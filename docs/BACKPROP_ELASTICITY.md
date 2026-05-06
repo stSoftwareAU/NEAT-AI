@@ -1,3 +1,26 @@
+# 🔄 Elastic Back Propagation
+
+> **TL;DR** — NEAT-AI's backpropagation does not blindly apply the chain rule
+> everywhere. It (a) computes a target pre-squash value for each neuron, (b)
+> distributes the required change across inbound weights using a minimum-change
+> heuristic weighted by `activationᵢ² × safeZoneFactorᵢ`, and (c) refuses to
+> push neurons that are already saturated further into saturation. The
+> topological backprop loop and the elastic distribution kernel both live in
+> WebAssembly (WASM) — there is no TypeScript fallback. Acronyms used here:
+> **WASM** (WebAssembly), **ReLU** (Rectified Linear Unit), **TANH** (hyperbolic
+> tangent), **MCMC** (Markov-chain Monte Carlo).
+
+### 🔗 Sibling docs in the **Compute / WASM** cluster
+
+- [ACTIVATION_FUNCTIONS.md](./ACTIVATION_FUNCTIONS.md) — squash catalogue and
+  saturation behaviour referenced throughout this doc.
+- [WASM_RESIDENT_TOPOLOGY.md](./WASM_RESIDENT_TOPOLOGY.md) — what data the WASM
+  backprop kernel reads from the typed-array topology.
+- [GPU_ACCELERATION.md](./GPU_ACCELERATION.md) — Discovery uses the same
+  per-neuron error attribution, accelerated on Graphics Processing Unit (GPU)
+  hardware.
+- [docs/README.md](./README.md) — full topic index.
+
 ## 🔄 Elastic Back Propagation (minimum-change + safe-zone aware)
 
 This project uses a value-solving form of back propagation.
@@ -15,6 +38,33 @@ immovable neurons.
 > preferring plastic (unsaturated) synapses over those that are already at their
 > activation boundary. This improves training stability and helps the network
 > avoid chasing meaningless error outliers.
+
+### 🧭 End-to-End Sequence
+
+The diagram below traces a single training iteration: forward pass, error
+computation, elastic distribution of that error across inbound links, and the
+resulting weight/bias update. The two highlighted steps are the WASM-only
+kernels described in `AGENTS.md` § "WASM-only operations".
+
+```mermaid
+sequenceDiagram
+    participant TS as TypeScript orchestrator
+    participant Topo as Typed-array topology
+    participant Wasm as WASM kernels (NEAT-AI-core)
+    participant Squash as Squash function
+
+    TS->>Topo: prepare typed arrays (weights, biases, activations)
+    TS->>Wasm: propagate_topological(forward pass)
+    Wasm->>Squash: apply per-neuron squash
+    Squash-->>Wasm: activation a, safeZoneFactor
+    Wasm-->>TS: per-neuron activations
+    TS->>TS: compute output error vs expected
+    Note over TS,Wasm: WASM-only — no TS fallback
+    TS->>Wasm: distribute_elastic_error(error, links)
+    Wasm-->>TS: per-link share = error · aᵢ² · sZFᵢ / Σ
+    TS->>Topo: apply weight & bias updates (adjustedWeight, adjustedBias)
+    Topo-->>TS: next iteration ready
+```
 
 ### 🧪 Training vs Recording (Explorer / Discovery)
 
@@ -156,7 +206,20 @@ With elastic backprop + safe-zones:
 
 ### 🗂️ Where to Look in Code
 
-- Elastic distribution helper: `src/propagate/ElasticDistribution.ts`
-- Back propagation application: `src/architecture/Neuron.ts`
+The TypeScript side is now a thin orchestration layer; the per-iteration
+topological loop and the elastic distribution kernel live exclusively in the
+NEAT-AI-core WASM bundle (Issue #2416). If the bundle cannot be loaded these
+operations fail fast with a `WasmError` — there is **no TypeScript fallback**.
+
+- Elastic distribution adapter (TS shim around the WASM kernel):
+  [`src/propagate/ElasticDistribution.ts`](../src/propagate/ElasticDistribution.ts)
+- Topological backprop wrapper (calls into WASM):
+  [`src/propagate/WasmTopologicalBackprop.ts`](../src/propagate/WasmTopologicalBackprop.ts)
+- Back-propagation application:
+  [`src/architecture/Neuron.ts`](../src/architecture/Neuron.ts)
   (`Neuron.propagate()`)
-- Example saturating squash: `src/methods/activations/types/ArcTan.ts`
+- Example saturating squash:
+  [`src/methods/activations/types/ArcTan.ts`](../src/methods/activations/types/ArcTan.ts)
+- WASM artefacts (vendored from the pinned NEAT-AI-core revision):
+  [`wasm_activation/pkg/`](../wasm_activation/pkg/) — see `AGENTS.md` for the
+  WASM-only operations list and core dependency policy.
