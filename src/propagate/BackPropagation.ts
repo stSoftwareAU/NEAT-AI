@@ -160,6 +160,20 @@ export type BackPropagationArguments = {
    * false = disabled (default, preserves existing sum behaviour).
    */
   normaliseGradients: boolean;
+
+  /**
+   * Issue #2529: Optional Muon-style orthogonalised gradient updates.
+   *
+   * When set to `"muon"`, after a backprop training step the per-target
+   * neuron incoming-weight gradient deltas are stacked into a per-layer
+   * matrix and orthogonalised via the standard quintic Newton-Schulz
+   * iteration. This decorrelates per-neuron update directions and (per
+   * the DeepSeek V4 paper) accelerates convergence and improves
+   * stability over AdamW.
+   *
+   * Default `"none"` preserves existing behaviour exactly.
+   */
+  gradientOrthogonalisation: "none" | "muon";
 };
 
 export type BackPropagationOptions = Partial<BackPropagationArguments>;
@@ -279,6 +293,10 @@ export function createBackPropagationConfig(
       1,
     ),
     normaliseGradients: options?.normaliseGradients ?? false,
+    // Issue #2529: Default-off Muon-style orthogonalised gradient updates.
+    gradientOrthogonalisation: options?.gradientOrthogonalisation === "muon"
+      ? "muon"
+      : "none",
   };
 
   return Object.freeze(config);
