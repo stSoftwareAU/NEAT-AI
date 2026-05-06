@@ -15,18 +15,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `[loadFrom] Recurrent synapse … source=fromJSON` `TopologyError` throws on
   every load even after Issue #2515 wired
   `assertNoRecurrentSynapseOnForwardOnly` into the discovery combiners and the
-  public `exportJSON` save path. The audit missed `exportJSONWithRuntimeIds`:
-  it is the internal export that worker training (`WorkerProcessor`),
-  evolution scheduling (`NeatScheduling`), training teardown / outcome /
-  setup, compaction (`CompactUnused`), discovery replay
-  (`ReplayEntryApplication`), knowledge distillation, and the legacy upgrade
-  pipeline all route through. A forward-only creature that gained a
-  recurrent synapse upstream could be persisted by any of those paths and
-  surfaced only as a load-side throw on the next worker. Mirroring the
-  assertion in `exportJSONWithRuntimeIds` pins the producer's stack frame so
-  the offending pipeline is named directly. Pre-4.x upgrade paths are
-  unaffected because the `forwardOnly` flag was introduced with 4.x — the
-  assertion is a no-op when `creature.forwardOnly !== true`.
+  public `exportJSON` save path. The audit missed `exportJSONWithRuntimeIds`: it
+  is the internal export that worker training (`WorkerProcessor`), evolution
+  scheduling (`NeatScheduling`), training teardown / outcome / setup, compaction
+  (`CompactUnused`), discovery replay (`ReplayEntryApplication`), knowledge
+  distillation, and the legacy upgrade pipeline all route through. A
+  forward-only creature that gained a recurrent synapse upstream could be
+  persisted by any of those paths and surfaced only as a load-side throw on the
+  next worker. Mirroring the assertion in `exportJSONWithRuntimeIds` pins the
+  producer's stack frame so the offending pipeline is named directly. Pre-4.x
+  upgrade paths are unaffected because the `forwardOnly` flag was introduced
+  with 4.x — the assertion is a no-op when `creature.forwardOnly !== true`.
 - **Issue #2523:** Breed-time fail-soft for corrupt parents. `findFather` now
   wraps the per-candidate `Creature.fromJSON(...)` call in a
   `try/catch (TopologyError)` block: a single corrupt parent is skipped with a
