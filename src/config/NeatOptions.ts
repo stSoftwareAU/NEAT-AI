@@ -24,6 +24,7 @@ import type { WorkerThreadCapConfig } from "@config/WorkerThreadCapConfig.ts";
 import type { HyperparameterEvolutionConfig } from "@config/HyperparameterConfig.ts";
 import type { MCMCConfig } from "@config/MCMCConfig.ts";
 import type { OpdConfig } from "@config/OpdConfig.ts";
+import type { SpecialistConfig } from "@config/SpecialistConfig.ts";
 import type { AdaptivePopulationConfig } from "@config/AdaptivePopulationConfig.ts";
 import type { CrossValidationConfig } from "@config/CrossValidationConfig.ts";
 import type { DataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
@@ -114,6 +115,7 @@ export type NeatOptions =
     | "hyperparameterEvolution"
     | "mcmc"
     | "opd"
+    | "specialist"
     | "adaptivePopulation"
     | "crossValidation"
     | "dataFuzzing"
@@ -169,6 +171,13 @@ export type NeatOptions =
      * Setting `opd.breedRate > 0` enables the operator.
      */
     opd?: OpdConfig;
+    /**
+     * Specialist sub-populations + ensemble distillation pipeline
+     * configuration (Issue #2530). Set `specialist.mode` to `"auto"` or
+     * `"manual"` and provide `specialist.subTaskIds` to enable the
+     * two-stage pipeline. Default mode is `"off"` (disabled).
+     */
+    specialist?: SpecialistConfig;
     /** Partial overrides for adaptive population sizing configuration (defaults applied if not specified) */
     adaptivePopulation?: AdaptivePopulationConfig;
     /** Partial overrides for cross-validation configuration (defaults applied if not specified) */
@@ -276,6 +285,7 @@ export type NeatOptionsInput =
     | "hyperparameterEvolution"
     | "mcmc"
     | "opd"
+    | "specialist"
     | "adaptivePopulation"
     | "crossValidation"
     | "dataFuzzing"
@@ -323,6 +333,11 @@ export type NeatOptionsInput =
      * #2528). Numeric fields coerced from CLI.
      */
     opd?: CoerceNumeric<OpdConfig>;
+    /**
+     * Specialist pipeline configuration (Issue #2530). Numeric fields
+     * coerced from CLI.
+     */
+    specialist?: CoerceNumeric<SpecialistConfig>;
     adaptivePopulation?: CoerceNumeric<AdaptivePopulationConfig>;
     /** Cross-validation configuration (Issue #1865). Numeric fields coerced from CLI. */
     crossValidation?: CoerceNumeric<CrossValidationConfig>;

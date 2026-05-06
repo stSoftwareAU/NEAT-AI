@@ -58,6 +58,7 @@ import {
   parsePlateauDetection,
   parsePredictiveCoding,
   parseQuantumStep,
+  parseSpecialist,
   parseSpeciesStagnation,
   parseSquashEffectiveness,
   parseStabilityAdaptation,
@@ -648,6 +649,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #2528: Parse On-Policy Distillation breeding operator configuration
     opd: parseOpd(
       opts.opd as Record<string, unknown> | undefined,
+    ),
+    // Issue #2530: Parse specialist sub-population pipeline configuration
+    specialist: parseSpecialist(
+      opts.specialist as Record<string, unknown> | undefined,
     ),
     // Issue #1863: Parse hyperparameter evolution and adaptive population configs
     hyperparameterEvolution: parseHyperparameterEvolution(
