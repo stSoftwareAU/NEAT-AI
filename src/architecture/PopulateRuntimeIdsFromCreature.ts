@@ -53,26 +53,50 @@ export function populateRuntimeIdsFromCreature(
 /**
  * Internal export with runtime integer ids on neurons and synapses.
  *
- * **Issue #2546 — forward-only post-condition.** This is the producer
- * gap that #2515 missed: worker training (`WorkerProcessor`), evolution
+ * **Issue #2546 — forward-only post-condition.** This is the producer gap
+ * that #2515 missed: worker training (`WorkerProcessor`), evolution
  * scheduling (`NeatScheduling`), training teardown / outcome / setup,
  * compaction (`CompactUnused`), discovery replay
- * (`ReplayEntryApplication`), knowledge distillation, and the legacy
- * upgrade pipeline all route through this function. The public
- * {@link exportJSON} already calls
- * {@link assertNoRecurrentSynapseOnForwardOnly}; this internal export
- * did not, and so any forward-only creature that gained a recurrent
- * synapse upstream could be persisted to disk and only surface as a
- * `[loadFrom] Recurrent synapse … source=fromJSON` `TopologyError` on
+ * (`ReplayEntryApplication`), knowledge distillation, and the worker→main
+ * wire all route through this function. The public {@link exportJSON}
+ * already calls {@link assertNoRecurrentSynapseOnForwardOnly}; this
+ * internal export did not, and so any forward-only creature that gained a
+ * recurrent synapse upstream could be persisted to disk and only surface
+ * as a `[loadFrom] Recurrent synapse … source=fromJSON` `TopologyError` on
  * the next worker that ingested the JSON. Mirroring the assertion here
  * pins the producer's stack frame.
  *
- * Pre-4.x upgrade paths are not affected: the `forwardOnly` flag was
- * introduced with 4.x, so 1.x/2.x/3.x creatures arriving in the upgrade
- * pipeline have `forwardOnly !== true` and the assertion is a no-op.
+ * Repair tools and legacy upgrade paths that legitimately need to
+ * serialise a not-yet-repaired creature must call
+ * {@link exportJSONWithRuntimeIdsUnchecked} (with a code comment naming
+ * the bypass) so the gate's intent is preserved.
  */
 export function exportJSONWithRuntimeIds(creature: Creature): CreatureExport {
   assertNoRecurrentSynapseOnForwardOnly(creature, "exportJSONWithRuntimeIds");
+  return buildExportWithRuntimeIds(creature);
+}
+
+/**
+ * Internal-only runtime-ids export that **bypasses** the Issue #2546
+ * forward-only assertion. Use only on paths that legitimately need to
+ * serialise a potentially-corrupt creature for further processing
+ * (e.g. the legacy `upgrade()` / `upgradeTwo()` pipeline before `fix()`
+ * finishes its repair pass on residual recurrent edges from 1.x/2.x
+ * genomes, and the `NeatScheduling` training-failure diagnostic write
+ * already on an error path that must not be masked by another throw).
+ *
+ * Always pair the call with a code comment naming the bypass — when in
+ * doubt, prefer {@link exportJSONWithRuntimeIds}; the assertion is the
+ * only thing that names the producing pipeline when corruption escapes
+ * onto the worker→main wire or onto disk.
+ */
+export function exportJSONWithRuntimeIdsUnchecked(
+  creature: Creature,
+): CreatureExport {
+  return buildExportWithRuntimeIds(creature);
+}
+
+function buildExportWithRuntimeIds(creature: Creature): CreatureExport {
   const json = new CreatureExportBuilder(creature).build(true);
   if (json.memetic) {
     json.memetic = convertMemeticExportToWireJson(creature, json.memetic);

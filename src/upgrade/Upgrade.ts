@@ -3,7 +3,7 @@ import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import { repairInvalidIfNeuronsInCreature } from "@architecture/RepairInvalidIfNeurons.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { pruneOrphanMemeticReferences } from "@compact/CompactUtils.ts";
-import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { exportJSONWithRuntimeIdsUnchecked } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import type { ValidationError } from "@errors/ValidationError.ts";
 import { writeDiagnostics } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
@@ -253,7 +253,11 @@ export function upgrade(creature: Creature): Creature {
 
   // Upgrade from 1.x → 2.x, then try 4.x
   if (majorVersion === 1) {
-    const v2 = upgradeTwo(exportJSONWithRuntimeIds(creature));
+    // Issue #2546: legacy 1.x creatures pre-date forward-only enforcement and
+    // may carry recurrent edges that the upgrade's `fix()` pass repairs. Use
+    // the unchecked export so the upgrader can serialise the not-yet-repaired
+    // creature without tripping the writer-side forward-only assertion.
+    const v2 = upgradeTwo(exportJSONWithRuntimeIdsUnchecked(creature));
     // Issue #2514: legacy 1.x creatures pre-date forward-only enforcement
     // and may legitimately carry recurrent edges through the upgrade
     // pipeline. Opt out of the load-side throw so the upgrader can finish
@@ -267,7 +271,10 @@ export function upgrade(creature: Creature): Creature {
   // Version 0 or unknown - set to 1.0.0 first, then upgrade to 2.x, then try 4.x
   // This handles undefined versions, invalid formats, and "0.x" versions
   if (majorVersion === 0) {
-    const json = exportJSONWithRuntimeIds(creature);
+    // Issue #2546: see major-1 branch — legacy v0 creatures pre-date the
+    // forward-only invariant; bypass the writer-side assertion until the
+    // upgrade's `fix()` pass runs.
+    const json = exportJSONWithRuntimeIdsUnchecked(creature);
     json.semanticVersion = "1.0.0"; // Set to 1.0.0 so upgradeTwo can process it
     const v2 = upgradeTwo(json);
     // Issue #2514: see above — same rationale for the v0 → v2 upgrade path.
