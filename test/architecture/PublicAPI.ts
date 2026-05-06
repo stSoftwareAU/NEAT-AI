@@ -1,9 +1,10 @@
 /**
  * Issue #1401: Verify the public API surface exported from mod.ts.
  *
- * This test ensures every symbol documented in docs/API_REFERENCE.md is
- * actually exported and usable. It exercises real code (constructors,
- * static methods, constants) rather than grepping documentation text.
+ * This test ensures every symbol documented in docs/API_REFERENCE.md and
+ * its per-surface detail docs under docs/api/ is actually exported and
+ * usable. It exercises real code (constructors, static methods, constants)
+ * rather than grepping documentation text.
  */
 import { assert, assertEquals } from "@std/assert";
 

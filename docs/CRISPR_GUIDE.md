@@ -3,8 +3,8 @@
 Targeted genetic modifications for NEAT-AI creatures, inspired by the
 [CRISPR gene-editing technique](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/).
 This guide complements the CRISPR API summary in
-[`docs/API_REFERENCE.md`](API_REFERENCE.md) with the conventions and gotchas
-that catch out new authors.
+[`docs/api/CREATURE.md`](api/CREATURE.md#-crispr) with the conventions and
+gotchas that catch out new authors.
 
 ## Modes
 
