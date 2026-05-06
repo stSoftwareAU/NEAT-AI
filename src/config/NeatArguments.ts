@@ -36,6 +36,7 @@ import type { RequiredDataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
 import type { RequiredDataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
 import type { RequiredMCMCConfig } from "@config/MCMCConfig.ts";
 import type { RequiredOpdConfig } from "@config/OpdConfig.ts";
+import type { RequiredSpecialistConfig } from "@config/SpecialistConfig.ts";
 import type { RequiredParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.ts";
 
 /**
@@ -839,6 +840,16 @@ export interface NeatArguments {
    * behaviour is preserved.
    */
   opd: RequiredOpdConfig;
+
+  /**
+   * Specialist sub-populations + ensemble distillation pipeline (Issue
+   * #2530). Mirrors DeepSeek V4's two-stage post-training pipeline at
+   * NEAT scale: dedicated specialist species per sub-task, periodically
+   * distilled into a generalist via the OPD breed operator. Defaults
+   * disable the pipeline (`mode: "off"`) so existing behaviour is
+   * preserved.
+   */
+  specialist: RequiredSpecialistConfig;
 
   /**
    * Parallel batch creature evaluation configuration.

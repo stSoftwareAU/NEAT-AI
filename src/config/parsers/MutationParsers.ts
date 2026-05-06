@@ -21,6 +21,11 @@ import {
   DEFAULT_OPD_CONFIG,
   type RequiredOpdConfig,
 } from "@config/OpdConfig.ts";
+import {
+  DEFAULT_SPECIALIST_CONFIG,
+  type RequiredSpecialistConfig,
+  type SpecialistMode,
+} from "@config/SpecialistConfig.ts";
 import { parseNumber } from "@config/ParseOptions.ts";
 import {
   DEFAULT_STABILITY_ADAPTATION_CONFIG,
@@ -335,6 +340,46 @@ export function parseOpd(
       overrides?.learningRate,
       d.learningRate,
       { minExclusive: 0, max: 1 },
+    ),
+  };
+}
+
+/**
+ * Parse specialist sub-population pipeline configuration (Issue #2530).
+ *
+ * Validates the mode enum and numeric ranges so an out-of-range CLI
+ * value (e.g. zero distillation cadence) fails fast at config build
+ * time instead of silently misbehaving at runtime.
+ */
+export function parseSpecialist(
+  overrides: Record<string, unknown> | undefined,
+): RequiredSpecialistConfig {
+  const d = DEFAULT_SPECIALIST_CONFIG;
+  const rawMode = overrides?.mode;
+  const mode: SpecialistMode = rawMode === "auto" || rawMode === "manual" ||
+      rawMode === "off"
+    ? rawMode
+    : d.mode;
+
+  const rawIds = overrides?.subTaskIds;
+  const subTaskIds: readonly string[] = Array.isArray(rawIds)
+    ? rawIds.filter((v): v is string => typeof v === "string" && v.length > 0)
+    : d.subTaskIds;
+
+  return {
+    mode,
+    distillEveryN: parseNumber(
+      "Specialist distillEveryN",
+      overrides?.distillEveryN,
+      d.distillEveryN,
+      { integer: true, min: 1 },
+    ),
+    subTaskIds,
+    minSpecialistsPerTask: parseNumber(
+      "Specialist minSpecialistsPerTask",
+      overrides?.minSpecialistsPerTask,
+      d.minSpecialistsPerTask,
+      { integer: true, min: 1 },
     ),
   };
 }
