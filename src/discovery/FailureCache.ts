@@ -29,6 +29,7 @@ import {
   buildDiscoveryWireRequest,
   DISCOVERY_WIRE_SCHEMA_VERSION,
 } from "@discovery/DiscoveryWireFormat.ts";
+import { indexCandidateForCache } from "@discovery/SubnetworkHashIndex.ts";
 
 // Re-export for backward compatibility.
 export { isPredictionTracingEnabled } from "@discovery/FailureCacheDiagnostics.ts";
@@ -241,6 +242,13 @@ export async function recordFailure(
       baseCreature,
     );
     await Deno.writeTextFile(filePath, JSON.stringify(cacheEntry, null, 2));
+
+    // Issue #2531: also index by subnetwork hash for O(1) lookup.
+    indexCandidateForCache(baseCreature, candidate, {
+      source: "failure",
+      changeType: candidate.change.type,
+      cacheKey: String(cacheEntry.key),
+    });
   } catch (error) {
     getLogger().warn(
       `[FailureCache] Failed to record failure for candidate ${candidate.change.type}: ${error}`,
@@ -279,6 +287,13 @@ export function recordFailureSync(
       baseCreature,
     );
     Deno.writeTextFileSync(filePath, JSON.stringify(cacheEntry, null, 2));
+
+    // Issue #2531: also index by subnetwork hash for O(1) lookup.
+    indexCandidateForCache(baseCreature, candidate, {
+      source: "failure",
+      changeType: candidate.change.type,
+      cacheKey: String(cacheEntry.key),
+    });
   } catch (error) {
     getLogger().warn(
       `[FailureCache] Failed to record failure for candidate ${candidate.change.type}: ${error}`,

@@ -30,6 +30,7 @@ import {
   DISCOVERY_WIRE_SCHEMA_VERSION,
   type DiscoveryWireRequest,
 } from "@discovery/DiscoveryWireFormat.ts";
+import { indexCandidateForCache } from "@discovery/SubnetworkHashIndex.ts";
 
 /** Metadata stored alongside cached successes for debugging/analysis */
 export interface SuccessMetadata {
@@ -169,6 +170,15 @@ export function recordSuccessSync(
       // Ignore cleanup failure.
     }
   }
+
+  // Issue #2531: also index this entry by subnetwork hash so the
+  // discovery cache lookup path can short-circuit to O(1) when the same
+  // local wire pattern reappears in the population.
+  indexCandidateForCache(baseCreature, candidate, {
+    source: "success",
+    changeType: candidate.change.type,
+    cacheKey: cacheEntry.key,
+  });
 }
 
 /**
