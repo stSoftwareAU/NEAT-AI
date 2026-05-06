@@ -246,9 +246,11 @@ flowchart LR
   sparsity in our setting is the natural sparsity of an evolved feed-forward
   topology.
 - **Applicability score**: **SKIP** — transformer-attention-only. Documented for
-  completeness in the non-applicability note (#2540).
+  completeness in the non-applicability triage note
+  ([`deepseek-not-applicable.md`](deepseek-not-applicable.md)).
 - **Linked research-note issue**:
-  [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540).
+  [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540)
+  ([`deepseek-not-applicable.md`](deepseek-not-applicable.md)).
 
 ### Janus (Oct 2024)
 
@@ -259,9 +261,12 @@ flowchart LR
   generation; unified autoregressive backbone.
 - **Closest NEAT-AI surface**: `n/a` — NEAT-AI is modality-agnostic but does not
   handle multimodal fusion; image-token-specific.
-- **Applicability score**: **SKIP** — multimodal-only.
+- **Applicability score**: **SKIP** — multimodal-only. Documented in the
+  non-applicability triage note
+  ([`deepseek-not-applicable.md`](deepseek-not-applicable.md)).
 - **Linked research-note issue**:
-  [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540).
+  [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540)
+  ([`deepseek-not-applicable.md`](deepseek-not-applicable.md)).
 
 ### Janus-Pro (Jan 2025)
 
@@ -271,8 +276,11 @@ flowchart LR
   backbones.
 - **Closest NEAT-AI surface**: `n/a`.
 - **Applicability score**: **SKIP** — multimodal-only; same rationale as Janus.
+  See the non-applicability triage note
+  ([`deepseek-not-applicable.md`](deepseek-not-applicable.md)).
 - **Linked research-note issue**:
-  [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540).
+  [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540)
+  ([`deepseek-not-applicable.md`](deepseek-not-applicable.md)).
 
 ### DeepSeek V4 (covered by #2526; reference only)
 
@@ -310,10 +318,11 @@ flowchart LR
   independent machines pushing creatures via GitHub, not a multi-thousand GPU
   AllReduce fabric.
 - **Applicability score**: **SKIP** — infrastructure paper for a problem shape
-  we do not have. Recorded for completeness in the non-applicability note
-  (#2540).
+  we do not have. Recorded for completeness in the non-applicability triage note
+  ([`deepseek-not-applicable.md`](deepseek-not-applicable.md)).
 - **Linked research-note issue**:
-  [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540).
+  [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540)
+  ([`deepseek-not-applicable.md`](deepseek-not-applicable.md)).
 
 ## Summary Table
 
@@ -330,8 +339,8 @@ flowchart LR
 | DeepSeek Prover V2      | Apr 2025 | HIGH   | [#2538](https://github.com/stSoftwareAU/NEAT-AI/issues/2538)                                                                                                                                 |
 | DeepSeek V3             | Dec 2024 | HIGH   | [#2536](https://github.com/stSoftwareAU/NEAT-AI/issues/2536)                                                                                                                                 |
 | DeepSeek R1             | Jan 2025 | HIGH   | [#2534](https://github.com/stSoftwareAU/NEAT-AI/issues/2534), exp. [#2528](https://github.com/stSoftwareAU/NEAT-AI/issues/2528)                                                              |
-| Native Sparse Attention | Feb 2025 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540)                                                                                                                                 |
-| Janus                   | Oct 2024 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540)                                                                                                                                 |
-| Janus-Pro               | Jan 2025 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540)                                                                                                                                 |
+| Native Sparse Attention | Feb 2025 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                          |
+| Janus                   | Oct 2024 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                          |
+| Janus-Pro               | Jan 2025 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                          |
 | DeepSeek V4             | 2025     | HIGH   | [#2526](https://github.com/stSoftwareAU/NEAT-AI/issues/2526), exp. [#2527](https://github.com/stSoftwareAU/NEAT-AI/issues/2527)–[#2531](https://github.com/stSoftwareAU/NEAT-AI/issues/2531) |
-| Fire-Flyer / HAI-LLM    | Aug 2024 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540)                                                                                                                                 |
+| Fire-Flyer / HAI-LLM    | Aug 2024 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                          |
