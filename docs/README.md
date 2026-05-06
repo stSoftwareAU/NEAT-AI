@@ -85,8 +85,10 @@ Drop-in API and configuration material.
   configuration surface. The detail docs under [`config/`](config/) cover
   presets, core evolution, training, discovery, mutation adaptation,
   regularisation, population sizing, workers, logging, and recipes.
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** — common problems and solutions
-  for WASM, discovery, memory, CI, and configuration.
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** — FAQ-style index of common
+  problems. The detail docs under [`troubleshooting/`](troubleshooting/) cover
+  WASM, discovery / FFI, memory, performance, training divergence, CI /
+  quality.sh, configuration, and ONNX export.
 
 ## 🧪 Specialised topics
 
