@@ -212,7 +212,7 @@ Deno.test(
       // Up to 30 attempts; POWER picks the highest-scored corrupt very
       // frequently. If somehow we never picked corrupt, the test would
       // be inconclusive but not flaky-failing.
-      for (let i = 0; i < 30 && !caught; i++) {
+      for (let i = 0; i < 30; i++) {
         try {
           findFather(mum, genus, config);
         } catch (e) {
@@ -251,7 +251,7 @@ Deno.test(
     );
     try {
       let caught: unknown;
-      for (let i = 0; i < 30 && !caught; i++) {
+      for (let i = 0; i < 30; i++) {
         try {
           findFather(mum, genus, config);
         } catch (e) {
