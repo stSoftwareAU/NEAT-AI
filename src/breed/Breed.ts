@@ -7,6 +7,7 @@ import type { NeatOptions } from "@config/NeatOptions.ts";
 import { BreedExhaustionError } from "@errors/BreedExhaustionError.ts";
 import type { Genus } from "@neat/Genus.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
+import { onPolicyDistillationBreed } from "@breed/OnPolicyDistillationBreed.ts";
 import {
   type BreedSelectionStats,
   buildAdjustedFitnessMap,
@@ -14,6 +15,7 @@ import {
   selectParent,
 } from "@breed/ParentSelection.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
  * Handles breeding operations between creatures in a NEAT population.
@@ -119,6 +121,19 @@ export class Breed {
     const ranking = populationRanking ??
       new FitnessRanking(this.genus.population, adjustedScores);
 
+    // Issue #2528: On-Policy Distillation (OPD) breeding operator.
+    // When `opd.breedRate > 0` and the dice roll succeeds, distil the
+    // top-K elites into a fresh student instead of running standard
+    // crossover. The operator skips itself silently when the elite
+    // pool is empty so the rest of the breeding loop is unaffected.
+    if (config.opd.breedRate > 0) {
+      const rng = getRandomNumberGenerator();
+      if (rng.random() < config.opd.breedRate) {
+        const opdChild = this.tryOnPolicyDistillationBreed(ranking, config);
+        if (opdChild) return opdChild;
+      }
+    }
+
     const mum = selectParent(ranking, config);
 
     assert(mum, "Mother is undefined");
@@ -164,5 +179,25 @@ export class Breed {
     }
 
     return child;
+  }
+
+  /**
+   * Attempt an On-Policy Distillation breed (Issue #2528).
+   *
+   * Selects the top-K elites from the fitness ranking and delegates to
+   * {@link onPolicyDistillationBreed}. Returns the offspring on success,
+   * or `undefined` when the elite pool is too small or distillation
+   * fails — the caller falls back to standard crossover in either case.
+   */
+  private tryOnPolicyDistillationBreed(
+    ranking: FitnessRanking,
+    config: NeatConfig,
+  ): Creature | undefined {
+    const k = Math.max(1, config.opd.teacherCount);
+    const elites = ranking.sortedPopulation.slice(0, k) as Creature[];
+    if (elites.length === 0) return undefined;
+    const result = onPolicyDistillationBreed(elites, config.opd);
+    if (!result) return undefined;
+    return result.offspring;
   }
 }
