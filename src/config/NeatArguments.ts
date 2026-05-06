@@ -907,6 +907,25 @@ export interface NeatArguments {
   compatibilityGating: RequiredCompatibilityGatingConfig;
 
   /**
+   * Tolerate corrupt parents during breeding (Issue #2523).
+   *
+   * When `true` (default), the breeding loop skips parent candidates
+   * whose serialised form fails to deserialise with a {@link
+   * TopologyError}, logs a structured `[breed-skip-corrupt-parent]`
+   * warning, and tries the next candidate. After exhausting all
+   * candidates (capped at `min(10, populationSize)` retries), a
+   * recoverable {@link BreedExhaustionError} is raised so the caller
+   * can continue the rest of the batch.
+   *
+   * When `false`, the legacy fail-fast behaviour is restored: the first
+   * `TopologyError` propagates out of the breeding loop (useful for
+   * diagnostic runs that want to surface every corruption immediately).
+   *
+   * Non-`TopologyError` exceptions are always re-thrown unchanged.
+   */
+  tolerateCorruptParents: boolean;
+
+  /**
    * Knob-tuning preset for inter-island DNA sharing (Issue #2492).
    *
    * Selects which bundle of defaults applies to the five inter-island

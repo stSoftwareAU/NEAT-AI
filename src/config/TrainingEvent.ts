@@ -288,6 +288,13 @@ export interface GenerationThroughputMetrics {
    * `scoredCreatureCount * 1000 / fitnessMs` when both are positive, else 0.
    */
   readonly creaturesPerSec: number;
+  /**
+   * Issue #2523: Number of corrupt parent candidates skipped during the
+   * breed phase of this generation. Non-zero values indicate upstream
+   * producer corruption that the breeding loop tolerated by trying the
+   * next-best candidate. `0` is the steady-state expectation.
+   */
+  readonly corruptParentSkips: number;
 }
 
 /**

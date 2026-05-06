@@ -8,6 +8,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Issue #2523:** Breed-time fail-soft for corrupt parents. `findFather` now
+  wraps the per-candidate `Creature.fromJSON(...)` call in a
+  `try/catch (TopologyError)` block: a single corrupt parent is skipped with a
+  structured
+  `[breed-skip-corrupt-parent] hash=<h> reason=<r>
+  source=findFather` warning,
+  the loop tries the next-best candidate, and the run continues. After all
+  candidates are skipped (capped at `min(10, populationSize)` retries) a
+  recoverable `BreedExhaustionError` is raised so the breeding batch can carry
+  on without killing the generation. The new
+  `NeatOptions.tolerateCorruptParents` (default `true`) controls the behaviour;
+  setting `false` restores the legacy fail-fast throw for diagnostic runs.
+  Non-`TopologyError` exceptions are always re-thrown unchanged. The
+  corrupt-parent skip count is surfaced in the per-batch `[Throughput]` summary
+  as `corruptParentSkips=N` and on `ParallelBreeding.lastCorruptParentSkips` /
+  `Breed.lastCorruptParentSkips`. Complements the producer-side throw added in
+  Issue #2514: producers continue to fail fast, and the consumer-side breeding
+  loop soldiers on through transient corruption.
+
 ### Fixed
 
 - **Issue #2517:** `Fitness.calculate` now partitions the unique creature queue

@@ -883,6 +883,8 @@ export async function evolve(
     // Issue #2424: Scorer runtime telemetry captured inside Fitness.calculate.
     scoredCreatureCount: neat.fitness.lastScoredCreatureCount,
     scorerMs: neat.fitness.lastScorerMs,
+    // Issue #2523: corrupt parent skips during the breed phase.
+    corruptParentSkips: parallelBreeding.lastCorruptParentSkips,
   });
 
   // Issue #2239: Log per-phase timing when verbose is enabled
@@ -924,7 +926,11 @@ export async function evolve(
         `/depth${throughput.heavyQueueMaxDepth}/wait${throughput.heavyWaitMs}ms` +
         ` scorer=${throughput.scorerMs.toFixed(1)}ms` +
         `/scored${throughput.scoredCreatureCount}` +
-        `/creaturesPerSec${throughput.creaturesPerSec.toFixed(1)}`,
+        `/creaturesPerSec${throughput.creaturesPerSec.toFixed(1)}` +
+        // Issue #2523: surface corrupt-parent skip count in the
+        // throughput summary so operators can alert on producer
+        // corruption.
+        ` corruptParentSkips=${throughput.corruptParentSkips}`,
     );
   }
 

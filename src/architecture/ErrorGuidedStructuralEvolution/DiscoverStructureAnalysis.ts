@@ -547,6 +547,18 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       return undefined;
     }
 
+    // Guard: consistent with analyzeSelectedNeurons, analyzeMissingNeurons,
+    // and analyzeSelectedNeuronsForRemoval — skip squash analysis when Parquet
+    // data is unavailable rather than letting loadNeuronRecords throw.
+    if (!this.parquetFilePath || !this.deps.isRustDiscoveryEnabled()) {
+      this.logRustAnalysisUnavailable(
+        "neuron",
+        focusList,
+        "Rust discovery unavailable",
+      );
+      return undefined;
+    }
+
     const idToWire = buildRuntimeIdToWireMap(this.creature);
     const candidatePromises = focusList.map(async (neuronId) => {
       const wireUuid = resolveRuntimeIdToWireUuid(idToWire, neuronId);
