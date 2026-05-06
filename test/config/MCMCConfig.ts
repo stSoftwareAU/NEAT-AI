@@ -266,3 +266,46 @@ Deno.test("MCMCConfig - string adjustmentRate and toleranceRate coerced from CLI
   assertEquals(config.mcmc.adjustmentRate, 0.03);
   assertEquals(config.mcmc.toleranceRate, 0.08);
 });
+
+// --- Issue #2527: mcmcAdvantageMode tests ---
+
+Deno.test(
+  "MCMCConfig - mcmcAdvantageMode defaults to 'absolute' (non-breaking)",
+  () => {
+    const config = createNeatConfig({});
+    assertEquals(config.mcmc.mcmcAdvantageMode, "absolute");
+    assertEquals(config.mcmc.minCohortSize, 4);
+    assertEquals(config.mcmc.advantageEps, 1e-8);
+    assertEquals(config.mcmc.advantageClip, 10);
+  },
+);
+
+Deno.test("MCMCConfig - mcmcAdvantageMode 'groupRelative' is accepted", () => {
+  const config = createNeatConfig({
+    mcmc: {
+      enabled: true,
+      mcmcAdvantageMode: "groupRelative",
+      minCohortSize: 8,
+      advantageEps: 1e-6,
+      advantageClip: 5,
+    },
+  });
+  assertEquals(config.mcmc.mcmcAdvantageMode, "groupRelative");
+  assertEquals(config.mcmc.minCohortSize, 8);
+  assertEquals(config.mcmc.advantageEps, 1e-6);
+  assertEquals(config.mcmc.advantageClip, 5);
+});
+
+Deno.test("MCMCConfig - mcmcAdvantageMode rejects unknown strings", () => {
+  assertThrows(
+    () =>
+      createNeatConfig({
+        mcmc: {
+          // deno-lint-ignore no-explicit-any
+          mcmcAdvantageMode: "raw" as any,
+        },
+      }),
+    Error,
+    "mcmcAdvantageMode",
+  );
+});
