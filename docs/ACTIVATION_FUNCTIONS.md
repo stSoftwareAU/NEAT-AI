@@ -1,5 +1,30 @@
 # ⚡ Activation Functions Guide
 
+> **TL;DR** — A **squash** function (NEAT-AI's name for an activation function)
+> is the small per-neuron non-linearity that turns a neuron's pre-activation sum
+> `v = b + Σ(wᵢ·aᵢ)` into its output. NEAT-AI ships 32 standard squashes, 3
+> aggregate functions, and 3 deprecated squashes kept only for backward
+> compatibility — every name in the tables below resolves to a real export under
+> [`src/methods/activations/`](../src/methods/activations/) (or
+> [`src/deprecated/`](../src/deprecated/) for the deprecated set). This guide
+> explains how to pick one. Acronyms used here: **ReLU** (Rectified Linear
+> Unit), **GELU** (Gaussian Error Linear Unit), **ELU** (Exponential Linear
+> Unit), **SELU** (Scaled ELU), **TANH** (hyperbolic tangent), **NaN** (Not a
+> Number).
+
+### 🔗 Sibling docs in the **Compute / WASM** cluster
+
+- [BACKPROP_ELASTICITY.md](./BACKPROP_ELASTICITY.md) — how saturated squashes
+  interact with elastic weight updates (where this guide ends, that one begins).
+- [WASM_RESIDENT_TOPOLOGY.md](./WASM_RESIDENT_TOPOLOGY.md) — what crosses the
+  TypeScript ↔ WebAssembly (WASM) boundary during activation.
+- [GPU_ACCELERATION.md](./GPU_ACCELERATION.md) — Graphics Processing Unit (GPU)
+  acceleration of activation/synapse evaluation in the Discovery Foreign
+  Function Interface (FFI).
+- [INTELLIGENT_DESIGN.md](./INTELLIGENT_DESIGN.md) — automated per-neuron squash
+  selection via `scanForSquashImprovements`.
+- [docs/README.md](./README.md) — full topic index.
+
 This guide covers all activation functions available in NEAT-AI, helps you
 understand their characteristics, and provides guidance on selecting the right
 function for your use case.
@@ -99,11 +124,33 @@ with existing trained models.
 > continue to function correctly, but you should plan to migrate away from them
 > in future training runs.
 
-| Name    | Output Range | Replacement                | Why Deprecated                                      |
-| :------ | :----------- | :------------------------- | :-------------------------------------------------- |
-| HYPOT   | (-inf, inf)  | Standard activation + bias | Expensive, unpredictable behaviour as a squash      |
-| HYPOTv2 | [0, inf)     | Standard activation + bias | Same issues as HYPOT                                |
-| MEAN    | (-inf, inf)  | Normal neuron with weights | A standard neuron can replicate averaging behaviour |
+| Name                                    | Output Range | Replacement                | Why Deprecated                                      |
+| :-------------------------------------- | :----------- | :------------------------- | :-------------------------------------------------- |
+| [HYPOT](../src/deprecated/HYPOT.ts)     | (-inf, inf)  | Standard activation + bias | Expensive, unpredictable behaviour as a squash      |
+| [HYPOTv2](../src/deprecated/HYPOTv2.ts) | [0, inf)     | Standard activation + bias | Same issues as HYPOT                                |
+| [MEAN](../src/deprecated/MEAN.ts)       | (-inf, inf)  | Normal neuron with weights | A standard neuron can replicate averaging behaviour |
+
+All three deprecated squashes still load and activate correctly so legacy models
+keep working — they are just excluded from the mutation pool. New training runs
+will never select them. See [`src/deprecated/`](../src/deprecated/) for the
+implementations.
+
+### 🔄 Where the Squash Sits in the Compute Pipeline
+
+```mermaid
+flowchart LR
+    Input[Inputs aᵢ] --> Sum["Pre-activation<br/>v = b + Σ(wᵢ·aᵢ)"]
+    Sum --> Squash["Squash function<br/>(this guide)"]
+    Squash --> Output[Output a]
+    Output --> Loss[Loss / error]
+    Loss --> Elastic["Elastic distribution<br/>(BACKPROP_ELASTICITY.md)"]
+    Elastic -.weight & bias updates.-> Sum
+    Squash -. safe-zone factor .-> Elastic
+```
+
+The squash function and its derivative/inverse jointly drive the elastic
+backpropagation step described in
+[BACKPROP_ELASTICITY.md](./BACKPROP_ELASTICITY.md).
 
 ---
 
