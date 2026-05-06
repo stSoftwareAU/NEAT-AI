@@ -109,21 +109,19 @@ Project-level policies, audits, and release plumbing.
 - **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — first-time contributor guide.
 - **[../SECURITY.md](../SECURITY.md)** — security disclosure policy.
 - **[../CHANGELOG.md](../CHANGELOG.md)** — release notes.
+- **[EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md)** — 🧭 cluster overview
+  for the NEAT-AI-core dependency. Day-to-day workflow for bumping the pinned
+  revision, plus links to every detail doc below.
 - **[CORE_DEPENDENCY_POLICY.md](CORE_DEPENDENCY_POLICY.md)** — how NEAT-AI pins
   and consumes [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) via
   `deno.json` + `build.sh` (rev pinning, semver, approval tiers).
-- **[EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md)** — day-to-day workflow
-  for bumping the pinned revision and refreshing `wasm_activation/pkg`.
 - **[CI_EXTERNAL_NEAT_AI_CORE.md](CI_EXTERNAL_NEAT_AI_CORE.md)** — CI plumbing
   for `build.sh`-driven artefact sync.
-- **[PARITY_GATE.md](PARITY_GATE.md)** — pre-removal verification checklist for
-  repin + artefact parity validation.
-- **[NEAT_AI_CORE_PARITY_AUDIT.md](NEAT_AI_CORE_PARITY_AUDIT.md)** — archived
-  parity audit (Issue #2367).
-- **[WASM_ACTIVATION_PARITY_AUDIT.md](WASM_ACTIVATION_PARITY_AUDIT.md)** —
-  archived activation parity audit (Issue #2369).
-- **[RUST_SCORER_PARITY_AUDIT.md](RUST_SCORER_PARITY_AUDIT.md)** — archived
-  rust\_scorer parity audit (Issue #2368).
+- **[PARITY_GATE.md](PARITY_GATE.md)** — release checklist run after every repin
+  to verify TypeScript ↔ WASM parity.
+- **[PARITY_AUDITS.md](PARITY_AUDITS.md)** — archived parity audits (Issues
+  #2367, #2368, #2369) consolidated into a single page. Replaces three former
+  stubs.
 - **[TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md)** — TypeScript → Rust migration
   milestone roadmap.
 

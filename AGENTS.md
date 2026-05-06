@@ -581,9 +581,10 @@ In our production workloads, the default is feed-forward/forward-only.
   policy (ADR)
 - **docs/PARITY_GATE.md** - Parity gate checklist (Issue #2345) that must pass
   before removing in-tree duplicate native Rust
-- **docs/NEAT_AI_CORE_PARITY_AUDIT.md** - Parity audit (Issue #2367) mapping
-  every in-tree `neat-core/` pub item and test to its NEAT-AI-core equivalent at
-  the pinned rev
+- **docs/PARITY_AUDITS.md** - Consolidated archive of the three parity audits
+  (Issues #2367, #2368, #2369). Replaces the former
+  `NEAT_AI_CORE_PARITY_AUDIT.md`, `RUST_SCORER_PARITY_AUDIT.md` and
+  `WASM_ACTIVATION_PARITY_AUDIT.md` stubs
 - **docs/dna-sharing-bake-off-results.md** - Inter-island DNA-sharing primitive
   bake-off results (Issue #2496); `PruningTemplateStrategy` is the recommended
   primitive

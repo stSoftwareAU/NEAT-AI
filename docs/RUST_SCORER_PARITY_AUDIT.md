@@ -1,13 +1,8 @@
-# rust_scorer Parity Audit (Issue #2368)
+# rust_scorer Parity Audit (Issue #2368) — moved
 
-Historical note:
+This stub has been consolidated. The archived audit content now lives in
+[docs/PARITY_AUDITS.md](PARITY_AUDITS.md) under the **rust_scorer parity audit**
+section.
 
-- The previous in-repo Rust scorer experiment is no longer part of this
-  repository structure.
-- Core native logic now lives in NEAT-AI-core and is consumed through pinned
-  artifact sync (`deno.json` + `./build.sh`).
-
-For current validation, rely on:
-
-- `./scripts/parity-gate.sh`
-- `./quality.sh`
+For the live verification flow, see [docs/PARITY_GATE.md](PARITY_GATE.md) and
+[`./scripts/parity-gate.sh`](../scripts/parity-gate.sh).

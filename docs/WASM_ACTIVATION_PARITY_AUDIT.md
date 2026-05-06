@@ -1,22 +1,8 @@
-# WASM Activation Parity Audit (Issue #2369)
+# WASM Activation Parity Audit (Issue #2369) — moved
 
-This document is retained as historical context.
+This stub has been consolidated. The archived audit content now lives in
+[docs/PARITY_AUDITS.md](PARITY_AUDITS.md) under the **wasm_activation parity
+audit** section.
 
-## Current state
-
-- `wasm_activation/src/` Rust sources have been removed from this repository.
-- The runtime contract remains unchanged for callers: `wasm_activation/pkg/**`
-  is still shipped and loaded by TypeScript.
-- `deno.json` `neatCore.rev` is the single source of truth for core revision.
-- `./build.sh` refreshes `wasm_activation/pkg` from that pinned NEAT-AI-core
-  commit.
-
-## Ongoing parity checks
-
-Use:
-
-```bash
-./scripts/parity-gate.sh
-```
-
-This validates pin policy, artifact sync, and TypeScript/WASM parity tests.
+For the live verification flow, see [docs/PARITY_GATE.md](PARITY_GATE.md) and
+[`./scripts/parity-gate.sh`](../scripts/parity-gate.sh).

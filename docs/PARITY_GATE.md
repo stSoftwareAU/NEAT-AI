@@ -112,9 +112,11 @@ If any step fails:
 
 - [AGENTS.md](../AGENTS.md) — contributor guide, including the quality gate
   overview.
+- [docs/EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — cluster overview
+  and day-to-day workflow for bumping the pinned revision.
 - [docs/CORE_DEPENDENCY_POLICY.md](CORE_DEPENDENCY_POLICY.md) — ADR for how
   NEAT-AI consumes NEAT-AI-core.
-- [docs/EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — day-to-day
-  workflow for bumping the pinned revision.
 - [docs/CI_EXTERNAL_NEAT_AI_CORE.md](CI_EXTERNAL_NEAT_AI_CORE.md) — CI plumbing
   for build.sh-driven WASM sync.
+- [docs/PARITY_AUDITS.md](PARITY_AUDITS.md) — archived audits (#2367, #2368,
+  #2369) for native code that has since been removed.
