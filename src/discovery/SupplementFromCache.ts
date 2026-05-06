@@ -36,9 +36,50 @@ import {
   listSuccessEntriesSync,
   type SuccessCacheEntry,
 } from "@discovery/SuccessCache.ts";
+import {
+  computeSubnetworkHash,
+  getSharedSubnetworkIndex,
+  type IndexedCacheReference,
+} from "@discovery/SubnetworkHashIndex.ts";
+import { exportJSON } from "@creature/CreatureSerialization.ts";
 
 /** Maximum number of cache entries to supplement with by default. */
 const DEFAULT_MAX_SUPPLEMENTS = 5;
+
+/**
+ * Walks every hidden / output neuron in the base creature, computes the
+ * subnetwork hash for that focal point, and returns the cache keys of any
+ * entries previously indexed under matching hashes.
+ *
+ * Returns an empty Set when the index is disabled or when no hits are found.
+ * Lookup is O(N) in the number of focal neurons, with each lookup an O(1)
+ * hashmap probe — there is no linear scan of cache entries here.
+ */
+function collectHashIndexHits(baseCreature: Creature): Set<string> {
+  const hits = new Set<string>();
+  const idx = getSharedSubnetworkIndex();
+  if (!idx.isEnabled() || idx.count === 0) return hits;
+
+  let exported;
+  try {
+    exported = exportJSON(baseCreature);
+  } catch {
+    return hits;
+  }
+
+  for (const neuron of exported.neurons) {
+    const uuid = neuron.uuid;
+    if (!uuid) continue;
+    if (neuron.type !== "hidden" && neuron.type !== "output") continue;
+    const hash = computeSubnetworkHash(exported, uuid);
+    if (!hash) continue;
+    const refs = idx.lookup(hash) as IndexedCacheReference[];
+    for (const ref of refs) {
+      hits.add(ref.cacheKey);
+    }
+  }
+  return hits;
+}
 
 /**
  * Checks whether a success cache entry references neurons/synapses
@@ -205,8 +246,21 @@ export function supplementFromCache(
       e.changeType !== "coordinated-structural",
   );
 
-  // Sort by scoreDelta descending (best historical performers first).
-  singleEntries.sort((a, b) => (b.scoreDelta ?? 0) - (a.scoreDelta ?? 0));
+  // Issue #2531: consult the in-memory subnetwork hash index first. Entries
+  // whose hash matches the current creature's local wire pattern are likely
+  // to apply, so we promote them ahead of the rest. This is a pure ordering
+  // hint — every entry is still verified by the existing exact-match path
+  // before being returned.
+  const hashHitKeys = collectHashIndexHits(baseCreature);
+
+  // Sort: hash-index hits first (best-historical-performers within), then the
+  // rest by scoreDelta descending.
+  singleEntries.sort((a, b) => {
+    const aHit = a.key ? hashHitKeys.has(a.key) ? 1 : 0 : 0;
+    const bHit = b.key ? hashHitKeys.has(b.key) ? 1 : 0 : 0;
+    if (aHit !== bHit) return bHit - aHit;
+    return (b.scoreDelta ?? 0) - (a.scoreDelta ?? 0);
+  });
 
   // Build cache keys for existing Phase 1 successes to avoid duplicates.
   const existingKeys = new Set<string>();

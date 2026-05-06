@@ -375,6 +375,31 @@ export type {
 } from "@neat/PlateauDetector.ts";
 
 /**
+ * Specialist Sub-Populations + Ensemble Distillation Pipeline
+ *
+ * Issue #2530: Mirrors DeepSeek V4's two-stage post-training pipeline at
+ * NEAT scale. Stage 1 seeds dedicated specialist species per declared
+ * sub-task; Stage 2 periodically distils the elites into a generalist
+ * via the OPD breed operator (Issue #2528). Disabled by default.
+ *
+ * @see {@link module:src/NEAT/SpecialistPipeline}
+ * @see {@link module:src/config/SpecialistConfig}
+ */
+export {
+  type DistillationResult,
+  SpecialistPipeline,
+  type SubTaskScores,
+} from "@neat/SpecialistPipeline.ts";
+export {
+  DEFAULT_SPECIALIST_CONFIG,
+  type RequiredSpecialistConfig,
+  type SpecialistConfig,
+  type SpecialistMode,
+} from "@config/SpecialistConfig.ts";
+export { Species } from "@neat/Species.ts";
+export { Genus } from "@neat/Genus.ts";
+
+/**
  * WASM Cache Control
  *
  * Issue #1338, #1504, #1581: Control the WASM activation LRU cache size, query

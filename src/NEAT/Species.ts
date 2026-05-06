@@ -54,6 +54,17 @@ export class Species {
   readonly speciesKey: string;
 
   /**
+   * Issue #2530: Optional sub-task tag binding this species to a specific
+   * objective in a multi-objective fitness function. When set, the species
+   * is a "specialist" — its members are ranked against {@link specialistTaskId}'s
+   * sub-score during selection, while still contributing to the global
+   * breeding pool size. {@link SpecialistPipeline} owns the lifecycle.
+   *
+   * `undefined` indicates a generalist (standard topology-only species).
+   */
+  specialistTaskId?: string;
+
+  /**
    * Issue #2452: Per-species rolling statistics. These are populated by
    * {@link computeStatistics}, called once per generation as part of
    * speciation, before parent selection runs.

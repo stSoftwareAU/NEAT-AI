@@ -21,7 +21,9 @@ export {
 export {
   parseAdaptiveMutationThresholds,
   parseMcmc,
+  parseOpd,
   parsePlateauDetection,
+  parseSpecialist,
   parseSquashEffectiveness,
   parseStabilityAdaptation,
 } from "@config/parsers/MutationParsers.ts";

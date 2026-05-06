@@ -17,6 +17,15 @@ import {
   type RequiredDiversityAwareMCMCConfig,
   type RequiredMCMCConfig,
 } from "@config/MCMCConfig.ts";
+import {
+  DEFAULT_OPD_CONFIG,
+  type RequiredOpdConfig,
+} from "@config/OpdConfig.ts";
+import {
+  DEFAULT_SPECIALIST_CONFIG,
+  type RequiredSpecialistConfig,
+  type SpecialistMode,
+} from "@config/SpecialistConfig.ts";
 import { parseNumber } from "@config/ParseOptions.ts";
 import {
   DEFAULT_STABILITY_ADAPTATION_CONFIG,
@@ -210,7 +219,48 @@ export function parseMcmc(
     diversityAwareMCMC: parseDiversityAwareMCMC(
       overrides?.diversityAwareMCMC as Record<string, unknown> | undefined,
     ),
+    // Issue #2527: GRPO-style group-relative advantage signal.
+    mcmcAdvantageMode: parseAdvantageMode(
+      overrides?.mcmcAdvantageMode,
+      d.mcmcAdvantageMode,
+    ),
+    minCohortSize: parseNumber(
+      "MCMC minCohortSize",
+      overrides?.minCohortSize,
+      d.minCohortSize,
+      { integer: true, min: 1 },
+    ),
+    advantageEps: parseNumber(
+      "MCMC advantageEps",
+      overrides?.advantageEps,
+      d.advantageEps,
+      { minExclusive: 0 },
+    ),
+    advantageClip: parseNumber(
+      "MCMC advantageClip",
+      overrides?.advantageClip,
+      d.advantageClip,
+      { minExclusive: 0 },
+    ),
   } as RequiredMCMCConfig;
+}
+
+/**
+ * Parses the `mcmcAdvantageMode` option (Issue #2527). Accepts only the
+ * two documented string literals so an out-of-spectrum CLI value fails
+ * fast instead of silently degrading to the default.
+ */
+function parseAdvantageMode(
+  raw: unknown,
+  fallback: "absolute" | "groupRelative",
+): "absolute" | "groupRelative" {
+  if (raw === undefined || raw === null) return fallback;
+  if (raw === "absolute" || raw === "groupRelative") return raw;
+  throw new Error(
+    `MCMC mcmcAdvantageMode must be "absolute" or "groupRelative", got ${
+      JSON.stringify(raw)
+    }`,
+  );
 }
 
 /** Parse diversity-aware MCMC reheat configuration (Issue #2456). */
@@ -239,6 +289,97 @@ export function parseDiversityAwareMCMC(
       overrides?.reheatFactor,
       d.reheatFactor,
       { minExclusive: 1 },
+    ),
+  };
+}
+
+/**
+ * Parse On-Policy Distillation breeding configuration (Issue #2528).
+ *
+ * Validates ranges so an out-of-range CLI value (e.g. negative breed
+ * rate, zero distillation steps) fails fast instead of silently
+ * disabling the operator at runtime.
+ */
+export function parseOpd(
+  overrides: Record<string, unknown> | undefined,
+): RequiredOpdConfig {
+  const d = DEFAULT_OPD_CONFIG;
+  return {
+    breedRate: parseNumber(
+      "OPD breedRate",
+      overrides?.breedRate,
+      d.breedRate,
+      { min: 0, max: 1 },
+    ),
+    teacherCount: parseNumber(
+      "OPD teacherCount",
+      overrides?.teacherCount,
+      d.teacherCount,
+      { integer: true, min: 1 },
+    ),
+    distillationSteps: parseNumber(
+      "OPD distillationSteps",
+      overrides?.distillationSteps,
+      d.distillationSteps,
+      { integer: true, min: 1 },
+    ),
+    calibrationBatchSize: parseNumber(
+      "OPD calibrationBatchSize",
+      overrides?.calibrationBatchSize,
+      d.calibrationBatchSize,
+      { integer: true, min: 1 },
+    ),
+    temperature: parseNumber(
+      "OPD temperature",
+      overrides?.temperature,
+      d.temperature,
+      { minExclusive: 0 },
+    ),
+    learningRate: parseNumber(
+      "OPD learningRate",
+      overrides?.learningRate,
+      d.learningRate,
+      { minExclusive: 0, max: 1 },
+    ),
+  };
+}
+
+/**
+ * Parse specialist sub-population pipeline configuration (Issue #2530).
+ *
+ * Validates the mode enum and numeric ranges so an out-of-range CLI
+ * value (e.g. zero distillation cadence) fails fast at config build
+ * time instead of silently misbehaving at runtime.
+ */
+export function parseSpecialist(
+  overrides: Record<string, unknown> | undefined,
+): RequiredSpecialistConfig {
+  const d = DEFAULT_SPECIALIST_CONFIG;
+  const rawMode = overrides?.mode;
+  const mode: SpecialistMode = rawMode === "auto" || rawMode === "manual" ||
+      rawMode === "off"
+    ? rawMode
+    : d.mode;
+
+  const rawIds = overrides?.subTaskIds;
+  const subTaskIds: readonly string[] = Array.isArray(rawIds)
+    ? rawIds.filter((v): v is string => typeof v === "string" && v.length > 0)
+    : d.subTaskIds;
+
+  return {
+    mode,
+    distillEveryN: parseNumber(
+      "Specialist distillEveryN",
+      overrides?.distillEveryN,
+      d.distillEveryN,
+      { integer: true, min: 1 },
+    ),
+    subTaskIds,
+    minSpecialistsPerTask: parseNumber(
+      "Specialist minSpecialistsPerTask",
+      overrides?.minSpecialistsPerTask,
+      d.minSpecialistsPerTask,
+      { integer: true, min: 1 },
     ),
   };
 }

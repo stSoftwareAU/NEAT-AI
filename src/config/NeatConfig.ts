@@ -53,10 +53,12 @@ import {
   parseHyperparameterEvolution,
   parseMcmc,
   parseMemoryConfig,
+  parseOpd,
   parseParallelEvaluation,
   parsePlateauDetection,
   parsePredictiveCoding,
   parseQuantumStep,
+  parseSpecialist,
   parseSpeciesStagnation,
   parseSquashEffectiveness,
   parseStabilityAdaptation,
@@ -358,6 +360,15 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       { integer: true, min: 0 },
     ),
 
+    // Issue #2531: bounded LRU size for the subnetwork hash index. Default
+    // 50,000 mirrors the failure-cache size order. Set to 0 to disable.
+    subnetworkIndexSize: parseNumber(
+      "Subnetwork Index Size",
+      opts.subnetworkIndexSize,
+      50_000,
+      { integer: true, min: 0 },
+    ),
+
     trainingBatchSize: parseNumber(
       "Training Batch Size",
       opts.trainingBatchSize,
@@ -643,6 +654,14 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #2199: Parse MCMC acceptance configuration
     mcmc: parseMcmc(
       opts.mcmc as Record<string, unknown> | undefined,
+    ),
+    // Issue #2528: Parse On-Policy Distillation breeding operator configuration
+    opd: parseOpd(
+      opts.opd as Record<string, unknown> | undefined,
+    ),
+    // Issue #2530: Parse specialist sub-population pipeline configuration
+    specialist: parseSpecialist(
+      opts.specialist as Record<string, unknown> | undefined,
     ),
     // Issue #1863: Parse hyperparameter evolution and adaptive population configs
     hyperparameterEvolution: parseHyperparameterEvolution(

@@ -31,6 +31,7 @@ import {
   computeCreatureWeightBiasPenalty,
   isTopologyMutation,
   metropolisHastingsAccept,
+  resolveMcmcAcceptanceDelta,
 } from "@neat/MetropolisHastings.ts";
 import type { MCMCDiagnostics } from "@neat/MCMCDiagnostics.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
@@ -62,6 +63,16 @@ export class Mutator {
    * Issue #2201: Optional diagnostics tracker for recording M-H acceptance decisions.
    */
   private mcmcDiagnostics?: MCMCDiagnostics;
+
+  /**
+   * Issue #2527: Per-creature cohort std lookup for `groupRelative`
+   * MCMC acceptance. When the creature's UUID is missing from this map
+   * (or the map itself is undefined), `mcmcCohortFallbackStd` is used.
+   * Set by `setMcmcCohortContext()` once per generation by
+   * `NeatEvolution`.
+   */
+  private mcmcCohortStdByUuid?: ReadonlyMap<string, number>;
+  private mcmcCohortFallbackStd = 0;
 
   /**
    * Issue #2457: Per-role squash effectiveness tracker. Persists across
@@ -122,6 +133,26 @@ export class Mutator {
    */
   public getSquashEffectivenessTracker(): SquashEffectivenessTracker {
     return this.squashTracker;
+  }
+
+  /**
+   * Issue #2527: Provide the per-creature cohort std lookup used by the
+   * groupRelative M-H acceptance signal. The fallback std is used when
+   * a creature has no entry (e.g. species size below `minCohortSize`).
+   * No-op when `mcmcAdvantageMode === "absolute"`.
+   *
+   * @param stdByUuid - Map from creature UUID to its species cohort std
+   * @param fallbackStd - Std of the full generation cohort, used when
+   *   the per-creature lookup misses
+   */
+  public setMcmcCohortContext(
+    stdByUuid: ReadonlyMap<string, number> | undefined,
+    fallbackStd: number,
+  ): void {
+    this.mcmcCohortStdByUuid = stdByUuid;
+    this.mcmcCohortFallbackStd = Number.isFinite(fallbackStd) && fallbackStd > 0
+      ? fallbackStd
+      : 0;
   }
 
   /**
@@ -310,7 +341,34 @@ export class Mutator {
           const postMutationPenalty = computeCreatureWeightBiasPenalty(
             creature,
           );
-          const deltaCost = postMutationPenalty - preMutationPenalty;
+          const rawDelta = postMutationPenalty - preMutationPenalty;
+
+          // Issue #2527: When `groupRelative` mode is active, normalise
+          // the delta by the cohort std before feeding M-H. Per-creature
+          // species std falls back to the generation-wide std when the
+          // species is small (set by NeatEvolution).
+          const advantageMode = this.config.mcmc.mcmcAdvantageMode;
+          let cohortStd = 0;
+          if (advantageMode === "groupRelative") {
+            const uuid = creature.uuid;
+            const speciesStd = uuid
+              ? this.mcmcCohortStdByUuid?.get(uuid)
+              : undefined;
+            cohortStd =
+              speciesStd !== undefined && Number.isFinite(speciesStd) &&
+                speciesStd > 0
+                ? speciesStd
+                : this.mcmcCohortFallbackStd;
+          }
+          const deltaCost = resolveMcmcAcceptanceDelta(
+            rawDelta,
+            advantageMode,
+            cohortStd,
+            {
+              eps: this.config.mcmc.advantageEps,
+              clip: this.config.mcmc.advantageClip,
+            },
+          );
 
           const accepted = metropolisHastingsAccept(
             deltaCost,

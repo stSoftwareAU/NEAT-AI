@@ -12,6 +12,11 @@
 
 import type { Creature } from "@creature";
 import { valuePenalty } from "@architecture/Score.ts";
+import {
+  type AdvantageMode,
+  type AdvantageOptions,
+  normaliseDeltaWithCohortStd,
+} from "@neat/GroupRelativeAdvantage.ts";
 
 /**
  * Determines whether a mutation should be accepted using the
@@ -40,6 +45,33 @@ export function metropolisHastingsAccept(
   // Accept worsening mutations with probability exp(-deltaCost / temperature)
   const acceptanceProbability = Math.exp(-deltaCost / temperature);
   return randomValue < acceptanceProbability;
+}
+
+/**
+ * Issue #2527: Resolves the effective acceptance delta given the
+ * configured `mcmcAdvantageMode`.
+ *
+ * - `"absolute"` (default) returns `rawDelta` unchanged so the existing
+ *   M-H behaviour is preserved bit-for-bit.
+ * - `"groupRelative"` returns `rawDelta / (cohortStd + eps)` clipped
+ *   symmetrically into `[-clip, +clip]`, mirroring the DeepSeek V4 GRPO
+ *   advantage transform. The cohort std is supplied by the caller; when
+ *   it is missing or zero (single-member cohort) the eps stabiliser
+ *   keeps the result finite.
+ *
+ * @param rawDelta - The raw `post - pre` cost delta
+ * @param mode - Acceptance signal mode from `MCMCConfig.mcmcAdvantageMode`
+ * @param cohortStd - Cohort standard deviation; ignored in `"absolute"` mode
+ * @param options - Optional `eps` and `clip` overrides
+ */
+export function resolveMcmcAcceptanceDelta(
+  rawDelta: number,
+  mode: AdvantageMode,
+  cohortStd: number,
+  options: AdvantageOptions = {},
+): number {
+  if (mode === "absolute") return rawDelta;
+  return normaliseDeltaWithCohortStd(rawDelta, cohortStd, options);
 }
 
 /**
