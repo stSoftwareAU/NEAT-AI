@@ -1,8 +1,50 @@
 # 📊 Predictive Coding Benchmarks
 
+> **Brief**: Benchmark companion to
+> [PREDICTIVE_CODING.md](./PREDICTIVE_CODING.md). Every number on this page is
+> produced by a script under
+> [`bench/predictiveCoding/`](../bench/predictiveCoding/) — if a number drifts,
+> refresh it from the script rather than editing it by hand. Numbers from a
+> previous bench run are kept in place with their date / issue reference for
+> historical comparison; do not delete them.
+
 Results from the Predictive Coding (PC) benchmark and validation suite.
 
-Issue #1558 | Part of #1549 | Complex creature results from #1914 and #1915
+Issue [#1558](https://github.com/stSoftwareAU/NEAT-AI/issues/1558) | Part of
+[#1549](https://github.com/stSoftwareAU/NEAT-AI/issues/1549) | Complex creature
+results from [#1914](https://github.com/stSoftwareAU/NEAT-AI/issues/1914) and
+[#1915](https://github.com/stSoftwareAU/NEAT-AI/issues/1915).
+
+## 📑 In this cluster
+
+- **[PREDICTIVE_CODING.md](./PREDICTIVE_CODING.md)** — parent doc; theory and
+  architecture for PC.
+- **PREDICTIVE_CODING_BENCHMARKS.md** (this file) — benchmark numbers, scaling
+  behaviour, and validation results.
+- **[PERFORMANCE_RESEARCH.md](./PERFORMANCE_RESEARCH.md)** — wider performance
+  optimisation log (frames where PC sits in the pipeline).
+- **[PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md)** — operational tuning
+  knobs for the memetic training loop that PC plugs into.
+
+See the [docs index](./README.md) for the full topic map.
+
+## 🧪 Acronyms used in this guide
+
+- **PC** — Predictive Coding
+- **CPU** / **GPU** — Central / Graphics Processing Unit
+- **WASM** — WebAssembly
+- **MSE / MAE / RMSE** — Mean Squared / Absolute / Root-Mean-Squared Error
+- **L2 norm** — Euclidean norm of a vector
+
+## 🛣️ How a PC benchmark is produced
+
+```mermaid
+flowchart LR
+    A[bench/predictiveCoding/<br/>convergence.ts · speed.ts · evolution.ts] --> B[deno bench]
+    B --> C[📊 Per-iteration<br/>timings + iter/s]
+    C --> D[Compare to<br/>standard backprop]
+    D --> E[📝 Update tables<br/>in this doc]
+```
 
 ## 🔬 Methodology
 
@@ -10,20 +52,46 @@ All benchmarks run on:
 
 - **CPU**: Apple M4 Pro
 - **Runtime**: Deno 2.6.10 (aarch64-apple-darwin)
-- **Date**: February 2026
+- **Date**: February 2026 (issue
+  [#1558](https://github.com/stSoftwareAU/NEAT-AI/issues/1558))
 - **Branch**: `issue-1558-add-predictive-coding-benchmarks-and-validation-su`
 
 Benchmarks use `Deno.bench()` with default warm-up and iteration settings. Each
 benchmark creates fresh creatures with random initial weights to avoid selection
 bias.
 
+The three bench scripts that produce the numbers below are:
+
+- **Convergence** —
+  [`bench/predictiveCoding/convergence.ts`](../bench/predictiveCoding/convergence.ts)
+  (XOR + regression, 20 iterations)
+- **Speed** —
+  [`bench/predictiveCoding/speed.ts`](../bench/predictiveCoding/speed.ts) (raw
+  inference settling, gradient computation, Hebbian update)
+- **Evolution** —
+  [`bench/predictiveCoding/evolution.ts`](../bench/predictiveCoding/evolution.ts)
+  (topology efficiency)
+
+Run any one of them with:
+
+```bash
+deno bench --allow-read --allow-write --allow-env --allow-ffi \
+  bench/predictiveCoding/<script>.ts
+```
+
 > [!NOTE]
 > All benchmarks were run on an Apple M4 Pro using Deno 2.6.10. Results will
 > differ on other hardware and runtimes. The relative comparisons between
 > methods (e.g., PC vs standard backprop) are more meaningful than the absolute
-> timings, which are hardware-specific.
+> timings, which are hardware-specific. If a fresh run produces materially
+> different numbers, **append the new figures and date them** rather than
+> overwriting the existing rows — historical trend matters for negative-result
+> investigations.
 
 ## 1. 📈 Training Convergence
+
+_Source bench script:_
+[`bench/predictiveCoding/convergence.ts`](../bench/predictiveCoding/convergence.ts).
 
 Compares PC training against standard elastic backpropagation on simple problems
 with 20 training iterations.
@@ -60,6 +128,9 @@ signal degradation is significant.
 > inference engine (#1560) is in place.
 
 ## 2. ⚡ Inference and Learning Speed
+
+_Source bench script:_
+[`bench/predictiveCoding/speed.ts`](../bench/predictiveCoding/speed.ts).
 
 Measures raw PC inference, gradient computation, and weight update speed across
 different network sizes.
@@ -109,6 +180,9 @@ deltas with constraint enforcement. Even for large networks (93 neurons, 2,090
 synapses), updates complete in under 60 us.
 
 ## 3. 🏗️ Structural Evolution
+
+_Source bench script:_
+[`bench/predictiveCoding/evolution.ts`](../bench/predictiveCoding/evolution.ts).
 
 Measures PC training cost across different network topologies.
 
@@ -293,3 +367,15 @@ prevent divergence in deep topologies where gradient magnitudes can explode.
   Approximates Backprop Along Arbitrary Computation Graphs."
 - Salvatori, T., et al. (2024). "A Stable, Fast, and Fully Automatic Learning
   Algorithm for Predictive Coding Networks."
+
+## 📚 See Also
+
+- [PREDICTIVE_CODING.md](./PREDICTIVE_CODING.md) — parent doc; theory,
+  architecture, and configuration reference for PC.
+- [PERFORMANCE_RESEARCH.md](./PERFORMANCE_RESEARCH.md) — investigation log for
+  the wider optimisation pipeline.
+- [PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md) — operational tuning of the
+  memetic loop that PC slots into.
+- [BACKPROP_ELASTICITY.md](./BACKPROP_ELASTICITY.md) — elastic backpropagation,
+  the standard-backprop comparison baseline used above.
+- [docs/README.md](./README.md) — topic index for the full documentation set.

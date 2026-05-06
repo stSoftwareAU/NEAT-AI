@@ -1,10 +1,78 @@
 # 🧠 Predictive Coding Architecture Design
 
+> **Brief**: Architectural design and theoretical background for the optional
+> Predictive Coding (PC) training mode. PC is a neuroscience-inspired
+> alternative to standard backpropagation in which weight updates are **purely
+> local** — each synapse is updated using only the prediction error at its
+> target neuron and the activity at its source neuron. PC is **disabled by
+> default**; enable it via `NeatOptions.predictiveCoding`.
+
+## 📑 In this cluster
+
+- **PREDICTIVE_CODING.md** (this file) — theory, architecture, and integration
+  strategy.
+- **[PREDICTIVE_CODING_BENCHMARKS.md](./PREDICTIVE_CODING_BENCHMARKS.md)** —
+  benchmark numbers, validation results, and tuning findings backed by scripts
+  in [`bench/predictiveCoding/`](../bench/predictiveCoding/).
+- **[PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md)** — operational tuning
+  knobs that govern memetic training (which PC slots into).
+- **[PERFORMANCE_RESEARCH.md](./PERFORMANCE_RESEARCH.md)** — the wider
+  optimisation pipeline that PC integrates with.
+
+See the [docs index](./README.md) for the full topic map.
+
+## 🧪 Acronyms used in this guide
+
+- **PC** — Predictive Coding
+- **NEAT** — NeuroEvolution of Augmenting Topologies
+- **WASM** — WebAssembly
+- **FFI** — Foreign Function Interface
+- **MSE / MAE / RMSE / MAPE** — Mean Squared / Absolute / Root-Mean-Squared /
+  Mean Absolute Percentage Error
+- **MCMC** — Markov Chain Monte Carlo
+- **GPU / CPU** — Graphics / Central Processing Unit
+- **Hebbian** — "neurons that fire together, wire together" — a local learning
+  rule that uses only pre- and post-synaptic activity
+
+## 📖 Table of contents
+
+1. [Background & Theory](#1--background--theory)
+2. [Architecture Design](#2--architecture-design)
+3. [Integration Strategy](#3--integration-strategy)
+4. [Implementation Roadmap](#4--implementation-roadmap)
+5. [Production Validation](#5--production-validation)
+6. [Configuration Guide](#6--configuration-guide)
+7. [Troubleshooting](#7--troubleshooting)
+8. [References](#8--references)
+9. [Further Reading](#-further-reading)
+
 This document describes the architecture for integrating **Predictive Coding**
 (PC) as an optional training mode in NEAT-AI. It serves as the blueprint for all
 subsequent implementation work.
 
 Part of [#1549](https://github.com/stSoftwareAU/NEAT-AI/issues/1549).
+
+## 🔁 The predictive-coding loop at a glance
+
+```mermaid
+flowchart LR
+    subgraph fast["Fast inner loop — settling (10–50 iters)"]
+        I1[📥 Clamp inputs<br/>+ optional outputs] --> I2[⚡ Forward pass<br/>initial activity]
+        I2 --> I3[📐 Predict each layer<br/>top-down]
+        I3 --> I4[⚠️ Compute prediction<br/>errors ε]
+        I4 --> I5[🔧 Update activities<br/>x ← x − η_x·∂L/∂x]
+        I5 --> I6{Converged?}
+        I6 -- "no" --> I3
+    end
+    I6 -- "yes" --> L1[📚 Hebbian weight update<br/>Δw = η_W·ε·f x ]
+    L1 --> L2[💾 Store trace tags<br/>+ prediction errors]
+    L2 --> next[➡️ Next training sample]
+```
+
+The same loop is described step-by-step in
+[Section 2.4](#24--pc-inference-iterative-settling) and
+[Section 2.5](#25--pc-learning-weight-updates), and benchmarked in
+[PREDICTIVE_CODING_BENCHMARKS.md](./PREDICTIVE_CODING_BENCHMARKS.md).
 
 ---
 
@@ -973,10 +1041,23 @@ If PC training produces no measurable improvement over standard backpropagation:
 
 ## 📚 Further Reading
 
+- [PREDICTIVE_CODING_BENCHMARKS.md](./PREDICTIVE_CODING_BENCHMARKS.md) —
+  benchmark companion to this doc; numbers are produced by
+  [`bench/predictiveCoding/`](../bench/predictiveCoding/).
+- [PERFORMANCE_RESEARCH.md](./PERFORMANCE_RESEARCH.md) — wider performance
+  optimisation log that frames where PC sits in the pipeline.
+- [PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md) — operational tuning of the
+  memetic training pipeline that PC plugs into.
+- [BACKPROP_ELASTICITY.md](./BACKPROP_ELASTICITY.md) — elastic backpropagation,
+  which shares structural similarities with PC.
+- [CONFIGURATION_GUIDE.md](./CONFIGURATION_GUIDE.md) — every `NeatOptions`
+  field, including the PC-specific options described in
+  [Section 6](#6--configuration-guide).
+- [DISCOVERY_GUIDE.md](./DISCOVERY_GUIDE.md) — error-guided structural
+  evolution; PC produces compatible per-neuron error signals that discovery can
+  consume.
+- [docs/README.md](./README.md) — topic index for the full documentation set.
 - Wikipedia:
   [Predictive coding](https://en.wikipedia.org/wiki/Predictive_coding)
-- NEAT-AI elastic backpropagation: `docs/BACKPROP_ELASTICITY.md`
-- NEAT-AI configuration guide: `docs/CONFIGURATION_GUIDE.md`
-- NEAT-AI Discovery guide: `docs/DISCOVERY_GUIDE.md`
 - NEAT-AI-Discovery repository:
   [stSoftwareAU/NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)
