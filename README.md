@@ -38,6 +38,12 @@ For project terminology, coding conventions, and development guidelines, see
    > **Activation uses WASM (required).** The library initialises the WASM
    > backend automatically; callers do not need to call any init function or set
    > environment variables.
+   >
+   > **Spawning your own Deno Workers that import NEAT-AI from JSR?** The worker
+   > may need explicit help to reach `jsr.io` for the WASM bytes — see
+   > [Troubleshooting › JSR-hosted NEAT-AI in your own workers](./docs/TROUBLESHOOTING.md#-jsr-hosted-neat-ai-in-your-own-workers-issue-2545)
+   > for the pre-fetch pattern (`fetchWasmForWorkers` +
+   > `initialiseWasmActivationFromPayload`).
 
 5. **Unique Squash Functions**: Supports unique squash functions such as IF, MAX
    and MIN, offering a wider range of potential solutions. More about
