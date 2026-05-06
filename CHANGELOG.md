@@ -2,13 +2,31 @@
 
 All notable changes to `@stsoftware/neat-ai` are documented here.
 
-The format is loosely based on
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
-adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format follows
+[Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/), and this project
+adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
+
+**Sibling docs:** [`README.md`](./README.md) — overview;
+[`AGENTS.md`](./AGENTS.md) — coding conventions;
+[`CONTRIBUTING.md`](./CONTRIBUTING.md) — contributor guide;
+[`SECURITY.md`](./SECURITY.md) — vulnerability disclosure policy;
+[`docs/README.md`](./docs/README.md) — topic index.
 
 ## [Unreleased]
 
 ### Added
+
+- **Issue #2529:** Optional Muon-inspired orthogonalised gradient update step in
+  the local backprop pass. New module `src/propagate/MuonOrthogonalisation.ts`
+  implements the quintic Newton-Schulz iteration plus Frobenius rescaling, and
+  `src/propagate/MuonGradientHook.ts` wires it into the backprop pipeline. Gated
+  by `BackPropagationArguments.gradientOrthogonalisation: "none" | "muon"`,
+  defaulting to `"none"` so existing pipelines are unchanged.
+
+- **Issue #2545:** JSR-hosted-worker WASM bootstrap is now documented and the
+  helper functions it relies on are exported from the public entry point. Fixes
+  the production worker startup failure described in #2543 without forcing
+  consumers onto unstable Deno worker options or inlining the WASM bytes.
 
 - **Issue #2546:** Writer-side forward-only assertion for
   `exportJSONWithRuntimeIds()`. Production GRQ logs continued to show
@@ -73,6 +91,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - One INFO log line per generation summarises the partition, e.g.
     `Batch scorer partition: 49 forwardOnly batched, 1 recurrent
     per-creature`.
+
+### Changed
+
+- **Issue #2513:** Discovery throughput-stall guard in
+  `DataRecorderAnalysis.runAnalysisLoop` is deferred until a warm-up window of
+  two completed chunks has elapsed, and only trips when the average per-chunk
+  elapsed time still exceeds `perChunkMaxMs`. Warm-up time is no longer counted
+  against subsequent chunks. Removes false stall trips on cold-start runs.
+
+### Documentation
+
+- **Issue #2566:** Added `docs/README.md` topic-by-topic index and refreshed the
+  documentation map in the project `README.md`.
+- **Issue #2569:** Refreshed Discovery and TypeScript ↔ Rust FFI documentation.
+- **Issue #2570:** Consolidated the core dependency and parity audit doc
+  cluster.
+- **Issue #2565:** Refreshed `COMPARISON.md` with features merged since
+  2026-04-12.
 
 ## [3.2.0] - 2026-05-05
 
