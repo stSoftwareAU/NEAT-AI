@@ -13,10 +13,10 @@ in #2535). Documentation only; no source-code changes. Closes #2536.
 
 ## Evidence
 
-This is a documentation-only change. The note includes a Mermaid diagram
-mapping V3 ideas to NEAT-AI modules, a summary table with effort sizing, and
-per-idea risk screens against the UUID-stability and semantic-version
-invariants from `AGENTS.md`.
+This is a documentation-only change. The note includes a Mermaid diagram mapping
+V3 ideas to NEAT-AI modules, a summary table with effort sizing, and per-idea
+risk screens against the UUID-stability and semantic-version invariants from
+`AGENTS.md`.
 
 ```mermaid
 flowchart LR
@@ -30,12 +30,12 @@ flowchart LR
 The note covers all six items required by the issue's acceptance criteria:
 
 - [x] `docs/research/deepseek-v3-applicability.md` exists and covers all six
-  ideas.
+      ideas.
 - [x] Each idea has GO or NO-GO with a one-paragraph rationale.
 - [x] Each GO recommendation includes a proposed experimental sub-issue title
-  and outline (not yet created).
+      and outline (not yet created).
 - [x] Differences vs V2 (covered in #2535) are explicit so the reader knows
-  which paper introduced what.
+      which paper introduced what.
 - [x] FP8 entry checks WASM toolchain status before recommending NO-GO.
 - [x] Mermaid diagram of V3 idea → NEAT-AI module mapping.
 - [x] No source-code changes; documentation-only PR.
