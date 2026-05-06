@@ -100,8 +100,17 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
   mutations, worse-fitness moves are accepted with a probability that decreases
   as temperature cools — enabling the population to escape local optima early
   and converge later. Includes adaptive temperature tuning toward the
-  theoretically optimal acceptance rate (~23.4%, Roberts et al. 1997). Opt-in
-  via `mcmc: { enabled: true }`.
+  theoretically optimal acceptance rate (~23.4%, Roberts et al. 1997). The
+  cooling schedule is also coupled to a live diversity signal: when species
+  count collapses or within-species crowding rises, the temperature is
+  reheated to restore exploration (`diversityAwareMCMC` block). Opt-in via
+  `mcmc: { enabled: true }`.
+- ✅ **Muon-Style Orthogonalised Gradient Updates**: Optional Newton-Schulz
+  polynomial iteration applied to per-neuron gradient matrices during
+  backpropagation, decorrelating update directions for improved training
+  stability. Inspired by the DeepSeek V4 approach. Opt-in via
+  `gradientOrthogonalisation: "muon"` in `BackPropagationArguments` (default
+  `"none"`).
 
 ### ✨ Unique Features
 
@@ -195,6 +204,48 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 - ✅ **Numerical Stability**: Unbounded activation functions (TAN, SQUARE, CUBE)
   are clamped to finite ranges in both TypeScript and Rust WASM implementations,
   preventing numerical overflow from producing extreme scores.
+- ✅ **Fitness Sharing and Per-Species Breeding Quotas**: Standard NEAT fitness
+  sharing divides raw fitness by species size so dominant species don't starve
+  smaller niches. Per-species breeding quotas guarantee each surviving species a
+  minimum number of breeding slots (`FitnessSharingConfig`, enabled by default).
+- ✅ **Stagnant Species Detection and Retirement**: Species that fail to improve
+  their best raw fitness across a sliding window are first halted (50% breeding
+  reduction) and then made extinct, reclaiming breeding slots for progressing
+  species. Configurable via `SpeciesStagnationConfig` (`haltWindow`,
+  `extinctionWindow`).
+- ✅ **Soft Compatibility-Gated Cross-Species Breeding**: Replaces hard
+  lowest-compatibility father selection with a soft probabilistic gate that
+  accepts candidates with probability `compatibility ^ power`, preserving rare
+  exploratory hybrids while favouring similar architectures
+  (`CompatibilityGatingConfig`, enabled by default).
+- ✅ **Fitness-Driven Squash Mutation**: Squash function selection during
+  mutation is biased toward activations that historically improved fitness in
+  similar neuron roles (layer depth + fan-in bucket). Uses EMA-smoothed fitness
+  deltas with Boltzmann-weighted selection (`SquashEffectivenessConfig`,
+  enabled by default).
+- ✅ **DNA-Sharing Primitives**: A bake-off harness compares strategies for
+  transferring useful structure between unrelated creatures. The current
+  recommended primitive is `PruningTemplateStrategy`, which uses an oracle
+  creature ("Europa") to identify and remove redundant production neurons via
+  activation-fingerprint correlation. Additional primitives include
+  `KnowledgeDistillation` (small student pathway trained to imitate donor
+  behaviour), `CompactModuleGraft` (graft 6–32 neuron dense modules preserving
+  donor UUIDs), and `KnobTuningStrategy` (baseline preset stamping). See
+  [docs/dna-sharing-bake-off-results.md](./docs/dna-sharing-bake-off-results.md).
+- ✅ **Optional Rust CLI Scorer with WASM Fallback**: Generation scoring can be
+  delegated to an external `rust_scorer` binary for higher throughput
+  (directory/batch mode runs once per generation), with automatic fallback to
+  the in-process WASM scorer when the binary is unavailable or errors out
+  (`RustScorerConfig`, opt-in).
+- ✅ **NEAT-AI-core Pinning and Parity Gate**: Read-heavy and hot-path
+  computations (topology validation/scanning, reverse topological order,
+  cycle detection, the topological backprop loop, and elastic weight
+  distribution) are owned by the external
+  [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) repository,
+  pinned by full 40-character SHA in `deno.json`. A parity gate (Issue #2345)
+  prevents drift between the in-tree wrappers and the pinned core. There are
+  no TypeScript fallbacks for core-owned operations — failure to load the
+  WASM bundle is fail-fast with an actionable error.
 
 ## 🏗️ Architectural Comparison
 
@@ -645,9 +696,17 @@ the population to explore broadly early in evolution (high temperature) and
 converge on good solutions later (low temperature), borrowing from the
 well-studied Markov chain Monte Carlo framework.
 
+**Diversity-Aware Cooling**: Beyond simple cooling, the temperature is also
+coupled to a live diversity signal. When species count drops below
+`minSpecies` or mean within-species compatibility exceeds `crowdingThreshold`,
+the temperature is multiplied by `reheatFactor` to restore exploration. This
+prevents premature convergence in long-running deployments where pure
+exponential cooling would settle a homogeneous population.
+
 **Configuration**: Opt-in via `mcmc: { enabled: true }` with configurable
 initial temperature, cooling rate, and adaptive tuning parameters
-(`adjustmentRate`, `toleranceRate`).
+(`adjustmentRate`, `toleranceRate`). Diversity-aware cooling is configured
+via the nested `diversityAwareMCMC` block.
 
 **Reference**: See Feature #20 in [README.md](./README.md)
 
@@ -672,6 +731,16 @@ creatures that go beyond standard NEAT crossover.
 - **Diversity-Driven Breeding**: Periodically breeds the fittest creatures with
   genetically distant newcomers (e.g., from separate islands) to inject
   diversity into stagnating populations
+- **Soft Compatibility Gating**: Replaces a hard lowest-compatibility father
+  selection step with a probabilistic gate that accepts candidates with
+  probability `compatibility ^ power`, preserving rare exploratory hybrids
+  while favouring similar architectures
+- **Fitness Sharing and Per-Species Breeding Quotas**: Standard NEAT fitness
+  sharing combined with minimum per-species breeding slots prevents dominant
+  species from starving smaller niches
+- **Stagnant Species Retirement**: Species that fail to improve their best raw
+  fitness over a sliding window are halted and ultimately made extinct,
+  reclaiming breeding budget for progressing species
 
 **Why It's Unique**: Most NEAT implementations fall back to simple fitness-based
 selection when parents are incompatible. Our approach preserves meaningful
@@ -680,7 +749,35 @@ benefits of cross-island migration without sacrificing structural integrity.
 
 **Reference**: See Feature #21 in [README.md](./README.md)
 
-### 11. 🔗 Synthetic Synapse Training
+### 11. 🧮 Muon-Style Orthogonalised Gradient Updates
+
+**What It Is**: An optional gradient orthogonalisation step that runs a
+Newton-Schulz polynomial iteration on per-neuron incoming-weight gradient
+matrices before applying them, decorrelating update directions to improve
+training stability. Inspired by the Muon optimiser used in DeepSeek V4.
+
+**How It Works**:
+
+1. During backpropagation, accumulated weight gradients per neuron are
+   reshaped into a small matrix.
+2. A few Newton-Schulz iterations approximate the orthogonal polar factor of
+   that gradient matrix.
+3. The orthogonalised update is then scaled and applied in place of the raw
+   gradient.
+
+**Why It's Unique**: Standard backpropagation in NEAT applies raw gradient
+descent (with learning-rate decay and L1/L2 decay). Muon-style updates
+remove correlations between row directions of the per-neuron gradient,
+which can produce smoother, less drift-prone training, particularly for
+small batch sizes typical in evolutionary fitness evaluation.
+
+**Configuration**: Opt-in via `gradientOrthogonalisation: "muon"` in
+`BackPropagationArguments` (default `"none"`).
+
+**Reference**: See `src/propagate/MuonOrthogonalisation.ts` and the DeepSeek
+applicability notes in [docs/](./docs/).
+
+### 12. 🔗 Synthetic Synapse Training
 
 **What It Is**: Temporary dense inter-layer connectivity during backpropagation
 that addresses NEAT's inherent sparse connectivity weakness.
@@ -788,7 +885,9 @@ configuration.
 8. **Unique Activations**: Supports non-standard functions (IF, MAX, MIN) for
    different behaviours
 9. **Transfer Learning**: Checkpoint export/import with UUID-based neuron
-   mapping and weight freezing for fine-tuning
+   mapping and weight freezing for fine-tuning, plus DNA-sharing primitives
+   (pruning template, knowledge distillation, compact module graft) for
+   inter-island transfer
 10. **ONNX Export**: Standard format export for interoperability with existing
     ML pipelines
 11. **Comprehensive Regularisation**: Dropout, L1/L2 weight & bias decay, sparse
@@ -807,6 +906,17 @@ configuration.
     different creatures
 16. **Synthetic Synapse Training**: Temporary layer densification gives gradient
     descent a richer search space without permanently inflating the network
+17. **Diversity Preservation**: Fitness sharing with per-species breeding
+    quotas, stagnant-species retirement, soft compatibility-gated cross-species
+    breeding, and diversity-aware MCMC reheating prevent premature convergence
+    in long-running deployments
+18. **Fitness-Driven Squash Selection**: Per-role tracker biases mutation
+    toward activations that historically improved fitness in similar neuron
+    roles, reducing wasted exploration on activations that rarely help
+19. **Optional Muon Orthogonalisation**: Newton-Schulz orthogonalisation of
+    per-neuron gradient matrices for smoother training updates
+20. **External Rust Scorer**: Optional `rust_scorer` CLI for higher
+    generation-scoring throughput, with automatic WASM fallback
 
 ### 🧬 NEAT (Our Implementation) - Cons
 
@@ -898,10 +1008,18 @@ across related tasks with different input/output configurations.
   fine-tuning (`freezeHidden` option) so only new connections are trained
 - ✅ **Population Seeding**: `createSeededPopulation()` initialises a new
   population from pre-trained creatures, enabling transfer across tasks
+- ✅ **DNA-Sharing Primitives** (Issue #2491–#2496): A bake-off harness compares
+  inter-island transfer strategies. Implemented primitives include
+  `PruningTemplateStrategy` (recommended winner — uses an oracle creature to
+  identify and remove redundant production neurons),
+  `KnowledgeDistillation` (small student pathway trained to imitate donor
+  behaviour on a probe dataset), `CompactModuleGraft` (grafts dense connected
+  6–32 neuron modules from donor into recipient preserving donor neuron
+  UUIDs), and `KnobTuningStrategy` (baseline preset configuration). See
+  [docs/dna-sharing-bake-off-results.md](./docs/dna-sharing-bake-off-results.md).
 
 **What's Still Missing**:
 
-- Knowledge distillation from larger to smaller networks
 - Multi-task learning capabilities
 
 **References**:
@@ -1343,15 +1461,21 @@ scalability limitations. Our implementation addresses many of these through
 cross-platform GPU acceleration, memetic evolution, error-guided discovery with
 intelligent caching, predictive coding, per-creature hyperparameter
 self-adaptation, comprehensive regularisation (dropout, L1/L2 weight & bias
-decay), transfer learning via checkpoint export/import, ONNX format export,
-k-fold cross-validation, parallel batch creature evaluation, MCMC mutation
-acceptance with adaptive temperature tuning, synthetic synapse training for
-temporary layer densification, advanced inter-species breeding strategies
-(input-weight crossover, subgraph transplantation, diversity-driven breeding),
-graceful WASM panic recovery for resilient long-running training, and
-forward-only topology enforcement for structural integrity. Remaining gaps in
-unsupervised learning and attention mechanisms represent opportunities for
-future development.
+decay), transfer learning via checkpoint export/import and DNA-sharing
+primitives (pruning template, knowledge distillation, compact module graft),
+ONNX format export, k-fold cross-validation, parallel batch creature
+evaluation, MCMC mutation acceptance with adaptive temperature tuning and
+diversity-aware reheating, optional Muon-style orthogonalised gradient
+updates, synthetic synapse training for temporary layer densification, advanced
+inter-species breeding strategies (input-weight crossover, subgraph
+transplantation, diversity-driven breeding, soft compatibility gating),
+fitness sharing with per-species breeding quotas and stagnant-species
+retirement, fitness-driven squash mutation, an optional external Rust CLI
+scorer with WASM fallback, a pinned NEAT-AI-core dependency with parity-gated
+WASM-only hot paths, graceful WASM panic recovery for resilient long-running
+training, and forward-only topology enforcement for structural integrity.
+Remaining gaps in unsupervised learning and attention mechanisms represent
+opportunities for future development.
 
 The choice between NEAT and traditional neural networks depends on:
 
