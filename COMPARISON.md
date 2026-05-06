@@ -102,8 +102,8 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
   and converge later. Includes adaptive temperature tuning toward the
   theoretically optimal acceptance rate (~23.4%, Roberts et al. 1997). The
   cooling schedule is also coupled to a live diversity signal: when species
-  count collapses or within-species crowding rises, the temperature is
-  reheated to restore exploration (`diversityAwareMCMC` block). Opt-in via
+  count collapses or within-species crowding rises, the temperature is reheated
+  to restore exploration (`diversityAwareMCMC` block). Opt-in via
   `mcmc: { enabled: true }`.
 - ✅ **Muon-Style Orthogonalised Gradient Updates**: Optional Newton-Schulz
   polynomial iteration applied to per-neuron gradient matrices during
@@ -221,8 +221,8 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 - ✅ **Fitness-Driven Squash Mutation**: Squash function selection during
   mutation is biased toward activations that historically improved fitness in
   similar neuron roles (layer depth + fan-in bucket). Uses EMA-smoothed fitness
-  deltas with Boltzmann-weighted selection (`SquashEffectivenessConfig`,
-  enabled by default).
+  deltas with Boltzmann-weighted selection (`SquashEffectivenessConfig`, enabled
+  by default).
 - ✅ **DNA-Sharing Primitives**: A bake-off harness compares strategies for
   transferring useful structure between unrelated creatures. The current
   recommended primitive is `PruningTemplateStrategy`, which uses an oracle
@@ -238,14 +238,14 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
   the in-process WASM scorer when the binary is unavailable or errors out
   (`RustScorerConfig`, opt-in).
 - ✅ **NEAT-AI-core Pinning and Parity Gate**: Read-heavy and hot-path
-  computations (topology validation/scanning, reverse topological order,
-  cycle detection, the topological backprop loop, and elastic weight
-  distribution) are owned by the external
+  computations (topology validation/scanning, reverse topological order, cycle
+  detection, the topological backprop loop, and elastic weight distribution) are
+  owned by the external
   [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) repository,
   pinned by full 40-character SHA in `deno.json`. A parity gate (Issue #2345)
-  prevents drift between the in-tree wrappers and the pinned core. There are
-  no TypeScript fallbacks for core-owned operations — failure to load the
-  WASM bundle is fail-fast with an actionable error.
+  prevents drift between the in-tree wrappers and the pinned core. There are no
+  TypeScript fallbacks for core-owned operations — failure to load the WASM
+  bundle is fail-fast with an actionable error.
 
 ## 🏗️ Architectural Comparison
 
@@ -697,16 +697,16 @@ converge on good solutions later (low temperature), borrowing from the
 well-studied Markov chain Monte Carlo framework.
 
 **Diversity-Aware Cooling**: Beyond simple cooling, the temperature is also
-coupled to a live diversity signal. When species count drops below
-`minSpecies` or mean within-species compatibility exceeds `crowdingThreshold`,
-the temperature is multiplied by `reheatFactor` to restore exploration. This
+coupled to a live diversity signal. When species count drops below `minSpecies`
+or mean within-species compatibility exceeds `crowdingThreshold`, the
+temperature is multiplied by `reheatFactor` to restore exploration. This
 prevents premature convergence in long-running deployments where pure
 exponential cooling would settle a homogeneous population.
 
 **Configuration**: Opt-in via `mcmc: { enabled: true }` with configurable
 initial temperature, cooling rate, and adaptive tuning parameters
-(`adjustmentRate`, `toleranceRate`). Diversity-aware cooling is configured
-via the nested `diversityAwareMCMC` block.
+(`adjustmentRate`, `toleranceRate`). Diversity-aware cooling is configured via
+the nested `diversityAwareMCMC` block.
 
 **Reference**: See Feature #20 in [README.md](./README.md)
 
@@ -733,8 +733,8 @@ creatures that go beyond standard NEAT crossover.
   diversity into stagnating populations
 - **Soft Compatibility Gating**: Replaces a hard lowest-compatibility father
   selection step with a probabilistic gate that accepts candidates with
-  probability `compatibility ^ power`, preserving rare exploratory hybrids
-  while favouring similar architectures
+  probability `compatibility ^ power`, preserving rare exploratory hybrids while
+  favouring similar architectures
 - **Fitness Sharing and Per-Species Breeding Quotas**: Standard NEAT fitness
   sharing combined with minimum per-species breeding slots prevents dominant
   species from starving smaller niches
@@ -758,18 +758,18 @@ training stability. Inspired by the Muon optimiser used in DeepSeek V4.
 
 **How It Works**:
 
-1. During backpropagation, accumulated weight gradients per neuron are
-   reshaped into a small matrix.
+1. During backpropagation, accumulated weight gradients per neuron are reshaped
+   into a small matrix.
 2. A few Newton-Schulz iterations approximate the orthogonal polar factor of
    that gradient matrix.
 3. The orthogonalised update is then scaled and applied in place of the raw
    gradient.
 
 **Why It's Unique**: Standard backpropagation in NEAT applies raw gradient
-descent (with learning-rate decay and L1/L2 decay). Muon-style updates
-remove correlations between row directions of the per-neuron gradient,
-which can produce smoother, less drift-prone training, particularly for
-small batch sizes typical in evolutionary fitness evaluation.
+descent (with learning-rate decay and L1/L2 decay). Muon-style updates remove
+correlations between row directions of the per-neuron gradient, which can
+produce smoother, less drift-prone training, particularly for small batch sizes
+typical in evolutionary fitness evaluation.
 
 **Configuration**: Opt-in via `gradientOrthogonalisation: "muon"` in
 `BackPropagationArguments` (default `"none"`).
@@ -910,9 +910,9 @@ configuration.
     quotas, stagnant-species retirement, soft compatibility-gated cross-species
     breeding, and diversity-aware MCMC reheating prevent premature convergence
     in long-running deployments
-18. **Fitness-Driven Squash Selection**: Per-role tracker biases mutation
-    toward activations that historically improved fitness in similar neuron
-    roles, reducing wasted exploration on activations that rarely help
+18. **Fitness-Driven Squash Selection**: Per-role tracker biases mutation toward
+    activations that historically improved fitness in similar neuron roles,
+    reducing wasted exploration on activations that rarely help
 19. **Optional Muon Orthogonalisation**: Newton-Schulz orthogonalisation of
     per-neuron gradient matrices for smoother training updates
 20. **External Rust Scorer**: Optional `rust_scorer` CLI for higher
@@ -1011,11 +1011,11 @@ across related tasks with different input/output configurations.
 - ✅ **DNA-Sharing Primitives** (Issue #2491–#2496): A bake-off harness compares
   inter-island transfer strategies. Implemented primitives include
   `PruningTemplateStrategy` (recommended winner — uses an oracle creature to
-  identify and remove redundant production neurons),
-  `KnowledgeDistillation` (small student pathway trained to imitate donor
-  behaviour on a probe dataset), `CompactModuleGraft` (grafts dense connected
-  6–32 neuron modules from donor into recipient preserving donor neuron
-  UUIDs), and `KnobTuningStrategy` (baseline preset configuration). See
+  identify and remove redundant production neurons), `KnowledgeDistillation`
+  (small student pathway trained to imitate donor behaviour on a probe dataset),
+  `CompactModuleGraft` (grafts dense connected 6–32 neuron modules from donor
+  into recipient preserving donor neuron UUIDs), and `KnobTuningStrategy`
+  (baseline preset configuration). See
   [docs/dna-sharing-bake-off-results.md](./docs/dna-sharing-bake-off-results.md).
 
 **What's Still Missing**:
@@ -1463,19 +1463,19 @@ intelligent caching, predictive coding, per-creature hyperparameter
 self-adaptation, comprehensive regularisation (dropout, L1/L2 weight & bias
 decay), transfer learning via checkpoint export/import and DNA-sharing
 primitives (pruning template, knowledge distillation, compact module graft),
-ONNX format export, k-fold cross-validation, parallel batch creature
-evaluation, MCMC mutation acceptance with adaptive temperature tuning and
-diversity-aware reheating, optional Muon-style orthogonalised gradient
-updates, synthetic synapse training for temporary layer densification, advanced
-inter-species breeding strategies (input-weight crossover, subgraph
-transplantation, diversity-driven breeding, soft compatibility gating),
-fitness sharing with per-species breeding quotas and stagnant-species
-retirement, fitness-driven squash mutation, an optional external Rust CLI
-scorer with WASM fallback, a pinned NEAT-AI-core dependency with parity-gated
-WASM-only hot paths, graceful WASM panic recovery for resilient long-running
-training, and forward-only topology enforcement for structural integrity.
-Remaining gaps in unsupervised learning and attention mechanisms represent
-opportunities for future development.
+ONNX format export, k-fold cross-validation, parallel batch creature evaluation,
+MCMC mutation acceptance with adaptive temperature tuning and diversity-aware
+reheating, optional Muon-style orthogonalised gradient updates, synthetic
+synapse training for temporary layer densification, advanced inter-species
+breeding strategies (input-weight crossover, subgraph transplantation,
+diversity-driven breeding, soft compatibility gating), fitness sharing with
+per-species breeding quotas and stagnant-species retirement, fitness-driven
+squash mutation, an optional external Rust CLI scorer with WASM fallback, a
+pinned NEAT-AI-core dependency with parity-gated WASM-only hot paths, graceful
+WASM panic recovery for resilient long-running training, and forward-only
+topology enforcement for structural integrity. Remaining gaps in unsupervised
+learning and attention mechanisms represent opportunities for future
+development.
 
 The choice between NEAT and traditional neural networks depends on:
 
