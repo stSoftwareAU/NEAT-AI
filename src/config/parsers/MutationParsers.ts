@@ -17,6 +17,10 @@ import {
   type RequiredDiversityAwareMCMCConfig,
   type RequiredMCMCConfig,
 } from "@config/MCMCConfig.ts";
+import {
+  DEFAULT_OPD_CONFIG,
+  type RequiredOpdConfig,
+} from "@config/OpdConfig.ts";
 import { parseNumber } from "@config/ParseOptions.ts";
 import {
   DEFAULT_STABILITY_ADAPTATION_CONFIG,
@@ -239,6 +243,57 @@ export function parseDiversityAwareMCMC(
       overrides?.reheatFactor,
       d.reheatFactor,
       { minExclusive: 1 },
+    ),
+  };
+}
+
+/**
+ * Parse On-Policy Distillation breeding configuration (Issue #2528).
+ *
+ * Validates ranges so an out-of-range CLI value (e.g. negative breed
+ * rate, zero distillation steps) fails fast instead of silently
+ * disabling the operator at runtime.
+ */
+export function parseOpd(
+  overrides: Record<string, unknown> | undefined,
+): RequiredOpdConfig {
+  const d = DEFAULT_OPD_CONFIG;
+  return {
+    breedRate: parseNumber(
+      "OPD breedRate",
+      overrides?.breedRate,
+      d.breedRate,
+      { min: 0, max: 1 },
+    ),
+    teacherCount: parseNumber(
+      "OPD teacherCount",
+      overrides?.teacherCount,
+      d.teacherCount,
+      { integer: true, min: 1 },
+    ),
+    distillationSteps: parseNumber(
+      "OPD distillationSteps",
+      overrides?.distillationSteps,
+      d.distillationSteps,
+      { integer: true, min: 1 },
+    ),
+    calibrationBatchSize: parseNumber(
+      "OPD calibrationBatchSize",
+      overrides?.calibrationBatchSize,
+      d.calibrationBatchSize,
+      { integer: true, min: 1 },
+    ),
+    temperature: parseNumber(
+      "OPD temperature",
+      overrides?.temperature,
+      d.temperature,
+      { minExclusive: 0 },
+    ),
+    learningRate: parseNumber(
+      "OPD learningRate",
+      overrides?.learningRate,
+      d.learningRate,
+      { minExclusive: 0, max: 1 },
     ),
   };
 }
