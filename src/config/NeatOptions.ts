@@ -23,6 +23,7 @@ import type { OutputRange } from "@config/OutputRangeConfig.ts";
 import type { WorkerThreadCapConfig } from "@config/WorkerThreadCapConfig.ts";
 import type { HyperparameterEvolutionConfig } from "@config/HyperparameterConfig.ts";
 import type { MCMCConfig } from "@config/MCMCConfig.ts";
+import type { OpdConfig } from "@config/OpdConfig.ts";
 import type { AdaptivePopulationConfig } from "@config/AdaptivePopulationConfig.ts";
 import type { CrossValidationConfig } from "@config/CrossValidationConfig.ts";
 import type { DataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
@@ -112,6 +113,7 @@ export type NeatOptions =
     | "workerThreadCap"
     | "hyperparameterEvolution"
     | "mcmc"
+    | "opd"
     | "adaptivePopulation"
     | "crossValidation"
     | "dataFuzzing"
@@ -161,6 +163,12 @@ export type NeatOptions =
     hyperparameterEvolution?: HyperparameterEvolutionConfig;
     /** Partial overrides for MCMC acceptance configuration (defaults applied if not specified) */
     mcmc?: MCMCConfig;
+    /**
+     * Partial overrides for On-Policy Distillation breeding operator
+     * configuration (Issue #2528). Defaults applied if not specified.
+     * Setting `opd.breedRate > 0` enables the operator.
+     */
+    opd?: OpdConfig;
     /** Partial overrides for adaptive population sizing configuration (defaults applied if not specified) */
     adaptivePopulation?: AdaptivePopulationConfig;
     /** Partial overrides for cross-validation configuration (defaults applied if not specified) */
@@ -267,6 +275,7 @@ export type NeatOptionsInput =
     | "workerThreadCap"
     | "hyperparameterEvolution"
     | "mcmc"
+    | "opd"
     | "adaptivePopulation"
     | "crossValidation"
     | "dataFuzzing"
@@ -309,6 +318,11 @@ export type NeatOptionsInput =
     hyperparameterEvolution?: CoerceNumeric<HyperparameterEvolutionConfig>;
     /** MCMC acceptance configuration (Issue #2199). Numeric fields coerced from CLI. */
     mcmc?: CoerceNumeric<MCMCConfig>;
+    /**
+     * On-Policy Distillation breeding operator configuration (Issue
+     * #2528). Numeric fields coerced from CLI.
+     */
+    opd?: CoerceNumeric<OpdConfig>;
     adaptivePopulation?: CoerceNumeric<AdaptivePopulationConfig>;
     /** Cross-validation configuration (Issue #1865). Numeric fields coerced from CLI. */
     crossValidation?: CoerceNumeric<CrossValidationConfig>;

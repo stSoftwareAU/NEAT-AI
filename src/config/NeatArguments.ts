@@ -35,6 +35,7 @@ import type { RequiredCrossValidationConfig } from "@config/CrossValidationConfi
 import type { RequiredDataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
 import type { RequiredDataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
 import type { RequiredMCMCConfig } from "@config/MCMCConfig.ts";
+import type { RequiredOpdConfig } from "@config/OpdConfig.ts";
 import type { RequiredParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.ts";
 
 /**
@@ -825,6 +826,19 @@ export interface NeatArguments {
    * escape from local optima.
    */
   mcmc: RequiredMCMCConfig;
+
+  /**
+   * On-Policy Distillation breeding operator configuration (Issue #2528).
+   *
+   * When `breedRate > 0`, the breeding loop occasionally produces an
+   * offspring by distilling the consensus output of K elite teachers
+   * (default K = 3) into a freshly-initialised student creature using
+   * on-policy gradient descent. Mirrors the DeepSeek V4 OPD stage.
+   *
+   * Defaults disable the operator (`breedRate: 0`) so existing
+   * behaviour is preserved.
+   */
+  opd: RequiredOpdConfig;
 
   /**
    * Parallel batch creature evaluation configuration.
