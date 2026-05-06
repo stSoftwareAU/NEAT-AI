@@ -50,6 +50,23 @@ export class Genus {
     }
   }
   addCreature(creature: Creature): Species {
+    return this.addCreatureWithTask(creature, undefined);
+  }
+
+  /**
+   * Issue #2530: Add a creature, optionally pre-binding it to a specialist
+   * sub-task. When `specialistTaskId` is set, the creature joins (or
+   * creates) a species whose key includes the task tag, so specialist
+   * species are kept structurally separate from generalist species even
+   * when their topologies match. The species's own `specialistTaskId`
+   * field is set to track the binding.
+   *
+   * `specialistTaskId === undefined` is identical to {@link addCreature}.
+   */
+  addCreatureWithTask(
+    creature: Creature,
+    specialistTaskId: string | undefined,
+  ): Species {
     assert(creature.uuid, "No creature UUID");
 
     const existingSpeciesKey = this.creatureToSpeciesMap.get(creature.uuid);
@@ -60,11 +77,19 @@ export class Genus {
     }
 
     this.population.push(creature);
-    const speciesKey = Species.calculateKey(creature);
+    const topologyKey = Species.calculateKey(creature);
+    // Tag the species key with the sub-task so specialist species do not
+    // collide with same-topology generalists.
+    const speciesKey = specialistTaskId === undefined
+      ? topologyKey
+      : `task:${specialistTaskId}|${topologyKey}`;
 
     let species = this.speciesMap.get(speciesKey);
     if (!species) {
       species = new Species(speciesKey);
+      if (specialistTaskId !== undefined) {
+        species.specialistTaskId = specialistTaskId;
+      }
       this.speciesMap.set(speciesKey, species);
     }
     species.addCreature(creature);
