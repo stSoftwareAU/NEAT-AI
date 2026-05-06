@@ -360,6 +360,15 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       { integer: true, min: 0 },
     ),
 
+    // Issue #2531: bounded LRU size for the subnetwork hash index. Default
+    // 50,000 mirrors the failure-cache size order. Set to 0 to disable.
+    subnetworkIndexSize: parseNumber(
+      "Subnetwork Index Size",
+      opts.subnetworkIndexSize,
+      50_000,
+      { integer: true, min: 0 },
+    ),
+
     trainingBatchSize: parseNumber(
       "Training Batch Size",
       opts.trainingBatchSize,
