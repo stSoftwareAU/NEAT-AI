@@ -1448,7 +1448,7 @@ const myConfig: MCMCConfig = {
   the target acceptance rate each generation
 
 For configuration details, see
-[Configuration Guide — MCMC](CONFIGURATION_GUIDE.md#mcmc-acceptance-criterion).
+[Configuration Guide — MCMC](config/MUTATION_ADAPTATION.md#-mcmc-acceptance-criterion).
 
 ---
 

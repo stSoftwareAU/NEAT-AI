@@ -81,8 +81,10 @@ Drop-in API and configuration material.
 
 - **[API_REFERENCE.md](API_REFERENCE.md)** — comprehensive public API
   documentation.
-- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** — every `NeatOptions` /
-  `NeatConfig` field, presets, and validation rules.
+- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** — topic index for the
+  configuration surface. The detail docs under [`config/`](config/) cover
+  presets, core evolution, training, discovery, mutation adaptation,
+  regularisation, population sizing, workers, logging, and recipes.
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** — common problems and solutions
   for WASM, discovery, memory, CI, and configuration.
 

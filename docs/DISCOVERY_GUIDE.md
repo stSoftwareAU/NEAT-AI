@@ -519,8 +519,8 @@ Discovery will analyse these neurons first before doing weighted selection.
   for `Creature.discoveryDir()` and the on-disk cache layout.
 - [Discovery Architecture](DISCOVERY_ARCHITECTURE.md) — Internal pipeline
   architecture, two-phase evaluation, TS ↔ Rust FFI flow (contributor-focused).
-- [Configuration Guide — Discovery](CONFIGURATION_GUIDE.md#discovery-parameters)
-  — All discovery configuration options.
+- [Configuration Guide — Discovery](config/DISCOVERY.md) — All discovery
+  configuration options.
 - [TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) — where TypeScript ends and Rust
   / WASM begins.
 - [GPU_ACCELERATION.md](GPU_ACCELERATION.md) — `wgpu` backend selection (Metal /
