@@ -629,6 +629,105 @@ and/or `--allow-net` permissions.
 - `Worker init timed out after Ns` — Increase the timeout by setting
   `NEAT_AI_WORKER_INIT_TIMEOUT_MS` (default: 60,000 ms, minimum: 1,000 ms).
 
+### 🌐 JSR-hosted NEAT-AI in your own workers (Issue #2545)
+
+**Symptoms:**
+
+- Parent process is run with `--allow-net`, yet a Deno Worker spawned by your
+  application logs:
+
+  ```
+  Failed to initialise WASM activation module:
+    NotCapable: Requires net access to "jsr.io:443",
+    run again with the --allow-net flag
+      at Module.__wbg_init (https://jsr.io/.../wasm_activation.js:...)
+      at initWasmActivation (https://jsr.io/.../WasmModuleLoader.ts:...)
+      at WasmAutoInit.ts:...
+  ```
+
+- The library silently degrades onto the slow path (or, since Issue #1263, fails
+  fast — prior to that release the Rust panic surfaced as
+  `RuntimeError: unreachable`).
+
+**Cause.** When NEAT-AI is consumed from JSR (`https://jsr.io/...`),
+`WasmModuleLoader.ts` resolves the WASM payload to an `https:` URL and calls the
+wasm-bindgen `fetch(URL)` path. That path needs `net` permission on `jsr.io:443`
+_inside the worker scope_. Two ways the permission can be missing even when the
+parent has `--allow-net`:
+
+1. **Older Deno** (pre-2.5). `Worker.deno.permissions` defaulted to `none` for
+   spawned workers. Parent permissions did not flow into the worker. This is the
+   most common cause for the production stack traces seen in Issue #2543.
+2. **Explicit narrowing.** Application code passes
+   `new Worker(url, { deno: { permissions: { net: ["api.example.com"] } } })` to
+   lock the worker down to a specific host. `jsr.io` is not on the list, so the
+   wasm-bindgen `fetch(URL)` is denied.
+
+**Recommended fix — pre-fetch the payload in the parent and forward it.**
+
+The library exposes a stable, in-process payload-passing API that bypasses
+network access in the worker entirely. Have the parent fetch once, then send the
+bytes over `postMessage` or a shared module:
+
+```typescript
+import {
+  fetchWasmForWorkers,
+  initialiseWasmActivationFromPayload,
+  loadWasmActivationInitPayloadAsync,
+} from "@stsoftware/neat-ai";
+
+// --- In the parent (has --allow-net) ---
+await fetchWasmForWorkers(); // Populates the in-memory cache.
+const payload = await loadWasmActivationInitPayloadAsync();
+const worker = new Worker(new URL("./worker.ts", import.meta.url).href, {
+  type: "module",
+});
+worker.postMessage({ kind: "wasm-init", payload });
+
+// --- In the worker (no --allow-net required) ---
+self.onmessage = async (ev) => {
+  if (ev.data?.kind === "wasm-init") {
+    await initialiseWasmActivationFromPayload(ev.data.payload, false);
+    // ... continue with creature work
+  }
+};
+```
+
+Because `initialiseWasmActivationFromPayload()` calls `initWasmActivationSync`
+with the bytes, the worker never reaches the `fetch(URL)` path and therefore
+never needs `net` permission. This works under both old and new Deno, and under
+narrowed worker permission lists.
+
+**Alternative — upgrade Deno and rely on default inheritance.** From Deno 2.5
+onwards, workers spawned with no explicit `deno.permissions` inherit the
+parent's permissions, so a parent with `--allow-net` is sufficient on its own.
+This is the simplest fix when you control the host's Deno version.
+
+**Sequence of events:**
+
+```mermaid
+sequenceDiagram
+    participant Parent as Parent (--allow-net)
+    participant Worker as Worker (no --allow-net)
+    participant JSR as jsr.io
+
+    Parent->>JSR: fetch(wasm_activation.js + .wasm)
+    JSR-->>Parent: bytes
+    Parent->>Parent: cache payload
+    Parent->>Worker: spawn + postMessage(payload)
+    Worker->>Worker: initialiseWasmActivationFromPayload(payload)
+    Note over Worker: initWasmActivationSync — no fetch, no net permission
+```
+
+**Why not just pass `deno: { permissions: "inherit" }` automatically?**
+
+In stable Deno 2.x, `Worker.deno.permissions` is gated by
+`--unstable-worker-options`. Setting `permissions: "inherit"` unconditionally
+inside the library makes worker spawn fail for every consumer that has not opted
+into that flag. Once that gate is removed, the library can adopt explicit
+inheritance internally; until then, the pre-fetch helpers above are the
+supported workaround.
+
 ### 💥 RuntimeError: unreachable
 
 **Symptoms:**

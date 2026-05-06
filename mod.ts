@@ -409,13 +409,25 @@ export type { CacheStats } from "@cache/CacheStats.ts";
 export { getCacheStats } from "@cache/getCacheStats.ts";
 
 /**
- * WASM preload for workers (Issue #1285)
+ * WASM preload for workers (Issue #1285, Issue #2545)
  *
  * Call {@link fetchWasmForWorkers} in the main thread before spawning workers
  * so WASM is fetched once and cached; workers then receive the cached payload
  * instead of each fetching separately.
+ *
+ * For *consumer-owned* Deno Workers that import NEAT-AI from JSR and may not
+ * have `--allow-net` to `jsr.io` inside the worker scope, fetch the payload
+ * with {@link loadWasmActivationInitPayloadAsync} in the parent, send the
+ * resulting bytes to the worker via `postMessage`, and bootstrap WASM in the
+ * worker by calling {@link initialiseWasmActivationFromPayload}. See
+ * `docs/TROUBLESHOOTING.md` for the full pattern.
  */
-export { fetchWasmForWorkers } from "@multithreading/workers/WorkerHandler.ts";
+export {
+  fetchWasmForWorkers,
+  loadWasmActivationInitPayloadAsync,
+} from "@multithreading/workers/WorkerHandler.ts";
+export type { WasmActivationInitPayload } from "@workers/WasmActivationPayload.ts";
+export { initialiseWasmActivationFromPayload } from "@workers/WasmWorkerInit.ts";
 
 /**
  * Structured Logger
