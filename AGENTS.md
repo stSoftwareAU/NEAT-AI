@@ -1,13 +1,47 @@
 # 🤖 AGENTS.md - Coding Guidelines for NEAT-AI
 
 This file is the single source of truth for coding conventions, project
-terminology, and development workflows in the NEAT-AI repository. All
-contributors (human and AI) should follow these guidelines.
+terminology, and development workflows in the NEAT-AI (NeuroEvolution of
+Augmenting Topologies — Artificial Intelligence) repository. All contributors
+(human and AI) should follow these guidelines.
 
 > [!NOTE]
 > This document is intended for both human contributors and AI coding agents.
 > When in doubt, follow the conventions described here rather than assuming
 > defaults from other projects.
+
+## 📌 Summary and where to go next
+
+This file collects the **conventions that apply across every subsystem** —
+terminology, the two critical invariants (neuron UUID stability and semantic
+version stability), the WASM (WebAssembly) compute contract, and the testing /
+logging policies. It assumes you have already met the project via
+[`README.md`](./README.md); it does **not** re-explain what NEAT-AI does.
+
+For deep dives on a single topic, follow the dedicated docs (full index in
+[`docs/README.md`](./docs/README.md)):
+
+- **Activation / squash functions** —
+  [`docs/ACTIVATION_FUNCTIONS.md`](./docs/ACTIVATION_FUNCTIONS.md) and
+  [`src/methods/activations/README.md`](./src/methods/activations/README.md).
+- **Neuron UUID rules** — quality-gate test
+  [`test/creature/NeuronUuidStability.ts`](./test/creature/NeuronUuidStability.ts);
+  identity vs runtime integer `id` lives in
+  [`src/architecture/NeuronId.ts`](./src/architecture/NeuronId.ts) (Issue
+  #1958).
+- **Semantic version rules** — quality-gate test
+  [`test/creature/SemanticVersionStability.ts`](./test/creature/SemanticVersionStability.ts).
+- **Discovery / FFI (Foreign Function Interface)** —
+  [`docs/DISCOVERY_GUIDE.md`](./docs/DISCOVERY_GUIDE.md),
+  [`docs/DISCOVERY_ARCHITECTURE.md`](./docs/DISCOVERY_ARCHITECTURE.md), and
+  [`docs/DISCOVERY_DIR.md`](./docs/DISCOVERY_DIR.md).
+- **NEAT-AI-core dependency** —
+  [`docs/CORE_DEPENDENCY_POLICY.md`](./docs/CORE_DEPENDENCY_POLICY.md) and
+  [`docs/PARITY_GATE.md`](./docs/PARITY_GATE.md).
+- **Contributor onboarding / quality gate** —
+  [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+- **Security disclosure** — [`SECURITY.md`](./SECURITY.md).
+- **Release notes** — [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## 📖 Terminology
 
@@ -40,7 +74,7 @@ machine-learning idea:
 - **Layer assignment** is the topological ordering of neurons into discrete
   layers based on longest-path distance from input neurons, used by synthetic
   synapse generation to determine which neuron pairs are in adjacent layers.
-- **MCMC acceptance** refers to the
+- **MCMC acceptance** — Markov Chain Monte Carlo acceptance — refers to the
   [Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
   criterion applied to mutation acceptance. Instead of accepting all mutations
   unconditionally, worsening mutations are accepted with a temperature-dependent
@@ -59,13 +93,14 @@ standard term the first time it appears.
 ### ⚙️ Technology Stack
 
 - **TypeScript** on **Deno 2.x** for the core library
-- **WASM** (required) for activation/scoring - initialised automatically, no
-  manual init needed
-- **Rust** FFI extension
+- **WASM** (WebAssembly, required) for activation/scoring — initialised
+  automatically, no manual init needed
+- **Rust** FFI (Foreign Function Interface) extension
   ([NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)) for
-  GPU-accelerated structural analysis
+  GPU (Graphics Processing Unit) accelerated structural analysis
 - **wgpu** for cross-platform GPU compute shaders (Metal on macOS, Vulkan on
-  Linux, DX12 on Windows) with CPU fallback
+  Linux, DX12 (DirectX 12) on Windows) with CPU (Central Processing Unit)
+  fallback
 
 ### 📂 Directory Structure
 
@@ -151,10 +186,31 @@ meaninglessly scrambled.
 6. **Genetic compatibility** uses `getHiddenNeuronWireKeys()` (UUID-based wire
    labels), not integer ids.
 
-7. **Quality gate test** (`test/creature/NeuronUuidStability.ts`): builds a
-   creature, records all neuron UUIDs, runs multiple generations of mutation and
-   breeding, then asserts that every surviving original neuron still has its
-   original UUID. This test MUST pass before any commit.
+7. **Quality gate test**
+   ([`test/creature/NeuronUuidStability.ts`](./test/creature/NeuronUuidStability.ts)):
+   builds a creature, records all neuron UUIDs, runs multiple generations of
+   mutation and breeding, then asserts that every surviving original neuron
+   still has its original UUID. This test MUST pass before any commit.
+
+#### 🔁 Neuron UUID lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created: crypto.randomUUID() at creation
+    Created --> Persisted: exportJSON() (UUID-only wire format)
+    Persisted --> Loaded: loadFrom() resolves by UUID first
+    Loaded --> InMemory: integer id assigned at runtime (ephemeral)
+    InMemory --> Mutated: mutate / compact / discovery
+    Mutated --> InMemory: UUID preserved (rule 1)
+    InMemory --> Bred: breed aligns parents by matching UUIDs
+    Bred --> InMemory: child neurons keep parent UUIDs;\nnew neurons get new UUIDs
+    InMemory --> Persisted: round-trip preserves UUID
+    Persisted --> [*]: archived / shared across machines
+```
+
+The integer `id` is recreated on every load and is **never** part of an external
+wire format. UUIDs are the only stable identity that survives a process
+boundary, disk write, or cross-machine handoff.
 
 ### Neuron identity: wire UUID vs runtime integer `id` (Issue #1958)
 
@@ -212,11 +268,10 @@ meaninglessly scrambled.
 > semantic version, that is a bug.
 
 **Why this matters:** The entire population has been 4.x for a long time. There
-is no path to downgrade. There is no need to re-upgrade. The scattered
-`bumpToFourIfForwardOnlyConfirmed` /
-`upgradeSemanticVersionIfForwardOnlyConfirmed` helper calls that previously
-existed throughout the pipeline were dead code for 4.x creatures and have been
-removed.
+is no path to downgrade. There is no need to re-upgrade. Scattered
+forward-only-bump helpers (`bumpToFourIfForwardOnlyConfirmed` /
+`upgradeSemanticVersionIfForwardOnlyConfirmed`) that previously existed
+throughout the pipeline were dead code for 4.x creatures and have been removed.
 
 **The rules:**
 
@@ -236,9 +291,32 @@ removed.
    alarm and runs the legacy upgrade as a safety net — but this should never
    happen in practice.
 
-5. **Quality gate test** (`test/creature/SemanticVersionStability.ts`): verifies
-   that `semanticVersion` survives mutation, breeding, compaction, and
+5. **Quality gate test**
+   ([`test/creature/SemanticVersionStability.ts`](./test/creature/SemanticVersionStability.ts)):
+   verifies that `semanticVersion` survives mutation, breeding, compaction, and
    export/import round-trips. This test MUST pass before any commit.
+
+#### 🔁 Semantic version invariant flow
+
+```mermaid
+flowchart LR
+    Disk[(JSON on disk<br/>any version)] -->|fromJSON / loadFrom| Up{semanticVersion<br/>== 4.x?}
+    Up -- "yes" --> Carry[Carry version unchanged]
+    Up -- "no (legacy)" --> Repair[upgrade() / upgradeTwo()<br/>one-time repair]
+    Repair --> Carry
+    Carry --> Mut[mutate]
+    Carry --> Brd[breed]
+    Carry --> Cmp[compact]
+    Carry --> Dsc[discovery]
+    Mut --> Out[exportJSON()<br/>preserves semanticVersion]
+    Brd --> Out
+    Cmp --> Out
+    Dsc --> Out
+    Out --> Disk
+```
+
+If a pipeline stage other than `upgrade()` ever changes `semanticVersion`, that
+is a bug — fail fast and fix the producer rather than masking it downstream.
 
 ## 📝 Coding Conventions
 
@@ -555,11 +633,18 @@ In our production workloads, the default is feed-forward/forward-only.
 
 ## 📚 Documentation Layout
 
-- **README.md** - Human-readable project overview, features, and quick start
-- **CONTRIBUTING.md** - First-time contributor guide with development setup and
-  workflow
-- **AGENTS.md** (this file) - Coding guidelines and development reference
-- **COMPARISON.md** - Comparison with other AI approaches
+The full topic index lives in [`docs/README.md`](./docs/README.md). Sibling
+governance / contributor documents:
+
+- **[README.md](./README.md)** — human-readable project overview, features, and
+  quick start.
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** — first-time contributor guide with
+  development setup and workflow.
+- **AGENTS.md** (this file) — coding guidelines and development reference.
+- **[SECURITY.md](./SECURITY.md)** — vulnerability disclosure policy.
+- **[CHANGELOG.md](./CHANGELOG.md)** — release notes (Keep a Changelog +
+  Semantic Versioning).
+- **[COMPARISON.md](./COMPARISON.md)** — comparison with other AI approaches.
 - **docs/API_REFERENCE.md** - Comprehensive public API reference
 - **docs/CRISPR_GUIDE.md** - CRISPR conventions, append+demote pattern, and
   validation rules

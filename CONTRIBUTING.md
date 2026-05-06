@@ -1,11 +1,41 @@
 # 🤝 Contributing to NEAT-AI
 
-Thank you for your interest in contributing to NEAT-AI! This guide covers
-everything you need to get started — from setting up your development
-environment to submitting a pull request.
+Thank you for your interest in contributing to NEAT-AI (NeuroEvolution of
+Augmenting Topologies — Artificial Intelligence)! This guide covers everything
+you need to get started — from setting up your development environment to
+submitting a pull request.
 
-For coding conventions, terminology, and architecture details, see
-[AGENTS.md](./AGENTS.md).
+## 📌 Summary and where to go next
+
+This document is the **first-time contributor onboarding** guide: install the
+toolchain, run the quality gate, branch off, write a failing test, and open a PR
+(Pull Request). It does **not** duplicate detail that already lives in:
+
+- [`AGENTS.md`](./AGENTS.md) — coding conventions, terminology, and the two
+  critical invariants (neuron UUID stability, semantic version stability).
+- [`docs/README.md`](./docs/README.md) — the topic-by-topic documentation index.
+- [`docs/DISCOVERY_GUIDE.md`](./docs/DISCOVERY_GUIDE.md) — Discovery setup,
+  including Rust FFI (Foreign Function Interface) extension build.
+- [`docs/CORE_DEPENDENCY_POLICY.md`](./docs/CORE_DEPENDENCY_POLICY.md) — pinning
+  policy for the external NEAT-AI-core WASM (WebAssembly) bundle.
+- [`SECURITY.md`](./SECURITY.md) — vulnerability disclosure.
+- [`CHANGELOG.md`](./CHANGELOG.md) — release notes.
+
+## 🌊 The contribution pipeline at a glance
+
+```mermaid
+flowchart LR
+    Fork[Fork / clone] --> Branch[Branch from Develop]
+    Branch --> TDD[Write failing test<br/>TDD]
+    TDD --> Code[Implement change]
+    Code --> Quality["./quality.sh<br/>(fmt, lint, type-check, tests)"]
+    Quality -- "fail" --> Code
+    Quality -- "pass" --> PR[Open PR targeting Develop]
+    PR --> Review[Reviewer + CI checks]
+    Review -- "request changes" --> Code
+    Review -- "approved" --> Merge[Merge to Develop]
+    Merge --> Release[CHANGELOG.md entry +<br/>release tag]
+```
 
 ## 🚀 Quick Start
 
@@ -200,7 +230,7 @@ Follow test-driven development:
 ./quality.sh
 ```
 
-The quality gate runs:
+The quality gate runs (see `quality.sh` for the canonical step list):
 
 1. Dependency updates (`deno outdated --update --latest`)
 2. Code formatting (`deno fmt`)
@@ -208,7 +238,7 @@ The quality gate runs:
 4. Bash script syntax checks
 5. Type checking (`deno check`)
 6. Discovery library build (if `../NEAT-AI-Discovery` exists)
-7. WASM activation module build (Rust build + tests)
+7. WASM package sync from pinned NEAT-AI-core (`./build.sh --verify-only`)
 8. All tests in parallel with leak detection
 
 > [!WARNING]
@@ -217,14 +247,23 @@ The quality gate runs:
 
 Keep running `./quality.sh` until it passes cleanly.
 
-For faster iteration, you can skip specific steps:
+For faster iteration, you can skip specific steps. The full flag set is shown by
+`./quality.sh --help`; the most common ones are listed below (kept in sync with
+the script's `show_help` block):
 
-```bash
-./quality.sh --help            # Show all available options
-./quality.sh --skip-tests      # Quick check without running tests
-./quality.sh --lint-only       # Only format + lint
-./quality.sh --check-only      # Only type-check
-```
+| Flag                          | Effect                                               |
+| ----------------------------- | ---------------------------------------------------- |
+| `--help`, `-h`                | Show usage and exit.                                 |
+| `--skip-tests`                | Skip test execution.                                 |
+| `--skip-discovery`            | Skip discovery library build and verification.       |
+| `--skip-wasm`                 | Skip WASM package sync from NEAT-AI-core.            |
+| `--with-rust-scorer`          | Enable external Rust scorer during test execution.   |
+| `--test-both-scorers`         | Run tests twice: WASM-only then Rust scorer.         |
+| `--rust-scorer-bin=PATH`      | Path to `rust_scorer` binary.                        |
+| `--rust-scorer-timeout-ms=MS` | Per-call scorer timeout.                             |
+| `--lint-only`                 | Only run formatting + linting (includes bash check). |
+| `--check-only`                | Only run type-checking (`deno check`).               |
+| `--dry-run`                   | Show which steps would run without executing them.   |
 
 ### 5. 📬 Submit a Pull Request
 
@@ -483,5 +522,14 @@ scripts/                # Utility scripts
 
 - Open an [issue](https://github.com/stSoftwareAU/NEAT-AI/issues) for bugs or
   feature requests.
-- Check [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for common issues.
+- Check [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for common issues.
 - See [AGENTS.md](./AGENTS.md) for detailed coding conventions and architecture.
+- Browse [docs/README.md](./docs/README.md) for the topic-by-topic index.
+
+## 🔗 Sibling docs
+
+- **[README.md](./README.md)** — project overview and quick start.
+- **[AGENTS.md](./AGENTS.md)** — coding conventions, terminology, invariants.
+- **[SECURITY.md](./SECURITY.md)** — vulnerability disclosure policy.
+- **[CHANGELOG.md](./CHANGELOG.md)** — release notes.
+- **[docs/README.md](./docs/README.md)** — topic-by-topic documentation index.
