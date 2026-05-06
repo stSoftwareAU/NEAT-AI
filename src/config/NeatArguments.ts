@@ -196,6 +196,18 @@ export interface NeatArguments {
    */
   skipTrainingAfterConsecutiveRegressions: number;
 
+  /**
+   * Issue #2531: Maximum entries kept in the in-memory subnetwork hash index
+   * that augments the discovery `SuccessCache` / `FailureCache` lookup. The
+   * index is a bounded LRU keyed on the local 1-hop wire-pattern around a
+   * focal neuron, which lets discovery short-circuit candidate ranking when
+   * the same pattern has already been observed in the population.
+   *
+   * Defaults to 50,000. Set to 0 to disable the index entirely (in which
+   * case discovery falls back to the existing exact-match cache lookup).
+   */
+  subnetworkIndexSize: number;
+
   /** The number of training samples per batch. */
   trainingBatchSize: number;
 

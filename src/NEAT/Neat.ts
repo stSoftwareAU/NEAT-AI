@@ -35,6 +35,7 @@ import {
 } from "@neat/DiscoveryReplayQueue.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { configureSharedSubnetworkIndex } from "@discovery/SubnetworkHashIndex.ts";
 
 // Extracted modules
 import * as evolution from "@neat/NeatEvolution.ts";
@@ -199,6 +200,11 @@ export class Neat {
     this.workers = workers;
 
     this.config = createNeatConfig(options);
+
+    // Issue #2531: size the in-process subnetwork hash index according to the
+    // configured limit (default 50,000; 0 disables indexing). This is a
+    // process-global secondary cache, so the most recent constructor wins.
+    configureSharedSubnetworkIndex(this.config.subnetworkIndexSize);
 
     const fastHandlers = fastWorkers ?? this.workers;
     this.fastWorkerHandlers = fastHandlers;
