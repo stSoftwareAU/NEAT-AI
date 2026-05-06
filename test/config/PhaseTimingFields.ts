@@ -194,8 +194,10 @@ Deno.test("phaseTiming fields sum to approximately totalMs", async () => {
 
   for (const event of events) {
     const timing = event.phaseTiming;
-    // Sum of instrumented phases should not exceed totalMs
-    // (some overhead is expected from non-instrumented code)
+    // Sum of instrumented phases should not exceed totalMs plus any
+    // pipeline overlap (Issue #2314: resultProcessingMs runs during
+    // breedingMs, speciationMs runs during writeScoresMs, etc.).
+    // A small absolute tolerance handles timer-resolution variance.
     const instrumentedSum = timing.fitnessMs + timing.breedingMs +
       timing.resultProcessingMs +
       (timing.memoryEvictionMs ?? 0) +
@@ -204,10 +206,14 @@ Deno.test("phaseTiming fields sum to approximately totalMs", async () => {
       (timing.deduplicationMs ?? 0) +
       (timing.speciationMs ?? 0);
 
+    const overlapAllowance = timing.pipelineOverlapMs ?? 0;
+    const tolerance = 10;
+
     assert(
-      instrumentedSum <= timing.totalMs + 5,
+      instrumentedSum <= timing.totalMs + overlapAllowance + tolerance,
       `Instrumented phases sum (${instrumentedSum}ms) should not greatly ` +
-        `exceed totalMs (${timing.totalMs}ms)`,
+        `exceed totalMs (${timing.totalMs}ms) + overlap (${overlapAllowance}ms) ` +
+        `+ tolerance (${tolerance}ms)`,
     );
   }
 });
