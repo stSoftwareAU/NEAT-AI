@@ -513,8 +513,7 @@ Discovery will analyse these neurons first before doing weighted selection.
 ## 📚 See Also
 
 - [`docs/README.md`](README.md) — topic index for all NEAT-AI documentation.
-- [API Reference — Discovery](API_REFERENCE.md#7-discovery-api) — Programmatic
-  API reference.
+- [API Reference — Discovery](api/DISCOVERY.md) — Programmatic API reference.
 - [DiscoveryDir Integration Guide](DISCOVERY_DIR.md) — Technical API reference
   for `Creature.discoveryDir()` and the on-disk cache layout.
 - [Discovery Architecture](DISCOVERY_ARCHITECTURE.md) — Internal pipeline

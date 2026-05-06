@@ -2,7 +2,7 @@
  * Tests that verify MCMC configuration documentation accuracy.
  *
  * Issue #2210: These tests ensure the MCMC defaults documented in
- * CONFIGURATION_GUIDE.md and API_REFERENCE.md match the actual code,
+ * CONFIGURATION_GUIDE.md and api/CONFIGURATION.md match the actual code,
  * and that MCMCConfig is properly exported from the public API.
  */
 

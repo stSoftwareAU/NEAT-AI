@@ -255,8 +255,8 @@ For detailed documentation, see the [docs/](./docs/) directory:
 
 ### 🔧 API & Reference
 
-- **[API Reference](./docs/API_REFERENCE.md)**: Comprehensive public API
-  documentation
+- **[API Reference](./docs/API_REFERENCE.md)**: Short topic index linking to
+  per-surface detail docs under [`docs/api/`](./docs/api/)
 - **[DiscoveryDir API](./docs/DISCOVERY_DIR.md)**: Technical API reference for
   `Creature.discoveryDir()` and data preparation
 - **[Activation Functions Guide](./docs/ACTIVATION_FUNCTIONS.md)**: Complete

@@ -645,7 +645,9 @@ governance / contributor documents:
 - **[CHANGELOG.md](./CHANGELOG.md)** — release notes (Keep a Changelog +
   Semantic Versioning).
 - **[COMPARISON.md](./COMPARISON.md)** — comparison with other AI approaches.
-- **docs/API_REFERENCE.md** - Comprehensive public API reference
+- **docs/API_REFERENCE.md** - Short index for the public API; per-surface detail
+  docs live under **docs/api/** (Creature, Evolution, Configuration, Costs &
+  Activations, Training, Discovery, Compute, Errors, Interop)
 - **docs/CRISPR_GUIDE.md** - CRISPR conventions, append+demote pattern, and
   validation rules
 - **docs/DISCOVERY_GUIDE.md** - Complete discovery workflow guide
