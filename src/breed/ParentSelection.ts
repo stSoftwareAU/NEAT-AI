@@ -19,6 +19,10 @@ import { calculateAdaptiveTournamentSize } from "@breed/AdaptiveTournamentSize.t
 import { createCompatibleFatherFromCreatures } from "@breed/Father.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
 import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
+import {
+  computeAdvantageStats,
+  computeGroupRelativeAdvantages,
+} from "@neat/GroupRelativeAdvantage.ts";
 
 /**
  * Mutable accumulator for breeding loop diagnostics (Issue #2523).
@@ -69,6 +73,138 @@ export function buildAdjustedFitnessMap(
     map.set(creature.uuid, score / size);
   }
   return map;
+}
+
+/**
+ * Issue #2527: Build a UUID → group-relative advantage map for parent
+ * selection. For each species, the advantage of every member is the
+ * z-score of its raw fitness against the species cohort. When a species
+ * has fewer than `minCohortSize` members, the whole-generation cohort is
+ * used as a fallback so a lone-member species does not collapse to a
+ * zero-signal `0` advantage.
+ *
+ * Creatures whose score is non-finite are skipped — they fall back to
+ * raw fitness in the resulting ranking. The map is intended to feed
+ * `FitnessRanking(population, advantages)` exactly like the existing
+ * adjusted-fitness map, so no FitnessRanking change is required.
+ *
+ * @param genus - The genus containing the population
+ * @param options - `minCohortSize`, `eps`, `clip` overrides
+ * @returns A map from creature UUID to group-relative advantage
+ */
+export function buildGroupRelativeAdvantageMap(
+  genus: Genus,
+  options: { minCohortSize?: number; eps?: number; clip?: number } = {},
+): Map<string, number> {
+  const minCohortSize = options.minCohortSize ?? 4;
+
+  // Pre-compute the generation-wide cohort once for the small-species
+  // fallback. Creatures with non-finite scores are skipped.
+  const generationScores: number[] = [];
+  const generationOrder: string[] = [];
+  for (const c of genus.population) {
+    if (!c.uuid) continue;
+    const score = c.score;
+    if (score === undefined || score === null || !Number.isFinite(score)) {
+      continue;
+    }
+    generationOrder.push(c.uuid);
+    generationScores.push(score);
+  }
+  const generationAdvantages = computeGroupRelativeAdvantages(
+    generationScores,
+    { eps: options.eps, clip: options.clip },
+  );
+  const generationAdvantageByUuid = new Map<string, number>();
+  for (let i = 0; i < generationOrder.length; i++) {
+    generationAdvantageByUuid.set(generationOrder[i], generationAdvantages[i]);
+  }
+
+  const out = new Map<string, number>();
+  for (const species of genus.speciesMap.values()) {
+    const speciesUuids: string[] = [];
+    const speciesScores: number[] = [];
+    for (const c of species.creatures) {
+      if (!c.uuid) continue;
+      const score = c.score;
+      if (score === undefined || score === null || !Number.isFinite(score)) {
+        continue;
+      }
+      speciesUuids.push(c.uuid);
+      speciesScores.push(score);
+    }
+
+    if (speciesScores.length < minCohortSize) {
+      // Small cohort: borrow the generation-wide advantage so the
+      // single-species curve does not flatten the signal to zero.
+      for (const uuid of speciesUuids) {
+        const adv = generationAdvantageByUuid.get(uuid);
+        if (adv !== undefined) out.set(uuid, adv);
+      }
+      continue;
+    }
+
+    const advantages = computeGroupRelativeAdvantages(speciesScores, {
+      eps: options.eps,
+      clip: options.clip,
+    });
+    for (let i = 0; i < speciesUuids.length; i++) {
+      out.set(speciesUuids[i], advantages[i]);
+    }
+  }
+  return out;
+}
+
+/**
+ * Issue #2527: Build a UUID → cohort std map for the M-H acceptance
+ * signal in `groupRelative` mode. The std measures variation in
+ * **fitness** across the species cohort and is used to normalise the
+ * raw cost delta before feeding it to M-H. When the species has fewer
+ * than `minCohortSize` finite-scored members, the entry is omitted so
+ * the caller's generation-wide fallback std is used.
+ *
+ * @param genus - The genus containing the population
+ * @param minCohortSize - Minimum species size for per-species std
+ * @returns A map from creature UUID to species cohort std, plus the
+ *   generation-wide fallback std
+ */
+export function buildCohortStdContext(
+  genus: Genus,
+  minCohortSize = 4,
+): { stdByUuid: Map<string, number>; fallbackStd: number } {
+  const stdByUuid = new Map<string, number>();
+
+  // Generation-wide fallback std.
+  const generationScores: number[] = [];
+  for (const c of genus.population) {
+    if (!c.uuid) continue;
+    const score = c.score;
+    if (score === undefined || score === null || !Number.isFinite(score)) {
+      continue;
+    }
+    generationScores.push(score);
+  }
+  const fallbackStd = computeAdvantageStats(generationScores).std;
+
+  for (const species of genus.speciesMap.values()) {
+    const speciesUuids: string[] = [];
+    const speciesScores: number[] = [];
+    for (const c of species.creatures) {
+      if (!c.uuid) continue;
+      const score = c.score;
+      if (score === undefined || score === null || !Number.isFinite(score)) {
+        continue;
+      }
+      speciesUuids.push(c.uuid);
+      speciesScores.push(score);
+    }
+    if (speciesScores.length < minCohortSize) continue;
+    const std = computeAdvantageStats(speciesScores).std;
+    if (!Number.isFinite(std) || std <= 0) continue;
+    for (const uuid of speciesUuids) stdByUuid.set(uuid, std);
+  }
+
+  return { stdByUuid, fallbackStd };
 }
 
 /**

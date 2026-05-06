@@ -1,8 +1,9 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import {
   computeCreatureWeightBiasPenalty,
   isTopologyMutation,
   metropolisHastingsAccept,
+  resolveMcmcAcceptanceDelta,
 } from "@neat/MetropolisHastings.ts";
 import { Creature } from "@creature";
 
@@ -118,4 +119,34 @@ Deno.test("computeCreatureWeightBiasPenalty: zero weights yield zero penalty", (
 
   const penalty = computeCreatureWeightBiasPenalty(creature);
   assertEquals(penalty, 0);
+});
+
+// --- Issue #2527: resolveMcmcAcceptanceDelta tests ---
+
+Deno.test("resolveMcmcAcceptanceDelta: absolute mode returns raw delta unchanged", () => {
+  assertEquals(resolveMcmcAcceptanceDelta(0.42, "absolute", 1.5), 0.42);
+  assertEquals(resolveMcmcAcceptanceDelta(-3.0, "absolute", 0.5), -3.0);
+  // cohortStd is ignored in absolute mode, even when zero or negative.
+  assertEquals(resolveMcmcAcceptanceDelta(2.5, "absolute", 0), 2.5);
+  assertEquals(resolveMcmcAcceptanceDelta(2.5, "absolute", -1), 2.5);
+});
+
+Deno.test("resolveMcmcAcceptanceDelta: groupRelative mode normalises by std", () => {
+  // delta=2.0, std=2.0 → ~1.0 (eps tiny).
+  const v = resolveMcmcAcceptanceDelta(2.0, "groupRelative", 2.0);
+  assertAlmostEquals(v, 1.0, 1e-6);
+});
+
+Deno.test("resolveMcmcAcceptanceDelta: groupRelative respects clip override", () => {
+  // huge delta, tiny std → unbounded except for clip.
+  const clipped = resolveMcmcAcceptanceDelta(1000, "groupRelative", 0.0001, {
+    clip: 5,
+  });
+  assertEquals(clipped, 5);
+});
+
+Deno.test("resolveMcmcAcceptanceDelta: groupRelative is finite for zero-std cohort", () => {
+  // No divide-by-zero — eps stabiliser keeps the result finite.
+  const v = resolveMcmcAcceptanceDelta(1.0, "groupRelative", 0);
+  assert(Number.isFinite(v));
 });

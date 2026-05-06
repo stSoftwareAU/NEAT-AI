@@ -214,7 +214,48 @@ export function parseMcmc(
     diversityAwareMCMC: parseDiversityAwareMCMC(
       overrides?.diversityAwareMCMC as Record<string, unknown> | undefined,
     ),
+    // Issue #2527: GRPO-style group-relative advantage signal.
+    mcmcAdvantageMode: parseAdvantageMode(
+      overrides?.mcmcAdvantageMode,
+      d.mcmcAdvantageMode,
+    ),
+    minCohortSize: parseNumber(
+      "MCMC minCohortSize",
+      overrides?.minCohortSize,
+      d.minCohortSize,
+      { integer: true, min: 1 },
+    ),
+    advantageEps: parseNumber(
+      "MCMC advantageEps",
+      overrides?.advantageEps,
+      d.advantageEps,
+      { minExclusive: 0 },
+    ),
+    advantageClip: parseNumber(
+      "MCMC advantageClip",
+      overrides?.advantageClip,
+      d.advantageClip,
+      { minExclusive: 0 },
+    ),
   } as RequiredMCMCConfig;
+}
+
+/**
+ * Parses the `mcmcAdvantageMode` option (Issue #2527). Accepts only the
+ * two documented string literals so an out-of-spectrum CLI value fails
+ * fast instead of silently degrading to the default.
+ */
+function parseAdvantageMode(
+  raw: unknown,
+  fallback: "absolute" | "groupRelative",
+): "absolute" | "groupRelative" {
+  if (raw === undefined || raw === null) return fallback;
+  if (raw === "absolute" || raw === "groupRelative") return raw;
+  throw new Error(
+    `MCMC mcmcAdvantageMode must be "absolute" or "groupRelative", got ${
+      JSON.stringify(raw)
+    }`,
+  );
 }
 
 /** Parse diversity-aware MCMC reheat configuration (Issue #2456). */

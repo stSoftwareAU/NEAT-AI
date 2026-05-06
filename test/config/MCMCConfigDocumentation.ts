@@ -68,6 +68,11 @@ Deno.test("MCMC documentation - RequiredMCMCConfig type is usable from public AP
       crowdingThreshold: 0.85,
       reheatFactor: 1.5,
     },
+    // Issue #2527: GRPO-style group-relative advantage signal.
+    mcmcAdvantageMode: "absolute",
+    minCohortSize: 4,
+    advantageEps: 1e-8,
+    advantageClip: 10,
   };
   assertEquals(config.enabled, true);
   assertEquals(config.initialTemperature, 1.5);
