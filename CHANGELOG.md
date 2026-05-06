@@ -10,6 +10,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #2546:** Writer-side forward-only assertion for
+  `exportJSONWithRuntimeIds()`. Production GRQ logs continued to show
+  `[loadFrom] Recurrent synapse … source=fromJSON` `TopologyError` throws on
+  every load even after Issue #2515 wired
+  `assertNoRecurrentSynapseOnForwardOnly` into the discovery combiners and the
+  public `exportJSON` save path. The audit missed `exportJSONWithRuntimeIds` —
+  the internal export that worker training (`WorkerProcessor`), evolution
+  scheduling (`NeatScheduling`), training teardown / outcome / setup, compaction
+  (`CompactUnused`), discovery replay (`ReplayEntryApplication`), knowledge
+  distillation, and the worker→main wire all route through. A forward-only
+  creature that gained a recurrent synapse upstream could be persisted by any of
+  those paths and surfaced only as a load-side throw on the next worker.
+  Mirroring the assertion at `exportJSONWithRuntimeIds()` pins the producer's
+  stack frame so the offending pipeline is named directly. Repair tools and
+  legacy upgrade paths that legitimately need to serialise a not-yet-repaired
+  creature use the new `exportJSONWithRuntimeIdsUnchecked()` companion (the
+  `upgrade()` / `upgradeTwo()` legacy 1.x/2.x repair pipeline, and the
+  `NeatScheduling` training-failure diagnostic write that already runs after a
+  thrown training error and must not chain a second throw that masks the root
+  cause), each with a code comment naming the bypass.
+
 - **Issue #2523:** Breed-time fail-soft for corrupt parents. `findFather` now
   wraps the per-candidate `Creature.fromJSON(...)` call in a
   `try/catch (TopologyError)` block: a single corrupt parent is skipped with a

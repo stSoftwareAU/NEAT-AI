@@ -12,7 +12,10 @@ import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
-import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import {
+  exportJSONWithRuntimeIds,
+  exportJSONWithRuntimeIdsUnchecked,
+} from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { calculate as calculateScore } from "@architecture/Score.ts";
 import { fineTuneImprovement } from "@blackbox/FineTune.ts";
@@ -397,9 +400,14 @@ export function scheduleTraining(
 
     neat.trainingInProgress.delete(uuid);
 
+    // Issue #2546: training has already failed for this creature; serialise
+    // it for the diagnostic record without re-running the writer-side
+    // forward-only assertion, so a corrupt forward-only topology surfaces
+    // here as the original training error rather than a chained
+    // TopologyError that masks the root cause.
     let creatureExport: ReturnType<typeof exportJSONWithRuntimeIds>;
     try {
-      creatureExport = exportJSONWithRuntimeIds(creature);
+      creatureExport = exportJSONWithRuntimeIdsUnchecked(creature);
     } catch {
       creatureExport = {
         neurons: [],

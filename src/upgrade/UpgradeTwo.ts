@@ -7,7 +7,7 @@ import type {
 } from "@architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { nextNeuronId } from "@architecture/NeuronId.ts";
-import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { exportJSONWithRuntimeIdsUnchecked } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { SQRT } from "@methods/activations/types/SQRT.ts";
@@ -154,7 +154,10 @@ function removeHYPOT(json: CreatureExport) {
     getLogger().info("Creature is not valid", e);
     tempCreature.fix();
   }
-  return exportJSONWithRuntimeIds(tempCreature);
+  // Issue #2546: legacy upgrade may have stripped recurrent edges via the
+  // `throwOnRecurrent: "never"` load above; the unchecked export keeps the
+  // upgrader from re-tripping on a creature that is already in mid-repair.
+  return exportJSONWithRuntimeIdsUnchecked(tempCreature);
 }
 
 function removeHYPOTv2(json: CreatureExport) {
@@ -222,5 +225,8 @@ function removeHYPOTv2(json: CreatureExport) {
     tempCreature.fix();
   }
 
-  return exportJSONWithRuntimeIds(tempCreature);
+  // Issue #2546: legacy upgrade may have stripped recurrent edges via the
+  // `throwOnRecurrent: "never"` load above; the unchecked export keeps the
+  // upgrader from re-tripping on a creature that is already in mid-repair.
+  return exportJSONWithRuntimeIdsUnchecked(tempCreature);
 }
