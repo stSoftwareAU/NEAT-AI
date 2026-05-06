@@ -11,6 +11,7 @@ import { FitnessRanking } from "@breed/FitnessRanking.ts";
 import {
   type BreedSelectionStats,
   buildAdjustedFitnessMap,
+  buildGroupRelativeAdvantageMap,
   findFather,
   selectParent,
 } from "@breed/ParentSelection.ts";
@@ -138,14 +139,24 @@ export class ParallelBreeding {
     // Issue #2453: When fitness sharing is enabled, rank the global
     // population by adjusted fitness so any global selection picks
     // creatures with cross-species fairness baked in.
-    const adjustedScores = config.fitnessSharing.enabled
-      ? buildAdjustedFitnessMap(this.genus)
-      : undefined;
+    // Issue #2527: GRPO-style group-relative advantage takes precedence
+    // when `mcmcAdvantageMode === "groupRelative"`, so cross-species
+    // selection compares z-scored advantages instead of raw fitness.
+    let scoreOverride: ReadonlyMap<string, number> | undefined;
+    if (config.mcmc.mcmcAdvantageMode === "groupRelative") {
+      scoreOverride = buildGroupRelativeAdvantageMap(this.genus, {
+        minCohortSize: config.mcmc.minCohortSize,
+        eps: config.mcmc.advantageEps,
+        clip: config.mcmc.advantageClip,
+      });
+    } else if (config.fitnessSharing.enabled) {
+      scoreOverride = buildAdjustedFitnessMap(this.genus);
+    }
 
     // Pre-compute fitness ranking once for the entire batch
     const populationRanking = new FitnessRanking(
       this.genus.population,
-      adjustedScores,
+      scoreOverride,
     );
 
     // Issue #2284: Time parent selection sub-phase

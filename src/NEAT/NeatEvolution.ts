@@ -16,6 +16,7 @@ import {
 import { FindTunePopulation } from "@blackbox/FineTunePopulation.ts";
 import { Breed } from "@breed/Breed.ts";
 import { ParallelBreeding } from "@breed/ParallelBreeding.ts";
+import { buildCohortStdContext } from "@breed/ParentSelection.ts";
 import { AddConnection } from "@mutate/AddConnection.ts";
 import { allocateBreedingQuotas } from "@neat/BreedingQuotas.ts";
 import { applyStagnationToQuotas } from "@neat/SpeciesPlateauDetector.ts";
@@ -629,6 +630,24 @@ export async function evolve(
     // histogram persists across generations.
     neat.squashEffectivenessTracker,
   );
+
+  // Issue #2527: Provide the per-creature cohort std lookup so the
+  // Mutator can run M-H acceptance against the GRPO group-relative
+  // delta when `mcmcAdvantageMode === "groupRelative"`. No-op when the
+  // mode is `"absolute"` so existing behaviour is unchanged.
+  if (
+    neat.config.mcmc.enabled &&
+    neat.config.mcmc.mcmcAdvantageMode === "groupRelative"
+  ) {
+    const cohortContext = buildCohortStdContext(
+      genus,
+      neat.config.mcmc.minCohortSize,
+    );
+    mutator.setMcmcCohortContext(
+      cohortContext.stdByUuid,
+      cohortContext.fallbackStd,
+    );
+  }
 
   // Issue #1099: Single-pass de-duplication (constructed early so it is ready
   // when needed after mutation, without waiting for breeding to complete).

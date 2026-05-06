@@ -64,6 +64,19 @@ export const DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG:
   };
 
 /**
+ * Issue #2527: GRPO-style group-relative advantage signal.
+ *
+ * When `mcmcAdvantageMode === "groupRelative"`, the M-H acceptance
+ * compares the cohort-normalised delta `delta / (cohortStd + eps)`
+ * against the temperature instead of the raw `delta`. The cohort is
+ * the creature's species; if species size is below `minCohortSize`
+ * the whole generation is used as a fallback. This mirrors the
+ * normalisation used in DeepSeek V4 GRPO and makes the temperature
+ * curriculum scale-invariant to the cost function.
+ */
+export type AdvantageMode = "absolute" | "groupRelative";
+
+/**
  * Configuration for MCMC acceptance behaviour.
  */
 export interface MCMCConfig {
@@ -104,6 +117,35 @@ export interface MCMCConfig {
    * Otherwise the standard exponential cooling applies.
    */
   diversityAwareMCMC?: DiversityAwareMCMCConfig;
+
+  /**
+   * Issue #2527: Acceptance signal mode. `"absolute"` (default)
+   * compares the raw cost delta against the temperature. `"groupRelative"`
+   * normalises the delta by the cohort's standard deviation so the
+   * temperature curriculum is invariant to cost-function scale, mirroring
+   * DeepSeek V4 GRPO. Default: `"absolute"` so existing behaviour is
+   * unchanged.
+   */
+  mcmcAdvantageMode?: AdvantageMode;
+
+  /**
+   * Issue #2527: Minimum cohort size for `groupRelative` mode. When the
+   * creature's species has fewer members than this threshold, the
+   * advantage falls back to the full generation cohort. Default: 4.
+   */
+  minCohortSize?: number;
+
+  /**
+   * Issue #2527: Numerical stabiliser added to cohort std when computing
+   * the group-relative advantage. Default: 1e-8.
+   */
+  advantageEps?: number;
+
+  /**
+   * Issue #2527: Symmetric clip on the group-relative advantage delta.
+   * Set to `Infinity` to disable. Default: 10.
+   */
+  advantageClip?: number;
 }
 
 /**
@@ -126,4 +168,9 @@ export const DEFAULT_MCMC_CONFIG: RequiredMCMCConfig = {
   adjustmentRate: 0.02,
   toleranceRate: 0.05,
   diversityAwareMCMC: DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG,
+  // Issue #2527: GRPO advantage signal (default off; existing behaviour).
+  mcmcAdvantageMode: "absolute",
+  minCohortSize: 4,
+  advantageEps: 1e-8,
+  advantageClip: 10,
 };

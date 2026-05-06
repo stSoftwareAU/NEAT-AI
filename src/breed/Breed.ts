@@ -11,6 +11,7 @@ import { onPolicyDistillationBreed } from "@breed/OnPolicyDistillationBreed.ts";
 import {
   type BreedSelectionStats,
   buildAdjustedFitnessMap,
+  buildGroupRelativeAdvantageMap,
   findFather,
   selectParent,
 } from "@breed/ParentSelection.ts";
@@ -115,11 +116,22 @@ export class Breed {
     // Issue #2453: When fitness sharing is enabled, rank the population by
     // adjusted fitness (raw / speciesSize) so small species are not starved
     // by larger ones during mother selection.
-    const adjustedScores = config.fitnessSharing.enabled
-      ? buildAdjustedFitnessMap(this.genus)
-      : undefined;
+    // Issue #2527: When `mcmcAdvantageMode === "groupRelative"`, replace
+    // the raw-fitness ranking with the GRPO group-relative advantage so a
+    // creature that is merely above its species mean is preferred over a
+    // creature that is merely below an absolutely-higher species mean.
+    let scoreOverride: ReadonlyMap<string, number> | undefined;
+    if (config.mcmc.mcmcAdvantageMode === "groupRelative") {
+      scoreOverride = buildGroupRelativeAdvantageMap(this.genus, {
+        minCohortSize: config.mcmc.minCohortSize,
+        eps: config.mcmc.advantageEps,
+        clip: config.mcmc.advantageClip,
+      });
+    } else if (config.fitnessSharing.enabled) {
+      scoreOverride = buildAdjustedFitnessMap(this.genus);
+    }
     const ranking = populationRanking ??
-      new FitnessRanking(this.genus.population, adjustedScores);
+      new FitnessRanking(this.genus.population, scoreOverride);
 
     // Issue #2528: On-Policy Distillation (OPD) breeding operator.
     // When `opd.breedRate > 0` and the dice roll succeeds, distil the
