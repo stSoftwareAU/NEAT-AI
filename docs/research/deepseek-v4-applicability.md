@@ -9,7 +9,7 @@ experimental sub-issues spawned from #2525.
 > **Source.** DeepSeek-AI, _DeepSeek V4 Technical Report_, 2026.
 > [`huggingface.co/deepseek-ai/DeepSeek-V4-Pro`](https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/main/DeepSeek_V4.pdf).
 > Citations below use the form _(V4 §x.y)_ and refer to that PDF.
-
+>
 > **Scope.** Documentation only. No source-code changes. Each GO recommendation
 > is paired with an experimental sub-issue under #2525 that owns the
 > implementation work; this note does not pre-empt those experiments.
