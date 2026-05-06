@@ -8,6 +8,61 @@ This project is a practical implementation of a neural network based on the NEAT
 For project terminology, coding conventions, and development guidelines, see
 [AGENTS.md](./AGENTS.md).
 
+## 📖 Docs map
+
+New here? Skim this section first; every topic guide is one link away.
+
+- **[docs/README.md](./docs/README.md)** — full topic index with a "where to
+  start" reading path and one-line summaries for every long-form guide.
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** — development setup, workflow, and
+  how to bump the pinned NEAT-AI-core revision.
+- **[AGENTS.md](./AGENTS.md)** — terminology and coding conventions for human
+  and AI contributors.
+- **[COMPARISON.md](./COMPARISON.md)** — how NEAT compares to other AI
+  approaches.
+- **Topic guides** — quick jumps to the most-used docs:
+  - Compute / WebAssembly (WASM):
+    [Activation Functions](./docs/ACTIVATION_FUNCTIONS.md),
+    [Backprop Elasticity](./docs/BACKPROP_ELASTICITY.md),
+    [GPU Acceleration](./docs/GPU_ACCELERATION.md)
+  - Discovery / Foreign Function Interface (FFI):
+    [Discovery Guide](./docs/DISCOVERY_GUIDE.md),
+    [DiscoveryDir API](./docs/DISCOVERY_DIR.md),
+    [Discovery Architecture](./docs/DISCOVERY_ARCHITECTURE.md)
+  - Performance: [Performance Tuning](./docs/PERFORMANCE_TUNING.md),
+    [Performance Research](./docs/PERFORMANCE_RESEARCH.md)
+  - Reference: [API Reference](./docs/API_REFERENCE.md),
+    [Configuration Guide](./docs/CONFIGURATION_GUIDE.md),
+    [Troubleshooting](./docs/TROUBLESHOOTING.md)
+  - Specialised: [CRISPR Guide](./docs/CRISPR_GUIDE.md),
+    [Intelligent Design](./docs/INTELLIGENT_DESIGN.md),
+    [Predictive Coding](./docs/PREDICTIVE_CODING.md)
+  - Governance: [Core Dependency Policy](./docs/CORE_DEPENDENCY_POLICY.md),
+    [Parity Gate](./docs/PARITY_GATE.md), [Security](./SECURITY.md),
+    [Changelog](./CHANGELOG.md)
+
+## 🏗️ High-level architecture
+
+A creature is a NEAT genome that mutates and breeds in TypeScript, then runs its
+forward pass inside a vendored WebAssembly (WASM) module. When the optional Rust
+extension is present, error-guided structural proposals come back over a Foreign
+Function Interface (FFI) call.
+
+```mermaid
+flowchart LR
+    Pop["Population<br/>(Creatures)"] -->|select / mutate / breed| Pop
+    Pop -->|forward pass| WASM["WebAssembly (WASM)<br/>activation + scoring"]
+    WASM -->|fitness| Pop
+    Pop -.->|optional via FFI| Rust["Rust Discovery extension<br/>(GPU-accelerated)"]
+    Rust -.->|structural candidates| Pop
+```
+
+The Rust path is optional: if the
+[NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) extension
+is not built, discovery is skipped and evolution still runs end-to-end in WASM.
+See [docs/DISCOVERY_ARCHITECTURE.md](./docs/DISCOVERY_ARCHITECTURE.md) for the
+full pipeline.
+
 ## ✨ Feature Highlights
 
 1. **Extendable Observations**: Input and output features are identified by
@@ -35,12 +90,13 @@ For project terminology, coding conventions, and development guidelines, see
    forward pass that maps inputs to outputs.
 
    > [!NOTE]
-   > **Activation uses WASM (required).** The library initialises the WASM
-   > backend automatically; callers do not need to call any init function or set
-   > environment variables.
+   > **Activation uses WebAssembly (WASM, required).** The library initialises
+   > the WASM backend automatically; callers do not need to call any init
+   > function or set environment variables.
    >
-   > **Spawning your own Deno Workers that import NEAT-AI from JSR?** The worker
-   > may need explicit help to reach `jsr.io` for the WASM bytes — see
+   > **Spawning your own Deno Workers that import NEAT-AI from the JavaScript
+   > Registry (JSR)?** The worker may need explicit help to reach `jsr.io` for
+   > the WASM bytes — see
    > [Troubleshooting › JSR-hosted NEAT-AI in your own workers](./docs/TROUBLESHOOTING.md#-jsr-hosted-neat-ai-in-your-own-workers-issue-2545)
    > for the pre-fetch pattern (`fetchWasmForWorkers` +
    > `initialiseWasmActivationFromPayload`).
@@ -53,8 +109,11 @@ For project terminology, coding conventions, and development guidelines, see
    removed, and the biases in associated neurons are adjusted. More about
    [Pruning (Neural Networks)](https://en.wikipedia.org/wiki/Pruning_(neural_networks)).
 
-7. **CRISPR**: Allows injection of genes into a population of creatures during
-   evolution. More about [CRISPR](https://en.wikipedia.org/wiki/CRISPR).
+7. **CRISPR**: Allows injection of hand-crafted genes into a population of
+   creatures during evolution. The name borrows the biology acronym CRISPR
+   (Clustered Regularly Interspaced Short Palindromic Repeats) from the
+   [CRISPR gene-editing technique](https://en.wikipedia.org/wiki/CRISPR); in
+   NEAT-AI, the "edits" are added neurons and synapses.
 
 8. **Grafting**: If parents aren't "genetically compatible", the grafting
    algorithm enables cross-island interbreeding, preserving diversity in the
@@ -67,9 +126,10 @@ For project terminology, coding conventions, and development guidelines, see
 
 10. **Error-Guided Structural Evolution**: Dynamically identifies and creates
     new synapses by analysing neuron activations and errors. A dedicated Rust
-    extension performs GPU-accelerated analysis and proposes structural
-    candidates. Discovery runs typically find improvements of 0.5-3% per run
-    that accumulate over many iterations.
+    extension performs graphics processing unit (GPU)-accelerated analysis and
+    proposes structural candidates over a Foreign Function Interface (FFI).
+    Discovery runs typically find improvements of 0.5–3% per run that accumulate
+    over many iterations.
 
     > [!WARNING]
     > Relies entirely on the
@@ -119,7 +179,7 @@ For project terminology, coding conventions, and development guidelines, see
     inference pipelines, bridging the gap between neuroevolution and production
     deployment.
 
-20. **MCMC Mutation Acceptance**: Uses the
+20. **Markov Chain Monte Carlo (MCMC) Mutation Acceptance**: Uses the
     [Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
     criterion for mutation acceptance. Instead of unconditionally accepting all
     mutations, worse-fitness moves are accepted with a probability that
