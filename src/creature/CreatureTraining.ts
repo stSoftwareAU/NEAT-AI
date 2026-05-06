@@ -32,6 +32,11 @@ import {
   createBackPropagationConfig,
 } from "@propagate/BackPropagation.ts";
 import { propagateTopological } from "@propagate/TopologicalBackpropagation.ts";
+import {
+  applyMuonGradientOrthogonalisation,
+  applyMuonOrthogonalisationToDeltas,
+  snapshotWeights,
+} from "@propagate/MuonGradientHook.ts";
 import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
@@ -66,6 +71,9 @@ export function propagate(
   sparseConfig: SparseConfig,
 ): void {
   propagateTopological(creature, expected, config, sparseConfig);
+  // Issue #2529: optional Muon-style orthogonalised gradient updates.
+  // No-op for the default `gradientOrthogonalisation = "none"` setting.
+  applyMuonGradientOrthogonalisation(creature, config);
 }
 
 /**
@@ -128,6 +136,14 @@ export function propagateUpdate(
   config: BackPropagationConfig,
   sparseConfig: SparseConfig,
 ): void {
+  // Issue #2529: Capture pre-update weights so the optional Muon hook
+  // below can compute the per-neuron delta the standard step applied
+  // and orthogonalise it. The snapshot is only taken when Muon mode
+  // is enabled; the default ("none") path remains zero-cost.
+  const muonSnapshot = config.gradientOrthogonalisation === "muon"
+    ? snapshotWeights(creature)
+    : undefined;
+
   let didUpdate = false;
   for (let indx = creature.input; indx < creature.neurons.length; indx++) {
     const n = creature.neurons[indx];
@@ -136,6 +152,14 @@ export function propagateUpdate(
       didUpdate = true;
     }
   }
+
+  // Issue #2529: Optional Muon-style orthogonalised gradient updates,
+  // applied to the (post-update − snapshot) delta per topological layer.
+  // No-op for the default `gradientOrthogonalisation = "none"` setting.
+  if (muonSnapshot !== undefined) {
+    applyMuonOrthogonalisationToDeltas(creature, muonSnapshot, config);
+  }
+
   creature.state.preparedNeurons = false;
 
   if (didUpdate && creature.cachedWasmActivation) {
