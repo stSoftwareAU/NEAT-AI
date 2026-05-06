@@ -1,5 +1,18 @@
 # 🏗️ Discovery Pipeline Internal Architecture
 
+> **Summary** — Deep-dive contributor reference for the discovery pipeline: the
+> TypeScript (TS) host orchestrates a two-phase evaluation, calls the Rust
+> Discovery extension across the Foreign Function Interface (FFI) for recording
+> and parallel analysis (Graphics Processing Unit (GPU) accelerated via `wgpu`,
+> with Central Processing Unit (CPU) fallback), and persists JavaScript Object
+> Notation (JSON) success / failure cache entries that are keyed by Universally
+> Unique Identifier (UUID). Companion docs:
+> [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) (user intro),
+> [DISCOVERY_DIR.md](DISCOVERY_DIR.md) (on-disk cache layout),
+> [TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) (where things live),
+> [GPU_ACCELERATION.md](GPU_ACCELERATION.md), and the topic index in
+> [`docs/README.md`](README.md).
+
 This document describes the internal architecture of the discovery pipeline —
 how modules interconnect, the two-phase evaluation strategy, cache architecture,
 and candidate lifecycle. For user-facing configuration and distributed setup
@@ -10,6 +23,68 @@ guidance, see [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) and
 > This document is contributor-focused. For user-facing configuration and
 > distributed setup guidance, refer to [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md).
 > For the integration API, refer to [DISCOVERY_DIR.md](DISCOVERY_DIR.md).
+
+## 🔗 TS host ↔ Rust extension data flow
+
+Every discovery run crosses the FFI boundary at least twice — once to record
+training data into Parquet files, and once to run parallel analysis. The diagram
+below traces a single call from the TypeScript host through the FFI bridge into
+the Rust extension, on into the `wgpu` GPU compute layer, and back to the host
+with a `DiscoverResult`.
+
+```mermaid
+flowchart LR
+    classDef ts fill:#3178c6,stroke:#1e4f8c,color:#fff
+    classDef ffi fill:#f1c40f,stroke:#b7950b,color:#000
+    classDef rust fill:#e07b53,stroke:#c0392b,color:#fff
+    classDef gpu fill:#9b59b6,stroke:#8e44ad,color:#fff
+    classDef result fill:#2ecc71,stroke:#27ae60,color:#fff
+
+    subgraph host["TS host (Deno)"]
+        H1["Creature.discoveryDir()"]:::ts
+        H2["RustDiscoveryInput<br/>creatureToRustFormat()<br/><b>UUID-only payload</b>"]:::ts
+        H3["RustDiscoveryOperations<br/>recordDiscovery() / analyzeParallel()"]:::ts
+    end
+
+    subgraph bridge["Deno FFI bridge"]
+        B1["Dynamic library load<br/>(.dylib / .so / .dll)"]:::ffi
+        B2["JSON in / JSON out<br/>(neuron UUIDs, no numeric IDs)"]:::ffi
+    end
+
+    subgraph rustExt["Rust extension (NEAT-AI-Discovery)"]
+        R1["Parquet recorder"]:::rust
+        R2["Analysis engine"]:::rust
+        R3["Focus ranker"]:::rust
+    end
+
+    subgraph compute["wgpu compute backend"]
+        G1["Metal (macOS)<br/>Vulkan (Linux)<br/>DirectX 12 (Windows)"]:::gpu
+        G2["CPU fallback"]:::gpu
+    end
+
+    subgraph back["Result path"]
+        D1["DiscoverResult<br/>(suggested ops,<br/>UUIDs only)"]:::result
+        D2["Candidate building<br/>+ filtering + caching"]:::result
+    end
+
+    H1 --> H2 --> H3 --> B1 --> B2
+    B2 --> R1 & R2 & R3
+    R2 --> G1
+    R2 --> G2
+    G1 --> D1
+    G2 --> D1
+    R1 --> D1
+    R3 --> D1
+    D1 --> D2 --> H1
+```
+
+> [!IMPORTANT]
+> **UUID-only wire payloads.** Both directions of the FFI hop carry **neuron
+> UUIDs only** — never numeric runtime IDs. This is the same wire contract that
+> governs `creature.exportJSON()` and `loadFrom`: see
+> [`AGENTS.md`](../AGENTS.md) §"Neuron UUID stability". Numeric IDs are an
+> internal acceleration only and are reconstructed at the last application step
+> inside the host.
 
 ## 🔄 Pipeline Overview
 
@@ -641,9 +716,18 @@ candidates rather than analysis targets.
 
 ## 📚 See Also
 
+- [`docs/README.md`](README.md) — topic index for all NEAT-AI documentation.
 - [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) — User guide: distributed setup,
-  configuration, best practices
+  configuration, best practices.
 - [DISCOVERY_DIR.md](DISCOVERY_DIR.md) — Integration guide: API reference for
-  `Creature.discoveryDir()`
+  `Creature.discoveryDir()` and the on-disk cache directory layout.
+- [TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) — which subsystems live in
+  TypeScript versus Rust / WASM today.
+- [GPU_ACCELERATION.md](GPU_ACCELERATION.md) — `wgpu` GPU backend selection and
+  CPU fallback.
+- [EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — vendored WASM artefact
+  workflow.
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — All configuration options
-  including discovery parameters
+  including discovery parameters.
+- [`AGENTS.md`](../AGENTS.md) §"Neuron UUID stability" — wire-format invariant
+  enforced across the FFI boundary.
