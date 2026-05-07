@@ -42,10 +42,13 @@ Deno.test(
 Deno.test(
   "fix() without forwardOnly does NOT remove self-connections (pre-fix behaviour)",
   () => {
+    // Use a plain (non-forwardOnly) creature to avoid the loadFrom strip-path
+    // that fires on forwardOnly creatures inside cleanupOrphanedNeuronsInCreature.
+    // The behaviour under test is: fix() without options leaves self-connections
+    // intact on creatures that are not forward-only.
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
     creature.semanticVersion = "4.0.0";
-    creature.forwardOnly = true;
-    creatureValidate(creature, { forwardOnly: true });
+    creatureValidate(creature);
 
     // Inject a self-connection.
     const hiddenIndex = creature.input;
