@@ -136,3 +136,8 @@ const config = createNeatConfig({
   WASM caches, thread pools, memory management, and scaling.
 - [PERFORMANCE_RESEARCH.md](../PERFORMANCE_RESEARCH.md) — WASM migration
   research and benchmark learnings.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

@@ -20,9 +20,9 @@ Mermaid flowchart:
   doc, the PC cluster, the GPU acceleration doc, and the docs index. The doc is
   retained as a single file (the largest section is well below the ~400-line
   threshold from the issue).
-- `PREDICTIVE_CODING.md` — added the brief, cluster index, acronyms, a
-  numbered Table of Contents covering the eight existing top-level sections, a
-  new "predictive-coding loop at a glance" Mermaid flowchart that summarises the
+- `PREDICTIVE_CODING.md` — added the brief, cluster index, acronyms, a numbered
+  Table of Contents covering the eight existing top-level sections, a new
+  "predictive-coding loop at a glance" Mermaid flowchart that summarises the
   fast settling and slow learning loops in one picture, and replaced the legacy
   Further Reading list with cross-references to all sibling docs.
 - `PREDICTIVE_CODING_BENCHMARKS.md` — added the brief, cluster index, acronyms,
@@ -32,8 +32,8 @@ Mermaid flowchart:
   performance docs.
 
 Numbers are kept verbatim with their existing issue / PR references; the issue
-explicitly requested that historical results be preserved with date / PR
-markers rather than overwritten. The Methodology and Note callouts in
+explicitly requested that historical results be preserved with date / PR markers
+rather than overwritten. The Methodology and Note callouts in
 `PREDICTIVE_CODING_BENCHMARKS.md` make the "append, do not overwrite" policy
 explicit. The dates and `iter/s` figures originate from issues
 [#1558](https://github.com/stSoftwareAU/NEAT-AI/issues/1558),
@@ -45,8 +45,8 @@ explicit. The dates and `iter/s` figures originate from issues
 This is a documentation-only change with no code or behaviour modifications.
 Verification:
 
-- `./quality.sh --lint-only < /dev/null` — passes (formatting, linting, and
-  bash syntax check all clean).
+- `./quality.sh --lint-only < /dev/null` — passes (formatting, linting, and bash
+  syntax check all clean).
 - The four files retain all existing benchmark numbers, callouts, and
   references; only structural framing (briefs, ToCs, cross-refs, Mermaid
   diagrams) was added.
@@ -66,13 +66,13 @@ flowchart LR
 ## Test Plan
 
 - [x] `./quality.sh --lint-only < /dev/null` passes.
-- [x] Each refreshed file opens with a Brief, links to the other three
-      companion docs, and includes at least one new Mermaid diagram.
+- [x] Each refreshed file opens with a Brief, links to the other three companion
+      docs, and includes at least one new Mermaid diagram.
 - [x] Acronyms (CPU, GPU, FFI, RMSE, MAPE, etc.) are expanded on first use in
       each file.
 - [x] Cross-references to `docs/README.md` index appear in each file.
 - [x] Australian English spellings preserved throughout (no introduced
       Americanisms).
-- [x] No claim was added without an evidence link — the new prose either
-      points at an existing benchmark issue, an existing PR, or a script under
+- [x] No claim was added without an evidence link — the new prose either points
+      at an existing benchmark issue, an existing PR, or a script under
       `bench/`.

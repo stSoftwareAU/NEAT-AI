@@ -1,5 +1,13 @@
 # DeepSeek Papers Not Applicable to NEAT-AI (Issue #2540)
 
+> **📦 Archived under
+> [Issue #2575](https://github.com/stSoftwareAU/NEAT-AI/issues/2575).** This
+> research note was moved from `docs/research/` to `docs/archive/research/`. Its
+> conclusions have landed (or been triaged out) — see the
+> [`deepseek-papers-index.md`](deepseek-papers-index.md) catalogue for the
+> consolidated implementation status. Topic index:
+> [`docs/README.md`](../../README.md).
+
 This note is the single negative-results triage record for DeepSeek papers that
 do **not** apply to NEAT-AI. It exists so that the next planning round does not
 re-investigate these papers from scratch — recording NO-GO with a clear

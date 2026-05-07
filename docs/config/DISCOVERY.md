@@ -225,3 +225,8 @@ logging using the exported formatting utilities.
   tasks.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — operational tuning for
   discovery throughput and memory.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

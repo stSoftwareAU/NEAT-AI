@@ -121,3 +121,8 @@ used by this repo's `deno.json`.
 - [docs/PARITY_GATE.md](PARITY_GATE.md) — release checklist for repins.
 - [docs/PARITY_AUDITS.md](PARITY_AUDITS.md) — archived parity audits.
 - [docs/README.md](README.md) — full documentation index.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

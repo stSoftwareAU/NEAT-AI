@@ -223,3 +223,8 @@ iteration). See [Logging](./LOGGING.md).
   fine-tune population fractions.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — practical guidance on
   picking population sizes and training schedules at scale.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

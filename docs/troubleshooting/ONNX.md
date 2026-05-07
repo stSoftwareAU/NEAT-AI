@@ -30,3 +30,8 @@ connections — ONNX export does not support feedback loops.
   highlighting ONNX-compatible options.
 - [Intelligent Design](../INTELLIGENT_DESIGN.md) — systematic per-neuron squash
   optimisation.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

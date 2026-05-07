@@ -182,3 +182,8 @@ Each creature evolves these values within the configured bounds:
   naturally with plateau detection.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — when MCMC and plateau
   detection are worth the per-generation overhead.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

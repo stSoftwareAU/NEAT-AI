@@ -447,3 +447,8 @@ Implementation files:
   of operations that fail fast without the WASM bundle
 - `docs/PERFORMANCE_RESEARCH.md` — Performance research with WASM migration
   learnings
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

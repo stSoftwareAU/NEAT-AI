@@ -1,5 +1,13 @@
 # DeepSeekMath Applicability to NEAT-AI (Issue #2537)
 
+> **📦 Archived under
+> [Issue #2575](https://github.com/stSoftwareAU/NEAT-AI/issues/2575).** This
+> research note was moved from `docs/research/` to `docs/archive/research/`. Its
+> conclusions have landed (or been triaged out) — see the
+> [`deepseek-papers-index.md`](deepseek-papers-index.md) catalogue for the
+> consolidated implementation status. Topic index:
+> [`docs/README.md`](../../README.md).
+
 This research note revisits the original DeepSeekMath paper — the paper that
 introduced **GRPO** — for techniques that extend beyond what the V4 note
 [#2526](https://github.com/stSoftwareAU/NEAT-AI/issues/2526) captured and that

@@ -237,3 +237,8 @@ unrecoverable crash.
 - [Memory troubleshooting](MEMORY.md) for WASM cache sizing and OOM
   (out-of-memory) recovery.
 - [Performance troubleshooting](PERFORMANCE.md) when WASM appears slow.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

@@ -731,3 +731,8 @@ candidates rather than analysis targets.
   including discovery parameters.
 - [`AGENTS.md`](../AGENTS.md) §"Neuron UUID stability" — wire-format invariant
   enforced across the FFI boundary.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

@@ -1,5 +1,12 @@
 # Issue #2515 — Forward-only audit of `applyChangeToCreature` and `normaliseCreatureExport`
 
+> **📦 Archived under
+> [Issue #2575](https://github.com/stSoftwareAU/NEAT-AI/issues/2575).** This
+> investigation note was moved from `docs/` to `docs/archive/investigations/`.
+> The line of work has closed — read on demand for historical context. Topic
+> index: [`docs/README.md`](../../README.md); entry point:
+> [`README.md`](../../../README.md).
+
 ## Summary
 
 This note records the audit that wired `assertNoRecurrentSynapseOnForwardOnly`

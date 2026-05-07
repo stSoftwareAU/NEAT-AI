@@ -1,5 +1,13 @@
 # DeepSeek Coder Applicability to NEAT-AI (Issue #2539)
 
+> **📦 Archived under
+> [Issue #2575](https://github.com/stSoftwareAU/NEAT-AI/issues/2575).** This
+> research note was moved from `docs/research/` to `docs/archive/research/`. Its
+> conclusions have landed (or been triaged out) — see the
+> [`deepseek-papers-index.md`](deepseek-papers-index.md) catalogue for the
+> consolidated implementation status. Topic index:
+> [`docs/README.md`](../../README.md).
+
 This research note maps the six headline ideas from DeepSeek-Coder and
 DeepSeek-Coder-V2 onto NEAT-AI's mutation, speciation, training-augmentation,
 and discovery surfaces and records a GO / NO-GO recommendation with a

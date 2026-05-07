@@ -110,3 +110,8 @@ whether your creature topology matches the configured mode.
 - [API errors reference](../api/ERRORS.md) — programmatic error catalogue.
 - [Training troubleshooting](TRAINING.md) — when invalid config manifests as
   divergence rather than a thrown `ValidationError`.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

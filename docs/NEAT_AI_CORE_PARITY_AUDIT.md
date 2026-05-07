@@ -6,3 +6,8 @@ audit** section.
 
 For the live verification flow, see [docs/PARITY_GATE.md](PARITY_GATE.md) and
 [`./scripts/parity-gate.sh`](../scripts/parity-gate.sh).
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

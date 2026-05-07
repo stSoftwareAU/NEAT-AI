@@ -120,3 +120,8 @@ If any step fails:
   for build.sh-driven WASM sync.
 - [docs/PARITY_AUDITS.md](PARITY_AUDITS.md) — archived audits (#2367, #2368,
   #2369) for native code that has since been removed.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

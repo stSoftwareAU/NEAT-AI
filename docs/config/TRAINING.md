@@ -174,3 +174,8 @@ const config = createNeatConfig({
   evolution can override `learningRate` and similar values.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — picking batch sizes for
   large datasets and CPU/GPU (Graphics Processing Unit) targets.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

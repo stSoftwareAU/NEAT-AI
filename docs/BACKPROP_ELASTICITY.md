@@ -223,3 +223,8 @@ operations fail fast with a `WasmError` — there is **no TypeScript fallback**.
 - WASM artefacts (vendored from the pinned NEAT-AI-core revision):
   [`wasm_activation/pkg/`](../wasm_activation/pkg/) — see `AGENTS.md` for the
   WASM-only operations list and core dependency policy.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

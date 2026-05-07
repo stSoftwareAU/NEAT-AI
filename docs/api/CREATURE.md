@@ -315,3 +315,8 @@ format.
   `Creature.activate()`.
 - [Discovery](DISCOVERY.md) — error-pattern-driven structural growth.
 - [`CRISPR_GUIDE.md`](../CRISPR_GUIDE.md) — full DNA conventions.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

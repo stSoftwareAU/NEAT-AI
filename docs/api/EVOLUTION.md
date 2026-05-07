@@ -278,3 +278,8 @@ alongside other sub-configs in [Configuration](CONFIGURATION.md).
   into the evolution loop.
 - [Compute / multithreading](COMPUTE.md) — `threads` and WASM cache controls
   used by `evolveDir()`.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

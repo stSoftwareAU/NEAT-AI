@@ -1,5 +1,13 @@
 # DeepSeek MoE (V1 + V2) Applicability to NEAT-AI (Issue #2535)
 
+> **📦 Archived under
+> [Issue #2575](https://github.com/stSoftwareAU/NEAT-AI/issues/2575).** This
+> research note was moved from `docs/research/` to `docs/archive/research/`. Its
+> conclusions have landed (or been triaged out) — see the
+> [`deepseek-papers-index.md`](deepseek-papers-index.md) catalogue for the
+> consolidated implementation status. Topic index:
+> [`docs/README.md`](../../README.md).
+
 This research note maps the headline ideas from the DeepSeek MoE family —
 fine-grained expert segmentation and shared-expert isolation from **DeepSeekMoE
 (V1)**, plus auxiliary-loss-free load balancing, Multi-head Latent Attention
@@ -151,7 +159,7 @@ compute.
 
 **Closest NEAT-AI surface.** The cleanest analogue is an **immutable shared-seed
 subnetwork** injected into every species via CRISPR (see AGENTS.md "CRISPR
-injections" terminology and [`docs/CRISPR_GUIDE.md`](../CRISPR_GUIDE.md)).
+injections" terminology and [`docs/CRISPR_GUIDE.md`](../../CRISPR_GUIDE.md)).
 Today, CRISPR templates can inject hand-crafted synapses/neurons into individual
 creatures, but there is no concept of a "core" sub-graph that every species must
 contain and that mutation/breeding must preserve. Such a core would be the
@@ -426,7 +434,7 @@ normal `exportJSON()` payload and reject any seed that contains numeric `id` /
   those routed specialists; the two compose, they do not duplicate.
 - AGENTS.md — "CRISPR injections" terminology and the two critical invariants
   quoted above.
-- [`docs/CRISPR_GUIDE.md`](../CRISPR_GUIDE.md) — append+demote pattern and
+- [`docs/CRISPR_GUIDE.md`](../../CRISPR_GUIDE.md) — append+demote pattern and
   validation rules that any shared-seed loader (Idea 2) must respect.
 
 ## What this note does not do

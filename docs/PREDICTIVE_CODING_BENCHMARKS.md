@@ -379,3 +379,8 @@ prevent divergence in deep topologies where gradient magnitudes can explode.
 - [BACKPROP_ELASTICITY.md](./BACKPROP_ELASTICITY.md) — elastic backpropagation,
   the standard-backprop comparison baseline used above.
 - [docs/README.md](./README.md) — topic index for the full documentation set.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

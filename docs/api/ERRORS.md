@@ -107,3 +107,8 @@ both classes are stable public exports.
   violations surface as `CrisprError`.
 - [`docs/TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) — common error signatures
   and remediation.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

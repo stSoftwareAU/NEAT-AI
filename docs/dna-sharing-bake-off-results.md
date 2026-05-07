@@ -1,13 +1,39 @@
-# DNA Sharing Bake-Off Results (Issue #2496)
+# 🥧 DNA Sharing Bake-Off Results (Issue #2496)
+
+> **Summary.** Five DNA-sharing strategies were measured under
+> [`bench/DnaSharingBakeOff.ts`](../bench/DnaSharingBakeOff.ts) across three
+> seeds. Only **`PruningTemplateStrategy`** produced a strictly positive lift on
+> every seed, so it is the recommended default — exported as
+> `recommendedDnaSharingStrategy` from `src/transfer/mod.ts`. The
+> `dnaSharingMode` knob is intentionally **not** flipped to `aggressive`,
+> because `KnobTuningStrategy("aggressive")` produced zero lift in this
+> bake-off. Numbers below are **current** (Issue #2496); a real-evolve-step
+> rerun is tracked separately on #2490 and will be linked here when it lands.
 
 This document captures the bake-off comparison of the four DNA-sharing
 primitives (Issues #2492 – #2495) plus the `NoOpStrategy` baseline run through
-the harness from #2491 (`bench/DnaSharingBakeOff.ts`).
+the harness from #2491
+([`bench/DnaSharingBakeOff.ts`](../bench/DnaSharingBakeOff.ts)).
 
 The bake-off is part of the parent investigation in #2490 — "what is the
 cheapest way to share useful behaviour between a small Europa island and a
 larger production cluster without violating the AGENTS.md UUID stability
 invariant?".
+
+## 📊 Lift at a glance
+
+```mermaid
+%%{init: {'theme': 'default'}}%%
+xychart-beta
+    title "Mean lift across 3 seeds (higher = better)"
+    x-axis ["NoOp", "KnobTuning", "CompactGraft", "KnowDistill", "PruningTpl"]
+    y-axis "Mean lift (units of -MSE)" -0.0002 --> 0.0003
+    bar [0, 0, 0, -0.000121, 0.000279]
+```
+
+The chart visualises the table below — only `PruningTemplate` lands a positive
+bar; `KnowledgeDistillation` regresses on every seed; the rest are neutral on
+this fixture.
 
 ## Method
 
@@ -151,3 +177,18 @@ opt-in matches the way the four primitives were designed.
   tracked in #2490.
 - 50 generations is intentionally short to keep CI runtime under 100 ms per row.
   Longer-budget bake-offs are tracked separately on #2490.
+
+## 🔗 Related
+
+- [`bench/DnaSharingBakeOff.ts`](../bench/DnaSharingBakeOff.ts) — the harness
+  that produced these numbers.
+- `src/transfer/mod.ts` — exports `recommendedDnaSharingStrategy` and the four
+  strategy classes.
+- [`docs/INTELLIGENT_DESIGN.md`](INTELLIGENT_DESIGN.md) — sibling specialised
+  topic; per-neuron squash search that reads/writes tacit knowledge in a similar
+  shared-knowledge style.
+- [`docs/CRISPR_GUIDE.md`](CRISPR_GUIDE.md) — sibling specialised topic;
+  hand-crafted DNA edits that operate on a single creature rather than across
+  islands.
+- [`README.md`](../README.md) and [`docs/README.md`](README.md) — entry point
+  and topic index.

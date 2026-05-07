@@ -158,3 +158,8 @@ For a full guide, see [`docs/DISCOVERY_GUIDE.md`](../DISCOVERY_GUIDE.md) and
 - [`docs/DISCOVERY_DIR.md`](../DISCOVERY_DIR.md) — `Creature.discoveryDir()`
   contract and on-disk layout.
 - [`docs/DISCOVERY_ARCHITECTURE.md`](../DISCOVERY_ARCHITECTURE.md) — internals.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).
