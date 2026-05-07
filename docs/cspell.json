@@ -5,7 +5,8 @@
     "../wasm_activation/pkg/**"
   ],
   "ignoreRegExpList": [
-    "/\\b[A-Z][A-Z0-9]*\\b/g"
+    "/\\b[A-Z][A-Z0-9]*\\b/g",
+    "/\\w*[ᵢᵤₐ₀₁₂₃₄₅₆₇₈₉]\\w*/g"
   ],
   "words": [
     "Accum",
@@ -290,6 +291,7 @@
     "repro",
     "repr",
     "repro",
+    "reflow",
     "rescalings",
     "rescore",
     "rescored",
@@ -406,6 +408,7 @@
     "writable",
     "writescores",
     "xaxis",
+    "xychart",
     "xorshift",
     "xoshiro",
     "xychart",
