@@ -53,7 +53,8 @@ findLiquidOffences supports inline {% raw %}{% endraw %} on one line ... ok (0ms
 ok | 6 passed | 0 failed (72ms)
 ```
 
-Both `./quality.sh --lint-only < /dev/null` and `./quality.sh --check-only
+Both `./quality.sh --lint-only < /dev/null` and
+`./quality.sh --check-only
 < /dev/null` pass.
 
 ## Test Plan
