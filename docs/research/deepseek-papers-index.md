@@ -29,6 +29,34 @@ infrastructure scores LOW or SKIP unless it carries a portable algorithmic idea
 (e.g. GRPO, expert iteration, aux-loss-free balancing, MTP) that maps onto our
 breeding, selection, mutation, discovery, or backprop surfaces.
 
+## Implementation Status (Issue #2584)
+
+The five HIGH-applicability ideas tied to the V4 research note (#2526) were
+implemented as experimental sub-issues #2527–#2531. Each landed only after a
+before/after benchmark showed neutral-or-better convergence — anything that did
+not carry its weight was rejected. All five operators are gated behind opt-in
+configuration so the production path is unchanged when defaults are in effect.
+
+| # | Idea                                  | Sub-issue | PR                                                         | Opt-in flag                            | Benchmark headline                                                    |
+| - | ------------------------------------- | --------- | ---------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------- |
+| 1 | GRPO group-relative advantage         | #2527     | [#2548](https://github.com/stSoftwareAU/NEAT-AI/pull/2548) | `mcmc.mcmcAdvantageMode`               | mean -0.151 → -0.112 (better), wall ≈45 % faster (12 seeds)           |
+| 2 | On-Policy Distillation breed operator | #2528     | [#2547](https://github.com/stSoftwareAU/NEAT-AI/pull/2547) | `opd.breedRate`                        | calibration MSE -90 % vs no-train baseline at 50 steps                |
+| 3 | Muon orthogonalised gradients         | #2529     | [#2544](https://github.com/stSoftwareAU/NEAT-AI/pull/2544) | `gradientOrthogonalisation = "muon"`   | 415 → 251 iters to target error (~40 % fewer), per-step ≈19 % cheaper |
+| 4 | Specialist + ensemble distillation    | #2530     | [#2550](https://github.com/stSoftwareAU/NEAT-AI/pull/2550) | `specialist.mode = "auto"`/`"manual"`  | generalist combined-score ≥ mean specialist (10/10 unit tests)        |
+| 5 | Engram subnetwork hash index          | #2531     | [#2551](https://github.com/stSoftwareAU/NEAT-AI/pull/2551) | `subnetworkIndexSize` (default 50 000) | ~0.5 µs lookup at 50 k entries, ~10 µs end-to-end per creature        |
+
+Each row links to the merged PR; full benchmark scripts live under `bench/`
+(`MCMCAdvantageConvergence.ts`, `OnPolicyDistillationBreed.ts`,
+`MuonVsBaseline.ts`, `SpecialistVsMixed.ts`, `SubnetworkHashLookup.ts`) and unit
+tests under `test/` (`NEAT/GroupRelativeAdvantage.ts`,
+`breed/OnPolicyDistillationBreed.ts`, `propagate/MuonOrthogonalisation.ts`,
+`NEAT/SpecialistPipeline.ts`, `discovery/SubnetworkHashIndex.ts`).
+
+The remaining HIGH-rated entries (R1, MoE, V3, Math, Prover) and the MEDIUM
+Coder note are research-only at this point — no operator was promoted from those
+notes during the May 2026 milestone. They remain candidates for future work; new
+experiments must follow the same before/after benchmark gate.
+
 ## Paper → NEAT-AI Subsystem Mapping
 
 ```mermaid
@@ -130,6 +158,12 @@ flowchart LR
   [#2537](https://github.com/stSoftwareAU/NEAT-AI/issues/2537) (extends
   experimental work in
   [#2527](https://github.com/stSoftwareAU/NEAT-AI/issues/2527)).
+- **Implementation status**: **landed** via #2527 / PR
+  [#2548](https://github.com/stSoftwareAU/NEAT-AI/pull/2548). Opt in with
+  `mcmc.mcmcAdvantageMode = "groupRelative"`. Benchmark
+  (`bench/MCMCAdvantageConvergence.ts`, 12 seeds, pop=32, 500 iters): mean score
+  -0.151 → -0.112 (better) and ~45 % lower wall time vs the absolute-delta
+  baseline.
 
 ### DeepSeek Coder (Jan 2024)
 
@@ -235,6 +269,13 @@ flowchart LR
   cold-start curriculum and the distillation-of-reasoning step (#2528).
 - **Linked research-note issue**:
   [#2534](https://github.com/stSoftwareAU/NEAT-AI/issues/2534).
+- **Implementation status**: distillation-of-reasoning **landed** as the
+  On-Policy Distillation breed operator via #2528 / PR
+  [#2547](https://github.com/stSoftwareAU/NEAT-AI/pull/2547). Opt in with
+  `opd.breedRate > 0`; defaults `teacherCount = 3`, `distillationSteps = 50`.
+  Benchmark (`bench/OnPolicyDistillationBreed.ts`, 32 holdout samples, 5
+  trials): -27.6 % MSE at 10 steps, -90.0 % at 50 steps, -96.3 % at 100 steps vs
+  the no-train baseline. Cold-start curriculum is not yet implemented.
 
 ### Native Sparse Attention (Feb 2025)
 
@@ -292,19 +333,39 @@ flowchart LR
 - **Closest NEAT-AI surface**: `src/NEAT/speciation`, `src/breed/`,
   `src/discovery/`.
 - **Applicability score**: **HIGH** — already covered by the existing V4
-  research note. Experimental sub-issues:
+  research note. Experimental sub-issues (all landed — see
+  [Implementation Status](#implementation-status-issue-2584)):
   - [#2527](https://github.com/stSoftwareAU/NEAT-AI/issues/2527) — GRPO-style
-    group-relative advantage signal for selection / MCMC acceptance.
+    group-relative advantage signal for selection / MCMC acceptance. **Landed**
+    via PR [#2548](https://github.com/stSoftwareAU/NEAT-AI/pull/2548); opt in
+    with `mcmc.mcmcAdvantageMode = "groupRelative"`. Benchmark: mean score
+    -0.151 → -0.112 (better), ~45 % lower wall time over 12 seeds.
   - [#2528](https://github.com/stSoftwareAU/NEAT-AI/issues/2528) — On-Policy
     Distillation breeding operator (student creature trained on K elite
-    teachers).
+    teachers). **Landed** via PR
+    [#2547](https://github.com/stSoftwareAU/NEAT-AI/pull/2547); opt in with
+    `opd.breedRate > 0`. Benchmark: calibration MSE -90 % at 50 distillation
+    steps vs no-train baseline.
   - [#2529](https://github.com/stSoftwareAU/NEAT-AI/issues/2529) — Muon-style
-    orthogonalised gradient updates in the local backprop pass.
+    orthogonalised gradient updates in the local backprop pass. **Landed** via
+    PR [#2544](https://github.com/stSoftwareAU/NEAT-AI/pull/2544); opt in with
+    `gradientOrthogonalisation = "muon"`. Benchmark: 415 → 251 iterations to
+    target error (~40 % fewer), per-step ~19 % cheaper.
   - [#2530](https://github.com/stSoftwareAU/NEAT-AI/issues/2530) — Specialist
     sub-populations + ensemble distillation pipeline (V4 two-stage
-    post-training).
+    post-training). **Landed** via PR
+    [#2550](https://github.com/stSoftwareAU/NEAT-AI/pull/2550); opt in with
+    `specialist.mode = "auto"` or `"manual"` plus `specialist.subTaskIds`.
+    Acceptance criteria verified by `test/NEAT/SpecialistPipeline.ts` (10/10
+    passing): generalist combined score is no worse than the mean specialist
+    combined score.
   - [#2531](https://github.com/stSoftwareAU/NEAT-AI/issues/2531) —
     Engram-inspired hash-based subnetwork lookup augmenting the discovery cache.
+    **Landed** via PR
+    [#2551](https://github.com/stSoftwareAU/NEAT-AI/pull/2551); opt in with
+    `subnetworkIndexSize` (default 50 000; `0` disables). Benchmark
+    (`bench/SubnetworkHashLookup.ts`): ~0.5 µs lookup at 50 k entries, ~10 µs
+    end-to-end per creature.
 - **Linked research-note issue**:
   [#2526](https://github.com/stSoftwareAU/NEAT-AI/issues/2526).
 
@@ -326,21 +387,25 @@ flowchart LR
 
 ## Summary Table
 
-| Paper                   | Year     | Score  | Note / Sub-issues                                                                                                                                                                            |
-| ----------------------- | -------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DeepSeek LLM            | Dec 2023 | LOW    | inline                                                                                                                                                                                       |
-| DeepSeek MoE            | Jan 2024 | HIGH   | [#2535](https://github.com/stSoftwareAU/NEAT-AI/issues/2535)                                                                                                                                 |
-| DeepSeekMath (GRPO)     | Feb 2024 | HIGH   | [#2537](https://github.com/stSoftwareAU/NEAT-AI/issues/2537), exp. [#2527](https://github.com/stSoftwareAU/NEAT-AI/issues/2527)                                                              |
-| DeepSeek Coder          | Jan 2024 | MEDIUM | [#2539](https://github.com/stSoftwareAU/NEAT-AI/issues/2539)                                                                                                                                 |
-| DeepSeek Coder V2       | Jun 2024 | MEDIUM | [#2539](https://github.com/stSoftwareAU/NEAT-AI/issues/2539)                                                                                                                                 |
-| DeepSeek V2 (MoE half)  | May 2024 | MEDIUM | [#2535](https://github.com/stSoftwareAU/NEAT-AI/issues/2535)                                                                                                                                 |
-| DeepSeek V2 (MLA half)  | May 2024 | SKIP   | inline                                                                                                                                                                                       |
-| DeepSeek Prover         | May 2024 | HIGH   | [#2538](https://github.com/stSoftwareAU/NEAT-AI/issues/2538)                                                                                                                                 |
-| DeepSeek Prover V2      | Apr 2025 | HIGH   | [#2538](https://github.com/stSoftwareAU/NEAT-AI/issues/2538)                                                                                                                                 |
-| DeepSeek V3             | Dec 2024 | HIGH   | [#2536](https://github.com/stSoftwareAU/NEAT-AI/issues/2536)                                                                                                                                 |
-| DeepSeek R1             | Jan 2025 | HIGH   | [#2534](https://github.com/stSoftwareAU/NEAT-AI/issues/2534), exp. [#2528](https://github.com/stSoftwareAU/NEAT-AI/issues/2528)                                                              |
-| Native Sparse Attention | Feb 2025 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                          |
-| Janus                   | Oct 2024 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                          |
-| Janus-Pro               | Jan 2025 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                          |
-| DeepSeek V4             | 2025     | HIGH   | [#2526](https://github.com/stSoftwareAU/NEAT-AI/issues/2526), exp. [#2527](https://github.com/stSoftwareAU/NEAT-AI/issues/2527)–[#2531](https://github.com/stSoftwareAU/NEAT-AI/issues/2531) |
-| Fire-Flyer / HAI-LLM    | Aug 2024 | SKIP   | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                          |
+`Status` reflects the May 2026 milestone (Issue #2532). _Implemented_ means an
+operator landed with a passing before/after benchmark; _Research only_ means a
+research note exists but no operator was promoted.
+
+| Paper                   | Year     | Score  | Status                          | Note / Sub-issues                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------- | -------- | ------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| DeepSeek LLM            | Dec 2023 | LOW    | n/a                             | inline                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| DeepSeek MoE            | Jan 2024 | HIGH   | Research only                   | [#2535](https://github.com/stSoftwareAU/NEAT-AI/issues/2535)                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| DeepSeekMath (GRPO)     | Feb 2024 | HIGH   | **Implemented** via #2527       | [#2537](https://github.com/stSoftwareAU/NEAT-AI/issues/2537), exp. [#2527](https://github.com/stSoftwareAU/NEAT-AI/issues/2527) → PR [#2548](https://github.com/stSoftwareAU/NEAT-AI/pull/2548)                                                                                                                                                                                                                                                                                                              |
+| DeepSeek Coder          | Jan 2024 | MEDIUM | Research only                   | [#2539](https://github.com/stSoftwareAU/NEAT-AI/issues/2539)                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| DeepSeek Coder V2       | Jun 2024 | MEDIUM | Research only                   | [#2539](https://github.com/stSoftwareAU/NEAT-AI/issues/2539)                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| DeepSeek V2 (MoE half)  | May 2024 | MEDIUM | Research only                   | [#2535](https://github.com/stSoftwareAU/NEAT-AI/issues/2535)                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| DeepSeek V2 (MLA half)  | May 2024 | SKIP   | n/a                             | inline                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| DeepSeek Prover         | May 2024 | HIGH   | Research only                   | [#2538](https://github.com/stSoftwareAU/NEAT-AI/issues/2538)                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| DeepSeek Prover V2      | Apr 2025 | HIGH   | Research only                   | [#2538](https://github.com/stSoftwareAU/NEAT-AI/issues/2538)                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| DeepSeek V3             | Dec 2024 | HIGH   | Research only                   | [#2536](https://github.com/stSoftwareAU/NEAT-AI/issues/2536)                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| DeepSeek R1             | Jan 2025 | HIGH   | **Implemented** via #2528       | [#2534](https://github.com/stSoftwareAU/NEAT-AI/issues/2534), exp. [#2528](https://github.com/stSoftwareAU/NEAT-AI/issues/2528) → PR [#2547](https://github.com/stSoftwareAU/NEAT-AI/pull/2547)                                                                                                                                                                                                                                                                                                              |
+| Native Sparse Attention | Feb 2025 | SKIP   | n/a                             | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Janus                   | Oct 2024 | SKIP   | n/a                             | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Janus-Pro               | Jan 2025 | SKIP   | n/a                             | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                                                                                                                                                                                                                                                                                                                                          |
+| DeepSeek V4             | 2025     | HIGH   | **Implemented** via #2527–#2531 | [#2526](https://github.com/stSoftwareAU/NEAT-AI/issues/2526), exp. [#2527](https://github.com/stSoftwareAU/NEAT-AI/issues/2527)–[#2531](https://github.com/stSoftwareAU/NEAT-AI/issues/2531); PRs [#2548](https://github.com/stSoftwareAU/NEAT-AI/pull/2548), [#2547](https://github.com/stSoftwareAU/NEAT-AI/pull/2547), [#2544](https://github.com/stSoftwareAU/NEAT-AI/pull/2544), [#2550](https://github.com/stSoftwareAU/NEAT-AI/pull/2550), [#2551](https://github.com/stSoftwareAU/NEAT-AI/pull/2551) |
+| Fire-Flyer / HAI-LLM    | Aug 2024 | SKIP   | n/a                             | [#2540](https://github.com/stSoftwareAU/NEAT-AI/issues/2540) ([triage](deepseek-not-applicable.md))                                                                                                                                                                                                                                                                                                                                                                                                          |
