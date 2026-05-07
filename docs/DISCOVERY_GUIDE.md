@@ -1,5 +1,19 @@
 # 🔍 Discovery: Continuous Incremental Improvement
 
+> **Summary** — Discovery is the user-facing entry point to NEAT-AI's
+> error-guided structural evolution. It runs as a continuous loop, fetching the
+> current best creature, asking the Rust extension via the Foreign Function
+> Interface (FFI) to propose small structural changes, and checking improvements
+> back into a shared pool. This guide covers configuration, distributed setup,
+> and best practices. For internals see
+> [DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md); for the
+> `discoveryDir()` Application Programming Interface (API) and on-disk layout
+> see [DISCOVERY_DIR.md](DISCOVERY_DIR.md); for Graphics Processing Unit (GPU)
+> backend selection see [GPU_ACCELERATION.md](GPU_ACCELERATION.md); for the
+> external Rust core dependency that vendors WebAssembly (WASM) artefacts see
+> [EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md). The full topic index
+> lives in [`docs/README.md`](README.md).
+
 ## 📖 Overview
 
 Discovery is designed for **continuous, incremental improvements** to neural
@@ -498,12 +512,24 @@ Discovery will analyse these neurons first before doing weighted selection.
 
 ## 📚 See Also
 
-- [API Reference — Discovery](API_REFERENCE.md#7-discovery-api) — Programmatic
-  API reference
+- [`docs/README.md`](README.md) — topic index for all NEAT-AI documentation.
+- [API Reference — Discovery](api/DISCOVERY.md) — Programmatic API reference.
 - [DiscoveryDir Integration Guide](DISCOVERY_DIR.md) — Technical API reference
-  for `Creature.discoveryDir()`
-- [Configuration Guide — Discovery](CONFIGURATION_GUIDE.md#discovery-parameters)
-  — All discovery configuration options
+  for `Creature.discoveryDir()` and the on-disk cache layout.
 - [Discovery Architecture](DISCOVERY_ARCHITECTURE.md) — Internal pipeline
-  architecture (contributor-focused)
-- `src/config/NeatOptions.ts` — All configuration options (source of truth)
+  architecture, two-phase evaluation, TS ↔ Rust FFI flow (contributor-focused).
+- [Configuration Guide — Discovery](config/DISCOVERY.md) — All discovery
+  configuration options.
+- [TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) — where TypeScript ends and Rust
+  / WASM begins.
+- [GPU_ACCELERATION.md](GPU_ACCELERATION.md) — `wgpu` backend selection (Metal /
+  Vulkan / DirectX 12) with Central Processing Unit (CPU) fallback.
+- [EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — vendored WASM artefact
+  workflow.
+- `src/config/NeatOptions.ts` — All configuration options (source of truth).
+- `src/discovery/` — Pipeline orchestration source.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

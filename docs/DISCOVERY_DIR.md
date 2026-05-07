@@ -1,5 +1,15 @@
 # 📂 DiscoveryDir Integration Guide
 
+> **Summary** — Reference for `Creature.discoveryDir()`: prerequisites, the data
+> and cache directories it manages, the operation vocabulary returned by the
+> Rust extension, and how to fold improvements back into your controller.
+> Companion docs: [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) (user intro),
+> [DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md) (deep dive — TypeScript
+> (TS) ↔ Rust Foreign Function Interface (FFI) flow),
+> [TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) (where subsystems live),
+> [GPU_ACCELERATION.md](GPU_ACCELERATION.md) (Graphics Processing Unit (GPU)
+> backend selection), and the topic index in [`docs/README.md`](README.md).
+
 The `Creature.discoveryDir()` helper schedules targeted discovery work over a
 sampled dataset and returns the best performing candidate creature together with
 a human-friendly summary. This guide explains how to prepare data, invoke
@@ -67,6 +77,87 @@ specify neuron placement so subsequent `addSynapse(newNeuron -> target)`
 respects forward-only ordering. If placement is omitted, NEAT-AI appends the
 neuron, which is safe for recurrent creatures but may be rejected for
 forward-only.
+
+## 🗄️ On-disk discovery cache layout
+
+Discovery persists state under a `.discovery/` directory rooted at the workspace
+(or at the path passed via `discoveryWorkDir`). The host writes per-run
+candidate snapshots, focus-selection diagnostics, and the success / failure
+caches consumed by replay. A typical tree looks like:
+
+```text
+.discovery/
+├── candidates/                          # per-run snapshots, organised by run name
+│   └── <runName>/<ISO8601-timestamp>/
+│       ├── original.json                # baseline creature (UUID-only export)
+│       ├── candidate-<changeType>.json  # one file per evaluated candidate
+│       ├── summary.json                 # per-run summary
+│       └── diagnostics.json             # per-changeType success / failure rates
+├── focus-analysis/<discoveryID>/        # focus-neuron selection trace
+│   └── <ISO8601-timestamp>-focus-selection[-retry-N].json
+├── <successCacheDir>/                   # success cache, sub-keyed by changeType
+│   ├── add-neurons/<hash>.json
+│   ├── add-synapses/<hash>.json
+│   ├── change-squash/<hash>.json
+│   ├── coordinated-structural/<hash>.json
+│   ├── remove-neuron/<hash>.json
+│   ├── remove-synapse/<hash>.json
+│   ├── remove-low-impact/<hash>.json
+│   └── cache-informed-removal/<hash>.json
+├── <failureCacheDir>/                   # failure cache (mirrors changeType layout)
+└── <runDir>/<creatureUuid>/             # per-creature work area
+    └── .discovery.lock                  # advisory lock for single-writer safety
+```
+
+```mermaid
+graph TD
+    classDef root fill:#9b59b6,stroke:#8e44ad,color:#fff
+    classDef dir fill:#3498db,stroke:#2980b9,color:#fff
+    classDef file fill:#2ecc71,stroke:#27ae60,color:#fff
+
+    R[".discovery/"]:::root
+    C["candidates/<runName>/<timestamp>/"]:::dir
+    F["focus-analysis/<discoveryID>/"]:::dir
+    S["successCacheDir/<changeType>/"]:::dir
+    X["failureCacheDir/<changeType>/"]:::dir
+    L["<runDir>/<creatureUuid>/"]:::dir
+
+    R --> C & F & S & X & L
+    C --> CO["original.json"]:::file
+    C --> CC["candidate-*.json"]:::file
+    C --> CS["summary.json"]:::file
+    C --> CD["diagnostics.json"]:::file
+    F --> FA["*-focus-selection*.json"]:::file
+    S --> SH["{hash}.json"]:::file
+    X --> XH["{hash}.json"]:::file
+    L --> LL[".discovery.lock"]:::file
+```
+
+> [!NOTE]
+> Each cache entry is a JavaScript Object Notation (JSON) document. The `{hash}`
+> filename is a deterministic cache key derived from the structural signature
+> plus weight-exponent buckets — see
+> [DISCOVERY_ARCHITECTURE.md §Cache Key Generation](DISCOVERY_ARCHITECTURE.md#-cache-key-generation).
+> Some fields evolve across releases (notably the success-cache metadata
+> extended in #1733); when a cache entry is missing newer fields the runner
+> falls back to legacy behaviour rather than rejecting the entry.
+
+### 🆔 UUID resolution — the `loadFrom` rule
+
+Every JSON payload in the cache identifies neurons and synapses by their
+**Universally Unique Identifier (UUID)**, never by the runtime integer `id`. On
+reload, `loadFrom` resolves synapses by UUID first; integer IDs are accepted
+only as a fallback for internal round-trips where UUIDs may not be present
+(Issue #2090). This matches the wire-format invariant for `exportJSON()` and the
+FFI bridge — see [`AGENTS.md`](../AGENTS.md) §"Neuron UUID stability" and the
+FFI flow diagram in
+[DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md#-ts-host--rust-extension-data-flow).
+
+> [!TIP]
+> When manually inspecting `.discovery/.../candidate-*.json` files, expect to
+> see only `uuid`, `fromUUID`, and `toUUID` fields on neurons and synapses. A
+> `id`, `fromId`, or `toId` field appearing in a cache entry is a bug — please
+> open an issue.
 
 ## 📁 Data Layout Expectations
 
@@ -357,3 +448,24 @@ finding improvements, examine the focus selection JSON to verify:
 selection is functioning correctly. Higher `weightedScore` values should
 correlate with higher selection frequency when sampling the same creature
 multiple times.
+
+## 📚 See Also
+
+- [`docs/README.md`](README.md) — topic index for all NEAT-AI documentation.
+- [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) — user-facing introduction to
+  Discovery and the distributed loop.
+- [DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md) — pipeline internals
+  and the TS ↔ Rust FFI data flow.
+- [TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) — which subsystems live in
+  TypeScript versus Rust / WebAssembly (WASM).
+- [GPU_ACCELERATION.md](GPU_ACCELERATION.md) — `wgpu` GPU backend selection
+  (Metal / Vulkan / DirectX 12) and CPU fallback.
+- [EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — vendored WASM artefact
+  workflow.
+- [`AGENTS.md`](../AGENTS.md) §"Neuron UUID stability" — wire-format invariant
+  and the `loadFrom` UUID-first resolution rule.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

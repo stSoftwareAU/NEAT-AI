@@ -5,7 +5,8 @@
     "../wasm_activation/pkg/**"
   ],
   "ignoreRegExpList": [
-    "/\\b[A-Z][A-Z0-9]*\\b/g"
+    "/\\b[A-Z][A-Z0-9]*\\b/g",
+    "/\\w*[ᵢᵤₐ₀₁₂₃₄₅₆₇₈₉]\\w*/g"
   ],
   "words": [
     "Accum",
@@ -27,6 +28,7 @@
     "bakeoff",
     "bakeoffs",
     "offs",
+    "activationᵢ",
     "analyzed",
     "analyzes",
     "analyzing",
@@ -76,6 +78,7 @@
     "cloneable",
     "codegen",
     "compactable",
+    "Factorᵢ",
     "compilednetwork",
     "conn",
     "Conns",
@@ -254,6 +257,7 @@
     "overfitting",
     "parameterisation",
     "parameterised",
+    "parsable",
     "parseable",
     "passthrough",
     "Pcts",
@@ -275,6 +279,7 @@
     "recomputations",
     "recs",
     "recip",
+    "reflow",
     "regulariser",
     "reinit",
     "relu",
@@ -286,6 +291,7 @@
     "repro",
     "repr",
     "repro",
+    "reflow",
     "rescalings",
     "rescore",
     "rescored",
@@ -402,8 +408,10 @@
     "writable",
     "writescores",
     "xaxis",
+    "xychart",
     "xorshift",
     "xoshiro",
+    "xychart",
     "yaxis",
     "Yordanov",
     "Yosinski",

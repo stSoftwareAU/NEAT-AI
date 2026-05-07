@@ -1,13 +1,37 @@
 # 🔒 Security Policy
 
+## 📌 Summary
+
+This document describes how to **report a vulnerability** in NEAT-AI
+(NeuroEvolution of Augmenting Topologies — Artificial Intelligence) and what
+response you can expect. Routine code-review hygiene (input validation,
+parameterised queries, secret handling) is enforced via the **`/security-review`
+Claude Code skill** that contributors run before opening a PR (see the
+secure-coding principles section of [`AGENTS.md`](./AGENTS.md)) and the in-repo
+automation listed below:
+
+- **Dependency review** — every PR is scanned by
+  [`actions/dependency-review-action`](https://github.com/actions/dependency-review-action)
+  via `.github/workflows/dependency-review.yml`.
+- **Static analysis (SAST)** — Semgrep runs on each PR via
+  `.github/workflows/semgrep.yml`.
+- **Secret scanning** — `gitleaks` patterns live in `.gitleaks.toml` at the
+  repository root.
+- **Dependency bumps** — the weekly `deno outdated` job in
+  `.github/workflows/deno-outdated.yml` raises automated bump PRs.
+
+For everything else, see the sibling docs: [`README.md`](./README.md),
+[`AGENTS.md`](./AGENTS.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md),
+[`CHANGELOG.md`](./CHANGELOG.md), and [`docs/README.md`](./docs/README.md).
+
 ## 🛡️ Supported Versions
 
-Current version only
+Current version only.
 
 > [!NOTE]
-> Only the current version of this project receives security updates. If you are
-> using an older version, please upgrade to benefit from the latest security
-> fixes.
+> Only the current published version of `@stsoftware/neat-ai` on JSR receives
+> security updates. If you are pinned to an older release, please upgrade to the
+> latest version to benefit from the most recent security fixes.
 
 ## ⚠️ Reporting a Vulnerability
 
@@ -21,8 +45,12 @@ responsibly by following these steps:
 
 ### 📋 Reporting Process
 
-1. **Do not** create a public GitHub issue for security vulnerabilities
-2. Send an email to the project maintainer with details about the vulnerability
+1. **Do not** create a public GitHub issue for security vulnerabilities.
+2. Use GitHub's **private vulnerability reporting** for this repository
+   ([Security → Report a vulnerability](https://github.com/stSoftwareAU/NEAT-AI/security/advisories/new)),
+   or email the maintainers at
+   [security@stsoftware.com.au](mailto:security@stsoftware.com.au) if a
+   GitHub-side report is not possible.
 3. Include the following information in your report:
    - Description of the vulnerability
    - Steps to reproduce the issue
@@ -56,3 +84,12 @@ We request that you:
 - Act in good faith and avoid privacy violations or service disruption
 
 Thank you for helping keep this project secure!
+
+## 🔗 Sibling docs
+
+- **[README.md](./README.md)** — project overview.
+- **[AGENTS.md](./AGENTS.md)** — coding conventions (includes secure-coding
+  principles).
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** — first-time contributor guide.
+- **[CHANGELOG.md](./CHANGELOG.md)** — release notes.
+- **[docs/README.md](./docs/README.md)** — topic-by-topic documentation index.

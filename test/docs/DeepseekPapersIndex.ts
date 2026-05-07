@@ -1,6 +1,7 @@
 /**
  * Issue #2584: tests verifying that the implementations referenced in the
- * "Implementation Status" section of `docs/research/deepseek-papers-index.md`
+ * "Implementation Status" section of
+ * `docs/archive/research/deepseek-papers-index.md` (archived under #2575).
  * actually exist and remain configurable.
  *
  * The catalogue in that file points readers at five landed sub-issues

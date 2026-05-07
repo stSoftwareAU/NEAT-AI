@@ -1,14 +1,46 @@
 # 🧠 Intelligent Design
 
-Intelligent Design is a technique for optimising neural network creatures by
-systematically testing different squash (activation) functions for each hidden
-neuron. Unlike random mutation, Intelligent Design methodically explores the
-activation function space and remembers successful substitutions for future use.
+> **Intelligent Design** in NEAT-AI is the systematic per-neuron search over
+> squash (activation) functions. For each hidden neuron, it tries the candidate
+> squash, scores the modified creature, and keeps the substitution if it
+> improves fitness. Successful substitutions are persisted as **tacit
+> knowledge** so future runs can replay them without re-discovering them. The
+> implementation lives in
+> [`src/intelligentDesign/`](../src/intelligentDesign/mod.ts); the project-wide
+> vocabulary is in [`AGENTS.md`](../AGENTS.md#-terminology) and the doc index is
+> [`docs/README.md`](README.md).
+
+<!-- -->
 
 > [!NOTE]
 > Intelligent Design is distinct from random mutation — it performs a
 > systematic, exhaustive scan of the activation function space and persists its
 > discoveries as tacit knowledge for reuse across future runs.
+
+## 🆚 Random search vs Intelligent Design
+
+```mermaid
+flowchart LR
+    subgraph Random["🎲 Random mutation"]
+        R1[Pick random neuron] --> R2[Pick random squash]
+        R2 --> R3[Score]
+        R3 -->|"discard most edits"| R1
+    end
+    subgraph ID["🧠 Intelligent Design"]
+        I1[For each hidden neuron] --> I2[Try target squash]
+        I2 --> I3{"Improves<br/>score?"}
+        I3 -->|yes| I4[Try alternatives<br/>tier 1 → 3]
+        I3 -->|no| I5[Skip neuron]
+        I4 --> I6[Persist as<br/>tacit knowledge]
+        I5 --> I1
+        I6 --> I1
+    end
+```
+
+The random path explores the search space uniformly and rejects most edits.
+Intelligent Design walks every hidden neuron once per pass, escalates promising
+neurons through the alternative-squash tiers, and writes successful
+substitutions to disk so the next run skips re-discovery.
 
 ## 📋 Overview
 
@@ -230,3 +262,15 @@ flowchart TD
 
 5. **Handle timeouts gracefully**: The scan returns partial results if timed
    out, which can still be valuable.
+
+## 🔗 Related
+
+- [`src/intelligentDesign/`](../src/intelligentDesign/mod.ts) — implementation
+  (`ImproveSquash.ts`, `BestNeuronSquash.ts`, `TacitKnowledge.ts`,
+  `AlternativeSquashes.ts`, `SafeWrite.ts`, and the worker pool).
+- [`docs/ACTIVATION_FUNCTIONS.md`](ACTIVATION_FUNCTIONS.md) — selection guide
+  for the 30+ built-in squash functions Intelligent Design searches over.
+- [`docs/CRISPR_GUIDE.md`](CRISPR_GUIDE.md) — sibling specialised topic;
+  hand-crafted DNA injection that complements the systematic squash search.
+- [`README.md`](../README.md) and [`docs/README.md`](README.md) — entry point
+  and topic index.

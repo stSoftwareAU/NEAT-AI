@@ -1,7 +1,74 @@
 # 🔲 WASM-Resident Creature Topology: Feasibility Analysis
 
+> **TL;DR** — Should the entire creature topology live inside WebAssembly (WASM)
+> linear memory? **No.** The amortisation ratio of mutable topology is far too
+> low to pay for the dual-state synchronisation cost. NEAT-AI instead landed on
+> a hybrid: TypeScript holds the source-of-truth typed-array topology, while a
+> curated set of read-heavy, hot-path operations runs **only** in WASM
+> (validation, scanning, reverse topological order, cycle detection, the
+> topological backprop loop, and elastic error distribution — see `AGENTS.md` §
+> "WASM-only operations"). This document is the original feasibility analysis
+> kept for the record. Acronyms used here: **WASM** (WebAssembly), **TS**
+> (TypeScript), **JS** (JavaScript), **GC** (garbage collector), **FFI**
+> (Foreign Function Interface), **UUID** (Universally Unique Identifier),
+> **LRU** (least recently used).
+
+## 🔗 Sibling docs in the **Compute / WASM** cluster
+
+- [ACTIVATION_FUNCTIONS.md](./ACTIVATION_FUNCTIONS.md) — squash catalogue
+  applied during activation.
+- [BACKPROP_ELASTICITY.md](./BACKPROP_ELASTICITY.md) — the WASM-only topological
+  backprop and elastic distribution kernels that read this topology.
+- [GPU_ACCELERATION.md](./GPU_ACCELERATION.md) — the same typed-array topology
+  shape is shipped over the Discovery FFI to the Graphics Processing Unit (GPU)
+  compute layer.
+- [PERFORMANCE_RESEARCH.md](./PERFORMANCE_RESEARCH.md) — broader WASM migration
+  learnings.
+- [docs/README.md](./README.md) — full topic index.
+
 Investigation for [#1642](https://github.com/stSoftwareAU/NEAT-AI/issues/1642),
 part of the WASM performance optimisation series (#1639).
+
+## 🧭 TypeScript ↔ WASM Boundary
+
+The diagram below summarises what crosses the boundary today (after
+#1957/#1959/#2415/#2416) versus what stays inside each side.
+
+```mermaid
+flowchart LR
+    subgraph TS["TypeScript (source of truth)"]
+        Creature[Creature object<br/>UUIDs, squash names]
+        Typed[TypedTopology<br/>Float64Array / Uint32Array / Uint8Array]
+        Mutate[Mutation & breeding operators]
+        Cache[TopologyCaches<br/>UUID → index, LRU compatibility]
+    end
+    subgraph WASM["WASM (NEAT-AI-core, hot path only)"]
+        Validate[validate_topology]
+        Scan[scan_available_connections]
+        Order[compute_reverse_topological_order]
+        Cycles[detect_cycles]
+        Activate[propagate_topological<br/>forward + backward]
+        Elastic[distribute_elastic_error]
+    end
+    Mutate --> Creature
+    Creature -->|sync| Typed
+    Typed -- typed-array slice (memcpy) --> Validate
+    Typed -- typed-array slice --> Scan
+    Typed -- typed-array slice --> Order
+    Typed -- typed-array slice --> Cycles
+    Typed -- header + payload --> Activate
+    Activate -- result buffer --> Typed
+    Typed -- error + links --> Elastic
+    Elastic -- per-link shares --> Mutate
+    Cache -. UUID-only wire format .- Creature
+```
+
+What **crosses** the boundary: typed-array payloads (weights, biases,
+activations, connectivity indices, squash IDs, error vectors) — never UUID
+strings, never JS objects. What **stays inside TS**: UUID identity,
+mutation/breeding logic, compatibility caches, and lifecycle management. What
+**stays inside WASM**: the validation/scanning/ordering/cycle kernels and the
+topological forward+backward loops with their elastic distribution step.
 
 ## 📋 Executive Summary
 
@@ -372,5 +439,16 @@ Implementation files:
 - #1644 — Breeding crossover allocation reduction
 - #1957 — Typed array topology implementation
 - #1959 — Selective WASM residency for read-heavy topology operations
+- #2415 — Removal of `*TS` fallbacks for the read-heavy topology operations
+  (WASM-only)
+- #2416 — Removal of TypeScript fallbacks for the topological backprop loop and
+  elastic distribution (WASM-only)
+- `AGENTS.md` § "WASM-only operations (no TS fallback)" — current canonical list
+  of operations that fail fast without the WASM bundle
 - `docs/PERFORMANCE_RESEARCH.md` — Performance research with WASM migration
   learnings
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

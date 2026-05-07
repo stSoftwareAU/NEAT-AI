@@ -1,5 +1,13 @@
 # DeepSeek V3 Applicability to NEAT-AI (Issue #2536)
 
+> **📦 Archived under
+> [Issue #2575](https://github.com/stSoftwareAU/NEAT-AI/issues/2575).** This
+> research note was moved from `docs/research/` to `docs/archive/research/`. Its
+> conclusions have landed (or been triaged out) — see the
+> [`deepseek-papers-index.md`](deepseek-papers-index.md) catalogue for the
+> consolidated implementation status. Topic index:
+> [`docs/README.md`](../../README.md).
+
 This research note maps each notable DeepSeek V3 technique onto NEAT-AI's
 existing architecture (memetic evolution, MCMC acceptance, speciation, breeding,
 backprop, multi-threading) and records a GO / NO-GO recommendation with a
@@ -63,10 +71,10 @@ heads are dropped (or repurposed for speculative decoding) — they exist purely
 to enrich the gradient.
 
 **Closest NEAT-AI surface.** The cost surface
-([`src/costs/CostInterface.ts`](../../src/costs/CostInterface.ts) and concrete
-costs MAE/MSE/MSLE/MAPE/CrossEntropy/HINGE) currently provides a single scalar
-loss against a single target vector. Backprop in
-[`src/propagate/BackPropagation.ts`](../../src/propagate/BackPropagation.ts)
+([`src/costs/CostInterface.ts`](../../../src/costs/CostInterface.ts) and
+concrete costs MAE/MSE/MSLE/MAPE/CrossEntropy/HINGE) currently provides a single
+scalar loss against a single target vector. Backprop in
+[`src/propagate/BackPropagation.ts`](../../../src/propagate/BackPropagation.ts)
 runs one local gradient pass per training row.
 
 **Rationale (GO).** For sequence and regression problems with multi-step
@@ -107,12 +115,12 @@ training and inference, trading a small accuracy delta for a large
 communication-cost reduction.
 
 **Closest NEAT-AI surface.** Cross-species breeding in
-[`src/breed/ParallelBreeding.ts`](../../src/breed/ParallelBreeding.ts) and the
-quota machinery in
-[`src/NEAT/BreedingQuotas.ts`](../../src/NEAT/BreedingQuotas.ts) already enforce
-**how many** offspring each species produces per generation; what is missing is
-a budget on **how many distinct partner species** each species can pair with per
-generation.
+[`src/breed/ParallelBreeding.ts`](../../../src/breed/ParallelBreeding.ts) and
+the quota machinery in
+[`src/NEAT/BreedingQuotas.ts`](../../../src/NEAT/BreedingQuotas.ts) already
+enforce **how many** offspring each species produces per generation; what is
+missing is a budget on **how many distinct partner species** each species can
+pair with per generation.
 
 **Rationale (GO).** Mapping V3's per-token node budget onto NEAT-AI's
 per-generation breeding budget is direct: cap the number of partner species a
@@ -154,8 +162,9 @@ level addition is reported in V3 as a small, measurable accuracy boost.
 V3 = same plus per-sequence rebalancing, applied at a different time scale (per
 sequence rather than per training step).
 
-**Closest NEAT-AI surface.** [`src/NEAT/Species.ts`](../../src/NEAT/Species.ts)
-and [`src/NEAT/Genus.ts`](../../src/NEAT/Genus.ts), where #2535's V2 expert-
+**Closest NEAT-AI surface.**
+[`src/NEAT/Species.ts`](../../../src/NEAT/Species.ts) and
+[`src/NEAT/Genus.ts`](../../../src/NEAT/Genus.ts), where #2535's V2 expert-
 level bias-only correction would land.
 
 **Rationale (NO-GO).** NEAT-AI does not have a "sequence" abstraction. The V2
@@ -184,7 +193,7 @@ native FP8 matmul (NVIDIA Hopper / Blackwell). The cost is quantisation-aware
 engineering (per-channel scales, stochastic rounding, sensitivity profiling).
 
 **Closest NEAT-AI surface.**
-[`src/propagate/BackPropagation.ts`](../../src/propagate/BackPropagation.ts)
+[`src/propagate/BackPropagation.ts`](../../../src/propagate/BackPropagation.ts)
 weights are FP64 (TypeScript `number`); WASM-side activation buffers are FP32 or
 FP64 depending on path.
 
@@ -220,10 +229,10 @@ communication between stages _i_ and _i+1_. The win is reduced pipeline-bubble
 time at large pipeline-depth × micro-batch counts.
 
 **Closest NEAT-AI surface.**
-[`src/multithreading/WorkerPool.ts`](../../src/multithreading/WorkerPool.ts) and
-the workers under `src/multithreading/workers/` already split per-creature work
-(activation, scoring, backprop, discovery dispatch) across worker threads. Today
-these are serialised per creature: backprop completes, then discovery is
+[`src/multithreading/WorkerPool.ts`](../../../src/multithreading/WorkerPool.ts)
+and the workers under `src/multithreading/workers/` already split per-creature
+work (activation, scoring, backprop, discovery dispatch) across worker threads.
+Today these are serialised per creature: backprop completes, then discovery is
 dispatched.
 
 **Rationale (GO).** The DualPipe principle — overlap **compute** with
@@ -265,7 +274,7 @@ is parameter sharing and consistent output-distribution geometry across the
 auxiliary heads.
 
 **Closest NEAT-AI surface.** Canonical output-neuron identity in
-[`src/neuron/NeuronSerialization.ts`](../../src/neuron/NeuronSerialization.ts):
+[`src/neuron/NeuronSerialization.ts`](../../../src/neuron/NeuronSerialization.ts):
 output neurons are addressed by the canonical wire UUID `output-N` (where N is
 the output index). This identity is shared **across all creatures** in a
 population by construction — every creature's _N_-th output neuron carries the

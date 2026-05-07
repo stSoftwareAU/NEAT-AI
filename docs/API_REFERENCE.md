@@ -1448,7 +1448,7 @@ const myConfig: MCMCConfig = {
   the target acceptance rate each generation
 
 For configuration details, see
-[Configuration Guide — MCMC](CONFIGURATION_GUIDE.md#mcmc-acceptance-criterion).
+[Configuration Guide — MCMC](config/MUTATION_ADAPTATION.md#-mcmc-acceptance-criterion).
 
 ---
 
@@ -1464,3 +1464,8 @@ For configuration details, see
 - [Intelligent Design](INTELLIGENT_DESIGN.md) — Squash optimisation guide
 - [Activation Functions](../src/methods/activations/README.md) — Detailed
   activation function reference
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

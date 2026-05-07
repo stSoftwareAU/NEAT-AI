@@ -1,17 +1,84 @@
 # 🔬 Performance Optimisation Guide
 
+> **Brief**: A research log of every measured attempt to make NEAT-AI faster —
+> what worked, what didn't, and the underlying reasons. Use this guide to decide
+> whether a proposed optimisation (WASM migration, SIMD expansion, algorithmic
+> change) is worth pursuing **before** writing code. For day-to-day operational
+> tuning, see [PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md).
+
+## 📑 In this cluster
+
+The performance documentation cluster is split across three companion docs. Pick
+whichever matches your task:
+
+- **PERFORMANCE_RESEARCH.md** (this file) — investigation log: which
+  optimisations worked, which did not, and why.
+- **[PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md)** — operational knobs for a
+  running training pipeline (caches, thread pools, memory).
+- **[PREDICTIVE_CODING_BENCHMARKS.md](./PREDICTIVE_CODING_BENCHMARKS.md)** —
+  benchmark companion to the [Predictive Coding](./PREDICTIVE_CODING.md) deep
+  dive.
+
+See also the [docs index](./README.md) for the full topic map.
+
+## 🧪 Acronyms used in this guide
+
+- **CPU** — Central Processing Unit
+- **GPU** — Graphics Processing Unit
+- **WASM** — WebAssembly
+- **FFI** — Foreign Function Interface (the JavaScript ↔ Rust boundary)
+- **SIMD** — Single Instruction, Multiple Data (vector arithmetic)
+- **MCMC** — Markov Chain Monte Carlo (used for mutation acceptance)
+- **LRU** — Least Recently Used (cache eviction policy)
+- **JIT** — Just-In-Time (compilation, as in V8)
+- **MSE / MAE / MAPE / RMSE** — Mean Squared Error / Mean Absolute Error / Mean
+  Absolute Percentage Error / Root Mean Squared Error
+- **UUID** — Universally Unique IDentifier
+
+## 🛣️ Optimisation pipeline overview
+
+The flowchart below shows the staged path NEAT-AI applies to every potential
+hotspot. The same pipeline is the lens through which every claim in the rest of
+this guide is evaluated.
+
+```mermaid
+flowchart LR
+    A[📏 Baseline benchmark<br/>under bench/] --> B{>10 µs<br/>per call?}
+    B -- "no" --> Z1[❌ Stop — overhead<br/>dominates compute]
+    B -- "yes" --> C{Tight numerical<br/>loop on typed arrays?}
+    C -- "yes" --> D[⚙️ TS / WASM<br/>algorithmic change]
+    C -- "no" --> E{Cache-dominated<br/>or graph-shaped?}
+    E -- "graph" --> F[🧠 Memetic /<br/>structural rewrite]
+    E -- "cache" --> G[🗄️ Tune cache<br/>or short-circuit]
+    D --> H[🔬 Discovery /<br/>FFI offload]
+    F --> H
+    G --> I[📈 Re-bench with<br/>same script]
+    H --> I
+    I --> J{Measured win?}
+    J -- "yes" --> K[✅ Land + record<br/>numbers in PR]
+    J -- "no" --> L[📝 Document negative<br/>result + close issue]
+```
+
+The **baseline → algorithmic change → measured outcome** loop is the only path
+that has produced repeatable wins. Skipping the baseline step or assuming that
+"WASM is faster" without measurement has consistently produced negative results
+(see issues
+[#1630](https://github.com/stSoftwareAU/NEAT-AI/issues/1630)–[#1633](https://github.com/stSoftwareAU/NEAT-AI/issues/1633)
+and the WASM-resident assessment further down).
+
 This guide captures learnings from systematic performance investigations in
 NEAT-AI, including several WASM migration experiments and TypeScript-level
 optimisations. The goal is to help contributors identify which optimisation
 strategies are likely to succeed and which are not worth pursuing.
 
-All benchmarks were run on Apple M4 Pro, Deno 2.7.x (aarch64-apple-darwin).
+All benchmarks were run on Apple M4 Pro (CPU) and M2 Ultra (CPU), Deno 2.7.x
+(aarch64-apple-darwin), unless otherwise stated.
 
 > [!NOTE]
-> All benchmark figures in this guide were measured on Apple M4 Pro running Deno
-> 2.7.x (aarch64-apple-darwin). Absolute timings will differ on other hardware,
-> but the relative ratios between approaches (e.g., serialisation overhead vs.
-> computation time) are consistent across platforms.
+> Absolute timings will differ on other hardware, but the relative ratios
+> between approaches (e.g., serialisation overhead vs computation time) are
+> consistent across platforms. Where a number was captured, the source benchmark
+> script is named in the surrounding text or referenced in the linked issue.
 
 ## ✅ When WASM Migration Works
 
@@ -717,9 +784,49 @@ This is a negative result. It confirms that the current SIMD coverage is
 well-targeted and there are no additional SIMD expansion opportunities in the
 evolution pipeline at this time.
 
+## 🧾 Reproducing the numbers in this guide
+
+Every benchmark cited above is backed by a script under [`bench/`](../bench/).
+The most relevant scripts are:
+
+| Topic                                | Bench script(s)                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| Breeding / crossover                 | `bench/BreedPerformance.ts`, `bench/ParallelBreeding.ts`                 |
+| Breeding sub-phase profile           | `bench/BreedingSubPhaseProfile.ts`                                       |
+| Backprop allocation / WASM overhead  | `bench/BackpropAllocation.ts`, `bench/BackpropWasmOverhead.ts`           |
+| Topological backprop profile         | `bench/TopologicalBackpropProfile.ts`                                    |
+| Discovery batch validation / timeout | `bench/BatchDiscoveryValidation.ts`, `bench/AdaptiveDiscoveryTimeout.ts` |
+| `evolveDir` per-phase profile        | `bench/EvolveDirPhaseProfile.ts`, `bench/ProfileEvolveDirPhases.ts`      |
+| `evolveDir` WASM migration analysis  | `bench/EvolveDirWasmMigrationAnalysis.ts`                                |
+| Production-scale evolveDir profile   | `bench/ProductionScaleEvolveDirProfile.ts`                               |
+| WASM activation                      | `bench/ActivateWasm.ts`, `bench/Activate.ts`                             |
+| Distance / compatibility cache       | `bench/DistanceCacheHitRate.ts`                                          |
+
+Run any benchmark with:
+
+```bash
+deno bench --allow-read --allow-env --allow-ffi bench/<Script>.ts
+```
+
+If a number in this guide no longer matches a fresh local run, **update the
+table and add a follow-up note** rather than deleting the prior figure — history
+matters for negative-result investigations.
+
 ## 📚 See Also
 
-- [Performance Tuning](./PERFORMANCE_TUNING.md) — Operational tuning guide for
-  WASM caches, thread pools, memory management, and scaling
-- [Configuration Guide](./CONFIGURATION_GUIDE.md) — Complete reference of all
-  configuration options
+- [PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md) — Operational tuning guide
+  for WASM caches, thread pools, memory management, and scaling.
+- [PREDICTIVE_CODING.md](./PREDICTIVE_CODING.md) — Deep dive on the predictive
+  coding training mode (theory and architecture).
+- [PREDICTIVE_CODING_BENCHMARKS.md](./PREDICTIVE_CODING_BENCHMARKS.md) —
+  Benchmark companion to the predictive coding deep dive.
+- [CONFIGURATION_GUIDE.md](./CONFIGURATION_GUIDE.md) — Complete reference of
+  every `NeatOptions` / `NeatConfig` field.
+- [GPU_ACCELERATION.md](./GPU_ACCELERATION.md) — GPU compute layer details
+  (Metal / Vulkan / DX12 via `wgpu`) referenced from the discovery pipeline.
+- [docs/README.md](./README.md) — Topic index for the full documentation set.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

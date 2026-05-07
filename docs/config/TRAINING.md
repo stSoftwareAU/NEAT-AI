@@ -1,0 +1,181 @@
+# 🏋️ Training parameters
+
+Training parameters control backpropagation within each NEAT (NeuroEvolution of
+Augmenting Topologies) generation: how much data is used, how aggressively
+weights/biases are updated, how dense layers become, and how the data is fuzzed
+and validated. These options sit on the top-level `NeatOptions` object or on
+dedicated nested configs (`dataFuzzing`, `crossValidation`).
+
+```ts
+import { createNeatConfig } from "@anthropic/neat-ai";
+
+const config = createNeatConfig({
+  trainPerGen: 1,
+  trainingBatchSize: 100,
+  trainingSampleRate: 1,
+  syntheticSynapses: false,
+});
+```
+
+## 📊 Quick reference
+
+| Option                         | Type      | Default | Description                                               |
+| ------------------------------ | --------- | ------- | --------------------------------------------------------- |
+| `trainPerGen`                  | `integer` | `1`     | Training sessions per generation (min: 0)                 |
+| `trainingBatchSize`            | `integer` | `100`   | Observations per training batch (min: 1)                  |
+| `trainingSampleRate`           | `number`  | `1`     | Fraction of data used for training (0.0001–1)             |
+| `dataSetPartitionBreak`        | `integer` | `2000`  | Records per dataset file (min: 1)                         |
+| `syntheticSynapses`            | `boolean` | `false` | Generate dense inter-layer synapses before backprop       |
+| `maximumBiasAdjustmentScale`   | `number`  | `1`     | Maximum bias adjustment per training iteration (min: 0)   |
+| `maximumWeightAdjustmentScale` | `number`  | `1`     | Maximum weight adjustment per training iteration (min: 0) |
+
+## 🔁 Backpropagation cadence
+
+### `trainPerGen`
+
+**Default: 1** | Type: integer | Min: 0
+
+Number of training sessions applied per generation. Set to `0` to disable
+backpropagation entirely and rely solely on evolutionary selection.
+
+### `trainingBatchSize`
+
+**Default: 100** | Type: integer | Min: 1
+
+Number of observations per training batch during backpropagation.
+
+### `trainingSampleRate`
+
+**Default: 1** | Type: number | Range: 0.0001–1
+
+Fraction of the training dataset used in each training iteration. Values below
+`1.0` enable stochastic training, which can improve generalisation and speed up
+each generation at the cost of noisier fitness signals.
+
+### `dataSetPartitionBreak`
+
+**Default: 2000** | Type: integer | Min: 1
+
+Number of records per dataset shard. Lower values reduce peak memory at the cost
+of more file handles.
+
+## 📐 Adjustment scales
+
+### `maximumBiasAdjustmentScale`
+
+**Default: 1** | Type: number | Min: 0
+
+Maximum amount by which a bias can be adjusted in one training iteration. Higher
+values allow more aggressive bias updates.
+
+### `maximumWeightAdjustmentScale`
+
+**Default: 1** | Type: number | Min: 0
+
+Maximum amount by which a weight can be adjusted in one training iteration.
+Higher values allow more aggressive weight updates.
+
+## 🧪 Synthetic synapses
+
+### `syntheticSynapses`
+
+**Default: false** | Type: boolean
+
+When enabled, dense zero-weight synapses are generated between adjacent
+topological layers before backpropagation begins. After training, synthetic
+synapses whose weights remain near zero are pruned, and any that have been
+trained to meaningful weights are retained as permanent connections. This allows
+backpropagation to discover useful connections that NEAT's evolutionary process
+may not have found.
+
+A per-target cap of 50 connections per target neuron per layer pair prevents
+combinatorial explosion on wide networks. Orphaned neurons are cleaned up
+automatically after pruning.
+
+> [!TIP]
+> Synthetic synapses are most beneficial for networks with sparse inter-layer
+> connectivity — typically early in evolution when NEAT has not yet built dense
+> connections between layers. For already-dense networks, the overhead may
+> outweigh the benefit.
+
+## 🎲 Data fuzzing
+
+Issue #1900: Training data fuzzing (noise injection) is a regularisation
+technique that prevents networks from memorising exact training examples. Each
+training iteration adds small random perturbations to inputs and optionally to
+outputs, forcing the network to learn robust patterns rather than overfitting to
+specific data points.
+
+Pass as `dataFuzzing` in options.
+
+```ts
+const config = createNeatConfig({
+  dataFuzzing: {
+    enabled: true,
+    inputNoiseScale: 0.02,
+    outputNoiseScale: 0.005,
+    noiseType: "gaussian",
+  },
+});
+```
+
+| Option             | Type                      | Default      | Description                                                                |
+| ------------------ | ------------------------- | ------------ | -------------------------------------------------------------------------- |
+| `enabled`          | `boolean`                 | `false`      | Whether data fuzzing is active                                             |
+| `inputNoiseScale`  | `number`                  | `0.01`       | Standard deviation (Gaussian) or half-width (uniform) of input noise (0–1) |
+| `outputNoiseScale` | `number`                  | `0`          | Noise on target outputs for label smoothing — 0 disables (0–1)             |
+| `noiseType`        | `"gaussian" \| "uniform"` | `"gaussian"` | Distribution used for noise generation                                     |
+
+> [!TIP]
+> Start with the defaults (`inputNoiseScale: 0.01`, `outputNoiseScale: 0`) and
+> increase gradually. Too much noise slows convergence; too little has no
+> regularisation effect. Gaussian noise is generally preferred because it
+> concentrates most perturbations near zero.
+
+## 🔀 Cross-validation
+
+Issue #1865: K-fold cross-validation evaluates creatures on held-out data folds
+during evolution, reducing overfitting to a single train/test split. Each
+generation, training data is divided into `k` folds; the creature trains on
+`k-1` folds and is evaluated on the remaining fold. The validation error guides
+early stopping and selection.
+
+Pass as `crossValidation` in options.
+
+```ts
+const config = createNeatConfig({
+  crossValidation: {
+    enabled: true,
+    folds: 5,
+    validationEarlyStopping: true,
+  },
+});
+```
+
+| Option                    | Type      | Default | Description                                                            |
+| ------------------------- | --------- | ------- | ---------------------------------------------------------------------- |
+| `enabled`                 | `boolean` | `false` | Whether cross-validation is enabled                                    |
+| `folds`                   | `integer` | `5`     | Number of folds — 1 preserves single-split behaviour (1–20)            |
+| `validationEarlyStopping` | `boolean` | `true`  | Use validation fold performance for early stopping instead of training |
+
+> [!TIP]
+> 5 folds is a good starting point. Higher fold counts give more reliable
+> estimates at the cost of more training time per generation. When
+> `validationEarlyStopping` is enabled, backpropagation stops when the
+> validation fold error stops improving, which helps prevent overfitting.
+
+## 👀 See also
+
+- [Core evolution parameters](./CORE_EVOLUTION.md) — population, mutation, and
+  stopping conditions.
+- [Regularisation](./REGULARISATION.md) — weight/bias regularisation and output
+  range constraints applied during training.
+- [Mutation adaptation](./MUTATION_ADAPTATION.md) — per-creature hyperparameter
+  evolution can override `learningRate` and similar values.
+- [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — picking batch sizes for
+  large datasets and CPU/GPU (Graphics Processing Unit) targets.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

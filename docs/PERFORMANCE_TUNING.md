@@ -1,12 +1,57 @@
 # ⚡ Performance Tuning Guide for Large-Scale Training
 
+> **Brief**: A practical, knob-by-knob tuning guide for production training
+> runs. Each section maps a `NeatOptions` setting to the symptom it addresses
+> and to the underlying research. For background on **why** the knobs are shaped
+> the way they are, read [PERFORMANCE_RESEARCH.md](./PERFORMANCE_RESEARCH.md).
+
+## 📑 In this cluster
+
+- **[PERFORMANCE_RESEARCH.md](./PERFORMANCE_RESEARCH.md)** — investigation log
+  behind every "what worked" and "what did not" claim referenced here.
+- **PERFORMANCE_TUNING.md** (this file) — operational tuning of caches, thread
+  pools, memory, and scaling.
+- **[PREDICTIVE_CODING.md](./PREDICTIVE_CODING.md)** and
+  **[PREDICTIVE_CODING_BENCHMARKS.md](./PREDICTIVE_CODING_BENCHMARKS.md)** —
+  background and benchmark numbers for the optional Predictive Coding (PC)
+  training mode. Tuning recipes for PC live in this file under
+  [Memetic Evolution](#-memetic-evolution-backpropagation--evolution).
+
+See the [docs index](./README.md) for the full topic map.
+
 This guide explains how to tune NEAT-AI for large-scale training runs. It covers
 every configurable performance parameter, explains when to enable or disable
 features, and provides practical recommendations for different scenarios.
 
 All configuration is passed via `NeatOptionsInput` to `createNeatConfig()`. See
 the [Configuration Guide](./CONFIGURATION_GUIDE.md) for the full reference of
-every option.
+every option. Acronyms used throughout: **CPU** (Central Processing Unit),
+**GPU** (Graphics Processing Unit), **WASM** (WebAssembly), **LRU** (Least
+Recently Used), **FFI** (Foreign Function Interface), **PC** (Predictive
+Coding).
+
+## 🛣️ Tuning decision flow
+
+```mermaid
+flowchart TD
+    A[🐢 Training run feels slow] --> B{Where is time<br/>being spent?}
+    B -- "compile / activate" --> C[🗄️ Tune wasmCache]
+    B -- "speciation / breeding" --> D[👥 Adjust population<br/>+ selection pressure]
+    B -- "fitness scoring" --> E[🧵 Resize thread pool<br/>+ workerThreadCap]
+    B -- "discovery proposals" --> F[🔬 Discovery batch + GPU]
+    B -- "RAM under pressure" --> G[🧩 Lower cache caps<br/>+ memory thresholds]
+    C --> H[📊 getCacheStats]
+    D --> H
+    E --> H
+    F --> H
+    G --> H
+    H --> I{Hit / eviction<br/>numbers healthy?}
+    I -- "yes" --> J[✅ Lock the recipe in<br/>NeatOptions]
+    I -- "no" --> B
+```
+
+Use `getCacheStats()` after every tuning change — the cross-reference numbers in
+this guide assume you can observe the same metrics live.
 
 ## Table of Contents
 
@@ -869,12 +914,24 @@ pressure event.
 
 ## 📚 Further Reading
 
-- [Configuration Guide](./CONFIGURATION_GUIDE.md) — Complete reference for all
-  configuration options
-- [Performance Research](./PERFORMANCE_RESEARCH.md) — WASM migration learnings
-  and benchmark results
-- [Discovery Guide](./DISCOVERY_GUIDE.md) — Distributed discovery workflows
-- [GPU Acceleration](./GPU_ACCELERATION.md) — GPU setup for discovery
-- [Backprop Elasticity](./BACKPROP_ELASTICITY.md) — Elastic backpropagation
-  details
-- [Troubleshooting](./TROUBLESHOOTING.md) — Common issues and solutions
+- [PERFORMANCE_RESEARCH.md](./PERFORMANCE_RESEARCH.md) — Investigation log for
+  every tuning trade-off; cited inline above as "the research".
+- [PREDICTIVE_CODING.md](./PREDICTIVE_CODING.md) — Architectural background for
+  the optional Predictive Coding training mode.
+- [PREDICTIVE_CODING_BENCHMARKS.md](./PREDICTIVE_CODING_BENCHMARKS.md) — PC
+  benchmark numbers, with the same `bench/predictiveCoding/` scripts cited.
+- [CONFIGURATION_GUIDE.md](./CONFIGURATION_GUIDE.md) — Complete reference for
+  every `NeatOptions` field touched here.
+- [DISCOVERY_GUIDE.md](./DISCOVERY_GUIDE.md) — Distributed discovery workflows
+  (the FFI-backed structural search referenced above).
+- [GPU_ACCELERATION.md](./GPU_ACCELERATION.md) — GPU compute layer for the
+  discovery pipeline (Metal / Vulkan / DX12 via `wgpu`).
+- [BACKPROP_ELASTICITY.md](./BACKPROP_ELASTICITY.md) — Elastic backpropagation
+  details referenced from the memetic evolution section.
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — Common issues and solutions.
+- [docs/README.md](./README.md) — Topic index for the full documentation set.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

@@ -1,0 +1,244 @@
+# ⚙️ WASM Troubleshooting
+
+WASM (WebAssembly) activation is **mandatory** in NEAT-AI. There is no
+JavaScript fallback. The library initialises the WASM backend automatically;
+callers do not need to call any init function or set environment variables.
+
+This document covers WASM init/load failures, JSR-hosted (JavaScript Registry)
+worker pre-fetch, runtime panics, and recovery behaviour. See the index in
+[`../TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) for other categories.
+
+## Table of contents
+
+- [WASM module not found or failed to compile](#-wasm-module-not-found-or-failed-to-compile)
+- [WASM module not initialised](#-wasm-module-not-initialised)
+- [WASM in Deno Workers vs Main Thread](#-wasm-in-deno-workers-vs-main-thread)
+- [JSR-hosted NEAT-AI in your own workers (Issue #2545)](#-jsr-hosted-neat-ai-in-your-own-workers-issue-2545)
+- [RuntimeError: unreachable](#-runtimeerror-unreachable)
+- [WASM panic recovery](#-wasm-panic-recovery)
+
+## ⚠️ WASM module not found or failed to compile
+
+**Symptoms:**
+
+- `WASM activation: pkg not found at the canonical package location.`
+- `WASM activation could not be loaded. Ensure the NEAT-AI package is installed
+  correctly. WASM activation is required.`
+
+**Causes:**
+
+1. The `wasm_activation/pkg/` directory is missing or incomplete.
+2. Network connectivity issues when loading from JSR (for `https://` URLs).
+3. Insufficient Deno permissions.
+
+**Solutions:**
+
+- Verify the NEAT-AI package includes `wasm_activation/pkg/` with at least:
+  - `wasm_activation.js`
+  - `wasm_activation_bg.wasm`
+- Ensure Deno has `--allow-read` (for local files) and `--allow-net` (for JSR).
+- If building from source, run:
+  ```bash
+  cd wasm_activation && ./build.sh
+  ```
+
+## ⚠️ WASM module not initialised
+
+**Symptoms:**
+
+- `WASM module not initialised`
+
+**Causes:**
+
+- Calling activation methods before the WASM module has finished loading. This
+  can happen in custom worker setups that bypass the standard initialisation.
+
+**Solutions:**
+
+- Use the standard `Creature.activate()` API which handles initialisation
+  transparently.
+- In custom worker setups, ensure `initWasmActivationSync()` is called with the
+  correct JS bindings and WASM binary payload before activating creatures.
+
+## 🧵 WASM in Deno Workers vs Main Thread
+
+**Main thread:** WASM auto-initialises at module evaluation time. No action
+required.
+
+**NEAT-AI worker system:** The parent thread pre-loads the WASM payload and
+sends it to workers during initialisation. Workers call
+`initWasmActivationSync()` with the received payload.
+
+**Independent Deno Workers:** If your Deno Worker imports NEAT-AI directly,
+auto-initialisation runs at module load. Ensure the worker has `--allow-read`
+and/or `--allow-net` permissions.
+
+**Common worker issues:**
+
+- `Worker WASM activation payload missing` — The parent thread did not send the
+  WASM payload. Call `fetchWasmForWorkers()` before spawning workers.
+- `Worker WASM activation init failed` — Synchronous init returned false. Check
+  for re-entrancy issues or payload corruption.
+- `Worker init timed out after Ns` — Increase the timeout by setting
+  `NEAT_AI_WORKER_INIT_TIMEOUT_MS` (default: 60,000 ms, minimum: 1,000 ms).
+
+## 🌐 JSR-hosted NEAT-AI in your own workers (Issue #2545)
+
+**Symptoms:**
+
+- Parent process is run with `--allow-net`, yet a Deno Worker spawned by your
+  application logs:
+
+  ```
+  Failed to initialise WASM activation module:
+    NotCapable: Requires net access to "jsr.io:443",
+    run again with the --allow-net flag
+      at Module.__wbg_init (https://jsr.io/.../wasm_activation.js:...)
+      at initWasmActivation (https://jsr.io/.../WasmModuleLoader.ts:...)
+      at WasmAutoInit.ts:...
+  ```
+
+- The library silently degrades onto the slow path (or, since Issue #1263, fails
+  fast — prior to that release the Rust panic surfaced as
+  `RuntimeError: unreachable`).
+
+**Cause.** When NEAT-AI is consumed from JSR (`https://jsr.io/...`),
+`WasmModuleLoader.ts` resolves the WASM payload to an `https:` URL and calls the
+wasm-bindgen `fetch(URL)` path. That path needs `net` permission on `jsr.io:443`
+_inside the worker scope_. Two ways the permission can be missing even when the
+parent has `--allow-net`:
+
+1. **Older Deno** (pre-2.5). `Worker.deno.permissions` defaulted to `none` for
+   spawned workers. Parent permissions did not flow into the worker. This is the
+   most common cause for the production stack traces seen in Issue #2543.
+2. **Explicit narrowing.** Application code passes
+   `new Worker(url, { deno: { permissions: { net: ["api.example.com"] } } })` to
+   lock the worker down to a specific host. `jsr.io` is not on the list, so the
+   wasm-bindgen `fetch(URL)` is denied.
+
+**Recommended fix — pre-fetch the payload in the parent and forward it.**
+
+The library exposes a stable, in-process payload-passing API that bypasses
+network access in the worker entirely. Have the parent fetch once, then send the
+bytes over `postMessage` or a shared module:
+
+```typescript
+import {
+  fetchWasmForWorkers,
+  initialiseWasmActivationFromPayload,
+  loadWasmActivationInitPayloadAsync,
+} from "@stsoftware/neat-ai";
+
+// --- In the parent (has --allow-net) ---
+await fetchWasmForWorkers(); // Populates the in-memory cache.
+const payload = await loadWasmActivationInitPayloadAsync();
+const worker = new Worker(new URL("./worker.ts", import.meta.url).href, {
+  type: "module",
+});
+worker.postMessage({ kind: "wasm-init", payload });
+
+// --- In the worker (no --allow-net required) ---
+self.onmessage = async (ev) => {
+  if (ev.data?.kind === "wasm-init") {
+    await initialiseWasmActivationFromPayload(ev.data.payload, false);
+    // ... continue with creature work
+  }
+};
+```
+
+Because `initialiseWasmActivationFromPayload()` calls `initWasmActivationSync`
+with the bytes, the worker never reaches the `fetch(URL)` path and therefore
+never needs `net` permission. This works under both old and new Deno, and under
+narrowed worker permission lists.
+
+**Alternative — upgrade Deno and rely on default inheritance.** From Deno 2.5
+onwards, workers spawned with no explicit `deno.permissions` inherit the
+parent's permissions, so a parent with `--allow-net` is sufficient on its own.
+This is the simplest fix when you control the host's Deno version.
+
+**Sequence of events:**
+
+```mermaid
+sequenceDiagram
+    participant Parent as Parent (--allow-net)
+    participant Worker as Worker (no --allow-net)
+    participant JSR as jsr.io
+
+    Parent->>JSR: fetch(wasm_activation.js + .wasm)
+    JSR-->>Parent: bytes
+    Parent->>Parent: cache payload
+    Parent->>Worker: spawn + postMessage(payload)
+    Worker->>Worker: initialiseWasmActivationFromPayload(payload)
+    Note over Worker: initWasmActivationSync — no fetch, no net permission
+```
+
+**Why not just pass `deno: { permissions: "inherit" }` automatically?**
+
+In stable Deno 2.x, `Worker.deno.permissions` is gated by
+`--unstable-worker-options`. Setting `permissions: "inherit"` unconditionally
+inside the library makes worker spawn fail for every consumer that has not opted
+into that flag. Once that gate is removed, the library can adopt explicit
+inheritance internally; until then, the pre-fetch helpers above are the
+supported workaround.
+
+## 💥 RuntimeError: unreachable
+
+**Symptoms:**
+
+- `RuntimeError: unreachable` during activation in long-running workloads.
+
+**Cause:** WASM heap exhaustion from too many cached `CompiledNetwork` instances
+(Issue #1338).
+
+**Solutions:**
+
+- The LRU (Least Recently Used) cache automatically evicts old entries (default:
+  512 cached instances). Reduce the limit if memory is tight:
+  ```typescript
+  import { setMaxCachedWasmCreatureActivations } from "neat-ai/wasm";
+  setMaxCachedWasmCreatureActivations(256);
+  ```
+- Reduce parallel creature count or population size.
+
+## 💥 WASM panic recovery
+
+**Symptoms:**
+
+- `RuntimeError: unreachable` thrown from within WASM activation
+- Subsequent activation or dispose calls fail with ownership errors
+
+**Cause:** A WASM panic (e.g., from an assertion failure in the Rust activation
+code) leaves the WASM instance in an unrecoverable state. Prior to Issue #2207
+and #2212, attempting to dispose a creature after a WASM panic would throw a
+second error, and fitness evaluation would propagate the panic as an
+unrecoverable crash.
+
+**Current behaviour (Issue #2207, #2212):**
+
+- **Fitness evaluation** now catches WASM panics gracefully and assigns the
+  worst possible fitness score to the affected creature, allowing evolution to
+  continue with the rest of the population.
+- **Disposal after panic** detects the corrupted WASM state and skips the normal
+  disposal path, preventing secondary errors from masking the original panic.
+- **Logging** records the panic details so the root cause can be investigated.
+
+**What you should do:**
+
+- If panics are frequent, check for numerical overflow in your training data or
+  extreme weight/bias values. Enable weight and bias regularisation to prevent
+  extreme values.
+- WASM panics are non-deterministic in multi-threaded workloads — a single panic
+  does not indicate a systematic problem.
+
+## See also
+
+- [Compute / WASM cluster](../GPU_ACCELERATION.md) for the GPU and WASM compute
+  layer.
+- [Memory troubleshooting](MEMORY.md) for WASM cache sizing and OOM
+  (out-of-memory) recovery.
+- [Performance troubleshooting](PERFORMANCE.md) when WASM appears slow.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

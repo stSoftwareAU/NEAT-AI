@@ -1,10 +1,35 @@
 # 🖥️ GPU Acceleration for Discovery
 
+> **TL;DR** — Discovery's heavy synapse/neuron analysis runs on a Graphics
+> Processing Unit (GPU) when one is available, via the cross-platform `wgpu`
+> abstraction. `wgpu` selects Metal on macOS, Vulkan on Linux, DirectX 12 (DX12)
+> on Windows, and falls back to a Central Processing Unit (CPU) path when no
+> compatible GPU is found. The acceleration is part of the **Discovery Foreign
+> Function Interface (FFI)** surface — see
+> [DISCOVERY_GUIDE.md](./DISCOVERY_GUIDE.md) for the end-to-end workflow.
+> Acronyms used here: **GPU** (Graphics Processing Unit), **CPU** (Central
+> Processing Unit), **FFI** (Foreign Function Interface), **WGSL** (WebGPU
+> Shading Language), **DX12** (Microsoft DirectX 12), **API** (Application
+> Programming Interface).
+
+## 🔗 Sibling docs
+
+- **Compute / WASM cluster**:
+  [ACTIVATION_FUNCTIONS.md](./ACTIVATION_FUNCTIONS.md) ·
+  [BACKPROP_ELASTICITY.md](./BACKPROP_ELASTICITY.md) ·
+  [WASM_RESIDENT_TOPOLOGY.md](./WASM_RESIDENT_TOPOLOGY.md).
+- **Discovery / FFI cluster**: [DISCOVERY_GUIDE.md](./DISCOVERY_GUIDE.md) ·
+  [DISCOVERY_ARCHITECTURE.md](./DISCOVERY_ARCHITECTURE.md) ·
+  [DISCOVERY_DIR.md](./DISCOVERY_DIR.md). GPU acceleration is part of the Rust
+  Discovery FFI surface — this document explains the compute layer underneath
+  those guides.
+- [docs/README.md](./README.md) — full topic index.
+
 ## 🔍 Overview
 
 The NEAT-AI Discovery Rust library supports **cross-platform GPU acceleration**
-via the `wgpu` crate. The wgpu abstraction layer automatically selects the best
-available GPU backend for the current platform:
+via the [`wgpu`](https://wgpu.rs/) crate. The wgpu abstraction layer
+automatically selects the best available GPU backend for the current platform:
 
 - **macOS**: Metal
 - **Linux**: Vulkan
@@ -13,10 +38,46 @@ available GPU backend for the current platform:
 When no compatible GPU is detected, discovery gracefully falls back to CPU
 computation. GPU accelerates analysis but is not required.
 
+### 🧭 Backend Compatibility Matrix
+
+The table below mirrors the backends advertised by the
+[NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) README
+and the `getGpuBackendInfo()` runtime probe.
+
+| Backend | Platform                         | Selected by `wgpu` when           | Status                            |
+| :------ | :------------------------------- | :-------------------------------- | :-------------------------------- |
+| Metal   | macOS (Apple Silicon, Intel)     | Default on macOS                  | ✅ Supported (primary dev target) |
+| Vulkan  | Linux (most distros)             | Default on Linux                  | ✅ Supported                      |
+| DX12    | Windows 10/11                    | Default on Windows                | ✅ Supported                      |
+| Gl      | Cross-platform (OpenGL fallback) | When no native API is usable      | ⚠️ Last-resort fallback           |
+| CPU     | All                              | No compatible GPU adapter present | ✅ Always available (slower)      |
+
+> [!NOTE]
+> The set of backends is determined entirely by the `wgpu` crate version pinned
+> in NEAT-AI-Discovery — there is no platform-specific code in this repository.
+> `getGpuBackendInfo()` reports the actual selection at runtime.
+
+<!-- -->
+
 > [!NOTE]
 > GPU acceleration is automatic and requires no platform-specific configuration.
 > The `wgpu` abstraction handles backend selection. Use `getGpuBackendInfo()` to
 > check which backend was selected.
+
+### 🛤️ Discovery → GPU Pipeline
+
+```mermaid
+flowchart LR
+    NEAT[NEAT-AI<br/>TypeScript] -->|Discovery FFI| Rust[NEAT-AI-Discovery<br/>Rust library]
+    Rust -->|wgpu adapter| Pick{wgpu backend<br/>selection}
+    Pick -->|macOS| Metal[Metal compute shaders]
+    Pick -->|Linux| Vulkan[Vulkan compute shaders]
+    Pick -->|Windows| DX12[DX12 compute shaders]
+    Pick -->|no GPU| CPUFallback[CPU fallback]
+    Metal & Vulkan & DX12 -->|WGSL kernels| Results[Helpful / harmful synapse<br/>+ neuron stats]
+    CPUFallback --> Results
+    Results -->|gpuUsed flag| NEAT
+```
 
 ## ⚡ Current GPU Implementation
 
@@ -237,3 +298,8 @@ Data is transferred to GPU as:
 - **2 Jan 2025**: Initial GPU batching improvements for synapse evaluation.
 - GPU acceleration is actively maintained as part of the NEAT-AI-Discovery Rust
   module.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

@@ -47,11 +47,29 @@ flowchart LR
 
 | Invocation                 | Behaviour                                                                                                     |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `./build.sh`               | Resolve Develop HEAD, download artifact, refresh pkg, update `deno.json` `neatCore.rev`. No-op if up to date. |
+| `./build.sh`               | Resolve Develop HEAD, download artefact, refresh pkg, update `deno.json` `neatCore.rev`. No-op if up to date. |
 | `./build.sh --rev <SHA>`   | Same as above but pin to a specific 40-char SHA instead of resolving HEAD. Used for reproducible builds.      |
 | `./build.sh --verify-only` | Verify the vendored pkg matches `deno.json` `neatCore.rev`. No network. No mutation. Used by `quality.sh`.    |
 | `./build.sh --clean`       | Delete `wasm_activation/pkg` before download.                                                                 |
 | `./build.sh --help`        | Show usage.                                                                                                   |
+
+## Pre-PR auto-bump (`bump-deps.sh`)
+
+The Vibe Coder worker invokes [`./bump-deps.sh`](../bump-deps.sh) before
+`./quality.sh` on every PR run. Two dependency classes are handled separately:
+
+- **Internal (`stSoftwareAU/*`, including NEAT-AI-core):** advances `deno.json`
+  `neatCore.rev` to NEAT-AI-core `Develop` HEAD by re-running `./build.sh`. No
+  quarantine — internal deps bump immediately.
+- **External (jsr:@std/_, npm:_, https://deno.land/*):** runs
+  `deno outdated --update --latest --minimum-dependency-age=<min>` with a
+  quarantine window (default 24h, see `VIBE_BUMP_QUARANTINE_HOURS`). The
+  quarantine dodges fast-flagged supply-chain attacks.
+
+After bumping, the script runs a two-phase audit gate (a curated WASM smoke
+subset followed by `deno check`). If either phase fails the script exits
+non-zero and the bump is reverted. The behaviour is verified by
+[`test/scripts/BumpDepsScript.ts`](../test/scripts/BumpDepsScript.ts).
 
 The artifact-based flow depends on the per-commit GitHub Release published by
 NEAT-AI-core CI (issue stSoftwareAU/NEAT-AI-core#37). When the upstream artifact
@@ -96,6 +114,15 @@ used by this repo's `deno.json`.
 
 ## Related Documents
 
-- [docs/EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md)
-- [docs/CI_EXTERNAL_NEAT_AI_CORE.md](CI_EXTERNAL_NEAT_AI_CORE.md)
-- [docs/PARITY_GATE.md](PARITY_GATE.md)
+- [docs/EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — cluster overview
+  and day-to-day workflow.
+- [docs/CI_EXTERNAL_NEAT_AI_CORE.md](CI_EXTERNAL_NEAT_AI_CORE.md) — CI plumbing
+  for build.sh-driven WASM sync.
+- [docs/PARITY_GATE.md](PARITY_GATE.md) — release checklist for repins.
+- [docs/PARITY_AUDITS.md](PARITY_AUDITS.md) — archived parity audits.
+- [docs/README.md](README.md) — full documentation index.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

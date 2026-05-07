@@ -445,7 +445,7 @@ export { getCacheStats } from "@cache/getCacheStats.ts";
  * with {@link loadWasmActivationInitPayloadAsync} in the parent, send the
  * resulting bytes to the worker via `postMessage`, and bootstrap WASM in the
  * worker by calling {@link initialiseWasmActivationFromPayload}. See
- * `docs/TROUBLESHOOTING.md` for the full pattern.
+ * `docs/troubleshooting/WASM.md` for the full pattern.
  */
 export {
   fetchWasmForWorkers,

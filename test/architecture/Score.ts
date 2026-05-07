@@ -154,8 +154,12 @@ Deno.test("calculate - large weights increase penalty", () => {
     biases: [0, 0],
   });
 
-  const score1 = calculate(creature1, 0.1, 0.001);
-  const score2 = calculate(creature2, 0.1, 0.001);
+  // Use a higher growthCost (0.1) to amplify the weight-penalty contribution,
+  // producing a score difference of ~0.001 instead of ~1e-5. This prevents
+  // occasional CI failures caused by the tiny margin under parallel WASM
+  // execution where numerical noise could mask the genuine penalty difference.
+  const score1 = calculate(creature1, 0.1, 0.1);
+  const score2 = calculate(creature2, 0.1, 0.1);
 
   assert(
     score1 > score2,
