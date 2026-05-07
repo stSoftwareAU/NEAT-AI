@@ -187,3 +187,8 @@ The performance research established that these categories are unsuitable:
 - [PERFORMANCE_TUNING.md](PERFORMANCE_TUNING.md) — operational tuning guide.
 - #1639 — Parent tracking issue for the WASM performance series.
 - #1642 — WASM-resident topology investigation.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

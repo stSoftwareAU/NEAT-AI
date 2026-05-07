@@ -1,5 +1,13 @@
 # DeepSeek V4 Applicability to NEAT-AI (Issue #2526)
 
+> **📦 Archived under
+> [Issue #2575](https://github.com/stSoftwareAU/NEAT-AI/issues/2575).** This
+> research note was moved from `docs/research/` to `docs/archive/research/`. Its
+> conclusions have landed (or been triaged out) — see the
+> [`deepseek-papers-index.md`](deepseek-papers-index.md) catalogue for the
+> consolidated implementation status. Topic index:
+> [`docs/README.md`](../../README.md).
+
 This research note maps each notable DeepSeek V4 technique onto NEAT-AI's
 existing architecture (memetic evolution, MCMC acceptance, speciation, discovery
 cache, backprop, breeding) and records a GO / NO-GO recommendation with a

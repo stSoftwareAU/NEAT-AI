@@ -134,3 +134,8 @@ effectiveStep = baseStep × (1 + errorScale × normalisedError)
   weight updates are preferred and how saturated activations are protected.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — when ensemble diversity is
   worth its evaluation cost.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

@@ -1061,3 +1061,8 @@ If PC training produces no measurable improvement over standard backpropagation:
   [Predictive coding](https://en.wikipedia.org/wiki/Predictive_coding)
 - NEAT-AI-Discovery repository:
   [stSoftwareAU/NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

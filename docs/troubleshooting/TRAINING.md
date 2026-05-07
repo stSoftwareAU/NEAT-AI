@@ -293,3 +293,8 @@ is a concern, reduce `folds` from the default of 5 to 3, or increase
   recovery details when NaN cascades into a panic.
 - [Configuration guide](../CONFIGURATION_GUIDE.md) for the full configuration
   surface.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

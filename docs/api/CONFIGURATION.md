@@ -428,3 +428,8 @@ Seeded RNG uses the xoshiro256** algorithm internally.
   worker-related fields.
 - [`CONFIGURATION_GUIDE.md`](../CONFIGURATION_GUIDE.md) — narrative
   configuration guide.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

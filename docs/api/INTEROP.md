@@ -243,3 +243,8 @@ For the complete narrative guide, see
   `Creature.evolveDir()`.
 - [`docs/INTELLIGENT_DESIGN.md`](../INTELLIGENT_DESIGN.md) — squash optimisation
   guide.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

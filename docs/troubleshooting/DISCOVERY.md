@@ -225,3 +225,8 @@ small, too noisy, or not representative of the problem domain:
 - [Discovery architecture](../DISCOVERY_ARCHITECTURE.md) for FFI internals.
 - [Memory troubleshooting](MEMORY.md) for discovery-specific memory tuning.
 - [GPU acceleration](../GPU_ACCELERATION.md) for backend selection details.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

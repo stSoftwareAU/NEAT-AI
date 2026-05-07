@@ -202,3 +202,8 @@ Lower values reduce peak memory at the cost of more I/O.
 - [Discovery troubleshooting](DISCOVERY.md) for the discovery-side knobs.
 - [Performance tuning guide](../PERFORMANCE_TUNING.md) for end-to-end memory and
   throughput tuning.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

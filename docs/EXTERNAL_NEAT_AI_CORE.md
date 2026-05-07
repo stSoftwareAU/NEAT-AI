@@ -106,3 +106,8 @@ documented in [`CI_EXTERNAL_NEAT_AI_CORE.md`](CI_EXTERNAL_NEAT_AI_CORE.md).
 - [`docs/DISCOVERY_ARCHITECTURE.md`](DISCOVERY_ARCHITECTURE.md) — the Discovery
   / Foreign Function Interface (FFI) cluster, which sits alongside this
   dependency.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

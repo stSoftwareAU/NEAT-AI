@@ -1,10 +1,34 @@
-# CRISPR Guide
+# 🧬 CRISPR Guide
 
-Targeted genetic modifications for NEAT-AI creatures, inspired by the
-[CRISPR gene-editing technique](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/).
-This guide complements the CRISPR API summary in
-[`docs/api/CREATURE.md`](api/CREATURE.md#-crispr) with the conventions and
-gotchas that catch out new authors.
+> **CRISPR (Clustered Regularly Interspaced Short Palindromic Repeats)** is a
+> real-world gene-editing technique
+> ([Wikipedia](https://en.wikipedia.org/wiki/CRISPR),
+> [Nature primer](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/)).
+> In NEAT-AI we borrow the name for **targeted, hand-crafted edits to a
+> creature's genome** — splicing in new neurons or wrapping existing outputs
+> with extra activation/aggregation layers — without disturbing the UUIDs of
+> neurons that survive the edit. The implementation lives in
+> [`src/reconstruct/CRISPR.ts`](../src/reconstruct/CRISPR.ts); the API surface
+> is summarised in [`docs/api/CREATURE.md`](api/CREATURE.md#-crispr).
+
+This guide complements that API summary with the conventions and gotchas that
+catch out new authors. For the project-wide vocabulary that places CRISPR
+alongside Grafting, Discovery, and Intelligent Design, see
+[`AGENTS.md`](../AGENTS.md#-terminology); the documentation index is in
+[`docs/README.md`](README.md).
+
+## 🧪 What a CRISPR injection looks like
+
+```mermaid
+flowchart LR
+    DNA[📜 Hand-crafted DNA<br/>neurons + synapses] --> Validate[validateDNA<br/>structural checks]
+    Validate --> Upgrade[Upgrade.CRISPR<br/>UUID → id resolution]
+    Upgrade --> Inject[CRISPR.cleaveDNA<br/>insert or append + demote]
+    Inject --> Pop[🧬 Target creature<br/>UUIDs preserved]
+    Pop --> Score[📐 Score against probe dataset]
+    Score -->|fitness lift| Keep[✅ Keep edit]
+    Score -->|no lift| Drop[🗑️ Reject edit]
+```
 
 ## Modes
 
@@ -197,9 +221,17 @@ const resolved = CRISPR.editAliases(dna, {
 
 ## Related
 
-- `src/reconstruct/CRISPR.ts` — implementation
+- [`src/reconstruct/CRISPR.ts`](../src/reconstruct/CRISPR.ts) — implementation
 - `src/reconstruct/validateDNA.ts` — DNA structural validation
 - `src/reconstruct/Upgrade.ts` — legacy field rename + UUID→id resolution
-- `test/CRISPR/AppendDemoteOutput.ts` — append+demote regression tests
+- [`test/CRISPR/AppendDemoteOutput.ts`](../test/CRISPR/AppendDemoteOutput.ts) —
+  append+demote regression tests
 - `test/data/CRISPR/DNA-SANE.json`, `DNA-VOLUME.json` — multi-output demote
   examples
+- [`docs/INTELLIGENT_DESIGN.md`](INTELLIGENT_DESIGN.md) — sibling specialised
+  topic; the systematic squash-function search that complements hand-crafted
+  CRISPR edits.
+- [`docs/api/CREATURE.md`](api/CREATURE.md#-crispr) — public API surface for
+  CRISPR.
+- [`README.md`](../README.md) and [`docs/README.md`](README.md) — entry point
+  and topic index.

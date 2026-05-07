@@ -93,3 +93,8 @@ The original audit narrative lives in
   instead of these snapshots.
 - [docs/CI_EXTERNAL_NEAT_AI_CORE.md](CI_EXTERNAL_NEAT_AI_CORE.md) — CI plumbing
   that enforces the policy on every PR.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

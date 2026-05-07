@@ -166,3 +166,8 @@ If your symptom is not listed above:
 2. Open a new issue with reproduction steps and error output.
 3. For development questions, see [`../AGENTS.md`](../AGENTS.md) for coding
    conventions and architecture details.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

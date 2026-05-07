@@ -144,18 +144,19 @@ above:
 - **`pr-summary-*.md`** — per-PR summary files. They are write-once release
   notes for a single change, not topic documentation. Browse them via `git log`
   or the merged PR.
-- **`archive/`** — historical material kept for context (e.g. archived PR
-  summaries). Read on demand, not as part of the topic flow.
+- **`archive/`** — historical material kept for context. Read on demand, not as
+  part of the topic flow. Now includes:
+  - `archive/pr-summaries/` — archived PR summaries.
+  - `archive/research/` — DeepSeek applicability surveys
+    ([`deepseek-papers-index.md`](archive/research/deepseek-papers-index.md) is
+    the catalogue entry point; sibling applicability notes link from there).
+  - `archive/investigations/` — closed per-issue investigation notes (e.g.
+    [`issue-2418-training-bin-stream-investigation.md`](archive/investigations/issue-2418-training-bin-stream-investigation.md),
+    [`issue-2515-forward-only-apply-audit.md`](archive/investigations/issue-2515-forward-only-apply-audit.md)).
 - **`evidence/`** — captured artefacts referenced by individual PR summaries
   (logs, screenshots, repro scripts).
-- **`research/`** — experimental research notes (e.g. DeepSeek applicability
-  surveys) that pre-date or sit outside the production roadmap.
 - **`models/`** — sample exported creature JSON used by the visualisation app.
 - **`visualize/`, `index.html`, `index.js`, `server.ts`,
   `snapshot-schema.json`** — assets for the GitHub Pages visualisation app, not
   prose documentation.
-- **`issue-*-*.md`** — per-issue investigation notes (e.g.
-  `issue-2418-training-bin-stream-investigation.md`). They record a closed line
-  of work and graduate into a topic doc only if the work becomes a long-lived
-  feature.
 - **`logo.png`, `cspell.json`** — brand asset and spell-check dictionary.

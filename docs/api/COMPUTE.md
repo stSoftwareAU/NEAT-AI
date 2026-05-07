@@ -146,3 +146,8 @@ console.log(stats);
 - [`docs/PERFORMANCE_TUNING.md`](../PERFORMANCE_TUNING.md) — operational tuning.
 - [`docs/troubleshooting/WASM.md`](../troubleshooting/WASM.md) — worker-init
   failure modes.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

@@ -432,3 +432,8 @@ Some activation functions have alternative names for convenience:
   weight updates near saturated activation functions
 - [Activation Backpropagation Strategy](../src/methods/activations/README.md) —
   Technical details on derivative vs inversion-based error propagation
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

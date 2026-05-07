@@ -528,3 +528,8 @@ Discovery will analyse these neurons first before doing weighted selection.
   workflow.
 - `src/config/NeatOptions.ts` — All configuration options (source of truth).
 - `src/discovery/` — Pipeline orchestration source.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

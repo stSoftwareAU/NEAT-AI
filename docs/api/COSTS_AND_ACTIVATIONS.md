@@ -143,3 +143,8 @@ selection guide.
   HYPOTv2, MEAN).
 - [`docs/ACTIVATION_FUNCTIONS.md`](../ACTIVATION_FUNCTIONS.md) — narrative
   selection guide for the 30+ built-in squash functions.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

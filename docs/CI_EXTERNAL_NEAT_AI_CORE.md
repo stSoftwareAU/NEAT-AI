@@ -77,3 +77,8 @@ If you need a hard guard that fails the build, the following pattern works:
   the pinning model and CI policy this workflow enforces.
 - [`docs/PARITY_GATE.md`](PARITY_GATE.md) — release checklist run after bumping
   the pinned revision.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

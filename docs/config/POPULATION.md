@@ -92,3 +92,8 @@ Pass as `fineTunePopulation` in options.
   with adaptive population sizing during stagnation.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — picking population sizes
   for large CPU clusters.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

@@ -1,5 +1,12 @@
 # Issue #2418 — Delegating TS training binary readers to NEAT-AI-core `training_bin_stream`
 
+> **📦 Archived under
+> [Issue #2575](https://github.com/stSoftwareAU/NEAT-AI/issues/2575).** This
+> investigation note was moved from `docs/` to `docs/archive/investigations/`.
+> The line of work has closed — read on demand for historical context. Topic
+> index: [`docs/README.md`](../../README.md); entry point:
+> [`README.md`](../../../README.md).
+
 > **Status:** Investigation closed as `negative-result` — **no action**.
 >
 > **Summary:** The TypeScript per-record `seekSync` + `readSync` path in

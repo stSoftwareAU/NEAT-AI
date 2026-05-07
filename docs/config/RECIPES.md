@@ -151,3 +151,8 @@ const config = createNeatConfig({
   picking thread counts, batch sizes, and memory budgets.
 - [PERFORMANCE_RESEARCH.md](../PERFORMANCE_RESEARCH.md) — benchmark learnings
   behind these defaults.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

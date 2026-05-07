@@ -101,3 +101,8 @@ discoveryAnalysisTimeoutMinutes: 5, // Reduce from default 10
   cache eviction under memory pressure.
 - [Performance tuning guide](../PERFORMANCE_TUNING.md) — operational tuning
   beyond the symptom-driven flow above.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

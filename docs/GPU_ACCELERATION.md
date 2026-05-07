@@ -296,3 +296,8 @@ Data is transferred to GPU as:
 - **2 Jan 2025**: Initial GPU batching improvements for synapse evaluation.
 - GPU acceleration is actively maintained as part of the NEAT-AI-Discovery Rust
   module.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

@@ -1,5 +1,16 @@
 # DeepSeek Paper Catalogue — NEAT-AI Applicability Index
 
+> **📦 Archived under
+> [Issue #2575](https://github.com/stSoftwareAU/NEAT-AI/issues/2575).** This
+> catalogue and its companion applicability notes were moved from
+> `docs/research/` to `docs/archive/research/`. The conclusions have already
+> landed (see the **Implementation Status** section below); the catalogue is
+> kept for historical reference and is exercised by
+> [`test/docs/DeepseekPapersIndex.ts`](../../../test/docs/DeepseekPapersIndex.ts)
+> so the linked artefacts cannot silently rot. Topic index:
+> [`docs/README.md`](../../README.md). Sibling archived applicability notes are
+> in this same directory.
+
 This document is the navigation hub for the broader DeepSeek-applicability
 investigation tracked under
 [#2532](https://github.com/stSoftwareAU/NEAT-AI/issues/2532). It catalogues

@@ -825,3 +825,8 @@ matters for negative-result investigations.
 - [GPU_ACCELERATION.md](./GPU_ACCELERATION.md) — GPU compute layer details
   (Metal / Vulkan / DX12 via `wgpu`) referenced from the discovery pipeline.
 - [docs/README.md](./README.md) — Topic index for the full documentation set.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

@@ -103,3 +103,8 @@ surface:
   reproducibility pitfalls.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — log cadence and
   per-iteration overhead.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

@@ -930,3 +930,8 @@ pressure event.
   details referenced from the memetic evolution section.
 - [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — Common issues and solutions.
 - [docs/README.md](./README.md) — Topic index for the full documentation set.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

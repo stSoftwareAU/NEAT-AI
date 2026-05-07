@@ -54,3 +54,8 @@ provides diagnostic guidance. See
   when the discovery library is broken.
 - [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) — full quality-gate workflow
   for contributors.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

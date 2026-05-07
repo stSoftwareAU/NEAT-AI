@@ -201,3 +201,8 @@ indices in that layer.
   minimum-change weight updates.
 - [`docs/PREDICTIVE_CODING.md`](../PREDICTIVE_CODING.md) — predictive coding
   training mode.
+
+---
+
+**Up to:** [`README.md`](../../README.md) (entry point) ·
+[`docs/README.md`](../README.md) (topic index).

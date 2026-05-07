@@ -464,3 +464,8 @@ multiple times.
   workflow.
 - [`AGENTS.md`](../AGENTS.md) §"Neuron UUID stability" — wire-format invariant
   and the `loadFrom` UUID-first resolution rule.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

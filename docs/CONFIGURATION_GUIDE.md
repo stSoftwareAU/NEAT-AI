@@ -90,3 +90,8 @@ Per-domain rules also appear in each topic detail doc.
   distributed, multi-machine discovery.
 - [API_REFERENCE.md](./API_REFERENCE.md) — types and exported helpers referenced
   throughout the configuration surface.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).
