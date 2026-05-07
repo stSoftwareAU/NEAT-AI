@@ -97,7 +97,7 @@ full pipeline.
    > **Spawning your own Deno Workers that import NEAT-AI from the JavaScript
    > Registry (JSR)?** The worker may need explicit help to reach `jsr.io` for
    > the WASM bytes — see
-   > [Troubleshooting › JSR-hosted NEAT-AI in your own workers](./docs/TROUBLESHOOTING.md#-jsr-hosted-neat-ai-in-your-own-workers-issue-2545)
+   > [Troubleshooting › JSR-hosted NEAT-AI in your own workers](./docs/troubleshooting/WASM.md#-jsr-hosted-neat-ai-in-your-own-workers-issue-2545)
    > for the pre-fetch pattern (`fetchWasmForWorkers` +
    > `initialiseWasmActivationFromPayload`).
 

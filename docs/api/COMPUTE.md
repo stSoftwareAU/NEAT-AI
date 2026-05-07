@@ -64,7 +64,8 @@ worker.addEventListener("message", (event) => {
 });
 ```
 
-See [`docs/TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) for the full pattern.
+See [`docs/troubleshooting/WASM.md`](../troubleshooting/WASM.md) for the full
+pattern.
 
 ## 🔀 Using multiple threads
 
@@ -143,5 +144,5 @@ console.log(stats);
   activation cache.
 - [`docs/GPU_ACCELERATION.md`](../GPU_ACCELERATION.md) — GPU compute details.
 - [`docs/PERFORMANCE_TUNING.md`](../PERFORMANCE_TUNING.md) — operational tuning.
-- [`docs/TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) — worker-init failure
-  modes.
+- [`docs/troubleshooting/WASM.md`](../troubleshooting/WASM.md) — worker-init
+  failure modes.
