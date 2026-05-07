@@ -256,7 +256,17 @@ export function fix(
   // Some mutation/breed paths can still strand a hidden neuron with outward
   // connections but no valid inbound source. Reuse the canonical orphan cleanup
   // pass here so fix() repairs those before validation retries.
+  //
+  // When fix() was not called with forwardOnly:true the caller did not ask us
+  // to strip self-connections.  cleanupOrphanedNeuronsInCreature calls
+  // loadFrom with throwOnRecurrent:"never", which silently strips recurrent
+  // synapses (including self-loops) from any creature whose forwardOnly flag
+  // is true.  Temporarily mask the flag so only the orphan removal runs, then
+  // restore it — the forwardOnly block below re-applies it when needed.
+  const savedForwardOnly = creature.forwardOnly;
+  if (!forwardOnly) creature.forwardOnly = undefined;
   cleanupOrphanedNeuronsInCreature(creature);
+  if (!forwardOnly) creature.forwardOnly = savedForwardOnly;
 
   // Forward-only strip / connection removal can leave IF neurons without the
   // three required inward roles; downgrade before validate (worker breeding).
