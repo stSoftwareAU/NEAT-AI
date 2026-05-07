@@ -61,7 +61,8 @@ four files, lint clean across 1540 files, all bash scripts ✅).
 - Docs-only change. No new code paths, so no new unit tests.
 - Verified all four files render Mermaid blocks with valid syntax (fenced
   `` ```mermaid `` blocks; flowchart/sequenceDiagram only).
-- Verified no Liquid `{% ... %}` / `{{ ... }}` patterns appear in prose.
+- Verified no Liquid {% raw %}`{% ... %}` / `{{ ... }}`{% endraw %} patterns
+  appear in prose.
 - Re-read the issue's acceptance criteria:
   - [x] Each file starts with a brief summary and links to siblings + Discovery
         cluster (where relevant).

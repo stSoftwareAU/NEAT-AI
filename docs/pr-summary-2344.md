@@ -71,6 +71,10 @@ The follow-up workflow PR (by a user/token with `workflow` scope) should:
 
 1. Add `source scripts/rust-ci-git-auth.sh && configure_cargo_git_auth` before
    any `cargo` step in `quality.yml`, `coverage.yaml`, and `wasm-build.yml`.
-2. Replace the inline `hashFiles(...)` cache key in `wasm-build.yml` with
-   `scripts/rust-ci-cache-key.sh --prefix ${{ runner.os }}-cargo-wasm`.
+2. Replace the inline `hashFiles(...)` cache key in `wasm-build.yml` with the
+   shared helper:
+
+   ```bash
+   scripts/rust-ci-cache-key.sh --prefix ${{ runner.os }}-cargo-wasm
+   ```
 3. Leave the WASM job scope unchanged — it is already correct.
