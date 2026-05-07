@@ -9,3 +9,13 @@ target/
 !.github
 !.gitleaks.toml
 on/
+
+# --- Vibe Coder safety patterns (Issue #1751) ---
+!.vibecoder.json
+.config.json
+.config*.json
+*.secret.json
+.secrets/
+.env
+.env.*
+# --- end Vibe Coder safety patterns ---

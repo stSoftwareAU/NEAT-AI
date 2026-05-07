@@ -27,6 +27,7 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";
 import { runRecordingPhase } from "@architecture/ErrorGuidedStructuralEvolution/DataRecorderRecording.ts";
 import { runAnalysisLoop } from "@architecture/ErrorGuidedStructuralEvolution/DataRecorderAnalysis.ts";
+import { checkAnalysisHeapAbort } from "@architecture/ErrorGuidedStructuralEvolution/AnalysisHeapGuard.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
@@ -316,6 +317,32 @@ class DataRecorder {
       fileProcessTime = perfStats.fileProcessingTime;
 
       if (!recordingSuccess) {
+        return {
+          ID: this.ID,
+          addHelpfulSynapses: undefined,
+          addHelpfulNeurons: undefined,
+          coordinatedStructuralCandidates: undefined,
+          removeHarmfulSynapse: undefined,
+          removeHarmfulNeurons: undefined,
+          removalCandidates: undefined,
+          candidateSquashes: undefined,
+        };
+      }
+
+      // Issue #2594: Heap-aware extension guard.
+      // Before we extend the timeout to give analysis room to run, sample
+      // the heap. If MemoryMonitor reports CRITICAL pressure here, the
+      // analysis phase is very likely to OOM the worker — the
+      // critical-level cache eviction has already fired in earlier ticks
+      // and was not enough. Skip the extension entirely and reuse the
+      // partial-result path so the caller gets the same empty
+      // DiscoverResult shape as the recordingSuccess === false branch.
+      const heapAbort = checkAnalysisHeapAbort(
+        this.ID,
+        this.config.memory,
+        getLogger(),
+      );
+      if (heapAbort.abort) {
         return {
           ID: this.ID,
           addHelpfulSynapses: undefined,
