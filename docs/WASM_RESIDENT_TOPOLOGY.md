@@ -13,7 +13,7 @@
 > (Foreign Function Interface), **UUID** (Universally Unique Identifier),
 > **LRU** (least recently used).
 
-### 🔗 Sibling docs in the **Compute / WASM** cluster
+## 🔗 Sibling docs in the **Compute / WASM** cluster
 
 - [ACTIVATION_FUNCTIONS.md](./ACTIVATION_FUNCTIONS.md) — squash catalogue
   applied during activation.

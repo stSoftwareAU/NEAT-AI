@@ -12,7 +12,7 @@
 > Unit), **SELU** (Scaled ELU), **TANH** (hyperbolic tangent), **NaN** (Not a
 > Number).
 
-### 🔗 Sibling docs in the **Compute / WASM** cluster
+## 🔗 Sibling docs in the **Compute / WASM** cluster
 
 - [BACKPROP_ELASTICITY.md](./BACKPROP_ELASTICITY.md) — how saturated squashes
   interact with elastic weight updates (where this guide ends, that one begins).

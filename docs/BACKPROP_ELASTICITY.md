@@ -10,7 +10,7 @@
 > **WASM** (WebAssembly), **ReLU** (Rectified Linear Unit), **TANH** (hyperbolic
 > tangent), **MCMC** (Markov-chain Monte Carlo).
 
-### 🔗 Sibling docs in the **Compute / WASM** cluster
+## 🔗 Sibling docs in the **Compute / WASM** cluster
 
 - [ACTIVATION_FUNCTIONS.md](./ACTIVATION_FUNCTIONS.md) — squash catalogue and
   saturation behaviour referenced throughout this doc.

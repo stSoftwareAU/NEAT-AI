@@ -10,6 +10,8 @@
 > vocabulary is in [`AGENTS.md`](../AGENTS.md#-terminology) and the doc index is
 > [`docs/README.md`](README.md).
 
+<!-- -->
+
 > [!NOTE]
 > Intelligent Design is distinct from random mutation — it performs a
 > systematic, exhaustive scan of the activation function space and persists its

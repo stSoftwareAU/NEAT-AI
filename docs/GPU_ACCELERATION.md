@@ -12,7 +12,7 @@
 > Shading Language), **DX12** (Microsoft DirectX 12), **API** (Application
 > Programming Interface).
 
-### 🔗 Sibling docs
+## 🔗 Sibling docs
 
 - **Compute / WASM cluster**:
   [ACTIVATION_FUNCTIONS.md](./ACTIVATION_FUNCTIONS.md) ·
@@ -56,6 +56,8 @@ and the `getGpuBackendInfo()` runtime probe.
 > The set of backends is determined entirely by the `wgpu` crate version pinned
 > in NEAT-AI-Discovery — there is no platform-specific code in this repository.
 > `getGpuBackendInfo()` reports the actual selection at runtime.
+
+<!-- -->
 
 > [!NOTE]
 > GPU acceleration is automatic and requires no platform-specific configuration.

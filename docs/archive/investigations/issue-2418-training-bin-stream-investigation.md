@@ -6,7 +6,7 @@
 > The line of work has closed — read on demand for historical context. Topic
 > index: [`docs/README.md`](../../README.md); entry point:
 > [`README.md`](../../../README.md).
-
+>
 > **Status:** Investigation closed as `negative-result` — **no action**.
 >
 > **Summary:** The TypeScript per-record `seekSync` + `readSync` path in
