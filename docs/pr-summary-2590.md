@@ -6,10 +6,14 @@ Fixed the GitHub Pages (Jekyll) build failure caused by literal Liquid syntax in
 two PR-summary docs, and added a regression test that scans every Markdown file
 under `docs/` for the same class of mistake. The Pages build was crashing with:
 
+{% raw %}
+
 ```
 Liquid Exception: Liquid syntax error (line 64): Tag '{% ... %}' was not
 properly terminated with regexp: /\%\}/ in pr-summary-2568.md
 ```
+
+{% endraw %}
 
 Two files contained literal Liquid sequences in prose. Inline backticks do not
 protect Liquid under Jekyll, so wrapping in a Liquid raw block (or moving the
@@ -40,18 +44,10 @@ flowchart LR
     C --> F[Page rendered OK]
 ```
 
-Regression test output (the test fails before the docs fix and passes after):
-
-```
-running 6 tests from ./test/docs/JekyllLiquidSafety.ts
-docs/**/*.md contains no unescaped Liquid syntax (#2590) ... ok (70ms)
-findLiquidOffences flags bare {% in prose ... ok (0ms)
-findLiquidOffences flags bare {{ in prose ... ok (0ms)
-findLiquidOffences ignores Liquid inside fenced code blocks ... ok (0ms)
-findLiquidOffences ignores Liquid inside {% raw %} blocks ... ok (0ms)
-findLiquidOffences supports inline {% raw %}{% endraw %} on one line ... ok (0ms)
-ok | 6 passed | 0 failed (72ms)
-```
+Regression test output: all six tests in `test/docs/JekyllLiquidSafety.ts` pass
+— the docs walker test plus five helper tests covering prose with bare Liquid,
+fenced blocks, multi-line raw regions, and inline raw/endraw pairs. The walker
+fails (with file:line) before the docs fix and goes green after.
 
 Both `./quality.sh --lint-only < /dev/null` and
 `./quality.sh --check-only
