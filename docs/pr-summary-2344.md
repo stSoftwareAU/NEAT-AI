@@ -74,7 +74,11 @@ The follow-up workflow PR (by a user/token with `workflow` scope) should:
 2. Replace the inline `hashFiles(...)` cache key in `wasm-build.yml` with the
    shared helper:
 
+   {% raw %}
+
    ```bash
    scripts/rust-ci-cache-key.sh --prefix ${{ runner.os }}-cargo-wasm
    ```
+
+   {% endraw %}
 3. Leave the WASM job scope unchanged — it is already correct.
