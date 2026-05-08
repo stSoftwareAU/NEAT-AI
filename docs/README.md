@@ -101,6 +101,10 @@ Subsystems that only some users need.
   squash optimisation.
 - **[PREDICTIVE_CODING.md](PREDICTIVE_CODING.md)** — neuroscience-inspired
   predictive-coding training mode.
+- **[REINFORCEMENT_LEARNING.md](REINFORCEMENT_LEARNING.md)** — streaming-
+  observation / agent-rollout pattern for episode-based tasks (Snake,
+  Cart-Pole). Names the use case, documents the `Creature.activate` contract,
+  and links to the worked example in NEAT-AI-Examples.
 - **[dna-sharing-bake-off-results.md](dna-sharing-bake-off-results.md)** —
   bake-off comparison of inter-island DNA-sharing primitives (Issue #2496).
 

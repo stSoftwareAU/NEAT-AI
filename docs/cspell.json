@@ -6,7 +6,7 @@
   ],
   "ignoreRegExpList": [
     "/\\b[A-Z][A-Z0-9]*\\b/g",
-    "/\\w*[ᵢᵤₐ₀₁₂₃₄₅₆₇₈₉]\\w*/g"
+    "/\\w*[ᵢᵤₐₙ₀₁₂₃₄₅₆₇₈₉]\\w*/g"
   ],
   "words": [
     "Accum",
@@ -32,6 +32,7 @@
     "analyzed",
     "analyzes",
     "analyzing",
+    "argmax",
     "arctanh",
     "autonumber",
     "Autoencoder",
@@ -161,6 +162,7 @@
     "Gilks",
     "Gimpel",
     "githubusercontent",
+    "Glos",
     "Goodfellow",
     "gotchas",
     "gtimeout",
@@ -300,6 +302,7 @@
     "reseen",
     "retryable",
     "rlib",
+    "RLlib",
     "rotl",
     "roundtrip",
     "runlib",

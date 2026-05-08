@@ -37,6 +37,8 @@ New here? Skim this section first; every topic guide is one link away.
   - Specialised: [CRISPR Guide](./docs/CRISPR_GUIDE.md),
     [Intelligent Design](./docs/INTELLIGENT_DESIGN.md),
     [Predictive Coding](./docs/PREDICTIVE_CODING.md)
+  - Topic guides:
+    [Reinforcement learning / agent rollouts](./docs/REINFORCEMENT_LEARNING.md)
   - Governance: [Core Dependency Policy](./docs/CORE_DEPENDENCY_POLICY.md),
     [Parity Gate](./docs/PARITY_GATE.md), [Security](./SECURITY.md),
     [Changelog](./CHANGELOG.md)

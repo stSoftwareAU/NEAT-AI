@@ -476,6 +476,26 @@ graph LR
 - Limited scalability compared to massive transformers
 - Less efficient for pure parallel processing
 
+### 🎮 Reinforcement Learning
+
+NEAT-AI is a **direct policy search** method for episode-based reinforcement
+learning (RL): each creature is a candidate policy, and the rollout score
+(cumulative reward, optionally with shaping penalties) is its fitness. Compared
+to value-based RL ([DQN](https://www.nature.com/articles/nature14236)) and
+policy-gradient methods ([PPO](https://arxiv.org/abs/1707.06347), REINFORCE),
+NEAT does not learn a value function and does not differentiate through the
+policy — it evolves the network's topology and weights directly against a scalar
+episode score. This means the reward can be sparse, discontinuous, or provided
+only by a black-box simulator; the action decoder need not be differentiable;
+and the policy architecture grows with the task instead of being chosen up
+front. The cost is sample efficiency per environment step — when a dense,
+differentiable reward is available, DQN or PPO usually converge in fewer
+simulator steps. Where NEAT wins is in parallelism (rollouts are embarrassingly
+parallel across the population) and robustness to non-differentiable objectives.
+The streaming primitive is `Creature.activate`, called once per simulator tick;
+the canonical episode-rollout loop and worked-example link are documented in
+[`docs/REINFORCEMENT_LEARNING.md`](./docs/REINFORCEMENT_LEARNING.md).
+
 ## ✨ Our Unique Approaches
 
 ### 1. 🧬 Memetic Evolution (Hybrid Evolution + Backpropagation)

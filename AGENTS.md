@@ -84,6 +84,16 @@ machine-learning idea:
   creatures, inspired by
   [horizontal gene transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer)
   in microbiology.
+- **Episode rollout** — one full play-through of a simulator for a creature,
+  from `reset` to a terminal state (or a `maxSteps` cap). Each tick is observe →
+  `Creature.activate` → decode action → `sim.step`. Used for
+  reinforcement-learning tasks; see
+  [`docs/REINFORCEMENT_LEARNING.md`](./docs/REINFORCEMENT_LEARNING.md).
+- **Streaming observation** — the input to `Creature.activate` in an episode
+  rollout, where the next observation depends on the agent's previous action.
+  The simulator owns world state; the creature owns weights. This is the API
+  pattern documented in
+  [`docs/REINFORCEMENT_LEARNING.md`](./docs/REINFORCEMENT_LEARNING.md).
 
 If you spot another fun label, expect it to be backed by a reference to the
 standard term the first time it appears.
