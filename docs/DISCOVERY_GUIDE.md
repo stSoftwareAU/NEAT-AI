@@ -1,11 +1,11 @@
 # 🔍 Discovery: Continuous Incremental Improvement
 
-> **Summary** — Discovery is the user-facing entry point to NEAT-AI's
-> error-guided structural evolution. It runs as a continuous loop, fetching the
-> current best creature, asking the Rust extension via the Foreign Function
-> Interface (FFI) to propose small structural changes, and checking improvements
-> back into a shared pool. This guide covers configuration, distributed setup,
-> and best practices. For internals see
+> **Summary** — Discovery is the user-facing entry point to
+> [NEAT-AI](../AGENTS.md#-terminology)'s error-guided structural evolution. It
+> runs as a continuous loop, fetching the current best creature, asking the Rust
+> extension via the Foreign Function Interface (FFI) to propose small structural
+> changes, and checking improvements back into a shared pool. This guide covers
+> configuration, distributed setup, and best practices. For internals see
 > [DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md); for the
 > `discoveryDir()` Application Programming Interface (API) and on-disk layout
 > see [DISCOVERY_DIR.md](DISCOVERY_DIR.md); for Graphics Processing Unit (GPU)

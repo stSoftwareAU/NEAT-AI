@@ -24,7 +24,10 @@ See the [docs index](./README.md) for the full topic map.
 ## 🧪 Acronyms used in this guide
 
 - **PC** — Predictive Coding
-- **NEAT** — NeuroEvolution of Augmenting Topologies
+- **NEAT** — NeuroEvolution of Augmenting Topologies (the original 2002
+  algorithm); see [terminology](../AGENTS.md#-terminology)
+- **NEAT-AI** — this project, which extends standard NEAT (see
+  [NEAT vs NEAT-AI](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use))
 - **WASM** — WebAssembly
 - **FFI** — Foreign Function Interface
 - **MSE / MAE / RMSE / MAPE** — Mean Squared / Absolute / Root-Mean-Squared /
@@ -210,7 +213,7 @@ NEAT-AI's core architecture consists of:
 
 #### 🔢 How Layers Map
 
-NEAT networks are not strictly layered — they are arbitrary directed graphs
+NEAT-AI networks are not strictly layered — they are arbitrary directed graphs
 (with optional recurrent connections). For PC, we define a neuron's **depth** as
 its topological distance from the input layer:
 

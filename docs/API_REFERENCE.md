@@ -1,6 +1,9 @@
 # 📖 NEAT-AI API Reference
 
-Comprehensive reference for the public API exported from `mod.ts`.
+Comprehensive reference for the public API exported from `mod.ts`. For project
+terminology — including the distinction between
+[NEAT and NEAT-AI](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use) — see
+[`AGENTS.md`](../AGENTS.md#-terminology).
 
 All imports use the single entry point:
 
@@ -38,7 +41,7 @@ import { Costs, Creature, Mutation, Selection } from "@stsoftware/neat-ai";
 
 ### 🐛 Creature
 
-The central class representing a neural network (genome) in NEAT.
+The central class representing a neural network (genome) in NEAT-AI.
 
 ```typescript
 import { Creature } from "@stsoftware/neat-ai";
@@ -179,7 +182,7 @@ interface CrisprInterface {
 
 ### ⚙️ NeatOptions
 
-The primary configuration type for the NEAT algorithm. Passed to
+The primary configuration type for the NEAT-AI evolutionary loop. Passed to
 `Creature.evolveDir()`.
 
 ```typescript
@@ -527,7 +530,7 @@ creature.activate(input);
 
 ## 6. 🧬 Evolution API
 
-The main entry point for NEAT evolution.
+The main entry point for NEAT-AI evolution.
 
 ### 🔄 Creature.evolveDir()
 
@@ -1222,9 +1225,9 @@ const population = createSeededPopulation({
 
 ## 17. 📤 ONNX Export
 
-Issue #1866: Export trained NEAT creatures to the [ONNX](https://onnx.ai/) (Open
-Neural Network Exchange) format for deployment in standard ML pipelines. The
-exported model produces identical outputs to the original creature (within
+Issue #1866: Export trained NEAT-AI creatures to the [ONNX](https://onnx.ai/)
+(Open Neural Network Exchange) format for deployment in standard ML pipelines.
+The exported model produces identical outputs to the original creature (within
 floating-point precision).
 
 ```typescript
@@ -1275,11 +1278,12 @@ Deno.writeFileSync("model.onnx", onnxBytes);
 
 ## 18. 🧪 Synthetic Synapses
 
-Issue #1919: Synthetic synapses address a key weakness of NEAT's incremental
-topology growth — newly evolved networks often have sparse inter-layer
-connectivity compared to conventional dense neural networks. Synthetic synapses
-temporarily densify the network during backpropagation, giving gradient descent
-a richer search space to discover useful connections.
+Issue #1919: Synthetic synapses address a key weakness of standard NEAT's
+incremental topology growth — newly evolved networks often have sparse
+inter-layer connectivity compared to conventional dense neural networks. NEAT-AI
+adds synthetic synapses to temporarily densify the network during
+backpropagation, giving gradient descent a richer search space to discover
+useful connections.
 
 ### Lifecycle
 

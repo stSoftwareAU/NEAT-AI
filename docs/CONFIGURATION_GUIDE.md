@@ -1,9 +1,10 @@
 # ⚙️ Configuration Guide
 
-This page is the topic index for NEAT-AI (NeuroEvolution of Augmenting
-Topologies — Artificial Intelligence) configuration. The full surface lives in
-topic detail docs under [`docs/config/`](./config/), grouped by configuration
-domain to mirror the structure of `src/config/`.
+This page is the topic index for [NEAT-AI](../AGENTS.md#-terminology)
+(NeuroEvolution of Augmenting Topologies — Artificial Intelligence)
+configuration. The full surface lives in topic detail docs under
+[`docs/config/`](./config/), grouped by configuration domain to mirror the
+structure of `src/config/`.
 
 Configuration is passed via `NeatOptionsInput` to `createNeatConfig()`, which
 validates, parses, and freezes the result into a read-only `NeatConfig`. Numeric
