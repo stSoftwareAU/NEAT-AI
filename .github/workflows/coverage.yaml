@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NEAT_RUST_DISCOVERY_OPTIONAL: "true"
+      # Enable per-process discovery directory isolation so parallel test
+      # workers don't collide on the same creature-UUID subdirectory.
+      DENO_TEST: "1"
 
     steps:
       # Checkout the code
