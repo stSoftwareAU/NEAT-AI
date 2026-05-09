@@ -956,6 +956,21 @@ export class Creature implements CreatureInternal {
     return training.evolveDir(this, dataSetDir, options);
   }
 
+  /**
+   * Evolve the creature against a streaming-observation simulator
+   * (Issue #2611). See {@link training.evolveEnv}.
+   */
+  evolveEnv<S, A>(
+    adapter: import("./creature/EpisodeAdapter.ts").EpisodeAdapter<S, A>,
+    options:
+      & NeatOptions
+      & import("./creature/EpisodeAdapter.ts").EpisodicOptions,
+  ): Promise<
+    { error: number; score: number; time: number; generation: number }
+  > {
+    return training.evolveEnv(this, adapter, options);
+  }
+
   evolveDataSet(
     dataSet: DataRecordInterface[],
     options: NeatOptions,

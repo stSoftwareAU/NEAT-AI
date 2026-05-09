@@ -29,6 +29,22 @@ export { Creature, CURRENT_CREATURE_SEMANTIC_VERSION } from "@creature";
 export { exportSnapshotJSON } from "@creature/CreatureSerialization.ts";
 
 /**
+ * Episode-rollout API for `Creature.evolveEnv()` (Issue #2611).
+ *
+ * The {@link EpisodeAdapter} interface lets callers drive evolution against a
+ * streaming-observation simulator (RL-style) instead of a partitioned dataset
+ * directory. {@link EpisodicOptions} extends `NeatOptions` with the
+ * trial-averaging and reward-mapping knobs that are specific to
+ * episode-based fitness.
+ */
+export type {
+  EpisodeAdapter,
+  EpisodeTrialsEvent,
+  EpisodicOptions,
+} from "@creature/EpisodeAdapter.ts";
+export { defaultRewardToError } from "@creature/EpisodeAdapter.ts";
+
+/**
  * Creature Interfaces
  *
  * These types define the structure of data used for exporting and tracing Creature instances.

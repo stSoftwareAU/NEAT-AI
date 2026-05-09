@@ -56,6 +56,12 @@ import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { setMaxCachedWasmCreatureActivations } from "@wasm/WasmCreatureActivationLRU.ts";
 import { setWasmCompilationCacheSize } from "@wasm/WasmCompilationCache.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
+import {
+  defaultRewardToError,
+  type EpisodeAdapter,
+  type EpisodicOptions,
+} from "@creature/EpisodeAdapter.ts";
+import type { Fitness } from "@architecture/Fitness.ts";
 
 /**
  * Propagate expected values backward through the network for all output neurons.
@@ -588,6 +594,255 @@ export async function evolveDir(
     error: error,
     score: bestScore,
     generation: generation,
+    time: Date.now() - start,
+  };
+}
+
+/**
+ * Evolve the creature against a streaming-observation simulator using an
+ * {@link EpisodeAdapter} (Issue #2611).
+ *
+ * Reuses the same outer shape as {@link evolveDir}: a single `Neat` instance
+ * drives population management, mutation, crossover, elitism, plateau
+ * detection, and lifecycle events. The only difference is the scorer — the
+ * worker-based dataset {@link Fitness} is swapped for an
+ * {@link EpisodicFitness} that runs episode rollouts inline.
+ *
+ * Stop conditions (`targetError`, `timeoutMinutes`, `iterations`, SIGTERM) and
+ * lifecycle events (`generation_complete`, `plateau_detected`) match
+ * `evolveDir()` so existing consumers do not need a new event handler.
+ * Cumulative episode reward is mapped to the non-negative `error` slot via
+ * {@link EpisodicOptions.rewardToError} (default `error = max(0, -reward)`),
+ * so `targetError` semantics are preserved.
+ *
+ * Multi-threaded worker rollouts are deliberately deferred to a follow-up so
+ * this PR stays reviewable; today every episode runs on the main thread.
+ */
+export async function evolveEnv<S, A>(
+  creature: Creature,
+  adapter: EpisodeAdapter<S, A>,
+  options: NeatOptions & EpisodicOptions,
+): Promise<
+  { error: number; score: number; time: number; generation: number }
+> {
+  if (creature.input !== adapter.inputCount) {
+    throw new Error(
+      `Creature input ${creature.input} does not match adapter inputCount ` +
+        `${adapter.inputCount}`,
+    );
+  }
+  if (creature.output !== adapter.outputCount) {
+    throw new Error(
+      `Creature output ${creature.output} does not match adapter outputCount ` +
+        `${adapter.outputCount}`,
+    );
+  }
+  if (adapter.maxSteps <= 0 || !Number.isFinite(adapter.maxSteps)) {
+    throw new Error(
+      `Adapter.maxSteps must be a positive finite integer, got ${adapter.maxSteps}`,
+    );
+  }
+
+  let interrupted = false;
+  const signalListener = () => {
+    getLogger().info("SIGTERM received, stopping evolveEnv...");
+    interrupted = true;
+  };
+  Deno.addSignalListener("SIGTERM", signalListener);
+
+  // Support AbortSignal for external interruption (e.g. in tests).
+  // Prefer this over Deno.kill(Deno.pid, "SIGTERM") from worker threads,
+  // which propagates to the main process and can abort parallel test runners.
+  const abortListener = () => {
+    getLogger().info("AbortSignal received, stopping evolveEnv...");
+    interrupted = true;
+  };
+  options.signal?.addEventListener("abort", abortListener);
+
+  const start = Date.now();
+  const config = createNeatConfig(options);
+
+  setMaxCachedWasmCreatureActivations(config.wasmCache.maxCachedActivations);
+  setWasmCompilationCacheSize(config.wasmCache.compilationCacheSize);
+
+  const endTimeMS = config.timeoutMinutes
+    ? start + Math.max(1, config.timeoutMinutes) * 60000
+    : 0;
+
+  const trialsPerScore = options.trialsPerScore !== undefined
+    ? Math.max(1, Math.floor(options.trialsPerScore))
+    : 1;
+  const initialPerturbation = options.initialPerturbation !== undefined
+    ? Math.max(0, options.initialPerturbation)
+    : 0;
+  const baseSeed = options.seed !== undefined && options.seed !== null
+    ? Math.max(0, Math.floor(options.seed))
+    : 0;
+  const rewardToError = options.rewardToError ?? defaultRewardToError;
+
+  // Lazy import avoids adding EpisodicFitness → Fitness to the static module
+  // graph, which would create a circular initialisation ordering problem
+  // (Neat.ts → Creature.ts → CreatureTraining.ts → EpisodicFitness.ts → Fitness.ts
+  // while Neat.ts also imports Fitness.ts directly).
+  const { EpisodicFitness } = await import("@creature/EpisodicFitness.ts");
+  const episodicFitness = new EpisodicFitness({
+    adapter,
+    growth: config.costOfGrowth,
+    trialsPerScore,
+    initialPerturbation,
+    baseSeed,
+    rewardToError,
+    onEpisodeTrials: options.onEpisodeTrials,
+  });
+
+  // Empty worker pool: scoring runs inline. Discovery/training scheduling
+  // becomes a no-op (the schedulers warn and bail when no workers are
+  // available); breeding falls back to the main-thread path.
+  const neat = new Neat(creature.input, creature.output, config, []);
+  // Swap in the episodic scorer. The `fitness` property is `readonly` at the
+  // type level for ergonomics, but this is the documented seam for
+  // alternative scoring strategies.
+  (neat as unknown as { fitness: Fitness }).fitness = episodicFitness;
+
+  await neat.populatePopulation(creature);
+
+  let error = Infinity;
+  let bestScore = -Infinity;
+
+  const { Creature: CreatureClass } = await import("../Creature.ts");
+  let bestCreature: InstanceType<typeof CreatureClass> | undefined;
+
+  let iterationStartMS = Date.now();
+  let generation = 0;
+  const targetError = config.targetError;
+  const iterations = config.iterations;
+
+  while (true) {
+    generation++;
+    episodicFitness.setGeneration(generation);
+
+    // deno-lint-ignore no-await-in-loop
+    const result = await neat.evolve(bestCreature);
+
+    const fittest = result.fittest;
+    const fittestScore = fittest.score!;
+    assert(fittestScore >= bestScore, "Score is less than best score");
+    if (fittestScore > bestScore) {
+      const errorTmp = getTag(fittest, "error");
+      assert(errorTmp, "No error tag found");
+
+      const parsedError = errorTmp === "Infinity"
+        ? Number.POSITIVE_INFINITY
+        : Number.parseFloat(errorTmp);
+      assert(Number.isFinite(parsedError), "Error is not finite");
+      assert(parsedError >= 0, "Error is negative");
+      error = parsedError;
+      bestScore = fittestScore;
+      bestCreature = fittest.shallowClone() as InstanceType<
+        typeof CreatureClass
+      >;
+      bestCreature.score = bestScore;
+    }
+
+    const now = Date.now();
+    const timedOut = endTimeMS ? now > endTimeMS : false;
+
+    let phaseTiming = result.phaseTiming;
+    if (config.checkpointEveryGeneration && config.creatureStore) {
+      const checkpointStart = Date.now();
+      // deno-lint-ignore no-await-in-loop
+      await writeCreatures(neat, config.creatureStore);
+      phaseTiming = {
+        ...result.phaseTiming,
+        checkpointWriteMs: Date.now() - checkpointStart,
+      };
+    }
+
+    const generationElapsedMs = now -
+      (generation === 1 ? start : iterationStartMS);
+    emitTrainingEvent(config.onTrainingEvent, {
+      kind: "generation_complete",
+      timestamp: new Date().toISOString(),
+      generation,
+      bestFitness: fittestScore,
+      averageFitness: result.averageScore,
+      populationSize: neat.population.length,
+      elapsedMs: generationElapsedMs,
+      phaseTiming,
+      throughput: result.throughput,
+    });
+
+    if (result.plateau.onPlateau) {
+      emitTrainingEvent(config.onTrainingEvent, {
+        kind: "plateau_detected",
+        timestamp: new Date().toISOString(),
+        generation,
+        stagnationCount: result.plateau.generationsOnPlateau,
+        plateauThreshold: config.plateauDetection.windowSize,
+        improvementRate: result.plateau.improvementRate,
+        mutationMultiplier: result.plateau.mutationMultiplier,
+      });
+    }
+
+    const completed = interrupted || timedOut || error <= targetError ||
+      generation >= iterations;
+
+    if (
+      config.log &&
+      (generation % config.log === 0 || completed)
+    ) {
+      let avgTxt = "";
+      if (Number.isFinite(result.averageScore)) {
+        avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
+      }
+      getLogger().info(
+        "Generation",
+        generation,
+        "score",
+        fittest.score,
+        avgTxt,
+        "error",
+        error,
+        (config.log > 1 ? "avg " : "") + "time",
+        yellow(
+          format(Math.round((now - iterationStartMS) / config.log), {
+            ignoreZero: true,
+          }),
+        ),
+      );
+      iterationStartMS = now;
+    }
+
+    if (completed) {
+      if (interrupted) break;
+      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+        break;
+      }
+      // deno-lint-ignore no-await-in-loop
+      await neat.awaitInFlightTasks();
+    }
+  }
+
+  // No worker pool to terminate — episode rollouts ran inline. Replay queue
+  // never had a chance to schedule anything (no dataDir was provided), but
+  // await it for symmetry with evolveDir() in case a future change wires one
+  // through.
+  await neat.discoveryReplayQueue.waitForCompletion();
+
+  if (bestCreature) {
+    creature.loadFrom(bestCreature, config.debug, "evolveEnv:restoreBest");
+  }
+
+  if (config.creatureStore) {
+    await writeCreatures(neat, config.creatureStore);
+  }
+
+  Deno.removeSignalListener("SIGTERM", signalListener);
+  options.signal?.removeEventListener("abort", abortListener);
+  return {
+    error,
+    score: bestScore,
+    generation,
     time: Date.now() - start,
   };
 }
