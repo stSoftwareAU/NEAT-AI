@@ -1,8 +1,9 @@
 # 🎮 Reinforcement Learning / Agent Rollouts
 
-> **Streaming-observation / agent-rollout** in NEAT-AI is the API pattern for
-> episode-based tasks (Snake, Cart-Pole, grid worlds, control tasks) where the
-> next observation depends on the creature's previous action.
+> **Streaming-observation / agent-rollout** in
+> [NEAT-AI](../AGENTS.md#-terminology) is the API pattern for episode-based
+> tasks (Snake, Cart-Pole, grid worlds, control tasks) where the next
+> observation depends on the creature's previous action.
 >
 > The library already supports this pattern out of the box — `Creature.activate`
 > is the streaming primitive — but until now there was no document on the
@@ -40,9 +41,9 @@ Use the streaming-observation pattern when:
   [agent-environment loop](https://en.wikipedia.org/wiki/Reinforcement_learning).
 - You can score a full episode after the fact — typically a sum of rewards, a
   survival proxy, or a shaping signal.
-- A differentiable loss is **not** available, or is expensive to construct. NEAT
-  optimises the network end-to-end against the episode score, so the reward
-  signal does not need to be differentiable.
+- A differentiable loss is **not** available, or is expensive to construct.
+  NEAT-AI optimises the network end-to-end against the episode score, so the
+  reward signal does not need to be differentiable.
 
 If your task is fully supervised — every observation comes with a target output
 and the data is independent — you do not need this pattern. Use
@@ -169,7 +170,7 @@ flowchart LR
 
 ## 📊 Scoring an episode
 
-The fitness score returned to NEAT is **a single scalar per creature, per
+The fitness score returned to NEAT-AI is **a single scalar per creature, per
 generation**. Common choices:
 
 | Score                   | When to use                                                                                    |
@@ -247,14 +248,14 @@ This puts it in a different family from the dominant deep-RL methods.
 | Policy-gradient                                                           | REINFORCE, PPO          | The policy `π(a \| s)` directly, via gradient on a stochastic objective.        | Yes — the policy must be differentiable, and we differentiate through it.                   | Continuous action spaces. Mature ecosystems (RLlib, Stable-Baselines3).                                                                        | Variance is high; needs careful baselines. Hyperparameter-sensitive.                                                                |
 | **Neuroevolution (NEAT-AI)**                                              | NEAT, CMA-ES, OpenAI ES | The policy network itself — both topology and weights — by evolutionary search. | **No.** The reward is a scalar produced by the simulator; nothing has to be differentiable. | Works with non-differentiable, sparse, or simulator-only rewards. Embarrassingly parallel across the population. Topology grows automatically. | Less sample-efficient per environment step than DQN/PPO when a good gradient signal exists. Computationally heavier per generation. |
 
-**When NEAT is the right choice for a streaming-observation task:**
+**When NEAT-AI is the right choice for a streaming-observation task:**
 
 - The reward is sparse, non-differentiable, or only available at the end of the
   episode (e.g. "did the agent win?").
 - The action space mixes discrete and continuous components, or the action
   decoder is itself non-differentiable.
 - You want the architecture to grow with the task — no manual layer sizing.
-- You have many CPU cores or distributed nodes — NEAT scales by spreading
+- You have many CPU cores or distributed nodes — NEAT-AI scales by spreading
   rollouts across them, not by one big GPU.
 
 **When DQN or PPO is the better choice:**

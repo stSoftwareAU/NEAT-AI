@@ -1,7 +1,7 @@
 # 🐛 Troubleshooting Guide
 
-Quick FAQ-style index of NEAT-AI failure modes. Each entry describes the symptom
-in one sentence and links to a detail doc under
+Quick FAQ-style index of [NEAT-AI](../AGENTS.md#-terminology) failure modes.
+Each entry describes the symptom in one sentence and links to a detail doc under
 [`troubleshooting/`](troubleshooting/) where the full diagnosis lives.
 
 If you have arrived here by Googling an error message, jump straight to the

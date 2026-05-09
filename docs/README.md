@@ -3,6 +3,18 @@
 Welcome to the NEAT-AI documentation. This page is the topic-by-topic table of
 contents — every long-form guide in the repository has a home here.
 
+> [!IMPORTANT]
+> **NEAT-AI ≠ NEAT.** NEAT-AI started from the original NeuroEvolution of
+> Augmenting Topologies algorithm
+> ([Stanley & Miikkulainen 2002](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf))
+> but extends it with memetic evolution, error-guided Discovery, MCMC mutation
+> acceptance, synthetic synapses, predictive coding, Muon-style orthogonalised
+> gradients, and other modern algorithms. When this documentation describes what
+> **this repository** does, it says **NEAT-AI**. When it discusses the 2002
+> algorithm itself, it says **NEAT** (or "standard NEAT", "pure NEAT"). The
+> [NEAT vs NEAT-AI rule in AGENTS.md](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
+> is the canonical entry.
+
 If you have not used NEAT-AI before, follow the **Where to start** reading path
 below; it walks from a zero-knowledge introduction through to the topic guides
 you are most likely to need next.
@@ -15,7 +27,10 @@ A new reader should follow the docs in this order:
    NEAT-AI is, the major features, and gives a working example.
 2. **[../AGENTS.md](../AGENTS.md)** — terminology and coding conventions. Read
    this if any of the playful names (Creature, Discovery, CRISPR, Grafting,
-   MCMC) are unfamiliar.
+   MCMC) are unfamiliar. In particular, see the
+   [**NEAT** and **NEAT-AI** terminology entries](../AGENTS.md#-terminology) and
+   the [NEAT vs NEAT-AI rule](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
+   for the convention used throughout this repository.
 3. **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — development setup, how to run
    the quality gate, and how to bump the pinned NEAT-AI-core dependency.
 4. **This page (`docs/README.md`)** — pick a topic guide below for the feature
@@ -135,10 +150,10 @@ Project-level policies, audits, and release plumbing.
 
 ## 🔍 Comparison with other approaches
 
-- **[../COMPARISON.md](../COMPARISON.md)** — how NEAT compares to traditional
-  neural networks, CNNs (Convolutional Neural Networks), RNNs (Recurrent Neural
-  Networks), and modern LLMs (Large Language Models). Owned by Issue #2563 and
-  excluded from the index refresh.
+- **[../COMPARISON.md](../COMPARISON.md)** — how NEAT-AI compares to standard
+  NEAT, traditional neural networks, CNNs (Convolutional Neural Networks), RNNs
+  (Recurrent Neural Networks), and modern LLMs (Large Language Models). Owned by
+  Issue #2563 and excluded from the index refresh.
 
 ## 🚫 Out of scope for this index
 

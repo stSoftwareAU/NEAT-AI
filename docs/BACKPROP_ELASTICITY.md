@@ -1,14 +1,15 @@
 # 🔄 Elastic Back Propagation
 
-> **TL;DR** — NEAT-AI's backpropagation does not blindly apply the chain rule
-> everywhere. It (a) computes a target pre-squash value for each neuron, (b)
-> distributes the required change across inbound weights using a minimum-change
-> heuristic weighted by `activationᵢ² × safeZoneFactorᵢ`, and (c) refuses to
-> push neurons that are already saturated further into saturation. The
-> topological backprop loop and the elastic distribution kernel both live in
-> WebAssembly (WASM) — there is no TypeScript fallback. Acronyms used here:
-> **WASM** (WebAssembly), **ReLU** (Rectified Linear Unit), **TANH** (hyperbolic
-> tangent), **MCMC** (Markov-chain Monte Carlo).
+> **TL;DR** — [NEAT-AI](../AGENTS.md#-terminology)'s backpropagation does not
+> blindly apply the chain rule everywhere. It (a) computes a target pre-squash
+> value for each neuron, (b) distributes the required change across inbound
+> weights using a minimum-change heuristic weighted by
+> `activationᵢ² × safeZoneFactorᵢ`, and (c) refuses to push neurons that are
+> already saturated further into saturation. The topological backprop loop and
+> the elastic distribution kernel both live in WebAssembly (WASM) — there is no
+> TypeScript fallback. Acronyms used here: **WASM** (WebAssembly), **ReLU**
+> (Rectified Linear Unit), **TANH** (hyperbolic tangent), **MCMC** (Markov-chain
+> Monte Carlo).
 
 ## 🔗 Sibling docs in the **Compute / WASM** cluster
 

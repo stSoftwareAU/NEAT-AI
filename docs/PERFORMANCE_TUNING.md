@@ -19,9 +19,10 @@
 
 See the [docs index](./README.md) for the full topic map.
 
-This guide explains how to tune NEAT-AI for large-scale training runs. It covers
-every configurable performance parameter, explains when to enable or disable
-features, and provides practical recommendations for different scenarios.
+This guide explains how to tune [NEAT-AI](../AGENTS.md#-terminology) for
+large-scale training runs. It covers every configurable performance parameter,
+explains when to enable or disable features, and provides practical
+recommendations for different scenarios.
 
 All configuration is passed via `NeatOptionsInput` to `createNeatConfig()`. See
 the [Configuration Guide](./CONFIGURATION_GUIDE.md) for the full reference of
@@ -624,7 +625,7 @@ training, near-zero connections are pruned and only useful ones are retained.
 
 ### When to Enable Synthetic Synapses
 
-- **Sparse early-evolution networks**: When NEAT has not yet evolved dense
+- **Sparse early-evolution networks**: When NEAT-AI has not yet evolved dense
   inter-layer connectivity, synthetic synapses give backpropagation more
   connections to optimise, often finding useful pathways that mutation alone
   would take many generations to discover.
@@ -723,7 +724,7 @@ best creatures.
 
 **How it works**:
 
-1. Each machine runs an independent NEAT population (an "island").
+1. Each machine runs an independent NEAT-AI population (an "island").
 2. Periodically, the best creatures from each island are exported and shared.
 3. Imported creatures are grafted into the receiving population, adding genetic
    diversity.

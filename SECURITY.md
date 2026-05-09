@@ -2,13 +2,13 @@
 
 ## 📌 Summary
 
-This document describes how to **report a vulnerability** in NEAT-AI
-(NeuroEvolution of Augmenting Topologies — Artificial Intelligence) and what
-response you can expect. Routine code-review hygiene (input validation,
-parameterised queries, secret handling) is enforced via the **`/security-review`
-Claude Code skill** that contributors run before opening a PR (see the
-secure-coding principles section of [`AGENTS.md`](./AGENTS.md)) and the in-repo
-automation listed below:
+This document describes how to **report a vulnerability** in
+[NEAT-AI](./AGENTS.md#-terminology) (NeuroEvolution of Augmenting Topologies —
+Artificial Intelligence) and what response you can expect. Routine code-review
+hygiene (input validation, parameterised queries, secret handling) is enforced
+via the **`/security-review` Claude Code skill** that contributors run before
+opening a PR (see the secure-coding principles section of
+[`AGENTS.md`](./AGENTS.md)) and the in-repo automation listed below:
 
 - **Dependency review** — every PR is scanned by
   [`actions/dependency-review-action`](https://github.com/actions/dependency-review-action)
