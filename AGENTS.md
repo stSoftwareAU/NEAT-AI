@@ -48,6 +48,19 @@ For deep dives on a single topic, follow the dedicated docs (full index in
 We keep the tone playful, but every nickname maps to a mainstream
 machine-learning idea:
 
+- **NEAT** — the original **NeuroEvolution of Augmenting Topologies** algorithm
+  published by
+  [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
+  Use this term **only** when discussing the algorithm as defined in that paper
+  (speciation by historical markings, structure-mutation crossover, and so on).
+  Synonyms acceptable for emphasis: "standard NEAT", "pure NEAT", "the 2002 NEAT
+  algorithm".
+- **NEAT-AI** — **this project**. Started from pure NEAT but extends it well
+  beyond the 2002 algorithm with memetic evolution, error-guided **Discovery**,
+  MCMC mutation acceptance, synthetic synapses, predictive coding, Muon-style
+  orthogonalised gradients, and other modern algorithms (some published only
+  weeks before this entry was written). Use this term for **all** references to
+  features, behaviour, or APIs in this repository.
 - **Creatures** are individual neural networks/genomes inside a NEAT population,
   as described in the original NEAT paper by
   [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
@@ -97,6 +110,28 @@ machine-learning idea:
 
 If you spot another fun label, expect it to be backed by a reference to the
 standard term the first time it appears.
+
+### 🆚 NEAT vs NEAT-AI — which term to use
+
+Because the project has extended far past the 2002 algorithm, mixing the two
+terms in docs and code comments has been a source of confusion. Use this rule of
+thumb:
+
+- ✅ Say **NEAT-AI** when discussing what **this repo** does — features,
+  behaviour, configuration, APIs, defaults, and roadmap.
+- ✅ Say **NEAT** (or "standard NEAT", "pure NEAT", "the 2002 NEAT algorithm")
+  **only** when contrasting with the original Stanley & Miikkulainen algorithm —
+  for example, "standard NEAT speciates by historical markings; NEAT-AI also
+  accepts mutations via an MCMC criterion".
+- ❌ Avoid using bare **NEAT** as shorthand for the implementation in
+  user-facing docs. If you mean "this codebase", write **NEAT-AI**.
+- 🧩 Inside historical-context paragraphs (e.g. the project's origin story or
+  the `src/NEAT/` folder name), bare "NEAT" is acceptable because the meaning is
+  clear from context, but prefer **NEAT-AI** when describing current behaviour.
+
+When a single sentence mentions both, name them explicitly to make the
+distinction unambiguous (e.g. "NEAT-AI inherits speciation from standard NEAT
+but replaces unconditional mutation acceptance with MCMC").
 
 ## 🏗️ Project Architecture
 
