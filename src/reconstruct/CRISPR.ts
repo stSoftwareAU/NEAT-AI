@@ -2,6 +2,7 @@ import { addTag, getTag, type TagsInterface } from "@stsoftware/tags/mod";
 import { CreatureUtil, Upgrade } from "../../mod.ts";
 import { Neuron } from "@architecture/Neuron.ts";
 import { nextNeuronId, outputNeuronId } from "@architecture/NeuronId.ts";
+import { assertNoWireSelfLoopOnForwardOnly } from "@architecture/ForwardOnlyAssertion.ts";
 import type { Creature } from "@creature";
 import { CrisprError } from "@errors/CrisprError.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
@@ -357,7 +358,22 @@ export class CRISPR {
             firstNetworkOutputIndex = indx;
           }
           neuron.type = "hidden";
-          if (neuron.uuid === undefined) {
+          // Issue #2618: ALWAYS mint a fresh stable uuid on demotion. The
+          // previous uuid is the wire-format label (`output-N`) that
+          // `exportJSON()` produced for the original output role; once the
+          // neuron is demoted to hidden, that label collides with the wire
+          // uuid the freshly appended output will produce for the same
+          // index N. Without this rewrite, the cleaved creature emits
+          // `output-N -> output-N` self-loops on export — one per appended
+          // output (multi-output regression of GRQ #2237).
+          //
+          // Only `output-N`-shaped strings are unsafe — any other previously
+          // assigned uuid is genuinely stable and must be preserved to
+          // honour the neuron-uuid-stability invariant (AGENTS.md).
+          if (
+            neuron.uuid === undefined ||
+            /^output-\d+$/.test(neuron.uuid)
+          ) {
             neuron.uuid = crypto.randomUUID();
           }
           if (neuron.id !== undefined && neuron.id < 0) {
@@ -689,6 +705,12 @@ export class CRISPR {
         // fix() here — reject the DNA and return the original (Issue #2086).
         modifiedCreature.validate({ forwardOnly: true });
         modifiedCreature.forwardOnly = true;
+        // Issue #2618: defence-in-depth wire-format check. Positional
+        // validation cannot detect synapses where two distinct neurons
+        // share the same wire uuid (e.g. a demoted `output-N` previous
+        // output and a freshly appended `output-N`). Catch any such
+        // collision before the cleaved creature leaves CRISPR.
+        assertNoWireSelfLoopOnForwardOnly(modifiedCreature, "CRISPR.cleaveDNA");
       } else {
         modifiedCreature.validate();
       }

@@ -161,3 +161,118 @@ Deno.test("CRISPR append+demote - DNA-SANE.json reproduces the multi-output demo
     }
   }
 });
+
+// Regression test for Issue #2618: when the previous outputs already carry
+// canonical wire-format uuids (`output-0`, `output-1`, ...), as produced by
+// `exportJSON()` and faithfully restored by `Creature.fromJSON()`, the demoted
+// neurons must NOT keep those wire labels. Otherwise the cleaved creature
+// emits `output-N -> output-N` self-loops once exported (because both the
+// demoted hidden neuron and the freshly appended output collapse to the same
+// wire UUID).
+//
+// This is the multi-output variant of GRQ #2237 / NEAT-AI #2618. The single-
+// output reproducer is the same scenario with one output.
+Deno.test("CRISPR append+demote - demoted previous outputs with wire-format `output-N` uuids do not collide with new outputs (Issue #2618, multi-output)", () => {
+  const json: CreatureInternal = {
+    input: 3,
+    output: 3,
+    forwardOnly: true,
+    neurons: [
+      { type: "hidden", squash: "LOGISTIC", bias: 0, index: 3, uuid: "h1" },
+      // Wire-format uuids ("output-N") as produced by exportJSON and re-loaded.
+      {
+        type: "output",
+        squash: "IDENTITY",
+        bias: 0,
+        index: 4,
+        uuid: "output-0",
+      },
+      {
+        type: "output",
+        squash: "IDENTITY",
+        bias: 0,
+        index: 5,
+        uuid: "output-1",
+      },
+      {
+        type: "output",
+        squash: "LOGISTIC",
+        bias: 0,
+        index: 6,
+        uuid: "output-2",
+      },
+    ],
+    synapses: [
+      { from: 0, to: 3, weight: 0.1 },
+      { from: 3, to: 4, weight: 0.2 },
+      { from: 1, to: 5, weight: 0.3 },
+      { from: 2, to: 6, weight: 0.4 },
+    ],
+  };
+  const creature = Creature.fromJSON(json);
+  // Mark forward-only so the cleaveDNA path enforces the strict invariant.
+  creature.forwardOnly = true;
+
+  const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-SANE.json");
+  const modified = new CRISPR(creature).cleaveDNA(
+    JSON.parse(dnaTXT),
+  ) as Creature;
+  // Forward-only must be preserved through cleaveDNA.
+  assertEquals(modified.forwardOnly, true);
+
+  // The cleaved creature must export cleanly (no recurrent synapses) — this
+  // is the contract enforced by the post-cleave forward-only assertion in
+  // GRQ's pipeline.
+  const exported = modified.exportJSON();
+
+  // Wire-format invariant 1: every neuron in the export must have a UNIQUE
+  // wire UUID. The demoted previous outputs must not collide on `output-N`
+  // with the freshly appended outputs.
+  const seenUuids = new Set<string>();
+  for (const n of exported.neurons) {
+    const id = n.uuid ?? "(no-uuid)";
+    assert(
+      !seenUuids.has(id),
+      `Duplicate neuron wire uuid in exported creature: ${id}`,
+    );
+    seenUuids.add(id);
+  }
+
+  // Wire-format invariant 2: no synapse may be a self-loop in the wire
+  // format (fromUUID === toUUID). This is exactly the failure GRQ's
+  // `assertCleavedCreatureForwardOnly` reports.
+  for (const s of exported.synapses) {
+    const from = (s as { fromUUID?: string }).fromUUID;
+    const to = (s as { toUUID?: string }).toUUID;
+    assert(
+      from !== undefined && to !== undefined,
+      `Exported synapse missing fromUUID/toUUID: ${JSON.stringify(s)}`,
+    );
+    assert(
+      from !== to,
+      `Wire-format self-loop in cleaved creature: ${from} -> ${to}`,
+    );
+  }
+
+  // Acceptance criterion: the three new outputs are still distinct and the
+  // demoted previous outputs survive as hidden neurons (with fresh, unique
+  // wire uuids).
+  const outputs = modified.neurons.filter((n) => n.type === "output");
+  assertEquals(outputs.length, 3);
+  const demoted = modified.neurons.filter((n) =>
+    n.type === "hidden" && n.id !== undefined && n.id >= 1_000_000 &&
+    n.uuid !== "h1"
+  );
+  assertEquals(
+    demoted.length,
+    3,
+    "Three previous outputs must survive as hidden neurons",
+  );
+  // None of the demoted neurons may carry a wire-format `output-N` uuid.
+  for (const d of demoted) {
+    assert(
+      typeof d.uuid === "string" && !/^output-\d+$/.test(d.uuid),
+      `Demoted previous output must have a fresh non-wire uuid; got ${d.uuid}`,
+    );
+  }
+});
