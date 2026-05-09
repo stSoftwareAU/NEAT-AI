@@ -1,13 +1,13 @@
 # ⚡ Activation Functions Guide
 
-> **TL;DR** — A **squash** function (NEAT-AI's name for an activation function)
-> is the small per-neuron non-linearity that turns a neuron's pre-activation sum
-> `v = b + Σ(wᵢ·aᵢ)` into its output. NEAT-AI ships 32 standard squashes, 3
-> aggregate functions, and 3 deprecated squashes kept only for backward
-> compatibility — every name in the tables below resolves to a real export under
-> [`src/methods/activations/`](../src/methods/activations/) (or
-> [`src/deprecated/`](../src/deprecated/) for the deprecated set). This guide
-> explains how to pick one. Acronyms used here: **ReLU** (Rectified Linear
+> **TL;DR** — A **squash** function ([NEAT-AI](../AGENTS.md#-terminology)'s name
+> for an activation function) is the small per-neuron non-linearity that turns a
+> neuron's pre-activation sum `v = b + Σ(wᵢ·aᵢ)` into its output. NEAT-AI ships
+> 32 standard squashes, 3 aggregate functions, and 3 deprecated squashes kept
+> only for backward compatibility — every name in the tables below resolves to a
+> real export under [`src/methods/activations/`](../src/methods/activations/)
+> (or [`src/deprecated/`](../src/deprecated/) for the deprecated set). This
+> guide explains how to pick one. Acronyms used here: **ReLU** (Rectified Linear
 > Unit), **GELU** (Gaussian Error Linear Unit), **ELU** (Exponential Linear
 > Unit), **SELU** (Scaled ELU), **TANH** (hyperbolic tangent), **NaN** (Not a
 > Number).
@@ -38,8 +38,8 @@ introduce non-linearity, enabling the network to learn complex patterns.
 
 In NEAT-AI, each neuron can have its own activation function. This is more
 flexible than traditional neural networks, where all neurons in a layer
-typically share the same function. NEAT's topology evolution can discover which
-activation works best for each neuron's role in the network.
+typically share the same function. NEAT-AI's topology evolution can discover
+which activation works best for each neuron's role in the network.
 
 ### 📖 Key Terms
 
@@ -61,7 +61,7 @@ activation works best for each neuron's role in the network.
 ## 📊 Overview Table
 
 The table below lists every activation function available in NEAT-AI. **Mutation
-probability** controls how often NEAT's evolution selects a function when
+probability** controls how often NEAT-AI's evolution selects a function when
 mutating neurons — higher values mean the function is chosen more frequently.
 
 ### ⚡ Standard Activation Functions
@@ -114,15 +114,15 @@ activation functions that transform a single value.
 
 ### 🗄️ Deprecated Functions
 
-These functions have a mutation probability of **0**, meaning NEAT will never
+These functions have a mutation probability of **0**, meaning NEAT-AI will never
 select them for new neurons. They remain available for backward compatibility
 with existing trained models.
 
 > [!WARNING]
 > The deprecated functions below (HYPOT, HYPOTv2, MEAN) will never be assigned
-> to neurons by NEAT's evolution. If you load a model that uses them, they will
-> continue to function correctly, but you should plan to migrate away from them
-> in future training runs.
+> to neurons by NEAT-AI's evolution. If you load a model that uses them, they
+> will continue to function correctly, but you should plan to migrate away from
+> them in future training runs.
 
 | Name                                    | Output Range | Replacement                | Why Deprecated                                      |
 | :-------------------------------------- | :----------- | :------------------------- | :-------------------------------------------------- |
@@ -312,34 +312,34 @@ network while introducing useful non-linearity.
 | Exponential    | Output grows rapidly, can cause overflow            |
 | SQRT / SQUARE  | Limited applicability, can cause numerical issues   |
 
-### 🧬 Functions That Work Well with NEAT's Topology Evolution
+### 🧬 Functions That Work Well with NEAT-AI's Topology Evolution
 
-NEAT evolves both the network's structure (topology) and its weights
+NEAT-AI evolves both the network's structure (topology) and its weights
 simultaneously. Some activation functions are better suited to this evolutionary
 process than others.
 
-**Best for NEAT evolution:**
+**Best for NEAT-AI evolution:**
 
 - **LeakyReLU, GELU, Swish, ELU, SELU, Mish** — These have high mutation
-  probabilities (31-36), meaning NEAT's evolution naturally favours them. They
-  provide smooth gradients that help memetic learning (the gradient-based
+  probabilities (31-36), meaning NEAT-AI's evolution naturally favours them.
+  They provide smooth gradients that help memetic learning (the gradient-based
   fine-tuning that happens alongside evolution) while being robust enough to
-  handle the varied topologies that NEAT generates.
+  handle the varied topologies that NEAT-AI generates.
 
 - **TANH, LOGISTIC, Softplus** — Bounded functions that prevent activation
-  values from exploding as NEAT adds new connections. Useful when the network
+  values from exploding as NEAT-AI adds new connections. Useful when the network
   grows and you want stable activations.
 
-**Challenging for NEAT evolution:**
+**Challenging for NEAT-AI evolution:**
 
 - **STEP, BIPOLAR** — These have zero gradients almost everywhere, which means
   memetic learning (backpropagation) cannot improve weights. Evolution must rely
   entirely on mutation and crossover, which is slower.
 
 - **TAN, Exponential** — Can produce extreme values that destabilise the network
-  when NEAT adds unexpected connections.
+  when NEAT-AI adds unexpected connections.
 
-- **IDENTITY** — Provides no non-linearity, so NEAT cannot increase the
+- **IDENTITY** — Provides no non-linearity, so NEAT-AI cannot increase the
   network's expressiveness by adding neurons with this function.
 
 ---
@@ -374,7 +374,7 @@ tests alternatives and remembers what works.
 
 | Scenario                             | Approach                                                               |
 | :----------------------------------- | :--------------------------------------------------------------------- |
-| Starting a new project               | Let NEAT evolve freely, then run Intelligent Design to refine          |
+| Starting a new project               | Let NEAT-AI evolve freely, then run Intelligent Design to refine       |
 | Optimising a mature model            | Use Intelligent Design to squeeze out improvements                     |
 | You know the ideal output function   | Set output layer manually, let Intelligent Design handle hidden layers |
 | Distributed training across machines | Share tacit knowledge via hive files for consistent optimisation       |

@@ -1,10 +1,11 @@
 # 🔬 Performance Optimisation Guide
 
-> **Brief**: A research log of every measured attempt to make NEAT-AI faster —
-> what worked, what didn't, and the underlying reasons. Use this guide to decide
-> whether a proposed optimisation (WASM migration, SIMD expansion, algorithmic
-> change) is worth pursuing **before** writing code. For day-to-day operational
-> tuning, see [PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md).
+> **Brief**: A research log of every measured attempt to make
+> [NEAT-AI](../AGENTS.md#-terminology) faster — what worked, what didn't, and
+> the underlying reasons. Use this guide to decide whether a proposed
+> optimisation (WASM migration, SIMD expansion, algorithmic change) is worth
+> pursuing **before** writing code. For day-to-day operational tuning, see
+> [PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md).
 
 ## 📑 In this cluster
 
@@ -275,7 +276,7 @@ yielded 9–12% improvement:
 | Large         | 2.3 ms   | 2.1 ms   | **9%**      |
 | Very Large    | 14.6 ms  | 13.2 ms  | **10%**     |
 
-**Lesson:** For sparse networks (the typical NEAT scenario), probabilistic
+**Lesson:** For sparse networks (the typical NEAT-AI scenario), probabilistic
 algorithms that exploit sparsity outperform exhaustive enumeration. The
 rejection sampling approach finds valid connections in 1–2 attempts, eliminating
 full list construction.
@@ -646,12 +647,12 @@ Per-element error loops (MSE, MAE, CrossEntropy) over output neurons.
 | >10 µs per call?      | ✗ NO — 6 ns (3 outputs) to 1.4 µs (100 CrossEntropy) |
 | Caching layer?        | ✗ NO                                                 |
 
-**Verdict: NOT SIMD-viable.** Typical NEAT creatures have 1–10 outputs, giving
-loop counts of 1–10 elements — far too small for SIMD to amortise setup cost.
-Even the worst case (100-output CrossEntropy at 1.4 µs) is well below the 10 µs
-threshold. Additionally, the batch loss functions in `loss.rs` already use SIMD
-for the activation step — the per-output error reduction is a tiny fraction of
-the total batch scoring time.
+**Verdict: NOT SIMD-viable.** Typical NEAT-AI creatures have 1–10 outputs,
+giving loop counts of 1–10 elements — far too small for SIMD to amortise setup
+cost. Even the worst case (100-output CrossEntropy at 1.4 µs) is well below the
+10 µs threshold. Additionally, the batch loss functions in `loss.rs` already use
+SIMD for the activation step — the per-output error reduction is a tiny fraction
+of the total batch scoring time.
 
 #### Candidate 2: Gradient Accumulation Arithmetic
 

@@ -1,9 +1,15 @@
 # 🤝 Contributing to NEAT-AI
 
-Thank you for your interest in contributing to NEAT-AI (NeuroEvolution of
-Augmenting Topologies — Artificial Intelligence)! This guide covers everything
-you need to get started — from setting up your development environment to
-submitting a pull request.
+Thank you for your interest in contributing to
+[NEAT-AI](./AGENTS.md#-terminology) (NeuroEvolution of Augmenting Topologies —
+Artificial Intelligence)! This guide covers everything you need to get started —
+from setting up your development environment to submitting a pull request.
+
+> [!IMPORTANT]
+> **NEAT** refers to the original 2002 algorithm; **NEAT-AI** refers to this
+> project, which extends it. See the
+> [NEAT vs NEAT-AI rule](./AGENTS.md#-neat-vs-neat-ai--which-term-to-use) for
+> the convention used throughout this repository.
 
 ## 📌 Summary and where to go next
 
@@ -508,7 +514,7 @@ src/                    # Source code
   intelligentDesign/    # Intelligent Design squash optimisation
   methods/              # Activation functions (squash implementations)
   mutate/               # Mutation operators
-  NEAT/                 # Core NEAT algorithm
+  NEAT/                 # Core NEAT-AI evolutionary loop (selection, speciation)
   propagate/            # Backpropagation
   wasm/                 # WASM activation bridge
 test/                   # Tests (mirrors src/ structure)

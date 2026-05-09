@@ -4,12 +4,12 @@
 > real-world gene-editing technique
 > ([Wikipedia](https://en.wikipedia.org/wiki/CRISPR),
 > [Nature primer](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/)).
-> In NEAT-AI we borrow the name for **targeted, hand-crafted edits to a
-> creature's genome** — splicing in new neurons or wrapping existing outputs
-> with extra activation/aggregation layers — without disturbing the UUIDs of
-> neurons that survive the edit. The implementation lives in
-> [`src/reconstruct/CRISPR.ts`](../src/reconstruct/CRISPR.ts); the API surface
-> is summarised in [`docs/api/CREATURE.md`](api/CREATURE.md#-crispr).
+> In [NEAT-AI](../AGENTS.md#-terminology) we borrow the name for **targeted,
+> hand-crafted edits to a creature's genome** — splicing in new neurons or
+> wrapping existing outputs with extra activation/aggregation layers — without
+> disturbing the UUIDs of neurons that survive the edit. The implementation
+> lives in [`src/reconstruct/CRISPR.ts`](../src/reconstruct/CRISPR.ts); the API
+> surface is summarised in [`docs/api/CREATURE.md`](api/CREATURE.md#-crispr).
 
 This guide complements that API summary with the conventions and gotchas that
 catch out new authors. For the project-wide vocabulary that places CRISPR

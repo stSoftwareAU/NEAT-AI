@@ -200,7 +200,7 @@ workers.forEach((w) => w.terminate());
 | `outputDir`       | string      | Required      | Directory to write improved creatures     |
 | `dataDir`         | string      | Required      | Directory containing scoring data         |
 | `bestScore`       | number      | Required      | Current best score of the creature        |
-| `options`         | NeatOptions | `{}`          | NEAT options (can include customCost)     |
+| `options`         | NeatOptions | `{}`          | NEAT-AI options (can include customCost)  |
 | `maxImprovements` | number      | 12            | Stop after finding this many improvements |
 | `maxPending`      | number      | Auto          | Maximum pending tasks per worker          |
 | `timeoutMs`       | number      | 3600000 (1hr) | Timeout in milliseconds                   |
