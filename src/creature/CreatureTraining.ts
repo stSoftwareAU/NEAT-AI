@@ -651,6 +651,15 @@ export async function evolveEnv<S, A>(
   };
   Deno.addSignalListener("SIGTERM", signalListener);
 
+  // Support AbortSignal for external interruption (e.g. in tests).
+  // Prefer this over Deno.kill(Deno.pid, "SIGTERM") from worker threads,
+  // which propagates to the main process and can abort parallel test runners.
+  const abortListener = () => {
+    getLogger().info("AbortSignal received, stopping evolveEnv...");
+    interrupted = true;
+  };
+  options.signal?.addEventListener("abort", abortListener);
+
   const start = Date.now();
   const config = createNeatConfig(options);
 
@@ -825,6 +834,7 @@ export async function evolveEnv<S, A>(
   }
 
   Deno.removeSignalListener("SIGTERM", signalListener);
+  options.signal?.removeEventListener("abort", abortListener);
   return {
     error,
     score: bestScore,

@@ -227,14 +227,16 @@ Deno.test("evolveEnv: emits generation_complete events", async () => {
   );
 });
 
-Deno.test("evolveEnv: SIGTERM interrupts the run", async () => {
+Deno.test("evolveEnv: abort signal interrupts the run", async () => {
   const creature = new Creature(1, 1);
   const adapter = buildTargetAdapter(99);
+  const controller = new AbortController();
 
-  // Schedule a SIGTERM after the first generation has had time to start.
-  const interrupt = setTimeout(() => {
-    Deno.kill(Deno.pid, "SIGTERM");
-  }, 50);
+  // Schedule an abort after the first generation has had time to start.
+  // Using AbortSignal instead of Deno.kill(Deno.pid, "SIGTERM") because
+  // sending an actual OS signal from a worker thread (used by --parallel)
+  // propagates to the main Deno process and aborts the entire test runner.
+  const interrupt = setTimeout(() => controller.abort(), 50);
 
   try {
     const result = await creature.evolveEnv(adapter, {
@@ -243,9 +245,10 @@ Deno.test("evolveEnv: SIGTERM interrupts the run", async () => {
       targetError: 0,
       seed: 9,
       threads: 1,
+      signal: controller.signal,
     });
-    // Run may complete via either the SIGTERM listener or by reaching the
-    // iterations cap first; we just need to confirm it terminates.
+    // Run terminates when the abort fires (or before if iterations cap is
+    // reached first); we just need to confirm it terminates promptly.
     assert(result.generation >= 1);
   } finally {
     clearTimeout(interrupt);

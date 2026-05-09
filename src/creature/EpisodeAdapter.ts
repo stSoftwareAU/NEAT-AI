@@ -133,6 +133,18 @@ export interface EpisodicOptions {
    * generation, so wrap any noisy I/O.
    */
   onEpisodeTrials?: (event: EpisodeTrialsEvent) => void;
+
+  /**
+   * Optional {@link AbortSignal} that allows the caller to interrupt the
+   * evolution run externally without sending an OS signal. When the signal is
+   * aborted, {@link evolveEnv} exits the generation loop after the current
+   * `neat.evolve()` call completes and returns the best result found so far.
+   *
+   * Prefer this over sending `SIGTERM` directly (e.g. in tests) because
+   * `Deno.kill(Deno.pid, "SIGTERM")` from a worker thread propagates to the
+   * main process and can abort the entire parallel test runner.
+   */
+  signal?: AbortSignal;
 }
 
 /**
