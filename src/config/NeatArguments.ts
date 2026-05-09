@@ -274,6 +274,26 @@ export interface NeatArguments {
   interSpeciesCrossoverThreshold: number;
 
   /**
+   * Threshold for the synthetic-UUID alignment fallback in
+   * `createCompatibleFather*` (Issues #2609, #2613, #2614).
+   *
+   * When the real-UUID overlap between mother and father (computed via
+   * `getHiddenNeuronWireKeys()`) is **below** this value, the father's
+   * hidden/constant neurons are aligned to the mother by recomputing
+   * location-based synthetic UUIDs and matching either anchor. This gives
+   * structurally similar but genetically incompatible parents real
+   * crossover anchor points without persisting any synthetic identifiers.
+   * When overlap is at or above the threshold, the new pass is a no-op
+   * and the existing stable-UUID + connectivity-key alignment runs alone.
+   *
+   * Synthetic UUIDs are recomputed on demand and never written into a
+   * `CreatureExport` — the gene swap continues to use real UUIDs only.
+   *
+   * Range 0..1. Default: 0.2. Set to 0 to disable the fallback.
+   */
+  syntheticAlignmentThreshold: number;
+
+  /**
    * Discovery sample rate: the fraction of training records sampled for structural analysis.
    * Defaults to 0.2 (20%) — increased from 0.05 in #1386 for better statistical coverage.
    * Set to -1 to disable discovery entirely.

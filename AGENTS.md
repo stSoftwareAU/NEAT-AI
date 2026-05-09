@@ -297,11 +297,20 @@ boundary, disk write, or cross-machine handoff.
 
 - **Grafting / `createCompatibleFather`**: Hidden and constant neurons are
   aligned to the mother’s id scheme **by matching stable wire `uuid` first**,
-  then by a connectivity fingerprint (integer neighbour ids) for any remaining
-  neurons. **Cross-machine**: the same saved genome should carry the same uuids;
-  alignment does not depend on neuron array position. When genetic compatibility
-  is below threshold, `editParentByIndex` may still reassign ids by **scan
-  order** — that path is a deliberate fallback for badly mismatched topologies.
+  then — when the real-UUID overlap is below `syntheticAlignmentThreshold`
+  (default `0.2`, Issue #2614) — by **location-based synthetic UUIDs** computed
+  on demand from `computeSyntheticLocationUuids` (Issue #2613), and finally by a
+  connectivity fingerprint (integer neighbour ids) for any remaining neurons.
+  Synthetic UUIDs follow a loose-match rule (either anchor — input-side OR
+  output-side — wins on first match) so structurally similar but genetically
+  incompatible parents pick up real crossover anchor points. They are **never
+  persisted**: aligned father neurons inherit the mother's real UUID, and the
+  resulting `CreatureExport` only ever carries real UUIDs (no
+  `${anchor}-${steps}-${sign}-${rank}` strings). **Cross-machine**: the same
+  saved genome should carry the same uuids; alignment does not depend on neuron
+  array position. When genetic compatibility is below threshold,
+  `editParentByIndex` may still reassign ids by **scan order** — that path is a
+  deliberate fallback for badly mismatched topologies.
 
 ### 🔢 Semantic version is immutable after upgrade (CRITICAL INVARIANT)
 

@@ -446,6 +446,12 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       dnaPreset.interSpeciesCrossoverThreshold,
       { min: 0, max: 1 },
     ),
+    syntheticAlignmentThreshold: parseNumber(
+      "Synthetic Alignment Threshold",
+      opts.syntheticAlignmentThreshold,
+      0.2,
+      { min: 0, max: 1 },
+    ),
     discoverySampleRate: parseDiscoverySampleRate(
       opts.discoverySampleRate,
       DEFAULT_DISCOVERY_SAMPLE_RATE,

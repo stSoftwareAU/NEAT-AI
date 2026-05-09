@@ -65,6 +65,7 @@ type NumericOptionKeys =
   | "diversityBreedingRate"
   | "geneticCompatibilityThreshold"
   | "interSpeciesCrossoverThreshold"
+  | "syntheticAlignmentThreshold"
   | "discoverySampleRate"
   | "discoveryRecordTimeOutMinutes"
   | "discoveryAnalysisTimeoutMinutes"

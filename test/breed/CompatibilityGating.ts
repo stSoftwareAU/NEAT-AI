@@ -140,16 +140,23 @@ Deno.test(
 
     // Run repeatedly — every call must select the lowest-compat
     // candidate, exactly matching the prior behaviour.
+    //
+    // Issue #2614: createCompatibleFatherFromCreatures now applies
+    // synthetic-UUID alignment when the real-UUID overlap is below
+    // `syntheticAlignmentThreshold` (default 0.2). For the lowest-compat
+    // candidate (3 hidden neurons, 0 shared UUIDs) this aligns father
+    // neurons to mother UUIDs, so post-alignment compatibility is no
+    // longer a stable proxy. We therefore identify the chosen candidate
+    // by hidden-neuron count (lowestMatch has 3; others have 2).
+    const lowestMatchHiddenCount = 3;
     for (let i = 0; i < 25; i++) {
       const dad = findFather(mother, genus, config);
       assert(dad, "Father should be found");
-      // The father returned by findFather is a re-aligned copy whose
-      // UUID may differ; assert by compatibility band instead.
-      const compat = geneticCompatibility(mother, dad);
+      const hiddenCount = dad.neurons.filter((n) => n.type === "hidden").length;
       assertEquals(
-        compat,
-        0,
-        `Iteration ${i}: power 0 must reproduce lowest-compat pick (compat=${compat})`,
+        hiddenCount,
+        lowestMatchHiddenCount,
+        `Iteration ${i}: power 0 must pick lowestMatch (hidden=${hiddenCount})`,
       );
     }
   },
@@ -177,13 +184,16 @@ Deno.test(
       seed: 21,
     });
 
+    // Issue #2614: see note on the previous test — identify the chosen
+    // candidate by hidden-neuron count rather than post-alignment compat.
+    const lowestMatchHiddenCount = 3;
     for (let i = 0; i < 20; i++) {
       const dad = findFather(mother, genus, config);
       assert(dad, "Father should be found");
-      const compat = geneticCompatibility(mother, dad);
+      const hiddenCount = dad.neurons.filter((n) => n.type === "hidden").length;
       assertEquals(
-        compat,
-        0,
+        hiddenCount,
+        lowestMatchHiddenCount,
         `Disabled gate must reproduce legacy lowest-compat pick`,
       );
     }
