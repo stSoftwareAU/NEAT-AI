@@ -1,21 +1,37 @@
-# 📊 NEAT vs Traditional Neural Networks and Modern LLMs: A Comprehensive Comparison
+# 📊 NEAT-AI vs Traditional Neural Networks and Modern LLMs: A Comprehensive Comparison
 
 ## 🔍 Overview
 
-This document compares our NEAT-AI implementation with traditional neural
-network architectures (feedforward, CNN, RNN) and modern Large Language Models
-(Transformers). It clearly explains what we've implemented, the pros and cons of
-our approaches, our unique innovations, and identifies shortcomings that
-represent future work opportunities.
+This document compares **[NEAT-AI](./AGENTS.md#-terminology)** — the
+implementation in this repository — with traditional neural network
+architectures (feedforward, CNN, RNN) and modern Large Language Models
+(Transformers).
+
+NEAT-AI started from
+**[NEAT (NeuroEvolution of Augmenting Topologies)](./AGENTS.md#-terminology)**
+as published by
+[Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf),
+but has since incorporated many algorithms beyond the 2002 paper — some
+published only weeks before the latest revision of this document. Throughout
+this document, **NEAT** refers strictly to the standard 2002 algorithm and
+**NEAT-AI** refers to this project. See the
+[NEAT vs NEAT-AI terminology rule](./AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
+in `AGENTS.md` for the full convention.
+
+The document explains what NEAT-AI has implemented (separating standard NEAT
+machinery from NEAT-AI extensions), the pros and cons of NEAT-AI's approaches,
+NEAT-AI's unique innovations, and the shortcomings that represent future work
+opportunities.
 
 > [!NOTE]
-> You don't need to be an expert in neural networks or the NEAT algorithm to get
-> value from this comparison. We start with a high-level introduction to NEAT
-> and only assume basic familiarity with ML concepts. It aims to stay accurate
-> and links to authoritative sources whenever new ideas are introduced.
+> You don't need to be an expert in neural networks or the original NEAT
+> algorithm to get value from this comparison. We start with a high-level
+> introduction and only assume basic familiarity with ML concepts. The text aims
+> to stay accurate and links to authoritative sources whenever new ideas are
+> introduced.
 
 For project terminology (Creatures, Memetic evolution, CRISPR injections,
-Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
+Grafting, etc.), see [AGENTS.md](./AGENTS.md#-terminology).
 
 ## 📋 Table of Contents
 
@@ -23,224 +39,252 @@ Grafting, etc.), see [AGENTS.md](./AGENTS.md#terminology).
 2. [Architectural Comparison](#architectural-comparison)
 3. [Training Paradigms](#training-paradigms)
 4. [Our Unique Approaches](#our-unique-approaches)
-5. [Ecosystem Comparison: What We've Built vs Standard Libraries](#ecosystem-comparison-what-weve-built-vs-standard-libraries)
+5. [Ecosystem Comparison: NEAT-AI vs Standard Libraries](#ecosystem-comparison-neat-ai-vs-standard-libraries)
 6. [Pros and Cons Analysis](#pros-and-cons-analysis)
 7. [Shortcomings and Future Work](#shortcomings-and-future-work)
 8. [References and Further Reading](#references-and-further-reading)
 
 ## 🧬 What We've Implemented
 
-### 🔬 Core NEAT Algorithm
+The features below are split into two groups so the line between **standard
+NEAT** (the 2002 algorithm) and the **NEAT-AI extensions** built on top is
+explicit.
 
-- ✅ **Evolutionary Topology Search**: Networks evolve their structure through
-  genetic operations (mutation, crossover)
-- ✅ **Speciation**: Networks grouped by similarity to protect innovation and
-  prevent premature convergence
-- ✅ **Historical Marking**: Tracks gene history for compatible crossover
-  between different topologies
-- ✅ **Genetic Operators**:
-  - Mutation: Add/remove neurons and connections, modify weights/biases
-  - Crossover: Breeding between compatible parents
-  - Selection: Multiple strategies (fitness proportionate, tournament, power)
+### 🔬 Standard NEAT machinery (Stanley & Miikkulainen, 2002)
 
-### 🎓 Training Methods
+These items come directly from the
+[original NEAT paper](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
+NEAT-AI inherits them as the evolutionary substrate.
 
-- ✅ **Backpropagation**: Full gradient-based weight optimisation implemented
-  with:
+- ✅ **Evolutionary Topology Search** _(standard NEAT)_: Networks evolve their
+  structure through genetic operations (mutation, crossover).
+- ✅ **Speciation** _(standard NEAT)_: Networks are grouped by similarity to
+  protect innovation and prevent premature convergence.
+- ✅ **Historical Marking** _(standard NEAT)_: Tracks gene history for
+  compatible crossover between different topologies.
+- ✅ **Genetic Operators** _(standard NEAT)_:
+  - Mutation: add/remove neurons and connections, modify weights/biases.
+  - Crossover: breeding between compatible parents.
+  - Selection: multiple strategies (fitness proportionate, tournament, power).
+- ✅ **Fitness Sharing** _(standard NEAT)_: Raw fitness is divided by species
+  size so dominant species don't starve smaller niches. NEAT-AI adds per-species
+  breeding quotas on top — see the NEAT-AI extensions list below.
+
+### 🚀 NEAT-AI extensions (beyond the 2002 paper)
+
+Everything below is a NEAT-AI extension added on top of standard NEAT — most of
+these have no counterpart in the original 2002 algorithm. Where a feature links
+to a dedicated guide, the contrast with standard NEAT is documented there.
+
+#### 🎓 Training methods (NEAT-AI extensions)
+
+- ✅ **Backpropagation** _(NEAT-AI extension)_: Full gradient-based weight
+  optimisation, which standard NEAT does not include. Implemented with:
   - Mini-batch gradient descent (configurable batch sizes)
   - Adaptive learning rate strategies (fixed, decay, adaptive)
   - Weight and bias adjustment with configurable limits
   - Sparse training with intelligent neuron selection
-- ✅ **Memetic Evolution**: Records successful weight patterns and reuses them
-  in later generations, following the
-  [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm) approach;
-  we've observed this hybrid step improve convergence on our internal
-  benchmarks.
-- ✅ **Error-Guided Structural Evolution**: GPU-accelerated discovery of
-  beneficial structural changes
-- ✅ **Sparse Training**: Configurable neuron selection strategies (random,
-  output-distance, error-weighted) for efficiency
-- ✅ **Batch Processing**: Mini-batch gradient descent with configurable batch
-  sizes
-- ✅ **Early Stopping**: Enhanced early stopping with patience and improvement
-  thresholds
-- ✅ **Predictive Coding**: Optional training paradigm based on
-  [Rao & Ballard (1999)](https://www.nature.com/articles/nn0199_79) that uses
-  iterative inference settling and local Hebbian learning rules. Configurable
-  via `PredictiveCodingConfig` with inference steps, learning rate, and energy
-  convergence thresholds. See
-  [PREDICTIVE_CODING.md](./docs/PREDICTIVE_CODING.md) for architecture details.
-- ✅ **Dropout Regularisation**: True
-  [inverted dropout](https://arxiv.org/abs/1207.0580) during training—randomly
+- ✅ **Memetic Evolution** _(NEAT-AI extension)_: Records successful weight
+  patterns and reuses them in later generations, following the
+  [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm) approach.
+  Standard NEAT has no memetic step; in NEAT-AI's internal benchmarks this
+  hybrid step improves convergence over evolution alone.
+- ✅ **Error-Guided Structural Evolution** _(NEAT-AI extension)_:
+  GPU-accelerated discovery of beneficial structural changes. Standard NEAT
+  performs structural mutation uniformly at random; NEAT-AI guides it with
+  measured error data — see [DISCOVERY_GUIDE.md](./docs/DISCOVERY_GUIDE.md).
+- ✅ **Sparse Training** _(NEAT-AI extension)_: Configurable neuron selection
+  strategies (random, output-distance, error-weighted) for efficiency.
+- ✅ **Batch Processing** _(NEAT-AI extension)_: Mini-batch gradient descent
+  with configurable batch sizes.
+- ✅ **Early Stopping** _(NEAT-AI extension)_: Enhanced early stopping with
+  patience and improvement thresholds.
+- ✅ **Predictive Coding** _(NEAT-AI extension)_: Optional training paradigm
+  based on [Rao & Ballard (1999)](https://www.nature.com/articles/nn0199_79)
+  that uses iterative inference settling and local Hebbian learning rules.
+  Configurable via `PredictiveCodingConfig` with inference steps, learning rate,
+  and energy convergence thresholds. See
+  [PREDICTIVE_CODING.md](./docs/PREDICTIVE_CODING.md) for architecture details
+  and the contrast with standard NEAT (which has no equivalent).
+- ✅ **Dropout Regularisation** _(NEAT-AI extension)_: True
+  [inverted dropout](https://arxiv.org/abs/1207.0580) during training — randomly
   disables a configurable fraction of hidden neurons per forward pass and scales
   remaining activations by 1/(1−p) so inference runs unchanged. Input and output
   neurons are never dropped.
-- ✅ **L1/L2 Weight & Bias Regularisation**: During backpropagation, applies L2
-  weight decay (`w *= (1 − lr·λ₂)`) and L1 soft-thresholding to drive small
-  weights to exactly zero, promoting sparsity. Mirrors the same decay for
-  biases.
-- ✅ **K-Fold Cross-Validation**: Splits training data into k folds, trains on
-  k−1 folds and validates on the held-out fold. Fitness is the average
-  validation error across all folds, reducing overfitting and producing more
-  robust fitness estimates. Configurable fold count (1–20) with automatic
-  fallback to single-split when data is insufficient.
-- ✅ **Gradient Accumulation Normalisation**: Optional sqrt-scaling for gradient
-  accumulation in high fan-out neurons, preventing neurons with many downstream
-  connections from receiving disproportionately large error signals.
-- ✅ **Synthetic Synapse Training**: Temporarily densifies inter-layer
-  connectivity during backpropagation by adding zero-weight synapses between
-  adjacent topological layers. After training, near-zero synapses are pruned and
-  only useful connections are retained — addressing NEAT's inherent weakness of
-  sparse connectivity compared to conventional
+- ✅ **L1/L2 Weight & Bias Regularisation** _(NEAT-AI extension)_: During
+  backpropagation, applies L2 weight decay (`w *= (1 − lr·λ₂)`) and L1
+  soft-thresholding to drive small weights to exactly zero, promoting sparsity.
+  Mirrors the same decay for biases. Standard NEAT has no gradient step at all
+  and therefore no weight decay.
+- ✅ **K-Fold Cross-Validation** _(NEAT-AI extension)_: Splits training data
+  into k folds, trains on k−1 folds and validates on the held-out fold. Fitness
+  is the average validation error across all folds, reducing overfitting and
+  producing more robust fitness estimates. Configurable fold count (1–20) with
+  automatic fallback to single-split when data is insufficient.
+- ✅ **Gradient Accumulation Normalisation** _(NEAT-AI extension)_: Optional
+  sqrt-scaling for gradient accumulation in high fan-out neurons, preventing
+  neurons with many downstream connections from receiving disproportionately
+  large error signals.
+- ✅ **Synthetic Synapse Training** _(NEAT-AI extension)_: Temporarily densifies
+  inter-layer connectivity during backpropagation by adding zero-weight synapses
+  between adjacent topological layers. After training, near-zero synapses are
+  pruned and only useful connections are retained — addressing the inherent
+  sparseness of NEAT-evolved networks compared to conventional
   [dense layers](https://en.wikipedia.org/wiki/Dense_layer). Opt-in via
   `syntheticSynapses: true` in the training configuration.
-- ✅ **MCMC Mutation Acceptance**: Uses the
+- ✅ **MCMC Mutation Acceptance** _(NEAT-AI extension)_: Uses the
   [Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
-  criterion for mutation acceptance. Instead of unconditionally accepting all
-  mutations, worse-fitness moves are accepted with a probability that decreases
-  as temperature cools — enabling the population to escape local optima early
-  and converge later. Includes adaptive temperature tuning toward the
+  criterion for mutation acceptance. Standard NEAT accepts all mutations
+  unconditionally; NEAT-AI accepts worsening mutations only with a
+  temperature-dependent probability so the population can escape local optima
+  early and converge later. Includes adaptive temperature tuning toward the
   theoretically optimal acceptance rate (~23.4%, Roberts et al. 1997). The
   cooling schedule is also coupled to a live diversity signal: when species
   count collapses or within-species crowding rises, the temperature is reheated
   to restore exploration (`diversityAwareMCMC` block). Opt-in via
   `mcmc: { enabled: true }`.
-- ✅ **Muon-Style Orthogonalised Gradient Updates**: Optional Newton-Schulz
-  polynomial iteration applied to per-neuron gradient matrices during
-  backpropagation, decorrelating update directions for improved training
-  stability. Inspired by the DeepSeek V4 approach. Opt-in via
+- ✅ **Muon-Style Orthogonalised Gradient Updates** _(NEAT-AI extension)_:
+  Optional Newton-Schulz polynomial iteration applied to per-neuron gradient
+  matrices during backpropagation, decorrelating update directions for improved
+  training stability. Inspired by the DeepSeek V4 approach. Opt-in via
   `gradientOrthogonalisation: "muon"` in `BackPropagationArguments` (default
   `"none"`).
 
-### ✨ Unique Features
+#### ✨ Architecture, identity, and tooling (NEAT-AI extensions)
 
-- ✅ **UUID-Based Indexing**: Extensible observations without restarting
-  evolution—new input features can be added dynamically by extending NEAT's
-  historical-marking idea from
-  [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
-- ✅ **Distributed Evolution**: Multi-node training with centralised combination
-  of best-of-breed creatures, similar to the
-  [island model](https://en.wikipedia.org/wiki/Island_model).
-- ✅ **Lifelong Learning**: Continuous adaptation via ongoing evolution and
-  backpropagation. In long-running deployments (for example, generating fresh
-  training data each day from many years of financial, market, or company
-  reporting data), the same population can keep training and adapting as new
-  samples and new features arrive. This supports continual learning in the
-  spirit of
+- ✅ **UUID-Based Indexing** _(NEAT-AI extension)_: Extensible observations
+  without restarting evolution — new input features can be added dynamically by
+  extending the historical-marking idea from
+  [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf)
+  to UUID-keyed neuron identity. Standard NEAT identifies genes by integer
+  innovation numbers only.
+- ✅ **Distributed Evolution** _(NEAT-AI extension)_: Multi-node training with
+  centralised combination of best-of-breed creatures, similar to the
+  [island model](https://en.wikipedia.org/wiki/Island_model). Standard NEAT is
+  single-machine.
+- ✅ **Lifelong Learning** _(NEAT-AI extension)_: Continuous adaptation via
+  ongoing evolution and backpropagation. In long-running deployments (for
+  example, generating fresh training data each day from many years of financial,
+  market, or company reporting data), the same population can keep training and
+  adapting as new samples and new features arrive. This supports continual
+  learning in the spirit of
   [continual learning](https://en.wikipedia.org/wiki/Continual_learning) while
   still relying on your training data mix to keep past behaviour represented.
-- ✅ **CRISPR Gene Injection**: Targeted gene insertion during evolution to
-  introduce specific traits, inspired by
+- ✅ **CRISPR Gene Injection** _(NEAT-AI extension)_: Targeted gene insertion
+  during evolution to introduce specific traits, inspired by
   [CRISPR-Cas9 gene editing](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/).
-- ✅ **Grafting**: Cross-species breeding algorithm for genetically incompatible
-  parents that preserves diversity like cross-island migration in the
-  [island model](https://en.wikipedia.org/wiki/Island_model).
-- ✅ **Neuron Pruning**: Automatic removal of neurons whose activations don't
-  vary during training, echoing established
+- ✅ **Grafting** _(NEAT-AI extension)_: Cross-species breeding algorithm for
+  genetically incompatible parents that preserves diversity like cross-island
+  migration in the [island model](https://en.wikipedia.org/wiki/Island_model).
+  Standard NEAT does not breed across speciation boundaries.
+- ✅ **Neuron Pruning** _(NEAT-AI extension)_: Automatic removal of neurons
+  whose activations don't vary during training, echoing established
   [network pruning](https://en.wikipedia.org/wiki/Pruning_(neural_networks))
   practice.
-- ✅ **GPU-Accelerated Discovery**: Cross-platform GPU support via
-  [wgpu](https://wgpu.rs/) abstraction—Metal on macOS, Vulkan on Linux, DX12 on
-  Windows—with automatic CPU fallback when no compatible GPU is detected.
-- ✅ **Discovery Caching**: Success and failure caching for discovery candidates
-  with age-based and size-based eviction, cache-informed multi-neuron removal
-  candidates, and supplemental candidate building from historical data.
-- ✅ **Disk Space Monitoring**: Pre-flight and runtime disk space checks during
-  discovery to gracefully warn or abort when disk space is insufficient.
-- ✅ **Ensemble Diversity**: `EnsembleDiversityConfig` scores creatures within
-  species by weight variance, squash entropy, and topology diversity to reduce
-  reliance on brilliant-but-brittle solutions.
-- ✅ **Adaptive Quantum Steps**: `QuantumStepConfig` provides adaptive step
-  sizing during memetic fine-tuning—larger steps when far from the optimum and
-  smaller steps during convergence.
-- ✅ **Unique Activation Functions**: IF, MAX, MIN, and other non-standard
-  squashes that enable different network behaviours, akin to the broader family
-  of [activation functions](https://en.wikipedia.org/wiki/Activation_function).
-- ✅ **Improved Aggregate Gradient Flow**: MAXIMUM and MINIMUM aggregate
-  functions distribute partial error signals to runner-up connections within a
-  proximity threshold (15%), preventing dead gradient paths while preserving
-  dominance of the winning connection.
-- ✅ **Transfer Learning**: Checkpoint export/import system with UUID-based
-  neuron and synapse mapping between creatures with different input/output
-  configurations. Supports weight freezing for fine-tuning imported hidden
-  layers and population seeding with pre-trained creatures.
-- ✅ **ONNX Format Export**: Exports trained creatures to the
-  [ONNX](https://onnx.ai/) binary format for interoperability with standard ML
-  tooling. Converts creature topology to ONNX computational graphs with
+- ✅ **GPU-Accelerated Discovery** _(NEAT-AI extension)_: Cross-platform GPU
+  support via [wgpu](https://wgpu.rs/) abstraction — Metal on macOS, Vulkan on
+  Linux, DX12 on Windows — with automatic CPU fallback when no compatible GPU is
+  detected.
+- ✅ **Discovery Caching** _(NEAT-AI extension)_: Success and failure caching
+  for discovery candidates with age-based and size-based eviction,
+  cache-informed multi-neuron removal candidates, and supplemental candidate
+  building from historical data.
+- ✅ **Disk Space Monitoring** _(NEAT-AI extension)_: Pre-flight and runtime
+  disk space checks during discovery to gracefully warn or abort when disk space
+  is insufficient.
+- ✅ **Ensemble Diversity** _(NEAT-AI extension)_: `EnsembleDiversityConfig`
+  scores creatures within species by weight variance, squash entropy, and
+  topology diversity to reduce reliance on brilliant-but-brittle solutions.
+- ✅ **Adaptive Quantum Steps** _(NEAT-AI extension)_: `QuantumStepConfig`
+  provides adaptive step sizing during memetic fine-tuning — larger steps when
+  far from the optimum and smaller steps during convergence.
+- ✅ **Unique Activation Functions** _(NEAT-AI extension)_: IF, MAX, MIN, and
+  other non-standard squashes that enable different network behaviours, akin to
+  the broader family of
+  [activation functions](https://en.wikipedia.org/wiki/Activation_function).
+  Standard NEAT typically restricts itself to sigmoid.
+- ✅ **Improved Aggregate Gradient Flow** _(NEAT-AI extension)_: MAXIMUM and
+  MINIMUM aggregate functions distribute partial error signals to runner-up
+  connections within a proximity threshold (15%), preventing dead gradient paths
+  while preserving dominance of the winning connection.
+- ✅ **Transfer Learning** _(NEAT-AI extension)_: Checkpoint export/import
+  system with UUID-based neuron and synapse mapping between creatures with
+  different input/output configurations. Supports weight freezing for
+  fine-tuning imported hidden layers and population seeding with pre-trained
+  creatures. Standard NEAT has no transfer-learning concept.
+- ✅ **ONNX Format Export** _(NEAT-AI extension)_: Exports trained creatures to
+  the [ONNX](https://onnx.ai/) binary format for interoperability with standard
+  ML tooling. Converts creature topology to ONNX computational graphs with
   compatibility checking for unsupported features (aggregate functions,
   recurrent connections).
-- ✅ **Hyperparameter Self-Adaptation**: Per-creature evolvable hyperparameters
-  (learning rate, mutation rates, regularisation strength) subject to Gaussian
-  mutation and weighted-average crossover, reducing the need for manual
-  hyperparameter tuning.
-- ✅ **Adaptive Population Sizing**: Automatically adjusts population size based
-  on species diversity metrics—growing the population when diversity is low
-  (premature convergence) and shrinking it during high-diversity stagnation.
-- ✅ **Parallel Batch Creature Evaluation**: Topology-aware grouping clusters
-  same-structure creatures in the evaluation queue to maximise WASM compilation
-  cache hits across workers, with configurable concurrency limits.
-- ✅ **MCMC Mutation Acceptance**: Implements the
-  [Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
-  criterion for mutation acceptance with adaptive temperature tuning toward the
-  theoretically optimal acceptance rate (~23.4%). Enables escape from local
-  optima early in evolution while promoting convergence later.
-- ✅ **Advanced Breeding Strategies**: Multiple breeding strategies for
-  genetically incompatible creatures, including input-weight cosine similarity
-  for neuron alignment, subgraph transplantation for
+- ✅ **Hyperparameter Self-Adaptation** _(NEAT-AI extension)_: Per-creature
+  evolvable hyperparameters (learning rate, mutation rates, regularisation
+  strength) subject to Gaussian mutation and weighted-average crossover,
+  reducing the need for manual hyperparameter tuning.
+- ✅ **Adaptive Population Sizing** _(NEAT-AI extension)_: Automatically adjusts
+  population size based on species diversity metrics — growing the population
+  when diversity is low (premature convergence) and shrinking it during
+  high-diversity stagnation.
+- ✅ **Parallel Batch Creature Evaluation** _(NEAT-AI extension)_:
+  Topology-aware grouping clusters same-structure creatures in the evaluation
+  queue to maximise WASM compilation cache hits across workers, with
+  configurable concurrency limits.
+- ✅ **Advanced Breeding Strategies** _(NEAT-AI extension)_: Multiple breeding
+  strategies for genetically incompatible creatures, including input-weight
+  cosine similarity for neuron alignment, subgraph transplantation for
   [horizontal gene transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer),
-  and diversity-driven breeding for cross-population pairing.
-- ✅ **Synthetic Synapse Training**: Temporarily densifies inter-layer
-  connectivity during backpropagation by adding zero-weight synapses between
-  adjacent topological layers, then prunes near-zero connections after training
-  — addressing NEAT's inherent sparse connectivity weakness.
-- ✅ **WASM Panic Recovery**: Graceful handling of WASM unreachable panics
-  during evolution. Creatures that trigger WASM traps are excluded from the
-  population without crashing the worker or evolution loop, enabling robust
-  long-running training.
-- ✅ **Forward-Only Topology Enforcement**: Unconditional topology validation
-  after creature initialisation, with DEBUG-gated assertions after bulk neuron
-  remapping operations, ensuring backward synapses cannot silently corrupt
-  forward-only creatures.
-- ✅ **Numerical Stability**: Unbounded activation functions (TAN, SQUARE, CUBE)
-  are clamped to finite ranges in both TypeScript and Rust WASM implementations,
-  preventing numerical overflow from producing extreme scores.
-- ✅ **Fitness Sharing and Per-Species Breeding Quotas**: Standard NEAT fitness
-  sharing divides raw fitness by species size so dominant species don't starve
-  smaller niches. Per-species breeding quotas guarantee each surviving species a
-  minimum number of breeding slots (`FitnessSharingConfig`, enabled by default).
-- ✅ **Stagnant Species Detection and Retirement**: Species that fail to improve
-  their best raw fitness across a sliding window are first halted (50% breeding
-  reduction) and then made extinct, reclaiming breeding slots for progressing
-  species. Configurable via `SpeciesStagnationConfig` (`haltWindow`,
-  `extinctionWindow`).
-- ✅ **Soft Compatibility-Gated Cross-Species Breeding**: Replaces hard
-  lowest-compatibility father selection with a soft probabilistic gate that
-  accepts candidates with probability `compatibility ^ power`, preserving rare
-  exploratory hybrids while favouring similar architectures
+  and diversity-driven breeding for cross-population pairing. Standard NEAT
+  refuses crossover between incompatible parents.
+- ✅ **WASM Panic Recovery** _(NEAT-AI extension)_: Graceful handling of WASM
+  unreachable panics during evolution. Creatures that trigger WASM traps are
+  excluded from the population without crashing the worker or evolution loop,
+  enabling robust long-running training.
+- ✅ **Forward-Only Topology Enforcement** _(NEAT-AI extension)_: Unconditional
+  topology validation after creature initialisation, with DEBUG-gated assertions
+  after bulk neuron remapping operations, ensuring backward synapses cannot
+  silently corrupt forward-only creatures.
+- ✅ **Numerical Stability** _(NEAT-AI extension)_: Unbounded activation
+  functions (TAN, SQUARE, CUBE) are clamped to finite ranges in both TypeScript
+  and Rust WASM implementations, preventing numerical overflow from producing
+  extreme scores.
+- ✅ **Per-Species Breeding Quotas** _(NEAT-AI extension)_: On top of standard
+  NEAT fitness sharing, per-species breeding quotas guarantee each surviving
+  species a minimum number of breeding slots (`FitnessSharingConfig`, enabled by
+  default).
+- ✅ **Stagnant Species Detection and Retirement** _(NEAT-AI extension)_:
+  Species that fail to improve their best raw fitness across a sliding window
+  are first halted (50% breeding reduction) and then made extinct, reclaiming
+  breeding slots for progressing species. Configurable via
+  `SpeciesStagnationConfig` (`haltWindow`, `extinctionWindow`).
+- ✅ **Soft Compatibility-Gated Cross-Species Breeding** _(NEAT-AI extension)_:
+  Replaces hard lowest-compatibility father selection with a soft probabilistic
+  gate that accepts candidates with probability `compatibility ^ power`,
+  preserving rare exploratory hybrids while favouring similar architectures
   (`CompatibilityGatingConfig`, enabled by default).
-- ✅ **Fitness-Driven Squash Mutation**: Squash function selection during
-  mutation is biased toward activations that historically improved fitness in
-  similar neuron roles (layer depth + fan-in bucket). Uses EMA-smoothed fitness
-  deltas with Boltzmann-weighted selection (`SquashEffectivenessConfig`, enabled
-  by default).
-- ✅ **DNA-Sharing Primitives**: A bake-off harness compares strategies for
-  transferring useful structure between unrelated creatures. The current
-  recommended primitive is `PruningTemplateStrategy`, which uses an oracle
-  creature ("Europa") to identify and remove redundant production neurons via
-  activation-fingerprint correlation. Additional primitives include
-  `KnowledgeDistillation` (small student pathway trained to imitate donor
-  behaviour), `CompactModuleGraft` (graft 6–32 neuron dense modules preserving
-  donor UUIDs), and `KnobTuningStrategy` (baseline preset stamping). See
+- ✅ **Fitness-Driven Squash Mutation** _(NEAT-AI extension)_: Squash function
+  selection during mutation is biased toward activations that historically
+  improved fitness in similar neuron roles (layer depth + fan-in bucket). Uses
+  EMA-smoothed fitness deltas with Boltzmann-weighted selection
+  (`SquashEffectivenessConfig`, enabled by default).
+- ✅ **DNA-Sharing Primitives** _(NEAT-AI extension)_: A bake-off harness
+  compares strategies for transferring useful structure between unrelated
+  creatures. The current recommended primitive is `PruningTemplateStrategy`,
+  which uses an oracle creature ("Europa") to identify and remove redundant
+  production neurons via activation-fingerprint correlation. Additional
+  primitives include `KnowledgeDistillation` (small student pathway trained to
+  imitate donor behaviour), `CompactModuleGraft` (graft 6–32 neuron dense
+  modules preserving donor UUIDs), and `KnobTuningStrategy` (baseline preset
+  stamping). See
   [docs/dna-sharing-bake-off-results.md](./docs/dna-sharing-bake-off-results.md).
-- ✅ **Optional Rust CLI Scorer with WASM Fallback**: Generation scoring can be
-  delegated to an external `rust_scorer` binary for higher throughput
-  (directory/batch mode runs once per generation), with automatic fallback to
-  the in-process WASM scorer when the binary is unavailable or errors out
-  (`RustScorerConfig`, opt-in).
-- ✅ **NEAT-AI-core Pinning and Parity Gate**: Read-heavy and hot-path
-  computations (topology validation/scanning, reverse topological order, cycle
-  detection, the topological backprop loop, and elastic weight distribution) are
-  owned by the external
+- ✅ **Optional Rust CLI Scorer with WASM Fallback** _(NEAT-AI extension)_:
+  Generation scoring can be delegated to an external `rust_scorer` binary for
+  higher throughput (directory/batch mode runs once per generation), with
+  automatic fallback to the in-process WASM scorer when the binary is
+  unavailable or errors out (`RustScorerConfig`, opt-in).
+- ✅ **NEAT-AI-core Pinning and Parity Gate** _(NEAT-AI extension)_: Read-heavy
+  and hot-path computations (topology validation/scanning, reverse topological
+  order, cycle detection, the topological backprop loop, and elastic weight
+  distribution) are owned by the external
   [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) repository,
   pinned by full 40-character SHA in `deno.json`. A parity gate (Issue #2345)
   prevents drift between the in-tree wrappers and the pinned core. There are no
@@ -374,7 +418,7 @@ graph LR
 **Image Reference**:
 [Transformer (machine learning model)](https://en.wikipedia.org/wiki/Transformer_(machine_learning_model))
 
-### 🧬 NEAT Architecture (Our Implementation)
+### 🧬 NEAT-AI Architecture
 
 ```mermaid
 graph LR
@@ -393,10 +437,16 @@ graph LR
     style O fill:#50C878,stroke:#3A9A5C,color:#fff,stroke-width:2px
 ```
 
-> **Key differences:** ✓ Topology evolves during training · ✓ Connections can be
-> added/removed dynamically · ✓ Neurons can be added/pruned automatically · ✓
-> Structure adapts to problem complexity · ✓ No predetermined architecture · ✓
-> Can handle non-differentiable objectives
+> **NEAT-AI vs standard NEAT:** NEAT-AI inherits the evolving-topology core from
+> standard NEAT and adds UUID-keyed input/output neurons (so features can be
+> added without restarting), error-guided structural mutation, MCMC mutation
+> acceptance, gradient-based weight optimisation, and synthetic synapses for
+> temporary densification.
+>
+> **NEAT-AI vs fixed-architecture nets:** ✓ Topology evolves during training · ✓
+> Connections can be added/removed dynamically · ✓ Neurons can be added/pruned
+> automatically · ✓ Structure adapts to problem complexity · ✓ No predetermined
+> architecture · ✓ Can handle non-differentiable objectives.
 
 **Visualisation**: See our
 [interactive visualisation](https://stsoftwareau.github.io/NEAT-AI/index.html)
@@ -429,32 +479,39 @@ graph LR
 - Limited interpretability (black box)
 - Rigid input/output dimensions
 
-### 🧬 NEAT (Our Implementation)
+### 🧬 NEAT-AI
 
-**Training Approach**:
+**Training Approach** (standard NEAT contribution in italics; everything else is
+a NEAT-AI extension):
 
-- **Hybrid Approach**: Combines evolutionary search with backpropagation
-- **Dynamic Architecture**: Structure evolves during training
-- **Genetic Operations**: Mutation, crossover, speciation
-- **Backpropagation**: Gradient-based weight optimisation (fully implemented)
-- **Memetic Learning**: Records and reuses successful weight patterns; on our
-  internal workloads this hybrid step has often converged faster than pure
-  backpropagation in practice
+- _Genetic operations: mutation, crossover, speciation (standard NEAT)_
+- **Hybrid Approach**: combines evolutionary search with backpropagation —
+  standard NEAT has no gradient step
+- **Dynamic Architecture**: structure evolves during training (inherits standard
+  NEAT's evolving topology)
+- **Backpropagation**: gradient-based weight optimisation (fully implemented;
+  not present in standard NEAT)
+- **Memetic Learning**: records and reuses successful weight patterns; on
+  NEAT-AI's internal workloads this hybrid step has often converged faster than
+  pure backpropagation in practice
 - **Error-Guided Discovery**: GPU-accelerated structural hints based on error
-  analysis
-- **Population-Based**: Evolves multiple networks simultaneously
-- **Regularisation**: Dropout, L1/L2 weight & bias decay, sparse training,
+  analysis — standard NEAT mutates structure uniformly at random
+- **Population-Based**: evolves multiple networks simultaneously (inherited from
+  standard NEAT)
+- **Regularisation**: dropout, L1/L2 weight & bias decay, sparse training,
   neuron pruning, and cost-of-growth penalty
 - **Cross-Validation**: K-fold validation for robust fitness estimation
-- **Transfer Learning**: Checkpoint export/import with weight freezing for
+- **Transfer Learning**: checkpoint export/import with weight freezing for
   fine-tuning on related tasks
 - **MCMC Mutation Acceptance**: Metropolis-Hastings criterion with adaptive
-  temperature tuning for accepting/rejecting mutations
-- **Synthetic Synapses**: Temporary dense inter-layer connectivity during
+  temperature tuning for accepting/rejecting mutations — standard NEAT accepts
+  all mutations unconditionally
+- **Synthetic Synapses**: temporary dense inter-layer connectivity during
   backpropagation, pruned after training
-- **Advanced Breeding**: Input-weight crossover, subgraph transplantation
+- **Advanced Breeding**: input-weight crossover, subgraph transplantation
   (horizontal gene transfer), diversity-driven breeding, and cosine similarity
-  neuron alignment for genetically incompatible creatures
+  neuron alignment for genetically incompatible creatures — standard NEAT
+  refuses crossover between incompatible parents
 
 **Strengths**:
 
@@ -483,17 +540,18 @@ learning (RL): each creature is a candidate policy, and the rollout score
 (cumulative reward, optionally with shaping penalties) is its fitness. Compared
 to value-based RL ([DQN](https://www.nature.com/articles/nature14236)) and
 policy-gradient methods ([PPO](https://arxiv.org/abs/1707.06347), REINFORCE),
-NEAT does not learn a value function and does not differentiate through the
-policy — it evolves the network's topology and weights directly against a scalar
-episode score. This means the reward can be sparse, discontinuous, or provided
-only by a black-box simulator; the action decoder need not be differentiable;
-and the policy architecture grows with the task instead of being chosen up
-front. The cost is sample efficiency per environment step — when a dense,
-differentiable reward is available, DQN or PPO usually converge in fewer
-simulator steps. Where NEAT wins is in parallelism (rollouts are embarrassingly
-parallel across the population) and robustness to non-differentiable objectives.
-The streaming primitive is `Creature.activate`, called once per simulator tick;
-the canonical episode-rollout loop and worked-example link are documented in
+NEAT-AI (like standard NEAT) does not learn a value function and does not
+differentiate through the policy — both evolve the network's topology and
+weights directly against a scalar episode score. This means the reward can be
+sparse, discontinuous, or provided only by a black-box simulator; the action
+decoder need not be differentiable; and the policy architecture grows with the
+task instead of being chosen up front. The cost is sample efficiency per
+environment step — when a dense, differentiable reward is available, DQN or PPO
+usually converge in fewer simulator steps. Where NEAT-AI wins is in parallelism
+(rollouts are embarrassingly parallel across the population) and robustness to
+non-differentiable objectives. The streaming primitive is `Creature.activate`,
+called once per simulator tick; the canonical episode-rollout loop and
+worked-example link are documented in
 [`docs/REINFORCEMENT_LEARNING.md`](./docs/REINFORCEMENT_LEARNING.md).
 
 ## ✨ Our Unique Approaches
@@ -599,8 +657,9 @@ best-of-breed creatures combined on a central controller.
 - Controller combines populations and redistributes
 - Enables scaling beyond single-machine constraints
 
-**Why It's Unique**: Most NEAT implementations are single-machine. Our
-distributed approach enables larger populations and faster evolution.
+**Why It's Unique**: Standard NEAT and most NEAT-derived implementations are
+single-machine. NEAT-AI's distributed approach enables larger populations and
+faster evolution.
 
 **Reference**: See Feature #2 in [README.md](./README.md)
 
@@ -657,7 +716,7 @@ Hebbian learning rules.
    prediction weights
 
 **Why It's Unique**: Predictive coding uses only local information for learning
-(pre- and post-synaptic activity), which aligns naturally with NEAT's
+(pre- and post-synaptic activity), which aligns naturally with NEAT-AI's
 neuron-centric topology. It provides an alternative to standard backpropagation
 that may generalise differently on certain problem types.
 
@@ -710,10 +769,10 @@ acceptance of all mutations.
    optimal acceptance rate (~23.4%, Roberts et al. 1997) based on a
    rolling-window of recent acceptance decisions
 
-**Why It's Unique**: Standard NEAT implementations accept all mutations
-unconditionally or use simple fitness-based filtering. MCMC acceptance enables
-the population to explore broadly early in evolution (high temperature) and
-converge on good solutions later (low temperature), borrowing from the
+**Why It's Unique**: Standard NEAT accepts all mutations unconditionally; most
+NEAT derivatives use simple fitness-based filtering. NEAT-AI's MCMC acceptance
+enables the population to explore broadly early in evolution (high temperature)
+and converge on good solutions later (low temperature), borrowing from the
 well-studied Markov chain Monte Carlo framework.
 
 **Diversity-Aware Cooling**: Beyond simple cooling, the temperature is also
@@ -762,10 +821,11 @@ creatures that go beyond standard NEAT crossover.
   fitness over a sliding window are halted and ultimately made extinct,
   reclaiming breeding budget for progressing species
 
-**Why It's Unique**: Most NEAT implementations fall back to simple fitness-based
-selection when parents are incompatible. Our approach preserves meaningful
-genetic information across species boundaries, enabling the evolutionary
-benefits of cross-island migration without sacrificing structural integrity.
+**Why It's Unique**: Standard NEAT and most NEAT derivatives fall back to simple
+fitness-based selection when parents are incompatible. NEAT-AI's approach
+preserves meaningful genetic information across species boundaries, enabling the
+evolutionary benefits of cross-island migration without sacrificing structural
+integrity.
 
 **Reference**: See Feature #21 in [README.md](./README.md)
 
@@ -785,11 +845,12 @@ training stability. Inspired by the Muon optimiser used in DeepSeek V4.
 3. The orthogonalised update is then scaled and applied in place of the raw
    gradient.
 
-**Why It's Unique**: Standard backpropagation in NEAT applies raw gradient
-descent (with learning-rate decay and L1/L2 decay). Muon-style updates remove
-correlations between row directions of the per-neuron gradient, which can
-produce smoother, less drift-prone training, particularly for small batch sizes
-typical in evolutionary fitness evaluation.
+**Why It's Unique**: Standard NEAT has no gradient step at all; NEAT-AI's
+default backpropagation already applies raw gradient descent (with learning-rate
+decay and L1/L2 decay). Muon-style updates remove correlations between row
+directions of the per-neuron gradient, which can produce smoother, less
+drift-prone training, particularly for small batch sizes typical in evolutionary
+fitness evaluation.
 
 **Configuration**: Opt-in via `gradientOrthogonalisation: "muon"` in
 `BackPropagationArguments` (default `"none"`).
@@ -800,7 +861,7 @@ applicability notes in [docs/](./docs/).
 ### 12. 🔗 Synthetic Synapse Training
 
 **What It Is**: Temporary dense inter-layer connectivity during backpropagation
-that addresses NEAT's inherent sparse connectivity weakness.
+that addresses the inherent sparse connectivity of NEAT-evolved networks.
 
 **How It Works**:
 
@@ -811,10 +872,10 @@ that addresses NEAT's inherent sparse connectivity weakness.
 3. After training, near-zero synapses are pruned and only connections that
    developed meaningful weights are retained
 
-**Why It's Unique**: NEAT networks are naturally sparse — they start minimal and
-grow only through mutation. This sparsity can limit backpropagation's
-effectiveness because gradient descent can only optimise existing connections.
-Synthetic synapses provide a temporary
+**Why It's Unique**: Standard NEAT (and NEAT-AI before this step) produces
+naturally sparse networks — they start minimal and grow only through mutation.
+This sparsity can limit backpropagation's effectiveness because gradient descent
+can only optimise existing connections. Synthetic synapses provide a temporary
 [layer densification](https://en.wikipedia.org/wiki/Dense_layer) step that lets
 gradient descent discover useful connections that evolution hasn't found yet,
 without permanently inflating the network.
@@ -824,7 +885,7 @@ configuration.
 
 **Reference**: See Feature #22 in [README.md](./README.md)
 
-## 🔬 Ecosystem Comparison: What We've Built vs Standard Libraries
+## 🔬 Ecosystem Comparison: NEAT-AI vs Standard Libraries
 
 ### 📚 Standard ML Libraries (TensorFlow, PyTorch, etc.)
 
@@ -839,41 +900,42 @@ configuration.
 - Pre-trained models (ImageNet, BERT, GPT, etc.)
 - Large community and extensive documentation
 
-**What We've Built Instead**:
+**What NEAT-AI Provides Instead** (standard NEAT contribution noted in italics;
+everything else is a NEAT-AI extension):
 
-- **Evolutionary Architecture Search**: No need to design layers - structure
+- _Genetic operations: speciation, crossover, mutation with historical marking
+  (standard NEAT)_
+- **Evolutionary Architecture Search**: no need to design layers — structure
   evolves
-- **Dynamic Topology**: Networks grow/shrink during training
-- **UUID-Based Extensibility**: Add features without restarting
-- **Memetic Evolution**: Hybrid evolution + backpropagation
+- **Dynamic Topology**: networks grow/shrink during training
+- **UUID-Based Extensibility**: add features without restarting
+- **Memetic Evolution**: hybrid evolution + backpropagation
 - **Error-Guided Discovery**: GPU-accelerated structural hints
-- **Distributed Evolution**: Multi-machine evolution with centralised
+- **Distributed Evolution**: multi-machine evolution with centralised
   combination
 - **Unique Activations**: IF, MAX, MIN and other non-standard functions
-- **Genetic Operations**: Speciation, crossover, mutation with historical
-  marking
 - **MCMC Acceptance**: Metropolis-Hastings mutation acceptance with adaptive
   temperature
-- **Synthetic Synapses**: Temporary dense connectivity for gradient descent
-- **Advanced Breeding**: Multiple strategies for incompatible parent crossover
-- **WASM Resilience**: Graceful panic recovery in long-running evolution
+- **Synthetic Synapses**: temporary dense connectivity for gradient descent
+- **Advanced Breeding**: multiple strategies for incompatible parent crossover
+- **WASM Resilience**: graceful panic recovery in long-running evolution
 
 **Key Differences**:
 
-- **Standard Libraries**: You design the architecture, they handle training
-- **Our Library**: Architecture evolves automatically, we handle both structure
-  and training
-- **Standard Libraries**: Fixed architectures, transfer learning from
+- **Standard Libraries**: you design the architecture, they handle training
+- **NEAT-AI**: architecture evolves automatically; NEAT-AI handles both
+  structure and training
+- **Standard Libraries**: fixed architectures, transfer learning from
   pre-trained models
-- **Our Library**: Dynamic architectures with transfer learning via checkpoint
+- **NEAT-AI**: dynamic architectures with transfer learning via checkpoint
   export/import, and ONNX export for interoperability
 
 **When to Use Each**:
 
-- **Use Standard Libraries**: When you have a proven architecture (CNN for
+- **Use Standard Libraries**: when you have a proven architecture (CNN for
   images, Transformer for language), need pre-trained models, or want
   industry-standard tooling
-- **Use Our Library**: When you need automatic architecture search, have
+- **Use NEAT-AI**: when you need automatic architecture search, have
   non-differentiable objectives, want to add features incrementally, or need
   lifelong learning
 
@@ -886,7 +948,7 @@ configuration.
 
 ## ⚖️ Pros and Cons Analysis
 
-### 🧬 NEAT (Our Implementation) - Pros
+### 🧬 NEAT-AI - Pros
 
 1. **Automatic Architecture Search**: No need to manually design network
    topology
@@ -938,7 +1000,7 @@ configuration.
 20. **External Rust Scorer**: Optional `rust_scorer` CLI for higher
     generation-scoring throughput, with automatic WASM fallback
 
-### 🧬 NEAT (Our Implementation) - Cons
+### 🧬 NEAT-AI - Cons
 
 1. **Computational Cost**: Population-based training requires more resources
 2. **Slower Convergence**: Evolutionary search is slower than pure gradient
@@ -950,11 +1012,11 @@ configuration.
 4. **Sequential Processing**: Less efficient for pure parallel computation than
    fixed architectures, though topology-aware parallel batch evaluation helps
 5. **Limited Unsupervised Learning**: While evolution itself doesn't require
-   labelled data for the algorithm, NEAT is typically used for supervised
-   learning tasks where you need labelled data to compute fitness. True
-   unsupervised learning (clustering, autoencoders, generative models) is not
-   yet implemented. See [Unsupervised Learning](#unsupervised-learning) section
-   for clarification.
+   labelled data for the algorithm, NEAT-AI (like standard NEAT) is typically
+   used for supervised learning tasks where you need labelled data to compute
+   fitness. True unsupervised learning (clustering, autoencoders, generative
+   models) is not yet implemented. See
+   [Unsupervised Learning](#unsupervised-learning) section for clarification.
 6. **Hyperparameter Sensitivity**: Many parameters to tune, though our
    implementation now addresses this with per-creature hyperparameter
    self-adaptation (evolvable learning rate, mutation rates, and regularisation
@@ -1056,9 +1118,10 @@ across related tasks with different input/output configurations.
 #### 2. 🔓 Unsupervised Learning
 
 **Current State**: While evolution itself doesn't require labelled data for the
-algorithm to work, NEAT is typically used for supervised learning tasks where
-you need labelled data to compute fitness scores. True unsupervised learning
-(learning patterns from unlabelled data) is not yet implemented.
+algorithm to work, both standard NEAT and NEAT-AI are typically used for
+supervised learning tasks where you need labelled data to compute fitness
+scores. True unsupervised learning (learning patterns from unlabelled data) is
+not yet implemented in NEAT-AI.
 
 > [!NOTE]
 > Evolution is "unsupervised" in the sense that the algorithm doesn't need
@@ -1475,31 +1538,32 @@ support exists via the `feedbackLoop` configuration.
 
 ## 🏁 Conclusion
 
-NEAT offers unique advantages in automatic architecture search and adaptive
-learning, but historically suffered from computational inefficiency and
-scalability limitations. Our implementation addresses many of these through
-cross-platform GPU acceleration, memetic evolution, error-guided discovery with
-intelligent caching, predictive coding, per-creature hyperparameter
-self-adaptation, comprehensive regularisation (dropout, L1/L2 weight & bias
-decay), transfer learning via checkpoint export/import and DNA-sharing
-primitives (pruning template, knowledge distillation, compact module graft),
-ONNX format export, k-fold cross-validation, parallel batch creature evaluation,
-MCMC mutation acceptance with adaptive temperature tuning and diversity-aware
-reheating, optional Muon-style orthogonalised gradient updates, synthetic
-synapse training for temporary layer densification, advanced inter-species
-breeding strategies (input-weight crossover, subgraph transplantation,
-diversity-driven breeding, soft compatibility gating), fitness sharing with
-per-species breeding quotas and stagnant-species retirement, fitness-driven
-squash mutation, an optional external Rust CLI scorer with WASM fallback, a
-pinned NEAT-AI-core dependency with parity-gated WASM-only hot paths, graceful
-WASM panic recovery for resilient long-running training, and forward-only
-topology enforcement for structural integrity. Remaining gaps in unsupervised
-learning and attention mechanisms represent opportunities for future
-development.
+Standard NEAT offers unique advantages in automatic architecture search and
+adaptive learning, but historically suffered from computational inefficiency and
+scalability limitations. NEAT-AI inherits the standard-NEAT substrate
+(evolutionary topology search, speciation, historical marking, fitness sharing)
+and addresses many of those limitations through cross-platform GPU acceleration,
+memetic evolution, error-guided discovery with intelligent caching, predictive
+coding, per-creature hyperparameter self-adaptation, comprehensive
+regularisation (dropout, L1/L2 weight & bias decay), transfer learning via
+checkpoint export/import and DNA-sharing primitives (pruning template, knowledge
+distillation, compact module graft), ONNX format export, k-fold
+cross-validation, parallel batch creature evaluation, MCMC mutation acceptance
+with adaptive temperature tuning and diversity-aware reheating, optional
+Muon-style orthogonalised gradient updates, synthetic synapse training for
+temporary layer densification, advanced inter-species breeding strategies
+(input-weight crossover, subgraph transplantation, diversity-driven breeding,
+soft compatibility gating), per-species breeding quotas and stagnant-species
+retirement, fitness-driven squash mutation, an optional external Rust CLI scorer
+with WASM fallback, a pinned NEAT-AI-core dependency with parity-gated WASM-only
+hot paths, graceful WASM panic recovery for resilient long-running training, and
+forward-only topology enforcement for structural integrity. Remaining gaps in
+unsupervised learning and attention mechanisms represent opportunities for
+future development.
 
-The choice between NEAT and traditional neural networks depends on:
+The choice between NEAT-AI and traditional neural networks depends on:
 
-- **Use NEAT when**:
+- **Use NEAT-AI when**:
   - You need automatic architecture search
   - You have non-differentiable objectives
   - You require lifelong learning
@@ -1513,7 +1577,7 @@ The choice between NEAT and traditional neural networks depends on:
   - You need maximum scalability (billions of parameters)
   - You want industry-standard tooling
 
-Our implementation bridges these worlds, making NEAT more practical while
+NEAT-AI bridges these worlds, making the NEAT idea more practical while
 preserving its unique advantages. The hybrid approach of evolution +
 backpropagation, combined with memetic learning, error-guided discovery,
 transfer learning, ONNX interoperability, MCMC acceptance, synthetic synapse
