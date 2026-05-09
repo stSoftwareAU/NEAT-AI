@@ -61,7 +61,6 @@ import {
   type EpisodeAdapter,
   type EpisodicOptions,
 } from "@creature/EpisodeAdapter.ts";
-import { EpisodicFitness } from "@creature/EpisodicFitness.ts";
 import type { Fitness } from "@architecture/Fitness.ts";
 
 /**
@@ -681,6 +680,11 @@ export async function evolveEnv<S, A>(
     : 0;
   const rewardToError = options.rewardToError ?? defaultRewardToError;
 
+  // Lazy import avoids adding EpisodicFitness → Fitness to the static module
+  // graph, which would create a circular initialisation ordering problem
+  // (Neat.ts → Creature.ts → CreatureTraining.ts → EpisodicFitness.ts → Fitness.ts
+  // while Neat.ts also imports Fitness.ts directly).
+  const { EpisodicFitness } = await import("@creature/EpisodicFitness.ts");
   const episodicFitness = new EpisodicFitness({
     adapter,
     growth: config.costOfGrowth,
