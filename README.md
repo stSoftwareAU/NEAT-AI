@@ -1,9 +1,24 @@
-# 🧬 NEAT Neural Network for DenoJS
+# 🧬 NEAT-AI Neural Network for DenoJS
 
 <p align="left">
   <img width="100" height="100" src="docs/logo.png" align="right" alt="NEAT-AI logo">
-This project is a practical implementation of a neural network based on the NEAT (NeuroEvolution of Augmenting Topologies) algorithm, written in DenoJS using TypeScript, with additional features such as error-guided discovery, memetic evolution, and distributed workflows.
+<strong>NEAT-AI</strong> started from <strong>NEAT</strong> — the
+NeuroEvolution of Augmenting Topologies algorithm published by
+<a href="http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf">Stanley &amp; Miikkulainen (2002)</a>
+— and has grown into a hybrid evolutionary plus gradient-based system, written
+in DenoJS using TypeScript. NEAT-AI keeps the speciation and structure-mutation
+ideas from standard NEAT but layers on much more recent research: memetic
+evolution, error-guided <strong>Discovery</strong>, Markov Chain Monte Carlo
+(MCMC) mutation acceptance, synthetic synapses, predictive coding, Muon-style
+orthogonalised gradients, and other algorithms (some published only weeks
+before this paragraph was written).
 </p>
+
+> [!IMPORTANT]
+> **NEAT** refers to the original 2002 algorithm. **NEAT-AI** refers to this
+> project — they are no longer the same thing. See the
+> [NEAT vs NEAT-AI terminology rule in AGENTS.md](./AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
+> for the convention used throughout this repository.
 
 For project terminology, coding conventions, and development guidelines, see
 [AGENTS.md](./AGENTS.md).
@@ -18,8 +33,8 @@ New here? Skim this section first; every topic guide is one link away.
   how to bump the pinned NEAT-AI-core revision.
 - **[AGENTS.md](./AGENTS.md)** — terminology and coding conventions for human
   and AI contributors.
-- **[COMPARISON.md](./COMPARISON.md)** — how NEAT compares to other AI
-  approaches.
+- **[COMPARISON.md](./COMPARISON.md)** — how NEAT-AI compares to other AI
+  approaches (and to standard NEAT).
 - **Topic guides** — quick jumps to the most-used docs:
   - Compute / WebAssembly (WASM):
     [Activation Functions](./docs/ACTIVATION_FUNCTIONS.md),
@@ -45,10 +60,10 @@ New here? Skim this section first; every topic guide is one link away.
 
 ## 🏗️ High-level architecture
 
-A creature is a NEAT genome that mutates and breeds in TypeScript, then runs its
-forward pass inside a vendored WebAssembly (WASM) module. When the optional Rust
-extension is present, error-guided structural proposals come back over a Foreign
-Function Interface (FFI) call.
+A creature is a NEAT-AI genome that mutates and breeds in TypeScript, then runs
+its forward pass inside a vendored WebAssembly (WASM) module. When the optional
+Rust extension is present, error-guided structural proposals come back over a
+Foreign Function Interface (FFI) call.
 
 ```mermaid
 flowchart LR
@@ -66,6 +81,11 @@ See [docs/DISCOVERY_ARCHITECTURE.md](./docs/DISCOVERY_ARCHITECTURE.md) for the
 full pipeline.
 
 ## ✨ Feature Highlights
+
+The list below describes **NEAT-AI** behaviour. Many entries — memetic
+evolution, error-guided Discovery, MCMC mutation acceptance, synthetic synapses,
+ONNX export — are extensions beyond the standard NEAT algorithm. See
+[COMPARISON.md](./COMPARISON.md) for the side-by-side picture.
 
 1. **Extendable Observations**: Input and output features are identified by
    stable UUIDs in the exported representation, rather than only by positional
@@ -246,8 +266,8 @@ For detailed documentation, see the [docs/](./docs/) directory:
 
 ### 🧠 Core Concepts
 
-- **[COMPARISON.md](./COMPARISON.md)**: How NEAT compares to traditional neural
-  networks, CNNs, RNNs, and modern LLMs
+- **[COMPARISON.md](./COMPARISON.md)**: How NEAT-AI compares to standard NEAT,
+  traditional neural networks, CNNs, RNNs, and modern LLMs
 - **[Discovery Guide](./docs/DISCOVERY_GUIDE.md)**: Complete guide to
   distributed, multi-machine discovery workflows, including failure/success
   caches, replay, candidate category limits, focus overrides, and the
