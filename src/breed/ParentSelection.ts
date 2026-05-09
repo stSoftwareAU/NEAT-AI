@@ -334,7 +334,14 @@ export function findFather(
 
     // Issue #1034: Avoid JSON exports in parent selection compatibility check.
     // Uses optimised function that works directly with Creature objects.
-    const fatherExport = createCompatibleFatherFromCreatures(mum, father);
+    // Issue #2614: pass through the configured synthetic-UUID alignment
+    // threshold so genetically incompatible parents can pick up real
+    // crossover anchor points via location-based synthetic UUIDs.
+    const fatherExport = createCompatibleFatherFromCreatures(
+      mum,
+      father,
+      config.syntheticAlignmentThreshold,
+    );
     try {
       return Creature.fromJSON(fatherExport);
     } catch (e) {

@@ -6,6 +6,17 @@ import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.t
 import { isOutputNeuronId, outputIndexFromId } from "@architecture/NeuronId.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import { neuronUuid } from "@neuron/NeuronSerialization.ts";
+import {
+  computeSyntheticLocationUuids,
+  computeSyntheticLocationUuidsExport,
+} from "@breed/SyntheticLocationUuid.ts";
+
+/**
+ * Default threshold for the synthetic-UUID alignment fallback (Issue #2614).
+ * Mirrors `NeatArguments.syntheticAlignmentThreshold` so callers that omit
+ * the option get the same behaviour as the configured pipeline default.
+ */
+export const DEFAULT_SYNTHETIC_ALIGNMENT_THRESHOLD = 0.2;
 
 /**
  * Lightweight neuron info needed for compatibility check.
@@ -194,6 +205,112 @@ function applyStableUuidAlignmentExport(
   }
 }
 
+/**
+ * Collects hidden-neuron wire UUIDs from a `CreatureExport` for the
+ * real-UUID overlap pre-check (Issue #2614). Mirrors the behaviour of
+ * `Creature.getHiddenNeuronWireKeys()` for the export shape.
+ */
+function collectHiddenWireUuidsFromExport(
+  creature: CreatureExport,
+): Set<string> {
+  const out = new Set<string>();
+  for (const n of creature.neurons) {
+    if (n.type !== "hidden") continue;
+    if (typeof n.uuid === "string" && n.uuid.length > 0) {
+      out.add(n.uuid);
+    } else if ((n as { id?: number }).id !== undefined) {
+      out.add(String((n as { id: number }).id));
+    }
+  }
+  return out;
+}
+
+/**
+ * Computes the real-UUID overlap ratio used to gate the synthetic-UUID
+ * alignment fallback (Issue #2614). The numerator is the number of
+ * hidden-neuron UUIDs shared between the two sets; the denominator is the
+ * smaller of the two set sizes — matching the ratio used by
+ * `geneticCompatibility`. Returns `1` when both sets are empty so empty
+ * topologies are treated as fully compatible (the fallback never fires).
+ */
+function realUuidOverlapRatio(
+  motherUuids: Set<string>,
+  fatherUuids: Set<string>,
+): number {
+  const smallest = motherUuids.size < fatherUuids.size
+    ? motherUuids
+    : fatherUuids;
+  const other = motherUuids.size < fatherUuids.size ? fatherUuids : motherUuids;
+  if (smallest.size === 0) return 1;
+  let matches = 0;
+  for (const u of smallest) {
+    if (other.has(u)) matches++;
+  }
+  return matches / smallest.size;
+}
+
+/**
+ * Synthetic-UUID alignment fallback (Issue #2614).
+ *
+ * Builds `Map<syntheticUUID, motherNeuronId>` from the mother's hidden
+ * neurons, then walks each father hidden/constant neuron and aligns it
+ * to a mother id if **either** of its two synthetic UUIDs matches a key
+ * in the map (loose match — first match wins, input anchor preferred).
+ *
+ * Existing usage guards still apply: an alignment is only recorded when
+ * `motherId` is not already present in the father's id space, when no
+ * other father neuron has already claimed the mother id, and when the
+ * father neuron itself has not already been aligned by an earlier pass.
+ *
+ * Aligned neurons inherit the mother's real UUID via the existing
+ * remap step in `createCompatibleFather*`. Synthetic UUIDs are never
+ * written into a neuron, the `idMapping`, or the resulting export.
+ */
+function applySyntheticUuidAlignment(
+  motherSynthByMotherId: Map<number, Set<string>>,
+  fatherSynthByFatherId: Map<number, Set<string>>,
+  idMapping: Map<number, number>,
+  usedMotherIds: Set<number>,
+  usedFatherIds: Set<number>,
+  fatherIds: Set<number>,
+): void {
+  if (
+    motherSynthByMotherId.size === 0 ||
+    fatherSynthByFatherId.size === 0
+  ) {
+    return;
+  }
+
+  // Build synthetic→mother-id index. When a synthetic UUID is shared by
+  // multiple mother neurons (rare but possible at the same anchor/steps/sign
+  // bucket once any mother neuron is bias-only and skipped above), keep the
+  // smallest mother id for deterministic behaviour.
+  const motherBySynthetic = new Map<string, number>();
+  for (const [motherId, synthSet] of motherSynthByMotherId) {
+    for (const synth of synthSet) {
+      const existing = motherBySynthetic.get(synth);
+      if (existing === undefined || motherId < existing) {
+        motherBySynthetic.set(synth, motherId);
+      }
+    }
+  }
+
+  for (const [fatherId, synthSet] of fatherSynthByFatherId) {
+    if (usedFatherIds.has(fatherId)) continue;
+    for (const synth of synthSet) {
+      const motherId = motherBySynthetic.get(synth);
+      if (motherId === undefined) continue;
+      if (fatherIds.has(motherId)) continue;
+      if (usedMotherIds.has(motherId)) continue;
+      // First match wins (loose match rule, Issue #2614).
+      idMapping.set(fatherId, motherId);
+      usedMotherIds.add(motherId);
+      usedFatherIds.add(fatherId);
+      break;
+    }
+  }
+}
+
 function applyStableUuidAlignmentCreatures(
   motherNeurons: Neuron[],
   fatherNeurons: Neuron[],
@@ -228,6 +345,7 @@ function applyStableUuidAlignmentCreatures(
 export function createCompatibleFather(
   mother: CreatureExport,
   father: CreatureExport,
+  syntheticAlignmentThreshold: number = DEFAULT_SYNTHETIC_ALIGNMENT_THRESHOLD,
 ): CreatureExport {
   normaliseCreatureExport(mother);
   normaliseCreatureExport(father);
@@ -253,6 +371,30 @@ export function createCompatibleFather(
     usedFatherIds,
     fatherIds,
   );
+
+  // Issue #2614: When the real-UUID overlap between mother and father is
+  // below `syntheticAlignmentThreshold`, fall back to location-based
+  // synthetic UUIDs (loose-match — either anchor) so structurally similar
+  // but genetically incompatible parents pick up real crossover anchors.
+  // The synthetic UUIDs are only consulted here; real UUIDs continue to
+  // drive the gene swap below and the resulting export.
+  if (syntheticAlignmentThreshold > 0) {
+    const motherWireUuids = collectHiddenWireUuidsFromExport(mother);
+    const fatherWireUuids = collectHiddenWireUuidsFromExport(father);
+    const overlap = realUuidOverlapRatio(motherWireUuids, fatherWireUuids);
+    if (overlap < syntheticAlignmentThreshold) {
+      const motherSynth = computeSyntheticLocationUuidsExport(mother);
+      const fatherSynth = computeSyntheticLocationUuidsExport(father);
+      applySyntheticUuidAlignment(
+        motherSynth,
+        fatherSynth,
+        idMapping,
+        usedMotherIds,
+        usedFatherIds,
+        fatherIds,
+      );
+    }
+  }
 
   // Generate neuron key maps for both mother and father, using sorted synapses
   const motherKeyMap = generateNeuronKeyMap(mother);
@@ -367,6 +509,7 @@ export function createCompatibleFather(
 export function createCompatibleFatherFromCreatures(
   mother: Creature,
   father: Creature,
+  syntheticAlignmentThreshold: number = DEFAULT_SYNTHETIC_ALIGNMENT_THRESHOLD,
 ): CreatureExport {
   const idMapping = new Map<number, number>();
   const usedMotherIds = new Set<number>();
@@ -390,6 +533,27 @@ export function createCompatibleFatherFromCreatures(
     usedFatherIds,
     fatherIds,
   );
+
+  // Issue #2614: synthetic-UUID alignment fallback for genetically
+  // incompatible parents — same gating and rules as the export path.
+  if (syntheticAlignmentThreshold > 0) {
+    const overlap = realUuidOverlapRatio(
+      mother.getHiddenNeuronWireKeys(),
+      father.getHiddenNeuronWireKeys(),
+    );
+    if (overlap < syntheticAlignmentThreshold) {
+      const motherSynth = computeSyntheticLocationUuids(mother);
+      const fatherSynth = computeSyntheticLocationUuids(father);
+      applySyntheticUuidAlignment(
+        motherSynth,
+        fatherSynth,
+        idMapping,
+        usedMotherIds,
+        usedFatherIds,
+        fatherIds,
+      );
+    }
+  }
 
   // Generate neuron key maps for both mother and father, using Creature objects directly
   const motherKeyMap = generateNeuronKeyMapFromCreature(mother);
