@@ -120,6 +120,12 @@ Subsystems that only some users need.
   observation / agent-rollout pattern for episode-based tasks (Snake,
   Cart-Pole). Names the use case, documents the `Creature.activate` contract,
   and links to the worked example in NEAT-AI-Examples.
+- **[event-driven-evolution.md](event-driven-evolution.md)** — RFC for the
+  first-class event-driven evolution API (`Creature.evolveEnv`). Names the
+  paradigm split between supervised batch (`evolveDir`/`evolveDataSet`) and
+  reinforcement / event-driven evolution, specifies the `EpisodeAdapter<S, A>`
+  contract, and sets out the migration path for the five episodic examples in
+  NEAT-AI-Examples.
 - **[dna-sharing-bake-off-results.md](dna-sharing-bake-off-results.md)** —
   bake-off comparison of inter-island DNA-sharing primitives (Issue #2496).
 
