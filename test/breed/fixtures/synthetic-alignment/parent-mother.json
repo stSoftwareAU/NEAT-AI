@@ -1,0 +1,95 @@
+{
+  "input": 2,
+  "output": 2,
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "a1b2c3d4-0001-4001-8000-000000000001",
+      "bias": 0.05,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "a1b2c3d4-0001-4001-8000-000000000002",
+      "bias": -0.02,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "a1b2c3d4-0001-4001-8000-000000000003",
+      "bias": 0.01,
+      "squash": "RELU"
+    },
+    {
+      "type": "hidden",
+      "uuid": "a1b2c3d4-0001-4001-8000-000000000004",
+      "bias": 0.0,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "a1b2c3d4-0001-4001-8000-000000000005",
+      "bias": -0.04,
+      "squash": "RELU"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0.0,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "uuid": "output-1",
+      "bias": 0.0,
+      "squash": "LOGISTIC"
+    }
+  ],
+  "synapses": [
+    {
+      "fromUUID": "input-0",
+      "toUUID": "a1b2c3d4-0001-4001-8000-000000000001",
+      "weight": 0.5
+    },
+    {
+      "fromUUID": "input-0",
+      "toUUID": "a1b2c3d4-0001-4001-8000-000000000005",
+      "weight": -0.7
+    },
+    {
+      "fromUUID": "input-1",
+      "toUUID": "a1b2c3d4-0001-4001-8000-000000000002",
+      "weight": 0.6
+    },
+    {
+      "fromUUID": "a1b2c3d4-0001-4001-8000-000000000001",
+      "toUUID": "a1b2c3d4-0001-4001-8000-000000000003",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "a1b2c3d4-0001-4001-8000-000000000002",
+      "toUUID": "a1b2c3d4-0001-4001-8000-000000000003",
+      "weight": 0.3
+    },
+    {
+      "fromUUID": "a1b2c3d4-0001-4001-8000-000000000003",
+      "toUUID": "a1b2c3d4-0001-4001-8000-000000000004",
+      "weight": 0.5
+    },
+    {
+      "fromUUID": "a1b2c3d4-0001-4001-8000-000000000004",
+      "toUUID": "output-0",
+      "weight": 0.8
+    },
+    {
+      "fromUUID": "a1b2c3d4-0001-4001-8000-000000000005",
+      "toUUID": "output-1",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "a1b2c3d4-0001-4001-8000-000000000003",
+      "toUUID": "output-1",
+      "weight": 0.2
+    }
+  ]
+}
