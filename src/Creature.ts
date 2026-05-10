@@ -986,7 +986,18 @@ export class Creature implements CreatureInternal {
     adapter: import("./creature/EpisodeAdapter.ts").EpisodeAdapter<S, A>,
     options: training.EvolveRLOptions,
   ): Promise<
-    { error: number; score: number; time: number; generation: number }
+    {
+      error: number;
+      score: number;
+      time: number;
+      generation: number;
+      /**
+       * Issue #2629: per-milestone payloads collected when
+       * `options.statistics === true`. Omitted when statistics are off.
+       */
+      milestones?:
+        import("./creature/EvolveRLStatistics.ts").EvolveRLMilestone[];
+    }
   > {
     return training.evolveRL(this, adapter, options);
   }

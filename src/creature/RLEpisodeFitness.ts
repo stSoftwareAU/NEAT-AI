@@ -64,6 +64,24 @@ export class RLEpisodeFitness<S, A> extends Fitness {
   private generation = 0;
   /** Per-generation seed set. Replaced before every fitness phase. */
   private seedSet: readonly number[] = [];
+  /**
+   * Issue #2629: when `true`, accumulate per-episode step counts and the
+   * fittest creature's mean return so `Creature.evolveRL()` can build a
+   * milestone payload. Off by default — collection cost is skipped entirely
+   * when statistics are disabled, not merely hidden.
+   */
+  private statisticsEnabled = false;
+  /**
+   * Issue #2629: per-generation statistics accumulated during `calculate()`.
+   * Reset by {@link beginGenerationStatistics} at the start of each fitness
+   * phase. `undefined` when statistics collection is disabled.
+   */
+  private generationStats?: {
+    totalSteps: number;
+    episodeCount: number;
+    bestMeanReward: number;
+    bestUuid: string | undefined;
+  };
 
   constructor(deps: RLEpisodeFitnessDeps<S, A>) {
     // Empty worker pool: the base class is only here for the structural
@@ -94,6 +112,53 @@ export class RLEpisodeFitness<S, A> extends Fitness {
       throw new Error("RLEpisodeFitness.setSeedSet: seedSet must be non-empty");
     }
     this.seedSet = seedSet;
+  }
+
+  /**
+   * Issue #2629: enable opt-in milestone statistics collection. When `false`
+   * (the default), per-episode step counts and best-mean-reward tracking are
+   * skipped entirely on the hot path.
+   */
+  setStatisticsEnabled(enabled: boolean): void {
+    this.statisticsEnabled = enabled;
+    if (!enabled) this.generationStats = undefined;
+  }
+
+  /**
+   * Issue #2629: reset the per-generation statistics accumulator. Called by
+   * `Creature.evolveRL()` before each fitness phase so the figures returned
+   * by {@link consumeGenerationStatistics} cover only one generation.
+   *
+   * No-op when statistics are disabled.
+   */
+  beginGenerationStatistics(): void {
+    if (!this.statisticsEnabled) return;
+    this.generationStats = {
+      totalSteps: 0,
+      episodeCount: 0,
+      bestMeanReward: Number.NEGATIVE_INFINITY,
+      bestUuid: undefined,
+    };
+  }
+
+  /**
+   * Issue #2629: read and clear the per-generation statistics accumulator.
+   *
+   * Returns `undefined` when statistics are disabled or
+   * {@link beginGenerationStatistics} was never called. Callers that need to
+   * record more than one generation must read after each `calculate()`.
+   */
+  consumeGenerationStatistics():
+    | {
+      totalSteps: number;
+      episodeCount: number;
+      bestMeanReward: number;
+      bestUuid: string | undefined;
+    }
+    | undefined {
+    const stats = this.generationStats;
+    this.generationStats = undefined;
+    return stats;
   }
 
   /**
@@ -165,12 +230,14 @@ export class RLEpisodeFitness<S, A> extends Fitness {
       for (let t = 0; t < this.seedSet.length; t++) {
         const seed = this.seedSet[t];
         let reward: number;
+        let stepCount = 0;
         try {
           // Seeds must run serially so the creature's per-trial returns line
           // up 1:1 with this.seedSet.
           // deno-lint-ignore no-await-in-loop
           const result = await runEpisode(this.adapter, creature, seed);
           reward = result.returnValue;
+          stepCount = result.steps;
         } catch (err) {
           if (err instanceof ActivationError) {
             getLogger().warn(
@@ -187,9 +254,27 @@ export class RLEpisodeFitness<S, A> extends Fitness {
         if (!Number.isFinite(reward)) nonFinite = true;
         trialRewards[t] = reward;
         cumulative += reward;
+        // Issue #2629: accumulate step counts only when statistics are on.
+        // Skipping the branch keeps the disabled-stats path zero-cost.
+        if (this.generationStats !== undefined) {
+          this.generationStats.totalSteps += stepCount;
+          this.generationStats.episodeCount += 1;
+        }
       }
 
       const meanReward = cumulative / this.seedSet.length;
+
+      // Issue #2629: track the best (highest) mean return seen this generation
+      // so the milestone payload can report `bestScore` as the raw RL return
+      // rather than the NEAT score (which folds in a growth penalty).
+      if (
+        this.generationStats !== undefined &&
+        Number.isFinite(meanReward) &&
+        meanReward > this.generationStats.bestMeanReward
+      ) {
+        this.generationStats.bestMeanReward = meanReward;
+        this.generationStats.bestUuid = creature.uuid;
+      }
 
       if (nonFinite || !Number.isFinite(meanReward)) {
         addTag(creature, "error", "Infinity");
@@ -225,6 +310,11 @@ export class RLEpisodeFitness<S, A> extends Fitness {
 
       addTag(creature, "score", creature.score.toString());
       addTag(creature, "trialRewards", trialRewards.join(","));
+      // Issue #2629: tag the mean return so `Creature.evolveRL()` can recover
+      // the fittest creature's raw RL return for milestone telemetry, even
+      // when the fittest is an elite that survived from a previous generation
+      // and was not re-evaluated this round.
+      addTag(creature, "meanReward", meanReward.toString());
 
       // Per-creature variance telemetry. Population-standard-deviation
       // (divisor = N) is the natural choice when the trials enumerate the
@@ -272,12 +362,14 @@ export class RLEpisodeFitness<S, A> extends Fitness {
     const errorTag = getTag(creature, "error");
     const scoreTag = getTag(creature, "score");
     const trialsTag = getTag(creature, "trialRewards");
+    const meanRewardTag = getTag(creature, "meanReward");
     for (const duplicate of dupes) {
       if (duplicate === creature) continue;
       duplicate.score = creature.score;
       if (errorTag) addTag(duplicate, "error", errorTag);
       if (scoreTag) addTag(duplicate, "score", scoreTag);
       if (trialsTag) addTag(duplicate, "trialRewards", trialsTag);
+      if (meanRewardTag) addTag(duplicate, "meanReward", meanRewardTag);
     }
   }
 }

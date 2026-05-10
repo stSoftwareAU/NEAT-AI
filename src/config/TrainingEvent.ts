@@ -453,6 +453,32 @@ export interface PopulationResizedEvent {
 }
 
 /**
+ * Emitted by `Creature.evolveRL()` at each milestone generation when the
+ * caller opts in via `EvolveRLOptions.statistics === true` (Issue #2629).
+ *
+ * The schedule is geometric — `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`
+ * followed by powers of ten beyond `1000`. See `EvolveRLStatistics.ts` for
+ * the predicate, payload field semantics, and rationale.
+ */
+export interface EvolveRLMilestoneEvent {
+  readonly kind: "evolverl_milestone";
+  /** ISO-8601 timestamp when the event was emitted. */
+  readonly timestamp: string;
+  /** 1-based generation counter that just completed. */
+  readonly generation: number;
+  /** Best creature's mean return across the per-generation seed set. */
+  readonly bestScore: number;
+  /** Best creature's neuron count (input + hidden + output). */
+  readonly bestNeurons: number;
+  /** Best creature's synapse count. */
+  readonly bestSynapses: number;
+  /** Mean `step()` count across every episode in this generation. */
+  readonly meanEpisodeSteps: number;
+  /** Wall-clock duration of this generation in milliseconds. */
+  readonly generationWallClockMs: number;
+}
+
+/**
  * Discriminated union of all training lifecycle events.
  *
  * Use the `kind` field to narrow the type:
@@ -475,7 +501,8 @@ export type TrainingEvent =
   | DiscoveryCompleteEvent
   | MemoryPressureEvent
   | SpeciesAdjustedEvent
-  | PopulationResizedEvent;
+  | PopulationResizedEvent
+  | EvolveRLMilestoneEvent;
 
 /**
  * Callback type for receiving structured training lifecycle events.
