@@ -18,6 +18,15 @@
 > drive the policy. The companion worked example lives in
 > [NEAT-AI-Examples/snake_game](https://github.com/stSoftwareAU/NEAT-AI-Examples).
 
+> [!TIP]
+> If you want NEAT-AI to **own the population loop** (selection, mutation,
+> plateau detection, checkpointing) and only ask you for a simulator adapter,
+> use `Creature.evolveRL()` — the first-class reinforcement-learning entry
+> point. The rollout pattern below is what `evolveRL` runs internally; this
+> guide stays useful when you need to drive the loop yourself. See
+> [`event-driven-evolution.md`](event-driven-evolution.md) for the full
+> contract.
+
 ## 📋 Table of Contents
 
 1. [When to use this pattern](#-when-to-use-this-pattern)
@@ -154,6 +163,9 @@ flowchart LR
 - **Population × generations** parallelises by creature: you can score every
   creature in a generation concurrently. Workers, threads, or remote machines —
   the simulator state lives next to the rollout, never inside the creature.
+  `Creature.evolveRL()` (see
+  [`event-driven-evolution.md`](event-driven-evolution.md)) handles this
+  parallelism for you when you give it an `EpisodeAdapter`.
 - **Per-generation seed**: pick **one** seed per generation and reuse it for
   every creature in that generation. Fitness is then a clean comparison ("which
   creature did best on the same level?"). Rotating the seed across generations
@@ -280,6 +292,11 @@ architectures, see [`COMPARISON.md`](../COMPARISON.md).
   comparison is fair.
 - **Return** — the standard RL term for the cumulative score of an episode
   (`Σ rewards`), optionally with shaping penalties subtracted.
+- **`evolveRL`** — the first-class reinforcement-learning entry point on
+  `Creature` that wraps the rollout pattern in this guide with the same
+  population manager, plateau detector, checkpoint store, and lifecycle events
+  that `evolveDir` already provides. Contract:
+  [`event-driven-evolution.md`](event-driven-evolution.md).
 
 For the project-wide vocabulary (Creature, Discovery, CRISPR, Grafting, MCMC),
 see [`AGENTS.md`](../AGENTS.md#-terminology).
