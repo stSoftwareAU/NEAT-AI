@@ -974,6 +974,23 @@ export class Creature implements CreatureInternal {
     return training.evolveEnv(this, adapter, options);
   }
 
+  /**
+   * Evolve the creature against a streaming-observation simulator using the
+   * class-shaped {@link import("./creature/EpisodeAdapter.ts").EpisodeAdapter}
+   * contract (Issue #2628). Per-creature fitness is the mean return across
+   * `episodesPerCreature` (default 3) episodes played against a per-generation
+   * rotating seed set so all creatures in a generation are compared fairly.
+   * See {@link training.evolveRL}.
+   */
+  evolveRL<S, A>(
+    adapter: import("./creature/EpisodeAdapter.ts").EpisodeAdapter<S, A>,
+    options: training.EvolveRLOptions,
+  ): Promise<
+    { error: number; score: number; time: number; generation: number }
+  > {
+    return training.evolveRL(this, adapter, options);
+  }
+
   evolveDataSet(
     dataSet: DataRecordInterface[],
     options: NeatOptions,

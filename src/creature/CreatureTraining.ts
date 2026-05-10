@@ -58,10 +58,13 @@ import { setWasmCompilationCacheSize } from "@wasm/WasmCompilationCache.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import {
   defaultRewardToError,
+  type EpisodeTrialsEvent,
   type EpisodicOptions,
   type LegacyEpisodeAdapter,
 } from "@creature/EpisodicFitnessTypes.ts";
 import type { Fitness } from "@architecture/Fitness.ts";
+import type { EpisodeAdapter } from "@creature/EpisodeAdapter.ts";
+import { buildRLSeedSet } from "@creature/EvolveRLSeedSet.ts";
 
 /**
  * Propagate expected values backward through the network for all output neurons.
@@ -831,6 +834,287 @@ export async function evolveEnv<S, A>(
 
   if (bestCreature) {
     creature.loadFrom(bestCreature, config.debug, "evolveEnv:restoreBest");
+  }
+
+  if (config.creatureStore) {
+    await writeCreatures(neat, config.creatureStore);
+  }
+
+  Deno.removeSignalListener("SIGTERM", signalListener);
+  options.signal?.removeEventListener("abort", abortListener);
+  return {
+    error,
+    score: bestScore,
+    generation,
+    time: Date.now() - start,
+  };
+}
+
+/**
+ * Caller-tunable options for {@link evolveRL} (Issue #2628).
+ *
+ * Layered on top of {@link NeatOptions} so the same evolutionary stop
+ * conditions and lifecycle events used by `evolveDir()` apply here too.
+ */
+export interface EvolveRLOptions extends NeatOptions {
+  /**
+   * Number of episodes per creature per generation; per-creature fitness is
+   * the mean return across these episodes. Default: `3`.
+   */
+  episodesPerCreature?: number;
+  /**
+   * Base seed mixed into the per-generation seed set. When omitted, a
+   * time-based default is used so the seed set still rotates between
+   * generations and across runs. Pin this when you need reproducibility.
+   */
+  seed?: number;
+  /**
+   * When `true`, every generation uses `seedSet(0)` instead of rotating with
+   * the generation counter. Tests / regression only — real evolution should
+   * keep this `false` so creatures cannot over-fit one map. Default: `false`.
+   */
+  fixedSeedSet?: boolean;
+  /**
+   * Reserved for future per-generation telemetry; kept off by default to
+   * stay zero-cost on the hot path. Default: `false`.
+   */
+  statistics?: boolean;
+  /**
+   * Optional callback fired once per scored creature per generation with the
+   * per-trial reward breakdown so callers can chart variance. Mirrors the
+   * `evolveEnv` hook of the same name.
+   */
+  onEpisodeTrials?: (event: EpisodeTrialsEvent) => void;
+  /**
+   * Optional {@link AbortSignal} that allows the caller to interrupt the
+   * evolution run externally without sending an OS signal. Mirrors the
+   * `evolveEnv` hook of the same name.
+   */
+  signal?: AbortSignal;
+}
+
+/**
+ * Evolve the creature against a streaming-observation simulator using the
+ * class-shaped {@link EpisodeAdapter} contract from Issue #2626 and the
+ * library-owned {@link runEpisode} runner from Issue #2627 (Issue #2628).
+ *
+ * Reuses the same outer shape as {@link evolveDir}: a single `Neat` instance
+ * drives population management, mutation, crossover, elitism, plateau
+ * detection, and lifecycle events. The only difference is the scorer — the
+ * worker-based dataset {@link Fitness} is swapped for an
+ * {@link RLEpisodeFitness} that runs `episodesPerCreature` episode rollouts
+ * per creature inline.
+ *
+ * Per-generation seed set: every creature in generation `g` plays the same
+ * seeds derived from `seedSet(g) = [hash(seed, g, 0), …, hash(seed, g, N-1)]`,
+ * so within-generation comparisons are fair and the set rotates each
+ * generation to avoid one-map over-fit. Pass `fixedSeedSet = true` to lock
+ * `seedSet(0)` for every generation (tests / regression only).
+ *
+ * Stop conditions (`targetError`, `timeoutMinutes`, `iterations`, SIGTERM)
+ * and lifecycle events (`generation_complete`, `plateau_detected`) match
+ * `evolveDir()` so existing consumers do not need a new event handler.
+ * Cumulative episode reward is mapped to the non-negative `error` slot via
+ * `defaultRewardToError` (`error = max(0, -reward)`), so `targetError`
+ * semantics are preserved.
+ *
+ * Multi-threaded worker rollouts are deliberately deferred to #2612; today
+ * every episode runs on the main thread.
+ */
+export async function evolveRL<S, A>(
+  creature: Creature,
+  adapter: EpisodeAdapter<S, A>,
+  options: EvolveRLOptions,
+): Promise<
+  { error: number; score: number; time: number; generation: number }
+> {
+  if (creature.input !== adapter.observationLength) {
+    throw new Error(
+      `Creature input ${creature.input} does not match adapter ` +
+        `observationLength ${adapter.observationLength}`,
+    );
+  }
+
+  const episodesPerCreature = options.episodesPerCreature !== undefined
+    ? Math.max(1, Math.floor(options.episodesPerCreature))
+    : 3;
+  const fixedSeedSet = options.fixedSeedSet === true;
+  // Default base seed is time-based so independent runs differ. Callers that
+  // need reproducibility pin `seed` explicitly. The mask keeps it inside the
+  // 32-bit unsigned range expected by `deriveRLSeed`.
+  const baseSeed = options.seed !== undefined && options.seed !== null
+    ? Math.floor(options.seed) >>> 0
+    : Date.now() >>> 0;
+
+  let interrupted = false;
+  const signalListener = () => {
+    getLogger().info("SIGTERM received, stopping evolveRL...");
+    interrupted = true;
+  };
+  Deno.addSignalListener("SIGTERM", signalListener);
+
+  const abortListener = () => {
+    getLogger().info("AbortSignal received, stopping evolveRL...");
+    interrupted = true;
+  };
+  options.signal?.addEventListener("abort", abortListener);
+
+  const start = Date.now();
+  const config = createNeatConfig(options);
+
+  setMaxCachedWasmCreatureActivations(config.wasmCache.maxCachedActivations);
+  setWasmCompilationCacheSize(config.wasmCache.compilationCacheSize);
+
+  const endTimeMS = config.timeoutMinutes
+    ? start + Math.max(1, config.timeoutMinutes) * 60000
+    : 0;
+
+  // Lazy import avoids a circular module graph (Neat.ts → Creature.ts →
+  // CreatureTraining.ts → RLEpisodeFitness.ts → Fitness.ts vs Neat.ts → Fitness.ts).
+  const { RLEpisodeFitness } = await import("@creature/RLEpisodeFitness.ts");
+  const rlFitness = new RLEpisodeFitness({
+    adapter,
+    growth: config.costOfGrowth,
+    rewardToError: defaultRewardToError,
+    onEpisodeTrials: options.onEpisodeTrials,
+  });
+
+  // Empty worker pool: scoring runs inline. Discovery/training scheduling
+  // becomes a no-op (the schedulers warn and bail when no workers are
+  // available); breeding falls back to the main-thread path.
+  const neat = new Neat(creature.input, creature.output, config, []);
+  // Swap in the RL scorer. The `fitness` property is `readonly` at the type
+  // level for ergonomics, but this is the documented seam for alternative
+  // scoring strategies.
+  (neat as unknown as { fitness: Fitness }).fitness = rlFitness;
+
+  await neat.populatePopulation(creature);
+
+  let error = Infinity;
+  let bestScore = -Infinity;
+
+  const { Creature: CreatureClass } = await import("../Creature.ts");
+  let bestCreature: InstanceType<typeof CreatureClass> | undefined;
+
+  let iterationStartMS = Date.now();
+  let generation = 0;
+  const targetError = config.targetError;
+  const iterations = config.iterations;
+
+  while (true) {
+    generation++;
+    rlFitness.setGeneration(generation);
+    rlFitness.setSeedSet(
+      buildRLSeedSet(baseSeed, generation, episodesPerCreature, fixedSeedSet),
+    );
+
+    // deno-lint-ignore no-await-in-loop
+    const result = await neat.evolve(bestCreature);
+
+    const fittest = result.fittest;
+    const fittestScore = fittest.score!;
+    assert(fittestScore >= bestScore, "Score is less than best score");
+    if (fittestScore > bestScore) {
+      const errorTmp = getTag(fittest, "error");
+      assert(errorTmp, "No error tag found");
+
+      const parsedError = errorTmp === "Infinity"
+        ? Number.POSITIVE_INFINITY
+        : Number.parseFloat(errorTmp);
+      assert(Number.isFinite(parsedError), "Error is not finite");
+      assert(parsedError >= 0, "Error is negative");
+      error = parsedError;
+      bestScore = fittestScore;
+      bestCreature = fittest.shallowClone() as InstanceType<
+        typeof CreatureClass
+      >;
+      bestCreature.score = bestScore;
+    }
+
+    const now = Date.now();
+    const timedOut = endTimeMS ? now > endTimeMS : false;
+
+    let phaseTiming = result.phaseTiming;
+    if (config.checkpointEveryGeneration && config.creatureStore) {
+      const checkpointStart = Date.now();
+      // deno-lint-ignore no-await-in-loop
+      await writeCreatures(neat, config.creatureStore);
+      phaseTiming = {
+        ...result.phaseTiming,
+        checkpointWriteMs: Date.now() - checkpointStart,
+      };
+    }
+
+    const generationElapsedMs = now -
+      (generation === 1 ? start : iterationStartMS);
+    emitTrainingEvent(config.onTrainingEvent, {
+      kind: "generation_complete",
+      timestamp: new Date().toISOString(),
+      generation,
+      bestFitness: fittestScore,
+      averageFitness: result.averageScore,
+      populationSize: neat.population.length,
+      elapsedMs: generationElapsedMs,
+      phaseTiming,
+      throughput: result.throughput,
+    });
+
+    if (result.plateau.onPlateau) {
+      emitTrainingEvent(config.onTrainingEvent, {
+        kind: "plateau_detected",
+        timestamp: new Date().toISOString(),
+        generation,
+        stagnationCount: result.plateau.generationsOnPlateau,
+        plateauThreshold: config.plateauDetection.windowSize,
+        improvementRate: result.plateau.improvementRate,
+        mutationMultiplier: result.plateau.mutationMultiplier,
+      });
+    }
+
+    const completed = interrupted || timedOut || error <= targetError ||
+      generation >= iterations;
+
+    if (
+      config.log &&
+      (generation % config.log === 0 || completed)
+    ) {
+      let avgTxt = "";
+      if (Number.isFinite(result.averageScore)) {
+        avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
+      }
+      getLogger().info(
+        "Generation",
+        generation,
+        "score",
+        fittest.score,
+        avgTxt,
+        "error",
+        error,
+        (config.log > 1 ? "avg " : "") + "time",
+        yellow(
+          format(Math.round((now - iterationStartMS) / config.log), {
+            ignoreZero: true,
+          }),
+        ),
+      );
+      iterationStartMS = now;
+    }
+
+    if (completed) {
+      if (interrupted) break;
+      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+        break;
+      }
+      // deno-lint-ignore no-await-in-loop
+      await neat.awaitInFlightTasks();
+    }
+  }
+
+  // No worker pool to terminate — episode rollouts ran inline.
+  await neat.discoveryReplayQueue.waitForCompletion();
+
+  if (bestCreature) {
+    creature.loadFrom(bestCreature, config.debug, "evolveRL:restoreBest");
   }
 
   if (config.creatureStore) {
