@@ -5,7 +5,7 @@
  * Drop-in replacement for {@link Fitness}: same `calculate()` signature and
  * the same telemetry counters consumed by `NeatEvolution.ts`. Replaces the
  * worker-based dataset evaluation with N-trial episode rollouts driven by an
- * {@link EpisodeAdapter}. Multi-threaded rollouts are deliberately deferred to
+ * {@link LegacyEpisodeAdapter}. Multi-threaded rollouts are deliberately deferred to
  * a follow-up so the implementation reviewable; today every episode runs on
  * the main thread.
  */
@@ -20,9 +20,9 @@ import { ValidationError } from "@errors/ValidationError.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type {
-  EpisodeAdapter,
   EpisodeTrialsEvent,
-} from "@creature/EpisodeAdapter.ts";
+  LegacyEpisodeAdapter,
+} from "@creature/EpisodicFitnessTypes.ts";
 
 /**
  * Constructor dependencies for {@link EpisodicFitness}. Mirrors the
@@ -30,7 +30,7 @@ import type {
  * pulled from {@link NeatConfig}.
  */
 export interface EpisodicFitnessDeps<S, A> {
-  readonly adapter: EpisodeAdapter<S, A>;
+  readonly adapter: LegacyEpisodeAdapter<S, A>;
   readonly growth: number;
   readonly trialsPerScore: number;
   readonly initialPerturbation: number;
@@ -50,7 +50,7 @@ export interface EpisodicFitnessDeps<S, A> {
  * `calculate()` is fully overridden and never dispatches to those workers.
  */
 export class EpisodicFitness<S, A> extends Fitness {
-  private readonly adapter: EpisodeAdapter<S, A>;
+  private readonly adapter: LegacyEpisodeAdapter<S, A>;
   private readonly episodicGrowth: number;
   private readonly trialsPerScore: number;
   private readonly initialPerturbation: number;
@@ -311,4 +311,4 @@ export class EpisodicFitness<S, A> extends Fitness {
 }
 
 /** Re-exported helper so `evolveEnv` callers can build dependencies cleanly. */
-export { defaultRewardToError } from "@creature/EpisodeAdapter.ts";
+export { defaultRewardToError } from "@creature/EpisodicFitnessTypes.ts";

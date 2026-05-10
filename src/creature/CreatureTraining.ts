@@ -58,9 +58,9 @@ import { setWasmCompilationCacheSize } from "@wasm/WasmCompilationCache.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import {
   defaultRewardToError,
-  type EpisodeAdapter,
   type EpisodicOptions,
-} from "@creature/EpisodeAdapter.ts";
+  type LegacyEpisodeAdapter,
+} from "@creature/EpisodicFitnessTypes.ts";
 import type { Fitness } from "@architecture/Fitness.ts";
 
 /**
@@ -600,7 +600,7 @@ export async function evolveDir(
 
 /**
  * Evolve the creature against a streaming-observation simulator using an
- * {@link EpisodeAdapter} (Issue #2611).
+ * {@link LegacyEpisodeAdapter} (Issue #2611).
  *
  * Reuses the same outer shape as {@link evolveDir}: a single `Neat` instance
  * drives population management, mutation, crossover, elitism, plateau
@@ -620,7 +620,7 @@ export async function evolveDir(
  */
 export async function evolveEnv<S, A>(
   creature: Creature,
-  adapter: EpisodeAdapter<S, A>,
+  adapter: LegacyEpisodeAdapter<S, A>,
   options: NeatOptions & EpisodicOptions,
 ): Promise<
   { error: number; score: number; time: number; generation: number }
