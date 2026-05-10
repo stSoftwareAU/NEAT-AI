@@ -961,10 +961,13 @@ export class Creature implements CreatureInternal {
    * (Issue #2611). See {@link training.evolveEnv}.
    */
   evolveEnv<S, A>(
-    adapter: import("./creature/EpisodeAdapter.ts").EpisodeAdapter<S, A>,
+    adapter: import("./creature/EpisodicFitnessTypes.ts").LegacyEpisodeAdapter<
+      S,
+      A
+    >,
     options:
       & NeatOptions
-      & import("./creature/EpisodeAdapter.ts").EpisodicOptions,
+      & import("./creature/EpisodicFitnessTypes.ts").EpisodicOptions,
   ): Promise<
     { error: number; score: number; time: number; generation: number }
   > {
