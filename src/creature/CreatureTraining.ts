@@ -901,6 +901,21 @@ export interface EvolveRLOptions extends NeatOptions {
    * `evolveEnv` hook of the same name.
    */
   signal?: AbortSignal;
+  /**
+   * Issue #2612: Adapter description used to spin up the parallel
+   * episode-rollout pool. When omitted, every rollout runs inline on the
+   * main thread regardless of `config.threads` — the worker pool needs an
+   * importable URL since adapter instances themselves cannot cross the
+   * worker boundary (they may close over functions, sockets, etc.).
+   *
+   * When supplied alongside `threads > 1`, every creature is dispatched to
+   * a worker pool of size `threads`. The main-thread `adapter` argument
+   * passed to `Creature.evolveRL()` is still used for type checking and
+   * graceful fallback, so authors should make sure both produce identical
+   * trajectories given the same seed.
+   */
+  adapterDescription?:
+    import("@creature/EpisodeWorkerProtocol.ts").AdapterDescription;
 }
 
 /**
@@ -993,11 +1008,42 @@ export async function evolveRL<S, A>(
   // Lazy import avoids a circular module graph (Neat.ts → Creature.ts →
   // CreatureTraining.ts → RLEpisodeFitness.ts → Fitness.ts vs Neat.ts → Fitness.ts).
   const { RLEpisodeFitness } = await import("@creature/RLEpisodeFitness.ts");
+
+  // Issue #2612: Build a parallel-rollout pool when the caller asked for
+  // > 1 thread AND supplied an importable adapter description. Without a
+  // description we cannot spin up real workers (adapter instances are not
+  // structured-clone-safe), so we warn and fall back to inline execution.
+  let workerPool:
+    | import("@creature/EpisodeWorkerPool.ts").EpisodeWorkerPool
+    | undefined;
+  if (config.threads > 1) {
+    if (options.adapterDescription) {
+      const { EpisodeWorkerPool } = await import(
+        "@creature/EpisodeWorkerPool.ts"
+      );
+      workerPool = await EpisodeWorkerPool.create({
+        adapter: options.adapterDescription,
+        threads: config.threads,
+        // `direct: true` on the adapter description forces in-process
+        // execution for the whole pool — tests use this; production runs
+        // leave it off so rollouts actually parallelise.
+        direct: options.adapterDescription.direct === true,
+      });
+    } else {
+      getLogger().warn(
+        "[evolveRL] config.threads > 1 but no adapterDescription supplied; " +
+          "falling back to single-threaded inline rollouts. Pass " +
+          "options.adapterDescription = { url, config } to enable the parallel pool.",
+      );
+    }
+  }
+
   const rlFitness = new RLEpisodeFitness({
     adapter,
     growth: config.costOfGrowth,
     rewardToError: defaultRewardToError,
     onEpisodeTrials: options.onEpisodeTrials,
+    workerPool,
   });
   // Issue #2629: opt-in milestone statistics. When enabled, RLEpisodeFitness
   // accumulates per-episode step counts and the best mean return per
@@ -1183,7 +1229,10 @@ export async function evolveRL<S, A>(
     }
   }
 
-  // No worker pool to terminate — episode rollouts ran inline.
+  // Issue #2612: Terminate the parallel rollout pool, if any. When no
+  // pool was constructed (single-threaded or missing adapterDescription)
+  // this is a no-op.
+  workerPool?.terminate();
   await neat.discoveryReplayQueue.waitForCompletion();
 
   if (bestCreature) {
