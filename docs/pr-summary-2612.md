@@ -46,11 +46,11 @@ CPU-bound benchmark (`bench/evolveRLParallel.bench.ts`, 16 creatures × 3
 episodes, 200 000 busy-loop iterations per step):
 
 ```
-threads=1: 6213 ms
-threads=2: 3445 ms (speedup 1.80x)
-threads=4: 1829 ms (speedup 3.40x)
+threads=1: 2584 ms
+threads=2: 1415 ms (speedup 1.83x)
+threads=4:  824 ms (speedup 3.14x)
 
-PASS: threads=4 speedup 3.40x ≥ 1.5x
+PASS: threads=4 speedup 3.14x ≥ 1.5x
 ```
 
 ### Tests verifying the result
