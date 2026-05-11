@@ -160,7 +160,7 @@ Deno.test(
     broken.fix();
     (broken as unknown as { input: number }).input = broken.neurons.length +
       10;
-    let ok = true;
+    let ok: boolean;
     try {
       ok = mutator.repairAfterMutation(broken);
     } catch (_err) {
