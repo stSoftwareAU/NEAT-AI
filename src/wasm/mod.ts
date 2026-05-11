@@ -158,3 +158,9 @@ export {
   type TopologyExportNode,
   type TopologyExportSynapse,
 } from "@wasm/WasmTopologyExport.ts";
+
+// Issue #2636 - Producer-side compile gate (mutate/breed reject bad topologies)
+export {
+  ensureProducerOutputCompiles,
+  type ProducerCompileResult,
+} from "@wasm/ProducerCompileGuard.ts";

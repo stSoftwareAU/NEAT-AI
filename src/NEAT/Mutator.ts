@@ -35,6 +35,7 @@ import {
 } from "@neat/MetropolisHastings.ts";
 import type { MCMCDiagnostics } from "@neat/MCMCDiagnostics.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
+import { ensureProducerOutputCompiles } from "@wasm/ProducerCompileGuard.ts";
 
 /**
  * Cache entry for valid mutation candidates.
@@ -326,8 +327,19 @@ export class Mutator {
         // per-mutation. Mutations must keep the creature valid; we do not run full
         // structural validation on every batch (use Creature.DEBUG / validate() when
         // diagnosing bugs).
+        // Issue #2636: repairAfterMutation now returns false when the post-repair
+        // creature still fails to compile to WASM. Revert to the pre-mutation
+        // snapshot so the bad topology does not propagate into evolution.
         if (changed) {
-          this.repairAfterMutation(creature);
+          const repairOk = this.repairAfterMutation(creature);
+          if (!repairOk) {
+            const snapshot = mcmcSnapshot ?? original;
+            if (snapshot) {
+              this.revertCreature(creature, snapshot);
+            }
+            changed = false;
+            hasTopologyMutation = false;
+          }
         }
 
         // Issue #2200: Metropolis-Hastings acceptance criterion.
@@ -724,7 +736,7 @@ export class Mutator {
    * mutation. Structural validation is not run here; mutations must preserve a
    * valid creature.
    */
-  public repairAfterMutation(creature: Creature): void {
+  public repairAfterMutation(creature: Creature): boolean {
     const enforceForwardOnly = creature.forwardOnly === true ||
       (this.config.feedbackLoop !== true && creature.forwardOnly !== false);
 
@@ -734,6 +746,25 @@ export class Mutator {
     } else {
       creature.fix();
     }
+
+    // Issue #2636: WASM compile sanity gate. The mutation loop has historically
+    // emitted creatures that pass `fix()` but still trap inside the WASM
+    // constructor (GRQ-3 scorer logged this twice with neurons=2156, inputs=2054,
+    // outputs=3). The probe attempts a real compile and one fix-retry; on
+    // failure callers should revert the creature to its pre-mutation snapshot
+    // rather than letting the bad topology contaminate training.
+    const compileResult = ensureProducerOutputCompiles(creature);
+    if (!compileResult.ok) {
+      getLogger().warn(
+        `[Mutator] reverting mutation that fails WASM compile (` +
+          `neurons=${creature.neurons.length}, inputs=${creature.input}, ` +
+          `outputs=${creature.output}): ${
+            compileResult.trapMessage ?? "unknown trap"
+          }`,
+      );
+      return false;
+    }
+    return true;
   }
 
   /**
