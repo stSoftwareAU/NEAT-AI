@@ -27,6 +27,7 @@ import type {
 } from "@architecture/SynapseInterfaces.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
+import { ensureProducerOutputCompiles } from "@wasm/ProducerCompileGuard.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -627,6 +628,39 @@ export class Offspring {
           "INVALID_CONNECTION",
         );
       }
+    }
+
+    // Issue #2636: WASM compile sanity gate. Some mutation/breeding paths emit
+    // topologies that pass `creatureValidate({ forwardOnly: true })` yet still
+    // trap inside `CompiledNetwork::new` with `RuntimeError: unreachable` (the
+    // GRQ-3 scorer logged two such offspring with shape neurons=2156,
+    // inputs=2054, outputs=3). Run a one-shot compile probe here so a bad
+    // topology is repaired or dropped at the producer rather than leaking into
+    // training and only being caught by the call-site recovery (#2483).
+    const compileResult = ensureProducerOutputCompiles(offspring);
+    if (!compileResult.ok) {
+      offspring.DEBUG = false;
+      writeDiagnostics({
+        error: new TopologyError(
+          `WASM compile failed for offspring: ${
+            compileResult.trapMessage ?? "unknown trap"
+          }`,
+          "INVALID_CONNECTION",
+        ),
+        prefix: "offspring-wasm-compile-trap",
+        mother: mother.exportJSON(),
+        father: father.exportJSON(),
+        offspring: offspring.exportJSON(),
+      });
+      getLogger().warn(
+        `[Offspring] dropping offspring that fails WASM compile (` +
+          `neurons=${offspring.neurons.length}, inputs=${offspring.input}, ` +
+          `outputs=${offspring.output}): ${
+            compileResult.trapMessage ?? "unknown trap"
+          }`,
+      );
+      if (acc) acc.postBreedingRepairMs += Date.now() - repairStartMs;
+      return undefined;
     }
 
     // Issue #2284: End post-breeding repair sub-phase, record successful offspring
