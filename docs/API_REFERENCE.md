@@ -572,6 +572,81 @@ of samples:
 ]
 ```
 
+### 🎮 Creature.evolveRL()
+
+`evolveRL` is the reinforcement-learning sibling of `evolveDir`: instead of
+reading a static dataset directory, it asks the caller for an
+[`EpisodeAdapter`](#episodeadapter) wrapping a streaming-observation simulator,
+then runs `episodesPerCreature` episode rollouts per creature per generation
+against that adapter. Population management, mutation, plateau detection,
+lifecycle events, and stop conditions match `evolveDir()`.
+
+```typescript
+async evolveRL<S, A>(
+  adapter: EpisodeAdapter<S, A>,
+  options: EvolveRLOptions,
+): Promise<{
+  error: number;
+  score: number;
+  time: number;
+  generation: number;
+  milestones?: EvolveRLMilestone[];
+}>
+```
+
+| Parameter | Type                   | Description                                               |
+| --------- | ---------------------- | --------------------------------------------------------- |
+| `adapter` | `EpisodeAdapter<S, A>` | Simulator wrapper (see [EpisodeAdapter](#episodeadapter)) |
+| `options` | `EvolveRLOptions`      | Evolution configuration (extends `NeatOptions`)           |
+
+`EvolveRLOptions` extends `NeatOptions` with:
+
+| Field                 | Type                 | Default    | Description                                                                                                              |
+| --------------------- | -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `episodesPerCreature` | `number`             | `3`        | Episodes per creature per generation; per-creature fitness is the mean return across these episodes                      |
+| `seed`                | `number`             | time-based | Base seed mixed into the per-generation seed set; pin for reproducibility                                                |
+| `fixedSeedSet`        | `boolean`            | `false`    | Lock `seedSet(0)` for every generation (tests / regression only)                                                         |
+| `statistics`          | `boolean`            | `false`    | Opt-in geometric milestone payloads at generations `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000`, then powers of ten beyond |
+| `onEpisodeTrials`     | `(event) => void`    | —          | Per-creature per-generation reward breakdown for variance charts                                                         |
+| `signal`              | `AbortSignal`        | —          | External interrupt signal                                                                                                |
+| `adapterDescription`  | `AdapterDescription` | —          | Importable adapter URL + JSON config used by the parallel worker pool when `threads > 1`                                 |
+
+#### EpisodeAdapter
+
+```typescript
+abstract class EpisodeAdapter<S = unknown, A = unknown> {
+  abstract reset(rngSeed: number): { observation: Float32Array; state: S };
+  abstract step(state: S, action: A): StepResult<Float32Array> & { state: S };
+  abstract get observationLength(): number;
+  abstract decodeAction(creatureOutput: Float32Array, state: S): A;
+
+  // Overridable termination guards (library defaults shown):
+  maxSteps(): number; // DEFAULT_MAX_STEPS = 5000
+  wallClockMs(): number; // DEFAULT_WALL_CLOCK_MS = 60_000
+
+  // Library plumbing — invoked once by the runner on first use:
+  assertContract(rngSeed?: number): void;
+}
+
+interface StepResult<O> {
+  readonly observation: O;
+  readonly reward: number;
+  readonly terminated: boolean; // natural episode end (death / goal)
+  readonly truncated: boolean; // a guard fired (step or wall-clock cap)
+  readonly info?: Readonly<Record<string, unknown>>;
+}
+```
+
+The class-shaped contract mirrors Gym/Gymnasium semantics: `terminated` and
+`truncated` are distinct, never collapsed into a single `done` flag.
+
+For the full reinforcement-learning guide and a worked `CountingAdapter`
+example, see
+[`docs/REINFORCEMENT_LEARNING.md`](REINFORCEMENT_LEARNING.md#-driving-evolution-with-evolverl).
+For the full contract — termination guards, seed cadence, opt-in milestone
+statistics, worker-pool semantics, and the migration path — see
+[`docs/event-driven-evolution.md`](event-driven-evolution.md).
+
 ### 💡 Evolution Example
 
 ```typescript

@@ -37,7 +37,8 @@
 6. [`clearState` between ticks vs episodes](#-clearstate-between-ticks-vs-episodes)
 7. [Worked example links](#-worked-example-links)
 8. [Comparison with value-based and policy-gradient RL](#-comparison-with-value-based-and-policy-gradient-rl)
-9. [Glossary](#-glossary)
+9. [Driving evolution with `evolveRL`](#-driving-evolution-with-evolverl)
+10. [Glossary](#-glossary)
 
 ## 🎯 When to use this pattern
 
@@ -278,6 +279,63 @@ This puts it in a different family from the dominant deep-RL methods.
 
 For a deeper comparison against feedforward, CNN, RNN, and Transformer
 architectures, see [`COMPARISON.md`](../COMPARISON.md).
+
+## 🚀 Driving evolution with `evolveRL`
+
+`Creature.evolveRL(adapter, options)` is the library-supplied way to evolve a
+population against an [`EpisodeAdapter`](#-glossary). It runs the rollout
+pattern documented above for every creature in every generation and reuses the
+same population manager, plateau detector, lifecycle events, and stop conditions
+as `evolveDir()`. Cross-link:
+[`event-driven-evolution.md`](event-driven-evolution.md) is the full contract —
+termination guards, seed cadence, opt-in milestone statistics, worker-pool
+semantics, and the migration path for the episodic examples in NEAT-AI-Examples.
+
+A 15-line worked example — a `CountingAdapter` that rewards every step until the
+agent's first output is positive:
+
+```typescript
+import { Creature, EpisodeAdapter } from "@stsoftware/neat-ai";
+
+class CountingAdapter extends EpisodeAdapter<number, number> {
+  observationLength = 2;
+  reset() {
+    return { observation: new Float32Array([0, 1]), state: 0 };
+  }
+  step(state: number, action: number) {
+    const next = state + 1;
+    return {
+      observation: new Float32Array([next / 100, 1]),
+      state: next,
+      reward: 1,
+      terminated: action > 0 || next >= 100,
+      truncated: false,
+    };
+  }
+  decodeAction(out: Float32Array) {
+    return out[0];
+  }
+}
+
+const creature = new Creature(2, 1);
+await creature.evolveRL(new CountingAdapter(), { iterations: 10 });
+```
+
+Things to notice:
+
+- The adapter owns the simulator state (`number` here); the creature owns the
+  weights. They never share mutable references.
+- `observationLength = 2` matches `new Creature(2, 1)`. `evolveRL` validates
+  this on first use via `EpisodeAdapter.assertContract()`.
+- `iterations: 10` caps the run at 10 generations. All other `NeatOptions`
+  fields are accepted via the `EvolveRLOptions` extension type — for example,
+  `episodesPerCreature: 3` (the default) averages three rollouts per creature
+  per generation, and `statistics: true` opts into the geometric milestone
+  schedule.
+
+For the full `EvolveRLOptions` and `EvolveRLMilestone` reference see
+[`docs/API_REFERENCE.md`](API_REFERENCE.md#-creatureevolverl) and the contract
+in [`event-driven-evolution.md`](event-driven-evolution.md).
 
 ## 📚 Glossary
 

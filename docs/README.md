@@ -119,7 +119,8 @@ Subsystems that only some users need.
 - **[REINFORCEMENT_LEARNING.md](REINFORCEMENT_LEARNING.md)** — streaming-
   observation / agent-rollout pattern for episode-based tasks (Snake,
   Cart-Pole). Names the use case, documents the `Creature.activate` contract,
-  and links to the worked example in NEAT-AI-Examples.
+  shows a worked `CountingAdapter` + `Creature.evolveRL` example, and links to
+  the full episode-rollout example in NEAT-AI-Examples.
 - **[event-driven-evolution.md](event-driven-evolution.md)** — RFC for the
   first-class reinforcement-learning evolution API (`Creature.evolveRL`). Names
   the paradigm split between supervised batch (`evolveDir`/`evolveDataSet`) and
