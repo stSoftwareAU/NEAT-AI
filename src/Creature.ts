@@ -961,14 +961,45 @@ export class Creature implements CreatureInternal {
    * (Issue #2611). See {@link training.evolveEnv}.
    */
   evolveEnv<S, A>(
-    adapter: import("./creature/EpisodeAdapter.ts").EpisodeAdapter<S, A>,
+    adapter: import("./creature/EpisodicFitnessTypes.ts").LegacyEpisodeAdapter<
+      S,
+      A
+    >,
     options:
       & NeatOptions
-      & import("./creature/EpisodeAdapter.ts").EpisodicOptions,
+      & import("./creature/EpisodicFitnessTypes.ts").EpisodicOptions,
   ): Promise<
     { error: number; score: number; time: number; generation: number }
   > {
     return training.evolveEnv(this, adapter, options);
+  }
+
+  /**
+   * Evolve the creature against a streaming-observation simulator using the
+   * class-shaped {@link import("./creature/EpisodeAdapter.ts").EpisodeAdapter}
+   * contract (Issue #2628). Per-creature fitness is the mean return across
+   * `episodesPerCreature` (default 3) episodes played against a per-generation
+   * rotating seed set so all creatures in a generation are compared fairly.
+   * See {@link training.evolveRL}.
+   */
+  evolveRL<S, A>(
+    adapter: import("./creature/EpisodeAdapter.ts").EpisodeAdapter<S, A>,
+    options: training.EvolveRLOptions,
+  ): Promise<
+    {
+      error: number;
+      score: number;
+      time: number;
+      generation: number;
+      /**
+       * Issue #2629: per-milestone payloads collected when
+       * `options.statistics === true`. Omitted when statistics are off.
+       */
+      milestones?:
+        import("./creature/EvolveRLStatistics.ts").EvolveRLMilestone[];
+    }
+  > {
+    return training.evolveRL(this, adapter, options);
   }
 
   evolveDataSet(

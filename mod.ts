@@ -29,20 +29,35 @@ export { Creature, CURRENT_CREATURE_SEMANTIC_VERSION } from "@creature";
 export { exportSnapshotJSON } from "@creature/CreatureSerialization.ts";
 
 /**
- * Episode-rollout API for `Creature.evolveEnv()` (Issue #2611).
+ * Episode-rollout API.
  *
- * The {@link EpisodeAdapter} interface lets callers drive evolution against a
- * streaming-observation simulator (RL-style) instead of a partitioned dataset
- * directory. {@link EpisodicOptions} extends `NeatOptions` with the
- * trial-averaging and reward-mapping knobs that are specific to
- * episode-based fitness.
+ * - {@link EpisodeAdapter} (abstract class, Issue #2626) is the class-shaped
+ *   contract for `Creature.evolveRL()` and the milestone reinforcement-learning
+ *   rewrite. New code should subclass this.
+ * - {@link LegacyEpisodeAdapter} (interface, Issue #2611) is the original
+ *   `evolveEnv()` adapter shape. Retained until the runner sub-issue
+ *   replaces `evolveEnv()`. {@link EpisodicOptions} extends `NeatOptions`
+ *   with the trial-averaging and reward-mapping knobs specific to that
+ *   legacy episode-based fitness path.
  */
+export { EpisodeAdapter } from "@creature/EpisodeAdapter.ts";
+export type { StepResult } from "@creature/EpisodeAdapter.ts";
+export {
+  DEFAULT_MAX_STEPS,
+  DEFAULT_WALL_CLOCK_MS,
+} from "@creature/EpisodeAdapter.ts";
 export type {
-  EpisodeAdapter,
+  EpisodeResult,
+  TruncationReason,
+} from "@creature/EpisodeRunner.ts";
+export type { EvolveRLOptions } from "@creature/CreatureTraining.ts";
+export type { EvolveRLMilestone } from "@creature/EvolveRLStatistics.ts";
+export type {
   EpisodeTrialsEvent,
   EpisodicOptions,
-} from "@creature/EpisodeAdapter.ts";
-export { defaultRewardToError } from "@creature/EpisodeAdapter.ts";
+  LegacyEpisodeAdapter,
+} from "@creature/EpisodicFitnessTypes.ts";
+export { defaultRewardToError } from "@creature/EpisodicFitnessTypes.ts";
 
 /**
  * Creature Interfaces

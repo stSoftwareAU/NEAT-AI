@@ -1,188 +1,217 @@
 /**
- * EpisodeAdapter.ts — Reinforcement-learning episode interface for
- * `Creature.evolveEnv()` (Issue #2611).
+ * EpisodeAdapter.ts — Class-shaped adapter contract for the
+ * reinforcement-learning episode runner (Issue #2626, part of #2624).
  *
- * NEAT-AI's existing `evolveDir()` API scores creatures against partitioned
- * dataset files via the worker pool. For RL workloads the simulator owns world
- * state and the next observation depends on the agent's previous action, so a
- * different scorer is needed: each generation runs a full episode rollout per
- * creature (`reset` → `observe` → activate → `decode` → `step`) and reports the
- * cumulative reward as the fitness signal.
+ * This is the single seam between NEAT-AI and a caller's RL environment.
+ * Subclasses MUST override the abstract members (`reset`, `step`,
+ * `observationLength`, `decodeAction`); the termination guard methods
+ * (`maxSteps()`, `wallClockMs()`) ship with library defaults and MAY be
+ * overridden for slower or faster simulators.
  *
- * The adapter is supplied by the caller and is the only RL-specific surface;
- * NEAT population management, mutation, crossover, elitism, and plateau
- * detection are all reused from the dataset path. See
- * `docs/REINFORCEMENT_LEARNING.md` for the streaming-observation contract.
+ * Return shape semantics intentionally mirror Gym/Gymnasium so users coming
+ * from those libraries recognise it: `terminated` (natural episode end —
+ * death, goal) and `truncated` (a guard fired — step cap or wall-clock cap)
+ * are distinct fields, never collapsed into a single `done` flag.
+ *
+ * Type discipline (Issue #1958 + AGENTS.md): the simulator state type `S` is
+ * opaque to NEAT-AI. It is passed back through `step()` unchanged but MUST
+ * NEVER cross a worker boundary directly — only the adapter's import URL,
+ * its JSON config, and the creature's UUID-only genome cross. Adapter wire
+ * types must be JSON-serialisable so the worker pool tracked by #2612 can
+ * ship adapter descriptions to off-thread rollouts.
  */
+
+import { AdapterContractError } from "@errors/AdapterContractError.ts";
 
 /**
- * One full play-through of a simulator for a single creature (an *episode*).
+ * Result of a single environment `step()` call. Mirrors Gymnasium's
+ * `(obs, reward, terminated, truncated, info)` return shape.
  *
- * Implementations are pure with respect to their `state` argument — no hidden
- * mutable globals — so that supplying a deterministic seed to `reset()`
- * reproduces the same trajectory bit-for-bit.
- *
- * @typeParam S — Simulator state type. Opaque to NEAT-AI; passed back into
- *   `observe`/`step` unchanged so the adapter can carry whatever data it likes
- *   (a typed array, a class instance, or a tuple).
- * @typeParam A — Action type emitted by `decode()`. Whatever shape the
- *   simulator's `step()` consumes — a number, a vector, an enum, etc.
+ * @typeParam O — Observation type. The runner expects `Float32Array` so the
+ *   genome can consume it directly via `Creature.activate(observation)`.
  */
-export interface EpisodeAdapter<S, A> {
-  /** Number of input neurons the creature must have. */
-  readonly inputCount: number;
-  /** Number of output neurons the creature must have. */
-  readonly outputCount: number;
-  /**
-   * Hard cap on the number of ticks per episode. Acts as a safety net for
-   * simulators that may never set `done = true`.
-   */
-  readonly maxSteps: number;
-
-  /**
-   * Initialise (or re-initialise) the simulator and return the starting state.
-   *
-   * @param seed — Optional deterministic seed. When the same `seed` is supplied
-   *   twice the adapter MUST produce identical state, observations, and step
-   *   transitions, otherwise determinism guarantees in {@link evolveEnv} are
-   *   broken.
-   */
-  reset(seed?: number): S;
-
-  /**
-   * Project the simulator state into the network's input vector. Length must
-   * equal {@link inputCount}.
-   */
-  observe(state: S): Float32Array;
-
-  /**
-   * Decode the network's output vector into the action consumed by `step()`.
-   * Called once per tick after `Creature.activate(observation)`.
-   */
-  decode(output: Float32Array): A;
-
-  /**
-   * Apply `action` to `state` and return the next state, the immediate reward,
-   * and whether the episode has terminated. The next observation is computed
-   * by passing the returned `state` to `observe()` on the next tick — this is
-   * the streaming-observation pattern documented in
-   * `docs/REINFORCEMENT_LEARNING.md`.
-   */
-  step(state: S, action: A): { state: S; reward: number; done: boolean };
+export interface StepResult<O> {
+  /** Observation produced by stepping the environment. */
+  readonly observation: O;
+  /** Scalar reward for this transition. */
+  readonly reward: number;
+  /** Natural episode end (death, goal reached, terminal absorbing state). */
+  readonly terminated: boolean;
+  /** A guard fired (step cap or wall-clock cap) — episode cut short. */
+  readonly truncated: boolean;
+  /** Optional diagnostic payload; opaque to the runner. */
+  readonly info?: Readonly<Record<string, unknown>>;
 }
 
 /**
- * Caller-tunable behaviour for {@link evolveEnv}.
- *
- * Combined with the standard {@link NeatOptions} (population size, target
- * error, timeout, plateau detection, ...), so the same evolutionary stop
- * conditions and lifecycle events used by `evolveDir()` apply here too.
+ * Default hard cap on the number of ticks per episode. Acts as a safety net
+ * for simulators that may never set `terminated = true`. Subclasses can
+ * override {@link EpisodeAdapter.maxSteps} to lift or lower this cap.
  */
-export interface EpisodicOptions {
-  /**
-   * Number of trials averaged into the creature's fitness score per
-   * generation. Default: `1`.
-   *
-   * When > 1 each trial uses a deterministic per-trial seed derived from
-   * {@link EpisodicOptions.seed} so duplicate runs reproduce. The mean reward
-   * across trials is mapped to the `error` slot via
-   * {@link EpisodicOptions.rewardToError}.
-   */
-  trialsPerScore?: number;
-
-  /**
-   * Magnitude of stochastic perturbation applied to the per-trial seed.
-   * Default: `0` (trials use deterministic seeds derived purely from the base
-   * seed and trial index).
-   *
-   * When > 0 the per-trial seed is offset by `trialIndex * initialPerturbation`
-   * so adapters that branch on subtle seed differences exercise more of their
-   * stochastic surface — useful for noisy simulators where a single trial is
-   * not representative.
-   */
-  initialPerturbation?: number;
-
-  /**
-   * Base seed used to derive per-trial seeds. When omitted the global RNG seed
-   * (from `NeatOptions.seed`) is used; when neither is set, an unseeded base
-   * of `0` is used and trials still vary deterministically by trial index.
-   */
-  seed?: number;
-
-  /**
-   * Map cumulative episode reward to the non-negative `error` slot consumed by
-   * the standard NEAT scoring path (`Score.calculate`). Lower error = better
-   * fitness, so the default mapping is `error = max(0, -reward)`:
-   *
-   * - reward ≥ 0 → error = 0 (best), score → 1 - growth penalty.
-   * - reward < 0 → error = |reward|, score = 1 - error - growth penalty.
-   *
-   * Override this when your reward signal needs a different mapping (for
-   * example a quadratic shaping or a fixed offset to keep stop-condition
-   * thresholds intuitive).
-   *
-   * The function MUST return a finite, non-negative number, otherwise
-   * {@link evolveEnv} fails fast.
-   */
-  rewardToError?: (cumulativeReward: number) => number;
-
-  /**
-   * Optional callback fired once per scored creature per generation with the
-   * per-trial reward breakdown so callers can chart variance. Fired
-   * synchronously inside the fitness phase; throwing here aborts the
-   * generation, so wrap any noisy I/O.
-   */
-  onEpisodeTrials?: (event: EpisodeTrialsEvent) => void;
-
-  /**
-   * Optional {@link AbortSignal} that allows the caller to interrupt the
-   * evolution run externally without sending an OS signal. When the signal is
-   * aborted, {@link evolveEnv} exits the generation loop after the current
-   * `neat.evolve()` call completes and returns the best result found so far.
-   *
-   * Prefer this over sending `SIGTERM` directly (e.g. in tests) because
-   * `Deno.kill(Deno.pid, "SIGTERM")` from a worker thread propagates to the
-   * main process and can abort the entire parallel test runner.
-   */
-  signal?: AbortSignal;
-}
+export const DEFAULT_MAX_STEPS = 5000;
 
 /**
- * Payload delivered to {@link EpisodicOptions.onEpisodeTrials}.
+ * Default wall-clock cap per episode in milliseconds. Wall-clock is the
+ * primary guard since the library cannot know the game's per-step cost in
+ * advance. Subclasses can override {@link EpisodeAdapter.wallClockMs} for
+ * slower or faster simulators.
  */
-export interface EpisodeTrialsEvent {
-  /** 1-based generation number at which this creature was scored. */
-  readonly generation: number;
-  /** UUID of the scored creature, when available. */
-  readonly creatureUuid?: string;
-  /** Cumulative reward returned by each trial (length === trialsPerScore). */
-  readonly trialRewards: readonly number[];
-  /** Arithmetic mean of `trialRewards`. */
-  readonly meanReward: number;
-  /**
-   * Population-standard-deviation of `trialRewards`; `0` when only a single
-   * trial was run.
-   */
-  readonly stdReward: number;
-  /** The non-negative error mapped from `meanReward` via `rewardToError`. */
-  readonly error: number;
-}
+export const DEFAULT_WALL_CLOCK_MS = 60_000;
 
 /**
- * Default reward → error mapping used when callers do not override
- * {@link EpisodicOptions.rewardToError}.
+ * Abstract base class for reinforcement-learning episode adapters.
  *
- * Returns `Math.max(0, -cumulativeReward)` so that:
+ * Java-class-style contract:
  *
- * - Any non-negative cumulative reward maps to `error = 0` (target reached).
- * - Negative cumulative rewards map to their absolute value as the error.
+ * - Required (`abstract`) methods MUST be overridden. They define how the
+ *   simulator resets, advances, exposes its observation shape, and decodes
+ *   creature outputs into actions.
+ * - Termination-guard methods (`maxSteps`, `wallClockMs`) ship library
+ *   defaults that MAY be overridden.
  *
- * This keeps `Score.calculate`'s `error >= 0` invariant satisfied while still
- * giving evolution a smooth gradient on the negative-reward side.
+ * Validation runs lazily on first use (see {@link assertContract}) rather
+ * than in the constructor so subclasses can defer their own initialisation.
+ *
+ * @typeParam S — Simulator state type. Opaque to NEAT-AI.
+ * @typeParam A — Action type emitted by `decodeAction()` and consumed by
+ *   `step()`.
  */
-export function defaultRewardToError(cumulativeReward: number): number {
-  if (!Number.isFinite(cumulativeReward)) {
-    return Number.MAX_SAFE_INTEGER;
+export abstract class EpisodeAdapter<S = unknown, A = unknown> {
+  /**
+   * `true` once {@link assertContract} has validated the subclass return
+   * shapes. Repeated checks would be wasted work on the hot path.
+   */
+  private contractChecked = false;
+
+  // --- MUST override -------------------------------------------------------
+
+  /**
+   * Initialise (or re-initialise) the simulator and return the starting
+   * observation plus the initial state.
+   *
+   * Determinism: when the same `rngSeed` is supplied twice the adapter MUST
+   * produce identical state, observations, and step transitions, otherwise
+   * the runner's reproducibility guarantees are broken.
+   *
+   * @param rngSeed — Deterministic seed for the simulator's RNG.
+   */
+  abstract reset(rngSeed: number): { observation: Float32Array; state: S };
+
+  /**
+   * Apply `action` to `state` and return the resulting transition. The
+   * returned `state` is threaded into the next `step()` call by the runner —
+   * this is the streaming-observation pattern.
+   */
+  abstract step(state: S, action: A): StepResult<Float32Array> & { state: S };
+
+  /**
+   * Number of input neurons the creature must have. Equivalent to the
+   * length of `Float32Array` returned by `reset()` / `step()`.
+   */
+  abstract get observationLength(): number;
+
+  /**
+   * Decode the creature's raw output vector into the action consumed by
+   * {@link step}. Called once per tick after `Creature.activate(observation)`.
+   *
+   * @param creatureOutput — Raw output from `Creature.activate()`.
+   * @param state — Current simulator state, in case action decoding depends
+   *   on context (e.g. legal-move masking).
+   */
+  abstract decodeAction(creatureOutput: Float32Array, state: S): A;
+
+  // --- MAY override (library defaults) -------------------------------------
+
+  /**
+   * Hard cap on the number of ticks per episode. Whichever guard fires
+   * first ({@link maxSteps} or {@link wallClockMs}) truncates the episode.
+   *
+   * Default: {@link DEFAULT_MAX_STEPS} (5000).
+   */
+  maxSteps(): number {
+    return DEFAULT_MAX_STEPS;
   }
-  return cumulativeReward >= 0 ? 0 : -cumulativeReward;
+
+  /**
+   * Wall-clock cap per episode in milliseconds. Primary guard for
+   * simulators with unknown per-step cost.
+   *
+   * Default: {@link DEFAULT_WALL_CLOCK_MS} (60 000 ms = 60 seconds).
+   */
+  wallClockMs(): number {
+    return DEFAULT_WALL_CLOCK_MS;
+  }
+
+  // --- Library plumbing ----------------------------------------------------
+
+  /**
+   * Validate the subclass's contract on first use.
+   *
+   * Lazy by design: the constructor cannot run this because subclasses may
+   * still be initialising fields when the base constructor returns.
+   * Library code that drives the adapter (the episode runner introduced in
+   * a follow-up sub-issue) MUST invoke this at least once before using any
+   * other method, typically right after wiring the adapter into the runner.
+   *
+   * Subsequent calls are no-ops.
+   *
+   * @throws {AdapterContractError} when:
+   *   - {@link observationLength} is not a positive finite integer
+   *   - {@link maxSteps} is not a positive finite integer
+   *   - {@link wallClockMs} is not a positive finite number
+   *   - {@link reset} returns an `observation` that is not a `Float32Array`
+   *     of the declared length
+   */
+  assertContract(rngSeed = 0): void {
+    if (this.contractChecked) return;
+
+    const obsLen = this.observationLength;
+    if (
+      !Number.isFinite(obsLen) ||
+      !Number.isInteger(obsLen) ||
+      obsLen <= 0
+    ) {
+      throw new AdapterContractError(
+        `EpisodeAdapter.observationLength must be a positive finite integer, ` +
+          `got ${String(obsLen)}`,
+        "INVALID_OBSERVATION_LENGTH",
+      );
+    }
+
+    const cap = this.maxSteps();
+    if (!Number.isFinite(cap) || !Number.isInteger(cap) || cap <= 0) {
+      throw new AdapterContractError(
+        `EpisodeAdapter.maxSteps() must return a positive finite integer, ` +
+          `got ${String(cap)}`,
+        "INVALID_MAX_STEPS",
+      );
+    }
+
+    const wall = this.wallClockMs();
+    if (!Number.isFinite(wall) || wall <= 0) {
+      throw new AdapterContractError(
+        `EpisodeAdapter.wallClockMs() must return a positive finite number, ` +
+          `got ${String(wall)}`,
+        "INVALID_WALL_CLOCK_MS",
+      );
+    }
+
+    const initial = this.reset(rngSeed);
+    if (!(initial.observation instanceof Float32Array)) {
+      throw new AdapterContractError(
+        `EpisodeAdapter.reset() must return a Float32Array observation, got ` +
+          `${typeof initial.observation}`,
+        "INVALID_OBSERVATION_TYPE",
+      );
+    }
+    if (initial.observation.length !== obsLen) {
+      throw new AdapterContractError(
+        `EpisodeAdapter.reset() returned ${initial.observation.length} ` +
+          `observation values, expected ${obsLen} (observationLength)`,
+        "INVALID_OBSERVATION_SIZE",
+      );
+    }
+
+    this.contractChecked = true;
+  }
 }

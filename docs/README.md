@@ -119,13 +119,15 @@ Subsystems that only some users need.
 - **[REINFORCEMENT_LEARNING.md](REINFORCEMENT_LEARNING.md)** — streaming-
   observation / agent-rollout pattern for episode-based tasks (Snake,
   Cart-Pole). Names the use case, documents the `Creature.activate` contract,
-  and links to the worked example in NEAT-AI-Examples.
+  shows a worked `CountingAdapter` + `Creature.evolveRL` example, and links to
+  the full episode-rollout example in NEAT-AI-Examples.
 - **[event-driven-evolution.md](event-driven-evolution.md)** — RFC for the
-  first-class event-driven evolution API (`Creature.evolveEnv`). Names the
-  paradigm split between supervised batch (`evolveDir`/`evolveDataSet`) and
-  reinforcement / event-driven evolution, specifies the `EpisodeAdapter<S, A>`
-  contract, and sets out the migration path for the five episodic examples in
-  NEAT-AI-Examples.
+  first-class reinforcement-learning evolution API (`Creature.evolveRL`). Names
+  the paradigm split between supervised batch (`evolveDir`/`evolveDataSet`) and
+  reinforcement-learning evolution, specifies the class-shaped
+  `EpisodeAdapter<S, A>` contract (Gym/Gymnasium return shape, default
+  termination guards, seed cadence, opt-in geometric statistics), and sets out
+  the migration path for the five episodic examples in NEAT-AI-Examples.
 - **[dna-sharing-bake-off-results.md](dna-sharing-bake-off-results.md)** —
   bake-off comparison of inter-island DNA-sharing primitives (Issue #2496).
 

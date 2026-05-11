@@ -28,9 +28,12 @@ Deno.test("Offspring.breed - produces offspring from compatible parents", () => 
     ],
   });
 
-  // Try multiple times since breeding involves randomness
+  // Try many times since breeding involves randomness.
+  // With 2 output neurons each having ~50% chance of coming from either parent,
+  // each trial has ~50% chance of producing a distinct (non-clone) offspring.
+  // 100 tries gives P(all clones) ≈ 0.5^100 ≈ 10^-30, making this practically certain.
   let offspring: Creature | undefined;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 100; i++) {
     offspring = Offspring.breed(mum, dad);
     if (offspring) break;
   }

@@ -6,10 +6,10 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import type {
-  EpisodeAdapter,
   EpisodeTrialsEvent,
-} from "@creature/EpisodeAdapter.ts";
-import { defaultRewardToError } from "@creature/EpisodeAdapter.ts";
+  LegacyEpisodeAdapter,
+} from "@creature/EpisodicFitnessTypes.ts";
+import { defaultRewardToError } from "@creature/EpisodicFitnessTypes.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 await initWasmForTests();
@@ -20,7 +20,7 @@ await initWasmForTests();
  * `reward = 0` (which the default mapping flattens to `error = 0`). This is
  * the "trivial 1-input/1-output" adapter referenced in the issue.
  */
-function buildTargetAdapter(target = 0.5): EpisodeAdapter<null, number> {
+function buildTargetAdapter(target = 0.5): LegacyEpisodeAdapter<null, number> {
   return {
     inputCount: 1,
     outputCount: 1,
@@ -48,7 +48,10 @@ function buildTargetAdapter(target = 0.5): EpisodeAdapter<null, number> {
  * Adapter that returns a different reward depending on the seed; used to
  * verify trial averaging picks up multiple seeds.
  */
-function buildSeedSensitiveAdapter(): EpisodeAdapter<{ seed: number }, number> {
+function buildSeedSensitiveAdapter(): LegacyEpisodeAdapter<
+  { seed: number },
+  number
+> {
   return {
     inputCount: 1,
     outputCount: 1,

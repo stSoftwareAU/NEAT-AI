@@ -14,7 +14,42 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [5.0.0]
+
 ### Added
+
+- **Issue #2630 (closes milestone #2624):** First-class reinforcement-learning
+  evolution surface. Wires `Creature.evolveRL(adapter, options)` and the
+  class-shaped `EpisodeAdapter` contract through the public entry point and the
+  reference documentation.
+  - **`Creature.evolveRL(adapter, options)`** — library-supplied way to evolve a
+    population against an `EpisodeAdapter`. Reuses the population manager,
+    plateau detector, lifecycle events, and stop conditions from `evolveDir()`;
+    the only difference is the scorer.
+  - **`EpisodeAdapter` base class** — abstract `reset`, `step`,
+    `observationLength`, and `decodeAction`; overridable termination guards
+    (`maxSteps`, `wallClockMs`). Contract is validated lazily on first use via
+    `assertContract()`.
+  - **Default termination guards** — 60 s wall-clock and 5000 steps per episode.
+    Whichever guard fires first truncates the episode (Gym/Gymnasium
+    `terminated` vs `truncated` semantics).
+  - **3 episodes per creature** averaged for fitness, with per-generation seed
+    rotation so within-generation comparisons stay fair and the population
+    cannot over-fit a single seed.
+  - **Opt-in evolution statistics** — when `EvolveRLOptions.statistics === true`
+    the run collects a per-milestone payload (best score, neuron/synapse counts,
+    mean episode steps, wall-clock) at generations
+    `1, 2, 5, 10, 20, 50, 100, 200, 500, 1000` and beyond at powers of ten.
+    Payloads ship on the existing `onTrainingEvent` channel as
+    `EvolveRLMilestoneEvent` and are returned as `milestones` on the run
+    summary.
+  - **Public re-exports from `mod.ts`** — `EpisodeAdapter`, `StepResult`,
+    `EpisodeResult`, `EvolveRLOptions`, and `EvolveRLMilestone` are now
+    importable from the package root so downstream consumers (notably
+    NEAT-AI-Examples) do not have to reach into `src/`.
+  - **Docs** — `docs/REINFORCEMENT_LEARNING.md` gains a "Driving evolution with
+    `evolveRL`" worked example, and `docs/API_REFERENCE.md` lists `evolveRL`
+    alongside `evolveDir` / `evolveDataSet`.
 
 - **Issue #2529:** Optional Muon-inspired orthogonalised gradient update step in
   the local backprop pass. New module `src/propagate/MuonOrthogonalisation.ts`
@@ -94,6 +129,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Issue #2630:** Library version bumped to `5.0.0`. The change is additive —
+  no existing 4.x APIs were removed or modified — but the new `evolveRL` surface
+  and the `EpisodeAdapter` contract are large enough that consumers should
+  consciously adopt them. The UUID-stability and semantic-version-stability
+  invariants from `AGENTS.md` are unaffected.
 - **Issue #2513:** Discovery throughput-stall guard in
   `DataRecorderAnalysis.runAnalysisLoop` is deferred until a warm-up window of
   two completed chunks has elapsed, and only trips when the average per-chunk
