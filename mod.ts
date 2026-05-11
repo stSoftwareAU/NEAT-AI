@@ -47,6 +47,12 @@ export {
   DEFAULT_WALL_CLOCK_MS,
 } from "@creature/EpisodeAdapter.ts";
 export type {
+  EpisodeResult,
+  TruncationReason,
+} from "@creature/EpisodeRunner.ts";
+export type { EvolveRLOptions } from "@creature/CreatureTraining.ts";
+export type { EvolveRLMilestone } from "@creature/EvolveRLStatistics.ts";
+export type {
   EpisodeTrialsEvent,
   EpisodicOptions,
   LegacyEpisodeAdapter,

@@ -17,22 +17,24 @@ The doc now covers, in order:
   Gym/Gymnasium-style `terminated` vs `truncated` semantics.
 - Seed cadence: per-generation seed set shared by every creature, deterministic
   per-generation rotation, opt-in fixed seeds for tests.
-- Per-creature averaging at `episodesPerCreature = 3`, with the mapping back
-  to NEAT-AI's `error` for `targetError` and plateau detection.
+- Per-creature averaging at `episodesPerCreature = 3`, with the mapping back to
+  NEAT-AI's `error` for `targetError` and plateau detection.
 - Opt-in geometric milestone statistics
-  (`1, 2, 5, 10, 20, 50, 100, 200, 500, 1 000, …`) and the per-milestone
-  payload (best score, best neuron / synapse counts, mean episode steps,
-  generation wall-clock).
+  (`1, 2, 5, 10, 20, 50, 100, 200, 500, 1 000, …`) and the per-milestone payload
+  (best score, best neuron / synapse counts, mean episode steps, generation
+  wall-clock).
 - Cross-reference to #2612 with the serialisable adapter descriptor (Option A).
 
-`docs/REINFORCEMENT_LEARNING.md` now cross-references `evolveRL` in three
-places (top tip, parallelism section, glossary), and `docs/README.md` updates
-the index entry to describe the renamed API.
+`docs/REINFORCEMENT_LEARNING.md` now cross-references `evolveRL` in three places
+(top tip, parallelism section, glossary), and `docs/README.md` updates the index
+entry to describe the renamed API.
 
 ## Evidence
 
-Documentation-only change. `./quality.sh --skip-tests --skip-discovery
---skip-wasm` (formatting, lint, bash check, type-check) passes cleanly.
+Documentation-only change.
+`./quality.sh --skip-tests --skip-discovery
+--skip-wasm` (formatting, lint, bash
+check, type-check) passes cleanly.
 
 ```mermaid
 classDiagram
@@ -54,14 +56,13 @@ classDiagram
 
 ## Test Plan
 
-This is a design-doc refresh — no executable code changes, so no new unit
-tests. The acceptance criteria from #2625 are verified by reading the doc:
+This is a design-doc refresh — no executable code changes, so no new unit tests.
+The acceptance criteria from #2625 are verified by reading the doc:
 
 - [x] No `evolveEnv` references outside the rename note.
 - [x] `evolveRL` justified against `evolveEnv` / `evolveOnline` /
       `evolveInteractive`.
-- [x] Class-shaped adapter contract documented (abstract / overridable /
-      final).
+- [x] Class-shaped adapter contract documented (abstract / overridable / final).
 - [x] Default termination guards (60 s wall-clock, 5 000 steps, truncated
       semantics) documented.
 - [x] Seed-cadence rules (per-generation rotation, fixed-seed opt-in)
