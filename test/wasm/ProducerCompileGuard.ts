@@ -171,7 +171,7 @@ Deno.test(
     assertEquals(
       ok,
       false,
-      "post-repair compile failure must surface as a falsey return",
+      "post-repair compile failure must surface as a falsy return",
     );
   },
 );
