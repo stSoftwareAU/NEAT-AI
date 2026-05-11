@@ -1,6 +1,6 @@
 /**
- * RLEpisodeFitness.ts — In-process episode-rollout scorer for
- * `Creature.evolveRL()` (Issue #2628, part of #2624).
+ * RLEpisodeFitness.ts — Episode-rollout scorer for `Creature.evolveRL()`
+ * (Issue #2628, part of #2624; parallel-pool path added in #2612).
  *
  * Counterpart to {@link EpisodicFitness} but speaks the new class-shaped
  * {@link EpisodeAdapter} contract from Issue #2626 and drives the
@@ -11,9 +11,11 @@
  *
  * Like {@link EpisodicFitness}, this scorer extends {@link Fitness} so it
  * satisfies the structural contract used by `NeatEvolution.ts`. The base
- * constructor is invoked with an empty worker pool; multi-threaded rollouts
- * via the worker pool are tracked in #2612 and slot in here later — this
- * implementation runs every episode inline.
+ * constructor is invoked with an empty worker pool because the dataset
+ * pool has no role here; an optional {@link EpisodeWorkerPool} (Issue
+ * #2612) parallelises per-creature rollouts when supplied. The mean and
+ * reward → error mapping always run on the main thread so the score path
+ * stays the single source of truth.
  */
 
 import { addTag, getTag } from "@stsoftware/tags/mod";
@@ -27,8 +29,21 @@ import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { EpisodeAdapter } from "@creature/EpisodeAdapter.ts";
 import { runEpisode } from "@creature/EpisodeRunner.ts";
+import type { EpisodeWorkerPool } from "@creature/EpisodeWorkerPool.ts";
 import type { EpisodeTrialsEvent } from "@creature/EpisodicFitnessTypes.ts";
 import { defaultRewardToError } from "@creature/EpisodicFitnessTypes.ts";
+
+/**
+ * Per-trial outcome captured during fitness evaluation. We retain `steps`
+ * alongside `reward` so the parallel and inline paths can share a single
+ * post-processing routine (see {@link RLEpisodeFitness.applyScore}); steps
+ * feed the opt-in milestone statistics (#2629) and `reward` drives the
+ * fitness mean.
+ */
+interface TrialOutcome {
+  readonly reward: number;
+  readonly steps: number;
+}
 
 /**
  * Constructor dependencies for {@link RLEpisodeFitness}. Mirrors the
@@ -40,10 +55,17 @@ export interface RLEpisodeFitnessDeps<S, A> {
   readonly growth: number;
   readonly rewardToError?: (reward: number) => number;
   readonly onEpisodeTrials?: (event: EpisodeTrialsEvent) => void;
+  /**
+   * Optional parallel-rollout pool (Issue #2612). When supplied, every
+   * unique creature is dispatched through the pool instead of running its
+   * episodes inline on the main thread. The mean and any reward → error
+   * mapping still happen here so the score path stays single-source-of-truth.
+   */
+  readonly workerPool?: EpisodeWorkerPool;
 }
 
 /**
- * Fitness scorer that runs episode rollouts inline using the new class-shaped
+ * Fitness scorer that runs episode rollouts using the new class-shaped
  * {@link EpisodeAdapter} and the library-owned {@link runEpisode} runner.
  *
  * The per-generation seed set is supplied by `Creature.evolveRL()` before each
@@ -53,12 +75,20 @@ export interface RLEpisodeFitnessDeps<S, A> {
  * `error` slot via {@link RLEpisodeFitnessDeps.rewardToError} (default
  * `error = max(0, -reward)`) and finally to a NEAT score via
  * {@link calculateScore}.
+ *
+ * When a worker pool is supplied, every unique creature is dispatched
+ * through the pool concurrently; otherwise the rollouts run serially on
+ * the main thread (the pre-#2612 behaviour). Either way the per-trial
+ * seed is a pure function of `(generation, episodeIndex)`, so the final
+ * score is byte-identical across thread counts for a fixed evolve seed.
  */
 export class RLEpisodeFitness<S, A> extends Fitness {
   private readonly adapter: EpisodeAdapter<S, A>;
   private readonly episodicGrowth: number;
   private readonly rewardToError: (reward: number) => number;
   private readonly onEpisodeTrials?: (event: EpisodeTrialsEvent) => void;
+  /** Issue #2612: optional pool for parallel per-creature rollouts. */
+  private readonly workerPool?: EpisodeWorkerPool;
 
   /** 1-based generation counter used in {@link EpisodeTrialsEvent.generation}. */
   private generation = 0;
@@ -85,12 +115,13 @@ export class RLEpisodeFitness<S, A> extends Fitness {
 
   constructor(deps: RLEpisodeFitnessDeps<S, A>) {
     // Empty worker pool: the base class is only here for the structural
-    // contract; episode rollouts run on the main thread.
+    // contract; dataset-style workers play no role in episode rollouts.
     super([], deps.growth, false);
     this.adapter = deps.adapter;
     this.episodicGrowth = deps.growth;
     this.rewardToError = deps.rewardToError ?? defaultRewardToError;
     this.onEpisodeTrials = deps.onEpisodeTrials;
+    this.workerPool = deps.workerPool;
   }
 
   /**
@@ -166,8 +197,11 @@ export class RLEpisodeFitness<S, A> extends Fitness {
    *
    * Mirrors {@link Fitness.calculate} semantics: deduplicates by UUID, scores
    * each unique creature once across the configured seed set, then fans the
-   * score and tags out to duplicates. The `additionalWorkers` argument is
-   * accepted for API parity but ignored — episode rollouts run inline.
+   * score and tags out to duplicates. When an {@link EpisodeWorkerPool} was
+   * supplied via the constructor, per-creature rollouts fan out to the pool
+   * concurrently; otherwise they run inline. Either way the determinism
+   * contract holds because the per-trial seed is a pure function of
+   * `(generation, episodeIndex)` set on the main thread before this call.
    */
   override async calculate(
     population: Creature[],
@@ -211,9 +245,9 @@ export class RLEpisodeFitness<S, A> extends Fitness {
 
     this.lastQueueMaxDepth = uniqueQueue.length;
 
-    let scorerMsAccum = 0;
-    let scoredCount = 0;
-
+    // Validate every creature's I/O against the adapter once before
+    // scheduling any rollouts. Failing fast keeps the worker pool from
+    // accepting an obviously-malformed creature.
     for (const creature of uniqueQueue) {
       if (creature.input !== this.adapter.observationLength) {
         throw new ValidationError(
@@ -222,128 +256,207 @@ export class RLEpisodeFitness<S, A> extends Fitness {
           "OTHER",
         );
       }
+    }
 
-      const trialRewards: number[] = new Array(this.seedSet.length);
-      let cumulative = 0;
-      let nonFinite = false;
-
-      for (let t = 0; t < this.seedSet.length; t++) {
-        const seed = this.seedSet[t];
-        let reward: number;
-        let stepCount = 0;
-        try {
-          // Seeds must run serially so the creature's per-trial returns line
-          // up 1:1 with this.seedSet.
-          // deno-lint-ignore no-await-in-loop
-          const result = await runEpisode(this.adapter, creature, seed);
-          reward = result.returnValue;
-          stepCount = result.steps;
-        } catch (err) {
-          if (err instanceof ActivationError) {
-            getLogger().warn(
-              `[RLEpisodeFitness] Activation failure on creature ` +
-                `${creature.uuid?.substring(0, 8) ?? "unknown"}: ` +
-                `${err.message}`,
-            );
-            reward = Number.NEGATIVE_INFINITY;
-          } else {
+    // Collect per-creature trial outcomes. With a worker pool, every
+    // creature is dispatched concurrently; without one, they run serially
+    // on the main thread (the legacy path).
+    const trialsPerCreature: TrialOutcome[][] = new Array(uniqueQueue.length);
+    if (this.workerPool) {
+      // Promise.all preserves index order, so `trialsPerCreature[i]`
+      // belongs to `uniqueQueue[i]` regardless of which worker served it.
+      const tasks = uniqueQueue.map((creature, i) =>
+        this.workerPool!.runEpisodes(creature, this.seedSet)
+          .then((outcomes) => {
+            const trials: TrialOutcome[] = new Array(outcomes.length);
+            for (let t = 0; t < outcomes.length; t++) {
+              trials[t] = {
+                reward: outcomes[t].reward,
+                steps: outcomes[t].steps,
+              };
+            }
+            trialsPerCreature[i] = trials;
+          })
+          .catch((err) => {
+            if (err instanceof ActivationError) {
+              getLogger().warn(
+                `[RLEpisodeFitness] Activation failure on creature ` +
+                  `${creature.uuid?.substring(0, 8) ?? "unknown"}: ` +
+                  `${err.message}`,
+              );
+              const trials: TrialOutcome[] = new Array(this.seedSet.length);
+              for (let t = 0; t < this.seedSet.length; t++) {
+                trials[t] = { reward: Number.NEGATIVE_INFINITY, steps: 0 };
+              }
+              trialsPerCreature[i] = trials;
+              return;
+            }
             throw err;
-          }
-        }
-
-        if (!Number.isFinite(reward)) nonFinite = true;
-        trialRewards[t] = reward;
-        cumulative += reward;
-        // Issue #2629: accumulate step counts only when statistics are on.
-        // Skipping the branch keeps the disabled-stats path zero-cost.
-        if (this.generationStats !== undefined) {
-          this.generationStats.totalSteps += stepCount;
-          this.generationStats.episodeCount += 1;
-        }
+          })
+      );
+      await Promise.all(tasks);
+    } else {
+      for (let i = 0; i < uniqueQueue.length; i++) {
+        // deno-lint-ignore no-await-in-loop
+        trialsPerCreature[i] = await this.collectTrialsInline(uniqueQueue[i]);
       }
+    }
 
-      const meanReward = cumulative / this.seedSet.length;
-
-      // Issue #2629: track the best (highest) mean return seen this generation
-      // so the milestone payload can report `bestScore` as the raw RL return
-      // rather than the NEAT score (which folds in a growth penalty).
-      if (
-        this.generationStats !== undefined &&
-        Number.isFinite(meanReward) &&
-        meanReward > this.generationStats.bestMeanReward
-      ) {
-        this.generationStats.bestMeanReward = meanReward;
-        this.generationStats.bestUuid = creature.uuid;
-      }
-
-      if (nonFinite || !Number.isFinite(meanReward)) {
-        addTag(creature, "error", "Infinity");
-        addTag(creature, "trialRewards", trialRewards.join(","));
-        creature.score = -Infinity;
-        addTag(creature, "score", creature.score.toString());
-        this.fanOutToDuplicates(creature, duplicates);
-        continue;
-      }
-
-      let error = this.rewardToError(meanReward);
-      if (!Number.isFinite(error) || error < 0) {
-        // Fail safe: a misbehaving rewardToError must not corrupt the
-        // population. Treat as worst case so natural selection drops the
-        // creature instead of crashing the run.
-        getLogger().warn(
-          `[RLEpisodeFitness] rewardToError returned non-positive-finite ` +
-            `(${error}) for reward ${meanReward}; mapping to Infinity.`,
-        );
-        error = Number.POSITIVE_INFINITY;
-      }
-
-      if (Number.isFinite(error)) {
-        addTag(creature, "error", error.toString());
-        const scoreStart = performance.now();
-        creature.score = calculateScore(creature, error, this.episodicGrowth);
-        scorerMsAccum += performance.now() - scoreStart;
-        scoredCount++;
-      } else {
-        addTag(creature, "error", "Infinity");
-        creature.score = -Infinity;
-      }
-
-      addTag(creature, "score", creature.score.toString());
-      addTag(creature, "trialRewards", trialRewards.join(","));
-      // Issue #2629: tag the mean return so `Creature.evolveRL()` can recover
-      // the fittest creature's raw RL return for milestone telemetry, even
-      // when the fittest is an elite that survived from a previous generation
-      // and was not re-evaluated this round.
-      addTag(creature, "meanReward", meanReward.toString());
-
-      // Per-creature variance telemetry. Population-standard-deviation
-      // (divisor = N) is the natural choice when the trials enumerate the
-      // entire sample (no bias correction needed).
-      let stdReward = 0;
-      if (this.seedSet.length > 1) {
-        let variance = 0;
-        for (let t = 0; t < this.seedSet.length; t++) {
-          const d = trialRewards[t] - meanReward;
-          variance += d * d;
-        }
-        variance /= this.seedSet.length;
-        stdReward = Math.sqrt(variance);
-      }
-
-      this.onEpisodeTrials?.({
-        generation: this.generation,
-        creatureUuid: creature.uuid,
-        trialRewards,
-        meanReward,
-        stdReward,
-        error,
-      });
-
+    // Post-processing: identical for both paths — cumulative/mean,
+    // rewardToError, score, tags, telemetry callback, duplicate fan-out.
+    let scorerMsAccum = 0;
+    let scoredCount = 0;
+    for (let i = 0; i < uniqueQueue.length; i++) {
+      const creature = uniqueQueue[i];
+      const trials = trialsPerCreature[i];
+      const stats = this.applyScore(creature, trials);
+      scorerMsAccum += stats.scoreMs;
+      if (stats.scored) scoredCount++;
       this.fanOutToDuplicates(creature, duplicates);
     }
 
     this.lastScorerMs = scorerMsAccum;
     this.lastScoredCreatureCount = scoredCount;
+  }
+
+  /**
+   * Inline (single-thread) per-creature rollout. Identical to the
+   * pre-#2612 hot loop but extracted so the parallel path can share the
+   * same post-processing.
+   */
+  private async collectTrialsInline(
+    creature: Creature,
+  ): Promise<TrialOutcome[]> {
+    const trials: TrialOutcome[] = new Array(this.seedSet.length);
+    for (let t = 0; t < this.seedSet.length; t++) {
+      const seed = this.seedSet[t];
+      try {
+        // Seeds must run serially so the creature's per-trial returns line
+        // up 1:1 with this.seedSet.
+        // deno-lint-ignore no-await-in-loop
+        const result = await runEpisode(this.adapter, creature, seed);
+        trials[t] = { reward: result.returnValue, steps: result.steps };
+      } catch (err) {
+        if (err instanceof ActivationError) {
+          getLogger().warn(
+            `[RLEpisodeFitness] Activation failure on creature ` +
+              `${creature.uuid?.substring(0, 8) ?? "unknown"}: ` +
+              `${err.message}`,
+          );
+          trials[t] = { reward: Number.NEGATIVE_INFINITY, steps: 0 };
+        } else {
+          throw err;
+        }
+      }
+    }
+    return trials;
+  }
+
+  /**
+   * Map per-trial outcomes to creature `score` + tags + telemetry. Returns
+   * a small bookkeeping struct so the caller can update its scorer-time
+   * accumulators. Also folds in the opt-in milestone statistics (#2629)
+   * so both the inline and parallel paths share the same step accounting.
+   */
+  private applyScore(
+    creature: Creature,
+    trials: TrialOutcome[],
+  ): { scoreMs: number; scored: boolean } {
+    let cumulative = 0;
+    let nonFinite = false;
+    const trialRewards: number[] = new Array(trials.length);
+    for (let t = 0; t < trials.length; t++) {
+      const reward = trials[t].reward;
+      trialRewards[t] = reward;
+      if (!Number.isFinite(reward)) nonFinite = true;
+      cumulative += reward;
+      // Issue #2629: accumulate step counts only when statistics are on.
+      // Skipping the branch keeps the disabled-stats path zero-cost.
+      if (this.generationStats !== undefined) {
+        this.generationStats.totalSteps += trials[t].steps;
+        this.generationStats.episodeCount += 1;
+      }
+    }
+    const meanReward = cumulative / trials.length;
+
+    // Issue #2629: track the best (highest) mean return seen this generation
+    // so the milestone payload can report `bestScore` as the raw RL return
+    // rather than the NEAT score (which folds in a growth penalty).
+    if (
+      this.generationStats !== undefined &&
+      Number.isFinite(meanReward) &&
+      meanReward > this.generationStats.bestMeanReward
+    ) {
+      this.generationStats.bestMeanReward = meanReward;
+      this.generationStats.bestUuid = creature.uuid;
+    }
+
+    if (nonFinite || !Number.isFinite(meanReward)) {
+      addTag(creature, "error", "Infinity");
+      addTag(creature, "trialRewards", trialRewards.join(","));
+      creature.score = -Infinity;
+      addTag(creature, "score", creature.score.toString());
+      addTag(creature, "meanReward", meanReward.toString());
+      return { scoreMs: 0, scored: false };
+    }
+
+    let error = this.rewardToError(meanReward);
+    if (!Number.isFinite(error) || error < 0) {
+      // Fail safe: a misbehaving rewardToError must not corrupt the
+      // population. Treat as worst case so natural selection drops the
+      // creature instead of crashing the run.
+      getLogger().warn(
+        `[RLEpisodeFitness] rewardToError returned non-positive-finite ` +
+          `(${error}) for reward ${meanReward}; mapping to Infinity.`,
+      );
+      error = Number.POSITIVE_INFINITY;
+    }
+
+    let scoreMs = 0;
+    let scored = false;
+    if (Number.isFinite(error)) {
+      addTag(creature, "error", error.toString());
+      const scoreStart = performance.now();
+      creature.score = calculateScore(creature, error, this.episodicGrowth);
+      scoreMs = performance.now() - scoreStart;
+      scored = true;
+    } else {
+      addTag(creature, "error", "Infinity");
+      creature.score = -Infinity;
+    }
+
+    addTag(creature, "score", creature.score.toString());
+    addTag(creature, "trialRewards", trialRewards.join(","));
+    // Issue #2629: tag the mean return so `Creature.evolveRL()` can recover
+    // the fittest creature's raw RL return for milestone telemetry, even
+    // when the fittest is an elite that survived from a previous generation
+    // and was not re-evaluated this round.
+    addTag(creature, "meanReward", meanReward.toString());
+
+    // Per-creature variance telemetry. Population-standard-deviation
+    // (divisor = N) is the natural choice when the trials enumerate the
+    // entire sample (no bias correction needed).
+    let stdReward = 0;
+    if (trialRewards.length > 1) {
+      let variance = 0;
+      for (let t = 0; t < trialRewards.length; t++) {
+        const d = trialRewards[t] - meanReward;
+        variance += d * d;
+      }
+      variance /= trialRewards.length;
+      stdReward = Math.sqrt(variance);
+    }
+
+    this.onEpisodeTrials?.({
+      generation: this.generation,
+      creatureUuid: creature.uuid,
+      trialRewards,
+      meanReward,
+      stdReward,
+      error,
+    });
+
+    return { scoreMs, scored };
   }
 
   /**
