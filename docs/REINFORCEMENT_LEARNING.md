@@ -18,6 +18,8 @@
 > drive the policy. The companion worked example lives in
 > [NEAT-AI-Examples/snake_game](https://github.com/stSoftwareAU/NEAT-AI-Examples).
 
+<!-- -->
+
 > [!TIP]
 > If you want NEAT-AI to **own the population loop** (selection, mutation,
 > plateau detection, checkpointing) and only ask you for a simulator adapter,
