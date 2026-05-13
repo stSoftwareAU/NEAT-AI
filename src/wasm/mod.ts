@@ -164,3 +164,6 @@ export {
   ensureProducerOutputCompiles,
   type ProducerCompileResult,
 } from "@wasm/ProducerCompileGuard.ts";
+
+// Issue #2643 - Serialiser self-consistency check for the WASM binary format
+export { assertWasmBinaryWellFormed } from "@wasm/WasmBinaryValidator.ts";

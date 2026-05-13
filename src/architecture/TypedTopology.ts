@@ -14,6 +14,8 @@
 import type { Creature } from "@creature";
 import { getSquashType } from "@wasm/SquashType.ts";
 import { getSynapseTypeCode } from "@wasm/CompileToWasm.ts";
+import { WasmError } from "@errors/WasmError.ts";
+import { assertWasmBinaryWellFormed } from "@wasm/WasmBinaryValidator.ts";
 import type {
   StructuralValidationResult,
   TopologyValidationResult,
@@ -163,6 +165,15 @@ export class TypedTopology {
    *   - Per inward synapse: u16 fromIndex, u8 synapseType, u8 padding, f64 weight
    */
   toWasmBinary(): Uint8Array {
+    // Issue #2643: Reject header drift up-front. See CompileToWasm for the
+    // matching guard in the object-based serialiser.
+    if (this.numInputs > this.numNeurons) {
+      throw new WasmError(
+        `Cannot serialise topology: num_inputs=${this.numInputs} > num_neurons=${this.numNeurons}. ` +
+          `Header drift would underflow the WASM loader.`,
+        "COMPILATION_FAILED",
+      );
+    }
     // Build inward connection index: for each non-input neuron,
     // collect synapse indices that connect TO that neuron.
     const inward: number[][] = new Array(this.numNeurons - this.numInputs);
@@ -245,7 +256,12 @@ export class TypedTopology {
       }
     }
 
-    return new Uint8Array(buffer);
+    const data = new Uint8Array(buffer);
+    // Issue #2643: Reject malformed blobs at the producer instead of letting
+    // the WASM decoder return `Data too short for neuron`. See
+    // `WasmBinaryValidator.ts` for the byte-walk that mirrors the core loader.
+    assertWasmBinaryWellFormed(data);
+    return data;
   }
 
   /**

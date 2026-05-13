@@ -31,6 +31,8 @@ import {
   WasmCreatureActivation,
 } from "@wasm/WasmActivation.ts";
 import { isWasmActivationAvailable } from "@wasm/WasmModuleLoader.ts";
+import { assertWasmBinaryWellFormed } from "@wasm/WasmBinaryValidator.ts";
+import { WasmError } from "@errors/WasmError.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 /**
@@ -377,6 +379,16 @@ class WasmCompilationCacheImpl {
     const numInputs = creature.input;
     const numOutputs = creature.output;
 
+    // Issue #2643: Reject header drift up-front. See CompileToWasm for the
+    // matching guard in the object-based serialiser.
+    if (numInputs > numNeurons) {
+      throw new WasmError(
+        `Cannot build WASM template: num_inputs=${numInputs} > num_neurons=${numNeurons}. ` +
+          `Header drift would underflow the WASM loader.`,
+        "COMPILATION_FAILED",
+      );
+    }
+
     // Calculate total size needed
     let totalSynapses = 0;
     for (let i = numInputs; i < numNeurons; i++) {
@@ -456,6 +468,12 @@ class WasmCompilationCacheImpl {
       neurons.push(neuronInfo);
     }
 
+    const templateBytes = new Uint8Array(templateBuffer);
+    // Issue #2643: The cache template is reused for every creature that shares
+    // this topology hash, so a malformed template would surface on every cache
+    // hit. Validate once at template-build time and throw early — the producer
+    // gate (#2636) catches the throw and reverts the offending mutation.
+    assertWasmBinaryWellFormed(templateBytes);
     return {
       bufferSize,
       numNeurons,
@@ -463,7 +481,7 @@ class WasmCompilationCacheImpl {
       numOutputs,
       numSynapses: totalSynapses,
       neurons,
-      templateBuffer: new Uint8Array(templateBuffer),
+      templateBuffer: templateBytes,
       bufferPool: [],
     };
   }

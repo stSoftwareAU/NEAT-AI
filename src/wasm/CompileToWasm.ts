@@ -20,7 +20,9 @@
  */
 
 import type { Creature } from "@creature";
+import { WasmError } from "@errors/WasmError.ts";
 import { getSquashType } from "@wasm/SquashType.ts";
+import { assertWasmBinaryWellFormed } from "@wasm/WasmBinaryValidator.ts";
 
 /**
  * Synapse type enum for WASM - must match Rust SynapseType
@@ -86,6 +88,19 @@ export function compileCreatureToWasm(
   const numNeurons = creature.neurons.length;
   const numInputs = creature.input;
   const numOutputs = creature.output;
+
+  // Issue #2643: Reject header drift up-front so the producer gate (#2636)
+  // surfaces a typed reject signal instead of a RangeError from a negative
+  // ArrayBuffer size. This is the canonical failure mode that produces
+  // `Data too short for neuron` (and `unreachable`) inside CompiledNetwork::new
+  // when num_inputs > num_neurons.
+  if (numInputs > numNeurons) {
+    throw new WasmError(
+      `Cannot serialise creature: num_inputs=${numInputs} > num_neurons=${numNeurons}. ` +
+        `Header drift would underflow the WASM loader.`,
+      "COMPILATION_FAILED",
+    );
+  }
 
   // Calculate total size needed
   // Header: 8 bytes (2 x u32)
@@ -160,8 +175,14 @@ export function compileCreatureToWasm(
     }
   }
 
+  const data = new Uint8Array(buffer);
+  // Issue #2643: Reject malformed blobs before they reach the WASM decoder.
+  // The producer gate (#2636) treats any throw as a reject signal, so a bad
+  // topology is dropped instead of burning compute on a creature that the
+  // WASM constructor would refuse anyway.
+  assertWasmBinaryWellFormed(data);
   return {
-    data: new Uint8Array(buffer),
+    data,
     numNeurons,
     numInputs,
     numOutputs,
