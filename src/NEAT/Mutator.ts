@@ -1,6 +1,8 @@
 import { assert } from "@std/assert";
 import { removeTag } from "@stsoftware/tags/mod";
+import type { TagInterface } from "@stsoftware/tags/mod";
 import { type Creature, CreatureUtil, Mutation } from "../../mod.ts";
+import { Neuron } from "@architecture/Neuron.ts";
 import { discover } from "@blackbox/Discover.ts";
 import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
@@ -462,10 +464,32 @@ export class Mutator {
    * Restores neurons, synapses, and key properties from the original.
    */
   private revertCreature(creature: Creature, original: Creature): void {
-    // Restore neurons array
+    // Restore neurons — create fresh instances so neuron.creature points to
+    // `creature`, not to the snapshot (`original`). The `creature` property is
+    // readonly, so we cannot reassign it on existing neuron objects (Issue #2644).
     creature.neurons.length = 0;
-    for (const neuron of original.neurons) {
-      creature.neurons.push(neuron);
+    for (let i = 0; i < original.neurons.length; i++) {
+      const src = original.neurons[i];
+      let n: Neuron;
+      if (src.type === "input") {
+        n = new Neuron(src.id, "input", 0, creature);
+      } else {
+        n = new Neuron(
+          src.id,
+          src.type,
+          src.bias,
+          creature,
+          src.squash,
+          src.uuid,
+        );
+        if (src.frozen) n.frozen = true;
+      }
+      n.index = i;
+      const srcTags = src.tags as TagInterface[] | undefined;
+      if (srcTags) {
+        (n as { tags: TagInterface[] | undefined }).tags = [...srcTags];
+      }
+      creature.neurons.push(n);
     }
 
     // Restore synapses array
