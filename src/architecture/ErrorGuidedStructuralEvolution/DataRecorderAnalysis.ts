@@ -478,6 +478,17 @@ export async function runAnalysisLoop(
           candidateBundle.coordinatedStructuralCandidates;
         ctx.refreshAnalysisTimeout(discoverStructure);
 
+        // Issue #2642: Drop the cached raw Rust analysis buffer now that
+        // candidates have been mapped out of it. The squash-analysis step
+        // below allocates aggressively (parquet records per focus neuron,
+        // activation traces, derivative maps), so releasing the prior
+        // chunk's full {helpful/harmful synapses + helpful neurons +
+        // diagnostics} payload here lets V8 reclaim it before squash
+        // allocates. Mapping in `collectRustAnalysisCandidates` already
+        // produced fresh `CandidateSynapse` / `CandidateNeuron` copies, so
+        // the bundle is independent of the cache.
+        discoverStructure.releaseCombinedRustAnalysisCache();
+
         if (shouldLogDiscovery(config)) {
           const helpfulSynapseCount = addHelpfulSynapse?.length ?? 0;
           const helpfulNeuronCount = addHelpfulNeurons?.length ?? 0;
@@ -648,6 +659,17 @@ export async function runAnalysisLoop(
         candidateSquashes,
         removeHarmfulNeurons,
       );
+
+      // Issue #2642: Drop the per-chunk Rust analysis result buffer as soon
+      // as candidates have been accumulated. Without this release the cache
+      // holds the previous chunk's helpful/harmful synapse and neuron arrays
+      // (plus diagnostics) until the next chunk's `ensureRustCombinedAnalysis`
+      // overwrites them, so peak heap is roughly two chunks' worth of
+      // analysis result. Releasing here lets V8 reclaim the prior chunk's
+      // buffer before the next FFI call allocates its own, which materially
+      // lowers the chance of tripping the `MemoryMonitor` CRITICAL
+      // threshold at the extension boundary.
+      discoverStructure.releaseCombinedRustAnalysisCache();
 
       // The chunk completed (the Rust FFI call returned). Record it for
       // the warm-up gate and rate-of-change check (Issue #2513).
