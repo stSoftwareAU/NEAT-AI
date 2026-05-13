@@ -5,7 +5,7 @@
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
-    "rev": "f4d3ba1a46be6a98ad56ca78bb0ef53ae2f4035a"
+    "rev": "9279a7a6a688413b22c41680ed13104dd48eb344"
   },
   "publish": {
     "include": [
