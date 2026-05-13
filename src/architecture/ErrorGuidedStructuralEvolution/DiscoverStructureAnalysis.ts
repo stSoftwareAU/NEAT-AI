@@ -188,6 +188,30 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   // ── Rust analysis cache (delegates) ─────────────────────────────────
 
+  /**
+   * Release the cached combined Rust analysis result so the heap can reclaim
+   * the per-chunk synapse/neuron/diagnostics buffers immediately (Issue
+   * #2642).
+   *
+   * Background: the cache holds the most recent {@link RustAnalyzeAllResult}
+   * — up to `focusList.length * 10` helpful synapses plus harmful synapses,
+   * `focusList.length * 5` helpful neurons, coordinated structural
+   * candidates, diagnostics arrays, and metadata. Without explicit release,
+   * the prior chunk's result stays live while the next chunk's analysis
+   * allocates its own large result, so peak heap is roughly two chunks'
+   * worth. After the chunk loop has called
+   * {@link collectRustAnalysisCandidates} and accumulated the bundle into
+   * the {@link DiscoverResult}, nothing else in the loop reads the cache,
+   * so dropping it now lets V8 collect that footprint before the next
+   * Rust FFI allocation.
+   *
+   * Safe to call unconditionally — a no-op when the cache is already
+   * empty.
+   */
+  public releaseCombinedRustAnalysisCache(): void {
+    this.combinedRustAnalysis = undefined;
+  }
+
   public ensureRustCombinedAnalysis(
     focusList: number[],
     includeSynapse: boolean,
