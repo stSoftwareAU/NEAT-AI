@@ -6,6 +6,7 @@ logback.log
 !.markdownlint-cli2.jsonc
 coverage/
 target/
+junit.xml
 !.github
 !.gitleaks.toml
 on/

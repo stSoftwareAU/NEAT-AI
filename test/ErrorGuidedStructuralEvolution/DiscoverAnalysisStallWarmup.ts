@@ -254,6 +254,50 @@ Deno.test(
 );
 
 Deno.test(
+  "deadline exhaustion between chunks is NOT reported as a throughput stall (GRQ #2312)",
+  async () => {
+    // Drive the loop so the warm-up chunk consumes the entire analysis
+    // budget. After chunk 1 returns the inner loop's between-chunks deadline
+    // check (chunkTimeRemaining <= 0) fires. Pre-fix this set
+    // `iterationStalled = true` and emitted the misleading
+    // "analysis throughput stalled after evaluating N neuron(s)" line. After
+    // GRQ #2312 the deadline path just breaks out of the inner chunk loop and
+    // the outer loop emits "analysis timeout reached" instead — so the
+    // surfaced `perfStats.analysisStalled` must stay false.
+    let tick = 1_000_000;
+    const fakeNow = () => tick;
+    // Burn 11 minutes on the first chunk so the 10-minute analysis deadline
+    // (configured inside runWith) is exhausted before chunk 2 is submitted.
+    const chunkDurationsMs = [11 * 60 * 1000, 1, 1, 1, 1, 1];
+    let chunkCallIdx = 0;
+
+    const { perfStats } = await runWith({
+      analyzeParallel: () => {
+        const dur = chunkDurationsMs[chunkCallIdx++] ?? 1;
+        tick += dur;
+        return {
+          success: true,
+          helpfulNeurons: [],
+          helpfulSynapses: [],
+          harmfulSynapses: [],
+        };
+      },
+      analysisChunkSize: 1,
+      // Use a generous per-chunk budget so the per-chunk stall guard does NOT
+      // fire — only the overall deadline does.
+      perChunkMaxMs: 30 * 60 * 1000,
+      discoveryMaxNeurons: 6,
+      now: fakeNow,
+    });
+
+    assertFalse(
+      perfStats.analysisStalled,
+      "overall-deadline exhaustion between chunks must NOT be reported as a throughput stall",
+    );
+  },
+);
+
+Deno.test(
   "formatStallMemoryDiagnostics returns a non-empty diagnostic string",
   () => {
     const text = formatStallMemoryDiagnostics();

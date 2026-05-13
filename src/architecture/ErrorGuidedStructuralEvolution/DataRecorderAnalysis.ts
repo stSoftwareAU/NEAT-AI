@@ -753,9 +753,16 @@ export async function runAnalysisLoop(
 
       // Overall deadline check between chunks so we don't start a new chunk
       // when there is effectively no budget remaining.
+      //
+      // Issue #2312 (GRQ): exhausting the overall deadline is NOT a throughput
+      // stall — it is normal budget exhaustion. Conflating the two caused the
+      // "analysis throughput stalled after evaluating N neuron(s)" line to fire
+      // whenever the warm-up chunk consumed most of the budget, even when the
+      // warm-up gate (#2513) and rate-of-change guard correctly chose to keep
+      // going. Just break the inner loop here and let the outer loop's
+      // deadline check route to the proper "analysis timeout reached" log.
       const chunkTimeRemaining = ctx.getTimeoutTS() - now();
       if (chunkTimeRemaining <= 0) {
-        iterationStalled = true;
         break;
       }
     }
