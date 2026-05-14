@@ -442,6 +442,10 @@
     "preempt",
     "rglob",
     "splitlines",
-    "stdlib"
+    "stdlib",
+    "Abramowitz",
+    "Stegun",
+    "Wilcoxon",
+    "stddev"
   ]
 }
