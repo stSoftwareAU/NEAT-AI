@@ -171,7 +171,10 @@ export function resetFailedCompileDedup(): void {
  * in GRQ-16 with a single line per offending creature so the surrounding
  * worker can drop or repair it without re-logging on every retry.
  */
-function logFailedCompileOnce(creature: Creature): void {
+function logFailedCompileOnce(
+  creature: Creature,
+  overrideMessage?: string,
+): void {
   const dedupKey = creature.uuid ?? creature.topologyHash ??
     CreatureUtil.getTopologyHash(creature);
   if (failedCompileLoggedUuids.has(dedupKey)) {
@@ -182,8 +185,12 @@ function logFailedCompileOnce(creature: Creature): void {
   }
   failedCompileLoggedUuids.add(dedupKey);
 
+  // Issue #2649: callers may supply an explicit trap message (typed
+  // WasmError from compileFromTemplate / buildTemplate); fall back to the
+  // last recorded WASM create failure for the trap-from-WASM path (#2483).
   const failure = getLastWasmCreateFailure();
-  const trapMessage = failure?.message ?? "unknown WASM compile failure";
+  const trapMessage = overrideMessage ?? failure?.message ??
+    "unknown WASM compile failure";
   getLogger().warn(
     `WASM compile failed for creature ${
       creature.uuid ?? "(no-uuid)"
@@ -325,39 +332,49 @@ class WasmCompilationCacheImpl {
     // Check if we have a cached template
     const node = this.nodeByKey.get(topologyHash);
     let activation: WasmCreatureActivation | null;
-    if (node) {
-      // Move to head (most recently used) — O(1)
-      this.moveToHead(node);
-      this.stats.hits++;
+    // Issue #2649: `compileFromTemplate` and `buildTemplate` can throw a
+    // typed WasmError when a malformed offspring (or stale topology hash)
+    // reaches the cache. Treat such throws as a failed compile so the
+    // surrounding evolveRL loop drops the creature instead of crashing.
+    try {
+      if (node) {
+        // Move to head (most recently used) — O(1)
+        this.moveToHead(node);
+        this.stats.hits++;
 
-      // Use cached template to quickly compile with creature's weights
-      const compiled = this.compileFromTemplate(creature, node.template);
-      activation = WasmCreatureActivation.create(compiled);
-    } else {
-      // Cache miss - build template and compile
-      this.stats.misses++;
-      const template = this.buildTemplate(creature);
+        // Use cached template to quickly compile with creature's weights
+        const compiled = this.compileFromTemplate(creature, node.template);
+        activation = WasmCreatureActivation.create(compiled);
+      } else {
+        // Cache miss - build template and compile
+        this.stats.misses++;
+        const template = this.buildTemplate(creature);
 
-      // Evict entries if cache is full — O(1) per eviction
-      while (this.nodeByKey.size >= this.maxSize) {
-        this.evictTail();
+        // Evict entries if cache is full — O(1) per eviction
+        while (this.nodeByKey.size >= this.maxSize) {
+          this.evictTail();
+        }
+
+        // Add template to cache as new head node
+        const newNode: LruNode = {
+          key: topologyHash,
+          template,
+          prev: null,
+          next: null,
+        };
+        this.nodeByKey.set(topologyHash, newNode);
+        this.moveToHead(newNode);
+        this.stats.size = this.nodeByKey.size;
+        this.stats.totalBytes += template.templateBuffer.length;
+
+        // Compile with creature's weights
+        const compiled = this.compileFromTemplate(creature, template);
+        activation = WasmCreatureActivation.create(compiled);
       }
-
-      // Add template to cache as new head node
-      const newNode: LruNode = {
-        key: topologyHash,
-        template,
-        prev: null,
-        next: null,
-      };
-      this.nodeByKey.set(topologyHash, newNode);
-      this.moveToHead(newNode);
-      this.stats.size = this.nodeByKey.size;
-      this.stats.totalBytes += template.templateBuffer.length;
-
-      // Compile with creature's weights
-      const compiled = this.compileFromTemplate(creature, template);
-      activation = WasmCreatureActivation.create(compiled);
+    } catch (error) {
+      if (!(error instanceof WasmError)) throw error;
+      logFailedCompileOnce(creature, error.message);
+      return null;
     }
 
     // Issue #2483: Log once per offending creature uuid when WASM
@@ -494,17 +511,52 @@ class WasmCompilationCacheImpl {
     creature: Creature,
     template: TopologyTemplate,
   ): CompiledCreatureData {
+    const numInputs = template.numInputs;
+
+    // Issue #2649: Validate that the creature's current topology still matches
+    // the cached template before we start poking offsets. A malformed offspring
+    // — or a creature whose `topologyHash` was not invalidated after a
+    // structural mutation — can reach this path with `creature.neurons.length`
+    // smaller than the template expects. Reading `neuron.bias` from
+    // `undefined` would otherwise crash the surrounding `evolveRL` loop with
+    // an unhandled TypeError. Surface this as a typed WasmError so
+    // `getOrCompile` can drop the creature like any other failed compile.
+    const expectedNonInputNeurons = template.neurons.length;
+    const actualNonInputNeurons = creature.neurons.length - numInputs;
+    if (actualNonInputNeurons < expectedNonInputNeurons) {
+      throw new WasmError(
+        `WASM compile failed: creature has ${creature.neurons.length} neurons ` +
+          `(${actualNonInputNeurons} non-input) but cached template expects ` +
+          `${expectedNonInputNeurons} non-input neurons. Topology hash drift ` +
+          `or malformed offspring — drop the creature or invalidate the cache.`,
+        "COMPILATION_FAILED",
+      );
+    }
+
     // Acquire a work buffer (pooled or fresh copy)
     const buffer = this.acquireBuffer(template);
     const view = new DataView(buffer.buffer);
-
-    const numInputs = template.numInputs;
 
     // Update weights and biases for each neuron
     for (let i = 0; i < template.neurons.length; i++) {
       const neuronInfo = template.neurons[i];
       const neuronIdx = numInputs + i;
       const neuron = creature.neurons[neuronIdx];
+
+      // Defensive: the length check above already guarantees presence, but
+      // guard against sparse arrays (holes) so we never read `.bias` from
+      // undefined and crash with an unhandled TypeError (Issue #2649).
+      if (neuron === undefined) {
+        // Return the work buffer to the pool before throwing so we do not
+        // leak it on the error path.
+        this.returnBuffer(template, buffer);
+        throw new WasmError(
+          `WASM compile failed: creature neuron at index ${neuronIdx} is ` +
+            `undefined (template expects ${expectedNonInputNeurons} non-input ` +
+            `neurons). Drop the creature or repair its topology before retrying.`,
+          "COMPILATION_FAILED",
+        );
+      }
 
       // Update bias
       view.setFloat64(neuronInfo.biasOffset, neuron.bias ?? 0, true);
