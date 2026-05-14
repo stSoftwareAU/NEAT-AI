@@ -217,3 +217,112 @@ Deno.test("EvolveRLStatistics: on — events at exactly 1, 2, 5, 10, 20, 50 over
     assertEquals(ret.generationWallClockMs, evt.generationWallClockMs);
   }
 });
+
+// ---------------------------------------------------------------------------
+// 6. Issue #2647: synthetic final-generation milestone when the run terminates
+// between two scheduled milestones.
+// ---------------------------------------------------------------------------
+
+Deno.test("EvolveRLStatistics: on — synthetic final milestone when termination falls between schedule entries", async () => {
+  const creature = new Creature(1, 1);
+  const adapter = new SingleTickAdapter();
+  const milestoneEvents: Extract<
+    TrainingEvent,
+    { kind: "evolverl_milestone" }
+  >[] = [];
+
+  const result = await creature.evolveRL(adapter, {
+    iterations: 7,
+    populationSize: 4,
+    targetError: 0,
+    seed: 1,
+    threads: 1,
+    episodesPerCreature: 1,
+    statistics: true,
+    onTrainingEvent: (event) => {
+      if (event.kind === "evolverl_milestone") milestoneEvents.push(event);
+    },
+  });
+
+  // Run completes its iteration cap. Generation 7 is not on the geometric
+  // schedule (1, 2, 5, 10, …) but must still appear as the terminal milestone.
+  assertEquals(result.generation, 7);
+  assertEquals(
+    milestoneEvents.map((e) => e.generation),
+    [1, 2, 5, 7],
+  );
+
+  // Invariant from Issue #2647: the last milestone tracks the terminal
+  // generation for every run that produced at least one milestone.
+  assert(result.milestones !== undefined, "milestones must be present");
+  assertEquals(result.milestones!.length, milestoneEvents.length);
+  const finalMilestone = result.milestones![result.milestones!.length - 1];
+  assertEquals(finalMilestone.generation, result.generation);
+
+  // Synthetic milestone carries the same payload shape as the scheduled ones —
+  // no new fields, all values finite, topology counts sane.
+  assertEquals(typeof finalMilestone.bestScore, "number");
+  assert(Number.isFinite(finalMilestone.bestScore));
+  assert(
+    finalMilestone.bestNeurons >= 2,
+    `bestNeurons too small: ${finalMilestone.bestNeurons}`,
+  );
+  assert(finalMilestone.bestSynapses >= 0);
+  assertEquals(finalMilestone.meanEpisodeSteps, 1);
+  assert(Number.isFinite(finalMilestone.generationWallClockMs));
+  assert(finalMilestone.generationWallClockMs >= 0);
+
+  // The synthetic milestone is also emitted as an `evolverl_milestone`
+  // training event so chart-builders driven by the event stream see the
+  // terminal generation too.
+  const lastEvent = milestoneEvents[milestoneEvents.length - 1];
+  assertEquals(lastEvent.generation, result.generation);
+  assertEquals(lastEvent.bestScore, finalMilestone.bestScore);
+  assertEquals(lastEvent.bestNeurons, finalMilestone.bestNeurons);
+  assertEquals(lastEvent.bestSynapses, finalMilestone.bestSynapses);
+  assertEquals(lastEvent.meanEpisodeSteps, finalMilestone.meanEpisodeSteps);
+  assertEquals(
+    lastEvent.generationWallClockMs,
+    finalMilestone.generationWallClockMs,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 7. Issue #2647: when the terminal generation IS already a scheduled
+// milestone (e.g. iterations = 10), no duplicate is appended.
+// ---------------------------------------------------------------------------
+
+Deno.test("EvolveRLStatistics: on — no duplicate milestone when termination lands on a schedule entry", async () => {
+  const creature = new Creature(1, 1);
+  const adapter = new SingleTickAdapter();
+  const milestoneEvents: Extract<
+    TrainingEvent,
+    { kind: "evolverl_milestone" }
+  >[] = [];
+
+  const result = await creature.evolveRL(adapter, {
+    iterations: 10,
+    populationSize: 4,
+    targetError: 0,
+    seed: 1,
+    threads: 1,
+    episodesPerCreature: 1,
+    statistics: true,
+    onTrainingEvent: (event) => {
+      if (event.kind === "evolverl_milestone") milestoneEvents.push(event);
+    },
+  });
+
+  assertEquals(result.generation, 10);
+  // Schedule entries in [1, 10] only — no duplicate 10 appended.
+  assertEquals(
+    milestoneEvents.map((e) => e.generation),
+    [1, 2, 5, 10],
+  );
+  assert(result.milestones !== undefined);
+  assertEquals(result.milestones!.length, 4);
+  assertEquals(
+    result.milestones![result.milestones!.length - 1].generation,
+    result.generation,
+  );
+});
