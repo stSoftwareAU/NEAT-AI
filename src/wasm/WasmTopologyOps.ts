@@ -12,6 +12,7 @@
  */
 
 import type { TypedTopology } from "@architecture/TypedTopology.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 import {
   getComputeReverseTopologicalOrderFn,
   getDetectCyclesFn,
@@ -99,6 +100,41 @@ function requireWasm<T>(fn: T | null | undefined, name: string): T {
   return fn;
 }
 
+/**
+ * Issue #2648: Run a WASM topology call, converting any non-typed trap
+ * (e.g. `RuntimeError: memory access out of bounds`, `RuntimeError:
+ * unreachable`) into a typed {@link TopologyError} so the breeding /
+ * upgrade pipeline can drop or repair the offending creature instead of
+ * crashing the whole evolution run.
+ *
+ * If the inner call already throws a `TopologyError` it is re-thrown
+ * untouched. Any other error (including unrelated bugs) is wrapped with
+ * a descriptive message and reason `INVALID_STATE`. The original error
+ * is attached via the standard `Error.cause` property so diagnostics can
+ * still inspect the underlying trap.
+ *
+ * Exported for direct unit testing of the trap-translation behaviour;
+ * production code reaches it via the per-operation wrappers below.
+ */
+export function withWasmTrapGuard<T>(opName: string, run: () => T): T {
+  try {
+    return run();
+  } catch (err) {
+    if (err instanceof TopologyError) {
+      throw err;
+    }
+    const message = err instanceof Error
+      ? `${err.name}: ${err.message}`
+      : String(err);
+    throw new TopologyError(
+      `WASM ${opName} trapped (${message}). The topology is malformed; ` +
+        `the caller should drop or repair the creature instead of ` +
+        `crashing the evolution run.`,
+      "INVALID_STATE",
+    );
+  }
+}
+
 // ===========================================================================
 // 1. Topology Validation (Forward-Only Checks)
 // ===========================================================================
@@ -110,7 +146,10 @@ export function validateTopology(
   topology: TypedTopology,
 ): TopologyValidationResult {
   const wasmFn = requireWasm(getValidateTopologyFn(), "validateTopology");
-  const result = wasmFn(topology.fromIndices, topology.toIndices);
+  const result = withWasmTrapGuard(
+    "validateTopology",
+    () => wasmFn(topology.fromIndices, topology.toIndices),
+  );
   return {
     valid: result[0] === TOPOLOGY_VALID,
     errorCode: result[0],
@@ -132,12 +171,16 @@ export function scanAvailableConnections(
     getScanAvailableConnectionsFn(),
     "scanAvailableConnections",
   );
-  const flat = wasmFn(
-    topology.fromIndices,
-    topology.toIndices,
-    topology.isConstant,
-    topology.numNeurons,
-    topology.numInputs,
+  const flat = withWasmTrapGuard(
+    "scanAvailableConnections",
+    () =>
+      wasmFn(
+        topology.fromIndices,
+        topology.toIndices,
+        topology.isConstant,
+        topology.numNeurons,
+        topology.numInputs,
+      ),
   );
   // Convert flat [from, to, from, to, ...] to pairs
   const result: [number, number][] = [];
@@ -161,11 +204,15 @@ export function computeReverseTopologicalOrder(
     getComputeReverseTopologicalOrderFn(),
     "computeReverseTopologicalOrder",
   );
-  const result = wasmFn(
-    topology.fromIndices,
-    topology.toIndices,
-    topology.numNeurons,
-    topology.numInputs,
+  const result = withWasmTrapGuard(
+    "computeReverseTopologicalOrder",
+    () =>
+      wasmFn(
+        topology.fromIndices,
+        topology.toIndices,
+        topology.numNeurons,
+        topology.numInputs,
+      ),
   );
   return Array.from(result);
 }
@@ -192,15 +239,19 @@ export function validateStructuralIntegrity(
     getValidateStructuralIntegrityFn(),
     "validateStructuralIntegrity",
   );
-  const result = wasmFn(
-    topology.fromIndices,
-    topology.toIndices,
-    topology.isConstant,
-    topology.squashTypes,
-    topology.biases,
-    topology.numInputs,
-    topology.numOutputs,
-    topology.synapseTypes,
+  const result = withWasmTrapGuard(
+    "validateStructuralIntegrity",
+    () =>
+      wasmFn(
+        topology.fromIndices,
+        topology.toIndices,
+        topology.isConstant,
+        topology.squashTypes,
+        topology.biases,
+        topology.numInputs,
+        topology.numOutputs,
+        topology.synapseTypes,
+      ),
   );
   return {
     valid: result[0] === STRUCTURAL_VALID,
@@ -221,10 +272,15 @@ export function validateStructuralIntegrity(
  */
 export function detectCycles(topology: TypedTopology): boolean {
   const wasmFn = requireWasm(getDetectCyclesFn(), "detectCycles");
-  return wasmFn(
-    topology.fromIndices,
-    topology.toIndices,
-    topology.numNeurons,
-    topology.numInputs,
-  ) !== 0;
+  const result = withWasmTrapGuard(
+    "detectCycles",
+    () =>
+      wasmFn(
+        topology.fromIndices,
+        topology.toIndices,
+        topology.numNeurons,
+        topology.numInputs,
+      ),
+  );
+  return result !== 0;
 }

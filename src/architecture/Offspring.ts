@@ -8,6 +8,7 @@ import type { RequiredHyperparameterEvolutionConfig } from "@config/Hyperparamet
 import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "@config/HyperparameterConfig.ts";
 import { crossoverHyperparameters } from "@neat/HyperparameterEvolution.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { neuronWireLabelForDiagnostics } from "@neuron/NeuronSerialization.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { prepareCreatureForBreeding } from "@upgrade/Upgrade.ts";
@@ -33,6 +34,41 @@ class OffspringError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "OffspringError";
+  }
+}
+
+/**
+ * Issue #2648: Shallow-clone a parent and run `prepareCreatureForBreeding`
+ * inside a guard. Returns the prepared parent on success, or `undefined`
+ * when the parent's topology is too broken to validate (typed
+ * `TopologyError` / `ValidationError`). Unexpected errors propagate.
+ *
+ * The previous flow let WASM `RuntimeError: memory access out of bounds`
+ * traps from `TypedTopology.validateForwardOnly()` escape uncaught and
+ * terminate the whole `evolveRL()` run. With the WASM-trap guard in
+ * `WasmTopologyOps.withWasmTrapGuard`, those traps now arrive here as a
+ * `TopologyError` and we can drop the offspring exactly the way the
+ * producer-side compile guards already do.
+ */
+function safelyPrepareParent(
+  parent: Creature,
+  role: "mother" | "father",
+): Creature | undefined {
+  try {
+    return prepareCreatureForBreeding(parent.shallowClone());
+  } catch (err) {
+    if (err instanceof TopologyError || err instanceof ValidationError) {
+      const reason = (err as { reason?: string }).reason ?? "unknown";
+      getLogger().warn(
+        `[Offspring] dropping offspring with corrupt ${role} ` +
+          `(uuid=${parent.uuid ?? "<unknown>"}, ` +
+          `neurons=${parent.neurons.length}, ` +
+          `synapses=${parent.synapses.length}): ` +
+          `${err.name} reason=${reason} - ${err.message}`,
+      );
+      return undefined;
+    }
+    throw err;
   }
 }
 
@@ -105,9 +141,17 @@ export class Offspring {
     // for parent preparation. shallowClone() is 3-4x faster as it:
     // - Creates new Creature with copied neuron/synapse arrays
     // - Avoids JSON string creation and parsing overhead
-    const mother = prepareCreatureForBreeding(mum.shallowClone());
+    //
+    // Issue #2648: If `prepareCreatureForBreeding` throws because the parent
+    // is too broken to validate (e.g. a WASM topology trap wrapped as a
+    // typed error by `WasmTopologyOps.withWasmTrapGuard`), drop the offspring
+    // instead of letting the error abort the whole evolution run. Other
+    // unexpected errors still propagate.
+    const mother = safelyPrepareParent(mum, "mother");
+    if (!mother) return undefined;
     CreatureUtil.makeUUID(mother);
-    let father = prepareCreatureForBreeding(dad.shallowClone());
+    let father = safelyPrepareParent(dad, "father");
+    if (!father) return undefined;
     CreatureUtil.makeUUID(father);
     assert(
       mother.input === father.input && mother.output === father.output,
