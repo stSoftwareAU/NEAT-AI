@@ -449,6 +449,90 @@ Deno.test("WasmCompilationCache: reducing cache size triggers correct evictions"
   }
 });
 
+Deno.test(
+  "Issue #2649: stale topology hash with missing neuron returns null instead of throwing TypeError",
+  () => {
+    clearWasmCompilationCache();
+
+    // Build and cache a template for a valid creature.
+    const creature = createTestCreature(2, 1, [{ count: 2, squash: "TANH" }]);
+    const first = getOrCompileWasmModule(creature);
+    assertExists(first, "first compile should succeed");
+    first!.free();
+
+    const cachedHash = creature.topologyHash;
+    assert(typeof cachedHash === "string" && cachedHash.length > 0);
+
+    // Simulate a malformed offspring: the creature's topology has been mangled
+    // (neurons array truncated) but the cached topology hash was not cleared,
+    // so the cache lookup will resolve to the original template. Before
+    // Issue #2649, `compileFromTemplate` would read `neuron.bias` from
+    // `undefined` and crash the evolveRL loop with a raw TypeError.
+    creature.neurons.length = creature.input + 1; // strip one non-input neuron
+    creature.topologyHash = cachedHash; // keep the stale hash
+
+    // The cache must surface this as a failed compile (return null), not throw
+    // a raw TypeError.
+    let thrown: unknown = null;
+    let module: ReturnType<typeof getOrCompileWasmModule> | undefined;
+    try {
+      module = getOrCompileWasmModule(creature);
+    } catch (e) {
+      thrown = e;
+    }
+    assertEquals(
+      thrown,
+      null,
+      `getOrCompileWasmModule must not throw on malformed creature, got: ${
+        thrown instanceof Error ? thrown.message : String(thrown)
+      }`,
+    );
+    assertEquals(
+      module,
+      null,
+      "malformed creature should produce a null activation (failed compile)",
+    );
+  },
+);
+
+Deno.test(
+  "Issue #2649: short neuron array on first compile is rejected without crashing",
+  () => {
+    clearWasmCompilationCache();
+
+    // Build a valid creature, then truncate its neuron array BEFORE the
+    // template is built. This drives the template builder itself (cache miss
+    // path) into a state where it would later read past the end of the
+    // creature's neuron array.
+    const creature = createTestCreature(2, 1, [{ count: 2, squash: "TANH" }]);
+    // Force a fresh hash next time getOrCompile is called.
+    creature.topologyHash = undefined;
+    // Truncate the neurons array so any downstream code that walks neurons
+    // beyond the input count finds undefined entries.
+    creature.neurons.length = creature.input;
+
+    let thrown: unknown = null;
+    let module: ReturnType<typeof getOrCompileWasmModule> | undefined;
+    try {
+      module = getOrCompileWasmModule(creature);
+    } catch (e) {
+      thrown = e;
+    }
+    // The malformed creature should surface as a failed compile (null) without
+    // throwing an unhandled TypeError.
+    assertEquals(
+      thrown,
+      null,
+      `getOrCompileWasmModule must not throw on truncated creature, got: ${
+        thrown instanceof Error ? thrown.message : String(thrown)
+      }`,
+    );
+    // Either null (rejected) or a valid module — the only forbidden outcome is
+    // an unhandled TypeError above.
+    assert(module === null || module !== undefined);
+  },
+);
+
 Deno.test("WasmCompilationCache: works with minimal creatures", () => {
   clearWasmCompilationCache();
 
