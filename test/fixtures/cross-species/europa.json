@@ -1,0 +1,322 @@
+{
+  "input": 4,
+  "output": 2,
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0000",
+      "bias": 0.15000000000000002,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0001",
+      "bias": 0.2,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0002",
+      "bias": 0.25,
+      "squash": "LeakyReLU"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0003",
+      "bias": 0.30000000000000004,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0004",
+      "bias": 0,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0005",
+      "bias": 0.05,
+      "squash": "LeakyReLU"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0006",
+      "bias": 0.1,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0007",
+      "bias": 0.15000000000000002,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0008",
+      "bias": 0.2,
+      "squash": "LeakyReLU"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0009",
+      "bias": 0.25,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0010",
+      "bias": 0.30000000000000004,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0011",
+      "bias": 0,
+      "squash": "LeakyReLU"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0012",
+      "bias": 0.05,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0013",
+      "bias": 0.1,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0014",
+      "bias": 0.15000000000000002,
+      "squash": "LeakyReLU"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0015",
+      "bias": 0.2,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0016",
+      "bias": 0.25,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0017",
+      "bias": 0.30000000000000004,
+      "squash": "LeakyReLU"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0018",
+      "bias": 0,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "europa:hidden-0019",
+      "bias": 0.05,
+      "squash": "IDENTITY"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0,
+      "squash": "IDENTITY",
+      "id": -1
+    },
+    {
+      "type": "output",
+      "uuid": "output-1",
+      "bias": 0,
+      "squash": "IDENTITY",
+      "id": -2
+    }
+  ],
+  "synapses": [
+    {
+      "fromUUID": "input-0",
+      "toUUID": "europa:hidden-0000",
+      "weight": -0.19999999999999996
+    },
+    {
+      "fromUUID": "input-1",
+      "toUUID": "europa:hidden-0001",
+      "weight": -0.09999999999999998
+    },
+    {
+      "fromUUID": "input-2",
+      "toUUID": "europa:hidden-0002",
+      "weight": 0
+    },
+    {
+      "fromUUID": "input-3",
+      "toUUID": "europa:hidden-0003",
+      "weight": 0.10000000000000009
+    },
+    {
+      "fromUUID": "europa:hidden-0000",
+      "toUUID": "europa:hidden-0001",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0001",
+      "toUUID": "europa:hidden-0002",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0002",
+      "toUUID": "europa:hidden-0003",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0003",
+      "toUUID": "europa:hidden-0004",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0004",
+      "toUUID": "europa:hidden-0005",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0005",
+      "toUUID": "europa:hidden-0006",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0006",
+      "toUUID": "europa:hidden-0007",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0007",
+      "toUUID": "europa:hidden-0008",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0008",
+      "toUUID": "europa:hidden-0009",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0009",
+      "toUUID": "europa:hidden-0010",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0010",
+      "toUUID": "europa:hidden-0011",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0011",
+      "toUUID": "europa:hidden-0012",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0012",
+      "toUUID": "europa:hidden-0013",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0013",
+      "toUUID": "europa:hidden-0014",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0014",
+      "toUUID": "europa:hidden-0015",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0015",
+      "toUUID": "europa:hidden-0016",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0016",
+      "toUUID": "europa:hidden-0017",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0017",
+      "toUUID": "europa:hidden-0018",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0018",
+      "toUUID": "europa:hidden-0019",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "europa:hidden-0000",
+      "toUUID": "europa:hidden-0003",
+      "weight": 0.2
+    },
+    {
+      "fromUUID": "europa:hidden-0004",
+      "toUUID": "europa:hidden-0007",
+      "weight": 0.2
+    },
+    {
+      "fromUUID": "europa:hidden-0008",
+      "toUUID": "europa:hidden-0011",
+      "weight": 0.2
+    },
+    {
+      "fromUUID": "europa:hidden-0012",
+      "toUUID": "europa:hidden-0015",
+      "weight": 0.2
+    },
+    {
+      "fromUUID": "europa:hidden-0016",
+      "toUUID": "europa:hidden-0019",
+      "weight": 0.2
+    },
+    {
+      "fromUUID": "europa:hidden-0016",
+      "toUUID": "output-0",
+      "weight": 0.3
+    },
+    {
+      "fromUUID": "europa:hidden-0016",
+      "toUUID": "output-1",
+      "weight": 0.3
+    },
+    {
+      "fromUUID": "europa:hidden-0017",
+      "toUUID": "output-0",
+      "weight": 0.3
+    },
+    {
+      "fromUUID": "europa:hidden-0017",
+      "toUUID": "output-1",
+      "weight": 0.3
+    },
+    {
+      "fromUUID": "europa:hidden-0018",
+      "toUUID": "output-0",
+      "weight": 0.3
+    },
+    {
+      "fromUUID": "europa:hidden-0018",
+      "toUUID": "output-1",
+      "weight": 0.3
+    },
+    {
+      "fromUUID": "europa:hidden-0019",
+      "toUUID": "output-0",
+      "weight": 0.3
+    },
+    {
+      "fromUUID": "europa:hidden-0019",
+      "toUUID": "output-1",
+      "weight": 0.3
+    }
+  ]
+}
