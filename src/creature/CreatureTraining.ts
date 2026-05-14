@@ -887,6 +887,10 @@ export interface EvolveRLOptions extends NeatOptions {
    * is returned as `milestones` on the run summary. Default `false` keeps
    * the collection cost (best-creature topology snapshot, per-episode step
    * counts) off the hot path.
+   *
+   * Issue #2647: when the run terminates between two scheduled milestones,
+   * a synthetic final-generation milestone is appended so the last entry of
+   * `milestones` always matches `result.generation`.
    */
   statistics?: boolean;
   /**
@@ -1053,6 +1057,58 @@ export async function evolveRL<S, A>(
   rlFitness.setStatisticsEnabled(statisticsEnabled);
   const milestones: EvolveRLMilestone[] = [];
 
+  /**
+   * Issue #2629 / #2647: build the milestone payload for the current
+   * generation, consuming and clearing the per-generation statistics
+   * accumulator. Hoisted into a closure so the loop body can emit on the
+   * geometric schedule and the post-loop tail can append a synthetic
+   * final-generation milestone using the same field semantics.
+   */
+  const buildMilestonePayload = (
+    fittest: Creature,
+    fittestScore: number,
+    generationStartMs: number,
+    nowMs: number,
+    gen: number,
+  ): EvolveRLMilestone => {
+    const stats = rlFitness.consumeGenerationStatistics();
+    // bestScore — prefer the fittest creature's tagged mean return so that
+    // elites which were not re-evaluated this generation still report a
+    // sensible value. Fall back to the in-generation best mean tracked by
+    // RLEpisodeFitness when no tag is present.
+    const meanRewardTag = getTag(fittest, "meanReward");
+    let milestoneBestScore: number;
+    if (meanRewardTag) {
+      const parsed = Number.parseFloat(meanRewardTag);
+      milestoneBestScore = Number.isFinite(parsed) ? parsed : fittestScore;
+    } else if (
+      stats !== undefined && Number.isFinite(stats.bestMeanReward)
+    ) {
+      milestoneBestScore = stats.bestMeanReward;
+    } else {
+      milestoneBestScore = fittestScore;
+    }
+    const meanEpisodeSteps = stats !== undefined && stats.episodeCount > 0
+      ? stats.totalSteps / stats.episodeCount
+      : 0;
+    return {
+      generation: gen,
+      bestScore: milestoneBestScore,
+      bestNeurons: fittest.neurons.length,
+      bestSynapses: fittest.synapses.length,
+      meanEpisodeSteps,
+      generationWallClockMs: nowMs - generationStartMs,
+    };
+  };
+
+  // Issue #2647: track the most recent generation's snapshot inputs so the
+  // post-loop tail can append a synthetic final-generation milestone when the
+  // run terminates between two scheduled milestones (e.g. iterations = 7).
+  let lastFittest: Creature | undefined;
+  let lastFittestScore = 0;
+  let lastGenerationStartMs = 0;
+  let lastNowMs = 0;
+
   // Empty worker pool: scoring runs inline. Discovery/training scheduling
   // becomes a no-op (the schedulers warn and bail when no workers are
   // available); breeding falls back to the main-thread path.
@@ -1150,38 +1206,28 @@ export async function evolveRL<S, A>(
       });
     }
 
+    // Issue #2647: remember the most recent generation's snapshot inputs so a
+    // synthetic final milestone can be built after the loop exits between
+    // scheduled milestones. Captured before the scheduled-milestone block
+    // because that block consumes the per-generation statistics accumulator.
+    if (statisticsEnabled) {
+      lastFittest = fittest;
+      lastFittestScore = fittestScore;
+      lastGenerationStartMs = generationStartMs;
+      lastNowMs = now;
+    }
+
     // Issue #2629: emit and accumulate the milestone payload exactly when the
     // schedule (geometric: 1, 2, 5, 10, …, 1000, 10_000, …) hits and statistics
     // were opted in.
     if (statisticsEnabled && isMilestoneGeneration(generation)) {
-      const stats = rlFitness.consumeGenerationStatistics();
-      // bestScore — prefer the fittest creature's tagged mean return so that
-      // elites which were not re-evaluated this generation still report a
-      // sensible value. Fall back to the in-generation best mean tracked by
-      // RLEpisodeFitness when no tag is present.
-      const meanRewardTag = getTag(fittest, "meanReward");
-      let bestScore: number;
-      if (meanRewardTag) {
-        const parsed = Number.parseFloat(meanRewardTag);
-        bestScore = Number.isFinite(parsed) ? parsed : fittestScore;
-      } else if (
-        stats !== undefined && Number.isFinite(stats.bestMeanReward)
-      ) {
-        bestScore = stats.bestMeanReward;
-      } else {
-        bestScore = fittestScore;
-      }
-      const meanEpisodeSteps = stats !== undefined && stats.episodeCount > 0
-        ? stats.totalSteps / stats.episodeCount
-        : 0;
-      const milestone: EvolveRLMilestone = {
+      const milestone = buildMilestonePayload(
+        fittest,
+        fittestScore,
+        generationStartMs,
+        now,
         generation,
-        bestScore,
-        bestNeurons: fittest.neurons.length,
-        bestSynapses: fittest.synapses.length,
-        meanEpisodeSteps,
-        generationWallClockMs: now - generationStartMs,
-      };
+      );
       milestones.push(milestone);
       emitTrainingEvent(config.onTrainingEvent, {
         kind: "evolverl_milestone",
@@ -1227,6 +1273,33 @@ export async function evolveRL<S, A>(
       // deno-lint-ignore no-await-in-loop
       await neat.awaitInFlightTasks();
     }
+  }
+
+  // Issue #2647: append a synthetic final-generation milestone when the run
+  // terminated between two scheduled milestones (e.g. `targetError` met or
+  // `timeoutMinutes` elapsed at a non-power-of-ten generation). Charts and
+  // resume helpers driven by `milestones` need the rightmost point to track
+  // `result.generation`; otherwise the last visible point is the previous
+  // scheduled milestone and downstream consumers see drift.
+  if (
+    statisticsEnabled &&
+    lastFittest !== undefined &&
+    (milestones.length === 0 ||
+      milestones[milestones.length - 1].generation !== generation)
+  ) {
+    const milestone = buildMilestonePayload(
+      lastFittest,
+      lastFittestScore,
+      lastGenerationStartMs,
+      lastNowMs,
+      generation,
+    );
+    milestones.push(milestone);
+    emitTrainingEvent(config.onTrainingEvent, {
+      kind: "evolverl_milestone",
+      timestamp: new Date().toISOString(),
+      ...milestone,
+    });
   }
 
   // Issue #2612: Terminate the parallel rollout pool, if any. When no

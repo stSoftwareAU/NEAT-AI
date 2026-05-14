@@ -14,6 +14,13 @@
  * the schedule sparsifies geometrically — only powers of ten (`10_000`,
  * `100_000`, …) qualify. This keeps the emit cadence roughly constant per
  * decade of training without flooding callers in long runs.
+ *
+ * Issue #2647: when a run terminates between two scheduled milestones (e.g.
+ * `targetError` met at generation 47, or `iterations = 7`), `evolveRL()`
+ * appends a synthetic final-generation milestone using the same payload shape
+ * so `result.milestones[result.milestones.length - 1].generation` always
+ * equals `result.generation`. Chart-builders and resume helpers can therefore
+ * trust the rightmost milestone to track the actual termination generation.
  */
 
 /**
