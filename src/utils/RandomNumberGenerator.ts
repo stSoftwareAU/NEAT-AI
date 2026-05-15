@@ -42,6 +42,13 @@ export interface RandomNumberGenerator {
    * Whether this RNG was created with a deterministic seed.
    */
   readonly seeded: boolean;
+
+  /**
+   * Issue #2672: The seed value used to initialise this RNG, when seeded.
+   * Returns `null` for unseeded RNGs so diagnostic dumps can record the
+   * exact value needed to replay a producer-gate failure offline.
+   */
+  readonly seed: number | null;
 }
 
 // ─── xoshiro256** implementation ────────────────────────────────────────────
@@ -191,9 +198,11 @@ function initState(seed: number): Xoshiro256State {
 
 class SeededRng implements RandomNumberGenerator {
   readonly seeded = true;
+  readonly seed: number;
   private state: Xoshiro256State;
 
   constructor(seed: number) {
+    this.seed = seed;
     this.state = initState(seed);
   }
 
@@ -215,6 +224,7 @@ class SeededRng implements RandomNumberGenerator {
 
 class UnseededRng implements RandomNumberGenerator {
   readonly seeded = false;
+  readonly seed = null;
 
   random(): number {
     // Use crypto.getRandomValues for a secure random float in [0, 1).

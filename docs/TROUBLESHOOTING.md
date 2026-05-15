@@ -47,6 +47,11 @@ WASM activation is mandatory; there is no JavaScript fallback. See
 - **WASM panic during fitness evaluation** — handled gracefully since Issues
   #2207 / #2212; root cause is usually numerical overflow. →
   [WASM panic recovery](troubleshooting/WASM.md#-wasm-panic-recovery).
+- **`[Offspring] dropping offspring that fails WASM compile`** or
+  **`[Mutator] reverting mutation that fails WASM compile`** — the producer gate
+  trapped on a bred or mutated topology and wrote a replay-ready dump under
+  `.diagnostics/` (Issue #2672). →
+  [Producer-gate WASM compile rejects](troubleshooting/WASM.md#-producer-gate-wasm-compile-rejects-issue-2672).
 
 ## 🦀 Discovery / Rust FFI — build, load, and GPU backend selection
 

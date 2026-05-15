@@ -166,8 +166,12 @@ Deno.test("getTopologyHash - different connection pattern should produce differe
   );
 });
 
-Deno.test("getTopologyHash - order independent", () => {
-  // Neurons and synapses in different order but same topology
+Deno.test("getTopologyHash - synapse-array order independent (#2670)", () => {
+  // Same neuron positions and same UUID→UUID synapse set, but the
+  // `synapses` array is supplied in a different order. The WASM template
+  // is built via `inwardConnections(i)` which sorts by `to` then `from`,
+  // so the order of `creature.synapses` does NOT affect the binary —
+  // the hash must therefore stay the same.
   const creature1: CreatureExport = {
     neurons: [
       { type: "hidden", uuid: "hidden-a", squash: "TANH", bias: 0.1 },
@@ -184,13 +188,13 @@ Deno.test("getTopologyHash - order independent", () => {
     output: 1,
   };
 
-  // Same structure, different ordering
   const creature2: CreatureExport = {
     neurons: [
-      { type: "hidden", uuid: "hidden-b", squash: "LOGISTIC", bias: 0.2 },
       { type: "hidden", uuid: "hidden-a", squash: "TANH", bias: 0.1 },
+      { type: "hidden", uuid: "hidden-b", squash: "LOGISTIC", bias: 0.2 },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.3 },
     ],
+    // Same UUID pairs, shuffled.
     synapses: [
       { fromUUID: "hidden-b", toUUID: "output-0", weight: 0.4 },
       { fromUUID: "hidden-a", toUUID: "output-0", weight: 0.3 },
@@ -204,13 +208,63 @@ Deno.test("getTopologyHash - order independent", () => {
   const c1 = Creature.fromJSON(creature1);
   const c2 = Creature.fromJSON(creature2);
 
-  const hash1 = CreatureUtil.getTopologyHash(c1);
-  const hash2 = CreatureUtil.getTopologyHash(c2);
-
   assertEquals(
-    hash1,
-    hash2,
-    "Topology hash should be order-independent",
+    CreatureUtil.getTopologyHash(c1),
+    CreatureUtil.getTopologyHash(c2),
+    "Topology hash must be independent of synapse-array order",
+  );
+});
+
+Deno.test("getTopologyHash - neuron position order is significant (#2670)", () => {
+  // Same UUID set + same UUID→UUID synapses, but the hidden neurons are
+  // listed in different positional orders. The WASM compilation cache
+  // template encodes synapse `from_index` and per-neuron `squash` byte by
+  // integer position in `creature.neurons`, so serving a cached template
+  // built for one ordering to a creature with a different ordering trips
+  // `RuntimeError: unreachable` inside `CompiledNetwork::new`. The hash
+  // MUST distinguish these two creatures so the cache treats them as
+  // distinct topologies.
+  const creature1: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "hidden-a", squash: "TANH", bias: 0.1 },
+      { type: "hidden", uuid: "hidden-b", squash: "LOGISTIC", bias: 0.2 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.3 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-a", weight: 0.1 },
+      { fromUUID: "input-1", toUUID: "hidden-b", weight: 0.2 },
+      { fromUUID: "hidden-a", toUUID: "output-0", weight: 0.3 },
+      { fromUUID: "hidden-b", toUUID: "output-0", weight: 0.4 },
+    ],
+    input: 2,
+    output: 1,
+  };
+
+  // Hidden neurons swapped — both orderings are valid topological orders.
+  const creature2: CreatureExport = {
+    neurons: [
+      { type: "hidden", uuid: "hidden-b", squash: "LOGISTIC", bias: 0.2 },
+      { type: "hidden", uuid: "hidden-a", squash: "TANH", bias: 0.1 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.3 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-a", weight: 0.1 },
+      { fromUUID: "input-1", toUUID: "hidden-b", weight: 0.2 },
+      { fromUUID: "hidden-a", toUUID: "output-0", weight: 0.3 },
+      { fromUUID: "hidden-b", toUUID: "output-0", weight: 0.4 },
+    ],
+    input: 2,
+    output: 1,
+  };
+
+  const c1 = Creature.fromJSON(creature1);
+  const c2 = Creature.fromJSON(creature2);
+
+  assertNotEquals(
+    CreatureUtil.getTopologyHash(c1),
+    CreatureUtil.getTopologyHash(c2),
+    "Neuron position swap must change the topology hash so the WASM " +
+      "compilation cache cannot serve a stale template across orderings",
   );
 });
 

@@ -154,9 +154,18 @@ export class CreatureUtil {
    * with different input counts produce distinct hashes, preventing
    * WASM compilation cache collisions after Upgrade.correct().
    *
+   * Issue #2670: Preserve neuron position order in the hash. The WASM
+   * compilation cache template encodes synapse `from_index` and per-neuron
+   * `squash` byte by integer position in `creature.neurons`, so two
+   * creatures that share the same UUID-set + UUID→UUID synapse-set but
+   * differ in topological ordering would previously collide in the hash
+   * and have one creature's stale template served to the other — tripping
+   * a `RuntimeError: unreachable` inside `CompiledNetwork::new`. Including
+   * the position order makes the hash one-to-one with the binary template.
+   *
    * The hash is based on:
    * - Input count (`creature.input`)
-   * - Neuron UUIDs, types, and squash functions
+   * - Neuron UUIDs, types, and squash functions **in position order**
    * - Synapse connection patterns (fromUUID -> toUUID pairs)
    * - NOT weights, biases, or tags
    *
@@ -205,14 +214,18 @@ export class CreatureUtil {
         }
       }
 
-      // Build sorted neuron topology key strings (non-input only).
+      // Build neuron topology key strings in position order (non-input only).
+      // Issue #2670: Position order is intentional — see the docstring above.
+      // The WASM template encodes by integer position, so two creatures with
+      // the same UUID-set but a different topological ordering must hash to
+      // different values to avoid stale cached templates trapping the WASM
+      // constructor with `RuntimeError: unreachable`.
       const neuronKeys = new Array<string>(neuronsLength - inputCount);
       for (let i = inputCount; i < neuronsLength; i++) {
         const neuron = neurons[i];
         neuronKeys[i - inputCount] = uuids[i] + "\t" + neuron.type + "\t" +
           (neuron.squash || "");
       }
-      neuronKeys.sort();
       neuronKey = neuronKeys.join("\n");
 
       // Cache for reuse across connection-only changes.

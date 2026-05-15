@@ -8,6 +8,8 @@
 
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { passesProducerCompileGate } from "@wasm/ProducerCompileGuard.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Options for creating a seeded population.
@@ -49,14 +51,34 @@ export function createSeededPopulation(
   const { inputCount, outputCount, populationSize, seeds, layers } = options;
   const population: CreatureExport[] = [];
 
-  // Add seed creatures (capped at population size)
-  const seedCount = Math.min(seeds.length, populationSize);
-  for (let i = 0; i < seedCount; i++) {
-    population.push(seeds[i]);
+  // Issue #2671: gate each seed through the producer-side WASM compile
+  // probe before it lands in the initial population. Bad seeds are dropped
+  // with a single log line and their slot is filled with a fresh random
+  // creature below so the requested population size is preserved.
+  const seedCap = Math.min(seeds.length, populationSize);
+  let acceptedSeedCount = 0;
+  for (let i = 0; i < seedCap; i++) {
+    const seed = seeds[i];
+    let candidate: Creature;
+    try {
+      candidate = Creature.fromJSON(seed, true);
+    } catch (err) {
+      getLogger().warn(
+        `[PopulationSeeding] dropping seed ${i} that failed to load: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      continue;
+    }
+    if (!passesProducerCompileGate(candidate, "PopulationSeeding")) {
+      continue;
+    }
+    population.push(seed);
+    acceptedSeedCount++;
   }
 
   // Fill remaining slots with randomly initialised creatures
-  const remainingSlots = populationSize - seedCount;
+  const remainingSlots = populationSize - acceptedSeedCount;
   for (let i = 0; i < remainingSlots; i++) {
     const creature = new Creature(inputCount, outputCount, { layers });
     population.push(creature.exportJSON());
