@@ -25,6 +25,7 @@ import { Fitness } from "@architecture/Fitness.ts";
 import { calculate as calculateScore } from "@architecture/Score.ts";
 import { ActivationError } from "@errors/ActivationError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
+import { WasmError } from "@errors/WasmError.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { EpisodeAdapter } from "@creature/EpisodeAdapter.ts";
@@ -278,9 +279,17 @@ export class RLEpisodeFitness<S, A> extends Fitness {
             trialsPerCreature[i] = trials;
           })
           .catch((err) => {
-            if (err instanceof ActivationError) {
+            // Issue #2669: A WasmError surfaced from `creature.activate`
+            // signals an unrepairable topology — the WASM compile cache
+            // already logged the offending uuid and asked callers to drop
+            // the creature. Treat it the same as ActivationError so the
+            // surrounding evolve loop drops the creature via natural
+            // selection instead of crashing the worker.
+            if (err instanceof ActivationError || err instanceof WasmError) {
               getLogger().warn(
-                `[RLEpisodeFitness] Activation failure on creature ` +
+                `[RLEpisodeFitness] ${
+                  err instanceof WasmError ? "WASM" : "Activation"
+                } failure on creature ` +
                   `${creature.uuid?.substring(0, 8) ?? "unknown"}: ` +
                   `${err.message}`,
               );
@@ -337,9 +346,17 @@ export class RLEpisodeFitness<S, A> extends Fitness {
         const result = await runEpisode(this.adapter, creature, seed);
         trials[t] = { reward: result.returnValue, steps: result.steps };
       } catch (err) {
-        if (err instanceof ActivationError) {
+        // Issue #2669: A WasmError surfaced from `creature.activate`
+        // signals an unrepairable topology — the WASM compile cache
+        // already logged the offending uuid and asked callers to drop
+        // the creature. Treat it the same as ActivationError so the
+        // surrounding evolve loop drops the creature via natural
+        // selection instead of crashing the worker.
+        if (err instanceof ActivationError || err instanceof WasmError) {
           getLogger().warn(
-            `[RLEpisodeFitness] Activation failure on creature ` +
+            `[RLEpisodeFitness] ${
+              err instanceof WasmError ? "WASM" : "Activation"
+            } failure on creature ` +
               `${creature.uuid?.substring(0, 8) ?? "unknown"}: ` +
               `${err.message}`,
           );
