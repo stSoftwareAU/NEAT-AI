@@ -62,17 +62,14 @@ const POPULATION_SIZE = 4;
 /** Fixed seed — change only with a deliberate baseline-recapture commit. */
 const SEED = 2668;
 /**
- * Maximum producer-gate rejects we tolerate today. The fix in #2666 will
- * drive this to zero; do NOT raise it to make the test pass.
- *
- * Observed baseline at seed 2668: 1 reject (a single `[Offspring]` drop on
- * a 28-neuron offspring with shape inputs=7/outputs=3 — exactly the
- * lunar_lander shape from the bug report). The 5-reject allowance leaves a
- * small margin for unrelated mutator-cache state changes; if the count
- * drifts UP, the producer is emitting MORE bad topologies — investigate
- * #2666 rather than raising the allowance.
+ * Maximum producer-gate rejects we tolerate. Issue #2670 drove this to
+ * zero by fixing the topology-hash collision that let the WASM
+ * compilation cache serve a stale template across two valid topological
+ * orderings of the same UUID set (causing the `RuntimeError: unreachable`
+ * inside `CompiledNetwork::new`). Do NOT raise this — a non-zero count
+ * means a NEW producer defect is leaking past the gate.
  */
-const BASELINE_REJECT_ALLOWANCE = 5;
+const BASELINE_REJECT_ALLOWANCE = 0;
 
 // ---------------------------------------------------------------------------
 // Test helpers
