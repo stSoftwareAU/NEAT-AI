@@ -33,6 +33,7 @@ import {
   resetLastWasmCreateFailure,
 } from "@wasm/WasmActivation.ts";
 import { getOrCompileWasmModule } from "@wasm/WasmCompilationCache.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /** Result returned by the producer-side compile gate. */
 export interface ProducerCompileResult {
@@ -136,4 +137,58 @@ export function ensureProducerOutputCompiles(
     ok: false,
     trapMessage: second.trapMessage ?? first.trapMessage,
   };
+}
+
+/**
+ * Issue #2671: Test seam. Producers go through `passesProducerCompileGate`
+ * which delegates to this function; tests can replace it via
+ * `__setProducerCompileGateProbeForTesting` to deterministically force a
+ * gate failure without engineering a WASM-tripping topology.
+ */
+let producerCompileProbe: (creature: Creature) => ProducerCompileResult =
+  ensureProducerOutputCompiles;
+
+/**
+ * Issue #2671: Test-only — replace the underlying compile probe used by
+ * `passesProducerCompileGate`. Returns a disposer that restores the real
+ * probe.
+ *
+ * Intentionally not re-exported through `@wasm/mod.ts` — production code
+ * must always use the real `ensureProducerOutputCompiles`.
+ */
+export function __setProducerCompileGateProbeForTesting(
+  probe: (creature: Creature) => ProducerCompileResult,
+): () => void {
+  const previous = producerCompileProbe;
+  producerCompileProbe = probe;
+  return () => {
+    producerCompileProbe = previous;
+  };
+}
+
+/**
+ * Issue #2671: Convenience wrapper that runs the producer-side WASM compile
+ * probe and emits a single warning line tagged with the producer name on
+ * failure. Returns `true` when the creature is safe to leave the producer.
+ *
+ * Producers should branch on the boolean to drop (`Offspring.breed` style),
+ * revert (`Mutator.repairAfterMutation` style), or skip
+ * (`DeDuplicator.replaceDuplicateCreature` style) the candidate.
+ */
+export function passesProducerCompileGate(
+  creature: Creature,
+  producerName: string,
+): boolean {
+  const result = producerCompileProbe(creature);
+  if (result.ok) {
+    return true;
+  }
+  getLogger().warn(
+    `[${producerName}] dropping output that fails WASM compile (` +
+      `neurons=${creature.neurons.length}, inputs=${creature.input}, ` +
+      `outputs=${creature.output}): ${
+        result.trapMessage ?? "unknown trap"
+      }. Drop the creature or repair its topology before retrying.`,
+  );
+  return false;
 }

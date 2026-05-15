@@ -8,6 +8,7 @@ import { getLogger } from "@utils/Logger.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
+import { passesProducerCompileGate } from "@wasm/ProducerCompileGuard.ts";
 
 /**
  * DeDuplicator - Removes duplicate creatures from a population.
@@ -269,6 +270,13 @@ export class DeDuplicator {
             duplicate2 = await this.previousExperiment(key2);
           }
           if (!duplicate2) {
+            // Issue #2671: defence-in-depth — even though `Offspring.breed`
+            // already runs the producer-compile gate, re-check the bred
+            // child at the dedup commit seam so a stray bad topology cannot
+            // reach the WASM cache via the replacement path.
+            if (!passesProducerCompileGate(child, "DeDuplicator/breed")) {
+              continue;
+            }
             unique.add(key2);
             this.bloomFilter.add(key2);
             creatures[index] = child;
@@ -292,6 +300,10 @@ export class DeDuplicator {
           duplicate3 = await this.previousExperiment(key3);
         }
         if (!duplicate3) {
+          // Issue #2671: gate the mutate-clone replacement at the commit seam.
+          if (!passesProducerCompileGate(tmpCreature, "DeDuplicator/mutate")) {
+            continue;
+          }
           this.breed.genus.addCreature(tmpCreature);
           creatures[index] = tmpCreature;
           unique.add(key3);
@@ -316,6 +328,22 @@ export class DeDuplicator {
         const isLastAttempt = fb === maxFallbackAttempts - 1;
 
         if (isUnique || isLastAttempt) {
+          // Issue #2671: gate the fallback replacement. On gate failure, skip
+          // this fallback and try the next one (unless this is the last
+          // attempt, in which case we return false so the caller culls the
+          // duplicate instead of seeding a broken topology into the
+          // population).
+          if (
+            !passesProducerCompileGate(
+              fallbackCreature,
+              "DeDuplicator/fallback",
+            )
+          ) {
+            if (isLastAttempt) {
+              return false;
+            }
+            continue;
+          }
           if (!isUnique) {
             getLogger().warn(
               `De-duplication: force-accepting non-unique creature after ` +
@@ -337,7 +365,9 @@ export class DeDuplicator {
         }
       }
 
-      // Unreachable: the loop above always returns on the last attempt.
+      // Reached when the gate rejects the last fallback (Issue #2671).
+      // Caller treats `false` as "cull this duplicate" so a bad topology
+      // is not seeded into the population.
       return false;
     } finally {
       this.breed.options.globalBreedingRate = globalBreedingRate;

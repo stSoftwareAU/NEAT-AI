@@ -18,6 +18,7 @@ import {
   resolveCoordinatedEdgeEndpoints,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
+import { passesProducerCompileGate } from "@wasm/ProducerCompileGuard.ts";
 
 function buildIdToIndexMap(creature: CreatureExport): Map<number, number> {
   const idToIndex = new Map<number, number>();
@@ -371,6 +372,16 @@ export function applyCoordinatedStructuralCandidate(
     updated,
     "discovery:applyCoordinatedStructuralCandidate",
   );
+
+  // Issue #2671: WASM compile sanity gate. Discovery candidates can still
+  // emit topologies that pass `validate()` yet trap inside the WASM
+  // constructor. On gate failure revert to the pre-application creature so
+  // the bad topology never leaves the producer.
+  if (
+    !passesProducerCompileGate(updated, "Discovery/applyCoordinatedStructural")
+  ) {
+    return creature;
+  }
 
   CreatureUtil.makeUUID(updated);
   return updated;

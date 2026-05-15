@@ -16,6 +16,8 @@ import type {
   CheckpointInterface,
   CheckpointMetadata,
 } from "@transfer/CheckpointInterface.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { passesProducerCompileGate } from "@wasm/ProducerCompileGuard.ts";
 
 /**
  * Options for exporting a creature as a checkpoint.
@@ -155,6 +157,7 @@ export function importCheckpoint(
   ) {
     const creature = Creature.fromJSON(sourceCreature, true);
     applyFreezeFlags(creature, checkpoint, options);
+    gateImportedCheckpoint(creature);
     return creature;
   }
 
@@ -170,7 +173,26 @@ export function importCheckpoint(
 
   const creature = Creature.fromJSON(remapped, true);
   applyFreezeFlags(creature, checkpoint, options);
+  gateImportedCheckpoint(creature);
   return creature;
+}
+
+/**
+ * Issue #2671: Run the producer-side WASM compile gate on an imported
+ * checkpoint before handing it to the caller. On failure, throw a
+ * `TopologyError` so the caller drops the checkpoint rather than letting
+ * a bad topology contaminate the population.
+ */
+function gateImportedCheckpoint(creature: Creature): void {
+  if (!passesProducerCompileGate(creature, "Checkpoint/import")) {
+    throw new TopologyError(
+      `[Checkpoint] imported creature fails WASM compile probe ` +
+        `(neurons=${creature.neurons.length}, ` +
+        `inputs=${creature.input}, outputs=${creature.output}); ` +
+        `drop the checkpoint or repair its topology before retrying.`,
+      "INVALID_CONNECTION",
+    );
+  }
 }
 
 /**
