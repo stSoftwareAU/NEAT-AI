@@ -6,6 +6,8 @@ import type { Mutator } from "@neat/Mutator.ts";
 import { BloomFilter } from "@utils/BloomFilter.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 
 /**
  * DeDuplicator - Removes duplicate creatures from a population.
@@ -231,7 +233,28 @@ export class DeDuplicator {
           this.breed.options.globalBreedingRate = 1;
         }
 
-        const child = this.breed.breed();
+        // Issue #2664: A bred offspring can occasionally fail creatureValidate
+        // (e.g. duplicate neuron id surfaced by `Offspring.breed`) and the
+        // TopologyError must not abort the whole dedup pass. Treat the failed
+        // breed attempt as a no-op and fall through to the mutation fallback.
+        let child: Creature | undefined;
+        try {
+          child = this.breed.breed();
+        } catch (error) {
+          if (
+            error instanceof TopologyError || error instanceof ValidationError
+          ) {
+            const reason = (error as { reason?: string }).reason ?? "unknown";
+            getLogger().warn(
+              `[DeDuplicator] dropping invalid bred offspring ` +
+                `(attempt ${attempts + 1}/${maxRetries}): ` +
+                `${error.name} reason=${reason} - ${error.message}`,
+            );
+            child = undefined;
+          } else {
+            throw error;
+          }
+        }
 
         if (child) {
           const key2 = CreatureUtil.makeUUID(child);
