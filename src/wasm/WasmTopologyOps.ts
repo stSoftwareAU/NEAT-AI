@@ -37,6 +37,14 @@ export const TOPOLOGY_SORT_ERROR_FROM = 3;
 export const TOPOLOGY_SORT_ERROR_TO = 4;
 /** Duplicate connection detected. */
 export const TOPOLOGY_DUPLICATE_CONNECTION = 5;
+/**
+ * Input buffers are malformed — length mismatch between `fromIndices` and
+ * `toIndices`, or other defensive bail-out from the Rust hardening landed
+ * for NEAT-AI #2659. The TS trap guard `withWasmTrapGuard` still wraps any
+ * leftover `RuntimeError` traps, but a Rust-side `MALFORMED_BUFFER` return
+ * now reaches callers as a typed result instead of an uncatchable trap.
+ */
+export const TOPOLOGY_MALFORMED_BUFFER = 6;
 
 // ---------------------------------------------------------------------------
 // Constants — structural integrity error codes (must match Rust topology_ops.rs)
@@ -63,6 +71,13 @@ export const STRUCTURAL_IF_MISSING_CONDITION = 7;
 export const STRUCTURAL_IF_MISSING_POSITIVE = 8;
 /** An IF neuron is missing a negative synapse. */
 export const STRUCTURAL_IF_MISSING_NEGATIVE = 9;
+/**
+ * Structural input buffers are malformed — length mismatch between
+ * `fromIndices`/`toIndices`, `numInputs`/`numOutputs` larger than
+ * `biases.length`, or `numInputs + numOutputs > numNeurons`. Reported by
+ * the hardening landed for NEAT-AI #2659 in place of an underflow trap.
+ */
+export const STRUCTURAL_MALFORMED_BUFFER = 10;
 
 // ---------------------------------------------------------------------------
 // Types
