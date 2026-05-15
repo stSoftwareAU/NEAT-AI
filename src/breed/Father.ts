@@ -7,6 +7,8 @@ import { isOutputNeuronId, outputIndexFromId } from "@architecture/NeuronId.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import { neuronUuid } from "@neuron/NeuronSerialization.ts";
 import {
+  computeSharedAnchorSyntheticUuids,
+  computeSharedAnchorSyntheticUuidsExport,
   computeSyntheticLocationUuids,
   computeSyntheticLocationUuidsExport,
 } from "@breed/SyntheticLocationUuid.ts";
@@ -250,6 +252,47 @@ function realUuidOverlapRatio(
 }
 
 /**
+ * Issue #2655 — compute the set of hidden/constant wire UUIDs shared between
+ * mother and father from already-collected wire-UUID sets. Used to seed the
+ * shared-anchor synthetic-UUID pass so each shared neuron becomes an extra
+ * alignment anchor.
+ */
+function computeSharedHiddenUuids(
+  motherUuids: ReadonlySet<string>,
+  fatherUuids: ReadonlySet<string>,
+): Set<string> {
+  const out = new Set<string>();
+  const [smaller, larger] = motherUuids.size < fatherUuids.size
+    ? [motherUuids, fatherUuids]
+    : [fatherUuids, motherUuids];
+  for (const u of smaller) {
+    if (larger.has(u)) out.add(u);
+  }
+  return out;
+}
+
+/**
+ * Issue #2655 — merge two synthetic-UUID maps (per-neuron-id Sets) into a
+ * single map, mutating `target` in place. Used to combine the I/O-anchor
+ * and shared-anchor synthetic IDs before invoking
+ * `applySyntheticUuidAlignment` so the loose-match rule (first match wins)
+ * applies across both anchor sources.
+ */
+function mergeSyntheticMaps(
+  target: Map<number, Set<string>>,
+  extra: ReadonlyMap<number, ReadonlySet<string>>,
+): void {
+  for (const [id, set] of extra) {
+    let existing = target.get(id);
+    if (!existing) {
+      existing = new Set<string>();
+      target.set(id, existing);
+    }
+    for (const v of set) existing.add(v);
+  }
+}
+
+/**
  * Synthetic-UUID alignment fallback (Issue #2614).
  *
  * Builds `Map<syntheticUUID, motherNeuronId>` from the mother's hidden
@@ -385,6 +428,24 @@ export function createCompatibleFather(
     if (overlap < syntheticAlignmentThreshold) {
       const motherSynth = computeSyntheticLocationUuidsExport(mother);
       const fatherSynth = computeSyntheticLocationUuidsExport(father);
+      // Issue #2655: every neuron whose real UUID is shared between both
+      // parents becomes an additional alignment anchor. Synthetic IDs from
+      // shared anchors merge into the same per-neuron Set so the loose-match
+      // rule (first match wins) applies uniformly across both anchor sources.
+      const sharedAnchors = computeSharedHiddenUuids(
+        motherWireUuids,
+        fatherWireUuids,
+      );
+      if (sharedAnchors.size > 0) {
+        mergeSyntheticMaps(
+          motherSynth,
+          computeSharedAnchorSyntheticUuidsExport(mother, sharedAnchors),
+        );
+        mergeSyntheticMaps(
+          fatherSynth,
+          computeSharedAnchorSyntheticUuidsExport(father, sharedAnchors),
+        );
+      }
       applySyntheticUuidAlignment(
         motherSynth,
         fatherSynth,
@@ -537,13 +598,27 @@ export function createCompatibleFatherFromCreatures(
   // Issue #2614: synthetic-UUID alignment fallback for genetically
   // incompatible parents — same gating and rules as the export path.
   if (syntheticAlignmentThreshold > 0) {
-    const overlap = realUuidOverlapRatio(
-      mother.getHiddenNeuronWireKeys(),
-      father.getHiddenNeuronWireKeys(),
-    );
+    const motherWireUuids = mother.getHiddenNeuronWireKeys();
+    const fatherWireUuids = father.getHiddenNeuronWireKeys();
+    const overlap = realUuidOverlapRatio(motherWireUuids, fatherWireUuids);
     if (overlap < syntheticAlignmentThreshold) {
       const motherSynth = computeSyntheticLocationUuids(mother);
       const fatherSynth = computeSyntheticLocationUuids(father);
+      // Issue #2655: shared hidden UUIDs become extra alignment anchors.
+      const sharedAnchors = computeSharedHiddenUuids(
+        motherWireUuids,
+        fatherWireUuids,
+      );
+      if (sharedAnchors.size > 0) {
+        mergeSyntheticMaps(
+          motherSynth,
+          computeSharedAnchorSyntheticUuids(mother, sharedAnchors),
+        );
+        mergeSyntheticMaps(
+          fatherSynth,
+          computeSharedAnchorSyntheticUuids(father, sharedAnchors),
+        );
+      }
       applySyntheticUuidAlignment(
         motherSynth,
         fatherSynth,

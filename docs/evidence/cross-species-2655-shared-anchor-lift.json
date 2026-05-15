@@ -1,0 +1,27 @@
+{
+  "issue": 2655,
+  "n": 200,
+  "sharedHiddenInjected": 4,
+  "mother": "europa.json",
+  "father": "grq-cluster.json",
+  "metric": "alignedHiddenProportion (mother UUIDs / father hidden count)",
+  "before": {
+    "n": 200,
+    "mean": 0.2,
+    "stddev": 0,
+    "min": 0.2,
+    "max": 0.2
+  },
+  "after": {
+    "n": 200,
+    "mean": 0.8425,
+    "stddev": 0.059889,
+    "min": 0.8,
+    "max": 1
+  },
+  "mannWhitneyU": {
+    "U": 0,
+    "z": -18.797694,
+    "pValue": 0
+  }
+}
