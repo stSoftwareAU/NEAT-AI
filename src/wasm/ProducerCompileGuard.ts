@@ -150,8 +150,8 @@ let producerCompileProbe: (creature: Creature) => ProducerCompileResult =
 
 /**
  * Issue #2671: Test-only — replace the underlying compile probe used by
- * `passesProducerCompileGate`. Returns a disposer that restores the real
- * probe.
+ * `passesProducerCompileGate` AND `runProducerCompileProbe`. Returns a
+ * disposer that restores the real probe.
  *
  * Intentionally not re-exported through `@wasm/mod.ts` — production code
  * must always use the real `ensureProducerOutputCompiles`.
@@ -164,6 +164,24 @@ export function __setProducerCompileGateProbeForTesting(
   return () => {
     producerCompileProbe = previous;
   };
+}
+
+/**
+ * Issue #2672: Internal helper that delegates to the (possibly stubbed)
+ * compile probe. Direct callers in `Offspring.breed` and
+ * `Mutator.repairAfterMutation` use this instead of the raw
+ * `ensureProducerOutputCompiles` so the existing test seam
+ * (`__setProducerCompileGateProbeForTesting`) can deterministically force
+ * a gate rejection without engineering a WASM-tripping topology — the same
+ * pattern already used by `passesProducerCompileGate`.
+ *
+ * Production behaviour is identical: when no test stub is installed the
+ * call is exactly `ensureProducerOutputCompiles(creature)`.
+ */
+export function runProducerCompileProbe(
+  creature: Creature,
+): ProducerCompileResult {
+  return producerCompileProbe(creature);
 }
 
 /**

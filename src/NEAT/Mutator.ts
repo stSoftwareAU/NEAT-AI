@@ -37,7 +37,10 @@ import {
 } from "@neat/MetropolisHastings.ts";
 import type { MCMCDiagnostics } from "@neat/MCMCDiagnostics.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
-import { ensureProducerOutputCompiles } from "@wasm/ProducerCompileGuard.ts";
+import { runProducerCompileProbe } from "@wasm/ProducerCompileGuard.ts";
+import { writeDiagnostics } from "@utils/Diagnostics.ts";
+import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 /**
  * Cache entry for valid mutation candidates.
@@ -279,10 +282,21 @@ export class Mutator {
 
         let changed = false;
 
+        // Issue #2672: Capture a pre-mutation snapshot exclusively for the
+        // producer-gate diagnostic dump. The MCMC/original snapshots are
+        // only populated under specific conditions; we always need this one
+        // when the gate later rejects so the dump can replay the failure.
+        const diagnosticPreMutationSnapshot = creature.shallowClone();
+
         // Issue #2200: Track whether any topology mutations were applied.
         // Topology mutations are always accepted; M-H only applies to
         // weight/bias-only mutation batches.
         let hasTopologyMutation = false;
+
+        // Issue #2672: Record the last mutation method name applied during
+        // the batch so the diagnostic dump can attribute the WASM trap to a
+        // specific operator.
+        let lastAppliedMutationName: string | undefined;
 
         // Issue #1100: Track focus list across mutations to preserve focus cache.
         // Only clear focus cache when the focus list changes between mutations.
@@ -318,6 +332,7 @@ export class Mutator {
           );
           if (flag) {
             changed = true;
+            lastAppliedMutationName = mutationMethod.name;
             // Issue #2200: Track topology mutations for M-H gating
             if (isTopologyMutation(mutationMethod.name)) {
               hasTopologyMutation = true;
@@ -333,7 +348,10 @@ export class Mutator {
         // creature still fails to compile to WASM. Revert to the pre-mutation
         // snapshot so the bad topology does not propagate into evolution.
         if (changed) {
-          const repairOk = this.repairAfterMutation(creature);
+          const repairOk = this.repairAfterMutation(creature, {
+            preMutationSnapshot: diagnosticPreMutationSnapshot,
+            mutationName: lastAppliedMutationName,
+          });
           if (!repairOk) {
             const snapshot = mcmcSnapshot ?? original;
             if (snapshot) {
@@ -760,9 +778,28 @@ export class Mutator {
    * mutation. Structural validation is not run here; mutations must preserve a
    * valid creature.
    */
-  public repairAfterMutation(creature: Creature): boolean {
+  public repairAfterMutation(
+    creature: Creature,
+    diagnosticContext?: {
+      /** Issue #2672: snapshot of the creature taken **before** mutate() ran. */
+      preMutationSnapshot?: Creature;
+      /** Issue #2672: name of the mutation operator that was just applied. */
+      mutationName?: string;
+    },
+  ): boolean {
     const enforceForwardOnly = creature.forwardOnly === true ||
       (this.config.feedbackLoop !== true && creature.forwardOnly !== false);
+
+    // Issue #2672: Capture the post-mutation creature JSON *before* fix()
+    // runs so the diagnostic dump records the raw mutation output, not the
+    // repaired-but-still-broken intermediate.
+    let preFixCreatureExport: CreatureExport | string | undefined;
+    try {
+      preFixCreatureExport = exportJSONUnchecked(creature);
+    } catch {
+      preFixCreatureExport =
+        "(pre-fix export failed — creature too corrupted to serialise)";
+    }
 
     if (enforceForwardOnly) {
       creature.fix({ forwardOnly: true });
@@ -777,14 +814,64 @@ export class Mutator {
     // outputs=3). The probe attempts a real compile and one fix-retry; on
     // failure callers should revert the creature to its pre-mutation snapshot
     // rather than letting the bad topology contaminate training.
-    const compileResult = ensureProducerOutputCompiles(creature);
+    const compileResult = runProducerCompileProbe(creature);
     if (!compileResult.ok) {
+      const trapMessage = compileResult.trapMessage ?? "unknown trap";
+      // Issue #2672: enrich diagnostic dump for replay-ready debugging.
+      const rng = getRandomNumberGenerator();
+      const mutationName = diagnosticContext?.mutationName ?? "unknown";
+      const creatureUuid = creature.uuid ?? "no-uuid";
+      let preMutationExport: CreatureExport | string | undefined;
+      if (diagnosticContext?.preMutationSnapshot) {
+        try {
+          preMutationExport = exportJSONUnchecked(
+            diagnosticContext.preMutationSnapshot,
+          );
+        } catch {
+          preMutationExport =
+            "(pre-mutation export failed — snapshot too corrupted to serialise)";
+        }
+      }
+      let postRepairExport: CreatureExport | string;
+      try {
+        postRepairExport = exportJSONUnchecked(creature);
+      } catch {
+        postRepairExport =
+          "(post-repair export failed — creature too corrupted to serialise)";
+      }
+      writeDiagnostics({
+        error: new Error(
+          `WASM compile failed after ${mutationName} mutation: ${trapMessage}`,
+        ),
+        // Standardised dump prefix so post-mortem tooling can grep
+        // `.diagnostics/` for `mutator-wasm-compile-trap-*` files.
+        prefix: `mutator-wasm-compile-trap-${mutationName}-${creatureUuid}`,
+        creature: typeof postRepairExport === "string"
+          ? undefined
+          : postRepairExport,
+        context: {
+          mutationName,
+          creatureUuid,
+          prngSeed: rng.seed ?? "n/a (unseeded RNG)",
+          prngSeeded: rng.seeded,
+          trapMessage,
+          preMutationCreature: preMutationExport,
+          preFixCreature: preFixCreatureExport,
+          postRepairSerialisationError: typeof postRepairExport === "string"
+            ? postRepairExport
+            : undefined,
+          neuronCount: creature.neurons.length,
+          synapseCount: creature.synapses.length,
+          inputCount: creature.input,
+          outputCount: creature.output,
+          forwardOnly: creature.forwardOnly,
+        },
+      });
       getLogger().warn(
         `[Mutator] reverting mutation that fails WASM compile (` +
+          `mutation=${mutationName}, ` +
           `neurons=${creature.neurons.length}, inputs=${creature.input}, ` +
-          `outputs=${creature.output}): ${
-            compileResult.trapMessage ?? "unknown trap"
-          }`,
+          `outputs=${creature.output}): ${trapMessage}`,
       );
       return false;
     }

@@ -28,7 +28,9 @@ import type {
 } from "@architecture/SynapseInterfaces.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
-import { ensureProducerOutputCompiles } from "@wasm/ProducerCompileGuard.ts";
+import { runProducerCompileProbe } from "@wasm/ProducerCompileGuard.ts";
+import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
 class OffspringError extends Error {
   constructor(message: string) {
@@ -566,6 +568,18 @@ export class Offspring {
     delete offspring.uuid;
     const childUUID = CreatureUtil.makeUUID(offspring);
 
+    // Issue #2672: Capture the post-splice/pre-fix offspring snapshot so the
+    // producer-gate diagnostic dump can include both the raw cross-over
+    // output and the post-fix output. Use the unchecked exporter — the
+    // creature has not been repaired yet and may not pass `creatureValidate`.
+    let preFixOffspringExport: CreatureExport | string;
+    try {
+      preFixOffspringExport = exportJSONUnchecked(offspring);
+    } catch {
+      preFixOffspringExport =
+        "(pre-fix export failed — offspring too corrupted to serialise)";
+    }
+
     assert(childUUID, "Failed to make UUID for offspring");
     assert(mother.uuid, "Failed to make UUID for mother");
     assert(father.uuid, "Failed to make UUID for father");
@@ -681,20 +695,53 @@ export class Offspring {
     // inputs=2054, outputs=3). Run a one-shot compile probe here so a bad
     // topology is repaired or dropped at the producer rather than leaking into
     // training and only being caught by the call-site recovery (#2483).
-    const compileResult = ensureProducerOutputCompiles(offspring);
+    const compileResult = runProducerCompileProbe(offspring);
     if (!compileResult.ok) {
       offspring.DEBUG = false;
+      // Issue #2672: Capture post-fix offspring even when `exportJSON()`
+      // could throw (the compile gate has already declared this topology
+      // bad). The diagnostic dump must always land.
+      let postFixOffspringExport: CreatureExport | string;
+      try {
+        postFixOffspringExport = exportJSONUnchecked(offspring);
+      } catch {
+        postFixOffspringExport =
+          "(post-fix export failed — offspring too corrupted to serialise)";
+      }
+      const trapMessage = compileResult.trapMessage ?? "unknown trap";
+      const activeSeed = rng.seed;
       writeDiagnostics({
         error: new TopologyError(
-          `WASM compile failed for offspring: ${
-            compileResult.trapMessage ?? "unknown trap"
-          }`,
+          `WASM compile failed for offspring: ${trapMessage}`,
           "INVALID_CONNECTION",
         ),
-        prefix: "offspring-wasm-compile-trap",
+        // Issue #2672: standardised dump prefix so post-mortem tooling can
+        // grep `.diagnostics/` for `offspring-wasm-compile-trap-*` files.
+        prefix: `offspring-wasm-compile-trap-${childUUID}`,
         mother: mother.exportJSON(),
         father: father.exportJSON(),
-        offspring: offspring.exportJSON(),
+        offspring: typeof postFixOffspringExport === "string"
+          ? undefined
+          : postFixOffspringExport,
+        context: {
+          // Replay metadata for offline reproduction (Issue #2672).
+          motherUuid: mother.uuid ?? "n/a",
+          fatherUuid: father.uuid ?? "n/a",
+          offspringUuid: childUUID,
+          breedSeed: activeSeed ?? "n/a (unseeded RNG)",
+          prngSeeded: rng.seeded,
+          trapMessage,
+          preFixOffspring: preFixOffspringExport,
+          postFixOffspringSerialisationError:
+            typeof postFixOffspringExport === "string"
+              ? postFixOffspringExport
+              : undefined,
+          neuronCount: offspring.neurons.length,
+          synapseCount: offspring.synapses.length,
+          inputCount: offspring.input,
+          outputCount: offspring.output,
+          forwardOnly: offspring.forwardOnly,
+        },
       });
       getLogger().warn(
         `[Offspring] dropping offspring that fails WASM compile (` +
