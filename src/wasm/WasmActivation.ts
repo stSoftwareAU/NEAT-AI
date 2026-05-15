@@ -115,15 +115,37 @@ export class WasmCreatureActivation {
   /**
    * Issue #2207: Invalidate this activation after a WASM panic.
    *
-   * When WASM traps (RuntimeError: unreachable), the Rust borrow counter
-   * may not be decremented, leaving the CompiledNetwork in a permanently
-   * borrowed state. Mark the activation as freed so no further operations
-   * are attempted, and release the JS reference for GC.
+   * When WASM traps (RuntimeError: unreachable, RuntimeError: memory access
+   * out of bounds), the Rust borrow counter may not be decremented, leaving
+   * the CompiledNetwork in a permanently borrowed state. Mark the activation
+   * as freed so no further operations are attempted, and release the JS
+   * reference for GC.
+   *
+   * Issue #2658: Convert any non-`WasmError` throwable (typically a raw
+   * `RuntimeError` produced by the WASM kernel) into a typed
+   * `WasmError("ACTIVATION_FAILED")`. This mirrors the
+   * `withWasmTrapGuard` pattern landed in #2648/#2650 for the topology
+   * entry points: a long `evolveRL` run should drop the offending creature
+   * via a typed error instead of crashing the whole run with an unhandled
+   * WASM trap surfacing from `creature.activate`. Existing `WasmError`s
+   * (pre-flight `freed` / input-length checks) propagate untouched.
    */
   private invalidateAfterWasmPanic(error: unknown): never {
     this.network = undefined as unknown as WasmCompiledNetwork;
     this.freed = true;
-    throw error;
+    if (error instanceof WasmError) {
+      throw error;
+    }
+    const message = error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : String(error);
+    throw new WasmError(
+      `WASM activation trapped (${message}). The creature is malformed; ` +
+        `the caller should drop or repair it instead of crashing the ` +
+        `evolution run.`,
+      "ACTIVATION_FAILED",
+      { cause: error },
+    );
   }
 
   /**

@@ -16,8 +16,19 @@ export class WasmError extends Error {
   override readonly name = "WasmError";
   readonly reason: WasmErrorReason;
 
-  constructor(message: string, reason: WasmErrorReason) {
-    super(message);
+  /**
+   * @param message Human-readable description of the failure.
+   * @param reason Programmatic discriminator for the failure mode.
+   * @param options Optional standard `ErrorOptions`; `cause` is preserved so
+   *   downstream diagnostics can still inspect the underlying trap (Issue
+   *   #2658).
+   */
+  constructor(
+    message: string,
+    reason: WasmErrorReason,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
     this.reason = reason;
   }
 }
