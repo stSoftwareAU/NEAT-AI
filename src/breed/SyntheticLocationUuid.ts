@@ -1,15 +1,24 @@
 /**
- * SyntheticLocationUuid.ts — Issue #2613.
+ * SyntheticLocationUuid.ts — Issue #2613, extended in Issue #2655.
  *
  * Pure-function module that computes, for every hidden/constant neuron in a
- * creature, up to two alignment-only synthetic UUIDs. The first is anchored
- * on the nearest input neuron (shortest hop count traced backwards via
- * incoming synapses); the second is anchored on the nearest output neuron
- * (shortest hop count traced forwards via outgoing synapses).
+ * creature, alignment-only synthetic UUIDs anchored on:
+ *  - the nearest input neuron (forward hop count via outgoing synapses),
+ *  - the nearest output neuron (backward hop count via incoming synapses),
+ *  - and (Issue #2655) optionally the nearest "shared" hidden/constant
+ *    neuron whose real `uuid` is present in both parents. Each shared
+ *    anchor seeds a forward and a backward BFS sweep so neurons on either
+ *    side of the anchor pick up an alignment-only identifier.
  *
- * Format: `${anchor}-${steps}-${sign}-${rank}`
+ * Format for I/O anchors: `${anchor}-${steps}-${sign}-${rank}`.
+ * Format for shared anchors (Issue #2655):
+ * `sharedAnchor-${dir}-${anchorUuid}-${steps}-${sign}-${rank}` where `dir`
+ * is `fwd` (the BFS walked outgoing synapses) or `bwd` (incoming synapses).
+ *
  *  - `anchor` is the canonical fixed UUID `input-N` or `output-N` of the
  *    nearest I/O neuron (ties broken by lowest index `N`).
+ *  - `anchorUuid` (shared variant) is the real wire UUID of the nearest
+ *    shared neuron (ties broken by lexicographically smallest UUID).
  *  - `steps` is the shortest hop count (integer, ≥ 1).
  *  - `sign` is `pos` when the primary incoming synapse weight is `>= 0`,
  *    otherwise `neg` (zero-weight is treated as `pos`).
@@ -20,9 +29,11 @@
  * Bias-only hidden neurons (no incoming synapses) are skipped — they receive
  * no synthetic UUIDs and never align across incompatible parents.
  *
- * The function is deterministic across runs given the same creature (no
- * `Math.random`, no `Date.now`) and runs in O(N + E) time where N is the
- * number of neurons and E is the number of synapses.
+ * The functions are deterministic across runs given the same creature (no
+ * `Math.random`, no `Date.now`) and run in O(A · (N + E)) time where A is
+ * the number of anchor sources, N is the neuron count, and E is the synapse
+ * count. For the I/O variant A is constant; for the shared variant A is the
+ * number of shared real UUIDs (typically a small fraction of the network).
  *
  * Synthetic UUIDs are never persisted. The function takes a read-only view
  * of the creature and is recomputed on demand by the crossover overlay.
@@ -512,6 +523,385 @@ export function computeSyntheticLocationUuidsExport(
       addToResult(
         arr[rank].exportId,
         `${anchor}-${stepsStr}-${sign}-${rank}`,
+      );
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Issue #2655 — shared-anchor synthetic UUID computation (runtime variant).
+ *
+ * For each hidden/constant neuron whose `uuid` appears in `sharedAnchorUuids`,
+ * promote it to an alignment anchor and propagate synthetic identifiers of
+ * the form `sharedAnchor-${dir}-${anchorUuid}-${steps}-${sign}-${rank}` to
+ * every hidden/constant neuron reachable from it (forward via outgoing
+ * synapses for `dir = "fwd"`; backward via incoming synapses for
+ * `dir = "bwd"`).
+ *
+ * The anchor for each visited neuron is the lexicographically smallest
+ * shared anchor UUID that reaches it at the shortest hop count — this gives
+ * deterministic, position-independent results across machines. Bias-only
+ * hidden neurons (no incoming synapses) are skipped exactly as in the
+ * existing I/O-anchor path.
+ *
+ * Returns an empty map when `sharedAnchorUuids` is empty (the typical case
+ * when both parents are entirely disjoint), so calling sites can rely on it
+ * being a cheap no-op for the zero-overlap regime.
+ */
+export function computeSharedAnchorSyntheticUuids(
+  creature: Creature,
+  sharedAnchorUuids: ReadonlySet<string>,
+): Map<number, Set<string>> {
+  const result = new Map<number, Set<string>>();
+  if (sharedAnchorUuids.size === 0) return result;
+
+  const neurons = creature.neurons;
+  const synapses = creature.synapses;
+  const N = neurons.length;
+
+  // 1. Resolve canonical wire UUIDs once per neuron index.
+  const wireUuid: string[] = new Array(N);
+  for (let i = 0; i < N; i++) {
+    wireUuid[i] = neuronWireUuid(neurons[i], i);
+  }
+
+  // 2. Build incoming/outgoing adjacency by neuron index.
+  const incoming: Synapse[][] = new Array(N);
+  const outgoing: Synapse[][] = new Array(N);
+  for (let i = 0; i < N; i++) {
+    incoming[i] = [];
+    outgoing[i] = [];
+  }
+  for (let i = 0; i < synapses.length; i++) {
+    const s = synapses[i];
+    incoming[s.to].push(s);
+    outgoing[s.from].push(s);
+  }
+
+  // 3. Find shared-anchor source indices. Only hidden/constant neurons can
+  //    be promoted to shared anchors here — input/output neurons already
+  //    drive the I/O-anchor sweep in the sibling functions above.
+  const anchorIdxs: number[] = [];
+  for (let idx = 0; idx < N; idx++) {
+    const n = neurons[idx];
+    if (n.type !== "hidden" && n.type !== "constant") continue;
+    const u = wireUuid[idx];
+    if (sharedAnchorUuids.has(u)) anchorIdxs.push(idx);
+  }
+  if (anchorIdxs.length === 0) return result;
+  // Sort by anchor UUID lexicographically so the BFS gives deterministic,
+  // position-independent results: equal-distance ties resolve to the
+  // lexicographically smallest anchor.
+  anchorIdxs.sort((a, b) => {
+    const ua = wireUuid[a];
+    const ub = wireUuid[b];
+    if (ua < ub) return -1;
+    if (ua > ub) return 1;
+    return 0;
+  });
+
+  // 4. Forward and backward BFS sweeps from the shared anchors.
+  const fwdAnchorByIdx = multiSourceBfs(
+    anchorIdxs,
+    wireUuid,
+    (idx) => outgoing[idx].map((s) => s.to),
+  );
+  const bwdAnchorByIdx = multiSourceBfs(
+    anchorIdxs,
+    wireUuid,
+    (idx) => incoming[idx].map((s) => s.from),
+  );
+
+  // 5. Compute per-hidden-neuron primary-edge metadata (sign + rank inputs).
+  const hiddenInfos: HiddenInfo[] = [];
+  for (let idx = 0; idx < N; idx++) {
+    const n = neurons[idx];
+    if (n.type !== "hidden" && n.type !== "constant") continue;
+    const inc = incoming[idx];
+    if (inc.length === 0) continue;
+    let primary = inc[0];
+    let primaryAbs = Math.abs(primary.weight);
+    let primaryFrom = wireUuid[primary.from];
+    for (let k = 1; k < inc.length; k++) {
+      const s = inc[k];
+      const aw = Math.abs(s.weight);
+      const fu = wireUuid[s.from];
+      if (aw > primaryAbs || (aw === primaryAbs && fu < primaryFrom)) {
+        primary = s;
+        primaryAbs = aw;
+        primaryFrom = fu;
+      }
+    }
+    hiddenInfos.push({
+      idx,
+      runtimeId: n.id,
+      sign: primary.weight >= 0 ? "pos" : "neg",
+      primaryAbsWeight: primaryAbs,
+      primaryFromUuid: primaryFrom,
+    });
+  }
+
+  // 6. Bucket and rank for each direction. Buckets are keyed by
+  //    `(dir, anchor, steps, sign)`.
+  type Bucket = HiddenInfo[];
+  const buckets = new Map<string, Bucket>();
+  for (const info of hiddenInfos) {
+    const fa = fwdAnchorByIdx.get(info.idx);
+    if (fa && fa.steps >= 1) {
+      const key = `fwd|${fa.anchor}|${fa.steps}|${info.sign}`;
+      let arr = buckets.get(key);
+      if (!arr) {
+        arr = [];
+        buckets.set(key, arr);
+      }
+      arr.push(info);
+    }
+    const ba = bwdAnchorByIdx.get(info.idx);
+    if (ba && ba.steps >= 1) {
+      const key = `bwd|${ba.anchor}|${ba.steps}|${info.sign}`;
+      let arr = buckets.get(key);
+      if (!arr) {
+        arr = [];
+        buckets.set(key, arr);
+      }
+      arr.push(info);
+    }
+  }
+
+  const sortBucket = (arr: Bucket): void => {
+    arr.sort((a, b) => {
+      if (b.primaryAbsWeight !== a.primaryAbsWeight) {
+        return b.primaryAbsWeight - a.primaryAbsWeight;
+      }
+      if (a.primaryFromUuid < b.primaryFromUuid) return -1;
+      if (a.primaryFromUuid > b.primaryFromUuid) return 1;
+      return a.runtimeId - b.runtimeId;
+    });
+  };
+
+  const addToResult = (runtimeId: number, uuid: string): void => {
+    let set = result.get(runtimeId);
+    if (!set) {
+      set = new Set<string>();
+      result.set(runtimeId, set);
+    }
+    set.add(uuid);
+  };
+
+  for (const [key, arr] of buckets) {
+    sortBucket(arr);
+    const sep1 = key.indexOf("|");
+    const sep2 = key.indexOf("|", sep1 + 1);
+    const sep3 = key.indexOf("|", sep2 + 1);
+    const dir = key.slice(0, sep1);
+    const anchor = key.slice(sep1 + 1, sep2);
+    const stepsStr = key.slice(sep2 + 1, sep3);
+    const sign = key.slice(sep3 + 1);
+    for (let rank = 0; rank < arr.length; rank++) {
+      addToResult(
+        arr[rank].runtimeId,
+        `sharedAnchor-${dir}-${anchor}-${stepsStr}-${sign}-${rank}`,
+      );
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Issue #2655 — shared-anchor synthetic UUID computation (export variant).
+ *
+ * Mirrors {@link computeSharedAnchorSyntheticUuids} for the
+ * `CreatureExport` shape used by `createCompatibleFather`. Operates on
+ * normalised exports (caller must invoke `normaliseCreatureExport` first).
+ */
+export function computeSharedAnchorSyntheticUuidsExport(
+  creature: CreatureExport,
+  sharedAnchorUuids: ReadonlySet<string>,
+): Map<number, Set<string>> {
+  const result = new Map<number, Set<string>>();
+  if (sharedAnchorUuids.size === 0) return result;
+
+  const neurons = creature.neurons;
+  const synapses = creature.synapses;
+  const N = neurons.length;
+  const inputCount = creature.input;
+
+  const idToIndex = new Map<number, number>();
+  for (let i = 0; i < inputCount; i++) idToIndex.set(i, i);
+  for (let i = 0; i < N; i++) {
+    const id = (neurons[i] as { id?: number }).id;
+    if (id !== undefined) idToIndex.set(id, inputCount + i);
+  }
+
+  const totalNodes = inputCount + N;
+
+  const wireUuid: string[] = new Array(totalNodes);
+  for (let i = 0; i < inputCount; i++) wireUuid[i] = `input-${i}`;
+  for (let i = 0; i < N; i++) {
+    const n = neurons[i];
+    const id = (n as { id?: number }).id;
+    if (n.type === "output" && id !== undefined && isOutputNeuronId(id)) {
+      wireUuid[inputCount + i] = `output-${outputIndexFromId(id)}`;
+    } else if (typeof n.uuid === "string" && n.uuid.length > 0) {
+      wireUuid[inputCount + i] = n.uuid;
+    } else {
+      wireUuid[inputCount + i] = `neuron-${inputCount + i}`;
+    }
+  }
+
+  interface SyntheticEdge {
+    from: number;
+    to: number;
+    weight: number;
+  }
+  const incoming: SyntheticEdge[][] = new Array(totalNodes);
+  const outgoing: SyntheticEdge[][] = new Array(totalNodes);
+  for (let i = 0; i < totalNodes; i++) {
+    incoming[i] = [];
+    outgoing[i] = [];
+  }
+  for (let i = 0; i < synapses.length; i++) {
+    const s = synapses[i];
+    if (s.fromId === undefined || s.toId === undefined) continue;
+    const fromIdx = idToIndex.get(s.fromId);
+    const toIdx = idToIndex.get(s.toId);
+    if (fromIdx === undefined || toIdx === undefined) continue;
+    const edge: SyntheticEdge = {
+      from: fromIdx,
+      to: toIdx,
+      weight: s.weight,
+    };
+    incoming[toIdx].push(edge);
+    outgoing[fromIdx].push(edge);
+  }
+
+  // Find shared-anchor source indices among hidden/constant neurons only.
+  const anchorIdxs: number[] = [];
+  for (let i = 0; i < N; i++) {
+    const n = neurons[i];
+    if (n.type !== "hidden" && n.type !== "constant") continue;
+    const idx = inputCount + i;
+    if (sharedAnchorUuids.has(wireUuid[idx])) anchorIdxs.push(idx);
+  }
+  if (anchorIdxs.length === 0) return result;
+  anchorIdxs.sort((a, b) => {
+    const ua = wireUuid[a];
+    const ub = wireUuid[b];
+    if (ua < ub) return -1;
+    if (ua > ub) return 1;
+    return 0;
+  });
+
+  const fwdAnchorByIdx = multiSourceBfs(
+    anchorIdxs,
+    wireUuid,
+    (idx) => outgoing[idx].map((e) => e.to),
+  );
+  const bwdAnchorByIdx = multiSourceBfs(
+    anchorIdxs,
+    wireUuid,
+    (idx) => incoming[idx].map((e) => e.from),
+  );
+
+  interface ExportInfo {
+    idx: number;
+    exportId: number;
+    sign: "pos" | "neg";
+    primaryAbsWeight: number;
+    primaryFromUuid: string;
+  }
+  const hiddenInfos: ExportInfo[] = [];
+  for (let i = 0; i < N; i++) {
+    const n = neurons[i];
+    if (n.type !== "hidden" && n.type !== "constant") continue;
+    const idx = inputCount + i;
+    const inc = incoming[idx];
+    if (inc.length === 0) continue;
+    const exportId = (n as { id?: number }).id;
+    if (exportId === undefined) continue;
+    let primary = inc[0];
+    let primaryAbs = Math.abs(primary.weight);
+    let primaryFrom = wireUuid[primary.from];
+    for (let k = 1; k < inc.length; k++) {
+      const e = inc[k];
+      const aw = Math.abs(e.weight);
+      const fu = wireUuid[e.from];
+      if (aw > primaryAbs || (aw === primaryAbs && fu < primaryFrom)) {
+        primary = e;
+        primaryAbs = aw;
+        primaryFrom = fu;
+      }
+    }
+    hiddenInfos.push({
+      idx,
+      exportId,
+      sign: primary.weight >= 0 ? "pos" : "neg",
+      primaryAbsWeight: primaryAbs,
+      primaryFromUuid: primaryFrom,
+    });
+  }
+
+  type Bucket = ExportInfo[];
+  const buckets = new Map<string, Bucket>();
+  for (const info of hiddenInfos) {
+    const fa = fwdAnchorByIdx.get(info.idx);
+    if (fa && fa.steps >= 1) {
+      const key = `fwd|${fa.anchor}|${fa.steps}|${info.sign}`;
+      let arr = buckets.get(key);
+      if (!arr) {
+        arr = [];
+        buckets.set(key, arr);
+      }
+      arr.push(info);
+    }
+    const ba = bwdAnchorByIdx.get(info.idx);
+    if (ba && ba.steps >= 1) {
+      const key = `bwd|${ba.anchor}|${ba.steps}|${info.sign}`;
+      let arr = buckets.get(key);
+      if (!arr) {
+        arr = [];
+        buckets.set(key, arr);
+      }
+      arr.push(info);
+    }
+  }
+
+  const sortBucket = (arr: Bucket): void => {
+    arr.sort((a, b) => {
+      if (b.primaryAbsWeight !== a.primaryAbsWeight) {
+        return b.primaryAbsWeight - a.primaryAbsWeight;
+      }
+      if (a.primaryFromUuid < b.primaryFromUuid) return -1;
+      if (a.primaryFromUuid > b.primaryFromUuid) return 1;
+      return a.exportId - b.exportId;
+    });
+  };
+
+  const addToResult = (exportId: number, uuid: string): void => {
+    let set = result.get(exportId);
+    if (!set) {
+      set = new Set<string>();
+      result.set(exportId, set);
+    }
+    set.add(uuid);
+  };
+
+  for (const [key, arr] of buckets) {
+    sortBucket(arr);
+    const sep1 = key.indexOf("|");
+    const sep2 = key.indexOf("|", sep1 + 1);
+    const sep3 = key.indexOf("|", sep2 + 1);
+    const dir = key.slice(0, sep1);
+    const anchor = key.slice(sep1 + 1, sep2);
+    const stepsStr = key.slice(sep2 + 1, sep3);
+    const sign = key.slice(sep3 + 1);
+    for (let rank = 0; rank < arr.length; rank++) {
+      addToResult(
+        arr[rank].exportId,
+        `sharedAnchor-${dir}-${anchor}-${stepsStr}-${sign}-${rank}`,
       );
     }
   }
