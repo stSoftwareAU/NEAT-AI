@@ -86,11 +86,21 @@ export function assertWasmBinaryWellFormed(data: Uint8Array): void {
           "COMPILATION_FAILED",
         );
       }
-      // Note: `from_index` is intentionally NOT bounds-checked here. The Rust
-      // decoder accepts any u16, and an out-of-range index manifests as a
-      // runtime trap during `activate` (covered by #2146 / #2484). Catching
-      // it here would silently change behaviour of those existing recovery
-      // tests, which is out of scope for #2643.
+      // Issue #2667: bounds-check `from_index`. The original #2643 validator
+      // deferred this to the runtime trap path, but #2666 logs show the trap
+      // firing inside `CompiledNetwork::new` for small creatures (neurons≈36,
+      // inputs=7, outputs=3) — well before `activate` is called — so the gap
+      // is closed producer-side. Reading at the same offset keeps the walk
+      // O(n) and allocation-free.
+      const fromIndex = view.getUint16(offset, true);
+      if (fromIndex >= numNeurons) {
+        throw new WasmError(
+          `Producer emitted WASM binary with out-of-range synapse from_index=${fromIndex} ` +
+            `(neuron ${n} of ${nonInputs}, synapse ${s} of ${numSynapses}, ` +
+            `num_neurons=${numNeurons}).`,
+          "COMPILATION_FAILED",
+        );
+      }
       offset += SYNAPSE_RECORD_SIZE;
     }
   }

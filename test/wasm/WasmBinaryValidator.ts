@@ -216,19 +216,101 @@ Deno.test("Issue #2643: assertWasmBinaryWellFormed rejects over-declared num_syn
   );
 });
 
-Deno.test("Issue #2643: assertWasmBinaryWellFormed tolerates out-of-range from_index (runtime trap path)", () => {
-  // Synapse from_index = 99 but num_neurons = 3. The Rust decoder accepts
-  // this and lets the trap surface at activate time — see Issue #2146/#2484
-  // (`ACTIVATION_FAILED` recovery). The validator must not pre-empt that
-  // path, otherwise those tests change semantics.
-  const body = new Uint8Array(12 + 12);
-  const view = new DataView(body.buffer);
-  view.setUint16(10, 1, true); // num_synapses = 1
-  view.setUint16(12, 99, true); // from_index = 99 (out of range)
-  const data = buildBinary(3, 2, body);
-  // Must NOT throw.
-  assertWasmBinaryWellFormed(data);
-});
+Deno.test(
+  "Issue #2667: assertWasmBinaryWellFormed rejects from_index >= num_neurons (one past end)",
+  () => {
+    // Synapse from_index = num_neurons (= 3) but only neuron indices 0..2 are
+    // valid. Previously (under #2643) the validator deferred this to the
+    // runtime trap path, but #2666 logs show the trap firing inside
+    // `CompiledNetwork::new` for small creatures, so the bounds check is
+    // promoted producer-side.
+    const body = new Uint8Array(12 + 12);
+    const view = new DataView(body.buffer);
+    view.setUint16(10, 1, true); // num_synapses = 1
+    view.setUint16(12, 3, true); // from_index = 3 (one past end; numNeurons = 3)
+    const data = buildBinary(3, 2, body);
+    const err = assertThrows(
+      () => assertWasmBinaryWellFormed(data),
+      WasmError,
+    );
+    assertEquals(err.reason, "COMPILATION_FAILED");
+    assert(
+      err.message.includes("from_index=3"),
+      `expected message to name from_index, got: ${err.message}`,
+    );
+    assert(
+      err.message.includes("num_neurons=3"),
+      `expected message to name num_neurons, got: ${err.message}`,
+    );
+    // Neuron index 0 in the non-input loop corresponds to the first non-input
+    // neuron (overall index = numInputs = 2). Message must name both the
+    // offending neuron index and the synapse position.
+    assert(
+      err.message.includes("neuron 0") || err.message.includes("neuron index"),
+      `expected message to name offending neuron, got: ${err.message}`,
+    );
+    assert(
+      err.message.includes("synapse 0") ||
+        err.message.includes("synapse position"),
+      `expected message to name offending synapse, got: ${err.message}`,
+    );
+  },
+);
+
+Deno.test(
+  "Issue #2667: assertWasmBinaryWellFormed rejects from_index = 0xFFFF for small num_neurons",
+  () => {
+    const body = new Uint8Array(12 + 12);
+    const view = new DataView(body.buffer);
+    view.setUint16(10, 1, true); // num_synapses = 1
+    view.setUint16(12, 0xFFFF, true); // from_index = 65535 (way out of range)
+    const data = buildBinary(3, 2, body);
+    const err = assertThrows(
+      () => assertWasmBinaryWellFormed(data),
+      WasmError,
+    );
+    assertEquals(err.reason, "COMPILATION_FAILED");
+    assert(
+      err.message.includes("from_index=65535"),
+      `expected message to name from_index=65535, got: ${err.message}`,
+    );
+  },
+);
+
+Deno.test(
+  "Issue #2667: compileCreatureToWasm rejects a buffer with an out-of-range from_index via assertWasmBinaryWellFormed",
+  () => {
+    // Hand-craft a buffer that the validator must reject. The Rust constructor
+    // would otherwise trap with `unreachable` inside `CompiledNetwork::new` for
+    // small creatures (#2666). We invoke the validator directly here — the
+    // producer path (compileCreatureToWasm) feeds its emitted bytes through
+    // assertWasmBinaryWellFormed unconditionally, so this is the same code
+    // path executed end-to-end.
+    const body = new Uint8Array(12 + 12);
+    const view = new DataView(body.buffer);
+    view.setUint16(10, 1, true); // num_synapses = 1
+    view.setUint16(12, 36, true); // from_index = 36, numNeurons = 36 (one past end)
+    const data = buildBinary(36, 7, body);
+
+    let caught: unknown = null;
+    try {
+      assertWasmBinaryWellFormed(data);
+    } catch (err) {
+      caught = err;
+    }
+    assert(
+      caught instanceof WasmError,
+      `expected WasmError, got ${caught}`,
+    );
+    assertEquals((caught as WasmError).reason, "COMPILATION_FAILED");
+    assert(
+      (caught as WasmError).message.includes("from_index=36"),
+      `expected from_index=36 in message, got: ${
+        (caught as WasmError).message
+      }`,
+    );
+  },
+);
 
 Deno.test("Issue #2643: assertWasmBinaryWellFormed rejects trailing bytes after declared shape", () => {
   // Declared shape consumes 8 + 12 = 20 bytes, but buffer is 24.
