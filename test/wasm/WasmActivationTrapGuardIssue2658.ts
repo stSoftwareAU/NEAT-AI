@@ -42,17 +42,46 @@ import { Creature } from "@creature";
 import { WasmError } from "@errors/WasmError.ts";
 import { activateEphemeral } from "@creature/CreatureActivation.ts";
 import { WasmCreatureActivation } from "@wasm/WasmActivation.ts";
-import { compileCreatureToWasm } from "@wasm/CompileToWasm.ts";
+import type { CompiledCreatureData } from "@wasm/CompileToWasm.ts";
 import { initWasmActivation } from "@wasm/WasmModuleLoader.ts";
 
 await initWasmActivation();
 
 /**
- * Build a 2-input / 1-output creature whose synapses all point at neuron
- * index 9999. Compilation succeeds (the binary is structurally well-formed
- * — the indices fit in a `u16`) but every activation traps in the WASM
- * kernel when it tries to read past the activation array.
+ * Hand-build a 2-input / 1-output creature binary whose one synapse points at
+ * neuron index 9999. The Rust constructor accepts this shape (any u16 fits)
+ * and the trap fires only when `activate()` reads past the activation array.
+ *
+ * Issue #2667 added a producer-side `from_index` bounds check in
+ * `assertWasmBinaryWellFormed`, so we deliberately bypass `compileCreatureToWasm`
+ * here — these tests are about activate-time trap propagation, not the
+ * producer gate. Going around the validator preserves the original trap site.
  */
+function buildTrappingCompiled(): CompiledCreatureData {
+  // 3 neurons (2 inputs + 1 output), 1 synapse from index 9999.
+  const buffer = new ArrayBuffer(8 + 12 + 12);
+  const view = new DataView(buffer);
+  view.setUint32(0, 3, true); // numNeurons
+  view.setUint32(4, 2, true); // numInputs
+  // Output neuron header.
+  view.setFloat64(8, 0, true); // bias
+  view.setUint8(16, 0); // squash type (Identity)
+  view.setUint8(17, 0); // isConstant
+  view.setUint16(18, 1, true); // numSynapses
+  // Synapse record.
+  view.setUint16(20, 9999, true); // from_index — out of range, traps at activate
+  view.setUint8(22, 0); // synapse_type
+  view.setUint8(23, 0); // padding
+  view.setFloat64(24, 1.0, true); // weight
+  return {
+    data: new Uint8Array(buffer),
+    numNeurons: 3,
+    numInputs: 2,
+    numOutputs: 1,
+    numSynapses: 1,
+  };
+}
+
 function createTrappingCreature(): Creature {
   const creature = new Creature(2, 1);
   creature.fix();
@@ -65,12 +94,11 @@ function createTrappingCreature(): Creature {
 }
 
 function createTrappingActivation(): WasmCreatureActivation {
-  const creature = createTrappingCreature();
-  const compiled = compileCreatureToWasm(creature);
+  const compiled = buildTrappingCompiled();
   const activation = WasmCreatureActivation.create(compiled);
   if (!activation) {
     throw new Error(
-      "Test setup: trapping creature should still compile cleanly; " +
+      "Test setup: trapping binary should still compile cleanly; " +
         "the activation kernel — not the constructor — is the trap site.",
     );
   }
@@ -213,16 +241,25 @@ Deno.test(
 Deno.test(
   "Issue #2658: activateEphemeral surfaces WASM trap as typed WasmError",
   () => {
+    // Issue #2667 promoted the `from_index` bounds check into the producer
+    // validator, so a creature whose synapses point at neuron 9999 is now
+    // rejected at compile time (COMPILATION_FAILED) instead of trapping at
+    // activate time (ACTIVATION_FAILED). Either reason satisfies the
+    // contract this test pins: `activateEphemeral` must drop the creature
+    // via a typed `WasmError` rather than propagate a raw `RuntimeError`.
     const creature = createTrappingCreature();
     const err = assertThrows(
       () => activateEphemeral(creature, new Float32Array([0.1, 0.2]), false),
       WasmError,
-    );
-    assertEquals(
-      (err as WasmError).reason,
-      "ACTIVATION_FAILED",
+      undefined,
       "activateEphemeral must drop the creature via WasmError, " +
         "not crash the surrounding evolveRL run with a raw RuntimeError",
     );
+    const reason = (err as WasmError).reason;
+    if (reason !== "COMPILATION_FAILED" && reason !== "ACTIVATION_FAILED") {
+      throw new Error(
+        `expected COMPILATION_FAILED or ACTIVATION_FAILED, got: ${reason}`,
+      );
+    }
   },
 );
