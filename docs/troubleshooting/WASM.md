@@ -200,6 +200,78 @@ supported workaround.
   ```
 - Reduce parallel creature count or population size.
 
+## 🧪 Producer-gate WASM compile rejects (Issue #2672)
+
+**Symptoms:**
+
+- Log lines that begin with
+  `[Offspring] dropping offspring that fails WASM
+  compile` or
+  `[Mutator] reverting mutation that fails WASM compile`.
+- New files appearing under `.diagnostics/` with the prefixes
+  `offspring-wasm-compile-trap-<uuid>-*` or
+  `mutator-wasm-compile-trap-<operator>-<uuid>-*`.
+
+**Cause:** the producer-gate
+([`ensureProducerOutputCompiles`](../../src/wasm/ProducerCompileGuard.ts))
+attempted to build a `CompiledNetwork` from a freshly bred or mutated creature
+and the WASM constructor trapped (typically `RuntimeError: unreachable`). Rather
+than letting the bad topology contaminate training, the producers drop the
+offspring (`Offspring.breed`) or revert the mutation
+(`Mutator.repairAfterMutation`) and write a diagnostic dump.
+
+**Where the dumps land:**
+
+- `.diagnostics/offspring-wasm-compile-trap-<childUuid>-*` — written by
+  `src/architecture/Offspring.ts` when the gate rejects an offspring after
+  breeding.
+- `.diagnostics/mutator-wasm-compile-trap-<mutationOperator>-<creatureUuid>-*` —
+  written by `src/NEAT/Mutator.ts` when the gate rejects a mutated creature.
+
+Each dump consists of several files sharing the same timestamp suffix:
+
+- `*-error-*.txt` — the typed error message with stack trace.
+- `*-mother-*.json` / `*-father-*.json` — parent exports (offspring path only).
+- `*-offspring-*.json` / `*-creature-*.json` — the post-fix creature export.
+- `*-context-*.json` — the replay metadata described below.
+
+**Replay metadata** (`*-context-*.json`):
+
+| Field                                | Path      | Meaning                                                |
+| ------------------------------------ | --------- | ------------------------------------------------------ |
+| `motherUuid` / `fatherUuid`          | offspring | parent stable identifiers                              |
+| `offspringUuid`                      | offspring | child stable identifier                                |
+| `breedSeed`                          | offspring | active PRNG seed at the time of the breed, or `"n/a"`  |
+| `mutationName`                       | mutator   | the operator that was just applied (e.g. `ADD_NODE`)   |
+| `creatureUuid`                       | mutator   | creature stable identifier                             |
+| `prngSeed`                           | mutator   | active PRNG seed, or `"n/a"` when the RNG was unseeded |
+| `prngSeeded`                         | both      | whether the active RNG was deterministic               |
+| `trapMessage`                        | both      | the `WasmBinaryValidator` trap message                 |
+| `preFixOffspring` / `preFixCreature` | both      | post-splice/post-mutation export _before_ `fix()` ran  |
+| `preMutationCreature`                | mutator   | shallow clone of the creature _before_ `mutate()` ran  |
+| `neuronCount` etc.                   | both      | shape summary at the time of rejection                 |
+
+**Replaying offline:**
+
+1. Pull the four files out of `.diagnostics/` for a single timestamp.
+2. Re-seed the RNG (`createSeededRng(breedSeed)` / `createSeededRng(prngSeed)`)
+   so any RNG-dependent repair step replays.
+3. For offspring: load the parent JSONs with `Creature.fromJSON` and call
+   `Offspring.breed(mother, father, …)`; the same combination of seed + parents
+   reproduces the failure.
+4. For mutator: load `preMutationCreature` with `Creature.fromJSON`, call
+   `mutator.mutateCreature(creature, Mutation[mutationName])`, then
+   `mutator.repairAfterMutation(creature)` — the gate should reject again,
+   confirming the dump is replay-ready.
+
+> [!TIP]
+> The dump filename prefixes are intentionally greppable. To list every
+> producer-gate rejection in a run:
+>
+> ```bash
+> ls .diagnostics/ | grep -E '^(offspring|mutator)-wasm-compile-trap-'
+> ```
+
 ## 💥 WASM panic recovery
 
 **Symptoms:**
