@@ -492,12 +492,32 @@ export function loadFrom(
       uuidToIndex.set(jn.uuid, pos);
     }
 
+    // Issue #2704: reject non-finite bias on the default JSON-load path.
+    // `bias` is template-interpolated into `new Function()` bodies by the
+    // activation compilers (see NeuronActivation.ts:69, IF.ts:46, etc), so
+    // an attacker-supplied string like `"0); evil(); //"` would otherwise
+    // flow unvalidated into the compiler and execute arbitrary JS.
+    if (
+      typeof jn.bias !== "number" ||
+      !Number.isFinite(jn.bias)
+    ) {
+      throw new TopologyError(
+        `Neuron at index ${i} (uuid=${jn.uuid ?? "?"}, type=${jn.type}): ` +
+          `'bias' must be a finite number, got ${
+            typeof jn.bias === "string"
+              ? `string ${JSON.stringify(jn.bias)}`
+              : String(jn.bias)
+          }`,
+        "INVALID_NEURON_BIAS",
+      );
+    }
+
     // Issue #2378: defence-in-depth — clamp bias magnitude at load time
     // so runaway values (up to ~1e+195 seen in production) cannot be
     // carried across generations via persisted JSON. Clone before mutating
     // so we never modify the caller's JSON object.
     let jnForLoad = jn;
-    if (typeof jn.bias === "number") {
+    {
       const biasDetail = clampWeightBiasDetail(jn.bias);
       if (biasDetail.clamped) {
         clampedBiasCount++;
@@ -632,9 +652,30 @@ export function loadFrom(
       lastTo = to;
     }
 
-    // Issue #2378: defence-in-depth — clamp weight magnitude at load time.
+    // Issue #2704: reject non-finite synapse weight. The weight is
+    // template-interpolated into `new Function()` bodies (see
+    // NeuronActivation.ts:75), so an attacker-supplied string like
+    // `"0; throw 1"` would otherwise reach the compiler and execute
+    // arbitrary JS on the next activation pass.
     let effectiveWeight = synapse.weight;
-    if (typeof effectiveWeight === "number") {
+    if (
+      typeof effectiveWeight !== "number" ||
+      !Number.isFinite(effectiveWeight)
+    ) {
+      throw new TopologyError(
+        `Synapse at index ${i} (from=${se.fromUUID ?? se.fromId ?? "?"} ` +
+          `to=${se.toUUID ?? se.toId ?? "?"}): ` +
+          `'weight' must be a finite number, got ${
+            typeof effectiveWeight === "string"
+              ? `string ${JSON.stringify(effectiveWeight)}`
+              : String(effectiveWeight)
+          }`,
+        "INVALID_SYNAPSE_WEIGHT",
+      );
+    }
+
+    // Issue #2378: defence-in-depth — clamp weight magnitude at load time.
+    {
       const weightDetail = clampWeightBiasDetail(effectiveWeight);
       if (weightDetail.clamped) {
         clampedWeightCount++;
