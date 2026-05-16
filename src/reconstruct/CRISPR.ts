@@ -8,7 +8,10 @@ import { CrisprError } from "@errors/CrisprError.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { validateDNA } from "@reconstruct/validateDNA.ts";
-import { passesProducerCompileGate } from "@wasm/ProducerCompileGuard.ts";
+import {
+  passesProducerCompileGate,
+  withProducerStep,
+} from "@wasm/ProducerCompileGuard.ts";
 
 /**
  * Recommended `index` for the first output neuron in append-mode CRISPR DNA
@@ -742,7 +745,16 @@ export class CRISPR {
     // WASM constructor. On gate failure log a single line and return the
     // unmodified original creature so the bad topology never leaves the
     // producer.
-    if (!passesProducerCompileGate(modifiedCreature, "CRISPR")) {
+    // Issue #2685: Attribute the rejection to the CRISPR sub-step the
+    // injection used (`append`, `replace`, etc.) so the histogram tracks
+    // the specific operator.
+    const crisprStep = `CRISPR.${dna.mode ?? "default"}:${dna.id ?? "no-id"}`;
+    if (
+      !withProducerStep(
+        crisprStep,
+        () => passesProducerCompileGate(modifiedCreature, "CRISPR"),
+      )
+    ) {
       warnSkippedCrisprDNA(
         dna,
         "WASM_COMPILE_FAILED",
