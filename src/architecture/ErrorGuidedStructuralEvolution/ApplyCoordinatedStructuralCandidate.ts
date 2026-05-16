@@ -18,7 +18,10 @@ import {
   resolveCoordinatedEdgeEndpoints,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
-import { passesProducerCompileGate } from "@wasm/ProducerCompileGuard.ts";
+import {
+  passesProducerCompileGate,
+  withProducerStep,
+} from "@wasm/ProducerCompileGuard.ts";
 
 function buildIdToIndexMap(creature: CreatureExport): Map<number, number> {
   const idToIndex = new Map<number, number>();
@@ -377,8 +380,22 @@ export function applyCoordinatedStructuralCandidate(
   // emit topologies that pass `validate()` yet trap inside the WASM
   // constructor. On gate failure revert to the pre-application creature so
   // the bad topology never leaves the producer.
+  //
+  // Issue #2685: Tag the rejection with the candidate's primary operation
+  // type when one is available; otherwise fall back to the candidate type.
+  const operationTypes = candidate.operations.map((op) => op.type);
+  const stepLabel = operationTypes.length > 0
+    ? `Discovery.applyCoordinatedStructural:${operationTypes.join("+")}`
+    : "Discovery.applyCoordinatedStructural";
   if (
-    !passesProducerCompileGate(updated, "Discovery/applyCoordinatedStructural")
+    !withProducerStep(
+      stepLabel,
+      () =>
+        passesProducerCompileGate(
+          updated,
+          "Discovery/applyCoordinatedStructural",
+        ),
+    )
   ) {
     return creature;
   }

@@ -8,7 +8,10 @@ import { getLogger } from "@utils/Logger.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
-import { passesProducerCompileGate } from "@wasm/ProducerCompileGuard.ts";
+import {
+  passesProducerCompileGate,
+  withProducerStep,
+} from "@wasm/ProducerCompileGuard.ts";
 
 /**
  * DeDuplicator - Removes duplicate creatures from a population.
@@ -274,7 +277,12 @@ export class DeDuplicator {
             // already runs the producer-compile gate, re-check the bred
             // child at the dedup commit seam so a stray bad topology cannot
             // reach the WASM cache via the replacement path.
-            if (!passesProducerCompileGate(child, "DeDuplicator/breed")) {
+            if (
+              !withProducerStep(
+                "DeDuplicator.replaceDuplicate:breed",
+                () => passesProducerCompileGate(child!, "DeDuplicator/breed"),
+              )
+            ) {
               continue;
             }
             unique.add(key2);
@@ -301,7 +309,13 @@ export class DeDuplicator {
         }
         if (!duplicate3) {
           // Issue #2671: gate the mutate-clone replacement at the commit seam.
-          if (!passesProducerCompileGate(tmpCreature, "DeDuplicator/mutate")) {
+          if (
+            !withProducerStep(
+              "DeDuplicator.replaceDuplicate:mutate",
+              () =>
+                passesProducerCompileGate(tmpCreature, "DeDuplicator/mutate"),
+            )
+          ) {
             continue;
           }
           this.breed.genus.addCreature(tmpCreature);
@@ -334,9 +348,13 @@ export class DeDuplicator {
           // duplicate instead of seeding a broken topology into the
           // population).
           if (
-            !passesProducerCompileGate(
-              fallbackCreature,
-              "DeDuplicator/fallback",
+            !withProducerStep(
+              "DeDuplicator.replaceDuplicate:fallback",
+              () =>
+                passesProducerCompileGate(
+                  fallbackCreature,
+                  "DeDuplicator/fallback",
+                ),
             )
           ) {
             if (isLastAttempt) {

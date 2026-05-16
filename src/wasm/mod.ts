@@ -160,9 +160,14 @@ export {
 } from "@wasm/WasmTopologyExport.ts";
 
 // Issue #2636 - Producer-side compile gate (mutate/breed reject bad topologies)
+// Issue #2685 - Producer-step attribution helpers
 export {
   ensureProducerOutputCompiles,
+  flushProducerStepHistogram,
+  getProducerStep,
   type ProducerCompileResult,
+  setProducerStep,
+  withProducerStep,
 } from "@wasm/ProducerCompileGuard.ts";
 
 // Issue #2643 - Serialiser self-consistency check for the WASM binary format

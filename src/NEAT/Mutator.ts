@@ -37,7 +37,10 @@ import {
 } from "@neat/MetropolisHastings.ts";
 import type { MCMCDiagnostics } from "@neat/MCMCDiagnostics.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
-import { runProducerCompileProbe } from "@wasm/ProducerCompileGuard.ts";
+import {
+  runProducerCompileProbe,
+  setProducerStep,
+} from "@wasm/ProducerCompileGuard.ts";
 import { writeDiagnostics } from "@utils/Diagnostics.ts";
 import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
@@ -801,11 +804,19 @@ export class Mutator {
         "(pre-fix export failed — creature too corrupted to serialise)";
     }
 
-    if (enforceForwardOnly) {
-      creature.fix({ forwardOnly: true });
-      creature.forwardOnly = true;
-    } else {
-      creature.fix();
+    // Issue #2685: Attribute any gate rejection arising from the fix() pass
+    // to the `Mutator.repairAfterMutation:fix` step. The `mutationName` (set
+    // by the caller in `mutate()`) is still recorded in the dump context.
+    setProducerStep("Mutator.repairAfterMutation:fix");
+    try {
+      if (enforceForwardOnly) {
+        creature.fix({ forwardOnly: true });
+        creature.forwardOnly = true;
+      } else {
+        creature.fix();
+      }
+    } finally {
+      setProducerStep(undefined);
     }
 
     // Issue #2636: WASM compile sanity gate. The mutation loop has historically
@@ -814,9 +825,24 @@ export class Mutator {
     // outputs=3). The probe attempts a real compile and one fix-retry; on
     // failure callers should revert the creature to its pre-mutation snapshot
     // rather than letting the bad topology contaminate training.
-    const compileResult = runProducerCompileProbe(creature);
+    //
+    // Issue #2685: Re-set the step around the probe itself so the rejection
+    // record names the gate sub-step rather than leaving `currentProducerStep`
+    // unset between the fix() pass and the probe.
+    setProducerStep("Mutator.repairAfterMutation:gate");
+    let compileResult: ReturnType<typeof runProducerCompileProbe>;
+    try {
+      compileResult = runProducerCompileProbe(creature);
+    } finally {
+      setProducerStep(undefined);
+    }
     if (!compileResult.ok) {
       const trapMessage = compileResult.trapMessage ?? "unknown trap";
+      // Issue #2685: prefer the operator name supplied by the caller as the
+      // attributable step; fall back to whatever the gate captured.
+      const producerStep = diagnosticContext?.mutationName
+        ? `Mutator.${diagnosticContext.mutationName}`
+        : compileResult.producerStep ?? "Mutator.repairAfterMutation";
       // Issue #2672: enrich diagnostic dump for replay-ready debugging.
       const rng = getRandomNumberGenerator();
       const mutationName = diagnosticContext?.mutationName ?? "unknown";
@@ -851,6 +877,9 @@ export class Mutator {
           : postRepairExport,
         context: {
           mutationName,
+          // Issue #2685: surface the attributable producer step in the
+          // diagnostic context block.
+          producerStep,
           creatureUuid,
           prngSeed: rng.seed ?? "n/a (unseeded RNG)",
           prngSeeded: rng.seeded,
@@ -868,7 +897,7 @@ export class Mutator {
         },
       });
       getLogger().warn(
-        `[Mutator] reverting mutation that fails WASM compile (` +
+        `[Mutator] reverting mutation from step=${producerStep} that fails WASM compile (` +
           `mutation=${mutationName}, ` +
           `neurons=${creature.neurons.length}, inputs=${creature.input}, ` +
           `outputs=${creature.output}): ${trapMessage}`,
@@ -905,7 +934,17 @@ export class Mutator {
     // significantly reducing object allocations during evolution.
     const mutator = this.getMutatorInstance(creature, method.name);
 
-    const changed = mutator.mutate(focusList, mutationBias);
+    // Issue #2685: Tag the mutate operator so the producer gate, on
+    // rejection, can attribute the bad topology to the specific operator
+    // (e.g. `AddNeuron`, `ModWeight`). Clear on success/failure so the
+    // surrounding repair phase reports its own step.
+    setProducerStep(`Mutator.${method.name}`);
+    let changed: boolean;
+    try {
+      changed = mutator.mutate(focusList, mutationBias);
+    } finally {
+      setProducerStep(undefined);
+    }
 
     // Issue #2383: Demote the "didn't mutate" diagnostic. An unfocused
     // mutation that cannot produce a change (e.g. every draw is clamped at

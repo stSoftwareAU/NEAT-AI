@@ -28,7 +28,10 @@ import type {
 } from "@architecture/SynapseInterfaces.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
-import { runProducerCompileProbe } from "@wasm/ProducerCompileGuard.ts";
+import {
+  runProducerCompileProbe,
+  setProducerStep,
+} from "@wasm/ProducerCompileGuard.ts";
 import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
@@ -616,12 +619,26 @@ export class Offspring {
     }
 
     if (shouldBeForwardOnly) {
-      Offspring.repairForwardOnlyComputationalInbounds(
-        offspring,
-        mother,
-        father,
-      );
-      Offspring.repairOrphanedConstants(offspring, mother, father);
+      // Issue #2685: Attribute any producer-gate rejection that arises from
+      // these repair steps to the specific sub-step that emitted the bad
+      // topology, rather than reporting the generic `Offspring/breed`
+      // producer name only.
+      setProducerStep("Offspring.repairForwardOnlyComputationalInbounds");
+      try {
+        Offspring.repairForwardOnlyComputationalInbounds(
+          offspring,
+          mother,
+          father,
+        );
+      } finally {
+        setProducerStep(undefined);
+      }
+      setProducerStep("Offspring.repairOrphanedConstants");
+      try {
+        Offspring.repairOrphanedConstants(offspring, mother, father);
+      } finally {
+        setProducerStep(undefined);
+      }
     }
 
     if (offspring.memetic) {
@@ -695,9 +712,22 @@ export class Offspring {
     // inputs=2054, outputs=3). Run a one-shot compile probe here so a bad
     // topology is repaired or dropped at the producer rather than leaking into
     // training and only being caught by the call-site recovery (#2483).
-    const compileResult = runProducerCompileProbe(offspring);
+    // Issue #2685: Default the step to `Offspring.breed:splice-repair` so
+    // an offspring that survives the earlier sub-steps but still fails the
+    // compile gate is attributed to the breed phase as a whole. Sub-step
+    // labels set above are cleared once those steps finish; on rejection
+    // here we capture the gate's own label.
+    setProducerStep("Offspring.breed:splice-repair");
+    let compileResult: ReturnType<typeof runProducerCompileProbe>;
+    try {
+      compileResult = runProducerCompileProbe(offspring);
+    } finally {
+      setProducerStep(undefined);
+    }
     if (!compileResult.ok) {
       offspring.DEBUG = false;
+      const producerStep = compileResult.producerStep ??
+        "Offspring.breed:splice-repair";
       // Issue #2672: Capture post-fix offspring even when `exportJSON()`
       // could throw (the compile gate has already declared this topology
       // bad). The diagnostic dump must always land.
@@ -730,6 +760,8 @@ export class Offspring {
           offspringUuid: childUUID,
           breedSeed: activeSeed ?? "n/a (unseeded RNG)",
           prngSeeded: rng.seeded,
+          // Issue #2685: surface the originating producer step.
+          producerStep,
           trapMessage,
           preFixOffspring: preFixOffspringExport,
           postFixOffspringSerialisationError:
@@ -744,7 +776,7 @@ export class Offspring {
         },
       });
       getLogger().warn(
-        `[Offspring] dropping offspring that fails WASM compile (` +
+        `[Offspring/breed] dropping offspring from step=${producerStep} that fails WASM compile (` +
           `neurons=${offspring.neurons.length}, inputs=${offspring.input}, ` +
           `outputs=${offspring.output}): ${
             compileResult.trapMessage ?? "unknown trap"

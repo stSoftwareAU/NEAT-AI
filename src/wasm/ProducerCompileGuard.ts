@@ -24,6 +24,12 @@
  *    reuse keeps allocations bounded.
  *  - When WASM activation is unavailable the probe is a no-op (returns
  *    `{ ok: true, skipped: true }`).
+ *
+ * Issue #2685: Producers thread a `producerStep` label through the gate so
+ * the rejection diagnostic dump, warning line, and periodic histogram can
+ * attribute a bad topology to the specific operator (e.g. `AddNeuron.split`,
+ * `repairForwardOnlyComputationalInbounds`, `crisprInsertSubgraph`) rather
+ * than just the surrounding producer name.
  */
 
 import type { Creature } from "@creature";
@@ -45,6 +51,54 @@ export interface ProducerCompileResult {
   repaired?: boolean;
   /** The trap message recorded by `WasmCreatureActivation.create`, if any. */
   trapMessage?: string;
+  /**
+   * Issue #2685: The last producer-step label set via `setProducerStep` at
+   * the moment the gate fired. `undefined` when no producer set a step
+   * (e.g. legacy call sites). Used by callers to enrich the diagnostic dump
+   * and warning line.
+   */
+  producerStep?: string;
+}
+
+/**
+ * Issue #2685: Module-local label naming the operator/sub-step currently
+ * executing inside a producer. Producers call `setProducerStep("AddNeuron")`
+ * before applying their mutation and clear it on success; if the producer
+ * gate fires while the label is set, the rejection record names that step.
+ */
+let currentProducerStep: string | undefined;
+
+/**
+ * Issue #2685: Set the label naming the operator/sub-step currently
+ * executing inside a producer. Pass `undefined` to clear. This is the
+ * cheapest threading the issue calls for — no per-call argument plumbing
+ * through every producer code path.
+ */
+export function setProducerStep(label: string | undefined): void {
+  currentProducerStep = label;
+}
+
+/**
+ * Issue #2685: Read the currently-active producer step label. Returns
+ * `undefined` when no producer has set one.
+ */
+export function getProducerStep(): string | undefined {
+  return currentProducerStep;
+}
+
+/**
+ * Issue #2685: Run `fn` with `label` installed as the current producer step,
+ * restoring the previous label (or clearing it) when `fn` returns. The label
+ * is preserved on error so the gate diagnostic still records the right step.
+ */
+export function withProducerStep<T>(label: string, fn: () => T): T {
+  const previous = currentProducerStep;
+  currentProducerStep = label;
+  try {
+    return fn();
+  } finally {
+    currentProducerStep = previous;
+  }
 }
 
 /**
@@ -125,7 +179,11 @@ export function ensureProducerOutputCompiles(
   } catch (_err) {
     // A repair failure means the creature is too broken to recover —
     // surface the original trap message and let the caller drop it.
-    return { ok: false, trapMessage: first.trapMessage };
+    return {
+      ok: false,
+      trapMessage: first.trapMessage,
+      producerStep: currentProducerStep,
+    };
   }
 
   const second = tryCompile(creature);
@@ -136,6 +194,7 @@ export function ensureProducerOutputCompiles(
   return {
     ok: false,
     trapMessage: second.trapMessage ?? first.trapMessage,
+    producerStep: currentProducerStep,
   };
 }
 
@@ -177,11 +236,102 @@ export function __setProducerCompileGateProbeForTesting(
  *
  * Production behaviour is identical: when no test stub is installed the
  * call is exactly `ensureProducerOutputCompiles(creature)`.
+ *
+ * Issue #2685: The result is enriched with the current producer step
+ * label (`producerStep`) when the probe failed without supplying one, so
+ * test stubs do not need to know about the threading.
  */
 export function runProducerCompileProbe(
   creature: Creature,
 ): ProducerCompileResult {
-  return producerCompileProbe(creature);
+  const result = producerCompileProbe(creature);
+  if (!result.ok && result.producerStep === undefined && currentProducerStep) {
+    return { ...result, producerStep: currentProducerStep };
+  }
+  return result;
+}
+
+/**
+ * Issue #2685: Histogram of producer-step rejection counts, flushed
+ * periodically by `passesProducerCompileGate`. The key is the producer
+ * step (or producer name when no step was set). Tests reset the histogram
+ * via `__resetProducerStepHistogramForTesting`.
+ */
+const producerStepHistogram = new Map<string, number>();
+let lastHistogramFlushMs = 0;
+let producerStepLogIntervalMs = 60_000;
+
+/**
+ * Issue #2685: Test-only — reset the rejection histogram and last-flush
+ * timestamp so a single test can observe its own counts.
+ */
+export function __resetProducerStepHistogramForTesting(): void {
+  producerStepHistogram.clear();
+  lastHistogramFlushMs = 0;
+}
+
+/**
+ * Issue #2685: Override the periodic summary interval. Used by tests to
+ * force or suppress a flush. Returns a disposer that restores the
+ * previous value (default 60 000 ms).
+ */
+export function __setProducerStepLogIntervalMsForTesting(
+  intervalMs: number,
+): () => void {
+  const previous = producerStepLogIntervalMs;
+  producerStepLogIntervalMs = intervalMs;
+  return () => {
+    producerStepLogIntervalMs = previous;
+  };
+}
+
+/**
+ * Issue #2685: Snapshot the histogram. Test helper.
+ */
+export function __getProducerStepHistogramSnapshotForTesting(): Map<
+  string,
+  number
+> {
+  return new Map(producerStepHistogram);
+}
+
+/**
+ * Issue #2685: Record a rejection for `key` (producer step label, or the
+ * producer name when no step was set). When at least
+ * `producerStepLogIntervalMs` has elapsed since the previous flush, emit
+ * a single info line containing a histogram sorted by frequency
+ * descending.
+ */
+function recordRejection(key: string): void {
+  producerStepHistogram.set(key, (producerStepHistogram.get(key) ?? 0) + 1);
+
+  const now = Date.now();
+  if (lastHistogramFlushMs === 0) {
+    // First rejection in this process; arm the timer but do not flush yet.
+    lastHistogramFlushMs = now;
+    return;
+  }
+  if (now - lastHistogramFlushMs < producerStepLogIntervalMs) {
+    return;
+  }
+  flushProducerStepHistogram();
+  lastHistogramFlushMs = now;
+}
+
+/**
+ * Issue #2685: Emit the current histogram as a single info line, then
+ * clear it. Public so other producer paths can trigger a flush when they
+ * notice an end-of-generation boundary. Tests use this to assert the
+ * sorted format.
+ */
+export function flushProducerStepHistogram(): void {
+  if (producerStepHistogram.size === 0) return;
+  const sorted = [...producerStepHistogram.entries()].sort((a, b) =>
+    b[1] - a[1]
+  );
+  const summary = sorted.map(([k, v]) => `${k}=${v}`).join(", ");
+  getLogger().info(`[ProducerCompileGate] step rejects: ${summary}`);
+  producerStepHistogram.clear();
 }
 
 /**
@@ -192,6 +342,9 @@ export function runProducerCompileProbe(
  * Producers should branch on the boolean to drop (`Offspring.breed` style),
  * revert (`Mutator.repairAfterMutation` style), or skip
  * (`DeDuplicator.replaceDuplicateCreature` style) the candidate.
+ *
+ * Issue #2685: The warning line includes the producer step label when
+ * known, and the rejection is recorded in a rate-limited histogram.
  */
 export function passesProducerCompileGate(
   creature: Creature,
@@ -201,12 +354,15 @@ export function passesProducerCompileGate(
   if (result.ok) {
     return true;
   }
+  const step = result.producerStep ?? currentProducerStep;
+  const stepSuffix = step ? ` from step=${step}` : "";
   getLogger().warn(
-    `[${producerName}] dropping output that fails WASM compile (` +
+    `[${producerName}] dropping output${stepSuffix} that fails WASM compile (` +
       `neurons=${creature.neurons.length}, inputs=${creature.input}, ` +
       `outputs=${creature.output}): ${
         result.trapMessage ?? "unknown trap"
       }. Drop the creature or repair its topology before retrying.`,
   );
+  recordRejection(step ?? producerName);
   return false;
 }
