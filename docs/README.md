@@ -153,6 +153,9 @@ Project-level policies, audits, and release plumbing.
 - **[PARITY_AUDITS.md](PARITY_AUDITS.md)** — archived parity audits (Issues
   #2367, #2368, #2369) consolidated into a single page. Replaces three former
   stubs.
+- **[VERSION_VISIBILITY.md](VERSION_VISIBILITY.md)** — every worker logs the
+  running `@stsoftware/neat-ai` version at startup (Issue #2682). Convention,
+  rationale, and how to add the line to new entry points.
 - **[TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md)** — TypeScript → Rust migration
   milestone roadmap.
 

@@ -62,6 +62,7 @@ import type {
   DiscoveryReplayRunnerLike,
 } from "@discovery/DiscoveryReplayRunner.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { logNeatAiVersionOnce } from "@utils/Version.ts";
 
 interface CreatureOptions {
   /**
@@ -209,6 +210,11 @@ export class Creature implements CreatureInternal {
     output: number,
     options: CreatureOptions = {},
   ) {
+    // Issue #2682: emit a single `[neat-ai] running version X.Y.Z` line per
+    // worker process so the running version is visible without having to
+    // reverse-engineer it from a stack trace. Idempotent.
+    logNeatAiVersionOnce();
+
     this.input = input;
     this.output = output;
     this.neurons = [];
