@@ -95,7 +95,8 @@ by `gh issue view <number>` plus `Grep` against the current `Develop` tree.
 - [x] No source-code changes are introduced by this PR — the audit's
       recommendations land in separate PRs against the filed issues.
 - [x] `docs/pr-summary-2703.md` builds under Jekyll/Pages — no unwrapped Liquid
-      syntax {% raw %}(no `{% … %}` / `{{ … }}` outside fenced blocks){% endraw %}.
+      syntax {% raw %}(no `{% … %}` / `{{ … }}` outside fenced blocks){% endraw
+      %}.
 
 ## Milestone
 
