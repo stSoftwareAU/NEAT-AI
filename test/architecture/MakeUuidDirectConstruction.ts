@@ -91,8 +91,13 @@ Deno.test(
     const creature2 = new Creature(3, 1, {
       layers: [{ count: 2, squash: "TANH" }],
     });
-    // Align weights to isolate squash difference
-    for (let i = 0; i < creature2.synapses.length; i++) {
+    // Align weights to isolate squash difference.
+    // Use the minimum length as the two architectures may produce different synapse counts.
+    const minSynapses = Math.min(
+      creature1.synapses.length,
+      creature2.synapses.length,
+    );
+    for (let i = 0; i < minSynapses; i++) {
       creature2.synapses[i].weight = creature1.synapses[i].weight;
     }
     for (let i = creature2.input; i < creature2.neurons.length; i++) {
