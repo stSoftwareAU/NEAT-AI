@@ -120,6 +120,8 @@ used by this repo's `deno.json`.
   for build.sh-driven WASM sync.
 - [docs/PARITY_GATE.md](PARITY_GATE.md) — release checklist for repins.
 - [docs/PARITY_AUDITS.md](PARITY_AUDITS.md) — archived parity audits.
+- [docs/VERSION_VISIBILITY.md](VERSION_VISIBILITY.md) — every worker logs the
+  running `@stsoftware/neat-ai` version at startup (Issue #2682).
 - [docs/README.md](README.md) — full documentation index.
 
 ---
