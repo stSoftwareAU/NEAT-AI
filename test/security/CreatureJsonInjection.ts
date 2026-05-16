@@ -117,15 +117,16 @@ Deno.test("CreatureSerialization.fromJSON rejects NaN synapse weight", () => {
   );
 });
 
-Deno.test("CreatureSerialization.fromJSON rejects missing bias on non-input neuron", () => {
+Deno.test("CreatureSerialization.fromJSON accepts missing bias on non-input neuron (normalised to 0)", () => {
+  // `bias` is optional in `NeuronInternal` / `NeuronAbstract` and has always
+  // been normalised to 0 by `Neuron.fromJSON` (`json.bias ? json.bias : 0`).
+  // `undefined` is therefore a safe "no bias set" state — not an attack vector —
+  // so the load path must accept it rather than reject it.
   const json = buildSkeleton();
   delete (json.neurons as Array<Record<string, unknown>>)[0].bias;
 
-  assertThrows(
-    () => fromJSON(json as never, false, Creature),
-    TopologyError,
-    "bias",
-  );
+  // Must NOT throw; loads cleanly with the missing bias defaulted to 0.
+  fromJSON(json as never, false, Creature);
 });
 
 Deno.test("CreatureSerialization.fromJSON rejects missing weight on synapse", () => {

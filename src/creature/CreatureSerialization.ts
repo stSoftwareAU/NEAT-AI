@@ -497,27 +497,32 @@ export function loadFrom(
     // activation compilers (see NeuronActivation.ts:69, IF.ts:46, etc), so
     // an attacker-supplied string like `"0); evil(); //"` would otherwise
     // flow unvalidated into the compiler and execute arbitrary JS.
-    if (
-      typeof jn.bias !== "number" ||
-      !Number.isFinite(jn.bias)
-    ) {
-      throw new TopologyError(
-        `Neuron at index ${i} (uuid=${jn.uuid ?? "?"}, type=${jn.type}): ` +
-          `'bias' must be a finite number, got ${
-            typeof jn.bias === "string"
-              ? `string ${JSON.stringify(jn.bias)}`
-              : String(jn.bias)
-          }`,
-        "INVALID_NEURON_BIAS",
-      );
+    // `undefined` is safe — it is the legitimate "no bias set" state for
+    // newly constructed neurons and is normalised to 0 below.
+    if (jn.bias !== undefined) {
+      if (
+        typeof jn.bias !== "number" ||
+        !Number.isFinite(jn.bias)
+      ) {
+        throw new TopologyError(
+          `Neuron at index ${i} (uuid=${jn.uuid ?? "?"}, type=${jn.type}): ` +
+            `'bias' must be a finite number, got ${
+              typeof jn.bias === "string"
+                ? `string ${JSON.stringify(jn.bias)}`
+                : String(jn.bias)
+            }`,
+          "INVALID_NEURON_BIAS",
+        );
+      }
     }
 
     // Issue #2378: defence-in-depth — clamp bias magnitude at load time
     // so runaway values (up to ~1e+195 seen in production) cannot be
     // carried across generations via persisted JSON. Clone before mutating
     // so we never modify the caller's JSON object.
+    // When bias is undefined, Neuron.fromJSON normalises it to 0 — skip clamping.
     let jnForLoad = jn;
-    {
+    if (jn.bias !== undefined) {
       const biasDetail = clampWeightBiasDetail(jn.bias);
       if (biasDetail.clamped) {
         clampedBiasCount++;
