@@ -1063,10 +1063,17 @@ export async function evolveRL<S, A>(
    * accumulator. Hoisted into a closure so the loop body can emit on the
    * geometric schedule and the post-loop tail can append a synthetic
    * final-generation milestone using the same field semantics.
+   *
+   * Issue #2693: the synthetic-tail caller passes already-snapshotted
+   * scalars instead of a live creature reference; the loop path still
+   * forwards live `creature.neurons.length` / `creature.synapses.length`
+   * via the wrapper below.
    */
-  const buildMilestonePayload = (
-    fittest: Creature,
+  const buildMilestoneFromScalars = (
     fittestScore: number,
+    fittestNeurons: number,
+    fittestSynapses: number,
+    fittestMeanReward: string | null,
     generationStartMs: number,
     nowMs: number,
     gen: number,
@@ -1076,10 +1083,9 @@ export async function evolveRL<S, A>(
     // elites which were not re-evaluated this generation still report a
     // sensible value. Fall back to the in-generation best mean tracked by
     // RLEpisodeFitness when no tag is present.
-    const meanRewardTag = getTag(fittest, "meanReward");
     let milestoneBestScore: number;
-    if (meanRewardTag) {
-      const parsed = Number.parseFloat(meanRewardTag);
+    if (fittestMeanReward) {
+      const parsed = Number.parseFloat(fittestMeanReward);
       milestoneBestScore = Number.isFinite(parsed) ? parsed : fittestScore;
     } else if (
       stats !== undefined && Number.isFinite(stats.bestMeanReward)
@@ -1094,20 +1100,47 @@ export async function evolveRL<S, A>(
     return {
       generation: gen,
       bestScore: milestoneBestScore,
-      bestNeurons: fittest.neurons.length,
-      bestSynapses: fittest.synapses.length,
+      bestNeurons: fittestNeurons,
+      bestSynapses: fittestSynapses,
       meanEpisodeSteps,
       generationWallClockMs: nowMs - generationStartMs,
     };
   };
 
+  const buildMilestonePayload = (
+    fittest: Creature,
+    fittestScore: number,
+    generationStartMs: number,
+    nowMs: number,
+    gen: number,
+  ): EvolveRLMilestone => {
+    return buildMilestoneFromScalars(
+      fittestScore,
+      fittest.neurons.length,
+      fittest.synapses.length,
+      getTag(fittest, "meanReward"),
+      generationStartMs,
+      nowMs,
+      gen,
+    );
+  };
+
   // Issue #2647: track the most recent generation's snapshot inputs so the
   // post-loop tail can append a synthetic final-generation milestone when the
   // run terminates between two scheduled milestones (e.g. iterations = 7).
-  let lastFittest: Creature | undefined;
+  //
+  // Issue #2693: snapshot the lightweight scalars rather than the live
+  // {@link Creature} reference. Holding a strong reference to the previous
+  // generation's fittest across the entire run pinned an otherwise-disposable
+  // creature in long-running evolveRL loops, fanning out to its neurons,
+  // synapses, and tag arrays via the creature → neuron → creature cycle.
   let lastFittestScore = 0;
+  let lastFittestNeurons = 0;
+  let lastFittestSynapses = 0;
+  let lastFittestMeanReward: string | null = null;
   let lastGenerationStartMs = 0;
   let lastNowMs = 0;
+  let lastFittestCaptured = false;
 
   // Empty worker pool: scoring runs inline. Discovery/training scheduling
   // becomes a no-op (the schedulers warn and bail when no workers are
@@ -1211,10 +1244,15 @@ export async function evolveRL<S, A>(
     // scheduled milestones. Captured before the scheduled-milestone block
     // because that block consumes the per-generation statistics accumulator.
     if (statisticsEnabled) {
-      lastFittest = fittest;
+      // Issue #2693: snapshot only the milestone-relevant scalars so the
+      // live creature reference is not retained across generations.
       lastFittestScore = fittestScore;
+      lastFittestNeurons = fittest.neurons.length;
+      lastFittestSynapses = fittest.synapses.length;
+      lastFittestMeanReward = getTag(fittest, "meanReward");
       lastGenerationStartMs = generationStartMs;
       lastNowMs = now;
+      lastFittestCaptured = true;
     }
 
     // Issue #2629: emit and accumulate the milestone payload exactly when the
@@ -1283,13 +1321,17 @@ export async function evolveRL<S, A>(
   // scheduled milestone and downstream consumers see drift.
   if (
     statisticsEnabled &&
-    lastFittest !== undefined &&
+    lastFittestCaptured &&
     (milestones.length === 0 ||
       milestones[milestones.length - 1].generation !== generation)
   ) {
-    const milestone = buildMilestonePayload(
-      lastFittest,
+    // Issue #2693: build the synthetic-tail milestone from the snapshotted
+    // scalars rather than a retained Creature reference.
+    const milestone = buildMilestoneFromScalars(
       lastFittestScore,
+      lastFittestNeurons,
+      lastFittestSynapses,
+      lastFittestMeanReward,
       lastGenerationStartMs,
       lastNowMs,
       generation,
