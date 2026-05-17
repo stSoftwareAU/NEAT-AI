@@ -341,20 +341,20 @@ function remapCreatureForTask(
     // Remap source input UUID to target input UUID
     if (sourceInputIds.has(fromId)) {
       const mapped = inputMap.get(fromId);
-      if (!mapped) return null; // Source input not in target
+      if (mapped === undefined) return null; // Source input not in target
       fromId = mapped;
     }
 
     // Remap source output UUID to target output UUID
     if (sourceOutputIds.has(toId!)) {
       const mapped = outputMap.get(toId!);
-      if (!mapped) return null; // Source output not in target
+      if (mapped === undefined) return null; // Source output not in target
       toId = mapped;
     }
 
     if (sourceOutputIds.has(fromId!)) {
       const mapped = outputMap.get(fromId!);
-      if (!mapped) return null;
+      if (mapped === undefined) return null;
       fromId = mapped;
     }
 
