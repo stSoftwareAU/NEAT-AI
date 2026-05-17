@@ -24,10 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout@v4.3.1
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Setup Deno
-        uses: denoland/setup-deno@v2
+        # denoland/setup-deno@v2.0.4
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
         with:
           deno-version: v2.x
 
@@ -35,7 +37,8 @@ jobs:
         run: deno outdated --update --latest
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
+        # peter-evans/create-pull-request@v7.0.11
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
         with:
           commit-message: "chore: update Deno dependencies"
           title: "chore: update Deno dependencies"
