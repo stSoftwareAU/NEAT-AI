@@ -4,6 +4,11 @@ on:
     branches:
       - Develop
 
+# Least-privilege GITHUB_TOKEN scopes (Issue #2706). The cspell action only
+# reads files; no write access is required.
+permissions:
+  contents: read
+
 jobs:
   spellcheck: # run the action
     runs-on: ubuntu-latest
