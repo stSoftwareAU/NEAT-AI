@@ -39,7 +39,7 @@ import { getLogger } from "@utils/Logger.ts";
  *
  * Must equal `deno.json` `version`. The version-sync test enforces this.
  */
-export const FALLBACK_NEAT_AI_VERSION = "5.0.20";
+export const FALLBACK_NEAT_AI_VERSION = "5.0.21";
 
 /**
  * Returns the running `@stsoftware/neat-ai` version.
