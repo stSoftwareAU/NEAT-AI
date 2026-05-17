@@ -21,7 +21,8 @@ Every worker now emits a single line at startup so the running version is
 unambiguous from the first log line of any run:
 
 ```
-[neat-ai] running version 5.0.14
+[neat-ai] running version 5.0.14            # published JSR build
+[neat-ai] running version 5.0.27 (local)    # local file:// dev/test load
 ```
 
 ## Convention
@@ -32,8 +33,10 @@ unambiguous from the first log line of any run:
   ([`src/utils/Logger.ts`](../src/utils/Logger.ts)) at `info` severity. Hosts
   that inject a custom logger via `NeatOptions.logger` or `setLogger()` see the
   line through their own sink.
-- The format is fixed: `[neat-ai] running version X.Y.Z`. Tools that grep log
-  streams for fleet-wide version audits depend on the prefix.
+- The prefix is fixed: `[neat-ai] running version X.Y.Z`. Tools that grep log
+  streams for fleet-wide version audits depend on the prefix. A trailing
+  `(local)` suffix marks dev/test runs so they are not counted as JSR
+  deployments.
 
 ## Implementation
 
@@ -41,16 +44,14 @@ unambiguous from the first log line of any run:
   - `getNeatAiVersion()` returns the running version. When the module is loaded
     from JSR (`https://jsr.io/@stsoftware/neat-ai/<X.Y.Z>/...`) the version is
     parsed from `import.meta.url` — no filesystem I/O. For local `file://` loads
-    during development, the function returns the `FALLBACK_NEAT_AI_VERSION`
-    constant.
+    during development the version is read once from `deno.json` at module load
+    (Issue #2720); `deno.json` is the single source of truth.
   - `logNeatAiVersionOnce()` is the idempotent emit. A module-level boolean
-    guards subsequent calls.
+    guards subsequent calls. The local load path appends a `(local)` suffix so
+    dev/test log lines are distinguishable from JSR builds.
 - The `Creature` constructor ([`src/Creature.ts`](../src/Creature.ts)) calls
   `logNeatAiVersionOnce()` as its first statement, so any worker that constructs
   a Creature (i.e. every production worker) gets the log for free.
-- The fallback constant is kept in sync with `deno.json` `version` by
-  [`test/creature/VersionStartupLog.ts`](../test/creature/VersionStartupLog.ts).
-  A drift fails `quality.sh`.
 
 ```mermaid
 flowchart LR
@@ -72,9 +73,10 @@ entry points stay quiet.
 
 ## Fleet rollout
 
-When the version constant is bumped (typically by `bump-deps.sh` or the
-`update-package-version.yml` workflow), the sync test enforces that the fallback
-constant in `src/utils/Version.ts` matches the new `deno.json` `version`. Update
-both in the same commit. Downstream consumers (GRQ and sibling repos) need to
-refresh their `@stsoftware/neat-ai` pin to the new JSR version so they pick up
-the fix; verify the line in their logs after the restart.
+When `deno.json` `version` is bumped (typically by `bump-deps.sh` or the
+`update-package-version.yml` workflow), no extra change is needed in
+`src/utils/Version.ts` — `deno.json` is the single source of truth on the local
+load path, and JSR consumers derive the version from `import.meta.url` after
+publish. Downstream consumers (GRQ and sibling repos) need to refresh their
+`@stsoftware/neat-ai` pin to the new JSR version so they pick up the fix; verify
+the line in their logs after the restart.

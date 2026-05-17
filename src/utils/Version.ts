@@ -8,7 +8,14 @@
  * stack trace. Every NEAT-AI worker now emits a single line at startup so
  * the running version is always visible:
  *
- *     [neat-ai] running version X.Y.Z
+ *     [neat-ai] running version X.Y.Z          (JSR consumers)
+ *     [neat-ai] running version X.Y.Z (local)  (local file:// dev/test load)
+ *
+ * Issue #2720: the previous `FALLBACK_NEAT_AI_VERSION` constant duplicated
+ * `deno.json` `version` and required a sync test to police drift. Per KISS,
+ * the `file://` (local dev/test) load path now reads `deno.json` once at
+ * module load and treats it as the single source of truth. JSR consumers
+ * still derive the version from `import.meta.url` — no file I/O.
  *
  * ## Convention
  *
@@ -17,47 +24,69 @@
  * does this automatically — sub-workers that build creatures get the log
  * for free. The function is idempotent (a module-level flag), so the line
  * fires at most once per worker process even across many constructions.
- *
- * ## Version derivation
- *
- * The version comes from {@link import.meta.url}: when this module is
- * loaded from JSR the URL embeds the version (e.g.
- * `https://jsr.io/@stsoftware/neat-ai/5.0.14/src/utils/Version.ts`). For
- * local `file://` loads during development the {@link FALLBACK_NEAT_AI_VERSION}
- * constant is used. No runtime file I/O.
- *
- * The fallback constant is kept in sync with `deno.json`'s `version` by the
- * test in `test/creature/VersionStartupLog.ts` — a mismatch fails the
- * quality gate.
  */
 
 import { getLogger } from "@utils/Logger.ts";
 
 /**
- * Fallback version string used when `import.meta.url` is not a JSR URL
- * (e.g. local `file://` loads during development and tests).
- *
- * Must equal `deno.json` `version`. The version-sync test enforces this.
+ * Source of the resolved version string. `"jsr"` means the version was
+ * parsed from `import.meta.url`; `"local"` means it was read from
+ * `deno.json` (i.e. the module was loaded over a `file://` URL during
+ * development or tests).
  */
-export const FALLBACK_NEAT_AI_VERSION = "5.0.27";
+type VersionSource = "jsr" | "local";
+
+interface VersionInfo {
+  readonly version: string;
+  readonly source: VersionSource;
+}
+
+/**
+ * Reads `deno.json` (relative to this module) and returns its `version`.
+ * Only invoked on the local `file://` load path — JSR consumers never
+ * reach this code path.
+ */
+function readLocalVersionFromDenoJson(): string {
+  // src/utils/Version.ts → ../../deno.json
+  const denoJsonUrl = new URL("../../deno.json", import.meta.url);
+  const parsed = JSON.parse(Deno.readTextFileSync(denoJsonUrl));
+  if (typeof parsed.version !== "string") {
+    throw new Error(
+      "deno.json must define a string `version` for the local load path",
+    );
+  }
+  return parsed.version;
+}
+
+function resolveVersionInfo(): VersionInfo {
+  const match = import.meta.url.match(
+    /@stsoftware\/neat-ai\/(\d+\.\d+\.\d+)/,
+  );
+  if (match) return { version: match[1], source: "jsr" };
+  return { version: readLocalVersionFromDenoJson(), source: "local" };
+}
+
+// Module-level read: happens at most once per worker process and only on
+// the local load path. JSR consumers skip the file I/O entirely.
+const VERSION_INFO: VersionInfo = resolveVersionInfo();
 
 /**
  * Returns the running `@stsoftware/neat-ai` version.
  *
  * Derived from `import.meta.url` when this module is loaded from JSR
- * (the URL embeds the version), or {@link FALLBACK_NEAT_AI_VERSION}
- * otherwise. No filesystem I/O is performed.
+ * (the URL embeds the version), or from `deno.json` `version` when loaded
+ * locally over `file://`. The result is cached at module load.
  */
 export function getNeatAiVersion(): string {
-  const url = import.meta.url;
-  const match = url.match(/@stsoftware\/neat-ai\/(\d+\.\d+\.\d+)/);
-  return match ? match[1] : FALLBACK_NEAT_AI_VERSION;
+  return VERSION_INFO.version;
 }
 
 let versionLogged = false;
 
 /**
  * Emits a single `[neat-ai] running version X.Y.Z` line per worker process.
+ * Local file:// loads append a ` (local)` suffix so a dev/test log line
+ * cannot be confused with a published JSR build.
  *
  * Idempotent: subsequent calls are no-ops. The first call (typically from
  * the `Creature` constructor) triggers the log via the configured
@@ -67,11 +96,13 @@ let versionLogged = false;
  *          first call), so callers can also surface it elsewhere if needed.
  */
 export function logNeatAiVersionOnce(): string {
-  const version = getNeatAiVersion();
-  if (versionLogged) return version;
+  if (versionLogged) return VERSION_INFO.version;
   versionLogged = true;
-  getLogger().info(`[neat-ai] running version ${version}`);
-  return version;
+  const suffix = VERSION_INFO.source === "local" ? " (local)" : "";
+  getLogger().info(
+    `[neat-ai] running version ${VERSION_INFO.version}${suffix}`,
+  );
+  return VERSION_INFO.version;
 }
 
 /**
