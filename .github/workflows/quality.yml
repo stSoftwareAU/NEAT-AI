@@ -193,9 +193,13 @@ jobs:
         # denoland/setup-deno@v2.0.4
         uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
 
-      # Update Deno
-      - name: Update Deno
-        run: deno outdated --update --latest
+      # Note: dep bumps flow through the scheduled
+      # `.github/workflows/deno-outdated.yml` workflow, which raises a
+      # reviewable PR via peter-evans/create-pull-request. The previous
+      # inline `Update Deno` step on every PR pulled whatever version
+      # was newest at run-time and auto-committed the lockfile changes
+      # under the bot's signature, bypassing contributor review and the
+      # bump quarantine for external deps (Issue #2697).
 
       - name: Sync WASM package from NEAT-AI-core
         run: ./build.sh --verify-only
