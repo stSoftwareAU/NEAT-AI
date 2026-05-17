@@ -16,6 +16,6 @@ jobs:
     steps:
       # actions/checkout@v4.3.1
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - run: semgrep ci --config p/default
+      - run: semgrep ci --config p/default --config p/security-audit --config p/owasp-top-ten
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
