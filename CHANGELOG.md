@@ -14,6 +14,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- **Issue #2704:** `CreatureSerialization.fromJSON` (the default JSON-load path)
+  now rejects creature JSON whose `bias` or synapse `weight` is not a finite
+  number with a `TopologyError` (`INVALID_NEURON_BIAS` /
+  `INVALID_SYNAPSE_WEIGHT`). Previously these fields were template-interpolated
+  into `new Function()` bodies by the activation compilers
+  (`NeuronActivation.ts`, `aggregate/IF.ts`, `aggregate/MINIMUM.ts`,
+  `aggregate/MAXIMUM.ts`, deprecated `HYPOT*`), so a crafted string such as
+  `"bias": "0); evil(); //"` could reach the function compiler and execute
+  arbitrary JS in the host process. The `Neuron` constructor now also asserts a
+  finite bias for non-input neurons as defence-in-depth.
+
 ## [5.0.0]
 
 ### Added

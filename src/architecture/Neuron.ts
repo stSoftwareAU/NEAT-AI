@@ -115,6 +115,23 @@ export class Neuron implements TagsInterface, NeuronInternal {
         throw new TopologyError("invalid type: " + type, "INVALID_NEURON_TYPE");
       }
 
+      // Issue #2704: defence-in-depth — reject any non-finite bias so a
+      // future call site cannot smuggle a string into the
+      // `new Function()` body built by NeuronActivation.ts at activation
+      // time. TypeScript types are erased at runtime; this is the only
+      // guard that holds when JSON crosses an untrusted boundary.
+      if (typeof bias !== "number" || !Number.isFinite(bias)) {
+        throw new TopologyError(
+          `Neuron id=${id} type=${type}: 'bias' must be a finite number, ` +
+            `got ${
+              typeof bias === "string"
+                ? `string ${JSON.stringify(bias)}`
+                : String(bias)
+            }`,
+          "INVALID_NEURON_BIAS",
+        );
+      }
+
       this.bias = bias;
 
       if (type === "constant") {
