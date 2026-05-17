@@ -462,6 +462,18 @@
     "Abramowitz",
     "Stegun",
     "Wilcoxon",
-    "stddev"
+    "stddev",
+    "AJSON",
+    "BJSON",
+    "coef",
+    "COEF",
+    "gelu",
+    "Gelu",
+    "isru",
+    "Isru",
+    "selu",
+    "Selu",
+    "ünter",
+    "XNOR"
   ]
 }
