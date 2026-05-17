@@ -129,7 +129,8 @@ NEAT_CORE_REF="${NEAT_CORE_REF:-$NEAT_CORE_REF_DEFAULT}"
 PINNED_REV="$NEAT_CORE_REV_DEFAULT"
 PINNED_ASSET_SHA256="$NEAT_CORE_ASSET_SHA256_DEFAULT"
 
-DEST_DIR="wasm_activation/pkg"
+# Tests may override via NEAT_PKG_DIR to avoid concurrent file-system races.
+DEST_DIR="${NEAT_PKG_DIR:-wasm_activation/pkg}"
 required=(
   "wasm_activation.js"
   "wasm_activation_bg.wasm"

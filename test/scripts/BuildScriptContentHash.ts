@@ -186,18 +186,42 @@ Deno.test({
 
 Deno.test({
   name: "build.sh --verify-only fails when wasm_activation_bg.wasm is tampered",
-  permissions: { run: true, read: true, write: true },
+  permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
     if (!(await fileExists(MANIFEST_PATH))) return;
-    const wasmPath = "wasm_activation/pkg/wasm_activation_bg.wasm";
-    const original = await Deno.readFile(wasmPath);
+
+    // Use an isolated temp directory so concurrent test runs in BuildScript.ts
+    // are not affected by file-system mutations (race condition fix, Issue #2718).
+    const tmpDir = await Deno.makeTempDir({ prefix: "neat-tamper-wasm-" });
     try {
-      // Flip the last byte to simulate post-install tampering.
+      // Copy all necessary pkg files into the temp directory.
+      const pkgFiles = [
+        "neat_core_rev.txt",
+        "wasm_activation.js",
+        "wasm_activation_bg.wasm",
+        "wasm_activation.d.ts",
+        "wasm_activation_bg.wasm.d.ts",
+        "package.json",
+        "content-manifest.sha256",
+      ];
+      await Promise.all(
+        pkgFiles.map((f) =>
+          Deno.copyFile(`wasm_activation/pkg/${f}`, `${tmpDir}/${f}`)
+        ),
+      );
+
+      // Flip the last byte of the COPY to simulate post-install tampering.
+      const wasmCopy = `${tmpDir}/wasm_activation_bg.wasm`;
+      const original = await Deno.readFile(wasmCopy);
       const tampered = new Uint8Array(original);
       tampered[tampered.length - 1] = tampered[tampered.length - 1] ^ 0xff;
-      await Deno.writeFile(wasmPath, tampered);
+      await Deno.writeFile(wasmCopy, tampered);
 
-      const result = await runBuild(["--verify-only"]);
+      const result = await runBuild(["--verify-only"], {
+        PATH: Deno.env.get("PATH") ?? "",
+        HOME: Deno.env.get("HOME") ?? "",
+        NEAT_PKG_DIR: tmpDir,
+      });
       assert(
         result.code !== 0,
         `--verify-only must fail on bundle tampering; stdout=${result.stdout} stderr=${result.stderr}`,
@@ -209,27 +233,48 @@ Deno.test({
         `Expected actionable error mentioning manifest/sha; got: ${result.stderr}`,
       );
     } finally {
-      // Restore original contents whether the test passed or not.
-      await Deno.writeFile(wasmPath, original);
+      await Deno.remove(tmpDir, { recursive: true });
     }
   },
 });
 
 Deno.test({
   name: "build.sh --verify-only fails when content-manifest.sha256 is missing",
-  permissions: { run: true, read: true, write: true },
+  permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
     if (!(await fileExists(MANIFEST_PATH))) return;
-    const backup = await Deno.readTextFile(MANIFEST_PATH);
+
+    // Use an isolated temp directory so concurrent test runs in BuildScript.ts
+    // are not affected by file-system mutations (race condition fix, Issue #2718).
+    const tmpDir = await Deno.makeTempDir({ prefix: "neat-tamper-manifest-" });
     try {
-      await Deno.remove(MANIFEST_PATH);
-      const result = await runBuild(["--verify-only"]);
+      // Copy all necessary pkg files EXCEPT content-manifest.sha256 into the
+      // temp directory, so the manifest is genuinely absent for the check.
+      const pkgFiles = [
+        "neat_core_rev.txt",
+        "wasm_activation.js",
+        "wasm_activation_bg.wasm",
+        "wasm_activation.d.ts",
+        "wasm_activation_bg.wasm.d.ts",
+        "package.json",
+      ];
+      await Promise.all(
+        pkgFiles.map((f) =>
+          Deno.copyFile(`wasm_activation/pkg/${f}`, `${tmpDir}/${f}`)
+        ),
+      );
+
+      const result = await runBuild(["--verify-only"], {
+        PATH: Deno.env.get("PATH") ?? "",
+        HOME: Deno.env.get("HOME") ?? "",
+        NEAT_PKG_DIR: tmpDir,
+      });
       assert(
         result.code !== 0,
         `--verify-only must fail when manifest is missing; stdout=${result.stdout} stderr=${result.stderr}`,
       );
     } finally {
-      await Deno.writeTextFile(MANIFEST_PATH, backup);
+      await Deno.remove(tmpDir, { recursive: true });
     }
   },
 });
