@@ -9,17 +9,17 @@ Scorecard, matching the pattern already in use by `markdown-lint.yml`,
 `semgrep.yml`, `shellcheck.yml`, `dependency-review.yml`, and
 `deno-outdated.yml`. Closes #2706.
 
-| Workflow | Scopes granted | Why |
-| --- | --- | --- |
-| `coverage.yaml` | `contents: read`, `checks: write`, `pull-requests: write` | Uploads artefacts, posts check-run annotations via `EnricoMi/publish-unit-test-result-action`, uploads to Codecov |
-| `quality.yml` | `contents: read` | Push back to the PR branch uses `secrets.ACTIONS_PUSH` (a PAT), not the default `GITHUB_TOKEN`, so the default token only needs read |
-| `spellcheck.yaml` | `contents: read` | `cspell-action` is read-only |
+| Workflow          | Scopes granted                                            | Why                                                                                                                                  |
+| ----------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `coverage.yaml`   | `contents: read`, `checks: write`, `pull-requests: write` | Uploads artefacts, posts check-run annotations via `EnricoMi/publish-unit-test-result-action`, uploads to Codecov                    |
+| `quality.yml`     | `contents: read`                                          | Push back to the PR branch uses `secrets.ACTIONS_PUSH` (a PAT), not the default `GITHUB_TOKEN`, so the default token only needs read |
+| `spellcheck.yaml` | `contents: read`                                          | `cspell-action` is read-only                                                                                                         |
 
 ## Evidence
 
-Backend / workflow-config change — no UI to screenshot. Verified by parsing
-each workflow YAML and asserting the structural shape of the new
-`permissions:` block:
+Backend / workflow-config change — no UI to screenshot. Verified by parsing each
+workflow YAML and asserting the structural shape of the new `permissions:`
+block:
 
 ```text
 running 6 tests from ./test/scripts/WorkflowLeastPrivilegePermissions.ts
@@ -43,8 +43,8 @@ flowchart LR
 
 ## Test Plan
 
-- Added `test/scripts/WorkflowLeastPrivilegePermissions.ts` with six tests
-  (one "declares a block" + one "grants only what is needed" per workflow).
+- Added `test/scripts/WorkflowLeastPrivilegePermissions.ts` with six tests (one
+  "declares a block" + one "grants only what is needed" per workflow).
 - Tests parse the workflow YAML with `@std/yaml` and assert on the parsed
   structure — they are pure "what" tests that survive any internal refactor of
   the workflow steps.
