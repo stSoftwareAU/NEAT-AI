@@ -13,8 +13,10 @@ jobs:
   spellcheck: # run the action
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: streetsidesoftware/cspell-action@v8
+      # actions/checkout@v4.3.1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      # streetsidesoftware/cspell-action@v8.4.0
+      - uses: streetsidesoftware/cspell-action@de2a73e963e7443969755b648a1008f77033c5b2
         with:
           # Specify the files to check
           files: "**/*.{md,html,js,ts,css,sh}"

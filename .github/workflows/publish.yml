@@ -12,10 +12,12 @@ jobs:
       contents: read
       id-token: write # OIDC for JSR (provenance + tokenless publish)
     steps:
-      - uses: actions/checkout@v4
+      # actions/checkout@v4.3.1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Setup Deno
-        uses: denoland/setup-deno@v2
+        # denoland/setup-deno@v2.0.4
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
         with:
           deno-version: v2.x
 

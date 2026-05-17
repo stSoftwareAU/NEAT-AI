@@ -15,7 +15,8 @@ jobs:
     steps:
       # Checkout the code
       - name: Checkout Code
-        uses: actions/checkout@v4
+        # actions/checkout@v4.3.1
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           token: ${{ secrets.ACTIONS_PUSH }}
           ref: ${{ github.head_ref }}
@@ -23,7 +24,8 @@ jobs:
 
       # Set up Deno
       - name: Setup Deno
-        uses: denoland/setup-deno@v2
+        # denoland/setup-deno@v2.0.4
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
 
       # Check if version has been updated
       - name: Check Version Update
