@@ -6,6 +6,12 @@ on:
       - Develop
   workflow_dispatch: # Allow manual trigger if needed
 
+# Least-privilege GITHUB_TOKEN scopes (Issue #2706). The push back to the PR
+# branch uses secrets.ACTIONS_PUSH (a PAT), not the default GITHUB_TOKEN, so the
+# default token only needs read access.
+permissions:
+  contents: read
+
 jobs:
   quality:
     runs-on: ubuntu-latest

@@ -5,6 +5,14 @@ on:
     branches:
       - Develop
 
+# Least-privilege GITHUB_TOKEN scopes (Issue #2706). The workflow uploads
+# artifacts, posts check-run annotations via EnricoMi/publish-unit-test-result-action,
+# and uploads coverage/results to Codecov.
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   coverage:
     runs-on: ubuntu-latest
