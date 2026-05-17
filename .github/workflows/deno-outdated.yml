@@ -1,10 +1,11 @@
-# Deno Dependency Updates (Issue #2362)
+# Deno Dependency Updates (Issue #2362, Issue #2697)
 #
 # Runs `deno outdated --update --latest` on a weekly schedule (and on demand)
 # and opens a pull request with any version bumps via
-# peter-evans/create-pull-request. Keeps the dedicated automation that the
-# detection patterns expect under the `deno-outdated` name, complementing the
-# inline `deno outdated` step in `quality.yml` which only runs on PR.
+# peter-evans/create-pull-request. This is the single source of truth for
+# Deno dep bumps — the previous inline step in `quality.yml` was removed by
+# Issue #2697 because it pulled fresh external versions onto every PR with
+# no quarantine and auto-committed the lockfile changes under the bot.
 name: Deno Dependency Updates
 
 on:
