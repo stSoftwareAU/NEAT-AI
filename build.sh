@@ -97,6 +97,7 @@ const config = JSON.parse(Deno.readTextFileSync("deno.json"));
 const repo = config.neatCore?.repo;
 const ref = config.neatCore?.ref ?? "Develop";
 const rev = config.neatCore?.rev ?? "";
+const assetSha256 = config.neatCore?.assetSha256 ?? "";
 if (typeof repo !== "string" || repo.length === 0) {
   console.error("deno.json missing neatCore.repo");
   Deno.exit(2);
@@ -109,7 +110,11 @@ if (rev && !/^[0-9a-f]{40}$/.test(String(rev))) {
   console.error("deno.json neatCore.rev must be 40-char sha when set");
   Deno.exit(4);
 }
-console.log(`${repo}\n${ref}\n${rev}`);
+if (assetSha256 && !/^[0-9a-f]{64}$/.test(String(assetSha256))) {
+  console.error("deno.json neatCore.assetSha256 must be 64-char sha-256 when set");
+  Deno.exit(5);
+}
+console.log(`${repo}\n${ref}\n${rev}\n${assetSha256}`);
 '
 }
 
@@ -117,10 +122,12 @@ cfg_output="$(read_config)"
 NEAT_CORE_REPO_DEFAULT="$(printf '%s\n' "$cfg_output" | sed -n '1p')"
 NEAT_CORE_REF_DEFAULT="$(printf '%s\n' "$cfg_output" | sed -n '2p')"
 NEAT_CORE_REV_DEFAULT="$(printf '%s\n' "$cfg_output" | sed -n '3p')"
+NEAT_CORE_ASSET_SHA256_DEFAULT="$(printf '%s\n' "$cfg_output" | sed -n '4p')"
 
 NEAT_CORE_REPO="${NEAT_CORE_REPO:-$NEAT_CORE_REPO_DEFAULT}"
 NEAT_CORE_REF="${NEAT_CORE_REF:-$NEAT_CORE_REF_DEFAULT}"
 PINNED_REV="$NEAT_CORE_REV_DEFAULT"
+PINNED_ASSET_SHA256="$NEAT_CORE_ASSET_SHA256_DEFAULT"
 
 DEST_DIR="wasm_activation/pkg"
 required=(
@@ -129,12 +136,81 @@ required=(
   "wasm_activation.d.ts"
   "wasm_activation_bg.wasm.d.ts"
 )
+# Files covered by the content manifest. Includes the required set plus
+# package.json (also published to JSR and a tampering target).
+manifest_files=(
+  "wasm_activation.js"
+  "wasm_activation_bg.wasm"
+  "wasm_activation.d.ts"
+  "wasm_activation_bg.wasm.d.ts"
+  "package.json"
+)
+CONTENT_MANIFEST="content-manifest.sha256"
 
 # WASM bundle size sanity threshold — issue #2389 found that the old
 # in-repo wasm-pack wrapper produced a ~30 KiB stub with no
 # CompiledNetwork bindings; a real bundle is two orders of magnitude
 # larger.
 MIN_WASM_BYTES=131072
+
+# verify_tarball_sha256 — fail fast on supply-chain tampering of the
+# downloaded WASM tarball (issue #2705). Computes shasum -a 256 of the
+# file and compares case-insensitively to the expected hash. Source is a
+# human-readable origin label (e.g. "deno.json neatCore.assetSha256" or
+# "release sidecar wasm_activation-pkg.tar.gz.sha256") used in error
+# output so reviewers can tell which guard caught the mismatch.
+verify_tarball_sha256() {
+  local file="$1"
+  local expected="$2"
+  local source="$3"
+  if ! [[ "$expected" =~ ^[0-9a-fA-F]{64}$ ]]; then
+    echo "ERROR: ${source} is not a 64-char SHA-256 (got '${expected}')" >&2
+    return 1
+  fi
+  if ! command -v shasum >/dev/null 2>&1; then
+    echo "ERROR: shasum is required to verify ${file} against ${source}" >&2
+    return 1
+  fi
+  local actual
+  actual="$(shasum -a 256 "$file" | awk '{print $1}')"
+  local expected_lc
+  expected_lc="$(printf '%s' "$expected" | tr 'A-F' 'a-f')"
+  if [[ "$actual" != "$expected_lc" ]]; then
+    echo "ERROR: SHA-256 mismatch for $(basename "$file") (source: ${source})." >&2
+    echo "  expected: ${expected_lc}" >&2
+    echo "  actual:   ${actual}" >&2
+    return 1
+  fi
+  return 0
+}
+
+# write_content_manifest — record sha256(file) for every artefact in the
+# vendored pkg so --verify-only can detect post-install tampering even
+# without a network round-trip. Format is standard `shasum -a 256`
+# output (`<hash>  <filename>`), so verification reuses `shasum -c`.
+write_content_manifest() {
+  if ! command -v shasum >/dev/null 2>&1; then
+    echo "ERROR: shasum is required to write content manifest" >&2
+    return 1
+  fi
+  ( cd "$DEST_DIR" && shasum -a 256 "${manifest_files[@]}" ) \
+    > "$DEST_DIR/$CONTENT_MANIFEST"
+}
+
+# verify_content_manifest — re-hash every file listed in the manifest
+# and fail if any line does not match. Returns non-zero on missing
+# manifest, missing tools, or mismatch.
+verify_content_manifest() {
+  if [[ ! -f "$DEST_DIR/$CONTENT_MANIFEST" ]]; then
+    return 1
+  fi
+  if ! command -v shasum >/dev/null 2>&1; then
+    echo "ERROR: shasum is required to verify content manifest" >&2
+    return 1
+  fi
+  # `shasum -c` resolves filenames relative to cwd, so cd into pkg.
+  ( cd "$DEST_DIR" && shasum -a 256 -c "$CONTENT_MANIFEST" >/dev/null )
+}
 
 verify_pkg_matches() {
   local expected_rev="$1"
@@ -154,6 +230,13 @@ verify_pkg_matches() {
   local wasm_bytes
   wasm_bytes="$(wc -c <"$DEST_DIR/wasm_activation_bg.wasm" | tr -d ' ')"
   if [[ "${wasm_bytes:-0}" -lt $MIN_WASM_BYTES ]]; then
+    return 1
+  fi
+  # Content-hash gate (issue #2705): every vendored file must match the
+  # committed manifest. A missing manifest is treated as a verification
+  # failure so the bundle is re-downloaded (or re-hashed) deliberately,
+  # never silently trusted.
+  if ! verify_content_manifest; then
     return 1
   fi
   return 0
@@ -184,6 +267,11 @@ if [[ "$VERIFY_ONLY" == true ]]; then
     exit 0
   fi
   echo "ERROR: $DEST_DIR does not match deno.json neatCore.rev (${PINNED_REV})." >&2
+  if [[ ! -f "$DEST_DIR/$CONTENT_MANIFEST" ]]; then
+    echo "  - content-manifest.sha256 is missing — bundle integrity cannot be verified." >&2
+  else
+    echo "  - content-manifest.sha256 verification may have failed (run 'cd $DEST_DIR && shasum -a 256 -c $CONTENT_MANIFEST' to inspect)." >&2
+  fi
   echo "Run './build.sh' (without --verify-only) to refresh the bundle from upstream." >&2
   exit 1
 fi
@@ -356,6 +444,79 @@ if [[ "$download_ok" != true ]]; then
   fi
 fi
 
+# --- Verify tarball content hash before extract (issue #2705) -----------
+# Two independent guards run against the downloaded tarball:
+#   1. The optional pin in deno.json neatCore.assetSha256, which lets a
+#      reviewer spot bundle-content changes in a single line of diff.
+#   2. The optional release-side sidecar wasm_activation-pkg.tar.gz.sha256
+#      published by NEAT-AI-core CI alongside the tarball.
+# Either present guard MUST match before extraction. If both are absent
+# the run still proceeds (the upstream workflow may not yet publish a
+# sidecar and the pin is empty on fresh setups), but a clear advisory is
+# printed so reviewers do not silently ship an unverified bundle.
+SIDECAR_NAME="${ASSET_NAME}.sha256"
+sidecar_path="$tmp_dir/$SIDECAR_NAME"
+sidecar_ok=false
+if command -v gh >/dev/null 2>&1; then
+  if gh release download "$RELEASE_TAG" \
+    --repo "$NEAT_CORE_REPO" \
+    --pattern "$SIDECAR_NAME" \
+    --dir "$tmp_dir" 2>/dev/null; then
+    sidecar_ok=true
+  fi
+fi
+if [[ "$sidecar_ok" != true ]]; then
+  sidecar_args=(-fsSL)
+  if [[ -n "${NEAT_CORE_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
+    sidecar_token="${NEAT_CORE_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
+    sidecar_args+=(-H "Authorization: Bearer ${sidecar_token}")
+  fi
+  sidecar_url="https://github.com/${NEAT_CORE_REPO}/releases/download/${RELEASE_TAG}/${SIDECAR_NAME}"
+  if curl "${sidecar_args[@]}" -o "$sidecar_path" "$sidecar_url" 2>/dev/null; then
+    sidecar_ok=true
+  fi
+fi
+
+verified_via=""
+if [[ "$sidecar_ok" == true && -s "$sidecar_path" ]]; then
+  # Standard `shasum -a 256` output is `<hash>  <filename>`. We only
+  # consume the leading 64 hex chars to be lenient about whitespace.
+  expected_sidecar="$(awk '{print $1}' <"$sidecar_path" | head -n1)"
+  if ! verify_tarball_sha256 \
+    "$tmp_dir/$ASSET_NAME" \
+    "$expected_sidecar" \
+    "release sidecar ${SIDECAR_NAME}"; then
+    exit 1
+  fi
+  verified_via="sidecar ${SIDECAR_NAME}"
+fi
+
+if [[ -n "$PINNED_ASSET_SHA256" ]]; then
+  if ! verify_tarball_sha256 \
+    "$tmp_dir/$ASSET_NAME" \
+    "$PINNED_ASSET_SHA256" \
+    "deno.json neatCore.assetSha256"; then
+    exit 1
+  fi
+  if [[ -n "$verified_via" ]]; then
+    verified_via="${verified_via} and deno.json neatCore.assetSha256"
+  else
+    verified_via="deno.json neatCore.assetSha256"
+  fi
+fi
+
+if [[ -n "$verified_via" ]]; then
+  echo "Tarball SHA-256 verified via ${verified_via}."
+else
+  echo "WARNING: no SHA-256 source for ${ASSET_NAME} (neither deno.json neatCore.assetSha256 nor release sidecar ${SIDECAR_NAME} present)." >&2
+  echo "         Computing local hash for the manifest only — tarball provenance is not attested." >&2
+fi
+
+# Record the tarball's own hash for transparency. The per-file manifest
+# (written after extract) is what `--verify-only` actually checks.
+DOWNLOADED_ASSET_SHA256="$(shasum -a 256 "$tmp_dir/$ASSET_NAME" | awk '{print $1}')"
+echo "Downloaded tarball SHA-256: ${DOWNLOADED_ASSET_SHA256}"
+
 mkdir -p "wasm_activation"
 echo "Extracting ${ASSET_NAME} into wasm_activation/..."
 tar -xzf "$tmp_dir/$ASSET_NAME" -C "wasm_activation/"
@@ -393,6 +554,13 @@ Deno.writeTextFileSync(path, JSON.stringify(config, null, 2) + '\n');
 fi
 
 refresh_fingerprint "$TARGET_REV"
+
+# --- Record per-file content manifest (issue #2705) ---------------------
+# Written after every successful download so --verify-only can detect
+# any later tampering with vendored pkg files without re-fetching the
+# tarball. Commit content-manifest.sha256 with the rest of pkg/**.
+echo "Writing $DEST_DIR/$CONTENT_MANIFEST..."
+write_content_manifest
 
 echo ""
 echo "✅ wasm_activation/pkg refreshed to ${NEAT_CORE_REPO}@${TARGET_REV}"

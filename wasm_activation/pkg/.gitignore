@@ -9,6 +9,7 @@
 !wasm_activation_bg.wasm.d.ts
 !build-fingerprint
 !neat_core_rev.txt
+!content-manifest.sha256
 
 # If wasm-pack emits snippets/, keep them too.
 !snippets/
