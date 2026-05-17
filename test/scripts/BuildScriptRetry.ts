@@ -235,10 +235,14 @@ Deno.test({
         await Deno.readTextFile(setup.downloadCounterFile),
         10,
       );
+      // Two `gh release download` invocations are now expected after the
+      // probe succeeds: one for the tarball and one for the optional
+      // .sha256 sidecar (Issue #2705 supply-chain hardening). The sidecar
+      // is fetched best-effort and skipped when absent.
       assertEquals(
         downloadCalls,
-        1,
-        `Expected exactly one download after probe success; got ${downloadCalls}`,
+        2,
+        `Expected tarball + sidecar downloads after probe success; got ${downloadCalls}`,
       );
       assert(
         result.stderr.includes("not yet published"),

@@ -20,7 +20,8 @@ NEAT-AI tracks NEAT-AI-core in `deno.json`:
 `build.sh` is the single integration point. By default it resolves NEAT-AI-core
 `Develop` HEAD via the GitHub API, downloads the matching
 `wasm_activation-pkg.tar.gz` asset from the per-commit Release tagged
-`wasm-bundle-<SHA>`, unpacks it into `wasm_activation/`, and updates `deno.json`
+`wasm-bundle-<SHA>`, content-verifies the tarball via SHA-256, unpacks it into
+`wasm_activation/`, writes a per-file content manifest, and updates `deno.json`
 `neatCore.rev` to the new SHA. The maintainer (or worker) running `./build.sh`
 commits the updated `deno.json` and `wasm_activation/pkg/**` together.
 
@@ -32,6 +33,40 @@ flowchart LR
   BUILD -- "bump rev" --> DENO["deno.json neatCore.rev"]
   PKG -- "import (unchanged)" --> GRQ["GRQ / downstream clients"]
 ```
+
+## Bundle Content Hash (Issue #2705)
+
+Pinning by upstream commit SHA stops a release _tag_ from being renamed or
+replaced, but it does not prevent the _asset_ attached to a release from being
+swapped (compromised CI runner, leaked release-write token, MITM on the
+unauthenticated `releases/download/...` URL). `build.sh` therefore enforces two
+independent content-hash guards on every download:
+
+1. **`deno.json` pin** — set `neatCore.assetSha256` to the expected SHA-256 of
+   `wasm_activation-pkg.tar.gz`. When set, `build.sh` recomputes the hash
+   immediately after download and refuses to extract on mismatch. Because the
+   pin lives next to `neatCore.rev`, reviewers can spot bundle-content changes
+   in a single line of diff.
+2. **Release sidecar** — if NEAT-AI-core publishes
+   `wasm_activation-pkg.tar.gz.sha256` alongside the tarball, `build.sh` fetches
+   the sidecar and verifies the tarball against it.
+
+After extraction `build.sh` writes `wasm_activation/pkg/content-manifest.sha256`
+(standard `shasum -a 256` format). This per-file manifest is committed with the
+rest of `pkg/**` and is re-checked on every `./build.sh --verify-only` run — so
+any later tampering with the vendored bundle is detected without a network
+round-trip.
+
+| Guard                         | When it runs              | What it protects against                                 |
+| ----------------------------- | ------------------------- | -------------------------------------------------------- |
+| `neatCore.assetSha256`        | Every download            | Swap of the release asset after the pin was committed    |
+| Release sidecar `*.sha256`    | Every download (if found) | Asset tampering by anyone without sidecar-signing access |
+| `pkg/content-manifest.sha256` | `--verify-only` / CI      | Local or post-install tampering with vendored pkg files  |
+
+If neither sidecar nor `assetSha256` is available `build.sh` still proceeds (the
+upstream workflow may not yet publish a sidecar and the pin is empty on fresh
+setups) but prints a clear `WARNING` so reviewers do not silently ship an
+unverified bundle.
 
 ## Why This Model
 
