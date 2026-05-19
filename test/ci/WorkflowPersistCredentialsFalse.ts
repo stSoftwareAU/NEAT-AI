@@ -1,0 +1,164 @@
+/**
+ * Issue #2727 — workflows that check out a PR head with the
+ * `ACTIONS_PUSH` PAT must NOT let `actions/checkout` persist that
+ * credential into `.git/config`. With `persist-credentials: true`
+ * (the default), the PAT is written to
+ * `http.https://github.com/.extraheader` so any subsequent step that
+ * executes PR-controlled code (e.g. `./build.sh --verify-only`) can
+ * read and exfiltrate it.
+ *
+ * Fix: every checkout that uses `secrets.ACTIONS_PUSH` (a privileged
+ * PAT) MUST set `persist-credentials: false`. The PAT is then
+ * re-introduced only at push time via a per-command auth header so it
+ * never lives on disk.
+ */
+
+import { assert, assertEquals } from "@std/assert";
+import { fromFileUrl, join } from "@std/path";
+import { parse } from "@std/yaml";
+
+const REPO_ROOT = fromFileUrl(new URL("../../", import.meta.url));
+
+interface CheckoutWith {
+  token?: string;
+  "persist-credentials"?: boolean | string;
+  ref?: string;
+  "fetch-depth"?: number;
+}
+
+interface Step {
+  name?: string;
+  uses?: string;
+  with?: CheckoutWith;
+  run?: string;
+  env?: Record<string, string>;
+}
+
+interface Job {
+  steps?: Step[];
+}
+
+interface Workflow {
+  jobs?: Record<string, Job>;
+}
+
+async function readWorkflow(relPath: string): Promise<Workflow> {
+  const text = await Deno.readTextFile(join(REPO_ROOT, relPath));
+  return parse(text) as Workflow;
+}
+
+function collectSteps(wf: Workflow): Step[] {
+  const steps: Step[] = [];
+  for (const job of Object.values(wf.jobs ?? {})) {
+    for (const step of job.steps ?? []) {
+      steps.push(step);
+    }
+  }
+  return steps;
+}
+
+function isCheckoutStep(step: Step): boolean {
+  return typeof step.uses === "string" &&
+    step.uses.startsWith("actions/checkout@");
+}
+
+function usesActionsPushPat(step: Step): boolean {
+  const tok = step.with?.token ?? "";
+  return /secrets\.ACTIONS_PUSH/.test(tok);
+}
+
+const SENSITIVE_WORKFLOWS = [
+  ".github/workflows/quality.yml",
+  ".github/workflows/update-package-version.yml",
+];
+
+for (const workflow of SENSITIVE_WORKFLOWS) {
+  Deno.test(
+    `${workflow} checkout with ACTIONS_PUSH must set persist-credentials: false (Issue #2727)`,
+    async () => {
+      const wf = await readWorkflow(workflow);
+      const checkoutSteps = collectSteps(wf).filter(isCheckoutStep);
+      assert(
+        checkoutSteps.length > 0,
+        `${workflow} expected at least one actions/checkout step`,
+      );
+      for (const step of checkoutSteps) {
+        if (!usesActionsPushPat(step)) continue;
+        const persist = step.with?.["persist-credentials"];
+        assertEquals(
+          persist,
+          false,
+          `${workflow} step "${step.name ?? "<unnamed>"}" checks out with ` +
+            `secrets.ACTIONS_PUSH but does not set persist-credentials: false. ` +
+            "Without this, the PAT is written to .git/config and any later " +
+            "step that runs PR-controlled code can exfiltrate it.",
+        );
+      }
+    },
+  );
+}
+
+function isGitPushStep(step: Step): boolean {
+  if (typeof step.run !== "string") return false;
+  return /\bgit\b/.test(step.run) && /\bpush\s+origin\b/.test(step.run);
+}
+
+Deno.test(
+  "quality.yml push step re-introduces ACTIONS_PUSH via env (Issue #2727)",
+  async () => {
+    const wf = await readWorkflow(".github/workflows/quality.yml");
+    const steps = collectSteps(wf);
+    const pushSteps = steps.filter(isGitPushStep);
+    assert(
+      pushSteps.length > 0,
+      "quality.yml expected at least one push step that runs git push",
+    );
+    for (const step of pushSteps) {
+      const envVals = Object.values(step.env ?? {}).join("\n");
+      assert(
+        /secrets\.ACTIONS_PUSH/.test(envVals),
+        `quality.yml push step "${step.name ?? "<unnamed>"}" must re-` +
+          "introduce secrets.ACTIONS_PUSH via the step env: map so the PAT " +
+          "is only in scope for the push itself, not for any earlier step " +
+          "that runs PR-controlled code.",
+      );
+      assert(
+        typeof step.run === "string" && /extraheader/i.test(step.run),
+        `quality.yml push step "${step.name ?? "<unnamed>"}" must pass the ` +
+          "PAT via a per-command `git -c http.<url>.extraheader=...` header " +
+          "so it never lives on disk in .git/config.",
+      );
+    }
+  },
+);
+
+Deno.test(
+  "update-package-version.yml push step re-introduces ACTIONS_PUSH via env (Issue #2727)",
+  async () => {
+    const wf = await readWorkflow(
+      ".github/workflows/update-package-version.yml",
+    );
+    const steps = collectSteps(wf);
+    const pushSteps = steps.filter(isGitPushStep);
+    assert(
+      pushSteps.length > 0,
+      "update-package-version.yml expected at least one push step",
+    );
+    for (const step of pushSteps) {
+      const envVals = Object.values(step.env ?? {}).join("\n");
+      assert(
+        /secrets\.ACTIONS_PUSH/.test(envVals),
+        `update-package-version.yml push step "${
+          step.name ?? "<unnamed>"
+        }" must re-introduce secrets.ACTIONS_PUSH via the step env: map.`,
+      );
+      assert(
+        typeof step.run === "string" && /extraheader/i.test(step.run),
+        `update-package-version.yml push step "${
+          step.name ?? "<unnamed>"
+        }" must pass the PAT via a per-command ` +
+          "`git -c http.<url>.extraheader=...` header.",
+      );
+    }
+  },
+);

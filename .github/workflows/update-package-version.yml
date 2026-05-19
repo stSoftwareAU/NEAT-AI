@@ -13,12 +13,22 @@ jobs:
       contents: write
 
     steps:
-      # Checkout the code
+      # Checkout the code.
+      #
+      # `persist-credentials: false` (Issue #2727) — even though no
+      # PR-controlled script runs in this workflow today, the default
+      # `true` would write `secrets.ACTIONS_PUSH` (a privileged PAT) into
+      # `.git/config` for every subsequent step. Anyone adding a future
+      # step that invokes a PR-controlled script would silently re-open
+      # the PAT-exfiltration vector. Strip credentials at checkout and
+      # re-introduce the PAT only at push time via a per-command
+      # auth header.
       - name: Checkout Code
         # actions/checkout@v4.3.1
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           token: ${{ secrets.ACTIONS_PUSH }}
+          persist-credentials: false
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
@@ -99,8 +109,16 @@ jobs:
             git commit -m "chore: auto-increment patch version"
           fi
 
-      # Push Changes
+      # Push Changes — re-introduce the PAT only here via a per-command
+      # `http.https://github.com/.extraheader` so it never lives in
+      # `.git/config` (Issue #2727). The PAT is passed through the step
+      # env: map rather than interpolated into the script body.
       - name: Push Version Update
         if: steps.check_version.outputs.needs_update == 'true'
+        env:
+          GH_PAT: ${{ secrets.ACTIONS_PUSH }}
         run: |
-          git push origin || echo "Push failed or no changes to push"
+          set -Eeuo pipefail
+          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 -w0)"
+          git -c http.https://github.com/.extraheader="$AUTH_HEADER" \
+            push origin || echo "Push failed or no changes to push"
