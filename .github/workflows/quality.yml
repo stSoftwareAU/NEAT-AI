@@ -19,12 +19,23 @@ jobs:
       NEAT_RUST_DISCOVERY_OPTIONAL: "true"
 
     steps:
-      # Checkout the code
+      # Checkout the code.
+      #
+      # `persist-credentials: false` (Issue #2727) — the default `true`
+      # writes the fetch token into `.git/config`
+      # (`http.https://github.com/.extraheader = AUTHORIZATION: basic …`)
+      # for the rest of the job. Because a later step runs PR-controlled
+      # code (`./build.sh --verify-only`) and the fetch token here is the
+      # privileged `secrets.ACTIONS_PUSH` PAT, persisting it would let a
+      # malicious PR read `.git/config` and exfiltrate the PAT. The PAT is
+      # re-introduced only at push time via a per-command auth header so
+      # it never lives on disk.
       - name: Checkout Code
         # actions/checkout@v4.3.1
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           token: ${{ secrets.ACTIONS_PUSH }} # Use the GitHub Actions token for write access
+          persist-credentials: false
           # For pull_request events, explicitly checkout the PR head branch to enable pushing
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
@@ -247,12 +258,23 @@ jobs:
 
       # Push Changes — pass the (already-validated) branch name through env:
       # for consistency with the Setup Branch step (Issue #2709).
+      #
+      # The PAT is re-introduced here via a per-command
+      # `http.https://github.com/.extraheader` so it never lives in
+      # `.git/config` for any PR-controlled step to read (Issue #2727).
+      # `GH_PAT` is passed through the step env: map rather than
+      # interpolated into the script body to avoid leaking the secret
+      # into shell expansion or `ps`/job-log echo paths.
       - name: Push Changes
         if: steps.check_changes.outputs.has_changes == 'true' && steps.branch_setup.outputs.branch_name != ''
         env:
           BRANCH_NAME: ${{ steps.branch_setup.outputs.branch_name }}
+          GH_PAT: ${{ secrets.ACTIONS_PUSH }}
         run: |
-          git push origin "$BRANCH_NAME"
+          set -Eeuo pipefail
+          AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 -w0)"
+          git -c http.https://github.com/.extraheader="$AUTH_HEADER" \
+            push origin "$BRANCH_NAME"
 
       # Note: Tests are run in coverage.yaml workflow
       # - coverage.yaml runs all tests with full permissions (including FFI) for coverage reporting
