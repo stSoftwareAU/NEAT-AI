@@ -14,6 +14,23 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Issue #2746:** Incompatible (graft) crossover no longer corrupts
+  forward-only offspring. When `editParentByIndex` renamed a parent's hidden
+  neuron onto the other parent's UUID, the post-breed `breed:fixAliases`
+  round-trip blindly restored the original UUID even when it collided with a
+  UUID already present in the offspring. The collision made `loadFrom` re-point
+  another neuron's synapses, turning a forward edge into a recurrent one
+  (`from >= to`) and tripping the `breed:fixAliases` recurrent-synapse
+  `TopologyError` (plus a downstream
+  `RangeError: Maximum call stack size
+  exceeded`) — the regression that forced
+  NEAT-AI-Examples to pin back to 5.0.29. Alias restoration is now
+  collision-aware (extracted to `src/breed/RestoreGraftAliases.ts`): an alias is
+  only restored when it does not duplicate an existing UUID, otherwise the
+  neuron keeps its deduplicated identity.
+
 ### Added
 
 - **Issue #2736:** New `"CATEGORICAL_ERROR"` built-in cost function for

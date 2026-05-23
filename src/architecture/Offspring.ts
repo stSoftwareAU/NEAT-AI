@@ -1,5 +1,5 @@
 import { assert } from "@std/assert";
-import { addTags, getTag, removeTag } from "@stsoftware/tags/mod";
+import { addTags } from "@stsoftware/tags/mod";
 import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";
 import { editParentByIndex } from "@breed/EditParentByIndex.ts";
 import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
@@ -16,6 +16,7 @@ import { writeDiagnostics } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { inputWeightCrossover } from "@breed/InputWeightCrossover.ts";
 import { subgraphTransplant } from "@breed/SubgraphTransplant.ts";
+import { restoreGraftAliases } from "@breed/RestoreGraftAliases.ts";
 import { pruneOrphanMemeticReferences } from "@compact/CompactUtils.ts";
 import type { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -550,19 +551,7 @@ export class Offspring {
 
     if (fixAliases) {
       const fixed = offspring.exportJSON();
-      for (const n of fixed.neurons) {
-        const alias = getTag(n, "alias");
-        if (alias && typeof n.uuid === "string") {
-          removeTag(n, "alias");
-          const oldUuid = n.uuid;
-          n.uuid = alias;
-          fixed.synapses.forEach((s) => {
-            if (s.fromUUID === oldUuid) s.fromUUID = alias;
-            if (s.toUUID === oldUuid) s.toUUID = alias;
-          });
-        }
-      }
-
+      restoreGraftAliases(fixed);
       offspring.loadFrom(fixed, false, "breed:fixAliases");
     }
 
