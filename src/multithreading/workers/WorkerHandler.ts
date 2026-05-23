@@ -249,6 +249,16 @@ export interface ResponseData {
      * the current fittest (which may have evolved during the discovery process).
      */
     improvedCreature?: CreatureExport;
+    /**
+     * Issue #2737: Set to `true` when the worker's discovery run aborted at
+     * the analysis-extension boundary because the V8 heap was at
+     * MemoryMonitor CRITICAL pressure. The candidate fields above are
+     * `undefined` in this case. The parent thread translates this signal
+     * into a `"heap_critical_skip"` `discovery_complete` outcome so callers
+     * can distinguish a memory-pressure skip from a genuine `"no_change"`
+     * result.
+     */
+    heapAbortedAtExtensionBoundary?: boolean;
   };
   /**
    * Issue #1567: Response after applying cache configuration.

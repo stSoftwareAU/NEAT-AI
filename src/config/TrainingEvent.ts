@@ -353,8 +353,24 @@ export interface DiscoveryCompleteEvent {
   readonly kind: "discovery_complete";
   /** ISO-8601 timestamp when the event was emitted. */
   readonly timestamp: string;
-  /** Outcome of the discovery: whether it improved the creature or not. */
-  readonly outcome: "improved" | "no_change" | "timeout";
+  /**
+   * Outcome of the discovery operation.
+   *
+   * - `"improved"` — discovery found and applied an improvement.
+   * - `"no_change"` — discovery ran to completion but found no improvement.
+   * - `"timeout"` — discovery exceeded its wall-clock budget.
+   * - `"heap_critical_skip"` (Issue #2737) — the analysis phase was skipped
+   *   because the V8 heap was at MemoryMonitor CRITICAL pressure at the
+   *   analysis-extension boundary. The recording phase completed but no
+   *   structural search was performed; callers should treat this as a
+   *   surfaced warning that memory pressure prevented analysis, not as
+   *   evidence that no structural improvement exists.
+   */
+  readonly outcome:
+    | "improved"
+    | "no_change"
+    | "timeout"
+    | "heap_critical_skip";
   /** Number of discovery candidates that were evaluated. */
   readonly candidateCount: number;
   /** Time elapsed for the discovery operation in milliseconds. */

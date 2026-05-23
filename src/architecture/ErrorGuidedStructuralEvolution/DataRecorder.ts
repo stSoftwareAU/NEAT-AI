@@ -343,6 +343,11 @@ class DataRecorder {
         getLogger(),
       );
       if (heapAbort.abort) {
+        // Issue #2737: Surface the heap-driven abort as a structured field on
+        // the DiscoverResult so the upstream training event pipeline can emit
+        // a `"heap_critical_skip"` outcome instead of indistinguishably
+        // reporting `"no_change"`. The candidate arrays are still `undefined`
+        // because the analysis loop never ran.
         return {
           ID: this.ID,
           addHelpfulSynapses: undefined,
@@ -352,6 +357,7 @@ class DataRecorder {
           removeHarmfulNeurons: undefined,
           removalCandidates: undefined,
           candidateSquashes: undefined,
+          heapAbortedAtExtensionBoundary: true,
         };
       }
 
