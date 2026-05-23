@@ -19,6 +19,7 @@ import type { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolu
 import type { DiscoveryPerformanceStats } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";
 import { shouldLogDiscovery } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";
 import type { PhaseDiagnostics } from "@architecture/ErrorGuidedStructuralEvolution/PhaseDiagnostics.ts";
+import { isHeapCritical } from "@architecture/ErrorGuidedStructuralEvolution/AnalysisHeapGuard.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 /**
@@ -136,6 +137,15 @@ export interface AnalysisLoopContext {
    * this.
    */
   readonly runParallelAnalysis?: ParallelAnalysisFn;
+  /**
+   * Optional probe for the in-loop heap-critical guard (Issue #2735).
+   * Defaults to sampling the real heap via `isHeapCritical(config.memory)`.
+   * Tests that exercise unrelated loop behaviour (stall guard, chunking)
+   * inject `() => false` so the small test process's naturally high
+   * `heapUsed/heapTotal` ratio does not trip the guard. Production code
+   * should not set this.
+   */
+  readonly heapCriticalProbe?: () => boolean;
 }
 
 /**
@@ -302,8 +312,27 @@ export async function runAnalysisLoop(
   // Retry loop: try different neurons if no candidates found and time remains
   // Sequential execution is intentional - we check results after each attempt
   const analysisPhaseStartTime = now();
+  const heapCritical = ctx.heapCriticalProbe ??
+    (() => isHeapCritical(config.memory));
   let stalledFlag = false;
+  let heapAbortedFlag = false;
   while (retryAttempt <= maxRetries) {
+    // Issue #2735: in-loop heap guard. The extension-boundary guard
+    // (Issue #2594) only samples heap once, before analysis starts. With a
+    // large layered seed the per-chunk squash analysis allocates aggressively
+    // (Issue #2642), so heap can climb back to CRITICAL across retry
+    // iterations and fatally OOM the worker. Sample at the top of each
+    // iteration and abort gracefully with whatever candidates we have rather
+    // than pressing on into OOM.
+    if (heapCritical()) {
+      heapAbortedFlag = true;
+      getLogger().warn(
+        `[Neat] Discovery ${
+          blue(ID)
+        } analysis aborted: heap CRITICAL during analysis loop after ${attemptedNeurons.size} neuron(s) [${formatStallMemoryDiagnostics()}]`,
+      );
+      break;
+    }
     // Allow callers (especially tests) to explicitly skip the analysis phase by
     // setting discoveryMaxNeurons to 0. This keeps record/flush coverage (FFI)
     // while avoiding long-running Rust analysis on GPU-backed machines.
@@ -377,6 +406,7 @@ export async function runAnalysisLoop(
       : 0;
     let chunkIdx = 0;
     let iterationStalled = false;
+    let iterationHeapAborted = false;
     // Track completed chunks and cumulative chunk time for the warm-up
     // gate and rate-of-change check (Issue #2513). A "completed" chunk is
     // one whose Rust FFI call returned (whether fast or slow) — chunks
@@ -386,6 +416,20 @@ export async function runAnalysisLoop(
     let totalChunkElapsedMs = 0;
     for (const chunk of chunks) {
       chunkIdx++;
+      // Issue #2735: in-loop heap guard, per chunk. Each chunk's combined
+      // analysis plus squash analysis allocates aggressively (Issue #2642),
+      // so heap can cross CRITICAL part-way through a multi-chunk iteration.
+      // Stop submitting further chunks and return the partial result instead
+      // of OOMing the worker.
+      if (heapCritical()) {
+        iterationHeapAborted = true;
+        getLogger().warn(
+          `[Neat] Discovery ${
+            blue(ID)
+          } analysis aborted: heap CRITICAL during analysis loop before chunk ${chunkIdx}/${chunks.length} [${formatStallMemoryDiagnostics()}]`,
+        );
+        break;
+      }
       // Defence-in-depth: check cumulative wall-clock before submitting each
       // new chunk (Issue #2420). If earlier chunks have already burned the
       // overall budget, stop — the per-chunk check below would only fire
@@ -784,6 +828,11 @@ export async function runAnalysisLoop(
       );
     }
 
+    if (iterationHeapAborted) {
+      heapAbortedFlag = true;
+      break;
+    }
+
     if (iterationStalled) {
       stalledFlag = true;
       if (shouldLogDiscovery(config)) {
@@ -823,6 +872,9 @@ export async function runAnalysisLoop(
   perfStats.analysisPhaseTime = now() - analysisPhaseStartTime;
   // Surface throughput stall so callers can inspect after the loop returns.
   perfStats.analysisStalled = stalledFlag;
+  // Surface the in-loop heap abort (Issue #2735) so callers can distinguish a
+  // graceful memory-pressure bail-out from normal completion.
+  perfStats.analysisHeapAborted = heapAbortedFlag;
 
   // Collect low-impact removal candidates from Rust focus ranking
   const removalCandidates = discoverStructure.getRemovalCandidates();

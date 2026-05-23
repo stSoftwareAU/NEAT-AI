@@ -240,6 +240,9 @@ Deno.test("runAnalysisLoop releases the combined analysis cache after every chun
         perChunkMaxMs: 0,
         getTimeoutTS: () => deadlineMs,
         refreshAnalysisTimeout: () => {},
+        // Issue #2735: exercises cache release, not the heap guard; opt out so
+        // the test process heap ratio does not trip the in-loop heap abort.
+        heapCriticalProbe: () => false,
       },
       structure,
       perfStats,

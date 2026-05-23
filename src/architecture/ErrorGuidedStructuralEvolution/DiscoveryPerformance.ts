@@ -52,6 +52,14 @@ export class DiscoveryPerformanceStats {
    * budget). See Issue #2380.
    */
   analysisStalled = false;
+  /**
+   * Set to true when the analysis loop aborted early because heap pressure
+   * reached the `MemoryMonitor` CRITICAL threshold mid-loop (Issue #2735).
+   * The extension-boundary guard (Issue #2594) only samples heap once; this
+   * flag records that the in-loop guard tripped and returned partial results
+   * rather than pressing on into a fatal OOM.
+   */
+  analysisHeapAborted = false;
 
   // Candidate counts (final arrays returned to the caller).
   // Note (29-Dec-2025): Counts are taken from the result arrays (not per-retry

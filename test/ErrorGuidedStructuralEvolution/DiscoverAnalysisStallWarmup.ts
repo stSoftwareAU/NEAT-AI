@@ -146,6 +146,10 @@ async function runWith(
         now: options.now,
         getTimeoutTS: () => deadlineMs,
         refreshAnalysisTimeout: () => {},
+        // Issue #2735: this harness exercises the stall guard, not the heap
+        // guard. Opt out so the small test process's high heapUsed/heapTotal
+        // ratio does not trip the in-loop heap-critical abort.
+        heapCriticalProbe: () => false,
       },
       structure,
       perfStats,
