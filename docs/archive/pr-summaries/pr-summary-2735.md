@@ -33,10 +33,10 @@ Closes #2735.
 
 ## Evidence
 
-Backend/CLI change — no web interface to screenshot. Verified by unit tests
-that drive `runAnalysisLoop` with an injected heap sample and assert the loop
-aborts gracefully (no chunk submitted, no neurons analysed) on CRITICAL heap,
-runs normally on low heap, and never aborts when `memory.enabled === false`.
+Backend/CLI change — no web interface to screenshot. Verified by unit tests that
+drive `runAnalysisLoop` with an injected heap sample and assert the loop aborts
+gracefully (no chunk submitted, no neurons analysed) on CRITICAL heap, runs
+normally on low heap, and never aborts when `memory.enabled === false`.
 
 ```mermaid
 flowchart TD
@@ -59,7 +59,8 @@ ok | 33 passed | 0 failed   # all ErrorGuidedStructuralEvolution analysis specs
 
 - Added `test/ErrorGuidedStructuralEvolution/AnalysisLoopHeapGuard.ts`:
   - CRITICAL heap aborts the loop before any chunk runs
-    (`analysisHeapAborted === true`, `chunkCalls === 0`, `neuronsAnalyzed === 0`).
+    (`analysisHeapAborted === true`, `chunkCalls === 0`,
+    `neuronsAnalyzed === 0`).
   - Normal heap runs the loop without aborting.
   - `memory.enabled === false` never aborts even when heap is CRITICAL.
 - Updated existing loop harnesses (`DiscoverAnalysisStallWarmup`,
