@@ -14,6 +14,7 @@ import { addTag, getTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { validateAfterDiscoveryOrThrow } from "@discovery/DiscoveryPostValidate.ts";
+import { chooseDiscoveryCompleteOutcome } from "@neat/DiscoveryOutcome.ts";
 import type { Genus } from "@neat/Genus.ts";
 import type { Approach } from "@neat/LogApproach.ts";
 import type { Neat } from "@neat/Neat.ts";
@@ -130,12 +131,17 @@ export function processCompletedResults(
     const r = neat.discoveryComplete[i];
     assert(r.discover, "No discovery found");
 
-    // Issue #1615: Emit discovery_complete event
-    const outcome = r.discover.improvedCreature ? "improved" : "no_change";
+    // Issue #1615: Emit discovery_complete event.
+    // Issue #2737: Outcome selection is delegated to
+    // `chooseDiscoveryCompleteOutcome` so the memory-pressure skip path
+    // (`"heap_critical_skip"`) is picked over the silent
+    // `"no_change"` fallback when `DataRecorder.recordFiles()` aborted at
+    // the analysis-extension boundary.
+    const outcome = chooseDiscoveryCompleteOutcome(r.discover);
     emitTrainingEvent(neat.config.onTrainingEvent, {
       kind: "discovery_complete",
       timestamp: new Date().toISOString(),
-      outcome: outcome as "improved" | "no_change" | "timeout",
+      outcome,
       candidateCount: (r.discover.addHelpfulSynapses?.length ?? 0) +
         (r.discover.removeHarmfulSynapse ? 1 : 0) +
         (r.discover.candidateSquashes?.length ?? 0),

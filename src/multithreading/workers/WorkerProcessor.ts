@@ -62,6 +62,10 @@ export function buildDiscoverResponsePayload(
     candidateSquashes: result.candidateSquashes
       ? [...result.candidateSquashes]
       : undefined,
+    // Issue #2737: Propagate the structured heap-abort signal across the
+    // worker boundary so the parent thread can surface it via the
+    // `discovery_complete` event.
+    heapAbortedAtExtensionBoundary: result.heapAbortedAtExtensionBoundary,
   };
 }
 

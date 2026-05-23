@@ -94,3 +94,38 @@ Deno.test("clearDiscoverResultForGC: skips undefined arrays safely", () => {
   clearDiscoverResultForGC(result);
   assertEquals(result.ID, "test-discovery-123");
 });
+
+// ============================================================================
+// Issue #2737: heapAbortedAtExtensionBoundary signalling
+// ============================================================================
+
+Deno.test(
+  "buildDiscoverResponsePayload: propagates heapAbortedAtExtensionBoundary=true",
+  () => {
+    const result = makeMinimalDiscoverResult();
+    result.heapAbortedAtExtensionBoundary = true;
+
+    const payload = buildDiscoverResponsePayload(result);
+    assertEquals(payload.heapAbortedAtExtensionBoundary, true);
+  },
+);
+
+Deno.test(
+  "buildDiscoverResponsePayload: leaves heapAbortedAtExtensionBoundary undefined for happy-path results",
+  () => {
+    const result = makeMinimalDiscoverResult();
+    const payload = buildDiscoverResponsePayload(result);
+    assertEquals(payload.heapAbortedAtExtensionBoundary, undefined);
+  },
+);
+
+Deno.test(
+  "buildDiscoverResponsePayload: propagates heapAbortedAtExtensionBoundary=false",
+  () => {
+    const result = makeMinimalDiscoverResult();
+    result.heapAbortedAtExtensionBoundary = false;
+
+    const payload = buildDiscoverResponsePayload(result);
+    assertEquals(payload.heapAbortedAtExtensionBoundary, false);
+  },
+);
