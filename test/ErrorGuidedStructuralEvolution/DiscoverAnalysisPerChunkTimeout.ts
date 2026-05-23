@@ -143,6 +143,9 @@ async function runAnalysisLoopWithStub(
         getTimeoutTS: () => deadlineMs,
         refreshAnalysisTimeout: () => {},
         runParallelAnalysis: wrapped,
+        // Issue #2735: exercises the per-chunk timeout, not the heap guard; opt
+        // out so the test process heap ratio does not trip the in-loop abort.
+        heapCriticalProbe: () => false,
       },
       structure,
       perfStats,

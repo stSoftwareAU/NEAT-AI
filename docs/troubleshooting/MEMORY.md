@@ -195,6 +195,45 @@ For discovery workloads, tune these options to control peak memory:
 
 Lower values reduce peak memory at the cost of more I/O.
 
+### Heap guards around discovery analysis
+
+Two `MemoryMonitor`-driven guards keep discovery analysis from fatally OOMing
+when a large layered seed (e.g. 986 neurons / ~109k synapses) is evolved over a
+large supervised `.bin` stream:
+
+1. **Extension-boundary guard** (Issue #2594): before the recording phase
+   extends the timeout to make room for analysis, it samples the heap once. If
+   pressure is already CRITICAL it skips analysis and returns a partial result,
+   logging
+   `[Neat] Discovery <id> analysis aborted: heap CRITICAL at extension boundary`.
+
+2. **In-loop guard** (Issue #2735): analysis itself runs many chunks across up
+   to ten retry iterations, and the per-chunk squash analysis allocates
+   aggressively (Issue #2642). The loop now re-samples the heap at the start of
+   each retry iteration and before each chunk; on CRITICAL pressure it stops
+   submitting work and returns the candidates accumulated so far, logging
+   `[Neat] Discovery <id> analysis aborted: heap CRITICAL during analysis loop`.
+   This degrades gracefully instead of pressing on into
+   `Fatal JavaScript out of memory`.
+
+Both guards honour `memory.enabled` and the shared `criticalThreshold`, so
+raising the V8 heap (Step 5) or lowering `criticalThreshold` (Step 2) changes
+when they fire. A graceful abort means analysis produced no (or partial)
+structural candidates for that cycle — evolution continues; it does not crash.
+
+```mermaid
+flowchart TD
+    classDef ok fill:#1e8449,stroke:#196f3d,color:#fff
+    classDef warn fill:#d68910,stroke:#b7770d,color:#fff
+    R[Recording phase done] --> B{Heap CRITICAL at\nextension boundary?}
+    B -- yes --> S1[Skip analysis,\nreturn partial]:::warn
+    B -- no --> L[Analysis loop]:::ok
+    L --> C{Heap CRITICAL before\niteration / chunk?}
+    C -- yes --> S2[Stop, return\naccumulated candidates]:::warn
+    C -- no --> P[Process chunk]:::ok
+    P --> C
+```
+
 ## See also
 
 - [WASM troubleshooting](WASM.md) for WASM cache sizing context and
