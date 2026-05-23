@@ -365,7 +365,7 @@ export async function runRecordingPhase(
   const WRITE_TIMEOUT_MS = 60000;
   const promiseWaitStartTime = Date.now();
 
-  let timeoutId: number | undefined;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => {

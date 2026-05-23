@@ -571,7 +571,7 @@ export async function runAnalysisLoop(
         let analysisResults: AnalysisTuple | undefined;
         let timedOut = false;
         if (budgetMs > 0) {
-          let timeoutHandle: number | undefined;
+          let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
           const timeoutPromise = new Promise<RaceResult>((resolve) => {
             timeoutHandle = setTimeout(
               () => resolve({ kind: "timeout" }),
