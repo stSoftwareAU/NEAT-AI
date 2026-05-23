@@ -63,4 +63,19 @@ export interface DiscoverResult {
 
   candidateSquashes: CandidateSquash[] | undefined;
   reScoringTime?: number; // Time spent re-scoring candidates (ms)
+
+  /**
+   * Issue #2737: Set to `true` when `DataRecorder.recordFiles()` aborted at the
+   * analysis-extension boundary because the V8 heap was at MemoryMonitor
+   * CRITICAL pressure. When `true`, every candidate field above is `undefined`
+   * — the analysis loop never ran — but the empty result still carries this
+   * structured signal so the upstream training event pipeline can surface a
+   * `"heap_critical_skip"` outcome instead of silently reporting
+   * `"no_change"`.
+   *
+   * Consumers should treat `heapAbortedAtExtensionBoundary === true` as
+   * evidence that structural search was prevented by memory pressure, not as
+   * evidence that no structural improvement exists.
+   */
+  heapAbortedAtExtensionBoundary?: boolean;
 }
