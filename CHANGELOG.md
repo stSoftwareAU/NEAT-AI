@@ -14,6 +14,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Issue #2736:** New `"CATEGORICAL_ERROR"` built-in cost function for
+  multi-class one-hot targets. It reports the argmax misclassification rate
+  (`error = 1 - accuracy`) so `evolveDir` `error`/`score`, champion selection
+  and the `targetError` early-stop reflect real classification quality instead
+  of the trivial MSE floor (~`0.1` for ten balanced classes) that a chance-level
+  classifier can reach. Distance-based costs such as `"MSE"` can decouple from
+  argmax accuracy on one-hot layouts; documented in
+  [`docs/API_REFERENCE.md`](./docs/API_REFERENCE.md). The cost is
+  non-differentiable and intended for scoring/early-stop — gradients are derived
+  independently of `costName`, so training is unaffected.
+
 ### Security
 
 - **Issue #2704:** `CreatureSerialization.fromJSON` (the default JSON-load path)

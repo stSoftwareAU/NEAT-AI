@@ -13,6 +13,7 @@ Deno.test("BUILT_IN_COST_NAMES - should stay in sync with supported costs", () =
     "MAPE",
     "MSLE",
     "HINGE",
+    "CATEGORICAL_ERROR",
   ]);
 });
 

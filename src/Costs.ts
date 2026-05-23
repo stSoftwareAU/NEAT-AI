@@ -5,6 +5,7 @@
 
 import type { CostInterface } from "@costs/CostInterface.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
+import { CategoricalError } from "@costs/CategoricalError.ts";
 import { CrossEntropy } from "@costs/CrossEntropy.ts";
 import { HINGE } from "@costs/HINGE.ts";
 import { MAE } from "@costs/MAE.ts";
@@ -26,6 +27,7 @@ export const BUILT_IN_COST_NAMES = [
   MAPE.NAME,
   MSLE.NAME,
   HINGE.NAME,
+  CategoricalError.NAME,
 ] as const;
 
 /** Union of built-in cost name string literals. */
@@ -68,6 +70,7 @@ export class Costs {
     this.registerFromInstance(new MAPE());
     this.registerFromInstance(new MSLE());
     this.registerFromInstance(new HINGE());
+    this.registerFromInstance(new CategoricalError());
   }
 
   /**

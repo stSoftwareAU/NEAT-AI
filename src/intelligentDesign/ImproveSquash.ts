@@ -38,7 +38,7 @@ async function waitForAllSettledOrTimeout(
   const remainingMs = remainingTimeMs(deadlineMs);
   if (remainingMs === 0) return true;
 
-  let timeoutID: number | undefined;
+  let timeoutID: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<"timeout">((resolve) => {
     timeoutID = setTimeout(() => resolve("timeout"), remainingMs);
   });

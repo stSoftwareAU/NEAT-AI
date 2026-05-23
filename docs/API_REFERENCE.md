@@ -429,14 +429,34 @@ import type { CostInterface } from "@stsoftware/neat-ai";
 
 ### 📋 Built-in Cost Functions
 
-| Name              | Class                          | Best For                     | Formula                                 |
-| ----------------- | ------------------------------ | ---------------------------- | --------------------------------------- |
-| `"MSE"`           | Mean Squared Error             | General regression (default) | `(1/n) * Sum((y - y')^2)`               |
-| `"MAE"`           | Mean Absolute Error            | Regression with outliers     | `(1/n) * Sum(\|y - y'\|)`               |
-| `"MAPE"`          | Mean Absolute Percentage Error | Forecasting, relative error  | `(1/n) * Sum(\|(y' - y) / y\|)`         |
-| `"MSLE"`          | Mean Squared Logarithmic Error | Wide value ranges            | `(1/n) * Sum((log(y) - log(y'))^2)`     |
-| `"CROSS_ENTROPY"` | Cross Entropy                  | Classification               | `-Sum(y * log(y') + (1-y) * log(1-y'))` |
-| `"HINGE"`         | Hinge Loss                     | SVM / binary classification  | `max(0, 1 - y * y')`                    |
+| Name                  | Class                          | Best For                     | Formula                                        |
+| --------------------- | ------------------------------ | ---------------------------- | ---------------------------------------------- |
+| `"MSE"`               | Mean Squared Error             | General regression (default) | `(1/n) * Sum((y - y')^2)`                      |
+| `"MAE"`               | Mean Absolute Error            | Regression with outliers     | `(1/n) * Sum(\|y - y'\|)`                      |
+| `"MAPE"`              | Mean Absolute Percentage Error | Forecasting, relative error  | `(1/n) * Sum(\|(y' - y) / y\|)`                |
+| `"MSLE"`              | Mean Squared Logarithmic Error | Wide value ranges            | `(1/n) * Sum((log(y) - log(y'))^2)`            |
+| `"CROSS_ENTROPY"`     | Cross Entropy                  | Classification               | `-Sum(y * log(y') + (1-y) * log(1-y'))`        |
+| `"HINGE"`             | Hinge Loss                     | SVM / binary classification  | `max(0, 1 - y * y')`                           |
+| `"CATEGORICAL_ERROR"` | Categorical (argmax) error     | Multi-class one-hot targets  | `(1/n) * Sum(argmax(y) != argmax(y') ? 1 : 0)` |
+
+> [!IMPORTANT]
+> **Regression costs can decouple from classification accuracy on one-hot
+> targets.** For multi-class problems encoded as one-hot targets, `"MSE"` (and
+> the other distance-based costs) measure squared output distance, **not**
+> argmax accuracy. A constant classifier that emits one output near `1` and the
+> rest near `0` reaches a trivial MSE floor (~`0.1` for ten balanced classes),
+> so `evolveDir` can report a low `error`/high `score` and even satisfy
+> `targetError` while real argmax accuracy is stuck at chance. Because
+> `score = 1 - error - penalties`, the reported score then overstates task
+> quality.
+>
+> Use `"CATEGORICAL_ERROR"` when argmax accuracy is the real objective. It
+> reports the **misclassification rate** (`error = 1 - accuracy`), so the
+> scorer, champion selection and `targetError` early-stop all reflect the
+> classification task. It is **non-differentiable** and intended for
+> scoring/early-stop — NEAT-AI derives backpropagation gradients independently
+> of `costName`, so training still proceeds normally. It needs at least two
+> outputs; with a single output the argmax is always index `0`.
 
 ### 📐 CostInterface
 
