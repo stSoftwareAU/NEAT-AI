@@ -372,19 +372,45 @@ Deno.test({
       assertEquals((await mkGood.output()).code, 0);
 
       // Traversal archive: member name "../target.txt".
-      await Deno.mkdir(`${tmpDir}/sub`, { recursive: true });
-      await Deno.writeTextFile(`${tmpDir}/target.txt`, "evil");
-      const mkTrav = new Deno.Command("bash", {
+      // Use Python's tarfile module rather than the `tar` CLI because GNU tar
+      // (Linux) silently strips leading ".." components when creating archives,
+      // which would produce a safe entry name and make the test meaningless.
+      // Python tarfile stores the entry name exactly as given, so no real
+      // filesystem file is needed — the TarInfo is crafted directly.
+      const mkTrav = new Deno.Command("python3", {
         args: [
           "-c",
-          `cd '${tmpDir}/sub' && tar -czf '${tmpDir}/trav.tar.gz' ../target.txt`,
+          [
+            "import tarfile, io",
+            `archive='${tmpDir}/trav.tar.gz'`,
+            "t=tarfile.open(archive,'w:gz')",
+            "info=tarfile.TarInfo(name='../target.txt')",
+            "content=b'evil'",
+            "info.size=len(content)",
+            "t.addfile(info,io.BytesIO(content))",
+            "t.close()",
+          ].join(";"),
         ],
       });
       assertEquals((await mkTrav.output()).code, 0);
 
       // Absolute-path archive: member name is an absolute path.
-      const mkAbs = new Deno.Command("tar", {
-        args: ["-cPzf", `${tmpDir}/abs.tar.gz`, `${tmpDir}/target.txt`],
+      // Also use Python tarfile for the same portability reason.
+      const mkAbs = new Deno.Command("python3", {
+        args: [
+          "-c",
+          [
+            "import tarfile, io",
+            `archive='${tmpDir}/abs.tar.gz'`,
+            `target='${tmpDir}/target.txt'`,
+            "t=tarfile.open(archive,'w:gz')",
+            "info=tarfile.TarInfo(name=target)",
+            "content=b'evil'",
+            "info.size=len(content)",
+            "t.addfile(info,io.BytesIO(content))",
+            "t.close()",
+          ].join(";"),
+        ],
       });
       assertEquals((await mkAbs.output()).code, 0);
 
