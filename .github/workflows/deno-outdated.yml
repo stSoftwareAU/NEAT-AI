@@ -35,7 +35,13 @@ jobs:
           deno-version: v2.x
 
       - name: Update Deno dependencies
-        run: deno outdated --update --latest
+        # Honour the dep-bump quarantine (Issue #2741): only pick up external
+        # versions published more than VIBE_BUMP_QUARANTINE_HOURS hours ago, so
+        # a freshly published malicious release cannot land in the auto-raised
+        # PR. --minimum-dependency-age takes minutes, matching bump-deps.sh.
+        env:
+          VIBE_BUMP_QUARANTINE_HOURS: "24"
+        run: deno outdated --update --latest --minimum-dependency-age="$((VIBE_BUMP_QUARANTINE_HOURS * 60))"
 
       - name: Create Pull Request
         # peter-evans/create-pull-request@v7.0.11
@@ -46,6 +52,8 @@ jobs:
           branch: chore/deno-outdated
           delete-branch: true
           body: |
-            Automated Deno dependency update via `deno outdated --update --latest`.
+            Automated Deno dependency update via
+            `deno outdated --update --latest --minimum-dependency-age` with a
+            24h quarantine (Issue #2741).
 
             Raised by `.github/workflows/deno-outdated.yml` (Issue #2362).
