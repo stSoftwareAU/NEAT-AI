@@ -1,6 +1,7 @@
 import { join, resolve } from "@std/path";
 import type { Creature } from "@creature";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
+import type { BuiltInCostName } from "@costs";
 import { getLogger } from "@utils/Logger.ts";
 import {
   __getBatchRunner,
@@ -159,12 +160,30 @@ export async function tryScoreWithRustScorer(
   creature: Creature,
   dataDir: string,
   override?: RequiredRustScorerConfig,
+  costName?: BuiltInCostName,
 ): Promise<RustScorerResult | undefined> {
   const config = override ?? getEnvRustScorerConfig();
   if (!config.enabled) return undefined;
 
   const probe = await resolveProbeState(config);
   if (!probe.available) return undefined;
+
+  // Issue #2745: When a non-MSE cost is configured but the probed binary is
+  // too old to advertise `--cost`, fall back to WASM rather than silently
+  // letting the Rust side compute MSE. MSE is the binary's historical
+  // default so it stays compatible without `--cost`.
+  if (
+    costName !== undefined && !probe.costSupported && costName !== "MSE"
+  ) {
+    if (!probe.warned) {
+      getLogger().warn(
+        `[NEAT-AI] Rust scorer at ${config.binaryPath} does not advertise --cost; ` +
+          `falling back to WASM scoring for cost=${costName}.`,
+      );
+      probe.warned = true;
+    }
+    return undefined;
+  }
 
   let creaturePath: string | undefined;
   try {
@@ -173,9 +192,16 @@ export async function tryScoreWithRustScorer(
     // rust_scorer resolves relative paths against its own process cwd, which
     // may not match the Deno/worker cwd. Always hand it absolute paths.
     const absoluteDataDir = resolve(Deno.cwd(), dataDir);
+    // Issue #2745: Prepend `--cost <NAME>` when the configured cost is
+    // a built-in and the binary supports the flag. This stops the Rust
+    // path from silently computing MSE while the TS layer trains against
+    // a different cost.
+    const args = costName !== undefined && probe.costSupported
+      ? ["--cost", costName, creaturePath, absoluteDataDir]
+      : [creaturePath, absoluteDataDir];
     const result = await __getBatchRunner()(
       config.binaryPath,
-      [creaturePath, absoluteDataDir],
+      args,
       {
         env: buildChildEnv(config.env),
         timeoutMs: config.timeoutMs,

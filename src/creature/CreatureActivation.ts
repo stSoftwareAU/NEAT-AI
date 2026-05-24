@@ -30,6 +30,7 @@ import {
   noteWasmCreatureActivationUse,
 } from "@wasm/WasmCreatureActivationLRU.ts";
 import { tryScoreWithRustScorer } from "../score/RustScorerBridge.ts";
+import { BUILT_IN_COST_NAMES, type BuiltInCostName } from "@costs";
 
 /**
  * Verify WASM is available and the creature is eligible.
@@ -417,12 +418,24 @@ export async function evaluateDir(
   const { ensureWasmActivation } = await import("../wasm/mod.ts");
   await ensureWasmActivation();
 
-  const rustResult = await tryScoreWithRustScorer(
-    creature,
-    dataDir,
-    rustScorer,
-  );
-  if (rustResult) return { error: rustResult.error };
+  // Issue #2745: Off-load to the rust scorer only when the configured cost
+  // is a built-in (the rust binary cannot resolve user-registered custom
+  // costs). Custom costs stay on the TS/WASM path.
+  const configuredCostName = cost.getName();
+  const builtInCost: BuiltInCostName | undefined =
+    (BUILT_IN_COST_NAMES as readonly string[]).includes(configuredCostName)
+      ? (configuredCostName as BuiltInCostName)
+      : undefined;
+
+  if (builtInCost !== undefined) {
+    const rustResult = await tryScoreWithRustScorer(
+      creature,
+      dataDir,
+      rustScorer,
+      builtInCost,
+    );
+    if (rustResult) return { error: rustResult.error };
+  }
 
   requireWasmOrThrow(creature);
 

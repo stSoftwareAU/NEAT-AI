@@ -217,6 +217,11 @@ export class Neat {
       this.config.costOfGrowth,
       this.config.feedbackLoop,
       this.config.parallelEvaluation,
+      undefined,
+      // Issue #2745: Forward the configured cost name to the batch rust
+      // scorer so the native scorer computes the same cost as the TS
+      // training loop instead of silently defaulting to MSE.
+      this.config.costName,
     );
 
     this.population = [];
