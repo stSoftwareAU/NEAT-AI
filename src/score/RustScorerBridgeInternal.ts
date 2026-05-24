@@ -36,6 +36,14 @@ export interface RustScorerProbeState {
   available: boolean;
   binaryPath: string;
   warned: boolean;
+  /**
+   * Issue #2745: Whether the probed `rust_scorer` binary advertises the
+   * `--cost <NAME>` flag in its `--help` output. Older binaries that
+   * silently compute MSE only set this to `false`; the bridge then falls
+   * back to WASM scoring whenever a non-MSE cost is configured rather than
+   * silently disagreeing with the TS layer.
+   */
+  costSupported: boolean;
 }
 
 async function defaultRunner(
@@ -121,12 +129,18 @@ export async function resolveProbeState(
   if (cached) return cached;
 
   let available = false;
+  let costSupported = false;
   try {
     const probe = await runCommand(config.binaryPath, ["--help"], {
       env: buildChildEnv(config.env),
       timeoutMs: config.timeoutMs,
     });
     available = probe.success || probe.code === 0 || probe.code === 1;
+    // Issue #2745: Detect whether the binary advertises `--cost`. We look
+    // in both stdout and stderr because clap-style help may write to either
+    // depending on whether `--help` exits 0 or 2.
+    const helpText = `${probe.stdout ?? ""}\n${probe.stderr ?? ""}`;
+    costSupported = /(^|\s|,)--cost\b/.test(helpText);
   } catch {
     available = false;
   }
@@ -135,6 +149,7 @@ export async function resolveProbeState(
     available,
     binaryPath: config.binaryPath,
     warned: false,
+    costSupported,
   };
   probeCache.set(key, state);
   return state;

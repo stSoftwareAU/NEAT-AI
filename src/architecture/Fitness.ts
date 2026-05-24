@@ -13,6 +13,7 @@ import { getEnvRustScorerConfig } from "../score/RustScorerBridge.ts";
 import { BatchScorerError } from "../score/BatchScorerReconciler.ts";
 import { buildBatchScorerDiagnostic } from "../score/BatchScorerDiagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { BUILT_IN_COST_NAMES, type BuiltInCostName } from "@costs";
 
 /**
  * Evaluates fitness scores for a population of creatures.
@@ -91,18 +92,29 @@ export class Fitness {
    */
   private dataDir: string | undefined;
 
+  /**
+   * Issue #2745: Configured cost name (`NeatConfig.costName`) passed through
+   * to the batch rust scorer via `--cost <NAME>` so the native scorer
+   * computes the same cost as the TS layer. Only built-in cost names are
+   * forwarded — custom (user-registered) costs cannot be off-loaded to
+   * the external binary and stay on the TS/WASM path.
+   */
+  private costName: BuiltInCostName | undefined;
+
   constructor(
     workers: WorkerHandler[],
     growth: number,
     feedbackLoop: boolean,
     evalConfig?: RequiredParallelEvaluationConfig,
     dataDir?: string,
+    costName?: string,
   ) {
     this.workers = workers;
     this.feedbackLoop = feedbackLoop;
     this.growth = growth;
     this.evalConfig = evalConfig ?? DEFAULT_PARALLEL_EVALUATION_CONFIG;
     this.dataDir = dataDir;
+    this.costName = toBuiltInCostName(costName);
   }
 
   /**
@@ -219,6 +231,7 @@ export class Fitness {
             forwardOnlyCreatures,
             this.dataDir!,
             rustScorerConfig,
+            this.costName,
           );
           this.lastBatchScorerInvocations = batchRun.invocations;
           if (batchRun.results) {
@@ -412,4 +425,18 @@ export class Fitness {
     this.lastScorerMs = scorerMsAccum;
     this.lastScoredCreatureCount = scoredCount;
   }
+}
+
+/**
+ * Narrow an unconstrained `costName` string to a `BuiltInCostName`, or
+ * return `undefined` if the value is unknown to the built-in registry
+ * (e.g. a user-registered custom cost). Issue #2745.
+ */
+function toBuiltInCostName(
+  costName: string | undefined,
+): BuiltInCostName | undefined {
+  if (costName === undefined) return undefined;
+  return (BUILT_IN_COST_NAMES as readonly string[]).includes(costName)
+    ? (costName as BuiltInCostName)
+    : undefined;
 }

@@ -25,7 +25,9 @@
 import { join, resolve } from "@std/path";
 import type { Creature } from "@creature";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
+import type { BuiltInCostName } from "@costs";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { getLogger } from "@utils/Logger.ts";
 import {
   BatchScorerError,
   type BatchScorerResult,
@@ -72,6 +74,7 @@ export async function tryBatchScoreWithRustScorer(
   creatures: readonly Creature[],
   dataDir: string,
   config: RequiredRustScorerConfig,
+  costName?: BuiltInCostName,
 ): Promise<BatchScorerRunResult> {
   if (!config.enabled || !config.batch) {
     return { results: undefined, invocations: 0 };
@@ -82,6 +85,22 @@ export async function tryBatchScoreWithRustScorer(
 
   const probe = await resolveProbeState(config);
   if (!probe.available) {
+    return { results: undefined, invocations: 0 };
+  }
+
+  // Issue #2745: When a non-MSE cost is configured but the probed binary is
+  // too old to support `--cost`, fall back rather than letting the Rust side
+  // silently compute MSE and disagree with the TS layer.
+  if (
+    costName !== undefined && !probe.costSupported && costName !== "MSE"
+  ) {
+    if (!probe.warned) {
+      getLogger().warn(
+        `[NEAT-AI] Rust scorer at ${config.binaryPath} does not advertise --cost; ` +
+          `falling back to WASM scoring for cost=${costName} (batch mode).`,
+      );
+      probe.warned = true;
+    }
     return { results: undefined, invocations: 0 };
   }
 
@@ -127,9 +146,15 @@ export async function tryBatchScoreWithRustScorer(
     const absoluteCreaturesDir = resolve(Deno.cwd(), creaturesDir);
     const absoluteDataDir = resolve(Deno.cwd(), dataDir);
 
+    // Issue #2745: Prepend `--cost <NAME>` so the Rust scorer computes the
+    // same cost as the TS training loop instead of its built-in default.
+    const args = costName !== undefined && probe.costSupported
+      ? ["--cost", costName, absoluteCreaturesDir, absoluteDataDir]
+      : [absoluteCreaturesDir, absoluteDataDir];
+
     const result = await runCommand(
       config.binaryPath,
-      [absoluteCreaturesDir, absoluteDataDir],
+      args,
       {
         env: buildChildEnv(config.env),
         timeoutMs: config.timeoutMs,
