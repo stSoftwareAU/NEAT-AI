@@ -36,6 +36,13 @@ Options:
   --check-only        Only run type-checking (deno check)
   --dry-run           Show which steps would run without executing them
 
+Environment:
+  VIBE_BUMP_QUARANTINE_HOURS
+                      Minimum age (hours) of registry versions accepted by
+                      `deno outdated --update --latest`. Default 24h. Mirrors
+                      bump-deps.sh; dodges fast-flagged supply-chain attacks
+                      (Issue #2742). Must be a non-negative integer.
+
 Exit codes:
   0   All enabled steps passed
   1   A step failed or an unknown option was provided
@@ -179,7 +186,18 @@ run_test_suite() {
 
 if [ "$RUN_DEPS" = true ]; then
   progress "Updating dependencies..."
-  deno outdated --update --latest
+  # Mirror the quarantine window enforced by bump-deps.sh / docs/CORE_DEPENDENCY_POLICY.md
+  # (Issue #2742). Without --minimum-dependency-age, a malicious registry version
+  # published minutes ago could be pulled in by a routine `./quality.sh` run before
+  # the supply-chain quarantine window expires.
+  QUALITY_QUARANTINE_HOURS="${VIBE_BUMP_QUARANTINE_HOURS:-24}"
+  if ! [[ "$QUALITY_QUARANTINE_HOURS" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: VIBE_BUMP_QUARANTINE_HOURS must be a non-negative integer, got '$QUALITY_QUARANTINE_HOURS'" >&2
+    exit 1
+  fi
+  QUALITY_QUARANTINE_MINUTES=$((QUALITY_QUARANTINE_HOURS * 60))
+  deno outdated --update --latest \
+    "--minimum-dependency-age=${QUALITY_QUARANTINE_MINUTES}"
 fi
 
 if [ "$RUN_FMT" = true ]; then

@@ -521,7 +521,10 @@ Before committing, run:
 
 This script runs the following steps by default:
 
-1. Updates dependencies (`deno outdated --update --latest`)
+1. Updates dependencies
+   (`deno outdated --update --latest --minimum-dependency-age=<minutes>`,
+   honouring `VIBE_BUMP_QUARANTINE_HOURS` — default 24h — to dodge fast-flagged
+   supply-chain attacks; see Issue #2742)
 2. Formats code (`deno fmt`)
 3. Lints and auto-fixes (`deno lint --fix`)
 4. Checks bash script syntax

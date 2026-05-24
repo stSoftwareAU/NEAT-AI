@@ -253,3 +253,67 @@ Deno.test(
     },
   },
 );
+
+/**
+ * Issue #2742 — quality.sh must enforce the same supply-chain quarantine
+ * window as bump-deps.sh / docs/CORE_DEPENDENCY_POLICY.md. Without
+ * `--minimum-dependency-age`, any developer running `./quality.sh` with the
+ * deps step enabled silently bypasses the VIBE_BUMP_QUARANTINE_HOURS gate
+ * and may pull in a too-recent (potentially malicious) registry version.
+ */
+Deno.test({
+  name:
+    "quality.sh dep update passes --minimum-dependency-age (Issue #2742 quarantine)",
+  permissions: { read: true },
+  fn: async () => {
+    const body = await Deno.readTextFile("./quality.sh");
+    assert(
+      body.includes("VIBE_BUMP_QUARANTINE_HOURS"),
+      "quality.sh must honour VIBE_BUMP_QUARANTINE_HOURS for the dep update",
+    );
+    assert(
+      body.includes("--minimum-dependency-age"),
+      "quality.sh must pass --minimum-dependency-age to `deno outdated --update --latest`",
+    );
+
+    // The flag must apply specifically to the `deno outdated --update --latest`
+    // invocation, not appear unused elsewhere.
+    const outdatedBlock =
+      /deno outdated --update --latest[\s\S]{0,200}?--minimum-dependency-age=\$\{?QUALITY_QUARANTINE_MINUTES\}?/;
+    assert(
+      outdatedBlock.test(body),
+      "quality.sh must call `deno outdated --update --latest` with `--minimum-dependency-age=${QUALITY_QUARANTINE_MINUTES}`",
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "quality.sh rejects non-integer VIBE_BUMP_QUARANTINE_HOURS (Issue #2742)",
+  permissions: { run: true, read: true, env: true },
+  fn: async () => {
+    const command = new Deno.Command("bash", {
+      args: ["./quality.sh", "--lint-only"],
+      stdout: "piped",
+      stderr: "piped",
+      cwd: Deno.cwd(),
+      env: {
+        PATH: Deno.env.get("PATH") ?? "",
+        VIBE_BUMP_QUARANTINE_HOURS: "not-a-number",
+      },
+    });
+    const output = await command.output();
+    // --lint-only sets RUN_DEPS=true (only RUN_TYPE_CHECK/RUN_DISCOVERY/
+    // RUN_WASM/RUN_TESTS are cleared), so the validation guard must fire.
+    assert(
+      output.code !== 0,
+      "quality.sh must reject non-integer VIBE_BUMP_QUARANTINE_HOURS",
+    );
+    const stderr = new TextDecoder().decode(output.stderr);
+    assert(
+      stderr.includes("VIBE_BUMP_QUARANTINE_HOURS") &&
+        stderr.includes("non-negative integer"),
+      `Expected validation error in stderr; got: ${stderr}`,
+    );
+  },
+});

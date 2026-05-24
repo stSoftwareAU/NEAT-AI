@@ -238,7 +238,10 @@ Follow test-driven development:
 
 The quality gate runs (see `quality.sh` for the canonical step list):
 
-1. Dependency updates (`deno outdated --update --latest`)
+1. Dependency updates
+   (`deno outdated --update --latest --minimum-dependency-age=<minutes>`,
+   honouring `VIBE_BUMP_QUARANTINE_HOURS` — default 24h — to dodge fast-flagged
+   supply-chain attacks; see Issue #2742)
 2. Code formatting (`deno fmt`)
 3. Linting with auto-fix (`deno lint --fix`)
 4. Bash script syntax checks
