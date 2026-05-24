@@ -28,7 +28,8 @@ Closes #2753.
 ## Evidence
 
 Backend/CLI change — no web interface to screenshot. Verified via unit tests
-(see Test Plan). The `./quality.sh` gate passed cleanly: `6865 passed | 0 failed`.
+(see Test Plan). The `./quality.sh` gate passed cleanly:
+`6865 passed | 0 failed`.
 
 ### Data flow
 
@@ -43,12 +44,17 @@ flowchart LR
 ## Test Plan
 
 - `test/architecture/ElitismUtils.ts`:
-  - Added `computeAverageScore` tests (mean, single creature, empty-population throw).
+  - Added `computeAverageScore` tests (mean, single creature, empty-population
+    throw).
   - Updated the former `averageScore is NaN when not verbose` test (which
     documented the old buggy behaviour) to
-    `averageScore is computed when not verbose`, asserting a finite mean of `0.7`.
+    `averageScore is computed when not verbose`, asserting a finite mean of
+    `0.7`.
 - `test/config/TrainingEvent.ts`:
-  - Added regression test `averageFitness is finite when verbose is false
-    (Issue #2753)`, evolving with `verbose` omitted and asserting every
-    `generation_complete` event has a finite `averageFitness`.
-- Full `./quality.sh` gate passed (lint, format, type-check, WASM sync, all tests).
+  - Added regression test
+    `averageFitness is finite when verbose is false
+    (Issue #2753)`, evolving
+    with `verbose` omitted and asserting every `generation_complete` event has a
+    finite `averageFitness`.
+- Full `./quality.sh` gate passed (lint, format, type-check, WASM sync, all
+  tests).
