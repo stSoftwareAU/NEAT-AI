@@ -63,10 +63,23 @@ round-trip.
 | Release sidecar `*.sha256`    | Every download (if found) | Asset tampering by anyone without sidecar-signing access |
 | `pkg/content-manifest.sha256` | `--verify-only` / CI      | Local or post-install tampering with vendored pkg files  |
 
-If neither sidecar nor `assetSha256` is available `build.sh` still proceeds (the
-upstream workflow may not yet publish a sidecar and the pin is empty on fresh
-setups) but prints a clear `WARNING` so reviewers do not silently ship an
-unverified bundle.
+If neither sidecar nor `assetSha256` is available, `build.sh` **refuses to
+extract** and exits non-zero (issue #2744). A content manifest written from an
+unattested download is self-referential — `--verify-only` would compare the
+freshly written files against the freshly written manifest and always pass — so
+silently extracting an unverified bundle proves nothing about provenance. To
+bootstrap a fresh setup (or pin a rev whose upstream release has no sidecar),
+re-run with `--allow-unverified`: `build.sh` then extracts and records the
+downloaded hash into `deno.json` `neatCore.assetSha256`, so every subsequent run
+is attested against that committed pin. Because the standing pin is committed,
+the default `./build.sh` (and the `--verify-only` no-op path used by
+`quality.sh`) always has an anchor and never needs the override.
+
+Before extraction, `build.sh` also lists the tarball with `tar -tzf` and rejects
+any entry whose normalised path is absolute or escapes the destination via `..`
+(path-traversal hardening, issue #2744), then extracts with
+`tar --no-same-owner --no-same-permissions` so archived ownership and permission
+bits are never honoured.
 
 ## Why This Model
 
@@ -80,13 +93,14 @@ unverified bundle.
 
 ## `build.sh` Modes
 
-| Invocation                 | Behaviour                                                                                                     |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `./build.sh`               | Resolve Develop HEAD, download artefact, refresh pkg, update `deno.json` `neatCore.rev`. No-op if up to date. |
-| `./build.sh --rev <SHA>`   | Same as above but pin to a specific 40-char SHA instead of resolving HEAD. Used for reproducible builds.      |
-| `./build.sh --verify-only` | Verify the vendored pkg matches `deno.json` `neatCore.rev`. No network. No mutation. Used by `quality.sh`.    |
-| `./build.sh --clean`       | Delete `wasm_activation/pkg` before download.                                                                 |
-| `./build.sh --help`        | Show usage.                                                                                                   |
+| Invocation                      | Behaviour                                                                                                                                             |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `./build.sh`                    | Resolve Develop HEAD, download artefact, refresh pkg, update `deno.json` `neatCore.rev`. No-op if up to date.                                         |
+| `./build.sh --rev <SHA>`        | Same as above but pin to a specific 40-char SHA instead of resolving HEAD. Used for reproducible builds.                                              |
+| `./build.sh --verify-only`      | Verify the vendored pkg matches `deno.json` `neatCore.rev`. No network. No mutation. Used by `quality.sh`.                                            |
+| `./build.sh --clean`            | Delete `wasm_activation/pkg` before download.                                                                                                         |
+| `./build.sh --allow-unverified` | Proceed even when no SHA-256 anchor attested the tarball; records the downloaded hash into `neatCore.assetSha256` to bootstrap the pin (issue #2744). |
+| `./build.sh --help`             | Show usage.                                                                                                                                           |
 
 ## Pre-PR auto-bump (`bump-deps.sh`)
 

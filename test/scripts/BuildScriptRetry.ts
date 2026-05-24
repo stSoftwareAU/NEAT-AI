@@ -208,9 +208,14 @@ Deno.test({
         fixturePath: setup.fixturePath,
         probeFailUntilSuccess: 2,
       });
+      // The fixture deno.json carries no neatCore.assetSha256 and the fake
+      // release publishes no .sha256 sidecar, so --allow-unverified is
+      // required to extract (issue #2744 hard-errors on an unattested
+      // download). This test exercises the 404 retry path, not SHA
+      // verification, so it deliberately opts out of the anchor requirement.
       const result = await runBuild(
         setup.dir,
-        ["--rev", FAKE_REV_B],
+        ["--rev", FAKE_REV_B, "--allow-unverified"],
         setup.fakeBinDir,
         {
           NEAT_CORE_BUNDLE_RETRIES: "5",
@@ -253,6 +258,56 @@ Deno.test({
         `${setup.dir}/wasm_activation/pkg/wasm_activation_bg.wasm`,
       );
       assert(stat.isFile, "wasm bundle should be extracted into pkg/");
+    } finally {
+      await setup.cleanup();
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "build.sh refuses to extract an unattested tarball without --allow-unverified",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    // Issue #2744: with no neatCore.assetSha256 pin and no release sidecar,
+    // the download must hard-error instead of silently extracting.
+    const setup = await setupFakeRepo();
+    try {
+      await writeFakeGh(setup.fakeBinDir, {
+        probeCounterFile: setup.probeCounterFile,
+        downloadCounterFile: setup.downloadCounterFile,
+        fixturePath: setup.fixturePath,
+        probeFailUntilSuccess: 0,
+      });
+      const result = await runBuild(
+        setup.dir,
+        ["--rev", FAKE_REV_B],
+        setup.fakeBinDir,
+        {
+          NEAT_CORE_BUNDLE_RETRIES: "5",
+          NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS: "0",
+        },
+      );
+      assert(
+        result.code !== 0,
+        `Expected non-zero exit on unattested download; stdout=${result.stdout}`,
+      );
+      assert(
+        result.stderr.includes("no SHA-256 source") &&
+          result.stderr.includes("--allow-unverified"),
+        `Expected actionable no-anchor error; stderr=${result.stderr}`,
+      );
+      // The bundle must NOT have been extracted into pkg/.
+      let extracted = false;
+      try {
+        const stat = await Deno.stat(
+          `${setup.dir}/wasm_activation/pkg/wasm_activation_bg.wasm`,
+        );
+        extracted = stat.isFile;
+      } catch {
+        extracted = false;
+      }
+      assert(!extracted, "unattested bundle must not be extracted into pkg/");
     } finally {
       await setup.cleanup();
     }

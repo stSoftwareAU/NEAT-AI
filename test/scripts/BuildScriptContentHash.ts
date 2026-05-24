@@ -279,6 +279,201 @@ Deno.test({
   },
 });
 
+/**
+ * Source a single named function out of build.sh into a sub-shell and run a
+ * follow-up command against it. Mirrors the existing verify_tarball_sha256
+ * helper test; lets us exercise the real bash logic with test data.
+ */
+async function runSourcedFn(
+  fnName: string,
+  invocation: string,
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  // Extract the named function out of build.sh and source it from a temp
+  // file. A temp file (rather than process substitution) is used because
+  // `source <(...)` does not reliably define functions across all bash
+  // builds (e.g. macOS bash 3.2).
+  const fnTmp = await Deno.makeTempFile({ prefix: "neat-fn-", suffix: ".sh" });
+  try {
+    const extract = new Deno.Command("awk", {
+      args: [`/^${fnName}\\(\\)/,/^}$/`, "./build.sh"],
+      stdout: "piped",
+      cwd: Deno.cwd(),
+    });
+    const ex = await extract.output();
+    await Deno.writeFile(fnTmp, ex.stdout);
+
+    const script = `set -e\nsource '${fnTmp}'\n${invocation}\n`;
+    const cmd = new Deno.Command("bash", {
+      args: ["-c", script],
+      stdout: "piped",
+      stderr: "piped",
+      cwd: Deno.cwd(),
+    });
+    const out = await cmd.output();
+    return {
+      stdout: new TextDecoder().decode(out.stdout),
+      stderr: new TextDecoder().decode(out.stderr),
+      code: out.code,
+    };
+  } finally {
+    await Deno.remove(fnTmp);
+  }
+}
+
+Deno.test({
+  name: "build.sh --help advertises --allow-unverified",
+  permissions: { run: true, read: true },
+  fn: async () => {
+    const result = await runBuild(["--help"]);
+    assertEquals(result.code, 0);
+    assert(
+      result.stdout.includes("--allow-unverified"),
+      "Expected help to mention the --allow-unverified flag",
+    );
+  },
+});
+
+Deno.test({
+  name: "guard_unverified_extract aborts when no anchor and not allowed",
+  permissions: { run: true, read: true, write: true },
+  fn: async () => {
+    const deny = await runSourcedFn(
+      "guard_unverified_extract",
+      'guard_unverified_extract "" false',
+    );
+    assertEquals(deny.code, 1, "no anchor + not allowed must abort (rc=1)");
+
+    const allow = await runSourcedFn(
+      "guard_unverified_extract",
+      'guard_unverified_extract "" true',
+    );
+    assertEquals(allow.code, 0, "--allow-unverified must permit (rc=0)");
+
+    const anchored = await runSourcedFn(
+      "guard_unverified_extract",
+      'guard_unverified_extract "sidecar wasm.sha256" false',
+    );
+    assertEquals(anchored.code, 0, "an existing anchor must permit (rc=0)");
+  },
+});
+
+Deno.test({
+  name: "assert_safe_tar_entries rejects path-traversal and absolute entries",
+  permissions: { run: true, read: true, write: true },
+  fn: async () => {
+    const tmpDir = await Deno.makeTempDir({ prefix: "neat-tar-safety-" });
+    try {
+      // Safe archive: a normal pkg/ layout extracted under wasm_activation/.
+      await Deno.mkdir(`${tmpDir}/src/pkg`, { recursive: true });
+      await Deno.writeTextFile(`${tmpDir}/src/pkg/a.txt`, "ok");
+      const mkGood = new Deno.Command("tar", {
+        args: ["-czf", `${tmpDir}/good.tar.gz`, "-C", `${tmpDir}/src`, "pkg"],
+      });
+      assertEquals((await mkGood.output()).code, 0);
+
+      // Traversal archive: member name "../target.txt".
+      // Use Python's tarfile module rather than the `tar` CLI because GNU tar
+      // (Linux) silently strips leading ".." components when creating archives,
+      // which would produce a safe entry name and make the test meaningless.
+      // Python tarfile stores the entry name exactly as given, so no real
+      // filesystem file is needed — the TarInfo is crafted directly.
+      const mkTrav = new Deno.Command("python3", {
+        args: [
+          "-c",
+          [
+            "import tarfile, io",
+            `archive='${tmpDir}/trav.tar.gz'`,
+            "t=tarfile.open(archive,'w:gz')",
+            "info=tarfile.TarInfo(name='../target.txt')",
+            "content=b'evil'",
+            "info.size=len(content)",
+            "t.addfile(info,io.BytesIO(content))",
+            "t.close()",
+          ].join(";"),
+        ],
+      });
+      assertEquals((await mkTrav.output()).code, 0);
+
+      // Absolute-path archive: member name is an absolute path.
+      // Also use Python tarfile for the same portability reason.
+      const mkAbs = new Deno.Command("python3", {
+        args: [
+          "-c",
+          [
+            "import tarfile, io",
+            `archive='${tmpDir}/abs.tar.gz'`,
+            `target='${tmpDir}/target.txt'`,
+            "t=tarfile.open(archive,'w:gz')",
+            "info=tarfile.TarInfo(name=target)",
+            "content=b'evil'",
+            "info.size=len(content)",
+            "t.addfile(info,io.BytesIO(content))",
+            "t.close()",
+          ].join(";"),
+        ],
+      });
+      assertEquals((await mkAbs.output()).code, 0);
+
+      const good = await runSourcedFn(
+        "assert_safe_tar_entries",
+        `assert_safe_tar_entries '${tmpDir}/good.tar.gz'`,
+      );
+      assertEquals(
+        good.code,
+        0,
+        `safe archive must pass; stderr=${good.stderr}`,
+      );
+
+      const trav = await runSourcedFn(
+        "assert_safe_tar_entries",
+        `assert_safe_tar_entries '${tmpDir}/trav.tar.gz'`,
+      );
+      assert(trav.code !== 0, "traversal archive must be rejected");
+      assert(
+        trav.stderr.includes("path-traversal"),
+        `expected path-traversal error; got: ${trav.stderr}`,
+      );
+
+      const abs = await runSourcedFn(
+        "assert_safe_tar_entries",
+        `assert_safe_tar_entries '${tmpDir}/abs.tar.gz'`,
+      );
+      assert(abs.code !== 0, "absolute-path archive must be rejected");
+      assert(
+        abs.stderr.includes("absolute-path"),
+        `expected absolute-path error; got: ${abs.stderr}`,
+      );
+    } finally {
+      await Deno.remove(tmpDir, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name: "build.sh extracts without honouring archived owner/permission bits",
+  permissions: { read: true },
+  fn: async () => {
+    const script = await Deno.readTextFile("build.sh");
+    assert(
+      /tar\s+--no-same-owner\s+--no-same-permissions\s+-xzf/.test(script),
+      "tar extract must pass --no-same-owner --no-same-permissions",
+    );
+  },
+});
+
+Deno.test({
+  name: "deno.json pins neatCore.assetSha256 so the default build is attested",
+  permissions: { read: true },
+  fn: async () => {
+    const config = JSON.parse(await Deno.readTextFile("deno.json"));
+    const pin: string = config.neatCore?.assetSha256 ?? "";
+    assert(
+      /^[0-9a-f]{64}$/.test(pin),
+      `deno.json neatCore.assetSha256 must be a 64-char SHA-256; got '${pin}'`,
+    );
+  },
+});
+
 Deno.test({
   name: "CORE_DEPENDENCY_POLICY documents the new content-hash step",
   permissions: { read: true },

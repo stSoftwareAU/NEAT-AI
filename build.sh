@@ -15,6 +15,7 @@ cd "$SCRIPT_DIR"
 
 CLEAN=false
 VERIFY_ONLY=false
+ALLOW_UNVERIFIED=false
 EXPLICIT_REV=""
 
 show_help() {
@@ -39,6 +40,13 @@ Options:
                   verify wasm_activation/pkg matches deno.json neatCore.rev.
                   Used by quality.sh and CI.
   --clean         Delete wasm_activation/pkg before download.
+  --allow-unverified
+                  Proceed with extraction even when no SHA-256 anchor
+                  (deno.json neatCore.assetSha256 or release sidecar
+                  wasm_activation-pkg.tar.gz.sha256) attested the tarball.
+                  Without this flag an unattested download is a hard error
+                  (issue #2744). The downloaded hash is recorded back into
+                  deno.json neatCore.assetSha256 so subsequent runs verify.
   --help, -h      Show this help and exit.
 HELP
 }
@@ -51,6 +59,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --verify-only)
       VERIFY_ONLY=true
+      shift
+      ;;
+    --allow-unverified)
+      ALLOW_UNVERIFIED=true
       shift
       ;;
     --rev)
@@ -182,6 +194,58 @@ verify_tarball_sha256() {
     echo "  actual:   ${actual}" >&2
     return 1
   fi
+  return 0
+}
+
+# guard_unverified_extract — decide whether extraction may proceed when no
+# SHA-256 anchor attested the downloaded tarball (issue #2744). A self-
+# referential content manifest written from an unattested download proves
+# nothing, so an unverified bundle must not be silently extracted.
+#   $1 = verified_via   non-empty when a pin or sidecar already matched
+#   $2 = allow_unverified  "true" when the operator passed --allow-unverified
+# Returns 0 when extraction may proceed, 1 when it must abort.
+guard_unverified_extract() {
+  local verified_via="$1"
+  local allow_unverified="$2"
+  if [[ -n "$verified_via" ]]; then
+    return 0
+  fi
+  if [[ "$allow_unverified" == true ]]; then
+    return 0
+  fi
+  return 1
+}
+
+# assert_safe_tar_entries — reject path-traversal and absolute-path entries
+# before extraction (issue #2744). A malicious tarball entry such as
+# `../etc/cron.d/x` or `/etc/passwd` would otherwise be written outside the
+# intended wasm_activation/ destination. Lists the archive with `tar -tzf`
+# and fails on the first unsafe normalised path.
+assert_safe_tar_entries() {
+  local archive="$1"
+  local entries
+  if ! entries="$(tar -tzf "$archive" 2>/dev/null)"; then
+    echo "ERROR: could not list contents of $(basename "$archive") for safety check" >&2
+    return 1
+  fi
+  local entry
+  while IFS= read -r entry; do
+    [[ -z "$entry" ]] && continue
+    # Strip a leading ./ so "./../x" is still caught below.
+    local normalised="${entry#./}"
+    if [[ "$normalised" == /* ]]; then
+      echo "ERROR: refusing to extract absolute-path entry from $(basename "$archive"): ${entry}" >&2
+      return 1
+    fi
+    case "/$normalised/" in
+      */../*)
+        echo "ERROR: refusing to extract path-traversal entry from $(basename "$archive"): ${entry}" >&2
+        return 1
+        ;;
+    esac
+  done <<EOF
+$entries
+EOF
   return 0
 }
 
@@ -508,19 +572,36 @@ fi
 
 if [[ -n "$verified_via" ]]; then
   echo "Tarball SHA-256 verified via ${verified_via}."
+elif ! guard_unverified_extract "$verified_via" "$ALLOW_UNVERIFIED"; then
+  echo "ERROR: no SHA-256 source for ${ASSET_NAME} (neither deno.json neatCore.assetSha256 nor release sidecar ${SIDECAR_NAME} present)." >&2
+  echo "       Refusing to extract an unattested tarball — the content manifest written from an" >&2
+  echo "       unverified download is self-referential and proves nothing about provenance (issue #2744)." >&2
+  echo "       Fix one of:" >&2
+  echo "         - set neatCore.assetSha256 in deno.json to the expected 64-char SHA-256, or" >&2
+  echo "         - have NEAT-AI-core publish the ${SIDECAR_NAME} release sidecar, or" >&2
+  echo "         - re-run with --allow-unverified to bootstrap the pin (the downloaded hash is" >&2
+  echo "           then recorded into deno.json neatCore.assetSha256 for future verification)." >&2
+  exit 1
 else
   echo "WARNING: no SHA-256 source for ${ASSET_NAME} (neither deno.json neatCore.assetSha256 nor release sidecar ${SIDECAR_NAME} present)." >&2
-  echo "         Computing local hash for the manifest only — tarball provenance is not attested." >&2
+  echo "         Proceeding because --allow-unverified was passed; the downloaded hash will be" >&2
+  echo "         recorded into deno.json neatCore.assetSha256 so subsequent runs are attested." >&2
 fi
 
-# Record the tarball's own hash for transparency. The per-file manifest
-# (written after extract) is what `--verify-only` actually checks.
+# Record the tarball's own hash for transparency and for pinning back into
+# deno.json neatCore.assetSha256 below. The per-file manifest (written
+# after extract) is what `--verify-only` actually checks.
 DOWNLOADED_ASSET_SHA256="$(shasum -a 256 "$tmp_dir/$ASSET_NAME" | awk '{print $1}')"
 echo "Downloaded tarball SHA-256: ${DOWNLOADED_ASSET_SHA256}"
 
+# Reject path-traversal / absolute-path entries before touching the tree
+# (issue #2744), then extract without honouring archived ownership or
+# permission bits.
+assert_safe_tar_entries "$tmp_dir/$ASSET_NAME"
+
 mkdir -p "wasm_activation"
 echo "Extracting ${ASSET_NAME} into wasm_activation/..."
-tar -xzf "$tmp_dir/$ASSET_NAME" -C "wasm_activation/"
+tar --no-same-owner --no-same-permissions -xzf "$tmp_dir/$ASSET_NAME" -C "wasm_activation/"
 
 # Ensure neat_core_rev.txt is consistent with the requested SHA. CI
 # writes this file, but we re-stamp it defensively in case someone
@@ -542,16 +623,25 @@ if [[ "${wasm_bytes:-0}" -lt $MIN_WASM_BYTES ]]; then
   exit 1
 fi
 
-# --- Update deno.json neatCore.rev --------------------------------------
-if [[ "$PINNED_REV" != "$TARGET_REV" ]]; then
+# --- Update deno.json neatCore.rev + assetSha256 ------------------------
+# Record the downloaded tarball hash as the committed pin so future runs
+# verify against it (issue #2744). Values are passed via the environment,
+# never interpolated into the eval source, so a hostile rev/hash cannot
+# inject code (both are already validated as hex above).
+if [[ "$PINNED_REV" != "$TARGET_REV" ]] \
+  || [[ "$PINNED_ASSET_SHA256" != "$DOWNLOADED_ASSET_SHA256" ]]; then
   echo "Updating deno.json neatCore.rev: ${PINNED_REV:-<unset>} -> ${TARGET_REV}"
-  deno eval "
-const path = 'deno.json';
+  echo "Updating deno.json neatCore.assetSha256: ${PINNED_ASSET_SHA256:-<unset>} -> ${DOWNLOADED_ASSET_SHA256}"
+  NEAT_TARGET_REV="$TARGET_REV" \
+  NEAT_ASSET_SHA256="$DOWNLOADED_ASSET_SHA256" \
+  deno eval '
+const path = "deno.json";
 const config = JSON.parse(Deno.readTextFileSync(path));
 config.neatCore = config.neatCore ?? {};
-config.neatCore.rev = '${TARGET_REV}';
-Deno.writeTextFileSync(path, JSON.stringify(config, null, 2) + '\n');
-"
+config.neatCore.rev = Deno.env.get("NEAT_TARGET_REV");
+config.neatCore.assetSha256 = Deno.env.get("NEAT_ASSET_SHA256");
+Deno.writeTextFileSync(path, JSON.stringify(config, null, 2) + "\n");
+'
 fi
 
 refresh_fingerprint "$TARGET_REV"
