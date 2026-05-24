@@ -16,9 +16,9 @@ env:
 run: deno outdated --update --latest --minimum-dependency-age="$((VIBE_BUMP_QUARANTINE_HOURS * 60))"
 ```
 
-`--minimum-dependency-age` takes minutes, matching `bump-deps.sh`, so a
-version published less than 24h ago can no longer land in the Monday-morning
-auto-raised PR.
+`--minimum-dependency-age` takes minutes, matching `bump-deps.sh`, so a version
+published less than 24h ago can no longer land in the Monday-morning auto-raised
+PR.
 
 Closes #2741.
 
@@ -47,16 +47,16 @@ ok | 3 passed | 0 failed
 ```
 
 `./quality.sh` passes apart from one pre-existing flaky test
-(`evolveRL_heapStability_test.ts`, Issue #2693) that is unrelated to this
-change and passes when run in isolation.
+(`evolveRL_heapStability_test.ts`, Issue #2693) that is unrelated to this change
+and passes when run in isolation.
 
 ## Test Plan
 
 - Added `test/ci/DenoOutdatedWorkflowQuarantine.ts`:
   - Asserts the workflow runs `deno outdated` with `--minimum-dependency-age`.
   - Asserts no executable `run:` step invokes a bare
-    `deno outdated --update --latest` without the quarantine flag (comment
-    lines are stripped before matching).
+    `deno outdated --update --latest` without the quarantine flag (comment lines
+    are stripped before matching).
   - Asserts the quarantine is sourced from `VIBE_BUMP_QUARANTINE_HOURS`.
 - The pre-existing `test/ci/QualityWorkflowDepBumpQuarantine.ts` still passes —
   the `deno outdated --update --latest` substring guard remains satisfied.
