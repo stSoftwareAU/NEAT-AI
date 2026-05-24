@@ -21,10 +21,10 @@ export function makeElitists(
 
   const result: ElitistsResults = {
     elitists: [],
-    averageScore: NaN,
+    averageScore: computeAverageScore(creatures),
   };
   if (verbose) {
-    result.averageScore = logVerbose(creatures);
+    logVerbose(creatures);
   }
 
   const elitism = Math.min(size, creatures.length);
@@ -40,6 +40,25 @@ export function sortCreaturesByScore(creatures: Creature[]): Creature[] {
   });
 
   return creatures;
+}
+
+/**
+ * Computes the mean of `creature.score` across the population. This is always
+ * available to telemetry (e.g. the `generation_complete` event's
+ * `averageFitness`) regardless of the `verbose` flag, which now only controls
+ * the per-creature training log emitted by {@link logVerbose}.
+ */
+export function computeAverageScore(creatures: Creature[]): number {
+  assert(creatures.length > 0, "Population must have creatures");
+
+  let totalScore = 0;
+  for (const creature of creatures) {
+    const score = creature.score;
+    assert(score !== undefined, "Creature must have a score");
+    totalScore += score;
+  }
+
+  return totalScore / creatures.length;
 }
 
 export function logVerbose(creatures: Creature[]): number {

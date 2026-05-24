@@ -9,6 +9,7 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import {
+  computeAverageScore,
   logVerbose,
   makeElitists,
   sortCreaturesByScore,
@@ -147,14 +148,22 @@ Deno.test("makeElitists - throws for non-integer size", () => {
   );
 });
 
-Deno.test("makeElitists - averageScore is NaN when not verbose", () => {
-  const creatures = [makeScoredCreature(0.5)];
+// Issue #2753: averageScore is now always computed, even when verbose is false,
+// so the public `generation_complete` event never emits NaN. The previous test
+// documented the old (buggy) NaN-when-not-verbose behaviour and has been
+// updated to assert the finite average is always available.
+Deno.test("makeElitists - averageScore is computed when not verbose", () => {
+  const creatures = [
+    makeScoredCreature(0.8),
+    makeScoredCreature(0.6),
+  ];
   const result = makeElitists(creatures, 1, false);
 
   assert(
-    Number.isNaN(result.averageScore),
-    "averageScore should be NaN when not verbose",
+    Number.isFinite(result.averageScore),
+    "averageScore should be finite when not verbose",
   );
+  assertEquals(result.averageScore, 0.7);
 });
 
 Deno.test("makeElitists - averageScore is computed when verbose", () => {
@@ -166,6 +175,30 @@ Deno.test("makeElitists - averageScore is computed when verbose", () => {
   const result = makeElitists(creatures, 1, true);
 
   assertEquals(result.averageScore, 0.7);
+});
+
+// --- computeAverageScore tests (Issue #2753) ---
+
+Deno.test("computeAverageScore - returns mean of population scores", () => {
+  const creatures = [
+    makeScoredCreature(0.8),
+    makeScoredCreature(0.6),
+    makeScoredCreature(0.4),
+  ];
+
+  assertEquals(computeAverageScore(creatures), 0.6);
+});
+
+Deno.test("computeAverageScore - single creature returns its score", () => {
+  assertEquals(computeAverageScore([makeScoredCreature(0.42)]), 0.42);
+});
+
+Deno.test("computeAverageScore - throws for empty population", () => {
+  assertThrows(
+    () => computeAverageScore([]),
+    Error,
+    "Population must have creatures",
+  );
 });
 
 // --- logVerbose tests ---

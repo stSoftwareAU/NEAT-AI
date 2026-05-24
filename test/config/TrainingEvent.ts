@@ -59,6 +59,40 @@ Deno.test("TrainingEvent - generation_complete events are emitted", async () => 
   assert(!isNaN(parsed.getTime()), "Timestamp should be valid ISO-8601");
 });
 
+Deno.test("TrainingEvent - averageFitness is finite when verbose is false (Issue #2753)", async () => {
+  const events: GenerationCompleteEvent[] = [];
+
+  const trainingSet = [
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
+  ];
+
+  const creature = new Creature(2, 1);
+
+  await creature.evolveDataSet(trainingSet, {
+    mutation: Mutation.FFW,
+    iterations: 5,
+    targetError: 0.001,
+    populationSize: 10,
+    threads: 1,
+    // verbose deliberately omitted (defaults to false) — the default code path.
+    onTrainingEvent: (event) => {
+      if (event.kind === "generation_complete") {
+        events.push(event);
+      }
+    },
+  });
+
+  assertGreater(events.length, 0, "Should emit generation_complete events");
+
+  for (const event of events) {
+    assert(
+      Number.isFinite(event.averageFitness),
+      `averageFitness must be finite, got ${event.averageFitness}`,
+    );
+  }
+});
+
 Deno.test("TrainingEvent - generation numbers are sequential", async () => {
   const events: GenerationCompleteEvent[] = [];
 

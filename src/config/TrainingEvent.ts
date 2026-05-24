@@ -308,7 +308,11 @@ export interface GenerationCompleteEvent {
   readonly generation: number;
   /** The best fitness score in this generation. */
   readonly bestFitness: number;
-  /** The average fitness score across the population. */
+  /**
+   * The average fitness score across the population. Always a finite number;
+   * computed for every generation independent of the `verbose` flag (Issue
+   * #2753).
+   */
   readonly averageFitness: number;
   /** Current population size. */
   readonly populationSize: number;
