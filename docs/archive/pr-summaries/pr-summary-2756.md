@@ -33,6 +33,7 @@ bridge passes it through unchanged.
 ## Test Plan
 
 New `test/score/RustScorerCategoricalError.ts`:
+
 - `per-creature bridge prepends --cost and returns analytic error` — asserts
   `tryScoreWithRustScorer` prepends `["--cost", "CATEGORICAL_ERROR", ...]` and
   returns the fixture's known `0.25` error.
@@ -56,7 +57,7 @@ in `src/config/RustScorerConfig.ts`.
 
 `./quality.sh` passes except for the pre-existing flaky heap-growth test
 `test/creature/evolveRL_heapStability_test.ts` (Issue #2693), which is GC
-nondeterministic — it measured 392 KB/gen on the clean tree (pass) and
-569–627 KB/gen across other runs (fail), independent of this change (an isolated
-test file + doc edits cannot affect evolveRL heap usage). All 6873 other tests,
+nondeterministic — it measured 392 KB/gen on the clean tree (pass) and 569–627
+KB/gen across other runs (fail), independent of this change (an isolated test
+file + doc edits cannot affect evolveRL heap usage). All 6873 other tests,
 including the four new ones, pass.
