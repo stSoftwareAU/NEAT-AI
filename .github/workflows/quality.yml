@@ -171,9 +171,9 @@ jobs:
             if [[ $size -gt 10485760 ]]; then  # 10MB in bytes
               # Allow large JSON model files in docs/models directory
               if [[ "$f" == *.json ]] && [[ "$f" == */docs/models/* ]]; then
-                echo "⚠️  Large model file detected (allowed): $f ($(numfmt --to=iec-i --suffix=B $size 2>/dev/null || echo "${size} bytes"))" >&2
+                echo "⚠️  Large model file detected (allowed): $f ($(numfmt --to=iec-i --suffix=B "$size" 2>/dev/null || echo "${size} bytes"))" >&2
               else
-                echo "❌ Unexpectedly large file: $f ($(numfmt --to=iec-i --suffix=B $size 2>/dev/null || echo "${size} bytes"))" >&2
+                echo "❌ Unexpectedly large file: $f ($(numfmt --to=iec-i --suffix=B "$size" 2>/dev/null || echo "${size} bytes"))" >&2
                 fail=1
               fi
             fi
@@ -243,9 +243,9 @@ jobs:
         id: check_changes # Define step ID to use outputs
         run: |
           if git diff --quiet; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
       # Commit Changes

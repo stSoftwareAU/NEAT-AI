@@ -20,7 +20,7 @@ jobs:
         id: version
         run: |
           VERSION=$(jq -r .version deno.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         # softprops/action-gh-release@v3.0.0 (node24 runtime)

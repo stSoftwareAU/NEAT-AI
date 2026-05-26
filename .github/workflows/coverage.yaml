@@ -229,13 +229,13 @@ jobs:
         if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') }}
         run: |
           if [ ! -f junit.xml ]; then
-            echo "junit_exists=false" >> $GITHUB_OUTPUT
+            echo "junit_exists=false" >> "$GITHUB_OUTPUT"
             echo "JUnit XML file does not exist"
             exit 0
           fi
 
           if [ ! -s junit.xml ]; then
-            echo "junit_exists=false" >> $GITHUB_OUTPUT
+            echo "junit_exists=false" >> "$GITHUB_OUTPUT"
             echo "JUnit XML file is empty"
             exit 0
           fi
@@ -243,20 +243,20 @@ jobs:
           # Validate XML format (basic check)
           if command -v xmllint &> /dev/null; then
             if xmllint --noout junit.xml 2>/dev/null; then
-              echo "junit_exists=true" >> $GITHUB_OUTPUT
+              echo "junit_exists=true" >> "$GITHUB_OUTPUT"
               echo "JUnit XML file exists and is valid"
             else
-              echo "junit_exists=false" >> $GITHUB_OUTPUT
+              echo "junit_exists=false" >> "$GITHUB_OUTPUT"
               echo "JUnit XML file exists but is not valid XML"
               xmllint --noout junit.xml 2>&1 || true
             fi
           else
             # Fallback: basic XML structure check
             if grep -q '<?xml' junit.xml && grep -q '</testsuites>' junit.xml; then
-              echo "junit_exists=true" >> $GITHUB_OUTPUT
+              echo "junit_exists=true" >> "$GITHUB_OUTPUT"
               echo "JUnit XML file exists and appears valid"
             else
-              echo "junit_exists=false" >> $GITHUB_OUTPUT
+              echo "junit_exists=false" >> "$GITHUB_OUTPUT"
               echo "JUnit XML file exists but does not appear to be valid XML"
             fi
           fi
