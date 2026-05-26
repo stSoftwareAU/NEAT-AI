@@ -57,14 +57,14 @@ jobs:
 
           if [ -z "$BASE_VERSION" ]; then
             echo "Could not determine base version, skipping update"
-            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
           elif [ "$CURRENT_VERSION" = "$BASE_VERSION" ]; then
             echo "Version unchanged, will update patch version"
-            echo "needs_update=true" >> $GITHUB_OUTPUT
-            echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+            echo "needs_update=true" >> "$GITHUB_OUTPUT"
+            echo "base_version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
           else
             echo "Version has been updated in PR"
-            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
           fi
 
       # Update patch version if needed
