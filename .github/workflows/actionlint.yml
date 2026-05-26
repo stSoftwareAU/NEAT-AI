@@ -1,0 +1,41 @@
+name: Actionlint
+
+# Lint every GitHub Actions workflow file on push and pull request so
+# regressions in `.github/workflows/*.y*ml` fail the build before they
+# merge (Issue #2762). actionlint catches mistyped expressions, missing
+# permission blocks, unsupported runners, shell-script issues inside
+# `run:` blocks, and many other workflow-only foot-guns that no other
+# linter in this repo covers.
+
+on:
+  pull_request:
+    branches: ["*"]
+  push:
+    branches: [Develop, main, master]
+
+# Least-privilege GITHUB_TOKEN scopes (Issue #2706). actionlint only
+# reads files; no write access is required.
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: Lint GitHub Actions workflows
+    runs-on: ubuntu-latest
+    steps:
+      # actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      # Wraps rhysd/actionlint and pins the underlying binary by release.
+      # The SHA below is pinned to v2.1.2 per Issue #2696 so a re-tagged
+      # release cannot silently change the action body. Bump alongside
+      # dependabot updates; quarantine policy is 24h (Issue #2742).
+      - name: Run actionlint
+        # raven-actions/actionlint@v2.1.2
+        uses: raven-actions/actionlint@205b530c5d9fa8f44ae9ed59f341a0db994aa6f8
+        with:
+          # Fail the job on any actionlint finding. Default is to fail
+          # only on errors; we treat warnings as errors too so reviewers
+          # see them before merge.
+          fail-on-error: true

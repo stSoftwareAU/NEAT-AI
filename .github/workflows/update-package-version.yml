@@ -24,8 +24,8 @@ jobs:
       # re-introduce the PAT only at push time via a per-command
       # auth header.
       - name: Checkout Code
-        # actions/checkout@v4.3.1
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        # actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           token: ${{ secrets.ACTIONS_PUSH }}
           persist-credentials: false
@@ -40,12 +40,17 @@ jobs:
       # Check if version has been updated
       - name: Check Version Update
         id: check_version
+        env:
+          # Use env: to avoid injecting github context data directly into the
+          # shell script body — prevents run-shell-injection (Semgrep rule
+          # yaml.github-actions.security.run-shell-injection).
+          BASE_REF: ${{ github.base_ref }}
         run: |
           set -Eeuo pipefail
 
           # Get the base branch version
-          git fetch origin ${{ github.base_ref }}:${{ github.base_ref }} || true
-          git show origin/${{ github.base_ref }}:deno.json > /tmp/base_deno.json 2>/dev/null || echo "{}" > /tmp/base_deno.json
+          git fetch origin "$BASE_REF:$BASE_REF" || true
+          git show "origin/$BASE_REF:deno.json" > /tmp/base_deno.json 2>/dev/null || echo "{}" > /tmp/base_deno.json
 
           BASE_VERSION=$(deno eval "try { const json = JSON.parse(Deno.readTextFileSync('/tmp/base_deno.json')); console.log(json.version || ''); } catch { console.log(''); }")
 
@@ -57,23 +62,23 @@ jobs:
 
           if [ -z "$BASE_VERSION" ]; then
             echo "Could not determine base version, skipping update"
-            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
           elif [ "$CURRENT_VERSION" = "$BASE_VERSION" ]; then
             echo "Version unchanged, will update patch version"
-            echo "needs_update=true" >> $GITHUB_OUTPUT
-            echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+            echo "needs_update=true" >> "$GITHUB_OUTPUT"
+            echo "base_version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
           else
             echo "Version has been updated in PR"
-            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
           fi
 
       # Update patch version if needed
       - name: Update Patch Version
         if: steps.check_version.outputs.needs_update == 'true'
+        env:
+          BASE_VERSION: ${{ steps.check_version.outputs.base_version }}
         run: |
           set -Eeuo pipefail
-
-          BASE_VERSION="${{ steps.check_version.outputs.base_version }}"
 
           # Parse version (e.g., 0.193.0 -> 0.193.1)
           IFS='.' read -ra VERSION_PARTS <<< "$BASE_VERSION"
