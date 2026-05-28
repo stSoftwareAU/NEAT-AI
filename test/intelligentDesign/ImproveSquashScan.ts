@@ -213,3 +213,107 @@ Deno.test("scanForSquashImprovements reports timedOut when task remains pending 
   // Let any scheduled timers complete so `--trace-leaks` stays happy.
   await new Promise((resolve) => setTimeout(resolve, 10));
 });
+
+Deno.test(
+  "scanForSquashImprovements early-returns without creating any worker when there are no hidden neurons (Issue #2783)",
+  async () => {
+    // Forward-only champion: zero hidden neurons.
+    const creature = new Creature(3, 2, { layers: [] });
+    const exported = creature.exportJSON();
+    normaliseCreatureExport(exported);
+    assertEquals(
+      exported.neurons.filter((n) => n.type === "hidden").length,
+      0,
+    );
+
+    let workerCreated = 0;
+    let scored = 0;
+    let terminated = 0;
+    const fakeWorker = {
+      score(): Promise<ResponseData> {
+        scored++;
+        return Promise.resolve({
+          taskID: 1,
+          duration: 1,
+        });
+      },
+      terminate() {
+        terminated++;
+      },
+    };
+
+    const result = await scanForSquashImprovements({
+      creature: exported,
+      targetSquash: "GELU",
+      outputDir: ".id-out",
+      dataDir: ".",
+      bestScore: 1.0,
+      cpuCount: 4,
+      createWorker: () => {
+        workerCreated++;
+        return fakeWorker;
+      },
+      alternativeSquashes: ["Swish"],
+      writeText: () => Promise.resolve(),
+      remove: () => Promise.resolve(),
+    });
+
+    // No worker should have been instantiated for a scan with nothing to do.
+    assertEquals(workerCreated, 0);
+    assertEquals(scored, 0);
+    assertEquals(terminated, 0);
+
+    // The scan reports a clean, empty no-op result.
+    assertEquals(result.tested, 0);
+    assertEquals(result.attempted, 0);
+    assertEquals(result.failed, 0);
+    assertEquals(result.improved, 0);
+    assertEquals(result.errors.length, 0);
+    assertEquals(result.improvements.size, 0);
+    assertEquals(result.timedOut, false);
+  },
+);
+
+Deno.test(
+  "scanForSquashImprovements early-returns when every hidden neuron already has the target squash (Issue #2783)",
+  async () => {
+    const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+    const exported = creature.exportJSON();
+    normaliseCreatureExport(exported);
+    // Force every hidden neuron to already have the target squash so the
+    // filter produces an empty list.
+    for (const n of exported.neurons) {
+      if (n.type === "hidden") {
+        n.squash = "GELU";
+      }
+    }
+
+    let workerCreated = 0;
+    const fakeWorker = {
+      score(): Promise<ResponseData> {
+        return Promise.resolve({ taskID: 1, duration: 1 });
+      },
+      terminate() {},
+    };
+
+    const result = await scanForSquashImprovements({
+      creature: exported,
+      targetSquash: "GELU",
+      outputDir: ".id-out",
+      dataDir: ".",
+      bestScore: 1.0,
+      cpuCount: 2,
+      createWorker: () => {
+        workerCreated++;
+        return fakeWorker;
+      },
+      alternativeSquashes: [],
+      writeText: () => Promise.resolve(),
+    });
+
+    assertEquals(workerCreated, 0);
+    assertEquals(result.improved, 0);
+    assertEquals(result.tested, 0);
+    assertEquals(result.timedOut, false);
+  },
+);

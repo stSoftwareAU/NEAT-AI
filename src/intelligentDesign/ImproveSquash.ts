@@ -283,6 +283,27 @@ export async function scanForSquashImprovements(
     (n: NeuronExport) => n.type === "hidden" && n.squash !== targetSquash,
   );
 
+  // Issue #2783: early-return when the filtered hidden-neuron list is empty,
+  // BEFORE constructing any worker. Forward-only champions (e.g. MNIST
+  // `784 -> 10` with zero hidden neurons) would otherwise spin up a worker
+  // pool, occasionally hit the WASM cold-cache init timeout, and emit a noisy
+  // stack trace for a scan that is a guaranteed no-op.
+  if (neuronList.length === 0) {
+    getLogger().info(
+      "Intelligent design skipped — no hidden neurons to scan for squash improvements",
+    );
+    return {
+      improvements: new Map<string, BestNeuronSquash>(),
+      tested: 0,
+      attempted: 0,
+      failed: 0,
+      errors: [],
+      improved: 0,
+      duration: Date.now() - start,
+      timedOut: false,
+    };
+  }
+
   shuffle(neuronList);
 
   const altSquashes = alternativeSquashesOverride ?? alternativeSquashes;
