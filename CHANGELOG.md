@@ -33,6 +33,21 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #2787 (depends on Issue #2786):** Cost-aware `evolveDir`
+  `targetError` early-stop and champion comparison. A new pure mapping helper
+  `costNameToTaskDescriptor()` (`src/costs/CostDescriptor.ts`) gives every
+  built-in cost a canonical descriptor (topology, range, output squash family),
+  and custom JS costs collapse to the sentinel `OTHER` + neutral descriptor —
+  the user's custom name is never echoed back. `evolveDir` /
+  `evolveDataSet` / `evolveRL` now route their `error <= targetError`
+  early-stop and `fittestScore > bestScore` champion comparison through
+  `shouldEarlyStop()` / `isBetterChampion()`
+  (`src/costs/CostAwareEarlyStop.ts`) so a `targetError` of `1.5` is
+  interpreted in the cost's natural range — clamped/rejected for unit-range
+  costs like `CATEGORICAL_ERROR`, applied directly for unbounded `MSE`/`MAE`,
+  and (regression guard) passed through verbatim for `OTHER`. This is the
+  caller-side counterpart to the Discovery cost-aware thresholds
+  (`stSoftwareAU/neat-ai-discovery#1320`).
 - **Issue #2736:** New `"CATEGORICAL_ERROR"` built-in cost function for
   multi-class one-hot targets. It reports the argmax misclassification rate
   (`error = 1 - accuracy`) so `evolveDir` `error`/`score`, champion selection
