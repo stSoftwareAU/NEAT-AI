@@ -9,6 +9,7 @@ import type { RustRecordBatchStats } from "@architecture/ErrorGuidedStructuralEv
 import type {
   CoordinatedStructuralCandidate,
 } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
+import type { TaskDescriptor } from "@costs/CostTaskDescriptor.ts";
 
 export interface DiscoverRecord {
   activation: number;
@@ -298,4 +299,11 @@ export interface DiscoverStructureOptions {
    * Primarily for testing and production tuning; defaults to ~50 MiB.
    */
   rustFlushBytesThreshold?: number;
+
+  /**
+   * Structural descriptor of the configured cost (Issue #2785), sent to
+   * Discovery on `recordDiscovery` and `analyzeParallel`. When omitted, the
+   * neutral `OTHER` descriptor is used.
+   */
+  taskDescriptor?: TaskDescriptor;
 }

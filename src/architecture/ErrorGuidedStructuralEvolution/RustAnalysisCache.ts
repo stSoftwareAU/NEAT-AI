@@ -17,6 +17,7 @@ import type {
 } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { creatureToRustFormat } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type { DiscoverStructureDeps } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import type { TaskDescriptor } from "@costs/CostTaskDescriptor.ts";
 import {
   buildRuntimeIdToWireMap,
   resolveRuntimeIdToWireUuid,
@@ -92,6 +93,12 @@ export function ensureRustCombinedAnalysis(
    * when the overall analysis deadline is far in the future.
    */
   chunkDeadlineMs?: number,
+  /**
+   * Structural descriptor of the configured cost (Issue #2785). Forwarded to
+   * Rust on `analyzeParallel`; defaults to the neutral `OTHER` descriptor when
+   * omitted so a custom cost's real name never leaks.
+   */
+  taskDescriptor?: TaskDescriptor,
 ): {
   result: RustAnalyzeAllResult | undefined;
   cache: CombinedAnalysisCache | undefined;
@@ -168,6 +175,7 @@ export function ensureRustCombinedAnalysis(
       : undefined,
     analysisDeadlineMs: effectiveDeadlineMs,
     focusNeuronErrorShares,
+    ...(taskDescriptor ? { taskDescriptor } : {}),
   };
 
   const parallelResult = deps.analyzeParallel(parallelInput);

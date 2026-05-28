@@ -56,6 +56,10 @@ import type {
   CandidateNeuron,
   CandidateSynapse,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
+import {
+  OTHER_TASK_DESCRIPTOR,
+  type TaskDescriptor,
+} from "@costs/CostTaskDescriptor.ts";
 
 export interface DiscoverStructureDeps {
   isRustDiscoveryEnabled: typeof isRustDiscoveryEnabled;
@@ -132,6 +136,13 @@ export class DiscoverStructureBase {
   protected disableCleanup = false;
   protected skipRecordPhase = false;
 
+  /**
+   * Structural descriptor of the configured cost (Issue #2785), forwarded to
+   * Discovery on both `recordDiscovery` and `analyzeParallel`. Defaults to the
+   * neutral `OTHER` descriptor when no cost is supplied.
+   */
+  protected taskDescriptor: TaskDescriptor = OTHER_TASK_DESCRIPTOR;
+
   protected discoveries: CandidateSynapse[] = [];
   protected neuronDiscoveries: CandidateNeuron[] = [];
 
@@ -183,6 +194,7 @@ export class DiscoverStructureBase {
     this.deps = { ...DEFAULT_DISCOVER_STRUCTURE_DEPS, ...deps };
     this.disableCleanup = options.disableCleanup ?? false;
     this.skipRecordPhase = options.skipRecordPhase ?? false;
+    this.taskDescriptor = options.taskDescriptor ?? OTHER_TASK_DESCRIPTOR;
 
     const nonInputNeuronCount =
       creature.neurons.filter((n) => n.type !== "input")

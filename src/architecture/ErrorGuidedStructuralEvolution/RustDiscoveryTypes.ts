@@ -5,6 +5,8 @@
  * Rust library via Deno's Foreign Function Interface.
  */
 
+import type { TaskDescriptor } from "@costs/CostTaskDescriptor.ts";
+
 /**
  * Result of recording discovery data via Rust module.
  */
@@ -238,6 +240,15 @@ export interface RustParallelAnalysisInput {
    * The Rust library v0.2.0 handles impact scaling internally.
    */
   focusNeuronErrorShares?: Record<string, number>;
+  /**
+   * Structural descriptor of the configured cost (Issue #2785). Built-in costs
+   * carry their canonical name; custom JS costs collapse to the neutral `OTHER`
+   * descriptor so the real custom name never leaves the process.
+   *
+   * Optional on the wire: an older Discovery build that ignores this field
+   * still works (backward compatible).
+   */
+  taskDescriptor?: TaskDescriptor;
 }
 
 /**
@@ -483,6 +494,15 @@ export interface RustRecordInput {
   "binary_file_path"?: string;
   "record_indices"?: number[];
   "timeout_seconds"?: number;
+  /**
+   * Structural descriptor of the configured cost (Issue #2785). Built-in costs
+   * carry their canonical name; custom JS costs collapse to the neutral `OTHER`
+   * descriptor so the real custom name never leaves the process.
+   *
+   * Optional on the wire: an older Discovery build that ignores this field
+   * still works (backward compatible).
+   */
+  taskDescriptor?: TaskDescriptor;
 }
 
 /**

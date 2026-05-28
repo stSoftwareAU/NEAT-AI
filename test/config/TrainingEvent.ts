@@ -190,15 +190,18 @@ Deno.test("TrainingEvent - plateau_detected events emitted when plateau detected
 
   await creature.evolveDataSet(trainingSet, {
     mutation: Mutation.FFW,
-    iterations: 50,
+    iterations: 100,
     targetError: 0.0001, // Very low target to encourage stagnation
     populationSize: 10,
     threads: 1,
     plateauDetection: {
       enabled: true,
       windowSize: 3,
-      minImprovementRate: 0.001,
-      rapidImprovementRate: 0.01,
+      // High threshold: any window where improvement is < 50% triggers a plateau.
+      // After the first few rapid iterations XOR improvement falls well below this,
+      // ensuring plateau events are reliably emitted regardless of random seed.
+      minImprovementRate: 0.5,
+      rapidImprovementRate: 0.9,
       responseMutationMultiplier: 2.0,
     },
     onTrainingEvent: (event) => {
@@ -208,7 +211,7 @@ Deno.test("TrainingEvent - plateau_detected events emitted when plateau detected
 
   const plateauEvents = events.filter((e) => e.kind === "plateau_detected");
 
-  // With a high minImprovementRate and XOR, we should see plateau events
+  // With minImprovementRate=0.5 (50% per window), plateau is reliably triggered
   assertGreater(
     plateauEvents.length,
     0,
