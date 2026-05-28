@@ -20,6 +20,7 @@ import {
   type DiscoverStructureOptions,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { costNameToTaskDescriptor } from "@costs/CostTaskDescriptor.ts";
 import { PhaseDiagnostics } from "@architecture/ErrorGuidedStructuralEvolution/PhaseDiagnostics.ts";
 import {
   DiscoveryPerformanceStats,
@@ -148,12 +149,16 @@ class DataRecorder {
     this.rustFlushRecords = config.discoveryRustFlushRecords;
     this.discoverDeps = deps;
 
-    // Build options for DiscoverStructure (debugging/testing features)
+    // Build options for DiscoverStructure (debugging/testing features).
+    // Issue #2785: map the configured cost name to its structural descriptor
+    // so Discovery receives it on recordDiscovery + analyzeParallel. Custom JS
+    // costs collapse to the neutral OTHER descriptor inside the mapping helper.
     this.discoverStructureOptions = {
       baseDirectory: config.discoveryBaseDirectory,
       disableCleanup: config.discoveryDisableCleanup,
       skipRecordPhase: config.discoverySkipRecordPhase,
       rustFlushBytesThreshold: config.discoveryRustFlushBytes,
+      taskDescriptor: costNameToTaskDescriptor(config.costName),
     };
   }
 

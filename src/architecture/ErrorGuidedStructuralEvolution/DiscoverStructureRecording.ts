@@ -312,6 +312,7 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
       "binary_file_path": this.rustBinaryFilePath || undefined,
       "record_indices": recordIndicesLocal,
       "timeout_seconds": timeoutSeconds,
+      taskDescriptor: this.taskDescriptor,
     };
 
     const result = this.deps.recordDiscovery(rustInput);

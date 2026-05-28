@@ -235,6 +235,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       includeNeuron,
       (scope, fl, reason) => this.logRustAnalysisUnavailable(scope, fl, reason),
       chunkDeadlineMs,
+      this.taskDescriptor,
     );
     this.combinedRustAnalysis = result.cache;
     return result.result;
