@@ -209,6 +209,28 @@ export type { CostInterface } from "@costs/CostInterface.ts";
 export { Costs } from "@costs";
 
 /**
+ * Cost → TaskDescriptor mapping helper
+ *
+ * Pure helper that maps a configured cost name to the structural descriptor
+ * sent to Discovery. Built-in costs map to their canonical descriptor; custom
+ * costs collapse to the `OTHER` sentinel without leaking their real name.
+ *
+ * @see {@link module:src/costs/CostTaskDescriptor}
+ */
+export {
+  costNameToTaskDescriptor,
+  OTHER_COST_NAME,
+  OTHER_TASK_DESCRIPTOR,
+} from "@costs/CostTaskDescriptor.ts";
+export type {
+  CostRange,
+  CostTopology,
+  DescriptorCostName,
+  OutputSquashFamily,
+  TaskDescriptor,
+} from "@costs/CostTaskDescriptor.ts";
+
+/**
  * Selection Class
  *
  * This class handles the selection process within the NEAT algorithm, responsible for selecting the fittest individuals for reproduction.
