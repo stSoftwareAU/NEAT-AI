@@ -44,8 +44,8 @@ flowchart LR
     Anl --> Rust
 ```
 
-Custom cost path: any unrecognised name → `OTHER` + neutral descriptor before
-it ever reaches `Rec`/`Anl`, so the real custom name is never serialised.
+Custom cost path: any unrecognised name → `OTHER` + neutral descriptor before it
+ever reaches `Rec`/`Anl`, so the real custom name is never serialised.
 
 ## Test Plan
 
@@ -54,8 +54,8 @@ Added `test/ErrorGuidedStructuralEvolution/DiscoveryTaskDescriptor.ts`:
 - `recordDiscovery` carries the configured built-in descriptor (canonical name).
 - `recordDiscovery` defaults to the neutral `OTHER` descriptor when no cost is
   configured.
-- `analyzeParallel` carries the configured descriptor through the full
-  record → merge → analyse path.
+- `analyzeParallel` carries the configured descriptor through the full record →
+  merge → analyse path.
 - `ensureRustCombinedAnalysis` never leaks a custom cost name — sends `OTHER`,
   and the raw custom name is absent from the serialised payload.
 - `analyzeParallel` omits the descriptor field when none is supplied (backward
