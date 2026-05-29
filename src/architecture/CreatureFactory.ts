@@ -64,7 +64,7 @@ export interface ProblemSpec {
   /** Number of output neurons. */
   outputs: number;
   /**
-   * Cost / task name (e.g. `"MSE"`, `"CROSS_ENTROPY"`, `"CATEGORICAL_ERROR"`,
+   * Cost / task name (e.g. `"MSE"`, `"CROSS_ENTROPY"`,
    * `"BINARY_CROSS_ENTROPY"`, `"HINGE"`). When omitted, the factory falls
    * back to the regression defaults (linear output, no bias).
    */

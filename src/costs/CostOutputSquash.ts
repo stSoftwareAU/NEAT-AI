@@ -7,7 +7,7 @@
  * loss can train at all: cross-entropy against a one-hot target needs a
  * bounded `(0, 1)` output, hinge loss needs a bounded `(-1, 1)` margin, and
  * so on. A misaligned random output is a large part of why a fresh
- * `new Creature(784, 10)` trained against CATEGORICAL_ERROR / CROSS_ENTROPY
+ * `new Creature(784, 10)` trained against CROSS_ENTROPY
  * stalls far below the linear-softmax baseline.
  *
  * This helper centralises the pairing so the constructor (and any other
@@ -21,8 +21,6 @@
  * |------------------------|---------|---------------|
  * | CROSS_ENTROPY          | ≥ 2     | SOFTMAX       |
  * | CROSS_ENTROPY          | 1       | LOGISTIC      |
- * | CATEGORICAL_ERROR      | ≥ 2     | SOFTMAX       |
- * | CATEGORICAL_ERROR      | 1       | LOGISTIC      |
  * | BINARY_CROSS_ENTROPY   | any ≥ 1 | LOGISTIC      |
  * | HINGE                  | any ≥ 1 | TANH          |
  * | MSE / MAE / MAPE / MSLE| any     | undefined     |
@@ -55,7 +53,6 @@ export function pickOutputSquashForCost(
 
   switch (costName) {
     case "CROSS_ENTROPY":
-    case "CATEGORICAL_ERROR":
       // A genuine multi-class classifier needs ≥ 2 mutually exclusive
       // classes for softmax to mean anything. Degenerate single-output
       // cases collapse to a Bernoulli probability — use LOGISTIC.

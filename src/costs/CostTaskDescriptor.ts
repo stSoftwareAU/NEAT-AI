@@ -150,12 +150,6 @@ const BUILT_IN_DESCRIPTORS: ReadonlyMap<string, TaskDescriptor> = new Map(
       range: "signed_unit",
       outputSquashFamily: "bounded_bipolar",
     },
-    {
-      costName: "CATEGORICAL_ERROR",
-      topology: "one_hot",
-      range: "unit",
-      outputSquashFamily: "bounded_unipolar",
-    },
   ] satisfies TaskDescriptor[]).map((
     descriptor,
   ) => [descriptor.costName, Object.freeze(descriptor)] as const),

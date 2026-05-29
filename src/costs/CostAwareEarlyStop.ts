@@ -3,13 +3,13 @@
  * `evolveDir` (Issue #2787).
  *
  * Before this module: `error <= targetError` was applied on a fixed scale
- * regardless of cost. A `0.1` `CATEGORICAL_ERROR` (≈90% accuracy) and a
- * `0.1` `MSE` (an unbounded regression metric) were stopped at the same
- * threshold — mis-calibrated.
+ * regardless of cost. A `0.1` `CROSS_ENTROPY` (a unit-range classification
+ * metric) and a `0.1` `MSE` (an unbounded regression metric) were stopped at
+ * the same threshold — mis-calibrated.
  *
  * After this module: the threshold is interpreted in the cost's natural
  * range using the descriptor from {@link costNameToTaskDescriptor}.
- * Unit-range costs (CATEGORICAL_ERROR, CROSS_ENTROPY, BINARY_CROSS_ENTROPY)
+ * Unit-range costs (CROSS_ENTROPY, BINARY_CROSS_ENTROPY)
  * clamp the threshold into `[0, 1]`. Positive-range costs (MAPE, MSLE)
  * floor it at `0`. Unbounded costs (MSE, MAE) accept any threshold.
  *
@@ -57,7 +57,7 @@ export function calibrateTargetError(
  * `error <= targetError`.
  *
  * For built-in costs, an out-of-range threshold (e.g. `targetError = 1.5`
- * for the unit-range `CATEGORICAL_ERROR`) is treated as "no early-stop on
+ * for the unit-range `CROSS_ENTROPY`) is treated as "no early-stop on
  * this criterion" — the run defers to `iterations` / `timeoutMinutes`. A
  * fat-fingered threshold should not silently halt the run on the very
  * first generation.
@@ -91,8 +91,7 @@ export function shouldEarlyStop(
  * cost (matches the legacy behaviour today) and NaN-safe: a NaN candidate
  * never wins, and any finite candidate beats a NaN incumbent. Routing
  * champion comparison through this helper gives future cost-specific
- * tie-breaks (e.g. continuous companion CE for CATEGORICAL_ERROR) a single
- * seam to extend without further touching `evolveDir`.
+ * tie-breaks a single seam to extend without further touching `evolveDir`.
  */
 export function isBetterChampion(
   candidateScore: number,

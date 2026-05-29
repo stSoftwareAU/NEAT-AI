@@ -20,7 +20,7 @@ Deno.test("resolveDefaultTrainPerGen - scales with population for supervised cos
   // 100 * 0.2 = 20
   assertEquals(resolveDefaultTrainPerGen(100, "CROSS_ENTROPY"), 20);
   // 30 * 0.2 = 6
-  assertEquals(resolveDefaultTrainPerGen(30, "CATEGORICAL_ERROR"), 6);
+  assertEquals(resolveDefaultTrainPerGen(30, "HINGE"), 6);
 });
 
 Deno.test("resolveDefaultTrainPerGen - never below 1 for tiny supervised populations", () => {

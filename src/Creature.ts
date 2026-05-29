@@ -85,7 +85,7 @@ interface CreatureOptions {
   /**
    * Optional cost name (Issue #2793). When provided, the output layer
    * activation defaults to the natural pairing for that cost (e.g.
-   * SOFTMAX for CROSS_ENTROPY/CATEGORICAL_ERROR with ≥ 2 outputs,
+   * SOFTMAX for CROSS_ENTROPY with ≥ 2 outputs,
    * LOGISTIC for BINARY_CROSS_ENTROPY, TANH for HINGE). An explicit
    * `outputLayer.squash` always overrides this default. Regression
    * costs (MSE/MAE/…) leave the existing random-per-output behaviour

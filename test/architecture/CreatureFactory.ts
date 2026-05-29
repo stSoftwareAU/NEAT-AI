@@ -45,12 +45,12 @@ Deno.test("pickOutputSquashForProblem: CROSS_ENTROPY + multi-class → SOFTMAX",
   );
 });
 
-Deno.test("pickOutputSquashForProblem: CATEGORICAL_ERROR + multi-class → SOFTMAX", () => {
+Deno.test("pickOutputSquashForProblem: CROSS_ENTROPY + high-dim multi-class → SOFTMAX", () => {
   assertEquals(
     pickOutputSquashForProblem({
       inputs: 784,
       outputs: 10,
-      cost: "CATEGORICAL_ERROR",
+      cost: "CROSS_ENTROPY",
     }),
     "SOFTMAX",
   );
@@ -366,7 +366,7 @@ Deno.test("creatureForDataset: classification output bias is NOT overridden", ()
       output: new Float32Array([0, 0, 1]),
     },
   ];
-  const creature = creatureForDataset(records, { cost: "CATEGORICAL_ERROR" });
+  const creature = creatureForDataset(records, { cost: "CROSS_ENTROPY" });
   for (const neuron of creature.neurons) {
     if (neuron.type === "output") {
       assertEquals(neuron.squash, "SOFTMAX");

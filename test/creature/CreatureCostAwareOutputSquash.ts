@@ -15,20 +15,20 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 
-Deno.test("Creature(784, 10, { costName: CATEGORICAL_ERROR }) wires every output to SOFTMAX", () => {
-  const creature = new Creature(784, 10, { costName: "CATEGORICAL_ERROR" });
+Deno.test("Creature(784, 10, { costName: CROSS_ENTROPY }) wires every output to SOFTMAX", () => {
+  const creature = new Creature(784, 10, { costName: "CROSS_ENTROPY" });
   const outputs = creature.neurons.filter((n) => n.type === "output");
   assertEquals(outputs.length, 10);
   for (const neuron of outputs) {
     assertEquals(
       neuron.squash,
       "SOFTMAX",
-      "every output neuron must use SOFTMAX for a multi-class one-hot cost",
+      "every output neuron must use SOFTMAX for a multi-class cost",
     );
   }
 });
 
-Deno.test("Creature(N, 10, { costName: CROSS_ENTROPY }) wires every output to SOFTMAX", () => {
+Deno.test("Creature(N, 10, { costName: CROSS_ENTROPY }) wires every output to SOFTMAX (small input arity)", () => {
   const creature = new Creature(4, 10, { costName: "CROSS_ENTROPY" });
   for (const neuron of creature.neurons) {
     if (neuron.type === "output") assertEquals(neuron.squash, "SOFTMAX");

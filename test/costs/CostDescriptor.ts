@@ -75,13 +75,6 @@ Deno.test("costNameToTaskDescriptor - HINGE maps to margin / signed_unit / bound
   assertEquals(descriptor.outputSquashFamily, "bounded_bipolar");
 });
 
-Deno.test("costNameToTaskDescriptor - CATEGORICAL_ERROR maps to one_hot / unit / bounded_unipolar", () => {
-  const descriptor = costNameToTaskDescriptor("CATEGORICAL_ERROR");
-  assertEquals(descriptor.topology, "one_hot");
-  assertEquals(descriptor.range, "unit");
-  assertEquals(descriptor.outputSquashFamily, "bounded_unipolar");
-});
-
 Deno.test("costNameToTaskDescriptor - unknown/custom cost maps to OTHER + neutral descriptor", () => {
   const descriptor = costNameToTaskDescriptor("MY_USER_DEFINED_COST");
   assertEquals(descriptor.costName, "OTHER");
@@ -119,7 +112,6 @@ Deno.test("costNameToTaskDescriptor - every built-in maps to a non-OTHER descrip
 
 Deno.test("isCostAware - built-ins are cost-aware; OTHER is not", () => {
   assertEquals(isCostAware("MSE"), true);
-  assertEquals(isCostAware("CATEGORICAL_ERROR"), true);
   assertEquals(isCostAware("CROSS_ENTROPY"), true);
   assertEquals(isCostAware("HINGE"), true);
   // Custom JS cost — must fall back to current ("OTHER") behaviour.
