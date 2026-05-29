@@ -45,6 +45,7 @@ import {
   computeOverallCpuUtilisation,
 } from "@neat/CpuUtilisation.ts";
 import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
+import { selectTrainingCandidates } from "@neat/TrainingCandidates.ts";
 
 /**
  * The result returned by a single call to `evolve()`.
@@ -350,17 +351,19 @@ export async function evolve(
   }
 
   if (trainingTimeOutMinutes !== -1) {
-    for (
-      let i = 0;
-      i < results.elitists.length;
-      i++
-    ) {
-      const n = results.elitists[i];
-
+    // Issue #2791: schedule per-generation backprop for the top `trainPerGen`
+    // creatures of the (already score-sorted) population, not just the
+    // elitist slice. With the default `elitism` of 1 the previous loop could
+    // only ever train a single creature per generation regardless of
+    // `trainPerGen`, starving supervised gradient descent.
+    const trainingCandidates = selectTrainingCandidates(
+      neat.population,
+      neat.config.trainPerGen,
+    );
+    for (const n of trainingCandidates) {
       if (
         neat.doNotStartMore === false &&
-        neat.trainingInProgress.size < neat.config.trainPerGen &&
-        Number.isFinite(n.score)
+        neat.trainingInProgress.size < neat.config.trainPerGen
       ) {
         neat.scheduleTraining(
           n,

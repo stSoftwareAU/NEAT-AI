@@ -17,6 +17,7 @@ import { Mutation } from "@neat/Mutation.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import type { NeatArguments } from "@config/NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "@config/ParseOptions.ts";
+import { resolveDefaultTrainPerGen } from "@config/TrainPerGen.ts";
 import {
   createConsoleLogger,
   getLogger,
@@ -239,6 +240,16 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     { integer: true, min: 2 },
   );
 
+  // Issue #2791: the default `trainPerGen` scales with the population for
+  // supervised costs so gradient descent is not starved (one creature per
+  // generation). Custom / evolution-only costs keep the conservative default
+  // of 1. Explicit `opts.trainPerGen` always wins via `parseNumber` below.
+  const costName = options.costName ?? "MSE";
+  const defaultTrainPerGen = resolveDefaultTrainPerGen(
+    populationSize,
+    costName,
+  );
+
   // Issue #2492: Resolve the DNA-sharing knob preset before parsing the
   // five inter-island knobs so the preset can supply mode-aware defaults.
   // Explicit user values still win over the preset default — `parseNumber`
@@ -258,7 +269,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     creatureStore: options.creatureStore,
     experimentStore: options.experimentStore,
     creatures: options.creatures ? options.creatures : [],
-    costName: options.costName ?? "MSE",
+    costName,
     dataSetPartitionBreak: parseNumber(
       "Data Set Partition Break",
       opts.dataSetPartitionBreak,
@@ -337,10 +348,15 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       min: 0,
     }),
     traceStore: options.traceStore,
-    trainPerGen: parseNumber("Training per generation", opts.trainPerGen, 1, {
-      integer: true,
-      min: 0,
-    }),
+    trainPerGen: parseNumber(
+      "Training per generation",
+      opts.trainPerGen,
+      defaultTrainPerGen,
+      {
+        integer: true,
+        min: 0,
+      },
+    ),
 
     log: parseNumber("Log", opts.log, options.verbose ? 1 : 0, {
       integer: true,

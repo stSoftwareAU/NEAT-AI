@@ -36,6 +36,7 @@ import { compactCreature } from "@compact/CompactCreature.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import { Activations } from "@methods/activations/Activations.ts";
+import { pickOutputSquashForCost } from "@costs/CostOutputSquash.ts";
 import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import type { SparseConfigLike } from "@propagate/sparse/SparseConfigLike.ts";
@@ -47,6 +48,7 @@ import { rejectRecurrentSynapseIfForwardOnlyCreature } from "@architecture/Forwa
 import { TypedTopology } from "@architecture/TypedTopology.ts";
 
 // Extracted modules
+import * as creatureFactory from "@architecture/CreatureFactory.ts";
 import * as activation from "@creature/CreatureActivation.ts";
 import * as topology from "@creature/CreatureTopology.ts";
 import type { TopologyCaches } from "@creature/CreatureTopology.ts";
@@ -80,6 +82,16 @@ interface CreatureOptions {
   outputLayer?: {
     squash?: string;
   };
+  /**
+   * Optional cost name (Issue #2793). When provided, the output layer
+   * activation defaults to the natural pairing for that cost (e.g.
+   * SOFTMAX for CROSS_ENTROPY/CATEGORICAL_ERROR with ≥ 2 outputs,
+   * LOGISTIC for BINARY_CROSS_ENTROPY, TANH for HINGE). An explicit
+   * `outputLayer.squash` always overrides this default. Regression
+   * costs (MSE/MAE/…) leave the existing random-per-output behaviour
+   * unchanged.
+   */
+  costName?: string;
 }
 
 /**
@@ -383,8 +395,17 @@ export class Creature implements CreatureInternal {
   private initialize(options: {
     layers?: { squash?: string; count: number }[];
     outputLayer?: { squash?: string };
+    costName?: string;
   }) {
     let fixNeeded = false;
+    // Issue #2793: Default the output squash from the configured cost when
+    // the caller has not specified one explicitly. SOFTMAX/LOGISTIC/TANH
+    // pair naturally with classification / margin losses; regression
+    // costs return undefined and the historical random-per-output path
+    // below is preserved.
+    const costDefaultOutputSquash = options.outputLayer?.squash
+      ? undefined
+      : pickOutputSquashForCost(options.costName, this.output);
     for (let i = this.input; i--;) {
       const type = "input";
       const neuron = new Neuron(
@@ -440,6 +461,9 @@ export class Creature implements CreatureInternal {
         let squash = Activations.pickRandomSquash();
         if (options.outputLayer?.squash) {
           squash = options.outputLayer.squash;
+        } else if (costDefaultOutputSquash) {
+          // Issue #2793: cost-aware output activation default.
+          squash = costDefaultOutputSquash;
         } else {
           fixNeeded = true;
         }
@@ -462,16 +486,23 @@ export class Creature implements CreatureInternal {
     } else {
       for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
+        // Issue #2793: prefer the cost-aware default if the caller has
+        // declared `costName` and not overridden the output squash; fall
+        // back to the historical random-per-output behaviour otherwise.
+        const squash = costDefaultOutputSquash ??
+          Activations.pickRandomSquash();
         const neuron = new Neuron(
           outputNeuronId(indx),
           type,
           getRandomNumberGenerator().random() * 0.2 - 0.1,
           this,
-          Activations.pickRandomSquash(),
+          squash,
         );
         neuron.index = this.neurons.length;
         this.neurons.push(neuron);
-        fixNeeded = true;
+        if (!costDefaultOutputSquash) {
+          fixNeeded = true;
+        }
       }
 
       for (let i = 0; i < this.input; i++) {
@@ -1175,6 +1206,31 @@ export class Creature implements CreatureInternal {
     creature.fix({ forwardOnly: creature.forwardOnly });
     creatureValidate(creature, { forwardOnly: creature.forwardOnly });
     return creature;
+  }
+
+  /**
+   * Build a smarter initial creature from problem metadata
+   * (Issue #2794). Thin forwarder to {@link creatureForProblem} in
+   * `@architecture/CreatureFactory.ts`; see that module for the
+   * heuristics applied.
+   *
+   * Cycle-safety: {@link creatureFactory} only references the Creature
+   * class from inside function bodies, so the static import below resolves
+   * fine under ES-module live bindings.
+   */
+  static forProblem(spec: creatureFactory.ProblemSpec): Creature {
+    return creatureFactory.creatureForProblem(spec);
+  }
+
+  /**
+   * Build a smarter initial creature from a training set
+   * (Issue #2794). Thin forwarder to {@link creatureForDataset}.
+   */
+  static forDataset(
+    records: readonly DataRecordInterface[],
+    options?: creatureFactory.DatasetFactoryOptions,
+  ): Creature {
+    return creatureFactory.creatureForDataset(records, options);
   }
 
   shallowClone(): Creature {
