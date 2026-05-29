@@ -10,7 +10,9 @@ dedicated nested configs (`dataFuzzing`, `crossValidation`).
 import { createNeatConfig } from "@anthropic/neat-ai";
 
 const config = createNeatConfig({
-  trainPerGen: 1,
+  // Omit trainPerGen to auto-scale with the population for supervised costs
+  // (default 10 for a population of 50); set explicitly to tune throughput.
+  trainPerGen: 10,
   trainingBatchSize: 100,
   trainingSampleRate: 1,
   syntheticSynapses: false,
@@ -19,24 +21,58 @@ const config = createNeatConfig({
 
 ## 📊 Quick reference
 
-| Option                         | Type      | Default | Description                                               |
-| ------------------------------ | --------- | ------- | --------------------------------------------------------- |
-| `trainPerGen`                  | `integer` | `1`     | Training sessions per generation (min: 0)                 |
-| `trainingBatchSize`            | `integer` | `100`   | Observations per training batch (min: 1)                  |
-| `trainingSampleRate`           | `number`  | `1`     | Fraction of data used for training (0.0001–1)             |
-| `dataSetPartitionBreak`        | `integer` | `2000`  | Records per dataset file (min: 1)                         |
-| `syntheticSynapses`            | `boolean` | `false` | Generate dense inter-layer synapses before backprop       |
-| `maximumBiasAdjustmentScale`   | `number`  | `1`     | Maximum bias adjustment per training iteration (min: 0)   |
-| `maximumWeightAdjustmentScale` | `number`  | `1`     | Maximum weight adjustment per training iteration (min: 0) |
+| Option                         | Type      | Default                    | Description                                               |
+| ------------------------------ | --------- | -------------------------- | --------------------------------------------------------- |
+| `trainPerGen`                  | `integer` | _auto_ (20% of population) | Creatures trained per generation (min: 0)                 |
+| `trainingBatchSize`            | `integer` | `100`                      | Observations per training batch (min: 1)                  |
+| `trainingSampleRate`           | `number`  | `1`                        | Fraction of data used for training (0.0001–1)             |
+| `dataSetPartitionBreak`        | `integer` | `2000`                     | Records per dataset file (min: 1)                         |
+| `syntheticSynapses`            | `boolean` | `false`                    | Generate dense inter-layer synapses before backprop       |
+| `maximumBiasAdjustmentScale`   | `number`  | `1`                        | Maximum bias adjustment per training iteration (min: 0)   |
+| `maximumWeightAdjustmentScale` | `number`  | `1`                        | Maximum weight adjustment per training iteration (min: 0) |
 
 ## 🔁 Backpropagation cadence
 
 ### `trainPerGen`
 
-**Default: 1** | Type: integer | Min: 0
+**Default: auto — `max(1, round(populationSize × 0.2))` for supervised costs;
+`1` for custom/unrecognised costs** | Type: integer | Min: 0
 
-Number of training sessions applied per generation. Set to `0` to disable
-backpropagation entirely and rely solely on evolutionary selection.
+`trainPerGen` is **the primary throughput knob for supervised learning**. Each
+generation, the fittest `trainPerGen` creatures of the (score-sorted) population
+receive a backpropagation (gradient-descent) step; the rest rely on evolutionary
+weight mutation alone.
+
+> [!IMPORTANT]
+> With a small `trainPerGen` only a handful of creatures get any gradient step
+> per generation, so high-dimensional supervised tasks (image classification,
+> regression with many inputs) converge slowly. NEAT-AI therefore **scales the
+> default with the population** (Issue #2791): for the default population of 50
+> the default `trainPerGen` is `10`, giving 20% gradient coverage per generation
+> rather than the previous ~2% (a single creature).
+
+**How the default is chosen**
+
+- **Recognised built-in supervised costs** (`MSE`, `MAE`, `MAPE`, `MSLE`,
+  `CROSS_ENTROPY`, `CATEGORICAL_ERROR`, `HINGE`) scale with the population:
+  `max(1, round(populationSize × 0.2))`.
+- **Custom or unrecognised costs** keep the conservative default of `1`, so
+  evolution-only tasks are unchanged.
+
+**Choosing a value for supervised tasks**
+
+- Start with the auto-scaled default. Raise `trainPerGen` (towards the
+  population size) when convergence is slow and you have spare worker capacity;
+  lower it to free workers for breeding/discovery.
+- Pair `trainPerGen` with enough training `iterations` so evolution has time to
+  apply many gradient steps — a single generation with one creature trained is
+  rarely enough for a high-dimensional task.
+- Set `trainPerGen: 0` to disable backpropagation entirely and rely solely on
+  evolutionary selection (pure evolution / reinforcement-learning tasks).
+
+`trainPerGen` is capped at the population size and is never scheduled for more
+creatures than there are idle training workers, so an over-large value simply
+trains as many creatures as capacity allows.
 
 ### `trainingBatchSize`
 

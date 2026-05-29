@@ -211,14 +211,14 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 
 #### 🎓 Training Fields
 
-| Field                          | Type     | Default           | Description                                |
-| ------------------------------ | -------- | ----------------- | ------------------------------------------ |
-| `trainPerGen`                  | `number` | `1`               | Backpropagation iterations per generation  |
-| `trainingBatchSize`            | `number` | `100`             | Samples per training batch                 |
-| `trainingSampleRate`           | `number` | `1.0`             | Fraction of data used per training pass    |
-| `maximumBiasAdjustmentScale`   | `number` | `1`               | Max bias change per backpropagation step   |
-| `maximumWeightAdjustmentScale` | `number` | `1`               | Max weight change per backpropagation step |
-| `sparseRatio`                  | `number` | `random * random` | Neuron selection ratio for sparse updates  |
+| Field                          | Type     | Default                                | Description                                |
+| ------------------------------ | -------- | -------------------------------------- | ------------------------------------------ |
+| `trainPerGen`                  | `number` | _auto_ (20% of population, supervised) | Creatures trained per generation           |
+| `trainingBatchSize`            | `number` | `100`                                  | Samples per training batch                 |
+| `trainingSampleRate`           | `number` | `1.0`                                  | Fraction of data used per training pass    |
+| `maximumBiasAdjustmentScale`   | `number` | `1`                                    | Max bias change per backpropagation step   |
+| `maximumWeightAdjustmentScale` | `number` | `1`                                    | Max weight change per backpropagation step |
+| `sparseRatio`                  | `number` | `random * random`                      | Neuron selection ratio for sparse updates  |
 
 #### 🔒 Network Constraints
 

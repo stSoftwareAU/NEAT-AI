@@ -23,6 +23,7 @@ import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolutio
 import { calculate as calculateScore } from "@architecture/Score.ts";
 import { dataFiles } from "@architecture/Training.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
+import { EVOLUTION_ONLY_TRAIN_PER_GEN } from "@config/TrainPerGen.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Costs } from "@costs";
 import {
@@ -681,7 +682,15 @@ export async function evolveEnv<S, A>(
   options.signal?.addEventListener("abort", abortListener);
 
   const start = Date.now();
-  const config = createNeatConfig(options);
+  // Issue #2791: reinforcement learning is an evolution-only task with no
+  // labelled dataset, so the supervised auto-scaling of `trainPerGen` does not
+  // apply. Preserve the historical default of 1 (per-generation backprop is a
+  // no-op without a dataset) unless the caller sets `trainPerGen` explicitly.
+  const config = createNeatConfig(
+    options.trainPerGen === undefined
+      ? { ...options, trainPerGen: EVOLUTION_ONLY_TRAIN_PER_GEN }
+      : options,
+  );
 
   setMaxCachedWasmCreatureActivations(config.wasmCache.maxCachedActivations);
   setWasmCompilationCacheSize(config.wasmCache.compilationCacheSize);
@@ -1024,7 +1033,15 @@ export async function evolveRL<S, A>(
   options.signal?.addEventListener("abort", abortListener);
 
   const start = Date.now();
-  const config = createNeatConfig(options);
+  // Issue #2791: reinforcement learning is an evolution-only task with no
+  // labelled dataset, so the supervised auto-scaling of `trainPerGen` does not
+  // apply. Preserve the historical default of 1 (per-generation backprop is a
+  // no-op without a dataset) unless the caller sets `trainPerGen` explicitly.
+  const config = createNeatConfig(
+    options.trainPerGen === undefined
+      ? { ...options, trainPerGen: EVOLUTION_ONLY_TRAIN_PER_GEN }
+      : options,
+  );
 
   setMaxCachedWasmCreatureActivations(config.wasmCache.maxCachedActivations);
   setWasmCompilationCacheSize(config.wasmCache.compilationCacheSize);

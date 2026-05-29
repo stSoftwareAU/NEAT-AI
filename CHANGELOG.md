@@ -14,6 +14,26 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Issue #2791:** `trainPerGen` now auto-scales with the population for
+  supervised costs so per-genome gradient training is no longer starved.
+  Previously the default was `1`: with the default population of 50 only a
+  single creature per generation received any backpropagation step (~2%
+  coverage), leaving the rest to rely on slow random weight mutation. The
+  default is now `max(1, round(populationSize × 0.2))` for recognised built-in
+  supervised costs (`MSE`, `MAE`, `MAPE`, `MSLE`, `CROSS_ENTROPY`,
+  `CATEGORICAL_ERROR`, `HINGE`) — `10` for a population of 50 — while custom /
+  unrecognised costs keep the conservative default of `1`, so evolution-only
+  tasks are unchanged. The per-generation training loop also now selects the
+  fittest `trainPerGen` creatures from the score-sorted population
+  (`selectTrainingCandidates`) instead of only the elitist slice, so raising
+  `trainPerGen` above `elitism` actually increases gradient coverage. Explicit
+  `trainPerGen` values (including `0` for pure evolution) always win. A new
+  convergence benchmark (`bench/TrainPerGenConvergence.ts`) shows ~31% lower
+  best error after 30 generations at `trainPerGen=10` versus `trainPerGen=1` on
+  a supervised task.
+
 ### Fixed
 
 - **Issue #2746:** Incompatible (graft) crossover no longer corrupts
