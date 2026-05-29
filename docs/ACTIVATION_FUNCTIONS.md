@@ -130,6 +130,38 @@ with existing trained models.
 | [HYPOTv2](../src/deprecated/HYPOTv2.ts) | [0, inf)     | Standard activation + bias | Same issues as HYPOT                                |
 | [MEAN](../src/deprecated/MEAN.ts)       | (-inf, inf)  | Normal neuron with weights | A standard neuron can replicate averaging behaviour |
 
+### 🧮 Output-Only Activations (Issue #2793)
+
+Some activations only make sense on the **output layer** paired with a specific
+loss. They are registered with `mutationProbability = 0` so they are never
+chosen randomly for hidden neurons; the caller opts in via the `costName` option
+(see [Cost coupling](#-cost-coupling-issue-2793)) or by passing
+`outputLayer.squash` explicitly.
+
+| Name                                                   | Output Range | Pair with                         | Summary                                                                                                                                                                                                                                                                                                                           |
+| :----------------------------------------------------- | :----------- | :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [SOFTMAX](../src/methods/activations/types/SOFTMAX.ts) | (0, 1)       | CROSS_ENTROPY / CATEGORICAL_ERROR | Multi-class probability head. Per-neuron `squash(x)` is a logistic surrogate that the WASM forward pass treats as LOGISTIC; the project-canonical vector normalisation lives in `softmaxNormalise()` for true probability outputs. `calculateError()` returns the cross-entropy-form gradient with no sigmoid-derivative scaling. |
+
+#### 🧷 Cost coupling (Issue #2793)
+
+When constructing a creature with a known cost, pass `costName` so the output
+activation defaults to the natural pairing:
+
+```typescript
+// Multi-class classifier — outputs auto-wired to SOFTMAX
+const classifier = new Creature(784, 10, { costName: "CATEGORICAL_ERROR" });
+
+// Binary probability head — outputs auto-wired to LOGISTIC
+const detector = new Creature(64, 1, { costName: "BINARY_CROSS_ENTROPY" });
+
+// Margin classifier — outputs auto-wired to TANH
+const svm = new Creature(8, 3, { costName: "HINGE" });
+```
+
+Regression costs (`MSE`, `MAE`, `MAPE`, `MSLE`) and unknown / custom costs leave
+the historical random-per-output behaviour unchanged. An explicit
+`outputLayer.squash` always wins over the cost-aware default.
+
 All three deprecated squashes still load and activate correctly so legacy models
 keep working — they are just excluded from the mutation pool. New training runs
 will never select them. See [`src/deprecated/`](../src/deprecated/) for the

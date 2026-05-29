@@ -30,6 +30,7 @@ import { ReLU } from "@methods/activations/types/ReLU.ts";
 import { ReLU6 } from "@methods/activations/types/ReLU6.ts";
 import { SELU } from "@methods/activations/types/SELU.ts";
 import { SINE } from "@methods/activations/types/SINE.ts";
+import { SOFTMAX } from "@methods/activations/types/SOFTMAX.ts";
 import { SOFTSIGN } from "@methods/activations/types/SOFTSIGN.ts";
 import { SQRT } from "@methods/activations/types/SQRT.ts";
 import { SQUARE } from "@methods/activations/types/SQUARE.ts";
@@ -145,6 +146,7 @@ const activationClasses = [
   SELU,
   SINE,
 
+  SOFTMAX,
   SOFTSIGN,
   Softplus,
   SQRT,
