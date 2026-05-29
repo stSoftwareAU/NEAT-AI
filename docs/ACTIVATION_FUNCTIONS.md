@@ -138,9 +138,9 @@ chosen randomly for hidden neurons; the caller opts in via the `costName` option
 (see [Cost coupling](#-cost-coupling-issue-2793)) or by passing
 `outputLayer.squash` explicitly.
 
-| Name                                                   | Output Range | Pair with                         | Summary                                                                                                                                                                                                                                                                                                                           |
-| :----------------------------------------------------- | :----------- | :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [SOFTMAX](../src/methods/activations/types/SOFTMAX.ts) | (0, 1)       | CROSS_ENTROPY / CATEGORICAL_ERROR | Multi-class probability head. Per-neuron `squash(x)` is a logistic surrogate that the WASM forward pass treats as LOGISTIC; the project-canonical vector normalisation lives in `softmaxNormalise()` for true probability outputs. `calculateError()` returns the cross-entropy-form gradient with no sigmoid-derivative scaling. |
+| Name                                                   | Output Range | Pair with     | Summary                                                                                                                                                                                                                                                                                                                           |
+| :----------------------------------------------------- | :----------- | :------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [SOFTMAX](../src/methods/activations/types/SOFTMAX.ts) | (0, 1)       | CROSS_ENTROPY | Multi-class probability head. Per-neuron `squash(x)` is a logistic surrogate that the WASM forward pass treats as LOGISTIC; the project-canonical vector normalisation lives in `softmaxNormalise()` for true probability outputs. `calculateError()` returns the cross-entropy-form gradient with no sigmoid-derivative scaling. |
 
 #### 🧷 Cost coupling (Issue #2793)
 
@@ -149,7 +149,7 @@ activation defaults to the natural pairing:
 
 ```typescript
 // Multi-class classifier — outputs auto-wired to SOFTMAX
-const classifier = new Creature(784, 10, { costName: "CATEGORICAL_ERROR" });
+const classifier = new Creature(784, 10, { costName: "CROSS_ENTROPY" });
 
 // Binary probability head — outputs auto-wired to LOGISTIC
 const detector = new Creature(64, 1, { costName: "BINARY_CROSS_ENTROPY" });

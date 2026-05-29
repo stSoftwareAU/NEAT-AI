@@ -25,25 +25,23 @@ import type { CostInterface } from "@stsoftware/neat-ai";
 
 ### 📋 Built-in cost functions
 
-| Name                  | Class                          | Best For                     | Formula                                 |
-| --------------------- | ------------------------------ | ---------------------------- | --------------------------------------- |
-| `"MSE"`               | Mean Squared Error             | General regression (default) | `(1/n) * Sum((y - y')^2)`               |
-| `"MAE"`               | Mean Absolute Error            | Regression with outliers     | `(1/n) * Sum(\|y - y'\|)`               |
-| `"MAPE"`              | Mean Absolute Percentage Error | Forecasting, relative error  | `(1/n) * Sum(\|(y' - y) / y\|)`         |
-| `"MSLE"`              | Mean Squared Logarithmic Error | Wide value ranges            | `(1/n) * Sum((log(y) - log(y'))^2)`     |
-| `"CROSS_ENTROPY"`     | Cross Entropy                  | Classification               | `-Sum(y * log(y') + (1-y) * log(1-y'))` |
-| `"HINGE"`             | Hinge Loss                     | SVM / binary classification  | `max(0, 1 - y * y')`                    |
-| `"CATEGORICAL_ERROR"` | Categorical (argmax) Error     | Multi-class classification   | `(1/n) * Sum(argmax(y) != argmax(y'))`  |
+| Name              | Class                          | Best For                     | Formula                                 |
+| ----------------- | ------------------------------ | ---------------------------- | --------------------------------------- |
+| `"MSE"`           | Mean Squared Error             | General regression (default) | `(1/n) * Sum((y - y')^2)`               |
+| `"MAE"`           | Mean Absolute Error            | Regression with outliers     | `(1/n) * Sum(\|y - y'\|)`               |
+| `"MAPE"`          | Mean Absolute Percentage Error | Forecasting, relative error  | `(1/n) * Sum(\|(y' - y) / y\|)`         |
+| `"MSLE"`          | Mean Squared Logarithmic Error | Wide value ranges            | `(1/n) * Sum((log(y) - log(y'))^2)`     |
+| `"CROSS_ENTROPY"` | Cross Entropy                  | Classification               | `-Sum(y * log(y') + (1-y) * log(1-y'))` |
+| `"HINGE"`         | Hinge Loss                     | SVM / binary classification  | `max(0, 1 - y * y')`                    |
 
-These seven names make up `BUILT_IN_COST_NAMES`.
+These six names make up `BUILT_IN_COST_NAMES`.
 
 ### 🦀 Native scorer off-load (`--cost`)
 
 When the optional `rust_scorer` binary is enabled
 (`NEAT_AI_RUST_SCORER_ENABLED`), NEAT-AI passes the configured `costName` to the
-binary via `--cost <NAME>`. **All seven `BUILT_IN_COST_NAMES` values — including
-`CATEGORICAL_ERROR` — are eligible for native off-load** once the scorer release
-containing
+binary via `--cost <NAME>`. **All six `BUILT_IN_COST_NAMES` values are eligible
+for native off-load** once the scorer release containing
 [NEAT-AI-scorer#134](https://github.com/stSoftwareAU/NEAT-AI-scorer/issues/134)
 is deployed.
 

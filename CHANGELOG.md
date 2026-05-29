@@ -67,6 +67,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   is the caller-side counterpart to the Discovery cost-aware thresholds
   (`stSoftwareAU/neat-ai-discovery#1320`).
 
+### Removed
+
+- **Issue #2806 (part of Issue #2798):** Removed the `CATEGORICAL_ERROR` cost.
+  Use `CROSS_ENTROPY` for multi-class training so the scorer, champion selection
+  and `targetError` early-stop all reflect the classification task. Argmax /
+  top-1 accuracy remains available as a reporting metric only — it is no longer
+  selectable as a `costName`. As `CATEGORICAL_ERROR` was only ever in the
+  unreleased changelog, no released behaviour changes.
+
 ### Security
 
 - **Issue #2704:** `CreatureSerialization.fromJSON` (the default JSON-load path)
