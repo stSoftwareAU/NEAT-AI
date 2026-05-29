@@ -244,9 +244,17 @@ Deno.test("ThroughputMetrics - scorer fields reported per generation (Issue #242
       throughput.scoredCreatureCount >= 0,
       `scoredCreatureCount should be non-negative, got ${throughput.scoredCreatureCount}`,
     );
+    // Issue #2791: per-generation backprop now trains up to `trainPerGen`
+    // creatures (which auto-scales with the population for supervised costs).
+    // Their asynchronously-completed trained variants — along with any
+    // discovery/replay results — are merged into the population before the
+    // fitness phase, so the scored count can exceed the base population size by
+    // a small margin. The bound stays meaningful (it catches gross
+    // over-scoring) but no longer assumes scoring is capped at the population.
+    const maxScored = populationSize * 2;
     assert(
-      throughput.scoredCreatureCount <= populationSize,
-      `scoredCreatureCount should be <= population (${populationSize}), ` +
+      throughput.scoredCreatureCount <= maxScored,
+      `scoredCreatureCount should be <= ${maxScored} (2x population ${populationSize}), ` +
         `got ${throughput.scoredCreatureCount}`,
     );
     assert(

@@ -41,7 +41,10 @@ Deno.test("Configuration guide - core evolution defaults match code", () => {
   assertEquals(config.targetError, 0.05);
   assertEquals(config.costName, "MSE");
   assertEquals(config.trainingSampleRate, 1);
-  assertEquals(config.trainPerGen, 1);
+  // Issue #2791: the default trainPerGen now scales with the population for
+  // supervised costs (population 50 * 0.2 = 10) so gradient descent is not
+  // starved. See test/config/TrainPerGen.ts for the full matrix.
+  assertEquals(config.trainPerGen, 10);
   assertEquals(config.trainingBatchSize, 100);
   assertEquals(config.dataSetPartitionBreak, 2000);
   assertEquals(config.creativeThinkingConnectionCount, 1);
