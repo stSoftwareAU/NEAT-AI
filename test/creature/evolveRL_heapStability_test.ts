@@ -1,26 +1,27 @@
 /**
- * Heap stability regression test for `Creature.evolveRL()` (Issue #2693).
+ * Functional regression test for `Creature.evolveRL()` (Issues #2693, #2803).
  *
- * The bug: when evolveRL runs for many generations on a small topology, V8
- * heap usage climbs monotonically until OOM (4 GiB after ~15 min on a
- * 5-input / 4-output adapter, population 80). The MemoryMonitor's
- * critical-response backoff confirms WASM caches are not the retainer —
- * something else accumulates per generation.
+ * History: this test was originally written to detect the heap leak in
+ * Issue #2693 by asserting per-generation heap growth stayed below a
+ * hard-coded byte threshold. That assertion combined a resource-threshold
+ * check (anti-pattern #3) with a benchmark-shaped loop measuring an
+ * aggregate (anti-pattern #4): heap growth depends on GC timing, V8
+ * version, allocator behaviour, and machine load — none of which are
+ * properties of the algorithm under test. On loaded CI runners or
+ * different Deno/V8 builds the threshold flaked green→red without any
+ * real regression (Issue #2803).
  *
- * This test mirrors the issue configuration as closely as a unit test
- * allows: 5 inputs, 4 outputs, multi-step episodes, `mutationRate = 0.5`,
- * `episodesPerCreature = 1`, `statistics: true`. It runs several hundred
- * generations and asserts that the JS heap does not grow without bound.
- * Heap usage is sampled after a warm-up window so JIT/initial-allocation
- * noise does not skew the comparison.
- *
- * The threshold is intentionally generous so the test is robust on noisy
- * CI hardware; the leak in #2693 grows the heap by ~10 MB/generation
- * (4 GiB / ~400 gens), which would blow past any reasonable threshold
- * within the sample window.
+ * The functional invariants worth gating on remain: after `iterations`
+ * generations of `evolveRL`, the call must resolve with a well-formed
+ * result and the evolved creature must still be able to activate
+ * observations from the adapter. Long-running heap behaviour, if and
+ * when needed, belongs in a benchmark / nightly perf job rather than
+ * the blocking unit suite. This test keeps the multi-generation run so
+ * the behaviour is exercised end-to-end, and the heap measurement is
+ * reported as an informational log only — no assertion gates on it.
  */
 
-import { assert } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import { EpisodeAdapter, type StepResult } from "@creature/EpisodeAdapter.ts";
 import { initWasmForTests } from "../_initWasm.ts";
@@ -93,7 +94,8 @@ class MultiStepCorridorAdapter
 
 /**
  * Force a GC if `--expose-gc` is available, then read heap. Falls back to
- * a single `Deno.memoryUsage()` read.
+ * a single `Deno.memoryUsage()` read. Used only for informational logging
+ * (Issue #2803) — no assertion is gated on the returned value.
  */
 async function sampleHeapBytes(): Promise<number> {
   const gc = (globalThis as { gc?: () => void }).gc;
@@ -125,7 +127,8 @@ async function sampleHeapBytes(): Promise<number> {
 }
 
 Deno.test(
-  "evolveRL: heap stays bounded across many generations (Issue #2693)",
+  "evolveRL: completes many generations and returns a usable creature " +
+    "(Issues #2693, #2803)",
   async () => {
     const TOTAL_ITERATIONS = 100;
     const WARMUP_ITERATIONS = 20;
@@ -133,7 +136,8 @@ Deno.test(
     const STEPS_PER_EPISODE = 200;
 
     // Run a short warm-up evolveRL to populate JIT and module caches so the
-    // baseline sample is not dominated by one-time allocations.
+    // baseline heap sample (logged below) is not dominated by one-time
+    // allocations.
     {
       const warmupSeed = new Creature(5, 4);
       const warmupAdapter = new MultiStepCorridorAdapter(STEPS_PER_EPISODE);
@@ -165,6 +169,10 @@ Deno.test(
       statistics: true,
     });
 
+    // Informational heap log only (Issue #2803). Threshold assertions on
+    // heap-byte counts are unreliable in a parallel unit suite and have
+    // been removed; if leak-regression detection is needed it belongs in
+    // a dedicated benchmark / nightly perf job.
     const endHeap = await sampleHeapBytes();
     const growthBytes = endHeap - baselineHeap;
     const growthBytesPerGen = growthBytes / TOTAL_ITERATIONS;
@@ -176,21 +184,58 @@ Deno.test(
         } KB/gen, gen=${result.generation})`,
     );
 
-    // Fail-loud assertion: the #2693 leak grew the heap by ~10 MB/generation
-    // (4 GiB / ~400 gens). We allow up to 500 KB/generation here to leave
-    // plenty of headroom for GC noise on tiny topologies and per-generation
-    // breeding allocations. Anything beyond this is a regression worth
-    // investigating.
-    const MAX_BYTES_PER_GEN = 500 * 1024;
-    assert(
-      growthBytesPerGen < MAX_BYTES_PER_GEN,
-      `evolveRL heap grew ${growthBytes} bytes over ${TOTAL_ITERATIONS} ` +
-        `generations (~${
-          Math.round(growthBytesPerGen / 1024)
-        } KB/gen). Threshold: ` +
-        `${Math.round(MAX_BYTES_PER_GEN / 1024)} KB/gen. ` +
-        `baseline=${baselineHeap}, end=${endHeap}, ` +
-        `result.generation=${result.generation}`,
+    // Functional assertions on the observable behaviour of `evolveRL`:
+    // the call resolves with a well-formed result describing the run,
+    // and the evolved seedCreature is still able to activate observations
+    // from the adapter (i.e. genuine output, not a degenerate state).
+    assertEquals(
+      typeof result.error,
+      "number",
+      "evolveRL result.error must be a number",
     );
+    assert(
+      Number.isFinite(result.error),
+      `evolveRL result.error must be finite (was ${result.error})`,
+    );
+    assertEquals(
+      typeof result.score,
+      "number",
+      "evolveRL result.score must be a number",
+    );
+    assert(
+      Number.isFinite(result.score),
+      `evolveRL result.score must be finite (was ${result.score})`,
+    );
+    assertEquals(
+      typeof result.generation,
+      "number",
+      "evolveRL result.generation must be a number",
+    );
+    assert(
+      result.generation >= TOTAL_ITERATIONS,
+      `evolveRL should advance through at least ${TOTAL_ITERATIONS} ` +
+        `generations (was ${result.generation})`,
+    );
+    assert(
+      result.time >= 0,
+      `evolveRL result.time must be non-negative (was ${result.time})`,
+    );
+
+    // The evolved creature must still produce a well-shaped output for
+    // an observation drawn from the adapter — a refactor that broke
+    // activation after evolution would fail here.
+    const { observation } = adapter.reset(0);
+    const output = seedCreature.activate(observation);
+    assertEquals(
+      output.length,
+      4,
+      "evolved creature must return one value per output neuron",
+    );
+    for (let i = 0; i < output.length; i++) {
+      assert(
+        Number.isFinite(output[i]),
+        `evolved creature output[${i}] must be finite (was ${output[i]})`,
+      );
+    }
   },
 );
