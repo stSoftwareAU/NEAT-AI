@@ -48,6 +48,7 @@ import { rejectRecurrentSynapseIfForwardOnlyCreature } from "@architecture/Forwa
 import { TypedTopology } from "@architecture/TypedTopology.ts";
 
 // Extracted modules
+import * as creatureFactory from "@architecture/CreatureFactory.ts";
 import * as activation from "@creature/CreatureActivation.ts";
 import * as topology from "@creature/CreatureTopology.ts";
 import type { TopologyCaches } from "@creature/CreatureTopology.ts";
@@ -1205,6 +1206,31 @@ export class Creature implements CreatureInternal {
     creature.fix({ forwardOnly: creature.forwardOnly });
     creatureValidate(creature, { forwardOnly: creature.forwardOnly });
     return creature;
+  }
+
+  /**
+   * Build a smarter initial creature from problem metadata
+   * (Issue #2794). Thin forwarder to {@link creatureForProblem} in
+   * `@architecture/CreatureFactory.ts`; see that module for the
+   * heuristics applied.
+   *
+   * Cycle-safety: {@link creatureFactory} only references the Creature
+   * class from inside function bodies, so the static import below resolves
+   * fine under ES-module live bindings.
+   */
+  static forProblem(spec: creatureFactory.ProblemSpec): Creature {
+    return creatureFactory.creatureForProblem(spec);
+  }
+
+  /**
+   * Build a smarter initial creature from a training set
+   * (Issue #2794). Thin forwarder to {@link creatureForDataset}.
+   */
+  static forDataset(
+    records: readonly DataRecordInterface[],
+    options?: creatureFactory.DatasetFactoryOptions,
+  ): Creature {
+    return creatureFactory.creatureForDataset(records, options);
   }
 
   shallowClone(): Creature {

@@ -29,6 +29,35 @@ export { Creature, CURRENT_CREATURE_SEMANTIC_VERSION } from "@creature";
 export { exportSnapshotJSON } from "@creature/CreatureSerialization.ts";
 
 /**
+ * Creature Factory (Issue #2794)
+ *
+ * Builds a smarter *initial* creature from problem metadata (input /
+ * output dimensions, cost name, declared value ranges) or — optionally —
+ * from a training-set scan that adds dead-feature pruning and output
+ * bias warm-start. Same evolution thereafter; the factory just hands
+ * `evolveDir` a better starting point.
+ *
+ * @see {@link module:src/architecture/CreatureFactory}
+ */
+export {
+  creatureForDataset,
+  creatureForProblem,
+  DEAD_FEATURE_VARIANCE_THRESHOLD,
+  HIGH_DIMENSIONAL_INPUT_THRESHOLD,
+  pickHiddenCapacity,
+  pickOutputSquashForProblem,
+  rescaleWeightsForInit,
+  scanTrainingData,
+  targetInitStddev,
+} from "@architecture/CreatureFactory.ts";
+export type {
+  DatasetFactoryOptions,
+  DatasetScan,
+  NumericRange,
+  ProblemSpec,
+} from "@architecture/CreatureFactory.ts";
+
+/**
  * Episode-rollout API.
  *
  * - {@link EpisodeAdapter} (abstract class, Issue #2626) is the class-shaped
