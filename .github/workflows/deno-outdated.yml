@@ -47,6 +47,12 @@ jobs:
         # peter-evans/create-pull-request@v8.1.1 (node24 — Issue #2764)
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
         with:
+          # Authenticate with the org-level PAT so downstream workflow
+          # triggers (CI checks, labels, reviewer automation) fire on the
+          # raised PR. GITHUB_TOKEN-authored PRs suppress those triggers
+          # until somebody pushes a new commit (Issue #1636, Issue #2780).
+          # Fall back to GITHUB_TOKEN when ACTIONS_PUSH is unset.
+          token: ${{ secrets.ACTIONS_PUSH || secrets.GITHUB_TOKEN }}
           commit-message: "chore: update Deno dependencies"
           title: "chore: update Deno dependencies"
           branch: chore/deno-outdated
