@@ -36,6 +36,7 @@ import { compactCreature } from "@compact/CompactCreature.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import { Activations } from "@methods/activations/Activations.ts";
+import { pickOutputSquashForCost } from "@costs/CostOutputSquash.ts";
 import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import type { SparseConfigLike } from "@propagate/sparse/SparseConfigLike.ts";
@@ -80,6 +81,16 @@ interface CreatureOptions {
   outputLayer?: {
     squash?: string;
   };
+  /**
+   * Optional cost name (Issue #2793). When provided, the output layer
+   * activation defaults to the natural pairing for that cost (e.g.
+   * SOFTMAX for CROSS_ENTROPY/CATEGORICAL_ERROR with ≥ 2 outputs,
+   * LOGISTIC for BINARY_CROSS_ENTROPY, TANH for HINGE). An explicit
+   * `outputLayer.squash` always overrides this default. Regression
+   * costs (MSE/MAE/…) leave the existing random-per-output behaviour
+   * unchanged.
+   */
+  costName?: string;
 }
 
 /**
@@ -383,8 +394,17 @@ export class Creature implements CreatureInternal {
   private initialize(options: {
     layers?: { squash?: string; count: number }[];
     outputLayer?: { squash?: string };
+    costName?: string;
   }) {
     let fixNeeded = false;
+    // Issue #2793: Default the output squash from the configured cost when
+    // the caller has not specified one explicitly. SOFTMAX/LOGISTIC/TANH
+    // pair naturally with classification / margin losses; regression
+    // costs return undefined and the historical random-per-output path
+    // below is preserved.
+    const costDefaultOutputSquash = options.outputLayer?.squash
+      ? undefined
+      : pickOutputSquashForCost(options.costName, this.output);
     for (let i = this.input; i--;) {
       const type = "input";
       const neuron = new Neuron(
@@ -440,6 +460,9 @@ export class Creature implements CreatureInternal {
         let squash = Activations.pickRandomSquash();
         if (options.outputLayer?.squash) {
           squash = options.outputLayer.squash;
+        } else if (costDefaultOutputSquash) {
+          // Issue #2793: cost-aware output activation default.
+          squash = costDefaultOutputSquash;
         } else {
           fixNeeded = true;
         }
@@ -462,16 +485,23 @@ export class Creature implements CreatureInternal {
     } else {
       for (let indx = 0; indx < this.output; indx++) {
         const type = "output";
+        // Issue #2793: prefer the cost-aware default if the caller has
+        // declared `costName` and not overridden the output squash; fall
+        // back to the historical random-per-output behaviour otherwise.
+        const squash = costDefaultOutputSquash ??
+          Activations.pickRandomSquash();
         const neuron = new Neuron(
           outputNeuronId(indx),
           type,
           getRandomNumberGenerator().random() * 0.2 - 0.1,
           this,
-          Activations.pickRandomSquash(),
+          squash,
         );
         neuron.index = this.neurons.length;
         this.neurons.push(neuron);
-        fixNeeded = true;
+        if (!costDefaultOutputSquash) {
+          fixNeeded = true;
+        }
       }
 
       for (let i = 0; i < this.input; i++) {
