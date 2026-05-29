@@ -18,7 +18,6 @@
  * | BINARY_CROSS_ENTROPY   | independent  | unit         | bounded_unipolar     |
  * | CROSS_ENTROPY          | simplex      | unit         | bounded_unipolar     |
  * | HINGE                  | margin       | signed_unit  | bounded_bipolar      |
- * | CATEGORICAL_ERROR      | one_hot      | unit         | bounded_unipolar     |
  * | OTHER (custom JS)      | unknown      | unbounded    | any                  |
  */
 
@@ -102,12 +101,6 @@ const TABLE: Readonly<Record<string, TaskDescriptor>> = Object.freeze({
     topology: "margin",
     range: "signed_unit",
     outputSquashFamily: "bounded_bipolar",
-  },
-  CATEGORICAL_ERROR: {
-    costName: "CATEGORICAL_ERROR",
-    topology: "one_hot",
-    range: "unit",
-    outputSquashFamily: "bounded_unipolar",
   },
 });
 

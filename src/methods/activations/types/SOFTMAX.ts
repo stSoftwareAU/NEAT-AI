@@ -47,9 +47,8 @@ import type { UnSquashInterface } from "@methods/activations/UnSquashInterface.t
  *    `target - activation`, matching the rest of NEAT-AI's error helpers).
  *
  * `mutationProbability` is intentionally `0`: SOFTMAX is only meaningful on
- * an output layer paired with a multi-class cost (CROSS_ENTROPY /
- * CATEGORICAL_ERROR). Random mutation should never pick it for a hidden
- * neuron.
+ * an output layer paired with a multi-class cost (CROSS_ENTROPY).
+ * Random mutation should never pick it for a hidden neuron.
  *
  * @see softmaxNormalise — vector-level normalisation helper.
  * @see {@link https://en.wikipedia.org/wiki/Softmax_function}
