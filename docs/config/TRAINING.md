@@ -54,7 +54,7 @@ weight mutation alone.
 **How the default is chosen**
 
 - **Recognised built-in supervised costs** (`MSE`, `MAE`, `MAPE`, `MSLE`,
-  `CROSS_ENTROPY`, `CATEGORICAL_ERROR`, `HINGE`) scale with the population:
+  `CROSS_ENTROPY`, `HINGE`) scale with the population:
   `max(1, round(populationSize × 0.2))`.
 - **Custom or unrecognised costs** keep the conservative default of `1`, so
   evolution-only tasks are unchanged.

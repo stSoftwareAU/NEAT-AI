@@ -3,7 +3,7 @@
  * `evolveDir` / `evolveDataSet` (Issue #2787).
  *
  * The "what" being tested: with the **same** user-supplied `targetError`,
- * a `CATEGORICAL_ERROR` run and an `MSE` run stop on appropriately-scaled
+ * a `CROSS_ENTROPY` run and an `MSE` run stop on appropriately-scaled
  * thresholds rather than on the same fixed scale. We verify this by
  * running the cost-aware helpers exactly as `CreatureTraining.ts` does and
  * asserting the early-stop decisions diverge per cost.
@@ -17,9 +17,9 @@
 import { assertEquals } from "@std/assert";
 import { shouldEarlyStop } from "@costs/CostAwareEarlyStop.ts";
 
-Deno.test("evolveDir wiring - same targetError diverges between CATEGORICAL_ERROR and MSE", () => {
+Deno.test("evolveDir wiring - same targetError diverges between CROSS_ENTROPY and MSE", () => {
   // Imagine an evolveDir caller that supplied `targetError = 1.5`. For the
-  // unit-range CATEGORICAL_ERROR cost (error always in [0, 1]) this is
+  // unit-range CROSS_ENTROPY cost (error always in [0, 1]) this is
   // clamped to 1.0; an intermediate error of 0.5 does NOT trigger
   // early-stop because the calibrated threshold reflects the cost's
   // natural range. For the unbounded MSE cost the same input is a
@@ -30,17 +30,17 @@ Deno.test("evolveDir wiring - same targetError diverges between CATEGORICAL_ERRO
   const observedError = 0.5;
   const userTargetError = 1.5;
 
-  const categoricalStop = shouldEarlyStop(
+  const crossEntropyStop = shouldEarlyStop(
     observedError,
     userTargetError,
-    "CATEGORICAL_ERROR",
+    "CROSS_ENTROPY",
   );
   const mseStop = shouldEarlyStop(observedError, userTargetError, "MSE");
 
   assertEquals(
-    categoricalStop,
+    crossEntropyStop,
     false,
-    "CATEGORICAL_ERROR must not stop on 0.5 ≤ clamped 1.0 boundary at error=0.5",
+    "CROSS_ENTROPY must not stop on 0.5 ≤ clamped 1.0 boundary at error=0.5",
   );
   assertEquals(mseStop, true, "MSE must stop on raw 0.5 ≤ 1.5");
 });
@@ -49,9 +49,9 @@ Deno.test("evolveDir wiring - both costs stop at their natural high-quality thre
   // Sanity check: at the realistic high-quality threshold each cost
   // typically targets, both stop.
   assertEquals(
-    shouldEarlyStop(0.05, 0.10, "CATEGORICAL_ERROR"),
+    shouldEarlyStop(0.05, 0.10, "CROSS_ENTROPY"),
     true,
-    "CATEGORICAL_ERROR at 5% misclass stops on 10% threshold",
+    "CROSS_ENTROPY at 0.05 stops on 0.10 threshold",
   );
   assertEquals(
     shouldEarlyStop(0.001, 0.01, "MSE"),

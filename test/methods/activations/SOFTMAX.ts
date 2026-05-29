@@ -1,8 +1,8 @@
 /**
  * Tests for SOFTMAX activation (Issue #2793).
  *
- * SOFTMAX is the natural pairing for CROSS_ENTROPY / CATEGORICAL_ERROR
- * multi-class costs. The per-neuron `squash(x)` is a logistic-shaped
+ * SOFTMAX is the natural pairing for the CROSS_ENTROPY
+ * multi-class cost. The per-neuron `squash(x)` is a logistic-shaped
  * surrogate so it is safe to use in the existing per-neuron WASM forward
  * pass (`wasmAliasName()` returns "LOGISTIC"); the project-canonical
  * vector normalisation lives in {@link softmaxNormalise} for callers that

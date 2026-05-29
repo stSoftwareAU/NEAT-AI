@@ -2,8 +2,7 @@
  * Tests for cost → output squash coupling (Issue #2793).
  *
  * Acceptance criteria covered:
- *  - Multi-output classification cost (CROSS_ENTROPY / CATEGORICAL_ERROR)
- *    ⇒ SOFTMAX outputs.
+ *  - Multi-output classification cost (CROSS_ENTROPY) ⇒ SOFTMAX outputs.
  *  - Single-output probability (BINARY_CROSS_ENTROPY) ⇒ LOGISTIC outputs.
  *  - Margin classifier (HINGE) ⇒ TANH outputs.
  *  - Regression (MSE / MAE / unknown) ⇒ undefined (preserves the legacy
@@ -19,10 +18,6 @@ Deno.test("pickOutputSquashForCost - CROSS_ENTROPY with >=2 outputs uses SOFTMAX
 
 Deno.test("pickOutputSquashForCost - CROSS_ENTROPY with single output falls back to LOGISTIC", () => {
   assertEquals(pickOutputSquashForCost("CROSS_ENTROPY", 1), "LOGISTIC");
-});
-
-Deno.test("pickOutputSquashForCost - CATEGORICAL_ERROR with >=2 outputs uses SOFTMAX", () => {
-  assertEquals(pickOutputSquashForCost("CATEGORICAL_ERROR", 10), "SOFTMAX");
 });
 
 Deno.test("pickOutputSquashForCost - BINARY_CROSS_ENTROPY uses LOGISTIC", () => {

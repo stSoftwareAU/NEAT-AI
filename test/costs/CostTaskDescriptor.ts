@@ -51,12 +51,6 @@ const EXPECTED: ReadonlyArray<TaskDescriptor> = [
     range: "signed_unit",
     outputSquashFamily: "bounded_bipolar",
   },
-  {
-    costName: "CATEGORICAL_ERROR",
-    topology: "one_hot",
-    range: "unit",
-    outputSquashFamily: "bounded_unipolar",
-  },
 ];
 
 for (const expected of EXPECTED) {

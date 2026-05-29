@@ -22,17 +22,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   single creature per generation received any backpropagation step (~2%
   coverage), leaving the rest to rely on slow random weight mutation. The
   default is now `max(1, round(populationSize × 0.2))` for recognised built-in
-  supervised costs (`MSE`, `MAE`, `MAPE`, `MSLE`, `CROSS_ENTROPY`,
-  `CATEGORICAL_ERROR`, `HINGE`) — `10` for a population of 50 — while custom /
-  unrecognised costs keep the conservative default of `1`, so evolution-only
-  tasks are unchanged. The per-generation training loop also now selects the
-  fittest `trainPerGen` creatures from the score-sorted population
-  (`selectTrainingCandidates`) instead of only the elitist slice, so raising
-  `trainPerGen` above `elitism` actually increases gradient coverage. Explicit
-  `trainPerGen` values (including `0` for pure evolution) always win. A new
-  convergence benchmark (`bench/TrainPerGenConvergence.ts`) shows ~31% lower
-  best error after 30 generations at `trainPerGen=10` versus `trainPerGen=1` on
-  a supervised task.
+  supervised costs (`MSE`, `MAE`, `MAPE`, `MSLE`, `CROSS_ENTROPY`, `HINGE`) —
+  `10` for a population of 50 — while custom / unrecognised costs keep the
+  conservative default of `1`, so evolution-only tasks are unchanged. The
+  per-generation training loop also now selects the fittest `trainPerGen`
+  creatures from the score-sorted population (`selectTrainingCandidates`)
+  instead of only the elitist slice, so raising `trainPerGen` above `elitism`
+  actually increases gradient coverage. Explicit `trainPerGen` values (including
+  `0` for pure evolution) always win. A new convergence benchmark
+  (`bench/TrainPerGenConvergence.ts`) shows ~31% lower best error after 30
+  generations at `trainPerGen=10` versus `trainPerGen=1` on a supervised task.
 
 ### Fixed
 
@@ -63,20 +62,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `fittestScore > bestScore` champion comparison through `shouldEarlyStop()` /
   `isBetterChampion()` (`src/costs/CostAwareEarlyStop.ts`) so a `targetError` of
   `1.5` is interpreted in the cost's natural range — clamped/rejected for
-  unit-range costs like `CATEGORICAL_ERROR`, applied directly for unbounded
+  unit-range costs like `CROSS_ENTROPY`, applied directly for unbounded
   `MSE`/`MAE`, and (regression guard) passed through verbatim for `OTHER`. This
   is the caller-side counterpart to the Discovery cost-aware thresholds
   (`stSoftwareAU/neat-ai-discovery#1320`).
-- **Issue #2736:** New `"CATEGORICAL_ERROR"` built-in cost function for
-  multi-class one-hot targets. It reports the argmax misclassification rate
-  (`error = 1 - accuracy`) so `evolveDir` `error`/`score`, champion selection
-  and the `targetError` early-stop reflect real classification quality instead
-  of the trivial MSE floor (~`0.1` for ten balanced classes) that a chance-level
-  classifier can reach. Distance-based costs such as `"MSE"` can decouple from
-  argmax accuracy on one-hot layouts; documented in
-  [`docs/API_REFERENCE.md`](./docs/API_REFERENCE.md). The cost is
-  non-differentiable and intended for scoring/early-stop — gradients are derived
-  independently of `costName`, so training is unaffected.
+
+### Removed
+
+- **Issue #2806 (part of Issue #2798):** Removed the `CATEGORICAL_ERROR` cost.
+  Use `CROSS_ENTROPY` for multi-class training so the scorer, champion selection
+  and `targetError` early-stop all reflect the classification task. Argmax /
+  top-1 accuracy remains available as a reporting metric only — it is no longer
+  selectable as a `costName`. As `CATEGORICAL_ERROR` was only ever in the
+  unreleased changelog, no released behaviour changes.
 
 ### Security
 

@@ -469,8 +469,7 @@ export async function evolveDir(
     // Issue #2787: route champion comparison through the cost-aware helper.
     // Today this remains a strict `score > bestScore` for every cost
     // (NaN-safe) so existing runs do not regress; the seam is in place for
-    // future cost-specific tie-breaks (e.g. continuous companion CE for
-    // CATEGORICAL_ERROR).
+    // future cost-specific tie-breaks.
     if (isBetterChampion(fittestScore, bestScore, config.costName)) {
       const errorTmp = getTag(fittest, "error");
       assert(errorTmp, "No error tag found");
@@ -543,8 +542,8 @@ export async function evolveDir(
     }
 
     // Issue #2787: cost-aware early-stop. For built-in costs the threshold
-    // is clamped into the cost's natural range (e.g. CATEGORICAL_ERROR
-    // ∈ [0, 1] vs unbounded MSE); custom JS costs fall back to the legacy
+    // is clamped into the cost's natural range (e.g. unit-range CROSS_ENTROPY
+    // clamped to [0, 1] vs unbounded MSE); custom JS costs fall back to the legacy
     // `error <= targetError` comparator as a regression guard.
     const earlyStop = shouldEarlyStop(error, targetError, config.costName);
     const completed = interrupted || timedOut || earlyStop ||
@@ -760,8 +759,7 @@ export async function evolveEnv<S, A>(
     // Issue #2787: route champion comparison through the cost-aware helper.
     // Today this remains a strict `score > bestScore` for every cost
     // (NaN-safe) so existing runs do not regress; the seam is in place for
-    // future cost-specific tie-breaks (e.g. continuous companion CE for
-    // CATEGORICAL_ERROR).
+    // future cost-specific tie-breaks.
     if (isBetterChampion(fittestScore, bestScore, config.costName)) {
       const errorTmp = getTag(fittest, "error");
       assert(errorTmp, "No error tag found");
@@ -820,8 +818,8 @@ export async function evolveEnv<S, A>(
     }
 
     // Issue #2787: cost-aware early-stop. For built-in costs the threshold
-    // is clamped into the cost's natural range (e.g. CATEGORICAL_ERROR
-    // ∈ [0, 1] vs unbounded MSE); custom JS costs fall back to the legacy
+    // is clamped into the cost's natural range (e.g. unit-range CROSS_ENTROPY
+    // clamped to [0, 1] vs unbounded MSE); custom JS costs fall back to the legacy
     // `error <= targetError` comparator as a regression guard.
     const earlyStop = shouldEarlyStop(error, targetError, config.costName);
     const completed = interrupted || timedOut || earlyStop ||
@@ -1226,8 +1224,7 @@ export async function evolveRL<S, A>(
     // Issue #2787: route champion comparison through the cost-aware helper.
     // Today this remains a strict `score > bestScore` for every cost
     // (NaN-safe) so existing runs do not regress; the seam is in place for
-    // future cost-specific tie-breaks (e.g. continuous companion CE for
-    // CATEGORICAL_ERROR).
+    // future cost-specific tie-breaks.
     if (isBetterChampion(fittestScore, bestScore, config.costName)) {
       const errorTmp = getTag(fittest, "error");
       assert(errorTmp, "No error tag found");
@@ -1321,8 +1318,8 @@ export async function evolveRL<S, A>(
     }
 
     // Issue #2787: cost-aware early-stop. For built-in costs the threshold
-    // is clamped into the cost's natural range (e.g. CATEGORICAL_ERROR
-    // ∈ [0, 1] vs unbounded MSE); custom JS costs fall back to the legacy
+    // is clamped into the cost's natural range (e.g. unit-range CROSS_ENTROPY
+    // clamped to [0, 1] vs unbounded MSE); custom JS costs fall back to the legacy
     // `error <= targetError` comparator as a regression guard.
     const earlyStop = shouldEarlyStop(error, targetError, config.costName);
     const completed = interrupted || timedOut || earlyStop ||
