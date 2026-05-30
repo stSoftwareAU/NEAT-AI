@@ -105,6 +105,34 @@ while (true) {
 }
 ```
 
+## 🧊 Seed Warm-Up Structural Lock
+
+Creatures seeded by the Creature Factory can carry a `warmupGenerations` tag
+(Issue #2825). While a seed is **within its warm-up window**
+(`currentGeneration <= warmupGenerations`), every structural-reduction path is
+locked so the factory topology can align its weights and biases **before** any
+pruning or rewiring happens. The lock suppresses:
+
+- structural-reduction / squash-changing **mutations**,
+- inline **Discovery** scheduling,
+- cached-discovery **replay**.
+
+The single source of truth is
+`isSeedWarmupStructuralLockActive(warmupGenerations, currentGeneration)` in
+`CreatureFactory.ts` (Issue #2828). It is **conservative**: if a seed declares
+`warmupGenerations > 0` but its `currentGeneration` is not yet known, the lock
+stays active so nothing prunes before the warm-up window can be proven elapsed.
+
+```mermaid
+flowchart TD
+    A[New fittest creature] --> B{warmupGenerations &gt; 0<br/>and currentGeneration &le; warmupGenerations?}
+    B -- Yes (lock active) --> C[Skip Discovery + replay<br/>weight/bias training continues]
+    B -- No (lock released) --> D[Schedule Discovery + replay as normal]
+```
+
+Once `currentGeneration > warmupGenerations`, the lock releases and Discovery
+and replay resume automatically.
+
 ## 🛠️ Configuration
 
 ### ⚡ Production-Tuned Defaults

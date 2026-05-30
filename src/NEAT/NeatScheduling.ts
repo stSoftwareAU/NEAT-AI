@@ -11,6 +11,7 @@ import { ensureDirSync } from "@std/fs";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { isSeedWarmupStructuralLockActive } from "@architecture/CreatureFactory.ts";
 import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import {
   exportJSONWithRuntimeIds,
@@ -40,6 +41,24 @@ export function scheduleDiscovery(
   creature: Creature,
   timeOutMinutes: number,
 ): void {
+  // Issue #2828: never schedule structural Discovery while the seed
+  // warm-up structural lock is active — Discovery prunes/rewires topology
+  // and must wait until the warm-up window has elapsed.
+  if (
+    isSeedWarmupStructuralLockActive(
+      neat.warmupGenerations,
+      neat.currentGeneration,
+    )
+  ) {
+    if (neat.config.verbose) {
+      getLogger().info(
+        `Skipping discovery: seed warm-up structural lock active ` +
+          `(generation ${neat.currentGeneration}/${neat.warmupGenerations})`,
+      );
+    }
+    return;
+  }
+
   if (neat.config.discoverySampleRate <= 0) {
     return;
   }

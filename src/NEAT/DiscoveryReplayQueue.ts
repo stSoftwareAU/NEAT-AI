@@ -5,6 +5,7 @@ import {
   DiscoveryReplayRunner,
 } from "@discovery/DiscoveryReplayRunner.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
+import { isSeedWarmupStructuralLockActiveForCreature } from "@architecture/CreatureFactory.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 // Re-export for use by Neat.ts (Issue #1150)
@@ -104,6 +105,15 @@ export class DiscoveryReplayQueue {
     options: NeatOptions,
     remainingTimeMinutes?: number,
   ): void {
+    // Issue #2828: never replay cached structural discoveries while the
+    // creature's seed warm-up structural lock is active — replay can prune
+    // or rewire topology, which must wait until warm-up has elapsed. The
+    // lock state is read from the creature's own warm-up tags because this
+    // queue does not hold the owning Neat instance.
+    if (isSeedWarmupStructuralLockActiveForCreature(creature)) {
+      return;
+    }
+
     const config = createNeatConfig(options);
 
     // Skip if no cache directory is configured
