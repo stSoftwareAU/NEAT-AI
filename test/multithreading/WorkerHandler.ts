@@ -5,7 +5,14 @@
  * and lifecycle management using direct (MockWorker) mode.
  */
 import { assertEquals, assertExists } from "@std/assert";
+import { addTag } from "@stsoftware/tags/mod";
+import { Creature } from "@creature";
 import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
+import type { TrainOptions } from "@config/TrainOptions.ts";
+import {
+  CURRENT_GENERATION_TAG,
+  WARMUP_GENERATIONS_TAG,
+} from "@architecture/CreatureFactory.ts";
 
 Deno.test("WorkerHandler: constructs in direct mode and initialises", async () => {
   const handler = new WorkerHandler(
@@ -71,4 +78,70 @@ Deno.test("WorkerHandler: terminate cleans up without error", async () => {
 
   // Should not throw after termination
   assertEquals(handler.isBusy(), false);
+});
+
+Deno.test("WorkerHandler.train: keeps warm-up tags in train payload", async () => {
+  const handler = new WorkerHandler(
+    await Deno.makeTempDir(),
+    "MSE",
+    true,
+  );
+  await handler.waitUntilReady();
+
+  const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+  addTag(creature, WARMUP_GENERATIONS_TAG, "1440");
+  addTag(creature, CURRENT_GENERATION_TAG, "12");
+  addTag(creature, "error", "0.5");
+  creature.score = 1.23;
+
+  let captured:
+    | {
+      train?: { creature?: { tags?: Array<{ name: string; value: string }> } };
+    }
+    | undefined;
+
+  const originalMakePromiseDeferred = (handler as unknown as {
+    makePromiseDeferred: (
+      data: unknown,
+      clearAfterPost?: () => void,
+    ) => Promise<unknown>;
+  }).makePromiseDeferred;
+
+  (handler as unknown as {
+    makePromiseDeferred: (
+      data: unknown,
+      clearAfterPost?: () => void,
+    ) => Promise<unknown>;
+  }).makePromiseDeferred = (data: unknown) => {
+    captured = data as typeof captured;
+    return Promise.resolve({ train: { ID: "mock", creature: {} } });
+  };
+
+  try {
+    await handler.train(creature, {} as TrainOptions);
+  } finally {
+    (handler as unknown as {
+      makePromiseDeferred: (
+        data: unknown,
+        clearAfterPost?: () => void,
+      ) => Promise<unknown>;
+    }).makePromiseDeferred = originalMakePromiseDeferred;
+    handler.terminate();
+  }
+
+  const tags = captured?.train?.creature?.tags;
+  assertEquals(
+    typeof tags?.find((t) => t.name === WARMUP_GENERATIONS_TAG)?.value,
+    "string",
+  );
+  assertEquals(
+    tags?.find((t) => t.name === WARMUP_GENERATIONS_TAG)?.value,
+    "1440",
+  );
+  assertEquals(
+    tags?.find((t) => t.name === CURRENT_GENERATION_TAG)?.value,
+    "12",
+  );
+  // Existing training context tags should still be present.
+  assertEquals(tags?.find((t) => t.name === "untrained-error")?.value, "0.5");
 });

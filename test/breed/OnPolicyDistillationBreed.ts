@@ -26,6 +26,11 @@ import { Breed } from "@breed/Breed.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Genus } from "@neat/Genus.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
+import {
+  readCurrentGenerationFromCreature,
+  readWarmupGenerationsFromCreature,
+  writeSeedWarmupProgressTags,
+} from "@architecture/CreatureFactory.ts";
 
 // DEBUG mode is intentionally NOT enabled here: it injects diagnostic
 // numeric `id` fields into `exportJSON()` output that destabilise the
@@ -311,5 +316,28 @@ Deno.test(
         );
       }
     }
+  },
+);
+
+Deno.test(
+  "OnPolicyDistillationBreed - warm-up tags survive onto offspring",
+  () => {
+    const teacherA = buildSimpleCreature(2, ["warm-a-h0", "warm-a-h1"]);
+    const teacherB = buildSimpleCreature(2, ["warm-b-h0", "warm-b-h1"]);
+    writeSeedWarmupProgressTags(teacherA, 1440, 77);
+    writeSeedWarmupProgressTags(teacherB, 1440, 77);
+
+    const result = onPolicyDistillationBreed(
+      [teacherA, teacherB],
+      defaultOpd({
+        teacherCount: 2,
+        distillationSteps: 4,
+        calibrationBatchSize: 4,
+      }),
+    );
+
+    assert(result, "OPD must produce an offspring");
+    assertEquals(readWarmupGenerationsFromCreature(result.offspring), 1440);
+    assertEquals(readCurrentGenerationFromCreature(result.offspring), 77);
   },
 );
