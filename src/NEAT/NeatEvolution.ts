@@ -46,6 +46,7 @@ import {
 } from "@neat/CpuUtilisation.ts";
 import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
 import { selectTrainingCandidates } from "@neat/TrainingCandidates.ts";
+import { writeSeedWarmupProgressTags } from "@architecture/CreatureFactory.ts";
 
 /**
  * The result returned by a single call to `evolve()`.
@@ -81,6 +82,8 @@ export async function evolve(
 ): Promise<EvolveResult> {
   // Issue #2239: Per-generation timing diagnostics
   const evolveStartMs = Date.now();
+
+  neat.currentGeneration++;
 
   neat.additionalGenerationCount--;
 
@@ -633,6 +636,7 @@ export async function evolve(
     // histogram persists across generations.
     neat.squashEffectivenessTracker,
   );
+  mutator.setWarmupContext(neat.warmupGenerations, neat.currentGeneration);
 
   // Issue #2527: Provide the per-creature cohort std lookup so the
   // Mutator can run M-H acceptance against the GRPO group-relative
@@ -953,6 +957,14 @@ export async function evolve(
         // throughput summary so operators can alert on producer
         // corruption.
         ` corruptParentSkips=${throughput.corruptParentSkips}`,
+    );
+  }
+
+  if (neat.warmupGenerations > 0) {
+    writeSeedWarmupProgressTags(
+      fittest,
+      neat.warmupGenerations,
+      neat.currentGeneration,
     );
   }
 
