@@ -97,7 +97,7 @@ export async function evolve(
   if (preFitnessMemory.evicted) {
     emitTrainingEvent(neat.config.onTrainingEvent, {
       kind: "memory_pressure",
-      timestamp: new Date().toISOString(),
+      timestamp: Temporal.Now.instant().toString(),
       heapUsed: preFitnessMemory.heapUsed,
       heapLimit: preFitnessMemory.heapTotal,
       evicted: true,
@@ -237,7 +237,7 @@ export async function evolve(
   // summary for diversity-aware features and external observability.
   emitTrainingEvent(neat.config.onTrainingEvent, {
     kind: "species_adjusted",
-    timestamp: new Date().toISOString(),
+    timestamp: Temporal.Now.instant().toString(),
     speciesCount: genus.speciesMap.size,
     compatibilityThreshold: neat.config.geneticCompatibilityThreshold,
     speciesSummary: genus.speciesSummary(),
@@ -491,7 +491,7 @@ export async function evolve(
 
     emitTrainingEvent(neat.config.onTrainingEvent, {
       kind: "population_resized",
-      timestamp: new Date().toISOString(),
+      timestamp: Temporal.Now.instant().toString(),
       previousSize: previousEffectiveSize,
       newSize: effectivePopSize,
       baseSize: neat.config.populationSize,
@@ -788,7 +788,7 @@ export async function evolve(
     // Issue #1615: Emit memory_pressure event
     emitTrainingEvent(neat.config.onTrainingEvent, {
       kind: "memory_pressure",
-      timestamp: new Date().toISOString(),
+      timestamp: Temporal.Now.instant().toString(),
       heapUsed: memoryResult.heapUsed,
       heapLimit: memoryResult.heapTotal,
       evicted: true,
