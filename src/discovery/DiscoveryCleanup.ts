@@ -32,7 +32,7 @@ export function createDiscoveryLockFile(dir: string): void {
   const lockPath = `${dir}/${LOCK_FILE_NAME}`;
   const data: DiscoveryLockData = {
     pid: Deno.pid,
-    startedAt: new Date().toISOString(),
+    startedAt: Temporal.Now.instant().toString(),
   };
   Deno.writeTextFileSync(lockPath, JSON.stringify(data));
 }

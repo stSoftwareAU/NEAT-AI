@@ -133,7 +133,7 @@ export function writeFocusSelectionAnalysis(
 
     const analysis: FocusSelectionAnalysis = {
       discoveryID,
-      timestamp: new Date().toISOString(),
+      timestamp: Temporal.Now.instant().toString(),
       costOfGrowth,
       selectionMethod,
       totalCandidates: candidates.length,

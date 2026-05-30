@@ -104,8 +104,8 @@ function recordValidationIssue(
 ): void {
   try {
     // Create timestamp in Australian format (yyyymmdd-HHmmss)
-    const now = new Date();
-    const timestamp = now.toISOString()
+    const nowIso = Temporal.Now.instant().toString();
+    const timestamp = nowIso
       .replace(/[-:]/g, "")
       .replace("T", "-")
       .slice(0, 15);
@@ -145,7 +145,7 @@ function recordValidationIssue(
       `Validation Error Report`,
       `=======================`,
       ``,
-      `Timestamp: ${now.toISOString()}`,
+      `Timestamp: ${nowIso}`,
       `Discovery ID: ${discoveryID}`,
       `Operation Type: ${operationType}`,
       ``,
@@ -187,8 +187,8 @@ export function recordDiscoveryIssue(
 ): void {
   try {
     // Create timestamp in Australian format (yyyymmdd-HHmmss)
-    const now = new Date();
-    const timestamp = now.toISOString()
+    const nowIso = Temporal.Now.instant().toString();
+    const timestamp = nowIso
       .replace(/[-:]/g, "")
       .replace("T", "-")
       .slice(0, 15);
@@ -227,7 +227,7 @@ export function recordDiscoveryIssue(
       `Discovery Issue Report`,
       `======================`,
       ``,
-      `Timestamp: ${now.toISOString()}`,
+      `Timestamp: ${nowIso}`,
       `Discovery ID: ${discoveryID}`,
       `Operation Type: ${operationType}`,
       `Issue Type: ${issueType}`,
