@@ -502,6 +502,17 @@ already consumer-pluggable. See the
 rationale, the audit command, and an example of injecting a custom `Logger` via
 `NeatOptions.logger` / `setLogger()`.
 
+### 🕒 Date/time handling
+
+Use the native `Temporal` API (stable in Deno 2.7+) for **wall-clock /
+calendar-style timestamps** — anything logged, emitted in an event payload,
+persisted to JSON, or shown in a user-facing report. Keep `Date.now()` /
+`performance.now()` for **elapsed-time measurements** (phase timings,
+cool-downs, sliding-window TTLs). Do **not** add `@js-temporal/polyfill` or
+`@std/datetime`. See the
+[Date/time handling section in AGENTS.md](./AGENTS.md#-datetime-handling--temporal-vs-date)
+for the full policy and canonical examples.
+
 ## 📁 Project Structure
 
 ```
