@@ -46,7 +46,10 @@ import {
 } from "@neat/CpuUtilisation.ts";
 import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
 import { selectTrainingCandidates } from "@neat/TrainingCandidates.ts";
-import { writeSeedWarmupProgressTags } from "@architecture/CreatureFactory.ts";
+import {
+  isSeedWarmupStructuralLockActive,
+  writeSeedWarmupProgressTags,
+} from "@architecture/CreatureFactory.ts";
 
 /**
  * The result returned by a single call to `evolve()`.
@@ -325,7 +328,23 @@ export async function evolve(
       elitists.push(simplified);
     }
 
-    if (trainingTimeOutMinutes !== -1) {
+    // Issue #2828: while the seed warm-up structural lock is active, skip
+    // both inline Discovery and cached-discovery replay — they prune/rewire
+    // topology, which must wait until the warm-up window has elapsed so the
+    // factory seed can align weights/biases first.
+    const warmupLockActive = isSeedWarmupStructuralLockActive(
+      neat.warmupGenerations,
+      neat.currentGeneration,
+    );
+
+    if (warmupLockActive && neat.config.verbose) {
+      getLogger().info(
+        `Skipping discovery and replay: seed warm-up structural lock ` +
+          `active (generation ${neat.currentGeneration}/${neat.warmupGenerations})`,
+      );
+    }
+
+    if (!warmupLockActive && trainingTimeOutMinutes !== -1) {
       // Estimate if we have enough time for discovery
       const estimatedDiscoveryMinutes = neat.lastDiscoveryDurationMS > 0
         ? Math.ceil(neat.lastDiscoveryDurationMS / 60000) + 1
@@ -343,7 +362,7 @@ export async function evolve(
     }
 
     // Issue #997: Schedule background replay of cached discoveries
-    if (neat.dataDir && neat.config.discoveryCacheDir) {
+    if (!warmupLockActive && neat.dataDir && neat.config.discoveryCacheDir) {
       neat.discoveryReplayQueue.scheduleReplay(
         fittest,
         neat.dataDir,

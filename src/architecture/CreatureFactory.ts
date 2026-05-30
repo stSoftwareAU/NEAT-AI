@@ -171,6 +171,54 @@ export function readCurrentGenerationFromCreature(creature: Creature): number {
 }
 
 /**
+ * Issue #2828: Centralised seed warm-up structural lock.
+ *
+ * While the lock is active, no path may apply structural reduction or
+ * squash changes to a warm-up seed — neither mutations, inline Discovery,
+ * Discovery replay, nor pruning-template DNA sharing. This lets a factory
+ * topology (e.g. 50 hidden → 1 output) align weights/biases before any
+ * structural pruning is permitted.
+ *
+ * The lock is active when warm-up is configured (`warmupGenerations > 0`)
+ * and the current generation has not yet passed it
+ * (`currentGeneration <= warmupGenerations`).
+ *
+ * Conservative default: when warm-up is configured but the current
+ * generation is unknown (`<= 0`, e.g. a freshly seeded creature whose
+ * `currentGeneration` tag has not been written yet), the lock stays
+ * **active**. We never prune a warm-up seed before we can prove the
+ * warm-up window has elapsed.
+ */
+export function isSeedWarmupStructuralLockActive(
+  warmupGenerations: number,
+  currentGeneration: number,
+): boolean {
+  if (!Number.isFinite(warmupGenerations) || warmupGenerations <= 0) {
+    // No warm-up configured — structural changes are always allowed.
+    return false;
+  }
+  if (!Number.isFinite(currentGeneration) || currentGeneration <= 0) {
+    // Warm-up configured but generation unknown — stay locked.
+    return true;
+  }
+  return currentGeneration <= warmupGenerations;
+}
+
+/**
+ * Read the seed warm-up structural lock state directly from a creature's
+ * tags. Used by paths (e.g. {@link DiscoveryReplayQueue}) that only have
+ * the creature, not the owning `Neat` instance.
+ */
+export function isSeedWarmupStructuralLockActiveForCreature(
+  creature: Creature,
+): boolean {
+  return isSeedWarmupStructuralLockActive(
+    readWarmupGenerationsFromCreature(creature),
+    readCurrentGenerationFromCreature(creature),
+  );
+}
+
+/**
  * Persist seed warm-up progress on a creature so export/load can resume
  * evolution with the correct warm-up gate.
  */
