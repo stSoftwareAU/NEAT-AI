@@ -84,6 +84,22 @@ export class Mutator {
   private mcmcCohortFallbackStd = 0;
 
   /**
+   * Seed warm-up: when `warmupGenerations > 0` and
+   * `currentGeneration <= warmupGenerations`, structural-reduction and
+   * squash-changing mutations are excluded from candidate selection.
+   */
+  private warmupGenerations = 0;
+  private currentGeneration = 0;
+
+  /** Mutation names allowed during seed warm-up. */
+  private static readonly warmupAllowedMutations = new Set([
+    Mutation.ADD_NODE.name,
+    Mutation.ADD_CONN.name,
+    Mutation.MOD_WEIGHT.name,
+    Mutation.MOD_BIAS.name,
+  ]);
+
+  /**
    * Issue #2457: Per-role squash effectiveness tracker. Persists across
    * generations within a run so ModSquash can bias toward squashes that
    * historically improved fitness in similar roles. When omitted, the
@@ -162,6 +178,37 @@ export class Mutator {
     this.mcmcCohortFallbackStd = Number.isFinite(fallbackStd) && fallbackStd > 0
       ? fallbackStd
       : 0;
+  }
+
+  /**
+   * Configure seed warm-up mutation gating for the current generation.
+   * No-op when `warmupGenerations` is 0 (default — unchanged behaviour).
+   */
+  public setWarmupContext(
+    warmupGenerations: number,
+    currentGeneration: number,
+  ): void {
+    this.warmupGenerations = Number.isFinite(warmupGenerations) &&
+        warmupGenerations > 0
+      ? Math.floor(warmupGenerations)
+      : 0;
+    this.currentGeneration = Number.isFinite(currentGeneration) &&
+        currentGeneration > 0
+      ? Math.floor(currentGeneration)
+      : 0;
+  }
+
+  private isSeedWarmupActive(): boolean {
+    return this.warmupGenerations > 0 &&
+      this.currentGeneration > 0 &&
+      this.currentGeneration <= this.warmupGenerations;
+  }
+
+  private applySeedWarmupFilter<T extends { name: string }>(
+    candidates: readonly T[],
+  ): readonly T[] {
+    if (!this.isSeedWarmupActive()) return candidates;
+    return candidates.filter((c) => Mutator.warmupAllowedMutations.has(c.name));
   }
 
   /**
@@ -615,9 +662,9 @@ export class Mutator {
       }
     });
 
-    // Pre-compute weight/bias count for weighted selection (Issue #1009)
+    const warmupFiltered = this.applySeedWarmupFilter(candidates);
     let weightBiasCount = 0;
-    for (const candidate of candidates) {
+    for (const candidate of warmupFiltered) {
       if (
         candidate.name === Mutation.MOD_BIAS.name ||
         candidate.name === Mutation.MOD_WEIGHT.name
@@ -625,15 +672,15 @@ export class Mutator {
         weightBiasCount++;
       }
     }
-
-    // Issue #2125: Pre-compute non-expansion candidates once per cache key.
-    // This avoids repeated .filter() calls in selectMutationMethod() for large
-    // creatures, reducing per-call array allocations and GC pressure.
-    const nonExpansionCandidates = candidates.filter((c) =>
+    const nonExpansionCandidates = warmupFiltered.filter((c) =>
       !this.isTopologyExpansionMutation(c.name)
     );
 
-    return { candidates, weightBiasCount, nonExpansionCandidates };
+    return {
+      candidates: warmupFiltered,
+      weightBiasCount,
+      nonExpansionCandidates,
+    };
   }
 
   /**

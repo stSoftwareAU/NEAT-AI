@@ -36,6 +36,10 @@ import {
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { configureSharedSubnetworkIndex } from "@discovery/SubnetworkHashIndex.ts";
+import {
+  readCurrentGenerationFromCreature,
+  readWarmupGenerationsFromCreature,
+} from "@architecture/CreatureFactory.ts";
 
 // Extracted modules
 import * as evolution from "@neat/NeatEvolution.ts";
@@ -144,6 +148,15 @@ export class Neat {
    * each generation by `computeAdaptivePopulationSize()`.
    */
   effectivePopulationSize: number;
+
+  /**
+   * Seed warm-up generation count from the initial creature tag.
+   * Zero means warm-up is disabled (default behaviour).
+   */
+  warmupGenerations = 0;
+
+  /** Current evolution generation (1-based, incremented at start of evolve). */
+  currentGeneration = 0;
 
   /** Data directory for discovery replay (Issue #997) */
   dataDir?: string;
@@ -560,12 +573,16 @@ export class Neat {
   }
 
   async populatePopulation(creature: Creature) {
+    this.warmupGenerations = readWarmupGenerationsFromCreature(creature);
+    this.currentGeneration = readCurrentGenerationFromCreature(creature);
+
     const mutator = new Mutator(
       this.config,
       undefined,
       undefined,
       this.squashEffectivenessTracker,
     );
+    mutator.setWarmupContext(this.warmupGenerations, this.currentGeneration);
     while (this.population.length < this.config.populationSize - 1) {
       const clonedCreature = creature.shallowClone();
       const creatures = [clonedCreature];
