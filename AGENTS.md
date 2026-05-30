@@ -449,6 +449,66 @@ deno info --json mod.ts | grep -o '"specifier": "[^"]*"' | grep '@std/log' \
   || echo 'no @std/log dependency'
 ```
 
+### 🕒 Date/time handling — Temporal vs Date
+
+NEAT-AI uses the native [`Temporal`](https://tc39.es/proposal-temporal/docs/)
+API for **wall-clock and calendar-style timestamps**, and keeps `Date.now()` /
+`performance.now()` for **elapsed-time measurements**. `Temporal` is stable in
+**Deno 2.7+** — no `--unstable-temporal` flag and no polyfill are required.
+
+**Use `Temporal` for wall-clock / calendar timestamps.** Anything that records
+_when something happened_ on the real-world clock:
+
+- Timestamps written to logs.
+- Timestamps emitted in event payloads (e.g. training events).
+- Timestamps persisted to JSON on disk.
+- Dates/times printed in a user-facing report.
+
+```typescript
+// ✅ Wall-clock timestamp — ISO 8601 string for a log, event, or JSON field
+const occurredAt = Temporal.Now.instant().toString();
+// e.g. "2026-05-30T03:21:09.123456789Z"
+```
+
+**Keep `Date.now()` / `performance.now()` for elapsed-time measurements.**
+Anything that measures _how long something took_ or drives a relative deadline:
+
+- Per-phase timings (start/stop durations).
+- Throttling cool-downs.
+- Sliding-window TTLs (time-to-live).
+- Deadline computations driven by `Date.now()` deltas.
+
+`Temporal` is **not** the right tool for monotonic elapsed timing — do not
+migrate these to `Temporal`.
+
+```typescript
+// ✅ Elapsed-time measurement — keep Date.now() / performance.now()
+const start = performance.now();
+runPhase();
+const elapsedMs = performance.now() - start;
+```
+
+**Canonical "do NOT migrate" examples** (these measure elapsed time, not
+wall-clock instants):
+
+- `src/NEAT/MemoryMonitor.ts` — sampling cadence and elapsed-window logic.
+- `src/NEAT/ThroughputMetrics.ts` — throughput is `count / elapsed`.
+- Per-phase timing in `src/NEAT/NeatEvolution.ts` — phase start/stop deltas.
+
+**Forbidden dependencies.** Do **not** add either of the following, and do not
+introduce any new `package.json`-only dependency to satisfy date/time needs
+(consistent with the project's Deno-regression guardrail):
+
+- `@js-temporal/polyfill` — native `Temporal` is already stable in Deno 2.7+, so
+  the polyfill is redundant.
+- `@std/datetime` (`jsr:@std/datetime`) — `Temporal` covers wall-clock
+  formatting and arithmetic without an extra dependency.
+
+> [!NOTE]
+> Quick test of which tool to reach for: if the value answers _"at what point on
+> the calendar?"_ use `Temporal`; if it answers _"how long?"_ use `Date.now()` /
+> `performance.now()`.
+
 ### 🧪 Testing
 
 #### Unit Tests vs Benchmarks
