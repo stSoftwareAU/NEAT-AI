@@ -2,9 +2,9 @@
 
 Bumped the package version from `5.1.3` to `5.2.0` in `deno.json` and added a
 `## [5.2.0] - 2026-05-30` heading to `CHANGELOG.md` summarising the Temporal
-migration completed across Issues #2813–#2817. The previously unreleased
-entries are now grouped under the `5.2.0` heading, leaving `[Unreleased]`
-empty for the next cycle. Closes #2818.
+migration completed across Issues #2813–#2817. The previously unreleased entries
+are now grouped under the `5.2.0` heading, leaving `[Unreleased]` empty for the
+next cycle. Closes #2818.
 
 The version bump from `5.1.x` to `5.2.0` is a minor bump: it adds new
 user-visible capability (native `Temporal` wall-clock timestamps) without
