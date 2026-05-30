@@ -526,6 +526,38 @@ Deno.test("checkpoint metadata - timestamps are valid ISO strings", async () => 
   assert(!isNaN(date.getTime()), "createdAt should be a valid ISO date");
 });
 
+// Issue #2815: createdAt must be a wall-clock ISO-8601 instant
+// parseable by Temporal.Instant.from, not just a Date-parseable string.
+Deno.test(
+  "Issue #2815: checkpoint createdAt is a Temporal.Instant-parseable ISO-8601 string",
+  async () => {
+    await initWasmForTests();
+    const before = Temporal.Now.instant();
+    const creature = new Creature(2, 1);
+    const checkpoint = exportCheckpoint(creature);
+    const after = Temporal.Now.instant();
+
+    assertEquals(
+      typeof checkpoint.metadata.createdAt,
+      "string",
+      "createdAt should be a string",
+    );
+
+    // Round-trip through Temporal.Instant.from — this throws on a malformed
+    // value, which is exactly what we want the regression test to catch.
+    const instant = Temporal.Instant.from(checkpoint.metadata.createdAt);
+
+    assert(
+      Temporal.Instant.compare(instant, before) >= 0,
+      `createdAt ${checkpoint.metadata.createdAt} should be >= ${before.toString()}`,
+    );
+    assert(
+      Temporal.Instant.compare(instant, after) <= 0,
+      `createdAt ${checkpoint.metadata.createdAt} should be <= ${after.toString()}`,
+    );
+  },
+);
+
 Deno.test("importCheckpoint - no options returns identical creature", async () => {
   await initWasmForTests();
   const creature = new Creature(2, 1, {
