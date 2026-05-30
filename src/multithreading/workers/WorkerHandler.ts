@@ -21,6 +21,10 @@ import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import type { WasmCacheConfig } from "@config/WasmCacheConfig.ts";
+import {
+  CURRENT_GENERATION_TAG,
+  WARMUP_GENERATIONS_TAG,
+} from "@architecture/CreatureFactory.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { clearForGc } from "@utils/ReleasableRef.ts";
 import {
@@ -470,8 +474,16 @@ export class WorkerHandler
 
   train(creature: Creature, options: TrainOptions) {
     const json = creature.exportJSON();
+    const warmupGenerations = getTag(creature, WARMUP_GENERATIONS_TAG);
+    const currentGeneration = getTag(creature, CURRENT_GENERATION_TAG);
 
     delete json.tags;
+    if (warmupGenerations) {
+      addTag(json, WARMUP_GENERATIONS_TAG, warmupGenerations);
+    }
+    if (currentGeneration) {
+      addTag(json, CURRENT_GENERATION_TAG, currentGeneration);
+    }
 
     addTag(
       json,
