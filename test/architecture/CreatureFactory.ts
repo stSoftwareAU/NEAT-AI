@@ -17,6 +17,7 @@
  *    pruning, target stats) — not normalization.
  */
 import { assert, assertEquals, assertThrows } from "@std/assert";
+import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import {
   creatureForDataset,
@@ -25,6 +26,8 @@ import {
   HIGH_DIMENSIONAL_INPUT_THRESHOLD,
   pickHiddenCapacity,
   pickOutputSquashForProblem,
+  readCurrentGenerationFromCreature,
+  readWarmupGenerationsFromCreature,
   rescaleWeightsForInit,
   scanTrainingData,
   targetInitStddev,
@@ -383,6 +386,40 @@ Deno.test("creatureForDataset: classification output bias is NOT overridden", ()
 Deno.test("creatureForDataset: empty training set throws", () => {
   assertThrows(
     () => creatureForDataset([], { cost: "MSE" }),
+    RangeError,
+  );
+});
+
+Deno.test("creatureForProblem: optional warmupGenerations tag when set", () => {
+  const creature = creatureForProblem({
+    inputs: 4,
+    outputs: 1,
+    cost: "MSE",
+    warmupGenerations: 25,
+  });
+  assertEquals(getTag(creature, "warmupGenerations"), "25");
+  const roundTrip = Creature.fromJSON(creature.exportJSON());
+  assertEquals(readWarmupGenerationsFromCreature(roundTrip), 25);
+  assertEquals(readCurrentGenerationFromCreature(roundTrip), 0);
+});
+
+Deno.test("creatureForProblem: omits warmupGenerations tag when unset", () => {
+  const creature = creatureForProblem({
+    inputs: 4,
+    outputs: 1,
+    cost: "MSE",
+  });
+  assertEquals(getTag(creature, "warmupGenerations"), null);
+});
+
+Deno.test("creatureForProblem: rejects negative warmupGenerations", () => {
+  assertThrows(
+    () =>
+      creatureForProblem({
+        inputs: 4,
+        outputs: 1,
+        warmupGenerations: -1,
+      }),
     RangeError,
   );
 });

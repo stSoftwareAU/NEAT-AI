@@ -1,5 +1,11 @@
 import { assert, assertEquals } from "@std/assert";
+import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
+import {
+  creatureForProblem,
+  CURRENT_GENERATION_TAG,
+  WARMUP_GENERATIONS_TAG,
+} from "@architecture/CreatureFactory.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Neat } from "@neat/Neat.ts";
@@ -204,6 +210,37 @@ Deno.test("populatePopulation: works with existing population", async () => {
       10,
       "Population should be filled to populationSize",
     );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("populatePopulation: restores warm-up tags from seed creature", async () => {
+  const dataDir = createTestDataDir(3, 2);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 5 };
+    const neat = new Neat(3, 2, options, workers);
+
+    const seedCreature = creatureForProblem({
+      inputs: 3,
+      outputs: 2,
+      cost: "MSE",
+      warmupGenerations: 20,
+    });
+    addTag(seedCreature, CURRENT_GENERATION_TAG, "7");
+
+    await neat.populatePopulation(seedCreature);
+
+    assertEquals(neat.warmupGenerations, 20);
+    assertEquals(neat.currentGeneration, 7);
+
+    const seedJson = neat.population[0].exportJSON();
+    const warmupTag = seedJson.tags?.find((t) =>
+      t.name === WARMUP_GENERATIONS_TAG
+    );
+    assertEquals(warmupTag?.value, "20");
   } finally {
     await terminateWorkers(workers);
   }

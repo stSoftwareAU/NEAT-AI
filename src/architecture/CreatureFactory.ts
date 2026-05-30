@@ -44,6 +44,7 @@
 import { Creature } from "@creature";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { pickOutputSquashForCost } from "@costs/CostOutputSquash.ts";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 
 /** Inclusive numeric range, e.g. `{ min: -1, max: 1 }`. */
 export interface NumericRange {
@@ -99,6 +100,12 @@ export interface ProblemSpec {
    * `CreatureOptions.feedbackEnabled`; defaults to forward-only.
    */
   feedbackEnabled?: boolean;
+  /**
+   * Optional seed warm-up length (generations). When set, the factory
+   * writes a `warmupGenerations` creature tag so evolution can defer
+   * structural pruning and squash changes until weights/biases align.
+   */
+  warmupGenerations?: number;
 }
 
 /** Result of {@link scanTrainingData}: the non-declarable observations. */
@@ -134,6 +141,75 @@ export const DEAD_FEATURE_VARIANCE_THRESHOLD = 1e-8;
  * sample-limited problems.
  */
 export const HIGH_DIMENSIONAL_INPUT_THRESHOLD = 100;
+
+/** Creature tag key for seed warm-up generation count. */
+export const WARMUP_GENERATIONS_TAG = "warmupGenerations";
+
+/** Creature tag key for evolution progress during seed warm-up resume. */
+export const CURRENT_GENERATION_TAG = "currentGeneration";
+
+/**
+ * Parse the seed warm-up generation count from a creature tag.
+ * Returns 0 when the tag is absent or invalid (no warm-up).
+ */
+export function readWarmupGenerationsFromCreature(creature: Creature): number {
+  const tag = getTag(creature, WARMUP_GENERATIONS_TAG);
+  if (!tag) return 0;
+  const n = Number.parseInt(tag, 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * Parse the saved evolution generation from a creature tag.
+ * Returns 0 when the tag is absent or invalid.
+ */
+export function readCurrentGenerationFromCreature(creature: Creature): number {
+  const tag = getTag(creature, CURRENT_GENERATION_TAG);
+  if (!tag) return 0;
+  const n = Number.parseInt(tag, 10);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+/**
+ * Persist seed warm-up progress on a creature so export/load can resume
+ * evolution with the correct warm-up gate.
+ */
+export function writeSeedWarmupProgressTags(
+  creature: Creature,
+  warmupGenerations: number,
+  currentGeneration: number,
+): void {
+  if (Number.isFinite(warmupGenerations) && warmupGenerations > 0) {
+    addTag(
+      creature,
+      WARMUP_GENERATIONS_TAG,
+      String(Math.floor(warmupGenerations)),
+    );
+  }
+  if (Number.isFinite(currentGeneration) && currentGeneration > 0) {
+    addTag(
+      creature,
+      CURRENT_GENERATION_TAG,
+      String(Math.floor(currentGeneration)),
+    );
+  }
+}
+
+function applyWarmupGenerationsTag(
+  creature: Creature,
+  warmupGenerations: number | undefined,
+): void {
+  if (warmupGenerations === undefined) return;
+  if (!Number.isFinite(warmupGenerations) || warmupGenerations < 0) {
+    throw new RangeError(
+      `warmupGenerations must be a non-negative integer, got ${warmupGenerations}`,
+    );
+  }
+  const n = Math.floor(warmupGenerations);
+  if (n > 0) {
+    addTag(creature, WARMUP_GENERATIONS_TAG, String(n));
+  }
+}
 
 // ─── Activation families (for weight-init scaling) ──────────────────────
 
@@ -335,6 +411,7 @@ export function creatureForProblem(spec: ProblemSpec): Creature {
   );
 
   rescaleWeightsForInit(creature);
+  applyWarmupGenerationsTag(creature, spec.warmupGenerations);
   return creature;
 }
 
@@ -444,6 +521,8 @@ export interface DatasetFactoryOptions {
   hiddenSquash?: string;
   /** Whether feedback / recurrent topology is allowed. */
   feedbackEnabled?: boolean;
+  /** Seed warm-up length; see {@link ProblemSpec.warmupGenerations}. */
+  warmupGenerations?: number;
 }
 
 /**
@@ -484,6 +563,7 @@ export function creatureForDataset(
     hiddenCapacity: options.hiddenCapacity,
     hiddenSquash: options.hiddenSquash,
     feedbackEnabled: options.feedbackEnabled,
+    warmupGenerations: options.warmupGenerations,
   };
   const creature = creatureForProblem(spec);
 
