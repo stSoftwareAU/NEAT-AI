@@ -55,7 +55,8 @@ export function writeDiagnostics(options: DiagnosticsOptions): void {
   }
 
   const filePrefix = prefix ? `${prefix}-` : "";
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  // Issue #2815: wall-clock instant — use Temporal for ISO timestamps.
+  const timestamp = Temporal.Now.instant().toString().replace(/[:.]/g, "-");
 
   // Write error text
   const errorText = error instanceof Error
