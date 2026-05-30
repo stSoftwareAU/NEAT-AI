@@ -518,7 +518,7 @@ export async function evolveDir(
       (generation === 1 ? start : iterationStartMS);
     emitTrainingEvent(config.onTrainingEvent, {
       kind: "generation_complete",
-      timestamp: new Date().toISOString(),
+      timestamp: Temporal.Now.instant().toString(),
       generation,
       bestFitness: fittestScore,
       averageFitness: result.averageScore,
@@ -532,7 +532,7 @@ export async function evolveDir(
     if (result.plateau.onPlateau) {
       emitTrainingEvent(config.onTrainingEvent, {
         kind: "plateau_detected",
-        timestamp: new Date().toISOString(),
+        timestamp: Temporal.Now.instant().toString(),
         generation,
         stagnationCount: result.plateau.generationsOnPlateau,
         plateauThreshold: config.plateauDetection.windowSize,
@@ -795,7 +795,7 @@ export async function evolveEnv<S, A>(
       (generation === 1 ? start : iterationStartMS);
     emitTrainingEvent(config.onTrainingEvent, {
       kind: "generation_complete",
-      timestamp: new Date().toISOString(),
+      timestamp: Temporal.Now.instant().toString(),
       generation,
       bestFitness: fittestScore,
       averageFitness: result.averageScore,
@@ -808,7 +808,7 @@ export async function evolveEnv<S, A>(
     if (result.plateau.onPlateau) {
       emitTrainingEvent(config.onTrainingEvent, {
         kind: "plateau_detected",
-        timestamp: new Date().toISOString(),
+        timestamp: Temporal.Now.instant().toString(),
         generation,
         stagnationCount: result.plateau.generationsOnPlateau,
         plateauThreshold: config.plateauDetection.windowSize,
@@ -1260,7 +1260,7 @@ export async function evolveRL<S, A>(
       (generation === 1 ? start : iterationStartMS);
     emitTrainingEvent(config.onTrainingEvent, {
       kind: "generation_complete",
-      timestamp: new Date().toISOString(),
+      timestamp: Temporal.Now.instant().toString(),
       generation,
       bestFitness: fittestScore,
       averageFitness: result.averageScore,
@@ -1273,7 +1273,7 @@ export async function evolveRL<S, A>(
     if (result.plateau.onPlateau) {
       emitTrainingEvent(config.onTrainingEvent, {
         kind: "plateau_detected",
-        timestamp: new Date().toISOString(),
+        timestamp: Temporal.Now.instant().toString(),
         generation,
         stagnationCount: result.plateau.generationsOnPlateau,
         plateauThreshold: config.plateauDetection.windowSize,
@@ -1312,7 +1312,7 @@ export async function evolveRL<S, A>(
       milestones.push(milestone);
       emitTrainingEvent(config.onTrainingEvent, {
         kind: "evolverl_milestone",
-        timestamp: new Date().toISOString(),
+        timestamp: Temporal.Now.instant().toString(),
         ...milestone,
       });
     }
@@ -1387,7 +1387,7 @@ export async function evolveRL<S, A>(
     milestones.push(milestone);
     emitTrainingEvent(config.onTrainingEvent, {
       kind: "evolverl_milestone",
-      timestamp: new Date().toISOString(),
+      timestamp: Temporal.Now.instant().toString(),
       ...milestone,
     });
   }
