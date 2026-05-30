@@ -14,7 +14,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [5.2.0] - 2026-05-30
+
 ### Changed
+
+- Adopted the native `Temporal` API for wall-clock timestamps in training
+  events, discovery cache entries, checkpoint metadata, diagnostics, and
+  validation reports. Elapsed-time measurements continue to use `Date.now()` /
+  `performance.now()`. (Issues #2814, #2815, #2816, #2817; policy in #2813.)
 
 - **Issue #2791:** `trainPerGen` now auto-scales with the population for
   supervised costs so per-genome gradient training is no longer starved.

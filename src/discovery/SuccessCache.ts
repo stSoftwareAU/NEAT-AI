@@ -137,7 +137,7 @@ export function recordSuccessSync(
     changeType: candidate.change.type,
     description: candidate.change.description,
     ...metadata,
-    timestamp: metadata.timestamp ?? new Date().toISOString(),
+    timestamp: metadata.timestamp ?? Temporal.Now.instant().toString(),
     ...(discoveryVersion ? { discoveryVersion } : {}),
     rustRequest: baseCreature
       ? buildRustRequest(baseCreature, candidate)

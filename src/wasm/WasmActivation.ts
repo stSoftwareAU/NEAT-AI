@@ -68,15 +68,20 @@ export interface WasmTraceResult {
  * the WASM constructor surfaces once per offending creature uuid rather than
  * once per retry. Reading this value clears nothing — callers compare
  * timestamps to confirm freshness.
+ *
+ * Issue #2815: `timestamp` is an ISO-8601 string sourced from
+ * `Temporal.Now.instant().toString()` (wall-clock instant). Downstream
+ * consumers compare records by identity / message rather than by numeric
+ * delta, so the string form is the appropriate Temporal representation.
  */
-let lastCreateFailure: { message: string; timestamp: number } | null = null;
+let lastCreateFailure: { message: string; timestamp: string } | null = null;
 
 /**
  * Read the most recent `WasmCreatureActivation.create` failure (if any).
  * Issue #2483.
  */
 export function getLastWasmCreateFailure():
-  | { message: string; timestamp: number }
+  | { message: string; timestamp: string }
   | null {
   return lastCreateFailure;
 }
@@ -189,7 +194,8 @@ export class WasmCreatureActivation {
       // surface it once per creature instead of logging here on every retry.
       lastCreateFailure = {
         message: error instanceof Error ? error.message : String(error),
-        timestamp: Date.now(),
+        // Issue #2815: wall-clock instant — use Temporal for ISO timestamps.
+        timestamp: Temporal.Now.instant().toString(),
       };
       return null;
     }

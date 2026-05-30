@@ -68,7 +68,8 @@ export function exportCheckpoint(
   const metadata: CheckpointMetadata = {
     sourceTask: options?.sourceTask,
     description: options?.description,
-    createdAt: new Date().toISOString(),
+    // Issue #2815: wall-clock instant — use Temporal for ISO timestamps.
+    createdAt: Temporal.Now.instant().toString(),
     score: creature.score,
     generations: options?.generations,
     sourceInputCount: creature.input,

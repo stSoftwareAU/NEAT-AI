@@ -57,7 +57,7 @@ function sanitizeSegment(value: string): string {
 }
 
 function makeArchiveTimestamp(): string {
-  return new Date().toISOString().replace(/[:.]/g, "-");
+  return Temporal.Now.instant().toString().replace(/[:.]/g, "-");
 }
 
 function safeRealPath(path: string): string {

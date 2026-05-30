@@ -307,3 +307,94 @@ Deno.test("TrainingEvent - species_adjusted events are emitted", async () => {
       typeof first.compatibilityThreshold === "number",
   );
 });
+
+Deno.test("TrainingEvent - timestamps are parseable by Temporal.Instant.from (Issue #2817)", async () => {
+  const events: TrainingEvent[] = [];
+
+  const trainingSet = [
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
+  ];
+
+  const creature = new Creature(2, 1);
+
+  await creature.evolveDataSet(trainingSet, {
+    mutation: Mutation.FFW,
+    iterations: 3,
+    targetError: 0.001,
+    populationSize: 10,
+    threads: 1,
+    onTrainingEvent: (event) => {
+      events.push(event);
+    },
+  });
+
+  assertGreater(events.length, 0, "Should emit at least one training event");
+
+  // Issue #2817: wall-clock timestamps emitted by CreatureTraining must be
+  // produced by Temporal.Now.instant().toString() — i.e. native Temporal —
+  // which means every timestamp must parse through Temporal.Instant.from
+  // without throwing and produce an epoch after the 2020-01-01 cutoff (a
+  // sanity check that we are emitting a real wall-clock instant, not a
+  // zero/epoch placeholder).
+  // Cutoff: 2020-01-01T00:00:00Z in epoch nanoseconds.
+  const cutoffNs = Temporal.Instant.from("2020-01-01T00:00:00Z")
+    .epochNanoseconds;
+  for (const event of events) {
+    const instant = Temporal.Instant.from(event.timestamp);
+    assert(
+      instant.epochNanoseconds > cutoffNs,
+      `Event timestamp ${event.timestamp} should be after 2020-01-01`,
+    );
+  }
+});
+
+Deno.test(
+  "TrainingEvent - NeatEvolution events use Temporal.Instant timestamps (Issue #2816)",
+  async () => {
+    const events: TrainingEvent[] = [];
+
+    const trainingSet = [
+      { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
+    ];
+
+    const creature = new Creature(2, 1);
+
+    await creature.evolveDataSet(trainingSet, {
+      mutation: Mutation.FFW,
+      iterations: 3,
+      targetError: 0.001,
+      populationSize: 10,
+      threads: 1,
+      onTrainingEvent: (event) => {
+        events.push(event);
+      },
+    });
+
+    // The NeatEvolution loop emits species_adjusted events on every
+    // generation; this is the canonical NeatEvolution.ts timestamp site
+    // migrated in Issue #2816. Asserting on it guards against a future
+    // regression to `new Date().toISOString()`.
+    const speciesAdjusted = events.filter(
+      (e) => e.kind === "species_adjusted",
+    );
+    assertGreater(
+      speciesAdjusted.length,
+      0,
+      "Expected at least one species_adjusted event from NeatEvolution",
+    );
+
+    const cutoffNs = Temporal.Instant.from("2020-01-01T00:00:00Z")
+      .epochNanoseconds;
+    for (const event of speciesAdjusted) {
+      // Must parse as a native Temporal.Instant — guards the migration
+      // from `new Date().toISOString()` to `Temporal.Now.instant()`.
+      const instant = Temporal.Instant.from(event.timestamp);
+      assert(
+        instant.epochNanoseconds > cutoffNs,
+        `species_adjusted timestamp ${event.timestamp} should be after 2020-01-01`,
+      );
+    }
+  },
+);

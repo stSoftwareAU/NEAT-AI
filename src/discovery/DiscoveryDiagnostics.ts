@@ -133,7 +133,7 @@ export function persistDiagnostics(
 
   const payload: Record<string, unknown> = {
     discoveryID,
-    timestamp: new Date().toISOString(),
+    timestamp: Temporal.Now.instant().toString(),
     changeTypes: Object.fromEntries(diagnostics),
   };
 

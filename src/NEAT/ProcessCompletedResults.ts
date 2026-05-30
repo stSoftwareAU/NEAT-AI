@@ -140,7 +140,7 @@ export function processCompletedResults(
     const outcome = chooseDiscoveryCompleteOutcome(r.discover);
     emitTrainingEvent(neat.config.onTrainingEvent, {
       kind: "discovery_complete",
-      timestamp: new Date().toISOString(),
+      timestamp: Temporal.Now.instant().toString(),
       outcome,
       candidateCount: (r.discover.addHelpfulSynapses?.length ?? 0) +
         (r.discover.removeHarmfulSynapse ? 1 : 0) +

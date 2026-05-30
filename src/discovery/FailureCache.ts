@@ -148,7 +148,7 @@ function buildCacheEntryPayload(
     changeType: candidate.change.type,
     description: candidate.change.description,
     ...metadata,
-    timestamp: new Date().toISOString(),
+    timestamp: Temporal.Now.instant().toString(),
     ...(discoveryVersion ? { discoveryVersion } : {}),
   };
 
