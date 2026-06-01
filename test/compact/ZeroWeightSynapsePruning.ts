@@ -69,8 +69,10 @@ Deno.test("Compact: prunes zero-weight synapses then removes newly-orphaned neur
   // - the inbound synapse to the newly removed neuron (input-0 -> hidden-unused)
   assertEquals(compacted.synapses.length, beforeSynapseCount - 2);
   assertEquals(compacted.synapses.some((s) => s.weight === 0), false);
+  // The newly-orphaned hidden neuron should be gone. Identify it by its stable
+  // UUID rather than the derived integer hash.
   assertEquals(
-    compacted.neurons.some((n) => n.id === 550257383),
+    compacted.neurons.some((n) => n.uuid === "hidden-unused"),
     false,
   );
 

@@ -46,9 +46,10 @@ Deno.test("pruneZeroWeightSynapses: keeps typed synapses, protects IF targets, a
   // - 1 inbound to output-1 (kept for structural safety) => 1 remains
   // - 3 typed required by IF + 1 untyped zero to IF => 4 remain
   assertEquals(exportJSON.synapses.length, 6);
-  // if-0 hidden neuron gets deterministic integer id 4227520
+  // The IF neuron must retain all four inbound synapses. Identify them by the
+  // stable UUID rather than the derived integer hash.
   assertEquals(
-    exportJSON.synapses.filter((s) => s.toId === 4227520).length,
+    exportJSON.synapses.filter((s) => s.toUUID === "if-0").length,
     4,
   );
   assertEquals(
