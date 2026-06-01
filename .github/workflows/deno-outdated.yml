@@ -23,6 +23,7 @@ jobs:
   outdated:
     name: Run deno outdated and raise PR
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         # actions/checkout@v6.0.2

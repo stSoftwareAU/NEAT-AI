@@ -11,6 +11,7 @@ jobs:
   semgrep:
     name: Semgrep SAST scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     container:
       # semgrep/semgrep:latest as of 2026-05-22 (multi-arch index digest).
       # Pinned to close the supply-chain hole on SEMGREP_APP_TOKEN — see #2743.
