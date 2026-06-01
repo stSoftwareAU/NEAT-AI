@@ -5,6 +5,12 @@ on:
     branches:
       - Develop
 
+# Serialise JSR publish runs but NEVER cancel one mid-flight: cancel-in-progress
+# is false so an in-progress publish is never interrupted (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest

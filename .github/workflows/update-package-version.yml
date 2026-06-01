@@ -6,6 +6,12 @@ on:
     branches:
       - Develop
 
+# Cancel superseded runs on the same ref so rapid successive pushes don't
+# pile up redundant version-bump runs (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   update-version:
     runs-on: ubuntu-latest

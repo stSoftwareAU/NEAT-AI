@@ -13,6 +13,12 @@ on:
   push:
     branches: [Develop, main, master]
 
+# Cancel superseded runs on the same ref so rapid successive pushes don't
+# pile up redundant lint runs (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Least-privilege GITHUB_TOKEN scopes (Issue #2706). actionlint only
 # reads files; no write access is required.
 permissions:

@@ -4,6 +4,12 @@ on:
   pull_request:
     branches: ["Develop"]
 
+# Cancel superseded runs on the same ref so rapid successive pushes don't
+# pile up redundant SAST scans (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
