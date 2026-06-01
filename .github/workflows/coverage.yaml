@@ -5,6 +5,12 @@ on:
     branches:
       - Develop
 
+# Cancel superseded runs on the same ref so rapid successive pushes don't
+# pile up redundant (heavy) coverage runs (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Least-privilege GITHUB_TOKEN scopes (Issue #2706). The workflow uploads
 # artifacts, posts check-run annotations via EnricoMi/publish-unit-test-result-action,
 # and uploads coverage/results to Codecov.

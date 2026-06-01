@@ -6,6 +6,12 @@ on:
       - Develop
   workflow_dispatch:
 
+# Cancel superseded runs on the same ref so rapid successive pushes don't
+# pile up redundant lint runs (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
