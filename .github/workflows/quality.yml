@@ -6,6 +6,12 @@ on:
       - Develop
   workflow_dispatch: # Allow manual trigger if needed
 
+# Cancel superseded runs on the same ref so rapid successive pushes don't
+# pile up redundant (heavy) quality runs (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Least-privilege GITHUB_TOKEN scopes (Issue #2706). The push back to the PR
 # branch uses secrets.ACTIONS_PUSH (a PAT), not the default GITHUB_TOKEN, so the
 # default token only needs read access.

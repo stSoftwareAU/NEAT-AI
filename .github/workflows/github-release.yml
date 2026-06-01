@@ -5,6 +5,12 @@ on:
     branches:
       - Develop
 
+# Serialise release runs but NEVER cancel one mid-flight: cancel-in-progress is
+# false so an in-progress release is never interrupted (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest

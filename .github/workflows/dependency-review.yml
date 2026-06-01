@@ -12,6 +12,12 @@ on:
   pull_request:
     branches: ["Develop"]
 
+# Cancel superseded runs on the same ref so rapid successive pushes don't
+# pile up redundant dependency-review runs (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # If using a dependency submission action in this workflow this permission will need to be set to:
 #
 # permissions:
