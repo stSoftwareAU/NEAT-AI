@@ -62,6 +62,80 @@ Deno.test("writeSeedWarmupProgressTags: updated generation survives re-export", 
   assertEquals(readWarmupGenerationsFromCreature(loaded), 10);
 });
 
+Deno.test("writeSeedWarmupProgressTags: never lowers an existing higher generation (Issue #2831)", () => {
+  // Simulates the end-of-round tagging clobber: a fittest creature that
+  // carried generation 30 (e.g. from a cross-bred ancestor on another
+  // machine) must not be reset to a lower local counter (6).
+  const creature = creatureForProblem({
+    inputs: 4,
+    outputs: 1,
+    warmupGenerations: 25,
+  });
+  writeSeedWarmupProgressTags(creature, 25, 30);
+  // A later write with a lower generation must keep the higher value.
+  writeSeedWarmupProgressTags(creature, 25, 6);
+
+  assertEquals(readCurrentGenerationFromCreature(creature), 30);
+  assertEquals(readWarmupGenerationsFromCreature(creature), 25);
+});
+
+Deno.test("writeSeedWarmupProgressTags: still raises generation when higher (Issue #2831)", () => {
+  const creature = creatureForProblem({
+    inputs: 4,
+    outputs: 1,
+    warmupGenerations: 25,
+  });
+  writeSeedWarmupProgressTags(creature, 25, 6);
+  writeSeedWarmupProgressTags(creature, 25, 14);
+
+  assertEquals(readCurrentGenerationFromCreature(creature), 14);
+});
+
+Deno.test("Offspring.breed: carries the HIGHER of two differing parent generations (Issue #2831)", () => {
+  const mum = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "hidden-0", weight: -0.2 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 1.0 },
+    ],
+  } as CreatureExport);
+  const dad = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    forwardOnly: true,
+    neurons: [
+      { type: "hidden", uuid: "hidden-0", squash: "IDENTITY", bias: 0.1 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.1 },
+      { fromUUID: "input-1", toUUID: "hidden-0", weight: 0.3 },
+      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.7 },
+      { fromUUID: "input-0", toUUID: "output-0", weight: 0.2 },
+    ],
+  } as CreatureExport);
+  // Differing generations: the offspring must inherit the larger (30).
+  writeSeedWarmupProgressTags(mum, 25, 30);
+  writeSeedWarmupProgressTags(dad, 25, 5);
+
+  let child: Creature | undefined;
+  for (let attempt = 0; attempt < 50; attempt++) {
+    child = Offspring.breed(mum, dad, { forwardOnly: true });
+    if (child) break;
+  }
+
+  assertEquals(child !== undefined, true);
+  assertEquals(readCurrentGenerationFromCreature(child!), 30);
+  assertEquals(readWarmupGenerationsFromCreature(child!), 25);
+});
+
 Deno.test("Offspring.breed: warm-up tags survive standard breeding", () => {
   const mum = Creature.fromJSON({
     input: 2,

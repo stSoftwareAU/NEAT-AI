@@ -221,6 +221,13 @@ export function isSeedWarmupStructuralLockActiveForCreature(
 /**
  * Persist seed warm-up progress on a creature so export/load can resume
  * evolution with the correct warm-up gate.
+ *
+ * Issue #2831: the generation tag is **monotonic** — it is never lowered.
+ * A creature that already carries a higher generation (e.g. a cross-bred
+ * offspring inheriting `Math.max` of its parents, or a creature loaded from
+ * a machine that ran further) keeps that higher value even when the local
+ * `currentGeneration` counter is behind. This stops the end-of-round
+ * tagging from clobbering generations accumulated across machines/breeding.
  */
 export function writeSeedWarmupProgressTags(
   creature: Creature,
@@ -235,10 +242,14 @@ export function writeSeedWarmupProgressTags(
     );
   }
   if (Number.isFinite(currentGeneration) && currentGeneration > 0) {
+    // Carry over the higher generation: never overwrite an existing tag
+    // with a smaller value.
+    const existing = readCurrentGenerationFromCreature(creature);
+    const next = Math.max(existing, Math.floor(currentGeneration));
     addTag(
       creature,
       CURRENT_GENERATION_TAG,
-      String(Math.floor(currentGeneration)),
+      String(next),
     );
   }
 }

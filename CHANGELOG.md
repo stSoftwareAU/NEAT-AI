@@ -14,6 +14,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Issue #2831:** Carry over the higher generation count when breeding and
+  loading creatures. The `currentGeneration` tag is now **monotonic** —
+  `writeSeedWarmupProgressTags` never lowers an existing value. Previously the
+  end-of-round tagging overwrote the fittest creature's generation with the
+  local `Neat.currentGeneration` counter, so a cross-bred offspring that
+  inherited a higher generation (`Math.max` of its parents) from another machine
+  was reset to the lower local count. With ~1-minute generations and ~15-minute
+  rounds, repeatedly losing the count meant a population evolving across
+  machines never converged. Breeding already takes `Math.max` of both parents;
+  the carryover now also survives the save/load and end-of-round write paths.
+
 ## [5.2.0] - 2026-05-30
 
 ### Changed
