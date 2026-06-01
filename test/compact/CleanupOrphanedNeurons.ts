@@ -72,19 +72,20 @@ Deno.test("cleanupOrphanedNeurons - should remove hidden neuron with no outward 
   const creature = Creature.fromJSON(creatureExport);
   creatureValidate(creature);
 
-  // The orphaned neuron should have been removed
+  // The orphaned neuron should have been removed. Identify it by its stable
+  // UUID rather than the derived integer hash, so a behaviour-preserving change
+  // to the hashing routine does not break this assertion.
   assertEquals(creatureExport.neurons.length, 2);
-  // orphan-hidden-1 → id 217046707
   assertEquals(
-    creatureExport.neurons.find((n) => n.id === 217046707),
+    creatureExport.neurons.find((n) => n.uuid === "orphan-hidden-1"),
     undefined,
     "Orphaned neuron should be removed",
   );
 
-  // The synapse to the orphaned neuron should also be removed
+  // The synapse to the orphaned neuron should also be removed.
   assertEquals(creatureExport.synapses.length, 2);
   assertEquals(
-    creatureExport.synapses.find((s) => s.toId === 217046707),
+    creatureExport.synapses.find((s) => s.toUUID === "orphan-hidden-1"),
     undefined,
     "Synapse to orphaned neuron should be removed",
   );
@@ -423,10 +424,11 @@ Deno.test("cleanupOrphanedNeurons - should apply squash function when converting
   // Run cleanup - should convert hidden to constant with squashed bias
   cleanupOrphanedNeurons(creatureExport);
 
-  // The hidden neuron should have been converted to a constant
-  // hidden-no-inward → id 1640249334
+  // The hidden neuron should have been converted to a constant. Identify it
+  // observably as the sole constant neuron rather than by a derived hash id
+  // (conversion drops the source UUID).
   const convertedNeuron = creatureExport.neurons.find(
-    (n) => n.id === 1640249334,
+    (n) => n.type === "constant",
   );
   assertEquals(
     convertedNeuron?.type,
@@ -493,10 +495,11 @@ Deno.test("cleanupOrphanedNeurons - should apply TANH squash function when conve
   assertEquals(result.converted, 1, "Should have converted 1 neuron");
   assertEquals(result.removed, 0, "Should have removed 0 neurons");
 
-  // Verify the constant neuron has the TANH-squashed bias
-  // hidden-tanh → id 890998550
+  // Verify the constant neuron has the TANH-squashed bias. Identify it
+  // observably as the sole constant neuron rather than by a derived hash id
+  // (conversion drops the source UUID).
   const convertedNeuron = creatureExport.neurons.find(
-    (n) => n.id === 890998550,
+    (n) => n.type === "constant",
   );
   assertEquals(convertedNeuron?.type, "constant");
   assertAlmostEquals(
