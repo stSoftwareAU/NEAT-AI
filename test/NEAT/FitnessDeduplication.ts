@@ -196,11 +196,23 @@ Deno.test("Fitness.calculate - different creatures are evaluated separately", as
   // Calculate fitness
   await fitness.calculate(population);
 
-  // Both creatures should be evaluated
-  assertEquals(
-    mockWorker.evaluateCallCount,
-    2,
-    "Different creatures should each be evaluated",
+  // Issue #2836: Assert the observable WHAT (both distinct creatures end up
+  // scored, with their own distinct scores) rather than the internal HOW
+  // (exactly two evaluate() calls). A behaviour-preserving refactor — batching
+  // both creatures into one worker round-trip, adding a cache layer, or
+  // coalescing calls — keeps both creatures correctly scored yet would flip the
+  // call count, so a count-only assertion would break for the wrong reason.
+  assert(
+    Number.isFinite(creature1.score),
+    "Creature 1 should receive a finite score",
+  );
+  assert(
+    Number.isFinite(creature2.score),
+    "Creature 2 should receive a finite score",
+  );
+  assert(
+    creature1.score !== creature2.score,
+    "Different creatures should score differently",
   );
 });
 
