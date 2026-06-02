@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
@@ -8,98 +8,171 @@ import { CRISPR } from "@reconstruct/CRISPR.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
+/**
+ * Count neurons by type. CRISPR's observable effect on topology is a change in
+ * these counts (a demoted output becomes hidden, new neurons are appended), so
+ * asserting on the counts checks *what* the transform produced rather than the
+ * exact serialisation of the export (Issue #2835).
+ */
+function neuronTypeCounts(creature: Creature): Record<string, number> {
+  return creature.neurons.reduce((acc: Record<string, number>, neuron) => {
+    acc[neuron.type] = (acc[neuron.type] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
+/** Squash functions of the output neurons, in declaration order. */
+function outputSquashes(creature: Creature): string[] {
+  return creature.neurons
+    .filter((neuron) => neuron.type === "output")
+    .map((neuron) => neuron.squash ?? "");
+}
+
+/** Number of neurons carrying the CRISPR tag for the given DNA id. */
+function taggedNeuronCount(creature: Creature, dnaId: string): number {
+  return creature.neurons.filter((neuron) => getTag(neuron, "CRISPR") === dnaId)
+    .length;
+}
+
+/** Number of synapses carrying the CRISPR tag for the given DNA id. */
+function taggedSynapseCount(creature: Creature, dnaId: string): number {
+  return creature.synapses.filter((synapse) =>
+    getTag(synapse, "CRISPR") === dnaId
+  ).length;
+}
+
+/** Deterministic, spread-out sample input of the requested width. */
+function sampleInput(size: number): Float32Array {
+  return Float32Array.from({ length: size }, (_, i) => ((i % 7) - 3) / 10);
+}
+
+function loadNetwork(): Creature {
+  return Creature.fromJSON(
+    JSON.parse(Deno.readTextFileSync("test/data/CRISPR/network.json")),
+  );
+}
+
+function loadDNA(name: string) {
+  return JSON.parse(Deno.readTextFileSync(`test/data/CRISPR/${name}`));
+}
+
 Deno.test("CRISPR", () => {
-  const networkTXT = Deno.readTextFileSync("test/data/CRISPR/network.json");
-  const network = Creature.fromJSON(JSON.parse(networkTXT));
+  const network = loadNetwork();
   network.validate();
+  const before = neuronTypeCounts(network);
+  const beforeSynapses = network.synapses.length;
+
   const crispr = new CRISPR(network);
-  const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-IF.json");
+  const networkIF = crispr.cleaveDNA(loadDNA("DNA-IF.json")) as Creature;
+  networkIF.validate();
 
-  const networkIF = crispr.cleaveDNA(JSON.parse(dnaTXT));
-  (networkIF as Creature).validate();
-  const expectedJSON = JSON.parse(
-    Deno.readTextFileSync("test/data/CRISPR/expected-IF.json"),
+  const after = neuronTypeCounts(networkIF);
+  // The input layer is untouched; the original output is demoted to hidden and
+  // a new LOGISTIC hidden neuron plus a new IF output neuron are appended.
+  assertEquals(after.input, before.input, "input count unchanged");
+  assertEquals(after.output, 1, "still a single output");
+  assertEquals(
+    after.hidden,
+    before.hidden + 2,
+    "demoted output + appended hidden neuron",
   );
-
-  const expectedTXT = JSON.stringify(
-    clean(Creature.fromJSON(expectedJSON).exportJSON()),
-    null,
-    2,
+  assertEquals(
+    outputSquashes(networkIF),
+    ["IF"],
+    "output neuron now uses the introduced IF squash",
   );
-
-  Deno.writeTextFileSync("test/data/CRISPR/.expected-IF.json", expectedTXT);
-  const actualJSON = (networkIF as Creature).exportJSON();
-
-  const actualTXT = JSON.stringify(
-    clean(actualJSON),
-    null,
-    2,
+  // DNA-IF defines four connections; each becomes a new synapse.
+  assertEquals(
+    networkIF.synapses.length,
+    beforeSynapses + 4,
+    "four CRISPR synapses added",
   );
+  // Introduced neurons (hidden + output) and synapses carry the DNA's tag.
+  assertEquals(taggedNeuronCount(networkIF, "Industry Model"), 2);
+  assertEquals(taggedSynapseCount(networkIF, "Industry Model"), 4);
 
-  Deno.writeTextFileSync("test/data/CRISPR/.actual-IF.json", actualTXT);
-  assertEquals(actualTXT, expectedTXT, "should have converted");
+  // The transformed network computes a finite output: the IF gate selects the
+  // positive branch for this input.
+  const out = networkIF.activate(sampleInput(network.input));
+  assertEquals(out.length, 1);
+  assertAlmostEquals(out[0], 1, 1e-6, "IF gate selects the positive branch");
 });
 
 Deno.test("CRISPR_twice", () => {
-  const networkTXT = Deno.readTextFileSync("test/data/CRISPR/network.json");
-  const network = Creature.fromJSON(JSON.parse(networkTXT));
+  const network = loadNetwork();
   network.validate();
-  const crispr = new CRISPR(network);
-  const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-IF.json");
+  const dna = loadDNA("DNA-IF.json");
 
-  const networkIF1 = crispr.cleaveDNA(JSON.parse(dnaTXT));
-  assert(networkIF1);
-  (networkIF1 as Creature).validate();
-  const crispr2 = new CRISPR(networkIF1);
-  const networkIF2 = crispr2.cleaveDNA(JSON.parse(dnaTXT));
-  (networkIF2 as Creature).validate();
-  const expectedJSON = JSON.parse(
-    Deno.readTextFileSync("test/data/CRISPR/expected-IF.json"),
-  );
-  const expectedTXT = JSON.stringify(clean(expectedJSON), null, 1);
-  const actualTXT = JSON.stringify(
-    clean((networkIF2 as Creature).exportJSON()),
-    null,
-    2,
-  );
+  const once = new CRISPR(network).cleaveDNA(dna) as Creature;
+  assert(once);
+  once.validate();
 
-  Deno.writeTextFileSync("test/data/CRISPR/.actual-IF.json", actualTXT);
-  assertEquals(actualTXT, expectedTXT, "should have converted");
+  const twice = new CRISPR(once).cleaveDNA(dna) as Creature;
+  twice.validate();
+
+  // Re-applying the same DNA is idempotent: cleaveDNA detects the existing
+  // CRISPR tag and returns the creature unchanged, so the topology matches the
+  // single-application result exactly.
+  assertEquals(
+    neuronTypeCounts(twice),
+    neuronTypeCounts(once),
+    "second application leaves the neuron layout unchanged",
+  );
+  assertEquals(
+    twice.synapses.length,
+    once.synapses.length,
+    "no extra synapses on re-application",
+  );
+  assertEquals(outputSquashes(twice), ["IF"]);
+  assertEquals(taggedNeuronCount(twice, "Industry Model"), 2);
+  assertEquals(taggedSynapseCount(twice, "Industry Model"), 4);
+
+  const input = sampleInput(network.input);
+  assertAlmostEquals(
+    twice.activate(input)[0],
+    once.activate(input)[0],
+    1e-6,
+    "idempotent re-application computes the same output",
+  );
 });
 
 Deno.test("CRISPR-Volume", () => {
-  const networkTXT = Deno.readTextFileSync("test/data/CRISPR/network.json");
-  const network = Creature.fromJSON(JSON.parse(networkTXT));
-  Deno.writeTextFileSync(
-    "test/data/CRISPR/.network.json",
-    JSON.stringify(network.exportJSON(), null, 1),
-  );
+  const network = loadNetwork();
   network.validate();
+  const before = neuronTypeCounts(network);
+  const beforeSynapses = network.synapses.length;
+
   const crispr = new CRISPR(network);
-  const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-VOLUME.json");
+  const networkIF = crispr.cleaveDNA(loadDNA("DNA-VOLUME.json")) as Creature;
+  networkIF.validate();
 
-  const networkIF = crispr.cleaveDNA(JSON.parse(dnaTXT));
-
-  const expectedJSON = JSON.parse(
-    Deno.readTextFileSync("test/data/CRISPR/expected-VOLUME.json"),
+  const after = neuronTypeCounts(networkIF);
+  // DNA-VOLUME appends a single MINIMUM output and demotes the previous output
+  // to hidden — no extra hidden neuron is defined by the DNA.
+  assertEquals(after.input, before.input, "input count unchanged");
+  assertEquals(after.output, 1, "still a single output");
+  assertEquals(
+    after.hidden,
+    before.hidden + 1,
+    "previous output demoted to hidden",
   );
-
-  const expectedTXT = JSON.stringify(
-    clean(Creature.fromJSON(expectedJSON).exportJSON()),
-    null,
-    2,
+  assertEquals(
+    outputSquashes(networkIF),
+    ["MINIMUM"],
+    "output neuron now uses the introduced MINIMUM squash",
   );
-
-  Deno.writeTextFileSync("test/data/CRISPR/.expected-VOLUME.json", expectedTXT);
-
-  const actualTXT = JSON.stringify(
-    clean((networkIF as Creature).exportJSON()),
-    null,
-    2,
+  // DNA-VOLUME defines two connections.
+  assertEquals(
+    networkIF.synapses.length,
+    beforeSynapses + 2,
+    "two CRISPR synapses added",
   );
+  assertEquals(taggedNeuronCount(networkIF, "Volume Recommendation"), 1);
+  assertEquals(taggedSynapseCount(networkIF, "Volume Recommendation"), 2);
 
-  Deno.writeTextFileSync("test/data/CRISPR/.actual-VOLUME.json", actualTXT);
-  assertEquals(actualTXT, expectedTXT, "should have converted");
+  const out = networkIF.activate(sampleInput(network.input));
+  assertEquals(out.length, 1);
+  assertAlmostEquals(out[0], -0.2, 1e-5, "MINIMUM output is deterministic");
 });
 
 Deno.test("REMOVE", () => {
@@ -179,54 +252,43 @@ Deno.test("CRISPR-multi-outputs1", () => {
     output: 3,
   };
   const network = Creature.fromJSON(json);
-  Deno.writeTextFileSync(
-    "test/data/CRISPR/.network-sane.json",
-    JSON.stringify(network.exportJSON(), null, 1),
-  );
   network.validate();
+  const before = neuronTypeCounts(network);
+  const beforeSynapses = network.synapses.length;
+
   const crispr = new CRISPR(network);
-  const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-SANE.json");
-
-  const tmpCreature = crispr.cleaveDNA(JSON.parse(dnaTXT));
-  assert(tmpCreature);
-  const networkSANE = Creature.fromJSON(tmpCreature);
+  const networkSANE = Creature.fromJSON(
+    crispr.cleaveDNA(loadDNA("DNA-SANE.json")),
+  );
   networkSANE.validate();
-  const expectedJSON = JSON.parse(
-    Deno.readTextFileSync("test/data/CRISPR/expected-sane.json"),
+
+  const after = neuronTypeCounts(networkSANE);
+  // DNA-SANE appends three outputs (MINIMUM, MEAN, MAXIMUM) and demotes the
+  // three previous outputs to hidden.
+  assertEquals(after.input, before.input, "input count unchanged");
+  assertEquals(after.output, 3, "three outputs after the rewrite");
+  assertEquals(
+    after.hidden,
+    before.hidden + 3,
+    "three previous outputs demoted to hidden",
   );
-
-  const expectedTXT = JSON.stringify(
-    clean(Creature.fromJSON(expectedJSON).exportJSON()),
-    null,
-    2,
+  assertEquals(outputSquashes(networkSANE), ["MINIMUM", "MEAN", "MAXIMUM"]);
+  // DNA-SANE defines nine connections (three per new output).
+  assertEquals(
+    networkSANE.synapses.length,
+    beforeSynapses + 9,
+    "nine CRISPR synapses added",
   );
+  assertEquals(taggedNeuronCount(networkSANE, "Sane Output"), 3);
+  assertEquals(taggedSynapseCount(networkSANE, "Sane Output"), 9);
 
-  Deno.writeTextFileSync("test/data/CRISPR/.expected-sane.json", expectedTXT);
-
-  const actualTXT = JSON.stringify(
-    clean(networkSANE.exportJSON()),
-    null,
-    2,
-  );
-
-  Deno.writeTextFileSync("test/data/CRISPR/.actual-sane.json", actualTXT);
-  assertEquals(actualTXT, expectedTXT, "should have converted");
+  // The transformed network computes deterministic outputs for a fixed input.
+  const out = networkSANE.activate(new Float32Array([0.1, 0.2, 0.3]));
+  assertEquals(out.length, 3);
+  assertAlmostEquals(out[0], 0.024987129494547844, 1e-5);
+  assertAlmostEquals(out[1], 0.3913297653198242, 1e-5);
+  assertAlmostEquals(out[2], 0.5962033867835999, 1e-5);
 });
-
-function clean(
-  networkJSON: { neurons?: { uuid?: string }[]; nodes?: { uuid?: string }[] },
-) {
-  const neurons = networkJSON.neurons
-    ? networkJSON.neurons
-    : networkJSON.nodes
-    ? networkJSON.nodes
-    : [];
-  neurons.forEach((n: Record<string, unknown>) => {
-    if (n.id && typeof n.id === "number" && !(n.id < 0)) {
-      delete n.id;
-    }
-  });
-}
 
 Deno.test("CRISPR-multi-outputs2", () => {
   const json: CreatureInternal = {
@@ -264,38 +326,38 @@ Deno.test("CRISPR-multi-outputs2", () => {
     output: 3,
   };
   const network = Creature.fromJSON(json);
-  Deno.writeTextFileSync(
-    "test/data/CRISPR/.network-sane2.json",
-    JSON.stringify(network.exportJSON(), null, 1),
-  );
   network.validate();
+  const before = neuronTypeCounts(network);
+  const beforeSynapses = network.synapses.length;
+
   const crispr = new CRISPR(network);
-  const dnaTXT = Deno.readTextFileSync("test/data/CRISPR/DNA-SANE.json");
-
-  const tmpCreature = crispr.cleaveDNA(JSON.parse(dnaTXT));
-  assert(tmpCreature);
-  const networkSANE = Creature.fromJSON(tmpCreature);
+  const networkSANE = Creature.fromJSON(
+    crispr.cleaveDNA(loadDNA("DNA-SANE.json")),
+  );
   networkSANE.validate();
-  const expectedJSON = JSON.parse(
-    Deno.readTextFileSync("test/data/CRISPR/expected-sane2.json"),
+
+  const after = neuronTypeCounts(networkSANE);
+  assertEquals(after.input, before.input, "input count unchanged");
+  assertEquals(after.output, 3, "three outputs after the rewrite");
+  assertEquals(
+    after.hidden,
+    before.hidden + 3,
+    "three previous outputs demoted to hidden",
   );
-
-  const expectedTXT = JSON.stringify(
-    clean(Creature.fromJSON(expectedJSON).exportJSON()),
-    null,
-    2,
+  assertEquals(outputSquashes(networkSANE), ["MINIMUM", "MEAN", "MAXIMUM"]);
+  assertEquals(
+    networkSANE.synapses.length,
+    beforeSynapses + 9,
+    "nine CRISPR synapses added",
   );
+  assertEquals(taggedNeuronCount(networkSANE, "Sane Output"), 3);
+  assertEquals(taggedSynapseCount(networkSANE, "Sane Output"), 9);
 
-  Deno.writeTextFileSync("test/data/CRISPR/.expected-sane2.json", expectedTXT);
-
-  const actualTXT = JSON.stringify(
-    clean(networkSANE.exportJSON()),
-    null,
-    2,
-  );
-
-  Deno.writeTextFileSync("test/data/CRISPR/.actual-sane2.json", actualTXT);
-  assertEquals(actualTXT, expectedTXT, "should have converted");
+  const out = networkSANE.activate(new Float32Array([0.1, 0.2, 0.3]));
+  assertEquals(out.length, 3);
+  assertAlmostEquals(out[0], 0.05990000069141388, 1e-5);
+  assertAlmostEquals(out[1], 0.22394384443759918, 1e-5);
+  assertAlmostEquals(out[2], 0.530064046382904, 1e-5);
 });
 
 Deno.test("CRISPR-uuid", () => {
@@ -331,10 +393,6 @@ Deno.test("CRISPR-uuid", () => {
     output: 3,
   };
   const creature = Creature.fromJSON(json);
-  Deno.writeTextFileSync(
-    "test/data/CRISPR/.network-proximity-to-delisting.json",
-    JSON.stringify(creature.exportJSON(), null, 1),
-  );
   creature.validate();
   const crispr = new CRISPR(creature);
   const dna = JSON.parse(Deno.readTextFileSync(
