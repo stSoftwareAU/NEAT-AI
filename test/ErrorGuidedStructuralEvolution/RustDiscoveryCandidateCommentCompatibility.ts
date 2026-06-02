@@ -1,159 +1,105 @@
 import { assertEquals } from "@std/assert";
-import { Creature } from "@creature";
-import { CreatureUtil } from "@architecture/CreatureUtils.ts";
-import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import {
+  mapRustCandidate,
+  mapRustNeuronCandidate,
+} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverAnalysis.ts";
 import type {
   RustCandidateNeuron,
   RustCandidateSynapse,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
-import type {
-  CandidateNeuron,
-  CandidateSynapse,
-} from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 
-type DiscoverStructurePrivateApi = {
-  mapRustNeuronCandidate: (
-    candidate: RustCandidateNeuron,
-  ) => CandidateNeuron;
-  mapRustCandidate: (candidate: RustCandidateSynapse) => CandidateSynapse;
-};
-
-function makeCreatureWithUuid(): Creature {
-  const creature = Creature.fromJSON({
-    input: 1,
-    output: 1,
-    neurons: [
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
-    ],
-    synapses: [{ fromUUID: "input-0", toUUID: "output-0", weight: 1 }],
-  });
-  creature.validate();
-  CreatureUtil.makeUUID(creature);
-  return creature;
-}
+// Issue #2849: These tests previously reached the private
+// `DiscoverStructure.mapRustNeuronCandidate` / `mapRustCandidate` methods
+// through an `as unknown as` cast, coupling them to the class's internal
+// factoring. The mapping logic is exposed as documented public functions in
+// DiscoverAnalysis.ts, so we exercise that stable surface directly. The
+// observable WHAT — a Rust candidate's optional `comment` survives the mapping
+// into the TypeScript candidate shape — is unchanged.
 
 Deno.test(
-  "Rust discovery candidate parsing succeeds with optional comment field",
+  "Rust discovery candidate mapping preserves the optional comment field",
   () => {
-    const baseDirectory = Deno.makeTempDirSync({ prefix: "neat-ai-comment-" });
-    try {
-      const discoverStructure = new DiscoverStructure(
-        makeCreatureWithUuid(),
-        1,
-        1,
-        {},
-        { baseDirectory, skipRecordPhase: true },
-      );
+    const parsedNeuron = JSON.parse(JSON.stringify({
+      sourceNeuronUuid: "input-0",
+      targetNeuronUuid: "output-0",
+      incomingWeight: 0.42,
+      outgoingWeight: -0.13,
+      squash: "TANH",
+      bias: 0.01,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0.0,
+      expectedCreatureScoreGain: 0.123,
+      improvedCount: 4,
+      totalCount: 5,
+      comment: "diagnostic: add-neuron suggested due to error spike cluster",
+    })) as RustCandidateNeuron;
 
-      const neuronJson = JSON.stringify({
-        sourceNeuronUuid: "input-0",
-        targetNeuronUuid: "output-0",
-        incomingWeight: 0.42,
-        outgoingWeight: -0.13,
-        squash: "TANH",
-        bias: 0.01,
-        targetNeuronImpact: 1.0,
-        expectedCreatureErrorReduction: 0.0,
-        expectedCreatureScoreGain: 0.123,
-        improvedCount: 4,
-        totalCount: 5,
-        comment: "diagnostic: add-neuron suggested due to error spike cluster",
-      });
+    const mappedNeuron = mapRustNeuronCandidate(parsedNeuron);
+    assertEquals(
+      mappedNeuron.comment,
+      "diagnostic: add-neuron suggested due to error spike cluster",
+    );
+    assertEquals(mappedNeuron.fromNeuronUuid, "input-0");
+    assertEquals(mappedNeuron.toNeuronUuid, "output-0");
 
-      const parsedNeuron = JSON.parse(neuronJson) as RustCandidateNeuron;
-      const mappedNeuron =
-        (discoverStructure as unknown as DiscoverStructurePrivateApi)
-          .mapRustNeuronCandidate(parsedNeuron);
-      assertEquals(
-        mappedNeuron.comment,
-        "diagnostic: add-neuron suggested due to error spike cluster",
-      );
-      assertEquals(mappedNeuron.fromNeuronUuid, "input-0");
-      assertEquals(mappedNeuron.toNeuronUuid, "output-0");
+    const parsedSynapse = JSON.parse(JSON.stringify({
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "output-0",
+      weight: 0.99,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0.0,
+      expectedCreatureScoreGain: 0.5,
+      improvedCount: 8,
+      totalCount: 10,
+      comment: "diagnostic: add-synapse chosen as strongest source",
+    })) as RustCandidateSynapse;
 
-      const synapseJson = JSON.stringify({
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "output-0",
-        weight: 0.99,
-        targetNeuronImpact: 1.0,
-        expectedCreatureErrorReduction: 0.0,
-        expectedCreatureScoreGain: 0.5,
-        improvedCount: 8,
-        totalCount: 10,
-        comment: "diagnostic: add-synapse chosen as strongest source",
-      });
-
-      const parsedSynapse = JSON.parse(synapseJson) as RustCandidateSynapse;
-      const mappedSynapse =
-        (discoverStructure as unknown as DiscoverStructurePrivateApi)
-          .mapRustCandidate(parsedSynapse);
-      assertEquals(
-        mappedSynapse.comment,
-        "diagnostic: add-synapse chosen as strongest source",
-      );
-      assertEquals(mappedSynapse.fromNeuronUuid, "input-0");
-      assertEquals(mappedSynapse.toNeuronUuid, "output-0");
-    } finally {
-      Deno.removeSync(baseDirectory, { recursive: true });
-    }
+    const mappedSynapse = mapRustCandidate(parsedSynapse);
+    assertEquals(
+      mappedSynapse.comment,
+      "diagnostic: add-synapse chosen as strongest source",
+    );
+    assertEquals(mappedSynapse.fromNeuronUuid, "input-0");
+    assertEquals(mappedSynapse.toNeuronUuid, "output-0");
   },
 );
 
 Deno.test(
-  "Rust discovery candidate parsing succeeds when comment is absent",
+  "Rust discovery candidate mapping leaves comment undefined when absent",
   () => {
-    const baseDirectory = Deno.makeTempDirSync({ prefix: "neat-ai-comment-" });
-    try {
-      const discoverStructure = new DiscoverStructure(
-        makeCreatureWithUuid(),
-        1,
-        1,
-        {},
-        { baseDirectory, skipRecordPhase: true },
-      );
+    const parsedNeuron = JSON.parse(JSON.stringify({
+      sourceNeuronUuid: "input-0",
+      targetNeuronUuid: "output-0",
+      incomingWeight: 0.42,
+      outgoingWeight: -0.13,
+      squash: "TANH",
+      bias: 0.01,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0.0,
+      expectedCreatureScoreGain: 0.123,
+      improvedCount: 4,
+      totalCount: 5,
+    })) as RustCandidateNeuron;
 
-      const neuronJson = JSON.stringify({
-        sourceNeuronUuid: "input-0",
-        targetNeuronUuid: "output-0",
-        incomingWeight: 0.42,
-        outgoingWeight: -0.13,
-        squash: "TANH",
-        bias: 0.01,
-        targetNeuronImpact: 1.0,
-        expectedCreatureErrorReduction: 0.0,
-        expectedCreatureScoreGain: 0.123,
-        improvedCount: 4,
-        totalCount: 5,
-      });
+    const mappedNeuron = mapRustNeuronCandidate(parsedNeuron);
+    assertEquals(mappedNeuron.comment, undefined);
+    assertEquals(mappedNeuron.fromNeuronUuid, "input-0");
+    assertEquals(mappedNeuron.toNeuronUuid, "output-0");
 
-      const parsedNeuron = JSON.parse(neuronJson) as RustCandidateNeuron;
-      const mappedNeuron =
-        (discoverStructure as unknown as DiscoverStructurePrivateApi)
-          .mapRustNeuronCandidate(parsedNeuron);
-      assertEquals(mappedNeuron.comment, undefined);
-      assertEquals(mappedNeuron.fromNeuronUuid, "input-0");
-      assertEquals(mappedNeuron.toNeuronUuid, "output-0");
+    const parsedSynapse = JSON.parse(JSON.stringify({
+      fromNeuronUuid: "input-0",
+      toNeuronUuid: "output-0",
+      weight: 0.99,
+      targetNeuronImpact: 1.0,
+      expectedCreatureErrorReduction: 0.0,
+      expectedCreatureScoreGain: 0.5,
+      improvedCount: 8,
+      totalCount: 10,
+    })) as RustCandidateSynapse;
 
-      const synapseJson = JSON.stringify({
-        fromNeuronUuid: "input-0",
-        toNeuronUuid: "output-0",
-        weight: 0.99,
-        targetNeuronImpact: 1.0,
-        expectedCreatureErrorReduction: 0.0,
-        expectedCreatureScoreGain: 0.5,
-        improvedCount: 8,
-        totalCount: 10,
-      });
-
-      const parsedSynapse = JSON.parse(synapseJson) as RustCandidateSynapse;
-      const mappedSynapse =
-        (discoverStructure as unknown as DiscoverStructurePrivateApi)
-          .mapRustCandidate(parsedSynapse);
-      assertEquals(mappedSynapse.comment, undefined);
-      assertEquals(mappedSynapse.fromNeuronUuid, "input-0");
-      assertEquals(mappedSynapse.toNeuronUuid, "output-0");
-    } finally {
-      Deno.removeSync(baseDirectory, { recursive: true });
-    }
+    const mappedSynapse = mapRustCandidate(parsedSynapse);
+    assertEquals(mappedSynapse.comment, undefined);
+    assertEquals(mappedSynapse.fromNeuronUuid, "input-0");
+    assertEquals(mappedSynapse.toNeuronUuid, "output-0");
   },
 );

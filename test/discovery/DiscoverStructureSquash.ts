@@ -1,11 +1,12 @@
 import { assert, assertAlmostEquals } from "@std/assert";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
-import {
-  type CandidateSquash,
-  type DiscoverRecord,
-  DiscoverStructure,
+import type {
+  CandidateSquash,
+  DiscoverRecord,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
+import { findCandidateSquash } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
+import { calculateNeuronImpact } from "@architecture/ErrorGuidedStructuralEvolution/NeuronImpact.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 import { Activations } from "@methods/activations/Activations.ts";
 import { STEP } from "@methods/activations/types/STEP.ts";
@@ -14,6 +15,13 @@ import { ActivationRange } from "@propagate/ActivationRange.ts";
 // Integer IDs computed from deterministic UUID hash.
 const ID_HIDDEN_STEP = 891010353; // "hidden-step"
 const ID_HIDDEN_CHAIN = 1836654946; // "hidden-chain"
+
+// Issue #2849: These tests previously reached the private
+// `DiscoverStructure.findCandidateSquash` method through an `as unknown as`
+// cast, coupling them to the class's internal factoring. The squash-selection
+// logic is exposed as a documented public function in DiscoverSquashAnalysis.ts,
+// so we drive it directly. The observable WHAT — which squash candidate gets
+// suggested and its error/impact scaling — is unchanged.
 
 class LookupActivation implements ActivationInterface {
   public readonly range: ActivationRange;
@@ -38,6 +46,35 @@ class LookupActivation implements ActivationInterface {
   }
 }
 
+/**
+ * Builds an impact function with the same estimator/index-map caching the
+ * DiscoverStructure facade uses, so `findCandidateSquash` sees identical
+ * behaviour to the production call site.
+ */
+function makeImpactFn(
+  creature: Creature,
+): (neuronId: number, derivativeMap?: Map<number, number>) => number {
+  let estimator:
+    | ReturnType<typeof calculateNeuronImpact>["estimator"]
+    | undefined;
+  let indexMap: Map<number, number> | undefined;
+  return (neuronId, derivativeMap) => {
+    const result = calculateNeuronImpact(
+      creature,
+      neuronId,
+      estimator,
+      indexMap,
+      derivativeMap,
+    );
+    estimator = result.estimator;
+    indexMap = result.indexMap;
+    return result.impact;
+  };
+}
+
+// Discovery logging is irrelevant to these assertions.
+const noopLog = () => {};
+
 function makeStepLockedCreature(): Creature {
   const creature = Creature.fromJSON({
     input: 1,
@@ -58,7 +95,6 @@ function makeStepLockedCreature(): Creature {
 
 Deno.test("squash estimates are computed in activation domain", () => {
   const creature = makeStepLockedCreature();
-  const discover = new DiscoverStructure(creature, 30);
 
   const activations = Activations as unknown as {
     list: () => ActivationInterface[];
@@ -79,25 +115,19 @@ Deno.test("squash estimates are computed in activation domain", () => {
     { activation: 0, value: -6, errors: [12] },
   ];
 
-  const internal = discover as unknown as {
-    findCandidateSquash: (
-      neuronId: number,
-      recs: DiscoverRecord[],
-    ) => CandidateSquash | undefined;
-    tempDir: string;
-  };
-
   try {
-    const candidate = internal.findCandidateSquash(ID_HIDDEN_STEP, records);
+    const candidate: CandidateSquash | undefined = findCandidateSquash(
+      creature,
+      ID_HIDDEN_STEP,
+      records,
+      makeImpactFn(creature),
+      false,
+      noopLog,
+    );
     assert(candidate, "Expected a squash candidate to be suggested.");
     assertAlmostEquals(candidate.currentError, 1, 1e-6);
   } finally {
     activations.list = originalList;
-    try {
-      Deno.removeSync(internal.tempDir, { recursive: true });
-    } catch {
-      // Ignore if already cleaned.
-    }
   }
 });
 
@@ -122,7 +152,6 @@ function makeDilutedImpactCreature(): Creature {
 
 Deno.test("squash estimates scale by neuron impact to avoid inflated expectations", () => {
   const creature = makeDilutedImpactCreature();
-  const discover = new DiscoverStructure(creature, 30);
 
   const activations = Activations as unknown as {
     list: () => ActivationInterface[];
@@ -146,16 +175,15 @@ Deno.test("squash estimates scale by neuron impact to avoid inflated expectation
     { activation: 0.1, value: 0.1, errors: [largeError] },
   ];
 
-  const internal = discover as unknown as {
-    findCandidateSquash: (
-      neuronId: number,
-      recs: DiscoverRecord[],
-    ) => CandidateSquash | undefined;
-    tempDir: string;
-  };
-
   try {
-    const candidate = internal.findCandidateSquash(ID_HIDDEN_CHAIN, records);
+    const candidate: CandidateSquash | undefined = findCandidateSquash(
+      creature,
+      ID_HIDDEN_CHAIN,
+      records,
+      makeImpactFn(creature),
+      false,
+      noopLog,
+    );
     assert(
       candidate,
       "Expected diluted chain neuron to return a squash candidate.",
@@ -166,10 +194,5 @@ Deno.test("squash estimates scale by neuron impact to avoid inflated expectation
     );
   } finally {
     activations.list = originalList;
-    try {
-      Deno.removeSync(internal.tempDir, { recursive: true });
-    } catch {
-      // Ignore cleanup errors to keep the test resilient on CI.
-    }
   }
 });
