@@ -357,7 +357,15 @@ Deno.test(
           capture.warnings.join("\n")
         }`,
       );
-      const ctx = readLatestDiagnosticContext("mutator-wasm-compile-trap-");
+      // Scope the read to this operator's dump prefix. Deno runs test files
+      // concurrently, and the sibling ProducerGateDiagnosticDumps.ts test
+      // writes `mutator-wasm-compile-trap-MOD_WEIGHT-*` dumps to the same
+      // `.diagnostics/` directory. A broad `mutator-wasm-compile-trap-`
+      // "latest by mtime" read could pick up that sibling dump and observe
+      // its `Mutator.MOD_WEIGHT` step instead of ours — a cross-file race.
+      const ctx = readLatestDiagnosticContext(
+        "mutator-wasm-compile-trap-ADD_NODE-",
+      );
       assert(
         ctx !== undefined,
         "expected a context-*.json diagnostic dump to exist",
