@@ -16,16 +16,17 @@ Following suggestion (a) in the issue, `checkMemetic` now separates the two
 concerns:
 
 - **Kept (genuine WHAT-assertions)** — the documented UUID→integer key
-  migration: bias key `552c68d3-…` → `675812961`, weight key `input-115` → `115`,
-  and `weights[115][1].toId === 855726674`. These verify observable migration
-  behaviour and survive a fixture regeneration.
+  migration: bias key `552c68d3-…` → `675812961`, weight key `input-115` →
+  `115`, and `weights[115][1].toId === 855726674`. These verify observable
+  migration behaviour and survive a fixture regeneration.
 - **Replaced (fixture-dump magnitudes)** — exact counts/score/generation and the
   bias/weight magnitudes are now structural/finite checks: the memetic block
   exists with the expected shape, `generation` is an integer, `score` and the
-  migrated bias/weight values are finite, and neuron/synapse counts are positive.
+  migrated bias/weight values are finite, and neuron/synapse counts are
+  positive.
 - **Node-count test** — `nodeState.count === 1386` is now `Number.isInteger` and
-  `> 0`, asserting the trace state restores a positive accumulation count without
-  echoing the fixture magnitude.
+  `> 0`, asserting the trace state restores a positive accumulation count
+  without echoing the fixture magnitude.
 
 No production code changed — `Creature.fromJSON` migration behaviour is
 unchanged. This is a test-quality refactor.
