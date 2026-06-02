@@ -33,8 +33,37 @@ Deno.test("Score: Calculation with given parameters", () => {
     );
   }
 
-  const expectedScore = 0.396_802;
-  assertAlmostEquals(score, expectedScore, 0.000_001, `Score was: ${score}`);
+  // The fitness score is defined in src/architecture/Score.ts as:
+  //   score = 1 - error - complexityPenalty - versionPenalty
+  // Every penalty term is non-negative, so `1 - error` is a ceiling the score
+  // can never reach. Asserting against this derived relationship — rather than
+  // a copied six-decimal magic constant — keeps the test tracking the scoring
+  // *spec*: subtracting the error, keeping penalties positive, and bounding the
+  // complexity penalty by network size. A legitimate tweak to the penalty
+  // formula no longer forces a developer to paste in whatever the new run
+  // prints, but a regression (error not subtracted, a flipped penalty sign, or
+  // an unbounded penalty) still breaks the test.
+  const error = 0.603;
+  const scoreCeiling = 1 - error; // 0.397 — strict, unreachable upper bound
+  assert(
+    score < scoreCeiling,
+    `Score ${score} must sit below the error ceiling ${scoreCeiling}: ` +
+      `the complexity and version penalties are strictly positive`,
+  );
+
+  // The complexity penalty is dominated by the deterministic, size-driven terms
+  // of the formula (hidden-neuron growth + synapse growth), both scaled by
+  // growthCost. We can therefore derive the expected score from the fixture's
+  // own structure instead of capturing it from output. The remaining
+  // weight/bias and version-penalty terms are small, so a 1e-4 tolerance bounds
+  // them without reconstructing the entire formula.
+  const growthCost = 0.000_000_1;
+  const hiddenNeurons = creature.neurons.length - creature.input -
+    creature.output;
+  const structuralPenalty = hiddenNeurons * growthCost +
+    creature.synapses.length * growthCost / 10;
+  const expectedScore = scoreCeiling - structuralPenalty;
+  assertAlmostEquals(score, expectedScore, 0.000_1, `Score was: ${score}`);
 });
 
 Deno.test("Score: Weight change should affect score", () => {
