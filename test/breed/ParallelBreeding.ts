@@ -419,14 +419,22 @@ Deno.test("ParallelBreeding - worker path handles large batch without stack over
   }
 });
 
-Deno.test("ParallelBreeding - worker path distributes work across all workers", async () => {
+Deno.test("ParallelBreeding - worker path spreads a batch across the pool", async () => {
+  // Issue #2837: Previously this test asserted every worker was called at
+  // least once — a HOW-test that couples to the scheduler's distribution
+  // strategy. A behaviour-preserving change (e.g. work-stealing that drains
+  // tasks through one fast worker) would leave a worker at zero calls yet
+  // produce identical offspring. We now assert the observable contract: the
+  // batch yields valid offspring, and — tolerantly — that work is spread
+  // across the pool rather than funnelled through a single worker.
   const { genus } = createTestPopulation(30, 5, 2);
   const config = createNeatConfig({
     populationSize: 30,
     geneticCompatibilityThreshold: 0.3,
   });
 
-  // Track how many times each mock worker is called
+  // Track how many times each mock worker is called, without asserting on
+  // the exact per-worker distribution.
   const callCounts = [0, 0, 0];
   const mockWorkers = callCounts.map((_, index) => {
     return {
@@ -464,13 +472,29 @@ Deno.test("ParallelBreeding - worker path distributes work across all workers", 
   });
 
   const parallelBreeding = new ParallelBreeding(genus, config, mockWorkers);
-  await parallelBreeding.breedBatch(20);
+  const offspring = await parallelBreeding.breedBatch(30);
 
-  // Each worker should have been called at least once
-  for (let i = 0; i < callCounts.length; i++) {
-    assert(
-      callCounts[i] > 0,
-      `Worker ${i} should have been called at least once, got ${callCounts[i]}`,
-    );
+  // Observable outcome: breeding the batch via the worker pool produces
+  // valid offspring with the expected shape.
+  assert(offspring.length > 0, "Worker breeding should produce offspring");
+  for (const child of offspring) {
+    child.validate();
+    assertEquals(child.input, 5, "Offspring should have correct input count");
+    assertEquals(child.output, 2, "Offspring should have correct output count");
   }
+
+  // Tolerant load-spreading check: the pool processed the batch and no single
+  // worker handled the entire workload. This survives any distribution
+  // strategy that genuinely uses more than one worker, without demanding a
+  // specific per-worker count.
+  const totalCalls = callCounts.reduce((sum, count) => sum + count, 0);
+  assert(totalCalls > 0, "The worker pool should have processed the batch");
+  const workersUsed = callCounts.filter((count) => count > 0).length;
+  assert(
+    workersUsed > 1,
+    `Work should be spread across the pool, not funnelled through one worker; ` +
+      `workers used: ${workersUsed} of ${callCounts.length} (calls: ${
+        callCounts.join(", ")
+      })`,
+  );
 });
