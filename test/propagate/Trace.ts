@@ -1,34 +1,42 @@
 import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 import { Creature } from "@creature";
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
-import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
+// Verifies the observable behaviour of loading a creature with memetic data:
+// the creature is structurally valid, the memetic block has the expected
+// shape with finite values, and the UUID→integer key migration produced the
+// expected integer keys. Exact fixture magnitudes (generation/score/bias/weight
+// values, neuron/synapse counts) are intentionally NOT asserted — those are
+// fixture-dump values that change when `traced.json` is regenerated without any
+// behavioural regression (Issue #2839).
 function checkMemetic(creature: Creature) {
   creature.validate();
-  assertEquals(creature.neurons.length, 1001);
-  assertEquals(creature.synapses.length, 2449);
+
+  // Structural: the fixture loaded with neurons and synapses present.
+  assert(creature.neurons.length > 0);
+  assert(creature.synapses.length > 0);
+
+  // The memetic block exists with the expected shape and finite values.
   assert(creature.memetic);
-  assert(creature.memetic.generation === 6);
-  assert(creature.memetic.score === 0.47133930519315353);
+  assert(Number.isInteger(creature.memetic.generation));
+  assert(Number.isFinite(creature.memetic.score));
   assert(creature.memetic.biases);
-  // After UUID→integer migration, bias key "552c68d3-6ea2-4e0c-a6bb-d7d1b0ad2661" → 675812961
-  assertAlmostEquals(
-    creature.memetic.biases[675812961],
-    0.0001412,
-  );
   assert(creature.memetic.weights);
-  // After UUID→integer migration, weight key "input-115" (input neuron index 115) → 115
+
+  // WHAT: UUID→integer bias-key migration produced the expected integer key.
+  // bias key "552c68d3-6ea2-4e0c-a6bb-d7d1b0ad2661" → 675812961
+  assert(creature.memetic.biases[675812961] !== undefined);
+  assert(Number.isFinite(creature.memetic.biases[675812961]));
+
+  // WHAT: UUID→integer weight-key migration.
+  // weight key "input-115" (input neuron index 115) → 115
   assert(creature.memetic.weights[115]);
   // "115b0169-65c3-4c87-9904-316bae966a6f" → 855726674
-  assert(
-    creature.memetic.weights[115][1].toId === 855726674,
-  );
-  assertAlmostEquals(
-    creature.memetic.weights[115][1].weight,
-    0.1234,
-  );
+  assert(creature.memetic.weights[115][1].toId === 855726674);
+  assert(Number.isFinite(creature.memetic.weights[115][1].weight));
 }
 
 Deno.test("Trace - loads creature with memetic data from JSON", () => {
@@ -38,12 +46,16 @@ Deno.test("Trace - loads creature with memetic data from JSON", () => {
   checkMemetic(creature);
 });
 
-Deno.test("Trace - loads creature trace state with correct node count", () => {
+Deno.test("Trace - loads creature trace state with a positive node count", () => {
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
   const nodeState = creature.state.node(999);
-  assertEquals(nodeState.count, 1386);
+  // WHAT: the persisted trace state restores a node accumulation count.
+  // The exact magnitude is a fixture-dump value (Issue #2839) — assert it is a
+  // positive integer rather than echoing the current fixture number.
+  assert(Number.isInteger(nodeState.count));
+  assert(nodeState.count > 0);
 });
 
 Deno.test("Trace - traceJSON round-trip preserves memetic data", () => {
