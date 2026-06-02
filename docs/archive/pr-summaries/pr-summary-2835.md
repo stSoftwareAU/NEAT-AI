@@ -13,7 +13,7 @@ genuine regression along with it.
 Worse, the `clean()` helper mutated its argument in place and returned
 `undefined`, so every headline assertion was effectively
 `assertEquals(undefined, undefined)` — the golden comparisons verified
-*nothing*.
+_nothing_.
 
 This PR rewrites the five golden tests (`CRISPR`, `CRISPR_twice`,
 `CRISPR-Volume`, `CRISPR-multi-outputs1`, `CRISPR-multi-outputs2`) to assert
@@ -23,12 +23,12 @@ unchanged (apart from dropping a debug-only file write in `CRISPR-uuid`).
 
 Closes #2835.
 
-### What the tests now assert (the *what*, not the *how*)
+### What the tests now assert (the _what_, not the _how_)
 
 - **Topology counts** — input layer untouched; previous output(s) demoted to
   hidden; the DNA-defined neurons appended; exact synapse-count delta.
-- **Introduced squash functions** — e.g. the IF/MINIMUM/MEAN/MAXIMUM outputs
-  the DNA introduces, in order.
+- **Introduced squash functions** — e.g. the IF/MINIMUM/MEAN/MAXIMUM outputs the
+  DNA introduces, in order.
 - **CRISPR provenance** — the introduced neurons and synapses carry the DNA's
   `CRISPR` tag.
 - **Computed behaviour** — `activate()` on a fixed input yields the expected
@@ -69,7 +69,8 @@ CRISPR-uuid ... ok
 ok | 7 passed | 0 failed
 ```
 
-`./quality.sh` passes cleanly: `ok | 7037 passed (2 steps) | 0 failed | 4 ignored`.
+`./quality.sh` passes cleanly:
+`ok | 7037 passed (2 steps) | 0 failed | 4 ignored`.
 
 ## Test Plan
 
