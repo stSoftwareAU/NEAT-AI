@@ -11,12 +11,13 @@ log noise (test-audit anti-pattern #4).
 
 It is now rewritten as a proper WHAT-test
 (`"Squash lookup table - large creature produces finite output for varied
-inputs"`) that asserts the observable behaviour the surrounding tests care
-about: the `traced.json` creature — which exercises many lookup-table squash
-functions — produces a finite output of the expected width for a deterministic
-spread of varied inputs. The timing loop, warm-up, `console.log`, and
-non-deterministic `Math.random` inputs are all removed; throughput measurement
-belongs in a dedicated benchmark, not the unit runner.
+inputs"`)
+that asserts the observable behaviour the surrounding tests care about: the
+`traced.json` creature — which exercises many lookup-table squash functions —
+produces a finite output of the expected width for a deterministic spread of
+varied inputs. The timing loop, warm-up, `console.log`, and non-deterministic
+`Math.random` inputs are all removed; throughput measurement belongs in a
+dedicated benchmark, not the unit runner.
 
 Closes #2848.
 
@@ -25,8 +26,8 @@ Closes #2848.
 Backend/test-only change — no UI to screenshot. Verified via the test runner.
 
 Before: 1000-iteration timing loop + warm-up, single tautological assertion,
-`console.log` noise.
-After: deterministic finite-output assertions; file runs in ~15ms.
+`console.log` noise. After: deterministic finite-output assertions; file runs in
+~15ms.
 
 ```
 running 5 tests from ./test/methods/activations/SquashLookupTable.ts
@@ -40,9 +41,10 @@ ok | 5 passed | 0 failed
 
 ## Test Plan
 
-- Rewrote `test/methods/activations/SquashLookupTable.ts::"Squash lookup table -
-  large creature produces finite output for varied inputs"` to assert output
-  width and finiteness across 16 deterministic input vectors, replacing the
-  former timing-loop case.
+- Rewrote
+  `test/methods/activations/SquashLookupTable.ts::"Squash lookup table -
+  large creature produces finite output for varied inputs"`
+  to assert output width and finiteness across 16 deterministic input vectors,
+  replacing the former timing-loop case.
 - Ran the file: 5 passed / 0 failed.
 - Ran the full `./quality.sh` gate (fmt, lint, type-check, tests).
