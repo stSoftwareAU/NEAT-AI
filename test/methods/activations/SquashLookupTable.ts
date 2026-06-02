@@ -257,49 +257,41 @@ Deno.test("Squash lookup table - handles all non-inline squash functions", () =>
   }
 });
 
-Deno.test("Squash lookup table - performance comparable to original", () => {
-  // Create a creature similar to the acceptance criteria:
-  // "2000 observations, 700 hidden neurons and 18000 synapses"
-  // For the test, we'll use a scaled-down version
-
+Deno.test("Squash lookup table - large creature produces finite output for varied inputs", () => {
+  // The traced.json creature exercises many lookup-table squash functions.
+  // Assert the observable behaviour: every input yields a finite output of
+  // the expected width. Throughput is measured separately in a benchmark,
+  // not asserted here.
   const creature = Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/traced.json")),
   );
   creature.fix();
 
-  // Generate inputs for testing
+  // Deterministic spread of inputs across the [-2, 2] range, so the test is
+  // reproducible (no Math.random) while still covering varied activations.
   const inputs: Float32Array[] = [];
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 16; i++) {
     const input = new Float32Array(creature.input);
     for (let j = 0; j < creature.input; j++) {
-      input[j] = Math.random() * 4 - 2;
+      // Map (i, j) onto [-2, 2] deterministically.
+      input[j] = ((((i + 1) * (j + 1)) % 41) / 10) - 2;
     }
     inputs.push(input);
   }
 
-  // Warm up
-  creature.clearState();
   for (const input of inputs) {
-    creature.activate(input, false);
+    creature.clearState();
+    const output = creature.activate(input, false);
+
+    assertEquals(
+      output.length,
+      creature.output,
+      "activation output width should match creature.output",
+    );
+    assertEquals(
+      output.every(Number.isFinite),
+      true,
+      "activation output must be finite for every input",
+    );
   }
-
-  // Measure performance
-  const iterations = 1000;
-  creature.clearState();
-
-  const start = performance.now();
-  for (let i = 0; i < iterations; i++) {
-    const input = inputs[i % inputs.length];
-    creature.activate(input, false);
-  }
-  const end = performance.now();
-
-  const timePerIteration = (end - start) / iterations;
-  console.log(
-    `Activation time per iteration: ${timePerIteration.toFixed(3)}ms`,
-  );
-
-  // The test passes if activation completes successfully
-  // The actual performance comparison is done in the benchmark
-  assertEquals(timePerIteration > 0, true, "Should complete in positive time");
 });
