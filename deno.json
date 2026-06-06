@@ -99,7 +99,6 @@
       ]
     }
   },
-  "lock": false,
   "exclude": [
     ".analysis",
     ".coverage",

@@ -212,13 +212,17 @@ Deno.test("osv-scan.yml invokes the OSV scanner action against the lockfile (Iss
   );
 });
 
-Deno.test('deno.json keeps "lock": false so the scan does not change dev policy (Issue #2864)', async () => {
+// Issue #2865 supersedes #2864's "lock": false assumption: the repo now
+// commits a real deno.lock for transitive-dependency integrity pinning, so
+// deno.json must NOT disable the lockfile. The OSV scanner still points at a
+// deno.lock — now the committed one rather than an ephemeral throwaway.
+Deno.test('deno.json does not disable the lockfile (Issue #2865 supersedes #2864 "lock": false)', async () => {
   const text = await Deno.readTextFile(DENO_JSON);
   const config = JSON.parse(text) as { lock?: unknown };
-  assertEquals(
-    config.lock,
-    false,
-    'deno.json must keep "lock": false — the OSV scan generates its own ' +
-      "ephemeral lockfile in CI and must not flip the repo's lock policy",
+  assert(
+    config.lock !== false,
+    'deno.json must not set "lock": false — Issue #2865 commits a real ' +
+      "deno.lock so transitive-dependency integrity is verified on every " +
+      "cache/install/run, including the OSV scan",
   );
 });
