@@ -1,0 +1,68 @@
+# Scheduled OSV vulnerability scan (Issue #2864 — SCR-VULN-SCAN)
+#
+# `dependency-review.yml` only inspects dependencies that change within a PR
+# diff, and `deno-outdated.yml` is a weekly *freshness* bump (newest version,
+# not "because of an advisory"). Neither alerts us when a CVE is disclosed
+# against an exact-pinned dependency we already ship (deno.json pins every
+# jsr:@std/* and jsr:@stsoftware/* import to an exact version).
+#
+# This workflow closes that detection gap: on a weekly schedule (and on
+# demand) it generates an *ephemeral* lockfile and scans the resolved
+# dependency tree against the OSV advisory database. osv-scanner exits
+# non-zero when it finds a known advisory, so the job fails and the signal is
+# actionable. deno.json's "lock": false policy is left intact — the lockfile
+# is produced only for the scan and never committed.
+name: OSV vulnerability scan
+
+on:
+  schedule:
+    # 07:00 UTC every Wednesday — mid-week, offset from the Monday
+    # deno-outdated bump so a CVE disclosed after Monday is caught within days
+    # rather than waiting for the next freshness run.
+    - cron: "0 7 * * 3"
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref so repeated manual dispatches don't
+# pile up redundant scans (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege GITHUB_TOKEN scopes (Issue #2706). The scan only reads the
+# repository and fails the job on findings; it never writes.
+permissions:
+  contents: read
+
+jobs:
+  osv-scan:
+    name: Scan resolved deps against the OSV database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        # actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+
+      - name: Setup Deno
+        # denoland/setup-deno@v2.0.4
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+        with:
+          deno-version: v2.x
+
+      - name: Generate ephemeral lockfile
+        # deno.json sets "lock": false, so pass --lock explicitly to write a
+        # transient deno.lock capturing the resolved tree. This file is NOT
+        # committed — it exists only for the scan step below.
+        run: deno cache --lock=deno.lock --no-check mod.ts
+
+      - name: Run OSV scanner
+        # google/osv-scanner-action@v2.3.8
+        uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2
+        with:
+          # Scan the ephemeral lockfile so newly-disclosed advisories against
+          # the pinned @std/* and @stsoftware/* versions are surfaced between
+          # weekly bumps. osv-scanner exits non-zero on any known advisory.
+          scan-args: |-
+            --lockfile=./deno.lock

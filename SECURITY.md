@@ -12,7 +12,14 @@ opening a PR (see the secure-coding principles section of
 
 - **Dependency review** — every PR is scanned by
   [`actions/dependency-review-action`](https://github.com/actions/dependency-review-action)
-  via `.github/workflows/dependency-review.yml`.
+  via `.github/workflows/dependency-review.yml`. This is PR-diff scoped: it only
+  flags dependencies that change within a pull request.
+- **Scheduled vulnerability scan** — a weekly OSV scan
+  (`.github/workflows/osv-scan.yml`) re-checks the _whole_ resolved dependency
+  tree against the [OSV](https://osv.dev/) advisory database, catching CVEs
+  disclosed against an already-merged, exact-pinned dependency between bumps. It
+  generates an ephemeral lockfile for the scan and leaves `deno.json`'s
+  `"lock": false` policy intact.
 - **Static analysis (SAST)** — Semgrep runs on each PR via
   `.github/workflows/semgrep.yml`.
 - **Secret scanning** — `gitleaks` patterns live in `.gitleaks.toml` at the
