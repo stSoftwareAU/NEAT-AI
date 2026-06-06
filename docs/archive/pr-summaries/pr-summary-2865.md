@@ -4,15 +4,15 @@
 
 `deno.json` previously set `"lock": false` with **no committed `deno.lock`**, so
 the **transitive** dependency graph was unpinned and no integrity hashes were
-recorded. Exact-pinning the *direct* `jsr:` imports does not pin what those
+recorded. Exact-pinning the _direct_ `jsr:` imports does not pin what those
 packages themselves resolve to — a newly published (potentially malicious)
 patch/minor within an allowed transitive range could be pulled into a build even
 though nothing in `deno.json` changed.
 
 This change closes that supply-chain readiness gap:
 
-- Removed the `"lock": false` line from `deno.json`, re-enabling Deno's
-  lockfile (default behaviour).
+- Removed the `"lock": false` line from `deno.json`, re-enabling Deno's lockfile
+  (default behaviour).
 - Generated and committed `deno.lock` (Deno lockfile v5) recording the exact
   resolved version **and** an integrity hash for every dependency in the tree.
   Deno now verifies the resolved graph on every `cache`/`install`/`run`, so any
@@ -23,7 +23,8 @@ This change closes that supply-chain readiness gap:
 The lockfile is repo-local only — it is **not** in `publish.include`, so nothing
 changes for downstream JSR consumers; it restores integrity verification for
 this repo's own CI and contributors. It also gives the scheduled OSV scanner
-(#2864) a real committed lockfile rather than relying solely on an ephemeral one.
+(#2864) a real committed lockfile rather than relying solely on an ephemeral
+one.
 
 Closes #2865.
 
@@ -69,5 +70,5 @@ manifest/lockfile):
 
 Modified `test/ci/OsvScanWorkflow.ts`:
 
-- Renamed/rewrote the `"lock": false` assertion to assert the lockfile is **not**
-  disabled, reflecting the #2865 policy change (documented above).
+- Renamed/rewrote the `"lock": false` assertion to assert the lockfile is
+  **not** disabled, reflecting the #2865 policy change (documented above).
