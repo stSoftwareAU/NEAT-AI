@@ -16,6 +16,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #2871:** Evolution now always finalizes even when an optional training
+  task never settles. Training is a best-effort phase, but the finish-up loop in
+  `Neat.finishUp()` only bounded the wait for _discovery_ tasks — the _training_
+  branch waited indefinitely, so an orphaned (never-resolving) training promise
+  pinned `trainingInProgress` and the run spun until an external wall-clock cap
+  killed it, discarding the whole compute window with no champion checkin. The
+  training branch now uses the identical bounded-wait logic as discovery (the
+  smaller of an iteration-derived and a wall-clock-derived generation cap; Issue
+  #2432): once the budget is exhausted the stuck training task is abandoned and
+  the run finalizes and checks in the best-so-far creature. The shared cap
+  computation was extracted into `computeMaxWaitGenerations()`.
 - **Issue #2831:** Carry over the higher generation count when breeding and
   loading creatures. The `currentGeneration` tag is now **monotonic** —
   `writeSeedWarmupProgressTags` never lowers an existing value. Previously the

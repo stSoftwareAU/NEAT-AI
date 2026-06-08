@@ -173,6 +173,11 @@ export class Neat {
   additionalGenerationCount = 0;
   private discoveryWaitGenerations = 0;
   private maxDiscoveryWaitGenerations = 0;
+  // Issue #2871: bound the finish-up wait for optional training tasks the same
+  // way discovery is bounded, so an orphaned (never-settling) training promise
+  // can never wedge the run from finalizing and checking in the best creature.
+  private trainingWaitGenerations = 0;
+  private maxTrainingWaitGenerations = 0;
   trainingInProgress = new Map<string, Promise<void>>();
   discoveryInProgress = new Map<string, Promise<void>>();
   discoveryComplete: ResponseData[] = [];
@@ -307,6 +312,80 @@ export class Neat {
     return cloned;
   }
 
+  /**
+   * Compute the bounded number of finish-up generations to wait for an
+   * optional in-flight phase (discovery or training) before abandoning it.
+   *
+   * Issue #2871: extracted from the discovery branch of {@link finishUp} so
+   * training is bounded by the identical limiting-factor logic — the smaller
+   * of an iteration-derived cap and a wall-clock-derived cap (Issue #2432).
+   */
+  private computeMaxWaitGenerations(
+    iterations?: number,
+    endTimeMS?: number,
+    startTimeMS?: number,
+    currentGeneration?: number,
+  ): number {
+    const DEFAULT_MAX_WAIT_MS = 5 * 60 * 1000;
+    let maxWaitByIterations = 20;
+    let maxWaitByTime = 20;
+
+    if (iterations) {
+      maxWaitByIterations = Math.max(1, Math.floor(iterations * 0.5));
+    }
+
+    if (startTimeMS && currentGeneration && currentGeneration > 0) {
+      const elapsedMS = Date.now() - startTimeMS;
+      const avgTimePerGeneration = elapsedMS / currentGeneration;
+
+      if (avgTimePerGeneration > 0) {
+        const maxGenerationsIn5Minutes = Math.max(
+          1,
+          Math.floor(DEFAULT_MAX_WAIT_MS / avgTimePerGeneration),
+        );
+
+        if (endTimeMS) {
+          const remainingTimeMS = endTimeMS - Date.now();
+          if (remainingTimeMS > 0) {
+            const estimatedGenerations = Math.max(
+              1,
+              Math.floor(remainingTimeMS / avgTimePerGeneration),
+            );
+            maxWaitByTime = Math.floor(estimatedGenerations * 0.5);
+          } else {
+            // Issue #2432: wall-clock deadline already exceeded — keep the
+            // grace window tight (1 generation) so a stuck task does not
+            // silently extend the caller's --timeout into an unbounded
+            // generation-count wait.
+            maxWaitByTime = 1;
+          }
+        } else {
+          maxWaitByTime = maxGenerationsIn5Minutes;
+        }
+
+        getLogger().info(
+          `Avg time per generation: ${
+            Math.round(avgTimePerGeneration)
+          }ms, max wait: ${maxGenerationsIn5Minutes} generations in 5 minutes`,
+        );
+      }
+    } else if (endTimeMS) {
+      const remainingTimeMS = endTimeMS - Date.now();
+      if (remainingTimeMS > 0) {
+        const estimatedGenerations = Math.max(
+          1,
+          Math.floor(remainingTimeMS / 30000),
+        );
+        maxWaitByTime = Math.floor(estimatedGenerations * 0.5);
+      } else {
+        // Issue #2432: same wall-clock guard as above.
+        maxWaitByTime = 1;
+      }
+    }
+
+    return Math.max(1, Math.min(maxWaitByIterations, maxWaitByTime));
+  }
+
   finishUp(
     iterations?: number,
     endTimeMS?: number,
@@ -328,66 +407,11 @@ export class Neat {
 
     if (this.discoveryInProgress.size > 0) {
       if (this.maxDiscoveryWaitGenerations === 0) {
-        const DEFAULT_MAX_WAIT_MS = 5 * 60 * 1000;
-        let maxWaitByIterations = 20;
-        let maxWaitByTime = 20;
-
-        if (iterations) {
-          maxWaitByIterations = Math.max(1, Math.floor(iterations * 0.5));
-        }
-
-        if (startTimeMS && currentGeneration && currentGeneration > 0) {
-          const elapsedMS = Date.now() - startTimeMS;
-          const avgTimePerGeneration = elapsedMS / currentGeneration;
-
-          if (avgTimePerGeneration > 0) {
-            const maxGenerationsIn5Minutes = Math.max(
-              1,
-              Math.floor(DEFAULT_MAX_WAIT_MS / avgTimePerGeneration),
-            );
-
-            if (endTimeMS) {
-              const remainingTimeMS = endTimeMS - Date.now();
-              if (remainingTimeMS > 0) {
-                const estimatedGenerations = Math.max(
-                  1,
-                  Math.floor(remainingTimeMS / avgTimePerGeneration),
-                );
-                maxWaitByTime = Math.floor(estimatedGenerations * 0.5);
-              } else {
-                // Issue #2432: wall-clock deadline already exceeded — keep the
-                // grace window tight (1 generation) so a stuck discovery does
-                // not silently extend the caller's --timeout into an
-                // unbounded generation-count wait.
-                maxWaitByTime = 1;
-              }
-            } else {
-              maxWaitByTime = maxGenerationsIn5Minutes;
-            }
-
-            getLogger().info(
-              `Avg time per generation: ${
-                Math.round(avgTimePerGeneration)
-              }ms, max wait: ${maxGenerationsIn5Minutes} generations in 5 minutes`,
-            );
-          }
-        } else if (endTimeMS) {
-          const remainingTimeMS = endTimeMS - Date.now();
-          if (remainingTimeMS > 0) {
-            const estimatedGenerations = Math.max(
-              1,
-              Math.floor(remainingTimeMS / 30000),
-            );
-            maxWaitByTime = Math.floor(estimatedGenerations * 0.5);
-          } else {
-            // Issue #2432: same wall-clock guard as above.
-            maxWaitByTime = 1;
-          }
-        }
-
-        this.maxDiscoveryWaitGenerations = Math.max(
-          1,
-          Math.min(maxWaitByIterations, maxWaitByTime),
+        this.maxDiscoveryWaitGenerations = this.computeMaxWaitGenerations(
+          iterations,
+          endTimeMS,
+          startTimeMS,
+          currentGeneration,
         );
         getLogger().info(
           `Discovery timeout set to ${this.maxDiscoveryWaitGenerations} generations (based on limiting factor)`,
@@ -439,12 +463,62 @@ export class Neat {
     }
 
     if (this.trainingInProgress.size > 0) {
+      // Issue #2871: training is an optional/best-effort phase. Bound the wait
+      // exactly like discovery so an orphaned training promise that never
+      // settles (e.g. a timed-out per-creature CPU score whose worker task is
+      // never reaped) cannot keep the run from finalizing and checking in the
+      // best-so-far creature.
+      if (this.maxTrainingWaitGenerations === 0) {
+        this.maxTrainingWaitGenerations = this.computeMaxWaitGenerations(
+          iterations,
+          endTimeMS,
+          startTimeMS,
+          currentGeneration,
+        );
+        getLogger().info(
+          `Training timeout set to ${this.maxTrainingWaitGenerations} generations (based on limiting factor)`,
+        );
+      }
+
+      this.trainingWaitGenerations++;
+
+      // The wall-clock deadline takes precedence over the generation-count
+      // wait: once the caller's --timeout has expired we must not let a stuck
+      // training task keep the loop alive.
+      const wallClockExpired = endTimeMS !== undefined && endTimeMS > 0 &&
+        Date.now() >= endTimeMS;
+
+      if (
+        wallClockExpired ||
+        this.trainingWaitGenerations >= this.maxTrainingWaitGenerations
+      ) {
+        const stuckUUIDs = Array.from(this.trainingInProgress.keys()).map(
+          (uuid) => uuid.substring(Math.max(0, uuid.length - 8)),
+        );
+        const reason = wallClockExpired
+          ? "wall-clock deadline expired"
+          : `${this.trainingWaitGenerations} generations`;
+        getLogger().warn(
+          `[Neat] Training timeout reached after ${reason}. Abandoning stuck training task(s): ${
+            stuckUUIDs.join(", ")
+          }`,
+        );
+
+        this.trainingInProgress.clear();
+        this.trainingWaitGenerations = 0;
+        this.maxTrainingWaitGenerations = 0;
+
+        return false;
+      }
+
       const trainingUUIDs = Array.from(this.trainingInProgress.keys()).map(
         (uuid) => uuid.substring(Math.max(0, uuid.length - 8)),
       );
       getLogger().info(
         `[Neat] Waiting for ${this.trainingInProgress.size} training task(s) ` +
-          `to complete - In progress: ${trainingUUIDs.join(", ")}`,
+          `to complete (${this.trainingWaitGenerations}/${this.maxTrainingWaitGenerations}) - In progress: ${
+            trainingUUIDs.join(", ")
+          }`,
       );
       return false;
     }

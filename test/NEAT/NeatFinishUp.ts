@@ -170,6 +170,115 @@ Deno.test("finishUp: discovery timeout clears stuck discoveries", async () => {
   }
 });
 
+// ============================================================================
+// Issue #2871: Training is an optional/best-effort phase and must NEVER be
+// able to wedge the run. A training task whose worker promise never settles
+// (e.g. a timed-out per-creature CPU score) must be abandoned after a bounded
+// wait so the run can finalize and check in the best-so-far creature.
+// ============================================================================
+
+Deno.test("finishUp: training timeout clears stuck trainings", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // A training promise that never settles (mimics an orphaned timed-out
+    // worker task that never resolves nor rejects).
+    neat.trainingInProgress.set("stuck-train-uuid", new Promise(() => {}));
+
+    // Call finishUp repeatedly with iterations=4 to bound the wait at 2.
+    let cleared = false;
+    for (let i = 0; i < 10; i++) {
+      const result = neat.finishUp(4);
+      if (neat.trainingInProgress.size === 0 || result === true) {
+        cleared = true;
+        break;
+      }
+    }
+
+    assert(cleared, "Training should be cleared after timeout generations");
+    assertEquals(
+      neat.trainingInProgress.size,
+      0,
+      "Training map should be empty after timeout",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("finishUp: clears stuck trainings promptly when wall-clock deadline has passed", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // Simulate a stuck (never-settling) training task.
+    neat.trainingInProgress.set("expired-train-uuid", new Promise(() => {}));
+
+    // Wall-clock deadline already in the past (caller's --timeout exceeded).
+    const start = Date.now() - 10 * 60_000; // ran for 10 minutes
+    const endTimeMS = Date.now() - 60_000; // 1 minute past deadline
+    const iterations = 1000; // generous cap — must NOT keep the run alive
+    const currentGeneration = 5;
+
+    let cleared = false;
+    for (let i = 0; i < 5; i++) {
+      neat.finishUp(iterations, endTimeMS, start, currentGeneration);
+      if (neat.trainingInProgress.size === 0) {
+        cleared = true;
+        break;
+      }
+    }
+    assert(
+      cleared,
+      "Stuck training should be cleared within a few generations after the wall-clock deadline expires",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("finishUp: eventually finalizes despite a never-settling training task", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // Orphaned training promise that will never settle.
+    neat.trainingInProgress.set("never-settles", new Promise(() => {}));
+
+    // Drive the finish-up loop with a bounded iteration cap. It must reach a
+    // terminal `true` (finalize + checkin) rather than spinning forever.
+    let finalized = false;
+    for (let i = 0; i < 50; i++) {
+      if (neat.finishUp(4)) {
+        finalized = true;
+        break;
+      }
+    }
+
+    assert(
+      finalized,
+      "Run must finalize even when a training task never settles",
+    );
+    assertEquals(
+      neat.trainingInProgress.size,
+      0,
+      "Stuck training must be abandoned before finalizing",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
 Deno.test("finishUp: returns false when additionalGenerationCount > 0", async () => {
   const dataDir = createTestDataDir(2, 1);
   const workers = createTestWorkers(dataDir);
