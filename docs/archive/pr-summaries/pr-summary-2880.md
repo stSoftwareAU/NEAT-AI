@@ -18,8 +18,8 @@ The `switch` over the `op.type` discriminant of the
 This PR adds a shared `assertNever(x: never)` helper and a `default` branch to
 both switches. If an eighth operation variant is ever added to
 `CoordinatedStructuralOperation`, both call sites now **fail to compile** until
-the new variant is handled — turning a latent data-loss bug into a
-compile-time error.
+the new variant is handled — turning a latent data-loss bug into a compile-time
+error.
 
 Closes #2880.
 
@@ -29,8 +29,8 @@ Closes #2880.
   parameter type `never` makes the compiler reject any unhandled union variant
   at the call site; at runtime (malformed wire data that escaped the type
   system) it throws with the offending value embedded so the failure is loud.
-- **`ApplyCoordinatedStructuralCandidate.ts`** — added `default: assertNever(op)`
-  to the operation-apply switch.
+- **`ApplyCoordinatedStructuralCandidate.ts`** — added
+  `default: assertNever(op)` to the operation-apply switch.
 - **`DiscoveryWireFormat.ts`** — added `default: return assertNever(op)` to
   `toWireCoordinatedOperation`.
 
