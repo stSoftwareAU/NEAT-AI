@@ -17,6 +17,7 @@ import {
   buildWireToRuntimeIdMap,
   resolveCoordinatedEdgeEndpoints,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { assertNever } from "@utils/assertNever.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 import {
   passesProducerCompileGate,
@@ -328,6 +329,12 @@ export function applyCoordinatedStructuralCandidate(
         // No-op if synapse doesn't exist (idempotent).
         continue;
       }
+
+      default:
+        // Exhaustiveness guard: if a new CoordinatedStructuralOperation variant
+        // is added without a case above, this fails to compile rather than
+        // silently dropping the operation from the coordinated ablation.
+        assertNever(op);
     }
   }
 

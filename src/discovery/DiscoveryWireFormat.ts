@@ -14,6 +14,7 @@ import {
   buildRuntimeIdToWireMap,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import type { Creature } from "@creature";
+import { assertNever } from "@utils/assertNever.ts";
 import type {
   DiscoveredNeuronDetails,
   DiscoveryCandidate,
@@ -293,6 +294,10 @@ function toWireCoordinatedOperation(
         ),
         bias: op.bias,
       };
+    default:
+      // Exhaustiveness guard: a new CoordinatedStructuralOperation variant must
+      // be handled here or the compile fails at this site.
+      return assertNever(op);
   }
 }
 
