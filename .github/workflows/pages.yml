@@ -1,0 +1,80 @@
+name: Deploy GitHub Pages
+
+# Builds the `docs/` site and deploys it through the modern, GitHub-Actions
+# based Pages pipeline (Issue #2877). This replaces GitHub's managed legacy
+# `pages-build-deployment` runner, which still executes
+# `actions/checkout@v4` and `actions/upload-artifact@v4` on the deprecated
+# Node 20 runtime. Every action below runs on Node 24 (or a pinned Docker
+# image), so no Node 20 deprecation warnings remain.
+#
+# IMPORTANT (one-time, human/admin step): after this workflow merges to
+# `Develop`, set Settings → Pages → "Source" to "GitHub Actions" (Pages
+# `build_type: workflow`). Until that switch is flipped the legacy branch
+# build keeps running; flipping it hands deployment to this workflow.
+
+on:
+  push:
+    branches: [Develop]
+    paths:
+      - "docs/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# Serialise Pages deployments. Unlike the lint/test workflows we do NOT cancel
+# an in-flight run: a half-finished deployment must complete to leave the live
+# site in a consistent state (Issue #2842).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# Least-privilege GITHUB_TOKEN scopes (Issue #2706). The build job only reads
+# the repo; the deploy job needs pages:write to publish and id-token:write for
+# the OIDC verification actions/deploy-pages performs.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build docs site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Code
+        # actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+
+      - name: Configure Pages
+        # actions/configure-pages@v6.0.0
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
+
+      - name: Build with Jekyll
+        # actions/jekyll-build-pages@v1.0.13 (pinned Docker image, no Node runtime)
+        uses: actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697
+        with:
+          source: ./docs
+          destination: ./_site
+
+      - name: Upload Pages artifact
+        # actions/upload-pages-artifact@v5.0.0 (composite; wraps upload-artifact@v7, Node 24)
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        # actions/deploy-pages@v5.0.0 — Node 24 runtime
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
