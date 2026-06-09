@@ -4,6 +4,7 @@
     "jsr:@std/assert@1.0.19": "1.0.19",
     "jsr:@std/assert@^1.0.19": "1.0.19",
     "jsr:@std/bytes@1.0.6": "1.0.6",
+    "jsr:@std/bytes@^1.0.6": "1.0.6",
     "jsr:@std/cli@1.0.17": "1.0.17",
     "jsr:@std/crypto@1.1.0": "1.1.0",
     "jsr:@std/data-structures@^1.1.0": "1.1.0",
@@ -15,6 +16,7 @@
     "jsr:@std/path@1.1.5": "1.1.5",
     "jsr:@std/path@^1.1.5": "1.1.5",
     "jsr:@std/testing@1.0.19": "1.0.19",
+    "jsr:@std/uuid@1.1.1": "1.1.1",
     "jsr:@std/yaml@1.1.1": "1.1.1",
     "jsr:@stsoftware/tags@1.0.13": "1.0.13"
   },
@@ -64,6 +66,12 @@
         "jsr:@std/fs@^1.0.24",
         "jsr:@std/internal@^1.0.14",
         "jsr:@std/path@^1.1.5"
+      ]
+    },
+    "@std/uuid@1.1.1": {
+      "integrity": "7b49060282d90f72fec64952f8c7a2914cbe6fdba3eca665f8cedc90830154a7",
+      "dependencies": [
+        "jsr:@std/bytes@^1.0.6"
       ]
     },
     "@std/yaml@1.1.1": {
