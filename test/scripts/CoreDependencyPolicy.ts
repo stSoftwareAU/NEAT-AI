@@ -36,30 +36,68 @@ Deno.test("core dependency policy document exists", async () => {
   assert(info.isFile, `${POLICY_DOC} must exist`);
 });
 
-Deno.test("policy document covers required sections", async () => {
-  const content = await Deno.readTextFile(POLICY_DOC);
-  const lower = content.toLowerCase();
-
-  const requiredTopics = [
-    "semver",
-    "deno.json",
-    "ref",
-    "build.sh",
-    "approval",
-  ];
-
-  for (const topic of requiredTopics) {
-    assert(
-      lower.includes(topic),
-      `policy document must cover "${topic}"`,
-    );
+/**
+ * Extract the `neatCore` pin advertised by the documented `json` fenced block
+ * in CORE_DEPENDENCY_POLICY.md and parse it into an object.
+ *
+ * The doc shows the canonical shape, e.g.
+ *
+ * ```json
+ * "neatCore": {
+ *   "repo": "stSoftwareAU/NEAT-AI-core",
+ *   "ref": "Develop",
+ *   "rev": "<40-char SHA>"
+ * }
+ * ```
+ *
+ * The fenced block is an object body (a `"neatCore": { ... }` fragment), so we
+ * wrap it in braces before parsing. Returns the inner `neatCore` object.
+ */
+function extractDocNeatCore(
+  doc: string,
+): { repo?: unknown; ref?: unknown } | null {
+  const fences = doc.matchAll(/```json\s*([\s\S]*?)```/g);
+  for (const match of fences) {
+    const body = match[1];
+    if (!body.includes('"neatCore"')) continue;
+    try {
+      const parsed = JSON.parse(`{${body}}`);
+      return parsed.neatCore ?? null;
+    } catch {
+      // Not a parseable fragment — keep scanning for the right block.
+    }
   }
-});
+  return null;
+}
 
-Deno.test("AGENTS.md references the core dependency policy", async () => {
-  const content = await Deno.readTextFile("AGENTS.md");
+/**
+ * WHAT-test: the pin documented in CORE_DEPENDENCY_POLICY.md must agree with the
+ * authoritative pin in deno.json on the values a machine can compare — `repo`
+ * and `ref`. This fails only when the two genuinely disagree (e.g. the doc still
+ * advertises an old ref after deno.json is bumped), not when surrounding prose
+ * is reworded. `rev` is intentionally excluded: the doc carries a `<40-char SHA>`
+ * placeholder rather than the live SHA.
+ */
+Deno.test("policy document pins the same neatCore repo and ref as deno.json", async () => {
+  const json = JSON.parse(await Deno.readTextFile(DENO_JSON));
+  const denoNeatCore = json.neatCore;
+  assert(denoNeatCore, "deno.json must define neatCore");
+
+  const doc = await Deno.readTextFile(POLICY_DOC);
+  const docNeatCore = extractDocNeatCore(doc);
   assert(
-    content.includes("CORE_DEPENDENCY_POLICY"),
-    "AGENTS.md must reference docs/CORE_DEPENDENCY_POLICY.md",
+    docNeatCore,
+    `${POLICY_DOC} must document a json neatCore block`,
+  );
+
+  assertEquals(
+    docNeatCore.repo,
+    denoNeatCore.repo,
+    "policy doc and deno.json must agree on neatCore.repo",
+  );
+  assertEquals(
+    docNeatCore.ref,
+    denoNeatCore.ref,
+    "policy doc and deno.json must agree on neatCore.ref",
   );
 });

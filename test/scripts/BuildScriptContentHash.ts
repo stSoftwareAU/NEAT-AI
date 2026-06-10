@@ -473,19 +473,3 @@ Deno.test({
     );
   },
 });
-
-Deno.test({
-  name: "CORE_DEPENDENCY_POLICY documents the new content-hash step",
-  permissions: { read: true },
-  fn: async () => {
-    const policy = await Deno.readTextFile("docs/CORE_DEPENDENCY_POLICY.md");
-    const lower = policy.toLowerCase();
-    assert(
-      lower.includes("content-manifest.sha256") ||
-        lower.includes("content hash") ||
-        lower.includes("sha-256") ||
-        lower.includes("sha256"),
-      "Policy must describe the content-hash verification step",
-    );
-  },
-});
