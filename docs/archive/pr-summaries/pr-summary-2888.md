@@ -2,14 +2,14 @@
 
 ## Summary
 
-Removed flake-prone wall-clock timing assertions from two unit test files.
-These assertions compared a `Date.now()` delta against a fixed millisecond
-budget — a "HOW"-flavoured check that depends on the machine the test runs on
-(loaded CI runner, shared laptop, ARM-vs-x86) rather than on observable
-behaviour. Per the project testing policy in `AGENTS.md` ("Unit tests must never
-measure timing or performance"), liveness/hang intent is now left to the test
-runner's own per-test timeout, while the genuine behavioural assertions that
-were already present are retained. Closes #2888.
+Removed flake-prone wall-clock timing assertions from two unit test files. These
+assertions compared a `Date.now()` delta against a fixed millisecond budget — a
+"HOW"-flavoured check that depends on the machine the test runs on (loaded CI
+runner, shared laptop, ARM-vs-x86) rather than on observable behaviour. Per the
+project testing policy in `AGENTS.md` ("Unit tests must never measure timing or
+performance"), liveness/hang intent is now left to the test runner's own
+per-test timeout, while the genuine behavioural assertions that were already
+present are retained. Closes #2888.
 
 Changes:
 
