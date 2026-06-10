@@ -187,25 +187,13 @@ Deno.test({
   },
 });
 
-Deno.test({
-  name: "build.sh exposes a --rev option for explicit historical pins",
-  permissions: { read: true },
-  fn: async () => {
-    const buildScript = await Deno.readTextFile("build.sh");
-    assert(
-      buildScript.includes("--rev"),
-      "build.sh should accept --rev <SHA> for explicit pinning",
-    );
-    assert(
-      /wasm-bundle-/.test(buildScript),
-      "build.sh should reference per-commit Release tag pattern wasm-bundle-<SHA>",
-    );
-    assert(
-      buildScript.includes("wasm_activation-pkg.tar.gz"),
-      "build.sh should reference the wasm_activation-pkg.tar.gz asset",
-    );
-  },
-});
+// The "build.sh exposes a --rev option" source-text grep was removed
+// (issue #2886): the --rev contract is already proven behaviourally by the
+// "--help lists new flags", "--rev rejects non-hex / wrong-length values"
+// and "--rev requires a value" tests above, which run build.sh and assert on
+// its exit codes and stderr. The release-tag/asset-name greps tested only
+// the internal wording of the network download path and added no behavioural
+// signal.
 
 Deno.test({
   name: "CORE_DEPENDENCY_POLICY documents the new artifact-based flow",

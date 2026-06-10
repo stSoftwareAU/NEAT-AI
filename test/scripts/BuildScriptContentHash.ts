@@ -40,40 +40,13 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
-Deno.test({
-  name: "build.sh declares a content manifest file constant",
-  permissions: { read: true },
-  fn: async () => {
-    const script = await Deno.readTextFile("build.sh");
-    assert(
-      script.includes("content-manifest.sha256"),
-      "build.sh must reference wasm_activation/pkg/content-manifest.sha256",
-    );
-  },
-});
-
-Deno.test({
-  name: "build.sh has tarball SHA-256 verification logic",
-  permissions: { read: true },
-  fn: async () => {
-    const script = await Deno.readTextFile("build.sh");
-    // Should reference shasum -a 256 (the hashing tool) and assetSha256
-    // (the optional deno.json pin) so a reviewer sees how upstream tarballs
-    // are content-verified before extract.
-    assert(
-      /shasum\s+-a\s+256/.test(script),
-      "build.sh must use 'shasum -a 256' to hash the downloaded tarball",
-    );
-    assert(
-      script.includes("assetSha256"),
-      "build.sh must read neatCore.assetSha256 from deno.json",
-    );
-    assert(
-      script.includes(".sha256"),
-      "build.sh must look for a sidecar .sha256 release asset",
-    );
-  },
-});
+// The content-manifest constant and the SHA-256 / assetSha256 / sidecar
+// verification logic were previously asserted by grepping build.sh source
+// text (issue #2886). Those HOW-tests are removed: the behaviour is proven
+// by the WHAT-tests below — `verify_tarball_sha256` failing on a hash
+// mismatch, `--verify-only` failing on a tampered or missing manifest, and
+// `deno.json` pinning a 64-char assetSha256 — none of which depend on the
+// script's internal wording.
 
 Deno.test({
   name: "build.sh fails the tarball check on SHA-256 mismatch (helper unit)",
@@ -146,13 +119,27 @@ Deno.test({
 });
 
 Deno.test({
-  name: "wasm_activation/pkg/.gitignore allows content-manifest.sha256",
-  permissions: { read: true },
+  name: "content-manifest.sha256 is not git-ignored",
+  permissions: { run: true, read: true },
   fn: async () => {
-    const gi = await Deno.readTextFile("wasm_activation/pkg/.gitignore");
-    assert(
-      gi.includes("!content-manifest.sha256"),
-      "pkg/.gitignore must un-ignore content-manifest.sha256",
+    // Behavioural check (issue #2886): ask git itself whether the manifest is
+    // ignored rather than grepping pkg/.gitignore source text. `git
+    // check-ignore` exits 0 when a path IS ignored and 1 when it is not, so
+    // the un-ignore rule working means rc=1. Removing the `!content-manifest
+    // .sha256` exception would let the blanket `*` rule ignore it again,
+    // flipping this to rc=0 and failing the test.
+    const cmd = new Deno.Command("git", {
+      args: ["check-ignore", "-q", MANIFEST_PATH],
+      stdout: "null",
+      stderr: "piped",
+      cwd: Deno.cwd(),
+    });
+    const out = await cmd.output();
+    assertEquals(
+      out.code,
+      1,
+      `${MANIFEST_PATH} must NOT be git-ignored (rc 1 = not ignored); ` +
+        `got rc=${out.code}, stderr=${new TextDecoder().decode(out.stderr)}`,
     );
   },
 });
@@ -450,14 +437,51 @@ Deno.test({
 });
 
 Deno.test({
-  name: "build.sh extracts without honouring archived owner/permission bits",
-  permissions: { read: true },
+  name: "build.sh extract_bundle does not honour archived permission bits",
+  permissions: { run: true, read: true, write: true },
   fn: async () => {
-    const script = await Deno.readTextFile("build.sh");
-    assert(
-      /tar\s+--no-same-owner\s+--no-same-permissions\s+-xzf/.test(script),
-      "tar extract must pass --no-same-owner --no-same-permissions",
-    );
+    // Behavioural replacement (issue #2886) for the old source-text grep:
+    // drive build.sh's real extract_bundle helper against an archive whose
+    // member is mode 0777 under a restrictive umask. With
+    // --no-same-permissions the archived bits are dropped and the umask
+    // applies, so the extracted file must not be group/other-accessible. A
+    // regression to `tar -p` (preserve permissions) would extract 0777 and
+    // fail this assertion.
+    const tmpDir = await Deno.makeTempDir({ prefix: "neat-extract-" });
+    try {
+      await Deno.mkdir(`${tmpDir}/src/pkg`, { recursive: true });
+      const member = `${tmpDir}/src/pkg/wasm_activation.js`;
+      await Deno.writeTextFile(member, "export const x = 1;\n");
+      await Deno.chmod(member, 0o777);
+      const mkTar = new Deno.Command("tar", {
+        args: ["-czf", `${tmpDir}/bundle.tar.gz`, "-C", `${tmpDir}/src`, "pkg"],
+      });
+      assertEquals((await mkTar.output()).code, 0);
+
+      const dest = `${tmpDir}/out`;
+      await Deno.mkdir(dest, { recursive: true });
+      const run = await runSourcedFn(
+        "extract_bundle",
+        `umask 077\nextract_bundle '${tmpDir}/bundle.tar.gz' '${dest}'`,
+      );
+      assertEquals(run.code, 0, `extract_bundle must succeed; ${run.stderr}`);
+
+      const extracted = `${dest}/pkg/wasm_activation.js`;
+      assertEquals(
+        await Deno.readTextFile(extracted),
+        "export const x = 1;\n",
+        "extracted file content must match the archived file",
+      );
+      const mode = ((await Deno.stat(extracted)).mode ?? 0) & 0o777;
+      assertEquals(
+        mode & 0o077,
+        0,
+        `extracted mode must be masked by umask, not the archived 0777; ` +
+          `got ${mode.toString(8)}`,
+      );
+    } finally {
+      await Deno.remove(tmpDir, { recursive: true });
+    }
   },
 });
 

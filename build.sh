@@ -249,6 +249,17 @@ EOF
   return 0
 }
 
+# extract_bundle — unpack the downloaded tarball into the destination tree
+# without honouring archived ownership or permission bits (issue #2744). The
+# --no-same-owner / --no-same-permissions flags ensure a hostile archive
+# cannot set foreign ownership or world-writable/setuid bits on extracted
+# files; permissions fall back to the caller's umask instead.
+extract_bundle() {
+  local archive="$1"
+  local dest="$2"
+  tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$dest"
+}
+
 # write_content_manifest — record sha256(file) for every artefact in the
 # vendored pkg so --verify-only can detect post-install tampering even
 # without a network round-trip. Format is standard `shasum -a 256`
@@ -601,7 +612,7 @@ assert_safe_tar_entries "$tmp_dir/$ASSET_NAME"
 
 mkdir -p "wasm_activation"
 echo "Extracting ${ASSET_NAME} into wasm_activation/..."
-tar --no-same-owner --no-same-permissions -xzf "$tmp_dir/$ASSET_NAME" -C "wasm_activation/"
+extract_bundle "$tmp_dir/$ASSET_NAME" "wasm_activation/"
 
 # Ensure neat_core_rev.txt is consistent with the requested SHA. CI
 # writes this file, but we re-stamp it defensively in case someone
