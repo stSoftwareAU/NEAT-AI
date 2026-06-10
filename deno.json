@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "5.3.19",
+  "version": "5.3.20",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
@@ -20,11 +20,9 @@
     "@std/assert": "jsr:@std/assert@1.0.19",
     "@std/bytes": "jsr:@std/bytes@1.0.6",
     "@std/crypto": "jsr:@std/crypto@1.1.0",
-    "@std/csv": "jsr:@std/csv@1.0.6",
     "@std/fmt": "jsr:@std/fmt@1.0.10",
     "@std/fs": "jsr:@std/fs@1.0.24",
     "@std/path": "jsr:@std/path@1.1.5",
-    "@std/streams": "jsr:@std/streams@1.1.1",
     "@std/uuid": "jsr:@std/uuid@1.1.1",
     "@std/yaml": "jsr:@std/yaml@1.1.1",
     "@std/testing/mock": "jsr:@std/testing@1.0.19/mock",

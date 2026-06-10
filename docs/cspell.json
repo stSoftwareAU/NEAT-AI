@@ -470,6 +470,7 @@
     "intree",
     "INTREE",
     "pathlib",
+    "pathx",
     "preempt",
     "rglob",
     "splitlines",
