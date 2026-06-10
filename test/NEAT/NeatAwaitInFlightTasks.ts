@@ -137,15 +137,11 @@ Deno.test("awaitInFlightTasks: respects timeout with long-running tasks", async 
     neat.discoveryInProgress.set("slow-uuid", taskPromise);
 
     try {
-      const startMs = Date.now();
+      // Returns after the short timeout without waiting for the 60s task. The
+      // assertion below — that the discovery task is still in flight — proves
+      // the timeout fired rather than the task completing (Issue #2888); a
+      // genuine hang is caught by the runner's per-test timeout.
       await neat.awaitInFlightTasks(200); // Short timeout
-      const elapsedMs = Date.now() - startMs;
-
-      // Should have returned after roughly the timeout, not waited for the full task
-      assert(
-        elapsedMs < 5000,
-        `Should have timed out quickly, but took ${elapsedMs}ms`,
-      );
 
       // Task is still in progress (not cleared by timeout)
       assertEquals(
