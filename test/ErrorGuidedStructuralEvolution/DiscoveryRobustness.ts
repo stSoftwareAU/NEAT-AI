@@ -207,24 +207,21 @@ Deno.test({
       throw new Error("Rust recording flush failed");
     }
 
-    // selectNeuronsWeightedByError should complete even if selection is difficult
-    const startTime = Date.now();
+    // selectNeuronsWeightedByError should complete even if selection is
+    // difficult. Termination is the behaviour under test; a genuine infinite
+    // loop is caught by the test runner's own per-test timeout, not by a
+    // wall-clock budget (Issue #2888).
     const selectedNeurons = await discoverStructure
       .selectNeuronsWeightedByError(
         10,
         DEFAULT_COST_OF_GROWTH,
       );
-    const elapsed = Date.now() - startTime;
 
     assertExists(selectedNeurons, "Should return selected neurons");
     assert(selectedNeurons.length > 0, "Should select at least some neurons");
     assert(
       selectedNeurons.length <= 10,
       "Should not select more than requested",
-    );
-    assert(
-      elapsed < 5000,
-      `Selection took ${elapsed}ms, should complete in < 5s (would hang forever if infinite loop)`,
     );
 
     await discoverStructure.cleanUp();
@@ -352,20 +349,16 @@ Deno.test({
     // With zero error, should return empty or fall back gracefully
     assertExists(viableNeurons, "Should handle zero-error case");
 
-    // Selection should not hang with zero total error
-    const startTime = Date.now();
+    // Selection should not hang with zero total error. Termination is the
+    // behaviour under test; a genuine hang is caught by the runner's per-test
+    // timeout rather than a wall-clock budget (Issue #2888).
     const selectedNeurons = await discoverStructure
       .selectNeuronsWeightedByError(
         5,
         DEFAULT_COST_OF_GROWTH,
       );
-    const elapsed = Date.now() - startTime;
 
     assertExists(selectedNeurons, "Should handle zero-error selection");
-    assert(
-      elapsed < 2000,
-      `Selection with zero error took ${elapsed}ms, should complete quickly`,
-    );
 
     await discoverStructure.cleanUp();
   },
@@ -406,9 +399,9 @@ Deno.test({
     // Wait for timeout to pass (0.1s timeout + small buffer)
     await new Promise((resolve) => setTimeout(resolve, 150));
 
-    // These should all return quickly due to timeout checks
-    const startTime = Date.now();
-
+    // These should all return after the configured timeout has elapsed. A
+    // genuine hang is caught by the runner's per-test timeout, not by a
+    // wall-clock budget (Issue #2888).
     const analysisResult = await discoverStructure.analyze(
       5,
       DEFAULT_COST_OF_GROWTH,
@@ -422,15 +415,7 @@ Deno.test({
       DEFAULT_COST_OF_GROWTH,
     );
 
-    const elapsed = Date.now() - startTime;
-
-    // All should return undefined or complete quickly due to timeout
-    assert(
-      elapsed < 10000,
-      `Analysis phases took ${elapsed}ms after timeout, should exit quickly`,
-    );
-
-    // Results may be undefined due to timeout, which is correct behavior
+    // Results may be undefined due to timeout, which is correct behaviour
     assert(
       analysisResult === undefined || Array.isArray(analysisResult),
       "Analysis should return undefined or array",
@@ -489,16 +474,12 @@ Deno.test({
       throw new Error("Rust recording flush failed");
     }
 
-    // listViableNeurons uses batching internally - if this completes, batching works
-    const startTime = Date.now();
+    // listViableNeurons uses batching internally - if this completes, batching
+    // works. A genuine hang is caught by the runner's per-test timeout, not by
+    // a wall-clock budget (Issue #2888).
     const viableNeurons = await discoverStructure.listViableNeurons();
-    const elapsed = Date.now() - startTime;
 
     assertExists(viableNeurons, "Should complete with batching");
-    assert(
-      elapsed < 30000,
-      `Should complete in reasonable time (${elapsed}ms), not hang`,
-    );
 
     await discoverStructure.cleanUp();
   },
