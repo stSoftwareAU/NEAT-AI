@@ -152,6 +152,14 @@ export function scheduleDiscovery(
     // Issue #2432: clamp the analysis ceiling to the slack remaining after
     // recording so record + analysis ≤ caller's wall-clock budget.
     discoveryAnalysisTimeoutMinutes: allocation.analysisMinutes,
+    // Issue #2898: pass the absolute hard deadline across the worker boundary so
+    // the worker clamps every per-discovery deadline to T+15 regardless of how
+    // long the request waited in the queue. The #2432 relative allocation above
+    // stays as the phase-split mechanism. Only set when a hard deadline is
+    // configured (0 means no `timeoutMinutes`), leaving behaviour unchanged.
+    ...(neat.hardDeadlineTS > 0
+      ? { discoveryHardDeadlineTS: neat.hardDeadlineTS }
+      : {}),
   });
 
   const taskStartTime = Date.now();

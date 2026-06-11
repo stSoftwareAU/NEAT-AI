@@ -95,7 +95,7 @@ export async function recordDirectory(
   return await recorder.recordDirectory(dataDir);
 }
 
-class DataRecorder {
+export class DataRecorder {
   private readonly BYTES_PER_RECORD: number;
   private readonly BATCH_SIZE: number;
   private readonly sampleRate: number;
@@ -105,6 +105,13 @@ class DataRecorder {
   private readonly timeoutSeconds: number;
   private readonly analysisTimeoutSeconds: number;
   private analysisDeadlineAt?: number;
+  /**
+   * Issue #2898: absolute hard-deadline timestamp (epoch ms) carried across the
+   * worker boundary in the per-call config. Clamps every per-discovery deadline
+   * to the caller's T+15 cap. `undefined` when no `timeoutMinutes` is
+   * configured, in which case clamping is a no-op (behaviour unchanged).
+   */
+  private readonly discoveryHardDeadlineTS?: number;
   private readonly discoveryMaxNeurons: number;
   private readonly drainEveryNBatches: number;
   private readonly rustFlushRecords: number;
@@ -136,7 +143,15 @@ class DataRecorder {
       config.discoveryRecordTimeOutMinutes,
     );
     this.timeoutSeconds = discoveryRecordTimeOutMinutes * 60;
+    // Issue #2898: clamp the recording deadline to the absolute hard cap. A
+    // request queued behind a busy worker would otherwise anchor its relative
+    // budget at start time, not schedule time, drifting the completion past
+    // T+15. `min(now + recordBudget, hardDeadline)` ties it back to the cap.
+    this.discoveryHardDeadlineTS = config.discoveryHardDeadlineTS;
     this.timeoutTS = Date.now() + this.timeoutSeconds * 1000;
+    if (this.discoveryHardDeadlineTS !== undefined) {
+      this.timeoutTS = Math.min(this.timeoutTS, this.discoveryHardDeadlineTS);
+    }
 
     const analysisTimeoutMinutes = Math.min(
       60,
@@ -366,13 +381,10 @@ class DataRecorder {
         };
       }
 
-      // Extend timeout for analysis phase
-      const analysisTimeoutSeconds = this.analysisTimeoutSeconds;
-      const analysisTimeoutMinutes = analysisTimeoutSeconds / 60;
-      const analysisDeadlineAt = Date.now() + analysisTimeoutSeconds * 1000;
-      this.analysisDeadlineAt = analysisDeadlineAt;
-      discoverStructure.extendTimeoutForAnalysis(analysisTimeoutSeconds);
-      this.timeoutTS = analysisDeadlineAt;
+      // Extend timeout for analysis phase (clamped to the hard deadline)
+      const analysisTimeoutMinutes = this.extendTimeoutForAnalysisPhase(
+        discoverStructure,
+      );
 
       if (shouldLogDiscovery(config)) {
         getLogger().info(
@@ -532,7 +544,36 @@ class DataRecorder {
     perfStats.totalTime = Date.now() - startTime;
   }
 
-  private refreshAnalysisTimeout(
+  /**
+   * Move from recording into analysis, extending the deadline by the configured
+   * analysis budget but never past the absolute hard deadline (Issue #2898).
+   *
+   * `analysisDeadlineAt = min(now + analysisBudget, discoveryHardDeadlineTS)`.
+   * The same clamped value is pushed into the DiscoverStructure (which also
+   * remembers the cap for later `refreshAnalysisTimeout` top-ups) and mirrored
+   * onto `this.timeoutTS`, which the analysis loop reads via `getTimeoutTS()`.
+   *
+   * @returns the analysis budget in minutes, for logging.
+   */
+  extendTimeoutForAnalysisPhase(discoverStructure: DiscoverStructure): number {
+    const analysisTimeoutSeconds = this.analysisTimeoutSeconds;
+    let analysisDeadlineAt = Date.now() + analysisTimeoutSeconds * 1000;
+    if (this.discoveryHardDeadlineTS !== undefined) {
+      analysisDeadlineAt = Math.min(
+        analysisDeadlineAt,
+        this.discoveryHardDeadlineTS,
+      );
+    }
+    this.analysisDeadlineAt = analysisDeadlineAt;
+    discoverStructure.extendTimeoutForAnalysis(
+      analysisTimeoutSeconds,
+      this.discoveryHardDeadlineTS,
+    );
+    this.timeoutTS = analysisDeadlineAt;
+    return analysisTimeoutSeconds / 60;
+  }
+
+  refreshAnalysisTimeout(
     discoverStructure: DiscoverStructure,
   ): void {
     if (this.analysisDeadlineAt === undefined) {
@@ -543,7 +584,22 @@ class DataRecorder {
       return;
     }
     const remainingSeconds = Math.max(1, Math.floor(remainingMs / 1000));
-    discoverStructure.extendTimeoutForAnalysis(remainingSeconds);
+    // Issue #2898: re-supply the hard cap so the top-up can never overshoot it,
+    // even though `analysisDeadlineAt` is already clamped.
+    discoverStructure.extendTimeoutForAnalysis(
+      remainingSeconds,
+      this.discoveryHardDeadlineTS,
+    );
     this.timeoutTS = this.analysisDeadlineAt;
+  }
+
+  /** Current recording/analysis deadline (epoch ms). Issue #2898 — test seam. */
+  get currentTimeoutTS(): number {
+    return this.timeoutTS;
+  }
+
+  /** Clamped analysis deadline (epoch ms), once analysis has begun. Issue #2898. */
+  get currentAnalysisDeadlineAt(): number | undefined {
+    return this.analysisDeadlineAt;
   }
 }
