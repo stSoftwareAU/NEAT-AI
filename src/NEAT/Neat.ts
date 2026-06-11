@@ -155,7 +155,21 @@ export class Neat {
    */
   warmupGenerations = 0;
 
-  /** Current evolution generation (1-based, incremented at start of evolve). */
+  /**
+   * Lineage-accumulated generation count — the single source of truth for how
+   * many generations this lineage has evolved across **all** runs, not a
+   * per-run counter (Issue #2908).
+   *
+   * Production runs last ~15 min at ~1 min/generation, so the count must
+   * persist across runs to ever reach a `warmupGenerations` of 1440. It is:
+   * - seeded monotonically from the saved `currentGeneration` tag at load
+   *   (`populatePopulation` folds the tag in via `Math.max`, never lowering it);
+   * - strictly ascending during a run (the only mid-run writer is the
+   *   per-generation increment at the start of `evolve`);
+   * - never reset or lowered by any path.
+   *
+   * The on-disk tag name remains `currentGeneration`.
+   */
   currentGeneration = 0;
 
   /** Data directory for discovery replay (Issue #997) */
@@ -648,7 +662,13 @@ export class Neat {
 
   async populatePopulation(creature: Creature) {
     this.warmupGenerations = readWarmupGenerationsFromCreature(creature);
-    this.currentGeneration = readCurrentGenerationFromCreature(creature);
+    // Issue #2908: seed the lineage-accumulated generation counter
+    // monotonically — fold the saved tag in via Math.max so no load path can
+    // ever lower it (consistent with the monotonic tag write in #2831).
+    this.currentGeneration = Math.max(
+      this.currentGeneration,
+      readCurrentGenerationFromCreature(creature),
+    );
 
     const mutator = new Mutator(
       this.config,
