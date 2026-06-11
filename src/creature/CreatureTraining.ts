@@ -392,9 +392,8 @@ export async function evolveDir(
     ? start + Math.max(1, config.timeoutMinutes) * 60000
     : 0;
   // Issue #2895: shared absolute hard cap (endTimeMS + clamped grace). 0 when
-  // no timeout is configured. Plumbing only — enforcement lands in follow-ups,
-  // so the value is computed but not yet consumed.
-  // deno-lint-ignore no-unused-vars
+  // no timeout is configured. Issue #2896 enforces it in the finish-up cycle
+  // below via neat.abandonInFlightPastHardDeadline(hardDeadlineMS).
   const hardDeadlineMS =
     computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
 
@@ -595,6 +594,16 @@ export async function evolveDir(
 
     if (completed) {
       if (interrupted) break;
+
+      // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
+      // any in-flight discovery/training bookkeeping and break unconditionally —
+      // even when finishUp() would still ask for more wait generations. The
+      // post-loop sequence (worker termination, best-creature restore,
+      // writeCreatures) still runs because the break lands there.
+      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS)) {
+        break;
+      }
+
       if (neat.finishUp(iterations, endTimeMS, start, generation)) {
         break;
       }
@@ -715,9 +724,8 @@ export async function evolveEnv<S, A>(
     ? start + Math.max(1, config.timeoutMinutes) * 60000
     : 0;
   // Issue #2895: shared absolute hard cap (endTimeMS + clamped grace). 0 when
-  // no timeout is configured. Plumbing only — enforcement lands in follow-ups,
-  // so the value is computed but not yet consumed.
-  // deno-lint-ignore no-unused-vars
+  // no timeout is configured. Issue #2896 enforces it in the finish-up cycle
+  // below via neat.abandonInFlightPastHardDeadline(hardDeadlineMS).
   const hardDeadlineMS =
     computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
 
@@ -876,6 +884,16 @@ export async function evolveEnv<S, A>(
 
     if (completed) {
       if (interrupted) break;
+
+      // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
+      // any in-flight discovery/training bookkeeping and break unconditionally —
+      // even when finishUp() would still ask for more wait generations. The
+      // post-loop sequence (best-creature restore, writeCreatures) still runs
+      // because the break lands there.
+      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS)) {
+        break;
+      }
+
       if (neat.finishUp(iterations, endTimeMS, start, generation)) {
         break;
       }
@@ -1071,9 +1089,8 @@ export async function evolveRL<S, A>(
     ? start + Math.max(1, config.timeoutMinutes) * 60000
     : 0;
   // Issue #2895: shared absolute hard cap (endTimeMS + clamped grace). 0 when
-  // no timeout is configured. Plumbing only — enforcement lands in follow-ups,
-  // so the value is computed but not yet consumed.
-  // deno-lint-ignore no-unused-vars
+  // no timeout is configured. Issue #2896 enforces it in the finish-up cycle
+  // below via neat.abandonInFlightPastHardDeadline(hardDeadlineMS).
   const hardDeadlineMS =
     computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
 
@@ -1382,6 +1399,16 @@ export async function evolveRL<S, A>(
 
     if (completed) {
       if (interrupted) break;
+
+      // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
+      // any in-flight discovery/training bookkeeping and break unconditionally —
+      // even when finishUp() would still ask for more wait generations. The
+      // post-loop sequence (best-creature restore, writeCreatures) still runs
+      // because the break lands there.
+      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS)) {
+        break;
+      }
+
       if (neat.finishUp(iterations, endTimeMS, start, generation)) {
         break;
       }

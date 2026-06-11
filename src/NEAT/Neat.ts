@@ -570,6 +570,34 @@ export class Neat {
   }
 
   /**
+   * Issue #2896: enforce the absolute T+15 hard cap during the finish-up cycle.
+   *
+   * When `hardDeadlineMS` is set (non-zero) and already in the past, abandon all
+   * in-flight discovery/training bookkeeping — so the abandoned promises cannot
+   * be re-awaited — and signal the caller to break out of the evolve loop, even
+   * when {@link finishUp} would still ask for more wait generations. The
+   * caller's post-loop sequence (worker termination, best-creature restore and
+   * `writeCreatures`) still runs because the break lands there.
+   *
+   * @param hardDeadlineMS Absolute hard-deadline epoch ms (0/unset = no cap).
+   * @returns `true` when the cap was exceeded and the loop must break.
+   */
+  abandonInFlightPastHardDeadline(hardDeadlineMS: number): boolean {
+    if (!hardDeadlineMS || Date.now() <= hardDeadlineMS) {
+      return false;
+    }
+
+    const abandoned = this.discoveryInProgress.size +
+      this.trainingInProgress.size;
+    getLogger().warn(
+      `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — abandoning ${abandoned} in-flight task(s)`,
+    );
+    this.discoveryInProgress.clear();
+    this.trainingInProgress.clear();
+    return true;
+  }
+
+  /**
    * Issue #2240: Lightweight wait for in-flight discovery and training tasks.
    *
    * Instead of running full evolve() cycles while waiting for async tasks
@@ -578,8 +606,15 @@ export class Neat {
    * resources on unnecessary fitness evaluation, breeding, and mutation.
    *
    * @param timeoutMs - Maximum time to wait before returning (default 30s)
+   * @param hardDeadlineTS - Absolute hard-deadline epoch ms (Issue #2896).
+   *   Defaults to this instance's {@link hardDeadlineTS}. The effective wait is
+   *   capped at `hardDeadlineTS - Date.now()` (minimum 0) so the 30s default
+   *   cannot push the finish-up wait past the T+15 cap. 0 disables the cap.
    */
-  async awaitInFlightTasks(timeoutMs = 30_000): Promise<void> {
+  async awaitInFlightTasks(
+    timeoutMs = 30_000,
+    hardDeadlineTS = this.hardDeadlineTS,
+  ): Promise<void> {
     const inFlightPromises: Promise<void>[] = [
       ...this.discoveryInProgress.values(),
       ...this.trainingInProgress.values(),
@@ -589,17 +624,23 @@ export class Neat {
       return;
     }
 
+    // Issue #2896: never wait past the absolute hard deadline. Cap the effective
+    // timeout at the time remaining before the cap (minimum 0).
+    const effectiveTimeoutMs = hardDeadlineTS > 0
+      ? Math.min(timeoutMs, Math.max(0, hardDeadlineTS - Date.now()))
+      : timeoutMs;
+
     const discoveryCount = this.discoveryInProgress.size;
     const trainingCount = this.trainingInProgress.size;
     getLogger().info(
       `[Neat] Awaiting ${inFlightPromises.length} in-flight task(s) ` +
         `(${discoveryCount} discovery, ${trainingCount} training) ` +
-        `with ${timeoutMs}ms timeout`,
+        `with ${effectiveTimeoutMs}ms timeout`,
     );
 
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<void>((resolve) => {
-      timeoutId = setTimeout(resolve, timeoutMs);
+      timeoutId = setTimeout(resolve, effectiveTimeoutMs);
     });
 
     try {
