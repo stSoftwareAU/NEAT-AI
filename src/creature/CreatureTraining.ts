@@ -32,6 +32,7 @@ import {
 } from "@costs/CostAwareEarlyStop.ts";
 import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { Neat } from "@neat/Neat.ts";
+import { computeHardDeadlineTS } from "@neat/HardDeadline.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
@@ -390,6 +391,12 @@ export async function evolveDir(
   const endTimeMS = config.timeoutMinutes
     ? start + Math.max(1, config.timeoutMinutes) * 60000
     : 0;
+  // Issue #2895: shared absolute hard cap (endTimeMS + clamped grace). 0 when
+  // no timeout is configured. Plumbing only — enforcement lands in follow-ups,
+  // so the value is computed but not yet consumed.
+  // deno-lint-ignore no-unused-vars
+  const hardDeadlineMS =
+    computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
 
   const workers: WorkerHandler[] = [];
   const threads = config.threads;
@@ -707,6 +714,12 @@ export async function evolveEnv<S, A>(
   const endTimeMS = config.timeoutMinutes
     ? start + Math.max(1, config.timeoutMinutes) * 60000
     : 0;
+  // Issue #2895: shared absolute hard cap (endTimeMS + clamped grace). 0 when
+  // no timeout is configured. Plumbing only — enforcement lands in follow-ups,
+  // so the value is computed but not yet consumed.
+  // deno-lint-ignore no-unused-vars
+  const hardDeadlineMS =
+    computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
 
   const trialsPerScore = options.trialsPerScore !== undefined
     ? Math.max(1, Math.floor(options.trialsPerScore))
@@ -1057,6 +1070,12 @@ export async function evolveRL<S, A>(
   const endTimeMS = config.timeoutMinutes
     ? start + Math.max(1, config.timeoutMinutes) * 60000
     : 0;
+  // Issue #2895: shared absolute hard cap (endTimeMS + clamped grace). 0 when
+  // no timeout is configured. Plumbing only — enforcement lands in follow-ups,
+  // so the value is computed but not yet consumed.
+  // deno-lint-ignore no-unused-vars
+  const hardDeadlineMS =
+    computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
 
   // Lazy import avoids a circular module graph (Neat.ts → Creature.ts →
   // CreatureTraining.ts → RLEpisodeFitness.ts → Fitness.ts vs Neat.ts → Fitness.ts).

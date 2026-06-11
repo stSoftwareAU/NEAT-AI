@@ -23,6 +23,7 @@ import type {
 import { WorkerPool } from "@multithreading/WorkerPool.ts";
 import type { CrisprInterface } from "@reconstruct/CRISPR.ts";
 import { Genus } from "@neat/Genus.ts";
+import { computeHardDeadlineTS } from "@neat/HardDeadline.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
@@ -80,6 +81,12 @@ export class Neat {
 
   /** Timestamp when evolution should end (if timeout is set) */
   readonly endTimeTS: number;
+  /**
+   * Absolute hard-deadline timestamp — the wall-clock cap past which all
+   * in-flight work must be abandoned (Issue #2895). 0 when no timeout is set.
+   * Enforcement lands in follow-up sub-issues; this is shared plumbing.
+   */
+  readonly hardDeadlineTS: number;
   /** Current population of creatures */
   population: Creature[];
   /** Available CRISPR modifications for targeted evolution (read-only after init) */
@@ -262,9 +269,16 @@ export class Neat {
       this.population.push(n);
     });
 
+    const startTS = Date.now();
     this.endTimeTS = options.timeoutMinutes
-      ? Date.now() + Math.max(1, options.timeoutMinutes) * 60_000
+      ? startTS + Math.max(1, options.timeoutMinutes) * 60_000
       : 0;
+    // Issue #2895: shared absolute hard cap (endTimeTS + clamped grace). 0 when
+    // no timeout is configured, mirroring endTimeTS.
+    this.hardDeadlineTS = computeHardDeadlineTS(
+      startTS,
+      options.timeoutMinutes ?? 0,
+    ) ?? 0;
     this.CRISPRs = Neat.deepCloneAndShuffle(this.config.CRISPRs);
 
     this.plateauDetector = new PlateauDetector(this.config.plateauDetection);
