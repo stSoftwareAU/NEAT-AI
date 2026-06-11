@@ -29,9 +29,14 @@ Deno.test("StdInverse - creature activation matches JS squash", () => {
     const data = new Float32Array([a]);
     const actual = creature.activateAndTrace(data, false, sparseConfig)[0];
     const expected = activation.squash(a);
+    // StdInverse is 1/x, so inputs near zero produce large-magnitude outputs.
+    // The creature path computes in float32, whose ULP grows with magnitude
+    // (~0.03 near 2.8e5), so a fixed absolute tolerance is unachievable there.
+    // Combine a small absolute floor with a relative term scaled by magnitude.
+    const tolerance = 0.01 + Math.abs(expected) * 1e-4;
     assert(
-      Math.abs(expected - actual) < 0.01,
-      `${p}) Expected: ${expected}, actual: ${actual}, input: ${a}`,
+      Math.abs(expected - actual) < tolerance,
+      `${p}) Expected: ${expected}, actual: ${actual}, input: ${a}, tolerance: ${tolerance}`,
     );
   }
 });
