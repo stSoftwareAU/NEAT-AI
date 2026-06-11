@@ -21,14 +21,14 @@ import {
   type RequiredOpdConfig,
 } from "@config/OpdConfig.ts";
 import { onPolicyDistillationBreed } from "@breed/OnPolicyDistillationBreed.ts";
-import { addTag } from "@stsoftware/tags/mod";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Breed } from "@breed/Breed.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Genus } from "@neat/Genus.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
 import {
-  readCurrentGenerationFromCreature,
-  readWarmupGenerationsFromCreature,
+  CURRENT_GENERATION_TAG,
+  WARMUP_GENERATIONS_TAG,
   writeSeedWarmupProgressTags,
 } from "@architecture/CreatureFactory.ts";
 
@@ -320,8 +320,10 @@ Deno.test(
 );
 
 Deno.test(
-  "OnPolicyDistillationBreed - warm-up tags survive onto offspring",
+  "OnPolicyDistillationBreed - offspring does NOT carry warm-up tags from teachers (Issue #2911)",
   () => {
+    // The Neat-level counter is the single source of truth mid-run; the
+    // distilled student must not inherit the teachers' warm-up tags.
     const teacherA = buildSimpleCreature(2, ["warm-a-h0", "warm-a-h1"]);
     const teacherB = buildSimpleCreature(2, ["warm-b-h0", "warm-b-h1"]);
     writeSeedWarmupProgressTags(teacherA, 1440, 77);
@@ -337,7 +339,7 @@ Deno.test(
     );
 
     assert(result, "OPD must produce an offspring");
-    assertEquals(readWarmupGenerationsFromCreature(result.offspring), 1440);
-    assertEquals(readCurrentGenerationFromCreature(result.offspring), 77);
+    assertEquals(getTag(result.offspring, WARMUP_GENERATIONS_TAG), null);
+    assertEquals(getTag(result.offspring, CURRENT_GENERATION_TAG), null);
   },
 );

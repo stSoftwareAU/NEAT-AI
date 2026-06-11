@@ -92,7 +92,12 @@ Deno.test("writeSeedWarmupProgressTags: still raises generation when higher (Iss
   assertEquals(readCurrentGenerationFromCreature(creature), 14);
 });
 
-Deno.test("Offspring.breed: carries the HIGHER of two differing parent generations (Issue #2831)", () => {
+// ─── Issue #2911: offspring no longer inherit warm-up tags mid-run ───────────
+// The Neat-level counter is the single source of truth during a run; tags
+// exist only at the load / save boundary. Breeding must therefore NOT copy
+// the two warm-up tags onto offspring.
+
+Deno.test("Offspring.breed: offspring does NOT carry warm-up tags from parents (Issue #2911)", () => {
   const mum = Creature.fromJSON({
     input: 2,
     output: 1,
@@ -122,7 +127,7 @@ Deno.test("Offspring.breed: carries the HIGHER of two differing parent generatio
       { fromUUID: "input-0", toUUID: "output-0", weight: 0.2 },
     ],
   } as CreatureExport);
-  // Differing generations: the offspring must inherit the larger (30).
+  // Parents differ, both carry warm-up tags — neither must propagate.
   writeSeedWarmupProgressTags(mum, 25, 30);
   writeSeedWarmupProgressTags(dad, 25, 5);
 
@@ -133,55 +138,11 @@ Deno.test("Offspring.breed: carries the HIGHER of two differing parent generatio
   }
 
   assertEquals(child !== undefined, true);
-  assertEquals(readCurrentGenerationFromCreature(child!), 30);
-  assertEquals(readWarmupGenerationsFromCreature(child!), 25);
+  assertEquals(getTag(child!, WARMUP_GENERATIONS_TAG), null);
+  assertEquals(getTag(child!, CURRENT_GENERATION_TAG), null);
 });
 
-Deno.test("Offspring.breed: warm-up tags survive standard breeding", () => {
-  const mum = Creature.fromJSON({
-    input: 2,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { type: "hidden", uuid: "hidden-0", squash: "IDENTITY", bias: 0 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
-      { fromUUID: "input-1", toUUID: "hidden-0", weight: -0.2 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 1.0 },
-    ],
-  } as CreatureExport);
-  const dad = Creature.fromJSON({
-    input: 2,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { type: "hidden", uuid: "hidden-0", squash: "IDENTITY", bias: 0.1 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.1 },
-      { fromUUID: "input-1", toUUID: "hidden-0", weight: 0.3 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.7 },
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.2 },
-    ],
-  } as CreatureExport);
-  writeSeedWarmupProgressTags(mum, 25, 12);
-  writeSeedWarmupProgressTags(dad, 25, 12);
-
-  let child: Creature | undefined;
-  for (let attempt = 0; attempt < 50; attempt++) {
-    child = Offspring.breed(mum, dad, { forwardOnly: true });
-    if (child) break;
-  }
-
-  assertEquals(child !== undefined, true);
-  assertEquals(readWarmupGenerationsFromCreature(child!), 25);
-  assertEquals(readCurrentGenerationFromCreature(child!), 12);
-});
-
-Deno.test("Offspring.breed: warm-up tags survive grafted breeding", () => {
+Deno.test("Offspring.breed: grafted breeding does NOT carry warm-up tags (Issue #2911)", () => {
   const mum = creatureForProblem({
     inputs: 3,
     outputs: 1,
@@ -205,8 +166,8 @@ Deno.test("Offspring.breed: warm-up tags survive grafted breeding", () => {
   }
 
   assertEquals(child !== undefined, true);
-  assertEquals(readWarmupGenerationsFromCreature(child!), 40);
-  assertEquals(readCurrentGenerationFromCreature(child!), 7);
+  assertEquals(getTag(child!, WARMUP_GENERATIONS_TAG), null);
+  assertEquals(getTag(child!, CURRENT_GENERATION_TAG), null);
 });
 
 // ─── Issue #2909: save-boundary stamping / stripping ────────────────────────

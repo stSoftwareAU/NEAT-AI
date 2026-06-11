@@ -40,11 +40,6 @@ import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutp
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
-import {
-  readCurrentGenerationFromCreature,
-  readWarmupGenerationsFromCreature,
-  writeSeedWarmupProgressTags,
-} from "@architecture/CreatureFactory.ts";
 
 /**
  * Result of an OPD breed call, returned from {@link onPolicyDistillationBreed}.
@@ -202,31 +197,6 @@ function evaluateBatchError(
   return inputs.length === 0 ? 0 : total / inputs.length;
 }
 
-function propagateSeedWarmupTagsFromTeachers(
-  offspring: Creature,
-  teachers: readonly Creature[],
-): void {
-  let warmupGenerations = 0;
-  let currentGeneration = 0;
-  for (const teacher of teachers) {
-    warmupGenerations = Math.max(
-      warmupGenerations,
-      readWarmupGenerationsFromCreature(teacher),
-    );
-    currentGeneration = Math.max(
-      currentGeneration,
-      readCurrentGenerationFromCreature(teacher),
-    );
-  }
-  if (warmupGenerations > 0) {
-    writeSeedWarmupProgressTags(
-      offspring,
-      warmupGenerations,
-      currentGeneration,
-    );
-  }
-}
-
 /**
  * On-Policy Distillation breeding operator.
  *
@@ -357,7 +327,6 @@ export function onPolicyDistillationBreed(
   // 4. Establish the offspring's identity and confirm UUID stability.
   delete student.uuid;
   CreatureUtil.makeUUID(student);
-  propagateSeedWarmupTagsFromTeachers(student, effectiveTeachers);
 
   return {
     offspring: student,
