@@ -10,6 +10,7 @@ import { restoreSource } from "@blackbox/RestoreSource.ts";
 import type { AdaptiveFineTuneTracker } from "@blackbox/AdaptiveFineTuneTracker.ts";
 
 import { retry } from "@blackbox/Retry.ts";
+import { appendAll } from "@utils/ArrayAppend.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
@@ -150,7 +151,9 @@ export class FindTunePopulation {
             this.neat.config.quantumStep,
           );
 
-          fineTunedPopulation.push(...restoredTunedPopulation);
+          // Issue #2900: stack-safe append; fineTunedPopulation scales with
+          // populationSize via fineTunePopSize, so spreading risks RangeError.
+          appendAll(fineTunedPopulation, restoredTunedPopulation);
         }
       } else {
         const retryPopulation = retry(
@@ -159,7 +162,7 @@ export class FindTunePopulation {
           undefined,
           this.neat.config.quantumStep,
         );
-        fineTunedPopulation.push(...retryPopulation);
+        appendAll(fineTunedPopulation, retryPopulation);
       }
 
       for (let attempts = 0; attempts < 12; attempts++) {
@@ -215,7 +218,7 @@ export class FindTunePopulation {
                 this.neat.config.quantumStep,
               );
 
-              fineTunedPopulation.push(...extendedTunedPopulation);
+              appendAll(fineTunedPopulation, extendedTunedPopulation);
             }
           }
         } else {
@@ -252,7 +255,7 @@ export class FindTunePopulation {
             this.neat.config.quantumStep,
           );
 
-          fineTunedPopulation.push(...extendedTunedPopulation);
+          appendAll(fineTunedPopulation, extendedTunedPopulation);
 
           /* Remove the chosen creature from the array */
           tmpFineTunePopulation.splice(location, 1);

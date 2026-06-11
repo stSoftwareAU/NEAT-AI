@@ -7,6 +7,7 @@
  * binary files, with retry logic for file descriptor limits.
  */
 import { getLogger } from "@utils/Logger.ts";
+import { appendAll } from "@utils/ArrayAppend.ts";
 import { DiscoveryError } from "@errors/DiscoveryError.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import type {
@@ -115,7 +116,9 @@ export async function loadInputNeuronFromBinary(
 
   // Flatten the results into a single array
   for (const fileRecords of allFileRecords) {
-    records.push(...fileRecords);
+    // Issue #2900: stack-safe append; fileRecords scales with the dataset
+    // record count for a binary file, so spreading risks RangeError.
+    appendAll(records, fileRecords);
   }
 
   return records;

@@ -1,4 +1,5 @@
 import { TopologyError } from "@errors/TopologyError.ts";
+import { appendAll } from "@utils/ArrayAppend.ts";
 import type {
   CandidateHarmfulNeuron,
   CandidateNeuron,
@@ -332,7 +333,9 @@ export function assertNoLegacyDiscoveryIdFields(value: unknown): void {
     const current = stack.pop();
     if (!current || typeof current !== "object") continue;
     if (Array.isArray(current)) {
-      stack.push(...current);
+      // Issue #2900: stack-safe append; `current` can be a wide creature array
+      // (synapses/neurons), so spreading risks RangeError on large payloads.
+      appendAll(stack, current);
       continue;
     }
     for (const [key, nested] of Object.entries(current)) {

@@ -43,6 +43,7 @@ import type {
   CoordinatedStructuralCandidate,
 } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import type { Creature } from "@creature";
+import { appendAll } from "@utils/ArrayAppend.ts";
 
 // Re-export from focused modules for backwards compatibility
 export { shortID } from "@discovery/CandidateDescriptions.ts";
@@ -231,8 +232,12 @@ export function buildDiscoveryCandidates(
   }
 
   // --- Single neurons ---
-  candidates.push(
-    ...buildSingleNeuronCandidates(
+  // Issue #2900: stack-safe appends throughout — each builder returns a list
+  // that scales with the discovery's neuron/synapse count, so spreading into
+  // push/splice arguments risks RangeError on large networks.
+  appendAll(
+    candidates,
+    buildSingleNeuronCandidates(
       discovery.ID,
       baseCreature,
       helpfulNeuronCandidates,
@@ -242,8 +247,9 @@ export function buildDiscoveryCandidates(
   );
 
   // --- Coordinated structural ---
-  candidates.push(
-    ...buildCoordinatedStructuralCandidates(
+  appendAll(
+    candidates,
+    buildCoordinatedStructuralCandidates(
       discovery,
       baseCreature,
       getExpectedCoordinated,
@@ -267,8 +273,9 @@ export function buildDiscoveryCandidates(
   }
 
   // --- Single synapses ---
-  candidates.push(
-    ...buildSingleSynapseCandidates(
+  appendAll(
+    candidates,
+    buildSingleSynapseCandidates(
       discovery.ID,
       baseCreature,
       addHelpfulSynapses,
@@ -288,7 +295,7 @@ export function buildDiscoveryCandidates(
     getExpectedRemoval,
     discoveryFailureCacheDir,
   );
-  candidates.push(...synapseRemovalResult.candidates);
+  appendAll(candidates, synapseRemovalResult.candidates);
 
   // --- Combined squash changes ---
   let changedSquashCreature: Creature | undefined;
@@ -303,12 +310,13 @@ export function buildDiscoveryCandidates(
       discoveryFailureCacheDir,
     );
     changedSquashCreature = squashResult.creature;
-    candidates.push(...squashResult.candidates);
+    appendAll(candidates, squashResult.candidates);
   }
 
   // --- Single squash changes ---
-  candidates.push(
-    ...buildSingleSquashCandidates(
+  appendAll(
+    candidates,
+    buildSingleSquashCandidates(
       discovery.ID,
       baseCreature,
       candidateSquashes,
@@ -329,8 +337,9 @@ export function buildDiscoveryCandidates(
   }
 
   // --- Low-impact removal candidates ---
-  candidates.push(
-    ...buildLowImpactRemovalCandidates(
+  appendAll(
+    candidates,
+    buildLowImpactRemovalCandidates(
       discovery,
       baseCreature,
       discoveryFailureCacheDir,
@@ -338,8 +347,9 @@ export function buildDiscoveryCandidates(
   );
 
   // --- Cache-informed multi-neuron removal candidates ---
-  candidates.push(
-    ...buildCacheInformedRemovalCandidates(
+  appendAll(
+    candidates,
+    buildCacheInformedRemovalCandidates(
       baseCreature,
       options?.discoverySuccessCacheDir,
       undefined, // Use default seed
