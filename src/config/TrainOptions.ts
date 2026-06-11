@@ -29,6 +29,22 @@ export interface TrainArguments extends BackPropagationArguments {
   trainingTimeOutMinutes: number;
 
   /**
+   * Absolute hard deadline (epoch milliseconds) at which training must stop.
+   *
+   * Issue #2899: A scheduled fine-tuning task may sit in the worker queue
+   * after being scheduled with a relative {@link trainingTimeOutMinutes}
+   * budget. The relative budget is otherwise anchored when the worker
+   * dequeues the task, so a queued task can run past the run's wall-clock
+   * deadline. Carrying the absolute deadline lets the worker clamp the
+   * relative budget to `min(now + trainingTimeOutMinutes, hardDeadlineTS)`.
+   *
+   * A plain number so it survives `Worker.postMessage`. When absent,
+   * behaviour is unchanged (direct `creature.train()` callers are
+   * unaffected).
+   */
+  hardDeadlineTS?: number;
+
+  /**
    * Enable feedback loop where the previous result feeds back into the next interaction.
    * Useful for time-series forecasting and recurrent neural networks.
    * More information: https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html
