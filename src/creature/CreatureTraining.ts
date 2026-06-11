@@ -626,7 +626,11 @@ export async function evolveDir(
   // Issue #1509: Await background replay queue completion before returning.
   // Without this, callers that delete the data directory after evolveDir()
   // returns may cause NotFound errors in still-running replay workers.
-  await neat.discoveryReplayQueue.waitForCompletion();
+  // Issue #2901: bound the wait to the absolute hard cap when a timeout is
+  // configured (hardDeadlineMS > 0); uncapped runs keep the unbounded wait.
+  await neat.discoveryReplayQueue.waitForCompletion(
+    hardDeadlineMS || undefined,
+  );
 
   if (bestCreature) {
     creature.loadFrom(bestCreature, config.debug, "training:restoreBest");
@@ -905,8 +909,10 @@ export async function evolveEnv<S, A>(
   // No worker pool to terminate — episode rollouts ran inline. Replay queue
   // never had a chance to schedule anything (no dataDir was provided), but
   // await it for symmetry with evolveDir() in case a future change wires one
-  // through.
-  await neat.discoveryReplayQueue.waitForCompletion();
+  // through. Issue #2901: bound the wait to the absolute hard cap when set.
+  await neat.discoveryReplayQueue.waitForCompletion(
+    hardDeadlineMS || undefined,
+  );
 
   if (bestCreature) {
     creature.loadFrom(bestCreature, config.debug, "evolveEnv:restoreBest");
@@ -1452,7 +1458,10 @@ export async function evolveRL<S, A>(
   // pool was constructed (single-threaded or missing adapterDescription)
   // this is a no-op.
   workerPool?.terminate();
-  await neat.discoveryReplayQueue.waitForCompletion();
+  // Issue #2901: bound the wait to the absolute hard cap when a timeout is set.
+  await neat.discoveryReplayQueue.waitForCompletion(
+    hardDeadlineMS || undefined,
+  );
 
   if (bestCreature) {
     creature.loadFrom(bestCreature, config.debug, "evolveRL:restoreBest");
