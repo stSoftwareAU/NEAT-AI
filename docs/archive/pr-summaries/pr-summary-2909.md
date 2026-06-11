@@ -5,18 +5,20 @@
 Warm-up tags (`warmupGenerations` / `currentGeneration`) are now written from
 Neat-level state **only when a creature is exported for persistence**, and both
 tags are **removed once the accumulated counter passes `warmupGenerations`**, so
-warm-up logic is zero cost after warm-up completes and no stale seed value
-lands on disk.
+warm-up logic is zero cost after warm-up completes and no stale seed value lands
+on disk.
 
 Previously only the per-generation fittest was re-stamped, so whichever creature
 actually landed on disk usually carried the stale seed value and the next run
 resumed from it.
 
-New helper `applySeedWarmupTagsAtSave(target, warmupGenerations, currentGeneration)`
-in `src/architecture/CreatureFactory.ts`:
+New helper
+`applySeedWarmupTagsAtSave(target, warmupGenerations, currentGeneration)` in
+`src/architecture/CreatureFactory.ts`:
 
-- **Warming** (`warmupGenerations > 0 && currentGeneration <= warmupGenerations`):
-  stamps both tags via `writeSeedWarmupProgressTags`, preserving its #2831
+- **Warming**
+  (`warmupGenerations > 0 && currentGeneration <= warmupGenerations`): stamps
+  both tags via `writeSeedWarmupProgressTags`, preserving its #2831
   monotonic-max guard (a higher generation is never lowered).
 - **Warm** (`currentGeneration > warmupGenerations`) or **not configured**:
   `removeTag` both tags if present.
