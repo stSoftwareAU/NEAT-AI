@@ -83,6 +83,21 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #2902 (acceptance gate for #2892; builds on #2895, #2896, #2898,
+  #2899, #2901):** `evolveDir(timeoutMinutes = T)` now carries a guaranteed
+  upper bound on how long it can run. Once the absolute hard cap —
+  `T +
+  min(15, T)` minutes ("T+15") — passes, the run abandons any in-flight
+  discovery, training, and replay work, keeps the best creature found so far,
+  writes `creatureStore`, and returns. In practice a run configured with
+  `--timeout=45` completes within the hour, leaving the caller time for its
+  normal save / model check-in instead of being killed mid-write by an external
+  watchdog. The external watchdog (e.g. GRQ's 3-hour `max-task-hours`) remains
+  the unchanged backstop. The semantics — what each phase does at the cap and
+  how the deadline propagates from `evolveDir` down to the worker clamps — are
+  documented in the new [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md), and an
+  end-to-end behavioural guard (`test/creature/EvolveDirHardDeadline.ts`) proves
+  the bound holds in training and stubbed-discovery modes alike.
 - **Issue #2787 (depends on Issue #2786):** Cost-aware `evolveDir` `targetError`
   early-stop and champion comparison. A new pure mapping helper
   `costNameToTaskDescriptor()` (`src/costs/CostDescriptor.ts`) gives every

@@ -772,6 +772,9 @@ governance / contributor documents:
 - **docs/DISCOVERY_DIR.md** - Technical API reference for `discoveryDir()`
 - **docs/GPU_ACCELERATION.md** - GPU acceleration details
 - **docs/CONFIGURATION_GUIDE.md** - Complete configuration options reference
+- **docs/TIMEOUTS.md** - `timeoutMinutes` semantics and the absolute T+15 hard
+  cap: deadline propagation from `evolveDir` to the worker clamps, what each
+  phase does at the cap, and the unchanged external-watchdog backstop
 - **docs/PERFORMANCE_TUNING.md** - Performance tuning guide for large-scale
   training
 - **docs/PERFORMANCE_RESEARCH.md** - Performance research with WASM migration

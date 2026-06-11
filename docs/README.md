@@ -100,6 +100,11 @@ Drop-in API and configuration material.
   configuration surface. The detail docs under [`config/`](config/) cover
   presets, core evolution, training, discovery, mutation adaptation,
   regularisation, population sizing, workers, logging, and recipes.
+- **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
+  **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
+  in-flight work, keep partial results, return the best creature), how the
+  deadline propagates from `evolveDir` to the worker clamps, and the unchanged
+  external-watchdog backstop.
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** — FAQ-style index of common
   problems. The detail docs under [`troubleshooting/`](troubleshooting/) cover
   WASM, discovery / FFI, memory, performance, training divergence, CI /

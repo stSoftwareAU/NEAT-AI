@@ -363,6 +363,30 @@ async function writeCreatures(neat: Neat, dir: string): Promise<void> {
 }
 
 /**
+ * Test-only injection seam for {@link evolveDir} (Issue #2902).
+ *
+ * Lets the end-to-end T+15 hard-deadline guard drive the absolute cap
+ * deterministically without real sleeps (behavioural-test policy #2888).
+ * Production callers omit `deps` entirely; the defaults reproduce the
+ * pre-existing behaviour exactly.
+ *
+ * - `startTimeMS` overrides the run-start timestamp that anchors both the soft
+ *   `endTimeMS` and the absolute T+15 hard cap. Passing a timestamp far enough
+ *   in the past places both deadlines behind the wall clock, so the very first
+ *   finish-up cycle takes the hard-cap branch.
+ * - `onNeatReady` is invoked with the live {@link Neat} instance once the
+ *   population is seeded and before the evolve loop starts, so a test can stub
+ *   never-resolving in-flight discovery / training promises (no Rust FFI in CI)
+ *   and later inspect the in-flight maps once the run returns.
+ */
+export interface EvolveDirDeps {
+  /** Override the run-start timestamp (ms since epoch). */
+  startTimeMS?: number;
+  /** Invoked with the constructed {@link Neat} instance before the evolve loop. */
+  onNeatReady?: (neat: Neat) => void;
+}
+
+/**
  * Evolve the creature on a dataset directory using NEAT.
  * Supports multi-threaded workers, checkpointing, and timeout.
  */
@@ -370,6 +394,7 @@ export async function evolveDir(
   creature: Creature,
   dataSetDir: string,
   options: NeatOptions,
+  deps?: EvolveDirDeps,
 ): Promise<
   { error: number; score: number; time: number; generation: number }
 > {
@@ -381,7 +406,10 @@ export async function evolveDir(
 
   Deno.addSignalListener("SIGTERM", signalListener);
 
-  const start = Date.now();
+  // Issue #2902: `deps?.startTimeMS` is a test-only override that anchors both
+  // the soft `endTimeMS` and the absolute T+15 hard cap to an injected (past)
+  // timestamp, so the hard-cap branch can be driven without real sleeps.
+  const start = deps?.startTimeMS ?? Date.now();
   const config = createNeatConfig(options);
 
   // Issue #1566: Apply WASM cache caps from config before training starts.
@@ -462,6 +490,11 @@ export async function evolveDir(
 
   neat.setDataDir(dataSetDir);
   await neat.populatePopulation(creature);
+
+  // Issue #2902: hand the constructed Neat instance to the test seam (if any)
+  // so integration guards can stub never-resolving in-flight work before the
+  // evolve loop. No-op for production callers.
+  deps?.onNeatReady?.(neat);
 
   let error = Infinity;
   let bestScore = -Infinity;
