@@ -1,10 +1,10 @@
 ## Summary
 
-Clamp every per-discovery deadline to the caller's absolute hard deadline
-(T+15) so no discovery phase can run past it regardless of worker-queue delay.
-Closes #2898.
+Clamp every per-discovery deadline to the caller's absolute hard deadline (T+15)
+so no discovery phase can run past it regardless of worker-queue delay. Closes
+#2898.
 
-The #2432 allocation clamps the *relative* record+analysis budget at schedule
+The #2432 allocation clamps the _relative_ record+analysis budget at schedule
 time, but the worker re-anchors those budgets at `Date.now()` when it starts
 processing a request. Queue delays therefore silently shift the absolute
 completion time past the caller's deadline, and analysis-timeout extensions
@@ -30,8 +30,8 @@ every per-discovery deadline against it:
   - `refreshAnalysisTimeout`: re-supplies the cap so top-ups never overshoot it.
 - **`src/architecture/ErrorGuidedStructuralEvolution/DiscoverStructureBase.ts`**
   (`extendTimeoutForAnalysis`) — accepts and remembers the hard cap and never
-  sets `timeoutTS` past it. Once past the cap the computed remaining budget is
-  ≤ 0, so the analysis loop's existing per-chunk checks exit — delivering
+  sets `timeoutTS` past it. Once past the cap the computed remaining budget is ≤
+  0, so the analysis loop's existing per-chunk checks exit — delivering
   "extensions clamped to the T+15 cap, at most one further extension once past
   T". Added a public `getTimeoutTS()` accessor.
 
@@ -42,8 +42,8 @@ by regression tests.
 
 ## Evidence
 
-Backend/worker change — no UI to screenshot. Verified by unit tests and the
-full quality gate (`./quality.sh`): **7101 passed, 0 failed, 4 ignored**.
+Backend/worker change — no UI to screenshot. Verified by unit tests and the full
+quality gate (`./quality.sh`): **7101 passed, 0 failed, 4 ignored**.
 
 ```mermaid
 flowchart LR
@@ -70,6 +70,6 @@ timestamps, no real waiting — #2888 policy):
 - `extendTimeoutForAnalysis` remembers the cap for later top-ups.
 - `extendTimeoutForAnalysis` is unchanged when no cap is supplied.
 
-Existing discovery/analysis suites
-(`DiscoverAnalysisPerChunkTimeout`, `NeuronDiscoveryIntegration`, `HardDeadline`,
-`NeatConstruction`) continue to pass, confirming no behaviour change.
+Existing discovery/analysis suites (`DiscoverAnalysisPerChunkTimeout`,
+`NeuronDiscoveryIntegration`, `HardDeadline`, `NeatConstruction`) continue to
+pass, confirming no behaviour change.

@@ -14,8 +14,8 @@ Closes #2901.
 ### What changed
 
 - **`src/NEAT/DiscoveryReplayQueue.ts`**
-  - New `DiscoveryReplayControl` (`{ deadlineTS?, signal? }`) plumbed through the
-    `replayDir` dependency.
+  - New `DiscoveryReplayControl` (`{ deadlineTS?, signal? }`) plumbed through
+    the `replayDir` dependency.
   - `waitForCompletion(hardDeadlineTS?)` — once the current time is past the cap
     it drops `#queuedCreature`, aborts the in-flight replay via an
     `AbortController`, and returns without awaiting. A `0`/`undefined` cap means
@@ -44,8 +44,8 @@ exactly as before.
 
 Backend/CLI change — no UI to screenshot. Verified via new behavioural unit
 tests (injected timestamps and a pre-aborted signal — no elapsed-time
-measurement, per the #2888 policy) and the full quality gate
-(`./quality.sh`: `7112 passed | 0 failed`).
+measurement, per the #2888 policy) and the full quality gate (`./quality.sh`:
+`7112 passed | 0 failed`).
 
 ```mermaid
 sequenceDiagram

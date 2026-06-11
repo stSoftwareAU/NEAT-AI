@@ -1,12 +1,12 @@
 ## Summary
 
-Fixed the `evolve()` spread-push stack overflow at `src/NEAT/NeatEvolution.ts:688`.
-Spreading an unbounded `offspringBatch` into `newPopulation.push(...offspringBatch)`
-exceeds V8's argument/stack limit (~65k–130k elements) once the configured
-population size is large enough, throwing
-`RangeError: Maximum call stack size exceeded`. This crashed the "Run Suggest
-Improvements" example after bumping `@stsoftware/neat-ai` 5.3.15 → 5.3.19
-(stSoftwareAU/NEAT-AI-Examples#578).
+Fixed the `evolve()` spread-push stack overflow at
+`src/NEAT/NeatEvolution.ts:688`. Spreading an unbounded `offspringBatch` into
+`newPopulation.push(...offspringBatch)` exceeds V8's argument/stack limit
+(~65k–130k elements) once the configured population size is large enough,
+throwing `RangeError: Maximum call stack size exceeded`. This crashed the "Run
+Suggest Improvements" example after bumping `@stsoftware/neat-ai` 5.3.15 →
+5.3.19 (stSoftwareAU/NEAT-AI-Examples#578).
 
 The fix introduces a stack-safe in-place append helper
 (`src/utils/ArrayAppend.ts` → `appendAll<T>(target, items)`) that appends via a
