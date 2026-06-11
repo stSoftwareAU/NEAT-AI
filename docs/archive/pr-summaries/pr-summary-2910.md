@@ -12,8 +12,9 @@ seeded topology during the warm-up window.
 This change switches the gate to **Neat-level warm-up context** supplied by the
 caller. `scheduleReplay` now accepts an optional `warmupContext`
 (`{ warmupGenerations, currentGeneration }`) and gates with the existing numbers
-variant `isSeedWarmupStructuralLockActive(warmupGenerations, currentGeneration)`.
-The call site in `NeatEvolution.ts` passes `neat.warmupGenerations` /
+variant
+`isSeedWarmupStructuralLockActive(warmupGenerations, currentGeneration)`. The
+call site in `NeatEvolution.ts` passes `neat.warmupGenerations` /
 `neat.currentGeneration`. The now-unused per-creature helper
 `isSeedWarmupStructuralLockActiveForCreature` has been removed.
 
