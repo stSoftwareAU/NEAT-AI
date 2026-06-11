@@ -310,6 +310,10 @@ export function scheduleTraining(
     trainingSampleRate: neat.config.trainingSampleRate,
     disableRandomSamples: neat.config.disableRandomSamples,
     trainingTimeOutMinutes: trainingTimeOutMinutes,
+    // Issue #2899: carry the absolute hard deadline so worker-side training
+    // stops at T+15 even when the task sat in the worker queue. 0 means no
+    // deadline configured; leave it absent so behaviour is unchanged.
+    hardDeadlineTS: neat.hardDeadlineTS > 0 ? neat.hardDeadlineTS : undefined,
     batchSize: neat.config.trainingBatchSize,
     maximumBiasAdjustmentScale: neat.config.maximumBiasAdjustmentScale,
     maximumWeightAdjustmentScale: neat.config.maximumWeightAdjustmentScale,
