@@ -133,6 +133,52 @@ flowchart TD
 Once `currentGeneration > warmupGenerations`, the lock releases and Discovery
 and replay resume automatically.
 
+### ♻️ Accumulated count across runs (save → reload → resume)
+
+The warm-up generation count **accumulates across runs** via the saved
+`currentGeneration` tag — it is **not** reset each time a run starts. A
+production run is short (e.g. GRQ checkpoints every ~15 minutes at roughly one
+generation per minute), so a long warm-up window (e.g.
+`warmupGenerations:
+1440`) can never elapse inside a single run. The count
+therefore persists through the export / reload boundary:
+
+- **Save** (`writeCreatures` → `applySeedWarmupTagsAtSave`): while warming, the
+  exported creature is stamped with the Neat-level counter, kept **monotonic**
+  (never lowered below an already-higher saved value, Issue #2831).
+- **Reload / resume** (`populatePopulation`): the lineage counter resumes from
+  the **highest saved `currentGeneration` tag** via `Math.max`, so the next run
+  picks up where the previous one left off instead of restarting at the seed
+  value (Issue #2908).
+- **Mid-run**: offspring no longer carry the warm-up tags — the Neat-level
+  counter is the single source of truth during a run (Issue #2911).
+
+```mermaid
+sequenceDiagram
+    participant R1 as Run 1
+    participant Disk as Saved JSON tag
+    participant R2 as Run 2
+    R1->>R1: resume gen 0, evolve → gen 2
+    R1->>Disk: stamp currentGeneration = 2
+    Disk->>R2: reload → resume from max(…, 2)
+    R2->>R2: evolve → gen 4
+    R2->>Disk: stamp currentGeneration = 4
+    Note over Disk: count accumulates run over run
+```
+
+### 🧹 Tag removal once warm (zero cost thereafter)
+
+Once the accumulated count passes the window
+(`currentGeneration > warmupGenerations`), the save boundary **removes both**
+the `warmupGenerations` and `currentGeneration` tags. Warm creatures therefore
+carry no warm-up state on disk and incur **zero warm-up cost** thereafter (Issue
+#2909).
+
+> [!NOTE]
+> Files stuck at `currentGeneration: 1` (the pre-#2908 production bug, where the
+> saved tag never accumulated) are **not migrated**. On reload they re-warm the
+> full window from their saved value — there is no special-case rewrite.
+
 ## 🛠️ Configuration
 
 ### ⚡ Production-Tuned Defaults
