@@ -15,6 +15,10 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Defence in depth (Issue #2904): the push trigger already restricts to
+    # Develop, but make the branch requirement explicit so the job never runs
+    # on any other ref.
+    if: github.ref == 'refs/heads/Develop'
     permissions:
       contents: read
       id-token: write # OIDC for JSR (provenance + tokenless publish)
@@ -36,9 +40,35 @@ jobs:
       - name: Verify WASM package matches deno.json neatCore.rev
         run: ./build.sh --verify-only
 
+      # Issue #2904: skip publishing when deno.json's version is already on JSR.
+      # Every push to Develop runs this workflow, but the package version only
+      # changes on a release commit. Re-running `jsr publish` for an existing
+      # version hangs the CLI until the 15-minute job timeout cancels it, so
+      # gate the publish step on the version being new. A 200 from the JSR
+      # version meta endpoint means the version is published; 404 means it is
+      # not.
+      - name: Determine whether the version needs publishing
+        id: needs_publish
+        run: |
+          name=$(jq -r .name deno.json)
+          version=$(jq -r .version deno.json)
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://jsr.io/${name}/${version}_meta.json")
+          if [ "$status" = "200" ]; then
+            echo "${name}@${version} is already published on JSR; skipping publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif [ "$status" = "404" ]; then
+            echo "${name}@${version} is not on JSR; will publish."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Unexpected HTTP ${status} from JSR meta endpoint; attempting publish." >&2
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # Tokenless publish: package must be linked to this repo on JSR.
       # For runs triggered by bots (e.g. stservice): scope admin must disable
       # "Only allow publishing when triggered by a scope member" in scope settings.
       # See https://jsr.io/docs/scopes#github-actions-publishing-security
       - name: Publish to JSR
+        if: steps.needs_publish.outputs.publish == 'true'
         run: npx jsr publish
