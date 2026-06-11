@@ -205,20 +205,6 @@ export function isSeedWarmupStructuralLockActive(
 }
 
 /**
- * Read the seed warm-up structural lock state directly from a creature's
- * tags. Used by paths (e.g. {@link DiscoveryReplayQueue}) that only have
- * the creature, not the owning `Neat` instance.
- */
-export function isSeedWarmupStructuralLockActiveForCreature(
-  creature: Creature,
-): boolean {
-  return isSeedWarmupStructuralLockActive(
-    readWarmupGenerationsFromCreature(creature),
-    readCurrentGenerationFromCreature(creature),
-  );
-}
-
-/**
  * Persist seed warm-up progress on a creature so export/load can resume
  * evolution with the correct warm-up gate.
  *

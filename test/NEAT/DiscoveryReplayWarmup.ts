@@ -1,8 +1,13 @@
 /**
- * Issue #2828: DiscoveryReplayQueue must honour the seed warm-up
- * structural lock. While a creature is within its warm-up window, replay
- * of cached structural discoveries must not run (replay can prune/rewire
- * topology). Once warm-up has elapsed, replay resumes as normal.
+ * Issue #2828 / #2910: DiscoveryReplayQueue must honour the seed warm-up
+ * structural lock. While the warm-up window is active, replay of cached
+ * structural discoveries must not run (replay can prune/rewire topology).
+ * Once warm-up has elapsed, replay resumes as normal.
+ *
+ * Issue #2910: the lock state is read from Neat-level warm-up context passed
+ * by the caller, NOT from per-creature warm-up tags. This keeps the gate
+ * correct once mid-run creatures stop carrying warm-up tags (#2911) — an
+ * untagged creature inside an active warm-up window must still be locked.
  */
 import { assertEquals } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
@@ -48,46 +53,73 @@ const OPTIONS: NeatOptions = {
   costOfGrowth: 0,
 };
 
-Deno.test("DiscoveryReplayWarmup: skips replay during warm-up window", async () => {
+Deno.test("DiscoveryReplayWarmup: skips replay during warm-up window (Neat context)", async () => {
   const creature = makeBaseCreature();
   creature.uuid = "warmup-locked";
-  addTag(creature, WARMUP_GENERATIONS_TAG, "1440");
-  addTag(creature, CURRENT_GENERATION_TAG, "100");
 
   const { deps, calls } = trackingDeps();
   const queue = new DiscoveryReplayQueue(deps);
 
-  queue.scheduleReplay(creature, "/tmp/data", OPTIONS);
+  queue.scheduleReplay(creature, "/tmp/data", OPTIONS, undefined, {
+    warmupGenerations: 1440,
+    currentGeneration: 100,
+  });
   await queue.waitForCompletion();
 
   assertEquals(calls(), 0, "Replay must not run while warm-up lock is active");
 });
 
-Deno.test("DiscoveryReplayWarmup: skips replay when generation tag missing", async () => {
+Deno.test("DiscoveryReplayWarmup: untagged creature during warm-up stays locked", async () => {
+  // Regression for #2910: the creature carries NO warm-up tags (as mid-run
+  // creatures will once #2911 lands). The lock must still be active because
+  // the Neat-level context says warm-up has not elapsed.
   const creature = makeBaseCreature();
-  creature.uuid = "warmup-no-gen";
-  addTag(creature, WARMUP_GENERATIONS_TAG, "1440");
-  // No currentGeneration tag — conservative lock must still block replay.
+  creature.uuid = "warmup-untagged";
 
   const { deps, calls } = trackingDeps();
   const queue = new DiscoveryReplayQueue(deps);
 
-  queue.scheduleReplay(creature, "/tmp/data", OPTIONS);
+  queue.scheduleReplay(creature, "/tmp/data", OPTIONS, undefined, {
+    warmupGenerations: 1440,
+    currentGeneration: 5,
+  });
+  await queue.waitForCompletion();
+
+  assertEquals(
+    calls(),
+    0,
+    "Untagged creature must stay locked during active warm-up window",
+  );
+});
+
+Deno.test("DiscoveryReplayWarmup: conservative lock when generation unknown", async () => {
+  const creature = makeBaseCreature();
+  creature.uuid = "warmup-no-gen";
+
+  const { deps, calls } = trackingDeps();
+  const queue = new DiscoveryReplayQueue(deps);
+
+  // Warm-up configured but current generation unknown (<= 0) → stay locked.
+  queue.scheduleReplay(creature, "/tmp/data", OPTIONS, undefined, {
+    warmupGenerations: 1440,
+    currentGeneration: 0,
+  });
   await queue.waitForCompletion();
 
   assertEquals(calls(), 0, "Conservative lock must block replay");
 });
 
-Deno.test("DiscoveryReplayWarmup: replays once warm-up has elapsed", async () => {
+Deno.test("DiscoveryReplayWarmup: replays once warm-up has elapsed (Neat context)", async () => {
   const creature = makeBaseCreature();
   creature.uuid = "warmup-elapsed";
-  addTag(creature, WARMUP_GENERATIONS_TAG, "10");
-  addTag(creature, CURRENT_GENERATION_TAG, "11");
 
   const { deps, calls } = trackingDeps();
   const queue = new DiscoveryReplayQueue(deps);
 
-  queue.scheduleReplay(creature, "/tmp/data", OPTIONS);
+  queue.scheduleReplay(creature, "/tmp/data", OPTIONS, undefined, {
+    warmupGenerations: 10,
+    currentGeneration: 11,
+  });
   await queue.waitForCompletion();
 
   assertEquals(calls(), 1, "Replay must run after warm-up elapses");
@@ -100,8 +132,52 @@ Deno.test("DiscoveryReplayWarmup: replays when no warm-up configured", async () 
   const { deps, calls } = trackingDeps();
   const queue = new DiscoveryReplayQueue(deps);
 
-  queue.scheduleReplay(creature, "/tmp/data", OPTIONS);
+  queue.scheduleReplay(creature, "/tmp/data", OPTIONS, undefined, {
+    warmupGenerations: 0,
+    currentGeneration: 50,
+  });
   await queue.waitForCompletion();
 
   assertEquals(calls(), 1, "Replay must run when no warm-up is configured");
+});
+
+Deno.test("DiscoveryReplayWarmup: replays when no warm-up context supplied", async () => {
+  const creature = makeBaseCreature();
+  creature.uuid = "no-context";
+
+  const { deps, calls } = trackingDeps();
+  const queue = new DiscoveryReplayQueue(deps);
+
+  queue.scheduleReplay(creature, "/tmp/data", OPTIONS);
+  await queue.waitForCompletion();
+
+  assertEquals(
+    calls(),
+    1,
+    "Replay must run when no warm-up context is supplied",
+  );
+});
+
+Deno.test("DiscoveryReplayWarmup: per-creature tags are ignored in favour of Neat context", async () => {
+  // The creature is tagged as if warm-up has elapsed, but the Neat-level
+  // context says the lock is active. The context must win.
+  const creature = makeBaseCreature();
+  creature.uuid = "tags-ignored";
+  addTag(creature, WARMUP_GENERATIONS_TAG, "10");
+  addTag(creature, CURRENT_GENERATION_TAG, "999");
+
+  const { deps, calls } = trackingDeps();
+  const queue = new DiscoveryReplayQueue(deps);
+
+  queue.scheduleReplay(creature, "/tmp/data", OPTIONS, undefined, {
+    warmupGenerations: 1440,
+    currentGeneration: 100,
+  });
+  await queue.waitForCompletion();
+
+  assertEquals(
+    calls(),
+    0,
+    "Neat-level context must override per-creature warm-up tags",
+  );
 });

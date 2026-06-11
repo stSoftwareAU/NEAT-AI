@@ -6,14 +6,7 @@
  * warm-up window has elapsed.
  */
 import { assertEquals } from "@std/assert";
-import { addTag } from "@stsoftware/tags/mod";
-import { Creature } from "@creature";
-import {
-  CURRENT_GENERATION_TAG,
-  isSeedWarmupStructuralLockActive,
-  isSeedWarmupStructuralLockActiveForCreature,
-  WARMUP_GENERATIONS_TAG,
-} from "@architecture/CreatureFactory.ts";
+import { isSeedWarmupStructuralLockActive } from "@architecture/CreatureFactory.ts";
 
 Deno.test("structural lock: inactive when no warm-up configured", () => {
   assertEquals(isSeedWarmupStructuralLockActive(0, 0), false);
@@ -44,28 +37,8 @@ Deno.test("structural lock: ignores non-finite inputs", () => {
   assertEquals(isSeedWarmupStructuralLockActive(10, NaN), true);
 });
 
-Deno.test("structural lock (creature): no warm-up tag → inactive", () => {
-  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-  assertEquals(isSeedWarmupStructuralLockActiveForCreature(creature), false);
-});
-
-Deno.test("structural lock (creature): warm-up tag, mid-window → active", () => {
-  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-  addTag(creature, WARMUP_GENERATIONS_TAG, "1440");
-  addTag(creature, CURRENT_GENERATION_TAG, "100");
-  assertEquals(isSeedWarmupStructuralLockActiveForCreature(creature), true);
-});
-
-Deno.test("structural lock (creature): warm-up tag, window elapsed → inactive", () => {
-  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-  addTag(creature, WARMUP_GENERATIONS_TAG, "10");
-  addTag(creature, CURRENT_GENERATION_TAG, "11");
-  assertEquals(isSeedWarmupStructuralLockActiveForCreature(creature), false);
-});
-
-Deno.test("structural lock (creature): warm-up tag, no generation tag → active", () => {
-  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-  addTag(creature, WARMUP_GENERATIONS_TAG, "1440");
-  // No currentGeneration tag — conservative lock keeps structural pruning off.
-  assertEquals(isSeedWarmupStructuralLockActiveForCreature(creature), true);
-});
+// Issue #2910: the per-creature variant
+// `isSeedWarmupStructuralLockActiveForCreature` has been removed — its only
+// production caller (DiscoveryReplayQueue) now reads the lock from Neat-level
+// warm-up context. The remaining tests above cover the numbers variant that
+// every gate uses.
