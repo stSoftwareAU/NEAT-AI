@@ -152,6 +152,14 @@ export function scheduleDiscovery(
     // Issue #2432: clamp the analysis ceiling to the slack remaining after
     // recording so record + analysis ≤ caller's wall-clock budget.
     discoveryAnalysisTimeoutMinutes: allocation.analysisMinutes,
+    // Issue #2898: pass the absolute hard deadline across the worker boundary so
+    // the worker clamps every per-discovery deadline to T+15 regardless of how
+    // long the request waited in the queue. The #2432 relative allocation above
+    // stays as the phase-split mechanism. Only set when a hard deadline is
+    // configured (0 means no `timeoutMinutes`), leaving behaviour unchanged.
+    ...(neat.hardDeadlineTS > 0
+      ? { discoveryHardDeadlineTS: neat.hardDeadlineTS }
+      : {}),
   });
 
   const taskStartTime = Date.now();
@@ -310,6 +318,10 @@ export function scheduleTraining(
     trainingSampleRate: neat.config.trainingSampleRate,
     disableRandomSamples: neat.config.disableRandomSamples,
     trainingTimeOutMinutes: trainingTimeOutMinutes,
+    // Issue #2899: carry the absolute hard deadline so worker-side training
+    // stops at T+15 even when the task sat in the worker queue. 0 means no
+    // deadline configured; leave it absent so behaviour is unchanged.
+    hardDeadlineTS: neat.hardDeadlineTS > 0 ? neat.hardDeadlineTS : undefined,
     batchSize: neat.config.trainingBatchSize,
     maximumBiasAdjustmentScale: neat.config.maximumBiasAdjustmentScale,
     maximumWeightAdjustmentScale: neat.config.maximumWeightAdjustmentScale,

@@ -108,4 +108,23 @@ Deno.test("TrainingSetup - prepareTraining allocates buffers and applies options
   // bestCreatureJSON should match creature I/O counts.
   assertEquals(setup.bestCreatureJSON.input, 3);
   assertEquals(setup.bestCreatureJSON.output, 2);
+  // Issue #2899: absent hardDeadlineTS leaves the field undefined.
+  assertEquals(setup.hardDeadlineTS, undefined);
+});
+
+Deno.test("TrainingSetup - prepareTraining carries hardDeadlineTS through (Issue #2899)", () => {
+  const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+  const hardDeadlineTS = 1_000_000_000_000;
+  const setup = prepareTraining(
+    creature,
+    {
+      iterations: 1,
+      trainingTimeOutMinutes: 15,
+      hardDeadlineTS,
+    },
+    "deadln01",
+  );
+
+  assertEquals(setup.trainingTimeOutMinutes, 15);
+  assertEquals(setup.hardDeadlineTS, hardDeadlineTS);
 });

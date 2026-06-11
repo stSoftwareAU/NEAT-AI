@@ -313,6 +313,17 @@ export interface NeatArguments {
    */
   discoveryAnalysisTimeoutMinutes: number;
 
+  /**
+   * Absolute hard-deadline timestamp (epoch ms) for a single discovery
+   * request (Issue #2898). Plumbed across the worker boundary in the per-call
+   * frozen config built by `scheduleDiscovery` so every per-discovery deadline
+   * — recording `timeoutTS`, the analysis extension, and `refreshAnalysisTimeout`
+   * top-ups — can be clamped to the caller's absolute T+15 cap regardless of
+   * worker-queue delay. Absent (undefined) when no `timeoutMinutes` is
+   * configured, in which case clamping is a no-op and behaviour is unchanged.
+   */
+  discoveryHardDeadlineTS?: number;
+
   /** The number of observations per promise */
   discoveryBatchSize: number;
 

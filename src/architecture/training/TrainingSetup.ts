@@ -125,6 +125,11 @@ export interface TrainingSetupState {
   iterations: number;
   trainingSampleRate: number;
   trainingTimeOutMinutes: number;
+  /**
+   * Absolute hard deadline (epoch ms) to clamp the relative timeout against.
+   * Issue #2899: undefined/0 leaves the relative budget unchanged.
+   */
+  hardDeadlineTS: number | undefined;
   ID: string;
   BYTES_PER_RECORD: number;
   recordBuffer: Uint8Array;
@@ -159,6 +164,8 @@ export function prepareTraining(
   const iterations = resolveIterations(options);
   const trainingSampleRate = resolveTrainingSampleRate(options);
   const trainingTimeOutMinutes = options.trainingTimeOutMinutes ?? 0;
+  // Issue #2899: carry the absolute hard deadline through to epoch state.
+  const hardDeadlineTS = options.hardDeadlineTS;
 
   const valuesCount = creature.input + creature.output;
   const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
@@ -222,6 +229,7 @@ export function prepareTraining(
     iterations,
     trainingSampleRate,
     trainingTimeOutMinutes,
+    hardDeadlineTS,
     ID: shortId,
     BYTES_PER_RECORD,
     recordBuffer,

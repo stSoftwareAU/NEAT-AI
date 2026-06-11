@@ -26,6 +26,7 @@ import { Mutator } from "@neat/Mutator.ts";
 import { CRISPR } from "@reconstruct/CRISPR.ts";
 import { CrisprError } from "@errors/CrisprError.ts";
 import { simplify } from "@optimize/Simplify.ts";
+import { appendAll } from "@utils/ArrayAppend.ts";
 import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
@@ -689,7 +690,10 @@ export async function evolve(
   // Issue #2314: Await breeding results now that all overlapped main-thread
   // work is complete.
   const offspringBatch = await breedingPromise;
-  newPopulation.push(...offspringBatch);
+  // Issue #2897: Stack-safe in-place append. Spreading an unbounded
+  // offspringBatch into push() arguments throws RangeError once the batch
+  // exceeds V8's argument/stack limit; appendAll uses an indexed loop instead.
+  appendAll(newPopulation, offspringBatch);
   const breedingMs = Date.now() - breedingStartMs;
   // Issue #2323: Compute pure worker breeding duration. If the .then()
   // callback has not fired yet (breedingWorkerEndMs is still 0), the worker

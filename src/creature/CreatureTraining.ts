@@ -32,6 +32,7 @@ import {
 } from "@costs/CostAwareEarlyStop.ts";
 import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { Neat } from "@neat/Neat.ts";
+import { computeHardDeadlineTS } from "@neat/HardDeadline.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
@@ -362,6 +363,30 @@ async function writeCreatures(neat: Neat, dir: string): Promise<void> {
 }
 
 /**
+ * Test-only injection seam for {@link evolveDir} (Issue #2902).
+ *
+ * Lets the end-to-end T+15 hard-deadline guard drive the absolute cap
+ * deterministically without real sleeps (behavioural-test policy #2888).
+ * Production callers omit `deps` entirely; the defaults reproduce the
+ * pre-existing behaviour exactly.
+ *
+ * - `startTimeMS` overrides the run-start timestamp that anchors both the soft
+ *   `endTimeMS` and the absolute T+15 hard cap. Passing a timestamp far enough
+ *   in the past places both deadlines behind the wall clock, so the very first
+ *   finish-up cycle takes the hard-cap branch.
+ * - `onNeatReady` is invoked with the live {@link Neat} instance once the
+ *   population is seeded and before the evolve loop starts, so a test can stub
+ *   never-resolving in-flight discovery / training promises (no Rust FFI in CI)
+ *   and later inspect the in-flight maps once the run returns.
+ */
+export interface EvolveDirDeps {
+  /** Override the run-start timestamp (ms since epoch). */
+  startTimeMS?: number;
+  /** Invoked with the constructed {@link Neat} instance before the evolve loop. */
+  onNeatReady?: (neat: Neat) => void;
+}
+
+/**
  * Evolve the creature on a dataset directory using NEAT.
  * Supports multi-threaded workers, checkpointing, and timeout.
  */
@@ -369,6 +394,7 @@ export async function evolveDir(
   creature: Creature,
   dataSetDir: string,
   options: NeatOptions,
+  deps?: EvolveDirDeps,
 ): Promise<
   { error: number; score: number; time: number; generation: number }
 > {
@@ -380,7 +406,10 @@ export async function evolveDir(
 
   Deno.addSignalListener("SIGTERM", signalListener);
 
-  const start = Date.now();
+  // Issue #2902: `deps?.startTimeMS` is a test-only override that anchors both
+  // the soft `endTimeMS` and the absolute T+15 hard cap to an injected (past)
+  // timestamp, so the hard-cap branch can be driven without real sleeps.
+  const start = deps?.startTimeMS ?? Date.now();
   const config = createNeatConfig(options);
 
   // Issue #1566: Apply WASM cache caps from config before training starts.
@@ -390,6 +419,11 @@ export async function evolveDir(
   const endTimeMS = config.timeoutMinutes
     ? start + Math.max(1, config.timeoutMinutes) * 60000
     : 0;
+  // Issue #2895: shared absolute hard cap (endTimeMS + clamped grace). 0 when
+  // no timeout is configured. Issue #2896 enforces it in the finish-up cycle
+  // below via neat.abandonInFlightPastHardDeadline(hardDeadlineMS).
+  const hardDeadlineMS =
+    computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
 
   const workers: WorkerHandler[] = [];
   const threads = config.threads;
@@ -456,6 +490,11 @@ export async function evolveDir(
 
   neat.setDataDir(dataSetDir);
   await neat.populatePopulation(creature);
+
+  // Issue #2902: hand the constructed Neat instance to the test seam (if any)
+  // so integration guards can stub never-resolving in-flight work before the
+  // evolve loop. No-op for production callers.
+  deps?.onNeatReady?.(neat);
 
   let error = Infinity;
   let bestScore = -Infinity;
@@ -588,6 +627,16 @@ export async function evolveDir(
 
     if (completed) {
       if (interrupted) break;
+
+      // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
+      // any in-flight discovery/training bookkeeping and break unconditionally —
+      // even when finishUp() would still ask for more wait generations. The
+      // post-loop sequence (worker termination, best-creature restore,
+      // writeCreatures) still runs because the break lands there.
+      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS)) {
+        break;
+      }
+
       if (neat.finishUp(iterations, endTimeMS, start, generation)) {
         break;
       }
@@ -610,7 +659,11 @@ export async function evolveDir(
   // Issue #1509: Await background replay queue completion before returning.
   // Without this, callers that delete the data directory after evolveDir()
   // returns may cause NotFound errors in still-running replay workers.
-  await neat.discoveryReplayQueue.waitForCompletion();
+  // Issue #2901: bound the wait to the absolute hard cap when a timeout is
+  // configured (hardDeadlineMS > 0); uncapped runs keep the unbounded wait.
+  await neat.discoveryReplayQueue.waitForCompletion(
+    hardDeadlineMS || undefined,
+  );
 
   if (bestCreature) {
     creature.loadFrom(bestCreature, config.debug, "training:restoreBest");
@@ -707,6 +760,11 @@ export async function evolveEnv<S, A>(
   const endTimeMS = config.timeoutMinutes
     ? start + Math.max(1, config.timeoutMinutes) * 60000
     : 0;
+  // Issue #2895: shared absolute hard cap (endTimeMS + clamped grace). 0 when
+  // no timeout is configured. Issue #2896 enforces it in the finish-up cycle
+  // below via neat.abandonInFlightPastHardDeadline(hardDeadlineMS).
+  const hardDeadlineMS =
+    computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
 
   const trialsPerScore = options.trialsPerScore !== undefined
     ? Math.max(1, Math.floor(options.trialsPerScore))
@@ -863,6 +921,16 @@ export async function evolveEnv<S, A>(
 
     if (completed) {
       if (interrupted) break;
+
+      // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
+      // any in-flight discovery/training bookkeeping and break unconditionally —
+      // even when finishUp() would still ask for more wait generations. The
+      // post-loop sequence (best-creature restore, writeCreatures) still runs
+      // because the break lands there.
+      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS)) {
+        break;
+      }
+
       if (neat.finishUp(iterations, endTimeMS, start, generation)) {
         break;
       }
@@ -874,8 +942,10 @@ export async function evolveEnv<S, A>(
   // No worker pool to terminate — episode rollouts ran inline. Replay queue
   // never had a chance to schedule anything (no dataDir was provided), but
   // await it for symmetry with evolveDir() in case a future change wires one
-  // through.
-  await neat.discoveryReplayQueue.waitForCompletion();
+  // through. Issue #2901: bound the wait to the absolute hard cap when set.
+  await neat.discoveryReplayQueue.waitForCompletion(
+    hardDeadlineMS || undefined,
+  );
 
   if (bestCreature) {
     creature.loadFrom(bestCreature, config.debug, "evolveEnv:restoreBest");
@@ -1057,6 +1127,11 @@ export async function evolveRL<S, A>(
   const endTimeMS = config.timeoutMinutes
     ? start + Math.max(1, config.timeoutMinutes) * 60000
     : 0;
+  // Issue #2895: shared absolute hard cap (endTimeMS + clamped grace). 0 when
+  // no timeout is configured. Issue #2896 enforces it in the finish-up cycle
+  // below via neat.abandonInFlightPastHardDeadline(hardDeadlineMS).
+  const hardDeadlineMS =
+    computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
 
   // Lazy import avoids a circular module graph (Neat.ts → Creature.ts →
   // CreatureTraining.ts → RLEpisodeFitness.ts → Fitness.ts vs Neat.ts → Fitness.ts).
@@ -1363,6 +1438,16 @@ export async function evolveRL<S, A>(
 
     if (completed) {
       if (interrupted) break;
+
+      // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
+      // any in-flight discovery/training bookkeeping and break unconditionally —
+      // even when finishUp() would still ask for more wait generations. The
+      // post-loop sequence (best-creature restore, writeCreatures) still runs
+      // because the break lands there.
+      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS)) {
+        break;
+      }
+
       if (neat.finishUp(iterations, endTimeMS, start, generation)) {
         break;
       }
@@ -1406,7 +1491,10 @@ export async function evolveRL<S, A>(
   // pool was constructed (single-threaded or missing adapterDescription)
   // this is a no-op.
   workerPool?.terminate();
-  await neat.discoveryReplayQueue.waitForCompletion();
+  // Issue #2901: bound the wait to the absolute hard cap when a timeout is set.
+  await neat.discoveryReplayQueue.waitForCompletion(
+    hardDeadlineMS || undefined,
+  );
 
   if (bestCreature) {
     creature.loadFrom(bestCreature, config.debug, "evolveRL:restoreBest");

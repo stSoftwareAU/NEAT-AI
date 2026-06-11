@@ -90,7 +90,8 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
   async replayDir(
     input: DiscoveryReplayDirInput,
   ): Promise<DiscoveryReplayDirResult> {
-    const { creature, dataDir, options, timeoutMinutes } = input;
+    const { creature, dataDir, options, timeoutMinutes, deadlineTS, signal } =
+      input;
     const config = createNeatConfig(options);
     const verifyScores = config.discoveryReplayVerifyScores;
     const replayConcurrency = verifyScores
@@ -102,16 +103,26 @@ export class DiscoveryReplayRunner implements DiscoveryReplayRunnerLike {
       diagnosticsEnabled ? {} : undefined;
     let resultToReturn: DiscoveryReplayDirResult | undefined;
 
-    // Issue #1113: Calculate timeout deadline if timeout is provided
-    const deadlineTS = timeoutMinutes !== undefined && timeoutMinutes > 0
-      ? Date.now() + timeoutMinutes * 60 * 1000
-      : undefined;
+    // Issue #1113/#2901: resolve the absolute deadline. A relative
+    // `timeoutMinutes` is converted at runner start; a caller-supplied
+    // `deadlineTS` is absolute and immune to worker-queue/start delays. When
+    // both are present we clamp to the earlier of the two so a late start can
+    // never extend the cap past the intended absolute deadline.
+    const convertedDeadlineTS =
+      timeoutMinutes !== undefined && timeoutMinutes > 0
+        ? Date.now() + timeoutMinutes * 60 * 1000
+        : undefined;
+    const effectiveDeadlineTS =
+      deadlineTS !== undefined && convertedDeadlineTS !== undefined
+        ? Math.min(deadlineTS, convertedDeadlineTS)
+        : deadlineTS ?? convertedDeadlineTS;
     let timedOut = false;
 
-    // Helper to check if we've exceeded the timeout
+    // Helper to check if we've exceeded the timeout or been asked to abort.
     const isTimedOut = (): boolean => {
-      if (!deadlineTS) return false;
-      return Date.now() >= deadlineTS;
+      if (signal?.aborted) return true;
+      if (effectiveDeadlineTS === undefined) return false;
+      return Date.now() >= effectiveDeadlineTS;
     };
 
     const successCacheDir = config.discoverySuccessCacheDir;

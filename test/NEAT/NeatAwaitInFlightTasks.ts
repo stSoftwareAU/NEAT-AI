@@ -205,6 +205,71 @@ Deno.test("awaitInFlightTasks: handles both discovery and training simultaneousl
   }
 });
 
+// ============================================================================
+// Issue #2896: awaitInFlightTasks must never wait past the absolute hard cap.
+// A hardDeadlineTS already in the past caps the effective timeout at 0, so the
+// wait returns immediately even for a never-settling task — without abandoning
+// the bookkeeping itself (the loop's hard-cap break owns that).
+// ============================================================================
+
+Deno.test("awaitInFlightTasks: past hard deadline caps the wait and returns immediately", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // A task that never settles — only the hard-cap timeout can release us.
+    neat.discoveryInProgress.set("never-settles", new Promise(() => {}));
+
+    // hardDeadlineTS already in the past → effective timeout clamps to 0. If the
+    // cap were not applied the 30s default would hang and the runner's per-test
+    // timeout would fail (Issue #2888: behavioural, no elapsed-time assertion).
+    await neat.awaitInFlightTasks(30_000, Date.now() - 1000);
+
+    // awaitInFlightTasks only waits; it does not clear the maps.
+    assertEquals(
+      neat.discoveryInProgress.size,
+      1,
+      "awaitInFlightTasks must not abandon tasks itself",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("awaitInFlightTasks: zero hardDeadlineTS disables the cap", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    let resolved = false;
+    let timerId: ReturnType<typeof setTimeout>;
+    const taskPromise = new Promise<void>((resolve) => {
+      timerId = setTimeout(() => {
+        resolved = true;
+        resolve();
+      }, 50);
+    });
+    neat.trainingInProgress.set("settles-soon", taskPromise);
+
+    try {
+      // hardDeadlineTS = 0 disables the cap, so the normal 5s timeout applies
+      // and the task completes well within it.
+      await neat.awaitInFlightTasks(5000, 0);
+      assert(resolved, "Task should complete when the cap is disabled");
+    } finally {
+      clearTimeout(timerId!);
+    }
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
 Deno.test("finishUp: logs waiting message with task counts", async () => {
   const dataDir = createTestDataDir(2, 1);
   const workers = createTestWorkers(dataDir);

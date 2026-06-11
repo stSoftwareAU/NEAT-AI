@@ -22,6 +22,24 @@ export interface DiscoveryReplayDirInput {
    * This prevents replay from hanging the evolution process when time runs out.
    */
   timeoutMinutes?: number;
+  /**
+   * Optional absolute wall-clock deadline (ms since epoch) — Issue #2901.
+   *
+   * When supplied, replay stops at its next candidate-boundary check once the
+   * deadline passes. Unlike {@link timeoutMinutes} (converted to a deadline at
+   * runner start), an absolute deadline cannot be shifted by worker-queue or
+   * start delays. When both are provided the runner clamps to the earlier of
+   * the two.
+   */
+  deadlineTS?: number;
+  /**
+   * Optional cooperative abort signal — Issue #2901.
+   *
+   * When aborted, replay stops at its next candidate-boundary check and
+   * performs no further data-directory reads. Used by the queue to abandon an
+   * in-flight replay once the evolution hard cap is reached.
+   */
+  signal?: AbortSignal;
 }
 
 export interface DiscoveryReplayEvaluationSummary {

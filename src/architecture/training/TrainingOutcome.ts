@@ -36,6 +36,39 @@ export interface EpochState {
   timeoutTS: number;
 }
 
+/**
+ * Computes the absolute timeout timestamp (epoch ms) for a training run.
+ *
+ * Issue #2899: the relative budget ({@link trainingTimeOutMinutes}) is
+ * anchored at worker start, which drifts when the task waited in the worker
+ * queue. When an absolute {@link hardDeadlineTS} is supplied it clamps the
+ * relative budget so the run stops at the hard deadline regardless of queue
+ * delay. A `trainingTimeOutMinutes` of `0` means "no relative budget"; an
+ * absent/zero `hardDeadlineTS` leaves the relative computation unchanged.
+ *
+ * Pure and `now`-injectable so it can be unit-tested without elapsed-time
+ * assertions (#2888 policy).
+ *
+ * @param now - current epoch ms (injected for deterministic testing)
+ * @param trainingTimeOutMinutes - relative budget in minutes (0 = none)
+ * @param hardDeadlineTS - absolute hard deadline epoch ms (0/undefined = none)
+ * @returns the timeout timestamp in epoch ms, or 0 for no timeout
+ */
+export function computeTimeoutTS(
+  now: number,
+  trainingTimeOutMinutes: number,
+  hardDeadlineTS?: number,
+): number {
+  const relativeTS = trainingTimeOutMinutes > 0
+    ? now + trainingTimeOutMinutes * 60 * 1000
+    : 0;
+  const hardTS = hardDeadlineTS ?? 0;
+  if (hardTS > 0) {
+    return relativeTS > 0 ? Math.min(relativeTS, hardTS) : hardTS;
+  }
+  return relativeTS;
+}
+
 /** Construct the initial epoch state from setup output. */
 export function createEpochState(setup: TrainingSetupState): EpochState {
   return {
@@ -49,9 +82,11 @@ export function createEpochState(setup: TrainingSetupState): EpochState {
     scratch: { buffer: null },
     indxMap: new Map(),
     timedOut: false,
-    timeoutTS: setup.trainingTimeOutMinutes > 0
-      ? Date.now() + setup.trainingTimeOutMinutes * 60 * 1000
-      : 0,
+    timeoutTS: computeTimeoutTS(
+      Date.now(),
+      setup.trainingTimeOutMinutes,
+      setup.hardDeadlineTS,
+    ),
   };
 }
 

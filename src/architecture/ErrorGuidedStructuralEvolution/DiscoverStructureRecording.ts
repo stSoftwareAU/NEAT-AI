@@ -26,6 +26,7 @@ import {
   observeRustTrainingRecord as observeRustTrainingRecordImpl,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { appendAll } from "@utils/ArrayAppend.ts";
 import { isReleased } from "@utils/ReleasableRef.ts";
 import { DiscoverStructureBase } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureBase.ts";
 import {
@@ -111,7 +112,9 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
       if (!this.selectedIndices[binaryFilePath]) {
         this.selectedIndices[binaryFilePath] = [];
       }
-      this.selectedIndices[binaryFilePath].push(...effectiveRecordIndices);
+      // Issue #2900: stack-safe append; a batch holds up to discoveryBatchSize
+      // indices (config, no hard upper cap), so spreading risks RangeError.
+      appendAll(this.selectedIndices[binaryFilePath], effectiveRecordIndices);
 
       Deno.writeTextFileSync(
         this.indicesFilePath,
