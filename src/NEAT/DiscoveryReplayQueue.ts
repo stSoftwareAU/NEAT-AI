@@ -5,11 +5,27 @@ import {
   DiscoveryReplayRunner,
 } from "@discovery/DiscoveryReplayRunner.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
-import { isSeedWarmupStructuralLockActiveForCreature } from "@architecture/CreatureFactory.ts";
+import { isSeedWarmupStructuralLockActive } from "@architecture/CreatureFactory.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 // Re-export for use by Neat.ts (Issue #1150)
 export type { DiscoveryReplayDirResult };
+
+/**
+ * Neat-level seed warm-up context supplied by the caller (Issue #2910).
+ *
+ * The {@link DiscoveryReplayQueue} holds no `Neat` reference, so the owning
+ * evolution loop passes the warm-up counters explicitly. Reading the lock
+ * state from this context — rather than from per-creature tags — keeps the
+ * gate correct once mid-run creatures stop carrying warm-up tags (#2911):
+ * an untagged creature inside an active warm-up window stays locked.
+ */
+export interface DiscoveryReplayWarmupContext {
+  /** Configured warm-up generation count (0 = warm-up disabled). */
+  warmupGenerations: number;
+  /** Current evolution generation (<= 0 = unknown). */
+  currentGeneration: number;
+}
 
 /**
  * Dependencies for the DiscoveryReplayQueue.
@@ -98,19 +114,29 @@ export class DiscoveryReplayQueue {
    * @param remainingTimeMinutes Optional remaining evolution time in minutes.
    *        If provided and below the minimum threshold, replay is skipped.
    *        If provided, replay timeout is capped to this value.
+   * @param warmupContext Optional Neat-level seed warm-up context. When
+   *        supplied and the lock is active, replay is skipped (Issue #2910).
    */
   scheduleReplay(
     creature: Creature,
     dataDir: string,
     options: NeatOptions,
     remainingTimeMinutes?: number,
+    warmupContext?: DiscoveryReplayWarmupContext,
   ): void {
-    // Issue #2828: never replay cached structural discoveries while the
-    // creature's seed warm-up structural lock is active — replay can prune
-    // or rewire topology, which must wait until warm-up has elapsed. The
-    // lock state is read from the creature's own warm-up tags because this
-    // queue does not hold the owning Neat instance.
-    if (isSeedWarmupStructuralLockActiveForCreature(creature)) {
+    // Issue #2828/#2910: never replay cached structural discoveries while the
+    // seed warm-up structural lock is active — replay can prune or rewire
+    // topology, which must wait until warm-up has elapsed. The lock state is
+    // read from Neat-level warm-up context supplied by the caller (this queue
+    // holds no Neat reference). Reading per-creature tags would silently open
+    // the lock once mid-run creatures stop carrying warm-up tags (#2911).
+    if (
+      warmupContext &&
+      isSeedWarmupStructuralLockActive(
+        warmupContext.warmupGenerations,
+        warmupContext.currentGeneration,
+      )
+    ) {
       return;
     }
 
