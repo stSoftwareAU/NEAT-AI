@@ -128,6 +128,12 @@ export class DiscoverStructureBase {
     undefined;
   protected lastNeuronScanStats?: NeuronScanStats;
   protected analysisDeadlineMs?: number;
+  /**
+   * Issue #2898: absolute hard-deadline timestamp (epoch ms). Once supplied,
+   * `extendTimeoutForAnalysis` will never move `timeoutTS` past this cap, so
+   * analysis-timeout extensions can never run past the caller's T+15 deadline.
+   */
+  protected analysisHardDeadlineTS?: number;
   protected cachedRemovalCandidates?:
     import("./DiscoverResult.ts").RemovalCandidate[];
   protected combinedRustAnalysis?: CombinedAnalysisCache;
@@ -292,13 +298,42 @@ export class DiscoverStructureBase {
     return false;
   }
 
-  public extendTimeoutForAnalysis(analysisTimeSeconds: number): void {
+  /**
+   * Expose the current absolute timeout timestamp (epoch ms) so callers and
+   * tests can assert the active deadline. Issue #2898.
+   */
+  public getTimeoutTS(): number {
+    return this.timeoutTS;
+  }
+
+  /**
+   * Extend the deadline to give the analysis phase room to run.
+   *
+   * Issue #2898: an optional absolute hard-deadline cap (epoch ms) clamps the
+   * extended deadline so it can never move past the caller's T+15 wall-clock
+   * cap, no matter how long the discovery request waited in the worker queue.
+   * The cap is remembered, so later `refreshAnalysisTimeout` top-ups stay
+   * clamped even if a cap is not re-supplied. Once the cap is reached the
+   * remaining budget the analysis loop computes is ≤ 0, so its per-chunk checks
+   * exit promptly. When no cap is supplied behaviour is unchanged.
+   */
+  public extendTimeoutForAnalysis(
+    analysisTimeSeconds: number,
+    hardDeadlineTS?: number,
+  ): void {
     assert(
       analysisTimeSeconds > 0,
       `Analysis time must be greater than 0, was: ${analysisTimeSeconds}`,
     );
-    this.timeoutTS = Date.now() + analysisTimeSeconds * 1000;
-    this.analysisDeadlineMs = this.timeoutTS;
+    if (hardDeadlineTS !== undefined) {
+      this.analysisHardDeadlineTS = hardDeadlineTS;
+    }
+    let target = Date.now() + analysisTimeSeconds * 1000;
+    if (this.analysisHardDeadlineTS !== undefined) {
+      target = Math.min(target, this.analysisHardDeadlineTS);
+    }
+    this.timeoutTS = target;
+    this.analysisDeadlineMs = target;
     this.analysisTimeoutGuardEnabled = false;
   }
 
