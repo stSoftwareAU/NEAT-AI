@@ -2,11 +2,12 @@
  * Seed warm-up tag persistence (export / load round-trip).
  */
 import { assertEquals } from "@std/assert";
-import { addTag } from "@stsoftware/tags/mod";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Offspring } from "@architecture/Offspring.ts";
 import {
+  applySeedWarmupTagsAtSave,
   creatureForProblem,
   CURRENT_GENERATION_TAG,
   readCurrentGenerationFromCreature,
@@ -206,4 +207,115 @@ Deno.test("Offspring.breed: warm-up tags survive grafted breeding", () => {
   assertEquals(child !== undefined, true);
   assertEquals(readWarmupGenerationsFromCreature(child!), 40);
   assertEquals(readCurrentGenerationFromCreature(child!), 7);
+});
+
+// ─── Issue #2909: save-boundary stamping / stripping ────────────────────────
+
+Deno.test("applySeedWarmupTagsAtSave: while warming stamps both tags from counter", () => {
+  const creature = creatureForProblem({
+    inputs: 4,
+    outputs: 1,
+    warmupGenerations: 20,
+  });
+  // Stale seed value lingering on the creature.
+  addTag(creature, CURRENT_GENERATION_TAG, "1");
+
+  applySeedWarmupTagsAtSave(creature, 20, 8);
+
+  assertEquals(readWarmupGenerationsFromCreature(creature), 20);
+  // Never a stale seed value — carries the accumulated counter.
+  assertEquals(readCurrentGenerationFromCreature(creature), 8);
+});
+
+Deno.test("applySeedWarmupTagsAtSave: keeps #2831 monotonic-max guard", () => {
+  const creature = creatureForProblem({
+    inputs: 4,
+    outputs: 1,
+    warmupGenerations: 30,
+  });
+  addTag(creature, CURRENT_GENERATION_TAG, "15");
+
+  // A lower Neat-level counter must never lower an existing higher generation.
+  applySeedWarmupTagsAtSave(creature, 30, 9);
+
+  assertEquals(readCurrentGenerationFromCreature(creature), 15);
+});
+
+Deno.test("applySeedWarmupTagsAtSave: once warm strips both tags", () => {
+  const creature = creatureForProblem({
+    inputs: 4,
+    outputs: 1,
+    warmupGenerations: 10,
+  });
+  // Stale warm-up tags present from earlier warming.
+  addTag(creature, WARMUP_GENERATIONS_TAG, "10");
+  addTag(creature, CURRENT_GENERATION_TAG, "10");
+
+  // counter (11) > warmupGenerations (10) => warm.
+  applySeedWarmupTagsAtSave(creature, 10, 11);
+
+  assertEquals(getTag(creature, WARMUP_GENERATIONS_TAG), null);
+  assertEquals(getTag(creature, CURRENT_GENERATION_TAG), null);
+});
+
+Deno.test("applySeedWarmupTagsAtSave: not configured strips stale tags", () => {
+  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+  addTag(creature, WARMUP_GENERATIONS_TAG, "5");
+  addTag(creature, CURRENT_GENERATION_TAG, "3");
+
+  // warmupGenerations 0 => warm-up never configured.
+  applySeedWarmupTagsAtSave(creature, 0, 0);
+
+  assertEquals(getTag(creature, WARMUP_GENERATIONS_TAG), null);
+  assertEquals(getTag(creature, CURRENT_GENERATION_TAG), null);
+});
+
+Deno.test("applySeedWarmupTagsAtSave: not configured adds no tags", () => {
+  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+
+  applySeedWarmupTagsAtSave(creature, 0, 0);
+
+  assertEquals(getTag(creature, WARMUP_GENERATIONS_TAG), null);
+  assertEquals(getTag(creature, CURRENT_GENERATION_TAG), null);
+});
+
+Deno.test("applySeedWarmupTagsAtSave: stamps the exported JSON object", () => {
+  const creature = creatureForProblem({
+    inputs: 4,
+    outputs: 1,
+    warmupGenerations: 25,
+  });
+  const json: CreatureExport = creature.exportJSON();
+
+  applySeedWarmupTagsAtSave(json, 25, 13);
+
+  const warmupTag = json.tags?.find((t) => t.name === WARMUP_GENERATIONS_TAG);
+  const generationTag = json.tags?.find((t) =>
+    t.name === CURRENT_GENERATION_TAG
+  );
+  assertEquals(warmupTag?.value, "25");
+  assertEquals(generationTag?.value, "13");
+});
+
+Deno.test("applySeedWarmupTagsAtSave: strips stale tags from exported JSON once warm", () => {
+  const creature = creatureForProblem({
+    inputs: 4,
+    outputs: 1,
+    warmupGenerations: 12,
+  });
+  // Stale seed value on the live creature that would otherwise land on disk.
+  addTag(creature, CURRENT_GENERATION_TAG, "1");
+  const json: CreatureExport = creature.exportJSON();
+
+  // counter (13) > warmupGenerations (12) => warm.
+  applySeedWarmupTagsAtSave(json, 12, 13);
+
+  assertEquals(
+    json.tags?.find((t) => t.name === WARMUP_GENERATIONS_TAG),
+    undefined,
+  );
+  assertEquals(
+    json.tags?.find((t) => t.name === CURRENT_GENERATION_TAG),
+    undefined,
+  );
 });
