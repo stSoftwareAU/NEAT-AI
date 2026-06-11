@@ -30,11 +30,6 @@ import type {
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
 import {
-  readCurrentGenerationFromCreature,
-  readWarmupGenerationsFromCreature,
-  writeSeedWarmupProgressTags,
-} from "@architecture/CreatureFactory.ts";
-import {
   runProducerCompileProbe,
   setProducerStep,
 } from "@wasm/ProducerCompileGuard.ts";
@@ -125,24 +120,6 @@ export function computeNeuronDependencyIndex(
   return indx;
 }
 
-function propagateSeedWarmupTags(
-  child: Creature,
-  mother: Creature,
-  father: Creature,
-): void {
-  const warmupGenerations = Math.max(
-    readWarmupGenerationsFromCreature(mother),
-    readWarmupGenerationsFromCreature(father),
-  );
-  if (warmupGenerations <= 0) return;
-
-  const currentGeneration = Math.max(
-    readCurrentGenerationFromCreature(mother),
-    readCurrentGenerationFromCreature(father),
-  );
-  writeSeedWarmupProgressTags(child, warmupGenerations, currentGeneration);
-}
-
 export class Offspring {
   /**
    * Create an offspring from two parent networks.
@@ -214,7 +191,6 @@ export class Offspring {
         if (!child) child = subgraphTransplant(mother, father);
       }
       if (child) {
-        propagateSeedWarmupTags(child, mother, father);
         // Memetic update (same as standard crossover path)
         if (mother.memetic) {
           child.memetic = memeticUpdate(mother, child);
@@ -805,7 +781,6 @@ export class Offspring {
       acc.offspringCount++;
     }
 
-    propagateSeedWarmupTags(offspring, mother, father);
     return offspring;
   }
 

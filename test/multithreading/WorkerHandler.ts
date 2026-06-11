@@ -80,7 +80,7 @@ Deno.test("WorkerHandler: terminate cleans up without error", async () => {
   assertEquals(handler.isBusy(), false);
 });
 
-Deno.test("WorkerHandler.train: keeps warm-up tags in train payload", async () => {
+Deno.test("WorkerHandler.train: does NOT carry warm-up tags in train payload (Issue #2911)", async () => {
   const handler = new WorkerHandler(
     await Deno.makeTempDir(),
     "MSE",
@@ -130,17 +130,15 @@ Deno.test("WorkerHandler.train: keeps warm-up tags in train payload", async () =
   }
 
   const tags = captured?.train?.creature?.tags;
+  // The Neat-level counter is the single source of truth mid-run — the
+  // training round-trip must not carry the two warm-up tags.
   assertEquals(
-    typeof tags?.find((t) => t.name === WARMUP_GENERATIONS_TAG)?.value,
-    "string",
+    tags?.find((t) => t.name === WARMUP_GENERATIONS_TAG),
+    undefined,
   );
   assertEquals(
-    tags?.find((t) => t.name === WARMUP_GENERATIONS_TAG)?.value,
-    "1440",
-  );
-  assertEquals(
-    tags?.find((t) => t.name === CURRENT_GENERATION_TAG)?.value,
-    "12",
+    tags?.find((t) => t.name === CURRENT_GENERATION_TAG),
+    undefined,
   );
   // Existing training context tags should still be present.
   assertEquals(tags?.find((t) => t.name === "untrained-error")?.value, "0.5");
