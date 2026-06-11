@@ -45,6 +45,7 @@ import {
 import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { applySeedWarmupTagsAtSave } from "@architecture/CreatureFactory.ts";
 import { BufferPool } from "@utils/BufferPool.ts";
 import {
   type DiscoveryDirResult,
@@ -343,6 +344,15 @@ async function writeCreatures(neat: Neat, dir: string): Promise<void> {
     }
     const json = c.exportJSON();
     assertValidWriteableSemanticVersion(json.semanticVersion);
+    // Issue #2909: stamp warm-up tags only at this export boundary. Stamp the
+    // exported JSON (not the live population member) so the saved file is
+    // correct regardless of which creature is saved: while warming it carries
+    // the Neat-level counter, and once warm both tags are stripped.
+    applySeedWarmupTagsAtSave(
+      json,
+      neat.warmupGenerations,
+      neat.currentGeneration,
+    );
     const txt = JSON.stringify(json);
     const filePath = dir + "/" + counter + ".json";
     writes.push(Deno.writeTextFile(filePath, txt));

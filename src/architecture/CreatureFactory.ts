@@ -44,7 +44,12 @@
 import { Creature } from "@creature";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { pickOutputSquashForCost } from "@costs/CostOutputSquash.ts";
-import { addTag, getTag } from "@stsoftware/tags/mod";
+import {
+  addTag,
+  getTag,
+  removeTag,
+  type TagsInterface,
+} from "@stsoftware/tags/mod";
 
 /** Inclusive numeric range, e.g. `{ min: -1, max: 1 }`. */
 export interface NumericRange {
@@ -163,7 +168,9 @@ export function readWarmupGenerationsFromCreature(creature: Creature): number {
  * Parse the saved evolution generation from a creature tag.
  * Returns 0 when the tag is absent or invalid.
  */
-export function readCurrentGenerationFromCreature(creature: Creature): number {
+export function readCurrentGenerationFromCreature(
+  creature: TagsInterface,
+): number {
   const tag = getTag(creature, CURRENT_GENERATION_TAG);
   if (!tag) return 0;
   const n = Number.parseInt(tag, 10);
@@ -216,7 +223,7 @@ export function isSeedWarmupStructuralLockActive(
  * tagging from clobbering generations accumulated across machines/breeding.
  */
 export function writeSeedWarmupProgressTags(
-  creature: Creature,
+  creature: TagsInterface,
   warmupGenerations: number,
   currentGeneration: number,
 ): void {
@@ -238,6 +245,41 @@ export function writeSeedWarmupProgressTags(
       String(next),
     );
   }
+}
+
+/**
+ * Issue #2909: Apply seed warm-up progress tags at an export/save boundary.
+ *
+ * Warm-up tags must only be written when a creature is persisted, and stripped
+ * once warm-up has completed, so warm-up logic costs nothing after warm-up.
+ *
+ * - While warming (`warmupGenerations > 0` and the accumulated counter has not
+ *   yet passed it, `currentGeneration <= warmupGenerations`), stamp both tags
+ *   from the Neat-level values via {@link writeSeedWarmupProgressTags}, keeping
+ *   its #2831 monotonic-max guard so a higher generation is never lowered.
+ * - When warm (`currentGeneration > warmupGenerations`) or warm-up was never
+ *   configured, strip both tags if present so the saved JSON carries no stale
+ *   warm-up state.
+ *
+ * Operates on any taggable target — a live `Creature` or an exported JSON
+ * object — so callers can stamp the export rather than mutating live
+ * population members.
+ */
+export function applySeedWarmupTagsAtSave(
+  target: TagsInterface,
+  warmupGenerations: number,
+  currentGeneration: number,
+): void {
+  const warming = Number.isFinite(warmupGenerations) &&
+    warmupGenerations > 0 &&
+    Number.isFinite(currentGeneration) &&
+    currentGeneration <= warmupGenerations;
+  if (warming) {
+    writeSeedWarmupProgressTags(target, warmupGenerations, currentGeneration);
+    return;
+  }
+  removeTag(target, WARMUP_GENERATIONS_TAG);
+  removeTag(target, CURRENT_GENERATION_TAG);
 }
 
 function applyWarmupGenerationsTag(
