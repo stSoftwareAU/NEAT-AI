@@ -28,6 +28,22 @@ export interface DiscoveryReplayWarmupContext {
 }
 
 /**
+ * Cooperative control for an in-flight replay (Issue #2901).
+ *
+ * Carries the absolute deadline and abort signal so a replay can be bounded to
+ * the evolution hard cap rather than a start-anchored relative budget.
+ */
+export interface DiscoveryReplayControl {
+  /**
+   * Absolute wall-clock deadline (ms since epoch). Replay stops at its next
+   * candidate-boundary check once this passes.
+   */
+  deadlineTS?: number;
+  /** Cooperative abort signal — when aborted, replay stops at the next boundary. */
+  signal?: AbortSignal;
+}
+
+/**
  * Dependencies for the DiscoveryReplayQueue.
  * These can be injected for testing purposes.
  */
@@ -40,12 +56,14 @@ export interface DiscoveryReplayQueueDeps {
    * @param dataDir The data directory containing training data
    * @param options NEAT options
    * @param timeoutMinutes Optional timeout in minutes (0 or undefined = no timeout)
+   * @param control Optional absolute deadline / abort signal (Issue #2901)
    */
   replayDir?: (
     creature: Creature,
     dataDir: string,
     options: NeatOptions,
     timeoutMinutes?: number,
+    control?: DiscoveryReplayControl,
   ) => Promise<DiscoveryReplayDirResult>;
 }
 
@@ -68,9 +86,13 @@ export class DiscoveryReplayQueue {
     dataDir: string;
     options: NeatOptions;
     timeoutMinutes?: number;
+    hardDeadlineTS?: number;
   } | null = null;
   #completedResults: DiscoveryReplayDirResult[] = [];
   #currentPromise: Promise<void> | null = null;
+  // Issue #2901: abort controller for the in-flight replay, so the queue can
+  // cooperatively signal it to stop when the evolution hard cap is reached.
+  #currentAbort: AbortController | null = null;
 
   constructor(deps: DiscoveryReplayQueueDeps = {}) {
     this.#deps = {
@@ -91,6 +113,7 @@ export class DiscoveryReplayQueue {
     dataDir: string,
     options: NeatOptions,
     timeoutMinutes?: number,
+    control?: DiscoveryReplayControl,
   ): Promise<DiscoveryReplayDirResult> {
     const runner = new DiscoveryReplayRunner();
     return await runner.replayDir({
@@ -98,6 +121,8 @@ export class DiscoveryReplayQueue {
       dataDir,
       options,
       timeoutMinutes,
+      deadlineTS: control?.deadlineTS,
+      signal: control?.signal,
     });
   }
 
@@ -116,6 +141,10 @@ export class DiscoveryReplayQueue {
    *        If provided, replay timeout is capped to this value.
    * @param warmupContext Optional Neat-level seed warm-up context. When
    *        supplied and the lock is active, replay is skipped (Issue #2910).
+   * @param hardDeadlineTS Optional absolute wall-clock hard cap (ms since
+   *        epoch, Issue #2901). When supplied and already passed, scheduling is
+   *        skipped. Otherwise it bounds the in-flight replay's absolute
+   *        deadline to `min(now + effectiveTimeout, hardDeadlineTS)`.
    */
   scheduleReplay(
     creature: Creature,
@@ -123,6 +152,7 @@ export class DiscoveryReplayQueue {
     options: NeatOptions,
     remainingTimeMinutes?: number,
     warmupContext?: DiscoveryReplayWarmupContext,
+    hardDeadlineTS?: number,
   ): void {
     // Issue #2828/#2910: never replay cached structural discoveries while the
     // seed warm-up structural lock is active — replay can prune or rewire
@@ -137,6 +167,12 @@ export class DiscoveryReplayQueue {
         warmupContext.currentGeneration,
       )
     ) {
+      return;
+    }
+
+    // Issue #2901: skip scheduling entirely once past the absolute hard cap.
+    // A replay started now could only run past the deadline.
+    if (hardDeadlineTS !== undefined && Date.now() >= hardDeadlineTS) {
       return;
     }
 
@@ -183,6 +219,7 @@ export class DiscoveryReplayQueue {
         dataDir,
         options,
         timeoutMinutes: effectiveTimeout,
+        hardDeadlineTS,
       };
       return;
     }
@@ -193,6 +230,7 @@ export class DiscoveryReplayQueue {
       dataDir,
       options,
       effectiveTimeout,
+      hardDeadlineTS,
     );
   }
 
@@ -203,20 +241,39 @@ export class DiscoveryReplayQueue {
    * @param dataDir The data directory containing training data
    * @param options NEAT options
    * @param timeoutMinutes Optional timeout in minutes
+   * @param hardDeadlineTS Optional absolute hard cap (ms since epoch). The
+   *        replay's absolute deadline is `min(now + effectiveTimeout,
+   *        hardDeadlineTS)` (Issue #2901).
    */
   #startReplay(
     creature: Creature,
     dataDir: string,
     options: NeatOptions,
     timeoutMinutes?: number,
+    hardDeadlineTS?: number,
   ): void {
     this.#replayInProgress = true;
+
+    // Issue #2901: derive an absolute deadline so worker-queue/start delays
+    // cannot shift the cap, and wire a cooperative abort signal so
+    // waitForCompletion() can abandon this replay at the hard cap.
+    const abortController = new AbortController();
+    this.#currentAbort = abortController;
+
+    const timeoutDeadlineTS = timeoutMinutes !== undefined && timeoutMinutes > 0
+      ? Date.now() + timeoutMinutes * 60 * 1000
+      : undefined;
+    const deadlineTS =
+      timeoutDeadlineTS !== undefined && hardDeadlineTS !== undefined
+        ? Math.min(timeoutDeadlineTS, hardDeadlineTS)
+        : timeoutDeadlineTS ?? hardDeadlineTS;
 
     this.#currentPromise = this.#deps.replayDir!(
       creature,
       dataDir,
       options,
       timeoutMinutes,
+      { deadlineTS, signal: abortController.signal },
     )
       .then((result) => {
         this.#completedResults.push(result);
@@ -227,6 +284,7 @@ export class DiscoveryReplayQueue {
       .finally(() => {
         this.#replayInProgress = false;
         this.#currentPromise = null;
+        this.#currentAbort = null;
 
         // Process the next queued creature if any
         if (this.#queuedCreature) {
@@ -237,6 +295,7 @@ export class DiscoveryReplayQueue {
             queued.dataDir,
             queued.options,
             queued.timeoutMinutes,
+            queued.hardDeadlineTS,
           );
         }
       });
@@ -267,10 +326,26 @@ export class DiscoveryReplayQueue {
   /**
    * Wait for any in-progress replay to complete.
    * Useful for testing and graceful shutdown.
+   *
+   * @param hardDeadlineTS Optional absolute wall-clock hard cap (ms since
+   *        epoch, Issue #2901). Once the current time is past this cap, the
+   *        wait is abandoned: any queued replay is dropped and the in-flight
+   *        replay is signalled to abort cooperatively. The method then returns
+   *        without awaiting further work. When omitted (or `<= 0`) the wait is
+   *        unbounded, preserving the Issue #1509 guarantee for uncapped runs.
    */
-  async waitForCompletion(): Promise<void> {
+  async waitForCompletion(hardDeadlineTS?: number): Promise<void> {
+    const capped = hardDeadlineTS !== undefined && hardDeadlineTS > 0;
     // Collect all promises to wait for rather than awaiting in loop
     while (this.#currentPromise || this.#queuedCreature) {
+      // Issue #2901: stop waiting at the hard cap. Drop the queued replay so it
+      // never starts, signal the in-flight replay to abort, and return without
+      // awaiting — the abandoned replay stops at its next candidate boundary.
+      if (capped && Date.now() >= hardDeadlineTS!) {
+        this.#queuedCreature = null;
+        this.#currentAbort?.abort();
+        return;
+      }
       const promiseToWait = this.#currentPromise;
       if (promiseToWait) {
         // deno-lint-ignore no-await-in-loop
