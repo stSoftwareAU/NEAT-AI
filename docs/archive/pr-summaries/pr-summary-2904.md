@@ -4,17 +4,16 @@ The Publish workflow was hanging on routine pushes to Develop. Every push to
 Develop triggers `.github/workflows/publish.yml`, but the package `version` in
 `deno.json` only changes on a release commit. When the version is unchanged,
 `npx jsr publish` re-attempts an already-published version and hangs the CLI
-until the 15-minute job timeout cancels it — exactly the
-**"Publish / publish (push) — Cancelled after 15m"** seen in the issue
-screenshot.
+until the 15-minute job timeout cancels it — exactly the **"Publish / publish
+(push) — Cancelled after 15m"** seen in the issue screenshot.
 
 Two guards now prevent this:
 
 1. **Explicit Develop branch guard** — the publish job carries
    `if: github.ref == 'refs/heads/Develop'`. The push trigger already restricts
    to Develop, but the explicit guard makes the requirement unambiguous so the
-   job never runs on any other ref (the issue's literal ask: *should not be
-   attempting to publish unless on the Develop branch*).
+   job never runs on any other ref (the issue's literal ask: _should not be
+   attempting to publish unless on the Develop branch_).
 2. **Version-already-published gate** — a new step queries the JSR version meta
    endpoint (`https://jsr.io/<name>/<version>_meta.json`): HTTP 200 means the
    version is already published (skip), 404 means it is new (publish). The
