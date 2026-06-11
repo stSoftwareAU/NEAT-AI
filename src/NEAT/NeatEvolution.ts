@@ -48,8 +48,8 @@ import {
 import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
 import { selectTrainingCandidates } from "@neat/TrainingCandidates.ts";
 import {
+  applySeedWarmupTagsAtSave,
   isSeedWarmupStructuralLockActive,
-  writeSeedWarmupProgressTags,
 } from "@architecture/CreatureFactory.ts";
 
 /**
@@ -987,13 +987,15 @@ export async function evolve(
     );
   }
 
-  if (neat.warmupGenerations > 0) {
-    writeSeedWarmupProgressTags(
-      fittest,
-      neat.warmupGenerations,
-      neat.currentGeneration,
-    );
-  }
+  // Issue #2909: stamp warm-up tags only at this save boundary while warming,
+  // and strip both once warm (or when warm-up was never configured) so the
+  // returned fittest never carries stale warm-up state. The fittest is already
+  // a clone, so tagging it directly is safe.
+  applySeedWarmupTagsAtSave(
+    fittest,
+    neat.warmupGenerations,
+    neat.currentGeneration,
+  );
 
   return {
     fittest: fittest,
