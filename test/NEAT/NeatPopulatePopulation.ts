@@ -215,6 +215,100 @@ Deno.test("populatePopulation: works with existing population", async () => {
   }
 });
 
+Deno.test("populatePopulation: seeds counter from saved currentGeneration tag (resume)", async () => {
+  // Issue #2908: the lineage-accumulated generation counter must resume from
+  // the saved tag value so a run can pick up where the previous one left off.
+  const dataDir = createTestDataDir(3, 2);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 5 };
+    const neat = new Neat(3, 2, options, workers);
+
+    const seedCreature = creatureForProblem({
+      inputs: 3,
+      outputs: 2,
+      cost: "MSE",
+      warmupGenerations: 1440,
+    });
+    addTag(seedCreature, CURRENT_GENERATION_TAG, "42");
+
+    await neat.populatePopulation(seedCreature);
+
+    assertEquals(
+      neat.currentGeneration,
+      42,
+      "Counter should resume from the saved tag value",
+    );
+
+    // The next generation increments to 43 (single increment writer).
+    neat.currentGeneration++;
+    assertEquals(
+      neat.currentGeneration,
+      43,
+      "Next generation should increment to 43",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("populatePopulation: never lowers an already-higher in-memory counter", async () => {
+  // Issue #2908: seeding is monotonic-max — a lower saved tag must not reset
+  // a counter that has already accumulated further this run.
+  const dataDir = createTestDataDir(3, 2);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 5 };
+    const neat = new Neat(3, 2, options, workers);
+    neat.currentGeneration = 100;
+
+    const seedCreature = creatureForProblem({
+      inputs: 3,
+      outputs: 2,
+      cost: "MSE",
+      warmupGenerations: 1440,
+    });
+    addTag(seedCreature, CURRENT_GENERATION_TAG, "7");
+
+    await neat.populatePopulation(seedCreature);
+
+    assertEquals(
+      neat.currentGeneration,
+      100,
+      "A lower saved tag must not lower the in-memory counter",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("populatePopulation: missing tag leaves a higher in-memory counter untouched", async () => {
+  // Issue #2908: a seed with no currentGeneration tag must not reset the
+  // counter to zero.
+  const dataDir = createTestDataDir(3, 2);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 5 };
+    const neat = new Neat(3, 2, options, workers);
+    neat.currentGeneration = 50;
+
+    const seedCreature = new Creature(3, 2, { layers: [{ count: 3 }] });
+
+    await neat.populatePopulation(seedCreature);
+
+    assertEquals(
+      neat.currentGeneration,
+      50,
+      "A missing tag must not lower the in-memory counter",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
 Deno.test("populatePopulation: restores warm-up tags from seed creature", async () => {
   const dataDir = createTestDataDir(3, 2);
   const workers = createTestWorkers(dataDir);
