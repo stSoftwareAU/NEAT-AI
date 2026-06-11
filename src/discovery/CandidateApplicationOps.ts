@@ -9,6 +9,7 @@
  */
 
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { appendAll, insertAll } from "@utils/ArrayAppend.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { assertNoRecurrentSynapseOnForwardOnly } from "@architecture/ForwardOnlyAssertion.ts";
 import {
@@ -61,7 +62,9 @@ export function applyAddSynapses(
   );
   if (newSynapses.length === 0) return undefined;
 
-  creatureJSON.synapses.push(...newSynapses);
+  // Issue #2900: stack-safe append; newSynapses scales with candidate
+  // connection count, so spreading risks RangeError on large networks.
+  appendAll(creatureJSON.synapses, newSynapses);
   // Issue #2514: candidate creatures may carry intentionally illegal
   // hints (forward-only filter happens here, but also above on a
   // best-effort basis). Opt out of the load-side throw so the
@@ -162,7 +165,9 @@ export function applyAddNeurons(
     const insertAt = firstOutputIndex >= 0
       ? firstOutputIndex
       : mergedNeurons.length;
-    mergedNeurons.splice(insertAt, 0, ...remaining);
+    // Issue #2900: stack-safe insertion; `remaining` scales with candidate
+    // neuron count, so spreading into splice risks RangeError on large networks.
+    insertAll(mergedNeurons, insertAt, remaining);
     for (const neuron of remaining) inserted.add(neuron.id!);
   }
 
@@ -196,7 +201,9 @@ export function applyAddNeurons(
           return from !== undefined && to !== undefined && from < to;
         })()),
   );
-  creatureJSON.synapses.push(...newSynapses);
+  // Issue #2900: stack-safe append; newSynapses scales with candidate
+  // connection count, so spreading risks RangeError on large networks.
+  appendAll(creatureJSON.synapses, newSynapses);
 
   // Issue #2514: candidate creatures may still hold filtered-but-not-yet-pruned
   // recurrent hints. Opt out of the load-side throw — the combiner is the
@@ -331,7 +338,9 @@ export function applyRemoveSynapse(
     );
   }
 
-  creatureJSON.synapses.push(...toAdd);
+  // Issue #2900: stack-safe append; toAdd scales with candidate connection
+  // count, so spreading risks RangeError on large networks.
+  appendAll(creatureJSON.synapses, toAdd);
 
   // Issue #2514: candidate creatures may still hold filtered-but-not-yet-pruned
   // recurrent hints. Opt out of the load-side throw.
@@ -432,7 +441,9 @@ export function applyRemoveNeuron(
 
   if (toRemove.size === 0 && toAdd.length === 0) return creature;
 
-  creatureJSON.synapses.push(...toAdd);
+  // Issue #2900: stack-safe append; toAdd scales with candidate connection
+  // count, so spreading risks RangeError on large networks.
+  appendAll(creatureJSON.synapses, toAdd);
 
   // Issue #2514: candidate creatures may still hold filtered-but-not-yet-pruned
   // recurrent hints. Opt out of the load-side throw.
