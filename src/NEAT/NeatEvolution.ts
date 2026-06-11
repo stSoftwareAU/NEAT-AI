@@ -368,6 +368,10 @@ export async function evolve(
         neat.dataDir,
         neat.config,
         trainingTimeOutMinutes > 0 ? trainingTimeOutMinutes : undefined,
+        {
+          warmupGenerations: neat.warmupGenerations,
+          currentGeneration: neat.currentGeneration,
+        },
       );
     }
   }
