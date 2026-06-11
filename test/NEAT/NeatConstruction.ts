@@ -286,6 +286,14 @@ Deno.test("NeatConstruction: timeout is set when timeoutMinutes provided", async
       neat.endTimeTS > Date.now(),
       "endTimeTS should be in the future",
     );
+    // Issue #2895: hardDeadlineTS must be endTimeTS plus the clamped grace.
+    // For timeoutMinutes=5, grace = min(15, max(1, 5)) = 5 minutes. Asserting
+    // the offset from endTimeTS keeps the check independent of the clock.
+    assertEquals(
+      neat.hardDeadlineTS - neat.endTimeTS,
+      5 * 60_000,
+      "hardDeadlineTS should be endTimeTS + 5 minutes of grace",
+    );
   } finally {
     await terminateWorkers(workers);
   }
@@ -306,6 +314,12 @@ Deno.test("NeatConstruction: timeout is zero when not provided", async () => {
       neat.endTimeTS,
       0,
       "endTimeTS should be 0 when no timeout",
+    );
+    // Issue #2895: hardDeadlineTS mirrors endTimeTS — both 0 when no timeout.
+    assertEquals(
+      neat.hardDeadlineTS,
+      0,
+      "hardDeadlineTS should be 0 when no timeout",
     );
   } finally {
     await terminateWorkers(workers);
