@@ -222,25 +222,30 @@ export function selectParent(
   ranking: FitnessRanking,
   config: NeatConfig,
 ): Creature {
+  // Issue #2929: selection-pressure knobs now come from config instead of
+  // the hardcoded Selection singletons. Defaults reproduce prior behaviour.
+  const sp = config.selectionPressure;
   switch (config.selection) {
     case Selection.POWER: {
-      return ranking.selectPower(Selection.POWER.power);
+      return ranking.selectPower(sp.power);
     }
     case Selection.FITNESS_PROPORTIONATE: {
       return ranking.selectFitnessProportionate();
     }
     case Selection.TOURNAMENT: {
       // Issue #1019: Use adaptive tournament size that scales with population
-      // instead of fixed size of 5. This improves selection pressure for
-      // large populations and reduces variance for small populations.
-      const adaptiveSize = calculateAdaptiveTournamentSize(
-        ranking.sortedPopulation.length,
-      );
+      // instead of a fixed size. This improves selection pressure for large
+      // populations and reduces variance for small populations. Issue #2929:
+      // the bounds (and the adaptive toggle / fixed size) are configurable.
+      const size = sp.adaptiveTournament
+        ? calculateAdaptiveTournamentSize(ranking.sortedPopulation.length, {
+          minSize: sp.adaptiveTournamentMinSize,
+          sqrtExponent: sp.adaptiveTournamentSqrtExponent,
+          capFraction: sp.adaptiveTournamentCapFraction,
+        })
+        : sp.tournamentSize;
 
-      return ranking.selectTournament(
-        adaptiveSize,
-        Selection.TOURNAMENT.probability,
-      );
+      return ranking.selectTournament(size, sp.tournamentProbability);
     }
     default: {
       throw new ValidationError(

@@ -41,6 +41,7 @@ export {
   parsePredictiveCoding,
   parseQuantumStep,
 } from "@config/parsers/TrainingParsers.ts";
+export { parseSelectionPressure } from "@config/parsers/SelectionParsers.ts";
 export {
   parseBiasRegularisation,
   parseWeightRegularisation,

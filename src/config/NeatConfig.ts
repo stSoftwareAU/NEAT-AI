@@ -59,6 +59,7 @@ import {
   parsePlateauDetection,
   parsePredictiveCoding,
   parseQuantumStep,
+  parseSelectionPressure,
   parseSpecialist,
   parseSpeciesStagnation,
   parseSquashEffectiveness,
@@ -729,6 +730,12 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         opts.compatibilityGating as Record<string, unknown> | undefined,
         dnaPreset.compatibilityGating,
       ),
+    ),
+
+    // Issue #2929: Parse selection-pressure configuration (POWER exponent,
+    // tournament size/probability, adaptive-tournament bounds).
+    selectionPressure: parseSelectionPressure(
+      opts.selectionPressure as Record<string, unknown> | undefined,
     ),
 
     // Issue #2492: Knob-tuning preset for inter-island DNA sharing.

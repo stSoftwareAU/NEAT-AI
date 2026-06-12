@@ -437,6 +437,42 @@ performers. Higher pressure means faster convergence but risks losing diversity.
 - **Adaptive mutation** adjusts these automatically based on creature size — see
   [Adaptive Mutation Thresholds](#adaptive-mutation-thresholds) below.
 
+#### Tunable selection-pressure knobs (`selectionPressure`)
+
+Issue #2929 exposes the previously hardcoded selection-pressure parameters
+through `selectionPressure`. Every default reproduces the prior behaviour, so
+existing runs are unchanged unless a knob is overridden. These knobs apply to
+the active `selection` strategy (`POWER` or `TOURNAMENT`).
+
+| Parameter                                          | Default | Description                                                                        |
+| -------------------------------------------------- | ------- | ---------------------------------------------------------------------------------- |
+| `selectionPressure.power`                          | `4`     | POWER selection exponent. Higher → stronger bias towards the top-ranked creatures. |
+| `selectionPressure.tournamentSize`                 | `5`     | Fixed tournament size used when `adaptiveTournament` is `false`.                   |
+| `selectionPressure.tournamentProbability`          | `0.5`   | Probability of picking the best tournament participant. Higher → more pressure.    |
+| `selectionPressure.adaptiveTournament`             | `true`  | Scale tournament size with population size instead of using `tournamentSize`.      |
+| `selectionPressure.adaptiveTournamentMinSize`      | `3`     | Floor for the adaptive tournament size.                                            |
+| `selectionPressure.adaptiveTournamentSqrtExponent` | `0.5`   | Population scaling exponent: `floor(pop ^ exponent)`. `0.5` = square-root scaling. |
+| `selectionPressure.adaptiveTournamentCapFraction`  | `0.1`   | Cap as a fraction of population: `floor(pop * fraction)`.                          |
+
+**Recommendations**:
+
+- **For faster convergence (more exploitation)**: raise `power` (e.g. 6–12),
+  raise `tournamentProbability` towards `1.0`, or raise
+  `adaptiveTournamentSqrtExponent`/`adaptiveTournamentCapFraction` so larger
+  tournaments form. This selects the best creatures more often.
+- **For longer exploration**: lower `power` (e.g. 1–3), lower
+  `tournamentProbability`, or shrink the adaptive bounds. This keeps weaker
+  creatures in the breeding pool for longer.
+- All values are validated at config time; out-of-range input (e.g.
+  `power <= 0`, `tournamentProbability > 1`) is rejected with a clear error.
+
+```ts
+const neat = new Neat(input, output, fitness, {
+  selection: Selection.POWER,
+  selectionPressure: { power: 8 }, // stronger exploitation
+});
+```
+
 ### 🔄 Adaptive Mutation Thresholds
 
 Large creatures (many neurons) are more fragile — random topology changes are

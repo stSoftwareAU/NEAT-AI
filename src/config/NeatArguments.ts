@@ -9,6 +9,7 @@ import type { MutationInterface } from "@neat/MutationInterface.ts";
 import type { RequiredPlateauDetectionConfig } from "@neat/PlateauDetector.ts";
 import type { RequiredAdaptiveMutationThresholds } from "@config/AdaptiveMutationThresholds.ts";
 import type { RequiredCompatibilityGatingConfig } from "@config/CompatibilityGatingConfig.ts";
+import type { RequiredSelectionPressureConfig } from "@config/SelectionPressureConfig.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import type { RequiredEnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
@@ -973,6 +974,28 @@ export interface NeatArguments {
    *   fallback (default: 3)
    */
   compatibilityGating: RequiredCompatibilityGatingConfig;
+
+  /**
+   * Selection-pressure configuration (Issue #2929).
+   *
+   * Exposes the previously hardcoded selection-pressure knobs so the
+   * exploration/exploitation trade-off can be tuned per problem:
+   * - power: POWER selection exponent (default: 4; higher biases harder
+   *   towards top-ranked creatures)
+   * - tournamentSize: fixed tournament size when adaptive sizing is off
+   *   (default: 5)
+   * - tournamentProbability: probability of picking the best participant
+   *   (default: 0.5)
+   * - adaptiveTournament: scale tournament size with population (default: true)
+   * - adaptiveTournamentMinSize: floor for adaptive size (default: 3)
+   * - adaptiveTournamentSqrtExponent: population scaling exponent
+   *   (default: 0.5, i.e. square-root scaling)
+   * - adaptiveTournamentCapFraction: cap as a fraction of population
+   *   (default: 0.1)
+   *
+   * Every default reproduces the prior hardcoded behaviour exactly.
+   */
+  selectionPressure: RequiredSelectionPressureConfig;
 
   /**
    * Tolerate corrupt parents during breeding (Issue #2523).

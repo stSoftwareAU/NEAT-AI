@@ -190,6 +190,22 @@ export type {
 export { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "@config/AdaptivePopulationConfig.ts";
 
 /**
+ * Selection-pressure configuration (Issue #2929)
+ *
+ * Exposes the previously hardcoded selection-pressure knobs — the POWER
+ * selection exponent, the tournament size and probability, and the
+ * adaptive-tournament bounds — through the standard config surface. Every
+ * default reproduces the prior behaviour exactly.
+ *
+ * @see {@link module:src/config/SelectionPressureConfig}
+ */
+export type {
+  RequiredSelectionPressureConfig,
+  SelectionPressureConfig,
+} from "@config/SelectionPressureConfig.ts";
+export { DEFAULT_SELECTION_PRESSURE_CONFIG } from "@config/SelectionPressureConfig.ts";
+
+/**
  * Parallel Batch Creature Evaluation
  *
  * Issue #1862: Controls topology-aware grouping and concurrency
