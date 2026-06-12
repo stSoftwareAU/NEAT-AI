@@ -802,6 +802,7 @@ The most relevant scripts are:
 | Production-scale evolveDir profile   | `bench/ProductionScaleEvolveDirProfile.ts`                               |
 | WASM activation                      | `bench/ActivateWasm.ts`, `bench/Activate.ts`                             |
 | Distance / compatibility cache       | `bench/DistanceCacheHitRate.ts`                                          |
+| Pace-lever head-to-head comparison   | `bench/EvolutionPaceLeverComparison.ts`                                  |
 
 Run any benchmark with:
 
@@ -866,6 +867,117 @@ faster fitness phase) and idle drops 97%. Ordering overhead is sub-millisecond
 (`deno bench bench/FitnessDispatchOrdering.ts`) and the uniform-topology path
 (`bench/ParallelFitnessEvaluation.ts`) is unchanged, since equal-cost creatures
 leave the makespan untouched.
+
+## 🎚️ OFF-by-default Pace Levers — Head-to-Head (Issue #2931)
+
+NEAT-AI ships several OFF-by-default "pace levers", each with its own per-lever
+bench that measures it **in isolation**:
+
+- `bench/AdaptivePopulationSizing.ts` — adaptive population sizing,
+- `bench/TrainPerGenConvergence.ts` — per-generation training depth,
+- `bench/MCMCAdvantageConvergence.ts` — MCMC mutation acceptance,
+- `bench/AdaptiveLearningRateConvergence.ts` — learning-rate schedules,
+- `bench/ParallelFitnessEvaluation.ts` — parallel fitness evaluation.
+
+What was missing was a **single experiment** running the _same_ fixed problem
+under multiple lever configurations so "which should we turn on?" could be
+answered with data instead of intuition.
+
+### Harness
+
+`bench/EvolutionPaceLeverComparison.ts` is a deterministic, seeded A/B harness.
+It builds one fixed supervised problem (a small dense network learning a fixed
+logistic mapping, identical seeded initial population and dataset) and evolves
+it under a matrix of configurations, reporting generations-to-`targetError`,
+wall-clock, and best error for each. Where a lever has a real production
+entrypoint, the harness calls it directly so the comparison measures library
+behaviour rather than a stand-in:
+
+- `mcmc` → `metropolisHastingsAccept` (`@neat/MetropolisHastings.ts`),
+- `adaptivePopulation` → `computeAdaptivePopulationSize`
+  (`@neat/AdaptivePopulationSizer.ts`),
+- `hyperparameterEvolution` → `createDefaultHyperparameters` /
+  `mutateHyperparameters` (`@neat/HyperparameterEvolution.ts`).
+
+`plateauDetection` is modelled directly (window-based stall detection plus
+random-immigrant injection). The run is pure measurement — **no
+production/runtime code is changed**. `generationsToTarget` and `bestError` are
+fully reproducible across runs; only wall-clock varies.
+
+```mermaid
+flowchart LR
+    P[Fixed seeded problem<br/>shared initial population] --> M{Lever matrix}
+    M --> B[baseline]
+    M --> PD[plateauDetection]
+    M --> AP[adaptivePopulation]
+    M --> MC[mcmc]
+    M --> HP[hyperparameterEvolution]
+    M --> F[fast = PD + mcmc + HP]
+    B & PD & AP & MC & HP & F --> R[generations-to-target<br/>wall-clock · best error]
+```
+
+### Results (reproducible)
+
+`deno run --allow-read --allow-env --allow-ffi
+bench/EvolutionPaceLeverComparison.ts`
+— population 24, 60 generations, 48-sample dataset, `targetError = 0.05`, seed
+2931:
+
+| config                  | generations-to-target | wall-clock ms | best error |
+| ----------------------- | --------------------- | ------------- | ---------- |
+| baseline                | 18                    | 562.2         | 0.049757   |
+| plateauDetection        | 14                    | 413.6         | 0.049974   |
+| adaptivePopulation      | 20                    | 610.2         | 0.047773   |
+| mcmc                    | 14                    | 417.3         | 0.044555   |
+| hyperparameterEvolution | 9                     | 268.1         | 0.045144   |
+| fast (combined)         | 11                    | 329.0         | 0.045903   |
+
+Convergence vs baseline (fewer generations is better):
+
+- `hyperparameterEvolution` — **9 generations, 50% faster** than baseline, and
+  the lowest wall-clock. Strongest single lever on this problem.
+- `mcmc` — 14 generations, **22% faster**, and the best final error (0.0446).
+  The Metropolis-Hastings acceptance lets the search ride over shallow local
+  optima.
+- `plateauDetection` — 14 generations, **22% faster**. Random-immigrant
+  injection only fires when progress stalls, so it is cheap when it is not
+  needed.
+- `fast (combined = plateauDetection + mcmc + hyperparameterEvolution)` — 11
+  generations, **39% faster**. Faster than baseline and than every lever except
+  `hyperparameterEvolution` alone: stacking levers compounds their per-step
+  stochasticity, so the combination is _not_ simply the sum of the best
+  individual gains on this problem.
+- `adaptivePopulation` — 20 generations, **11% slower**. Growing the population
+  under low diversity spreads the fixed per-generation training budget across
+  more creatures, delaying convergence on a problem that benefits from
+  concentrated training. It pays off for diversity/escape, not raw convergence
+  speed.
+
+The effect ordering is stable as the target is tightened (harder targets widen
+the gaps); e.g. at `targetError = 0.04`, baseline = 24 generations while
+`hyperparameterEvolution` = 10 (58% faster) and `adaptivePopulation` stays at
+the baseline 24.
+
+### Recommendation
+
+- **Turn on `hyperparameterEvolution`** for convergence-bound runs — it is the
+  single biggest pace win here (50% fewer generations, lowest wall-clock) and
+  degrades gracefully (per-creature search around the existing defaults).
+- **Turn on `mcmc`** where final solution quality matters — it reaches the best
+  error and is a clear convergence win.
+- **Keep `plateauDetection` available** as a cheap stall-escape; it helps and
+  costs nothing when no plateau is detected.
+- **Leave `adaptivePopulation` OFF by default for convergence-bound runs.** It
+  slows raw convergence here; enable it only when population diversity or
+  stagnation escape is the goal, not generations-to-target.
+- The combined **fast** profile is a reasonable opinionated default (39% faster
+  than baseline), but on convergence-bound problems `hyperparameterEvolution`
+  alone is faster — prefer it when convergence speed is the sole objective.
+
+These are recommendations from a single deterministic micro-benchmark; they
+_inform_ default changes (e.g. #2928) but do not, by themselves, change any
+default. Re-run the harness on a representative problem before flipping a
+production default.
 
 ## 📚 See Also
 
