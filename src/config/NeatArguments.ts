@@ -14,6 +14,7 @@ import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCand
 import type { RequiredEnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 import type { RequiredFitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
+import type { RequiredNoveltyConfig } from "@config/NoveltyConfig.ts";
 import type { RequiredSpeciesStagnationConfig } from "@config/SpeciesStagnationConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "@config/StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "@config/QuantumStepConfig.ts";
@@ -937,6 +938,21 @@ export interface NeatArguments {
    * - minSpeciesSlots: Floor for per-species breeding slots (default: 1)
    */
   fitnessSharing: RequiredFitnessSharingConfig;
+
+  /**
+   * Novelty (behavioural-diversity) selection configuration (Issue #2932).
+   * OFF by default. When `enabled`, ranking blends fitness with a
+   * k-nearest-neighbour novelty score over per-creature behaviour
+   * descriptors to escape deceptive local optima.
+   * Configuration options:
+   * - enabled: Whether novelty selection is active (default: false)
+   * - weight: Blend weight in score' = (1-w)*fitness + w*novelty (default: 0.5)
+   * - neighbours: k nearest neighbours for the novelty score (default: 15)
+   * - archiveLimit: Maximum behaviours retained in the archive (default: 500)
+   * - addThreshold: Minimum novelty to admit to the archive (default: 0)
+   * - behaviourTag: Tag holding the behaviour descriptor (default: "behaviour")
+   */
+  novelty: RequiredNoveltyConfig;
 
   /**
    * Species stagnation detection and breeding-budget reclamation

@@ -15,6 +15,10 @@ import {
   findFather,
   selectParent,
 } from "@breed/ParentSelection.ts";
+import {
+  buildNoveltyBlendedScores,
+  type NoveltySearch,
+} from "@neat/NoveltySearch.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
@@ -65,15 +69,26 @@ export class Breed {
   lastCorruptParentSkips = 0;
 
   /**
+   * Persistent novelty search engine (Issue #2932). Provided by the owning
+   * `Neat` so its archive accumulates across generations. `undefined` when
+   * novelty selection is not wired in (e.g. direct/test construction).
+   */
+  private readonly noveltySearch?: NoveltySearch;
+
+  /**
    * Creates a new Breed instance.
    *
    * @param genus - The genus containing the population
    * @param config - NEAT configuration options (used directly, no re-parsing)
+   * @param noveltySearch - Optional persistent novelty engine (Issue #2932).
+   *   When supplied and `config.novelty.enabled`, mother-selection ranking
+   *   blends fitness with behavioural novelty.
    */
-  constructor(genus: Genus, config: NeatConfig) {
+  constructor(genus: Genus, config: NeatConfig, noveltySearch?: NoveltySearch) {
     this.genus = genus;
     this.options = { ...config };
     this.cachedConfig = config;
+    this.noveltySearch = noveltySearch;
   }
 
   /**
@@ -130,6 +145,30 @@ export class Breed {
     } else if (config.fitnessSharing.enabled) {
       scoreOverride = buildAdjustedFitnessMap(this.genus);
     }
+
+    // Issue #2932: When novelty selection is enabled, blend the base score
+    // (raw fitness, or whatever override was chosen above) with a
+    // behavioural-novelty score so the population can escape deceptive
+    // local optima. No-op when no pre-computed ranking is reused and the
+    // population lacks behaviour descriptors.
+    if (
+      config.novelty.enabled && this.noveltySearch && !populationRanking
+    ) {
+      const base = scoreOverride;
+      const blended = buildNoveltyBlendedScores(
+        this.genus.population,
+        (creature) => {
+          const override = base?.get(creature.uuid!);
+          if (override !== undefined && Number.isFinite(override)) {
+            return override;
+          }
+          return Number.isFinite(creature.score) ? creature.score! : 0;
+        },
+        this.noveltySearch,
+      );
+      if (blended) scoreOverride = blended;
+    }
+
     const ranking = populationRanking ??
       new FitnessRanking(this.genus.population, scoreOverride);
 

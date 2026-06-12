@@ -135,6 +135,10 @@ Subsystems that only some users need.
   the migration path for the five episodic examples in NEAT-AI-Examples.
 - **[dna-sharing-bake-off-results.md](dna-sharing-bake-off-results.md)** —
   bake-off comparison of inter-island DNA-sharing primitives (Issue #2496).
+- **[NOVELTY_SEARCH.md](NOVELTY_SEARCH.md)** — optional novelty
+  (behavioural-diversity) selection to escape deceptive landscapes: behaviour
+  descriptors, the bounded archive, the kNN novelty score, and the
+  fitness/novelty blend (Issue #2932).
 
 ## 🏛️ Governance and core dependency
 
