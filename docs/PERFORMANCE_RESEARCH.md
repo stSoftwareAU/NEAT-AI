@@ -813,6 +813,60 @@ If a number in this guide no longer matches a fresh local run, **update the
 table and add a follow-up note** rather than deleting the prior figure — history
 matters for negative-result investigations.
 
+## ⏱️ Fitness-Phase Worker Idle Time (Issue #2934)
+
+**Goal:** raise wall-clock throughput (generations/hour) by cutting
+per-generation worker idle time during the fitness phase, using the existing
+throughput metrics (`fastIdleMs`, `heavyIdleMs`, …) to guide the change.
+
+### Profiling finding — dominant idle source
+
+The fitness phase already balances load _during_ the phase: workers pull from a
+single shared front pointer (`Fitness.calculate`), so a free worker always takes
+the next creature. The remaining idle is the **makespan tail** — near the end of
+the phase fewer creatures remain than there are workers, so workers fall idle
+waiting for the last evaluations to finish. When creature cost varies (a few
+large topologies among many small ones, the typical NEAT-AI generation shape), a
+single expensive creature scheduled late forces every other worker to wait for
+it. Topology grouping (Issue #1862) sorts by topology _hash_, which is
+uncorrelated with cost, so it does nothing to shorten this tail.
+
+So the dominant idle source is **load imbalance in the tail caused by
+cost-agnostic task ordering** — not serialisation and not the fitness→breed
+barrier.
+
+### Change — cost-aware (LPT) queue ordering
+
+`src/multithreading/EvaluationScheduling.ts` orders the evaluation queue
+**longest-processing-time-first** (LPT): expensive creatures start early so the
+tail is filled with cheap ones. Cost is proxied by `neurons + synapses`
+(constant per topology). Topology grouping is preserved as a tiebreak — same
+topology ⇒ same cost, so `(cost desc, hash asc)` keeps same-topology creatures
+contiguous for WASM-cache reuse while still front-loading heavy blocks. The
+ordering is a pure function of topology, so scores and seeded-run determinism
+are unchanged.
+
+### Before / after (reproducible)
+
+`deno run --allow-read --allow-env bench/FitnessDispatchOrdering.ts` simulates
+the exact pull-queue scheduling for a representative 100-creature generation
+(total cost 810) under the baseline (cost-agnostic) order versus the cost-aware
+order:
+
+| workers | makespan before | makespan after | idle before | idle after | idle reduction |
+| ------- | --------------- | -------------- | ----------- | ---------- | -------------- |
+| 2       | 420             | 408            | 30          | 6          | 80.0%          |
+| 4       | 222             | 204            | 78          | 6          | 92.3%          |
+| 8       | 126             | 102            | 198         | 6          | 97.0%          |
+| 16      | 78              | 54             | 438         | 54         | 87.7%          |
+
+Makespan is the fitness-phase wall-clock; a shorter makespan means more
+generations/hour. At 8 workers the makespan drops 126 → 102 cost units (≈19%
+faster fitness phase) and idle drops 97%. Ordering overhead is sub-millisecond
+(`deno bench bench/FitnessDispatchOrdering.ts`) and the uniform-topology path
+(`bench/ParallelFitnessEvaluation.ts`) is unchanged, since equal-cost creatures
+leave the makespan untouched.
+
 ## 📚 See Also
 
 - [PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md) — Operational tuning guide
