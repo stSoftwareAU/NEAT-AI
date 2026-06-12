@@ -7,7 +7,9 @@
 
 import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
-import type { Creature } from "@creature";
+import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { injectRandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { DeDuplicator } from "@architecture/DeDuplicator.ts";
 import {
   makeElitists,
@@ -743,6 +745,49 @@ export async function evolve(
     ...newPopulation,
     ...dnaPopulation,
   ]; // Keep pseudo sorted.
+
+  // Issue #2933: On a sustained plateau, inject fresh genomes (random
+  // immigrants) in place of the weakest non-elite creatures. Elites (the
+  // leading `elitists.length` entries) are always preserved. This adds new
+  // genetic material — complementing the mutation-rate boost above — to help
+  // the population escape a stagnation trap. OFF by default: a no-op unless
+  // `randomImmigrants.enabled`.
+  if (
+    neat.randomImmigrants.shouldInject(
+      neat.plateauDetector.getGenerationsOnPlateau(),
+      neat.currentGeneration,
+    )
+  ) {
+    const immigrantCount = neat.randomImmigrants.immigrantCount(
+      neat.population.length,
+      elitists.length,
+    );
+    const feedbackEnabled = fittest.forwardOnly === false;
+    const makeImmigrant = (): Creature => {
+      const immigrant = new Creature(fittest.input, fittest.output, {
+        feedbackEnabled,
+      });
+      CreatureUtil.makeUUID(immigrant);
+      return immigrant;
+    };
+    const injection = injectRandomImmigrants(
+      neat.population,
+      elitists.length,
+      immigrantCount,
+      makeImmigrant,
+    );
+    if (injection.injected > 0) {
+      neat.randomImmigrants.recordInjection(neat.currentGeneration);
+      if (neat.config.verbose) {
+        getLogger().info(
+          `[RandomImmigrants] Injected ${injection.injected} fresh genome(s) ` +
+            `on plateau ` +
+            `(${neat.plateauDetector.getGenerationsOnPlateau()} generations), ` +
+            `preserving ${elitists.length} elite(s)`,
+        );
+      }
+    }
+  }
 
   // Issue #1099: Single-pass de-duplication on the combined population
   // Issue #2274: Time de-duplication phase

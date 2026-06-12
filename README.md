@@ -239,6 +239,26 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
     default** — opt-in via `novelty: { enabled: true }` and set a `behaviour`
     tag on each creature. See [Novelty Search](./docs/NOVELTY_SEARCH.md).
 
+24. **Random Immigrants (Fresh Genomes on a Plateau)**: When the population
+    stalls, boosting the mutation rate only perturbs the _existing_ genomes — it
+    adds no new genetic material. Driven by the existing plateau signal,
+    random-immigrant injection replaces the weakest _non-elite_ creatures with
+    freshly seeded genomes once the population has been on a plateau for
+    `triggerWindow` generations, then waits `cooldown` generations before
+    injecting again. Elites are always preserved. **OFF by default** — opt-in
+    via `randomImmigrants: { enabled: true }`. Tune `injectionFraction` (the
+    fraction of non-elites replaced), `triggerWindow`, and `cooldown`.
+
+    ```mermaid
+    flowchart LR
+        A[Generation] --> B{On plateau for<br/>triggerWindow gens?}
+        B -- no --> E[Breed + mutate as usual]
+        B -- yes --> C{Cooldown<br/>elapsed?}
+        C -- no --> E
+        C -- yes --> D[Replace weakest non-elites<br/>with fresh genomes<br/>elites preserved]
+        D --> E
+    ```
+
 ## 🚀 Quick Start
 
 ```typescript

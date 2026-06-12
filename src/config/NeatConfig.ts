@@ -60,6 +60,7 @@ import {
   parsePlateauDetection,
   parsePredictiveCoding,
   parseQuantumStep,
+  parseRandomImmigrants,
   parseSelectionPressure,
   parseSpecialist,
   parseSpeciesStagnation,
@@ -721,6 +722,10 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #2932: Parse novelty (behavioural-diversity) configuration
     novelty: parseNovelty(
       opts.novelty as Record<string, unknown> | undefined,
+    ),
+    // Issue #2933: Parse random-immigrants configuration
+    randomImmigrants: parseRandomImmigrants(
+      opts.randomImmigrants as Record<string, unknown> | undefined,
     ),
     // Issue #2454: Parse species stagnation configuration
     speciesStagnation: parseSpeciesStagnation(

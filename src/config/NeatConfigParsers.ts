@@ -34,6 +34,7 @@ export {
   parseFineTunePopulation,
   parseFitnessSharing,
   parseNovelty,
+  parseRandomImmigrants,
   parseSpeciesStagnation,
 } from "@config/parsers/PopulationParsers.ts";
 export {
