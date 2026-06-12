@@ -7,6 +7,7 @@ import {
 import { ValidationError } from "@errors/ValidationError.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { orderForEvaluation } from "@multithreading/EvaluationScheduling.ts";
 import { calculate as calculateScore } from "@architecture/Score.ts";
 import { tryBatchScoreWithRustScorer } from "../score/BatchRustScorerBridge.ts";
 import { getEnvRustScorerConfig } from "../score/RustScorerBridge.ts";
@@ -312,27 +313,24 @@ export class Fitness {
       // worker path already covers every recurrent creature.
     }
 
-    // Issue #1862: Sort by topology hash to cluster same-topology creatures.
-    // This improves WASM compilation cache hit rates because workers pull
-    // from the front of the queue, so same-topology creatures flow to the
-    // same worker via the work-stealing pattern.
-    // Issue #2123: Avoid unnecessary array copy. When grouping is disabled,
-    // use the worker queue directly. When enabled, pre-compute hashes into a
-    // Map for O(1) lookups during sort instead of O(n log n) hash
-    // computations.
+    // Issue #2934: Cost-aware ordering of the evaluation queue. Creatures are
+    // sorted longest-cost-first (LPT) so the most expensive evaluations start
+    // early and the makespan "tail" — where workers fall idle waiting for the
+    // last few evaluations — is filled with cheap creatures. This reduces the
+    // per-generation `fastIdleMs`/`heavyIdleMs` reported by the throughput
+    // metrics layer without changing any score (the ordering is a pure
+    // function of topology, so seeded runs stay deterministic).
+    //
+    // Issue #1862: Topology grouping is preserved as a tiebreak — same-topology
+    // creatures share a cost, so cost-then-hash ordering keeps them contiguous
+    // for WASM compilation cache reuse while still front-loading heavy blocks.
     // Issue #2517: `creaturesForWorkerPath` excludes any creatures already
     // scored by the batch path; it is identical to `uniqueQueue` whenever
     // batch is disabled, the forwardOnly subset is empty, or batch failed.
     const queue: Creature[] = creaturesForWorkerPath;
-    if (this.evalConfig.topologyGrouping) {
-      const hashCache = new Map<Creature, string>();
-      for (const creature of queue) {
-        hashCache.set(creature, CreatureUtil.getTopologyHash(creature));
-      }
-      queue.sort((a, b) => {
-        return hashCache.get(a)!.localeCompare(hashCache.get(b)!);
-      });
-    }
+    orderForEvaluation(queue, {
+      topologyGrouping: this.evalConfig.topologyGrouping,
+    });
 
     // Issue #1289: Work-stealing pattern - each worker continuously pulls
     // creatures from the shared queue until it is empty.
