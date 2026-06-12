@@ -216,6 +216,20 @@ export function validateNeatConfig(config: NeatArguments): void {
     );
   }
 
+  // Issue #2933: When random-immigrant injection is enabled, the injection
+  // fraction must be strictly positive — a zero fraction would never inject.
+  if (
+    config.randomImmigrants.enabled &&
+    config.randomImmigrants.injectionFraction <= 0
+  ) {
+    throw new ConfigurationError(
+      `randomImmigrants.injectionFraction must be greater than 0 when ` +
+        `enabled. injectionFraction: ` +
+        `${config.randomImmigrants.injectionFraction}`,
+      "CROSS_FIELD_VALIDATION",
+    );
+  }
+
   // Discovery focus neuron UUID validation
   if (!Array.isArray(config.discoveryFocusNeuronUUIDs)) {
     throw new ConfigurationError(

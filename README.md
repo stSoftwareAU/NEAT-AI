@@ -227,6 +227,38 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
     [dense layers](https://en.wikipedia.org/wiki/Dense_layer). Opt-in via
     `syntheticSynapses: true` in the training configuration.
 
+23. **Novelty (Behavioural-Diversity) Selection**: On deceptive problems,
+    pure-fitness selection drives the population into local optima where the
+    pace of evolution collapses.
+    [Novelty search (Lehman & Stanley, 2011)](https://doi.org/10.1162/EVCO_a_00025)
+    rewards behavioural diversity instead. Each creature is given a numeric
+    behaviour descriptor (problem-supplied via a tag — for example the output
+    vector on a probe set); its novelty score is the mean distance to its `k`
+    nearest neighbours across the population and a bounded archive; and ranking
+    uses the blend `score' = (1 - weight)·fitness + weight·novelty`. **OFF by
+    default** — opt-in via `novelty: { enabled: true }` and set a `behaviour`
+    tag on each creature. See [Novelty Search](./docs/NOVELTY_SEARCH.md).
+
+24. **Random Immigrants (Fresh Genomes on a Plateau)**: When the population
+    stalls, boosting the mutation rate only perturbs the _existing_ genomes — it
+    adds no new genetic material. Driven by the existing plateau signal,
+    random-immigrant injection replaces the weakest _non-elite_ creatures with
+    freshly seeded genomes once the population has been on a plateau for
+    `triggerWindow` generations, then waits `cooldown` generations before
+    injecting again. Elites are always preserved. **OFF by default** — opt-in
+    via `randomImmigrants: { enabled: true }`. Tune `injectionFraction` (the
+    fraction of non-elites replaced), `triggerWindow`, and `cooldown`.
+
+    ```mermaid
+    flowchart LR
+        A[Generation] --> B{On plateau for<br/>triggerWindow gens?}
+        B -- no --> E[Breed + mutate as usual]
+        B -- yes --> C{Cooldown<br/>elapsed?}
+        C -- no --> E
+        C -- yes --> D[Replace weakest non-elites<br/>with fresh genomes<br/>elites preserved]
+        D --> E
+    ```
+
 ## 🚀 Quick Start
 
 ```typescript

@@ -26,7 +26,9 @@ import { Genus } from "@neat/Genus.ts";
 import { computeHardDeadlineTS } from "@neat/HardDeadline.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
+import { NoveltySearch } from "@neat/NoveltySearch.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
+import { RandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { SpeciesPlateauDetector } from "@neat/SpeciesPlateauDetector.ts";
 import { TrainingRegressionTracker } from "@neat/TrainingRegressionTracker.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
@@ -101,6 +103,13 @@ export class Neat {
   readonly plateauDetector: PlateauDetector;
 
   /**
+   * Random-immigrants controller (Issue #2933). Decides when to inject
+   * fresh genomes on a detected plateau. OFF by default; only injects when
+   * `config.randomImmigrants.enabled`.
+   */
+  readonly randomImmigrants: RandomImmigrants;
+
+  /**
    * Per-species plateau detector for stagnant-species retirement
    * (Issue #2454). Tracks each species' best raw fitness across
    * generations so stalled species can be halved or dropped from
@@ -110,6 +119,13 @@ export class Neat {
 
   /** Issue #2200: MCMC temperature state for Metropolis-Hastings acceptance */
   readonly mcmcState: MCMCState;
+
+  /**
+   * Persistent novelty (behavioural-diversity) search engine (Issue #2932).
+   * Holds the cross-generation novelty archive. OFF by default; only
+   * consulted when `config.novelty.enabled`.
+   */
+  readonly noveltySearch: NoveltySearch;
 
   /**
    * Issue #2457: Per-role squash effectiveness tracker.
@@ -283,6 +299,10 @@ export class Neat {
 
     this.plateauDetector = new PlateauDetector(this.config.plateauDetection);
 
+    // Issue #2933: Random-immigrants controller. A no-op when
+    // `randomImmigrants.enabled` is false.
+    this.randomImmigrants = new RandomImmigrants(this.config.randomImmigrants);
+
     // Issue #2454: Per-species stagnation detector. The detector is a
     // no-op when `speciesStagnation.enabled` is false.
     this.speciesPlateauDetector = new SpeciesPlateauDetector(
@@ -291,6 +311,10 @@ export class Neat {
 
     // Issue #2200: Initialise MCMC temperature state
     this.mcmcState = new MCMCState(this.config.mcmc);
+
+    // Issue #2932: Initialise the persistent novelty search engine. The
+    // archive lives here so it accumulates across generations.
+    this.noveltySearch = new NoveltySearch(this.config.novelty);
 
     // Issue #2457: Initialise the per-role squash effectiveness tracker.
     this.squashEffectivenessTracker = new SquashEffectivenessTracker(
@@ -755,7 +779,7 @@ export class Neat {
       genus.addCreature(creature);
     }
 
-    const breed = new Breed(genus, this.config);
+    const breed = new Breed(genus, this.config, this.noveltySearch);
     const deDuplicator = new DeDuplicator(breed, mutator);
     await deDuplicator.perform(this.population);
   }

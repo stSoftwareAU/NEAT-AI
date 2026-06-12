@@ -9,10 +9,13 @@ import type { MutationInterface } from "@neat/MutationInterface.ts";
 import type { RequiredPlateauDetectionConfig } from "@neat/PlateauDetector.ts";
 import type { RequiredAdaptiveMutationThresholds } from "@config/AdaptiveMutationThresholds.ts";
 import type { RequiredCompatibilityGatingConfig } from "@config/CompatibilityGatingConfig.ts";
+import type { RequiredSelectionPressureConfig } from "@config/SelectionPressureConfig.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import type { RequiredEnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 import type { RequiredFitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
+import type { RequiredNoveltyConfig } from "@config/NoveltyConfig.ts";
+import type { RequiredRandomImmigrantsConfig } from "@config/RandomImmigrantsConfig.ts";
 import type { RequiredSpeciesStagnationConfig } from "@config/SpeciesStagnationConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "@config/StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "@config/QuantumStepConfig.ts";
@@ -938,6 +941,35 @@ export interface NeatArguments {
   fitnessSharing: RequiredFitnessSharingConfig;
 
   /**
+   * Novelty (behavioural-diversity) selection configuration (Issue #2932).
+   * OFF by default. When `enabled`, ranking blends fitness with a
+   * k-nearest-neighbour novelty score over per-creature behaviour
+   * descriptors to escape deceptive local optima.
+   * Configuration options:
+   * - enabled: Whether novelty selection is active (default: false)
+   * - weight: Blend weight in score' = (1-w)*fitness + w*novelty (default: 0.5)
+   * - neighbours: k nearest neighbours for the novelty score (default: 15)
+   * - archiveLimit: Maximum behaviours retained in the archive (default: 500)
+   * - addThreshold: Minimum novelty to admit to the archive (default: 0)
+   * - behaviourTag: Tag holding the behaviour descriptor (default: "behaviour")
+   */
+  novelty: RequiredNoveltyConfig;
+
+  /**
+   * Random-immigrant injection configuration (Issue #2933).
+   * OFF by default. When `enabled`, on a detected plateau the weakest
+   * non-elite creatures are replaced with freshly seeded genomes, adding
+   * new genetic material to escape a stagnation trap. Elites are always
+   * preserved.
+   * Configuration options:
+   * - enabled: Whether immigrant injection is active (default: false)
+   * - injectionFraction: Fraction of non-elites replaced per injection (default: 0.1)
+   * - triggerWindow: Generations on plateau before injecting (default: 5)
+   * - cooldown: Generations to wait between injections (default: 10)
+   */
+  randomImmigrants: RequiredRandomImmigrantsConfig;
+
+  /**
    * Species stagnation detection and breeding-budget reclamation
    * configuration.
    *
@@ -973,6 +1005,28 @@ export interface NeatArguments {
    *   fallback (default: 3)
    */
   compatibilityGating: RequiredCompatibilityGatingConfig;
+
+  /**
+   * Selection-pressure configuration (Issue #2929).
+   *
+   * Exposes the previously hardcoded selection-pressure knobs so the
+   * exploration/exploitation trade-off can be tuned per problem:
+   * - power: POWER selection exponent (default: 4; higher biases harder
+   *   towards top-ranked creatures)
+   * - tournamentSize: fixed tournament size when adaptive sizing is off
+   *   (default: 5)
+   * - tournamentProbability: probability of picking the best participant
+   *   (default: 0.5)
+   * - adaptiveTournament: scale tournament size with population (default: true)
+   * - adaptiveTournamentMinSize: floor for adaptive size (default: 3)
+   * - adaptiveTournamentSqrtExponent: population scaling exponent
+   *   (default: 0.5, i.e. square-root scaling)
+   * - adaptiveTournamentCapFraction: cap as a fraction of population
+   *   (default: 0.1)
+   *
+   * Every default reproduces the prior hardcoded behaviour exactly.
+   */
+  selectionPressure: RequiredSelectionPressureConfig;
 
   /**
    * Tolerate corrupt parents during breeding (Issue #2523).

@@ -3,10 +3,13 @@ import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import type { TrainingEventCallback } from "@config/TrainingEvent.ts";
 import type { AdaptiveMutationThresholds } from "@config/AdaptiveMutationThresholds.ts";
 import type { CompatibilityGatingConfig } from "@config/CompatibilityGatingConfig.ts";
+import type { SelectionPressureConfig } from "@config/SelectionPressureConfig.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import type { EnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { FineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 import type { FitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
+import type { NoveltyConfig } from "@config/NoveltyConfig.ts";
+import type { RandomImmigrantsConfig } from "@config/RandomImmigrantsConfig.ts";
 import type { SpeciesStagnationConfig } from "@config/SpeciesStagnationConfig.ts";
 import type { NeatArguments } from "@config/NeatArguments.ts";
 import type { PlateauDetectionConfig } from "@neat/PlateauDetector.ts";
@@ -124,8 +127,11 @@ export type NeatOptions =
     | "parallelEvaluation"
     | "squashEffectiveness"
     | "fitnessSharing"
+    | "novelty"
+    | "randomImmigrants"
     | "speciesStagnation"
     | "compatibilityGating"
+    | "selectionPressure"
     | "outputRanges"
     | "logger"
     | "rng"
@@ -193,10 +199,16 @@ export type NeatOptions =
     squashEffectiveness?: SquashEffectivenessConfig;
     /** Partial overrides for fitness sharing configuration (Issue #2453, defaults applied if not specified) */
     fitnessSharing?: FitnessSharingConfig;
+    /** Partial overrides for novelty selection configuration (Issue #2932, defaults applied if not specified) */
+    novelty?: NoveltyConfig;
+    /** Partial overrides for random-immigrants configuration (Issue #2933, defaults applied if not specified) */
+    randomImmigrants?: RandomImmigrantsConfig;
     /** Partial overrides for species stagnation configuration (Issue #2454, defaults applied if not specified) */
     speciesStagnation?: SpeciesStagnationConfig;
     /** Partial overrides for compatibility gating configuration (Issue #2455, defaults applied if not specified) */
     compatibilityGating?: CompatibilityGatingConfig;
+    /** Partial overrides for selection-pressure configuration (Issue #2929, defaults applied if not specified) */
+    selectionPressure?: SelectionPressureConfig;
     /**
      * Optional per-output range constraints (Issue #1620).
      *
@@ -294,8 +306,11 @@ export type NeatOptionsInput =
     | "parallelEvaluation"
     | "squashEffectiveness"
     | "fitnessSharing"
+    | "novelty"
+    | "randomImmigrants"
     | "speciesStagnation"
     | "compatibilityGating"
+    | "selectionPressure"
     | "outputRanges"
     | "logger"
     | "logLevel"
@@ -352,10 +367,16 @@ export type NeatOptionsInput =
     squashEffectiveness?: CoerceNumeric<SquashEffectivenessConfig>;
     /** Fitness sharing configuration (Issue #2453). Numeric fields coerced from CLI. */
     fitnessSharing?: CoerceNumeric<FitnessSharingConfig>;
+    /** Novelty selection configuration (Issue #2932). Numeric fields coerced from CLI. */
+    novelty?: CoerceNumeric<NoveltyConfig>;
+    /** Random-immigrants configuration (Issue #2933). Numeric fields coerced from CLI. */
+    randomImmigrants?: CoerceNumeric<RandomImmigrantsConfig>;
     /** Species stagnation configuration (Issue #2454). Numeric fields coerced from CLI. */
     speciesStagnation?: CoerceNumeric<SpeciesStagnationConfig>;
     /** Compatibility gating configuration (Issue #2455). Numeric fields coerced from CLI. */
     compatibilityGating?: CoerceNumeric<CompatibilityGatingConfig>;
+    /** Selection-pressure configuration (Issue #2929). Numeric fields coerced from CLI. */
+    selectionPressure?: CoerceNumeric<SelectionPressureConfig>;
     /** Per-output range constraints (Issue #1620). Numeric fields coerced from CLI. */
     outputRanges?: readonly CoerceNumeric<OutputRange>[];
     /** Custom logger instance (not coerced — functions cannot come from CLI). */

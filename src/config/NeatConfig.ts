@@ -54,11 +54,14 @@ import {
   parseHyperparameterEvolution,
   parseMcmc,
   parseMemoryConfig,
+  parseNovelty,
   parseOpd,
   parseParallelEvaluation,
   parsePlateauDetection,
   parsePredictiveCoding,
   parseQuantumStep,
+  parseRandomImmigrants,
+  parseSelectionPressure,
   parseSpecialist,
   parseSpeciesStagnation,
   parseSquashEffectiveness,
@@ -716,6 +719,14 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     fitnessSharing: parseFitnessSharing(
       opts.fitnessSharing as Record<string, unknown> | undefined,
     ),
+    // Issue #2932: Parse novelty (behavioural-diversity) configuration
+    novelty: parseNovelty(
+      opts.novelty as Record<string, unknown> | undefined,
+    ),
+    // Issue #2933: Parse random-immigrants configuration
+    randomImmigrants: parseRandomImmigrants(
+      opts.randomImmigrants as Record<string, unknown> | undefined,
+    ),
     // Issue #2454: Parse species stagnation configuration
     speciesStagnation: parseSpeciesStagnation(
       opts.speciesStagnation as Record<string, unknown> | undefined,
@@ -729,6 +740,12 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         opts.compatibilityGating as Record<string, unknown> | undefined,
         dnaPreset.compatibilityGating,
       ),
+    ),
+
+    // Issue #2929: Parse selection-pressure configuration (POWER exponent,
+    // tournament size/probability, adaptive-tournament bounds).
+    selectionPressure: parseSelectionPressure(
+      opts.selectionPressure as Record<string, unknown> | undefined,
     ),
 
     // Issue #2492: Knob-tuning preset for inter-island DNA sharing.

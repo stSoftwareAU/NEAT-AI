@@ -14,6 +14,20 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Issue #2932:** Optional novelty (behavioural-diversity) selection to escape
+  deceptive landscapes. A new self-contained module
+  (`src/NEAT/NoveltySearch.ts`) adds a per-creature behaviour descriptor
+  (problem-supplied via a `behaviour` tag), a bounded novelty archive, a
+  k-nearest-neighbour novelty score, and a configurable blend
+  `score' = (1 - weight)·fitness + weight·novelty` used in parent-selection
+  ranking. **OFF by default** (`novelty: { enabled: false }`), so existing
+  behaviour and tests are unchanged. A deterministic deceptive-task benchmark
+  (`bench/NoveltyDeceptiveEscape.ts`) and acceptance test show novelty escaping
+  a local optimum in far fewer generations than fitness-only search. See
+  [`docs/NOVELTY_SEARCH.md`](./docs/NOVELTY_SEARCH.md).
+
 ### Fixed
 
 - **Issue #2871:** Evolution now always finalizes even when an optional training

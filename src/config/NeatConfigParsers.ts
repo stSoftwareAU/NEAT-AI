@@ -33,6 +33,8 @@ export {
   parseEnsembleDiversity,
   parseFineTunePopulation,
   parseFitnessSharing,
+  parseNovelty,
+  parseRandomImmigrants,
   parseSpeciesStagnation,
 } from "@config/parsers/PopulationParsers.ts";
 export {
@@ -41,6 +43,7 @@ export {
   parsePredictiveCoding,
   parseQuantumStep,
 } from "@config/parsers/TrainingParsers.ts";
+export { parseSelectionPressure } from "@config/parsers/SelectionParsers.ts";
 export {
   parseBiasRegularisation,
   parseWeightRegularisation,

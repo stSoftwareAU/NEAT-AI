@@ -28,6 +28,14 @@ import {
   type RequiredFitnessSharingConfig,
 } from "@config/FitnessSharingConfig.ts";
 import {
+  DEFAULT_NOVELTY_CONFIG,
+  type RequiredNoveltyConfig,
+} from "@config/NoveltyConfig.ts";
+import {
+  DEFAULT_RANDOM_IMMIGRANTS_CONFIG,
+  type RequiredRandomImmigrantsConfig,
+} from "@config/RandomImmigrantsConfig.ts";
+import {
   DEFAULT_SPECIES_STAGNATION_CONFIG,
   type RequiredSpeciesStagnationConfig,
 } from "@config/SpeciesStagnationConfig.ts";
@@ -130,6 +138,76 @@ export function parseFitnessSharing(
       { integer: true, min: 0 },
     ),
   } as RequiredFitnessSharingConfig;
+}
+
+/** Parse novelty (behavioural-diversity) configuration (Issue #2932). */
+export function parseNovelty(
+  overrides: Record<string, unknown> | undefined,
+): RequiredNoveltyConfig {
+  const d = DEFAULT_NOVELTY_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    weight: parseNumber(
+      "Novelty weight",
+      overrides?.weight,
+      d.weight,
+      { min: 0, max: 1 },
+    ),
+    neighbours: parseNumber(
+      "Novelty neighbours",
+      overrides?.neighbours,
+      d.neighbours,
+      { integer: true, min: 1 },
+    ),
+    archiveLimit: parseNumber(
+      "Novelty archiveLimit",
+      overrides?.archiveLimit,
+      d.archiveLimit,
+      { integer: true, min: 1 },
+    ),
+    addThreshold: parseNumber(
+      "Novelty addThreshold",
+      overrides?.addThreshold,
+      d.addThreshold,
+      { min: 0 },
+    ),
+    behaviourTag: typeof overrides?.behaviourTag === "string" &&
+        overrides.behaviourTag.length > 0
+      ? overrides.behaviourTag
+      : d.behaviourTag,
+  } as RequiredNoveltyConfig;
+}
+
+/** Parse random-immigrants configuration (Issue #2933). */
+export function parseRandomImmigrants(
+  overrides: Record<string, unknown> | undefined,
+): RequiredRandomImmigrantsConfig {
+  const d = DEFAULT_RANDOM_IMMIGRANTS_CONFIG;
+  return {
+    enabled: typeof overrides?.enabled === "boolean"
+      ? overrides.enabled
+      : d.enabled,
+    injectionFraction: parseNumber(
+      "Random immigrants injectionFraction",
+      overrides?.injectionFraction,
+      d.injectionFraction,
+      { min: 0, max: 1 },
+    ),
+    triggerWindow: parseNumber(
+      "Random immigrants triggerWindow",
+      overrides?.triggerWindow,
+      d.triggerWindow,
+      { integer: true, min: 1 },
+    ),
+    cooldown: parseNumber(
+      "Random immigrants cooldown",
+      overrides?.cooldown,
+      d.cooldown,
+      { integer: true, min: 0 },
+    ),
+  } as RequiredRandomImmigrantsConfig;
 }
 
 /** Parse compatibility gating configuration (Issue #2455). */
