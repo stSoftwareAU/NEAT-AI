@@ -28,6 +28,7 @@ import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { NoveltySearch } from "@neat/NoveltySearch.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
+import { RandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { SpeciesPlateauDetector } from "@neat/SpeciesPlateauDetector.ts";
 import { TrainingRegressionTracker } from "@neat/TrainingRegressionTracker.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
@@ -100,6 +101,13 @@ export class Neat {
   crisprIndex = 0;
   /** Plateau detector for fitness stagnation detection (Issue #1039) */
   readonly plateauDetector: PlateauDetector;
+
+  /**
+   * Random-immigrants controller (Issue #2933). Decides when to inject
+   * fresh genomes on a detected plateau. OFF by default; only injects when
+   * `config.randomImmigrants.enabled`.
+   */
+  readonly randomImmigrants: RandomImmigrants;
 
   /**
    * Per-species plateau detector for stagnant-species retirement
@@ -290,6 +298,10 @@ export class Neat {
     this.CRISPRs = Neat.deepCloneAndShuffle(this.config.CRISPRs);
 
     this.plateauDetector = new PlateauDetector(this.config.plateauDetection);
+
+    // Issue #2933: Random-immigrants controller. A no-op when
+    // `randomImmigrants.enabled` is false.
+    this.randomImmigrants = new RandomImmigrants(this.config.randomImmigrants);
 
     // Issue #2454: Per-species stagnation detector. The detector is a
     // no-op when `speciesStagnation.enabled` is false.

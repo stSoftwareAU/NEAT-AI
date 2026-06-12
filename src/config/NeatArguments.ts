@@ -15,6 +15,7 @@ import type { RequiredEnsembleDiversityConfig } from "@config/EnsembleDiversityC
 import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 import type { RequiredFitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
 import type { RequiredNoveltyConfig } from "@config/NoveltyConfig.ts";
+import type { RequiredRandomImmigrantsConfig } from "@config/RandomImmigrantsConfig.ts";
 import type { RequiredSpeciesStagnationConfig } from "@config/SpeciesStagnationConfig.ts";
 import type { RequiredStabilityAdaptationConfig } from "@config/StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "@config/QuantumStepConfig.ts";
@@ -953,6 +954,20 @@ export interface NeatArguments {
    * - behaviourTag: Tag holding the behaviour descriptor (default: "behaviour")
    */
   novelty: RequiredNoveltyConfig;
+
+  /**
+   * Random-immigrant injection configuration (Issue #2933).
+   * OFF by default. When `enabled`, on a detected plateau the weakest
+   * non-elite creatures are replaced with freshly seeded genomes, adding
+   * new genetic material to escape a stagnation trap. Elites are always
+   * preserved.
+   * Configuration options:
+   * - enabled: Whether immigrant injection is active (default: false)
+   * - injectionFraction: Fraction of non-elites replaced per injection (default: 0.1)
+   * - triggerWindow: Generations on plateau before injecting (default: 5)
+   * - cooldown: Generations to wait between injections (default: 10)
+   */
+  randomImmigrants: RequiredRandomImmigrantsConfig;
 
   /**
    * Species stagnation detection and breeding-budget reclamation
