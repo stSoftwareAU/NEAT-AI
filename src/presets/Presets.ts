@@ -169,3 +169,80 @@ export const DISCOVERY_FOCUSED_PRESET: NeatOptions = {
     enabled: true,
   },
 };
+
+/**
+ * Fast Convergence preset — bundles the high-impact "pace" levers that
+ * ship fully implemented but OFF by default, so reaching `targetError`
+ * takes fewer generations (Issue #2930).
+ *
+ * **Use case:** You want the library to converge as quickly as possible
+ * on a supervised task and are happy to trade a little extra
+ * per-generation compute (and a touch more premature-convergence risk)
+ * for fewer generations overall. A one-line opt-in to "evolve faster".
+ *
+ * **Trade-offs:**
+ * - **Higher per-generation cost.** `trainPerGen: 2` doubles the
+ *   supervised training passes each generation, and adaptive population
+ *   sizing can grow the population (up to 2× by default) when diversity
+ *   drops — both buy faster convergence at the price of more work per
+ *   generation.
+ * - **Premature-convergence risk.** Higher elitism and an aggressive
+ *   plateau response push hard toward exploitation. Plateau detection's
+ *   2× mutation boost and per-species stagnation reclamation are the
+ *   counter-weights that keep diversity flowing; if your task is highly
+ *   multi-modal, consider widening `plateauDetection.windowSize` or
+ *   lowering `elitism`.
+ *
+ * **Settings rationale:**
+ * - `populationSize: 50` — Mid-sized base; adaptive sizing scales it.
+ * - `iterations: 1_000` — Plenty of generations; convergence should
+ *   arrive well before this cap.
+ * - `targetError: 0.05` — Standard target so the gain is comparable to
+ *   library defaults.
+ * - **`trainPerGen` is deliberately left unset** so the supervised
+ *   auto-scaling kicks in (`round(populationSize × 0.2)` per generation,
+ *   Issue #2791). Pinning a small literal here would *starve* gradient
+ *   descent below the default and slow convergence — the lever is the
+ *   auto-scaling, not a hard-coded number.
+ * - `elitism: 2` — Retain the top two performers so hard-won solutions
+ *   are never lost to mutation.
+ * - `timeoutMinutes: 30` — Sensible wall-clock guard.
+ * - `plateauDetection.enabled: true` with
+ *   `responseMutationMultiplier: 2.0` — On a stall, double the mutation
+ *   rate to break out of local optima quickly (the "2× boost"). This is
+ *   the lever that pays off on harder, plateau-prone tasks.
+ * - `plateauDetection.windowSize: 10` — Detect stalls promptly.
+ * - `adaptivePopulation.enabled: true` — Grow the population when
+ *   diversity collapses and shrink it when the search is healthy, so
+ *   compute is spent where it speeds convergence.
+ * - `speciesStagnation` — Enabled (the default) with documented windows:
+ *   `haltWindow: 12` halves a flat species' breeding share, and
+ *   `extinctionWindow: 20` drops it entirely, reclaiming budget for
+ *   species still making progress. Slightly tighter than the defaults
+ *   (15/25) to recycle dead-end effort sooner.
+ *
+ * **When NOT to use this:** on trivially easy tasks (e.g. 2-input XOR)
+ * the library defaults already converge in a handful of generations, and
+ * the extra exploration here adds variance without paying off. The preset
+ * earns its keep on harder, multi-modal problems where the defaults stall.
+ */
+export const FAST_CONVERGENCE_PRESET: NeatOptions = {
+  populationSize: 50,
+  iterations: 1_000,
+  targetError: 0.05,
+  elitism: 2,
+  timeoutMinutes: 30,
+  plateauDetection: {
+    enabled: true,
+    windowSize: 10,
+    responseMutationMultiplier: 2.0,
+  },
+  adaptivePopulation: {
+    enabled: true,
+  },
+  speciesStagnation: {
+    enabled: true,
+    haltWindow: 12,
+    extinctionWindow: 20,
+  },
+};
