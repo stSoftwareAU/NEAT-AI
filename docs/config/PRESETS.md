@@ -16,12 +16,13 @@ const config = createNeatConfig({
 
 ## 📊 Available presets
 
-| Preset                      | Population | Discovery | Timeout | Use case                                   |
-| --------------------------- | ---------- | --------- | ------- | ------------------------------------------ |
-| `QUICK_START_PRESET`        | 10         | Disabled  | 5 min   | Learning, prototyping, quick experiments   |
-| `LARGE_NETWORK_PRESET`      | 200        | 30%       | 2 hrs   | Complex problems with many inputs/outputs  |
-| `MEMORY_CONSTRAINED_PRESET` | 20         | Disabled  | 30 min  | Limited-memory environments, CI/CD runners |
-| `DISCOVERY_FOCUSED_PRESET`  | 100        | 50%       | 3 hrs   | Finding novel architectures, research      |
+| Preset                      | Population | Discovery | Timeout | Use case                                     |
+| --------------------------- | ---------- | --------- | ------- | -------------------------------------------- |
+| `QUICK_START_PRESET`        | 10         | Disabled  | 5 min   | Learning, prototyping, quick experiments     |
+| `LARGE_NETWORK_PRESET`      | 200        | 30%       | 2 hrs   | Complex problems with many inputs/outputs    |
+| `MEMORY_CONSTRAINED_PRESET` | 20         | Disabled  | 30 min  | Limited-memory environments, CI/CD runners   |
+| `DISCOVERY_FOCUSED_PRESET`  | 100        | 50%       | 3 hrs   | Finding novel architectures, research        |
+| `FAST_CONVERGENCE_PRESET`   | 50         | Disabled  | 30 min  | Reaching a target error in fewer generations |
 
 ### ⚡ Quick Start
 
@@ -95,6 +96,43 @@ const config = createNeatConfig({
 **Settings:** `populationSize: 100`, `discoverySampleRate: 0.5`,
 `discoveryMaxNeurons: 12`, `costOfGrowth: 0.00000001`, `timeoutMinutes: 180`,
 plateau detection enabled.
+
+### 🏁 Fast Convergence
+
+Bundles the high-impact "pace" levers that ship fully implemented but **off by
+default**, so reaching `targetError` takes fewer generations. A one-line opt-in
+to "evolve faster".
+
+```ts
+import { createNeatConfig, FAST_CONVERGENCE_PRESET } from "@anthropic/neat-ai";
+
+const config = createNeatConfig({
+  ...FAST_CONVERGENCE_PRESET,
+  targetError: 0.02, // override for a tighter target
+});
+```
+
+**Settings:** `populationSize: 50`, `elitism: 2`, `timeoutMinutes: 30`, plateau
+detection enabled with a 2× stall mutation boost (`windowSize: 10`,
+`responseMutationMultiplier: 2.0`), adaptive population sizing enabled, and
+species stagnation tightened (`haltWindow: 12`, `extinctionWindow: 20`).
+`trainPerGen` is deliberately left unset so the supervised auto-scaling applies
+(`round(populationSize × 0.2)` — 10 for this population); pinning a small
+literal would starve gradient descent and slow convergence.
+
+> [!NOTE]
+> **Trade-offs.** Higher per-generation cost (adaptive sizing can grow the
+> population; the auto-scaled `trainPerGen` runs more backprop passes) and a
+> little more premature-convergence risk from the higher elitism and aggressive
+> plateau response. Plateau detection's 2× boost and per-species stagnation
+> reclamation are the diversity counter-weights.
+>
+> **When NOT to use it.** On trivially easy tasks (e.g. 2-input XOR) the
+> defaults already converge in a handful of generations and the extra
+> exploration just adds variance. The preset earns its keep on harder,
+> plateau-prone problems — the bundled `bench/FastConvergencePreset.ts` shows it
+> converging on a 3-bit parity task in ~10% fewer generations on average,
+> solving seeds the defaults stall on within the same budget.
 
 ### 🔀 Composing presets
 
