@@ -40,6 +40,7 @@ import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { configureSharedSubnetworkIndex } from "@discovery/SubnetworkHashIndex.ts";
 import {
+  isSeedWarmupStructuralLockActive,
   readCurrentGenerationFromCreature,
   readWarmupGenerationsFromCreature,
 } from "@architecture/CreatureFactory.ts";
@@ -194,6 +195,15 @@ export class Neat {
    * The on-disk tag name remains `currentGeneration`.
    */
   currentGeneration = 0;
+
+  /**
+   * Issue #2947: tracks whether the warm-up → warm structural-lock-lift
+   * transition has already been logged this run, so the transition line is
+   * emitted at most once. Seeded `true` in `populatePopulation` when the
+   * lineage resumes already warm (lock lifted on resume), so only a genuine
+   * mid-run lift produces the log line.
+   */
+  warmupLockLiftLogged = false;
 
   /** Data directory for discovery replay (Issue #997) */
   dataDir?: string;
@@ -755,11 +765,43 @@ export class Neat {
       (m, c) => Math.max(m, readCurrentGenerationFromCreature(c)),
       0,
     );
+    const seedGeneration = readCurrentGenerationFromCreature(creature);
     this.currentGeneration = Math.max(
       this.currentGeneration,
-      readCurrentGenerationFromCreature(creature),
+      seedGeneration,
       populationMax,
     );
+
+    // Issue #2947: surface the resumed warm-up state exactly once at run start
+    // so a frozen/resetting counter is obvious at a glance. The `source` makes
+    // the #2945 bug self-evident: a tagless factory seed (source=population)
+    // looks identical to a fresh start (source=none) without it. No logging
+    // when warm-up is not configured — zero overhead once warm (#2903).
+    if (this.warmupGenerations > 0) {
+      const lockActive = isSeedWarmupStructuralLockActive(
+        this.warmupGenerations,
+        this.currentGeneration,
+      );
+      let source: "primary-seed" | "population" | "none";
+      if (this.currentGeneration <= 0) {
+        source = "none";
+      } else if (seedGeneration >= this.currentGeneration) {
+        source = "primary-seed";
+      } else if (populationMax >= this.currentGeneration) {
+        source = "population";
+      } else {
+        source = "none";
+      }
+      getLogger().info(
+        `warm-up: resumed currentGeneration=${this.currentGeneration} / ` +
+          `warmupGenerations=${this.warmupGenerations} ` +
+          `(lock ${lockActive ? "active" : "lifted"}, source=${source})`,
+      );
+      // Resuming already warm (lock lifted on resume) means no mid-run
+      // transition will occur — suppress the lock-lift line so it only fires
+      // on a genuine warm-up → warm transition during this run.
+      this.warmupLockLiftLogged = !lockActive;
+    }
 
     const mutator = new Mutator(
       this.config,
