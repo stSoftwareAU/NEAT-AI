@@ -212,6 +212,31 @@ export function isSeedWarmupStructuralLockActive(
 }
 
 /**
+ * Issue #2947: Build the warm-up observability fields for a
+ * `generation_complete` training event.
+ *
+ * Returns the lineage-accumulated counter and a derived `warmupLockActive`
+ * boolean **only** when warm-up is configured (`warmupGenerations > 0`).
+ * Returns `undefined` otherwise so the fields are absent on the event,
+ * keeping zero overhead once warm-up is not in play (the #2903 design goal).
+ */
+export function buildWarmupEventFields(
+  warmupGenerations: number,
+  currentGeneration: number,
+): { currentGeneration: number; warmupLockActive: boolean } | undefined {
+  if (!Number.isFinite(warmupGenerations) || warmupGenerations <= 0) {
+    return undefined;
+  }
+  return {
+    currentGeneration,
+    warmupLockActive: isSeedWarmupStructuralLockActive(
+      warmupGenerations,
+      currentGeneration,
+    ),
+  };
+}
+
+/**
  * Persist seed warm-up progress on a creature so export/load can resume
  * evolution with the correct warm-up gate.
  *

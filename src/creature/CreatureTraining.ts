@@ -46,7 +46,10 @@ import {
 import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
-import { applySeedWarmupTagsAtSave } from "@architecture/CreatureFactory.ts";
+import {
+  applySeedWarmupTagsAtSave,
+  buildWarmupEventFields,
+} from "@architecture/CreatureFactory.ts";
 import { BufferPool } from "@utils/BufferPool.ts";
 import {
   type DiscoveryDirResult,
@@ -575,6 +578,9 @@ export async function evolveDir(
       elapsedMs: generationElapsedMs,
       phaseTiming,
       throughput: result.throughput,
+      // Issue #2947: surface the lineage-accumulated warm-up counter and the
+      // derived lock state (present only while warm-up is configured).
+      ...buildWarmupEventFields(neat.warmupGenerations, neat.currentGeneration),
     });
 
     // Issue #1615: Emit plateau_detected event when on plateau
@@ -871,6 +877,9 @@ export async function evolveEnv<S, A>(
       elapsedMs: generationElapsedMs,
       phaseTiming,
       throughput: result.throughput,
+      // Issue #2947: surface the lineage-accumulated warm-up counter and the
+      // derived lock state (present only while warm-up is configured).
+      ...buildWarmupEventFields(neat.warmupGenerations, neat.currentGeneration),
     });
 
     if (result.plateau.onPlateau) {
@@ -1353,6 +1362,9 @@ export async function evolveRL<S, A>(
       elapsedMs: generationElapsedMs,
       phaseTiming,
       throughput: result.throughput,
+      // Issue #2947: surface the lineage-accumulated warm-up counter and the
+      // derived lock state (present only while warm-up is configured).
+      ...buildWarmupEventFields(neat.warmupGenerations, neat.currentGeneration),
     });
 
     if (result.plateau.onPlateau) {

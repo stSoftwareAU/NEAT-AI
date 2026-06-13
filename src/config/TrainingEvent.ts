@@ -329,6 +329,25 @@ export interface GenerationCompleteEvent {
    * depth/wait counters that explain *why* a generation is fast or slow.
    */
   readonly throughput?: GenerationThroughputMetrics;
+  /**
+   * Issue #2947: Lineage-accumulated warm-up generation counter — the single
+   * source of truth for how many generations this lineage has evolved across
+   * **all** runs (see `Neat.currentGeneration`). Lets dashboards chart the
+   * counter climbing across runs and alert if it is flat or resetting.
+   *
+   * Present only when seed warm-up is configured (`warmupGenerations > 0`);
+   * absent once warm-up is not in play, keeping zero overhead consistent with
+   * the #2903 design goal.
+   */
+  readonly currentGeneration?: number;
+  /**
+   * Issue #2947: Whether the seed warm-up structural lock is currently active
+   * (derived from `warmupGenerations` and `currentGeneration`). `true` while
+   * warming, `false` once the warm-up window has elapsed.
+   *
+   * Present only when seed warm-up is configured (`warmupGenerations > 0`).
+   */
+  readonly warmupLockActive?: boolean;
 }
 
 /**

@@ -91,6 +91,21 @@ export async function evolve(
 
   neat.currentGeneration++;
 
+  // Issue #2947: log the warm-up → warm transition exactly once per run, when
+  // the structural lock lifts (currentGeneration first exceeds
+  // warmupGenerations). Greppable marker for the warm-up window ending.
+  if (
+    neat.warmupGenerations > 0 &&
+    !neat.warmupLockLiftLogged &&
+    neat.currentGeneration > neat.warmupGenerations
+  ) {
+    neat.warmupLockLiftLogged = true;
+    getLogger().info(
+      `warm-up: structural lock lifted at currentGeneration=` +
+        `${neat.currentGeneration} (warmupGenerations=${neat.warmupGenerations})`,
+    );
+  }
+
   neat.additionalGenerationCount--;
 
   // Issue #2263: Proactive pre-fitness memory monitoring.
