@@ -21,10 +21,10 @@ Three signals were added:
    warm-up: resumed currentGeneration=900 / warmupGenerations=1440 (lock active, source=population)
    ```
 
-   The `source` (`primary-seed` | `population` | `none`) is what makes the
-   #2945 bug self-evident: a tagless factory seed resuming from a population
-   member (`source=population`) is otherwise indistinguishable from a fresh
-   start (`source=none`).
+   The `source` (`primary-seed` | `population` | `none`) is what makes the #2945
+   bug self-evident: a tagless factory seed resuming from a population member
+   (`source=population`) is otherwise indistinguishable from a fresh start
+   (`source=none`).
 
 2. **Per-generation event fields** — `generation_complete` events now carry the
    accumulated `currentGeneration` and a derived `warmupLockActive` boolean
@@ -40,17 +40,17 @@ Three signals were added:
    ```
 
 When warm-up is not configured (`warmupGenerations <= 0`) nothing is logged and
-the event fields are absent — zero overhead once warm, consistent with the
-#2903 design goal. A lineage that resumes already-warm suppresses the lock-lift
-line (seeded in `populatePopulation`), so it fires only on a genuine
-warm-up → warm transition during the run.
+the event fields are absent — zero overhead once warm, consistent with the #2903
+design goal. A lineage that resumes already-warm suppresses the lock-lift line
+(seeded in `populatePopulation`), so it fires only on a genuine warm-up → warm
+transition during the run.
 
 ## Evidence
 
 Backend/CLI change — no web interface to screenshot. Verified via the new unit
 tests (7 passing) and the full quality gate (`./quality.sh`: 7212 passed, 0
-failed). Sample captured output from the existing `NeatPopulatePopulation`
-suite confirms the resume line in situ:
+failed). Sample captured output from the existing `NeatPopulatePopulation` suite
+confirms the resume line in situ:
 
 ```
 warm-up: resumed currentGeneration=37 / warmupGenerations=1440 (lock active, source=population)
@@ -90,7 +90,8 @@ New tests in `test/NEAT/WarmupObservability.ts`:
   warm-up window and asserts the lift line fires exactly once and not again on
   subsequent generations.
 - `generation_complete carries accumulated counter and lock state while
-  warming` — end-to-end via `evolveDataSet`; asserts the events expose
+  warming`
+  — end-to-end via `evolveDataSet`; asserts the events expose
   `currentGeneration` and `warmupLockActive === true`.
 - `generation_complete omits warm-up fields when warm-up is not configured` —
   asserts both fields are `undefined`.
