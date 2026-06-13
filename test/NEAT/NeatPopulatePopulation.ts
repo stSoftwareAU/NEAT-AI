@@ -309,6 +309,117 @@ Deno.test("populatePopulation: missing tag leaves a higher in-memory counter unt
   }
 });
 
+Deno.test("populatePopulation: resumes counter from tagged config.creatures when primary seed is tagless", async () => {
+  // Issue #2945: in production the primary seed is a freshly-built factory
+  // template that carries warmupGenerations but no currentGeneration. The
+  // accumulated lineage value lives on the prior champions loaded via
+  // config.creatures. The counter must resume from the population maximum,
+  // not from the tagless primary seed (which would restart at 0 every run).
+  const dataDir = createTestDataDir(3, 2);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    // Prior champion carrying the accumulated lineage tag.
+    const champion = new Creature(3, 2, { layers: [{ count: 3 }] });
+    addTag(champion, CURRENT_GENERATION_TAG, "37");
+
+    const options: NeatOptions = {
+      populationSize: 5,
+      creatures: [champion.exportJSON()],
+    };
+    const neat = new Neat(3, 2, options, workers);
+
+    // Tagless factory-style primary seed: warm-up length only, no progress.
+    const seedCreature = creatureForProblem({
+      inputs: 3,
+      outputs: 2,
+      cost: "MSE",
+      warmupGenerations: 1440,
+    });
+
+    await neat.populatePopulation(seedCreature);
+
+    assertEquals(
+      neat.currentGeneration,
+      37,
+      "Counter must resume from the population maximum, not the tagless seed",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("populatePopulation: stamps exports with resumed counter plus generations run", async () => {
+  // Issue #2945: after resuming at K from the population and running G
+  // generations, the in-memory counter (and therefore the export stamp) must
+  // read K + G — proving the lineage accumulates rather than resetting.
+  const dataDir = createTestDataDir(3, 2);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const champion = new Creature(3, 2, { layers: [{ count: 3 }] });
+    addTag(champion, CURRENT_GENERATION_TAG, "37");
+
+    const options: NeatOptions = {
+      populationSize: 5,
+      creatures: [champion.exportJSON()],
+    };
+    const neat = new Neat(3, 2, options, workers);
+
+    const seedCreature = creatureForProblem({
+      inputs: 3,
+      outputs: 2,
+      cost: "MSE",
+      warmupGenerations: 1440,
+    });
+
+    await neat.populatePopulation(seedCreature);
+    assertEquals(neat.currentGeneration, 37, "Resume at population maximum");
+
+    // Run G generations (exactly what evolve() does each generation).
+    const G = 4;
+    for (let g = 0; g < G; g++) {
+      neat.currentGeneration++;
+    }
+
+    assertEquals(
+      neat.currentGeneration,
+      41,
+      "Counter must read K + G (37 + 4) after running the generations",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("populatePopulation: a fully tagless population still starts at zero", async () => {
+  // Issue #2945: the genuinely-fresh case must be unchanged — no
+  // currentGeneration anywhere means the counter starts at 0.
+  const dataDir = createTestDataDir(3, 2);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const member = new Creature(3, 2, { layers: [{ count: 3 }] });
+    const options: NeatOptions = {
+      populationSize: 5,
+      creatures: [member.exportJSON()],
+    };
+    const neat = new Neat(3, 2, options, workers);
+
+    const seedCreature = new Creature(3, 2, { layers: [{ count: 3 }] });
+
+    await neat.populatePopulation(seedCreature);
+
+    assertEquals(
+      neat.currentGeneration,
+      0,
+      "A fully tagless population must start the counter at 0",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
 Deno.test("populatePopulation: restores warm-up tags from seed creature", async () => {
   const dataDir = createTestDataDir(3, 2);
   const workers = createTestWorkers(dataDir);

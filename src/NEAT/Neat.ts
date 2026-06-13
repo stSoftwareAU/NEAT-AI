@@ -744,9 +744,21 @@ export class Neat {
     // Issue #2908: seed the lineage-accumulated generation counter
     // monotonically — fold the saved tag in via Math.max so no load path can
     // ever lower it (consistent with the monotonic tag write in #2831).
+    // Issue #2945: also fold in the maximum currentGeneration across the whole
+    // starting population (the prior champions loaded via config.creatures),
+    // not just the primary seed. In production the primary seed is a tagless
+    // factory template, so the accumulated lineage value lives only on those
+    // population members — resuming from the seed alone restarts the counter
+    // at 0 every run and the warm-up gate never lifts. Monotonic-max keeps
+    // tagless clones contributing 0, so they can never lower the counter.
+    const populationMax = this.population.reduce(
+      (m, c) => Math.max(m, readCurrentGenerationFromCreature(c)),
+      0,
+    );
     this.currentGeneration = Math.max(
       this.currentGeneration,
       readCurrentGenerationFromCreature(creature),
+      populationMax,
     );
 
     const mutator = new Mutator(
