@@ -91,13 +91,13 @@ sequenceDiagram
   participant TS as WasmTopologicalBackprop.ts
   participant SHIM as wasm_propagate_topological (wasm_exports.rs)
   participant CODEC as propagate_codec.rs (NEW, native-testable)
-  participant LOOP as propagate_topological_loop
+  participant Driver as propagate_topological_loop
 
   TS->>SHIM: Uint8Array (HEADER_SIZE=36, NEURON_STRIDE=24)
   SHIM->>CODEC: decode_propagate_buffer(&[u8])
   CODEC-->>SHIM: DecodedPropagate { neurons, synapses, ..., adjusted_bias }
-  SHIM->>LOOP: PropagateInput<'_>
-  LOOP-->>SHIM: PropagateOutput
+  SHIM->>Driver: PropagateInput<'_>
+  Driver-->>SHIM: PropagateOutput
   SHIM->>CODEC: encode_propagate_output(&output)
   CODEC-->>SHIM: Vec<f64> (sentinel-encoded)
   SHIM-->>TS: Float64Array

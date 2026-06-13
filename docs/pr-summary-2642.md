@@ -96,26 +96,26 @@ The synthetic benchmark understates production gains for two reasons:
 
 ```mermaid
 sequenceDiagram
-    participant Loop as runAnalysisLoop
+    participant Driver as runAnalysisLoop
     participant DS as DiscoverStructure
     participant Rust as Rust FFI
     participant Heap as V8 heap
 
     loop per chunk
-        Loop->>DS: ensureRustCombinedAnalysis(chunk)
+        Driver->>DS: ensureRustCombinedAnalysis(chunk)
         DS->>Rust: analyzeParallel(...)
         Rust-->>DS: RustAnalyzeAllResult (large)
         DS->>Heap: cache = result
-        Loop->>DS: collectRustAnalysisCandidates(chunk)
-        DS-->>Loop: bundle (mapped CandidateSynapse/Neuron copies)
-        Note over Loop,Heap: Before #2642: cache holds the result<br/>across squash analysis & next chunk's allocation
-        Loop->>DS: releaseCombinedRustAnalysisCache()  [post-#2642]
+        Driver->>DS: collectRustAnalysisCandidates(chunk)
+        DS-->>Driver: bundle (mapped CandidateSynapse/Neuron copies)
+        Note over Driver,Heap: Before #2642: cache holds the result<br/>across squash analysis & next chunk's allocation
+        Driver->>DS: releaseCombinedRustAnalysisCache()  [post-#2642]
         DS->>Heap: cache = undefined
         Note over Heap: Raw FFI buffer eligible for GC<br/>before squash analysis allocates
-        Loop->>DS: analyzeSelectedNeuronsSquashes(chunk)
-        DS-->>Loop: candidate squashes
-        Loop->>Loop: accumulateResults(bundle)
-        Loop->>DS: releaseCombinedRustAnalysisCache()  [catches fallback path]
+        Driver->>DS: analyzeSelectedNeuronsSquashes(chunk)
+        DS-->>Driver: candidate squashes
+        Driver->>Driver: accumulateResults(bundle)
+        Driver->>DS: releaseCombinedRustAnalysisCache()  [catches fallback path]
     end
 ```
 
