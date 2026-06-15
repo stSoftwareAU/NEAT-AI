@@ -38,11 +38,22 @@ A new reader should follow the docs in this order:
 5. **A topic guide** — each guide assumes the basics from steps 1–3 and focuses
    on a single subsystem.
 
+Two **foundation documents** underpin every other doc — keep them open while
+reading or writing:
+
+- **[GLOSSARY.md](GLOSSARY.md)** — the canonical glossary. Every acronym
+  expanded with a deeper-reading link; every themed term (Creature, Discovery,
+  CRISPR, Grafting, Islands …) explained in plain language.
+- **[DOC_STYLE.md](DOC_STYLE.md)** — the short documentation style guide: the
+  rules (define acronyms, link themed terms, call out NEAT-vs-NEAT-AI
+  differences, fact-check, keep docs small, prefer diagrams) every doc follows.
+
 ## 🗺️ Reading map
 
 ```mermaid
 flowchart LR
     R[../README.md<br/>zero-knowledge entry] --> I[docs/README.md<br/>topic index]
+    I --> Found[Foundation<br/>Glossary + Style guide]
     I --> Compute[Compute / WASM]
     I --> Discovery[Discovery / FFI]
     I --> Perf[Performance]
