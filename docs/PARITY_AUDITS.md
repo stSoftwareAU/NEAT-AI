@@ -51,8 +51,9 @@ Current alignment is enforced by:
   [`test/scripts/CoreDependencyPolicy.ts`](../test/scripts/CoreDependencyPolicy.ts)
   and the cross-boundary parity tests.
 
-The original audit narrative lives in
-[`docs/pr-summary-2367.md`](pr-summary-2367.md) for historical reference.
+The original audit narrative lives in the merged PR for Issue #2367 (browse via
+`git log` or GitHub's PR history); the per-PR summary file was pruned in Issue
+#2958.
 
 ## rust_scorer parity audit (Issue #2368)
 
@@ -66,8 +67,9 @@ test scores a deterministic synthetic creature end-to-end through the WASM
 activation module and asserts the score is finite, non-negative and bounded
 by 1.
 
-The original audit narrative lives in
-[`docs/pr-summary-2368.md`](pr-summary-2368.md).
+The original audit narrative lives in the merged PR for Issue #2368 (browse via
+`git log` or GitHub's PR history); the per-PR summary file was pruned in Issue
+#2958.
 
 ## wasm_activation parity audit (Issue #2369)
 
@@ -80,8 +82,9 @@ Current activation parity is verified by the same WASM/JS score parity test plus
 [`test/costs/MSE.ts`](../test/costs/MSE.ts), which exercises the Mean Squared
 Error cost surface that crosses the WASM boundary.
 
-The original audit narrative lives in
-[`docs/pr-summary-2369.md`](pr-summary-2369.md).
+The original audit narrative lives in the merged PR for Issue #2369 (browse via
+`git log` or GitHub's PR history); the per-PR summary file was pruned in Issue
+#2958.
 
 ## See also
 
