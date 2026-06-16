@@ -6,6 +6,15 @@ The format follows
 [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
+> [!NOTE]
+> Patch releases are cut automatically: every pull request merged into `Develop`
+> bumps the patch version (`.github/workflows/update-package-version.yml`) and
+> publishes a GitHub release (`.github/workflows/github-release.yml`). The
+> published `@stsoftware/neat-ai` version therefore advances faster than this
+> file. This changelog records **notable** changes grouped under the minor or
+> major version that introduced them; the routine auto-patch releases in between
+> are not listed individually.
+
 **Sibling docs:** [`README.md`](./README.md) — overview;
 [`AGENTS.md`](./AGENTS.md) — coding conventions;
 [`CONTRIBUTING.md`](./CONTRIBUTING.md) — contributor guide;
