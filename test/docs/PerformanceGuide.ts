@@ -7,8 +7,47 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "../../mod.ts";
+import { Creature, getCacheStats } from "../../mod.ts";
 import { initWasmActivation, isWasmActivationAvailable } from "@wasm/mod.ts";
+
+// ---------------------------------------------------------------------------
+// Section: getCacheStats public API shape (documented in PERFORMANCE_TUNING.md)
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  "performance-guide - getCacheStats is importable from the package root and returns the documented shape",
+  () => {
+    // PERFORMANCE_TUNING.md instructs users to
+    //   import { getCacheStats } from "@stsoftware/neat-ai";
+    // and iterate over name/hits/misses/evictions/currentSize/maxSize. Verify
+    // the symbol is reachable from mod.ts (the package entry point) and that
+    // every documented field is present with the documented type.
+    const stats = getCacheStats();
+    assert(Array.isArray(stats), "getCacheStats() should return an array");
+    assert(stats.length > 0, "At least one instrumented cache should report");
+
+    for (const cache of stats) {
+      assertEquals(typeof cache.name, "string", "name should be a string");
+      assertEquals(typeof cache.hits, "number", "hits should be a number");
+      assertEquals(typeof cache.misses, "number", "misses should be a number");
+      assertEquals(
+        typeof cache.evictions,
+        "number",
+        "evictions should be a number",
+      );
+      assertEquals(
+        typeof cache.currentSize,
+        "number",
+        "currentSize should be a number",
+      );
+      assertEquals(
+        typeof cache.maxSize,
+        "number",
+        "maxSize should be a number",
+      );
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Section: WASM activation works for numerical operations
