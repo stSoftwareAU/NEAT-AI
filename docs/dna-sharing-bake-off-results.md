@@ -16,9 +16,19 @@ the harness from #2491
 ([`bench/DnaSharingBakeOff.ts`](../bench/DnaSharingBakeOff.ts)).
 
 The bake-off is part of the parent investigation in #2490 — "what is the
-cheapest way to share useful behaviour between a small Europa island and a
-larger production cluster without violating the AGENTS.md UUID stability
+cheapest way to share useful behaviour between a small Europa
+[island](GLOSSARY.md#-themed--house-terms) and a larger production cluster
+without violating the AGENTS.md UUID (Universally Unique Identifier) stability
 invariant?".
+
+> [!NOTE]
+> **NEAT-AI vs standard NEAT.** Inter-island DNA-sharing strategies are a
+> NEAT-AI extension — standard NEAT's island model only migrates whole
+> Creatures, it has no notion of transplanting partial
+> [DNA](GLOSSARY.md#-themed--house-terms) (subgraphs, pruning templates, or
+> distilled students) between islands. See the
+> [NEAT-vs-NEAT-AI rule](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use) and
+> [horizontal gene transfer](GLOSSARY.md#-themed--house-terms) in the glossary.
 
 ## 📊 Lift at a glance
 
@@ -38,9 +48,11 @@ this fixture.
 ## Method
 
 - **Harness**: `bench/DnaSharingBakeOff.ts` (Issue #2491). Single-process
-  harness that scores each strategy as `-MSE` against a probe dataset (higher is
-  better), reusing the public `Creature.activate` so the same WASM path as
-  production is exercised.
+  harness that scores each strategy as negative
+  [Mean Squared Error (MSE)](https://en.wikipedia.org/wiki/Mean_squared_error)
+  against a probe dataset (higher is better), reusing the public
+  `Creature.activate` so the same WASM (WebAssembly) path as production is
+  exercised.
 - **Recipient (production)**: `test/breed/samples/mother-1.json` — the default
   fallback when no `PRODUCTION_URL` env var is supplied.
 - **Donor (Europa)**: `test/breed/samples/father-1.json` — the default fallback

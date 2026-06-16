@@ -7,6 +7,22 @@
 > #2612 (worker contract). Replaces the `evolveEnv` design from the earlier RFC
 > #2610.
 
+<!-- -->
+
+> [!IMPORTANT]
+> **This is the design RFC, not the shipped API reference.** The implemented
+> [`EpisodeAdapter`](../src/creature/EpisodeAdapter.ts) refined the contract
+> below as it landed (Issue #2626): the observation-size member is
+> `observationLength` (a getter, not `observationShape`); the adapter adds an
+> abstract `decodeAction(creatureOutput, state)` rather than baking action
+> decoding into the network output; `reset(rngSeed)` returns
+> `{ observation, state }`; and `step(state, action)` threads the simulator
+> state explicitly. For the **accurate, runnable** contract and a worked
+> `CountingAdapter`, see
+> [`REINFORCEMENT_LEARNING.md`](REINFORCEMENT_LEARNING.md#-driving-evolution-with-evolverl)
+> and [`API_REFERENCE.md`](API_REFERENCE.md#-creatureevolverl). The names in the
+> code blocks below are the original proposal, kept for design provenance.
+
 NEAT-AI today gives **supervised batch evolution** the full library treatment
 through `Creature.evolveDir()` / `Creature.evolveDataSet()`: worker pool,
 plateau detection, checkpointing, lifecycle events, signal-based interrupt. It

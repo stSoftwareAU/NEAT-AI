@@ -38,8 +38,13 @@ introduce non-linearity, enabling the network to learn complex patterns.
 
 In NEAT-AI, each neuron can have its own activation function. This is more
 flexible than traditional neural networks, where all neurons in a layer
-typically share the same function. NEAT-AI's topology evolution can discover
-which activation works best for each neuron's role in the network.
+typically share the same function — and it also differs from **standard NEAT**,
+which evolves activation functions only by random mutation. NEAT-AI's topology
+evolution (plus [Intelligent Design](./INTELLIGENT_DESIGN.md)) can discover
+which activation works best for each neuron's role in the network. For the
+convention on flagging NEAT-AI-vs-standard differences, see the
+[NEAT-vs-NEAT-AI rule](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use); the
+[squash](GLOSSARY.md#-themed--house-terms) term is defined in the glossary.
 
 ### 📖 Key Terms
 

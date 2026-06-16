@@ -12,10 +12,21 @@
 > surface is summarised in [`docs/api/CREATURE.md`](api/CREATURE.md#-crispr).
 
 This guide complements that API summary with the conventions and gotchas that
-catch out new authors. For the project-wide vocabulary that places CRISPR
-alongside Grafting, Discovery, and Intelligent Design, see
-[`AGENTS.md`](../AGENTS.md#-terminology); the documentation index is in
+catch out new authors. For the project-wide vocabulary that places
+[CRISPR](GLOSSARY.md#-themed--house-terms) alongside
+[Grafting](GLOSSARY.md#-themed--house-terms),
+[Discovery](GLOSSARY.md#-themed--house-terms), and
+[Intelligent Design](GLOSSARY.md#-themed--house-terms), see the
+[glossary](GLOSSARY.md); the documentation index is in
 [`docs/README.md`](README.md).
+
+> [!NOTE]
+> **NEAT-AI vs standard NEAT.** Standard NEAT has no notion of hand-crafted gene
+> edits — topology only ever changes through random add-node / add-connection
+> mutation and crossover. CRISPR is a NEAT-AI-specific tool for **deliberate**,
+> author-driven structural edits that preserve neuron UUIDs (the project's
+> identity invariant). See the
+> [NEAT-vs-NEAT-AI rule](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use).
 
 ## 🧪 What a CRISPR injection looks like
 
