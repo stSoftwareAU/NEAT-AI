@@ -34,8 +34,8 @@ asserts on outcomes:
   before deletion (199 stray files), passes after.
 - `test/docs/DocsIndex.ts` — `docs/README.md internal links resolve` confirms no
   dangling internal links remain.
-- `test/docs/JekyllLiquidSafety.ts` — scans every `docs/**/*.md` (now the reduced
-  set plus the new README) for unescaped Liquid; still clean.
+- `test/docs/JekyllLiquidSafety.ts` — scans every `docs/**/*.md` (now the
+  reduced set plus the new README) for unescaped Liquid; still clean.
 
 ```
 ok | 19 passed | 0 failed (179ms)
