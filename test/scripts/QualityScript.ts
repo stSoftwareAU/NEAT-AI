@@ -260,30 +260,77 @@ Deno.test(
  * `--minimum-dependency-age`, any developer running `./quality.sh` with the
  * deps step enabled silently bypasses the VIBE_BUMP_QUARANTINE_HOURS gate
  * and may pull in a too-recent (potentially malicious) registry version.
+ *
+ * Issue #2997 — this was previously a source-text grep over quality.sh (a
+ * HOW-test that passed if the string appeared anywhere, even in a comment).
+ * It is now a WHAT-test: a fake `deno` is placed on PATH that records its
+ * argv, quality.sh runs its deps step (via --lint-only, which keeps RUN_DEPS
+ * on), and we assert on the command line actually emitted to `deno outdated`,
+ * including the hours → minutes conversion.
  */
 Deno.test({
   name:
-    "quality.sh dep update passes --minimum-dependency-age (Issue #2742 quarantine)",
-  permissions: { read: true },
+    "quality.sh dep update invokes `deno outdated` with --minimum-dependency-age (Issue #2742 quarantine)",
+  permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
-    const body = await Deno.readTextFile("./quality.sh");
-    assert(
-      body.includes("VIBE_BUMP_QUARANTINE_HOURS"),
-      "quality.sh must honour VIBE_BUMP_QUARANTINE_HOURS for the dep update",
-    );
-    assert(
-      body.includes("--minimum-dependency-age"),
-      "quality.sh must pass --minimum-dependency-age to `deno outdated --update --latest`",
-    );
+    // quality.sh prepends "$HOME/.deno/bin" to PATH, so the shim must live
+    // there. Point HOME at a temp dir whose .deno/bin holds the fake `deno`.
+    const home = await Deno.makeTempDir({ prefix: "neat-quality-home-" });
+    try {
+      const binDir = `${home}/.deno/bin`;
+      await Deno.mkdir(binDir, { recursive: true });
+      const callLog = `${home}/deno-calls.log`;
+      const shim = `${binDir}/deno`;
+      // Records each invocation's argv (one line) and always succeeds, so
+      // fmt/lint/the deps update all "pass" without touching the real toolchain.
+      await Deno.writeTextFile(
+        shim,
+        `#!/usr/bin/env bash\nprintf '%s\\n' "$*" >> "${callLog}"\nexit 0\n`,
+      );
+      await Deno.chmod(shim, 0o755);
 
-    // The flag must apply specifically to the `deno outdated --update --latest`
-    // invocation, not appear unused elsewhere.
-    const outdatedBlock =
-      /deno outdated --update --latest[\s\S]{0,200}?--minimum-dependency-age=\$\{?QUALITY_QUARANTINE_MINUTES\}?/;
-    assert(
-      outdatedBlock.test(body),
-      "quality.sh must call `deno outdated --update --latest` with `--minimum-dependency-age=${QUALITY_QUARANTINE_MINUTES}`",
-    );
+      const command = new Deno.Command("bash", {
+        args: ["./quality.sh", "--lint-only"],
+        stdout: "piped",
+        stderr: "piped",
+        cwd: Deno.cwd(),
+        env: {
+          PATH: Deno.env.get("PATH") ?? "",
+          HOME: home,
+          VIBE_BUMP_QUARANTINE_HOURS: "3",
+        },
+      });
+      const output = await command.output();
+      assertEquals(
+        output.code,
+        0,
+        `quality.sh --lint-only must succeed with the shim; stderr=${
+          new TextDecoder().decode(output.stderr)
+        }`,
+      );
+
+      const calls = (await Deno.readTextFile(callLog))
+        .split("\n")
+        .filter((l) => l.trim().length > 0);
+      const outdated = calls.find((l) => l.startsWith("outdated"));
+      assert(
+        outdated !== undefined,
+        `expected a 'deno outdated' invocation; got calls: ${
+          JSON.stringify(calls)
+        }`,
+      );
+      assert(
+        outdated.includes("--update") && outdated.includes("--latest"),
+        `deno outdated must update to latest; got: ${outdated}`,
+      );
+      // 3 hours → 180 minutes proves the conversion, not just the literal flag.
+      assert(
+        outdated.includes("--minimum-dependency-age=180"),
+        `deno outdated must carry the quarantine window in minutes; got: ${outdated}`,
+      );
+    } finally {
+      await Deno.remove(home, { recursive: true });
+    }
   },
 });
 
