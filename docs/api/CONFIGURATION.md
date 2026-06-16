@@ -28,6 +28,8 @@ field-by-field reference.
   `DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG`
 - Adaptive population: `AdaptivePopulationConfig`,
   `RequiredAdaptivePopulationConfig`, `DEFAULT_ADAPTIVE_POPULATION_CONFIG`
+- Selection pressure: `SelectionPressureConfig`,
+  `RequiredSelectionPressureConfig`, `DEFAULT_SELECTION_PRESSURE_CONFIG`
 - Parallel evaluation: `ParallelEvaluationConfig`,
   `RequiredParallelEvaluationConfig`, `DEFAULT_PARALLEL_EVALUATION_CONFIG`
 - Data fuzzing: `DataFuzzingConfig`, `RequiredDataFuzzingConfig`,
@@ -311,6 +313,22 @@ Issue #2530: enable the specialist sub-population pipeline (see
 [Evolution API → Specialist Pipeline](EVOLUTION.md#-specialist-pipeline)).
 Defaults via `DEFAULT_SPECIALIST_CONFIG`. `SpecialistMode` enumerates the
 distillation modes available.
+
+### `selectionPressure` — SelectionPressureConfig
+
+Issue #2929: exposes the previously-hardcoded selection-pressure knobs through
+the standard config surface. Every default reproduces the prior behaviour
+exactly. Defaults via `DEFAULT_SELECTION_PRESSURE_CONFIG`.
+
+| Field                            | Type      | Default | Description                                      |
+| -------------------------------- | --------- | ------- | ------------------------------------------------ |
+| `power`                          | `number`  | `4`     | Exponent for `Selection.POWER`                   |
+| `tournamentSize`                 | `number`  | `5`     | `Selection.TOURNAMENT` subset size               |
+| `tournamentProbability`          | `number`  | `0.5`   | Probability the tournament winner is picked      |
+| `adaptiveTournament`             | `boolean` | `true`  | Scale tournament size with population size       |
+| `adaptiveTournamentMinSize`      | `number`  | `3`     | Lower bound for the adaptive tournament size     |
+| `adaptiveTournamentSqrtExponent` | `number`  | `0.5`   | Exponent applied to population size when scaling |
+| `adaptiveTournamentCapFraction`  | `number`  | `0.1`   | Upper bound as a fraction of population size     |
 
 ---
 

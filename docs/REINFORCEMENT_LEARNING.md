@@ -336,7 +336,7 @@ Things to notice:
   schedule.
 
 For the full `EvolveRLOptions` and `EvolveRLMilestone` reference see
-[`docs/API_REFERENCE.md`](API_REFERENCE.md#-creatureevolverl) and the contract
+[`docs/api/EVOLUTION.md`](api/EVOLUTION.md#-creatureevolverl) and the contract
 in [`event-driven-evolution.md`](event-driven-evolution.md).
 
 ## 📚 Glossary

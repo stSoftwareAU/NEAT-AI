@@ -20,7 +20,7 @@
 > state explicitly. For the **accurate, runnable** contract and a worked
 > `CountingAdapter`, see
 > [`REINFORCEMENT_LEARNING.md`](REINFORCEMENT_LEARNING.md#-driving-evolution-with-evolverl)
-> and [`API_REFERENCE.md`](API_REFERENCE.md#-creatureevolverl). The names in the
+> and [`api/EVOLUTION.md`](api/EVOLUTION.md#-creatureevolverl). The names in the
 > code blocks below are the original proposal, kept for design provenance.
 
 NEAT-AI today gives **supervised batch evolution** the full library treatment
