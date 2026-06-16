@@ -59,10 +59,12 @@ networks.
 1. **Computational cost**: population-based training requires more resources.
 2. **Slower convergence**: evolutionary search is slower than pure gradient
    descent.
-3. **Limited scalability**: struggles with very large networks. In production we
-   max out around 500 hidden neurons and 16,000 synapses; the `discoveryDir`
-   feature helps push past this by finding structural improvements
-   incrementally.
+3. **Limited scalability**: struggles with very large networks, though "limited"
+   is relative — the live production creature
+   ([`GRQ-cluster/network.json`](https://github.com/stSoftwareAU/GRQ-cluster/blob/main/network.json),
+   snapshot 2026-06-16) carries ~1,700 hidden neurons and ~22,000 synapses
+   across 2,461 inputs, and keeps growing. The `discoveryDir` feature helps push
+   past this by finding structural improvements incrementally.
 4. **Sequential processing**: less efficient for pure parallel computation than
    fixed architectures, though topology-aware parallel batch evaluation helps.
 5. **Limited unsupervised learning**: NEAT-AI (like standard NEAT) is typically
