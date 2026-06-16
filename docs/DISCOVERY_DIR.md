@@ -10,11 +10,15 @@
 > [GPU_ACCELERATION.md](GPU_ACCELERATION.md) (Graphics Processing Unit (GPU)
 > backend selection), and the topic index in [`docs/README.md`](README.md).
 
-The `Creature.discoveryDir()` helper schedules targeted discovery work over a
-sampled dataset and returns the best performing candidate creature together with
-a human-friendly summary. This guide explains how to prepare data, invoke
-discovery, and fold improvements back into your controller workflow without
-referencing private infrastructure.
+The `Creature.discoveryDir()` helper schedules targeted
+[**Discovery**](GLOSSARY.md#-themed--house-terms) work — NEAT-AI's error-guided
+structural evolution — over a sampled dataset and returns the best performing
+candidate creature together with a human-friendly summary. This guide explains
+how to prepare data, invoke discovery, and fold improvements back into your
+controller workflow without referencing private infrastructure. For the concept
+and the standard-NEAT contrast see
+[DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md#-discovery-vs-standard-neat); for
+pipeline internals see [DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md).
 
 ## 🔧 Prerequisites
 
@@ -25,19 +29,14 @@ referencing private infrastructure.
   `cargo build --release` and either:
   - copy the resulting `libneat_ai_discovery` artefact into `~/.cargo/lib`, or
   - set `NEAT_AI_DISCOVERY_LIB_PATH=/absolute/path/to/libneat_ai_discovery.*`.
-- Discovery-aware builds of `NEAT-AI`. Use `isRustDiscoveryEnabled()` to assert
-  that the Rust module is available before scheduling work:
-
-```18:38:src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts
-export function isRustDiscoveryEnabled(): boolean {
-  try {
-    return isRustLibraryAvailable();
-  } catch {
-    // FFI not allowed or library not available
-    return false;
-  }
-}
-```
+- Discovery-aware builds of `NEAT-AI`. `discoveryDir()` internally calls
+  `isRustDiscoveryEnabled()` and skips the discovery phase when the Rust module
+  cannot be loaded, so a missing library degrades gracefully rather than
+  throwing. The guard returns `true` only when the native library loads; GPU
+  availability is probed for telemetry but does **not** gate discovery (the Rust
+  library handles CPU fallback internally), and the result is cached after the
+  first call for low overhead. The implementation lives in
+  [`RustDiscoveryLibrary.ts`](../src/architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts).
 
 > [!NOTE]
 > If `isRustDiscoveryEnabled()` returns `false`, the Rust library is not
@@ -80,10 +79,11 @@ forward-only.
 
 ## 🗄️ On-disk discovery cache layout
 
-Discovery persists state under a `.discovery/` directory rooted at the workspace
-(or at the path passed via `discoveryWorkDir`). The host writes per-run
-candidate snapshots, focus-selection diagnostics, and the success / failure
-caches consumed by replay. A typical tree looks like:
+Discovery persists state under a `.discovery/` directory rooted at the current
+working directory (or at the path passed via `discoveryBaseDirectory`, which
+defaults to `.discovery`). The host writes per-run candidate snapshots,
+focus-selection diagnostics, and the success / failure caches consumed by
+replay. A typical tree looks like:
 
 ```text
 .discovery/

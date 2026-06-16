@@ -16,14 +16,60 @@
 
 ## 📖 Overview
 
-Discovery is designed for **continuous, incremental improvements** to neural
-networks through automated structure analysis. Each discovery iteration finds
-small improvements (typically 1-3%), which accumulate over time through repeated
-iterations.
+**Discovery** is a [NEAT-AI](../AGENTS.md#-terminology) themed term for
+**error-guided structural evolution** — see the
+[glossary entry](GLOSSARY.md#-themed--house-terms). It is designed for
+**continuous, incremental improvements** to neural networks through automated
+structure analysis. Each discovery iteration finds small improvements (typically
+1-3%), which accumulate over time through repeated iterations.
 
 > [!IMPORTANT]
 > Discovery is NOT about finding large 10%+ improvements in a single run. It's
 > about finding many small 1-2% improvements that compound over time.
+
+## 🆚 Discovery vs standard NEAT
+
+Discovery is a NEAT-AI-specific mechanism with **no direct standard-NEAT
+equivalent**. The contrast is the clearest way to understand it (the canonical
+rule for when to write "NEAT-AI" versus "standard NEAT" lives in
+[AGENTS.md](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)):
+
+- **Standard NEAT** grows topology with **blind structural mutations** —
+  `add-node` and `add-connection` are applied at random and only later judged by
+  fitness. The search has no model of _where_ a network is failing.
+- **NEAT-AI Discovery** is **error-guided**. It records each neuron's
+  activations and errors, asks the Rust
+  [Foreign Function Interface (FFI)](GLOSSARY.md#-acronyms) extension where the
+  creature is making mistakes, and proposes **targeted** candidate edits ranked
+  by expected error reduction. Each candidate is then re-scored and gated by the
+  [cost-of-growth](#-selection-strategy-cost-benefit-analysis) rule before it is
+  accepted.
+
+In other words, standard NEAT mutates and hopes; Discovery measures, then edits.
+
+```mermaid
+flowchart LR
+    classDef record fill:#3498db,stroke:#2980b9,color:#fff
+    classDef analyse fill:#e07b53,stroke:#c0392b,color:#fff
+    classDef propose fill:#9b59b6,stroke:#8e44ad,color:#fff
+    classDef gate fill:#f39c12,stroke:#e67e22,color:#fff
+    classDef accept fill:#2ecc71,stroke:#27ae60,color:#fff
+
+    R["1. Record<br/>per-neuron errors<br/>+ activations"]:::record
+    A["2. Analyse (Rust FFI)<br/>where is the<br/>creature failing?"]:::analyse
+    P["3. Propose<br/>targeted candidate<br/>edits, ranked"]:::propose
+    G["4. Gate<br/>re-score +<br/>cost-of-growth"]:::gate
+    K["5. Accept best<br/>net improvement"]:::accept
+
+    R --> A --> P --> G --> K
+    K -. "next iteration" .-> R
+```
+
+This loop is the user-facing view; the
+[architecture guide](DISCOVERY_ARCHITECTURE.md) documents the two-phase
+pipeline, caches, and FFI handshake behind it, and the
+[on-disk layout reference](DISCOVERY_DIR.md) covers the cache directories and
+the `Creature.discoveryDir()` API.
 
 ## ⚙️ How Discovery Works
 
