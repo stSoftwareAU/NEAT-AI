@@ -11,6 +11,17 @@
 > (Rectified Linear Unit), **TANH** (hyperbolic tangent), **MCMC** (Markov-chain
 > Monte Carlo).
 
+<!-- -->
+
+> [!NOTE]
+> **NEAT-AI vs standard backpropagation.** Textbook backpropagation applies the
+> chain rule uniformly to every weight. NEAT-AI's elastic variant is a
+> NEAT-AI-specific departure: it solves for a target pre-squash value and
+> distributes the required change by a minimum-change, saturation-aware
+> heuristic. For the project-wide convention on flagging such differences, see
+> the [NEAT-vs-NEAT-AI rule](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use);
+> [squash](GLOSSARY.md#-themed--house-terms) is defined in the glossary.
+
 ## 🔗 Sibling docs in the **Compute / WASM** cluster
 
 - [ACTIVATION_FUNCTIONS.md](./ACTIVATION_FUNCTIONS.md) — squash catalogue and
