@@ -698,7 +698,7 @@ training, near-zero connections are pruned and only useful ones are retained.
 - **Very small networks**: Networks with fewer than 10 neurons have limited
   layer structure; synthetic synapses add little value.
 - **Memory-constrained environments**: Synthetic synapses temporarily increase
-  the network size. At production scale (~1,000 neurons), expect a ~3.3x
+  the network size. At production scale (~1,700 neurons), expect a ~3.3x
   expansion in synapse count during training.
 
 ### Performance Implications
