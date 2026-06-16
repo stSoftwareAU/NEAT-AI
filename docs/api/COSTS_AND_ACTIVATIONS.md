@@ -126,6 +126,38 @@ interface TaskDescriptor {
 `OTHER_COST_NAME` is `"OTHER"`; `OTHER_TASK_DESCRIPTOR` is the fully-`unknown`
 descriptor returned for any unrecognised cost.
 
+#### FFI wire shape (Issue #3012)
+
+The `TaskDescriptor` above uses snake_case **internal** names. NEAT-AI-Discovery
+(the Rust consumer) deserialises a different, PascalCase shape, so every
+descriptor crossing the FFI boundary is mapped through
+`taskDescriptorToRustWire(descriptor, numOutputs)` first. Forwarding the
+internal shape unchanged makes Rust fail with `unknown variant 'unbounded'`.
+
+```typescript
+interface RustWireTaskDescriptor {
+  readonly targetTopology: RustWireTopology; // "Independent" | "Simplex" | …
+  readonly targetRange: RustWireRange; // "Unbounded" | "Positive" | …
+  readonly outputSquashFamily: RustWireSquashFamily; // "BoundedUnipolar" | …
+  readonly numOutputs: number; // from the creature export
+}
+```
+
+| Internal field       | Wire field           | Example mapping                        |
+| -------------------- | -------------------- | -------------------------------------- |
+| `topology`           | `targetTopology`     | `independent` → `Independent`          |
+| `range`              | `targetRange`        | `signed_unit` → `SignedUnit`           |
+| `outputSquashFamily` | `outputSquashFamily` | `bounded_unipolar` → `BoundedUnipolar` |
+| _(none)_             | `numOutputs`         | output neuron count                    |
+| `costName`           | _(dropped)_          | never sent on the wire                 |
+
+```mermaid
+flowchart LR
+  A["costNameToTaskDescriptor<br/>(snake_case internal)"] --> B["taskDescriptorToRustWire<br/>(PascalCase wire)"]
+  B --> C["recordDiscovery /<br/>analyzeParallel FFI"]
+  C --> D["NEAT-AI-Discovery (Rust)"]
+```
+
 ---
 
 ## ⚡ Activation Functions

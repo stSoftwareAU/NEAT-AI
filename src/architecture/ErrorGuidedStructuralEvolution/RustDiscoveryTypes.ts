@@ -5,7 +5,7 @@
  * Rust library via Deno's Foreign Function Interface.
  */
 
-import type { TaskDescriptor } from "@costs/CostTaskDescriptor.ts";
+import type { RustWireTaskDescriptor } from "@costs/TaskDescriptorRustWire.ts";
 
 /**
  * Result of recording discovery data via Rust module.
@@ -241,14 +241,16 @@ export interface RustParallelAnalysisInput {
    */
   focusNeuronErrorShares?: Record<string, number>;
   /**
-   * Structural descriptor of the configured cost (Issue #2785). Built-in costs
-   * carry their canonical name; custom JS costs collapse to the neutral `OTHER`
-   * descriptor so the real custom name never leaves the process.
+   * Structural descriptor of the configured cost on the FFI wire (Issues #2785,
+   * #3012). PascalCase shape NEAT-AI-Discovery deserialises — built-in costs
+   * carry their canonical structure; custom JS costs collapse to the neutral
+   * `Unknown` / `Unbounded` / `Any` descriptor so the real custom name never
+   * leaves the process.
    *
    * Optional on the wire: an older Discovery build that ignores this field
    * still works (backward compatible).
    */
-  taskDescriptor?: TaskDescriptor;
+  taskDescriptor?: RustWireTaskDescriptor;
 }
 
 /**
@@ -495,14 +497,16 @@ export interface RustRecordInput {
   "record_indices"?: number[];
   "timeout_seconds"?: number;
   /**
-   * Structural descriptor of the configured cost (Issue #2785). Built-in costs
-   * carry their canonical name; custom JS costs collapse to the neutral `OTHER`
-   * descriptor so the real custom name never leaves the process.
+   * Structural descriptor of the configured cost on the FFI wire (Issues #2785,
+   * #3012). PascalCase shape NEAT-AI-Discovery deserialises — built-in costs
+   * carry their canonical structure; custom JS costs collapse to the neutral
+   * `Unknown` / `Unbounded` / `Any` descriptor so the real custom name never
+   * leaves the process.
    *
    * Optional on the wire: an older Discovery build that ignores this field
    * still works (backward compatible).
    */
-  taskDescriptor?: TaskDescriptor;
+  taskDescriptor?: RustWireTaskDescriptor;
 }
 
 /**

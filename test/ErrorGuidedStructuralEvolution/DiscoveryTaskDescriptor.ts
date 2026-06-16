@@ -20,9 +20,8 @@ import type {
 import {
   costNameToTaskDescriptor,
   OTHER_COST_NAME,
-  OTHER_TASK_DESCRIPTOR,
-  type TaskDescriptor,
 } from "@costs/CostTaskDescriptor.ts";
+import type { RustWireTaskDescriptor } from "@costs/TaskDescriptorRustWire.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 function makeCreature(): Creature {
@@ -107,16 +106,24 @@ Deno.test("recordDiscovery carries the configured cost task descriptor (Issue #2
       1,
       "recordDiscovery should be invoked once",
     );
+    // Assert the serialised FFI wire shape (Issue #3012), not the internal
+    // object reference — Discovery deserialises PascalCase field names/variants.
+    const wire: RustWireTaskDescriptor =
+      JSON.parse(JSON.stringify(recordedInputs[0])).taskDescriptor;
     assertEquals(
-      recordedInputs[0].taskDescriptor,
-      crossEntropyDescriptor,
-      "recordDiscovery should send the configured descriptor",
+      wire,
+      {
+        targetTopology: "Simplex",
+        targetRange: "Unit",
+        outputSquashFamily: "BoundedUnipolar",
+        numOutputs: 1,
+      },
+      "recordDiscovery should send the PascalCase wire descriptor for CROSS_ENTROPY",
     );
-    assertEquals(
-      recordedInputs[0].taskDescriptor?.costName,
-      "CROSS_ENTROPY",
-      "built-in cost sends its canonical name",
-    );
+    // Internal-only fields must never appear on the wire.
+    assert(!("costName" in wire), "wire must not include internal costName");
+    assert(!("topology" in wire), "wire must not include internal topology");
+    assert(!("range" in wire), "wire must not include internal range");
   } finally {
     await structure.cleanUp();
   }
@@ -163,11 +170,16 @@ Deno.test("recordDiscovery defaults to the neutral OTHER descriptor when no cost
     );
     assertEquals(structure.flushRustChunk(), true);
 
-    assertEquals(
-      recordedInputs[0].taskDescriptor,
-      OTHER_TASK_DESCRIPTOR,
-      "missing cost defaults to the neutral OTHER descriptor",
-    );
+    // Missing cost defaults to the neutral OTHER descriptor, mapped to its
+    // PascalCase wire form (Issue #3012).
+    const wire: RustWireTaskDescriptor =
+      JSON.parse(JSON.stringify(recordedInputs[0])).taskDescriptor;
+    assertEquals(wire, {
+      targetTopology: "Unknown",
+      targetRange: "Unbounded",
+      outputSquashFamily: "Any",
+      numOutputs: 1,
+    });
   } finally {
     await structure.cleanUp();
   }
@@ -232,12 +244,21 @@ Deno.test("analyzeParallel carries the configured cost task descriptor (Issue #2
       1,
       "analyzeParallel should be invoked once",
     );
-    assertEquals(
-      analyzeInputs[0].taskDescriptor,
-      mseDescriptor,
-      "analyzeParallel should send the configured descriptor",
+    // Assert the serialised FFI wire shape (Issue #3012). MSE's internal range
+    // and squash are both snake_case "unbounded"; the wire must be "Unbounded".
+    const wire: RustWireTaskDescriptor =
+      JSON.parse(JSON.stringify(analyzeInputs[0])).taskDescriptor;
+    assertEquals(wire, {
+      targetTopology: "Independent",
+      targetRange: "Unbounded",
+      outputSquashFamily: "Unbounded",
+      numOutputs: 1,
+    });
+    // Exact regression guard: the snake_case variant must never reach the wire.
+    assert(
+      !JSON.stringify(analyzeInputs[0]).includes('"unbounded"'),
+      'MSE wire must not contain snake_case "unbounded"',
     );
-    assertEquals(analyzeInputs[0].taskDescriptor?.costName, "MSE");
   } finally {
     await structure.cleanUp();
   }
@@ -280,8 +301,17 @@ Deno.test("ensureRustCombinedAnalysis never leaks a custom cost name, sending OT
   );
 
   assert(capturedInput, "analyzeParallel should have been called");
-  const sent: TaskDescriptor | undefined = capturedInput.taskDescriptor;
-  assertEquals(sent?.costName, OTHER_COST_NAME);
+  // The custom cost collapses to the neutral OTHER descriptor on the wire — a
+  // PascalCase shape carrying no name (Issue #3012).
+  const sent: RustWireTaskDescriptor | undefined =
+    JSON.parse(JSON.stringify(capturedInput)).taskDescriptor;
+  assertEquals(sent, {
+    targetTopology: "Unknown",
+    targetRange: "Unbounded",
+    outputSquashFamily: "Any",
+    numOutputs: 1,
+  });
+  assert(sent && !("costName" in sent), "wire must not include costName");
   // The raw custom name must not appear anywhere in the serialised payload.
   assert(
     !JSON.stringify(capturedInput).includes("my-secret-custom-cost"),
