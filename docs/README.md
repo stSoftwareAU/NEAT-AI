@@ -181,10 +181,28 @@ Project-level policies, audits, and release plumbing.
 
 ## 🔍 Comparison with other approaches
 
-- **[../COMPARISON.md](../COMPARISON.md)** — how NEAT-AI compares to standard
-  NEAT, traditional neural networks, CNNs (Convolutional Neural Networks), RNNs
-  (Recurrent Neural Networks), and modern LLMs (Large Language Models). Owned by
-  Issue #2563 and excluded from the index refresh.
+- **[../COMPARISON.md](../COMPARISON.md)** — the concise comparison **hub**: how
+  NEAT-AI compares to standard NEAT, traditional neural networks, CNNs
+  (Convolutional Neural Networks), RNNs (Recurrent Neural Networks), and modern
+  LLMs (Large Language Models). It carries the at-a-glance capability matrix and
+  links out to the focused sub-documents under [`comparison/`](comparison/)
+  (Issue #2961):
+  - **[comparison/IMPLEMENTED.md](comparison/IMPLEMENTED.md)** — standard NEAT
+    machinery vs the NEAT-AI extensions built on top.
+  - **[comparison/ARCHITECTURES.md](comparison/ARCHITECTURES.md)** — NEAT-AI's
+    evolving topology vs feedforward, CNN, RNN/LSTM, and Transformer networks.
+  - **[comparison/TRAINING_PARADIGMS.md](comparison/TRAINING_PARADIGMS.md)** —
+    gradient-only training vs NEAT-AI's hybrid evolution + backprop, and RL.
+  - **[comparison/UNIQUE_APPROACHES.md](comparison/UNIQUE_APPROACHES.md)** — the
+    12 headline NEAT-AI innovations.
+  - **[comparison/ECOSYSTEM.md](comparison/ECOSYSTEM.md)** — NEAT-AI vs
+    TensorFlow / PyTorch / scikit-learn.
+  - **[comparison/PROS_AND_CONS.md](comparison/PROS_AND_CONS.md)** — candid
+    trade-offs vs traditional neural networks.
+  - **[comparison/FUTURE_WORK.md](comparison/FUTURE_WORK.md)** — gaps versus the
+    modern state of the art.
+  - **[comparison/REFERENCES.md](comparison/REFERENCES.md)** — consolidated
+    supporting literature.
 
 ## 🚫 Out of scope for this index
 
