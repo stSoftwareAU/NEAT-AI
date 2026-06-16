@@ -1,79 +1,78 @@
-# SCR-AUTO-UPDATE: enable the advisory-driven security-update channel
+# SCR-AUTO-UPDATE — enable advisory-driven security-update channel
 
 ## Summary
 
-The repository already had _freshness-driven_ dependency automation
-(`.github/workflows/deno-outdated.yml` weekly bump, `bump-deps.sh` quarantine
-refresh) and advisory _detection_ (`.github/workflows/osv-scan.yml`), but no
-advisory-_driven_ update channel. When a CVE was disclosed against a pinned
-`jsr:`/`npm:` dependency, nothing raised a targeted remediation PR — the team
-waited for the next weekly freshness run (plus the 24h quarantine) or responded
-manually to the OSV scan failure.
+The repository had dependency-update automation, but only the _freshness-driven_
+half: `.github/workflows/deno-outdated.yml` raises a weekly PR for whatever is
+newest, and `.github/workflows/osv-scan.yml` _detects_ advisories (failing CI)
+but raises no remediation PR. When a CVE is disclosed against a pinned
+dependency, nothing automatically opened a targeted bump — the team waited for
+the next weekly freshness run or responded manually to the OSV scan failure.
 
-This change adds a minimal `renovate.json` that enables Renovate's OSV-backed
-vulnerability-alert channel. Renovate supports the Deno manager (`jsr:`, `npm:`,
-`https://deno.land/*`), so the control is genuinely available here (unlike
-Dependabot, which does not parse `deno.json`/`deno.lock`). The existing
-freshness job is left untouched — this closes the _remediation-automation_ half
-of the same loop that `osv-scan.yml` _detects_.
+This change adds a minimal `renovate.json` that enables Renovate's
+_advisory-driven_ security-update channel alongside the existing freshness job.
+Renovate supports the Deno manager (`jsr:`, `npm:`, `https://deno.land/*`), and
+with `osvVulnerabilityAlerts` enabled it raises a dedicated PR for any
+dependency carrying a known OSV advisory — turning "an advisory exists" into "a
+fix PR is waiting for review" and shrinking the exposure window between
+disclosure and remediation. `deno-outdated.yml` is left intact for routine
+freshness bumps.
 
-`SECURITY.md` is updated to document the new channel alongside the existing
-automation.
+`renovate.json`:
+
+```json
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "vulnerabilityAlerts": { "enabled": true },
+  "osvVulnerabilityAlerts": true
+}
+```
+
+`SECURITY.md` is updated to document the new channel under the in-repo
+automation list.
 
 Closes #3007.
 
 ## Evidence
 
-This is a config/CI change with no web interface to screenshot. Verification is
-via the new "what" tests that parse the committed `renovate.json` and assert on
-the resulting configuration (schema reference, `config:recommended` preset,
-`vulnerabilityAlerts.enabled`, `osvVulnerabilityAlerts`).
+This is a CI/config change with no web interface to screenshot. Verification is
+via the new behavioural tests, which parse the committed `renovate.json` and
+assert on the resolved configuration.
+
+```
+deno test test/ci/RenovateSecurityUpdates.ts --allow-read
+ok | 5 passed | 0 failed
+```
+
+Full quality gate: `./quality.sh` → `7265 passed | 0 failed | 4 ignored`.
+
+The two complementary automation channels after this change:
 
 ```mermaid
 flowchart LR
-    CVE[CVE disclosed against<br/>pinned dependency] --> Detect
-    subgraph Detection
-      Detect[osv-scan.yml<br/>weekly OSV scan] -->|fails CI| Signal[Actionable signal]
+    subgraph Freshness
+        A[deno-outdated.yml<br/>weekly] --> B[bump PR for newest version]
     end
-    subgraph Remediation
-      CVE --> Renovate[renovate.json<br/>osvVulnerabilityAlerts]
-      Renovate -->|raises targeted bump PR| PR[Fix PR waiting<br/>for review]
+    subgraph Advisory
+        C[OSV advisory disclosed] --> D[osv-scan.yml<br/>detects, fails CI]
+        C --> E[renovate.json<br/>osvVulnerabilityAlerts]
+        E --> F[targeted remediation PR]
     end
-    Freshness[deno-outdated.yml<br/>weekly freshness bump] -.routine, not advisory.-> PR
-```
-
-Before: detection only (red CI), remediation manual. After: a dedicated
-remediation PR is raised automatically for any dependency carrying a known OSV
-advisory.
-
-Test run:
-
-```text
-running 5 tests from ./test/ci/RenovateConfig.ts
-renovate.json exists and parses as JSON (Issue #3007) ... ok
-renovate.json references the Renovate schema (Issue #3007) ... ok
-renovate.json extends a recommended preset (Issue #3007) ... ok
-renovate.json enables the vulnerability-alert channel (Issue #3007) ... ok
-renovate.json enables OSV-backed vulnerability alerts (Issue #3007) ... ok
-ok | 5 passed | 0 failed
 ```
 
 ## Test Plan
 
-- Added `test/ci/RenovateConfig.ts` — five "what" tests parsing the committed
-  `renovate.json`:
-  - exists and parses as JSON
-  - references the Renovate schema (`$schema`)
-  - extends `config:recommended`
-  - `vulnerabilityAlerts.enabled === true`
-  - `osvVulnerabilityAlerts === true`
-- Confirmed the tests fail against the unfixed tree (no `renovate.json`) and
-  pass after adding the file (TDD).
-- `./quality.sh --lint-only` passes (fmt, lint, bash syntax).
-- `markdownlint-cli2` clean on `SECURITY.md`.
+Added `test/ci/RenovateSecurityUpdates.ts` (5 tests), mirroring the existing
+`test/ci/OsvScanWorkflow.ts` "what" style:
 
-## Deno regression avoided
+- `renovate.json exists and parses as JSON`
+- `renovate.json references the Renovate schema`
+- `renovate.json extends a base preset`
+- `renovate.json enables vulnerability alerts`
+  (`vulnerabilityAlerts.enabled === true`)
+- `renovate.json enables OSV-backed vulnerability alerts`
+  (`osvVulnerabilityAlerts === true`)
 
-- Chose Renovate's native Deno manager (config-only `renovate.json`) over GitHub
-  Dependabot, which does not parse `deno.json`/`deno.lock`. No Node tooling,
-  `package.json`, or lockfile was introduced.
+Each test failed before `renovate.json` was added (TDD red) and passes after
+(green).
