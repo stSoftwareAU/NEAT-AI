@@ -25,6 +25,7 @@ import {
   finalizeRustFlushDiagnostics as finalizeRustFlushDiagnosticsImpl,
   observeRustTrainingRecord as observeRustTrainingRecordImpl,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
+import { taskDescriptorToRustWire } from "@costs/TaskDescriptorRustWire.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { appendAll } from "@utils/ArrayAppend.ts";
 import { isReleased } from "@utils/ReleasableRef.ts";
@@ -315,7 +316,12 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
       "binary_file_path": this.rustBinaryFilePath || undefined,
       "record_indices": recordIndicesLocal,
       "timeout_seconds": timeoutSeconds,
-      taskDescriptor: this.taskDescriptor,
+      // Map the internal snake_case descriptor to the PascalCase FFI wire
+      // shape NEAT-AI-Discovery deserialises (Issue #3012).
+      taskDescriptor: taskDescriptorToRustWire(
+        this.taskDescriptor,
+        this.creature.output,
+      ),
     };
 
     const result = this.deps.recordDiscovery(rustInput);

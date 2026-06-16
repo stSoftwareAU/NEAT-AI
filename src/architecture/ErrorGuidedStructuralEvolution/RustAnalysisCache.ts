@@ -18,6 +18,7 @@ import type {
 import { creatureToRustFormat } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type { DiscoverStructureDeps } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { TaskDescriptor } from "@costs/CostTaskDescriptor.ts";
+import { taskDescriptorToRustWire } from "@costs/TaskDescriptorRustWire.ts";
 import {
   buildRuntimeIdToWireMap,
   resolveRuntimeIdToWireUuid,
@@ -175,7 +176,17 @@ export function ensureRustCombinedAnalysis(
       : undefined,
     analysisDeadlineMs: effectiveDeadlineMs,
     focusNeuronErrorShares,
-    ...(taskDescriptor ? { taskDescriptor } : {}),
+    // Map the internal snake_case descriptor to the PascalCase FFI wire shape
+    // NEAT-AI-Discovery deserialises (Issue #3012). Stays absent when no
+    // descriptor is configured (backward compatible).
+    ...(taskDescriptor
+      ? {
+        taskDescriptor: taskDescriptorToRustWire(
+          taskDescriptor,
+          creature.output,
+        ),
+      }
+      : {}),
   };
 
   const parallelResult = deps.analyzeParallel(parallelInput);
