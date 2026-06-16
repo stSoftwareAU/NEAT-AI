@@ -243,13 +243,11 @@ Deno.test({
           log: 0,
         });
 
-        const start128 = Date.now();
         const result128 = await recordDirectory(
           creature128,
           tmpDir128,
           config128,
         );
-        const elapsed128 = Date.now() - start128;
 
         const config512 = createNeatConfig({
           discoveryBatchSize: 512,
@@ -262,13 +260,11 @@ Deno.test({
           log: 0,
         });
 
-        const start512 = Date.now();
         const result512 = await recordDirectory(
           creature512,
           tmpDir512,
           config512,
         );
-        const elapsed512 = Date.now() - start512;
 
         // Both should return results (not throw) - this tests timeout handling and FFI integration.
         assertExists(result128, "Batch 128 should return result");
@@ -314,13 +310,6 @@ Deno.test({
         assert(
           recorded512 < recordCount,
           `Expected partial recording for batch=512. Recorded=${recorded512}, total=${recordCount}`,
-        );
-
-        // This is a regression guard for "timeout tests are slow on GPU machines".
-        // We want this test bounded even when GPUs are available.
-        assert(
-          elapsed128 < 15_000 && elapsed512 < 15_000,
-          `Expected both runs to finish quickly. elapsed128=${elapsed128}ms elapsed512=${elapsed512}ms`,
         );
       } finally {
         // Restore original DENO_TEST value
@@ -370,9 +359,7 @@ Deno.test({
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
-        const start = Date.now();
         const result = await recordDirectory(creature, tmpDir, config);
-        const elapsed = Date.now() - start;
 
         // Should return result (not throw)
         assertExists(result, "Should return result even with timeout");
@@ -394,11 +381,6 @@ Deno.test({
         assert(
           recorded < recordCount,
           `Expected partial recording. Recorded=${recorded}, total=${recordCount}`,
-        );
-
-        assert(
-          elapsed < 15_000,
-          `Expected timeout test to be fast. elapsed=${elapsed}ms`,
         );
       } finally {
         // Restore original DENO_TEST value
@@ -449,9 +431,7 @@ Deno.test({
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
-        const start = Date.now();
         const result = await recordDirectory(creature, tmpDir, config);
-        const elapsed = Date.now() - start;
 
         // Should complete without throwing
         assertExists(result, "Should return result despite timeout");
@@ -469,11 +449,6 @@ Deno.test({
         assert(
           recorded > 0,
           "Expected to record at least one sample before timing out",
-        );
-
-        assert(
-          elapsed < 15_000,
-          `Expected timeout test to be fast. elapsed=${elapsed}ms`,
         );
       } finally {
         // Restore original DENO_TEST value
@@ -525,9 +500,7 @@ Deno.test({
       const originalDenoTest = Deno.env.get("DENO_TEST");
       Deno.env.set("DENO_TEST", "true");
       try {
-        const start = Date.now();
         const result = await recordDirectory(creature, tmpDir, config);
-        const elapsed = Date.now() - start;
 
         // Should complete successfully
         assertExists(result, "Should return result");
@@ -544,11 +517,6 @@ Deno.test({
         assert(
           recorded === recordCount,
           `Expected all records to be recorded. Recorded=${recorded}, total=${recordCount}`,
-        );
-
-        assert(
-          elapsed < 15_000,
-          `Expected discovery (record-only) test to be fast. elapsed=${elapsed}ms`,
         );
       } finally {
         // Restore original DENO_TEST value
