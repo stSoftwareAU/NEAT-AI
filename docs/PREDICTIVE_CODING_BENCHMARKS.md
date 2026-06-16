@@ -127,6 +127,23 @@ signal degradation is significant.
 > correctness outweigh the settling cost — especially once the Rust/WASM
 > inference engine (#1560) is in place.
 
+#### 🔁 Re-verification — June 2026 (Issue #2965)
+
+Re-run on Apple M4 Pro, **Deno 2.8.3**, to confirm the numbers reproduce. The
+February 2026 rows above are retained for historical comparison. Figures are
+within noise of the original run; on XOR, PC was marginally faster on this run.
+
+| Problem    | Method            | time/iter (avg) | iter/s |
+| ---------- | ----------------- | --------------- | ------ |
+| XOR        | Standard backprop | 4.0 ms          | 249.5  |
+| XOR        | Predictive Coding | 3.7 ms          | 266.8  |
+| Regression | Standard backprop | 5.8 ms          | 171.4  |
+| Regression | Predictive Coding | 8.6 ms          | 115.9  |
+
+**Finding**: Reproducible. PC ≈ backprop on XOR (~1.07× either way, within run
+variance) and ~1.48× slower on regression — consistent with the original finding
+that PC's settling overhead is modest on small networks.
+
 ## 2. ⚡ Inference and Learning Speed
 
 _Source bench script:_
@@ -178,6 +195,23 @@ of synapses (quadratic in dense layers).
 **Finding**: Weight updates are very fast — a single pass applying pre-computed
 deltas with constraint enforcement. Even for large networks (93 neurons, 2,090
 synapses), updates complete in under 60 us.
+
+### 🔁 Re-verification — June 2026 (Issue #2965)
+
+Re-run on Apple M4 Pro, **Deno 2.8.3**. Numbers reproduce within
+hardware/runtime noise; the February 2026 rows above are retained for
+comparison.
+
+| Stage          | Small (7) | Medium (37) | Large (93) |
+| -------------- | --------- | ----------- | ---------- |
+| Inference (50) | 36.7 us   | 2.4 ms      | 38.1 ms    |
+| Gradient comp. | 1.2 us    | 54.0 us     | 745.8 us   |
+| Hebbian update | 326.5 ns  | 8.5 us      | 54.3 us    |
+
+**Finding**: Reproducible. Inference still dominates and scales super-linearly;
+gradient computation and Hebbian updates remain cheap (large-network Hebbian
+update still under 60 us). This continues to motivate the planned Rust/WASM
+inference engine (#1560) for production-scale networks.
 
 ## 3. 🏗️ Structural Evolution
 

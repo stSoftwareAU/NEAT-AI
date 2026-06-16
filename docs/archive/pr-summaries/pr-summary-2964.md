@@ -58,12 +58,12 @@ flowchart LR
 
 Documentation-only change (no runtime code). Verified via:
 
-- `test/docs/DiscoveryGuides.ts` — new "what" tests (read the real files,
-  assert on outcomes): all 7 pass.
+- `test/docs/DiscoveryGuides.ts` — new "what" tests (read the real files, assert
+  on outcomes): all 7 pass.
 - `deno test --allow-read "test/docs/*.ts"` — 83 passed, 0 failed.
 - `deno fmt`, `deno lint`, `deno check` — clean on all changed files.
 - `markdownlint-cli2` — 0 errors across the docs.
-- No stray Liquid (`{% %}` / `{{ }}`) outside code fences.
+- No stray Liquid ({% raw %}`{% %}` / `{{ }}`{% endraw %}) outside code fences.
 
 ## Test Plan
 
