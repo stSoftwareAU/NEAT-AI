@@ -84,7 +84,7 @@ and cited in the linked sub-documents.**
 | Cross-incompatible-parent breeding | ❌ Refuses             | ✅ Extension (grafting, subgraph) | n/a                     |
 | Transfer learning                  | ❌                     | ✅ Checkpoints + ONNX             | ✅ Pre-trained models   |
 | Non-differentiable objectives      | ✅                     | ✅                                | ❌ Needs gradients      |
-| Scales to billions of parameters   | ❌                     | 🟡 ~500 hidden neurons in prod    | ✅                      |
+| Scales to billions of parameters   | ❌                     | 🟡 ~1,700 hidden neurons in prod  | ✅                      |
 
 Legend: ✅ supported · 🟡 partial · ❌ not supported. See
 [Pros and cons](./docs/comparison/PROS_AND_CONS.md) and
