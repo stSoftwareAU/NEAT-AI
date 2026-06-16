@@ -73,3 +73,24 @@ jobs:
       - name: Publish to JSR
         if: steps.needs_publish.outputs.publish == 'true'
         run: npx jsr publish
+
+      # Issue #3008 (SCR-SBOM): emit a machine-readable Software Bill of
+      # Materials for the published version. Deno has no first-class SBOM
+      # emitter, so generate a CycloneDX document over the committed deno.lock
+      # (-t deno) — the same resolved tree that ships. Downstream consumers use
+      # this to answer "did the version I depend on include the compromised
+      # package?" without re-resolving the dependency graph.
+      - name: Generate CycloneDX SBOM
+        if: steps.needs_publish.outputs.publish == 'true'
+        run: deno run -A npm:@cyclonedx/cdxgen -t deno -o sbom.cdx.json .
+
+      # Pinned per github-actions-audit (SCR-ACTIONS-PIN): 40-char commit SHA,
+      # not a moving tag. Same release as coverage.yaml's upload-artifact.
+      - name: Upload SBOM
+        if: steps.needs_publish.outputs.publish == 'true'
+        # actions/upload-artifact@v7.0.1 — Node 24 runtime (Issue #2767)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          if-no-files-found: error
