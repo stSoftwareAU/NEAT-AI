@@ -1,18 +1,18 @@
 ## Summary
 
-Rewrote the benchmark-shaped unit test `test/propagate/SyntheticSynapsesProductionScale.ts:307-350`
-("synthetic synapses: memory estimate at production scale") into a proper
-**"what" test** that asserts the invariant the per-target cap actually
-guarantees. Closes #2999.
+Rewrote the benchmark-shaped unit test
+`test/propagate/SyntheticSynapsesProductionScale.ts:307-350` ("synthetic
+synapses: memory estimate at production scale") into a proper **"what" test**
+that asserts the invariant the per-target cap actually guarantees. Closes #2999.
 
 The old test fabricated a memory figure from a magic constant
 (`const estimatedBytesPerSynapse = 88`), multiplied it by `result.addedCount`,
-`console.log`-ged a throughput-style report, then asserted against two
-spec-less round numbers (`assertLess(estimatedAdditionalMB, 50)` and
+`console.log`-ged a throughput-style report, then asserted against two spec-less
+round numbers (`assertLess(estimatedAdditionalMB, 50)` and
 `assertLess(expansionRatio, 5)`). None of these numbers were measured or
 specified — they tracked what the current estimate heuristic happened to
-produce, so any change to the heuristic or the cap forced the magic values to
-be re-tuned even when no observable behaviour regressed. The `console.log` was
+produce, so any change to the heuristic or the cap forced the magic values to be
+re-tuned even when no observable behaviour regressed. The `console.log` was
 benchmark output that added no correctness signal.
 
 ### What changed
@@ -20,8 +20,8 @@ benchmark output that added no correctness signal.
 The rewritten test (renamed to "synthetic synapses: no target exceeds the
 per-target cap at production scale") asserts the genuine invariant:
 
-- Group the returned `syntheticKeys` by their target neuron index (`toIdx`).
-  A target neuron is the `to` endpoint for exactly one adjacent layer pair, so
+- Group the returned `syntheticKeys` by their target neuron index (`toIdx`). A
+  target neuron is the `to` endpoint for exactly one adjacent layer pair, so
   this count is the complete per-target synthetic count.
 - Assert every per-target count is `<= DEFAULT_MAX_SYNTHETIC_PER_TARGET`. This
   is the behaviour the cap exists to enforce and bounds total memory growth far
@@ -73,5 +73,5 @@ Full `./quality.sh` passes: `ok | 7252 passed (2 steps) | 0 failed | 4 ignored`.
   layout or the sampling heuristic, failing only if the cap is genuinely
   violated.
 - Verified the existing six tests in the file are unchanged and still pass.
-- Ran the full quality gate (`./quality.sh`) — lint, format, type-check, and
-  the entire test suite pass cleanly.
+- Ran the full quality gate (`./quality.sh`) — lint, format, type-check, and the
+  entire test suite pass cleanly.
