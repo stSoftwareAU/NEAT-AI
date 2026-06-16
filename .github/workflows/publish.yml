@@ -50,6 +50,7 @@ jobs:
       - name: Determine whether the version needs publishing
         id: needs_publish
         run: |
+          set -Eeuo pipefail
           name=$(jq -r .name deno.json)
           version=$(jq -r .version deno.json)
           status=$(curl -s -o /dev/null -w '%{http_code}' \
