@@ -105,8 +105,13 @@ Tuning guides and benchmark research.
 
 Drop-in API and configuration material.
 
-- **[API_REFERENCE.md](API_REFERENCE.md)** — comprehensive public API
-  documentation.
+- **[API_REFERENCE.md](API_REFERENCE.md)** — public API index. A short surface
+  map linking to the per-topic detail docs under [`api/`](api/):
+  [Creature](api/CREATURE.md), [Configuration](api/CONFIGURATION.md),
+  [Costs & Activations](api/COSTS_AND_ACTIVATIONS.md),
+  [Evolution](api/EVOLUTION.md), [Training](api/TRAINING.md),
+  [Discovery](api/DISCOVERY.md), [Interop](api/INTEROP.md),
+  [Compute / WASM](api/COMPUTE.md), and [Errors](api/ERRORS.md).
 - **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** — topic index for the
   configuration surface. The detail docs under [`config/`](config/) cover
   presets, core evolution, training, discovery, mutation adaptation,

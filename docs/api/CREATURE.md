@@ -10,6 +10,11 @@ Creature lifecycle, hand-edited gene modification, and serialisation types.
 ## 📦 Exports documented here
 
 - `Creature`, `CURRENT_CREATURE_SEMANTIC_VERSION`
+- Creature factory: `creatureForProblem`, `creatureForDataset`,
+  `scanTrainingData`, `pickHiddenCapacity`, `pickOutputSquashForProblem`,
+  `rescaleWeightsForInit`, `targetInitStddev`,
+  `DEAD_FEATURE_VARIANCE_THRESHOLD`, `HIGH_DIMENSIONAL_INPUT_THRESHOLD`,
+  `ProblemSpec`, `DatasetFactoryOptions`, `DatasetScan`, `NumericRange`
 - `CreatureUtil`
 - `CRISPR`, `CRISPR_DEFAULT_FIRST_DNA_OUTPUT_INDEX`,
   `FROM_RELATIVE_DEMOTED_OUTPUT`, `validateDNA`, `CrisprInterface`
@@ -102,6 +107,94 @@ freshly-exported creatures.
 
 ---
 
+## 🏭 Creature factory
+
+Issue #2794: build a smarter _initial_ creature from problem metadata or a
+training-set scan, then hand it to `Creature.evolveDir()`. Evolution is
+unchanged — the factory just provides a better starting point (sensible hidden
+capacity, output squash matched to the cost, weight scaling, dead-feature
+pruning, and output-bias warm-start).
+
+```typescript
+import {
+  creatureForDataset,
+  creatureForProblem,
+  scanTrainingData,
+} from "@stsoftware/neat-ai";
+import type {
+  DatasetFactoryOptions,
+  DatasetScan,
+  NumericRange,
+  ProblemSpec,
+} from "@stsoftware/neat-ai";
+```
+
+### `creatureForProblem(spec)`
+
+Builds an initial creature from declared problem metadata.
+
+```typescript
+const creature = creatureForProblem({
+  inputs: 8,
+  outputs: 3,
+  cost: "CROSS_ENTROPY",
+  outputRange: { min: 0, max: 1 },
+});
+```
+
+`ProblemSpec` fields (only `inputs` and `outputs` are required):
+
+| Field               | Type           | Description                                          |
+| ------------------- | -------------- | ---------------------------------------------------- |
+| `inputs`            | `number`       | Number of input neurons                              |
+| `outputs`           | `number`       | Number of output neurons                             |
+| `cost`              | `string`       | Cost name used to pick the output squash family      |
+| `inputRange`        | `NumericRange` | Expected input value range (`{ min, max }`)          |
+| `outputRange`       | `NumericRange` | Expected output value range (`{ min, max }`)         |
+| `hiddenCapacity`    | `number`       | Override the auto-chosen hidden-neuron count         |
+| `hiddenSquash`      | `string`       | Override the hidden-layer activation function        |
+| `feedbackEnabled`   | `boolean`      | Allow recurrent connections                          |
+| `warmupGenerations` | `number`       | Suggested warm-up generations recorded on the genome |
+
+### `creatureForDataset(records, options?)`
+
+Scans a dataset first (adding dead-feature pruning and output-bias warm-start),
+then builds the creature. `DatasetFactoryOptions` carries the same optional
+fields as `ProblemSpec` minus `inputs` / `outputs` (those are inferred).
+
+```typescript
+const creature = creatureForDataset(records, { cost: "MSE" });
+```
+
+### `scanTrainingData(records)`
+
+Returns a `DatasetScan` summary used by the factory and available to callers:
+
+```typescript
+interface DatasetScan {
+  sampleCount: number;
+  inputMean: Float32Array;
+  inputVariance: Float32Array;
+  deadInputIndices: number[];
+  outputMean: Float32Array;
+  outputVariance: Float32Array;
+}
+```
+
+### Lower-level helpers and constants
+
+- `pickHiddenCapacity(spec)` — the heuristic hidden-neuron count for a spec.
+- `pickOutputSquashForProblem(spec)` — output squash name matched to the cost.
+- `targetInitStddev(squash, fanIn, fanOut)` — initialisation standard deviation.
+- `rescaleWeightsForInit(creature)` — rescales weights in place for a fresh
+  creature.
+- `DEAD_FEATURE_VARIANCE_THRESHOLD` (`1e-8`) — variance at or below which an
+  input feature is treated as dead and pruned.
+- `HIGH_DIMENSIONAL_INPUT_THRESHOLD` (`100`) — input count above which
+  high-dimensional heuristics apply.
+
+---
+
 ## ✂️ CRISPR
 
 Targeted genetic modifications inspired by CRISPR (Clustered Regularly
@@ -134,10 +227,10 @@ import type { CrisprInterface } from "@stsoftware/neat-ai";
 new CRISPR(creature: Creature)
 ```
 
-| Method                 | Signature                                                                  | Description                                            |
-| ---------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `cleaveDNA`            | `(dna: CrisprInterface): Creature`                                         | Applies modifications and returns the edited creature. |
-| `editAliases` (static) | `(dna: CrisprInterface, aliases: Record<string, string>): CrisprInterface` | Replaces neuron UUID aliases in DNA.                   |
+| Method                 | Signature                                                                                            | Description                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `cleaveDNA`            | `(dna: CrisprInterface): Creature`                                                                   | Applies modifications and returns the edited creature.  |
+| `editAliases` (static) | `(dna: CrisprInterface, aliases: Record<number, number> \| Record<string, string>): CrisprInterface` | Replaces neuron UUID (or numeric index) aliases in DNA. |
 
 ### 📐 CrisprInterface
 
