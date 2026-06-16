@@ -70,9 +70,10 @@ the source.
 ## 🧬 Themed / house terms
 
 We keep the tone playful, but every nickname maps to a mainstream idea. These
-plain-language definitions live here; the
-[AGENTS.md terminology section](../AGENTS.md#-terminology) is the matching
-contributor-facing reference and stays in lock-step with this table.
+plain-language definitions are **canonical and live here**; the
+[AGENTS.md terminology section](../AGENTS.md#-terminology) links back to this
+table rather than restating it, and keeps only the two project-name terms (NEAT,
+NEAT-AI) plus a few codebase-specific terms.
 
 - **Creature** — an individual neural network (genome) inside a population. The
   fundamental unit that NEAT-AI evolves, named in the original
@@ -121,8 +122,9 @@ contributor-facing reference and stays in lock-step with this table.
 
 > [!TIP]
 > Spotted a fun label in the codebase that is not defined here? Add it to this
-> table **and** to [AGENTS.md](../AGENTS.md#-terminology), with a link to the
-> mainstream term it stands for. The two lists must never drift apart.
+> table — the canonical home — with a link to the mainstream term it stands for.
+> Other docs (including [AGENTS.md](../AGENTS.md#-terminology)) link back here
+> rather than keeping a parallel copy.
 
 ## 🔗 Related reading
 
