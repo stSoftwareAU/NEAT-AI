@@ -3,6 +3,22 @@
 Issue #2345 — parity checklist that validates NEAT-AI stays aligned with the
 pinned [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) revision.
 
+The numerically heavy core lives in Rust and is consumed here as a vendored
+[WebAssembly (WASM)](GLOSSARY.md#-acronyms) bundle; the
+[TypeScript](https://www.typescriptlang.org/) (TS) runtime calls across that
+boundary. This gate confirms the two sides still agree — see
+[TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) for what lives where and why.
+
+```mermaid
+flowchart LR
+    Pin["deno.json<br/>neatCore.rev (SHA)"] --> S1["Step 1<br/>Core dependency policy<br/>CoreDependencyPolicy.ts"]
+    S1 --> S2["Step 2<br/>./build.sh<br/>sync wasm_activation/pkg"]
+    S2 --> S3["Step 3<br/>TS ↔ WASM parity tests<br/>WasmJsScoreParity + MSE"]
+    S3 --> Pass{"all pass?"}
+    Pass -- "yes" --> Sign["Sign-off / release"]
+    Pass -- "no" --> Block["Block repin<br/>(see Failure response)"]
+```
+
 ## When to run the gate
 
 - After bumping `deno.json` `neatCore.rev`.
@@ -42,9 +58,12 @@ deno test --no-check --allow-read \
 Verifies the invariants from
 [docs/CORE_DEPENDENCY_POLICY.md](CORE_DEPENDENCY_POLICY.md):
 
-- `deno.json` pins `neatCore.repo` and `neatCore.rev`.
-- `neatCore.rev` is a full 40-character hex SHA.
-- The policy document exists and references the required topics.
+- `deno.json` pins `neatCore.repo` and `neatCore.ref`; `neatCore.rev` is a full
+  40-character hex SHA when set.
+- The policy document exists.
+- The `neatCore` block documented in `CORE_DEPENDENCY_POLICY.md` agrees with
+  `deno.json` on `repo` and `ref` (the keyword-grep assertions were dropped in
+  Issue #2887 in favour of this behavioural check).
 
 ### Step 2 — Sync WASM artifacts from pinned rev
 

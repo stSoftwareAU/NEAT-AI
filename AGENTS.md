@@ -45,8 +45,17 @@ For deep dives on a single topic, follow the dedicated docs (full index in
 
 ## 📖 Terminology
 
-We keep the tone playful, but every nickname maps to a mainstream
-machine-learning idea:
+NEAT-AI keeps a playful vocabulary, but every nickname maps to a mainstream
+machine-learning idea. The **canonical, plain-language definitions** for every
+themed term (Creature, Discovery, Intelligent Design, Islands, CRISPR, Grafting,
+Squash, memetic evolution, MCMC acceptance, synthetic synapses, horizontal gene
+transfer, …) and every acronym live in the **canonical glossary**,
+[`docs/GLOSSARY.md`](./docs/GLOSSARY.md). Define a term once there and link back
+rather than restating it.
+
+This file stays the canonical home for the two project-name terms — most docs
+link here for them — and for the
+[NEAT vs NEAT-AI rule](#-neat-vs-neat-ai--which-term-to-use):
 
 - **NEAT** — the original **NeuroEvolution of Augmenting Topologies** algorithm
   published by
@@ -57,46 +66,16 @@ machine-learning idea:
   algorithm".
 - **NEAT-AI** — **this project**. Started from pure NEAT but extends it well
   beyond the 2002 algorithm with memetic evolution, error-guided **Discovery**,
-  MCMC mutation acceptance, synthetic synapses, predictive coding, Muon-style
-  orthogonalised gradients, and other modern algorithms (some published only
-  weeks before this entry was written). Use this term for **all** references to
-  features, behaviour, or APIs in this repository.
-- **Creatures** are individual neural networks/genomes inside a NEAT population,
-  as described in the original NEAT paper by
-  [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
-- **Memetic evolution** refers to the well-studied combination of evolutionary
-  search plus local gradient descent, also called a
-  [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm).
-- **CRISPR injections** describe targeted gene edits inspired by the real-world
-  [CRISPR gene editing technique](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/);
-  in practice we add hand-crafted synapses/neurons.
-- **Grafting** is crossover between incompatibly shaped genomes, similar to the
-  [island-model speciation strategies](https://en.wikipedia.org/wiki/Island_model)
-  used in evolutionary algorithms.
-- **Squash** is our term for activation functions applied to neurons.
-- **Discovery** is the error-guided structural evolution process that uses the
-  Rust FFI extension to propose structural improvements.
-- **Intelligent Design** is a technique for systematically testing different
-  squash functions for each hidden neuron.
-- **Synthetic synapses** are temporary zero-weight connections added between
-  adjacent topological layers before backpropagation. They give gradient descent
-  a richer search space — similar to
-  [layer densification](https://en.wikipedia.org/wiki/Dense_layer) in
-  conventional deep learning — and are pruned back to only the useful ones after
-  training.
-- **Layer assignment** is the topological ordering of neurons into discrete
-  layers based on longest-path distance from input neurons, used by synthetic
-  synapse generation to determine which neuron pairs are in adjacent layers.
-- **MCMC acceptance** — Markov Chain Monte Carlo acceptance — refers to the
-  [Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
-  criterion applied to mutation acceptance. Instead of accepting all mutations
-  unconditionally, worsening mutations are accepted with a temperature-dependent
-  probability, enabling escape from local optima early and convergence later.
-- **Horizontal gene transfer** describes the subgraph transplantation breeding
-  strategy that copies connected subgraphs between genetically incompatible
-  creatures, inspired by
-  [horizontal gene transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer)
-  in microbiology.
+  MCMC (Markov Chain Monte Carlo) mutation acceptance, synthetic synapses,
+  predictive coding, Muon-style orthogonalised gradients, and other modern
+  algorithms. Use this term for **all** references to features, behaviour, or
+  APIs in this repository.
+
+A few terms are specific to this codebase and are **not** in the glossary:
+
+- **Layer assignment** — the topological ordering of neurons into discrete
+  layers by longest-path distance from input neurons; used by synthetic-synapse
+  generation to decide which neuron pairs are in adjacent layers.
 - **Episode rollout** — one full play-through of a simulator for a creature,
   from `reset` to a terminal state (or a `maxSteps` cap). Each tick is observe →
   `Creature.activate` → decode action → `sim.step`. Used for
@@ -104,12 +83,12 @@ machine-learning idea:
   [`docs/REINFORCEMENT_LEARNING.md`](./docs/REINFORCEMENT_LEARNING.md).
 - **Streaming observation** — the input to `Creature.activate` in an episode
   rollout, where the next observation depends on the agent's previous action.
-  The simulator owns world state; the creature owns weights. This is the API
-  pattern documented in
+  The simulator owns world state; the creature owns weights. See
   [`docs/REINFORCEMENT_LEARNING.md`](./docs/REINFORCEMENT_LEARNING.md).
 
-If you spot another fun label, expect it to be backed by a reference to the
-standard term the first time it appears.
+Spotted a fun label that is not yet defined? Add it to
+[`docs/GLOSSARY.md`](./docs/GLOSSARY.md) with a link to the standard term it
+stands for.
 
 ### 🆚 NEAT vs NEAT-AI — which term to use
 
@@ -439,15 +418,8 @@ project deliberately does **not** depend on `@std/log`.
    should be raised as a separate issue against `src/utils/Logger.ts`. Do not
    reach for `@std/log` to fill the gap.
 
-#### Audit
-
-The current tree contains zero `@std/log` references. Confirm with:
-
-```bash
-grep -r '@std/log\|jsr:@std/log' src test mod.ts deno.json
-deno info --json mod.ts | grep -o '"specifier": "[^"]*"' | grep '@std/log' \
-  || echo 'no @std/log dependency'
-```
+The tree contains zero `@std/log` references; confirm with
+`grep -r '@std/log' src test mod.ts deno.json` (expect no matches).
 
 ### 🕒 Date/time handling — Temporal vs Date
 
@@ -456,33 +428,21 @@ API for **wall-clock and calendar-style timestamps**, and keeps `Date.now()` /
 `performance.now()` for **elapsed-time measurements**. `Temporal` is stable in
 **Deno 2.7+** — no `--unstable-temporal` flag and no polyfill are required.
 
-**Use `Temporal` for wall-clock / calendar timestamps.** Anything that records
-_when something happened_ on the real-world clock:
+**Use `Temporal` for wall-clock / calendar timestamps** — anything recording
+_when something happened_ on the real-world clock: log timestamps, event-payload
+timestamps (e.g. training events), timestamps persisted to JSON, and dates
+printed in user-facing reports.
 
-- Timestamps written to logs.
-- Timestamps emitted in event payloads (e.g. training events).
-- Timestamps persisted to JSON on disk.
-- Dates/times printed in a user-facing report.
-
-```typescript
-// ✅ Wall-clock timestamp — ISO 8601 string for a log, event, or JSON field
-const occurredAt = Temporal.Now.instant().toString();
-// e.g. "2026-05-30T03:21:09.123456789Z"
-```
-
-**Keep `Date.now()` / `performance.now()` for elapsed-time measurements.**
-Anything that measures _how long something took_ or drives a relative deadline:
-
-- Per-phase timings (start/stop durations).
-- Throttling cool-downs.
-- Sliding-window TTLs (time-to-live).
-- Deadline computations driven by `Date.now()` deltas.
-
-`Temporal` is **not** the right tool for monotonic elapsed timing — do not
-migrate these to `Temporal`.
+**Keep `Date.now()` / `performance.now()` for elapsed-time measurements** —
+anything measuring _how long something took_ or driving a relative deadline:
+per-phase timings, throttling cool-downs, sliding-window TTLs (time-to-live),
+and `Date.now()`-delta deadlines. `Temporal` is **not** the right tool for
+monotonic elapsed timing — do not migrate these.
 
 ```typescript
-// ✅ Elapsed-time measurement — keep Date.now() / performance.now()
+// ✅ Wall-clock instant (log / event / JSON field)
+const occurredAt = Temporal.Now.instant().toString(); // "2026-05-30T03:21:09.123Z"
+// ✅ Elapsed-time measurement — keep performance.now()
 const start = performance.now();
 runPhase();
 const elapsedMs = performance.now() - start;
@@ -579,33 +539,15 @@ Before committing, run:
 > type-checking, WASM sync, and all tests in one step — no need to run them
 > individually.
 
-This script runs the following steps by default:
+In one step it updates dependencies, formats (`deno fmt`), lints
+(`deno lint --fix`), checks bash syntax, type-checks (`deno check`), builds the
+optional Rust discovery library, syncs `wasm_activation/pkg` from the pinned
+NEAT-AI-core (`./build.sh`), and runs all tests in parallel with leak detection.
 
-1. Updates dependencies
-   (`deno outdated --update --latest --minimum-dependency-age=<minutes>`,
-   honouring `VIBE_BUMP_QUARANTINE_HOURS` — default 24h — to dodge fast-flagged
-   supply-chain attacks; see Issue #2742)
-2. Formats code (`deno fmt`)
-3. Lints and auto-fixes (`deno lint --fix`)
-4. Checks bash script syntax
-5. Type-checks (`deno check`)
-6. Builds the Rust discovery library (if `../NEAT-AI-Discovery` exists)
-7. Syncs `wasm_activation/pkg` from pinned NEAT-AI-core (`./build.sh`)
-8. Runs all tests in parallel with leak detection
-
-### 🚩 Optional Flags
-
-```bash
-./quality.sh --help            # Show usage and step descriptions
-./quality.sh --skip-tests      # Skip test execution
-./quality.sh --skip-discovery  # Skip discovery library build and verification
-./quality.sh --skip-wasm       # Skip WASM package sync step
-./quality.sh --lint-only       # Only run formatting + linting (includes bash check)
-./quality.sh --check-only      # Only run type-checking (deno check)
-./quality.sh --dry-run         # Show which steps would run without executing them
-```
-
-Flags can be combined, e.g. `./quality.sh --skip-tests --skip-discovery`.
+Run `./quality.sh --help` for the authoritative list of steps and optional flags
+(`--skip-tests`, `--skip-discovery`, `--skip-wasm`, `--lint-only`,
+`--check-only`, `--dry-run`, combinable). The contributor walkthrough is in
+[`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ### 🚀 Deployment Checklist
 
@@ -677,65 +619,37 @@ The Rust FFI extension shipped via
 [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) provides
 GPU-accelerated structural hints used by `discoveryDir()`.
 
-### 🛠️ Setup
+**Setup** (clone/build, explicit-path override, validation) lives in
+[`CONTRIBUTING.md`](./CONTRIBUTING.md); the end-to-end workflow is in
+[`docs/DISCOVERY_GUIDE.md`](./docs/DISCOVERY_GUIDE.md). The conventions that
+matter for contributors:
 
-1. Clone and build:
-
-   ```bash
-   git clone https://github.com/stSoftwareAU/NEAT-AI-Discovery.git
-   ../NEAT-AI-Discovery/scripts/runlib.sh
-   ```
-
-2. Or set an explicit path:
-
-   ```bash
-   export NEAT_AI_DISCOVERY_LIB_PATH="/absolute/path/to/libneat_ai_discovery.dylib"
-   ```
-
-3. Validate:
-
-   ```bash
-   deno run --allow-env --allow-ffi --allow-read scripts/check_discovery.ts
-   ```
-
-4. Guard discovery calls with `isRustDiscoveryEnabled()` so controllers fail
-   fast when the module is unavailable.
-
-> [!NOTE]
-> Discovery is always optional. When the library cannot be resolved, tests are
-> skipped gracefully and discovery is disabled — no environment variable is
-> required.
+- **Discovery is always optional.** When the library cannot be resolved, tests
+  skip gracefully and discovery is disabled — no environment variable required.
+- **Guard discovery calls with `isRustDiscoveryEnabled()`** so controllers fail
+  fast when the module is unavailable.
 
 ## 🦀 NEAT-AI-core Dependency Policy
 
 NEAT-AI consumes shared Rust computation from the external
 [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) repository. The
-full policy is in
-[docs/CORE_DEPENDENCY_POLICY.md](docs/CORE_DEPENDENCY_POLICY.md); the key rules
-are:
+**full policy** — pinning, semver tiers, sync flow, commit policy, parity gate,
+and scorer alignment — is in
+[docs/CORE_DEPENDENCY_POLICY.md](docs/CORE_DEPENDENCY_POLICY.md); the day-to-day
+workflow is in [docs/EXTERNAL_NEAT_AI_CORE.md](docs/EXTERNAL_NEAT_AI_CORE.md).
+The two rules contributors most often trip over:
 
-1. **Pinning:** `deno.json` contains `neatCore.repo` and immutable
-   `neatCore.rev` (full 40-char SHA). Never use branch pinning.
-2. **Single source of truth:** only `deno.json` controls the core revision.
-3. **Sync flow:** run `./build.sh` to refresh `wasm_activation/pkg` from pin.
-4. **Commit policy:** commit `deno.json` and `wasm_activation/pkg` together.
-5. **Semver:** NEAT-AI-core tags follow `v<MAJOR>.<MINOR>.<PATCH>`. Patch bumps
-   need CI green; minor bumps need one review; major bumps need owner approval.
-6. **Parity gate:** before **removing** any in-tree duplicate native Rust (or
-   after bumping the pinned `rev`), run `./scripts/parity-gate.sh` and include
-   the output in the PR. See [docs/PARITY_GATE.md](docs/PARITY_GATE.md).
-7. **Scorer alignment:** downstream consumers such as
-   [NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer) must pin the
-   **same core rev** as this workspace. When bumping the rev here, verify and
-   update the scorer in the same coordinated change.
-8. **No TS fallbacks for core-owned operations:** once an operation moves into
-   NEAT-AI-core (e.g. topology validation/scanning, reverse topological order,
-   structural integrity, cycle detection, the topological backprop loop, and
-   elastic weight distribution), the TypeScript side does **not** keep a
-   parallel implementation. Wrappers in `src/wasm/` and `src/propagate/` call
-   into WASM and fail fast if the bundle is unavailable. Do not reintroduce
-   `*TS` fallbacks for these operations — the parity gate is the only alignment
-   check, and a divergent TS implementation would silently mask drift.
+1. **`deno.json` is the single source of truth** for the core revision
+   (immutable 40-char `neatCore.rev`, never branch pinning). Run `./build.sh` to
+   refresh `wasm_activation/pkg` from the pin, and commit `deno.json` and
+   `wasm_activation/pkg` together.
+2. **No TS fallbacks for core-owned operations.** Once an operation moves into
+   NEAT-AI-core (topology validation/scanning, reverse topological order,
+   structural integrity, cycle detection, the topological backprop loop, elastic
+   weight distribution), the TypeScript side keeps **no** parallel
+   implementation. Wrappers in `src/wasm/` and `src/propagate/` call into WASM
+   and fail fast if the bundle is unavailable — do not reintroduce `*TS`
+   fallbacks; a divergent TS implementation would silently mask drift.
 
 ## 🔄 Feed-forward vs Recurrent Connections
 
@@ -750,51 +664,24 @@ In our production workloads, the default is feed-forward/forward-only.
 
 ## 📚 Documentation Layout
 
-The full topic index lives in [`docs/README.md`](./docs/README.md). Sibling
-governance / contributor documents:
+The **full topic-by-topic index** of every long-form guide lives in
+[`docs/README.md`](./docs/README.md) — do not duplicate it here. Two foundation
+docs underpin all of them:
+
+- **[`docs/GLOSSARY.md`](./docs/GLOSSARY.md)** — canonical acronyms and themed
+  terms.
+- **[`docs/DOC_STYLE.md`](./docs/DOC_STYLE.md)** — the documentation style guide
+  every doc follows.
+
+Sibling governance / contributor documents at the repository root:
 
 - **[README.md](./README.md)** — human-readable project overview, features, and
   quick start.
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** — first-time contributor guide with
   development setup and workflow.
-- **AGENTS.md** (this file) — coding guidelines and development reference.
+- **AGENTS.md** (this file) — coding conventions, the NEAT-vs-NEAT-AI rule, and
+  the project invariants.
 - **[SECURITY.md](./SECURITY.md)** — vulnerability disclosure policy.
 - **[CHANGELOG.md](./CHANGELOG.md)** — release notes (Keep a Changelog +
   Semantic Versioning).
 - **[COMPARISON.md](./COMPARISON.md)** — comparison with other AI approaches.
-- **docs/API_REFERENCE.md** - Short index for the public API; per-surface detail
-  docs live under **docs/api/** (Creature, Evolution, Configuration, Costs &
-  Activations, Training, Discovery, Compute, Errors, Interop)
-- **docs/CRISPR_GUIDE.md** - CRISPR conventions, append+demote pattern, and
-  validation rules
-- **docs/DISCOVERY_GUIDE.md** - Complete discovery workflow guide
-- **docs/DISCOVERY_ARCHITECTURE.md** - Discovery pipeline internal architecture
-- **docs/DISCOVERY_DIR.md** - Technical API reference for `discoveryDir()`
-- **docs/GPU_ACCELERATION.md** - GPU acceleration details
-- **docs/CONFIGURATION_GUIDE.md** - Complete configuration options reference
-- **docs/TIMEOUTS.md** - `timeoutMinutes` semantics and the absolute T+15 hard
-  cap: deadline propagation from `evolveDir` to the worker clamps, what each
-  phase does at the cap, and the unchanged external-watchdog backstop
-- **docs/PERFORMANCE_TUNING.md** - Performance tuning guide for large-scale
-  training
-- **docs/PERFORMANCE_RESEARCH.md** - Performance research with WASM migration
-  learnings
-- **docs/ACTIVATION_FUNCTIONS.md** - Activation function selection guide
-- **docs/BACKPROP_ELASTICITY.md** - Elastic backpropagation explanation
-- **docs/INTELLIGENT_DESIGN.md** - Intelligent Design squash optimisation guide
-- **docs/PREDICTIVE_CODING.md** - Predictive Coding architecture design
-- **docs/TS_RUST_MIGRATION.md** - TypeScript to Rust migration milestone roadmap
-- **docs/CORE_DEPENDENCY_POLICY.md** - NEAT-AI-core release, pinning, and semver
-  policy (ADR)
-- **docs/PARITY_GATE.md** - Parity gate checklist (Issue #2345) that must pass
-  before removing in-tree duplicate native Rust
-- **docs/PARITY_AUDITS.md** - Consolidated archive of the three parity audits
-  (Issues #2367, #2368, #2369). Replaces the former
-  `NEAT_AI_CORE_PARITY_AUDIT.md`, `RUST_SCORER_PARITY_AUDIT.md` and
-  `WASM_ACTIVATION_PARITY_AUDIT.md` stubs
-- **docs/dna-sharing-bake-off-results.md** - Inter-island DNA-sharing primitive
-  bake-off results (Issue #2496); `PruningTemplateStrategy` is the recommended
-  primitive
-- **docs/TROUBLESHOOTING.md** - Common issues and solutions
-- **docs/archive/pr-summaries/** - Archived PR summary files (historical)
-- **src/methods/activations/README.md** - Activation function strategy reference

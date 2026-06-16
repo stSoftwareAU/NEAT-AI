@@ -336,7 +336,7 @@ Things to notice:
   schedule.
 
 For the full `EvolveRLOptions` and `EvolveRLMilestone` reference see
-[`docs/API_REFERENCE.md`](API_REFERENCE.md#-creatureevolverl) and the contract
+[`docs/api/EVOLUTION.md`](api/EVOLUTION.md#-creatureevolverl) and the contract
 in [`event-driven-evolution.md`](event-driven-evolution.md).
 
 ## 📚 Glossary
@@ -359,4 +359,8 @@ in [`event-driven-evolution.md`](event-driven-evolution.md).
   [`event-driven-evolution.md`](event-driven-evolution.md).
 
 For the project-wide vocabulary (Creature, Discovery, CRISPR, Grafting, MCMC),
-see [`AGENTS.md`](../AGENTS.md#-terminology).
+see the [glossary](GLOSSARY.md#-themed--house-terms). For where NEAT-AI sits
+relative to standard NEAT and industry RL, see the comparison table above and
+the [NEAT-vs-NEAT-AI rule](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use).
+**RL** throughout this guide is
+[Reinforcement Learning](https://en.wikipedia.org/wiki/Reinforcement_learning).

@@ -12,6 +12,9 @@ Cost (fitness) functions and the activation function (squash) menu used by NEAT
 ## 📦 Exports documented here
 
 - `Costs`, `CostInterface`
+- Cost → task descriptor: `costNameToTaskDescriptor`, `OTHER_COST_NAME`,
+  `OTHER_TASK_DESCRIPTOR`, `TaskDescriptor`, `CostRange`, `CostTopology`,
+  `DescriptorCostName`, `OutputSquashFamily`
 - Activation function names (referenced in `NeuronExport.squash` and CRISPR DNA)
 
 ## 💰 Cost Functions
@@ -79,11 +82,55 @@ Costs.registerCustomCost(myCustomCost);
 Costs.registerCostFactory("MY_COST", () => new MyCost());
 ```
 
+### 🧭 Cost → task descriptor
+
+`costNameToTaskDescriptor(costName)` maps a configured cost name to the
+structural `TaskDescriptor` sent to Discovery. Built-in costs map to their
+canonical descriptor; custom (user-registered) costs collapse to the `OTHER`
+sentinel without leaking their real name.
+
+```typescript
+import {
+  costNameToTaskDescriptor,
+  OTHER_COST_NAME,
+  OTHER_TASK_DESCRIPTOR,
+} from "@stsoftware/neat-ai";
+import type {
+  CostRange,
+  CostTopology,
+  DescriptorCostName,
+  OutputSquashFamily,
+  TaskDescriptor,
+} from "@stsoftware/neat-ai";
+
+const descriptor = costNameToTaskDescriptor("MSE");
+const custom = costNameToTaskDescriptor("MY_COST"); // === OTHER_TASK_DESCRIPTOR
+```
+
+```typescript
+interface TaskDescriptor {
+  readonly costName: DescriptorCostName;
+  readonly topology: CostTopology;
+  readonly range: CostRange;
+  readonly outputSquashFamily: OutputSquashFamily;
+}
+```
+
+| Type                 | Values                                                                          |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `CostRange`          | `"unbounded" \| "positive" \| "unit" \| "signed_unit"`                          |
+| `CostTopology`       | `"independent" \| "simplex" \| "margin" \| "one_hot" \| "unknown"`              |
+| `OutputSquashFamily` | `"unbounded" \| "positive" \| "bounded_unipolar" \| "bounded_bipolar" \| "any"` |
+| `DescriptorCostName` | a built-in cost name, `"BINARY_CROSS_ENTROPY"`, or `"OTHER"`                    |
+
+`OTHER_COST_NAME` is `"OTHER"`; `OTHER_TASK_DESCRIPTOR` is the fully-`unknown`
+descriptor returned for any unrecognised cost.
+
 ---
 
 ## ⚡ Activation Functions
 
-NEAT-AI provides 38 activation functions (called "squash" functions). The
+NEAT-AI provides 39 activation functions (called "squash" functions). The
 library uses WASM (WebAssembly) for all activation computation.
 
 ```typescript
@@ -141,6 +188,12 @@ Higher priority means more likely to be selected.
 | **MAXIMUM**         |    0     | Special        | Max of inputs                             |
 | **MEAN**            |    0     | (-Inf, +Inf)   | Mean of inputs (deprecated)               |
 | **MINIMUM**         |    0     | Special        | Min of inputs                             |
+| **SOFTMAX**         |    0     | (0, 1)         | Multi-class output (vector-normalised)    |
+
+> [!NOTE]
+> **SOFTMAX** is never picked by random mutation (priority `0`). It is intended
+> as an output-layer activation: per-neuron it behaves like **LOGISTIC**, and
+> true vector normalisation across the output layer happens at the caller layer.
 
 For detailed backpropagation strategy notes, see
 [`src/methods/activations/README.md`](../../src/methods/activations/README.md)

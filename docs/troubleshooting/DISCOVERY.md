@@ -114,14 +114,17 @@ deno run --allow-ffi --allow-read --allow-env your_script.ts
 
 ## 🖥️ No GPU detected
 
-**Symptom:** `Discovery disabled: Rust library loaded but GPU probe failed`
+**Symptom:** `ℹ️  No GPU detected — discovery will use CPU fallback`
 
-This is a **non-fatal** condition. The library loaded but no usable GPU was
-found. Discovery simply will not run. On macOS, ensure Metal is available.
+This is a **non-fatal**, informational condition. The library loaded but no
+usable GPU was found. The GPU probe is for logging/telemetry only — it does
+**not** gate discovery, which continues to run on the CPU path handled inside
+the Rust library. GPU accelerates analysis but is not required. On macOS, ensure
+Metal is available if you want the acceleration.
 
 The Rust extension uses `wgpu` to negotiate Metal (macOS), Vulkan (Linux), or
-DirectX 12 (Windows). When no compatible adapter is available it falls back to
-CPU; if even the CPU path is unavailable, discovery is disabled. See
+DirectX 12 (Windows). When no compatible adapter is available the library falls
+back to CPU computation automatically. See
 [`../GPU_ACCELERATION.md`](../GPU_ACCELERATION.md) for backend selection
 details.
 

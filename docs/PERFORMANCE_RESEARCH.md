@@ -199,6 +199,25 @@ or offloaded without moving the entire creature state into WASM.
 The most effective optimisations in NEAT-AI have been TypeScript-level
 algorithmic improvements.
 
+> [!NOTE]
+> **NEAT-AI-specific vs general practice.** The _decision framework_ (benchmark
+> first, measure end-to-end, treat a negative result as a result) is general
+> engineering practice that applies to any project. The _conclusions_ below are
+> **NEAT-AI-specific**: they hold because NEAT-AI's hot paths are
+> graph-structured (UUID-keyed `Map`/`Set` topologies) rather than dense tensor
+> maths. A project whose hot path is dense linear algebra would reach the
+> opposite conclusion about WASM/SIMD migration.
+
+The relative speedups from the four landed TypeScript optimisations below:
+
+```mermaid
+xychart-beta
+    title "Measured speedup of landed TS optimisations (medium creature)"
+    x-axis ["batch fix/validate", "remove redundant validate", "shallowClone", "rejection sampling"]
+    y-axis "Speedup vs baseline (x)" 0 --> 4
+    bar [1.66, 1.11, 3.54, 1.10]
+```
+
 ### 🗂️ Batching Expensive Operations
 
 **PR:** [#1590](https://github.com/stSoftwareAU/NEAT-AI/pull/1590) (from
@@ -931,6 +950,14 @@ bench/EvolutionPaceLeverComparison.ts`
 | mcmc                    | 14                    | 417.3         | 0.044555   |
 | hyperparameterEvolution | 9                     | 268.1         | 0.045144   |
 | fast (combined)         | 11                    | 329.0         | 0.045903   |
+
+```mermaid
+xychart-beta
+    title "Generations-to-target per pace lever (fewer is better)"
+    x-axis ["baseline", "plateau", "adaptPop", "mcmc", "hyperparam", "fast"]
+    y-axis "Generations" 0 --> 22
+    bar [18, 14, 20, 14, 9, 11]
+```
 
 Convergence vs baseline (fewer generations is better):
 

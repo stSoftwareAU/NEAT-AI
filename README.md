@@ -33,6 +33,10 @@ New here? Skim this section first; every topic guide is one link away.
   how to bump the pinned NEAT-AI-core revision.
 - **[AGENTS.md](./AGENTS.md)** — terminology and coding conventions for human
   and AI contributors.
+- **[Glossary](./docs/GLOSSARY.md)** — the canonical reference for every acronym
+  and house term used here (Creature, Discovery, Grafting, CRISPR, Intelligent
+  Design, MCMC, FFI, WASM, …). When a themed word below is unfamiliar, this is
+  the place to look it up.
 - **[COMPARISON.md](./COMPARISON.md)** — how NEAT-AI compares to other AI
   approaches (and to standard NEAT).
 - **Topic guides** — quick jumps to the most-used docs:
@@ -261,8 +265,36 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
 
 ## 🚀 Quick Start
 
+Install nothing — NEAT-AI is published to the
+[JavaScript Registry (JSR)](https://jsr.io/@stsoftware/neat-ai) and the
+WebAssembly (WASM) backend initialises itself on first use. Create a
+**Creature** (a NEAT-AI genome — one neural network), run a forward pass, then
+round-trip it through JSON:
+
 ```typescript
-// Single discovery iteration
+import { Creature } from "@stsoftware/neat-ai";
+
+// A Creature with 2 inputs, 1 output, and one hidden layer of 3 neurons.
+const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+
+// activate() runs a single forward pass through the WASM backend.
+const output = creature.activate(new Float32Array([0.5, 0.3]));
+console.log(output); // Float32Array(1) [ … ]
+
+// Serialise and restore — UUID-stable, safe to share between machines.
+const json = creature.exportJSON();
+const restored = Creature.fromJSON(json);
+```
+
+Run it with `deno run -A example.ts` (the `-A` permission lets Deno fetch the
+WASM bytes from JSR on first run).
+
+Once you have training data, `evolveDataSet()` evolves a population toward it.
+The optional error-guided **Discovery** step then proposes structural
+improvements — one iteration looks like:
+
+```typescript
+// Requires the optional NEAT-AI-Discovery Rust extension (see note below).
 const result = await creature.discoveryDir(dataDir, {
   discoveryRecordTimeOutMinutes: 1,
   discoveryAnalysisTimeoutMinutes: 10,
@@ -270,9 +302,14 @@ const result = await creature.discoveryDir(dataDir, {
 
 if (result.improvement) {
   console.log(`Found ${result.improvement.changeType} improvement!`);
-  // Use improved creature for next iteration
+  // Use the improved creature for the next iteration.
 }
 ```
+
+`discoveryDir()` needs the optional
+[NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery) Rust
+extension. Without it the discovery phase is skipped — `activate()`, training,
+and evolution still run end-to-end in WASM.
 
 > [!TIP]
 > For distributed, multi-machine workflows that accumulate small improvements
@@ -282,7 +319,7 @@ if (result.improvement) {
 ## 💻 Usage
 
 This project is designed to be used in a DenoJS environment. Please refer to the
-[DenoJS documentation](https://deno.land/manual) for setup and usage
+[Deno runtime manual](https://docs.deno.com/runtime/manual/) for setup and usage
 instructions.
 
 ## 📚 Documentation

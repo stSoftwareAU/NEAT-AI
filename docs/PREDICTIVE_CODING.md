@@ -49,11 +49,32 @@ See the [docs index](./README.md) for the full topic map.
 8. [References](#8--references)
 9. [Further Reading](#-further-reading)
 
-This document describes the architecture for integrating **Predictive Coding**
-(PC) as an optional training mode in NEAT-AI. It serves as the blueprint for all
-subsequent implementation work.
+This document describes the architecture **and current implementation** of
+**Predictive Coding** (PC) as an optional training mode in NEAT-AI. It began as
+the design blueprint for the feature (issue
+[#1549](https://github.com/stSoftwareAU/NEAT-AI/issues/1549)); the TypeScript
+implementation now ships, so the sections below note where the shipped code
+matches the original design and where it diverges.
 
 Part of [#1549](https://github.com/stSoftwareAU/NEAT-AI/issues/1549).
+
+> [!IMPORTANT]
+> **Implementation status (verified June 2026).** PC ships as a
+> **TypeScript-only** training mode under
+> [`src/predictiveCoding/`](../src/predictiveCoding/), wired through
+> `predictiveCoding` in
+> [`src/config/PredictiveCodingConfig.ts`](../src/config/PredictiveCodingConfig.ts).
+> It is **opt-in** (`enabled: false` by default), includes adaptive scaling
+> (Issue #1915) and trace tags (Issue #1913), and **fully replaces** standard
+> elastic backprop for a creature when enabled. The **Rust/WASM inference
+> engine** described in [Section 2.7](#27--typescript-vs-rustwasm-decision) and
+> [Phase 3](#-phase-3--rustwasm-pc-inference) is **planned but not yet
+> implemented** (issue
+> [#1560](https://github.com/stSoftwareAU/NEAT-AI/issues/1560)). The `replace`
+> vs `complement` integration mode in the original design
+> ([Phase 5](#-phase-5--complement-mode-and-advanced-features)) is also **not
+> yet implemented** — there is no `integrationMode` config field. See
+> [NEAT-AI vs canonical PC](#-neat-ai-vs-canonical-predictive-coding).
 
 ## 🔁 The predictive-coding loop at a glance
 
@@ -194,6 +215,29 @@ The key difference is that elastic backprop performs a **single pass** through
 the network, while PC performs **iterative settling** before weight updates.
 PC's iterative inference can potentially find better target activations for
 hidden neurons, particularly in deep or recurrent topologies.
+
+### 🆚 NEAT-AI vs canonical predictive coding
+
+NEAT-AI's PC implementation follows the canonical Rao & Ballard (1999) /
+Whittington & Bogacz (2017) formulation for the core energy function, settling
+dynamics, and Hebbian weight rule, but **diverges** from the textbook algorithm
+in several deliberate ways. Call these out when comparing against the
+literature:
+
+| Aspect             | Canonical PC                                         | NEAT-AI                                                                                                                      |
+| ------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Network shape      | Strict hierarchical layers                           | Arbitrary directed graphs; "depth" is the topological distance from inputs (computed at prepare)                             |
+| Prediction weights | Separate feedback weights \(W_{fb}\) (Rao & Ballard) | **Shared (tied) weights** — feedback uses the transpose of the feedforward weight ([2.3](#23--weight-symmetry-decision))     |
+| Hyper-parameters   | Fixed learning/inference rates                       | **Adaptive scaling** by topology (Issue #1915) — not part of any textbook formulation ([Section 6](#6--configuration-guide)) |
+| Gradient stability | Raw activity gradients                               | Inference gradients **L2-normalised** (capped at 1.0) to prevent divergence in deep topologies                               |
+| Role in training   | Standalone learner                                   | One **opt-in** mode inside the memetic NEAT-AI pipeline; replaces elastic backprop when enabled                              |
+| Compute backend    | n/a                                                  | **TypeScript only** today; Rust/WASM hot loop ([2.7](#27--typescript-vs-rustwasm-decision)) is planned (#1560), not shipped  |
+
+These divergences are pragmatic adaptations so PC fits NEAT-AI's
+variable-topology creatures and per-neuron/per-synapse architecture. The
+mathematical validation suite (see
+[PREDICTIVE_CODING_BENCHMARKS.md §4](./PREDICTIVE_CODING_BENCHMARKS.md#4--mathematical-validation-summary))
+confirms the core PC properties still hold under these adaptations.
 
 ---
 
@@ -353,10 +397,15 @@ flowchart LR
     S --> N
 ```
 
-This replaces or complements the elastic backpropagation step
-(`Neuron.propagate()`) when PC mode is active. The existing
-`Neuron.propagateUpdate()` mechanism for applying accumulated weight/bias
-changes can be reused — the only difference is **how** the deltas are computed.
+When PC mode is active it **replaces** the elastic backpropagation step
+(`Neuron.propagate()`) — the shipped trainer
+([`src/architecture/training/TrainingPredictiveCoding.ts`](../src/architecture/training/TrainingPredictiveCoding.ts))
+routes training through the PC learner instead of standard backprop. The
+existing `Neuron.propagateUpdate()` mechanism for applying accumulated
+weight/bias changes is reused — the only difference is **how** the deltas are
+computed. (A `complement` mode that runs both was part of the original design
+but is not yet implemented; see
+[Phase 5](#-phase-5--complement-mode-and-advanced-features).)
 
 ### 2.6 🔌 Integration with Existing Forward Activation
 
@@ -404,14 +453,22 @@ activations become the "true" activations used for fitness evaluation.
 | PC-enhanced structural discovery   | Rust (NEAT-AI-Discovery) | Prediction errors provide richer signals for the existing GPU-accelerated analysis  |
 | Integration tests and validation   | TypeScript (Deno)        | Follows existing test patterns                                                      |
 
-The Rust/WASM components extend the existing `wasm_activation` crate
-(`wasm_activation/src/`). New Rust modules:
+> [!NOTE]
+> **Not yet implemented (status June 2026).** The Rust/WASM components below are
+> the planned design (issue
+> [#1560](https://github.com/stSoftwareAU/NEAT-AI/issues/1560)). The shipped PC
+> inference and learning loops run in **TypeScript** under
+> [`src/predictiveCoding/`](../src/predictiveCoding/). The file names below do
+> **not** exist yet — treat this subsection as the forward plan.
+
+The Rust/WASM components would extend the existing `wasm_activation` crate
+(`wasm_activation/src/`). Planned Rust modules:
 
 - `wasm_activation/src/pc_inference.rs` — Settling loop with convergence
   detection
 - `wasm_activation/src/pc_learning.rs` — Batch Hebbian weight updates
 
-The TypeScript side calls these through the existing WASM bridge pattern
+The TypeScript side would call these through the existing WASM bridge pattern
 (`src/wasm/`), adding new wrapper functions in a `PredictiveCodingWasm.ts`
 module.
 
@@ -461,38 +518,32 @@ updates are computed during training.
 Following the established config pattern (see `src/config/` for examples like
 `BiasRegularisationConfig.ts`):
 
-**File: `src/config/PredictiveCodingConfig.ts`**
+**File:
+[`src/config/PredictiveCodingConfig.ts`](../src/config/PredictiveCodingConfig.ts)**
+(shipped — the block below mirrors the actual source):
 
 ```typescript
 /**
- * Configuration for Predictive Coding training mode.
+ * Configuration for Predictive Coding (PC) training mode.
  *
  * When enabled, training uses iterative inference (settling) followed by
- * local Hebbian weight updates instead of (or alongside) elastic
- * backpropagation.
+ * local Hebbian weight updates instead of elastic backpropagation.
  */
 export interface PredictiveCodingConfig {
-  /** Whether PC training is enabled. Default: false */
+  /** Whether PC training mode is active (default: false). */
   enabled?: boolean;
 
-  /** Maximum iterations for inference settling. Default: 20 */
-  maxInferenceIterations?: number;
+  /** Number of settling iterations for inference (default: 50). */
+  inferenceSteps?: number;
 
-  /** Convergence threshold for early stopping during settling.
-   *  Settling stops when |E_prev - E_current| < threshold. Default: 1e-4 */
-  convergenceThreshold?: number;
-
-  /** Learning rate for activity updates during inference. Default: 0.1 */
+  /** Learning rate for inference updates (default: 0.05). */
   inferenceRate?: number;
 
-  /** Learning rate for weight updates after settling. Default: 0.01 */
+  /** Learning rate for weight updates (default: 0.001). */
   learningRate?: number;
 
-  /** Strategy for combining PC with existing backprop.
-   *  - "replace": PC replaces elastic backprop entirely
-   *  - "complement": PC runs first, then elastic backprop refines
-   *  Default: "replace" */
-  integrationMode?: "replace" | "complement";
+  /** Convergence threshold for inference energy (default: 1e-6). */
+  energyThreshold?: number;
 }
 
 export type RequiredPredictiveCodingConfig = Required<PredictiveCodingConfig>;
@@ -500,15 +551,22 @@ export type RequiredPredictiveCodingConfig = Required<PredictiveCodingConfig>;
 export const DEFAULT_PREDICTIVE_CODING_CONFIG: RequiredPredictiveCodingConfig =
   {
     enabled: false,
-    maxInferenceIterations: 20,
-    convergenceThreshold: 1e-4,
-    inferenceRate: 0.1,
-    learningRate: 0.01,
-    integrationMode: "replace",
+    inferenceSteps: 50,
+    inferenceRate: 0.05,
+    learningRate: 0.001,
+    energyThreshold: 1e-6,
   };
 ```
 
-**Integration points** (following the config pattern from `MEMORY.md`):
+> [!NOTE]
+> The original design sketched extra fields (`maxInferenceIterations`,
+> `convergenceThreshold`, `integrationMode`). The shipped config consolidated
+> these into `inferenceSteps` and `energyThreshold`, and **omits**
+> `integrationMode` (there is currently only the `replace` behaviour). The
+> [Configuration Guide](#6--configuration-guide) below documents the live fields
+> and their effective values under adaptive scaling.
+
+**Integration points** (following the config pattern in `src/config/`):
 
 1. Add `predictiveCoding: RequiredPredictiveCodingConfig` to
    `src/config/NeatArguments.ts`
@@ -558,7 +616,15 @@ fields.
 
 ## 4. 🗓️ Implementation Roadmap
 
-### 🧱 Phase 1: Configuration and State Infrastructure
+> [!NOTE]
+> **Status (June 2026).** Phases 1–2 (config, state, TypeScript inference) are
+> **shipped**, together with adaptive scaling (Issue #1915) and trace tags
+> (Issue #1913). Phase 4's prediction-error-guided mutation exists
+> ([`src/predictiveCoding/PredictionErrorGuidedMutation.ts`](../src/predictiveCoding/PredictionErrorGuidedMutation.ts)).
+> **Phase 3 (Rust/WASM) and Phase 5 (complement mode) are not yet implemented.**
+> Status markers below: ✅ shipped · 🟡 partial · 🔜 planned.
+
+### 🧱 Phase 1 ✅: Configuration and State Infrastructure
 
 **Goal**: Add PC configuration and extend creature state without changing any
 runtime behaviour.
@@ -579,28 +645,35 @@ runtime behaviour.
 - `src/config/NeatConfig.ts` (modified)
 - `src/architecture/CreatureState.ts` (modified)
 
-### 🔬 Phase 2: TypeScript PC Inference Prototype
+### 🔬 Phase 2 ✅: TypeScript PC Inference
 
-**Goal**: Implement PC inference (settling) in TypeScript as a working
-prototype.
+**Goal**: Implement PC inference (settling) in TypeScript.
 
-- Implement the settling algorithm in a new `src/propagate/PredictiveCoding.ts`
-  module
-- Integrate with `CreatureTraining.ts` — call settling before weight updates
-  when `pc.enabled === true`
-- Implement Hebbian weight update rule
-- Write tests verifying convergence on simple networks (XOR, AND, OR)
-- Benchmark inference loop to establish baseline for WASM optimisation
+- Settling algorithm and Hebbian weight update implemented under
+  `src/predictiveCoding/`
+- Integrated with training via
+  `src/architecture/training/TrainingPredictiveCoding.ts` — routes training
+  through the PC learner when `predictiveCoding.enabled === true`
+- Tests verify convergence on simple networks (XOR, regression)
+- Benchmarks establish the baseline for the planned WASM optimisation
 - **Depends on**: Phase 1
 - **Result**: PC training works end-to-end in TypeScript; performance baseline
   established
 
-**Key files**:
+**Key files (as shipped)**:
 
-- `src/propagate/PredictiveCoding.ts` (new)
-- `src/creature/CreatureTraining.ts` (modified)
+- [`src/predictiveCoding/PredictiveCodingInference.ts`](../src/predictiveCoding/PredictiveCodingInference.ts)
+  — settling loop
+- [`src/predictiveCoding/PredictiveCodingLearning.ts`](../src/predictiveCoding/PredictiveCodingLearning.ts)
+  — Hebbian weight updates
+- [`src/predictiveCoding/PredictiveCodingTrainer.ts`](../src/predictiveCoding/PredictiveCodingTrainer.ts)
+  — training orchestration
+- [`src/predictiveCoding/PredictionErrorComputation.ts`](../src/predictiveCoding/PredictionErrorComputation.ts)
+  — energy and error computation
+- [`src/architecture/training/TrainingPredictiveCoding.ts`](../src/architecture/training/TrainingPredictiveCoding.ts)
+  — pipeline integration
 
-### ⚡ Phase 3: Rust/WASM PC Inference
+### ⚡ Phase 3 🔜: Rust/WASM PC Inference
 
 **Goal**: Port the PC inference hot loop to Rust/WASM for production
 performance.
@@ -620,7 +693,7 @@ performance.
 - `wasm_activation/src/lib.rs` (modified — re-export new modules)
 - `src/wasm/PredictiveCodingWasm.ts` (new)
 
-### 🔍 Phase 4: Discovery Integration
+### 🔍 Phase 4 🟡: Discovery Integration
 
 **Goal**: Feed PC prediction errors into the structural evolution pipeline.
 
@@ -638,7 +711,7 @@ performance.
 - `src/architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts` (modified)
 - NEAT-AI-Discovery repo (separate PRs)
 
-### 🚀 Phase 5: Complement Mode and Advanced Features
+### 🚀 Phase 5 🔜: Complement Mode and Advanced Features
 
 **Goal**: Enable PC and elastic backprop to work together, and add adaptive
 settling.
@@ -691,9 +764,9 @@ The PC inference loop is the critical performance bottleneck:
 > [!TIP]
 > Early convergence detection is an important optimisation. When prediction
 > errors are already small (e.g., after weight updates stabilise), the settling
-> loop can terminate well before `maxInferenceIterations` — reducing per-sample
-> cost significantly. Tuning `convergenceThreshold` is worthwhile when
-> optimising for throughput.
+> loop can terminate well before `inferenceSteps` — reducing per-sample cost
+> significantly. Tuning `energyThreshold` is worthwhile when optimising for
+> throughput.
 
 ### 🔧 Adaptive Scaling for Complex Creatures (Issue #1915)
 

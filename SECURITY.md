@@ -18,8 +18,10 @@ opening a PR (see the secure-coding principles section of
   (`.github/workflows/osv-scan.yml`) re-checks the _whole_ resolved dependency
   tree against the [OSV](https://osv.dev/) advisory database, catching CVEs
   disclosed against an already-merged, exact-pinned dependency between bumps. It
-  generates an ephemeral lockfile for the scan and leaves `deno.json`'s
-  `"lock": false` policy intact.
+  resolves the full dependency tree into a lockfile for the scan. The committed
+  `deno.lock` (Issue #2865) pins the exact transitive-dependency versions
+  consumed at build time, so a CVE disclosed against any pinned dependency is
+  caught even between bumps.
 - **Static analysis (SAST)** — Semgrep runs on each PR via
   `.github/workflows/semgrep.yml`.
 - **Secret scanning** — `gitleaks` patterns live in `.gitleaks.toml` at the

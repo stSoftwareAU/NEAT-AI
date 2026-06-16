@@ -8,9 +8,10 @@ version it actually loaded, once per process, at startup.
 Two pieces of context made this necessary:
 
 - The GRQ-logs / Develop trap-sample storm in May 2026 was eventually traced
-  back to GRQ workers pinned to `5.0.13`. That JSR release predates the
-  position-blind topology-hash collision fix from PR #2678, which only landed in
-  `5.0.14`+.
+  back to GRQ (a downstream NEAT-AI consumer) workers pinned to `5.0.13`. That
+  [JavaScript Registry (JSR)](https://jsr.io/) release predates the
+  position-blind topology-hash collision fix from Pull Request (PR) #2678, which
+  only landed in `5.0.14`+.
 - The only way to discover the running version at the time was to read it out of
   a captured stack trace
   (`https://jsr.io/@stsoftware/neat-ai/5.0.13/src/architecture/Offspring.ts:688`).
@@ -80,3 +81,16 @@ load path, and JSR consumers derive the version from `import.meta.url` after
 publish. Downstream consumers (GRQ and sibling repos) need to refresh their
 `@stsoftware/neat-ai` pin to the new JSR version so they pick up the fix; verify
 the line in their logs after the restart.
+
+## Related documents
+
+- [docs/README.md](README.md) — full documentation index.
+- [docs/CORE_DEPENDENCY_POLICY.md](CORE_DEPENDENCY_POLICY.md) — how the pinned
+  NEAT-AI-core revision (and the `@stsoftware/neat-ai` version) is bumped.
+- [docs/EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — cluster overview
+  for the NEAT-AI-core dependency.
+
+---
+
+**Up to:** [`README.md`](../README.md) (entry point) ·
+[`docs/README.md`](README.md) (topic index).

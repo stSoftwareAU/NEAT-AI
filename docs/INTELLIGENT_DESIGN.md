@@ -1,14 +1,26 @@
 # 🧠 Intelligent Design
 
-> **Intelligent Design** in NEAT-AI is the systematic per-neuron search over
-> squash (activation) functions. For each hidden neuron, it tries the candidate
-> squash, scores the modified creature, and keeps the substitution if it
-> improves fitness. Successful substitutions are persisted as **tacit
-> knowledge** so future runs can replay them without re-discovering them. The
-> implementation lives in
-> [`src/intelligentDesign/`](../src/intelligentDesign/mod.ts); the project-wide
-> vocabulary is in [`AGENTS.md`](../AGENTS.md#-terminology) and the doc index is
-> [`docs/README.md`](README.md).
+> **[Intelligent Design](GLOSSARY.md#-themed--house-terms)** in NEAT-AI is the
+> systematic per-neuron search over [squash](GLOSSARY.md#-themed--house-terms)
+> (activation) functions. For each hidden neuron, it tries the candidate squash,
+> scores the modified creature, and keeps the substitution if it improves
+> fitness. Successful substitutions are persisted as **tacit knowledge** so
+> future runs can replay them without re-discovering them. The implementation
+> lives in [`src/intelligentDesign/`](../src/intelligentDesign/mod.ts); the
+> themed vocabulary is defined in the [glossary](GLOSSARY.md) and the doc index
+> is [`docs/README.md`](README.md).
+
+<!-- -->
+
+> [!NOTE]
+> **NEAT-AI vs standard NEAT.** Standard NEAT mutates activation functions
+> _randomly_ as part of topology mutation. Intelligent Design is a NEAT-AI
+> extension: an exhaustive, per-neuron hyper-parameter search whose results are
+> cached and shared. The name is a wink at the
+> [intelligent-design debate](https://en.wikipedia.org/wiki/Intelligent_design),
+> not a claim about the technique. See the
+> [NEAT-vs-NEAT-AI rule](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use) for
+> the project-wide convention.
 
 <!-- -->
 

@@ -38,11 +38,22 @@ A new reader should follow the docs in this order:
 5. **A topic guide** — each guide assumes the basics from steps 1–3 and focuses
    on a single subsystem.
 
+Two **foundation documents** underpin every other doc — keep them open while
+reading or writing:
+
+- **[GLOSSARY.md](GLOSSARY.md)** — the canonical glossary. Every acronym
+  expanded with a deeper-reading link; every themed term (Creature, Discovery,
+  CRISPR, Grafting, Islands …) explained in plain language.
+- **[DOC_STYLE.md](DOC_STYLE.md)** — the short documentation style guide: the
+  rules (define acronyms, link themed terms, call out NEAT-vs-NEAT-AI
+  differences, fact-check, keep docs small, prefer diagrams) every doc follows.
+
 ## 🗺️ Reading map
 
 ```mermaid
 flowchart LR
     R[../README.md<br/>zero-knowledge entry] --> I[docs/README.md<br/>topic index]
+    I --> Found[Foundation<br/>Glossary + Style guide]
     I --> Compute[Compute / WASM]
     I --> Discovery[Discovery / FFI]
     I --> Perf[Performance]
@@ -94,8 +105,13 @@ Tuning guides and benchmark research.
 
 Drop-in API and configuration material.
 
-- **[API_REFERENCE.md](API_REFERENCE.md)** — comprehensive public API
-  documentation.
+- **[API_REFERENCE.md](API_REFERENCE.md)** — public API index. A short surface
+  map linking to the per-topic detail docs under [`api/`](api/):
+  [Creature](api/CREATURE.md), [Configuration](api/CONFIGURATION.md),
+  [Costs & Activations](api/COSTS_AND_ACTIVATIONS.md),
+  [Evolution](api/EVOLUTION.md), [Training](api/TRAINING.md),
+  [Discovery](api/DISCOVERY.md), [Interop](api/INTEROP.md),
+  [Compute / WASM](api/COMPUTE.md), and [Errors](api/ERRORS.md).
 - **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** — topic index for the
   configuration surface. The detail docs under [`config/`](config/) cover
   presets, core evolution, training, discovery, mutation adaptation,
@@ -170,10 +186,28 @@ Project-level policies, audits, and release plumbing.
 
 ## 🔍 Comparison with other approaches
 
-- **[../COMPARISON.md](../COMPARISON.md)** — how NEAT-AI compares to standard
-  NEAT, traditional neural networks, CNNs (Convolutional Neural Networks), RNNs
-  (Recurrent Neural Networks), and modern LLMs (Large Language Models). Owned by
-  Issue #2563 and excluded from the index refresh.
+- **[../COMPARISON.md](../COMPARISON.md)** — the concise comparison **hub**: how
+  NEAT-AI compares to standard NEAT, traditional neural networks, CNNs
+  (Convolutional Neural Networks), RNNs (Recurrent Neural Networks), and modern
+  LLMs (Large Language Models). It carries the at-a-glance capability matrix and
+  links out to the focused sub-documents under [`comparison/`](comparison/)
+  (Issue #2961):
+  - **[comparison/IMPLEMENTED.md](comparison/IMPLEMENTED.md)** — standard NEAT
+    machinery vs the NEAT-AI extensions built on top.
+  - **[comparison/ARCHITECTURES.md](comparison/ARCHITECTURES.md)** — NEAT-AI's
+    evolving topology vs feedforward, CNN, RNN/LSTM, and Transformer networks.
+  - **[comparison/TRAINING_PARADIGMS.md](comparison/TRAINING_PARADIGMS.md)** —
+    gradient-only training vs NEAT-AI's hybrid evolution + backprop, and RL.
+  - **[comparison/UNIQUE_APPROACHES.md](comparison/UNIQUE_APPROACHES.md)** — the
+    12 headline NEAT-AI innovations.
+  - **[comparison/ECOSYSTEM.md](comparison/ECOSYSTEM.md)** — NEAT-AI vs
+    TensorFlow / PyTorch / scikit-learn.
+  - **[comparison/PROS_AND_CONS.md](comparison/PROS_AND_CONS.md)** — candid
+    trade-offs vs traditional neural networks.
+  - **[comparison/FUTURE_WORK.md](comparison/FUTURE_WORK.md)** — gaps versus the
+    modern state of the art.
+  - **[comparison/REFERENCES.md](comparison/REFERENCES.md)** — consolidated
+    supporting literature.
 
 ## 🚫 Out of scope for this index
 

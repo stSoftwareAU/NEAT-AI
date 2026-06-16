@@ -9,11 +9,16 @@ presets, and plateau detection.
 
 ## 📦 Exports documented here
 
-- `Creature.evolveDir()` (method on `Creature`)
+- `Creature.evolveDir()`, `Creature.evolveRL()` (methods on `Creature`)
+- Reinforcement-learning episode contract: `EpisodeAdapter`, `StepResult`,
+  `DEFAULT_MAX_STEPS`, `DEFAULT_WALL_CLOCK_MS`, `EpisodeResult`,
+  `TruncationReason`, `EvolveRLOptions`, `EvolveRLMilestone`,
+  `EpisodeTrialsEvent`, `EpisodicOptions`, `LegacyEpisodeAdapter`,
+  `defaultRewardToError`
 - `Selection`
 - `Mutation`
-- `QUICK_START_PRESET`, `LARGE_NETWORK_PRESET`, `MEMORY_CONSTRAINED_PRESET`,
-  `DISCOVERY_FOCUSED_PRESET`
+- `QUICK_START_PRESET`, `FAST_CONVERGENCE_PRESET`, `LARGE_NETWORK_PRESET`,
+  `MEMORY_CONSTRAINED_PRESET`, `DISCOVERY_FOCUSED_PRESET`
 - `PlateauDetector`, `detectPlateau`, `DEFAULT_PLATEAU_DETECTION`,
   `PlateauDetectionConfig`, `RequiredPlateauDetectionConfig`
 - `Species`, `Genus`
@@ -91,6 +96,81 @@ console.log(`Error: ${result.error}, Generations: ${result.generation}`);
 
 ---
 
+## 🎮 Creature.evolveRL()
+
+`evolveRL` is the reinforcement-learning sibling of `evolveDir`. Instead of
+reading a static dataset directory, it drives an
+[`EpisodeAdapter`](#episodeadapter) wrapping a streaming-observation simulator,
+running `episodesPerCreature` episode rollouts per creature per generation.
+Population management, mutation, plateau detection, lifecycle events, and stop
+conditions match `evolveDir()`.
+
+```typescript
+async evolveRL<S, A>(
+  adapter: EpisodeAdapter<S, A>,
+  options: EvolveRLOptions,
+): Promise<{
+  error: number;
+  score: number;
+  time: number;
+  generation: number;
+  milestones?: EvolveRLMilestone[];
+}>
+```
+
+`EvolveRLOptions` extends `NeatOptions` with:
+
+| Field                 | Type                 | Default    | Description                                                                 |
+| --------------------- | -------------------- | ---------- | --------------------------------------------------------------------------- |
+| `episodesPerCreature` | `number`             | `3`        | Episodes per creature per generation; fitness is the mean return            |
+| `seed`                | `number`             | time-based | Base seed mixed into the per-generation seed set; pin for reproducibility   |
+| `fixedSeedSet`        | `boolean`            | `false`    | Lock the seed set for every generation (tests / regression only)            |
+| `statistics`          | `boolean`            | `false`    | Opt-in geometric milestone payloads                                         |
+| `onEpisodeTrials`     | `(event) => void`    | —          | Per-creature per-generation reward breakdown for variance charts            |
+| `signal`              | `AbortSignal`        | —          | External interrupt signal                                                   |
+| `adapterDescription`  | `AdapterDescription` | —          | Importable adapter URL + JSON config for the worker pool when `threads > 1` |
+
+### EpisodeAdapter
+
+```typescript
+abstract class EpisodeAdapter<S = unknown, A = unknown> {
+  abstract reset(rngSeed: number): { observation: Float32Array; state: S };
+  abstract step(state: S, action: A): StepResult<Float32Array> & { state: S };
+  abstract get observationLength(): number;
+  abstract decodeAction(creatureOutput: Float32Array, state: S): A;
+
+  // Overridable termination guards (library defaults shown):
+  maxSteps(): number; // DEFAULT_MAX_STEPS = 5000
+  wallClockMs(): number; // DEFAULT_WALL_CLOCK_MS = 60_000
+}
+
+interface StepResult<O> {
+  readonly observation: O;
+  readonly reward: number;
+  readonly terminated: boolean; // natural episode end (death / goal)
+  readonly truncated: boolean; // a guard fired (step or wall-clock cap)
+  readonly info?: Readonly<Record<string, unknown>>;
+}
+```
+
+The class-shaped contract mirrors Gym/Gymnasium semantics: `terminated` and
+`truncated` are distinct, never collapsed into a single `done` flag. A finished
+episode is reported as an `EpisodeResult` (`returnValue`, `steps`, `terminated`,
+`truncated`, optional `truncationReason: TruncationReason`, `elapsedMs`,
+`seed`).
+
+> [!NOTE]
+> `LegacyEpisodeAdapter`, `EpisodicOptions`, `EpisodeTrialsEvent`, and
+> `defaultRewardToError` are the **legacy** `evolveEnv()` episode shape,
+> retained until the runner replaces it. New code should subclass
+> `EpisodeAdapter`.
+
+For the full walkthrough and a worked `CountingAdapter` example, see
+[`docs/REINFORCEMENT_LEARNING.md`](../REINFORCEMENT_LEARNING.md#-driving-evolution-with-evolverl)
+and the RFC [`docs/event-driven-evolution.md`](../event-driven-evolution.md).
+
+---
+
 ## 🎯 Selection strategies
 
 ```typescript
@@ -104,7 +184,10 @@ import { Selection } from "@stsoftware/neat-ai";
 | `Selection.TOURNAMENT`            | Best of random subset is selected                    | `size: 5`, `probability: 0.5` |
 
 Pick a strategy through `NeatOptions.selection`. If left unset, the evolution
-loop chooses one at random each run.
+loop chooses one at random each run. The previously-hardcoded pressure knobs
+(the POWER exponent, tournament size/probability, and adaptive-tournament
+bounds) are exposed via `NeatOptions.selectionPressure` — see
+[Configuration → selection pressure](CONFIGURATION.md#selectionpressure--selectionpressureconfig).
 
 ---
 
@@ -146,6 +229,7 @@ preset can be spread into user configuration.
 ```typescript
 import {
   DISCOVERY_FOCUSED_PRESET,
+  FAST_CONVERGENCE_PRESET,
   LARGE_NETWORK_PRESET,
   MEMORY_CONSTRAINED_PRESET,
   QUICK_START_PRESET,
@@ -157,12 +241,13 @@ const options = {
 };
 ```
 
-| Preset                      | Best For                                                |
-| --------------------------- | ------------------------------------------------------- |
-| `QUICK_START_PRESET`        | First-run smoke tests on a small dataset                |
-| `LARGE_NETWORK_PRESET`      | Topology growth on large input/output dimensions        |
-| `MEMORY_CONSTRAINED_PRESET` | Reduced WASM cache and worker counts for tight machines |
-| `DISCOVERY_FOCUSED_PRESET`  | Heavier discovery cadence for error-pattern exploration |
+| Preset                      | Best For                                                          |
+| --------------------------- | ----------------------------------------------------------------- |
+| `QUICK_START_PRESET`        | First-run smoke tests on a small dataset (pop 10, 100 iterations) |
+| `FAST_CONVERGENCE_PRESET`   | Quick convergence with plateau escape (pop 50, 1 000 iterations)  |
+| `LARGE_NETWORK_PRESET`      | Topology growth on large input/output dimensions (pop 200)        |
+| `MEMORY_CONSTRAINED_PRESET` | Reduced WASM cache and worker counts for tight machines           |
+| `DISCOVERY_FOCUSED_PRESET`  | Heavier discovery cadence for error-pattern exploration           |
 
 ---
 

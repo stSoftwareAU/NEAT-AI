@@ -20,9 +20,19 @@ guidance, see [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md) and
 [DISCOVERY_DIR.md](DISCOVERY_DIR.md).
 
 > [!NOTE]
-> This document is contributor-focused. For user-facing configuration and
-> distributed setup guidance, refer to [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md).
-> For the integration API, refer to [DISCOVERY_DIR.md](DISCOVERY_DIR.md).
+> **Discovery** is a [NEAT-AI](../AGENTS.md#-terminology) themed term for
+> error-guided structural evolution
+> ([glossary](GLOSSARY.md#-themed--house-terms)). Unlike standard NEAT's blind
+> `add-node` / `add-connection` mutations, the pipeline below records per-neuron
+> errors and proposes _targeted_ edits — see
+> [DISCOVERY_GUIDE.md §Discovery vs standard NEAT](DISCOVERY_GUIDE.md#-discovery-vs-standard-neat)
+> for that contrast and the
+> [canonical NEAT-vs-NEAT-AI rule](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use).
+
+This document is **contributor-focused**: for user-facing configuration and
+distributed setup refer to [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md); for the
+integration API and on-disk layout refer to
+[DISCOVERY_DIR.md](DISCOVERY_DIR.md).
 
 ## 🔗 TS host ↔ Rust extension data flow
 
@@ -191,7 +201,7 @@ available as `additionalImprovements`.
 
 ## 🗺️ Module Dependency Map
 
-### `src/discovery/` — Pipeline Orchestration (37 files)
+### `src/discovery/` — Pipeline Orchestration
 
 ```mermaid
 graph TD
@@ -275,7 +285,7 @@ graph TD
     DR --> PDQ & BS & NEI & DSM & DT & DCL
 ```
 
-### 🦀 `src/architecture/ErrorGuidedStructuralEvolution/` — Rust FFI & Structure Operations (38 files)
+### 🦀 `src/architecture/ErrorGuidedStructuralEvolution/` — Rust FFI & Structure Operations
 
 ```mermaid
 graph TD
@@ -476,45 +486,15 @@ two-step validation approach:
 
 The success cache stores candidates that improved the creature's score. Each
 entry preserves enough information to **replay** the candidate on a future
-creature.
+creature. Entries are sub-keyed by change type, one `{hash}.json` document per
+candidate.
 
-**Directory structure:**
-
-```mermaid
-graph TD
-    classDef root fill:#9b59b6,stroke:#8e44ad,color:#fff
-    classDef dir fill:#3498db,stroke:#2980b9,color:#fff
-    classDef file fill:#2ecc71,stroke:#27ae60,color:#fff
-
-    ROOT["{successCacheDir}/"]:::root
-    AN["add-neurons/"]:::dir
-    AS["add-synapses/"]:::dir
-    CQ["change-squash/"]:::dir
-    RN["remove-neuron/"]:::dir
-    RLI["remove-low-impact/"]:::dir
-    RS["remove-synapse/"]:::dir
-    CIR["cache-informed-removal/"]:::dir
-    CS["coordinated-structural/"]:::dir
-
-    ANF["{hash}.json"]:::file
-    ASF["{hash}.json"]:::file
-    CQF["{hash}.json"]:::file
-    RNF["{hash}.json"]:::file
-    RLIF["{hash}.json"]:::file
-    RSF["{hash}.json"]:::file
-    CIRF["{hash}.json"]:::file
-    CSF["{hash}.json"]:::file
-
-    ROOT --> AN & AS & CQ & RN & RLI & RS & CIR & CS
-    AN --> ANF
-    AS --> ASF
-    CQ --> CQF
-    RN --> RNF
-    RLI --> RLIF
-    RS --> RSF
-    CIR --> CIRF
-    CS --> CSF
-```
+> [!NOTE]
+> The **on-disk directory tree** (success and failure caches, candidate
+> snapshots, focus-analysis traces, lock files) is documented once in
+> [DISCOVERY_DIR.md §On-disk discovery cache layout](DISCOVERY_DIR.md#-on-disk-discovery-cache-layout)
+> — this section covers the cache's _role and contents_ rather than repeating
+> the layout.
 
 **Entry metadata** (enhanced in #1733):
 

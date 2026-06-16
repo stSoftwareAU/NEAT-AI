@@ -1,6 +1,23 @@
-# Novelty (Behavioural-Diversity) Selection
+# 🧭 Novelty (Behavioural-Diversity) Selection
 
-> Issue #2932 — escape deceptive landscapes by rewarding behavioural novelty.
+> **Novelty search** ([glossary](GLOSSARY.md#-themed--house-terms)) is optional
+> selection that rewards what a [Creature](GLOSSARY.md#-themed--house-terms)
+> _does_ — its behaviour on a probe set — rather than its raw fitness, to escape
+> deceptive landscapes. The mechanism is **OFF by default** (Issue #2932); when
+> disabled, ranking and selection are exactly as before. Implementation:
+> [`src/config/NoveltyConfig.ts`](../src/config/NoveltyConfig.ts).
+>
+> Acronyms used here: **kNN** (k-Nearest Neighbours), **FIFO**
+> (First-In-First-Out), **i.i.d.** (independent and identically distributed).
+
+## 🔗 Foundation docs
+
+- [GLOSSARY.md](GLOSSARY.md) — canonical terms (Creature, novelty search,
+  Islands).
+- [DOC_STYLE.md](DOC_STYLE.md) — the house style this guide follows.
+- [docs/README.md](README.md) — full topic index.
+
+## 🌍 The problem: deceptive landscapes
 
 On **deceptive** problems, pure-fitness selection drives the population into a
 local optimum where fitness stops improving and the effective pace of evolution
@@ -9,13 +26,23 @@ collapses. **Novelty search**
 behavioural diversity rather than — or blended with — raw fitness, and is a
 well-established accelerant for escaping deception.
 
-NEAT-AI's existing diversity mechanisms (speciation, fitness sharing,
-compatibility gating) maintain **structural** diversity only. Novelty selection
-adds **behavioural** diversity: it compares what creatures _do_, not how they
-are wired.
+## 🆚 NEAT-AI vs the textbook
 
-The mechanism is **OFF by default**. When disabled, ranking and selection are
-exactly as before.
+Novelty search is a **standard** evolutionary-computation technique, not a
+NEAT-AI invention — the algorithm below is the
+[Lehman & Stanley](https://doi.org/10.1162/EVCO_a_00025) formulation (behaviour
+descriptor → kNN distance to population + archive → blend with fitness). What is
+**NEAT-AI-specific** is how it slots into the existing machinery:
+
+- NEAT-AI's prior diversity mechanisms
+  ([Islands](GLOSSARY.md#-themed--house-terms), speciation, fitness sharing,
+  compatibility gating) maintain **structural** diversity only — they compare
+  how Creatures are _wired_. Novelty selection adds **behavioural** diversity:
+  it compares what Creatures _do_.
+- It is **OFF by default**, layered on the standard NEAT-AI fitness ranking as
+  an opt-in blend rather than replacing it. For the project-wide convention on
+  when a behaviour is "NEAT-AI" versus "standard NEAT", see the
+  [NEAT-vs-NEAT-AI rule](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use).
 
 ## How it works
 
@@ -105,3 +132,14 @@ The acceptance test
 [`test/NEAT/NoveltySearchDeceptive.ts`](../test/NEAT/NoveltySearchDeceptive.ts)
 asserts novelty escapes the trap in strictly fewer generations than
 fitness-only.
+
+## 🔗 Related
+
+- [`src/config/NoveltyConfig.ts`](../src/config/NoveltyConfig.ts) —
+  configuration shape and defaults (matched by the table above).
+- [GLOSSARY.md](GLOSSARY.md#-themed--house-terms) — the canonical novelty-search
+  and Islands definitions.
+- [Lehman & Stanley, 2011](https://doi.org/10.1162/EVCO_a_00025) — the original
+  novelty-search paper.
+- [`README.md`](../README.md) and [`docs/README.md`](README.md) — entry point
+  and topic index.

@@ -21,6 +21,35 @@ flowchart LR
     Idx --> ONNX[troubleshooting/ONNX.md]
 ```
 
+## 🧭 First-response decision tree
+
+Not sure which topic you need? Start here and follow the first branch that
+matches your symptom.
+
+```mermaid
+flowchart TD
+    Start{What went wrong?} --> Crash[Process crashed / killed]
+    Start --> Err[Error message thrown]
+    Start --> Slow[Run is too slow]
+    Start --> Bad[Run finishes but results are poor]
+
+    Crash --> OOM{Exit 143 / SIGTERM?}
+    OOM -->|yes| Mem[troubleshooting/MEMORY.md]
+    OOM -->|no| WASMc[troubleshooting/WASM.md]
+
+    Err --> Val{ValidationError?}
+    Val -->|yes| Cfg[troubleshooting/CONFIGURATION.md]
+    Val -->|no| Ffi{FFI / discovery / GPU?}
+    Ffi -->|yes| Disc[troubleshooting/DISCOVERY.md]
+    Ffi -->|no| Onnx{ONNX export?}
+    Onnx -->|yes| ONNXd[troubleshooting/ONNX.md]
+    Onnx -->|no| WASMe[troubleshooting/WASM.md]
+
+    Slow --> Perf[troubleshooting/PERFORMANCE.md]
+
+    Bad --> Train[troubleshooting/TRAINING.md]
+```
+
 ## ⚙️ WASM (WebAssembly) — init, load, and runtime panics
 
 WASM activation is mandatory; there is no JavaScript fallback. See
@@ -47,10 +76,10 @@ WASM activation is mandatory; there is no JavaScript fallback. See
 - **WASM panic during fitness evaluation** — handled gracefully since Issues
   #2207 / #2212; root cause is usually numerical overflow. →
   [WASM panic recovery](troubleshooting/WASM.md#-wasm-panic-recovery).
-- **`[Offspring] dropping offspring that fails WASM compile`** or
-  **`[Mutator] reverting mutation that fails WASM compile`** — the producer gate
-  trapped on a bred or mutated topology and wrote a replay-ready dump under
-  `.diagnostics/` (Issue #2672). →
+- **`[Offspring/breed] dropping offspring from step=… that fails WASM compile`**
+  or **`[Mutator] reverting mutation from step=… that fails WASM compile`** —
+  the producer gate trapped on a bred or mutated topology and wrote a
+  replay-ready dump under `.diagnostics/` (Issue #2672). →
   [Producer-gate WASM compile rejects](troubleshooting/WASM.md#-producer-gate-wasm-compile-rejects-issue-2672).
 
 ## 🦀 Discovery / Rust FFI — build, load, and GPU backend selection
@@ -65,10 +94,10 @@ diagnostics.
 - **Segfault / "Killed: 9" loading the library** — `arm64` vs `x86_64` (or
   `glibc` vs `musl`) mismatch; rebuild on the target machine. →
   [Architecture mismatch errors](troubleshooting/DISCOVERY.md#-architecture-mismatch-errors-arm64-vs-x86).
-- **`Discovery disabled: Rust library loaded but GPU probe failed`** — no
-  compatible `wgpu` adapter (Metal / Vulkan / DirectX 12); discovery falls back
-  to CPU or is disabled. →
-  [No GPU detected](troubleshooting/DISCOVERY.md#-no-gpu-detected).
+- **`ℹ️  No GPU detected — discovery will use CPU fallback`** — no compatible
+  `wgpu` adapter (Metal / Vulkan / DirectX 12). This is **non-fatal**: the GPU
+  probe is informational only and does not gate discovery, which continues on
+  CPU. → [No GPU detected](troubleshooting/DISCOVERY.md#-no-gpu-detected).
 - **Library cannot be found at the default locations** — set
   `NEAT_AI_DISCOVERY_LIB_PATH` to an absolute path. →
   [Setting NEAT_AI_DISCOVERY_LIB_PATH](troubleshooting/DISCOVERY.md#-setting-neat_ai_discovery_lib_path).
@@ -155,12 +184,19 @@ See [`troubleshooting/ONNX.md`](troubleshooting/ONNX.md) for full details.
 
 ## 🌐 Environment variables reference
 
-| Variable                          | Default  | Purpose                                     |
-| --------------------------------- | -------- | ------------------------------------------- |
-| `NEAT_AI_DISCOVERY_LIB_PATH`      | _(none)_ | Override discovery library location         |
-| `NEAT_AI_WORKER_INIT_TIMEOUT_MS`  | `60000`  | Worker initialisation timeout (ms)          |
-| `NEAT_AI_DISCOVERY_VERBOSE`       | _(none)_ | Enable verbose discovery logging in workers |
-| `NEAT_AI_DISCOVERY_DETERMINISTIC` | _(none)_ | Force deterministic discovery (testing)     |
+| Variable                          | Default        | Purpose                                                                |
+| --------------------------------- | -------------- | ---------------------------------------------------------------------- |
+| `NEAT_AI_DISCOVERY_LIB_PATH`      | _(none)_       | Override discovery library location                                    |
+| `NEAT_AI_WORKER_INIT_TIMEOUT_MS`  | `60000`        | Worker initialisation timeout (ms); ignored below `1000`               |
+| `NEAT_AI_DISCOVERY_VERBOSE`       | _(none)_       | Enable verbose discovery logging in workers (`1`)                      |
+| `NEAT_AI_DISCOVERY_DETERMINISTIC` | _(none)_       | Force deterministic discovery for testing (`1` / `true`)               |
+| `NEAT_AI_RUST_SCORER_ENABLED`     | `false`        | Route fitness scoring through the external Rust scorer process         |
+| `NEAT_AI_RUST_SCORER_BINARY_PATH` | `rust_scorer`  | Path to the Rust scorer binary                                         |
+| `NEAT_AI_RUST_SCORER_BATCH`       | `true`         | Directory/batch scoring mode; set `false` for per-creature invocations |
+| `NEAT_AI_RUST_SCORER_TIMEOUT_MS`  | `0` (no limit) | Per-invocation timeout for the Rust scorer (ms)                        |
+| `NEAT_AI_RUST_SCORER_TMP_DIR`     | _(data dir)_   | Working directory for Rust scorer batch I/O                            |
+| `NEAT_AI_RUST_SCORER_ENV`         | _(none)_       | JSON object of extra env vars passed to the Rust scorer child process  |
+| `NEAT_AI_TRACE_PREDICTION`        | _(none)_       | Log detailed discovery failure-cache prediction traces (`1`)           |
 
 ## 🆘 Getting help
 
