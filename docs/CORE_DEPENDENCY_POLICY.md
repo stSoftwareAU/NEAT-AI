@@ -1,9 +1,9 @@
 # NEAT-AI-core Release and Pinning Policy
 
-Issue #2342 — ADR for how NEAT-AI consumes native computation from
-[NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) after removing all
-in-repo Rust source. Issue #2433 / #2434 extended this to an artifact-based
-auto-sync flow that mirrors the GRQ ← NEAT-AI pattern.
+Issue #2342 — Architecture Decision Record (ADR) for how NEAT-AI consumes native
+computation from [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)
+after removing all in-repo Rust source. Issue #2433 / #2434 extended this to an
+artifact-based auto-sync flow that mirrors the GRQ ← NEAT-AI pattern.
 
 ## Decision Summary
 
@@ -38,9 +38,10 @@ flowchart LR
 
 Pinning by upstream commit SHA stops a release _tag_ from being renamed or
 replaced, but it does not prevent the _asset_ attached to a release from being
-swapped (compromised CI runner, leaked release-write token, MITM on the
-unauthenticated `releases/download/...` URL). `build.sh` therefore enforces two
-independent content-hash guards on every download:
+swapped (compromised Continuous Integration (CI) runner, leaked release-write
+token, Man-in-the-Middle (MITM) attack on the unauthenticated
+`releases/download/...` URL). `build.sh` therefore enforces two independent
+content-hash guards on every download:
 
 1. **`deno.json` pin** — set `neatCore.assetSha256` to the expected SHA-256 of
    `wasm_activation-pkg.tar.gz`. When set, `build.sh` recomputes the hash
@@ -86,7 +87,8 @@ bits are never honoured.
 - Release control happens at PR approval and merge timing.
 - No Rust toolchain required in NEAT-AI CI or local contributor setup.
 - External API stays unchanged (`wasm_activation/pkg/**` is still published to
-  JSR exactly as before), so GRQ and other downstream consumers do not change
+  the [JavaScript Registry (JSR)](https://jsr.io/) exactly as before), so GRQ (a
+  downstream NEAT-AI-core consumer) and other downstream consumers do not change
   their imports.
 - The full `(repo, ref, rev)` triple is still recorded in `deno.json`, so any
   past build is reproducible by passing `--rev <SHA>` to `build.sh`.

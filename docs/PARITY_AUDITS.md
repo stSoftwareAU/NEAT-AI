@@ -63,9 +63,9 @@ into NEAT-AI-core, consumed via `wasm_activation/pkg/**`.
 
 Current scoring parity is verified by
 [`test/score/WasmJsScoreParity.ts`](../test/score/WasmJsScoreParity.ts): the
-test scores a deterministic synthetic creature end-to-end through the WASM
-activation module and asserts the score is finite, non-negative and bounded
-by 1.
+test scores a deterministic synthetic creature end-to-end through the
+[WebAssembly (WASM)](GLOSSARY.md#-acronyms) activation module and asserts the
+score is finite, non-negative and bounded by 1.
 
 The original audit narrative lives in the merged PR for Issue #2368 (browse via
 `git log` or GitHub's PR history); the per-PR summary file was pruned in Issue

@@ -19,13 +19,13 @@ flowchart LR
 
 This cluster has five docs. Use this overview to pick the one you need.
 
-| Doc                                                          | When to read                                                                                                 |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| **This page**                                                | Day-to-day workflow for bumping the pinned revision.                                                         |
-| [`CORE_DEPENDENCY_POLICY.md`](CORE_DEPENDENCY_POLICY.md)     | The pinning policy ADR — why we pin by SHA, semver bands, approval tiers, and the `build.sh` mode reference. |
-| [`PARITY_GATE.md`](PARITY_GATE.md)                           | Release checklist — what the parity gate runs and how to interpret its output.                               |
-| [`CI_EXTERNAL_NEAT_AI_CORE.md`](CI_EXTERNAL_NEAT_AI_CORE.md) | What the GitHub Actions workflows do for this dependency, and the sync-policy guard.                         |
-| [`PARITY_AUDITS.md`](PARITY_AUDITS.md)                       | Archived audits (#2367, #2368, #2369) for in-tree code that has since been removed.                          |
+| Doc                                                          | When to read                                                                                                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **This page**                                                | Day-to-day workflow for bumping the pinned revision.                                                                                        |
+| [`CORE_DEPENDENCY_POLICY.md`](CORE_DEPENDENCY_POLICY.md)     | The pinning policy Architecture Decision Record (ADR) — why we pin by SHA, semver bands, approval tiers, and the `build.sh` mode reference. |
+| [`PARITY_GATE.md`](PARITY_GATE.md)                           | Release checklist — what the parity gate runs and how to interpret its output.                                                              |
+| [`CI_EXTERNAL_NEAT_AI_CORE.md`](CI_EXTERNAL_NEAT_AI_CORE.md) | What the GitHub Actions workflows do for this dependency, and the sync-policy guard.                                                        |
+| [`PARITY_AUDITS.md`](PARITY_AUDITS.md)                       | Archived audits (#2367, #2368, #2369) for in-tree code that has since been removed.                                                         |
 
 ## TL;DR
 
@@ -84,8 +84,12 @@ deno eval 'const c = JSON.parse(Deno.readTextFileSync("../NEAT-AI-scorer/deno.js
 ```
 
 If the revisions differ, update the scorer pin and rerun its tests in the same
-coordinated bump. The scorer alignment policy is verified by
-[`test/scripts/ScorerAlignmentPolicy.ts`](../test/scripts/ScorerAlignmentPolicy.ts).
+coordinated bump. Alignment is a manual coordinated step: the former
+`test/scripts/ScorerAlignmentPolicy.ts` check was removed in Issue #2887 because
+it asserted on documentation text rather than runtime behaviour. The scorer
+lives in a separate repository, so this workspace cannot verify its pin
+automatically — compare the two `neatCore.rev` values with the commands above
+when bumping.
 
 ## Sync invariant
 

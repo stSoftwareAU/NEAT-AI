@@ -2,8 +2,8 @@
 
 > **Brief:** Continuous Integration (CI) here never builds Rust or resolves
 > NEAT-AI-core HEAD. It only **verifies** that the vendored
-> `wasm_activation/pkg/**` matches the SHA pinned in `deno.json`. For the
-> cluster overview start at
+> [WebAssembly (WASM)](GLOSSARY.md#-acronyms) bundle `wasm_activation/pkg/**`
+> matches the SHA pinned in `deno.json`. For the cluster overview start at
 > [docs/EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md).
 
 ## What the workflows do today
