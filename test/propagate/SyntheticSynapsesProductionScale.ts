@@ -10,7 +10,13 @@
  * These are correctness tests only — timing is measured in bench/.
  */
 
-import { assert, assertEquals, assertGreater, assertLess } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertGreater,
+  assertLess,
+  assertLessOrEqual,
+} from "@std/assert";
 import { Creature } from "@creature";
 import {
   DEFAULT_MAX_SYNTHETIC_PER_TARGET,
@@ -301,50 +307,52 @@ Deno.test("synthetic synapses: custom maxPerTarget limits connections", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test 7: Memory estimate — document additional memory usage
+// Test 7: Per-target cap invariant — no target exceeds the cap at scale
 // ---------------------------------------------------------------------------
 
-Deno.test("synthetic synapses: memory estimate at production scale", () => {
+Deno.test("synthetic synapses: no target exceeds the per-target cap at production scale", () => {
   const rng = createSeededRng(42);
   const json = generateProductionCreature(10, 3, rng);
   const creature = Creature.fromJSON(json);
 
-  const originalSynapseCount = creature.synapses.length;
   const result = generateSyntheticSynapses(creature);
 
-  // Estimate memory: each synapse object has from (8), to (8), weight (8),
-  // plus object overhead (~64 bytes). Plus the tracking key string (~20 bytes).
-  const estimatedBytesPerSynapse = 88;
-  const estimatedAdditionalMB = (result.addedCount * estimatedBytesPerSynapse) /
-    (1024 * 1024);
+  // The feature guarantees each target neuron receives at most
+  // DEFAULT_MAX_SYNTHETIC_PER_TARGET synthetic synapses (per adjacent layer
+  // pair). A target neuron is the "to" endpoint for exactly one layer pair,
+  // so counting synthetic keys grouped by their target index directly bounds
+  // per-target growth — this is the behaviour the cap exists to enforce, and
+  // it bounds total memory growth far more meaningfully than a hand-guessed
+  // bytes-per-synapse estimate ever could.
+  const perTargetCount = new Map<string, number>();
+  for (const key of result.syntheticKeys) {
+    // Keys are "fromIdx-toIdx" with non-negative integer indices, so the
+    // first "-" separates the two endpoints.
+    const toIdx = key.slice(key.indexOf("-") + 1);
+    perTargetCount.set(toIdx, (perTargetCount.get(toIdx) ?? 0) + 1);
+  }
 
-  console.log(
-    `Synthetic synapse memory estimate:`,
-    `\n  Original synapses: ${originalSynapseCount}`,
-    `\n  Synthetic added: ${result.addedCount}`,
-    `\n  Skipped (capped): ${result.skippedCount}`,
-    `\n  Total synapses: ${creature.synapses.length}`,
-    `\n  Expansion ratio: ${
-      (creature.synapses.length / originalSynapseCount).toFixed(1)
-    }x`,
-    `\n  Estimated additional memory: ${estimatedAdditionalMB.toFixed(1)} MB`,
-    `\n  Max per target: ${DEFAULT_MAX_SYNTHETIC_PER_TARGET}`,
+  for (const [toIdx, count] of perTargetCount) {
+    assertLessOrEqual(
+      count,
+      DEFAULT_MAX_SYNTHETIC_PER_TARGET,
+      `Target ${toIdx} received ${count} synthetic synapses, exceeding cap ${DEFAULT_MAX_SYNTHETIC_PER_TARGET}`,
+    );
+  }
+
+  // Guard against a vacuous pass: at production scale the cap must actually
+  // engage, so the invariant above is genuinely exercised.
+  assertGreater(
+    perTargetCount.size,
+    0,
+    "Some target neurons should receive synthetic synapses",
+  );
+  assertGreater(
+    result.skippedCount,
+    0,
+    "The per-target cap should have engaged at production scale",
   );
 
-  // Memory should be reasonable (under 50 MB for synapse objects)
-  assertLess(
-    estimatedAdditionalMB,
-    50,
-    `Additional memory should be under 50 MB, estimated ${
-      estimatedAdditionalMB.toFixed(1)
-    } MB`,
-  );
-
-  // Expansion ratio should be reasonable (under 5x)
-  const expansionRatio = creature.synapses.length / originalSynapseCount;
-  assertLess(
-    expansionRatio,
-    5,
-    `Expansion ratio should be under 5x, got ${expansionRatio.toFixed(1)}x`,
-  );
+  // Creature should remain structurally valid after generation.
+  creature.validate();
 });
