@@ -16,12 +16,13 @@ established by `test/scripts/BuildScriptContentHash.ts` under issue #2886.
   **non-hidden** `build-fingerprint` file containing the expected SHA-256 of
   `<repo>@<rev>` — and that no hidden `.build-fingerprint` companion is created.
 - `test/scripts/QualityScript.ts` — the grep over `quality.sh`
-  (`includes("VIBE_BUMP_QUARANTINE_HOURS")`, `includes("--minimum-dependency-age")`
-  plus a regex over the body) is replaced by a test that places a fake `deno` on
-  PATH (via a temp `HOME/.deno/bin`, the directory `quality.sh` prepends),
-  runs the deps step through `--lint-only`, and asserts on the **command line
-  actually emitted** to `deno outdated` — including the hours → minutes
-  conversion (`VIBE_BUMP_QUARANTINE_HOURS=3` → `--minimum-dependency-age=180`).
+  (`includes("VIBE_BUMP_QUARANTINE_HOURS")`,
+  `includes("--minimum-dependency-age")` plus a regex over the body) is replaced
+  by a test that places a fake `deno` on PATH (via a temp `HOME/.deno/bin`, the
+  directory `quality.sh` prepends), runs the deps step through `--lint-only`,
+  and asserts on the **command line actually emitted** to `deno outdated` —
+  including the hours → minutes conversion (`VIBE_BUMP_QUARANTINE_HOURS=3` →
+  `--minimum-dependency-age=180`).
 
 The genuinely behavioural cases already in these files (the `--dry-run`
 flag-parsing tests, the non-integer `VIBE_BUMP_QUARANTINE_HOURS` rejection test,
@@ -61,12 +62,17 @@ running the affected test files and the quality gate:
 
 ## Test Plan
 
-- Rewrote `test/scripts/BuildFingerprint.ts::build.sh refresh_fingerprint writes
-  a non-hidden build-fingerprint` — sources and runs the real
-  `refresh_fingerprint`; a regression to a hidden `.build-fingerprint` (or a
-  wrong fingerprint value/location) fails the assertions.
+- Rewrote
+  `test/scripts/BuildFingerprint.ts::build.sh refresh_fingerprint writes
+  a non-hidden build-fingerprint`
+  — sources and runs the real `refresh_fingerprint`; a regression to a hidden
+  `.build-fingerprint` (or a wrong fingerprint value/location) fails the
+  assertions.
 - Rewrote `test/scripts/QualityScript.ts::quality.sh dep update invokes
-  \`deno outdated\` with --minimum-dependency-age` — shims `deno`, runs the deps
-  step, and asserts the emitted argv carries `--update --latest
-  --minimum-dependency-age=180`; dropping the flag or mis-converting hours fails.
+  \`deno
+  outdated\` with
+  --minimum-dependency-age`— shims`deno`, runs the deps
+  step, and asserts the emitted argv carries`--update
+  --latest --minimum-dependency-age=180`; dropping the flag or mis-converting
+  hours fails.
 - All other existing test cases in both files are retained unchanged.
