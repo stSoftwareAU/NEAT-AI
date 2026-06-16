@@ -35,6 +35,7 @@ jobs:
       - name: Detect Deno worker module
         id: detect-deno
         run: |
+          set -Eeuo pipefail
           if [ -f worker/deno/mod.ts ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
