@@ -16,8 +16,8 @@ The numbers come from the live production genome
 | Inputs                  |     (unstated) |                2,461 |
 | Listed neurons (total)¹ |              — |                1,673 |
 
-¹ 1,669 hidden + 3 constant + 1 output. Genome is forward-only, semantic
-version 4.0.0.
+¹ 1,669 hidden + 3 constant + 1 output. Genome is forward-only, semantic version
+4.0.0.
 
 ### Files changed
 
