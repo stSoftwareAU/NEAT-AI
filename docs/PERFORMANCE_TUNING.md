@@ -78,6 +78,16 @@ this guide assume you can observe the same metrics live.
 Before diving into configuration, here are the core concepts referenced
 throughout this guide.
 
+> [!NOTE]
+> **General practice vs NEAT-AI-specific.** LRU caching, work-stealing thread
+> pools and the island model are **general** techniques borrowed from mainstream
+> systems and evolutionary-computing literature — the definitions below are
+> deliberately generic. The _knobs_ in the rest of this guide (`wasmCache`,
+> `distanceCache`, `selectionPressure`, `discoverySampleRate`, the
+> serialisation-wall trade-offs) are **NEAT-AI-specific**: they exist because of
+> NEAT-AI's UUID-keyed graph topologies and TypeScript↔WASM boundary, and their
+> default values are tuned for this library, not for systems in general.
+
 **LRU cache** — A "Least Recently Used" cache is a fixed-size store that
 automatically evicts the oldest unused entry when it runs out of room. NEAT-AI
 uses LRU caches for compiled WASM modules and genetic distance scores so that
@@ -192,6 +202,17 @@ during speciation) are nearly free.
 | Cache hit                    | ~66 ns  | Below WASM boundary crossing cost |
 | Cache miss                   | ~521 ns | Full genome comparison            |
 | Warm pairwise (50 creatures) | ~119 µs | ~97 ns per pair                   |
+
+```mermaid
+xychart-beta
+    title "Distance lookup cost: hit vs miss (lower is better, ns)"
+    x-axis ["cache hit", "cache miss"]
+    y-axis "Nanoseconds per lookup" 0 --> 550
+    bar [66, 521]
+```
+
+A cache hit is ~7.9× cheaper than a full genome comparison, which is why sizing
+`distanceCache.maxSize` to cover your population matters at scale.
 
 **Recommendations**:
 
@@ -363,7 +384,7 @@ out of memory.
 Use `getCacheStats()` to inspect cache health at any point during training:
 
 ```typescript
-import { getCacheStats } from "@anthropic/neat-ai";
+import { getCacheStats } from "@stsoftware/neat-ai";
 
 const stats = getCacheStats();
 for (const cache of stats) {
@@ -885,7 +906,7 @@ Call `getCacheStats()` at any point during training to get a snapshot of all
 cache health metrics:
 
 ```typescript
-import { getCacheStats } from "@anthropic/neat-ai";
+import { getCacheStats } from "@stsoftware/neat-ai";
 
 const stats = getCacheStats();
 ```
