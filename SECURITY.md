@@ -27,7 +27,15 @@ opening a PR (see the secure-coding principles section of
 - **Secret scanning** — `gitleaks` patterns live in `.gitleaks.toml` at the
   repository root.
 - **Dependency bumps** — the weekly `deno outdated` job in
-  `.github/workflows/deno-outdated.yml` raises automated bump PRs.
+  `.github/workflows/deno-outdated.yml` raises automated _freshness_ bump PRs
+  (whatever is newest, honouring the 24h quarantine).
+- **Advisory-driven security updates** — `renovate.json` enables Renovate's
+  OSV-backed vulnerability-alert channel (`vulnerabilityAlerts` +
+  `osvVulnerabilityAlerts`). Where the OSV scan above _detects_ a disclosed CVE,
+  this channel _remediates_ it: Renovate raises a dedicated bump PR for any
+  dependency carrying a known OSV advisory, shrinking the window between
+  disclosure and a reviewable fix rather than waiting for the next weekly
+  freshness run.
 
 For everything else, see the sibling docs: [`README.md`](./README.md),
 [`AGENTS.md`](./AGENTS.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md),
