@@ -14,10 +14,12 @@ This PR adds two steps to `.github/workflows/publish.yml`, both gated on the
 existing `needs_publish` signal so they run only when a new version is actually
 published:
 
-1. **Generate CycloneDX SBOM** — `deno run -A npm:@cyclonedx/cdxgen -t deno -o
-   sbom.cdx.json .`, generated over the committed `deno.lock` (the same resolved
-   tree that ships). Deno has no first-class SBOM emitter, so a CycloneDX
-   generator targeting the Deno ecosystem is used.
+1. **Generate CycloneDX SBOM** —
+   `deno run -A npm:@cyclonedx/cdxgen -t deno -o
+   sbom.cdx.json .`, generated
+   over the committed `deno.lock` (the same resolved tree that ships). Deno has
+   no first-class SBOM emitter, so a CycloneDX generator targeting the Deno
+   ecosystem is used.
 2. **Upload SBOM** — `actions/upload-artifact` pinned to the 40-char commit SHA
    `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` (v7.0.1, the same release already
    used by `coverage.yaml`), per the `github-actions-audit` SHA-pinning policy
@@ -34,9 +36,10 @@ This is a CI/workflow-only change with no web interface to screenshot. It was
 verified by:
 
 - New "what" tests in `test/ci/SbomPublishWorkflow.ts` parse the committed
-  `publish.yml` and assert the SBOM generation + upload configuration — all pass.
-- Existing `test/ci/WorkflowActionPinning.ts` confirms the new
-  `upload-artifact` reference is a 40-char SHA with a provenance comment — passes.
+  `publish.yml` and assert the SBOM generation + upload configuration — all
+  pass.
+- Existing `test/ci/WorkflowActionPinning.ts` confirms the new `upload-artifact`
+  reference is a 40-char SHA with a provenance comment — passes.
 - `actionlint .github/workflows/publish.yml` reports no issues.
 - `deno fmt --check`, `deno lint`, and `deno check` pass on the new test file.
 
