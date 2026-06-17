@@ -579,9 +579,13 @@ export function fineTuneImprovement(
     }
   };
 
-  const compactNetwork = fittest.compact(feedbackLoop);
+  // Issue #3037: offer both compaction candidates (safe + aggressive) to
+  // selection. acceptCandidate dedupes by UUID, so the no-op aggressive
+  // placeholder collapses into the safe candidate rather than being scored.
+  const compactCandidates = fittest.compactVariants(feedbackLoop);
   const forwardOnly = feedbackLoop !== true;
-  acceptCandidate(compactNetwork);
+  acceptCandidate(compactCandidates.safe);
+  acceptCandidate(compactCandidates.aggressive);
   const resultSame = tuneRandomize(
     fittest,
     previousFittest,
