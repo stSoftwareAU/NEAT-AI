@@ -39,8 +39,8 @@ score.
 
 New trimmed fixtures vendored into `test/data/`:
 
-- `constant-fold-full-removal.json` — constant `legacy-neuron-1762683495`
-  feeds only a `HARD_TANH` hidden neuron (`533d8616-…`).
+- `constant-fold-full-removal.json` — constant `legacy-neuron-1762683495` feeds
+  only a `HARD_TANH` hidden neuron (`533d8616-…`).
 - `constant-fold-partial-if.json` — constant `neuron-132866057` feeds an `IF`
   (aggregate) consumer plus a non-`IF` consumer.
 
@@ -61,13 +61,13 @@ unrelated to this change); it passes on re-run.
 
 Added `test/compact/CompactCreatureConstantFold.ts`:
 
-1. **Full removal (HARD_TANH-only):** the constant folds into the HARD_TANH
-   bias (`0.2 + 0.5·0.5 = 0.45`), its synapse is dropped, the constant is
-   deleted, the HARD_TANH neuron survives (it keeps a varying input), outputs
-   match within 1e-6 and score does not regress.
+1. **Full removal (HARD_TANH-only):** the constant folds into the HARD_TANH bias
+   (`0.2 + 0.5·0.5 = 0.45`), its synapse is dropped, the constant is deleted,
+   the HARD_TANH neuron survives (it keeps a varying input), outputs match
+   within 1e-6 and score does not regress.
 2. **Partial fold (IF + non-IF):** the non-IF synapse folds away
    (`0.1 + 0.4·0.5 = 0.3`), the IF synapse is kept, the constant is retained,
    outputs match within 1e-6 and score does not regress.
 
-Existing `test/compact/CompactCreatureDisconnectedConstant.ts` behaviour is
-left intact.
+Existing `test/compact/CompactCreatureDisconnectedConstant.ts` behaviour is left
+intact.

@@ -21,7 +21,8 @@ What it does:
   varying inputs (every input constant, or none at all), its output is the fixed
   scalar `squash(H.pre)` where `H.pre = Σ(weightᵢ · constantᵢ) + H.bias`. The
   squash is applied via the existing `Activations.find()` lookup (never
-  hand-rolled). That scalar is folded downstream like a constant and `H` deleted.
+  hand-rolled). That scalar is folded downstream like a constant and `H`
+  deleted.
 
 Safety rules honoured:
 
@@ -31,7 +32,8 @@ Safety rules honoured:
 - A neuron is only treated as constant when it has **zero** varying inputs — any
   varying input means it is never constant.
 - Only non-aggregate squashes (those exposing a scalar `squash(x)`) collapse.
-- Never folds away an output neuron's last inbound synapse (structural validity).
+- Never folds away an output neuron's last inbound synapse (structural
+  validity).
 - Frozen consumers/synapses (Issue #1861) are never modified.
 - `didCompact` is set and `assertValidSynapseReferences` is asserted after the
   fold, consistent with the surrounding passes.

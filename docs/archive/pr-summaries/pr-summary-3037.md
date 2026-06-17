@@ -24,7 +24,7 @@ is never scored. Closes #3037.
 - **New `src/compact/CompactVariants.ts`**: the `CompactVariants` type plus
   `selectCompactVariant()` — picks the best single candidate for call sites that
   consume one creature. The safe variant is the floor (wins ties, is the
-  fallback); an aggressive variant only displaces it when it is a *distinct*
+  fallback); an aggressive variant only displaces it when it is a _distinct_
   creature (different UUID) with a strictly higher finite score. Identical
   variants return the safe one without scoring the duplicate.
 - **All four call sites updated to offer both candidates to selection**:
@@ -74,7 +74,7 @@ Added `test/compact/CompactCreatureVariants.ts`:
 - No-op aggressive pass dedupes to a single scored candidate via UUID (mirrors
   the call-site selection collapsing identical variants to one).
 - `compactCreatureVariants` returns empty `{}` when nothing compacts.
-- `selectCompactVariant` unit coverage: falls back to the present variant;
-  keeps safe when variants are identical (distinct instances, same UUID);
-  prefers a distinct strictly-higher-scoring aggressive; keeps safe on lower
-  score or ties.
+- `selectCompactVariant` unit coverage: falls back to the present variant; keeps
+  safe when variants are identical (distinct instances, same UUID); prefers a
+  distinct strictly-higher-scoring aggressive; keeps safe on lower score or
+  ties.

@@ -2,10 +2,10 @@
 
 ## Summary
 
-Replaces the no-op aggressive placeholder from the two-variant plumbing
-(#3037) with a real **aggressive** compaction pass. On top of the safe folds,
-it speculatively prunes low-impact structure using a **purely structural,
-dataset-free** heuristic and returns the result as a *candidate*. The existing
+Replaces the no-op aggressive placeholder from the two-variant plumbing (#3037)
+with a real **aggressive** compaction pass. On top of the safe folds, it
+speculatively prunes low-impact structure using a **purely structural,
+dataset-free** heuristic and returns the result as a _candidate_. The existing
 score-gated selection keeps the candidate only if it beats the safe variant, so
 the safe variant remains the guaranteed floor and an over-eager prune costs
 nothing. **No training data is threaded into `compactCreature`.**
@@ -14,19 +14,21 @@ Closes #3038.
 
 ### What changed
 
-- **New `src/compact/AggressivePrune.ts`** — `aggressivePrune(export, threshold)`
-  drops untyped synapses whose `|weight|` is below a small structural threshold
+- **New `src/compact/AggressivePrune.ts`** —
+  `aggressivePrune(export, threshold)` drops untyped synapses whose `|weight|`
+  is below a small structural threshold
   (`AGGRESSIVE_PRUNE_WEIGHT_THRESHOLD = 1e-3`), **including** synapses feeding
   aggregate consumers (`MAXIMUM`/`MINIMUM`/`HYPOT`/`HYPOTv2`) and non-constant
   neurons — exactly the cases the exact/safe variant must leave untouched.
-  Safety rules mirror the safe pass: frozen synapses, typed synapses
-  (IF roles), and synapses into IF neurons are never pruned, and every output
-  keeps at least one inbound edge.
+  Safety rules mirror the safe pass: frozen synapses, typed synapses (IF roles),
+  and synapses into IF neurons are never pruned, and every output keeps at least
+  one inbound edge.
 - **`src/compact/CompactCreature.ts`** — `compactCreatureVariants` now builds
-  the aggressive candidate on top of the safe variant via `buildAggressiveCompact`:
-  prune low-impact synapses, then run the existing orphan / dead-subgraph
-  cleanup, and return a distinct creature only when the prune changed the
-  structure (otherwise the variants dedupe by UUID exactly as before).
+  the aggressive candidate on top of the safe variant via
+  `buildAggressiveCompact`: prune low-impact synapses, then run the existing
+  orphan / dead-subgraph cleanup, and return a distinct creature only when the
+  prune changed the structure (otherwise the variants dedupe by UUID exactly as
+  before).
 
 ### Why it is safe
 
