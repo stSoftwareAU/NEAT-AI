@@ -84,6 +84,24 @@ Deno.test("parseMemoryConfig - rejects warningThreshold above 1", () => {
   );
 });
 
+Deno.test("parseMemoryConfig - nativeBudgetBytes defaults to 0 (#3025)", () => {
+  const cfg = parseMemoryConfig(undefined);
+  assertEquals(cfg.nativeBudgetBytes, DEFAULT_MEMORY_CONFIG.nativeBudgetBytes);
+  assertEquals(cfg.nativeBudgetBytes, 0);
+});
+
+Deno.test("parseMemoryConfig - applies nativeBudgetBytes override (#3025)", () => {
+  const cfg = parseMemoryConfig({ nativeBudgetBytes: 8_589_934_592 });
+  assertEquals(cfg.nativeBudgetBytes, 8_589_934_592);
+});
+
+Deno.test("parseMemoryConfig - rejects negative nativeBudgetBytes (#3025)", () => {
+  assertThrows(
+    () => parseMemoryConfig({ nativeBudgetBytes: -1 }),
+    ConfigurationError,
+  );
+});
+
 Deno.test("parseParallelEvaluation - returns defaults when no overrides", () => {
   const cfg = parseParallelEvaluation(undefined);
   assertEquals(

@@ -32,6 +32,13 @@ export interface HeapGuardSample {
   pressureLevel: PressureLevel;
   heapUsed: number;
   heapTotal: number;
+  /**
+   * Resident-set size in bytes (off-heap / native / Rust + V8). Issue #3025.
+   * `0` when the provider does not report RSS.
+   */
+  rss: number;
+  /** External (non-heap) bytes attributed to V8. `0` when unreported. */
+  external: number;
 }
 
 /**
@@ -81,23 +88,63 @@ export function sampleHeapPressure(
     pressureLevel,
     heapUsed: sample.heapUsed,
     heapTotal: sample.heapTotal,
+    rss: sample.rss ?? 0,
+    external: sample.external ?? 0,
   };
 }
 
 /**
- * Returns true when the most recent heap sample is at or above the
- * `MemoryMonitor` CRITICAL threshold and the extension should be skipped.
+ * Pure, unit-testable abort decision (Issue #3025).
  *
- * Honours `memoryConfig.enabled` — when monitoring is disabled the guard
- * never trips, preserving the legacy unconditional-extension behaviour.
+ * The discovery worker runs on a small default V8 heap, so after recording the
+ * V8 heap fraction sits near the critical threshold while the bulk of memory is
+ * off-heap (native/Rust) RSS that still has plenty of headroom. Deciding solely
+ * on the V8 fraction mis-classifies such a healthy run as fatal.
+ *
+ * The rule, in order:
+ * 1. Monitoring disabled → never abort (legacy behaviour).
+ * 2. Not CRITICAL → never abort.
+ * 3. No native budget configured (`nativeBudgetBytes <= 0`) → legacy V8-only
+ *    decision: a CRITICAL V8 fraction aborts.
+ * 4. RSS unreported (`rss <= 0`) → cannot trust off-heap headroom, so fall back
+ *    to the legacy decision and abort. Missing telemetry never silently
+ *    disables the safeguard.
+ * 5. RSS exceeds the budget → abort (genuine OOM is never masked).
+ * 6. Otherwise the CRITICAL is driven only by the V8 fraction while RSS is
+ *    within budget → do NOT abort.
+ */
+export function shouldAbortOnHeapPressure(
+  sample: HeapGuardSample,
+  memoryConfig: RequiredMemoryConfig,
+): boolean {
+  if (!memoryConfig.enabled) return false;
+  if (sample.pressureLevel !== "critical") return false;
+
+  const budget = memoryConfig.nativeBudgetBytes;
+  if (budget <= 0) return true; // off-heap awareness not configured
+  if (sample.rss <= 0) return true; // RSS unknown — keep the legacy safeguard
+  if (sample.rss > budget) return true; // genuine OOM — RSS over budget
+
+  // Worker-V8-only CRITICAL with off-heap headroom — safe to continue.
+  return false;
+}
+
+/**
+ * Returns true when the most recent heap sample warrants skipping the
+ * extension / aborting the analysis loop.
+ *
+ * Delegates to {@link shouldAbortOnHeapPressure}, so a worker-V8-only CRITICAL
+ * sample no longer trips when an off-heap (RSS) budget is configured and RSS
+ * has headroom (Issue #3025). Honours `memoryConfig.enabled` — when monitoring
+ * is disabled the guard never trips, preserving legacy behaviour.
  */
 export function isHeapCritical(
   memoryConfig: RequiredMemoryConfig,
   provider?: MemoryUsageProvider,
 ): boolean {
   if (!memoryConfig.enabled) return false;
-  return sampleHeapPressure(memoryConfig, provider).pressureLevel ===
-    "critical";
+  const sample = sampleHeapPressure(memoryConfig, provider);
+  return shouldAbortOnHeapPressure(sample, memoryConfig);
 }
 
 /**
@@ -116,7 +163,7 @@ export function checkAnalysisHeapAbort(
   provider?: MemoryUsageProvider,
 ): { abort: boolean; sample: HeapGuardSample } {
   const sample = sampleHeapPressure(memoryConfig, provider);
-  if (memoryConfig.enabled && sample.pressureLevel === "critical") {
+  if (shouldAbortOnHeapPressure(sample, memoryConfig)) {
     logger.warn(
       `[Neat] Discovery ${discoveryID} analysis aborted: heap CRITICAL at extension boundary`,
     );

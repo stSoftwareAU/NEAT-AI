@@ -108,6 +108,26 @@ export interface MemoryConfig {
    * Defaults to false (so production behaviour is unchanged unless opted in).
    */
   proactiveGc?: boolean;
+
+  /**
+   * Off-heap (native/Rust) resident-set budget in bytes. Issue #3025.
+   *
+   * The discovery worker runs on a small default V8 heap (~269 MB), so after
+   * the recording phase the V8 heap fraction sits near the critical threshold
+   * even though the bulk of memory is native/Rust RSS with plenty of headroom.
+   * The `AnalysisHeapGuard` would then mis-classify a healthy run as CRITICAL
+   * and abort analysis (see GRQ-23).
+   *
+   * When this is `> 0`, a worker-V8-only CRITICAL sample no longer forces an
+   * abort as long as resident-set size (RSS) stays within the budget. RSS
+   * exceeding the budget still aborts (genuine OOM is never masked). When the
+   * provider does not report RSS the guard falls back to the legacy V8-only
+   * decision so missing telemetry can never silently disable the safeguard.
+   *
+   * Defaults to 0, which disables off-heap awareness and preserves the legacy
+   * V8-only abort behaviour.
+   */
+  nativeBudgetBytes?: number;
 }
 
 /**
@@ -128,4 +148,5 @@ export const DEFAULT_MEMORY_CONFIG: RequiredMemoryConfig = {
   criticalBackoffWindowMs: 10_000,
   criticalBackoffCooldownMs: 60_000,
   proactiveGc: false,
+  nativeBudgetBytes: 0,
 };
