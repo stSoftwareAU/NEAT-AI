@@ -221,16 +221,64 @@ raising the V8 heap (Step 5) or lowering `criticalThreshold` (Step 2) changes
 when they fire. A graceful abort means analysis produced no (or partial)
 structural candidates for that cycle — evolution continues; it does not crash.
 
+#### Releasing record-phase retainers before the boundary (Issue #3026)
+
+Before the extension-boundary guard samples the heap, `DataRecorder` now calls
+`DiscoverStructure.releaseRecordingRetainers()`. By the time recording finishes
+it has already persisted everything analysis reads — the merged
+`discovery_data.parquet` and the `selected_indices.json` written during
+recording — yet the in-memory sample accumulators (`rustAccumulatedData`,
+`rustAccumulatedNeuronData`) and the per-file sampled-index map
+(`selectedIndices`) are still alive on the small default worker heap. On their
+own they push the sampled heap fraction artificially toward CRITICAL.
+
+Dropping those in-memory copies at the record→analysis handoff lowers the
+sampled `heapUsed` so the guard reads the heap analysis actually needs, not the
+record-phase leftovers — the per-chunk cache release of #2642 applied to the
+boundary. State analysis still consumes is preserved
+(`recordedNeuronTotalAbsError` for focus ranking, `parquetFilePath`,
+`combinedRustAnalysis`, `creature`), so there is no use-after-free and no change
+to recorded output. When `memory.proactiveGc` is enabled a best-effort
+`globalThis.gc?.()` runs after the references are dropped, but correctness never
+depends on GC running.
+
+#### Off-heap (RSS / native budget) awareness (Issue #3025)
+
+The discovery worker runs on a small default V8 heap (~269 MB), so after a
+recording phase the V8 heap fraction sits near the critical threshold even
+though the bulk of memory is native/Rust RSS with plenty of headroom (GRQ-23
+observed `heap=231MB/269MB rss=13289MB`). Deciding solely on the V8 fraction
+mis-classified that healthy run as fatal.
+
+Set `memory.nativeBudgetBytes` to the worker's total resident-set (RSS) budget
+to make the guards off-heap aware:
+
+| `nativeBudgetBytes` | Worker-V8-only CRITICAL  | RSS over budget |
+| ------------------- | ------------------------ | --------------- |
+| `0` (default)       | aborts (legacy)          | aborts          |
+| `> 0`               | continues (RSS headroom) | aborts (OOM)    |
+
+The decision lives in the pure, unit-tested `shouldAbortOnHeapPressure`: a
+CRITICAL sample driven only by the V8 fraction no longer aborts while RSS stays
+within `nativeBudgetBytes`, but RSS exceeding the budget — or RSS being
+unreported — still aborts, so a genuine OOM is never masked. The default of `0`
+preserves the legacy V8-only behaviour.
+
 ```mermaid
 flowchart TD
     classDef ok fill:#1e8449,stroke:#196f3d,color:#fff
     classDef warn fill:#d68910,stroke:#b7770d,color:#fff
-    R[Recording phase done] --> B{Heap CRITICAL at\nextension boundary?}
-    B -- yes --> S1[Skip analysis,\nreturn partial]:::warn
+    R[Recording phase done] --> RR[Release record-phase\nretainers #3026]:::ok
+    RR --> B{Heap CRITICAL at\nextension boundary?}
     B -- no --> L[Analysis loop]:::ok
+    B -- yes --> N{nativeBudgetBytes &gt; 0\nand RSS within budget?}
+    N -- yes --> L
+    N -- no --> S1[Skip analysis,\nreturn partial]:::warn
     L --> C{Heap CRITICAL before\niteration / chunk?}
-    C -- yes --> S2[Stop, return\naccumulated candidates]:::warn
     C -- no --> P[Process chunk]:::ok
+    C -- yes --> M{RSS within budget?}
+    M -- yes --> P
+    M -- no --> S2[Stop, return\naccumulated candidates]:::warn
     P --> C
 ```
 

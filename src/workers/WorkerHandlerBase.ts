@@ -11,18 +11,140 @@
  */
 
 import { assert } from "@std/assert";
+import v8 from "node:v8";
 import type {
   BaseRequestData,
   BaseResponseData,
   WorkerInterface,
 } from "@workers/WorkerInterface.ts";
-import { getLogger } from "@utils/Logger.ts";
+import { getLogger, type Logger } from "@utils/Logger.ts";
 
 interface WorkerEventListener<THandler> {
   (worker: THandler): void;
 }
 
 let globalWorkerID = 0;
+
+const BYTES_PER_MB = 1024 * 1024;
+
+/**
+ * Environment variable carrying the externally-set discovery V8 heap target,
+ * in MB. Set by the discovery runner (`worker/Discovery/run.sh`,
+ * `src/Discovery/Scan.ts`) which lives outside this repo; here it is treated
+ * as an input contract the library consumes (Issue #3024).
+ */
+export const DISCOVERY_HEAP_SIZE_ENV = "DISCOVERY_HEAP_SIZE_MB";
+
+/** Default getter so callers can inject a hermetic env in tests. */
+function defaultEnvGet(key: string): string | undefined {
+  try {
+    return Deno.env.get(key);
+  } catch {
+    // No --allow-env: behave as if unset rather than throwing.
+    return undefined;
+  }
+}
+
+function parsePositiveIntMb(
+  raw: string | undefined | null,
+): number | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  const n = Number.parseInt(String(raw).trim(), 10);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/**
+ * Parses `--max-old-space-size=<MB>` (or the space-separated form) out of a V8
+ * flags string such as the value of `DENO_V8_FLAGS`.
+ *
+ * @returns the MB value, or undefined when the flag is absent/invalid.
+ */
+export function parseMaxOldSpaceMb(
+  v8Flags: string | undefined | null,
+): number | undefined {
+  if (!v8Flags) return undefined;
+  const m = v8Flags.match(/--max[-_]old[-_]space[-_]size[=\s]+(\d+)/);
+  return m ? parsePositiveIntMb(m[1]) : undefined;
+}
+
+/**
+ * Resolves the V8 old-space heap budget (MB) a spawned discovery worker should
+ * run with. Precedence (Issue #3024):
+ *   1. `DISCOVERY_HEAP_SIZE_MB` — the explicit external target (input contract).
+ *   2. `--max-old-space-size` parsed from the parent's `DENO_V8_FLAGS` — so a
+ *      worker inherits the parent's configured heap when no explicit target.
+ *
+ * @returns the budget in MB, or undefined when neither source yields a
+ *   positive integer (worker stays on Deno's default isolate heap, ~269 MB).
+ */
+export function resolveWorkerHeapBudgetMb(
+  getEnv: (key: string) => string | undefined = defaultEnvGet,
+): number | undefined {
+  return parsePositiveIntMb(getEnv(DISCOVERY_HEAP_SIZE_ENV)) ??
+    parseMaxOldSpaceMb(getEnv("DENO_V8_FLAGS"));
+}
+
+/**
+ * The process-launch flag a worker isolate must inherit to be sized to
+ * `budgetMb`. Deno Web Workers inherit the parent's process-level V8 flags but
+ * expose no per-worker heap option, so this is the only supported lever.
+ */
+export function requiredWorkerV8Flag(budgetMb: number): string {
+  return `--max-old-space-size=${budgetMb}`;
+}
+
+/** The current isolate's V8 old-space heap limit, in MB. */
+export function readV8HeapLimitMb(): number {
+  return Math.round(v8.getHeapStatistics().heap_size_limit / BYTES_PER_MB);
+}
+
+/**
+ * Verifies — and logs — that a spawned worker's effective V8 old-space heap
+ * limit matches the configured discovery budget (Issue #3024).
+ *
+ * Spawned Web Worker isolates inherit the parent isolate's heap limit, so the
+ * parent's limit (read here) is an exact proxy for the worker's. When a budget
+ * is configured but the effective limit falls materially short — the GRQ-23
+ * regression, where the worker sat on Deno's ~269 MB default while ~4 GB was
+ * configured — a warning tells the operator the exact flag the process must be
+ * launched with, since runtime env mutation cannot resize an isolate.
+ *
+ * @returns the resolved budget in MB, or undefined when none is configured.
+ */
+export function verifyWorkerHeapBudget(
+  workerName: string,
+  getEnv: (key: string) => string | undefined = defaultEnvGet,
+  heapLimitMb: () => number = readV8HeapLimitMb,
+  logger: Logger = getLogger(),
+): number | undefined {
+  const budgetMb = resolveWorkerHeapBudgetMb(getEnv);
+  const effectiveMb = heapLimitMb();
+
+  if (budgetMb === undefined) {
+    logger.debug(
+      `Worker ${workerName}: V8 old-space heap limit ≈ ${effectiveMb} MB ` +
+        `(no discovery heap budget configured).`,
+    );
+    return undefined;
+  }
+
+  // Allow ~10% slack: V8 reports heap_size_limit above max-old-space-size
+  // (young generation + overhead), e.g. 4096 → ≈4192.
+  if (effectiveMb < Math.floor(budgetMb * 0.9)) {
+    logger.warn(
+      `Worker ${workerName}: V8 old-space heap limit ≈ ${effectiveMb} MB is ` +
+        `below the configured discovery budget of ${budgetMb} MB. Launch the ` +
+        `process with --v8-flags=${requiredWorkerV8Flag(budgetMb)} (or set ` +
+        `DENO_V8_FLAGS) so worker isolates inherit it.`,
+    );
+  } else {
+    logger.info(
+      `Worker ${workerName}: V8 old-space heap limit ≈ ${effectiveMb} MB ` +
+        `(discovery budget ${budgetMb} MB).`,
+    );
+  }
+  return budgetMb;
+}
 
 /**
  * Reads the worker init timeout from the environment.
@@ -131,6 +253,22 @@ export abstract class WorkerHandlerBase<
     if (direct) {
       return mockFactory();
     }
+
+    // Issue #3024: size the spawned worker's V8 heap to the configured
+    // discovery budget. Chosen Deno mechanism + its limits:
+    //   - Deno's `Worker` constructor has NO per-worker heap option (unlike
+    //     Node's `worker_threads` `resourceLimits.maxOldGenerationSizeMb`).
+    //   - Worker isolates DO inherit the parent's process-level V8 flags, so
+    //     launching with `--v8-flags=--max-old-space-size=<budget>` (or
+    //     `DENO_V8_FLAGS`) sizes every worker. Verified on Deno 2.8.3: a
+    //     worker reports the same `heap_size_limit` as the parent isolate.
+    //   - Mutating `DENO_V8_FLAGS` at runtime before `new Worker` does NOT
+    //     resize the isolate — flags are read once at process start.
+    // The external discovery runner (out of this repo) launches the process
+    // with the flag derived from `DISCOVERY_HEAP_SIZE_MB`. Here we consume that
+    // input contract and verify/log the effective worker heap limit, warning
+    // loudly when the process was not launched with a matching flag.
+    verifyWorkerHeapBudget(workerName);
 
     const worker = new Worker(workerUrl, {
       type: "module",

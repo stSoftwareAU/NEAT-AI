@@ -123,6 +123,12 @@ export function parseMemoryConfig(
     proactiveGc: overrides?.proactiveGc !== undefined
       ? Boolean(overrides.proactiveGc)
       : d.proactiveGc,
+    nativeBudgetBytes: parseNumber(
+      "Memory nativeBudgetBytes",
+      overrides?.nativeBudgetBytes,
+      d.nativeBudgetBytes,
+      { integer: true, min: 0 },
+    ),
   } as RequiredMemoryConfig;
 }
 
