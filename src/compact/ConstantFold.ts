@@ -130,7 +130,7 @@ export function foldConstants(
  * neuron whose every input is constant (or which has no inputs) is constant
  * with value `squash(Σ(weightᵢ · constantᵢ) + bias)`.
  */
-function computeConstantValues(
+export function computeConstantValues(
   neurons: NeuronExport[],
   inward: Map<number, SynapseExport[]>,
 ): Map<number, number> {

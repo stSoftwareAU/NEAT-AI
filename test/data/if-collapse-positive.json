@@ -1,0 +1,33 @@
+{
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "input": 2,
+  "output": 1,
+  "neurons": [
+    { "type": "constant", "uuid": "const-cond", "bias": 1.0 },
+    { "type": "constant", "uuid": "const-neg", "bias": 0.3 },
+    { "type": "hidden", "uuid": "if-neuron", "bias": 0.2, "squash": "IF" },
+    { "type": "output", "uuid": "output-0", "bias": 0, "squash": "IDENTITY" }
+  ],
+  "synapses": [
+    {
+      "fromUUID": "input-0",
+      "toUUID": "if-neuron",
+      "weight": 0.6,
+      "type": "positive"
+    },
+    {
+      "fromUUID": "const-cond",
+      "toUUID": "if-neuron",
+      "weight": 0.5,
+      "type": "condition"
+    },
+    {
+      "fromUUID": "const-neg",
+      "toUUID": "if-neuron",
+      "weight": 0.4,
+      "type": "negative"
+    },
+    { "fromUUID": "if-neuron", "toUUID": "output-0", "weight": 0.8 }
+  ]
+}
