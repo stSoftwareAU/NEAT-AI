@@ -513,6 +513,12 @@
     "selu",
     "Selu",
     "ünter",
-    "XNOR"
+    "XNOR",
+    "unconfigured",
+    "rhysd",
+    "COLOR",
+    "noout",
+    "pathspecs",
+    "numfmt"
   ]
 }
