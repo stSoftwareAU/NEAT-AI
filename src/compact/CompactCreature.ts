@@ -19,6 +19,7 @@ import { mergeParallelIdentityBridges } from "@compact/ParallelIdentityMerge.ts"
 import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
 import { simplifyLargeWeights } from "@compact/SimplifyLargeWeights.ts";
 import { foldConstants } from "@compact/ConstantFold.ts";
+import { collapseConstantIf } from "@compact/IfCollapse.ts";
 import { removeBackwardSynapses } from "@compact/RemoveBackwardSynapses.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
@@ -298,6 +299,20 @@ export function compactCreature(
         break; // restart the loop after each mutation
       }
     }
+  }
+
+  // Issue #3036: Exact IF-collapse when every condition input is constant.
+  // The selector is fixed at compaction time, so the IF is rewritten to its
+  // always-taken branch as a plain additive (IDENTITY) neuron, dropping the
+  // dead condition + untaken-branch synapses. Lossless → safe variant. Runs
+  // before the constant fold so any constants it strands are absorbed below.
+  const ifCollapseResult = collapseConstantIf(compactCreature);
+  if (ifCollapseResult.changed) {
+    assertValidSynapseReferences(
+      compactCreature,
+      "after constant IF collapse",
+    );
+    didCompact = true;
   }
 
   // Issue #3035: Transitive constant fold + zero-varying-input collapse.
