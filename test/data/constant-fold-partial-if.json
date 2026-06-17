@@ -1,0 +1,45 @@
+{
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "input": 2,
+  "output": 1,
+  "neurons": [
+    { "type": "constant", "uuid": "neuron-132866057", "bias": 0.5 },
+    {
+      "type": "hidden",
+      "uuid": "nonif-consumer",
+      "bias": 0.1,
+      "squash": "HARD_TANH"
+    },
+    { "type": "hidden", "uuid": "if-consumer", "bias": 0, "squash": "IF" },
+    { "type": "output", "uuid": "output-0", "bias": 0, "squash": "IDENTITY" }
+  ],
+  "synapses": [
+    { "fromUUID": "input-0", "toUUID": "nonif-consumer", "weight": 0.6 },
+    {
+      "fromUUID": "neuron-132866057",
+      "toUUID": "nonif-consumer",
+      "weight": 0.4
+    },
+    {
+      "fromUUID": "input-0",
+      "toUUID": "if-consumer",
+      "weight": -0.3,
+      "type": "condition"
+    },
+    {
+      "fromUUID": "neuron-132866057",
+      "toUUID": "if-consumer",
+      "weight": 0.3,
+      "type": "positive"
+    },
+    {
+      "fromUUID": "input-1",
+      "toUUID": "if-consumer",
+      "weight": 0.3,
+      "type": "negative"
+    },
+    { "fromUUID": "nonif-consumer", "toUUID": "output-0", "weight": 0.8 },
+    { "fromUUID": "if-consumer", "toUUID": "output-0", "weight": 0.7 }
+  ]
+}

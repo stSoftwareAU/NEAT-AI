@@ -1,0 +1,33 @@
+{
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "input": 1,
+  "output": 1,
+  "neurons": [
+    { "type": "constant", "uuid": "legacy-neuron-1762683495", "bias": 0.5 },
+    {
+      "type": "hidden",
+      "uuid": "533d8616-037c-4278-b95c-3a2a1ce15ee6",
+      "bias": 0.2,
+      "squash": "HARD_TANH"
+    },
+    { "type": "output", "uuid": "output-0", "bias": 0.1, "squash": "IDENTITY" }
+  ],
+  "synapses": [
+    {
+      "fromUUID": "input-0",
+      "toUUID": "533d8616-037c-4278-b95c-3a2a1ce15ee6",
+      "weight": 0.7
+    },
+    {
+      "fromUUID": "legacy-neuron-1762683495",
+      "toUUID": "533d8616-037c-4278-b95c-3a2a1ce15ee6",
+      "weight": 0.5
+    },
+    {
+      "fromUUID": "533d8616-037c-4278-b95c-3a2a1ce15ee6",
+      "toUUID": "output-0",
+      "weight": 0.5
+    }
+  ]
+}
