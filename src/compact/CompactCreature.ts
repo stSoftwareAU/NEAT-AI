@@ -18,6 +18,7 @@ import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseRe
 import { mergeParallelIdentityBridges } from "@compact/ParallelIdentityMerge.ts";
 import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
 import { simplifyLargeWeights } from "@compact/SimplifyLargeWeights.ts";
+import { foldConstants } from "@compact/ConstantFold.ts";
 import { removeBackwardSynapses } from "@compact/RemoveBackwardSynapses.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
@@ -297,6 +298,20 @@ export function compactCreature(
         break; // restart the loop after each mutation
       }
     }
+  }
+
+  // Issue #3035: Transitive constant fold + zero-varying-input collapse.
+  // Fold `type:"constant"` producers (and hidden neurons that have become
+  // effectively constant) into their non-aggregate consumers' biases, iterating
+  // to a fixpoint so chained constant subgraphs collapse fully. Lossless, so it
+  // belongs to the safe variant.
+  const constantFoldResult = foldConstants(compactCreature);
+  if (constantFoldResult.changed) {
+    assertValidSynapseReferences(
+      compactCreature,
+      "after constant fold",
+    );
+    didCompact = true;
   }
 
   // Issue #1947: Merge parallel IDENTITY bridge neurons that all connect
