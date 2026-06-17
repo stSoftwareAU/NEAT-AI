@@ -19,6 +19,7 @@ import { mergeParallelIdentityBridges } from "@compact/ParallelIdentityMerge.ts"
 import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
 import { simplifyLargeWeights } from "@compact/SimplifyLargeWeights.ts";
 import { foldConstants } from "@compact/ConstantFold.ts";
+import { aggressivePrune } from "@compact/AggressivePrune.ts";
 import { collapseConstantIf } from "@compact/IfCollapse.ts";
 import { removeBackwardSynapses } from "@compact/RemoveBackwardSynapses.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
@@ -31,10 +32,12 @@ import type { CompactVariants } from "@compact/CompactVariants.ts";
  *
  * The `safe` variant is the result of all exact, behaviour-preserving folds
  * (the long-standing {@link compactCreature} output). The `aggressive` variant
- * is the safe folds plus extra structural pruning; the aggressive heuristic
- * itself lands in the aggressive-pruning sub-issue of #3029, so for now it is a
- * no-op placeholder equal to the safe variant. Identical variants dedupe via
- * UUID downstream, so the duplicate is never scored.
+ * (Issue #3038) is the safe folds plus a dataset-free structural prune of
+ * low-impact synapses — including those feeding aggregate consumers and
+ * non-constant neurons that the safe pass must leave untouched. It is built on
+ * top of the safe variant, so it is never structurally worse than safe. When
+ * the prune finds nothing the two are identical and dedupe via UUID downstream,
+ * so the duplicate is never scored.
  *
  * @param creature - The creature to compact
  * @param feedbackLoop - Whether to use a feedback loop during compaction
@@ -52,11 +55,65 @@ export function compactCreatureVariants(
   const safe = buildSafeCompact(creature, feedbackLoop, mcmcTemperature);
   if (!safe) return {};
 
-  // No-op placeholder: the aggressive pass currently equals the safe variant.
-  // The real heuristic is the aggressive-pruning sub-issue of #3029. Returning
-  // the same creature keeps the gamble free and lets UUID dedup collapse the
-  // duplicate before selection scores it.
-  return { safe, aggressive: safe };
+  // Issue #3038: build the aggressive candidate on top of the safe floor by
+  // speculatively pruning low-impact structure. When the prune finds nothing,
+  // it returns the safe creature unchanged; identical variants then dedupe via
+  // UUID downstream so the duplicate is never scored.
+  const aggressive = buildAggressiveCompact(safe) ?? safe;
+  return { safe, aggressive };
+}
+
+/**
+ * Build the aggressive compaction candidate (Issue #3038): the safe variant
+ * plus a dataset-free structural prune of low-impact synapses. Returns a new
+ * creature only when the prune actually changed the structure; otherwise
+ * `undefined` so the caller can reuse the safe floor.
+ *
+ * No training data is threaded in — pruning is judged purely on synapse-weight
+ * magnitude. The result is a *candidate*: population scoring keeps it only if it
+ * beats the safe floor, so an over-eager prune costs nothing.
+ *
+ * Pruning only ever removes synapses (never adds), so it cannot introduce new
+ * backward edges — the safe floor's `removeBackwardSynapses` pass already
+ * settled forward-only semantics, hence no `feedbackLoop` handling here.
+ */
+function buildAggressiveCompact(
+  safe: Creature,
+): Creature | undefined {
+  const holdDebug = safe.DEBUG;
+  safe.DEBUG = false;
+  const safeExport = exportJSONUnchecked(safe);
+  safe.DEBUG = holdDebug;
+  normaliseCreatureExport(safeExport);
+
+  const candidate = cloneCreatureExport(safeExport);
+
+  const pruneResult = aggressivePrune(candidate);
+  if (!pruneResult.changed) return undefined;
+
+  // Clean up any structure the prune stranded (now-dangling neurons and
+  // subgraphs that can no longer influence an output).
+  cleanupOrphanedNeurons(candidate);
+  pruneDeadSubgraphs(candidate);
+
+  addTag(candidate, "approach", "compact" as Approach);
+  delete candidate.memetic;
+  removeTag(candidate, "approach-logged");
+
+  // Preserve forwardOnly semantics from the safe floor.
+  if (safe.forwardOnly === true) candidate.forwardOnly = true;
+
+  assertValidSynapseReferences(
+    candidate,
+    "before Creature.fromJSON in buildAggressiveCompact",
+  );
+
+  // Issue #2514: opt out of the load-side recurrent throw — like the safe
+  // path, this repair candidate may carry residual backward synapses that the
+  // load-side cleanup strips.
+  return Creature.fromJSON(candidate, false, "compactCreatureAggressive", {
+    throwOnRecurrent: "never",
+  });
 }
 
 /**
