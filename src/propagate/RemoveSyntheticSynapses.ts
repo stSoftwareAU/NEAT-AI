@@ -10,6 +10,7 @@
  */
 
 import type { Creature } from "@creature";
+import { selectCompactVariant } from "@compact/CompactVariants.ts";
 
 /** Default threshold: same as the backpropagation plankConstant. */
 const DEFAULT_THRESHOLD = 0.000_000_1;
@@ -67,7 +68,9 @@ export function removeSyntheticSynapses(
   if (zeroed > 0) {
     // Delegate to the standard compact function for zero-weight synapse
     // removal, orphan cleanup, and dead subgraph pruning (DRY).
-    const compacted = creature.compact(false);
+    // Issue #3037: select the best of the safe + aggressive compaction
+    // candidates (the safe variant is the floor; identical variants dedupe).
+    const compacted = selectCompactVariant(creature.compactVariants(false));
     if (compacted) {
       creature.loadFrom(
         compacted.exportJSON(),

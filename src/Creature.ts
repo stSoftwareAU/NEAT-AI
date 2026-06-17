@@ -32,7 +32,11 @@ import { Synapse } from "@architecture/Synapse.ts";
 import type { SynapseInternal } from "@architecture/SynapseInterfaces.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
 import type { EvolvableHyperparameters } from "@config/HyperparameterConfig.ts";
-import { compactCreature } from "@compact/CompactCreature.ts";
+import {
+  compactCreature,
+  compactCreatureVariants,
+} from "@compact/CompactCreature.ts";
+import type { CompactVariants } from "@compact/CompactVariants.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import { Activations } from "@methods/activations/Activations.ts";
@@ -642,6 +646,20 @@ export class Creature implements CreatureInternal {
     mcmcTemperature?: number,
   ): Creature | undefined {
     return compactCreature(this, feedbackLoop, mcmcTemperature);
+  }
+
+  /**
+   * Issue #3037: Produce both compaction candidates — a `safe` variant (all
+   * exact folds, score guaranteed ≥ this creature) and an `aggressive` variant
+   * (safe folds plus extra structural pruning). Feed both into score-based
+   * selection so the best wins; the safe variant is the floor the aggressive
+   * gamble can never cost anything against.
+   */
+  compactVariants(
+    feedbackLoop: boolean,
+    mcmcTemperature?: number,
+  ): CompactVariants {
+    return compactCreatureVariants(this, feedbackLoop, mcmcTemperature);
   }
 
   validate(options?: {

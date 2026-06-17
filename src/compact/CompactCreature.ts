@@ -24,9 +24,47 @@ import { removeBackwardSynapses } from "@compact/RemoveBackwardSynapses.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
+import type { CompactVariants } from "@compact/CompactVariants.ts";
+
+/**
+ * Produce both compaction candidates for a creature (Issue #3037).
+ *
+ * The `safe` variant is the result of all exact, behaviour-preserving folds
+ * (the long-standing {@link compactCreature} output). The `aggressive` variant
+ * is the safe folds plus extra structural pruning; the aggressive heuristic
+ * itself lands in the aggressive-pruning sub-issue of #3029, so for now it is a
+ * no-op placeholder equal to the safe variant. Identical variants dedupe via
+ * UUID downstream, so the duplicate is never scored.
+ *
+ * @param creature - The creature to compact
+ * @param feedbackLoop - Whether to use a feedback loop during compaction
+ * @param mcmcTemperature - Issue #2200: Optional MCMC temperature for probabilistic
+ *   weight rescaling acceptance. When provided, worsening rescalings may be accepted
+ *   with probability exp(-delta / temperature) instead of greedy rejection.
+ * @returns The safe and aggressive candidates; either is absent when no
+ *   compaction occurred.
+ */
+export function compactCreatureVariants(
+  creature: Creature,
+  feedbackLoop: boolean,
+  mcmcTemperature?: number,
+): CompactVariants {
+  const safe = buildSafeCompact(creature, feedbackLoop, mcmcTemperature);
+  if (!safe) return {};
+
+  // No-op placeholder: the aggressive pass currently equals the safe variant.
+  // The real heuristic is the aggressive-pruning sub-issue of #3029. Returning
+  // the same creature keeps the gamble free and lets UUID dedup collapse the
+  // duplicate before selection scores it.
+  return { safe, aggressive: safe };
+}
 
 /**
  * Compacts a creature by removing redundant neurons and connections.
+ *
+ * Thin wrapper over {@link compactCreatureVariants} that returns the safe
+ * variant for back-compat — the floor that score-based selection can never do
+ * worse than.
  *
  * @param creature - The creature to compact
  * @param feedbackLoop - Whether to use a feedback loop during compaction
@@ -36,6 +74,18 @@ import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
  * @returns A new compacted creature or undefined if no compaction occurred
  */
 export function compactCreature(
+  creature: Creature,
+  feedbackLoop: boolean,
+  mcmcTemperature?: number,
+): Creature | undefined {
+  return compactCreatureVariants(creature, feedbackLoop, mcmcTemperature).safe;
+}
+
+/**
+ * Build the safe compaction candidate — all exact, behaviour-preserving folds.
+ * The returned creature's score is guaranteed ≥ the original's.
+ */
+function buildSafeCompact(
   creature: Creature,
   feedbackLoop: boolean,
   mcmcTemperature?: number,
