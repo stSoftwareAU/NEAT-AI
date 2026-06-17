@@ -5,8 +5,10 @@ import { assert, assertEquals } from "@std/assert";
 import {
   _setHeapGuardProviderForTests,
   checkAnalysisHeapAbort,
+  type HeapGuardSample,
   isHeapCritical,
   sampleHeapPressure,
+  shouldAbortOnHeapPressure,
 } from "@architecture/ErrorGuidedStructuralEvolution/AnalysisHeapGuard.ts";
 import { DEFAULT_MEMORY_CONFIG } from "@config/MemoryConfig.ts";
 import type { Logger } from "@utils/Logger.ts";
@@ -139,6 +141,153 @@ Deno.test("checkAnalysisHeapAbort: no abort when monitoring disabled even if cri
   );
   assertEquals(result.abort, false);
   assertEquals(lines.length, 0);
+});
+
+// --- Issue #3025: off-heap (RSS/native budget) awareness ------------------
+
+const MB = 1024 * 1024;
+
+/** Configured RSS budget with headroom above the GRQ-23 sample's RSS. */
+const NATIVE_BUDGET = Math.round(16384 * MB);
+
+/** GRQ-23: V8 heap ≈86% (CRITICAL) but native RSS well within budget. */
+const GRQ23_SAMPLE = {
+  heapUsed: Math.round(231 * MB),
+  heapTotal: Math.round(269 * MB),
+  rss: Math.round(13289 * MB),
+  external: Math.round(47 * MB),
+};
+
+function criticalSample(rss: number): HeapGuardSample {
+  return {
+    usageFraction: 0.86,
+    pressureLevel: "critical",
+    heapUsed: Math.round(231 * MB),
+    heapTotal: Math.round(269 * MB),
+    rss,
+    external: Math.round(47 * MB),
+  };
+}
+
+Deno.test("sampleHeapPressure: captures rss and external from the provider (#3025)", () => {
+  const sample = sampleHeapPressure(
+    DEFAULT_MEMORY_CONFIG,
+    fixedProvider({
+      heapUsed: 95,
+      heapTotal: 100,
+      rss: 12345,
+      external: 678,
+    }),
+  );
+  assertEquals(sample.rss, 12345);
+  assertEquals(sample.external, 678);
+});
+
+Deno.test("sampleHeapPressure: rss/external default to 0 when unreported (#3025)", () => {
+  const sample = sampleHeapPressure(
+    DEFAULT_MEMORY_CONFIG,
+    fixedProvider({ heapUsed: 95, heapTotal: 100 }),
+  );
+  assertEquals(sample.rss, 0);
+  assertEquals(sample.external, 0);
+});
+
+Deno.test("shouldAbortOnHeapPressure: V8-only CRITICAL within native budget does NOT abort (#3025)", () => {
+  const config = { ...DEFAULT_MEMORY_CONFIG, nativeBudgetBytes: NATIVE_BUDGET };
+  assertEquals(
+    shouldAbortOnHeapPressure(criticalSample(GRQ23_SAMPLE.rss), config),
+    false,
+  );
+});
+
+Deno.test("shouldAbortOnHeapPressure: RSS over native budget still aborts (genuine OOM) (#3025)", () => {
+  const config = { ...DEFAULT_MEMORY_CONFIG, nativeBudgetBytes: NATIVE_BUDGET };
+  assertEquals(
+    shouldAbortOnHeapPressure(criticalSample(NATIVE_BUDGET + MB), config),
+    true,
+  );
+});
+
+Deno.test("shouldAbortOnHeapPressure: no native budget configured keeps legacy V8-only abort (#3025)", () => {
+  // DEFAULT_MEMORY_CONFIG has nativeBudgetBytes = 0.
+  assertEquals(
+    shouldAbortOnHeapPressure(
+      criticalSample(GRQ23_SAMPLE.rss),
+      DEFAULT_MEMORY_CONFIG,
+    ),
+    true,
+  );
+});
+
+Deno.test("shouldAbortOnHeapPressure: budget configured but RSS unreported falls back to abort (#3025)", () => {
+  const config = { ...DEFAULT_MEMORY_CONFIG, nativeBudgetBytes: NATIVE_BUDGET };
+  assertEquals(shouldAbortOnHeapPressure(criticalSample(0), config), true);
+});
+
+Deno.test("shouldAbortOnHeapPressure: non-critical never aborts even with budget (#3025)", () => {
+  const config = { ...DEFAULT_MEMORY_CONFIG, nativeBudgetBytes: NATIVE_BUDGET };
+  const normal: HeapGuardSample = {
+    usageFraction: 0.1,
+    pressureLevel: "normal",
+    heapUsed: 10,
+    heapTotal: 100,
+    rss: NATIVE_BUDGET + MB, // even over budget — not critical, so no abort
+    external: 0,
+  };
+  assertEquals(shouldAbortOnHeapPressure(normal, config), false);
+});
+
+Deno.test("shouldAbortOnHeapPressure: monitoring disabled never aborts (#3025)", () => {
+  const config = {
+    ...DEFAULT_MEMORY_CONFIG,
+    enabled: false,
+    nativeBudgetBytes: NATIVE_BUDGET,
+  };
+  assertEquals(shouldAbortOnHeapPressure(criticalSample(0), config), false);
+});
+
+Deno.test("checkAnalysisHeapAbort: GRQ-23 V8-only CRITICAL within budget returns abort:false (#3025)", () => {
+  const config = { ...DEFAULT_MEMORY_CONFIG, nativeBudgetBytes: NATIVE_BUDGET };
+  const { logger, lines } = makeRecordingLogger();
+  const result = checkAnalysisHeapAbort(
+    "grq23-disc",
+    config,
+    logger,
+    fixedProvider(GRQ23_SAMPLE),
+  );
+  assertEquals(result.abort, false);
+  assertEquals(result.sample.pressureLevel, "critical");
+  assertEquals(result.sample.rss, GRQ23_SAMPLE.rss);
+  assertEquals(
+    lines.length,
+    0,
+    "no abort log when off-heap budget has headroom",
+  );
+});
+
+Deno.test("checkAnalysisHeapAbort: RSS over budget still aborts and logs (#3025)", () => {
+  const config = { ...DEFAULT_MEMORY_CONFIG, nativeBudgetBytes: NATIVE_BUDGET };
+  const { logger, lines } = makeRecordingLogger();
+  const result = checkAnalysisHeapAbort(
+    "grq23-oom",
+    config,
+    logger,
+    fixedProvider({ ...GRQ23_SAMPLE, rss: NATIVE_BUDGET + MB }),
+  );
+  assertEquals(result.abort, true);
+  assertEquals(lines.filter((l) => l.level === "warn").length, 1);
+});
+
+Deno.test("isHeapCritical: V8-only CRITICAL within budget returns false (#3025)", () => {
+  const config = { ...DEFAULT_MEMORY_CONFIG, nativeBudgetBytes: NATIVE_BUDGET };
+  assertEquals(isHeapCritical(config, fixedProvider(GRQ23_SAMPLE)), false);
+  assertEquals(
+    isHeapCritical(
+      config,
+      fixedProvider({ ...GRQ23_SAMPLE, rss: NATIVE_BUDGET + MB }),
+    ),
+    true,
+  );
 });
 
 Deno.test("_setHeapGuardProviderForTests: module-level override is honoured", () => {

@@ -73,6 +73,8 @@ interface RunOptions {
   readonly heapSample: MemoryUsageSample;
   /** Whether heap monitoring is enabled in the config. */
   readonly memoryEnabled?: boolean;
+  /** Off-heap (RSS) budget in bytes — Issue #3025. 0/undefined disables it. */
+  readonly nativeBudgetBytes?: number;
 }
 
 async function runWith(
@@ -119,7 +121,10 @@ async function runWith(
     discoveryMaxNeurons: 6,
     discoveryAnalysisChunkSize: 1,
     discoveryAnalysisPerChunkMaxMs: 60_000,
-    memory: { enabled: options.memoryEnabled ?? true },
+    memory: {
+      enabled: options.memoryEnabled ?? true,
+      nativeBudgetBytes: options.nativeBudgetBytes ?? 0,
+    },
   });
 
   const perfStats = new DiscoveryPerformanceStats();
@@ -199,6 +204,59 @@ Deno.test(
     assert(
       chunkCalls > 0,
       "chunks should run normally when heap is not under pressure",
+    );
+  },
+);
+
+Deno.test(
+  "in-loop heap guard: V8-only CRITICAL within native budget keeps the loop running (#3025)",
+  async () => {
+    const MB = 1024 * 1024;
+    const { perfStats, chunkCalls } = await runWith({
+      // V8 heap ≈86% (CRITICAL) but RSS well within the configured budget.
+      heapSample: {
+        heapUsed: Math.round(231 * MB),
+        heapTotal: Math.round(269 * MB),
+        rss: Math.round(13289 * MB),
+        external: Math.round(47 * MB),
+      },
+      nativeBudgetBytes: Math.round(16384 * MB),
+    });
+
+    assertFalse(
+      perfStats.analysisHeapAborted,
+      "off-heap headroom must keep the loop running despite V8 CRITICAL",
+    );
+    assert(
+      chunkCalls > 0,
+      "chunks should run when only the V8 fraction is critical but RSS is within budget",
+    );
+  },
+);
+
+Deno.test(
+  "in-loop heap guard: RSS over native budget still aborts (#3025)",
+  async () => {
+    const MB = 1024 * 1024;
+    const budget = Math.round(16384 * MB);
+    const { perfStats, chunkCalls } = await runWith({
+      heapSample: {
+        heapUsed: Math.round(231 * MB),
+        heapTotal: Math.round(269 * MB),
+        rss: budget + MB, // RSS itself over budget — genuine OOM
+        external: Math.round(47 * MB),
+      },
+      nativeBudgetBytes: budget,
+    });
+
+    assert(
+      perfStats.analysisHeapAborted,
+      "RSS over budget must still abort the loop (no masking of real OOM)",
+    );
+    assertEquals(
+      chunkCalls,
+      0,
+      "no chunk should run once RSS exceeds the native budget",
     );
   },
 );
