@@ -46,7 +46,11 @@ import type { MemoryUsageSample } from "@neat/MemoryMonitor.ts";
  * off-heap-budget headroom into the guard). Flipping it activates the post-fix
  * contract case below, taking this TDD red step to green.
  */
-const EXPECT_POST_FIX_HEAP_PROPAGATION = false;
+// Flipped to `true` by the #3024 sibling fix: `WorkerHandlerBase` now consumes
+// the configured discovery heap budget (DISCOVERY_HEAP_SIZE_MB / parent
+// --max-old-space-size) and spawned worker isolates inherit a
+// parent-proportional V8 heap, so the post-fix contract case below is active.
+const EXPECT_POST_FIX_HEAP_PROPAGATION = true;
 
 const MB = 1024 * 1024;
 
