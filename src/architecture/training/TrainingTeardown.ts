@@ -9,6 +9,7 @@
 
 import { Creature } from "@creature";
 import { compactUnused } from "@compact/CompactUnused.ts";
+import { selectCompactVariant } from "@compact/CompactVariants.ts";
 import { removeSyntheticSynapses } from "@propagate/RemoveSyntheticSynapses.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import type {
@@ -185,7 +186,11 @@ export function finaliseTraining(
 
   let compact = compactUnused(bestTraceJSON, iterationConfig.plankConstant);
   if (!compact) {
-    compact = Creature.fromJSON(bestTraceJSON).compact(feedbackLoop);
+    // Issue #3037: select the best of the safe + aggressive compaction
+    // candidates (the safe variant is the floor; identical variants dedupe).
+    compact = selectCompactVariant(
+      Creature.fromJSON(bestTraceJSON).compactVariants(feedbackLoop),
+    );
   }
 
   return {

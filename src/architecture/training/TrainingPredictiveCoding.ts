@@ -9,6 +9,7 @@
 import type { CostInterface } from "@costs/CostInterface.ts";
 import { Creature } from "@creature";
 import { compactUnused } from "@compact/CompactUnused.ts";
+import { selectCompactVariant } from "@compact/CompactVariants.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { trainWithPredictiveCoding } from "@predictiveCoding/PredictiveCodingTrainer.ts";
@@ -57,7 +58,11 @@ export function trainDirPredictiveCoding(
   const feedbackLoop = options.feedbackLoop ?? false;
   let compact = compactUnused(creature.traceJSON(), 1e-7);
   if (!compact) {
-    compact = Creature.fromJSON(creature.exportJSON()).compact(feedbackLoop);
+    // Issue #3037: select the best of the safe + aggressive compaction
+    // candidates (the safe variant is the floor; identical variants dedupe).
+    compact = selectCompactVariant(
+      Creature.fromJSON(creature.exportJSON()).compactVariants(feedbackLoop),
+    );
   }
 
   // Issue #1913: Add trace tags indicating Predictive Coding was used.
