@@ -28,7 +28,10 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";
 import { runRecordingPhase } from "@architecture/ErrorGuidedStructuralEvolution/DataRecorderRecording.ts";
 import { runAnalysisLoop } from "@architecture/ErrorGuidedStructuralEvolution/DataRecorderAnalysis.ts";
-import { checkAnalysisHeapAbort } from "@architecture/ErrorGuidedStructuralEvolution/AnalysisHeapGuard.ts";
+import {
+  buildEmptyDiscoverResult,
+  resolveHeapAbortBoundary,
+} from "@architecture/ErrorGuidedStructuralEvolution/AnalysisExtensionBoundary.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
@@ -236,16 +239,7 @@ export class DataRecorder {
         );
       }
       // Return empty result - discovery is skipped
-      return {
-        ID: this.ID,
-        addHelpfulSynapses: undefined,
-        addHelpfulNeurons: undefined,
-        coordinatedStructuralCandidates: undefined,
-        removeHarmfulSynapse: undefined,
-        removeHarmfulNeurons: undefined,
-        removalCandidates: undefined,
-        candidateSquashes: undefined,
-      };
+      return buildEmptyDiscoverResult(this.ID);
     }
 
     const binaryFiles = await this.getBinaryFiles(dataDir);
@@ -337,16 +331,7 @@ export class DataRecorder {
       fileProcessTime = perfStats.fileProcessingTime;
 
       if (!recordingSuccess) {
-        return {
-          ID: this.ID,
-          addHelpfulSynapses: undefined,
-          addHelpfulNeurons: undefined,
-          coordinatedStructuralCandidates: undefined,
-          removeHarmfulSynapse: undefined,
-          removeHarmfulNeurons: undefined,
-          removalCandidates: undefined,
-          candidateSquashes: undefined,
-        };
+        return buildEmptyDiscoverResult(this.ID);
       }
 
       // Issue #3026: Release record-phase JS retainers before sampling the
@@ -369,28 +354,19 @@ export class DataRecorder {
       // and was not enough. Skip the extension entirely and reuse the
       // partial-result path so the caller gets the same empty
       // DiscoverResult shape as the recordingSuccess === false branch.
-      const heapAbort = checkAnalysisHeapAbort(
+      // Issue #2737/#3025: Surface a genuine heap-driven abort as a structured
+      // field on the DiscoverResult so the upstream training event pipeline can
+      // emit a `"heap_critical_skip"` outcome instead of indistinguishably
+      // reporting `"no_change"`. The guard is off-heap (RSS) aware, so a
+      // worker-default-heap CRITICAL with native-budget headroom returns `null`
+      // here (analysis continues, signal stays unset) — no false positive.
+      const heapAbortResult = resolveHeapAbortBoundary(
         this.ID,
         this.config.memory,
         getLogger(),
       );
-      if (heapAbort.abort) {
-        // Issue #2737: Surface the heap-driven abort as a structured field on
-        // the DiscoverResult so the upstream training event pipeline can emit
-        // a `"heap_critical_skip"` outcome instead of indistinguishably
-        // reporting `"no_change"`. The candidate arrays are still `undefined`
-        // because the analysis loop never ran.
-        return {
-          ID: this.ID,
-          addHelpfulSynapses: undefined,
-          addHelpfulNeurons: undefined,
-          coordinatedStructuralCandidates: undefined,
-          removeHarmfulSynapse: undefined,
-          removeHarmfulNeurons: undefined,
-          removalCandidates: undefined,
-          candidateSquashes: undefined,
-          heapAbortedAtExtensionBoundary: true,
-        };
+      if (heapAbortResult) {
+        return heapAbortResult;
       }
 
       // Extend timeout for analysis phase (clamped to the hard deadline)
