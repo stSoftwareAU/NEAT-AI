@@ -26,6 +26,7 @@ import {
   observeRustTrainingRecord as observeRustTrainingRecordImpl,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
 import { taskDescriptorToRustWire } from "@costs/TaskDescriptorRustWire.ts";
+import { attemptProactiveGc } from "@neat/MemoryMonitor.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { appendAll } from "@utils/ArrayAppend.ts";
 import { isReleased } from "@utils/ReleasableRef.ts";
@@ -515,6 +516,64 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
       }
     }
     return true;
+  }
+
+  /**
+   * Release record-phase JS retainers the analysis phase no longer needs,
+   * ahead of the analysis-extension heap check (Issue #3026).
+   *
+   * Once {@link flushRustRecording} has produced the on-disk parquet output,
+   * the in-memory sample accumulators and the per-file sampled-index map are
+   * dead weight on the small default worker V8 heap. The recording phase has
+   * already persisted everything the analysis phase reads — the merged parquet
+   * file (`parquetFilePath`) and the `selected_indices.json` written to
+   * `indicesFilePath` during recording — so dropping the in-memory copies
+   * changes no recorded output.
+   *
+   * This mirrors the per-chunk cache release of #2642
+   * ({@link releaseCombinedRustAnalysisCache}) applied to the
+   * record→analysis handoff. State the analysis phase still consumes is
+   * deliberately preserved: `recordedNeuronTotalAbsError` (focus ranking),
+   * `parquetFilePath`, `combinedRustAnalysis`, and `creature`.
+   *
+   * @param options.attemptGc request a proactive `globalThis.gc?.()` after
+   *   dropping the references. Only effective under
+   *   `--v8-flags=--expose-gc`; correctness never depends on GC running.
+   * @returns counts of what was released, for observability and tests.
+   */
+  public releaseRecordingRetainers(
+    options?: Readonly<{ attemptGc?: boolean }>,
+  ): { releasedIndexEntries: number; releasedAccumulatedSamples: number } {
+    let releasedIndexEntries = 0;
+    for (const key of Object.keys(this.selectedIndices)) {
+      releasedIndexEntries += this.selectedIndices[key]?.length ?? 0;
+    }
+    const releasedAccumulatedSamples = this.rustAccumulatedData.length;
+
+    // In-memory copies only — the analysis phase reads the merged parquet and
+    // `selected_indices.json` from disk, never these fields.
+    this.selectedIndices = {};
+    this.rustAccumulatedData = [];
+    this.rustAccumulatedNeuronData = [];
+    this.rustAccumulatedEstimatedBytes = 0;
+    this.rustBinaryFilePaths = new Set();
+
+    if (options?.attemptGc) {
+      // Best-effort; a no-op unless the runtime was started with --expose-gc.
+      attemptProactiveGc();
+    }
+
+    if (
+      this.loggingEnabled &&
+      (releasedIndexEntries > 0 || releasedAccumulatedSamples > 0)
+    ) {
+      this.log(
+        "info",
+        `Released record-phase retainers before analysis heap check: ${releasedIndexEntries} index entries, ${releasedAccumulatedSamples} accumulated samples.`,
+      );
+    }
+
+    return { releasedIndexEntries, releasedAccumulatedSamples };
   }
 
   // ── Flush diagnostics ──────────────────────────────────────────────

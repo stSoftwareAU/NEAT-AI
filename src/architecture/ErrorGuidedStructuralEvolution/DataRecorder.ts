@@ -349,6 +349,18 @@ export class DataRecorder {
         };
       }
 
+      // Issue #3026: Release record-phase JS retainers before sampling the
+      // heap at the analysis-extension boundary. The recording phase has
+      // already persisted its output (merged parquet + selected_indices.json),
+      // so the in-memory sample accumulators and per-file index map are dead
+      // weight on the small default worker V8 heap. Dropping them here lowers
+      // the heap sample the guard reads — the #2642 chunk-cache release applied
+      // to the record→analysis handoff — without touching analysis-needed
+      // state or recorded output.
+      discoverStructure.releaseRecordingRetainers({
+        attemptGc: this.config.memory.proactiveGc,
+      });
+
       // Issue #2594: Heap-aware extension guard.
       // Before we extend the timeout to give analysis room to run, sample
       // the heap. If MemoryMonitor reports CRITICAL pressure here, the
