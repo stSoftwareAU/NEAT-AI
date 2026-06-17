@@ -20,10 +20,10 @@ the candidate mechanisms on Deno 2.8.3 by reading
 `v8.getHeapStatistics().heap_size_limit` from both the parent and a spawned
 worker:
 
-| Mechanism | Worker heap sized? |
-| --- | --- |
-| Process-level `--v8-flags=--max-old-space-size=512` | ✅ worker inherits (608 MB, same as parent) |
-| `DENO_V8_FLAGS=--max-old-space-size=512` at process start | ✅ worker inherits |
+| Mechanism                                                         | Worker heap sized?                              |
+| ----------------------------------------------------------------- | ----------------------------------------------- |
+| Process-level `--v8-flags=--max-old-space-size=512`               | ✅ worker inherits (608 MB, same as parent)     |
+| `DENO_V8_FLAGS=--max-old-space-size=512` at process start         | ✅ worker inherits                              |
 | `Deno.env.set("DENO_V8_FLAGS", …)` at runtime before `new Worker` | ❌ no effect — flags read once at process start |
 
 So the only supported lever is the **process-level V8 flag worker isolates
@@ -74,9 +74,10 @@ Flipped the sibling switch in
 `test/ErrorGuidedStructuralEvolution/DiscoveryWorkerHeapLimit.ts`
 (`EXPECT_POST_FIX_HEAP_PROPAGATION` `false → true`) as that file documents: this
 PR is the sibling fix that propagates a parent-proportional worker heap, so the
-previously-x-failed post-fix case (`propagated ~4096MB worker heap keeps
-analysis running`) is now active and green. No existing tests were removed or
-disabled.
+previously-x-failed post-fix case
+(`propagated ~4096MB worker heap keeps
+analysis running`) is now active and
+green. No existing tests were removed or disabled.
 
 No regression to the `direct`/mock path: `createWorkerOrMock(direct=true)` still
 returns the mock unchanged (the budget verification runs only on the real-spawn
