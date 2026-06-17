@@ -26,4 +26,18 @@ export {
   loadWasmActivationInitPayloadAsync,
 } from "@workers/WasmActivationPayload.ts";
 export { initialiseWasmActivationFromPayload } from "@workers/WasmWorkerInit.ts";
-export { setupWorkerMessageLoop } from "@workers/workerEntryPoint.ts";
+export {
+  setupWorkerMessageLoop,
+  verifyWorkerHeapBudget,
+} from "@workers/workerEntryPoint.ts";
+export type {
+  EnvReader,
+  WorkerHeapBudgetPlan,
+} from "@workers/WorkerHeapBudget.ts";
+export {
+  currentHeapLimitMb,
+  describeBudgetPropagation,
+  DISCOVERY_HEAP_SIZE_ENV,
+  planWorkerHeapBudget,
+  resolveDiscoveryHeapBudgetMb,
+} from "@workers/WorkerHeapBudget.ts";
