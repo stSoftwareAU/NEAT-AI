@@ -19,6 +19,7 @@ import {
 } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { calculate as calculateScore } from "@architecture/Score.ts";
+import { computeTimeoutTS } from "@architecture/training/TrainingOutcome.ts";
 import { fineTuneImprovement } from "@blackbox/FineTune.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
@@ -407,6 +408,7 @@ export function scheduleTraining(
 
     neat.trainingComplete.push(r);
     neat.trainingInProgress.delete(uuid);
+    neat.trainingDeadlines.delete(uuid);
 
     if (neat.config.traceStore) {
       if (r.train.trace) {
@@ -430,6 +432,7 @@ export function scheduleTraining(
     );
 
     neat.trainingInProgress.delete(uuid);
+    neat.trainingDeadlines.delete(uuid);
 
     // Issue #2546: training has already failed for this creature; serialise
     // it for the diagnostic record without re-running the writer-side
@@ -466,6 +469,17 @@ export function scheduleTraining(
   });
 
   neat.trainingInProgress.set(uuid, p);
+  // Issue #3053: record this task's absolute per-task wall-clock deadline so the
+  // incremental stuck-task watchdog can abandon it promptly if its worker
+  // promise never settles. Mirrors the worker-side `timeoutTS` derivation.
+  neat.trainingDeadlines.set(
+    uuid,
+    computeTimeoutTS(
+      Date.now(),
+      trainingTimeOutMinutes,
+      neat.hardDeadlineTS > 0 ? neat.hardDeadlineTS : undefined,
+    ),
+  );
 }
 
 /**

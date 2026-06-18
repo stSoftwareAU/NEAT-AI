@@ -163,21 +163,29 @@ export function runSingleEpoch(
         );
 
         const now = Date.now();
+
+        // Issue #3053: evaluate the per-task wall-clock timeout on every
+        // sample, not only behind the 60s progress-log gate. Previously the
+        // check was nested inside the 60s gate, so a task could overrun its
+        // cap by up to a full sample batch + 60s. This is the worker-side
+        // watchdog that abandons a stuck task promptly once its `timeoutTS`
+        // is exceeded.
+        if (state.timeoutTS && now > state.timeoutTS) {
+          state.timedOut = true;
+          const totalTime = now - startTS;
+          getLogger().info(
+            `Training ${blue(setup.ID)} timed out after ${
+              yellow(format(totalTime, { ignoreZero: true }))
+            }`,
+          );
+          trainingStopped = true;
+          break;
+        }
+
         if (now - lastTS > 60_000) {
           lastTS = now;
           const totalTime = now - startTS;
           logProgress(setup, state, counter, errorSum, totalTime);
-
-          if (state.timeoutTS && now > state.timeoutTS) {
-            state.timedOut = true;
-            getLogger().info(
-              `Training ${blue(setup.ID)} timed out after ${
-                yellow(format(totalTime, { ignoreZero: true }))
-              }`,
-            );
-            trainingStopped = true;
-            break;
-          }
         }
       }
       if (trainingStopped) break;

@@ -25,6 +25,20 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3053:** New `trainingTaskTimeoutMinutes` option caps the wall-clock
+  budget of any **single** training task independent of the overall
+  `timeoutMinutes` run budget (default `5`; `0` disables). Previously a task
+  inherited the entire remaining run budget, so a stuck creature could burn
+  10–13 minutes before timing out. The per-task budget is now
+  `min(remainingRunMinutes, trainingTaskTimeoutMinutes)` and the worker-side
+  loop evaluates the deadline on **every sample** (not only behind the 60s
+  progress-log gate), so a task that exceeds its cap is abandoned promptly. An
+  incremental Neat-level watchdog (`Neat.abandonStuckTrainingTasks()`) also
+  abandons each task whose worker promise never settles individually once it
+  overruns its own per-task deadline (plus a small grace), instead of clearing
+  them all in one batch at the hard deadline. See
+  [`docs/config/TRAINING.md`](./docs/config/TRAINING.md).
+
 - **Issue #2932:** Optional novelty (behavioural-diversity) selection to escape
   deceptive landscapes. A new self-contained module
   (`src/NEAT/NoveltySearch.ts`) adds a per-creature behaviour descriptor

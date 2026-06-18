@@ -24,6 +24,7 @@ const config = createNeatConfig({
 | Option                         | Type      | Default                    | Description                                               |
 | ------------------------------ | --------- | -------------------------- | --------------------------------------------------------- |
 | `trainPerGen`                  | `integer` | _auto_ (20% of population) | Creatures trained per generation (min: 0)                 |
+| `trainingTaskTimeoutMinutes`   | `number`  | `5`                        | Per-task wall-clock cap; `0` disables (min: 0)            |
 | `trainingBatchSize`            | `integer` | `100`                      | Observations per training batch (min: 1)                  |
 | `trainingSampleRate`           | `number`  | `1`                        | Fraction of data used for training (0.0001–1)             |
 | `dataSetPartitionBreak`        | `integer` | `2000`                     | Records per dataset file (min: 1)                         |
@@ -73,6 +74,52 @@ weight mutation alone.
 `trainPerGen` is capped at the population size and is never scheduled for more
 creatures than there are idle training workers, so an over-large value simply
 trains as many creatures as capacity allows.
+
+### `trainingTaskTimeoutMinutes`
+
+**Default: 5** | Type: number | Min: 0 (`0` disables)
+
+Maximum wall-clock minutes any **single** training task may run, independent of
+the overall `timeoutMinutes` run budget (Issue #3053).
+
+Without this cap an individual task inherited the **entire remaining run
+budget**, so a stuck or pathologically slow creature could burn 10+ minutes
+before timing out — a handful of such tasks dominated the run's wall-clock. The
+per-task budget is now:
+
+```text
+min(remainingRunMinutes, trainingTaskTimeoutMinutes)
+```
+
+The worker-side training loop evaluates this deadline on **every sample** (not
+only behind the 60s progress-log gate), so a task that exceeds its cap is
+abandoned promptly rather than overrunning by up to a full sample batch.
+
+A second, **Neat-level** watchdog (`Neat.abandonStuckTrainingTasks()`, swept at
+the start of each finish-up cycle) covers the case the worker-side check cannot:
+a task whose worker promise **never settles**. Each in-flight task's per-task
+deadline is tracked in `trainingDeadlines`; once a task overruns its own
+deadline plus a small grace it is abandoned **individually and promptly**,
+instead of waiting for the whole batch to be cleared at the hard deadline.
+
+- Lower the cap (e.g. `2`) on tight wall-clock budgets so no single task can
+  starve breeding/discovery.
+- Set `trainingTaskTimeoutMinutes: 0` to disable the cap and restore the
+  previous "use the full remaining run budget" behaviour.
+
+This cap applies only to per-creature training tasks; discovery scheduling still
+uses the full remaining budget.
+
+```mermaid
+flowchart LR
+    R["remaining run<br/>(endTimeTS − now)"] --> M{"min(remaining, cap)"}
+    C["trainingTaskTimeoutMinutes<br/>(per-task cap)"] --> M
+    M --> T["per-task timeoutTS"]
+    T --> W["worker watchdog<br/>checked every sample"]
+    W -->|"now &gt; timeoutTS"| A["abandon task promptly"]
+    T --> N["Neat watchdog<br/>abandonStuckTrainingTasks()"]
+    N -->|"promise never settles<br/>now &gt; deadline + grace"| A
+```
 
 ### `trainingBatchSize`
 

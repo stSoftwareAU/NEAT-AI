@@ -24,6 +24,7 @@ import { allocateBreedingQuotas } from "@neat/BreedingQuotas.ts";
 import { applyStagnationToQuotas } from "@neat/SpeciesPlateauDetector.ts";
 import { Genus } from "@neat/Genus.ts";
 import { checkMemoryAndEvict, logMemoryUsage } from "@neat/MemoryMonitor.ts";
+import { computePerTaskTimeoutMinutes } from "@neat/PerTaskTrainingTimeout.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { CRISPR } from "@reconstruct/CRISPR.ts";
 import { CrisprError } from "@errors/CrisprError.ts";
@@ -404,6 +405,13 @@ export async function evolve(
       neat.population,
       neat.config.trainPerGen,
     );
+    // Issue #3053: cap each task's wall-clock budget so a single stuck task
+    // cannot consume the entire remaining run. Discovery scheduling above
+    // still uses the full remaining budget; only per-task training is capped.
+    const perTaskTimeoutMinutes = computePerTaskTimeoutMinutes(
+      trainingTimeOutMinutes,
+      neat.config.trainingTaskTimeoutMinutes,
+    );
     for (const n of trainingCandidates) {
       if (
         neat.doNotStartMore === false &&
@@ -411,7 +419,7 @@ export async function evolve(
       ) {
         neat.scheduleTraining(
           n,
-          trainingTimeOutMinutes,
+          perTaskTimeoutMinutes,
         );
       }
     }
