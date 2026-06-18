@@ -6,7 +6,11 @@
  */
 
 import { assertEquals } from "@std/assert";
-import { computePerTaskTimeoutMinutes } from "@neat/PerTaskTrainingTimeout.ts";
+import {
+  computePerTaskTimeoutMinutes,
+  isPastTrainingDeadline,
+  TRAINING_TASK_WATCHDOG_GRACE_MS,
+} from "@neat/PerTaskTrainingTimeout.ts";
 
 Deno.test("computePerTaskTimeoutMinutes - cap clamps a large remaining run", () => {
   // 180 minutes left in the run, but a single task may only run 3 minutes.
@@ -40,4 +44,35 @@ Deno.test("computePerTaskTimeoutMinutes - fractional cap rounds up to at least o
   // makes forward progress before the timeout trips.
   assertEquals(computePerTaskTimeoutMinutes(180, 0.5), 1);
   assertEquals(computePerTaskTimeoutMinutes(180, 2.4), 3);
+});
+
+Deno.test("isPastTrainingDeadline - trips only once now passes deadline + grace", () => {
+  const deadline = 1_000_000;
+  assertEquals(isPastTrainingDeadline(deadline, deadline + 100, 1000), false);
+  assertEquals(isPastTrainingDeadline(deadline, deadline + 1000, 1000), false);
+  assertEquals(isPastTrainingDeadline(deadline, deadline + 1001, 1000), true);
+});
+
+Deno.test("isPastTrainingDeadline - a non-positive deadline never trips", () => {
+  assertEquals(isPastTrainingDeadline(0, 1_000_000, 0), false);
+  assertEquals(isPastTrainingDeadline(-1, 1_000_000, 0), false);
+});
+
+Deno.test("isPastTrainingDeadline - defaults to the watchdog grace constant", () => {
+  const deadline = 1_000_000;
+  // Inside the default grace → not past; just beyond it → past.
+  assertEquals(
+    isPastTrainingDeadline(
+      deadline,
+      deadline + TRAINING_TASK_WATCHDOG_GRACE_MS,
+    ),
+    false,
+  );
+  assertEquals(
+    isPastTrainingDeadline(
+      deadline,
+      deadline + TRAINING_TASK_WATCHDOG_GRACE_MS + 1,
+    ),
+    true,
+  );
 });

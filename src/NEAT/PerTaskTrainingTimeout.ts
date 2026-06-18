@@ -11,6 +11,34 @@
  */
 
 /**
+ * Grace (ms) added to a task's own deadline before the Neat-level watchdog
+ * ({@link Neat.abandonStuckTrainingTasks}) abandons it. The worker enforces
+ * each task's `timeoutTS` itself; the watchdog only steps in for tasks whose
+ * worker promise never settles, so a short grace avoids racing a task that is
+ * about to resolve cleanly.
+ */
+export const TRAINING_TASK_WATCHDOG_GRACE_MS = 30_000;
+
+/**
+ * Whether `now` has passed a task's absolute per-task deadline plus grace.
+ *
+ * A non-positive `deadlineTS` means "no per-task deadline" and never trips.
+ * Used by the incremental stuck-task watchdog to decide, individually, which
+ * in-flight tasks have overrun and must be abandoned.
+ *
+ * @param deadlineTS absolute per-task deadline epoch ms (≤0 = none)
+ * @param now current epoch ms (injected for deterministic testing)
+ * @param graceMS grace added to the deadline before tripping
+ */
+export function isPastTrainingDeadline(
+  deadlineTS: number,
+  now: number,
+  graceMS: number = TRAINING_TASK_WATCHDOG_GRACE_MS,
+): boolean {
+  return deadlineTS > 0 && now > deadlineTS + graceMS;
+}
+
+/**
  * Derives the wall-clock budget (in minutes) for a single training task.
  *
  * @param remainingRunMinutes minutes left in the overall run budget. A

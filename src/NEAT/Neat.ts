@@ -38,6 +38,10 @@ import {
 } from "@neat/DiscoveryReplayQueue.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import {
+  isPastTrainingDeadline,
+  TRAINING_TASK_WATCHDOG_GRACE_MS,
+} from "@neat/PerTaskTrainingTimeout.ts";
 import { configureSharedSubnetworkIndex } from "@discovery/SubnetworkHashIndex.ts";
 import {
   isSeedWarmupStructuralLockActive,
@@ -226,6 +230,15 @@ export class Neat {
   private trainingWaitGenerations = 0;
   private maxTrainingWaitGenerations = 0;
   trainingInProgress = new Map<string, Promise<void>>();
+  /**
+   * Issue #3053: per-task absolute wall-clock deadline (epoch ms) for each
+   * in-flight training task, keyed by creature UUID. Drives the incremental
+   * stuck-task watchdog ({@link abandonStuckTrainingTasks}) so an individual
+   * task is abandoned promptly when it overruns its own cap, rather than only
+   * in a single batch at the hard deadline. A value of `0` means "no per-task
+   * deadline" (the watchdog ignores it).
+   */
+  trainingDeadlines = new Map<string, number>();
   discoveryInProgress = new Map<string, Promise<void>>();
   discoveryComplete: ResponseData[] = [];
   trainingComplete: ResponseData[] = [];
@@ -524,6 +537,11 @@ export class Neat {
       return false;
     }
 
+    // Issue #3053: sweep the incremental stuck-task watchdog first so tasks
+    // that overran their own per-task cap are abandoned promptly, rather than
+    // lingering until the generation-count or hard-deadline batch clear.
+    this.abandonStuckTrainingTasks();
+
     if (this.trainingInProgress.size > 0) {
       // Issue #2871: training is an optional/best-effort phase. Bound the wait
       // exactly like discovery so an orphaned training promise that never
@@ -567,6 +585,7 @@ export class Neat {
         );
 
         this.trainingInProgress.clear();
+        this.trainingDeadlines.clear();
         this.trainingWaitGenerations = 0;
         this.maxTrainingWaitGenerations = 0;
 
@@ -616,6 +635,48 @@ export class Neat {
    * @param hardDeadlineMS Absolute hard-deadline epoch ms (0/unset = no cap).
    * @returns `true` when the cap was exceeded and the loop must break.
    */
+  /**
+   * Issue #3053: incremental stuck-task watchdog.
+   *
+   * Abandons individual training tasks that have exceeded their own per-task
+   * wall-clock deadline (plus a small grace), instead of waiting to clear the
+   * whole batch at the hard deadline. The worker enforces each task's
+   * `timeoutTS` itself (see {@link runSingleEpoch}) and settles its promise;
+   * this watchdog only steps in for tasks whose worker promise never settles,
+   * so a stuck task no longer keeps the run alive until the hard cap.
+   *
+   * Pure aside from the maps it mutates and `now`-injectable for deterministic
+   * testing (#2888 policy).
+   *
+   * @param nowTS current epoch ms (injected for testing)
+   * @param graceMS grace added to each deadline before abandoning
+   * @returns the UUIDs abandoned this sweep
+   */
+  abandonStuckTrainingTasks(
+    nowTS: number = Date.now(),
+    graceMS: number = TRAINING_TASK_WATCHDOG_GRACE_MS,
+  ): string[] {
+    const abandoned: string[] = [];
+    for (const [uuid, deadlineTS] of this.trainingDeadlines) {
+      if (isPastTrainingDeadline(deadlineTS, nowTS, graceMS)) {
+        this.trainingInProgress.delete(uuid);
+        this.trainingDeadlines.delete(uuid);
+        abandoned.push(uuid);
+      }
+    }
+    if (abandoned.length > 0) {
+      getLogger().warn(
+        `[Neat] Stuck-task watchdog abandoning ${abandoned.length} training ` +
+          `task(s) past per-task deadline: ${
+            abandoned
+              .map((u) => u.substring(Math.max(0, u.length - 8)))
+              .join(", ")
+          }`,
+      );
+    }
+    return abandoned;
+  }
+
   abandonInFlightPastHardDeadline(hardDeadlineMS: number): boolean {
     if (!hardDeadlineMS || Date.now() <= hardDeadlineMS) {
       return false;
@@ -628,6 +689,7 @@ export class Neat {
     );
     this.discoveryInProgress.clear();
     this.trainingInProgress.clear();
+    this.trainingDeadlines.clear();
     return true;
   }
 

@@ -29,6 +29,16 @@ What changed:
   the training promise on timeout, which clears the task from
   `trainingInProgress` incrementally rather than only in the hard-deadline
   batch.
+- **Incremental Neat-level watchdog** (`src/NEAT/Neat.ts`,
+  `src/NEAT/NeatScheduling.ts`) — covers the case the worker-side check cannot:
+  a task whose worker promise **never settles**. Each in-flight task's per-task
+  deadline is tracked in a new `trainingDeadlines` map (set in
+  `scheduleTraining`, cleared on completion/failure);
+  `Neat.abandonStuckTrainingTasks()` (swept at the start of each finish-up
+  cycle) abandons each overrun task individually plus a small grace, instead of
+  the single batch clear at the hard deadline. The pure deadline check
+  (`isPastTrainingDeadline`) and grace constant live alongside the cap helper in
+  `PerTaskTrainingTimeout.ts`.
 
 ### Acceptance criteria
 
@@ -36,8 +46,10 @@ What changed:
   (`min(remaining, trainingTaskTimeoutMinutes)`, default 5 min — well under the
   10–13 min runaways).
 - ✅ Stuck tasks are abandoned promptly: the per-task deadline is checked every
-  sample (worker-side watchdog), and the resolved promise clears the in-flight
-  task immediately.
+  sample (worker-side watchdog) and the resolved promise clears the in-flight
+  task immediately; an incremental Neat-level watchdog
+  (`abandonStuckTrainingTasks()`) also abandons never-settling tasks
+  individually rather than in a single batch at the hard deadline.
 - ✅ A new `NeatOption` (`trainingTaskTimeoutMinutes`) lets consumers set the
   per-task cap independent of `timeoutMinutes`.
 
@@ -53,6 +65,8 @@ flowchart LR
     M --> T["per-task timeoutTS"]
     T --> W["worker watchdog<br/>checked every sample"]
     W -->|"now &gt; timeoutTS"| A["abandon task promptly"]
+    T --> N["Neat watchdog<br/>abandonStuckTrainingTasks()"]
+    N -->|"promise never settles<br/>now &gt; deadline + grace"| A
 ```
 
 The watchdog regression test drives a past deadline (`hardDeadlineTS: 1`) and
@@ -73,5 +87,11 @@ genuine regression test for the tightened cadence.
 - `test/architecture/training/TrainingTaskWatchdog.ts` — behavioural: an
   already-expired deadline stops training on the first iteration; with no
   deadline the loop runs the full iteration budget.
+- `test/NEAT/PerTaskTrainingTimeout.ts` (extended) — `isPastTrainingDeadline`
+  trips only past deadline + grace, ignores a non-positive deadline, and
+  defaults to the watchdog grace constant.
+- `test/NEAT/NeatStuckTaskWatchdog.ts` — `abandonStuckTrainingTasks` abandons
+  only the overrun task, respects the grace window, and ignores a `0` deadline
+  (clock-injected, behavioural assertions per #2888).
 - Full `./quality.sh` gate: format, lint, type-check, and all tests (7350
   passed, 0 failed).

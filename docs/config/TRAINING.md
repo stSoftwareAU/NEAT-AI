@@ -95,6 +95,13 @@ The worker-side training loop evaluates this deadline on **every sample** (not
 only behind the 60s progress-log gate), so a task that exceeds its cap is
 abandoned promptly rather than overrunning by up to a full sample batch.
 
+A second, **Neat-level** watchdog (`Neat.abandonStuckTrainingTasks()`, swept at
+the start of each finish-up cycle) covers the case the worker-side check cannot:
+a task whose worker promise **never settles**. Each in-flight task's per-task
+deadline is tracked in `trainingDeadlines`; once a task overruns its own
+deadline plus a small grace it is abandoned **individually and promptly**,
+instead of waiting for the whole batch to be cleared at the hard deadline.
+
 - Lower the cap (e.g. `2`) on tight wall-clock budgets so no single task can
   starve breeding/discovery.
 - Set `trainingTaskTimeoutMinutes: 0` to disable the cap and restore the
@@ -110,6 +117,8 @@ flowchart LR
     M --> T["per-task timeoutTS"]
     T --> W["worker watchdog<br/>checked every sample"]
     W -->|"now &gt; timeoutTS"| A["abandon task promptly"]
+    T --> N["Neat watchdog<br/>abandonStuckTrainingTasks()"]
+    N -->|"promise never settles<br/>now &gt; deadline + grace"| A
 ```
 
 ### `trainingBatchSize`
