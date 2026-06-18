@@ -20,14 +20,13 @@ What changed:
   pure helper deriving the per-task budget as
   `min(remainingRunMinutes, trainingTaskTimeoutMinutes)`, preserving the
   existing `-1` "no remaining budget" sentinel and the `0` "no run deadline"
-  case. Wired into the `scheduleTraining` call in
-  `src/NEAT/NeatEvolution.ts`. Discovery scheduling is untouched — only per-task
-  training is capped.
+  case. Wired into the `scheduleTraining` call in `src/NEAT/NeatEvolution.ts`.
+  Discovery scheduling is untouched — only per-task training is capped.
 - **Per-sample watchdog** (`src/architecture/training/TrainingEpoch.ts`) — the
   `timeoutTS` check now runs on every sample, not only behind the 60s
   progress-log gate, so a task that exceeds its cap is abandoned promptly
-  instead of overrunning by up to a full sample batch + 60s. The worker
-  resolves the training promise on timeout, which clears the task from
+  instead of overrunning by up to a full sample batch + 60s. The worker resolves
+  the training promise on timeout, which clears the task from
   `trainingInProgress` incrementally rather than only in the hard-deadline
   batch.
 
@@ -74,5 +73,5 @@ genuine regression test for the tightened cadence.
 - `test/architecture/training/TrainingTaskWatchdog.ts` — behavioural: an
   already-expired deadline stops training on the first iteration; with no
   deadline the loop runs the full iteration budget.
-- Full `./quality.sh` gate: format, lint, type-check, and all tests
-  (7350 passed, 0 failed).
+- Full `./quality.sh` gate: format, lint, type-check, and all tests (7350
+  passed, 0 failed).
