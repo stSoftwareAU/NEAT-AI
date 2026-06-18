@@ -138,6 +138,19 @@ export interface NeatArguments {
   /** Number of training sessions per generation. Default is 1. */
   trainPerGen: number;
 
+  /**
+   * Issue #3053: Maximum wall-clock minutes any single training task may run,
+   * independent of the overall {@link timeoutMinutes} run budget.
+   *
+   * Without this cap an individual task inherited the entire remaining run
+   * budget, so a stuck task could burn 10+ minutes before timing out. The
+   * per-task budget is `min(remainingRunMinutes, trainingTaskTimeoutMinutes)`.
+   *
+   * Defaults to `5`. Set to `0` to disable the cap and restore the previous
+   * "use the full remaining run budget" behaviour.
+   */
+  trainingTaskTimeoutMinutes: number;
+
   /** Maximum number of connections allowed in the neural network. */
   maxConns: number;
 

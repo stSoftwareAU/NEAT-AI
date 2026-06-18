@@ -58,6 +58,7 @@ type NumericOptionKeys =
   | "mutationAmount"
   | "timeoutMinutes"
   | "trainPerGen"
+  | "trainingTaskTimeoutMinutes"
   | "log"
   | "trainingBatchSize"
   | "threads"

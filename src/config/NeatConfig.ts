@@ -103,6 +103,14 @@ export const DEFAULT_DISCOVERY_SAMPLE_RATE = 0.2;
 export const DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES = 5;
 
 /**
+ * Issue #3053: Default per-training-task wall-clock cap (minutes). Bounds a
+ * single training task well under the 10–13 minute runaways observed in
+ * production while leaving headroom for legitimate single-pass training. Set
+ * `trainingTaskTimeoutMinutes` to 0 to disable the cap.
+ */
+export const DEFAULT_TRAINING_TASK_TIMEOUT_MINUTES = 5;
+
+/**
  * Minimum allowed cost of growth value.
  */
 export const MIN_COST_OF_GROWTH = 0.000_000_000_1;
@@ -359,6 +367,16 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
         integer: true,
         min: 0,
       },
+    ),
+
+    // Issue #3053: cap the wall-clock budget of any single training task so a
+    // stuck task cannot consume the entire remaining run. Default 5 minutes;
+    // 0 disables the cap (full remaining run budget).
+    trainingTaskTimeoutMinutes: parseNumber(
+      "Training Task Timeout Minutes",
+      opts.trainingTaskTimeoutMinutes,
+      DEFAULT_TRAINING_TASK_TIMEOUT_MINUTES,
+      { min: 0 },
     ),
 
     log: parseNumber("Log", opts.log, options.verbose ? 1 : 0, {
