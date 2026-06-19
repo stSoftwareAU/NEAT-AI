@@ -93,13 +93,6 @@ export function setDistanceCacheMaxSize(max: number): void {
 }
 
 /**
- * Get the current maximum cache size.
- */
-export function getDistanceCacheMaxSize(): number {
-  return maxSize;
-}
-
-/**
  * Return the current number of cached entries.
  */
 export function getDistanceCacheSize(): number {
