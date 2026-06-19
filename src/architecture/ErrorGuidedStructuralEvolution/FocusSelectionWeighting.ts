@@ -18,6 +18,84 @@ import type {
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 
 /**
+ * Default number of epochs without an accepted candidate before focus
+ * selection abandons error-weighted roulette in favour of deterministic
+ * round-robin across the top-ranked neurons (Issue #3074). On a plateaued
+ * network the squared roulette weighting otherwise keeps re-selecting the same
+ * dominant neuron; round-robin guarantees the focus list rotates through
+ * distinct targets while the drought persists.
+ */
+export const DEFAULT_FOCUS_DROUGHT_THRESHOLD = 20;
+
+/**
+ * Optional diversity controls for {@link selectNeuronsWeightedByError}
+ * (Issue #3074).
+ */
+export interface FocusDiversityOptions {
+  /**
+   * Number of discovery epochs since a candidate was last accepted. When this
+   * exceeds {@link FocusDiversityOptions.droughtThreshold} the selection
+   * switches to round-robin across the top-ranked neurons. Defaults to 0 (no
+   * drought).
+   */
+  epochsSinceLastAccepted?: number;
+  /**
+   * Drought threshold in epochs. Defaults to
+   * {@link DEFAULT_FOCUS_DROUGHT_THRESHOLD}.
+   */
+  droughtThreshold?: number;
+}
+
+/**
+ * Computes the share of total weight held by the single heaviest entry
+ * (Issue #3074). Returns 0 for an empty or non-positive distribution.
+ */
+function weightConcentration(weights: readonly number[]): number {
+  let max = 0;
+  let total = 0;
+  for (const w of weights) {
+    if (!Number.isFinite(w) || w <= 0) continue;
+    total += w;
+    if (w > max) max = w;
+  }
+  return total > 0 ? max / total : 0;
+}
+
+/**
+ * Applies the diversity floor to a roulette weight distribution (Issue #3074).
+ *
+ * Iteratively clips any weight above the running mean (`total / N`) down to
+ * that mean until no weight exceeds it ("water filling"). At the fixed point
+ * the heaviest neuron holds at most a `1/N` share of the total, so no single
+ * neuron can dominate the wheel, while sub-mean weights are left untouched so
+ * the relative ordering of the tail survives. Returns a new array; the input
+ * is not mutated.
+ */
+function applyDiversityFloor(weights: readonly number[]): number[] {
+  const n = weights.length;
+  let current = weights.map((w) => (Number.isFinite(w) && w > 0 ? w : 0));
+  if (n === 0) return current;
+  // Weights only ever decrease and the total is monotonically non-increasing,
+  // so this converges quickly; the iteration cap is a safety backstop.
+  for (let iter = 0; iter < 100; iter++) {
+    let total = 0;
+    for (const w of current) total += w;
+    if (total <= 0) break;
+    const cap = total / n;
+    let changed = false;
+    current = current.map((w) => {
+      if (w > cap) {
+        changed = true;
+        return cap;
+      }
+      return w;
+    });
+    if (!changed) break;
+  }
+  return current;
+}
+
+/**
  * Generates a cache key for focus selection.
  */
 export function focusSelectionKey(focusList: readonly number[]): string {
@@ -89,6 +167,7 @@ export function writeFocusSelectionAnalysis(
     details?: unknown,
   ) => void,
   retryNumber?: number,
+  weightConcentrationRatio?: number,
 ): void {
   try {
     const selectedSet = new Set(selectedIds);
@@ -139,6 +218,7 @@ export function writeFocusSelectionAnalysis(
       totalCandidates: candidates.length,
       selectedCount: selectedIds.size,
       totalWeightedSum,
+      weightConcentrationRatio,
       candidates,
       lowImpactNeurons,
       retryNumber,
@@ -192,6 +272,7 @@ export async function selectNeuronsWeightedByError(
   ) => void,
   retryNumber?: number,
   mode: "add" | "remove" = "add",
+  diversity: FocusDiversityOptions = {},
 ): Promise<{
   selected: number[];
   focusSelection: FocusSelectionSummary;
@@ -279,14 +360,40 @@ export async function selectNeuronsWeightedByError(
       }`,
     );
   }
-  const weightedValues = rawWeights.map((entry) => ({
+  const scaledValues = rawWeights.map((entry) => ({
     id: entry.id,
     weight: entry.raw * scale,
+  }));
+
+  // Issue #3074: Diversity floor. The squared weighting above lets a single
+  // neuron capture almost all of the roulette weight on a plateaued network
+  // (one neuron held ~98% on GRQ-3), so the nominally-distinct focus neurons
+  // collapse onto one target. Water-fill each neuron's weight down to at most
+  // a 1/N share of the total (N = candidate count) so no single neuron can
+  // dominate the wheel, while preserving the relative ordering of the tail.
+  const flooredWeights = applyDiversityFloor(
+    scaledValues.map((entry) => entry.weight),
+  );
+  const weightedValues = scaledValues.map((entry, i) => ({
+    id: entry.id,
+    weight: flooredWeights[i],
   }));
   const totalWeightedSum = weightedValues.reduce(
     (sum, entry) => sum + entry.weight,
     0,
   );
+  const weightConcentrationRatio = weightConcentration(flooredWeights);
+  const preFloorConcentration = weightConcentration(
+    scaledValues.map((entry) => entry.weight),
+  );
+  if (loggingEnabled && preFloorConcentration > weightConcentrationRatio) {
+    logFn(
+      "debug",
+      `Diversity floor reduced weight concentration from ${
+        preFloorConcentration.toFixed(4)
+      } to ${weightConcentrationRatio.toFixed(4)} (N=${scaledValues.length})`,
+    );
+  }
   const weightMapAll = new Map(
     weightedValues.map((entry) => [entry.id, entry.weight]),
   );
@@ -303,6 +410,7 @@ export async function selectNeuronsWeightedByError(
       totalWeightedSum,
       "all viable neurons selected",
     );
+    focusSelection.weightConcentrationRatio = weightConcentrationRatio;
     const selectedSet = new Set(ids);
     writeFocusSelectionAnalysis(
       tempDir,
@@ -315,6 +423,7 @@ export async function selectNeuronsWeightedByError(
       costOfGrowth,
       logFn,
       retryNumber,
+      weightConcentrationRatio,
     );
     return { selected: ids, focusSelection };
   }
@@ -396,6 +505,62 @@ export async function selectNeuronsWeightedByError(
     return { selected: fallback, focusSelection };
   }
 
+  // Issue #3074: Drought round-robin. When discovery has gone many epochs
+  // without accepting a candidate the network is plateaued, and even the
+  // diversity-floored roulette tends to keep re-sampling the same heavy
+  // neurons. Switch to a deterministic round-robin across the top 3×count
+  // ranked neurons, rotating the start offset by the drought length so
+  // successive plateaued epochs cycle through distinct targets.
+  const droughtThreshold = diversity.droughtThreshold ??
+    DEFAULT_FOCUS_DROUGHT_THRESHOLD;
+  const epochsSinceLastAccepted = diversity.epochsSinceLastAccepted ?? 0;
+  if (epochsSinceLastAccepted > droughtThreshold) {
+    // Rank to mirror the weighting logic: "add" favours the highest
+    // error × impact, "remove" favours the lowest impact.
+    const ranked = [...neuronErrors].sort((a, b) =>
+      mode === "add"
+        ? (b.totalError * b.impact) - (a.totalError * a.impact)
+        : a.impact - b.impact
+    );
+    const poolSize = Math.min(ranked.length, count * 3);
+    const offset = poolSize > 0 ? epochsSinceLastAccepted % poolSize : 0;
+    const roundRobin: number[] = [];
+    for (let i = 0; i < count && i < poolSize; i++) {
+      roundRobin.push(ranked[(offset + i) % poolSize].id);
+    }
+    if (loggingEnabled) {
+      logFn(
+        "info",
+        `Drought round-robin focus selection: epochsSinceLastAccepted=${epochsSinceLastAccepted} > threshold ${droughtThreshold}; rotating ${roundRobin.length} of top ${poolSize} ranked neurons (offset ${offset}).`,
+      );
+    }
+    const focusSelection = updateFocusSelectionSummary(
+      loggingEnabled,
+      discoveryID,
+      "round-robin",
+      roundRobin,
+      logFn,
+      weightMapAll,
+      totalWeightedSum,
+      `drought round-robin (epochsSinceLastAccepted=${epochsSinceLastAccepted} > ${droughtThreshold})`,
+    );
+    focusSelection.weightConcentrationRatio = weightConcentrationRatio;
+    writeFocusSelectionAnalysis(
+      tempDir,
+      discoveryID,
+      loggingEnabled,
+      neuronErrors,
+      new Set(roundRobin),
+      totalWeightedSum,
+      "round-robin-drought",
+      costOfGrowth,
+      logFn,
+      retryNumber,
+      weightConcentrationRatio,
+    );
+    return { selected: roundRobin, focusSelection };
+  }
+
   // Use while loop with max iterations to prevent infinite loops
   const maxIterations = Math.min(count, neuronErrors.length) * 100;
   let iterations = 0;
@@ -458,6 +623,7 @@ export async function selectNeuronsWeightedByError(
     totalWeightedSum,
     "error x impact weighting",
   );
+  focusSelection.weightConcentrationRatio = weightConcentrationRatio;
   writeFocusSelectionAnalysis(
     tempDir,
     discoveryID,
@@ -469,6 +635,7 @@ export async function selectNeuronsWeightedByError(
     costOfGrowth,
     logFn,
     retryNumber,
+    weightConcentrationRatio,
   );
 
   return { selected: selection, focusSelection };

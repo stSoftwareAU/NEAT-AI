@@ -46,6 +46,7 @@ import {
   selectNeuronsWeightedByError as selectNeuronsWeightedByErrorImpl,
   updateFocusSelectionSummary,
 } from "@architecture/ErrorGuidedStructuralEvolution/FocusSelection.ts";
+import type { FocusDiversityOptions } from "@architecture/ErrorGuidedStructuralEvolution/FocusSelection.ts";
 import {
   formatMillis,
   logAnalysisSkipped,
@@ -104,6 +105,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
     costOfGrowth: number,
     retryNumber?: number,
     mode: "add" | "remove" = "add",
+    diversity: FocusDiversityOptions = {},
   ): Promise<number[]> {
     assert(count > 0, "Count must be greater than 0");
     this.lastFocusSelection = undefined;
@@ -168,6 +170,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       (level, message, details) => this.log(level, message, details),
       retryNumber,
       mode,
+      diversity,
     );
     const maxErrorTime = Date.now() - maxErrorStart;
 

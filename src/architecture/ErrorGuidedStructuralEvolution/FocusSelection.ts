@@ -8,8 +8,10 @@
 export { listViableNeurons } from "@architecture/ErrorGuidedStructuralEvolution/FocusSelectionRanking.ts";
 
 export {
+  DEFAULT_FOCUS_DROUGHT_THRESHOLD,
   focusSelectionKey,
   selectNeuronsWeightedByError,
   updateFocusSelectionSummary,
   writeFocusSelectionAnalysis,
 } from "@architecture/ErrorGuidedStructuralEvolution/FocusSelectionWeighting.ts";
+export type { FocusDiversityOptions } from "@architecture/ErrorGuidedStructuralEvolution/FocusSelectionWeighting.ts";
