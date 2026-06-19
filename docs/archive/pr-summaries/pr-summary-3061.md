@@ -25,13 +25,16 @@ After removal, the surviving `isRecord` export is still imported and exercised:
 
 Verification commands:
 
-- `deno check src/utils/TypeGuards.ts src/creature/CreatureSerialization.ts` — passes.
+- `deno check src/utils/TypeGuards.ts src/creature/CreatureSerialization.ts` —
+  passes.
 - `deno test test/creature/SerialisationTypeSafety.ts` — 7 passed, 0 failed.
 - `./quality.sh` — 7356 passed, 0 failed, 4 ignored.
 
 ## Test Plan
 
 No new tests required — this is a dead-code deletion with no behaviour change.
-The existing `test/creature/SerialisationTypeSafety.ts::isRecord - validates
-plain objects` guards the surviving `isRecord` export, and the full quality gate
+The existing
+`test/creature/SerialisationTypeSafety.ts::isRecord - validates
+plain objects`
+guards the surviving `isRecord` export, and the full quality gate
 (`./quality.sh`) confirms nothing else depended on `asRecord`.
