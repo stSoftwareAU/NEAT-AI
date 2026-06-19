@@ -241,7 +241,18 @@ export class DiscoveryRunner {
         removalCandidates: rawDiscover.removalCandidates ?? undefined,
         candidateSquashes: rawDiscover.candidateSquashes ?? undefined,
         reScoringTime: undefined, // Will be set after re-scoring completes
+        noveltyEscalationActive: rawDiscover.noveltyEscalationActive ??
+          undefined,
+        creatureDroughtAlarm: rawDiscover.creatureDroughtAlarm ?? undefined,
       };
+
+      // Issue #3072: A drought escalation (novelty escalation active or the
+      // creature drought alarm) lets the candidate filter bypass the failure
+      // cache for the top-K candidates so a plateaued creature is not starved.
+      const droughtEscalationActive = Boolean(
+        discoverResult.noveltyEscalationActive ||
+          discoverResult.creatureDroughtAlarm,
+      );
 
       const addCount = discoverResult.addHelpfulSynapses?.length ?? 0;
       const neuronCount = discoverResult.addHelpfulNeurons?.length ?? 0;
@@ -305,6 +316,7 @@ export class DiscoveryRunner {
           workerCount,
           config,
           failureCacheDir,
+          droughtEscalationActive,
         );
       if (skipped.length > 0) {
         // Group skipped candidates by type for a cleaner summary
@@ -457,6 +469,7 @@ export class DiscoveryRunner {
               workerCount,
               config,
               failureCacheDir,
+              droughtEscalationActive,
             );
 
           // Note: Cached candidates are already filtered out in #filterCandidatesForEvaluation
@@ -620,6 +633,7 @@ export class DiscoveryRunner {
     threadCount: number,
     config: NeatConfig,
     failureCacheDir?: string,
+    droughtEscalationActive?: boolean,
   ): {
     filtered: DiscoveryCandidate[];
     skipped: Array<{
@@ -641,6 +655,7 @@ export class DiscoveryRunner {
         isCandidateCached: isCandidateCachedSync,
         random: Math.random,
         successCacheDir: config.discoverySuccessCacheDir,
+        droughtEscalationActive,
       },
     );
 

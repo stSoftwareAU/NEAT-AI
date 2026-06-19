@@ -78,4 +78,19 @@ export interface DiscoverResult {
    * evidence that no structural improvement exists.
    */
   heapAbortedAtExtensionBoundary?: boolean;
+
+  /**
+   * Issue #3072: Set to `true` by the Rust discovery engine (NEAT-AI-Discovery
+   * #1423) when novelty escalation is active for a plateaued creature. While
+   * active, the TypeScript candidate filter bypasses the failure cache for the
+   * top-K candidates so a plateaued creature is not starved of all candidates.
+   */
+  noveltyEscalationActive?: boolean;
+
+  /**
+   * Issue #3072: Set to `true` by the Rust discovery engine when the creature
+   * drought alarm has fired (no accepted candidates for an extended period).
+   * Treated identically to `noveltyEscalationActive` for failure-cache bypass.
+   */
+  creatureDroughtAlarm?: boolean;
 }

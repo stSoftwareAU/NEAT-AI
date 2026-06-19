@@ -474,6 +474,22 @@ export interface NeatArguments {
   discoverySuccessCacheDir?: string;
 
   /**
+   * When true, the discovery failure cache is bypassed for the top-K candidates
+   * while a drought escalation is active (Issue #3072).
+   *
+   * The Rust discovery engine raises a drought signal — `noveltyEscalationActive`
+   * or `creatureDroughtAlarm` — when a creature has plateaued and no candidates
+   * have been accepted for an extended period. Normally `CandidateFiltering`
+   * drops failure-cache hits before Phase-1 evaluation, which can starve a
+   * plateaued creature of all candidates. When this option is enabled and a
+   * drought signal is present, the highest-value cached candidates are
+   * re-admitted for re-evaluation so the creature can escape the drought.
+   *
+   * Defaults to true.
+   */
+  discoveryFailureCacheBypassOnDrought: boolean;
+
+  /**
    * Maximum number of cached successful candidates to re-score during replay.
    *
    * Defaults are applied in createNeatConfig().

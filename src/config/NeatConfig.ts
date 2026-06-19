@@ -579,6 +579,8 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       const base = options.discoveryCacheDir?.trim();
       return base ? `${base}/success` : undefined;
     })(),
+    discoveryFailureCacheBypassOnDrought:
+      options.discoveryFailureCacheBypassOnDrought ?? true,
     discoveryReplayMaxSingles: parseNumber(
       "Discovery replay max singles",
       opts.discoveryReplayMaxSingles,

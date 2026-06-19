@@ -42,6 +42,15 @@ export interface FilterCandidatesForEvaluationDeps {
    * Inject a stub in tests for determinism and to avoid filesystem access.
    */
   getSuccessfulRemovalIds?: (dir: string) => Set<string>;
+  /**
+   * Issue #3072: When `true`, the Rust discovery engine has signalled a drought
+   * escalation (novelty escalation active or creature drought alarm fired). When
+   * combined with `config.discoveryFailureCacheBypassOnDrought` and a configured
+   * failure cache directory, the highest-value cached candidates are re-admitted
+   * for evaluation instead of being dropped, so a plateaued creature is not
+   * starved of all candidates.
+   */
+  droughtEscalationActive?: boolean;
 }
 
 export interface FilterCandidatesForEvaluationDiagnostics {
@@ -52,6 +61,13 @@ export interface FilterCandidatesForEvaluationDiagnostics {
     cachedOther: number;
     totalCached: number;
     cachedOtherByType: Map<string, number>;
+  };
+  /**
+   * Issue #3072: Number of failure-cache hits re-admitted for evaluation because
+   * a drought escalation was active. Present (and > 0) only when the bypass fired.
+   */
+  failureCacheBypass?: {
+    count: number;
   };
   categoryDiversity?: Map<string, { selected: number; total: number }>;
   removalSelection?: {
@@ -107,15 +123,50 @@ export function filterCandidatesForEvaluation(
     type === "remove-low-impact" || type === "remove-neuron" ||
     type === "remove-synapse" || type === "cache-informed-removal";
 
+  // Compute failure-cache status once per candidate (single filesystem pass).
+  const cachedStatus = new Map<DiscoveryCandidate, boolean>();
+  if (failureCacheDir) {
+    for (const candidate of candidates) {
+      cachedStatus.set(
+        candidate,
+        isCandidateCached(failureCacheDir, candidate),
+      );
+    }
+  }
+
+  // Issue #3072: During a drought escalation, re-admit the top-K cached
+  // candidates for evaluation rather than dropping them. Without this, a
+  // plateaued creature whose candidates are all in the failure cache would
+  // never have a single candidate reach Phase-1 evaluation.
+  const bypassFailureCache = Boolean(
+    failureCacheDir &&
+      deps.droughtEscalationActive &&
+      config.discoveryFailureCacheBypassOnDrought,
+  );
+  const bypassedCandidates = new Set<DiscoveryCandidate>();
+  if (bypassFailureCache) {
+    const expectedOf = (candidate: DiscoveryCandidate): number => {
+      const value = candidate.change.expectedErrorReduction;
+      return Number.isFinite(value) ? (value ?? 0) : 0;
+    };
+    const bypassTopK = Math.max(1, threadCount);
+    const cachedSorted = candidates
+      .filter((candidate) => cachedStatus.get(candidate) === true)
+      .sort((a, b) => expectedOf(b) - expectedOf(a));
+    for (const candidate of cachedSorted.slice(0, bypassTopK)) {
+      bypassedCandidates.add(candidate);
+    }
+  }
+
   // Filter cached candidates first so they never consume slots.
   const nonRemovalCandidates: DiscoveryCandidate[] = [];
   const removalCandidates: DiscoveryCandidate[] = [];
 
   for (const candidate of candidates) {
     const changeType = candidate.change.type;
-    const cached = failureCacheDir
-      ? isCandidateCached(failureCacheDir, candidate)
-      : false;
+    // A bypassed candidate is treated as not-cached so it re-enters selection.
+    const cached = (cachedStatus.get(candidate) ?? false) &&
+      !bypassedCandidates.has(candidate);
 
     if (isRemovalType(changeType)) {
       cacheStats.totalRemoval++;
@@ -145,6 +196,10 @@ export function filterCandidatesForEvaluation(
       ...cacheStats,
       totalCached,
     };
+  }
+
+  if (bypassedCandidates.size > 0) {
+    diagnostics.failureCacheBypass = { count: bypassedCandidates.size };
   }
 
   // Group non-removal candidates by change type.
@@ -490,6 +545,15 @@ export function logFilteringDiagnostics(
         } due to previous failure: ${parts.join(", ")}`,
       );
     }
+  }
+
+  // Log failure-cache bypass summary (Issue #3072).
+  if (
+    diagnostics?.failureCacheBypass && diagnostics.failureCacheBypass.count > 0
+  ) {
+    getLogger().info(
+      `[DiscoveryRunner] failure-cache bypass: ${diagnostics.failureCacheBypass.count} candidates re-evaluated (drought escalation)`,
+    );
   }
 
   // Log diversity selection summary for non-removal categories.
