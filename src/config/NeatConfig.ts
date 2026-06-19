@@ -111,11 +111,6 @@ export const DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES = 5;
 export const DEFAULT_TRAINING_TASK_TIMEOUT_MINUTES = 5;
 
 /**
- * Minimum allowed cost of growth value.
- */
-export const MIN_COST_OF_GROWTH = 0.000_000_000_1;
-
-/**
  * Minimum allowed discovery analysis timeout in minutes.
  */
 export const MIN_ANALYSIS_TIMEOUT_MINUTES = 0.05; // 3 seconds
