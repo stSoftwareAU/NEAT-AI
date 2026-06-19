@@ -16,14 +16,3 @@ export function isRecord(
   return value !== null && value !== undefined &&
     typeof value === "object" && !Array.isArray(value);
 }
-
-/**
- * Narrows a value to `Record<string, unknown>` when it is a plain object,
- * or returns `undefined` otherwise.  Useful at serialisation boundaries
- * where JSON-parsed data may not match the expected shape.
- */
-export function asRecord(
-  value: unknown,
-): Record<string, unknown> | undefined {
-  return isRecord(value) ? value : undefined;
-}
