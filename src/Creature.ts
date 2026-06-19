@@ -105,10 +105,6 @@ interface CreatureOptions {
  */
 export const CURRENT_CREATURE_SEMANTIC_VERSION = "4.0.0";
 
-/** @deprecated Use {@link CURRENT_CREATURE_SEMANTIC_VERSION}. */
-export const DEFAULT_NEW_CREATURE_SEMANTIC_VERSION =
-  CURRENT_CREATURE_SEMANTIC_VERSION;
-
 /**
  * Cached score components to avoid recalculating on every score calculation.
  * Issue #1023: Performance optimisation for large creatures.
