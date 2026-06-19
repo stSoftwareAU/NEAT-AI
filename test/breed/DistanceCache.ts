@@ -119,6 +119,20 @@ Deno.test("DistanceCache - LRU eviction when exceeding max size", () => {
   clearDistanceCache();
 });
 
+Deno.test("DistanceCache - max size is observable via stats", () => {
+  clearDistanceCache();
+  setDistanceCacheMaxSize(42);
+  assertEquals(getDistanceCacheStats().maxSize, 42);
+
+  // Values below 1 are clamped to 1.
+  setDistanceCacheMaxSize(0);
+  assertEquals(getDistanceCacheStats().maxSize, 1);
+
+  // Reset to default for other tests.
+  setDistanceCacheMaxSize(10_000);
+  clearDistanceCache();
+});
+
 Deno.test("DistanceCache - stats track hits and misses", () => {
   clearDistanceCache();
   setCachedDistance("s1", "s2", 0.9);
