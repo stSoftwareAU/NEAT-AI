@@ -515,8 +515,12 @@ export async function selectNeuronsWeightedByError(
     DEFAULT_FOCUS_DROUGHT_THRESHOLD;
   const epochsSinceLastAccepted = diversity.epochsSinceLastAccepted ?? 0;
   if (epochsSinceLastAccepted > droughtThreshold) {
+    // Rank to mirror the weighting logic: "add" favours the highest
+    // error × impact, "remove" favours the lowest impact.
     const ranked = [...neuronErrors].sort((a, b) =>
-      (b.totalError * b.impact) - (a.totalError * a.impact)
+      mode === "add"
+        ? (b.totalError * b.impact) - (a.totalError * a.impact)
+        : a.impact - b.impact
     );
     const poolSize = Math.min(ranked.length, count * 3);
     const offset = poolSize > 0 ? epochsSinceLastAccepted % poolSize : 0;
