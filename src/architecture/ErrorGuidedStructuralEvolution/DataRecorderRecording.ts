@@ -16,6 +16,10 @@ import type { DiscoveryPerformanceStats } from "@architecture/ErrorGuidedStructu
 import { shouldLogDiscovery } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";
 import type { PhaseDiagnostics } from "@architecture/ErrorGuidedStructuralEvolution/PhaseDiagnostics.ts";
 import { submitDiscoveryRecordBatch } from "@architecture/ErrorGuidedStructuralEvolution/SubmitDiscoveryRecordBatch.ts";
+import {
+  computeRecordCoverage,
+  formatRecordCoverage,
+} from "@architecture/ErrorGuidedStructuralEvolution/RecordCoverage.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 /**
@@ -266,8 +270,13 @@ export async function runRecordingPhase(
     }
     perfStats.fileProcessingTime = 0;
     perfStats.recordsProcessed = 0;
+    perfStats.totalFiles = binaryFiles.length;
+    perfStats.recordTimedOut = false;
     return true;
   }
+
+  perfStats.totalFiles = binaryFiles.length;
+  perfStats.recordTimedOut = false;
 
   const counter = { count: 0 };
   const drainCounter = { count: 0 };
@@ -328,12 +337,22 @@ export async function runRecordingPhase(
     perfStats.filesProcessed++;
 
     if (ctx.timeoutTS && Date.now() > ctx.timeoutTS) {
+      perfStats.recordTimedOut = true;
       if (shouldLogDiscovery(ctx.config)) {
+        // Issue #3073: surface recordsProcessed / estimatedTotal so a truncated
+        // recording on a large dataset is visible in the logs. The downstream
+        // coverage guard (DataRecorder) decides whether analysis still runs.
+        const coverage = computeRecordCoverage({
+          recordsProcessed: counter.count,
+          filesProcessed: perfStats.filesProcessed,
+          totalFiles: binaryFiles.length,
+          timedOut: true,
+        });
         getLogger().warn(
           `⏲  Discovery ${
             blue(ctx.ID)
           } timeout reached during file processing. ` +
-            `Processed ${counter.count} records. Proceeding with partial results for analysis.`,
+            `Recorded ${formatRecordCoverage(coverage)}.`,
         );
       }
       break;
