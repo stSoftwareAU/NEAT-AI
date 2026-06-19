@@ -154,16 +154,51 @@ Bounded concurrency for replay scoring operations.
 
 ## 💾 Caching
 
-| Option                     | Type     | Default                       | Description                                 |
-| -------------------------- | -------- | ----------------------------- | ------------------------------------------- |
-| `discoveryCacheDir`        | `string` | `undefined`                   | Base directory for discovery caching        |
-| `discoveryFailureCacheDir` | `string` | `{discoveryCacheDir}/failure` | Directory for caching failed candidates     |
-| `discoverySuccessCacheDir` | `string` | `{discoveryCacheDir}/success` | Directory for caching successful candidates |
+| Option                                 | Type      | Default                       | Description                                                |
+| -------------------------------------- | --------- | ----------------------------- | ---------------------------------------------------------- |
+| `discoveryCacheDir`                    | `string`  | `undefined`                   | Base directory for discovery caching                       |
+| `discoveryFailureCacheDir`             | `string`  | `{discoveryCacheDir}/failure` | Directory for caching failed candidates                    |
+| `discoverySuccessCacheDir`             | `string`  | `{discoveryCacheDir}/success` | Directory for caching successful candidates                |
+| `discoveryFailureCacheBypassOnDrought` | `boolean` | `true`                        | Re-admit top-K failure-cache hits during a drought (#3072) |
 
 > [!WARNING]
 > Delete the cache directory when the training dataset changes materially.
 > Replaying cached discoveries against a substantially different dataset can
 > introduce stale structural signals that degrade training quality.
+
+### `discoveryFailureCacheBypassOnDrought`
+
+**Default: true** | Type: boolean
+
+Normally `CandidateFiltering` drops failure-cache hits _before_ Phase-1
+evaluation so previously-failed candidates never consume evaluation slots. For a
+plateaued creature this can be self-defeating: once every candidate is in the
+failure cache, **no** candidate reaches evaluation and the creature can never
+escape the drought.
+
+When the Rust discovery engine raises a drought signal —
+`noveltyEscalationActive` or `creatureDroughtAlarm` (NEAT-AI-Discovery #1423) —
+and this option is enabled, the candidate filter re-admits the top-K
+highest-value cached candidates (ranked by `expectedErrorReduction`, K scaling
+with the worker thread count) so at least one candidate is re-evaluated. The
+bypass is logged as:
+
+```text
+[DiscoveryRunner] failure-cache bypass: N candidates re-evaluated (drought escalation)
+```
+
+Set to `false` to keep the strict failure-cache filter even during a drought.
+
+```mermaid
+flowchart TD
+    A[Discovery candidates] --> B{Failure-cache hit?}
+    B -->|No| E[Evaluate]
+    B -->|Yes| C{Drought escalation<br/>active and bypass enabled?}
+    C -->|No| D[Drop candidate]
+    C -->|Yes| F{Top-K by expected<br/>error reduction?}
+    F -->|Yes| E
+    F -->|No| D
+```
 
 ## 🐛 Debug options
 
