@@ -374,6 +374,21 @@ export async function runAnalysisLoop(
       );
     }
 
+    // Issue #3074: surface the diversity-floor weight concentration so a
+    // plateaued network (one neuron dominating the roulette) is visible in the
+    // normal discovery logs, not only in focus-selection.json.
+    if (shouldLogDiscovery(config)) {
+      const ratio = discoverStructure.getLastFocusSelection()
+        ?.weightConcentrationRatio;
+      if (ratio !== undefined) {
+        getLogger().info(
+          `Discovery ${blue(ID)} focus weight concentration ratio ${
+            ratio.toFixed(4)
+          }${ratio >= 0.5 ? " ⚠️ high (plateau risk)" : ""}`,
+        );
+      }
+    }
+
     // Mark these neurons as attempted
     newFocusList.forEach((uuid) => attemptedNeurons.add(uuid));
     perfStats.neuronsAnalyzed += newFocusList.length;

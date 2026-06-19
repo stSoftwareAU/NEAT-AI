@@ -161,7 +161,12 @@ export interface CandidateAnalysisBundle {
   neuronMetadata?: { candidatesFound: number; candidatesReturned: number };
 }
 
-export type FocusSelectionMode = "weighted" | "forced" | "all" | "random";
+export type FocusSelectionMode =
+  | "weighted"
+  | "forced"
+  | "all"
+  | "random"
+  | "round-robin";
 
 export interface FocusSelectionSummaryEntry {
   id: number;
@@ -174,6 +179,14 @@ export interface FocusSelectionSummary {
   reason: string;
   neurons: FocusSelectionSummaryEntry[];
   totalWeight?: number;
+  /**
+   * Share of the (diversity-floored) roulette weight held by the single
+   * heaviest neuron, in `[0, 1]` (Issue #3074). A value near 1 means one
+   * neuron dominates the wheel and the nominally-distinct focus neurons
+   * collapse onto one target; the diversity floor keeps this well below 1 on
+   * plateaued networks.
+   */
+  weightConcentrationRatio?: number;
 }
 
 export interface NeuronScanStats {
@@ -221,6 +234,12 @@ export interface FocusSelectionAnalysis {
   totalCandidates: number;
   selectedCount: number;
   totalWeightedSum: number;
+  /**
+   * Share of the (diversity-floored) roulette weight held by the single
+   * heaviest neuron, in `[0, 1]` (Issue #3074). Acceptance target on
+   * plateaued fixtures: `weightConcentrationRatio < 0.5` after the floor.
+   */
+  weightConcentrationRatio?: number;
   candidates: FocusNeuronCandidate[];
   lowImpactNeurons: LowImpactNeuron[];
   retryNumber?: number;

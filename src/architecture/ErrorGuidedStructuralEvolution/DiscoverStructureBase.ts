@@ -245,6 +245,15 @@ export class DiscoverStructureBase {
     return this.tempDir;
   }
 
+  /**
+   * Returns the most recent focus selection summary, or `undefined` if no
+   * selection has run yet. Exposes the diversity-floor concentration metric
+   * (Issue #3074) to callers such as the analysis loop logging.
+   */
+  public getLastFocusSelection(): FocusSelectionSummary | undefined {
+    return this.lastFocusSelection;
+  }
+
   public shouldSkipRecording(): boolean {
     if (!this.skipRecordPhase) {
       return false;
