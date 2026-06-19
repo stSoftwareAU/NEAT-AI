@@ -34,8 +34,7 @@ constant.
 
 - No new test required — this is a dead-code deletion of a deprecated alias.
 - Existing coverage of the surviving constant remains green:
-  `test/creature/CreatureConstruction.ts`,
-  `test/creature/CreatureModeSplit.ts`, and
-  `test/creature/SemanticVersionWriteGuard.ts` all assert on
+  `test/creature/CreatureConstruction.ts`, `test/creature/CreatureModeSplit.ts`,
+  and `test/creature/SemanticVersionWriteGuard.ts` all assert on
   `CURRENT_CREATURE_SEMANTIC_VERSION`.
 - `./quality.sh` (fmt, lint, type-check, full test suite) run after the change.
