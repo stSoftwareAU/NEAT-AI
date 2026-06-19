@@ -30,6 +30,14 @@ export class DiscoveryPerformanceStats {
   // Record phase stats
   recordsProcessed = 0;
   filesProcessed = 0;
+  /** Total binary files discovered for this recording (Issue #3073). */
+  totalFiles = 0;
+  /**
+   * True when the record phase ended because the record-phase timeout fired
+   * before every file was processed (Issue #3073). Used by the record-coverage
+   * guard to decide whether analysis should run on partial data.
+   */
+  recordTimedOut = false;
   recordPhaseTime = 0;
   initializationTime = 0;
   fileProcessingTime = 0;

@@ -30,6 +30,7 @@ const config = createNeatConfig({
 | ----------------------------------- | --------- | --------- | ------------------------------------------------------------------- |
 | `discoverySampleRate`               | `number`  | `0.2`     | Fraction of records sampled for structural analysis (-1 to disable) |
 | `discoveryRecordTimeOutMinutes`     | `number`  | `5`       | Maximum minutes for the recording phase                             |
+| `discoveryMinRecordCoverage`        | `number`  | `0.5`     | Minimum recorded coverage (0–1) before analysis runs on a timeout   |
 | `discoveryAnalysisTimeoutMinutes`   | `number`  | `10`      | Maximum minutes for the analysis phase (0.05–60)                    |
 | `discoveryBatchSize`                | `integer` | `128`     | Observations per discovery promise                                  |
 | `discoveryBufferSize`               | `number`  | `0`       | Read buffer size in bytes (0 = default)                             |
@@ -57,6 +58,32 @@ cost of longer recording time.
 Maximum minutes allocated to the recording phase before discovery advances to
 analysis. At approximately 700 records/sec, 5 minutes allows recording around
 210,000 samples.
+
+### `discoveryMinRecordCoverage`
+
+**Default: 0.5 (50%)** | Type: number | Range: 0–1
+
+Minimum fraction of the dataset that must be recorded before the analysis phase
+runs when the record-phase timeout fires. On a large dataset (e.g. 520 binary
+files at a 5% sample) the record timeout can fire after only a fraction of the
+expected records have been sampled, leaving focus-neuron coverage too sparse for
+a meaningful analysis pass. When recording times out below this threshold,
+analysis is skipped with a clear reason instead of burning the analysis budget
+on partial data.
+
+The guard only fires on a genuine timeout that left part of a **multi-file**
+dataset unread — a recording that finished normally (or a single-file dataset
+where the total cannot be estimated) is never affected. Set to `0` to disable
+the guard and always run analysis.
+
+```mermaid
+flowchart TD
+    Rec[Record phase] --> TO{Timed out?}
+    TO -- no --> An[Run analysis]
+    TO -- yes --> Cov{coverage ≥ discoveryMinRecordCoverage?}
+    Cov -- yes --> An
+    Cov -- no --> Skip[Skip analysis<br/>log recordsProcessed / estimatedTotal]
+```
 
 ### `discoveryAnalysisTimeoutMinutes`
 

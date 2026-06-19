@@ -103,6 +103,18 @@ export const DEFAULT_DISCOVERY_SAMPLE_RATE = 0.2;
 export const DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES = 5;
 
 /**
+ * Default minimum record-phase coverage fraction (Issue #3073).
+ *
+ * When the record phase times out having sampled less than this fraction of
+ * the dataset, the analysis phase is skipped with a clear reason rather than
+ * running on sparse partial data (which produced zero-candidate passes on
+ * GRQ-3's 520-file dataset). Only fires on a genuine timeout that left part of
+ * a multi-file dataset unread; recordings that finish normally are unaffected.
+ * Set `discoveryMinRecordCoverage` to 0 to disable the guard.
+ */
+export const DEFAULT_DISCOVERY_MIN_RECORD_COVERAGE = 0.5;
+
+/**
  * Issue #3053: Default per-training-task wall-clock cap (minutes). Bounds a
  * single training task well under the 10–13 minute runaways observed in
  * production while leaving headroom for legitimate single-pass training. Set
@@ -493,6 +505,12 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       opts.discoveryRecordTimeOutMinutes ?? opts.discoveryTimeOutMinutes,
       DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES,
       { min: 0 },
+    ),
+    discoveryMinRecordCoverage: parseNumber(
+      "Discovery minimum record coverage",
+      opts.discoveryMinRecordCoverage,
+      DEFAULT_DISCOVERY_MIN_RECORD_COVERAGE,
+      { min: 0, max: 1 },
     ),
     discoveryAnalysisTimeoutMinutes: parseNumber(
       "Discovery Analysis Timeout Minutes",

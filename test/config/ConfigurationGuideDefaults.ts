@@ -13,6 +13,7 @@ import { createNeatConfig } from "@config/NeatConfig.ts";
 import {
   DEFAULT_COST_OF_GROWTH,
   DEFAULT_DISCOVERY_MIN_CANDIDATES_PER_CATEGORY,
+  DEFAULT_DISCOVERY_MIN_RECORD_COVERAGE,
   DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES,
   DEFAULT_DISCOVERY_SAMPLE_RATE,
 } from "@config/NeatConfig.ts";
@@ -68,6 +69,13 @@ Deno.test("Configuration guide - discovery defaults match code", () => {
     DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES,
   );
   assertEquals(DEFAULT_DISCOVERY_RECORD_TIMEOUT_MINUTES, 5);
+
+  // Issue #3073: record-coverage guard threshold.
+  assertEquals(
+    config.discoveryMinRecordCoverage,
+    DEFAULT_DISCOVERY_MIN_RECORD_COVERAGE,
+  );
+  assertEquals(DEFAULT_DISCOVERY_MIN_RECORD_COVERAGE, 0.5);
 
   assertEquals(config.discoveryAnalysisTimeoutMinutes, 10);
   assertEquals(config.discoveryBatchSize, 128);

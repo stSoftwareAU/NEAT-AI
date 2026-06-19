@@ -32,6 +32,11 @@ import {
   buildEmptyDiscoverResult,
   resolveHeapAbortBoundary,
 } from "@architecture/ErrorGuidedStructuralEvolution/AnalysisExtensionBoundary.ts";
+import {
+  computeRecordCoverage,
+  formatRecordCoverage,
+  shouldSkipAnalysisForCoverage,
+} from "@architecture/ErrorGuidedStructuralEvolution/RecordCoverage.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
@@ -331,6 +336,38 @@ export class DataRecorder {
       fileProcessTime = perfStats.fileProcessingTime;
 
       if (!recordingSuccess) {
+        return buildEmptyDiscoverResult(this.ID);
+      }
+
+      // Issue #3073: Record-coverage guard. When recording timed out having
+      // sampled too little of the dataset, the focus-neuron Parquet coverage is
+      // too sparse for a meaningful analysis pass — running analysis would only
+      // burn the analysis budget and produce zero-candidate passes. Skip
+      // analysis with a clear reason and return the same empty result shape as
+      // the other partial-result paths. Only fires on a genuine timeout that
+      // left part of a multi-file dataset unread; complete recordings are
+      // unaffected.
+      const coverage = computeRecordCoverage({
+        recordsProcessed: perfStats.recordsProcessed,
+        filesProcessed: perfStats.filesProcessed,
+        totalFiles: perfStats.totalFiles,
+        timedOut: perfStats.recordTimedOut,
+      });
+      if (
+        shouldSkipAnalysisForCoverage(
+          coverage,
+          config.discoveryMinRecordCoverage,
+        )
+      ) {
+        getLogger().warn(
+          `⏭️  Discovery ${
+            blue(this.ID)
+          } skipping analysis: record phase timed out with insufficient ` +
+            `coverage (${formatRecordCoverage(coverage)}, minimum ${
+              (config.discoveryMinRecordCoverage * 100).toFixed(0)
+            }%).`,
+        );
+        await this.runCleanup(discoverStructure, perfStats, startTime);
         return buildEmptyDiscoverResult(this.ID);
       }
 

@@ -72,6 +72,7 @@ type NumericOptionKeys =
   | "syntheticAlignmentThreshold"
   | "discoverySampleRate"
   | "discoveryRecordTimeOutMinutes"
+  | "discoveryMinRecordCoverage"
   | "discoveryAnalysisTimeoutMinutes"
   | "discoveryBatchSize"
   | "discoveryBufferSize"

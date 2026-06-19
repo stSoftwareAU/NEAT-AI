@@ -93,13 +93,14 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 
 ### 🔬 Discovery fields
 
-| Field                             | Type     | Default | Description                                  |
-| --------------------------------- | -------- | ------- | -------------------------------------------- |
-| `discoverySampleRate`             | `number` | `0.2`   | Fraction of data for discovery (20%)         |
-| `discoveryRecordTimeOutMinutes`   | `number` | `5`     | Minutes for discovery recording phase        |
-| `discoveryAnalysisTimeoutMinutes` | `number` | `10`    | Minutes for discovery analysis               |
-| `discoveryBatchSize`              | `number` | `128`   | Samples per discovery analysis batch         |
-| `discoveryMaxNeurons`             | `number` | `6`     | Max neurons analysed per discovery iteration |
+| Field                             | Type     | Default | Description                                        |
+| --------------------------------- | -------- | ------- | -------------------------------------------------- |
+| `discoverySampleRate`             | `number` | `0.2`   | Fraction of data for discovery (20%)               |
+| `discoveryRecordTimeOutMinutes`   | `number` | `5`     | Minutes for discovery recording phase              |
+| `discoveryMinRecordCoverage`      | `number` | `0.5`   | Min recorded coverage before analysis on a timeout |
+| `discoveryAnalysisTimeoutMinutes` | `number` | `10`    | Minutes for discovery analysis                     |
+| `discoveryBatchSize`              | `number` | `128`   | Samples per discovery analysis batch               |
+| `discoveryMaxNeurons`             | `number` | `6`     | Max neurons analysed per discovery iteration       |
 
 ### 🧬 Evolution fields
 

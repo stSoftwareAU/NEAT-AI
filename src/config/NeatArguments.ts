@@ -324,6 +324,22 @@ export interface NeatArguments {
   discoveryRecordTimeOutMinutes: number;
 
   /**
+   * Minimum fraction (0–1) of the dataset that must be recorded before the
+   * analysis phase runs when the record-phase timeout fires (Issue #3073).
+   *
+   * On a large dataset the record timeout can fire after only a fraction of
+   * the expected records have been sampled, leaving focus-neuron coverage too
+   * sparse for a meaningful analysis pass. When recording times out and the
+   * achieved coverage is below this threshold, analysis is skipped with a clear
+   * reason instead of burning the analysis budget on partial data.
+   *
+   * Defaults to 0.5 (50%). The guard only fires on a genuine timeout that left
+   * part of a multi-file dataset unread — a recording that finished normally is
+   * never affected. Set to 0 to disable the guard and always run analysis.
+   */
+  discoveryMinRecordCoverage: number;
+
+  /**
    * The maximum number of minutes allocated for the analysis phase (after recording completes).
    * Defaults to 10 minutes (tuned from production - was 3 minutes but caused timeouts).
    */
