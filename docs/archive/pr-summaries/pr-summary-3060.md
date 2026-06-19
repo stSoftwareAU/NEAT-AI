@@ -2,8 +2,8 @@
 
 ## Summary
 
-Static dead-code analysis flagged the exported function `encodeModelProto`
-(at `src/onnx/OnnxProtobuf.ts:372`) as having no in-repo importer. Investigation
+Static dead-code analysis flagged the exported function `encodeModelProto` (at
+`src/onnx/OnnxProtobuf.ts:372`) as having no in-repo importer. Investigation
 confirmed the **entire module** is orphaned: it is the call-tree root of a
 self-contained ONNX protobuf-encoding cluster (8 `encode*` functions plus the
 `ONNX_TENSOR_TYPE` const) that nothing references. This PR deletes the whole
@@ -20,9 +20,9 @@ Verification before deleting:
   **not** `OnnxProtobuf.ts`; the root `mod.ts` exposes only `exportToOnnx` /
   `checkOnnxCompatibility`.
 - The module imports nothing, so deletion leaves no dangling imports.
-- The live ONNX export path uses the sibling `ProtobufEncoder.ts`
-  (imported by `src/onnx/OnnxModel.ts`, covered by `test/onnx/ProtobufEncoder.ts`)
-  — `OnnxProtobuf.ts` was a superseded duplicate.
+- The live ONNX export path uses the sibling `ProtobufEncoder.ts` (imported by
+  `src/onnx/OnnxModel.ts`, covered by `test/onnx/ProtobufEncoder.ts`) —
+  `OnnxProtobuf.ts` was a superseded duplicate.
 
 ## Evidence
 
@@ -54,8 +54,8 @@ existing ONNX suites continue to exercise the live export path and all pass:
 
 - `test/onnx/ProtobufEncoder.ts` — the live `ProtobufWriter` encoder used by
   `OnnxModel.ts`.
-- `test/onnx/OnnxExport.ts` — the public `exportToOnnx` / `checkOnnxCompatibility`
-  API.
+- `test/onnx/OnnxExport.ts` — the public `exportToOnnx` /
+  `checkOnnxCompatibility` API.
 
 Full suite (7356 tests) passes after the deletion, confirming nothing depended
 on the removed module.
