@@ -300,32 +300,3 @@ export function recordFailureSync(
     );
   }
 }
-
-/**
- * Filters candidates, removing those that are already cached as failures.
- *
- * @param cacheDir - The cache directory path (if undefined, no filtering is done)
- * @param candidates - The candidates to filter
- * @returns Object with filtered candidates and count of skipped candidates
- */
-export function filterCachedCandidates(
-  cacheDir: string | undefined,
-  candidates: DiscoveryCandidate[],
-): { filtered: DiscoveryCandidate[]; cachedCount: number } {
-  if (!cacheDir) {
-    return { filtered: candidates, cachedCount: 0 };
-  }
-
-  const filtered: DiscoveryCandidate[] = [];
-  let cachedCount = 0;
-
-  for (const candidate of candidates) {
-    if (isCandidateCachedSync(cacheDir, candidate)) {
-      cachedCount++;
-    } else {
-      filtered.push(candidate);
-    }
-  }
-
-  return { filtered, cachedCount };
-}
