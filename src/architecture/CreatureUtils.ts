@@ -36,11 +36,14 @@ export class CreatureUtil {
    * The shuffle is performed in-place for memory efficiency.
    *
    * @param array - The array to be shuffled
+   * @param length - Optional number of leading elements to shuffle. Defaults to
+   *   the full array length. Lets callers shuffle a pooled buffer's used slice
+   *   without allocating a `subarray` view (Issue #3087).
    */
-  static shuffle(array: Int32Array): void {
-    if (array.length > 1) {
+  static shuffle(array: Int32Array, length: number = array.length): void {
+    if (length > 1) {
       const rng = getRandomNumberGenerator();
-      for (let i = array.length; i--;) {
+      for (let i = length; i--;) {
         const j = Math.round(rng.random() * i);
         [array[i], array[j]] = [array[j], array[i]];
       }
