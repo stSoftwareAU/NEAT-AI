@@ -14,6 +14,7 @@ import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
+import { assertSynapsesSortedByFromTo } from "@architecture/SynapseOrderGuard.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 /**
@@ -310,15 +311,12 @@ export class AddNeuron extends AbstractMutationOperator {
 
     assert(neuron.type === "hidden", neuron.type);
 
-    const left = this.creature.neurons.slice(0, neuron.index);
-    const right = this.creature.neurons.slice(neuron.index);
-    right.forEach((n) => {
-      n.index++;
-    });
-
-    const full = [...left, neuron, ...right];
-
-    this.creature.neurons = full;
+    // Insert the new neuron in place and bump the index of every neuron that
+    // now sits after it (Issue #3083: avoids the slice/spread triple-allocation).
+    this.creature.neurons.splice(neuron.index, 0, neuron);
+    for (let i = neuron.index + 1; i < this.creature.neurons.length; i++) {
+      this.creature.neurons[i].index++;
+    }
 
     // Update all synapse indices to account for the new neuron
     // This must preserve all synapse properties including type
@@ -331,14 +329,11 @@ export class AddNeuron extends AbstractMutationOperator {
       }
     });
 
-    // Re-sort synapses after index updates to maintain sort order
-    // This is critical for correct connection lookups
-    this.creature.synapses.sort((a, b) => {
-      if (a.from === b.from) {
-        return a.to - b.to;
-      }
-      return a.from - b.from;
-    });
+    // Issue #3083: no re-sort needed. The remap above is the strictly monotonic
+    // map f(x) = x + (x >= index ? 1 : 0), which preserves the lexicographic
+    // (from, to) ordering — a sorted array stays sorted. A debug-only assertion
+    // guards the invariant so any future change that disturbs it fails tests.
+    assertSynapsesSortedByFromTo(this.creature, "insertNeuron");
 
     // Clear cache to force rebuild with updated indices
     this.creature.clearCache();
