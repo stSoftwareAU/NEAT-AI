@@ -29,6 +29,16 @@ export interface BackpropBufferSet {
   fusedActivations: Float32Array;
   /** Synapse weights for WASM. */
   fusedWeights: Float32Array;
+  /**
+   * Issue #3087: Connection-index scratch for the IF aggregate backprop step
+   * (`IF.propagate`). Filled `0..listLength-1` and optionally shuffled.
+   */
+  indices: Int32Array;
+  /**
+   * Issue #3087: Per-connection error-share scratch for `IF.propagate`,
+   * replacing a `new Float64Array(listLength)` on every call.
+   */
+  errorShares: Float64Array;
   /** Current allocated capacity. */
   capacity: number;
 }
@@ -87,6 +97,8 @@ export class BackpropBuffers {
       fusedHintValues: new Float32Array(capacity),
       fusedActivations: new Float32Array(capacity),
       fusedWeights: new Float32Array(capacity),
+      indices: new Int32Array(capacity),
+      errorShares: new Float64Array(capacity),
       capacity,
     };
   }
@@ -100,6 +112,8 @@ export class BackpropBuffers {
     buf.fusedHintValues = new Float32Array(newCapacity);
     buf.fusedActivations = new Float32Array(newCapacity);
     buf.fusedWeights = new Float32Array(newCapacity);
+    buf.indices = new Int32Array(newCapacity);
+    buf.errorShares = new Float64Array(newCapacity);
     buf.capacity = newCapacity;
     return buf;
   }

@@ -21,8 +21,34 @@ Deno.test("BackpropBuffers - acquire returns buffer with sufficient capacity", (
   assertGreaterOrEqual(buf.fusedHintValues.length, 5);
   assertGreaterOrEqual(buf.fusedActivations.length, 5);
   assertGreaterOrEqual(buf.fusedWeights.length, 5);
+  // Issue #3087: IF.propagate scratch buffers.
+  assertGreaterOrEqual(buf.indices.length, 5);
+  assertGreaterOrEqual(buf.errorShares.length, 5);
 
   pool.release(buf);
+});
+
+Deno.test("BackpropBuffers - IF scratch buffers have correct typed-array kinds", () => {
+  const pool = new BackpropBuffers(8);
+  const buf = pool.acquire(4);
+
+  // Issue #3087: indices is Int32Array, errorShares is Float64Array.
+  assertEquals(buf.indices instanceof Int32Array, true);
+  assertEquals(buf.errorShares instanceof Float64Array, true);
+
+  pool.release(buf);
+});
+
+Deno.test("BackpropBuffers - IF scratch buffers grow with capacity", () => {
+  const pool = new BackpropBuffers(4);
+  const small = pool.acquire(4);
+  pool.release(small);
+
+  const large = pool.acquire(32);
+  assertGreaterOrEqual(large.indices.length, 32);
+  assertGreaterOrEqual(large.errorShares.length, 32);
+
+  pool.release(large);
 });
 
 Deno.test("BackpropBuffers - released buffer is reused by next acquire", () => {

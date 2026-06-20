@@ -319,3 +319,30 @@ Deno.test("CreatureUtil.shuffle - preserves all elements (two element array)", (
   assertEquals(sorted[0], 10);
   assertEquals(sorted[1], 20);
 });
+
+// Issue #3087: shuffle accepts an optional `length` so callers can shuffle the
+// used slice of a pooled buffer without allocating a `subarray` view.
+Deno.test("CreatureUtil.shuffle - only shuffles the first `length` elements", () => {
+  // Buffer larger than the used slice; tail entries are sentinels.
+  const arr = new Int32Array([0, 1, 2, 3, 4, -100, -200, -300]);
+  CreatureUtil.shuffle(arr, 5);
+
+  // Tail beyond `length` is untouched.
+  assertEquals(arr[5], -100);
+  assertEquals(arr[6], -200);
+  assertEquals(arr[7], -300);
+
+  // The first 5 entries are a permutation of 0..4.
+  const slice = Array.from(arr.subarray(0, 5)).sort((a, b) => a - b);
+  assertEquals(slice, [0, 1, 2, 3, 4]);
+});
+
+Deno.test("CreatureUtil.shuffle - length of 1 leaves the slice unchanged", () => {
+  const arr = new Int32Array([7, 8, 9]);
+  CreatureUtil.shuffle(arr, 1);
+  // No swaps performed for a single-element slice.
+  assertEquals(arr[0], 7);
+  // Untouched tail.
+  assertEquals(arr[1], 8);
+  assertEquals(arr[2], 9);
+});
