@@ -14,12 +14,6 @@ import type { CacheStats } from "@cache/CacheStats.ts";
 
 const DEFAULT_MAX_SIZE = 10_000;
 
-/** Cached distance entry with access tracking for LRU eviction. */
-interface DistanceEntry {
-  distance: number;
-  lastAccess: number;
-}
-
 /**
  * Make a canonical cache key from two UUIDs.
  * Sorting ensures (a, b) and (b, a) map to the same key.
@@ -28,10 +22,16 @@ function makeCacheKey(uuidA: string, uuidB: string): string {
   return uuidA < uuidB ? `${uuidA}\0${uuidB}` : `${uuidB}\0${uuidA}`;
 }
 
-/** Global distance cache instance. */
-const cache = new Map<string, DistanceEntry>();
+/**
+ * Global distance cache instance.
+ *
+ * Issue #3084: `Map` preserves insertion order, so the least-recently-used
+ * entry is always the first key. We exploit this for an O(1) LRU: a hit moves
+ * its entry to the most-recently-used (last) position, and eviction removes the
+ * first key. No per-entry `lastAccess` bookkeeping or full-cache scan is needed.
+ */
+const cache = new Map<string, number>();
 let maxSize = DEFAULT_MAX_SIZE;
-let accessCounter = 0;
 
 // Counters for diagnostics / benchmarking
 let hits = 0;
@@ -48,11 +48,14 @@ export function getCachedDistance(
   uuidB: string,
 ): number | undefined {
   const key = makeCacheKey(uuidA, uuidB);
-  const entry = cache.get(key);
-  if (entry !== undefined) {
-    entry.lastAccess = ++accessCounter;
+  const distance = cache.get(key);
+  if (distance !== undefined) {
+    // Refresh recency: re-insert moves the key to the most-recently-used
+    // (last) position, keeping eviction O(1).
+    cache.delete(key);
+    cache.set(key, distance);
     hits++;
-    return entry.distance;
+    return distance;
   }
   misses++;
   return undefined;
@@ -67,7 +70,9 @@ export function setCachedDistance(
   distance: number,
 ): void {
   const key = makeCacheKey(uuidA, uuidB);
-  cache.set(key, { distance, lastAccess: ++accessCounter });
+  // Delete-then-set so an existing key moves to the most-recently-used position.
+  cache.delete(key);
+  cache.set(key, distance);
   evictIfNeeded();
 }
 
@@ -80,7 +85,6 @@ export function clearDistanceCache(): void {
   hits = 0;
   misses = 0;
   evictions = 0;
-  accessCounter = 0;
 }
 
 /**
@@ -117,21 +121,16 @@ export function getDistanceCacheStats(): CacheStats {
 }
 
 /**
- * Evict the oldest entries until the cache is within bounds.
+ * Evict the least-recently-used entries until the cache is within bounds.
+ *
+ * Issue #3084: `Map` iterates in insertion order and both `getCachedDistance`
+ * and `setCachedDistance` re-insert on access, so the first key is always the
+ * least-recently-used entry. Removing it is O(1) — no full-cache scan.
  */
 function evictIfNeeded(): void {
   while (cache.size > maxSize) {
-    let oldestKey: string | null = null;
-    let oldestAccess = Infinity;
-
-    for (const [key, entry] of cache) {
-      if (entry.lastAccess < oldestAccess) {
-        oldestAccess = entry.lastAccess;
-        oldestKey = key;
-      }
-    }
-
-    if (oldestKey === null) break;
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey === undefined) break;
     cache.delete(oldestKey);
     evictions++;
   }
