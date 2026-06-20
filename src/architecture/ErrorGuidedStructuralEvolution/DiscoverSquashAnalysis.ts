@@ -8,7 +8,6 @@
  */
 import { assert } from "@std/assert";
 import type { Creature } from "@creature";
-import { MSE } from "@costs/MSE.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 import { Activations } from "@methods/activations/Activations.ts";
@@ -20,31 +19,62 @@ import type {
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import { buildRuntimeIdToWireMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
-/** Module-level MSE instance — the class is stateless so one suffices. */
-const mse = new MSE();
-
 /**
  * Calculates MSE between ideal and actual activations.
+ *
+ * Issue #3092: The previous implementation routed every sample through a
+ * single-element `Float32Array` and a per-sample `mse.calculate` call (each
+ * dividing by `len = 1`). That churn is fused away here into one
+ * allocation-free loop. `Math.fround` is retained on both operands so the
+ * result is bit-for-bit identical to the old `Float32Array`-rounded path,
+ * keeping best-squash decisions unchanged.
  */
 export function calculateSquashError(
   idealActivations: number[],
   actualActivations: number[],
 ): number {
-  const idealBuffer = new Float32Array(1);
-  const actualBuffer = new Float32Array(1);
   let totalError = 0;
   for (let i = 0; i < idealActivations.length; i++) {
     const actualActivation = actualActivations[i];
     if (actualActivation === undefined) {
       throw new TopologyError("Activation is undefined", "INVALID_STATE");
     }
-    idealBuffer[0] = idealActivations[i];
-    actualBuffer[0] = actualActivation;
-    const error = mse.calculate(idealBuffer, actualBuffer);
-    totalError += error;
+    const d = Math.fround(idealActivations[i]) - Math.fround(actualActivation);
+    totalError += d * d;
   }
 
   return totalError / idealActivations.length;
+}
+
+/**
+ * Fused squash-error evaluation for a single candidate activation function.
+ *
+ * Issue #3092: The discovery candidate loop previously allocated a fresh
+ * `tempActivations` array per candidate (≈39 per focus neuron) and then called
+ * {@link calculateSquashError} over it. This fused form squashes each raw value
+ * inline and accumulates the squared error in a single allocation-free pass,
+ * removing both the throwaway array and the second iteration. `Math.fround`
+ * matches the `Float32Array` rounding of {@link calculateSquashError} so the
+ * two agree to the bit and selected candidates are unchanged.
+ *
+ * @param squashFunction - The candidate activation function to evaluate.
+ * @param rawValues - Pre-squash neuron input values.
+ * @param idealActivations - Target activations to compare against.
+ * @returns Mean squared error between the squashed raw values and the ideals.
+ */
+export function calculateSquashErrorFromRaw(
+  squashFunction: ActivationInterface,
+  rawValues: number[],
+  idealActivations: number[],
+): number {
+  let totalError = 0;
+  for (let i = 0; i < rawValues.length; i++) {
+    const d = Math.fround(squashFunction.squash(rawValues[i])) -
+      Math.fround(idealActivations[i]);
+    totalError += d * d;
+  }
+
+  return totalError / rawValues.length;
 }
 
 /**
@@ -203,12 +233,12 @@ export function findCandidateSquash(
   }
 
   for (const squashFunction of squashFunctions) {
-    const tempActivations = rawValues.map((value) => {
-      return squashFunction.squash(value);
-    });
-    const newError = calculateSquashError(
+    // Issue #3092: fused, allocation-free evaluation — no per-candidate
+    // `tempActivations` array and no per-sample `mse.calculate` churn.
+    const newError = calculateSquashErrorFromRaw(
+      squashFunction,
+      rawValues,
       idealActivations,
-      tempActivations,
     );
 
     if (newError < lowestError - 0.0001) {

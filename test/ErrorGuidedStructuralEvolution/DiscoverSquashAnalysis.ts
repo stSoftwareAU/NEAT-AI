@@ -4,7 +4,10 @@ import { buildWireToRuntimeIdMap } from "@architecture/ErrorGuidedStructuralEvol
 import {
   analyzeSelectedNeuronsForHarmfulRemoval,
   calculateSquashError,
+  calculateSquashErrorFromRaw,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
+import { Activations } from "@methods/activations/Activations.ts";
+import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 
 Deno.test("calculateSquashError - returns zero for identical arrays", () => {
@@ -56,6 +59,70 @@ Deno.test("calculateSquashError - handles large arrays", () => {
   const error = calculateSquashError(ideal, actual);
   // Each element: (0.01)^2 = 0.0001, average should be ~0.0001
   assertAlmostEquals(error, 0.0001, 1e-4);
+});
+
+Deno.test("calculateSquashErrorFromRaw - matches the mapped calculateSquashError", () => {
+  const squash = Activations.find("LOGISTIC") as ActivationInterface;
+  const rawValues = [-2.0, -0.5, 0.0, 0.5, 2.0, 5.0, -3.3];
+  const idealActivations = rawValues.map((v) => squash.squash(v) + 0.01 * v);
+
+  const fused = calculateSquashErrorFromRaw(
+    squash,
+    rawValues,
+    idealActivations,
+  );
+  // The legacy path materialised a temp array of squashed values first.
+  const tempActivations = rawValues.map((v) => squash.squash(v));
+  const reference = calculateSquashError(idealActivations, tempActivations);
+
+  // Math.fround parity means the two agree to the bit.
+  assertEquals(fused, reference);
+});
+
+Deno.test("calculateSquashErrorFromRaw - zero when squash hits the ideals exactly", () => {
+  const squash = Activations.find("IDENTITY") as ActivationInterface;
+  const rawValues = [0.1, -0.2, 3.0];
+  const idealActivations = rawValues.map((v) => squash.squash(v));
+  const error = calculateSquashErrorFromRaw(
+    squash,
+    rawValues,
+    idealActivations,
+  );
+  assertEquals(error, 0);
+});
+
+Deno.test("calculateSquashErrorFromRaw - picks the same best candidate as the legacy loop", () => {
+  const truth = Activations.find("TANH") as ActivationInterface;
+  const rawValues = Array.from({ length: 200 }, (_, i) => Math.sin(i) * 3);
+  const idealActivations = rawValues.map((v) => truth.squash(v));
+
+  const candidates = Activations.list().filter(
+    (a) => (a as ActivationInterface).squash !== undefined,
+  ) as ActivationInterface[];
+
+  const pick = (
+    score: (fn: ActivationInterface) => number,
+  ): string => {
+    let best = candidates[0];
+    let bestError = score(best);
+    for (const fn of candidates) {
+      const e = score(fn);
+      if (e < bestError) {
+        bestError = e;
+        best = fn;
+      }
+    }
+    return best.getName();
+  };
+
+  const fusedBest = pick((fn) =>
+    calculateSquashErrorFromRaw(fn, rawValues, idealActivations)
+  );
+  const legacyBest = pick((fn) =>
+    calculateSquashError(idealActivations, rawValues.map((v) => fn.squash(v)))
+  );
+
+  assertEquals(fusedBest, legacyBest);
 });
 
 Deno.test(
