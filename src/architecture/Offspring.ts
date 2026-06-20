@@ -784,16 +784,23 @@ export class Offspring {
     return offspring;
   }
 
-  private static findParentNeuronIndexByWireLabel(
+  /**
+   * Build a `wire label -> neuron index` map for a parent so the forward-only
+   * repair routines can resolve a label in O(1) instead of rescanning the whole
+   * neuron array per offspring neuron (Issue #3090). First-match wins, mirroring
+   * the linear scan this replaces.
+   */
+  private static buildParentWireLabelIndex(
     parent: Creature,
-    label: string,
-  ): number | undefined {
+  ): Map<string, number> {
+    const labelToIndex = new Map<string, number>();
     for (let i = 0; i < parent.neurons.length; i++) {
-      if (neuronWireLabelForDiagnostics(parent.neurons[i], i) === label) {
-        return i;
+      const label = neuronWireLabelForDiagnostics(parent.neurons[i], i);
+      if (!labelToIndex.has(label)) {
+        labelToIndex.set(label, i);
       }
     }
-    return undefined;
+    return labelToIndex;
   }
 
   /**
@@ -815,6 +822,13 @@ export class Offspring {
       );
     }
 
+    // Issue #3090: precompute each parent's wire-label -> index map once so the
+    // per-neuron parent lookups below are O(1) rather than a full array rescan.
+    const parents = [mother, father];
+    const parentLabelToIndex = parents.map((parent) =>
+      Offspring.buildParentWireLabelIndex(parent)
+    );
+
     for (let i = offspring.input; i < offspring.neurons.length; i++) {
       const node = offspring.neurons[i];
       if (node.type !== "hidden" && node.type !== "output") continue;
@@ -823,8 +837,9 @@ export class Offspring {
       const label = neuronWireLabelForDiagnostics(node, i);
 
       let linked = false;
-      for (const parent of [mother, father]) {
-        const pIdx = Offspring.findParentNeuronIndexByWireLabel(parent, label);
+      for (let p = 0; p < parents.length; p++) {
+        const parent = parents[p];
+        const pIdx = parentLabelToIndex[p].get(label);
         if (pIdx === undefined) continue;
 
         for (const syn of parent.inwardConnections(pIdx)) {
@@ -878,6 +893,13 @@ export class Offspring {
       );
     }
 
+    // Issue #3090: precompute each parent's wire-label -> index map once so the
+    // per-neuron parent lookups below are O(1) rather than a full array rescan.
+    const parents = [mother, father];
+    const parentLabelToIndex = parents.map((parent) =>
+      Offspring.buildParentWireLabelIndex(parent)
+    );
+
     for (let i = offspring.input; i < offspring.neurons.length; i++) {
       const node = offspring.neurons[i];
       if (node.type !== "constant") continue;
@@ -886,8 +908,9 @@ export class Offspring {
       const label = neuronWireLabelForDiagnostics(node, i);
 
       let linked = false;
-      for (const parent of [mother, father]) {
-        const pIdx = Offspring.findParentNeuronIndexByWireLabel(parent, label);
+      for (let p = 0; p < parents.length; p++) {
+        const parent = parents[p];
+        const pIdx = parentLabelToIndex[p].get(label);
         if (pIdx === undefined) continue;
 
         for (const syn of parent.outwardConnections(pIdx)) {
