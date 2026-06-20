@@ -1,4 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
+import { join } from "@std/path/join";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
@@ -117,6 +118,104 @@ Deno.test("DiscoverStructure preserves record indices for single binary chunk", 
     await structure.cleanUp();
   }
 });
+
+/**
+ * Issue #3086: `record()` must NOT re-serialise and rewrite the whole
+ * selected-indices map per batch. Persistence is deferred to each chunk flush
+ * (`writeRustParquetChunk`) and the end-of-phase flush. These tests assert on
+ * the observable on-disk side effect (`selected_indices.json`) so they verify
+ * the behavioural contract, not the implementation.
+ */
+Deno.test(
+  "DiscoverStructure: record() defers indices persistence to chunk flush (Issue #3086)",
+  async () => {
+    await initWasmForTests();
+    const creature = makeCreature();
+    const baseDir = await Deno.makeTempDir({ prefix: "record-indices-3086-" });
+    const binaryFilePath = "/tmp/fake-3086.bin";
+
+    const structure = new DiscoverStructure(
+      creature,
+      60,
+      100,
+      {
+        isRustDiscoveryEnabled: () => true,
+        isRustLibraryAvailable: () => true,
+        recordDiscovery: () => ({ success: true, file: "chunk.parquet" }),
+        mergeDiscoveryParquet: () => ({
+          success: true,
+          outputFile: "merged.parquet",
+        }),
+        analyzeParallel: () => ({
+          success: true,
+          helpfulNeurons: [],
+          helpfulSynapses: [],
+          harmfulSynapses: [],
+        }),
+        readDiscoveryRecords: () => ({ success: true, records: [] }),
+      },
+      { baseDirectory: baseDir, disableCleanup: true },
+    );
+
+    const neuronPromises = new Map<number, Promise<void>>();
+    const indicesFilePath = join(
+      structure.getTempDir(),
+      "selected_indices.json",
+    );
+
+    try {
+      structure.initialize(neuronPromises);
+
+      // initialize() seeds the file with an empty map.
+      assertEquals(
+        JSON.parse(await Deno.readTextFile(indicesFilePath)),
+        {},
+        "initialize() should seed an empty indices map",
+      );
+
+      // Two record() batches WITHOUT an intervening flush.
+      const first = makeBatch(0, 4);
+      const second = makeBatch(100, 4);
+      assert(
+        structure.record(
+          first.trainingRecords,
+          neuronPromises,
+          binaryFilePath,
+          first.rawIndices,
+        ),
+        "first batch should record",
+      );
+      assert(
+        structure.record(
+          second.trainingRecords,
+          neuronPromises,
+          binaryFilePath,
+          second.rawIndices,
+        ),
+        "second batch should record",
+      );
+
+      // Regression guard: record() must not have rewritten the indices file
+      // per batch — on disk it is still the seeded empty map until a flush.
+      assertEquals(
+        JSON.parse(await Deno.readTextFile(indicesFilePath)),
+        {},
+        "record() must not persist the indices map per batch (Issue #3086)",
+      );
+
+      // A chunk flush persists the complete, correct map.
+      assertEquals(structure.flushRustChunk(), true, "flush should succeed");
+      assertEquals(
+        JSON.parse(await Deno.readTextFile(indicesFilePath)),
+        { [binaryFilePath]: [...first.rawIndices, ...second.rawIndices] },
+        "chunk flush should persist all accumulated indices",
+      );
+    } finally {
+      await structure.cleanUp();
+      await Deno.remove(baseDir, { recursive: true }).catch(() => {});
+    }
+  },
+);
 
 function makeBatch(
   startIndex: number,

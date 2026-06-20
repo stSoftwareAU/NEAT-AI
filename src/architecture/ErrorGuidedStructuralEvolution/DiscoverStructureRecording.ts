@@ -118,10 +118,13 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
       // indices (config, no hard upper cap), so spreading risks RangeError.
       appendAll(this.selectedIndices[binaryFilePath], effectiveRecordIndices);
 
-      Deno.writeTextFileSync(
-        this.indicesFilePath,
-        JSON.stringify(this.selectedIndices),
-      );
+      // Issue #3086: do NOT re-serialise and rewrite the whole (monotonically
+      // growing) selected-indices map here. Persisting it on every batch was
+      // redundant O(batches × total_indices) blocking I/O. The map is written
+      // to `indicesFilePath` atomically alongside each parquet chunk in
+      // `writeRustParquetChunk`, and `flushRustRecording` covers end-of-phase.
+      // The analysis phase only reads `selected_indices.json` after recording
+      // completes (DiscoverDataLoading.ts), never an intermediate version.
 
       if (!this.rustBinaryFilePath) {
         this.rustBinaryFilePath = binaryFilePath;
