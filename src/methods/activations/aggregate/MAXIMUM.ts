@@ -131,8 +131,8 @@ export class MAXIMUM
 
     for (let i = 0, len = fromList.length; i < len; i++) {
       const c = fromList[i];
-      const { from, to, weight } = c;
-      const cs = state.connection(from, to);
+      const { from, weight } = c;
+      const cs = state.connectionFor(c); // Issue #3089: cached state lookup
       if (cs.used === undefined) cs.used = false;
 
       const value = activations[from] * weight;
@@ -198,7 +198,7 @@ export class MAXIMUM
       assert(c.to === neuron.index, "mismatched index");
       if (c.from === c.to) continue;
 
-      const cs = state.connection(c.from, c.to);
+      const cs = state.connectionFor(c); // Issue #3089: cached state lookup
       if (!cs.used) {
         neuron.creature.disconnect(c.from, c.to);
         changed = true;
@@ -263,7 +263,7 @@ export class MAXIMUM
 
       const { from, to, weight } = mainConnection!;
 
-      const mainCS = state.connection(from, to);
+      const mainCS = state.connectionFor(mainConnection!); // Issue #3089: cached state lookup
       accumulateWeight(
         weight,
         mainCS,
@@ -342,7 +342,7 @@ export class MAXIMUM
             const proximity = 1 - (distance / threshold);
             const leakError = error * LEAK_FRACTION * proximity;
             if (Math.abs(leakError) > config.plankConstant) {
-              const cs = state.connection(info.c.from, info.c.to);
+              const cs = state.connectionFor(info.c); // Issue #3089: cached state lookup
               const targetValue = info.fromValue + leakError;
               accumulateWeight(
                 info.c.weight,

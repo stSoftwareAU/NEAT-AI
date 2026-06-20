@@ -118,8 +118,11 @@ Deno.test("adjustedWeight - returns original weight before batch boundary", () =
 
   // Create a mock CreatureState that returns our SynapseState
   const cs = new SynapseState();
+  // Issue #3089: adjustedWeight now resolves state via connectionFor(synapse)
+  // (cached reference) rather than connection(from, to); the mock provides both.
   const mockState = {
     connection: (_from: number, _to: number) => cs,
+    connectionFor: (_synapse: Synapse) => cs,
   } as unknown as CreatureState;
 
   // Accumulate fewer samples than batchSize
@@ -149,8 +152,11 @@ Deno.test("adjustedWeight - recalculates at batch boundary", () => {
   const synapse = fakeSynapse(0.5);
 
   const cs = new SynapseState();
+  // Issue #3089: adjustedWeight now resolves state via connectionFor(synapse)
+  // (cached reference) rather than connection(from, to); the mock provides both.
   const mockState = {
     connection: (_from: number, _to: number) => cs,
+    connectionFor: (_synapse: Synapse) => cs,
   } as unknown as CreatureState;
 
   // Accumulate exactly batchSize samples pointing toward weight=3
@@ -176,8 +182,11 @@ Deno.test("adjustedWeight - disableWeightAdjustment returns original", () => {
   const synapse = fakeSynapse(0.5);
 
   const cs = new SynapseState();
+  // Issue #3089: adjustedWeight now resolves state via connectionFor(synapse)
+  // (cached reference) rather than connection(from, to); the mock provides both.
   const mockState = {
     connection: (_from: number, _to: number) => cs,
+    connectionFor: (_synapse: Synapse) => cs,
   } as unknown as CreatureState;
 
   accumulateWeight(synapse.weight, cs, 10.0, 1.0, config);

@@ -1,5 +1,6 @@
 import { assert } from "@std/assert";
 import type { Creature } from "@creature";
+import type { Synapse } from "@architecture/Synapse.ts";
 import type { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
 import { SynapseState } from "@propagate/SynapseState.ts";
 import { DenseNumberMap } from "@architecture/DenseNumberMap.ts";
@@ -127,6 +128,14 @@ export class CreatureState {
   private nodeArray: NeuronState[];
   private connectionMap;
   private creature;
+  /**
+   * Issue #3089: Generation counter for the synapse-state cache. Bumped on
+   * every reset of {@link connectionMap} (see {@link clear}). A cached
+   * `SynapseState` on a {@link Synapse} is only valid while its
+   * `stateGeneration` matches this counter, so a stale cache is detected in
+   * `O(1)` without walking the nested map.
+   */
+  private stateGeneration = 0;
   public activations: Float32Array = new Float32Array(0);
   /**
    * Cache for adjusted activation values per neuron index.
@@ -173,6 +182,33 @@ export class CreatureState {
       fromMap.set(to, tmpState);
       return tmpState;
     }
+  }
+
+  /**
+   * Issue #3089: Resolve the {@link SynapseState} for a synapse, memoising the
+   * reference on the synapse itself to avoid the nested-`Map` double lookup on
+   * subsequent calls within the same generation.
+   *
+   * The first call for a synapse (or after a {@link clear}) resolves through
+   * {@link connection} and caches the result. Later calls return the cached
+   * reference directly after a single generation comparison — eliminating both
+   * hash lookups on the innermost backprop loop.
+   *
+   * Behaviourally identical to `connection(synapse.from, synapse.to)`; only the
+   * cost of resolution differs.
+   */
+  connectionFor(synapse: Synapse): SynapseState {
+    if (
+      synapse.stateGeneration === this.stateGeneration &&
+      synapse.stateCache !== undefined
+    ) {
+      return synapse.stateCache;
+    }
+
+    const state = this.connection(synapse.from, synapse.to);
+    synapse.stateCache = state;
+    synapse.stateGeneration = this.stateGeneration;
+    return state;
   }
 
   node(indx: number): NeuronState {
@@ -231,5 +267,9 @@ export class CreatureState {
       this.nodeArray[i] = new NeuronState();
     }
     this.connectionMap.clear();
+    // Issue #3089: Invalidate every cached SynapseState reference in O(1) by
+    // bumping the generation counter. Synapses holding a stale cache will
+    // re-resolve through connection() on their next connectionFor() call.
+    this.stateGeneration++;
   }
 }

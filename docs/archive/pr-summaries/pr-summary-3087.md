@@ -21,11 +21,11 @@ path. **Closes #3087.**
   plain `for` loop, uses the pooled `errorShares`, and releases the set after
   all recursive `fromNeuron.propagate(...)` calls complete. The pool is
   stack-based, so each recursion level gets its own set.
-- **`CreatureUtil.shuffle`** — gained an optional `length` parameter so the
-  used `0..listLength-1` slice of the pooled `indices` buffer is shuffled
-  without allocating a `subarray` view. Existing callers are unaffected
-  (`length` defaults to `array.length`), and the Fisher-Yates iteration order
-  over the slice is identical, preserving determinism.
+- **`CreatureUtil.shuffle`** — gained an optional `length` parameter so the used
+  `0..listLength-1` slice of the pooled `indices` buffer is shuffled without
+  allocating a `subarray` view. Existing callers are unaffected (`length`
+  defaults to `array.length`), and the Fisher-Yates iteration order over the
+  slice is identical, preserving determinism.
 - **`IF.record`** — replaced `inward.filter(...)` with an in-place index scan
   into a reused, stack-pooled scratch array (`eligibleScratchPool`). The array
   is consumed synchronously by `buildRecordElasticLinks` and returned to the
@@ -53,21 +53,21 @@ flowchart LR
 
 ## Evidence
 
-Backend/numerical change — no UI to screenshot. Performance is demonstrated by
-a focused micro-benchmark plus the existing backprop suite.
+Backend/numerical change — no UI to screenshot. Performance is demonstrated by a
+focused micro-benchmark plus the existing backprop suite.
 
-**`deno bench --allow-read --allow-env bench/IfPropagateAllocation.ts`**
-(Apple M4 Pro, Deno 2.8.3, 600 IF neurons, max in-degree 16):
+**`deno bench --allow-read --allow-env bench/IfPropagateAllocation.ts`** (Apple
+M4 Pro, Deno 2.8.3, 600 IF neurons, max in-degree 16):
 
-| benchmark                                            | time/iter (avg) |   iter/s |
-| ---------------------------------------------------- | --------------- | -------- |
-| Fresh typed-array allocation per IF.propagate (600N) |        308.1 µs |    3,245 |
-| Pooled buffers per IF.propagate (600N)               |         49.9 µs |   20,030 |
+| benchmark                                            | time/iter (avg) | iter/s |
+| ---------------------------------------------------- | --------------- | ------ |
+| Fresh typed-array allocation per IF.propagate (600N) | 308.1 µs        | 3,245  |
+| Pooled buffers per IF.propagate (600N)               | 49.9 µs         | 20,030 |
 
 **Result: pooled path is 6.17× faster** than the fresh per-call allocation
 pattern, removing two (sometimes three) per-call typed-array/array allocations
-from the IF backprop path and cutting GC pressure proportional to
-IF-neurons × samples × epochs.
+from the IF backprop path and cutting GC pressure proportional to IF-neurons ×
+samples × epochs.
 
 ## Test Plan
 
