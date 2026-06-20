@@ -5,7 +5,7 @@
  *               instead of using subarray()
  *
  * This benchmark demonstrates the performance improvement from using
- * subarray().set() bulk copy instead of element-by-element copying.
+ * subarray().set() bulk copy instead of element-by-element copying
  *
  * The optimisation affects:
  * 1. outputs extraction - from result[0..numOutputs]
