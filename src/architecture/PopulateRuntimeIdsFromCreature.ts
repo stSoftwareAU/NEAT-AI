@@ -97,7 +97,10 @@ export function exportJSONWithRuntimeIdsUnchecked(
 }
 
 function buildExportWithRuntimeIds(creature: Creature): CreatureExport {
-  const json = new CreatureExportBuilder(creature).build(true);
+  // Issue #3088: convertMemeticExportToWireJson deep-clones memetic, so build()
+  // attaches it by reference (cloneMemetic=false) to avoid a redundant clone on
+  // this per-genome worker→main / breeding hot path.
+  const json = new CreatureExportBuilder(creature).build(true, false);
   if (json.memetic) {
     json.memetic = convertMemeticExportToWireJson(creature, json.memetic);
   }
