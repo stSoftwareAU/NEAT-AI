@@ -78,7 +78,7 @@ export function adjustedWeight(
   if (config.disableWeightAdjustment || c.frozen) {
     return c.weight;
   }
-  const cs = creatureState.connection(c.from, c.to);
+  const cs = creatureState.connectionFor(c); // Issue #3089: cached state lookup
   if (cs.count && cs.count % config.batchSize === 0) {
     cs.batchAverageWeight = calculateWeight(cs, c, config);
   }

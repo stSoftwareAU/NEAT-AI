@@ -287,8 +287,9 @@ export class IF
 
     if (condition > 0) {
       for (let i = inward.length; i--;) {
-        const { from, to, type } = inward[i];
-        const cs = state.connection(from, to);
+        const c = inward[i];
+        const { type } = c;
+        const cs = state.connectionFor(c); // Issue #3089: cached state lookup
         switch (type) {
           case "condition":
           case "negative":
@@ -300,10 +301,10 @@ export class IF
       }
     } else {
       for (let i = inward.length; i--;) {
-        const { from, to, type } = inward[i];
+        const c = inward[i];
 
-        if (type === "negative") {
-          state.connection(from, to).used = true;
+        if (c.type === "negative") {
+          state.connectionFor(c).used = true; // Issue #3089: cached state lookup
         }
       }
     }
@@ -352,7 +353,7 @@ export class IF
     const state = neuron.creature.state;
     for (let i = inward.length; i--;) {
       const c = inward[i];
-      const cs = state.connection(c.from, c.to);
+      const cs = state.connectionFor(c); // Issue #3089: cached state lookup
       switch (c.type) {
         case "condition":
           break;
@@ -516,7 +517,7 @@ export class IF
       const fromNeuron = neuron.creature.neurons[c.from];
       const fromActivation = fromNeuron.adjustedActivation(config);
 
-      const cs = state.connection(c.from, c.to);
+      const cs = state.connectionFor(c); // Issue #3089: cached state lookup
 
       const fromWeight = adjustedWeight(state, c, config);
       const fromValue = fromWeight * fromActivation;

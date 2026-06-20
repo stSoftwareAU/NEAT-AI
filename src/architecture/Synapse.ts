@@ -5,6 +5,7 @@ import type {
   SynapseExport,
   SynapseInternal,
 } from "@architecture/SynapseInterfaces.ts";
+import type { SynapseState } from "@propagate/SynapseState.ts";
 
 /**
  * Represents a synapse (connection) between two neurons in a neural network.
@@ -43,6 +44,21 @@ export class Synapse implements SynapseInternal {
 
   /** Tags for storing metadata about the synapse */
   public tags?: TagInterface[];
+
+  /**
+   * Issue #3089: Memoised SynapseState reference for this synapse, paired with
+   * {@link stateGeneration}. The hot backprop path resolves a synapse's state
+   * through a nested `Map` (two hash lookups) many times per step; caching the
+   * reference here lets {@link CreatureState.connectionFor} skip both lookups
+   * after the first resolution. The cache is validated against
+   * `CreatureState`'s generation counter, which is bumped whenever the
+   * connection map is reset — so a stale cache is detected in `O(1)`.
+   *
+   * These fields are runtime-only and are never serialised.
+   */
+  public stateCache?: SynapseState;
+  /** Generation tag matching {@link CreatureState}'s counter (Issue #3089). */
+  public stateGeneration?: number;
 
   /**
    * Generates a random weight value with controlled precision.
