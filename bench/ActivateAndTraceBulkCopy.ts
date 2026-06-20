@@ -314,6 +314,92 @@ Deno.bench(
   },
 );
 
+// ============================================================================
+// Issue #3085: view-return vs copy-return contrast
+//
+// `activateAndTrace` now returns `activations`/`hintValues` as zero-copy
+// `subarray` views into the per-call `result` buffer instead of freshly
+// allocated copies. These two benchmarks isolate the extraction cost on an
+// identical `result` buffer so the allocation + bulk-copy saving is visible
+// independent of the WASM activation itself.
+// ============================================================================
+type TraceExtract = {
+  outputs: Float32Array;
+  activations: Float32Array;
+  hintValues: Float32Array;
+};
+
+// Old behaviour: three standalone copies.
+function extractCopy(
+  result: Float32Array,
+  numOutputs: number,
+  numNonInputs: number,
+): TraceExtract {
+  const outputs = new Float32Array(numOutputs);
+  outputs.set(result.subarray(0, numOutputs));
+  const activations = new Float32Array(numNonInputs);
+  activations.set(result.subarray(numOutputs, numOutputs + numNonInputs));
+  const hintValues = new Float32Array(numNonInputs);
+  hintValues.set(
+    result.subarray(numOutputs + numNonInputs, numOutputs + 2 * numNonInputs),
+  );
+  return { outputs, activations, hintValues };
+}
+
+// New behaviour (Issue #3085): outputs copied, activations/hintValues as views.
+function extractView(
+  result: Float32Array,
+  numOutputs: number,
+  numNonInputs: number,
+): TraceExtract {
+  const outputs = new Float32Array(numOutputs);
+  outputs.set(result.subarray(0, numOutputs));
+  const activations = result.subarray(numOutputs, numOutputs + numNonInputs);
+  const hintValues = result.subarray(
+    numOutputs + numNonInputs,
+    numOutputs + 2 * numNonInputs,
+  );
+  return { outputs, activations, hintValues };
+}
+
+// A representative production-scale result buffer (outputs + 2*nonInputs + a
+// terminator), read element-wise after extraction to mirror the consumer.
+const extractNumOutputs = productionCreature.output;
+const extractNonInputs = productionNumNonInputs;
+const extractResult = new Float32Array(
+  extractNumOutputs + 2 * extractNonInputs + 1,
+);
+for (let i = 0; i < extractResult.length; i++) extractResult[i] = i * 0.001;
+extractResult[extractResult.length - 1] = -1; // trace terminator
+
+function consume(t: TraceExtract): number {
+  let sum = t.outputs[0];
+  for (let i = 0; i < t.activations.length; i++) {
+    sum += t.activations[i] + t.hintValues[i];
+  }
+  return sum;
+}
+
+Deno.bench(
+  "Extract: copy-return [old]",
+  { group: "extract-strategy", baseline: true },
+  () => {
+    for (let i = 0; i < ITERATIONS; i++) {
+      consume(extractCopy(extractResult, extractNumOutputs, extractNonInputs));
+    }
+  },
+);
+
+Deno.bench(
+  "Extract: view-return [Issue #3085]",
+  { group: "extract-strategy" },
+  () => {
+    for (let i = 0; i < ITERATIONS; i++) {
+      consume(extractView(extractResult, extractNumOutputs, extractNonInputs));
+    }
+  },
+);
+
 console.log(`\n`);
 console.log(
   `Note: The bulk copy optimisation (Issue #1172) is already applied.`,

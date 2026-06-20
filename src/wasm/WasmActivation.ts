@@ -387,20 +387,27 @@ export class WasmCreatureActivation {
       this.invalidateAfterWasmPanic(error);
     }
 
+    // Issue #3085: `result` is a fresh per-call copy of WASM linear memory
+    // (the binding `.slice()`s the WASM slice before returning), so it is safe
+    // to hand back zero-copy `subarray` views into it. `activations` and
+    // `hintValues` are read straight back out element-wise by the consumer and
+    // never retained, so views avoid two heap allocations + two bulk copies per
+    // traced activation on the backprop hot path.
+    //
+    // `outputs` stays a standalone copy: it is returned to external callers who
+    // may retain it, and keeping it small avoids pinning the whole `result`
+    // buffer (including trace data) alive for the lifetime of that reference.
     const outputs = new Float32Array(this.numOutputs);
     outputs.set(result.subarray(0, this.numOutputs));
 
-    const activations = new Float32Array(numNonInputs);
-    activations.set(
-      result.subarray(this.numOutputs, this.numOutputs + numNonInputs),
+    const activations = result.subarray(
+      this.numOutputs,
+      this.numOutputs + numNonInputs,
     );
 
-    const hintValues = new Float32Array(numNonInputs);
-    hintValues.set(
-      result.subarray(
-        this.numOutputs + numNonInputs,
-        this.numOutputs + 2 * numNonInputs,
-      ),
+    const hintValues = result.subarray(
+      this.numOutputs + numNonInputs,
+      this.numOutputs + 2 * numNonInputs,
     );
 
     const traceEntries: WasmTraceEntry[] = [];
