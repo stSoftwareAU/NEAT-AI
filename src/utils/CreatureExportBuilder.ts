@@ -19,8 +19,15 @@ export class CreatureExportBuilder {
    * @param includeIds When true, includes runtime integer `id` on neurons
    *   and `fromId`/`toId` on synapses. External consumers should use the
    *   default (false) which produces UUID-only output (Issue #2054).
+   * @param cloneMemetic When true (default), `memetic` is deep-cloned so the
+   *   caller can safely mutate it in place. Callers that hand the export to
+   *   {@link convertMemeticExportToWireJson} (the wire path) should pass
+   *   `false`: that converter deep-clones memetic itself, so cloning here too
+   *   is pure waste (Issue #3088). The export then carries `creature.memetic`
+   *   by reference — the wire converter never mutates its input, so the live
+   *   creature is never aliased into.
    */
-  build(includeIds = false): CreatureExport {
+  build(includeIds = false, cloneMemetic = true): CreatureExport {
     const creature = this.creature;
     const neurons = creature.neurons;
     const synapses = creature.synapses;
@@ -78,8 +85,13 @@ export class CreatureExportBuilder {
 
     const memetic = creature.memetic;
     if (memetic) {
-      // Deep clone memetic data using JSON.parse/stringify for robust cloning
-      json.memetic = JSON.parse(JSON.stringify(memetic));
+      // Issue #3088: only deep-clone when the caller mutates memetic in place
+      // (the includeIds → normaliseCreatureExport path). Wire-export callers
+      // pass cloneMemetic=false because convertMemeticExportToWireJson clones
+      // memetic itself; cloning here as well was a redundant per-export clone.
+      json.memetic = cloneMemetic
+        ? JSON.parse(JSON.stringify(memetic))
+        : memetic;
     }
 
     // Issue #1863: Export per-creature evolvable hyperparameters

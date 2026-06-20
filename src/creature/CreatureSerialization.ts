@@ -105,7 +105,11 @@ function buildCreatureExportJSON(
   includeIds: boolean,
 ): CreatureExport {
   const builder = new CreatureExportBuilder(creature);
-  const json = builder.build(includeIds) as CreatureExport;
+  // Issue #3088: the wire path (convertMemeticExportToWireJson) deep-clones
+  // memetic itself, so only ask build() to clone for the includeIds path,
+  // which mutates memetic in place via normaliseCreatureExport. This avoids a
+  // redundant second clone on every wire export.
+  const json = builder.build(includeIds, includeIds) as CreatureExport;
   if (includeIds && json.memetic) {
     normaliseCreatureExport(json);
   } else if (json.memetic) {
