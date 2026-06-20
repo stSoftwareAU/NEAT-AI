@@ -18,17 +18,18 @@ JavaScript `Map` already preserves insertion order, so a true O(1) LRU needs no
   `cache.keys().next().value` — the least-recently-used entry.
 
 This removes the per-entry `lastAccess` field and the global `accessCounter`,
-and shrinks each cache value from an object to a bare `number`. Hit/miss/eviction
-statistics (`getDistanceCacheStats`) are unchanged, and eviction still strictly
-bounds the cache at `maxSize`.
+and shrinks each cache value from an object to a bare `number`.
+Hit/miss/eviction statistics (`getDistanceCacheStats`) are unchanged, and
+eviction still strictly bounds the cache at `maxSize`.
 
 Closes #3084.
 
 ## Evidence
 
 Backend/CLI change — no web interface to screenshot. Verified by tests and a
-dedicated benchmark (`bench/DistanceCacheEviction.ts`) that drives the write path
-well past `maxSize` so nearly every insert evicts, isolating the eviction cost.
+dedicated benchmark (`bench/DistanceCacheEviction.ts`) that drives the write
+path well past `maxSize` so nearly every insert evicts, isolating the eviction
+cost.
 
 ### Benchmark: eviction-heavy writes (40 000 inserts into a 2 000-entry cache)
 
@@ -60,10 +61,10 @@ All tests in `test/breed/DistanceCache.ts` pass (14 total). Added three new
 
 - `DistanceCache - a hit refreshes recency so the unaccessed entry is evicted` —
   a hit on the oldest entry makes it most-recently-used, so the next insert
-  evicts the now-oldest *unaccessed* entry.
-- `DistanceCache - eviction strictly bounds the cache at maxSize` — inserting 100
-  distinct entries into a 5-entry cache keeps size at 5, records 95 evictions,
-  and retains exactly the last 5 inserts.
+  evicts the now-oldest _unaccessed_ entry.
+- `DistanceCache - eviction strictly bounds the cache at maxSize` — inserting
+  100 distinct entries into a 5-entry cache keeps size at 5, records 95
+  evictions, and retains exactly the last 5 inserts.
 - `DistanceCache - shrinking maxSize evicts oldest entries immediately` —
   lowering `maxSize` drops the oldest entries down to the new bound, retaining
   the most-recently inserted.

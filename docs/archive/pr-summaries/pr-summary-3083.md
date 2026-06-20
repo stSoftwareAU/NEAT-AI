@@ -23,9 +23,10 @@ order that was never disturbed.
    (`src/architecture/SynapseOrderGuard.ts`) — gated on `creature.DEBUG`, so it
    adds **zero** cost to the production hot path while catching any future code
    path that violates the ordering invariant during tests.
-3. Replaced the `slice(0,index)` / `slice(index)` / `[...left, neuron, ...right]`
-   triple-allocation neuron rebuild with a single in-place
-   `neurons.splice(neuron.index, 0, neuron)` plus the existing tail-index bump.
+3. Replaced the `slice(0,index)` / `slice(index)` /
+   `[...left, neuron, ...right]` triple-allocation neuron rebuild with a single
+   in-place `neurons.splice(neuron.index, 0, neuron)` plus the existing
+   tail-index bump.
 
 ### Behaviour change
 
@@ -55,10 +56,10 @@ micro-benchmark and the existing + new unit tests.
 many ADD_NODE mutations (`deno run -A bench/mutate/AddNeuronInsertResort.ts`).
 Averages of three runs each, `creature.DEBUG` off (production path):
 
-| Scenario | Synapses (end) | Mutations | Before (avg/mutation) | After (avg/mutation) | Improvement |
-|---|---|---|---|---|---|
-| 20in/5out/100hidden | 1100 | 200 | ~426 µs | ~410 µs | ~3.7% |
-| 40in/10out/200hidden | 2600 | 300 | ~1.045 ms | ~1.000 ms | ~4.3% |
+| Scenario             | Synapses (end) | Mutations | Before (avg/mutation) | After (avg/mutation) | Improvement |
+| -------------------- | -------------- | --------- | --------------------- | -------------------- | ----------- |
+| 20in/5out/100hidden  | 1100           | 200       | ~426 µs               | ~410 µs              | ~3.7%       |
+| 40in/10out/200hidden | 2600           | 300       | ~1.045 ms             | ~1.000 ms            | ~4.3%       |
 
 The saving is consistent across runs (outside measurement noise) and grows with
 synapse count `E`, matching the `O(E log E) → O(E)` reduction. Ordering and
