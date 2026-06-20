@@ -31,10 +31,10 @@ Added an `extract-strategy` group contrasting the old copy-return against the
 new view-return on an identical production-scale `result` buffer (1000
 iterations/run, Apple M4 Pro, Deno 2.8.3):
 
-| benchmark                          | time/iter (avg) |  iter/s | result            |
-| ---------------------------------- | --------------- | ------- | ----------------- |
-| Extract: copy-return [old]         |          1.1 ms |   912.4 | baseline          |
-| Extract: view-return [Issue #3085] |        503.9 µs |   1,985 | **2.17× faster**  |
+| benchmark                          | time/iter (avg) | iter/s | result           |
+| ---------------------------------- | --------------- | ------ | ---------------- |
+| Extract: copy-return [old]         | 1.1 ms          | 912.4  | baseline         |
+| Extract: view-return [Issue #3085] | 503.9 µs        | 1,985  | **2.17× faster** |
 
 Removing the 2 allocations + 2 bulk copies per call roughly halves the
 extraction cost and cuts GC pressure on the hot path.
@@ -54,13 +54,13 @@ flowchart LR
 ## Test Plan
 
 - Added `test/wasm/ActivateAndTraceViewReturn.ts`:
-  - `numeric outputs are correct` — verifies `outputs`/`activations`/`hintValues`
-    against a hand-computed known network (numeric parity unchanged).
+  - `numeric outputs are correct` — verifies
+    `outputs`/`activations`/`hintValues` against a hand-computed known network
+    (numeric parity unchanged).
   - `earlier result survives a later call (per-call buffer)` — retains the first
     call's views, runs a second activation with different input, and asserts the
     first result is unchanged. This guards against a regression to aliasing live
     WASM memory.
-- Existing trace/backprop suites continue to pass
-  (`WasmBackpropagation.ts`, `ActivateAndTraceBatch4Way.ts`,
-  `test/propagate/*`).
+- Existing trace/backprop suites continue to pass (`WasmBackpropagation.ts`,
+  `ActivateAndTraceBatch4Way.ts`, `test/propagate/*`).
 - Full `./quality.sh` gate: **7392 passed, 0 failed**.
