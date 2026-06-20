@@ -344,19 +344,19 @@ function applyWasmTraceData(
     if (squash === "MINIMUM" || squash === "MAXIMUM") {
       const winningLocalIdx = Math.round(entry.traceInfo);
       for (const c of inwardList) {
-        const cs = creature.state.connection(c.from, c.to);
+        const cs = creature.state.connectionFor(c);
         if (cs.used === undefined) cs.used = false;
       }
       if (winningLocalIdx >= 0 && winningLocalIdx < inwardList.length) {
         const winningConnection = inwardList[winningLocalIdx];
-        creature.state.connection(winningConnection.from, winningConnection.to)
+        creature.state.connectionFor(winningConnection)
           .used = true;
       }
     } else if (squash === "IF") {
       const positiveBranch = entry.traceInfo > 0.5;
       if (positiveBranch) {
         for (const c of inwardList) {
-          const cs = creature.state.connection(c.from, c.to);
+          const cs = creature.state.connectionFor(c);
           switch (c.type) {
             case "condition":
             case "negative":
@@ -369,7 +369,7 @@ function applyWasmTraceData(
       } else {
         for (const c of inwardList) {
           if (c.type === "negative") {
-            creature.state.connection(c.from, c.to).used = true;
+            creature.state.connectionFor(c).used = true;
           }
         }
       }
@@ -388,7 +388,7 @@ function applyWasmTraceData(
 
     const inwardList = creature.inwardConnections(i);
     for (const c of inwardList) {
-      const cs = creature.state.connection(c.from, c.to);
+      const cs = creature.state.connectionFor(c);
       cs.used = true;
     }
   }

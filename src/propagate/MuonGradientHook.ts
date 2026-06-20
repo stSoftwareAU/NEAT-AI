@@ -96,7 +96,7 @@ export function applyMuonGradientOrthogonalisation(
         let normSq = 0;
         for (let c = 0; c < cols; c++) {
           const synapse = inward[c];
-          const cs = state.connection(synapse.from, synapse.to);
+          const cs = state.connectionFor(synapse); // Issue #3089: cached state lookup
           if (cs.batchAverageWeight === undefined) continue;
           const delta = cs.batchAverageWeight - synapse.weight;
           if (!Number.isFinite(delta)) continue;
@@ -137,7 +137,7 @@ export function applyMuonGradientOrthogonalisation(
         for (let c = 0; c < cols; c++) {
           if (written[r * cols + c] === 0) continue;
           const synapse = inward[c];
-          const cs = state.connection(synapse.from, synapse.to);
+          const cs = state.connectionFor(synapse); // Issue #3089: cached state lookup
           const newDelta = data[r * cols + c];
           if (!Number.isFinite(newDelta)) continue;
           cs.batchAverageWeight = synapse.weight + newDelta;

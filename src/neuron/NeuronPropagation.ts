@@ -54,7 +54,7 @@ export function propagateUpdate(
   let minSynapseCount = Infinity;
   for (let i = 0; i < toList.length; i++) {
     const c = toList[i];
-    const cs = state.connection(c.from, c.to);
+    const cs = state.connectionFor(c); // Issue #3089: cached state lookup
     currentWeights.push(c.weight);
     candidateWeights.push(calculateWeight(cs, c, config));
     if (coordinationEnabled) {
@@ -352,7 +352,7 @@ export function propagate(
           updateNeeded &&
           Math.abs(improvedFromActivation) > config.plankConstant
         ) {
-          const cs = state.connection(from, to);
+          const cs = state.connectionFor(c); // Issue #3089: cached state lookup
           accumulateWeight(
             c.weight,
             cs,

@@ -376,7 +376,7 @@ export function wasmTopologicalBackprop(
     const countDelta = result[sbase];
     if (countDelta > 0) {
       const syn = allSynapses[i];
-      const cs = state.connection(syn.from, syn.to);
+      const cs = state.connectionFor(syn); // Issue #3089: cached state lookup
       cs.count += countDelta;
       cs.totalPositiveActivation += result[sbase + 1];
       cs.totalNegativeActivation += result[sbase + 2];

@@ -119,6 +119,78 @@ Deno.test("DistanceCache - LRU eviction when exceeding max size", () => {
   clearDistanceCache();
 });
 
+Deno.test("DistanceCache - a hit refreshes recency so the unaccessed entry is evicted", () => {
+  clearDistanceCache();
+  setDistanceCacheMaxSize(3);
+
+  // Insertion order (oldest first): a-b, c-d, e-f
+  setCachedDistance("a", "b", 0.1);
+  setCachedDistance("c", "d", 0.2);
+  setCachedDistance("e", "f", 0.3);
+
+  // Refresh the oldest entry via a hit; it should become most-recently-used.
+  assertEquals(getCachedDistance("a", "b"), 0.1);
+
+  // Inserting a fourth entry must evict the now-oldest unaccessed entry (c-d).
+  setCachedDistance("g", "h", 0.4);
+  assertEquals(getDistanceCacheSize(), 3);
+
+  assertEquals(getCachedDistance("c", "d"), undefined); // evicted
+  assertEquals(getCachedDistance("a", "b"), 0.1); // refreshed, retained
+  assertEquals(getCachedDistance("e", "f"), 0.3); // retained
+  assertEquals(getCachedDistance("g", "h"), 0.4); // newest, retained
+
+  setDistanceCacheMaxSize(10_000);
+  clearDistanceCache();
+});
+
+Deno.test("DistanceCache - eviction strictly bounds the cache at maxSize", () => {
+  clearDistanceCache();
+  setDistanceCacheMaxSize(5);
+
+  // Insert far more distinct entries than the cache can hold.
+  for (let i = 0; i < 100; i++) {
+    setCachedDistance(`bound-a-${i}`, `bound-b-${i}`, i * 0.01);
+  }
+
+  // Size never exceeds maxSize, and exactly the last 5 inserts survive.
+  assertEquals(getDistanceCacheSize(), 5);
+  const stats = getDistanceCacheStats();
+  assertEquals(stats.evictions, 95);
+
+  for (let i = 0; i < 95; i++) {
+    assertEquals(getCachedDistance(`bound-a-${i}`, `bound-b-${i}`), undefined);
+  }
+  for (let i = 95; i < 100; i++) {
+    assertEquals(getCachedDistance(`bound-a-${i}`, `bound-b-${i}`), i * 0.01);
+  }
+
+  setDistanceCacheMaxSize(10_000);
+  clearDistanceCache();
+});
+
+Deno.test("DistanceCache - shrinking maxSize evicts oldest entries immediately", () => {
+  clearDistanceCache();
+  setDistanceCacheMaxSize(10);
+
+  for (let i = 0; i < 10; i++) {
+    setCachedDistance(`shrink-a-${i}`, `shrink-b-${i}`, i);
+  }
+  assertEquals(getDistanceCacheSize(), 10);
+
+  // Shrinking should drop the oldest entries down to the new bound.
+  setDistanceCacheMaxSize(3);
+  assertEquals(getDistanceCacheSize(), 3);
+
+  // The three most-recently inserted entries remain.
+  for (let i = 7; i < 10; i++) {
+    assertEquals(getCachedDistance(`shrink-a-${i}`, `shrink-b-${i}`), i);
+  }
+
+  setDistanceCacheMaxSize(10_000);
+  clearDistanceCache();
+});
+
 Deno.test("DistanceCache - max size is observable via stats", () => {
   clearDistanceCache();
   setDistanceCacheMaxSize(42);

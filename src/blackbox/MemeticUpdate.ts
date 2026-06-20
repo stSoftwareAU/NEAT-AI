@@ -15,7 +15,31 @@ export function memeticUpdate(
     return undefined;
   }
 
-  const memetic: MemeticInterface = JSON.parse(JSON.stringify(parent.memetic));
+  // Issue #3091: avoid a full JSON deep-clone of the entire memetic graph.
+  // memeticUpdate runs per-offspring during breeding (O(children ×
+  // generations)) yet only appends the handful of changed bias/weight entries.
+  // Instead of serialising/parsing the whole graph we shallow-copy the
+  // top-level object — carrying `generation`, `score` and the never-touched
+  // `ancestry` subtree by reference — and clone only the small containers we
+  // append to. `biases` is shallow-copied (values are primitives). `weights`
+  // uses copy-on-write: each per-`fromId` array is reused from the parent by
+  // reference until the first time we mutate that key, at which point we copy
+  // just that single array. The result never aliases `parent.memetic`'s arrays
+  // for any key it mutates.
+  const parentMemetic = parent.memetic;
+  const memetic: MemeticInterface = {
+    ...parentMemetic,
+    biases: parentMemetic.biases
+      ? { ...parentMemetic.biases }
+      : parentMemetic.biases,
+    weights: parentMemetic.weights
+      ? { ...parentMemetic.weights }
+      : parentMemetic.weights,
+  };
+
+  // Tracks `fromId` weight arrays already copied for this call so the
+  // copy-on-write clone happens at most once per key.
+  const copiedWeightKeys = new Set<number>();
 
   const squashMap = new Map<number, string>();
   const biasMap = new Map<number, number>();
@@ -93,10 +117,17 @@ export function memeticUpdate(
       if (fromWeights === undefined) {
         fromWeights = [];
         memetic.weights[fromId] = fromWeights;
+        copiedWeightKeys.add(fromId);
+      } else if (!copiedWeightKeys.has(fromId)) {
+        // Copy-on-write: this array is still the parent's. Clone it (and its
+        // entries) before mutating so we never alias `parent.memetic`.
+        fromWeights = fromWeights.map((e) => ({ ...e }));
+        memetic.weights[fromId] = fromWeights;
+        copiedWeightKeys.add(fromId);
       }
       const toWeight = fromWeights.find((w) => w.toId === toId);
       if (toWeight === undefined) {
-        memetic.weights[fromId].push({
+        fromWeights.push({
           toId,
           weight: weight,
         });

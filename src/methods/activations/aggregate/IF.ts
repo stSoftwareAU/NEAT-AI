@@ -6,7 +6,9 @@ import { findActivationFunction } from "@optimize/FunctionCache.ts";
 import type { InlineActivationInterface } from "@optimize/InlineActivationInterface.ts";
 import type { MakeActivationFunctionInterface } from "@optimize/MakeActivationFunctionInterface.ts";
 import { makeSynapsesValue } from "@optimize/makeSynapsesValue.ts";
+import type { Synapse } from "@architecture/Synapse.ts";
 import { ActivationRange } from "@propagate/ActivationRange.ts";
+import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
 import {
   type BackPropagationConfig,
   limitValue,
@@ -24,6 +26,15 @@ import type { ApplyLearningsInterface } from "@methods/activations/ApplyLearning
 import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+
+/**
+ * Issue #3087: Stack-based pool of reusable eligible-connection scratch arrays
+ * for `IF.record`, replacing a per-call `inward.filter(...)` allocation. The
+ * array is filled by an in-place scan, consumed synchronously by
+ * `buildRecordElasticLinks`, and returned to the pool before any recursive
+ * `record(...)` call — so a simple stack is sufficient and reentrancy-safe.
+ */
+const eligibleScratchPool: Synapse[][] = [];
 
 export class IF
   implements
@@ -276,8 +287,9 @@ export class IF
 
     if (condition > 0) {
       for (let i = inward.length; i--;) {
-        const { from, to, type } = inward[i];
-        const cs = state.connection(from, to);
+        const c = inward[i];
+        const { type } = c;
+        const cs = state.connectionFor(c); // Issue #3089: cached state lookup
         switch (type) {
           case "condition":
           case "negative":
@@ -289,10 +301,10 @@ export class IF
       }
     } else {
       for (let i = inward.length; i--;) {
-        const { from, to, type } = inward[i];
+        const c = inward[i];
 
-        if (type === "negative") {
-          state.connection(from, to).used = true;
+        if (c.type === "negative") {
+          state.connectionFor(c).used = true; // Issue #3089: cached state lookup
         }
       }
     }
@@ -341,7 +353,7 @@ export class IF
     const state = neuron.creature.state;
     for (let i = inward.length; i--;) {
       const c = inward[i];
-      const cs = state.connection(c.from, c.to);
+      const cs = state.connectionFor(c); // Issue #3089: cached state lookup
       switch (c.type) {
         case "condition":
           break;
@@ -426,10 +438,26 @@ export class IF
     let improvedValue = currentBias;
 
     const listLength = inward.length;
-    const indices = Int32Array.from({ length: listLength }, (_, i) => i);
+
+    // Issue #3087: Acquire pooled scratch buffers instead of allocating a
+    // fresh `indices` (previously via the slow `Int32Array.from({length}, cb)`
+    // form) and `errorShares` typed array on every call. The pool is the same
+    // stack-based one used by the regular backprop path, so recursive
+    // `fromNeuron.propagate(...)` calls below each get their own buffer set.
+    let backpropBuffers = state.backpropBuffers;
+    if (backpropBuffers === undefined) {
+      backpropBuffers = new BackpropBuffers();
+      state.backpropBuffers = backpropBuffers;
+    }
+    const buf = backpropBuffers.acquire(listLength);
+    const indices = buf.indices;
+    for (let i = 0; i < listLength; i++) {
+      indices[i] = i;
+    }
 
     if (!config.disableRandomSamples) {
-      CreatureUtil.shuffle(indices);
+      // Shuffle only the used `0..listLength-1` slice of the pooled buffer.
+      CreatureUtil.shuffle(indices, listLength);
     }
 
     // Issue #1874: Compute activation-magnitude-weighted error shares
@@ -437,7 +465,10 @@ export class IF
     // magnitudes absorb proportionally more error, consistent with the
     // elastic distribution used by standard neurons.
     const eligibleCount = condition > 0 ? positiveCount : negativeCount;
-    const errorShares = new Float64Array(listLength);
+    // Issue #3087: Reuse the pooled `errorShares` slice. Only eligible
+    // connections are written below; ineligible entries are never read because
+    // the consuming loops re-apply the same eligibility checks before use.
+    const errorShares = buf.errorShares;
     let totalMagnitude = 0;
 
     for (let i = listLength; i--;) {
@@ -486,7 +517,7 @@ export class IF
       const fromNeuron = neuron.creature.neurons[c.from];
       const fromActivation = fromNeuron.adjustedActivation(config);
 
-      const cs = state.connection(c.from, c.to);
+      const cs = state.connectionFor(c); // Issue #3089: cached state lookup
 
       const fromWeight = adjustedWeight(state, c, config);
       const fromValue = fromWeight * fromActivation;
@@ -529,6 +560,10 @@ export class IF
 
       improvedValue += improvedAdjustedFromValue;
     }
+
+    // Issue #3087: Return the pooled scratch buffers for reuse. All recursive
+    // `fromNeuron.propagate(...)` calls have completed by this point.
+    backpropBuffers.release(buf);
 
     accumulateBias(
       ns,
@@ -583,15 +618,23 @@ export class IF
       error = targetValue - currentValue;
     }
 
-    const eligible = inward.filter((c) => {
-      if (c.from === c.to) return false;
-      if (c.type === "condition") return false;
-      if (c.type === "positive" && condition <= 0) return false;
-      if (c.type === "negative" && condition > 0) return false;
-      return true;
-    });
+    // Issue #3087: In-place index scan into a pooled scratch array instead of
+    // allocating a fresh array via `inward.filter(...)` on every call.
+    const eligible = eligibleScratchPool.pop() ?? [];
+    eligible.length = 0;
+    for (let i = 0; i < inward.length; i++) {
+      const c = inward[i];
+      if (c.from === c.to) continue;
+      if (c.type === "condition") continue;
+      if (c.type === "positive" && condition <= 0) continue;
+      if (c.type === "negative" && condition > 0) continue;
+      eligible.push(c);
+    }
 
-    if (eligible.length === 0) return;
+    if (eligible.length === 0) {
+      eligibleScratchPool.push(eligible);
+      return;
+    }
 
     const provisionalErrorPerLink = error / eligible.length;
     const links = buildRecordElasticLinks(
@@ -600,6 +643,10 @@ export class IF
       discoverMap,
       provisionalErrorPerLink,
     );
+    // `links` now holds the synapse references; release the scratch array
+    // before the recursive record(...) calls below reuse the pool.
+    eligible.length = 0;
+    eligibleScratchPool.push(eligible);
     const { links: chosenLinks, shares } = distributeRecordError(error, links, {
       plankConstant: 1e-12,
       allowEqualFallback: true,
