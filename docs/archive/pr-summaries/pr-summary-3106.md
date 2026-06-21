@@ -1,67 +1,57 @@
 ## Summary
 
-Removed the dead `MutationStabilityTracker` module and its orphaned behavioural
-test. The module was implemented for Issue #1307 ("Reduce brittleness: adaptive
-mutation rate based on validation stability") but was never wired into the
-evolution pipeline. Issue #1307 is **CLOSED / COMPLETED**, and verification
-confirmed the code is genuinely dead rather than pending integration. Closes
-#3106.
+Removed the dead-code module `src/NEAT/MutationStabilityTracker.ts` (384
+lines) and its orphaned behavioural test
+`test/NEAT/MutationStabilityTrackerBehavioural.ts`. Closes #3106.
 
-Deleted:
+The module exported four public symbols — the `MutationStabilityTracker`
+class, the `MutationOutcome` enum, and the `StabilityConfig` and
+`StabilityMetrics` interfaces. It was added for Issue #1307 ("Reduce
+brittleness: adaptive mutation rate based on validation stability") but was
+**never wired into the evolution pipeline**:
 
-- `src/NEAT/MutationStabilityTracker.ts` — the `MutationStabilityTracker` class,
-  the `MutationOutcome` enum, and the `StabilityConfig` / `StabilityMetrics`
-  interfaces.
-- `test/NEAT/MutationStabilityTrackerBehavioural.ts` — the sole consumer; it
-  imported only the deleted module and would fail to compile otherwise.
+- Not reachable from the `mod.ts` entry graph.
+- Not re-exported from any barrel (there is no `src/NEAT/mod.ts`).
+- No production `.ts` file under `src/`, `scripts/`, or `bench/` imports it.
+- No dynamic / string-keyed reference to any of the four symbols exists.
+- Its **only** importer was its own behavioural test, which kept otherwise
+  dead code alive rather than guarding a real call site.
 
-### Verification before deletion
-
-- **Not in the public API** — `mod.ts` does not export or re-export the module
-  (no `src/NEAT/mod.ts` barrel exists).
-- **No production importer** — a repo-wide search (`*.ts`) found references to
-  `MutationStabilityTracker`, `MutationOutcome`, `StabilityConfig`, and
-  `StabilityMetrics` only inside the module itself and its behavioural test.
-- **No dynamic/string reference** — searched `*.json`, `*.jsonc`, `*.md`,
-  `*.sh`; the only hits were in an archived research snapshot
-  (`docs/archive/research/deepseek-r1-applicability.md`), a point-in-time
-  document left untouched (out of scope).
-- **Feature genuinely abandoned, not pending** — Issue #1307 is closed as
-  completed; no other adaptive-mutation tracker (`AdaptiveFineTuneTracker`,
-  `SquashEffectivenessTracker`, `NeatEvolution`) imports or uses this module.
+Issue #1307 is **closed** (5 Feb 2026), so the adaptive-mutation-rate work
+is complete and this unintegrated module is genuinely dead, not pending
+integration. The two remaining mentions of the symbol live in an archived
+research snapshot (`docs/archive/research/deepseek-r1-applicability.md`) —
+historical prose, not code — and were intentionally left untouched to
+preserve that snapshot.
 
 ```mermaid
 flowchart LR
-    Entry[mod.ts entry graph] -. not reachable .-> Mod[MutationStabilityTracker.ts]
-    Mod --> Test[MutationStabilityTrackerBehavioural.ts]
-    Test -. only consumer .-> Mod
-    subgraph Deleted
-      Mod
-      Test
-    end
+    mod[mod.ts entry graph] -. no import .-> M
+    barrel[src/NEAT barrel] -. none exists .-> M
+    test[Behavioural test] -- only importer --> M[MutationStabilityTracker.ts]
+    M -.->|deleted| X[(removed)]
+    test -.->|deleted| X
 ```
 
 ## Evidence
 
-Backend/library change only — no web interface to screenshot.
+Backend/library change with no web interface to screenshot.
 
-- `./quality.sh` passes lint, format, and type-check; **7396 tests passed** with
-  the module and its test removed.
-- The one failure observed in the full run —
-  `test/ErrorGuidedStructuralEvolution/DiscoveryTimeout.ts` → "Batch size 128
-  saves more batches than 512 on timeout" — is a **pre-existing, load-dependent
-  flake** unrelated to this change. It has zero references to the removed
-  module, and the same untouched test alternates pass/fail across runs on both
-  the base tree and this branch (confirmed: passed on base, then
-  failed-then-passed on consecutive isolated runs of this branch). It asserts
-  that a timeout fires partway through recording 5000 batches, which depends on
-  machine load.
+- `deno check mod.ts` → exit 0 (entry graph unaffected).
+- `deno check test/**/*.ts` → exit 0 (no dangling imports left by removing
+  the test).
+- `./quality.sh < /dev/null` → exit 0: **7397 passed, 0 failed, 4 ignored**
+  (lint, format, type-check, WASM sync, and full test suite).
 
 ## Test Plan
 
-- No new tests — this is a dead-code removal. Correctness is verified by the
-  remaining suite continuing to compile and pass after the module and its sole
-  test are deleted.
-- Removed `test/NEAT/MutationStabilityTrackerBehavioural.ts` (orphaned;
-  documented here as a deliberate deletion required by the module removal, per
-  the TDD/test policy — it would not compile without the deleted module).
+This is a pure dead-code deletion — no new behaviour to test. Verification
+is that the codebase still compiles and the full suite still passes after
+removing the module and its sole consumer:
+
+- Removed `test/NEAT/MutationStabilityTrackerBehavioural.ts` (the only test
+  that referenced the deleted module; it would otherwise fail to compile).
+  This deliberate deletion is required by the module removal, per the test
+  policy.
+- Confirmed no other test or source file imports the removed symbols.
+- Full `./quality.sh` run passes cleanly (7397 tests).
