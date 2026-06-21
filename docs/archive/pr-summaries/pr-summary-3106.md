@@ -4,7 +4,8 @@ Removed the dead `MutationStabilityTracker` module and its orphaned behavioural
 test. The module was implemented for Issue #1307 ("Reduce brittleness: adaptive
 mutation rate based on validation stability") but was never wired into the
 evolution pipeline. Issue #1307 is **CLOSED / COMPLETED**, and verification
-confirmed the code is genuinely dead rather than pending integration. Closes #3106.
+confirmed the code is genuinely dead rather than pending integration. Closes
+#3106.
 
 Deleted:
 
@@ -49,17 +50,18 @@ Backend/library change only — no web interface to screenshot.
 - The one failure observed in the full run —
   `test/ErrorGuidedStructuralEvolution/DiscoveryTimeout.ts` → "Batch size 128
   saves more batches than 512 on timeout" — is a **pre-existing, load-dependent
-  flake** unrelated to this change. It has zero references to the removed module,
-  and the same untouched test alternates pass/fail across runs on both the base
-  tree and this branch (confirmed: passed on base, then failed-then-passed on
-  consecutive isolated runs of this branch). It asserts that a timeout fires
-  partway through recording 5000 batches, which depends on machine load.
+  flake** unrelated to this change. It has zero references to the removed
+  module, and the same untouched test alternates pass/fail across runs on both
+  the base tree and this branch (confirmed: passed on base, then
+  failed-then-passed on consecutive isolated runs of this branch). It asserts
+  that a timeout fires partway through recording 5000 batches, which depends on
+  machine load.
 
 ## Test Plan
 
 - No new tests — this is a dead-code removal. Correctness is verified by the
   remaining suite continuing to compile and pass after the module and its sole
   test are deleted.
-- Removed `test/NEAT/MutationStabilityTrackerBehavioural.ts` (orphaned; documented
-  here as a deliberate deletion required by the module removal, per the TDD/test
-  policy — it would not compile without the deleted module).
+- Removed `test/NEAT/MutationStabilityTrackerBehavioural.ts` (orphaned;
+  documented here as a deliberate deletion required by the module removal, per
+  the TDD/test policy — it would not compile without the deleted module).
