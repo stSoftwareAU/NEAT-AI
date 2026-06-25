@@ -1,3 +1,12 @@
+/**
+ * @module
+ *
+ * Builds offspring creatures from two parents for the breeding pipeline —
+ * crossover of topology, synapses and hyperparameters. Neurons are aligned
+ * between parents by matching stable UUIDs (never array position), so the same
+ * genome breeds consistently across machines; child neurons keep their parent
+ * UUID and any newly created neurons get a fresh one.
+ */
 import { assert } from "@std/assert";
 import { addTags } from "@stsoftware/tags/mod";
 import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";

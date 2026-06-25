@@ -1,3 +1,12 @@
+/**
+ * @module
+ *
+ * Structural and topological validation for a creature. {@link creatureValidate}
+ * checks the invariants a healthy topology must hold — no self or backward
+ * connections, no duplicate synapses, every hidden neuron wired in and out,
+ * finite biases — and raises a {@link TopologyError} or {@link ValidationError}
+ * when a mutation, breeding or discovery step produces an invalid creature.
+ */
 import { assert } from "@std/assert";
 import type { Creature } from "@creature";
 import { TopologyError } from "@errors/TopologyError.ts";

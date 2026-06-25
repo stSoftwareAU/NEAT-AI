@@ -1,3 +1,12 @@
+/**
+ * @module
+ *
+ * Per-activation runtime state for a creature's neurons and synapses — the
+ * scratch buffers backpropagation reads and writes. {@link NeuronState} holds
+ * one neuron's running activation, bias and error totals; {@link CreatureState}
+ * owns the dense collections of those buffers for a whole topology. This state
+ * is ephemeral working memory, not part of the persisted UUID-only wire format.
+ */
 import { assert } from "@std/assert";
 import type { Creature } from "@creature";
 import type { Synapse } from "@architecture/Synapse.ts";

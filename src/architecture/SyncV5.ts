@@ -1,3 +1,11 @@
+/**
+ * @module
+ *
+ * Deterministic RFC 4122 version-5 UUID generation. {@link generate} hashes a
+ * namespace UUID together with a byte payload (SHA-1) to derive a stable,
+ * reproducible UUID — the same namespace and data always yield the same UUID,
+ * which lets neuron identities be derived deterministically rather than randomly.
+ */
 import { concat } from "@std/bytes";
 import { crypto as stdCrypto } from "@std/crypto";
 
