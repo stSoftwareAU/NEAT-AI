@@ -1,3 +1,12 @@
+/**
+ * @module
+ *
+ * Type definitions for synapses (connections). Distinguishes the internal,
+ * index-based shape ({@link SynapseInternal}, used during in-memory creature
+ * operations) from the export shape that crosses process boundaries. These
+ * interfaces fix the shared contract for synapse serialisation and traversal;
+ * they contain no logic.
+ */
 import type { TagInterface } from "@stsoftware/tags/mod";
 import type { SynapseState } from "@propagate/SynapseState.ts";
 

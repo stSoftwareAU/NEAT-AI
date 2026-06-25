@@ -1,3 +1,11 @@
+/**
+ * @module
+ *
+ * Backpropagation shortcut for unchanged neurons. {@link noChangePropagate}
+ * walks a neuron's inward connections and propagates updates only where an
+ * upstream activation actually changed, skipping neurons flagged `noChange` so
+ * the gradient pass avoids redundant work on a stable subgraph.
+ */
 import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
 import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
 import type { Neuron } from "@architecture/Neuron.ts";

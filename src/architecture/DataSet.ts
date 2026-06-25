@@ -1,3 +1,11 @@
+/**
+ * @module
+ *
+ * Training-dataset serialisation. {@link makeDataDir} writes an array of
+ * input/output {@link DataRecordInterface} records to partitioned binary files
+ * in a temporary directory, the on-disk format the trainer streams during
+ * evolution so a large dataset need not be held in memory at once.
+ */
 import { ValidationError } from "@errors/ValidationError.ts";
 
 export interface DataRecordInterface {

@@ -1,3 +1,15 @@
+/**
+ * Behaviour-preserving simplification passes for an exported creature.
+ *
+ * `simplify()` folds constants, prunes redundant synapses (e.g. collapsing
+ * COMPLEMENT-of-COMPLEMENT to IDENTITY), removes neurons that no longer affect
+ * the output and normalises computational neuron order — all without changing
+ * what the creature computes. Helpers `removeKnownSign` and `removeNeuron`
+ * support those passes.
+ *
+ * @module
+ */
+
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { type CreatureExport, CreatureUtil } from "../../mod.ts";
 import { normaliseComputationalNeuronOrderInExport } from "@architecture/NormaliseComputationalNeuronOrder.ts";

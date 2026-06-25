@@ -1,3 +1,14 @@
+/**
+ * Re-runs fine-tuning (memetic evolution) on creatures whose live score has
+ * drifted from their recorded memetic score.
+ *
+ * `retry` scans a population for creatures whose current score differs from the
+ * score stored in their memetic record, picks one (weighted towards the largest
+ * improvement), and fine-tunes it against its restored source — either pushing
+ * forward (`retry`) or backtracking when the source scored higher.
+ *
+ * @module
+ */
 import { assert } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";

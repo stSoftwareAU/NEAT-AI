@@ -656,10 +656,14 @@ export function createCompatibleFatherFromCreatures(
     fatherIndexToId[i] = fatherNeurons[i].id;
   }
 
-  // Issue #2050: Build ID-to-UUID map for mother neurons
+  // Issue #2050: Build ID-to-UUID map for mother neurons.
+  // Input neurons use id = inputIndex (see NeuronId.ts), so map id `i`
+  // directly rather than indexing motherNeurons positionally — a bred or
+  // immigrant genome may carry fewer/reordered neuron entries than its
+  // declared input count, which made `motherNeurons[i]` undefined.
   const motherIdToUuid = new Map<number, string>();
   for (let i = 0; i < mother.input; i++) {
-    motherIdToUuid.set(motherNeurons[i].id, `input-${i}`);
+    motherIdToUuid.set(i, `input-${i}`);
   }
   for (const neuron of motherNeurons) {
     if (neuron.type !== "input") {
@@ -671,7 +675,7 @@ export function createCompatibleFatherFromCreatures(
   // Issue #2050: Build a combined ID → UUID map for synapse uuid resolution
   const combinedIdToUuid = new Map<number, string>();
   for (let i = 0; i < father.input; i++) {
-    combinedIdToUuid.set(fatherNeurons[i].id, `input-${i}`);
+    combinedIdToUuid.set(i, `input-${i}`);
   }
 
   const newNeurons: NeuronExport[] = [];

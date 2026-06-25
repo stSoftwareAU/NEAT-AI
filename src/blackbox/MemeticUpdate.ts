@@ -1,3 +1,16 @@
+/**
+ * Propagates a parent's memetic (local fine-tuning) record onto a child during
+ * breeding.
+ *
+ * `memeticUpdate` returns a new memetic record for a child whose topology
+ * matches its parent, copying the parent's bias and weight deltas and appending
+ * any changes the child introduced. It uses a copy-on-write strategy (Issue
+ * #3091) to avoid a full deep clone on the per-offspring hot path, and returns
+ * `undefined` when the structures diverge so the caller falls back to
+ * `discover`.
+ *
+ * @module
+ */
 import type { Creature } from "../../mod.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
 
