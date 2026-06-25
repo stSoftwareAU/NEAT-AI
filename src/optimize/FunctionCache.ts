@@ -1,3 +1,14 @@
+/**
+ * Single-entry cache for compiled neuron activation functions.
+ *
+ * `findActivationFunction` keys a generated activation-function body by a
+ * deterministic UUIDv5 (over the body plus an optional suffix) and returns the
+ * previously compiled function on a hit, evicting the stale entry on a miss so
+ * the caller can recompile. Avoids recompiling identical inlined activations.
+ *
+ * @module
+ */
+
 import type { ActivationFunction } from "@optimize/MakeActivationFunctionInterface.ts";
 
 import { generate as generateV5Sync } from "@architecture/SyncV5.ts";
