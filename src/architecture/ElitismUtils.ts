@@ -1,3 +1,11 @@
+/**
+ * @module
+ *
+ * Elitism helpers for the evolutionary loop. {@link makeElitists} selects the
+ * fittest creatures of a population to carry forward unchanged into the next
+ * generation, guarding the best-known solutions from being lost to mutation or
+ * breeding, and reports the population's average score alongside the elites.
+ */
 import { assert } from "@std/assert";
 import { blue, bold, green, red, white, yellow } from "@std/fmt/colors";
 import { addTag, getTag } from "@stsoftware/tags/mod";

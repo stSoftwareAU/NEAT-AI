@@ -1,3 +1,12 @@
+/**
+ * @module
+ *
+ * Type definitions for neurons. Distinguishes the export shape
+ * ({@link NeuronExport}, the UUID-only wire format that crosses process and
+ * machine boundaries) from the internal shape carrying the runtime integer id.
+ * These interfaces fix the contract every neuron serialisation and breeding
+ * path shares; they contain no logic.
+ */
 import type { TagsInterface } from "@stsoftware/tags/mod";
 import type { NeuronStateInterface } from "@architecture/CreatureState.ts";
 
