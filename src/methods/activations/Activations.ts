@@ -1,3 +1,13 @@
+/**
+ * @module
+ *
+ * Central registry of every activation function: registers each implementation
+ * under its canonical name plus aliases, builds the mutation-weighted random
+ * pool, and resolves a name to its `AbstractActivationInterface` (throwing
+ * `ActivationError` for unknown names). The single lookup point used across
+ * mutation, breeding, and serialisation.
+ */
+
 import { assert } from "@std/assert";
 import { ActivationError } from "@errors/ActivationError.ts";
 import { HYPOT } from "@deprecated/HYPOT.ts";
