@@ -1,3 +1,14 @@
+/**
+ * Builds the per-generation fine-tune (memetic evolution) population.
+ *
+ * `FindTunePopulation.make` orchestrates the fine-tune step across a whole
+ * generation: it pairs the fittest creature with suitable lower-scoring
+ * partners (the previous fittest, a restored source, and same-species
+ * neighbours), drives each pairing through `fineTuneImprovement`, dedupes by
+ * UUID, and adds the resulting candidates to the genus for selection.
+ *
+ * @module
+ */
 import { assert } from "@std/assert";
 import { type Creature, CreatureUtil } from "../../mod.ts";
 import { ValidationError } from "@errors/ValidationError.ts";

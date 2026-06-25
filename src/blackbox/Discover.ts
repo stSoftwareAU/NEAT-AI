@@ -1,3 +1,14 @@
+/**
+ * Memetic-state discovery for the fine-tune (memetic evolution) path.
+ *
+ * `discover` compares a scored parent with an as-yet-unscored child of
+ * identical topology and, when their structure matches, reconstructs the
+ * child's memetic record — the per-neuron bias and per-synapse weight deltas
+ * inherited from the parent — so locally fine-tuned state is carried across
+ * during breeding instead of being lost.
+ *
+ * @module
+ */
 import { assert } from "@std/assert";
 import type { Creature } from "../../mod.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";

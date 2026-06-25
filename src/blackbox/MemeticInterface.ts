@@ -1,3 +1,15 @@
+/**
+ * Type definitions for the memetic (local fine-tuning) record carried on a
+ * creature.
+ *
+ * A `MemeticInterface` captures the per-neuron bias and per-synapse weight
+ * deltas produced by fine-tuning, the generation and score they were recorded
+ * at, and an optional bounded `ancestry` of earlier snapshots used for
+ * trajectory analysis. These shapes are shared across the `@blackbox/`
+ * fine-tune modules.
+ *
+ * @module
+ */
 export interface MemeticWeightInterface {
   toId: number;
   weight: number;

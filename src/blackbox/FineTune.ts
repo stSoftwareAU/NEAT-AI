@@ -1,3 +1,15 @@
+/**
+ * Quantum-step fine-tuning (memetic evolution) of the fittest creature.
+ *
+ * This module performs the local fine-tune step: it compares the current
+ * fittest creature against a previous fittest, nudges biases and weights by an
+ * adaptive quantum step (`quantumAdjust` / `calculateEffectiveStep`), and emits
+ * a population of fine-tuned candidates (`fineTuneImprovement`) for selection.
+ * Adjustments are biased by trajectory momentum and recorded in each
+ * candidate's memetic record.
+ *
+ * @module
+ */
 import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import type { CreatureExport } from "../../mod.ts";
