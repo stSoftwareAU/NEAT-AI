@@ -1,3 +1,11 @@
+/**
+ * @module
+ *
+ * Mutation operator that removes a hidden neuron from the network, operating
+ * directly on the creature's arrays with no export/import cycle. Repairs any
+ * invalid IF neurons left behind and renormalises neuron order so the
+ * creature stays computationally valid.
+ */
 import { moveConstantNeuronIntoPrefix } from "@architecture/NormaliseComputationalNeuronOrder.ts";
 import { repairInvalidIfNeuronsInCreature } from "@architecture/RepairInvalidIfNeurons.ts";
 import { removeHiddenNeuron } from "@compact/CompactUtils.ts";

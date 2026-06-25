@@ -1,3 +1,11 @@
+/**
+ * @module
+ *
+ * Mutation operator that adds a back (recurrent) connection — a synapse
+ * feeding from a later neuron to an earlier one — giving the topology memory
+ * of past activations. Standard NEAT adds only feed-forward links; NEAT-AI
+ * permits these recurrent edges unless the creature is `forwardOnly`.
+ */
 import { Synapse } from "@architecture/Synapse.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";

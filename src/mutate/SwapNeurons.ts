@@ -1,3 +1,11 @@
+/**
+ * @module
+ *
+ * Mutation operator that swaps the squash (activation) and bias of two hidden
+ * neurons, exploring the parameter space without changing the connection
+ * structure. Unlike a sub/add pair it preserves the existing topology — only
+ * the two neurons' activation behaviour is exchanged.
+ */
 import { assert } from "@std/assert";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 
