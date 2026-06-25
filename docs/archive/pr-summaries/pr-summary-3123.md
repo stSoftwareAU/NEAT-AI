@@ -12,7 +12,8 @@ Added a short leading `@module` JSDoc block to each of the five affected files,
 following [`docs/DOC_STYLE.md`](../../DOC_STYLE.md) and matching the existing
 style in `TypeGuards.ts`:
 
-- `src/methods/activations/ActivationInterface.ts` — scalar `squash(x)` contract.
+- `src/methods/activations/ActivationInterface.ts` — scalar `squash(x)`
+  contract.
 - `src/methods/activations/Activations.ts` — central activation registry.
 - `src/methods/activations/NeuronActivationInterface.ts` — whole-`Neuron`
   activation/propagation/record contract.
