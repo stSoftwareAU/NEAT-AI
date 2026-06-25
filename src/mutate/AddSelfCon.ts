@@ -1,3 +1,10 @@
+/**
+ * @module
+ *
+ * Mutation operator that adds a self-connection — a synapse from a neuron back
+ * to itself — so a single neuron can retain state across activations. Skipped
+ * when the creature is `forwardOnly`, since self-loops are recurrent.
+ */
 import { Synapse } from "@architecture/Synapse.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";

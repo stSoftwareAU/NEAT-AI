@@ -1,3 +1,10 @@
+/**
+ * @module
+ *
+ * Mutation operator that removes a self-connection, pruning the self-loops
+ * that {@link AddSelfCon} introduces. Only neurons whose self-connection can
+ * be safely removed are considered, keeping the topology valid.
+ */
 import { moveConstantNeuronIntoPrefix } from "@architecture/NormaliseComputationalNeuronOrder.ts";
 import { removeHiddenNeuron } from "@compact/CompactUtils.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";

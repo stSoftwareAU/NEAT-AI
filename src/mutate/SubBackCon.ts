@@ -1,3 +1,10 @@
+/**
+ * @module
+ *
+ * Mutation operator that removes a back (recurrent) connection, pruning the
+ * recurrent edges that {@link AddBackCon} introduces. Tidies the affected
+ * neuron order afterwards so the creature stays computationally valid.
+ */
 import { moveConstantNeuronIntoPrefix } from "@architecture/NormaliseComputationalNeuronOrder.ts";
 import { removeHiddenNeuron } from "@compact/CompactUtils.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";

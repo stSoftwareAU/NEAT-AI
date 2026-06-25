@@ -1,3 +1,11 @@
+/**
+ * @module
+ *
+ * Mutation operator that removes a feed-forward connection from the network,
+ * operating directly on the creature's arrays with no export/import cycle.
+ * Any neuron left without connections is cleaned up so the topology stays
+ * valid.
+ */
 import { moveConstantNeuronIntoPrefix } from "@architecture/NormaliseComputationalNeuronOrder.ts";
 import { removeHiddenNeuron } from "@compact/CompactUtils.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
