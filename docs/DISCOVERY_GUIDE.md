@@ -193,9 +193,15 @@ therefore persists through the export / reload boundary:
   exported creature is stamped with the Neat-level counter, kept **monotonic**
   (never lowered below an already-higher saved value, Issue #2831).
 - **Reload / resume** (`populatePopulation`): the lineage counter resumes from
-  the **highest saved `currentGeneration` tag** via `Math.max`, so the next run
-  picks up where the previous one left off instead of restarting at the seed
-  value (Issue #2908).
+  the **highest saved `currentGeneration` tag** across both the loaded seed and
+  the whole starting population (prior champions from other machines), via
+  `Math.max` — the cross-machine "always increase, take the maximum" point
+  (Issues #2908, #2945, #3138). The next run picks up at the population maximum
+  instead of restarting at a tagless seed.
+- **Gate on the loaded creature** (Issue #3138): all `currentGeneration` logic
+  is skipped when the **loaded** champion has graduated (no `warmupGenerations`
+  tag). A still-warming immigrant in `config.creatures` can never seed
+  `currentGeneration` once the loaded creature is past warm-up.
 - **Mid-run**: offspring no longer carry the warm-up tags — the Neat-level
   counter is the single source of truth during a run (Issue #2911).
 

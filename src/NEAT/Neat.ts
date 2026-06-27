@@ -813,33 +813,42 @@ export class Neat {
 
   async populatePopulation(creature: Creature) {
     this.warmupGenerations = readWarmupGenerationsFromCreature(creature);
-    // Issue #2908: seed the lineage-accumulated generation counter
-    // monotonically — fold the saved tag in via Math.max so no load path can
-    // ever lower it (consistent with the monotonic tag write in #2831).
-    // Issue #2945: also fold in the maximum currentGeneration across the whole
-    // starting population (the prior champions loaded via config.creatures),
-    // not just the primary seed. In production the primary seed is a tagless
-    // factory template, so the accumulated lineage value lives only on those
-    // population members — resuming from the seed alone restarts the counter
-    // at 0 every run and the warm-up gate never lifts. Monotonic-max keeps
-    // tagless clones contributing 0, so they can never lower the counter.
-    const populationMax = this.population.reduce(
-      (m, c) => Math.max(m, readCurrentGenerationFromCreature(c)),
-      0,
-    );
-    const seedGeneration = readCurrentGenerationFromCreature(creature);
-    this.currentGeneration = Math.max(
-      this.currentGeneration,
-      seedGeneration,
-      populationMax,
-    );
 
-    // Issue #2947: surface the resumed warm-up state exactly once at run start
-    // so a frozen/resetting counter is obvious at a glance. The `source` makes
-    // the #2945 bug self-evident: a tagless factory seed (source=population)
-    // looks identical to a fresh start (source=none) without it. No logging
-    // when warm-up is not configured — zero overhead once warm (#2903).
+    // Issue #3138: gate every currentGeneration computation on the LOADED
+    // creature's warm-up tag. When the loaded champion has graduated (no
+    // `warmupGenerations` tag), warm-up is off for the whole call, so we skip
+    // the population-max scan and the counter seeding entirely. This is the
+    // "gate on the loaded creature only" rule: a still-warming immigrant in
+    // `config.creatures` must never seed `currentGeneration` once the loaded
+    // champion has graduated. The save boundary then strips both tags so the
+    // output emerges warm-up-free.
     if (this.warmupGenerations > 0) {
+      // Issue #2908: seed the lineage-accumulated generation counter
+      // monotonically — fold the saved tag in via Math.max so no load path can
+      // ever lower it (consistent with the monotonic tag write in #2831).
+      // Issue #2945: also fold in the maximum currentGeneration across the whole
+      // starting population (the prior champions loaded via config.creatures),
+      // not just the primary seed. In production the primary seed is a tagless
+      // factory template, so the accumulated lineage value lives only on those
+      // population members — resuming from the seed alone restarts the counter
+      // at 0 every run and the warm-up gate never lifts. Taking the maximum is
+      // the cross-machine "always increase" point (Issue #3138): tagless clones
+      // contribute 0 so they can never lower the counter.
+      const populationMax = this.population.reduce(
+        (m, c) => Math.max(m, readCurrentGenerationFromCreature(c)),
+        0,
+      );
+      const seedGeneration = readCurrentGenerationFromCreature(creature);
+      this.currentGeneration = Math.max(
+        this.currentGeneration,
+        seedGeneration,
+        populationMax,
+      );
+
+      // Issue #2947: surface the resumed warm-up state exactly once at run start
+      // so a frozen/resetting counter is obvious at a glance. The `source` makes
+      // the #2945 bug self-evident: a tagless factory seed (source=population)
+      // looks identical to a fresh start (source=none) without it.
       const lockActive = isSeedWarmupStructuralLockActive(
         this.warmupGenerations,
         this.currentGeneration,
