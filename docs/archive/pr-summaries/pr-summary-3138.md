@@ -35,11 +35,11 @@ Backend/engine change — no UI to screenshot. Verified by unit tests
 The three concrete issue cases, exercised as "what" tests against
 `populatePopulation`:
 
-| Case | Setup | Expected | Result |
-| --- | --- | --- | --- |
-| Accumulate | loaded tag 10, run 50 generations | `currentGeneration == 60` | pass (already worked) |
-| Cross-machine max | machine A tag 10, machine B tag 20 | seed `currentGeneration == 20` | pass (already worked) |
-| Graduated gate | graduated seed + immigrant tag 500 | `currentGeneration == 0` | **red before fix → green after** |
+| Case              | Setup                              | Expected                       | Result                           |
+| ----------------- | ---------------------------------- | ------------------------------ | -------------------------------- |
+| Accumulate        | loaded tag 10, run 50 generations  | `currentGeneration == 60`      | pass (already worked)            |
+| Cross-machine max | machine A tag 10, machine B tag 20 | seed `currentGeneration == 20` | pass (already worked)            |
+| Graduated gate    | graduated seed + immigrant tag 500 | `currentGeneration == 0`       | **red before fix → green after** |
 
 ```mermaid
 flowchart TD
@@ -65,5 +65,5 @@ Added to `test/NEAT/NeatPopulatePopulation.ts`:
   counter (stays 0). This test was failing before the gate and passes after.
 
 Existing warm-up tests (`SeedWarmupPersistence.ts`, the rest of
-`NeatPopulatePopulation.ts`) remain green, confirming no regression to the
-#2908 / #2945 / #2909 / #2911 behaviour.
+`NeatPopulatePopulation.ts`) remain green, confirming no regression to the #2908
+/ #2945 / #2909 / #2911 behaviour.
