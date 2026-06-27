@@ -450,3 +450,124 @@ Deno.test("populatePopulation: restores warm-up tags from seed creature", async 
     await terminateWorkers(workers);
   }
 });
+
+// ─── Issue #3138: currentGeneration must always increase across machines ─────
+// The three concrete cases from the issue: accumulate (start + generations
+// run), take the cross-machine maximum at the population-max seed, and skip all
+// currentGeneration logic when the loaded creature has graduated (no warm-up
+// tag) so a still-warming immigrant can never seed the counter.
+
+Deno.test("populatePopulation: start 10 + 50 generations accumulates to 60 (Issue #3138)", async () => {
+  const dataDir = createTestDataDir(3, 2);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 5 };
+    const neat = new Neat(3, 2, options, workers);
+
+    // Loaded champion is warming and has reached generation 10.
+    const seedCreature = creatureForProblem({
+      inputs: 3,
+      outputs: 2,
+      cost: "MSE",
+      warmupGenerations: 1440,
+    });
+    addTag(seedCreature, CURRENT_GENERATION_TAG, "10");
+
+    await neat.populatePopulation(seedCreature);
+    assertEquals(neat.currentGeneration, 10, "Start generation from the tag");
+
+    // Run 50 generations exactly as evolve() does (single increment writer).
+    for (let g = 0; g < 50; g++) {
+      neat.currentGeneration++;
+    }
+
+    assertEquals(
+      neat.currentGeneration,
+      60,
+      "currentGeneration must accumulate start + generations run (10 + 50)",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("populatePopulation: machine A (10) and machine B (20) take the maximum 20 (Issue #3138)", async () => {
+  const dataDir = createTestDataDir(3, 2);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    // Two prior champions from different machines, at generations 10 and 20.
+    const machineA = new Creature(3, 2, { layers: [{ count: 3 }] });
+    addTag(machineA, CURRENT_GENERATION_TAG, "10");
+    const machineB = new Creature(3, 2, { layers: [{ count: 3 }] });
+    addTag(machineB, CURRENT_GENERATION_TAG, "20");
+
+    const options: NeatOptions = {
+      populationSize: 5,
+      creatures: [machineA.exportJSON(), machineB.exportJSON()],
+    };
+    const neat = new Neat(3, 2, options, workers);
+
+    // Tagless factory-style warming primary seed.
+    const seedCreature = creatureForProblem({
+      inputs: 3,
+      outputs: 2,
+      cost: "MSE",
+      warmupGenerations: 1440,
+    });
+
+    await neat.populatePopulation(seedCreature);
+
+    assertEquals(
+      neat.currentGeneration,
+      20,
+      "Cross-machine seed must take the maximum (max(10, 20) = 20)",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("populatePopulation: graduated seed ignores a warming immigrant's generation (Issue #3138)", async () => {
+  // Gate on the loaded creature only: when the loaded champion has graduated
+  // (no warmupGenerations tag), warm-up is off for the whole call. A still
+  // warming immigrant in config.creatures must NOT seed currentGeneration.
+  const dataDir = createTestDataDir(3, 2);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    // A still-warming immigrant carrying both warm-up tags.
+    const immigrant = creatureForProblem({
+      inputs: 3,
+      outputs: 2,
+      cost: "MSE",
+      warmupGenerations: 1440,
+    });
+    addTag(immigrant, CURRENT_GENERATION_TAG, "500");
+
+    const options: NeatOptions = {
+      populationSize: 5,
+      creatures: [immigrant.exportJSON()],
+    };
+    const neat = new Neat(3, 2, options, workers);
+
+    // Graduated loaded champion: no warmupGenerations tag at all.
+    const seedCreature = new Creature(3, 2, { layers: [{ count: 3 }] });
+
+    await neat.populatePopulation(seedCreature);
+
+    assertEquals(
+      neat.warmupGenerations,
+      0,
+      "Loaded creature has graduated — warm-up stays off",
+    );
+    assertEquals(
+      neat.currentGeneration,
+      0,
+      "A warming immigrant must not seed currentGeneration once graduated",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
