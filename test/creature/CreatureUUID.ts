@@ -136,13 +136,31 @@ Deno.test("ignoreTags", () => {
   assertEquals(uuid3, uuid1, "Alive creature should match was: " + uuid3);
 
   /**
-   * Manually update when export identity / makeUUID canonicalisation changes.
-   * Issue #2308: Updated after switching makeUUID to direct string construction
-   * (avoiding the expensive exportJSON() path).
+   * Issue #3143: Assert the durable WHAT properties instead of pinning the
+   * opaque literal `makeUUID` happened to produce. The previous magic-value
+   * assertion had to be hand-edited whenever the canonicalisation changed
+   * (see Issue #2308), so it obstructed refactoring rather than catching real
+   * regressions. The spec-level guarantees are: `makeUUID` returns a
+   * well-formed RFC-4122 v5 UUID, and that UUID is stable across an
+   * export/import reconstruction of the same canonical structure.
    */
+  const rfc4122v5 =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
   assert(
-    uuid2 === "6c65e71e-a5c6-5e46-8abb-06f991c79c63",
-    "Wrong UUID was: " + uuid2,
+    rfc4122v5.test(uuid2),
+    "makeUUID should return a well-formed RFC-4122 v5 UUID, was: " + uuid2,
+  );
+
+  // Stable across reconstruction: exportJSON() omits the top-level uuid, so
+  // makeUUID re-derives the value from the wire structure. A refactor of the
+  // canonicalisation must keep this round-trip identity intact.
+  const roundTripUUID = CreatureUtil.makeUUID(
+    Creature.fromJSON(alive.exportJSON()),
+  );
+  assertEquals(
+    roundTripUUID,
+    uuid2,
+    `UUID should be stable across reconstruction: ${roundTripUUID} vs ${uuid2}`,
   );
 });
 
