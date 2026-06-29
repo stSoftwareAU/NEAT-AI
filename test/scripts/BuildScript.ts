@@ -195,24 +195,13 @@ Deno.test({
 // the internal wording of the network download path and added no behavioural
 // signal.
 
-Deno.test({
-  name: "CORE_DEPENDENCY_POLICY documents the new artifact-based flow",
-  permissions: { read: true },
-  fn: async () => {
-    const policy = await Deno.readTextFile("docs/CORE_DEPENDENCY_POLICY.md");
-    const lower = policy.toLowerCase();
-    assert(
-      lower.includes("wasm_activation-pkg.tar.gz") ||
-        lower.includes("wasm-bundle-"),
-      "Policy must describe the per-commit Release artifact",
-    );
-    assert(
-      lower.includes("--verify-only") || lower.includes("verify-only"),
-      "Policy must describe the verify-only mode",
-    );
-    assert(
-      lower.includes("--rev") || lower.includes("rev <sha>"),
-      "Policy must describe the --rev <SHA> override",
-    );
-  },
-});
+// The "CORE_DEPENDENCY_POLICY documents the new artifact-based flow"
+// doc-prose grep was removed (issue #3142). It read
+// docs/CORE_DEPENDENCY_POLICY.md and asserted the prose contained
+// substrings like "wasm_activation-pkg.tar.gz", "--verify-only" and
+// "--rev <SHA>". That asserted on documentation wording, not behaviour: a
+// reword of the policy doc broke the build even though build.sh behaved
+// identically. The --verify-only and --rev contracts are already proven
+// behaviourally by the tests above, which run build.sh and assert on its
+// exit codes, stdout and stderr; the per-commit artifact name is a
+// documentation convention better left to the Markdown linter.
