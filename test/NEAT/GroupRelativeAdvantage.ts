@@ -14,6 +14,7 @@ import {
   DEFAULT_ADVANTAGE_EPS,
   normaliseDeltaWithCohortStd,
 } from "@neat/GroupRelativeAdvantage.ts";
+import * as advantageModule from "@neat/GroupRelativeAdvantage.ts";
 
 Deno.test("GRPO advantage: signs match expected ordering for a known cohort", () => {
   // Cohort mean = 3, so 1 and 2 are below average, 4 and 5 above.
@@ -86,6 +87,17 @@ Deno.test("GRPO advantage: default clip is ±10", () => {
   assertEquals(DEFAULT_ADVANTAGE_CLIP, 10);
   assert(DEFAULT_ADVANTAGE_EPS > 0 && DEFAULT_ADVANTAGE_EPS < 1e-3);
 });
+
+Deno.test(
+  "GRPO advantage: DEFAULT_MIN_COHORT_SIZE is not part of the module surface (Issue #3148)",
+  () => {
+    // The unused export was removed; nothing wires a min-cohort default in.
+    assert(
+      !("DEFAULT_MIN_COHORT_SIZE" in advantageModule),
+      "DEFAULT_MIN_COHORT_SIZE must not be exported — it had no consumer",
+    );
+  },
+);
 
 Deno.test("computeAdvantageStats: skips non-finite entries", () => {
   const stats = computeAdvantageStats([1, NaN, 3, Infinity, 5]);
