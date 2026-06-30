@@ -6,9 +6,10 @@
   ],
   "ignoreRegExpList": [
     "/\\b[A-Z][A-Z0-9]*\\b/g",
-    "/\\w*[ᵢᵤₐₙ₀₁₂₃₄₅₆₇₈₉]\\w*/g"
+    "/\\w*[ᵢᵤₐₙₘₑₓ₀₁₂₃₄₅₆₇₈₉]\\w*/g"
   ],
   "words": [
+    "feedface",
     "Accum",
     "Aggr",
     "Autodiff",
