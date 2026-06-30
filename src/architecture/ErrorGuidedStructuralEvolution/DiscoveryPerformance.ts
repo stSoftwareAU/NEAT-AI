@@ -18,8 +18,11 @@ export const shouldLogDiscovery = (config: NeatConfig): boolean =>
 
 /**
  * Clamps non-finite values to zero for safe formatting.
+ *
+ * Module-private helper (Issue #3149): only consumed internally by
+ * `formatDiscoveryPerformanceSummary`; nothing outside this file imports it.
  */
-export function msOrZero(ms: number): number {
+function msOrZero(ms: number): number {
   return Number.isFinite(ms) ? ms : 0;
 }
 

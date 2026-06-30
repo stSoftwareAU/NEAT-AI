@@ -7,12 +7,6 @@
 export const DEFAULT_RUST_FLUSH_RECORDS = 4_096;
 
 /**
- * Maximum number of records to stream to the Rust recorder in a single call.
- * This keeps JSON payloads bounded during discovery flushes to avoid OOMs.
- */
-export const DEFAULT_RUST_STREAM_RECORDS = 512;
-
-/**
  * Default estimated payload size threshold (in bytes) before flushing a Rust
  * discovery chunk.
  *

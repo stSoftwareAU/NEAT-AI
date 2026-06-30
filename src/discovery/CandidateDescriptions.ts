@@ -80,8 +80,11 @@ export function describeSingleCoordinatedStructuralOperation(
 /**
  * Select an appropriate emoji for the combination based on change types.
  * Each combination category has a unique emoji to distinguish at a glance.
+ *
+ * Module-private helper: only consumed internally by
+ * `buildCombinationDescription` (Issue #3150 — dropped the unused `export`).
  */
-export function selectCombinationEmoji(types: string[]): string {
+function selectCombinationEmoji(types: string[]): string {
   const typeSet = new Set(types);
   const hasRemoval = typeSet.has("remove-low-impact") ||
     typeSet.has("remove-neuron") ||

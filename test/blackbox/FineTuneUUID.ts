@@ -4,6 +4,14 @@ import { fineTuneImprovement } from "@blackbox/FineTune.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
+// Both parents share the same output-neuron bias below. Fine-tuning blends the
+// current fittest towards the previous fittest, so when the two parents already
+// agree on a value the blend has nothing to move towards and must conserve it.
+// Deriving the expectation from this single constant (rather than pasting the
+// algorithm's emitted number) keeps the assertion a WHAT-test: it verifies the
+// preservation contract, not an opaque intermediate of today's blend.
+const SHARED_OUTPUT_BIAS = -0.49135010426905;
+
 Deno.test("tune", () => {
   const previousFittest: Creature = Creature.fromJSON({
     neurons: [
@@ -34,7 +42,7 @@ Deno.test("tune", () => {
       {
         type: "output",
         uuid: "output-0",
-        bias: -0.49135010426905,
+        bias: SHARED_OUTPUT_BIAS,
         squash: "BIPOLAR_SIGMOID",
       },
     ],
@@ -112,7 +120,7 @@ Deno.test("tune", () => {
       {
         type: "output",
         uuid: "output-0",
-        bias: -0.49135010426905,
+        bias: SHARED_OUTPUT_BIAS,
         squash: "BIPOLAR_SIGMOID",
       },
     ],
@@ -175,9 +183,12 @@ Deno.test("tune", () => {
       }
 
       if (node.id === -1) {
+        // Preservation: both parents agreed on this output bias, so the
+        // fine-tune blend must conserve it. Derived from the shared fixture
+        // constant rather than the algorithm's emitted value.
         assertAlmostEquals(
           node.bias,
-          -0.49135010426905,
+          SHARED_OUTPUT_BIAS,
           0.0000001,
           n.uuid,
         );
