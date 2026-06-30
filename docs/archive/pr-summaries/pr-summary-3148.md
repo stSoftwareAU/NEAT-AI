@@ -31,8 +31,8 @@ flowchart LR
 
 ## Test Plan
 
-- Added `test/NEAT/GroupRelativeAdvantage.ts` regression test "GRPO advantage:
-  DEFAULT_MIN_COHORT_SIZE is not part of the module surface (Issue #3148)" —
-  imports the module namespace and asserts the key is absent.
+- Added `test/NEAT/GroupRelativeAdvantage.ts` regression test
+  "GRPO advantage: DEFAULT_MIN_COHORT_SIZE is not part of the module surface
+  (Issue #3148)" — imports the module namespace and asserts the key is absent.
 - Existing `test/NEAT/GroupRelativeAdvantage.ts` suite (15 tests) continues to
   pass, confirming the surviving exports and behaviour are unchanged.
