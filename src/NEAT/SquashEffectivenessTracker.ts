@@ -34,7 +34,7 @@ export interface NeuronRole {
 /**
  * Encode a role into a string key suitable for Map indexing.
  */
-export function roleKey(role: NeuronRole): string {
+function roleKey(role: NeuronRole): string {
   return `${role.layer}|${role.fanIn}`;
 }
 
