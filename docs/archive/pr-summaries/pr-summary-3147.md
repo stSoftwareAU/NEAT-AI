@@ -5,10 +5,10 @@
 Removed the unused exported constant `DEFAULT_RUST_STREAM_RECORDS` (and its
 JSDoc block) from
 `src/architecture/ErrorGuidedStructuralEvolution/constants.ts`. A
-whole-repository word-boundary search for the identifier returns exactly one hit
-— the declaration itself — so it was an orphaned default that nothing consumed:
-no module, test, bench, doc, barrel re-export, or `mod.ts` published surface
-read it. Its siblings `DEFAULT_RUST_FLUSH_RECORDS` and
+whole-repository word-boundary search for the identifier returns exactly one
+hit — the declaration itself — so it was an orphaned default that nothing
+consumed: no module, test, bench, doc, barrel re-export, or `mod.ts` published
+surface read it. Its siblings `DEFAULT_RUST_FLUSH_RECORDS` and
 `DEFAULT_RUST_FLUSH_BYTES` are still referenced and remain untouched.
 
 Closes #3147.
@@ -42,5 +42,6 @@ screenshot. Verification performed:
 No new test is added: the change deletes an unreferenced symbol with no
 behaviour to assert. Correctness is established by (1) the repo-wide search
 showing no consumer, and (2) the existing type-check (`deno check`) which would
-fail on any dangling import, plus the existing `ErrorGuidedStructuralEvolution`
-test suite continuing to pass. No existing tests were removed or modified.
+fail on any dangling import, plus the existing
+`ErrorGuidedStructuralEvolution` test suite continuing to pass. No existing
+tests were removed or modified.
