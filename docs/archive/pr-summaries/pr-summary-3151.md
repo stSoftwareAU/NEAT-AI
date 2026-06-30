@@ -35,6 +35,6 @@ flowchart LR
   methods that call `roleKey` internally are covered by
   `test/NEAT/SquashEffectivenessTracker.ts` (`recordOutcome`, `recordPending`,
   `commit`, `getSampleCount`, `getEma`, `computeRole`).
-- Ran `deno test --allow-all test/NEAT/SquashEffectivenessTracker.ts`:
-  14 passed, 0 failed.
+- Ran `deno test --allow-all test/NEAT/SquashEffectivenessTracker.ts`: 14
+  passed, 0 failed.
 - Ran `./quality.sh` to confirm lint, type-check, and tests pass cleanly.
