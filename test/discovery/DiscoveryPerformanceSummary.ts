@@ -76,3 +76,61 @@ Deno.test("Discovery performance summary omits unrecorded (zero) phase timings",
     `Expected 'Cleanup' to be omitted when unrecorded, got:\n${text}`,
   );
 });
+
+Deno.test("Discovery performance summary clamps non-finite total times to zero (Issue #3149)", () => {
+  // The module-private `msOrZero` helper guards the "Total ... phase" / "Total
+  // time" lines against non-finite inputs (NaN / Infinity). Exercise it through
+  // the public formatter so the clamping survives even though the helper is no
+  // longer exported.
+  const text = formatDiscoveryPerformanceSummary(
+    "feedface",
+    {
+      // Record phase — non-finite total
+      recordsProcessed: 1,
+      filesProcessed: 1,
+      initializationTime: 0,
+      fileProcessingTime: 0,
+      promiseWaitTime: 0,
+      recordPhaseTime: Number.POSITIVE_INFINITY,
+
+      // Analysis phase — NaN total
+      neuronsAnalyzed: 1,
+      retryAttempts: 0,
+      focusSelectionTime: 0,
+      rustCombinedAnalysisTime: 0,
+      neuronAnalysisTime: 0,
+      synapseAnalysisTime: 0,
+      harmfulSynapseAnalysisTime: 0,
+      harmfulNeuronAnalysisTime: 0,
+      squashAnalysisTime: 0,
+      analysisPhaseTime: Number.NaN,
+
+      // Candidate counts
+      helpfulSynapseCount: 0,
+      helpfulNeuronCount: 0,
+      coordinatedStructuralCount: 0,
+      harmfulSynapseCount: 0,
+      harmfulNeuronCount: 0,
+      squashCount: 0,
+      removalCount: 0,
+
+      // Overall — non-finite total
+      cleanupTime: 0,
+      totalTime: Number.NEGATIVE_INFINITY,
+    },
+    { colour: false },
+  );
+
+  // Non-finite values must never leak into the rendered summary.
+  assert(
+    !text.includes("Infinity") && !text.includes("NaN"),
+    `Expected non-finite times to be clamped, got:\n${text}`,
+  );
+
+  // Each clamped total renders as the zero-duration form rather than a blank or
+  // a garbage token.
+  const zeroDuration = "0d 0h 0m 0s 0ms 0µs 0ns";
+  assertStringIncludes(text, `Total record phase: ${zeroDuration}`);
+  assertStringIncludes(text, `Total analysis phase: ${zeroDuration}`);
+  assertStringIncludes(text, `Total time: ${zeroDuration}`);
+});
