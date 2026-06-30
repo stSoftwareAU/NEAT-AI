@@ -28,7 +28,6 @@
 /** Defaults for the group-relative advantage transform. */
 export const DEFAULT_ADVANTAGE_EPS = 1e-8;
 export const DEFAULT_ADVANTAGE_CLIP = 10;
-export const DEFAULT_MIN_COHORT_SIZE = 4;
 
 /** Options for {@link computeGroupRelativeAdvantages}. */
 export interface AdvantageOptions {
