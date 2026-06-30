@@ -46,6 +46,58 @@ function sampleInput(size: number): Float32Array {
   return Float32Array.from({ length: size }, (_, i) => ((i % 7) - 3) / 10);
 }
 
+/**
+ * Assert the DNA-SANE aggregation contract (Issue #3144).
+ *
+ * The rewrite appends three outputs — MINIMUM, MEAN, MAXIMUM — each wired to
+ * the three previous outputs (now demoted to hidden). Demotion preserves a
+ * neuron's wiring, bias and squash, so the demoted outputs compute exactly what
+ * the *original* network's outputs computed for the same input. That gives us a
+ * spec-derived oracle (`demoted`) for the appended outputs.
+ *
+ * Rather than pinning opaque activation floats pasted from a run — which drift
+ * when the activation backend changes even though the MIN/MEAN/MAX behaviour is
+ * unchanged — assert the relationship directly: out[0] is the minimum of the
+ * demoted outputs, out[1] their mean, out[2] their maximum, each offset by the
+ * appended output's own bias.
+ */
+function assertSaneAggregation(
+  creature: Creature,
+  out: Float32Array,
+  demoted: Float32Array,
+): void {
+  const outputs = creature.neurons.filter((neuron) => neuron.type === "output");
+  assertEquals(
+    outputs.map((neuron) => neuron.squash ?? ""),
+    ["MINIMUM", "MEAN", "MAXIMUM"],
+    "appended outputs use the MIN/MEAN/MAX squashes in order",
+  );
+
+  const demotedValues = Array.from(demoted);
+  assertEquals(demotedValues.length, 3, "three demoted outputs aggregated");
+  const mean = demotedValues.reduce((sum, value) => sum + value, 0) /
+    demotedValues.length;
+
+  assertAlmostEquals(
+    out[0],
+    Math.min(...demotedValues) + outputs[0].bias,
+    1e-6,
+    "MINIMUM output equals the smallest demoted output (plus its bias)",
+  );
+  assertAlmostEquals(
+    out[1],
+    mean + outputs[1].bias,
+    1e-6,
+    "MEAN output equals the mean of the demoted outputs (plus its bias)",
+  );
+  assertAlmostEquals(
+    out[2],
+    Math.max(...demotedValues) + outputs[2].bias,
+    1e-6,
+    "MAXIMUM output equals the largest demoted output (plus its bias)",
+  );
+}
+
 function loadNetwork(): Creature {
   return Creature.fromJSON(
     JSON.parse(Deno.readTextFileSync("test/data/CRISPR/network.json")),
@@ -282,12 +334,15 @@ Deno.test("CRISPR-multi-outputs1", () => {
   assertEquals(taggedNeuronCount(networkSANE, "Sane Output"), 3);
   assertEquals(taggedSynapseCount(networkSANE, "Sane Output"), 9);
 
-  // The transformed network computes deterministic outputs for a fixed input.
-  const out = networkSANE.activate(new Float32Array([0.1, 0.2, 0.3]));
+  // The transformed network honours the MIN/MEAN/MAX aggregation contract over
+  // the demoted outputs for a fixed input (Issue #3144). A fresh copy of the
+  // pre-CRISPR network yields the demoted-output values (demotion preserves
+  // their wiring), giving a spec-derived oracle rather than frozen floats.
+  const fixedInput = new Float32Array([0.1, 0.2, 0.3]);
+  const demoted = Creature.fromJSON(json).activate(fixedInput);
+  const out = networkSANE.activate(fixedInput);
   assertEquals(out.length, 3);
-  assertAlmostEquals(out[0], 0.024987129494547844, 1e-5);
-  assertAlmostEquals(out[1], 0.3913297653198242, 1e-5);
-  assertAlmostEquals(out[2], 0.5962033867835999, 1e-5);
+  assertSaneAggregation(networkSANE, out, demoted);
 });
 
 Deno.test("CRISPR-multi-outputs2", () => {
@@ -353,11 +408,13 @@ Deno.test("CRISPR-multi-outputs2", () => {
   assertEquals(taggedNeuronCount(networkSANE, "Sane Output"), 3);
   assertEquals(taggedSynapseCount(networkSANE, "Sane Output"), 9);
 
-  const out = networkSANE.activate(new Float32Array([0.1, 0.2, 0.3]));
+  // Same MIN/MEAN/MAX aggregation contract over the demoted outputs (Issue
+  // #3144); the pre-CRISPR network supplies the demoted-output oracle.
+  const fixedInput = new Float32Array([0.1, 0.2, 0.3]);
+  const demoted = Creature.fromJSON(json).activate(fixedInput);
+  const out = networkSANE.activate(fixedInput);
   assertEquals(out.length, 3);
-  assertAlmostEquals(out[0], 0.05990000069141388, 1e-5);
-  assertAlmostEquals(out[1], 0.22394384443759918, 1e-5);
-  assertAlmostEquals(out[2], 0.530064046382904, 1e-5);
+  assertSaneAggregation(networkSANE, out, demoted);
 });
 
 Deno.test("CRISPR-uuid", () => {
