@@ -85,3 +85,27 @@ Deno.test("every workflow job declares an explicit timeout-minutes", async () =>
     }
   }
 });
+
+// The coverage run collects test coverage across the whole suite and is the
+// heaviest workflow. It has occasionally exceeded the previous 30-minute cap
+// and failed PRs (Issue #3168). Its bound is deliberately more generous than
+// the other jobs, so assert the floor explicitly to guard against a regression
+// back to a too-tight value.
+const COVERAGE_WORKFLOW = `${WORKFLOW_DIR}/coverage.yaml`;
+const COVERAGE_MIN_TIMEOUT_MINUTES = 60;
+
+Deno.test("coverage workflow allows at least an hour for its job", async () => {
+  const wf = await readWorkflow(COVERAGE_WORKFLOW);
+  const jobs = wf.jobs ?? {};
+  const jobIds = Object.keys(jobs);
+  assert(jobIds.length > 0, `${COVERAGE_WORKFLOW} declares no jobs`);
+
+  for (const jobId of jobIds) {
+    const timeout = jobs[jobId]["timeout-minutes"];
+    assert(
+      typeof timeout === "number" && timeout >= COVERAGE_MIN_TIMEOUT_MINUTES,
+      `${COVERAGE_WORKFLOW} job "${jobId}" timeout-minutes (${timeout}) must be ` +
+        `at least ${COVERAGE_MIN_TIMEOUT_MINUTES} minutes (Issue #3168)`,
+    );
+  }
+});
