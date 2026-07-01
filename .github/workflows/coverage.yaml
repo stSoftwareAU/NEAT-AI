@@ -22,7 +22,10 @@ permissions:
 jobs:
   coverage:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Coverage runs the full suite under instrumentation and can exceed
+    # 30 minutes on a slow runner, failing PRs spuriously. Allow a full hour
+    # (Issue #3168) while staying well under the 6-hour GitHub default.
+    timeout-minutes: 60
     env:
       NEAT_RUST_DISCOVERY_OPTIONAL: "true"
       # Enable per-process discovery directory isolation so parallel test

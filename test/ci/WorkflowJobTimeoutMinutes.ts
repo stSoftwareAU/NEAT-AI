@@ -85,3 +85,22 @@ Deno.test("every workflow job declares an explicit timeout-minutes", async () =>
     }
   }
 });
+
+// The coverage job runs the full test suite under coverage instrumentation and
+// occasionally exceeds 30 minutes, causing spurious PR failures (Issue #3168).
+// Its timeout is extended to a full hour to absorb that variance while still
+// staying well under the 6-hour GitHub default.
+const COVERAGE_JOB_MIN_TIMEOUT_MINUTES = 60;
+
+Deno.test("coverage workflow job allows at least an hour (Issue #3168)", async () => {
+  const wf = await readWorkflow(`${WORKFLOW_DIR}/coverage.yaml`);
+  const job = (wf.jobs ?? {})["coverage"];
+  assert(job !== undefined, "coverage.yaml is missing the 'coverage' job");
+  const timeout = job["timeout-minutes"];
+  assert(
+    typeof timeout === "number" && timeout >= COVERAGE_JOB_MIN_TIMEOUT_MINUTES,
+    `coverage job timeout-minutes (${timeout}) must be at least ` +
+      `${COVERAGE_JOB_MIN_TIMEOUT_MINUTES} minutes so heavy coverage runs ` +
+      `don't fail spuriously`,
+  );
+});
