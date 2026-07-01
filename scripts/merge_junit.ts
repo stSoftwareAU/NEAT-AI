@@ -22,10 +22,22 @@ interface SuiteTotals {
   time: number;
 }
 
-function readNumberAttr(openingTag: string, name: string): number {
-  const match = openingTag.match(new RegExp(`\\b${name}="([^"]*)"`));
-  if (match === null) return 0;
-  const value = Number(match[1]);
+// Parse the attributes of an XML opening tag into a name→value map using a
+// single hardcoded regex. Building the pattern statically (rather than
+// `new RegExp(name + ...)` per attribute) avoids the ReDoS-prone dynamic
+// RegExp construction Semgrep flags and parses each tag only once.
+function parseAttrs(openingTag: string): Map<string, string> {
+  const attrs = new Map<string, string>();
+  for (const [, name, value] of openingTag.matchAll(/([\w.-]+)="([^"]*)"/g)) {
+    attrs.set(name, value);
+  }
+  return attrs;
+}
+
+function readNumberAttr(attrs: Map<string, string>, name: string): number {
+  const raw = attrs.get(name);
+  if (raw === undefined) return 0;
+  const value = Number(raw);
   return Number.isFinite(value) ? value : 0;
 }
 
@@ -46,11 +58,12 @@ function extractSuites(content: string): string {
 function tallyTotals(suitesBody: string, totals: SuiteTotals): void {
   const openingTags = suitesBody.match(/<testsuite\b[^>]*>/g) ?? [];
   for (const tag of openingTags) {
-    totals.tests += readNumberAttr(tag, "tests");
-    totals.failures += readNumberAttr(tag, "failures");
-    totals.errors += readNumberAttr(tag, "errors");
-    totals.skipped += readNumberAttr(tag, "skipped");
-    totals.time += readNumberAttr(tag, "time");
+    const attrs = parseAttrs(tag);
+    totals.tests += readNumberAttr(attrs, "tests");
+    totals.failures += readNumberAttr(attrs, "failures");
+    totals.errors += readNumberAttr(attrs, "errors");
+    totals.skipped += readNumberAttr(attrs, "skipped");
+    totals.time += readNumberAttr(attrs, "time");
   }
 }
 
