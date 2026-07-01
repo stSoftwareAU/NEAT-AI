@@ -22,7 +22,9 @@ permissions:
 jobs:
   coverage:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Coverage is the heaviest run (full suite + coverage collection) and has
+    # occasionally exceeded 30 minutes, failing PRs (Issue #3168). Allow an hour.
+    timeout-minutes: 60
     env:
       NEAT_RUST_DISCOVERY_OPTIONAL: "true"
       # Enable per-process discovery directory isolation so parallel test
