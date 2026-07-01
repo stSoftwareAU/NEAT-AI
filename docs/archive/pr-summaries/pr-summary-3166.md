@@ -28,6 +28,14 @@ Root cause and fix:
    clear misconfiguration warning, rather than dispatching a worker that could
    only time out in milliseconds.
 
+3. **Worker-side defence-in-depth.** The scheduling guard rejects sub-second
+   budgets before dispatch, but a queue delay can still shrink a
+   just-above-floor budget to milliseconds by the time the worker starts. When
+   the per-task timeout fires in `runSingleEpoch` (`TrainingEpoch.ts`), the
+   worker now reuses the same helpers to flag an implausibly small budget as
+   misconfiguration (a warning: "no useful training performed") instead of
+   emitting a silent millisecond "timed out" line.
+
 New pure, `now`-injectable helpers `computeEffectiveTrainingBudgetMs` and
 `isTrainingBudgetTooSmall` live in `src/NEAT/PerTaskTrainingTimeout.ts` (policy
 from Issue #2888).
