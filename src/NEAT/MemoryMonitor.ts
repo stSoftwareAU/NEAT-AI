@@ -112,6 +112,8 @@ export function determinePressureLevel(
  * oldest entries to bring the cache within the new cap.
  */
 export function applyWarningResponse(logger: Logger): void {
+  // Remember the cap so it can be restored once pressure clears (#3082).
+  captureActivationCapBaseline();
   const currentCap = getMaxCachedWasmCreatureActivations();
   const reducedCap = Math.max(1, Math.floor(currentCap / 2));
   setMaxCachedWasmCreatureActivations(reducedCap);
@@ -154,6 +156,22 @@ let _lastSnapshotAtMs = 0;
 /** Whether the "entered backoff" message has already been logged for the current cooldown. */
 let _backoffNotified = false;
 
+/**
+ * The activation-cache cap captured the first time pressure forced a reduction,
+ * so it can be RESTORED once the caches are shown not to be the retainer or
+ * heap pressure clears (Issue #3082). `null` means no pressure-driven reduction
+ * is currently in effect.
+ *
+ * Without this, a single heap spike pins the activation cap at 1 for the rest
+ * of the run and evolve throughput collapses — a major contributor to the
+ * GRQ-16 forex `easy` run overrunning its ~1h target. The adaptive backoff
+ * (#2381) already concludes "caches appear not to be the retainer" when the
+ * critical-response burst limit is exceeded; at that point continuing to pin
+ * the cap at 1 achieves no memory relief and only starves throughput, so we
+ * restore it.
+ */
+let _preReductionActivationCap: number | null = null;
+
 /** Reset pressure-response log counters (for tests; module state is shared across a worker). */
 export function resetMemoryPressureLogCountersForTests(): void {
   _criticalResponseLogCount = 0;
@@ -162,6 +180,42 @@ export function resetMemoryPressureLogCountersForTests(): void {
   _criticalBackoffUntilMs = 0;
   _lastSnapshotAtMs = 0;
   _backoffNotified = false;
+  _preReductionActivationCap = null;
+}
+
+/**
+ * Remember the activation-cache cap before the first pressure-driven reduction
+ * of a pressure episode so restoreActivationCapIfRecovered() can put it back.
+ * Only captures a genuine baseline (> 1) and only once per episode. Issue #3082.
+ */
+function captureActivationCapBaseline(): void {
+  if (_preReductionActivationCap !== null) return;
+  const currentCap = getMaxCachedWasmCreatureActivations();
+  if (currentCap > 1) {
+    _preReductionActivationCap = currentCap;
+  }
+}
+
+/**
+ * Restore the activation-cache cap to its pre-pressure baseline (Issue #3082).
+ *
+ * Called when the caches have been shown not to be the retainer (adaptive
+ * backoff engaged) or heap pressure has returned to normal — in both cases
+ * keeping the cap pinned at 1 buys no memory relief and only collapses evolve
+ * throughput. Returns true when a restoration happened.
+ */
+export function restoreActivationCapIfRecovered(logger: Logger): boolean {
+  if (_preReductionActivationCap === null) return false;
+  const baseline = _preReductionActivationCap;
+  _preReductionActivationCap = null;
+  if (getMaxCachedWasmCreatureActivations() >= baseline) return false;
+  setMaxCachedWasmCreatureActivations(baseline);
+  logger.warn(
+    `[MemoryMonitor] Restored activation cache cap to ${baseline} — the caches ` +
+      `were not the retainer / heap pressure cleared, so the cap was un-pinned ` +
+      `to avoid throttling throughput for the rest of the run`,
+  );
+  return true;
 }
 
 /**
@@ -169,6 +223,8 @@ export function resetMemoryPressureLogCountersForTests(): void {
  * caches and attempt garbage collection.
  */
 export function applyCriticalResponse(logger: Logger): void {
+  // Remember the cap so it can be restored once pressure clears (#3082).
+  captureActivationCapBaseline();
   // Shrink activation cache to minimum
   const currentCap = getMaxCachedWasmCreatureActivations();
   setMaxCachedWasmCreatureActivations(1);
@@ -379,11 +435,21 @@ export function checkMemoryAndEvict(
               `critical responses for ` +
               `${config.criticalBackoffCooldownMs}ms to avoid thrashing`,
           );
+          // We have now concluded the caches are not the retainer. Un-pin the
+          // activation cap that applyCriticalResponse just slammed to 1 —
+          // keeping it pinned buys no memory relief and only collapses evolve
+          // throughput for the rest of the run (Issue #3082).
+          restoreActivationCapIfRecovered(logger);
         }
       }
     } else if (pressureLevel === "warning") {
       applyWarningResponse(logger);
       evicted = true;
+    } else {
+      // pressureLevel === "normal": heap has recovered — restore any cap that a
+      // previous pressure response pinned low so throughput is not throttled
+      // for the rest of the run (Issue #3082).
+      restoreActivationCapIfRecovered(logger);
     }
   }
 
