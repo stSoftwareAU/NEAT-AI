@@ -7,8 +7,11 @@
 
 import { assertEquals } from "@std/assert";
 import {
+  computeEffectiveTrainingBudgetMs,
   computePerTaskTimeoutMinutes,
   isPastTrainingDeadline,
+  isTrainingBudgetTooSmall,
+  MIN_TRAINING_BUDGET_MS,
   TRAINING_TASK_WATCHDOG_GRACE_MS,
 } from "@neat/PerTaskTrainingTimeout.ts";
 
@@ -75,4 +78,49 @@ Deno.test("isPastTrainingDeadline - defaults to the watchdog grace constant", ()
     ),
     true,
   );
+});
+
+// ============================================================================
+// Issue #3166: reject implausibly small (sub-second) training budgets
+// ============================================================================
+
+Deno.test("computeEffectiveTrainingBudgetMs - remaining budget from an absolute timeout", () => {
+  const now = 1_000_000;
+  assertEquals(computeEffectiveTrainingBudgetMs(now, now + 5_000), 5_000);
+  // Deadline already passed → negative remaining budget.
+  assertEquals(computeEffectiveTrainingBudgetMs(now, now - 250), -250);
+});
+
+Deno.test("computeEffectiveTrainingBudgetMs - no timeout yields an infinite budget", () => {
+  const now = 1_000_000;
+  assertEquals(
+    computeEffectiveTrainingBudgetMs(now, 0),
+    Number.POSITIVE_INFINITY,
+  );
+  assertEquals(
+    computeEffectiveTrainingBudgetMs(now, -1),
+    Number.POSITIVE_INFINITY,
+  );
+});
+
+Deno.test("isTrainingBudgetTooSmall - flags sub-second and non-positive budgets", () => {
+  // The GRQ-16 millisecond budgets are all rejected.
+  assertEquals(isTrainingBudgetTooSmall(16), true);
+  assertEquals(isTrainingBudgetTooSmall(93), true);
+  assertEquals(isTrainingBudgetTooSmall(0), true);
+  assertEquals(isTrainingBudgetTooSmall(-250), true);
+  // Just under and just over the default floor.
+  assertEquals(isTrainingBudgetTooSmall(MIN_TRAINING_BUDGET_MS - 1), true);
+  assertEquals(isTrainingBudgetTooSmall(MIN_TRAINING_BUDGET_MS), false);
+});
+
+Deno.test("isTrainingBudgetTooSmall - a plausible or unbounded budget is accepted", () => {
+  assertEquals(isTrainingBudgetTooSmall(60_000), false);
+  // No timeout configured (infinite budget) is never too small.
+  assertEquals(isTrainingBudgetTooSmall(Number.POSITIVE_INFINITY), false);
+});
+
+Deno.test("isTrainingBudgetTooSmall - honours a custom minimum", () => {
+  assertEquals(isTrainingBudgetTooSmall(1_500, 2_000), true);
+  assertEquals(isTrainingBudgetTooSmall(2_500, 2_000), false);
 });

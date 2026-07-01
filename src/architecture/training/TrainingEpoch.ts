@@ -18,6 +18,11 @@ import { WasmError } from "@errors/WasmError.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { applyDropout } from "@propagate/Dropout.ts";
+import {
+  computeEffectiveTrainingBudgetMs,
+  isTrainingBudgetTooSmall,
+  MIN_TRAINING_BUDGET_MS,
+} from "@neat/PerTaskTrainingTimeout.ts";
 import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
 import type { EpochState } from "@architecture/training/TrainingOutcome.ts";
 import {
@@ -173,11 +178,29 @@ export function runSingleEpoch(
         if (state.timeoutTS && now > state.timeoutTS) {
           state.timedOut = true;
           const totalTime = now - startTS;
-          getLogger().info(
-            `Training ${blue(setup.ID)} timed out after ${
-              yellow(format(totalTime, { ignoreZero: true }))
-            }`,
+          // Issue #3166: `scheduleTraining` skips sub-second budgets before
+          // dispatch, but a queue delay can still shrink the effective budget
+          // to milliseconds by the time the worker starts. Flag that as
+          // misconfiguration (no useful training performed) instead of a silent
+          // millisecond "timed out" line.
+          const budgetMs = computeEffectiveTrainingBudgetMs(
+            startTS,
+            state.timeoutTS,
           );
+          if (isTrainingBudgetTooSmall(budgetMs)) {
+            getLogger().warn(
+              `Training ${blue(setup.ID)} had an implausibly small budget of ${
+                yellow(format(Math.max(0, budgetMs), { ignoreZero: true }))
+              } (< ${MIN_TRAINING_BUDGET_MS}ms) — likely a queue delay or ` +
+                `misconfiguration; no useful training performed.`,
+            );
+          } else {
+            getLogger().info(
+              `Training ${blue(setup.ID)} timed out after ${
+                yellow(format(totalTime, { ignoreZero: true }))
+              }`,
+            );
+          }
           trainingStopped = true;
           break;
         }

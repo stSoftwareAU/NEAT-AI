@@ -20,6 +20,58 @@
 export const TRAINING_TASK_WATCHDOG_GRACE_MS = 30_000;
 
 /**
+ * Issue #3166: the smallest effective per-task training budget (ms) that can do
+ * any useful work. A budget below this floor trains nothing meaningful — it
+ * "times out" in milliseconds (the GRQ-16 run saw 16–93 ms budgets) — and
+ * signals misconfiguration (a mis-scaled budget upstream) or a run that is
+ * already out of time. Such tasks are skipped and flagged rather than
+ * dispatched to a worker that can only immediately time out.
+ */
+export const MIN_TRAINING_BUDGET_MS = 1_000;
+
+/**
+ * Effective wall-clock budget (ms) a training task actually gets, given its
+ * absolute timeout timestamp.
+ *
+ * A non-positive `timeoutTS` means "no timeout configured" and yields
+ * {@link Number.POSITIVE_INFINITY} (an unbounded budget — never too small).
+ * Otherwise the budget is `timeoutTS - now`, which can be negative when the
+ * deadline is already in the past.
+ *
+ * Pure and `now`-injectable for deterministic testing (#2888 policy).
+ *
+ * @param now absolute current epoch ms
+ * @param timeoutTS absolute timeout epoch ms (≤0 = no timeout)
+ * @returns the remaining budget in ms, or +Infinity when there is no timeout
+ */
+export function computeEffectiveTrainingBudgetMs(
+  now: number,
+  timeoutTS: number,
+): number {
+  if (timeoutTS <= 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return timeoutTS - now;
+}
+
+/**
+ * Whether an effective training budget is too small to do useful work.
+ *
+ * A budget is too small when it is finite and below `minMs` — including zero or
+ * negative budgets (the deadline has already passed). An infinite budget (no
+ * timeout) is never too small.
+ *
+ * @param budgetMs effective budget in ms (may be +Infinity for "no timeout")
+ * @param minMs the minimum useful budget (default {@link MIN_TRAINING_BUDGET_MS})
+ */
+export function isTrainingBudgetTooSmall(
+  budgetMs: number,
+  minMs: number = MIN_TRAINING_BUDGET_MS,
+): boolean {
+  return Number.isFinite(budgetMs) && budgetMs < minMs;
+}
+
+/**
  * Whether `now` has passed a task's absolute per-task deadline plus grace.
  *
  * A non-positive `deadlineTS` means "no per-task deadline" and never trips.

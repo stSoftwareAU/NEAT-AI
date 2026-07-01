@@ -244,6 +244,99 @@ Deno.test("finishUp: clears stuck trainings promptly when wall-clock deadline ha
   }
 });
 
+// ============================================================================
+// Issue #3166: cooperative-return grace before force-abandon
+// ============================================================================
+
+Deno.test("finishUp: grants a grace cycle so a cooperatively-returning training task is not force-abandoned", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // A task whose worker has just hit its own per-task timeout and returned:
+    // still in the map (its result handler has not run yet) but NOT stuck (its
+    // per-task deadline is in the future, so the watchdog leaves it alone).
+    neat.trainingInProgress.set("returning-uuid", new Promise(() => {}));
+    neat.trainingDeadlines.set("returning-uuid", Date.now() + 120_000);
+
+    const start = Date.now() - 10 * 60_000;
+    const endTimeMS = Date.now() - 60_000; // wall-clock deadline already passed
+    const iterations = 1000;
+    const currentGeneration = 5;
+
+    // First cycle after the deadline: grace granted, task NOT abandoned.
+    const first = neat.finishUp(
+      iterations,
+      endTimeMS,
+      start,
+      currentGeneration,
+    );
+    assertEquals(first, false, "Grace cycle keeps the finish-up loop alive");
+    assertEquals(
+      neat.trainingInProgress.size,
+      1,
+      "Task must survive the first cycle (bounded grace, not force-abandon)",
+    );
+
+    // Simulate the cooperative return: the worker result handler removes the
+    // task during the grace window (as scheduleTraining's .then does).
+    neat.trainingInProgress.delete("returning-uuid");
+    neat.trainingDeadlines.delete("returning-uuid");
+
+    // Next cycle sees no in-flight training and never force-abandons it.
+    let finalized = false;
+    for (let i = 0; i < 5; i++) {
+      if (neat.finishUp(iterations, endTimeMS, start, currentGeneration)) {
+        finalized = true;
+        break;
+      }
+    }
+    assert(
+      finalized,
+      "Run finalizes cleanly once the task returns cooperatively",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("finishUp: still force-abandons a genuinely stuck training task within a bounded window", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // A genuinely stuck task that never settles and never removes itself.
+    neat.trainingInProgress.set("stuck-uuid", new Promise(() => {}));
+    neat.trainingDeadlines.set("stuck-uuid", Date.now() + 120_000);
+
+    const start = Date.now() - 10 * 60_000;
+    const endTimeMS = Date.now() - 60_000; // wall-clock deadline already passed
+    const iterations = 1000;
+    const currentGeneration = 5;
+
+    let cleared = false;
+    for (let i = 0; i < 5; i++) {
+      neat.finishUp(iterations, endTimeMS, start, currentGeneration);
+      if (neat.trainingInProgress.size === 0) {
+        cleared = true;
+        break;
+      }
+    }
+    assert(
+      cleared,
+      "A stuck task is still force-abandoned within a bounded number of cycles",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
 Deno.test("finishUp: eventually finalizes despite a never-settling training task", async () => {
   const dataDir = createTestDataDir(2, 1);
   const workers = createTestWorkers(dataDir);

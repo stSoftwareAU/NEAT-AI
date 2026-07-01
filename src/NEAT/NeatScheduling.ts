@@ -20,6 +20,11 @@ import {
 import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { calculate as calculateScore } from "@architecture/Score.ts";
 import { computeTimeoutTS } from "@architecture/training/TrainingOutcome.ts";
+import {
+  computeEffectiveTrainingBudgetMs,
+  isTrainingBudgetTooSmall,
+  MIN_TRAINING_BUDGET_MS,
+} from "@neat/PerTaskTrainingTimeout.ts";
 import { fineTuneImprovement } from "@blackbox/FineTune.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
@@ -245,6 +250,31 @@ export function scheduleTraining(
 ): void {
   const uuid = CreatureUtil.makeUUID(creature);
   if (neat.trainingInProgress.has(uuid)) return;
+
+  // Issue #3166: reject implausibly small training budgets instead of silently
+  // dispatching a task that can only "time out" in milliseconds (the GRQ-16 run
+  // saw 16–93 ms budgets that trained nothing). The effective budget is the
+  // per-task relative timeout clamped by the absolute hard deadline; when that
+  // is sub-second the run is either misconfigured or already out of time, so
+  // skip and flag rather than burn a worker slot on a no-op.
+  const nowTS = Date.now();
+  const timeoutTS = computeTimeoutTS(
+    nowTS,
+    trainingTimeOutMinutes,
+    neat.hardDeadlineTS > 0 ? neat.hardDeadlineTS : undefined,
+  );
+  const budgetMs = computeEffectiveTrainingBudgetMs(nowTS, timeoutTS);
+  if (isTrainingBudgetTooSmall(budgetMs)) {
+    getLogger().warn(
+      `[Neat] Skipping training ${
+        blue(uuid.substring(Math.max(0, uuid.length - 8)))
+      }: implausibly small budget of ${
+        Math.max(0, Math.round(budgetMs))
+      }ms (< ${MIN_TRAINING_BUDGET_MS}ms). Likely misconfiguration or the run ` +
+        `is out of time; not dispatching a task that can only time out.`,
+    );
+    return;
+  }
 
   if (neat.alreadyScheduledMap.has(uuid)) {
     if (!neat.config.enableRepetitiveTraining) {

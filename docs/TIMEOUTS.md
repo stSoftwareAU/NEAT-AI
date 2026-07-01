@@ -67,6 +67,36 @@ creature found so far is loaded onto the caller's creature**, `creatureStore` is
 written, and the run returns its normal `{ error, score, generation, time }`
 summary. The cap costs you only the _unfinished_ work, never the finished work.
 
+## 🤝 Cooperative return vs. forced abandon (Issue #3166)
+
+A task asked to stop should **return on its own** within a small bounded grace
+window — a _forced abandon_ is the failure mode, not the design. Two behaviours
+keep the "Abandoning stuck training task(s)" force-cleanup path from firing in
+normal runs:
+
+- **A bounded grace cycle before force-abandon.** When the soft timeout passes,
+  a worker that has hit its own per-task deadline has already returned
+  cooperatively — but its result-handling callback (which removes the task from
+  `trainingInProgress` / `discoveryInProgress`) runs as a microtask on the next
+  finish-up cycle. `Neat.finishUp()` now grants **one** grace cycle after the
+  wall-clock deadline passes, during which `awaitInFlightTasks()` drains those
+  settled promises, so a cooperatively-returning task removes itself instead of
+  being mislabelled "stuck" and force-abandoned the instant the deadline passes.
+  Genuinely stuck tasks (whose promise never settles) are still abandoned — by
+  the per-task stuck-task watchdog (`abandonStuckTrainingTasks`, Issue #3053)
+  and, as a final backstop, on the next cycle after the grace — so the run
+  always finalizes within a bounded window.
+- **Sub-second training budgets are rejected, not silently run.**
+  `scheduleTraining` computes each task's effective budget
+  (`min(relative budget, hardDeadlineTS) − now`) up front. When that budget is
+  below `MIN_TRAINING_BUDGET_MS` (1 s) the task is **skipped and flagged** with
+  a warning rather than dispatched to a worker that could only "time out" in
+  milliseconds. This surfaces mis-scaled budgets (the GRQ-16 run saw 16–93 ms
+  budgets) and stops burning a worker slot near the hard deadline on a no-op.
+  The pure helpers `computeEffectiveTrainingBudgetMs` and
+  `isTrainingBudgetTooSmall` live in
+  [`src/NEAT/PerTaskTrainingTimeout.ts`](../src/NEAT/PerTaskTrainingTimeout.ts).
+
 ## 🔀 How the deadline propagates
 
 ```mermaid
