@@ -60,9 +60,40 @@
     "@creature": "./src/Creature.ts",
     "@globalAccessors": "./src/globalAccessors.ts"
   },
+  "tasks": {
+    "bench": "deno bench --allow-read --allow-write --allow-env --allow-ffi",
+    "bench:smoke": "deno bench --allow-read --allow-write --allow-env --allow-ffi bench/FatherCompatibility.ts bench/Activate.ts"
+  },
   "test": {
     "include": [
       "test/**/*.ts"
+    ]
+  },
+  "bench": {
+    "include": [
+      "bench/**/*.ts"
+    ],
+    "exclude": [
+      "bench/ActivateAndTraceApp.ts",
+      "bench/ActivateApp.ts",
+      "bench/AdaptiveLearningRateConvergence.ts",
+      "bench/CosineAnnealingWarmRestart.ts",
+      "bench/CreatureStateNodeMap.ts",
+      "bench/DenseNumberMapBenchmark.ts",
+      "bench/DiscoveryAnalysisCacheRelease.ts",
+      "bench/FastConvergencePreset.ts",
+      "bench/GenerationalInertiaSchedule.ts",
+      "bench/IncrementalScoreUpdate.ts",
+      "bench/MainThreadScoreWork.ts",
+      "bench/MaxWeightBiasRecalculation.ts",
+      "bench/NoveltyDeceptiveEscape.ts",
+      "bench/OnPolicyDistillationBreed.ts",
+      "bench/RandomImmigrantsStagnationEscape.ts",
+      "bench/RevisitDiagnostic.ts",
+      "bench/ScoreCalculationCache.ts",
+      "bench/ScorePooledBuffers.ts",
+      "bench/SelectiveCacheInvalidation.ts",
+      "bench/WasmScoreScan.ts"
     ]
   },
   "fmt": {

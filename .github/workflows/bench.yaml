@@ -1,0 +1,63 @@
+name: Benchmarks
+
+# Runs a fast benchmark smoke pass so the `bench/` Deno.bench suites are
+# actually executed on every change to the benchmarks or their runner config
+# (Issue #3175). This is deliberately a small, fast subset — the full
+# benchmark suite (`deno task bench`) is a long-running, manual/nightly
+# command. Fanning the full suite across a CI matrix and the OOM hardening
+# are tracked as separate sub-issues of #3169.
+
+on:
+  pull_request:
+    branches:
+      - Develop
+    paths:
+      - "bench/**"
+      - "deno.json"
+      - ".github/workflows/bench.yaml"
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref so rapid pushes don't pile up.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least-privilege GITHUB_TOKEN scopes: the job only reads the repo and
+# uploads an artifact.
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Benchmark smoke
+    runs-on: ubuntu-latest
+    # The smoke subset is fast; keep a generous cap purely as a wedge guard.
+    timeout-minutes: 20
+    env:
+      NEAT_RUST_DISCOVERY_OPTIONAL: "true"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Deno
+        # denoland/setup-deno@v2.0.4
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+
+      - name: Sync WASM package from NEAT-AI-core
+        run: ./build.sh --verify-only
+
+      - name: Run benchmark smoke pass
+        run: |
+          set -Eeuo pipefail
+          export NO_COLOR=true
+          deno task bench:smoke | tee bench-smoke-output.txt
+
+      - name: Upload benchmark output
+        if: ${{ always() }}
+        # actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: bench-smoke-output
+          path: bench-smoke-output.txt
+          retention-days: 7
+          if-no-files-found: warn
