@@ -19,12 +19,32 @@ permissions:
   checks: write
   pull-requests: write
 
+# Number of parallel shards the test suite is partitioned across (Issue #3173).
+# MUST equal the length of the coverage job's `strategy.matrix.shard` list —
+# test/ci/CoverageShardMatrix.ts asserts this parity so a mismatch (which would
+# drop or double-run files) fails CI.
+env:
+  SHARD_TOTAL: "8"
+
 jobs:
+  # Fan out the ~1k-file suite across N shards (Issue #3173). `deno test` has no
+  # native --shard flag, so scripts/shard_test_files.ts partitions the sorted
+  # test/**/*.ts list round-robin; each shard runs its slice, collecting a
+  # partial .coverage-<shard> dir and junit-<shard>.xml, then uploads both as a
+  # per-shard artifact for the merge job to aggregate. Smaller slices also
+  # reduce per-job memory pressure (the OOM root cause is tracked separately).
   coverage:
+    name: Coverage shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    # Coverage is the heaviest run (full suite + coverage collection) and has
-    # occasionally exceeded 30 minutes, failing PRs (Issue #3168). Allow an hour.
+    # Each shard runs only ~1/N of the suite, but keep the generous hour-long
+    # cap (Issue #3168) as a safety bound against a wedged shard.
     timeout-minutes: 60
+    strategy:
+      # Never let one shard's failure cancel the others — every shard must run
+      # so the merge job sees the full picture and the parity gate is honest.
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     env:
       NEAT_RUST_DISCOVERY_OPTIONAL: "true"
       # Enable per-process discovery directory isolation so parallel test
@@ -44,234 +64,200 @@ jobs:
       - name: Sync WASM package from NEAT-AI-core
         run: ./build.sh --verify-only
 
-      - id: create_coverage_files
-        name: Create coverage files
-        continue-on-error: true
+      - id: run_shard
+        name: Run test shard
         run: |
           set -Eeuo pipefail
           export NO_COLOR=true
-          # Check available memory
-          echo "Available memory:"
-          free -h
-          echo "System memory info:"
-          head -5 /proc/meminfo
+          SHARD="${{ matrix.shard }}"
+          COV_DIR=".coverage-${SHARD}"
+          JUNIT="junit-${SHARD}.xml"
 
-          # Dynamically calculate memory limit and thread count based on available resources
-          # Get total memory in MB and CPU cores
+          # Deterministically pick this shard's slice of test/**/*.ts. The same
+          # partition function is unit-tested and re-verified in the merge job.
+          deno run --allow-read scripts/shard_test_files.ts \
+            --list --shard="${SHARD}" --total="${SHARD_TOTAL}" > shard-files.txt
+          # Portable read (no mapfile) so this works on any bash the runner ships.
+          FILES=()
+          while IFS= read -r line; do
+            [ -n "$line" ] && FILES+=("$line")
+          done < shard-files.txt
+          echo "Shard ${SHARD}/${SHARD_TOTAL}: ${#FILES[@]} test files"
+          if [ "${#FILES[@]}" -eq 0 ]; then
+            echo "No files assigned to this shard; nothing to do."
+            echo "passed" > "shard-status-${SHARD}.txt"
+            : > "${JUNIT}"
+            mkdir -p "${COV_DIR}"
+            exit 0
+          fi
+
+          # Dynamically size the V8 heap / parallelism to the runner (mirrors the
+          # pre-shard job). Smaller slices mean lower memory pressure per shard.
           TOTAL_MEMORY_MB=$(grep MemTotal /proc/meminfo | awk '{print int($2/1024)}')
           CPU_CORES=$(nproc)
-
-          # Calculate memory per core (aim for 1-2GB per core)
-          MEMORY_PER_CORE=$((TOTAL_MEMORY_MB / CPU_CORES))
-
-          # Determine optimal memory allocation based on cores and total memory
           if [ "$CPU_CORES" -ge 8 ] && [ "$TOTAL_MEMORY_MB" -ge 8192 ]; then
-            # High-end system: use more memory and parallelism
-            V8_MEMORY_MB=$((TOTAL_MEMORY_MB * 70 / 100))
-            PARALLEL_FLAG="--parallel"
+            V8_MEMORY_MB=$((TOTAL_MEMORY_MB * 70 / 100)); PARALLEL_FLAG="--parallel"
           elif [ "$CPU_CORES" -ge 4 ] && [ "$TOTAL_MEMORY_MB" -ge 4096 ]; then
-            # Mid-range system: moderate memory and parallelism
-            V8_MEMORY_MB=$((TOTAL_MEMORY_MB * 60 / 100))
-            PARALLEL_FLAG="--parallel"
+            V8_MEMORY_MB=$((TOTAL_MEMORY_MB * 60 / 100)); PARALLEL_FLAG="--parallel"
           else
-            # Low-end system: conservative memory, no parallelism
-            V8_MEMORY_MB=$((TOTAL_MEMORY_MB * 50 / 100))
-            PARALLEL_FLAG=""
+            V8_MEMORY_MB=$((TOTAL_MEMORY_MB * 50 / 100)); PARALLEL_FLAG=""
           fi
+          if [ "$V8_MEMORY_MB" -lt 1024 ]; then V8_MEMORY_MB=1024; fi
+          if [ "$V8_MEMORY_MB" -gt 8192 ]; then V8_MEMORY_MB=8192; fi
+          echo "System: ${CPU_CORES} cores, ${TOTAL_MEMORY_MB}MB RAM; V8 heap ${V8_MEMORY_MB}MB; parallel: ${PARALLEL_FLAG:-off}"
 
-          # Ensure we don't exceed reasonable limits (min 1GB, max 8GB)
-          if [ "$V8_MEMORY_MB" -lt 1024 ]; then
-            V8_MEMORY_MB=1024
-          elif [ "$V8_MEMORY_MB" -gt 8192 ]; then
-            V8_MEMORY_MB=8192
-          fi
-
-          echo "System specs: ${CPU_CORES} cores, ${TOTAL_MEMORY_MB}MB RAM"
-          echo "Memory per core: ${MEMORY_PER_CORE}MB"
-          echo "Setting V8 memory limit to: ${V8_MEMORY_MB}MB"
-          echo "Parallel execution: $([ -n "$PARALLEL_FLAG" ] && echo "enabled" || echo "disabled")"
-
-          # Add garbage collection flags to help with memory management
-          # Capture exit code to check if tests failed (disable exit on error for this command)
-          # Only capture stdout to junit.xml, keep stderr separate to avoid corrupting XML
-          # Note: -A grants all permissions including --allow-ffi (required for Rust discovery)
-          #
-          # Skipped tests (~35): optional NEAT-AI-Discovery Rust library is not built on this
-          # workflow (see NEAT_RUST_DISCOVERY_OPTIONAL). Tests use ignore: shouldSkipRustDiscoveryTests()
-          # or ignore: !isRustDiscoveryEnabled() — not "disabled" arbitrarily; they run locally when
-          # the library is present. GPU-specific checks live inside the Rust stack (CPU fallback OK).
-          set +e
-          deno test -A \
-            --v8-flags=--max-old-space-size=${V8_MEMORY_MB},--expose-gc \
-            ${PARALLEL_FLAG} \
-            --coverage=.coverage \
-            --config ./deno.json --reporter junit > junit-raw.xml 2>test-errors.log
-          TEST_EXIT_CODE=$?
-          set -e
-
-          # If deno was terminated (SIGTERM=143) or crashed with OOM (SIGABRT=134, SIGKILL=137),
-          # retry once in a safer mode (no parallelism, reduced memory).
-          if [ "$TEST_EXIT_CODE" -eq 143 ] || [ "$TEST_EXIT_CODE" -eq 137 ] || [ "$TEST_EXIT_CODE" -eq 134 ]; then
-            echo "⚠️  deno test exited with ${TEST_EXIT_CODE} (OOM/signal). Retrying once with no parallelism and reduced memory..."
-            V8_MEMORY_MB_RETRY=$((V8_MEMORY_MB / 2))
-            if [ "$V8_MEMORY_MB_RETRY" -lt 512 ]; then
-              V8_MEMORY_MB_RETRY=512
-            fi
-            echo "Retry V8 memory limit: ${V8_MEMORY_MB_RETRY}MB"
-
+          # Skipped tests (~35): optional NEAT-AI-Discovery Rust library is not
+          # built here (see NEAT_RUST_DISCOVERY_OPTIONAL); those tests self-skip.
+          # -A grants --allow-ffi required for Rust discovery.
+          run_tests() {
+            local heap="$1"; shift
+            local parallel="$1"; shift
+            local -a extra=()
+            if [ -n "$parallel" ]; then extra+=("$parallel"); fi
             set +e
             deno test -A \
-              --v8-flags=--max-old-space-size=${V8_MEMORY_MB_RETRY},--expose-gc \
-              --coverage=.coverage \
-              --config ./deno.json --reporter junit > junit-raw.xml 2>test-errors.log
-            TEST_EXIT_CODE=$?
+              --v8-flags=--max-old-space-size="${heap}",--expose-gc \
+              ${extra[@]+"${extra[@]}"} \
+              --coverage="${COV_DIR}" \
+              --config ./deno.json --reporter junit \
+              "${FILES[@]}" > junit-raw.xml 2>test-errors.log
+            local code=$?
             set -e
+            return $code
+          }
+
+          run_tests "${V8_MEMORY_MB}" "${PARALLEL_FLAG}" || TEST_EXIT_CODE=$?
+          TEST_EXIT_CODE="${TEST_EXIT_CODE:-0}"
+
+          # On OOM/termination signals (143/137/134) retry once, single-threaded
+          # with a smaller heap (the pre-shard job's resilience, per shard).
+          if [ "$TEST_EXIT_CODE" -eq 143 ] || [ "$TEST_EXIT_CODE" -eq 137 ] || [ "$TEST_EXIT_CODE" -eq 134 ]; then
+            echo "⚠️  shard exited ${TEST_EXIT_CODE} (OOM/signal). Retrying single-threaded, reduced heap..."
+            V8_RETRY=$((V8_MEMORY_MB / 2)); [ "$V8_RETRY" -lt 512 ] && V8_RETRY=512
+            unset TEST_EXIT_CODE
+            run_tests "${V8_RETRY}" "" || TEST_EXIT_CODE=$?
+            TEST_EXIT_CODE="${TEST_EXIT_CODE:-0}"
           fi
 
-          # Show any errors that occurred
-          if [ -s test-errors.log ]; then
-            echo "Test errors/warnings:"
-            cat test-errors.log
-          fi
+          if [ -s test-errors.log ]; then echo "Test errors/warnings:"; cat test-errors.log; fi
 
-          # Extract only valid XML content (from <?xml to </testsuites>)
-          # This removes any trailing content that might corrupt the XML
+          # Keep only valid XML (from <?xml to the last </testsuites>).
           if [ -f junit-raw.xml ]; then
-            # Find the last line containing </testsuites> and extract everything up to that line
             CLOSING_LINE=$(grep -n '</testsuites>' junit-raw.xml | tail -1 | cut -d: -f1)
             if [ -n "$CLOSING_LINE" ]; then
-              # Extract everything from start to the closing tag line (inclusive)
-              head -n "$CLOSING_LINE" junit-raw.xml > junit.xml
+              head -n "$CLOSING_LINE" junit-raw.xml > "${JUNIT}"
             else
-              # Fallback: try sed to extract XML block
-              sed -n '/^<?xml/,/<\/testsuites>/p' junit-raw.xml > junit.xml || cp junit-raw.xml junit.xml
+              sed -n '/^<?xml/,/<\/testsuites>/p' junit-raw.xml > "${JUNIT}" || cp junit-raw.xml "${JUNIT}"
             fi
           fi
 
-          # Check if tests failed (exit code 1 means tests failed)
-          if [ "$TEST_EXIT_CODE" -eq 1 ]; then
-            echo "Tests failed with exit code 1"
-            echo "test_failed=true" >> "$GITHUB_OUTPUT"
+          # Record this shard's outcome for the merge job's gate. Never fail the
+          # shard on test failures (exit 1) — the merge job gates the build so
+          # every shard still uploads its results. Genuine runner crashes are
+          # recorded as "error".
+          if [ "$TEST_EXIT_CODE" -eq 0 ]; then
+            echo "passed" > "shard-status-${SHARD}.txt"
+          elif [ "$TEST_EXIT_CODE" -eq 1 ]; then
+            echo "failed" > "shard-status-${SHARD}.txt"
           else
-            echo "test_failed=false" >> "$GITHUB_OUTPUT"
+            echo "error:${TEST_EXIT_CODE}" > "shard-status-${SHARD}.txt"
           fi
+          echo "Shard ${SHARD} status: $(cat "shard-status-${SHARD}.txt")"
 
-          # If test command failed completely (not just test failures), fail the step
-          if [ "$TEST_EXIT_CODE" -ne 0 ] && [ "$TEST_EXIT_CODE" -ne 1 ]; then
-            echo "Test command failed with exit code $TEST_EXIT_CODE"
-            exit $TEST_EXIT_CODE
-          fi
+      - name: Upload shard artifact
+        if: ${{ always() }}
+        # actions/upload-artifact@v7.0.1 — Node 24 runtime (Issue #2767)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: shard-${{ matrix.shard }}
+          path: |
+            .coverage-${{ matrix.shard }}/
+            junit-${{ matrix.shard }}.xml
+            shard-status-${{ matrix.shard }}.txt
+          retention-days: 7
+          if-no-files-found: warn
 
-      - id: create_coverage_files_fallback
-        name: Create coverage files (fallback - reduced memory)
-        if: ${{ steps.create_coverage_files.outcome == 'failure' }}
+  # Aggregate every shard's partial coverage + JUnit into a single Codecov
+  # coverage report and one consolidated Test Results check (Issue #3173).
+  merge:
+    name: Merge coverage & results
+    needs: coverage
+    # Run even if some shards failed/crashed so results are still published and
+    # the gate can report accurately; only skip if the whole run was cancelled.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Deno
+        # denoland/setup-deno@v2.0.4
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+
+      # File-count parity gate: assert the partition covers every test/**/*.ts
+      # exactly once across all shards (no gaps, no double-runs).
+      - name: Verify shard partition parity
         run: |
           set -Eeuo pipefail
-          export NO_COLOR=true
-          echo "First attempt failed, trying with reduced memory and no parallelism"
+          deno run --allow-read scripts/shard_test_files.ts --verify --total="${SHARD_TOTAL}"
 
-          # Dynamically calculate conservative memory limit for fallback
-          TOTAL_MEMORY_MB=$(grep MemTotal /proc/meminfo | awk '{print int($2/1024)}')
-          CPU_CORES=$(nproc)
+      - name: Download shard artifacts
+        # actions/download-artifact@v5.0.0
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          pattern: shard-*
+          merge-multiple: true
 
-          # Conservative fallback: use 25% of memory, no parallelism
-          V8_MEMORY_MB=$((TOTAL_MEMORY_MB * 25 / 100))
-
-          # Ensure minimum 512MB and maximum 4GB for fallback
-          if [ "$V8_MEMORY_MB" -lt 512 ]; then
-            V8_MEMORY_MB=512
-          elif [ "$V8_MEMORY_MB" -gt 4096 ]; then
-            V8_MEMORY_MB=4096
-          fi
-
-          echo "Fallback: System specs: ${CPU_CORES} cores, ${TOTAL_MEMORY_MB}MB RAM"
-          echo "Fallback: Setting V8 memory limit to: ${V8_MEMORY_MB}MB (conservative mode)"
-
-          # Use conservative memory limit and no parallelism for memory-constrained environments
-          # Capture exit code to check if tests failed (disable exit on error for this command)
-          # Only capture stdout to junit.xml, keep stderr separate to avoid corrupting XML
-          # Note: -A grants all permissions including --allow-ffi (required for Rust discovery)
-          set +e
-          deno test -A \
-            --v8-flags=--max-old-space-size=${V8_MEMORY_MB},--expose-gc \
-            --coverage=.coverage \
-            --config ./deno.json --reporter junit > junit-raw.xml 2>test-errors.log
-          TEST_EXIT_CODE=$?
-          set -e
-
-          # Show any errors that occurred
-          if [ -s test-errors.log ]; then
-            echo "Test errors/warnings:"
-            cat test-errors.log
-          fi
-
-          # Extract only valid XML content (from <?xml to </testsuites>)
-          # This removes any trailing content that might corrupt the XML
-          if [ -f junit-raw.xml ]; then
-            # Find the last line containing </testsuites> and extract everything up to that line
-            CLOSING_LINE=$(grep -n '</testsuites>' junit-raw.xml | tail -1 | cut -d: -f1)
-            if [ -n "$CLOSING_LINE" ]; then
-              # Extract everything from start to the closing tag line (inclusive)
-              head -n "$CLOSING_LINE" junit-raw.xml > junit.xml
-            else
-              # Fallback: try sed to extract XML block
-              sed -n '/^<?xml/,/<\/testsuites>/p' junit-raw.xml > junit.xml || cp junit-raw.xml junit.xml
-            fi
-          fi
-
-          # Check if tests failed (exit code 1 means tests failed)
-          if [ "$TEST_EXIT_CODE" -eq 1 ]; then
-            echo "Tests failed with exit code 1"
-            echo "test_failed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "test_failed=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          # If test command failed completely (not just test failures), fail the step
-          if [ "$TEST_EXIT_CODE" -ne 0 ] && [ "$TEST_EXIT_CODE" -ne 1 ]; then
-            echo "Test command failed with exit code $TEST_EXIT_CODE"
-            exit $TEST_EXIT_CODE
-          fi
-
-      - name: Check if test results exist and validate XML
-        id: check_junit
-        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') }}
+      - id: gate
+        name: Aggregate shard statuses
         run: |
-          if [ ! -f junit.xml ]; then
-            echo "junit_exists=false" >> "$GITHUB_OUTPUT"
-            echo "JUnit XML file does not exist"
-            exit 0
-          fi
-
-          if [ ! -s junit.xml ]; then
-            echo "junit_exists=false" >> "$GITHUB_OUTPUT"
-            echo "JUnit XML file is empty"
-            exit 0
-          fi
-
-          # Validate XML format (basic check)
-          if command -v xmllint &> /dev/null; then
-            if xmllint --noout junit.xml 2>/dev/null; then
-              echo "junit_exists=true" >> "$GITHUB_OUTPUT"
-              echo "JUnit XML file exists and is valid"
-            else
-              echo "junit_exists=false" >> "$GITHUB_OUTPUT"
-              echo "JUnit XML file exists but is not valid XML"
-              xmllint --noout junit.xml 2>&1 || true
+          set -Eeuo pipefail
+          missing=0
+          failed=0
+          errored=0
+          for shard in $(seq 0 $((SHARD_TOTAL - 1))); do
+            f="shard-status-${shard}.txt"
+            if [ ! -f "$f" ]; then
+              echo "❌ shard ${shard}: no status uploaded (job likely crashed)"
+              missing=$((missing + 1))
+              continue
             fi
+            status="$(cat "$f")"
+            echo "shard ${shard}: ${status}"
+            case "$status" in
+              passed) ;;
+              failed) failed=$((failed + 1)) ;;
+              *) errored=$((errored + 1)) ;;
+            esac
+          done
+          {
+            echo "missing=${missing}"
+            echo "failed=${failed}"
+            echo "errored=${errored}"
+          } >> "$GITHUB_OUTPUT"
+
+      - id: merge_junit
+        name: Merge JUnit reports
+        run: |
+          set -Eeuo pipefail
+          shopt -s nullglob
+          reports=(junit-*.xml)
+          if [ "${#reports[@]}" -eq 0 ]; then
+            echo "junit_exists=false" >> "$GITHUB_OUTPUT"
+            echo "No shard JUnit reports found"
+            exit 0
+          fi
+          deno run --allow-read --allow-write scripts/merge_junit.ts \
+            --output=junit.xml "${reports[@]}"
+          if [ -s junit.xml ]; then
+            echo "junit_exists=true" >> "$GITHUB_OUTPUT"
           else
-            # Fallback: basic XML structure check
-            if grep -q '<?xml' junit.xml && grep -q '</testsuites>' junit.xml; then
-              echo "junit_exists=true" >> "$GITHUB_OUTPUT"
-              echo "JUnit XML file exists and appears valid"
-            else
-              echo "junit_exists=false" >> "$GITHUB_OUTPUT"
-              echo "JUnit XML file exists but does not appear to be valid XML"
-            fi
+            echo "junit_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Upload test results to GitHub Actions
-        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') && steps.check_junit.outputs.junit_exists == 'true' }}
+      - name: Upload consolidated test results
+        if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
         # actions/upload-artifact@v7.0.1 — Node 24 runtime (Issue #2767)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
@@ -280,7 +266,7 @@ jobs:
           retention-days: 30
 
       - name: Publish Test Results
-        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') && steps.check_junit.outputs.junit_exists == 'true' }}
+        if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
         continue-on-error: true
         # EnricoMi/publish-unit-test-result-action@v2.23.0
         uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040
@@ -293,7 +279,7 @@ jobs:
           check_run_annotations_branch: ${{ github.head_ref || github.ref_name }}
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && (steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success') && steps.check_junit.outputs.junit_exists == 'true' }}
+        if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
         # codecov/codecov-action@v6.0.1 — bumps internal actions/github-script
         # to v8.0.0 which runs on node24 (resolves issue #2768).
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354
@@ -302,35 +288,27 @@ jobs:
           files: junit.xml
           report_type: test_results
 
-      - name: Fail Build if Tests Failed
-        if: ${{ steps.create_coverage_files.outputs.test_failed == 'true' || steps.create_coverage_files_fallback.outputs.test_failed == 'true' }}
+      - name: Create merged coverage report
         run: |
-          echo "❌ Tests failed. Build cannot proceed."
-          exit 1
-
-      - name: Fail Build if All Test Attempts Failed
-        if: ${{ steps.create_coverage_files.outcome == 'failure' && steps.create_coverage_files_fallback.outcome == 'failure' }}
-        run: |
-          echo "❌ Both test attempts failed. Build cannot proceed."
-          exit 1
-
-      - name: Create coverage report
-        if: ${{ steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success' }}
-        run: |
-          # Check memory usage after tests
-          echo "Memory usage after tests:"
-          free -h
-          # Exclude ephemeral temp-file modules (eg `file:///tmp/...`) that can be
-          # generated during tests and removed before report generation.
-          # Keep the default `test\.(js|mjs|ts|jsx|tsx)$` exclusion as well.
-          deno coverage .coverage \
+          set -Eeuo pipefail
+          shopt -s nullglob
+          cov_dirs=(.coverage-*/)
+          if [ "${#cov_dirs[@]}" -eq 0 ]; then
+            echo "No shard coverage directories found; skipping coverage report"
+            exit 0
+          fi
+          echo "Merging coverage from: ${cov_dirs[*]}"
+          # `deno coverage` accepts multiple input dirs and merges them into one
+          # lcov report. Exclude ephemeral temp modules and *.test.* files as
+          # before.
+          deno coverage "${cov_dirs[@]}" \
             --lcov \
             --output=.coverage.lcov \
             --exclude="^file:///tmp/" \
             --exclude="test\\.(js|mjs|ts|jsx|tsx)$"
 
       - name: Upload coverage to Codecov
-        if: ${{ steps.create_coverage_files.outcome == 'success' || steps.create_coverage_files_fallback.outcome == 'success' }}
+        if: ${{ hashFiles('.coverage.lcov') != '' }}
         # codecov/codecov-action@v6.0.1 — bumps internal actions/github-script
         # to v8.0.0 which runs on node24 (resolves issue #2768).
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354
@@ -338,3 +316,16 @@ jobs:
           files: .coverage.lcov
           token: ${{ secrets.CODECOV_TOKEN }}
           verbose: false
+
+      - name: Fail build if any shard crashed
+        if: ${{ steps.gate.outputs.errored != '0' || steps.gate.outputs.missing != '0' }}
+        run: |
+          echo "❌ ${{ steps.gate.outputs.errored }} shard(s) crashed and ${{ steps.gate.outputs.missing }} shard(s) produced no status."
+          echo "The test runner failed (not just test assertions). Build cannot proceed."
+          exit 1
+
+      - name: Fail build if tests failed
+        if: ${{ steps.gate.outputs.failed != '0' }}
+        run: |
+          echo "❌ ${{ steps.gate.outputs.failed }} shard(s) reported test failures. Build cannot proceed."
+          exit 1
