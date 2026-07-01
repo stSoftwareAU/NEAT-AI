@@ -177,67 +177,6 @@ Deno.test(
 );
 
 Deno.test(
-  "BatchDiscoveryValidator uses validation cache to avoid redundant validations",
-  () => {
-    const base = makeBaselineCreature();
-    const discovery: DiscoverResult = {
-      ID: "BATCH-CACHE-TEST",
-      addHelpfulSynapses: [
-        {
-          fromNeuronUuid: "input-2",
-          toNeuronUuid: "hidden-1",
-          weight: 0.5,
-          targetNeuronImpact: 1.0,
-          expectedCreatureErrorReduction: 0,
-          expectedCreatureScoreGain: 0.2,
-          improvedCount: 3,
-          totalCount: 5,
-        },
-        {
-          fromNeuronUuid: "input-3",
-          toNeuronUuid: "hidden-2",
-          weight: 0.6,
-          targetNeuronImpact: 1.0,
-          expectedCreatureErrorReduction: 0,
-          expectedCreatureScoreGain: 0.25,
-          improvedCount: 4,
-          totalCount: 6,
-        },
-      ],
-      addHelpfulNeurons: undefined,
-      removeHarmfulSynapse: undefined,
-      removeHarmfulNeurons: undefined,
-      removalCandidates: undefined,
-      candidateSquashes: undefined,
-    };
-
-    const candidates = buildDiscoveryCandidates(base, discovery, {
-      skipCombinedCandidates: true,
-    });
-
-    const validator = new BatchDiscoveryValidator({
-      feedbackLoop: false,
-    });
-
-    const results = validator.validateBatch(base, candidates);
-    const stats = validator.getStats();
-
-    // All should be valid (they're simple synapse additions)
-    assert(
-      results.every((r) => r.valid),
-      "All simple synapse additions should be valid",
-    );
-
-    // Stats should show caching benefit
-    assertExists(stats, "Should have stats");
-    assert(
-      stats.totalValidations > 0,
-      "Should track total validations",
-    );
-  },
-);
-
-Deno.test(
   "BatchDiscoveryValidator early-exits on first invalid structural candidate",
   () => {
     const base = makeBaselineCreature();
@@ -413,6 +352,10 @@ Deno.test(
   },
 );
 
+// Merged (Issue #3172): the former "uses validation cache to avoid redundant
+// validations" test used the identical two-synapse setup and only asserted
+// `totalValidations > 0` plus that all results were valid. Its unique
+// assertions are folded in here so no coverage is lost.
 Deno.test(
   "BatchDiscoveryValidator provides validation statistics",
   () => {
@@ -456,8 +399,14 @@ Deno.test(
       feedbackLoop: false,
     });
 
-    validator.validateBatch(base, candidates);
+    const results = validator.validateBatch(base, candidates);
     const stats = validator.getStats();
+
+    // All simple synapse additions should be valid (from merged cache test).
+    assert(
+      results.every((r) => r.valid),
+      "All simple synapse additions should be valid",
+    );
 
     assertExists(stats, "Should return statistics");
     assert(
@@ -540,56 +489,48 @@ Deno.test(
   },
 );
 
+// Merged (Issue #3172): three former single-assertion tests covering the
+// `isEnhancedValidationEnabled()` config gate (default off, holdout on,
+// brittleness on) collapsed into one table-driven test. Each row exercises the
+// same code path with a different config, so no coverage is lost.
 Deno.test(
-  "BatchDiscoveryValidator reports enhanced validation as disabled by default",
-  () => {
-    const validator = new BatchDiscoveryValidator({
-      feedbackLoop: false,
+  "BatchDiscoveryValidator.isEnhancedValidationEnabled reflects config",
+  async (t) => {
+    const check = (
+      options: ConstructorParameters<typeof BatchDiscoveryValidator>[0],
+      expected: boolean,
+    ) => {
+      const validator = new BatchDiscoveryValidator(options);
+      assertEquals(
+        validator.isEnhancedValidationEnabled(),
+        expected,
+        `Enhanced validation should be ${expected}`,
+      );
+    };
+
+    await t.step("disabled by default", () => {
+      check({ feedbackLoop: false }, false);
     });
 
-    assertEquals(
-      validator.isEnhancedValidationEnabled(),
-      false,
-      "Enhanced validation should be disabled by default",
-    );
-  },
-);
-
-Deno.test(
-  "BatchDiscoveryValidator enables enhanced validation when holdout is configured",
-  () => {
-    const validator = new BatchDiscoveryValidator({
-      feedbackLoop: false,
-      holdout: {
-        enabled: true,
-        holdoutPercentage: 0.2,
-      },
+    await t.step("enabled when holdout is configured", () => {
+      check(
+        {
+          feedbackLoop: false,
+          holdout: { enabled: true, holdoutPercentage: 0.2 },
+        },
+        true,
+      );
     });
 
-    assertEquals(
-      validator.isEnhancedValidationEnabled(),
-      true,
-      "Enhanced validation should be enabled when holdout is configured",
-    );
-  },
-);
-
-Deno.test(
-  "BatchDiscoveryValidator enables enhanced validation when brittleness is configured",
-  () => {
-    const validator = new BatchDiscoveryValidator({
-      feedbackLoop: false,
-      brittleness: {
-        enabled: true,
-        perturbationMagnitude: 0.1,
-      },
+    await t.step("enabled when brittleness is configured", () => {
+      check(
+        {
+          feedbackLoop: false,
+          brittleness: { enabled: true, perturbationMagnitude: 0.1 },
+        },
+        true,
+      );
     });
-
-    assertEquals(
-      validator.isEnhancedValidationEnabled(),
-      true,
-      "Enhanced validation should be enabled when brittleness is configured",
-    );
   },
 );
 

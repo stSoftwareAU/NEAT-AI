@@ -767,98 +767,12 @@ Deno.test({
   },
 });
 
-// Comprehensive test comparing WASM roundtrip behaviour
-Deno.test({
-  name: "WASM UnSquash: Comprehensive roundtrip test",
-  fn() {
-    const implementations: Array<{
-      name: string;
-      squashType: SquashType;
-      testValues: number[];
-      tolerance?: number;
-    }> = [
-      {
-        name: "IDENTITY",
-        squashType: SquashType.Identity,
-        testValues,
-      },
-      {
-        name: "LeakyReLU",
-        squashType: SquashType.LeakyRelu,
-        testValues,
-      },
-      {
-        name: "LOGISTIC",
-        squashType: SquashType.Logistic,
-        testValues: [-5, -2, -1, 0, 1, 2, 5],
-      },
-      {
-        name: "TANH",
-        squashType: SquashType.Tanh,
-        testValues: [-5, -2, -1, 0, 1, 2, 5],
-      },
-      {
-        name: "Softsign",
-        squashType: SquashType.Softsign,
-        testValues: [-5, -2, -1, 0, 1, 2, 5],
-      },
-      {
-        name: "Complement",
-        squashType: SquashType.Complement,
-        testValues,
-      },
-      {
-        name: "Cube",
-        squashType: SquashType.Cube,
-        testValues,
-      },
-      {
-        name: "BipolarSigmoid",
-        squashType: SquashType.BipolarSigmoid,
-        testValues: [-5, -2, -1, 0, 1, 2, 5],
-      },
-    ];
-
-    let totalTests = 0;
-    let passedTests = 0;
-
-    for (
-      const { name, squashType, testValues: vals, tolerance } of implementations
-    ) {
-      for (const x of vals) {
-        totalTests++;
-        try {
-          // Squash and unsquash
-          const activation = wasmSquash(squashType, x);
-          if (!Number.isFinite(activation)) continue;
-
-          const recovered = wasmUnSquash(squashType, activation, x);
-          const expected = x;
-          const percentage = Math.abs(expected) > 1e-10
-            ? Math.abs((recovered - expected) / expected) * 100
-            : Math.abs(recovered - expected) * 100;
-
-          const tol = tolerance ?? 5.0;
-          assert(
-            percentage <= tol,
-            `${name} roundtrip failed at x=${x}: got ${recovered}, expected ${expected}`,
-          );
-          passedTests++;
-        } catch (e) {
-          console.error(`Failed: ${name} at x=${x}`, e);
-        }
-      }
-    }
-
-    console.log(
-      `Comprehensive roundtrip test: ${passedTests}/${totalTests} passed`,
-    );
-    assert(
-      passedTests === totalTests,
-      `All tests should pass: ${passedTests}/${totalTests}`,
-    );
-  },
-});
+// NOTE (Issue #3172): the former "Comprehensive roundtrip test" was removed as
+// redundant. Every squash type it exercised (Identity, LeakyReLU, LOGISTIC,
+// TANH, Softsign, Complement, Cube, BipolarSigmoid) already has a dedicated
+// per-function test above that calls `testRoundtrip` over an equal-or-wider set
+// of values with an equal-or-tighter tolerance, so the aggregate test covered no
+// additional squash/unSquash code path.
 
 // Test edge cases for numerical stability
 Deno.test({
