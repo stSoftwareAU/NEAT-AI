@@ -12,6 +12,7 @@ import {
   type MemorySnapshot,
   type MemoryUsageProvider,
   resetMemoryPressureLogCountersForTests,
+  restoreActivationCapIfRecovered,
 } from "@neat/MemoryMonitor.ts";
 import {
   DEFAULT_MEMORY_CONFIG,
@@ -685,6 +686,116 @@ Deno.test(
         clock.now,
       );
       assertEquals(result.snapshot !== null, true);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalCap);
+      resetMemoryPressureLogCountersForTests();
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Activation-cap restoration — stops the cap being pinned at 1 for the whole
+// run once heap recovers or the caches are shown not to be the retainer.
+// Issue #3082.
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  "restoreActivationCapIfRecovered restores the cap after a critical response and normal recovery (#3082)",
+  () => {
+    const originalCap = getMaxCachedWasmCreatureActivations();
+    const config: RequiredMemoryConfig = {
+      ...DEFAULT_MEMORY_CONFIG,
+      enabled: true,
+    };
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(200);
+      const logger = createTestLogger();
+      const clock = fakeClock();
+
+      // Critical pressure pins the cap at 1.
+      checkMemoryAndEvict(
+        config,
+        logger,
+        fakeMemoryProvider(900, 1000),
+        clock.now,
+      );
+      assertStrictEquals(getMaxCachedWasmCreatureActivations(), 1);
+
+      // Heap recovers to normal — the cap is restored to its baseline (200),
+      // not left pinned at 1 for the rest of the run.
+      clock.advance(1000);
+      const result = checkMemoryAndEvict(
+        config,
+        logger,
+        fakeMemoryProvider(100, 1000),
+        clock.now,
+      );
+      assertStrictEquals(result.pressureLevel, "normal");
+      assertStrictEquals(getMaxCachedWasmCreatureActivations(), 200);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalCap);
+      resetMemoryPressureLogCountersForTests();
+    }
+  },
+);
+
+Deno.test(
+  "critical-response burst backoff un-pins the activation cap (#3082)",
+  () => {
+    const originalCap = getMaxCachedWasmCreatureActivations();
+    const config: RequiredMemoryConfig = {
+      ...DEFAULT_MEMORY_CONFIG,
+      enabled: true,
+    };
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(200);
+      const logger = createTestLogger();
+      const clock = fakeClock();
+
+      // Fire enough sustained-critical checks to exceed the burst limit within
+      // the window. Once the monitor concludes the caches are not the retainer
+      // it must un-pin the cap rather than leave it collapsed at 1.
+      const checks = config.criticalBackoffBurst + 1;
+      for (let i = 0; i < checks; i++) {
+        checkMemoryAndEvict(
+          config,
+          logger,
+          fakeMemoryProvider(900, 1000),
+          clock.now,
+        );
+        clock.advance(100);
+      }
+
+      assertStrictEquals(
+        getMaxCachedWasmCreatureActivations(),
+        200,
+        "cap should be restored to baseline once caches are ruled out as the retainer",
+      );
+      const restoreLogged = logger.messages.some((m) =>
+        m.includes("Restored activation cache cap to 200")
+      );
+      assertStrictEquals(restoreLogged, true);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalCap);
+      resetMemoryPressureLogCountersForTests();
+    }
+  },
+);
+
+Deno.test(
+  "restoreActivationCapIfRecovered is a no-op when no reduction was in effect (#3082)",
+  () => {
+    const originalCap = getMaxCachedWasmCreatureActivations();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(50);
+      const logger = createTestLogger();
+      // No prior pressure response captured a baseline → nothing to restore.
+      const restored = restoreActivationCapIfRecovered(logger);
+      assertStrictEquals(restored, false);
+      assertStrictEquals(getMaxCachedWasmCreatureActivations(), 50);
     } finally {
       setMaxCachedWasmCreatureActivations(originalCap);
       resetMemoryPressureLogCountersForTests();
