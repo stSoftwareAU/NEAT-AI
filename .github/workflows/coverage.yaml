@@ -91,25 +91,18 @@ jobs:
             exit 0
           fi
 
-          # Dynamically size the V8 heap / parallelism to the runner (mirrors the
-          # pre-shard job). Smaller slices mean lower memory pressure per shard.
-          # The suite always runs with `--parallel`; worker count is controlled
-          # via DENO_JOBS so OOM recovery can *narrow* parallelism instead of
-          # collapsing to a whole-shard serial re-run (Issue #3174). An empty
-          # JOBS value means "auto" (Deno picks one worker per CPU core).
+          # Size the V8 heap + worker pool via the unit-tested plan script so the
+          # workflow and its tests share one source of truth (Issue #3174). The
+          # script prints shell `KEY=value` lines (HEAP_MB, DENO_JOBS, PARALLEL);
+          # we `eval` them. The suite always runs with `--parallel`; worker count
+          # is controlled via DENO_JOBS so OOM recovery can *narrow* parallelism
+          # instead of collapsing to a whole-shard serial re-run. An empty
+          # DENO_JOBS means "auto" (Deno picks one worker per CPU core).
           TOTAL_MEMORY_MB=$(grep MemTotal /proc/meminfo | awk '{print int($2/1024)}')
           CPU_CORES=$(nproc)
-          if [ "$CPU_CORES" -ge 8 ] && [ "$TOTAL_MEMORY_MB" -ge 8192 ]; then
-            V8_MEMORY_MB=$((TOTAL_MEMORY_MB * 70 / 100)); JOBS=""
-          elif [ "$CPU_CORES" -ge 4 ] && [ "$TOTAL_MEMORY_MB" -ge 4096 ]; then
-            V8_MEMORY_MB=$((TOTAL_MEMORY_MB * 60 / 100)); JOBS=""
-          else
-            # Memory-constrained runner: keep tests parallel but cap the worker
-            # count so peak heap stays bounded (Issue #3174 — no serial path).
-            V8_MEMORY_MB=$((TOTAL_MEMORY_MB * 50 / 100)); JOBS="2"
-          fi
-          if [ "$V8_MEMORY_MB" -lt 1024 ]; then V8_MEMORY_MB=1024; fi
-          if [ "$V8_MEMORY_MB" -gt 8192 ]; then V8_MEMORY_MB=8192; fi
+          eval "$(deno run scripts/coverage_run_plan.ts \
+            --mode=initial --cores="${CPU_CORES}" --memory-mb="${TOTAL_MEMORY_MB}")"
+          V8_MEMORY_MB="${HEAP_MB}"; JOBS="${DENO_JOBS}"
           echo "System: ${CPU_CORES} cores, ${TOTAL_MEMORY_MB}MB RAM; V8 heap ${V8_MEMORY_MB}MB; parallel workers: ${JOBS:-auto}"
 
           # Skipped tests (~35): optional NEAT-AI-Discovery Rust library is not
@@ -136,13 +129,16 @@ jobs:
           run_tests "${V8_MEMORY_MB}" "${JOBS}" || TEST_EXIT_CODE=$?
           TEST_EXIT_CODE="${TEST_EXIT_CODE:-0}"
 
-          # On OOM/termination signals (143/137/134) retry once with a smaller
-          # heap AND a capped worker count. Recovery stays parallel (scoped to
-          # this shard's slice) rather than dropping to a whole-shard serial
-          # re-run that blows the timeout (Issue #3174).
+          # On OOM/termination signals (143/137/134) retry once via the scoped
+          # `--mode=retry` plan: a smaller heap AND a capped worker count.
+          # Recovery stays parallel (scoped to this shard's slice) rather than
+          # dropping to a whole-shard serial re-run that blows the timeout
+          # (Issue #3174).
           if [ "$TEST_EXIT_CODE" -eq 143 ] || [ "$TEST_EXIT_CODE" -eq 137 ] || [ "$TEST_EXIT_CODE" -eq 134 ]; then
             echo "⚠️  shard exited ${TEST_EXIT_CODE} (OOM/signal). Retrying parallel with capped workers + reduced heap..."
-            V8_RETRY=$((V8_MEMORY_MB / 2)); [ "$V8_RETRY" -lt 512 ] && V8_RETRY=512
+            eval "$(deno run scripts/coverage_run_plan.ts \
+              --mode=retry --cores="${CPU_CORES}" --memory-mb="${TOTAL_MEMORY_MB}")"
+            V8_RETRY="${HEAP_MB}"
             # Cap to 2 workers so at most two heavy files share the heap at once.
             RETRY_JOBS=2
             unset TEST_EXIT_CODE
