@@ -229,6 +229,15 @@ export class Neat {
   // can never wedge the run from finalizing and checking in the best creature.
   private trainingWaitGenerations = 0;
   private maxTrainingWaitGenerations = 0;
+  // Issue #3166: once the wall-clock deadline passes, grant one bounded grace
+  // cycle before force-abandoning in-flight tasks. A worker that hit its own
+  // per-task timeout has already returned cooperatively; its result-handling
+  // microtask only needs one finish-up cycle (during which
+  // `awaitInFlightTasks` drains settled promises) to remove itself. Without the
+  // grace, such a task is mislabelled "stuck" and force-abandoned the instant
+  // the deadline passes. `false` until the grace has been used for this run.
+  private trainingWallClockGraceUsed = false;
+  private discoveryWallClockGraceUsed = false;
   trainingInProgress = new Map<string, Promise<void>>();
   /**
    * Issue #3053: per-task absolute wall-clock deadline (epoch ms) for each
@@ -502,6 +511,21 @@ export class Neat {
       const wallClockExpired = endTimeMS !== undefined && endTimeMS > 0 &&
         Date.now() >= endTimeMS;
 
+      // Issue #3166: on the first finish-up cycle after the wall-clock deadline
+      // passes, grant one bounded grace cycle so a discovery task that has
+      // already returned cooperatively can settle its result handler and remove
+      // itself, rather than being force-abandoned (mislabelled "stuck") the
+      // instant the deadline passes.
+      if (wallClockExpired && !this.discoveryWallClockGraceUsed) {
+        this.discoveryWallClockGraceUsed = true;
+        getLogger().info(
+          `[Neat] Wall-clock deadline passed; granting a bounded grace cycle ` +
+            `for ${this.discoveryInProgress.size} in-flight discovery task(s) ` +
+            `to return cooperatively before force-abandon`,
+        );
+        return false;
+      }
+
       if (
         wallClockExpired ||
         this.discoveryWaitGenerations >= this.maxDiscoveryWaitGenerations
@@ -521,6 +545,7 @@ export class Neat {
         this.discoveryInProgress.clear();
         this.discoveryWaitGenerations = 0;
         this.maxDiscoveryWaitGenerations = 0;
+        this.discoveryWallClockGraceUsed = false;
 
         return false;
       }
@@ -568,6 +593,23 @@ export class Neat {
       const wallClockExpired = endTimeMS !== undefined && endTimeMS > 0 &&
         Date.now() >= endTimeMS;
 
+      // Issue #3166: on the first finish-up cycle after the wall-clock deadline
+      // passes, grant one bounded grace cycle so a training task that has
+      // already returned cooperatively (its worker hit its own per-task
+      // timeout) can settle its result handler and remove itself, rather than
+      // being force-abandoned (mislabelled "stuck") the instant the deadline
+      // passes. `abandonStuckTrainingTasks` above still promptly clears tasks
+      // that overran their own per-task deadline plus grace.
+      if (wallClockExpired && !this.trainingWallClockGraceUsed) {
+        this.trainingWallClockGraceUsed = true;
+        getLogger().info(
+          `[Neat] Wall-clock deadline passed; granting a bounded grace cycle ` +
+            `for ${this.trainingInProgress.size} in-flight training task(s) ` +
+            `to return cooperatively before force-abandon`,
+        );
+        return false;
+      }
+
       if (
         wallClockExpired ||
         this.trainingWaitGenerations >= this.maxTrainingWaitGenerations
@@ -588,6 +630,7 @@ export class Neat {
         this.trainingDeadlines.clear();
         this.trainingWaitGenerations = 0;
         this.maxTrainingWaitGenerations = 0;
+        this.trainingWallClockGraceUsed = false;
 
         return false;
       }
