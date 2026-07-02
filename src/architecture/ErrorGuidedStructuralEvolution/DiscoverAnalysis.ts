@@ -24,6 +24,7 @@ import type {
   RustNeuronDiagnostic,
   RustSynapseDiagnostic,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+import { assertNever } from "@utils/assertNever.ts";
 
 /**
  * Maps a RustCandidateSynapse to CandidateSynapse.
@@ -275,7 +276,7 @@ export function tryRustHelpfulNeurons(
 /**
  * Maps a single Rust coordinated operation (string UUIDs) to the TS type (number IDs).
  */
-function mapRustCoordinatedOp(
+export function mapRustCoordinatedOp(
   op: RustCoordinatedStructuralOperation,
 ): CoordinatedStructuralOperation {
   switch (op.type) {
@@ -293,7 +294,7 @@ function mapRustCoordinatedOp(
         weight: op.weight,
       };
     default:
-      return op as CoordinatedStructuralOperation;
+      return assertNever(op);
   }
 }
 
