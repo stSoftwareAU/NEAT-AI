@@ -1,0 +1,20 @@
+# CODEOWNERS — required reviewers for privileged surfaces (Issue #3187)
+#
+# GitHub requires a listed code owner's approval on any pull request that
+# touches a path matched below, once the "Require review from Code Owners"
+# branch-protection rule is enabled on the default branch. This closes the
+# poisoned-pipeline / secret-exfiltration path where a workflow edit runs
+# with privileged secrets (the write-scoped ACTIONS_PUSH PAT and the JSR
+# OIDC `id-token`) the moment CI fires — before a human necessarily
+# notices the workflow diff.
+#
+# Owner teams MUST have write (push) access to this repository, otherwise
+# GitHub silently ignores the rule. `@stSoftwareAU/developers` is the
+# maintaining team with push access to NEAT-AI.
+
+# CI/CD surface — all GitHub Actions workflows and composite actions.
+/.github/workflows/  @stSoftwareAU/developers
+/.github/actions/    @stSoftwareAU/developers
+
+# The CODEOWNERS file itself, so ownership rules cannot be quietly changed.
+/.github/CODEOWNERS  @stSoftwareAU/developers
