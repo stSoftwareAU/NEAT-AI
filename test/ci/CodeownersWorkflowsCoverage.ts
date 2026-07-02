@@ -153,3 +153,27 @@ Deno.test("every CODEOWNERS owner is a valid @user or @org/team (Issue #3187)", 
     }
   }
 });
+
+// A code owner must have write access or GitHub silently ignores the rule and
+// enforces no review. The `maintainers` team suggested by some templates does
+// not exist in the stSoftwareAU org, so pointing a rule at it would leave the
+// CI/CD surface unprotected. Guard against that regression explicitly.
+const NONEXISTENT_TEAM = /^@[A-Za-z0-9-]+\/maintainers$/i;
+
+Deno.test("CODEOWNERS does not reference the non-existent 'maintainers' team (Issue #3187)", async () => {
+  const file = await readCodeowners();
+  assert(file !== null, "CODEOWNERS file is required");
+  const rules = parseCodeowners(file.source);
+
+  for (const rule of rules) {
+    for (const owner of rule.owners) {
+      assert(
+        !NONEXISTENT_TEAM.test(owner),
+        `Owner "${owner}" for "${rule.pattern}" references a 'maintainers' team ` +
+          "that does not exist in the stSoftwareAU org. A code owner must have " +
+          "write access, otherwise GitHub ignores the rule and no review is " +
+          "enforced. Use @stSoftwareAU/developers instead.",
+      );
+    }
+  }
+});

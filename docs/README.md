@@ -164,6 +164,9 @@ Project-level policies, audits, and release plumbing.
   contributors (terminology, invariants, testing rules).
 - **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — first-time contributor guide.
 - **[../SECURITY.md](../SECURITY.md)** — security disclosure policy.
+- **[REPO_GOVERNANCE.md](REPO_GOVERNANCE.md)** — CI/CD code ownership
+  (`.github/CODEOWNERS`) and required branch-protection settings that guard the
+  privileged workflows (Issue #3187).
 - **[../CHANGELOG.md](../CHANGELOG.md)** — release notes.
 - **[EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md)** — 🧭 cluster overview
   for the NEAT-AI-core dependency. Day-to-day workflow for bumping the pinned
