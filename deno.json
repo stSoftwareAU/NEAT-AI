@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "5.7.7",
+  "version": "5.7.8",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
@@ -22,9 +22,9 @@
     "@std/crypto": "jsr:@std/crypto@1.1.0",
     "@std/fmt": "jsr:@std/fmt@1.0.10",
     "@std/fs": "jsr:@std/fs@1.0.24",
-    "@std/path": "jsr:@std/path@1.1.5",
+    "@std/path": "jsr:@std/path@1.1.6",
     "@std/uuid": "jsr:@std/uuid@1.1.1",
-    "@std/yaml": "jsr:@std/yaml@1.1.1",
+    "@std/yaml": "jsr:@std/yaml@1.1.2",
     "@std/testing/mock": "jsr:@std/testing@1.0.19/mock",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13",
     "@architecture/": "./src/architecture/",
@@ -60,9 +60,40 @@
     "@creature": "./src/Creature.ts",
     "@globalAccessors": "./src/globalAccessors.ts"
   },
+  "tasks": {
+    "bench": "deno bench --allow-read --allow-write --allow-env --allow-ffi",
+    "bench:smoke": "deno bench --allow-read --allow-write --allow-env --allow-ffi bench/FatherCompatibility.ts bench/Activate.ts"
+  },
   "test": {
     "include": [
       "test/**/*.ts"
+    ]
+  },
+  "bench": {
+    "include": [
+      "bench/**/*.ts"
+    ],
+    "exclude": [
+      "bench/ActivateAndTraceApp.ts",
+      "bench/ActivateApp.ts",
+      "bench/AdaptiveLearningRateConvergence.ts",
+      "bench/CosineAnnealingWarmRestart.ts",
+      "bench/CreatureStateNodeMap.ts",
+      "bench/DenseNumberMapBenchmark.ts",
+      "bench/DiscoveryAnalysisCacheRelease.ts",
+      "bench/FastConvergencePreset.ts",
+      "bench/GenerationalInertiaSchedule.ts",
+      "bench/IncrementalScoreUpdate.ts",
+      "bench/MainThreadScoreWork.ts",
+      "bench/MaxWeightBiasRecalculation.ts",
+      "bench/NoveltyDeceptiveEscape.ts",
+      "bench/OnPolicyDistillationBreed.ts",
+      "bench/RandomImmigrantsStagnationEscape.ts",
+      "bench/RevisitDiagnostic.ts",
+      "bench/ScoreCalculationCache.ts",
+      "bench/ScorePooledBuffers.ts",
+      "bench/SelectiveCacheInvalidation.ts",
+      "bench/WasmScoreScan.ts"
     ]
   },
   "fmt": {

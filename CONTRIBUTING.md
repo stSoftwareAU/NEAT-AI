@@ -319,6 +319,36 @@ Avoid **"how" tests** that check implementation details:
 > unpredictably under different system loads. Keep timing logic strictly within
 > `bench/`.
 
+### 🏃 Running benchmarks
+
+Benchmarks live in `bench/` and are **not** part of the unit-test / coverage
+suite, so they never count against the ≤120s-per-test budget. Run them
+explicitly:
+
+```bash
+# Full Deno.bench suite (long-running — manual / nightly use).
+deno task bench
+
+# Fast smoke subset — the same command the Benchmarks CI job runs.
+deno task bench:smoke
+
+# A single benchmark file.
+deno bench --allow-read --allow-write --allow-env --allow-ffi bench/Activate.ts
+```
+
+`deno task bench` uses the `bench.include` / `bench.exclude` config in
+`deno.json`. `deno bench` only auto-discovers `*.bench.ts` files, so `include`
+widens discovery to the whole `bench/` tree; `exclude` lists the standalone
+profiling harnesses that are launched with `deno run` (they do heavy work at
+module top level) so `deno task bench` does not execute them. New profiling
+scripts of that kind should either be named without a `Deno.bench` suite or
+guard their entry point with `import.meta.main`.
+
+The `.github/workflows/bench.yaml` workflow runs `deno task bench:smoke` on pull
+requests that touch `bench/` or `deno.json`, so the benchmarks are actually
+executed in CI. It is intentionally a small, fast pass; fanning the full suite
+across a CI matrix and OOM hardening are tracked as separate sub-issues.
+
 ## ➕ Adding Configuration
 
 When adding a new configuration option, follow the established pattern:

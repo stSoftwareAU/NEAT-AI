@@ -25,6 +25,18 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3175:** Benchmarks in `bench/` are now runnable via a single
+  documented command. `deno.json` gains a `bench` task (`deno task bench`, full
+  suite) and a `bench:smoke` task (fast subset), plus a `bench` config whose
+  `include`/`exclude` widen `deno bench` discovery to the PascalCase
+  `Deno.bench` files while skipping the standalone profiling harnesses. A new
+  `.github/workflows/bench.yaml` runs the smoke pass in CI so benchmarks are
+  actually executed. Verification confirmed the "Performance"-named files under
+  `test/` (`FatherPerformance.ts`, `OffspringBreedPerformance.ts`,
+  `DiscoveryPerformanceSummary.ts`, `PerformanceGuide.ts`, and the `test/bench/`
+  harness tests) are genuine, fast correctness tests — their timing counterparts
+  already live in `bench/` — so they remain in the unit suite with no coverage
+  regression.
 - **Issue #3053:** New `trainingTaskTimeoutMinutes` option caps the wall-clock
   budget of any **single** training task independent of the overall
   `timeoutMinutes` run budget (default `5`; `0` disables). Previously a task
