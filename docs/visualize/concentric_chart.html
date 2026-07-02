@@ -13,14 +13,18 @@
   </head>
 
   <body>
-    <div id="modelSelection" class="container mt-5">
+    <section
+      id="modelSelection"
+      class="container mt-5"
+      aria-label="Model selection"
+    >
       <h1>Neural Network Visualization</h1>
       <ul id="modelList" class="list-group"></ul>
-    </div>
-    <div id="visualizationContainer" class="container-fluid d-none">
+    </section>
+    <main id="visualizationContainer" class="container-fluid d-none">
       <button class="btn btn-primary mt-3" id="backButton">Back</button>
       <div id="graph-container"></div>
-    </div>
+    </main>
     <script
       src="https://cdn.jsdelivr.net/npm/cytoscape@3.21.1/dist/cytoscape.min.js"
     ></script>
