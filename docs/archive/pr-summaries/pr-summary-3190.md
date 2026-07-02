@@ -12,9 +12,9 @@ any unhandled variant through the boundary **unmapped and with no compile
 error**. The day the Rust side emits a third operation (e.g. `setWeight`), that
 value would slip through unmapped — a latent, hard-to-trace data-mapping bug.
 
-This change replaces the silent cast with the project's canonical
-exhaustiveness guard `assertNever` (`src/utils/assertNever.ts`), matching the
-sibling file `ApplyCoordinatedStructuralCandidate.ts`. Now:
+This change replaces the silent cast with the project's canonical exhaustiveness
+guard `assertNever` (`src/utils/assertNever.ts`), matching the sibling file
+`ApplyCoordinatedStructuralCandidate.ts`. Now:
 
 - If a new Rust variant is added and this mapper forgets to handle it, `op` is
   no longer narrowed to `never` and the build fails at the `assertNever` call —
@@ -52,7 +52,8 @@ Backend/type-safety change — no web interface to screenshot. Verified via:
 
 ## Test Plan
 
-Added `test/ErrorGuidedStructuralEvolution/MapRustCoordinatedOpExhaustiveness.ts`:
+Added
+`test/ErrorGuidedStructuralEvolution/MapRustCoordinatedOpExhaustiveness.ts`:
 
 - **Happy path** — `removeSynapse` maps to the correct TS shape.
 - **Happy path** — `addSynapse` maps and preserves `weight`.
