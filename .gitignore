@@ -7,6 +7,9 @@ logback.log
 coverage/
 target/
 junit.xml
+# Generated quality-gate output logs (Issue #3188)
+quality-output.log
+quality-output.txt
 !.github
 !.gitleaks.toml
 on/
