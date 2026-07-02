@@ -36,6 +36,16 @@ opening a PR (see the secure-coding principles section of
   dependency carrying a known OSV advisory, shrinking the window between
   disclosure and a reviewable fix rather than waiting for the next weekly
   freshness run.
+- **Code-owner review of the CI/CD surface** — `.github/CODEOWNERS` requires a
+  review from the maintaining team (`@stSoftwareAU/developers`) on any PR that
+  edits `.github/workflows/` or `.github/actions/`. Several workflows run with
+  privileged credentials — `publish.yml` / `pages.yml` request
+  `id-token: write`, and `quality.yml` / `update-package-version.yml` expose the
+  write-scoped `ACTIONS_PUSH` PAT — so requiring a named owner's approval closes
+  the poisoned-pipeline path where a workflow edit exfiltrates those secrets the
+  moment CI fires. Enforcement additionally depends on the default branch
+  enabling the **Require review from Code Owners** branch-protection rule (a
+  repository setting that lives outside the tree).
 
 For everything else, see the sibling docs: [`README.md`](./README.md),
 [`AGENTS.md`](./AGENTS.md), [`CONTRIBUTING.md`](./CONTRIBUTING.md),
