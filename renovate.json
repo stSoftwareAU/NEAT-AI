@@ -1,6 +1,21 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "vulnerabilityAlerts": { "enabled": true },
-  "osvVulnerabilityAlerts": true
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "minimumReleaseAge": "0"
+  },
+  "osvVulnerabilityAlerts": true,
+  "minimumReleaseAge": "24 hours",
+  "packageRules": [
+    {
+      "description": "Internal stSoftwareAU/* deps bump immediately (0h quarantine), mirroring deno.json minimumDependencyAge.exclude",
+      "matchPackageNames": [
+        "/^@stsoftware\\//",
+        "/^jsr:@stsoftware\\//",
+        "/^npm:@stsoftware\\//"
+      ],
+      "minimumReleaseAge": "0"
+    }
+  ]
 }
