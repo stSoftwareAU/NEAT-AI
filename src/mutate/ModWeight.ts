@@ -21,7 +21,7 @@ import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
  * slot and emitting noisy telemetry, we retry a bounded number of times with
  * fresh random draws before returning false.
  */
-export const MOD_WEIGHT_MAX_RETRIES = 8;
+const MOD_WEIGHT_MAX_RETRIES = 8;
 
 /**
  * Mutation operator that modifies synapse weights.

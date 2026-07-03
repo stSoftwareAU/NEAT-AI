@@ -53,3 +53,15 @@ Deno.test("parseDiscoverySampleRate - normalises '-0' string to 0", () => {
   assertEquals(Object.is(result, -0), false, "Result should not be -0");
   assertEquals(result, 0, "Result should be positive 0");
 });
+
+// --- parseDiscoverySampleRate disabled sentinel (Issue #3213) ---
+// The -1 "disabled" sentinel is a module-private constant; these tests pin the
+// public behaviour so keeping it un-exported cannot silently change semantics.
+
+Deno.test("parseDiscoverySampleRate - -1 sentinel (numeric) returns -1 (disabled)", () => {
+  assertEquals(parseDiscoverySampleRate(-1, 0.5), -1);
+});
+
+Deno.test("parseDiscoverySampleRate - '-1' sentinel (string) returns -1 (disabled)", () => {
+  assertEquals(parseDiscoverySampleRate("-1", 0.5), -1);
+});
