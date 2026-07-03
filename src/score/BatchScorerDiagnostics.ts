@@ -27,7 +27,7 @@ import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type { BatchScorerError } from "./BatchScorerReconciler.ts";
 
 /** Default cap for the per-creature detail list emitted in the log line. */
-export const DEFAULT_OFFENDER_DETAIL_CAP = 10;
+const DEFAULT_OFFENDER_DETAIL_CAP = 10;
 
 /**
  * `forwardOnly` composition counters for a population. Any creature whose
