@@ -5,8 +5,8 @@
 The diagnostics cap constant `DEFAULT_OFFENDER_DETAIL_CAP` in
 `src/score/BatchScorerDiagnostics.ts` was exported but had no importer anywhere
 in `src/`, `test/`, `bench/`, or `mod.ts`. Its only use is internal — the
-fallback for `options.detailCap` inside `buildBatchScorerDiagnostic`. Dropped the
-`export` keyword so the constant is module-private, removing the dead export
+fallback for `options.detailCap` inside `buildBatchScorerDiagnostic`. Dropped
+the `export` keyword so the constant is module-private, removing the dead export
 while keeping behaviour identical.
 
 `BatchScorerDiagnostics.ts` is not re-exported from `mod.ts` and the repository
@@ -27,8 +27,8 @@ behavioural test that exercises the default cap through the public API
   default cap of 10 is applied when `detailCap` is omitted (i.e. the value the
   constant supplies) — a "what" test that survives the visibility change.
 - `./quality.sh --check-only` → exit 0 (type-check across the tree).
-- `./quality.sh --lint-only` → exit 0 (1753 files linted, `deno fmt` clean,
-  bash scripts clean).
+- `./quality.sh --lint-only` → exit 0 (1753 files linted, `deno fmt` clean, bash
+  scripts clean).
 
 Reference (unused-export before removal):
 

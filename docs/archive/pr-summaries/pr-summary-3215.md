@@ -38,17 +38,17 @@ flowchart LR
 ## Test Plan
 
 - No test imported the constant, so no test needed updating.
-- The existing behavioural guard
-  `test/discovery/SubnetworkHashIndex.ts` →
+- The existing behavioural guard `test/discovery/SubnetworkHashIndex.ts` →
   `"SubnetworkHashIndex - default size 50,000 and isEnabled() reflects size"`
-  constructs `new SubnetworkHashIndex()` with no arguments and asserts the
-  index is enabled. It exercises the default-constructor behaviour that the
-  constant backs, without depending on the exported symbol, and continues to
-  pass after the change.
+  constructs `new SubnetworkHashIndex()` with no arguments and asserts the index
+  is enabled. It exercises the default-constructor behaviour that the constant
+  backs, without depending on the exported symbol, and continues to pass after
+  the change.
 - `deno test test/discovery/SubnetworkHashIndex.ts` — 19 passed / 0 failed.
 - `deno check src/discovery/SubnetworkHashIndex.ts` — clean.
 - Full `./quality.sh` passes lint, format and type-check. One unrelated test
-  (`NeuronDiscoveryIntegration.ts` → `collectRustAnalysisCandidates returns
-  analysis bundle`) fails on both this branch and the untouched base branch —
-  a pre-existing Rust-dylib `setWeight` variant mismatch with no connection to
-  this one-line export change.
+  (`NeuronDiscoveryIntegration.ts` →
+  `collectRustAnalysisCandidates returns
+  analysis bundle`) fails on both this
+  branch and the untouched base branch — a pre-existing Rust-dylib `setWeight`
+  variant mismatch with no connection to this one-line export change.
