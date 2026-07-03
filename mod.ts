@@ -80,6 +80,8 @@ export type {
   TruncationReason,
 } from "@creature/EpisodeRunner.ts";
 export type { EvolveRLOptions } from "@creature/CreatureTraining.ts";
+// Issue #3210: whole-run per-phase timing totals returned by the evolve* fns.
+export type { PhaseTimingTotals } from "@creature/PhaseTimingTotals.ts";
 export type { EvolveRLMilestone } from "@creature/EvolveRLStatistics.ts";
 export type {
   EpisodeTrialsEvent,

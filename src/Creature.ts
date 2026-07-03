@@ -1002,7 +1002,13 @@ export class Creature implements CreatureInternal {
     dataSetDir: string,
     options: NeatOptions,
   ): Promise<
-    { error: number; score: number; time: number; generation: number }
+    {
+      error: number;
+      score: number;
+      time: number;
+      generation: number;
+      phaseTimingTotals: training.PhaseTimingTotals;
+    }
   > {
     return training.evolveDir(this, dataSetDir, options);
   }
@@ -1020,7 +1026,13 @@ export class Creature implements CreatureInternal {
       & NeatOptions
       & import("./creature/EpisodicFitnessTypes.ts").EpisodicOptions,
   ): Promise<
-    { error: number; score: number; time: number; generation: number }
+    {
+      error: number;
+      score: number;
+      time: number;
+      generation: number;
+      phaseTimingTotals: training.PhaseTimingTotals;
+    }
   > {
     return training.evolveEnv(this, adapter, options);
   }
@@ -1042,6 +1054,7 @@ export class Creature implements CreatureInternal {
       score: number;
       time: number;
       generation: number;
+      phaseTimingTotals: training.PhaseTimingTotals;
       /**
        * Issue #2629: per-milestone payloads collected when
        * `options.statistics === true`. Omitted when statistics are off.
@@ -1056,7 +1069,14 @@ export class Creature implements CreatureInternal {
   evolveDataSet(
     dataSet: DataRecordInterface[],
     options: NeatOptions,
-  ): Promise<{ error: number; score: number; time: number }> {
+  ): Promise<
+    {
+      error: number;
+      score: number;
+      time: number;
+      phaseTimingTotals: training.PhaseTimingTotals;
+    }
+  > {
     return training.evolveDataSet(this, dataSet, options);
   }
 

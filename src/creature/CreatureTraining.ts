@@ -76,6 +76,15 @@ import type { Fitness } from "@architecture/Fitness.ts";
 import type { EpisodeAdapter } from "@creature/EpisodeAdapter.ts";
 import { buildRLSeedSet } from "@creature/EvolveRLSeedSet.ts";
 import {
+  accumulatePhaseTiming,
+  createPhaseTimingAccumulator,
+  finalisePhaseTimingTotals,
+  type PhaseTimingTotals,
+} from "@creature/PhaseTimingTotals.ts";
+// Re-export so `import * as training` consumers (e.g. Creature.ts) can name the
+// run-level phase-timing totals shape (Issue #3210).
+export type { PhaseTimingTotals } from "@creature/PhaseTimingTotals.ts";
+import {
   type EvolveRLMilestone,
   isMilestoneGeneration,
 } from "@creature/EvolveRLStatistics.ts";
@@ -399,7 +408,13 @@ export async function evolveDir(
   options: NeatOptions,
   deps?: EvolveDirDeps,
 ): Promise<
-  { error: number; score: number; time: number; generation: number }
+  {
+    error: number;
+    score: number;
+    time: number;
+    generation: number;
+    phaseTimingTotals: PhaseTimingTotals;
+  }
 > {
   let interrupted = false;
   const signalListener = () => {
@@ -510,6 +525,8 @@ export async function evolveDir(
   let generation = 0;
   const targetError = config.targetError;
   const iterations = config.iterations;
+  // Issue #3210: sum the always-on per-generation phase timings across the run.
+  const phaseTimingAccumulator = createPhaseTimingAccumulator();
 
   while (true) {
     // deno-lint-ignore no-await-in-loop
@@ -566,6 +583,10 @@ export async function evolveDir(
     // Issue #2239: Include per-phase timing diagnostics from evolve()
     // Issue #2330: Forward compact throughput counters (wall-clock, queue
     // depths, approximate worker wait) on the same event.
+    // Issue #3210: fold this generation's (checkpoint-merged) phase timing
+    // into the whole-run running totals returned alongside `time`.
+    accumulatePhaseTiming(phaseTimingAccumulator, phaseTiming);
+
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
     emitTrainingEvent(config.onTrainingEvent, {
@@ -680,11 +701,13 @@ export async function evolveDir(
   }
 
   Deno.removeSignalListener("SIGTERM", signalListener);
+  const time = Date.now() - start;
   return {
     error: error,
     score: bestScore,
     generation: generation,
-    time: Date.now() - start,
+    time,
+    phaseTimingTotals: finalisePhaseTimingTotals(phaseTimingAccumulator, time),
   };
 }
 
@@ -713,7 +736,13 @@ export async function evolveEnv<S, A>(
   adapter: LegacyEpisodeAdapter<S, A>,
   options: NeatOptions & EpisodicOptions,
 ): Promise<
-  { error: number; score: number; time: number; generation: number }
+  {
+    error: number;
+    score: number;
+    time: number;
+    generation: number;
+    phaseTimingTotals: PhaseTimingTotals;
+  }
 > {
   if (creature.input !== adapter.inputCount) {
     throw new Error(
@@ -819,6 +848,8 @@ export async function evolveEnv<S, A>(
   let generation = 0;
   const targetError = config.targetError;
   const iterations = config.iterations;
+  // Issue #3210: sum the always-on per-generation phase timings across the run.
+  const phaseTimingAccumulator = createPhaseTimingAccumulator();
 
   while (true) {
     generation++;
@@ -864,6 +895,10 @@ export async function evolveEnv<S, A>(
         checkpointWriteMs: Date.now() - checkpointStart,
       };
     }
+
+    // Issue #3210: fold this generation's (checkpoint-merged) phase timing
+    // into the whole-run running totals returned alongside `time`.
+    accumulatePhaseTiming(phaseTimingAccumulator, phaseTiming);
 
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
@@ -966,11 +1001,13 @@ export async function evolveEnv<S, A>(
 
   Deno.removeSignalListener("SIGTERM", signalListener);
   options.signal?.removeEventListener("abort", abortListener);
+  const time = Date.now() - start;
   return {
     error,
     score: bestScore,
     generation,
-    time: Date.now() - start,
+    time,
+    phaseTimingTotals: finalisePhaseTimingTotals(phaseTimingAccumulator, time),
   };
 }
 
@@ -1080,6 +1117,7 @@ export async function evolveRL<S, A>(
     score: number;
     time: number;
     generation: number;
+    phaseTimingTotals: PhaseTimingTotals;
     /**
      * Issue #2629: per-milestone payloads collected when `statistics === true`.
      * Omitted entirely when statistics are disabled so the return shape stays
@@ -1296,6 +1334,8 @@ export async function evolveRL<S, A>(
   let generation = 0;
   const targetError = config.targetError;
   const iterations = config.iterations;
+  // Issue #3210: sum the always-on per-generation phase timings across the run.
+  const phaseTimingAccumulator = createPhaseTimingAccumulator();
 
   while (true) {
     generation++;
@@ -1349,6 +1389,10 @@ export async function evolveRL<S, A>(
         checkpointWriteMs: Date.now() - checkpointStart,
       };
     }
+
+    // Issue #3210: fold this generation's (checkpoint-merged) phase timing
+    // into the whole-run running totals returned alongside `time`.
+    accumulatePhaseTiming(phaseTimingAccumulator, phaseTiming);
 
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
@@ -1520,12 +1564,18 @@ export async function evolveRL<S, A>(
   options.signal?.removeEventListener("abort", abortListener);
   // Issue #2629: include milestones only when statistics were enabled, so
   // callers that did not opt in see the same return shape as #2628.
+  const time = Date.now() - start;
+  const phaseTimingTotals = finalisePhaseTimingTotals(
+    phaseTimingAccumulator,
+    time,
+  );
   if (statisticsEnabled) {
     return {
       error,
       score: bestScore,
       generation,
-      time: Date.now() - start,
+      time,
+      phaseTimingTotals,
       milestones,
     };
   }
@@ -1533,7 +1583,8 @@ export async function evolveRL<S, A>(
     error,
     score: bestScore,
     generation,
-    time: Date.now() - start,
+    time,
+    phaseTimingTotals,
   };
 }
 
@@ -1545,7 +1596,14 @@ export async function evolveDataSet(
   creature: Creature,
   dataSet: DataRecordInterface[],
   options: NeatOptions,
-): Promise<{ error: number; score: number; time: number }> {
+): Promise<
+  {
+    error: number;
+    score: number;
+    time: number;
+    phaseTimingTotals: PhaseTimingTotals;
+  }
+> {
   const config = createNeatConfig(options);
 
   const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak, {
