@@ -45,7 +45,7 @@ export type ParallelAnalysisFn = (
  * mid-flight timeout fires (Issue #2420). A small amount of slack avoids
  * racing the budget in normal operation.
  */
-export const DEFAULT_PER_CHUNK_GRACE_MS = 1_000;
+const DEFAULT_PER_CHUNK_GRACE_MS = 1_000;
 
 /**
  * Minimum number of completed chunks before the per-chunk stall guard may
@@ -55,7 +55,7 @@ export const DEFAULT_PER_CHUNK_GRACE_MS = 1_000;
  * amortised against a fast second chunk avoids tearing down the retry loop
  * after evaluating only one chunk's worth of neurons.
  */
-export const STALL_WARMUP_MIN_COMPLETED_CHUNKS = 2;
+const STALL_WARMUP_MIN_COMPLETED_CHUNKS = 2;
 
 /**
  * Returns a one-line diagnostic of the current Deno heap / RSS state.
