@@ -123,7 +123,7 @@ export function parseNumber(
 }
 
 /** Sentinel for "discovery sampling disabled". Only -1 is allowed; other negatives (e.g. -0.12) are rejected. */
-export const DISCOVERY_SAMPLE_RATE_DISABLED = -1;
+const DISCOVERY_SAMPLE_RATE_DISABLED = -1;
 
 /**
  * Parses discovery sample rate: -1 (disabled) or a number in [0, 1].
