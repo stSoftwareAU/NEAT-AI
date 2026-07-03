@@ -26,8 +26,8 @@ import { exportJSON } from "@creature/CreatureSerialization.ts";
 import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import { extractExponent } from "@discovery/FailureCacheKey.ts";
 
-/** Default maximum entries kept in the in-memory index. */
-export const DEFAULT_SUBNETWORK_INDEX_SIZE = 50_000;
+/** Default maximum entries kept in the in-memory index (module-private). */
+const DEFAULT_SUBNETWORK_INDEX_SIZE = 50_000;
 
 interface InternalEntry<T> {
   value: T;
