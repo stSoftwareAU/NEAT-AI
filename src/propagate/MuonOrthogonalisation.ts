@@ -28,10 +28,13 @@
  * module is never invoked.
  */
 
-/** Standard Muon quintic Newton-Schulz coefficients. */
-export const MUON_QUINTIC_A = 3.4445;
-export const MUON_QUINTIC_B = -4.7750;
-export const MUON_QUINTIC_C = 2.0315;
+/**
+ * Standard Muon quintic Newton-Schulz coefficients. Module-private: used only
+ * by the quintic iteration below, with no in-repo importers (Issue #3211).
+ */
+const MUON_QUINTIC_A = 3.4445;
+const MUON_QUINTIC_B = -4.7750;
+const MUON_QUINTIC_C = 2.0315;
 
 /** Default number of Newton-Schulz iterations (the V4 standard is 5). */
 export const MUON_DEFAULT_STEPS = 5;

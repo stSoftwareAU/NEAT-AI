@@ -301,6 +301,34 @@ Deno.test("Muon - default steps constant is 5 (V4 standard)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Export contract (Issue #3211): the quintic Newton-Schulz coefficients are
+// module-private implementation details, not part of the public surface. The
+// intended public API stays exported.
+// ---------------------------------------------------------------------------
+
+Deno.test("Muon - quintic coefficients are not part of the public export surface", async () => {
+  const mod = await import("@propagate/MuonOrthogonalisation.ts");
+  const keys = Object.keys(mod);
+  for (const name of ["MUON_QUINTIC_A", "MUON_QUINTIC_B", "MUON_QUINTIC_C"]) {
+    assert(
+      !keys.includes(name),
+      `${name} must be module-private (over-exported dead code, Issue #3211)`,
+    );
+  }
+  // The genuinely-public API must remain exported.
+  for (
+    const name of [
+      "newtonSchulzOrthogonalise",
+      "orthogonalise2D",
+      "frobeniusNorm",
+      "MUON_DEFAULT_STEPS",
+    ]
+  ) {
+    assert(keys.includes(name), `${name} must remain part of the public API`);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Config + hook integration.
 // ---------------------------------------------------------------------------
 
