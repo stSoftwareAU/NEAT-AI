@@ -474,8 +474,10 @@ existing-code path** with one new scorer. Concretely:
 - Signal-based interrupt — `SIGTERM` listener that flips `interrupted = true`
   and lets the current generation finish before exiting cleanly.
 - Time and iteration budgets — `timeoutMinutes`, `iterations`, `targetError`.
-- Result shape — `{ error, score, time, generation }` matches `evolveDir`'s
-  return so existing CLIs and dashboards do not branch on the entry point.
+- Result shape — `{ error, score, time, generation, phaseTimingTotals }` matches
+  `evolveDir`'s return so existing CLIs and dashboards do not branch on the
+  entry point. `phaseTimingTotals` is the whole-run per-phase timing breakdown
+  (Issue #3210); see below.
 
 ### New code paths
 
@@ -525,6 +527,38 @@ sequenceDiagram
     Neat->>Creature: fittest creature
     Creature->>Caller: { error, score, time, generation }
 ```
+
+## ⏱️ Run-level phase timing totals (Issue #3210)
+
+Every `evolve*` function already streams a per-generation
+`GenerationPhaseTiming` on each `generation_complete` event. Alongside the
+single total `time`, the result now also carries `phaseTimingTotals` — the
+whole-run **sum** of those always-on measurements, so a caller can confirm where
+the bulk of the time went (typically fitness/scoring when scanning large
+training data) without wiring up an `onTrainingEvent` listener.
+
+```typescript
+const { time, phaseTimingTotals } = await creature.evolveDataSet(data, opts);
+// e.g. { generations: 200, totalMs: 812_340, fitnessMs: 780_120,
+//        breedingMs: 9_800, mutationMs: 1_400, deduplicationMs: 900,
+//        speciationMs: 700, sortMs: 300, writeScoresMs: 5_100,
+//        checkpointWriteMs: 0, otherMs: 13_920 }
+const scoringShare = phaseTimingTotals.fitnessMs / phaseTimingTotals.totalMs;
+```
+
+- **Major phases only** — `fitnessMs`, `breedingMs`, `mutationMs`,
+  `deduplicationMs`, `speciationMs`, `sortMs`, `writeScoresMs`,
+  `checkpointWriteMs`. No breeding sub-phase totals.
+- **Raw milliseconds** — percentages are the caller's to derive.
+- **`otherMs`** reconciles the named buckets against the run total: worker
+  start-up, population seeding, finish-up waits, the final checkpoint write and
+  any phase overlap. It is clamped at 0, so when pipelined phases overlap
+  wall-clock the named phases can sum to slightly more than `totalMs`.
+- **`generations`** is the number of generations aggregated; **`totalMs`**
+  equals the returned `time`.
+
+The overhead is effectively zero — the per-generation measurements are always
+on; this just sums them.
 
 ## 🧪 Validation hold-out hook (deferred)
 
