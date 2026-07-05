@@ -19,8 +19,8 @@ Closes #3228.
 - `.github/workflows/markdown-lint.yml` — deleted the `detect-deno`,
   `setup-deno`, and `Validate Mermaid blocks` steps.
 - `test/scripts/MarkdownLintWorkflow.ts` — the test that asserted the dead block
-  **exists** was inverted into a regression test asserting it stays **gone**
-  (no `detect-deno` step, no `check-mermaid` run, no `worker/deno/mod.ts`
+  **exists** was inverted into a regression test asserting it stays **gone** (no
+  `detect-deno` step, no `check-mermaid` run, no `worker/deno/mod.ts`
   reference). This test change is required by the workflow change and is
   documented here per the "do not silently modify tests" rule.
 - `test/ci/MarkdownLintStrictMode.ts` — **deleted.** This file existed solely to
@@ -54,10 +54,11 @@ ok | 8 passed | 0 failed
 
 ## Test Plan
 
-- Updated `test/scripts/MarkdownLintWorkflow.ts::"markdown-lint workflow omits
-  the dead cross-repo Mermaid block (Issue #3228)"` — fails against the
-  un-edited workflow (dead block present), passes after removal. Acts as the
-  regression guard.
+- Updated
+  `test/scripts/MarkdownLintWorkflow.ts::"markdown-lint workflow omits
+  the dead cross-repo Mermaid block (Issue #3228)"`
+  — fails against the un-edited workflow (dead block present), passes after
+  removal. Acts as the regression guard.
 - Removed the now-obsolete `test/ci/MarkdownLintStrictMode.ts`.
 - Ran `deno fmt --check` (1135 files) and `deno lint` — clean.
 
