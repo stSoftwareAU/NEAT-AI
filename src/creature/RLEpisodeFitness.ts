@@ -215,6 +215,11 @@ export class RLEpisodeFitness<S, A> extends Fitness {
     this.lastScorerMs = 0;
     this.lastScoredCreatureCount = 0;
     this.lastBatchScorerInvocations = 0;
+    // Issue #3234: RL episode scoring never uses the native batch path — every
+    // scored creature is per-creature. Reset the split counters each call.
+    this.lastCreaturesBatchScored = 0;
+    this.lastCreaturesPerCreatureScored = 0;
+    this.lastBatchFallbackOccurred = false;
 
     if (this.seedSet.length === 0) {
       throw new Error(
@@ -326,6 +331,8 @@ export class RLEpisodeFitness<S, A> extends Fitness {
 
     this.lastScorerMs = scorerMsAccum;
     this.lastScoredCreatureCount = scoredCount;
+    // Issue #3234: every RL creature is scored on the per-creature path.
+    this.lastCreaturesPerCreatureScored = scoredCount;
   }
 
   /**

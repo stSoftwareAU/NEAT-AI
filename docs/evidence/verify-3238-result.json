@@ -1,0 +1,48 @@
+{
+  "issue": 3238,
+  "parent": 3233,
+  "generatedBy": "scripts/verifyBatchScorerUtilisation3238.ts",
+  "realBinary": "/Users/nigelleck/src/NEAT-AI-scorer/target/release/rust_scorer",
+  "run": {
+    "configuredIterations": 12,
+    "aggregatedGenerations": 14,
+    "populationSize": 24,
+    "inputs": 3,
+    "finalError": 0.005503000297373967,
+    "finalScore": 0.994496599702626,
+    "timeMs": 1393
+  },
+  "generationCompleteEvents": 14,
+  "partitionLines": [
+    "[NEAT-AI] Batch scorer partition: 24 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 12 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 23 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 20 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 19 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 18 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 26 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 25 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 25 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 30 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 26 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 26 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 23 forwardOnly batched, 0 recurrent per-creature",
+    "[NEAT-AI] Batch scorer partition: 25 forwardOnly batched, 0 recurrent per-creature"
+  ],
+  "osScorerSpawnsTotal": 15,
+  "osBatchScorerSpawns": 14,
+  "osProbeSpawns": 1,
+  "osScorerSpawnSample": [
+    "2026-07-06T17:40:46Z\t--help",
+    "2026-07-06T17:40:46Z\t--cost MSE /var/folders/4f/d17wyvq50cx42xqb6rnnz4w80000gn/T/dataSet-3d503a345b44999f/neat-rust-scorer-batch-8dbb3488c0407411 /var/folders/4f/d17wyvq50cx42xqb6rnnz4w80000gn/T/dataSet-3d503a345b44999f",
+    "2026-07-06T17:40:46Z\t--cost MSE /var/folders/4f/d17wyvq50cx42xqb6rnnz4w80000gn/T/dataSet-3d503a345b44999f/neat-rust-scorer-batch-3a93085be4fef0e1 /var/folders/4f/d17wyvq50cx42xqb6rnnz4w80000gn/T/dataSet-3d503a345b44999f"
+  ],
+  "scorerUtilisation": {
+    "generations": 14,
+    "batchScorerInvocations": 14,
+    "creaturesBatchScored": 322,
+    "creaturesPerCreatureScored": 0,
+    "batchFallbackGenerations": 0
+  },
+  "discrepancies": []
+}
