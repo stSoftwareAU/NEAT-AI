@@ -5,9 +5,9 @@
 Adds a **permanent automated assertion** that multi-creature (directory/batch)
 scoring in NEAT-AI-scorer reads the training data in **exactly one pass**,
 scoring the whole batch in that single sweep — so the "one pass over the
-training data" property is guaranteed by the test suite, not just by
-inspection. This is the "permanent automated assertion" half of the practice
-confirmation tracked under the milestone parent #3233. Closes #3236.
+training data" property is guaranteed by the test suite, not just by inspection.
+This is the "permanent automated assertion" half of the practice confirmation
+tracked under the milestone parent #3233. Closes #3236.
 
 The actual code lands in the sibling **stSoftwareAU/NEAT-AI-scorer** repository
 (the Rust scorer is a separate internal repo), delivered as
@@ -38,8 +38,8 @@ counter reports **N** instead of `1` and the `assert_eq!` fails — breaking
 
 ## Evidence
 
-Backend/CLI change with no web interface to screenshot. Verification is the
-test suite in the scorer repo:
+Backend/CLI change with no web interface to screenshot. Verification is the test
+suite in the scorer repo:
 
 - `cargo test -p rust_scorer` — all suites pass, including the new
   `single_pass_assertion` (3/3); no existing test regressed.
