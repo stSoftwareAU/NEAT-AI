@@ -86,6 +86,31 @@ export class Fitness {
   lastBatchScorerInvocations = 0;
 
   /**
+   * Creatures scored via the native batch (one-pass) rust-scorer path during
+   * the most recent `calculate()` call (Issue #3234).
+   *
+   * Split out from {@link lastScoredCreatureCount} — which spans both backends
+   * — so a silent regression where the batch path breaks and every creature
+   * quietly falls back to the slow per-creature worker path is visible as a
+   * zero here instead of blending into the combined total.
+   */
+  lastCreaturesBatchScored = 0;
+
+  /**
+   * Creatures scored via the per-creature worker path during the most recent
+   * `calculate()` call (Issue #3234). Includes recurrent creatures that never
+   * enter the batch path and any creatures re-scored after a batch fallback.
+   */
+  lastCreaturesPerCreatureScored = 0;
+
+  /**
+   * True when a batch attempt failed during the most recent `calculate()` call
+   * and its creatures reverted to the per-creature worker path (Issue #3234).
+   * A partial/whole fallback must stay visible, never masked as success.
+   */
+  lastBatchFallbackOccurred = false;
+
+  /**
    * Data directory passed to the external `rust_scorer` binary in batch
    * mode (Issue #2422). `undefined` disables batch scoring regardless of
    * configuration, matching the behaviour of environments where no dataset
@@ -169,6 +194,11 @@ export class Fitness {
       this.lastScorerMs = 0;
       this.lastScoredCreatureCount = 0;
       this.lastBatchScorerInvocations = 0;
+      // Issue #3234: reset per-backend scorer-utilisation counters alongside
+      // the existing telemetry resets.
+      this.lastCreaturesBatchScored = 0;
+      this.lastCreaturesPerCreatureScored = 0;
+      this.lastBatchFallbackOccurred = false;
       return;
     }
 
@@ -182,8 +212,12 @@ export class Fitness {
     // `processNext` will increment these after every `calculateScore()`
     // call. Using bare numeric mutation keeps the hot path allocation-free.
     let scorerMsAccum = 0;
-    let scoredCount = 0;
+    // Issue #3234: split the scored-creature tally by backend so the batch
+    // (one-pass) path and the per-creature worker path can be distinguished.
+    let batchScoredCount = 0;
+    let workerScoredCount = 0;
     this.lastBatchScorerInvocations = 0;
+    this.lastBatchFallbackOccurred = false;
 
     // Issue #2422: When the external rust scorer is enabled in directory
     // mode, invoke it once for the whole generation, map results back to
@@ -248,7 +282,7 @@ export class Fitness {
                 const scoreStart = performance.now();
                 creature.score = calculateScore(creature, error, this.growth);
                 scorerMsAccum += performance.now() - scoreStart;
-                scoredCount++;
+                batchScoredCount++;
               }
               addTag(creature, "score", creature.score.toString());
 
@@ -307,6 +341,9 @@ export class Fitness {
           // creaturesForWorkerPath stays at uniqueQueue so the worker path
           // re-scores everything, including the forwardOnly creatures the
           // batch attempt failed to score.
+          // Issue #3234: mark the fallback so it is counted per-run rather
+          // than silently absorbed by the worker path's success.
+          this.lastBatchFallbackOccurred = true;
         }
       }
       // forwardOnlyCreatures.length === 0 — no temp dir, no spawn. The
@@ -387,7 +424,7 @@ export class Fitness {
         const scoreStart = performance.now();
         creature.score = calculateScore(creature, error, this.growth);
         scorerMsAccum += performance.now() - scoreStart;
-        scoredCount++;
+        workerScoredCount++;
       }
       addTag(creature, "score", creature.score.toString());
 
@@ -421,7 +458,11 @@ export class Fitness {
 
     // Issue #2424: Publish scorer telemetry for throughput metrics assembly.
     this.lastScorerMs = scorerMsAccum;
-    this.lastScoredCreatureCount = scoredCount;
+    // Issue #3234: publish the per-backend split. The combined count is kept
+    // for existing throughput consumers and must equal batch + worker.
+    this.lastCreaturesBatchScored = batchScoredCount;
+    this.lastCreaturesPerCreatureScored = workerScoredCount;
+    this.lastScoredCreatureCount = batchScoredCount + workerScoredCount;
   }
 }
 

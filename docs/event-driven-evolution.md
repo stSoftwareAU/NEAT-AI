@@ -474,10 +474,12 @@ existing-code path** with one new scorer. Concretely:
 - Signal-based interrupt — `SIGTERM` listener that flips `interrupted = true`
   and lets the current generation finish before exiting cleanly.
 - Time and iteration budgets — `timeoutMinutes`, `iterations`, `targetError`.
-- Result shape — `{ error, score, time, generation, phaseTimingTotals }` matches
-  `evolveDir`'s return so existing CLIs and dashboards do not branch on the
-  entry point. `phaseTimingTotals` is the whole-run per-phase timing breakdown
-  (Issue #3210); see below.
+- Result shape —
+  `{ error, score, time, generation, phaseTimingTotals, scorerUtilisation }`
+  matches `evolveDir`'s return so existing CLIs and dashboards do not branch on
+  the entry point. `phaseTimingTotals` is the whole-run per-phase timing
+  breakdown (Issue #3210) and `scorerUtilisation` is the whole-run per-backend
+  scorer-utilisation breakdown (Issue #3234); see below.
 
 ### New code paths
 
@@ -559,6 +561,53 @@ const scoringShare = phaseTimingTotals.fitnessMs / phaseTimingTotals.totalMs;
 
 The overhead is effectively zero — the per-generation measurements are always
 on; this just sums them.
+
+## 🔀 Run-level scorer-utilisation totals (Issue #3234)
+
+Alongside `phaseTimingTotals`, every `evolve*` result also carries
+`scorerUtilisation` — the whole-run **per-backend** count of how creatures were
+scored. `Fitness.calculate()` can score a generation two ways: the Rust native
+**batch (one-pass)** path (only forwardOnly creatures, one `rust_scorer` process
+per generation) or the **per-creature worker** path (recurrent creatures, and
+anything that falls back). Previously a single combined count spanned both, so a
+silent regression — the batch path breaks and every creature quietly falls back
+to the slow worker path — looked identical to a healthy run. `scorerUtilisation`
+splits the count by backend and tallies fallback generations so that regression
+is visible in `result.json`.
+
+```mermaid
+flowchart TD
+    Q[Unique creatures this generation] --> P{forwardOnly?}
+    P -->|yes| B[Batch rust scorer<br/>one process per generation]
+    P -->|no| W[Per-creature worker path]
+    B -->|success| BS[creaturesBatchScored++]
+    B -->|failure| F[batchFallbackGenerations++<br/>revert to worker path]
+    F --> W
+    W --> WS[creaturesPerCreatureScored++]
+```
+
+```typescript
+const { scorerUtilisation } = await creature.evolveDataSet(data, opts);
+// e.g. { generations: 200, batchScorerInvocations: 200,
+//        creaturesBatchScored: 40_000, creaturesPerCreatureScored: 0,
+//        batchFallbackGenerations: 0 }
+```
+
+- **`batchScorerInvocations`** — total `rust_scorer` processes spawned across
+  the run. Roughly one per generation when batch mode is healthy; `0` means
+  batch mode was disabled, unavailable, or never used.
+- **`creaturesBatchScored`** — creatures resolved via the native batch path. `0`
+  on a batch-enabled host is a red flag: the one-pass path never ran.
+- **`creaturesPerCreatureScored`** — creatures resolved via the worker path
+  (recurrent creatures plus any batch remainder or fallback).
+- **`batchFallbackGenerations`** — generations where a batch attempt failed and
+  its creatures reverted to the worker path. **Non-zero exposes the exact
+  silent-fallback regression this telemetry exists to catch.**
+- **`generations`** is the number of generations aggregated.
+
+The per-generation split is also emitted on the verbose `[Throughput]` log line
+(`batchScored…/perCreatureScored…/batchFallback…`). The overhead is zero — the
+counters are always on; this just sums them.
 
 ## 🧪 Validation hold-out hook (deferred)
 

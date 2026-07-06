@@ -1008,6 +1008,7 @@ export class Creature implements CreatureInternal {
       time: number;
       generation: number;
       phaseTimingTotals: training.PhaseTimingTotals;
+      scorerUtilisation: training.ScorerUtilisationTotals;
     }
   > {
     return training.evolveDir(this, dataSetDir, options);
@@ -1032,6 +1033,7 @@ export class Creature implements CreatureInternal {
       time: number;
       generation: number;
       phaseTimingTotals: training.PhaseTimingTotals;
+      scorerUtilisation: training.ScorerUtilisationTotals;
     }
   > {
     return training.evolveEnv(this, adapter, options);
@@ -1055,6 +1057,7 @@ export class Creature implements CreatureInternal {
       time: number;
       generation: number;
       phaseTimingTotals: training.PhaseTimingTotals;
+      scorerUtilisation: training.ScorerUtilisationTotals;
       /**
        * Issue #2629: per-milestone payloads collected when
        * `options.statistics === true`. Omitted when statistics are off.
@@ -1075,6 +1078,7 @@ export class Creature implements CreatureInternal {
       score: number;
       time: number;
       phaseTimingTotals: training.PhaseTimingTotals;
+      scorerUtilisation: training.ScorerUtilisationTotals;
     }
   > {
     return training.evolveDataSet(this, dataSet, options);

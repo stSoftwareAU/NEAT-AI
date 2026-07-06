@@ -85,9 +85,33 @@ import {
 // run-level phase-timing totals shape (Issue #3210).
 export type { PhaseTimingTotals } from "@creature/PhaseTimingTotals.ts";
 import {
+  accumulateScorerUtilisation,
+  createScorerUtilisationAccumulator,
+  finaliseScorerUtilisationTotals,
+  type ScorerUtilisationCounts,
+  type ScorerUtilisationTotals,
+} from "@creature/ScorerUtilisationTotals.ts";
+// Re-export so `import * as training` consumers (e.g. Creature.ts) can name the
+// run-level scorer-utilisation totals shape (Issue #3234).
+export type { ScorerUtilisationTotals } from "@creature/ScorerUtilisationTotals.ts";
+import {
   type EvolveRLMilestone,
   isMilestoneGeneration,
 } from "@creature/EvolveRLStatistics.ts";
+
+/**
+ * Snapshot the per-backend scorer-utilisation counts published by `Fitness`
+ * after a generation's `evolve()` cycle (Issue #3234). Read once per
+ * generation into the run-level accumulator.
+ */
+function readScorerUtilisation(fitness: Fitness): ScorerUtilisationCounts {
+  return {
+    batchScorerInvocations: fitness.lastBatchScorerInvocations,
+    creaturesBatchScored: fitness.lastCreaturesBatchScored,
+    creaturesPerCreatureScored: fitness.lastCreaturesPerCreatureScored,
+    batchFallbackOccurred: fitness.lastBatchFallbackOccurred,
+  };
+}
 
 /**
  * Propagate expected values backward through the network for all output neurons.
@@ -414,6 +438,7 @@ export async function evolveDir(
     time: number;
     generation: number;
     phaseTimingTotals: PhaseTimingTotals;
+    scorerUtilisation: ScorerUtilisationTotals;
   }
 > {
   let interrupted = false;
@@ -527,6 +552,8 @@ export async function evolveDir(
   const iterations = config.iterations;
   // Issue #3210: sum the always-on per-generation phase timings across the run.
   const phaseTimingAccumulator = createPhaseTimingAccumulator();
+  // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
+  const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
 
   while (true) {
     // deno-lint-ignore no-await-in-loop
@@ -586,6 +613,12 @@ export async function evolveDir(
     // Issue #3210: fold this generation's (checkpoint-merged) phase timing
     // into the whole-run running totals returned alongside `time`.
     accumulatePhaseTiming(phaseTimingAccumulator, phaseTiming);
+    // Issue #3234: fold this generation's per-backend scorer-utilisation counts
+    // into the whole-run totals returned alongside `phaseTimingTotals`.
+    accumulateScorerUtilisation(
+      scorerUtilisationAccumulator,
+      readScorerUtilisation(neat.fitness),
+    );
 
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
@@ -708,6 +741,9 @@ export async function evolveDir(
     generation: generation,
     time,
     phaseTimingTotals: finalisePhaseTimingTotals(phaseTimingAccumulator, time),
+    scorerUtilisation: finaliseScorerUtilisationTotals(
+      scorerUtilisationAccumulator,
+    ),
   };
 }
 
@@ -742,6 +778,7 @@ export async function evolveEnv<S, A>(
     time: number;
     generation: number;
     phaseTimingTotals: PhaseTimingTotals;
+    scorerUtilisation: ScorerUtilisationTotals;
   }
 > {
   if (creature.input !== adapter.inputCount) {
@@ -850,6 +887,8 @@ export async function evolveEnv<S, A>(
   const iterations = config.iterations;
   // Issue #3210: sum the always-on per-generation phase timings across the run.
   const phaseTimingAccumulator = createPhaseTimingAccumulator();
+  // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
+  const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
 
   while (true) {
     generation++;
@@ -899,6 +938,12 @@ export async function evolveEnv<S, A>(
     // Issue #3210: fold this generation's (checkpoint-merged) phase timing
     // into the whole-run running totals returned alongside `time`.
     accumulatePhaseTiming(phaseTimingAccumulator, phaseTiming);
+    // Issue #3234: fold this generation's per-backend scorer-utilisation counts
+    // into the whole-run totals returned alongside `phaseTimingTotals`.
+    accumulateScorerUtilisation(
+      scorerUtilisationAccumulator,
+      readScorerUtilisation(neat.fitness),
+    );
 
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
@@ -1008,6 +1053,9 @@ export async function evolveEnv<S, A>(
     generation,
     time,
     phaseTimingTotals: finalisePhaseTimingTotals(phaseTimingAccumulator, time),
+    scorerUtilisation: finaliseScorerUtilisationTotals(
+      scorerUtilisationAccumulator,
+    ),
   };
 }
 
@@ -1118,6 +1166,7 @@ export async function evolveRL<S, A>(
     time: number;
     generation: number;
     phaseTimingTotals: PhaseTimingTotals;
+    scorerUtilisation: ScorerUtilisationTotals;
     /**
      * Issue #2629: per-milestone payloads collected when `statistics === true`.
      * Omitted entirely when statistics are disabled so the return shape stays
@@ -1336,6 +1385,8 @@ export async function evolveRL<S, A>(
   const iterations = config.iterations;
   // Issue #3210: sum the always-on per-generation phase timings across the run.
   const phaseTimingAccumulator = createPhaseTimingAccumulator();
+  // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
+  const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
 
   while (true) {
     generation++;
@@ -1393,6 +1444,12 @@ export async function evolveRL<S, A>(
     // Issue #3210: fold this generation's (checkpoint-merged) phase timing
     // into the whole-run running totals returned alongside `time`.
     accumulatePhaseTiming(phaseTimingAccumulator, phaseTiming);
+    // Issue #3234: fold this generation's per-backend scorer-utilisation counts
+    // into the whole-run totals returned alongside `phaseTimingTotals`.
+    accumulateScorerUtilisation(
+      scorerUtilisationAccumulator,
+      readScorerUtilisation(neat.fitness),
+    );
 
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
@@ -1569,6 +1626,10 @@ export async function evolveRL<S, A>(
     phaseTimingAccumulator,
     time,
   );
+  // Issue #3234: finalise the run-level per-backend scorer-utilisation totals.
+  const scorerUtilisation = finaliseScorerUtilisationTotals(
+    scorerUtilisationAccumulator,
+  );
   if (statisticsEnabled) {
     return {
       error,
@@ -1576,6 +1637,7 @@ export async function evolveRL<S, A>(
       generation,
       time,
       phaseTimingTotals,
+      scorerUtilisation,
       milestones,
     };
   }
@@ -1585,6 +1647,7 @@ export async function evolveRL<S, A>(
     generation,
     time,
     phaseTimingTotals,
+    scorerUtilisation,
   };
 }
 
@@ -1602,6 +1665,7 @@ export async function evolveDataSet(
     score: number;
     time: number;
     phaseTimingTotals: PhaseTimingTotals;
+    scorerUtilisation: ScorerUtilisationTotals;
   }
 > {
   const config = createNeatConfig(options);
