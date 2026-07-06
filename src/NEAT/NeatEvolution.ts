@@ -1047,6 +1047,12 @@ export async function evolve(
         `/depth${throughput.heavyQueueMaxDepth}/wait${throughput.heavyWaitMs}ms` +
         ` scorer=${throughput.scorerMs.toFixed(1)}ms` +
         `/scored${throughput.scoredCreatureCount}` +
+        // Issue #3234: per-backend scorer-utilisation split so a silent batch
+        // fallback is visible on the verbose log line, not just in the result.
+        `/batchScored${neat.fitness.lastCreaturesBatchScored}` +
+        `/perCreatureScored${neat.fitness.lastCreaturesPerCreatureScored}` +
+        `/batchInvocations${neat.fitness.lastBatchScorerInvocations}` +
+        `/batchFallback${neat.fitness.lastBatchFallbackOccurred ? 1 : 0}` +
         `/creaturesPerSec${throughput.creaturesPerSec.toFixed(1)}` +
         // Issue #2523: surface corrupt-parent skip count in the
         // throughput summary so operators can alert on producer
