@@ -52,14 +52,17 @@ flowchart TD
     C -.recorded cause.-> G
 ```
 
-Before: `… requires the NEAT-AI-core WASM bundle, but it could not be loaded. Run
-./build.sh …` (no cause).
+Before:
+`… requires the NEAT-AI-core WASM bundle, but it could not be loaded. Run
+./build.sh …`
+(no cause).
 
-After: `… requires the NEAT-AI-core WASM bundle, but it could not be loaded.
+After:
+`… requires the NEAT-AI-core WASM bundle, but it could not be loaded.
 Underlying load error: PermissionDenied: Requires net access to "jsr.io". If you
 are consuming @stsoftware/neat-ai from JSR, ensure the runtime can load the
-vendored bundle … If you are developing NEAT-AI locally, run ./build.sh …` with
-the original error attached via `Error.cause`.
+vendored bundle … If you are developing NEAT-AI locally, run ./build.sh …`
+with the original error attached via `Error.cause`.
 
 ## Test Plan
 
