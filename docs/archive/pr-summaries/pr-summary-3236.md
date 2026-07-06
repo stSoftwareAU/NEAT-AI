@@ -52,7 +52,7 @@ test suite in the scorer repo:
 ```mermaid
 flowchart LR
     subgraph batch["score_from_creature_dir (N creatures)"]
-        R["training_pass_probe::record_sweep()"] --> S["for_each_read_chunk\n(one sweep over all .bin files)"]
+        R["training_pass_probe::record_sweep()"] --> S["for_each_read_chunk<br/>(one sweep over all .bin files)"]
         S --> C["score whole batch in-pass"]
     end
     T["single_pass_assertion test"] -->|reset then count == 1| batch
