@@ -25,6 +25,7 @@ export {
 
 // Issue #1405 - Module loading, init, and availability from WasmModuleLoader
 export {
+  getWasmLoadError,
   initWasmActivation,
   initWasmActivationSync,
   isWasmActivationAvailable,

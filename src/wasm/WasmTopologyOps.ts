@@ -19,6 +19,7 @@ import {
   getScanAvailableConnectionsFn,
   getValidateStructuralIntegrityFn,
   getValidateTopologyFn,
+  getWasmLoadError,
 } from "@wasm/WasmModuleLoader.ts";
 
 // ---------------------------------------------------------------------------
@@ -103,14 +104,45 @@ export interface TopologyValidationResult {
   synapseIndex: number;
 }
 
-/** Throws a clear error when the WASM topology bundle is unavailable. */
-function requireWasm<T>(fn: T | null | undefined, name: string): T {
+/**
+ * Throws a clear error when the WASM topology bundle is unavailable.
+ *
+ * Issue #3230: the previous message only told the caller to "run ./build.sh",
+ * which is useless to a project consuming `@stsoftware/neat-ai` from JSR — that
+ * consumer cannot rebuild the vendored bundle. Worse, the *real* reason the
+ * bundle failed to load (e.g. a Deno `PermissionDenied` net/read error, or a
+ * corrupt artefact) was swallowed during auto-init, so the abort surfaced a
+ * generic message with no actionable cause.
+ *
+ * We now surface the underlying load error captured by the loader
+ * ({@link getWasmLoadError}) so the failure is loud with its true cause
+ * (Issue #3234), and we give guidance for both JSR consumers and local
+ * developers. `loadError` defaults to the loader's recorded error but is
+ * injectable for testing.
+ */
+export function requireWasm<T>(
+  fn: T | null | undefined,
+  name: string,
+  loadError: Error | null = getWasmLoadError(),
+): T {
   if (!fn) {
-    throw new Error(
+    const cause = loadError
+      ? `Underlying load error: ${loadError.name}: ${loadError.message}.`
+      : `No underlying load error was recorded, so the WASM module was ` +
+        `never initialised (auto-init may have been skipped or the process ` +
+        `exited before it completed).`;
+    const error = new Error(
       `WasmTopologyOps.${name} requires the NEAT-AI-core WASM bundle, ` +
-        `but it could not be loaded. Run ./build.sh to refresh ` +
-        `wasm_activation/pkg from the pinned core revision.`,
+        `but it could not be loaded. ${cause} ` +
+        `If you are consuming @stsoftware/neat-ai from JSR, ensure the ` +
+        `runtime can load the vendored bundle at wasm_activation/pkg ` +
+        `(Deno needs read/net access to the package location to fetch ` +
+        `wasm_activation_bg.wasm). If you are developing NEAT-AI locally, ` +
+        `run ./build.sh to refresh wasm_activation/pkg from the pinned ` +
+        `core revision.`,
+      loadError ? { cause: loadError } : undefined,
     );
+    throw error;
   }
   return fn;
 }

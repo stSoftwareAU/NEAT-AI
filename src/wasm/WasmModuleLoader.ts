@@ -24,6 +24,27 @@ let wasmModule: WasmModule | null = null;
 let compiledNetworkClass: WasmCompiledNetworkConstructor | null = null;
 let initPromise: Promise<boolean> | null = null;
 
+/**
+ * Issue #3230: The real, underlying reason the WASM bundle failed to load.
+ *
+ * Auto-init (`WasmAutoInit.ts`) and `initWasmActivation` deliberately swallow
+ * the load failure and return `false` so a missing bundle does not crash at
+ * import time. Without capturing *why* it failed, downstream consumers of
+ * WASM-only operations (e.g. `WasmTopologyOps.validateTopology`) can only
+ * report a generic "could not be loaded" message — useless to a JSR consumer
+ * who cannot "run ./build.sh". We record the last load error here so those
+ * consumers can fail loud with the actual cause (Issue #3234).
+ */
+let lastLoadError: Error | null = null;
+
+/** Normalise an unknown thrown value into an `Error`. */
+function toError(value: unknown): Error {
+  if (value instanceof Error) {
+    return value;
+  }
+  return new Error(String(value));
+}
+
 // Standalone function pointers
 let squashFn: ((squashType: number, value: number) => number) | null = null;
 let derivativeFn: ((squashType: number, value: number) => number) | null = null;
@@ -476,8 +497,10 @@ export async function initWasmActivation(): Promise<boolean> {
       const module = await import(modulePath);
       await module.default();
       assignFunctionPointers(module);
+      lastLoadError = null;
       return true;
     } catch (error) {
+      lastLoadError = toError(error);
       const code = (error as { code?: string })?.code;
       const msg = (error as Error)?.message ?? String(error);
       const isNotFound = code === "ERR_MODULE_NOT_FOUND" ||
@@ -530,8 +553,10 @@ export function initWasmActivationSync(
       jsBindings.initSync(wasmBinary);
     }
     assignFunctionPointers(jsBindings);
+    lastLoadError = null;
     return true;
   } catch (error) {
+    lastLoadError = toError(error);
     getLogger().error(
       "Failed to initialise WASM activation module sync:",
       error,
@@ -545,6 +570,17 @@ export function initWasmActivationSync(
  */
 export function isWasmActivationAvailable(): boolean {
   return wasmModule !== null && compiledNetworkClass !== null;
+}
+
+/**
+ * Issue #3230: The underlying error from the most recent failed attempt to load
+ * the WASM bundle, or `null` if the bundle loaded successfully or was never
+ * initialised. Used by WASM-only operations to surface *why* the bundle could
+ * not be loaded (e.g. a `PermissionDenied` net/read error for a JSR consumer),
+ * instead of a generic "could not be loaded" message.
+ */
+export function getWasmLoadError(): Error | null {
+  return lastLoadError;
 }
 
 // ---------------------------------------------------------------------------
