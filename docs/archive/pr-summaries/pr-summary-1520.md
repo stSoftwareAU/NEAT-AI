@@ -11,7 +11,7 @@ expectedCreatureScoreGain = min(0.5, max(0.1, 0.1 + (excessMagnitude / 10) * 0.4
 ```
 
 where `excessMagnitude = log10(err) − log10(1e10)`. That formula ignored network
-topology — it turned a large squash error into a large *positive* gain
+topology — it turned a large squash error into a large _positive_ gain
 regardless of how many layers separated the neuron from the output(s). For the
 recorded `neuron-1802938338` failure it claimed `+0.17882921` while the measured
 effect was `−0.000194` (~920× too large and opposite in sign).
@@ -31,7 +31,7 @@ synthesising the gain** and instead **consume an injected Discovery estimate**:
   Discovery estimate is not yet wired.
 - The Issue #2483 WASM-hygiene behaviour is **preserved**: over-threshold
   neurons are still promoted for removal (removal is gated on error magnitude,
-  not gain). Only the *gain value* stopped being synthesised.
+  not gain). Only the _gain value_ stopped being synthesised.
 
 The estimator seam is threaded through the callers
 `DiscoverStructureAnalysis.analyzeSelectedNeuronsSquashes` and
@@ -63,7 +63,8 @@ flowchart LR
 
 Backend/CLI change — no web interface. Verified via `deno test` on the
 `DiscoverSquashAnalysis` suite (14 passed, incl. 4 new), project-wide
-`deno lint` (1789 files) and `deno check` (`quality.sh --check-only`), all green.
+`deno lint` (1789 files) and `deno check` (`quality.sh --check-only`), all
+green.
 
 Regression proof: the new assertions require the gain to equal the injected
 estimate (or `0`), which the old placeholder path (returning `0.5` for these
@@ -73,16 +74,16 @@ inputs) would fail.
 
 Added to `test/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts`:
 
-- `DiscoverSquashAnalysis - remove-neuron gain is not synthesised locally (findCandidateSquash)` —
-  injects a Discovery estimate, asserts the harmful-sink gain equals it and does
-  **not** match the placeholder formula.
-- `DiscoverSquashAnalysis - remove-neuron gain defaults to non-fabricated zero (findCandidateSquash)` —
-  no estimator → gain `0`, still `!= placeholder`, neuron still promoted for
+- `DiscoverSquashAnalysis - remove-neuron gain is not synthesised locally (findCandidateSquash)`
+  — injects a Discovery estimate, asserts the harmful-sink gain equals it and
+  does **not** match the placeholder formula.
+- `DiscoverSquashAnalysis - remove-neuron gain defaults to non-fabricated zero (findCandidateSquash)`
+  — no estimator → gain `0`, still `!= placeholder`, neuron still promoted for
   removal.
-- `DiscoverSquashAnalysis - remove-neuron gain is consumed from Discovery (analyzeSelectedNeuronsForHarmfulRemoval)` —
-  injected estimate consumed verbatim.
-- `DiscoverSquashAnalysis - harmful removal emits non-fabricated zero without an estimate` —
-  default-path guard.
+- `DiscoverSquashAnalysis - remove-neuron gain is consumed from Discovery (analyzeSelectedNeuronsForHarmfulRemoval)`
+  — injected estimate consumed verbatim.
+- `DiscoverSquashAnalysis - harmful removal emits non-fabricated zero without an estimate`
+  — default-path guard.
 
 Existing `calculateSquashError*` and
 `analyzeSelectedNeuronsForHarmfulRemoval loads records via wire uuid path` cases
