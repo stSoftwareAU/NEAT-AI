@@ -37,6 +37,7 @@ import {
 import {
   analyzeSelectedNeuronsForHarmfulRemoval as analyzeHarmfulNeuronsImpl,
   findCandidateSquash as findCandidateSquashImpl,
+  type RemoveNeuronGainEstimator,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts";
 import { assert } from "@std/assert";
 import type { NeuronErrorInfo } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
@@ -550,6 +551,13 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
      * instead of merely logging "this neuron should be removed".
      */
     harmfulSink?: CandidateHarmfulNeuron[],
+    /**
+     * Issue #1520: injected Discovery estimator forwarded to
+     * {@link findCandidateSquashImpl} so the over-threshold remove-neuron gain
+     * comes from the propagation-aware Discovery estimate rather than the old
+     * synthetic placeholder.
+     */
+    estimateRemoveNeuronGain?: RemoveNeuronGainEstimator,
   ): Promise<CandidateSquash[] | undefined> {
     if (focusList.length === 0) return undefined;
 
@@ -610,6 +618,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
         this.loggingEnabled,
         (level, message, details) => this.log(level, message, details),
         harmfulSink,
+        estimateRemoveNeuronGain,
       );
     });
 
@@ -622,6 +631,12 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   public async analyzeSelectedNeuronsForHarmfulRemoval(
     focusList: number[],
+    /**
+     * Issue #1520: injected Discovery estimator forwarded to the squash
+     * analyser so the remove-neuron gain is consumed from the propagation-aware
+     * Discovery estimate rather than fabricated locally.
+     */
+    estimateRemoveNeuronGain?: RemoveNeuronGainEstimator,
   ): Promise<CandidateHarmfulNeuron[] | undefined> {
     if (focusList.length === 0) return undefined;
 
@@ -654,6 +669,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       this.tempDir,
       this.loggingEnabled,
       (level, message, details) => this.log(level, message, details),
+      estimateRemoveNeuronGain,
     );
   }
 
