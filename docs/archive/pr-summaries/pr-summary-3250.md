@@ -1,12 +1,12 @@
 ## Summary
 
 `mapRustCoordinatedOp` in
-`src/architecture/ErrorGuidedStructuralEvolution/DiscoverAnalysis.ts` only mapped
-the two synapse coordinated-op variants (`removeSynapse`, `addSynapse`). The Rust
-discovery engine, however, emits the **full** coordinated-op set — including
-`setBias`, `setWeight`, `addNeuron`, `removeNeuron` and `changeSquash`. When the
-Rust analysis path returned a `setBias` op it fell through to `assertNever` and
-threw at runtime:
+`src/architecture/ErrorGuidedStructuralEvolution/DiscoverAnalysis.ts` only
+mapped the two synapse coordinated-op variants (`removeSynapse`, `addSynapse`).
+The Rust discovery engine, however, emits the **full** coordinated-op set —
+including `setBias`, `setWeight`, `addNeuron`, `removeNeuron` and
+`changeSquash`. When the Rust analysis path returned a `setBias` op it fell
+through to `assertNever` and threw at runtime:
 
 ```
 Error: Unhandled variant: {"type":"setBias","neuronUuid":"L1-a","bias":-0.80727166}
@@ -16,8 +16,9 @@ Root cause: the `RustCoordinatedStructuralOperation` union and its mapper were
 out of lock-step with both the TypeScript `CoordinatedStructuralOperation` union
 and the apply side (`ApplyCoordinatedStructuralCandidate.ts`), which already
 handled all seven variants. This fix brings the FFI boundary type and mapper up
-to the full variant set so every op the engine emits is mapped instead of hitting
-the loud `assertNever` guard. Malformed/unknown wire data still fails loudly.
+to the full variant set so every op the engine emits is mapped instead of
+hitting the loud `assertNever` guard. Malformed/unknown wire data still fails
+loudly.
 
 Closes #3250.
 
