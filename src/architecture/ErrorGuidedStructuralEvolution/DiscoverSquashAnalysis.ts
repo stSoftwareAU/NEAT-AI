@@ -20,6 +20,42 @@ import type {
 import { buildRuntimeIdToWireMap } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 
 /**
+ * Injected propagation-aware remove-neuron gain estimator (Issue #1520).
+ *
+ * Estimation authority for the remove-neuron gain has moved to the
+ * NEAT-AI-Discovery (Rust) `estimate_remove_neuron_gain` estimator
+ * (NEAT-AI-Discovery #1518, cross-repo per NEAT-AI-Discovery #2942). The Deno
+ * squash analyser no longer synthesises the gain locally — it consumes this
+ * injected estimate instead. Implementations return the honest,
+ * propagation-aware gain for removing `neuronUuid` (typically `<= 0`), or
+ * `undefined` when no estimate is available.
+ */
+export type RemoveNeuronGainEstimator = (
+  neuronUuid: string,
+) => number | undefined;
+
+/**
+ * Resolve the remove-neuron gain for an over-threshold ("harmful") neuron.
+ *
+ * Issue #1520: the previous `0.1 + (log10(err) − 10)/10 × 0.4` placeholder
+ * (clamped to `[0.1, 0.5]`) is gone. When a Discovery estimate is injected we
+ * surface it verbatim; otherwise we emit a non-fabricated neutral `0`. A zero
+ * gain keeps the neuron removal-eligible (removal is gated on error magnitude,
+ * not gain) while the `DiscoverSquashAnalysis` benchmark surfaces the zero as
+ * the cross-repo sequencing signal that the Discovery estimate is not yet wired
+ * (NEAT-AI-Discovery #1516).
+ */
+function resolveRemoveNeuronGain(
+  neuronUuid: string,
+  estimateRemoveNeuronGain?: RemoveNeuronGainEstimator,
+): number {
+  const estimate = estimateRemoveNeuronGain?.(neuronUuid);
+  return typeof estimate === "number" && Number.isFinite(estimate)
+    ? estimate
+    : 0;
+}
+
+/**
  * Calculates MSE between ideal and actual activations.
  *
  * Issue #3092: The previous implementation routed every sample through a
@@ -110,6 +146,13 @@ export function findCandidateSquash(
    * "this neuron should be removed".
    */
   harmfulSink?: CandidateHarmfulNeuron[],
+  /**
+   * Issue #1520: injected Discovery estimator supplying the honest,
+   * propagation-aware remove-neuron gain for an over-threshold neuron. When
+   * omitted, the emitted gain is a non-fabricated neutral `0` rather than the
+   * old synthetic placeholder formula.
+   */
+  estimateRemoveNeuronGain?: RemoveNeuronGainEstimator,
 ): CandidateSquash | undefined {
   const idToWire = buildRuntimeIdToWireMap(creature);
   const rawValues: number[] = [];
@@ -188,12 +231,13 @@ export function findCandidateSquash(
       const averageActivation = activationCount > 0
         ? activationSum / activationCount
         : 0;
-      const errorLog = Math.log10(baselineError);
-      const thresholdLog = Math.log10(MAX_REASONABLE_SQUASH_ERROR);
-      const excessMagnitude = errorLog - thresholdLog;
-      const expectedCreatureScoreGain = Math.min(
-        0.5,
-        Math.max(0.1, 0.1 + (excessMagnitude / 10) * 0.4),
+      // Issue #1520: delegate the remove-neuron gain to the injected Discovery
+      // estimator instead of synthesising it from the error magnitude. The
+      // over-threshold neuron is still promoted for removal (#2483 WASM
+      // hygiene) — only the fabricated gain value is gone.
+      const expectedCreatureScoreGain = resolveRemoveNeuronGain(
+        neuronUuid,
+        estimateRemoveNeuronGain,
       );
       harmfulSink.push({
         neuronUuid,
@@ -400,6 +444,12 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
     message: string,
     details?: unknown,
   ) => void,
+  /**
+   * Issue #1520: injected Discovery estimator supplying the honest,
+   * propagation-aware remove-neuron gain. When omitted, the emitted gain is a
+   * non-fabricated neutral `0` rather than the old synthetic placeholder.
+   */
+  estimateRemoveNeuronGain?: RemoveNeuronGainEstimator,
 ): Promise<CandidateHarmfulNeuron[] | undefined> {
   if (focusList.length === 0) return undefined;
   const idToWire = buildRuntimeIdToWireMap(creature);
@@ -471,12 +521,12 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
       if (baselineActivationError > MAX_REASONABLE_SQUASH_ERROR) {
         const neuronUuid = idToWire.get(neuronId);
         assert(neuronUuid, `Missing wire uuid for neuron ${neuronId}`);
-        const errorLog = Math.log10(baselineActivationError);
-        const thresholdLog = Math.log10(MAX_REASONABLE_SQUASH_ERROR);
-        const excessMagnitude = errorLog - thresholdLog;
-        const expectedCreatureScoreGain = Math.min(
-          0.5,
-          Math.max(0.1, 0.1 + (excessMagnitude / 10) * 0.4),
+        // Issue #1520: consume the injected Discovery estimate rather than
+        // fabricating the gain from the error magnitude. The over-threshold
+        // neuron is still returned for removal (#2483 WASM hygiene).
+        const expectedCreatureScoreGain = resolveRemoveNeuronGain(
+          neuronUuid,
+          estimateRemoveNeuronGain,
         );
 
         return {
