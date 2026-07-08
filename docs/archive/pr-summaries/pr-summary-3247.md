@@ -1,66 +1,74 @@
-# Untested public functions in `src/workers/WorkerHeapBudget.ts`
-
 ## Summary
 
-Four exported functions in `src/workers/WorkerHeapBudget.ts` had no test
-asserting their observable behaviour. The similarly-named test file
-`test/workers/WorkerHeapBudget.ts` actually imports and exercises the
-**parallel** heap-budget implementation in `src/workers/WorkerHandlerBase.ts`,
-so the `WorkerHeapBudget.ts` module was reached only transitively and never had
-its own safety net. A refactor — or a bad merge with the parallel copy — could
-have silently inverted the shortfall comparison, dropped the `MIN_BUDGET_MB`
-floor, or corrupted the operator-facing remediation message, and the suite would
-still have passed.
+The four exported functions in `src/workers/WorkerHeapBudget.ts`
+(`resolveDiscoveryHeapBudgetMb`, `currentHeapLimitMb`,
+`describeBudgetPropagation`, `planWorkerHeapBudget`) had no test exercising their
+observable behaviour. The similarly named `test/workers/WorkerHeapBudget.ts`
+actually tests a *different* module — the parallel heap-budget implementation on
+`WorkerHandlerBase.ts` — so these pure functions had no safety net and a bad
+refactor (or a merge with the parallel copy) could silently invert the shortfall
+comparison, drop the `MIN_BUDGET_MB` floor, or corrupt the operator-facing
+remediation message with the whole suite still green.
 
-This PR adds `test/workers/WorkerHeapBudgetCore.ts`, a WHAT-test that asserts
-the observable outputs of the pure functions (no mocking of internals), so it
-keeps passing across any reimplementation that preserves the same decisions. No
-production code was changed — this is a coverage-gap fix.
+This adds a new WHAT-test file, `test/workers/WorkerHeapBudgetCore.ts`, that
+asserts the *observable outputs* of these pure functions directly — no mocking
+of internals — so the tests keep passing across any reimplementation that
+preserves the same decisions. The existing colliding test file is left
+untouched (it covers a real, separate module). No production code changed.
 
-`Closes #3247`.
+Closes #3247.
 
 ## Evidence
 
-Backend/library change with no web interface to screenshot. Verified by running
-the new test file:
+Backend/library change only — no web interface to screenshot. Verification is
+the new test run.
 
-```
-running 13 tests from ./test/workers/WorkerHeapBudgetCore.ts
-... ok | 13 passed | 0 failed
-```
-
-`deno fmt --check`, `deno lint`, and `deno check` all pass on the new file.
-
-The functions under test and the behaviour each test guards:
+The `WorkerHeapBudget.ts` functions are reached only through
+`workerEntryPoint.verifyWorkerHeapBudget`, whose own test never drives the
+heap-budget wrapper — hence the gap this test closes:
 
 ```mermaid
-flowchart TD
-    A[DISCOVERY_HEAP_SIZE_MB env] --> B[resolveDiscoveryHeapBudgetMb]
-    B -->|valid, >= MIN_BUDGET_MB| C[budget MB]
-    B -->|empty / non-numeric / below floor / reader throws| D[undefined]
-    C --> E[planWorkerHeapBudget]
-    F[worker isolate heap_size_limit] --> E
-    E -->|actual >= 90% budget| G[level=info, shortfall=false]
-    E -->|actual < 90% budget| H[level=warn, shortfall=true,\nmessage has --max-old-space-size remediation]
-    C --> I[describeBudgetPropagation\nparent-side spawn log line]
+flowchart LR
+    Env[DISCOVERY_HEAP_SIZE_MB] --> R[resolveDiscoveryHeapBudgetMb]
+    R -->|budgetMb| P[planWorkerHeapBudget]
+    P -->|shortfall/level/message| Log[manual heap-limit log line]
+    R --> D[describeBudgetPropagation]
+    subgraph new["test/workers/WorkerHeapBudgetCore.ts (new)"]
+        R
+        P
+        D
+        H[currentHeapLimitMb]
+    end
 ```
+
+New test run (12 tests, all passing):
+
+```
+running 12 tests from ./test/workers/WorkerHeapBudgetCore.ts
+... ok
+ok | 12 passed | 0 failed
+```
+
+`deno fmt`, `deno lint`, and `deno check` pass cleanly on the new file. The full
+`quality.sh` suite reports two pre-existing failures unrelated to this change
+(`test/ErrorGuidedStructuralEvolution/NeuronDiscoveryIntegration.ts` and
+`test/lifecycle/ForwardOnlyApplyChangeLifecycle.ts`) — both reproduce on the
+clean tree with this file stashed, confirming they are not caused by this PR.
 
 ## Test Plan
 
-Added `test/workers/WorkerHeapBudgetCore.ts` (13 tests):
+Added `test/workers/WorkerHeapBudgetCore.ts` covering the observable outputs of
+the four untested exports:
 
-- `resolveDiscoveryHeapBudgetMb` — valid integer, whitespace trimming,
-  unset/empty rejection, non-numeric/non-integer rejection, `MIN_BUDGET_MB`
-  floor (63 rejected, 64 accepted), and a throwing env reader treated as
-  unconfigured.
-- `currentHeapLimitMb` — returns a positive integer heap limit.
-- `describeBudgetPropagation` — describes a configured budget (worker name +
-  `--max-old-space-size` flag) and returns `undefined` when unconfigured.
-- `planWorkerHeapBudget` — within-budget (`shortfall=false`, `level=info`), the
-  90% shortfall boundary (3686 within / 3685 shortfall for a 4096 MB budget),
-  the GRQ-23 shape (`shortfall=true`, `level=warn`, message carries the
-  `--max-old-space-size` remediation), and `undefined` when `budgetMb` is
+- `resolveDiscoveryHeapBudgetMb` — valid integer (with whitespace trimming);
+  `undefined` for unset/empty, non-numeric/non-integer, and below-`MIN_BUDGET_MB`
+  (with the 64 MB floor as an accepted boundary); `undefined` when the env reader
+  throws (no `--allow-env`).
+- `planWorkerHeapBudget` — within-budget (`shortfall === false`,
+  `level === "info"`); materially smaller limit (`shortfall === true`,
+  `level === "warn"`, message contains the `--max-old-space-size` remediation);
+  the `SHORTFALL_FRACTION` (0.9) boundary; `undefined` when `budgetMb` is
   `undefined`.
-
-The existing `test/workers/WorkerHeapBudget.ts` (covering
-`WorkerHandlerBase.ts`) is left untouched.
+- `describeBudgetPropagation` — the spawn log line for a configured budget;
+  `undefined` when unconfigured.
+- `currentHeapLimitMb` — returns a positive integer MB.
