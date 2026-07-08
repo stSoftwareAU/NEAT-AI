@@ -3,14 +3,14 @@
 Closed a test-coverage gap in `src/workers/WorkerHeapBudget.ts`. Four exported
 functions had no test exercising their observable behaviour, and no tested
 caller reached them — the similarly-named `test/workers/WorkerHeapBudget.ts`
-actually covers a *different* module (`WorkerHandlerBase.ts`). A refactor or a
+actually covers a _different_ module (`WorkerHandlerBase.ts`). A refactor or a
 bad merge with that parallel implementation could silently invert the shortfall
 comparison, drop the `MIN_BUDGET_MB` floor, or corrupt the operator remediation
 message, and the whole suite would still pass.
 
 Added `test/workers/WorkerHeapBudgetCore.ts` with WHAT-tests asserting the
 observable outputs of the pure functions — no mocking of internals. The tests
-protect the *behaviour* (the shortfall/threshold decision, the env-validation
+protect the _behaviour_ (the shortfall/threshold decision, the env-validation
 floor, and the GRQ-23 remediation message) so they keep passing across any
 reimplementation that preserves the same decisions.
 
@@ -61,7 +61,8 @@ flowchart LR
 - The existing colliding file `test/workers/WorkerHeapBudget.ts` was left
   untouched (it validly covers `WorkerHandlerBase.ts`); the new file is named
   `WorkerHeapBudgetCore.ts` to avoid ambiguity, as suggested in the issue.
-- Two unrelated tests (`ErrorGuidedStructuralEvolution/NeuronDiscoveryIntegration.ts`
-  and `score/RustScorerBridgeHardening.ts`) fail on this working tree due to a
-  stale vendored WASM/Rust bundle (an "Unhandled variant: setBias" mismatch);
-  they are pre-existing, environmental, and unrelated to this test-only change.
+- Two unrelated tests
+  (`ErrorGuidedStructuralEvolution/NeuronDiscoveryIntegration.ts` and
+  `score/RustScorerBridgeHardening.ts`) fail on this working tree due to a stale
+  vendored WASM/Rust bundle (an "Unhandled variant: setBias" mismatch); they are
+  pre-existing, environmental, and unrelated to this test-only change.
