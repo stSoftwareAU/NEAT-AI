@@ -4,17 +4,17 @@
 
 Four exported functions in `src/workers/WorkerHeapBudget.ts` had no test
 asserting their observable behaviour. The similarly-named test file
-`test/workers/WorkerHeapBudget.ts` actually imports and exercises the **parallel**
-heap-budget implementation in `src/workers/WorkerHandlerBase.ts`, so the
-`WorkerHeapBudget.ts` module was reached only transitively and never had its own
-safety net. A refactor — or a bad merge with the parallel copy — could have
-silently inverted the shortfall comparison, dropped the `MIN_BUDGET_MB` floor,
-or corrupted the operator-facing remediation message, and the suite would still
-have passed.
+`test/workers/WorkerHeapBudget.ts` actually imports and exercises the
+**parallel** heap-budget implementation in `src/workers/WorkerHandlerBase.ts`,
+so the `WorkerHeapBudget.ts` module was reached only transitively and never had
+its own safety net. A refactor — or a bad merge with the parallel copy — could
+have silently inverted the shortfall comparison, dropped the `MIN_BUDGET_MB`
+floor, or corrupted the operator-facing remediation message, and the suite would
+still have passed.
 
-This PR adds `test/workers/WorkerHeapBudgetCore.ts`, a WHAT-test that asserts the
-observable outputs of the pure functions (no mocking of internals), so it keeps
-passing across any reimplementation that preserves the same decisions. No
+This PR adds `test/workers/WorkerHeapBudgetCore.ts`, a WHAT-test that asserts
+the observable outputs of the pure functions (no mocking of internals), so it
+keeps passing across any reimplementation that preserves the same decisions. No
 production code was changed — this is a coverage-gap fix.
 
 `Closes #3247`.
@@ -50,8 +50,9 @@ flowchart TD
 Added `test/workers/WorkerHeapBudgetCore.ts` (13 tests):
 
 - `resolveDiscoveryHeapBudgetMb` — valid integer, whitespace trimming,
-  unset/empty rejection, non-numeric/non-integer rejection, `MIN_BUDGET_MB` floor
-  (63 rejected, 64 accepted), and a throwing env reader treated as unconfigured.
+  unset/empty rejection, non-numeric/non-integer rejection, `MIN_BUDGET_MB`
+  floor (63 rejected, 64 accepted), and a throwing env reader treated as
+  unconfigured.
 - `currentHeapLimitMb` — returns a positive integer heap limit.
 - `describeBudgetPropagation` — describes a configured budget (worker name +
   `--max-old-space-size` flag) and returns `undefined` when unconfigured.
@@ -61,5 +62,5 @@ Added `test/workers/WorkerHeapBudgetCore.ts` (13 tests):
   `--max-old-space-size` remediation), and `undefined` when `budgetMb` is
   `undefined`.
 
-The existing `test/workers/WorkerHeapBudget.ts` (covering `WorkerHandlerBase.ts`)
-is left untouched.
+The existing `test/workers/WorkerHeapBudget.ts` (covering
+`WorkerHandlerBase.ts`) is left untouched.
