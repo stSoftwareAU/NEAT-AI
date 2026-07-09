@@ -34,6 +34,7 @@ import type { DataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
 import type { DataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
 import type { ParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.ts";
 import type { SquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
+import type { SquashBudgetConfig } from "@config/SquashBudgetConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -129,6 +130,7 @@ export type NeatOptions =
     | "dataQuantisation"
     | "parallelEvaluation"
     | "squashEffectiveness"
+    | "squashBudget"
     | "fitnessSharing"
     | "novelty"
     | "randomImmigrants"
@@ -200,6 +202,8 @@ export type NeatOptions =
     parallelEvaluation?: ParallelEvaluationConfig;
     /** Partial overrides for squash effectiveness tracker configuration (defaults applied if not specified) */
     squashEffectiveness?: SquashEffectivenessConfig;
+    /** Opt-in squash budget / activation prior (Issue #3263). Empty allow-list = free mix (default). */
+    squashBudget?: SquashBudgetConfig;
     /** Partial overrides for fitness sharing configuration (Issue #2453, defaults applied if not specified) */
     fitnessSharing?: FitnessSharingConfig;
     /** Partial overrides for novelty selection configuration (Issue #2932, defaults applied if not specified) */
@@ -308,6 +312,7 @@ export type NeatOptionsInput =
     | "dataQuantisation"
     | "parallelEvaluation"
     | "squashEffectiveness"
+    | "squashBudget"
     | "fitnessSharing"
     | "novelty"
     | "randomImmigrants"
@@ -368,6 +373,8 @@ export type NeatOptionsInput =
     parallelEvaluation?: CoerceNumeric<ParallelEvaluationConfig>;
     /** Squash effectiveness tracker configuration (Issue #2457). Numeric fields coerced from CLI. */
     squashEffectiveness?: CoerceNumeric<SquashEffectivenessConfig>;
+    /** Opt-in squash budget / activation prior (Issue #3263). No numeric fields to coerce. */
+    squashBudget?: SquashBudgetConfig;
     /** Fitness sharing configuration (Issue #2453). Numeric fields coerced from CLI. */
     fitnessSharing?: CoerceNumeric<FitnessSharingConfig>;
     /** Novelty selection configuration (Issue #2932). Numeric fields coerced from CLI. */

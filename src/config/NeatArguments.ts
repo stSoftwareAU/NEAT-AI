@@ -20,6 +20,7 @@ import type { RequiredSpeciesStagnationConfig } from "@config/SpeciesStagnationC
 import type { RequiredStabilityAdaptationConfig } from "@config/StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "@config/QuantumStepConfig.ts";
 import type { RequiredSquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
+import type { RequiredSquashBudgetConfig } from "@config/SquashBudgetConfig.ts";
 import type { RequiredBiasRegularisationConfig } from "@config/BiasRegularisationConfig.ts";
 import type { Logger } from "@utils/Logger.ts";
 import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
@@ -978,6 +979,16 @@ export interface NeatArguments {
    *   sampled squashes still get tried (default: 0.2)
    */
   squashEffectiveness: RequiredSquashEffectivenessConfig;
+
+  /**
+   * Opt-in squash budget / activation prior (Issue #3263).
+   *
+   * When `allowedSquashes` is non-empty, mutation and neuron creation may only
+   * introduce squashes from the allow-list, keeping populations cheap to score
+   * and easier to keep GPU-hostable. Default is an empty allow-list (the free
+   * 34-type mix), so existing runs are unaffected.
+   */
+  squashBudget: RequiredSquashBudgetConfig;
 
   /**
    * NEAT fitness sharing configuration.

@@ -24,6 +24,7 @@ export {
   parseOpd,
   parsePlateauDetection,
   parseSpecialist,
+  parseSquashBudget,
   parseSquashEffectiveness,
   parseStabilityAdaptation,
 } from "@config/parsers/MutationParsers.ts";
