@@ -66,6 +66,23 @@ export class Activations {
     new Map<string, AbstractActivationInterface>();
 
   private static readonly WEIGHTED_POOL: string[] = [];
+
+  /**
+   * Issue #3263: optional squash allow-list ("squash budget"). When set to a
+   * non-empty set of canonical names, {@link pickRandomSquash} only ever
+   * returns a squash from this set, so mutation and neuron creation can never
+   * introduce a disallowed activation. `null` means no restriction (the
+   * default free mix). Follows the same global-instance pattern as the RNG.
+   */
+  private static allowedSquashes: Set<string> | null = null;
+
+  /**
+   * The weighted random pool filtered to {@link allowedSquashes}. Rebuilt by
+   * {@link setAllowedSquashes} so the hot `pickRandomSquash` path does no
+   * per-call filtering when a budget is active.
+   */
+  private static restrictedPool: string[] = [];
+
   public static register(
     activation: AbstractActivationInterface,
     options: ActivationOptions,
@@ -104,11 +121,80 @@ export class Activations {
   }
 
   public static pickRandomSquash(exclude?: string): string {
-    const pool = exclude
-      ? Activations.WEIGHTED_POOL.filter((name) => name !== exclude)
+    // Issue #3263: draw from the restricted pool when a squash budget is
+    // active, otherwise from the full mutation-weighted pool.
+    const base = Activations.allowedSquashes !== null
+      ? Activations.restrictedPool
       : Activations.WEIGHTED_POOL;
+    let pool = exclude ? base.filter((name) => name !== exclude) : base;
+    // Excluding the only allowed squash would empty the pool; fall back to the
+    // unfiltered base so we always return an allowed squash (fail loud would
+    // be wrong here — the caller simply gets no-change, matching legacy).
+    if (pool.length === 0) pool = base;
     const index = Math.floor(getRandomNumberGenerator().random() * pool.length);
     return pool[index];
+  }
+
+  /**
+   * Issue #3263: restrict squash selection to an allow-list ("squash budget").
+   *
+   * Each name is resolved through {@link find} (canonicalising aliases and
+   * throwing {@link ActivationError} for unknown names), so an invalid budget
+   * fails loud at configuration time rather than silently degrading. Passing
+   * `null` or an empty array clears the restriction and restores the free mix.
+   *
+   * The restricted pool preserves each activation's relative mutation weight
+   * where possible; if every allowed activation has a mutation weight of zero
+   * (e.g. SOFTMAX), the pool falls back to a uniform draw over the allowed
+   * names so it is never empty.
+   */
+  public static setAllowedSquashes(names: readonly string[] | null): void {
+    if (!names || names.length === 0) {
+      Activations.allowedSquashes = null;
+      Activations.restrictedPool = [];
+      return;
+    }
+
+    const canonical = new Set<string>();
+    for (const name of names) {
+      // Throws ActivationError for unknown names (fail loud, Issue #3234).
+      canonical.add(Activations.find(name).getName());
+    }
+
+    const weighted = Activations.WEIGHTED_POOL.filter((n) => canonical.has(n));
+    Activations.restrictedPool = weighted.length > 0
+      ? weighted
+      : Array.from(canonical);
+    Activations.allowedSquashes = canonical;
+  }
+
+  /**
+   * Issue #3263: the active squash allow-list of canonical names, or `null`
+   * when no budget is set.
+   */
+  public static getAllowedSquashes(): ReadonlySet<string> | null {
+    return Activations.allowedSquashes;
+  }
+
+  /**
+   * Issue #3263: whether `name` (canonical or alias) is permitted under the
+   * active squash budget. Always `true` when no budget is set.
+   */
+  public static isSquashAllowed(name: string): boolean {
+    if (Activations.allowedSquashes === null) return true;
+    const activation = Activations.MAP.get(name);
+    const canonical = activation ? activation.getName() : name;
+    return Activations.allowedSquashes.has(canonical);
+  }
+
+  /**
+   * Issue #3263: reset the squash budget to the unrestricted default. Used by
+   * the test preload so parallel workers start from a known baseline, mirroring
+   * `resetGlobalRandomNumberGeneratorForTesting`.
+   */
+  public static resetAllowedSquashesForTesting(): void {
+    Activations.allowedSquashes = null;
+    Activations.restrictedPool = [];
   }
 }
 

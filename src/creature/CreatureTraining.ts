@@ -636,6 +636,8 @@ export async function evolveDir(
       elapsedMs: generationElapsedMs,
       phaseTiming,
       throughput: result.throughput,
+      // Issue #3263: diagnostic squash mix for the squash-budget experiment.
+      squashHistogram: result.squashHistogram,
       // Issue #2947: surface the lineage-accumulated warm-up counter and the
       // derived lock state (present only while warm-up is configured).
       ...buildWarmupEventFields(neat.warmupGenerations, neat.currentGeneration),
@@ -961,6 +963,8 @@ export async function evolveEnv<S, A>(
       elapsedMs: generationElapsedMs,
       phaseTiming,
       throughput: result.throughput,
+      // Issue #3263: diagnostic squash mix for the squash-budget experiment.
+      squashHistogram: result.squashHistogram,
       // Issue #2947: surface the lineage-accumulated warm-up counter and the
       // derived lock state (present only while warm-up is configured).
       ...buildWarmupEventFields(neat.warmupGenerations, neat.currentGeneration),
@@ -1467,6 +1471,8 @@ export async function evolveRL<S, A>(
       elapsedMs: generationElapsedMs,
       phaseTiming,
       throughput: result.throughput,
+      // Issue #3263: diagnostic squash mix for the squash-budget experiment.
+      squashHistogram: result.squashHistogram,
       // Issue #2947: surface the lineage-accumulated warm-up counter and the
       // derived lock state (present only while warm-up is configured).
       ...buildWarmupEventFields(neat.warmupGenerations, neat.currentGeneration),

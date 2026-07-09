@@ -10,6 +10,7 @@
  */
 
 import { resetHiddenNeuronIdCounterForTesting } from "@architecture/NeuronId.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 import { resetGlobalRandomNumberGeneratorForTesting } from "@utils/RandomNumberGenerator.ts";
 import {
   setMaxCachedWasmCreatureActivations,
@@ -23,6 +24,8 @@ setMaxCachedWasmCreatureActivations(16);
 // Keep at most 8 topology templates per worker (down from 100).
 setWasmCompilationCacheSize(8);
 
-// Known baseline for globals mutated during tests (RNG, neuron id counter).
+// Known baseline for globals mutated during tests (RNG, neuron id counter,
+// Issue #3263 squash budget).
 resetGlobalRandomNumberGeneratorForTesting();
 resetHiddenNeuronIdCounterForTesting();
+Activations.resetAllowedSquashesForTesting();

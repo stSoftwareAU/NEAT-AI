@@ -39,6 +39,11 @@ import {
   DEFAULT_SQUASH_EFFECTIVENESS_CONFIG,
   type RequiredSquashEffectivenessConfig,
 } from "@config/SquashEffectivenessConfig.ts";
+import {
+  DEFAULT_SQUASH_BUDGET_CONFIG,
+  type RequiredSquashBudgetConfig,
+} from "@config/SquashBudgetConfig.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 
 /** Parse adaptive mutation thresholds. */
 export function parseAdaptiveMutationThresholds(
@@ -430,4 +435,47 @@ export function parseSquashEffectiveness(
       { integer: true, min: 2 },
     ),
   } as RequiredSquashEffectivenessConfig;
+}
+
+/**
+ * Parse the opt-in squash budget configuration (Issue #3263).
+ *
+ * Validates the structural shape of `allowedSquashes` (an array of non-empty
+ * strings) and de-duplicates it. Activation-name resolution — rejecting
+ * unknown squashes — happens when the budget is applied via
+ * `Activations.setAllowedSquashes`, so this parser stays decoupled from the
+ * activation registry.
+ */
+export function parseSquashBudget(
+  overrides: Record<string, unknown> | undefined,
+): RequiredSquashBudgetConfig {
+  const d = DEFAULT_SQUASH_BUDGET_CONFIG;
+  const raw = overrides?.allowedSquashes;
+  if (raw === undefined || raw === null) {
+    return { allowedSquashes: [...d.allowedSquashes] };
+  }
+  if (!Array.isArray(raw)) {
+    throw new ValidationError(
+      "Squash budget allowedSquashes must be an array of activation names",
+      "OTHER",
+    );
+  }
+
+  const seen = new Set<string>();
+  const allowedSquashes: string[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "string" || entry.trim().length === 0) {
+      throw new ValidationError(
+        "Squash budget allowedSquashes entries must be non-empty strings",
+        "OTHER",
+      );
+    }
+    const name = entry.trim();
+    if (!seen.has(name)) {
+      seen.add(name);
+      allowedSquashes.push(name);
+    }
+  }
+
+  return { allowedSquashes };
 }
