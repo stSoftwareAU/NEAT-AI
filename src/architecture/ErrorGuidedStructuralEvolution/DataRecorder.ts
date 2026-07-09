@@ -30,7 +30,7 @@ import { runRecordingPhase } from "@architecture/ErrorGuidedStructuralEvolution/
 import { runAnalysisLoop } from "@architecture/ErrorGuidedStructuralEvolution/DataRecorderAnalysis.ts";
 import {
   buildEmptyDiscoverResult,
-  resolveHeapAbortBoundary,
+  resolveDegradedAnalysisBoundary,
 } from "@architecture/ErrorGuidedStructuralEvolution/AnalysisExtensionBoundary.ts";
 import {
   computeRecordCoverage,
@@ -383,28 +383,28 @@ export class DataRecorder {
         attemptGc: this.config.memory.proactiveGc,
       });
 
-      // Issue #2594: Heap-aware extension guard.
-      // Before we extend the timeout to give analysis room to run, sample
-      // the heap. If MemoryMonitor reports CRITICAL pressure here, the
-      // analysis phase is very likely to OOM the worker — the
-      // critical-level cache eviction has already fired in earlier ticks
-      // and was not enough. Skip the extension entirely and reuse the
-      // partial-result path so the caller gets the same empty
-      // DiscoverResult shape as the recordingSuccess === false branch.
-      // Issue #2737/#3025: Surface a genuine heap-driven abort as a structured
-      // field on the DiscoverResult so the upstream training event pipeline can
-      // emit a `"heap_critical_skip"` outcome instead of indistinguishably
-      // reporting `"no_change"`. The guard is off-heap (RSS) aware, so a
-      // worker-default-heap CRITICAL with native-budget headroom returns `null`
-      // here (analysis continues, signal stays unset) — no false positive.
-      const heapAbortResult = resolveHeapAbortBoundary(
+      // Issue #2594/#3025/#3296: Heap-aware extension boundary — degrade, don't
+      // abort. Before extending the timeout for analysis, sample the heap. If
+      // the off-heap-aware guard reports CRITICAL pressure here (genuine
+      // budget exhaustion), the historical response was to skip analysis and
+      // return an empty, 0-candidate result. Issue #3296 replaces that abort
+      // with degrade-and-continue: reduce the analysis footprint (fewer focus
+      // neurons, smaller Rust FFI chunks) and push through to a genuine
+      // completion instead. The degrade decision is logged with the reduced
+      // knob values so the smaller footprint is observable. A worker-default
+      // heap CRITICAL with native-budget headroom is not degraded — the happy
+      // path is untouched (`degraded === false`).
+      const boundary = resolveDegradedAnalysisBoundary(
         this.ID,
         this.config.memory,
         getLogger(),
+        {
+          discoveryMaxNeurons: this.discoveryMaxNeurons,
+          analysisChunkSize: this.config.discoveryAnalysisChunkSize,
+        },
       );
-      if (heapAbortResult) {
-        return heapAbortResult;
-      }
+      const analysisMaxNeurons = boundary.knobs.discoveryMaxNeurons;
+      const analysisChunkSize = boundary.knobs.analysisChunkSize;
 
       // Extend timeout for analysis phase (clamped to the hard deadline)
       const analysisTimeoutMinutes = this.extendTimeoutForAnalysisPhase(
@@ -424,12 +424,17 @@ export class DataRecorder {
         {
           ID: this.ID,
           config: this.config,
-          discoveryMaxNeurons: this.discoveryMaxNeurons,
+          discoveryMaxNeurons: analysisMaxNeurons,
           costOfGrowth: this.config.costOfGrowth,
-          analysisChunkSize: this.config.discoveryAnalysisChunkSize,
+          analysisChunkSize: analysisChunkSize,
           perChunkMaxMs: this.config.discoveryAnalysisPerChunkMaxMs,
           getTimeoutTS: () => this.timeoutTS,
           refreshAnalysisTimeout: (ds) => this.refreshAnalysisTimeout(ds),
+          // #3296: when the boundary degraded under memory pressure, run at
+          // least one minimal-footprint pass before the in-loop heap guard may
+          // abort — so a starved host reaches a genuine completion instead of a
+          // zero-candidate abort at the very first iteration.
+          degradedFirstPass: boundary.degraded,
         },
         discoverStructure,
         perfStats,
