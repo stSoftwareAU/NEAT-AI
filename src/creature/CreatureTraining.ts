@@ -485,6 +485,8 @@ export async function evolveDir(
       config.customCost,
       config.wasmCache,
       outputRanges,
+      // Issue #3257: ranking-pass fitness corpus subsample rate.
+      config.fitnessSampleRate,
     );
     try {
       // deno-lint-ignore no-await-in-loop
@@ -507,6 +509,8 @@ export async function evolveDir(
           config.customCost,
           config.wasmCache,
           outputRanges,
+          // Issue #3257: ranking-pass fitness corpus subsample rate.
+          config.fitnessSampleRate,
         );
         // deno-lint-ignore no-await-in-loop
         await w.waitUntilReady();

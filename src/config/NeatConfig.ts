@@ -313,6 +313,14 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       1,
       { min: 0.0001, max: 1 },
     ),
+    // Issue #3257: Ranking-pass fitness corpus subsample. Default 1 = full
+    // corpus (unchanged behaviour); mirrors the trainingSampleRate bounds.
+    fitnessSampleRate: parseNumber(
+      "Fitness Sample Rate",
+      opts.fitnessSampleRate,
+      1,
+      { min: 0.0001, max: 1 },
+    ),
 
     debug: options.debug === true || getGlobalDebug(),
 
