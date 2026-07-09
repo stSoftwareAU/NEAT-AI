@@ -94,6 +94,9 @@ export class WorkerProcessor {
   /** Issue #1620: Per-output range constraints for fitness penalty. */
   private outputRanges?: ReadonlyArray<RequiredOutputRange>;
 
+  /** Issue #3257: Ranking-pass fitness corpus subsample rate in (0, 1]. */
+  private fitnessSampleRate?: number;
+
   private wasmInitAttempted = false;
 
   /** Issue #2260: Cache dataset file list across evaluate calls. */
@@ -186,6 +189,9 @@ export class WorkerProcessor {
         this.outputRanges = data.initialize.outputRanges;
       }
 
+      // Issue #3257: Store the ranking-pass subsample rate (if opted in).
+      this.fitnessSampleRate = data.initialize.fitnessSampleRate;
+
       return {
         taskID: data.taskID,
         duration: Date.now() - start,
@@ -241,6 +247,9 @@ export class WorkerProcessor {
           data.evaluate.feedbackLoop,
           this.outputRanges,
           cachedFiles,
+          undefined,
+          // Issue #3257: apply the ranking-pass subsample when opted in.
+          this.fitnessSampleRate,
         );
 
         return {

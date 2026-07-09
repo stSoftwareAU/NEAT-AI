@@ -82,6 +82,7 @@
       "bench/DenseNumberMapBenchmark.ts",
       "bench/DiscoveryAnalysisCacheRelease.ts",
       "bench/FastConvergencePreset.ts",
+      "bench/FitnessSampleRate.ts",
       "bench/GenerationalInertiaSchedule.ts",
       "bench/IncrementalScoreUpdate.ts",
       "bench/MainThreadScoreWork.ts",
