@@ -75,6 +75,12 @@ interface RunOptions {
   readonly memoryEnabled?: boolean;
   /** Off-heap (RSS) budget in bytes — Issue #3025. 0/undefined disables it. */
   readonly nativeBudgetBytes?: number;
+  /**
+   * Degrade-and-continue signal (Issue #3296): when true, the boundary degraded
+   * under memory pressure, so the loop must run one minimal-footprint pass to a
+   * genuine completion instead of aborting to zero candidates.
+   */
+  readonly degradedFirstPass?: boolean;
 }
 
 async function runWith(
@@ -144,6 +150,7 @@ async function runWith(
         perChunkMaxMs: 60_000,
         getTimeoutTS: () => deadlineMs,
         refreshAnalysisTimeout: () => {},
+        degradedFirstPass: options.degradedFirstPass,
       },
       structure,
       perfStats,
@@ -186,6 +193,29 @@ Deno.test(
       perfStats.neuronsAnalyzed,
       0,
       "no neurons analysed when aborting before the first chunk",
+    );
+  },
+);
+
+Deno.test(
+  "degrades footprint and continues at extension boundary instead of aborting",
+  async () => {
+    // Same persistently-CRITICAL heap as the abort-to-zero case above, but the
+    // boundary degraded (degradedFirstPass = true). The loop must run one
+    // minimal-footprint pass to a genuine completion instead of aborting with
+    // zero neurons analysed (Issue #3296).
+    const { perfStats, chunkCalls } = await runWith({
+      heapSample: { heapUsed: 95, heapTotal: 100 }, // CRITICAL
+      degradedFirstPass: true,
+    });
+
+    assert(
+      chunkCalls > 0,
+      "degraded first pass must submit at least one analysis chunk (no 0-candidate abort)",
+    );
+    assert(
+      perfStats.neuronsAnalyzed > 0,
+      "degraded first pass must analyse neurons rather than skip to zero",
     );
   },
 );
