@@ -1006,6 +1006,145 @@ _inform_ default changes (e.g. #2928) but do not, by themselves, change any
 default. Re-run the harness on a representative problem before flipping a
 production default.
 
+## 🏭 Production Pace-Lever Bake-Off — Generation-Efficiency Levers (Issue #3259)
+
+Parent: **#3256** (production evolution wall-clock on the GRQ corpus).
+
+The OFF-by-default lever study above (#2931) — and the earlier pace work
+(#2928–#2934, `bench/EvolutionPaceLeverComparison.ts`, Fast Convergence preset)
+— ranks levers by **raw wall-clock on tiny fixtures**, where a fitness
+evaluation is nearly free. Production is the opposite regime: fitness scoring is
+**≈95 % of wall-clock** and each full-corpus evaluation costs _minutes_ of CPU
+on a 21 GiB corpus. There, `generations × population × corpus-bytes` dominates,
+so the raw-wall-clock ranking of levers measured on small fixtures does **not**
+transfer.
+
+### The corpus-independent primary metric
+
+When fitness dominates and every full-corpus evaluation costs the same `C`
+seconds, total wall-clock ≈ `N_scored × C`, where `N_scored` is the number of
+full-corpus fitness evaluations performed. Ranking levers by wall-clock is
+therefore equivalent to ranking them by **`N_scored`** — a quantity independent
+of `C`, and hence of corpus size. So the levers can be ranked faithfully on a
+laptop by _counting scored evaluations_, then multiplied by the production
+per-evaluation cost (measured on GRQ via #3256 `phaseTimingTotals`: fitness-ms ÷
+scored-count) to model production wall-clock.
+
+`bench/ProductionPaceLeverBakeOff.ts` implements exactly this. It mirrors the
+production score-carry contract (`Fitness.calculate` scores only
+`score === undefined` creatures — Issue #1016): elites carry their score forward
+and cost **zero** re-scores, while memetically-trained creatures are always
+re-scored because training changes their output. Each lever moves `N_scored`:
+
+| Lever             | Effect on `N_scored` per generation   | Bake-off question                                       |
+| ----------------- | ------------------------------------- | ------------------------------------------------------- |
+| `populationSize`  | New (unscored) creatures bred per gen | Smaller pop + more gens for fewer scored evals overall? |
+| `elitismFraction` | Elites carried without re-scoring     | How many full-corpus scores are redundant?              |
+| `trainPerGen`     | +1 re-score per trained creature      | Does memetic backprop pay for its extra scores?         |
+
+```mermaid
+flowchart LR
+  L[populationSize / elitism / trainPerGen] --> N["N_scored<br/>(full-corpus evaluations)"]
+  C["per-eval cost C (s)<br/>from GRQ #3256"] --> W
+  N --> W["modelled wall-clock<br/>= N_scored × C"]
+  W --> R{"≥5% better than<br/>production baseline?"}
+  R -- yes --> A[adopt preset]
+  R -- no --> D[document negative / neutral]
+```
+
+### Synthetic sanity check — NOT production evidence
+
+Running the harness on its small seeded synthetic problem
+(`deno run --allow-read --allow-env --allow-ffi bench/ProductionPaceLeverBakeOff.ts`,
+`C = 90 s` placeholder) validates that the method captures the expected
+directional dynamics:
+
+| Sweep             | Result                                                                                                                                    |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `populationSize`  | 12 / 24 / 48 → **267 / 388 / 748** scored evals to target; the smaller pop reaches the same score for far fewer full-corpus scores.       |
+| `elitismFraction` | 0 / 0.1 / 0.25 / 0.5 → **459 / 388 / 384 / 312** scored evals; carrying more elites removes redundant re-scores with no loss of reach.    |
+| `trainPerGen`     | 0 / 2 / 6 → **706 / 432 / 388** scored evals; memetic backprop more than pays for its extra re-scores by converging in fewer generations. |
+
+> [!WARNING]
+> These are a **methodology sanity check on a synthetic fixture**, not
+> production evidence. Exactly the transfer caveat the parent issue raises
+> applies — do **not** treat these lifts (or the tiny-XOR DNA-sharing lifts in
+> `docs/dna-sharing-bake-off-results.md`) as a reason to flip a GRQ default.
+
+### Adoption gate
+
+Per #3259, a production preset may be adopted — or a default flipped — **only**
+when the primary metric (`N_scored`, equivalently modelled wall-clock) improves
+by **≥5 %** on the **production creature + 21 GiB binary corpus** with
+repeatable seeds. Producing those numbers requires GRQ Apple-Silicon hardware
+and the production corpus/creature, which are **not** reachable from CI or an
+autonomous worker. To generate the adoption-gate evidence, a human runs the
+harness on GRQ: swap the synthetic `buildNetwork`/`buildDataset`/scoring for the
+production creature and corpus scorer, set the per-evaluation cost via
+`BAKE_OFF_COST_PER_EVAL_SECONDS` (from #3256 `phaseTimingTotals`), and record
+the host class, neat-ai/scorer/core versions, and corpus path alongside each
+row. Until that run exists, **no default is flipped** — this section ships the
+transfer-correct measurement method, not a preset.
+
+Follow-up for the human-run production bake-off is tracked on the parent
+milestone **#3256**.
+
+## 🧪 Squash budget / GPU-hostable activation prior (Issue #3263)
+
+**Status:** mechanism shipped, opt-in, **default off**. Full production A/B
+deferred to a human on GRQ (needs the production creature seed + the 21 GiB
+binary corpus + GPU scorer — none reachable from CI).
+
+### Motivation
+
+Two production facts collide:
+
+1. CPU scoring cost scales with the **34-type** squash zoo (dispatch + `libm`
+   mix).
+2. The GPU scorer directory only hosts a small activation set today; a smaller,
+   SIMD-friendly squash mix is easier to keep GPU-hostable.
+
+If mutation freely invents rare/expensive squashes, every kernel win is
+partially undone by the next generation's mix. The squash budget is the
+**evolutionary prior** that keeps populations cheap and GPU-eligible — it is not
+a kernel change.
+
+### What shipped
+
+- `NeatOptions.squashBudget.allowedSquashes` — a hard allow-list. When
+  non-empty, `Activations.pickRandomSquash` (used by **all** squash selection:
+  mutation, neuron creation, topology repair) only ever returns an allowed
+  squash. Unknown names fail loud at config time (Issue #3234). Default is an
+  empty allow-list — the free 34-type mix — so existing runs are unchanged.
+- Squash-histogram telemetry on every `generation_complete` training event
+  (`squashHistogram`: canonical squash name → population count) so an operator
+  can watch the mix converge during an A/B run.
+
+### Measurement — selection cost is _not_ the bottleneck (expected)
+
+`bench/SquashBudgetSelection.ts`, Apple M2 Ultra, Deno 2.9.1, 1000 draws/iter:
+
+| Squash pool                   | time/iter (avg) |
+| ----------------------------- | --------------- |
+| Free 34-type mix (baseline)   | ~85.5 µs        |
+| GPU-hostable budget (4 types) | ~87.1 µs        |
+
+The restricted draw is the same array-index operation, so **selection cost is
+flat** — a negative result for the selection path, exactly as the issue
+predicted ("breeding is <5% of GRQ time"). The budget can only pay off
+**downstream**: cheaper networks lower `fitnessMs`, and a GPU-hostable
+population unlocks a measured GPU win. That gain lives in the scoring path, not
+here.
+
+### Adoption gate (unchanged from the #3259 rule)
+
+The default stays **free mix**. Flipping it — or shipping a production preset —
+requires the **≥5%** wall-clock / `fitnessMs` improvement (or a measured GPU win
+on a hostable population) on the production creature + corpus with repeatable
+seeds, run by a human on GRQ per the parent milestone **#3256**. A **negative
+result** (restricting squashes hurts search enough to erase scoring gains) is an
+acceptable outcome — document it and keep the free mix.
+
 ## 📚 See Also
 
 - [PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md) — Operational tuning guide

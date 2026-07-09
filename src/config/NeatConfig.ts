@@ -30,6 +30,7 @@ import {
   type RandomNumberGenerator,
   setRandomNumberGenerator,
 } from "@utils/RandomNumberGenerator.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 
 import {
   DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT,
@@ -64,6 +65,7 @@ import {
   parseSelectionPressure,
   parseSpecialist,
   parseSpeciesStagnation,
+  parseSquashBudget,
   parseSquashEffectiveness,
   parseStabilityAdaptation,
   parseWasmCache,
@@ -214,6 +216,14 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
   })();
   setRandomNumberGenerator(rng);
 
+  // Issue #3263: apply the opt-in squash budget before any squash is drawn so
+  // mutation and neuron creation can never introduce a disallowed activation.
+  // Unknown squash names fail loud here (fail loud, Issue #3234).
+  const squashBudget = parseSquashBudget(
+    opts.squashBudget as Record<string, unknown> | undefined,
+  );
+  Activations.setAllowedSquashes(squashBudget.allowedSquashes);
+
   let selection: SelectionInterface = Selection.POWER;
   if (options.selection) {
     selection = options.selection;
@@ -310,6 +320,14 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     trainingSampleRate: parseNumber(
       "Training Sample Rate",
       opts.trainingSampleRate,
+      1,
+      { min: 0.0001, max: 1 },
+    ),
+    // Issue #3257: Ranking-pass fitness corpus subsample. Default 1 = full
+    // corpus (unchanged behaviour); mirrors the trainingSampleRate bounds.
+    fitnessSampleRate: parseNumber(
+      "Fitness Sample Rate",
+      opts.fitnessSampleRate,
       1,
       { min: 0.0001, max: 1 },
     ),
@@ -761,6 +779,9 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     squashEffectiveness: parseSquashEffectiveness(
       opts.squashEffectiveness as Record<string, unknown> | undefined,
     ),
+    // Issue #3263: opt-in squash budget (already applied to the global
+    // activation registry above); stored so the config is self-describing.
+    squashBudget,
     // Issue #2453: Parse fitness sharing configuration
     fitnessSharing: parseFitnessSharing(
       opts.fitnessSharing as Record<string, unknown> | undefined,

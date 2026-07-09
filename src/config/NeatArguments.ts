@@ -20,6 +20,7 @@ import type { RequiredSpeciesStagnationConfig } from "@config/SpeciesStagnationC
 import type { RequiredStabilityAdaptationConfig } from "@config/StabilityAdaptationConfig.ts";
 import type { RequiredQuantumStepConfig } from "@config/QuantumStepConfig.ts";
 import type { RequiredSquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
+import type { RequiredSquashBudgetConfig } from "@config/SquashBudgetConfig.ts";
 import type { RequiredBiasRegularisationConfig } from "@config/BiasRegularisationConfig.ts";
 import type { Logger } from "@utils/Logger.ts";
 import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
@@ -237,6 +238,16 @@ export interface NeatArguments {
 
   /** The percentage of observations that will be used for training. Range 0..1 */
   trainingSampleRate: number;
+
+  /**
+   * Issue #3257: Fraction of the binary fitness corpus scored per creature
+   * during the per-generation ranking pass. A deterministic, stratified
+   * subsample (records skipped in one streaming pass — no second corpus on
+   * disk) so scoring does proportionally less work while preserving rank
+   * order. Range 0.0001..1; default 1 (score the full corpus — today's
+   * behaviour, so production quality is unchanged unless opted in).
+   */
+  fitnessSampleRate: number;
 
   /** The target error to reach, once the network falls below this error, the process is stopped. Default: 0.05, Range 0..1 */
   targetError: number;
@@ -968,6 +979,16 @@ export interface NeatArguments {
    *   sampled squashes still get tried (default: 0.2)
    */
   squashEffectiveness: RequiredSquashEffectivenessConfig;
+
+  /**
+   * Opt-in squash budget / activation prior (Issue #3263).
+   *
+   * When `allowedSquashes` is non-empty, mutation and neuron creation may only
+   * introduce squashes from the allow-list, keeping populations cheap to score
+   * and easier to keep GPU-hostable. Default is an empty allow-list (the free
+   * 34-type mix), so existing runs are unaffected.
+   */
+  squashBudget: RequiredSquashBudgetConfig;
 
   /**
    * NEAT fitness sharing configuration.

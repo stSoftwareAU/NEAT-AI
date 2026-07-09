@@ -161,3 +161,38 @@ Deno.test("NeatConfigParseOptions - discoveryRecordTimeOutMinutes accepts overri
     1,
   );
 });
+
+// Issue #3257: fitnessSampleRate — ranking-pass corpus subsample.
+Deno.test("NeatConfigParseOptions - fitnessSampleRate defaults to 1", () => {
+  assertEquals(createNeatConfig({}).fitnessSampleRate, 1);
+});
+
+Deno.test("NeatConfigParseOptions - fitnessSampleRate accepts number", () => {
+  assertEquals(
+    createNeatConfig({ fitnessSampleRate: 0.25 }).fitnessSampleRate,
+    0.25,
+  );
+});
+
+Deno.test("NeatConfigParseOptions - fitnessSampleRate accepts string", () => {
+  assertEquals(
+    createNeatConfig({ fitnessSampleRate: "0.1" }).fitnessSampleRate,
+    0.1,
+  );
+});
+
+Deno.test("NeatConfigParseOptions - fitnessSampleRate out of range throws clear error", () => {
+  const error = assertThrows(
+    () => createNeatConfig({ fitnessSampleRate: 2 }),
+    Error,
+  );
+  assertStringIncludes(error.message, "Fitness Sample Rate must be between");
+});
+
+Deno.test("NeatConfigParseOptions - fitnessSampleRate invalid string throws clear error", () => {
+  const error = assertThrows(
+    () => createNeatConfig({ fitnessSampleRate: "abc" }),
+    Error,
+  );
+  assertStringIncludes(error.message, "Fitness Sample Rate must be a number");
+});
