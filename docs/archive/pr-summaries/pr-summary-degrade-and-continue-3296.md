@@ -2,9 +2,8 @@
 
 Discovery now **degrades and continues** at the analysis-extension boundary
 under CRITICAL heap pressure instead of aborting the iteration to zero
-candidates. This is the NEAT-AI root-cause fix for **GRQ #3296** (part of
-GRQ milestone #3267 — "Discovery OOM-killed on 16 GB host — adapt to host
-memory").
+candidates. This is the NEAT-AI root-cause fix for **GRQ #3296** (part of GRQ
+milestone #3267 — "Discovery OOM-killed on 16 GB host — adapt to host memory").
 
 Previously, when the off-heap-aware guard reported CRITICAL pressure at the
 extension boundary (genuine native-budget exhaustion), `DataRecorder` skipped
@@ -76,9 +75,14 @@ continue to pass (`resolveHeapAbortBoundary` and the
 
 ## Test Plan
 
-- `deno test test/ErrorGuidedStructuralEvolution/AnalysisDegradeDecision.ts` — 6 passed
-- `deno test test/ErrorGuidedStructuralEvolution/AnalysisExtensionBoundary.ts` — 10 passed
-- `deno test test/ErrorGuidedStructuralEvolution/AnalysisLoopHeapGuard.ts` — 6 passed
-- `deno test test/ErrorGuidedStructuralEvolution/AnalysisHeapGuard.ts test/ErrorGuidedStructuralEvolution/DiscoveryHeapAbortBoundaryIntegration.ts` — 25 passed
-- `deno test test/multithreading/WorkerProcessor.ts test/NEAT/DiscoveryOutcome.ts test/ErrorGuidedStructuralEvolution/DiscoveryTimeout.ts` — 17 passed
+- `deno test test/ErrorGuidedStructuralEvolution/AnalysisDegradeDecision.ts` — 6
+  passed
+- `deno test test/ErrorGuidedStructuralEvolution/AnalysisExtensionBoundary.ts` —
+  10 passed
+- `deno test test/ErrorGuidedStructuralEvolution/AnalysisLoopHeapGuard.ts` — 6
+  passed
+- `deno test test/ErrorGuidedStructuralEvolution/AnalysisHeapGuard.ts test/ErrorGuidedStructuralEvolution/DiscoveryHeapAbortBoundaryIntegration.ts`
+  — 25 passed
+- `deno test test/multithreading/WorkerProcessor.ts test/NEAT/DiscoveryOutcome.ts test/ErrorGuidedStructuralEvolution/DiscoveryTimeout.ts`
+  — 17 passed
 - `deno check` + `deno fmt` + `deno lint` clean on all changed files
