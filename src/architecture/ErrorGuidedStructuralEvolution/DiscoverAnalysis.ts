@@ -274,7 +274,13 @@ export function tryRustHelpfulNeurons(
 }
 
 /**
- * Maps a single Rust coordinated operation (string UUIDs) to the TS type (number IDs).
+ * Maps a single Rust coordinated operation to the TS type.
+ *
+ * Every variant the Rust discovery engine can emit must be mapped here — the
+ * engine emits the full coordinated-op set (synapse, weight, neuron, squash and
+ * bias ops), not just the two synapse ops (Issue #3250). A variant that reaches
+ * the `default` branch is malformed wire data and fails loudly via
+ * `assertNever` rather than being blessed through the boundary unmapped.
  */
 export function mapRustCoordinatedOp(
   op: RustCoordinatedStructuralOperation,
@@ -292,6 +298,39 @@ export function mapRustCoordinatedOp(
         fromNeuronUuid: op.fromNeuronUuid,
         toNeuronUuid: op.toNeuronUuid,
         weight: op.weight,
+      };
+    case "setWeight":
+      return {
+        type: op.type,
+        fromNeuronUuid: op.fromNeuronUuid,
+        toNeuronUuid: op.toNeuronUuid,
+        weight: op.weight,
+      };
+    case "addNeuron":
+      return {
+        type: op.type,
+        neuronUuid: op.neuronUuid,
+        neuronType: op.neuronType,
+        squash: op.squash,
+        bias: op.bias,
+        insertBeforeNeuronUuid: op.insertBeforeNeuronUuid,
+      };
+    case "removeNeuron":
+      return {
+        type: op.type,
+        neuronUuid: op.neuronUuid,
+      };
+    case "changeSquash":
+      return {
+        type: op.type,
+        neuronUuid: op.neuronUuid,
+        squash: op.squash,
+      };
+    case "setBias":
+      return {
+        type: op.type,
+        neuronUuid: op.neuronUuid,
+        bias: op.bias,
       };
     default:
       return assertNever(op);

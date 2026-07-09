@@ -132,10 +132,22 @@ export interface RustCandidateNeuron {
 
 /**
  * Coordinated structural operation emitted by Rust.
+ *
+ * The Rust discovery engine emits the full coordinated-op set — not just the
+ * two synapse ops. Every variant here must stay in lock-step with the
+ * TypeScript `CoordinatedStructuralOperation` union (see
+ * `CoordinatedStructuralCandidate.ts`) and with `mapRustCoordinatedOp`; a
+ * variant the engine emits but the mapper does not handle throws at the FFI
+ * boundary (Issue #3250).
  */
 export type RustCoordinatedStructuralOperation =
   | RustCoordinatedRemoveSynapseOperation
-  | RustCoordinatedAddSynapseOperation;
+  | RustCoordinatedAddSynapseOperation
+  | RustCoordinatedSetWeightOperation
+  | RustCoordinatedAddNeuronOperation
+  | RustCoordinatedRemoveNeuronOperation
+  | RustCoordinatedChangeSquashOperation
+  | RustCoordinatedSetBiasOperation;
 
 export interface RustCoordinatedRemoveSynapseOperation {
   type: "removeSynapse";
@@ -148,6 +160,40 @@ export interface RustCoordinatedAddSynapseOperation {
   fromNeuronUuid: string;
   toNeuronUuid: string;
   weight: number;
+}
+
+export interface RustCoordinatedSetWeightOperation {
+  type: "setWeight";
+  fromNeuronUuid: string;
+  toNeuronUuid: string;
+  weight: number;
+}
+
+export interface RustCoordinatedAddNeuronOperation {
+  type: "addNeuron";
+  neuronUuid: string;
+  neuronType: "hidden" | "output";
+  squash: string;
+  bias: number;
+  /** Optional placement hint for forward-only creatures. */
+  insertBeforeNeuronUuid?: string;
+}
+
+export interface RustCoordinatedRemoveNeuronOperation {
+  type: "removeNeuron";
+  neuronUuid: string;
+}
+
+export interface RustCoordinatedChangeSquashOperation {
+  type: "changeSquash";
+  neuronUuid: string;
+  squash: string;
+}
+
+export interface RustCoordinatedSetBiasOperation {
+  type: "setBias";
+  neuronUuid: string;
+  bias: number;
 }
 
 /**
