@@ -25,7 +25,16 @@ import type { RequiredMemoryConfig } from "@config/MemoryConfig.ts";
 import type { MemoryUsageProvider } from "@neat/MemoryMonitor.ts";
 import type { Logger } from "@utils/Logger.ts";
 import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { checkAnalysisHeapAbort } from "@architecture/ErrorGuidedStructuralEvolution/AnalysisHeapGuard.ts";
+import {
+  checkAnalysisHeapAbort,
+  type HeapGuardSample,
+  sampleHeapPressure,
+  shouldAbortOnHeapPressure,
+} from "@architecture/ErrorGuidedStructuralEvolution/AnalysisHeapGuard.ts";
+import {
+  type AnalysisKnobs,
+  computeDegradedAnalysisKnobs,
+} from "@architecture/ErrorGuidedStructuralEvolution/AnalysisDegradeDecision.ts";
 
 /** Options for {@link buildEmptyDiscoverResult}. */
 export interface EmptyDiscoverResultOptions {
@@ -96,4 +105,69 @@ export function resolveHeapAbortBoundary(
   return buildEmptyDiscoverResult(ID, {
     heapAbortedAtExtensionBoundary: true,
   });
+}
+
+/** Outcome of {@link resolveDegradedAnalysisBoundary}. */
+export interface AnalysisBoundaryDecision {
+  /**
+   * `true` when the heap was CRITICAL at the boundary and analysis will run at a
+   * degraded, minimal footprint instead of aborting to zero candidates.
+   */
+  degraded: boolean;
+  /** The knobs analysis should run with (degraded when `degraded === true`). */
+  knobs: AnalysisKnobs;
+  /** The heap sample taken at the boundary. */
+  sample: HeapGuardSample;
+  /** Log-ready summary of the reduced knobs — set only when `degraded`. */
+  reason?: string;
+}
+
+/**
+ * Degrade-and-continue analysis-extension boundary decision (Issue #3296).
+ *
+ * Replaces the historical abort-to-zero-candidates behaviour: when the heap is
+ * CRITICAL at the extension boundary, instead of returning an empty result the
+ * boundary **degrades the analysis footprint** (fewer focus neurons, smaller
+ * Rust FFI chunks — see {@link computeDegradedAnalysisKnobs}) and reports that
+ * analysis should continue at that minimal footprint. The degrade decision is
+ * logged with the reduced knob values so the smaller footprint is observable.
+ *
+ * When the heap is not CRITICAL the current knobs are returned unchanged and
+ * `degraded` is `false` — the happy path is untouched.
+ *
+ * The same helper serves the "starved at start" case: passing the starting
+ * knobs when the host is already memory-starved yields the minimal footprint to
+ * begin analysis with, rather than deferring or skipping.
+ *
+ * @param ID - Discovery ID for the log line.
+ * @param memoryConfig - Resolved memory config (thresholds + native budget).
+ * @param logger - Logger for the grep-friendly degrade-decision line.
+ * @param currentKnobs - The knobs analysis would otherwise run with.
+ * @param provider - Optional injected heap sample source (tests).
+ */
+export function resolveDegradedAnalysisBoundary(
+  ID: string,
+  memoryConfig: RequiredMemoryConfig,
+  logger: Logger,
+  currentKnobs: AnalysisKnobs,
+  provider?: MemoryUsageProvider,
+): AnalysisBoundaryDecision {
+  const sample = sampleHeapPressure(memoryConfig, provider);
+  if (!shouldAbortOnHeapPressure(sample, memoryConfig)) {
+    return { degraded: false, knobs: currentKnobs, sample };
+  }
+
+  const decision = computeDegradedAnalysisKnobs(currentKnobs);
+  const heapPct = (sample.usageFraction * 100).toFixed(0);
+  logger.warn(
+    `[Neat] Discovery ${ID} analysis DEGRADED at extension boundary ` +
+      `(heap CRITICAL ${heapPct}%): continuing at ${decision.reason} ` +
+      `(#3296)`,
+  );
+  return {
+    degraded: true,
+    knobs: decision.knobs,
+    sample,
+    reason: decision.reason,
+  };
 }

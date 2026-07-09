@@ -146,6 +146,15 @@ export interface AnalysisLoopContext {
    * should not set this.
    */
   readonly heapCriticalProbe?: () => boolean;
+  /**
+   * Degrade-and-continue signal (Issue #3296). When `true`, the extension
+   * boundary degraded the analysis footprint under CRITICAL heap pressure
+   * instead of aborting. In that case the in-loop heap guard must let the first
+   * (retryAttempt 0) minimal-footprint pass run to completion rather than
+   * aborting immediately — otherwise the degraded run would still abort to zero
+   * candidates. Subsequent iterations honour the guard normally.
+   */
+  readonly degradedFirstPass?: boolean;
 }
 
 /**
@@ -325,13 +334,26 @@ export async function runAnalysisLoop(
     // iteration and abort gracefully with whatever candidates we have rather
     // than pressing on into OOM.
     if (heapCritical()) {
-      heapAbortedFlag = true;
-      getLogger().warn(
-        `[Neat] Discovery ${
-          blue(ID)
-        } analysis aborted: heap CRITICAL during analysis loop after ${attemptedNeurons.size} neuron(s) [${formatStallMemoryDiagnostics()}]`,
-      );
-      break;
+      // #3296: degrade-and-continue. When the boundary degraded into a
+      // minimal-footprint pass, run the first (retryAttempt 0) pass to a
+      // genuine completion instead of aborting to zero candidates. Only the
+      // first pass is spared; later iterations honour the guard so a run that
+      // stays CRITICAL still bails out with whatever candidates it found.
+      if (ctx.degradedFirstPass && retryAttempt === 0) {
+        getLogger().warn(
+          `[Neat] Discovery ${
+            blue(ID)
+          } heap CRITICAL at degraded analysis start — running one minimal-footprint pass to completion [${formatStallMemoryDiagnostics()}] (#3296)`,
+        );
+      } else {
+        heapAbortedFlag = true;
+        getLogger().warn(
+          `[Neat] Discovery ${
+            blue(ID)
+          } analysis aborted: heap CRITICAL during analysis loop after ${attemptedNeurons.size} neuron(s) [${formatStallMemoryDiagnostics()}]`,
+        );
+        break;
+      }
     }
     // Allow callers (especially tests) to explicitly skip the analysis phase by
     // setting discoveryMaxNeurons to 0. This keeps record/flush coverage (FFI)
@@ -436,7 +458,13 @@ export async function runAnalysisLoop(
       // so heap can cross CRITICAL part-way through a multi-chunk iteration.
       // Stop submitting further chunks and return the partial result instead
       // of OOMing the worker.
-      if (heapCritical()) {
+      // #3296: on the degraded first pass, let the first (minimal-footprint)
+      // chunk run so the iteration reaches a genuine completion instead of
+      // aborting to zero candidates. Degraded focus breadth is small, so this
+      // is typically the only chunk; any later chunk still honours the guard.
+      const spareForDegradedPass = ctx.degradedFirstPass === true &&
+        retryAttempt === 0 && chunkIdx === 1;
+      if (heapCritical() && !spareForDegradedPass) {
         iterationHeapAborted = true;
         getLogger().warn(
           `[Neat] Discovery ${
