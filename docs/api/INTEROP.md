@@ -77,15 +77,47 @@ Deno.writeTextFileSync("checkpoint.json", JSON.stringify(checkpoint));
 
 **Returns:** `CheckpointInterface` — serialisable checkpoint object.
 
-### `importCheckpoint(checkpoint, inputCount, outputCount)`
+### `importCheckpoint(checkpoint, options?)`
 
 Imports a checkpoint to create a creature for a new task, handling UUID mapping
-when input/output dimensions differ from the source task.
+when input/output dimensions differ from the source task. The new task's
+input/output counts are passed through `options.targetInputCount` /
+`options.targetOutputCount` — not as positional arguments.
+
+```typescript
+type CheckpointImportOptions = {
+  inputIdMapping?: Map<number, number>; // source→target input UUID mapping
+  outputIdMapping?: Map<number, number>; // source→target output UUID mapping
+  targetInputCount?: number; // inputs in the target task
+  targetOutputCount?: number; // outputs in the target task
+  freezeHidden?: boolean; // freeze hidden weights (default false)
+};
+
+function importCheckpoint(
+  checkpoint: CheckpointInterface,
+  options?: CheckpointImportOptions,
+): Creature;
+```
 
 ```typescript
 const checkpoint = JSON.parse(Deno.readTextFileSync("checkpoint.json"));
-const creature = importCheckpoint(checkpoint, 8, 3); // new task: 8 inputs, 3 outputs
+// new task: 8 inputs, 3 outputs
+const creature = importCheckpoint(checkpoint, {
+  targetInputCount: 8,
+  targetOutputCount: 3,
+});
 ```
+
+| Parameter                   | Type                  | Description                                               |
+| --------------------------- | --------------------- | --------------------------------------------------------- |
+| `checkpoint`                | `CheckpointInterface` | The checkpoint to import                                  |
+| `options.targetInputCount`  | `number`              | Inputs in the target task (defaults to the source)        |
+| `options.targetOutputCount` | `number`              | Outputs in the target task (defaults to the source)       |
+| `options.inputIdMapping`    | `Map<number, number>` | Source→target input UUID mapping (positional if omitted)  |
+| `options.outputIdMapping`   | `Map<number, number>` | Source→target output UUID mapping (positional if omitted) |
+| `options.freezeHidden`      | `boolean`             | Freeze hidden neuron weights (default `false`)            |
+
+**Returns:** `Creature` — a creature adapted to the target task.
 
 ### `createSeededPopulation(options)`
 
