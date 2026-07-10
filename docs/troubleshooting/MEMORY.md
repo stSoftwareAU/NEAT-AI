@@ -201,11 +201,17 @@ Two `MemoryMonitor`-driven guards keep discovery analysis from fatally OOMing
 when a large layered seed (e.g. 986 neurons / ~109k synapses) is evolved over a
 large supervised `.bin` stream:
 
-1. **Extension-boundary guard** (Issue #2594): before the recording phase
-   extends the timeout to make room for analysis, it samples the heap once. If
-   pressure is already CRITICAL it skips analysis and returns a partial result,
-   logging
-   `[Neat] Discovery <id> analysis aborted: heap CRITICAL at extension boundary`.
+1. **Extension-boundary guard** (Issue #2594; degrade-and-continue since Issue
+   #3296): before the recording phase extends the timeout to make room for
+   analysis, it samples the heap once. If pressure is already CRITICAL it now
+   **degrades the analysis footprint and continues** rather than skipping to a
+   partial result. `resolveDegradedAnalysisBoundary` reduces the focus breadth
+   to a quarter of the neurons (floored at one), bounds the Rust FFI chunks to a
+   small chunk, and runs one minimal-footprint pass to completion, logging the
+   degrade decision with each reduced knob's `from->to` value so the smaller
+   footprint is observable. The result is a genuine completion — candidates, or
+   an honest no-improvement result — instead of a zero-candidate skip. See
+   [Degrade and continue at the extension boundary (Issue #3296)](#degrade-and-continue-at-the-extension-boundary-issue-3296).
 
 2. **In-loop guard** (Issue #2735): analysis itself runs many chunks across up
    to ten retry iterations, and the per-chunk squash analysis allocates
@@ -273,7 +279,8 @@ flowchart TD
     B -- no --> L[Analysis loop]:::ok
     B -- yes --> N{nativeBudgetBytes &gt; 0\nand RSS within budget?}
     N -- yes --> L
-    N -- no --> S1[Skip analysis,\nreturn partial]:::warn
+    N -- no --> D[Degrade footprint #3296:\nquarter focus, smaller\nRust FFI chunks]:::warn
+    D --> E[Run one minimal-footprint\npass to completion]:::ok
     L --> C{Heap CRITICAL before\niteration / chunk?}
     C -- no --> P[Process chunk]:::ok
     C -- yes --> M{RSS within budget?}
@@ -281,6 +288,39 @@ flowchart TD
     M -- no --> S2[Stop, return\naccumulated candidates]:::warn
     P --> C
 ```
+
+#### Degrade and continue at the extension boundary (Issue #3296)
+
+The extension-boundary guard used to **skip-to-partial**: on CRITICAL heap
+pressure it returned an empty `DiscoverResult` carrying
+`heapAbortedAtExtensionBoundary: true`, logging
+`[Neat] Discovery <id> analysis aborted: heap CRITICAL at extension boundary`.
+
+> [!NOTE]
+> **Negative result — skip-to-partial was reclassified as a failure.** A loud
+> degraded skip that returns zero candidates is still a failure: the iteration
+> did no useful work. Do **not** re-attempt the skip-to-partial approach.
+
+The production boundary now **degrades and continues** instead
+(`resolveDegradedAnalysisBoundary`):
+
+- **Reduce the footprint** — `computeDegradedAnalysisKnobs` cuts the focus
+  breadth to a quarter of the neurons (floored at one) and bounds the Rust FFI
+  combined-analysis chunks to a small chunk. The degrade decision is logged with
+  each reduced knob's `from->to` value.
+- **Run one minimal-footprint pass to completion** — `DataRecorder` runs
+  `runAnalysisLoop` with the degraded knobs and a `degradedFirstPass` signal, so
+  the first (retry-attempt 0) pass runs through — including its first chunk —
+  rather than aborting immediately. Subsequent iterations honour the in-loop
+  guard normally, so a run that stays CRITICAL still bails with whatever
+  candidates it has found.
+
+The outcome is a genuine completion — candidates, or an honest no-improvement
+result — instead of a zero-candidate skip.
+
+The legacy skip-to-partial function `resolveHeapAbortBoundary` (and its
+`heapAbortedAtExtensionBoundary` wire contract) is **retained only for its unit
+tests**; it is no longer the production path.
 
 ## See also
 
