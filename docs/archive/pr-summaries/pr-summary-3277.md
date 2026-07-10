@@ -10,13 +10,13 @@ it so the two copies stop drifting). Closes #3277.
 
 Corrections:
 
-| Field                              | Was                              | Now                                                        | Source of truth                                        |
-| ---------------------------------- | -------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------ |
-| `threads` default                  | `navigator.hardwareConcurrency`  | `navigator.hardwareConcurrency + 2` (+ link to Workers)    | `NeatConfig.ts:239-240`, `DEFAULT_HEAVY_TASK_WORKER_COUNT` = 2 |
-| `maxConns` default                 | `Infinity`                       | `MAX_SAFE_INTEGER` (+ link to Core evolution)              | `NeatConfig.ts` `parseNumber(... MAX_SAFE_INTEGER)`    |
-| `maximumNumberOfNodes` default     | `Infinity` / "Maximum **hidden** neurons" | `MAX_SAFE_INTEGER` / "Maximum neurons" (+ link) | `NeatConfig.ts` (caps all neurons)                     |
-| `adaptiveMutationThresholds.medium`/`.large` | "**Synapse** count threshold" | "Neuron count threshold"                    | `AdaptiveMutationThresholds.ts:13,20`                  |
-| `verbose` description              | "Enable debug logging"           | "Verbose logging; when `true`, `log` defaults to `1`" (+ link to Logging) | `NeatConfig.ts:420,424` (`verbose` ≠ `debug`) |
+| Field                                        | Was                                       | Now                                                                       | Source of truth                                                |
+| -------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `threads` default                            | `navigator.hardwareConcurrency`           | `navigator.hardwareConcurrency + 2` (+ link to Workers)                   | `NeatConfig.ts:239-240`, `DEFAULT_HEAVY_TASK_WORKER_COUNT` = 2 |
+| `maxConns` default                           | `Infinity`                                | `MAX_SAFE_INTEGER` (+ link to Core evolution)                             | `NeatConfig.ts` `parseNumber(... MAX_SAFE_INTEGER)`            |
+| `maximumNumberOfNodes` default               | `Infinity` / "Maximum **hidden** neurons" | `MAX_SAFE_INTEGER` / "Maximum neurons" (+ link)                           | `NeatConfig.ts` (caps all neurons)                             |
+| `adaptiveMutationThresholds.medium`/`.large` | "**Synapse** count threshold"             | "Neuron count threshold"                                                  | `AdaptiveMutationThresholds.ts:13,20`                          |
+| `verbose` description                        | "Enable debug logging"                    | "Verbose logging; when `true`, `log` defaults to `1`" (+ link to Logging) | `NeatConfig.ts:420,424` (`verbose` ≠ `debug`)                  |
 
 `verbose` and `debug` are distinct flags: `debug` toggles debug mode, while
 `verbose` controls log cadence (it makes `log` default to `1`).

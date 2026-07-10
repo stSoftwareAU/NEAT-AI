@@ -4,15 +4,15 @@
 
 The "Directory Structure" section of `AGENTS.md` embedded a hand-maintained
 per-module `src/` tree that had drifted from the real source layout. Eight live
-subsystems existed under `src/` but were **absent** from the tree —
-`cache/`, `neuron/`, `onnx/`, `predictiveCoding/`, `presets/`, `score/`,
-`transfer/`, `workers/` — several of them load-bearing (ONNX export, predictive
-coding, presets, transfer learning). A contributor trusting the map would
-conclude those subsystems did not exist.
+subsystems existed under `src/` but were **absent** from the tree — `cache/`,
+`neuron/`, `onnx/`, `predictiveCoding/`, `presets/`, `score/`, `transfer/`,
+`workers/` — several of them load-bearing (ONNX export, predictive coding,
+presets, transfer learning). A contributor trusting the map would conclude those
+subsystems did not exist.
 
 Per the audit's preferred fix, the drift-prone per-module `src/` enumeration is
-removed and replaced with a pointer to `src/` as the single source of truth
-that cannot rot. The stable top-level directory list is retained. `Closes #3285`.
+removed and replaced with a pointer to `src/` as the single source of truth that
+cannot rot. The stable top-level directory list is retained. `Closes #3285`.
 
 ```mermaid
 flowchart LR
@@ -29,8 +29,8 @@ section:
 
 - Before the fix: `21/29` subsystems listed, omitting the 8 live subsystems →
   test fails (reproduces #3285).
-- After the fix: the section names no individual subsystem and points to
-  `src/` → test passes.
+- After the fix: the section names no individual subsystem and points to `src/`
+  → test passes.
 
 Full quality gate (`./quality.sh`) passes cleanly: `7593 passed | 0 failed`.
 
