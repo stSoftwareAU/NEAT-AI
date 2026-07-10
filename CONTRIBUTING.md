@@ -135,39 +135,56 @@ optional — tests and the core library work without it.
 
 Shared native Rust computation lives in the external
 [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) repository and is
-consumed by tracking `neatCore.ref` (default `Develop`) in `deno.json` and
-syncing `wasm_activation/pkg` via `./build.sh`.
+consumed as a vendored WASM bundle **pinned by an immutable 40-char SHA** in
+`deno.json` (`neatCore.rev`), attested by `neatCore.assetSha256`, and synced
+into `wasm_activation/pkg` via `./build.sh`. The `neatCore.ref` field is only a
+human-readable label recording which branch the pinned SHA came from — it is
+**not** branch-tracking. `deno.json` is the single source of truth; `neatCore`
+is pinned by SHA, never by branch.
 
-For the full pinning policy (semver rules, approval tiers, CI auth), see
-[docs/CORE_DEPENDENCY_POLICY.md](./docs/CORE_DEPENDENCY_POLICY.md).
+For the full pinning policy (semver rules, approval tiers, CI auth) see
+[docs/CORE_DEPENDENCY_POLICY.md](./docs/CORE_DEPENDENCY_POLICY.md); for the
+day-to-day bump workflow see
+[docs/EXTERNAL_NEAT_AI_CORE.md](./docs/EXTERNAL_NEAT_AI_CORE.md).
 
-### Using Latest Core in PRs
+### Bumping the pinned core revision
 
-By default, NEAT-AI follows latest `Develop` from NEAT-AI-core:
+`deno.json` pins the core by immutable SHA. A valid `neatCore` block carries
+`repo`, `ref`, a 40-char `rev`, and a 64-char `assetSha256`:
 
-1. Ensure `deno.json` has:
+```json
+"neatCore": {
+  "repo": "stSoftwareAU/NEAT-AI-core",
+  "ref": "Develop",
+  "rev": "fb793eba1fbfb2bf444ada43cc97b059292d1abc",
+  "assetSha256": "81f7b7a886b8bedbea85c0dda216058e02181f64035034904038e76a36102fe3"
+}
+```
 
-   ```json
-   "neatCore": { "repo": "stSoftwareAU/NEAT-AI-core", "ref": "Develop" }
-   ```
+An example that omits `rev`/`assetSha256` would fail `./quality.sh`, which runs
+`./build.sh --verify-only` and errors when `neatCore.rev` is unset.
 
-2. Refresh the WASM package:
+To bump the pin (see
+[docs/EXTERNAL_NEAT_AI_CORE.md](./docs/EXTERNAL_NEAT_AI_CORE.md) for the
+authoritative workflow):
 
-   ```bash
-   ./build.sh
-   ```
-
-3. (Historical note for older branches) some workflows mention
+1. Run `./build.sh` — it resolves the target NEAT-AI-core commit, downloads the
+   matching `wasm-bundle-<SHA>` artefact, refreshes `wasm_activation/pkg`, and
+   updates `deno.json` `neatCore.rev` + `assetSha256`. Pass a specific commit
+   with `./build.sh --rev <40-char-sha>`.
+2. (Historical note for older branches) some workflows mention
    `cargo update -p neat-core`; in this repository layout, use `./build.sh`
    instead because Rust/Cargo is no longer built in-tree.
-4. Run the full `./quality.sh` gate.
-5. Run the parity gate to verify no behavioural drift:
+3. Run the full `./quality.sh` gate.
+4. Run the parity gate to verify no behavioural drift:
 
    ```bash
    ./scripts/parity-gate.sh
    ```
 
-6. Commit the artifact refresh in your PR (approval controls rollout timing).
+5. Commit the updated `deno.json` and `wasm_activation/pkg` **together** in your
+   PR — the pin and the artefact must move as one commit (approval controls
+   rollout timing).
 
 See [docs/PARITY_GATE.md](./docs/PARITY_GATE.md) for the full parity checklist
 that must pass before removing in-tree Rust or after any core bump.
