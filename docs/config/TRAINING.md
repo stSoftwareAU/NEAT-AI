@@ -7,7 +7,7 @@ and validated. These options sit on the top-level `NeatOptions` object or on
 dedicated nested configs (`dataFuzzing`, `crossValidation`).
 
 ```ts
-import { createNeatConfig } from "@anthropic/neat-ai";
+import { createNeatConfig } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   // Omit trainPerGen to auto-scale with the population for supervised costs

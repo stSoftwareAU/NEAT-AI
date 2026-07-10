@@ -5,7 +5,7 @@ Artificial Intelligence) routes its log output, how often it logs, and how to
 make a run deterministic for reproducibility experiments.
 
 ```ts
-import { createNeatConfig } from "@anthropic/neat-ai";
+import { createNeatConfig } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   log: 1,
