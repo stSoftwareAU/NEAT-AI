@@ -328,6 +328,7 @@ Each focus selection produces a JSON file with the following structure:
   "totalCandidates": 6,
   "selectedCount": 2,
   "totalWeightedSum": 1.234,
+  "weightConcentrationRatio": 0.18,
   "candidates": [
     {
       "neuronUuid": "neuron-high-high",
@@ -362,12 +363,23 @@ Each focus selection produces a JSON file with the following structure:
 - **timestamp** – ISO 8601 timestamp when neurons were selected
 - **costOfGrowth** – Structural penalty threshold used for growth decisions
 - **selectionMethod** – Selection strategy: `"weighted"`, `"all"`,
-  `"random-fallback-nan"`, or `"random-fallback-zero"`
+  `"random-fallback-nan"`, `"random-fallback-zero"`, or `"round-robin-drought"`.
+  `"round-robin-drought"` is the plateau fallback (#3074) — see
+  `weightConcentrationRatio` below.
 - **totalCandidates** – Total number of neurons evaluated (hidden + output
   neurons)
 - **selectedCount** – Number of neurons chosen for analysis this round
 - **totalWeightedSum** – Sum of weighted scores (may be scaled to respect output
   error caps)
+- **weightConcentrationRatio** – The heaviest candidate's share of the total
+  roulette weight after the diversity floor, in `[0, 1]` (#3074). The
+  **water-fill cap** clips each weight to at most a `1/N` share, so on a healthy
+  distribution this stays near `1/N`. A value **≥ 0.5** means one neuron still
+  dominates the wheel despite the floor — it is logged with a **⚠️** marker and
+  signals a plateaued network where focus selection may repeat the same target.
+  Persistent high values are what trigger the `"round-robin-drought"` fallback.
+  See the diversity-floor section of
+  [`DISCOVERY_ARCHITECTURE.md`](DISCOVERY_ARCHITECTURE.md) for the mechanism.
 - **retryNumber** – Present only on retry attempts (1, 2, 3, etc.)
 
 #### Candidate Neuron Metrics
@@ -413,7 +425,11 @@ removal if spare re-score workers are available. Each entry includes:
 
 3. **Check for selection bias** – If the same neurons are always selected,
    verify that error values are being updated correctly and that different
-   neurons have varying error levels.
+   neurons have varying error levels. Inspect `weightConcentrationRatio`: a
+   value **≥ 0.5** (flagged with ⚠️ in the logs) means one neuron dominates the
+   wheel even after the diversity floor, so nominally-distinct focus neurons
+   collapse onto one target — expect `selectionMethod` to switch to
+   `"round-robin-drought"` once the plateau persists past the drought threshold.
 
 4. **Monitor low-impact neurons** – If many neurons have
    `impact < costOfGrowth`, the network might benefit from pruning. These
