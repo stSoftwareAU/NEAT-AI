@@ -39,6 +39,8 @@ async evolveDir(
   score: number;
   time: number;
   generation: number;
+  phaseTimingTotals: PhaseTimingTotals;
+  scorerUtilisation: ScorerUtilisationTotals;
 }>
 ```
 
@@ -53,6 +55,10 @@ async evolveDir(
 - `score` — Final best score (negative error minus complexity penalty)
 - `time` — Elapsed milliseconds
 - `generation` — Number of generations completed
+- `phaseTimingTotals` — Whole-run summed per-phase timing totals
+  (`PhaseTimingTotals`, Issue #3210); see [Run telemetry](#run-telemetry)
+- `scorerUtilisation` — Whole-run scorer-utilisation totals split by backend
+  (`ScorerUtilisationTotals`, Issue #3234); see [Run telemetry](#run-telemetry)
 
 ### 📁 Dataset Format
 
@@ -114,9 +120,15 @@ async evolveRL<S, A>(
   score: number;
   time: number;
   generation: number;
+  phaseTimingTotals: PhaseTimingTotals;
+  scorerUtilisation: ScorerUtilisationTotals;
   milestones?: EvolveRLMilestone[];
 }>
 ```
+
+`phaseTimingTotals` and `scorerUtilisation` carry the same whole-run telemetry
+as `evolveDir()` — see [Run telemetry](#run-telemetry). `milestones` is present
+only when `options.statistics === true`.
 
 `EvolveRLOptions` extends `NeatOptions` with:
 
@@ -129,6 +141,44 @@ async evolveRL<S, A>(
 | `onEpisodeTrials`     | `(event) => void`    | —          | Per-creature per-generation reward breakdown for variance charts            |
 | `signal`              | `AbortSignal`        | —          | External interrupt signal                                                   |
 | `adapterDescription`  | `AdapterDescription` | —          | Importable adapter URL + JSON config for the worker pool when `threads > 1` |
+
+### Run telemetry
+
+Both `evolveDir()` and `evolveRL()` return two whole-run telemetry objects
+alongside the scalar result. `PhaseTimingTotals` is a public export documented
+as "returned by the `evolve*` fns"; the signatures below are mirrored from
+`src/creature/PhaseTimingTotals.ts` and
+`src/creature/ScorerUtilisationTotals.ts`.
+
+```typescript
+// phaseTimingTotals — summed per-phase wall-clock across the whole run,
+// in raw milliseconds (Issue #3210). The named buckets plus otherMs
+// reconcile to totalMs (== the returned `time`).
+interface PhaseTimingTotals {
+  readonly generations: number;
+  readonly totalMs: number;
+  readonly fitnessMs: number;
+  readonly breedingMs: number;
+  readonly mutationMs: number;
+  readonly deduplicationMs: number;
+  readonly speciationMs: number;
+  readonly sortMs: number;
+  readonly writeScoresMs: number;
+  readonly checkpointWriteMs: number;
+  readonly otherMs: number; // unattributed wall-clock; clamped at 0
+}
+
+// scorerUtilisation — per-backend scorer counts summed across the run
+// (Issue #3234). batchFallbackGenerations > 0 means the native batch
+// path failed at least once and scoring fell back to the slow worker path.
+interface ScorerUtilisationTotals {
+  readonly generations: number;
+  readonly batchScorerInvocations: number;
+  readonly creaturesBatchScored: number;
+  readonly creaturesPerCreatureScored: number;
+  readonly batchFallbackGenerations: number;
+}
+```
 
 ### EpisodeAdapter
 
@@ -277,7 +327,7 @@ class PlateauDetector {
 
   recordFitness(fitness: number): void;
   isOnPlateau(): boolean;
-  isRapidlyImproving(): boolean;
+  isImproving(): boolean;
   getMutationMultiplier(): number;
   getGenerationsOnPlateau(): number;
 }
