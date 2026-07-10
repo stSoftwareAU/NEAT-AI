@@ -151,9 +151,11 @@ tests in parallel with a large heap.
 
 - Reduce `--max-old-space-size` to leave headroom for the OS.
 - Run tests without `--parallel`.
-- In CI, the `coverage.yaml` workflow automatically retries with 50% memory and
-  no parallelism if the first attempt exits with code 143. See
-  [CI troubleshooting](CI.md) for the retry logic.
+- In CI, the `coverage.yaml` workflow automatically retries once if the first
+  attempt exits with code 143 — it **stays parallel** but caps the worker pool
+  (`DENO_JOBS=2`) and halves the heap (Issue #3174), rather than dropping to a
+  serial re-run that would blow the job timeout. See [CI troubleshooting](CI.md)
+  for the retry logic.
 
 ## 🔬 Memory leak detection tests
 
