@@ -76,9 +76,12 @@ The WASM activation cache stores compiled creature networks. Reduce the limit
 for memory-constrained environments:
 
 ```typescript
-import { setMaxCachedWasmCreatureActivations } from "neat-ai/wasm";
+import { setMaxCachedWasmCreatureActivations } from "@stsoftware/neat-ai";
 setMaxCachedWasmCreatureActivations(256); // Default: 512
 ```
+
+> The package exposes a single entry point, `@stsoftware/neat-ai`; every public
+> symbol is re-exported from it. There are no subpath specifiers.
 
 **Step 4 — Check population size:**
 
