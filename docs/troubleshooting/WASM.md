@@ -195,9 +195,11 @@ supported workaround.
 - The LRU (Least Recently Used) cache automatically evicts old entries (default:
   512 cached instances). Reduce the limit if memory is tight:
   ```typescript
-  import { setMaxCachedWasmCreatureActivations } from "neat-ai/wasm";
+  import { setMaxCachedWasmCreatureActivations } from "@stsoftware/neat-ai";
   setMaxCachedWasmCreatureActivations(256);
   ```
+  The package exposes a single entry point, `@stsoftware/neat-ai`; every public
+  symbol is re-exported from it, so there are no subpath specifiers.
 - Reduce parallel creature count or population size.
 
 ## 🧪 Producer-gate WASM compile rejects (Issue #2672)

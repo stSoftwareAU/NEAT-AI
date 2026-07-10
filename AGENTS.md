@@ -397,8 +397,7 @@ project deliberately does **not** depend on `@std/log`.
    call `setLogger()` directly:
 
    ```typescript
-   import { Neat } from "@stsoftware/neat-ai";
-   import { setLogger } from "@stsoftware/neat-ai/utils/Logger";
+   import { Neat, setLogger } from "@stsoftware/neat-ai";
 
    // Option A — inject via NeatOptions
    const neat = new Neat(input, output, fitness, {
@@ -413,6 +412,11 @@ project deliberately does **not** depend on `@std/log`.
    // Option B — set globally
    setLogger(myCustomLogger);
    ```
+
+   > **One entry point.** `deno.json` declares `"exports": "./mod.ts"`, so the
+   > package exposes exactly one public specifier: `@stsoftware/neat-ai`. There
+   > are no subpaths (`/utils/Logger`, `/wasm`, …); every public symbol is
+   > re-exported from the root barrel. Import from `@stsoftware/neat-ai` only.
 
 4. **Missing logging features** (e.g. structured key/value pairs, async sinks)
    should be raised as a separate issue against `src/utils/Logger.ts`. Do not
