@@ -5,10 +5,10 @@ Part of the [Comparison hub](../../COMPARISON.md). This page contrasts
 toolchain (TensorFlow, PyTorch, Keras, scikit-learn).
 
 > [!IMPORTANT]
-> **NEAT-AI ≠ NEAT.** The genetic substrate below is inherited from standard
-> [NEAT](../../AGENTS.md#-terminology); everything else is a NEAT-AI extension.
-> See the
-> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use).
+> **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
+> means this project — they are no longer the same thing. See the
+> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
+> for the one canonical statement of the convention.
 
 ## 📚 Standard ML Libraries (TensorFlow, PyTorch, etc.)
 

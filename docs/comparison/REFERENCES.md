@@ -4,10 +4,10 @@ Part of the [Comparison hub](../../COMPARISON.md). Consolidated supporting
 references for every external claim made across the comparison sub-documents.
 
 > [!IMPORTANT]
-> **NEAT-AI ≠ NEAT.** The first reference below is the **standard NEAT** paper;
-> everything NEAT-AI adds on top is cited against the modern literature in the
-> sections that follow. See the
-> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use).
+> **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
+> means this project — they are no longer the same thing. See the
+> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
+> for the one canonical statement of the convention.
 
 ## 🧬 NEAT algorithm (standard NEAT)
 

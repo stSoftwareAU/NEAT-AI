@@ -13,13 +13,10 @@ things:
    understanding.
 
 > [!IMPORTANT]
-> **NEAT-AI ≠ NEAT.** NEAT-AI began as the original NeuroEvolution of Augmenting
-> Topologies algorithm
-> ([Stanley & Miikkulainen 2002](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf))
-> but has grown well past it. This glossary does **not** restate the rule for
-> when to say "NEAT-AI" versus "standard NEAT" — the
+> **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
+> means this project — they are no longer the same thing. See the
 > [NEAT vs NEAT-AI rule in AGENTS.md](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
-> is the one canonical entry. Read it once; every other doc defers to it.
+> for the one canonical statement of the convention.
 
 New here? Start with [`../README.md`](../README.md), then skim this glossary,
 then dip into a [topic guide](README.md). The companion

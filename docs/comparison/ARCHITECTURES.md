@@ -6,12 +6,10 @@ network families it is most often compared against: feedforward networks, CNNs,
 RNNs/LSTMs, and Transformers.
 
 > [!IMPORTANT]
-> **NEAT-AI ≠ NEAT.** The evolving-topology core below is inherited from
-> standard [NEAT](../../AGENTS.md#-terminology); the UUID-keyed neurons,
-> error-guided mutation, MCMC acceptance, gradient training, and synthetic
-> synapses are NEAT-AI extensions. The
-> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use) is
-> the canonical convention.
+> **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
+> means this project — they are no longer the same thing. See the
+> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
+> for the one canonical statement of the convention.
 
 ## 🧠 Traditional Feedforward Neural Networks
 

@@ -4,16 +4,10 @@ Welcome to the NEAT-AI documentation. This page is the topic-by-topic table of
 contents — every long-form guide in the repository has a home here.
 
 > [!IMPORTANT]
-> **NEAT-AI ≠ NEAT.** NEAT-AI started from the original NeuroEvolution of
-> Augmenting Topologies algorithm
-> ([Stanley & Miikkulainen 2002](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf))
-> but extends it with memetic evolution, error-guided Discovery, MCMC mutation
-> acceptance, synthetic synapses, predictive coding, Muon-style orthogonalised
-> gradients, and other modern algorithms. When this documentation describes what
-> **this repository** does, it says **NEAT-AI**. When it discusses the 2002
-> algorithm itself, it says **NEAT** (or "standard NEAT", "pure NEAT"). The
+> **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
+> means this project — they are no longer the same thing. See the
 > [NEAT vs NEAT-AI rule in AGENTS.md](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
-> is the canonical entry.
+> for the one canonical statement of the convention.
 
 If you have not used NEAT-AI before, follow the **Where to start** reading path
 below; it walks from a zero-knowledge introduction through to the topic guides

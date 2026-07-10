@@ -6,10 +6,10 @@ approaches. These represent opportunities for future development and can serve
 as a task list.
 
 > [!IMPORTANT]
-> **NEAT-AI ≠ NEAT.** The gaps below are measured against the modern industry
-> state of the art, not against the 2002
-> [NEAT](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use) algorithm. Several
-> items that were once gaps are now implemented NEAT-AI extensions, marked ✅.
+> **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
+> means this project — they are no longer the same thing. See the
+> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
+> for the one canonical statement of the convention.
 
 The gaps are grouped into high, medium, and low priority below.
 
