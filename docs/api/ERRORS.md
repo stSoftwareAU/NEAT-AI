@@ -54,18 +54,31 @@ documented here so callers can `catch` it without importing internal modules.
 ```typescript
 type ValidationErrorName =
   | "OTHER"
+  | "NEURON_ORDER" // Constant/hidden neurons out of topological order
   | "NO_OUTWARD_CONNECTIONS" // Neuron has no outgoing synapses
   | "NO_INWARD_CONNECTIONS" // Neuron has no incoming synapses
   | "IF_CONDITIONS" // IF neuron validation failed
   | "RECURSIVE_SYNAPSE" // Backward connection in forward-only mode
   | "SELF_CONNECTION" // Self-loop in forward-only mode
+  | "DUPLICATE_SYNAPSE" // Repeated synapse between the same endpoints
   | "MEMETIC"; // Memetic (origin) tracking error
 
 class ValidationError extends Error {
-  name: ValidationErrorName;
-  constructor(message: string, name: ValidationErrorName);
+  // `name` is always the fixed literal "ValidationError".
+  override readonly name = "ValidationError";
+  // The failure code lives here — branch on `reason`, not `name`.
+  readonly reason: ValidationErrorName;
+  constructor(message: string, reason: ValidationErrorName);
 }
 ```
+
+> [!IMPORTANT]
+> `ValidationError.name` is **always** the literal string `"ValidationError"`,
+> not the failure code. The discriminant is the separate `reason` field. Branch
+> on `error.reason === "RECURSIVE_SYNAPSE"` (guarded by an
+> `error.name === "ValidationError"` check or an `instanceof` test). Matching a
+> failure code against `error.name` (e.g. `error.name === "<REASON>"`) can
+> **never** be true and silently lets the error escape unhandled.
 
 > [!WARNING]
 > Always pass `validate: true` to `Creature.fromJSON()` when loading untrusted
@@ -80,10 +93,12 @@ import { Creature } from "@stsoftware/neat-ai";
 try {
   const creature = Creature.fromJSON(jsonData, true); // validate = true
 } catch (error) {
-  // ValidationError is not re-exported — match by name + shape.
+  // ValidationError is not re-exported — match by name + shape. The failure
+  // code lives in `reason`; `name` is always the literal "ValidationError".
   if (
     error instanceof Error &&
-    error.name === "RECURSIVE_SYNAPSE"
+    error.name === "ValidationError" &&
+    (error as { reason?: string }).reason === "RECURSIVE_SYNAPSE"
   ) {
     console.error("Network has backward connections in forward-only mode");
   }
