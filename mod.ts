@@ -546,6 +546,18 @@ export type { CacheStats } from "@cache/CacheStats.ts";
 export { getCacheStats } from "@cache/getCacheStats.ts";
 
 /**
+ * Distance Cache Tuning (Issue #1293)
+ *
+ * The distance cache stores pairwise genetic-compatibility scores keyed by
+ * creature UUID pairs. Its size is not a `NeatOptions` / `NeatConfig` field;
+ * it defaults to 10,000 entries and is tuned imperatively via
+ * {@link setDistanceCacheMaxSize} — the distance-cache counterpart to
+ * {@link setMaxCachedWasmCreatureActivations}. See
+ * `docs/PERFORMANCE_TUNING.md` for sizing guidance.
+ */
+export { setDistanceCacheMaxSize } from "@breed/DistanceCache.ts";
+
+/**
  * WASM preload for workers (Issue #1285, Issue #2545)
  *
  * Call {@link fetchWasmForWorkers} in the main thread before spawning workers

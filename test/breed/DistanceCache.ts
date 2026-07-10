@@ -4,7 +4,7 @@
  * Issue #1293: Verifies that pairwise genetic compatibility distances
  * are correctly cached and retrieved, and that LRU eviction works.
  */
-import { assertEquals, assertNotEquals } from "@std/assert";
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -17,6 +17,10 @@ import {
   setCachedDistance,
   setDistanceCacheMaxSize,
 } from "@breed/DistanceCache.ts";
+// Issue #3282: the distance-cache size is not a NeatOptions/NeatConfig field;
+// it is tuned at runtime via this setter, which must be reachable from the
+// single public entry point (`mod.ts`) exactly like the WASM cache setter.
+import { setDistanceCacheMaxSize as publicSetDistanceCacheMaxSize } from "../../mod.ts";
 
 function makeCreature(prefix: string, hiddenCount: number): Creature {
   const neurons: CreatureExport["neurons"] = [];
@@ -355,4 +359,26 @@ Deno.test("DistanceCache - shared neurons produce correct cached compatibility",
   assertEquals(cachedResult, 0.5);
 
   clearDistanceCache();
+});
+
+Deno.test("DistanceCache - setDistanceCacheMaxSize is re-exported from mod.ts and bounds the cache", () => {
+  clearDistanceCache();
+
+  // The public entry point exposes the runtime knob documented in
+  // docs/PERFORMANCE_TUNING.md (Issue #3282).
+  assertEquals(typeof publicSetDistanceCacheMaxSize, "function");
+
+  publicSetDistanceCacheMaxSize(3);
+  assertEquals(getDistanceCacheStats().maxSize, 3);
+
+  // Insert more entries than the configured bound; LRU eviction keeps the
+  // cache within maxSize.
+  for (let i = 0; i < 6; i++) {
+    setCachedDistance(`u-${i}`, `v-${i}`, i);
+  }
+  assert(getDistanceCacheSize() <= 3);
+
+  // Restore the default so other tests see the documented 10,000 bound.
+  clearDistanceCache();
+  setDistanceCacheMaxSize(10_000);
 });

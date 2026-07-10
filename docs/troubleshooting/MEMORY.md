@@ -77,8 +77,13 @@ for memory-constrained environments:
 
 ```typescript
 import { setMaxCachedWasmCreatureActivations } from "@stsoftware/neat-ai";
-setMaxCachedWasmCreatureActivations(256); // Default: 512
+setMaxCachedWasmCreatureActivations(256); // Effective default: populationSize * 2
 ```
+
+> A configured `Neat` run derives the WASM activation-cache limit from your
+> population — the **effective default is `populationSize * 2`**. The bare `512`
+> is only the low-level module fallback used when the LRU is driven directly
+> without a `Neat` config; a normal run never sees it.
 
 > The package exposes a single entry point, `@stsoftware/neat-ai`; every public
 > symbol is re-exported from it. There are no subpath specifiers.
