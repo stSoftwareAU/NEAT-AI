@@ -46,26 +46,27 @@ Each acronym is expanded on first use and linked to a deeper reference. When you
 introduce one of these in a doc, expand it the first time and link here or to
 the source.
 
-| Acronym     | Expansion                                                                        | Go deeper                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **NEAT**    | NeuroEvolution of Augmenting Topologies                                          | [Stanley & Miikkulainen 2002](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf)                                                   |
-| **NEAT-AI** | NeuroEvolution of Augmenting Topologies — Artificial Intelligence (this project) | [AGENTS.md terminology](../AGENTS.md#-terminology)                                                                                         |
-| **MCMC**    | Markov Chain Monte Carlo                                                         | [Metropolis–Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)                                                 |
-| **WASM**    | WebAssembly                                                                      | [WebAssembly](https://webassembly.org/)                                                                                                    |
-| **FFI**     | Foreign Function Interface                                                       | [Deno FFI](https://docs.deno.com/runtime/fundamentals/ffi/)                                                                                |
-| **GPU**     | Graphics Processing Unit                                                         | [Graphics processing unit](https://en.wikipedia.org/wiki/Graphics_processing_unit)                                                         |
-| **CPU**     | Central Processing Unit                                                          | [Central processing unit](https://en.wikipedia.org/wiki/Central_processing_unit)                                                           |
-| **RL**      | Reinforcement Learning                                                           | [Reinforcement learning](https://en.wikipedia.org/wiki/Reinforcement_learning); see [REINFORCEMENT_LEARNING.md](REINFORCEMENT_LEARNING.md) |
-| **CRISPR**  | Clustered Regularly Interspaced Short Palindromic Repeats                        | [CRISPR-Cas9 overview](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/)                                 |
-| **ONNX**    | Open Neural Network Exchange                                                     | [onnx.ai](https://onnx.ai/)                                                                                                                |
-| **CNN**     | Convolutional Neural Network                                                     | [Convolutional neural network](https://en.wikipedia.org/wiki/Convolutional_neural_network)                                                 |
-| **RNN**     | Recurrent Neural Network                                                         | [Recurrent neural network](https://en.wikipedia.org/wiki/Recurrent_neural_network)                                                         |
-| **LLM**     | Large Language Model                                                             | [Large language model](https://en.wikipedia.org/wiki/Large_language_model)                                                                 |
-| **JSR**     | JavaScript Registry                                                              | [jsr.io](https://jsr.io/)                                                                                                                  |
-| **UUID**    | Universally Unique Identifier                                                    | [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier); see the neuron UUID invariant in [AGENTS.md](../AGENTS.md)            |
-| **MSE**     | Mean Squared Error                                                               | [Mean squared error](https://en.wikipedia.org/wiki/Mean_squared_error)                                                                     |
-| **DX12**    | DirectX 12 (Windows GPU API)                                                     | [DirectX 12](https://en.wikipedia.org/wiki/DirectX#DirectX_12)                                                                             |
-| **CI**      | Continuous Integration                                                           | [Continuous integration](https://en.wikipedia.org/wiki/Continuous_integration)                                                             |
+| Acronym     | Expansion                                                                        | Go deeper                                                                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **NEAT**    | NeuroEvolution of Augmenting Topologies                                          | [Stanley & Miikkulainen 2002](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf)                                                                                 |
+| **NEAT-AI** | NeuroEvolution of Augmenting Topologies — Artificial Intelligence (this project) | [AGENTS.md terminology](../AGENTS.md#-terminology)                                                                                                                       |
+| **MCMC**    | Markov Chain Monte Carlo                                                         | [Metropolis–Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)                                                                               |
+| **WASM**    | WebAssembly                                                                      | [WebAssembly](https://webassembly.org/)                                                                                                                                  |
+| **FFI**     | Foreign Function Interface                                                       | [Deno FFI](https://docs.deno.com/runtime/fundamentals/ffi/)                                                                                                              |
+| **GPU**     | Graphics Processing Unit                                                         | [Graphics processing unit](https://en.wikipedia.org/wiki/Graphics_processing_unit)                                                                                       |
+| **CPU**     | Central Processing Unit                                                          | [Central processing unit](https://en.wikipedia.org/wiki/Central_processing_unit)                                                                                         |
+| **RL**      | Reinforcement Learning                                                           | [Reinforcement learning](https://en.wikipedia.org/wiki/Reinforcement_learning); see [REINFORCEMENT_LEARNING.md](REINFORCEMENT_LEARNING.md)                               |
+| **CRISPR**  | Clustered Regularly Interspaced Short Palindromic Repeats                        | [CRISPR-Cas9 overview](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/)                                                               |
+| **ONNX**    | Open Neural Network Exchange                                                     | [onnx.ai](https://onnx.ai/)                                                                                                                                              |
+| **CNN**     | Convolutional Neural Network                                                     | [Convolutional neural network](https://en.wikipedia.org/wiki/Convolutional_neural_network)                                                                               |
+| **RNN**     | Recurrent Neural Network                                                         | [Recurrent neural network](https://en.wikipedia.org/wiki/Recurrent_neural_network)                                                                                       |
+| **LLM**     | Large Language Model                                                             | [Large language model](https://en.wikipedia.org/wiki/Large_language_model)                                                                                               |
+| **JSR**     | JavaScript Registry                                                              | [jsr.io](https://jsr.io/)                                                                                                                                                |
+| **UUID**    | Universally Unique Identifier                                                    | [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier); see the neuron UUID invariant in [AGENTS.md](../AGENTS.md)                                          |
+| **MSE**     | Mean Squared Error                                                               | [Mean squared error](https://en.wikipedia.org/wiki/Mean_squared_error)                                                                                                   |
+| **DX12**    | DirectX 12 (Windows GPU API)                                                     | [DirectX 12](https://en.wikipedia.org/wiki/DirectX#DirectX_12)                                                                                                           |
+| **CI**      | Continuous Integration                                                           | [Continuous integration](https://en.wikipedia.org/wiki/Continuous_integration)                                                                                           |
+| **OPD**     | On-Policy Distillation                                                           | [Knowledge distillation](https://en.wikipedia.org/wiki/Knowledge_distillation); the elites-into-generalist breed operator in the [Specialist Pipeline](api/EVOLUTION.md) |
 
 ## 🧬 Themed / house terms
 
@@ -124,6 +125,18 @@ NEAT-AI) plus a few codebase-specific terms.
   deceptive landscapes. Standard technique from
   [Lehman & Stanley 2011](https://doi.org/10.1162/EVCO_a_00025); **OFF by
   default** in NEAT-AI. See [NOVELTY_SEARCH.md](NOVELTY_SEARCH.md).
+- **Predictive coding** — an alternative to plain backpropagation in which each
+  layer iteratively minimises local prediction errors passed between layers,
+  inspired by the neuroscience theory of
+  [predictive coding](https://en.wikipedia.org/wiki/Predictive_coding). See
+  [PREDICTIVE_CODING.md](PREDICTIVE_CODING.md).
+- **Muon-style orthogonalised gradients** — an optional gradient step that runs
+  a Newton–Schulz polynomial iteration to
+  [orthogonalise](https://en.wikipedia.org/wiki/Orthogonalization) each
+  per-neuron incoming-weight gradient matrix before applying it, decorrelating
+  update directions. Inspired by the Muon optimiser; opt-in via
+  `gradientOrthogonalisation: "muon"`. See
+  [UNIQUE_APPROACHES.md](comparison/UNIQUE_APPROACHES.md).
 
 > [!TIP]
 > Spotted a fun label in the codebase that is not defined here? Add it to this

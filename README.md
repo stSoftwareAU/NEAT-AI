@@ -9,9 +9,12 @@ NeuroEvolution of Augmenting Topologies algorithm published by
 in DenoJS using TypeScript. NEAT-AI keeps the speciation and structure-mutation
 ideas from standard NEAT but layers on much more recent research: memetic
 evolution, error-guided <strong>Discovery</strong>, Markov Chain Monte Carlo
-(MCMC) mutation acceptance, synthetic synapses, predictive coding, Muon-style
-orthogonalised gradients, and other algorithms (some published only weeks
-before this paragraph was written).
+(MCMC) mutation acceptance, synthetic synapses,
+<a href="docs/PREDICTIVE_CODING.md">predictive coding</a>,
+<a href="docs/comparison/UNIQUE_APPROACHES.md">Muon-style orthogonalised
+gradients</a>, and other algorithms (some published only weeks
+before this paragraph was written). Every house term and acronym here is defined
+in the <a href="docs/GLOSSARY.md">glossary</a>.
 </p>
 
 > [!IMPORTANT]

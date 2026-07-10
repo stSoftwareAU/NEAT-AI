@@ -379,7 +379,8 @@ orchestrator. The default `Creature.evolveDir()` loop manages them internally.
 Issue #2530: two-stage post-training pipeline that mirrors specialist /
 generalist distillation. Stage 1 seeds dedicated specialist species per declared
 sub-task; Stage 2 periodically distils the elites into a generalist via the OPD
-breed operator. Disabled by default.
+(On-Policy Distillation) breed operator. Disabled by default. See the
+[glossary entry for OPD](../GLOSSARY.md).
 
 ```typescript
 import {
