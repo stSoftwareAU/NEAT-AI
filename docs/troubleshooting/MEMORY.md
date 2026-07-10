@@ -85,6 +85,8 @@ setMaxCachedWasmCreatureActivations(256); // Effective default: populationSize *
 > is only the low-level module fallback used when the LRU is driven directly
 > without a `Neat` config; a normal run never sees it.
 
+<!-- -->
+
 > The package exposes a single entry point, `@stsoftware/neat-ai`; every public
 > symbol is re-exported from it. There are no subpath specifiers.
 

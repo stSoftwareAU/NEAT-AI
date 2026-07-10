@@ -80,6 +80,8 @@ class ValidationError extends Error {
 > failure code against `error.name` (e.g. `error.name === "<REASON>"`) can
 > **never** be true and silently lets the error escape unhandled.
 
+<!-- -->
+
 > [!WARNING]
 > Always pass `validate: true` to `Creature.fromJSON()` when loading untrusted
 > or user-supplied creature data. Skipping validation may result in silent
