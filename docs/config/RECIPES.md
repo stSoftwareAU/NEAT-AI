@@ -8,7 +8,7 @@ starting point — adjust the values to your dataset and compute budget.
 Small population, quick iterations to validate an approach:
 
 ```ts
-import { createNeatConfig } from "@anthropic/neat-ai";
+import { createNeatConfig } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   populationSize: 10,

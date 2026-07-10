@@ -8,7 +8,7 @@ remove low-impact elements) based on error patterns recorded during evaluation.
 Set `discoverySampleRate` to `-1` to disable discovery entirely.
 
 ```ts
-import { createNeatConfig } from "@anthropic/neat-ai";
+import { createNeatConfig } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   discoverySampleRate: 0.2,

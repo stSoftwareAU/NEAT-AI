@@ -33,6 +33,14 @@ Apply every rule below to any doc you write or audit.
    with the external/industry reference it cites. **Delete obsolete content
    outright** — do not archive it inline; stale docs mislead more than missing
    ones.
+   - **Import examples must resolve.** Every
+     `import … from "@stsoftware/neat-ai"` in an example must use the published
+     scope `@stsoftware/neat-ai` (never a stale scope such as
+     `@anthropic/neat-ai`) and may import **only** symbols actually re-exported
+     from [`mod.ts`](../mod.ts) — the package's sole `exports` entry. Never
+     import from a `src/…` path in reader-facing docs. If an example needs a
+     symbol that is not yet exported, add the re-export to `mod.ts` (and a
+     public-export test) rather than deep-importing (Issue #3271).
 5. **Keep documents small.** Favour several focused, linked sub-documents over
    one monolith. If a doc grows past a comfortable single-screen-of-scrolling
    topic, split it and link the parts (see how

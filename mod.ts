@@ -121,6 +121,18 @@ export { CreatureUtil } from "@architecture/CreatureUtils.ts";
 export type { NeatOptions, NeatOptionsInput } from "@config/NeatOptions.ts";
 
 /**
+ * NEAT Configuration Factory
+ *
+ * Issue #3271: `createNeatConfig()` validates user `NeatOptions` and returns a
+ * frozen `NeatConfig`. It is the symbol every `docs/config/` example imports,
+ * so it must be reachable from the package root — not only from `src/`.
+ *
+ * @see {@link module:src/config/NeatConfig}
+ */
+export { createNeatConfig } from "@config/NeatConfig.ts";
+export type { NeatConfig } from "@config/NeatConfig.ts";
+
+/**
  * Output Range Constraints
  *
  * Issue #1620: Per-output range constraints for evolution. When specified,

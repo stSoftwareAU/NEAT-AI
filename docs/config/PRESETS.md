@@ -6,7 +6,7 @@ is a `NeatOptions` object that can be spread into your configuration — user
 overrides take precedence when spread after the preset.
 
 ```ts
-import { createNeatConfig, QUICK_START_PRESET } from "@anthropic/neat-ai";
+import { createNeatConfig, QUICK_START_PRESET } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   ...QUICK_START_PRESET,
@@ -30,7 +30,7 @@ Small population, fast iterations, good for learning and prototyping. Discovery
 is disabled for speed.
 
 ```ts
-import { createNeatConfig, QUICK_START_PRESET } from "@anthropic/neat-ai";
+import { createNeatConfig, QUICK_START_PRESET } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   ...QUICK_START_PRESET,
@@ -48,7 +48,7 @@ ensemble diversity enabled. Suitable for complex problems requiring larger
 architectures.
 
 ```ts
-import { createNeatConfig, LARGE_NETWORK_PRESET } from "@anthropic/neat-ai";
+import { createNeatConfig, LARGE_NETWORK_PRESET } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   ...LARGE_NETWORK_PRESET,
@@ -69,7 +69,7 @@ smaller populations, and disables discovery.
 import {
   createNeatConfig,
   MEMORY_CONSTRAINED_PRESET,
-} from "@anthropic/neat-ai";
+} from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   ...MEMORY_CONSTRAINED_PRESET,
@@ -85,7 +85,10 @@ Aggressive structural evolution with higher sample rates, more neurons analysed
 per iteration, and longer timeouts. Suitable for finding novel architectures.
 
 ```ts
-import { createNeatConfig, DISCOVERY_FOCUSED_PRESET } from "@anthropic/neat-ai";
+import {
+  createNeatConfig,
+  DISCOVERY_FOCUSED_PRESET,
+} from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   ...DISCOVERY_FOCUSED_PRESET,
@@ -104,7 +107,7 @@ default**, so reaching `targetError` takes fewer generations. A one-line opt-in
 to "evolve faster".
 
 ```ts
-import { createNeatConfig, FAST_CONVERGENCE_PRESET } from "@anthropic/neat-ai";
+import { createNeatConfig, FAST_CONVERGENCE_PRESET } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   ...FAST_CONVERGENCE_PRESET,
@@ -144,7 +147,7 @@ import {
   createNeatConfig,
   DISCOVERY_FOCUSED_PRESET,
   MEMORY_CONSTRAINED_PRESET,
-} from "@anthropic/neat-ai";
+} from "@stsoftware/neat-ai";
 
 // Start with memory constraints, then override with discovery settings
 // but keep limited threads.
