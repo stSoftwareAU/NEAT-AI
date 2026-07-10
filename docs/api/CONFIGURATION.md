@@ -56,20 +56,20 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 
 ### 🎯 Core fields
 
-| Field            | Type                  | Default                         | Description                                                |
-| ---------------- | --------------------- | ------------------------------- | ---------------------------------------------------------- |
-| `costName`       | `CostName`            | `"MSE"`                         | Cost function name                                         |
-| `populationSize` | `number`              | `50`                            | Target population size (min: 2)                            |
-| `iterations`     | `number`              | `MAX_SAFE_INTEGER`              | Maximum evolution generations                              |
-| `targetError`    | `number`              | `0.05`                          | Stop when error falls below this (0–1)                     |
-| `mutationRate`   | `number`              | `0.3`                           | Probability of mutation (>0.001)                           |
-| `mutationAmount` | `number`              | `1`                             | Number of changes per gene during mutation (min: 1)        |
-| `elitism`        | `number`              | `1`                             | Top-performing creatures retained each generation (min: 1) |
-| `selection`      | `SelectionInterface`  | Random                          | Selection strategy (randomly chosen each run)              |
-| `mutation`       | `MutationInterface[]` | `Mutation.FFW`                  | Allowed mutation types                                     |
-| `threads`        | `number`              | `navigator.hardwareConcurrency` | Worker threads for parallel evaluation                     |
-| `verbose`        | `boolean`             | `false`                         | Enable debug logging                                       |
-| `log`            | `number`              | `0`                             | Log status every N generations (0 = off, 1 if verbose)     |
+| Field            | Type                  | Default                             | Description                                                                               |
+| ---------------- | --------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------- |
+| `costName`       | `CostName`            | `"MSE"`                             | Cost function name                                                                        |
+| `populationSize` | `number`              | `50`                                | Target population size (min: 2)                                                           |
+| `iterations`     | `number`              | `MAX_SAFE_INTEGER`                  | Maximum evolution generations                                                             |
+| `targetError`    | `number`              | `0.05`                              | Stop when error falls below this (0–1)                                                    |
+| `mutationRate`   | `number`              | `0.3`                               | Probability of mutation (>0.001)                                                          |
+| `mutationAmount` | `number`              | `1`                                 | Number of changes per gene during mutation (min: 1)                                       |
+| `elitism`        | `number`              | `1`                                 | Top-performing creatures retained each generation (min: 1)                                |
+| `selection`      | `SelectionInterface`  | Random                              | Selection strategy (randomly chosen each run)                                             |
+| `mutation`       | `MutationInterface[]` | `Mutation.FFW`                      | Allowed mutation types                                                                    |
+| `threads`        | `number`              | `navigator.hardwareConcurrency + 2` | Worker threads for parallel evaluation (see [Workers](../config/WORKERS.md))              |
+| `verbose`        | `boolean`             | `false`                             | Verbose logging; when `true`, `log` defaults to `1` (see [Logging](../config/LOGGING.md)) |
+| `log`            | `number`              | `0`                                 | Log status every N generations (0 = off, 1 if verbose)                                    |
 
 ### 🎓 Training fields
 
@@ -84,12 +84,12 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 
 ### 🔒 Network constraints
 
-| Field                  | Type      | Default       | Description                           |
-| ---------------------- | --------- | ------------- | ------------------------------------- |
-| `feedbackLoop`         | `boolean` | `false`       | Enable recurrent connections          |
-| `maxConns`             | `number`  | `Infinity`    | Maximum synapses allowed              |
-| `maximumNumberOfNodes` | `number`  | `Infinity`    | Maximum hidden neurons allowed        |
-| `costOfGrowth`         | `number`  | `0.000_000_1` | Complexity penalty per synapse/neuron |
+| Field                  | Type      | Default            | Description                                                                  |
+| ---------------------- | --------- | ------------------ | ---------------------------------------------------------------------------- |
+| `feedbackLoop`         | `boolean` | `false`            | Enable recurrent connections                                                 |
+| `maxConns`             | `number`  | `MAX_SAFE_INTEGER` | Maximum synapses allowed (see [Core evolution](../config/CORE_EVOLUTION.md)) |
+| `maximumNumberOfNodes` | `number`  | `MAX_SAFE_INTEGER` | Maximum neurons allowed (see [Core evolution](../config/CORE_EVOLUTION.md))  |
+| `costOfGrowth`         | `number`  | `0.000_000_1`      | Complexity penalty per synapse/neuron                                        |
 
 ### 🔬 Discovery fields
 
@@ -211,8 +211,8 @@ defaults are applied.
 
 | Field                 | Type     | Default | Description                                            |
 | --------------------- | -------- | ------- | ------------------------------------------------------ |
-| `medium`              | `number` | `100`   | Synapse count threshold for "medium" creatures         |
-| `large`               | `number` | `300`   | Synapse count threshold for "large" creatures          |
+| `medium`              | `number` | `100`   | Neuron count threshold for "medium" creatures          |
+| `large`               | `number` | `300`   | Neuron count threshold for "large" creatures           |
 | `largeTopologyWeight` | `number` | `0.1`   | Topology mutation weight reduction for large creatures |
 
 ### `mcmc` — MCMCConfig
