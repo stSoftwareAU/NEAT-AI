@@ -739,6 +739,46 @@ The cap is always on and solves the production concentration problem; the
 round-robin is an optional, drought-gated fallback exposed via a `diversity`
 argument on `selectNeuronsWeightedByError`.
 
+### 🧮 Remove-neuron gain estimation (propagation-aware, Rust-owned)
+
+The expected score gain for a `remove-neuron` candidate is **estimated by the
+propagation-aware Rust estimator `estimate_remove_neuron_gain`**
+(NEAT-AI-Discovery), never by a JavaScript-local heuristic. The Deno side in
+`src/architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts`
+consumes an injected `RemoveNeuronGainEstimator` verbatim; when no estimate is
+injected the emitted gain is a **non-fabricated neutral `0`** (the benchmark
+sequencing signal that the Discovery estimate is not yet wired) — never a
+synthesised value.
+
+Note that gain and removal-eligibility are **separate**: over-threshold
+("harmful") neurons are still promoted for removal on error magnitude alone, so
+consuming a neutral `0` gain does not suppress the removal itself. Only the
+_gain value_ comes from the estimator.
+
+> [!CAUTION]
+> **Negative result — do NOT resurrect a local squash-error gain heuristic.** A
+> previous Deno-side sink synthesised the gain from squash error alone:
+> `min(0.5, max(0.1, 0.1 + (excessMagnitude / 10) × 0.4))` where
+> `excessMagnitude = log₁₀(err) − log₁₀(1e10)`. That formula **ignored network
+> topology** — it turned a large squash error into a large _positive_ gain
+> regardless of how many layers separated the neuron from the output(s). For the
+> recorded `neuron-1802938338` failure it claimed `+0.17882921` while the
+> measured effect was `−0.000194` — roughly **920× too large and opposite in
+> sign**. A local, topology-blind gain estimate cannot be trusted; remove-neuron
+> gain must come from the propagation-aware Rust estimator, which accounts for
+> how a neuron's error actually propagates to the outputs.
+
+```mermaid
+flowchart LR
+    A["Over-threshold neuron<br/>err &gt; 1e10"] --> B{DiscoverSquashAnalysis}
+    B -->|"removal-eligible on<br/>error magnitude alone"| C[CandidateHarmfulNeuron]
+    B -->|"gain value"| D{RemoveNeuronGainEstimator<br/>injected?}
+    D -->|yes| E["Rust estimate_remove_neuron_gain<br/>propagation-aware"]
+    D -->|no| F["neutral 0<br/>(not-yet-wired signal)"]
+    E --> C
+    F --> C
+```
+
 ## 🔗 Related Issues
 
 - **#1731** — Cache-informed multi-neuron removal building during Phase 1
@@ -750,6 +790,10 @@ argument on `selectNeuronsWeightedByError`.
   deltas)
 - **#3074** — Focus-selection diversity floor: water-fill cap,
   `weightConcentrationRatio` metric, and drought round-robin fallback
+- **#3284** — Remove-neuron gain moved to the propagation-aware Rust
+  `estimate_remove_neuron_gain`; captures why a local, topology-blind
+  squash-error gain heuristic (~920× too large and opposite in sign) must never
+  be reintroduced
 
 ## 📚 See Also
 
