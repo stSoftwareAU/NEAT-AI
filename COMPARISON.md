@@ -7,16 +7,10 @@ sub-documents under [`docs/comparison/`](./docs/comparison/) so you can go as
 deep as you like without wading through one giant page.
 
 > [!IMPORTANT]
-> **NEAT-AI ≠ NEAT.** NEAT-AI started from
-> **[NEAT (NeuroEvolution of Augmenting Topologies)](./AGENTS.md#-terminology)**
-> as published by
-> [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf),
-> but extends it well beyond the 2002 paper with gradient training, memetic
-> evolution, error-guided Discovery, MCMC mutation acceptance, synthetic
-> synapses, and more. Throughout these docs, **NEAT** means the standard 2002
-> algorithm and **NEAT-AI** means this project. The
+> **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
+> means this project — they are no longer the same thing. See the
 > [NEAT vs NEAT-AI rule in AGENTS.md](./AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
-> is the one canonical statement of the convention.
+> for the one canonical statement of the convention.
 
 New to NEAT-AI? Read on — this hub assumes no prior expertise.
 
