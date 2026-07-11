@@ -231,8 +231,11 @@ export function buildBestOfCategoryCandidate(
 
 /**
  * Wrap the single best-scoring entry from a candidate array into a 1-element array.
+ *
+ * Module-private: used only by `buildBestOfCategoryCandidate` above. Not exported
+ * because no other module consumes it (Issue #3314).
  */
-export function wrapBestCandidate<
+function wrapBestCandidate<
   T extends { expectedCreatureScoreGain?: number },
 >(
   entries: T[] | undefined,
