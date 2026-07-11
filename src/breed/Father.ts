@@ -18,7 +18,7 @@ import {
  * Mirrors `NeatArguments.syntheticAlignmentThreshold` so callers that omit
  * the option get the same behaviour as the configured pipeline default.
  */
-export const DEFAULT_SYNTHETIC_ALIGNMENT_THRESHOLD = 0.2;
+const DEFAULT_SYNTHETIC_ALIGNMENT_THRESHOLD = 0.2;
 
 /**
  * Lightweight neuron info needed for compatibility check.
