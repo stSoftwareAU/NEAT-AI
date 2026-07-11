@@ -136,6 +136,25 @@ Deno.test("verifyWorkerHeapBudget: warns when the worker heap limit is materiall
   );
 });
 
+Deno.test("verifyWorkerHeapBudget: uses the module-private readV8HeapLimitMb default when no heap reader is supplied (Issue #3316)", () => {
+  // No `heapLimitMb` argument, so the call falls through to the module-private
+  // `readV8HeapLimitMb` default. It must still resolve the configured budget and
+  // emit a heap-limit log line — this guards the internal default now that the
+  // symbol is no longer exported.
+  const { logger, lines } = makeRecordingLogger();
+  const budget = verifyWorkerHeapBudget(
+    "disc-worker-default",
+    envFrom({ [DISCOVERY_HEAP_SIZE_ENV]: "4096" }),
+    undefined,
+    logger,
+  );
+  assertEquals(budget, 4096);
+  assert(
+    lines.some((l) => l.message.includes("4096")),
+    "expected a heap-limit log line mentioning the budget via the default reader",
+  );
+});
+
 Deno.test("verifyWorkerHeapBudget: no budget configured returns undefined and does not warn", () => {
   const { logger, lines } = makeRecordingLogger();
   const budget = verifyWorkerHeapBudget(
