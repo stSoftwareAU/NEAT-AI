@@ -187,9 +187,19 @@ const config = createNeatConfig({
 The distance cache stores genetic compatibility scores between pairs of
 creatures. These scores determine which creatures belong to the same species.
 
-| Parameter               | Default | Description                   |
-| ----------------------- | ------- | ----------------------------- |
-| `distanceCache.maxSize` | `10000` | Maximum cached distance pairs |
+> [!IMPORTANT]
+> The distance-cache size is **not** a `NeatOptions` / `NeatConfig` field —
+> there is no `distanceCache.maxSize` config key. It is a process-wide LRU that
+> defaults to **10,000** entries and is tuned imperatively at runtime via
+> `setDistanceCacheMaxSize()` (the distance-cache counterpart to
+> `setMaxCachedWasmCreatureActivations()`):
+>
+> ```typescript
+> import { setDistanceCacheMaxSize } from "@stsoftware/neat-ai";
+>
+> // Size the cache to cover a population of N creatures without eviction.
+> setDistanceCacheMaxSize(50_000); // Default: 10_000
+> ```
 
 **How it works**: Computing the genetic distance between two creatures requires
 comparing their full genome structure. The LRU cache stores results keyed by
@@ -213,15 +223,17 @@ xychart-beta
 ```
 
 A cache hit is ~7.9× cheaper than a full genome comparison, which is why sizing
-`distanceCache.maxSize` to cover your population matters at scale.
+the distance cache (via `setDistanceCacheMaxSize()`) to cover your population
+matters at scale.
 
 **Recommendations**:
 
 - For a population of size `N`, each generation computes up to `N*(N-1)/2`
   pairwise distances. The default of 10,000 covers populations up to ~140
   creatures without eviction.
-- **For large populations** (500+), increase to `N * N / 2` or higher. Cache
-  hits at 66 ns are dramatically faster than recomputation at 521 ns.
+- **For large populations** (500+), call `setDistanceCacheMaxSize(N * N / 2)` or
+  higher. Cache hits at 66 ns are dramatically faster than recomputation at 521
+  ns.
 - **With high population turnover** (many new creatures each generation), the
   cache hit rate drops. Expect ~64% hit rate with 20% turnover versus ~100% for
   stable populations.
@@ -230,8 +242,8 @@ A cache hit is ~7.9× cheaper than a full genome comparison, which is why sizing
 > The distance cache uses UUID pairs as keys. Creatures that are eliminated and
 > replaced each generation will never yield a cache hit for their pairings,
 > which is why high turnover reduces hit rates significantly. If your problem
-> involves aggressive culling, consider raising `distanceCache.maxSize` beyond
-> the default.
+> involves aggressive culling, consider raising the distance-cache size with
+> `setDistanceCacheMaxSize()` beyond the default.
 
 ---
 
@@ -242,13 +254,17 @@ and mutation across CPU cores.
 
 ### Thread Count (`threads`)
 
-| Parameter | Default                                     | Description              |
-| --------- | ------------------------------------------- | ------------------------ |
-| `threads` | `navigator.hardwareConcurrency` (all cores) | Number of worker threads |
+| Parameter | Default                             | Description              |
+| --------- | ----------------------------------- | ------------------------ |
+| `threads` | `navigator.hardwareConcurrency + 2` | Number of worker threads |
+
+The default adds two heavy-task workers on top of the core count
+(`hardwareConcurrency + 2`) so the pool keeps making progress while some workers
+are busy on longer breeding/discovery tasks.
 
 **Recommendations**:
 
-- **Use the default** (all available cores) for dedicated training machines.
+- **Use the default** (all cores plus two) for dedicated training machines.
 - **Reserve 1–2 cores** (`cores - 2`) on shared machines or when running
   alongside other processes.
 - **More threads are not always better**: each worker consumes memory for its
@@ -805,8 +821,8 @@ with memory management.
 
 **Step-by-step approach**:
 
-1. **Start with all cores**: `threads: navigator.hardwareConcurrency` (the
-   default).
+1. **Start with the default**: leave `threads` unset to get
+   `navigator.hardwareConcurrency + 2` (all cores plus two heavy-task workers).
 2. **Enable memory capping**: Set `workerThreadCap.maxMemoryMB` to 80% of
    available RAM.
 3. **Monitor memory**: Use `getCacheStats()` and system memory tools to check

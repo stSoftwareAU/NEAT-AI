@@ -128,35 +128,19 @@ but replaces unconditional mutation acceptance with MCMC").
 
 ### 📂 Directory Structure
 
-```
-src/                    # Source code
-  architecture/         # Core neural network architecture (Creature, Neuron, Synapse)
-  blackbox/             # Black-box evaluation utilities
-  breed/                # Crossover and breeding algorithms
-  compact/              # Network compaction and optimisation
-  config/               # Configuration and options (NeatOptions, NeatConfig)
-  costs/                # Cost/fitness functions
-  creature/             # Creature behaviour modules (activation, mutation, serialisation, training)
-  deprecated/           # Deprecated activation functions (HYPOT, HYPOTv2, MEAN)
-  discovery/            # Discovery integration (Rust FFI bridge)
-  errors/               # Error types
-  intelligentDesign/    # Intelligent Design squash optimisation
-  methods/              # Activation functions (squash implementations)
-  multithreading/       # Worker thread utilities
-  mutate/               # Mutation operators
-  NEAT/                 # Core NEAT algorithm (selection, speciation)
-  optimize/             # Optimisation passes
-  propagate/            # Backpropagation (TS orchestration; topological loop and elastic distribution are WASM-only)
-  reconstruct/          # Network reconstruction utilities
-  upgrade/              # Version migration
-  utils/                # Shared utilities
-  wasm/                 # WASM activation bridge
-test/                   # Tests (mirrors src/ structure)
-bench/                  # Benchmarks
-docs/                   # Extended documentation
-wasm_activation/pkg/    # Vendored WASM runtime artifacts from NEAT-AI-core
-scripts/                # Utility scripts
-```
+The per-module layout under `src/` grows as the source tree evolves, so it is
+**not** duplicated here — a hand-maintained tree only rots and misleads. Browse
+`src/` for the current, authoritative module layout, where each subdirectory is
+a subsystem.
+
+Top-level repository directories:
+
+- `src/` — Source code (one subdirectory per subsystem)
+- `test/` — Tests (mirrors `src/` structure)
+- `bench/` — Benchmarks
+- `docs/` — Extended documentation
+- `wasm_activation/pkg/` — Vendored WASM runtime artifacts from NEAT-AI-core
+- `scripts/` — Utility scripts
 
 ### 🗝️ Key Files
 
@@ -397,8 +381,7 @@ project deliberately does **not** depend on `@std/log`.
    call `setLogger()` directly:
 
    ```typescript
-   import { Neat } from "@stsoftware/neat-ai";
-   import { setLogger } from "@stsoftware/neat-ai/utils/Logger";
+   import { Neat, setLogger } from "@stsoftware/neat-ai";
 
    // Option A — inject via NeatOptions
    const neat = new Neat(input, output, fitness, {
@@ -413,6 +396,11 @@ project deliberately does **not** depend on `@std/log`.
    // Option B — set globally
    setLogger(myCustomLogger);
    ```
+
+   > **One entry point.** `deno.json` declares `"exports": "./mod.ts"`, so the
+   > package exposes exactly one public specifier: `@stsoftware/neat-ai`. There
+   > are no subpaths (`/utils/Logger`, `/wasm`, …); every public symbol is
+   > re-exported from the root barrel. Import from `@stsoftware/neat-ai` only.
 
 4. **Missing logging features** (e.g. structured key/value pairs, async sinks)
    should be raised as a separate issue against `src/utils/Logger.ts`. Do not

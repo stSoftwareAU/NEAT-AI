@@ -66,22 +66,22 @@ new Creature(input: number, output: number, options?: {
 
 ### 🔧 Key Methods
 
-| Method               | Signature                                                                                   | Description                                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `activate`           | `(input: Float32Array, feedbackLoop?: boolean): Float32Array`                               | Forward pass through the network using WASM. Returns output values.                                |
-| `activateAndTrace`   | `(input: Float32Array, feedbackLoop: boolean, sparseConfig: SparseConfig): Float32Array`    | Activation with tracing enabled for analysis.                                                      |
-| `propagate`          | `(expected: Float32Array, config: BackPropagationConfig, sparseConfig: SparseConfig): void` | Backpropagation — propagates errors backwards through the network.                                 |
-| `propagateUpdate`    | `(config: BackPropagationConfig, sparseConfig: SparseConfig): void`                         | Updates weights/biases based on propagated errors.                                                 |
-| `record`             | `(expected: Float32Array): Map<string, DiscoverRecord>`                                     | Records expected outputs for discovery analysis.                                                   |
-| `exportJSON`         | `(): CreatureExport`                                                                        | Canonical serialisation: wire UUIDs plus resolved runtime ids (`id` / `fromId` / `toId`).          |
-| `exportSnapshotJSON` | `(): CreatureExport`                                                                        | Wire-only snapshot: same topology as `exportJSON` but omits numeric ids (sharing / schema checks). |
-| `traceJSON`          | `(): CreatureTrace`                                                                         | Exports with detailed trace information from last activation.                                      |
-| `loadFrom`           | `(json: CreatureInternal \| CreatureExport, validate: boolean): void`                       | Loads creature structure from a JSON object.                                                       |
-| `connect`            | `(from: number, to: number, weight: number, type?: SynapseType): Synapse`                   | Creates a synapse between two neurons.                                                             |
-| `getSynapse`         | `(from: number, to: number): Synapse \| null`                                               | Gets the synapse between two neurons, or `null`.                                                   |
-| `shallowClone`       | `(): Creature`                                                                              | Fast clone without JSON serialisation overhead.                                                    |
-| `dispose`            | `(): void`                                                                                  | Releases all resources and memory.                                                                 |
-| `clearCache`         | `(from?: number, to?: number): void`                                                        | Clears internal synapse connection caches.                                                         |
+| Method               | Signature                                                                                   | Description                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `activate`           | `(input: Float32Array, feedbackLoop?: boolean): Float32Array`                               | Forward pass through the network using WASM. Returns output values.                                   |
+| `activateAndTrace`   | `(input: Float32Array, feedbackLoop: boolean, sparseConfig: SparseConfig): Float32Array`    | Activation with tracing enabled for analysis.                                                         |
+| `propagate`          | `(expected: Float32Array, config: BackPropagationConfig, sparseConfig: SparseConfig): void` | Backpropagation — propagates errors backwards through the network.                                    |
+| `propagateUpdate`    | `(config: BackPropagationConfig, sparseConfig: SparseConfig): void`                         | Updates weights/biases based on propagated errors.                                                    |
+| `record`             | `(expected: Float32Array): Map<number, DiscoverRecord>`                                     | Records expected outputs for discovery analysis. The map key is the runtime neuron `id` (a `number`). |
+| `exportJSON`         | `(): CreatureExport`                                                                        | Canonical serialisation: wire UUIDs plus resolved runtime ids (`id` / `fromId` / `toId`).             |
+| `exportSnapshotJSON` | `(): CreatureExport`                                                                        | Wire-only snapshot: same topology as `exportJSON` but omits numeric ids (sharing / schema checks).    |
+| `traceJSON`          | `(): CreatureTrace`                                                                         | Exports with detailed trace information from last activation.                                         |
+| `loadFrom`           | `(json: CreatureInternal \| CreatureExport, validate: boolean): void`                       | Loads creature structure from a JSON object.                                                          |
+| `connect`            | `(from: number, to: number, weight: number, type?: SynapseType): Synapse`                   | Creates a synapse between two neurons.                                                                |
+| `getSynapse`         | `(from: number, to: number): Synapse \| null`                                               | Gets the synapse between two neurons, or `null`.                                                      |
+| `shallowClone`       | `(): Creature`                                                                              | Fast clone without JSON serialisation overhead.                                                       |
+| `dispose`            | `(): void`                                                                                  | Releases all resources and memory.                                                                    |
+| `clearCache`         | `(from?: number, to?: number): void`                                                        | Clears internal synapse connection caches.                                                            |
 
 ### ⚡ Static Methods
 

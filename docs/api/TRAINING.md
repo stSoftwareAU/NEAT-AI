@@ -189,6 +189,90 @@ indices in that layer.
 
 ---
 
+## 🗜️ Compaction
+
+After training, a creature is **compacted** to shed redundant structure before
+it is scored. Compaction produces **two candidates** and lets the existing
+score-based population selection pick the winner:
+
+- **Safe** — only exact, behaviour-preserving folds. Its output is
+  mathematically identical to the original, so its score is guaranteed to be `≥`
+  the original. Built by `buildSafeCompact()`
+  (`src/compact/CompactCreature.ts`).
+- **Aggressive** — the safe folds **plus** a speculative low-impact prune. Built
+  by `buildAggressiveCompact()` on top of the safe variant.
+
+`Creature.compactVariants()` returns `{ safe?, aggressive? }`;
+`selectCompactVariant()` (`src/compact/CompactVariants.ts`) chooses one.
+`Creature.compact()` / `compactCreature()` are thin wrappers that return the
+safe variant for back-compat.
+
+### The invariant: safe is the floor
+
+> **The safe variant is a guaranteed score floor, so the aggressive gamble can
+> never cost anything.** `selectCompactVariant()` is score-gated: the safe
+> variant wins ties and is the fallback; the aggressive candidate only displaces
+> it when it is a **distinct** creature (different UUID) with a strictly higher
+> finite score. Identical variants dedupe by UUID and the duplicate is never
+> scored.
+
+This invariant is load-bearing. Because the aggressive prune is **purely
+structural and dataset-free** (it inspects synapse-weight magnitude only — no
+training data is threaded into `compactCreature`) and can only ever be
+**discarded** in favour of the safe floor, an over-eager prune is free. Two
+changes would break it and must not be made without replacing this rationale:
+
+1. **Do not add a training-data threshold to the aggressive prune.** Its safety
+   comes precisely from being dataset-free and score-gated after the fact —
+   threading data into compaction couples pruning to a particular dataset and
+   voids the "costs nothing" guarantee.
+2. **Do not drop the safe floor.** Removing the safe candidate (or letting the
+   aggressive variant win a tie) removes the floor that makes the gamble free.
+
+### The safe folds
+
+The safe variant is exactly these exact, lossless transforms:
+
+1. **Constant fold into additive consumers.** A `type:"constant"` neuron emits
+   the fixed scalar `bias`. For every **non-aggregate** consumer `B`, the
+   contribution `weight · constant.bias` is folded into `B.bias` and the synapse
+   dropped; once a constant has no outbound synapses it is deleted. A constant
+   feeding an **aggregate** consumer
+   (`MAXIMUM`/`MINIMUM`/`IF`/`HYPOT`/`HYPOTv2`) is retained.
+   (`src/compact/ConstantFold.ts`)
+2. **Transitive constant fold to a fixpoint + zero-varying-input collapse.**
+   Each fold can turn another neuron's inputs entirely constant, so the pass
+   repeats until nothing changes. A hidden neuron with **zero** genuinely
+   varying inputs collapses to the fixed scalar `squash(pre)` (via the standard
+   `Activations.find()` lookup) and is folded downstream like a constant. A
+   neuron with even one varying input is never treated as constant.
+   (`src/compact/ConstantFold.ts`)
+3. **Exact `IF`-collapse when all condition inputs are constant.** An `IF`
+   selects its branch by `condition = Σ(condition-type inputs)`. When every
+   condition input is constant the selector is fixed at compaction time, so the
+   `IF` collapses losslessly to its always-taken branch: the taken branch's
+   synapses become ordinary additive edges and the squash is rewritten to
+   `IDENTITY`. (`src/compact/IfCollapse.ts`)
+
+The aggressive prune adds one non-exact step: it drops **untyped** synapses
+whose `|weight|` is below `AGGRESSIVE_PRUNE_WEIGHT_THRESHOLD = 1e-3`
+(`src/compact/AggressivePrune.ts`) — including synapses into aggregate consumers
+and non-constant neurons that the safe variant must leave untouched. Frozen
+synapses, typed synapses (`IF` roles), synapses into `IF` neurons, and an
+output's last inbound edge are never pruned.
+
+```mermaid
+flowchart LR
+    O[Trained creature] --> S["buildSafeCompact<br/>exact folds only"]
+    S -->|safe = guaranteed floor| SEL{"selectCompactVariant<br/>(score-gated)"}
+    S --> A["buildAggressiveCompact<br/>safe folds + low-weight prune<br/>(dataset-free)"]
+    A -->|distinct candidate| SEL
+    SEL -->|aggressive strictly higher score| KEEP[aggressive]
+    SEL -->|tie / lower / identical| FLOOR[safe floor]
+```
+
+---
+
 ## 🔗 Related topics
 
 - [Configuration reference](CONFIGURATION.md) — training fields on `NeatOptions`

@@ -204,6 +204,13 @@ export const DISCOVERY_FOCUSED_PRESET: NeatOptions = {
  *   Issue #2791). Pinning a small literal here would *starve* gradient
  *   descent below the default and slow convergence — the lever is the
  *   auto-scaling, not a hard-coded number.
+ * - **`discoverySampleRate` is deliberately left unset** so it resolves to
+ *   the default 20% (`DEFAULT_DISCOVERY_SAMPLE_RATE`). Discovery is *enabled*
+ *   for this preset — unlike `QUICK_START_PRESET` and
+ *   `MEMORY_CONSTRAINED_PRESET`, which set `discoverySampleRate: -1` to
+ *   disable it. Structural discovery can help reach the target in fewer
+ *   generations, which is exactly what this preset optimises for (Issue
+ *   #3272).
  * - `elitism: 2` — Retain the top two performers so hard-won solutions
  *   are never lost to mutation.
  * - `timeoutMinutes: 30` — Sensible wall-clock guard.

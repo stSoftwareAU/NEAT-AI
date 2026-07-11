@@ -31,7 +31,8 @@ flowchart TD
 **Step 1 — Check worker threads:**
 
 Verify how many threads are being used. By default, NEAT-AI uses
-`navigator.hardwareConcurrency` (all available CPU cores).
+`navigator.hardwareConcurrency + 2` (all available CPU cores plus two heavy-task
+workers).
 
 ```typescript
 // Check effective thread count

@@ -37,9 +37,12 @@ worker pre-fetch, runtime panics, and recovery behaviour. See the index in
   - `wasm_activation.js`
   - `wasm_activation_bg.wasm`
 - Ensure Deno has `--allow-read` (for local files) and `--allow-net` (for JSR).
-- If building from source, run:
+- If the vendored bundle is missing or stale, re-sync it by running the
+  repo-root `./build.sh`. This does **not** build WASM from source — it syncs
+  the pre-built, vendored WASM bundle (`wasm_activation/pkg`) from the pinned
+  NEAT-AI-core release into your checkout:
   ```bash
-  cd wasm_activation && ./build.sh
+  ./build.sh
   ```
 
 ## ⚠️ WASM module not initialised
@@ -192,12 +195,17 @@ supported workaround.
 
 **Solutions:**
 
-- The LRU (Least Recently Used) cache automatically evicts old entries (default:
-  512 cached instances). Reduce the limit if memory is tight:
+- The LRU (Least Recently Used) cache automatically evicts old entries. A
+  configured `Neat` run sizes it from your population, so the **effective
+  default is `populationSize * 2`** cached instances; the bare `512` is only the
+  low-level module fallback used when the LRU is driven directly without a
+  `Neat` config. Reduce the limit if memory is tight:
   ```typescript
-  import { setMaxCachedWasmCreatureActivations } from "neat-ai/wasm";
+  import { setMaxCachedWasmCreatureActivations } from "@stsoftware/neat-ai";
   setMaxCachedWasmCreatureActivations(256);
   ```
+  The package exposes a single entry point, `@stsoftware/neat-ai`; every public
+  symbol is re-exported from it, so there are no subpath specifiers.
 - Reduce parallel creature count or population size.
 
 ## 🧪 Producer-gate WASM compile rejects (Issue #2672)

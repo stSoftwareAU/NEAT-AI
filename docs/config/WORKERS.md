@@ -7,7 +7,7 @@ roles, and control how creatures are distributed across workers during
 evaluation.
 
 ```ts
-import { createNeatConfig } from "@anthropic/neat-ai";
+import { createNeatConfig } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   threads: 8,

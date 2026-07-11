@@ -6,11 +6,10 @@ paradigm of traditional neural networks, and explains where NEAT-AI sits in the
 reinforcement-learning landscape.
 
 > [!IMPORTANT]
-> **NEAT-AI ≠ NEAT.** The genetic operators below are inherited from standard
-> [NEAT](../../AGENTS.md#-terminology); the gradient step, memetic learning,
-> MCMC acceptance, synthetic synapses, and advanced breeding are NEAT-AI
-> extensions. See the
-> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use).
+> **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
+> means this project — they are no longer the same thing. See the
+> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
+> for the one canonical statement of the convention.
 
 ## 🧠 Traditional Neural Networks
 
