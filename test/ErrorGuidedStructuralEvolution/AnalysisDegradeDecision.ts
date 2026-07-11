@@ -26,6 +26,18 @@ Deno.test("computeDegradedAnalysisKnobs: reduces focus breadth to a quarter and 
   assert(decision.reason.includes("chunkSize 32->4"));
 });
 
+Deno.test("computeDegradedAnalysisKnobs: applies the quarter focus-breadth factor observably", () => {
+  // Pins the quarter (0.25) reduction through the public API so the
+  // module-private DEGRADED_MAX_NEURONS_FACTOR value stays guarded even though
+  // the constant is no longer exported (Issue #3317).
+  const decision = computeDegradedAnalysisKnobs({
+    discoveryMaxNeurons: 100,
+    analysisChunkSize: 8,
+  });
+  assertEquals(decision.knobs.discoveryMaxNeurons, 25); // ceil(100 * 0.25)
+  assert(decision.reason.includes("maxNeurons 100->25"));
+});
+
 Deno.test("computeDegradedAnalysisKnobs: an unbounded chunk size is bounded to the degraded chunk", () => {
   const decision = computeDegradedAnalysisKnobs({
     discoveryMaxNeurons: 12,
