@@ -60,7 +60,7 @@ export const MIN_DEGRADED_MAX_NEURONS = 1;
  * Fraction of the current focus breadth kept when degrading. A quarter keeps a
  * meaningful (but much smaller) working set so candidates can still be found.
  */
-export const DEGRADED_MAX_NEURONS_FACTOR = 0.25;
+const DEGRADED_MAX_NEURONS_FACTOR = 0.25;
 
 /**
  * Chunk size the degraded analysis bounds each Rust FFI call to. Small enough to
