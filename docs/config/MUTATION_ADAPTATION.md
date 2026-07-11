@@ -7,7 +7,7 @@ exploration alive when the population stagnates, and tighten exploitation when
 fitness improves.
 
 ```ts
-import { createNeatConfig } from "@anthropic/neat-ai";
+import { createNeatConfig } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   adaptiveMutationThresholds: {

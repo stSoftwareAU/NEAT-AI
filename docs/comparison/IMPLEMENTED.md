@@ -7,13 +7,10 @@ a reader never confuses what the original algorithm did with what this
 repository adds.
 
 > [!IMPORTANT]
-> **NEAT-AI ≠ NEAT.** Everything in the _Standard NEAT machinery_ list below
-> comes from
-> [Stanley & Miikkulainen (2002)](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
-> Everything in the _NEAT-AI extensions_ lists is added by this repository and
-> has no counterpart in the 2002 paper. The
+> **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
+> means this project — they are no longer the same thing. See the
 > [NEAT vs NEAT-AI rule in AGENTS.md](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
-> is the canonical statement of the convention.
+> for the one canonical statement of the convention.
 
 ## 🔬 Standard NEAT machinery (Stanley & Miikkulainen, 2002)
 

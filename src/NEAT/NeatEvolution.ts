@@ -33,6 +33,10 @@ import { appendAll } from "@utils/ArrayAppend.ts";
 import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import {
+  computeSquashHistogram,
+  type SquashHistogram,
+} from "@neat/SquashHistogram.ts";
 import type {
   GenerationPhaseTiming,
   GenerationThroughputMetrics,
@@ -74,6 +78,12 @@ export interface EvolveResult {
   phaseTiming: GenerationPhaseTiming;
   /** Compact throughput counters for this generation. Issue #2330. */
   throughput: GenerationThroughputMetrics;
+  /**
+   * Issue #3263: canonical squash name → count across the population after
+   * this generation's breeding/mutation. Diagnostic telemetry for the
+   * squash-budget A/B experiment.
+   */
+  squashHistogram: SquashHistogram;
 }
 
 /**
@@ -1047,6 +1057,12 @@ export async function evolve(
         `/depth${throughput.heavyQueueMaxDepth}/wait${throughput.heavyWaitMs}ms` +
         ` scorer=${throughput.scorerMs.toFixed(1)}ms` +
         `/scored${throughput.scoredCreatureCount}` +
+        // Issue #3234: per-backend scorer-utilisation split so a silent batch
+        // fallback is visible on the verbose log line, not just in the result.
+        `/batchScored${neat.fitness.lastCreaturesBatchScored}` +
+        `/perCreatureScored${neat.fitness.lastCreaturesPerCreatureScored}` +
+        `/batchInvocations${neat.fitness.lastBatchScorerInvocations}` +
+        `/batchFallback${neat.fitness.lastBatchFallbackOccurred ? 1 : 0}` +
         `/creaturesPerSec${throughput.creaturesPerSec.toFixed(1)}` +
         // Issue #2523: surface corrupt-parent skip count in the
         // throughput summary so operators can alert on producer
@@ -1076,5 +1092,8 @@ export async function evolve(
     },
     phaseTiming,
     throughput,
+    // Issue #3263: population squash mix after this generation, for the
+    // squash-budget A/B experiment.
+    squashHistogram: computeSquashHistogram(neat.population),
   };
 }

@@ -6,7 +6,7 @@ when to stop, and how growth is penalised. These options live on the top-level
 `NeatOptions` object and are validated by `createNeatConfig()`.
 
 ```ts
-import { createNeatConfig } from "@anthropic/neat-ai";
+import { createNeatConfig } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   populationSize: 50,

@@ -9,9 +9,12 @@ NeuroEvolution of Augmenting Topologies algorithm published by
 in DenoJS using TypeScript. NEAT-AI keeps the speciation and structure-mutation
 ideas from standard NEAT but layers on much more recent research: memetic
 evolution, error-guided <strong>Discovery</strong>, Markov Chain Monte Carlo
-(MCMC) mutation acceptance, synthetic synapses, predictive coding, Muon-style
-orthogonalised gradients, and other algorithms (some published only weeks
-before this paragraph was written).
+(MCMC) mutation acceptance, synthetic synapses,
+<a href="docs/PREDICTIVE_CODING.md">predictive coding</a>,
+<a href="docs/comparison/UNIQUE_APPROACHES.md">Muon-style orthogonalised
+gradients</a>, and other algorithms (some published only weeks
+before this paragraph was written). Every house term and acronym here is defined
+in the <a href="docs/GLOSSARY.md">glossary</a>.
 </p>
 
 > [!IMPORTANT]
@@ -25,10 +28,17 @@ For project terminology, coding conventions, and development guidelines, see
 
 ## 📖 Docs map
 
-New here? Skim this section first; every topic guide is one link away.
+New here? **[docs/README.md](./docs/README.md)** is the single, canonical
+documentation index — a topic-by-topic table of contents with a "where to start"
+reading path and a one-line summary for every long-form guide (Compute / WASM,
+Discovery / FFI, Performance, Reference, Specialised topics, Governance). This
+README deliberately does **not** re-catalogue those guides; it links off to the
+one index so the two never drift apart.
 
-- **[docs/README.md](./docs/README.md)** — full topic index with a "where to
-  start" reading path and one-line summaries for every long-form guide.
+Top entry points:
+
+- **[docs/README.md](./docs/README.md)** — full documentation index; start here
+  for any topic guide.
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** — development setup, workflow, and
   how to bump the pinned NEAT-AI-core revision.
 - **[AGENTS.md](./AGENTS.md)** — terminology and coding conventions for human
@@ -39,28 +49,6 @@ New here? Skim this section first; every topic guide is one link away.
   the place to look it up.
 - **[COMPARISON.md](./COMPARISON.md)** — how NEAT-AI compares to other AI
   approaches (and to standard NEAT).
-- **Topic guides** — quick jumps to the most-used docs:
-  - Compute / WebAssembly (WASM):
-    [Activation Functions](./docs/ACTIVATION_FUNCTIONS.md),
-    [Backprop Elasticity](./docs/BACKPROP_ELASTICITY.md),
-    [GPU Acceleration](./docs/GPU_ACCELERATION.md)
-  - Discovery / Foreign Function Interface (FFI):
-    [Discovery Guide](./docs/DISCOVERY_GUIDE.md),
-    [DiscoveryDir API](./docs/DISCOVERY_DIR.md),
-    [Discovery Architecture](./docs/DISCOVERY_ARCHITECTURE.md)
-  - Performance: [Performance Tuning](./docs/PERFORMANCE_TUNING.md),
-    [Performance Research](./docs/PERFORMANCE_RESEARCH.md)
-  - Reference: [API Reference](./docs/API_REFERENCE.md),
-    [Configuration Guide](./docs/CONFIGURATION_GUIDE.md),
-    [Troubleshooting](./docs/TROUBLESHOOTING.md)
-  - Specialised: [CRISPR Guide](./docs/CRISPR_GUIDE.md),
-    [Intelligent Design](./docs/INTELLIGENT_DESIGN.md),
-    [Predictive Coding](./docs/PREDICTIVE_CODING.md)
-  - Topic guides:
-    [Reinforcement learning / agent rollouts](./docs/REINFORCEMENT_LEARNING.md)
-  - Governance: [Core Dependency Policy](./docs/CORE_DEPENDENCY_POLICY.md),
-    [Parity Gate](./docs/PARITY_GATE.md), [Security](./SECURITY.md),
-    [Changelog](./CHANGELOG.md)
 
 ## 🏗️ High-level architecture
 
@@ -321,79 +309,6 @@ and evolution still run end-to-end in WASM.
 This project is designed to be used in a DenoJS environment. Please refer to the
 [Deno runtime manual](https://docs.deno.com/runtime/manual/) for setup and usage
 instructions.
-
-## 📚 Documentation
-
-For detailed documentation, see the [docs/](./docs/) directory:
-
-### 🚀 Getting Started
-
-- **[CONTRIBUTING.md](./CONTRIBUTING.md)**: First-time contributor guide with
-  development setup and workflow
-- **[Configuration Guide](./docs/CONFIGURATION_GUIDE.md)**: Complete reference
-  of all configuration options and presets
-
-### 🧠 Core Concepts
-
-- **[COMPARISON.md](./COMPARISON.md)**: How NEAT-AI compares to standard NEAT,
-  traditional neural networks, CNNs, RNNs, and modern LLMs
-- **[Discovery Guide](./docs/DISCOVERY_GUIDE.md)**: Complete guide to
-  distributed, multi-machine discovery workflows, including failure/success
-  caches, replay, candidate category limits, focus overrides, and the
-  cost-of-growth gate
-- **[Intelligent Design](./docs/INTELLIGENT_DESIGN.md)**: Systematic squash
-  function optimisation for hidden neurons
-
-### 🔧 API & Reference
-
-- **[API Reference](./docs/API_REFERENCE.md)**: Short topic index linking to
-  per-surface detail docs under [`docs/api/`](./docs/api/)
-- **[DiscoveryDir API](./docs/DISCOVERY_DIR.md)**: Technical API reference for
-  `Creature.discoveryDir()` and data preparation
-- **[Activation Functions Guide](./docs/ACTIVATION_FUNCTIONS.md)**: Complete
-  guide to all 30+ activation functions with selection guidance
-
-### 🔬 Advanced Topics
-
-- **[Predictive Coding](./docs/PREDICTIVE_CODING.md)**: Neuroscience-inspired
-  predictive coding training mode
-- **[Predictive Coding Benchmarks](./docs/PREDICTIVE_CODING_BENCHMARKS.md)**:
-  Benchmark results for predictive coding
-- **[Elastic Backpropagation](./docs/BACKPROP_ELASTICITY.md)**: Why we prefer
-  minimum-change weight updates and avoid pushing saturated squashes further
-  into saturation
-- **[GPU Acceleration](./docs/GPU_ACCELERATION.md)**: GPU acceleration for
-  discovery on macOS using Metal
-- **[WASM Resident Topology](./docs/WASM_RESIDENT_TOPOLOGY.md)**: Feasibility
-  analysis for WASM-resident creature topology
-
-### ⚡ Operations
-
-- **[Performance Tuning](./docs/PERFORMANCE_TUNING.md)**: Tuning WASM caches,
-  thread pools, memory management, and scaling for large-scale training
-- **[Performance Research](./docs/PERFORMANCE_RESEARCH.md)**: WASM migration
-  research and benchmark learnings
-- **[Troubleshooting](./docs/TROUBLESHOOTING.md)**: Common issues and solutions
-  for WASM, discovery, memory, CI, and configuration
-
-### 🦀 Core Dependency
-
-- **[Core Dependency Policy](./docs/CORE_DEPENDENCY_POLICY.md)**: How NEAT-AI
-  pins and consumes [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)
-  via `deno.json` + `build.sh` (semver, rev pinning, approval tiers)
-- **[External NEAT-AI-core](./docs/EXTERNAL_NEAT_AI_CORE.md)**: Day-to-day
-  workflow for bumping the pinned revision and refreshing `wasm_activation/pkg`
-- **[Parity Gate](./docs/PARITY_GATE.md)**: Pre-removal verification checklist
-  for repin + artefact parity validation
-- **[CI for External Core](./docs/CI_EXTERNAL_NEAT_AI_CORE.md)**: CI plumbing
-  for `build.sh`-driven artifact sync
-
-### 🤝 For Contributors
-
-- **[AGENTS.md](./AGENTS.md)**: Coding conventions, terminology, and development
-  guidelines
-- **[Discovery Architecture](./docs/DISCOVERY_ARCHITECTURE.md)**: Internal
-  discovery pipeline architecture
 
 ## 🌐 Related Repositories
 

@@ -233,25 +233,33 @@ carry no warm-up state on disk and incur **zero warm-up cost** thereafter (Issue
 
 ## 🛠️ Configuration
 
-### ⚡ Production-Tuned Defaults
+### ⚡ Production-Tuned Overrides (illustrative)
 
-These defaults are tuned for continuous incremental discovery:
+These are **illustrative overrides** for continuous incremental discovery — not
+the library defaults. Each line shows a value you might set to depart from the
+shipped default; every comment names the real default alongside it. For the
+authoritative default of every option, see the
+[Discovery parameters table](./config/DISCOVERY.md) and, for `costOfGrowth`, the
+[Core evolution table](./config/CORE_EVOLUTION.md) — treat those tables as the
+single source of truth so this example cannot drift.
 
 ```typescript
 const options: NeatOptions = {
-  // Recording phase (1 minute = ~50k records at 700 records/sec)
+  // Shorten the recording phase (default: 5 minutes ≈ ~200k records at 700 records/sec)
   discoveryRecordTimeOutMinutes: 1,
 
-  // Analysis phase (10 minutes for thorough analysis)
+  // Analysis phase — 10 minutes, matching the default (shown for context)
   discoveryAnalysisTimeoutMinutes: 10,
 
-  // Cost of growth penalty (each synapse/neuron must earn back this cost)
-  costOfGrowth: 0.001, // Default: candidates must reduce error > 0.001 per synapse
+  // Raise the growth penalty well above the default of 0.0000001 — a much
+  // stricter gate, so only candidates that reduce error by more than 0.001 per
+  // synapse are accepted (fewer, higher-value structural additions)
+  costOfGrowth: 0.001,
 
-  // Analyse 6 neurons per iteration (balances speed vs thoroughness)
+  // Analyse 6 neurons per iteration — matches the default (balances speed vs thoroughness)
   discoveryMaxNeurons: 6,
 
-  // Sample 5% of data (faster while maintaining statistical validity)
+  // Sample 5% of data — below the default of 0.2 (20%) for faster iteration
   discoverySampleRate: 0.05,
 };
 ```

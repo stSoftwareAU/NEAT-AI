@@ -210,8 +210,9 @@ jobs:
           deno run --allow-read scripts/shard_test_files.ts --verify --total="${SHARD_TOTAL}"
 
       - name: Download shard artifacts
-        # actions/download-artifact@v5.0.0
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        # actions/download-artifact@v8.0.1 — Node 24 runtime (clears Node 20
+        # deprecation warning; matches the Node 24 upload-artifact pins above).
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           pattern: shard-*
           merge-multiple: true

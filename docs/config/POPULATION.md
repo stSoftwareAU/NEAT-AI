@@ -6,7 +6,7 @@ creatures dedicated to fine-tuning, based on diversity and recent fitness
 improvements.
 
 ```ts
-import { createNeatConfig } from "@anthropic/neat-ai";
+import { createNeatConfig } from "@stsoftware/neat-ai";
 
 const config = createNeatConfig({
   populationSize: 100,

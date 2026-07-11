@@ -10,6 +10,7 @@
 import { assert, assertEquals } from "@std/assert";
 import {
   buildEmptyDiscoverResult,
+  resolveDegradedAnalysisBoundary,
   resolveHeapAbortBoundary,
 } from "@architecture/ErrorGuidedStructuralEvolution/AnalysisExtensionBoundary.ts";
 import { DEFAULT_MEMORY_CONFIG } from "@config/MemoryConfig.ts";
@@ -109,4 +110,77 @@ Deno.test("resolveHeapAbortBoundary: monitoring disabled never aborts", () => {
     provider({ heapUsed: 260 * MB, heapTotal: 269 * MB }), // would be critical
   );
   assertEquals(decision, null);
+});
+
+function capturingLogger(): { logger: Logger; warnings: string[] } {
+  const warnings: string[] = [];
+  return {
+    logger: {
+      debug: () => {},
+      info: () => {},
+      warn: (...args: unknown[]) => warnings.push(args.join(" ")),
+      error: () => {},
+    },
+    warnings,
+  };
+}
+
+Deno.test("resolveDegradedAnalysisBoundary: not critical returns the current knobs unchanged (happy path)", () => {
+  const { logger, warnings } = capturingLogger();
+  const decision = resolveDegradedAnalysisBoundary(
+    "disc-8",
+    DEFAULT_MEMORY_CONFIG,
+    logger,
+    { discoveryMaxNeurons: 16, analysisChunkSize: 32 },
+    provider({ heapUsed: 50 * MB, heapTotal: 269 * MB }), // ≈0.19, normal
+  );
+  assertEquals(decision.degraded, false);
+  assertEquals(decision.knobs.discoveryMaxNeurons, 16);
+  assertEquals(decision.knobs.analysisChunkSize, 32);
+  assertEquals(decision.reason, undefined);
+  assertEquals(warnings.length, 0);
+});
+
+Deno.test("resolveDegradedAnalysisBoundary: CRITICAL heap degrades and continues instead of aborting", () => {
+  const { logger, warnings } = capturingLogger();
+  const decision = resolveDegradedAnalysisBoundary(
+    "disc-9",
+    DEFAULT_MEMORY_CONFIG, // legacy CRITICAL (no native budget) → would-abort
+    logger,
+    { discoveryMaxNeurons: 16, analysisChunkSize: 32 },
+    provider({ heapUsed: 231 * MB, heapTotal: 269 * MB }), // ≈0.86, critical
+  );
+  assertEquals(decision.degraded, true);
+  // Footprint reduced — analysis continues at the minimal footprint.
+  assert(decision.knobs.discoveryMaxNeurons < 16);
+  assert(decision.knobs.analysisChunkSize < 32);
+  // The degrade decision is logged with the reduced knob values.
+  assertEquals(warnings.length, 1);
+  assert(warnings[0].includes("DEGRADED at extension boundary"));
+  assert(warnings[0].includes("maxNeurons 16->"));
+  assert(warnings[0].includes("chunkSize 32->"));
+});
+
+Deno.test("resolveDegradedAnalysisBoundary: genuine budget exhaustion degrades (no OOM-forcing abort)", () => {
+  // RSS over the native budget — the previous behaviour aborted to zero
+  // candidates. #3296 degrades to the minimal footprint and continues.
+  const config: RequiredMemoryConfig = {
+    ...DEFAULT_MEMORY_CONFIG,
+    nativeBudgetBytes: 8 * 1024 * MB,
+  };
+  const { logger } = capturingLogger();
+  const decision = resolveDegradedAnalysisBoundary(
+    "disc-10",
+    config,
+    logger,
+    { discoveryMaxNeurons: 12, analysisChunkSize: 0 },
+    provider({
+      heapUsed: 231 * MB,
+      heapTotal: 269 * MB,
+      rss: 9 * 1024 * MB, // over the 8 GB budget — genuine exhaustion
+      external: 47 * MB,
+    }),
+  );
+  assertEquals(decision.degraded, true);
+  assert(decision.knobs.discoveryMaxNeurons < 12);
 });

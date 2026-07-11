@@ -121,6 +121,18 @@ export { CreatureUtil } from "@architecture/CreatureUtils.ts";
 export type { NeatOptions, NeatOptionsInput } from "@config/NeatOptions.ts";
 
 /**
+ * NEAT Configuration Factory
+ *
+ * Issue #3271: `createNeatConfig()` validates user `NeatOptions` and returns a
+ * frozen `NeatConfig`. It is the symbol every `docs/config/` example imports,
+ * so it must be reachable from the package root — not only from `src/`.
+ *
+ * @see {@link module:src/config/NeatConfig}
+ */
+export { createNeatConfig } from "@config/NeatConfig.ts";
+export type { NeatConfig } from "@config/NeatConfig.ts";
+
+/**
  * Output Range Constraints
  *
  * Issue #1620: Per-output range constraints for evolution. When specified,
@@ -532,6 +544,18 @@ export {
  */
 export type { CacheStats } from "@cache/CacheStats.ts";
 export { getCacheStats } from "@cache/getCacheStats.ts";
+
+/**
+ * Distance Cache Tuning (Issue #1293)
+ *
+ * The distance cache stores pairwise genetic-compatibility scores keyed by
+ * creature UUID pairs. Its size is not a `NeatOptions` / `NeatConfig` field;
+ * it defaults to 10,000 entries and is tuned imperatively via
+ * {@link setDistanceCacheMaxSize} — the distance-cache counterpart to
+ * {@link setMaxCachedWasmCreatureActivations}. See
+ * `docs/PERFORMANCE_TUNING.md` for sizing guidance.
+ */
+export { setDistanceCacheMaxSize } from "@breed/DistanceCache.ts";
 
 /**
  * WASM preload for workers (Issue #1285, Issue #2545)

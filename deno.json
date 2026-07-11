@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "5.7.12",
+  "version": "5.8.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
@@ -82,6 +82,7 @@
       "bench/DenseNumberMapBenchmark.ts",
       "bench/DiscoveryAnalysisCacheRelease.ts",
       "bench/FastConvergencePreset.ts",
+      "bench/FitnessSampleRate.ts",
       "bench/GenerationalInertiaSchedule.ts",
       "bench/IncrementalScoreUpdate.ts",
       "bench/MainThreadScoreWork.ts",

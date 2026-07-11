@@ -6,7 +6,10 @@
  * user overrides via spread syntax.
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
-import { createNeatConfig } from "@config/NeatConfig.ts";
+import {
+  createNeatConfig,
+  DEFAULT_DISCOVERY_SAMPLE_RATE,
+} from "@config/NeatConfig.ts";
 import {
   DISCOVERY_FOCUSED_PRESET,
   FAST_CONVERGENCE_PRESET,
@@ -146,6 +149,20 @@ Deno.test("Fast Convergence preset - produces valid configuration", () => {
   );
   assertEquals(config.targetError, FAST_CONVERGENCE_PRESET.targetError);
   assertEquals(config.iterations, FAST_CONVERGENCE_PRESET.iterations);
+});
+
+Deno.test("Fast Convergence preset - discovery stays at the default sample rate", () => {
+  // The preset deliberately does NOT set discoverySampleRate, so config
+  // resolution falls through to DEFAULT_DISCOVERY_SAMPLE_RATE (0.2 / 20%).
+  // Discovery is therefore ENABLED for this preset (Issue #3272) — the docs
+  // table must reflect 20%, not "Disabled".
+  const config = createNeatConfig({ ...FAST_CONVERGENCE_PRESET });
+  assertEquals(config.discoverySampleRate, DEFAULT_DISCOVERY_SAMPLE_RATE);
+  assertNotEquals(config.discoverySampleRate, -1);
+  assert(
+    config.discoverySampleRate > 0,
+    "discovery must be active (rate > 0) for the Fast Convergence preset",
+  );
 });
 
 Deno.test("Fast Convergence preset - plateau detection is enabled", () => {

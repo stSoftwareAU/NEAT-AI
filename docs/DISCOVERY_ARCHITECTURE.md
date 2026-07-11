@@ -684,6 +684,101 @@ weighted random sampling based on:
 Low-impact neurons (impact < costOfGrowth) are flagged separately as removal
 candidates rather than analysis targets.
 
+#### 🪣 Diversity floor: water-fill cap and drought round-robin (#3074)
+
+The squared `error × impact` weighting above is deliberately aggressive, but on
+a **plateaued** network it lets a single neuron capture almost all of the wheel
+— on the GRQ-3 fixture (1673 neurons) one neuron held **~98%** of the weight.
+The nominally-distinct focus neurons then collapse onto the same target and the
+search stops exploring. Two mechanisms bound this concentration:
+
+- **Water-fill cap (always on).** Each neuron's roulette weight is _iteratively_
+  clipped down to at most a `1/N` share of the total (`N` = candidate count):
+  clip every weight above the running mean (`total / N`) to that mean, recompute
+  the total, and repeat until nothing exceeds the mean. At the fixed point the
+  heaviest neuron holds no more than `1/N` of the wheel, so it can no longer
+  dominate, while sub-mean weights keep their relative ordering so the tail
+  survives.
+
+  > [!NOTE]
+  > **Negative result — why a naive single-pass clip is insufficient.** An
+  > earlier attempt clipped each weight to `1/N` in a single pass. That does
+  > **not** bound concentration when the tail mass is smaller than the mean:
+  > clipping the dominant weight lowers the total, which lowers the effective
+  > mean, so the (unchanged) dominant weight can still exceed a `1/N` share of
+  > the _new_ total. The iterative water-fill converges to the true fixed point;
+  > the single-pass clip does not. Do not replace the water-fill with a
+  > single-pass clip — it reintroduces the roulette-concentration bug.
+
+- **`weightConcentrationRatio` metric.** The heaviest floored weight's share of
+  the total (in `[0, 1]`) is recorded on the focus-selection summary and written
+  to `focus-selection.json`, and surfaced in the discovery analysis logs with a
+  **⚠️** marker when it stays **≥ 0.5** (persistent concentration despite the
+  floor). See [`DISCOVERY_DIR.md`](./DISCOVERY_DIR.md) for the JSON field.
+
+- **Drought round-robin (drought-gated).** When `epochsSinceLastAccepted`
+  exceeds the drought threshold (`DEFAULT_FOCUS_DROUGHT_THRESHOLD`, default
+  **20**) the network is plateaued and even the floored roulette keeps
+  re-sampling the heavy neurons. Selection then abandons roulette and rotates
+  **deterministically** through the top `3 × count` ranked neurons, advancing
+  the start offset by the drought length so successive plateaued epochs explore
+  distinct targets. This path writes `selectionMethod: "round-robin-drought"`.
+
+```mermaid
+flowchart TD
+    A["error × impact weights<br/>(squared, output-cap scaled)"] --> B{"drought?<br/>epochsSinceLastAccepted &gt; threshold"}
+    B -- "yes" --> C["round-robin across top 3×count<br/>rotate start offset by drought length"]
+    B -- "no" --> D["water-fill cap: clip each weight<br/>to ≤ 1/N share (iterate to fixed point)"]
+    D --> E["weightConcentrationRatio ≤ 1/N<br/>⚠️ logged if ≥ 0.5"]
+    E --> F["weighted roulette selection"]
+    C --> G["focus-selection.json<br/>+ weightConcentrationRatio"]
+    F --> G
+```
+
+The cap is always on and solves the production concentration problem; the
+round-robin is an optional, drought-gated fallback exposed via a `diversity`
+argument on `selectNeuronsWeightedByError`.
+
+### 🧮 Remove-neuron gain estimation (propagation-aware, Rust-owned)
+
+The expected score gain for a `remove-neuron` candidate is **estimated by the
+propagation-aware Rust estimator `estimate_remove_neuron_gain`**
+(NEAT-AI-Discovery), never by a JavaScript-local heuristic. The Deno side in
+`src/architecture/ErrorGuidedStructuralEvolution/DiscoverSquashAnalysis.ts`
+consumes an injected `RemoveNeuronGainEstimator` verbatim; when no estimate is
+injected the emitted gain is a **non-fabricated neutral `0`** (the benchmark
+sequencing signal that the Discovery estimate is not yet wired) — never a
+synthesised value.
+
+Note that gain and removal-eligibility are **separate**: over-threshold
+("harmful") neurons are still promoted for removal on error magnitude alone, so
+consuming a neutral `0` gain does not suppress the removal itself. Only the
+_gain value_ comes from the estimator.
+
+> [!CAUTION]
+> **Negative result — do NOT resurrect a local squash-error gain heuristic.** A
+> previous Deno-side sink synthesised the gain from squash error alone:
+> `min(0.5, max(0.1, 0.1 + (excessMagnitude / 10) × 0.4))` where
+> `excessMagnitude = log₁₀(err) − log₁₀(1e10)`. That formula **ignored network
+> topology** — it turned a large squash error into a large _positive_ gain
+> regardless of how many layers separated the neuron from the output(s). For the
+> recorded `neuron-1802938338` failure it claimed `+0.17882921` while the
+> measured effect was `−0.000194` — roughly **920× too large and opposite in
+> sign**. A local, topology-blind gain estimate cannot be trusted; remove-neuron
+> gain must come from the propagation-aware Rust estimator, which accounts for
+> how a neuron's error actually propagates to the outputs.
+
+```mermaid
+flowchart LR
+    A["Over-threshold neuron<br/>err &gt; 1e10"] --> B{DiscoverSquashAnalysis}
+    B -->|"removal-eligible on<br/>error magnitude alone"| C[CandidateHarmfulNeuron]
+    B -->|"gain value"| D{RemoveNeuronGainEstimator<br/>injected?}
+    D -->|yes| E["Rust estimate_remove_neuron_gain<br/>propagation-aware"]
+    D -->|no| F["neutral 0<br/>(not-yet-wired signal)"]
+    E --> C
+    F --> C
+```
+
 ## 🔗 Related Issues
 
 - **#1731** — Cache-informed multi-neuron removal building during Phase 1
@@ -693,6 +788,12 @@ candidates rather than analysis targets.
   historical success supplementation
 - **#1735** — Per-change-type discovery diagnostics (success rates, score
   deltas)
+- **#3074** — Focus-selection diversity floor: water-fill cap,
+  `weightConcentrationRatio` metric, and drought round-robin fallback
+- **#3284** — Remove-neuron gain moved to the propagation-aware Rust
+  `estimate_remove_neuron_gain`; captures why a local, topology-blind
+  squash-error gain heuristic (~920× too large and opposite in sign) must never
+  be reintroduced
 
 ## 📚 See Also
 

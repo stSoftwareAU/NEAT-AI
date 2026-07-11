@@ -62,6 +62,7 @@ this guide assume you can observe the same metrics live.
 - [Thread Pool Configuration](#thread-pool-configuration)
 - [Memory Management](#memory-management)
 - [Population Size and Selection Pressure](#population-size-and-selection-pressure)
+- [Fitness Corpus Subsampling](#fitness-corpus-subsampling)
 - [When to Enable WASM Activation](#when-to-enable-wasm-activation)
 - [Discovery and GPU Acceleration](#discovery-and-gpu-acceleration)
 - [Memetic Evolution (Backpropagation + Evolution)](#memetic-evolution-backpropagation--evolution)
@@ -186,9 +187,19 @@ const config = createNeatConfig({
 The distance cache stores genetic compatibility scores between pairs of
 creatures. These scores determine which creatures belong to the same species.
 
-| Parameter               | Default | Description                   |
-| ----------------------- | ------- | ----------------------------- |
-| `distanceCache.maxSize` | `10000` | Maximum cached distance pairs |
+> [!IMPORTANT]
+> The distance-cache size is **not** a `NeatOptions` / `NeatConfig` field —
+> there is no `distanceCache.maxSize` config key. It is a process-wide LRU that
+> defaults to **10,000** entries and is tuned imperatively at runtime via
+> `setDistanceCacheMaxSize()` (the distance-cache counterpart to
+> `setMaxCachedWasmCreatureActivations()`):
+>
+> ```typescript
+> import { setDistanceCacheMaxSize } from "@stsoftware/neat-ai";
+>
+> // Size the cache to cover a population of N creatures without eviction.
+> setDistanceCacheMaxSize(50_000); // Default: 10_000
+> ```
 
 **How it works**: Computing the genetic distance between two creatures requires
 comparing their full genome structure. The LRU cache stores results keyed by
@@ -212,15 +223,17 @@ xychart-beta
 ```
 
 A cache hit is ~7.9× cheaper than a full genome comparison, which is why sizing
-`distanceCache.maxSize` to cover your population matters at scale.
+the distance cache (via `setDistanceCacheMaxSize()`) to cover your population
+matters at scale.
 
 **Recommendations**:
 
 - For a population of size `N`, each generation computes up to `N*(N-1)/2`
   pairwise distances. The default of 10,000 covers populations up to ~140
   creatures without eviction.
-- **For large populations** (500+), increase to `N * N / 2` or higher. Cache
-  hits at 66 ns are dramatically faster than recomputation at 521 ns.
+- **For large populations** (500+), call `setDistanceCacheMaxSize(N * N / 2)` or
+  higher. Cache hits at 66 ns are dramatically faster than recomputation at 521
+  ns.
 - **With high population turnover** (many new creatures each generation), the
   cache hit rate drops. Expect ~64% hit rate with 20% turnover versus ~100% for
   stable populations.
@@ -229,8 +242,8 @@ A cache hit is ~7.9× cheaper than a full genome comparison, which is why sizing
 > The distance cache uses UUID pairs as keys. Creatures that are eliminated and
 > replaced each generation will never yield a cache hit for their pairings,
 > which is why high turnover reduces hit rates significantly. If your problem
-> involves aggressive culling, consider raising `distanceCache.maxSize` beyond
-> the default.
+> involves aggressive culling, consider raising the distance-cache size with
+> `setDistanceCacheMaxSize()` beyond the default.
 
 ---
 
@@ -241,13 +254,17 @@ and mutation across CPU cores.
 
 ### Thread Count (`threads`)
 
-| Parameter | Default                                     | Description              |
-| --------- | ------------------------------------------- | ------------------------ |
-| `threads` | `navigator.hardwareConcurrency` (all cores) | Number of worker threads |
+| Parameter | Default                             | Description              |
+| --------- | ----------------------------------- | ------------------------ |
+| `threads` | `navigator.hardwareConcurrency + 2` | Number of worker threads |
+
+The default adds two heavy-task workers on top of the core count
+(`hardwareConcurrency + 2`) so the pool keeps making progress while some workers
+are busy on longer breeding/discovery tasks.
 
 **Recommendations**:
 
-- **Use the default** (all available cores) for dedicated training machines.
+- **Use the default** (all cores plus two) for dedicated training machines.
 - **Reserve 1–2 cores** (`cores - 2`) on shared machines or when running
   alongside other processes.
 - **More threads are not always better**: each worker consumes memory for its
@@ -517,6 +534,66 @@ rates for large creatures.
 
 ---
 
+## 🎯 Fitness Corpus Subsampling
+
+`fitnessSampleRate` (Issue #3257) trades a small amount of ranking precision for
+a large cut in per-generation scoring work. In production evolution ≈95 % of
+`evolveDir` wall-clock is fitness evaluation against a multi-GiB binary corpus,
+so scoring each creature on a **deterministic, stratified subsample** of records
+is the single largest algorithmic lever available.
+
+- **Range:** `0.0001 … 1`. **Default `1`** (score the full corpus — today's
+  behaviour, unchanged unless you opt in).
+- **What it does:** on the streaming `evaluateDir` reader, a record at global
+  index `i` is kept iff `floor((i + 1) × rate) > floor(i × rate)`. This keeps
+  exactly `floor(N × rate)` records, spread evenly (a stride), in a single pass
+  — **no second corpus is written to disk**. The selection is RNG-free, so the
+  same creature on the same corpus always sees the same records and rank
+  comparisons stay honest.
+- **Why it wins:** halving the scored records roughly halves the 95 % phase —
+  far larger than another few-percent kernel tweak — **provided** rank order on
+  the subsample tracks the full-corpus rank for your workload.
+
+```typescript
+// Score each creature on a deterministic 25 % of the corpus per generation.
+await creature.evolveDir(".training", {
+  fitnessSampleRate: 0.25,
+});
+```
+
+### Before you enable a sub-1 rate
+
+Run `bench/FitnessSampleRate.ts` against a representative corpus and confirm the
+**Spearman (rank) correlation** of subsample vs full scores stays high (≥ 0.95
+is a sensible bar) across a frozen population. On a uniform synthetic 27 MiB
+corpus the reference run shows wall-clock falling ~proportionally to the rate
+with Spearman ≥ 0.999:
+
+| rate | wall-clock | speedup | Spearman vs full |
+| ---: | ---------: | ------: | ---------------: |
+| 1.00 |     3738ms |   1.02× |           1.0000 |
+| 0.50 |     2104ms |   1.80× |           1.0000 |
+| 0.25 |     1067ms |   3.56× |           0.9991 |
+| 0.10 |      468ms |   8.11× |           1.0000 |
+
+Real production corpora may correlate less than a uniform synthetic one, so keep
+the default at `1.0` until the correlation is confirmed on your data. When the
+external `rust_scorer` batch path is enabled, a sub-1 rate currently stays on
+the TS/WASM path (the native binary cannot yet skip records) — record-level
+subsampling inside the streaming reader is tracked as a scorer follow-up.
+
+```mermaid
+flowchart LR
+    A[Population] --> B{fitnessSampleRate}
+    B -- "= 1 (default)" --> C[Score full corpus]
+    B -- "< 1" --> D[Stratified stride:<br/>keep floor N×rate records]
+    D --> E[Score subsample<br/>one pass, records skipped]
+    C --> F[Rank + select]
+    E --> F
+```
+
+---
+
 ## 🚀 When to Enable WASM Activation
 
 WASM activation is always enabled in NEAT-AI — it is required for all forward
@@ -744,8 +821,8 @@ with memory management.
 
 **Step-by-step approach**:
 
-1. **Start with all cores**: `threads: navigator.hardwareConcurrency` (the
-   default).
+1. **Start with the default**: leave `threads` unset to get
+   `navigator.hardwareConcurrency + 2` (all cores plus two heavy-task workers).
 2. **Enable memory capping**: Set `workerThreadCap.maxMemoryMB` to 80% of
    available RAM.
 3. **Monitor memory**: Use `getCacheStats()` and system memory tools to check

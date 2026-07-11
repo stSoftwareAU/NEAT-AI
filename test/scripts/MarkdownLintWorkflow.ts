@@ -100,18 +100,23 @@ Deno.test("markdown-lint workflow installs and runs markdownlint-cli2", async ()
   );
 });
 
-Deno.test("markdown-lint workflow gates the optional Mermaid step on detect-deno", async () => {
+Deno.test("markdown-lint workflow omits the dead cross-repo Mermaid block (Issue #3228)", async () => {
+  // NEAT-AI has no worker/deno/mod.ts, so the detect-deno / setup-deno /
+  // check-mermaid steps could never run. They were dead cross-repo template
+  // scaffolding and have been removed; assert they stay gone.
   const wf = await readWorkflow();
   const steps = wf.jobs.markdownlint.steps;
-  const detect = steps.find((s) => s.id === "detect-deno");
-  assert(detect, "workflow must include a detect-deno step");
-  const mermaidStep = steps.find((s) =>
-    (s.run ?? "").includes("check-mermaid")
-  );
-  assert(mermaidStep, "workflow must include a check-mermaid step");
   assert(
-    (mermaidStep.if ?? "").includes("detect-deno"),
-    "check-mermaid step must be gated on detect-deno output",
+    !steps.some((s) => s.id === "detect-deno"),
+    "workflow must not include the dead detect-deno step",
+  );
+  assert(
+    !steps.some((s) => (s.run ?? "").includes("check-mermaid")),
+    "workflow must not include the dead check-mermaid step",
+  );
+  assert(
+    !steps.some((s) => (s.run ?? "").includes("worker/deno/mod.ts")),
+    "workflow must not reference the absent worker/deno/mod.ts module",
   );
 });
 

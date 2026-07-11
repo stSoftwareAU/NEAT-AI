@@ -6,9 +6,10 @@ standard [NEAT](../../AGENTS.md#-terminology) and, in most cases, uncommon in
 other open-source neuroevolution libraries.
 
 > [!IMPORTANT]
-> **NEAT-AI ≠ NEAT.** Every approach below is a NEAT-AI extension. Where it
-> contrasts with the 2002 algorithm, that contrast is stated explicitly, per the
-> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use).
+> **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
+> means this project — they are no longer the same thing. See the
+> [NEAT vs NEAT-AI rule](../../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
+> for the one canonical statement of the convention.
 
 ## 1. 🧬 Memetic Evolution (Hybrid Evolution + Backpropagation)
 

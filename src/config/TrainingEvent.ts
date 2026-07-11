@@ -348,6 +348,12 @@ export interface GenerationCompleteEvent {
    * Present only when seed warm-up is configured (`warmupGenerations > 0`).
    */
   readonly warmupLockActive?: boolean;
+  /**
+   * Issue #3263: canonical squash name → count across the population after this
+   * generation. Diagnostic telemetry for the opt-in squash-budget experiment;
+   * present on every `generation_complete` event.
+   */
+  readonly squashHistogram?: Readonly<Record<string, number>>;
 }
 
 /**
