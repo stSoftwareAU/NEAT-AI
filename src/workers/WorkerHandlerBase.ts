@@ -93,8 +93,13 @@ export function requiredWorkerV8Flag(budgetMb: number): string {
   return `--max-old-space-size=${budgetMb}`;
 }
 
-/** The current isolate's V8 old-space heap limit, in MB. */
-export function readV8HeapLimitMb(): number {
+/**
+ * The current isolate's V8 old-space heap limit, in MB.
+ *
+ * Module-private: consumed only as the default `heapLimitMb` argument of
+ * {@link verifyWorkerHeapBudget} below (Issue #3316).
+ */
+function readV8HeapLimitMb(): number {
   return Math.round(v8.getHeapStatistics().heap_size_limit / BYTES_PER_MB);
 }
 
