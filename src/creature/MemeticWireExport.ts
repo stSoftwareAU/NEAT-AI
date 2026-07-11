@@ -31,7 +31,7 @@ export type MemeticWeightWireRow = {
  * Rewrites one memetic snapshot for wire JSON: biases keyed by wire strings;
  * weights as an array of synapse-shaped rows (no numeric neuron keys).
  */
-export function convertMemeticSnapshotToWireJson(
+function convertMemeticSnapshotToWireJson(
   node: MemeticWireData,
   idToUuid: Map<number, string>,
 ): void {
