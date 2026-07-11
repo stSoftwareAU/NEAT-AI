@@ -143,7 +143,7 @@ function simplifyComplementToIdentity(
   return exported;
 }
 
-export function removeKnownSign(exported: CreatureExport) {
+function removeKnownSign(exported: CreatureExport) {
   normaliseCreatureExport(exported);
   const neuronMap = new Map<number, NeuronExport>();
   exported.neurons.forEach((neuron) => {
