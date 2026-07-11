@@ -38,15 +38,15 @@ The helper's selection logic (picking the top-scoring candidate) is already
 covered behaviourally through the public `buildDiscoveryCandidates` path by the
 existing test suite — dropping the `export` keeps that coverage green, which is
 the regression guarantee. A new test asserting "the symbol is not exported"
-would be a forbidden "how" test (it inspects API surface rather than
-behaviour), so none was added.
+would be a forbidden "how" test (it inspects API surface rather than behaviour),
+so none was added.
 
 - Targeted run — `test/discovery/DiscoveryCandidatesIndividual.ts`:
   `7 passed | 0 failed`, including
   `buildDiscoveryCandidates combines best candidate from each category` and
   `buildDiscoveryCandidates includes removeHarmfulNeurons in best-of-category
-  candidate`, both of which exercise `wrapBestCandidate` via
-  `buildBestOfCategoryCandidate`.
+  candidate`,
+  both of which exercise `wrapBestCandidate` via `buildBestOfCategoryCandidate`.
 - `deno check` and `deno lint` on the affected modules: clean.
 - Full `./quality.sh`: `7601 passed (5 steps) | 0 failed | 4 ignored`.
 
@@ -56,5 +56,5 @@ behaviour), so none was added.
   "how" test). Existing behavioural coverage in
   `test/discovery/DiscoveryCandidatesIndividual.ts` verifies the helper's
   selection logic through the public API and continues to pass.
-- Ran the full quality gate (`./quality.sh`) — lint, format, type-check, and
-  all tests pass.
+- Ran the full quality gate (`./quality.sh`) — lint, format, type-check, and all
+  tests pass.
