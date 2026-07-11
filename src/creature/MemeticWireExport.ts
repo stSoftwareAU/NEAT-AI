@@ -30,8 +30,13 @@ export type MemeticWeightWireRow = {
 /**
  * Rewrites one memetic snapshot for wire JSON: biases keyed by wire strings;
  * weights as an array of synapse-shaped rows (no numeric neuron keys).
+ *
+ * Module-private: only `convertMemeticExportToWireJson` (below) calls it. It is
+ * deliberately not exported — the public wire-conversion entry point is
+ * `convertMemeticExportToWireJson`, which handles the root snapshot and every
+ * ancestry snapshot (Issue #3315).
  */
-export function convertMemeticSnapshotToWireJson(
+function convertMemeticSnapshotToWireJson(
   node: MemeticWireData,
   idToUuid: Map<number, string>,
 ): void {
