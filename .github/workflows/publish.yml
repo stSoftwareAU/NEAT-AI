@@ -70,9 +70,37 @@ jobs:
       # For runs triggered by bots (e.g. stservice): scope admin must disable
       # "Only allow publishing when triggered by a scope member" in scope settings.
       # See https://jsr.io/docs/scopes#github-actions-publishing-security
+      #
+      # Issue #3333: publish with the job's installed Deno (`deno publish`),
+      # NOT `npx jsr publish`. The npm shim downloads its own pinned Deno binary
+      # and delegates to `deno publish`, bypassing setup-deno v2.x above — that
+      # indirection silently dropped Sigstore provenance for v5.8.0/v5.8.1
+      # (rekorLogId: null). `deno publish` enables provenance by default on
+      # GitHub Actions when `id-token: write` is granted, so the transparency-log
+      # entry is recorded. The verify step below fails the run if it is not.
       - name: Publish to JSR
         if: steps.needs_publish.outputs.publish == 'true'
-        run: npx jsr publish
+        run: deno publish
+
+      # Issue #3333: the pre-fix failure was silent — JSR accepted the publish
+      # and nothing inspected the attestation. Poll the version meta endpoint and
+      # fail the run when `rekorLogId` is null/missing, so any regression (CLI
+      # swap, OIDC env loss, --no-provenance) turns the publish run red on the
+      # same run that produced the unattested version (never fail silently,
+      # Issue #3234).
+      - name: Verify JSR provenance attestation
+        if: steps.needs_publish.outputs.publish == 'true'
+        run: deno run --allow-read=deno.json --allow-net=jsr.io scripts/verify_provenance.ts
+
+      # Issue #3334 (parent #3332): fail LOUDLY when a release publishes with no
+      # Sigstore provenance. v5.8.1 published with rekorLogId null on JSR while
+      # CI stayed green. This guardrail polls the just-published version's meta
+      # endpoint and exits non-zero if rekorLogId is null/absent, so a
+      # no-provenance release blocks the workflow instead of passing quietly.
+      # Runs only when a publish actually occurred (skipped otherwise).
+      - name: Verify JSR provenance was recorded
+        if: steps.needs_publish.outputs.publish == 'true'
+        run: ./scripts/verify_jsr_provenance.sh
 
       # Issue #3008 (SCR-SBOM): emit a machine-readable Software Bill of
       # Materials for the published version. Deno has no first-class SBOM
