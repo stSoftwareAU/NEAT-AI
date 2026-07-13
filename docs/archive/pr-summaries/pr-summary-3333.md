@@ -6,20 +6,21 @@
 (`id-token: write`) granted, yet both recorded **no Sigstore provenance**
 (`rekorLogId: null`). The publish pipeline was silently failing to attest.
 
-**Root cause.** `.github/workflows/publish.yml` published with `npx jsr publish`.
-The `jsr` npm CLI is a thin shim: it downloads its **own pinned Deno binary**
-into `.download/` and delegates to `deno publish`, completely bypassing the
-Deno 2.x that `setup-deno` already installs in the job. Provenance behaviour is
-therefore governed by that pinned, indirect binary — which produced no
-transparency-log entry for v5.8.0/v5.8.1. (Verified against the jsr-npm source:
-`getOrDownloadBinPath` → `getDenoVersionToDownload` returns a hard-pinned
-version, then `exec(binPath, ["publish", ...])`.)
+**Root cause.** `.github/workflows/publish.yml` published with
+`npx jsr publish`. The `jsr` npm CLI is a thin shim: it downloads its **own
+pinned Deno binary** into `.download/` and delegates to `deno publish`,
+completely bypassing the Deno 2.x that `setup-deno` already installs in the job.
+Provenance behaviour is therefore governed by that pinned, indirect binary —
+which produced no transparency-log entry for v5.8.0/v5.8.1. (Verified against
+the jsr-npm source: `getOrDownloadBinPath` → `getDenoVersionToDownload` returns
+a hard-pinned version, then `exec(binPath, ["publish", ...])`.)
 
 **Fix.** Publish with the job's installed Deno directly (`deno publish`).
 `deno publish` **enables Sigstore provenance by default on GitHub Actions** when
 `id-token: write` is granted (opt-out is `--no-provenance`), so the next release
 records a non-null `rekorLogId`. The tokenless-OIDC posture and the #2904
-version-gate are unchanged; permissions stay `id-token: write` + `contents:
+version-gate are unchanged; permissions stay `id-token: write` +
+`contents:
 read` (least privilege).
 
 **Detection (never fail silently — Issue #3234).** The original failure was
@@ -46,9 +47,9 @@ attestation). ...
 ```
 
 Acceptance is confirmed post-merge on the next release: the version's
-`_meta.json` shows a non-null `rekorLogId` and the JSR score page shows
-"Has provenance" ✓. A ✗ there with a green publish run would mean the CI gate
-itself has regressed.
+`_meta.json` shows a non-null `rekorLogId` and the JSR score page shows "Has
+provenance" ✓. A ✗ there with a green publish run would mean the CI gate itself
+has regressed.
 
 ### Publish flow — before vs after
 
@@ -83,9 +84,10 @@ flowchart TB
     and fails loud after exhausting retries on network errors;
   - `metaUrl` builds the JSR endpoint and honours a custom base URL.
 - `test/ci/ProvenancePublishWorkflow.ts` (new) — parses the committed
-  `publish.yml` and asserts it publishes via `deno publish` (not `npx jsr
-  publish`), does not pass `--no-provenance`, runs the `verify_provenance.ts`
-  gate (guarded on the version-publish output), and keeps
+  `publish.yml` and asserts it publishes via `deno publish` (not
+  `npx jsr
+  publish`), does not pass `--no-provenance`, runs the
+  `verify_provenance.ts` gate (guarded on the version-publish output), and keeps
   `id-token: write` + `contents: read`.
 - `test/scripts/PublishBranchGuard.ts` (modified) — the publish-step detector
   matched only `jsr publish`; broadened to `deno|jsr publish` so the #2904
