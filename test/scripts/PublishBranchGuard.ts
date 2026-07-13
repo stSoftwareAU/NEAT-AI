@@ -111,10 +111,16 @@ Deno.test("publish step is gated on a prior version-published check", async () =
   const job = publishJob(wf);
   const steps = job.steps ?? [];
 
-  const publishStep = steps.find((s) => (s.run ?? "").includes("jsr publish"));
+  // Issue #3333 switched the publish command from `npx jsr publish` to
+  // `deno publish` (native provenance). Match either CLI so this branch-guard
+  // test stays valid regardless of which publish command is in use.
+  const publishStep = steps.find((s) =>
+    /\b(?:deno|jsr)\s+publish\b/.test(s.run ?? "")
+  );
   assert(
     publishStep !== undefined,
-    "publish job must contain a step that runs `jsr publish`",
+    "publish job must contain a step that runs a JSR publish command " +
+      "(`deno publish` or `jsr publish`)",
   );
 
   const condition = publishStep.if ?? "";
