@@ -92,6 +92,16 @@ jobs:
         if: steps.needs_publish.outputs.publish == 'true'
         run: deno run --allow-read=deno.json --allow-net=jsr.io scripts/verify_provenance.ts
 
+      # Issue #3334 (parent #3332): fail LOUDLY when a release publishes with no
+      # Sigstore provenance. v5.8.1 published with rekorLogId null on JSR while
+      # CI stayed green. This guardrail polls the just-published version's meta
+      # endpoint and exits non-zero if rekorLogId is null/absent, so a
+      # no-provenance release blocks the workflow instead of passing quietly.
+      # Runs only when a publish actually occurred (skipped otherwise).
+      - name: Verify JSR provenance was recorded
+        if: steps.needs_publish.outputs.publish == 'true'
+        run: ./scripts/verify_jsr_provenance.sh
+
       # Issue #3008 (SCR-SBOM): emit a machine-readable Software Bill of
       # Materials for the published version. Deno has no first-class SBOM
       # emitter, so generate a CycloneDX document over the committed deno.lock
