@@ -7,6 +7,19 @@ Deno.test("Costs.find - returns MSE instance", () => {
   assertEquals(cost.getName(), "MSE");
 });
 
+Deno.test("Costs.find - returns RMSE instance", () => {
+  const cost = Costs.find("RMSE");
+  assertEquals(cost.getName(), "RMSE");
+});
+
+Deno.test("Costs.find - RMSE equals sqrt of MSE", () => {
+  const target = new Float32Array([1.0, 2.0, 3.0]);
+  const output = new Float32Array([0.5, 2.5, 2.0]);
+  const mse = Costs.find("MSE").calculate(target, output);
+  const rmse = Costs.find("RMSE").calculate(target, output);
+  assertEquals(rmse, Math.sqrt(mse));
+});
+
 Deno.test("Costs.find - returns MAE instance", () => {
   const cost = Costs.find("MAE");
   assertEquals(cost.getName(), "MAE");
@@ -48,6 +61,7 @@ Deno.test("Costs.find - throws for unknown cost", () => {
 Deno.test("Costs.getAvailableCosts - includes all built-in costs", () => {
   const available = Costs.getAvailableCosts();
   assert(available.includes("MSE"), "Should include MSE");
+  assert(available.includes("RMSE"), "Should include RMSE");
   assert(available.includes("MAE"), "Should include MAE");
   assert(available.includes("MAPE"), "Should include MAPE");
   assert(available.includes("MSLE"), "Should include MSLE");

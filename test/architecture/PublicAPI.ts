@@ -93,7 +93,15 @@ Deno.test("Public API: CrisprError is exported and constructable", () => {
 });
 
 Deno.test("Public API: Costs.find returns built-in cost functions", () => {
-  const costNames = ["MSE", "MAE", "MAPE", "MSLE", "CROSS_ENTROPY", "HINGE"];
+  const costNames = [
+    "MSE",
+    "RMSE",
+    "MAE",
+    "MAPE",
+    "MSLE",
+    "CROSS_ENTROPY",
+    "HINGE",
+  ];
   for (const name of costNames) {
     const cost: CostInterface = Costs.find(name);
     assertEquals(cost.getName(), name);

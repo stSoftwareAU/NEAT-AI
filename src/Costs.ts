@@ -11,6 +11,7 @@ import { MAE } from "@costs/MAE.ts";
 import { MAPE } from "@costs/MAPE.ts";
 import { MSE } from "@costs/MSE.ts";
 import { MSLE } from "@costs/MSLE.ts";
+import { RMSE } from "@costs/RMSE.ts";
 
 /**
  * Built-in cost names supported by this library.
@@ -22,6 +23,9 @@ import { MSLE } from "@costs/MSLE.ts";
 export const BUILT_IN_COST_NAMES = [
   CrossEntropy.NAME,
   MSE.NAME,
+  // RMSE sits next to MSE: it reuses the MSE squared-error sum and only adds a
+  // host-side `sqrt`, mirroring the rust `CostKind` ordering (NEAT-AI-scorer#340).
+  RMSE.NAME,
   MAE.NAME,
   MAPE.NAME,
   MSLE.NAME,
@@ -64,6 +68,7 @@ export class Costs {
     // Register predefined cost functions using their getName() method
     this.registerFromInstance(new CrossEntropy());
     this.registerFromInstance(new MSE());
+    this.registerFromInstance(new RMSE());
     this.registerFromInstance(new MAE());
     this.registerFromInstance(new MAPE());
     this.registerFromInstance(new MSLE());
