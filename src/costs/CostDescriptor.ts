@@ -13,7 +13,7 @@
  *
  * | costName               | topology     | range        | output squash family |
  * |------------------------|--------------|--------------|----------------------|
- * | MSE, MAE               | independent  | unbounded    | unbounded            |
+ * | MSE, RMSE, MAE         | independent  | unbounded    | unbounded            |
  * | MAPE, MSLE             | independent  | positive     | positive             |
  * | BINARY_CROSS_ENTROPY   | independent  | unit         | bounded_unipolar     |
  * | CROSS_ENTROPY          | simplex      | unit         | bounded_unipolar     |
@@ -62,6 +62,14 @@ const NEUTRAL_OTHER: TaskDescriptor = Object.freeze({
 const TABLE: Readonly<Record<string, TaskDescriptor>> = Object.freeze({
   MSE: {
     costName: "MSE",
+    topology: "independent",
+    range: "unbounded",
+    outputSquashFamily: "unbounded",
+  },
+  // RMSE is the square root of MSE — monotonic in it and reported in the same
+  // units — so it shares MSE's task characteristics.
+  RMSE: {
+    costName: "RMSE",
     topology: "independent",
     range: "unbounded",
     outputSquashFamily: "unbounded",

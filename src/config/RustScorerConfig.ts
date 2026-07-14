@@ -5,8 +5,8 @@
  * `rust_scorer` binary for improved throughput on large production datasets.
  *
  * Issue #2745 passes the configured `costName` through to the binary via
- * `--cost <NAME>`. All six `BUILT_IN_COST_NAMES` values — `MSE`, `MAE`,
- * `MAPE`, `MSLE`, `CROSS_ENTROPY`, and `HINGE` — are
+ * `--cost <NAME>`. All seven `BUILT_IN_COST_NAMES` values — `MSE`, `RMSE`,
+ * `MAE`, `MAPE`, `MSLE`, `CROSS_ENTROPY`, and `HINGE` — are
  * eligible for native off-load once the scorer release containing
  * NEAT-AI-scorer#134 is deployed. When the probed binary does not advertise
  * `--cost`, a non-`MSE` cost falls back to WASM scoring; custom (user-

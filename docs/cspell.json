@@ -418,6 +418,7 @@
     "rglob",
     "rhysd",
     "rlib",
+    "rmse",
     "rotl",
     "roundtrip",
     "runlib",

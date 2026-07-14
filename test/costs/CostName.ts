@@ -9,6 +9,7 @@ Deno.test("BUILT_IN_COST_NAMES - should stay in sync with supported costs", () =
   assertEquals(BUILT_IN_COST_NAMES, [
     "CROSS_ENTROPY",
     "MSE",
+    "RMSE",
     "MAE",
     "MAPE",
     "MSLE",
