@@ -115,6 +115,14 @@ const BUILT_IN_DESCRIPTORS: ReadonlyMap<string, TaskDescriptor> = new Map(
       outputSquashFamily: "unbounded",
     },
     {
+      // RMSE is the square root of MSE — monotonic in it and reported in the
+      // same units — so it shares MSE's task characteristics.
+      costName: "RMSE",
+      topology: "independent",
+      range: "unbounded",
+      outputSquashFamily: "unbounded",
+    },
+    {
       costName: "MAE",
       topology: "independent",
       range: "unbounded",
