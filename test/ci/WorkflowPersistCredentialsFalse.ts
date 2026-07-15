@@ -98,6 +98,36 @@ for (const workflow of SENSITIVE_WORKFLOWS) {
   );
 }
 
+/**
+ * Issue #3349 — the benchmark smoke job only reads the repo and uploads an
+ * artifact; it never pushes back or fetches private submodules. The default
+ * `persist-credentials: true` still writes the workflow `GITHUB_TOKEN` into
+ * `.git/config`, where a later step running PR-controlled code (e.g.
+ * `./build.sh --verify-only`) could read it. The read-only checkout must set
+ * `persist-credentials: false` so the token never lands on disk.
+ */
+Deno.test(
+  ".github/workflows/bench.yaml smoke checkout must set persist-credentials: false (Issue #3349)",
+  async () => {
+    const wf = await readWorkflow(".github/workflows/bench.yaml");
+    const checkoutSteps = collectSteps(wf).filter(isCheckoutStep);
+    assert(
+      checkoutSteps.length > 0,
+      "bench.yaml expected at least one actions/checkout step",
+    );
+    for (const step of checkoutSteps) {
+      assertEquals(
+        step.with?.["persist-credentials"],
+        false,
+        `bench.yaml step "${step.name ?? "<unnamed>"}" must set ` +
+          "persist-credentials: false. This job only reads the repo and " +
+          "uploads an artifact, so persisting the GITHUB_TOKEN to " +
+          ".git/config only widens the blast radius of a compromised step.",
+      );
+    }
+  },
+);
+
 function isGitPushStep(step: Step): boolean {
   if (typeof step.run !== "string") return false;
   return /\bgit\b/.test(step.run) && /\bpush\s+origin\b/.test(step.run);
