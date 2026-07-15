@@ -163,6 +163,43 @@ Deno.test(
   },
 );
 
+/**
+ * Issue #3351 — the coverage `merge` job only checks out the repo, downloads
+ * every shard's artifacts, merges the partial coverage + JUnit reports, and
+ * uploads them to Codecov; it never pushes back or fetches private submodules.
+ * The default `persist-credentials: true` still writes the workflow
+ * `GITHUB_TOKEN` into `.git/config`, where a later step running PR-controlled
+ * code could read it. The read-only checkout must set
+ * `persist-credentials: false`.
+ *
+ * Scoped to the `merge` job only — the sibling `coverage` shard job is tracked
+ * separately (Issue #3350).
+ */
+Deno.test(
+  ".github/workflows/coverage.yaml merge-job checkout must set persist-credentials: false (Issue #3351)",
+  async () => {
+    const wf = await readWorkflow(".github/workflows/coverage.yaml");
+    const job = wf.jobs?.merge;
+    assert(job, "coverage.yaml expected a `merge` job");
+    const checkoutSteps = (job.steps ?? []).filter(isCheckoutStep);
+    assert(
+      checkoutSteps.length > 0,
+      "merge job expected at least one actions/checkout step",
+    );
+    for (const step of checkoutSteps) {
+      assertEquals(
+        step.with?.["persist-credentials"],
+        false,
+        `merge job step "${step.name ?? "<unnamed>"}" must set ` +
+          "persist-credentials: false. This job only reads the repo, merges " +
+          "shard artifacts, and uploads to Codecov, so persisting the " +
+          "GITHUB_TOKEN to .git/config only widens the blast radius of a " +
+          "compromised step.",
+      );
+    }
+  },
+);
+
 function isGitPushStep(step: Step): boolean {
   if (typeof step.run !== "string") return false;
   return /\bgit\b/.test(step.run) && /\bpush\s+origin\b/.test(step.run);
