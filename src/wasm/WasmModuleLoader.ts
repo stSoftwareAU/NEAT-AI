@@ -12,6 +12,7 @@
 
 import { getLogger } from "@utils/Logger.ts";
 import type { WasmCompiledNetworkConstructor } from "@wasm/WasmCompiledNetwork.ts";
+import { loadWasmBundleBytes } from "@wasm/WasmBundleCache.ts";
 
 // deno-lint-ignore no-explicit-any
 type WasmModule = any;
@@ -495,7 +496,25 @@ export async function initWasmActivation(): Promise<boolean> {
         new URL("../../wasm_activation/pkg/wasm_activation.js", import.meta.url)
           .href;
       const module = await import(modulePath);
-      await module.default();
+      const wasmUrl = new URL(
+        "../../wasm_activation/pkg/wasm_activation_bg.wasm",
+        import.meta.url,
+      );
+      if (wasmUrl.protocol === "file:") {
+        // Local build: the vendored bundle is on disk beside the JS glue.
+        // wasm-bindgen's default init reads it directly (no network) and names
+        // the WASM module after the file for readable trap stacks.
+        await module.default();
+      } else {
+        // Issue #3419: cache-first bundle loading for remote (JSR) installs.
+        // Read the immutable, version-keyed bundle from the local cache (no
+        // network) when present, otherwise fetch-with-backoff and persist it.
+        // Passing the bytes to the init avoids wasm-bindgen's default
+        // fetch-at-startup from jsr.io, which crashed breeding on a transient
+        // DNS failure (recurrence of #3230).
+        const wasmBytes = await loadWasmBundleBytes(wasmUrl);
+        await module.default({ module_or_path: wasmBytes });
+      }
       assignFunctionPointers(module);
       lastLoadError = null;
       return true;
