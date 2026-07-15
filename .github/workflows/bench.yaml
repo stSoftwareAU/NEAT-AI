@@ -37,7 +37,15 @@ jobs:
       NEAT_RUST_DISCOVERY_OPTIONAL: "true"
     steps:
       - name: Checkout Code
+        # `persist-credentials: false` (Issue #3349) — the default `true`
+        # writes the workflow `GITHUB_TOKEN` into `.git/config` as an auth
+        # header for the rest of the job. This smoke job only reads the repo
+        # and uploads an artifact; it never pushes back or fetches private
+        # submodules, so the persisted credential is unnecessary and keeping
+        # it on disk only widens the blast radius of a compromised step.
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Deno
         # denoland/setup-deno@v2.0.4
