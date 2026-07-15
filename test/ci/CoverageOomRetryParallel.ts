@@ -76,8 +76,11 @@ Deno.test("coverage shard controls worker count via DENO_JOBS, not by dropping -
 
 Deno.test("coverage shard OOM recovery narrows workers instead of going serial", async () => {
   const run = await readShardRunScript();
-  // The OOM/termination signals that trigger recovery.
-  for (const code of ["134", "137", "143"]) {
+  // The OOM/termination signals that trigger recovery. 133 (128+SIGTRAP) is
+  // how V8 aborts on heap exhaustion ("Fatal JavaScript out of memory:
+  // Ineffective mark-compacts") — it must trigger recovery like the other
+  // OOM/termination signals, not be mistaken for a plain test failure.
+  for (const code of ["133", "134", "137", "143"]) {
     assert(
       run.includes(code),
       `OOM recovery must react to exit code ${code}`,
