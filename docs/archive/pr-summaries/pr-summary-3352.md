@@ -27,12 +27,12 @@ actionlint exit: 0
 The diff adds a `with:` block to the existing checkout step:
 
 ```yaml
-      - name: "Checkout repository"
-        # actions/checkout@v6.0.2
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          persist-credentials: false
-      - name: "Dependency Review"
+- name: "Checkout repository"
+  # actions/checkout@v6.0.2
+  uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+  with:
+    persist-credentials: false
+- name: "Dependency Review"
 ```
 
 ## Test Plan
