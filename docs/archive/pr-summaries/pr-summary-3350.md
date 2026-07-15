@@ -41,7 +41,8 @@ ok | 6 passed | 0 failed
   `".github/workflows/coverage.yaml coverage-job checkout must set persist-credentials: false (Issue #3350)"`,
   which parses the workflow YAML and asserts every `actions/checkout` step in
   the `coverage` job sets `persist-credentials: false`. Confirmed it fails
-  against the unfixed workflow (`undefined` vs `false`) and passes after the fix.
+  against the unfixed workflow (`undefined` vs `false`) and passes after the
+  fix.
 - Re-ran the full `WorkflowPersistCredentialsFalse.ts` suite (6 passed).
 - Ran `test/ci/ActionlintWorkflow.ts`, `test/ci/WorkflowActionPinning.ts`, and
   `test/ci/CoverageShardMatrix.ts` (16 passed) to confirm no regression.
