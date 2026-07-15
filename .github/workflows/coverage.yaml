@@ -52,9 +52,22 @@ jobs:
       DENO_TEST: "1"
 
     steps:
-      # Checkout the code
+      # Checkout the code. This shard job only reads the repo and uploads
+      # artifacts — it never pushes back or fetches private submodules — so the
+      # default `persist-credentials: true` would write the GITHUB_TOKEN into
+      # .git/config where a later step running PR-controlled code could read it
+      # (Issue #3350). Keep the token off disk.
       - name: Checkout Code
+        # `persist-credentials: false` (Issue #3350) — the default `true`
+        # writes the workflow `GITHUB_TOKEN` into `.git/config` as an auth
+        # header for the rest of the job. This coverage shard only reads the
+        # repo, runs tests, and uploads an artifact; it never pushes back or
+        # fetches private submodules, so the persisted credential is
+        # unnecessary and keeping it on disk only widens the blast radius of a
+        # compromised step.
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       # Set up Deno 2.x
       - name: Setup Deno
@@ -129,12 +142,15 @@ jobs:
           run_tests "${V8_MEMORY_MB}" "${JOBS}" || TEST_EXIT_CODE=$?
           TEST_EXIT_CODE="${TEST_EXIT_CODE:-0}"
 
-          # On OOM/termination signals (143/137/134) retry once via the scoped
-          # `--mode=retry` plan: a smaller heap AND a capped worker count.
+          # On OOM/termination signals (143/137/134/133) retry once via the
+          # scoped `--mode=retry` plan: a smaller heap AND a capped worker count.
           # Recovery stays parallel (scoped to this shard's slice) rather than
           # dropping to a whole-shard serial re-run that blows the timeout
-          # (Issue #3174).
-          if [ "$TEST_EXIT_CODE" -eq 143 ] || [ "$TEST_EXIT_CODE" -eq 137 ] || [ "$TEST_EXIT_CODE" -eq 134 ]; then
+          # (Issue #3174). 133 (128+SIGTRAP) is how V8 aborts on heap
+          # exhaustion — "Fatal JavaScript out of memory: Ineffective
+          # mark-compacts near heap limit" surfaces as a Trace/breakpoint trap,
+          # not SIGKILL/SIGTERM/SIGABRT — so it must trigger the same recovery.
+          if [ "$TEST_EXIT_CODE" -eq 143 ] || [ "$TEST_EXIT_CODE" -eq 137 ] || [ "$TEST_EXIT_CODE" -eq 134 ] || [ "$TEST_EXIT_CODE" -eq 133 ]; then
             echo "⚠️  shard exited ${TEST_EXIT_CODE} (OOM/signal). Retrying parallel with capped workers + reduced heap..."
             eval "$(deno run scripts/coverage_run_plan.ts \
               --mode=retry --cores="${CPU_CORES}" --memory-mb="${TOTAL_MEMORY_MB}")"
@@ -148,9 +164,14 @@ jobs:
 
           if [ -s test-errors.log ]; then echo "Test errors/warnings:"; cat test-errors.log; fi
 
-          # Keep only valid XML (from <?xml to the last </testsuites>).
+          # Keep only valid XML (from <?xml to the last </testsuites>). A crashed
+          # (e.g. OOM) run can leave junit-raw.xml truncated with no closing tag;
+          # the trailing `|| true` stops the no-match `grep` (exit 1, propagated
+          # by pipefail) from aborting the step under `set -e` BEFORE the shard
+          # status is recorded. The shard must always fail loud via a written
+          # status the merge gate reads — never die silently with no artifact.
           if [ -f junit-raw.xml ]; then
-            CLOSING_LINE=$(grep -n '</testsuites>' junit-raw.xml | tail -1 | cut -d: -f1)
+            CLOSING_LINE=$(grep -n '</testsuites>' junit-raw.xml | tail -1 | cut -d: -f1 || true)
             if [ -n "$CLOSING_LINE" ]; then
               head -n "$CLOSING_LINE" junit-raw.xml > "${JUNIT}"
             else
