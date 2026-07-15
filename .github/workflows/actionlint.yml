@@ -1,17 +1,22 @@
 name: Actionlint
 
-# Lint every GitHub Actions workflow file on push and pull request so
-# regressions in `.github/workflows/*.y*ml` fail the build before they
-# merge (Issue #2762). actionlint catches mistyped expressions, missing
-# permission blocks, unsupported runners, shell-script issues inside
-# `run:` blocks, and many other workflow-only foot-guns that no other
-# linter in this repo covers.
+# Lint every GitHub Actions workflow file on pull request so regressions
+# in `.github/workflows/*.y*ml` fail the build before they merge (Issue
+# #2762). actionlint catches mistyped expressions, missing permission
+# blocks, unsupported runners, shell-script issues inside `run:` blocks,
+# and many other workflow-only foot-guns that no other linter in this repo
+# covers.
+#
+# This is a PR gate, not a deploy/release workflow, so it no longer fires
+# on push to the default branch (`Develop`). The PR run already gated the
+# change; re-running on the post-merge push just duplicated that work,
+# wasting CI minutes and risking a red tick on `Develop` for a check that
+# already passed (Issue #3347). `workflow_dispatch` keeps a manual trigger.
 
 on:
   pull_request:
     branches: ["*"]
-  push:
-    branches: [Develop, main, master]
+  workflow_dispatch:
 
 # Cancel superseded runs on the same ref so rapid successive pushes don't
 # pile up redundant lint runs (Issue #2842).
