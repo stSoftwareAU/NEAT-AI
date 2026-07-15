@@ -1,12 +1,12 @@
 ## Summary
 
-The coverage workflow's `merge` job checked out the repo with
-`actions/checkout` at its default `persist-credentials: true`, writing the
-workflow `GITHUB_TOKEN` into `.git/config` as an auth header for the rest of
-the job. That job only reads the repo, downloads shard artifacts, merges the
-partial coverage + JUnit reports, and uploads them to Codecov — it never pushes
-back or fetches private submodules, so the persisted credential is unnecessary
-and only widens the blast radius of a compromised step.
+The coverage workflow's `merge` job checked out the repo with `actions/checkout`
+at its default `persist-credentials: true`, writing the workflow `GITHUB_TOKEN`
+into `.git/config` as an auth header for the rest of the job. That job only
+reads the repo, downloads shard artifacts, merges the partial coverage + JUnit
+reports, and uploads them to Codecov — it never pushes back or fetches private
+submodules, so the persisted credential is unnecessary and only widens the blast
+radius of a compromised step.
 
 Added `persist-credentials: false` to the `merge` job's checkout step in
 `.github/workflows/coverage.yaml`, matching the fix already applied to the
@@ -37,8 +37,8 @@ flowchart LR
 - Added `test/ci/WorkflowPersistCredentialsFalse.ts` →
   `.github/workflows/coverage.yaml merge-job checkout must set persist-credentials: false (Issue #3351)`,
   which parses the workflow, isolates the `merge` job, and asserts every
-  `actions/checkout` step sets `persist-credentials: false`. This reproduces
-  the finding (fails before the fix) and confirms the fix.
+  `actions/checkout` step sets `persist-credentials: false`. This reproduces the
+  finding (fails before the fix) and confirms the fix.
 - Re-ran the full `WorkflowPersistCredentialsFalse.ts` suite (7 passed) plus
   `ActionlintWorkflow.ts` and `WorkflowActionPinning.ts` (12 passed) to confirm
   the workflow still lints and every action stays SHA-pinned.
