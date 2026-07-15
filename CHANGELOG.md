@@ -65,6 +65,21 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3419 (recurrence of #3230):** WASM activation bundle loading is now
+  cache-first, removing the runtime network dependency on process start. The
+  loader previously let wasm-bindgen fetch
+  `wasm_activation/pkg/wasm_activation_bg.wasm` from jsr.io on **every** start,
+  so a transient DNS/network blip left the bundle unloaded and later crashed
+  breeding uncaught in `WasmTopologyOps.validateTopology` → `requireWasm`. The
+  bundle for a given version is immutable, so the network is only needed when
+  the version changes. `initWasmActivation` now loads the bytes via
+  `loadWasmBundleBytes` (`src/wasm/WasmBundleCache.ts`): a JSR (`https:`)
+  install reads the bytes from a version-keyed on-disk cache with **no network**
+  on a cache hit, and a cache miss fetches with **bounded exponential backoff**
+  before erroring; the fetched bytes are persisted for the next start. Local
+  (`file:`) checkouts are unchanged (direct read, no cache). Fail-loud is
+  preserved: when the bytes genuinely cannot be obtained, the existing "requires
+  the NEAT-AI-core WASM bundle" error still surfaces.
 - **Issue #2871:** Evolution now always finalizes even when an optional training
   task never settles. Training is a best-effort phase, but the finish-up loop in
   `Neat.finishUp()` only bounded the wait for _discovery_ tasks — the _training_
