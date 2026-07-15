@@ -8,8 +8,8 @@ By default `actions/checkout` writes the workflow `GITHUB_TOKEN` into
 compromised dependency or injected script — can read it and act as the token.
 The coverage shard only reads the repo, runs the test suite, and uploads an
 artifact; it never pushes back to the repository or fetches private submodules,
-so the persisted credential is unnecessary and only widens the blast radius of
-a compromised step. This matches the established pattern already applied across
+so the persisted credential is unnecessary and only widens the blast radius of a
+compromised step. This matches the established pattern already applied across
 the repo (`bench.yaml`, `quality.yml`, `pages.yml`, `osv-scan.yml`,
 `actionlint.yml`, `update-package-version.yml`).
 
