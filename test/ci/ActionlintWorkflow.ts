@@ -13,7 +13,10 @@
  * cannot be silently removed or downgraded:
  *
  *   1. The file exists at `.github/workflows/actionlint.yml`.
- *   2. It triggers on both `pull_request` and `push`.
+ *   2. It triggers on `pull_request` (the PR gate) but NOT on `push` —
+ *      this is a checker, not a deploy/release workflow, so it must not
+ *      re-run on push to the default branch (`Develop`) and duplicate the
+ *      run that already gated the PR (Issue #3347).
  *   3. At least one job runs the `actionlint` binary (either via an
  *      action wrapper or by invoking the binary directly).
  *   4. It declares a read-only `contents: read` permission block so the
@@ -57,18 +60,20 @@ Deno.test("actionlint workflow file exists (Issue #2762)", async () => {
 });
 
 Deno.test(
-  "actionlint workflow triggers on both pull_request and push (Issue #2762)",
+  "actionlint workflow triggers on pull_request but not push (Issue #3347)",
   async () => {
     const wf = await readWorkflow();
     assert(wf.on, "actionlint workflow must declare an `on:` trigger");
     const triggers = wf.on as Record<string, unknown>;
     assert(
       "pull_request" in triggers,
-      "actionlint workflow must trigger on pull_request",
+      "actionlint workflow must trigger on pull_request (the PR gate)",
     );
     assert(
-      "push" in triggers,
-      "actionlint workflow must trigger on push",
+      !("push" in triggers),
+      "actionlint is a checker, not a deploy workflow: it must NOT trigger " +
+        "on push, so it does not duplicate the PR run on merge to Develop " +
+        "(Issue #3347)",
     );
   },
 );
