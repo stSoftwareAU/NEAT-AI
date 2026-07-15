@@ -3,8 +3,12 @@ name: Markdown Lint
 on:
   pull_request:
     branches: ["*"]
+  # Lint gates the pull request only. It must NOT re-run on push to the default
+  # branch (Develop) — that merge already passed this check on the PR, so the
+  # post-merge run is a duplicate that wastes CI minutes (Issue #3348). Keep
+  # push for non-default branches so direct pushes there are still linted.
   push:
-    branches: [Develop, main, master]
+    branches: [main, master]
 
 # Cancel superseded runs on the same ref so rapid successive pushes don't
 # pile up redundant lint runs (Issue #2842).
