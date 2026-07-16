@@ -297,6 +297,38 @@ Deno.test(
   },
 );
 
+/**
+ * Issue #3356 — the semgrep `semgrep` job only checks out the repo and runs
+ * `semgrep ci` (a SAST scan authenticated via SEMGREP_APP_TOKEN, not the
+ * checkout credential); it never pushes back or fetches private submodules. The
+ * default `persist-credentials: true` still writes the workflow `GITHUB_TOKEN`
+ * into `.git/config`, where a later step running PR-controlled code could read
+ * it. The read-only checkout must set `persist-credentials: false`.
+ */
+Deno.test(
+  ".github/workflows/semgrep.yml checkout must set persist-credentials: false (Issue #3356)",
+  async () => {
+    const wf = await readWorkflow(".github/workflows/semgrep.yml");
+    const job = wf.jobs?.semgrep;
+    assert(job, "semgrep.yml expected a `semgrep` job");
+    const checkoutSteps = (job.steps ?? []).filter(isCheckoutStep);
+    assert(
+      checkoutSteps.length > 0,
+      "semgrep job expected at least one actions/checkout step",
+    );
+    for (const step of checkoutSteps) {
+      assertEquals(
+        step.with?.["persist-credentials"],
+        false,
+        `semgrep job step "${step.name ?? "<unnamed>"}" must set ` +
+          "persist-credentials: false. This job only reads the repo and runs " +
+          "a Semgrep SAST scan, so persisting the GITHUB_TOKEN to .git/config " +
+          "only widens the blast radius of a compromised step.",
+      );
+    }
+  },
+);
+
 function isGitPushStep(step: Step): boolean {
   if (typeof step.run !== "string") return false;
   return /\bgit\b/.test(step.run) && /\bpush\s+origin\b/.test(step.run);

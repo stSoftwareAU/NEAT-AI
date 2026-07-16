@@ -26,6 +26,11 @@ jobs:
     steps:
       # actions/checkout@v6.0.2
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          # Semgrep only reads the tree; it never pushes or fetches private
+          # submodules, so the GITHUB_TOKEN must not be persisted to .git/config
+          # where a compromised step could read it (Issue #3356).
+          persist-credentials: false
       - run: semgrep ci --config p/default --config p/security-audit --config p/owasp-top-ten
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
