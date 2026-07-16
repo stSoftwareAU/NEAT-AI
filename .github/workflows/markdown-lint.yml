@@ -24,13 +24,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # actions/checkout@v6.0.2
       # `persist-credentials: false` (Issue #3354) — the default `true` writes
       # the workflow `GITHUB_TOKEN` into `.git/config` as an auth header for the
       # rest of the job. This job only reads the repo and lints Markdown; it
       # never pushes back or fetches private submodules, so the persisted
       # credential is unnecessary and keeping it on disk only widens the blast
       # radius of a compromised step.
+      # actions/checkout@v6.0.2
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           persist-credentials: false
