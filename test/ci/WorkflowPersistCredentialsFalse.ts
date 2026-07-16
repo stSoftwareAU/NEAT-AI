@@ -329,6 +329,38 @@ Deno.test(
   },
 );
 
+/**
+ * Issue #3358 — the spellcheck `spellcheck` job only checks out the repo and
+ * runs `streetsidesoftware/cspell-action` to spell-check files; it never pushes
+ * back or fetches private submodules. The default `persist-credentials: true`
+ * still writes the workflow `GITHUB_TOKEN` into `.git/config`, where a later
+ * step running PR-controlled code could read it. The read-only checkout must
+ * set `persist-credentials: false`.
+ */
+Deno.test(
+  ".github/workflows/spellcheck.yaml checkout must set persist-credentials: false (Issue #3358)",
+  async () => {
+    const wf = await readWorkflow(".github/workflows/spellcheck.yaml");
+    const job = wf.jobs?.spellcheck;
+    assert(job, "spellcheck.yaml expected a `spellcheck` job");
+    const checkoutSteps = (job.steps ?? []).filter(isCheckoutStep);
+    assert(
+      checkoutSteps.length > 0,
+      "spellcheck job expected at least one actions/checkout step",
+    );
+    for (const step of checkoutSteps) {
+      assertEquals(
+        step.with?.["persist-credentials"],
+        false,
+        `spellcheck job step "${step.name ?? "<unnamed>"}" must set ` +
+          "persist-credentials: false. This job only reads the repo and " +
+          "spell-checks files, so persisting the GITHUB_TOKEN to .git/config " +
+          "only widens the blast radius of a compromised step.",
+      );
+    }
+  },
+);
+
 function isGitPushStep(step: Step): boolean {
   if (typeof step.run !== "string") return false;
   return /\bgit\b/.test(step.run) && /\bpush\s+origin\b/.test(step.run);

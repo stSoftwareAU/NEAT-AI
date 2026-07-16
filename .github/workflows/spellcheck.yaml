@@ -22,6 +22,10 @@ jobs:
     steps:
       # actions/checkout@v6.0.2
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          # Read-only job (spell-check + upload); do not persist the
+          # GITHUB_TOKEN to .git/config (Issue #3358).
+          persist-credentials: false
       # streetsidesoftware/cspell-action@v8.4.0
       - uses: streetsidesoftware/cspell-action@de2a73e963e7443969755b648a1008f77033c5b2
         with:
