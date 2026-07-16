@@ -22,6 +22,10 @@ jobs:
       - name: Checkout code
         # actions/checkout@v6.0.2
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          # No step pushes back or fetches private submodules, so the token
+          # need not be persisted to .git/config (Issue #3353).
+          persist-credentials: false
 
       - name: Read version from deno.json
         id: version
