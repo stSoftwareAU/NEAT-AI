@@ -200,6 +200,38 @@ Deno.test(
   },
 );
 
+/**
+ * Issue #3352 — the dependency-review job only checks out the repo and runs
+ * `actions/dependency-review-action` to scan changed dependency manifests; it
+ * never pushes back or fetches private submodules. The default
+ * `persist-credentials: true` still writes the workflow `GITHUB_TOKEN` into
+ * `.git/config`, where a later step running PR-controlled code could read it.
+ * The read-only checkout must set `persist-credentials: false`.
+ */
+Deno.test(
+  ".github/workflows/dependency-review.yml checkout must set persist-credentials: false (Issue #3352)",
+  async () => {
+    const wf = await readWorkflow(".github/workflows/dependency-review.yml");
+    const job = wf.jobs?.["dependency-review"];
+    assert(job, "dependency-review.yml expected a `dependency-review` job");
+    const checkoutSteps = (job.steps ?? []).filter(isCheckoutStep);
+    assert(
+      checkoutSteps.length > 0,
+      "dependency-review job expected at least one actions/checkout step",
+    );
+    for (const step of checkoutSteps) {
+      assertEquals(
+        step.with?.["persist-credentials"],
+        false,
+        `dependency-review job step "${step.name ?? "<unnamed>"}" must set ` +
+          "persist-credentials: false. This job only reads the repo and " +
+          "scans dependency manifests, so persisting the GITHUB_TOKEN to " +
+          ".git/config only widens the blast radius of a compromised step.",
+      );
+    }
+  },
+);
+
 function isGitPushStep(step: Step): boolean {
   if (typeof step.run !== "string") return false;
   return /\bgit\b/.test(step.run) && /\bpush\s+origin\b/.test(step.run);
