@@ -2,7 +2,14 @@ name: Markdown Lint
 
 on:
   pull_request:
-    branches: ["*"]
+    # `*` matches a single path segment and does NOT match a slash, so it never
+    # matched milestone feature branches (`milestone/<slug>`). Milestone
+    # sub-issue PRs target that shared branch (planning delivery workflow), so
+    # without the explicit `milestone/*` glob the lint gate never ran on them
+    # and they merged into the milestone branch unchecked (Issue #3361).
+    # Milestone names have no nested slashes, so single-level `milestone/*` is
+    # sufficient.
+    branches: ["*", "milestone/*"]
   # Lint gates the pull request only. It must NOT re-run on push to the default
   # branch (Develop) — that merge already passed this check on the PR, so the
   # post-merge run is a duplicate that wastes CI minutes (Issue #3348). Keep
