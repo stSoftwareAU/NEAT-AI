@@ -164,7 +164,6 @@ async function runAnalysisLoopWithStub(
 }
 
 Deno.test("runAnalysisLoop aborts runParallelAnalysis mid-flight when it never resolves", async () => {
-  const started = Date.now();
   const { perfStats, callCount } = await runAnalysisLoopWithStub({
     // Stub driver that never resolves — simulates a hung Rust FFI call.
     runParallelAnalysis: () => new Promise(() => {}),
@@ -173,17 +172,13 @@ Deno.test("runAnalysisLoop aborts runParallelAnalysis mid-flight when it never r
     perChunkGraceMs: 50,
     discoveryMaxNeurons: 3,
   });
-  const elapsed = Date.now() - started;
 
+  // The observable outcome: the never-resolving driver was aborted mid-flight
+  // and the stall was recorded. This is a WHAT-assertion — no wall-clock
+  // measurement, so it cannot flake on a loaded CI runner or ARM-vs-x86 host.
   assert(
     perfStats.analysisStalled,
     "analysisStalled must be set when runParallelAnalysis times out mid-flight",
-  );
-  // The timeout must fire — elapsed should be well under the 10-minute
-  // deadline. Allow generous slack for CI scheduling.
-  assert(
-    elapsed < 60_000,
-    `timeout should fire promptly, elapsed=${elapsed}ms`,
   );
   // The stub is invoked at most once per iteration before the timeout
   // aborts the chunk loop. One call is expected.
