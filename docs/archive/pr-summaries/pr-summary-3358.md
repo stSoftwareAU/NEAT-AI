@@ -23,10 +23,10 @@ flowchart LR
 
 Backend/CI-only change — no web interface to screenshot.
 
-- Extended `test/ci/WorkflowPersistCredentialsFalse.ts` with a test asserting the
-  `spellcheck` job checkout sets `persist-credentials: false` (Issue #3358). The
-  test failed against the unfixed workflow (`undefined` vs `false`) and passes
-  after the fix.
+- Extended `test/ci/WorkflowPersistCredentialsFalse.ts` with a test asserting
+  the `spellcheck` job checkout sets `persist-credentials: false` (Issue #3358).
+  The test failed against the unfixed workflow (`undefined` vs `false`) and
+  passes after the fix.
 - Full test file result: `12 passed | 0 failed`.
 - `deno fmt`, `deno lint`, and `deno check` pass on the modified test file; the
   workflow YAML parses correctly with the new `with.persist-credentials: false`.
