@@ -143,6 +143,23 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
     neuron.type === "constant" || neuron.type === "hidden",
     "Node must be a 'constant' or 'hidden' type",
   );
+
+  // Neurons feeding into the one being removed. Dropping this neuron also drops
+  // those synapses, which can leave a feeder (hidden/constant) with no outward
+  // connections — an orphan `creatureValidate` rejects. Capture the feeder
+  // objects now (they survive the array reindex below) so we can cascade-remove
+  // any that become orphaned. Only hidden/constant feeders are removable; input
+  // neurons are never removed (Issue #3359 XOR-evolve invalid-creature failure).
+  const feeders: Neuron[] = [];
+  for (const c of creature.synapses) {
+    if (c.to === indx && c.from !== indx) {
+      const feeder = creature.neurons[c.from];
+      if (feeder.type === "hidden" || feeder.type === "constant") {
+        feeders.push(feeder);
+      }
+    }
+  }
+
   const left = creature.neurons.slice(0, indx);
   const right = creature.neurons.slice(indx + 1);
   right.forEach((item) => {
@@ -181,6 +198,16 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
 
   // Issue #2191: Verify forward-only topology after bulk index remap
   assertForwardOnlyTopologyAfterBulkRemap(creature, "removeHiddenNeuron");
+
+  // Cascade: remove any feeder now orphaned (no outward connections). Each
+  // recursive call reindexes remaining feeders' `.index`, so read it fresh; a
+  // feeder already removed by an earlier cascade no longer sits at its index.
+  for (const feeder of feeders) {
+    if (creature.neurons[feeder.index] !== feeder) continue;
+    if (creature.outwardConnections(feeder.index).length === 0) {
+      removeHiddenNeuron(creature, feeder.index);
+    }
+  }
 }
 
 /**
