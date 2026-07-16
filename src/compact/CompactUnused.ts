@@ -90,25 +90,29 @@ export function compactUnused(
       n.uuid === neuronForRemoval.uuid
     );
     assert(runtimeNeuron !== undefined, "Compacted neuron should be resolved");
-    if (
-      removeNeuron(
-        runtimeNeuron.id,
-        compacted,
-        averageActivation,
-      )
-    ) {
+    const didRemove = removeNeuron(
+      runtimeNeuron.id,
+      compacted,
+      averageActivation,
+    );
+
+    // Issue #2117 / #3383: Clean up neurons orphaned by the removal attempt
+    // (e.g. feeder neurons whose only outward connection went through the
+    // removed neuron). A bailed-out removal (`removeNeuron` returns false) can
+    // still leave a freshly-created constant with no outward connections, so
+    // always prune and validate here — not only on the success path — before
+    // this candidate can be serialised.
+    cleanupOrphanedNeuronsInCreature(compacted);
+
+    if (didRemove) {
       addTag(compacted, "unused", String(neuronForRemoval.uuid));
-
-      // Issue #2117: Clean up neurons orphaned by the removal (e.g. feeder
-      // neurons whose only outward connection went through the removed neuron).
-      cleanupOrphanedNeuronsInCreature(compacted);
-
-      validateOrDiagnose(
-        compacted,
-        "compactUnused",
-        compacted.forwardOnly ? { forwardOnly: true } : undefined,
-      );
     }
+
+    validateOrDiagnose(
+      compacted,
+      "compactUnused",
+      compacted.forwardOnly ? { forwardOnly: true } : undefined,
+    );
   }
 
   const cleanUUID = CreatureUtil.makeUUID(clean);
