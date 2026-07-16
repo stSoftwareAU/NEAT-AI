@@ -45,6 +45,16 @@ export class SubConnection extends AbstractMutationOperator {
     const fromIndx = randomConn.from;
     const toIndx = randomConn.to;
 
+    // Issue #3383: capture the source neuron by reference before any topology
+    // edit below. Converting `to` into a constant moves it into the prefix
+    // (`moveConstantNeuronIntoPrefix`) and removing `to` outright both reindex
+    // the neuron array, so `fromIndx` can go stale. The neuron object keeps a
+    // live `.index`, so we re-read it when cleaning up the source below rather
+    // than trusting the captured integer — otherwise an orphaned source neuron
+    // (hidden or constant) is missed and leaks a NO_OUTWARD_CONNECTIONS
+    // creature into evolution/serialisation.
+    const fromNeuron = creature.neurons[fromIndx];
+
     creature.disconnect(fromIndx, toIndx);
 
     const inwardList = creature.inwardConnections(toIndx);
@@ -68,11 +78,16 @@ export class SubConnection extends AbstractMutationOperator {
       }
     }
 
-    const fromOutwardList = creature.outwardConnections(fromIndx);
-    if (fromOutwardList.length === 0) {
-      const fromNeuron = creature.neurons[fromIndx];
-      if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
-        removeHiddenNeuron(creature, fromIndx);
+    // Re-read the source neuron's current index: the block above may have
+    // reindexed the array. A source removed by an earlier cascade no longer
+    // sits in the array, so guard on identity before touching it.
+    const fromCurrentIndx = fromNeuron.index;
+    if (creature.neurons[fromCurrentIndx] === fromNeuron) {
+      const fromOutwardList = creature.outwardConnections(fromCurrentIndx);
+      if (fromOutwardList.length === 0) {
+        if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
+          removeHiddenNeuron(creature, fromCurrentIndx);
+        }
       }
     }
 
