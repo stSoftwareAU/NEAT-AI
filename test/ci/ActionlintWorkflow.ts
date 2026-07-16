@@ -78,6 +78,57 @@ Deno.test(
   },
 );
 
+// Translate a GitHub branch-filter glob into a RegExp using GitHub's
+// semantics: `*` matches any run of characters except `/`, `**` matches any
+// run of characters including `/`. This lets us assert on what the committed
+// filter actually MATCHES rather than on the literal patterns written.
+function branchGlobToRegExp(glob: string): RegExp {
+  let out = "^";
+  for (let i = 0; i < glob.length; i++) {
+    const ch = glob[i];
+    if (ch === "*") {
+      if (glob[i + 1] === "*") {
+        out += ".*"; // `**` crosses path separators
+        i++;
+      } else {
+        out += "[^/]*"; // `*` stops at `/`
+      }
+    } else if ("\\^$.|?+()[]{}".includes(ch)) {
+      out += "\\" + ch;
+    } else {
+      out += ch;
+    }
+  }
+  return new RegExp(out + "$");
+}
+
+function branchFilterMatches(branches: string[], branch: string): boolean {
+  return branches.some((glob) => branchGlobToRegExp(glob).test(branch));
+}
+
+Deno.test(
+  "actionlint workflow gate runs on milestone/* PRs (Issue #3359)",
+  async () => {
+    const wf = await readWorkflow();
+    const triggers = wf.on as { pull_request?: { branches?: string[] } };
+    const branches = triggers.pull_request?.branches;
+    assert(
+      Array.isArray(branches) && branches.length > 0,
+      "actionlint pull_request trigger must declare a non-empty `branches` " +
+        "filter",
+    );
+    // Milestone sub-issue PRs target a shared `milestone/<slug>` branch. A
+    // bare `*` glob does not cross `/`, so the gate would skip those PRs and
+    // they would merge into the milestone branch unchecked (Issue #3359).
+    assert(
+      branchFilterMatches(branches!, "milestone/example-slug"),
+      "actionlint pull_request.branches must match milestone/<slug> branches " +
+        "(add `milestone/*`) so the gate runs on milestone sub-issue PRs " +
+        `(Issue #3359); got: ${JSON.stringify(branches)}`,
+    );
+  },
+);
+
 Deno.test(
   "actionlint workflow declares read-only contents permission (Issue #2762)",
   async () => {

@@ -15,7 +15,12 @@ name: Actionlint
 
 on:
   pull_request:
-    branches: ["*"]
+    # A bare `*` glob does not cross `/`, so milestone sub-issue PRs that
+    # target a shared `milestone/<slug>` branch would skip this gate and
+    # merge unchecked. `milestone/*` restores the gate on those PRs (Issue
+    # #3359). Milestone branch names have no nested slashes, so the single
+    # level glob is sufficient.
+    branches: ["*", "milestone/*"]
   workflow_dispatch:
 
 # Cancel superseded runs on the same ref so rapid successive pushes don't
