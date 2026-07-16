@@ -142,16 +142,37 @@ jobs:
           run_tests "${V8_MEMORY_MB}" "${JOBS}" || TEST_EXIT_CODE=$?
           TEST_EXIT_CODE="${TEST_EXIT_CODE:-0}"
 
-          # On OOM/termination signals (143/137/134/133) retry once via the
+          # Detect an out-of-memory failure from EITHER a termination signal OR
+          # the V8 fatal-OOM log signature (Issue #3371). V8's "Fatal JavaScript
+          # out of memory: Ineffective mark-compacts near heap limit" abort
+          # exits the test-runner process with code 1 — indistinguishable, by
+          # exit code alone, from an ordinary test failure — so the signal-only
+          # trigger (133/134/137/143) silently missed it and the capped-worker
+          # retry never engaged. Inspect the captured stderr for the fatal-OOM
+          # signature so recovery fires regardless of exit code. `grep -q` under
+          # `set -e` is safe inside an `if` condition (a no-match exit 1 is the
+          # tested branch, not an uncaught error).
+          is_oom_failure() {
+            local code="$1"
+            case "$code" in
+              133 | 134 | 137 | 143) return 0 ;;
+            esac
+            if [ -f test-errors.log ] && \
+              grep -qE 'Fatal JavaScript out of memory|Ineffective mark-compacts' test-errors.log; then
+              return 0
+            fi
+            return 1
+          }
+
+          # On an OOM (signal OR fatal-OOM log signature) retry once via the
           # scoped `--mode=retry` plan: a smaller heap AND a capped worker count.
           # Recovery stays parallel (scoped to this shard's slice) rather than
           # dropping to a whole-shard serial re-run that blows the timeout
-          # (Issue #3174). 133 (128+SIGTRAP) is how V8 aborts on heap
-          # exhaustion — "Fatal JavaScript out of memory: Ineffective
-          # mark-compacts near heap limit" surfaces as a Trace/breakpoint trap,
-          # not SIGKILL/SIGTERM/SIGABRT — so it must trigger the same recovery.
-          if [ "$TEST_EXIT_CODE" -eq 143 ] || [ "$TEST_EXIT_CODE" -eq 137 ] || [ "$TEST_EXIT_CODE" -eq 134 ] || [ "$TEST_EXIT_CODE" -eq 133 ]; then
-            echo "⚠️  shard exited ${TEST_EXIT_CODE} (OOM/signal). Retrying parallel with capped workers + reduced heap..."
+          # (Issue #3174). 133 (128+SIGTRAP) is how V8 aborts on heap exhaustion
+          # via SIGTRAP; the exit-1 fatal-OOM path is caught by the log-signature
+          # check above (Issue #3371).
+          if is_oom_failure "$TEST_EXIT_CODE"; then
+            echo "⚠️  shard OOM detected (exit ${TEST_EXIT_CODE}). Retrying parallel with capped workers + reduced heap..."
             eval "$(deno run scripts/coverage_run_plan.ts \
               --mode=retry --cores="${CPU_CORES}" --memory-mb="${TOTAL_MEMORY_MB}")"
             V8_RETRY="${HEAP_MB}"

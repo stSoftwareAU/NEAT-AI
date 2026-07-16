@@ -100,3 +100,30 @@ Deno.test("coverage shard OOM recovery narrows workers instead of going serial",
     `RETRY_JOBS must be a positive worker count, got ${match[1]}`,
   );
 });
+
+Deno.test("coverage shard OOM recovery also fires on the V8 fatal-OOM log signature (exit 1)", async () => {
+  const run = await readShardRunScript();
+  // A V8 fatal out-of-memory ("Fatal JavaScript out of memory: Ineffective
+  // mark-compacts near heap limit") aborts the `deno test` process with exit
+  // code 1 — NOT one of the signal codes (133/134/137/143). Relying only on
+  // exit codes therefore misses this OOM and the capped-worker retry never
+  // engages (Issue #3371). The recovery decision must ALSO inspect the captured
+  // stderr for the fatal-OOM signature, regardless of exit code.
+  for (
+    const signature of [
+      "Fatal JavaScript out of memory",
+      "Ineffective mark-compacts",
+    ]
+  ) {
+    assert(
+      run.includes(signature),
+      `OOM recovery must match the fatal-OOM log signature "${signature}" so an exit-1 OOM triggers the retry (Issue #3371)`,
+    );
+  }
+  // The signature must be matched against the captured test stderr so the
+  // decision is driven by the actual crash output, not a hard-coded exit code.
+  assert(
+    /grep[^\n]*test-errors\.log/.test(run),
+    "OOM recovery must grep test-errors.log for the fatal-OOM signature (Issue #3371)",
+  );
+});
