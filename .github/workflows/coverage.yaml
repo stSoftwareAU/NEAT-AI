@@ -4,6 +4,12 @@ on:
   pull_request:
     branches:
       - Develop
+      # Also gate milestone sub-issue PRs. They target a shared
+      # `milestone/<slug>` branch (planning delivery workflow); without this
+      # glob the coverage gate never ran on them and they merged into the
+      # milestone branch unchecked (Issue #3360). Milestone names have no
+      # nested slashes, so the single-level `milestone/*` glob is sufficient.
+      - milestone/*
 
 # Cancel superseded runs on the same ref so rapid successive pushes don't
 # pile up redundant (heavy) coverage runs (Issue #2842).
