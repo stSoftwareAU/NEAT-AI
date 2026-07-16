@@ -17,9 +17,9 @@ Closes #3362.
 
 ## Evidence
 
-Backend/CI-config change with no web interface to screenshot. Verified via a
-new "what" test that parses the committed workflow YAML and asserts on the
-resulting branch filter.
+Backend/CI-config change with no web interface to screenshot. Verified via a new
+"what" test that parses the committed workflow YAML and asserts on the resulting
+branch filter.
 
 ```mermaid
 flowchart LR
