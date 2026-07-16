@@ -35,6 +35,7 @@ flowchart LR
 
 - Added `test/ci/WorkflowPersistCredentialsFalse.ts` →
   `.github/workflows/github-release.yml checkout must set persist-credentials:
-  false (Issue #3353)`, which asserts the `release` job's checkout step sets
+  false (Issue #3353)`,
+  which asserts the `release` job's checkout step sets
   `persist-credentials: false`. Confirmed it fails on the pre-fix workflow and
   passes after the change.
