@@ -3,8 +3,8 @@
 ## Summary
 
 The Markdown Lint CI quality workflow (`.github/workflows/markdown-lint.yml`)
-gated only branches matched by the single `*` glob. In GitHub branch filters
-`*` matches a single path segment and does **not** match a slash, so milestone
+gated only branches matched by the single `*` glob. In GitHub branch filters `*`
+matches a single path segment and does **not** match a slash, so milestone
 feature branches (`milestone/<slug>`) never matched. Milestone sub-issue PRs
 target that shared branch (planning delivery workflow), so the lint gate never
 ran on them and they merged into the milestone branch unchecked — the gap only
@@ -19,8 +19,8 @@ Closes #3361.
 
 ## Evidence
 
-Backend/CI-config change only — no web interface to screenshot. Verified via
-the new "what" test that parses the committed workflow YAML and asserts the
+Backend/CI-config change only — no web interface to screenshot. Verified via the
+new "what" test that parses the committed workflow YAML and asserts the
 `pull_request.branches` filter includes `milestone/*` while preserving `*`.
 
 ```mermaid
