@@ -10,6 +10,7 @@
 import { Creature } from "@creature";
 import { compactUnused } from "@compact/CompactUnused.ts";
 import { selectCompactVariant } from "@compact/CompactVariants.ts";
+import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { removeSyntheticSynapses } from "@propagate/RemoveSyntheticSynapses.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import type {
@@ -193,6 +194,16 @@ export function finaliseTraining(
     );
   }
 
+  // Issue #3383: validate (and repair) the compact creature before it is
+  // serialised into the worker result. `compactUnused` already guards its own
+  // output, but the `compactVariants` fallback above loads its result with
+  // validation disabled, so a constant neuron stranded with no outward
+  // connection could otherwise reach `Creature.fromJSON` in
+  // `processCompletedResults` and throw `NO_OUTWARD_CONNECTIONS`
+  // non-deterministically on load. Repair it — or fail loudly at the producer —
+  // rather than letting the fault surface downstream on deserialisation.
+  compact = validateAndRepairCompact(compact);
+
   return {
     ID,
     iteration: loop.iteration,
@@ -200,4 +211,33 @@ export function finaliseTraining(
     trace: bestTraceJSON,
     compact: compact ? compact.exportJSON() : undefined,
   };
+}
+
+/**
+ * Issue #3383: guard the compact creature returned to the evolution loop.
+ *
+ * Validates the compacted creature and, on failure, repairs it in place via
+ * {@link validateOrDiagnose} (which runs `fix()` and re-validates, throwing
+ * with full producer context if the creature is unrecoverable). This mirrors
+ * the guard the primary {@link compactUnused} path already applies, closing the
+ * gap where the {@link selectCompactVariant} fallback returned an unvalidated
+ * creature. A constant neuron left with no outward connection is pruned by
+ * `fix()`, so the failure can never surface non-deterministically as a
+ * `NO_OUTWARD_CONNECTIONS` throw when the result is deserialised downstream.
+ *
+ * @param compact - The compacted creature (or `undefined` when no compaction
+ *   occurred).
+ * @returns The same creature reference, now guaranteed valid, or `undefined`.
+ */
+export function validateAndRepairCompact(
+  compact: Creature | undefined,
+): Creature | undefined {
+  if (compact) {
+    validateOrDiagnose(
+      compact,
+      "finaliseTraining:compact",
+      compact.forwardOnly ? { forwardOnly: true } : undefined,
+    );
+  }
+  return compact;
 }
