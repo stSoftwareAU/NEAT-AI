@@ -25,6 +25,7 @@ import { accumulateWeight, adjustedWeight } from "@propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "@methods/activations/ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import { recordAggregateSelf } from "@neuron/AggregateRecord.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 /**
@@ -609,14 +610,19 @@ export class IF
     }
 
     const currentActivation = state.activations[neuron.index];
+    const currentValue = toValue(neuron, currentActivation);
 
     let error = 0;
     if (Math.abs(requestedActivation - currentActivation) > 1e-8) {
       const targetValue = toValue(neuron, requestedActivation);
-      const currentValue = toValue(neuron, currentActivation);
 
       error = targetValue - currentValue;
     }
+
+    // Issue #3389: record this aggregate neuron's own value/error before
+    // delegating the walk to the selected branch — including when no branch is
+    // eligible and we return early below.
+    recordAggregateSelf(neuron, currentValue, error, discoverMap);
 
     // Issue #3087: In-place index scan into a pooled scratch array instead of
     // allocating a fresh array via `inward.filter(...)` on every call.
