@@ -18,6 +18,7 @@ import {
 import {
   calculateError as wasmCalculateError,
 } from "@wasm/ActivationMethods.ts";
+import { toValue } from "@propagate/BackPropagation.ts";
 
 /**
  * Record the error for the neuron, used for structural discovery.
@@ -70,6 +71,24 @@ export function record(
 
   const propagateUpdateMethod = squashMethod as NeuronActivationInterface;
   if (propagateUpdateMethod.record !== undefined) {
+    // Issue #3389: aggregate-squash neurons (MAXIMUM/MINIMUM/IF) delegate their
+    // record() wholly to the selected input path, so previously the aggregate
+    // neuron's own quantities were discarded and it exported a fully-null
+    // `value` series with no `errors` (this includes `output-0` when it is an
+    // aggregate squash). Record the aggregate neuron's own pre-activation
+    // `value` and attributed `error` here — on first visit only, matching the
+    // non-delegating branch below — using the same `toValue(neuron, activation)`
+    // quantities the squash `record()` methods compute internally. These errors
+    // then flow into discovery analysis alongside the existing delegation.
+    if (discoverRecord.errors.length === 0) {
+      const ownValue = toValue(neuron, currentActivation);
+      discoverRecord.value = ownValue;
+      let ownError = 0;
+      if (Math.abs(requestedActivation - currentActivation) > 1e-8) {
+        ownError = toValue(neuron, requestedActivation) - ownValue;
+      }
+      discoverRecord.errors.push(ownError);
+    }
     propagateUpdateMethod.record(
       neuron,
       requestedActivation,
