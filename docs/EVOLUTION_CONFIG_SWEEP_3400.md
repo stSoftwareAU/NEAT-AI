@@ -44,8 +44,8 @@ deno task bench:evolution-sweep \
   --scale=grq-3397 --inputs=2461 --outputs=2 --samples=20 \
   --max-generations=1000 --time-budget-ms=120000 --seed=3396 \
   --populations=10,20,30,50 --baseline-label=pop20 \
-  --out=docs/evidence/sweep-3400-timeboxed.json \
-  --md=docs/evidence/sweep-3400-timeboxed.md
+  --out=docs/evidence/sweep-3400-time-boxed.json \
+  --md=docs/evidence/sweep-3400-time-boxed.md
 ```
 
 ### Key flags
@@ -145,7 +145,7 @@ belongs in the GRQ production environment — see the cross-repo GRQ issue.
   as a cross-repo GRQ issue referencing #3400 with this evidence attached.
 
 Evidence artefacts:
-[`docs/evidence/sweep-3400-timeboxed.md`](./evidence/sweep-3400-timeboxed.md),
+[`docs/evidence/sweep-3400-time-boxed.md`](./evidence/sweep-3400-time-boxed.md),
 [`docs/evidence/sweep-3400-population.md`](./evidence/sweep-3400-population.md),
-[`docs/evidence/sweep-3400-samplerate-noop.md`](./evidence/sweep-3400-samplerate-noop.md)
+[`docs/evidence/sweep-3400-sample-rate-noop.md`](./evidence/sweep-3400-sample-rate-noop.md)
 (with matching `.json`).

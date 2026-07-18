@@ -83,9 +83,9 @@ Every combination of `trainingSampleRate ∈ {0.1, 1.0}` ×
 in-repo harness. That measurement is handed to GRQ (stSoftwareAU/GRQ#3472) with
 the reusable tool.
 
-Full evidence: `docs/evidence/sweep-3400-timeboxed.{md,json}`,
+Full evidence: `docs/evidence/sweep-3400-time-boxed.{md,json}`,
 `docs/evidence/sweep-3400-population.{md,json}`,
-`docs/evidence/sweep-3400-samplerate-noop.{md,json}`.
+`docs/evidence/sweep-3400-sample-rate-noop.{md,json}`.
 
 ## Recommendation
 
