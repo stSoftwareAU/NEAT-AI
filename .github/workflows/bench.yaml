@@ -15,6 +15,10 @@ on:
       - "bench/**"
       - "deno.json"
       - ".github/workflows/bench.yaml"
+  # Weekly scheduled run drives the score-per-hour regression gate (Issue
+  # #3398) against the checked-in baseline trajectory.
+  schedule:
+    - cron: "0 4 * * 1"
   workflow_dispatch:
 
 # Cancel superseded runs on the same ref so rapid pushes don't pile up.
@@ -68,4 +72,58 @@ jobs:
           name: bench-smoke-output
           path: bench-smoke-output.txt
           retention-days: 7
+          if-no-files-found: warn
+
+  score-per-hour-regression:
+    name: Score-per-hour regression gate
+    # Only on the weekly schedule / manual dispatch — this runs a real
+    # (bounded) evolution and is slower than the smoke pass (Issue #3398).
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEAT_RUST_DISCOVERY_OPTIONAL: "true"
+    steps:
+      - name: Checkout Code
+        # `persist-credentials: false` (Issue #3349) — this job only reads the
+        # repo and uploads an artifact; it never pushes back.
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Deno
+        # denoland/setup-deno@v2.0.4
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+
+      - name: Sync WASM package from NEAT-AI-core
+        run: ./build.sh --verify-only
+
+      - name: Run score-per-hour harness against the baseline trajectory
+        # Same seeded config as bench/baseline_score_trajectory.json. The gate
+        # fails (non-zero exit) if the deterministic evolution outcome regresses
+        # below the checked-in baseline, or if the run produced no score samples
+        # (silent-failure guard). Score/hour drift is reported as an advisory
+        # warning, not a hard failure, because wall-clock timing is
+        # machine-load-dependent.
+        run: |
+          set -Eeuo pipefail
+          export NO_COLOR=true
+          deno run --allow-read --allow-write --allow-env --allow-ffi \
+            bench/score_per_hour_harness.ts \
+            --scale=grq-3397 --inputs=2461 --outputs=2 --samples=20 \
+            --population=10 --max-generations=10 --time-budget-ms=600000 \
+            --seed=3396 --train-per-gen=0 \
+            --baseline=bench/baseline_score_trajectory.json \
+            --out=score-per-hour-trajectory.json 2>&1 | tee score-per-hour-output.txt
+
+      - name: Upload score-per-hour trajectory
+        if: ${{ always() }}
+        # actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: score-per-hour-trajectory
+          path: |
+            score-per-hour-trajectory.json
+            score-per-hour-output.txt
+          retention-days: 30
           if-no-files-found: warn

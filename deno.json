@@ -62,11 +62,13 @@
   },
   "tasks": {
     "bench": "deno bench --allow-read --allow-write --allow-env --allow-ffi",
-    "bench:smoke": "deno bench --allow-read --allow-write --allow-env --allow-ffi bench/FatherCompatibility.ts bench/Activate.ts"
+    "bench:smoke": "deno bench --allow-read --allow-write --allow-env --allow-ffi bench/FatherCompatibility.ts bench/Activate.ts",
+    "bench:score-per-hour": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/score_per_hour_harness.ts"
   },
   "test": {
     "include": [
-      "test/**/*.ts"
+      "test/**/*.ts",
+      "bench/**/*_test.ts"
     ]
   },
   "bench": {
@@ -74,6 +76,7 @@
       "bench/**/*.ts"
     ],
     "exclude": [
+      "bench/score_per_hour_harness_test.ts",
       "bench/ActivateAndTraceApp.ts",
       "bench/ActivateApp.ts",
       "bench/AdaptiveLearningRateConvergence.ts",
