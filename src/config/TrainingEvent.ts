@@ -316,6 +316,21 @@ export interface GenerationCompleteEvent {
   readonly averageFitness: number;
   /** Current population size. */
   readonly populationSize: number;
+  /**
+   * Mean neuron count (input + hidden + output) across the population after
+   * this generation. Always a finite number (`0` for an empty population).
+   *
+   * Issue #3402: the GRQ-19 OOM memprofile line carried `avg_neurons=0`, so a
+   * heap that ballooned within one generation could not be attributed to
+   * runaway topology. Surfacing the real average closes that diagnostic gap.
+   */
+  readonly averageNeurons: number;
+  /**
+   * Mean synapse count across the population after this generation. Always a
+   * finite number (`0` for an empty population). Issue #3402 — see
+   * {@link GenerationCompleteEvent.averageNeurons}.
+   */
+  readonly averageSynapses: number;
   /** Time elapsed for this generation in milliseconds. */
   readonly elapsedMs: number;
   /**
