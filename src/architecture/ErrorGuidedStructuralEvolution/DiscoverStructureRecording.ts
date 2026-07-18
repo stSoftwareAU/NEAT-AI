@@ -36,6 +36,7 @@ import {
   logDiscoveryDiskUsage,
 } from "@discovery/DiskSpaceMonitor.ts";
 import { neuronUuid } from "@neuron/NeuronSerialization.ts";
+import { RUST_FLUSH_PEAK_COPY_MULTIPLIER } from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
 
 /**
  * Adds recording, chunk management, and flush methods to the
@@ -210,7 +211,16 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
       "Discovery requires Rust discovery to be enabled.",
     );
     if (this.rustAccumulatedData.length >= this.rustFlushRecords) return true;
-    return this.rustAccumulatedEstimatedBytes >= this.rustFlushBytesThreshold;
+    // Issue #3402: the flush transform (writeRustParquetChunk) builds a second
+    // plain-object FFI payload of every pending sample that coexists with the
+    // still-live accumulator, so the true peak heap at flush is ~2× the
+    // accumulated estimate. Trigger the byte-based flush against that projected
+    // peak so it stays under `rustFlushBytesThreshold` instead of overshooting
+    // it by the copy — the discovery heap retainer MemoryMonitor cannot free
+    // (#2594).
+    const projectedPeakBytes = this.rustAccumulatedEstimatedBytes *
+      RUST_FLUSH_PEAK_COPY_MULTIPLIER;
+    return projectedPeakBytes >= this.rustFlushBytesThreshold;
   }
 
   private getNextChunkDir(): string {
