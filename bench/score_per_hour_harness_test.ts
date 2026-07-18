@@ -95,6 +95,49 @@ Deno.test("score-per-hour harness: a different seed changes the trajectory", asy
   );
 });
 
+Deno.test("score-per-hour harness: extraOptions run is byte-reproducible and validates (Issue #3400)", async () => {
+  const config = withConfigDefaults({
+    ...tinyConfig(),
+    extraOptions: { trainingSampleRate: 0.5, sparseRatio: 0.1 },
+  });
+
+  const first = await runScorePerHourHarness(config, { now: virtualClock() });
+  const second = await runScorePerHourHarness(config, { now: virtualClock() });
+
+  assertEquals(
+    JSON.stringify(second),
+    JSON.stringify(first),
+    "extraOptions must stay byte-reproducible under a seeded run",
+  );
+  assertEquals(
+    validateHarnessResult(JSON.parse(JSON.stringify(first))),
+    [],
+    "extraOptions output should pass schema validation",
+  );
+});
+
+Deno.test("score-per-hour harness: extraOptions cannot override determinism-critical fields (Issue #3400)", async () => {
+  const base = tinyConfig();
+  const plain = await runScorePerHourHarness(base, { now: virtualClock() });
+
+  // A sweep must never be able to break seeding or population via extraOptions:
+  // the harness spreads extraOptions FIRST, so these overrides are ignored and
+  // the trajectory is identical to the plain run.
+  const hijacked = await runScorePerHourHarness(
+    withConfigDefaults({
+      ...base,
+      extraOptions: { seed: 999_999, populationSize: 3, iterations: 1 },
+    }),
+    { now: virtualClock() },
+  );
+
+  assertEquals(
+    hijacked.scoreTrajectory.map((s) => s.bestFitness),
+    plain.scoreTrajectory.map((s) => s.bestFitness),
+    "extraOptions must not override seed/populationSize/iterations",
+  );
+});
+
 Deno.test("score-per-hour harness: topology matches the requested preset", async () => {
   const result = await runScorePerHourHarness(tinyConfig(), {
     now: virtualClock(),
