@@ -37,6 +37,10 @@ import {
   computeSquashHistogram,
   type SquashHistogram,
 } from "@neat/SquashHistogram.ts";
+import {
+  computeTopologyAverages,
+  type TopologyAverages,
+} from "@neat/TopologyAverages.ts";
 import type {
   GenerationPhaseTiming,
   GenerationThroughputMetrics,
@@ -84,6 +88,12 @@ export interface EvolveResult {
    * squash-budget A/B experiment.
    */
   squashHistogram: SquashHistogram;
+  /**
+   * Issue #3402: mean neuron and synapse counts across the population after
+   * this generation. Forwarded onto `generation_complete` events so a
+   * memory-profile line can attribute heap growth to topology growth.
+   */
+  topologyAverages: TopologyAverages;
 }
 
 /**
@@ -1095,5 +1105,7 @@ export async function evolve(
     // Issue #3263: population squash mix after this generation, for the
     // squash-budget A/B experiment.
     squashHistogram: computeSquashHistogram(neat.population),
+    // Issue #3402: population topology averages for memory-profile diagnosis.
+    topologyAverages: computeTopologyAverages(neat.population),
   };
 }

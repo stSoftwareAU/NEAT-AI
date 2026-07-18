@@ -52,6 +52,17 @@ Deno.test("TrainingEvent - generation_complete events are emitted", async () => 
   assertEquals(typeof first.bestFitness, "number");
   assertEquals(typeof first.averageFitness, "number");
   assertGreater(first.populationSize, 0);
+  // Issue #3402: population topology averages must be present and finite so a
+  // memory-profile line can attribute heap growth to topology growth.
+  assertEquals(typeof first.averageNeurons, "number");
+  assertEquals(Number.isFinite(first.averageNeurons), true);
+  assertEquals(typeof first.averageSynapses, "number");
+  assertEquals(Number.isFinite(first.averageSynapses), true);
+  // A 2-input/1-output creature always has at least one neuron and one synapse,
+  // so the population averages must be strictly positive (not the 0 the GRQ-19
+  // memprofile line reported).
+  assertGreater(first.averageNeurons, 0);
+  assertGreater(first.averageSynapses, 0);
   assertGreater(first.elapsedMs, -1);
 
   // Timestamp should be a valid ISO-8601 string

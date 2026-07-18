@@ -633,6 +633,9 @@ export async function evolveDir(
       bestFitness: fittestScore,
       averageFitness: result.averageScore,
       populationSize: neat.population.length,
+      // Issue #3402: population topology averages for memory-profile diagnosis.
+      averageNeurons: result.topologyAverages.averageNeurons,
+      averageSynapses: result.topologyAverages.averageSynapses,
       elapsedMs: generationElapsedMs,
       phaseTiming,
       throughput: result.throughput,
@@ -960,6 +963,9 @@ export async function evolveEnv<S, A>(
       bestFitness: fittestScore,
       averageFitness: result.averageScore,
       populationSize: neat.population.length,
+      // Issue #3402: population topology averages for memory-profile diagnosis.
+      averageNeurons: result.topologyAverages.averageNeurons,
+      averageSynapses: result.topologyAverages.averageSynapses,
       elapsedMs: generationElapsedMs,
       phaseTiming,
       throughput: result.throughput,
@@ -1468,6 +1474,9 @@ export async function evolveRL<S, A>(
       bestFitness: fittestScore,
       averageFitness: result.averageScore,
       populationSize: neat.population.length,
+      // Issue #3402: population topology averages for memory-profile diagnosis.
+      averageNeurons: result.topologyAverages.averageNeurons,
+      averageSynapses: result.topologyAverages.averageSynapses,
       elapsedMs: generationElapsedMs,
       phaseTiming,
       throughput: result.throughput,
