@@ -98,6 +98,17 @@ export interface HarnessConfig {
    * data so the harness can sanity-check against real data where cheap.
    */
   readonly trainDataPath?: string;
+  /**
+   * Extra `NeatOptions` merged into the `evolveDataSet` call (Issue #3400).
+   * Lets a config sweep vary the evolution-mode flags plus `trainingSampleRate`
+   * / `sparseRatio` that `worker/learn.sh` sets, without adding a harness field
+   * per knob. These are spread in **first**, so the harness keeps control of
+   * the determinism-critical fields (`seed`, `threads`, `iterations`,
+   * `timeoutMinutes`, `trainPerGen`, `discoverySampleRate`, `populationSize`,
+   * and the `onTrainingEvent` sampler) — a sweep can never accidentally break
+   * seeding or the score-vs-time capture.
+   */
+  readonly extraOptions?: Partial<NeatOptions>;
 }
 
 /** One point on the score-vs-time curve. */
@@ -169,6 +180,7 @@ export function withConfigDefaults(
     trainPerGen: partial.trainPerGen ?? 0,
     discoverySampleRate: partial.discoverySampleRate ?? -1,
     trainDataPath: partial.trainDataPath,
+    extraOptions: partial.extraOptions,
   };
 }
 
@@ -237,6 +249,8 @@ export async function runScorePerHourHarness(
   const start = now();
 
   const evolveOptions: NeatOptions = {
+    // Sweep-supplied knobs first; harness-controlled fields below win.
+    ...config.extraOptions,
     iterations: config.maxGenerations,
     timeoutMinutes: config.timeBudgetMs / 60_000,
     targetError: 0,
