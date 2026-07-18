@@ -49,13 +49,16 @@ export const AGGREGATE_SQUASHES = ["IF", "MAXIMUM", "MINIMUM"];
  * - `"default"`: ~1,000 neurons, ~18,000 synapses (original test scale).
  * - `"grq-cluster"`: ~1,500 neurons, ~20,000 synapses (GRQ production scale,
  *   matching dimensions from `performance.csv`). Issue #2306.
+ * - `"grq-3397"`: 1,666 neurons, ~21,513 synapses at 2,461 inputs — the
+ *   GRQ-cluster production `network.json` topology used by `worker/learn.sh`.
+ *   Issue #3397.
  */
 export interface CreatureScaleOptions {
   /**
    * Predefined scale preset. Defaults to `"default"`.
    * `"grq-cluster"` targets ~1,500 neurons and ~20,000 synapses.
    */
-  scale?: "default" | "grq-cluster";
+  scale?: "default" | "grq-cluster" | "grq-3397";
 }
 
 /** Internal configuration per scale preset. */
@@ -78,6 +81,15 @@ const SCALE_CONFIGS: Record<string, ScaleConfig> = {
     interLayerMin: 10,
     interLayerRange: 12,
   },
+  // Issue #3397: matches the GRQ-cluster production `network.json` used by
+  // `worker/learn.sh` — ~1,666 neurons, ~21,513 synapses, 2,461 inputs.
+  // Used by the production learn/sampler profiling report so the reproducible
+  // profiling command exercises the real production topology.
+  "grq-3397": {
+    layers: [279, 302, 268, 234, 190, 156, 112, 78, 45],
+    interLayerMin: 10,
+    interLayerRange: 11,
+  },
 };
 
 /**
@@ -86,6 +98,7 @@ const SCALE_CONFIGS: Record<string, ScaleConfig> = {
  * Target depends on `options.scale`:
  * - `"default"`: ~1,000+ neurons, ~18,000+ synapses
  * - `"grq-cluster"`: ~1,500 neurons, ~20,000 synapses (issue #2306)
+ * - `"grq-3397"`: 1,666 neurons, ~21,513 synapses (issue #3397)
  *
  * Uses diverse squash functions, multiple layers, aggregate neurons,
  * and skip connections for realistic topology depth.
