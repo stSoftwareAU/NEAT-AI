@@ -94,6 +94,12 @@ Tuning guides and benchmark research.
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
   benchmark results for the predictive-coding training mode.
+- **[SCORE_PER_HOUR_HARNESS.md](SCORE_PER_HOUR_HARNESS.md)** — the
+  score-improvement-per-wall-clock-hour benchmark harness: the reproducible
+  evidence gate for the #3396 evolution-performance milestone.
+- **[EVOLUTION_CONFIG_SWEEP_3400.md](EVOLUTION_CONFIG_SWEEP_3400.md)** — the
+  evolution-mode / population / sample-rate configuration sweep over that
+  harness, and its findings (Issue #3400).
 
 ## 📖 Reference
 

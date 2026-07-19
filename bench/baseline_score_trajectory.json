@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "config": {
+    "seed": 3396,
+    "scale": "grq-3397",
+    "inputCount": 2461,
+    "outputCount": 2,
+    "sampleCount": 20,
+    "populationSize": 10,
+    "maxGenerations": 10,
+    "timeBudgetMs": 600000,
+    "threads": 1,
+    "trainPerGen": 0,
+    "discoverySampleRate": -1
+  },
+  "topology": {
+    "neurons": 1666,
+    "synapses": 21560,
+    "inputs": 2461
+  },
+  "usedRealTrainData": false,
+  "scoreTrajectory": [
+    {
+      "generation": 1,
+      "elapsedMs": 7598.385458,
+      "bestFitness": -1.4394885350527997e+31,
+      "averageFitness": -1.6850841423201814e+31
+    },
+    {
+      "generation": 2,
+      "elapsedMs": 12890.169625,
+      "bestFitness": -1.4394885350527997e+31,
+      "averageFitness": -1.5173458155349338e+31
+    },
+    {
+      "generation": 3,
+      "elapsedMs": 16480.266625,
+      "bestFitness": -1.3685010273181068e+31,
+      "averageFitness": -1.5317111232301896e+31
+    },
+    {
+      "generation": 4,
+      "elapsedMs": 20005.7995,
+      "bestFitness": -1.3681436502264738e+31,
+      "averageFitness": -1.427926354625945e+31
+    },
+    {
+      "generation": 5,
+      "elapsedMs": 23770.362583000002,
+      "bestFitness": -1.289385276135227e+31,
+      "averageFitness": -1.3756106209682727e+31
+    },
+    {
+      "generation": 6,
+      "elapsedMs": 27345.400041,
+      "bestFitness": -1.289385276135227e+31,
+      "averageFitness": -1.317348193091206e+31
+    },
+    {
+      "generation": 7,
+      "elapsedMs": 30242.415083,
+      "bestFitness": -1.283532610770523e+31,
+      "averageFitness": -1.2884098317519917e+31
+    },
+    {
+      "generation": 8,
+      "elapsedMs": 33526.086708,
+      "bestFitness": -1.2576869685680517e+31,
+      "averageFitness": -1.3001487879634245e+31
+    },
+    {
+      "generation": 9,
+      "elapsedMs": 37411.024958,
+      "bestFitness": -1.2576869685680517e+31,
+      "averageFitness": -1.303180510700828e+31
+    },
+    {
+      "generation": 10,
+      "elapsedMs": 40672.714916000004,
+      "bestFitness": -1.257652533664427e+31,
+      "averageFitness": -1.284502823232164e+31
+    }
+  ],
+  "initialBestFitness": -1.4394885350527997e+31,
+  "finalBestFitness": -1.257652533664427e+31,
+  "bestFitness": -1.257652533664427e+31,
+  "totalElapsedMs": 40710.551416,
+  "scorePerHour": 1.607960546417133e+32
+}

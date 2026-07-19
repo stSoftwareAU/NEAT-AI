@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "scale": "grq-3397",
+  "seed": 3396,
+  "maxGenerations": 1000,
+  "timeBudgetMs": 120000,
+  "trainPerGen": 0,
+  "baselineLabel": "pop20",
+  "entries": [
+    {
+      "label": "pop20",
+      "populationSize": 20,
+      "trainingSampleRate": null,
+      "sparseRatio": null,
+      "generations": 13,
+      "initialBestFitness": -1.4394885350527997e+31,
+      "finalBestFitness": -1.081957982433202e+31,
+      "bestFitness": -1.081957982433202e+31,
+      "totalElapsedMs": 124498.92733399999,
+      "scorePerHour": 1.0338321919654394e+32
+    },
+    {
+      "label": "pop10",
+      "populationSize": 10,
+      "trainingSampleRate": null,
+      "sparseRatio": null,
+      "generations": 34,
+      "initialBestFitness": -1.4394885350527997e+31,
+      "finalBestFitness": -1.2031125106841734e+31,
+      "bestFitness": -1.2031125106841734e+31,
+      "totalElapsedMs": 122085.917291,
+      "scorePerHour": 6.970121588215202e+31
+    },
+    {
+      "label": "pop50",
+      "populationSize": 50,
+      "trainingSampleRate": null,
+      "sparseRatio": null,
+      "generations": 5,
+      "initialBestFitness": -1.1735655875227645e+31,
+      "finalBestFitness": -9.207320078087152e+30,
+      "bestFitness": -9.207320078087152e+30,
+      "totalElapsedMs": 134643.655792,
+      "scorePerHour": 6.760072590250169e+31
+    },
+    {
+      "label": "pop30",
+      "populationSize": 30,
+      "trainingSampleRate": null,
+      "sparseRatio": null,
+      "generations": 8,
+      "initialBestFitness": -1.2243238106000022e+31,
+      "finalBestFitness": -1.0415019567311907e+31,
+      "bestFitness": -1.0415019567311907e+31,
+      "totalElapsedMs": 121917.904709,
+      "scorePerHour": 5.398375862008527e+31
+    }
+  ],
+  "regressions": [
+    {
+      "label": "pop10",
+      "delta": -1.2115452825097145e+30
+    }
+  ]
+}

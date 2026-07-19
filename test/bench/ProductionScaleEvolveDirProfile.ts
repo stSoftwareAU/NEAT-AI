@@ -12,7 +12,7 @@
  * timing measurements.
  */
 
-import { assertEquals, assertGreater } from "@std/assert";
+import { assertAlmostEquals, assertEquals, assertGreater } from "@std/assert";
 import {
   createSeededRng,
   generateProductionCreature,
@@ -37,4 +37,32 @@ Deno.test("Production-scale creature has GRQ-cluster dimensions", () => {
   );
   assertEquals(creature.input, 648, "Input count should match GRQ-cluster");
   assertEquals(creature.output, 2, "Output count should match GRQ-cluster");
+});
+
+Deno.test("Production learn/sampler creature matches network.json dimensions (grq-3397)", () => {
+  // Issue #3397: the `grq-3397` preset reproduces the GRQ-cluster production
+  // `network.json` topology used by worker/learn.sh — 1,666 neurons,
+  // ~21,513 synapses, 2,461 inputs — so the profiling report's command is
+  // reproducible against the real production dimensions.
+  const rng = createSeededRng(3396);
+  const creature = generateProductionCreature(2461, 2, rng, {
+    scale: "grq-3397",
+  });
+
+  // Neuron and input counts are exact and deterministic for this seed.
+  assertEquals(
+    creature.neurons.length,
+    1666,
+    "grq-3397 must produce exactly 1,666 neurons (network.json)",
+  );
+  assertEquals(creature.input, 2461, "Input count should match network.json");
+  assertEquals(creature.output, 2, "Output count should match network.json");
+
+  // Synapse count is close to the production 21,513 (deterministic per seed).
+  assertAlmostEquals(
+    creature.synapses.length,
+    21_513,
+    500,
+    "grq-3397 synapse count should be within 500 of the production 21,513",
+  );
 });
