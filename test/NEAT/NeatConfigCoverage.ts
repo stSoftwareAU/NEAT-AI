@@ -86,6 +86,22 @@ Deno.test("NEAT/NeatConfigCoverage - discoveryFocusNeuronUUIDs entries must be i
   }
 });
 
+Deno.test("NEAT/NeatConfigCoverage - discoveryFocusNeuronUUIDs accepts non-empty UUID strings (#3493)", () => {
+  const config = createNeatConfig({
+    discoveryFocusNeuronUUIDs: [
+      "input-2460",
+      "d7c1f2a0-1234-4abc-8def-0123456789ab",
+      7,
+    ],
+  });
+  // Order and identity are preserved; strings are not coerced to numbers.
+  assertEquals(config.discoveryFocusNeuronUUIDs, [
+    "input-2460",
+    "d7c1f2a0-1234-4abc-8def-0123456789ab",
+    7,
+  ]);
+});
+
 Deno.test("NEAT/NeatConfigCoverage - discoveryReplayConcurrency rejects non-positive", () => {
   try {
     createNeatConfig({ discoveryReplayConcurrency: 0 });

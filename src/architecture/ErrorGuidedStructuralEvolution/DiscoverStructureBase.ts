@@ -41,6 +41,7 @@ import type {
 import {
   truncateForLogValue as truncateForLogValueImpl,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
+import { resolveForcedFocusReferences } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { clearForGc } from "@utils/ReleasableRef.ts";
 import { logDiscoveryDiskUsage } from "@discovery/DiskSpaceMonitor.ts";
@@ -346,9 +347,42 @@ export class DiscoverStructureBase {
     this.analysisTimeoutGuardEnabled = false;
   }
 
-  public setForcedFocusNeurons(neuronIds: readonly number[]): void {
-    const usable = Array.isArray(neuronIds)
-      ? neuronIds.filter((id) => typeof id === "number" && Number.isInteger(id))
+  /**
+   * Resolve a mixed list of forced-focus references to runtime neuron ids.
+   *
+   * References may be:
+   *   - a numeric runtime id (used directly), or
+   *   - a stable wire UUID string such as `input-2460` or a hidden/output
+   *     neuron UUID (resolved to a runtime id against this creature), or
+   *   - a bare integer string such as `"42"` (treated as a runtime id).
+   *
+   * Unresolvable string tokens are dropped with a WARN so a bad identifier
+   * never silently degrades to weighted selection without a trace.
+   */
+  private resolveForcedFocusRuntimeIds(
+    neuronRefs: readonly (number | string)[],
+  ): number[] {
+    const { ids, unresolved } = resolveForcedFocusReferences(
+      this.creature,
+      neuronRefs,
+    );
+    if (unresolved.length > 0 && this.loggingEnabled) {
+      for (const token of unresolved) {
+        this.log(
+          "warn",
+          `Forced focus neuron '${token}' did not resolve to a known wire ` +
+            `UUID or runtime id and will be ignored.`,
+        );
+      }
+    }
+    return ids;
+  }
+
+  public setForcedFocusNeurons(
+    neuronRefs: readonly (number | string)[],
+  ): void {
+    const usable = Array.isArray(neuronRefs)
+      ? this.resolveForcedFocusRuntimeIds(neuronRefs)
       : [];
 
     if (usable.length === 0) {

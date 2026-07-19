@@ -45,6 +45,54 @@ export function resolveWireToRuntimeId(
   return wireToId.get(wireUuid);
 }
 
+/**
+ * Resolve a mixed list of forced-focus references to runtime neuron ids.
+ *
+ * References may be:
+ *   - a numeric runtime id (used directly), or
+ *   - a stable wire UUID string such as `input-2460` or a hidden/output
+ *     neuron UUID (resolved to a runtime id against `creature`), or
+ *   - a bare integer string such as `"42"` (treated as a runtime id).
+ *
+ * Order and identity are preserved. Empty and unresolvable string tokens are
+ * returned in `unresolved` so the caller can report them loudly rather than
+ * silently degrading — a bad identifier is never swallowed without a trace.
+ */
+export function resolveForcedFocusReferences(
+  creature: Creature,
+  refs: readonly (number | string)[],
+): { ids: number[]; unresolved: string[] } {
+  const wireToId = buildWireToRuntimeIdMap(creature);
+  const ids: number[] = [];
+  const unresolved: string[] = [];
+  for (const ref of refs) {
+    if (typeof ref === "number" && Number.isInteger(ref)) {
+      ids.push(ref);
+      continue;
+    }
+    if (typeof ref !== "string") {
+      continue;
+    }
+    const token = ref.trim();
+    if (token.length === 0) {
+      continue;
+    }
+    const resolved = wireToId.get(token);
+    if (resolved !== undefined) {
+      ids.push(resolved);
+      continue;
+    }
+    // Fall back to a bare integer string (e.g. "42") = runtime id.
+    const asInt = Number(token);
+    if (Number.isInteger(asInt)) {
+      ids.push(asInt);
+      continue;
+    }
+    unresolved.push(token);
+  }
+  return { ids, unresolved };
+}
+
 export function resolveRuntimeIdToWireUuid(
   idToWire: Map<number, string>,
   runtimeId: number | undefined,
