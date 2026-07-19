@@ -422,10 +422,15 @@ export interface NeatArguments {
   discoveryDrainEveryNBatches: number;
 
   /**
-   * Optional ordered list of neuron UUIDs to prioritise during discovery analysis.
-   * When provided, discovery focuses on these neurons before performing weighted selection.
+   * Optional ordered list of neuron identifiers to prioritise during discovery
+   * analysis. Each entry is either a stable wire UUID string (for example
+   * `input-2460`, or a hidden/output neuron's UUID) or a numeric runtime neuron
+   * id. String UUIDs are resolved to runtime ids against the creature before
+   * selection, so callers may focus by the documented UUID rather than the
+   * internal numeric id. When provided, discovery focuses on these neurons
+   * before performing weighted selection.
    */
-  discoveryFocusNeuronUUIDs: number[];
+  discoveryFocusNeuronUUIDs: Array<number | string>;
 
   /**
    * Disable the internal evaluation summary logging. When set to true, the library
