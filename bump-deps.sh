@@ -156,8 +156,45 @@ if ! [[ "$QUARANTINE_HOURS" =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
-if ! command -v deno >/dev/null 2>&1; then
+# Resolve the `deno` binary before doing anything else. The Vibe Coder
+# worker sometimes spawns this script with an unattended launchd/cron PATH
+# that lacks ~/.deno/bin (the official installer location), so a bare
+# `command -v deno` fails even though deno is installed (Issue #3417). Probe
+# the known install locations as defence in depth — first match wins — and
+# prepend the winner's directory to PATH so every later `deno` call resolves.
+# The real fix is worker-side PATH bootstrap (VibeCoding#3532); this is a
+# local hardening layer. When no candidate exists we still fail loud
+# (ERROR + exit 1) rather than silently skipping the bump.
+#
+# BUMP_DEPS_DENO_FALLBACKS (colon-separated) overrides the probe list. It is
+# a test seam and defaults to the canonical installer locations.
+DENO_FALLBACK_PATHS="${BUMP_DEPS_DENO_FALLBACKS:-$HOME/.deno/bin/deno:/opt/homebrew/bin/deno:/usr/local/bin/deno}"
+
+resolve_deno() {
+  if command -v deno >/dev/null 2>&1; then
+    return 0
+  fi
+  local candidate
+  # Split the colon-separated fallback list without a subshell (bash 3.2-safe).
+  local IFS=':'
+  # shellcheck disable=SC2086 # intentional word-splitting on ':'
+  for candidate in $DENO_FALLBACK_PATHS; do
+    [[ -n "$candidate" ]] || continue
+    if [[ -x "$candidate" ]]; then
+      PATH="$(dirname "$candidate"):$PATH"
+      export PATH
+      echo "Resolved deno via fallback: $candidate (not on PATH)" >&2
+      return 0
+    fi
+  done
+  return 1
+}
+
+if ! resolve_deno; then
   echo "ERROR: deno is required" >&2
+  echo "       deno is not on PATH and no fallback binary was found in:" >&2
+  echo "       ${DENO_FALLBACK_PATHS}" >&2
+  echo "       Install deno (https://deno.land) or add ~/.deno/bin to PATH." >&2
   exit 1
 fi
 
