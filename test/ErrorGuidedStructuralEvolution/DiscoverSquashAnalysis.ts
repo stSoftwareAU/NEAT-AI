@@ -323,3 +323,131 @@ Deno.test(
     assertNotEquals(result?.[0]?.expectedCreatureScoreGain, synthetic);
   },
 );
+
+/**
+ * Focus neuron using an aggregate squash (`MAXIMUM`/`MINIMUM`) fed by two
+ * inputs. Issue #3389 began recording these neurons' value/error, so they now
+ * reach the squash analysis; Issue #3419 keeps that analysis from crashing.
+ */
+function aggregateFocusCreature(squash: string): Creature {
+  return Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "agg", squash, bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "agg", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "agg", weight: 0.5 },
+      { fromUUID: "agg", toUUID: "output-0", weight: 1 },
+    ],
+  });
+}
+
+/** IF focus neuron with the typed condition/positive/negative connections. */
+function ifFocusCreature(): Creature {
+  return Creature.fromJSON({
+    input: 3,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "if-h", squash: "IF", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "if-h", weight: 0.2, type: "condition" },
+      { fromUUID: "input-1", toUUID: "if-h", weight: 0.3, type: "positive" },
+      { fromUUID: "input-2", toUUID: "if-h", weight: -0.4, type: "negative" },
+      { fromUUID: "if-h", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+}
+
+// Issue #3419: MAXIMUM/MINIMUM aggregate neurons expose no scalar squash(x).
+// Pre-fix `findCandidateSquash` cast the aggregate to ActivationInterface and
+// called `.squash(idealValue)`, throwing `squash is not a function` and
+// aborting the whole discovery run. It must now score simple-squash
+// replacements against the IDENTITY pass-through instead of throwing.
+for (const squash of ["MAXIMUM", "MINIMUM"]) {
+  Deno.test(
+    `DiscoverSquashAnalysis - findCandidateSquash scores ${squash} focus neuron without throwing (#3419)`,
+    () => {
+      const creature = aggregateFocusCreature(squash);
+      const aggId = buildWireToRuntimeIdMap(creature).get("agg")!;
+
+      const records = [
+        { value: 0.3, activation: 0.3, errors: [0.05] },
+        { value: 0.6, activation: 0.6, errors: [-0.05] },
+        { value: -0.2, activation: -0.2, errors: [0.1] },
+      ];
+
+      // The bug reproduced here: pre-fix this call threw a TypeError.
+      const candidate = findCandidateSquash(
+        creature,
+        aggId,
+        records,
+        () => 1,
+        false,
+        () => {},
+      );
+
+      // A swap candidate is optional (low score is a valid state); when one is
+      // returned it must describe swapping away from the aggregate squash.
+      if (candidate !== undefined) {
+        assertEquals(candidate.previousSquash, squash);
+        assertNotEquals(candidate.squash, squash);
+      }
+    },
+  );
+}
+
+Deno.test(
+  "DiscoverSquashAnalysis - findCandidateSquash excludes IF focus neuron without throwing (#3419)",
+  () => {
+    const creature = ifFocusCreature();
+    const ifId = buildWireToRuntimeIdMap(creature).get("if-h")!;
+
+    const records = [
+      { value: 0.4, activation: 0.4, errors: [0.05] },
+      { value: -0.1, activation: -0.1, errors: [-0.05] },
+    ];
+
+    // IF routes typed connections a scalar squash would reinterpret, so it is
+    // excluded from swap scoring — no candidate, and crucially no throw.
+    const candidate = findCandidateSquash(
+      creature,
+      ifId,
+      records,
+      () => 1,
+      false,
+      () => {},
+    );
+
+    assertEquals(candidate, undefined);
+  },
+);
+
+Deno.test(
+  "DiscoverSquashAnalysis - harmful removal analysis tolerates aggregate focus neuron (#3419)",
+  async () => {
+    const creature = aggregateFocusCreature("MAXIMUM");
+    const aggId = buildWireToRuntimeIdMap(creature).get("agg")!;
+
+    // Pre-fix this path threw `squash is not a function` per neuron (logged);
+    // now it completes and, for reasonable errors, promotes nothing.
+    const result = await analyzeSelectedNeuronsForHarmfulRemoval(
+      creature,
+      [aggId],
+      () =>
+        Promise.resolve([
+          { value: 0.3, activation: 0.3, errors: [0.05] },
+          { value: 0.6, activation: 0.6, errors: [-0.05] },
+        ]),
+      "/tmp/discovery",
+      false,
+      () => {},
+    );
+
+    assertEquals(result, undefined);
+  },
+);

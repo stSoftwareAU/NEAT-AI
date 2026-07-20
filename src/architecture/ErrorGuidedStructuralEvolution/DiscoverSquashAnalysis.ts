@@ -11,6 +11,9 @@ import type { Creature } from "@creature";
 import { TopologyError } from "@errors/TopologyError.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 import { Activations } from "@methods/activations/Activations.ts";
+import { hasScalarSquash } from "@methods/activations/TypeGuards.ts";
+import { IF } from "@methods/activations/aggregate/IF.ts";
+import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import type {
   CandidateHarmfulNeuron,
@@ -114,6 +117,40 @@ export function calculateSquashErrorFromRaw(
 }
 
 /**
+ * Sentinel distinguishing "aggregate neuron excluded from swap scoring" from
+ * "genuine scalar squash resolved" — {@link resolveScoringSquash} returns it
+ * for `IF`, which callers treat as "skip this neuron without throwing".
+ */
+const EXCLUDED_FROM_SWAP = Symbol("excluded-from-swap");
+
+/**
+ * Resolve the scalar squash method to score a focus neuron against.
+ *
+ * Issue #3419: aggregate-squash neurons (`MAXIMUM`, `MINIMUM`, `IF`) implement
+ * `activate(neuron)` but expose no scalar `squash(x)`. #3389 began recording
+ * their value/error, so they now reach the squash analysis for the first time;
+ * the old unchecked `Activations.find(...) as ActivationInterface` cast then
+ * threw `squash is not a function`, aborting the whole discovery run. Resolve a
+ * scalar stand-in instead of throwing:
+ *
+ * - a genuine scalar squash resolves to itself;
+ * - `MAXIMUM`/`MINIMUM` pass their aggregated value straight through, so they
+ *   resolve to the `IDENTITY` pass-through — simple-squash replacements are then
+ *   scored against the recorded ideal values like any other candidate;
+ * - `IF` routes typed condition/positive/negative connections whose meaning a
+ *   scalar squash would change, so it resolves to {@link EXCLUDED_FROM_SWAP} and
+ *   is skipped (never thrown on).
+ */
+function resolveScoringSquash(
+  squashName: string,
+): ActivationInterface | typeof EXCLUDED_FROM_SWAP {
+  const activation = Activations.find(squashName);
+  if (hasScalarSquash(activation)) return activation;
+  if (squashName === IF.NAME) return EXCLUDED_FROM_SWAP;
+  return Activations.find(IDENTITY.NAME) as ActivationInterface;
+}
+
+/**
  * Core squash analysis: tries all activation functions, picks best.
  *
  * @param creature - The creature containing the neuron
@@ -165,9 +202,13 @@ export function findCandidateSquash(
   assert(neuronUuid, `Missing wire uuid for neuron ${neuronId}`);
   const currentSquash = neuron.squash;
   assert(currentSquash, "Squash function not found");
-  const currentSquashMethod = Activations.find(
-    currentSquash,
-  ) as ActivationInterface;
+  // Issue #3419: aggregate-squash neurons expose no scalar squash(x). Resolve a
+  // stand-in (IDENTITY for MAXIMUM/MINIMUM) or skip IF entirely, rather than
+  // calling `.squash` on an aggregate and aborting discovery.
+  const currentSquashMethod = resolveScoringSquash(currentSquash);
+  if (currentSquashMethod === EXCLUDED_FROM_SWAP) {
+    return undefined;
+  }
 
   records.forEach((record) => {
     const value = record.value;
@@ -475,10 +516,12 @@ export async function analyzeSelectedNeuronsForHarmfulRemoval(
       const currentSquash = neuron.squash;
       if (!currentSquash) return undefined;
 
-      const currentSquashMethod = Activations.find(
-        currentSquash,
-      ) as ActivationInterface;
-      if (!currentSquashMethod) return undefined;
+      // Issue #3419: aggregate-squash neurons expose no scalar squash(x). The
+      // same unchecked cast crashed this path per-neuron; resolve a stand-in
+      // (IDENTITY for MAXIMUM/MINIMUM) or skip IF instead of calling `.squash`
+      // on an aggregate.
+      const currentSquashMethod = resolveScoringSquash(currentSquash);
+      if (currentSquashMethod === EXCLUDED_FROM_SWAP) return undefined;
 
       let activationSum = 0;
       let activationCount = 0;
