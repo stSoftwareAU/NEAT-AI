@@ -25,6 +25,18 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3412:** New `DatasetError` typed error (exported from the public
+  barrel) makes a vanished training dataset fail loud and clear. When the
+  dataset directory or a `.bin` file is deleted out from under a running
+  discovery (files vanish mid-read), the dataset I/O boundaries now throw a
+  `DatasetError` naming the missing file/directory (reasons `DIRECTORY_MISSING`,
+  `FILE_MISSING`, `NO_DATA_FILES`) instead of letting the fault propagate into
+  scoring and surface as a misleading
+  `AssertionError: Error is not finite:
+  Infinity`. The translation lives in
+  `src/architecture/DatasetIO.ts` and is applied to every binary-dataset read
+  path (`evaluateDir`, `dataFiles`, the training epoch loop, cross-validation,
+  and k-fold splitting).
 - **Issue #3175:** Benchmarks in `bench/` are now runnable via a single
   documented command. `deno.json` gains a `bench` task (`deno task bench`, full
   suite) and a `bench:smoke` task (fast subset), plus a `bench` config whose

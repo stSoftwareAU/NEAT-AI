@@ -15,6 +15,7 @@ import type { CostInterface } from "@costs/CostInterface.ts";
 import type { Creature } from "@creature";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import { WasmError } from "@errors/WasmError.ts";
+import { openDatasetFileSync } from "@architecture/DatasetIO.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { applyDropout } from "@propagate/Dropout.ts";
@@ -50,7 +51,9 @@ export function runSingleEpoch(
 
   for (let fileIndx = binaryFiles.length; !trainingStopped && fileIndx--;) {
     const fn = binaryFiles[fileIndx];
-    const file = Deno.openSync(fn, { read: true });
+    // Issue #3412: a vanished `.bin` file fails loud as a DatasetError naming
+    // the path rather than a bare NotFound.
+    const file = openDatasetFileSync(fn);
 
     try {
       let recordSet = state.indxMap.get(fn);

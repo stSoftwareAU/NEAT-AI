@@ -15,6 +15,10 @@ import { Creature } from "@creature";
 import { getLogger } from "@utils/Logger.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
+  readDatasetDirEntriesSync,
+  readDatasetFileSync,
+} from "@architecture/DatasetIO.ts";
+import {
   cleanupFoldSplits,
   createKFoldSplits,
   type FoldSplit,
@@ -58,11 +62,14 @@ function evaluateValidation(
   let errorSum = 0;
   let counter = 0;
 
-  for (const dirEntry of Deno.readDirSync(validationDir)) {
+  // Issue #3412: a vanished validation directory / file fails loud as a
+  // DatasetError naming the path rather than a bare NotFound or a silent
+  // Infinity error propagating into scoring.
+  for (const dirEntry of readDatasetDirEntriesSync(validationDir)) {
     if (!dirEntry.isFile || !dirEntry.name.endsWith(".bin")) continue;
 
     const filePath = `${validationDir}/${dirEntry.name}`;
-    const fileData = Deno.readFileSync(filePath);
+    const fileData = readDatasetFileSync(filePath);
     const recordCount = Math.floor(fileData.byteLength / BYTES_PER_RECORD);
     const dataView = new Float32Array(fileData.buffer);
 

@@ -8,6 +8,8 @@
 import { assert } from "@std/assert";
 import { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 import { dataFiles } from "@architecture/Training.ts";
+import { openDatasetFileSync } from "@architecture/DatasetIO.ts";
+import { DatasetError } from "@errors/DatasetError.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { CostInterface } from "@costs/CostInterface.ts";
@@ -425,7 +427,17 @@ export async function evaluateDir(
   fitnessSampleRate?: number,
 ): Promise<{ error: number }> {
   const files = cachedFiles ?? dataFiles(dataDir).files;
-  assert(files.length > 0, "No data files found");
+  // Issue #3412: an empty file list means the dataset directory holds no
+  // `.bin` files (e.g. deleted mid-run). Fail loud with a DatasetError naming
+  // the directory rather than letting the empty corpus surface downstream as a
+  // misleading "Error is not finite: Infinity" assertion.
+  if (files.length === 0) {
+    throw new DatasetError(
+      `no .bin training data files found in ${dataDir} (dataset vanished?)`,
+      "NO_DATA_FILES",
+      dataDir,
+    );
+  }
 
   // Issue #3257: Resolve the ranking-pass subsample rate. `1` (default) means
   // score every record; a sub-`1` rate keeps a deterministic stratified stride.
@@ -538,8 +550,9 @@ export async function evaluateDir(
 
   for (let fileIndx = files.length; fileIndx--;) {
     const filePath = files[fileIndx];
-    // deno-lint-ignore no-sync-fn-in-async-fn -- Intentional: synchronous I/O for batch processing performance.
-    const file = Deno.openSync(filePath, { read: true });
+    // Issue #3412: a vanished `.bin` file fails loud as a DatasetError naming
+    // the path rather than a bare NotFound swallowed into an Infinity score.
+    const file = openDatasetFileSync(filePath);
 
     try {
       while (true) {

@@ -141,6 +141,12 @@ decision trees.
 - **Activations producing `NaN` or `Infinity`** — input normalisation,
   activation choice, weight / bias bounds, stability adaptation. →
   [Creatures producing NaN or Infinity](troubleshooting/TRAINING.md#-creatures-producing-nan-or-infinity).
+- **`AssertionError: Error is not finite: Infinity` mid-run** — the training
+  dataset directory or a `.bin` file was deleted while scoring/discovery was
+  running. NEAT-AI now fails loud with a `DatasetError` naming the missing
+  file/directory instead (Issue #3412); check whether a disk-cleanup sweep
+  removed `.trainData-binary*/`. →
+  [`DatasetError`](api/ERRORS.md#-dataseterror).
 - **Noise injection / cross-validation tuning** — see
   [Data fuzzing and regularisation](troubleshooting/TRAINING.md#-data-fuzzing-and-regularisation).
 - **Evolved hyperparameters cluster at extremes** — see

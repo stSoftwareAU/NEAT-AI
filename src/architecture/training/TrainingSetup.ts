@@ -7,6 +7,7 @@
  */
 
 import { yellow } from "@std/fmt/colors";
+import { readDatasetDirEntriesSync } from "@architecture/DatasetIO.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import type { Creature } from "@creature";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
@@ -62,7 +63,9 @@ export function dataFiles(
 ): { files: string[] } {
   const binaryFiles: string[] = [];
 
-  for (const dirEntry of Deno.readDirSync(dataDir)) {
+  // Issue #3412: a vanished dataset directory fails loud as a DatasetError
+  // naming the path rather than a bare Deno.errors.NotFound.
+  for (const dirEntry of readDatasetDirEntriesSync(dataDir)) {
     if (dirEntry.isFile) {
       const fn = dirEntry.name;
       if (fn.endsWith(".bin")) {

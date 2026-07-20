@@ -8,6 +8,10 @@
  */
 
 import { ValidationError } from "@errors/ValidationError.ts";
+import {
+  readDatasetDirEntriesSync,
+  readDatasetFileSync,
+} from "@architecture/DatasetIO.ts";
 
 /**
  * Describes a single fold split with training and validation data directories.
@@ -32,11 +36,13 @@ function collectRecords(
 ): Uint8Array[] {
   const records: Uint8Array[] = [];
 
-  for (const dirEntry of Deno.readDirSync(dataDir)) {
+  // Issue #3412: a vanished dataset directory / file fails loud as a
+  // DatasetError naming the path rather than a bare NotFound.
+  for (const dirEntry of readDatasetDirEntriesSync(dataDir)) {
     if (!dirEntry.isFile || !dirEntry.name.endsWith(".bin")) continue;
 
     const filePath = `${dataDir}/${dirEntry.name}`;
-    const fileData = Deno.readFileSync(filePath);
+    const fileData = readDatasetFileSync(filePath);
 
     const recordCount = Math.floor(fileData.byteLength / bytesPerRecord);
     for (let i = 0; i < recordCount; i++) {

@@ -324,6 +324,8 @@ export { CrisprError } from "@errors/CrisprError.ts";
 export type { CrisprErrorCode } from "@errors/CrisprError.ts";
 export { BreedExhaustionError } from "@errors/BreedExhaustionError.ts";
 export type { BreedExhaustionReason } from "@errors/BreedExhaustionError.ts";
+export { DatasetError } from "@errors/DatasetError.ts";
+export type { DatasetErrorReason } from "@errors/DatasetError.ts";
 export { validateDNA } from "@reconstruct/validateDNA.ts";
 
 /**
