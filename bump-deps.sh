@@ -175,10 +175,12 @@ resolve_deno() {
     return 0
   fi
   local candidate
-  # Split the colon-separated fallback list without a subshell (bash 3.2-safe).
-  local IFS=':'
-  # shellcheck disable=SC2086 # intentional word-splitting on ':'
-  for candidate in $DENO_FALLBACK_PATHS; do
+  # Split the colon-separated fallback list without setting IFS globally
+  # (avoids the ifs-tampering SAST finding) and without a subshell
+  # (bash 3.2-safe): scope IFS to the single `read` that does the splitting.
+  local candidates=()
+  IFS=':' read -r -a candidates <<<"$DENO_FALLBACK_PATHS"
+  for candidate in ${candidates[@]+"${candidates[@]}"}; do
     [[ -n "$candidate" ]] || continue
     if [[ -x "$candidate" ]]; then
       PATH="$(dirname "$candidate"):$PATH"
