@@ -59,6 +59,15 @@ At **warning level** (70%), the monitor halves the WASM activation cache and
 evicts the oldest quarter of entries. At **critical level** (85%), it reduces
 the cache to a single entry and clears the compilation cache.
 
+> **Thresholds are measured against the real V8 heap limit** (`heap_size_limit`,
+> i.e. `--max-old-space-size`), **not** the dynamically-committed `heapTotal`
+> (Issue #3410). Committed `heapTotal` starts far below the configured limit and
+> grows on demand, so measuring against it would read ~100% usage early in a run
+> and fire a spurious CRITICAL response while gigabytes of headroom remain. The
+> `[MemoryMonitor] Heap: <used> / <limit> (<pct>%)` log line shows the real
+> ceiling. When the runtime cannot report the limit the monitor falls back to
+> `heapTotal` (legacy behaviour).
+
 **Step 2 — Adjust `MemoryMonitor` thresholds:**
 
 If warnings trigger too frequently, your workload may need more headroom:
