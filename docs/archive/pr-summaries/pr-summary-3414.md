@@ -9,8 +9,8 @@ NEAT-AI-Discovery #1686 regression class. This PR makes the applier consume the
 variance-aware compensation now emitted by NEAT-AI-Discovery instead:
 
 - **#1559 / #1689 — weight redistribution** (`removeNeuronCompensation`): for a
-  variance-carrying candidate, bump the correlated survivor's synapse weight into
-  the shared target by `deltaWeight` **in addition to** the mean bias fold.
+  variance-carrying candidate, bump the correlated survivor's synapse weight
+  into the shared target by `deltaWeight` **in addition to** the mean bias fold.
 - **#1623 / #1690 — constant bias fold** (`constantNeuronBiasFold`): for a
   functionally-constant candidate, apply the pre-computed exact per-target bias
   deltas.
@@ -29,10 +29,11 @@ NEAT-AI-Discovery#1686).
   `RustConstantNeuronBiasFold`, `RustFoldedBiasDelta`,
   `RustRemoveNeuronCompensationData`; optional fields on
   `RustCoordinatedStructuralCandidate` and `RustRemovalCandidate`.
-- **TS types** (`CoordinatedStructuralCandidate.ts`): `RemoveNeuronCompensation`,
-  `ConstantNeuronBiasFold`, `FoldedBiasDelta`, `RemoveNeuronCompensationData`;
-  optional fields on `CoordinatedStructuralCandidate`, `CandidateHarmfulNeuron`,
-  and `RemovalCandidate`.
+- **TS types** (`CoordinatedStructuralCandidate.ts`):
+  `RemoveNeuronCompensation`, `ConstantNeuronBiasFold`, `FoldedBiasDelta`,
+  `RemoveNeuronCompensationData`; optional fields on
+  `CoordinatedStructuralCandidate`, `CandidateHarmfulNeuron`, and
+  `RemovalCandidate`.
 - **Parse** (`DiscoverAnalysis.ts`, `DiscoverResult.ts`): carry the compensation
   payload through the Rust→TS mapping.
 - **Applier** (`DiscoveryNeuronRemoval.ts`): new exported pure helper
