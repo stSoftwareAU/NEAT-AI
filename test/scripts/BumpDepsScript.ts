@@ -198,6 +198,72 @@ Deno.test({
 });
 
 Deno.test({
+  name:
+    "bump-deps.sh resolves deno from ~/.deno/bin fallback when PATH lacks it (Issue #3417)",
+  fn: async () => {
+    // Simulate the unattended launchd/cron PATH: deno installed at
+    // ~/.deno/bin but that directory absent from PATH. The script must probe
+    // the fallback location and proceed, not fail loud.
+    const home = await Deno.makeTempDir();
+    try {
+      const binDir = `${home}/.deno/bin`;
+      await Deno.mkdir(binDir, { recursive: true });
+      const stub = `${binDir}/deno`;
+      // Stub deno tolerates any invocation (read_neat_core_rev calls
+      // `deno eval` even under --dry-run) and exits 0.
+      await Deno.writeTextFile(stub, "#!/bin/sh\nexit 0\n");
+      await Deno.chmod(stub, 0o755);
+
+      const result = await runBump(
+        ["--dry-run", "--no-internal", "--no-external"],
+        { PATH: "/usr/bin:/bin", HOME: home },
+      );
+      assertEquals(
+        result.code,
+        0,
+        `expected exit 0 via fallback deno; stderr=${result.stderr}`,
+      );
+      assert(
+        !result.stderr.includes("deno is required"),
+        `must not fail loud when a fallback deno exists; stderr=${result.stderr}`,
+      );
+    } finally {
+      await Deno.remove(home, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "bump-deps.sh fails loud when deno is absent and no fallback exists (Issue #3417)",
+  fn: async () => {
+    // PATH without deno and a fallback list pointing only at non-existent
+    // binaries must reproduce the original fail-loud behaviour.
+    const home = await Deno.makeTempDir();
+    try {
+      const result = await runBump(
+        ["--dry-run", "--no-internal", "--no-external"],
+        {
+          PATH: "/usr/bin:/bin",
+          HOME: home,
+          BUMP_DEPS_DENO_FALLBACKS: `${home}/none-a/deno:${home}/none-b/deno`,
+        },
+      );
+      assert(
+        result.code !== 0,
+        `expected non-zero exit when no deno is resolvable; stderr=${result.stderr}`,
+      );
+      assert(
+        result.stderr.includes("deno is required"),
+        `expected fail-loud 'deno is required'; stderr=${result.stderr}`,
+      );
+    } finally {
+      await Deno.remove(home, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
   name: "bump-deps.sh exists and is executable",
   fn: async () => {
     const stat = await Deno.stat("bump-deps.sh");
