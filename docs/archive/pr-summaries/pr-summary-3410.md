@@ -8,7 +8,7 @@ the **committed** heap that starts small (~676 MB observed) and grows on demand
 host). This made the usage fraction, the WARNING/CRITICAL thresholds, and the
 CRITICAL response meaningless: the monitor read CRITICAL against the tiny
 committed heap early in the run, fired its cache-eviction response uselessly,
-and never tracked true proximity to the OOM ceiling.
+and never tracked true proximity to the OOM ceiling
 
 The fix reads the real limit from `node:v8`
 `getHeapStatistics().heap_size_limit` (the same mechanism already used by
