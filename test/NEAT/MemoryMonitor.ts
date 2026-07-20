@@ -5,6 +5,7 @@ import {
   attemptProactiveGc,
   captureMemorySnapshot,
   checkMemoryAndEvict,
+  defaultMemoryUsageProvider,
   determinePressureLevel,
   formatMemorySnapshot,
   logMemoryUsage,
@@ -12,6 +13,7 @@ import {
   type MemorySnapshot,
   type MemoryUsageProvider,
   resetMemoryPressureLogCountersForTests,
+  resolveHeapLimit,
   restoreActivationCapIfRecovered,
 } from "@neat/MemoryMonitor.ts";
 import {
@@ -52,7 +54,12 @@ function createTestLogger(): Logger & { messages: string[] } {
 function fakeMemoryProvider(
   heapUsed: number,
   heapTotal: number,
-  extras: { rss?: number; external?: number; arrayBuffers?: number } = {},
+  extras: {
+    heapLimit?: number;
+    rss?: number;
+    external?: number;
+    arrayBuffers?: number;
+  } = {},
 ): MemoryUsageProvider {
   return () => ({ heapUsed, heapTotal, ...extras });
 }
@@ -289,6 +296,7 @@ Deno.test("logMemoryUsage logs formatted heap statistics", () => {
   const result: MemoryCheckResult = {
     heapUsed: 1024 * 1024 * 500,
     heapTotal: 1024 * 1024 * 1000,
+    heapLimit: 1024 * 1024 * 1000,
     usageFraction: 0.5,
     pressureLevel: "normal",
     evicted: false,
@@ -310,6 +318,7 @@ Deno.test("logMemoryUsage includes pressure level tag for warning", () => {
   const result: MemoryCheckResult = {
     heapUsed: 700,
     heapTotal: 1000,
+    heapLimit: 1000,
     usageFraction: 0.7,
     pressureLevel: "warning",
     evicted: true,
@@ -327,6 +336,7 @@ Deno.test("logMemoryUsage includes pressure level tag for critical", () => {
   const result: MemoryCheckResult = {
     heapUsed: 900,
     heapTotal: 1000,
+    heapLimit: 1000,
     usageFraction: 0.9,
     pressureLevel: "critical",
     evicted: true,
@@ -394,6 +404,7 @@ Deno.test("formatMemorySnapshot produces a single-line summary", () => {
     timestampMs: 1_000,
     heapUsed: 1024 * 1024 * 500,
     heapTotal: 1024 * 1024 * 1000,
+    heapLimit: 1024 * 1024 * 4000,
     rss: 1024 * 1024 * 1200,
     external: 1024 * 1024 * 50,
     arrayBuffers: 0,
@@ -405,6 +416,7 @@ Deno.test("formatMemorySnapshot produces a single-line summary", () => {
   const line = formatMemorySnapshot(snapshot);
   assertEquals(line.includes("[MemoryMonitor] Snapshot:"), true);
   assertEquals(line.includes("heap=500 MB/1000 MB"), true);
+  assertEquals(line.includes("limit=4000 MB"), true);
   assertEquals(line.includes("rss=1200 MB"), true);
   assertEquals(line.includes("external=50 MB"), true);
   assertEquals(line.includes("wasmActivation=13/512"), true);
@@ -800,5 +812,151 @@ Deno.test(
       setMaxCachedWasmCreatureActivations(originalCap);
       resetMemoryPressureLogCountersForTests();
     }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Issue #3410 — thresholds must be measured against the real V8 heap *limit*
+// (`heap_size_limit`), not the committed `heapTotal` that grows over the run.
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  "resolveHeapLimit prefers the real heapLimit over committed heapTotal (#3410)",
+  () => {
+    assertStrictEquals(
+      resolveHeapLimit({ heapUsed: 650, heapTotal: 676, heapLimit: 4373 }),
+      4373,
+    );
+  },
+);
+
+Deno.test(
+  "resolveHeapLimit falls back to heapTotal when heapLimit is absent or bogus (#3410)",
+  () => {
+    // Absent — legacy providers / test fakes.
+    assertStrictEquals(resolveHeapLimit({ heapUsed: 5, heapTotal: 10 }), 10);
+    // Zero / non-positive / non-finite must never become the denominator.
+    assertStrictEquals(
+      resolveHeapLimit({ heapUsed: 5, heapTotal: 10, heapLimit: 0 }),
+      10,
+    );
+    assertStrictEquals(
+      resolveHeapLimit({ heapUsed: 5, heapTotal: 10, heapLimit: -1 }),
+      10,
+    );
+    assertStrictEquals(
+      resolveHeapLimit({ heapUsed: 5, heapTotal: 10, heapLimit: NaN }),
+      10,
+    );
+  },
+);
+
+Deno.test(
+  "defaultMemoryUsageProvider reports the real V8 heap limit above committed heapTotal (#3410)",
+  () => {
+    const sample = defaultMemoryUsageProvider();
+    // The real limit must be present, positive, and at least the committed heap
+    // — never the tiny committed value the old code divided by.
+    assertEquals(typeof sample.heapLimit, "number");
+    assertEquals((sample.heapLimit ?? 0) > 0, true);
+    assertEquals((sample.heapLimit ?? 0) >= sample.heapTotal, true);
+    assertEquals((sample.heapLimit ?? 0) >= sample.heapUsed, true);
+  },
+);
+
+Deno.test(
+  "checkMemoryAndEvict measures usageFraction against heapLimit, not heapTotal (#3410)",
+  () => {
+    const originalCap = getMaxCachedWasmCreatureActivations();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(100);
+      const logger = createTestLogger();
+      // Reproduces the GRQ-21 misread: heapUsed nearly fills the committed heap
+      // (650/676 ≈ 96% → would be CRITICAL against heapTotal) but is a small
+      // fraction of the real 4373 MB limit (≈15% → normal).
+      const result = checkMemoryAndEvict(
+        DEFAULT_MEMORY_CONFIG,
+        logger,
+        fakeMemoryProvider(650, 676, { heapLimit: 4373 }),
+      );
+
+      assertStrictEquals(result.pressureLevel, "normal");
+      assertStrictEquals(result.evicted, false);
+      assertEquals(Math.abs(result.usageFraction - 650 / 4373) < 1e-9, true);
+      assertStrictEquals(result.heapLimit, 4373);
+      // Committed heap is still reported for diagnostics, unchanged.
+      assertStrictEquals(result.heapTotal, 676);
+      // No spurious CRITICAL response fired against the tiny committed heap.
+      assertEquals(getMaxCachedWasmCreatureActivations(), 100);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalCap);
+      resetMemoryPressureLogCountersForTests();
+    }
+  },
+);
+
+Deno.test(
+  "checkMemoryAndEvict goes CRITICAL when heapUsed nears the real heap limit (#3410)",
+  () => {
+    const originalCap = getMaxCachedWasmCreatureActivations();
+    const originalCompilationCap = getWasmCompilationCacheMaxSize();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(100);
+      setWasmCompilationCacheSize(50);
+      const logger = createTestLogger();
+      // The genuine OOM approach: 4200 MB used against the 4373 MB limit ≈ 96%.
+      const result = checkMemoryAndEvict(
+        DEFAULT_MEMORY_CONFIG,
+        logger,
+        fakeMemoryProvider(4200, 4250, { heapLimit: 4373 }),
+      );
+
+      assertStrictEquals(result.pressureLevel, "critical");
+      assertStrictEquals(result.evicted, true);
+      assertStrictEquals(result.heapLimit, 4373);
+      assertEquals(getMaxCachedWasmCreatureActivations(), 1);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalCap);
+      setWasmCompilationCacheSize(originalCompilationCap);
+      resetMemoryPressureLogCountersForTests();
+    }
+  },
+);
+
+Deno.test(
+  "checkMemoryAndEvict preserves legacy heapTotal fallback when no heapLimit provided (#3410)",
+  () => {
+    const originalCap = getMaxCachedWasmCreatureActivations();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(100);
+      const logger = createTestLogger();
+      // No heapLimit — behaviour must match the pre-fix path exactly.
+      const result = checkMemoryAndEvict(
+        DEFAULT_MEMORY_CONFIG,
+        logger,
+        fakeMemoryProvider(900, 1000),
+      );
+      assertStrictEquals(result.pressureLevel, "critical");
+      assertStrictEquals(result.usageFraction, 0.9);
+      assertStrictEquals(result.heapLimit, 1000);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalCap);
+      resetMemoryPressureLogCountersForTests();
+    }
+  },
+);
+
+Deno.test(
+  "captureMemorySnapshot records the real heap limit (#3410)",
+  () => {
+    const snapshot = captureMemorySnapshot(
+      { heapUsed: 650, heapTotal: 676, heapLimit: 4373 },
+      99,
+    );
+    assertStrictEquals(snapshot.heapLimit, 4373);
+    assertStrictEquals(snapshot.heapTotal, 676);
   },
 );

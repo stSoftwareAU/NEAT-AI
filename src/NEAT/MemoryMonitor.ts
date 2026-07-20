@@ -17,6 +17,7 @@
  *   non-essential caches, attempt GC if available.
  */
 
+import v8 from "node:v8";
 import type { RequiredMemoryConfig } from "@config/MemoryConfig.ts";
 import {
   evictOldestWasmCreatureActivations,
@@ -43,9 +44,17 @@ export type PressureLevel = "normal" | "warning" | "critical";
 export interface MemoryCheckResult {
   /** Heap bytes currently in use. */
   heapUsed: number;
-  /** Total heap bytes available. */
+  /** Committed heap bytes (V8 `heapTotal`) — grows on demand up to the limit. */
   heapTotal: number;
-  /** Usage as a fraction of total (0–1). */
+  /**
+   * The V8 old-space heap **limit** in bytes — the real ceiling
+   * (`--max-old-space-size`, reported via `heap_size_limit`) that `heapUsed`
+   * approaches before OOM. Distinct from `heapTotal`, which is only the heap
+   * currently committed and grows over the run (Issue #3410). Falls back to
+   * `heapTotal` when the runtime does not expose the limit.
+   */
+  heapLimit: number;
+  /** Usage as a fraction of the heap limit (0–1). */
   usageFraction: number;
   /** The determined pressure level. */
   pressureLevel: PressureLevel;
@@ -77,8 +86,14 @@ export interface MemorySnapshot {
   timestampMs: number;
   /** Heap bytes currently in use (from the memory provider). */
   heapUsed: number;
-  /** Heap bytes currently available (from the memory provider). */
+  /** Committed heap bytes (from the memory provider). */
   heapTotal: number;
+  /**
+   * The V8 old-space heap limit in bytes — the real OOM ceiling, not the
+   * committed `heapTotal` (Issue #3410). Falls back to `heapTotal` when the
+   * runtime does not expose the limit.
+   */
+  heapLimit: number;
   /** Resident set size in bytes, if reported by the provider. */
   rss: number;
   /** External (non-heap) bytes attributed to V8, if reported. */
@@ -277,9 +292,35 @@ export type MemoryUsageProvider = () => MemoryUsageSample;
 export interface MemoryUsageSample {
   heapUsed: number;
   heapTotal: number;
+  /**
+   * The V8 old-space heap **limit** in bytes (`heap_size_limit`) — the real
+   * ceiling `heapUsed` approaches before OOM. Optional so existing callers /
+   * test providers that only supply `heapUsed` / `heapTotal` keep working;
+   * when absent or non-positive the limit falls back to `heapTotal`
+   * (Issue #3410).
+   */
+  heapLimit?: number;
   rss?: number;
   external?: number;
   arrayBuffers?: number;
+}
+
+/**
+ * Resolve the effective heap **limit** for a sample (Issue #3410).
+ *
+ * Prefers the real V8 old-space limit (`heapLimit`) when the provider reports a
+ * positive, finite value; otherwise falls back to the committed `heapTotal` so
+ * runtimes / test providers that cannot report the limit keep their previous
+ * behaviour. This is the correct denominator for pressure thresholds: dividing
+ * by the committed `heapTotal` (which starts small and grows) made the monitor
+ * read CRITICAL against a tiny committed heap and blind to true OOM proximity.
+ */
+export function resolveHeapLimit(sample: MemoryUsageSample): number {
+  const limit = sample.heapLimit;
+  if (typeof limit === "number" && Number.isFinite(limit) && limit > 0) {
+    return limit;
+  }
+  return sample.heapTotal;
 }
 
 /** Injectable clock for deterministic tests (Issue #2381). */
@@ -293,9 +334,31 @@ export function defaultMemoryUsageProvider(): MemoryUsageSample {
   return {
     heapUsed: mem.heapUsed,
     heapTotal: mem.heapTotal,
+    // `Deno.memoryUsage()` reports the *committed* heap (`heapTotal`), which
+    // starts small (~a few hundred MB) and grows over the run — it is NOT the
+    // real OOM ceiling. The V8 old-space limit (`--max-old-space-size`, e.g.
+    // ~4373 MB on an 8 GB host) is only exposed via `node:v8`
+    // `getHeapStatistics().heap_size_limit`, so read it there (Issue #3410).
+    heapLimit: readHeapSizeLimit(),
     rss: mem.rss,
     external: mem.external,
   };
+}
+
+/**
+ * The current isolate's V8 old-space heap limit in bytes (Issue #3410).
+ *
+ * Returns `0` when `node:v8` cannot report the limit, so `resolveHeapLimit`
+ * transparently falls back to the committed `heapTotal` rather than dividing by
+ * a bogus value.
+ */
+function readHeapSizeLimit(): number {
+  try {
+    const limit = v8.getHeapStatistics().heap_size_limit;
+    return Number.isFinite(limit) && limit > 0 ? limit : 0;
+  } catch {
+    return 0;
+  }
 }
 
 /**
@@ -313,6 +376,7 @@ export function captureMemorySnapshot(
     timestampMs: now,
     heapUsed: sample.heapUsed,
     heapTotal: sample.heapTotal,
+    heapLimit: resolveHeapLimit(sample),
     rss: sample.rss ?? 0,
     external: sample.external ?? 0,
     arrayBuffers: sample.arrayBuffers ?? 0,
@@ -333,7 +397,8 @@ function formatMB(bytes: number): string {
  */
 export function formatMemorySnapshot(snapshot: MemorySnapshot): string {
   return `[MemoryMonitor] Snapshot: heap=${formatMB(snapshot.heapUsed)}/` +
-    `${formatMB(snapshot.heapTotal)} rss=${formatMB(snapshot.rss)} ` +
+    `${formatMB(snapshot.heapTotal)} limit=${formatMB(snapshot.heapLimit)} ` +
+    `rss=${formatMB(snapshot.rss)} ` +
     `external=${formatMB(snapshot.external)} ` +
     `wasmActivation=${snapshot.wasmActivationEntries}/${snapshot.wasmActivationCap} ` +
     `wasmCompilation=${snapshot.wasmCompilationEntries} ` +
@@ -371,7 +436,12 @@ export function checkMemoryAndEvict(
   const sample = provider();
   const { heapUsed, heapTotal } = sample;
 
-  const usageFraction = heapTotal > 0 ? heapUsed / heapTotal : 0;
+  // Divide by the real V8 old-space *limit*, not the committed `heapTotal`.
+  // `heapTotal` grows on demand, so `heapUsed / heapTotal` reads near-full
+  // against a tiny committed heap early in the run (the "676 MB" misread) and
+  // never reflects true proximity to the OOM ceiling (Issue #3410).
+  const heapLimit = resolveHeapLimit(sample);
+  const usageFraction = heapLimit > 0 ? heapUsed / heapLimit : 0;
   const pressureLevel = determinePressureLevel(usageFraction, config);
 
   let evicted = false;
@@ -383,7 +453,7 @@ export function checkMemoryAndEvict(
   const nowMs = now();
   const shouldSnapshot = config.enabled &&
     usageFraction >= config.snapshotThreshold &&
-    heapTotal > 0 &&
+    heapLimit > 0 &&
     (nowMs - _lastSnapshotAtMs) >= config.snapshotIntervalMs;
 
   if (shouldSnapshot) {
@@ -456,6 +526,7 @@ export function checkMemoryAndEvict(
   return {
     heapUsed,
     heapTotal,
+    heapLimit,
     usageFraction,
     pressureLevel,
     evicted,
@@ -479,8 +550,10 @@ export function logMemoryUsage(
     ? ""
     : ` [${result.pressureLevel.toUpperCase()}]`;
 
+  // Report against the real heap *limit* so the percentage matches
+  // usageFraction and the CRITICAL threshold (Issue #3410).
   logger.info(
     `[MemoryMonitor] Heap: ${formatMB(result.heapUsed)} / ` +
-      `${formatMB(result.heapTotal)} (${pct}%)${levelTag}`,
+      `${formatMB(result.heapLimit)} (${pct}%)${levelTag}`,
   );
 }

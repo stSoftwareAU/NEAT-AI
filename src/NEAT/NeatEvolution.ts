@@ -144,7 +144,7 @@ export async function evolve(
       kind: "memory_pressure",
       timestamp: Temporal.Now.instant().toString(),
       heapUsed: preFitnessMemory.heapUsed,
-      heapLimit: preFitnessMemory.heapTotal,
+      heapLimit: preFitnessMemory.heapLimit,
       evicted: true,
       pressureLevel: preFitnessMemory.pressureLevel as "warning" | "critical",
     });
@@ -909,7 +909,7 @@ export async function evolve(
       kind: "memory_pressure",
       timestamp: Temporal.Now.instant().toString(),
       heapUsed: memoryResult.heapUsed,
-      heapLimit: memoryResult.heapTotal,
+      heapLimit: memoryResult.heapLimit,
       evicted: true,
       pressureLevel: memoryResult.pressureLevel as "warning" | "critical",
     });
