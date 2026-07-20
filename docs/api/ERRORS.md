@@ -11,6 +11,7 @@ and the validation patterns the library expects callers to follow.
 
 - `CrisprError`, `CrisprErrorCode`
 - `BreedExhaustionError`, `BreedExhaustionReason`
+- `DatasetError`, `DatasetErrorReason`
 - `ValidationError` (internal — thrown by creature validation but not
   re-exported from `mod.ts`; documented here so callers know what to catch)
 
@@ -44,6 +45,40 @@ Thrown by the breeding pipeline when no viable child can be produced after the
 configured retry budget. `BreedExhaustionReason` enumerates the underlying
 causes (e.g. all candidate parents excluded, every attempted topology rejected
 by validation).
+
+## 🗂️ DatasetError
+
+```typescript
+import { DatasetError } from "@stsoftware/neat-ai";
+import type { DatasetErrorReason } from "@stsoftware/neat-ai";
+
+try {
+  await creature.evaluateDir(dataDir, cost, false);
+} catch (err) {
+  if (err instanceof DatasetError) {
+    // err.path names the missing file/directory; err.reason discriminates.
+    console.error(err.reason, err.path, err.message);
+  }
+}
+```
+
+Thrown when a binary training dataset vanishes mid-run — the directory or a
+`.bin` file is deleted out from under a running discovery (e.g. a background
+disk-cleanup sweep `rm -rf`s `.trainData-binary/` while an iteration holds
+hundreds of files open). Rather than letting the missing data propagate into
+scoring and surface as a misleading
+`AssertionError: Error is not finite:
+Infinity`, the dataset I/O boundaries fail
+loud with a `DatasetError` that names the offending path. `DatasetError.reason`
+is one of the `DatasetErrorReason` values:
+
+- `"DIRECTORY_MISSING"` — the dataset directory itself is gone.
+- `"FILE_MISSING"` — a `.bin` file disappeared between listing and reading it.
+- `"NO_DATA_FILES"` — the directory exists but holds no `.bin` training files.
+
+`DatasetError.path` carries the file or directory path that could not be read,
+so operators debug the real fault (the dataset disappeared) rather than a
+numeric-stability assertion.
 
 ## 🔒 ValidationError
 
@@ -108,9 +143,10 @@ try {
 }
 ```
 
-For programmatic discrimination of CRISPR and breeding failures, prefer
-`instanceof CrisprError` and `instanceof BreedExhaustionError` respectively —
-both classes are stable public exports.
+For programmatic discrimination of CRISPR, breeding, and vanished-dataset
+failures, prefer `instanceof CrisprError`, `instanceof BreedExhaustionError`,
+and `instanceof DatasetError` respectively — all three classes are stable public
+exports.
 
 ---
 

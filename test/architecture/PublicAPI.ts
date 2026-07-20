@@ -17,6 +17,7 @@ import {
   CreatureUtil,
   CRISPR,
   CrisprError,
+  DatasetError,
   DEFAULT_PLATEAU_DETECTION,
   fetchWasmForWorkers,
   formatErrorDelta,
@@ -89,6 +90,18 @@ Deno.test("Public API: CrisprError is exported and constructable", () => {
   const error = new CrisprError("test", "INVALID_DNA");
   assertEquals(error.name, "CrisprError");
   assertEquals(error.code, "INVALID_DNA");
+  assert(error instanceof Error);
+});
+
+Deno.test("Public API: DatasetError is exported and constructable", () => {
+  const error = new DatasetError(
+    "training data directory /tmp/x disappeared mid-run",
+    "DIRECTORY_MISSING",
+    "/tmp/x",
+  );
+  assertEquals(error.name, "DatasetError");
+  assertEquals(error.reason, "DIRECTORY_MISSING");
+  assertEquals(error.path, "/tmp/x");
   assert(error instanceof Error);
 });
 

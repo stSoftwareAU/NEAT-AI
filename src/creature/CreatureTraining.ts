@@ -17,6 +17,8 @@ import {
   isValidWriteableSemanticVersion,
 } from "@upgrade/SemanticVersionValidation.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
+import { DatasetError } from "@errors/DatasetError.ts";
+import { openDatasetFileSync } from "@architecture/DatasetIO.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { makeDataDir } from "@architecture/DataSet.ts";
 import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
@@ -272,7 +274,15 @@ export function traceDir(
   options: NeatOptions,
 ): { score: number; error: number } {
   const dataResult = dataFiles(dataDir);
-  assert(dataResult.files.length > 0, "No data files found");
+  // Issue #3412: an empty file list means the dataset vanished / holds no
+  // `.bin` files — fail loud with a DatasetError naming the directory.
+  if (dataResult.files.length === 0) {
+    throw new DatasetError(
+      `no .bin training data files found in ${dataDir} (dataset vanished?)`,
+      "NO_DATA_FILES",
+      dataDir,
+    );
+  }
   const config = createNeatConfig(options);
   const cost = Costs.find(config.costName);
   let error = 0;
@@ -304,7 +314,9 @@ export function traceDir(
 
   for (let fileIndx = dataResult.files.length; fileIndx--;) {
     const filePath = dataResult.files[fileIndx];
-    const file = Deno.openSync(filePath, { read: true });
+    // Issue #3412: a vanished `.bin` file fails loud as a DatasetError naming
+    // the path rather than a bare NotFound.
+    const file = openDatasetFileSync(filePath);
 
     try {
       while (true) {
