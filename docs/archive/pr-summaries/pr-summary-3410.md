@@ -1,98 +1,109 @@
 ## Summary
 
-Fixed the `MemoryMonitor` heap-limit misread that let the GRQ `learn` stage OOM
-on an 8 GB host (Issue #3410). The monitor computed heap pressure as
-`heapUsed / heapTotal`, where `heapTotal` is `Deno.memoryUsage().heapTotal` —
-the **committed** heap that starts small (~676 MB observed) and grows on demand
-— not the real V8 old-space **limit** (`--max-old-space-size`, ~4373 MB on the
-host). This made the usage fraction, the WARNING/CRITICAL thresholds, and the
-CRITICAL response meaningless: the monitor read CRITICAL against the tiny
-committed heap early in the run, fired its cache-eviction response uselessly,
-and never tracked true proximity to the OOM ceiling
+The `MemoryMonitor` misread the V8 heap limit, so its pressure thresholds and
+CRITICAL response were meaningless — it went CRITICAL early with gigabytes of
+headroom and never contained the real gen-2 heap growth that OOM-aborted the
+GRQ-21 `learn` run (exit 133). This fixes the library-side root cause. **Closes
+#3410.**
 
-The fix reads the real limit from `node:v8`
-`getHeapStatistics().heap_size_limit` (the same mechanism already used by
-`WorkerHeapBudget.ts` / `WorkerHandlerBase.ts`) and divides `heapUsed` by that
-limit instead. Now the pressure level, thresholds, snapshot, and the emitted
-`memory_pressure` training event all reflect the genuine OOM ceiling, so the
-graduated eviction and proactive-GC response fire at the right time — when
-`heapUsed` actually approaches the real limit — giving them a chance to relieve
-pressure before V8 aborts.
+Root cause (issue defect #2): `checkMemoryAndEvict` computed
+`usageFraction = heapUsed / heapTotal`, where `heapTotal` is the
+**dynamically-committed** heap from `Deno.memoryUsage()`. Committed `heapTotal`
+starts far below the configured `--max-old-space-size` and grows on demand, so
+early in a run `heapUsed / heapTotal` reads ~100% and fires a spurious CRITICAL
+while the real limit is untouched. On GRQ-21 the **4373 MB** V8 limit was
+misread as **676 MB** (the committed heapTotal at that moment).
 
-`Closes #3410.`
+The fix reads the **real** V8 old-space limit via `node:v8`
+`getHeapStatistics().heap_size_limit` — the same source `WorkerHeapBudget`
+already uses — and measures pressure against it, falling back to committed
+`heapTotal` only when the runtime cannot report a limit (legacy behaviour). The
+`[MemoryMonitor] Heap: <used> / <limit> (<pct>%)` log line and the emitted
+`memory_pressure` training event now both report the real ceiling.
 
-### Scope note
+This also addresses the containment side of defect #1 (residual heap growth
+post-#3403): with the limit read correctly, the CRITICAL response no longer
+fires spuriously early **and** genuinely fires when the heap approaches the real
+limit, so cache eviction / proactive GC actually run before the V8 OOM abort
+rather than being wasted on a false alarm. The change does not depend on
+reducing `popSize` (GRQ#3472 keeps population = 20).
 
-This library-side change addresses defect 2 (the misread limit), which is the
-root cause of why the monitor's CRITICAL response "fired without preventing the
-OOM" in defect 1: with a correct denominator the monitor's warning/critical
-responses are now meaningful and actionable near the true limit. Downstream
-containment (wiring `learn.sh` into the bounded exit-133 retry and tuning the
-low-memory-profile heap budget) is owned by stSoftwareAU/GRQ#3508, per the
-issue. No change depends on reducing `popSize` (GRQ#3472 keeps it at 20).
+### What changed
 
-### Deno regression avoided
-
-- Read the V8 heap limit via the existing `node:v8` `getHeapStatistics()` API
-  (already used elsewhere in this Deno repo) rather than introducing any
-  Node-only tooling.
+| File                             | Change                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/NEAT/MemoryMonitor.ts`      | New `readHeapLimit()` (reads `heap_size_limit`); `defaultMemoryUsageProvider` populates `heapLimit`; `checkMemoryAndEvict` divides by the real limit (fallback to `heapTotal`) and returns `heapLimit`; `logMemoryUsage` logs against the real limit. `MemoryUsageSample` / `MemoryCheckResult` gain an optional `heapLimit`. |
+| `src/NEAT/NeatEvolution.ts`      | Both `memory_pressure` events report `heapLimit` (real limit) instead of committed `heapTotal`.                                                                                                                                                                                                                               |
+| `docs/troubleshooting/MEMORY.md` | Documents that thresholds are measured against the real V8 limit, not committed `heapTotal`.                                                                                                                                                                                                                                  |
 
 ## Evidence
 
-Backend/library change with no web interface — verified via unit tests
-(`deno test`), not screenshots.
+Backend/library change — no web interface to screenshot. Verified via the unit
+tests below (all 40 tests in `test/NEAT/MemoryMonitor.ts` pass, including the 7
+new #3410 cases):
 
-Behaviour before vs after, for the reproduced GRQ-21 sample (`heapUsed=650 MB`,
-committed `heapTotal=676 MB`, real `heapLimit=4373 MB`):
+```
+checkMemoryAndEvict measures usage against the real heap limit, not committed heapTotal (#3410) ... ok
+checkMemoryAndEvict fires critical when heap actually approaches the real limit (#3410) ... ok
+checkMemoryAndEvict falls back to committed heapTotal when no real limit is reported (#3410) ... ok
+checkMemoryAndEvict ignores a non-positive heap limit and falls back to heapTotal (#3410) ... ok
+readHeapLimit reports the real V8 old-space limit (#3410) ... ok
+defaultMemoryUsageProvider populates the real heap limit (#3410) ... ok
+logMemoryUsage logs against the real heap limit when present (#3410) ... ok
+ok | 40 passed | 0 failed
+```
+
+The first case is the direct regression reproduction: a sample with
+`heapUsed = 650 MB`, committed `heapTotal = 676 MB` (≈96% of committed), and the
+real `heapLimit = 4373 MB` now reports **normal** (~15%) instead of the old
+spurious **critical**.
 
 ```mermaid
 flowchart TD
-    S["sample: heapUsed=650MB, heapTotal=676MB, heapLimit=4373MB"]
-    S --> OLD["BEFORE: usageFraction = 650 / 676 = 0.96"]
-    S --> NEW["AFTER: usageFraction = 650 / 4373 = 0.15"]
-    OLD --> OLDR["CRITICAL — evict caches, spurious response, still OOMs later"]
-    NEW --> NEWR["NORMAL — no spurious eviction; CRITICAL now fires only near 4373MB"]
-```
+    classDef bad fill:#c0392b,stroke:#922b21,color:#fff
+    classDef good fill:#1e8449,stroke:#196f3d,color:#fff
+    classDef q fill:#1a6fa8,stroke:#154c78,color:#fff
 
-Denominator selection (`resolveHeapLimit`):
+    S["Deno.memoryUsage()<br/>heapUsed, committed heapTotal"] --> Q{"real heap_size_limit<br/>reported?"}:::q
+    Q -- "yes (production)" --> L["divide by real V8 limit<br/>(heap_size_limit)"]:::good
+    Q -- "no (legacy)" --> T["divide by committed heapTotal<br/>(fallback)"]:::good
+    L --> D{"usageFraction vs thresholds"}:::q
+    T --> D
+    D -- "early run, real headroom" --> N["normal — no spurious CRITICAL"]:::good
+    D -- "heap near real limit" --> C["CRITICAL — evict caches + GC<br/>before OOM"]:::good
 
-```mermaid
-flowchart LR
-    A["sample.heapLimit"] -->|finite and > 0| B["use real V8 heap_size_limit"]
-    A -->|absent / 0 / NaN| C["fall back to committed heapTotal (legacy behaviour)"]
+    OLD["OLD: always divide by committed heapTotal<br/>→ reads ~100% early → spurious CRITICAL<br/>→ response wasted, OOM not contained"]:::bad
 ```
 
 ## Test Plan
 
-Added to `test/NEAT/MemoryMonitor.ts`:
+Added to `test/NEAT/MemoryMonitor.ts` (7 new tests, real functions with test
+data asserting behaviour — no source-grep tests):
 
-- `resolveHeapLimit prefers the real heapLimit over committed heapTotal (#3410)`
-- `resolveHeapLimit falls back to heapTotal when heapLimit is absent or bogus (#3410)`
-  — covers absent, `0`, negative, and `NaN` limits (never divides by a bogus
-  value).
-- `defaultMemoryUsageProvider reports the real V8 heap limit above committed heapTotal (#3410)`
-  — asserts the provider now surfaces `heap_size_limit ≥ heapTotal`.
-- `checkMemoryAndEvict measures usageFraction against heapLimit, not heapTotal (#3410)`
-  — the regression test: the 650/676-vs-4373 misread now reads NORMAL, and no
-  spurious CRITICAL cache eviction fires.
-- `checkMemoryAndEvict goes CRITICAL when heapUsed nears the real heap limit (#3410)`
-  — 4200 MB against the 4373 MB limit correctly trips CRITICAL.
-- `checkMemoryAndEvict preserves legacy heapTotal fallback when no heapLimit provided (#3410)`
-  — providers without a limit behave exactly as before.
-- `captureMemorySnapshot records the real heap limit (#3410)`.
+- `checkMemoryAndEvict measures usage against the real heap limit, not committed heapTotal (#3410)`
+  — regression repro (676 MB committed vs 4373 MB real limit → normal, no
+  eviction).
+- `checkMemoryAndEvict fires critical when heap actually approaches the real limit (#3410)`
+  — 4.2 GB against 4373 MB → critical, caches evicted.
+- `checkMemoryAndEvict falls back to committed heapTotal when no real limit is reported (#3410)`
+  — legacy path preserved.
+- `checkMemoryAndEvict ignores a non-positive heap limit and falls back to heapTotal (#3410)`
+  — guards a zero/invalid limit.
+- `readHeapLimit reports the real V8 old-space limit (#3410)` — returns a
+  positive number.
+- `defaultMemoryUsageProvider populates the real heap limit (#3410)` — sample
+  carries `heapLimit >= heapTotal`.
+- `logMemoryUsage logs against the real heap limit when present (#3410)` — log
+  denominator is the real limit, not committed heapTotal.
 
-Existing `MemoryCheckResult` / `MemorySnapshot` literals in the tests were
-updated to include the new required `heapLimit` field, and the snapshot format
-assertion now checks the added `limit=` field. All 47 tests across
-`test/NEAT/MemoryMonitor.ts` and `test/NEAT/PreFitnessMemoryEviction.ts` pass,
-and the 22 `AnalysisHeapGuard` tests (shared provider) remain green.
+All 33 pre-existing `MemoryMonitor` tests remain unchanged and pass, plus
+`PreFitnessMemoryEviction`, `MemoryPressureCacheCorrelation`, and
+`TrainingEventEmitter` suites (60 passed).
 
-## Files changed
+## Scope note
 
-- `src/NEAT/MemoryMonitor.ts` — read `heap_size_limit`; add `heapLimit` to
-  `MemoryUsageSample`, `MemoryCheckResult`, `MemorySnapshot`; new
-  `resolveHeapLimit`; divide by the real limit; report the limit in the log and
-  snapshot.
-- `src/NEAT/NeatEvolution.ts` — emit the real `heapLimit` (not `heapTotal`) in
-  both `memory_pressure` training events.
-- `test/NEAT/MemoryMonitor.ts` — new tests + literal/field updates.
+Defect #2 (the misread limit) is the well-defined library root cause and is
+fully fixed here. Correcting it also makes the CRITICAL response meaningful,
+which is the library-side containment for defect #1's residual heap growth. The
+downstream GRQ containment (bounded exit-133 retry, low-memory heap-budget
+tuning) is tracked separately in stSoftwareAU/GRQ#3508.
