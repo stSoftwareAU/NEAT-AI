@@ -8,6 +8,7 @@
 import type { RustRecordBatchStats } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type {
   CoordinatedStructuralCandidate,
+  RemoveNeuronCompensationData,
 } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import type { TaskDescriptor } from "@costs/CostTaskDescriptor.ts";
 
@@ -142,6 +143,13 @@ export interface CandidateHarmfulNeuron {
    * This must not affect ranking/selection logic.
    */
   comment?: string;
+  /**
+   * Variance-aware compensation emitted by NEAT-AI-Discovery (#1559/#1623).
+   * When present, the applier consumes it instead of the mean-only bias fold
+   * (Issue #1691). Absent for older Discovery builds — the applier then falls
+   * back to the mean-only fold unchanged.
+   */
+  compensation?: RemoveNeuronCompensationData;
 }
 
 export interface CandidateAnalysisBundle {

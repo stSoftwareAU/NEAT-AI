@@ -17,6 +17,7 @@ import {
   buildWireToRuntimeIdMap,
   resolveCoordinatedEdgeEndpoints,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { applyRemoveNeuronCompensation } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryNeuronRemoval.ts";
 import { assertNever } from "@utils/assertNever.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 import {
@@ -176,6 +177,31 @@ export function applyCoordinatedStructuralCandidate(
           continue;
         }
         const beforeNeuronCount = next.neurons.length;
+
+        // Issue #1691: consume the variance-aware compensation emitted by
+        // NEAT-AI-Discovery (#1559/#1623) for this sole-op removal before the
+        // neuron and its synapses are deleted. No mean activation is available
+        // in the coordinated op, so the variance path applies only the survivor
+        // weight bump; the constant path applies the pre-computed folded bias
+        // deltas. When no compensation is present this is a no-op, so older
+        // Discovery builds keep today's delete-only behaviour unchanged.
+        if (
+          candidate.removeNeuronCompensation ||
+          candidate.constantNeuronBiasFold
+        ) {
+          applyRemoveNeuronCompensation(
+            next.neurons,
+            next.synapses,
+            op.neuronUuid,
+            undefined,
+            {
+              removeNeuronCompensation: candidate.removeNeuronCompensation,
+              constantNeuronBiasFold: candidate.constantNeuronBiasFold,
+            },
+            "coordinated/removeNeuron",
+          );
+        }
+
         next.neurons = next.neurons.filter((n) => n.id !== neuronId);
         if (next.neurons.length === beforeNeuronCount) {
           // No-op if neuron didn't exist (idempotent).

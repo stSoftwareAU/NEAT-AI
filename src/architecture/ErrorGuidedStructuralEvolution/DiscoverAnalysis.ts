@@ -348,6 +348,20 @@ function mapRustCoordinatedCandidate(
     operations: rc.operations.map(mapRustCoordinatedOp),
     expectedCreatureScoreGain: rc.expectedCreatureScoreGain,
     comment: rc.comment,
+    // Issue #1691: carry the remove-neuron compensation payload (if any)
+    // through to the applier. The wire and TS shapes match field-for-field,
+    // so structural-clone the optional payloads rather than restating them.
+    removeNeuronCompensation: rc.removeNeuronCompensation
+      ? { ...rc.removeNeuronCompensation }
+      : undefined,
+    constantNeuronBiasFold: rc.constantNeuronBiasFold
+      ? {
+        ...rc.constantNeuronBiasFold,
+        foldedTargets: rc.constantNeuronBiasFold.foldedTargets.map((ft) => ({
+          ...ft,
+        })),
+      }
+      : undefined,
   };
 }
 

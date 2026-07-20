@@ -7,6 +7,7 @@ import type {
 import type { RustRemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import type {
   CoordinatedStructuralCandidate,
+  RemoveNeuronCompensationData,
 } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 
 /**
@@ -30,6 +31,13 @@ export interface RemovalCandidate {
    * This must not affect ranking/selection logic.
    */
   comment?: string;
+  /**
+   * Variance-aware compensation emitted by NEAT-AI-Discovery (#1559/#1623).
+   * When present, the applier consumes it instead of the mean-only bias fold
+   * (Issue #1691). Absent for older Discovery builds — the applier then falls
+   * back to the mean-only fold unchanged.
+   */
+  compensation?: RemoveNeuronCompensationData;
 }
 
 /**
@@ -45,6 +53,7 @@ export function fromRustRemovalCandidate(
     reason: rust.reason,
     meanActivation: rust.meanActivation,
     comment: rust.comment,
+    compensation: rust.compensation,
   };
 }
 

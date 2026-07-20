@@ -9,9 +9,23 @@
 
 import type { CoordinatedStructuralOperation } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 
-/** Returns the last 8 characters of a UUID or the full ID if short. */
+/**
+ * Abbreviates a long, hyphenated UUID to its last 8 characters, keeping short
+ * human-readable ids intact.
+ *
+ * Issue #1691: the previous guard sliced the last 8 characters of the *whole*
+ * id whenever it was longer than 15 chars and contained a `-`. That mangled a
+ * short numeric neuron id such as `neuron-876870118` into `76870118` — dropping
+ * both the `neuron-` prefix and the leading digit. A canonical UUID has four
+ * hyphen-separated groups, so abbreviate only when the id carries at least two
+ * dashes; a single-dash `prefix-number` label is rendered whole.
+ */
 export function shortID(id: string): string {
-  if (id.length > 15 && id.includes("-")) {
+  let dashCount = 0;
+  for (let i = 0; i < id.length; i++) {
+    if (id[i] === "-") dashCount++;
+  }
+  if (id.length > 15 && dashCount >= 2) {
     return id.slice(-8);
   }
   return id;

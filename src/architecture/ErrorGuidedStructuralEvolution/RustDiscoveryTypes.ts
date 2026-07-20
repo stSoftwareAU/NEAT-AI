@@ -197,6 +197,55 @@ export interface RustCoordinatedSetBiasOperation {
 }
 
 /**
+ * Variance-aware weight-redistribution remedy emitted by NEAT-AI-Discovery
+ * (#1559/#1689) on a sole-op `removeNeuron` coordinated candidate. Wire mirror
+ * of `RemoveNeuronCompensation`.
+ */
+export interface RustRemoveNeuronCompensation {
+  targetNeuronUuid: string;
+  survivorNeuronUuid: string;
+  deltaWeight: number;
+  sampleCount: number;
+  candidateVariance: number;
+  survivorVariance: number;
+  covariance: number;
+  correlation: number;
+  biasOnlyResidualVariance: number;
+  redistributedResidualVariance: number;
+  varianceRecovered: number;
+  fullyCompensable: boolean;
+}
+
+/** Wire mirror of `FoldedBiasDelta` (NEAT-AI-Discovery #1623). */
+export interface RustFoldedBiasDelta {
+  targetNeuronUuid: string;
+  biasDelta: number;
+}
+
+/**
+ * Constant-neuron bias-fold remedy emitted by NEAT-AI-Discovery (#1623/#1690) on
+ * a sole-op `removeNeuron` coordinated candidate. Wire mirror of
+ * `ConstantNeuronBiasFold`.
+ */
+export interface RustConstantNeuronBiasFold {
+  constantActivation: number;
+  activationVariance: number;
+  maxResidual: number;
+  foldedTargets: RustFoldedBiasDelta[];
+}
+
+/**
+ * Optional compensation payload emitted by NEAT-AI-Discovery on a remove-neuron
+ * candidate: either the variance-aware weight redistribution or the
+ * constant-neuron bias fold (never both). Wire mirror of
+ * `RemoveNeuronCompensationData` (Issue #1691).
+ */
+export interface RustRemoveNeuronCompensationData {
+  removeNeuronCompensation?: RustRemoveNeuronCompensation;
+  constantNeuronBiasFold?: RustConstantNeuronBiasFold;
+}
+
+/**
  * Ordered grouped structural candidate emitted by Rust.
  */
 export interface RustCoordinatedStructuralCandidate {
@@ -204,6 +253,16 @@ export interface RustCoordinatedStructuralCandidate {
   operations: RustCoordinatedStructuralOperation[];
   expectedCreatureScoreGain: number;
   comment?: string;
+  /**
+   * Variance-aware compensation for a sole-op `removeNeuron` candidate
+   * (NEAT-AI-Discovery #1559/#1689). Omitted by older library versions.
+   */
+  removeNeuronCompensation?: RustRemoveNeuronCompensation;
+  /**
+   * Constant-neuron bias-fold compensation for a sole-op `removeNeuron`
+   * candidate (NEAT-AI-Discovery #1623/#1690). Omitted by older library versions.
+   */
+  constantNeuronBiasFold?: RustConstantNeuronBiasFold;
 }
 
 export type RustStructuralCandidate = never;
@@ -375,6 +434,11 @@ export interface RustRemovalCandidate {
    * This must not affect ranking/selection logic.
    */
   comment?: string;
+  /**
+   * Optional variance-aware compensation emitted by NEAT-AI-Discovery
+   * (#1559/#1623). Omitted by older library versions (Issue #1691).
+   */
+  compensation?: RustRemoveNeuronCompensationData;
 }
 
 /**

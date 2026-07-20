@@ -22,6 +22,13 @@ Deno.test("shortID - returns short ids unchanged", () => {
   assertEquals(shortID("short"), "short");
 });
 
+Deno.test("shortID - keeps a single-dash numeric neuron id intact (Issue #1691)", () => {
+  // Regression: `neuron-876870118` used to be mangled to `76870118` (the
+  // `neuron-` prefix and the leading digit dropped). A single-dash label is
+  // rendered whole; only multi-dash hyphenated UUIDs are abbreviated.
+  assertEquals(shortID("neuron-876870118"), "neuron-876870118");
+});
+
 Deno.test("buildCombinationDescription - 3+ types uses 🏆 emoji", () => {
   const out = buildCombinationDescription(
     ["add-neurons", "remove-neuron", "change-squash"],
