@@ -1,17 +1,18 @@
 /**
- * Issue #2695 / #3426 — supply-chain hygiene for
- * `.github/workflows/shellcheck.yml`.
+ * Issue #2695 / #3426 — every GitHub Actions `uses:` reference in
+ * `.github/workflows/shellcheck.yml` must pin to a 40-character commit SHA
+ * rather than a moving ref such as `@master`, `@main`, or `@vN`.
  *
- * Issue #3426 dropped the unmaintained `ludeeus/action-shellcheck` wrapper
- * (no release in ~42 months) and now lints via the koalaman/shellcheck binary
- * preinstalled on the runner, invoked directly from a `run:` step. This
- * removes the orphaned third-party Action from the supply chain entirely.
+ * A moving ref means any commit pushed to the upstream branch executes
+ * inside our CI on the next run — a supply-chain attack vector with full
+ * `GITHUB_TOKEN` blast radius. This test guards against regression by
+ * scanning the workflow file directly.
  *
- * These tests guard that:
- *   - the unmaintained wrapper does not creep back in, and
- *   - every remaining `uses:` reference stays pinned to a 40-character commit
- *     SHA (Issue #2695) — a moving ref means any commit pushed to the upstream
- *     branch executes inside our CI with full `GITHUB_TOKEN` blast radius.
+ * Issue #3426 removed the unmaintained `ludeeus/action-shellcheck` wrapper —
+ * shellcheck now runs as the preinstalled binary via a `run:` step — so the
+ * pinning guard is expressed generically over whatever actions remain (today,
+ * `actions/checkout`), and a dedicated test asserts the orphaned wrapper is
+ * gone.
  */
 
 import { assert, assertEquals, assertMatch } from "@std/assert";
@@ -54,62 +55,23 @@ Deno.test("extractUses returns empty for no uses lines", () => {
 Deno.test("extractUses captures multiple actions", () => {
   const src = [
     "      - uses: actions/checkout@abc",
-    "      - uses: actions/setup-node@def",
+    "      - uses: ludeeus/action-shellcheck@def",
     "",
   ].join("\n");
   const refs = extractUses(src);
   assertEquals(refs.length, 2);
   assertEquals(refs[0].action, "actions/checkout");
-  assertEquals(refs[1].action, "actions/setup-node");
+  assertEquals(refs[1].action, "ludeeus/action-shellcheck");
 });
 
 Deno.test(
-  "shellcheck.yml no longer uses the unmaintained ludeeus/action-shellcheck (Issue #3426)",
-  async () => {
-    const source = await Deno.readTextFile(WORKFLOW);
-    const refs = extractUses(source).filter(
-      (r) => r.action === "ludeeus/action-shellcheck",
-    );
-    assertEquals(
-      refs.length,
-      0,
-      "shellcheck.yml must not reference the orphaned ludeeus/action-shellcheck wrapper",
-    );
-    assert(
-      !source.includes("ludeeus/action-shellcheck"),
-      "shellcheck.yml must not mention ludeeus/action-shellcheck anywhere (Issue #3426)",
-    );
-  },
-);
-
-Deno.test(
-  "shellcheck.yml lints via the preinstalled koalaman/shellcheck binary (Issue #3426)",
-  async () => {
-    const source = await Deno.readTextFile(WORKFLOW);
-    // The gate must invoke the binary directly at warning severity rather than
-    // through a third-party wrapper Action.
-    assertMatch(
-      source,
-      /shellcheck\s+--severity=warning/,
-      "shellcheck.yml must run 'shellcheck --severity=warning' directly",
-    );
-    // The upstream project reference lets the workflow-sync detector recognise
-    // the lint gate (Issue #2430).
-    assert(
-      source.includes("koalaman/shellcheck"),
-      "shellcheck.yml must reference the upstream koalaman/shellcheck project",
-    );
-  },
-);
-
-Deno.test(
-  "every remaining uses: in shellcheck.yml is pinned to a 40-char commit SHA (Issue #2695)",
+  "shellcheck.yml pins every third-party action to a 40-char commit SHA (Issue #2695, #3426)",
   async () => {
     const source = await Deno.readTextFile(WORKFLOW);
     const refs = extractUses(source);
     assert(
       refs.length > 0,
-      "expected at least one pinned action (e.g. actions/checkout) in shellcheck.yml",
+      "expected at least one `uses:` action reference in shellcheck.yml",
     );
     for (const r of refs) {
       // Reject moving refs.
@@ -124,5 +86,25 @@ Deno.test(
         `${r.action} must be pinned to a 40-char commit SHA on line ${r.line}, got '${r.ref}'`,
       );
     }
+  },
+);
+
+Deno.test(
+  "shellcheck.yml no longer depends on the unmaintained ludeeus/action-shellcheck wrapper (Issue #3426)",
+  async () => {
+    const source = await Deno.readTextFile(WORKFLOW);
+    const usesLudeeus = extractUses(source).some(
+      (r) => r.action === "ludeeus/action-shellcheck",
+    );
+    assert(
+      !usesLudeeus,
+      "shellcheck.yml must not `uses:` the orphaned ludeeus/action-shellcheck wrapper — run the preinstalled shellcheck binary directly instead",
+    );
+    // The job must still lint with the shellcheck binary at warning severity.
+    assertMatch(
+      source,
+      /shellcheck --severity=warning/,
+      "shellcheck.yml must invoke `shellcheck --severity=warning` directly",
+    );
   },
 );
