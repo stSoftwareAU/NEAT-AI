@@ -25,6 +25,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3422:** Every `evolve*` result now carries a run-level `statistics`
+  block for throughput tuning, so GRQ-cluster's `result.json` is self-contained
+  enough to compare configurations across the fleet. It records the configured
+  `populationSize` (plus the final actual size when adaptive population sizing
+  is enabled), host `hardware` descriptors (CPU cores, total memory, host id), a
+  JSON-safe echo of the caller's `requestedOptions` (callbacks recorded by
+  marker, never serialised), and an `improvement` milestone summary — the
+  generation / elapsed time / creatures scored at which the run reached
+  25/50/75/90% of its total score improvement (no per-generation series). New
+  public type exports: `EvolveRunStatistics`, `HardwareDescriptor`,
+  `OptionsEcho`, `ImprovementSummary`, `ImprovementMilestone`.
 - **Issue #3412:** New `DatasetError` typed error (exported from the public
   barrel) makes a vanished training dataset fail loud and clear. When the
   dataset directory or a `.bin` file is deleted out from under a running

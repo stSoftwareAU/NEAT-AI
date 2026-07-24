@@ -475,11 +475,13 @@ existing-code path** with one new scorer. Concretely:
   and lets the current generation finish before exiting cleanly.
 - Time and iteration budgets — `timeoutMinutes`, `iterations`, `targetError`.
 - Result shape —
-  `{ error, score, time, generation, phaseTimingTotals, scorerUtilisation }`
+  `{ error, score, time, generation, phaseTimingTotals, scorerUtilisation, statistics }`
   matches `evolveDir`'s return so existing CLIs and dashboards do not branch on
   the entry point. `phaseTimingTotals` is the whole-run per-phase timing
-  breakdown (Issue #3210) and `scorerUtilisation` is the whole-run per-backend
-  scorer-utilisation breakdown (Issue #3234); see below.
+  breakdown (Issue #3210), `scorerUtilisation` is the whole-run per-backend
+  scorer-utilisation breakdown (Issue #3234), and `statistics` is the run-level
+  tuning block (population, hardware, options echo, score-improvement milestones
+  — Issue #3422); see below.
 
 ### New code paths
 
@@ -608,6 +610,68 @@ const { scorerUtilisation } = await creature.evolveDataSet(data, opts);
 The per-generation split is also emitted on the verbose `[Throughput]` log line
 (`batchScored…/perCreatureScored…/batchFallback…`). The overhead is zero — the
 counters are always on; this just sums them.
+
+## 🎛️ Run-level tuning statistics (Issue #3422)
+
+Alongside `phaseTimingTotals` and `scorerUtilisation`, every `evolve*` result
+carries a `statistics` block so each run's `result.json` is self-contained
+enough to compare configurations across the production fleet and judge which
+gives the best **rate** of score improvement. Final score alone is insufficient
+because runs plateau — the same final number can be reached fast or slow, on a
+big or small machine.
+
+```typescript
+const { statistics } = await creature.evolveDataSet(data, opts);
+// {
+//   populationSize: 150,          // configured — the primary tuning variable
+//   adaptivePopulation: false,    // AdaptivePopulationConfig.enabled
+//   // finalPopulationSize: 137,  // present ONLY when adaptivePopulation is on
+//   hardware: { cpuCores: 32, totalMemoryBytes: 67_000_000_000, host: "GRQ-7" },
+//   requestedOptions: { populationSize: 150, threads: 32, onTrainingEvent: "[function]" },
+//   improvement: {
+//     firstScore: 0.42, finalScore: 0.91, totalImprovement: 0.49,
+//     milestones: [ { fraction: 0.25, generation: 12, timeMs: 41000, scoredCount: 18000, score: 0.54 }, … ],
+//   },
+// }
+```
+
+- **`populationSize`** — the configured population size, recorded even when it
+  came from a default (it is the primary tuning variable). GRQ-cluster feeds
+  this into the `population` column of `performance.csv`.
+- **`adaptivePopulation`** / **`finalPopulationSize`** — whether adaptive
+  population sizing was enabled, and the final actual population size. The final
+  size is present **only** when adaptive sizing was on; otherwise the population
+  never diverges from `populationSize`.
+- **`hardware`** — best-effort host descriptors (CPU cores, total memory bytes,
+  host identifier) so "variants checked per hour" can be normalised against the
+  machine that produced it. Any field is `null` when the runtime API is
+  unavailable or `--allow-sys` was not granted.
+- **`requestedOptions`** — a JSON-safe echo of the options the caller actually
+  requested (its changes from the defaults). Non-serialisable entries (callbacks
+  such as `onTrainingEvent`, an `AbortSignal`, typed arrays) are recorded by a
+  compact marker keyed by their option name, never serialised.
+- **`improvement`** — a compact milestone summary of the score-improvement
+  curve: the generation, elapsed time, and cumulative creatures scored at which
+  the run reached 25/50/75/90% of its total improvement. It is derived at run
+  end from a tiny in-memory trajectory (one point per improvement) — **no**
+  per-generation series is persisted, keeping `result.json` small.
+
+Per-hour rates are **derived downstream** from `generation`, `time`, and
+`scorerUtilisation`; they are deliberately not emitted here.
+
+```mermaid
+flowchart LR
+    Run[evolve* run] --> Cfg[config.populationSize<br/>+ adaptivePopulation]
+    Run --> HW[readHardwareDescriptor]
+    Run --> Echo[echoRequestedOptions]
+    Run --> Traj[best-score improvement<br/>trajectory]
+    Traj --> Sum[summariseImprovement<br/>25/50/75/90%]
+    Cfg --> Stats[statistics block]
+    HW --> Stats
+    Echo --> Stats
+    Sum --> Stats
+    Stats --> RJ[(result.json)]
+```
 
 ## 🧪 Validation hold-out hook (deferred)
 
