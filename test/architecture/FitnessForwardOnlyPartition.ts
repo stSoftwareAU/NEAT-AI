@@ -19,6 +19,7 @@ import { makeDataDir } from "@architecture/DataSet.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import {
   __resetRustScorerBridgeForTests,
+  __setRustScorerConfigForTests,
   __setRustScorerRunnerForTests,
 } from "../../src/score/RustScorerBridge.ts";
 
@@ -69,37 +70,19 @@ function buildCreature(bias: number, forwardOnly: boolean): Creature {
   return Creature.fromJSON(data);
 }
 
-interface BatchEnvSnapshot {
-  enabled: string | undefined;
-  batch: string | undefined;
-}
-
-function enableBatchEnv(): BatchEnvSnapshot {
-  const snapshot: BatchEnvSnapshot = {
-    enabled: Deno.env.get("NEAT_AI_RUST_SCORER_ENABLED"),
-    batch: Deno.env.get("NEAT_AI_RUST_SCORER_BATCH"),
-  };
-  Deno.env.set("NEAT_AI_RUST_SCORER_ENABLED", "true");
-  Deno.env.set("NEAT_AI_RUST_SCORER_BATCH", "true");
-  return snapshot;
-}
-
-function restoreBatchEnv(snapshot: BatchEnvSnapshot): void {
-  if (snapshot.enabled === undefined) {
-    Deno.env.delete("NEAT_AI_RUST_SCORER_ENABLED");
-  } else {
-    Deno.env.set("NEAT_AI_RUST_SCORER_ENABLED", snapshot.enabled);
-  }
-  if (snapshot.batch === undefined) {
-    Deno.env.delete("NEAT_AI_RUST_SCORER_BATCH");
-  } else {
-    Deno.env.set("NEAT_AI_RUST_SCORER_BATCH", snapshot.batch);
-  }
+/**
+ * Force batch scoring on in-process (Issue #3234). Callers pair this with a
+ * `__resetRustScorerBridgeForTests()` in their `finally`, which clears the
+ * override. This never touches the shared process env, so parallel test
+ * workers cannot race on it.
+ */
+function enableBatchConfig(): void {
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
 }
 
 Deno.test("Fitness partition - all forwardOnly population batches every creature", async () => {
   __resetRustScorerBridgeForTests();
-  const envSnapshot = enableBatchEnv();
+  enableBatchConfig();
 
   const population = [
     buildCreature(0.1, true),
@@ -171,7 +154,6 @@ Deno.test("Fitness partition - all forwardOnly population batches every creature
       assert(creature.score !== undefined, "every creature should be scored");
     }
   } finally {
-    restoreBatchEnv(envSnapshot);
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }
@@ -179,7 +161,7 @@ Deno.test("Fitness partition - all forwardOnly population batches every creature
 
 Deno.test("Fitness partition - all recurrent population skips batch entirely", async () => {
   __resetRustScorerBridgeForTests();
-  const envSnapshot = enableBatchEnv();
+  enableBatchConfig();
 
   const population = [
     buildCreature(0.1, false),
@@ -235,7 +217,6 @@ Deno.test("Fitness partition - all recurrent population skips batch entirely", a
       assert(creature.score !== undefined, "every creature should be scored");
     }
   } finally {
-    restoreBatchEnv(envSnapshot);
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }
@@ -243,7 +224,7 @@ Deno.test("Fitness partition - all recurrent population skips batch entirely", a
 
 Deno.test("Fitness partition - mixed population batches forwardOnly only, recurrent via worker", async () => {
   __resetRustScorerBridgeForTests();
-  const envSnapshot = enableBatchEnv();
+  enableBatchConfig();
 
   const fwd1 = buildCreature(0.11, true);
   const fwd2 = buildCreature(0.12, true);
@@ -331,7 +312,6 @@ Deno.test("Fitness partition - mixed population batches forwardOnly only, recurr
     // Telemetry: scored count covers both paths (4 unique creatures).
     assertEquals(fitness.lastScoredCreatureCount, 4);
   } finally {
-    restoreBatchEnv(envSnapshot);
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }
@@ -339,7 +319,7 @@ Deno.test("Fitness partition - mixed population batches forwardOnly only, recurr
 
 Deno.test("Fitness partition - batch failure on forwardOnly subset still scores recurrent via worker", async () => {
   __resetRustScorerBridgeForTests();
-  const envSnapshot = enableBatchEnv();
+  enableBatchConfig();
 
   const fwd = buildCreature(0.31, true);
   const rec = buildCreature(0.32, false);
@@ -389,7 +369,6 @@ Deno.test("Fitness partition - batch failure on forwardOnly subset still scores 
       assert(creature.score !== undefined, "every creature should be scored");
     }
   } finally {
-    restoreBatchEnv(envSnapshot);
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }

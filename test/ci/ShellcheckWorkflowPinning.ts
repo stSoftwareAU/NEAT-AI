@@ -1,12 +1,18 @@
 /**
- * Issue #2695 — `.github/workflows/shellcheck.yml` must pin
- * `ludeeus/action-shellcheck` to a 40-character commit SHA rather than a
- * moving ref such as `@master`, `@main`, or `@vN`.
+ * Issue #2695 / #3426 — every GitHub Actions `uses:` reference in
+ * `.github/workflows/shellcheck.yml` must pin to a 40-character commit SHA
+ * rather than a moving ref such as `@master`, `@main`, or `@vN`.
  *
  * A moving ref means any commit pushed to the upstream branch executes
  * inside our CI on the next run — a supply-chain attack vector with full
  * `GITHUB_TOKEN` blast radius. This test guards against regression by
  * scanning the workflow file directly.
+ *
+ * Issue #3426 removed the unmaintained `ludeeus/action-shellcheck` wrapper —
+ * shellcheck now runs as the preinstalled binary via a `run:` step — so the
+ * pinning guard is expressed generically over whatever actions remain (today,
+ * `actions/checkout`), and a dedicated test asserts the orphaned wrapper is
+ * gone.
  */
 
 import { assert, assertEquals, assertMatch } from "@std/assert";
@@ -59,42 +65,46 @@ Deno.test("extractUses captures multiple actions", () => {
 });
 
 Deno.test(
-  "shellcheck.yml pins ludeeus/action-shellcheck to a 40-char commit SHA (Issue #2695)",
+  "shellcheck.yml pins every third-party action to a 40-char commit SHA (Issue #2695, #3426)",
   async () => {
     const source = await Deno.readTextFile(WORKFLOW);
-    const refs = extractUses(source).filter(
-      (r) => r.action === "ludeeus/action-shellcheck",
-    );
+    const refs = extractUses(source);
     assert(
       refs.length > 0,
-      "expected at least one ludeeus/action-shellcheck reference in shellcheck.yml",
+      "expected at least one `uses:` action reference in shellcheck.yml",
     );
     for (const r of refs) {
       // Reject moving refs.
       assert(
         r.ref !== "master" && r.ref !== "main",
-        `ludeeus/action-shellcheck pinned to moving ref '${r.ref}' on line ${r.line}`,
+        `${r.action} pinned to moving ref '${r.ref}' on line ${r.line}`,
       );
       // Require a 40-character lowercase hex commit SHA.
       assertMatch(
         r.ref,
         /^[0-9a-f]{40}$/,
-        `ludeeus/action-shellcheck must be pinned to a 40-char commit SHA on line ${r.line}, got '${r.ref}'`,
+        `${r.action} must be pinned to a 40-char commit SHA on line ${r.line}, got '${r.ref}'`,
       );
     }
   },
 );
 
 Deno.test(
-  "shellcheck.yml records the resolved tag in a comment for reviewer provenance (Issue #2695)",
+  "shellcheck.yml no longer depends on the unmaintained ludeeus/action-shellcheck wrapper (Issue #3426)",
   async () => {
     const source = await Deno.readTextFile(WORKFLOW);
-    // A nearby comment naming the action and its tag lets reviewers verify
-    // the SHA resolves to a real release.
+    const usesLudeeus = extractUses(source).some(
+      (r) => r.action === "ludeeus/action-shellcheck",
+    );
+    assert(
+      !usesLudeeus,
+      "shellcheck.yml must not `uses:` the orphaned ludeeus/action-shellcheck wrapper — run the preinstalled shellcheck binary directly instead",
+    );
+    // The job must still lint with the shellcheck binary at warning severity.
     assertMatch(
       source,
-      /#\s*ludeeus\/action-shellcheck@\S+/,
-      "expected a '# ludeeus/action-shellcheck@<tag>' comment near the pinned SHA",
+      /shellcheck --severity=warning/,
+      "shellcheck.yml must invoke `shellcheck --severity=warning` directly",
     );
   },
 );

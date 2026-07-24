@@ -32,6 +32,7 @@ import {
 } from "@creature/ScorerUtilisationTotals.ts";
 import {
   __resetRustScorerBridgeForTests,
+  __setRustScorerConfigForTests,
   __setRustScorerRunnerForTests,
 } from "../../src/score/RustScorerBridge.ts";
 
@@ -124,11 +125,10 @@ Deno.test("forwardOnly population is batch-scored every generation, never per-cr
   const GENERATIONS = 4;
   const POPULATION_SIZE = 5;
 
+  // In-process override (Issue #3234) — never mutate the shared process env,
+  // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  const prevEnabled = Deno.env.get("NEAT_AI_RUST_SCORER_ENABLED");
-  const prevBatch = Deno.env.get("NEAT_AI_RUST_SCORER_BATCH");
-  Deno.env.set("NEAT_AI_RUST_SCORER_ENABLED", "true");
-  Deno.env.set("NEAT_AI_RUST_SCORER_BATCH", "true");
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
 
   const population = buildForwardOnlyPopulation(POPULATION_SIZE);
   const uuids = population.map((c) => CreatureUtil.makeUUID(c));
@@ -196,16 +196,6 @@ Deno.test("forwardOnly population is batch-scored every generation, never per-cr
     // No fallback: the batch path succeeded every generation.
     assertEquals(totals.batchFallbackGenerations, 0);
   } finally {
-    if (prevEnabled === undefined) {
-      Deno.env.delete("NEAT_AI_RUST_SCORER_ENABLED");
-    } else {
-      Deno.env.set("NEAT_AI_RUST_SCORER_ENABLED", prevEnabled);
-    }
-    if (prevBatch === undefined) {
-      Deno.env.delete("NEAT_AI_RUST_SCORER_BATCH");
-    } else {
-      Deno.env.set("NEAT_AI_RUST_SCORER_BATCH", prevBatch);
-    }
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }

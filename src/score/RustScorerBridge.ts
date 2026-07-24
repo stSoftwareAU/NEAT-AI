@@ -18,6 +18,19 @@ interface RustScorerResult {
 
 let envRustScorerCache: RequiredRustScorerConfig | undefined;
 
+/**
+ * In-process (per-isolate) scorer-config override for tests.
+ *
+ * Tests must NOT drive the enabled/batch flags through process-global
+ * `Deno.env`: under `deno test --parallel` every test file runs in its own
+ * worker thread but they all share the one OS process environment, so one
+ * file's `Deno.env.set`/`delete` races with another's mid-test and
+ * intermittently flips the batch path off (Issue #3234 flake). This override
+ * lives in module state, which IS isolated per worker, so tests can force a
+ * config without touching the shared environment.
+ */
+let testConfigOverride: Partial<RequiredRustScorerConfig> | undefined;
+
 /** Maximum characters of stdout/stderr preserved in a warning log line. */
 const LOG_TRIM_LIMIT = 2000;
 
@@ -97,7 +110,17 @@ export function getEnvRustScorerConfig(): RequiredRustScorerConfig {
   const batch = parseBoolLike(readEnvString("NEAT_AI_RUST_SCORER_BATCH")) ??
     true;
 
-  envRustScorerCache = { enabled, binaryPath, timeoutMs, env, batch };
+  const base: RequiredRustScorerConfig = {
+    enabled,
+    binaryPath,
+    timeoutMs,
+    env,
+    batch,
+  };
+  // Apply any in-process test override on top of the env-derived config.
+  envRustScorerCache = testConfigOverride === undefined
+    ? base
+    : { ...base, ...testConfigOverride };
   return envRustScorerCache;
 }
 
@@ -286,8 +309,25 @@ export async function tryScoreWithRustScorer(
 export function __resetRustScorerBridgeForTests(): void {
   __resetInternal();
   envRustScorerCache = undefined;
+  testConfigOverride = undefined;
 }
 
 export function __setRustScorerRunnerForTests(runner: CommandRunner): void {
   __setRunnerInternal(runner);
+}
+
+/**
+ * Force scorer config in-process for tests (Issue #3234).
+ *
+ * Prefer this over `Deno.env.set("NEAT_AI_RUST_SCORER_*")`: it mutates only
+ * this isolate's module state, so parallel test files can each force their own
+ * enabled/batch config without racing on the shared process environment.
+ * Cleared by `__resetRustScorerBridgeForTests`.
+ */
+export function __setRustScorerConfigForTests(
+  partial: Partial<RequiredRustScorerConfig>,
+): void {
+  testConfigOverride = { ...testConfigOverride, ...partial };
+  // Drop the cache so the next read recomputes with the override applied.
+  envRustScorerCache = undefined;
 }

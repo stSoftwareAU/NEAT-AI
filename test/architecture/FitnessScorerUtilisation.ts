@@ -21,6 +21,7 @@ import { makeDataDir } from "@architecture/DataSet.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import {
   __resetRustScorerBridgeForTests,
+  __setRustScorerConfigForTests,
   __setRustScorerRunnerForTests,
 } from "../../src/score/RustScorerBridge.ts";
 
@@ -77,16 +78,15 @@ function buildPopulation(count: number, forwardOnly: boolean): Creature[] {
   return creatures;
 }
 
-/** Enable batch rust scoring, run `fn`, and always restore the env. */
+/** Enable batch rust scoring, run `fn`, and always reset the bridge. */
 async function withBatchEnabled(
   runner: Parameters<typeof __setRustScorerRunnerForTests>[0],
   fn: (fitness: Fitness, worker: MockWorkerHandler) => Promise<void>,
 ): Promise<void> {
+  // In-process override (Issue #3234) — never mutate the shared process env,
+  // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  const prevEnabled = Deno.env.get("NEAT_AI_RUST_SCORER_ENABLED");
-  const prevBatch = Deno.env.get("NEAT_AI_RUST_SCORER_BATCH");
-  Deno.env.set("NEAT_AI_RUST_SCORER_ENABLED", "true");
-  Deno.env.set("NEAT_AI_RUST_SCORER_BATCH", "true");
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
   __setRustScorerRunnerForTests(runner);
   const worker = new MockWorkerHandler();
   const dataDir = makeDataDir(buildDataSet(), 4);
@@ -100,16 +100,6 @@ async function withBatchEnabled(
     );
     await fn(fitness, worker);
   } finally {
-    if (prevEnabled === undefined) {
-      Deno.env.delete("NEAT_AI_RUST_SCORER_ENABLED");
-    } else {
-      Deno.env.set("NEAT_AI_RUST_SCORER_ENABLED", prevEnabled);
-    }
-    if (prevBatch === undefined) {
-      Deno.env.delete("NEAT_AI_RUST_SCORER_BATCH");
-    } else {
-      Deno.env.set("NEAT_AI_RUST_SCORER_BATCH", prevBatch);
-    }
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }

@@ -17,6 +17,7 @@ import { makeDataDir } from "@architecture/DataSet.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import {
   __resetRustScorerBridgeForTests,
+  __setRustScorerConfigForTests,
   __setRustScorerRunnerForTests,
 } from "../../src/score/RustScorerBridge.ts";
 
@@ -82,11 +83,10 @@ function buildPopulation(count: number): Creature[] {
 }
 
 Deno.test("Fitness.calculate batch rust scorer - one scorer process per generation", async () => {
+  // In-process override (Issue #3234) — never mutate the shared process env,
+  // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  const prevEnabled = Deno.env.get("NEAT_AI_RUST_SCORER_ENABLED");
-  const prevBatch = Deno.env.get("NEAT_AI_RUST_SCORER_BATCH");
-  Deno.env.set("NEAT_AI_RUST_SCORER_ENABLED", "true");
-  Deno.env.set("NEAT_AI_RUST_SCORER_BATCH", "true");
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
 
   const population = buildPopulation(4);
   const uuids = population.map((c) => CreatureUtil.makeUUID(c));
@@ -147,27 +147,16 @@ Deno.test("Fitness.calculate batch rust scorer - one scorer process per generati
       assert(creature.score !== undefined, "every creature should be scored");
     }
   } finally {
-    if (prevEnabled === undefined) {
-      Deno.env.delete("NEAT_AI_RUST_SCORER_ENABLED");
-    } else {
-      Deno.env.set("NEAT_AI_RUST_SCORER_ENABLED", prevEnabled);
-    }
-    if (prevBatch === undefined) {
-      Deno.env.delete("NEAT_AI_RUST_SCORER_BATCH");
-    } else {
-      Deno.env.set("NEAT_AI_RUST_SCORER_BATCH", prevBatch);
-    }
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }
 });
 
 Deno.test("Fitness.calculate batch rust scorer - falls back to worker path on reconciliation failure", async () => {
+  // In-process override (Issue #3234) — never mutate the shared process env,
+  // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  const prevEnabled = Deno.env.get("NEAT_AI_RUST_SCORER_ENABLED");
-  const prevBatch = Deno.env.get("NEAT_AI_RUST_SCORER_BATCH");
-  Deno.env.set("NEAT_AI_RUST_SCORER_ENABLED", "true");
-  Deno.env.set("NEAT_AI_RUST_SCORER_BATCH", "true");
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
 
   const population = buildPopulation(3);
   // Generate UUIDs up-front so the reconciler knows what to expect.
@@ -214,16 +203,6 @@ Deno.test("Fitness.calculate batch rust scorer - falls back to worker path on re
     // Still records the single batch invocation attempt.
     assertEquals(fitness.lastBatchScorerInvocations, 0);
   } finally {
-    if (prevEnabled === undefined) {
-      Deno.env.delete("NEAT_AI_RUST_SCORER_ENABLED");
-    } else {
-      Deno.env.set("NEAT_AI_RUST_SCORER_ENABLED", prevEnabled);
-    }
-    if (prevBatch === undefined) {
-      Deno.env.delete("NEAT_AI_RUST_SCORER_BATCH");
-    } else {
-      Deno.env.set("NEAT_AI_RUST_SCORER_BATCH", prevBatch);
-    }
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }
