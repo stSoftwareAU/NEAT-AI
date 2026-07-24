@@ -83,6 +83,15 @@ export type { EvolveRLOptions } from "@creature/CreatureTraining.ts";
 // Issue #3210: whole-run per-phase timing totals returned by the evolve* fns.
 export type { PhaseTimingTotals } from "@creature/PhaseTimingTotals.ts";
 export type { EvolveRLMilestone } from "@creature/EvolveRLStatistics.ts";
+// Issue #3422: run-level tuning statistics recorded on every evolve* result.
+export type {
+  EvolveResult,
+  EvolveRunStatistics,
+  HardwareDescriptors,
+  OptionsEcho,
+  ScoreImprovementMilestone,
+  ScoreImprovementMilestones,
+} from "@creature/EvolveRunStatistics.ts";
 export type {
   EpisodeTrialsEvent,
   EpisodicOptions,

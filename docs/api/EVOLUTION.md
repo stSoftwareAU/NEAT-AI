@@ -10,6 +10,9 @@ presets, and plateau detection.
 ## 📦 Exports documented here
 
 - `Creature.evolveDir()`, `Creature.evolveRL()` (methods on `Creature`)
+- Run-level tuning statistics (Issue #3422): `EvolveResult`,
+  `EvolveRunStatistics`, `HardwareDescriptors`, `OptionsEcho`,
+  `ScoreImprovementMilestone`, `ScoreImprovementMilestones`
 - Reinforcement-learning episode contract: `EpisodeAdapter`, `StepResult`,
   `DEFAULT_MAX_STEPS`, `DEFAULT_WALL_CLOCK_MS`, `EpisodeResult`,
   `TruncationReason`, `EvolveRLOptions`, `EvolveRLMilestone`,
@@ -41,6 +44,12 @@ async evolveDir(
   generation: number;
   phaseTimingTotals: PhaseTimingTotals;
   scorerUtilisation: ScorerUtilisationTotals;
+  // Issue #3422 — run-level tuning statistics:
+  populationSize: number;
+  finalPopulationSize?: number; // only when adaptive sizing is enabled
+  requestedOptions: OptionsEcho;
+  hardware: HardwareDescriptors;
+  scoreImprovement: ScoreImprovementMilestones;
 }>
 ```
 
@@ -59,6 +68,16 @@ async evolveDir(
   (`PhaseTimingTotals`, Issue #3210); see [Run telemetry](#run-telemetry)
 - `scorerUtilisation` — Whole-run scorer-utilisation totals split by backend
   (`ScorerUtilisationTotals`, Issue #3234); see [Run telemetry](#run-telemetry)
+- `populationSize` — Configured population size, always recorded explicitly
+  (Issue #3422); see [Tuning statistics](#tuning-statistics-issue-3422)
+- `finalPopulationSize` — Final effective population size, present **only** when
+  adaptive population sizing is enabled
+- `requestedOptions` — Echo of the caller-requested options (changes from
+  defaults; functions/non-serialisable values recorded by name with a marker)
+- `hardware` — CPU cores, total memory and host identifier for cross-machine
+  comparison
+- `scoreImprovement` — Milestone summary of the score-improvement curve
+  (25/50/75/90%)
 
 ### 📁 Dataset Format
 
@@ -178,6 +197,65 @@ interface ScorerUtilisationTotals {
   readonly creaturesPerCreatureScored: number;
   readonly batchFallbackGenerations: number;
 }
+```
+
+### Tuning statistics (Issue #3422)
+
+Every `evolve*` result also carries the inputs needed to tune throughput across
+machines — the population size, the caller-requested options, the hardware the
+run used, and a milestone summary of the score-improvement curve. Judging
+"optimal" (most variants checked per hour, best rate of score gain) happens
+downstream from these fields; the library only records the data. The signatures
+below mirror `src/creature/EvolveRunStatistics.ts`.
+
+```typescript
+// populationSize — configured population size, always recorded explicitly
+// even when it came from a default (the primary tuning variable).
+// finalPopulationSize — final effective size, present ONLY when adaptive
+// population sizing (AdaptivePopulationConfig) is enabled.
+
+// requestedOptions — echo of just the options the caller requested (changes
+// from defaults). Function/callback options are recorded as "[function]" and
+// non-serialisable values as "[unserialisable]" rather than dropped silently.
+type OptionsEcho = Record<string, unknown>;
+
+// hardware — machine descriptors for cross-machine comparison. The best-effort
+// fields degrade to null (never throw) when --allow-sys is not granted.
+interface HardwareDescriptors {
+  readonly cpuCores: number | null; // navigator.hardwareConcurrency
+  readonly totalMemoryBytes: number | null; // needs --allow-sys=systemMemoryInfo
+  readonly host: string | null; // needs --allow-sys=hostname
+}
+
+// scoreImprovement — when the run reached 25/50/75/90% of its total score
+// improvement. Computed at run end from a compact in-memory best-score
+// trajectory; no per-generation series is kept or persisted.
+interface ScoreImprovementMilestone {
+  readonly fraction: number; // 0.25 | 0.5 | 0.75 | 0.9
+  readonly generation: number;
+  readonly timeMs: number;
+  readonly scoredCount: number; // cumulative creatures scored ("variants checked")
+  readonly score: number;
+}
+interface ScoreImprovementMilestones {
+  readonly initialScore: number; // first champion (baseline)
+  readonly finalScore: number;
+  readonly totalImprovement: number; // finalScore - initialScore; 0 if no gain
+  readonly milestones: ScoreImprovementMilestone[]; // empty when no positive gain
+}
+```
+
+The improvement milestones are derived from a compact trajectory that only grows
+when the best score improves — nothing per-generation is stored:
+
+```mermaid
+flowchart LR
+    Gen[Generation cycle] -->|champion improved?| Rec{best score<br/>strictly up?}
+    Rec -- no --> Gen
+    Rec -- yes --> Point[Append trajectory point<br/>score / generation / time / scoredCount]
+    Point --> Gen
+    Gen -->|run ends| Fin[Finalise: for each of<br/>25/50/75/90% pick first<br/>point reaching the target]
+    Fin --> Out[scoreImprovement on result]
 ```
 
 ### EpisodeAdapter

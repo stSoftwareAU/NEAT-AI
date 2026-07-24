@@ -81,7 +81,6 @@ import {
   accumulatePhaseTiming,
   createPhaseTimingAccumulator,
   finalisePhaseTimingTotals,
-  type PhaseTimingTotals,
 } from "@creature/PhaseTimingTotals.ts";
 // Re-export so `import * as training` consumers (e.g. Creature.ts) can name the
 // run-level phase-timing totals shape (Issue #3210).
@@ -91,7 +90,6 @@ import {
   createScorerUtilisationAccumulator,
   finaliseScorerUtilisationTotals,
   type ScorerUtilisationCounts,
-  type ScorerUtilisationTotals,
 } from "@creature/ScorerUtilisationTotals.ts";
 // Re-export so `import * as training` consumers (e.g. Creature.ts) can name the
 // run-level scorer-utilisation totals shape (Issue #3234).
@@ -100,6 +98,25 @@ import {
   type EvolveRLMilestone,
   isMilestoneGeneration,
 } from "@creature/EvolveRLStatistics.ts";
+import {
+  buildEvolveRunStatistics,
+  type EvolveResult,
+} from "@creature/EvolveRunStatistics.ts";
+// Re-export so `import * as training` consumers (e.g. Creature.ts) can name the
+// run-level result and its tuning-statistics sub-shapes (Issue #3422).
+export type {
+  EvolveResult,
+  EvolveRunStatistics,
+  HardwareDescriptors,
+  OptionsEcho,
+  ScoreImprovementMilestone,
+  ScoreImprovementMilestones,
+} from "@creature/EvolveRunStatistics.ts";
+import {
+  createScoreTrajectory,
+  recordScoreImprovement,
+} from "@creature/ScoreImprovementMilestones.ts";
+import { serialiseOptionsEcho } from "@creature/EvolveOptionsEcho.ts";
 
 /**
  * Snapshot the per-backend scorer-utilisation counts published by `Fitness`
@@ -443,16 +460,7 @@ export async function evolveDir(
   dataSetDir: string,
   options: NeatOptions,
   deps?: EvolveDirDeps,
-): Promise<
-  {
-    error: number;
-    score: number;
-    time: number;
-    generation: number;
-    phaseTimingTotals: PhaseTimingTotals;
-    scorerUtilisation: ScorerUtilisationTotals;
-  }
-> {
+): Promise<EvolveResult> {
   let interrupted = false;
   const signalListener = () => {
     getLogger().info("SIGTERM received, saving progress...");
@@ -570,6 +578,8 @@ export async function evolveDir(
   const phaseTimingAccumulator = createPhaseTimingAccumulator();
   // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
   const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
+  // Issue #3422: compact best-score trajectory for the improvement milestones.
+  const scoreTrajectory = createScoreTrajectory();
 
   while (true) {
     // deno-lint-ignore no-await-in-loop
@@ -578,6 +588,9 @@ export async function evolveDir(
     const fittest = result.fittest;
     const fittestScore = fittest.score!;
     assert(fittestScore >= bestScore, "Score is less than best score");
+    // Issue #3422: note whether this generation improved the champion so the
+    // trajectory point is recorded once the scored-count is up to date below.
+    let championImproved = false;
     // Issue #2787: route champion comparison through the cost-aware helper.
     // Today this remains a strict `score > bestScore` for every cost
     // (NaN-safe) so existing runs do not regress; the seam is in place for
@@ -602,6 +615,7 @@ export async function evolveDir(
         typeof CreatureClass
       >;
       bestCreature.score = bestScore;
+      championImproved = true;
     }
 
     const now = Date.now();
@@ -635,6 +649,19 @@ export async function evolveDir(
       scorerUtilisationAccumulator,
       readScorerUtilisation(neat.fitness),
     );
+
+    // Issue #3422: on a champion improvement, snapshot the best-score curve with
+    // the now-current cumulative scored-count so the milestone summary can be
+    // derived at run end without persisting a per-generation series.
+    if (championImproved) {
+      recordScoreImprovement(scoreTrajectory, {
+        score: bestScore,
+        generation,
+        timeMs: now - start,
+        scoredCount: scorerUtilisationAccumulator.creaturesBatchScored +
+          scorerUtilisationAccumulator.creaturesPerCreatureScored,
+      });
+    }
 
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
@@ -765,6 +792,15 @@ export async function evolveDir(
     scorerUtilisation: finaliseScorerUtilisationTotals(
       scorerUtilisationAccumulator,
     ),
+    // Issue #3422: run-level tuning statistics — population size, requested
+    // options, hardware and the score-improvement milestones.
+    ...buildEvolveRunStatistics({
+      populationSize: config.populationSize,
+      adaptivePopulationEnabled: config.adaptivePopulation.enabled,
+      finalPopulationSize: neat.effectivePopulationSize,
+      options,
+      trajectory: scoreTrajectory,
+    }),
   };
 }
 
@@ -792,16 +828,7 @@ export async function evolveEnv<S, A>(
   creature: Creature,
   adapter: LegacyEpisodeAdapter<S, A>,
   options: NeatOptions & EpisodicOptions,
-): Promise<
-  {
-    error: number;
-    score: number;
-    time: number;
-    generation: number;
-    phaseTimingTotals: PhaseTimingTotals;
-    scorerUtilisation: ScorerUtilisationTotals;
-  }
-> {
+): Promise<EvolveResult> {
   if (creature.input !== adapter.inputCount) {
     throw new Error(
       `Creature input ${creature.input} does not match adapter inputCount ` +
@@ -910,6 +937,8 @@ export async function evolveEnv<S, A>(
   const phaseTimingAccumulator = createPhaseTimingAccumulator();
   // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
   const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
+  // Issue #3422: compact best-score trajectory for the improvement milestones.
+  const scoreTrajectory = createScoreTrajectory();
 
   while (true) {
     generation++;
@@ -921,6 +950,9 @@ export async function evolveEnv<S, A>(
     const fittest = result.fittest;
     const fittestScore = fittest.score!;
     assert(fittestScore >= bestScore, "Score is less than best score");
+    // Issue #3422: note whether this generation improved the champion so the
+    // trajectory point is recorded once the scored-count is up to date below.
+    let championImproved = false;
     // Issue #2787: route champion comparison through the cost-aware helper.
     // Today this remains a strict `score > bestScore` for every cost
     // (NaN-safe) so existing runs do not regress; the seam is in place for
@@ -940,6 +972,7 @@ export async function evolveEnv<S, A>(
         typeof CreatureClass
       >;
       bestCreature.score = bestScore;
+      championImproved = true;
     }
 
     const now = Date.now();
@@ -965,6 +998,19 @@ export async function evolveEnv<S, A>(
       scorerUtilisationAccumulator,
       readScorerUtilisation(neat.fitness),
     );
+
+    // Issue #3422: on a champion improvement, snapshot the best-score curve with
+    // the now-current cumulative scored-count so the milestone summary can be
+    // derived at run end without persisting a per-generation series.
+    if (championImproved) {
+      recordScoreImprovement(scoreTrajectory, {
+        score: bestScore,
+        generation,
+        timeMs: now - start,
+        scoredCount: scorerUtilisationAccumulator.creaturesBatchScored +
+          scorerUtilisationAccumulator.creaturesPerCreatureScored,
+      });
+    }
 
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
@@ -1082,6 +1128,15 @@ export async function evolveEnv<S, A>(
     scorerUtilisation: finaliseScorerUtilisationTotals(
       scorerUtilisationAccumulator,
     ),
+    // Issue #3422: run-level tuning statistics — population size, requested
+    // options, hardware and the score-improvement milestones.
+    ...buildEvolveRunStatistics({
+      populationSize: config.populationSize,
+      adaptivePopulationEnabled: config.adaptivePopulation.enabled,
+      finalPopulationSize: neat.effectivePopulationSize,
+      options,
+      trajectory: scoreTrajectory,
+    }),
   };
 }
 
@@ -1186,13 +1241,7 @@ export async function evolveRL<S, A>(
   adapter: EpisodeAdapter<S, A>,
   options: EvolveRLOptions,
 ): Promise<
-  {
-    error: number;
-    score: number;
-    time: number;
-    generation: number;
-    phaseTimingTotals: PhaseTimingTotals;
-    scorerUtilisation: ScorerUtilisationTotals;
+  EvolveResult & {
     /**
      * Issue #2629: per-milestone payloads collected when `statistics === true`.
      * Omitted entirely when statistics are disabled so the return shape stays
@@ -1413,6 +1462,8 @@ export async function evolveRL<S, A>(
   const phaseTimingAccumulator = createPhaseTimingAccumulator();
   // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
   const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
+  // Issue #3422: compact best-score trajectory for the improvement milestones.
+  const scoreTrajectory = createScoreTrajectory();
 
   while (true) {
     generation++;
@@ -1432,6 +1483,9 @@ export async function evolveRL<S, A>(
     const fittest = result.fittest;
     const fittestScore = fittest.score!;
     assert(fittestScore >= bestScore, "Score is less than best score");
+    // Issue #3422: note whether this generation improved the champion so the
+    // trajectory point is recorded once the scored-count is up to date below.
+    let championImproved = false;
     // Issue #2787: route champion comparison through the cost-aware helper.
     // Today this remains a strict `score > bestScore` for every cost
     // (NaN-safe) so existing runs do not regress; the seam is in place for
@@ -1451,6 +1505,7 @@ export async function evolveRL<S, A>(
         typeof CreatureClass
       >;
       bestCreature.score = bestScore;
+      championImproved = true;
     }
 
     const now = Date.now();
@@ -1476,6 +1531,19 @@ export async function evolveRL<S, A>(
       scorerUtilisationAccumulator,
       readScorerUtilisation(neat.fitness),
     );
+
+    // Issue #3422: on a champion improvement, snapshot the best-score curve with
+    // the now-current cumulative scored-count so the milestone summary can be
+    // derived at run end without persisting a per-generation series.
+    if (championImproved) {
+      recordScoreImprovement(scoreTrajectory, {
+        score: bestScore,
+        generation,
+        timeMs: now - start,
+        scoredCount: scorerUtilisationAccumulator.creaturesBatchScored +
+          scorerUtilisationAccumulator.creaturesPerCreatureScored,
+      });
+    }
 
     const generationElapsedMs = now -
       (generation === 1 ? start : iterationStartMS);
@@ -1661,6 +1729,15 @@ export async function evolveRL<S, A>(
   const scorerUtilisation = finaliseScorerUtilisationTotals(
     scorerUtilisationAccumulator,
   );
+  // Issue #3422: run-level tuning statistics — population size, requested
+  // options, hardware and the score-improvement milestones.
+  const runStatistics = buildEvolveRunStatistics({
+    populationSize: config.populationSize,
+    adaptivePopulationEnabled: config.adaptivePopulation.enabled,
+    finalPopulationSize: neat.effectivePopulationSize,
+    options,
+    trajectory: scoreTrajectory,
+  });
   if (statisticsEnabled) {
     return {
       error,
@@ -1669,6 +1746,7 @@ export async function evolveRL<S, A>(
       time,
       phaseTimingTotals,
       scorerUtilisation,
+      ...runStatistics,
       milestones,
     };
   }
@@ -1679,6 +1757,7 @@ export async function evolveRL<S, A>(
     time,
     phaseTimingTotals,
     scorerUtilisation,
+    ...runStatistics,
   };
 }
 
@@ -1690,15 +1769,7 @@ export async function evolveDataSet(
   creature: Creature,
   dataSet: DataRecordInterface[],
   options: NeatOptions,
-): Promise<
-  {
-    error: number;
-    score: number;
-    time: number;
-    phaseTimingTotals: PhaseTimingTotals;
-    scorerUtilisation: ScorerUtilisationTotals;
-  }
-> {
+): Promise<EvolveResult> {
   const config = createNeatConfig(options);
 
   const dataSetDir = makeDataDir(dataSet, config.dataSetPartitionBreak, {
@@ -1711,7 +1782,10 @@ export async function evolveDataSet(
   // deno-lint-ignore no-sync-fn-in-async-fn -- Cleanup of temporary directory after async evolution.
   Deno.removeSync(dataSetDir, { recursive: true });
 
-  return result;
+  // Issue #3422: evolveDir was handed the fully-resolved `config`, so its
+  // requestedOptions echo would list every default. Overwrite it with the
+  // caller's original request (changes from defaults) to match the contract.
+  return { ...result, requestedOptions: serialiseOptionsEcho(options) };
 }
 
 /**
