@@ -68,11 +68,11 @@ change — not deleted):
 
 - `test/ci/ShellcheckWorkflowPinning.ts` — the ludeeus-specific SHA-pin test is
   generalised to pin **every** remaining `uses:` action to a 40-char SHA, and a
-  new test asserts the orphaned wrapper is gone and `shellcheck --severity=warning`
-  is invoked directly.
+  new test asserts the orphaned wrapper is gone and
+  `shellcheck --severity=warning` is invoked directly.
 - `test/scripts/ShellCheckLint.ts` — the "well-formed workflow" test now asserts
-  the wrapper is absent and shellcheck runs directly; the "all shell scripts pass
-  `shellcheck --severity=warning`" behavioural test is unchanged.
+  the wrapper is absent and shellcheck runs directly; the "all shell scripts
+  pass `shellcheck --severity=warning`" behavioural test is unchanged.
 
 `test/ci/WorkflowActionPinning.ts` (generic pin guard) required no change and
 still passes. All 14 tests across these files pass.
