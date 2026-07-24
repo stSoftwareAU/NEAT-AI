@@ -1,16 +1,13 @@
 /**
- * Unit tests for {@link serialiseOptionsEcho} (Issue #3422): the caller-supplied
- * evolve options echoed onto the run-level result must round-trip serialisable
- * values, skip `undefined`, and record non-serialisable options by name with a
- * marker rather than dropping them silently.
+ * Unit tests for {@link serialiseOptionsEcho} (Issue #3422, revised by Issue
+ * #3427): the caller-supplied evolve options echoed onto the run-level result
+ * must round-trip serialisable values, skip `undefined`, drop any
+ * non-serialisable option entirely (no marker), and record the `creatures`
+ * seed array as its count.
  */
 
 import { assertEquals } from "@std/assert";
-import {
-  OPTION_FUNCTION_MARKER,
-  OPTION_UNSERIALISABLE_MARKER,
-  serialiseOptionsEcho,
-} from "@creature/EvolveOptionsEcho.ts";
+import { serialiseOptionsEcho } from "@creature/EvolveOptionsEcho.ts";
 
 Deno.test("serialiseOptionsEcho - echoes serialisable options as passed", () => {
   const echo = serialiseOptionsEcho({
@@ -30,7 +27,7 @@ Deno.test("serialiseOptionsEcho - echoes serialisable options as passed", () => 
   });
 });
 
-Deno.test("serialiseOptionsEcho - records function options by name with marker", () => {
+Deno.test("serialiseOptionsEcho - drops function options entirely", () => {
   const echo = serialiseOptionsEcho({
     populationSize: 10,
     onTrainingEvent: () => {},
@@ -39,19 +36,40 @@ Deno.test("serialiseOptionsEcho - records function options by name with marker",
     },
   });
 
-  assertEquals(echo.populationSize, 10);
-  assertEquals(echo.onTrainingEvent, OPTION_FUNCTION_MARKER);
-  assertEquals(echo.customCost, OPTION_FUNCTION_MARKER);
+  assertEquals(echo, { populationSize: 10 });
+  assertEquals(Object.hasOwn(echo, "onTrainingEvent"), false);
+  assertEquals(Object.hasOwn(echo, "customCost"), false);
 });
 
-Deno.test("serialiseOptionsEcho - marks non-serialisable (circular) values", () => {
+Deno.test("serialiseOptionsEcho - drops non-serialisable (circular) values", () => {
   const circular: Record<string, unknown> = { name: "loop" };
   circular.self = circular;
 
   const echo = serialiseOptionsEcho({ populationSize: 5, circular });
 
-  assertEquals(echo.populationSize, 5);
-  assertEquals(echo.circular, OPTION_UNSERIALISABLE_MARKER);
+  assertEquals(echo, { populationSize: 5 });
+  assertEquals(Object.hasOwn(echo, "circular"), false);
+});
+
+Deno.test("serialiseOptionsEcho - echoes the creatures seed array as its count", () => {
+  const echo = serialiseOptionsEcho({
+    creatureStore: ".creatures",
+    creatures: [{ id: "a" }, { id: "b" }, { id: "c" }],
+  });
+
+  assertEquals(echo, { creatureStore: ".creatures", creatures: 3 });
+});
+
+Deno.test("serialiseOptionsEcho - echoes an empty creatures array as 0", () => {
+  const echo = serialiseOptionsEcho({ creatures: [] });
+
+  assertEquals(echo, { creatures: 0 });
+});
+
+Deno.test("serialiseOptionsEcho - omits creatures when the caller supplies none", () => {
+  const echo = serialiseOptionsEcho({ populationSize: 20 });
+
+  assertEquals(Object.hasOwn(echo, "creatures"), false);
 });
 
 Deno.test("serialiseOptionsEcho - skips undefined values", () => {

@@ -47,10 +47,13 @@ Deno.test("evolveDataSet returns run-level tuning statistics", async () => {
   assert(Object.hasOwn(result.hardware, "host"));
 
   // Requested options echoed as the caller's changes from defaults, with the
-  // callback recorded by marker (not serialised).
+  // non-serialisable callback dropped entirely rather than marked (Issue #3427).
   assertEquals(result.requestedOptions.populationSize, 12);
   assertEquals(result.requestedOptions.iterations, 8);
-  assertEquals(result.requestedOptions.onTrainingEvent, "[function]");
+  assertEquals(
+    Object.hasOwn(result.requestedOptions, "onTrainingEvent"),
+    false,
+  );
 
   // Improvement summary reflects the run: final score matches result.score and
   // milestone fractions are a subset of the fixed schedule.
@@ -66,8 +69,8 @@ Deno.test("evolveDataSet returns run-level tuning statistics", async () => {
   }
 
   // The whole result must survive JSON serialisation (it lands in result.json),
-  // with the callback recorded by marker rather than a function body.
+  // with the callback dropped rather than echoed as a function body or marker.
   const json = JSON.stringify(result);
   assert(json.length > 0);
-  assert(!json.includes('"onTrainingEvent":{'), "no function body in echo");
+  assert(!json.includes("onTrainingEvent"), "callback dropped from echo");
 });

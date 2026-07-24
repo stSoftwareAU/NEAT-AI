@@ -30,11 +30,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   enough to compare configurations across the fleet. It records the configured
   `populationSize` (plus the final actual size when adaptive population sizing
   is enabled), host `hardware` descriptors (CPU cores, total memory, host id), a
-  JSON-safe echo of the caller's `requestedOptions` (callbacks recorded by
-  marker, never serialised), and an `improvement` milestone summary — the
-  generation / elapsed time / creatures scored at which the run reached
-  25/50/75/90% of its total score improvement (no per-generation series). New
-  public type exports: `EvolveRunStatistics`, `HardwareDescriptor`,
+  JSON-safe echo of the caller's `requestedOptions` (see the #3427 note under
+  Changed for how non-serialisable options are handled), and an `improvement`
+  milestone summary — the generation / elapsed time / creatures scored at which
+  the run reached 25/50/75/90% of its total score improvement (no per-generation
+  series). New public type exports: `EvolveRunStatistics`, `HardwareDescriptor`,
   `OptionsEcho`, `ImprovementSummary`, `ImprovementMilestone`.
 - **Issue #3412:** New `DatasetError` typed error (exported from the public
   barrel) makes a vanished training dataset fail loud and clear. When the
@@ -85,6 +85,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   (`bench/NoveltyDeceptiveEscape.ts`) and acceptance test show novelty escaping
   a local optimum in far fewer generations than fitness-only search. See
   [`docs/NOVELTY_SEARCH.md`](./docs/NOVELTY_SEARCH.md).
+
+### Changed
+
+- **Issue #3427:** The `requestedOptions` echo (Issue #3422) no longer records
+  non-serialisable options with a `"[function]"` / `"[unserialisable]"` marker —
+  such entries are now dropped entirely, since the markers carry no tuning value
+  and are pure noise in every GRQ-cluster snapshot. The one exception is
+  `creatures`: instead of dropping the seed-creature array it is echoed as its
+  **count** (a number, e.g. `"creatures": 12`; an empty seed array echoes as
+  `0`), because seed size can matter when comparing runs. The
+  `OPTION_FUNCTION_MARKER` / `OPTION_UNSERIALISABLE_MARKER` exports are removed.
 
 ### Fixed
 

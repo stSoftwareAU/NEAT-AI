@@ -215,8 +215,10 @@ below mirror `src/creature/EvolveRunStatistics.ts`.
 // population sizing (AdaptivePopulationConfig) is enabled.
 
 // requestedOptions — echo of just the options the caller requested (changes
-// from defaults). Function/callback options are recorded as "[function]" and
-// non-serialisable values as "[unserialisable]" rather than dropped silently.
+// from defaults). Non-serialisable options (functions/callbacks and other
+// values that cannot round-trip through JSON) are dropped entirely. The one
+// exception is `creatures`: the seed array is echoed as its count (a number),
+// e.g. `creatures: 12`; an empty seed array echoes as 0 (Issue #3427).
 type OptionsEcho = Record<string, unknown>;
 
 // hardware — machine descriptors for cross-machine comparison. The best-effort
