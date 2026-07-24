@@ -30,11 +30,26 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           persist-credentials: false
-      # Runs koalaman/shellcheck (https://github.com/koalaman/shellcheck) via the
-      # ludeeus/action-shellcheck wrapper to lint shell scripts in the repository.
-      # ludeeus/action-shellcheck@2.0.0
+      # Lint shell scripts with koalaman/shellcheck
+      # (https://github.com/koalaman/shellcheck), preinstalled on the
+      # ubuntu-latest runner. Issue #3426 dropped the unmaintained ludeeus
+      # wrapper action (no release in ~42 months, no commit in ~25) and runs the
+      # binary directly, removing an orphaned third-party Action from the supply
+      # chain. This mirrors `scandir: .` + `severity: warning` and fails loud: a
+      # non-zero shellcheck exit fails the job.
       - name: Run ShellCheck (koalaman/shellcheck)
-        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38
-        with:
-          scandir: .
-          severity: warning
+        run: |
+          shellcheck --version
+          mapfile -d '' scripts < <(
+            find . -name '*.sh' -type f \
+              -not -path './.git/*' \
+              -not -path '*/target/*' \
+              -not -path '*/node_modules/*' \
+              -print0
+          )
+          if [ "${#scripts[@]}" -eq 0 ]; then
+            echo "No shell scripts found to lint" >&2
+            exit 1
+          fi
+          printf 'Linting %d shell script(s)\n' "${#scripts[@]}"
+          shellcheck --severity=warning "${scripts[@]}"

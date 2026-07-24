@@ -5,11 +5,12 @@ import { assert, assertEquals } from "@std/assert";
  * `warning` severity, matching the gate enforced by
  * `.github/workflows/shellcheck.yml` (Issue #2361).
  *
- * The workflow uses `ludeeus/action-shellcheck@master` with
- *   scandir: .
+ * The workflow lints via the preinstalled koalaman/shellcheck binary at
  *   severity: warning
- * so this test mirrors those inputs locally. The test is skipped when
- * `shellcheck` is not installed, so it cannot block contributors who do
+ * across every `*.sh` script (Issue #3426 dropped the unmaintained
+ * `ludeeus/action-shellcheck` wrapper in favour of running the binary
+ * directly), so this test mirrors those inputs locally. The test is skipped
+ * when `shellcheck` is not installed, so it cannot block contributors who do
  * not yet have the tool available.
  */
 
@@ -83,10 +84,16 @@ Deno.test("shellcheck workflow file exists and is well-formed", async () => {
   assert(stat?.isFile, `${path} must exist`);
 
   const body = await Deno.readTextFile(path);
-  // Must invoke the ludeeus action as specified by the issue.
+  // Must NOT use the unmaintained ludeeus/action-shellcheck wrapper — Issue
+  // #3426 replaced it with the preinstalled binary.
   assert(
-    body.includes("ludeeus/action-shellcheck"),
-    "workflow must use ludeeus/action-shellcheck",
+    !body.includes("ludeeus/action-shellcheck"),
+    "workflow must not use the unmaintained ludeeus/action-shellcheck (Issue #3426)",
+  );
+  // Must invoke the shellcheck binary directly via a run: step.
+  assert(
+    /shellcheck\s+--severity=warning/.test(body),
+    "workflow must run shellcheck --severity=warning directly",
   );
   // Must run on pull_request so the gate triggers on every PR.
   assert(
@@ -95,8 +102,8 @@ Deno.test("shellcheck workflow file exists and is well-formed", async () => {
   );
   // Must apply at least `warning` severity.
   assert(
-    /severity:\s*warning/.test(body),
-    "workflow must set severity: warning",
+    /--severity=warning/.test(body),
+    "workflow must lint at severity warning",
   );
   // Must reference the upstream koalaman/shellcheck project so the workflow
   // sync detector recognises the lint gate (Issue #2430).
