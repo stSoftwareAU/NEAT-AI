@@ -1001,16 +1001,7 @@ export class Creature implements CreatureInternal {
   evolveDir(
     dataSetDir: string,
     options: NeatOptions,
-  ): Promise<
-    {
-      error: number;
-      score: number;
-      time: number;
-      generation: number;
-      phaseTimingTotals: training.PhaseTimingTotals;
-      scorerUtilisation: training.ScorerUtilisationTotals;
-    }
-  > {
+  ): Promise<training.EvolveResult> {
     return training.evolveDir(this, dataSetDir, options);
   }
 
@@ -1026,16 +1017,7 @@ export class Creature implements CreatureInternal {
     options:
       & NeatOptions
       & import("./creature/EpisodicFitnessTypes.ts").EpisodicOptions,
-  ): Promise<
-    {
-      error: number;
-      score: number;
-      time: number;
-      generation: number;
-      phaseTimingTotals: training.PhaseTimingTotals;
-      scorerUtilisation: training.ScorerUtilisationTotals;
-    }
-  > {
+  ): Promise<training.EvolveResult> {
     return training.evolveEnv(this, adapter, options);
   }
 
@@ -1051,13 +1033,7 @@ export class Creature implements CreatureInternal {
     adapter: import("./creature/EpisodeAdapter.ts").EpisodeAdapter<S, A>,
     options: training.EvolveRLOptions,
   ): Promise<
-    {
-      error: number;
-      score: number;
-      time: number;
-      generation: number;
-      phaseTimingTotals: training.PhaseTimingTotals;
-      scorerUtilisation: training.ScorerUtilisationTotals;
+    training.EvolveResult & {
       /**
        * Issue #2629: per-milestone payloads collected when
        * `options.statistics === true`. Omitted when statistics are off.
@@ -1072,15 +1048,7 @@ export class Creature implements CreatureInternal {
   evolveDataSet(
     dataSet: DataRecordInterface[],
     options: NeatOptions,
-  ): Promise<
-    {
-      error: number;
-      score: number;
-      time: number;
-      phaseTimingTotals: training.PhaseTimingTotals;
-      scorerUtilisation: training.ScorerUtilisationTotals;
-    }
-  > {
+  ): Promise<training.EvolveResult> {
     return training.evolveDataSet(this, dataSet, options);
   }
 
