@@ -33,32 +33,29 @@ Deno.test("evolveDataSet returns run-level tuning statistics", async () => {
     onTrainingEvent,
   });
 
-  const stats = result.statistics;
-  assert(stats !== undefined, "statistics block must be present");
-
+  // The tuning-statistics group is flattened onto the run result (Issue #3422).
   // Configured population size is always recorded, adaptive off by default.
-  assertEquals(stats.populationSize, 12);
-  assertEquals(stats.adaptivePopulation, false);
+  assertEquals(result.populationSize, 12);
   assert(
-    !Object.hasOwn(stats, "finalPopulationSize"),
+    !Object.hasOwn(result, "finalPopulationSize"),
     "finalPopulationSize omitted when adaptive sizing is off",
   );
 
   // Hardware descriptor present with the three known keys.
-  assert(Object.hasOwn(stats.hardware, "cpuCores"));
-  assert(Object.hasOwn(stats.hardware, "totalMemoryBytes"));
-  assert(Object.hasOwn(stats.hardware, "host"));
+  assert(Object.hasOwn(result.hardware, "cpuCores"));
+  assert(Object.hasOwn(result.hardware, "totalMemoryBytes"));
+  assert(Object.hasOwn(result.hardware, "host"));
 
   // Requested options echoed as the caller's changes from defaults, with the
   // callback recorded by marker (not serialised).
-  assertEquals(stats.requestedOptions.populationSize, 12);
-  assertEquals(stats.requestedOptions.iterations, 8);
-  assertEquals(stats.requestedOptions.onTrainingEvent, "[function]");
+  assertEquals(result.requestedOptions.populationSize, 12);
+  assertEquals(result.requestedOptions.iterations, 8);
+  assertEquals(result.requestedOptions.onTrainingEvent, "[function]");
 
   // Improvement summary reflects the run: final score matches result.score and
   // milestone fractions are a subset of the fixed schedule.
-  assertEquals(stats.improvement.finalScore, result.score);
-  for (const m of stats.improvement.milestones) {
+  assertEquals(result.scoreImprovement.finalScore, result.score);
+  for (const m of result.scoreImprovement.milestones) {
     assert(
       [0.25, 0.5, 0.75, 0.9].includes(m.fraction),
       `unexpected milestone fraction ${m.fraction}`,
@@ -68,8 +65,9 @@ Deno.test("evolveDataSet returns run-level tuning statistics", async () => {
     assert(m.scoredCount >= 0, "milestone scoredCount must be non-negative");
   }
 
-  // The whole block must survive JSON serialisation (it lands in result.json).
-  const json = JSON.stringify(result.statistics);
+  // The whole result must survive JSON serialisation (it lands in result.json),
+  // with the callback recorded by marker rather than a function body.
+  const json = JSON.stringify(result);
   assert(json.length > 0);
   assert(!json.includes('"onTrainingEvent":{'), "no function body in echo");
 });
