@@ -1,73 +1,60 @@
 ## Summary
 
-Migrated the `ShellCheck` CI gate off the unmaintained
-`ludeeus/action-shellcheck` wrapper (no release in ~42 months, no commit in
-~25). Rather than swap in another third-party wrapper, the workflow now lints
-with the `koalaman/shellcheck` binary **preinstalled on the `ubuntu-latest`
-runner**, invoked directly from a `run:` step — removing the orphaned Action
-from the supply chain entirely. Closes #3426.
+The `shellcheck` CI job wrapped `koalaman/shellcheck` through the third-party
+`ludeeus/action-shellcheck` action, which is **unmaintained** — no release since
+2023-01, no commit since 2024-06, and a growing unanswered issue/PR backlog
+(ORPHAN-STALE). Because the action was SHA-pinned to a dormant repository, no fix
+would ever arrive through the normal bump flow.
 
-Behaviour is preserved one-for-one: the previous `scandir: .` +
-`severity: warning` inputs map to a repo-wide `find` for `*.sh` scripts piped
-through `shellcheck --severity=warning`. The step **fails loud** (Issue #3234) —
-a non-zero `shellcheck` exit fails the job, and finding zero scripts (a broken
-glob) also exits non-zero rather than reporting a false-clean pass.
+This PR removes the orphaned dependency **at the root** rather than swapping it
+for another wrapper: the job now invokes the `shellcheck` binary preinstalled on
+`ubuntu-latest` runners directly via a `run:` step. There is no dormant SHA to
+track, and the job follows the actively-maintained runner image's shellcheck
+version.
 
-### Why direct-run instead of `reviewdog/action-shellcheck`
+Behaviour is preserved:
 
-`reviewdog/action-shellcheck` defaults to `filter_mode: added`, which lints only
-changed lines and would **silently** let pre-existing shell-script warnings
-through — a regression of the gate's coverage and a silent-failure risk. Running
-the preinstalled binary keeps full-repo coverage with no external Action to vet,
-pin, or maintain.
+- **File discovery** mirrors `quality.sh` (`find . -name '*.sh'`), covering the
+  same six shell scripts the wrapper linted (all repo scripts use the `.sh`
+  extension; no extensionless shebang scripts exist).
+- **`severity=warning`** matches the previous wrapper configuration exactly —
+  info-level findings (e.g. SC2086) are filtered, warning-and-above fail the job.
+- **Fails loud** (Issue #3234): the step exits non-zero if the binary is missing,
+  no scripts are found, or shellcheck reports a finding — a fault is never masked
+  as success.
+- **bash 3.2 compatible**: a null-delimited `read` loop is used instead of the
+  bash-4-only `mapfile`.
+
+Closes #3426.
 
 ## Evidence
 
-Backend/CI change — no web interface to screenshot. Verified via the CI tests
-below and by running the real `shellcheck` binary over every repo shell script.
+Backend/CI change only — no web interface to screenshot. Validated with the same
+tools CI uses:
+
+- `actionlint` (all workflows, incl. embedded `run:` shellcheck lint): **pass**
+- `shellcheck --severity=warning` over the six repo scripts: **exit 0** (parity
+  with current CI)
+- Fail-loud paths verified: empty file set → exit 1; a warning-level finding
+  (SC2164) → exit 1; info-level finding (SC2086) correctly filtered by
+  `severity=warning` → exit 0
+- Step logic re-run end-to-end under local bash 3.2.57 → **exit 0**
 
 ```mermaid
 flowchart LR
-    A[shellcheck.yml] --> B[actions/checkout @SHA]
-    B --> C["run: shellcheck --version"]
-    C --> D["find . -name '*.sh'"]
-    D --> E{"scripts found?"}
-    E -- no --> F["exit 1 — fail loud"]
-    E -- yes --> G["shellcheck --severity=warning"]
-    G --> H{"warnings?"}
-    H -- yes --> I["non-zero exit — job fails"]
-    H -- no --> J["job passes"]
+    PR[Pull request to Develop] --> CO[actions/checkout]
+    CO --> RUN["run: shellcheck --severity=warning<br/>(preinstalled binary)"]
+    RUN --> CHK{binary present?<br/>scripts found?<br/>no findings?}
+    CHK -- "all yes" --> OK[Job passes]
+    CHK -- "any no" --> FAIL[Exit non-zero — fail loud]
 ```
-
-- `test/scripts/ShellCheckLint.ts::all shell scripts pass shellcheck --severity=warning`
-  runs the real binary over every `*.sh` script — passes.
-- `deno test test/ci/ShellcheckWorkflowPinning.ts test/scripts/ShellCheckLint.ts
-  test/ci/WorkflowActionPinning.ts`
-  — 16 passed, 0 failed.
-- `./quality.sh --lint-only` — fmt, lint, and bash checks all pass.
 
 ## Test Plan
 
-Tests were updated (TDD: written to fail against the old workflow first) to
-assert the new behaviour. Business-logic change documented here: the premise
-that `ludeeus/action-shellcheck` must be SHA-pinned is obsolete now the wrapper
-is gone, so the ludeeus-specific pinning assertions were repurposed — no tests
-were removed or commented out.
+There is no application function to unit-test — the change is to a CI workflow.
+Verification used the workflow's own gate tools:
 
-- `test/ci/ShellcheckWorkflowPinning.ts`
-  - Kept the generic `extractUses` parser unit tests.
-  - New:
-    `shellcheck.yml no longer uses the unmaintained ludeeus/action-shellcheck (Issue #3426)`.
-  - New:
-    `shellcheck.yml lints via the preinstalled koalaman/shellcheck binary (Issue #3426)`.
-  - Retained SHA-pinning coverage for every remaining `uses:` (e.g.
-    `actions/checkout`).
-- `test/scripts/ShellCheckLint.ts`
-  - Updated the workflow-shape assertions: must **not** reference the
-    unmaintained wrapper, must run `shellcheck --severity=warning` directly,
-    still triggers on `pull_request` and references upstream
-    `koalaman/shellcheck`.
-  - The existing "all shell scripts pass" behaviour test is unchanged and still
-    green.
-- `test/ci/WorkflowActionPinning.ts` (generic, unchanged) continues to enforce
-  40-char SHA pinning across all workflows.
+- `actionlint .github/workflows/shellcheck.yml` and `actionlint` (all workflows)
+- `shellcheck --severity=warning` over the discovered `*.sh` set (exit 0)
+- Simulated the exact `run:` step under bash 3.2 (success path, empty-set failure
+  path, and finding failure path)
