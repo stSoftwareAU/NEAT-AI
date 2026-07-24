@@ -627,7 +627,7 @@ const { statistics } = await creature.evolveDataSet(data, opts);
 //   adaptivePopulation: false,    // AdaptivePopulationConfig.enabled
 //   // finalPopulationSize: 137,  // present ONLY when adaptivePopulation is on
 //   hardware: { cpuCores: 32, totalMemoryBytes: 67_000_000_000, host: "GRQ-7" },
-//   requestedOptions: { populationSize: 150, threads: 32, onTrainingEvent: "[function]" },
+//   requestedOptions: { populationSize: 150, threads: 32 }, // callbacks dropped; `creatures` echoed as a count
 //   improvement: {
 //     firstScore: 0.42, finalScore: 0.91, totalImprovement: 0.49,
 //     milestones: [ { fraction: 0.25, generation: 12, timeMs: 41000, scoredCount: 18000, score: 0.54 }, … ],
