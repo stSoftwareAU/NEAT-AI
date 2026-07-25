@@ -24,6 +24,7 @@ import { allocateBreedingQuotas } from "@neat/BreedingQuotas.ts";
 import { applyStagnationToQuotas } from "@neat/SpeciesPlateauDetector.ts";
 import { Genus } from "@neat/Genus.ts";
 import { checkMemoryAndEvict, logMemoryUsage } from "@neat/MemoryMonitor.ts";
+import { createMemoryPressureSink } from "@neat/createMemoryPressureSink.ts";
 import { computePerTaskTimeoutMinutes } from "@neat/PerTaskTrainingTimeout.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { CRISPR } from "@reconstruct/CRISPR.ts";
@@ -133,10 +134,17 @@ export async function evolve(
   // Check heap pressure BEFORE the fitness phase so that WASM caches are
   // evicted proactively rather than reactively per-creature inside
   // CreatureActivation.ts. This reduces GC pauses during fitnessMs.
+  // Issue #3431: broadcast reduced WASM cache caps to worker isolates and
+  // surface live worker count in diagnostics when heap pressure is detected.
+  const memoryPressureSink = createMemoryPressureSink(neat.workers);
+
   const preFitnessMemoryStartMs = Date.now();
   const preFitnessMemory = checkMemoryAndEvict(
     neat.config.memory,
     getLogger(),
+    undefined,
+    undefined,
+    memoryPressureSink,
   );
   const preFitnessMemoryMs = Date.now() - preFitnessMemoryStartMs;
   if (preFitnessMemory.evicted) {
@@ -888,6 +896,9 @@ export async function evolve(
   const memoryResult = checkMemoryAndEvict(
     neat.config.memory,
     getLogger(),
+    undefined,
+    undefined,
+    memoryPressureSink,
   );
   if (memoryResult.evicted) {
     if (memoryResult.pressureLevel === "warning") {
