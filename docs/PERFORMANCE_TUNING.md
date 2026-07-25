@@ -396,6 +396,29 @@ out of memory.
 > breaches it and there is nothing left to evict, the process will crash. Always
 > leave at least 10–15% headroom below your system's physical memory limit.
 
+### Checkpoint Write Memory (`creatureStore`)
+
+Per-generation checkpoints (`creatureStore` plus `checkpointEveryGeneration`)
+land on an already-hot generation, so the checkpoint itself must not become the
+peak. Creatures are exported, serialised, and written in **bounded batches** of
+8 (Issue #3436), so the transient checkpoint footprint is capped by the batch
+size rather than by the population size.
+
+```mermaid
+flowchart LR
+    P[Population] --> B1[Batch 1..8]
+    B1 --> S1[exportJSON + stringify] --> W1[write + await] --> R1[released]
+    R1 --> B2[Batch 9..16]
+    B2 --> S2[exportJSON + stringify] --> W2[write + await] --> R2[released]
+    R2 --> Bn[…remaining batches]
+```
+
+Each batch's serialised genomes and in-flight write buffers are released before
+the next batch allocates its own, so peak checkpoint memory no longer scales
+with `populationSize × genome JSON`. File contents and numbering (`1.json`,
+`2.json`, …) are unchanged. No configuration is required — this is the default
+and only behaviour.
+
 ### Understanding Cache Diagnostics
 
 Use `getCacheStats()` to inspect cache health at any point during training:

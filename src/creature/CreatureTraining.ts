@@ -8,14 +8,9 @@
 import { assert } from "@std/assert";
 import { yellow } from "@std/fmt/colors";
 import { format } from "@std/fmt/duration";
-import { emptyDirSync } from "@std/fs";
 import { getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "@creature";
-import { CURRENT_CREATURE_SEMANTIC_VERSION } from "@creature";
-import {
-  assertValidWriteableSemanticVersion,
-  isValidWriteableSemanticVersion,
-} from "@upgrade/SemanticVersionValidation.ts";
+import { writeCreatures } from "@creature/CheckpointWriter.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { DatasetError } from "@errors/DatasetError.ts";
 import { openDatasetFileSync } from "@architecture/DatasetIO.ts";
@@ -48,10 +43,7 @@ import {
 import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
-import {
-  applySeedWarmupTagsAtSave,
-  buildWarmupEventFields,
-} from "@architecture/CreatureFactory.ts";
+import { buildWarmupEventFields } from "@architecture/CreatureFactory.ts";
 import { BufferPool } from "@utils/BufferPool.ts";
 import {
   type DiscoveryDirResult,
@@ -389,47 +381,6 @@ export function traceDir(
   );
 
   return { error: averageError, score: creature.score };
-}
-
-/**
- * Write creatures to a directory for checkpointing.
- *
- * Issue #2275: Converted to async I/O with compact JSON serialisation.
- * Benchmarks showed 32-54% improvement over the previous synchronous
- * approach (which used pretty-printed JSON.stringify(..., null, 1) +
- * Deno.writeTextFileSync per creature). Compact JSON (no indentation)
- * is 2.4x faster to serialise, and async file writes with Promise.all
- * unblock the event loop during checkpoint writes.
- */
-async function writeCreatures(neat: Neat, dir: string): Promise<void> {
-  emptyDirSync(dir);
-  const writes: Promise<void>[] = [];
-  let counter = 1;
-  for (const c of neat.population) {
-    // Issue #2349: never write a creature without a valid semanticVersion.
-    // If a creature somehow lost its version (empty, undefined, or pre-2.x),
-    // heal it to the current default rather than writing an invalid value
-    // that aborts downstream tools (GRQ worker).
-    if (!isValidWriteableSemanticVersion(c.semanticVersion)) {
-      c.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
-    }
-    const json = c.exportJSON();
-    assertValidWriteableSemanticVersion(json.semanticVersion);
-    // Issue #2909: stamp warm-up tags only at this export boundary. Stamp the
-    // exported JSON (not the live population member) so the saved file is
-    // correct regardless of which creature is saved: while warming it carries
-    // the Neat-level counter, and once warm both tags are stripped.
-    applySeedWarmupTagsAtSave(
-      json,
-      neat.warmupGenerations,
-      neat.currentGeneration,
-    );
-    const txt = JSON.stringify(json);
-    const filePath = dir + "/" + counter + ".json";
-    writes.push(Deno.writeTextFile(filePath, txt));
-    counter++;
-  }
-  await Promise.all(writes);
 }
 
 /**

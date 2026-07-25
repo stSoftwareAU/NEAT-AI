@@ -82,6 +82,7 @@
       "bench/ActivateAndTraceApp.ts",
       "bench/ActivateApp.ts",
       "bench/AdaptiveLearningRateConvergence.ts",
+      "bench/CheckpointWritePeakHeap.ts",
       "bench/CosineAnnealingWarmRestart.ts",
       "bench/CreatureStateNodeMap.ts",
       "bench/DenseNumberMapBenchmark.ts",
