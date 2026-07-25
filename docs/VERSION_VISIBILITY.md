@@ -7,8 +7,8 @@ version it actually loaded, once per process, at startup.
 
 Two pieces of context made this necessary:
 
-- The GRQ-logs / Develop trap-sample storm in May 2026 was eventually traced
-  back to GRQ (a downstream NEAT-AI consumer) workers pinned to `5.0.13`. That
+- A May 2026 production trap-sample storm was eventually traced back to a
+  downstream NEAT-AI consumer's workers pinned to `5.0.13`. That
   [JavaScript Registry (JSR)](https://jsr.io/) release predates the
   position-blind topology-hash collision fix from Pull Request (PR) #2678, which
   only landed in `5.0.14`+.
@@ -78,9 +78,9 @@ When `deno.json` `version` is bumped (typically by `bump-deps.sh` or the
 `update-package-version.yml` workflow), no extra change is needed in
 `src/utils/Version.ts` — `deno.json` is the single source of truth on the local
 load path, and JSR consumers derive the version from `import.meta.url` after
-publish. Downstream consumers (GRQ and sibling repos) need to refresh their
-`@stsoftware/neat-ai` pin to the new JSR version so they pick up the fix; verify
-the line in their logs after the restart.
+publish. Downstream consumers need to refresh their `@stsoftware/neat-ai` pin to
+the new JSR version so they pick up the fix; verify the line in their logs after
+the restart.
 
 ## Related documents
 
