@@ -76,7 +76,7 @@ import {
 // Extracted cross-field validation
 import { validateNeatConfig } from "@config/NeatConfigValidation.ts";
 
-// Issue GRQ#3295: automatic Discovery worker-memory envelope → workerThreadCap.
+// Automatic Discovery worker-memory envelope → workerThreadCap wiring.
 import {
   mergeDiscoveryWorkerThreadCapDefaults,
   resolveDiscoveryWorkerThreadCap,
@@ -244,7 +244,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
   });
 
   // Issue #1569: Parse worker thread cap config and apply memory-based capping.
-  // Issue GRQ#3295: when the Discovery runner exports a host-derived worker-memory
+  // When the external production runner exports a host-derived worker-memory
   // envelope (DISCOVERY_WORKER_ENVELOPE_MB) and per-worker V8 budget, wire them in
   // automatically so the cap fires without any per-caller opt-in. Explicit user
   // overrides still win; non-Discovery callers (env unset) keep the cap disabled.

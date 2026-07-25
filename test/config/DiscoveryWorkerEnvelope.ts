@@ -1,6 +1,6 @@
 /**
  * Tests for the Discovery worker-memory envelope → workerThreadCap resolver
- * (stSoftwareAU/GRQ#3295).
+ * that guards against the Discovery-worker OOM on a 16 GB production host.
  *
  * These exercise the pure env → overrides mapping with an injected reader, so
  * they are hermetic and never touch the real process environment.
