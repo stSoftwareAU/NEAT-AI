@@ -20,6 +20,8 @@ import type { DiscoveryPerformanceStats } from "@architecture/ErrorGuidedStructu
 import { shouldLogDiscovery } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryPerformance.ts";
 import type { PhaseDiagnostics } from "@architecture/ErrorGuidedStructuralEvolution/PhaseDiagnostics.ts";
 import { isHeapCritical } from "@architecture/ErrorGuidedStructuralEvolution/AnalysisHeapGuard.ts";
+import { formatDiscoveryMemoryUsage } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryAnalysisMemory.ts";
+import { getDiscoveryMemoryUsageBytes } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 /**
@@ -64,15 +66,26 @@ const STALL_WARMUP_MIN_COMPLETED_CHUNKS = 2;
  * can be correlated with memory pressure (Issue #2513). Falls back to an
  * "unavailable" marker when `Deno.memoryUsage()` is not present (e.g.
  * non-Deno test runners).
+ *
+ * Issue #3432: the line also carries Discovery's own allocator footprint
+ * (`discovery_memory_usage_bytes`). Deno's numbers cover V8 and process RSS
+ * but say nothing about how much of that belongs to the Rust analysis, so
+ * without this the host cannot tell an analysis-driven spike from a V8 one.
+ *
+ * @param discoveryUsageBytes - Discovery-reported allocator bytes; defaults to
+ *   a passive FFI read that reports `unavailable` when discovery is not loaded.
  */
-export function formatStallMemoryDiagnostics(): string {
+export function formatStallMemoryDiagnostics(
+  discoveryUsageBytes: number | undefined = getDiscoveryMemoryUsageBytes(),
+): string {
+  const discovery = formatDiscoveryMemoryUsage(discoveryUsageBytes);
   // Deno.memoryUsage may be unavailable when this module is loaded under a
   // non-Deno runtime. Guard the lookup so the diagnostic stays a
   // best-effort annotation rather than a hard dependency.
   const memFn = (globalThis as { Deno?: { memoryUsage?: () => unknown } })
     ?.Deno?.memoryUsage;
   if (typeof memFn !== "function") {
-    return "heap=unavailable rss=unavailable";
+    return `heap=unavailable rss=unavailable ${discovery}`;
   }
   try {
     const mem = memFn() as {
@@ -87,9 +100,9 @@ export function formatStallMemoryDiagnostics(): string {
         : "?";
     return `heap=${mb(mem.heapUsed)}/${mb(mem.heapTotal)} rss=${
       mb(mem.rss)
-    } external=${mb(mem.external)}`;
+    } external=${mb(mem.external)} ${discovery}`;
   } catch {
-    return "heap=unavailable rss=unavailable";
+    return `heap=unavailable rss=unavailable ${discovery}`;
   }
 }
 

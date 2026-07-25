@@ -129,6 +129,12 @@ export function parseMemoryConfig(
       d.nativeBudgetBytes,
       { integer: true, min: 0 },
     ),
+    maxAnalysisMemoryMb: parseNumber(
+      "Memory maxAnalysisMemoryMb",
+      overrides?.maxAnalysisMemoryMb,
+      d.maxAnalysisMemoryMb,
+      { integer: true, min: 0 },
+    ),
   } as RequiredMemoryConfig;
 }
 

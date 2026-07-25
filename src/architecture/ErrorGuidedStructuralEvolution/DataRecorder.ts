@@ -21,6 +21,7 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { costNameToTaskDescriptor } from "@costs/CostTaskDescriptor.ts";
+import { resolveAnalysisMemoryBudgetMb } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryAnalysisMemory.ts";
 import { PhaseDiagnostics } from "@architecture/ErrorGuidedStructuralEvolution/PhaseDiagnostics.ts";
 import {
   DiscoveryPerformanceStats,
@@ -182,6 +183,10 @@ export class DataRecorder {
       skipRecordPhase: config.discoverySkipRecordPhase,
       rustFlushBytesThreshold: config.discoveryRustFlushBytes,
       taskDescriptor: costNameToTaskDescriptor(config.costName),
+      // Issue #3432: forward the configured analysis memory budget so Rust
+      // enforces a ceiling of its own during `analyze_parallel`. Resolves to
+      // `undefined` when unconfigured, which keeps the field off the wire.
+      maxAnalysisMemoryMb: resolveAnalysisMemoryBudgetMb(config.memory),
     };
   }
 

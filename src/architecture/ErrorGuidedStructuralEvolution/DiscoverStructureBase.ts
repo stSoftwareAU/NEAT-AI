@@ -150,6 +150,13 @@ export class DiscoverStructureBase {
    */
   protected taskDescriptor: TaskDescriptor = OTHER_TASK_DESCRIPTOR;
 
+  /**
+   * Analysis-phase memory budget (MB) forwarded to Discovery on
+   * `analyze_parallel` (Issue #3432). `undefined` means no budget is sent, so
+   * Discovery runs unbounded — the pre-#3432 behaviour.
+   */
+  protected maxAnalysisMemoryMb?: number;
+
   protected discoveries: CandidateSynapse[] = [];
   protected neuronDiscoveries: CandidateNeuron[] = [];
 
@@ -202,6 +209,10 @@ export class DiscoverStructureBase {
     this.disableCleanup = options.disableCleanup ?? false;
     this.skipRecordPhase = options.skipRecordPhase ?? false;
     this.taskDescriptor = options.taskDescriptor ?? OTHER_TASK_DESCRIPTOR;
+    this.maxAnalysisMemoryMb = options.maxAnalysisMemoryMb !== undefined &&
+        options.maxAnalysisMemoryMb > 0
+      ? Math.floor(options.maxAnalysisMemoryMb)
+      : undefined;
 
     const nonInputNeuronCount =
       creature.neurons.filter((n) => n.type !== "input")

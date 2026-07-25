@@ -65,9 +65,41 @@ type RustDiscoverySymbols = {
 };
 
 /**
+ * Analysis-memory FFI symbols (Issue #3432).
+ *
+ * These live on a **separate** `Deno.dlopen` handle deliberately: `dlopen`
+ * fails the whole call when any requested symbol is missing, so folding them
+ * into {@link RustDiscoverySymbols} would make an older NEAT-AI-Discovery
+ * build disable discovery entirely. Loading them separately lets the core
+ * symbols keep working while the memory controls report themselves as
+ * unavailable (loudly, via a one-time warning) rather than silently.
+ */
+type RustMemorySymbols = {
+  "discovery_memory_usage_bytes": {
+    parameters: [];
+    result: "u64";
+    nonblocking: false;
+  };
+  "cancel_analysis_memory_pressure": {
+    parameters: [];
+    result: "void";
+    nonblocking: false;
+  };
+};
+
+/**
  * Loaded Rust library instance.
  */
 let rustLib: Deno.DynamicLibrary<RustDiscoverySymbols> | null = null;
+
+/** Optional analysis-memory handle (Issue #3432); null until probed/loaded. */
+let rustMemoryLib: Deno.DynamicLibrary<RustMemorySymbols> | null = null;
+
+/** True once the optional memory-symbol load has been attempted. */
+let rustMemoryLibProbed = false;
+
+/** One-time warning latch for a missing analysis-memory FFI surface. */
+let rustMemoryWarningEmitted = false;
 
 let rustGpuWarningEmitted = false;
 
@@ -311,8 +343,137 @@ export function closeRustLibrary(): void {
     cachedDiscoveryVersion = null;
     cachedGpuBackendInfo = null;
   }
+  if (rustMemoryLib !== null) {
+    rustMemoryLib.close();
+    rustMemoryLib = null;
+  }
+  rustMemoryLibProbed = false;
+  rustMemoryWarningEmitted = false;
   // Reset cached discovery state so it will be re-checked on next call
   rustDiscoveryEnabledState = "unknown";
+}
+
+/**
+ * Loads (once) the optional analysis-memory FFI symbols (Issue #3432).
+ *
+ * Returns `null` when the library cannot be resolved or the build predates the
+ * memory API. The first failure emits a single warning so a stale library is
+ * visible in the log rather than degrading silently.
+ */
+function getRustMemorySymbols(
+  loadIfNeeded: boolean,
+):
+  | Deno.DynamicLibrary<RustMemorySymbols>["symbols"]
+  | null {
+  if (rustMemoryLib !== null) {
+    return rustMemoryLib.symbols;
+  }
+  if (rustMemoryLibProbed) {
+    return null;
+  }
+  // Passive callers (diagnostics) must not force a library load; they only
+  // report what an already-loaded library says.
+  if (!loadIfNeeded && rustLib === null) {
+    return null;
+  }
+  rustMemoryLibProbed = true;
+
+  const libPath = findRustLibrary();
+  if (!libPath) {
+    return null;
+  }
+
+  try {
+    rustMemoryLib = Deno.dlopen(
+      libPath,
+      {
+        "discovery_memory_usage_bytes": {
+          parameters: [],
+          result: "u64",
+          nonblocking: false,
+        },
+        "cancel_analysis_memory_pressure": {
+          parameters: [],
+          result: "void",
+          nonblocking: false,
+        },
+      } as const satisfies RustMemorySymbols,
+    );
+    return rustMemoryLib.symbols;
+  } catch (error) {
+    if (!rustMemoryWarningEmitted) {
+      rustMemoryWarningEmitted = true;
+      getLogger().warn(
+        "[RustDiscovery] Analysis-memory FFI symbols " +
+          "(discovery_memory_usage_bytes / cancel_analysis_memory_pressure) " +
+          `are unavailable in ${libPath}. Analysis memory usage cannot be ` +
+          "observed and in-flight analysis cannot be cancelled under memory " +
+          "pressure — rebuild NEAT-AI-Discovery to restore them.",
+        error,
+      );
+    }
+    return null;
+  }
+}
+
+/**
+ * Returns the Rust-side allocator footprint of NEAT-AI-Discovery in bytes
+ * (Discovery #1027), or `undefined` when the FFI surface is unavailable.
+ *
+ * The value covers memory allocated through Rust's global allocator only — it
+ * does **not** include the V8 heap. Combine it with `Deno.memoryUsage()` for a
+ * whole-process view.
+ *
+ * This is a **passive** read: it never loads the discovery library, so calling
+ * it from a diagnostic path cannot open an FFI handle as a side effect. When
+ * the library is not loaded in this isolate the answer is `undefined`.
+ */
+export function getDiscoveryMemoryUsageBytes(): number | undefined {
+  const symbols = getRustMemorySymbols(false);
+  if (symbols === null) {
+    return undefined;
+  }
+  try {
+    return Number(symbols["discovery_memory_usage_bytes"]());
+  } catch (error) {
+    getLogger().warn(
+      "[RustDiscovery] discovery_memory_usage_bytes threw:",
+      error,
+    );
+    return undefined;
+  }
+}
+
+/**
+ * Asks NEAT-AI-Discovery to abort an in-flight analysis because the host is
+ * under CRITICAL memory pressure (Discovery #1099).
+ *
+ * Discovery's cancellation flag is process-wide, so a host isolate that is not
+ * itself blocked inside `analyze_parallel` can use this to stop an analysis
+ * running on another thread of the same process. For that reason — unlike
+ * {@link getDiscoveryMemoryUsageBytes} — this call *will* load the library if
+ * it is not yet open in this isolate; it only ever runs under genuine memory
+ * pressure, so the one-off load is a fair price for being able to stop the
+ * analysis at all.
+ *
+ * @returns true when the cancellation was signalled, false when the FFI
+ *          surface is unavailable or the call failed.
+ */
+export function cancelAnalysisMemoryPressure(): boolean {
+  const symbols = getRustMemorySymbols(true);
+  if (symbols === null) {
+    return false;
+  }
+  try {
+    symbols["cancel_analysis_memory_pressure"]();
+    return true;
+  } catch (error) {
+    getLogger().warn(
+      "[RustDiscovery] cancel_analysis_memory_pressure threw:",
+      error,
+    );
+    return false;
+  }
 }
 
 /**

@@ -333,4 +333,11 @@ export interface DiscoverStructureOptions {
    * neutral `OTHER` descriptor is used.
    */
   taskDescriptor?: TaskDescriptor;
+
+  /**
+   * Analysis-phase memory budget in megabytes forwarded to Discovery on
+   * `analyze_parallel` (Issue #3432). Omitted or `<= 0` means no Rust-side
+   * budget is sent, which is Discovery's "unbounded" mode.
+   */
+  maxAnalysisMemoryMb?: number;
 }
