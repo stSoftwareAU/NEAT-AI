@@ -20,8 +20,20 @@ import { walk } from "@std/fs";
 const SRC_DIR = fromFileUrl(new URL("../../src", import.meta.url));
 const TEST_DIR = fromFileUrl(new URL("../../test", import.meta.url));
 
-/** This guard file itself — excluded so its own examples never self-match. */
-const SELF = fromFileUrl(import.meta.url);
+/**
+ * Private-repo *detector* tests — this guard plus its siblings that must embed
+ * the forbidden `GRQ` patterns verbatim as fixtures and test names to verify
+ * their own detection logic. They are the audit, not offenders, so scanning them
+ * would be a self-referential false positive. Any new detector test that carries
+ * literal pattern fixtures belongs here.
+ */
+const DETECTOR_TESTS = new Set(
+  [
+    import.meta.url,
+    new URL("./LiveDocsNoPrivateGrqReference.ts", import.meta.url).href,
+    new URL("./CrossSpeciesBaselineNoPrivateRepo.ts", import.meta.url).href,
+  ].map(fromFileUrl),
+);
 
 /**
  * Match a private `stSoftwareAU/GRQ` issue-tracker slug (`GRQ#3295`,
@@ -53,7 +65,7 @@ async function scanTree(root: string): Promise<string[]> {
   for await (
     const entry of walk(root, { exts: [".ts"], includeDirs: false })
   ) {
-    if (entry.path === SELF) continue;
+    if (DETECTOR_TESTS.has(entry.path)) continue;
     const source = await Deno.readTextFile(entry.path);
     const hits = findPrivateGrqRefs(source);
     if (hits.length > 0) {

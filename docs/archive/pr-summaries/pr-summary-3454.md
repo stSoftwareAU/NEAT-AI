@@ -43,7 +43,12 @@ repo"/"GRQ shell" pointer, modelled on the existing
 `test/docs/CrossSpeciesBaselineNoPrivateRepo.ts` audit test. It exercises
 committed file content (behaviour), not the source text of any function.
 
-Quality gate: `./quality.sh` → `7844 passed | 0 failed | 4 ignored`.
+The guard now exempts the private-repo **detector tests**
+(`LiveDocsNoPrivateGrqReference.ts`, `CrossSpeciesBaselineNoPrivateRepo.ts`, and
+itself) from the scan: those tests must embed the forbidden `GRQ` patterns
+verbatim as fixtures and test names to verify their own detection, so scanning
+them was a self-referential false positive that made the guard fail on the whole
+tree. The exemption is an explicit, documented allowlist — not a silent skip.
 
 ## Test Plan
 
