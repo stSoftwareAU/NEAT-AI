@@ -29,6 +29,18 @@
  *   the existing buggy producers; #2666 will drive it to zero. Bumping the
  *   allowance is NOT how to "fix" this test — root-cause the trap and bring
  *   the count down instead.
+ *
+ * Coverage lineage (Issue #3461):
+ *
+ *   Together with `TopologyHashPositionOrderingIssue2670.ts`, this test is
+ *   the in-tree, synthetic coverage anchor that let the private-`GRQ-logs`-
+ *   derived replay test `Grq2681TrapReplay.ts` (#2683/#2681) be deleted
+ *   under #3451 without losing coverage. That replay confirmed the
+ *   `unreachable` `CompiledNetwork::new` producer-gate trap stayed at zero
+ *   on large captured production shapes; this test drives the same
+ *   producer-gate trap to zero (`BASELINE_REJECT_ALLOWANCE = 0`) on a
+ *   synthetic lunar_lander shape with no private data. The scale differs;
+ *   the failure mode pinned is the same.
  */
 
 import { assert, assertEquals } from "@std/assert";

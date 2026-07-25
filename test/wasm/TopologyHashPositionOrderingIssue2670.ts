@@ -24,6 +24,18 @@
  *     3. Compiling both via `getOrCompileWasmModule` from a freshly cleared
  *        cache and confirming both compile cleanly — the second creature
  *        must NOT hit a stale template from the first.
+ *
+ * Coverage lineage (Issue #3461):
+ *
+ *   This synthetic test is the go/no-go coverage anchor for the removal of
+ *   the private-`GRQ-logs`-derived replay test `Grq2681TrapReplay.ts`
+ *   (#2683/#2681, deleted under #3451). That replay loaded nine large
+ *   production creature snapshots to confirm PR #2678 also resolved the
+ *   `unreachable` `CompiledNetwork::new` trap. The *failure mode* it pinned
+ *   — a position-blind topology-hash collision serving a stale WASM
+ *   template across two valid orderings of the same UUID set — is exactly
+ *   the invariant asserted here, reproduced synthetically with no private
+ *   data. Do not weaken these assertions without re-checking #3451.
  */
 
 import { assert, assertNotEquals } from "@std/assert";
