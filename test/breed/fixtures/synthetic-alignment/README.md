@@ -10,9 +10,9 @@ the end-to-end regression for the synthetic-UUID alignment fallback wired into
 The fixtures are inspired by the production cross-island breed problem first
 reported in Issue #2609:
 
-- `parent-mother.json` — modelled on the GRQ-cluster `network.json` shape
-  (cascading layered topology, fan-in to a deep hidden neuron, a shortcut hidden
-  neuron from `input-0` directly to `output-1`).
+- `parent-mother.json` — modelled on the production cluster's `network.json`
+  shape (cascading layered topology, fan-in to a deep hidden neuron, a shortcut
+  hidden neuron from `input-0` directly to `output-1`).
 - `parent-father.json` — modelled on the GRQ-teams Europa creature shape (same
   overall layered topology, deliberately disjoint hidden-neuron real UUIDs).
 

@@ -40,8 +40,8 @@ Deno.test("Production-scale creature has GRQ-cluster dimensions", () => {
 });
 
 Deno.test("Production learn/sampler creature matches network.json dimensions (grq-3397)", () => {
-  // Issue #3397: the `grq-3397` preset reproduces the GRQ-cluster production
-  // `network.json` topology used by worker/learn.sh — 1,666 neurons,
+  // Issue #3397: the `grq-3397` preset reproduces the production cluster's
+  // `network.json`-scale topology used by worker/learn.sh — 1,666 neurons,
   // ~21,513 synapses, 2,461 inputs — so the profiling report's command is
   // reproducible against the real production dimensions.
   const rng = createSeededRng(3396);
