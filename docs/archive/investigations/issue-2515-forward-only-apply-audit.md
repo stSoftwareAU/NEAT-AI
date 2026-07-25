@@ -93,4 +93,4 @@ flowchart LR
 
 - Builds on #2511 (save-side assertion in `exportJSON`) and #2514 (load-side
   throw in `loadFrom`).
-- Closes the producer-side audit requested in stSoftwareAU/GRQ#2109.
+- Closes the producer-side audit requested in the downstream production repo.

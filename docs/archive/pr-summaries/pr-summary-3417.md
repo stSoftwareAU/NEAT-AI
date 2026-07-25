@@ -7,23 +7,23 @@ Dependency bumps on host Mac-Ultra-M2 were rejected because `bump-deps.sh`'s
 with the unattended launchd/cron PATH, which lacks `~/.deno/bin` (the official
 installer location). The bump was reverted and PR #3416 shipped without it.
 
-The root cause is worker-side and tracked separately as
-`stSoftwareAU/VibeCoding#3532`. This PR adds a **local defence-in-depth layer**:
-when `command -v deno` fails, `bump-deps.sh` now probes the known install
-locations — `~/.deno/bin/deno`, `/opt/homebrew/bin/deno`, `/usr/local/bin/deno`
-(first match wins) — and prepends the winner's directory to `PATH` so every
-later `deno` call resolves. When no candidate exists it still **fails loud**
-with the existing `ERROR: deno is required` message and exit 1, so the worker
-reverts per VibeCoding#1613 — no silent skip.
+The root cause is worker-side and tracked separately in the orchestration repo's
+tracking issue. This PR adds a **local defence-in-depth layer**: when
+`command -v deno` fails, `bump-deps.sh` now probes the known install locations —
+`~/.deno/bin/deno`, `/opt/homebrew/bin/deno`, `/usr/local/bin/deno` (first match
+wins) — and prepends the winner's directory to `PATH` so every later `deno` call
+resolves. When no candidate exists it still **fails loud** with the existing
+`ERROR: deno is required` message and exit 1, so the worker reverts per the
+orchestration repo's dependency-bump contract — no silent skip.
 
 The fallback list is overridable via `BUMP_DEPS_DENO_FALLBACKS` (a
 colon-separated test seam) that defaults to the three canonical locations.
 
 Closes #3417.
 
-> Note: the verify-and-close step in the issue depends on VibeCoding#3532
-> landing on an affected host; this PR delivers the hardening half, which does
-> not depend on the worker fix.
+> Note: the verify-and-close step in the issue depends on the orchestration
+> repo's worker fix landing on an affected host; this PR delivers the hardening
+> half, which does not depend on the worker fix.
 
 ## Deno regression avoided
 

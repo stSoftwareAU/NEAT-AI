@@ -32,6 +32,9 @@ const DETECTOR_TESTS = new Set(
     import.meta.url,
     new URL("./LiveDocsNoPrivateGrqReference.ts", import.meta.url).href,
     new URL("./CrossSpeciesBaselineNoPrivateRepo.ts", import.meta.url).href,
+    new URL("./ArchiveDocsNoPrivateRepoSlugs.ts", import.meta.url).href,
+    new URL("./ArchiveDocsNoPrivateRepoReference.ts", import.meta.url).href,
+    new URL("./ArchivedDocsNoPrivateRepoReference.ts", import.meta.url).href,
   ].map(fromFileUrl),
 );
 

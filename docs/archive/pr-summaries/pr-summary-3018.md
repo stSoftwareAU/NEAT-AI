@@ -1,10 +1,9 @@
 ## Summary
 
 The docs understated the size of the live production creature. Several spots
-claimed "~500 hidden neurons", but the production genome
-([GRQ-cluster/network.json](https://github.com/stSoftwareAU/GRQ-cluster/blob/main/network.json))
-is far larger. This PR refreshes those statistics to match the actual deployed
-creature. Closes #3018.
+claimed "~500 hidden neurons", but the production genome (the production
+`network.json` snapshot) is far larger. This PR refreshes those statistics to
+match the actual deployed creature. Closes #3018.
 
 Measured directly from the production `network.json` (semantic version 4.0.0,
 forward-only):
@@ -36,8 +35,8 @@ were left unchanged.
 This is a documentation-only change (no TypeScript modified), so there is no UI
 to screenshot and no runtime behaviour to benchmark. Verification:
 
-- Production statistics derived by parsing the live `network.json` fetched from
-  `stSoftwareAU/GRQ-cluster`:
+- Production statistics derived by parsing the live production `network.json`
+  snapshot:
   `input: 2461, output: 1, neurons: 1673 (1669 hidden, 3 constant, 1 output), synapses: 21689`.
 - `./quality.sh --lint-only` passes cleanly (formatting, linting, bash check).
 - `markdownlint-cli2` reports 0 errors.
