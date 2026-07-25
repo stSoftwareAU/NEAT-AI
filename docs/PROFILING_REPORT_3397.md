@@ -4,8 +4,8 @@ Sub-issue of #3396 — the foundational profiling deliverable that the other #33
 sub-issues derive their priorities from (same pattern as #3082 → milestone).
 
 This report profiles exactly what the two production scripts drive, on the
-GRQ-cluster production topology, and ranks the hotspots by their owning repo and
-the follow-up sub-issue that addresses each one. Every finding is framed against
+production topology, and ranks the hotspots by their owning repo and the
+follow-up sub-issue that addresses each one. Every finding is framed against
 **score improvement per wall-clock hour** inside the fixed learn/sampler
 time-boxes — not raw throughput.
 
@@ -16,8 +16,8 @@ time-boxes — not raw throughput.
 | `worker/learn.sh`   | one `src/Learn.ts` run | populationSize=20, trainingSampleRate=0.1, sparseRatio=0.05, random 6-bit evolution-mode flags, soft `--timeout ≈ 45 min` |
 | `worker/sampler.sh` | 5 `src/Learn.ts` loops | populations 20→50, rates 0.01→1.0, ~1 h target (only the final 100 % loop is checked in)                                  |
 
-**Production model** = GRQ-cluster `network.json`: **1,666 neurons, ~21,513
-synapses, 2,461 inputs (~3 MB)**.
+**Production model** = a production-scale network snapshot: **1,666 neurons,
+~21,513 synapses, 2,461 inputs (~3 MB)**.
 
 The synthetic `grq-3397` scale preset in
 `test/propagate/large/ProductionScaleCreature.ts` reproduces those exact
@@ -107,12 +107,11 @@ lives in this repo: `getEnvRustScorerConfig()` in
 - **In this profiling run:** JS/WASM lane. Evidence — `NEAT_AI_RUST_SCORER_*`
   was unset; the run logged 16 `wasmActivation` / `wasmCompilation`
   `MemoryMonitor` markers and **zero** `rust_scorer` markers.
-- **In production:** `GRQ/worker/learn.sh` selects the lane via
-  `shared/ensure_neat_ai_native_scorer.sh`, which exports
-  `NEAT_AI_RUST_SCORER_*` when the native binary is built — so production runs
-  the **native lane** when the scorer is present and falls back to JS/WASM
-  otherwise. The chosen lane is visible in the run's GRQ-logs output; if a
-  production log contradicts the lane assumed here, the native-lane routing
+- **In production:** the downstream production runner scripts select the lane by
+  exporting `NEAT_AI_RUST_SCORER_*` when the native binary is built — so
+  production runs the **native lane** when the scorer is present and falls back
+  to JS/WASM otherwise. The chosen lane is visible in the production run logs;
+  if a production log contradicts the lane assumed here, the native-lane routing
   below must be re-triaged.
 
 **Consequence for routing:** because production scores on the **native lane**,
@@ -122,15 +121,15 @@ duplicated in NEAT-AI (one root cause → one issue in the repo where it lives).
 
 ## 3. Hotspots ranked, classified, and routed to a follow-up
 
-|  # | Hotspot                                                                                | Evidence                                           | Owning repo                                                                     | Follow-up sub-issue                                                                                                              |
-| -: | -------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-|  1 | **Main-thread breeding** (70 %) — largest score-per-hour lever                         | 11,144.9 ms/gen                                    | **NEAT-AI**                                                                     | **#3399** — overlap next-gen breeding/mutation prep with in-flight scoring so the main-thread band stops gating generations/hour |
-|  2 | **Fitness / scoring lane** (11.3 % single-thread; parallelised in prod)                | 40.7 ms/activation, WASM in bench / native in prod | **NEAT-AI-core / NEAT-AI-scorer** (native lane) + **NEAT-AI** (pool scheduling) | **stSoftwareAU/NEAT-AI-core#285** for native-lane per-score cost; **#3399** for generation-end idle-worker time                  |
-|  3 | **De-duplication** (3.7 %, 561–691 ms/gen)                                             | Bloom-filter + Set on 1,666-neuron creatures       | **NEAT-AI** (main thread)                                                       | **#3399** (main-thread band; overlap/scheduling)                                                                                 |
-|  4 | **Mutation** (3.2 %)                                                                   | 504.0 ms/gen                                       | **NEAT-AI** (main thread)                                                       | **#3399** (overlap) / **#3400** (mutation rate is a tuned flag)                                                                  |
-|  5 | **resultProcessing + preWarm** (3.2 %)                                                 | 301.7 + 208.3 ms/gen                               | **NEAT-AI** (main thread)                                                       | **#3399**                                                                                                                        |
-|  6 | **Config lane** — population=20, trainingSampleRate=0.1, sparseRatio=0.05, 6-bit flags | GRQ script parameters + NEAT-AI defaults           | **GRQ** (script params) + **NEAT-AI** (defaults)                                | **#3400** — sweep flags & pop/rate for score-per-hour; raise cross-repo GRQ issue for winning script params                      |
-|  7 | **Serialisation / checkpoint I/O** — 58 ms/creature round-trip                         | per-generation write cost                          | **NEAT-AI**                                                                     | tracked as a minor cost; the #3398 harness records it. No dedicated sub-issue — below the breeding/scoring levers                |
+|  # | Hotspot                                                                                | Evidence                                               | Owning repo                                                                     | Follow-up sub-issue                                                                                                              |
+| -: | -------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+|  1 | **Main-thread breeding** (70 %) — largest score-per-hour lever                         | 11,144.9 ms/gen                                        | **NEAT-AI**                                                                     | **#3399** — overlap next-gen breeding/mutation prep with in-flight scoring so the main-thread band stops gating generations/hour |
+|  2 | **Fitness / scoring lane** (11.3 % single-thread; parallelised in prod)                | 40.7 ms/activation, WASM in bench / native in prod     | **NEAT-AI-core / NEAT-AI-scorer** (native lane) + **NEAT-AI** (pool scheduling) | **stSoftwareAU/NEAT-AI-core#285** for native-lane per-score cost; **#3399** for generation-end idle-worker time                  |
+|  3 | **De-duplication** (3.7 %, 561–691 ms/gen)                                             | Bloom-filter + Set on 1,666-neuron creatures           | **NEAT-AI** (main thread)                                                       | **#3399** (main-thread band; overlap/scheduling)                                                                                 |
+|  4 | **Mutation** (3.2 %)                                                                   | 504.0 ms/gen                                           | **NEAT-AI** (main thread)                                                       | **#3399** (overlap) / **#3400** (mutation rate is a tuned flag)                                                                  |
+|  5 | **resultProcessing + preWarm** (3.2 %)                                                 | 301.7 + 208.3 ms/gen                                   | **NEAT-AI** (main thread)                                                       | **#3399**                                                                                                                        |
+|  6 | **Config lane** — population=20, trainingSampleRate=0.1, sparseRatio=0.05, 6-bit flags | downstream runner script parameters + NEAT-AI defaults | **downstream runner** (script params) + **NEAT-AI** (defaults)                  | **#3400** — sweep flags & pop/rate for score-per-hour; raise the winning script params with the downstream runner owners         |
+|  7 | **Serialisation / checkpoint I/O** — 58 ms/creature round-trip                         | per-generation write cost                              | **NEAT-AI**                                                                     | tracked as a minor cost; the #3398 harness records it. No dedicated sub-issue — below the breeding/scoring levers                |
 
 The **#3398** score-per-hour harness is the evidence gate every row above
 depends on: it is where each follow-up demonstrates its before/after inside a
@@ -156,8 +155,8 @@ Priority order by score-per-hour impact within the fixed time-boxes:
 - ✅ Report committed with a reproducible profiling command over `bench/`
   production-scale data (`bench/ProductionLearnSamplerProfile.ts`).
 - ✅ Production scoring lane confirmed with evidence — env-gated, default WASM;
-  native in production via GRQ `ensure_neat_ai_native_scorer.sh`; this run was
-  WASM (0 `rust_scorer` markers, 16 WASM markers).
+  native in production via the downstream production runner scripts; this run
+  was WASM (0 `rust_scorer` markers, 16 WASM markers).
 - ✅ Hotspots ranked, each assigned an owning repo + follow-up issue (§3, §4).
 
 ## References
