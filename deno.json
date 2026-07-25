@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "5.9.31",
+  "version": "5.9.32",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
@@ -82,6 +82,7 @@
       "bench/ActivateAndTraceApp.ts",
       "bench/ActivateApp.ts",
       "bench/AdaptiveLearningRateConvergence.ts",
+      "bench/CheckpointWritePeakHeap.ts",
       "bench/CosineAnnealingWarmRestart.ts",
       "bench/CreatureStateNodeMap.ts",
       "bench/DenseNumberMapBenchmark.ts",

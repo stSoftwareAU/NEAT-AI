@@ -177,10 +177,22 @@ export function scheduleDiscovery(
     );
   }
 
+  // Issue #3435: capture the abandon token at schedule time so a late-resolving
+  // discovery promise discards its result (rather than re-inflating the complete
+  // queue) if the run abandons in-flight work past the hard deadline meanwhile.
+  const scheduledEpoch = neat.abandonEpoch;
+
   const discoveryPromise = w.discover(creature, discoveryConfig);
 
   const p = discoveryPromise.then((r) => {
     assert(r.discover, "No discovery found");
+
+    // Issue #3435: discard late completions after a hard-deadline abandon before
+    // doing any heavy work (building the improved creature) or pushing a large
+    // result blob into the complete queue.
+    if (neat.isRunAbandonedSince(scheduledEpoch)) {
+      return;
+    }
 
     const discoveryDurationMS = Date.now() - taskStartTime;
     neat.lastDiscoveryDurationMS = discoveryDurationMS;
@@ -216,9 +228,16 @@ export function scheduleDiscovery(
       }
     }
 
-    neat.discoveryComplete.push(r);
-    neat.discoveryInProgress.delete(uuid);
+    // Issue #3435: guarded push — discarded (with no map mutation) when the run
+    // abandoned this task since it was scheduled.
+    neat.recordDiscoveryComplete(uuid, scheduledEpoch, r);
   }).catch((error) => {
+    // Issue #3435: a late failure after abandon must not push a stub into the
+    // complete queue either.
+    if (neat.isRunAbandonedSince(scheduledEpoch)) {
+      return;
+    }
+
     getLogger().error(
       `[Neat] Discovery failed for creature ${
         uuid.substring(Math.max(0, uuid.length - 8))
@@ -226,9 +245,7 @@ export function scheduleDiscovery(
       error,
     );
 
-    neat.discoveryInProgress.delete(uuid);
-
-    neat.discoveryComplete.push({
+    neat.recordDiscoveryComplete(uuid, scheduledEpoch, {
       taskID: 0,
       duration: 0,
       discover: {
@@ -363,8 +380,19 @@ export function scheduleTraining(
     dataFuzzing: neat.config.dataFuzzing,
   };
 
+  // Issue #3435: capture the abandon token at schedule time so a late-resolving
+  // training promise discards its result if the run abandons in-flight work past
+  // the hard deadline before it settles.
+  const scheduledEpoch = neat.abandonEpoch;
+
   const p = w.train(creature, trainOptions).then((r) => {
     assert(r.train, "No train found");
+
+    // Issue #3435: discard late completions after a hard-deadline abandon before
+    // rebuilding the trained creature, fine-tuning, or writing traces.
+    if (neat.isRunAbandonedSince(scheduledEpoch)) {
+      return;
+    }
 
     const errorTx = getTag(creature, "error");
     assert(errorTx, "No error tag found");
@@ -436,9 +464,9 @@ export function scheduleTraining(
       neat.trainingRegressionTracker.recordImprovement(uuid);
     }
 
-    neat.trainingComplete.push(r);
-    neat.trainingInProgress.delete(uuid);
-    neat.trainingDeadlines.delete(uuid);
+    // Issue #3435: guarded push — discarded (with no map mutation) when the run
+    // abandoned this task since it was scheduled.
+    neat.recordTrainingComplete(uuid, scheduledEpoch, r);
 
     if (neat.config.traceStore) {
       if (r.train.trace) {
@@ -454,15 +482,18 @@ export function scheduleTraining(
       }
     }
   }).catch((error) => {
+    // Issue #3435: a late failure after abandon must not push a stub (or
+    // serialise the creature) into the complete queue.
+    if (neat.isRunAbandonedSince(scheduledEpoch)) {
+      return;
+    }
+
     getLogger().error(
       `Training failed for creature ${
         uuid.substring(Math.max(0, uuid.length - 8))
       }:`,
       error,
     );
-
-    neat.trainingInProgress.delete(uuid);
-    neat.trainingDeadlines.delete(uuid);
 
     // Issue #2546: training has already failed for this creature; serialise
     // it for the diagnostic record without re-running the writer-side
@@ -481,7 +512,7 @@ export function scheduleTraining(
       };
     }
 
-    neat.trainingComplete.push({
+    neat.recordTrainingComplete(uuid, scheduledEpoch, {
       taskID: 0,
       duration: 0,
       train: {

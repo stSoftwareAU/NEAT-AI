@@ -251,6 +251,16 @@ export class Neat {
   discoveryInProgress = new Map<string, Promise<void>>();
   discoveryComplete: ResponseData[] = [];
   trainingComplete: ResponseData[] = [];
+  /**
+   * Issue #3435: monotonic abandon token, bumped whenever in-flight
+   * discovery/training work is abandoned past the hard deadline
+   * ({@link abandonInFlightPastHardDeadline}). Each scheduled task captures the
+   * token at schedule time; a late-resolving promise whose captured token no
+   * longer matches discards its (potentially large) result payload instead of
+   * re-inflating {@link discoveryComplete} / {@link trainingComplete} after the
+   * run has already shed the work.
+   */
+  abandonEpoch = 0;
   alreadyScheduledMap = new Map<string, number>();
   /**
    * Issue #2382: tracks per-creature training regression history so
@@ -733,6 +743,71 @@ export class Neat {
     this.discoveryInProgress.clear();
     this.trainingInProgress.clear();
     this.trainingDeadlines.clear();
+    // Issue #3435: invalidate every task scheduled before this abandon so their
+    // late-resolving promises discard their result blobs rather than re-inflate
+    // the complete queues after we have deliberately shed the work.
+    this.abandonEpoch++;
+    return true;
+  }
+
+  /**
+   * Issue #3435: true when the run has abandoned in-flight work since a task was
+   * scheduled at `scheduledEpoch`. Used by the discovery/training completion
+   * handlers to discard late results instead of pushing them into the complete
+   * queues.
+   */
+  isRunAbandonedSince(scheduledEpoch: number): boolean {
+    return scheduledEpoch !== this.abandonEpoch;
+  }
+
+  /**
+   * Issue #3435: record a completed discovery unless the task was abandoned
+   * since it was scheduled. A completion is discarded when either the run was
+   * abandoned past the hard deadline (`scheduledEpoch` no longer current) or the
+   * task is no longer tracked in {@link discoveryInProgress} (e.g. cleared by
+   * abandon). Discarded completions leave the maps untouched — the entry has
+   * already been removed by abandon, or belongs to a newer task for the same
+   * UUID that must not be clobbered.
+   *
+   * @returns `true` when the result was recorded, `false` when discarded.
+   */
+  recordDiscoveryComplete(
+    uuid: string,
+    scheduledEpoch: number,
+    result: ResponseData,
+  ): boolean {
+    if (
+      this.isRunAbandonedSince(scheduledEpoch) ||
+      !this.discoveryInProgress.has(uuid)
+    ) {
+      return false;
+    }
+    this.discoveryComplete.push(result);
+    this.discoveryInProgress.delete(uuid);
+    return true;
+  }
+
+  /**
+   * Issue #3435: record a completed training result unless the task was
+   * abandoned since it was scheduled. Mirrors {@link recordDiscoveryComplete}
+   * for the training maps, also releasing the per-task deadline on success.
+   *
+   * @returns `true` when the result was recorded, `false` when discarded.
+   */
+  recordTrainingComplete(
+    uuid: string,
+    scheduledEpoch: number,
+    result: ResponseData,
+  ): boolean {
+    if (
+      this.isRunAbandonedSince(scheduledEpoch) ||
+      !this.trainingInProgress.has(uuid)
+    ) {
+      return false;
+    }
+    this.trainingComplete.push(result);
+    this.trainingInProgress.delete(uuid);
+    this.trainingDeadlines.delete(uuid);
     return true;
   }
 

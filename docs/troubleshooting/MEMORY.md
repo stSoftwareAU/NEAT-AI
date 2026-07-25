@@ -59,6 +59,22 @@ At **warning level** (70%), the monitor halves the WASM activation cache and
 evicts the oldest quarter of entries. At **critical level** (85%), it reduces
 the cache to a single entry and clears the compilation cache.
 
+Because worker isolates keep their own WASM heaps and some retainers are
+process-global, the same responses also reach beyond the main-thread caches
+(Issue #3431):
+
+- **Both levels** broadcast the reduced caps to every live worker isolate via
+  `WorkerHandler.configureCache`, so worker WASM caches shrink in step with the
+  main thread rather than climbing unchecked.
+- **Critical level** additionally clears the process-global breed
+  `DistanceCache` and the shared discovery `SubnetworkHashIndex` — retainers
+  that otherwise survive across generations and repeated `evolveDir` calls.
+
+The diagnostic snapshot line now appends `distanceCache=<n>/<max>`,
+`subnetworkIndex=<n>`, and `workers=<n>` fields, reporting these
+previously-invisible retainers so backoff decisions can see the real memory
+holder.
+
 > **Thresholds are measured against the real V8 heap limit** (`heap_size_limit`,
 > i.e. `--max-old-space-size`), **not** the dynamically-committed `heapTotal`
 > (Issue #3410). Committed `heapTotal` starts far below the configured limit and
@@ -67,6 +83,13 @@ the cache to a single entry and clears the compilation cache.
 > `[MemoryMonitor] Heap: <used> / <limit> (<pct>%)` log line shows the real
 > ceiling. When the runtime cannot report the limit the monitor falls back to
 > `heapTotal` (legacy behaviour).
+>
+> **Discovery shares this denominator.** The Discovery analysis-extension guard
+> (`AnalysisHeapGuard.sampleHeapPressure`) resolves its pressure fraction with
+> the same `resolveHeapLimit` helper, so the guard's degrade/abort decisions and
+> the `MemoryMonitor` pressure level agree for the same `Deno.memoryUsage()` /
+> V8 sample (Issue #3433). The guard's off-heap RSS / `nativeBudgetBytes` abort
+> rules (Issue #3025) still apply on top of the corrected V8 fraction.
 
 **Step 2 — Adjust `MemoryMonitor` thresholds:**
 

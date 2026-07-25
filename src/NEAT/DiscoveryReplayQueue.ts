@@ -213,7 +213,10 @@ export class DiscoveryReplayQueue {
 
     if (this.#replayInProgress) {
       // Queue this creature to be processed when the current replay completes
-      // Only keep the most recent queued creature
+      // Only keep the most recent queued creature.
+      // Issue #3435: dispose the previously queued clone we are about to drop so
+      // its topology is not retained until the next scheduleReplay overwrites it.
+      this.#queuedCreature?.creature.dispose();
       this.#queuedCreature = {
         creature: creature.shallowClone(),
         dataDir,
@@ -286,6 +289,11 @@ export class DiscoveryReplayQueue {
         this.#currentPromise = null;
         this.#currentAbort = null;
 
+        // Issue #3435: release the replay clone's topology promptly on
+        // completion, failure, or cooperative abort so it is not retained across
+        // generations while the next queued replay runs.
+        creature.dispose();
+
         // Process the next queued creature if any
         if (this.#queuedCreature) {
           const queued = this.#queuedCreature;
@@ -342,6 +350,9 @@ export class DiscoveryReplayQueue {
       // never starts, signal the in-flight replay to abort, and return without
       // awaiting — the abandoned replay stops at its next candidate boundary.
       if (capped && Date.now() >= hardDeadlineTS!) {
+        // Issue #3435: dispose the dropped queued clone before releasing it so
+        // its topology is not retained after we stop waiting at the hard cap.
+        this.#queuedCreature?.creature.dispose();
         this.#queuedCreature = null;
         this.#currentAbort?.abort();
         return;

@@ -128,6 +128,27 @@ export interface MemoryConfig {
    * V8-only abort behaviour.
    */
   nativeBudgetBytes?: number;
+
+  /**
+   * Analysis-phase memory budget in megabytes handed to NEAT-AI-Discovery on
+   * every `analyze_parallel` call (Issue #3432).
+   *
+   * Discovery exposes `maxAnalysisMemoryMb` (Discovery #1028): when the Rust
+   * side sees its own allocator approach 90% of this budget it stops issuing
+   * further work and returns the partial results gathered so far, instead of
+   * growing the resident set until the host OOMs. Omitting the field means
+   * **no Rust-side budget at all** — which is what NEAT-AI did before this
+   * issue, and a contributor to the RSS spikes seen on discovery-heavy
+   * `evolveDir` runs.
+   *
+   * The host cannot police this from TypeScript: `analyze_parallel` is a
+   * blocking FFI call, so no JS timer or heap sample runs while Rust is
+   * allocating. The budget is the only in-flight brake.
+   *
+   * Defaults to 0, which means "do not send a budget" and preserves the
+   * previous unbounded behaviour.
+   */
+  maxAnalysisMemoryMb?: number;
 }
 
 /**
@@ -149,4 +170,5 @@ export const DEFAULT_MEMORY_CONFIG: RequiredMemoryConfig = {
   criticalBackoffCooldownMs: 60_000,
   proactiveGc: false,
   nativeBudgetBytes: 0,
+  maxAnalysisMemoryMb: 0,
 };

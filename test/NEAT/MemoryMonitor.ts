@@ -10,6 +10,7 @@ import {
   formatMemorySnapshot,
   logMemoryUsage,
   type MemoryCheckResult,
+  type MemoryPressureSink,
   type MemorySnapshot,
   type MemoryUsageProvider,
   resetMemoryPressureLogCountersForTests,
@@ -28,7 +29,30 @@ import {
   getWasmCompilationCacheMaxSize,
   setWasmCompilationCacheSize,
 } from "@wasm/WasmCompilationCache.ts";
+import {
+  clearDistanceCache,
+  getDistanceCacheSize,
+  setCachedDistance,
+} from "@breed/DistanceCache.ts";
+import { getSharedSubnetworkIndex } from "@discovery/SubnetworkHashIndex.ts";
+import type { WasmCacheConfig } from "@config/WasmCacheConfig.ts";
 import type { Logger } from "@utils/Logger.ts";
+
+/** A pressure sink that records the caps broadcast to workers. Issue #3431. */
+function recordingSink(
+  workerCount = 3,
+): MemoryPressureSink & { broadcasts: WasmCacheConfig[] } {
+  const broadcasts: WasmCacheConfig[] = [];
+  return {
+    broadcasts,
+    configureWorkerCaches(config: WasmCacheConfig) {
+      broadcasts.push(config);
+    },
+    workerCount() {
+      return workerCount;
+    },
+  };
+}
 
 /** Silent logger that captures messages for assertions. */
 function createTestLogger(): Logger & { messages: string[] } {
@@ -412,6 +436,10 @@ Deno.test("formatMemorySnapshot produces a single-line summary", () => {
     wasmActivationCap: 512,
     wasmCompilationEntries: 7,
     wasmCompilationBytes: 1024 * 1024 * 4,
+    distanceCacheEntries: 42,
+    distanceCacheMax: 10_000,
+    subnetworkIndexEntries: 99,
+    workerCount: 4,
   };
   const line = formatMemorySnapshot(snapshot);
   assertEquals(line.includes("[MemoryMonitor] Snapshot:"), true);
@@ -422,6 +450,10 @@ Deno.test("formatMemorySnapshot produces a single-line summary", () => {
   assertEquals(line.includes("wasmActivation=13/512"), true);
   assertEquals(line.includes("wasmCompilation=7"), true);
   assertEquals(line.includes("4 MB"), true);
+  // Issue #3431: new retainers appear in the diagnostic line.
+  assertEquals(line.includes("distanceCache=42/10000"), true);
+  assertEquals(line.includes("subnetworkIndex=99"), true);
+  assertEquals(line.includes("workers=4"), true);
   assertEquals(line.includes("\n"), false);
 });
 
@@ -958,5 +990,255 @@ Deno.test(
     );
     assertStrictEquals(snapshot.heapLimit, 4373);
     assertStrictEquals(snapshot.heapTotal, 676);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Issue #3431: evict worker WASM caches + DistanceCache + SubnetworkHashIndex.
+// ---------------------------------------------------------------------------
+
+Deno.test(
+  "applyCriticalResponse broadcasts minimum caps to worker isolates (#3431)",
+  () => {
+    const originalActivationCap = getMaxCachedWasmCreatureActivations();
+    const originalCompilationCap = getWasmCompilationCacheMaxSize();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(200);
+      setWasmCompilationCacheSize(50);
+      const sink = recordingSink();
+
+      applyCriticalResponse(createTestLogger(), sink);
+
+      assertEquals(sink.broadcasts.length, 1);
+      assertEquals(sink.broadcasts[0].maxCachedActivations, 1);
+      assertEquals(sink.broadcasts[0].compilationCacheSize, 1);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalActivationCap);
+      setWasmCompilationCacheSize(originalCompilationCap);
+    }
+  },
+);
+
+Deno.test(
+  "applyWarningResponse broadcasts the halved activation cap to workers (#3431)",
+  () => {
+    const originalCap = getMaxCachedWasmCreatureActivations();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(80);
+      const sink = recordingSink();
+
+      applyWarningResponse(createTestLogger(), sink);
+
+      assertEquals(sink.broadcasts.length, 1);
+      assertEquals(sink.broadcasts[0].maxCachedActivations, 40);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalCap);
+    }
+  },
+);
+
+Deno.test(
+  "applyCriticalResponse clears the DistanceCache and SubnetworkHashIndex (#3431)",
+  () => {
+    const originalActivationCap = getMaxCachedWasmCreatureActivations();
+    const originalCompilationCap = getWasmCompilationCacheMaxSize();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(64);
+      setWasmCompilationCacheSize(32);
+
+      // Seed both process-global retainers with real entries.
+      clearDistanceCache();
+      setCachedDistance("uuid-a", "uuid-b", 0.5);
+      setCachedDistance("uuid-a", "uuid-c", 0.9);
+      assertEquals(getDistanceCacheSize(), 2);
+
+      const index = getSharedSubnetworkIndex();
+      index.clear();
+      index.insert("hash-1", {
+        source: "success",
+        changeType: "add-synapses",
+        cacheKey: "k1",
+      });
+      index.insert("hash-2", {
+        source: "failure",
+        changeType: "remove-neuron",
+        cacheKey: "k2",
+      });
+      assertEquals(index.count, 2);
+
+      applyCriticalResponse(createTestLogger());
+
+      assertEquals(getDistanceCacheSize(), 0);
+      assertEquals(getSharedSubnetworkIndex().count, 0);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalActivationCap);
+      setWasmCompilationCacheSize(originalCompilationCap);
+      clearDistanceCache();
+      getSharedSubnetworkIndex().clear();
+    }
+  },
+);
+
+Deno.test(
+  "checkMemoryAndEvict clears retainers and broadcasts to workers on critical (#3431)",
+  () => {
+    const originalActivationCap = getMaxCachedWasmCreatureActivations();
+    const originalCompilationCap = getWasmCompilationCacheMaxSize();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(128);
+      setWasmCompilationCacheSize(64);
+
+      clearDistanceCache();
+      setCachedDistance("x", "y", 0.1);
+      const index = getSharedSubnetworkIndex();
+      index.clear();
+      index.insert("h", {
+        source: "success",
+        changeType: "change-squash",
+        cacheKey: "k",
+      });
+
+      const sink = recordingSink(6);
+      const result = checkMemoryAndEvict(
+        DEFAULT_MEMORY_CONFIG,
+        createTestLogger(),
+        fakeMemoryProvider(900, 1000),
+        undefined,
+        sink,
+      );
+
+      assertStrictEquals(result.pressureLevel, "critical");
+      assertStrictEquals(result.evicted, true);
+      assertEquals(getDistanceCacheSize(), 0);
+      assertEquals(getSharedSubnetworkIndex().count, 0);
+      assertEquals(sink.broadcasts.length, 1);
+      assertEquals(sink.broadcasts[0].maxCachedActivations, 1);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalActivationCap);
+      setWasmCompilationCacheSize(originalCompilationCap);
+      clearDistanceCache();
+      getSharedSubnetworkIndex().clear();
+      resetMemoryPressureLogCountersForTests();
+    }
+  },
+);
+
+Deno.test(
+  "checkMemoryAndEvict does not touch retainers or workers when disabled (#3431)",
+  () => {
+    const originalActivationCap = getMaxCachedWasmCreatureActivations();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(100);
+
+      clearDistanceCache();
+      setCachedDistance("p", "q", 0.7);
+      const index = getSharedSubnetworkIndex();
+      index.clear();
+      index.insert("hh", {
+        source: "success",
+        changeType: "add-neurons",
+        cacheKey: "kk",
+      });
+
+      const sink = recordingSink();
+      const config: RequiredMemoryConfig = {
+        ...DEFAULT_MEMORY_CONFIG,
+        enabled: false,
+      };
+      const result = checkMemoryAndEvict(
+        config,
+        createTestLogger(),
+        fakeMemoryProvider(950, 1000),
+        undefined,
+        sink,
+      );
+
+      assertStrictEquals(result.evicted, false);
+      // Nothing evicted or broadcast when monitoring is disabled.
+      assertEquals(getDistanceCacheSize(), 1);
+      assertEquals(getSharedSubnetworkIndex().count, 1);
+      assertEquals(sink.broadcasts.length, 0);
+      assertEquals(getMaxCachedWasmCreatureActivations(), 100);
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalActivationCap);
+      clearDistanceCache();
+      getSharedSubnetworkIndex().clear();
+    }
+  },
+);
+
+Deno.test(
+  "captureMemorySnapshot records retainer sizes and worker count (#3431)",
+  () => {
+    try {
+      clearDistanceCache();
+      setCachedDistance("a", "b", 0.2);
+      setCachedDistance("a", "c", 0.4);
+      const index = getSharedSubnetworkIndex();
+      index.clear();
+      index.insert("only", {
+        source: "failure",
+        changeType: "remove-synapse",
+        cacheKey: "ck",
+      });
+
+      const snapshot = captureMemorySnapshot(
+        { heapUsed: 10, heapTotal: 20 },
+        7,
+        recordingSink(5),
+      );
+
+      assertEquals(snapshot.distanceCacheEntries, 2);
+      assertEquals(snapshot.subnetworkIndexEntries, 1);
+      assertEquals(snapshot.workerCount, 5);
+      assertEquals(snapshot.distanceCacheMax >= 1, true);
+    } finally {
+      clearDistanceCache();
+      getSharedSubnetworkIndex().clear();
+    }
+  },
+);
+
+Deno.test(
+  "captureMemorySnapshot defaults worker count to zero without a sink (#3431)",
+  () => {
+    const snapshot = captureMemorySnapshot({ heapUsed: 1, heapTotal: 2 }, 1);
+    assertEquals(snapshot.workerCount, 0);
+  },
+);
+
+Deno.test(
+  "broadcastWorkerCacheCaps swallows a throwing sink (#3431)",
+  () => {
+    const originalActivationCap = getMaxCachedWasmCreatureActivations();
+    const originalCompilationCap = getWasmCompilationCacheMaxSize();
+    try {
+      resetMemoryPressureLogCountersForTests();
+      setMaxCachedWasmCreatureActivations(50);
+      setWasmCompilationCacheSize(20);
+      const logger = createTestLogger();
+      const throwingSink: MemoryPressureSink = {
+        configureWorkerCaches() {
+          throw new Error("worker is dead");
+        },
+      };
+
+      // Must not throw; the critical response still applies main-thread caps.
+      applyCriticalResponse(logger, throwingSink);
+
+      assertEquals(getMaxCachedWasmCreatureActivations(), 1);
+      assertEquals(
+        logger.messages.some((m) => m.includes("Failed to broadcast")),
+        true,
+      );
+    } finally {
+      setMaxCachedWasmCreatureActivations(originalActivationCap);
+      setWasmCompilationCacheSize(originalCompilationCap);
+    }
   },
 );
