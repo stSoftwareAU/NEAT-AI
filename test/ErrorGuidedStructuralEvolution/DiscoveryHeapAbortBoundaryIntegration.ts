@@ -152,7 +152,17 @@ Deno.test(
     // The explicit #3022 rule, encoded as an assertion: EITHER the serialized
     // worker heap sample is below CRITICAL at the boundary, OR the guard does
     // not abort while configured budget headroom exists.
-    const guardSample: HeapGuardSample = sampleHeapPressure(config);
+    //
+    // Sample the *injected* worker-default heap, not the live process. Passing
+    // the provider explicitly keeps this deterministic: since Issue #3433/#3410
+    // the usage fraction divides by the real V8 old-space *limit* (~GBs), so
+    // sampling `Deno.memoryUsage()` here would read far below CRITICAL and the
+    // line-171 assertion — which asserts the worker-default fraction IS
+    // critical — would fail non-deterministically on the runner's live heap.
+    const guardSample: HeapGuardSample = sampleHeapPressure(
+      config,
+      fixedProvider(sample),
+    );
     const belowCritical = guardSample.usageFraction < config.criticalThreshold;
     const budgetHeadroom = config.nativeBudgetBytes > 0 &&
       guardSample.rss <= config.nativeBudgetBytes;
