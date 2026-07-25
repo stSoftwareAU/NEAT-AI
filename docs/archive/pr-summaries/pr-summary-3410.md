@@ -26,7 +26,7 @@ post-#3403): with the limit read correctly, the CRITICAL response no longer
 fires spuriously early **and** genuinely fires when the heap approaches the real
 limit, so cache eviction / proactive GC actually run before the V8 OOM abort
 rather than being wasted on a false alarm. The change does not depend on
-reducing `popSize` (GRQ#3472 keeps population = 20).
+reducing `popSize` (the downstream production repo keeps population = 20).
 
 ### What changed
 
@@ -105,5 +105,6 @@ All 33 pre-existing `MemoryMonitor` tests remain unchanged and pass, plus
 Defect #2 (the misread limit) is the well-defined library root cause and is
 fully fixed here. Correcting it also makes the CRITICAL response meaningful,
 which is the library-side containment for defect #1's residual heap growth. The
-downstream GRQ containment (bounded exit-133 retry, low-memory heap-budget
-tuning) is tracked separately in stSoftwareAU/GRQ#3508.
+downstream production containment (bounded exit-133 retry, low-memory
+heap-budget tuning) is tracked separately in a cross-repo issue in the
+downstream production repo.

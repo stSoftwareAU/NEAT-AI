@@ -90,6 +90,6 @@ DIRECTORY_MISSING`, `path` = the deleted dir) is thrown — **not** an
 
 - **Repository isolation / Deno-native:** the fix lives entirely inside this
   repo and uses Deno-native `Deno.errors.NotFound`; no Node tooling introduced.
-- **Scope:** the upstream deletion itself is tracked separately in
-  `stSoftwareAU/GRQ#3518`; this change only makes the surfacing loud and clear
-  as the issue requested.
+- **Scope:** the upstream deletion itself is tracked separately in a cross-repo
+  issue in the downstream production repo; this change only makes the surfacing
+  loud and clear as the issue requested.

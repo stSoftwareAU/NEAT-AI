@@ -14,7 +14,7 @@ Key outcome: **no NEAT-AI default change is warranted** — the production
 settings are already at (or validated against) the score-per-hour optimum on
 production-scale data, and no swept configuration improves score-per-hour
 without regressing the final score. The evidence-backed recommendation is to
-keep the current settings; a cross-repo GRQ issue (stSoftwareAU/GRQ#3472)
+keep the current settings; a cross-repo issue in the downstream production repo
 carries the one action that must run in the production backprop environment.
 
 ### What changed
@@ -80,8 +80,8 @@ Every combination of `trainingSampleRate ∈ {0.1, 1.0}` ×
 {0.05, 0.5}` reached the **identical final best score
 (-1.115e+31)** — these knobs only act under backprop training
 (`trainPerGen ≥ 1`), which is non-deterministic and cannot be measured by the
-in-repo harness. That measurement is handed to GRQ (stSoftwareAU/GRQ#3472) with
-the reusable tool.
+in-repo harness. That measurement is handed to the downstream production repo
+via a cross-repo issue with the reusable tool.
 
 Full evidence: `docs/evidence/sweep-3400-time-boxed.{md,json}`,
 `docs/evidence/sweep-3400-population.{md,json}`,
@@ -91,10 +91,10 @@ Full evidence: `docs/evidence/sweep-3400-time-boxed.{md,json}`,
 
 - **NEAT-AI defaults: no change** — current settings are at/validated against
   the score-per-hour optimum; changing one would be an unbacked regression risk.
-- **GRQ:** keep `learn.sh` `populationSize=20` and the sampler 20→50 ramp
-  (validated); run the in-situ backprop sweep for `trainingSampleRate` /
-  `sparseRatio` — filed as stSoftwareAU/GRQ#3472 referencing this issue with the
-  evidence.
+- **Downstream production repo:** keep `learn.sh` `populationSize=20` and the
+  sampler 20→50 ramp (validated); run the in-situ backprop sweep for
+  `trainingSampleRate` / `sparseRatio` — filed as a cross-repo issue in the
+  downstream production repo referencing this issue with the evidence.
 
 ## Test Plan
 
