@@ -33,8 +33,8 @@
  * Coverage lineage (Issue #3461):
  *
  *   Together with `TopologyHashPositionOrderingIssue2670.ts`, this test is
- *   the in-tree, synthetic coverage anchor that let the private-`GRQ-logs`-
- *   derived replay test `Grq2681TrapReplay.ts` (#2683/#2681) be deleted
+ *   the in-tree, synthetic coverage anchor that let the private-repo-derived
+ *   WASM compile-trap replay test (#2683/#2681) be deleted
  *   under #3451 without losing coverage. That replay confirmed the
  *   `unreachable` `CompiledNetwork::new` producer-gate trap stayed at zero
  *   on large captured production shapes; this test drives the same

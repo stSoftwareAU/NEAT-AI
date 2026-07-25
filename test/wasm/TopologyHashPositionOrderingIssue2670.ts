@@ -28,7 +28,7 @@
  * Coverage lineage (Issue #3461):
  *
  *   This synthetic test is the go/no-go coverage anchor for the removal of
- *   the private-`GRQ-logs`-derived replay test `Grq2681TrapReplay.ts`
+ *   the private-repo-derived WASM compile-trap replay test
  *   (#2683/#2681, deleted under #3451). That replay loaded nine large
  *   production creature snapshots to confirm PR #2678 also resolved the
  *   `unreachable` `CompiledNetwork::new` trap. The *failure mode* it pinned
