@@ -31,7 +31,39 @@ import {
   getWasmCompilationCacheStats,
   setWasmCompilationCacheSize,
 } from "@wasm/WasmCompilationCache.ts";
+import {
+  clearDistanceCache,
+  getDistanceCacheSize,
+  getDistanceCacheStats,
+} from "@breed/DistanceCache.ts";
+import { getSharedSubnetworkIndex } from "@discovery/SubnetworkHashIndex.ts";
+import type { WasmCacheConfig } from "@config/WasmCacheConfig.ts";
 import type { Logger } from "@utils/Logger.ts";
+
+/**
+ * Sink for memory-pressure responses that must reach state the MemoryMonitor
+ * module does not own directly (Issue #3431).
+ *
+ * The MemoryMonitor can evict main-thread WASM caches and process-global
+ * breed/discovery indexes by itself, but worker isolates keep their own WASM
+ * heaps that only the owning `Neat` instance can address. The evolution loop
+ * supplies a sink so a CRITICAL/WARNING response also reduces worker cache caps
+ * and so diagnostics can report how many worker isolates are live.
+ *
+ * All members are optional: when no sink is supplied (or a member is absent),
+ * the monitor simply skips that action — preserving existing single-thread
+ * behaviour.
+ */
+export interface MemoryPressureSink {
+  /**
+   * Broadcast reduced WASM cache caps to every live worker isolate. Called with
+   * the same reduced caps the monitor applied on the main thread. Must be
+   * fire-and-forget and must not throw for a dead/absent worker.
+   */
+  configureWorkerCaches?(config: WasmCacheConfig): void;
+  /** Number of live worker isolates, each retaining its own WASM heap. */
+  workerCount?(): number;
+}
 
 /**
  * Pressure level determined by heap usage relative to configured thresholds.
@@ -108,6 +140,25 @@ export interface MemorySnapshot {
   wasmCompilationEntries: number;
   /** Approximate template bytes retained by the WASM compilation cache. */
   wasmCompilationBytes: number;
+  /**
+   * Number of entries currently in the process-global breed DistanceCache.
+   * A previously-invisible retainer (Issue #3431).
+   */
+  distanceCacheEntries: number;
+  /** Configured cap of the breed DistanceCache. */
+  distanceCacheMax: number;
+  /**
+   * Number of entries currently held by the shared discovery
+   * SubnetworkHashIndex — survives across generations / repeated `evolveDir`
+   * calls (Issue #3431).
+   */
+  subnetworkIndexEntries: number;
+  /**
+   * Number of live worker isolates reported by the pressure sink, each holding
+   * its own WASM heap off the main-thread JS heap (Issue #3431). `0` when no
+   * sink is supplied (single-thread context).
+   */
+  workerCount: number;
 }
 
 /**
@@ -126,7 +177,10 @@ export function determinePressureLevel(
  * Apply the warning-level response: halve activation cache cap and evict
  * oldest entries to bring the cache within the new cap.
  */
-export function applyWarningResponse(logger: Logger): void {
+export function applyWarningResponse(
+  logger: Logger,
+  sink?: MemoryPressureSink,
+): void {
   // Remember the cap so it can be restored once pressure clears (#3082).
   captureActivationCapBaseline();
   const currentCap = getMaxCachedWasmCreatureActivations();
@@ -136,6 +190,10 @@ export function applyWarningResponse(logger: Logger): void {
   // Evict a quarter of the original cap to free memory promptly
   const evictCount = Math.max(1, Math.floor(currentCap / 4));
   evictOldestWasmCreatureActivations(evictCount);
+
+  // Issue #3431: mirror the reduced activation cap onto worker isolates, which
+  // keep their own WASM heaps the main-thread eviction never touches.
+  broadcastWorkerCacheCaps(sink, { maxCachedActivations: reducedCap }, logger);
 
   _warningResponseLogCount++;
   if (_warningResponseLogCount % 10 !== 1) return;
@@ -237,7 +295,10 @@ export function restoreActivationCapIfRecovered(logger: Logger): boolean {
  * Apply the critical-level response: aggressively clear all non-essential
  * caches and attempt garbage collection.
  */
-export function applyCriticalResponse(logger: Logger): void {
+export function applyCriticalResponse(
+  logger: Logger,
+  sink?: MemoryPressureSink,
+): void {
   // Remember the cap so it can be restored once pressure clears (#3082).
   captureActivationCapBaseline();
   // Shrink activation cache to minimum
@@ -251,12 +312,69 @@ export function applyCriticalResponse(logger: Logger): void {
   // Reset compilation cache to minimum size
   setWasmCompilationCacheSize(1);
 
+  // Issue #3431: clear process-global breed/discovery retainers that the
+  // per-worker and main-thread WASM eviction never reached. These survive
+  // across generations and repeated `evolveDir` calls, so they can pin RSS
+  // high while the WASM caches report near-empty.
+  const { distanceEntries, subnetworkEntries } = evictProcessGlobalRetainers();
+
+  // Issue #3431: mirror the aggressively-reduced caps onto worker isolates.
+  broadcastWorkerCacheCaps(
+    sink,
+    { maxCachedActivations: 1, compilationCacheSize: 1 },
+    logger,
+  );
+
   // Throttle repeated critical messages (e.g. when heap stays high for many generations).
   _criticalResponseLogCount++;
   if (_criticalResponseLogCount % 10 === 1) {
     logger.warn(
       `[MemoryMonitor] Critical-level response: cleared all WASM caches, ` +
-        `activation cap reduced to 1, compilation cache cleared`,
+        `activation cap reduced to 1, compilation cache cleared, ` +
+        `DistanceCache (${distanceEntries}) and SubnetworkHashIndex ` +
+        `(${subnetworkEntries}) cleared`,
+    );
+  }
+}
+
+/**
+ * Clear the process-global breed/discovery retainers under critical pressure
+ * and report how many entries each held (Issue #3431).
+ *
+ * These are module singletons the MemoryMonitor can address directly, unlike
+ * worker WASM heaps. Returns the pre-clear entry counts for diagnostics.
+ */
+function evictProcessGlobalRetainers(): {
+  distanceEntries: number;
+  subnetworkEntries: number;
+} {
+  const distanceEntries = getDistanceCacheSize();
+  clearDistanceCache();
+
+  const index = getSharedSubnetworkIndex();
+  const subnetworkEntries = index.count;
+  index.clear();
+
+  return { distanceEntries, subnetworkEntries };
+}
+
+/**
+ * Broadcast reduced WASM cache caps to worker isolates via the pressure sink
+ * (Issue #3431). Best-effort: a sink failure is logged loudly but never
+ * propagated, so a dead worker cannot crash the memory monitor.
+ */
+function broadcastWorkerCacheCaps(
+  sink: MemoryPressureSink | undefined,
+  config: WasmCacheConfig,
+  logger: Logger,
+): void {
+  if (!sink?.configureWorkerCaches) return;
+  try {
+    sink.configureWorkerCaches(config);
+  } catch (error) {
+    logger.warn(
+      `[MemoryMonitor] Failed to broadcast reduced cache caps to workers: ` +
+        `${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -369,9 +487,11 @@ function readHeapSizeLimit(): number {
 export function captureMemorySnapshot(
   sample: MemoryUsageSample,
   now: number = Date.now(),
+  sink: MemoryPressureSink | undefined = undefined,
 ): MemorySnapshot {
   const compilationStats = getWasmCompilationCacheStats();
   const activationStats = getWasmActivationLruStats();
+  const distanceStats = getDistanceCacheStats();
   return {
     timestampMs: now,
     heapUsed: sample.heapUsed,
@@ -384,6 +504,11 @@ export function captureMemorySnapshot(
     wasmActivationCap: activationStats.maxSize,
     wasmCompilationEntries: compilationStats.size,
     wasmCompilationBytes: compilationStats.totalBytes,
+    // Issue #3431: previously-invisible process-global / worker retainers.
+    distanceCacheEntries: distanceStats.currentSize,
+    distanceCacheMax: distanceStats.maxSize,
+    subnetworkIndexEntries: getSharedSubnetworkIndex().count,
+    workerCount: sink?.workerCount?.() ?? 0,
   };
 }
 
@@ -402,7 +527,10 @@ export function formatMemorySnapshot(snapshot: MemorySnapshot): string {
     `external=${formatMB(snapshot.external)} ` +
     `wasmActivation=${snapshot.wasmActivationEntries}/${snapshot.wasmActivationCap} ` +
     `wasmCompilation=${snapshot.wasmCompilationEntries} ` +
-    `(${formatMB(snapshot.wasmCompilationBytes)})`;
+    `(${formatMB(snapshot.wasmCompilationBytes)}) ` +
+    `distanceCache=${snapshot.distanceCacheEntries}/${snapshot.distanceCacheMax} ` +
+    `subnetworkIndex=${snapshot.subnetworkIndexEntries} ` +
+    `workers=${snapshot.workerCount}`;
 }
 
 /**
@@ -423,6 +551,9 @@ export function formatMemorySnapshot(snapshot: MemorySnapshot): string {
  * @param logger - Logger instance for diagnostics
  * @param memoryProvider - Optional custom memory provider (for testing)
  * @param clock - Optional clock for deterministic tests
+ * @param sink - Optional pressure sink (Issue #3431): broadcasts reduced WASM
+ *   cache caps to worker isolates on WARNING/CRITICAL and reports live worker
+ *   count for diagnostics. Omit in single-thread contexts.
  * @returns Diagnostics about the check and any actions taken
  */
 export function checkMemoryAndEvict(
@@ -430,6 +561,7 @@ export function checkMemoryAndEvict(
   logger: Logger,
   memoryProvider?: MemoryUsageProvider,
   clock?: Clock,
+  sink?: MemoryPressureSink,
 ): MemoryCheckResult {
   const provider = memoryProvider ?? defaultMemoryUsageProvider;
   const now = clock ?? Date.now;
@@ -457,7 +589,7 @@ export function checkMemoryAndEvict(
     (nowMs - _lastSnapshotAtMs) >= config.snapshotIntervalMs;
 
   if (shouldSnapshot) {
-    snapshot = captureMemorySnapshot(sample, nowMs);
+    snapshot = captureMemorySnapshot(sample, nowMs, sink);
     _lastSnapshotAtMs = nowMs;
     logger.warn(formatMemorySnapshot(snapshot));
   }
@@ -488,7 +620,7 @@ export function checkMemoryAndEvict(
         // Cooldown has expired — reset the notification flag.
         _backoffNotified = false;
 
-        applyCriticalResponse(logger);
+        applyCriticalResponse(logger, sink);
         if (config.proactiveGc) attemptProactiveGc();
         evicted = true;
 
@@ -513,7 +645,7 @@ export function checkMemoryAndEvict(
         }
       }
     } else if (pressureLevel === "warning") {
-      applyWarningResponse(logger);
+      applyWarningResponse(logger, sink);
       evicted = true;
     } else {
       // pressureLevel === "normal": heap has recovered — restore any cap that a
