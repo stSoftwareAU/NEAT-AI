@@ -1,6 +1,8 @@
 /**
- * Discovery worker-memory envelope → `workerThreadCap` wiring
- * (stSoftwareAU/GRQ#3295, part of GRQ#3267 — Discovery OOM-killed on a 16 GB host).
+ * Discovery worker-memory envelope → `workerThreadCap` wiring: a Discovery
+ * worker was OOM-killed on a 16 GB production host, so the external production
+ * runner exports a host-derived worker-memory envelope that this module turns
+ * into a thread cap.
  *
  * ## Why this exists
  *
@@ -16,7 +18,7 @@
  *
  * ## The fix
  *
- * The external Discovery runner (`worker/Discovery/run.sh`, in the GRQ repo)
+ * The external production runner (`worker/Discovery/run.sh`)
  * carves a host-derived worker-memory envelope and exports it via env. This module
  * reads that envelope and turns it into `workerThreadCap` overrides **automatically**
  * — no per-caller opt-in — so `createNeatConfig` caps the effective thread count to

@@ -11,7 +11,7 @@ import {
 import { DISCOVERY_HEAP_SIZE_ENV } from "@workers/WorkerHeapBudget.ts";
 import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
 
-/** Env vars the Discovery envelope wiring reads (GRQ#3295). */
+/** Env vars the Discovery envelope wiring reads (host-derived OOM cap). */
 const ENVELOPE_ENV_KEYS = [
   DISCOVERY_WORKER_ENVELOPE_ENV,
   DISCOVERY_HEAP_SIZE_ENV,

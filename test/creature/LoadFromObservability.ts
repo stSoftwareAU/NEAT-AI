@@ -4,9 +4,9 @@
  *  - a usable creature identifier (uuid OR `hash:<8hex>` fallback)
  *  - a `source=...` tag describing the upstream pipeline
  *
- * Without these, GRQ logs show `UUID: unknown` for every event and the
- * upstream corruption source cannot be traced (regression of GRQ#1497,
- * GRQ#1906).
+ * Without these, production logs show `UUID: unknown` for every event and the
+ * upstream corruption source cannot be traced (a regression this test locks
+ * out).
  */
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
