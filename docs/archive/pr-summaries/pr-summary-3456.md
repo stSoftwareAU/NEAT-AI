@@ -58,7 +58,7 @@ quality gate:
 flowchart LR
     A["Comment / README / CHANGELOG<br/>names private GRQ-cluster<br/>network.json / result.json"]
     A --> B["Reword to concept level:<br/>production cluster / production run"]
-    B --> C["Public reader no longer<br/>pointed at unseeable files"]
+    B --> C["Public reader no longer<br/>pointed at inaccessible files"]
 ```
 
 ## Test Plan
