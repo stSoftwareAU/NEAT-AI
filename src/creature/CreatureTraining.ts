@@ -78,6 +78,11 @@ import type { Fitness } from "@architecture/Fitness.ts";
 import type { EpisodeAdapter } from "@creature/EpisodeAdapter.ts";
 import { buildRLSeedSet } from "@creature/EvolveRLSeedSet.ts";
 import {
+  adoptChampionClone,
+  disposeEvolvePopulation,
+  releaseEvolveCaches,
+} from "@creature/EvolveTeardown.ts";
+import {
   accumulatePhaseTiming,
   createPhaseTimingAccumulator,
   finalisePhaseTimingTotals,
@@ -611,10 +616,13 @@ export async function evolveDir(
       // Issue #2276: Use shallowClone() instead of exportJSONWithRuntimeIds +
       // fromJSON round-trip. shallowClone() is 2.4–3.5x faster (Issue #1586)
       // and preserves all necessary state including runtime IDs and UUIDs.
-      bestCreature = fittest.shallowClone() as InstanceType<
-        typeof CreatureClass
-      >;
-      bestCreature.score = bestScore;
+      // Issue #3434: dispose the superseded champion clone before overwriting
+      // it so its topology arrays / WASM activation are released immediately.
+      bestCreature = adoptChampionClone(
+        bestCreature,
+        fittest,
+        bestScore,
+      ) as InstanceType<typeof CreatureClass>;
       championImproved = true;
     }
 
@@ -780,6 +788,15 @@ export async function evolveDir(
   if (config.creatureStore) {
     await writeCreatures(neat, config.creatureStore);
   }
+
+  // Issue #3434: run-level lifecycle teardown. The champion has been restored
+  // into (and any checkpoint written from) the population above, so dispose the
+  // run's population (keeping the caller creature), dispose the temporary
+  // champion clone, and release the process-global breed/discovery caches so a
+  // second evolveDir in the same process starts from a clean baseline.
+  disposeEvolvePopulation(neat.population, creature);
+  bestCreature?.dispose();
+  releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
   const time = Date.now() - start;
@@ -968,10 +985,12 @@ export async function evolveEnv<S, A>(
       assert(parsedError >= 0, "Error is negative");
       error = parsedError;
       bestScore = fittestScore;
-      bestCreature = fittest.shallowClone() as InstanceType<
-        typeof CreatureClass
-      >;
-      bestCreature.score = bestScore;
+      // Issue #3434: dispose the superseded champion clone before overwriting.
+      bestCreature = adoptChampionClone(
+        bestCreature,
+        fittest,
+        bestScore,
+      ) as InstanceType<typeof CreatureClass>;
       championImproved = true;
     }
 
@@ -1115,6 +1134,13 @@ export async function evolveEnv<S, A>(
   if (config.creatureStore) {
     await writeCreatures(neat, config.creatureStore);
   }
+
+  // Issue #3434: run-level lifecycle teardown — dispose the run's population
+  // (keeping the caller creature), dispose the temporary champion clone, and
+  // release the process-global breed/discovery caches.
+  disposeEvolvePopulation(neat.population, creature);
+  bestCreature?.dispose();
+  releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
   options.signal?.removeEventListener("abort", abortListener);
@@ -1501,10 +1527,12 @@ export async function evolveRL<S, A>(
       assert(parsedError >= 0, "Error is negative");
       error = parsedError;
       bestScore = fittestScore;
-      bestCreature = fittest.shallowClone() as InstanceType<
-        typeof CreatureClass
-      >;
-      bestCreature.score = bestScore;
+      // Issue #3434: dispose the superseded champion clone before overwriting.
+      bestCreature = adoptChampionClone(
+        bestCreature,
+        fittest,
+        bestScore,
+      ) as InstanceType<typeof CreatureClass>;
       championImproved = true;
     }
 
@@ -1715,6 +1743,13 @@ export async function evolveRL<S, A>(
   if (config.creatureStore) {
     await writeCreatures(neat, config.creatureStore);
   }
+
+  // Issue #3434: run-level lifecycle teardown — dispose the run's population
+  // (keeping the caller creature), dispose the temporary champion clone, and
+  // release the process-global breed/discovery caches.
+  disposeEvolvePopulation(neat.population, creature);
+  bestCreature?.dispose();
+  releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
   options.signal?.removeEventListener("abort", abortListener);
