@@ -34,8 +34,8 @@ Backend/docs-only change — no web interface to screenshot. Verified by a new
 regression test that walks the real doc and fails if any link into the private
 `stSoftwareAU/GRQ-cluster` repo is present.
 
-- Against the pre-fix doc the detector reported private-repo links on lines
-  14 and 16; against the fixed doc it reports none.
+- Against the pre-fix doc the detector reported private-repo links on lines 14
+  and 16; against the fixed doc it reports none.
 - Full `./quality.sh` gate passes: `7839 passed | 0 failed | 4 ignored`.
 
 ## Test Plan
