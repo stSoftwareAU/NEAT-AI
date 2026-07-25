@@ -646,6 +646,10 @@ for GPU-accelerated structural analysis.
 | `rankFocusNeurons()`      | Rank neurons by error impact for focus selection |
 | `mergeDiscoveryParquet()` | Merge multiple Parquet files                     |
 
+Two further exports cover analysis memory (see
+[Analysis memory controls](#-analysis-memory-controls)):
+`getDiscoveryMemoryUsageBytes()` and `cancelAnalysisMemoryPressure()`.
+
 ### 🔄 Data Conversion
 
 `creatureToRustFormat()` converts a Creature instance to the FFI-compatible
@@ -668,6 +672,61 @@ is flagged with warnings.
 > `isRustDiscoveryEnabled()` requires the native library to be loadable. GPU
 > acceleration is automatic via wgpu (Metal on macOS, Vulkan on Linux, DX12 on
 > Windows) but not required — CPU fallback is always available.
+
+### 🧠 Analysis memory controls
+
+`analyze_parallel` is a **blocking** FFI call: while Rust is analysing, the
+calling isolate cannot run a timer, sample the heap, or evict a cache. The host
+therefore cannot police the analysis footprint from TypeScript — it has to hand
+Rust a budget up front and be able to interrupt from a _different_ thread. Three
+controls cover that (Issue #3432):
+
+| Control                                              | Direction   | Role                                                                            |
+| ---------------------------------------------------- | ----------- | ------------------------------------------------------------------------------- |
+| `maxAnalysisMemoryMb` on `RustParallelAnalysisInput` | host → Rust | Budget in MB; Rust returns partial results near 90% of it. **Omit ⇒ no budget** |
+| `discovery_memory_usage_bytes()`                     | Rust → host | Rust allocator footprint, for logs and diagnostics                              |
+| `cancel_analysis_memory_pressure()`                  | host → Rust | Aborts an in-flight analysis under CRITICAL host pressure                       |
+
+Configuration lives on `memory` in `NeatOptions`:
+
+- `memory.maxAnalysisMemoryMb` — the budget sent on every analysis request.
+  Defaults to `0`, which keeps the field **off the wire** entirely (Discovery
+  reads an absent field as "unbounded"; a literal `0` would starve the analysis
+  immediately, so the two are not interchangeable).
+- `memory.nativeBudgetBytes` — the host's off-heap RSS budget, reused as the
+  cancellation trigger alongside V8 CRITICAL pressure.
+
+The cancellation flag inside NEAT-AI-Discovery is process-wide, which is what
+makes the interrupt possible: the evolve loop signals it from the host isolate
+while the analysis blocks a different thread of the same process.
+
+```mermaid
+sequenceDiagram
+    participant Evolve as Evolve loop (host isolate)
+    participant Guard as DiscoveryAnalysisMemory
+    participant Rust as NEAT-AI-Discovery (analysis thread)
+
+    Evolve->>Rust: analyze_parallel({ maxAnalysisMemoryMb })
+    Note over Rust: Rust self-limits at ~90% of the budget<br/>and returns partial results
+    loop every generation
+        Evolve->>Guard: signalDiscoveryMemoryPressure(memory config)
+        Guard->>Guard: sample heap + RSS
+        alt CRITICAL, or RSS > nativeBudgetBytes
+            Guard->>Rust: discovery_memory_usage_bytes()
+            Rust-->>Guard: allocator bytes
+            Guard->>Rust: cancel_analysis_memory_pressure()
+            Guard-->>Evolve: warn [DiscoveryMemory] … discovery=NNNMB
+            Rust-->>Evolve: partial result (memoryPressureCancelled)
+        else healthy
+            Guard-->>Evolve: no action, no FFI call
+        end
+    end
+```
+
+When a NEAT-AI-Discovery build predates these exports, the memory symbols are
+loaded on a **separate** `dlopen` handle so the core discovery symbols keep
+working; the missing surface is reported with a one-time warning and
+`cancelled: false` rather than being reported as a successful cancellation.
 
 ### 🎯 Focus Neuron Selection
 
@@ -790,6 +849,11 @@ flowchart LR
   deltas)
 - **#3074** — Focus-selection diversity floor: water-fill cap,
   `weightConcentrationRatio` metric, and drought round-robin fallback
+- **#3432** — Analysis memory FFI wired into the `evolveDir` path:
+  `maxAnalysisMemoryMb` sent on every analysis request,
+  `discovery_memory_usage_bytes` surfaced in diagnostics, and
+  `cancel_analysis_memory_pressure` invoked on host CRITICAL / native-budget
+  breach
 - **#3284** — Remove-neuron gain moved to the propagation-aware Rust
   `estimate_remove_neuron_gain`; captures why a local, topology-blind
   squash-error gain heuristic (~920× too large and opposite in sign) must never

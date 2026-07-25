@@ -59,9 +59,11 @@ export {
 // Library management and availability
 export {
   assertRustDiscoveryAvailable,
+  cancelAnalysisMemoryPressure,
   closeRustLibrary,
   findRustLibrary,
   findRustLibraryFromOptions,
+  getDiscoveryMemoryUsageBytes,
   getDiscoveryVersion,
   getGpuBackendInfo,
   getRustGpuBackend,

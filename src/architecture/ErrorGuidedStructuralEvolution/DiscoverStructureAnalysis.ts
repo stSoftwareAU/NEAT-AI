@@ -240,6 +240,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       (scope, fl, reason) => this.logRustAnalysisUnavailable(scope, fl, reason),
       chunkDeadlineMs,
       this.taskDescriptor,
+      this.maxAnalysisMemoryMb,
     );
     this.combinedRustAnalysis = result.cache;
     return result.result;

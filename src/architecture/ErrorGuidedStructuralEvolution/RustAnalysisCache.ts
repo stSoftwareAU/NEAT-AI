@@ -100,6 +100,13 @@ export function ensureRustCombinedAnalysis(
    * omitted so a custom cost's real name never leaks.
    */
   taskDescriptor?: TaskDescriptor,
+  /**
+   * Analysis-phase memory budget in megabytes (Issue #3432). Forwarded to Rust
+   * as `maxAnalysisMemoryMb` so Discovery stops issuing work once its own
+   * allocator nears the budget. Omitted when `undefined` or `<= 0` — Discovery
+   * reads an absent field as "no budget", so sending `0` would be wrong.
+   */
+  maxAnalysisMemoryMb?: number,
 ): {
   result: RustAnalyzeAllResult | undefined;
   cache: CombinedAnalysisCache | undefined;
@@ -176,6 +183,13 @@ export function ensureRustCombinedAnalysis(
       : undefined,
     analysisDeadlineMs: effectiveDeadlineMs,
     focusNeuronErrorShares,
+    // Issue #3432: hand Rust an explicit analysis memory budget. Without it
+    // Discovery runs with no budget at all and the resident set can grow until
+    // the host OOMs; JS cannot police this because `analyze_parallel` blocks
+    // the isolate for its whole duration.
+    ...(maxAnalysisMemoryMb !== undefined && maxAnalysisMemoryMb > 0
+      ? { maxAnalysisMemoryMb: Math.floor(maxAnalysisMemoryMb) }
+      : {}),
     // Map the internal snake_case descriptor to the PascalCase FFI wire shape
     // NEAT-AI-Discovery deserialises (Issue #3012). Stays absent when no
     // descriptor is configured (backward compatible).

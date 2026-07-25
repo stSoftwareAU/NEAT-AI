@@ -335,6 +335,15 @@ export interface RustParallelAnalysisInput {
   requireGpu?: boolean;
   analysisDeadlineMs?: number;
   /**
+   * Analysis-phase memory budget in megabytes (Discovery #1028, Issue #3432).
+   *
+   * When present, Discovery stops issuing further analysis work once its own
+   * allocator reaches ~90% of this budget and returns the partial results
+   * gathered so far. **Omitting the field means no Rust-side budget at all**,
+   * so the resident set is free to grow until the host OOMs.
+   */
+  maxAnalysisMemoryMb?: number;
+  /**
    * Maps each focus neuron UUID to its impact on the creature's output.
    * As of Rust v0.2.0, the Rust library calculates creature-level metrics
    * internally using this data. Output neurons have impact = 1.0,
@@ -388,6 +397,19 @@ export interface RustParallelAnalysisResult {
   error?: string;
   /** Typed error classification from Rust (Issue #2116). */
   errorKind?: string;
+  /**
+   * True when analysis stopped early because the Rust-side allocator reached
+   * the configured `maxAnalysisMemoryMb` budget (Discovery #1028). The results
+   * are partial but valid. Absent on builds without the memory budget.
+   */
+  memoryBudgetExceeded?: boolean;
+  /** True when the host requested graceful cancellation (Discovery #1047). */
+  cancelled?: boolean;
+  /**
+   * True when the cancellation came from `cancel_analysis_memory_pressure`
+   * (Discovery #1099, Issue #3432) — the host was at CRITICAL memory pressure.
+   */
+  memoryPressureCancelled?: boolean;
 }
 
 /**
