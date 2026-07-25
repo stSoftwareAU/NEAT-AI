@@ -63,6 +63,72 @@ Deno.test("sampleHeapPressure: heapTotal=0 reports normal (no telemetry)", () =>
   assertEquals(sample.usageFraction, 0);
 });
 
+// --- Issue #3433: share the MemoryMonitor heap_size_limit denominator -------
+
+Deno.test("sampleHeapPressure: small committed heapTotal + large heapLimit is NOT critical (#3433)", () => {
+  // Mirrors #3410: heapUsed/heapTotal would read 231/269 ≈ 86% (CRITICAL), but
+  // dividing by the real V8 limit (4373 MB) gives ≈5% → normal. The guard must
+  // agree with MemoryMonitor and use the limit, not the committed heap.
+  const sample = sampleHeapPressure(
+    DEFAULT_MEMORY_CONFIG,
+    fixedProvider({
+      heapUsed: Math.round(231 * MB),
+      heapTotal: Math.round(269 * MB),
+      heapLimit: Math.round(4373 * MB),
+    }),
+  );
+  assert(
+    sample.usageFraction < 0.1,
+    `expected fraction against the limit, got ${sample.usageFraction}`,
+  );
+  assertEquals(sample.pressureLevel, "normal");
+  assertEquals(sample.heapLimit, Math.round(4373 * MB));
+});
+
+Deno.test("sampleHeapPressure: divides heapUsed by heapLimit not heapTotal (#3433)", () => {
+  const sample = sampleHeapPressure(
+    DEFAULT_MEMORY_CONFIG,
+    fixedProvider({ heapUsed: 90, heapTotal: 100, heapLimit: 1000 }),
+  );
+  assertEquals(sample.usageFraction, 0.09);
+  assertEquals(sample.pressureLevel, "normal");
+});
+
+Deno.test("sampleHeapPressure: critical when heapUsed near heapLimit (#3433)", () => {
+  const sample = sampleHeapPressure(
+    DEFAULT_MEMORY_CONFIG,
+    fixedProvider({ heapUsed: 950, heapTotal: 1000, heapLimit: 1000 }),
+  );
+  assertEquals(sample.usageFraction, 0.95);
+  assertEquals(sample.pressureLevel, "critical");
+});
+
+Deno.test("sampleHeapPressure: falls back to heapTotal when heapLimit unreported (#3433)", () => {
+  const sample = sampleHeapPressure(
+    DEFAULT_MEMORY_CONFIG,
+    fixedProvider({ heapUsed: 95, heapTotal: 100 }),
+  );
+  assertEquals(sample.heapLimit, 100);
+  assertEquals(sample.usageFraction, 0.95);
+  assertEquals(sample.pressureLevel, "critical");
+});
+
+Deno.test("isHeapCritical: large heapLimit keeps a small committed heap non-critical (#3433)", () => {
+  const config = { ...DEFAULT_MEMORY_CONFIG, nativeBudgetBytes: NATIVE_BUDGET };
+  assertEquals(
+    isHeapCritical(
+      config,
+      fixedProvider({
+        heapUsed: Math.round(231 * MB),
+        heapTotal: Math.round(269 * MB),
+        heapLimit: Math.round(4373 * MB),
+        rss: Math.round(13289 * MB),
+      }),
+    ),
+    false,
+  );
+});
+
 Deno.test("isHeapCritical: returns true when heap at critical", () => {
   assertEquals(
     isHeapCritical(
@@ -164,6 +230,7 @@ function criticalSample(rss: number): HeapGuardSample {
     pressureLevel: "critical",
     heapUsed: Math.round(231 * MB),
     heapTotal: Math.round(269 * MB),
+    heapLimit: Math.round(269 * MB),
     rss,
     external: Math.round(47 * MB),
   };
@@ -231,6 +298,7 @@ Deno.test("shouldAbortOnHeapPressure: non-critical never aborts even with budget
     pressureLevel: "normal",
     heapUsed: 10,
     heapTotal: 100,
+    heapLimit: 100,
     rss: NATIVE_BUDGET + MB, // even over budget — not critical, so no abort
     external: 0,
   };

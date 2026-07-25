@@ -23,6 +23,7 @@ import {
   determinePressureLevel,
   type MemoryUsageProvider,
   type PressureLevel,
+  resolveHeapLimit,
 } from "@neat/MemoryMonitor.ts";
 import type { Logger } from "@utils/Logger.ts";
 
@@ -32,6 +33,13 @@ export interface HeapGuardSample {
   pressureLevel: PressureLevel;
   heapUsed: number;
   heapTotal: number;
+  /**
+   * The V8 old-space heap **limit** in bytes — the real OOM ceiling used as the
+   * pressure denominator, shared with `MemoryMonitor` via `resolveHeapLimit`
+   * (Issue #3433). Falls back to the committed `heapTotal` when the provider
+   * does not report the limit.
+   */
+  heapLimit: number;
   /**
    * Resident-set size in bytes (off-heap / native / Rust + V8). Issue #3025.
    * `0` when the provider does not report RSS.
@@ -65,10 +73,15 @@ export function _setHeapGuardProviderForTests(
 /**
  * Sample the current heap pressure using the configured thresholds.
  *
- * Returns the raw sample together with the derived `pressureLevel`. When
- * `heapTotal` is reported as 0 (e.g. on a runtime that does not expose heap
- * stats), the sample is treated as `normal` — we never abort discovery on
- * missing telemetry.
+ * Returns the raw sample together with the derived `pressureLevel`. The usage
+ * fraction divides `heapUsed` by the real V8 old-space **limit** resolved via
+ * the shared `resolveHeapLimit` helper — the same denominator `MemoryMonitor`
+ * uses (Issue #3433) — not the committed `heapTotal`, which starts small and
+ * grows over the run. Dividing by `heapTotal` made the guard read CRITICAL
+ * against a tiny committed heap and disagree with `MemoryMonitor` on the same
+ * sample. When the resolved limit is 0 (e.g. a runtime that exposes neither the
+ * limit nor `heapTotal`), the sample is treated as `normal` — we never abort
+ * discovery on missing telemetry.
  */
 export function sampleHeapPressure(
   memoryConfig: RequiredMemoryConfig,
@@ -77,10 +90,9 @@ export function sampleHeapPressure(
   const effectiveProvider = provider ?? _providerOverride ??
     defaultMemoryUsageProvider;
   const sample = effectiveProvider();
-  const usageFraction = sample.heapTotal > 0
-    ? sample.heapUsed / sample.heapTotal
-    : 0;
-  const pressureLevel = sample.heapTotal > 0
+  const heapLimit = resolveHeapLimit(sample);
+  const usageFraction = heapLimit > 0 ? sample.heapUsed / heapLimit : 0;
+  const pressureLevel = heapLimit > 0
     ? determinePressureLevel(usageFraction, memoryConfig)
     : "normal";
   return {
@@ -88,6 +100,7 @@ export function sampleHeapPressure(
     pressureLevel,
     heapUsed: sample.heapUsed,
     heapTotal: sample.heapTotal,
+    heapLimit,
     rss: sample.rss ?? 0,
     external: sample.external ?? 0,
   };
