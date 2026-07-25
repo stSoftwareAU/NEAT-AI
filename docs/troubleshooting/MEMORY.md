@@ -83,6 +83,13 @@ holder.
 > `[MemoryMonitor] Heap: <used> / <limit> (<pct>%)` log line shows the real
 > ceiling. When the runtime cannot report the limit the monitor falls back to
 > `heapTotal` (legacy behaviour).
+>
+> **Discovery shares this denominator.** The Discovery analysis-extension guard
+> (`AnalysisHeapGuard.sampleHeapPressure`) resolves its pressure fraction with
+> the same `resolveHeapLimit` helper, so the guard's degrade/abort decisions and
+> the `MemoryMonitor` pressure level agree for the same `Deno.memoryUsage()` /
+> V8 sample (Issue #3433). The guard's off-heap RSS / `nativeBudgetBytes` abort
+> rules (Issue #3025) still apply on top of the corrected V8 fraction.
 
 **Step 2 — Adjust `MemoryMonitor` thresholds:**
 

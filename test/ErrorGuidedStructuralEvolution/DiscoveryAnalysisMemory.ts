@@ -62,6 +62,7 @@ function sample(overrides: Partial<HeapGuardSample> = {}): HeapGuardSample {
     pressureLevel: "normal",
     heapUsed: 50 * MB,
     heapTotal: 100 * MB,
+    heapLimit: 100 * MB,
     rss: 100 * MB,
     external: 0,
     ...overrides,
