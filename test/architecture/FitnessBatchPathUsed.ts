@@ -9,7 +9,7 @@
  * all-`forwardOnly` population through several generations, accumulating each
  * generation's per-backend counts into the run-level
  * {@link ScorerUtilisationTotals} — the exact telemetry surfaced on the
- * `evolve*` result and in the GRQ-cluster `result.json`.
+ * `evolve*` result and in the production cluster's `result.json`.
  *
  * It fails if the batch path silently stops being used (regression to
  * per-creature scoring): `batchScorerInvocations` would drop below the

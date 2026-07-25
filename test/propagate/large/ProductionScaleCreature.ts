@@ -47,10 +47,10 @@ export const AGGREGATE_SQUASHES = ["IF", "MAXIMUM", "MINIMUM"];
  * Scale presets for creature generation.
  *
  * - `"default"`: ~1,000 neurons, ~18,000 synapses (original test scale).
- * - `"grq-cluster"`: ~1,500 neurons, ~20,000 synapses (GRQ production scale,
+ * - `"grq-cluster"`: ~1,500 neurons, ~20,000 synapses (production-cluster scale,
  *   matching dimensions from `performance.csv`). Issue #2306.
  * - `"grq-3397"`: 1,666 neurons, ~21,513 synapses at 2,461 inputs — the
- *   GRQ-cluster production `network.json` topology used by `worker/learn.sh`.
+ *   production cluster's `network.json` topology used by `worker/learn.sh`.
  *   Issue #3397.
  */
 export interface CreatureScaleOptions {
@@ -81,7 +81,7 @@ const SCALE_CONFIGS: Record<string, ScaleConfig> = {
     interLayerMin: 10,
     interLayerRange: 12,
   },
-  // Issue #3397: matches the GRQ-cluster production `network.json` used by
+  // Issue #3397: matches the production cluster's `network.json` used by
   // `worker/learn.sh` — ~1,666 neurons, ~21,513 synapses, 2,461 inputs.
   // Used by the production learn/sampler profiling report so the reproducible
   // profiling command exercises the real production topology.

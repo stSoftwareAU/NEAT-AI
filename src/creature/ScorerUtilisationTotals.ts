@@ -9,7 +9,7 @@
  * and every creature quietly fell back to the slow worker path looked
  * identical to a healthy run. These aggregates split that count by backend and
  * add an explicit batch-fallback tally so the split is visible in the run
- * result (and therefore in the GRQ-cluster `result.json`).
+ * result (and therefore in the production cluster's `result.json`).
  *
  * All values are raw counts summed across every generation of the run.
  */

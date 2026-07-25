@@ -2,7 +2,7 @@
  * Issue #2307 — Tests for production-scale creature generation.
  *
  * Validates that the `generateProductionCreature` helper produces a
- * creature with the expected GRQ-cluster dimensions. This test is
+ * creature with the expected production-cluster dimensions. This test is
  * purely structural (no WASM activation, no evolution) and runs fast.
  *
  * Phase timing field tests (fitnessMs, breedingMs, etc.) are covered
@@ -18,13 +18,13 @@ import {
   generateProductionCreature,
 } from "../../test/propagate/large/ProductionScaleCreature.ts";
 
-Deno.test("Production-scale creature has GRQ-cluster dimensions", () => {
+Deno.test("Production-scale creature has production-cluster dimensions", () => {
   const rng = createSeededRng(2307);
   const creature = generateProductionCreature(648, 2, rng, {
     scale: "grq-cluster",
   });
 
-  // GRQ-cluster target: ~1,500 neurons, ~20,000 synapses
+  // Production-cluster target: ~1,500 neurons, ~20,000 synapses
   assertGreater(
     creature.neurons.length,
     1_300,
@@ -35,12 +35,20 @@ Deno.test("Production-scale creature has GRQ-cluster dimensions", () => {
     15_000,
     "Should have at least 15,000 synapses for production scale",
   );
-  assertEquals(creature.input, 648, "Input count should match GRQ-cluster");
-  assertEquals(creature.output, 2, "Output count should match GRQ-cluster");
+  assertEquals(
+    creature.input,
+    648,
+    "Input count should match production-cluster scale",
+  );
+  assertEquals(
+    creature.output,
+    2,
+    "Output count should match production-cluster scale",
+  );
 });
 
 Deno.test("Production learn/sampler creature matches network.json dimensions (grq-3397)", () => {
-  // Issue #3397: the `grq-3397` preset reproduces the GRQ-cluster production
+  // Issue #3397: the `grq-3397` preset reproduces the production cluster's
   // `network.json` topology used by worker/learn.sh — 1,666 neurons,
   // ~21,513 synapses, 2,461 inputs — so the profiling report's command is
   // reproducible against the real production dimensions.
