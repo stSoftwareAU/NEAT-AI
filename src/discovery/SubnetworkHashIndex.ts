@@ -21,7 +21,6 @@ import { crypto as stdCrypto } from "@std/crypto";
 import type { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
-import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
 import { exportJSON } from "@creature/CreatureSerialization.ts";
 import type { DiscoveryCandidate } from "@discovery/DiscoveryCandidates.ts";
 import { extractExponent } from "@discovery/FailureCacheKey.ts";
@@ -142,6 +141,92 @@ export class SubnetworkHashIndex<T> {
 }
 
 /**
+ * In/out degree and incident weight lists for one neuron, keyed by wire UUID.
+ */
+export interface SubnetworkDegrees {
+  inDegree: number;
+  outDegree: number;
+  inWeights: number[];
+  outWeights: number[];
+}
+
+/**
+ * Topology-invariant adjacency for a single creature export.
+ *
+ * Built once with a single pass over `exported.synapses` (plus one pass over
+ * `exported.neurons`), it lets `computeSubnetworkHash` resolve every focal /
+ * neighbour lookup in O(1) instead of rescanning the whole synapse list per
+ * neuron. Hoisting this out of a per-neuron loop turns the old
+ * O(neurons × synapses) cost into O(neurons + synapses) (Issue #3475).
+ */
+export interface SubnetworkAdjacency {
+  neuronByUuid: Map<string, NeuronExport>;
+  degreesByUuid: Map<string, SubnetworkDegrees>;
+  neighboursByUuid: Map<string, Set<string>>;
+}
+
+/** Shared read-only fallbacks for neurons with no incident synapses. */
+const EMPTY_DEGREES: SubnetworkDegrees = {
+  inDegree: 0,
+  outDegree: 0,
+  inWeights: [],
+  outWeights: [],
+};
+const EMPTY_NEIGHBOURS: ReadonlySet<string> = new Set<string>();
+
+/**
+ * Precomputes {@link SubnetworkAdjacency} for `exported` in a single synapse
+ * pass. Pass the result into {@link computeSubnetworkHash} to hash many focal
+ * neurons of the same creature without repeating the O(synapses) scan.
+ */
+export function buildSubnetworkAdjacency(
+  exported: CreatureExport,
+): SubnetworkAdjacency {
+  const neuronByUuid = new Map<string, NeuronExport>();
+  for (const n of exported.neurons) {
+    if (n.uuid) neuronByUuid.set(n.uuid, n);
+  }
+
+  const degreesByUuid = new Map<string, SubnetworkDegrees>();
+  const neighboursByUuid = new Map<string, Set<string>>();
+
+  const degreesFor = (uuid: string): SubnetworkDegrees => {
+    let d = degreesByUuid.get(uuid);
+    if (!d) {
+      d = { inDegree: 0, outDegree: 0, inWeights: [], outWeights: [] };
+      degreesByUuid.set(uuid, d);
+    }
+    return d;
+  };
+  const neighboursFor = (uuid: string): Set<string> => {
+    let s = neighboursByUuid.get(uuid);
+    if (!s) {
+      s = new Set<string>();
+      neighboursByUuid.set(uuid, s);
+    }
+    return s;
+  };
+
+  for (const s of exported.synapses) {
+    const { fromUUID, toUUID, weight } = s;
+    if (toUUID) {
+      const d = degreesFor(toUUID);
+      d.inDegree++;
+      d.inWeights.push(weight);
+      if (fromUUID) neighboursFor(toUUID).add(fromUUID);
+    }
+    if (fromUUID) {
+      const d = degreesFor(fromUUID);
+      d.outDegree++;
+      d.outWeights.push(weight);
+      if (toUUID) neighboursFor(fromUUID).add(toUUID);
+    }
+  }
+
+  return { neuronByUuid, degreesByUuid, neighboursByUuid };
+}
+
+/**
  * Computes a UUID-anonymised hash describing the local 1-hop wire pattern
  * around `focalUuid` in the supplied creature export.
  *
@@ -156,36 +241,36 @@ export class SubnetworkHashIndex<T> {
  * Neighbour tuples are sorted before hashing so the result is independent of
  * iteration order. UUIDs are intentionally excluded — the index keys on the
  * structural pattern, not on identity.
+ *
+ * Pass a precomputed {@link SubnetworkAdjacency} (via
+ * {@link buildSubnetworkAdjacency}) to avoid rebuilding the neuron map and
+ * rescanning synapses when hashing many focal neurons of the same creature.
  */
 export function computeSubnetworkHash(
   source: Creature | CreatureExport,
   focalUuid: string,
+  adjacency?: SubnetworkAdjacency,
 ): string | undefined {
   const exported: CreatureExport = isCreatureExport(source)
     ? source
     : exportJSON(source);
 
-  const focal = exported.neurons.find((n) => n.uuid === focalUuid);
+  const adj = adjacency ?? buildSubnetworkAdjacency(exported);
+
+  const focal = adj.neuronByUuid.get(focalUuid);
   if (!focal) return undefined;
 
-  const focalDegrees = computeDegrees(exported.synapses, focalUuid);
+  const focalDegrees = adj.degreesByUuid.get(focalUuid) ?? EMPTY_DEGREES;
   const focalTuple = neuronTuple(
     focal,
     focalDegrees.inDegree,
     focalDegrees.outDegree,
   );
 
-  const neighbourUuids = collectNeighbours(exported.synapses, focalUuid);
-
-  const neuronByUuid = new Map<string, NeuronExport>();
-  for (const n of exported.neurons) {
-    if (n.uuid) neuronByUuid.set(n.uuid, n);
-  }
-
   const neighbourTuples: string[] = [];
-  for (const uuid of neighbourUuids) {
-    const degrees = computeDegrees(exported.synapses, uuid);
-    const neighbour = neuronByUuid.get(uuid);
+  for (const uuid of adj.neighboursByUuid.get(focalUuid) ?? EMPTY_NEIGHBOURS) {
+    const degrees = adj.degreesByUuid.get(uuid) ?? EMPTY_DEGREES;
+    const neighbour = adj.neuronByUuid.get(uuid);
     if (neighbour) {
       neighbourTuples.push(
         neuronTuple(neighbour, degrees.inDegree, degrees.outDegree),
@@ -229,44 +314,6 @@ function isCreatureExport(source: unknown): source is CreatureExport {
   // synapse is a reliable discriminator.
   const first = candidate.synapses[0] as Record<string, unknown>;
   return "fromUUID" in first || "toUUID" in first;
-}
-
-function computeDegrees(
-  synapses: SynapseExport[],
-  uuid: string,
-): {
-  inDegree: number;
-  outDegree: number;
-  inWeights: number[];
-  outWeights: number[];
-} {
-  let inDegree = 0;
-  let outDegree = 0;
-  const inWeights: number[] = [];
-  const outWeights: number[] = [];
-  for (const s of synapses) {
-    if (s.toUUID === uuid) {
-      inDegree++;
-      inWeights.push(s.weight);
-    }
-    if (s.fromUUID === uuid) {
-      outDegree++;
-      outWeights.push(s.weight);
-    }
-  }
-  return { inDegree, outDegree, inWeights, outWeights };
-}
-
-function collectNeighbours(
-  synapses: SynapseExport[],
-  focalUuid: string,
-): string[] {
-  const set = new Set<string>();
-  for (const s of synapses) {
-    if (s.toUUID === focalUuid && s.fromUUID) set.add(s.fromUUID);
-    if (s.fromUUID === focalUuid && s.toUUID) set.add(s.toUUID);
-  }
-  return Array.from(set);
 }
 
 function neuronTuple(
