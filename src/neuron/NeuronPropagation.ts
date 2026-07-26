@@ -17,7 +17,8 @@ import {
   adjustedBias,
   calculateBias,
 } from "@propagate/Bias.ts";
-import { distributeElasticError } from "@propagate/ElasticDistribution.ts";
+import { distributeElasticErrorTyped } from "@propagate/ElasticDistribution.ts";
+import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import {
   accumulateWeight,
@@ -45,22 +46,55 @@ export function propagateUpdate(
 ): void {
   const state = neuron.creature.state;
   const toList = neuron.creature.inwardConnections(neuron.index);
+  const listLength = toList.length;
 
   const coordinationEnabled = config.biasWeightCoordinationFactor < 1;
 
-  const currentWeights: number[] = [];
-  const candidateWeights: number[] = [];
-  const sourceActivations: number[] = [];
+  if (!coordinationEnabled) {
+    // Issue #3477: Coordination disabled — apply each candidate weight inline.
+    // No per-neuron scratch arrays are needed: coordination never runs, so the
+    // current-weight and source-activation buffers are dead. `calculateBias`
+    // reads only accumulated neuron state (not connection weights), so applying
+    // the weights before the bias is order-independent.
+    for (let i = 0; i < listLength; i++) {
+      const c = toList[i];
+      const cs = state.connectionFor(c); // Issue #3089: cached state lookup
+      // Issue #2421: Clamp proactively so runaway gradients cannot escape.
+      c.weight = clampAndTrack(
+        calculateWeight(cs, c, config),
+        "training.weight",
+        "propagateUpdate",
+      );
+    }
+    neuron.bias = clampAndTrack(
+      calculateBias(neuron, config),
+      "training.bias",
+      "propagateUpdate",
+    );
+    return;
+  }
+
+  // Issue #3477: Coordination enabled — gather candidates into pooled scratch
+  // buffers (sized to the maximum fan-in) instead of allocating growable arrays
+  // per neuron.
+  let backpropBuffers = state.backpropBuffers;
+  if (backpropBuffers === undefined) {
+    backpropBuffers = new BackpropBuffers();
+    state.backpropBuffers = backpropBuffers;
+  }
+  const buf = backpropBuffers.acquire(listLength);
+  const currentWeights = buf.currentWeights;
+  const candidateWeights = buf.candidateWeights;
+  const sourceActivations = buf.sourceActivations;
+
   let minSynapseCount = Infinity;
-  for (let i = 0; i < toList.length; i++) {
+  for (let i = 0; i < listLength; i++) {
     const c = toList[i];
     const cs = state.connectionFor(c); // Issue #3089: cached state lookup
-    currentWeights.push(c.weight);
-    candidateWeights.push(calculateWeight(cs, c, config));
-    if (coordinationEnabled) {
-      sourceActivations.push(state.activations[c.from]);
-      if (cs.count < minSynapseCount) minSynapseCount = cs.count;
-    }
+    currentWeights[i] = c.weight;
+    candidateWeights[i] = calculateWeight(cs, c, config);
+    sourceActivations[i] = state.activations[c.from];
+    if (cs.count < minSynapseCount) minSynapseCount = cs.count;
   }
 
   const candidateBias = calculateBias(neuron, config);
@@ -70,9 +104,7 @@ export function propagateUpdate(
   // gradient signals are too noisy for coordination to help.
   // Require at least one full batch of samples.
   const MIN_SAMPLES_FOR_COORDINATION = Math.max(config.batchSize, 4);
-  if (
-    coordinationEnabled && minSynapseCount >= MIN_SAMPLES_FOR_COORDINATION
-  ) {
+  if (minSynapseCount >= MIN_SAMPLES_FOR_COORDINATION) {
     const coordinated = coordinateBackpropUpdates(
       neuron.bias,
       candidateBias,
@@ -80,11 +112,12 @@ export function propagateUpdate(
       candidateWeights,
       sourceActivations,
       config.biasWeightCoordinationFactor,
+      listLength, // Issue #3477: pooled buffers may exceed the fan-in
     );
 
     // Issue #2421: Clamp proactively after backprop computes candidates so
     // runaway gradient magnitudes cannot escape a single training step.
-    for (let i = 0; i < toList.length; i++) {
+    for (let i = 0; i < listLength; i++) {
       toList[i].weight = clampAndTrack(
         coordinated.weights[i],
         "training.weight",
@@ -97,7 +130,7 @@ export function propagateUpdate(
       "propagateUpdate/coordinated",
     );
   } else {
-    for (let i = 0; i < toList.length; i++) {
+    for (let i = 0; i < listLength; i++) {
       toList[i].weight = clampAndTrack(
         candidateWeights[i],
         "training.weight",
@@ -110,6 +143,8 @@ export function propagateUpdate(
       "propagateUpdate",
     );
   }
+
+  backpropBuffers.release(buf);
 }
 
 /**
@@ -287,17 +322,21 @@ export function propagate(
         // Fallback: ignore safe zones, use activation² only.
         // Include weight data for the weight-based fallback when activations
         // are near zero (Issue #1388).
-        const fallbackMeta = new Array(listLength);
-        for (let i = 0; i < listLength; i++) {
-          fallbackMeta[i] = {
-            activation: fusedActivations[i],
-            safeZoneFactor: 1,
-            weight: fromWeightCache[i],
-          };
-        }
-        perLinkError = distributeElasticError(error, fallbackMeta, {
-          plankConstant: config.plankConstant,
-        });
+        //
+        // Issue #3477: Feed the already-populated typed scratch buffers
+        // directly to the WASM ABI with a uniform safeZoneFactor of 1, instead
+        // of repacking them into `listLength` `ElasticLink` objects. The fused
+        // buffers already hold the exact float32 activation (`fusedActivations`)
+        // and synapse weight (`fusedWeights`) values the object path would have
+        // supplied — `distributeElasticError` truncates both to float32 anyway
+        // — so the result is numerically identical with no per-link allocation.
+        perLinkError = distributeElasticErrorTyped(
+          error,
+          fusedActivations.subarray(0, listLength),
+          fusedWeights.subarray(0, listLength),
+          1,
+          { plankConstant: config.plankConstant },
+        );
       }
 
       for (let indx = 0; indx < listLength; indx++) {
