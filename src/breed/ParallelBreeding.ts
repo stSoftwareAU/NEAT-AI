@@ -7,6 +7,7 @@ import { BreedExhaustionError } from "@errors/BreedExhaustionError.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import type { Genus } from "@neat/Genus.ts";
 import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
+import { FatherSelectionCache } from "@breed/FatherSelectionCache.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
 import {
   type BreedSelectionStats,
@@ -159,6 +160,16 @@ export class ParallelBreeding {
       scoreOverride,
     );
 
+    // Issue #3474: Reuse one raw-fitness ranking per generation across every
+    // findFather call instead of rebuilding a FitnessRanking per mother. The
+    // batch ranking is only reused directly when it was built from raw scores
+    // (no override); father selection ranks by raw fitness, so an
+    // adjusted/override batch ranking is not reused (a raw one is built lazily).
+    const fatherCache = new FatherSelectionCache(
+      this.genus.population,
+      scoreOverride === undefined ? populationRanking : undefined,
+    );
+
     // Issue #2284: Time parent selection sub-phase
     const selectionStartMs = Date.now();
 
@@ -169,6 +180,7 @@ export class ParallelBreeding {
       count,
       speciesQuotas,
       stats,
+      fatherCache,
     );
     acc.parentSelectionMs = Date.now() - selectionStartMs;
     this.lastCorruptParentSkips = stats.corruptParentSkips;
@@ -317,6 +329,7 @@ export class ParallelBreeding {
     populationRanking: FitnessRanking,
     config: NeatConfig,
     stats?: BreedSelectionStats,
+    fatherCache?: FatherSelectionCache,
   ): ParentPair | undefined {
     const mum = selectParent(populationRanking, config);
     if (!mum) {
@@ -325,7 +338,7 @@ export class ParallelBreeding {
 
     let dad: Creature | undefined;
     try {
-      dad = findFather(mum, this.genus, config, stats);
+      dad = findFather(mum, this.genus, config, stats, fatherCache);
     } catch (error) {
       // Issue #2523: BreedExhaustionError is recoverable — skip this
       // mother and let the batch continue. Anything else propagates.
@@ -360,12 +373,18 @@ export class ParallelBreeding {
     count: number,
     speciesQuotas?: ReadonlyMap<string, number>,
     stats?: BreedSelectionStats,
+    fatherCache?: FatherSelectionCache,
   ): ParentPair[] {
     const parentPairs: ParentPair[] = [];
 
     if (!speciesQuotas || speciesQuotas.size === 0) {
       for (let i = 0; i < count; i++) {
-        const pair = this.selectParentPair(populationRanking, config, stats);
+        const pair = this.selectParentPair(
+          populationRanking,
+          config,
+          stats,
+          fatherCache,
+        );
         if (pair) parentPairs.push(pair);
       }
       return parentPairs;
@@ -382,13 +401,17 @@ export class ParallelBreeding {
       allocated += quota;
       const species = this.genus.speciesMap.get(speciesKey);
       if (!species || species.creatures.length === 0) continue;
-      const speciesRanking = new FitnessRanking(species.creatures);
+      // Issue #3474: Reuse the per-species ranking (shared with father
+      // selection) instead of rebuilding it here.
+      const speciesRanking = fatherCache
+        ? fatherCache.speciesRanking(speciesKey, species.creatures)
+        : new FitnessRanking(species.creatures);
       for (let i = 0; i < quota; i++) {
         const mum = selectParent(speciesRanking, config);
         if (!mum) continue;
         let dad: Creature | undefined;
         try {
-          dad = findFather(mum, this.genus, config, stats);
+          dad = findFather(mum, this.genus, config, stats, fatherCache);
         } catch (error) {
           if (error instanceof BreedExhaustionError) {
             continue;
@@ -404,7 +427,12 @@ export class ParallelBreeding {
     // rounding or empty species (defence in depth — quotas should sum
     // to count, but never exceed the requested batch).
     for (let i = allocated; i < count; i++) {
-      const pair = this.selectParentPair(populationRanking, config, stats);
+      const pair = this.selectParentPair(
+        populationRanking,
+        config,
+        stats,
+        fatherCache,
+      );
       if (pair) parentPairs.push(pair);
     }
 
