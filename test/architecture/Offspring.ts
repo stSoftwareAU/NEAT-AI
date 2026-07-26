@@ -9,8 +9,15 @@
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import type { ConnectionRef } from "@architecture/Offspring.ts";
-import { Offspring } from "@architecture/Offspring.ts";
+import {
+  __setPreFixOffspringExporterForTesting,
+  Offspring,
+} from "@architecture/Offspring.ts";
 import type { SynapseInternal } from "@architecture/SynapseInterfaces.ts";
+import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
+import { __setProducerCompileGateProbeForTesting } from "@wasm/ProducerCompileGuard.ts";
+import { getGlobalDebug, setGlobalDebug } from "@globalAccessors";
+import { initWasmForTests } from "../_initWasm.ts";
 
 // --- Offspring.breed tests ---
 
@@ -171,6 +178,122 @@ Deno.test("Offspring.breed - with forwardOnly option", () => {
     }
   }
 });
+
+// --- Issue #3473: deferred pre-fix genome export ---
+
+Deno.test(
+  "Offspring.breed - skips the pre-fix genome export on the happy path when diagnostics are off (Issue #3473)",
+  async () => {
+    await initWasmForTests();
+    const prevDebug = getGlobalDebug();
+    setGlobalDebug(false);
+
+    let exportCalls = 0;
+    const restoreExporter = __setPreFixOffspringExporterForTesting((c) => {
+      exportCalls++;
+      return exportJSONUnchecked(c);
+    });
+
+    try {
+      const mum = new Creature(3, 2, {
+        layers: [
+          { count: 2, squash: "IDENTITY" },
+          { count: 2, squash: "LOGISTIC" },
+        ],
+      });
+      const dad = new Creature(3, 2, {
+        layers: [
+          { count: 2, squash: "LOGISTIC" },
+          { count: 2, squash: "IDENTITY" },
+        ],
+      });
+
+      // Breeding is random; a non-clone offspring is practically certain within
+      // 100 tries (see the "compatible parents" test above for the maths).
+      let offspring: Creature | undefined;
+      for (let i = 0; i < 100; i++) {
+        offspring = Offspring.breed(mum, dad);
+        if (offspring) break;
+      }
+
+      assert(
+        offspring,
+        "expected a non-clone offspring from compatible parents",
+      );
+      // The core regression guard: with diagnostics off the full-genome export
+      // that only the rare compile-failure dump consumes must never run.
+      assertEquals(
+        exportCalls,
+        0,
+        "pre-fix genome export must not run on the happy breeding path when diagnostics are off",
+      );
+    } finally {
+      restoreExporter();
+      setGlobalDebug(prevDebug);
+    }
+  },
+);
+
+Deno.test(
+  "Offspring.breed - captures the pre-fix genome once when diagnostics are on (Issue #3473)",
+  async () => {
+    await initWasmForTests();
+    const prevDebug = getGlobalDebug();
+    setGlobalDebug(true);
+
+    let exportCalls = 0;
+    let capturedNeurons = -1;
+    let capturedSynapses = -1;
+    const restoreExporter = __setPreFixOffspringExporterForTesting((c) => {
+      exportCalls++;
+      // Snapshot the genome size at capture time so we can prove a real
+      // pre-fix genome was serialised, not a placeholder.
+      capturedNeurons = c.neurons.length;
+      capturedSynapses = c.synapses.length;
+      return exportJSONUnchecked(c);
+    });
+    // Force the WASM compile gate to reject so the deferred dump path fires.
+    const restoreProbe = __setProducerCompileGateProbeForTesting(() => ({
+      ok: false as const,
+      trapMessage: "test-forced trap (issue #3473)",
+    }));
+
+    try {
+      const mum = new Creature(3, 2, {
+        layers: [
+          { count: 2, squash: "IDENTITY" },
+          { count: 2, squash: "LOGISTIC" },
+        ],
+      });
+      const dad = new Creature(3, 2, {
+        layers: [
+          { count: 2, squash: "LOGISTIC" },
+          { count: 2, squash: "IDENTITY" },
+        ],
+      });
+
+      const result = Offspring.breed(mum, dad);
+      assertEquals(
+        result,
+        undefined,
+        "the forced compile-gate rejection must drop the offspring",
+      );
+      assertEquals(
+        exportCalls,
+        1,
+        "the pre-fix genome must be captured exactly once when diagnostics are on",
+      );
+      assert(
+        capturedNeurons > 0 && capturedSynapses > 0,
+        "the captured pre-fix snapshot must reflect a real genome",
+      );
+    } finally {
+      restoreProbe();
+      restoreExporter();
+      setGlobalDebug(prevDebug);
+    }
+  },
+);
 
 // --- Offspring.cloneConnections tests ---
 
