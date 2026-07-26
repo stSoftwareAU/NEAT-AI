@@ -11,6 +11,7 @@ import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
+  buildSubnetworkAdjacency,
   computeSubnetworkHash,
   configureSharedSubnetworkIndex,
   extractFocalUuid,
@@ -413,4 +414,90 @@ Deno.test("SubnetworkHashIndex - lookup matches without re-verify cannot leak th
   const verified = matches.filter((m) => m.ok);
   assertEquals(verified.length, 1);
   assertEquals(verified[0].key, "applies");
+});
+
+Deno.test("buildSubnetworkAdjacency - precomputed adjacency yields byte-identical hashes (Issue #3475)", () => {
+  // The #3475 hoist must not change any hash: a precomputed adjacency and the
+  // internal per-call rebuild must produce identical output for every focal
+  // neuron of the creature.
+  const c = makeBaseCreature();
+  const exp = c.exportJSON();
+  const adjacency = buildSubnetworkAdjacency(exp);
+
+  for (const n of exp.neurons) {
+    if (!n.uuid) continue;
+    const withoutAdj = computeSubnetworkHash(exp, n.uuid);
+    const withAdj = computeSubnetworkHash(exp, n.uuid, adjacency);
+    assertEquals(withAdj, withoutAdj, `hash mismatch for ${n.uuid}`);
+  }
+});
+
+Deno.test("buildSubnetworkAdjacency - captures degrees, weights and neighbours in one pass", () => {
+  const exp = {
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "hidden" as const, uuid: "h1", squash: "IDENTITY", bias: 0 },
+      {
+        type: "output" as const,
+        uuid: "output-0",
+        squash: "IDENTITY",
+        bias: 0,
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "h1", weight: 0.5 },
+      { fromUUID: "h1", toUUID: "output-0", weight: -0.25 },
+      { fromUUID: "input-0", toUUID: "output-0", weight: 0.75 },
+    ],
+  };
+
+  const adj = buildSubnetworkAdjacency(exp);
+
+  // neuronByUuid holds the exported neurons (inputs have no NeuronExport entry).
+  assertEquals(adj.neuronByUuid.get("h1")?.squash, "IDENTITY");
+  assertEquals(adj.neuronByUuid.has("input-0"), false);
+
+  const h1 = adj.degreesByUuid.get("h1")!;
+  assertEquals(h1.inDegree, 1);
+  assertEquals(h1.outDegree, 1);
+  assertEquals(h1.inWeights, [0.5]);
+  assertEquals(h1.outWeights, [-0.25]);
+
+  const out = adj.degreesByUuid.get("output-0")!;
+  assertEquals(out.inDegree, 2);
+  assertEquals(out.outDegree, 0);
+  assertEquals([...out.inWeights].sort((a, b) => a - b), [-0.25, 0.75]);
+
+  // h1's 1-hop neighbours are its input source and its output target.
+  assertEquals([...adj.neighboursByUuid.get("h1")!].sort(), [
+    "input-0",
+    "output-0",
+  ]);
+});
+
+Deno.test("buildSubnetworkAdjacency - focal neuron with no incident synapses hashes as isolated", () => {
+  // An isolated focal neuron (no synapses) must still hash (degree 0), matching
+  // the pre-#3475 empty-degree behaviour rather than returning undefined.
+  const exp = {
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "hidden" as const, uuid: "lonely", squash: "IDENTITY", bias: 0 },
+      {
+        type: "output" as const,
+        uuid: "output-0",
+        squash: "IDENTITY",
+        bias: 0,
+      },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
+    ],
+  };
+  const adj = buildSubnetworkAdjacency(exp);
+  const hash = computeSubnetworkHash(exp, "lonely", adj);
+  assert(hash, "isolated neuron should still hash");
+  // Degree-0 neuron has no adjacency entry; defaults apply.
+  assertEquals(adj.degreesByUuid.has("lonely"), false);
 });
