@@ -5,7 +5,7 @@
  * including message handling, structured clone validation, error responses,
  * and termination.
  */
-import { assert, assertEquals, assertExists } from "@std/assert";
+import { assert, assertEquals, assertExists, assertThrows } from "@std/assert";
 import { MockWorker } from "@multithreading/workers/MockWorker.ts";
 import type {
   RequestData,
@@ -58,6 +58,67 @@ Deno.test("MockWorker: validates structured clone safety on postMessage", async 
   assertEquals(response.taskID, 1);
 
   worker.terminate();
+});
+
+Deno.test("MockWorker: rejects non-cloneable payload when debug validation is on", () => {
+  // Issue #3476: with the debug flag on, MockWorker must still fire the
+  // Issue #1428 non-cloneable-payload detection (a synchronous DataCloneError
+  // from structuredClone), preserving the guarantee under the flag.
+  const worker = new MockWorker();
+
+  // A function is not structured-clone safe.
+  const nonCloneable = {
+    taskID: 30,
+    debug: true,
+    echo: { message: "boom", ms: 0 },
+    // deno-lint-ignore no-explicit-any
+    notCloneable: (() => {}) as any,
+  } as unknown as RequestData;
+
+  assertThrows(
+    () => worker.postMessage(nonCloneable),
+    // Deno throws a DataCloneError for non-cloneable structuredClone input.
+    Error,
+  );
+
+  worker.terminate();
+});
+
+Deno.test("MockWorker: skips structuredClone on the single-thread happy path (debug off)", async () => {
+  // Issue #3476: with debug off (default), postMessage must NOT deep-clone the
+  // payload. A payload carrying a function would throw DataCloneError if cloned;
+  // here it must be processed without throwing because the clone is skipped.
+  const original = globalThis.structuredClone;
+  let cloneCalls = 0;
+  globalThis.structuredClone = ((value: unknown) => {
+    cloneCalls++;
+    return original(value);
+  }) as typeof structuredClone;
+
+  try {
+    const worker = new MockWorker();
+
+    const payloadWithFunction = {
+      taskID: 31,
+      echo: { message: "no-clone", ms: 0 },
+      // A function would make structuredClone throw — proves it is not called.
+      // deno-lint-ignore no-explicit-any
+      sideChannel: (() => {}) as any,
+    } as unknown as RequestData;
+
+    // Must not throw and must return a normal response.
+    const response = await sendAndReceive(worker, payloadWithFunction);
+    assertEquals(response.taskID, 31);
+    assertEquals(
+      cloneCalls,
+      0,
+      "structuredClone must not be invoked on the debug-off happy path",
+    );
+
+    worker.terminate();
+  } finally {
+    globalThis.structuredClone = original;
+  }
 });
 
 Deno.test("MockWorker: terminate cleans up resources", () => {
