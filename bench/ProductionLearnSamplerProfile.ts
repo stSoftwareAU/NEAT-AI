@@ -3,7 +3,7 @@
  *
  * Profiles exactly what `worker/learn.sh` (one `src/Learn.ts` run,
  * populationSize=20) and `worker/sampler.sh` (5 `Learn.ts` loops) drive, on
- * the GRQ-cluster production topology captured in the production `network.json`:
+ * the production cluster's `network.json`-scale topology:
  *
  *   1,666 neurons, ~21,513 synapses, 2,461 inputs
  *
@@ -36,7 +36,7 @@ import {
 } from "../test/propagate/large/ProductionScaleCreature.ts";
 
 // ──────────────────────────────────────────────────────────────────
-// Production topology from the GRQ-cluster `network.json` (Issue #3397)
+// Production topology at the production `network.json` scale (Issue #3397)
 // ──────────────────────────────────────────────────────────────────
 
 /** Inputs of the production model. */
