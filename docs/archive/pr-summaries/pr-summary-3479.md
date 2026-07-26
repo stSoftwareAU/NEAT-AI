@@ -24,9 +24,10 @@ element-by-element into a `DataView` in a second pass.
 
 ### What changed
 
-1. **New `TopologicalBackpropCache`** (`src/propagate/TopologicalBackpropCache.ts`)
-   holds all topology-invariant artefacts and a **reusable serialisation buffer**
-   with every topology-invariant field pre-written (header counts, per-neuron
+1. **New `TopologicalBackpropCache`**
+   (`src/propagate/TopologicalBackpropCache.ts`) holds all topology-invariant
+   artefacts and a **reusable serialisation buffer** with every
+   topology-invariant field pre-written (header counts, per-neuron
    type/range/squash, per-synapse endpoints/self-loop, inward mapping, inward
    indices, reverse order).
 2. **Generation-keyed invalidation.** A new
@@ -38,14 +39,15 @@ element-by-element into a `DataView` in a second pass.
    `creature.state.backpropTopologyCache`, mirroring the existing
    `stateGeneration` invalidation pattern.
 3. **Sparse-selection flags** (`propagateNeeded` / `updateNeeded`) depend on the
-   `SparseConfig`, not pure topology, so they are re-patched only when the active
-   sparse config reference changes (stable within a training pass).
+   `SparseConfig`, not pure topology, so they are re-patched only when the
+   active sparse config reference changes (stable within a training pass).
 4. **Direct-to-`DataView` per-sample writes.** Each sample recomputes only the
    five genuinely value-dependent regions (adjusted activation, adjusted bias,
    hint value, original weight, adjusted weight) and writes them straight into
    the reused buffer — the ~10 intermediate typed arrays and the redundant
    second read/write pass are gone. The dead `hasCustomPropagate` array was also
-   removed (custom-propagate fallback is driven by the WASM `Infinity` sentinel).
+   removed (custom-propagate fallback is driven by the WASM `Infinity`
+   sentinel).
 
 Numerical behaviour is unchanged: the buffer bytes handed to
 `propagate_topological` are identical to the previous implementation for a given
@@ -57,15 +59,15 @@ This is a backend/CLI performance change — no web interface to screenshot.
 
 ### Before / after benchmark (`bench/ProductionScaleBackprop.ts`)
 
-Production-scale creature: **1176 neurons (1164 hidden), 19500 synapses**.
-Apple M2 Ultra, Deno 2.9.3. Lower time is better.
+Production-scale creature: **1176 neurons (1164 hidden), 19500 synapses**. Apple
+M2 Ultra, Deno 2.9.3. Lower time is better.
 
-| Benchmark (production 1176N/19500S) | Before | After | Speed-up |
-| ----------------------------------- | ------ | ----- | -------- |
-| Propagate only                      | 7.2 ms | 3.7 ms | **1.95× faster** |
-| Full backprop (activate + propagate)| 8.4 ms | 4.7 ms | **1.79× faster** |
-| Propagate (error only)              | 6.4 ms | 2.9 ms | **2.21× faster** |
-| Propagate (full)                    | 6.8 ms | 3.7 ms | **1.84× faster** |
+| Benchmark (production 1176N/19500S)  | Before | After  | Speed-up         |
+| ------------------------------------ | ------ | ------ | ---------------- |
+| Propagate only                       | 7.2 ms | 3.7 ms | **1.95× faster** |
+| Full backprop (activate + propagate) | 8.4 ms | 4.7 ms | **1.79× faster** |
+| Propagate (error only)               | 6.4 ms | 2.9 ms | **2.21× faster** |
+| Propagate (full)                     | 6.8 ms | 3.7 ms | **1.84× faster** |
 
 The topology-invariant work (reverse topo-sort WASM call, inward-mapping
 construction, buffer template) now runs once per topology instead of once per
