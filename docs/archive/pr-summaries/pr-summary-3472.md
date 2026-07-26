@@ -7,12 +7,13 @@ whole new population. It previously deep-cloned **every** creature that passed
 the mutation gate via `creature.shallowClone()` purely to seed the producer-gate
 diagnostic dump — an `O(neurons+synapses)` allocation per mutated creature, per
 generation. That snapshot is consumed **only** on the rare compile-failure path
-(`repairAfterMutation` reads it inside `if (!compileResult.ok)`); the MCMC/repair
-revert path uses `mcmcSnapshot ?? original`, never this clone.
+(`repairAfterMutation` reads it inside `if (!compileResult.ok)`); the
+MCMC/repair revert path uses `mcmcSnapshot ?? original`, never this clone.
 
 The fix reuses whichever pre-mutation snapshot was **already** allocated
 (`score`/`memetic` → `original`; MCMC → `mcmcSnapshot`) and only clones
-specifically for diagnostics when none exists **and** per-creature `DEBUG` is on:
+specifically for diagnostics when none exists **and** per-creature `DEBUG` is
+on:
 
 ```ts
 const diagnosticPreMutationSnapshot: Creature | undefined = original ??
@@ -49,8 +50,8 @@ Backend-only change — no UI to screenshot. Evidence is benchmarks + tests.
 ### Production-scale cost of the eliminated clone (`bench/MutatorDiagnosticClone.ts`)
 
 Isolates the per-creature diagnostic clone the happy path no longer performs, on
-a sparse production-scale creature matching the issue (~1,500 neurons /
-~20,000 synapses):
+a sparse production-scale creature matching the issue (~1,500 neurons / ~20,000
+synapses):
 
 ```
 === Production-scale creature ===
@@ -71,14 +72,14 @@ No regression — these creatures are on the happy path (no score, MCMC off,
 plus the WASM compile probe, so the removal sits within measurement noise here;
 the isolated bench above is where the saving is visible.
 
-| population | before (unconditional clone) | after (gated) |
-| --- | --- | --- |
-| 100 small (5→5→3) | 34.2 ms | 34.1 ms |
-| 500 small (5→5→3) | 158.3 ms | 157.1 ms |
-| 100 medium (10→20→5) | 181.9 ms | 186.0 ms |
-| 500 medium (10→20→5) | 921.4 ms | 930.1 ms |
-| 100 large (20→50→10) | 909.2 ms | 902.8 ms |
-| 500 large (20→50→10) | 4.6 s | 4.6 s |
+| population           | before (unconditional clone) | after (gated) |
+| -------------------- | ---------------------------- | ------------- |
+| 100 small (5→5→3)    | 34.2 ms                      | 34.1 ms       |
+| 500 small (5→5→3)    | 158.3 ms                     | 157.1 ms      |
+| 100 medium (10→20→5) | 181.9 ms                     | 186.0 ms      |
+| 500 medium (10→20→5) | 921.4 ms                     | 930.1 ms      |
+| 100 large (20→50→10) | 909.2 ms                     | 902.8 ms      |
+| 500 large (20→50→10) | 4.6 s                        | 4.6 s         |
 
 No evolution-quality regression: the happy path never read the eliminated clone,
 and the revert/repair path (`mcmcSnapshot ?? original`) is unchanged.
@@ -95,7 +96,7 @@ and the revert/repair path (`mcmcSnapshot ?? original`) is unchanged.
 - **Regression guards (unchanged, still green):**
   `test/wasm/ProducerGateDiagnosticDumps.ts` and
   `test/NEAT/MutatorBatchRepair.ts` cover the `repairAfterMutation` failure-path
-  dump contents and revert/repair semantics; `test/NEAT/MutatorMCMCAcceptance.ts`
-  covers the MCMC snapshot path.
+  dump contents and revert/repair semantics;
+  `test/NEAT/MutatorMCMCAcceptance.ts` covers the MCMC snapshot path.
 - Full `test/NEAT/` + `test/wasm/` suites pass; `./quality.sh --lint-only` and
   `--check-only` pass clean.
