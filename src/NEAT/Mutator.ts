@@ -332,11 +332,17 @@ export class Mutator {
 
         let changed = false;
 
-        // Issue #2672: Capture a pre-mutation snapshot exclusively for the
-        // producer-gate diagnostic dump. The MCMC/original snapshots are
-        // only populated under specific conditions; we always need this one
-        // when the gate later rejects so the dump can replay the failure.
-        const diagnosticPreMutationSnapshot = creature.shallowClone();
+        // Issue #2672 / #3472: Provide a pre-mutation snapshot for the
+        // producer-gate diagnostic dump *without* an extra clone on the happy
+        // path. Reuse whichever pre-mutation snapshot was already allocated
+        // (score/memetic → `original`; MCMC → `mcmcSnapshot`). Only clone
+        // specifically for diagnostics when none exists AND per-creature debug
+        // is enabled. For the common new-offspring case (no score, MCMC off,
+        // debug off) this makes no clone at all, removing an
+        // O(neurons+synapses) allocation per mutated creature per generation.
+        const diagnosticPreMutationSnapshot: Creature | undefined = original ??
+          mcmcSnapshot ??
+          (creature.DEBUG ? creature.shallowClone() : undefined);
 
         // Issue #2200: Track whether any topology mutations were applied.
         // Topology mutations are always accepted; M-H only applies to
