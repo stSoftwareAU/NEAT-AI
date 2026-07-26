@@ -23,13 +23,58 @@ export interface WasmActivationInitPayload {
    * filesystem reads to boot WASM.
    */
   jsSource: string;
-  /** Raw `wasm_activation_bg.wasm` bytes. */
+  /**
+   * Raw `wasm_activation_bg.wasm` bytes.
+   *
+   * Issue #3478: backed by a `SharedArrayBuffer` when the runtime permits, so
+   * every worker's init `postMessage` shares one copy instead of
+   * structured-cloning the multi-MB binary into each worker. Falls back to a
+   * plain `ArrayBuffer`-backed array when `SharedArrayBuffer` is unavailable.
+   */
   wasmBinary: Uint8Array;
 }
 
 let cachedPayload: WasmActivationInitPayload | null = null;
 let inFlightPayload: { promise: Promise<WasmActivationInitPayload> } | null =
   null;
+
+/**
+ * Back raw WASM bytes with a `SharedArrayBuffer` so every worker references the
+ * same underlying memory instead of receiving its own structured-clone copy.
+ *
+ * Issue #3478: `WorkerHandler` embeds the multi-MB WASM binary in each worker's
+ * init message. `postMessage` structured-clones a `Uint8Array` backed by a plain
+ * `ArrayBuffer`, so an N-worker pool creates N transient full copies of the
+ * binary at startup. A `SharedArrayBuffer` is instead *shared* (not copied) by
+ * the structured-clone algorithm, so all workers reference one copy.
+ *
+ * A plain `Transferable` cannot be used here: transferring detaches the buffer
+ * after the first `postMessage`, but the same bytes must reach every worker.
+ * `SharedArrayBuffer` is therefore the correct primitive.
+ *
+ * Falls back to the original copy-per-worker buffer when `SharedArrayBuffer` is
+ * unavailable or its construction is rejected by the runtime (e.g. a browser
+ * context without cross-origin isolation).
+ *
+ * @param bytes - The raw WASM binary bytes.
+ * @returns A `Uint8Array` backed by a `SharedArrayBuffer` when possible, else
+ *   the original `bytes` unchanged.
+ */
+export function toShareableWasmBinary(bytes: Uint8Array): Uint8Array {
+  if (typeof SharedArrayBuffer === "undefined") return bytes;
+  // Already SAB-backed (e.g. a re-shared cached payload): nothing to do.
+  if (bytes.buffer instanceof SharedArrayBuffer) return bytes;
+  try {
+    const shared = new SharedArrayBuffer(bytes.byteLength);
+    const view = new Uint8Array(shared);
+    view.set(bytes);
+    return view;
+  } catch {
+    // Construction can throw when the runtime disables SharedArrayBuffer.
+    // Fail soft to the existing copy-per-worker path rather than aborting init.
+    return bytes;
+  }
+}
 
 /**
  * Load the WASM activation payload synchronously from the canonical package location.
@@ -52,7 +97,8 @@ export function loadWasmActivationInitPayload():
     const wasmBinary = Deno.readFileSync(
       new URL("wasm_activation_bg.wasm", baseUrl).pathname,
     );
-    cachedPayload = { jsSource, wasmBinary };
+    // Issue #3478: share one copy across all workers when SAB is available.
+    cachedPayload = { jsSource, wasmBinary: toShareableWasmBinary(wasmBinary) };
     return cachedPayload;
   } catch {
     return null;
@@ -106,7 +152,8 @@ export async function loadWasmActivationInitPayloadAsync(): Promise<
       wasmBinary = new Uint8Array(await wasmRes.arrayBuffer());
     }
 
-    cachedPayload = { jsSource, wasmBinary };
+    // Issue #3478: share one copy across all workers when SAB is available.
+    cachedPayload = { jsSource, wasmBinary: toShareableWasmBinary(wasmBinary) };
     return cachedPayload;
   })().finally(() => {
     inFlightPayload = null;

@@ -24,6 +24,7 @@ export {
   isWasmActivationPayloadAvailable,
   loadWasmActivationInitPayload,
   loadWasmActivationInitPayloadAsync,
+  toShareableWasmBinary,
 } from "@workers/WasmActivationPayload.ts";
 export { initialiseWasmActivationFromPayload } from "@workers/WasmWorkerInit.ts";
 export {
