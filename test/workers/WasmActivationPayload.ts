@@ -84,6 +84,30 @@ Deno.test("WasmActivationPayload: fetchWasmForWorkers completes without error", 
   assertExists(payload, "payload should be cached after fetchWasmForWorkers");
 });
 
+Deno.test("WasmActivationPayload: loaded wasmBinary is shared across worker init messages (Issue #3478)", async () => {
+  // Only meaningful when the payload is actually available in this checkout.
+  const payload = await loadWasmActivationInitPayloadAsync();
+  assertExists(payload.wasmBinary, "wasmBinary should be present");
+
+  if (typeof SharedArrayBuffer !== "undefined") {
+    assertEquals(
+      payload.wasmBinary.buffer instanceof SharedArrayBuffer,
+      true,
+      "wasmBinary should be SAB-backed when SharedArrayBuffer is available",
+    );
+    // postMessage uses structuredClone; SAB is shared, not copied, so N worker
+    // init messages reference one physical copy. structuredClone returns a
+    // fresh SAB wrapper over the same memory, so shared-ness is proven by the
+    // clone staying SAB-backed (a plain ArrayBuffer would be deep-copied).
+    const cloned = structuredClone(payload.wasmBinary);
+    assertEquals(
+      cloned.buffer instanceof SharedArrayBuffer,
+      true,
+      "structuredClone must keep the payload SAB-backed (no per-worker copy)",
+    );
+  }
+});
+
 Deno.test("WasmActivationPayload: availability matches sync load result", () => {
   const available = isWasmActivationPayloadAvailable();
   const payload = loadWasmActivationInitPayload();
