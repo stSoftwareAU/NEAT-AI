@@ -182,6 +182,16 @@ export class Creature implements CreatureInternal {
   public topologyHash?: string;
 
   /**
+   * Issue #3479: Monotonic counter bumped whenever a structural or squash
+   * change invalidates the topology-invariant artefacts cached by the
+   * topological backprop path. Every such change routes through
+   * {@link invalidateScoreCache}, so the cache detects a stale topology in
+   * O(1) and rebuilds only when the structure (or a neuron's squash) actually
+   * changes — not on every training record.
+   */
+  public topologyInvalidationGeneration = 0;
+
+  /**
    * Issue #2258: Cached neuron topology key and UUID lookup array.
    * Stable across connection-only structural changes; cleared only
    * when neurons are added or removed.
@@ -382,6 +392,10 @@ export class Creature implements CreatureInternal {
   public invalidateScoreCache() {
     this.cachedScoreComponents = undefined;
     this.wasmEligibilityCache = undefined;
+    // Issue #3479: Every structural change (clearCache / clearConnectionCaches)
+    // and every squash change (Neuron.setSquash) routes through here, so this
+    // is the single chokepoint that invalidates the topological backprop cache.
+    this.topologyInvalidationGeneration++;
   }
 
   clearState() {
