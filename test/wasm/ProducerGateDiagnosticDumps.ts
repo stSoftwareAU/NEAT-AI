@@ -30,6 +30,7 @@ import {
   createSeededRng,
   setRandomNumberGenerator,
 } from "@utils/RandomNumberGenerator.ts";
+import { getGlobalDebug, setGlobalDebug } from "@globalAccessors";
 import { initWasmForTests } from "../_initWasm.ts";
 
 const REJECT_PROBE = () => ({
@@ -192,6 +193,13 @@ Deno.test(
     // Use a deterministic RNG so the dump records a concrete `breedSeed`.
     setRandomNumberGenerator(createSeededRng(20260515));
 
+    // Issue #3473: the pre-fix genome export is now deferred and only runs when
+    // diagnostics are enabled. Turn diagnostics on so the compile-failure dump
+    // carries the genuine pre-fix snapshot (asserted below), rather than the
+    // "skipped" placeholder emitted on the non-debug default path.
+    const prevDebug = getGlobalDebug();
+    setGlobalDebug(true);
+
     const existing = snapshotExisting();
     const restore = __setProducerCompileGateProbeForTesting(REJECT_PROBE);
     try {
@@ -260,9 +268,26 @@ Deno.test(
         "test-forced trap (issue #2672)",
         "context.trapMessage must include the validator output",
       );
+      // Issue #3473: the deferred capture must still embed the genuine
+      // *pre-fix* genome (not a placeholder string, and not a snapshot taken
+      // after the repair steps mutated the offspring). A structured export
+      // with populated neuron/synapse arrays confirms a real pre-fix genome
+      // was serialised at the pre-repair capture site.
+      const preFix = dump.context.preFixOffspring as {
+        neurons?: unknown[];
+        synapses?: unknown[];
+      };
       assert(
-        dump.context.preFixOffspring,
-        "context.preFixOffspring must be present",
+        preFix && typeof preFix === "object" && !Array.isArray(preFix),
+        "context.preFixOffspring must be a structured export, not a skipped/failed placeholder string",
+      );
+      assert(
+        Array.isArray(preFix.neurons) && preFix.neurons.length > 0,
+        "context.preFixOffspring must carry the pre-fix neurons",
+      );
+      assert(
+        Array.isArray(preFix.synapses) && preFix.synapses.length > 0,
+        "context.preFixOffspring must carry the pre-fix synapses",
       );
 
       // Per-creature dumps still land alongside the context.
@@ -271,6 +296,7 @@ Deno.test(
       assert(dump.offspringPath, "offspring dump file must exist");
     } finally {
       restore();
+      setGlobalDebug(prevDebug);
       cleanupByPrefix("offspring-wasm-compile-trap-", existing);
     }
   },

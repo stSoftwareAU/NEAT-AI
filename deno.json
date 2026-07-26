@@ -81,6 +81,7 @@
       "bench/evolution_config_sweep_test.ts",
       "bench/ActivateAndTraceApp.ts",
       "bench/ActivateApp.ts",
+      "bench/BreedPreFixExportAllocation.ts",
       "bench/AdaptiveLearningRateConvergence.ts",
       "bench/CheckpointWritePeakHeap.ts",
       "bench/CosineAnnealingWarmRestart.ts",
