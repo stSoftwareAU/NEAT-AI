@@ -17,6 +17,7 @@ import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { calculateAdaptiveTournamentSize } from "@breed/AdaptiveTournamentSize.ts";
 import { createCompatibleFatherFromCreatures } from "@breed/Father.ts";
+import type { FatherSelectionCache } from "@breed/FatherSelectionCache.ts";
 import { FitnessRanking } from "@breed/FitnessRanking.ts";
 import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
 import {
@@ -38,6 +39,98 @@ export interface BreedSelectionStats {
 
 /** Maximum retries when skipping corrupt parents (Issue #2523). */
 const CORRUPT_PARENT_RETRY_CAP = 10;
+
+/**
+ * Maximum rejection-sampling draws from a cached ranking before falling back
+ * to the exact filtered path (Issue #3474). For production-size pools the
+ * mother is one member in n, so the first draw almost always yields a valid
+ * father; the cap only bites on tiny pools dominated by the mother/skipped
+ * candidates, where the fallback below guarantees correctness.
+ */
+const RANKING_REJECTION_CAP = 16;
+
+/**
+ * Resolved candidate pool for father selection (Issue #3474).
+ *
+ * `pool` is the **full** source array (it may include the mother); `ranking`
+ * is the cached raw-fitness ranking of that pool when a cache is supplied.
+ * `mumInPool` records whether the mother is a member so the corrupt-parent
+ * retry cap can be sized against the eligible (mother-excluded) count.
+ */
+interface FatherPool {
+  pool: Creature[];
+  ranking: FitnessRanking | undefined;
+  mumInPool: boolean;
+}
+
+/**
+ * Resolves the candidate pool for father selection, mirroring the historical
+ * fallback order (global population → mother's species → closest species →
+ * global population) without copying the mother-excluded array on the hot
+ * paths (Issue #3474). Returns `undefined` when no eligible father exists.
+ *
+ * @param mum - The mother creature (its UUID must be set).
+ * @param genus - The genus containing the population.
+ * @param config - NEAT configuration (drives the global-breeding roll).
+ * @param cache - Optional per-generation ranking cache.
+ * @returns The resolved pool, or `undefined` when no father is available.
+ */
+function resolveFatherPool(
+  mum: Creature,
+  genus: Genus,
+  config: NeatConfig,
+  cache?: FatherSelectionCache,
+): FatherPool | undefined {
+  const population = genus.population;
+
+  // Global-breeding path: always consume the roll (matches legacy RNG use),
+  // then take the whole population when it holds a father besides the mother.
+  if (
+    config.globalBreedingRate > getRandomNumberGenerator().random() &&
+    population.length > 1
+  ) {
+    return {
+      pool: population,
+      ranking: cache?.populationRanking(),
+      mumInPool: true,
+    };
+  }
+
+  // Within-species path.
+  const species = genus.findSpeciesByCreatureUUID(mum.uuid!);
+  if (species.creatures.length > 1) {
+    return {
+      pool: species.creatures,
+      ranking: cache?.speciesRanking(species.speciesKey, species.creatures),
+      mumInPool: true,
+    };
+  }
+
+  // Closest matching species (a different species, so the mother is absent).
+  const closestSpecies = genus.findClosestMatchingSpecies(mum);
+  if (closestSpecies) {
+    if (closestSpecies.creatures.length > 0) {
+      return {
+        pool: closestSpecies.creatures,
+        ranking: cache?.speciesRanking(
+          closestSpecies.speciesKey,
+          closestSpecies.creatures,
+        ),
+        mumInPool: false,
+      };
+    }
+    // Empty closest species: fall back to the global population.
+    if (population.length > 1) {
+      return {
+        pool: population,
+        ranking: cache?.populationRanking(),
+        mumInPool: true,
+      };
+    }
+  }
+
+  return undefined;
+}
 
 /**
  * Issue #2453: Compute per-creature adjusted fitness for NEAT fitness
@@ -271,10 +364,19 @@ export function selectParent(
  * `config.tolerateCorruptParents = false` restores legacy fail-fast.
  * Non-`TopologyError` exceptions are always re-thrown unchanged.
  *
+ * Issue #3474: An optional {@link FatherSelectionCache} lets a batch reuse
+ * one raw-fitness ranking per generation (whole-population and per-species)
+ * instead of rebuilding a {@link FitnessRanking} on every call. The cached
+ * rankings include the mother; she — and any skipped candidates — are excluded
+ * by rejection sampling, with an exact filtered fallback that guarantees the
+ * mother is never returned. When no cache is supplied the behaviour is
+ * identical to before.
+ *
  * @param mum - The mother creature
  * @param genus - The genus containing the population
  * @param config - NEAT configuration
  * @param stats - Optional accumulator for `corruptParentSkips`
+ * @param cache - Optional per-generation ranking cache (Issue #3474)
  * @returns A compatible father creature, or undefined if none found
  */
 export function findFather(
@@ -282,44 +384,19 @@ export function findFather(
   genus: Genus,
   config: NeatConfig,
   stats?: BreedSelectionStats,
+  cache?: FatherSelectionCache,
 ): Creature | undefined {
   assert(mum.uuid, "Mother UUID is undefined");
 
-  let possibleFathers: Creature[] = [];
-
-  if (config.globalBreedingRate > getRandomNumberGenerator().random()) {
-    possibleFathers = genus.population.filter((creature) =>
-      creature.uuid !== mum.uuid
-    );
-  }
-
-  if (possibleFathers.length === 0) {
-    const species = genus.findSpeciesByCreatureUUID(mum.uuid);
-
-    possibleFathers = species.creatures.filter((creature) =>
-      creature.uuid !== mum.uuid
-    );
-
-    if (possibleFathers.length === 0) {
-      const closestSpecies = genus.findClosestMatchingSpecies(mum);
-      if (closestSpecies) {
-        possibleFathers = closestSpecies.creatures;
-
-        if (possibleFathers.length === 0) {
-          possibleFathers = genus.population.filter((creature) =>
-            creature.uuid !== mum.uuid
-          );
-        }
-      }
-    }
-  }
-
-  if (possibleFathers.length === 0) {
+  const resolved = resolveFatherPool(mum, genus, config, cache);
+  if (!resolved) {
     return undefined;
   }
+  const { pool, ranking, mumInPool } = resolved;
 
   const tolerate = config.tolerateCorruptParents !== false;
-  const retryCap = Math.min(CORRUPT_PARENT_RETRY_CAP, possibleFathers.length);
+  const eligibleCount = pool.length - (mumInPool ? 1 : 0);
+  const retryCap = Math.min(CORRUPT_PARENT_RETRY_CAP, eligibleCount);
   let skips = 0;
   // Track candidates we've already rejected as corrupt so later draws
   // can avoid them. Identity by reference is enough — the candidate
@@ -327,15 +404,13 @@ export function findFather(
   const skipped = new Set<Creature>();
 
   for (let attempt = 0; attempt <= retryCap; attempt++) {
-    const remaining = possibleFathers.filter((c) => !skipped.has(c));
-    if (remaining.length === 0) break;
-
-    // Issue #2173: Diversity-driven breeding. When diversityBreedingRate triggers,
-    // select the most genetically distant father instead of a fitness-biased one.
-    // This ensures newcomers from isolated islands (e.g., Europa) periodically
-    // breed with fitter creatures despite having low initial fitness.
-    const father = selectFatherFromCandidates(mum, remaining, config);
-    assert(father !== undefined, "Father is undefined");
+    // Issue #2173: Diversity-driven breeding. When diversityBreedingRate
+    // triggers, select the most genetically distant father instead of a
+    // fitness-biased one. Issue #3474: on the fitness path a cached ranking
+    // is reused (rejection-sampling the mother/skipped out); the exact
+    // filtered path is the fallback and the no-cache behaviour.
+    const father = selectFatherFromPool(mum, pool, ranking, config, skipped);
+    if (father === undefined) break;
 
     // Issue #1034: Avoid JSON exports in parent selection compatibility check.
     // Uses optimised function that works directly with Creature objects.
@@ -401,27 +476,58 @@ export function findFather(
 }
 
 /**
- * Selects a father from candidate creatures, optionally using diversity-driven
- * selection (Issue #2173).
+ * Selects a father from a candidate pool, optionally using diversity-driven
+ * selection (Issue #2173) and a reused per-generation ranking (Issue #3474).
  *
- * When `config.diversityBreedingRate` triggers (random check), the most
- * genetically distant creature from the mother is selected. Otherwise,
- * standard fitness-biased selection is used via FitnessRanking.
+ * The `pool` is the full source array and may include the mother. The mother
+ * and any `skipped` (corrupt) candidates are always excluded from the result:
+ *
+ * - **Fitness path with a cached `ranking`** — rejection-samples the ranking,
+ *   skipping the mother and skipped candidates, avoiding both a per-call
+ *   candidate copy and a per-call `FitnessRanking` rebuild. Falls through to
+ *   the exact filtered path if the tiny-pool rejection cap is hit.
+ * - **Diversity path / no cache / rejection fallback** — materialises the
+ *   eligible (mother- and skip-excluded) candidates and selects from them,
+ *   exactly as before Issue #3474.
  *
  * @param mum - The mother creature
- * @param candidates - Array of potential father creatures
+ * @param pool - Full candidate source array (may include the mother)
+ * @param ranking - Cached raw-fitness ranking of `pool`, or `undefined`
  * @param config - NEAT configuration
- * @returns The selected father creature
+ * @param skipped - Candidates already rejected as corrupt this call
+ * @returns The selected father, or `undefined` when no eligible candidate remains
  */
-function selectFatherFromCandidates(
+function selectFatherFromPool(
   mum: Creature,
-  candidates: Creature[],
+  pool: Creature[],
+  ranking: FitnessRanking | undefined,
   config: NeatConfig,
-): Creature {
-  if (
-    config.diversityBreedingRate > 0 &&
-    config.diversityBreedingRate > getRandomNumberGenerator().random()
-  ) {
+  skipped: Set<Creature>,
+): Creature | undefined {
+  const diversity = config.diversityBreedingRate > 0 &&
+    config.diversityBreedingRate > getRandomNumberGenerator().random();
+
+  // Fast path: fitness-biased selection reusing the cached ranking.
+  if (!diversity && ranking) {
+    for (let i = 0; i < RANKING_REJECTION_CAP; i++) {
+      const candidate = selectParent(ranking, config);
+      if (candidate.uuid === mum.uuid) continue;
+      if (skipped.size > 0 && skipped.has(candidate)) continue;
+      return candidate;
+    }
+    // Rejection exhausted on a tiny pool — fall through to the exact path.
+  }
+
+  // Materialise the eligible candidates (mother- and skip-excluded). When
+  // `skipped` is empty this is the only copy, and it is skipped entirely on
+  // the fast path above (Issue #3474 acceptance: no full-population copy on
+  // the happy path).
+  const candidates = pool.filter(
+    (c) => c.uuid !== mum.uuid && !skipped.has(c),
+  );
+  if (candidates.length === 0) return undefined;
+
+  if (diversity) {
     // Issue #2455: Apply the soft compatibility gate when enabled. The
     // soft gate keeps cross-species exploration possible while
     // concentrating most pairings on compatible parents — a hard

@@ -83,3 +83,64 @@ export function distributeElasticError(
   }
   return shares;
 }
+
+/**
+ * Issue #3477 — typed-array-native entry point for elastic error distribution.
+ *
+ * The backward-pass fallback in `NeuronPropagation.propagate` already holds the
+ * upstream activations and synapse weights in pre-populated `Float32Array`
+ * scratch buffers. The `ElasticLink[]` API (`distributeElasticError`) forces
+ * those buffers to be repacked into `count` short-lived `{ activation,
+ * safeZoneFactor, weight }` objects only to have the WASM shim immediately
+ * unpack them back into typed arrays. This entry point skips that round-trip:
+ * it feeds the caller's typed views straight into the WASM ABI with a uniform
+ * scalar `safeZoneFactor` (the fallback always uses `1`), allocating nothing
+ * per link.
+ *
+ * The returned `Float32Array` is the raw WASM result — a fresh copy of linear
+ * memory (wasm-bindgen returns a new array), so it is safe to retain across
+ * subsequent WASM calls, exactly like `fusedErrorDistribution().perLinkError`.
+ *
+ * `activations` and `weights` must be views of equal length (`count`); a
+ * uniform `safeZoneFactor` is applied to every link. Throws `WasmError` when the
+ * WASM module is not loaded — there is no TS fallback.
+ */
+export function distributeElasticErrorTyped(
+  error: number,
+  activations: Float32Array,
+  weights: Float32Array,
+  safeZoneFactor: number,
+  options?: Readonly<{
+    plankConstant?: number;
+  }>,
+): Float32Array {
+  const count = activations.length;
+  if (count === 0) {
+    return new Float32Array(0);
+  }
+
+  const plankConstant = options?.plankConstant ?? 1e-12;
+
+  const fn = getDistributeElasticErrorFn();
+  if (!fn) {
+    throw new WasmError(
+      "distributeElasticErrorTyped requires the WASM module to be loaded. " +
+        "Ensure the NEAT-AI package is installed correctly.",
+      "MODULE_NOT_LOADED",
+    );
+  }
+
+  // Reusable scratch of uniform safe-zone factors. Grown on demand and refilled
+  // each call; only read during the synchronous WASM call below, so a single
+  // module-level buffer is safe even under recursive propagate().
+  if (safeZoneScratch.length < count) {
+    safeZoneScratch = new Float32Array(count);
+  }
+  const safeZoneFactors = safeZoneScratch.subarray(0, count);
+  safeZoneFactors.fill(safeZoneFactor);
+
+  return fn(error, activations, safeZoneFactors, weights, plankConstant);
+}
+
+/** Reusable uniform safe-zone-factor scratch for {@link distributeElasticErrorTyped}. */
+let safeZoneScratch = new Float32Array(0);

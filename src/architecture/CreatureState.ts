@@ -11,6 +11,7 @@ import { assert } from "@std/assert";
 import type { Creature } from "@creature";
 import type { Synapse } from "@architecture/Synapse.ts";
 import type { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
+import type { TopologicalBackpropCache } from "@propagate/TopologicalBackpropCache.ts";
 import { SynapseState } from "@propagate/SynapseState.ts";
 import { DenseNumberMap } from "@architecture/DenseNumberMap.ts";
 
@@ -158,6 +159,14 @@ export class CreatureState {
    * creatures that are only used for forward activation (evaluation).
    */
   backpropBuffers?: BackpropBuffers;
+
+  /**
+   * Issue #3479: Cached topology-invariant serialisation state for the
+   * topological backprop WASM call. Rebuilt when
+   * {@link Creature.topologyInvalidationGeneration} changes; reused across every
+   * training record for a fixed topology.
+   */
+  backpropTopologyCache?: TopologicalBackpropCache;
   public preparedNeurons = false;
 
   constructor(creature: Creature) {

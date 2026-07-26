@@ -37,6 +37,7 @@ import {
   type SuccessCacheEntry,
 } from "@discovery/SuccessCache.ts";
 import {
+  buildSubnetworkAdjacency,
   computeSubnetworkHash,
   getSharedSubnetworkIndex,
   type IndexedCacheReference,
@@ -67,11 +68,16 @@ function collectHashIndexHits(baseCreature: Creature): Set<string> {
     return hits;
   }
 
+  // Issue #3475: build the topology-invariant adjacency once, then reuse it for
+  // every focal neuron so each hash is O(1) lookups instead of an O(synapses)
+  // rescan per neuron.
+  const adjacency = buildSubnetworkAdjacency(exported);
+
   for (const neuron of exported.neurons) {
     const uuid = neuron.uuid;
     if (!uuid) continue;
     if (neuron.type !== "hidden" && neuron.type !== "output") continue;
-    const hash = computeSubnetworkHash(exported, uuid);
+    const hash = computeSubnetworkHash(exported, uuid, adjacency);
     if (!hash) continue;
     const refs = idx.lookup(hash) as IndexedCacheReference[];
     for (const ref of refs) {
@@ -87,15 +93,19 @@ function collectHashIndexHits(baseCreature: Creature): Set<string> {
  *
  * This pre-filter avoids calling the more expensive
  * `applyEntryUsingRustRequest` on entries that clearly cannot apply.
+ *
+ * `neuronIds` (the base creature's runtime id set) and `wireToId` (its
+ * wire-UUID → runtime-id map) are topology-invariant across cache entries, so
+ * the caller computes them once and passes them in rather than rebuilding them
+ * per entry (Issue #3475).
  */
 function isEntryRelevantToCreature(
-  creature: Creature,
   entry: SuccessCacheEntry,
+  neuronIds: Set<number>,
+  wireToId: Map<string, number>,
 ): boolean {
   const req = entry.rustRequest;
   if (!req) return false;
-  const neuronIds = new Set(creature.neurons.map((n) => n.id));
-  const wireToId = buildWireToRuntimeIdMap(creature);
 
   switch (entry.changeType) {
     case "add-synapses": {
@@ -275,6 +285,13 @@ export function supplementFromCache(
   const supplements: DiscoveryCandidate[] = [];
   const limit = maxSupplements ?? DEFAULT_MAX_SUPPLEMENTS;
 
+  // Issue #3475: the base creature's runtime id set and wire-UUID → id map are
+  // invariant across every cache entry, so compute them once here rather than
+  // rebuilding them for each entry inside the relevance / already-applied
+  // checks below.
+  const baseNeuronIds = new Set(baseCreature.neurons.map((n) => n.id));
+  const baseWireToId = buildWireToRuntimeIdMap(baseCreature);
+
   for (const entry of singleEntries) {
     if (supplements.length >= limit) break;
 
@@ -282,10 +299,12 @@ export function supplementFromCache(
     if (entry.key && existingKeys.has(entry.key)) continue;
 
     // Skip entries that have already been applied to the creature.
-    if (isAlreadyApplied(baseCreature, entry)) continue;
+    if (isAlreadyApplied(baseCreature, entry, baseWireToId)) continue;
 
     // Validate that referenced neurons/synapses still exist.
-    if (!isEntryRelevantToCreature(baseCreature, entry)) continue;
+    if (!isEntryRelevantToCreature(entry, baseNeuronIds, baseWireToId)) {
+      continue;
+    }
 
     // Apply the entry to get the modified creature.
     const modified = applyEntryUsingRustRequest(baseCreature, entry);

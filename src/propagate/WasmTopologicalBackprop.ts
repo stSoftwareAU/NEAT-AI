@@ -9,30 +9,12 @@
 import type { Creature } from "@creature";
 import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
 import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
-import { adjustedBias } from "@propagate/Bias.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
-import { adjustedWeight } from "@propagate/Weight.ts";
-import { adjustedActivation } from "@neuron/NeuronPropagation.ts";
 import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
-import { TypedTopology } from "@architecture/TypedTopology.ts";
+import { TopologicalBackpropCache } from "@propagate/TopologicalBackpropCache.ts";
 import { wasmPropagateTopological } from "@wasm/WasmStandaloneFunctions.ts";
 import { getPropagateTopologicalFn } from "@wasm/WasmModuleLoader.ts";
 import { noChangePropagate } from "@architecture/NoChangePropagate.ts";
-
-/** Neuron type constants matching the Rust side. */
-const NEURON_TYPE_INPUT = 0;
-const NEURON_TYPE_HIDDEN = 1;
-const NEURON_TYPE_OUTPUT = 2;
-const NEURON_TYPE_CONSTANT = 3;
-
-/** Header size in bytes. */
-const HEADER_SIZE = 36;
-/** Per-neuron data size in bytes. */
-const NEURON_STRIDE = 24;
-/** Per-synapse data size in bytes. */
-const SYNAPSE_STRIDE = 20;
-/** Inward mapping size per neuron. */
-const INWARD_MAP_STRIDE = 8;
 
 /**
  * Attempt to run topological backpropagation via WASM.
@@ -64,229 +46,34 @@ export function wasmTopologicalBackprop(
 
   const neurons = creature.neurons;
   const neuronCount = neurons.length;
-  const inputCount = creature.input;
-  const outputCount = creature.output;
-  const allSynapses = creature.synapses;
-  const synapseCount = allSynapses.length;
+  const synapseCount = creature.synapses.length;
+  const state = creature.state;
 
-  // Get reverse topological order via the WASM-backed topology ops.
-  const order = TypedTopology.fromCreature(creature)
-    .computeReverseTopologicalOrder();
-
-  // Build synapse lookup: (from, to) → synapse index.
-  const synapseLookup = new Map<number, Map<number, number>>();
-  for (let i = 0; i < synapseCount; i++) {
-    const s = allSynapses[i];
-    let fromMap = synapseLookup.get(s.from);
-    if (fromMap === undefined) {
-      fromMap = new Map<number, number>();
-      synapseLookup.set(s.from, fromMap);
-    }
-    fromMap.set(s.to, i);
+  // Issue #3479: reuse the topology-invariant cache when the creature's
+  // structure (and squash functions) are unchanged. `topologyInvalidationGeneration`
+  // is bumped by every structural or squash change (via `invalidateScoreCache`),
+  // so a stale cache after a mutation is detected in O(1) and rebuilt — the
+  // reverse topo-sort, inward mapping and buffer template are otherwise reused
+  // across every training record.
+  const generation = creature.topologyInvalidationGeneration;
+  let cache = state.backpropTopologyCache;
+  if (cache === undefined || cache.generation !== generation) {
+    cache = TopologicalBackpropCache.build(creature, generation);
+    cache.applySparse(creature, sparseConfig);
+    state.backpropTopologyCache = cache;
+  } else if (cache.sparseConfig !== sparseConfig) {
+    // Sparse selection flags depend on the sparse config, not pure topology.
+    cache.applySparse(creature, sparseConfig);
   }
 
-  // Build inward connection mapping.
-  // For each neuron, store which synapse indices connect inward.
-  const inwardStarts = new Uint32Array(neuronCount);
-  const inwardCounts = new Uint32Array(neuronCount);
-  const inwardIndicesList: number[] = [];
-
-  // Check for special squash types that need TS fallback.
-  const hasCustomPropagate = new Uint8Array(neuronCount);
-
-  for (let i = 0; i < neuronCount; i++) {
-    const inward = creature.inwardConnections(i);
-    inwardStarts[i] = inwardIndicesList.length;
-    inwardCounts[i] = inward.length;
-
-    // Map synapses to their global indices using O(1) lookup.
-    for (const syn of inward) {
-      const synIdx = synapseLookup.get(syn.from)?.get(syn.to) ?? -1;
-      inwardIndicesList.push(synIdx);
-    }
-
-    // Check for custom propagate method (IF, MAXIMUM, MINIMUM).
-    const n = neurons[i];
-    if (n.type !== "input" && n.type !== "constant") {
-      const squashMethod = n.findSquash();
-      const propagateMethod = squashMethod as NeuronActivationInterface;
-      if (propagateMethod.propagate !== undefined) {
-        hasCustomPropagate[i] = 1;
-      }
-    }
-  }
-
-  const totalInward = inwardIndicesList.length;
-
-  // Pre-compute adjusted values for all neurons and synapses.
-  const adjActivations = new Float32Array(neuronCount);
-  const adjBiases = new Float32Array(neuronCount);
-  const hintValues = new Float32Array(neuronCount);
-  const rangeLows = new Float32Array(neuronCount);
-  const rangeHighs = new Float32Array(neuronCount);
-  const squashTypes = new Uint8Array(neuronCount);
-  const neuronTypes = new Uint8Array(neuronCount);
-  const propagateNeeded = new Uint8Array(neuronCount);
-  const updateNeeded = new Uint8Array(neuronCount);
-
-  for (let i = 0; i < neuronCount; i++) {
-    const n = neurons[i];
-    adjActivations[i] = adjustedActivation(n, config);
-    squashTypes[i] = n.cachedSquashType();
-
-    if (n.type === "input") {
-      neuronTypes[i] = NEURON_TYPE_INPUT;
-      rangeLows[i] = -Infinity;
-      rangeHighs[i] = Infinity;
-    } else if (n.type === "constant") {
-      neuronTypes[i] = NEURON_TYPE_CONSTANT;
-      rangeLows[i] = -Infinity;
-      rangeHighs[i] = Infinity;
-    } else if (n.type === "output") {
-      neuronTypes[i] = NEURON_TYPE_OUTPUT;
-      const squashMethod = n.findSquash();
-      rangeLows[i] = squashMethod.range.low;
-      rangeHighs[i] = squashMethod.range.high;
-    } else {
-      neuronTypes[i] = NEURON_TYPE_HIDDEN;
-      const squashMethod = n.findSquash();
-      rangeLows[i] = squashMethod.range.low;
-      rangeHighs[i] = squashMethod.range.high;
-    }
-
-    if (n.type !== "input" && n.type !== "constant") {
-      adjBiases[i] = adjustedBias(n, config);
-      const ns = creature.state.node(i);
-      hintValues[i] = ns.hintValue;
-    }
-
-    propagateNeeded[i] = sparseConfig.propagateNeeded(n.id) ? 1 : 0;
-    updateNeeded[i] = sparseConfig.updateNeeded(n.id) ? 1 : 0;
-  }
-
-  const adjWeights = new Float32Array(synapseCount);
-  const origWeights = new Float32Array(synapseCount);
-  const synFrom = new Uint32Array(synapseCount);
-  const synTo = new Uint32Array(synapseCount);
-  const isSelfLoop = new Uint8Array(synapseCount);
-
-  for (let i = 0; i < synapseCount; i++) {
-    const s = allSynapses[i];
-    synFrom[i] = s.from;
-    synTo[i] = s.to;
-    origWeights[i] = s.weight;
-    adjWeights[i] = adjustedWeight(creature.state, s, config);
-    isSelfLoop[i] = s.from === s.to ? 1 : 0;
-  }
-
-  // ---- Serialise to binary format ----
-  const totalSize = HEADER_SIZE +
-    neuronCount * NEURON_STRIDE +
-    synapseCount * SYNAPSE_STRIDE +
-    neuronCount * INWARD_MAP_STRIDE +
-    totalInward * 4 +
-    order.length * 4 +
-    outputCount * 4;
-
-  const buffer = new ArrayBuffer(totalSize);
-  const view = new DataView(buffer);
-  const bytes = new Uint8Array(buffer);
-  let offset = 0;
-
-  // Header
-  view.setUint32(offset, neuronCount, true);
-  offset += 4;
-  view.setUint32(offset, inputCount, true);
-  offset += 4;
-  view.setUint32(offset, outputCount, true);
-  offset += 4;
-  view.setUint32(offset, synapseCount, true);
-  offset += 4;
-  view.setUint32(offset, order.length, true);
-  offset += 4;
-  view.setUint32(offset, totalInward, true);
-  offset += 4;
-  view.setFloat64(offset, config.plankConstant, true);
-  offset += 8;
-  bytes[offset] = config.normaliseGradients ? 1 : 0;
-  offset += 1;
-  bytes[offset] = 0;
-  offset += 1; // padding
-  bytes[offset] = 0;
-  offset += 1; // padding
-  bytes[offset] = 0;
-  offset += 1; // padding
-
-  // Per-neuron data
-  for (let i = 0; i < neuronCount; i++) {
-    bytes[offset] = squashTypes[i];
-    offset += 1;
-    bytes[offset] = neuronTypes[i];
-    offset += 1;
-    bytes[offset] = propagateNeeded[i];
-    offset += 1;
-    bytes[offset] = updateNeeded[i];
-    offset += 1;
-    view.setFloat32(offset, hintValues[i], true);
-    offset += 4;
-    view.setFloat32(offset, rangeLows[i], true);
-    offset += 4;
-    view.setFloat32(offset, rangeHighs[i], true);
-    offset += 4;
-    view.setFloat32(offset, adjActivations[i], true);
-    offset += 4;
-    view.setFloat32(offset, adjBiases[i], true);
-    offset += 4;
-  }
-
-  // Per-synapse data
-  for (let i = 0; i < synapseCount; i++) {
-    view.setUint32(offset, synFrom[i], true);
-    offset += 4;
-    view.setUint32(offset, synTo[i], true);
-    offset += 4;
-    view.setFloat32(offset, origWeights[i], true);
-    offset += 4;
-    view.setFloat32(offset, adjWeights[i], true);
-    offset += 4;
-    bytes[offset] = isSelfLoop[i];
-    offset += 1;
-    bytes[offset] = 0;
-    offset += 1; // padding
-    bytes[offset] = 0;
-    offset += 1; // padding
-    bytes[offset] = 0;
-    offset += 1; // padding
-  }
-
-  // Inward mapping
-  for (let i = 0; i < neuronCount; i++) {
-    view.setUint32(offset, inwardStarts[i], true);
-    offset += 4;
-    view.setUint32(offset, inwardCounts[i], true);
-    offset += 4;
-  }
-
-  // Inward indices
-  for (let i = 0; i < totalInward; i++) {
-    view.setUint32(offset, inwardIndicesList[i], true);
-    offset += 4;
-  }
-
-  // Reverse topological order
-  for (let i = 0; i < order.length; i++) {
-    view.setUint32(offset, order[i], true);
-    offset += 4;
-  }
-
-  // Expected outputs
-  for (let i = 0; i < outputCount; i++) {
-    view.setFloat32(offset, expected[i], true);
-    offset += 4;
-  }
+  // Patch the per-sample value-dependent fields straight into the reused
+  // buffer, then hand it to WASM.
+  cache.writeSample(creature, config, expected);
+  const order = cache.order;
+  const adjActivations = cache.adjActivations;
 
   // ---- Call WASM ----
-  const result = wasmPropagateTopological(bytes);
+  const result = wasmPropagateTopological(cache.bytes);
   if (result === undefined) {
     return false;
   }
@@ -294,7 +81,6 @@ export function wasmTopologicalBackprop(
   // ---- Deserialise results ----
   const neuronResultStride = 7;
   const synapseResultStride = 7;
-  const state = creature.state;
 
   // Check if any neurons need the custom-propagate handler (IF/MAXIMUM/MINIMUM)
   // and collect any neurons that hit the WASM-side noChange path so that the
@@ -375,7 +161,7 @@ export function wasmTopologicalBackprop(
     const sbase = neuronCount * neuronResultStride + i * synapseResultStride;
     const countDelta = result[sbase];
     if (countDelta > 0) {
-      const syn = allSynapses[i];
+      const syn = creature.synapses[i];
       const cs = state.connectionFor(syn); // Issue #3089: cached state lookup
       cs.count += countDelta;
       cs.totalPositiveActivation += result[sbase + 1];

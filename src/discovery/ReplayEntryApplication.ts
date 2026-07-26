@@ -53,7 +53,7 @@ function isSynapsePresent(
 }
 
 function resolveSynapseDetailsEndpoints(
-  creature: Creature,
+  wireToId: Map<string, number>,
   details:
     | {
       fromNeuronUuid?: string;
@@ -62,7 +62,6 @@ function resolveSynapseDetailsEndpoints(
     | undefined,
 ): { fromId: number; toId: number } | undefined {
   if (!details) return undefined;
-  const wireToId = buildWireToRuntimeIdMap(creature);
   if (!details.fromNeuronUuid || !details.toNeuronUuid) {
     return undefined;
   }
@@ -94,20 +93,27 @@ function nearlyEqual(a: number, b: number): boolean {
  *
  * Checks structural presence of the change (neuron/synapse existence, squash values)
  * to avoid redundant application during replay.
+ *
+ * `precomputedWireToId` is the base creature's wire-UUID → runtime-id map. It is
+ * topology-invariant across cache entries, so callers that check many entries
+ * against the same creature (e.g. `supplementFromCache`) pass it in once instead
+ * of rebuilding it per entry (Issue #3475). Omit it for standalone one-off checks.
  */
 export function isAlreadyApplied(
   creature: Creature,
   entry: SuccessCacheEntry,
+  precomputedWireToId?: Map<string, number>,
 ): boolean {
   const type = entry.changeType;
   const req = getRustRequest(entry);
+  const wireToId = precomputedWireToId ?? buildWireToRuntimeIdMap(creature);
 
   // Fast-path: structural removals.
   if (type === "remove-low-impact") {
     const c = req.removalCandidate;
     if (!c?.neuronUuid) return false;
     const neuronId = resolveWireToRuntimeId(
-      buildWireToRuntimeIdMap(creature),
+      wireToId,
       c.neuronUuid,
     );
     return neuronId !== undefined
@@ -118,7 +124,7 @@ export function isAlreadyApplied(
     const c = req.harmfulNeuronCandidate;
     if (!c?.neuronUuid) return false;
     const neuronId = resolveWireToRuntimeId(
-      buildWireToRuntimeIdMap(creature),
+      wireToId,
       c.neuronUuid,
     );
     return neuronId !== undefined
@@ -127,7 +133,6 @@ export function isAlreadyApplied(
   }
   if (type === "remove-synapse") {
     const c = req.harmfulSynapseCandidate;
-    const wireToId = buildWireToRuntimeIdMap(creature);
     const candidateEndpoints = c
       ? resolveCandidateSynapseEndpoints(wireToId, c)
       : undefined;
@@ -139,7 +144,7 @@ export function isAlreadyApplied(
       );
     }
     const details = req.synapseDetails;
-    const detailEndpoints = resolveSynapseDetailsEndpoints(creature, details);
+    const detailEndpoints = resolveSynapseDetailsEndpoints(wireToId, details);
     if (detailEndpoints) {
       return !isSynapsePresent(
         creature,
@@ -154,7 +159,7 @@ export function isAlreadyApplied(
     const c = req.synapseCandidate;
     if (!c) return false;
     const endpoints = resolveCandidateSynapseEndpoints(
-      buildWireToRuntimeIdMap(creature),
+      wireToId,
       c,
     );
     if (!endpoints) return false;
@@ -167,7 +172,7 @@ export function isAlreadyApplied(
       return false;
     }
     const neuronId = resolveWireToRuntimeId(
-      buildWireToRuntimeIdMap(creature),
+      wireToId,
       c.neuronUuid,
     );
     if (neuronId === undefined || !c?.squash) {
@@ -194,7 +199,6 @@ export function isAlreadyApplied(
     >();
     const edgeKey = (fromId: number, toId: number): string =>
       `${fromId}\0${toId}`;
-    const wireToId = buildWireToRuntimeIdMap(creature);
 
     for (const op of ops) {
       if (!op || typeof op.type !== "string") return false;
@@ -264,7 +268,7 @@ export function isAlreadyApplied(
     const details = req.neuronDetails;
     const endpoints = details
       ? resolveCandidateNeuronEndpoints(
-        buildWireToRuntimeIdMap(creature),
+        wireToId,
         details as unknown as CandidateNeuron,
       )
       : undefined;

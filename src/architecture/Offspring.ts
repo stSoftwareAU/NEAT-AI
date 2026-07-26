@@ -45,6 +45,34 @@ import {
 import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
+/**
+ * Issue #3473: The pre-fix offspring snapshot is only consumed by the rare
+ * WASM-compile-failure diagnostic dump in `Offspring.breed`. Routing the
+ * capture through a swappable reference lets a test spy on it and assert the
+ * happy breeding path skips the export entirely when diagnostics are off,
+ * so the deferral cannot silently regress. Production always uses the real
+ * `exportJSONUnchecked`.
+ */
+let preFixOffspringExporter: (creature: Creature) => CreatureExport =
+  exportJSONUnchecked;
+
+/**
+ * Issue #3473: Test-only — replace the pre-fix offspring exporter used by
+ * `Offspring.breed`. Returns a disposer that restores the real exporter.
+ *
+ * Intentionally not re-exported through `@architecture/mod.ts` — production
+ * code must always use the real `exportJSONUnchecked`.
+ */
+export function __setPreFixOffspringExporterForTesting(
+  exporter: (creature: Creature) => CreatureExport,
+): () => void {
+  const previous = preFixOffspringExporter;
+  preFixOffspringExporter = exporter;
+  return () => {
+    preFixOffspringExporter = previous;
+  };
+}
+
 class OffspringError extends Error {
   constructor(message: string) {
     super(message);
@@ -573,12 +601,26 @@ export class Offspring {
     // producer-gate diagnostic dump can include both the raw cross-over
     // output and the post-fix output. Use the unchecked exporter — the
     // creature has not been repaired yet and may not pass `creatureValidate`.
+    //
+    // Issue #3473: This snapshot is consumed only by the rare
+    // WASM-compile-failure dump below, yet `Offspring.breed` runs
+    // ~population-size times per generation. Serialising the full genome on
+    // every offspring is pure overhead on the happy path. Capture it eagerly
+    // *here* — before the repair steps mutate the offspring, so the snapshot
+    // genuinely reflects the pre-fix genome — but only when diagnostics are
+    // enabled (`offspring.DEBUG`). When diagnostics are off we skip the export
+    // and record why, so the deferral cannot silently regress and the rare
+    // non-debug compile-failure dump still explains the absent snapshot.
     let preFixOffspringExport: CreatureExport | string;
-    try {
-      preFixOffspringExport = exportJSONUnchecked(offspring);
-    } catch {
-      preFixOffspringExport =
-        "(pre-fix export failed — offspring too corrupted to serialise)";
+    if (offspring.DEBUG) {
+      try {
+        preFixOffspringExport = preFixOffspringExporter(offspring);
+      } catch {
+        preFixOffspringExport =
+          "(pre-fix export failed — offspring too corrupted to serialise)";
+      }
+    } else {
+      preFixOffspringExport = "(pre-fix export skipped — diagnostics disabled)";
     }
 
     assert(childUUID, "Failed to make UUID for offspring");
