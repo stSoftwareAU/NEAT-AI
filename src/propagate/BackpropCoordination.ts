@@ -49,7 +49,12 @@ const CANCELLATION_THRESHOLD = 0.95;
  * @param activations - Array of source neuron activations for each synapse
  * @param reductionFactor - How much of the opposing changes to
  *   keep (0..1). Default 0.2 matches fine-tuning coordination.
- * @returns Coordinated bias and weight values
+ * @param count - Number of synapses to process (Issue #3477). Defaults to
+ *   `currentWeights.length`. Pass an explicit count when the weight/activation
+ *   arrays are over-sized pooled scratch buffers whose backing length exceeds
+ *   the neuron's fan-in.
+ * @returns Coordinated bias and weight values (an array of exactly `count`
+ *   elements)
  */
 export function coordinateBackpropUpdates(
   currentBias: number,
@@ -58,17 +63,18 @@ export function coordinateBackpropUpdates(
   candidateWeights: readonly number[],
   activations: readonly number[],
   reductionFactor: number,
+  count: number = currentWeights.length,
 ): { bias: number; weights: number[] } {
   const biasDelta = candidateBias - currentBias;
   const biasChanged = biasDelta !== 0;
 
   // Compute weight deltas and the net effect on pre-activation value
-  const weightDeltas: number[] = [];
+  const weightDeltas: number[] = new Array<number>(count);
   let anyWeightChanged = false;
   let netWeightEffect = 0;
-  for (let i = 0; i < currentWeights.length; i++) {
+  for (let i = 0; i < count; i++) {
     const delta = candidateWeights[i] - currentWeights[i];
-    weightDeltas.push(delta);
+    weightDeltas[i] = delta;
     if (delta !== 0) {
       anyWeightChanged = true;
       // The actual effect of this weight change on the neuron's
@@ -81,7 +87,7 @@ export function coordinateBackpropUpdates(
   if (!biasChanged || !anyWeightChanged) {
     return {
       bias: candidateBias,
-      weights: candidateWeights.slice() as number[],
+      weights: sliceCandidates(candidateWeights, count),
     };
   }
 
@@ -107,11 +113,12 @@ export function coordinateBackpropUpdates(
       // Reduce both sides proportionally to eliminate cancellation
       // without creating asymmetry that could push the neuron in
       // the wrong direction during early training.
-      const adjustedWeights = currentWeights.map((w, i) => {
+      const adjustedWeights = new Array<number>(count);
+      for (let i = 0; i < count; i++) {
+        const w = currentWeights[i];
         const delta = weightDeltas[i];
-        if (delta === 0) return w;
-        return w + delta * reductionFactor;
-      });
+        adjustedWeights[i] = delta === 0 ? w : w + delta * reductionFactor;
+      }
       return {
         bias: currentBias + biasDelta * reductionFactor,
         weights: adjustedWeights,
@@ -123,6 +130,22 @@ export function coordinateBackpropUpdates(
   // risk significant cancellation — pass through unchanged.
   return {
     bias: candidateBias,
-    weights: candidateWeights.slice() as number[],
+    weights: sliceCandidates(candidateWeights, count),
   };
+}
+
+/**
+ * Issue #3477: Copy exactly `count` candidate weights into a fresh array.
+ * Replaces `candidateWeights.slice()` so pooled scratch buffers whose backing
+ * length exceeds the neuron's fan-in are truncated correctly.
+ */
+function sliceCandidates(
+  candidateWeights: readonly number[],
+  count: number,
+): number[] {
+  const out = new Array<number>(count);
+  for (let i = 0; i < count; i++) {
+    out[i] = candidateWeights[i];
+  }
+  return out;
 }

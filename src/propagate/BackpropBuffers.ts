@@ -39,6 +39,21 @@ export interface BackpropBufferSet {
    * replacing a `new Float64Array(listLength)` on every call.
    */
   errorShares: Float64Array;
+  /**
+   * Issue #3477: Current synapse weights scratch for the coordination-enabled
+   * `propagateUpdate` path, replacing a `number[]` grown by `push()` per neuron.
+   */
+  currentWeights: number[];
+  /**
+   * Issue #3477: Candidate synapse weights scratch for the coordination-enabled
+   * `propagateUpdate` path.
+   */
+  candidateWeights: number[];
+  /**
+   * Issue #3477: Source-neuron activations scratch for the coordination-enabled
+   * `propagateUpdate` path.
+   */
+  sourceActivations: number[];
   /** Current allocated capacity. */
   capacity: number;
 }
@@ -99,6 +114,9 @@ export class BackpropBuffers {
       fusedWeights: new Float32Array(capacity),
       indices: new Int32Array(capacity),
       errorShares: new Float64Array(capacity),
+      currentWeights: new Array<number>(capacity),
+      candidateWeights: new Array<number>(capacity),
+      sourceActivations: new Array<number>(capacity),
       capacity,
     };
   }
@@ -114,6 +132,9 @@ export class BackpropBuffers {
     buf.fusedWeights = new Float32Array(newCapacity);
     buf.indices = new Int32Array(newCapacity);
     buf.errorShares = new Float64Array(newCapacity);
+    buf.currentWeights = new Array<number>(newCapacity);
+    buf.candidateWeights = new Array<number>(newCapacity);
+    buf.sourceActivations = new Array<number>(newCapacity);
     buf.capacity = newCapacity;
     return buf;
   }
