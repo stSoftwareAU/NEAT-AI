@@ -50,6 +50,15 @@ flowchart TD
     E --> F[Automated worker reverts the bump]
 ```
 
+### Quality gate
+
+`deno fmt --check`, `deno lint` (2242 files) and `deno check` (1904 files) are
+clean, and all 307 tests under `test/docs/` + `test/scripts/` pass. Two full
+`./quality.sh` runs hit unrelated flakiness in the heavy evolve suite — one
+`test/creature/FitnessSubsampleEvaluateDir.ts` failure that passes in isolation,
+and one `deno` process SIGTRAP (exit 133) under memory pressure. Neither can be
+caused by this change, which touches comment and message text only.
+
 ## Test Plan
 
 - Ran the existing behavioural suite `test/scripts/BumpDepsScript.ts` (13 tests,
