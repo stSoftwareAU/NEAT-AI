@@ -2,14 +2,15 @@
 
 ## Failing check
 
-`Merge coverage & results` failed: coverage **shard 7** recorded a genuine
-test failure (shards always exit 0 and let the merge gate report), so
+`Merge coverage & results` failed: coverage **shard 7** recorded a genuine test
+failure (shards always exit 0 and let the merge gate report), so
 `Fail build if tests failed` exited 1.
 
 The failing test was
 `test/NEAT/RandomImmigrantsStagnationEscape.ts::"RandomImmigrants - evolveDataSet runs end-to-end with injection enabled"`,
-crashing with an **uncaught** `TypeError: Cannot read properties of undefined (reading 'id')`
-in `CreatureSerialization.shallowClone`.
+crashing with an **uncaught**
+`TypeError: Cannot read properties of undefined (reading 'id')` in
+`CreatureSerialization.shallowClone`.
 
 ## Root cause
 
@@ -17,7 +18,7 @@ in `CreatureSerialization.shallowClone`.
 `victim.dispose()` on each replaced weakest non-elite. `Creature.dispose()`
 empties `neurons`/`synapses` **but leaves `input` non-zero**.
 
-The breeding genus is built from the population *before* the random-immigrant
+The breeding genus is built from the population _before_ the random-immigrant
 injection runs, and elites/trained survivors are the **same creature objects**
 shared between `neat.population` and that genus. Disposing a victim therefore
 corrupted a genome still referenced as a breeding parent. When the subsequent
@@ -46,15 +47,16 @@ sequenceDiagram
 
 Remove the `victim.dispose()` call. The helper operates on a population array
 via a factory and does **not** own the victims exclusively, so it must not free
-them. Replaced victims are simply dropped from the population; they remain valid,
-breedable genomes for any other holder (the genus), and become GC-eligible once
-unreferenced. WASM activation memory is already bounded by the
+them. Replaced victims are simply dropped from the population; they remain
+valid, breedable genomes for any other holder (the genus), and become
+GC-eligible once unreferenced. WASM activation memory is already bounded by the
 `WasmCreatureActivationLRU` cache (which calls `.free()` on eviction), so no
 memory regression results.
 
 ## Tests
 
-- Added `test/NEAT/RandomImmigrants.ts::"injectRandomImmigrants - replaced victim is not disposed (shared ownership)"`,
+- Added
+  `test/NEAT/RandomImmigrants.ts::"injectRandomImmigrants - replaced victim is not disposed (shared ownership)"`,
   a regression test that fails against the unfixed code (disposed victim →
   `shallowClone` throws) and passes with the fix.
 - Stress-ran the previously-flaky end-to-end test **200×** with zero failures
