@@ -4,12 +4,13 @@
 
 On GRQ-23 a discovery-replay worker once failed to initialise and logged
 `Worker init: no response after 60s. Worker may have crashed or be stuck
-loading WASM.` — a **guess**, not a measurement. From the log alone it was
-impossible to tell whether the 60s went on the bundle cache read, the
-wasm-bindgen glue `import()`, `WebAssembly.instantiate`, or the worker
-handshake itself. This change instruments the three init phases so the *next*
-occurrence is root-causable, while leaving the self-healing direct-execution
-fallback exactly as it was. Closes #3494.
+loading WASM.`
+— a **guess**, not a measurement. From the log alone it was impossible to tell
+whether the 60s went on the bundle cache read, the wasm-bindgen glue `import()`,
+`WebAssembly.instantiate`, or the worker handshake itself. This change
+instruments the three init phases so the _next_ occurrence is root-causable,
+while leaving the self-healing direct-execution fallback exactly as it was.
+Closes #3494.
 
 What changed:
 
@@ -19,7 +20,7 @@ What changed:
   phase timings. The contract is documented in the module doc comment.
 - **`src/wasm/WasmBundleCache.ts`** — `loadWasmBundleBytesWithDiagnostics`
   reports the cache `hit` / `miss` / `disabled` / `local` outcome, the resolved
-  cache directory (or an explicit *caching disabled* reason when
+  cache directory (or an explicit _caching disabled_ reason when
   `resolveCacheDir()` returns `null`), the bundle byte length, and elapsed ms.
   Injectable `now` and `cacheDir: null` make every branch deterministically
   testable; `loadWasmBundleBytes` is unchanged for existing callers.
@@ -28,19 +29,19 @@ What changed:
   and records them for the worker init sequence to fold in.
 - **`src/workers/WorkerHandlerBase.ts`** — `createInitSequence` emits **one**
   always-on `info` line per successful init and, on timeout, embeds the
-  parent-observed phase breakdown in the *thrown error message* so it lands
+  parent-observed phase breakdown in the _thrown error message_ so it lands
   after the trailing `Error:` token of the fallback log line (straight into
   GRQ's `firstError=` field). Because the worker never answered, the child's
   internal phases are flagged **unknown** rather than reported as zeros.
 
 ### Why one choke point covers all five fallback sites
 
-Every worker-init fallback listed in the issue
-(`ReplayHelpers.ts`, `DiscoveryRunner.ts`, `ImproveSquash.ts`,
-`CreatureTraining.ts`, `EpisodeWorkerPool.ts`) reaches init through
-`waitUntilReady()` → `createInitSequence`. Instrumenting that shared base
-method covers all of them without per-site changes; each handler now just
-passes its worker label (`worker-N` / `id-worker-N` / `episode-worker-N`).
+Every worker-init fallback listed in the issue (`ReplayHelpers.ts`,
+`DiscoveryRunner.ts`, `ImproveSquash.ts`, `CreatureTraining.ts`,
+`EpisodeWorkerPool.ts`) reaches init through `waitUntilReady()` →
+`createInitSequence`. Instrumenting that shared base method covers all of them
+without per-site changes; each handler now just passes its worker label
+(`worker-N` / `id-worker-N` / `episode-worker-N`).
 
 ```mermaid
 flowchart TD
@@ -66,8 +67,8 @@ dependency or config was introduced.
 
 ## Evidence
 
-Backend/CLI change with no web interface, so no screenshot. Verified via the
-new unit tests and the full quality gate (`./quality.sh`):
+Backend/CLI change with no web interface, so no screenshot. Verified via the new
+unit tests and the full quality gate (`./quality.sh`):
 `ok | 7936 passed (5 steps) | 0 failed | 4 ignored`.
 
 Example info line produced (contract shape):
