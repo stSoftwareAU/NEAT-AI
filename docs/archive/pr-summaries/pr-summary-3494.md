@@ -8,9 +8,9 @@ loading WASM.`
 — a **guess**, not a measurement. From the log alone it was impossible to tell
 whether the 60s went on the bundle cache read, the wasm-bindgen glue `import()`,
 `WebAssembly.instantiate`, or the worker handshake itself. This change
-instruments the three init phases so the _next_ occurrence is root-causable,
-while leaving the self-healing direct-execution fallback exactly as it was.
-Closes #3494.
+instruments the three init phases so the _next_ occurrence is diagnosable, while
+leaving the self-healing direct-execution fallback exactly as it was. Closes
+#3494.
 
 What changed:
 
