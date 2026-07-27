@@ -1,9 +1,9 @@
 # Evolution-mode / population / sample-rate configuration sweep
 
 > Issue #3400 (sub-issue of #3396) — tune the evolution-mode flags and
-> population / sample-rate parameters the production `worker/learn.sh` /
-> `worker/sampler.sh` (GRQ) scripts pass, to maximise **score improvement per
-> wall-clock hour** inside the production time-boxes.
+> population / sample-rate parameters the downstream production runner scripts
+> pass, to maximise **score improvement per wall-clock hour** inside the
+> production time-boxes.
 
 Source: [`bench/evolution_config_sweep.ts`](../bench/evolution_config_sweep.ts).
 Tests:
@@ -89,8 +89,8 @@ time-boxes.
 |    3 | pop50  |         50 |           5 |       -9.207e+30 |     6.760e+31 |      −34.6% |
 |    4 | pop30  |         30 |           8 |       -1.042e+31 |     5.398e+31 |      −47.8% |
 
-**`populationSize=20` — the current `worker/learn.sh` value — already maximises
-score-per-hour in the learn time-box.** No swept value beats it:
+**`populationSize=20` — the current downstream production runner value — already
+maximises score-per-hour in the learn time-box.** No swept value beats it:
 
 - `pop10` runs more generations but each is lower quality; it reaches a **worse
   final score** (flagged as a regression) _and_ a −32.6% score/hour.
@@ -128,21 +128,23 @@ wall-clock jitter — same score gained, slightly different elapsed time):
 These two knobs govern **backprop training** (`trainPerGen ≥ 1`), so they are
 no-ops for the deterministic pure-neuroevolution harness. A faithful measurement
 needs a non-deterministic `--train-per-gen ≥ 1` run on real `.trainData`, which
-belongs in the GRQ production environment — see the cross-repo GRQ issue.
+belongs in the downstream production environment — see the issue filed in the
+downstream production repo.
 
 ## Recommendation
 
-- **NEAT-AI defaults: no change.** The production settings the GRQ scripts pass
-  are already at (or validated against) the score-per-hour optimum on
-  production-scale data; no swept configuration improves score-per-hour without
-  regressing the final score. Changing an in-repo default would be an unbacked
-  regression risk.
-- **GRQ `worker/learn.sh` / `worker/sampler.sh`:** keep `populationSize=20` for
-  learn and the 20→50 sampler ramp — this sweep **validates** that design. The
+- **NEAT-AI defaults: no change.** The production settings the downstream
+  production runner scripts pass are already at (or validated against) the
+  score-per-hour optimum on production-scale data; no swept configuration
+  improves score-per-hour without regressing the final score. Changing an
+  in-repo default would be an unbacked regression risk.
+- **Downstream production runner scripts:** keep `populationSize=20` for learn
+  and the 20→50 sampler ramp — this sweep **validates** that design. The
   `trainingSampleRate` / `sparseRatio` knobs need an in-situ backprop sweep
   (`--train-per-gen ≥ 1` on real `.trainData`) that the deterministic in-repo
   harness cannot run; the reusable sweep tool here is the vehicle for it. Filed
-  as a cross-repo GRQ issue referencing #3400 with this evidence attached.
+  as an issue in the downstream production repo referencing #3400 with this
+  evidence attached.
 
 Evidence artefacts:
 [`docs/evidence/sweep-3400-time-boxed.md`](./evidence/sweep-3400-time-boxed.md),
