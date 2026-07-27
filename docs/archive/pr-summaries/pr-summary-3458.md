@@ -1,74 +1,66 @@
-# Reword private-repo issue-contract references to concept level
+# Reword private issue-contract references to concept level
 
 ## Summary
 
-Live dependency-bump automation, contributor docs, and a test comment referenced
-a **private** organisation issue tracker via `<repo>#NNNN` issue slugs —
-including **two lines printed to stderr at runtime**. Those slugs are
-meaningless to public readers (the tracker is private, so the reference cannot
-be followed), which breaks the "a public repository must be self-contained"
-rule. The behaviour they described — the automated dependency-bump worker
-reverting a bump when a gate fails — is fully expressible without the slug.
+Live dependency-bump automation, contributor documentation and a test comment
+cited the **private** orchestration repository's issue tracker by slug. Two of
+those slugs were printed to stderr by `bump-deps.sh` at runtime, so any public
+user whose bump failed an audit gate was pointed at an issue they cannot open.
 
-This change rewords each reference to concept level:
+Each reference is now worded at concept level — describing the revert contract
+itself rather than naming a private tracker item:
 
-- `bump-deps.sh:8` — header now credits "the automated dependency-bump worker
-  before quality.sh", no slug.
-- `bump-deps.sh:32` — "The worker then reverts the bump."
-- `bump-deps.sh:165` — "The real fix is worker-side PATH bootstrap; this is a
-  local hardening layer."
-- `bump-deps.sh:341` and `bump-deps.sh:362` — the two runtime stderr lines now
-  read `Worker should revert this bump.`
-- `AGENTS.md:600` — "the Vibe Coder worker reverts the bump."
-- `test/scripts/BumpDepsScript.ts:8` — header comment drops the slug.
+| Location                           | After                                                         |
+| ---------------------------------- | ------------------------------------------------------------- |
+| `bump-deps.sh:8`                   | `(see "WASM smoke audit gate in bump-deps.sh" in AGENTS.md)`  |
+| `bump-deps.sh:32`                  | `The automated dependency-bump worker then reverts the bump.` |
+| `bump-deps.sh:165`                 | `PATH bootstrap in the automation that spawns us`             |
+| `bump-deps.sh:341,362` (stderr)    | `Worker should revert this bump.`                             |
+| `AGENTS.md:600`                    | `the automated dependency-bump worker reverts the bump`       |
+| `test/scripts/BumpDepsScript.ts:8` | slug dropped; the worker is described generically             |
 
-No control flow changed — only comment text, doc prose, and two stderr strings.
+No behaviour changed — the audit gates still fail loud with exit 1; only the
+wording of the guidance changed.
 
 Closes #3458.
 
 ## Evidence
 
-Backend/CLI-only change; no web interface to screenshot.
-
-Repo-wide scan confirms the target files no longer carry a private-repo slug
-(remaining hits live only in the private-repo-reference **audit tests**, which
-intentionally hold the slug as detection fixtures/regexes and are out of scope):
+This is a documentation/CLI-text change with no web interface, so no screenshot
+applies. Verification is by test:
 
 ```
-$ grep -rn "VibeCoding" bump-deps.sh AGENTS.md test/scripts/BumpDepsScript.ts
-(no matches)
+deno test --allow-read test/scripts/BumpDepsNoPrivateRepoReference.ts
+ok | 10 passed | 0 failed (8ms)
 ```
 
-The gate-failure flow that emits the reworded stderr line:
+The new test fails against the unfixed tree (4 failures: `bump-deps.sh`,
+`AGENTS.md`, `test/scripts/BumpDepsScript.ts`, and the runtime revert-guidance
+check) and passes after the rewording.
+
+Full gate: `./quality.sh` → `ok | 7955 passed (5 steps) | 0 failed | 4 ignored`.
+`shellcheck bump-deps.sh` and `bash -n bump-deps.sh` are both clean.
 
 ```mermaid
-flowchart TD
-    A[bump-deps.sh bumps deps] --> B{Audit gate: WASM smoke + deno check}
-    B -- pass --> C[Print bump summary, exit 0]
-    B -- fail --> D["stderr: Worker should revert this bump."]
-    D --> E[exit 1]
-    E --> F[Automated worker reverts the bump]
+flowchart LR
+    A["bump-deps.sh<br/>audit gate fails"] --> B{"stderr guidance"}
+    B -->|before| C["revert-per-private-slug<br/>404 for public users"]
+    B -->|after| D["'Worker should revert this bump.'<br/>self-contained"]
 ```
-
-### Quality gate
-
-`deno fmt --check`, `deno lint` (2242 files) and `deno check` (1904 files) are
-clean, and all 307 tests under `test/docs/` + `test/scripts/` pass. Two full
-`./quality.sh` runs hit unrelated flakiness in the heavy evolve suite — one
-`test/creature/FitnessSubsampleEvaluateDir.ts` failure that passes in isolation,
-and one `deno` process SIGTRAP (exit 133) under memory pressure. Neither can be
-caused by this change, which touches comment and message text only.
 
 ## Test Plan
 
-- Ran the existing behavioural suite `test/scripts/BumpDepsScript.ts` (13 tests,
-  all passing) — flag parsing, quarantine validation, `--dry-run` no-op, and the
-  deno-fallback paths still behave identically after the reword.
-- `deno fmt --check` and `deno lint` pass on the changed files.
-- `bash -n bump-deps.sh` confirms the script still parses.
+Added `test/scripts/BumpDepsNoPrivateRepoReference.ts` (10 tests):
 
-No new test was added: the change is a pure textual reword with no new
-behaviour, no existing test asserts on the reworded strings, and a
-grep-of-source test would be a discouraged non-behavioural check. Exercising the
-reworded stderr line directly requires forcing the network-dependent
-gate-failure path, which the unit suite deliberately avoids.
+- Per-file scans of `bump-deps.sh`, `AGENTS.md` and
+  `test/scripts/BumpDepsScript.ts` for a private issue slug or org-qualified
+  private repo path (regression guard, 3 tests).
+- `bump-deps.sh revert guidance is worded at concept level` — asserts both audit
+  gates still emit revert guidance and that neither line cites a private
+  tracker.
+- `findVibeCodingReferences` unit coverage: bare slug, org-qualified blob link,
+  multiple offending lines, public `NEAT-AI` link not flagged, concept-level
+  prose not flagged, and the empty-input edge case.
+
+No existing tests were removed or modified beyond the comment rewording in
+`test/scripts/BumpDepsScript.ts`.
