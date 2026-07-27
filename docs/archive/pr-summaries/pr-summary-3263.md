@@ -63,11 +63,12 @@ predicted ("breeding is <5% of GRQ time"). The budget can only pay off
 population unlocks a measured GPU win — both live in the scoring path.
 
 The full GRQ evolve wall-clock / `fitnessMs` A/B requires the production
-creature seed, `../GRQ/.trainData-binary_115`, and the GPU scorer — none
-reachable from CI or an autonomous worker. That measurement, and the **≥5%**
-adoption gate that would flip the default, are deferred to a human on GRQ per
-milestone #3256 and documented in `docs/PERFORMANCE_RESEARCH.md`. The default
-stays **free mix**, so this PR adds **zero regression risk** by default.
+creature seed, the production training corpus (≈21 GiB, not distributable), and
+the GPU scorer — none reachable from CI or an autonomous worker. That
+measurement, and the **≥5%** adoption gate that would flip the default, are
+deferred to a human on GRQ per milestone #3256 and documented in
+`docs/PERFORMANCE_RESEARCH.md`. The default stays **free mix**, so this PR adds
+**zero regression risk** by default.
 
 ## Test Plan
 

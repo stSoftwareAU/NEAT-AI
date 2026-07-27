@@ -22,9 +22,9 @@ deno task bench:score-per-hour \
   --out=trajectory.json
 ```
 
-This drives the same production-scale synthetic topology used by
-`worker/learn.sh` / `worker/sampler.sh` — the `grq-3397` preset: **1,666 neurons
-/ ~21,513 synapses / 2,461 inputs** — from
+This drives the same production-scale synthetic topology used by the downstream
+production runner scripts — the `grq-3397` preset: **1,666 neurons / ~21,513
+synapses / 2,461 inputs** — from
 [`test/propagate/large/ProductionScaleCreature.ts`](../test/propagate/large/ProductionScaleCreature.ts),
 and writes a machine-readable JSON trajectory containing:
 

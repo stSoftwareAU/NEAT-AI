@@ -7,10 +7,11 @@
  * evolutionary prior), not the activation kernel itself.
  *
  * It is a proxy for the intended production effect: a smaller, cheaper squash
- * mix flows through mutation into every generation's networks. The full GRQ
- * A/B (evolve wall-clock / `fitnessMs`) requires the production creature seed
- * and `../GRQ/.trainData-binary_115`, which are not available in this repo's
- * CI — see docs/PERFORMANCE_RESEARCH.md.
+ * mix flows through mutation into every generation's networks. The full
+ * production A/B (evolve wall-clock / `fitnessMs`) requires the production
+ * creature seed and the production training corpus (≈21 GiB, not
+ * distributable), which are not available in this repo's CI — see
+ * docs/PERFORMANCE_RESEARCH.md.
  *
  * Run with:
  *   deno bench --allow-all bench/SquashBudgetSelection.ts
