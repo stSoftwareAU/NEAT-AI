@@ -150,6 +150,40 @@ Deno.test("injectRandomImmigrants - count clamped to non-elite count", () => {
   assertEquals(population[0].uuid, "a"); // elite preserved
 });
 
+Deno.test("injectRandomImmigrants - replaced victim is not disposed (shared ownership)", () => {
+  // Regression (PR #3497): the weakest non-elite is frequently the SAME
+  // creature object still held by the breeding genus (elites/survivors are
+  // shared between the population and the parent pool). Disposing it here
+  // emptied its neurons while leaving `input` non-zero, so a later
+  // shallowClone during dedup breeding read `undefined.id` and aborted the
+  // whole evolve run. The victim must stay a valid, breedable genome.
+  const elite = scored(100, "elite");
+  const worst = scored(1, "worst");
+  const population = [elite, worst];
+  const worstNeuronCount = worst.neurons.length;
+
+  const result = injectRandomImmigrants(
+    population,
+    1,
+    1,
+    () => scored(undefined, "immigrant"),
+  );
+
+  assertEquals(result.injected, 1);
+  assertEquals(result.replacedUuids, ["worst"]);
+  // The dropped victim is still intact — a second holder (the genus) can
+  // clone it without crashing.
+  assertEquals(
+    worst.neurons.length,
+    worstNeuronCount,
+    "replaced victim must retain its neurons (not be disposed)",
+  );
+  assert(worst.input > 0, "victim still declares its input count");
+  // shallowClone must succeed on the dropped victim (the crashing path).
+  const clone = worst.shallowClone();
+  assertEquals(clone.neurons.length, worstNeuronCount);
+});
+
 Deno.test("injectRandomImmigrants - zero count is a no-op", () => {
   const population = [scored(10, "a"), scored(5, "b")];
   const result = injectRandomImmigrants(

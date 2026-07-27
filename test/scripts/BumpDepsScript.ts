@@ -5,7 +5,7 @@ import { assert, assertEquals } from "@std/assert";
  *
  * Issue #2435 — add bump-deps.sh: refresh deno deps + neatCore.rev with
  * audit gate. The Vibe Coder worker invokes this script before
- * quality.sh on every PR (see VibeCoding#1613).
+ * quality.sh on every PR.
  *
  * These tests deliberately avoid the network paths (Develop HEAD
  * resolution, artifact download, registry lookups). They verify:

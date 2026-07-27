@@ -152,8 +152,18 @@ export class RandomImmigrants {
  * are never touched. The remaining creatures are ranked by score (ascending
  * — worst first); creatures without a numeric score are treated as the
  * weakest so freshly bred, not-yet-evaluated offspring are replaced before
- * any scored survivor. The weakest `count` of them are disposed and
- * replaced in place by genomes from `makeImmigrant`.
+ * any scored survivor. The weakest `count` of them are replaced in place by
+ * genomes from `makeImmigrant`.
+ *
+ * The replaced victims are dropped from `population` but are NOT disposed:
+ * the same creature objects are frequently still referenced by the breeding
+ * genus (elites and trained survivors are shared between the population and
+ * the parent pool), and `Creature.dispose()` empties `neurons`/`synapses`
+ * while leaving `input` non-zero. Disposing a shared victim here left a
+ * corrupt genome in the genus that later crashed `shallowClone` mid-breed
+ * (`Cannot read properties of undefined (reading 'id')`), aborting the whole
+ * evolve run. Ownership is shared, so this helper must not free them; the
+ * WASM activation LRU cache bounds their memory and GC reclaims the rest.
  *
  * The population array is mutated in place and its length is preserved.
  *
@@ -186,7 +196,9 @@ export function injectRandomImmigrants(
     if (victim.uuid) {
       replacedUuids.push(victim.uuid);
     }
-    victim.dispose();
+    // Do NOT dispose(): the victim may still be referenced by the breeding
+    // genus (shared elites/survivors). Disposing empties its neurons and
+    // corrupts that shared reference. Just drop it from the population.
     rest[i] = makeImmigrant();
   }
 
