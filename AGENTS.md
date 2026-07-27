@@ -597,9 +597,8 @@ landing on `main` from exactly this class of regression.
 2. **`deno check`** — the existing static type-check.
 
 Either gate failing fails the script with exit 1, and the Vibe Coder worker
-reverts per the VibeCoding#1613 contract. Use `--skip-smoke` only when running
-the full `./quality.sh` immediately afterwards (which exercises the same paths
-and more).
+reverts the bump. Use `--skip-smoke` only when running the full `./quality.sh`
+immediately afterwards (which exercises the same paths and more).
 
 ## 🦀 Rust Discovery Module
 

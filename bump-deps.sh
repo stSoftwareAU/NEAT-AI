@@ -4,8 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# bump-deps.sh — pre-PR dependency refresh, invoked by the Vibe Coder
-# worker before quality.sh (see VibeCoding#1613, #1614).
+# bump-deps.sh — pre-PR dependency refresh, invoked by the automated
+# dependency-bump worker before quality.sh.
 #
 # Internal (NEAT-AI-core, stSoftwareAU/*):
 #   Advances deno.json neatCore.rev to NEAT-AI-core Develop HEAD by
@@ -29,7 +29,7 @@ cd "$SCRIPT_DIR"
 #   2. `deno check` — static type-check, catches type errors introduced
 #      by external dep bumps.
 #   Either gate failing fails the script with a non-zero exit code.
-#   The worker then reverts per the VibeCoding#1613 contract.
+#   The worker then reverts the bump.
 #
 # Output:
 #   Prints a one-line summary of what was bumped (or "no bumps" when
@@ -162,7 +162,7 @@ fi
 # `command -v deno` fails even though deno is installed (Issue #3417). Probe
 # the known install locations as defence in depth — first match wins — and
 # prepend the winner's directory to PATH so every later `deno` call resolves.
-# The real fix is worker-side PATH bootstrap (VibeCoding#3532); this is a
+# The real fix is worker-side PATH bootstrap; this is a
 # local hardening layer. When no candidate exists we still fail loud
 # (ERROR + exit 1) rather than silently skipping the bump.
 #
@@ -338,7 +338,7 @@ else
     if [[ "$INTERNAL_BEFORE" != "$INTERNAL_AFTER" ]]; then
       echo "Internal neatCore.rev advanced: ${INTERNAL_BEFORE:0:7} -> ${INTERNAL_AFTER:0:7}" >&2
     fi
-    echo "Worker should revert per VibeCoding#1613." >&2
+    echo "Worker should revert this bump." >&2
     exit 1
   fi
 fi
@@ -359,7 +359,7 @@ if [[ "$DRY_RUN" != true ]]; then
     if [[ "$INTERNAL_BEFORE" != "$INTERNAL_AFTER" ]]; then
       echo "Internal neatCore.rev advanced: ${INTERNAL_BEFORE:0:7} -> ${INTERNAL_AFTER:0:7}" >&2
     fi
-    echo "Worker should revert per VibeCoding#1613." >&2
+    echo "Worker should revert this bump." >&2
     exit 1
   fi
 fi
