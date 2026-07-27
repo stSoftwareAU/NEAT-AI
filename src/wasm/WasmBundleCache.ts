@@ -27,6 +27,7 @@
 
 import { dirname, fromFileUrl, join } from "@std/path";
 import { getLogger } from "@utils/Logger.ts";
+import type { WasmBundleLoadDiagnostics } from "@wasm/WasmInitDiagnostics.ts";
 
 /** Options for {@link loadWasmBundleBytes}; all are injectable for testing. */
 export interface LoadWasmBundleOptions {
@@ -44,8 +45,24 @@ export interface LoadWasmBundleOptions {
   /**
    * Override the cache directory. When omitted it is derived from the
    * environment (`NEAT_AI_WASM_CACHE_DIR`, then the platform cache dir).
+   * Pass `null` to force caching **disabled** (every start fetches) — used to
+   * exercise the disabled branch deterministically in tests (Issue #3494).
    */
-  cacheDir?: string;
+  cacheDir?: string | null;
+  /**
+   * Monotonic clock used for phase-timing measurement. Defaults to
+   * `performance.now`. Injectable so tests get deterministic elapsed values
+   * without real timing (Issue #3494).
+   */
+  now?: () => number;
+}
+
+/** Bytes plus the phase-timing diagnostics for a single bundle load. */
+export interface LoadWasmBundleResult {
+  /** The loaded bundle bytes. */
+  bytes: Uint8Array;
+  /** Cache outcome, resolved directory, size, and elapsed time. */
+  diagnostics: WasmBundleLoadDiagnostics;
 }
 
 /** Default bounded number of fetch attempts on a cache miss. */
@@ -68,7 +85,11 @@ function defaultSleep(ms: number): Promise<void> {
  * in which case caching is skipped and loading falls back to a plain
  * fetch-with-retry.
  */
-export function resolveCacheDir(override?: string): string | null {
+export function resolveCacheDir(override?: string | null): string | null {
+  if (override === null) {
+    // Caller forced caching off (Issue #3494).
+    return null;
+  }
   if (override !== undefined && override !== "") {
     return override;
   }
@@ -221,9 +242,38 @@ export async function loadWasmBundleBytes(
   wasmUrl: URL,
   options: LoadWasmBundleOptions = {},
 ): Promise<Uint8Array> {
+  return (await loadWasmBundleBytesWithDiagnostics(wasmUrl, options)).bytes;
+}
+
+/**
+ * Load the WASM activation bundle bytes and report the phase-timing
+ * diagnostics (Issue #3494) — cache hit/miss/disabled/local outcome, the
+ * resolved cache directory, the bundle byte length, and elapsed milliseconds.
+ *
+ * Behaviour is identical to {@link loadWasmBundleBytes}; only the return type
+ * differs so callers that want the diagnostics do not measure them twice.
+ *
+ * @throws when the bytes genuinely cannot be obtained (fail-loud).
+ */
+export async function loadWasmBundleBytesWithDiagnostics(
+  wasmUrl: URL,
+  options: LoadWasmBundleOptions = {},
+): Promise<LoadWasmBundleResult> {
+  const now = options.now ?? (() => performance.now());
+  const start = now();
+
   // Local build: the bundle is on disk beside the JS glue. No cache/network.
   if (wasmUrl.protocol === "file:") {
-    return await Deno.readFile(fromFileUrl(wasmUrl));
+    const bytes = await Deno.readFile(fromFileUrl(wasmUrl));
+    return {
+      bytes,
+      diagnostics: {
+        outcome: "local",
+        cacheDir: null,
+        byteLength: bytes.byteLength,
+        elapsedMs: now() - start,
+      },
+    };
   }
 
   const fetchFn = options.fetchFn ?? fetch;
@@ -232,6 +282,12 @@ export async function loadWasmBundleBytes(
   const baseDelayMs = options.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
 
   const cacheDir = resolveCacheDir(options.cacheDir);
+  // Explicit "caching disabled" reason so a null cache dir never reads as a
+  // silent cache hit in the diagnostics (Issue #3494).
+  const disabledReason = cacheDir === null
+    ? "no cache directory resolved (NEAT_AI_WASM_CACHE_DIR / XDG_CACHE_HOME / " +
+      "HOME unset, env access denied, or caching disabled)"
+    : undefined;
   const cachePath = cacheDir === null
     ? null
     : await wasmCacheFilePath(wasmUrl, cacheDir);
@@ -240,11 +296,20 @@ export async function loadWasmBundleBytes(
   if (cachePath !== null) {
     const cached = await readCache(cachePath);
     if (cached !== null) {
-      return cached;
+      return {
+        bytes: cached,
+        diagnostics: {
+          outcome: "hit",
+          cacheDir,
+          byteLength: cached.byteLength,
+          elapsedMs: now() - start,
+        },
+      };
     }
   }
 
-  // Cache miss: fetch with backoff, then persist for the next start.
+  // Cache miss (or disabled): fetch with backoff, then persist when caching is
+  // enabled so the next start is offline.
   const bytes = await fetchWithRetry(
     wasmUrl,
     fetchFn,
@@ -255,5 +320,14 @@ export async function loadWasmBundleBytes(
   if (cachePath !== null) {
     await writeCache(cachePath, bytes);
   }
-  return bytes;
+  return {
+    bytes,
+    diagnostics: {
+      outcome: cacheDir === null ? "disabled" : "miss",
+      cacheDir,
+      disabledReason,
+      byteLength: bytes.byteLength,
+      elapsedMs: now() - start,
+    },
+  };
 }

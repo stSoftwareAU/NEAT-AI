@@ -85,6 +85,44 @@ and/or `--allow-net` permissions.
 - `Worker init timed out after Ns` — Increase the timeout by setting
   `NEAT_AI_WORKER_INIT_TIMEOUT_MS` (default: 60,000 ms, minimum: 1,000 ms).
 
+### 🔎 Init-phase timing diagnostics (Issue #3494)
+
+Every worker init emits one compact, always-on `info` line so a rare init stall
+is diagnosable from the log alone (no debug flag to enable after the fact). The
+shape is a **contract** — GRQ health tooling matches on the fixed
+`[WasmWorkerInit]` prefix and field keys, so treat them as stable:
+
+```text
+[WasmWorkerInit] worker=worker-3 outcome=ok handshakeMs=42 cache=hit \
+  cacheDir=/home/u/.cache/neat-ai/wasm bundleBytes=1234567 bundleLoadMs=3 \
+  glueImportMs=12 instantiateMs=27 wasmTotalMs=42 workerError=none
+```
+
+- `cache` is `hit` / `miss` / `disabled` / `local` / `unknown`. `disabled` means
+  no cache directory could be resolved, so **every** start fetches over the
+  network — set `NEAT_AI_WASM_CACHE_DIR` (or `XDG_CACHE_HOME` / `HOME`) to
+  restore caching.
+- The WASM phase timings (`bundleLoadMs`, `glueImportMs`, `instantiateMs`) are
+  measured on the parent/main thread by `initWasmActivation`.
+
+On a handshake timeout the same breakdown is embedded in the thrown error
+message (after the trailing `Error:` token of the fallback log line). Because
+the worker never answered, the **child's** internal phases are unknowable, so
+the message reports only what the parent can see and says so explicitly rather
+than printing zeros:
+
+```text
+[WasmWorkerInit] Worker init: no response after 60s (worker=worker-3). \
+  Parent-observed: handshakeMs=60001 workerError=none wasm[cache=hit …]. \
+  Child WASM phase timings unknown — the worker never answered the init \
+  handshake (may be stuck loading WASM, CPU-starved, or OOM).
+```
+
+The self-healing direct-execution fallback is unchanged — the timeout still
+fires and the worker slot still degrades gracefully; it is now just loud about
+_what_ it was waiting on. The contract is defined in
+`src/wasm/WasmInitDiagnostics.ts`.
+
 ## 🌐 JSR-hosted NEAT-AI in your own workers (Issue #2545)
 
 **Symptoms:**

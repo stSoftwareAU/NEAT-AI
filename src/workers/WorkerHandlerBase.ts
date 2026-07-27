@@ -18,6 +18,11 @@ import type {
   WorkerInterface,
 } from "@workers/WorkerInterface.ts";
 import { getLogger, type Logger } from "@utils/Logger.ts";
+import {
+  formatWorkerInitDiagnostics,
+  formatWorkerInitTimeout,
+  getLastWasmActivationInitDiagnostics,
+} from "@wasm/WasmInitDiagnostics.ts";
 
 interface WorkerEventListener<THandler> {
   (worker: THandler): void;
@@ -304,25 +309,41 @@ export abstract class WorkerHandlerBase<
    *
    * Wraps a `makePromise` call with a timeout and races against an
    * init-error promise so that worker crashes during startup cause fast failure.
+   *
+   * Issue #3494: emits one compact, greppable `info` line per successful init
+   * (the `[WasmWorkerInit]` contract — always on, never gated) and, on a
+   * handshake timeout, embeds the parent-observed phase breakdown in the
+   * thrown error message so the stall is diagnosable from the log alone. This
+   * base method is the single choke point every pooled worker reaches via
+   * `waitUntilReady()`, so instrumenting it here covers every fallback site
+   * (discovery replay, discovery, improve-squash, creature training, episode
+   * pool) without per-site changes.
+   *
+   * @param workerLabel - Stable label for the worker slot (e.g. `worker-3`),
+   *   used in the diagnostics line. Defaults to `worker-<workerID>`.
    */
   protected createInitSequence(
     initRequest: TRequest,
     initErrorPromise: Promise<never>,
     timeoutMs: number,
+    workerLabel: string = `worker-${this.workerID}`,
   ): Promise<TResponse> {
+    // Elapsed-time measurement (parent-observed handshake), not a wall-clock
+    // instant — `performance.now()` is the correct tool per project policy.
+    const startMs = performance.now();
     const initSequence = async (): Promise<TResponse> =>
       await new Promise<TResponse>((resolve, reject) => {
         const timeoutId = setTimeout(
           () =>
             reject(
               new Error(
-                `Worker init: no response after ${
-                  timeoutMs / 1000
-                }s. Worker may have crashed or be stuck loading WASM.${
-                  this.initWorkerError
-                    ? ` First worker error: ${this.initWorkerError.message}`
-                    : ""
-                }`,
+                formatWorkerInitTimeout({
+                  workerLabel,
+                  timeoutMs,
+                  elapsedMs: performance.now() - startMs,
+                  wasm: getLastWasmActivationInitDiagnostics(),
+                  workerError: this.initWorkerError,
+                }),
               ),
             ),
           timeoutMs,
@@ -339,7 +360,18 @@ export abstract class WorkerHandlerBase<
         );
       });
 
-    return Promise.race([initSequence(), initErrorPromise]);
+    return Promise.race([initSequence(), initErrorPromise]).then((result) => {
+      // Normal path: one always-on structured line per worker init.
+      getLogger().info(
+        formatWorkerInitDiagnostics({
+          workerLabel,
+          handshakeMs: performance.now() - startMs,
+          wasm: getLastWasmActivationInitDiagnostics(),
+          workerError: this.initWorkerError,
+        }),
+      );
+      return result;
+    });
   }
 
   /**

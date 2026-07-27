@@ -85,10 +85,12 @@ export class WorkerHandler
       rejectInitError = null;
     };
 
+    const workerLabel = "id-worker-" +
+      (++WorkerHandler.nextWorkerIDForConstruction);
     const worker = WorkerHandlerBase.createWorkerOrMock<RequestData>(
       direct,
       workerUrl,
-      "id-worker-" + (++WorkerHandler.nextWorkerIDForConstruction),
+      workerLabel,
       () => new MockWorker() as unknown as WorkerInterface<RequestData>,
       onInitError,
     );
@@ -118,6 +120,7 @@ export class WorkerHandler
           initReq,
           initErrorPromise,
           INIT_RESPONSE_TIMEOUT_MS,
+          workerLabel,
         );
       },
     ).then((result) => {

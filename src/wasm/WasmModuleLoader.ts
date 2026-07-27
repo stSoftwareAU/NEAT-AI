@@ -12,7 +12,11 @@
 
 import { getLogger } from "@utils/Logger.ts";
 import type { WasmCompiledNetworkConstructor } from "@wasm/WasmCompiledNetwork.ts";
-import { loadWasmBundleBytes } from "@wasm/WasmBundleCache.ts";
+import { loadWasmBundleBytesWithDiagnostics } from "@wasm/WasmBundleCache.ts";
+import {
+  recordWasmActivationInitDiagnostics,
+  type WasmBundleLoadDiagnostics,
+} from "@wasm/WasmInitDiagnostics.ts";
 
 // deno-lint-ignore no-explicit-any
 type WasmModule = any;
@@ -492,19 +496,36 @@ export async function initWasmActivation(): Promise<boolean> {
 
   initPromise = (async () => {
     try {
+      // Issue #3494: measure the init phases so a downstream worker-init
+      // timeout is diagnosable. `performance.now()` is the right tool here —
+      // these are elapsed-time deltas, not wall-clock instants.
+      const initStart = performance.now();
       const modulePath =
         new URL("../../wasm_activation/pkg/wasm_activation.js", import.meta.url)
           .href;
+      const glueStart = performance.now();
       const module = await import(modulePath);
+      const glueImportMs = performance.now() - glueStart;
       const wasmUrl = new URL(
         "../../wasm_activation/pkg/wasm_activation_bg.wasm",
         import.meta.url,
       );
+      let bundle: WasmBundleLoadDiagnostics;
+      let instantiateMs: number;
       if (wasmUrl.protocol === "file:") {
         // Local build: the vendored bundle is on disk beside the JS glue.
         // wasm-bindgen's default init reads it directly (no network) and names
-        // the WASM module after the file for readable trap stacks.
+        // the WASM module after the file for readable trap stacks — so the
+        // bundle byte length is not observed on this path (sentinel -1).
+        const instantiateStart = performance.now();
         await module.default();
+        instantiateMs = performance.now() - instantiateStart;
+        bundle = {
+          outcome: "local",
+          cacheDir: null,
+          byteLength: -1,
+          elapsedMs: 0,
+        };
       } else {
         // Issue #3419: cache-first bundle loading for remote (JSR) installs.
         // Read the immutable, version-keyed bundle from the local cache (no
@@ -512,11 +533,23 @@ export async function initWasmActivation(): Promise<boolean> {
         // Passing the bytes to the init avoids wasm-bindgen's default
         // fetch-at-startup from jsr.io, which crashed breeding on a transient
         // DNS failure (recurrence of #3230).
-        const wasmBytes = await loadWasmBundleBytes(wasmUrl);
+        const { bytes: wasmBytes, diagnostics } =
+          await loadWasmBundleBytesWithDiagnostics(wasmUrl);
+        bundle = diagnostics;
+        const instantiateStart = performance.now();
         await module.default({ module_or_path: wasmBytes });
+        instantiateMs = performance.now() - instantiateStart;
       }
       assignFunctionPointers(module);
       lastLoadError = null;
+      // Issue #3494: stash the phase timings for the worker init sequence to
+      // fold into its per-init info line and any timeout breakdown.
+      recordWasmActivationInitDiagnostics({
+        bundle,
+        glueImportMs,
+        instantiateMs,
+        totalMs: performance.now() - initStart,
+      });
       return true;
     } catch (error) {
       lastLoadError = toError(error);
