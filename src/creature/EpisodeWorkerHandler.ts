@@ -57,10 +57,11 @@ export class EpisodeWorkerHandler
       new URL("../multithreading/episode/episodeWorker.ts", import.meta.url)
         .href;
 
+    const workerLabel = "episode-worker-" + (++EpisodeWorkerHandler.nextId);
     const worker = WorkerHandlerBase.createWorkerOrMock<EpisodeRequest>(
       direct,
       workerUrl,
-      "episode-worker-" + (++EpisodeWorkerHandler.nextId),
+      workerLabel,
       () =>
         new MockEpisodeWorker() as unknown as WorkerInterface<
           EpisodeRequest
@@ -95,7 +96,12 @@ export class EpisodeWorkerHandler
       );
     });
 
-    this.createInitSequence(initRequest, initErrorPromise, timeoutMs)
+    this.createInitSequence(
+      initRequest,
+      initErrorPromise,
+      timeoutMs,
+      workerLabel,
+    )
       .then((result) => {
         if (
           result &&

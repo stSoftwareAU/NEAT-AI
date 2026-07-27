@@ -372,10 +372,12 @@ export class WorkerHandler
       rejectInitError = null;
     };
 
+    const workerLabel = "worker-" +
+      (++WorkerHandler.nextWorkerIDForConstruction);
     const worker = WorkerHandlerBase.createWorkerOrMock<RequestData>(
       direct,
       workerUrl,
-      "worker-" + (++WorkerHandler.nextWorkerIDForConstruction),
+      workerLabel,
       () => new MockWorker() as unknown as WorkerInterface<RequestData>,
       onInitError,
     );
@@ -440,6 +442,7 @@ export class WorkerHandler
         data,
         initErrorPromise,
         INIT_RESPONSE_TIMEOUT_MS,
+        workerLabel,
       );
       // Init complete: do not allow init error to affect anything else.
       rejectInitError = null;
