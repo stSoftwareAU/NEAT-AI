@@ -35,6 +35,8 @@ const DETECTOR_TESTS = new Set(
     new URL("./ArchiveDocsNoPrivateRepoSlugs.ts", import.meta.url).href,
     new URL("./ArchiveDocsNoPrivateRepoReference.ts", import.meta.url).href,
     new URL("./ArchivedDocsNoPrivateRepoReference.ts", import.meta.url).href,
+    new URL("../scripts/BumpDepsNoPrivateRepoReference.ts", import.meta.url)
+      .href,
   ].map(fromFileUrl),
 );
 
