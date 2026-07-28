@@ -239,16 +239,6 @@ export interface NeatArguments {
   /** The percentage of observations that will be used for training. Range 0..1 */
   trainingSampleRate: number;
 
-  /**
-   * Issue #3257: Fraction of the binary fitness corpus scored per creature
-   * during the per-generation ranking pass. A deterministic, stratified
-   * subsample (records skipped in one streaming pass — no second corpus on
-   * disk) so scoring does proportionally less work while preserving rank
-   * order. Range 0.0001..1; default 1 (score the full corpus — today's
-   * behaviour, so production quality is unchanged unless opted in).
-   */
-  fitnessSampleRate: number;
-
   /** The target error to reach, once the network falls below this error, the process is stopped. Default: 0.05, Range 0..1 */
   targetError: number;
 

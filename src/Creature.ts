@@ -1106,9 +1106,6 @@ export class Creature implements CreatureInternal {
     cachedFiles?: string[],
     rustScorer?:
       import("./config/RustScorerConfig.ts").RequiredRustScorerConfig,
-    // Issue #3257: Optional ranking-pass subsample rate in (0, 1]. Default 1
-    // scores the full corpus (unchanged behaviour).
-    fitnessSampleRate?: number,
   ): Promise<{ error: number }> {
     return activation.evaluateDir(
       this,
@@ -1118,7 +1115,6 @@ export class Creature implements CreatureInternal {
       outputRanges,
       cachedFiles,
       rustScorer,
-      fitnessSampleRate,
     );
   }
 

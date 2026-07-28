@@ -33,10 +33,6 @@ import {
 } from "@wasm/WasmCreatureActivationLRU.ts";
 import { tryScoreWithRustScorer } from "../score/RustScorerBridge.ts";
 import { BUILT_IN_COST_NAMES, type BuiltInCostName } from "@costs";
-import {
-  resolveFitnessSampleRate,
-  shouldScoreRecord,
-} from "./FitnessSubsample.ts";
 
 /**
  * Verify WASM is available and the creature is eligible.
@@ -407,14 +403,6 @@ function applyWasmTraceData(
  * Issue #1229: WASM is required by default with no fallback.
  * Issue #2260: Accepts optional pre-cached file list to avoid repeated
  * directory scans in long-lived workers.
- * Issue #3257: Accepts an optional `fitnessSampleRate` in `(0, 1]`. When below
- * `1`, the streaming reader scores each creature on a deterministic,
- * stratified subsample of records (one pass, records skipped — no second
- * corpus on disk) so the ranking pass does proportionally less work. The
- * default `1` preserves today's full-corpus behaviour exactly. Because the
- * external `rust_scorer` cannot yet skip records, a sub-`1` rate stays on the
- * TS/WASM path rather than off-loading a full-corpus score that would
- * contradict the requested subsample.
  */
 export async function evaluateDir(
   creature: Creature,
@@ -424,7 +412,6 @@ export async function evaluateDir(
   outputRanges?: ReadonlyArray<RequiredOutputRange>,
   cachedFiles?: string[],
   rustScorer?: RequiredRustScorerConfig,
-  fitnessSampleRate?: number,
 ): Promise<{ error: number }> {
   const files = cachedFiles ?? dataFiles(dataDir).files;
   // Issue #3412: an empty file list means the dataset directory holds no
@@ -439,11 +426,6 @@ export async function evaluateDir(
     );
   }
 
-  // Issue #3257: Resolve the ranking-pass subsample rate. `1` (default) means
-  // score every record; a sub-`1` rate keeps a deterministic stratified stride.
-  const sampleRate = resolveFitnessSampleRate(fitnessSampleRate);
-  const subsampling = sampleRate < 1;
-
   // Issue #1247: Auto-initialise WASM before scoring if not yet available.
   const { ensureWasmActivation } = await import("../wasm/mod.ts");
   await ensureWasmActivation();
@@ -457,10 +439,7 @@ export async function evaluateDir(
       ? (configuredCostName as BuiltInCostName)
       : undefined;
 
-  // Issue #3257: Skip the native off-load when a subsample is requested — the
-  // external binary would score the full corpus and disagree with the
-  // subsampled ranking. Full-rate scoring off-loads exactly as before.
-  if (builtInCost !== undefined && !subsampling) {
+  if (builtInCost !== undefined) {
     const rustResult = await tryScoreWithRustScorer(
       creature,
       dataDir,
@@ -536,18 +515,6 @@ export async function evaluateDir(
       costName as typeof supportedFusedCosts[number],
     );
 
-  // Issue #3257: When subsampling, the fused path compacts each batch down to
-  // only the sampled records before the single fused WASM call, so the WASM
-  // work drops proportionally to the rate while staying one call per batch.
-  // Allocated once and reused; left null on the default full-rate path so
-  // nothing changes for production.
-  const compactArray = subsampling && useFusedWasm
-    ? new Float32Array(BATCH_SIZE * valuesCount)
-    : null;
-  // 0-based record position across every shard and batch — drives the
-  // deterministic stratified stride in `shouldScoreRecord`.
-  let globalRecordIndex = 0;
-
   for (let fileIndx = files.length; fileIndx--;) {
     const filePath = files[fileIndx];
     // Issue #3412: a vanished `.bin` file fails loud as a DatasetError naming
@@ -567,31 +534,7 @@ export async function evaluateDir(
         );
 
         if (useFusedWasm) {
-          // Issue #3257: On the subsample path, compact the batch to only the
-          // sampled records and score that slice; otherwise score the whole
-          // batch exactly as before (zero overhead at full rate).
-          let slice: Float32Array;
-          let recordsScored: number;
-          if (subsampling) {
-            let compactRecords = 0;
-            for (let r = 0; r < recordsRead; r++) {
-              if (shouldScoreRecord(globalRecordIndex + r, sampleRate)) {
-                const src = r * valuesCount;
-                compactArray!.set(
-                  batchArray.subarray(src, src + valuesCount),
-                  compactRecords * valuesCount,
-                );
-                compactRecords++;
-              }
-            }
-            globalRecordIndex += recordsRead;
-            recordsScored = compactRecords;
-            if (compactRecords === 0) continue;
-            slice = compactArray!.subarray(0, compactRecords * valuesCount);
-          } else {
-            slice = batchArray.subarray(0, recordsRead * valuesCount);
-            recordsScored = recordsRead;
-          }
+          const slice = batchArray.subarray(0, recordsRead * valuesCount);
           const wasm = creature.cachedWasmActivation!;
 
           // Issue #2214: Wrap fused WASM batch calls in try-catch so that
@@ -629,19 +572,11 @@ export async function evaluateDir(
             );
             return { error: Number.MAX_SAFE_INTEGER };
           }
-          count += recordsScored;
+          count += recordsRead;
           continue;
         }
 
         for (let recordIndex = 0; recordIndex < recordsRead; recordIndex++) {
-          // Issue #3257: Skip records outside the deterministic stratified
-          // subsample. `globalRecordIndex` advances for every record so the
-          // stride is stable across batches and shards.
-          const keepRecord = !subsampling ||
-            shouldScoreRecord(globalRecordIndex, sampleRate);
-          globalRecordIndex++;
-          if (!keepRecord) continue;
-
           const offset = recordIndex * valuesCount;
           const inputEnd = offset + creature.input;
           const observations = batchArray.subarray(offset, inputEnd);
