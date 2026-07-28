@@ -161,19 +161,30 @@ Deno.test("ThroughputMetrics - fastQueueMaxDepth reflects population size during
 
   // fastQueueMaxDepth is Math.max(fitness queue depth, breeding queue depth).
   // On the first generation the fitness queue holds at least 1 creature, so
-  // the metric must be >= 1. The breeding queue can exceed populationSize
-  // because adaptive sizing and worker-floor adjustments may raise the
-  // effective population above the configured value, so we allow up to 2×.
+  // the metric must be >= 1.
   const first = events[0].throughput as GenerationThroughputMetrics;
+  assert(
+    Number.isInteger(first.fastQueueMaxDepth),
+    `fastQueueMaxDepth should be an integer, got ${first.fastQueueMaxDepth}`,
+  );
   assert(
     first.fastQueueMaxDepth >= 1,
     `fastQueueMaxDepth should be >= 1 on first generation, got ${first.fastQueueMaxDepth}`,
   );
+  // Bound the metric by the work the generation actually did rather than by a
+  // fixed multiple of the configured population size. The fitness queue holds
+  // exactly the creatures scored this generation (`scoredCreatureCount`) and
+  // the breeding queue never exceeds the effective population, which equals
+  // the configured size here because adaptive sizing is off by default. The
+  // population itself is NOT capped at `populationSize` — completed
+  // training/fine-tuning/discovery creatures are concatenated back in — so the
+  // old `2 × populationSize` ceiling asserted an invariant the implementation
+  // does not provide and failed on a slower runner (48 vs 30, PR #3503).
+  const upperBound = Math.max(first.scoredCreatureCount, populationSize);
   assert(
-    first.fastQueueMaxDepth <= populationSize * 2,
-    `fastQueueMaxDepth should be <= 2 × population size (${
-      populationSize * 2
-    }), got ${first.fastQueueMaxDepth}`,
+    first.fastQueueMaxDepth <= upperBound,
+    `fastQueueMaxDepth should be <= max(scoredCreatureCount, populationSize) ` +
+      `(${upperBound}), got ${first.fastQueueMaxDepth}`,
   );
 });
 
