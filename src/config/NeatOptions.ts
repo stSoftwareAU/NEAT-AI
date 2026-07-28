@@ -47,7 +47,6 @@ type NumericOptionKeys =
   | "creativeThinkingConnectionCount"
   | "dataSetPartitionBreak"
   | "trainingSampleRate"
-  | "fitnessSampleRate"
   | "focusRate"
   | "targetError"
   | "costOfGrowth"
