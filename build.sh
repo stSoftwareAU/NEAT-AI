@@ -224,7 +224,9 @@ verify_pinned_asset_sha256() {
   if [[ "$pinned_rev" != "$target_rev" ]]; then
     local pinned_short="${pinned_rev:0:7}"
     local target_short="${target_rev:0:7}"
-    echo "Skipping deno.json neatCore.assetSha256 check: target rev ${target_short:-<unset>} differs from pinned rev ${pinned_short:-<unset>} (the pin records the pinned rev's tarball hash)."
+    # stderr, not stdout: select_tarball_anchor captures stdout as the anchor
+    # label, and this note is a diagnostic rather than part of that label.
+    echo "Skipping deno.json neatCore.assetSha256 check: target rev ${target_short:-<unset>} differs from pinned rev ${pinned_short:-<unset>} (the pin records the pinned rev's tarball hash)." >&2
     return 2
   fi
   if ! verify_tarball_sha256 "$file" "$pinned_sha256" "deno.json neatCore.assetSha256"; then
@@ -264,6 +266,111 @@ guard_unverified_extract() {
     return 0
   fi
   return 1
+}
+
+# select_tarball_anchor — compose the two SHA-256 anchors into a single
+# extract-or-refuse decision for the downloaded tarball (issue #3516).
+# Extracted from the download flow so a revision advance is testable without
+# a network fetch. Ordering matters: the release sidecar is the only anchor
+# that can attest a *new* revision, while the deno.json pin is scoped to the
+# rev it was recorded against (see verify_pinned_asset_sha256), so on an
+# advance the stale pin is skipped rather than compared.
+#   $1 = tarball path
+#   $2 = sidecar path ("" when the release published no sidecar)
+#   $3 = pinned sha-256 ("" when unset)
+#   $4 = pinned rev ("" when unset)
+#   $5 = target rev
+#   $6 = allow_unverified ("true" when the operator passed --allow-unverified)
+# Returns:
+#   0 = anchored; the anchor label is printed on stdout
+#   1 = an applicable anchor MISMATCHED — abort (verify_tarball_sha256 has
+#       already reported which source caught it)
+#   2 = no anchor, but an --allow-unverified same-rev bootstrap is permitted
+#   3 = no anchor and extraction must be refused
+select_tarball_anchor() {
+  local file="$1"
+  local sidecar_path="$2"
+  local pinned_sha256="$3"
+  local pinned_rev="$4"
+  local target_rev="$5"
+  local allow_unverified="$6"
+
+  # A revision advance is a *pinned* rev changing, not the first-ever pin
+  # being set (empty pinned rev is fresh setup — issue #3515).
+  local is_rev_advance=false
+  if [[ -n "$pinned_rev" && "$pinned_rev" != "$target_rev" ]]; then
+    is_rev_advance=true
+  fi
+
+  local verified_via=""
+  if [[ -n "$sidecar_path" && -s "$sidecar_path" ]]; then
+    local sidecar_name
+    sidecar_name="$(basename "$sidecar_path")"
+    # Standard `shasum -a 256` output is `<hash>  <filename>`. We only
+    # consume the leading 64 hex chars to be lenient about whitespace.
+    local expected_sidecar
+    expected_sidecar="$(awk '{print $1}' <"$sidecar_path" | head -n1)"
+    if ! verify_tarball_sha256 "$file" "$expected_sidecar" \
+      "release sidecar ${sidecar_name}"; then
+      return 1
+    fi
+    verified_via="sidecar ${sidecar_name}"
+  fi
+
+  local pin_status=0
+  verify_pinned_asset_sha256 "$file" "$pinned_sha256" "$pinned_rev" \
+    "$target_rev" || pin_status=$?
+  if [[ "$pin_status" -eq 1 ]]; then
+    return 1
+  fi
+  if [[ "$pin_status" -eq 0 ]]; then
+    if [[ -n "$verified_via" ]]; then
+      verified_via="${verified_via} and deno.json neatCore.assetSha256"
+    else
+      verified_via="deno.json neatCore.assetSha256"
+    fi
+  fi
+
+  if [[ -n "$verified_via" ]]; then
+    printf '%s\n' "$verified_via"
+    return 0
+  fi
+  if guard_unverified_extract "" "$allow_unverified" "$is_rev_advance"; then
+    return 2
+  fi
+  return 3
+}
+
+# update_core_pin — record the downloaded rev and tarball hash back into the
+# deno.json neatCore block (issue #2744) so subsequent runs verify against
+# them. A no-op when both already match. Values are passed via the
+# environment, never interpolated into the eval source, so a hostile rev/hash
+# cannot inject code (both are validated as hex before reaching here).
+#   $1 = config path  $2 = target rev  $3 = downloaded sha-256
+#   $4 = pinned rev ("" when unset)  $5 = pinned sha-256 ("" when unset)
+update_core_pin() {
+  local config_path="$1"
+  local target_rev="$2"
+  local asset_sha256="$3"
+  local pinned_rev="$4"
+  local pinned_sha256="$5"
+  if [[ "$pinned_rev" == "$target_rev" ]] \
+    && [[ "$pinned_sha256" == "$asset_sha256" ]]; then
+    return 0
+  fi
+  echo "Updating ${config_path} neatCore.rev: ${pinned_rev:-<unset>} -> ${target_rev}"
+  echo "Updating ${config_path} neatCore.assetSha256: ${pinned_sha256:-<unset>} -> ${asset_sha256}"
+  NEAT_CONFIG_PATH="$config_path" \
+  NEAT_TARGET_REV="$target_rev" \
+  NEAT_ASSET_SHA256="$asset_sha256" \
+  deno eval '
+const path = Deno.env.get("NEAT_CONFIG_PATH");
+const config = JSON.parse(Deno.readTextFileSync(path));
+config.neatCore = config.neatCore ?? {};
+config.neatCore.rev = Deno.env.get("NEAT_TARGET_REV");
+config.neatCore.assetSha256 = Deno.env.get("NEAT_ASSET_SHA256");
+Deno.writeTextFileSync(path, JSON.stringify(config, null, 2) + "\n");
+'
 }
 
 # assert_safe_tar_entries — reject path-traversal and absolute-path entries
@@ -610,40 +717,25 @@ if [[ "$sidecar_ok" != true ]]; then
   fi
 fi
 
-verified_via=""
-if [[ "$sidecar_ok" == true && -s "$sidecar_path" ]]; then
-  # Standard `shasum -a 256` output is `<hash>  <filename>`. We only
-  # consume the leading 64 hex chars to be lenient about whitespace.
-  expected_sidecar="$(awk '{print $1}' <"$sidecar_path" | head -n1)"
-  if ! verify_tarball_sha256 \
-    "$tmp_dir/$ASSET_NAME" \
-    "$expected_sidecar" \
-    "release sidecar ${SIDECAR_NAME}"; then
-    exit 1
-  fi
-  verified_via="sidecar ${SIDECAR_NAME}"
+if [[ "$sidecar_ok" != true ]]; then
+  sidecar_path=""
 fi
 
-pin_status=0
-verify_pinned_asset_sha256 \
+anchor_status=0
+verified_via="$(select_tarball_anchor \
   "$tmp_dir/$ASSET_NAME" \
+  "$sidecar_path" \
   "$PINNED_ASSET_SHA256" \
   "$PINNED_REV" \
-  "$TARGET_REV" || pin_status=$?
-if [[ "$pin_status" -eq 1 ]]; then
-  exit 1
-fi
-if [[ "$pin_status" -eq 0 ]]; then
-  if [[ -n "$verified_via" ]]; then
-    verified_via="${verified_via} and deno.json neatCore.assetSha256"
-  else
-    verified_via="deno.json neatCore.assetSha256"
-  fi
-fi
+  "$TARGET_REV" \
+  "$ALLOW_UNVERIFIED")" || anchor_status=$?
 
-if [[ -n "$verified_via" ]]; then
+if [[ "$anchor_status" -eq 0 ]]; then
   echo "Tarball SHA-256 verified via ${verified_via}."
-elif ! guard_unverified_extract "$verified_via" "$ALLOW_UNVERIFIED" "$IS_REV_ADVANCE"; then
+elif [[ "$anchor_status" -eq 1 ]]; then
+  # verify_tarball_sha256 already named the source that caught the mismatch.
+  exit 1
+elif [[ "$anchor_status" -eq 3 ]]; then
   if [[ "$IS_REV_ADVANCE" == true ]]; then
     echo "ERROR: revision advance (${PINNED_REV:0:7} -> ${TARGET_REV:0:7}) has no SHA-256 anchor for ${ASSET_NAME}." >&2
     echo "       A revision advance requires the release sidecar ${SIDECAR_NAME} on the" >&2
@@ -714,21 +806,12 @@ fi
 # verify against it (issue #2744). Values are passed via the environment,
 # never interpolated into the eval source, so a hostile rev/hash cannot
 # inject code (both are already validated as hex above).
-if [[ "$PINNED_REV" != "$TARGET_REV" ]] \
-  || [[ "$PINNED_ASSET_SHA256" != "$DOWNLOADED_ASSET_SHA256" ]]; then
-  echo "Updating deno.json neatCore.rev: ${PINNED_REV:-<unset>} -> ${TARGET_REV}"
-  echo "Updating deno.json neatCore.assetSha256: ${PINNED_ASSET_SHA256:-<unset>} -> ${DOWNLOADED_ASSET_SHA256}"
-  NEAT_TARGET_REV="$TARGET_REV" \
-  NEAT_ASSET_SHA256="$DOWNLOADED_ASSET_SHA256" \
-  deno eval '
-const path = "deno.json";
-const config = JSON.parse(Deno.readTextFileSync(path));
-config.neatCore = config.neatCore ?? {};
-config.neatCore.rev = Deno.env.get("NEAT_TARGET_REV");
-config.neatCore.assetSha256 = Deno.env.get("NEAT_ASSET_SHA256");
-Deno.writeTextFileSync(path, JSON.stringify(config, null, 2) + "\n");
-'
-fi
+update_core_pin \
+  "deno.json" \
+  "$TARGET_REV" \
+  "$DOWNLOADED_ASSET_SHA256" \
+  "$PINNED_REV" \
+  "$PINNED_ASSET_SHA256"
 
 refresh_fingerprint "$TARGET_REV"
 

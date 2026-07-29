@@ -1,4 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
+import { runSourcedFns } from "./_buildShHarness.ts";
 
 /**
  * Tests that build.sh scopes the deno.json `neatCore.assetSha256` pin to the
@@ -12,62 +13,6 @@ import { assert, assertEquals } from "@std/assert";
  */
 
 const PIN_FNS = ["verify_tarball_sha256", "verify_pinned_asset_sha256"];
-
-/**
- * Source the named build.sh functions into a sub-shell and run an invocation
- * against them, so the real bash logic is exercised with test data.
- */
-async function runSourcedFns(
-  fnNames: string[],
-  invocation: string,
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  // A temp file (rather than process substitution) is used because
-  // `source <(...)` does not reliably define functions across all bash
-  // builds (e.g. macOS bash 3.2).
-  const fnTmp = await Deno.makeTempFile({ prefix: "neat-fn-", suffix: ".sh" });
-  try {
-    const extracted = await Promise.all(
-      fnNames.map((fnName) =>
-        new Deno.Command("awk", {
-          args: [`/^${fnName}\\(\\)/,/^}$/`, "./build.sh"],
-          stdout: "piped",
-          cwd: Deno.cwd(),
-        }).output()
-      ),
-    );
-    const parts: Uint8Array[] = extracted.map((ex, i) => {
-      assert(
-        ex.stdout.length > 0,
-        `build.sh must define a top-level ${fnNames[i]}() function`,
-      );
-      return ex.stdout;
-    });
-    const joined = new Uint8Array(
-      parts.reduce((n, p) => n + p.length, 0),
-    );
-    let offset = 0;
-    for (const p of parts) {
-      joined.set(p, offset);
-      offset += p.length;
-    }
-    await Deno.writeFile(fnTmp, joined);
-
-    const cmd = new Deno.Command("bash", {
-      args: ["-c", `set -uo pipefail\nsource '${fnTmp}'\n${invocation}\n`],
-      stdout: "piped",
-      stderr: "piped",
-      cwd: Deno.cwd(),
-    });
-    const out = await cmd.output();
-    return {
-      stdout: new TextDecoder().decode(out.stdout),
-      stderr: new TextDecoder().decode(out.stderr),
-      code: out.code,
-    };
-  } finally {
-    await Deno.remove(fnTmp);
-  }
-}
 
 const REV_A = "a".repeat(40);
 const REV_B = "b".repeat(40);
