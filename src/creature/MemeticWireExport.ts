@@ -7,7 +7,7 @@ import { neuronUuid } from "../neuron/NeuronSerialization.ts";
  * Runtime neuron id → canonical wire string (input-N, output-N, or neuron.uuid).
  * Used when serialising memetic state for any JSON that leaves the process.
  */
-export function buildNeuronIdToWireUuidMap(
+function buildNeuronIdToWireUuidMap(
   creature: Creature,
 ): Map<number, string> {
   const m = new Map<number, string>();
@@ -31,7 +31,7 @@ export type MemeticWeightWireRow = {
  * Rewrites one memetic snapshot for wire JSON: biases keyed by wire strings;
  * weights as an array of synapse-shaped rows (no numeric neuron keys).
  */
-export function convertMemeticSnapshotToWireJson(
+function convertMemeticSnapshotToWireJson(
   node: MemeticWireData,
   idToUuid: Map<number, string>,
 ): void {

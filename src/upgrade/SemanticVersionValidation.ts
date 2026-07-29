@@ -14,7 +14,7 @@
  * Accepts `2.0.0`, `4.0.0`, `10.1.3`, etc.
  * Rejects `""`, `"0.0.1"`, `"1.0.0"`, or any non-semver string.
  */
-export const VALID_WRITEABLE_SEMANTIC_VERSION_RE =
+const VALID_WRITEABLE_SEMANTIC_VERSION_RE =
   /^([2-9]|[1-9][0-9]+)\.[0-9]+\.[0-9]+$/;
 
 /**

@@ -19,7 +19,7 @@ import type { DiscoverStructureDeps } from "@architecture/ErrorGuidedStructuralE
 /**
  * Opens a file with exponential backoff retry for "Too many open files" errors.
  */
-export async function openFileWithRetry(
+async function openFileWithRetry(
   file: string,
   maxRetries = 5,
   initialDelay = 200,
@@ -56,7 +56,7 @@ export async function openFileWithRetry(
  * Loads input neuron activation data directly from binary files using stored indices.
  * Input neurons are stored in binary format as they are not written to Parquet.
  */
-export async function loadInputNeuronFromBinary(
+async function loadInputNeuronFromBinary(
   neuronIndex: number,
   indicesFilePath: string,
   inputCount: number,
