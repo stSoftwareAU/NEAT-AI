@@ -9,6 +9,7 @@ import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { trimPopulationToSize } from "@neat/PopulationCap.ts";
 import { injectRandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { DeDuplicator } from "@architecture/DeDuplicator.ts";
 import {
@@ -796,6 +797,26 @@ export async function evolve(
     ...newPopulation,
     ...dnaPopulation,
   ]; // Keep pseudo sorted.
+
+  // Issue #3508: Only the bred slice above was budgeted against
+  // `effectivePopSize`; the elite, trained/discovered, fine-tuned and CRISPR
+  // slices were concatenated uncapped. Several heavy-pool tasks completing in
+  // the same generation therefore grew the population — and with it the next
+  // generation's fitness queue — well past the configured size (a queue depth
+  // of 48 for `populationSize: 15` on a contended CI runner). Trim back to the
+  // budget, dropping the weakest non-elite creatures.
+  const trim = trimPopulationToSize(
+    neat.population,
+    elitists.length,
+    effectivePopSize,
+  );
+  if (trim.removed > 0 && neat.config.verbose) {
+    getLogger().info(
+      `[PopulationCap] Trimmed ${trim.removed} creature(s) to the effective ` +
+        `population size of ${effectivePopSize} ` +
+        `(preserving ${elitists.length} elite(s))`,
+    );
+  }
 
   // Issue #2933: On a sustained plateau, inject fresh genomes (random
   // immigrants) in place of the weakest non-elite creatures. Elites (the

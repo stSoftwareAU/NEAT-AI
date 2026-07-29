@@ -59,6 +59,46 @@ const config = createNeatConfig({
 | `adjustmentRate`         | `number`  | `0.1`   | Maximum population change per generation as a fraction (0–1)              |
 | `minCreaturesPerWorker`  | `number`  | `3`     | Worker-aware floor: minimum creatures per worker thread (0 to disable)    |
 
+## 🚧 Population cap (hard bound)
+
+Issue #3508: the population is a **hard bound**, not a target. Each generation
+is assembled from several slices — elites, completed training / discovery
+results, fine-tuned creatures, freshly bred offspring, and CRISPR (Clustered
+Regularly Interspaced Short Palindromic Repeats) variants — and only the bred
+slice was budgeted. When several heavy-pool tasks completed in the same
+generation (far more likely on a slow or contended machine), the population, and
+therefore the next generation's fitness queue, grew well past the configured
+size — a queue depth of 48 was observed for `populationSize: 15`.
+
+The assembled population is now trimmed back to the effective population size
+(`populationSize`, or the adaptive size when `adaptivePopulation.enabled`), so
+memory and CPU per generation stay within what was configured:
+
+- **Elites are never dropped.** If elitism alone meets the cap, the population
+  stays at the elite count.
+- **The weakest non-elites go first.** Unevaluated creatures have no score to
+  rank by and are treated as the weakest; ties fall back to assembly order, so
+  the over-represented heavy-pool results — the slice that overflows the budget
+  — are dropped ahead of the freshly bred offspring that drive exploration.
+- **Survivors keep their order**, elites first.
+
+```mermaid
+flowchart LR
+    E[Elites] --> A[Assembled population]
+    T[Trained / discovered] --> A
+    F[Fine-tuned] --> A
+    B[Bred offspring] --> A
+    D[CRISPR variants] --> A
+    A --> C{"length > effective<br/>population size?"}
+    C -- "no" --> P[Next generation]
+    C -- "yes" --> X[Drop weakest non-elites]
+    X --> P
+```
+
+Telemetry consumers can rely on the bound: `populationSize` on
+`generation_complete`, and the fitness-queue depth it drives, never exceed the
+effective population size.
+
 ## 👥 Fine-tune population
 
 Dynamically adjusts the fine-tuning population size based on recent success
