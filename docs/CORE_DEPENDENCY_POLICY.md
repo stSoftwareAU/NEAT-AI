@@ -48,9 +48,17 @@ content-hash guards on every download:
    immediately after download and refuses to extract on mismatch. Because the
    pin lives next to `neatCore.rev`, reviewers can spot bundle-content changes
    in a single line of diff.
-2. **Release sidecar** — if NEAT-AI-core publishes
-   `wasm_activation-pkg.tar.gz.sha256` alongside the tarball, `build.sh` fetches
-   the sidecar and verifies the tarball against it.
+2. **Release sidecar** — NEAT-AI-core publishes
+   `wasm_activation-pkg.tar.gz.sha256` alongside the tarball, and `build.sh`
+   fetches the sidecar and verifies the tarball against it. The sidecar is the
+   **per-revision** anchor: it is produced by the same workflow run that built
+   the tarball, so advancing `neatCore.rev` has a trustworthy hash for the _new_
+   bundle, whereas the `assetSha256` pin only ever describes the _pinned_
+   revision (issue #3513). Publication is guaranteed from NEAT-AI-core
+   [PR #439](https://github.com/stSoftwareAU/NEAT-AI-core/pull/439) onwards;
+   `wasm-bundle-<SHA>` releases created before it carry only the tarball and the
+   CycloneDX Software Bill of Materials (SBOM), so advancing to one of those
+   revisions still fails loud unless `--allow-unverified` is passed.
 
 After extraction `build.sh` writes `wasm_activation/pkg/content-manifest.sha256`
 (standard `shasum -a 256` format). This per-file manifest is committed with the
@@ -58,11 +66,11 @@ rest of `pkg/**` and is re-checked on every `./build.sh --verify-only` run — s
 any later tampering with the vendored bundle is detected without a network
 round-trip.
 
-| Guard                         | When it runs              | What it protects against                                 |
-| ----------------------------- | ------------------------- | -------------------------------------------------------- |
-| `neatCore.assetSha256`        | Every download            | Swap of the release asset after the pin was committed    |
-| Release sidecar `*.sha256`    | Every download (if found) | Asset tampering by anyone without sidecar-signing access |
-| `pkg/content-manifest.sha256` | `--verify-only` / CI      | Local or post-install tampering with vendored pkg files  |
+| Guard                         | When it runs         | What it protects against                                 |
+| ----------------------------- | -------------------- | -------------------------------------------------------- |
+| `neatCore.assetSha256`        | Every download       | Swap of the release asset after the pin was committed    |
+| Release sidecar `*.sha256`    | Every download       | Asset tampering by anyone without sidecar-signing access |
+| `pkg/content-manifest.sha256` | `--verify-only` / CI | Local or post-install tampering with vendored pkg files  |
 
 If neither sidecar nor `assetSha256` is available, `build.sh` **refuses to
 extract** and exits non-zero (issue #2744). A content manifest written from an
