@@ -104,7 +104,7 @@ export interface GroupedCandidates {
 /**
  * Structural change types that modify the network topology.
  */
-export const STRUCTURAL_CHANGE_TYPES: Set<DiscoveryChangeType> = new Set([
+const STRUCTURAL_CHANGE_TYPES: Set<DiscoveryChangeType> = new Set([
   "add-synapses",
   "add-neurons",
   "coordinated-structural",
@@ -120,7 +120,7 @@ export const STRUCTURAL_CHANGE_TYPES: Set<DiscoveryChangeType> = new Set([
 /**
  * Weight-only change types that don't modify topology.
  */
-export const WEIGHT_ONLY_CHANGE_TYPES: Set<DiscoveryChangeType> = new Set([
+const WEIGHT_ONLY_CHANGE_TYPES: Set<DiscoveryChangeType> = new Set([
   "change-squash",
   "combo-add-change",
 ]);

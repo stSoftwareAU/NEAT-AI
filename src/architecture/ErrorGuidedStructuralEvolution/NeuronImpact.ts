@@ -119,7 +119,7 @@ export function calculateNeuronImpact(
  * (e.g., TANH at large inputs) have very small derivatives and thus limited impact
  * on output error regardless of their local error magnitude.
  */
-export function computeSquashDerivative(
+function computeSquashDerivative(
   creature: Creature,
   neuronId: number,
 ): number {

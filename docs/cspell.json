@@ -215,6 +215,7 @@
     "cutoff",
     "cyclonedx",
     "cytoscape",
+    "deadcode",
     "deadln",
     "dedup",
     "dedupe",

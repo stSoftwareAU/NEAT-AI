@@ -72,14 +72,14 @@ export function mapRustNeuronCandidate(
 /**
  * Generates key string for synapse candidate dedup.
  */
-export function candidateKey(candidate: CandidateSynapse): string {
+function candidateKey(candidate: CandidateSynapse): string {
   return `${candidate.fromNeuronUuid}->${candidate.toNeuronUuid}`;
 }
 
 /**
  * Generates key string for neuron candidate dedup.
  */
-export function neuronCandidateKey(candidate: CandidateNeuron): string {
+function neuronCandidateKey(candidate: CandidateNeuron): string {
   return `${candidate.fromNeuronUuid}->${candidate.toNeuronUuid}`;
 }
 
@@ -128,7 +128,7 @@ export function upsertNeuronDiscovery(
 /**
  * Groups synapse candidates by target neuron, keeps best per target.
  */
-export function filterTopSynapseCandidates(
+function filterTopSynapseCandidates(
   candidates: CandidateSynapse[],
 ): CandidateSynapse[] {
   const grouped = new Map<string, CandidateSynapse>();
@@ -368,7 +368,7 @@ function mapRustCoordinatedCandidate(
 /**
  * Reads coordinated structural candidates from Rust analysis.
  */
-export function tryRustCoordinatedStructuralCandidates(
+function tryRustCoordinatedStructuralCandidates(
   rustResult: RustAnalyzeAllResult | undefined,
 ): CoordinatedStructuralCandidate[] | undefined {
   const neuronResult = rustResult?.neuron;

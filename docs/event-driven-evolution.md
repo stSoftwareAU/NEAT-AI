@@ -662,10 +662,10 @@ Per-hour rates are **derived downstream** from `generation`, `time`, and
 ```mermaid
 flowchart LR
     Run[evolve* run] --> Cfg[config.populationSize<br/>+ adaptivePopulation]
-    Run --> HW[readHardwareDescriptor]
+    Run --> HW[captureHardwareDescriptors]
     Run --> Echo[echoRequestedOptions]
     Run --> Traj[best-score improvement<br/>trajectory]
-    Traj --> Sum[summariseImprovement<br/>25/50/75/90%]
+    Traj --> Sum[finaliseScoreImprovementMilestones<br/>25/50/75/90%]
     Cfg --> Stats[statistics block]
     HW --> Stats
     Echo --> Stats

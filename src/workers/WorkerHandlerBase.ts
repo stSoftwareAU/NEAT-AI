@@ -99,7 +99,7 @@ export function requiredWorkerV8Flag(budgetMb: number): string {
 }
 
 /** The current isolate's V8 old-space heap limit, in MB. */
-export function readV8HeapLimitMb(): number {
+function readV8HeapLimitMb(): number {
   return Math.round(v8.getHeapStatistics().heap_size_limit / BYTES_PER_MB);
 }
 
