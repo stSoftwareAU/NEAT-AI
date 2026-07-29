@@ -57,6 +57,33 @@ generation.
 - **Large (200+):** Production runs where solution quality matters more than
   speed.
 
+#### Population size is a hard cap (Issue #3508)
+
+Each generation is assembled from five slices: elites, creatures returned by
+completed training / discovery / replay tasks, fine-tuned variants, bred
+offspring, and CRISPR (DNA) enhanced creatures. Heavy-pool results arrive
+asynchronously — a single training task can return up to four creatures — so the
+assembled population is capped at the effective population size (see
+[`adaptivePopulation`](./POPULATION.md) when adaptive sizing is enabled).
+
+When the slices overflow, the surplus is trimmed weakest-contribution first:
+bred offspring, then trained, then fine-tuned, then DNA. Elites are never
+trimmed, so the only way the population can exceed the cap is an `elitism`
+setting larger than `populationSize`.
+
+```mermaid
+flowchart LR
+    E[Elites] --> A[Assemble]
+    T[Trained / discovered] --> A
+    F[Fine-tuned] --> A
+    B[Bred offspring] --> A
+    D[DNA / CRISPR] --> A
+    A --> C{Over budget?}
+    C -- no --> P[Next population]
+    C -- yes --> X[Trim bred → trained → fine-tuned → DNA]
+    X --> P
+```
+
 ### `elitism`
 
 **Default: 1** | Type: integer | Min: 1

@@ -178,10 +178,11 @@ Deno.test("ThroughputMetrics - fastQueueMaxDepth reflects population size during
   //   * `fastQueueMaxDepth` is the max of the fitness AND breeding queues, and
   //     the breeding queue is unrelated to `scoredCreatureCount`;
   //   * `scoredCreatureCount` counts creatures actually scored, which is at
-  //     most — not equal to — the fitness queue depth;
-  //   * the population is not capped at `populationSize`, because completed
-  //     training/fine-tuning/discovery creatures are concatenated back in, and
-  //     how many complete within generation 1 depends on runner speed.
+  //     most — not equal to — the fitness queue depth.
+  // Issue #3508 has since capped the population itself at the effective
+  // population size (asserted directly in `test/NEAT/PopulationCapEvolve.ts`),
+  // but that bounds the fitness queue only — not the breeding queue this
+  // metric also maxes over.
   // Asserting a speed-dependent ceiling makes this test flaky rather than
   // catching a real regression, so we assert only the invariants that hold.
   // Those invariants do hold for EVERY generation, not just the first, so
