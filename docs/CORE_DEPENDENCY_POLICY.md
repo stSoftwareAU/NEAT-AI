@@ -47,7 +47,12 @@ content-hash guards on every download:
    `wasm_activation-pkg.tar.gz`. When set, `build.sh` recomputes the hash
    immediately after download and refuses to extract on mismatch. Because the
    pin lives next to `neatCore.rev`, reviewers can spot bundle-content changes
-   in a single line of diff.
+   in a single line of diff. The pin is **scoped to the rev it was recorded
+   against** (issue #3514): it is enforced only when the target rev equals
+   `neatCore.rev`, and on a revision advance it is skipped with a one-line note
+   naming both short SHAs — comparing the old rev's hash to the new rev's
+   tarball would reject every bump. A skipped pin contributes **no** anchor, so
+   an advance without a sidecar still fails loud.
 2. **Release sidecar** — NEAT-AI-core publishes
    `wasm_activation-pkg.tar.gz.sha256` alongside the tarball, and `build.sh`
    fetches the sidecar and verifies the tarball against it. The sidecar is the
@@ -68,7 +73,7 @@ round-trip.
 
 | Guard                         | When it runs         | What it protects against                                 |
 | ----------------------------- | -------------------- | -------------------------------------------------------- |
-| `neatCore.assetSha256`        | Every download       | Swap of the release asset after the pin was committed    |
+| `neatCore.assetSha256`        | Same-rev downloads   | Swap of the release asset after the pin was committed    |
 | Release sidecar `*.sha256`    | Every download       | Asset tampering by anyone without sidecar-signing access |
 | `pkg/content-manifest.sha256` | `--verify-only` / CI | Local or post-install tampering with vendored pkg files  |
 

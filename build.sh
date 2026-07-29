@@ -197,6 +197,39 @@ verify_tarball_sha256() {
   return 0
 }
 
+# verify_pinned_asset_sha256 — enforce the deno.json neatCore.assetSha256 pin
+# only for the revision it was recorded against (issue #3514). The pin is
+# written next to neatCore.rev and is by construction the hash of *that* rev's
+# tarball, so on a revision advance it describes a different bundle: comparing
+# it would always mismatch and would reject every automated internal bump.
+#   $1 = tarball path
+#   $2 = pinned sha-256 ("" when unset)
+#   $3 = pinned rev ("" when unset)
+#   $4 = target rev
+# Returns 0 when the pin applied and matched (the caller records it as an
+# anchor), 1 when it applied and mismatched (abort — tampering), and 2 when it
+# does not apply (unset, or recorded against a different rev), in which case it
+# contributes no anchor and the sidecar/no-anchor guard still decides.
+verify_pinned_asset_sha256() {
+  local file="$1"
+  local pinned_sha256="$2"
+  local pinned_rev="$3"
+  local target_rev="$4"
+  if [[ -z "$pinned_sha256" ]]; then
+    return 2
+  fi
+  if [[ "$pinned_rev" != "$target_rev" ]]; then
+    local pinned_short="${pinned_rev:0:7}"
+    local target_short="${target_rev:0:7}"
+    echo "Skipping deno.json neatCore.assetSha256 check: target rev ${target_short:-<unset>} differs from pinned rev ${pinned_short:-<unset>} (the pin records the pinned rev's tarball hash)."
+    return 2
+  fi
+  if ! verify_tarball_sha256 "$file" "$pinned_sha256" "deno.json neatCore.assetSha256"; then
+    return 1
+  fi
+  return 0
+}
+
 # guard_unverified_extract — decide whether extraction may proceed when no
 # SHA-256 anchor attested the downloaded tarball (issue #2744). A self-
 # referential content manifest written from an unattested download proves
@@ -567,13 +600,16 @@ if [[ "$sidecar_ok" == true && -s "$sidecar_path" ]]; then
   verified_via="sidecar ${SIDECAR_NAME}"
 fi
 
-if [[ -n "$PINNED_ASSET_SHA256" ]]; then
-  if ! verify_tarball_sha256 \
-    "$tmp_dir/$ASSET_NAME" \
-    "$PINNED_ASSET_SHA256" \
-    "deno.json neatCore.assetSha256"; then
-    exit 1
-  fi
+pin_status=0
+verify_pinned_asset_sha256 \
+  "$tmp_dir/$ASSET_NAME" \
+  "$PINNED_ASSET_SHA256" \
+  "$PINNED_REV" \
+  "$TARGET_REV" || pin_status=$?
+if [[ "$pin_status" -eq 1 ]]; then
+  exit 1
+fi
+if [[ "$pin_status" -eq 0 ]]; then
   if [[ -n "$verified_via" ]]; then
     verified_via="${verified_via} and deno.json neatCore.assetSha256"
   else
