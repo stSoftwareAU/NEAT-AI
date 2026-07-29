@@ -13,7 +13,8 @@ NEAT-AI tracks NEAT-AI-core in `deno.json`:
 "neatCore": {
   "repo": "stSoftwareAU/NEAT-AI-core",
   "ref": "Develop",
-  "rev": "<40-char SHA>"
+  "rev": "<40-char SHA>",
+  "assetSha256": "<64-char SHA-256 of that rev's tarball>"
 }
 ```
 
@@ -22,15 +23,17 @@ NEAT-AI tracks NEAT-AI-core in `deno.json`:
 `wasm_activation-pkg.tar.gz` asset from the per-commit Release tagged
 `wasm-bundle-<SHA>`, content-verifies the tarball via SHA-256, unpacks it into
 `wasm_activation/`, writes a per-file content manifest, and updates `deno.json`
-`neatCore.rev` to the new SHA. The maintainer (or worker) running `./build.sh`
-commits the updated `deno.json` and `wasm_activation/pkg/**` together.
+`neatCore.rev` to the new SHA along with `neatCore.assetSha256` to that
+tarball's hash. The maintainer (or worker) running `./build.sh` commits the
+updated `deno.json` and `wasm_activation/pkg/**` together.
 
 ```mermaid
 flowchart LR
   CORE["NEAT-AI-core Develop"] -- "wasm-pack CI" --> REL["GitHub Release<br/>wasm-bundle-&lt;SHA&gt;"]
   REL -- "wasm_activation-pkg.tar.gz" --> BUILD["./build.sh"]
+  REL -- "wasm_activation-pkg.tar.gz.sha256<br/>(sidecar anchor)" --> BUILD
   BUILD -- "extract" --> PKG["wasm_activation/pkg/**"]
-  BUILD -- "bump rev" --> DENO["deno.json neatCore.rev"]
+  BUILD -- "bump rev + pin" --> DENO["deno.json neatCore.rev<br/>+ assetSha256"]
   PKG -- "import (unchanged)" --> GRQ["GRQ / downstream clients"]
 ```
 
@@ -40,30 +43,62 @@ Pinning by upstream commit SHA stops a release _tag_ from being renamed or
 replaced, but it does not prevent the _asset_ attached to a release from being
 swapped (compromised Continuous Integration (CI) runner, leaked release-write
 token, Man-in-the-Middle (MITM) attack on the unauthenticated
-`releases/download/...` URL). `build.sh` therefore enforces two independent
-content-hash guards on every download:
+`releases/download/...` URL). `build.sh` therefore anchors every download to a
+SHA-256 it did not compute itself. Two sources can supply that anchor, and which
+one applies depends on whether the run advances `neatCore.rev`:
 
-1. **`deno.json` pin** — set `neatCore.assetSha256` to the expected SHA-256 of
-   `wasm_activation-pkg.tar.gz`. When set, `build.sh` recomputes the hash
-   immediately after download and refuses to extract on mismatch. Because the
-   pin lives next to `neatCore.rev`, reviewers can spot bundle-content changes
-   in a single line of diff. The pin is **scoped to the rev it was recorded
-   against** (issue #3514): it is enforced only when the target rev equals
-   `neatCore.rev`, and on a revision advance it is skipped with a one-line note
-   naming both short SHAs — comparing the old rev's hash to the new rev's
-   tarball would reject every bump. A skipped pin contributes **no** anchor, so
-   an advance without a sidecar still fails loud.
-2. **Release sidecar** — NEAT-AI-core publishes
-   `wasm_activation-pkg.tar.gz.sha256` alongside the tarball, and `build.sh`
-   fetches the sidecar and verifies the tarball against it. The sidecar is the
-   **per-revision** anchor: it is produced by the same workflow run that built
-   the tarball, so advancing `neatCore.rev` has a trustworthy hash for the _new_
-   bundle, whereas the `assetSha256` pin only ever describes the _pinned_
-   revision (issue #3513). Publication is guaranteed from NEAT-AI-core
-   [PR #439](https://github.com/stSoftwareAU/NEAT-AI-core/pull/439) onwards;
-   `wasm-bundle-<SHA>` releases created before it carry only the tarball and the
-   CycloneDX Software Bill of Materials (SBOM), so advancing to one of those
-   revisions still fails loud unless `--allow-unverified` is passed.
+1. **`deno.json` pin** — `neatCore.assetSha256` records the SHA-256 of the
+   `wasm_activation-pkg.tar.gz` that `neatCore.rev` was pinned against. The pin
+   is **scoped to that rev** (issue #3514): `build.sh` enforces it only when the
+   target rev equals `neatCore.rev`, recomputing the hash immediately after
+   download and refusing to extract on mismatch. On a revision advance the pin
+   is skipped with a one-line note naming both short SHAs — comparing the old
+   rev's hash to the new rev's tarball would reject every bump — and a skipped
+   pin contributes **no** anchor. Because the pin lives next to `neatCore.rev`,
+   reviewers can spot bundle-content changes in a single line of diff.
+2. **Release sidecar** — NEAT-AI-core CI publishes
+   `wasm_activation-pkg.tar.gz.sha256` alongside the tarball on **every**
+   `wasm-bundle-<SHA>` release, from the same workflow run that built that
+   tarball (issue #3513). `build.sh` fetches the sidecar and verifies the
+   tarball against it on every download. It is therefore the only anchor that
+   can vouch for a revision this repo has never seen, whereas the `assetSha256`
+   pin only ever describes the _pinned_ revision.
+
+### Same rev vs revision advance
+
+| Case                                                                       | Anchor                                                     | Fails loud when                                                 |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------- |
+| **Same rev** — re-download of `neatCore.rev`, or the `--verify-only` no-op | committed `assetSha256` pin (plus the sidecar when served) | the pin mismatches: the release asset changed under a live pin  |
+| **Revision advance** — `./build.sh`, `--rev <new SHA>`, `./bump-deps.sh`   | release sidecar — **required**                             | the sidecar is missing or disagrees with the downloaded tarball |
+
+```mermaid
+flowchart TD
+  DL["Download wasm_activation-pkg.tar.gz"] --> Q{"target rev ==<br/>deno.json neatCore.rev?"}
+  Q -- "yes (same rev)" --> PIN{"assetSha256 pin matches?"}
+  PIN -- "yes" --> OK["Extract + write content manifest"]
+  PIN -- "no" --> FAIL["Fail loud — nothing extracted"]
+  Q -- "no (revision advance)" --> SC{"sidecar present<br/>and matches?"}
+  SC -- "yes" --> REC["Record sidecar-verified hash into<br/>deno.json neatCore.assetSha256"] --> OK
+  SC -- "no" --> FAIL
+```
+
+On a revision advance the sidecar is mandatory and there is **no
+trust-on-first-use** (issue #3515): an advance is exactly the moment a
+substituted asset would be adopted, so `--allow-unverified` does not override
+it. When the sidecar verifies, `build.sh` extracts and rewrites `deno.json`
+`neatCore.assetSha256` to the downloaded hash — the advanced rev arrives with
+its own pin, and every later same-rev run is attested against it. When the
+sidecar is absent or disagrees, `build.sh` fails loud and extracts nothing.
+
+Sidecar publication is guaranteed from NEAT-AI-core
+[PR #439](https://github.com/stSoftwareAU/NEAT-AI-core/pull/439) onwards;
+`wasm-bundle-<SHA>` releases created before it carry only the tarball and the
+CycloneDX Software Bill of Materials (SBOM), so an advance targeting one of
+those historical revisions legitimately fails loud. Either trigger the upstream
+[`wasm-bundle.yml`](https://github.com/stSoftwareAU/NEAT-AI-core/actions/workflows/wasm-bundle.yml)
+workflow to publish the missing sidecar, or commit the known-good hash to
+`neatCore.assetSha256` first and re-run `./build.sh --rev <SHA>` so the download
+is a same-rev, pin-anchored one.
 
 After extraction `build.sh` writes `wasm_activation/pkg/content-manifest.sha256`
 (standard `shasum -a 256` format). This per-file manifest is committed with the
@@ -71,23 +106,25 @@ rest of `pkg/**` and is re-checked on every `./build.sh --verify-only` run — s
 any later tampering with the vendored bundle is detected without a network
 round-trip.
 
-| Guard                         | When it runs         | What it protects against                                 |
-| ----------------------------- | -------------------- | -------------------------------------------------------- |
-| `neatCore.assetSha256`        | Same-rev downloads   | Swap of the release asset after the pin was committed    |
-| Release sidecar `*.sha256`    | Every download       | Asset tampering by anyone without sidecar-signing access |
-| `pkg/content-manifest.sha256` | `--verify-only` / CI | Local or post-install tampering with vendored pkg files  |
+| Guard                         | When it runs                                         | What it protects against                                 |
+| ----------------------------- | ---------------------------------------------------- | -------------------------------------------------------- |
+| `neatCore.assetSha256`        | Same-rev downloads only                              | Swap of the release asset after the pin was committed    |
+| Release sidecar `*.sha256`    | Every download; the required anchor on a rev advance | Asset tampering by anyone without sidecar-signing access |
+| `pkg/content-manifest.sha256` | `--verify-only` / CI                                 | Local or post-install tampering with vendored pkg files  |
 
-If neither sidecar nor `assetSha256` is available, `build.sh` **refuses to
-extract** and exits non-zero (issue #2744). A content manifest written from an
-unattested download is self-referential — `--verify-only` would compare the
-freshly written files against the freshly written manifest and always pass — so
-silently extracting an unverified bundle proves nothing about provenance. To
-bootstrap a fresh setup (or pin a rev whose upstream release has no sidecar),
-re-run with `--allow-unverified`: `build.sh` then extracts and records the
-downloaded hash into `deno.json` `neatCore.assetSha256`, so every subsequent run
-is attested against that committed pin. Because the standing pin is committed,
-the default `./build.sh` (and the `--verify-only` no-op path used by
-`quality.sh`) always has an anchor and never needs the override.
+If no anchor attested the tarball, `build.sh` **refuses to extract** and exits
+non-zero (issue #2744). A content manifest written from an unattested download
+is self-referential — `--verify-only` would compare the freshly written files
+against the freshly written manifest and always pass — so silently extracting an
+unverified bundle proves nothing about provenance. `--allow-unverified` covers
+exactly one narrow case: a **same-rev bootstrap** where `neatCore.assetSha256`
+is unset and the upstream release serves no sidecar. It then extracts and
+records the downloaded hash into `deno.json` `neatCore.assetSha256`, so every
+subsequent run is attested against that committed pin. It does **not** cover a
+revision advance — that always requires the sidecar, with no override (issue
+#3515). Because the standing pin is committed, the default `./build.sh` (and the
+`--verify-only` no-op path used by `quality.sh`) always has an anchor and never
+needs the override.
 
 Before extraction, `build.sh` also lists the tarball with `tar -tzf` and rejects
 any entry whose normalised path is absolute or escapes the destination via `..`
@@ -108,14 +145,14 @@ bits are never honoured.
 
 ## `build.sh` Modes
 
-| Invocation                      | Behaviour                                                                                                                                             |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `./build.sh`                    | Resolve Develop HEAD, download artefact, refresh pkg, update `deno.json` `neatCore.rev`. No-op if up to date.                                         |
-| `./build.sh --rev <SHA>`        | Same as above but pin to a specific 40-char SHA instead of resolving HEAD. Used for reproducible builds.                                              |
-| `./build.sh --verify-only`      | Verify the vendored pkg matches `deno.json` `neatCore.rev`. No network. No mutation. Used by `quality.sh`.                                            |
-| `./build.sh --clean`            | Delete `wasm_activation/pkg` before download.                                                                                                         |
-| `./build.sh --allow-unverified` | Proceed even when no SHA-256 anchor attested the tarball; records the downloaded hash into `neatCore.assetSha256` to bootstrap the pin (issue #2744). |
-| `./build.sh --help`             | Show usage.                                                                                                                                           |
+| Invocation                      | Behaviour                                                                                                                                                                                                                                      |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `./build.sh`                    | Resolve Develop HEAD, download artefact, refresh pkg, update `deno.json` `neatCore.rev` + `assetSha256`. No-op if up to date.                                                                                                                  |
+| `./build.sh --rev <SHA>`        | Same as above but pin to a specific 40-char SHA instead of resolving HEAD. Used for reproducible builds.                                                                                                                                       |
+| `./build.sh --verify-only`      | Verify the vendored pkg matches `deno.json` `neatCore.rev`. No network. No mutation. Used by `quality.sh`.                                                                                                                                     |
+| `./build.sh --clean`            | Delete `wasm_activation/pkg` before download.                                                                                                                                                                                                  |
+| `./build.sh --allow-unverified` | Bootstrap a **same-rev** download that no anchor attested (no pin, no sidecar); records the downloaded hash into `neatCore.assetSha256` (issue #2744). Does **not** cover a revision advance, which always requires the sidecar (issue #3515). |
+| `./build.sh --help`             | Show usage.                                                                                                                                                                                                                                    |
 
 ## Pre-PR auto-bump (`bump-deps.sh`)
 
@@ -124,7 +161,11 @@ The Vibe Coder worker invokes [`./bump-deps.sh`](../bump-deps.sh) before
 
 - **Internal (`stSoftwareAU/*`, including NEAT-AI-core):** advances `deno.json`
   `neatCore.rev` to NEAT-AI-core `Develop` HEAD by re-running `./build.sh`. No
-  quarantine — internal deps bump immediately.
+  quarantine — internal deps bump immediately. The advance is anchored by the
+  release sidecar and `./build.sh` rewrites `neatCore.assetSha256` to the new
+  rev's hash, so the bump completes without anyone hand-maintaining the pin; if
+  the target release serves no sidecar the advance fails loud (issue #3515) and
+  the bump is reverted.
 - **External (jsr:@std/_, npm:_, https://deno.land/*):** runs
   `deno outdated --update --latest --minimum-dependency-age=<min>` with a
   quarantine window (default 24h, see `VIBE_BUMP_QUARANTINE_HOURS`). The

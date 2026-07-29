@@ -84,6 +84,44 @@ Deno.test("CONTRIBUTING.md neatCore example agrees with deno.json on repo", asyn
   );
 });
 
+/**
+ * Issue #3517 — the `assetSha256` pin is scoped to the rev it was recorded
+ * against (#3514) and is rewritten by `./build.sh` on a revision advance
+ * (#3515). CONTRIBUTING.md must not tell contributors the pin is checked on
+ * every download, nor that they hand-maintain it across bumps.
+ */
+Deno.test("CONTRIBUTING.md describes assetSha256 as a per-revision pin rewritten by ./build.sh", async () => {
+  const doc = await Deno.readTextFile(CONTRIBUTING);
+  const scoped = doc.split(/\n\s*\n/).filter((block) =>
+    block.includes("assetSha256") && /per[-\s]revision/i.test(block)
+  );
+  assert(
+    scoped.length > 0,
+    "CONTRIBUTING.md must describe neatCore.assetSha256 as a per-revision pin " +
+      "(it attests only the rev it was recorded against — Issue #3514)",
+  );
+  assert(
+    scoped.some((block) =>
+      /build\.sh/.test(block) && /rewrit|updates|regenerat/i.test(block)
+    ),
+    "CONTRIBUTING.md must state that ./build.sh rewrites neatCore.assetSha256 " +
+      "rather than contributors hand-maintaining it across bumps",
+  );
+});
+
+Deno.test("CONTRIBUTING.md does not claim assetSha256 is verified on every download", async () => {
+  const doc = await Deno.readTextFile(CONTRIBUTING);
+  const claims = doc.split(/\n\s*\n/).filter((block) =>
+    block.includes("assetSha256") && /every download/i.test(block)
+  );
+  assertEquals(
+    claims,
+    [],
+    "The assetSha256 pin is enforced only for same-rev downloads (Issue #3514) — " +
+      "CONTRIBUTING.md must not claim it is verified on every download",
+  );
+});
+
 Deno.test("CONTRIBUTING.md does not claim core follows latest Develop", async () => {
   const doc = await Deno.readTextFile(CONTRIBUTING);
   // The branch-tracking claim contradicts the immutable-SHA pinning policy.
