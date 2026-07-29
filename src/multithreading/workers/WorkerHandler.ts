@@ -97,13 +97,6 @@ export interface RequestData {
      * evaluation error for outputs that fall outside the specified ranges.
      */
     outputRanges?: ReadonlyArray<RequiredOutputRange>;
-    /**
-     * Issue #3257: Ranking-pass fitness corpus subsample rate in (0, 1].
-     * When below 1, the worker's `evaluateDir` scores each creature on a
-     * deterministic stratified subsample of records. Omitted/1 scores the
-     * full corpus (unchanged behaviour).
-     */
-    fitnessSampleRate?: number;
   };
   /** Creature evaluation request */
   evaluate?: {
@@ -335,8 +328,6 @@ export class WorkerHandler
     customCost?: { filePath: string },
     wasmCache?: WasmCacheConfig,
     outputRanges?: ReadonlyArray<RequiredOutputRange>,
-    // Issue #3257: Ranking-pass fitness corpus subsample rate in (0, 1].
-    fitnessSampleRate?: number,
   ) {
     let rejectInitError: ((err: Error) => void) | null = null;
     const initErrorPromise: Promise<never> = new Promise((_, reject) => {
@@ -428,12 +419,6 @@ export class WorkerHandler
           wasmCache,
           outputRanges: outputRanges && outputRanges.length > 0
             ? outputRanges
-            : undefined,
-          // Issue #3257: forward the ranking-pass subsample rate; omit at the
-          // default 1 so the wire payload is unchanged for full-corpus runs.
-          fitnessSampleRate: fitnessSampleRate !== undefined &&
-              fitnessSampleRate < 1
-            ? fitnessSampleRate
             : undefined,
         },
       };

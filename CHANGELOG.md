@@ -137,6 +137,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   machines never converged. Breeding already takes `Math.max` of both parents;
   the carryover now also survives the save/load and end-of-round write paths.
 
+### Removed
+
+- **Issue #3502:** Removed the unused `fitnessSampleRate` option added by #3257.
+  No consumer ever set it (an org-wide search found references only inside this
+  repository) and it defaulted to `1` — the full corpus — so production
+  behaviour is unchanged. The option, its `NeatArguments` / `NeatOptions` /
+  `NeatConfig` surface, `src/creature/FitnessSubsample.ts`, the `evaluateDir` /
+  worker plumbing, `bench/FitnessSampleRate.ts`, and the **Fitness Corpus
+  Subsampling** section of `docs/PERFORMANCE_TUNING.md` are all gone.
+
 ## [5.2.0] - 2026-05-30
 
 ### Changed
