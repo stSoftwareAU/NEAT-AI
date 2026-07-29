@@ -24,6 +24,11 @@ import {
 
 // ---------------------------------------------------------------------------
 // Constants — topology validation error codes (must match Rust topology_ops.rs)
+//
+// This block deliberately mirrors the *complete* Rust code set, so a code
+// returned by core always has a named constant here. Every code is labelled
+// for diagnostics in `TopologyErrorMessages.ts` (Issue #3512) — add both the
+// constant and its label when core gains a new code.
 // ---------------------------------------------------------------------------
 
 /** Topology is valid. */
