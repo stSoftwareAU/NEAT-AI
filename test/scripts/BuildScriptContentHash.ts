@@ -317,6 +317,10 @@ Deno.test({
       result.stdout.includes("--allow-unverified"),
       "Expected help to mention the --allow-unverified flag",
     );
+    assert(
+      result.stdout.includes("revision advance"),
+      "Expected help to note that --allow-unverified does not cover a revision advance (issue #3515)",
+    );
   },
 });
 
@@ -326,21 +330,58 @@ Deno.test({
   fn: async () => {
     const deny = await runSourcedFn(
       "guard_unverified_extract",
-      'guard_unverified_extract "" false',
+      'guard_unverified_extract "" false false',
     );
     assertEquals(deny.code, 1, "no anchor + not allowed must abort (rc=1)");
 
     const allow = await runSourcedFn(
       "guard_unverified_extract",
-      'guard_unverified_extract "" true',
+      'guard_unverified_extract "" true false',
     );
     assertEquals(allow.code, 0, "--allow-unverified must permit (rc=0)");
 
     const anchored = await runSourcedFn(
       "guard_unverified_extract",
-      'guard_unverified_extract "sidecar wasm.sha256" false',
+      'guard_unverified_extract "sidecar wasm.sha256" false false',
     );
     assertEquals(anchored.code, 0, "an existing anchor must permit (rc=0)");
+  },
+});
+
+Deno.test({
+  name:
+    "guard_unverified_extract blocks a revision advance even with --allow-unverified (issue #3515)",
+  permissions: { run: true, read: true, write: true },
+  fn: async () => {
+    const blockedWithAllow = await runSourcedFn(
+      "guard_unverified_extract",
+      'guard_unverified_extract "" true true',
+    );
+    assertEquals(
+      blockedWithAllow.code,
+      1,
+      "a revision advance with no anchor must abort (rc=1) even when --allow-unverified was passed",
+    );
+
+    const blockedWithoutAllow = await runSourcedFn(
+      "guard_unverified_extract",
+      'guard_unverified_extract "" false true',
+    );
+    assertEquals(
+      blockedWithoutAllow.code,
+      1,
+      "a revision advance with no anchor must abort (rc=1) without --allow-unverified too",
+    );
+
+    const anchoredAdvance = await runSourcedFn(
+      "guard_unverified_extract",
+      'guard_unverified_extract "sidecar wasm.sha256" false true',
+    );
+    assertEquals(
+      anchoredAdvance.code,
+      0,
+      "a revision advance with a matching sidecar anchor must still proceed (rc=0)",
+    );
   },
 });
 
