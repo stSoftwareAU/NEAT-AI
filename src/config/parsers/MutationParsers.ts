@@ -269,7 +269,7 @@ function parseAdvantageMode(
 }
 
 /** Parse diversity-aware MCMC reheat configuration (Issue #2456). */
-export function parseDiversityAwareMCMC(
+function parseDiversityAwareMCMC(
   overrides: Record<string, unknown> | undefined,
 ): RequiredDiversityAwareMCMCConfig {
   const d = DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG;

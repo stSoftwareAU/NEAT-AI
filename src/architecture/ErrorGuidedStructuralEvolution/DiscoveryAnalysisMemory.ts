@@ -44,11 +44,10 @@ export interface DiscoveryAnalysisMemoryDeps {
 }
 
 /** Production dependencies — the real NEAT-AI-Discovery FFI surface. */
-export const DEFAULT_DISCOVERY_ANALYSIS_MEMORY_DEPS:
-  DiscoveryAnalysisMemoryDeps = {
-    usageBytes: getDiscoveryMemoryUsageBytes,
-    cancelMemoryPressure: cancelAnalysisMemoryPressure,
-  };
+const DEFAULT_DISCOVERY_ANALYSIS_MEMORY_DEPS: DiscoveryAnalysisMemoryDeps = {
+  usageBytes: getDiscoveryMemoryUsageBytes,
+  cancelMemoryPressure: cancelAnalysisMemoryPressure,
+};
 
 /**
  * Resolves the analysis memory budget to send on `analyze_parallel`.

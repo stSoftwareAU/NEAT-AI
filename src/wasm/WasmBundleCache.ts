@@ -66,10 +66,10 @@ export interface LoadWasmBundleResult {
 }
 
 /** Default bounded number of fetch attempts on a cache miss. */
-export const DEFAULT_MAX_ATTEMPTS = 5;
+const DEFAULT_MAX_ATTEMPTS = 5;
 
 /** Default base backoff delay in milliseconds (doubles each attempt). */
-export const DEFAULT_BASE_DELAY_MS = 250;
+const DEFAULT_BASE_DELAY_MS = 250;
 
 /** Real sleep used when no `sleepFn` is injected. */
 function defaultSleep(ms: number): Promise<void> {
@@ -85,7 +85,7 @@ function defaultSleep(ms: number): Promise<void> {
  * in which case caching is skipped and loading falls back to a plain
  * fetch-with-retry.
  */
-export function resolveCacheDir(override?: string | null): string | null {
+function resolveCacheDir(override?: string | null): string | null {
   if (override === null) {
     // Caller forced caching off (Issue #3494).
     return null;
