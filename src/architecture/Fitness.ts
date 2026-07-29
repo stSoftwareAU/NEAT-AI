@@ -4,6 +4,7 @@ import {
   DEFAULT_PARALLEL_EVALUATION_CONFIG,
   type RequiredParallelEvaluationConfig,
 } from "@config/ParallelEvaluationConfig.ts";
+import { DatasetError } from "@errors/DatasetError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -309,6 +310,10 @@ export class Fitness {
             creaturesForWorkerPath = recurrentCreatures;
           }
         } catch (err) {
+          // Issue #3541: a corrupt dataset is not a transient scorer issue —
+          // the per-creature and WASM paths read the same bytes. Propagate so
+          // the run fails once on the scorer's own diagnostic.
+          if (err instanceof DatasetError) throw err;
           // Surface batch reconciliation failures as explicit log errors per
           // the acceptance criteria, then fall back to the per-creature path
           // so the generation is not lost to a transient scorer issue.

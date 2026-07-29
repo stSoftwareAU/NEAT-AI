@@ -5,10 +5,12 @@
  * under 500 lines and each module focused on a single responsibility.
  */
 
-import { assert } from "@std/assert";
 import { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 import { dataFiles } from "@architecture/Training.ts";
-import { openDatasetFileSync } from "@architecture/DatasetIO.ts";
+import {
+  assertWholeRecordRead,
+  openDatasetFileSync,
+} from "@architecture/DatasetIO.ts";
 import { DatasetError } from "@errors/DatasetError.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
@@ -525,13 +527,14 @@ export async function evaluateDir(
       while (true) {
         const bytesRead = file.readSync(batchBuffer);
         if (bytesRead === null) break;
-        assert(bytesRead > 0, "Invalid number of bytes read");
+        // Issue #3541: name the file and the byte counts — the bare
+        // `AssertionError: Invalid number of bytes read` named neither.
+        assertWholeRecordRead(filePath, bytesRead, BYTES_PER_RECORD, {
+          inputs: creature.input,
+          outputs: creature.output,
+        });
 
         const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
-        assert(
-          bytesRead % BYTES_PER_RECORD === 0,
-          "Invalid number of bytes read",
-        );
 
         if (useFusedWasm) {
           const slice = batchArray.subarray(0, recordsRead * valuesCount);

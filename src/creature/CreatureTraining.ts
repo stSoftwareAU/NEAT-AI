@@ -13,7 +13,10 @@ import type { Creature } from "@creature";
 import { writeCreatures } from "@creature/CheckpointWriter.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { DatasetError } from "@errors/DatasetError.ts";
-import { openDatasetFileSync } from "@architecture/DatasetIO.ts";
+import {
+  assertWholeRecordRead,
+  openDatasetFileSync,
+} from "@architecture/DatasetIO.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { makeDataDir } from "@architecture/DataSet.ts";
 import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
@@ -336,13 +339,14 @@ export function traceDir(
       while (true) {
         const bytesRead = file.readSync(batchBuffer);
         if (bytesRead === null) break;
-        assert(bytesRead > 0, "Invalid number of bytes read");
+        // Issue #3541: name the file and the byte counts — the bare
+        // `AssertionError: Invalid number of bytes read` named neither.
+        assertWholeRecordRead(filePath, bytesRead, BYTES_PER_RECORD, {
+          inputs: creature.input,
+          outputs: creature.output,
+        });
 
         const recordsRead = Math.floor(bytesRead / BYTES_PER_RECORD);
-        assert(
-          bytesRead % BYTES_PER_RECORD === 0,
-          "Invalid number of bytes read",
-        );
 
         for (let recordIndex = 0; recordIndex < recordsRead; recordIndex++) {
           const offset = recordIndex * valuesCount;

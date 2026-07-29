@@ -100,6 +100,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3541:** The WASM fallback is no longer used as a "fallback" for
+  corrupt training data. A native scorer failure whose stderr identifies a
+  malformed/truncated dataset (`Trailing N bytes (incomplete record)` and
+  friends) is now classified by `src/score/ScorerFailureClassification.ts` and
+  raised as a `DatasetError` with the new `CORRUPT_DATA` reason, preserving the
+  scorer's own message and exit code — previously that diagnostic was demoted to
+  a warning and the run died on the WASM re-read of the same bytes with a bare
+  `AssertionError: Invalid number of bytes read`. Backend failures (missing
+  binary, GPU init, process crash) still fall back to WASM unchanged, and
+  `Fitness.calculate` no longer absorbs a data fault into its per-creature
+  retry. Both dataset readers (`evaluateDir`, the training loop) now report the
+  offending file, the bytes read, the record size, and the trailing byte count
+  via `assertWholeRecordRead` (`src/architecture/DatasetIO.ts`).
 - **Issue #3508:** The population can no longer exceed the configured
   `populationSize`. Each generation is assembled from several slices (elites,
   completed training / discovery results, fine-tuned creatures, bred offspring,
