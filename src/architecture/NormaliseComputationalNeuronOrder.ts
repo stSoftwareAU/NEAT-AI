@@ -13,7 +13,7 @@ import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOn
  * Moves one neuron to a target index, remapping synapse endpoints and
  * `neuron.index`. Used when repair paths flip hidden→constant in place.
  */
-export function moveNeuronToIndex(
+function moveNeuronToIndex(
   creature: Creature,
   from: number,
   to: number,

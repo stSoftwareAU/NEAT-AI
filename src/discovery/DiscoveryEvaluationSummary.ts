@@ -246,7 +246,7 @@ export function logEvaluationSummary(
 /**
  * Logs a single evaluation summary line.
  */
-export function logSingleSummary(
+function logSingleSummary(
   summary: DiscoveryEvaluationSummary,
   isBest: boolean,
 ): void {

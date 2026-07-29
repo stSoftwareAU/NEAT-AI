@@ -41,7 +41,7 @@ export interface FileProcessingContext {
  * Processes a single binary data file, reading sampled records and submitting
  * them in batches to the discovery structure for recording.
  */
-export async function processDiscoveryFile(
+async function processDiscoveryFile(
   ctx: FileProcessingContext,
   filePath: string,
   discoverStructure: DiscoverStructure,
