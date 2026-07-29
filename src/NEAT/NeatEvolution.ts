@@ -9,6 +9,7 @@ import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { trimPopulationToSize } from "@neat/PopulationCap.ts";
 import { injectRandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { DeDuplicator } from "@architecture/DeDuplicator.ts";
 import {
@@ -57,6 +58,7 @@ import {
   captureUtilisationSnapshot,
   computeOverallCpuUtilisation,
 } from "@neat/CpuUtilisation.ts";
+import { assemblePopulationWithinBudget } from "@neat/PopulationBudget.ts";
 import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
 import { selectTrainingCandidates } from "@neat/TrainingCandidates.ts";
 import {
@@ -789,13 +791,50 @@ export async function evolve(
   // Issue #1568: Save reference to old population before replacement
   const oldPopulation = neat.population;
 
-  neat.population = [
-    ...elitists,
-    ...trainedPopulation,
-    ...fineTunedPopulation,
-    ...newPopulation,
-    ...dnaPopulation,
-  ]; // Keep pseudo sorted.
+  // Issue #3508: cap the assembled population at the effective population
+  // size. Only the bred slice was budgeted, and its budget was computed
+  // before the completed heavy-pool results were drained, so a burst of
+  // training/discovery/replay results could push the population — and the
+  // next generation's fitness queue — well past `populationSize`.
+  const budgeted = assemblePopulationWithinBudget({
+    elitists,
+    trained: trainedPopulation,
+    fineTuned: fineTunedPopulation,
+    bred: newPopulation,
+    dna: dnaPopulation,
+  }, effectivePopSize);
+
+  neat.population = budgeted.population; // Keep pseudo sorted.
+
+  if (budgeted.dropped.length > 0 && neat.config.verbose) {
+    getLogger().info(
+      `[PopulationBudget] Dropped ${budgeted.dropped.length} creature(s) to ` +
+        `stay within the effective population size of ${effectivePopSize} ` +
+        `(elitists=${elitists.length}, trained=${trainedPopulation.length}, ` +
+        `fineTuned=${fineTunedPopulation.length}, bred=${newPopulation.length}, ` +
+        `dna=${dnaPopulation.length})`,
+    );
+  }
+
+  // Issue #3508: Only the bred slice above was budgeted against
+  // `effectivePopSize`; the elite, trained/discovered, fine-tuned and CRISPR
+  // slices were concatenated uncapped. Several heavy-pool tasks completing in
+  // the same generation therefore grew the population — and with it the next
+  // generation's fitness queue — well past the configured size (a queue depth
+  // of 48 for `populationSize: 15` on a contended CI runner). Trim back to the
+  // budget, dropping the weakest non-elite creatures.
+  const trim = trimPopulationToSize(
+    neat.population,
+    elitists.length,
+    effectivePopSize,
+  );
+  if (trim.removed > 0 && neat.config.verbose) {
+    getLogger().info(
+      `[PopulationCap] Trimmed ${trim.removed} creature(s) to the effective ` +
+        `population size of ${effectivePopSize} ` +
+        `(preserving ${elitists.length} elite(s))`,
+    );
+  }
 
   // Issue #2933: On a sustained plateau, inject fresh genomes (random
   // immigrants) in place of the weakest non-elite creatures. Elites (the
@@ -875,11 +914,22 @@ export async function evolve(
   );
 
   // Issue #1568: Dispose old population creatures not carried forward
+  // Issue #3508: also dispose creatures dropped by the population budget.
+  // A Set de-duplicates the two sources so nothing is disposed twice.
   const carriedForward = new Set(neat.population);
+  const toDispose = new Set<Creature>();
   for (const creature of oldPopulation) {
     if (!carriedForward.has(creature)) {
-      creature.dispose();
+      toDispose.add(creature);
     }
+  }
+  for (const creature of budgeted.dropped) {
+    if (!carriedForward.has(creature)) {
+      toDispose.add(creature);
+    }
+  }
+  for (const creature of toDispose) {
+    creature.dispose();
   }
 
   if (neat.config.verbose && preWarmResult.newTemplatesCompiled > 0) {

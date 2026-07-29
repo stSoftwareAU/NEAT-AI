@@ -100,6 +100,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3508:** The population can no longer exceed the configured
+  `populationSize`. Each generation is assembled from several slices (elites,
+  completed training / discovery results, fine-tuned creatures, bred offspring,
+  CRISPR variants) but only the bred slice was budgeted, so several heavy-pool
+  tasks completing in one generation grew the population — and the next
+  generation's fitness queue — to several times the configured size (depth 48
+  for `populationSize: 15` on a contended CI runner). The assembled population
+  is now trimmed back to the effective population size by `trimPopulationToSize`
+  (`src/NEAT/PopulationCap.ts`), dropping the weakest non-elite creatures and
+  never an elite. See
+  [`docs/config/POPULATION.md`](./docs/config/POPULATION.md).
 - **Issue #3419 (recurrence of #3230):** WASM activation bundle loading is now
   cache-first, removing the runtime network dependency on process start. The
   loader previously let wasm-bindgen fetch

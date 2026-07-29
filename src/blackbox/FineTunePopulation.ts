@@ -25,6 +25,18 @@ import { appendAll } from "@utils/ArrayAppend.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
+/**
+ * Issue #3506: a score is usable for fine-tune ordering when it is a real
+ * number. Truthiness must never be used here — `0` is a legitimate score
+ * (with `costOfGrowth: 0` the score is `1 - error`, so an error of exactly `1`
+ * yields exactly `0`) and rejecting it aborted the whole run. `-Infinity` stays
+ * acceptable: creatures that suffered a WASM panic are scored `-Infinity`
+ * (issue #2214) and are deliberately retained in the population.
+ */
+function hasUsableScore(score: number | undefined): score is number {
+  return typeof score === "number" && !Number.isNaN(score);
+}
+
 export class FindTunePopulation {
   private neat: Neat;
   private fineTuneTracker?: AdaptiveFineTuneTracker;
@@ -51,7 +63,9 @@ export class FindTunePopulation {
     ) {
       const previousUUID = CreatureUtil.makeUUID(previousFittest);
       if (!uniqueUUID.has(previousUUID)) {
-        if (previousFittest.score && fittest.score) {
+        if (
+          hasUsableScore(previousFittest.score) && hasUsableScore(fittest.score)
+        ) {
           if (previousFittest.score < fittest.score) {
             tmpPreviousFittest = previousFittest;
             tmpFineTunePopulation.push(previousFittest);
@@ -85,7 +99,7 @@ export class FindTunePopulation {
     for (const creature of this.neat.population) {
       const creatureUUID = CreatureUtil.makeUUID(creature);
       if (!uniqueUUID.has(creatureUUID)) {
-        if (creature.score && fittest.score) {
+        if (hasUsableScore(creature.score) && hasUsableScore(fittest.score)) {
           if (creature.score < fittest.score) {
             if (!tmpPreviousFittest) {
               tmpPreviousFittest = creature;
