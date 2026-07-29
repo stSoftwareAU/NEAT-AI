@@ -2,8 +2,12 @@
   "name": "neat-core",
   "type": "module",
   "description": "Shared computation library for NEAT-AI neural network operations. Optional wasm-bindgen on wasm32 only.",
-  "version": "0.1.26",
+  "version": "0.8.0",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stSoftwareAU/NEAT-AI-core"
+  },
   "files": [
     "wasm_activation_bg.wasm",
     "wasm_activation.js",

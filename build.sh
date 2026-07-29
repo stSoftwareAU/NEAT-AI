@@ -47,6 +47,9 @@ Options:
                   Without this flag an unattested download is a hard error
                   (issue #2744). The downloaded hash is recorded back into
                   deno.json neatCore.assetSha256 so subsequent runs verify.
+                  Does NOT apply to a revision advance (neatCore.rev
+                  changing): that always requires the release sidecar,
+                  with no override (issue #3515).
   --help, -h      Show this help and exit.
 HELP
 }
@@ -234,14 +237,28 @@ verify_pinned_asset_sha256() {
 # SHA-256 anchor attested the downloaded tarball (issue #2744). A self-
 # referential content manifest written from an unattested download proves
 # nothing, so an unverified bundle must not be silently extracted.
-#   $1 = verified_via   non-empty when a pin or sidecar already matched
-#   $2 = allow_unverified  "true" when the operator passed --allow-unverified
+#
+# A revision advance (issue #3515) is never allowed to proceed unverified,
+# even with --allow-unverified: an advance is exactly the moment a
+# substituted release asset would be adopted, and deno.json
+# neatCore.assetSha256 cannot anchor it (the pin only ever records the
+# *previous* rev's tarball hash — see verify_pinned_asset_sha256). Only the
+# release sidecar can anchor a new revision, so --allow-unverified keeps its
+# trust-on-first-use bootstrap role solely for a same-rev, no-pin run.
+#   $1 = verified_via     non-empty when a pin or sidecar already matched
+#   $2 = allow_unverified "true" when the operator passed --allow-unverified
+#   $3 = is_rev_advance   "true" when TARGET_REV differs from a non-empty
+#                         PINNED_REV
 # Returns 0 when extraction may proceed, 1 when it must abort.
 guard_unverified_extract() {
   local verified_via="$1"
   local allow_unverified="$2"
+  local is_rev_advance="${3:-false}"
   if [[ -n "$verified_via" ]]; then
     return 0
+  fi
+  if [[ "$is_rev_advance" == true ]]; then
+    return 1
   fi
   if [[ "$allow_unverified" == true ]]; then
     return 0
@@ -412,6 +429,13 @@ else
 fi
 
 echo "Target NEAT-AI-core revision: ${TARGET_REV}"
+
+# A revision advance is a *pinned* rev changing, not the first-ever pin
+# being set (empty PINNED_REV is fresh setup, not an advance — issue #3515).
+IS_REV_ADVANCE=false
+if [[ -n "$PINNED_REV" && "$PINNED_REV" != "$TARGET_REV" ]]; then
+  IS_REV_ADVANCE=true
+fi
 
 # --- No-op fast path: pin matches and pkg is intact ---------------------
 if [[ "$CLEAN" != true ]] && [[ "$PINNED_REV" == "$TARGET_REV" ]] \
@@ -619,7 +643,22 @@ fi
 
 if [[ -n "$verified_via" ]]; then
   echo "Tarball SHA-256 verified via ${verified_via}."
-elif ! guard_unverified_extract "$verified_via" "$ALLOW_UNVERIFIED"; then
+elif ! guard_unverified_extract "$verified_via" "$ALLOW_UNVERIFIED" "$IS_REV_ADVANCE"; then
+  if [[ "$IS_REV_ADVANCE" == true ]]; then
+    echo "ERROR: revision advance (${PINNED_REV:0:7} -> ${TARGET_REV:0:7}) has no SHA-256 anchor for ${ASSET_NAME}." >&2
+    echo "       A revision advance requires the release sidecar ${SIDECAR_NAME} on the" >&2
+    echo "       ${RELEASE_TAG} release — deno.json neatCore.assetSha256 cannot anchor a new" >&2
+    echo "       revision because it only ever records the *previous* rev's tarball hash." >&2
+    echo "       --allow-unverified does NOT apply to a revision advance (issue #3515): an" >&2
+    echo "       advance is exactly the moment a substituted release asset would be adopted." >&2
+    echo "       Fix one of:" >&2
+    echo "         - wait for/trigger the NEAT-AI-core wasm-bundle.yml workflow to publish" >&2
+    echo "           ${SIDECAR_NAME} for ${RELEASE_TAG}:" >&2
+    echo "           https://github.com/stSoftwareAU/NEAT-AI-core/actions/workflows/wasm-bundle.yml" >&2
+    echo "         - or pin neatCore.assetSha256 in deno.json to the known-good hash first, then" >&2
+    echo "           re-run --rev ${TARGET_REV} as a same-rev download." >&2
+    exit 1
+  fi
   echo "ERROR: no SHA-256 source for ${ASSET_NAME} (neither deno.json neatCore.assetSha256 nor release sidecar ${SIDECAR_NAME} present)." >&2
   echo "       Refusing to extract an unattested tarball — the content manifest written from an" >&2
   echo "       unverified download is self-referential and proves nothing about provenance (issue #2744)." >&2

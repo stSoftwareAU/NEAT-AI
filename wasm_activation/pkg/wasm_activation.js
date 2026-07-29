@@ -265,172 +265,6 @@ export class CompiledNetwork {
 if (Symbol.dispose) CompiledNetwork.prototype[Symbol.dispose] = CompiledNetwork.prototype.free;
 
 /**
- * The Predictive Coding inference engine.
- *
- * Holds the network topology and configuration for running the iterative
- * inference (settling) loop. The engine is constructed once from a creature's
- * topology and can be reused for multiple inference calls.
- *
- * Issue #36 — annotated with `#[wasm_bindgen]` on `wasm32` so the JS class
- * surface used by NEAT-AI is reproduced by `wasm-pack` against this crate.
- */
-export class PredictiveCodingEngine {
-    __destroy_into_raw() {
-        const ptr = this.__wbg_ptr;
-        this.__wbg_ptr = 0;
-        PredictiveCodingEngineFinalization.unregister(this);
-        return ptr;
-    }
-    free() {
-        const ptr = this.__destroy_into_raw();
-        wasm.__wbg_predictivecodingengine_free(ptr, 0);
-    }
-    /**
-     * Computes weight and bias gradients from settled inference state.
-     *
-     * # Arguments
-     * * `latents` - Float32Array of settled latent values (length = num_neurons).
-     * * `errors` - Float32Array of prediction errors for non-input neurons.
-     * * `learning_rate` - The learning rate for weight updates.
-     *
-     * # Returns
-     * Packed Float32Array:
-     * - \[0\]: num_non_inputs (number of bias deltas)
-     * - \[1\]: num_weight_entries (number of weight delta triples)
-     * - \[2..2+num_non_inputs\): bias deltas
-     * - \[2+num_non_inputs..\]: weight delta triples (neuron_rel_idx, conn_local_idx, delta)
-     * @param {Float32Array} latents
-     * @param {Float32Array} errors
-     * @param {number} learning_rate
-     * @returns {Float32Array}
-     */
-    compute_gradients_wasm(latents, errors, learning_rate) {
-        const ptr0 = passArrayF32ToWasm0(latents, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passArrayF32ToWasm0(errors, wasm.__wbindgen_malloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.predictivecodingengine_compute_gradients_wasm(this.__wbg_ptr, ptr0, len0, ptr1, len1, learning_rate);
-        var v3 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-        return v3;
-    }
-    /**
-     * Runs inference on a batch of samples.
-     *
-     * Input format: packed Float32Array [input0..., input1..., ...]
-     * Each input has `input_size` elements.
-     *
-     * Result format: packed with per-record length headers (same as
-     * activate_and_trace_batch_4way pattern):
-     * - [0..num_samples): per-record lengths
-     * - Then each record in infer_wasm format
-     * @param {Float32Array} inputs
-     * @param {number} input_size
-     * @param {number} num_samples
-     * @param {Float32Array | null | undefined} targets
-     * @param {number} target_size
-     * @returns {Float32Array}
-     */
-    infer_batch_wasm(inputs, input_size, num_samples, targets, target_size) {
-        const ptr0 = passArrayF32ToWasm0(inputs, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        var ptr1 = isLikeNone(targets) ? 0 : passArrayF32ToWasm0(targets, wasm.__wbindgen_malloc);
-        var len1 = WASM_VECTOR_LEN;
-        const ret = wasm.predictivecodingengine_infer_batch_wasm(this.__wbg_ptr, ptr0, len0, input_size, num_samples, ptr1, len1, target_size);
-        var v3 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-        return v3;
-    }
-    /**
-     * Runs inference and returns a packed result array.
-     *
-     * Input format: Float32Array of input values.
-     * Optional targets: Float32Array of target values for output neurons.
-     *
-     * Result format (Float32Array):
-     * - \[0\]: steps_used (as f32)
-     * - \[1\]: final_energy
-     * - \[2\]: converged (1.0 = true, 0.0 = false)
-     * - \[3\]: num_neurons
-     * - \[4\]: num_non_inputs
-     * - \[5\]: energy_history_length
-     * - \[6..6+num_neurons\): latent values
-     * - \[6+num_neurons..6+num_neurons+num_non_inputs\): predictions
-     * - \[6+num_neurons+num_non_inputs..6+num_neurons+2*num_non_inputs\): errors
-     * - Remaining indices: energy history
-     * @param {Float32Array} input
-     * @param {Float32Array | null} [targets]
-     * @returns {Float32Array}
-     */
-    infer_wasm(input, targets) {
-        const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        var ptr1 = isLikeNone(targets) ? 0 : passArrayF32ToWasm0(targets, wasm.__wbindgen_malloc);
-        var len1 = WASM_VECTOR_LEN;
-        const ret = wasm.predictivecodingengine_infer_wasm(this.__wbg_ptr, ptr0, len0, ptr1, len1);
-        var v3 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
-        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-        return v3;
-    }
-    /**
-     * Creates a new PredictiveCodingEngine from serialised topology data.
-     *
-     * Data format (all values little-endian):
-     * - u32: num_inputs
-     * - u32: num_outputs
-     * - u32: num_neurons_total (including inputs)
-     * - u32: inference_steps
-     * - f32: inference_rate
-     * - f32: energy_threshold
-     * - For each non-input neuron:
-     *   - f32: bias
-     *   - u8: squash_type
-     *   - u8: is_hidden (1 = hidden, 0 = output)
-     *   - u16: num_connections
-     *   - For each connection:
-     *     - u16: from_index
-     *     - f32: weight (as 4 bytes, little-endian)
-     * @param {Uint8Array} data
-     */
-    constructor(data) {
-        const ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.predictivecodingengine_new(ptr0, len0);
-        if (ret[2]) {
-            throw takeFromExternrefTable0(ret[1]);
-        }
-        this.__wbg_ptr = ret[0];
-        PredictiveCodingEngineFinalization.register(this, this.__wbg_ptr, this);
-        return this;
-    }
-    /**
-     * Get the number of input neurons.
-     * @returns {number}
-     */
-    get num_inputs() {
-        const ret = wasm.predictivecodingengine_num_inputs(this.__wbg_ptr);
-        return ret >>> 0;
-    }
-    /**
-     * Get the number of neurons in the engine.
-     * @returns {number}
-     */
-    get num_neurons() {
-        const ret = wasm.predictivecodingengine_num_neurons(this.__wbg_ptr);
-        return ret >>> 0;
-    }
-    /**
-     * Get the number of output neurons.
-     * @returns {number}
-     */
-    get num_outputs() {
-        const ret = wasm.predictivecodingengine_num_outputs(this.__wbg_ptr);
-        return ret >>> 0;
-    }
-}
-if (Symbol.dispose) PredictiveCodingEngine.prototype[Symbol.dispose] = PredictiveCodingEngine.prototype.free;
-
-/**
  * Issue #1518 - Batch bias accumulation for 4 neurons.
  *
  * Processes 4 neurons in a single WASM call, returning a packed f64 array
@@ -773,29 +607,6 @@ export function calculate_error(squash_type, current_activation, target_activati
 }
 
 /**
- * JS `calculate_error_batch_4way(squash_type, current_activations, target_activations, current_values)`.
- *
- * Inputs must each have length 4; the function reads the first 4 lanes.
- * @param {number} squash_type
- * @param {Float32Array} current_activations
- * @param {Float32Array} target_activations
- * @param {Float32Array} current_values
- * @returns {Float32Array}
- */
-export function calculate_error_batch_4way(squash_type, current_activations, target_activations, current_values) {
-    const ptr0 = passArrayF32ToWasm0(current_activations, wasm.__wbindgen_malloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArrayF32ToWasm0(target_activations, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArrayF32ToWasm0(current_values, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ret = wasm.calculate_error_batch_4way(squash_type, ptr0, len0, ptr1, len1, ptr2, len2);
-    var v4 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-    return v4;
-}
-
-/**
  * Issue #1518 - Calculate the finalised weight after accumulation.
  *
  * Mirrors the TypeScript `calculateWeight()` function. Performs the
@@ -883,6 +694,52 @@ export function calculate_weight_batch_4way(packed_state, generations, plank_con
 }
 
 /**
+ * Fused activate + Categorical Error (argmax misclassification) for batch scoring.
+ *
+ * Reference TypeScript: `NEAT-AI/src/costs/CategoricalError.ts`. For each
+ * record, this compares the index of the largest target value (the true
+ * class) with the index of the largest output value (the predicted class).
+ * Each record contributes `0` for a correct prediction or `1` for an
+ * incorrect one. The returned sum is therefore the **count of
+ * misclassified records**; divide by `record_count` to obtain the mean
+ * error rate (`1 - accuracy`).
+ *
+ * Ties resolve to the first index (standard argmax convention) on both the
+ * target and output sides, matching the TS reference.
+ *
+ * This metric is intentionally **non-differentiable** — it is intended as a
+ * scoring / early-stop signal, not a gradient source.
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Count of misclassified records (divide by record count for mean error
+ * rate). Returns `0.0` when the record set is empty or `input_size +
+ * num_outputs == 0`.
+ *
+ * Issue stSoftwareAU/NEAT-AI-core#88 — extend native scorer with the last
+ * remaining built-in NEAT-AI cost function.
+ * @param {CompiledNetwork} network
+ * @param {Float32Array} records
+ * @param {number} input_size
+ * @param {number} num_outputs
+ * @param {boolean} forward_only
+ * @returns {number}
+ */
+export function categorical_error_sum_batch_packed(network, records, input_size, num_outputs, forward_only) {
+    _assertClass(network, CompiledNetwork);
+    const ptr0 = passArrayF32ToWasm0(records, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.categorical_error_sum_batch_packed(network.__wbg_ptr, ptr0, len0, input_size, num_outputs, forward_only);
+    return ret;
+}
+
+/**
  * Compute reverse topological order for backpropagation.
  *
  * Uses Kahn's algorithm on the forward connection graph. Returns neuron
@@ -962,22 +819,6 @@ export function cross_entropy_sum_batch_packed(network, records, input_size, num
 export function derivative(squash_type, value) {
     const ret = wasm.derivative(squash_type, value);
     return ret;
-}
-
-/**
- * JS `derivative_batch_4way(squash_type, x0, x1, x2, x3) -> Float32Array`.
- * @param {number} squash_type
- * @param {number} x0
- * @param {number} x1
- * @param {number} x2
- * @param {number} x3
- * @returns {Float32Array}
- */
-export function derivative_batch_4way(squash_type, x0, x1, x2, x3) {
-    const ret = wasm.derivative_batch_4way(squash_type, x0, x1, x2, x3);
-    var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
-    wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
-    return v1;
 }
 
 /**
@@ -1085,24 +926,6 @@ export function get_range(squash_type) {
     var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
     return v1;
-}
-
-/**
- * Get the number of neurons in the current training state.
- * @returns {number}
- */
-export function get_training_state_num_neurons() {
-    const ret = wasm.get_training_state_num_neurons();
-    return ret >>> 0;
-}
-
-/**
- * Get the number of synapses in the current training state.
- * @returns {number}
- */
-export function get_training_state_num_synapses() {
-    const ret = wasm.get_training_state_num_synapses();
-    return ret >>> 0;
 }
 
 /**
@@ -1410,11 +1233,25 @@ export function safe_zone_adjustment_batch(squash_types, raw_inputs, error, weig
  * Scan for available forward-only connection slots.
  *
  * Returns all `(from, to)` pairs where `from < to`, `to >= num_inputs`, the
- * target neuron is not constant, and no connection already exists. Uses a
- * flat boolean array for O(1) existence checks.
+ * target neuron is not constant, and no connection already exists.
+ *
+ * Issue #387 — existence is answered from a compressed per-`from` run of
+ * existing targets (an `O(n + synapses)` adjacency built once), merge-walked
+ * against the candidate range. The previous implementation allocated a dense
+ * `n × n` boolean matrix for the same answer: 2.78 MB zeroed per call on the
+ * production topology to record ~21.5k synapses, a fill factor under 0.8%.
+ * The candidate count is also computed up front so the result vector is
+ * allocated exactly once at its final size instead of growing through a
+ * realloc chain. Output — pairs and their order — is unchanged.
+ *
+ * Sorted input is *not* required: each per-`from` run is sorted on build, so
+ * an unsorted or duplicate-bearing edge list yields the same answer.
  *
  * # Returns
- * Flattened `[from, to, from, to, ...]` pairs.
+ * Flattened `[from, to, from, to, ...]` pairs. Returns an empty vector for
+ * malformed input — mismatched `from`/`to` lengths, an implausibly large
+ * `num_neurons`, or a candidate count whose result vector could not be
+ * addressed — rather than panicking (which would trap under WASM).
  * @param {Uint32Array} from_indices
  * @param {Uint32Array} to_indices
  * @param {Uint8Array} is_constant
@@ -1620,10 +1457,10 @@ export function version() {
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
-        __wbg___wbindgen_copy_to_typed_array_787746aeb47818bc: function(arg0, arg1, arg2) {
+        __wbg___wbindgen_copy_to_typed_array_4db0cbe2cc60dbee: function(arg0, arg1, arg2) {
             new Uint8Array(arg2.buffer, arg2.byteOffset, arg2.byteLength).set(getArrayU8FromWasm0(arg0, arg1));
         },
-        __wbg___wbindgen_throw_9c31b086c2b26051: function(arg0, arg1) {
+        __wbg___wbindgen_throw_344f42d3211c4765: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
@@ -1650,9 +1487,6 @@ function __wbg_get_imports() {
 const CompiledNetworkFinalization = (typeof FinalizationRegistry === 'undefined')
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry(ptr => wasm.__wbg_compilednetwork_free(ptr, 1));
-const PredictiveCodingEngineFinalization = (typeof FinalizationRegistry === 'undefined')
-    ? { register: () => {}, unregister: () => {} }
-    : new FinalizationRegistry(ptr => wasm.__wbg_predictivecodingengine_free(ptr, 1));
 
 function _assertClass(instance, klass) {
     if (!(instance instanceof klass)) {
@@ -1727,10 +1561,6 @@ function getUint8ArrayMemory0() {
         cachedUint8ArrayMemory0 = new Uint8Array(wasm.memory.buffer);
     }
     return cachedUint8ArrayMemory0;
-}
-
-function isLikeNone(x) {
-    return x === undefined || x === null;
 }
 
 function passArray32ToWasm0(arg, malloc) {

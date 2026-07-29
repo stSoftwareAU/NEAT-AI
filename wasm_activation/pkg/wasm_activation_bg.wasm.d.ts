@@ -2,7 +2,6 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const __wbg_compilednetwork_free: (a: number, b: number) => void;
-export const __wbg_predictivecodingengine_free: (a: number, b: number) => void;
 export const accumulate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
 export const accumulate_bias_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
 export const accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
@@ -14,9 +13,9 @@ export const accumulate_weight_persistent_8way: (a: number, b: number, c: number
 export const calculate_bias: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
 export const calculate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number];
 export const calculate_error: (a: number, b: number, c: number, d: number) => number;
-export const calculate_error_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
 export const calculate_weight: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number) => number;
 export const calculate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number];
+export const categorical_error_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const compilednetwork_activate: (a: number, b: number, c: number, d: number) => [number, number];
 export const compilednetwork_activate_and_trace: (a: number, b: number, c: number, d: number) => [number, number];
 export const compilednetwork_activate_and_trace_batch_4way: (a: number, b: number, c: number, d: number, e: number) => [number, number];
@@ -33,14 +32,11 @@ export const compute_reverse_topological_order: (a: number, b: number, c: number
 export const compute_score_components: (a: number, b: number, c: number, d: number) => [number, number];
 export const cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const derivative: (a: number, b: number) => number;
-export const derivative_batch_4way: (a: number, b: number, c: number, d: number, e: number) => [number, number];
 export const detect_cycles: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
 export const free_training_state: () => void;
 export const fused_error_distribution: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => [number, number];
 export const get_range: (a: number) => [number, number];
-export const get_training_state_num_neurons: () => number;
-export const get_training_state_num_synapses: () => number;
 export const hinge_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const init_training_state: (a: number, b: number) => void;
 export const limit_range: (a: number, b: number) => number;
@@ -48,13 +44,6 @@ export const mae_sum_batch_packed: (a: number, b: number, c: number, d: number, 
 export const mape_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-export const predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
-export const predictivecodingengine_infer_batch_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
-export const predictivecodingengine_infer_wasm: (a: number, b: number, c: number, d: number, e: number) => [number, number];
-export const predictivecodingengine_new: (a: number, b: number) => [number, number, number];
-export const predictivecodingengine_num_inputs: (a: number) => number;
-export const predictivecodingengine_num_neurons: (a: number) => number;
-export const predictivecodingengine_num_outputs: (a: number) => number;
 export const propagate_topological: (a: number, b: number) => [number, number];
 export const read_all_neuron_state: () => [number, number];
 export const read_all_synapse_state: () => [number, number];
