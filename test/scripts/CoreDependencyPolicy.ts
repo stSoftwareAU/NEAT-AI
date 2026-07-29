@@ -71,6 +71,76 @@ function extractDocNeatCore(
 }
 
 /**
+ * Read the cells of the markdown table row whose first cell mentions `needle`.
+ * Returns null when no such row exists, so callers can assert on absence.
+ */
+function tableRowCells(doc: string, needle: string): string[] | null {
+  for (const line of doc.split("\n")) {
+    if (!line.startsWith("|")) continue;
+    const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
+    if (cells.length > 1 && cells[0].includes(needle)) return cells;
+  }
+  return null;
+}
+
+/**
+ * Issue #3517 — the `assetSha256` pin is enforced only when the target rev
+ * equals `neatCore.rev` (#3514); the release sidecar is the anchor on a
+ * revision advance (#3515). The guard table must not advertise the pin as a
+ * whole-of-download check.
+ */
+Deno.test("policy guard table scopes assetSha256 to same-rev downloads", async () => {
+  const doc = await Deno.readTextFile(POLICY_DOC);
+  const cells = tableRowCells(doc, "neatCore.assetSha256");
+  assert(
+    cells,
+    `${POLICY_DOC} must document neatCore.assetSha256 in the guard table`,
+  );
+
+  const whenItRuns = cells[1];
+  assert(
+    !/every download/i.test(whenItRuns),
+    `The assetSha256 pin is not verified on every download — guard table says "${whenItRuns}"`,
+  );
+  assert(
+    /same[-\s]rev/i.test(whenItRuns),
+    `The assetSha256 guard row must say it runs on same-rev downloads only — got "${whenItRuns}"`,
+  );
+});
+
+/**
+ * Issue #3517 — `--allow-unverified` no longer covers a revision advance
+ * (#3515): an advance always requires the sidecar, with no override. Both the
+ * modes table and the bootstrap prose must say so.
+ */
+Deno.test("policy doc narrows --allow-unverified to the bootstrap case", async () => {
+  const doc = await Deno.readTextFile(POLICY_DOC);
+  const cells = tableRowCells(doc, "--allow-unverified");
+  assert(
+    cells,
+    `${POLICY_DOC} must document ./build.sh --allow-unverified in the modes table`,
+  );
+  assert(
+    /revision advance/i.test(cells[1]),
+    "The --allow-unverified modes-table row must state that it does not cover a " +
+      `revision advance (Issue #3515) — got "${cells[1]}"`,
+  );
+
+  const bootstrapProse = doc.split(/\n\s*\n/).filter((block) =>
+    !block.startsWith("|") && block.includes("--allow-unverified")
+  );
+  assert(
+    bootstrapProse.length > 0,
+    `${POLICY_DOC} must explain --allow-unverified in prose, not only in the modes table`,
+  );
+  assert(
+    bootstrapProse.some((block) => /revision advance/i.test(block)),
+    "The --allow-unverified prose must state that a revision advance is never " +
+      "allowed to proceed unverified (Issue #3515)",
+  );
+});
+
+/**
  * WHAT-test: the pin documented in CORE_DEPENDENCY_POLICY.md must agree with the
  * authoritative pin in deno.json on the values a machine can compare — `repo`
  * and `ref`. This fails only when the two genuinely disagree (e.g. the doc still
