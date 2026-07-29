@@ -184,6 +184,18 @@ Deno.test("ThroughputMetrics - fastQueueMaxDepth reflects population size during
   //     how many complete within generation 1 depends on runner speed.
   // Asserting a speed-dependent ceiling makes this test flaky rather than
   // catching a real regression, so we assert only the invariants that hold.
+  // Those invariants do hold for EVERY generation, not just the first, so
+  // check them all: a metric that goes NaN, negative, or fractional part-way
+  // through a run is a real regression this still catches.
+  for (const event of events) {
+    const depth = (event.throughput as GenerationThroughputMetrics)
+      .fastQueueMaxDepth;
+    assert(
+      Number.isInteger(depth) && depth >= 0,
+      `fastQueueMaxDepth should be a non-negative integer on generation ` +
+        `${event.generation}, got ${depth}`,
+    );
+  }
 });
 
 Deno.test("ThroughputMetrics - fastIdleMs <= fastWorkers × wallClockMs", async () => {
