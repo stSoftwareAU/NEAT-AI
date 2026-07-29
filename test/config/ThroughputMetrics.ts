@@ -171,21 +171,31 @@ Deno.test("ThroughputMetrics - fastQueueMaxDepth reflects population size during
     first.fastQueueMaxDepth >= 1,
     `fastQueueMaxDepth should be >= 1 on first generation, got ${first.fastQueueMaxDepth}`,
   );
-  // Bound the metric by the work the generation actually did rather than by a
-  // fixed multiple of the configured population size. The fitness queue holds
-  // exactly the creatures scored this generation (`scoredCreatureCount`) and
-  // the breeding queue never exceeds the effective population, which equals
-  // the configured size here because adaptive sizing is off by default. The
-  // population itself is NOT capped at `populationSize` — completed
-  // training/fine-tuning/discovery creatures are concatenated back in — so the
-  // old `2 × populationSize` ceiling asserted an invariant the implementation
-  // does not provide and failed on a slower runner (48 vs 30, PR #3503).
-  const upperBound = Math.max(first.scoredCreatureCount, populationSize);
-  assert(
-    first.fastQueueMaxDepth <= upperBound,
-    `fastQueueMaxDepth should be <= max(scoredCreatureCount, populationSize) ` +
-      `(${upperBound}), got ${first.fastQueueMaxDepth}`,
-  );
+  // No upper bound is asserted: the implementation provides none, and two
+  // successive attempts to invent one both failed on CI (`2 × populationSize`
+  // → 48 vs 30 in PR #3503; `max(scoredCreatureCount, populationSize)` → 42
+  // vs 15 in PR #3507). Neither term bounds the metric:
+  //   * `fastQueueMaxDepth` is the max of the fitness AND breeding queues, and
+  //     the breeding queue is unrelated to `scoredCreatureCount`;
+  //   * `scoredCreatureCount` counts creatures actually scored, which is at
+  //     most — not equal to — the fitness queue depth;
+  //   * the population is not capped at `populationSize`, because completed
+  //     training/fine-tuning/discovery creatures are concatenated back in, and
+  //     how many complete within generation 1 depends on runner speed.
+  // Asserting a speed-dependent ceiling makes this test flaky rather than
+  // catching a real regression, so we assert only the invariants that hold.
+  // Those invariants do hold for EVERY generation, not just the first, so
+  // check them all: a metric that goes NaN, negative, or fractional part-way
+  // through a run is a real regression this still catches.
+  for (const event of events) {
+    const depth = (event.throughput as GenerationThroughputMetrics)
+      .fastQueueMaxDepth;
+    assert(
+      Number.isInteger(depth) && depth >= 0,
+      `fastQueueMaxDepth should be a non-negative integer on generation ` +
+        `${event.generation}, got ${depth}`,
+    );
+  }
 });
 
 Deno.test("ThroughputMetrics - fastIdleMs <= fastWorkers × wallClockMs", async () => {
