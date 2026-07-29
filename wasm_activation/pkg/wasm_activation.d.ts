@@ -157,100 +157,6 @@ export class CompiledNetwork {
 }
 
 /**
- * The Predictive Coding inference engine.
- *
- * Holds the network topology and configuration for running the iterative
- * inference (settling) loop. The engine is constructed once from a creature's
- * topology and can be reused for multiple inference calls.
- *
- * Issue #36 — annotated with `#[wasm_bindgen]` on `wasm32` so the JS class
- * surface used by NEAT-AI is reproduced by `wasm-pack` against this crate.
- */
-export class PredictiveCodingEngine {
-    free(): void;
-    [Symbol.dispose](): void;
-    /**
-     * Computes weight and bias gradients from settled inference state.
-     *
-     * # Arguments
-     * * `latents` - Float32Array of settled latent values (length = num_neurons).
-     * * `errors` - Float32Array of prediction errors for non-input neurons.
-     * * `learning_rate` - The learning rate for weight updates.
-     *
-     * # Returns
-     * Packed Float32Array:
-     * - \[0\]: num_non_inputs (number of bias deltas)
-     * - \[1\]: num_weight_entries (number of weight delta triples)
-     * - \[2..2+num_non_inputs\): bias deltas
-     * - \[2+num_non_inputs..\]: weight delta triples (neuron_rel_idx, conn_local_idx, delta)
-     */
-    compute_gradients_wasm(latents: Float32Array, errors: Float32Array, learning_rate: number): Float32Array;
-    /**
-     * Runs inference on a batch of samples.
-     *
-     * Input format: packed Float32Array [input0..., input1..., ...]
-     * Each input has `input_size` elements.
-     *
-     * Result format: packed with per-record length headers (same as
-     * activate_and_trace_batch_4way pattern):
-     * - [0..num_samples): per-record lengths
-     * - Then each record in infer_wasm format
-     */
-    infer_batch_wasm(inputs: Float32Array, input_size: number, num_samples: number, targets: Float32Array | null | undefined, target_size: number): Float32Array;
-    /**
-     * Runs inference and returns a packed result array.
-     *
-     * Input format: Float32Array of input values.
-     * Optional targets: Float32Array of target values for output neurons.
-     *
-     * Result format (Float32Array):
-     * - \[0\]: steps_used (as f32)
-     * - \[1\]: final_energy
-     * - \[2\]: converged (1.0 = true, 0.0 = false)
-     * - \[3\]: num_neurons
-     * - \[4\]: num_non_inputs
-     * - \[5\]: energy_history_length
-     * - \[6..6+num_neurons\): latent values
-     * - \[6+num_neurons..6+num_neurons+num_non_inputs\): predictions
-     * - \[6+num_neurons+num_non_inputs..6+num_neurons+2*num_non_inputs\): errors
-     * - Remaining indices: energy history
-     */
-    infer_wasm(input: Float32Array, targets?: Float32Array | null): Float32Array;
-    /**
-     * Creates a new PredictiveCodingEngine from serialised topology data.
-     *
-     * Data format (all values little-endian):
-     * - u32: num_inputs
-     * - u32: num_outputs
-     * - u32: num_neurons_total (including inputs)
-     * - u32: inference_steps
-     * - f32: inference_rate
-     * - f32: energy_threshold
-     * - For each non-input neuron:
-     *   - f32: bias
-     *   - u8: squash_type
-     *   - u8: is_hidden (1 = hidden, 0 = output)
-     *   - u16: num_connections
-     *   - For each connection:
-     *     - u16: from_index
-     *     - f32: weight (as 4 bytes, little-endian)
-     */
-    constructor(data: Uint8Array);
-    /**
-     * Get the number of input neurons.
-     */
-    readonly num_inputs: number;
-    /**
-     * Get the number of neurons in the engine.
-     */
-    readonly num_neurons: number;
-    /**
-     * Get the number of output neurons.
-     */
-    readonly num_outputs: number;
-}
-
-/**
  * Issue #1518 - Batch bias accumulation for 4 neurons.
  *
  * Processes 4 neurons in a single WASM call, returning a packed f64 array
@@ -411,13 +317,6 @@ export function calculate_bias_batch_4way(packed_state: Float64Array, no_change_
 export function calculate_error(squash_type: number, current_activation: number, target_activation: number, current_value: number): number;
 
 /**
- * JS `calculate_error_batch_4way(squash_type, current_activations, target_activations, current_values)`.
- *
- * Inputs must each have length 4; the function reads the first 4 lanes.
- */
-export function calculate_error_batch_4way(squash_type: number, current_activations: Float32Array, target_activations: Float32Array, current_values: Float32Array): Float32Array;
-
-/**
  * Issue #1518 - Calculate the finalised weight after accumulation.
  *
  * Mirrors the TypeScript `calculateWeight()` function. Performs the
@@ -470,6 +369,40 @@ export function calculate_weight(count: number, total_positive_activation: numbe
 export function calculate_weight_batch_4way(packed_state: Float64Array, generations: number, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number, l1_weight_decay: number, l2_weight_decay: number): Float64Array;
 
 /**
+ * Fused activate + Categorical Error (argmax misclassification) for batch scoring.
+ *
+ * Reference TypeScript: `NEAT-AI/src/costs/CategoricalError.ts`. For each
+ * record, this compares the index of the largest target value (the true
+ * class) with the index of the largest output value (the predicted class).
+ * Each record contributes `0` for a correct prediction or `1` for an
+ * incorrect one. The returned sum is therefore the **count of
+ * misclassified records**; divide by `record_count` to obtain the mean
+ * error rate (`1 - accuracy`).
+ *
+ * Ties resolve to the first index (standard argmax convention) on both the
+ * target and output sides, matching the TS reference.
+ *
+ * This metric is intentionally **non-differentiable** — it is intended as a
+ * scoring / early-stop signal, not a gradient source.
+ *
+ * # Arguments
+ * * `network` - The compiled network to activate
+ * * `records` - Packed array of `[inputs..., targets...]` records
+ * * `input_size` - Number of inputs per record
+ * * `num_outputs` - Number of outputs per record
+ * * `forward_only` - If true, skip reset_state() (for forward-only networks)
+ *
+ * # Returns
+ * Count of misclassified records (divide by record count for mean error
+ * rate). Returns `0.0` when the record set is empty or `input_size +
+ * num_outputs == 0`.
+ *
+ * Issue stSoftwareAU/NEAT-AI-core#88 — extend native scorer with the last
+ * remaining built-in NEAT-AI cost function.
+ */
+export function categorical_error_sum_batch_packed(network: CompiledNetwork, records: Float32Array, input_size: number, num_outputs: number, forward_only: boolean): number;
+
+/**
  * Compute reverse topological order for backpropagation.
  *
  * Uses Kahn's algorithm on the forward connection graph. Returns neuron
@@ -506,11 +439,6 @@ export function cross_entropy_sum_batch_packed(network: CompiledNetwork, records
  * JS `derivative(squash_type, value)`.
  */
 export function derivative(squash_type: number, value: number): number;
-
-/**
- * JS `derivative_batch_4way(squash_type, x0, x1, x2, x3) -> Float32Array`.
- */
-export function derivative_batch_4way(squash_type: number, x0: number, x1: number, x2: number, x3: number): Float32Array;
 
 /**
  * Detect whether the topology contains cycles among non-input neurons.
@@ -558,16 +486,6 @@ export function fused_error_distribution(neuron_squash_type: number, neuron_acti
  * JS `get_range(squash_type) -> Float32Array of [low, high]`.
  */
 export function get_range(squash_type: number): Float32Array;
-
-/**
- * Get the number of neurons in the current training state.
- */
-export function get_training_state_num_neurons(): number;
-
-/**
- * Get the number of synapses in the current training state.
- */
-export function get_training_state_num_synapses(): number;
 
 /**
  * Fused activate + Hinge Loss calculation for batch scoring.
@@ -743,11 +661,25 @@ export function safe_zone_adjustment_batch(squash_types: Uint8Array, raw_inputs:
  * Scan for available forward-only connection slots.
  *
  * Returns all `(from, to)` pairs where `from < to`, `to >= num_inputs`, the
- * target neuron is not constant, and no connection already exists. Uses a
- * flat boolean array for O(1) existence checks.
+ * target neuron is not constant, and no connection already exists.
+ *
+ * Issue #387 — existence is answered from a compressed per-`from` run of
+ * existing targets (an `O(n + synapses)` adjacency built once), merge-walked
+ * against the candidate range. The previous implementation allocated a dense
+ * `n × n` boolean matrix for the same answer: 2.78 MB zeroed per call on the
+ * production topology to record ~21.5k synapses, a fill factor under 0.8%.
+ * The candidate count is also computed up front so the result vector is
+ * allocated exactly once at its final size instead of growing through a
+ * realloc chain. Output — pairs and their order — is unchanged.
+ *
+ * Sorted input is *not* required: each per-`from` run is sorted on build, so
+ * an unsorted or duplicate-bearing edge list yields the same answer.
  *
  * # Returns
- * Flattened `[from, to, from, to, ...]` pairs.
+ * Flattened `[from, to, from, to, ...]` pairs. Returns an empty vector for
+ * malformed input — mismatched `from`/`to` lengths, an implausibly large
+ * `num_neurons`, or a candidate count whose result vector could not be
+ * addressed — rather than panicking (which would trap under WASM).
  */
 export function scan_available_connections(from_indices: Uint32Array, to_indices: Uint32Array, is_constant: Uint8Array, num_neurons: number, num_inputs: number): Uint32Array;
 
@@ -827,7 +759,6 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_compilednetwork_free: (a: number, b: number) => void;
-    readonly __wbg_predictivecodingengine_free: (a: number, b: number) => void;
     readonly accumulate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly accumulate_bias_batch_8way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => [number, number];
     readonly accumulate_bias_persistent_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
@@ -839,9 +770,9 @@ export interface InitOutput {
     readonly calculate_bias: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => number;
     readonly calculate_bias_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => [number, number];
     readonly calculate_error: (a: number, b: number, c: number, d: number) => number;
-    readonly calculate_error_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
     readonly calculate_weight: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number, o: number) => number;
     readonly calculate_weight_batch_4way: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => [number, number];
+    readonly categorical_error_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly compilednetwork_activate: (a: number, b: number, c: number, d: number) => [number, number];
     readonly compilednetwork_activate_and_trace: (a: number, b: number, c: number, d: number) => [number, number];
     readonly compilednetwork_activate_and_trace_batch_4way: (a: number, b: number, c: number, d: number, e: number) => [number, number];
@@ -858,14 +789,11 @@ export interface InitOutput {
     readonly compute_score_components: (a: number, b: number, c: number, d: number) => [number, number];
     readonly cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly derivative: (a: number, b: number) => number;
-    readonly derivative_batch_4way: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly detect_cycles: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly distribute_elastic_error: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
     readonly free_training_state: () => void;
     readonly fused_error_distribution: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => [number, number];
     readonly get_range: (a: number) => [number, number];
-    readonly get_training_state_num_neurons: () => number;
-    readonly get_training_state_num_synapses: () => number;
     readonly hinge_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly init_training_state: (a: number, b: number) => void;
     readonly limit_range: (a: number, b: number) => number;
@@ -873,13 +801,6 @@ export interface InitOutput {
     readonly mape_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly predictivecodingengine_compute_gradients_wasm: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
-    readonly predictivecodingengine_infer_batch_wasm: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => [number, number];
-    readonly predictivecodingengine_infer_wasm: (a: number, b: number, c: number, d: number, e: number) => [number, number];
-    readonly predictivecodingengine_new: (a: number, b: number) => [number, number, number];
-    readonly predictivecodingengine_num_inputs: (a: number) => number;
-    readonly predictivecodingengine_num_neurons: (a: number) => number;
-    readonly predictivecodingengine_num_outputs: (a: number) => number;
     readonly propagate_topological: (a: number, b: number) => [number, number];
     readonly read_all_neuron_state: () => [number, number];
     readonly read_all_synapse_state: () => [number, number];
