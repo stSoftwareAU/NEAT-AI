@@ -638,13 +638,13 @@ for GPU-accelerated structural analysis.
 
 ### 🖥️ FFI Operations
 
-| Function                  | Purpose                                          |
-| ------------------------- | ------------------------------------------------ |
-| `recordDiscovery()`       | Record training data to Parquet via Rust         |
-| `analyzeParallel()`       | Run GPU/CPU parallel analysis on recorded data   |
-| `readDiscoveryRecords()`  | Read Parquet data for a specific neuron          |
-| `rankFocusNeurons()`      | Rank neurons by error impact for focus selection |
-| `mergeDiscoveryParquet()` | Merge multiple Parquet files                     |
+| Function                  | Purpose                                        |
+| ------------------------- | ---------------------------------------------- |
+| `recordDiscovery()`       | Record training data to Parquet via Rust       |
+| `analyzeParallel()`       | Run GPU/CPU parallel analysis on recorded data |
+| `readDiscoveryRecords()`  | Read Parquet data for a specific neuron        |
+| `rankFocusNeurons()`      | Rank neurons by structural impact (no Parquet) |
+| `mergeDiscoveryParquet()` | Merge multiple Parquet files                   |
 
 Two further exports cover analysis memory (see
 [Analysis memory controls](#-analysis-memory-controls)):
@@ -733,12 +733,21 @@ working; the missing surface is reported with a one-time warning and
 Before analysis, the pipeline selects which neurons to focus on. Selection uses
 weighted random sampling based on:
 
-- **Total error** — Average absolute error for the neuron (capped by maximum
+- **Total error** — Accumulated absolute error for the neuron (capped by maximum
   output error).
 - **Impact** — How much the neuron affects outputs through outgoing synapse
   weights (0.0–1.0).
 - **Weighted score** — `totalError × (impact + ε)` — drives roulette-wheel
   selection.
+
+`rankFocusNeurons()` is **structure-only**: it never opens the discovery
+Parquet, so it supplies the structural `impact` but always reports
+`totalError: 0`. NEAT-AI therefore hydrates each ranked neuron's total error
+from the per-neuron absolute error accumulated locally during recording (Issue
+#3531). Without that hydration `totalError × impact` is zero for every
+candidate, so all of them fall below `costOfGrowth` and discovery adds nothing.
+When the ranking reports zero error and no recorded error exists either, the
+focus path warns rather than passing an unusable all-zero ranking on silently.
 
 Low-impact neurons (impact < costOfGrowth) are flagged separately as removal
 candidates rather than analysis targets.
