@@ -6,8 +6,8 @@ option-removal audit (Issue #3518). It enumerates every NEAT-AI option key from
 a baseline inventory the sibling removal slices work from.
 
 The harness answers **`IN USE` vs `not set`** only. The `QUALIFIES` vs
-`KEEP (load-bearing default)` call needs a human reading the default's code
-path — that remains the sibling slices' job.
+`KEEP (load-bearing default)` call needs a human reading the default's code path
+— that remains the sibling slices' job.
 
 ## Running it
 
@@ -18,13 +18,13 @@ deno run --allow-read --allow-write --allow-run --allow-env \
 
 Useful flags (`--help` lists them all):
 
-| Flag | Effect |
-| --- | --- |
-| `--out-dir DIR` | Where the CSV/markdown land (default `docs/audit/option-usage`) |
-| `--clone-root DIR` | Directory holding the sibling consumer clones (default `..`) |
-| `--cache FILE` | Probe cache; a re-run costs no search quota |
-| `--no-code-search` | Local grep only — fast, but skips the code-search cross-check |
-| `--controls-only` | Run the two controls and stop |
+| Flag               | Effect                                                          |
+| ------------------ | --------------------------------------------------------------- |
+| `--out-dir DIR`    | Where the CSV/markdown land (default `docs/audit/option-usage`) |
+| `--clone-root DIR` | Directory holding the sibling consumer clones (default `..`)    |
+| `--cache FILE`     | Probe cache; a re-run costs no search quota                     |
+| `--no-code-search` | Local grep only — fast, but skips the code-search cross-check   |
+| `--controls-only`  | Run the two controls and stop                                   |
 
 Exit codes: `0` clean, `1` a control failed or a key stayed `UNKNOWN`, `2` bad
 usage.
@@ -61,7 +61,7 @@ the argument list.
 
 Excluding NEAT-AI with a `-repo:` qualifier does **not** fix this — the
 qualifier is ignored in that position and the window saturates anyway. The org
-backstop is therefore a single `--filename deno.json` search that *discovers*
+backstop is therefore a single `--filename deno.json` search that _discovers_
 the consumer set (currently GRQ and NEAT-AI-Examples), after which every key is
 checked per repo.
 
@@ -106,20 +106,20 @@ false `QUALIFIES` verdict.
 `docs/audit/option-usage/option-usage.csv` and `option-usage.md` carry one row
 per declaration site:
 
-| Column | Meaning |
-| --- | --- |
-| `slice` | `top-level` (`NeatArguments`) or `nested` (a `*Config.ts` interface) |
-| `owner_file` / `owner_interface` | Where the key is declared |
-| `key` | The option key |
-| `status` | `IN USE`, `not set`, or `UNKNOWN` |
-| `set_by` | Consumers that mention the key |
-| `verdict_candidate` | What a sibling slice should do next |
-| `detail` | Evidence paths, or why the key is unresolved |
+| Column                           | Meaning                                                              |
+| -------------------------------- | -------------------------------------------------------------------- |
+| `slice`                          | `top-level` (`NeatArguments`) or `nested` (a `*Config.ts` interface) |
+| `owner_file` / `owner_interface` | Where the key is declared                                            |
+| `key`                            | The option key                                                       |
+| `status`                         | `IN USE`, `not set`, or `UNKNOWN`                                    |
+| `set_by`                         | Consumers that mention the key                                       |
+| `verdict_candidate`              | What a sibling slice should do next                                  |
+| `detail`                         | Evidence paths, or why the key is unresolved                         |
 
 The harness matches the key as a plain string, so a nested key with a generic
 name (`enabled`, `weight`) and a key mentioned only in a consumer's
-documentation both come out as `IN USE`. That bias is deliberate: an
-over-broad match can only ever prevent a removal, never cause a wrong one.
-Check the `detail` column before treating an `IN USE` verdict as a live call
-site — a row whose only evidence is `docs/…` is a documentation mention, not a
-consumer setting the option.
+documentation both come out as `IN USE`. That bias is deliberate: an over-broad
+match can only ever prevent a removal, never cause a wrong one. Check the
+`detail` column before treating an `IN USE` verdict as a live call site — a row
+whose only evidence is `docs/…` is a documentation mention, not a consumer
+setting the option.
