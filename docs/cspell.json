@@ -571,6 +571,10 @@
     "Δfitness",
     "Δscore",
     "Δweight",
-    "Σmax"
+    "Σmax",
+    "destructures",
+    "grpo",
+    "unchunked",
+    "mnist"
   ]
 }
