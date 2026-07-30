@@ -116,6 +116,41 @@ Drop-in API and configuration material.
   configuration surface. The detail docs under [`config/`](config/) cover
   presets, core evolution, training, discovery, mutation adaptation,
   regularisation, population sizing, workers, logging, and recipes.
+- **[OPTION_USAGE_AUDIT.md](OPTION_USAGE_AUDIT.md)** — the option-usage scan
+  harness (`scripts/audit-option-usage.ts`): how every option key is enumerated
+  from source and checked against consumer repositories, the built-in controls,
+  and the search traps that would otherwise corrupt the audit.
+- **[OPTION_AUDIT_SLICE_A.md](OPTION_AUDIT_SLICE_A.md)** — slice A of the #3505
+  audit: the 46 non-`discovery*` top-level options classified `IN USE` /
+  `KEEP (load-bearing default)` / `QUALIFIES`, with the per-key evidence and the
+  two search faults that had to be corrected first.
+- **[OPTION_AUDIT_SLICE_B.md](OPTION_AUDIT_SLICE_B.md)** — slice B of the #3505
+  audit: the 33 `discovery*` top-level options plus the 3 discovery-scoped
+  nested configs, with the env-var / CLI-alias forms that a camelCase-only grep
+  misses and the substring false positive that hides an unset nested config.
+- **[OPTION_AUDIT_SLICE_C.md](OPTION_AUDIT_SLICE_C.md)** — slice C of the #3505
+  audit: the 10 population & selection nested configs and all 49 of their
+  fields, why no consumer sets any of them, and how a nested field's verdict is
+  resolved through its parent rather than by a name grep that collides with
+  common identifiers.
+- **[OPTION_AUDIT_SLICE_D.md](OPTION_AUDIT_SLICE_D.md)** — slice D of the #3505
+  audit: the 12 training, regularisation & data-shaping nested configs and all
+  57 of their fields, the two keys GRQ genuinely drives, and the camelCase-split
+  false positive that makes the code-search index report an unset key as used.
+- **[OPTION_AUDIT_SLICE_E.md](OPTION_AUDIT_SLICE_E.md)** — slice E of the #3505
+  audit: the 4 runtime & infrastructure nested configs, the internal
+  `RustScorerConfig`, and the 6 injection points, and why two of them are
+  load-bearing in production despite zero camelCase hits in either consumer —
+  they are set entirely from environment variables.
+- **[OPTION_AUDIT_SLICE_F.md](OPTION_AUDIT_SLICE_F.md)** — slice F of the #3505
+  audit: the 4 experimental research configs (`mcmc`, `hyperparameterEvolution`,
+  `opd`, `specialist`) and all 39 of their fields, every one `QUALIFIES`, plus
+  the GRQ evolution-mode sweep that advertises three of them without wiring any.
+- **[OPTION_AUDIT_CONSOLIDATED.md](OPTION_AUDIT_CONSOLIDATED.md)** — the #3505
+  roll-up: the six slice tables merged into one, the mechanical coverage check
+  that diffs them against the harness inventory, the one gap it found
+  (`mutation`), the cross-slice and cross-campaign deduplication, and the order
+  the removal issues must land in.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the

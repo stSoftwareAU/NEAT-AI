@@ -529,11 +529,13 @@
     "unmutated",
     "unnormalised",
     "unpartitioned",
+    "unparseable",
     "unpoisoned",
     "unreached",
     "unrecoverably",
     "unregularised",
     "unrepresentable",
+    "unscanned",
     "unscored",
     "unserialisable",
     "UNSERIALISABLE",
@@ -571,6 +573,10 @@
     "Δfitness",
     "Δscore",
     "Δweight",
-    "Σmax"
+    "Σmax",
+    "destructures",
+    "grpo",
+    "unchunked",
+    "mnist"
   ]
 }
