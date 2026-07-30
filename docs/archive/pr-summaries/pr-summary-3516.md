@@ -4,7 +4,7 @@
 
 `test/scripts/BuildScriptContentHash.ts` only ever exercised **same-rev**
 downloads, which is why #3504 shipped: a stale `deno.json`
-`neatCore.assetSha256` pin was compared against a *different* revision's tarball
+`neatCore.assetSha256` pin was compared against a _different_ revision's tarball
 and blocked every internal bump. This PR adds the missing regression coverage
 for the rev-advance decision. Closes #3516.
 
@@ -54,8 +54,8 @@ Backend/CLI change — no web interface to screenshot.
 
 **Acceptance criterion spot-check.** The criterion is "fails if the
 `TARGET_REV == PINNED_REV` condition on the pin check is reverted". Reverting
-that guard locally (`if [[ "$pinned_rev" != "$target_rev" ]]` → `if false`) turns
-the suite red exactly as intended:
+that guard locally (`if [[ "$pinned_rev" != "$target_rev" ]]` → `if false`)
+turns the suite red exactly as intended:
 
 ```
 FAILURES
@@ -86,21 +86,37 @@ stand-in blob, both under a `makeTempDir` scratch dir; the write-back runs
 against a temp copy of `deno.json`. `git status` is clean of `deno.json` and
 `wasm_activation/pkg` after the run.
 
+### Pre-existing failures on this milestone branch (not caused by this PR)
+
+`./quality.sh` reports 13 unrelated failures on the branch point, all of which
+reproduce without this PR's files and were already red on #3539's own
+`Test Results` check:
+
+| Failing tests                                              | Root cause                                                                                                   |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 4 × `ErrorGuidedStructuralEvolution/*` discovery-selection | Already tracked by #3531                                                                                     |
+| 2 × `BuildFingerprint` / `WasmPublishIncluded`             | `wasm_activation/pkg/.gitignore` was clobbered to a bare `*` by the bundle refresh in #3539 — filed as #3544 |
+| 6 × `WasmActivationTrapGuardIssue2658`                     | The core rev bump to `7eaa3322` moved synapse-index validation to construction — filed as #3545              |
+
+#3544 is the more urgent of the two new ones: a bare `*` excludes the whole
+vendored bundle from `deno publish`, so JSR consumers would 404 on
+`wasm_activation.js`.
+
 ## Test Plan
 
 New `test/scripts/BuildScriptRevAdvance.ts` (picked up automatically by the
 `test/**/*.ts` include in `deno.json` — no registration change needed), covering
 the five cases from the issue plus two guard-rails:
 
-| # | Test | Asserts |
-| - | ---- | ------- |
-| 1 | stale pin not compared on an advance (#3504) | rc 0, sidecar label on stdout, pin **not** reported as an anchor |
-| 2 | pin still bites on the pinned rev | rc 1, `deno.json neatCore.assetSha256` source label |
-| 3 | advance with no sidecar fails loud | rc 3 with **and** without `--allow-unverified` (#3515) |
-| 4 | advance with a mismatching sidecar fails | rc 1, `release sidecar …` source label |
-| 5 | write-back on a successful advance | temp `deno.json` ends with the new `rev` + `assetSha256`, unrelated keys preserved |
-| + | same-rev bootstrap preserved (#2744) | rc 2 under `--allow-unverified`, rc 3 without — guards against over-tightening |
-| + | write-back is a no-op when already current | `deno.json` left byte-identical |
+| # | Test                                         | Asserts                                                                            |
+| - | -------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 1 | stale pin not compared on an advance (#3504) | rc 0, sidecar label on stdout, pin **not** reported as an anchor                   |
+| 2 | pin still bites on the pinned rev            | rc 1, `deno.json neatCore.assetSha256` source label                                |
+| 3 | advance with no sidecar fails loud           | rc 3 with **and** without `--allow-unverified` (#3515)                             |
+| 4 | advance with a mismatching sidecar fails     | rc 1, `release sidecar …` source label                                             |
+| 5 | write-back on a successful advance           | temp `deno.json` ends with the new `rev` + `assetSha256`, unrelated keys preserved |
+| + | same-rev bootstrap preserved (#2744)         | rc 2 under `--allow-unverified`, rc 3 without — guards against over-tightening     |
+| + | write-back is a no-op when already current   | `deno.json` left byte-identical                                                    |
 
 WHAT-tests only: exit codes, error source labels and resulting `deno.json`
 contents. No grepping of `build.sh` source text — the header comment in
@@ -119,8 +135,9 @@ environment; no Node tooling was introduced to make it testable.
 
 ## Pre-PR Security Self-Check
 
-- **Input validation** — `select_tarball_anchor` re-uses `verify_tarball_sha256`,
-  which rejects anything that is not a 64-char hex digest before comparing.
+- **Input validation** — `select_tarball_anchor` re-uses
+  `verify_tarball_sha256`, which rejects anything that is not a 64-char hex
+  digest before comparing.
 - **Injection surface** — `update_core_pin` passes the rev and hash via the
   environment, never interpolated into the `deno eval` source, so a hostile
   rev/hash cannot inject code. This is the pre-existing property, preserved.
