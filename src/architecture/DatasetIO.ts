@@ -77,6 +77,48 @@ export function readDatasetDirEntriesSync(dataDir: string): Deno.DirEntry[] {
   }
 }
 
+/**
+ * Assert a read returned a whole number of records.
+ *
+ * Issue #3541: both dataset readers previously used
+ * `assert(bytesRead % BYTES_PER_RECORD === 0, "Invalid number of bytes read")`,
+ * which named neither the file nor any byte count. That bare message was the
+ * one the operator saw when a corrupt corpus killed a run — one line after the
+ * native Rust scorer's genuinely diagnostic `Trailing N bytes (incomplete
+ * record)` had been demoted to a warning by the WASM "fallback".
+ *
+ * @param filePath - The `.bin` file being read
+ * @param bytesRead - Bytes returned by the read
+ * @param bytesPerRecord - Record size, `(inputs + outputs) * 4`
+ * @param shape - Creature input/output counts, reported for context
+ * @throws {DatasetError} With reason `CORRUPT_DATA` for a short/partial record
+ */
+export function assertWholeRecordRead(
+  filePath: string,
+  bytesRead: number,
+  bytesPerRecord: number,
+  shape: { inputs: number; outputs: number },
+): void {
+  if (bytesRead <= 0) {
+    throw new DatasetError(
+      `training data file ${filePath} returned ${bytesRead} bytes from a read`,
+      "CORRUPT_DATA",
+      filePath,
+    );
+  }
+  const trailingBytes = bytesRead % bytesPerRecord;
+  if (trailingBytes !== 0) {
+    throw new DatasetError(
+      `training data file ${filePath} is not a whole number of records: ` +
+        `read ${bytesRead} bytes at ${bytesPerRecord} bytes/record ` +
+        `(${shape.inputs} inputs + ${shape.outputs} outputs) — ` +
+        `Trailing ${trailingBytes} bytes (incomplete record)`,
+      "CORRUPT_DATA",
+      filePath,
+    );
+  }
+}
+
 function translateMissingFile(error: unknown, filePath: string): unknown {
   if (error instanceof Deno.errors.NotFound) {
     return new DatasetError(

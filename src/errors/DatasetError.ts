@@ -21,7 +21,14 @@ export type DatasetErrorReason =
   /** A `.bin` file disappeared between listing and reading it. */
   | "FILE_MISSING"
   /** The directory exists but holds no `.bin` training files. */
-  | "NO_DATA_FILES";
+  | "NO_DATA_FILES"
+  /**
+   * The dataset is present but malformed — e.g. a `.bin` whose length is not a
+   * whole multiple of the record size. Issue #3541: this is a *data* fault, so
+   * it is never retryable on another scoring backend; the WASM path reads the
+   * same bytes and fails the same way with a worse message.
+   */
+  | "CORRUPT_DATA";
 
 export class DatasetError extends Error {
   override readonly name = "DatasetError";
