@@ -102,7 +102,8 @@ Deno.test("CONTRIBUTING.md describes assetSha256 as a per-revision pin rewritten
   );
   assert(
     scoped.some((block) =>
-      /build\.sh/.test(block) && /rewrit|updates|regenerat/i.test(block)
+      /build\.sh/.test(block) &&
+      /(rewrites?|rewritten|regenerate|regenerated|updates?)/i.test(block)
     ),
     "CONTRIBUTING.md must state that ./build.sh rewrites neatCore.assetSha256 " +
       "rather than contributors hand-maintaining it across bumps",
