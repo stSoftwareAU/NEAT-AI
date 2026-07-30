@@ -63,8 +63,8 @@ exit=2
 `actionlint .github/workflows/coverage.yaml` passes with no findings.
 
 Docs: the shard/merge flow in
-[`docs/troubleshooting/CI.md`](../../troubleshooting/CI.md) is updated with a new
-"Coverage must never go missing silently" section explaining the hidden-file
+[`docs/troubleshooting/CI.md`](../../troubleshooting/CI.md) is updated with a
+new "Coverage must never go missing silently" section explaining the hidden-file
 footgun and both guards.
 
 ## Test Plan
@@ -86,8 +86,8 @@ New — `test/ci/CoverageMergeGate.ts` (calls the real gate functions):
 
 New — `test/ci/CoverageShardArtifactPaths.ts` (parses the committed workflow):
 
-- shard artifact upload lists no hidden paths and includes
-  {% raw %}`coverage-${{ matrix.shard }}/`{% endraw %}
+- shard artifact upload lists no hidden paths and includes {% raw
+  %}`coverage-${{ matrix.shard }}/`{% endraw %}
 - `COV_DIR` is not dot-prefixed
 - merge job invokes the gate before `deno coverage`, does not swallow it with
   `|| true`, and globs `coverage-*/`
