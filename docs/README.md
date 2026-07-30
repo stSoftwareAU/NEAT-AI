@@ -116,6 +116,10 @@ Drop-in API and configuration material.
   configuration surface. The detail docs under [`config/`](config/) cover
   presets, core evolution, training, discovery, mutation adaptation,
   regularisation, population sizing, workers, logging, and recipes.
+- **[OPTION_USAGE_AUDIT.md](OPTION_USAGE_AUDIT.md)** — the option-usage scan
+  harness (`scripts/audit-option-usage.ts`): how every option key is enumerated
+  from source and checked against consumer repositories, the built-in controls,
+  and the search traps that would otherwise corrupt the audit.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the
