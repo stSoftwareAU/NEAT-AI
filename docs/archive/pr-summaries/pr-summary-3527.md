@@ -6,8 +6,8 @@ Verification-only change. The four dead WASM exports tracked by
 stSoftwareAU/NEAT-AI-core#416 (`derivative_batch_4way`,
 `calculate_error_batch_4way`, `get_training_state_num_neurons`,
 `get_training_state_num_synapses`) are **already gone** from this repo's
-vendored bundle — the routine internal bump in PR #3548 advanced
-`neatCore.rev` past the removal commits, so no re-vendor was required.
+vendored bundle — the routine internal bump in PR #3548 advanced `neatCore.rev`
+past the removal commits, so no re-vendor was required.
 
 This PR records the verification evidence; no source, test, or vendored file
 changed. Closes #3527.
@@ -17,8 +17,8 @@ changed. Closes #3527.
 Backend/CLI verification only — there is no web interface to screenshot.
 
 **1. `neatCore.rev` includes all three #416 removals.** `deno.json` pins
-`7eaa332270fc119f59080b04a267097ab83a5b7a`, which the GitHub compare API
-reports as `identical` to NEAT-AI-core `Develop`; core issue #416 is closed.
+`7eaa332270fc119f59080b04a267097ab83a5b7a`, which the GitHub compare API reports
+as `identical` to NEAT-AI-core `Develop`; core issue #416 is closed.
 
 **2. The four dead exports are gone, live siblings remain.**
 
@@ -33,8 +33,8 @@ $ grep -rn 'derivative_batch_4way\|calculate_error_batch_4way\|get_training_stat
 ```
 
 The count is **49**, not the 48 the issue predicted: core removed the four dead
-exports and added one new live export in the same span. The diff of the
-vendored `.d.ts` at the bump commit (`aac95bdc`) shows exactly that:
+exports and added one new live export in the same span. The diff of the vendored
+`.d.ts` at the bump commit (`aac95bdc`) shows exactly that:
 
 ```
 - export function calculate_error_batch_4way(...)
@@ -50,8 +50,8 @@ vendored `.d.ts` at the bump commit (`aac95bdc`) shows exactly that:
 
 **3. `./build.sh` is a no-op at the current pin** — quality-gate step 7 reports
 `Skipping build: wasm_activation/pkg already matches
-stSoftwareAU/NEAT-AI-core@7eaa332270fc119f59080b04a267097ab83a5b7a`, so
-`content-manifest.sha256`, `build-fingerprint` and `neat_core_rev.txt` are
+stSoftwareAU/NEAT-AI-core@7eaa332270fc119f59080b04a267097ab83a5b7a`,
+so `content-manifest.sha256`, `build-fingerprint` and `neat_core_rev.txt` are
 already consistent with the pin.
 
 ```mermaid
