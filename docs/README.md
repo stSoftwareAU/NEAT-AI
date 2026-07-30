@@ -133,6 +133,10 @@ Drop-in API and configuration material.
   fields, why no consumer sets any of them, and how a nested field's verdict is
   resolved through its parent rather than by a name grep that collides with
   common identifiers.
+- **[OPTION_AUDIT_SLICE_D.md](OPTION_AUDIT_SLICE_D.md)** — slice D of the #3505
+  audit: the 12 training, regularisation & data-shaping nested configs and all
+  57 of their fields, the two keys GRQ genuinely drives, and the camelCase-split
+  false positive that makes the code-search index report an unset key as used.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the
