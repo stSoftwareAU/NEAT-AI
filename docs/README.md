@@ -120,6 +120,10 @@ Drop-in API and configuration material.
   harness (`scripts/audit-option-usage.ts`): how every option key is enumerated
   from source and checked against consumer repositories, the built-in controls,
   and the search traps that would otherwise corrupt the audit.
+- **[OPTION_AUDIT_SLICE_A.md](OPTION_AUDIT_SLICE_A.md)** — slice A of the #3505
+  audit: the 46 non-`discovery*` top-level options classified `IN USE` /
+  `KEEP (load-bearing default)` / `QUALIFIES`, with the per-key evidence and the
+  two search faults that had to be corrected first.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the
