@@ -26,6 +26,11 @@ import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { createCompatibleFatherFromCreatures } from "@breed/Father.ts";
 import { Offspring } from "@architecture/Offspring.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import {
+  createSeededRng,
+  resetGlobalRandomNumberGeneratorForTesting,
+  setRandomNumberGenerator,
+} from "@utils/RandomNumberGenerator.ts";
 
 const FIXTURE_DIR = new URL(
   "./fixtures/synthetic-alignment/",
@@ -167,9 +172,25 @@ Deno.test(
     // (5) Breed via Offspring.breed and assert the child is valid.
     //     Pass `geneticCompatibilityThreshold` so the standard crossover
     //     path runs (the parents are intentionally incompatible).
-    const child = Offspring.breed(mother, father, {
-      geneticCompatibilityThreshold: 1,
-    });
+    //
+    //     Crossover picks each gene from either parent at random, so a small
+    //     fraction of draws (~1% for these fixtures) take every gene from one
+    //     parent. `Offspring.breed` deliberately drops such offspring — a clone
+    //     of a parent is not useful — and returns `undefined`. A single
+    //     unseeded attempt therefore made this assertion flaky in CI. Seed the
+    //     RNG and search a bounded seed range for a draw that yields a genuine
+    //     crossover child, which is what criteria (3) and (4) actually assert.
+    let child: Creature | undefined;
+    try {
+      for (let seed = 1; seed <= 64 && child === undefined; seed++) {
+        setRandomNumberGenerator(createSeededRng(seed));
+        child = Offspring.breed(mother, father, {
+          geneticCompatibilityThreshold: 1,
+        });
+      }
+    } finally {
+      resetGlobalRandomNumberGeneratorForTesting();
+    }
     assert(
       child !== undefined,
       "Offspring.breed must return a non-undefined child for incompatible parents with synthetic alignment",

@@ -58,7 +58,14 @@ export function listViableNeurons(
     targetCount,
   );
   if (rustResult && rustResult.neurons.length > 0) {
-    return rustResult;
+    return {
+      ...rustResult,
+      neurons: hydrateRecordedErrors(
+        rustResult.neurons,
+        recordedNeuronTotalAbsError,
+        logFn,
+      ),
+    };
   }
   if (
     rustResult && rustResult.neurons.length === 0 &&
@@ -101,6 +108,57 @@ export function listViableNeurons(
     `   Ensure NEAT-AI-Discovery Rust library is properly built and available.`,
   );
   return { neurons: [] };
+}
+
+/**
+ * Fills in the record-derived `totalError` the Rust focus ranking no longer
+ * reports (Issue #3531).
+ *
+ * NEAT-AI-Discovery's focus ranking is deliberately **structure-only**: it
+ * never opens the discovery parquet, so every ranked neuron arrives with
+ * `totalError: 0` and a purely structural `impact`. NEAT-AI still weights focus
+ * selection by `totalError × impact`, so leaving the zero in place drives every
+ * candidate below `costOfGrowth` and discovery selects nothing at all.
+ *
+ * The per-neuron absolute error accumulated locally during recording is the
+ * same quantity the ranking used to return, so use it whenever the ranking
+ * reports none. A non-zero ranking value always wins, so a future ranking that
+ * carries real error data needs no change here.
+ */
+function hydrateRecordedErrors(
+  neurons: NeuronErrorInfo[],
+  recordedNeuronTotalAbsError: Map<number, number>,
+  logFn: (
+    level: "debug" | "info" | "warn" | "error",
+    message: string,
+    details?: unknown,
+  ) => void,
+): NeuronErrorInfo[] {
+  let hydrated = 0;
+  const result = neurons.map((neuron) => {
+    if (neuron.totalError > 0) return neuron;
+    const recorded = recordedNeuronTotalAbsError.get(neuron.id) ?? 0;
+    if (!Number.isFinite(recorded) || recorded <= 0) return neuron;
+    hydrated++;
+    return { ...neuron, totalError: recorded };
+  });
+
+  if (hydrated > 0) {
+    logFn(
+      "debug",
+      `Hydrated recorded absolute error for ${hydrated}/${neurons.length} ranked neuron(s); the focus ranking reports structural impact only.`,
+    );
+  } else if (result.every((neuron) => neuron.totalError <= 0)) {
+    // Never let an all-zero error vector pass as a usable ranking: every
+    // candidate would silently fall below costOfGrowth and discovery would
+    // add nothing while looking healthy.
+    logFn(
+      "warn",
+      `Focus ranking returned ${neurons.length} neuron(s) with zero total error and no recorded error data is available; error-weighted selection cannot rank them.`,
+    );
+  }
+
+  return result;
 }
 
 /**
