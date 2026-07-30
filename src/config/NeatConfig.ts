@@ -658,7 +658,6 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       if (typeof user === "boolean") return user;
       return verify ? true : false;
     })(),
-    discoveryReplayDiagnostics: options.discoveryReplayDiagnostics ?? false,
     discoveryReplayTimeoutMinutes: parseNumber(
       "Discovery replay timeout minutes",
       opts.discoveryReplayTimeoutMinutes,

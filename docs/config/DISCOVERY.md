@@ -163,7 +163,6 @@ against newer fittest creatures to re-apply structural improvements.
 | `discoveryReplayConcurrency`     | `integer` | `threads` (or `max(cores, 8)` if verify enabled) | Bounded concurrency for replay scoring             |
 | `discoveryReplayVerifyScores`    | `boolean` | `false`                                          | Verify replay scores against current dataset       |
 | `discoveryReplayRescoreBaseline` | `boolean` | `false` (`true` when verify enabled)             | Report baseline score drift                        |
-| `discoveryReplayDiagnostics`     | `boolean` | `false`                                          | Record timing diagnostics for replay               |
 
 ### `discoveryReplayVerifyScores`
 
