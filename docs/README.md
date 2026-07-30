@@ -124,6 +124,10 @@ Drop-in API and configuration material.
   audit: the 46 non-`discovery*` top-level options classified `IN USE` /
   `KEEP (load-bearing default)` / `QUALIFIES`, with the per-key evidence and the
   two search faults that had to be corrected first.
+- **[OPTION_AUDIT_SLICE_B.md](OPTION_AUDIT_SLICE_B.md)** — slice B of the #3505
+  audit: the 33 `discovery*` top-level options plus the 3 discovery-scoped
+  nested configs, with the env-var / CLI-alias forms that a camelCase-only grep
+  misses and the substring false positive that hides an unset nested config.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the
