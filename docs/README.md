@@ -137,6 +137,11 @@ Drop-in API and configuration material.
   audit: the 12 training, regularisation & data-shaping nested configs and all
   57 of their fields, the two keys GRQ genuinely drives, and the camelCase-split
   false positive that makes the code-search index report an unset key as used.
+- **[OPTION_AUDIT_SLICE_E.md](OPTION_AUDIT_SLICE_E.md)** — slice E of the #3505
+  audit: the 4 runtime & infrastructure nested configs, the internal
+  `RustScorerConfig`, and the 6 injection points, and why two of them are
+  load-bearing in production despite zero camelCase hits in either consumer —
+  they are set entirely from environment variables.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the
