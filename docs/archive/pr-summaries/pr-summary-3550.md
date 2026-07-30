@@ -86,8 +86,8 @@ New — `test/ci/CoverageMergeGate.ts` (calls the real gate functions):
 
 New — `test/ci/CoverageShardArtifactPaths.ts` (parses the committed workflow):
 
-- shard artifact upload lists no hidden paths and includes {% raw
-  %}`coverage-${{ matrix.shard }}/`{% endraw %}
+- shard artifact upload lists no hidden paths
+- upload includes {% raw %}`coverage-${{ matrix.shard }}/`{% endraw %}
 - `COV_DIR` is not dot-prefixed
 - merge job invokes the gate before `deno coverage`, does not swallow it with
   `|| true`, and globs `coverage-*/`
