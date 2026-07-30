@@ -170,6 +170,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `NeatConfig` surface, `src/creature/FitnessSubsample.ts`, the `evaluateDir` /
   worker plumbing, `bench/FitnessSampleRate.ts`, and the **Fitness Corpus
   Subsampling** section of `docs/PERFORMANCE_TUNING.md` are all gone.
+- **Issue #3558:** Removed the `ensembleDiversity` option and its ten fields. It
+  was parsed into `NeatArguments` but never read by any code path — there was no
+  `EnsembleDiversity*` implementation module at all — so setting `enabled: true`
+  changed nothing. Neither GRQ nor NEAT-AI-Examples set it. The option surface
+  (`src/config/EnsembleDiversityConfig.ts`, the `NeatArguments` / `NeatOptions`
+  entries), the `parseEnsembleDiversity` parser, the `LARGE_NETWORK_PRESET`
+  block that advertised it, and the documentation sections describing it as a
+  working feature are all gone.
 
 ## [5.2.0] - 2026-05-30
 

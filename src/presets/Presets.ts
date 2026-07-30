@@ -73,7 +73,6 @@ export const QUICK_START_PRESET: NeatOptions = {
  * - `plateauDetection.windowSize: 15` — Wider window for plateau detection
  * - `plateauDetection.responseMutationMultiplier: 2.5` — Aggressive response
  * - `stabilityAdaptation.enabled: true` — Adapt mutation to stability
- * - `ensembleDiversity.enabled: true` — Encourage species diversity
  */
 export const LARGE_NETWORK_PRESET: NeatOptions = {
   populationSize: 200,
@@ -91,9 +90,6 @@ export const LARGE_NETWORK_PRESET: NeatOptions = {
     responseMutationMultiplier: 2.5,
   },
   stabilityAdaptation: {
-    enabled: true,
-  },
-  ensembleDiversity: {
     enabled: true,
   },
 };

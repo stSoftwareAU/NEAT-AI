@@ -57,9 +57,9 @@ when you change it".
 - **[Mutation adaptation](./config/MUTATION_ADAPTATION.md)** — adaptive mutation
   thresholds, plateau detection, stability adaptation, MCMC (Markov Chain Monte
   Carlo) acceptance, and per-creature hyperparameter evolution.
-- **[Regularisation, diversity, and step sizing](./config/REGULARISATION.md)** —
-  weight/bias regularisation, ensemble diversity, output range constraints, and
-  quantum step sizing.
+- **[Regularisation, output ranges, and step sizing](./config/REGULARISATION.md)**
+  — weight/bias regularisation, output range constraints, and quantum step
+  sizing.
 - **[Population sizing](./config/POPULATION.md)** — adaptive population sizing
   and fine-tune population fractions.
 - **[Workers and parallel evaluation](./config/WORKERS.md)** — thread count,

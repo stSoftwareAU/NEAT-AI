@@ -11,7 +11,6 @@ import type { RequiredAdaptiveMutationThresholds } from "@config/AdaptiveMutatio
 import type { RequiredCompatibilityGatingConfig } from "@config/CompatibilityGatingConfig.ts";
 import type { RequiredSelectionPressureConfig } from "@config/SelectionPressureConfig.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
-import type { RequiredEnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { RequiredFineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 import type { RequiredFitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
 import type { RequiredNoveltyConfig } from "@config/NoveltyConfig.ts";
@@ -699,31 +698,6 @@ export interface NeatArguments {
    * - smallChangeScale: Scale factor for small change preference (default: 0.5)
    */
   biasRegularisation: RequiredBiasRegularisationConfig;
-
-  /**
-   * Ensemble diversity scoring configuration for species management.
-   *
-   * Issue #1310: Reduce brittleness by encouraging species diversity to avoid
-   * over-reliance on "brilliant but brittle" high-performers.
-   *
-   * When enabled:
-   * - Measures diversity within species using weight variance, squash entropy,
-   *   and topology diversity
-   * - Adjusts fitness scores to reward diversity contribution
-   * - Optionally protects diverse low-performers from culling
-   * - Triggers cross-species breeding when diversity is too low
-   * - Prefers diverse parent combinations during selection
-   *
-   * Configuration options:
-   * - enabled: Whether ensemble diversity scoring is active (default: false)
-   * - diversityWeight: Weight given to diversity in fitness adjustment (default: 0.15)
-   * - weightVarianceWeight: Weight for weight variance metric (default: 0.4)
-   * - squashEntropyWeight: Weight for squash entropy metric (default: 0.3)
-   * - topologyDiversityWeight: Weight for topology diversity metric (default: 0.3)
-   * - protectDiverseLowPerformers: Protect diverse creatures from culling (default: false)
-   * - crossSpeciesBreedingThreshold: Trigger cross-species breeding below this (default: 0.2)
-   */
-  ensembleDiversity: RequiredEnsembleDiversityConfig;
 
   /**
    * Quantum step sizing configuration for memetic fine-tuning.

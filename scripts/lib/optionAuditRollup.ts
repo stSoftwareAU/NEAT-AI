@@ -171,14 +171,13 @@ const SLICE_B: RollupEntry[] = [
   ].map((k) => inUse(k, "B")),
 ];
 
-/** Slice C (#3521) — 10 population & selection nested configs. */
+/**
+ * Slice C (#3521) — population & selection nested configs.
+ *
+ * `ensembleDiversity` was the tenth entry; #3558 removed the option outright,
+ * so it no longer has a source key to classify.
+ */
 const SLICE_C: RollupEntry[] = [
-  qualifies("ensembleDiversity", "C", 3558, {
-    interfaces: [
-      "src/config/EnsembleDiversityConfig.ts::EnsembleDiversityConfig",
-    ],
-    note: "No implementation exists — parsed, never read.",
-  }),
   qualifies("novelty", "C", 3559, {
     interfaces: ["src/config/NoveltyConfig.ts::NoveltyConfig"],
     note: "Decision, audit recommends KEEP — implemented and documented.",

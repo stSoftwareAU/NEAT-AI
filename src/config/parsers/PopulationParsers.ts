@@ -3,8 +3,8 @@
  *
  * Extracted from NeatConfigParsers.ts (Issue #2396) to keep each parser
  * group focused on a single concern. This file holds parsers for
- * fine-tune population sizing, adaptive population sizing, and ensemble
- * diversity selection pressure.
+ * fine-tune population sizing, adaptive population sizing, and species
+ * selection pressure.
  */
 
 import {
@@ -15,10 +15,6 @@ import {
   DEFAULT_COMPATIBILITY_GATING_CONFIG,
   type RequiredCompatibilityGatingConfig,
 } from "@config/CompatibilityGatingConfig.ts";
-import {
-  DEFAULT_ENSEMBLE_DIVERSITY_CONFIG,
-  type RequiredEnsembleDiversityConfig,
-} from "@config/EnsembleDiversityConfig.ts";
 import {
   DEFAULT_FINE_TUNE_POPULATION_CONFIG,
   type RequiredFineTunePopulationConfig,
@@ -256,68 +252,4 @@ export function parseSpeciesStagnation(
       { integer: true, min: 1 },
     ),
   } as RequiredSpeciesStagnationConfig;
-}
-
-/** Parse ensemble diversity configuration (Issue #1310). */
-export function parseEnsembleDiversity(
-  overrides: Record<string, unknown> | undefined,
-): RequiredEnsembleDiversityConfig {
-  const d = DEFAULT_ENSEMBLE_DIVERSITY_CONFIG;
-  return {
-    enabled: typeof overrides?.enabled === "boolean"
-      ? overrides.enabled
-      : d.enabled,
-    diversityWeight: parseNumber(
-      "Ensemble diversity diversityWeight",
-      overrides?.diversityWeight,
-      d.diversityWeight,
-      { min: 0, max: 1 },
-    ),
-    weightVarianceWeight: parseNumber(
-      "Ensemble diversity weightVarianceWeight",
-      overrides?.weightVarianceWeight,
-      d.weightVarianceWeight,
-      { min: 0, max: 1 },
-    ),
-    squashEntropyWeight: parseNumber(
-      "Ensemble diversity squashEntropyWeight",
-      overrides?.squashEntropyWeight,
-      d.squashEntropyWeight,
-      { min: 0, max: 1 },
-    ),
-    topologyDiversityWeight: parseNumber(
-      "Ensemble diversity topologyDiversityWeight",
-      overrides?.topologyDiversityWeight,
-      d.topologyDiversityWeight,
-      { min: 0, max: 1 },
-    ),
-    protectDiverseLowPerformers:
-      typeof overrides?.protectDiverseLowPerformers === "boolean"
-        ? overrides.protectDiverseLowPerformers
-        : d.protectDiverseLowPerformers,
-    diversityProtectionThreshold: parseNumber(
-      "Ensemble diversity diversityProtectionThreshold",
-      overrides?.diversityProtectionThreshold,
-      d.diversityProtectionThreshold,
-      { min: 0, max: 1 },
-    ),
-    crossSpeciesBreedingThreshold: parseNumber(
-      "Ensemble diversity crossSpeciesBreedingThreshold",
-      overrides?.crossSpeciesBreedingThreshold,
-      d.crossSpeciesBreedingThreshold,
-      { min: 0, max: 1 },
-    ),
-    lowDiversityThreshold: parseNumber(
-      "Ensemble diversity lowDiversityThreshold",
-      overrides?.lowDiversityThreshold,
-      d.lowDiversityThreshold,
-      { min: 0, max: 1 },
-    ),
-    diverseParentPreferenceWeight: parseNumber(
-      "Ensemble diversity diverseParentPreferenceWeight",
-      overrides?.diverseParentPreferenceWeight,
-      d.diverseParentPreferenceWeight,
-      { min: 0, max: 1 },
-    ),
-  } as RequiredEnsembleDiversityConfig;
 }

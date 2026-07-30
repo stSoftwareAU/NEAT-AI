@@ -92,17 +92,6 @@ Deno.test(
 );
 
 Deno.test(
-  "COMPARISON documented features - ensemble diversity config is accessible",
-  () => {
-    const config = createNeatConfig({
-      ensembleDiversity: { enabled: true, diversityWeight: 0.2 },
-    });
-    assertEquals(config.ensembleDiversity.enabled, true);
-    assertEquals(config.ensembleDiversity.diversityWeight, 0.2);
-  },
-);
-
-Deno.test(
   "COMPARISON documented features - quantum step config is accessible",
   () => {
     const config = createNeatConfig({
@@ -125,7 +114,6 @@ Deno.test(
     assert(config.adaptiveMutationThresholds !== undefined);
     assert(config.plateauDetection !== undefined);
     assert(config.stabilityAdaptation !== undefined);
-    assert(config.ensembleDiversity !== undefined);
     assert(config.quantumStep !== undefined);
 
     // feedbackLoop defaults to false (forward-only)

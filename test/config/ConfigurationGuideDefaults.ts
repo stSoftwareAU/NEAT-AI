@@ -18,7 +18,6 @@ import {
   DEFAULT_DISCOVERY_SAMPLE_RATE,
 } from "@config/NeatConfig.ts";
 import { DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS } from "@config/AdaptiveMutationThresholds.ts";
-import { DEFAULT_ENSEMBLE_DIVERSITY_CONFIG } from "@config/EnsembleDiversityConfig.ts";
 import { DEFAULT_QUANTUM_STEP_CONFIG } from "@config/QuantumStepConfig.ts";
 import { DEFAULT_STABILITY_ADAPTATION_CONFIG } from "@config/StabilityAdaptationConfig.ts";
 import { DEFAULT_WEIGHT_REGULARISATION_CONFIG } from "@config/WeightRegularisationConfig.ts";
@@ -143,20 +142,6 @@ Deno.test("Configuration guide - bias regularisation defaults match code", () =>
   assertEquals(defaults.l2Strength, 0.1);
   assertEquals(defaults.preferSmallChanges, true);
   assertEquals(defaults.smallChangeScale, 0.5);
-});
-
-Deno.test("Configuration guide - ensemble diversity defaults match code", () => {
-  const defaults = DEFAULT_ENSEMBLE_DIVERSITY_CONFIG;
-  assertEquals(defaults.enabled, false);
-  assertEquals(defaults.diversityWeight, 0.15);
-  assertEquals(defaults.weightVarianceWeight, 0.4);
-  assertEquals(defaults.squashEntropyWeight, 0.3);
-  assertEquals(defaults.topologyDiversityWeight, 0.3);
-  assertEquals(defaults.protectDiverseLowPerformers, false);
-  assertEquals(defaults.diversityProtectionThreshold, 0.7);
-  assertEquals(defaults.crossSpeciesBreedingThreshold, 0.2);
-  assertEquals(defaults.lowDiversityThreshold, 0.3);
-  assertEquals(defaults.diverseParentPreferenceWeight, 0.2);
 });
 
 Deno.test("Configuration guide - quantum step defaults match code", () => {

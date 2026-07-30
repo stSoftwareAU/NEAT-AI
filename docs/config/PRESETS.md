@@ -43,9 +43,8 @@ const config = createNeatConfig({
 
 ### 🔬 Large Network
 
-Higher population with discovery, plateau detection, stability adaptation, and
-ensemble diversity enabled. Suitable for complex problems requiring larger
-architectures.
+Higher population with discovery, plateau detection, and stability adaptation
+enabled. Suitable for complex problems requiring larger architectures.
 
 ```ts
 import { createNeatConfig, LARGE_NETWORK_PRESET } from "@stsoftware/neat-ai";
@@ -58,7 +57,7 @@ const config = createNeatConfig({
 
 **Settings:** `populationSize: 200`, `iterations: 10_000`, `targetError: 0.01`,
 `discoverySampleRate: 0.3`, `timeoutMinutes: 120`, plateau detection enabled,
-stability adaptation enabled, ensemble diversity enabled.
+stability adaptation enabled.
 
 ### 💾 Memory Constrained
 

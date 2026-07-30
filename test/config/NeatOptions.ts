@@ -76,7 +76,6 @@ Deno.test("NeatOptions - Omit list allows partial sub-object overrides", () => {
     stabilityAdaptation: { enabled: true },
     weightRegularisation: { enabled: false },
     biasRegularisation: { maxAbsoluteBias: 50 },
-    ensembleDiversity: { enabled: true },
     quantumStep: { minStep: 0.001 },
     fineTunePopulation: { successRateWindow: 5 },
   });
@@ -86,9 +85,15 @@ Deno.test("NeatOptions - Omit list allows partial sub-object overrides", () => {
   assertEquals(config.stabilityAdaptation.enabled, true);
   assertEquals(config.weightRegularisation.enabled, false);
   assertEquals(config.biasRegularisation.maxAbsoluteBias, 50);
-  assertEquals(config.ensembleDiversity.enabled, true);
   assertEquals(config.quantumStep.minStep, 0.001);
   assertEquals(config.fineTunePopulation.successRateWindow, 5);
+});
+
+// Issue #3558: ensembleDiversity was removed as an unimplemented option — the
+// parsed config must no longer carry it (regression guard against reintroduction).
+Deno.test("NeatOptions - ensembleDiversity is not a config key", () => {
+  const config = createNeatConfig({}) as unknown as Record<string, unknown>;
+  assertEquals(Object.hasOwn(config, "ensembleDiversity"), false);
 });
 
 Deno.test("NeatOptions - seed option produces deterministic RNG", () => {

@@ -94,16 +94,6 @@ Low diversity means the population has converged prematurely.
 
 - **Increase `populationSize`**: Larger populations maintain more diversity (try
   `100`–`200` for production runs)
-- **Enable ensemble diversity scoring:**
-
-```typescript
-ensembleDiversity: {
-  enabled: true,
-  diversityWeight: 0.15,
-  protectDiverseLowPerformers: true,
-}
-```
-
 - **Lower `geneticCompatibilityThreshold`** (default: `0.3`) to create more
   species and preserve niche exploration
 
