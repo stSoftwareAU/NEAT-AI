@@ -76,8 +76,10 @@ async function main(): Promise<number> {
 
   if (result.orphans.length > 0) {
     console.error(
-      `⚠️  ${result.orphans.length} roll-up entr${
-        result.orphans.length === 1 ? "y describes a key" : "ies describe keys"
+      `⚠️  ${result.orphans.length} roll-up ${
+        result.orphans.length === 1
+          ? "entry describes a key"
+          : "entries describe keys"
       } the source no longer has: ${result.orphans.join(", ")}`,
     );
   }
