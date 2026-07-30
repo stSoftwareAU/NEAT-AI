@@ -36,7 +36,7 @@ jobs:
   # Fan out the ~1k-file suite across N shards (Issue #3173). `deno test` has no
   # native --shard flag, so scripts/shard_test_files.ts partitions the sorted
   # test/**/*.ts list round-robin; each shard runs its slice, collecting a
-  # partial .coverage-<shard> dir and junit-<shard>.xml, then uploads both as a
+  # partial coverage-<shard> dir and junit-<shard>.xml, then uploads both as a
   # per-shard artifact for the merge job to aggregate. Smaller slices also
   # reduce per-job memory pressure (the OOM root cause is tracked separately).
   coverage:
@@ -89,7 +89,11 @@ jobs:
           set -Eeuo pipefail
           export NO_COLOR=true
           SHARD="${{ matrix.shard }}"
-          COV_DIR=".coverage-${SHARD}"
+          # Non-hidden on purpose (Issue #3550): actions/upload-artifact
+          # defaults to include-hidden-files: false, so a dot-prefixed
+          # `.coverage-<shard>/` was silently dropped from the artifact and the
+          # merge job saw no coverage at all.
+          COV_DIR="coverage-${SHARD}"
           JUNIT="junit-${SHARD}.xml"
 
           # Deterministically pick this shard's slice of test/**/*.ts. The same
@@ -226,7 +230,7 @@ jobs:
         with:
           name: shard-${{ matrix.shard }}
           path: |
-            .coverage-${{ matrix.shard }}/
+            coverage-${{ matrix.shard }}/
             junit-${{ matrix.shard }}.xml
             shard-status-${{ matrix.shard }}.txt
           retention-days: 7
@@ -357,12 +361,18 @@ jobs:
         run: |
           set -Eeuo pipefail
           shopt -s nullglob
-          cov_dirs=(.coverage-*/)
-          if [ "${#cov_dirs[@]}" -eq 0 ]; then
-            echo "No shard coverage directories found; skipping coverage report"
-            exit 0
-          fi
-          echo "Merging coverage from: ${cov_dirs[*]}"
+          # Fail loud when coverage went missing (Issue #3550). The gate exits
+          # 1 if any shard uploaded a status marker (so it ran tests) while no
+          # coverage-<shard>/ dir arrived, and 2 only when nothing at all was
+          # uploaded — the shard-status gate reports that case.
+          set +e
+          deno run --allow-read scripts/coverage_merge_gate.ts
+          GATE_EXIT=$?
+          set -e
+          if [ "$GATE_EXIT" -eq 2 ]; then exit 0; fi
+          if [ "$GATE_EXIT" -ne 0 ]; then exit "$GATE_EXIT"; fi
+
+          cov_dirs=(coverage-*/)
           # `deno coverage` accepts multiple input dirs and merges them into one
           # lcov report. Exclude ephemeral temp modules and *.test.* files as
           # before.
@@ -371,6 +381,13 @@ jobs:
             --output=.coverage.lcov \
             --exclude="^file:///tmp/" \
             --exclude="test\\.(js|mjs|ts|jsx|tsx)$"
+
+          # A successful merge that produced no lcov would silently skip the
+          # Codecov upload (its hashFiles guard) — fail loud instead.
+          if [ ! -s .coverage.lcov ]; then
+            echo "❌ deno coverage produced no lcov report from: ${cov_dirs[*]}"
+            exit 1
+          fi
 
       - name: Upload coverage to Codecov
         if: ${{ hashFiles('.coverage.lcov') != '' }}

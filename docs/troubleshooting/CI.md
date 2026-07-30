@@ -18,15 +18,15 @@ every file runs on exactly one shard (no gaps, no double-runs).
 ```mermaid
 flowchart LR
     subgraph coverage["coverage job (matrix, fail-fast: false)"]
-        S0["shard 0<br/>slice → .coverage-0 + junit-0.xml"]
-        S1["shard 1<br/>slice → .coverage-1 + junit-1.xml"]
-        SN["shard N-1<br/>slice → .coverage-N-1 + junit-N-1.xml"]
+        S0["shard 0<br/>slice → coverage-0 + junit-0.xml"]
+        S1["shard 1<br/>slice → coverage-1 + junit-1.xml"]
+        SN["shard N-1<br/>slice → coverage-N-1 + junit-N-1.xml"]
     end
     S0 --> M
     S1 --> M
     SN --> M
     subgraph merge["merge job (needs: coverage, if: !cancelled)"]
-        M["Verify parity → merge .coverage-* (lcov)<br/>+ merge junit-*.xml → gate on shard statuses"]
+        M["Verify parity → merge coverage-* (lcov)<br/>+ merge junit-*.xml → gate on shard statuses"]
     end
     M --> C["1 Codecov coverage report<br/>1 consolidated Test Results check"]
 ```
@@ -35,7 +35,7 @@ flowchart LR
 runs its slice, and — if the runner OOM-kills the run — retries once while
 **staying parallel**: it keeps `--parallel` but caps the worker pool via
 `DENO_JOBS=2` and halves the V8 heap (Issue #3174). Each shard uploads its
-partial `.coverage-<shard>` dir, `junit-<shard>.xml`, and a
+partial `coverage-<shard>` dir, `junit-<shard>.xml`, and a
 `shard-status-<shard>.txt` marker; test _failures_ never fail the shard job (the
 merge job gates the build), so every shard always publishes its results.
 
@@ -88,15 +88,16 @@ stays serial on the retry with the reduced heap.
 flowchart TD
     A[Shard slice] --> B["Initial run<br/>--parallel, DENO_JOBS=auto, full heap"]
     B --> C{Exit code}
-    C -->|"0 / 1"| E["Record status<br/>upload .coverage-N + junit-N.xml"]
+    C -->|"0 / 1"| E["Record status<br/>upload coverage-N + junit-N.xml"]
     C -->|"134 / 137 / 143 (OOM)"| D["Scoped recovery<br/>--parallel, DENO_JOBS=2, half heap"]
     D --> E
     E --> M["Merge job<br/>merge coverage + JUnit, gate on shard statuses"]
 ```
 
-**Merge job:** re-verifies partition parity, merges the partial coverage dirs
-into one `.coverage.lcov` via `deno coverage`, merges the per-shard JUnit
-reports into a single `junit.xml` via
+**Merge job:** re-verifies partition parity, checks the
+[coverage merge gate](#-coverage-must-never-go-missing-silently-issue-3550),
+merges the partial coverage dirs into one `.coverage.lcov` via `deno coverage`,
+merges the per-shard JUnit reports into a single `junit.xml` via
 [`scripts/merge_junit.ts`](../../scripts/merge_junit.ts), publishes one
 consolidated Test Results check + Codecov upload, then fails the build if any
 shard reported test failures (`failed`) or a runner crash (`error`/missing
@@ -114,6 +115,45 @@ status).
 **Tuning shard count:** set the workflow-level `SHARD_TOTAL` env **and** the
 `coverage` job's `strategy.matrix.shard` list to the same value —
 `test/ci/CoverageShardMatrix.ts` fails CI if they diverge.
+
+### 🚨 Coverage must never go missing silently (Issue #3550)
+
+> [!IMPORTANT]
+> Shard coverage directories are **non-hidden** (`coverage-<shard>/`, never
+> `.coverage-<shard>/`). `actions/upload-artifact` defaults to
+> `include-hidden-files: false`, so a dot-prefixed directory is dropped from the
+> artifact without failing anything.
+
+That footgun cost real coverage: shards wrote `.coverage-<shard>/`, the artifact
+carried only `junit-<shard>.xml` + `shard-status-<shard>.txt`, the merge job's
+glob came back empty, and the step printed "skipping coverage report" and exited
+0 — a lost input reported as a clean run.
+
+Two guards now make the failure loud:
+
+1. [`scripts/coverage_merge_gate.ts`](../../scripts/coverage_merge_gate.ts) — if
+   any shard uploaded a status marker it ran tests, so at least one
+   `coverage-<shard>/` dir must exist. An empty glob then exits **1**. Only when
+   nothing at all was uploaded does it exit **2** (skip), because the
+   shard-status gate already reports that crash.
+2. The merge step asserts `.coverage.lcov` is non-empty, so a merge that
+   produced no report fails instead of silently skipping the Codecov upload.
+
+```mermaid
+flowchart TD
+    G["Merge job: coverage_merge_gate.ts"] --> D{"coverage-*/ dirs?"}
+    D -->|"yes"| M["deno coverage → .coverage.lcov"]
+    D -->|"no, but shard-status-*.txt present"| F["❌ exit 1 — coverage lost"]
+    D -->|"no artifacts at all"| S["exit 2 — skip; shard-status gate fails build"]
+    M --> L{".coverage.lcov non-empty?"}
+    L -->|"yes"| U["Upload to Codecov"]
+    L -->|"no"| F2["❌ exit 1 — empty report"]
+```
+
+The gate's decision logic is unit-tested in
+[`test/ci/CoverageMergeGate.ts`](../../test/ci/CoverageMergeGate.ts), and
+`test/ci/CoverageShardArtifactPaths.ts` fails CI if a hidden path is ever
+re-introduced into the shard artifact.
 
 ## 🔧 quality.sh failures
 
