@@ -188,11 +188,20 @@ export function extractInterfaceKeys(
   interfaceName: string,
 ): string[] {
   const clean = stripCommentsAndStrings(source);
-  const escaped = interfaceName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const decl = new RegExp(`\\binterface\\s+${escaped}\\b`).exec(clean);
-  if (!decl) throw new Error(`interface ${interfaceName} not found in source`);
+  // Hardcoded regex over every declaration, then compare the captured name —
+  // a dynamic RegExp built from `interfaceName` would risk ReDoS.
+  let declIndex = -1;
+  for (const m of clean.matchAll(/\binterface\s+([A-Za-z_$][\w$]*)\b/g)) {
+    if (m[1] === interfaceName) {
+      declIndex = m.index ?? -1;
+      break;
+    }
+  }
+  if (declIndex === -1) {
+    throw new Error(`interface ${interfaceName} not found in source`);
+  }
 
-  const open = clean.indexOf("{", decl.index);
+  const open = clean.indexOf("{", declIndex);
   if (open === -1) throw new Error(`interface ${interfaceName} has no body`);
   const close = matchBrace(clean, open);
   if (close === -1) {
