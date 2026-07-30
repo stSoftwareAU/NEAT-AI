@@ -31,7 +31,6 @@ export {
 export {
   parseAdaptivePopulation,
   parseCompatibilityGating,
-  parseEnsembleDiversity,
   parseFineTunePopulation,
   parseFitnessSharing,
   parseNovelty,

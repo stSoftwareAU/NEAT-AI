@@ -153,9 +153,6 @@ to a dedicated guide, the contrast with standard NEAT is documented there.
 - ✅ **Disk Space Monitoring** _(NEAT-AI extension)_: Pre-flight and runtime
   disk space checks during discovery to gracefully warn or abort when disk space
   is insufficient.
-- ✅ **Ensemble Diversity** _(NEAT-AI extension)_: `EnsembleDiversityConfig`
-  scores creatures within species by weight variance, squash entropy, and
-  topology diversity to reduce reliance on brilliant-but-brittle solutions.
 - ✅ **Adaptive Quantum Steps** _(NEAT-AI extension)_: `QuantumStepConfig`
   provides adaptive step sizing during memetic fine-tuning — larger steps when
   far from the optimum and smaller steps during convergence.

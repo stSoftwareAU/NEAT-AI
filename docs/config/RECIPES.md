@@ -45,10 +45,6 @@ const config = createNeatConfig({
   stabilityAdaptation: {
     enabled: true,
   },
-  ensembleDiversity: {
-    enabled: true,
-    diversityWeight: 0.2,
-  },
 });
 ```
 

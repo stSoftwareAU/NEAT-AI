@@ -925,10 +925,6 @@ const config = createNeatConfig({
   },
   mutationRate: 0.5,
   mutationAmount: 3,
-  ensembleDiversity: {
-    enabled: true,
-    diversityWeight: 0.2,
-  },
   fineTunePopulation: {
     maxPopulationFraction: 0.5,
   },

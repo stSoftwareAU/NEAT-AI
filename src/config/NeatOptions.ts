@@ -5,7 +5,6 @@ import type { AdaptiveMutationThresholds } from "@config/AdaptiveMutationThresho
 import type { CompatibilityGatingConfig } from "@config/CompatibilityGatingConfig.ts";
 import type { SelectionPressureConfig } from "@config/SelectionPressureConfig.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
-import type { EnsembleDiversityConfig } from "@config/EnsembleDiversityConfig.ts";
 import type { FineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 import type { FitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
 import type { NoveltyConfig } from "@config/NoveltyConfig.ts";
@@ -111,7 +110,6 @@ export type NeatOptions =
     | "stabilityAdaptation"
     | "weightRegularisation"
     | "biasRegularisation"
-    | "ensembleDiversity"
     | "quantumStep"
     | "fineTunePopulation"
     | "discoveryCache"
@@ -156,8 +154,6 @@ export type NeatOptions =
     weightRegularisation?: WeightRegularisationConfig;
     /** Partial overrides for bias regularisation configuration (defaults applied if not specified) */
     biasRegularisation?: BiasRegularisationConfig;
-    /** Partial overrides for ensemble diversity configuration (defaults applied if not specified) */
-    ensembleDiversity?: EnsembleDiversityConfig;
     /** Partial overrides for quantum step configuration (defaults applied if not specified) */
     quantumStep?: QuantumStepConfig;
     /** Partial overrides for fine-tune population configuration (defaults applied if not specified) */
@@ -293,7 +289,6 @@ export type NeatOptionsInput =
     | "stabilityAdaptation"
     | "weightRegularisation"
     | "biasRegularisation"
-    | "ensembleDiversity"
     | "quantumStep"
     | "fineTunePopulation"
     | "discoveryCache"
@@ -340,7 +335,6 @@ export type NeatOptionsInput =
     stabilityAdaptation?: CoerceNumeric<StabilityAdaptationConfig>;
     weightRegularisation?: CoerceNumeric<WeightRegularisationConfig>;
     biasRegularisation?: CoerceNumeric<BiasRegularisationConfig>;
-    ensembleDiversity?: CoerceNumeric<EnsembleDiversityConfig>;
     quantumStep?: CoerceNumeric<QuantumStepConfig>;
     fineTunePopulation?: CoerceNumeric<FineTunePopulationConfig>;
     discoveryCache?: CoerceNumeric<DiscoveryCacheConfig>;

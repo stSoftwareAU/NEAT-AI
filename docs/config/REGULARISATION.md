@@ -1,10 +1,10 @@
-# ⚖️ Regularisation, diversity, and step sizing
+# ⚖️ Regularisation, output ranges, and step sizing
 
 This page covers the configuration knobs that constrain mutation magnitudes,
-diversify the population, bound output ranges, and tune the memetic step size
-during fine-tuning. They are independent subsystems but are grouped here because
-they all reshape the optimisation landscape rather than the NEAT (NeuroEvolution
-of Augmenting Topologies) outer loop itself.
+bound output ranges, and tune the memetic step size during fine-tuning. They are
+independent subsystems but are grouped here because they all reshape the
+optimisation landscape rather than the NEAT (NeuroEvolution of Augmenting
+Topologies) outer loop itself.
 
 ## ⚖️ Weight regularisation
 
@@ -37,26 +37,6 @@ Pass as `biasRegularisation` in options.
 | `l2Strength`         | `number`  | `0.1`   | L2 regularisation strength (0–1)                   |
 | `preferSmallChanges` | `boolean` | `true`  | Bias mutation distribution towards smaller changes |
 | `smallChangeScale`   | `number`  | `0.5`   | Scale factor for small change preference (0–1)     |
-
-## 🌈 Ensemble diversity
-
-Encourages species diversity to avoid over-reliance on "brilliant but brittle"
-high-performers. Disabled by default.
-
-Pass as `ensembleDiversity` in options.
-
-| Option                          | Type      | Default | Description                                                 |
-| ------------------------------- | --------- | ------- | ----------------------------------------------------------- |
-| `enabled`                       | `boolean` | `false` | Enable ensemble diversity scoring                           |
-| `diversityWeight`               | `number`  | `0.15`  | Weight of diversity in fitness adjustment (0–1)             |
-| `weightVarianceWeight`          | `number`  | `0.4`   | Weight for weight variance metric (0–1)                     |
-| `squashEntropyWeight`           | `number`  | `0.3`   | Weight for squash entropy metric (0–1)                      |
-| `topologyDiversityWeight`       | `number`  | `0.3`   | Weight for topology diversity metric (0–1)                  |
-| `protectDiverseLowPerformers`   | `boolean` | `false` | Protect diverse creatures from culling                      |
-| `diversityProtectionThreshold`  | `number`  | `0.7`   | Diversity threshold for culling protection (0–1)            |
-| `crossSpeciesBreedingThreshold` | `number`  | `0.2`   | Diversity threshold triggering cross-species breeding (0–1) |
-| `lowDiversityThreshold`         | `number`  | `0.3`   | Threshold for considering a species low-diversity (0–1)     |
-| `diverseParentPreferenceWeight` | `number`  | `0.2`   | Weight for genetic distance in parent selection (0–1)       |
 
 ## 📐 Output range constraints
 
@@ -132,8 +112,8 @@ effectiveStep = baseStep × (1 + errorScale × normalisedError)
   per-creature hyperparameter evolution.
 - [BACKPROP_ELASTICITY.md](../BACKPROP_ELASTICITY.md) — why minimum-change
   weight updates are preferred and how saturated activations are protected.
-- [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — when ensemble diversity is
-  worth its evaluation cost.
+- [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — throughput and memory
+  tuning recipes.
 
 ---
 

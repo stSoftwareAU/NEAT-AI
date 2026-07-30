@@ -176,8 +176,8 @@ Each creature evolves these values within the configured bounds:
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — base mutation rates that
   these adaptations modulate.
-- [Regularisation](./REGULARISATION.md) — weight/bias regularisation and
-  ensemble diversity scoring.
+- [Regularisation](./REGULARISATION.md) — weight/bias regularisation and output
+  range constraints.
 - [Population sizing](./POPULATION.md) — adaptive population sizing pairs
   naturally with plateau detection.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — when MCMC and plateau

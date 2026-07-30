@@ -5,11 +5,9 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "@config/AdaptivePopulationConfig.ts";
-import { DEFAULT_ENSEMBLE_DIVERSITY_CONFIG } from "@config/EnsembleDiversityConfig.ts";
 import { DEFAULT_FINE_TUNE_POPULATION_CONFIG } from "@config/FineTunePopulationConfig.ts";
 import {
   parseAdaptivePopulation,
-  parseEnsembleDiversity,
   parseFineTunePopulation,
 } from "@config/parsers/PopulationParsers.ts";
 
@@ -77,35 +75,6 @@ Deno.test("parseAdaptivePopulation - rejects maxPopulationFraction below 1", () 
 Deno.test("parseAdaptivePopulation - rejects minPopulationFraction of 0 (exclusive)", () => {
   assertThrows(
     () => parseAdaptivePopulation({ minPopulationFraction: 0 }),
-    ConfigurationError,
-  );
-});
-
-Deno.test("parseEnsembleDiversity - returns defaults", () => {
-  const cfg = parseEnsembleDiversity(undefined);
-  assertEquals(cfg.enabled, DEFAULT_ENSEMBLE_DIVERSITY_CONFIG.enabled);
-  assertEquals(
-    cfg.diversityWeight,
-    DEFAULT_ENSEMBLE_DIVERSITY_CONFIG.diversityWeight,
-  );
-});
-
-Deno.test("parseEnsembleDiversity - applies overrides", () => {
-  const cfg = parseEnsembleDiversity({
-    enabled: true,
-    diversityWeight: 0.3,
-    weightVarianceWeight: 0.2,
-    protectDiverseLowPerformers: true,
-  });
-  assertEquals(cfg.enabled, true);
-  assertEquals(cfg.diversityWeight, 0.3);
-  assertEquals(cfg.weightVarianceWeight, 0.2);
-  assertEquals(cfg.protectDiverseLowPerformers, true);
-});
-
-Deno.test("parseEnsembleDiversity - rejects diversityWeight above 1", () => {
-  assertThrows(
-    () => parseEnsembleDiversity({ diversityWeight: 1.1 }),
     ConfigurationError,
   );
 });

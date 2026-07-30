@@ -145,11 +145,11 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
 
   // Pinned so a config refactor that adds or removes a field without the
   // harness picking it up fails here rather than mid-audit. #3518 quotes 118,
-  // which came from a grep that skipped `readonly mutation` — the parser sees
-  // the real 119.
+  // which came from a grep that skipped `readonly mutation` — the parser saw
+  // the real 119. #3558 then removed `ensembleDiversity`, leaving 118.
   assertEquals(
     topLevel.length,
-    119,
+    118,
     "NeatArguments top-level key count changed",
   );
   assert(

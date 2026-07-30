@@ -175,21 +175,6 @@ defaults are applied.
 | `preferSmallChanges` | `boolean` | `true`  | Prefer small bias changes        |
 | `smallChangeScale`   | `number`  | `0.5`   | Scale for small changes          |
 
-### `ensembleDiversity` — EnsembleDiversityConfig
-
-| Field                           | Type      | Default | Description                              |
-| ------------------------------- | --------- | ------- | ---------------------------------------- |
-| `enabled`                       | `boolean` | `false` | Enable diversity scoring                 |
-| `diversityWeight`               | `number`  | `0.15`  | Overall diversity weight in fitness      |
-| `weightVarianceWeight`          | `number`  | `0.4`   | Weight variance contribution             |
-| `squashEntropyWeight`           | `number`  | `0.3`   | Activation function entropy contribution |
-| `topologyDiversityWeight`       | `number`  | `0.3`   | Topology diversity contribution          |
-| `protectDiverseLowPerformers`   | `boolean` | `false` | Shield diverse but low-scoring creatures |
-| `diversityProtectionThreshold`  | `number`  | `0.7`   | Diversity threshold for protection       |
-| `crossSpeciesBreedingThreshold` | `number`  | `0.2`   | Threshold for cross-species breeding     |
-| `lowDiversityThreshold`         | `number`  | `0.3`   | Threshold below which diversity is "low" |
-| `diverseParentPreferenceWeight` | `number`  | `0.2`   | Preference weight for diverse parents    |
-
 ### `quantumStep` — QuantumStepConfig
 
 | Field        | Type     | Default       | Description                   |

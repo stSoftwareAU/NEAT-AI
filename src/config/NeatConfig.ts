@@ -49,7 +49,6 @@ import {
   parseDiscoveryCache,
   parseDiscoveryMinCandidates,
   parseDiskSpaceConfig,
-  parseEnsembleDiversity,
   parseFineTunePopulation,
   parseFitnessSharing,
   parseHyperparameterEvolution,
@@ -695,9 +694,6 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     ),
     biasRegularisation: parseBiasRegularisation(
       opts.biasRegularisation as Record<string, unknown> | undefined,
-    ),
-    ensembleDiversity: parseEnsembleDiversity(
-      opts.ensembleDiversity as Record<string, unknown> | undefined,
     ),
     predictiveCoding: parsePredictiveCoding(
       opts.predictiveCoding as Record<string, unknown> | undefined,
