@@ -2,7 +2,9 @@ import { join, resolve } from "@std/path";
 import type { Creature } from "@creature";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { BuiltInCostName } from "@costs";
+import { DatasetError } from "@errors/DatasetError.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { assertNotCorruptDataset } from "./ScorerFailureClassification.ts";
 import {
   __getBatchRunner,
   __resetInternal,
@@ -232,6 +234,10 @@ export async function tryScoreWithRustScorer(
     );
 
     if (!result.success) {
+      // Issue #3541: a rejected *dataset* is not retryable on another backend.
+      // Fail loud with the scorer's own diagnostic instead of demoting it to a
+      // warning and letting the WASM re-read die on a bare assertion.
+      assertNotCorruptDataset(result.stderr, result.code, dataDir);
       if (!probe.warned) {
         const stderrSnippet = trimForLog(result.stderr);
         const suffix = stderrSnippet.length > 0
@@ -286,6 +292,9 @@ export async function tryScoreWithRustScorer(
     }
     return { error };
   } catch (error) {
+    // Issue #3541: a data fault must not be absorbed into "scorer unavailable"
+    // — no backend can read a corrupt dataset, so it propagates.
+    if (error instanceof DatasetError) throw error;
     if (!probe.warned) {
       getLogger().warn(
         `[NEAT-AI] Rust scorer unavailable (${

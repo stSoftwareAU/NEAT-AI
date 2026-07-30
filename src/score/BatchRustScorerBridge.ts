@@ -38,6 +38,7 @@ import {
   buildChildEnv,
   resolveProbeState,
 } from "./RustScorerBridgeInternal.ts";
+import { assertNotCorruptDataset } from "./ScorerFailureClassification.ts";
 
 /**
  * Outcome of a batch scorer invocation.
@@ -162,6 +163,9 @@ export async function tryBatchScoreWithRustScorer(
     );
 
     if (!result.success) {
+      // Issue #3541: classify before signalling a retryable batch failure — a
+      // corrupt dataset fails identically on the per-creature and WASM paths.
+      assertNotCorruptDataset(result.stderr, result.code, absoluteDataDir);
       throw new BatchScorerError(
         `Rust scorer batch call failed (exit ${result.code}): ${
           trimForLog(result.stderr)
