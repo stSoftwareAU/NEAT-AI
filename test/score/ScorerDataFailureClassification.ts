@@ -162,14 +162,17 @@ Deno.test("evaluateDir: a short final record names the file and the byte counts"
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   const dataDir = makeDataDir(buildDataSet(), 24);
   try {
-    const bin = [...Deno.readDirSync(dataDir)]
-      .find((e) => e.name.endsWith(".bin"))!;
-    const path = `${dataDir}/${bin.name}`;
+    const entries: string[] = [];
+    for await (const entry of Deno.readDir(dataDir)) {
+      entries.push(entry.name);
+    }
+    const bin = entries.find((name) => name.endsWith(".bin"))!;
+    const path = `${dataDir}/${bin}`;
     // Truncate the last record by appending a partial one (4 of 12 bytes).
-    const existing = Deno.readFileSync(path);
+    const existing = await Deno.readFile(path);
     const padded = new Uint8Array(existing.length + 4);
     padded.set(existing);
-    Deno.writeFileSync(path, padded);
+    await Deno.writeFile(path, padded);
 
     const error = await assertRejects(
       () => creature.evaluateDir(dataDir, Costs.find("MSE"), false),
