@@ -142,6 +142,15 @@ Drop-in API and configuration material.
   `RustScorerConfig`, and the 6 injection points, and why two of them are
   load-bearing in production despite zero camelCase hits in either consumer —
   they are set entirely from environment variables.
+- **[OPTION_AUDIT_SLICE_F.md](OPTION_AUDIT_SLICE_F.md)** — slice F of the #3505
+  audit: the 4 experimental research configs (`mcmc`, `hyperparameterEvolution`,
+  `opd`, `specialist`) and all 39 of their fields, every one `QUALIFIES`, plus
+  the GRQ evolution-mode sweep that advertises three of them without wiring any.
+- **[OPTION_AUDIT_CONSOLIDATED.md](OPTION_AUDIT_CONSOLIDATED.md)** — the #3505
+  roll-up: the six slice tables merged into one, the mechanical coverage check
+  that diffs them against the harness inventory, the one gap it found
+  (`mutation`), the cross-slice and cross-campaign deduplication, and the order
+  the removal issues must land in.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the

@@ -41,8 +41,9 @@ That does not make the keys `IN USE` — a flag parsed and dropped is not a
 consumer setting an option — but it is the only adoption signal anywhere, so
 `mcmc` + `opd` are filed as a **decision** issue (**#3570**, the #3563 pattern)
 rather than a deletion. `hyperparameterEvolution` has no such signal and is
-filed as a straight **removal** (**#3569**). The GRQ-side half-wiring is a
-separate root cause in a separate repo: **stSoftwareAU/GRQ#3793**.
+filed as a straight **removal** (**#3569**). The consumer-side half-wiring is a
+separate root cause and is filed in the downstream production repo's own
+tracker.
 
 **3. A default-on flag nested inside a default-off feature.**
 `mcmc.diversityAwareMCMC.enabled` defaults to `true`. Read on its own that looks
@@ -110,18 +111,18 @@ flowchart TD
     H --> D2["#3569 removal<br/>no adopter, declared or otherwise"]
     S --> D3["#3568 removal<br/>no read site at any value"]
 
-    D1 -.-> GRQ["stSoftwareAU/GRQ#3793<br/>wire the sweep bits or drop them"]
+    D1 -.-> GRQ["downstream production repo<br/>wire the sweep bits or drop them"]
 ```
 
 ### Issues filed
 
-| Feature                   | Issue                 | Shape                                               |
-| ------------------------- | --------------------- | --------------------------------------------------- |
-| `specialist`              | #3568                 | Removal — option surface unreadable at any value    |
-| `hyperparameterEvolution` | #3569                 | Removal — feature complete, flag never turned on    |
-| `mcmc` + `opd`            | #3570                 | Decision — inert today, GRQ's sweep declares intent |
-| GRQ sweep half-wiring     | stSoftwareAU/GRQ#3793 | Wire bits G/O/S onto `NeatOptions` or drop them     |
-| `dnaSharingMode`          | #3554 (slice A)       | Not re-filed — slice A owns it                      |
+| Feature                   | Issue           | Shape                                               |
+| ------------------------- | --------------- | --------------------------------------------------- |
+| `specialist`              | #3568           | Removal — option surface unreadable at any value    |
+| `hyperparameterEvolution` | #3569           | Removal — feature complete, flag never turned on    |
+| `mcmc` + `opd`            | #3570           | Decision — inert today, GRQ's sweep declares intent |
+| GRQ sweep half-wiring     | downstream repo | Wire bits G/O/S onto `NeatOptions` or drop them     |
+| `dnaSharingMode`          | #3554 (slice A) | Not re-filed — slice A owns it                      |
 
 Classification table posted on #3505:
 [comment](https://github.com/stSoftwareAU/NEAT-AI/issues/3505#issuecomment-5129320935).
