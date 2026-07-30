@@ -116,6 +116,10 @@ per declaration site:
 | `verdict_candidate` | What a sibling slice should do next |
 | `detail` | Evidence paths, or why the key is unresolved |
 
-A nested key with a generic name (`enabled`, `weight`) matches any consumer
-mention of that word, so it errs towards `IN USE`. That bias is deliberate: it
-can only ever prevent a removal, never cause a wrong one.
+The harness matches the key as a plain string, so a nested key with a generic
+name (`enabled`, `weight`) and a key mentioned only in a consumer's
+documentation both come out as `IN USE`. That bias is deliberate: an
+over-broad match can only ever prevent a removal, never cause a wrong one.
+Check the `detail` column before treating an `IN USE` verdict as a live call
+site — a row whose only evidence is `docs/…` is a documentation mention, not a
+consumer setting the option.

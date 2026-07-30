@@ -86,6 +86,23 @@ function nonEmptyLines(text: string): string[] {
   return text.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
 }
 
+const DOC_PATH = /\.md$|(^|\/)docs\//i;
+
+/**
+ * Order matches so real call sites outrank documentation mentions. Only the
+ * first few paths are reported, and a row whose evidence is five changelog
+ * entries tells a sibling slice nothing about whether the option is live.
+ */
+export function rankEvidencePaths(paths: string[]): string[] {
+  return [...paths].sort((a, b) =>
+    Number(DOC_PATH.test(a)) - Number(DOC_PATH.test(b))
+  );
+}
+
+function reportedPaths(paths: string[]): string[] {
+  return rankEvidencePaths(paths).slice(0, MAX_REPORTED_PATHS);
+}
+
 /** Local search tools, in preference order. */
 export type LocalGrepTool = "rg" | "git-grep";
 
@@ -157,7 +174,7 @@ export class LocalGrepProbe implements KeyProbe {
       const paths = nonEmptyLines(stdout).map((p) =>
         p.startsWith(root) ? p.slice(root.length).replace(/^\//, "") : p
       );
-      return { resolution: "hit", paths: paths.slice(0, MAX_REPORTED_PATHS) };
+      return { resolution: "hit", paths: reportedPaths(paths) };
     }
     if (code === 1) return { resolution: "miss", paths: [] };
     return {
@@ -264,7 +281,7 @@ export class CodeSearchProbe implements KeyProbe {
           const parsed = JSON.parse(stdout || "[]") as { path?: string }[];
           const paths = parsed.map((r) => r.path ?? "").filter(Boolean);
           return paths.length > 0
-            ? { resolution: "hit", paths: paths.slice(0, MAX_REPORTED_PATHS) }
+            ? { resolution: "hit", paths: reportedPaths(paths) }
             : { resolution: "miss", paths: [] };
         } catch (error) {
           lastNote = `unparseable gh output: ${(error as Error).message}`;

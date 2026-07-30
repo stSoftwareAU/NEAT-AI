@@ -15,6 +15,7 @@ import {
   type KeyProbe,
   LocalGrepProbe,
   type ProbeResult,
+  rankEvidencePaths,
   RateLimiter,
   runCommand,
   SPAWN_FAILED,
@@ -280,6 +281,49 @@ Deno.test("LocalGrepProbe - the git-grep fallback searches inside the clone", as
   assertEquals(probe.name, "local-git-grep");
   assertEquals(result.paths, ["src/Learn.ts"]);
   assertEquals(calls[0].slice(0, 4), ["git", "-C", "/clones/GRQ", "grep"]);
+});
+
+Deno.test("rankEvidencePaths - call sites outrank documentation mentions", () => {
+  assertEquals(
+    rankEvidencePaths([
+      "CHANGELOG.md",
+      "docs/archive/pr-summaries/pr-summary-1.md",
+      "src/Learn.ts",
+      "docs/evidence/run.log",
+      "test/Worker.ts",
+    ]),
+    [
+      "src/Learn.ts",
+      "test/Worker.ts",
+      "CHANGELOG.md",
+      "docs/archive/pr-summaries/pr-summary-1.md",
+      "docs/evidence/run.log",
+    ],
+  );
+});
+
+Deno.test("LocalGrepProbe - reports at most five paths, call sites first", async () => {
+  const { run } = fakeRunner([
+    OK([
+      "/c/CHANGELOG.md",
+      "/c/docs/a.md",
+      "/c/docs/b.md",
+      "/c/docs/c.md",
+      "/c/docs/d.md",
+      "/c/src/Learn.ts",
+    ].join("\n")),
+  ]);
+  const result = await new LocalGrepProbe("rg", run).probe("populationSize", {
+    repo: "stSoftwareAU/GRQ",
+    clonePath: "/c",
+  });
+
+  assertEquals(result.paths.length, 5);
+  assertEquals(
+    result.paths[0],
+    "src/Learn.ts",
+    "the call site must survive truncation",
+  );
 });
 
 Deno.test("detectLocalGrepTool - falls back to git grep when rg is absent", async () => {
