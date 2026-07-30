@@ -29,7 +29,7 @@ No behaviour change: the direct-execution fallback, the timeout value, and the
 existing greppable field names are all untouched — the timeout message gains one
 field and one closing sentence.
 
-Raised for `stSoftwareAU/GRQ#3771`.
+Raised for the orchestration repo's worker-init timeout tracking issue.
 
 ### Design notes
 

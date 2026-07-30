@@ -129,7 +129,8 @@ Deno.test("#3771: the two stall cases produce different diagnostics", async () =
 
 Deno.test("#3771: a heartbeat is not routed as a task response", async () => {
   // The task-callback map asserts a callback exists for every message it
-  // sees, so an unrouted heartbeat would throw "No callback" and kill init.
+  // sees, so a heartbeat reaching that map would throw "No callback" and kill
+  // init.
   resetWasmActivationInitDiagnostics();
   const worker = new StalledWorker(true);
   const handler = new Handler(
