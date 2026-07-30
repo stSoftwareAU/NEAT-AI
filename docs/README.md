@@ -128,6 +128,11 @@ Drop-in API and configuration material.
   audit: the 33 `discovery*` top-level options plus the 3 discovery-scoped
   nested configs, with the env-var / CLI-alias forms that a camelCase-only grep
   misses and the substring false positive that hides an unset nested config.
+- **[OPTION_AUDIT_SLICE_C.md](OPTION_AUDIT_SLICE_C.md)** — slice C of the #3505
+  audit: the 10 population & selection nested configs and all 49 of their
+  fields, why no consumer sets any of them, and how a nested field's verdict is
+  resolved through its parent rather than by a name grep that collides with
+  common identifiers.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the
