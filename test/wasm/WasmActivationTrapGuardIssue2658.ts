@@ -27,14 +27,17 @@
  *   bypasses the `activateWasm` try/catch (Issue #2146) by talking to
  *   `WasmCreatureActivation` directly.
  *
- *   The trap is reproduced by feeding `WasmCreatureActivation` a creature
- *   whose synapses point at a non-existent `from` neuron index — the
- *   binary compiles cleanly but the WASM activation kernel traps the
- *   moment it tries to read past the activation array. This is the same
- *   technique `WasmCompileFailureRecovery.ts` (Issue #2483) uses to drive
- *   `activateWasm` into its existing recovery path; here we drive the
- *   raw `WasmCreatureActivation` API directly to prove the guard sits at
- *   the right layer.
+ *   The trap used to be reproduced by feeding `WasmCreatureActivation` a
+ *   binary whose synapse points at a non-existent `from` neuron index. The
+ *   NEAT-AI-core bundle now rejects that shape in the Rust constructor
+ *   ("Synapse source index N is out of bounds"), so `create()` returns
+ *   `null` and no activation-time trap is reachable through a hand-built
+ *   binary any more. The guard contract is unchanged, so the trap is now
+ *   injected at the only remaining boundary: a stub compiled-network whose
+ *   kernel entry points throw the same `WebAssembly.RuntimeError` the real
+ *   kernel raises. The activation object under test is still a real
+ *   `WasmCreatureActivation`, so every pre-flight check and the
+ *   `invalidateAfterWasmPanic` conversion run exactly as in production.
  */
 
 import { assertEquals, assertThrows } from "@std/assert";
@@ -48,17 +51,12 @@ import { initWasmActivation } from "@wasm/WasmModuleLoader.ts";
 await initWasmActivation();
 
 /**
- * Hand-build a 2-input / 1-output creature binary whose one synapse points at
- * neuron index 9999. The Rust constructor accepts this shape (any u16 fits)
- * and the trap fires only when `activate()` reads past the activation array.
- *
- * Issue #2667 added a producer-side `from_index` bounds check in
- * `assertWasmBinaryWellFormed`, so we deliberately bypass `compileCreatureToWasm`
- * here — these tests are about activate-time trap propagation, not the
- * producer gate. Going around the validator preserves the original trap site.
+ * Hand-build a well-formed 2-input / 1-output creature binary: one synapse
+ * from input neuron 0 into the output neuron. The Rust constructor accepts
+ * it, so `create()` yields a real `WasmCreatureActivation` whose kernel we
+ * then swap for the trapping stub below.
  */
-function buildTrappingCompiled(): CompiledCreatureData {
-  // 3 neurons (2 inputs + 1 output), 1 synapse from index 9999.
+function buildCompiled(): CompiledCreatureData {
   const buffer = new ArrayBuffer(8 + 12 + 12);
   const view = new DataView(buffer);
   view.setUint32(0, 3, true); // numNeurons
@@ -69,7 +67,7 @@ function buildTrappingCompiled(): CompiledCreatureData {
   view.setUint8(17, 0); // isConstant
   view.setUint16(18, 1, true); // numSynapses
   // Synapse record.
-  view.setUint16(20, 9999, true); // from_index — out of range, traps at activate
+  view.setUint16(20, 0, true); // from_index — input neuron 0
   view.setUint8(22, 0); // synapse_type
   view.setUint8(23, 0); // padding
   view.setFloat64(24, 1.0, true); // weight
@@ -79,6 +77,30 @@ function buildTrappingCompiled(): CompiledCreatureData {
     numInputs: 2,
     numOutputs: 1,
     numSynapses: 1,
+  };
+}
+
+/** The trap the real kernel raises when it reads past the activation array. */
+function trap(): never {
+  throw new WebAssembly.RuntimeError("memory access out of bounds");
+}
+
+/**
+ * Stand-in for the wasm-bindgen `CompiledNetwork`: every activation kernel
+ * traps, while the non-kernel surface (`num_neurons`, `reset_state`, `free`)
+ * behaves normally so the wrapper reaches the kernel call rather than
+ * failing earlier for an unrelated reason.
+ */
+function trappingNetwork() {
+  return {
+    num_neurons: 3,
+    num_synapses: 1,
+    activate: trap,
+    activate_view: trap,
+    activate_into: trap,
+    activate_and_trace: trap,
+    reset_state: () => {},
+    free: () => {},
   };
 }
 
@@ -94,14 +116,17 @@ function createTrappingCreature(): Creature {
 }
 
 function createTrappingActivation(): WasmCreatureActivation {
-  const compiled = buildTrappingCompiled();
-  const activation = WasmCreatureActivation.create(compiled);
+  const activation = WasmCreatureActivation.create(buildCompiled());
   if (!activation) {
     throw new Error(
-      "Test setup: trapping binary should still compile cleanly; " +
+      "Test setup: the well-formed binary must compile; " +
         "the activation kernel — not the constructor — is the trap site.",
     );
   }
+  // Replace the compiled kernel with the trapping stub. The wrapper's own
+  // pre-flight checks and trap-guard conversion are untouched, which is
+  // precisely the layer these tests pin.
+  (activation as unknown as { network: unknown }).network = trappingNetwork();
   return activation;
 }
 

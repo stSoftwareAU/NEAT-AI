@@ -411,10 +411,18 @@ EOF
 # --no-same-owner / --no-same-permissions flags ensure a hostile archive
 # cannot set foreign ownership or world-writable/setuid bits on extracted
 # files; permissions fall back to the caller's umask instead.
+#
+# `.gitignore` is never extracted: wasm-pack emits a blanket `*` ignore file
+# into pkg/, which would clobber this repo's curated pkg/.gitignore allowlist
+# and silently un-track the vendored WASM artefacts (they then vanish from
+# `deno publish` output). The ignore policy belongs to this repo, not to the
+# upstream bundle; no manifest entry covers it either.
 extract_bundle() {
   local archive="$1"
   local dest="$2"
-  tar --no-same-owner --no-same-permissions -xzf "$archive" -C "$dest"
+  tar --no-same-owner --no-same-permissions \
+    --exclude='.gitignore' --exclude='./.gitignore' \
+    -xzf "$archive" -C "$dest"
 }
 
 # write_content_manifest — record sha256(file) for every artefact in the
