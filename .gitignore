@@ -5,6 +5,9 @@ logback.log
 !.gitignore
 !.markdownlint-cli2.jsonc
 coverage/
+# Per-shard coverage dirs are deliberately non-hidden so upload-artifact keeps
+# them (Issue #3550); ignore them so a local run never commits one.
+coverage-*/
 target/
 junit.xml
 !.github
