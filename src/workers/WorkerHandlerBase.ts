@@ -18,6 +18,7 @@ import type {
   WorkerInterface,
 } from "@workers/WorkerInterface.ts";
 import { getLogger, type Logger } from "@utils/Logger.ts";
+import { isWorkerHeartbeatMessage } from "@workers/WorkerHeartbeat.ts";
 import {
   formatWorkerInitDiagnostics,
   formatWorkerInitTimeout,
@@ -221,6 +222,12 @@ export abstract class WorkerHandlerBase<
   protected ready: Promise<TResponse>;
   /** Captured worker error during initialisation (if any). */
   protected initWorkerError?: Error;
+  /**
+   * `performance.now()` at which the child's start heartbeat arrived, or
+   * `undefined` when it never did (Issue #3771). This is what separates a
+   * child that never started from one that started and then stalled.
+   */
+  private heartbeatAtMs?: number;
 
   /**
    * Creates a new WorkerHandlerBase.
@@ -236,6 +243,13 @@ export abstract class WorkerHandlerBase<
 
     this.worker.addEventListener("message", (message) => {
       const me = message as MessageEvent;
+      // Issue #3771: the child's start heartbeat is not a task response —
+      // take it off the wire before task routing, which asserts a callback
+      // exists for every message it sees.
+      if (isWorkerHeartbeatMessage(me.data)) {
+        this.heartbeatAtMs = performance.now();
+        return;
+      }
       this.handleCallback(me.data as TResponse);
     });
 
@@ -343,6 +357,11 @@ export abstract class WorkerHandlerBase<
                   elapsedMs: performance.now() - startMs,
                   wasm: getLastWasmActivationInitDiagnostics(),
                   workerError: this.initWorkerError,
+                  // Clamped: a heartbeat that beat the init request to the
+                  // parent is 0 ms into the handshake, never negative.
+                  heartbeatMs: this.heartbeatAtMs === undefined
+                    ? undefined
+                    : Math.max(0, this.heartbeatAtMs - startMs),
                 }),
               ),
             ),

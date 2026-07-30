@@ -31,9 +31,14 @@
  *
  *    ```text
  *    [WasmWorkerInit] Worker init: no response after 60s (worker=worker-3). \
- *      Parent-observed: handshakeMs=60001 workerError=none wasm[cache=hit …]. \
- *      Child WASM phase timings unknown — the worker never answered …
+ *      Parent-observed: handshakeMs=60001 workerError=none heartbeat=none \
+ *      wasm[cache=hit …]. Child WASM phase timings unknown — the worker never \
+ *      answered … The child never sent its start heartbeat …
  *    ```
+ *
+ *    `heartbeat=received heartbeatMs=N` / `heartbeat=none` (Issue #3771) is
+ *    the field that separates a child which started and then stalled from one
+ *    that never started at all.
  *
  * The phrases "no response after Ns" and "stuck loading WASM" are preserved so
  * existing operator greps keep matching.
@@ -184,28 +189,64 @@ export interface WorkerInitTimeoutInput {
   wasm: WasmActivationInitDiagnostics | null;
   /** Any worker `error`/`messageerror` captured during init. */
   workerError?: Error;
+  /**
+   * Milliseconds into the handshake at which the child's start heartbeat
+   * arrived, or `undefined` when it never did (Issue #3771).
+   */
+  heartbeatMs?: number;
+}
+
+/**
+ * The `heartbeat=…` field and the sentence that reads it (Issue #3771).
+ *
+ * A received heartbeat proves the child isolate started and evaluated its
+ * entry point, so a subsequent stall is inside the worker (CPU starvation or a
+ * stuck init) rather than a spawn that never happened. No heartbeat means the
+ * isolate never got that far — spawn starvation or OOM.
+ */
+function heartbeatFields(
+  heartbeatMs: number | undefined,
+): { field: string; verdict: string } {
+  if (heartbeatMs === undefined) {
+    return {
+      field: "heartbeat=none",
+      verdict: "The child never sent its start heartbeat, so it did not " +
+        "reach its entry point — suspect spawn starvation or OOM, not WASM " +
+        "loading.",
+    };
+  }
+  return {
+    field: `heartbeat=received heartbeatMs=${ms(heartbeatMs)}`,
+    verdict: "The child sent its start heartbeat and then stalled before " +
+      "answering — suspect CPU starvation or a stuck init, not a failed spawn.",
+  };
 }
 
 /**
  * Build the timeout error message. The breakdown is embedded here (not merely
  * logged) so it survives into the caller's `Error:`-suffixed fallback log line
- * and GRQ's `firstError=` field. Child-side phase timings are explicitly
- * flagged unknown, since a worker that never answered cannot report them.
+ * and GRQ's `firstError=` field. Child-side phase timings are still unknown —
+ * a worker that never answered cannot report them — but the start heartbeat
+ * (Issue #3771) says whether the child ever ran, which is what separates the
+ * "never started" and "started and stalled" cases the phase timings cannot.
  */
 export function formatWorkerInitTimeout(
   input: WorkerInitTimeoutInput,
 ): string {
-  const { workerLabel, timeoutMs, elapsedMs, wasm, workerError } = input;
+  const { workerLabel, timeoutMs, elapsedMs, wasm, workerError, heartbeatMs } =
+    input;
   const seconds = Math.round(timeoutMs / 1000);
   const parentWasm = wasm
     ? `wasm[${bundleFields(wasm)}]`
     : "wasm[not-measured]";
+  const heartbeat = heartbeatFields(heartbeatMs);
   return `${WASM_WORKER_INIT_LOG_PREFIX} Worker init: no response after ` +
     `${seconds}s (worker=${workerLabel}). Parent-observed: ` +
     `handshakeMs=${ms(elapsedMs)} workerError=${
       workerErrorField(workerError)
     } ` +
+    `${heartbeat.field} ` +
     `${parentWasm}. Child WASM phase timings unknown — the worker never ` +
     `answered the init handshake (may be stuck loading WASM, CPU-starved, ` +
-    `or OOM).`;
+    `or OOM). ${heartbeat.verdict}`;
 }

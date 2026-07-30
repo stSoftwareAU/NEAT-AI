@@ -15,6 +15,7 @@ import type {
   BaseResponseData,
 } from "@workers/WorkerInterface.ts";
 import { getInitTimeoutMs } from "@workers/WorkerHandlerBase.ts";
+import { buildWorkerHeartbeatMessage } from "@workers/WorkerHeartbeat.ts";
 import {
   currentHeapLimitMb,
   planWorkerHeapBudget,
@@ -100,6 +101,15 @@ export function setupWorkerMessageLoop<
 ): void {
   const INIT_TIMEOUT_MS = getInitTimeoutMs();
   const workerSelf = self as unknown as WorkerSelf<TRequest, TResponse>;
+
+  // Announce the isolate is alive BEFORE any init work (Issue #3771). The
+  // parent records receipt so a missed handshake can report whether the child
+  // ever started — `heartbeat=none` (never started: spawn starvation or OOM)
+  // versus `heartbeat=received` (started, then stalled). Emitting it here, at
+  // the end of module evaluation, is the earliest point the child controls.
+  workerSelf.postMessage(
+    buildWorkerHeartbeatMessage("loaded") as unknown as TResponse,
+  );
 
   workerSelf.onmessage = async function (message: { data: TRequest }) {
     const start = Date.now();
