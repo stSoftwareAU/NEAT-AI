@@ -41,6 +41,15 @@ async function buildFixtureTarball(workDir: string): Promise<string> {
   return fixturePath;
 }
 
+async function sha256Of(path: string): Promise<string> {
+  const cmd = new Deno.Command("shasum", {
+    args: ["-a", "256", path],
+    stdout: "piped",
+  });
+  const out = await cmd.output();
+  return new TextDecoder().decode(out.stdout).trim().split(/\s+/)[0];
+}
+
 async function setupFakeRepo(): Promise<{
   dir: string;
   cleanup: () => Promise<void>;
@@ -104,6 +113,13 @@ async function writeFakeGh(
     probeFailUntilSuccess?: number;
     /** If set, every probe fails with this stderr (non-404 fatal error). */
     probeFatalStderr?: string;
+    /**
+     * When set, a `--pattern *.sha256` download writes a real release
+     * sidecar with this hash instead of silently missing the file — the
+     * only way to anchor a revision advance without --allow-unverified
+     * (issue #3515).
+     */
+    sidecarSha256?: string;
   },
 ): Promise<void> {
   const script = `#!/usr/bin/env bash
@@ -115,6 +131,7 @@ DL_COUNTER="${opts.downloadCounterFile}"
 FIXTURE="${opts.fixturePath}"
 PROBE_FAIL_UNTIL_SUCCESS="${opts.probeFailUntilSuccess ?? 0}"
 PROBE_FATAL_STDERR=${JSON.stringify(opts.probeFatalStderr ?? "")}
+SIDECAR_SHA256=${JSON.stringify(opts.sidecarSha256 ?? "")}
 
 case "$1" in
   api)
@@ -141,11 +158,12 @@ case "$1" in
       d=$((d + 1))
       echo "$d" > "$DL_COUNTER"
       asset_dir=""
+      pattern=""
       shift 2
       while [[ $# -gt 0 ]]; do
         case "$1" in
           --dir) asset_dir="$2"; shift 2 ;;
-          --pattern) shift 2 ;;
+          --pattern) pattern="$2"; shift 2 ;;
           --repo) shift 2 ;;
           *) shift ;;
         esac
@@ -153,6 +171,15 @@ case "$1" in
       if [[ -z "$asset_dir" || ! -f "$FIXTURE" ]]; then
         echo "fake-gh: missing --dir or fixture" >&2
         exit 1
+      fi
+      if [[ "$pattern" == *.sha256 ]]; then
+        if [[ -n "$SIDECAR_SHA256" ]]; then
+          echo "$SIDECAR_SHA256  wasm_activation-pkg.tar.gz" > "$asset_dir/$pattern"
+        fi
+        # No SIDECAR_SHA256: report success but write nothing, simulating
+        # no sidecar published — avoids the curl network fallback in
+        # build.sh, which a sandboxed test must not exercise.
+        exit 0
       fi
       cp "$FIXTURE" "$asset_dir/wasm_activation-pkg.tar.gz"
       exit 0
@@ -202,20 +229,23 @@ Deno.test({
   fn: async () => {
     const setup = await setupFakeRepo();
     try {
+      // The fixture pins neatCore.rev to FAKE_REV_A while --rev targets
+      // FAKE_REV_B, i.e. a revision advance. Since issue #3515 a revision
+      // advance requires a real release-sidecar anchor — --allow-unverified
+      // no longer suffices — so the fake release publishes a matching
+      // .sha256 sidecar here. This test exercises the 404 retry path, not
+      // the anchor requirement itself.
+      const sidecarSha256 = await sha256Of(setup.fixturePath);
       await writeFakeGh(setup.fakeBinDir, {
         probeCounterFile: setup.probeCounterFile,
         downloadCounterFile: setup.downloadCounterFile,
         fixturePath: setup.fixturePath,
         probeFailUntilSuccess: 2,
+        sidecarSha256,
       });
-      // The fixture deno.json carries no neatCore.assetSha256 and the fake
-      // release publishes no .sha256 sidecar, so --allow-unverified is
-      // required to extract (issue #2744 hard-errors on an unattested
-      // download). This test exercises the 404 retry path, not SHA
-      // verification, so it deliberately opts out of the anchor requirement.
       const result = await runBuild(
         setup.dir,
-        ["--rev", FAKE_REV_B, "--allow-unverified"],
+        ["--rev", FAKE_REV_B],
         setup.fakeBinDir,
         {
           NEAT_CORE_BUNDLE_RETRIES: "5",
@@ -264,53 +294,82 @@ Deno.test({
   },
 });
 
+/**
+ * Runs one case of the sidecar-less revision-advance guard (issue #3515):
+ * the fixture pins neatCore.rev to FAKE_REV_A while --rev targets
+ * FAKE_REV_B — a revision advance. deno.json neatCore.assetSha256 cannot
+ * anchor a new revision (it only ever records the previous rev's hash),
+ * and no release sidecar is published here, so the advance must hard-error
+ * regardless of extraArgs — in particular --allow-unverified must not
+ * bypass it.
+ */
+async function assertRevAdvanceBlocked(extraArgs: string[]): Promise<void> {
+  const setup = await setupFakeRepo();
+  try {
+    await writeFakeGh(setup.fakeBinDir, {
+      probeCounterFile: setup.probeCounterFile,
+      downloadCounterFile: setup.downloadCounterFile,
+      fixturePath: setup.fixturePath,
+      probeFailUntilSuccess: 0,
+    });
+    const denoJsonBefore = await Deno.readTextFile(`${setup.dir}/deno.json`);
+    const result = await runBuild(
+      setup.dir,
+      ["--rev", FAKE_REV_B, ...extraArgs],
+      setup.fakeBinDir,
+      {
+        NEAT_CORE_BUNDLE_RETRIES: "5",
+        NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS: "0",
+      },
+    );
+    assert(
+      result.code !== 0,
+      `Expected non-zero exit on a sidecar-less revision advance (args=${
+        JSON.stringify(extraArgs)
+      }); stdout=${result.stdout}`,
+    );
+    assert(
+      result.stderr.includes("revision advance") &&
+        result.stderr.includes("wasm_activation-pkg.tar.gz.sha256") &&
+        result.stderr.includes(`wasm-bundle-${FAKE_REV_B}`) &&
+        result.stderr.includes("--allow-unverified") &&
+        result.stderr.includes("wasm-bundle.yml"),
+      `Expected the actionable rev-advance error (sidecar name, tag, --allow-unverified note, workflow link); stderr=${result.stderr}`,
+    );
+    // The bundle must NOT have been extracted into pkg/.
+    let extracted = false;
+    try {
+      const stat = await Deno.stat(
+        `${setup.dir}/wasm_activation/pkg/wasm_activation_bg.wasm`,
+      );
+      extracted = stat.isFile;
+    } catch {
+      extracted = false;
+    }
+    assert(
+      !extracted,
+      "unattested revision advance must not be extracted into pkg/",
+    );
+    const denoJsonAfter = await Deno.readTextFile(`${setup.dir}/deno.json`);
+    assertEquals(
+      denoJsonAfter,
+      denoJsonBefore,
+      "deno.json must not be mutated on a blocked revision advance",
+    );
+  } finally {
+    await setup.cleanup();
+  }
+}
+
 Deno.test({
   name:
-    "build.sh refuses to extract an unattested tarball without --allow-unverified",
+    "build.sh refuses a revision advance with no sidecar, with and without --allow-unverified (issue #3515)",
   permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
-    // Issue #2744: with no neatCore.assetSha256 pin and no release sidecar,
-    // the download must hard-error instead of silently extracting.
-    const setup = await setupFakeRepo();
-    try {
-      await writeFakeGh(setup.fakeBinDir, {
-        probeCounterFile: setup.probeCounterFile,
-        downloadCounterFile: setup.downloadCounterFile,
-        fixturePath: setup.fixturePath,
-        probeFailUntilSuccess: 0,
-      });
-      const result = await runBuild(
-        setup.dir,
-        ["--rev", FAKE_REV_B],
-        setup.fakeBinDir,
-        {
-          NEAT_CORE_BUNDLE_RETRIES: "5",
-          NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS: "0",
-        },
-      );
-      assert(
-        result.code !== 0,
-        `Expected non-zero exit on unattested download; stdout=${result.stdout}`,
-      );
-      assert(
-        result.stderr.includes("no SHA-256 source") &&
-          result.stderr.includes("--allow-unverified"),
-        `Expected actionable no-anchor error; stderr=${result.stderr}`,
-      );
-      // The bundle must NOT have been extracted into pkg/.
-      let extracted = false;
-      try {
-        const stat = await Deno.stat(
-          `${setup.dir}/wasm_activation/pkg/wasm_activation_bg.wasm`,
-        );
-        extracted = stat.isFile;
-      } catch {
-        extracted = false;
-      }
-      assert(!extracted, "unattested bundle must not be extracted into pkg/");
-    } finally {
-      await setup.cleanup();
-    }
+    await Promise.all([
+      assertRevAdvanceBlocked([]),
+      assertRevAdvanceBlocked(["--allow-unverified"]),
+    ]);
   },
 });
 

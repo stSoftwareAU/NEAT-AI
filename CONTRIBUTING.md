@@ -136,11 +136,12 @@ optional — tests and the core library work without it.
 Shared native Rust computation lives in the external
 [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) repository and is
 consumed as a vendored WASM bundle **pinned by an immutable 40-char SHA** in
-`deno.json` (`neatCore.rev`), attested by `neatCore.assetSha256`, and synced
-into `wasm_activation/pkg` via `./build.sh`. The `neatCore.ref` field is only a
-human-readable label recording which branch the pinned SHA came from — it is
-**not** branch-tracking. `deno.json` is the single source of truth; `neatCore`
-is pinned by SHA, never by branch.
+`deno.json` (`neatCore.rev`), attested by the per-revision
+`neatCore.assetSha256` pin, and synced into `wasm_activation/pkg` via
+`./build.sh`. The `neatCore.ref` field is only a human-readable label recording
+which branch the pinned SHA came from — it is **not** branch-tracking.
+`deno.json` is the single source of truth; `neatCore` is pinned by SHA, never by
+branch.
 
 For the full pinning policy (semver rules, approval tiers, CI auth) see
 [docs/CORE_DEPENDENCY_POLICY.md](./docs/CORE_DEPENDENCY_POLICY.md); for the
@@ -163,6 +164,16 @@ day-to-day bump workflow see
 
 An example that omits `rev`/`assetSha256` would fail `./quality.sh`, which runs
 `./build.sh --verify-only` and errors when `neatCore.rev` is unset.
+
+`assetSha256` is **per-revision**: it is the SHA-256 of the
+`wasm_activation-pkg.tar.gz` belonging to the pinned `rev`, so the two fields
+always move together. You never hand-maintain it across bumps — `./build.sh`
+rewrites both fields on a revision advance, after verifying the new tarball
+against the release sidecar `wasm_activation-pkg.tar.gz.sha256`. An advance
+whose target release serves no sidecar fails loud rather than adopting an
+unattested bundle; see
+[docs/CORE_DEPENDENCY_POLICY.md](./docs/CORE_DEPENDENCY_POLICY.md) for the
+same-rev vs revision-advance rules.
 
 To bump the pin (see
 [docs/EXTERNAL_NEAT_AI_CORE.md](./docs/EXTERNAL_NEAT_AI_CORE.md) for the
