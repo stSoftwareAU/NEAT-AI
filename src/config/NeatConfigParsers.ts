@@ -33,7 +33,6 @@ export {
   parseCompatibilityGating,
   parseFineTunePopulation,
   parseFitnessSharing,
-  parseNovelty,
   parseRandomImmigrants,
   parseSpeciesStagnation,
 } from "@config/parsers/PopulationParsers.ts";

@@ -96,6 +96,14 @@ Deno.test("NeatOptions - ensembleDiversity is not a config key", () => {
   assertEquals(Object.hasOwn(config, "ensembleDiversity"), false);
 });
 
+// Issue #3559: novelty selection was removed as an opt-in feature with zero
+// adopters — the parsed config must no longer carry it (regression guard
+// against reintroduction).
+Deno.test("NeatOptions - novelty is not a config key", () => {
+  const config = createNeatConfig({}) as unknown as Record<string, unknown>;
+  assertEquals(Object.hasOwn(config, "novelty"), false);
+});
+
 // Issue #3553: enableRepetitiveTraining was removed as an unused option — the
 // parsed config must no longer carry it (regression guard against reintroduction).
 Deno.test("NeatOptions - enableRepetitiveTraining is not a config key", () => {

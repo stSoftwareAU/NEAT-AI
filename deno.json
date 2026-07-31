@@ -93,7 +93,6 @@
       "bench/IncrementalScoreUpdate.ts",
       "bench/MainThreadScoreWork.ts",
       "bench/MaxWeightBiasRecalculation.ts",
-      "bench/NoveltyDeceptiveEscape.ts",
       "bench/OnPolicyDistillationBreed.ts",
       "bench/RandomImmigrantsStagnationEscape.ts",
       "bench/RevisitDiagnostic.ts",

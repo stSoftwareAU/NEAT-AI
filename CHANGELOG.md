@@ -195,6 +195,22 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   entries), the `parseEnsembleDiversity` parser, the `LARGE_NETWORK_PRESET`
   block that advertised it, and the documentation sections describing it as a
   working feature are all gone.
+- **Issue #3559:** Removed the `novelty` (behavioural-diversity) selection
+  option and its six fields (#3505 audit, slice C). Unlike the other slice-C
+  removals this was a **working, benchmarked, documented feature** — the
+  keep-or-remove decision was resolved as remove because no consumer ever
+  adopted it in the seven weeks since #2932 delivered it, and an opt-in lever
+  nobody sets still costs type surface, documentation and maintenance on every
+  config change. `DEFAULT_NOVELTY_CONFIG.enabled` was `false` and the feature
+  additionally required a problem-supplied behaviour descriptor, so ranking
+  already used raw fitness in every production run and **behaviour is
+  unchanged**. **Breaking for embedders that opted in:** setting `novelty` is
+  now a `deno check` error. `src/config/NoveltyConfig.ts`,
+  `src/NEAT/NoveltySearch.ts` (engine, archive and `blendScores`), the
+  `noveltySearch` argument threaded through `Neat` into `Breed`,
+  `bench/NoveltyDeceptiveEscape.ts` and `docs/NOVELTY_SEARCH.md` are all gone.
+  The unrelated `noveltyEscalationActive` Discovery drought signal (#3072) is
+  untouched.
 
 ## [5.2.0] - 2026-05-30
 

@@ -149,10 +149,11 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   // the real 119. #3558 then removed `ensembleDiversity`, leaving 118; #3556
   // then removed `discoveryReplayDiagnostics`, leaving 117; #3552 then removed
   // `maxConns` and `maximumNumberOfNodes`, leaving 115; #3553 then removed
-  // `enableRepetitiveTraining`, leaving 114.
+  // `enableRepetitiveTraining`, leaving 114; #3559 then removed `novelty`,
+  // leaving 113.
   assertEquals(
     topLevel.length,
-    114,
+    113,
     "NeatArguments top-level key count changed",
   );
   assert(
@@ -187,8 +188,10 @@ Deno.test("enumerateOptionKeys - covers the nested *Config.ts interfaces", async
     "nested keys come from *Config.ts files",
   );
   assert(
-    nested.some((r) => r.owner === "NoveltyConfig" && r.key === "archiveLimit"),
-    "NoveltyConfig.archiveLimit must be enumerated",
+    nested.some((r) =>
+      r.owner === "RandomImmigrantsConfig" && r.key === "enabled"
+    ),
+    "RandomImmigrantsConfig.enabled must be enumerated",
   );
   assert(
     rows.every((r) =>
@@ -800,8 +803,8 @@ const INVENTORY = [
   },
   {
     slice: "nested" as const,
-    ownerFile: "src/config/NoveltyConfig.ts",
-    owner: "NoveltyConfig",
+    ownerFile: "src/config/RandomImmigrantsConfig.ts",
+    owner: "RandomImmigrantsConfig",
     key: "archiveLimit",
   },
 ];
