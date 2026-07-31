@@ -104,6 +104,15 @@ Deno.test("NeatOptions - novelty is not a config key", () => {
   assertEquals(Object.hasOwn(config, "novelty"), false);
 });
 
+// Issue #3554: the dnaSharingMode knob preset was retired — nobody set it and
+// the default preset equalled the per-knob defaults, which are now inline. The
+// parsed config must no longer carry it (regression guard against
+// reintroduction).
+Deno.test("NeatOptions - dnaSharingMode is not a config key", () => {
+  const config = createNeatConfig({}) as unknown as Record<string, unknown>;
+  assertEquals(Object.hasOwn(config, "dnaSharingMode"), false);
+});
+
 // Issue #3553: enableRepetitiveTraining was removed as an unused option — the
 // parsed config must no longer carry it (regression guard against reintroduction).
 Deno.test("NeatOptions - enableRepetitiveTraining is not a config key", () => {

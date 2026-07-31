@@ -27,8 +27,8 @@ export type { PopulationSeedingOptions } from "@transfer/PopulationSeeding.ts";
 /**
  * DNA-sharing strategy interface and bake-off harness (Issue #2491).
  *
- * Each candidate primitive (knob tuning, sub-graph graft, distillation,
- * pruning template) implements `DnaSharingStrategy`. The bake-off harness
+ * Each candidate primitive (sub-graph graft, distillation, pruning template)
+ * implements `DnaSharingStrategy`. The bake-off harness
  * (`bench/DnaSharingBakeOff.ts`) measures every strategy against the same
  * probe dataset, generation budget, and seed.
  */
@@ -113,30 +113,6 @@ export type {
 } from "@transfer/PruningTemplate.ts";
 
 /**
- * Knob-tuning DNA-sharing primitive (Issue #2492).
- *
- * The cheapest of the four primitives in the parent issue (#2490): no
- * structural surgery on the recipient, just stamps the
- * `dnaSharingMode = "aggressive"` preset onto the recipient's tags so the
- * next NEAT run on that creature picks up the aggressive defaults bundled
- * in `src/config/DnaSharingPreset.ts`.
- */
-export {
-  KNOB_TUNING_TAG_NAME,
-  KnobTuningStrategy,
-  readDnaSharingModeTag,
-} from "@transfer/KnobTuningStrategy.ts";
-export {
-  AGGRESSIVE_DNA_SHARING_PRESET,
-  DEFAULT_DNA_SHARING_PRESET,
-  getDnaSharingPreset,
-} from "@config/DnaSharingPreset.ts";
-export type {
-  DnaSharingMode,
-  DnaSharingPresetValues,
-} from "@config/DnaSharingPreset.ts";
-
-/**
  * Recommended DNA-sharing strategy from the bake-off (Issue #2496).
  *
  * After running the four primitives (#2492 – #2495) plus the `NoOpStrategy`
@@ -145,10 +121,9 @@ export type {
  * positive lift on every seed. The full result table lives in
  * `docs/dna-sharing-bake-off-results.md`.
  *
- * The default `dnaSharingMode` (knob preset gated by #2492) is intentionally
- * **not** flipped to `"aggressive"` — `KnobTuningStrategy("aggressive")`
- * produced zero lift in the bake-off, and flipping the default would change
- * behaviour for every existing `NeatOptions` user. Operators who want the
- * winning primitive should invoke `PruningTemplateStrategy` explicitly.
+ * The knob-tuning primitive (#2492) has since been retired (#3554): it
+ * produced zero lift, and no consumer ever set the `dnaSharingMode` option it
+ * stamped. Operators who want the winning primitive should invoke
+ * `PruningTemplateStrategy` explicitly.
  */
 export const recommendedDnaSharingStrategy = "PruningTemplate" as const;

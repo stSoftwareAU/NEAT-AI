@@ -5,10 +5,11 @@
 > seeds. Only **`PruningTemplateStrategy`** produced a strictly positive lift on
 > every seed, so it is the recommended default — exported as
 > `recommendedDnaSharingStrategy` from `src/transfer/mod.ts`. The
-> `dnaSharingMode` knob is intentionally **not** flipped to `aggressive`,
-> because `KnobTuningStrategy("aggressive")` produced zero lift in this
-> bake-off. Numbers below are **current** (Issue #2496); a real-evolve-step
-> rerun is tracked separately on #2490 and will be linked here when it lands.
+> `KnobTuning(aggressive)` arm produced zero lift, so the `dnaSharingMode` knob
+> it gated was never flipped — and has since been **retired** (see
+> [Retirement of the knob-tuning arm](#retirement-of-the-knob-tuning-arm)).
+> Numbers below are **current** (Issue #2496); a real-evolve-step rerun is
+> tracked separately on #2490 and will be linked here when it lands.
 
 This document captures the bake-off comparison of the four DNA-sharing
 primitives (Issues #2492 – #2495) plus the `NoOpStrategy` baseline run through
@@ -63,7 +64,10 @@ this fixture.
   keeping the per-row wall-clock under 100 ms on the small fixtures.
 - **Strategies (5 rows in this order)**: `NoOpStrategy`,
   `KnobTuningStrategy("aggressive")`, `CompactModuleGraftStrategy`,
-  `KnowledgeDistillationStrategy`, `PruningTemplateStrategy`.
+  `KnowledgeDistillationStrategy`, `PruningTemplateStrategy`. The
+  `KnobTuningStrategy` arm has since been retired (#3554), so a rerun today
+  produces the other four rows — see
+  [Retirement of the knob-tuning arm](#retirement-of-the-knob-tuning-arm).
 - **Seeds**: 1, 7, and 42 — three independent seeds so noise is visible.
 
 > [!NOTE]
@@ -164,18 +168,47 @@ The issue asks two questions:
    the bake-off winner documented above.
 
 2. **Flip the default `dnaSharingMode` to the winning preset.** **Not done** —
-   and deliberately so. The `dnaSharingMode` knob (introduced in #2492) gates
+   and deliberately so. The `dnaSharingMode` knob (introduced in #2492) gated
    `KnobTuningStrategy`'s aggressive preset, but `KnobTuningStrategy` was _not_
    the bake-off winner — it produced zero lift on every seed. Flipping
-   `dnaSharingMode` to `aggressive` would promote a primitive the bake-off does
-   not justify and would change default behaviour for every existing
+   `dnaSharingMode` to `aggressive` would have promoted a primitive the bake-off
+   does not justify and would have changed default behaviour for every existing
    `NeatOptions` user. The acceptance criterion "no regression: existing default
-   behaviour for unrelated `NeatOptions` users is preserved" is honoured by
-   leaving `dnaSharingMode` at `"default"`.
+   behaviour for unrelated `NeatOptions` users is preserved" was honoured by
+   leaving `dnaSharingMode` at `"default"` — and, in the end, by removing the
+   knob altogether.
 
 The winning primitive is invoked explicitly by operators via
 `PruningTemplateStrategy` from `@stsoftware/neat-ai/transfer/mod.ts`; that
 opt-in matches the way the four primitives were designed.
+
+## Retirement of the knob-tuning arm
+
+**Issue #3554 (option audit
+[#3505](https://github.com/stSoftwareAU/NEAT-AI/issues/3505), slice A).** The
+measured results above stand — they are the evidence for the decision, not
+something the retirement invalidates — but the code behind the
+`KnobTuning(aggressive)` row is gone:
+
+- `dnaSharingMode` (`NeatOptions` / `NeatArguments`) — no consumer ever set it,
+  confirmed per-repo against `stSoftwareAU/GRQ` and
+  `stSoftwareAU/NEAT-AI-Examples`.
+- `src/config/DnaSharingPreset.ts` — the `default` preset was defined to equal
+  the per-knob defaults already applied by `createNeatConfig()`, so with nobody
+  setting the option the whole preset layer was inert. Those four defaults
+  (`diversityBreedingRate` `0`, `interSpeciesCrossoverThreshold` `0.1`,
+  `geneticCompatibilityThreshold` `0.3`, `compatibilityGating`
+  `{ enabled: true, power: 1.5, maxDraws: 3 }`) are now inline literals and are
+  locked by `test/config/InterIslandKnobDefaults.ts`.
+- `src/transfer/KnobTuningStrategy.ts` — orphaned by the option removal, since
+  its only effect was stamping a `dnaSharingMode` tag for the next `Neat` run to
+  read.
+- The `KnobTuning` arm in `bench/DnaSharingBakeOff.ts`. The other four arms
+  (`NoOp`, `CompactGraft`, `KnowDistill`, `PruningTpl`) are unchanged, so the
+  harness still reproduces every row except that one.
+
+Operators who want to widen inter-island gating can still set the four knobs
+directly on `NeatOptions` — that path was always available and is unaffected.
 
 ## Limitations
 
@@ -194,8 +227,8 @@ opt-in matches the way the four primitives were designed.
 
 - [`bench/DnaSharingBakeOff.ts`](../bench/DnaSharingBakeOff.ts) — the harness
   that produced these numbers.
-- `src/transfer/mod.ts` — exports `recommendedDnaSharingStrategy` and the four
-  strategy classes.
+- `src/transfer/mod.ts` — exports `recommendedDnaSharingStrategy` and the
+  surviving strategy classes.
 - [`docs/INTELLIGENT_DESIGN.md`](INTELLIGENT_DESIGN.md) — sibling specialised
   topic; per-neuron squash search that reads/writes tacit knowledge in a similar
   shared-knowledge style.

@@ -85,8 +85,11 @@ is worse than no inventory:
   and `stSoftwareAU/NEAT-AI-Examples`. This flips if the `--owner` saturation
   trap reappears, if the cache goes stale, or if the code-search index skips a
   consumer.
-- **Negative** — `dnaSharingMode` must be reported as not set in both. This
-  flips if a probe starts matching everything.
+- **Negative** — `syntheticAlignmentThreshold` must be reported as not set in
+  both. This flips if a probe starts matching everything. It replaced the
+  original negative control, `dnaSharingMode`, when #3554 retired that option;
+  the replacement is a `KEEP` key (load-bearing default, #2614), so it stays in
+  the surface the harness enumerates.
 
 ## Rate limiting
 
