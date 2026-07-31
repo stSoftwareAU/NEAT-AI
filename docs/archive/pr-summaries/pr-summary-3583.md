@@ -57,8 +57,8 @@ flowchart LR
 ## Test Plan
 
 - Added `test/utils/DiagnosticsDir.ts`:
-  - `writeDiagnostics` honours the configured directory and writes nothing
-    under that prefix into the default directory.
+  - `writeDiagnostics` honours the configured directory and writes nothing under
+    that prefix into the default directory.
   - `setDiagnosticsDir()` with no argument restores `.diagnostics`.
   - `setDiagnosticsDir("   ")` fails loud and leaves the active directory
     unchanged.
