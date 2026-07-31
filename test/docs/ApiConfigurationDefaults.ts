@@ -8,10 +8,9 @@
  * with the code. They fail if the doc drifts from the source again.
  */
 
-import { assert } from "@std/assert";
+import { assert, assertRejects } from "@std/assert";
 import { fromFileUrl, resolve } from "@std/path";
 import { DEFAULT_HEAVY_TASK_WORKER_COUNT } from "@config/NeatConfig.ts";
-import { createNeatConfig } from "@config/NeatConfig.ts";
 
 const REPO_ROOT = resolve(fromFileUrl(import.meta.url), "..", "..", "..");
 const CONFIG_DOC = `${REPO_ROOT}/docs/api/CONFIGURATION.md`;
@@ -36,28 +35,6 @@ Deno.test("CONFIGURATION.md - threads default reflects hardwareConcurrency + hea
   assert(
     def.includes(`+ ${DEFAULT_HEAVY_TASK_WORKER_COUNT}`),
     `threads default must document "+ ${DEFAULT_HEAVY_TASK_WORKER_COUNT}", got: ${def}`,
-  );
-});
-
-Deno.test("CONFIGURATION.md - maxConns default is MAX_SAFE_INTEGER not Infinity", async () => {
-  const [, , def] = await tableRow("maxConns");
-  assert(def.includes("MAX_SAFE_INTEGER"), `maxConns default wrong: ${def}`);
-  assert(!def.includes("Infinity"), `maxConns must not say Infinity: ${def}`);
-});
-
-Deno.test("CONFIGURATION.md - maximumNumberOfNodes default and semantics", async () => {
-  const row = await tableRow("maximumNumberOfNodes");
-  const def = row[2];
-  const desc = row[3];
-  assert(
-    def.includes("MAX_SAFE_INTEGER"),
-    `maximumNumberOfNodes default wrong: ${def}`,
-  );
-  assert(!def.includes("Infinity"), `must not say Infinity: ${def}`);
-  // Caps all neurons, not only hidden neurons.
-  assert(
-    !/hidden/i.test(desc),
-    `maximumNumberOfNodes must not be labelled "hidden": ${desc}`,
   );
 });
 
@@ -87,8 +64,20 @@ Deno.test("CONFIGURATION.md - verbose is not conflated with debug", async () => 
 
 Deno.test("CONFIGURATION.md - documented defaults still match code", () => {
   // Guards the numeric source-of-truth the doc now cites.
-  const config = createNeatConfig({});
-  assert(config.maxConns === Number.MAX_SAFE_INTEGER);
-  assert(config.maximumNumberOfNodes === Number.MAX_SAFE_INTEGER);
   assert(DEFAULT_HEAVY_TASK_WORKER_COUNT === 2);
+});
+
+// Issue #3552: the two growth-cap knobs were removed, so the doc table must no
+// longer advertise them.
+Deno.test("CONFIGURATION.md - removed growth-cap options are not documented", async () => {
+  await Promise.all(
+    ["maxConns", "maximumNumberOfNodes"].map((field) =>
+      assertRejects(
+        () => tableRow(field),
+        Error,
+        "No table row found",
+        `${field} was removed by #3552 and must not be documented`,
+      )
+    ),
+  );
 });

@@ -358,18 +358,6 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       min: 1,
     }),
 
-    maxConns: parseNumber(
-      "Max Connections",
-      opts.maxConns,
-      Number.MAX_SAFE_INTEGER,
-      { integer: true, min: 1 },
-    ),
-    maximumNumberOfNodes: parseNumber(
-      "Maximum Number of Nodes",
-      opts.maximumNumberOfNodes,
-      Number.MAX_SAFE_INTEGER,
-      { integer: true, min: 1 },
-    ),
     mutationRate: parseNumber("Mutation Rate", opts.mutationRate, 0.3, {
       minExclusive: 0.001,
       max: 1,

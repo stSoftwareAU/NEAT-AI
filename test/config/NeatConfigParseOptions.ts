@@ -176,3 +176,12 @@ Deno.test("NeatConfigParseOptions - discoveryReplayDiagnostics is not a config k
   const config = createNeatConfig({}) as unknown as Record<string, unknown>;
   assertEquals(Object.hasOwn(config, "discoveryReplayDiagnostics"), false);
 });
+
+// Issue #3552: maxConns and maximumNumberOfNodes were removed as unused
+// growth-cap knobs — the parsed config must no longer carry them (regression
+// guard against reintroduction).
+Deno.test("NeatConfigParseOptions - growth-cap options are not config keys", () => {
+  const config = createNeatConfig({}) as unknown as Record<string, unknown>;
+  assertEquals(Object.hasOwn(config, "maxConns"), false);
+  assertEquals(Object.hasOwn(config, "maximumNumberOfNodes"), false);
+});

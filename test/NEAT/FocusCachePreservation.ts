@@ -194,8 +194,6 @@ Deno.test("Mutator should clear focus cache only when focus list changes", () =>
     mutationAmount: 3,
     focusRate: 1.0, // Always use focus list
     focusList: [1, 2],
-    maxConns: 100,
-    maximumNumberOfNodes: 50,
     feedbackLoop: false,
     mutation: [Mutation.MOD_WEIGHT, Mutation.MOD_BIAS],
   });

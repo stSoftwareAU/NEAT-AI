@@ -20,9 +20,9 @@ it:
 
 ## Headline
 
-**288 classifications, zero unclassified keys, 15 issues, zero duplicates.** Of
-the 288 rows, **68 are `IN USE`**, **121 are `KEEP (load-bearing default)`** and
-**99 `QUALIFY`** — but that last number is dominated by the nested fields of
+**275 classifications, zero unclassified keys, 15 issues, zero duplicates.** Of
+the 275 rows, **68 are `IN USE`**, **121 are `KEEP (load-bearing default)`** and
+**86 `QUALIFY`** — but that last number is dominated by the nested fields of
 four experimental configs and badly overstates the removable surface.
 
 Counted by _option_ rather than by row, **20 of 120 qualify**, and only 10 of
@@ -42,7 +42,7 @@ grounds for removal.
 
 ```mermaid
 flowchart LR
-    H["#3518 harness<br/>enumerateOptionKeys()"] --> INV["288 rows<br/>118 top-level + 170 nested"]
+    H["#3518 harness<br/>enumerateOptionKeys()"] --> INV["275 rows<br/>115 top-level + 160 nested"]
     A["Slices A–F<br/>#3519–#3524"] --> TAB["Merged table<br/>optionAuditRollup.ts"]
     INV --> REC{"reconcile()"}
     TAB --> REC
@@ -62,7 +62,7 @@ run on every CI build by
 
 ```bash
 deno run --allow-read scripts/option-audit-rollup.ts
-# 🔎 288 enumerated rows (118 top-level, 170 nested) · 288 classified
+# 🔎 275 enumerated rows (115 top-level, 160 nested) · 275 classified
 # ✅ zero coverage gaps — every option key is classified
 ```
 
@@ -77,8 +77,8 @@ in #3518 and #3525. The original figure came from a grep that skipped
 `readonly mutation: readonly MutationInterface[]`; the parser-backed harness saw
 the real 119, and its CI test pins that number. Every slice brief was written
 from the 118-key list, so **no slice classified `mutation`**. (The pinned count
-is **118** again today — a different 118: #3556 removed
-`discoveryReplayDiagnostics`. See [Executed removals](#executed-removals).)
+is **115** today, as executed removals have taken keys back out. See
+[Executed removals](#executed-removals).)
 
 This roll-up classified it with the slice method — `git grep`, exit code
 checked, both controls run first (`populationSize` 390 hits, `dnaSharingMode`
@@ -99,9 +99,11 @@ reported as an orphan (`reconcile()` lists keys the source no longer has) and
 fails `test/scripts/OptionAuditRollup.ts`. The counts in this document therefore
 shrink as the campaign proceeds.
 
-| Issue | Key                          | Slice | Landed                                                     |
-| ----- | ---------------------------- | ----- | ---------------------------------------------------------- |
-| #3556 | `discoveryReplayDiagnostics` | B     | Timing instrumentation and its `diagnostics` payload gone. |
+| Issue | Key                                | Slice | Landed                                                       |
+| ----- | ---------------------------------- | ----- | ------------------------------------------------------------ |
+| #3556 | `discoveryReplayDiagnostics`       | B     | Timing instrumentation and its `diagnostics` payload gone.   |
+| #3558 | `ensembleDiversity`                | C     | Parsed-but-never-read config and its 10 nested fields gone.  |
+| #3552 | `maxConns`, `maximumNumberOfNodes` | A     | Both `Mutator` growth guards gone; `maxSynapses` still caps. |
 
 ### `fitnessSampleRate` and `seed`
 
@@ -123,16 +125,18 @@ per-slice totals shift:
 
 | Slice     | Slice comment | Roll-up | Why                                                                                                                                               |
 | --------- | ------------: | ------: | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A         |            46 |      46 | —                                                                                                                                                 |
+| A         |            46 |      44 | —                                                                                                                                                 |
 | B         |            36 |      42 | B classified its 3 nested configs at parent level; the harness enumerates `DiscoveryCacheConfig` (4) + `DiskSpaceConfig` (3) fields individually. |
-| C         |            59 |      56 | `adaptiveMutationThresholds` is declared inline in `NeatArguments`, so its 3 fields are not separate nested rows.                                 |
+| C         |            59 |      45 | `adaptiveMutationThresholds` is declared inline in `NeatArguments`, so its 3 fields are not separate nested rows.                                 |
 | D         |            69 |      63 | Same for `plateauDetection`'s 6 inline fields.                                                                                                    |
 | E         |            33 |      37 | `RustScorerConfig` has no `NeatOptions` key (−1 parent row) but two interfaces, so `RequiredRustScorerConfig`'s 5 fields are enumerated too (+5). |
 | F         |            43 |      43 | —                                                                                                                                                 |
 | roll-up   |             — |       1 | `mutation`.                                                                                                                                       |
-| **Total** |       **286** | **288** |                                                                                                                                                   |
+| **Total** |       **286** | **275** |                                                                                                                                                   |
 
-No slice lost a key in the merge; the deltas are all enumeration conventions.
+No slice lost a key in the merge; the deltas are enumeration conventions plus
+the [executed removals](#executed-removals) — A is down 2 (#3552), B down 1
+(#3556) and C down 11 (#3558 and its 10 nested fields).
 
 ## Merged classification table
 
@@ -144,10 +148,10 @@ set independently. Generated by
 
 | Verdict     | Classifications |
 | ----------- | --------------: |
-| `QUALIFIES` |              99 |
+| `QUALIFIES` |              86 |
 | `KEEP`      |             121 |
 | `IN USE`    |              68 |
-| **Total**   |         **288** |
+| **Total**   |         **275** |
 
 | Key                                           | Slice   | Verdict     | Issue | Note                                                                                      |
 | --------------------------------------------- | ------- | ----------- | ----- | ----------------------------------------------------------------------------------------- |
@@ -170,8 +174,6 @@ set independently. Generated by
 | `timeoutMinutes`                              | A       | `IN USE`    | —     |                                                                                           |
 | `trainPerGen`                                 | A       | `IN USE`    | —     |                                                                                           |
 | `trainingTaskTimeoutMinutes`                  | A       | `KEEP`      | —     |                                                                                           |
-| `maxConns`                                    | A       | `QUALIFIES` | #3552 |                                                                                           |
-| `maximumNumberOfNodes`                        | A       | `QUALIFIES` | #3552 |                                                                                           |
 | `mutationAmount`                              | A       | `IN USE`    | —     |                                                                                           |
 | `mutationRate`                                | A       | `IN USE`    | —     |                                                                                           |
 | `populationSize`                              | A       | `IN USE`    | —     |                                                                                           |
@@ -235,7 +237,6 @@ set independently. Generated by
 | `stabilityAdaptation`                         | D       | `QUALIFIES` | #3562 | No implementation exists — parsed, never read.                                            |
 | `weightRegularisation`                        | D       | `KEEP`      | —     |                                                                                           |
 | `biasRegularisation`                          | D       | `KEEP`      | —     |                                                                                           |
-| `ensembleDiversity`                           | C       | `QUALIFIES` | #3558 | No implementation exists — parsed, never read.                                            |
 | `quantumStep`                                 | D       | `KEEP`      | —     |                                                                                           |
 | `fineTunePopulation`                          | C       | `KEEP`      | —     |                                                                                           |
 | `predictiveCoding`                            | D       | `IN USE`    | —     | GRQ sets only `.enabled`; the other four defaults then drive inference.                   |
@@ -362,7 +363,7 @@ KEEP, its position in the chain simply drops out.
 
 ## Definition of done
 
-- [x] Single consolidated table covering every option key — 288 rows above.
+- [x] Single consolidated table covering every option key — 275 rows above.
 - [x] Zero unclassified keys — one gap found (`mutation`), classified `IN USE`
       in this roll-up rather than left to disappear. No follow-up needed.
 - [x] Cross-slice and cross-campaign duplicates closed — none existed; one issue

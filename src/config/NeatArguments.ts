@@ -151,12 +151,6 @@ export interface NeatArguments {
    */
   trainingTaskTimeoutMinutes: number;
 
-  /** Maximum number of connections allowed in the neural network. */
-  maxConns: number;
-
-  /** Maximum number of nodes allowed in the neural network. */
-  maximumNumberOfNodes: number;
-
   /** Number of changes to apply per gene during mutation. */
   mutationAmount: number;
 

@@ -163,6 +163,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- **Issue #3552:** Removed the unused `maxConns` and `maximumNumberOfNodes`
+  growth-cap options (#3505 audit, slice A). No consumer set either key and both
+  defaulted to `Number.MAX_SAFE_INTEGER`, so the two `Mutator`
+  mutation-candidate guards they fed were inert in every production run — the
+  `ADD_CONN` guard could never fire and the `ADD_NODE` guard was always true.
+  **Breaking for embedders that set them:** setting either key is now a
+  `deno check` error, and there is no config cap on neuron or synapse count.
+  `ADD_CONN` is still bounded by the structural `maxSynapses` ceiling, and
+  `costOfGrowth` remains the lever for discouraging topology growth.
 - **Issue #3556:** Removed the unused `discoveryReplayDiagnostics` option and
   the replay timing payload it gated (#3505 audit, slice B). No consumer set it
   and it defaulted to `false`, so every `performance.now()` site in

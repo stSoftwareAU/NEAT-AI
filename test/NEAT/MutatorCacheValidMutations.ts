@@ -105,11 +105,10 @@ Deno.test(
   () => {
     const config = createNeatConfig({
       mutation: Mutation.FFW,
-      maximumNumberOfNodes: 10,
     });
     const mutator = new Mutator(config);
 
-    // Create creature at max nodes - ADD_NODE should be filtered out
+    // Larger creature — a different cache key to the small one below.
     const maxCreature = new Creature(3, 2, {
       layers: [{ count: 5 }],
     }); // 3 + 5 + 2 = 10 neurons
@@ -120,7 +119,7 @@ Deno.test(
       "maxCreature should have exactly 10 neurons",
     );
 
-    // Create normal creature - ADD_NODE should be allowed
+    // Smaller creature — must not pick up the larger creature's cache entry.
     const normalCreature = new Creature(3, 2, { layers: [{ count: 1 }] });
     assertEquals(
       normalCreature.neurons.length,
@@ -194,7 +193,6 @@ Deno.test(
   () => {
     const config = createNeatConfig({
       mutation: Mutation.FFW,
-      maxConns: 1000,
     });
     const mutator = new Mutator(config);
 

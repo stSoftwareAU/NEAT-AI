@@ -52,8 +52,6 @@ type NumericOptionKeys =
   | "iterations"
   | "populationSize"
   | "elitism"
-  | "maxConns"
-  | "maximumNumberOfNodes"
   | "mutationRate"
   | "mutationAmount"
   | "timeoutMinutes"

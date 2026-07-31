@@ -84,12 +84,10 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 
 ### 🔒 Network constraints
 
-| Field                  | Type      | Default            | Description                                                                  |
-| ---------------------- | --------- | ------------------ | ---------------------------------------------------------------------------- |
-| `feedbackLoop`         | `boolean` | `false`            | Enable recurrent connections                                                 |
-| `maxConns`             | `number`  | `MAX_SAFE_INTEGER` | Maximum synapses allowed (see [Core evolution](../config/CORE_EVOLUTION.md)) |
-| `maximumNumberOfNodes` | `number`  | `MAX_SAFE_INTEGER` | Maximum neurons allowed (see [Core evolution](../config/CORE_EVOLUTION.md))  |
-| `costOfGrowth`         | `number`  | `0.000_000_1`      | Complexity penalty per synapse/neuron                                        |
+| Field          | Type      | Default       | Description                           |
+| -------------- | --------- | ------------- | ------------------------------------- |
+| `feedbackLoop` | `boolean` | `false`       | Enable recurrent connections          |
+| `costOfGrowth` | `number`  | `0.000_000_1` | Complexity penalty per synapse/neuron |
 
 ### 🔬 Discovery fields
 

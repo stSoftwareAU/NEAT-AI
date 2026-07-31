@@ -88,8 +88,6 @@ Favour simpler networks with aggressive growth penalties:
 ```ts
 const config = createNeatConfig({
   costOfGrowth: 0.001,
-  maxConns: 50,
-  maximumNumberOfNodes: 20,
   populationSize: 50,
   targetError: 0.05,
 });
