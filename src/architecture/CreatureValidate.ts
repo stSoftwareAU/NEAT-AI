@@ -12,7 +12,7 @@ import type { Creature } from "@creature";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 import { neuronWireLabelForDiagnostics } from "@neuron/NeuronSerialization.ts";
-import { DIAGNOSTICS_DIR } from "@utils/Diagnostics.ts";
+import { getDiagnosticsDir } from "@utils/Diagnostics.ts";
 import { TypedTopology } from "@architecture/TypedTopology.ts";
 import {
   structuralErrorMessage,
@@ -529,7 +529,8 @@ export function creatureValidate(
 
 function debugWrite(creature: Creature) {
   if (creature.DEBUG) {
-    Deno.mkdirSync(DIAGNOSTICS_DIR, { recursive: true });
+    const diagnosticsDir = getDiagnosticsDir();
+    Deno.mkdirSync(diagnosticsDir, { recursive: true });
     try {
       creature.DEBUG = false;
       let payload: unknown;
@@ -545,7 +546,7 @@ function debugWrite(creature: Creature) {
         };
       }
       Deno.writeTextFileSync(
-        `${DIAGNOSTICS_DIR}/creatureValidate.json`,
+        `${diagnosticsDir}/creatureValidate.json`,
         JSON.stringify(payload, null, 1),
       );
     } finally {

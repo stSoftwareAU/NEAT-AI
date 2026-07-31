@@ -5,7 +5,8 @@
  * creature, the diagnostic dump must contain enough metadata to replay the
  * failure offline. These tests force a rejection via the test seam
  * `__setProducerCompileGateProbeForTesting`, run the producer path, and
- * assert that the resulting files under `.diagnostics/`:
+ * assert that the resulting dump files (written to a directory owned by this
+ * spec — Issue #3583):
  *
  *  - Use the standardised file-name prefix
  *    (`offspring-wasm-compile-trap-<uuid>` / `mutator-wasm-compile-trap-<op>-<uuid>`).
@@ -25,13 +26,14 @@ import { createNeatConfig } from "@config/NeatConfig.ts";
 import {
   __setProducerCompileGateProbeForTesting,
 } from "@wasm/ProducerCompileGuard.ts";
-import { DIAGNOSTICS_DIR } from "@utils/Diagnostics.ts";
+import { getDiagnosticsDir } from "@utils/Diagnostics.ts";
 import {
   createSeededRng,
   setRandomNumberGenerator,
 } from "@utils/RandomNumberGenerator.ts";
 import { getGlobalDebug, setGlobalDebug } from "@globalAccessors";
 import { initWasmForTests } from "../_initWasm.ts";
+import { useIsolatedDiagnosticsDir } from "../_diagnosticsDir.ts";
 
 const REJECT_PROBE = () => ({
   ok: false as const,
@@ -49,26 +51,9 @@ interface DumpFiles {
   creaturePath?: string;
 }
 
-/**
- * Snapshot the file names already in `.diagnostics/` so the test can grep
- * for files written by *this* run only.
- */
-function snapshotExisting(): Set<string> {
-  const seen = new Set<string>();
-  try {
-    for (const entry of Deno.readDirSync(DIAGNOSTICS_DIR)) {
-      seen.add(entry.name);
-    }
-  } catch {
-    // Directory does not exist yet — first run.
-  }
-  return seen;
-}
-
-/** Find dump files created since the snapshot whose name starts with prefix. */
+/** Find dump files whose name starts with prefix. */
 function findDumpsByPrefix(
   prefix: string,
-  existing: Set<string>,
 ): {
   error: string[];
   context: string[];
@@ -86,8 +71,7 @@ function findDumpsByPrefix(
     creature: [] as string[],
   };
   try {
-    for (const entry of Deno.readDirSync(DIAGNOSTICS_DIR)) {
-      if (existing.has(entry.name)) continue;
+    for (const entry of Deno.readDirSync(getDiagnosticsDir())) {
       if (!entry.name.startsWith(prefix)) continue;
       if (entry.name.includes("-error-")) result.error.push(entry.name);
       else if (entry.name.includes("-context-")) {
@@ -108,53 +92,31 @@ function findDumpsByPrefix(
   return result;
 }
 
-function readDump(prefix: string, existing: Set<string>): DumpFiles {
-  const dumps = findDumpsByPrefix(prefix, existing);
+function readDump(prefix: string): DumpFiles {
+  const dir = getDiagnosticsDir();
+  const dumps = findDumpsByPrefix(prefix);
   assert(
     dumps.error.length > 0,
-    `expected an error dump with prefix '${prefix}', got nothing (existing=${existing.size})`,
+    `expected an error dump with prefix '${prefix}', got nothing`,
   );
   assert(
     dumps.context.length > 0,
     `expected a context dump with prefix '${prefix}', got nothing`,
   );
-  const errorPath = `${DIAGNOSTICS_DIR}/${dumps.error[0]}`;
-  const contextPath = `${DIAGNOSTICS_DIR}/${dumps.context[0]}`;
+  const errorPath = `${dir}/${dumps.error[0]}`;
+  const contextPath = `${dir}/${dumps.context[0]}`;
   return {
     errorPath,
     errorText: Deno.readTextFileSync(errorPath),
     contextPath,
     context: JSON.parse(Deno.readTextFileSync(contextPath)),
-    motherPath: dumps.mother[0]
-      ? `${DIAGNOSTICS_DIR}/${dumps.mother[0]}`
-      : undefined,
-    fatherPath: dumps.father[0]
-      ? `${DIAGNOSTICS_DIR}/${dumps.father[0]}`
-      : undefined,
+    motherPath: dumps.mother[0] ? `${dir}/${dumps.mother[0]}` : undefined,
+    fatherPath: dumps.father[0] ? `${dir}/${dumps.father[0]}` : undefined,
     offspringPath: dumps.offspring[0]
-      ? `${DIAGNOSTICS_DIR}/${dumps.offspring[0]}`
+      ? `${dir}/${dumps.offspring[0]}`
       : undefined,
-    creaturePath: dumps.creature[0]
-      ? `${DIAGNOSTICS_DIR}/${dumps.creature[0]}`
-      : undefined,
+    creaturePath: dumps.creature[0] ? `${dir}/${dumps.creature[0]}` : undefined,
   };
-}
-
-function cleanupByPrefix(prefix: string, existing: Set<string>): void {
-  try {
-    for (const entry of Deno.readDirSync(DIAGNOSTICS_DIR)) {
-      if (existing.has(entry.name)) continue;
-      if (entry.name.startsWith(prefix)) {
-        try {
-          Deno.removeSync(`${DIAGNOSTICS_DIR}/${entry.name}`);
-        } catch {
-          // best effort
-        }
-      }
-    }
-  } catch {
-    // ignore
-  }
 }
 
 function buildHealthyCreature(): Creature {
@@ -200,7 +162,9 @@ Deno.test(
     const prevDebug = getGlobalDebug();
     setGlobalDebug(true);
 
-    const existing = snapshotExisting();
+    // Issue #3583: dumps land in a directory owned by this spec so a spec
+    // running in parallel cannot supply a dump with the same prefix.
+    const diagnostics = useIsolatedDiagnosticsDir("offspring-gate");
     const restore = __setProducerCompileGateProbeForTesting(REJECT_PROBE);
     try {
       const mother = buildBreedingParent(100);
@@ -229,7 +193,7 @@ Deno.test(
         "Offspring.breed must drop the offspring when the producer gate rejects",
       );
 
-      const dump = readDump("offspring-wasm-compile-trap-", existing);
+      const dump = readDump("offspring-wasm-compile-trap-");
 
       // Trap message threaded through to the error file.
       assert(
@@ -297,7 +261,7 @@ Deno.test(
     } finally {
       restore();
       setGlobalDebug(prevDebug);
-      cleanupByPrefix("offspring-wasm-compile-trap-", existing);
+      diagnostics.dispose();
     }
   },
 );
@@ -307,7 +271,9 @@ Deno.test(
   async () => {
     await initWasmForTests();
 
-    const existing = snapshotExisting();
+    // Issue #3583: dumps land in a directory owned by this spec so a spec
+    // running in parallel cannot supply a dump with the same prefix.
+    const diagnostics = useIsolatedDiagnosticsDir("offspring-gate");
     const restore = __setProducerCompileGateProbeForTesting(REJECT_PROBE);
     try {
       const creature = buildHealthyCreature();
@@ -342,7 +308,6 @@ Deno.test(
 
       const dump = readDump(
         `mutator-wasm-compile-trap-${Mutation.MOD_WEIGHT.name}-`,
-        existing,
       );
 
       assert(
@@ -382,7 +347,7 @@ Deno.test(
       assert(dump.creaturePath, "creature dump file must exist");
     } finally {
       restore();
-      cleanupByPrefix("mutator-wasm-compile-trap-", existing);
+      diagnostics.dispose();
     }
   },
 );

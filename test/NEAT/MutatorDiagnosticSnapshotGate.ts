@@ -23,65 +23,32 @@ import { Mutator } from "@neat/Mutator.ts";
 import {
   __setProducerCompileGateProbeForTesting,
 } from "@wasm/ProducerCompileGuard.ts";
-import { DIAGNOSTICS_DIR } from "@utils/Diagnostics.ts";
+import { getDiagnosticsDir } from "@utils/Diagnostics.ts";
 import {
   createSeededRng,
   setRandomNumberGenerator,
 } from "@utils/RandomNumberGenerator.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+import { useIsolatedDiagnosticsDir } from "../_diagnosticsDir.ts";
 
 const REJECT_PROBE = () => ({
   ok: false as const,
   trapMessage: "test-forced trap (issue #3472)",
 });
 
-/** Snapshot existing `.diagnostics/` file names so we only inspect our own. */
-function snapshotExisting(): Set<string> {
-  const seen = new Set<string>();
+/** Read the context dump written by this spec for `prefix`, if any. */
+function findContextDump(prefix: string): Record<string, unknown> | undefined {
+  const dir = getDiagnosticsDir();
   try {
-    for (const entry of Deno.readDirSync(DIAGNOSTICS_DIR)) {
-      seen.add(entry.name);
-    }
-  } catch {
-    // Directory does not exist yet — first run.
-  }
-  return seen;
-}
-
-function findContextDump(
-  prefix: string,
-  existing: Set<string>,
-): Record<string, unknown> | undefined {
-  try {
-    for (const entry of Deno.readDirSync(DIAGNOSTICS_DIR)) {
-      if (existing.has(entry.name)) continue;
+    for (const entry of Deno.readDirSync(dir)) {
       if (!entry.name.startsWith(prefix)) continue;
       if (!entry.name.includes("-context-")) continue;
-      return JSON.parse(
-        Deno.readTextFileSync(`${DIAGNOSTICS_DIR}/${entry.name}`),
-      );
+      return JSON.parse(Deno.readTextFileSync(`${dir}/${entry.name}`));
     }
   } catch {
     // ignore
   }
   return undefined;
-}
-
-function cleanupByPrefix(prefix: string, existing: Set<string>): void {
-  try {
-    for (const entry of Deno.readDirSync(DIAGNOSTICS_DIR)) {
-      if (existing.has(entry.name)) continue;
-      if (entry.name.startsWith(prefix)) {
-        try {
-          Deno.removeSync(`${DIAGNOSTICS_DIR}/${entry.name}`);
-        } catch {
-          // best effort
-        }
-      }
-    }
-  } catch {
-    // ignore
-  }
 }
 
 Deno.test(
@@ -144,7 +111,9 @@ Deno.test(
   async () => {
     await initWasmForTests();
 
-    const existing = snapshotExisting();
+    // Issue #3583: own the dump directory so a spec running in parallel
+    // cannot supply a dump with the same `mutator-wasm-compile-trap-` prefix.
+    const diagnostics = useIsolatedDiagnosticsDir("mutator-snapshot-gate");
     const restore = __setProducerCompileGateProbeForTesting(REJECT_PROBE);
     try {
       const creature = new Creature(2, 1, {
@@ -172,7 +141,6 @@ Deno.test(
 
       const context = findContextDump(
         `mutator-wasm-compile-trap-${Mutation.MOD_WEIGHT.name}-`,
-        existing,
       );
       assert(
         context !== undefined,
@@ -189,7 +157,7 @@ Deno.test(
       );
     } finally {
       restore();
-      cleanupByPrefix("mutator-wasm-compile-trap-", existing);
+      diagnostics.dispose();
     }
   },
 );
