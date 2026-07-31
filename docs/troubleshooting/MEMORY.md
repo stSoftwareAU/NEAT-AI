@@ -131,11 +131,12 @@ WASM compilation. Reduce `populationSize` if memory is tight:
 populationSize: 30, // Reduce from default 50
 ```
 
-Also consider limiting network complexity:
+Also consider discouraging network complexity. There is no hard neuron or
+synapse cap — raise the growth penalty so larger topologies have to earn their
+size:
 
 ```typescript
-maxConns: 100,            // Limit connections
-maximumNumberOfNodes: 30, // Limit neurons
+costOfGrowth: 0.001, // Raise from the default 0.0000001
 ```
 
 **Step 5 — Check V8 heap allocation:**

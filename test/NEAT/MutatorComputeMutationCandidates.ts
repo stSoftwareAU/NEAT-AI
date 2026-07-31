@@ -9,7 +9,7 @@ import { Mutator } from "@neat/Mutator.ts";
  *
  * Issue #1397: Verify that selectMutationMethod correctly filters
  * mutations based on creature state and config, including forward-only
- * constraints, maximum node/connection limits, and adaptive behaviour.
+ * constraints, the structural synapse ceiling, and adaptive behaviour.
  */
 
 function createConfig(overrides: Record<string, unknown> = {}) {
@@ -117,27 +117,10 @@ Deno.test("ComputeMutationCandidates: filters SWAP_NODES when insufficient hidde
   );
 });
 
-Deno.test("ComputeMutationCandidates: filters ADD_NODE when at maximum nodes", () => {
-  const config = createConfig({ maximumNumberOfNodes: 6 });
-  const mutator = new Mutator(config);
-
-  // Creature with 3 input + 2 output + 1 hidden = 6 neurons (at max)
-  const creature = new Creature(3, 2, { layers: [{ count: 1 }] });
-
-  const selectedNames = new Set<string>();
-  for (let i = 0; i < 500; i++) {
-    const method = mutator.selectMutationMethod(creature);
-    selectedNames.add(method.name);
-  }
-
-  assert(
-    !selectedNames.has("ADD_NODE"),
-    "ADD_NODE should not be selected when at maximum nodes",
-  );
-});
-
-Deno.test("ComputeMutationCandidates: allows ADD_NODE when below maximum", () => {
-  const config = createConfig({ maximumNumberOfNodes: 100 });
+// Issue #3552: `maximumNumberOfNodes` was removed, so neuron growth is no
+// longer capped by config — ADD_NODE stays a candidate at any creature size.
+Deno.test("ComputeMutationCandidates: allows ADD_NODE regardless of neuron count", () => {
+  const config = createConfig();
   const mutator = new Mutator(config);
 
   const creature = new Creature(3, 2, { layers: [{ count: 5 }] });
@@ -150,7 +133,7 @@ Deno.test("ComputeMutationCandidates: allows ADD_NODE when below maximum", () =>
 
   assert(
     selectedNames.has("ADD_NODE"),
-    "ADD_NODE should be available when below maximum nodes",
+    "ADD_NODE should always be an available candidate",
   );
 });
 

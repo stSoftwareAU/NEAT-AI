@@ -30,8 +30,6 @@ const config = createNeatConfig({
 | `mutationAmount`                  | `integer`  | `1`                | Number of changes per gene during mutation (min: 1)                                                       |
 | `elitism`                         | `integer`  | `1`                | Top-performing individuals retained each generation (min: 1)                                              |
 | `costOfGrowth`                    | `number`   | `0.0000001`        | Penalty per structural addition (min: 0)                                                                  |
-| `maxConns`                        | `integer`  | `MAX_SAFE_INTEGER` | Maximum connections (min: 1)                                                                              |
-| `maximumNumberOfNodes`            | `integer`  | `MAX_SAFE_INTEGER` | Maximum neurons (min: 1)                                                                                  |
 | `timeoutMinutes`                  | `integer`  | `0`                | Maximum training time in minutes (0 = unlimited)                                                          |
 | `feedbackLoop`                    | `boolean`  | `false`            | Enable recurrent connections                                                                              |
 | `debug`                           | `boolean`  | `false`            | Enable debug mode (slower)                                                                                |
@@ -188,18 +186,6 @@ Set to `0` to disable the growth penalty entirely.
 
 The cost (fitness) function used to evaluate creatures. Common options include
 `"MSE"` (Mean Squared Error) and others defined in `src/costs/`.
-
-### `maxConns`
-
-**Default: MAX_SAFE_INTEGER** | Type: integer | Min: 1
-
-Hard cap on the number of synapses any creature may have.
-
-### `maximumNumberOfNodes`
-
-**Default: MAX_SAFE_INTEGER** | Type: integer | Min: 1
-
-Hard cap on the number of neurons any creature may have.
 
 ## 🔁 Topology mode
 

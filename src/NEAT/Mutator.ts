@@ -645,13 +645,8 @@ export class Mutator {
     // the current constraints.
     const candidates = mutationMethods.filter((method) => {
       switch (method.name) {
-        case Mutation.ADD_NODE.name:
-          return creature.neurons.length < this.config.maximumNumberOfNodes;
         case Mutation.ADD_CONN.name:
-          return !(
-            creature.synapses.length >= this.config.maxConns ||
-            creature.synapses.length >= maxSynapses
-          );
+          return creature.synapses.length < maxSynapses;
         case Mutation.SUB_NODE.name:
           return creature.neurons.length > creature.input + creature.output;
         case Mutation.SWAP_NODES.name:
