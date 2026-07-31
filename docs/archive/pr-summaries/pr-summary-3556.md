@@ -48,14 +48,14 @@ started setting it would fail `deno check` with TS2353 on its next
 **Audit book-keeping.** A landed removal takes its key out of `NeatArguments`,
 so the #3518 harness stops enumerating it and its roll-up entry becomes an
 orphan — which `test/scripts/OptionAuditRollup.ts` already fails on. The entry
-is therefore deleted with the key, the pinned top-level count moves 119 → 118,
+is therefore deleted with the key, the pinned top-level count moves 118 → 117,
 and the consolidated table is regenerated (289 → 288 rows, 100 → 99
 `QUALIFIES`). A new **Executed removals** section records why the numbers
 shrink.
 
 ```mermaid
 flowchart LR
-    K["discoveryReplayDiagnostics<br/>removed from NeatArguments"] --> H["#3518 harness<br/>enumerates 118 keys"]
+    K["discoveryReplayDiagnostics<br/>removed from NeatArguments"] --> H["#3518 harness<br/>enumerates 117 keys"]
     K --> C["deno check in consumers<br/>TS2353 if anyone set it"]
     H --> R{"reconcile()"}
     T["roll-up entry<br/>also removed"] --> R
@@ -79,7 +79,7 @@ flowchart LR
   — regression guard (mirroring the #3502 guard) asserting the parsed config no
   longer carries the key.
 - **Modified** `test/scripts/AuditOptionUsage.ts` — the pinned `NeatArguments`
-  top-level count moves 119 → 118. This is the audit's own designed tripwire
+  top-level count moves 118 → 117. This is the audit's own designed tripwire
   firing on an intended removal.
 - **Unchanged and passing:** `test/scripts/OptionAuditRollup.ts` (zero gaps,
   zero orphans) and `test/docs/*` doc-defaults gates.
