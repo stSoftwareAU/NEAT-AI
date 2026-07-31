@@ -1049,22 +1049,4 @@ export interface NeatArguments {
    * Non-`TopologyError` exceptions are always re-thrown unchanged.
    */
   tolerateCorruptParents: boolean;
-
-  /**
-   * Knob-tuning preset for inter-island DNA sharing (Issue #2492).
-   *
-   * Selects which bundle of defaults applies to the five inter-island
-   * knobs (`diversityBreedingRate`, `interSpeciesCrossoverThreshold`,
-   * `geneticCompatibilityThreshold`, and `compatibilityGating.*`).
-   *
-   * - `default` keeps the existing per-knob defaults (current behaviour).
-   * - `aggressive` widens gating and increases diversity-driven breeding
-   *   for very-distant donors (e.g. Europa→production cluster import).
-   *   See `src/config/DnaSharingPreset.ts` for the exact preset values.
-   *
-   * Any explicit user value for a knob still wins over the preset default
-   * — the preset only changes the default when the user did not set the
-   * knob themselves.
-   */
-  dnaSharingMode: "default" | "aggressive";
 }

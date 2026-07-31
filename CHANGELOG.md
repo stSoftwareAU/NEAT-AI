@@ -163,6 +163,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- **Issue #3554:** Retired the `dnaSharingMode` knob preset and
+  `KnobTuningStrategy` (#3505 audit, slice A). No consumer set the option, and
+  its `"default"` preset was defined to equal the per-knob defaults
+  `createNeatConfig()` already applied, so the whole preset layer was inert;
+  those defaults are now inline literals and are unchanged. The only non-default
+  value, `"aggressive"`, measured **zero lift** in the #2496 bake-off.
+  **Breaking for embedders that set it:** `dnaSharingMode` is now a `deno check`
+  error, and `KnobTuningStrategy`, `KNOB_TUNING_TAG_NAME`,
+  `readDnaSharingModeTag`, `getDnaSharingPreset`, `DEFAULT_DNA_SHARING_PRESET`,
+  `AGGRESSIVE_DNA_SHARING_PRESET`, `DnaSharingMode` and `DnaSharingPresetValues`
+  are no longer exported. Set `diversityBreedingRate`,
+  `interSpeciesCrossoverThreshold`, `geneticCompatibilityThreshold` and
+  `compatibilityGating.*` directly instead.
 - **Issue #3552:** Removed the unused `maxConns` and `maximumNumberOfNodes`
   growth-cap options (#3505 audit, slice A). No consumer set either key and both
   defaulted to `Number.MAX_SAFE_INTEGER`, so the two `Mutator`

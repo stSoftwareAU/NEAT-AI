@@ -36,8 +36,9 @@ related tasks with different input/output configurations.
 - ✅ **Population seeding** (`createSeededPopulation()`) from pre-trained
   creatures.
 - ✅ **DNA-sharing primitives** (Issues #2491–#2496): `PruningTemplateStrategy`
-  (recommended winner), `KnowledgeDistillation`, `CompactModuleGraft`, and
-  `KnobTuningStrategy`. See
+  (recommended winner), `KnowledgeDistillation`, and `CompactModuleGraft`. The
+  fourth candidate, `KnobTuningStrategy`, was retired in #3554 after measuring
+  zero lift. See
   [dna-sharing-bake-off-results.md](../dna-sharing-bake-off-results.md).
 
 **What's still missing**: multi-task learning capabilities.

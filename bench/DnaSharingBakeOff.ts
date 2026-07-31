@@ -39,7 +39,6 @@ import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import {
   CompactModuleGraftStrategy,
   formatBakeOffMarkdown,
-  KnobTuningStrategy,
   KnowledgeDistillationStrategy,
   NoOpStrategy,
   PruningTemplateStrategy,
@@ -151,10 +150,6 @@ if (import.meta.main) {
     seed,
     strategies: [
       new NoOpStrategy(),
-      // Issue #2492: Knob-tuning is the cheapest primitive — pure config
-      // tweak via the `aggressive` preset. Acts as the baseline the
-      // structural primitives (e.g. CompactModuleGraft) must beat.
-      new KnobTuningStrategy("aggressive"),
       new CompactModuleGraftStrategy({
         probe,
         minSize,

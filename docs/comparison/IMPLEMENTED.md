@@ -229,8 +229,7 @@ to a dedicated guide, the contrast with standard NEAT is documented there.
   creatures. The current recommended primitive is `PruningTemplateStrategy`,
   which uses an oracle creature ("Europa") to identify and remove redundant
   production neurons via activation-fingerprint correlation. Additional
-  primitives include `KnowledgeDistillation`, `CompactModuleGraft`, and
-  `KnobTuningStrategy`. See
+  primitives include `KnowledgeDistillation` and `CompactModuleGraft`. See
   [dna-sharing-bake-off-results.md](../dna-sharing-bake-off-results.md).
 - ✅ **Optional Rust CLI Scorer with WASM Fallback** _(NEAT-AI extension)_:
   Generation scoring can be delegated to an external `rust_scorer` binary for

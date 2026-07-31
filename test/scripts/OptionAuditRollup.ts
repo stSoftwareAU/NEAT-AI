@@ -84,8 +84,9 @@ Deno.test("rollup - the named cross-slice overlaps resolve to one issue each", (
   const byKey = removalIssuesByKey(OPTION_AUDIT_ROLLUP);
   // The three overlap pairs the roll-up brief names. `seed` is not a
   // NeatArguments field at all (it is input-only, resolved into `rng`), so the
-  // A↔E pair reduces to `rng`, which no issue touches.
-  assertEquals(byKey.get("dnaSharingMode"), [3554]);
+  // A↔E pair reduces to `rng`, which no issue touches. The A↔F pair,
+  // `dnaSharingMode`, was removed by #3554, so it is gone from the table too.
+  assertEquals(byKey.get("dnaSharingMode"), undefined);
   assertEquals(byKey.get("rng"), undefined);
   assertEquals(byKey.get("discoveryCache"), undefined);
   assertEquals(byKey.get("discoveryDiskSpace"), undefined);
@@ -110,7 +111,7 @@ Deno.test("toConsolidatedMarkdown - renders every classified key", () => {
     assert(md.includes(`\`${key}\``), `${key} missing from the merged table`);
   }
   assert(md.includes("| `mutation`"), "the gap key has its own table row");
-  assert(md.includes("#3554"), "removal issue numbers are rendered");
+  assert(md.includes("#3568"), "removal issue numbers are rendered");
 });
 
 Deno.test("toConsolidatedMarkdown - reports a gap loudly when one exists", () => {

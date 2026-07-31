@@ -150,10 +150,10 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   // then removed `discoveryReplayDiagnostics`, leaving 117; #3552 then removed
   // `maxConns` and `maximumNumberOfNodes`, leaving 115; #3553 then removed
   // `enableRepetitiveTraining`, leaving 114; #3559 then removed `novelty`,
-  // leaving 113.
+  // leaving 113; #3554 then removed `dnaSharingMode`, leaving 112.
   assertEquals(
     topLevel.length,
-    113,
+    112,
     "NeatArguments top-level key count changed",
   );
   assert(
@@ -163,7 +163,7 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   for (
     const expected of [
       "populationSize",
-      "dnaSharingMode",
+      "syntheticAlignmentThreshold",
       "mutation",
       "costName",
     ]
@@ -250,10 +250,13 @@ Deno.test("LocalGrepProbe - exit 0 is a hit with clone-relative paths", async ()
 
 Deno.test("LocalGrepProbe - exit 1 is a genuine miss", async () => {
   const { run } = fakeRunner([{ code: 1, stdout: "", stderr: "" }]);
-  const result = await new LocalGrepProbe("rg", run).probe("dnaSharingMode", {
-    repo: "stSoftwareAU/GRQ",
-    clonePath: "/clones/GRQ",
-  });
+  const result = await new LocalGrepProbe("rg", run).probe(
+    "syntheticAlignmentThreshold",
+    {
+      repo: "stSoftwareAU/GRQ",
+      clonePath: "/clones/GRQ",
+    },
+  );
   assertEquals(result.resolution, "miss");
 });
 
@@ -385,7 +388,9 @@ Deno.test("CodeSearchProbe - always scopes the query to a single repo", async ()
 Deno.test("CodeSearchProbe - an empty result set is a miss", async () => {
   const { probe } = codeSearchProbe([OK("[]")]);
   assertEquals(
-    (await probe.probe("dnaSharingMode", { repo: "stSoftwareAU/GRQ" }))
+    (await probe.probe("syntheticAlignmentThreshold", {
+      repo: "stSoftwareAU/GRQ",
+    }))
       .resolution,
     "miss",
   );
@@ -562,7 +567,7 @@ Deno.test("verdictForKey - IN USE when any consumer sets the key", () => {
 });
 
 Deno.test("verdictForKey - not set only when every consumer resolved to a miss", () => {
-  const verdict = verdictForKey("dnaSharingMode", [
+  const verdict = verdictForKey("syntheticAlignmentThreshold", [
     { repo: "a", status: "not set", evidence: [], notes: [] },
     { repo: "b", status: "not set", evidence: [], notes: [] },
   ]);
@@ -620,7 +625,7 @@ Deno.test("scanKeys - spends code-search quota only where local found nothing", 
   const search = new TableProbe("gh-code-search", {});
 
   const verdicts = await scanKeys(
-    ["populationSize", "dnaSharingMode"],
+    ["populationSize", "syntheticAlignmentThreshold"],
     CONSUMERS,
     {
       localProbe: local,
@@ -633,8 +638,8 @@ Deno.test("scanKeys - spends code-search quota only where local found nothing", 
   assertEquals(
     search.calls.sort(),
     [
-      "stSoftwareAU/GRQ|dnaSharingMode",
-      "stSoftwareAU/NEAT-AI-Examples|dnaSharingMode",
+      "stSoftwareAU/GRQ|syntheticAlignmentThreshold",
+      "stSoftwareAU/NEAT-AI-Examples|syntheticAlignmentThreshold",
     ],
     "local hits must not consume the rate-limited quota",
   );
@@ -732,7 +737,7 @@ Deno.test("ProbeCache - a missing file is fine, a corrupt one is loud", async ()
 
 const CONTROL_SPEC = {
   positiveKey: "populationSize",
-  negativeKey: "dnaSharingMode",
+  negativeKey: "syntheticAlignmentThreshold",
   repos: ["stSoftwareAU/GRQ", "stSoftwareAU/NEAT-AI-Examples"],
 };
 
@@ -799,7 +804,7 @@ const INVENTORY = [
     slice: "top-level" as const,
     ownerFile: "src/config/NeatArguments.ts",
     owner: "NeatArguments",
-    key: "dnaSharingMode",
+    key: "syntheticAlignmentThreshold",
   },
   {
     slice: "nested" as const,
@@ -816,7 +821,7 @@ const VERDICTS: KeyVerdict[] = [
     evidence: ["local-rg:src/Learn.ts"],
     notes: [],
   }]),
-  verdictForKey("dnaSharingMode", [{
+  verdictForKey("syntheticAlignmentThreshold", [{
     repo: "stSoftwareAU/GRQ",
     status: "not set",
     evidence: [],

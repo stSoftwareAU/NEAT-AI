@@ -49,7 +49,11 @@ const DEFAULT_CONSUMERS = ["stSoftwareAU/GRQ", "stSoftwareAU/NEAT-AI-Examples"];
 
 const CONTROLS: ControlSpec = {
   positiveKey: "populationSize",
-  negativeKey: "dnaSharingMode",
+  // Issue #3554: `dnaSharingMode` was the original negative control until it
+  // was retired. `syntheticAlignmentThreshold` replaces it — a `KEEP` key
+  // (load-bearing default, #2614) that no consumer sets, so the control keeps
+  // detecting a probe that has started matching everything.
+  negativeKey: "syntheticAlignmentThreshold",
   repos: DEFAULT_CONSUMERS,
 };
 
