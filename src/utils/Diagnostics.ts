@@ -3,7 +3,31 @@ import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import { getLogger } from "@utils/Logger.ts";
 
+/** Default directory diagnostic dumps are written to. */
 export const DIAGNOSTICS_DIR = ".diagnostics";
+
+let diagnosticsDir: string = DIAGNOSTICS_DIR;
+
+/** The directory diagnostic dumps are currently written to. */
+export function getDiagnosticsDir(): string {
+  return diagnosticsDir;
+}
+
+/**
+ * Redirect diagnostic dumps to `dir`.
+ *
+ * Call with no argument to restore the {@link DIAGNOSTICS_DIR} default. Used
+ * by specs that write dumps with a shared file-name prefix so parallel runs
+ * cannot resolve another spec's dump as their own (Issue #3583).
+ *
+ * @param dir - Target directory; must be a non-empty string.
+ */
+export function setDiagnosticsDir(dir: string = DIAGNOSTICS_DIR): void {
+  if (dir.trim().length === 0) {
+    throw new Error("diagnostics directory must be a non-empty string");
+  }
+  diagnosticsDir = dir;
+}
 
 /**
  * Options for writing diagnostic files when an error occurs.
@@ -48,8 +72,10 @@ export function writeDiagnostics(options: DiagnosticsOptions): void {
     context,
   } = options;
 
+  const dir = getDiagnosticsDir();
+
   try {
-    Deno.mkdirSync(DIAGNOSTICS_DIR, { recursive: true });
+    Deno.mkdirSync(dir, { recursive: true });
   } catch {
     // Directory may already exist; ignore errors.
   }
@@ -63,7 +89,7 @@ export function writeDiagnostics(options: DiagnosticsOptions): void {
     ? `${error.name}: ${error.message}\n\nStack:\n${error.stack ?? "N/A"}`
     : `Error: ${String(error)}`;
   Deno.writeTextFileSync(
-    `${DIAGNOSTICS_DIR}/${filePrefix}error-${timestamp}.txt`,
+    `${dir}/${filePrefix}error-${timestamp}.txt`,
     errorText,
   );
 
@@ -73,28 +99,28 @@ export function writeDiagnostics(options: DiagnosticsOptions): void {
       ? creature
       : JSON.stringify(creature, null, 2);
     Deno.writeTextFileSync(
-      `${DIAGNOSTICS_DIR}/${filePrefix}creature-${timestamp}.json`,
+      `${dir}/${filePrefix}creature-${timestamp}.json`,
       creatureJson,
     );
   }
 
   if (mother) {
     Deno.writeTextFileSync(
-      `${DIAGNOSTICS_DIR}/${filePrefix}mother-${timestamp}.json`,
+      `${dir}/${filePrefix}mother-${timestamp}.json`,
       JSON.stringify(mother, null, 2),
     );
   }
 
   if (father) {
     Deno.writeTextFileSync(
-      `${DIAGNOSTICS_DIR}/${filePrefix}father-${timestamp}.json`,
+      `${dir}/${filePrefix}father-${timestamp}.json`,
       JSON.stringify(father, null, 2),
     );
   }
 
   if (offspring) {
     Deno.writeTextFileSync(
-      `${DIAGNOSTICS_DIR}/${filePrefix}offspring-${timestamp}.json`,
+      `${dir}/${filePrefix}offspring-${timestamp}.json`,
       JSON.stringify(offspring, null, 2),
     );
   }
@@ -102,7 +128,7 @@ export function writeDiagnostics(options: DiagnosticsOptions): void {
   // Write context if provided
   if (context) {
     Deno.writeTextFileSync(
-      `${DIAGNOSTICS_DIR}/${filePrefix}context-${timestamp}.json`,
+      `${dir}/${filePrefix}context-${timestamp}.json`,
       JSON.stringify(context, null, 2),
     );
   }
