@@ -30,15 +30,13 @@ const TEST_DIR = fromFileUrl(new URL("../../test", import.meta.url));
 const DETECTOR_TESTS = new Set(
   [
     import.meta.url,
-    new URL("./AutomationNoPrivateRepoReference.ts", import.meta.url).href,
     new URL("./LiveDocsNoPrivateGrqReference.ts", import.meta.url).href,
     new URL("./CrossSpeciesBaselineNoPrivateRepo.ts", import.meta.url).href,
     new URL("./ArchiveDocsNoPrivateRepoSlugs.ts", import.meta.url).href,
-    new URL("./ArchiveDocsNoPrivateRepoReference.ts", import.meta.url).href,
-    new URL("./ArchivedDocsNoPrivateRepoReference.ts", import.meta.url).href,
+    new URL("./PrivateRepoRefScanner.ts", import.meta.url).href,
+    new URL("../_privateRepoRefs.ts", import.meta.url).href,
     new URL("../scripts/BumpDepsNoPrivateRepoReference.ts", import.meta.url)
       .href,
-    new URL("../scripts/BumpDepsNoPrivateRepoRefs.ts", import.meta.url).href,
   ].map(fromFileUrl),
 );
 
