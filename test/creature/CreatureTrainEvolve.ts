@@ -434,7 +434,6 @@ Deno.test("NARX Sequence", async () => {
       iterations: 500,
       targetError:targetError,
       feedbackLoop: true,
-      enableRepetitiveTraining: true,
     });
 
     if (result.error <= targetError){

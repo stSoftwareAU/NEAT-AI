@@ -401,8 +401,6 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     }),
     verbose: options.verbose ? true : false,
 
-    enableRepetitiveTraining: options.enableRepetitiveTraining || false,
-
     // Issue #2382: skip training for a creature whose last N attempts all
     // produced a higher error and no usable fine-tune variant. Default of 2
     // means a creature must regress twice in a row before it is bypassed.
