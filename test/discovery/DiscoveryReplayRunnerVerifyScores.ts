@@ -306,7 +306,10 @@ Deno.test("DiscoveryReplayRunner: concurrency does not change which verified imp
   );
 });
 
-Deno.test("DiscoveryReplayRunner: returns timing diagnostics when enabled", async () => {
+// Issue #3556 removed the `discoveryReplayDiagnostics` timing payload; the
+// verify-scores path this case also covered — an empty success cache producing
+// a baseline-only result — is kept and asserted on the result itself.
+Deno.test("DiscoveryReplayRunner: verifies scores with an empty success cache", async () => {
   const base = makeBaseCreature();
   base.uuid = "base";
   base.tags = [{ name: "score", value: "0.5" }];
@@ -327,17 +330,19 @@ Deno.test("DiscoveryReplayRunner: returns timing diagnostics when enabled", asyn
       costOfGrowth: 0,
       threads: 1,
       discoveryReplayVerifyScores: true,
-      discoveryReplayDiagnostics: true,
     },
   });
 
-  assertExists(result.diagnostics);
-  assertExists(result.diagnostics.timingsMS.total);
-  assertExists(result.diagnostics.timingsMS.listEntries);
-  assertExists(result.diagnostics.timingsMS.sortEntries);
-  assertExists(result.diagnostics.timingsMS.applySingles);
-  assertExists(result.diagnostics.timingsMS.evaluateBaselineAndSingles);
-  assertExists(result.diagnostics.timingsMS.selectBest);
-  assertEquals(result.diagnostics.counts.entriesLoaded, 0);
-  assertEquals(result.diagnostics.counts.singlesEvaluated, 0);
+  assertEquals(result.original.score, 0.5);
+  assertEquals(result.original.error, 0.2);
+  assertEquals(result.evaluatedSingles, 0);
+  assertEquals(result.evaluatedCombos, 0);
+  assertEquals(result.pruned, 0);
+  assertEquals(result.improvement, undefined);
+  assertEquals(result.verifiedImprovement, undefined);
+  // Verification rescored the baseline against the creature's claimed tag.
+  assertExists(result.baselineRescore);
+  assertEquals(result.baselineRescore.claimedScore, 0.5);
+  assertEquals(result.baselineRescore.actualScore, 0.5);
+  assertEquals(result.baselineRescore.changed, false);
 });

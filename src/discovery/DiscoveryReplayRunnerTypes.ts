@@ -2,7 +2,7 @@
  * Discovery Replay Runner Types Module
  *
  * Interface and type definitions for the discovery replay runner,
- * including input/output shapes, diagnostics, and dependency injection.
+ * including input/output shapes and dependency injection.
  *
  * Extracted from DiscoveryReplayRunner.ts as part of #1598.
  */
@@ -53,42 +53,11 @@ export interface DiscoveryReplayEvaluationSummary {
   improved: boolean;
 }
 
-export interface DiscoveryReplayDiagnostics {
-  /**
-   * Timing breakdown in milliseconds. Values are best-effort and intended for
-   * visibility (where time is being spent), not micro-benchmarking.
-   */
-  timingsMS: {
-    total?: number;
-    setupWorkers?: number;
-    listEntries?: number;
-    sortEntries?: number;
-    applySingles?: number;
-    evaluateBaselineAndSingles?: number;
-    buildCombos?: number;
-    evaluateCombos?: number;
-    selectBest?: number;
-    teardownWorkers?: number;
-  };
-  counts: {
-    workerCount: number;
-    entriesLoaded: number;
-    singlesApplied: number;
-    singlesEvaluated: number;
-    combosBuilt: number;
-    combosEvaluated: number;
-    pruned: number;
-    skippedAlreadyApplied: number;
-    skippedNotApplicable: number;
-  };
-}
-
 export interface DiscoveryReplayDirResult {
   original: {
     error: number;
     score: number;
   };
-  diagnostics?: DiscoveryReplayDiagnostics;
   baselineRescore?: {
     claimedScore?: number;
     actualScore: number;

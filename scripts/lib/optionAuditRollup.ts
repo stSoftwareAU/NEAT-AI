@@ -123,9 +123,15 @@ const SLICE_A: RollupEntry[] = [
   ].map((k) => inUse(k, "A")),
 ];
 
-/** Slice B (#3520) — 36 `discovery*` top-level options. */
+/**
+ * Slice B (#3520) — 36 `discovery*` top-level options.
+ *
+ * Slice B's one `QUALIFIES` verdict, `discoveryReplayDiagnostics`, was carried
+ * out by #3556: the key no longer exists in `NeatArguments`, so the harness no
+ * longer enumerates it and its entry is gone from this table. A retained entry
+ * would be an orphan (`reconcile()` reports keys the source no longer has).
+ */
 const SLICE_B: RollupEntry[] = [
-  qualifies("discoveryReplayDiagnostics", "B", 3556),
   ...[
     "discoveryMinRecordCoverage",
     "discoveryHardDeadlineTS",

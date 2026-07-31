@@ -163,6 +163,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- **Issue #3556:** Removed the unused `discoveryReplayDiagnostics` option and
+  the replay timing payload it gated (#3505 audit, slice B). No consumer set it
+  and it defaulted to `false`, so every `performance.now()` site in
+  `DiscoveryReplayRunner` short-circuited and `result.diagnostics` was never
+  assigned. **Breaking for embedders that opted in:** the
+  `DiscoveryReplayDiagnostics` type and the optional `diagnostics` field on
+  `DiscoveryReplayDirResult` are gone, so `Creature.discoveryReplayDir()` no
+  longer reports per-phase timings.
 - **Issue #3502:** Removed the unused `fitnessSampleRate` option added by #3257.
   No consumer ever set it (an org-wide search found references only inside this
   repository) and it defaulted to `1` — the full corpus — so production

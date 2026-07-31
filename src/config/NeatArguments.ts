@@ -556,14 +556,6 @@ export interface NeatArguments {
   discoveryReplayRescoreBaseline: boolean;
 
   /**
-   * When true, replay records and returns simple timing diagnostics so callers can
-   * see where time is being spent (workers, rescoring, applying candidates, etc.).
-   *
-   * Defaults to false.
-   */
-  discoveryReplayDiagnostics: boolean;
-
-  /**
    * Maximum minutes allocated for discovery replay operations.
    *
    * When the evolution loop schedules a replay, it passes the remaining evolution

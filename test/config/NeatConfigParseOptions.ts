@@ -168,3 +168,11 @@ Deno.test("NeatConfigParseOptions - fitnessSampleRate is not a config key", () =
   const config = createNeatConfig({}) as unknown as Record<string, unknown>;
   assertEquals(Object.hasOwn(config, "fitnessSampleRate"), false);
 });
+
+// Issue #3556: discoveryReplayDiagnostics was removed as an unused timing knob —
+// the parsed config must no longer carry it (regression guard against
+// reintroduction).
+Deno.test("NeatConfigParseOptions - discoveryReplayDiagnostics is not a config key", () => {
+  const config = createNeatConfig({}) as unknown as Record<string, unknown>;
+  assertEquals(Object.hasOwn(config, "discoveryReplayDiagnostics"), false);
+});

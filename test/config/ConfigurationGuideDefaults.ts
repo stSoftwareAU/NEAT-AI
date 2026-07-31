@@ -176,7 +176,6 @@ Deno.test("Configuration guide - discovery replay defaults match code", () => {
   assertEquals(config.discoveryReplayMaxTriples, 8);
   assertEquals(config.discoveryReplayVerifyScores, false);
   assertEquals(config.discoveryReplayRescoreBaseline, false);
-  assertEquals(config.discoveryReplayDiagnostics, false);
   assertEquals(config.discoveryReplayTimeoutMinutes, 5);
   assertEquals(config.discoveryReplayMinTimeMinutes, 1);
 });
