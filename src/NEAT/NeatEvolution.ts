@@ -662,7 +662,7 @@ export async function evolve(
     return result;
   });
 
-  const breed = new Breed(genus, neat.config, neat.noveltySearch);
+  const breed = new Breed(genus, neat.config);
 
   // Issue #2323: Start timing main-thread overlap work (runs concurrently
   // with worker breeding).

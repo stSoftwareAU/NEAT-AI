@@ -186,14 +186,11 @@ const SLICE_B: RollupEntry[] = [
 /**
  * Slice C (#3521) — population & selection nested configs.
  *
- * `ensembleDiversity` was the tenth entry; #3558 removed the option outright,
- * so it no longer has a source key to classify.
+ * `ensembleDiversity` was the tenth entry; #3558 removed the option outright.
+ * `novelty` was the ninth; #3559 resolved the keep-or-remove decision as
+ * remove. Neither has a source key left to classify.
  */
 const SLICE_C: RollupEntry[] = [
-  qualifies("novelty", "C", 3559, {
-    interfaces: ["src/config/NoveltyConfig.ts::NoveltyConfig"],
-    note: "Decision, audit recommends KEEP — implemented and documented.",
-  }),
   qualifies("randomImmigrants", "C", 3560, {
     interfaces: [
       "src/config/RandomImmigrantsConfig.ts::RandomImmigrantsConfig",

@@ -42,7 +42,7 @@ grounds for removal.
 
 ```mermaid
 flowchart LR
-    H["#3518 harness<br/>enumerateOptionKeys()"] --> INV["274 rows<br/>114 top-level + 160 nested"]
+    H["#3518 harness<br/>enumerateOptionKeys()"] --> INV["267 rows<br/>113 top-level + 154 nested"]
     A["Slices A–F<br/>#3519–#3524"] --> TAB["Merged table<br/>optionAuditRollup.ts"]
     INV --> REC{"reconcile()"}
     TAB --> REC
@@ -62,7 +62,7 @@ run on every CI build by
 
 ```bash
 deno run --allow-read scripts/option-audit-rollup.ts
-# 🔎 274 enumerated rows (114 top-level, 160 nested) · 274 classified
+# 🔎 267 enumerated rows (113 top-level, 154 nested) · 267 classified
 # ✅ zero coverage gaps — every option key is classified
 ```
 
@@ -77,7 +77,7 @@ in #3518 and #3525. The original figure came from a grep that skipped
 `readonly mutation: readonly MutationInterface[]`; the parser-backed harness saw
 the real 119, and its CI test pins that number. Every slice brief was written
 from the 118-key list, so **no slice classified `mutation`**. (The pinned count
-is **114** today, as executed removals have taken keys back out. See
+is **113** today, as executed removals have taken keys back out. See
 [Executed removals](#executed-removals).)
 
 This roll-up classified it with the slice method — `git grep`, exit code
@@ -99,12 +99,13 @@ reported as an orphan (`reconcile()` lists keys the source no longer has) and
 fails `test/scripts/OptionAuditRollup.ts`. The counts in this document therefore
 shrink as the campaign proceeds.
 
-| Issue | Key                                | Slice | Landed                                                              |
-| ----- | ---------------------------------- | ----- | ------------------------------------------------------------------- |
-| #3556 | `discoveryReplayDiagnostics`       | B     | Timing instrumentation and its `diagnostics` payload gone.          |
-| #3558 | `ensembleDiversity`                | C     | Parsed-but-never-read config and its 10 nested fields gone.         |
-| #3552 | `maxConns`, `maximumNumberOfNodes` | A     | Both `Mutator` growth guards gone; `maxSynapses` still caps.        |
-| #3553 | `enableRepetitiveTraining`         | A     | Repeat-training gate gone; the schedule guard is now unconditional. |
+| Issue | Key                                | Slice | Landed                                                                |
+| ----- | ---------------------------------- | ----- | --------------------------------------------------------------------- |
+| #3556 | `discoveryReplayDiagnostics`       | B     | Timing instrumentation and its `diagnostics` payload gone.            |
+| #3558 | `ensembleDiversity`                | C     | Parsed-but-never-read config and its 10 nested fields gone.           |
+| #3552 | `maxConns`, `maximumNumberOfNodes` | A     | Both `Mutator` growth guards gone; `maxSynapses` still caps.          |
+| #3553 | `enableRepetitiveTraining`         | A     | Repeat-training gate gone; the schedule guard is now unconditional.   |
+| #3559 | `novelty`                          | C     | Keep-or-remove decision resolved as remove; engine and 6 fields gone. |
 
 ### `fitnessSampleRate` and `seed`
 
@@ -128,16 +129,17 @@ per-slice totals shift:
 | --------- | ------------: | ------: | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A         |            46 |      43 | —                                                                                                                                                 |
 | B         |            36 |      42 | B classified its 3 nested configs at parent level; the harness enumerates `DiscoveryCacheConfig` (4) + `DiskSpaceConfig` (3) fields individually. |
-| C         |            59 |      45 | `adaptiveMutationThresholds` is declared inline in `NeatArguments`, so its 3 fields are not separate nested rows.                                 |
+| C         |            59 |      38 | `adaptiveMutationThresholds` is declared inline in `NeatArguments`, so its 3 fields are not separate nested rows.                                 |
 | D         |            69 |      63 | Same for `plateauDetection`'s 6 inline fields.                                                                                                    |
 | E         |            33 |      37 | `RustScorerConfig` has no `NeatOptions` key (−1 parent row) but two interfaces, so `RequiredRustScorerConfig`'s 5 fields are enumerated too (+5). |
 | F         |            43 |      43 | —                                                                                                                                                 |
 | roll-up   |             — |       1 | `mutation`.                                                                                                                                       |
-| **Total** |       **286** | **274** |                                                                                                                                                   |
+| **Total** |       **286** | **267** |                                                                                                                                                   |
 
 No slice lost a key in the merge; the deltas are enumeration conventions plus
 the [executed removals](#executed-removals) — A is down 3 (#3552 and #3553), B
-down 1 (#3556) and C down 11 (#3558 and its 10 nested fields).
+down 1 (#3556) and C down 18 (#3558 and its 10 nested fields, plus #3559 and its
+6 nested fields).
 
 ## Merged classification table
 
@@ -263,7 +265,6 @@ set independently. Generated by
 | `squashEffectiveness`                         | D       | `KEEP`      | —     |                                                                                           |
 | `squashBudget`                                | D       | `QUALIFIES` | #3563 | Decision, audit recommends KEEP — live lever, adoption is a GRQ task.                     |
 | `fitnessSharing`                              | C       | `KEEP`      | —     |                                                                                           |
-| `novelty`                                     | C       | `QUALIFIES` | #3559 | Decision, audit recommends KEEP — implemented and documented.                             |
 | `randomImmigrants`                            | C       | `QUALIFIES` | #3560 | Decision, audit recommends KEEP — implemented and documented.                             |
 | `speciesStagnation`                           | C       | `KEEP`      | —     |                                                                                           |
 | `compatibilityGating`                         | C       | `KEEP`      | —     |                                                                                           |

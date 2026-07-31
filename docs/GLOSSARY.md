@@ -117,11 +117,6 @@ NEAT-AI) plus a few codebase-specific terms.
 - **Horizontal gene transfer** — subgraph transplantation that copies connected
   subgraphs between genetically incompatible Creatures, inspired by biological
   [horizontal gene transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer).
-- **Novelty search** — optional selection that rewards _behavioural_ diversity
-  (what a Creature does on a probe set) rather than raw fitness, to escape
-  deceptive landscapes. Standard technique from
-  [Lehman & Stanley 2011](https://doi.org/10.1162/EVCO_a_00025); **OFF by
-  default** in NEAT-AI. See [NOVELTY_SEARCH.md](NOVELTY_SEARCH.md).
 - **Predictive coding** — an alternative to plain backpropagation in which each
   layer iteratively minimises local prediction errors passed between layers,
   inspired by the neuroscience theory of

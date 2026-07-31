@@ -26,7 +26,6 @@ import { Genus } from "@neat/Genus.ts";
 import { computeHardDeadlineTS } from "@neat/HardDeadline.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
-import { NoveltySearch } from "@neat/NoveltySearch.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
 import { RandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { SpeciesPlateauDetector } from "@neat/SpeciesPlateauDetector.ts";
@@ -124,13 +123,6 @@ export class Neat {
 
   /** Issue #2200: MCMC temperature state for Metropolis-Hastings acceptance */
   readonly mcmcState: MCMCState;
-
-  /**
-   * Persistent novelty (behavioural-diversity) search engine (Issue #2932).
-   * Holds the cross-generation novelty archive. OFF by default; only
-   * consulted when `config.novelty.enabled`.
-   */
-  readonly noveltySearch: NoveltySearch;
 
   /**
    * Issue #2457: Per-role squash effectiveness tracker.
@@ -353,10 +345,6 @@ export class Neat {
 
     // Issue #2200: Initialise MCMC temperature state
     this.mcmcState = new MCMCState(this.config.mcmc);
-
-    // Issue #2932: Initialise the persistent novelty search engine. The
-    // archive lives here so it accumulates across generations.
-    this.noveltySearch = new NoveltySearch(this.config.novelty);
 
     // Issue #2457: Initialise the per-role squash effectiveness tracker.
     this.squashEffectivenessTracker = new SquashEffectivenessTracker(
@@ -1022,7 +1010,7 @@ export class Neat {
       genus.addCreature(creature);
     }
 
-    const breed = new Breed(genus, this.config, this.noveltySearch);
+    const breed = new Breed(genus, this.config);
     const deDuplicator = new DeDuplicator(breed, mutator);
     await deDuplicator.perform(this.population);
   }

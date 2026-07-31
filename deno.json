@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "6.1.7",
+  "version": "6.1.8",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
@@ -93,7 +93,6 @@
       "bench/IncrementalScoreUpdate.ts",
       "bench/MainThreadScoreWork.ts",
       "bench/MaxWeightBiasRecalculation.ts",
-      "bench/NoveltyDeceptiveEscape.ts",
       "bench/OnPolicyDistillationBreed.ts",
       "bench/RandomImmigrantsStagnationEscape.ts",
       "bench/RevisitDiagnostic.ts",

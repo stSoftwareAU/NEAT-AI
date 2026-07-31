@@ -7,7 +7,6 @@ import type { SelectionPressureConfig } from "@config/SelectionPressureConfig.ts
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import type { FineTunePopulationConfig } from "@config/FineTunePopulationConfig.ts";
 import type { FitnessSharingConfig } from "@config/FitnessSharingConfig.ts";
-import type { NoveltyConfig } from "@config/NoveltyConfig.ts";
 import type { RandomImmigrantsConfig } from "@config/RandomImmigrantsConfig.ts";
 import type { SpeciesStagnationConfig } from "@config/SpeciesStagnationConfig.ts";
 import type { NeatArguments } from "@config/NeatArguments.ts";
@@ -127,7 +126,6 @@ export type NeatOptions =
     | "squashEffectiveness"
     | "squashBudget"
     | "fitnessSharing"
-    | "novelty"
     | "randomImmigrants"
     | "speciesStagnation"
     | "compatibilityGating"
@@ -199,8 +197,6 @@ export type NeatOptions =
     squashBudget?: SquashBudgetConfig;
     /** Partial overrides for fitness sharing configuration (Issue #2453, defaults applied if not specified) */
     fitnessSharing?: FitnessSharingConfig;
-    /** Partial overrides for novelty selection configuration (Issue #2932, defaults applied if not specified) */
-    novelty?: NoveltyConfig;
     /** Partial overrides for random-immigrants configuration (Issue #2933, defaults applied if not specified) */
     randomImmigrants?: RandomImmigrantsConfig;
     /** Partial overrides for species stagnation configuration (Issue #2454, defaults applied if not specified) */
@@ -306,7 +302,6 @@ export type NeatOptionsInput =
     | "squashEffectiveness"
     | "squashBudget"
     | "fitnessSharing"
-    | "novelty"
     | "randomImmigrants"
     | "speciesStagnation"
     | "compatibilityGating"
@@ -368,8 +363,6 @@ export type NeatOptionsInput =
     squashBudget?: SquashBudgetConfig;
     /** Fitness sharing configuration (Issue #2453). Numeric fields coerced from CLI. */
     fitnessSharing?: CoerceNumeric<FitnessSharingConfig>;
-    /** Novelty selection configuration (Issue #2932). Numeric fields coerced from CLI. */
-    novelty?: CoerceNumeric<NoveltyConfig>;
     /** Random-immigrants configuration (Issue #2933). Numeric fields coerced from CLI. */
     randomImmigrants?: CoerceNumeric<RandomImmigrantsConfig>;
     /** Species stagnation configuration (Issue #2454). Numeric fields coerced from CLI. */
