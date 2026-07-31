@@ -69,14 +69,14 @@ const qualifies = (
 /**
  * Slice A (#3519) — 46 non-`discovery*` top-level options.
  *
- * Two of slice A's `QUALIFIES` verdicts, `maxConns` and
- * `maximumNumberOfNodes`, were carried out by #3552: the keys no longer exist
- * in `NeatArguments`, so the harness no longer enumerates them and their
- * entries are gone from this table. A retained entry would be an orphan
- * (`reconcile()` reports keys the source no longer has).
+ * Three of slice A's `QUALIFIES` verdicts have been carried out: `maxConns`
+ * and `maximumNumberOfNodes` by #3552, and `enableRepetitiveTraining` by
+ * #3553. Those keys no longer exist in `NeatArguments`, so the harness no
+ * longer enumerates them and their entries are gone from this table. A
+ * retained entry would be an orphan (`reconcile()` reports keys the source no
+ * longer has).
  */
 const SLICE_A: RollupEntry[] = [
-  qualifies("enableRepetitiveTraining", "A", 3553),
   qualifies("dnaSharingMode", "A", 3554, {
     note:
       "Slice F confirmed `DnaSharingPreset.ts` is covered here and filed nothing.",

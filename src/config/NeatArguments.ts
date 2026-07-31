@@ -195,8 +195,6 @@ export interface NeatArguments {
   /** Enable verbose logging. Default is false. */
   verbose: boolean;
 
-  enableRepetitiveTraining: boolean;
-
   /**
    * Issue #2382: Skip scheduling training for a creature whose last N training
    * attempts all produced a higher error and no usable fine-tune variant. A

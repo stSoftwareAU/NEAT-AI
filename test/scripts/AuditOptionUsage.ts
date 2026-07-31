@@ -148,10 +148,11 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   // which came from a grep that skipped `readonly mutation` — the parser saw
   // the real 119. #3558 then removed `ensembleDiversity`, leaving 118; #3556
   // then removed `discoveryReplayDiagnostics`, leaving 117; #3552 then removed
-  // `maxConns` and `maximumNumberOfNodes`, leaving 115.
+  // `maxConns` and `maximumNumberOfNodes`, leaving 115; #3553 then removed
+  // `enableRepetitiveTraining`, leaving 114.
   assertEquals(
     topLevel.length,
-    115,
+    114,
     "NeatArguments top-level key count changed",
   );
   assert(

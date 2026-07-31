@@ -96,6 +96,13 @@ Deno.test("NeatOptions - ensembleDiversity is not a config key", () => {
   assertEquals(Object.hasOwn(config, "ensembleDiversity"), false);
 });
 
+// Issue #3553: enableRepetitiveTraining was removed as an unused option — the
+// parsed config must no longer carry it (regression guard against reintroduction).
+Deno.test("NeatOptions - enableRepetitiveTraining is not a config key", () => {
+  const config = createNeatConfig({}) as unknown as Record<string, unknown>;
+  assertEquals(Object.hasOwn(config, "enableRepetitiveTraining"), false);
+});
+
 Deno.test("NeatOptions - seed option produces deterministic RNG", () => {
   const config1 = createNeatConfig({ seed: 42 });
   const config2 = createNeatConfig({ seed: 42 });

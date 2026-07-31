@@ -293,11 +293,10 @@ export function scheduleTraining(
     return;
   }
 
-  if (neat.alreadyScheduledMap.has(uuid)) {
-    if (!neat.config.enableRepetitiveTraining) {
-      return;
-    }
-  }
+  // Issue #3553: a creature is trained at most once per run. This guard was
+  // previously gated on the unused `enableRepetitiveTraining` flag, which
+  // defaulted to `false` and was never set by any consumer.
+  if (neat.alreadyScheduledMap.has(uuid)) return;
 
   // Issue #2382: bypass training for creatures whose last N attempts all
   // produced a higher error and no usable fine-tune variant. The heavy
