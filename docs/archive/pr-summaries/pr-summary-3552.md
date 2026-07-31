@@ -3,9 +3,10 @@
 ## Summary
 
 Removes the `maxConns` and `maximumNumberOfNodes` options — slice A's two
-`QUALIFIES` verdicts from the [#3505](https://github.com/stSoftwareAU/NEAT-AI/issues/3505)
-option audit ([slice A brief](../../OPTION_AUDIT_SLICE_A.md), #3519). Follows the
-#3502 / #3556 removal pattern. Closes #3552.
+`QUALIFIES` verdicts from the
+[#3505](https://github.com/stSoftwareAU/NEAT-AI/issues/3505) option audit
+([slice A brief](../../OPTION_AUDIT_SLICE_A.md), #3519). Follows the #3502 /
+#3556 removal pattern. Closes #3552.
 
 Both keys are filed together because they share one code path — the `Mutator`
 mutation-candidate filter — and both defaulted to `Number.MAX_SAFE_INTEGER`, the
@@ -44,13 +45,13 @@ flowchart LR
 
 ### What was deleted
 
-| Area      | Change                                                                                                        |
-| --------- | ------------------------------------------------------------------------------------------------------------- |
-| Options   | `src/config/NeatArguments.ts` (both fields), `src/config/NeatOptions.ts` (both `NumericOptionKeys` entries)     |
-| Parsing   | `src/config/NeatConfig.ts` — both `parseNumber` blocks                                                          |
-| Plumbing  | `src/NEAT/Mutator.ts` — the `ADD_NODE` case and the `maxConns` half of the `ADD_CONN` case                       |
-| Docs      | `docs/api/CONFIGURATION.md`, `docs/config/CORE_EVOLUTION.md`, `docs/config/RECIPES.md`, `docs/troubleshooting/MEMORY.md` |
-| Audit     | `scripts/lib/optionAuditRollup.ts` entries, `docs/OPTION_AUDIT_CONSOLIDATED.md` counts, pinned key count       |
+| Area     | Change                                                                                                                   |
+| -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Options  | `src/config/NeatArguments.ts` (both fields), `src/config/NeatOptions.ts` (both `NumericOptionKeys` entries)              |
+| Parsing  | `src/config/NeatConfig.ts` — both `parseNumber` blocks                                                                   |
+| Plumbing | `src/NEAT/Mutator.ts` — the `ADD_NODE` case and the `maxConns` half of the `ADD_CONN` case                               |
+| Docs     | `docs/api/CONFIGURATION.md`, `docs/config/CORE_EVOLUTION.md`, `docs/config/RECIPES.md`, `docs/troubleshooting/MEMORY.md` |
+| Audit    | `scripts/lib/optionAuditRollup.ts` entries, `docs/OPTION_AUDIT_CONSOLIDATED.md` counts, pinned key count                 |
 
 `bench/` referenced neither key.
 
@@ -96,11 +97,12 @@ $ deno run --allow-read scripts/option-audit-rollup.ts
 **Added**
 
 - `test/config/NeatConfigParseOptions.ts::NeatConfigParseOptions - growth-cap
-  options are not config keys` — asserts the parsed config carries neither key,
-  guarding against reintroduction (mirrors the #3502 and #3556 guards).
+  options are not config keys`
+  — asserts the parsed config carries neither key, guarding against
+  reintroduction (mirrors the #3502 and #3556 guards).
 - `test/docs/ApiConfigurationDefaults.ts::CONFIGURATION.md - removed growth-cap
-  options are not documented` — asserts the doc table no longer has a row for
-  either key.
+  options are not documented`
+  — asserts the doc table no longer has a row for either key.
 
 **Modified**
 
@@ -108,10 +110,11 @@ $ deno run --allow-read scripts/option-audit-rollup.ts
   117 → 115.
 - `test/NEAT/MutatorComputeMutationCandidates.ts` — **one test removed**:
   `filters ADD_NODE when at maximum nodes` asserted a cap that no longer exists,
-  so it could not be rewritten to pass. Its sibling `allows ADD_NODE when below
-  maximum` is retained, renamed `allows ADD_NODE regardless of neuron count`,
-  and now covers the new behaviour: ADD_NODE stays a candidate at any creature
-  size.
+  so it could not be rewritten to pass. Its sibling
+  `allows ADD_NODE when below
+  maximum` is retained, renamed
+  `allows ADD_NODE regardless of neuron count`, and now covers the new
+  behaviour: ADD_NODE stays a candidate at any creature size.
 - `test/NEAT/MutatorCacheValidMutations.ts` — dropped the two removed keys from
   two configs. Neither test asserted on the caps; the per-creature cache test
   still exercises distinct cache keys via differing neuron counts.
