@@ -235,7 +235,8 @@ const SLICE_D: RollupEntry[] = [
     fieldDefault: "KEEP",
     fieldOverrides: { enabled: { verdict: "IN USE" } },
     note:
-      "GRQ sets only `.enabled`; the other four defaults then drive inference.",
+      "The downstream production consumer sets only `.enabled`; the other four " +
+      "defaults then drive inference.",
   }),
   inUse("outputRanges", "D", {
     interfaces: ["src/config/OutputRangeConfig.ts::OutputRange"],
@@ -263,7 +264,8 @@ const SLICE_D: RollupEntry[] = [
   qualifies("squashBudget", "D", 3563, {
     interfaces: ["src/config/SquashBudgetConfig.ts::SquashBudgetConfig"],
     note:
-      "Decision, audit recommends KEEP — live lever, adoption is a GRQ task.",
+      "Decision, audit recommends KEEP — live lever, adoption is a downstream " +
+      "consumer task.",
   }),
   keep("weightRegularisation", "D", {
     interfaces: [
@@ -300,7 +302,9 @@ const SLICE_E: RollupEntry[] = [
       proactiveGc: { verdict: "QUALIFIES", issue: 3565 },
       maxAnalysisMemoryMb: { verdict: "QUALIFIES", issue: 3565 },
     },
-    note: "GRQ sets `enabled` + `nativeBudgetBytes`; seven defaults are live.",
+    note:
+      "The downstream production consumer sets `enabled` + `nativeBudgetBytes`; " +
+      "seven defaults are live.",
   }),
   inUse("workerThreadCap", "E", {
     interfaces: ["src/config/WorkerThreadCapConfig.ts::WorkerThreadCapConfig"],
@@ -318,7 +322,8 @@ const SLICE_E: RollupEntry[] = [
   keep("wasmCache", "E", {
     interfaces: ["src/config/WasmCacheConfig.ts::WasmCacheConfig"],
     note:
-      "GRQ's 50 `wasmCache` hits are its own unrelated cap — a false IN USE.",
+      "The downstream consumer's 50 `wasmCache` hits are its own unrelated cap " +
+      "— a false IN USE.",
   }),
   ...["creatureStore", "experimentStore", "traceStore", "onTrainingEvent"].map((
     k,
@@ -351,7 +356,8 @@ const SLICE_F: RollupEntry[] = [
       "src/config/MCMCConfig.ts::DiversityAwareMCMCConfig",
     ],
     note:
-      "Decision — GRQ's evolution-mode sweep declares intent but never wires it.",
+      "Decision — the downstream consumer's evolution-mode sweep declares intent " +
+      "but never wires it.",
   }),
   qualifies("opd", "F", 3570, {
     interfaces: ["src/config/OpdConfig.ts::OpdConfig"],
@@ -375,13 +381,14 @@ const SLICE_F: RollupEntry[] = [
  * The six slice briefs were built from a grep that skipped `readonly mutation`
  * — the "118 top-level fields" figure in #3518 and #3525. The parser-backed
  * harness enumerates 119, and this is the difference. Re-probed with the
- * slice method (`git grep`, exit code checked, controls run): GRQ sets it in
- * four `NeatOptions` literals from its `--mutation=ALL|FFW` operator flag.
+ * slice method (`git grep`, exit code checked, controls run): the downstream
+ * production consumer sets it in four `NeatOptions` literals from its
+ * `--mutation=ALL|FFW` operator flag.
  */
 const ROLLUP_GAP_FILLS: RollupEntry[] = [
   inUse("mutation", "roll-up", {
-    note:
-      "Gap found by this roll-up. GRQ `src/{exchange,fx,industry,location}/EvolveApp.ts` set it.",
+    note: "Gap found by this roll-up. The downstream consumer's four " +
+      "`EvolveApp.ts` entry points set it.",
   }),
 ];
 
