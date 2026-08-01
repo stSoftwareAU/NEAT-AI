@@ -16,7 +16,8 @@
  *      (one streamed pass per invocation; the streaming guarantee lives in
  *      NEAT-AI-scorer `multi_score.rs`, one `for_each_read_chunk` call).
  *   4. The `scorerUtilisation` block, written into a `result.json` artifact in
- *      the same shape the GRQ worker serialises into GRQ-cluster/result.json.
+ *      the same shape the production worker serialises into the downstream
+ *      run-result file.
  *
  * Any discrepancy (unexpected fallback, batch path not taken) is printed
  * loudly and reflected in the artifact rather than hidden (Issue #3234).

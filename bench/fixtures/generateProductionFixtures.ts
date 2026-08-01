@@ -1,6 +1,6 @@
 /**
  * generateProductionFixtures.ts — Deterministically generate production-scale
- * creature and binary training data fixtures matching GRQ-cluster dimensions.
+ * creature and binary training data fixtures matching production-scale dimensions.
  *
  * Issue #2306 — Creates benchmark fixtures for realistic profiling so that
  * bottleneck analysis reflects production workloads rather than small-data
@@ -40,7 +40,7 @@ import {
   generateProductionCreature,
 } from "../../test/propagate/large/ProductionScaleCreature.ts";
 
-/** Default configuration matching GRQ-cluster production dimensions. */
+/** Default configuration matching production-scale dimensions. */
 export const PRODUCTION_DEFAULTS = {
   /** Seed for deterministic generation. */
   seed: 2306,

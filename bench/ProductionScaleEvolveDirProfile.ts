@@ -1,7 +1,7 @@
 /**
  * Issue #2307 — Production-scale evolveDir phase-timing benchmark.
  *
- * Profiles the evolveDir evolution loop at GRQ-cluster dimensions
+ * Profiles the evolveDir evolution loop at production-scale dimensions
  * (~1,500 neurons, ~20,000 synapses, 648 inputs, 2 outputs) to identify
  * which phases dominate wall-clock time at production scale — contrasting
  * with the small-data profiling from #2274 that showed breeding at 50–60%.
