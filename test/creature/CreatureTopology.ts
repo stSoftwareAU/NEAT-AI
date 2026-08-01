@@ -14,8 +14,10 @@ import {
   getSynapse,
   hasConnection,
   inwardConnections,
+  isInwardIndexBuilt,
   outwardConnections,
   prebuildInwardIndex,
+  prebuildInwardIndexIfLarge,
   selfConnection,
   type TopologyCaches,
 } from "@creature/CreatureTopology.ts";
@@ -257,4 +259,32 @@ Deno.test("facade delegation matches direct module calls", async () => {
 
   // hasConnection via facade
   assert(creature.hasConnection(syn.from, syn.to));
+});
+
+Deno.test("prebuildInwardIndexIfLarge - only builds for large creatures", async () => {
+  await initWasmForTests();
+
+  const small = new Creature(2, 1, { layers: [{ count: 2 }] });
+  creatureValidate(small);
+  const smallCaches = makeCaches();
+  prebuildInwardIndexIfLarge(small, smallCaches);
+  assertEquals(
+    isInwardIndexBuilt(smallCaches),
+    false,
+    "Small creature should not trigger the prebuild threshold",
+  );
+
+  const large = new Creature(20, 5, { layers: [{ count: 40 }, { count: 30 }] });
+  creatureValidate(large);
+  assert(
+    large.synapses.length >= 1000,
+    "Fixture must exceed the prebuild threshold",
+  );
+  const largeCaches = makeCaches();
+  prebuildInwardIndexIfLarge(large, largeCaches);
+  assertEquals(
+    isInwardIndexBuilt(largeCaches),
+    true,
+    "Large creature should trigger the prebuild threshold",
+  );
 });
