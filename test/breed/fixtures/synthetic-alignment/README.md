@@ -13,8 +13,9 @@ reported in Issue #2609:
 - `parent-mother.json` — modelled on the production cluster's `network.json`
   shape (cascading layered topology, fan-in to a deep hidden neuron, a shortcut
   hidden neuron from `input-0` directly to `output-1`).
-- `parent-father.json` — modelled on the GRQ-teams Europa creature shape (same
-  overall layered topology, deliberately disjoint hidden-neuron real UUIDs).
+- `parent-father.json` — modelled on a large production teams creature shape
+  (same overall layered topology, deliberately disjoint hidden-neuron real
+  UUIDs).
 
 Both creatures expose the same alignment problem the production crossover hit on
 the GitHub fleet: real-UUID overlap of `0.0` (well below the

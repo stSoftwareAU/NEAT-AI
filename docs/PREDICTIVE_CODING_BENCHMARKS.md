@@ -308,8 +308,8 @@ The complex creature topology mirrors production-scale workloads:
 - **Connectivity**: Fully connected between adjacent layers plus skip
   connections
 
-A second topology tests a production-representative GRQ-cluster pattern with 50+
-neurons and forward-only connections.
+A second topology tests a production-representative large-network pattern with
+50+ neurons and forward-only connections.
 
 ### 📊 PC vs Standard Backprop on Complex Creatures
 
@@ -339,7 +339,7 @@ neurons and forward-only connections.
 4. **Forward-only and recurrent topologies**: Both topology styles converge
    under PC training, though forward-only networks settle more predictably.
 
-5. **Production-representative topologies**: The GRQ-cluster topology (50+
+5. **Production-representative topologies**: The production-scale topology (50+
    neurons) demonstrates that PC with adaptive scaling produces valid trace tags
    and measurable weight changes on realistic workloads.
 

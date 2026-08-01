@@ -4,8 +4,8 @@
  *
  * A real `evolveDataSet` run on XOR must self-report the configured population
  * size, the host hardware, an echo of the caller-requested options, and a
- * score-improvement milestone summary — enough for GRQ-cluster's `result.json`
- * to be compared across machines without an external inventory.
+ * score-improvement milestone summary — enough for the downstream run-result
+ * file to be compared across machines without an external inventory.
  */
 
 import { assert, assertEquals } from "@std/assert";

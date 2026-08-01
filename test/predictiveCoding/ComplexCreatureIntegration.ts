@@ -548,11 +548,11 @@ Deno.test("PC training works on forward-only complex creature with mixed activat
 });
 
 // ---------------------------------------------------------------------------
-// Test: Production-representative topology (GRQ-cluster-scale creature)
+// Test: Production-representative topology (production-scale creature)
 // ---------------------------------------------------------------------------
 
-Deno.test("PC training improves on production-representative GRQ-cluster topology", () => {
-  // Build a creature representative of the production GRQ-cluster network.
+Deno.test("PC training improves on production-representative large topology", () => {
+  // Build a creature representative of a large production network.
   // Production creature has ~90+ neurons. We create a scaled version
   // with 50+ hidden neurons across 5 layers with diverse connectivity.
   const squashOptions = [

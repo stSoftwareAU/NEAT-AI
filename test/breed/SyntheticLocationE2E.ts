@@ -3,8 +3,8 @@
  * `createCompatibleFatherFromCreatures` by Issue #2614.
  *
  * Loads two production-shape, genetically incompatible parent fixtures
- * (mother modelled on the production cluster's `network.json` shape, father modelled on the
- * GRQ-teams Europa creature) and proves that:
+ * (mother modelled on the production cluster's `network.json` shape, father
+ * modelled on a large production teams creature) and proves that:
  *
  *  1. Real-UUID overlap is below the configured `syntheticAlignmentThreshold`.
  *  2. The synthetic-UUID alignment pass produces strictly more aligned
