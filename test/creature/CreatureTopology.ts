@@ -199,6 +199,40 @@ Deno.test("prebuildInwardIndex - builds secondary index", async () => {
   );
 });
 
+Deno.test("inwardConnections - index path matches linear-scan path", async () => {
+  await initWasmForTests();
+  const creature = new Creature(3, 2, {
+    layers: [{ count: 4 }, { count: 3 }],
+  });
+  creatureValidate(creature);
+
+  const caches = makeCaches();
+  // Query every neuron so the miss counter crosses the internal build
+  // threshold part-way through: early lookups use the linear scan, later
+  // ones use the secondary index. Both must agree with a brute-force scan.
+  for (let indx = 0; indx < creature.neurons.length; indx++) {
+    const expected = creature.synapses.filter((syn) => syn.to === indx);
+    const actual = inwardConnections(creature, caches, indx);
+    assertEquals(
+      actual.length,
+      expected.length,
+      `Inward count mismatch for neuron ${indx}`,
+    );
+    for (const syn of expected) {
+      assert(
+        actual.some((a) => a.from === syn.from && a.to === syn.to),
+        `Missing inward synapse ${syn.from}->${syn.to}`,
+      );
+    }
+  }
+
+  assertNotEquals(
+    caches.synapsesIndexedByTo,
+    null,
+    "Index should be built once the miss threshold is crossed",
+  );
+});
+
 Deno.test("facade delegation matches direct module calls", async () => {
   await initWasmForTests();
   const creature = new Creature(2, 1, {
