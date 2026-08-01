@@ -59,8 +59,10 @@ export function isFixableActivation(
 /**
  * Creates a function that calculates the activation of the neuron.
  * Uses dynamic function compilation for performance.
+ *
+ * Module-private: only `prepare()` below calls it (Issue #3609).
  */
-export function makeFunction(
+function makeFunction(
   neuron: Neuron,
   functionCache: FunctionCache,
   squashProxy: (value: number) => number,
