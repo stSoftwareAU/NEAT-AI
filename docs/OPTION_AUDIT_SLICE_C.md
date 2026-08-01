@@ -59,10 +59,10 @@ flowchart TD
 
 ## Method
 
-The two confirmed consumers are unchanged from slice B: `stSoftwareAU/GRQ` and
-`stSoftwareAU/NEAT-AI-Examples`, both declaring `@stsoftware/neat` in
-`deno.json`. Each key was resolved against fresh clones (fetched 30 Jul 2026)
-and cross-checked against the code-search index:
+The two confirmed consumers are unchanged from slice B: the downstream
+production consumer and `stSoftwareAU/NEAT-AI-Examples`, both declaring
+`@stsoftware/neat` in `deno.json`. Each key was resolved against fresh clones
+(fetched 30 Jul 2026) and cross-checked against the code-search index:
 
 ```bash
 # Local pass — primary evidence, complete and unmetered. Searched against
@@ -71,7 +71,7 @@ git -C GRQ              grep -n -F "<key>" origin/Develop
 git -C NEAT-AI-Examples grep -n -F "<key>" origin/Develop
 
 # Cross-check — per-repo only, never a bare --owner.
-gh search code "<key>" --repo stSoftwareAU/GRQ --limit 20
+gh search code "<key>" --repo <consumer-repo> --limit 20
 gh search code "<key>" --repo stSoftwareAU/NEAT-AI-Examples --limit 20
 ```
 

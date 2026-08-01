@@ -60,10 +60,10 @@ flowchart TD
 
 ## Method
 
-The two confirmed consumers are unchanged from slices B–D: `stSoftwareAU/GRQ`
-and `stSoftwareAU/NEAT-AI-Examples`. Each key was resolved against fresh clones
-(fetched 30 Jul 2026; GRQ `origin/Develop` at `5199cb241`, NEAT-AI-Examples at
-`2405d1b`).
+The two confirmed consumers are unchanged from slices B–D: the downstream
+production consumer and `stSoftwareAU/NEAT-AI-Examples`. Each key was resolved
+against fresh clones (fetched 30 Jul 2026; GRQ `origin/Develop` at `5199cb241`,
+NEAT-AI-Examples at `2405d1b`).
 
 ```bash
 # Local pass — primary evidence, complete and unmetered. git grep searches
@@ -76,7 +76,7 @@ git -C GRQ grep -n -I -F "<SCREAMING_SNAKE>" origin/Develop \
   -- '*.sh' '*.yml' '*.yaml' '*.json' '*.jsonc' 'Dockerfile*' '*.env'
 
 # Cross-check — per-repo only, never a bare --owner.
-gh search code "<key>" --repo stSoftwareAU/GRQ --limit 20
+gh search code "<key>" --repo <consumer-repo> --limit 20
 ```
 
 Every local search checks the exit code explicitly — `rc 0` hit, `rc 1` miss,
@@ -122,8 +122,7 @@ family already accounted for above.
 ### Two name collisions that would have produced wrong verdicts
 
 **`wasmCache` — a false `IN USE`.**
-`gh search code wasmCache --repo
-stSoftwareAU/GRQ` returns the full window of
+`gh search code wasmCache --repo <consumer-repo>` returns the full window of
 **20 hits**, and `git grep` returns 50. Not one of them is NEAT-AI's `wasmCache`
 option: every hit is GRQ's own `src/train/wasmCacheCap.ts`, an unrelated
 per-host LRU cap with its own `WASM_CACHE_CAP` env var. This is the same failure

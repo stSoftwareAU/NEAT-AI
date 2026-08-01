@@ -27,8 +27,8 @@ Four options qualify for removal, filed as three removal issues: #3552
 
 ## Method
 
-Consumers were confirmed from `deno.json`: `stSoftwareAU/GRQ` pins
-`jsr:@stsoftware/neat-ai@6.0.0` and `stSoftwareAU/NEAT-AI-Examples` pins
+Consumers were confirmed from `deno.json`: the downstream production consumer
+pins `jsr:@stsoftware/neat-ai@6.0.0` and `stSoftwareAU/NEAT-AI-Examples` pins
 `@5.9.43`.
 
 Each key was resolved twice, against fresh clones and against the code-search
@@ -40,7 +40,7 @@ git -C GRQ                grep -n -E "(^|[^A-Za-z0-9_])<key>[[:space:]]*[:=]" --
 git -C NEAT-AI-Examples   grep -n -E "(^|[^A-Za-z0-9_])<key>[[:space:]]*[:=]" -- '*.ts' '*.js' '*.json' '*.sh'
 
 # Cross-check — per-repo only, never a bare --owner.
-gh search code "<key>" --repo stSoftwareAU/GRQ --limit 20
+gh search code "<key>" --repo <consumer-repo> --limit 20
 gh search code "<key>" --repo stSoftwareAU/NEAT-AI-Examples --limit 20
 ```
 

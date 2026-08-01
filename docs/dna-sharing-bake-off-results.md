@@ -191,7 +191,7 @@ something the retirement invalidates — but the code behind the
 `KnobTuning(aggressive)` row is gone:
 
 - `dnaSharingMode` (`NeatOptions` / `NeatArguments`) — no consumer ever set it,
-  confirmed per-repo against `stSoftwareAU/GRQ` and
+  confirmed per-repo against the downstream production consumer and
   `stSoftwareAU/NEAT-AI-Examples`.
 - `src/config/DnaSharingPreset.ts` — the `default` preset was defined to equal
   the per-knob defaults already applied by `createNeatConfig()`, so with nobody

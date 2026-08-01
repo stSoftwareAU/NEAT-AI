@@ -55,8 +55,8 @@ flowchart TD
 
 ## Method
 
-The two confirmed consumers are unchanged from slices B and C:
-`stSoftwareAU/GRQ` and `stSoftwareAU/NEAT-AI-Examples`. Both were rediscovered
+The two confirmed consumers are unchanged from slices B and C: the downstream
+production consumer and `stSoftwareAU/NEAT-AI-Examples`. Both were rediscovered
 independently in this run by the #3518 harness's org backstop
 (`--filename deno.json`), which reported exactly those two repositories as
 declaring `@stsoftware/neat-ai`.
@@ -71,7 +71,7 @@ git -C GRQ              grep -n -F "<key>" origin/Develop
 git -C NEAT-AI-Examples grep -n -F "<key>" origin/Develop
 
 # Cross-check — per-repo only, never a bare --owner.
-gh search code "<key>" --repo stSoftwareAU/GRQ --limit 20
+gh search code "<key>" --repo <consumer-repo> --limit 20
 gh search code "<key>" --repo stSoftwareAU/NEAT-AI-Examples --limit 20
 ```
 
@@ -93,7 +93,7 @@ The zero results below are therefore a property of the keys, not of the search.
 `OPTION_USAGE_AUDIT.md` warns that a bare `--owner` search saturates and reports
 a set key as unused. Slice D hit the opposite failure on the same tool:
 
-`gh search code squashBudget --repo stSoftwareAU/GRQ` returns **2 hits** where
+`gh search code squashBudget --repo <consumer-repo>` returns **2 hits** where
 `git grep -F squashBudget origin/Develop` returns none. Both are GRQ's own
 **ImproveSquash** pass and its wall-clock **budget** —
 `worker/IntelligentDesign/run.sh` (`--budgetSeconds`, `ID_STEP_BUDGET_SECONDS`)

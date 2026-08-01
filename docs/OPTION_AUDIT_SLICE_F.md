@@ -60,11 +60,12 @@ flowchart TD
 
 ## Method
 
-The two confirmed consumers are unchanged from slices B–D: `stSoftwareAU/GRQ`
-and `stSoftwareAU/NEAT-AI-Examples`. Both were resolved against fresh clones
-fetched 30 Jul 2026 — GRQ `origin/Develop` at `312370d`, NEAT-AI-Examples
-`origin/Develop` at `2405d1b`. `Develop` is the default branch of both
-repositories, so the local pass and the code-search index look at the same tree.
+The two confirmed consumers are unchanged from slices B–D: the downstream
+production consumer and `stSoftwareAU/NEAT-AI-Examples`. Both were resolved
+against fresh clones fetched 30 Jul 2026 — GRQ `origin/Develop` at `312370d`,
+NEAT-AI-Examples `origin/Develop` at `2405d1b`. `Develop` is the default branch
+of both repositories, so the local pass and the code-search index look at the
+same tree.
 
 ```bash
 # Local pass — primary evidence, complete and unmetered.
@@ -72,7 +73,7 @@ git -C GRQ              grep -n -F -I "<key>" origin/Develop
 git -C NEAT-AI-Examples grep -n -F -I "<key>" origin/Develop
 
 # Cross-check — per-repo only, never a bare --owner.
-gh search code "<key>" --repo stSoftwareAU/GRQ --limit 20
+gh search code "<key>" --repo <consumer-repo> --limit 20
 gh search code "<key>" --repo stSoftwareAU/NEAT-AI-Examples --limit 20
 ```
 
@@ -304,8 +305,8 @@ Two consequences for this audit:
    unreadable at any value; whether the _feature_ is later wired up through
    `SpecialistPipeline` is independent of that.
 
-The GRQ-side half-wiring is a separate root cause in a separate repository and
-is filed there as **stSoftwareAU/GRQ#3793**.
+The consumer-side half-wiring is a separate root cause in a separate repository
+and is tracked in that repository's own issue tracker, not here.
 
 ## Overlap with slice A
 
