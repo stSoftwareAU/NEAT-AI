@@ -4,7 +4,7 @@ The `requestedOptions` echo added by #3422 (`serialiseOptionsEcho` in
 `src/creature/EvolveOptionsEcho.ts`) recorded every caller-supplied option,
 replacing values that cannot round-trip through JSON with a `"[function]"` /
 `"[unserialisable]"` marker. Those marker entries — notably `creatures` (the
-seed-creature array), which landed as `"[unserialisable]"` in every GRQ-cluster
+seed-creature array), which landed as `"[unserialisable]"` in every production
 snapshot — are pure noise with no tuning value.
 
 This change drops **every** marker-valued entry from the echo: any option whose
@@ -16,9 +16,10 @@ seed array echoes as `0`; when the caller supplies no `creatures` option at all,
 nothing is echoed. Serialisable options (e.g. `creatureStore`) are unaffected.
 
 The now-unused `OPTION_FUNCTION_MARKER` / `OPTION_UNSERIALISABLE_MARKER` exports
-are removed. Historic snapshot files already committed in GRQ-cluster are not
-rewritten; the new field shape applies to future runs once GRQ picks up a
-NEAT-AI release containing this fix (release is human-gated, out of scope here).
+are removed. Historic snapshot files already committed in the downstream
+run-result store are not rewritten; the new field shape applies to future runs
+once GRQ picks up a NEAT-AI release containing this fix (release is human-gated,
+out of scope here).
 
 Closes #3427.
 

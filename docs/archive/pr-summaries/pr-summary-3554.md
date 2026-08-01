@@ -8,8 +8,8 @@ the `KnobTuningStrategy` primitive that was its only writer. Closes #3554.
 The evidence for "inert" held up on re-verification:
 
 - **Nobody sets it.** `git grep -F dnaSharingMode` returns 0 files in
-  `stSoftwareAU/NEAT-AI-Examples`, and `gh search code` returns 0 hits in
-  `stSoftwareAU/GRQ` and `stSoftwareAU/NEAT-AI-Examples`.
+  `stSoftwareAU/NEAT-AI-Examples`, and `gh search code` returns 0 hits in the
+  downstream production consumer and `stSoftwareAU/NEAT-AI-Examples`.
 - **The default was inert by construction.** `DEFAULT_DNA_SHARING_PRESET` was
   defined to equal the per-knob defaults `createNeatConfig()` already applied,
   so with nobody setting the option the preset resolved to the values that
