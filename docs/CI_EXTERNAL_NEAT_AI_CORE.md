@@ -8,15 +8,27 @@
 
 ## What the workflows do today
 
-The two workflows that touch the NEAT-AI-core dependency both call
+Every job that touches the NEAT-AI-core dependency calls
 `./build.sh --verify-only`. The verify-only mode performs no network calls and
 no mutation — it simply checks that the on-disk `wasm_activation/pkg/**` matches
 `deno.json` `neatCore.rev`.
 
-| Workflow                                                            | Job       | Step                                                 | Command                    |
-| ------------------------------------------------------------------- | --------- | ---------------------------------------------------- | -------------------------- |
-| [`.github/workflows/quality.yml`](../.github/workflows/quality.yml) | `quality` | _Sync WASM package from NEAT-AI-core_                | `./build.sh --verify-only` |
-| [`.github/workflows/publish.yml`](../.github/workflows/publish.yml) | `publish` | _Verify WASM package matches deno.json neatCore.rev_ | `./build.sh --verify-only` |
+Since Issue #3608 that call lives in exactly one file — the local composite
+action [`.github/actions/setup-neat`](../.github/actions/setup-neat/action.yml),
+which installs Deno 2.x and then runs the verify step. Jobs reach it via
+`uses: ./.github/actions/setup-neat`:
+
+| Workflow                                                                | Job                         | WASM sync |
+| ----------------------------------------------------------------------- | --------------------------- | --------- |
+| [`.github/workflows/quality.yml`](../.github/workflows/quality.yml)     | `quality`                   | yes       |
+| [`.github/workflows/coverage.yaml`](../.github/workflows/coverage.yaml) | `coverage`                  | yes       |
+| [`.github/workflows/coverage.yaml`](../.github/workflows/coverage.yaml) | `merge`                     | no        |
+| [`.github/workflows/bench.yaml`](../.github/workflows/bench.yaml)       | `smoke`                     | yes       |
+| [`.github/workflows/bench.yaml`](../.github/workflows/bench.yaml)       | `score-per-hour-regression` | yes       |
+| [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)     | `publish`                   | yes       |
+
+The `merge` job only aggregates shard artefacts and never loads the bundle, so
+it opts out with `verify-wasm: "false"`.
 
 The publish workflow uses verify-only deliberately: the default `GITHUB_TOKEN`
 cannot read commits from `NEAT-AI-core`, so any attempt to resolve `Develop`
@@ -25,20 +37,27 @@ HEAD from the publish job would fail (see
 
 ## Required workflow pattern
 
-If you add another workflow that needs the WASM bundle, follow this pattern —
-verify only, never resolve HEAD:
+If you add another job that needs the WASM bundle, reuse the composite action
+rather than re-pinning `denoland/setup-deno` and re-typing the verify command:
 
 ```yaml
-- name: Setup Deno
-  uses: denoland/setup-deno@v2
+- name: Checkout Code
+  # actions/checkout@v6.0.2
+  uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+  with:
+    persist-credentials: false
 
-- name: Verify WASM package matches deno.json neatCore.rev
-  run: ./build.sh --verify-only
+- name: Setup Deno and sync WASM package
+  uses: ./.github/actions/setup-neat
 ```
 
-Place this step before any `deno check`, `deno test`, or publish step. Bumping
-`neatCore.rev` is an explicit human (or worker) action, not something CI does on
-its own.
+`actions/checkout` stays inline: a local `uses: ./…` action is loaded from
+`$GITHUB_WORKSPACE`, so the repository must already be checked out before the
+composite action can be read.
+
+Place the composite step before any `deno check`, `deno test`, or publish step.
+Bumping `neatCore.rev` is an explicit human (or worker) action, not something CI
+does on its own.
 
 ## Sync policy enforcement
 

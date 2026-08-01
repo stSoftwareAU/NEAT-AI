@@ -55,12 +55,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Deno
-        # denoland/setup-deno@v2.0.4
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
-
-      - name: Sync WASM package from NEAT-AI-core
-        run: ./build.sh --verify-only
+      # Shared preamble — Deno 2.x plus the WASM pin check (Issue #3608).
+      - name: Setup Deno and sync WASM package
+        uses: ./.github/actions/setup-neat
 
       - name: Run benchmark smoke pass
         run: |
@@ -95,12 +92,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Deno
-        # denoland/setup-deno@v2.0.4
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
-
-      - name: Sync WASM package from NEAT-AI-core
-        run: ./build.sh --verify-only
+      # Shared preamble — Deno 2.x plus the WASM pin check (Issue #3608).
+      - name: Setup Deno and sync WASM package
+        uses: ./.github/actions/setup-neat
 
       - name: Run score-per-hour harness against the baseline trajectory
         # Same seeded config as bench/baseline_score_trajectory.json. The gate
