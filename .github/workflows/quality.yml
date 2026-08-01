@@ -25,80 +25,40 @@ permissions:
   contents: read
 
 jobs:
+  # Everything in this job runs code from the pull request head — `build.sh`,
+  # `deno check`/`fmt`/`lint`, and the repo's own scripts. It therefore holds
+  # NO credential beyond the default read-scoped `GITHUB_TOKEN` (Issue #3607).
+  # Any fmt/lint fixes leave as a patch artefact for the `push-fixes` job,
+  # which is the only place `secrets.ACTIONS_PUSH` appears.
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       NEAT_RUST_DISCOVERY_OPTIONAL: "true"
+    outputs:
+      has_changes: ${{ steps.check_changes.outputs.has_changes }}
 
     steps:
       # Checkout the code.
       #
+      # The fetch uses the default `GITHUB_TOKEN` (scoped `contents: read`
+      # above) — read access is all this job needs, and keeping the
+      # privileged PAT out of the job that executes PR-controlled code is
+      # the point of the split (Issue #3607).
+      #
       # `persist-credentials: false` (Issue #2727) — the default `true`
       # writes the fetch token into `.git/config`
       # (`http.https://github.com/.extraheader = AUTHORIZATION: basic …`)
-      # for the rest of the job. Because a later step runs PR-controlled
-      # code (`./build.sh --verify-only`) and the fetch token here is the
-      # privileged `secrets.ACTIONS_PUSH` PAT, persisting it would let a
-      # malicious PR read `.git/config` and exfiltrate the PAT. The PAT is
-      # re-introduced only at push time via a per-command auth header so
-      # it never lives on disk.
+      # for the rest of the job, where PR-controlled code could read it.
       - name: Checkout Code
         # actions/checkout@v6.0.2
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          token: ${{ secrets.ACTIONS_PUSH }} # Use the GitHub Actions token for write access
           persist-credentials: false
-          # For pull_request events, explicitly checkout the PR head branch to enable pushing
+          # For pull_request events, explicitly checkout the PR head branch so
+          # the checks see exactly what the contributor pushed.
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
-
-      # Ensure we're on the correct branch and prevent pushing to protected branches
-      # Untrusted GitHub-context strings (the PR source branch name is attacker-
-      # controllable) are passed via env: rather than interpolated into the
-      # script body, so shell metacharacters in branch names cannot break out
-      # of quoting (Issue #2709).
-      - name: Setup Branch
-        id: branch_setup
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-        run: |
-          set -Eeuo pipefail
-          # Determine the branch name
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            BRANCH_NAME="$PR_HEAD_REF"
-          else
-            BRANCH_NAME="$GITHUB_REF_NAME"
-          fi
-
-          # Defence in depth: reject branch names that contain shell
-          # metacharacters or that could be parsed as a git option. Even
-          # though the value reaches git as a single argv element, a name
-          # beginning with `-` would still be interpreted as a flag.
-          if [[ ! "$BRANCH_NAME" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$BRANCH_NAME" == -* ]]; then
-            echo "❌ Refusing to act on suspicious branch name: $BRANCH_NAME" >&2
-            exit 1
-          fi
-
-          # Protect default branch - never push to Develop
-          PROTECTED_BRANCHES="Develop main master"
-          for protected in $PROTECTED_BRANCHES; do
-            if [[ "$BRANCH_NAME" == "$protected" ]]; then
-              echo "❌ Cannot push to protected branch: $BRANCH_NAME" >&2
-              echo "Protected branches can only be updated via PR." >&2
-              exit 1
-            fi
-          done
-
-          # Ensure we're on the branch (checkout@v4 with ref: may leave us in
-          # detached HEAD). `--` after the branch name ends option parsing
-          # before any pathspecs (none here), preserving git's
-          # branch-switch semantics.
-          git checkout "$BRANCH_NAME" -- 2>/dev/null || git checkout -b "$BRANCH_NAME" --
-
-          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Check Bash Script Syntax
         run: |
@@ -251,20 +211,140 @@ jobs:
       - name: Make executable
         run: find . -type f -name "*.sh" -exec chmod u+x {} +
 
-      # Check for Changes
+      # Check for Changes — capture the fmt/lint fixes as a patch so the
+      # privileged `push-fixes` job can apply them as data without ever
+      # executing anything from the PR tree (Issue #3607). `--binary` keeps
+      # any `wasm_activation/pkg` deltas applicable.
       - name: Check for Changes
         id: check_changes # Define step ID to use outputs
+        env:
+          PATCH_FILE: ${{ runner.temp }}/quality-fixes.patch
         run: |
+          set -Eeuo pipefail
           if git diff --quiet; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
+            git diff --binary > "$PATCH_FILE"
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Commit Changes
-      - name: Commit Changes
-        if: steps.check_changes.outputs.has_changes == 'true' # Use step output
+      - name: Upload Fix Patch
+        if: steps.check_changes.outputs.has_changes == 'true'
+        # actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-fix-patch
+          path: ${{ runner.temp }}/quality-fixes.patch
+          retention-days: 1
+          if-no-files-found: error
+
+      # Note: Tests are run in coverage.yaml workflow
+      # - coverage.yaml runs all tests with full permissions (including FFI) for coverage reporting
+      # - Discovery tests gracefully skip when Rust library is unavailable via ignore: !isRustDiscoveryEnabled()
+      # - No need to run tests here as they're already covered in the coverage workflow
+
+  # The only job that sees `secrets.ACTIONS_PUSH` (Issue #3607). It executes
+  # nothing from the checked-out tree: it applies the fmt/lint patch produced
+  # by `quality` as pure data, commits it, and pushes. Because a fresh
+  # checkout runs here, no `$GITHUB_PATH` entry, `$GITHUB_ENV` variable or
+  # repo-local git config planted by PR-controlled code in `quality` can reach
+  # the push.
+  push-fixes:
+    needs: quality
+    if: needs.quality.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        # actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          fetch-depth: 0
+
+      # Ensure we're on the correct branch and prevent pushing to protected
+      # branches. The branch name is derived from the GitHub context and
+      # re-validated here — never taken from the `quality` job's outputs,
+      # which PR-controlled code can write to freely.
+      #
+      # Untrusted GitHub-context strings (the PR source branch name is
+      # attacker-controllable) are passed via env: rather than interpolated
+      # into the script body, so shell metacharacters in branch names cannot
+      # break out of quoting (Issue #2709).
+      - name: Setup Branch
+        id: branch_setup
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
+          set -Eeuo pipefail
+          # Determine the branch name
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            BRANCH_NAME="$PR_HEAD_REF"
+          else
+            BRANCH_NAME="$GITHUB_REF_NAME"
+          fi
+
+          # Defence in depth: reject branch names that contain shell
+          # metacharacters or that could be parsed as a git option. Even
+          # though the value reaches git as a single argv element, a name
+          # beginning with `-` would still be interpreted as a flag.
+          if [[ ! "$BRANCH_NAME" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$BRANCH_NAME" == -* ]]; then
+            echo "❌ Refusing to act on suspicious branch name: $BRANCH_NAME" >&2
+            exit 1
+          fi
+
+          # Protect default branch - never push to Develop
+          PROTECTED_BRANCHES="Develop main master"
+          for protected in $PROTECTED_BRANCHES; do
+            if [[ "$BRANCH_NAME" == "$protected" ]]; then
+              echo "❌ Cannot push to protected branch: $BRANCH_NAME" >&2
+              echo "Protected branches can only be updated via PR." >&2
+              exit 1
+            fi
+          done
+
+          # Ensure we're on the branch (checkout@v4 with ref: may leave us in
+          # detached HEAD). `--` after the branch name ends option parsing
+          # before any pathspecs (none here), preserving git's
+          # branch-switch semantics.
+          git checkout "$BRANCH_NAME" -- 2>/dev/null || git checkout -b "$BRANCH_NAME" --
+
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Download Fix Patch
+        # actions/download-artifact@v8.0.1
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: quality-fix-patch
+          path: ${{ runner.temp }}/fix-patch
+
+      - name: Apply Fix Patch
+        env:
+          PATCH_FILE: ${{ runner.temp }}/fix-patch/quality-fixes.patch
+        run: |
+          set -Eeuo pipefail
+          if [[ ! -s "$PATCH_FILE" ]]; then
+            echo "❌ Expected a non-empty fmt/lint patch at $PATCH_FILE" >&2
+            exit 1
+          fi
+
+          # Defence in depth: the patch was produced by the PR-controlled
+          # `quality` job, so refuse anything addressing the git directory.
+          # `git apply` rejects these too — fail loud before it gets there.
+          if grep -qE '^(diff --git |--- |\+\+\+ )[^\n]*\.git/' "$PATCH_FILE"; then
+            echo "❌ Patch addresses paths under .git/ — refusing to apply" >&2
+            exit 1
+          fi
+
+          git apply --binary --whitespace=nowarn "$PATCH_FILE"
+
+      - name: Commit Changes
+        run: |
+          set -Eeuo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -am "chore: apply deno fmt and lint fixes"
@@ -274,12 +354,11 @@ jobs:
       #
       # The PAT is re-introduced here via a per-command
       # `http.https://github.com/.extraheader` so it never lives in
-      # `.git/config` for any PR-controlled step to read (Issue #2727).
-      # `GH_PAT` is passed through the step env: map rather than
-      # interpolated into the script body to avoid leaking the secret
-      # into shell expansion or `ps`/job-log echo paths.
+      # `.git/config` (Issue #2727). `GH_PAT` is passed through the step env:
+      # map rather than interpolated into the script body to avoid leaking the
+      # secret into shell expansion or `ps`/job-log echo paths.
       - name: Push Changes
-        if: steps.check_changes.outputs.has_changes == 'true' && steps.branch_setup.outputs.branch_name != ''
+        if: steps.branch_setup.outputs.branch_name != ''
         env:
           BRANCH_NAME: ${{ steps.branch_setup.outputs.branch_name }}
           GH_PAT: ${{ secrets.ACTIONS_PUSH }}
@@ -288,8 +367,3 @@ jobs:
           AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 -w0)"
           git -c http.https://github.com/.extraheader="$AUTH_HEADER" \
             push origin "$BRANCH_NAME"
-
-      # Note: Tests are run in coverage.yaml workflow
-      # - coverage.yaml runs all tests with full permissions (including FFI) for coverage reporting
-      # - Discovery tests gracefully skip when Rust library is unavailable via ignore: !isRustDiscoveryEnabled()
-      # - No need to run tests here as they're already covered in the coverage workflow
