@@ -46,8 +46,8 @@ flowchart LR
 
 Consumers were confirmed from `deno.json` via the org backstop
 (`gh search code "stsoftware/neat-ai" --owner stSoftwareAU --filename deno.json`,
-the one org-wide query that is safe because it is `--filename`-scoped):
-`stSoftwareAU/GRQ` pins `jsr:@stsoftware/neat-ai@6.0.0` and
+the one org-wide query that is safe because it is `--filename`-scoped): the
+downstream production consumer pins `jsr:@stsoftware/neat-ai@6.0.0` and
 `stSoftwareAU/NEAT-AI-Examples` pins `@5.9.43`. No third TypeScript consumer
 exists. `stSoftwareAU/NEAT-AI-Discovery` was searched as the extra Rust-side
 consumer this slice is required to cover.
@@ -63,7 +63,7 @@ git -C NEAT-AI-Examples   grep -n -F "<key>" origin/Develop
 git -C NEAT-AI-Discovery  grep -n -F "<key>" origin/Develop
 
 # Cross-check — per-repo only, never a bare --owner.
-gh search code "<key>" --repo stSoftwareAU/GRQ --limit 20
+gh search code "<key>" --repo <consumer-repo> --limit 20
 gh search code "<key>" --repo stSoftwareAU/NEAT-AI-Examples --limit 20
 gh search code "<key>" --repo stSoftwareAU/NEAT-AI-Discovery --limit 20
 ```
