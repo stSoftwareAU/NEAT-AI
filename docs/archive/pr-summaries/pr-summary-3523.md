@@ -7,7 +7,8 @@ infrastructure nested configs (`memory`, `wasmCache`, `workerThreadCap`,
 `parallelEvaluation`), the internal `RustScorerConfig`, and the six injection
 points (`logger`, `rng`, `onTrainingEvent`, `creatureStore`, `experimentStore`,
 `traceStore`) — the top-level key and every field — against consumer usage in
-`stSoftwareAU/GRQ` and `stSoftwareAU/NEAT-AI-Examples`. **Closes #3523.**
+the downstream production consumer and `stSoftwareAU/NEAT-AI-Examples`. **Closes
+#3523.**
 
 **33 classifications: 15 `IN USE`, 15 `KEEP (load-bearing default)`, 3
 `QUALIFIES`.** Follow-ups #3565 (decision) and #3566 (removal) filed;

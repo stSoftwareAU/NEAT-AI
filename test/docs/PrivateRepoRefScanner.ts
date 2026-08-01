@@ -10,6 +10,13 @@
  *
  * This file is a private-repo *detector*: it embeds the forbidden slugs and
  * links verbatim as fixtures to verify its own detection logic.
+ *
+ * Issue #3617 widened the contract: a bare org-qualified `stSoftwareAU/GRQ`
+ * slug and an un-prefixed `GRQ-cluster` / `GRQ-logs` / `GRQ-teams` repo name
+ * are now flagged, because both name a private repository the reader cannot
+ * open. The former "a bare downstream consumer repo name" clean fixture
+ * therefore moved into `FLAGGED` — a deliberate contract change, not a relaxed
+ * test. The bare `GRQ` token stays clean and keeps its own coverage.
  */
 
 import { assertEquals } from "@std/assert";
@@ -61,6 +68,24 @@ const FLAGGED: ScannerCase[] = [
     name: "an org-qualified private repo path",
     lines: ["statistics derived from `stSoftwareAU/GRQ-cluster`."],
     expected: [1],
+  },
+  {
+    name: "a bare org-qualified downstream consumer slug (#3617)",
+    lines: [
+      "Neither confirmed consumer (stSoftwareAU/GRQ, NEAT-AI-Examples) uses it.",
+      "Logs were captured from the private stSoftwareAU/GRQ-logs repository.",
+    ],
+    expected: [1, 2],
+  },
+  {
+    name: "an un-prefixed private repo name (#3617)",
+    lines: [
+      "the run-level statistics land in the GRQ-cluster `result.json`.",
+      "Clean middle line.",
+      "profiled on the GRQ-teams production topology.",
+      "captured from the GRQ-logs archive.",
+    ],
+    expected: [1, 3, 4],
   },
   {
     name: "a private-repo blob link",
@@ -118,10 +143,10 @@ const CLEAN: ScannerCase[] = [
     expected: [],
   },
   {
-    name: "a bare downstream consumer repo name",
+    name: "the bare GRQ token on its own",
     lines: [
-      "Neither confirmed consumer (stSoftwareAU/GRQ, NEAT-AI-Examples) uses it.",
-      "Logs were captured from the private stSoftwareAU/GRQ-logs repository.",
+      "Measured on the GRQ corpus with the production creature.",
+      "The full GRQ evolve wall-clock A/B needs production hardware.",
     ],
     expected: [],
   },

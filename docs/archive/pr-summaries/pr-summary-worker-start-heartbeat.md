@@ -10,7 +10,7 @@ Child WASM phase timings unknown — the worker never answered the init handshak
 (may be stuck loading WASM, CPU-starved, or OOM).
 ```
 
-A `stSoftwareAU/GRQ` `team` run lost five worker slots to that 60-second
+A downstream production `team` run lost five worker slots to that 60-second
 handshake with `cache=hit`, `bundleLoadMs=2`, `instantiateMs=1`,
 `wasmTotalMs=20` and `workerError=none` — the parent loaded and instantiated the
 bundle in 20 ms, so "stuck loading WASM" was already ruled out, yet nothing in

@@ -18,23 +18,26 @@
  *
  * - a private issue-tracker slug (`GRQ#3472`, `VibeCoding#1613`, and their
  *   org-qualified forms);
- * - an org-qualified private repo path (`stSoftwareAU/GRQ-cluster`,
- *   `stSoftwareAU/VibeCoding`);
- * - a link into a private repository
- *   (`github.com/stSoftwareAU/GRQ-cluster/blob/...`).
+ * - any org-qualified private repo path, including the bare downstream
+ *   consumer (`stSoftwareAU/GRQ`, `stSoftwareAU/GRQ-cluster`,
+ *   `stSoftwareAU/VibeCoding`) — this also covers links into a private
+ *   repository (`github.com/stSoftwareAU/GRQ-cluster/blob/...`);
+ * - an un-prefixed private repo name (`GRQ-cluster`, `GRQ-logs`, `GRQ-teams`),
+ *   which names the repository just as unambiguously as the org-qualified
+ *   form (Issue #3617).
  *
  * Deliberately **not** matched — these name a concept rather than pointing at
  * an unreachable page, consistent with the #3454 mnemonic decision:
  *
  * - the public `stSoftwareAU/NEAT-AI` repository;
- * - a bare `stSoftwareAU/GRQ` / `stSoftwareAU/GRQ-logs` repo name used to
- *   identify the downstream consumer or its log store (no `#` slug, no link);
- * - bare host/log/preset mnemonics (`GRQ-21`, `GRQ-3-rocket.log`) and the
- *   lower-case in-tree `grq-3397` scale-preset fixture — matching is
+ * - the bare `GRQ` token on its own ("the GRQ corpus"), which the live-doc and
+ *   `src`/`test` guards police separately;
+ * - bare host/log/preset mnemonics (`GRQ-21`, `GRQ-3-rocket.log`, `GRQ-side`)
+ *   and the lower-case in-tree `grq-3397` scale-preset fixture — matching is
  *   case-sensitive on the upper-case repo tokens.
  */
 export const PRIVATE_REPO_PATTERN =
-  /(?:GRQ|VibeCoding)#\d+|stSoftwareAU\/(?:GRQ-cluster|VibeCoding)|github\.com\/stSoftwareAU\/(?:GRQ|VibeCoding)/;
+  /(?:GRQ|VibeCoding)#\d+|stSoftwareAU\/(?:GRQ|VibeCoding)\b|\bGRQ-(?:cluster|logs|teams)\b/;
 
 /**
  * Return every 1-indexed line number carrying a private-repo issue slug,

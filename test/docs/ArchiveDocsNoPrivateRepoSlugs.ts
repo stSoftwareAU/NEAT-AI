@@ -30,11 +30,25 @@ const ARCHIVE_DIR = fromFileUrl(new URL("../../docs/archive", import.meta.url));
  * was removed, so scanning them would be a self-referential false positive —
  * they are the audit, not offenders. Any new summary that necessarily cites the
  * private-repo patterns it removes belongs here.
+ *
+ * Issue #3617 widened the detector to bare org-qualified private slugs and
+ * un-prefixed private repo names (see `test/_privateRepoRefs.ts`), which pulled
+ * the rest of the clean-up series (#3451–#3462, #3613–#3616) into this list for
+ * the same self-referential reason.
  */
 const AUDIT_NARRATIVE_DOCS = new Set([
+  "pr-summary-3451.md",
   "pr-summary-3452.md",
+  "pr-summary-3453.md",
   "pr-summary-3454.md",
   "pr-summary-3455.md",
+  "pr-summary-3456.md",
+  "pr-summary-3457.md",
+  "pr-summary-3461.md",
+  "pr-summary-3462.md",
+  "pr-summary-3613.md",
+  "pr-summary-3615.md",
+  "pr-summary-3616.md",
 ]);
 
 Deno.test("no private stSoftwareAU repo slugs or links in docs/archive (#3455)", async () => {

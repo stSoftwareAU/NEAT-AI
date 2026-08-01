@@ -12,9 +12,10 @@ no-op. Worse, two shipped surfaces advertised behaviour that never happened:
 working feature — including a troubleshooting step users would follow to fix a
 diversity problem.
 
-Neither confirmed consumer (`stSoftwareAU/GRQ`, `stSoftwareAU/NEAT-AI-Examples`)
-sets the key or uses `LARGE_NETWORK_PRESET`, so nothing downstream changes.
-Behaviour cannot regress here because no behaviour was ever attached.
+Neither confirmed consumer (the downstream production consumer,
+`stSoftwareAU/NEAT-AI-Examples`) sets the key or uses `LARGE_NETWORK_PRESET`, so
+nothing downstream changes. Behaviour cannot regress here because no behaviour
+was ever attached.
 
 Closes #3558.
 

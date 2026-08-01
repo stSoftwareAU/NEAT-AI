@@ -3,7 +3,7 @@
 ## Summary
 
 Every `evolve*` result (`evolveDir`, `evolveDataSet`, `evolveEnv`, `evolveRL`)
-now carries a run-level `statistics` block so GRQ-cluster's `result.json` is
+now carries a run-level `statistics` block so the downstream run-result file is
 self-contained enough to compare configurations across the ~20-machine
 production fleet and judge which gives the best **rate** of score improvement.
 Final score alone is insufficient because runs plateau — the same final number

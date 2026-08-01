@@ -8,7 +8,7 @@ scored via the Rust **batch** path — one `rust_scorer` invocation per generati
 silently swallowed. Both tests drive `Fitness.calculate()` across several
 generations and accumulate each generation's per-backend counts into the
 run-level `ScorerUtilisationTotals` (the same telemetry surfaced on the
-`evolve*` result and in the GRQ-cluster `result.json`), then assert on the
+`evolve*` result and in the downstream run-result file), then assert on the
 aggregate. Closes #3237.
 
 The per-backend instrumentation this issue depends on
