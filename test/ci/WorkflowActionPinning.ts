@@ -13,6 +13,12 @@
  * This test scans every workflow file and asserts that each pinned action is
  * a 40-character lowercase hex SHA and carries a nearby comment naming the
  * resolved tag (so reviewers can verify provenance).
+ *
+ * Issue #3608 — local composite actions under `.github/actions/` are scanned
+ * too. They run inside the same jobs and pin the same third-party actions, so
+ * moving a `uses:` there must not move it out of this gate. Local `./…`
+ * references are exempt by construction: they carry no `@ref`, so
+ * `extractUses` never returns them.
  */
 
 import { assert, assertMatch } from "@std/assert";
@@ -21,25 +27,41 @@ import { extractUses } from "./ShellcheckWorkflowPinning.ts";
 
 const REPO_ROOT = fromFileUrl(new URL("../../", import.meta.url));
 const WORKFLOWS_DIR = join(REPO_ROOT, ".github/workflows");
+const ACTIONS_DIR = join(REPO_ROOT, ".github/actions");
 
-async function listWorkflowFiles(): Promise<string[]> {
-  const names: string[] = [];
+/** Every workflow file plus every local composite action definition. */
+async function listActionYamlFiles(): Promise<string[]> {
+  const paths: string[] = [];
   for await (const entry of Deno.readDir(WORKFLOWS_DIR)) {
     if (!entry.isFile) continue;
     if (!/\.ya?ml$/.test(entry.name)) continue;
-    names.push(entry.name);
+    paths.push(join(WORKFLOWS_DIR, entry.name));
   }
-  names.sort();
-  return names;
+  const candidates: string[] = [];
+  for await (const entry of Deno.readDir(ACTIONS_DIR)) {
+    if (!entry.isDirectory) continue;
+    candidates.push(
+      join(ACTIONS_DIR, entry.name, "action.yml"),
+      join(ACTIONS_DIR, entry.name, "action.yaml"),
+    );
+  }
+  const stats = await Promise.all(
+    candidates.map((path) => Deno.stat(path).catch(() => null)),
+  );
+  candidates.forEach((path, i) => {
+    if (stats[i]?.isFile) paths.push(path);
+  });
+  paths.sort();
+  return paths;
 }
 
 async function readAllWorkflows(): Promise<
   { name: string; source: string }[]
 > {
-  const files = await listWorkflowFiles();
-  const reads = files.map(async (name) => ({
-    name,
-    source: await Deno.readTextFile(join(WORKFLOWS_DIR, name)),
+  const files = await listActionYamlFiles();
+  const reads = files.map(async (path) => ({
+    name: path.slice(REPO_ROOT.length),
+    source: await Deno.readTextFile(path),
   }));
   return await Promise.all(reads);
 }

@@ -75,13 +75,10 @@ jobs:
         with:
           persist-credentials: false
 
-      # Set up Deno 2.x
-      - name: Setup Deno
-        # denoland/setup-deno@v2.0.4
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
-
-      - name: Sync WASM package from NEAT-AI-core
-        run: ./build.sh --verify-only
+      # Set up Deno 2.x and verify the vendored WASM bundle matches
+      # deno.json's neatCore.rev (Issue #3608 — shared preamble).
+      - name: Setup Deno and sync WASM package
+        uses: ./.github/actions/setup-neat
 
       - id: run_shard
         name: Run test shard
@@ -259,9 +256,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # This job only merges shard artefacts and uploads them — it never loads
+      # the WASM bundle, so it opts out of the sync (Issue #3608).
       - name: Setup Deno
-        # denoland/setup-deno@v2.0.4
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+        uses: ./.github/actions/setup-neat
+        with:
+          verify-wasm: "false"
 
       # File-count parity gate: assert the partition covers every test/**/*.ts
       # exactly once across all shards (no gaps, no double-runs).
