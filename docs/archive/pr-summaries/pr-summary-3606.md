@@ -2,8 +2,8 @@
 
 ## Summary
 
-Four PR quality gates restricted their `pull_request` trigger to `Develop`
-only, so they never ran on milestone sub-issue PRs (which target a shared
+Four PR quality gates restricted their `pull_request` trigger to `Develop` only,
+so they never ran on milestone sub-issue PRs (which target a shared
 `milestone/<slug>` branch). Added the single-level `milestone/*` glob to each
 branch filter, matching the pattern already used by the five sibling workflows
 fixed under Issues #3359–#3363. Closes #3606.
@@ -20,8 +20,8 @@ should only run on PRs targeting `Develop`.
 
 ## Evidence
 
-Backend/CI-only change; there is no web interface to screenshot. Verified by
-the new parsing tests (failing before the workflow edits, passing after) and by
+Backend/CI-only change; there is no web interface to screenshot. Verified by the
+new parsing tests (failing before the workflow edits, passing after) and by
 `actionlint`, which reports no findings on the four edited workflows.
 
 ```mermaid
