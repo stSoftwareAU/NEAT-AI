@@ -5,8 +5,8 @@
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
-    "rev": "7eaa332270fc119f59080b04a267097ab83a5b7a",
-    "assetSha256": "169f5fecf7c014ef0220e54e579198028dc9e4f5fc2f5764a71110b00382eec2"
+    "rev": "70573fe87cb3d6f5cdeeb15d2fdd4c121dcb9246",
+    "assetSha256": "5814da63d53b71f2bad577b291176e2d45e069814edc0b732a85a7762a389a2e"
   },
   "publish": {
     "include": [

@@ -10,7 +10,10 @@
 name: "Dependency review"
 on:
   pull_request:
-    branches: ["Develop"]
+    # Milestone sub-issue PRs target a shared `milestone/<slug>` branch, so a
+    # `Develop`-only filter skipped this gate on them (Issue #3606). Milestone
+    # branch names have no nested slashes, so a single-level glob is enough.
+    branches: ["Develop", "milestone/*"]
 
 # Cancel superseded runs on the same ref so rapid successive pushes don't
 # pile up redundant dependency-review runs (Issue #2842).
