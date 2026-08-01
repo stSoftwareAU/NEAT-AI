@@ -36,8 +36,7 @@ now-private helper through its only caller, `prepare()`:
   one-input/one-output creature with an `IDENTITY` squash, calls
   `neuron.prepare()`, then asserts the dynamically compiled function returns
   `value = bias + activation * weight` (0.25 + 2 × 0.5 = 1.25), that
-  `activation` matches, and that the result is written into
-  `state.activations`.
+  `activation` matches, and that the result is written into `state.activations`.
 - `prepare - traced activation records the hint value` — asserts the traced
   wrapper installed alongside the compiled function computes the same value and
   records it as `hintValue` on the neuron state.
