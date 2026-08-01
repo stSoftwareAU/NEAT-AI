@@ -2,7 +2,7 @@
  * Tests for the production-scale profiling fixture generator (issue #2306).
  *
  * Validates that:
- * - The creature fixture matches GRQ-cluster dimensions (~1,500 neurons, ~20,000 synapses).
+ * - The creature fixture matches production-scale dimensions (~1,500 neurons, ~20,000 synapses).
  * - The training data generator produces the correct number of binary files
  *   with correct record sizes.
  * - Generation is deterministic (seeded PRNG produces identical output).
@@ -35,7 +35,7 @@ function testConfig(suffix: string): ProductionFixtureConfig {
   };
 }
 
-Deno.test("GRQ-cluster creature has ~1,500 neurons", () => {
+Deno.test("Production-scale creature has ~1,500 neurons", () => {
   const rng = createSeededRng(2306);
   const creature = generateProductionCreature(648, 2, rng, {
     scale: "grq-cluster",
@@ -46,12 +46,12 @@ Deno.test("GRQ-cluster creature has ~1,500 neurons", () => {
   const totalNeurons = hiddenNeurons.length + outputNeurons.length;
 
   // Production target: ~1,500 neurons (accept 1,400–1,600 range)
-  assertGreater(totalNeurons, 1_400, "too few neurons for GRQ-cluster scale");
+  assertGreater(totalNeurons, 1_400, "too few neurons for production scale");
   assert(totalNeurons < 1_700, `too many neurons: ${totalNeurons}`);
   assertEquals(outputNeurons.length, 2, "output neuron count mismatch");
 });
 
-Deno.test("GRQ-cluster creature has ~20,000 synapses", () => {
+Deno.test("Production-scale creature has ~20,000 synapses", () => {
   const rng = createSeededRng(2306);
   const creature = generateProductionCreature(648, 2, rng, {
     scale: "grq-cluster",
@@ -61,7 +61,7 @@ Deno.test("GRQ-cluster creature has ~20,000 synapses", () => {
   assertGreater(
     creature.synapses.length,
     18_000,
-    "too few synapses for GRQ-cluster scale",
+    "too few synapses for production scale",
   );
   assert(
     creature.synapses.length < 22_000,
@@ -69,7 +69,7 @@ Deno.test("GRQ-cluster creature has ~20,000 synapses", () => {
   );
 });
 
-Deno.test("GRQ-cluster creature generation is deterministic", () => {
+Deno.test("Production-scale creature generation is deterministic", () => {
   const rng1 = createSeededRng(2306);
   const creature1 = generateProductionCreature(648, 2, rng1, {
     scale: "grq-cluster",
@@ -227,7 +227,7 @@ Deno.test("generateAllFixtures produces complete result", () => {
   }
 });
 
-Deno.test("GRQ-cluster creature has diverse squash functions", () => {
+Deno.test("Production-scale creature has diverse squash functions", () => {
   const rng = createSeededRng(2306);
   const creature = generateProductionCreature(648, 2, rng, {
     scale: "grq-cluster",

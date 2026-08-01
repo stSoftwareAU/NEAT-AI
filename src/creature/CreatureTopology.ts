@@ -33,13 +33,13 @@ export interface TopologyCaches {
  * Threshold for switching from linear scan to building the secondary index.
  * Issue #1010: Performance optimisation for large creatures.
  */
-export const INWARD_INDEX_BUILD_THRESHOLD = 3;
+const INWARD_INDEX_BUILD_THRESHOLD = 3;
 
 /**
  * Minimum number of synapses to trigger proactive index prebuilding.
  * Issue #1097: Performance - Prebuild inward synapse index after breed/mutation batch.
  */
-export const PREBUILD_SYNAPSE_THRESHOLD = 1000;
+const PREBUILD_SYNAPSE_THRESHOLD = 1000;
 
 /**
  * Get a self-connection for the neuron at the given index.

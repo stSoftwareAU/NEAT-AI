@@ -29,6 +29,19 @@ Useful flags (`--help` lists them all):
 Exit codes: `0` clean, `1` a control failed or a key stayed `UNKNOWN`, `2` bad
 usage.
 
+## Which consumers get probed
+
+The harness ships with **public consumers only** — currently
+`stSoftwareAU/NEAT-AI-Examples` — so anybody who clones NEAT-AI can run it end
+to end. It hard-codes no private repository: a private default would 404 on the
+code-search probe and find no sibling checkout for the local grep, splitting the
+tooling into "works internally" and "fails publicly" (Issue #3613).
+
+Wider sweeps come from the caller's own credentials: org discovery
+(`--filename deno.json`, on by default) adds every repository the caller can
+see, and `--clone-root` picks up whichever of those are checked out locally.
+Pass `--no-discover` to probe the public default alone.
+
 ## How a key is resolved
 
 ```mermaid
@@ -51,9 +64,10 @@ flowchart TD
 
 ## The methodology traps it guards against
 
-**Never search with a bare `--owner`.** `populationSize` is set by both GRQ and
-NEAT-AI-Examples, but NEAT-AI's own hits fill the entire org-wide result window,
-so `gh search code populationSize --owner stSoftwareAU` reports it as unused. An
+**Never search with a bare `--owner`.** `populationSize` is set by
+NEAT-AI-Examples and by the downstream production consumer, but NEAT-AI's own
+hits fill the entire org-wide result window, so
+`gh search code populationSize --owner stSoftwareAU` reports it as unused. An
 audit built on `--owner` searches produces false `QUALIFIES` verdicts and
 proposes removing load-bearing options. Every code-search query the harness
 issues is `--repo`-scoped, and a unit test asserts `--owner` never appears in
@@ -62,8 +76,7 @@ the argument list.
 Excluding NEAT-AI with a `-repo:` qualifier does **not** fix this — the
 qualifier is ignored in that position and the window saturates anyway. The org
 backstop is therefore a single `--filename deno.json` search that _discovers_
-the consumer set (currently GRQ and NEAT-AI-Examples), after which every key is
-checked per repo.
+the consumer set, after which every key is checked per repo.
 
 **Never fold "could not search" into "not set".** Each probe reports `hit`,
 `miss` or `unresolved`. A consumer is only `not set` when at least one probe
@@ -81,15 +94,14 @@ surface without the harness picking it up.
 Both run before the sweep and abort it on failure, because a corrupt inventory
 is worse than no inventory:
 
-- **Positive** — `populationSize` must be `IN USE` in both `stSoftwareAU/GRQ`
-  and `stSoftwareAU/NEAT-AI-Examples`. This flips if the `--owner` saturation
-  trap reappears, if the cache goes stale, or if the code-search index skips a
-  consumer.
+- **Positive** — `populationSize` must be `IN USE` in every default consumer.
+  This flips if the `--owner` saturation trap reappears, if the cache goes
+  stale, or if the code-search index skips a consumer.
 - **Negative** — `syntheticAlignmentThreshold` must be reported as not set in
-  both. This flips if a probe starts matching everything. It replaced the
-  original negative control, `dnaSharingMode`, when #3554 retired that option;
-  the replacement is a `KEEP` key (load-bearing default, #2614), so it stays in
-  the surface the harness enumerates.
+  every default consumer. This flips if a probe starts matching everything. It
+  replaced the original negative control, `dnaSharingMode`, when #3554 retired
+  that option; the replacement is a `KEEP` key (load-bearing default, #2614), so
+  it stays in the surface the harness enumerates.
 
 ## Rate limiting
 

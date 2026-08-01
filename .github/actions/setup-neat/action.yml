@@ -1,0 +1,41 @@
+name: Set up NEAT-AI CI job
+description: >-
+  Shared preamble for NEAT-AI CI jobs — installs Deno 2.x and verifies the
+  vendored wasm_activation/pkg matches the NEAT-AI-core revision pinned in
+  deno.json.
+
+# Issue #3608 — this preamble was copy-pasted across six jobs in four
+# workflows, so every pin bump or policy change needed six coordinated edits.
+# Keeping it here makes the next such change a one-file edit.
+#
+# `actions/checkout` deliberately stays inline in each calling job. A local
+# `uses: ./…` action is loaded from $GITHUB_WORKSPACE, so the repository must
+# already be checked out before this file can be read — a checkout step here
+# could never run.
+
+inputs:
+  verify-wasm:
+    description: >-
+      Run `./build.sh --verify-only` to confirm the vendored WASM bundle
+      matches deno.json's neatCore.rev. Set to "false" only for jobs that
+      never load the WASM bundle (e.g. artefact-merge jobs).
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Deno
+      # denoland/setup-deno@v2.0.4
+      uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
+      with:
+        deno-version: v2.x
+
+    # `--verify-only` matches the CI policy in docs/CORE_DEPENDENCY_POLICY.md:
+    # CI must never resolve NEAT-AI-core HEAD or auto-advance neatCore.rev
+    # (Issue #2439). It fails loud when the vendored bundle has drifted from
+    # the pin or has been tampered with.
+    - name: Sync WASM package from NEAT-AI-core
+      if: ${{ inputs.verify-wasm == 'true' }}
+      shell: bash
+      run: ./build.sh --verify-only

@@ -4,6 +4,7 @@ import {
   isFixableActivation,
   isNodeActivation,
 } from "@neuron/NeuronActivation.ts";
+import { Creature } from "@creature";
 
 Deno.test("isNodeActivation - returns true when activateAndTrace is defined", () => {
   const activation = {
@@ -101,4 +102,58 @@ Deno.test("Type guards return correct types", () => {
     // If type guard passes, we should be able to call activateAndTrace
     assertEquals(typeof nodeAct.activateAndTrace, "function");
   }
+});
+
+/**
+ * Issue #3609: the dynamic-compilation helper is module-private, so it is
+ * exercised through `prepare()` — the only caller.
+ */
+Deno.test("prepare - compiles an activation function for a plain squash", () => {
+  const creature = Creature.fromJSON({
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.25 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+  const state = creature.state;
+  state.activations = new Float32Array(creature.neurons.length);
+  state.activations[0] = 2;
+
+  const neuron = creature.neurons[creature.neurons.length - 1];
+  const squashMethod = neuron.prepare();
+  assert(squashMethod, "prepare should return the squash method");
+  assertFalse(isNodeActivation(squashMethod));
+
+  // value = bias + activations[input] * weight = 0.25 + 2 * 0.5 = 1.25
+  const result = neuron.activateNeuron();
+  assertEquals(result.value, 1.25);
+  assertEquals(result.activation, 1.25); // IDENTITY
+  assertEquals(state.activations[neuron.index], 1.25);
+});
+
+Deno.test("prepare - traced activation records the hint value", () => {
+  const creature = Creature.fromJSON({
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "output-0", weight: 2 },
+    ],
+  });
+  const state = creature.state;
+  state.activations = new Float32Array(creature.neurons.length);
+  state.activations[0] = 1.5;
+
+  const neuron = creature.neurons[creature.neurons.length - 1];
+  neuron.prepare();
+
+  const result = neuron.activateAndTraceNeuron();
+  assertEquals(result.value, 3);
+  assertEquals(state.node(neuron.index).hintValue, 3);
 });

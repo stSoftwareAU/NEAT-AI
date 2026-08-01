@@ -40,7 +40,14 @@ import {
  * the #3505 option-removal audit. These exercise the real enumeration,
  * probe, verdict and reporting functions used by
  * `scripts/audit-option-usage.ts`.
+ *
+ * Fixtures name only the public consumer plus a generic placeholder for "some
+ * other repository the caller's credentials discovered" — the harness pins no
+ * private repository (Issue #3613).
  */
+
+/** Stand-in for a second consumer supplied by discovery or the CLI. */
+const OTHER_CONSUMER = "stSoftwareAU/downstream-consumer";
 
 // ---------------------------------------------------------------- inventory
 
@@ -238,11 +245,13 @@ const OK = (stdout: string): CommandOutput => ({ code: 0, stdout, stderr: "" });
 
 Deno.test("LocalGrepProbe - exit 0 is a hit with clone-relative paths", async () => {
   const { run } = fakeRunner([
-    OK("/clones/GRQ/src/Learn.ts\n/clones/GRQ/worker/learn.sh\n"),
+    OK(
+      "/clones/NEAT-AI-Examples/src/Learn.ts\n/clones/NEAT-AI-Examples/worker/learn.sh\n",
+    ),
   ]);
   const result = await new LocalGrepProbe("rg", run).probe("populationSize", {
-    repo: "stSoftwareAU/GRQ",
-    clonePath: "/clones/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
+    clonePath: "/clones/NEAT-AI-Examples",
   });
   assertEquals(result.resolution, "hit");
   assertEquals(result.paths, ["src/Learn.ts", "worker/learn.sh"]);
@@ -253,8 +262,8 @@ Deno.test("LocalGrepProbe - exit 1 is a genuine miss", async () => {
   const result = await new LocalGrepProbe("rg", run).probe(
     "syntheticAlignmentThreshold",
     {
-      repo: "stSoftwareAU/GRQ",
-      clonePath: "/clones/GRQ",
+      repo: "stSoftwareAU/NEAT-AI-Examples",
+      clonePath: "/clones/NEAT-AI-Examples",
     },
   );
   assertEquals(result.resolution, "miss");
@@ -263,8 +272,8 @@ Deno.test("LocalGrepProbe - exit 1 is a genuine miss", async () => {
 Deno.test("LocalGrepProbe - a search error is unresolved, never a miss", async () => {
   const { run } = fakeRunner([{ code: 2, stdout: "", stderr: "rg: boom" }]);
   const result = await new LocalGrepProbe("rg", run).probe("populationSize", {
-    repo: "stSoftwareAU/GRQ",
-    clonePath: "/clones/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
+    clonePath: "/clones/NEAT-AI-Examples",
   });
   assertEquals(result.resolution, "unresolved");
   assert(result.note?.includes("rg: boom"));
@@ -273,7 +282,7 @@ Deno.test("LocalGrepProbe - a search error is unresolved, never a miss", async (
 Deno.test("LocalGrepProbe - no clone is unresolved, never a miss", async () => {
   const { run } = fakeRunner([OK("")]);
   const result = await new LocalGrepProbe("rg", run).probe("populationSize", {
-    repo: "stSoftwareAU/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
   });
   assertEquals(result.resolution, "unresolved");
 });
@@ -283,13 +292,18 @@ Deno.test("LocalGrepProbe - the git-grep fallback searches inside the clone", as
   const probe = new LocalGrepProbe("git-grep", run);
 
   const result = await probe.probe("populationSize", {
-    repo: "stSoftwareAU/GRQ",
-    clonePath: "/clones/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
+    clonePath: "/clones/NEAT-AI-Examples",
   });
 
   assertEquals(probe.name, "local-git-grep");
   assertEquals(result.paths, ["src/Learn.ts"]);
-  assertEquals(calls[0].slice(0, 4), ["git", "-C", "/clones/GRQ", "grep"]);
+  assertEquals(calls[0].slice(0, 4), [
+    "git",
+    "-C",
+    "/clones/NEAT-AI-Examples",
+    "grep",
+  ]);
 });
 
 Deno.test("rankEvidencePaths - call sites outrank documentation mentions", () => {
@@ -323,7 +337,7 @@ Deno.test("LocalGrepProbe - reports at most five paths, call sites first", async
     ].join("\n")),
   ]);
   const result = await new LocalGrepProbe("rg", run).probe("populationSize", {
-    repo: "stSoftwareAU/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
     clonePath: "/c",
   });
 
@@ -371,14 +385,17 @@ Deno.test("CodeSearchProbe - always scopes the query to a single repo", async ()
     OK('[{"path":"src/fx/EvolveApp.ts"}]'),
   ]);
   const result = await probe.probe("populationSize", {
-    repo: "stSoftwareAU/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
   });
 
   assertEquals(result.resolution, "hit");
   assertEquals(result.paths, ["src/fx/EvolveApp.ts"]);
   const args = calls[0];
   assert(args.includes("--repo"), "the query must be repo-scoped");
-  assertEquals(args[args.indexOf("--repo") + 1], "stSoftwareAU/GRQ");
+  assertEquals(
+    args[args.indexOf("--repo") + 1],
+    "stSoftwareAU/NEAT-AI-Examples",
+  );
   assert(
     !args.includes("--owner"),
     "a bare --owner search saturates on NEAT-AI's own hits (#3518)",
@@ -389,7 +406,7 @@ Deno.test("CodeSearchProbe - an empty result set is a miss", async () => {
   const { probe } = codeSearchProbe([OK("[]")]);
   assertEquals(
     (await probe.probe("syntheticAlignmentThreshold", {
-      repo: "stSoftwareAU/GRQ",
+      repo: "stSoftwareAU/NEAT-AI-Examples",
     }))
       .resolution,
     "miss",
@@ -403,7 +420,7 @@ Deno.test("CodeSearchProbe - backs off and retries a 403, then succeeds", async 
     OK('[{"path":"src/Learn.ts"}]'),
   ]);
   const result = await probe.probe("populationSize", {
-    repo: "stSoftwareAU/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
   });
 
   assertEquals(result.resolution, "hit", "a retried key must not be dropped");
@@ -416,7 +433,7 @@ Deno.test("CodeSearchProbe - exhausted retries are unresolved, never a miss", as
     { code: 1, stdout: "", stderr: "HTTP 403: secondary rate limit" },
   ]);
   const result = await probe.probe("populationSize", {
-    repo: "stSoftwareAU/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
   });
 
   assertEquals(result.resolution, "unresolved");
@@ -429,7 +446,7 @@ Deno.test("CodeSearchProbe - a non-rate-limit failure is not retried", async () 
     { code: 4, stdout: "", stderr: "gh: authentication required" },
   ]);
   const result = await probe.probe("populationSize", {
-    repo: "stSoftwareAU/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
   });
 
   assertEquals(result.resolution, "unresolved");
@@ -439,7 +456,9 @@ Deno.test("CodeSearchProbe - a non-rate-limit failure is not retried", async () 
 Deno.test("CodeSearchProbe - unparseable output is unresolved", async () => {
   const { probe } = codeSearchProbe([OK("not json")]);
   assertEquals(
-    (await probe.probe("populationSize", { repo: "stSoftwareAU/GRQ" }))
+    (await probe.probe("populationSize", {
+      repo: "stSoftwareAU/NEAT-AI-Examples",
+    }))
       .resolution,
     "unresolved",
   );
@@ -488,17 +507,17 @@ Deno.test("RateLimiter - penalise pushes the next slot further out", async () =>
 Deno.test("discoverConsumerRepos - lists org consumers, excluding NEAT-AI itself", async () => {
   const { run, calls } = fakeRunner([
     OK(JSON.stringify([
-      { repository: { nameWithOwner: "stSoftwareAU/GRQ" } },
-      { repository: { nameWithOwner: "stSoftwareAU/NEAT-AI" } },
       { repository: { nameWithOwner: "stSoftwareAU/NEAT-AI-Examples" } },
-      { repository: { nameWithOwner: "stSoftwareAU/GRQ" } },
+      { repository: { nameWithOwner: "stSoftwareAU/NEAT-AI" } },
+      { repository: { nameWithOwner: OTHER_CONSUMER } },
+      { repository: { nameWithOwner: "stSoftwareAU/NEAT-AI-Examples" } },
     ])),
   ]);
   const found = await discoverConsumerRepos(run);
 
   assertEquals(found.repos, [
-    "stSoftwareAU/GRQ",
     "stSoftwareAU/NEAT-AI-Examples",
+    OTHER_CONSUMER,
   ]);
   assertEquals(found.note, undefined);
   assert(
@@ -528,7 +547,7 @@ const unresolved = (note: string): ProbeResult => ({
 });
 
 Deno.test("resolveConsumer - any probe hit makes the consumer IN USE", () => {
-  const verdict = resolveConsumer("stSoftwareAU/GRQ", [
+  const verdict = resolveConsumer("stSoftwareAU/NEAT-AI-Examples", [
     { probe: "local-rg", result: miss() },
     { probe: "gh-code-search", result: hit(["src/Learn.ts"]) },
   ]);
@@ -537,7 +556,7 @@ Deno.test("resolveConsumer - any probe hit makes the consumer IN USE", () => {
 });
 
 Deno.test("resolveConsumer - a resolved miss beside an unresolved probe is not set", () => {
-  const verdict = resolveConsumer("stSoftwareAU/GRQ", [
+  const verdict = resolveConsumer("stSoftwareAU/NEAT-AI-Examples", [
     { probe: "local-rg", result: miss() },
     { probe: "gh-code-search", result: unresolved("HTTP 403") },
   ]);
@@ -549,7 +568,7 @@ Deno.test("resolveConsumer - a resolved miss beside an unresolved probe is not s
 });
 
 Deno.test("resolveConsumer - no probe resolving is UNKNOWN, never not set", () => {
-  const verdict = resolveConsumer("stSoftwareAU/GRQ", [
+  const verdict = resolveConsumer("stSoftwareAU/NEAT-AI-Examples", [
     { probe: "local-rg", result: unresolved("no local clone configured") },
     { probe: "gh-code-search", result: unresolved("HTTP 403") },
   ]);
@@ -610,17 +629,17 @@ class TableProbe implements KeyProbe {
 }
 
 const CONSUMERS = [
-  { repo: "stSoftwareAU/GRQ", clonePath: "/clones/GRQ" },
   {
     repo: "stSoftwareAU/NEAT-AI-Examples",
     clonePath: "/clones/NEAT-AI-Examples",
   },
+  { repo: OTHER_CONSUMER, clonePath: "/clones/downstream-consumer" },
 ];
 
 Deno.test("scanKeys - spends code-search quota only where local found nothing", async () => {
   const local = new TableProbe("local-rg", {
-    "stSoftwareAU/GRQ|populationSize": hit(["src/Learn.ts"]),
     "stSoftwareAU/NEAT-AI-Examples|populationSize": hit(["xor.ts"]),
+    [`${OTHER_CONSUMER}|populationSize`]: hit(["src/Learn.ts"]),
   });
   const search = new TableProbe("gh-code-search", {});
 
@@ -638,8 +657,8 @@ Deno.test("scanKeys - spends code-search quota only where local found nothing", 
   assertEquals(
     search.calls.sort(),
     [
-      "stSoftwareAU/GRQ|syntheticAlignmentThreshold",
       "stSoftwareAU/NEAT-AI-Examples|syntheticAlignmentThreshold",
+      `${OTHER_CONSUMER}|syntheticAlignmentThreshold`,
     ],
     "local hits must not consume the rate-limited quota",
   );
@@ -648,7 +667,7 @@ Deno.test("scanKeys - spends code-search quota only where local found nothing", 
 Deno.test("scanKeys - a code-search hit rescues a local miss", async () => {
   const local = new TableProbe("local-rg", {});
   const search = new TableProbe("gh-code-search", {
-    "stSoftwareAU/GRQ|lateKey": hit(["src/New.ts"]),
+    "stSoftwareAU/NEAT-AI-Examples|lateKey": hit(["src/New.ts"]),
   });
 
   const [verdict] = await scanKeys(["lateKey"], CONSUMERS, {
@@ -657,7 +676,7 @@ Deno.test("scanKeys - a code-search hit rescues a local miss", async () => {
   });
 
   assertEquals(verdict.status, "IN USE");
-  assertEquals(verdict.setBy, ["stSoftwareAU/GRQ"]);
+  assertEquals(verdict.setBy, ["stSoftwareAU/NEAT-AI-Examples"]);
 });
 
 Deno.test("scanKeys - reports progress for every key", async () => {
@@ -674,7 +693,7 @@ Deno.test("ProbeCache - a cached result replaces the probe call", async () => {
   const cache = new ProbeCache();
   cache.set(
     "local-rg",
-    "stSoftwareAU/GRQ",
+    "stSoftwareAU/NEAT-AI-Examples",
     "populationSize",
     hit(["src/Learn.ts"]),
   );
@@ -691,9 +710,17 @@ Deno.test("ProbeCache - a cached result replaces the probe call", async () => {
 
 Deno.test("ProbeCache - never caches an unresolved probe", () => {
   const cache = new ProbeCache();
-  cache.set("gh-code-search", "stSoftwareAU/GRQ", "k", unresolved("HTTP 403"));
+  cache.set(
+    "gh-code-search",
+    "stSoftwareAU/NEAT-AI-Examples",
+    "k",
+    unresolved("HTTP 403"),
+  );
   assertEquals(cache.size, 0, "a rate-limited probe must be retried next run");
-  assertEquals(cache.get("gh-code-search", "stSoftwareAU/GRQ", "k"), undefined);
+  assertEquals(
+    cache.get("gh-code-search", "stSoftwareAU/NEAT-AI-Examples", "k"),
+    undefined,
+  );
 });
 
 Deno.test("ProbeCache - round-trips through disk", async () => {
@@ -702,7 +729,7 @@ Deno.test("ProbeCache - round-trips through disk", async () => {
     const writer = new ProbeCache(path);
     writer.set(
       "local-rg",
-      "stSoftwareAU/GRQ",
+      "stSoftwareAU/NEAT-AI-Examples",
       "populationSize",
       hit(["src/Learn.ts"]),
     );
@@ -711,7 +738,7 @@ Deno.test("ProbeCache - round-trips through disk", async () => {
     const reader = new ProbeCache(path);
     await reader.load();
     assertEquals(
-      reader.get("local-rg", "stSoftwareAU/GRQ", "populationSize"),
+      reader.get("local-rg", "stSoftwareAU/NEAT-AI-Examples", "populationSize"),
       hit(["src/Learn.ts"]),
     );
   } finally {
@@ -738,7 +765,7 @@ Deno.test("ProbeCache - a missing file is fine, a corrupt one is loud", async ()
 const CONTROL_SPEC = {
   positiveKey: "populationSize",
   negativeKey: "syntheticAlignmentThreshold",
-  repos: ["stSoftwareAU/GRQ", "stSoftwareAU/NEAT-AI-Examples"],
+  repos: ["stSoftwareAU/NEAT-AI-Examples", OTHER_CONSUMER],
 };
 
 function controlVerdicts(
@@ -816,19 +843,19 @@ const INVENTORY = [
 
 const VERDICTS: KeyVerdict[] = [
   verdictForKey("populationSize", [{
-    repo: "stSoftwareAU/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
     status: "IN USE",
     evidence: ["local-rg:src/Learn.ts"],
     notes: [],
   }]),
   verdictForKey("syntheticAlignmentThreshold", [{
-    repo: "stSoftwareAU/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
     status: "not set",
     evidence: [],
     notes: [],
   }]),
   verdictForKey("archiveLimit", [{
-    repo: "stSoftwareAU/GRQ",
+    repo: "stSoftwareAU/NEAT-AI-Examples",
     status: "UNKNOWN",
     evidence: [],
     notes: ["gh-code-search: HTTP 403"],
@@ -839,7 +866,7 @@ Deno.test("buildRows - maps each declaration to its verdict", () => {
   const rows = buildRows(INVENTORY, VERDICTS);
   assertEquals(rows.length, 3);
   assertEquals(rows[0].status, "IN USE");
-  assertEquals(rows[0].setBy, ["stSoftwareAU/GRQ"]);
+  assertEquals(rows[0].setBy, ["stSoftwareAU/NEAT-AI-Examples"]);
   assert(rows[0].verdictCandidate.startsWith("KEEP"));
   assert(rows[1].verdictCandidate.startsWith("REVIEW DEFAULT"));
   assert(rows[2].verdictCandidate.startsWith("UNKNOWN"));

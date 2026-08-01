@@ -5,8 +5,8 @@
 Slice D of the #3505 option-removal audit. Classifies the **12 nested config
 objects governing training, regularisation and data shaping** — the top-level
 `NeatOptions` key _and_ every field inside each interface — against consumer
-usage in `stSoftwareAU/GRQ` and `stSoftwareAU/NEAT-AI-Examples`. **69
-classifications, none skipped.** Closes #3522.
+usage in the downstream production consumer and `stSoftwareAU/NEAT-AI-Examples`.
+**69 classifications, none skipped.** Closes #3522.
 
 | Verdict                       | Parent keys | Fields |  Total |
 | ----------------------------- | ----------: | -----: | -----: |
@@ -41,10 +41,10 @@ keys: `predictiveCoding` (a `worker/sampler.sh` variant emitting
 
 **The code-search index can produce a false _used_, not just a false _unused_.**
 `OPTION_USAGE_AUDIT.md` documents `--owner` saturation hiding a set key. Slice D
-hit the mirror image: `gh search code squashBudget --repo stSoftwareAU/GRQ`
-returns 2 hits that `git grep -F` does not, because GitHub splits camelCase and
-matched GRQ's own **ImproveSquash** wall-clock **budget**. Resting on the index
-alone would have recorded `squashBudget` as `IN USE`.
+hit the mirror image: `gh search code squashBudget` scoped to the downstream
+production consumer returns 2 hits that `git grep -F` does not, because GitHub
+splits camelCase and matched GRQ's own **ImproveSquash** wall-clock **budget**.
+Resting on the index alone would have recorded `squashBudget` as `IN USE`.
 
 **The `squashBudget` `CoerceNumeric` asymmetry the brief flagged is intentional,
 not a bug.** `CoerceNumeric<T>` returns arrays unchanged, and
@@ -83,7 +83,7 @@ KEY=dnaSharingMode REPO=NEAT-AI-Examples RC=1 HITS=0
 The #3518 harness ran its own copy of both controls in this session and reported
 `✅ controls passed` before being stopped, and independently rediscovered the
 consumer set via its org backstop:
-`🔎 consumers declaring @stsoftware/neat-ai: stSoftwareAU/GRQ, stSoftwareAU/NEAT-AI-Examples`.
+`🔎 consumers declaring @stsoftware/neat-ai: <downstream production consumer>, stSoftwareAU/NEAT-AI-Examples`.
 
 **Per-key sweep** — fresh clones, GRQ `origin/Develop` at `bc622f5`, 30 Jul
 2026. `rc 0` hit, `rc 1` miss, `rc > 1` would have been reported as

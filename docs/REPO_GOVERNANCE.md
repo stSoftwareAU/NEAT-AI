@@ -14,9 +14,16 @@ run with secrets beyond the default `GITHUB_TOKEN`:
 | `.github/workflows/publish.yml`                | `id-token: write` — OIDC tokenless publish of `@stsoftware/neat-ai` to JSR |
 | `.github/workflows/pages.yml`                  | `id-token: write` + `pages: write` — GitHub Pages deploy                   |
 | `.github/workflows/update-package-version.yml` | `secrets.ACTIONS_PUSH` — write-scoped push PAT                             |
-| `.github/workflows/quality.yml`                | `secrets.ACTIONS_PUSH`, `secrets.GITLEAKS_LICENSE`                         |
+| `.github/workflows/quality.yml`                | `secrets.ACTIONS_PUSH` (`push-fixes` job only), `secrets.GITLEAKS_LICENSE` |
 | `.github/workflows/semgrep.yml`                | `secrets.SEMGREP_APP_TOKEN`                                                |
 | `.github/workflows/coverage.yaml`              | `secrets.CODECOV_TOKEN`                                                    |
+
+`quality.yml` splits its privileged capability out of the job that runs
+PR-controlled code (Issue #3607): the `quality` job executes `build.sh` and the
+Deno checks with only the read-scoped default `GITHUB_TOKEN` and hands its
+fmt/lint fixes on as a patch artefact, while the separate `push-fixes` job
+checks out fresh, applies that patch as data, and is the only place
+`secrets.ACTIONS_PUSH` is in scope.
 
 Without a code-owner rule covering `.github/workflows/`, a single careless or
 compromised account could open a pull request that quietly edits one of these

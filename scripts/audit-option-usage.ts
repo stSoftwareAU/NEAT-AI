@@ -6,6 +6,10 @@
  * against the consumer repositories, and emits a CSV/markdown inventory of
  * `key → consumers that set it → verdict candidate`.
  *
+ * Only public consumers are wired in by default, so anyone can run it. Org
+ * discovery widens the consumer set under the caller's own credentials, which
+ * is how a private downstream consumer joins a sweep (Issue #3613).
+ *
  * The script decides `IN USE` vs `not set` only. Deciding `QUALIFIES` vs
  * `KEEP (load-bearing default)` needs a human reading the default's code path —
  * that is the sibling slices' job.
@@ -44,10 +48,17 @@ import {
   toMarkdown,
 } from "./lib/optionUsageReport.ts";
 
-/** Confirmed consumers: both declare `@stsoftware/neat-ai` in `deno.json`. */
-const DEFAULT_CONSUMERS = ["stSoftwareAU/GRQ", "stSoftwareAU/NEAT-AI-Examples"];
+/**
+ * Confirmed **public** consumer: declares `@stsoftware/neat-ai` in `deno.json`
+ * and can be probed by anyone. Private downstream consumers are deliberately
+ * absent (Issue #3613) — a hard-coded private repo makes every public run 404
+ * on the code-search probe and find nothing for the sibling-clone grep. Extra
+ * consumers arrive from org discovery or `--repo`-scoped CLI use under the
+ * caller's own credentials.
+ */
+export const DEFAULT_CONSUMERS = ["stSoftwareAU/NEAT-AI-Examples"];
 
-const CONTROLS: ControlSpec = {
+export const CONTROLS: ControlSpec = {
   positiveKey: "populationSize",
   // Issue #3554: `dnaSharingMode` was the original negative control until it
   // was retired. `syntheticAlignmentThreshold` replaces it — a `KEEP` key
@@ -81,7 +92,7 @@ const USAGE =
   --repo-root DIR     NEAT-AI checkout to enumerate keys from (default: .)
   --interval-ms N     Spacing between code-search requests (default: ${DEFAULT_CODE_SEARCH_INTERVAL_MS})
   --no-code-search    Local ripgrep only; skip 'gh search code' entirely
-  --no-discover       Skip org consumer discovery; use the known consumers
+  --no-discover       Skip org consumer discovery; use the public default only
   --controls-only     Run the two controls and stop
   --help              Show this message`;
 
@@ -156,7 +167,7 @@ async function dirExists(path: string): Promise<boolean> {
 }
 
 /** Pair each consumer repo with its local clone, when one is checked out. */
-async function resolveConsumers(
+export async function resolveConsumers(
   repos: string[],
   cloneRoot: string,
 ): Promise<ConsumerRepo[]> {
@@ -181,7 +192,7 @@ async function main(): Promise<number> {
     const discovered = await discoverConsumerRepos();
     if (discovered.note) {
       console.error(
-        `⚠️  consumer discovery failed (${discovered.note}); using known consumers`,
+        `⚠️  consumer discovery failed (${discovered.note}); using the public default`,
       );
     } else {
       repos = [...new Set([...DEFAULT_CONSUMERS, ...discovered.repos])].sort();

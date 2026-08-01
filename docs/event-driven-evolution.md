@@ -636,8 +636,9 @@ const { statistics } = await creature.evolveDataSet(data, opts);
 ```
 
 - **`populationSize`** — the configured population size, recorded even when it
-  came from a default (it is the primary tuning variable). GRQ-cluster feeds
-  this into the `population` column of `performance.csv`.
+  came from a default (it is the primary tuning variable). The downstream
+  production consumer feeds this into the `population` column of
+  `performance.csv`.
 - **`adaptivePopulation`** / **`finalPopulationSize`** — whether adaptive
   population sizing was enabled, and the final actual population size. The final
   size is present **only** when adaptive sizing was on; otherwise the population

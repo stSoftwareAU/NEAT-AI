@@ -7,7 +7,7 @@ path — the deliverable that the other #3396 sub-issues derive their priorities
 from. Closes #3397.
 
 The report (`docs/PROFILING_REPORT_3397.md`) profiles exactly what
-`worker/learn.sh` and `worker/sampler.sh` drive, on the GRQ-cluster production
+`worker/learn.sh` and `worker/sampler.sh` drive, on the production-scale
 topology (**1,666 neurons, ~21,513 synapses, 2,461 inputs**), with a
 reproducible `bench/` command, and:
 

@@ -4,9 +4,9 @@
 
 Classified all **33 `discovery*` / discovery-adjacent top-level options** in
 `src/config/NeatArguments.ts` plus the **3 discovery-scoped nested configs** (36
-keys total, none skipped) against real consumer usage in `stSoftwareAU/GRQ`,
-`stSoftwareAU/NEAT-AI-Examples`, and — as this slice specifically requires — the
-Rust crate `stSoftwareAU/NEAT-AI-Discovery`.
+keys total, none skipped) against real consumer usage in the downstream
+production consumer, `stSoftwareAU/NEAT-AI-Examples`, and — as this slice
+specifically requires — the Rust crate `stSoftwareAU/NEAT-AI-Discovery`.
 
 **Result: 19 `IN USE`, 16 `KEEP (load-bearing default)`, 1 `QUALIFIES`.**
 

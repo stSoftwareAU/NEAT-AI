@@ -102,7 +102,12 @@ export { defaultRewardToError } from "@creature/EpisodicFitnessTypes.ts";
 /**
  * Creature Interfaces
  *
- * These types define the structure of data used for exporting and tracing Creature instances.
+ * `CreatureExport` is the serialised wire shape — UUID-keyed neuron identity,
+ * no runtime state — and is what `Creature.exportJSON()` produces.
+ * `CreatureTrace` extends it: neurons and synapses that have accumulated
+ * back-propagation state additionally carry a `trace` object. Nothing is
+ * traced until the creature has been run through `activateAndTrace()` and
+ * `propagate()`, so `traceJSON()` on a fresh creature is just a plain export.
  *
  * @see {@link module:src/architecture/CreatureInterfaces}
  */
@@ -114,16 +119,27 @@ export type {
 /**
  * Creature Utilities
  *
- * This utility class provides additional functions and helpers for manipulating and working with Creature instances.
+ * Two static helpers. `CreatureUtil.makeUUID()` derives a creature's UUID from
+ * its structure alone, so two structurally identical creatures always get the
+ * same UUID (and an existing UUID is returned unchanged).
+ * `CreatureUtil.shuffle()` reorders an `Int32Array` in place (Fisher–Yates)
+ * using the injected random number generator, optionally over only the leading
+ * `length` elements so pooled buffers need no `subarray` view.
  *
  * @see {@link module:src/architecture/CreatureUtils}
  */
 export { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
 /**
- * NEAT Options
+ * NEAT-AI Options
  *
- * This type defines the configuration options available for setting up the NEAT algorithm.
+ * `NeatOptionsInput` is the shape a caller supplies: every numeric field also
+ * accepts a `string`, so argv and environment values can be passed straight
+ * through without pre-parsing. `NeatOptions` is the same surface with those
+ * fields already narrowed to `number`. Neither type is validated — parsing,
+ * defaulting and range checking happen in {@link createNeatConfig}, which
+ * returns a frozen `NeatConfig`. Do not trust either until it has been through
+ * that call.
  *
  * @see {@link module:src/config/NeatOptions}
  */
@@ -299,18 +315,31 @@ export type {
 } from "@costs/CostTaskDescriptor.ts";
 
 /**
- * Selection Class
+ * Selection strategies
  *
- * This class handles the selection process within the NEAT algorithm, responsible for selecting the fittest individuals for reproduction.
+ * Registry of the three parent-selection strategies NEAT-AI recognises:
+ * `FITNESS_PROPORTIONATE` (roulette wheel), `POWER` (a uniform random number
+ * raised to an exponent before indexing the fitness-sorted population) and
+ * `TOURNAMENT`. Pass one as `NeatOptions.selection`; when it is omitted
+ * {@link createNeatConfig} draws one of the three at random from the seeded
+ * RNG, so a run is only reproducible if the strategy is pinned or the seed is
+ * fixed. The exponent and the tournament size/probability are tuned through
+ * `SelectionPressureConfig`, not by editing these objects.
  *
  * @see {@link module:src/methods/Selection}
  */
 export { Selection } from "@methods/Selection.ts";
 
 /**
- * Mutation Class
+ * Mutation operators
  *
- * This class manages the mutation processes within the NEAT algorithm, allowing for genetic variations in the population.
+ * Frozen registry of the named structural and parametric operators
+ * (`ADD_NODE`, `SUB_NODE`, `ADD_CONN`, `SUB_CONN`, `MOD_WEIGHT`, `MOD_BIAS`,
+ * `MOD_SQUASH`, `SWAP_NODES`, and the recurrent `ADD_SELF_CONN` /
+ * `SUB_SELF_CONN` / `ADD_BACK_CONN` / `SUB_BACK_CONN`), plus two ready-made
+ * sets: `Mutation.FFW` — the feed-forward-safe subset that omits every
+ * recurrent operator — and `Mutation.ALL`. {@link createNeatConfig} defaults
+ * `NeatOptions.mutation` to `Mutation.FFW`.
  *
  * @see {@link module:src/methods/Mutation}
  */
@@ -340,14 +369,29 @@ export { validateDNA } from "@reconstruct/validateDNA.ts";
 /**
  * Upgrade Class
  *
- * This class facilitates the process of upgrading and evolving AI entities, ensuring the continued improvement of the population.
+ * Static repair helpers for creature exports — it does not evolve anything.
+ * `Upgrade.correct(json, input)` widens an export to a larger input count and
+ * returns a fixed, validated `Creature`; it throws if asked to shrink the
+ * input count. `Upgrade.CRISPR(dna)` migrates legacy CRISPR (targeted
+ * gene-editing, see `docs/GLOSSARY.md`) data to the current format: it renames
+ * the old `nodes`/`connections` keys to `neurons`/`synapses`, defaults any
+ * `mode` other than `insert` to `append`, and resolves UUID endpoints to
+ * runtime integer ids.
  *
  * @see {@link module:src/reconstruct/Upgrade}
  */
 export { Upgrade } from "@reconstruct/Upgrade.ts";
 
 /**
- * Connects missing neurons in the creature's brain.
+ * Connect unconnected input neurons
+ *
+ * "Missing" means an input neuron with no outgoing synapse — such an input can
+ * never influence an output. Each one is given a new connection to a randomly
+ * chosen neuron, drawn from the injected random number generator, with a small
+ * random weight (scale `0.1`) so the existing behaviour is barely disturbed.
+ * Returns the creature unchanged when no input is missing; otherwise returns a
+ * new, validated creature.
+ *
  * @see {@link module:src/reconstruct/ConnectMissing}
  */
 export { randomConnectMissing } from "@reconstruct/ConnectMissing.ts";
@@ -363,12 +407,26 @@ export { randomConnectMissing } from "@reconstruct/ConnectMissing.ts";
 export { TypedTopology } from "@architecture/TypedTopology.ts";
 
 /**
- * Neuron Class
+ * Neuron wire format
+ *
+ * `NeuronExport` is the interface — not a class — for a neuron as it crosses a
+ * process or machine boundary: identity is the stable `uuid`, and the runtime
+ * integer `id` is omitted from new exports (Issue #1958).
+ *
+ * @see {@link module:src/architecture/NeuronInterfaces}
  */
 export { type NeuronExport } from "@architecture/NeuronInterfaces.ts";
 
 /**
- * Synapse Class
+ * Synapse wire format
+ *
+ * `SynapseExport` is the interface — not a class — for a connection on the
+ * wire: endpoints are the stable `fromUUID` / `toUUID` strings, matching a
+ * neuron `uuid` or the `input-N` / `output-N` sentinels. The `fromId` / `toId`
+ * integers are runtime-only and are omitted from public snapshots; call
+ * {@link normaliseCreatureExport} to populate them.
+ *
+ * @see {@link module:src/architecture/SynapseInterfaces}
  */
 export { type SynapseExport } from "@architecture/SynapseInterfaces.ts";
 
@@ -387,6 +445,15 @@ export {
 
 /**
  * Upgrade to version 2.0.0
+ *
+ * Migrates a creature export whose `semanticVersion` starts with `1.` to
+ * `2.0.0` by expanding the activation functions deprecated in that release —
+ * `HYPOT` and `HYPOTv2` — into equivalent `SQUARE`/`SQRT`/`IDENTITY`
+ * sub-networks, so the upgraded creature adds neurons and synapses. Throws
+ * when the creature is already at `2.x` or higher, so it is not safe to call
+ * unconditionally — check `semanticVersion` first.
+ *
+ * @see {@link module:src/upgrade/UpgradeTwo}
  */
 export { upgradeTwo } from "@upgrade/UpgradeTwo.ts";
 

@@ -5,7 +5,7 @@
 Slice C of the #3505 option-removal audit. Classifies the **10 nested config
 objects governing population and selection dynamics** — both the top-level
 `NeatOptions` key and every field inside each interface, **59 classifications**
-in total — against real consumer usage in `stSoftwareAU/GRQ` and
+in total — against real consumer usage in the downstream production consumer and
 `stSoftwareAU/NEAT-AI-Examples`. Closes #3521.
 
 | Verdict                       | Parent keys | Fields | Total |

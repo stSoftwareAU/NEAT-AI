@@ -4,7 +4,7 @@
 
 Classifies the four experimental / research nested configs — `mcmc`,
 `hyperparameterEvolution`, `opd` and `specialist` — plus every field inside
-each, against consumer usage in `stSoftwareAU/GRQ` and
+each, against consumer usage in the downstream production consumer and
 `stSoftwareAU/NEAT-AI-Examples`. **43 classifications, none skipped: 0 `IN USE`,
 0 `KEEP (load-bearing default)`, 43 `QUALIFIES`.** Closes #3524.
 

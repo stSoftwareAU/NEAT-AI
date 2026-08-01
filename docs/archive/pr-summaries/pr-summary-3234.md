@@ -7,8 +7,8 @@ on the `evolve*/train` result. Previously `Fitness.calculate()` tracked a single
 the batch path breaks and every creature quietly falls back to the slow worker
 path — looked identical to a healthy run. This change splits that count by
 backend and adds an explicit batch-fallback tally so the split is visible in the
-run result (and therefore in the GRQ-cluster `result.json`). Telemetry only — no
-change to scoring numbers or the batch/worker partition.
+run result (and therefore in the downstream run-result file). Telemetry only —
+no change to scoring numbers or the batch/worker partition.
 
 **Closes #3234.**
 

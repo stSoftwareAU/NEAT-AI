@@ -14,8 +14,10 @@ import {
   getSynapse,
   hasConnection,
   inwardConnections,
+  isInwardIndexBuilt,
   outwardConnections,
   prebuildInwardIndex,
+  prebuildInwardIndexIfLarge,
   selfConnection,
   type TopologyCaches,
 } from "@creature/CreatureTopology.ts";
@@ -199,6 +201,40 @@ Deno.test("prebuildInwardIndex - builds secondary index", async () => {
   );
 });
 
+Deno.test("inwardConnections - index path matches linear-scan path", async () => {
+  await initWasmForTests();
+  const creature = new Creature(3, 2, {
+    layers: [{ count: 4 }, { count: 3 }],
+  });
+  creatureValidate(creature);
+
+  const caches = makeCaches();
+  // Query every neuron so the miss counter crosses the internal build
+  // threshold part-way through: early lookups use the linear scan, later
+  // ones use the secondary index. Both must agree with a brute-force scan.
+  for (let indx = 0; indx < creature.neurons.length; indx++) {
+    const expected = creature.synapses.filter((syn) => syn.to === indx);
+    const actual = inwardConnections(creature, caches, indx);
+    assertEquals(
+      actual.length,
+      expected.length,
+      `Inward count mismatch for neuron ${indx}`,
+    );
+    for (const syn of expected) {
+      assert(
+        actual.some((a) => a.from === syn.from && a.to === syn.to),
+        `Missing inward synapse ${syn.from}->${syn.to}`,
+      );
+    }
+  }
+
+  assertNotEquals(
+    caches.synapsesIndexedByTo,
+    null,
+    "Index should be built once the miss threshold is crossed",
+  );
+});
+
 Deno.test("facade delegation matches direct module calls", async () => {
   await initWasmForTests();
   const creature = new Creature(2, 1, {
@@ -223,4 +259,32 @@ Deno.test("facade delegation matches direct module calls", async () => {
 
   // hasConnection via facade
   assert(creature.hasConnection(syn.from, syn.to));
+});
+
+Deno.test("prebuildInwardIndexIfLarge - only builds for large creatures", async () => {
+  await initWasmForTests();
+
+  const small = new Creature(2, 1, { layers: [{ count: 2 }] });
+  creatureValidate(small);
+  const smallCaches = makeCaches();
+  prebuildInwardIndexIfLarge(small, smallCaches);
+  assertEquals(
+    isInwardIndexBuilt(smallCaches),
+    false,
+    "Small creature should not trigger the prebuild threshold",
+  );
+
+  const large = new Creature(20, 5, { layers: [{ count: 40 }, { count: 30 }] });
+  creatureValidate(large);
+  assert(
+    large.synapses.length >= 1000,
+    "Fixture must exceed the prebuild threshold",
+  );
+  const largeCaches = makeCaches();
+  prebuildInwardIndexIfLarge(large, largeCaches);
+  assertEquals(
+    isInwardIndexBuilt(largeCaches),
+    true,
+    "Large creature should trigger the prebuild threshold",
+  );
 });

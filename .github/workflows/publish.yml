@@ -35,19 +35,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Deno
-        # denoland/setup-deno@v2.0.4
-        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
-        with:
-          deno-version: v2.x
-
-      # Issue #2439: --verify-only matches CI policy in
-      # docs/CORE_DEPENDENCY_POLICY.md — CI must not resolve NEAT-AI-core
-      # HEAD or auto-advance neatCore.rev. The vendored wasm_activation/pkg
-      # is committed and pinned by deno.json neatCore.rev; verify it is in
-      # sync before publishing to JSR.
-      - name: Verify WASM package matches deno.json neatCore.rev
-        run: ./build.sh --verify-only
+      # Shared preamble (Issue #3608): installs Deno 2.x — whose `deno publish`
+      # attaches the Sigstore provenance verified below (Issue #3333) — and
+      # verifies the vendored wasm_activation/pkg still matches deno.json's
+      # neatCore.rev before publishing to JSR (Issue #2439).
+      - name: Setup Deno and verify WASM package
+        uses: ./.github/actions/setup-neat
 
       # Issue #2904: skip publishing when deno.json's version is already on JSR.
       # Every push to Develop runs this workflow, but the package version only

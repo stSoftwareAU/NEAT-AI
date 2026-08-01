@@ -3,9 +3,9 @@
 ## Summary
 
 Classified all **46** non-`discovery*` top-level scalar and flag options
-declared in `src/config/NeatArguments.ts` against real consumer usage in
-`stSoftwareAU/GRQ` and `stSoftwareAU/NEAT-AI-Examples`, and filed a removal
-issue for every qualifying key. Closes #3519.
+declared in `src/config/NeatArguments.ts` against real consumer usage in the
+downstream production consumer and `stSoftwareAU/NEAT-AI-Examples`, and filed a
+removal issue for every qualifying key. Closes #3519.
 
 | Verdict                       | Count |
 | ----------------------------- | ----: |
