@@ -26,10 +26,6 @@ import { createNeatConfig } from "@config/NeatConfig.ts";
 import { EVOLUTION_ONLY_TRAIN_PER_GEN } from "@config/TrainPerGen.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Costs } from "@costs";
-import {
-  isBetterChampion,
-  shouldEarlyStop,
-} from "@costs/CostAwareEarlyStop.ts";
 import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { Neat } from "@neat/Neat.ts";
 import { computeHardDeadlineTS } from "@neat/HardDeadline.ts";
@@ -46,7 +42,6 @@ import {
 import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
-import { buildWarmupEventFields } from "@architecture/CreatureFactory.ts";
 import { BufferPool } from "@utils/BufferPool.ts";
 import {
   type DiscoveryDirResult,
@@ -73,12 +68,11 @@ import type { Fitness } from "@architecture/Fitness.ts";
 import type { EpisodeAdapter } from "@creature/EpisodeAdapter.ts";
 import { buildRLSeedSet } from "@creature/EvolveRLSeedSet.ts";
 import {
-  adoptChampionClone,
   disposeEvolvePopulation,
   releaseEvolveCaches,
 } from "@creature/EvolveTeardown.ts";
+import { finishGeneration } from "@creature/EvolveGenerationTail.ts";
 import {
-  accumulatePhaseTiming,
   createPhaseTimingAccumulator,
   finalisePhaseTimingTotals,
 } from "@creature/PhaseTimingTotals.ts";
@@ -86,10 +80,8 @@ import {
 // run-level phase-timing totals shape (Issue #3210).
 export type { PhaseTimingTotals } from "@creature/PhaseTimingTotals.ts";
 import {
-  accumulateScorerUtilisation,
   createScorerUtilisationAccumulator,
   finaliseScorerUtilisationTotals,
-  type ScorerUtilisationCounts,
 } from "@creature/ScorerUtilisationTotals.ts";
 // Re-export so `import * as training` consumers (e.g. Creature.ts) can name the
 // run-level scorer-utilisation totals shape (Issue #3234).
@@ -112,25 +104,8 @@ export type {
   ScoreImprovementMilestone,
   ScoreImprovementMilestones,
 } from "@creature/EvolveRunStatistics.ts";
-import {
-  createScoreTrajectory,
-  recordScoreImprovement,
-} from "@creature/ScoreImprovementMilestones.ts";
+import { createScoreTrajectory } from "@creature/ScoreImprovementMilestones.ts";
 import { serialiseOptionsEcho } from "@creature/EvolveOptionsEcho.ts";
-
-/**
- * Snapshot the per-backend scorer-utilisation counts published by `Fitness`
- * after a generation's `evolve()` cycle (Issue #3234). Read once per
- * generation into the run-level accumulator.
- */
-function readScorerUtilisation(fitness: Fitness): ScorerUtilisationCounts {
-  return {
-    batchScorerInvocations: fitness.lastBatchScorerInvocations,
-    creaturesBatchScored: fitness.lastCreaturesBatchScored,
-    creaturesPerCreatureScored: fitness.lastCreaturesPerCreatureScored,
-    batchFallbackOccurred: fitness.lastBatchFallbackOccurred,
-  };
-}
 
 /**
  * Propagate expected values backward through the network for all output neurons.
@@ -528,7 +503,6 @@ export async function evolveDir(
 
   let iterationStartMS = Date.now();
   let generation = 0;
-  const targetError = config.targetError;
   const iterations = config.iterations;
   // Issue #3210: sum the always-on per-generation phase timings across the run.
   const phaseTimingAccumulator = createPhaseTimingAccumulator();
@@ -541,129 +515,45 @@ export async function evolveDir(
     // deno-lint-ignore no-await-in-loop
     const result = await neat.evolve(bestCreature);
 
-    const fittest = result.fittest;
-    const fittestScore = fittest.score!;
-    assert(fittestScore >= bestScore, "Score is less than best score");
-    // Issue #3422: note whether this generation improved the champion so the
-    // trajectory point is recorded once the scored-count is up to date below.
-    let championImproved = false;
-    // Issue #2787: route champion comparison through the cost-aware helper.
-    // Today this remains a strict `score > bestScore` for every cost
-    // (NaN-safe) so existing runs do not regress; the seam is in place for
-    // future cost-specific tie-breaks.
-    if (isBetterChampion(fittestScore, bestScore, config.costName)) {
-      const errorTmp = getTag(fittest, "error");
-      assert(errorTmp, "No error tag found");
-
-      error = Number.parseFloat(errorTmp);
-      assert(Number.isFinite(error), "Error is not finite");
-      assert(error >= 0, "Error is negative");
-      const tolerance = 1e-10;
-      assert(
-        fittestScore - 1 <= -error + tolerance,
-        `Score (absolute) less than error (score=${fittestScore}, error=${error})`,
-      );
-      bestScore = fittestScore;
-      // Issue #2276: Use shallowClone() instead of exportJSONWithRuntimeIds +
-      // fromJSON round-trip. shallowClone() is 2.4–3.5x faster (Issue #1586)
-      // and preserves all necessary state including runtime IDs and UUIDs.
-      // Issue #3434: dispose the superseded champion clone before overwriting
-      // it so its topology arrays / WASM activation are released immediately.
-      bestCreature = adoptChampionClone(
-        bestCreature,
-        fittest,
-        bestScore,
-      ) as InstanceType<typeof CreatureClass>;
-      championImproved = true;
-    }
-
-    const now = Date.now();
-    const timedOut = endTimeMS ? now > endTimeMS : false;
-
     generation++;
 
-    // Issue #2251: Time checkpoint write so it flows through onTrainingEvent
-    // Issue #2275: Async checkpoint writes unblock the event loop
-    let phaseTiming = result.phaseTiming;
-    if (config.checkpointEveryGeneration && config.creatureStore) {
-      const checkpointStart = Date.now();
-      // deno-lint-ignore no-await-in-loop
-      await writeCreatures(neat, config.creatureStore);
-      phaseTiming = {
-        ...result.phaseTiming,
-        checkpointWriteMs: Date.now() - checkpointStart,
-      };
-    }
-
-    // Issue #1615: Emit generation_complete event
-    // Issue #2239: Include per-phase timing diagnostics from evolve()
-    // Issue #2330: Forward compact throughput counters (wall-clock, queue
-    // depths, approximate worker wait) on the same event.
-    // Issue #3210: fold this generation's (checkpoint-merged) phase timing
-    // into the whole-run running totals returned alongside `time`.
-    accumulatePhaseTiming(phaseTimingAccumulator, phaseTiming);
-    // Issue #3234: fold this generation's per-backend scorer-utilisation counts
-    // into the whole-run totals returned alongside `phaseTimingTotals`.
-    accumulateScorerUtilisation(
-      scorerUtilisationAccumulator,
-      readScorerUtilisation(neat.fitness),
-    );
-
-    // Issue #3422: on a champion improvement, snapshot the best-score curve with
-    // the now-current cumulative scored-count so the milestone summary can be
-    // derived at run end without persisting a per-generation series.
-    if (championImproved) {
-      recordScoreImprovement(scoreTrajectory, {
-        score: bestScore,
-        generation,
-        timeMs: now - start,
-        scoredCount: scorerUtilisationAccumulator.creaturesBatchScored +
-          scorerUtilisationAccumulator.creaturesPerCreatureScored,
-      });
-    }
-
-    const generationElapsedMs = now -
-      (generation === 1 ? start : iterationStartMS);
-    emitTrainingEvent(config.onTrainingEvent, {
-      kind: "generation_complete",
-      timestamp: Temporal.Now.instant().toString(),
+    // Issue #3636: the end-of-generation bookkeeping (champion adoption, timed
+    // checkpoint, run-total accumulation, score trajectory, lifecycle events,
+    // cost-aware early stop) is shared with evolveEnv and evolveRL.
+    // deno-lint-ignore no-await-in-loop
+    const tail = await finishGeneration({
+      neat,
+      config,
+      result,
       generation,
-      bestFitness: fittestScore,
-      averageFitness: result.averageScore,
-      populationSize: neat.population.length,
-      // Issue #3402: population topology averages for memory-profile diagnosis.
-      averageNeurons: result.topologyAverages.averageNeurons,
-      averageSynapses: result.topologyAverages.averageSynapses,
-      elapsedMs: generationElapsedMs,
-      phaseTiming,
-      throughput: result.throughput,
-      // Issue #3263: diagnostic squash mix for the squash-budget experiment.
-      squashHistogram: result.squashHistogram,
-      // Issue #2947: surface the lineage-accumulated warm-up counter and the
-      // derived lock state (present only while warm-up is configured).
-      ...buildWarmupEventFields(neat.warmupGenerations, neat.currentGeneration),
+      start,
+      iterationStartMS,
+      endTimeMS,
+      interrupted,
+      bestScore,
+      error,
+      bestCreature,
+      phaseTimingAccumulator,
+      scorerUtilisationAccumulator,
+      scoreTrajectory,
     });
+    bestCreature = tail.bestCreature as
+      | InstanceType<typeof CreatureClass>
+      | undefined;
+    bestScore = tail.bestScore;
+    error = tail.error;
+    const now = tail.now;
+    const completed = tail.completed;
 
-    // Issue #1615: Emit plateau_detected event when on plateau
-    if (result.plateau.onPlateau) {
-      emitTrainingEvent(config.onTrainingEvent, {
-        kind: "plateau_detected",
-        timestamp: Temporal.Now.instant().toString(),
-        generation,
-        stagnationCount: result.plateau.generationsOnPlateau,
-        plateauThreshold: config.plateauDetection.windowSize,
-        improvementRate: result.plateau.improvementRate,
-        mutationMultiplier: result.plateau.mutationMultiplier,
-      });
+    // evolveDir-specific: supervised scores are `1 - error` (plus the growth
+    // penalty), so a new champion's score and error must stay consistent.
+    if (tail.championImproved) {
+      const tolerance = 1e-10;
+      assert(
+        bestScore - 1 <= -error + tolerance,
+        `Score (absolute) less than error (score=${bestScore}, error=${error})`,
+      );
     }
-
-    // Issue #2787: cost-aware early-stop. For built-in costs the threshold
-    // is clamped into the cost's natural range (e.g. unit-range CROSS_ENTROPY
-    // clamped to [0, 1] vs unbounded MSE); custom JS costs fall back to the legacy
-    // `error <= targetError` comparator as a regression guard.
-    const earlyStop = shouldEarlyStop(error, targetError, config.costName);
-    const completed = interrupted || timedOut || earlyStop ||
-      generation >= iterations;
 
     if (
       config.log &&
@@ -677,7 +567,7 @@ export async function evolveDir(
         "Generation",
         generation,
         "score",
-        fittest.score,
+        result.fittest.score,
         avgTxt,
         "error",
         error,
@@ -899,7 +789,6 @@ export async function evolveEnv<S, A>(
 
   let iterationStartMS = Date.now();
   let generation = 0;
-  const targetError = config.targetError;
   const iterations = config.iterations;
   // Issue #3210: sum the always-on per-generation phase timings across the run.
   const phaseTimingAccumulator = createPhaseTimingAccumulator();
@@ -915,114 +804,31 @@ export async function evolveEnv<S, A>(
     // deno-lint-ignore no-await-in-loop
     const result = await neat.evolve(bestCreature);
 
-    const fittest = result.fittest;
-    const fittestScore = fittest.score!;
-    assert(fittestScore >= bestScore, "Score is less than best score");
-    // Issue #3422: note whether this generation improved the champion so the
-    // trajectory point is recorded once the scored-count is up to date below.
-    let championImproved = false;
-    // Issue #2787: route champion comparison through the cost-aware helper.
-    // Today this remains a strict `score > bestScore` for every cost
-    // (NaN-safe) so existing runs do not regress; the seam is in place for
-    // future cost-specific tie-breaks.
-    if (isBetterChampion(fittestScore, bestScore, config.costName)) {
-      const errorTmp = getTag(fittest, "error");
-      assert(errorTmp, "No error tag found");
-
-      const parsedError = errorTmp === "Infinity"
-        ? Number.POSITIVE_INFINITY
-        : Number.parseFloat(errorTmp);
-      assert(Number.isFinite(parsedError), "Error is not finite");
-      assert(parsedError >= 0, "Error is negative");
-      error = parsedError;
-      bestScore = fittestScore;
-      // Issue #3434: dispose the superseded champion clone before overwriting.
-      bestCreature = adoptChampionClone(
-        bestCreature,
-        fittest,
-        bestScore,
-      ) as InstanceType<typeof CreatureClass>;
-      championImproved = true;
-    }
-
-    const now = Date.now();
-    const timedOut = endTimeMS ? now > endTimeMS : false;
-
-    let phaseTiming = result.phaseTiming;
-    if (config.checkpointEveryGeneration && config.creatureStore) {
-      const checkpointStart = Date.now();
-      // deno-lint-ignore no-await-in-loop
-      await writeCreatures(neat, config.creatureStore);
-      phaseTiming = {
-        ...result.phaseTiming,
-        checkpointWriteMs: Date.now() - checkpointStart,
-      };
-    }
-
-    // Issue #3210: fold this generation's (checkpoint-merged) phase timing
-    // into the whole-run running totals returned alongside `time`.
-    accumulatePhaseTiming(phaseTimingAccumulator, phaseTiming);
-    // Issue #3234: fold this generation's per-backend scorer-utilisation counts
-    // into the whole-run totals returned alongside `phaseTimingTotals`.
-    accumulateScorerUtilisation(
-      scorerUtilisationAccumulator,
-      readScorerUtilisation(neat.fitness),
-    );
-
-    // Issue #3422: on a champion improvement, snapshot the best-score curve with
-    // the now-current cumulative scored-count so the milestone summary can be
-    // derived at run end without persisting a per-generation series.
-    if (championImproved) {
-      recordScoreImprovement(scoreTrajectory, {
-        score: bestScore,
-        generation,
-        timeMs: now - start,
-        scoredCount: scorerUtilisationAccumulator.creaturesBatchScored +
-          scorerUtilisationAccumulator.creaturesPerCreatureScored,
-      });
-    }
-
-    const generationElapsedMs = now -
-      (generation === 1 ? start : iterationStartMS);
-    emitTrainingEvent(config.onTrainingEvent, {
-      kind: "generation_complete",
-      timestamp: Temporal.Now.instant().toString(),
+    // Issue #3636: shared end-of-generation bookkeeping (see finishGeneration).
+    // deno-lint-ignore no-await-in-loop
+    const tail = await finishGeneration({
+      neat,
+      config,
+      result,
       generation,
-      bestFitness: fittestScore,
-      averageFitness: result.averageScore,
-      populationSize: neat.population.length,
-      // Issue #3402: population topology averages for memory-profile diagnosis.
-      averageNeurons: result.topologyAverages.averageNeurons,
-      averageSynapses: result.topologyAverages.averageSynapses,
-      elapsedMs: generationElapsedMs,
-      phaseTiming,
-      throughput: result.throughput,
-      // Issue #3263: diagnostic squash mix for the squash-budget experiment.
-      squashHistogram: result.squashHistogram,
-      // Issue #2947: surface the lineage-accumulated warm-up counter and the
-      // derived lock state (present only while warm-up is configured).
-      ...buildWarmupEventFields(neat.warmupGenerations, neat.currentGeneration),
+      start,
+      iterationStartMS,
+      endTimeMS,
+      interrupted,
+      bestScore,
+      error,
+      bestCreature,
+      phaseTimingAccumulator,
+      scorerUtilisationAccumulator,
+      scoreTrajectory,
     });
-
-    if (result.plateau.onPlateau) {
-      emitTrainingEvent(config.onTrainingEvent, {
-        kind: "plateau_detected",
-        timestamp: Temporal.Now.instant().toString(),
-        generation,
-        stagnationCount: result.plateau.generationsOnPlateau,
-        plateauThreshold: config.plateauDetection.windowSize,
-        improvementRate: result.plateau.improvementRate,
-        mutationMultiplier: result.plateau.mutationMultiplier,
-      });
-    }
-
-    // Issue #2787: cost-aware early-stop. For built-in costs the threshold
-    // is clamped into the cost's natural range (e.g. unit-range CROSS_ENTROPY
-    // clamped to [0, 1] vs unbounded MSE); custom JS costs fall back to the legacy
-    // `error <= targetError` comparator as a regression guard.
-    const earlyStop = shouldEarlyStop(error, targetError, config.costName);
-    const completed = interrupted || timedOut || earlyStop ||
-      generation >= iterations;
+    bestCreature = tail.bestCreature as
+      | InstanceType<typeof CreatureClass>
+      | undefined;
+    bestScore = tail.bestScore;
+    error = tail.error;
+    const now = tail.now;
+    const completed = tail.completed;
 
     if (
       config.log &&
@@ -1036,7 +842,7 @@ export async function evolveEnv<S, A>(
         "Generation",
         generation,
         "score",
-        fittest.score,
+        result.fittest.score,
         avgTxt,
         "error",
         error,
@@ -1433,7 +1239,6 @@ export async function evolveRL<S, A>(
 
   let iterationStartMS = Date.now();
   let generation = 0;
-  const targetError = config.targetError;
   const iterations = config.iterations;
   // Issue #3210: sum the always-on per-generation phase timings across the run.
   const phaseTimingAccumulator = createPhaseTimingAccumulator();
@@ -1459,104 +1264,32 @@ export async function evolveRL<S, A>(
 
     const fittest = result.fittest;
     const fittestScore = fittest.score!;
-    assert(fittestScore >= bestScore, "Score is less than best score");
-    // Issue #3422: note whether this generation improved the champion so the
-    // trajectory point is recorded once the scored-count is up to date below.
-    let championImproved = false;
-    // Issue #2787: route champion comparison through the cost-aware helper.
-    // Today this remains a strict `score > bestScore` for every cost
-    // (NaN-safe) so existing runs do not regress; the seam is in place for
-    // future cost-specific tie-breaks.
-    if (isBetterChampion(fittestScore, bestScore, config.costName)) {
-      const errorTmp = getTag(fittest, "error");
-      assert(errorTmp, "No error tag found");
 
-      const parsedError = errorTmp === "Infinity"
-        ? Number.POSITIVE_INFINITY
-        : Number.parseFloat(errorTmp);
-      assert(Number.isFinite(parsedError), "Error is not finite");
-      assert(parsedError >= 0, "Error is negative");
-      error = parsedError;
-      bestScore = fittestScore;
-      // Issue #3434: dispose the superseded champion clone before overwriting.
-      bestCreature = adoptChampionClone(
-        bestCreature,
-        fittest,
-        bestScore,
-      ) as InstanceType<typeof CreatureClass>;
-      championImproved = true;
-    }
-
-    const now = Date.now();
-    const timedOut = endTimeMS ? now > endTimeMS : false;
-
-    let phaseTiming = result.phaseTiming;
-    if (config.checkpointEveryGeneration && config.creatureStore) {
-      const checkpointStart = Date.now();
-      // deno-lint-ignore no-await-in-loop
-      await writeCreatures(neat, config.creatureStore);
-      phaseTiming = {
-        ...result.phaseTiming,
-        checkpointWriteMs: Date.now() - checkpointStart,
-      };
-    }
-
-    // Issue #3210: fold this generation's (checkpoint-merged) phase timing
-    // into the whole-run running totals returned alongside `time`.
-    accumulatePhaseTiming(phaseTimingAccumulator, phaseTiming);
-    // Issue #3234: fold this generation's per-backend scorer-utilisation counts
-    // into the whole-run totals returned alongside `phaseTimingTotals`.
-    accumulateScorerUtilisation(
-      scorerUtilisationAccumulator,
-      readScorerUtilisation(neat.fitness),
-    );
-
-    // Issue #3422: on a champion improvement, snapshot the best-score curve with
-    // the now-current cumulative scored-count so the milestone summary can be
-    // derived at run end without persisting a per-generation series.
-    if (championImproved) {
-      recordScoreImprovement(scoreTrajectory, {
-        score: bestScore,
-        generation,
-        timeMs: now - start,
-        scoredCount: scorerUtilisationAccumulator.creaturesBatchScored +
-          scorerUtilisationAccumulator.creaturesPerCreatureScored,
-      });
-    }
-
-    const generationElapsedMs = now -
-      (generation === 1 ? start : iterationStartMS);
-    emitTrainingEvent(config.onTrainingEvent, {
-      kind: "generation_complete",
-      timestamp: Temporal.Now.instant().toString(),
+    // Issue #3636: shared end-of-generation bookkeeping (see finishGeneration).
+    // deno-lint-ignore no-await-in-loop
+    const tail = await finishGeneration({
+      neat,
+      config,
+      result,
       generation,
-      bestFitness: fittestScore,
-      averageFitness: result.averageScore,
-      populationSize: neat.population.length,
-      // Issue #3402: population topology averages for memory-profile diagnosis.
-      averageNeurons: result.topologyAverages.averageNeurons,
-      averageSynapses: result.topologyAverages.averageSynapses,
-      elapsedMs: generationElapsedMs,
-      phaseTiming,
-      throughput: result.throughput,
-      // Issue #3263: diagnostic squash mix for the squash-budget experiment.
-      squashHistogram: result.squashHistogram,
-      // Issue #2947: surface the lineage-accumulated warm-up counter and the
-      // derived lock state (present only while warm-up is configured).
-      ...buildWarmupEventFields(neat.warmupGenerations, neat.currentGeneration),
+      start,
+      iterationStartMS,
+      endTimeMS,
+      interrupted,
+      bestScore,
+      error,
+      bestCreature,
+      phaseTimingAccumulator,
+      scorerUtilisationAccumulator,
+      scoreTrajectory,
     });
-
-    if (result.plateau.onPlateau) {
-      emitTrainingEvent(config.onTrainingEvent, {
-        kind: "plateau_detected",
-        timestamp: Temporal.Now.instant().toString(),
-        generation,
-        stagnationCount: result.plateau.generationsOnPlateau,
-        plateauThreshold: config.plateauDetection.windowSize,
-        improvementRate: result.plateau.improvementRate,
-        mutationMultiplier: result.plateau.mutationMultiplier,
-      });
-    }
+    bestCreature = tail.bestCreature as
+      | InstanceType<typeof CreatureClass>
+      | undefined;
+    bestScore = tail.bestScore;
+    error = tail.error;
+    const now = tail.now;
+    const completed = tail.completed;
 
     // Issue #2647: remember the most recent generation's snapshot inputs so a
     // synthetic final milestone can be built after the loop exits between
@@ -1592,14 +1325,6 @@ export async function evolveRL<S, A>(
         ...milestone,
       });
     }
-
-    // Issue #2787: cost-aware early-stop. For built-in costs the threshold
-    // is clamped into the cost's natural range (e.g. unit-range CROSS_ENTROPY
-    // clamped to [0, 1] vs unbounded MSE); custom JS costs fall back to the legacy
-    // `error <= targetError` comparator as a regression guard.
-    const earlyStop = shouldEarlyStop(error, targetError, config.costName);
-    const completed = interrupted || timedOut || earlyStop ||
-      generation >= iterations;
 
     if (
       config.log &&
