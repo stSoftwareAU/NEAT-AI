@@ -357,9 +357,12 @@ function applyWasmTraceData(
         creature.state.connectionFor(winningConnection)
           .used = true;
 
-        // Issue #3635: apply the same runner-up proximity rule the TypeScript
-        // activateAndTrace and propagate use, so applyLearnings never
+        // Issue #3635/#3640: this WASM trace is the production path —
+        // Creature.activateAndTrace() never reaches the TypeScript
+        // MAXIMUM/MINIMUM activateAndTrace bodies. Apply the same runner-up
+        // proximity rule they and propagate use, so applyLearnings never
         // disconnects a connection that still receives leaked gradient.
+        // Regression cover: test/creature/WasmTraceRunnerUpProximity.ts.
         if (inwardList.length > 1) {
           const activations = creature.state.activations;
           const winnerValue = activations[winningConnection.from] *
