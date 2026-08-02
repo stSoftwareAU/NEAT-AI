@@ -9,6 +9,11 @@
  * silently losing provenance. Publishing with `deno publish` directly restores
  * it (provenance is default-on for `deno publish` on GitHub Actions).
  *
+ * Issue #3633 added the transcript capture: `deno publish` prints the Sigstore
+ * transparency-log entry it mints, and that printed logIndex is the only place
+ * the entry is exposed at publish time, so the output must be captured for the
+ * gate (`PublishProvenanceGate.ts`) to verify it against Rekor.
+ *
  * These are "what" tests: they parse the committed workflow YAML and assert on
  * the resulting configuration, not on the exact wording of each step.
  */
@@ -74,24 +79,28 @@ Deno.test("publish.yml publishes with `deno publish`, not the npm shim (Issue #3
   );
 });
 
-Deno.test("publish.yml verifies the provenance attestation after publishing (Issue #3333)", async () => {
+Deno.test("publish.yml captures the publish transcript for the gate (Issue #3633)", async () => {
   const wf = await readWorkflow();
-  const all = steps(wf);
+  const publishStep = steps(wf).find((s) =>
+    /\bdeno\s+publish\b/.test(s.run ?? "")
+  );
+  assert(publishStep !== undefined, "publish step missing");
+  const run = publishStep!.run ?? "";
 
-  const verifyStep = all.find((s) => /verify_provenance\.ts/.test(s.run ?? ""));
+  // The Sigstore logIndex `deno publish` mints is only ever printed to its own
+  // output, so the transcript must be captured for the gate to verify it.
   assert(
-    verifyStep !== undefined,
-    "publish job must run scripts/verify_provenance.ts after publishing so a " +
-      "missing Sigstore attestation fails the run instead of passing silently",
+    /publish-output\.log/.test(run),
+    "the publish step must capture `deno publish` output to " +
+      `publish-output.log, got: ${JSON.stringify(run)}`,
   );
 
-  // The gate only makes sense when a publish actually happened, so it must be
-  // gated on the same needs_publish signal as the publish step.
-  const cond = verifyStep!.if ?? "";
+  // `tee` without pipefail would swallow a failing `deno publish` behind tee's
+  // exit 0 — a silent failure (Issue #3234).
   assert(
-    cond.includes("steps.") && cond.includes("outputs."),
-    "the verify-provenance step must be gated on the version-publish check " +
-      `output; got: ${JSON.stringify(verifyStep!.if)}`,
+    /pipefail/.test(run),
+    "the publish step must set `pipefail` so a failing `deno publish` is not " +
+      `masked by the \`tee\` pipeline, got: ${JSON.stringify(run)}`,
   );
 });
 
