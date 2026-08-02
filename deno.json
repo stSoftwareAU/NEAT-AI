@@ -5,8 +5,8 @@
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
-    "rev": "93f1a4563144e056ecb3ae86d2b6a00dab35a118",
-    "assetSha256": "3d50d49c7a8c7ec93981aa165825494bdf8d28310cf9d423ae9ec54d3f00289e"
+    "rev": "be4fab896a0eaf71a075036aa1bda7b510cd2162",
+    "assetSha256": "136c3785f8a3ecaa64790f5a9fc33b213fe7aad35cdc497bb873bfcb68331bad"
   },
   "publish": {
     "include": [
@@ -24,8 +24,8 @@
     "@std/fs": "jsr:@std/fs@1.0.24",
     "@std/path": "jsr:@std/path@1.1.6",
     "@std/uuid": "jsr:@std/uuid@1.1.1",
-    "@std/yaml": "jsr:@std/yaml@1.1.2",
-    "@std/testing/mock": "jsr:@std/testing@1.0.19/mock",
+    "@std/yaml": "jsr:@std/yaml@1.2.0",
+    "@std/testing/mock": "jsr:@std/testing@1.0.20/mock",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.13",
     "@architecture/": "./src/architecture/",
     "@blackbox/": "./src/blackbox/",
