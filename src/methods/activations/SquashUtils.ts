@@ -84,3 +84,59 @@ export function isParallelMergeableSquash(name?: string): boolean {
   if (!name) return false;
   return PARALLEL_MERGEABLE_SQUASH_NAMES.has(name);
 }
+
+/**
+ * Width of the runner-up participation window, as a fraction of the winning
+ * connection's magnitude (Issue #1874).
+ */
+export const RUNNER_UP_WINDOW_FRACTION = 0.2;
+
+/**
+ * Floor applied to the winner's magnitude when sizing the runner-up window,
+ * so a near-zero winner still has a usable window (Issue #1874).
+ *
+ * Issue #3635: this is a fixed constant rather than `config.plankConstant`.
+ * `activateAndTrace` has no `BackPropagationConfig`, so a config-derived floor
+ * cannot be shared between the two sides of the rule — and when the two sides
+ * disagree, a connection can receive leaked gradient in `propagate` while never
+ * being marked `used` in `activateAndTrace`, letting `applyLearnings`
+ * disconnect a connection that is still learning. The value matches the default
+ * `plankConstant` (1e-7), which keeps the propagation window unchanged for the
+ * default configuration and widens the (previously 1e-12 floored) marking
+ * window to match it.
+ */
+export const RUNNER_UP_MAGNITUDE_FLOOR = 0.000_000_1;
+
+/**
+ * Proximity of a losing connection to the winning connection of an extremum
+ * aggregate (MAXIMUM / MINIMUM) — the single source of truth for the
+ * "runner-up still participates" rule of Issue #1874.
+ *
+ * A runner-up participates when its distance from the winner falls inside a
+ * window of `RUNNER_UP_WINDOW_FRACTION` of the winner's magnitude (floored by
+ * `floor`). Callers measure `distance` towards their own losing side — below
+ * the winner for MAXIMUM, above it for MINIMUM — so the returned proximity is
+ * direction-free.
+ *
+ * @param winnerValue - Value of the winning connection (sign is ignored)
+ * @param distance - Non-negative distance from the winner to the runner-up
+ * @param floor - Minimum magnitude used to size the window
+ * @returns 1 at the winner, decaying linearly to 0 at the window edge, or -1
+ *          when the runner-up is outside the window (including a negative or
+ *          non-finite distance)
+ */
+export function runnerUpProximity(
+  winnerValue: number,
+  distance: number,
+  floor: number,
+): number {
+  if (!Number.isFinite(distance) || distance < 0) return -1;
+
+  const threshold = Math.max(Math.abs(winnerValue), floor) *
+    RUNNER_UP_WINDOW_FRACTION;
+
+  if (threshold <= 0) return distance === 0 ? 1 : -1;
+  if (distance > threshold) return -1;
+
+  return 1 - distance / threshold;
+}
