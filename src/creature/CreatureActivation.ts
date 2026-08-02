@@ -17,6 +17,7 @@ import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import type { Creature } from "@creature";
 import { WasmError } from "@errors/WasmError.ts";
+import { runnerUpProximity } from "@methods/activations/aggregate/RunnerUpProximity.ts";
 import type { SparseConfigLike } from "@propagate/sparse/SparseConfigLike.ts";
 import { getLogger } from "@utils/Logger.ts";
 import {
@@ -355,6 +356,28 @@ function applyWasmTraceData(
         const winningConnection = inwardList[winningLocalIdx];
         creature.state.connectionFor(winningConnection)
           .used = true;
+
+        // Issue #3635: apply the same runner-up proximity rule the TypeScript
+        // activateAndTrace and propagate use, so applyLearnings never
+        // disconnects a connection that still receives leaked gradient.
+        if (inwardList.length > 1) {
+          const activations = creature.state.activations;
+          const winnerValue = activations[winningConnection.from] *
+            winningConnection.weight;
+          const isMaximum = squash === "MAXIMUM";
+          for (const c of inwardList) {
+            if (c === winningConnection) continue;
+            const value = activations[c.from] * c.weight;
+            // Runner-ups sit below the winner for MAXIMUM, above it for MINIMUM
+            const distance = isMaximum
+              ? winnerValue - value
+              : value - winnerValue;
+            const proximity = runnerUpProximity(winnerValue, distance);
+            if (proximity >= 0) {
+              creature.state.connectionFor(c).used = true;
+            }
+          }
+        }
       }
     } else if (squash === "IF") {
       const positiveBranch = entry.traceInfo > 0.5;

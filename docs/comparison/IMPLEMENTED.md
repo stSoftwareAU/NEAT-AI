@@ -163,8 +163,9 @@ to a dedicated guide, the contrast with standard NEAT is documented there.
   Standard NEAT typically restricts itself to sigmoid.
 - ✅ **Improved Aggregate Gradient Flow** _(NEAT-AI extension)_: MAXIMUM and
   MINIMUM aggregate functions distribute partial error signals to runner-up
-  connections within a proximity threshold (15%), preventing dead gradient paths
-  while preserving dominance of the winning connection.
+  connections within a proximity window of 20% of the winning magnitude (leaking
+  up to 15% of the error), preventing dead gradient paths while preserving
+  dominance of the winning connection.
 - ✅ **Transfer Learning** _(NEAT-AI extension)_: Checkpoint export/import
   system with UUID-based neuron and synapse mapping between creatures with
   different input/output configurations. Supports weight freezing for

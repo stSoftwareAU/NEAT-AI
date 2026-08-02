@@ -17,6 +17,7 @@ import type { SynapseState } from "@propagate/SynapseState.ts";
 import { accumulateWeight, adjustedWeight } from "@propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "@methods/activations/ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
+import { runnerUpProximity } from "@methods/activations/aggregate/RunnerUpProximity.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { recordAggregateSelf } from "@neuron/AggregateRecord.ts";
 
@@ -152,12 +153,11 @@ export class MINIMUM
     // the gradient leak logic in propagate. This prevents applyLearnings from
     // disconnecting connections that receive partial gradient flow.
     if (connectionValues.length > 1) {
-      const range = Math.max(Math.abs(tmpValue), 1e-12);
-      const threshold = range * 0.2;
       for (const info of connectionValues) {
         if (info.cs === usedState) continue;
+        // For MINIMUM, runner-ups are above the winner
         const distance = info.value - tmpValue;
-        if (distance >= 0 && distance <= threshold) {
+        if (runnerUpProximity(tmpValue, distance) >= 0) {
           info.cs.used = true;
         }
       }
@@ -335,15 +335,13 @@ export class MINIMUM
       // prevents dead gradient paths while keeping the winner dominant.
       if (connectionInfo.length > 1) {
         const LEAK_FRACTION = 0.15;
-        const range = Math.max(Math.abs(tmpValue), config.plankConstant);
-        const threshold = range * 0.2;
 
         for (const info of connectionInfo) {
           if (info.c === mainConnection) continue;
           // For MINIMUM, runner-ups are above the winner
           const distance = info.fromValue - tmpValue;
-          if (distance >= 0 && distance <= threshold) {
-            const proximity = 1 - (distance / threshold);
+          const proximity = runnerUpProximity(tmpValue, distance);
+          if (proximity >= 0) {
             const leakError = error * LEAK_FRACTION * proximity;
             if (Math.abs(leakError) > config.plankConstant) {
               const cs = state.connectionFor(info.c); // Issue #3089: cached state lookup
