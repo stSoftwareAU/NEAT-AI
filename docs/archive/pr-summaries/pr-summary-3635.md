@@ -1,102 +1,94 @@
-# Unify the runner-up proximity rule for MAXIMUM/MINIMUM
+# Consolidate the runner-up proximity rule (Issue #3635)
 
 ## Summary
 
 The Issue #1874 "runner-up proximity" rule — a losing connection whose value
-sits within 20% of the winning connection's magnitude still participates — was
-copy-pasted into four method bodies across `MAXIMUM` and `MINIMUM`, and the
-copies had diverged on the floor constant:
+sits within 20% of the winner's magnitude still participates — was copy-pasted
+into four method bodies across the two extremum aggregates, and the copies had
+already diverged on the magnitude floor:
 
-- `activateAndTrace` (usage marking) floored the winner's magnitude at `1e-12`;
-- `propagate` (gradient leak) floored it at `config.plankConstant` (`1e-7` by
-  default).
+| Site                       | Floor used             |
+| -------------------------- | ---------------------- |
+| `MAXIMUM.activateAndTrace` | `1e-12`                |
+| `MINIMUM.activateAndTrace` | `1e-12`                |
+| `MAXIMUM.propagate`        | `config.plankConstant` |
+| `MINIMUM.propagate`        | `config.plankConstant` |
 
-When the winner's magnitude fell between those two values the blocks computed
-different windows, so a connection could receive leaked gradient in `propagate`
-while never being marked `used` in `activateAndTrace` — and `applyLearnings`
-then disconnected a connection that was still learning. That is exactly the
-hazard the marking block exists to prevent.
+`plankConstant` defaults to `1e-7`, so for any winner magnitude between `1e-12`
+and `1e-7` the propagation window was wider than the tracing window: a
+connection could receive leaked gradient in `propagate` yet never be marked
+`used` in `activateAndTrace`, leaving `applyLearnings` free to disconnect a
+connection that was still learning.
 
-The rule now lives in one place,
-`src/methods/activations/aggregate/RunnerUpProximity.ts`, and all four sites
-call it. Each site keeps only its local concern: the direction of `distance`
-(below the winner for MAXIMUM, above it for MINIMUM) and its action (mark
-`used`, or scale the leak).
+The rule now lives once, in `runnerUpProximity()` in
+`src/methods/activations/SquashUtils.ts`, and each of the four sites is a call
+plus its local action (mark `used`, or scale the leak). The direction of the
+distance stays at the call site, so no per-caller flags were needed.
 
-**Chosen floor:** the fixed constant `RUNNER_UP_PROXIMITY_FLOOR = 1e-7`, which
-matches the default `plankConstant` — the smallest magnitude propagation treats
-as meaningful. It is deliberately _not_ read from `config.plankConstant`,
-because `activateAndTrace` has no `BackPropagationConfig`; sourcing the floor
-from config is what let the two halves disagree in the first place. With the
-default config the propagation window is unchanged; tracing now marks the same
-(slightly wider) set of runner-ups that propagation leaks to.
+**Which floor is correct:** the constant `1e-12`, not `config.plankConstant`.
+Tracing has no `BackPropagationConfig` in scope, so a config-dependent floor
+cannot give both sides the same window under any configuration. Fixing the floor
+at `1e-12` makes the two windows identical regardless of the configured plank
+constant. This narrows the propagation window only for winner magnitudes below
+`1e-7`, where the leaked gradient was reaching connections that tracing never
+marked.
+
+The routine `@std/yaml` and `@std/testing` bumps produced by `bump-deps.sh` ride
+in the same PR (#1613).
 
 Closes #3635.
 
 ## Evidence
 
-Backend-only change — no web interface to screenshot. Verified by the tests
-below plus the full `./quality.sh` gate.
+Backend-only change — no web interface to screenshot. Evidence is the test
+suite: `./quality.sh` passes with **8113 tests, 0 failed**.
 
-The invariant the fix restores:
+The invariant the four sites must jointly satisfy:
 
 ```mermaid
 flowchart LR
-    R["runnerUpProximity()<br/>max(|winner|, 1e-7) × 0.2"]
-    R --> T["activateAndTrace<br/>proximity ≥ 0 → mark used"]
-    R --> P["propagate<br/>proximity ≥ 0 → leak gradient"]
-    T --> A["applyLearnings<br/>keeps every used connection"]
-    P --> A
+    R["runnerUpProximity(winner, distance)<br/>SquashUtils.ts"]
+    T1[MAXIMUM.activateAndTrace] --> R
+    T2[MINIMUM.activateAndTrace] --> R
+    P1[MAXIMUM.propagate] --> R
+    P2[MINIMUM.propagate] --> R
+    R --> M["proximity >= 0<br/>→ mark used / leak gradient"]
+    M --> A["applyLearnings keeps<br/>every connection that<br/>received gradient"]
 ```
 
-Because both halves read the same window, a connection can no longer be leaked
-gradient by `propagate` yet dropped by `applyLearnings`.
-
-**Regression proof:** with the trace-side floor temporarily restored to `1e-12`
-(the pre-fix value), the two `survives applyLearnings` tests fail; with the
-shared floor they pass.
+Before the fix, the two new consistency tests for the divergence window failed
+with:
 
 ```
-MAXIMUM: a runner-up in the window survives applyLearnings => FAILED
-MINIMUM: a runner-up in the window survives applyLearnings => FAILED
-FAILED | 8 passed | 2 failed
+MAXIMUM: runner-up received gradient (count=1) but was not marked used (used=false)
+MINIMUM: runner-up received gradient (count=1) but was not marked used (used=false)
 ```
+
+## Follow-up found while working
+
+`Creature.activateAndTrace()` always runs the WASM trace path, and
+`applyWasmTraceData` marks only the **winning** connection for MAXIMUM/MINIMUM —
+it never applies the proximity marking at all, while TypeScript propagation
+still leaks gradient to runner-ups. That is a separate defect from this DRY
+consolidation and is filed as **stSoftwareAU/NEAT-AI#3640**; this PR
+deliberately does not change production tracing behaviour.
 
 ## Test Plan
 
-New file `test/methods/activations/RunnerUpProximity.ts`:
+New tests:
 
-- `runnerUpProximity: winner itself scores 1` — happy path at zero distance.
-- `runnerUpProximity: window edge scores 0, beyond scores -1` — boundary.
-- `runnerUpProximity: decays linearly across the window` — the leak scale.
-- `runnerUpProximity: distance on the winning side is not a runner-up` — error
-  path (negative and `NaN` distance).
-- `runnerUpProximity: floor bounds the window for tiny winners` — the floor
-  matters, and it equals the default `plankConstant`.
-- `runnerUpProximity: a zero window only admits an exact tie` — degenerate
-  floor.
-- `MAXIMUM/MINIMUM: a runner-up in the window survives applyLearnings` —
-  regression for the diverged floor: a winner of magnitude `1e-9` with a
-  runner-up `1e-8` away (inside the floored window, outside the old `1e-12` one)
-  is kept, while a far connection is disconnected.
-- `MAXIMUM/MINIMUM: the same runner-up receives leaked gradient` — the other
-  half of the invariant: `propagate` accumulates on that same runner-up and not
-  on the far connection.
+- `test/methods/activations/RunnerUpProximity.ts` — unit tests for the shared
+  helper: winner scores 1, window edge scores 0, halfway scores 0.5, outside
+  scores -1, negative distance and non-finite inputs are outside, zero winner
+  falls back to the magnitude floor, and the regression case
+  (`runnerUpProximity(1e-9, 1e-8) === -1`) that the old plank-constant floor
+  admitted.
+- `test/propagate/RunnerUpProximityConsistency.ts` — behavioural regression
+  tests for both aggregates. Each traces then propagates one sample through a
+  two-input extremum neuron and asserts the invariant "a connection that
+  received leaked gradient must be marked `used`", plus the specific window
+  outcome for a distant runner-up (neither) and a close one (both). The two
+  distant-runner-up tests fail against the unfixed code.
 
-Existing `test/propagate/MaximumGradientFlow.ts` and
-`test/propagate/MinimumGradientFlow.ts` continue to pass unchanged.
-
-## Notes
-
-- The helper landed in `src/methods/activations/aggregate/RunnerUpProximity.ts`
-  rather than `SquashUtils.ts` (the issue's suggestion): `SquashUtils` is
-  squash-name _classification_ and deliberately imports nothing, whereas this is
-  extremum-aggregate numerics used only by the two files beside it.
-- `MINIMUM.activateAndTrace` writing `state.activations[neuron.index]` where
-  `MAXIMUM` does not, noted in the issue as a further sign of drift, is left
-  alone — changing it alters activation behaviour and is outside this fix.
-
-## Security self-check
-
-- No new external input, secrets, injection surface, endpoints, or dependencies;
-  the change is a pure-function extraction over existing in-memory numerics.
+Existing tests: no test was modified or removed; the full `./quality.sh` gate
+(fmt, lint, type-check, 8113 tests) passes.
