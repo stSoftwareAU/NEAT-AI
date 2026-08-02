@@ -25,7 +25,7 @@ call it. Each site keeps only its local concern: the direction of `distance`
 
 **Chosen floor:** the fixed constant `RUNNER_UP_PROXIMITY_FLOOR = 1e-7`, which
 matches the default `plankConstant` — the smallest magnitude propagation treats
-as meaningful. It is deliberately *not* read from `config.plankConstant`,
+as meaningful. It is deliberately _not_ read from `config.plankConstant`,
 because `activateAndTrace` has no `BackPropagationConfig`; sourcing the floor
 from config is what let the two halves disagree in the first place. With the
 default config the propagation window is unchanged; tracing now marks the same
@@ -73,7 +73,8 @@ New file `test/methods/activations/RunnerUpProximity.ts`:
   path (negative and `NaN` distance).
 - `runnerUpProximity: floor bounds the window for tiny winners` — the floor
   matters, and it equals the default `plankConstant`.
-- `runnerUpProximity: a zero window only admits an exact tie` — degenerate floor.
+- `runnerUpProximity: a zero window only admits an exact tie` — degenerate
+  floor.
 - `MAXIMUM/MINIMUM: a runner-up in the window survives applyLearnings` —
   regression for the diverged floor: a winner of magnitude `1e-9` with a
   runner-up `1e-8` away (inside the floored window, outside the old `1e-12` one)
@@ -89,7 +90,7 @@ Existing `test/propagate/MaximumGradientFlow.ts` and
 
 - The helper landed in `src/methods/activations/aggregate/RunnerUpProximity.ts`
   rather than `SquashUtils.ts` (the issue's suggestion): `SquashUtils` is
-  squash-name *classification* and deliberately imports nothing, whereas this is
+  squash-name _classification_ and deliberately imports nothing, whereas this is
   extremum-aggregate numerics used only by the two files beside it.
 - `MINIMUM.activateAndTrace` writing `state.activations[neuron.index]` where
   `MAXIMUM` does not, noted in the issue as a further sign of drift, is left
