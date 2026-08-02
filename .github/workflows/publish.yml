@@ -80,29 +80,36 @@ jobs:
       # (rekorLogId: null). `deno publish` enables provenance by default on
       # GitHub Actions when `id-token: write` is granted, so the transparency-log
       # entry is recorded. The verify step below fails the run if it is not.
+      # Issue #3633: capture the publish transcript. `deno publish` prints the
+      # Sigstore transparency-log entry it minted ("Provenance transparency log
+      # available at https://search.sigstore.dev/?logIndex=..."); the gate below
+      # reads that logIndex from the log and verifies the entry in Rekor.
+      # `pipefail` keeps a failing `deno publish` red through the `tee`.
       - name: Publish to JSR
         if: steps.needs_publish.outputs.publish == 'true'
-        run: deno publish
+        run: |
+          set -Eeuo pipefail
+          deno publish 2>&1 | tee publish-output.log
 
-      # Issue #3333: the pre-fix failure was silent — JSR accepted the publish
-      # and nothing inspected the attestation. Poll the version meta endpoint and
-      # fail the run when `rekorLogId` is null/missing, so any regression (CLI
-      # swap, OIDC env loss, --no-provenance) turns the publish run red on the
-      # same run that produced the unattested version (never fail silently,
-      # Issue #3234).
-      - name: Verify JSR provenance attestation
+      # Issues #3333 + #3633: the pre-fix failure was silent — JSR accepted the
+      # publish and nothing inspected the attestation. This gate confirms the
+      # transparency-log entry against Rekor (the authoritative source) and
+      # fails the run when it is missing or attests a different artefact, so any
+      # regression (CLI swap, OIDC env loss, --no-provenance) turns the publish
+      # run red on the same run that produced the unattested version (never fail
+      # silently, Issue #3234).
+      #
+      # It deliberately does NOT gate on JSR's `rekorLogId`: JSR has recorded
+      # null for every package in the registry since ~2026-07-02 (upstream
+      # jsr-io/jsr#1474), which turned 12+ consecutive publish runs red while
+      # provenance was in fact being minted correctly. That value is still
+      # reported, informationally only.
+      - name: Verify Sigstore provenance attestation
         if: steps.needs_publish.outputs.publish == 'true'
-        run: deno run --allow-read=deno.json --allow-net=jsr.io scripts/verify_provenance.ts
-
-      # Issue #3334 (parent #3332): fail LOUDLY when a release publishes with no
-      # Sigstore provenance. v5.8.1 published with rekorLogId null on JSR while
-      # CI stayed green. This guardrail polls the just-published version's meta
-      # endpoint and exits non-zero if rekorLogId is null/absent, so a
-      # no-provenance release blocks the workflow instead of passing quietly.
-      # Runs only when a publish actually occurred (skipped otherwise).
-      - name: Verify JSR provenance was recorded
-        if: steps.needs_publish.outputs.publish == 'true'
-        run: ./scripts/verify_jsr_provenance.sh
+        run: |
+          deno run --allow-read=deno.json,publish-output.log \
+            --allow-net=rekor.sigstore.dev,jsr.io \
+            scripts/verify_provenance.ts publish-output.log
 
       # Issue #3008 (SCR-SBOM): emit a machine-readable Software Bill of
       # Materials for the published version. Deno has no first-class SBOM
