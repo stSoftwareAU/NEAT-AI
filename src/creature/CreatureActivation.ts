@@ -17,10 +17,7 @@ import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import type { Creature } from "@creature";
 import { WasmError } from "@errors/WasmError.ts";
-import {
-  RUNNER_UP_MAGNITUDE_FLOOR,
-  runnerUpProximity,
-} from "@methods/activations/SquashUtils.ts";
+import { runnerUpProximity } from "@methods/activations/aggregate/RunnerUpProximity.ts";
 import type { SparseConfigLike } from "@propagate/sparse/SparseConfigLike.ts";
 import { getLogger } from "@utils/Logger.ts";
 import {
@@ -375,11 +372,7 @@ function applyWasmTraceData(
             const distance = isMaximum
               ? winnerValue - value
               : value - winnerValue;
-            const proximity = runnerUpProximity(
-              winnerValue,
-              distance,
-              RUNNER_UP_MAGNITUDE_FLOOR,
-            );
+            const proximity = runnerUpProximity(winnerValue, distance);
             if (proximity >= 0) {
               creature.state.connectionFor(c).used = true;
             }

@@ -10,6 +10,9 @@
  * tracing floored at 1e-12, propagation at `config.plankConstant` (1e-7 by
  * default), so any winner magnitude between the two produced two different
  * windows.
+ *
+ * Both sides now share `runnerUpProximity`, whose window is
+ * `max(|winner|, 1e-7) * 0.2`.
  */
 
 import { assert, assertEquals } from "@std/assert";
@@ -75,9 +78,8 @@ function assertNoGradientToUnusedSynapse(cs: SynapseState, label: string) {
 }
 
 Deno.test("MAXIMUM: distant runner-up neither marked used nor leaked gradient (#3635)", () => {
-  // Winner 1e-9 (between the two old floors), runner-up 1e-8 away: inside the
-  // old propagation window (2e-8) but outside the tracing window (2e-10).
-  const cs = traceAndPropagate(new MAXIMUM(), [1e-9, -9e-9]);
+  // Winner 1.0 gives a 0.2-wide window; a runner-up 0.5 away sits well outside.
+  const cs = traceAndPropagate(new MAXIMUM(), [1, 0.5]);
 
   assertNoGradientToUnusedSynapse(cs, "MAXIMUM");
   assertEquals(cs.used ?? false, false, "distant runner-up must not be used");
@@ -85,8 +87,8 @@ Deno.test("MAXIMUM: distant runner-up neither marked used nor leaked gradient (#
 });
 
 Deno.test("MAXIMUM: close runner-up is both marked used and leaked gradient (#3635)", () => {
-  // Runner-up 1e-10 away from a 1e-9 winner: inside the 2e-10 window.
-  const cs = traceAndPropagate(new MAXIMUM(), [1e-9, 9e-10]);
+  // Runner-up 0.1 away from a 1.0 winner: inside the 0.2 window.
+  const cs = traceAndPropagate(new MAXIMUM(), [1, 0.9]);
 
   assertNoGradientToUnusedSynapse(cs, "MAXIMUM");
   assertEquals(cs.used, true, "close runner-up must be marked used");
@@ -95,7 +97,7 @@ Deno.test("MAXIMUM: close runner-up is both marked used and leaked gradient (#36
 
 Deno.test("MINIMUM: distant runner-up neither marked used nor leaked gradient (#3635)", () => {
   // Mirror of the MAXIMUM case — runner-ups sit above the winning minimum.
-  const cs = traceAndPropagate(new MINIMUM(), [-1e-9, 9e-9]);
+  const cs = traceAndPropagate(new MINIMUM(), [-1, -0.5]);
 
   assertNoGradientToUnusedSynapse(cs, "MINIMUM");
   assertEquals(cs.used ?? false, false, "distant runner-up must not be used");
@@ -103,9 +105,38 @@ Deno.test("MINIMUM: distant runner-up neither marked used nor leaked gradient (#
 });
 
 Deno.test("MINIMUM: close runner-up is both marked used and leaked gradient (#3635)", () => {
-  const cs = traceAndPropagate(new MINIMUM(), [-1e-9, -9e-10]);
+  const cs = traceAndPropagate(new MINIMUM(), [-1, -0.9]);
 
   assertNoGradientToUnusedSynapse(cs, "MINIMUM");
   assertEquals(cs.used, true, "close runner-up must be marked used");
   assert(cs.count > 0, "close runner-up must receive leaked gradient");
+});
+
+// The regression band: a winner magnitude between the two old floors (1e-12
+// while tracing, 1e-7 while propagating). Before the consolidation, a runner-up
+// 1e-8 from a 1e-9 winner fell inside the propagation window (2e-8) but outside
+// the tracing window (2e-10) — gradient leaked to a synapse never marked used.
+// The shared floor puts both sides on the same 2e-8 window, so it is used.
+Deno.test("MAXIMUM: sub-plank winner marks and leaks to the same runner-up (#3635)", () => {
+  const cs = traceAndPropagate(new MAXIMUM(), [1e-9, -9e-9]);
+
+  assertNoGradientToUnusedSynapse(cs, "MAXIMUM");
+  assertEquals(
+    cs.used,
+    true,
+    "runner-up inside the shared window must be used",
+  );
+  assert(cs.count > 0, "runner-up inside the shared window must get gradient");
+});
+
+Deno.test("MINIMUM: sub-plank winner marks and leaks to the same runner-up (#3635)", () => {
+  const cs = traceAndPropagate(new MINIMUM(), [-1e-9, 9e-9]);
+
+  assertNoGradientToUnusedSynapse(cs, "MINIMUM");
+  assertEquals(
+    cs.used,
+    true,
+    "runner-up inside the shared window must be used",
+  );
+  assert(cs.count > 0, "runner-up inside the shared window must get gradient");
 });
