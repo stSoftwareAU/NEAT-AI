@@ -107,11 +107,13 @@ Deno.test("rollup - verdict totals are internally consistent", () => {
 
 Deno.test("toConsolidatedMarkdown - renders every classified key", () => {
   const md = toConsolidatedMarkdown(result);
-  for (const key of ["populationSize", "mutation", "specialist", "mcmc"]) {
+  // `specialist` was here until #3568 removed the option; `opd` stands in as
+  // the slice F representative.
+  for (const key of ["populationSize", "mutation", "opd", "mcmc"]) {
     assert(md.includes(`\`${key}\``), `${key} missing from the merged table`);
   }
   assert(md.includes("| `mutation`"), "the gap key has its own table row");
-  assert(md.includes("#3568"), "removal issue numbers are rendered");
+  assert(md.includes("#3570"), "removal issue numbers are rendered");
 });
 
 Deno.test("toConsolidatedMarkdown - reports a gap loudly when one exists", () => {

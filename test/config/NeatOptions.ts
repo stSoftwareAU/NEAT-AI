@@ -87,6 +87,14 @@ Deno.test("NeatOptions - Omit list allows partial sub-object overrides", () => {
   assertEquals(config.fineTunePopulation.successRateWindow, 5);
 });
 
+// Issue #3568: specialist was removed as an option that was parsed but never
+// read — the parsed config must no longer carry it (regression guard against
+// reintroduction). `SpecialistPipeline` keeps its own constructor config.
+Deno.test("NeatOptions - specialist is not a config key", () => {
+  const config = createNeatConfig({}) as unknown as Record<string, unknown>;
+  assertEquals(Object.hasOwn(config, "specialist"), false);
+});
+
 // Issue #3562: stabilityAdaptation was removed as an unimplemented option — the
 // parsed config must no longer carry it (regression guard against reintroduction).
 Deno.test("NeatOptions - stabilityAdaptation is not a config key", () => {
