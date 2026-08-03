@@ -29,8 +29,10 @@ jobs:
 
       - name: Read version from deno.json
         id: version
+        # `-E` is pinned here by test/ci/WorkflowVersionCheckStrictMode.ts
+        # (Issue #3003) — do not normalise to `set -euo pipefail`.
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
           VERSION=$(jq -r .version deno.json)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
