@@ -3,7 +3,6 @@ import { Creature } from "@creature";
 import { compactCreature } from "@compact/CompactCreature.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { cleanupOrphanedNeurons } from "@compact/OrphanedNeuronCleanup.ts";
-import { mergeParallelIdentityBridges } from "@compact/ParallelIdentityMerge.ts";
 import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 
@@ -277,12 +276,8 @@ Deno.test("compact: parallel IDENTITY bridge merge preserves neuron tags on kept
     output: 1,
   };
 
-  // mergeParallelIdentityBridges does not call normaliseCreatureExport,
-  // so populate integer IDs before calling.
-  normaliseCreatureExport(exported);
-
   // Act
-  const result = mergeParallelIdentityBridges(exported);
+  const result = mergeParallelBridges(exported);
   assertEquals(result.removedNeurons, 1, "One neuron should be removed");
 
   // Assert: The kept neuron (bridge-A) should have merged tags.
@@ -396,12 +391,8 @@ Deno.test("compact: parallel IDENTITY bridge merge preserves synapse tags", () =
     output: 1,
   };
 
-  // mergeParallelIdentityBridges does not call normaliseCreatureExport,
-  // so populate integer IDs before calling.
-  normaliseCreatureExport(exported);
-
   // Act
-  const result = mergeParallelIdentityBridges(exported);
+  const result = mergeParallelBridges(exported);
   assertEquals(result.removedNeurons, 1, "One neuron should be removed");
 
   // Assert: Both inbound synapses should retain their tags.

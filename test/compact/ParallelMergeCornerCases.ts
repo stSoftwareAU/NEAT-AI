@@ -1,6 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
-import { mergeParallelIdentityBridges } from "@compact/ParallelIdentityMerge.ts";
 import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
 import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
 
@@ -36,7 +35,7 @@ Deno.test("parallel merge: bridge neuron with typed synapse is not merged", () =
 
   // h0 has 2 inbound (normal + condition), so NOT a bridge.
   // h1 is a bridge but alone — no group of 2+. No merge should occur.
-  const identityResult = mergeParallelIdentityBridges(json);
+  const identityResult = mergeParallelBridges(json);
   assertEquals(
     identityResult.removedNeurons,
     0,
@@ -104,7 +103,7 @@ Deno.test("parallel merge: kept neuron's source is also merged elsewhere", () =>
   };
 
   // h0 and h1 are bridges to output. h2 is not a bridge (2 outbound).
-  const result = mergeParallelIdentityBridges(json);
+  const result = mergeParallelBridges(json);
   assert(result.removedNeurons > 0, "Should merge h0 and h1");
   assertValidSynapseReferences(json, "after kept neuron source test");
 
@@ -134,7 +133,7 @@ Deno.test("parallel merge: duplicate synapse from redirect is prevented", () => 
     ],
   };
 
-  const result = mergeParallelIdentityBridges(json);
+  const result = mergeParallelBridges(json);
   assertEquals(
     result.removedNeurons,
     0,
@@ -174,7 +173,7 @@ Deno.test("parallel merge: neuron becomes bridge after zero-weight pruning conte
 
   // This simulates the state after zero-weight pruning has already
   // removed zero-weight synapses, leaving bridge candidates.
-  const result = mergeParallelIdentityBridges(json);
+  const result = mergeParallelBridges(json);
   assert(result.removedNeurons > 0, "Should merge post-pruning bridges");
   assertValidSynapseReferences(json, "after post-pruning merge");
 
@@ -232,7 +231,7 @@ Deno.test("parallel identity merge: integrity assertion catches dangling referen
     ],
   };
 
-  const result = mergeParallelIdentityBridges(json);
+  const result = mergeParallelBridges(json);
   assert(result.removedNeurons > 0, "Should merge");
   // If assertion is missing or there's a dangling ref, this would have thrown.
   assertValidSynapseReferences(json, "post-merge integrity check");
