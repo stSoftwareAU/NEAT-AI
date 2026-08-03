@@ -1,10 +1,9 @@
 # 🎛️ Mutation adaptation
 
-Adaptive mutation, plateau detection, stability adaptation, MCMC (Markov Chain
-Monte Carlo) acceptance, and per-creature hyperparameter evolution all adjust
-how mutations are applied and accepted. They share a common goal: keep
-exploration alive when the population stagnates, and tighten exploitation when
-fitness improves.
+Adaptive mutation, plateau detection, MCMC (Markov Chain Monte Carlo)
+acceptance, and per-creature hyperparameter evolution all adjust how mutations
+are applied and accepted. They share a common goal: keep exploration alive when
+the population stagnates, and tighten exploitation when fitness improves.
 
 ```ts
 import { createNeatConfig } from "@stsoftware/neat-ai";
@@ -16,7 +15,6 @@ const config = createNeatConfig({
     largeTopologyWeight: 0.1,
   },
   plateauDetection: { enabled: true },
-  stabilityAdaptation: { enabled: true },
   mcmc: { enabled: true, initialTemperature: 1.0, coolingRate: 0.995 },
   hyperparameterEvolution: { enabled: true },
 });
@@ -63,27 +61,6 @@ Pass as `plateauDetection` in options.
 
 **Validation:** `rapidImprovementRate` must be greater than
 `minImprovementRate`.
-
-## 🧪 Stability adaptation
-
-Adapts mutation rates based on validation stability, tracking mutation outcomes
-per creature and adjusting strategies for brittle offspring. Disabled by
-default.
-
-Pass as `stabilityAdaptation` in options.
-
-| Option                                | Type      | Default | Description                                               |
-| ------------------------------------- | --------- | ------- | --------------------------------------------------------- |
-| `enabled`                             | `boolean` | `false` | Enable stability-based adaptation                         |
-| `stabilityWindowSize`                 | `integer` | `20`    | Rolling window size for tracking outcomes (min: 1)        |
-| `brittlenessThreshold`                | `number`  | `0.3`   | Fraction of brittle mutations triggering adjustment (0–1) |
-| `brittleReductionFactor`              | `number`  | `0.5`   | Mutation rate reduction for brittle creatures (0–1)       |
-| `stableBoostFactor`                   | `number`  | `1.3`   | Mutation rate boost for stable creatures (min: 1)         |
-| `stableBoostThreshold`                | `number`  | `0.85`  | Stability rate threshold for boost (0–1)                  |
-| `selectionStabilityWeight`            | `number`  | `0.2`   | Weight of stability in parent selection (0–1)             |
-| `adaptiveSelectionWeight`             | `boolean` | `false` | Adapt selection weight based on population brittleness    |
-| `topologyMutationReductionForBrittle` | `number`  | `0.3`   | Topology mutation weight for brittle creatures (0–1)      |
-| `trackPerMutationType`                | `boolean` | `false` | Track and adapt per mutation type                         |
 
 ## 🎲 MCMC acceptance criterion
 

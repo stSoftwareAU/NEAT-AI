@@ -13,7 +13,6 @@ import type { NeatArguments } from "@config/NeatArguments.ts";
 import type { PlateauDetectionConfig } from "@neat/PlateauDetector.ts";
 import type { PredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
 import type { QuantumStepConfig } from "@config/QuantumStepConfig.ts";
-import type { StabilityAdaptationConfig } from "@config/StabilityAdaptationConfig.ts";
 import type { BiasRegularisationConfig } from "@config/BiasRegularisationConfig.ts";
 import type { MemoryConfig } from "@config/MemoryConfig.ts";
 import type { DiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
@@ -94,8 +93,8 @@ type NumericOptionKeys =
 /**
  * Options for NEAT configuration.
  * All properties are optional; defaults are applied in createNeatConfig().
- * For discoveryMinCandidatesPerCategory, adaptiveMutationThresholds, plateauDetection,
- * and stabilityAdaptation, you can specify partial overrides and defaults will be merged in.
+ * For discoveryMinCandidatesPerCategory, adaptiveMutationThresholds and
+ * plateauDetection, you can specify partial overrides and defaults will be merged in.
  */
 export type NeatOptions =
   & Omit<
@@ -104,7 +103,6 @@ export type NeatOptions =
     | "adaptiveMutationThresholds"
     | "plateauDetection"
     | "predictiveCoding"
-    | "stabilityAdaptation"
     | "weightRegularisation"
     | "biasRegularisation"
     | "quantumStep"
@@ -144,8 +142,6 @@ export type NeatOptions =
     plateauDetection?: PlateauDetectionConfig;
     /** Partial overrides for Predictive Coding configuration (defaults applied if not specified) */
     predictiveCoding?: PredictiveCodingConfig;
-    /** Partial overrides for stability adaptation configuration (defaults applied if not specified) */
-    stabilityAdaptation?: StabilityAdaptationConfig;
     /** Partial overrides for weight regularisation configuration (defaults applied if not specified) */
     weightRegularisation?: WeightRegularisationConfig;
     /** Partial overrides for bias regularisation configuration (defaults applied if not specified) */
@@ -280,7 +276,6 @@ export type NeatOptionsInput =
     | "adaptiveMutationThresholds"
     | "plateauDetection"
     | "predictiveCoding"
-    | "stabilityAdaptation"
     | "weightRegularisation"
     | "biasRegularisation"
     | "quantumStep"
@@ -325,7 +320,6 @@ export type NeatOptionsInput =
     adaptiveMutationThresholds?: CoerceNumeric<AdaptiveMutationThresholds>;
     plateauDetection?: CoerceNumeric<PlateauDetectionConfig>;
     predictiveCoding?: CoerceNumeric<PredictiveCodingConfig>;
-    stabilityAdaptation?: CoerceNumeric<StabilityAdaptationConfig>;
     weightRegularisation?: CoerceNumeric<WeightRegularisationConfig>;
     biasRegularisation?: CoerceNumeric<BiasRegularisationConfig>;
     quantumStep?: CoerceNumeric<QuantumStepConfig>;

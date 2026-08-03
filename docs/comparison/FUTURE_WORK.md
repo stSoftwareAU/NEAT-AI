@@ -189,8 +189,6 @@ population sizing is implemented (Issue #1863).
   creatures (≥300 neurons) receive 90% weight/bias mutations, with linear
   interpolation for medium creatures (100–299 neurons).
 - **Plateau detection** (`PlateauDetector`): adapts mutation rates on plateaus.
-- **Stability adaptation** (`StabilityAdaptationConfig`): adapts mutation and
-  breeding based on validation stability.
 
 **What's still missing**: meta-learning for hyperparameters (learning to learn
 across tasks).

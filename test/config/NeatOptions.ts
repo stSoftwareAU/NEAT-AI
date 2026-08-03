@@ -73,7 +73,6 @@ Deno.test("NeatOptions - Omit list allows partial sub-object overrides", () => {
     discoveryMinCandidatesPerCategory: { addNeurons: 5 },
     adaptiveMutationThresholds: { medium: 30, large: 150 },
     plateauDetection: { enabled: true },
-    stabilityAdaptation: { enabled: true },
     weightRegularisation: { enabled: false },
     biasRegularisation: { maxAbsoluteBias: 50 },
     quantumStep: { minStep: 0.001 },
@@ -82,11 +81,17 @@ Deno.test("NeatOptions - Omit list allows partial sub-object overrides", () => {
   assertEquals(config.discoveryMinCandidatesPerCategory.addNeurons, 5);
   assertEquals(config.adaptiveMutationThresholds.medium, 30);
   assertEquals(config.plateauDetection.enabled, true);
-  assertEquals(config.stabilityAdaptation.enabled, true);
   assertEquals(config.weightRegularisation.enabled, false);
   assertEquals(config.biasRegularisation.maxAbsoluteBias, 50);
   assertEquals(config.quantumStep.minStep, 0.001);
   assertEquals(config.fineTunePopulation.successRateWindow, 5);
+});
+
+// Issue #3562: stabilityAdaptation was removed as an unimplemented option — the
+// parsed config must no longer carry it (regression guard against reintroduction).
+Deno.test("NeatOptions - stabilityAdaptation is not a config key", () => {
+  const config = createNeatConfig({}) as unknown as Record<string, unknown>;
+  assertEquals(Object.hasOwn(config, "stabilityAdaptation"), false);
 });
 
 // Issue #3558: ensembleDiversity was removed as an unimplemented option — the

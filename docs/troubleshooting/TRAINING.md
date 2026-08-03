@@ -77,16 +77,6 @@ disrupts good solutions.
 
 - **Too low** (< 0.1): Increase to `0.3` (default) or higher
 - **Too high** (> 0.7): Reduce to `0.3`–`0.5`
-- Consider enabling `stabilityAdaptation` to auto-tune per creature:
-
-```typescript
-stabilityAdaptation: {
-  enabled: true,
-  brittlenessThreshold: 0.3,
-  brittleReductionFactor: 0.5,
-  stableBoostFactor: 1.3,
-}
-```
 
 **Step 4 — Check population diversity:**
 
@@ -214,23 +204,11 @@ biasRegularisation: {
 }
 ```
 
-**Step 5 — Enable regularisation and stability adaptation:**
+**Step 5 — Rely on regularisation:**
 
-If `NaN`/`Infinity` occurs after mutations, the stability adaptation system can
-detect and reduce mutations for brittle creatures:
-
-```typescript
-stabilityAdaptation: {
-  enabled: true,
-  brittlenessThreshold: 0.3,      // Fraction of bad outcomes to trigger
-  brittleReductionFactor: 0.5,    // Halve mutation rate for brittle creatures
-  topologyMutationReductionForBrittle: 0.3, // Reduce structural mutations
-}
-```
-
-Combined with weight and bias regularisation (both enabled by default), this
-prevents the feedback loop where extreme values produce `NaN`, which then
-corrupts further calculations.
+Weight and bias regularisation (both enabled by default) prevent the feedback
+loop where extreme values produce `NaN`, which then corrupts further
+calculations.
 
 > [!WARNING]
 > If `NaN` values persist despite enabling all regularisation options, check

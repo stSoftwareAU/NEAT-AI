@@ -72,7 +72,6 @@ export const QUICK_START_PRESET: NeatOptions = {
  * - `plateauDetection.enabled: true` — Detect and respond to stagnation
  * - `plateauDetection.windowSize: 15` — Wider window for plateau detection
  * - `plateauDetection.responseMutationMultiplier: 2.5` — Aggressive response
- * - `stabilityAdaptation.enabled: true` — Adapt mutation to stability
  */
 export const LARGE_NETWORK_PRESET: NeatOptions = {
   populationSize: 200,
@@ -88,9 +87,6 @@ export const LARGE_NETWORK_PRESET: NeatOptions = {
     enabled: true,
     windowSize: 15,
     responseMutationMultiplier: 2.5,
-  },
-  stabilityAdaptation: {
-    enabled: true,
   },
 };
 

@@ -19,7 +19,6 @@ import {
 } from "@config/NeatConfig.ts";
 import { DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS } from "@config/AdaptiveMutationThresholds.ts";
 import { DEFAULT_QUANTUM_STEP_CONFIG } from "@config/QuantumStepConfig.ts";
-import { DEFAULT_STABILITY_ADAPTATION_CONFIG } from "@config/StabilityAdaptationConfig.ts";
 import { DEFAULT_WEIGHT_REGULARISATION_CONFIG } from "@config/WeightRegularisationConfig.ts";
 import { DEFAULT_BIAS_REGULARISATION_CONFIG } from "@config/BiasRegularisationConfig.ts";
 import { DEFAULT_FINE_TUNE_POPULATION_CONFIG } from "@config/FineTunePopulationConfig.ts";
@@ -108,20 +107,6 @@ Deno.test("Configuration guide - plateau detection defaults match code", () => {
   assertEquals(defaults.rapidImprovementRate, 0.01);
   assertEquals(defaults.responseMutationMultiplier, 2.0);
   assertEquals(defaults.responseImprovementMultiplier, 0.8);
-});
-
-Deno.test("Configuration guide - stability adaptation defaults match code", () => {
-  const defaults = DEFAULT_STABILITY_ADAPTATION_CONFIG;
-  assertEquals(defaults.enabled, false);
-  assertEquals(defaults.stabilityWindowSize, 20);
-  assertEquals(defaults.brittlenessThreshold, 0.3);
-  assertEquals(defaults.brittleReductionFactor, 0.5);
-  assertEquals(defaults.stableBoostFactor, 1.3);
-  assertEquals(defaults.stableBoostThreshold, 0.85);
-  assertEquals(defaults.selectionStabilityWeight, 0.2);
-  assertEquals(defaults.adaptiveSelectionWeight, false);
-  assertEquals(defaults.topologyMutationReductionForBrittle, 0.3);
-  assertEquals(defaults.trackPerMutationType, false);
 });
 
 Deno.test("Configuration guide - weight regularisation defaults match code", () => {

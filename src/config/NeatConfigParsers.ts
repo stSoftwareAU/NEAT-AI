@@ -26,7 +26,6 @@ export {
   parseSpecialist,
   parseSquashBudget,
   parseSquashEffectiveness,
-  parseStabilityAdaptation,
 } from "@config/parsers/MutationParsers.ts";
 export {
   parseAdaptivePopulation,
