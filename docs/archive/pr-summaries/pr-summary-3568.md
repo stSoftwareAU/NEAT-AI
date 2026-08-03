@@ -46,8 +46,8 @@ flowchart LR
 Removed:
 
 - `src/config/NeatOptions.ts` — the `specialist?: SpecialistConfig` field, the
-  `CoerceNumeric` mirror, `"specialist"` from both `keyof` `Omit` unions, and the
-  now-unused import.
+  `CoerceNumeric` mirror, `"specialist"` from both `keyof` `Omit` unions, and
+  the now-unused import.
 - `src/config/NeatArguments.ts` — the `specialist: RequiredSpecialistConfig`
   field and its import.
 - `src/config/NeatConfig.ts` — the `parseSpecialist(...)` wiring.
@@ -64,23 +64,27 @@ Removed:
 
 Kept, as the issue requires: `src/config/SpecialistConfig.ts`,
 `src/NEAT/SpecialistPipeline.ts`, `bench/SpecialistVsMixed.ts`,
-`test/NEAT/SpecialistPipeline.ts`, `Genus.addCreatureToSpecies(specialistTaskId)`
-and `Species.specialistTaskId`. `docs/archive/` is untouched.
+`test/NEAT/SpecialistPipeline.ts`,
+`Genus.addCreatureToSpecies(specialistTaskId)` and `Species.specialistTaskId`.
+`docs/archive/` is untouched.
 
 ## Test Plan
 
-- **Added** `test/config/NeatOptions.ts::"NeatOptions - specialist is not a
-  config key"` — a regression guard asserting the parsed config no longer carries
-  the key, matching the #3562 / #3558 precedent.
+- **Added**
+  `test/config/NeatOptions.ts::"NeatOptions - specialist is not a
+  config key"`
+  — a regression guard asserting the parsed config no longer carries the key,
+  matching the #3562 / #3558 precedent.
 - **Modified**
   `test/docs/DeepseekPapersIndex.ts::"deepseek-papers-index — specialist pipeline
-  defaults to off (#2530)"` — now asserts `DEFAULT_SPECIALIST_CONFIG.mode` (the
-  pipeline's own default, the only remaining opt-in switch) instead of the
-  removed `config.specialist.mode`. Same behavioural claim, live source.
+  defaults to off (#2530)"`
+  — now asserts `DEFAULT_SPECIALIST_CONFIG.mode` (the pipeline's own default,
+  the only remaining opt-in switch) instead of the removed
+  `config.specialist.mode`. Same behavioural claim, live source.
 - **Modified** `test/scripts/AuditOptionUsage.ts` — the pinned `NeatArguments`
   top-level key count moves 111 → 110.
-- **Modified** `test/scripts/OptionAuditRollup.ts` — the rendered-table probe uses
-  `opd` / `#3570` in place of the now-removed `specialist` / `#3568` row.
+- **Modified** `test/scripts/OptionAuditRollup.ts` — the rendered-table probe
+  uses `opd` / `#3570` in place of the now-removed `specialist` / `#3568` row.
 - **Unchanged and still green:** all 10 `test/NEAT/SpecialistPipeline.ts` tests,
   including `DEFAULT_SPECIALIST_CONFIG matches Issue #2530 defaults`.
 - `./quality.sh` (fmt, lint, bash syntax, `deno check`, WASM sync, full parallel
