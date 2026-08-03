@@ -17,8 +17,13 @@
 
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
-import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
-import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import {
+  buildTeacherDataset,
+  meanAbsoluteError,
+  perturb,
+  type Sample,
+  trainOneGeneration,
+} from "./lamarckian_harness.ts";
 
 // ---------------------------------------------------------------------------
 // Deterministic RNG
@@ -38,6 +43,8 @@ const DATASET_SIZE = 48;
 const POPULATION = 24;
 const GENERATIONS = 30;
 const INNER_TRAIN_ITERS = 4;
+const LEARNING_RATE = 0.1;
+const PERTURB_SCALE = 0.1;
 
 // ---------------------------------------------------------------------------
 // Build a small dense feed-forward network.
@@ -93,78 +100,16 @@ function buildNetwork(rng: () => number): CreatureExport {
 }
 
 // ---------------------------------------------------------------------------
-// Supervised dataset: a fixed (random) target mapping the population must learn.
+// Supervised dataset: a fixed (random) logistic-teacher mapping the population
+// must learn. The dataset, fitness metric, Lamarckian training step and
+// perturbation operator are shared with the rest of the pace/convergence
+// experiment family via `bench/lamarckian_harness.ts`.
 // ---------------------------------------------------------------------------
-interface Sample {
-  input: Float32Array;
-  target: Float32Array;
-}
-
-function buildDataset(rng: () => number): Sample[] {
-  // Random target weights for a logistic mapping of the inputs.
-  const targetW: number[][] = Array.from(
-    { length: OUTPUTS },
-    () => Array.from({ length: INPUTS }, () => rng() * 2 - 1),
-  );
-  const logistic = (x: number) => 1 / (1 + Math.exp(-x));
-
-  const samples: Sample[] = [];
-  for (let s = 0; s < DATASET_SIZE; s++) {
-    const input = new Float32Array(INPUTS);
-    for (let i = 0; i < INPUTS; i++) input[i] = rng() * 2 - 1;
-    const target = new Float32Array(OUTPUTS);
-    for (let o = 0; o < OUTPUTS; o++) {
-      let sum = 0;
-      for (let i = 0; i < INPUTS; i++) sum += targetW[o][i] * input[i];
-      target[o] = logistic(sum);
-    }
-    samples.push({ input, target });
-  }
-  return samples;
-}
-
-function meanError(creature: Creature, data: Sample[]): number {
-  let total = 0;
-  for (const { input, target } of data) {
-    const out = creature.activate(input);
-    for (let o = 0; o < OUTPUTS; o++) total += Math.abs(out[o] - target[o]);
-  }
-  return total / (data.length * OUTPUTS);
-}
-
-function trainCreature(creature: Creature, data: Sample[]): void {
-  const json = creature.exportJSON();
-  const config = createBackPropagationConfig({
-    generations: 1,
-    learningRate: 0.1,
-    plankConstant: 1e-7,
-    maximumWeightAdjustmentScale: 1,
-    maximumBiasAdjustmentScale: 1,
-    disableRandomSamples: true,
-    batchSize: 1,
-  });
-  const sparse = new SparseConfig(json, config);
-  for (let iter = 0; iter < INNER_TRAIN_ITERS; iter++) {
-    for (const { input, target } of data) {
-      creature.activateAndTrace(input, false, sparse);
-      creature.propagate(target, config, sparse);
-    }
-  }
-  creature.applyLearnings(config, sparse);
-}
-
-function perturb(
-  source: Creature,
-  rng: () => number,
-  scale: number,
-): Creature {
-  const json = source.exportJSON();
-  for (const s of json.synapses) s.weight += (rng() * 2 - 1) * scale;
-  for (const n of json.neurons) {
-    if (typeof n.bias === "number") n.bias += (rng() * 2 - 1) * scale;
-  }
-  return Creature.fromJSON(json);
-}
+const DATASET_OPTIONS = {
+  inputs: INPUTS,
+  outputs: OUTPUTS,
+  datasetSize: DATASET_SIZE,
+} as const;
 
 // ---------------------------------------------------------------------------
 // One full evolution run for a given trainPerGen.
@@ -180,13 +125,16 @@ function runEvolution(
   let best = Number.POSITIVE_INFINITY;
   for (let gen = 0; gen < GENERATIONS; gen++) {
     // Evaluate and sort ascending by error (fittest first).
-    const scored = pop.map((c) => ({ c, e: meanError(c, data) }));
+    const scored = pop.map((c) => ({
+      c,
+      e: meanAbsoluteError(c, data, OUTPUTS),
+    }));
     scored.sort((a, b) => a.e - b.e);
     best = scored[0].e;
 
     // Train the top `trainPerGen` creatures with real backprop.
     for (let i = 0; i < Math.min(trainPerGen, scored.length); i++) {
-      trainCreature(scored[i].c, data);
+      trainOneGeneration(scored[i].c, data, LEARNING_RATE, INNER_TRAIN_ITERS);
     }
 
     // Evolve: keep the better half, replace the worse half with perturbed
@@ -196,13 +144,13 @@ function runEvolution(
     const next: Creature[] = scored.slice(0, keep).map((s) => s.c);
     while (next.length < scored.length) {
       const parent = scored[Math.floor(rng() * topQuarter)].c;
-      next.push(perturb(parent, rng, 0.1));
+      next.push(perturb(parent, rng, PERTURB_SCALE));
     }
     pop = next;
   }
 
   // Final best after the last training round.
-  const finalScored = pop.map((c) => meanError(c, data));
+  const finalScored = pop.map((c) => meanAbsoluteError(c, data, OUTPUTS));
   finalScored.sort((a, b) => a - b);
   return Math.min(best, finalScored[0]);
 }
@@ -211,7 +159,7 @@ function runEvolution(
 // Shared setup and comparison.
 // ---------------------------------------------------------------------------
 const setupRng = seededRandom(2791);
-const dataset = buildDataset(setupRng);
+const dataset = buildTeacherDataset(setupRng, DATASET_OPTIONS);
 
 // Build a shared initial population (same starting point for every run).
 const initialPopulation: CreatureExport[] = [];
@@ -222,7 +170,11 @@ for (let p = 0; p < POPULATION; p++) {
 const baseError = (() => {
   let total = 0;
   for (const j of initialPopulation) {
-    total += meanError(Creature.fromJSON(structuredClone(j)), dataset);
+    total += meanAbsoluteError(
+      Creature.fromJSON(structuredClone(j)),
+      dataset,
+      OUTPUTS,
+    );
   }
   return total / initialPopulation.length;
 })();
@@ -257,5 +209,5 @@ for (const r of results) {
 // A single training step, exposed for `deno bench`.
 const benchCreature = Creature.fromJSON(structuredClone(initialPopulation[0]));
 Deno.bench("trainPerGenConvergence: single creature backprop step", () => {
-  trainCreature(benchCreature, dataset);
+  trainOneGeneration(benchCreature, dataset, LEARNING_RATE, INNER_TRAIN_ITERS);
 });
