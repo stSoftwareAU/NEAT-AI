@@ -45,7 +45,7 @@
  * gate, a preset may be flipped only when the primary metric improves by ≥5 %
  * on the **production creature + 21 GiB binary corpus** with repeatable seeds.
  * To produce the adoption-gate numbers on GRQ, a human replaces the synthetic
- * `buildNetwork`/`buildDataset`/scoring with the production creature and corpus
+ * `buildNetwork`/`buildTeacherDataset`/scoring with the production creature and corpus
  * scorer, and sets `costPerEvalSeconds` to the value measured from #3256
  * `phaseTimingTotals`. This file flips **no** default.
  *
@@ -63,8 +63,12 @@
 
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
-import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
-import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import {
+  buildTeacherDataset,
+  meanAbsoluteError,
+  perturb,
+  trainOneGeneration,
+} from "./lamarckian_harness.ts";
 import {
   createSeededRng,
   type RandomNumberGenerator,
@@ -147,13 +151,10 @@ export const DEFAULT_BAKE_OFF_OPTIONS: BakeOffOptions = {
 };
 
 // ---------------------------------------------------------------------------
-// Fixed supervised problem (same construction as EvolutionPaceLeverComparison)
+// Fixed supervised problem — the teacher dataset, fitness metric, Lamarckian
+// training step and perturbation operator are shared with the rest of the
+// pace/convergence experiment family via `bench/lamarckian_harness.ts`.
 // ---------------------------------------------------------------------------
-
-interface Sample {
-  readonly input: Float32Array;
-  readonly target: Float32Array;
-}
 
 const BASE_LEARNING_RATE = 0.1;
 const BASE_PERTURB_SCALE = 0.1;
@@ -219,83 +220,6 @@ function buildNetwork(
   };
 }
 
-function buildDataset(
-  rng: RandomNumberGenerator,
-  opts: BakeOffOptions,
-): Sample[] {
-  const targetW: number[][] = Array.from(
-    { length: opts.outputs },
-    () => Array.from({ length: opts.inputs }, () => rng.random() * 2 - 1),
-  );
-  const logistic = (x: number) => 1 / (1 + Math.exp(-x));
-
-  const samples: Sample[] = [];
-  for (let s = 0; s < opts.datasetSize; s++) {
-    const input = new Float32Array(opts.inputs);
-    for (let i = 0; i < opts.inputs; i++) input[i] = rng.random() * 2 - 1;
-    const target = new Float32Array(opts.outputs);
-    for (let o = 0; o < opts.outputs; o++) {
-      let sum = 0;
-      for (let i = 0; i < opts.inputs; i++) sum += targetW[o][i] * input[i];
-      target[o] = logistic(sum);
-    }
-    samples.push({ input, target });
-  }
-  return samples;
-}
-
-function meanError(
-  creature: Creature,
-  data: readonly Sample[],
-  outputs: number,
-): number {
-  let total = 0;
-  for (const { input, target } of data) {
-    const out = creature.activate(input);
-    for (let o = 0; o < outputs; o++) total += Math.abs(out[o] - target[o]);
-  }
-  return total / (data.length * outputs);
-}
-
-function trainCreature(
-  creature: Creature,
-  data: readonly Sample[],
-  learningRate: number,
-  innerIters: number,
-): void {
-  const json = creature.exportJSON();
-  const config = createBackPropagationConfig({
-    generations: 1,
-    learningRate,
-    plankConstant: 1e-7,
-    maximumWeightAdjustmentScale: 1,
-    maximumBiasAdjustmentScale: 1,
-    disableRandomSamples: true,
-    batchSize: 1,
-  });
-  const sparse = new SparseConfig(json, config);
-  for (let iter = 0; iter < innerIters; iter++) {
-    for (const { input, target } of data) {
-      creature.activateAndTrace(input, false, sparse);
-      creature.propagate(target, config, sparse);
-    }
-  }
-  creature.applyLearnings(config, sparse);
-}
-
-function perturb(
-  source: Creature,
-  rng: RandomNumberGenerator,
-  scale: number,
-): Creature {
-  const json = source.exportJSON();
-  for (const s of json.synapses) s.weight += (rng.random() * 2 - 1) * scale;
-  for (const n of json.neurons) {
-    if (typeof n.bias === "number") n.bias += (rng.random() * 2 - 1) * scale;
-  }
-  return Creature.fromJSON(json);
-}
-
 // ---------------------------------------------------------------------------
 // One member of the evolving population
 // ---------------------------------------------------------------------------
@@ -323,14 +247,14 @@ export function eliteCount(opts: BakeOffOptions): number {
  */
 export function runBakeOffConfig(opts: BakeOffOptions): BakeOffResult {
   const setupRng = createSeededRng(opts.seed);
-  const dataset = buildDataset(setupRng, opts);
+  const dataset = buildTeacherDataset(() => setupRng.random(), opts);
   // A distinct stream for evolution so dataset size does not shift breeding.
   const rng = createSeededRng(opts.seed ^ 0x5bd1e995);
 
   let scoredEvaluations = 0;
   const score = (creature: Creature): number => {
     scoredEvaluations++;
-    return meanError(creature, dataset, opts.outputs);
+    return meanAbsoluteError(creature, dataset, opts.outputs);
   };
 
   // Initial population — every member is unscored, so every member is scored.
@@ -358,7 +282,7 @@ export function runBakeOffConfig(opts: BakeOffOptions): BakeOffResult {
     const trainCount = Math.min(opts.trainPerGen, members.length);
     for (let i = 0; i < trainCount; i++) {
       const m = members[i];
-      trainCreature(
+      trainOneGeneration(
         m.creature,
         dataset,
         BASE_LEARNING_RATE,
@@ -375,7 +299,11 @@ export function runBakeOffConfig(opts: BakeOffOptions): BakeOffResult {
     const topQuarter = Math.max(1, Math.floor(members.length / 4));
     while (next.length < opts.populationSize) {
       const parent = members[rng.randomInt(0, topQuarter - 1)];
-      const childCreature = perturb(parent.creature, rng, BASE_PERTURB_SCALE);
+      const childCreature = perturb(
+        parent.creature,
+        () => rng.random(),
+        BASE_PERTURB_SCALE,
+      );
       next.push({ creature: childCreature, error: score(childCreature) });
     }
 

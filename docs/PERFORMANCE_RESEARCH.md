@@ -1079,8 +1079,8 @@ by **≥5 %** on the **production creature + 21 GiB binary corpus** with
 repeatable seeds. Producing those numbers requires GRQ Apple-Silicon hardware
 and the production corpus/creature, which are **not** reachable from CI or an
 autonomous worker. To generate the adoption-gate evidence, a human runs the
-harness on GRQ: swap the synthetic `buildNetwork`/`buildDataset`/scoring for the
-production creature and corpus scorer, set the per-evaluation cost via
+harness on GRQ: swap the synthetic `buildNetwork`/`buildTeacherDataset`/scoring
+for the production creature and corpus scorer, set the per-evaluation cost via
 `BAKE_OFF_COST_PER_EVAL_SECONDS` (from #3256 `phaseTimingTotals`), and record
 the host class, neat-ai/scorer/core versions, and corpus path alongside each
 row. Until that run exists, **no default is flipped** — this section ships the

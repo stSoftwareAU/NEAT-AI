@@ -44,8 +44,13 @@
 
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
-import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
-import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import {
+  buildTeacherDataset,
+  meanAbsoluteError,
+  perturb,
+  type Sample,
+  trainOneGeneration,
+} from "./lamarckian_harness.ts";
 import { metropolisHastingsAccept } from "@neat/MetropolisHastings.ts";
 import { computeAdaptivePopulationSize } from "@neat/AdaptivePopulationSizer.ts";
 import { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "@config/AdaptivePopulationConfig.ts";
@@ -169,13 +174,10 @@ export const LEVER_MATRIX: readonly LeverConfig[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Fixed supervised problem (same construction as TrainPerGenConvergence)
+// Fixed supervised problem — the teacher dataset, fitness metric, Lamarckian
+// training step and perturbation operator are shared with the rest of the
+// pace/convergence experiment family via `bench/lamarckian_harness.ts`.
 // ---------------------------------------------------------------------------
-
-interface Sample {
-  readonly input: Float32Array;
-  readonly target: Float32Array;
-}
 
 const BASE_LEARNING_RATE = 0.1;
 const BASE_PERTURB_SCALE = 0.1;
@@ -246,83 +248,6 @@ function buildNetwork(
     neurons,
     synapses,
   };
-}
-
-function buildDataset(
-  rng: RandomNumberGenerator,
-  opts: ComparisonOptions,
-): Sample[] {
-  const targetW: number[][] = Array.from(
-    { length: opts.outputs },
-    () => Array.from({ length: opts.inputs }, () => rng.random() * 2 - 1),
-  );
-  const logistic = (x: number) => 1 / (1 + Math.exp(-x));
-
-  const samples: Sample[] = [];
-  for (let s = 0; s < opts.datasetSize; s++) {
-    const input = new Float32Array(opts.inputs);
-    for (let i = 0; i < opts.inputs; i++) input[i] = rng.random() * 2 - 1;
-    const target = new Float32Array(opts.outputs);
-    for (let o = 0; o < opts.outputs; o++) {
-      let sum = 0;
-      for (let i = 0; i < opts.inputs; i++) sum += targetW[o][i] * input[i];
-      target[o] = logistic(sum);
-    }
-    samples.push({ input, target });
-  }
-  return samples;
-}
-
-function meanError(
-  creature: Creature,
-  data: readonly Sample[],
-  outputs: number,
-): number {
-  let total = 0;
-  for (const { input, target } of data) {
-    const out = creature.activate(input);
-    for (let o = 0; o < outputs; o++) total += Math.abs(out[o] - target[o]);
-  }
-  return total / (data.length * outputs);
-}
-
-function trainCreature(
-  creature: Creature,
-  data: readonly Sample[],
-  learningRate: number,
-  innerIters: number,
-): void {
-  const json = creature.exportJSON();
-  const config = createBackPropagationConfig({
-    generations: 1,
-    learningRate,
-    plankConstant: 1e-7,
-    maximumWeightAdjustmentScale: 1,
-    maximumBiasAdjustmentScale: 1,
-    disableRandomSamples: true,
-    batchSize: 1,
-  });
-  const sparse = new SparseConfig(json, config);
-  for (let iter = 0; iter < innerIters; iter++) {
-    for (const { input, target } of data) {
-      creature.activateAndTrace(input, false, sparse);
-      creature.propagate(target, config, sparse);
-    }
-  }
-  creature.applyLearnings(config, sparse);
-}
-
-function perturb(
-  source: Creature,
-  rng: RandomNumberGenerator,
-  scale: number,
-): Creature {
-  const json = source.exportJSON();
-  for (const s of json.synapses) s.weight += (rng.random() * 2 - 1) * scale;
-  for (const n of json.neurons) {
-    if (typeof n.bias === "number") n.bias += (rng.random() * 2 - 1) * scale;
-  }
-  return Creature.fromJSON(json);
 }
 
 // ---------------------------------------------------------------------------
@@ -406,7 +331,7 @@ export function runConfig(
       return {
         creature,
         hyper,
-        error: meanError(creature, dataset, opts.outputs),
+        error: meanAbsoluteError(creature, dataset, opts.outputs),
       };
     });
 
@@ -419,7 +344,7 @@ export function runConfig(
     for (let gen = 0; gen < opts.generations; gen++) {
       // Evaluate + sort fittest-first.
       for (const m of members) {
-        m.error = meanError(m.creature, dataset, opts.outputs);
+        m.error = meanAbsoluteError(m.creature, dataset, opts.outputs);
       }
       members.sort((a, b) => a.error - b.error);
       best = Math.min(best, members[0].error);
@@ -453,13 +378,13 @@ export function runConfig(
       const trainCount = Math.min(opts.trainPerGen, members.length);
       for (let i = 0; i < trainCount; i++) {
         const m = members[i];
-        trainCreature(
+        trainOneGeneration(
           m.creature,
           dataset,
           memberLearningRate(m, config),
           opts.innerTrainIters,
         );
-        m.error = meanError(m.creature, dataset, opts.outputs);
+        m.error = meanAbsoluteError(m.creature, dataset, opts.outputs);
       }
       members.sort((a, b) => a.error - b.error);
 
@@ -481,10 +406,14 @@ export function runConfig(
           : parent.hyper;
         const childCreature = perturb(
           parent.creature,
-          rng,
+          () => rng.random(),
           memberPerturbScale({ ...parent, hyper: childHyper }, config),
         );
-        const childError = meanError(childCreature, dataset, opts.outputs);
+        const childError = meanAbsoluteError(
+          childCreature,
+          dataset,
+          opts.outputs,
+        );
 
         let accept = true;
         if (config.mcmc) {
@@ -524,7 +453,7 @@ export function runConfig(
                 DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
               )
               : { ...DEFAULT_EVOLVABLE_HYPERPARAMETERS },
-            error: meanError(fresh, dataset, opts.outputs),
+            error: meanAbsoluteError(fresh, dataset, opts.outputs),
           };
         }
         // Re-warm the temperature so MCMC can explore the fresh blood.
@@ -537,7 +466,7 @@ export function runConfig(
 
     // Final sweep so a last-generation improvement is not missed.
     for (const m of members) {
-      const e = meanError(m.creature, dataset, opts.outputs);
+      const e = meanAbsoluteError(m.creature, dataset, opts.outputs);
       best = Math.min(best, e);
     }
     if (generationsToTarget === null && best <= opts.targetError) {
@@ -564,7 +493,7 @@ export function runLeverComparison(
   matrix: readonly LeverConfig[] = LEVER_MATRIX,
 ): LeverResult[] {
   const setupRng = createSeededRng(opts.seed);
-  const dataset = buildDataset(setupRng, opts);
+  const dataset = buildTeacherDataset(() => setupRng.random(), opts);
   const initialPopulation: CreatureExport[] = [];
   for (let p = 0; p < opts.population; p++) {
     initialPopulation.push(buildNetwork(setupRng, opts));
