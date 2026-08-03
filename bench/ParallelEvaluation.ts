@@ -85,7 +85,6 @@ Deno.bench({
   baseline: true,
   async fn() {
     const evalConfig: RequiredParallelEvaluationConfig = {
-      maxConcurrentEvaluations: 0,
       topologyGrouping: false,
     };
     const fitness = new Fitness(workers, 0.0001, false, evalConfig);
@@ -99,7 +98,6 @@ Deno.bench({
   group: "100 creatures, 5 topologies",
   async fn() {
     const evalConfig: RequiredParallelEvaluationConfig = {
-      maxConcurrentEvaluations: 0,
       topologyGrouping: true,
     };
     const fitness = new Fitness(workers, 0.0001, false, evalConfig);
@@ -114,7 +112,6 @@ Deno.bench({
   baseline: true,
   async fn() {
     const evalConfig: RequiredParallelEvaluationConfig = {
-      maxConcurrentEvaluations: 0,
       topologyGrouping: false,
     };
     const fitness = new Fitness(workers, 0.0001, false, evalConfig);
@@ -128,7 +125,6 @@ Deno.bench({
   group: "500 creatures, 10 topologies",
   async fn() {
     const evalConfig: RequiredParallelEvaluationConfig = {
-      maxConcurrentEvaluations: 0,
       topologyGrouping: true,
     };
     const fitness = new Fitness(workers, 0.0001, false, evalConfig);

@@ -7,6 +7,11 @@
  * verifies that `additionalWorkers` passed to `Fitness.calculate()`
  * participate in creature evaluation alongside the regular fast-pool
  * workers.
+ *
+ * BUSINESS LOGIC CHANGE (Issue #3566): a test here asserted that
+ * `maxConcurrentEvaluations: 2` excluded the assisting heavy worker. The
+ * option has been removed — it defaulted to 0 (no cap) and no consumer set
+ * it — so that test went with it; every supplied worker now participates.
  */
 import { assertEquals, assertGreater } from "@std/assert";
 import { Creature } from "@creature";
@@ -156,57 +161,6 @@ Deno.test(
       fastWorker.evaluationCount,
       2,
       "All creatures should be evaluated by the fast worker",
-    );
-  },
-);
-
-Deno.test(
-  "Fitness.calculate with additional workers respects maxConcurrentEvaluations",
-  async () => {
-    const fastWorker1 = new MockWorker("fast-1");
-    const fastWorker2 = new MockWorker("fast-2");
-    const heavyWorker = new MockWorker("heavy-idle");
-
-    // Limit to 2 concurrent workers
-    const fitness = new Fitness(
-      [fastWorker1, fastWorker2] as unknown[] as WorkerHandler[],
-      0.0001,
-      false,
-      {
-        maxConcurrentEvaluations: 2,
-        topologyGrouping: false,
-      },
-    );
-
-    const population = [
-      makeCreature(0.1),
-      makeCreature(0.2),
-      makeCreature(0.3),
-      makeCreature(0.4),
-    ];
-
-    // Even though we pass a heavy worker, the cap should limit to 2 workers
-    await fitness.calculate(
-      population,
-      [heavyWorker] as unknown[] as WorkerHandler[],
-    );
-
-    const totalEvaluations = fastWorker1.evaluationCount +
-      fastWorker2.evaluationCount +
-      heavyWorker.evaluationCount;
-
-    assertEquals(
-      totalEvaluations,
-      4,
-      "All 4 creatures should be evaluated",
-    );
-
-    // With maxConcurrent=2, only the first 2 workers from the combined
-    // list (fast1, fast2) should participate — heavy worker should not.
-    assertEquals(
-      heavyWorker.evaluationCount,
-      0,
-      "Heavy worker should be excluded when maxConcurrentEvaluations caps at 2",
     );
   },
 );

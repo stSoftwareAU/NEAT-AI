@@ -5,7 +5,7 @@
  * rejection for the runtime/system limit parsers.
  */
 
-import { assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { DEFAULT_MEMORY_CONFIG } from "@config/MemoryConfig.ts";
 import { DEFAULT_PARALLEL_EVALUATION_CONFIG } from "@config/ParallelEvaluationConfig.ts";
@@ -105,10 +105,6 @@ Deno.test("parseMemoryConfig - rejects negative nativeBudgetBytes (#3025)", () =
 Deno.test("parseParallelEvaluation - returns defaults when no overrides", () => {
   const cfg = parseParallelEvaluation(undefined);
   assertEquals(
-    cfg.maxConcurrentEvaluations,
-    DEFAULT_PARALLEL_EVALUATION_CONFIG.maxConcurrentEvaluations,
-  );
-  assertEquals(
     cfg.topologyGrouping,
     DEFAULT_PARALLEL_EVALUATION_CONFIG.topologyGrouping,
   );
@@ -116,19 +112,18 @@ Deno.test("parseParallelEvaluation - returns defaults when no overrides", () => 
 
 Deno.test("parseParallelEvaluation - applies overrides", () => {
   const cfg = parseParallelEvaluation({
-    maxConcurrentEvaluations: 4,
     topologyGrouping: !DEFAULT_PARALLEL_EVALUATION_CONFIG.topologyGrouping,
   });
-  assertEquals(cfg.maxConcurrentEvaluations, 4);
   assertEquals(
     cfg.topologyGrouping,
     !DEFAULT_PARALLEL_EVALUATION_CONFIG.topologyGrouping,
   );
 });
 
-Deno.test("parseParallelEvaluation - rejects negative maxConcurrentEvaluations", () => {
-  assertThrows(
-    () => parseParallelEvaluation({ maxConcurrentEvaluations: -1 }),
-    ConfigurationError,
+Deno.test("parseParallelEvaluation - drops removed maxConcurrentEvaluations (#3566)", () => {
+  const cfg = parseParallelEvaluation({ maxConcurrentEvaluations: 4 });
+  assert(
+    !("maxConcurrentEvaluations" in cfg),
+    "the removed option must not be parsed back into the config",
   );
 });

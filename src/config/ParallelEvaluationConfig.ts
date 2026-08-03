@@ -10,15 +10,15 @@
  * by topology hash so same-topology creatures cluster together and
  * naturally flow to the same worker via the work-stealing pattern.
  *
- * `maxConcurrentEvaluations` allows capping the number of workers
- * used for evaluation independently from the total thread count,
- * which is useful when other tasks (training, discovery) need
- * workers concurrently.
- *
  * Issue #2245: The `busyWorkerWaitMs` option was removed because fitness
  * evaluation now receives only fast-pool workers that are dedicated to
  * evaluation and never run discovery or training. The reactive
  * `isRunningLongTask()` filtering is no longer needed.
+ *
+ * Issue #3566: `maxConcurrentEvaluations` was removed for the same reason —
+ * it defaulted to 0 (use every worker), so its branch never fired, and the
+ * fast/heavy pool split already reserves capacity for training and discovery.
+ * Size the heavy pool with `heavyTaskWorkerCount` instead.
  */
 
 /**
@@ -27,17 +27,6 @@
  * All fields are optional; defaults are applied in `createNeatConfig()`.
  */
 export interface ParallelEvaluationConfig {
-  /**
-   * Maximum number of concurrent creature evaluations.
-   *
-   * Caps how many workers participate in fitness evaluation.
-   * When 0 (default), all available workers are used.
-   *
-   * Useful when other tasks (training, discovery) need workers
-   * concurrently and you want to reserve capacity for them.
-   */
-  maxConcurrentEvaluations?: number;
-
   /**
    * Whether to group creatures by topology hash before evaluation.
    *
@@ -61,11 +50,9 @@ export type RequiredParallelEvaluationConfig = Required<
 /**
  * Default values for parallel evaluation configuration.
  *
- * `maxConcurrentEvaluations` defaults to 0 (use all workers).
  * `topologyGrouping` defaults to true for optimal WASM cache utilisation.
  */
 export const DEFAULT_PARALLEL_EVALUATION_CONFIG:
   RequiredParallelEvaluationConfig = {
-    maxConcurrentEvaluations: 0,
     topologyGrouping: true,
   };

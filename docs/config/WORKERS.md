@@ -13,20 +13,19 @@ const config = createNeatConfig({
   threads: 8,
   heavyTaskWorkerCount: 2,
   workerThreadCap: { maxMemoryMB: 8192, estimatedMemoryPerWorkerMB: 2048 },
-  parallelEvaluation: { topologyGrouping: true, maxConcurrentEvaluations: 0 },
+  parallelEvaluation: { topologyGrouping: true },
 });
 ```
 
 ## 📊 Quick reference
 
-| Option                                        | Type      | Default                                                          | Description                                       |
-| --------------------------------------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------- |
-| `threads`                                     | `integer` | `navigator.hardwareConcurrency + heavyTaskWorkerCount` (default) | Worker threads (min: 1)                           |
-| `heavyTaskWorkerCount`                        | `integer` | `2`                                                              | Workers dedicated to discovery/training (min: 1)  |
-| `workerThreadCap.maxMemoryMB`                 | `integer` | `0` (disabled)                                                   | Total memory budget for workers (MB)              |
-| `workerThreadCap.estimatedMemoryPerWorkerMB`  | `integer` | `2048`                                                           | Estimated memory per worker (MB)                  |
-| `parallelEvaluation.topologyGrouping`         | `boolean` | `true`                                                           | Group same-topology creatures for WASM cache hits |
-| `parallelEvaluation.maxConcurrentEvaluations` | `integer` | `0` (all)                                                        | Max workers for evaluation                        |
+| Option                                       | Type      | Default                                                          | Description                                       |
+| -------------------------------------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------- |
+| `threads`                                    | `integer` | `navigator.hardwareConcurrency + heavyTaskWorkerCount` (default) | Worker threads (min: 1)                           |
+| `heavyTaskWorkerCount`                       | `integer` | `2`                                                              | Workers dedicated to discovery/training (min: 1)  |
+| `workerThreadCap.maxMemoryMB`                | `integer` | `0` (disabled)                                                   | Total memory budget for workers (MB)              |
+| `workerThreadCap.estimatedMemoryPerWorkerMB` | `integer` | `2048`                                                           | Estimated memory per worker (MB)                  |
+| `parallelEvaluation.topologyGrouping`        | `boolean` | `true`                                                           | Group same-topology creatures for WASM cache hits |
 
 ## 🧮 Sizing the pool
 
@@ -102,21 +101,22 @@ Pass as `parallelEvaluation` in options.
 const config = createNeatConfig({
   parallelEvaluation: {
     topologyGrouping: true, // default
-    maxConcurrentEvaluations: 4, // cap at 4 workers for evaluation
   },
 });
 ```
 
-| Option                     | Type      | Default   | Description                                                     |
-| -------------------------- | --------- | --------- | --------------------------------------------------------------- |
-| `topologyGrouping`         | `boolean` | `true`    | Group creatures by topology hash to improve WASM cache hit rate |
-| `maxConcurrentEvaluations` | `integer` | `0` (all) | Maximum workers for evaluation — 0 means use all available      |
+| Option             | Type      | Default | Description                                                     |
+| ------------------ | --------- | ------- | --------------------------------------------------------------- |
+| `topologyGrouping` | `boolean` | `true`  | Group creatures by topology hash to improve WASM cache hit rate |
 
 > [!TIP]
 > Keep `topologyGrouping` enabled unless you have a specific reason to disable
 > it. Topology grouping improves WASM cache utilisation by batching same-shape
-> creatures together. Set `maxConcurrentEvaluations` when you need to reserve
-> workers for concurrent training or discovery tasks.
+> creatures together. Every worker handed to evaluation participates — to
+> reserve capacity for concurrent training or discovery, size the heavy pool
+> with `heavyTaskWorkerCount` rather than capping evaluation. (Issue #3566
+> removed the inert `maxConcurrentEvaluations` cap, which defaulted to "no
+> cap".)
 
 ## ✅ Validation rules
 

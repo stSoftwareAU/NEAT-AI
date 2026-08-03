@@ -258,56 +258,13 @@ Deno.test("Fitness - topology grouping disabled preserves original order", async
   );
 });
 
-Deno.test("Fitness - maxConcurrentEvaluations limits active workers", async () => {
-  const workers: MockWorkerHandler[] = [];
-  for (let i = 0; i < 4; i++) {
-    workers.push(new MockWorkerHandler());
-  }
-
-  const evalConfig: RequiredParallelEvaluationConfig = {
-    maxConcurrentEvaluations: 2,
-    topologyGrouping: false,
-  };
-
-  const fitness = new Fitness(
-    workers.map((w) => w as unknown as WorkerHandler),
-    0.0001,
-    false,
-    evalConfig,
-  );
-
-  const population = createSameTopologyCreatures(8);
-
-  await fitness.calculate(population);
-
-  // All creatures should have scores
-  for (const creature of population) {
-    assert(creature.score !== undefined, "All creatures should have scores");
-  }
-
-  // Total evaluations should match
-  const totalEvaluations = workers.reduce(
-    (sum, w) => sum + w.evaluateCallCount,
-    0,
-  );
-  assertEquals(totalEvaluations, 8, "Total evaluations should equal 8");
-
-  // Only 2 of 4 workers should have been used (capped at 2)
-  const workersUsed = workers.filter((w) => w.evaluateCallCount > 0).length;
-  assert(
-    workersUsed <= 2,
-    `Only ${evalConfig.maxConcurrentEvaluations} workers should be used, but ${workersUsed} were used`,
-  );
-});
-
-Deno.test("Fitness - maxConcurrentEvaluations 0 uses all workers", async () => {
+Deno.test("Fitness - every supplied worker is available for evaluation", async () => {
   const workers: MockWorkerHandler[] = [];
   for (let i = 0; i < 3; i++) {
     workers.push(new MockWorkerHandler());
   }
 
   const evalConfig: RequiredParallelEvaluationConfig = {
-    maxConcurrentEvaluations: 0,
     topologyGrouping: true,
   };
 
@@ -334,7 +291,7 @@ Deno.test("Fitness - maxConcurrentEvaluations 0 uses all workers", async () => {
   );
   assertEquals(totalEvaluations, 9, "Total evaluations should equal 9");
 
-  // With 0 (all workers), at least 2 workers should be used
+  // Issue #3566: every supplied worker participates — no cap exists.
   const workersUsed = workers.filter((w) => w.evaluateCallCount > 0).length;
   assert(
     workersUsed >= 2,
@@ -346,7 +303,6 @@ Deno.test("Fitness - batch evaluation produces identical results to sequential",
   // Evaluate with topology grouping enabled
   const worker1 = new MockWorkerHandler();
   const evalConfigGrouped: RequiredParallelEvaluationConfig = {
-    maxConcurrentEvaluations: 0,
     topologyGrouping: true,
   };
   const fitnessGrouped = new Fitness(
@@ -359,7 +315,6 @@ Deno.test("Fitness - batch evaluation produces identical results to sequential",
   // Evaluate without topology grouping
   const worker2 = new MockWorkerHandler();
   const evalConfigUngrouped: RequiredParallelEvaluationConfig = {
-    maxConcurrentEvaluations: 0,
     topologyGrouping: false,
   };
   const fitnessUngrouped = new Fitness(
@@ -416,7 +371,6 @@ Deno.test("Fitness - topology grouping with deduplication", async () => {
   const worker2 = new MockWorkerHandler();
 
   const evalConfig: RequiredParallelEvaluationConfig = {
-    maxConcurrentEvaluations: 0,
     topologyGrouping: true,
   };
 
@@ -496,6 +450,5 @@ Deno.test("Fitness - topology grouping with deduplication", async () => {
 });
 
 Deno.test("Fitness - default config has expected values", () => {
-  assertEquals(DEFAULT_PARALLEL_EVALUATION_CONFIG.maxConcurrentEvaluations, 0);
   assertEquals(DEFAULT_PARALLEL_EVALUATION_CONFIG.topologyGrouping, true);
 });

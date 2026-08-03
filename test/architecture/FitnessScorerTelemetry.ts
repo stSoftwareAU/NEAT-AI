@@ -64,7 +64,6 @@ function makeCreature(bias: number): Creature {
 
 const EVAL_CONFIG: RequiredParallelEvaluationConfig = {
   topologyGrouping: false,
-  maxConcurrentEvaluations: 0,
 };
 
 Deno.test("Fitness scorer telemetry - counts unique scored creatures", async () => {

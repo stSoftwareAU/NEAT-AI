@@ -3,70 +3,42 @@
  *
  * Verifies that the ParallelEvaluationConfig is properly parsed,
  * defaults are applied, and CLI coercion works correctly.
+ *
+ * Issue #3566: `maxConcurrentEvaluations` was removed — it defaulted to 0,
+ * which made the only branch reading it a no-op, and the #2245 fast/heavy
+ * worker-pool split already reserves workers for training and discovery.
  */
-import { assertEquals, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import { createNeatConfig } from "@config/NeatConfig.ts";
 import { DEFAULT_PARALLEL_EVALUATION_CONFIG } from "@config/ParallelEvaluationConfig.ts";
 
 Deno.test("ParallelEvaluationConfig - default values are sensible", () => {
-  assertEquals(
-    DEFAULT_PARALLEL_EVALUATION_CONFIG.maxConcurrentEvaluations,
-    0,
-  );
   assertEquals(DEFAULT_PARALLEL_EVALUATION_CONFIG.topologyGrouping, true);
 });
 
 Deno.test("ParallelEvaluationConfig - defaults applied when not set", () => {
   const config = createNeatConfig({});
-  assertEquals(config.parallelEvaluation.maxConcurrentEvaluations, 0);
   assertEquals(config.parallelEvaluation.topologyGrouping, true);
 });
 
 Deno.test("ParallelEvaluationConfig - custom values override defaults", () => {
   const config = createNeatConfig({
-    parallelEvaluation: {
-      maxConcurrentEvaluations: 4,
-      topologyGrouping: false,
-    },
+    parallelEvaluation: { topologyGrouping: false },
   });
-  assertEquals(config.parallelEvaluation.maxConcurrentEvaluations, 4);
   assertEquals(config.parallelEvaluation.topologyGrouping, false);
 });
 
 Deno.test("ParallelEvaluationConfig - partial overrides merge with defaults", () => {
-  const config = createNeatConfig({
-    parallelEvaluation: { maxConcurrentEvaluations: 2 },
-  });
-  assertEquals(config.parallelEvaluation.maxConcurrentEvaluations, 2);
+  const config = createNeatConfig({ parallelEvaluation: {} });
   assertEquals(
     config.parallelEvaluation.topologyGrouping,
     DEFAULT_PARALLEL_EVALUATION_CONFIG.topologyGrouping,
   );
 });
 
-Deno.test("ParallelEvaluationConfig - string values coerced from CLI", () => {
-  const config = createNeatConfig({
-    parallelEvaluation: {
-      maxConcurrentEvaluations: "3" as unknown as number,
-    },
-  });
-  assertEquals(config.parallelEvaluation.maxConcurrentEvaluations, 3);
-});
-
-Deno.test("ParallelEvaluationConfig - maxConcurrentEvaluations must be >= 0", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        parallelEvaluation: { maxConcurrentEvaluations: -1 },
-      }),
-    Error,
-    "maxConcurrentEvaluations",
-  );
-});
-
 Deno.test("ParallelEvaluationConfig - config frozen after creation", () => {
   const config = createNeatConfig({
-    parallelEvaluation: { maxConcurrentEvaluations: 2 },
+    parallelEvaluation: { topologyGrouping: false },
   });
   assertThrows(
     () => {
@@ -82,4 +54,21 @@ Deno.test("ParallelEvaluationConfig - topology grouping can be disabled", () => 
     parallelEvaluation: { topologyGrouping: false },
   });
   assertEquals(config.parallelEvaluation.topologyGrouping, false);
+});
+
+Deno.test("ParallelEvaluationConfig - maxConcurrentEvaluations is gone (Issue #3566)", () => {
+  assert(
+    !("maxConcurrentEvaluations" in DEFAULT_PARALLEL_EVALUATION_CONFIG),
+    "the removed option must not reappear in the defaults",
+  );
+  const config = createNeatConfig({
+    parallelEvaluation: {
+      maxConcurrentEvaluations: 2,
+    } as unknown as Record<string, unknown>,
+  });
+  assert(
+    !("maxConcurrentEvaluations" in config.parallelEvaluation),
+    "an unknown override must not be carried into the parsed config",
+  );
+  assertEquals(config.parallelEvaluation.topologyGrouping, true);
 });

@@ -258,10 +258,9 @@ convergence progress. Defaults via `DEFAULT_ADAPTIVE_POPULATION_CONFIG`.
 
 ### `parallelEvaluation` — ParallelEvaluationConfig
 
-Issue #1862: controls topology-aware grouping and concurrency limits for
-population fitness evaluation. Topology grouping clusters same-structure
-creatures to maximise WASM (WebAssembly) cache hits. Defaults via
-`DEFAULT_PARALLEL_EVALUATION_CONFIG`.
+Issue #1862: controls topology-aware grouping for population fitness evaluation.
+Topology grouping clusters same-structure creatures to maximise WASM
+(WebAssembly) cache hits. Defaults via `DEFAULT_PARALLEL_EVALUATION_CONFIG`.
 
 ### `dataFuzzing` — DataFuzzingConfig
 
