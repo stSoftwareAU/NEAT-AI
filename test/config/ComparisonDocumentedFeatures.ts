@@ -81,17 +81,6 @@ Deno.test(
 );
 
 Deno.test(
-  "COMPARISON documented features - stability adaptation config is accessible",
-  () => {
-    const config = createNeatConfig({
-      stabilityAdaptation: { enabled: true, brittlenessThreshold: 0.4 },
-    });
-    assertEquals(config.stabilityAdaptation.enabled, true);
-    assertEquals(config.stabilityAdaptation.brittlenessThreshold, 0.4);
-  },
-);
-
-Deno.test(
   "COMPARISON documented features - quantum step config is accessible",
   () => {
     const config = createNeatConfig({
@@ -113,7 +102,6 @@ Deno.test(
     assert(config.predictiveCoding !== undefined);
     assert(config.adaptiveMutationThresholds !== undefined);
     assert(config.plateauDetection !== undefined);
-    assert(config.stabilityAdaptation !== undefined);
     assert(config.quantumStep !== undefined);
 
     // feedbackLoop defaults to false (forward-only)

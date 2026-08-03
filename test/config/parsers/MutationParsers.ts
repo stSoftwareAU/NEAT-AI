@@ -6,13 +6,11 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { DEFAULT_ADAPTIVE_MUTATION_THRESHOLDS } from "@config/AdaptiveMutationThresholds.ts";
 import { DEFAULT_MCMC_CONFIG } from "@config/MCMCConfig.ts";
-import { DEFAULT_STABILITY_ADAPTATION_CONFIG } from "@config/StabilityAdaptationConfig.ts";
 import { DEFAULT_PLATEAU_DETECTION } from "@neat/PlateauDetector.ts";
 import {
   parseAdaptiveMutationThresholds,
   parseMcmc,
   parsePlateauDetection,
-  parseStabilityAdaptation,
 } from "@config/parsers/MutationParsers.ts";
 
 Deno.test("parseAdaptiveMutationThresholds - returns defaults", () => {
@@ -54,33 +52,6 @@ Deno.test("parsePlateauDetection - applies overrides", () => {
 Deno.test("parsePlateauDetection - rejects windowSize below 1", () => {
   assertThrows(
     () => parsePlateauDetection({ windowSize: 0 }),
-    ConfigurationError,
-  );
-});
-
-Deno.test("parseStabilityAdaptation - returns defaults", () => {
-  const cfg = parseStabilityAdaptation(undefined);
-  assertEquals(cfg.enabled, DEFAULT_STABILITY_ADAPTATION_CONFIG.enabled);
-  assertEquals(
-    cfg.brittlenessThreshold,
-    DEFAULT_STABILITY_ADAPTATION_CONFIG.brittlenessThreshold,
-  );
-});
-
-Deno.test("parseStabilityAdaptation - applies overrides", () => {
-  const cfg = parseStabilityAdaptation({
-    enabled: true,
-    brittlenessThreshold: 0.25,
-    stableBoostFactor: 2.0,
-  });
-  assertEquals(cfg.enabled, true);
-  assertEquals(cfg.brittlenessThreshold, 0.25);
-  assertEquals(cfg.stableBoostFactor, 2.0);
-});
-
-Deno.test("parseStabilityAdaptation - rejects stableBoostFactor below 1", () => {
-  assertThrows(
-    () => parseStabilityAdaptation({ stableBoostFactor: 0.5 }),
     ConfigurationError,
   );
 });

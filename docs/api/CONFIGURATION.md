@@ -136,21 +136,6 @@ defaults are applied.
 | `responseMutationMultiplier`    | `number`  | `2.0`   | Mutation rate multiplier on plateau               |
 | `responseImprovementMultiplier` | `number`  | `0.8`   | Mutation rate multiplier during rapid improvement |
 
-### `stabilityAdaptation` — StabilityAdaptationConfig
-
-| Field                                 | Type      | Default | Description                                       |
-| ------------------------------------- | --------- | ------- | ------------------------------------------------- |
-| `enabled`                             | `boolean` | `false` | Enable stability-based adaptation                 |
-| `stabilityWindowSize`                 | `number`  | `20`    | Window for stability measurement                  |
-| `brittlenessThreshold`                | `number`  | `0.3`   | Threshold below which a creature is "brittle"     |
-| `brittleReductionFactor`              | `number`  | `0.5`   | Mutation reduction for brittle creatures          |
-| `stableBoostFactor`                   | `number`  | `1.3`   | Mutation boost for stable creatures               |
-| `stableBoostThreshold`                | `number`  | `0.85`  | Stability score threshold for boost               |
-| `selectionStabilityWeight`            | `number`  | `0.2`   | Weight of stability in selection                  |
-| `adaptiveSelectionWeight`             | `boolean` | `false` | Auto-adjust selection weight                      |
-| `topologyMutationReductionForBrittle` | `number`  | `0.3`   | Topology mutation reduction for brittle creatures |
-| `trackPerMutationType`                | `boolean` | `false` | Track stability per mutation type                 |
-
 ### `weightRegularisation` — WeightRegularisationConfig
 
 | Field                | Type      | Default | Description                        |

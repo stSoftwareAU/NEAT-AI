@@ -55,8 +55,8 @@ when you change it".
   Interface) discovery: sample rate, recording/analysis timeouts, caching,
   replay, debug options, and minimum candidates per category.
 - **[Mutation adaptation](./config/MUTATION_ADAPTATION.md)** — adaptive mutation
-  thresholds, plateau detection, stability adaptation, MCMC (Markov Chain Monte
-  Carlo) acceptance, and per-creature hyperparameter evolution.
+  thresholds, plateau detection, MCMC (Markov Chain Monte Carlo) acceptance, and
+  per-creature hyperparameter evolution.
 - **[Regularisation, output ranges, and step sizing](./config/REGULARISATION.md)**
   — weight/bias regularisation, output range constraints, and quantum step
   sizing.

@@ -139,7 +139,7 @@ decision trees.
   detection, check mutation rate / diversity / `costOfGrowth`. →
   [Fitness plateau](troubleshooting/TRAINING.md#-fitness-plateau).
 - **Activations producing `NaN` or `Infinity`** — input normalisation,
-  activation choice, weight / bias bounds, stability adaptation. →
+  activation choice, weight / bias bounds, regularisation. →
   [Creatures producing NaN or Infinity](troubleshooting/TRAINING.md#-creatures-producing-nan-or-infinity).
 - **`AssertionError: Error is not finite: Infinity` mid-run** — the training
   dataset directory or a `.bin` file was deleted while scoring/discovery was

@@ -71,8 +71,8 @@ networks.
    [Future work](./FUTURE_WORK.md#2--unsupervised-learning).
 6. **Hyperparameter sensitivity**: many parameters to tune, though per-creature
    hyperparameter self-adaptation, adaptive population sizing, adaptive mutation
-   thresholds, plateau detection, stability adaptation, and randomised
-   hyperparameters per run substantially mitigate this (see tip below).
+   thresholds, plateau detection, and randomised hyperparameters per run
+   substantially mitigate this (see tip below).
 7. **No native CUDA**: GPU acceleration uses wgpu (Metal, Vulkan, DX12) with CPU
    fallback rather than native CUDA for NVIDIA GPUs.
 

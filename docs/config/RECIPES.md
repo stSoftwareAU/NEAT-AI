@@ -42,9 +42,6 @@ const config = createNeatConfig({
     windowSize: 15,
     responseMutationMultiplier: 2.5,
   },
-  stabilityAdaptation: {
-    enabled: true,
-  },
 });
 ```
 

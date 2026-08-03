@@ -65,7 +65,6 @@ import {
   parseSpeciesStagnation,
   parseSquashBudget,
   parseSquashEffectiveness,
-  parseStabilityAdaptation,
   parseWasmCache,
   parseWeightRegularisation,
   parseWorkerThreadCap,
@@ -625,9 +624,6 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     ),
     plateauDetection: parsePlateauDetection(
       opts.plateauDetection as Record<string, unknown> | undefined,
-    ),
-    stabilityAdaptation: parseStabilityAdaptation(
-      opts.stabilityAdaptation as Record<string, unknown> | undefined,
     ),
     weightRegularisation: parseWeightRegularisation(
       opts.weightRegularisation as Record<string, unknown> | undefined,

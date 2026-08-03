@@ -224,6 +224,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `bench/NoveltyDeceptiveEscape.ts` and `docs/NOVELTY_SEARCH.md` are all gone.
   The unrelated `noveltyEscalationActive` Discovery drought signal (#3072) is
   untouched.
+- **Issue #3562:** Removed the `stabilityAdaptation` option and its ten fields
+  (#3505 audit, slice D). Like its slice-C sibling `ensembleDiversity`, it was
+  parsed into `NeatArguments` but never read by any code path — no
+  `StabilityAdaptation*` implementation module ever existed — so setting
+  `enabled: true` changed nothing. Neither GRQ nor NEAT-AI-Examples set it. The
+  option surface (`src/config/StabilityAdaptationConfig.ts`, the `NeatArguments`
+  / `NeatOptions` entries), the `parseStabilityAdaptation` parser, the
+  `LARGE_NETWORK_PRESET` block that advertised "adapt mutation to stability",
+  and the documentation and troubleshooting advice describing it as a working
+  lever are all gone.
 
 ## [5.2.0] - 2026-05-30
 
