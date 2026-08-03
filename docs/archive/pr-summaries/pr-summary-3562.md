@@ -21,10 +21,10 @@ closed `NOT_PLANNED` because it bundled two dead configs with one genuinely live
 one (`adaptivePopulation`, explicitly **not** in scope here).
 
 Neither confirmed consumer sets the key — `git grep -F stabilityAdaptation` and
-repo-scoped `gh search code` both return zero hits in `stSoftwareAU/GRQ` and
-`stSoftwareAU/NEAT-AI-Examples`, and neither uses `LARGE_NETWORK_PRESET` either.
-The option is not exported from `mod.ts`, so no consumer can hold a reference to
-the type.
+repo-scoped `gh search code` both return zero hits in the downstream production
+repo and in `stSoftwareAU/NEAT-AI-Examples`, and neither uses
+`LARGE_NETWORK_PRESET` either. The option is not exported from `mod.ts`, so no
+consumer can hold a reference to the type.
 
 Closes #3562.
 
