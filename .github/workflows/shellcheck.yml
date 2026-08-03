@@ -43,6 +43,7 @@ jobs:
       # non-zero shellcheck exit fails the job.
       - name: Run ShellCheck (koalaman/shellcheck)
         run: |
+          set -euo pipefail
           shellcheck --version
           mapfile -d '' scripts < <(
             find . -name '*.sh' -type f \

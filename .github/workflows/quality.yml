@@ -62,7 +62,7 @@ jobs:
 
       - name: Check Bash Script Syntax
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           echo "Checking bash script syntax..."
           fail=0
           while IFS= read -r f; do
@@ -77,7 +77,7 @@ jobs:
 
       - name: Check for Zero-Length Files
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           echo "Checking for zero-length files..."
           fail=0
           while IFS= read -r f; do
@@ -94,7 +94,7 @@ jobs:
 
       - name: Check for Merge Conflict Markers
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           echo "Checking for merge conflict markers..."
           fail=0
           while IFS= read -r f; do
@@ -111,7 +111,7 @@ jobs:
 
       - name: Validate JSON Files
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           echo "Validating JSON files..."
           if ! command -v jq &> /dev/null; then
             echo "Installing jq..."
@@ -135,7 +135,7 @@ jobs:
 
       - name: Check for Large Files
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           echo "Checking for unexpectedly large files..."
           # Check for files larger than 10MB (excluding expected large files like models)
           fail=0
@@ -191,7 +191,7 @@ jobs:
 
       - name: Report WASM sync changes
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           changed="$(git diff --name-only)"
           if echo "$changed" | grep -q '^wasm_activation/pkg/'; then
             echo "ℹ️ wasm_activation/pkg changed after syncing latest NEAT-AI-core."
@@ -221,7 +221,7 @@ jobs:
         env:
           PATCH_FILE: ${{ runner.temp }}/quality-fixes.patch
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           if git diff --quiet; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
@@ -281,7 +281,7 @@ jobs:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           # Determine the branch name
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             BRANCH_NAME="$PR_HEAD_REF"
@@ -327,7 +327,7 @@ jobs:
         env:
           PATCH_FILE: ${{ runner.temp }}/fix-patch/quality-fixes.patch
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           if [[ ! -s "$PATCH_FILE" ]]; then
             echo "❌ Expected a non-empty fmt/lint patch at $PATCH_FILE" >&2
             exit 1
@@ -345,7 +345,7 @@ jobs:
 
       - name: Commit Changes
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -am "chore: apply deno fmt and lint fixes"
@@ -364,7 +364,7 @@ jobs:
           BRANCH_NAME: ${{ steps.branch_setup.outputs.branch_name }}
           GH_PAT: ${{ secrets.ACTIONS_PUSH }}
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 -w0)"
           git -c http.https://github.com/.extraheader="$AUTH_HEADER" \
             push origin "$BRANCH_NAME"

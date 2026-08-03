@@ -83,7 +83,7 @@ jobs:
       - id: run_shard
         name: Run test shard
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           export NO_COLOR=true
           SHARD="${{ matrix.shard }}"
           # Non-hidden on purpose (Issue #3550): actions/upload-artifact
@@ -267,7 +267,7 @@ jobs:
       # exactly once across all shards (no gaps, no double-runs).
       - name: Verify shard partition parity
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           deno run --allow-read scripts/shard_test_files.ts --verify --total="${SHARD_TOTAL}"
 
       - name: Download shard artifacts
@@ -281,7 +281,7 @@ jobs:
       - id: gate
         name: Aggregate shard statuses
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           missing=0
           failed=0
           errored=0
@@ -309,7 +309,7 @@ jobs:
       - id: merge_junit
         name: Merge JUnit reports
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           shopt -s nullglob
           reports=(junit-*.xml)
           if [ "${#reports[@]}" -eq 0 ]; then
@@ -359,7 +359,7 @@ jobs:
 
       - name: Create merged coverage report
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           shopt -s nullglob
           # Fail loud when coverage went missing (Issue #3550). The gate exits
           # 1 if any shard uploaded a status marker (so it ran tests) while no
@@ -402,6 +402,7 @@ jobs:
       - name: Fail build if any shard crashed
         if: ${{ steps.gate.outputs.errored != '0' || steps.gate.outputs.missing != '0' }}
         run: |
+          set -euo pipefail
           echo "❌ ${{ steps.gate.outputs.errored }} shard(s) crashed and ${{ steps.gate.outputs.missing }} shard(s) produced no status."
           echo "The test runner failed (not just test assertions). Build cannot proceed."
           exit 1
@@ -409,5 +410,6 @@ jobs:
       - name: Fail build if tests failed
         if: ${{ steps.gate.outputs.failed != '0' }}
         run: |
+          set -euo pipefail
           echo "❌ ${{ steps.gate.outputs.failed }} shard(s) reported test failures. Build cannot proceed."
           exit 1

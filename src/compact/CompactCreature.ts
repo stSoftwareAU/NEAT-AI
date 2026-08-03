@@ -15,7 +15,6 @@ import {
   pruneZeroWeightSynapses,
 } from "@compact/CompactUtils.ts";
 import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
-import { mergeParallelIdentityBridges } from "@compact/ParallelIdentityMerge.ts";
 import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
 import { simplifyLargeWeights } from "@compact/SimplifyLargeWeights.ts";
 import { foldConstants } from "@compact/ConstantFold.ts";
@@ -436,18 +435,13 @@ function buildSafeCompact(
     didCompact = true;
   }
 
-  // Issue #1947: Merge parallel IDENTITY bridge neurons that all connect
-  // to the same target into a single IDENTITY neuron with merged weights.
-  const parallelResult = mergeParallelIdentityBridges(compactCreature);
+  // Issues #1947/#1948: Merge parallel bridge neurons that all connect to the
+  // same target into a single IDENTITY neuron with merged weights. Issue #3637
+  // retired the separate IDENTITY-only pass — this generalised pass already
+  // covers IDENTITY (it is a mergeable squash, and the IDENTITY conversion step
+  // short-circuits for it). See SquashUtils.isParallelMergeableSquash().
+  const parallelResult = mergeParallelBridges(compactCreature);
   if (parallelResult.removedNeurons > 0) {
-    didCompact = true;
-  }
-
-  // Issue #1948: Extend parallel merging to other compatible squash functions.
-  // Currently supports COMPLEMENT (converted to IDENTITY before merging).
-  // See SquashUtils.isParallelMergeableSquash() for the full analysis.
-  const extendedParallelResult = mergeParallelBridges(compactCreature);
-  if (extendedParallelResult.removedNeurons > 0) {
     didCompact = true;
   }
 

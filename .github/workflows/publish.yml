@@ -51,6 +51,8 @@ jobs:
       # not.
       - name: Determine whether the version needs publishing
         id: needs_publish
+        # `-E` is pinned here by test/ci/WorkflowVersionCheckStrictMode.ts
+        # (Issue #3003) — do not normalise to `set -euo pipefail`.
         run: |
           set -Eeuo pipefail
           name=$(jq -r .name deno.json)
@@ -88,7 +90,7 @@ jobs:
       - name: Publish to JSR
         if: steps.needs_publish.outputs.publish == 'true'
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           deno publish 2>&1 | tee publish-output.log
 
       # Issues #3333 + #3633: the pre-fix failure was silent — JSR accepted the
@@ -107,6 +109,7 @@ jobs:
       - name: Verify Sigstore provenance attestation
         if: steps.needs_publish.outputs.publish == 'true'
         run: |
+          set -euo pipefail
           deno run --allow-read=deno.json,publish-output.log \
             --allow-net=rekor.sigstore.dev,jsr.io \
             scripts/verify_provenance.ts publish-output.log
