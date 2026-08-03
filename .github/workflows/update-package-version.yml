@@ -53,7 +53,7 @@ jobs:
           # yaml.github-actions.security.run-shell-injection).
           BASE_REF: ${{ github.base_ref }}
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
 
           # Get the base branch version
           git fetch origin "$BASE_REF:$BASE_REF" || true
@@ -85,7 +85,7 @@ jobs:
         env:
           BASE_VERSION: ${{ steps.check_version.outputs.base_version }}
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
 
           # Parse version (e.g., 0.193.0 -> 0.193.1)
           IFS='.' read -ra VERSION_PARTS <<< "$BASE_VERSION"
@@ -112,6 +112,7 @@ jobs:
       - name: Commit Version Update
         if: steps.check_version.outputs.needs_update == 'true'
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add deno.json
@@ -130,7 +131,7 @@ jobs:
         env:
           GH_PAT: ${{ secrets.ACTIONS_PUSH }}
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           AUTH_HEADER="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_PAT" | base64 -w0)"
           git -c http.https://github.com/.extraheader="$AUTH_HEADER" \
             push origin || echo "Push failed or no changes to push"

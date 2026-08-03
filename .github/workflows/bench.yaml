@@ -61,7 +61,7 @@ jobs:
 
       - name: Run benchmark smoke pass
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           export NO_COLOR=true
           deno task bench:smoke | tee bench-smoke-output.txt
 
@@ -104,7 +104,7 @@ jobs:
         # warning, not a hard failure, because wall-clock timing is
         # machine-load-dependent.
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           export NO_COLOR=true
           deno run --allow-read --allow-write --allow-env --allow-ffi \
             bench/score_per_hour_harness.ts \
