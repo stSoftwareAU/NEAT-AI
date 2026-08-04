@@ -13,7 +13,7 @@ as inert defaults. This PR carries out the decision recorded on the issue:
   `DISCOVERY_WORKER_ENVELOPE_MB` precedent. An explicitly supplied option always
   wins (including an explicit `0`); an invalid value is ignored **loudly** —
   warn and fall back to the default — and with the variable unset behaviour is
-  unchanged. stSoftwareAU/GRQ#3881 exports the runner-side value.
+  unchanged. The downstream production repo exports the runner-side value.
 - **`memory.proactiveGc` — removed.** `attemptProactiveGc()` is a no-op unless
   the runtime was started with `--v8-flags=--expose-gc`, which no launcher
   passes. The option, its default, its parser entry, the `MemoryMonitor`
