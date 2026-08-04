@@ -49,10 +49,6 @@
     "memetic": {
       "$ref": "#/$defs/memetic",
       "description": "Optional memetic evolution state tracking weights, biases, and ancestry across generations."
-    },
-    "hyperparameters": {
-      "$ref": "#/$defs/hyperparameters",
-      "description": "Optional per-creature evolvable hyperparameters (Issue #1863). These evolve alongside topology and weights."
     }
   },
   "$defs": {
@@ -265,37 +261,6 @@
           "items": {
             "$ref": "#/$defs/memeticAncestorSnapshot"
           }
-        }
-      }
-    },
-    "hyperparameters": {
-      "type": "object",
-      "description": "Per-creature evolvable hyperparameters (Issue #1863). These values evolve alongside topology and weights via mutation and crossover.",
-      "additionalProperties": false,
-      "properties": {
-        "learningRate": {
-          "type": "number",
-          "description": "Per-creature learning rate for backpropagation."
-        },
-        "addNeuronRate": {
-          "type": "number",
-          "description": "Per-creature probability of adding a neuron during mutation. Range: [0, 1]."
-        },
-        "addConnectionRate": {
-          "type": "number",
-          "description": "Per-creature probability of adding a connection during mutation. Range: [0, 1]."
-        },
-        "weightPerturbationScale": {
-          "type": "number",
-          "description": "Per-creature weight perturbation magnitude scaling factor."
-        },
-        "l1RegularisationStrength": {
-          "type": "number",
-          "description": "Per-creature L1 regularisation strength for backpropagation."
-        },
-        "l2RegularisationStrength": {
-          "type": "number",
-          "description": "Per-creature L2 regularisation strength for backpropagation."
         }
       }
     }

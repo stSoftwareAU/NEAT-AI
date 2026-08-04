@@ -176,10 +176,6 @@ to a dedicated guide, the contrast with standard NEAT is documented there.
   ML tooling. Converts creature topology to ONNX computational graphs with
   compatibility checking for unsupported features (aggregate functions,
   recurrent connections).
-- ✅ **Hyperparameter Self-Adaptation** _(NEAT-AI extension)_: Per-creature
-  evolvable hyperparameters (learning rate, mutation rates, regularisation
-  strength) subject to Gaussian mutation and weighted-average crossover,
-  reducing the need for manual hyperparameter tuning.
 - ✅ **Adaptive Population Sizing** _(NEAT-AI extension)_: Automatically adjusts
   population size based on species diversity metrics — growing the population
   when diversity is low (premature convergence) and shrinking it during

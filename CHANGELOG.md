@@ -163,6 +163,27 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- **Issue #3569:** Removed per-creature evolvable hyperparameters (#3505 audit,
+  slice F). The feature (Issue #1863) was fully implemented and tested, but
+  `hyperparameterEvolution.enabled` defaulted to `false` and no consumer ever
+  turned it on, so `Mutator` never created a hyperparameter block, no creature
+  ever carried a `hyperparameters` genome field, and the `Offspring` crossover
+  and carry-through branches were both unreachable. Removed the 13-field option
+  surface (`NeatOptions.hyperparameterEvolution`, its `CoerceNumeric` mirror,
+  both `keyof` unions, the `NeatArguments` field, the `NeatConfig` wiring, and
+  `parseHyperparameterEvolution` with its re-export), the `hyperparameters`
+  genome field and its export/import/clone plumbing, the `hyperparameters` entry
+  in `docs/snapshot-schema.json`, and the `hyperparameterEvolution` row from the
+  `bench/EvolutionPaceLeverComparison.ts` lever matrix.
+  `computeSpeciesDiversity` — the one live consumer of the removed module —
+  moved to `src/NEAT/SpeciesDiversity.ts`; adaptive population sizing is
+  unchanged. **Breaking for embedders:** `NeatOptions.hyperparameterEvolution`
+  is now a `deno check` error, and `EvolvableHyperparameters`,
+  `HyperparameterEvolutionConfig`, `RequiredEvolvableHyperparameters`,
+  `RequiredHyperparameterEvolutionConfig`, `DEFAULT_EVOLVABLE_HYPERPARAMETERS`
+  and `DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG` are no longer exported. Existing
+  creature JSON that carries a `hyperparameters` field still loads — the field
+  is ignored and dropped on the next export.
 - **Issue #3568:** Removed the `specialist` option surface (#3505 audit, slice
   F). The key was declared on `NeatOptions`, parsed by `parseSpecialist` and
   stored on `NeatArguments`, but never read — neither `Neat` nor `NeatEvolution`

@@ -176,24 +176,18 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
     evaluates creatures on held-out data folds during evolution, reducing
     overfitting to a single train/test split.
 
-17. **Hyperparameter Self-Adaptation**: Each creature carries its own learning
-    rate, mutation rates, and regularisation strength. These evolve alongside
-    topology and weights — creatures with better-suited hyperparameters achieve
-    higher fitness and propagate their settings, inspired by
-    [self-adaptive evolution strategies](https://en.wikipedia.org/wiki/Evolution_strategy).
-
-18. **Transfer Learning**: Export trained creatures as checkpoints with
+17. **Transfer Learning**: Export trained creatures as checkpoints with
     metadata, import them into new tasks with UUID mapping for different
     input/output configurations, and seed populations with pre-trained creatures
     for [transfer learning](https://en.wikipedia.org/wiki/Transfer_learning)
     across related problems.
 
-19. **ONNX Export**: Export trained creatures to the [ONNX](https://onnx.ai/)
+18. **ONNX Export**: Export trained creatures to the [ONNX](https://onnx.ai/)
     (Open Neural Network Exchange) format for deployment in standard ML
     inference pipelines, bridging the gap between neuroevolution and production
     deployment.
 
-20. **Markov Chain Monte Carlo (MCMC) Mutation Acceptance**: Uses the
+19. **Markov Chain Monte Carlo (MCMC) Mutation Acceptance**: Uses the
     [Metropolis-Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
     criterion for mutation acceptance. Instead of unconditionally accepting all
     mutations, worse-fitness moves are accepted with a probability that
@@ -202,7 +196,7 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
     the theoretically optimal acceptance rate (~23.4%, Roberts et al. 1997).
     Opt-in via `mcmc: { enabled: true }` in the configuration.
 
-21. **Advanced Breeding Strategies**: Multiple breeding strategies for
+20. **Advanced Breeding Strategies**: Multiple breeding strategies for
     genetically incompatible creatures, including input-weight cosine similarity
     for neuron alignment, subgraph transplantation for horizontal gene transfer,
     and diversity-driven breeding for cross-population pairing. These strategies
@@ -211,7 +205,7 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
     [horizontal gene transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer)
     in biology.
 
-22. **Synthetic Synapse Training**: Temporarily densifies inter-layer
+21. **Synthetic Synapse Training**: Temporarily densifies inter-layer
     connectivity during backpropagation by adding zero-weight synapses between
     adjacent topological layers. After training, near-zero synapses are pruned
     and only the useful connections are retained — addressing NEAT's inherent
@@ -219,7 +213,7 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
     [dense layers](https://en.wikipedia.org/wiki/Dense_layer). Opt-in via
     `syntheticSynapses: true` in the training configuration.
 
-23. **Random Immigrants (Fresh Genomes on a Plateau)**: When the population
+22. **Random Immigrants (Fresh Genomes on a Plateau)**: When the population
     stalls, boosting the mutation rate only perturbs the _existing_ genomes — it
     adds no new genetic material. Driven by the existing plateau signal,
     random-immigrant injection replaces the weakest _non-elite_ creatures with

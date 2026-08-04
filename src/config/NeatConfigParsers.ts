@@ -36,7 +36,6 @@ export {
 } from "@config/parsers/PopulationParsers.ts";
 export {
   parseCrossValidation,
-  parseHyperparameterEvolution,
   parsePredictiveCoding,
   parseQuantumStep,
 } from "@config/parsers/TrainingParsers.ts";

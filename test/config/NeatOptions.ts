@@ -87,6 +87,15 @@ Deno.test("NeatOptions - Omit list allows partial sub-object overrides", () => {
   assertEquals(config.fineTunePopulation.successRateWindow, 5);
 });
 
+// Issue #3569: hyperparameterEvolution was removed — the feature was fully
+// implemented but its `enabled` flag was never turned on by any consumer, so
+// no creature ever acquired a `hyperparameters` block. The parsed config must
+// no longer carry it (regression guard against reintroduction).
+Deno.test("NeatOptions - hyperparameterEvolution is not a config key", () => {
+  const config = createNeatConfig({}) as unknown as Record<string, unknown>;
+  assertEquals(Object.hasOwn(config, "hyperparameterEvolution"), false);
+});
+
 // Issue #3568: specialist was removed as an option that was parsed but never
 // read — the parsed config must no longer carry it (regression guard against
 // reintroduction). `SpecialistPipeline` keeps its own constructor config.

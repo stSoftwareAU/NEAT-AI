@@ -253,8 +253,8 @@ const config = createNeatConfig({
   stopping conditions.
 - [Regularisation](./REGULARISATION.md) — weight/bias regularisation and output
   range constraints applied during training.
-- [Mutation adaptation](./MUTATION_ADAPTATION.md) — per-creature hyperparameter
-  evolution can override `learningRate` and similar values.
+- [Mutation adaptation](./MUTATION_ADAPTATION.md) — adaptive thresholds, plateau
+  detection, and MCMC acceptance.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — picking batch sizes for
   large datasets and CPU/GPU (Graphics Processing Unit) targets.
 

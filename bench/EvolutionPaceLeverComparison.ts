@@ -1,11 +1,10 @@
 /**
  * Issue #2931 — Benchmark OFF-by-default pace levers head-to-head.
  *
- * NEAT-AI ships many OFF-by-default "pace levers" (plateau detection,
- * adaptive population sizing, MCMC mutation acceptance, per-creature
- * hyperparameter evolution). Per-lever benches already exist, but each
- * tests one mechanism in isolation, so "which should we turn on?" has
- * only ever been answered by intuition.
+ * NEAT-AI ships several OFF-by-default "pace levers" (plateau detection,
+ * adaptive population sizing, MCMC mutation acceptance). Per-lever benches
+ * already exist, but each tests one mechanism in isolation, so "which
+ * should we turn on?" has only ever been answered by intuition.
  *
  * This harness runs the **same** fixed supervised problem under a matrix
  * of lever configurations and reports, for each:
@@ -29,8 +28,6 @@
  *
  *   - `mcmc`                → `metropolisHastingsAccept` (@neat/MetropolisHastings.ts)
  *   - `adaptivePopulation`  → `computeAdaptivePopulationSize` (@neat/AdaptivePopulationSizer.ts)
- *   - `hyperparameterEvolution` → `createDefaultHyperparameters` /
- *                                 `mutateHyperparameters` (@neat/HyperparameterEvolution.ts)
  *
  * `plateauDetection` is modelled directly (window-based stall detection +
  * random-immigrant injection) because it has no single pure entrypoint.
@@ -55,15 +52,6 @@ import { metropolisHastingsAccept } from "@neat/MetropolisHastings.ts";
 import { computeAdaptivePopulationSize } from "@neat/AdaptivePopulationSizer.ts";
 import { DEFAULT_ADAPTIVE_POPULATION_CONFIG } from "@config/AdaptivePopulationConfig.ts";
 import {
-  createDefaultHyperparameters,
-  mutateHyperparameters,
-} from "@neat/HyperparameterEvolution.ts";
-import {
-  DEFAULT_EVOLVABLE_HYPERPARAMETERS,
-  DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
-  type RequiredEvolvableHyperparameters,
-} from "@config/HyperparameterConfig.ts";
-import {
   createSeededRng,
   getRandomNumberGenerator,
   type RandomNumberGenerator,
@@ -84,8 +72,6 @@ export interface LeverConfig {
   readonly adaptivePopulation: boolean;
   /** Accept worsening offspring via Metropolis-Hastings. */
   readonly mcmc: boolean;
-  /** Evolve per-creature learning rate + perturbation scale. */
-  readonly hyperparameterEvolution: boolean;
 }
 
 /** Measured outcome for one lever configuration. */
@@ -127,49 +113,37 @@ export const DEFAULT_OPTIONS: ComparisonOptions = {
   seed: 2931,
 };
 
-/** The six head-to-head configurations from issue #2931. */
+/** The five head-to-head configurations from issue #2931. */
 export const LEVER_MATRIX: readonly LeverConfig[] = [
   {
     name: "baseline",
     plateauDetection: false,
     adaptivePopulation: false,
     mcmc: false,
-    hyperparameterEvolution: false,
   },
   {
     name: "plateauDetection",
     plateauDetection: true,
     adaptivePopulation: false,
     mcmc: false,
-    hyperparameterEvolution: false,
   },
   {
     name: "adaptivePopulation",
     plateauDetection: false,
     adaptivePopulation: true,
     mcmc: false,
-    hyperparameterEvolution: false,
   },
   {
     name: "mcmc",
     plateauDetection: false,
     adaptivePopulation: false,
     mcmc: true,
-    hyperparameterEvolution: false,
-  },
-  {
-    name: "hyperparameterEvolution",
-    plateauDetection: false,
-    adaptivePopulation: false,
-    mcmc: false,
-    hyperparameterEvolution: true,
   },
   {
     name: "fast (combined)",
     plateauDetection: true,
     adaptivePopulation: false,
     mcmc: true,
-    hyperparameterEvolution: true,
   },
 ];
 
@@ -256,27 +230,7 @@ function buildNetwork(
 
 interface Member {
   creature: Creature;
-  /** Per-creature hyperparameters (only evolved when the lever is on). */
-  hyper: RequiredEvolvableHyperparameters;
   error: number;
-}
-
-/** Effective learning rate for a member given the active levers. */
-function memberLearningRate(member: Member, config: LeverConfig): number {
-  if (!config.hyperparameterEvolution) return BASE_LEARNING_RATE;
-  // Scale the base rate by the evolved rate relative to its default so the
-  // lever explores around the same operating point as every other config.
-  const ratio = member.hyper.learningRate /
-    DEFAULT_EVOLVABLE_HYPERPARAMETERS.learningRate;
-  return BASE_LEARNING_RATE * ratio;
-}
-
-/** Effective weight-perturbation scale for a member given the active levers. */
-function memberPerturbScale(member: Member, config: LeverConfig): number {
-  if (!config.hyperparameterEvolution) return BASE_PERTURB_SCALE;
-  const ratio = member.hyper.weightPerturbationScale /
-    DEFAULT_EVOLVABLE_HYPERPARAMETERS.weightPerturbationScale;
-  return BASE_PERTURB_SCALE * ratio;
 }
 
 /**
@@ -313,9 +267,9 @@ export function runConfig(
   dataset: readonly Sample[],
   opts: ComparisonOptions,
 ): LeverResult {
-  // Seed the global RNG so the hyperparameter-evolution helpers (which read
-  // the global generator) are deterministic. Restore the prior generator
-  // afterwards so the harness leaves no global side effects.
+  // Seed the global RNG so any library helper reading the global generator
+  // is deterministic. Restore the prior generator afterwards so the harness
+  // leaves no global side effects.
   const priorRng = getRandomNumberGenerator();
   const seed = opts.seed + config.name.length * 1000 + 7;
   setRandomNumberGenerator(createSeededRng(seed));
@@ -325,12 +279,8 @@ export function runConfig(
   try {
     let members: Member[] = initialPopulation.map((j) => {
       const creature = Creature.fromJSON(structuredClone(j));
-      const hyper = config.hyperparameterEvolution
-        ? createDefaultHyperparameters(DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG)
-        : { ...DEFAULT_EVOLVABLE_HYPERPARAMETERS };
       return {
         creature,
-        hyper,
         error: meanAbsoluteError(creature, dataset, opts.outputs),
       };
     });
@@ -381,7 +331,7 @@ export function runConfig(
         trainOneGeneration(
           m.creature,
           dataset,
-          memberLearningRate(m, config),
+          BASE_LEARNING_RATE,
           opts.innerTrainIters,
         );
         m.error = meanAbsoluteError(m.creature, dataset, opts.outputs);
@@ -398,16 +348,10 @@ export function runConfig(
 
       while (next.length < targetSize) {
         const parent = members[rng.randomInt(0, topQuarter - 1)];
-        const childHyper = config.hyperparameterEvolution
-          ? mutateHyperparameters(
-            parent.hyper,
-            DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
-          )
-          : parent.hyper;
         const childCreature = perturb(
           parent.creature,
           () => rng.random(),
-          memberPerturbScale({ ...parent, hyper: childHyper }, config),
+          BASE_PERTURB_SCALE,
         );
         const childError = meanAbsoluteError(
           childCreature,
@@ -429,13 +373,12 @@ export function runConfig(
         if (accept) {
           next.push({
             creature: childCreature,
-            hyper: childHyper,
             error: childError,
           });
         } else {
-          // Rejected: carry a fresh perturbation of the parent instead so the
-          // population size stays on target.
-          next.push({ ...parent, hyper: childHyper });
+          // Rejected: carry the parent through instead so the population size
+          // stays on target.
+          next.push({ ...parent });
         }
       }
 
@@ -448,11 +391,6 @@ export function runConfig(
           const fresh = Creature.fromJSON(buildNetwork(rng, opts));
           next[idx] = {
             creature: fresh,
-            hyper: config.hyperparameterEvolution
-              ? createDefaultHyperparameters(
-                DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
-              )
-              : { ...DEFAULT_EVOLVABLE_HYPERPARAMETERS },
             error: meanAbsoluteError(fresh, dataset, opts.outputs),
           };
         }

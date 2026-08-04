@@ -351,7 +351,9 @@ const SLICE_E: RollupEntry[] = [
  * Slice F (#3524) — experimental / research configs, all `QUALIFIES`.
  *
  * `specialist` was one of the four entries; #3568 removed the option outright,
- * so it no longer has a source key to classify.
+ * so it no longer has a source key to classify. `hyperparameterEvolution` was
+ * another; #3569 removed it — option surface, genome field and public exports
+ * — so it too has no source key left.
  */
 const SLICE_F: RollupEntry[] = [
   qualifies("mcmc", "F", 3570, {
@@ -366,12 +368,6 @@ const SLICE_F: RollupEntry[] = [
   qualifies("opd", "F", 3570, {
     interfaces: ["src/config/OpdConfig.ts::OpdConfig"],
     note: "Decision — filed jointly with `mcmc`.",
-  }),
-  qualifies("hyperparameterEvolution", "F", 3569, {
-    interfaces: [
-      "src/config/HyperparameterConfig.ts::HyperparameterEvolutionConfig",
-      "src/config/HyperparameterConfig.ts::EvolvableHyperparameters",
-    ],
   }),
   {
     key: "SpecialistConfig",

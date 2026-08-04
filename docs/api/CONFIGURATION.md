@@ -19,10 +19,6 @@ field-by-field reference.
 - `NeatOptions`, `NeatOptionsInput`
 - `OutputRange`, `RequiredOutputRange`, `DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT`,
   `calculateOutputRangePenalty`
-- Hyperparameter evolution: `EvolvableHyperparameters`,
-  `HyperparameterEvolutionConfig`, `RequiredEvolvableHyperparameters`,
-  `RequiredHyperparameterEvolutionConfig`, `DEFAULT_EVOLVABLE_HYPERPARAMETERS`,
-  `DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG`
 - MCMC: `MCMCConfig`, `RequiredMCMCConfig`, `DiversityAwareMCMCConfig`,
   `RequiredDiversityAwareMCMCConfig`, `DEFAULT_MCMC_CONFIG`,
   `DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG`
@@ -243,13 +239,6 @@ these ranges receive a fitness penalty proportional to the excess. Use
 `calculateOutputRangePenalty(creature, ranges)` to compute the penalty manually;
 `DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT` is the internal weighting applied during
 evolution.
-
-### `hyperparameterEvolution` — HyperparameterEvolutionConfig
-
-Issue #1863: per-creature evolvable hyperparameters (learning rate, mutation
-rates, regularisation strength) subject to mutation and crossover.
-`DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG` and
-`DEFAULT_EVOLVABLE_HYPERPARAMETERS` are the seed values.
 
 ### `adaptivePopulation` — AdaptivePopulationConfig
 

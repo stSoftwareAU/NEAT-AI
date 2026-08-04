@@ -230,8 +230,8 @@ iteration). See [Logging](./LOGGING.md).
 - [Configuration presets](./PRESETS.md) — pre-built profiles built from these
   options.
 - [Mutation adaptation](./MUTATION_ADAPTATION.md) — adaptive mutation
-  thresholds, plateau detection, MCMC, and per-creature hyperparameter
-  evolution.
+  thresholds, plateau detection, and MCMC acceptance — the mechanisms that
+  modulate the base rates above.
 - [Population sizing](./POPULATION.md) — adaptive population sizing and
   fine-tune population fractions.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — practical guidance on

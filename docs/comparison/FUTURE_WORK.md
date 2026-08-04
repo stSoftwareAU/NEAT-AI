@@ -175,14 +175,14 @@ cross-validation.
 
 ### 7. 🔧 Hyperparameter Evolution
 
-**Current state**: Per-creature hyperparameter self-adaptation with adaptive
-population sizing is implemented (Issue #1863).
+**Current state**: Adaptive population sizing is implemented (Issue #1863).
+Per-creature hyperparameter self-adaptation was implemented alongside it but
+withdrawn in Issue #3569 — the feature was complete and tested, yet its
+`enabled` flag was never turned on by any consumer, so it carried a genome field
+and a 13-field config surface for no measured benefit.
 
 **What we have**:
 
-- ✅ **Per-creature hyperparameter self-adaptation**: learning rate, mutation
-  rates, and regularisation strength as evolvable parameters with Gaussian
-  mutation and weighted-average crossover.
 - ✅ **Adaptive population sizing** (`AdaptivePopulationConfig`): adjusts size
   based on species diversity metrics.
 - **Adaptive mutation thresholds** (`AdaptiveMutationThresholds`): large
@@ -190,8 +190,10 @@ population sizing is implemented (Issue #1863).
   interpolation for medium creatures (100–299 neurons).
 - **Plateau detection** (`PlateauDetector`): adapts mutation rates on plateaus.
 
-**What's still missing**: meta-learning for hyperparameters (learning to learn
-across tasks).
+**What's still missing**: per-creature hyperparameter self-adaptation (see above
+— a prior implementation was withdrawn as unused, so any revival should land
+with a consumer that enables it), and meta-learning for hyperparameters
+(learning to learn across tasks).
 
 **Impact**: reduced manual tuning, better default configurations.
 

@@ -2,7 +2,7 @@
  * @module
  *
  * Builds offspring creatures from two parents for the breeding pipeline —
- * crossover of topology, synapses and hyperparameters. Neurons are aligned
+ * crossover of topology and synapses. Neurons are aligned
  * between parents by matching stable UUIDs (never array position), so the same
  * genome breeds consistently across machines; child neurons keep their parent
  * UUID and any newly created neurons get a fresh one.
@@ -13,9 +13,6 @@ import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";
 import { editParentByIndex } from "@breed/EditParentByIndex.ts";
 import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
 import { Creature } from "@creature";
-import type { RequiredHyperparameterEvolutionConfig } from "@config/HyperparameterConfig.ts";
-import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "@config/HyperparameterConfig.ts";
-import { crossoverHyperparameters } from "@neat/HyperparameterEvolution.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 import { neuronWireLabelForDiagnostics } from "@neuron/NeuronSerialization.ts";
@@ -173,7 +170,6 @@ export class Offspring {
       geneticCompatibilityThreshold?: number;
       interSpeciesCrossoverThreshold?: number;
       forwardOnly?: boolean;
-      hyperparameterEvolution?: RequiredHyperparameterEvolutionConfig;
       /** Issue #2284: Optional accumulator for sub-phase timing instrumentation. */
       subPhaseAccumulator?: BreedingSubPhaseAccumulator;
     } = {},
@@ -233,23 +229,6 @@ export class Offspring {
           child.memetic = memeticUpdate(mother, child);
         } else if (father.memetic) {
           child.memetic = memeticUpdate(father, child);
-        }
-
-        // Hyperparameter crossover (same as standard crossover path)
-        const hpConfig = options.hyperparameterEvolution ??
-          DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG;
-        if (hpConfig.enabled) {
-          child.hyperparameters = crossoverHyperparameters(
-            mum.hyperparameters,
-            dad.hyperparameters,
-            hpConfig,
-          );
-        } else if (mum.hyperparameters || dad.hyperparameters) {
-          child.hyperparameters = mum.hyperparameters
-            ? { ...mum.hyperparameters }
-            : dad.hyperparameters
-            ? { ...dad.hyperparameters }
-            : undefined;
         }
 
         if (child.memetic) {
@@ -637,25 +616,6 @@ export class Offspring {
     } else if (father.memetic) {
       const memetic = memeticUpdate(father, offspring);
       offspring.memetic = memetic;
-    }
-
-    // Issue #1863: Crossover per-creature hyperparameters
-    const hpConfig = options.hyperparameterEvolution ??
-      DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG;
-    if (hpConfig.enabled) {
-      offspring.hyperparameters = crossoverHyperparameters(
-        mum.hyperparameters,
-        dad.hyperparameters,
-        hpConfig,
-      );
-    } else if (mum.hyperparameters || dad.hyperparameters) {
-      // Preserve hyperparameters even when evolution is disabled,
-      // inheriting from the fitter parent (mother).
-      offspring.hyperparameters = mum.hyperparameters
-        ? { ...mum.hyperparameters }
-        : dad.hyperparameters
-        ? { ...dad.hyperparameters }
-        : undefined;
     }
 
     if (shouldBeForwardOnly) {

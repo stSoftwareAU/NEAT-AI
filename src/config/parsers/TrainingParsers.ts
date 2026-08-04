@@ -3,18 +3,14 @@
  *
  * Extracted from NeatConfigParsers.ts (Issue #2396) to keep each parser
  * group focused on a single concern. This file holds parsers for
- * hyperparameter evolution, quantum step sizing, predictive coding
- * inference, and cross-validation folds.
+ * quantum step sizing, predictive coding inference, and
+ * cross-validation folds.
  */
 
 import {
   DEFAULT_CROSS_VALIDATION_CONFIG,
   type RequiredCrossValidationConfig,
 } from "@config/CrossValidationConfig.ts";
-import {
-  DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
-  type RequiredHyperparameterEvolutionConfig,
-} from "@config/HyperparameterConfig.ts";
 import { parseNumber } from "@config/ParseOptions.ts";
 import {
   DEFAULT_PREDICTIVE_CODING_CONFIG,
@@ -24,54 +20,6 @@ import {
   DEFAULT_QUANTUM_STEP_CONFIG,
   type RequiredQuantumStepConfig,
 } from "@config/QuantumStepConfig.ts";
-
-/** Parse hyperparameter evolution configuration (Issue #1863). */
-export function parseHyperparameterEvolution(
-  overrides: Record<string, unknown> | undefined,
-): RequiredHyperparameterEvolutionConfig {
-  const d = DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG;
-  return {
-    enabled: typeof overrides?.enabled === "boolean"
-      ? overrides.enabled
-      : d.enabled,
-    minLearningRate: parseNumber(
-      "Hyperparameter evolution minLearningRate",
-      overrides?.minLearningRate,
-      d.minLearningRate,
-      { minExclusive: 0, max: 1 },
-    ),
-    maxLearningRate: parseNumber(
-      "Hyperparameter evolution maxLearningRate",
-      overrides?.maxLearningRate,
-      d.maxLearningRate,
-      { minExclusive: 0, max: 1 },
-    ),
-    minWeightPerturbation: parseNumber(
-      "Hyperparameter evolution minWeightPerturbation",
-      overrides?.minWeightPerturbation,
-      d.minWeightPerturbation,
-      { minExclusive: 0 },
-    ),
-    maxWeightPerturbation: parseNumber(
-      "Hyperparameter evolution maxWeightPerturbation",
-      overrides?.maxWeightPerturbation,
-      d.maxWeightPerturbation,
-      { minExclusive: 0 },
-    ),
-    maxRegularisationStrength: parseNumber(
-      "Hyperparameter evolution maxRegularisationStrength",
-      overrides?.maxRegularisationStrength,
-      d.maxRegularisationStrength,
-      { min: 0 },
-    ),
-    mutationStdDev: parseNumber(
-      "Hyperparameter evolution mutationStdDev",
-      overrides?.mutationStdDev,
-      d.mutationStdDev,
-      { minExclusive: 0, max: 1 },
-    ),
-  } as RequiredHyperparameterEvolutionConfig;
-}
 
 /** Parse quantum step configuration (Issue #1330). */
 export function parseQuantumStep(

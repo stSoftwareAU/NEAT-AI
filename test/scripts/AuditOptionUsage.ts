@@ -159,10 +159,11 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   // `enableRepetitiveTraining`, leaving 114; #3559 then removed `novelty`,
   // leaving 113; #3554 then removed `dnaSharingMode`, leaving 112; #3562 then
   // removed `stabilityAdaptation`, leaving 111; #3568 then removed
-  // `specialist`, leaving 110.
+  // `specialist`, leaving 110; #3569 then removed `hyperparameterEvolution`,
+  // leaving 109.
   assertEquals(
     topLevel.length,
-    110,
+    109,
     "NeatArguments top-level key count changed",
   );
   assert(

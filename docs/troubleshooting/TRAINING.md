@@ -1,16 +1,14 @@
 # 📉 Training Troubleshooting
 
 This document covers training-quality symptoms: fitness plateaus, NaN / infinity
-outputs, hyperparameter evolution drift, and data fuzzing / regularisation
-tuning. See the index in [`../TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) for
-other categories.
+outputs, and data fuzzing / regularisation tuning. See the index in
+[`../TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) for other categories.
 
 ## Table of contents
 
 - [Fitness plateau](#-fitness-plateau)
 - [Creatures producing NaN or Infinity](#-creatures-producing-nan-or-infinity)
 - [Data fuzzing and regularisation](#-data-fuzzing-and-regularisation)
-- [Hyperparameter evolution](#-hyperparameter-evolution)
 
 ## 📉 Fitness plateau
 
@@ -241,17 +239,6 @@ to prevent memorisation. If convergence is unacceptably slow, reduce
 Each generation evaluates creatures `k` times (once per fold). If training time
 is a concern, reduce `folds` from the default of 5 to 3, or increase
 `timeoutMinutes` to allow more time for the additional evaluations.
-
-## 🧬 Hyperparameter evolution
-
-### Evolved hyperparameters cluster around extreme values
-
-- **Check bounds:** If `minLearningRate` and `maxLearningRate` are too far
-  apart, evolution may oscillate between extremes. Narrow the range.
-- **Reduce mutation magnitude:** Lower `mutationStdDev` from `0.1` to `0.05` for
-  more gradual adaptation.
-- **Increase population size:** Hyperparameter evolution benefits from larger
-  populations to maintain diversity in the hyperparameter gene pool.
 
 ## See also
 

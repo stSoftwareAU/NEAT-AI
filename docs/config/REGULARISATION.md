@@ -108,8 +108,8 @@ effectiveStep = baseStep × (1 + errorScale × normalisedError)
 
 - [Training parameters](./TRAINING.md) — adjustment scales applied per iteration
   during backpropagation.
-- [Mutation adaptation](./MUTATION_ADAPTATION.md) — adaptive thresholds and
-  per-creature hyperparameter evolution.
+- [Mutation adaptation](./MUTATION_ADAPTATION.md) — adaptive thresholds, plateau
+  detection, and MCMC acceptance.
 - [BACKPROP_ELASTICITY.md](../BACKPROP_ELASTICITY.md) — why minimum-change
   weight updates are preferred and how saturated activations are protected.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — throughput and memory

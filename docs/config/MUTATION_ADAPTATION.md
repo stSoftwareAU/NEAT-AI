@@ -1,9 +1,9 @@
 # 🎛️ Mutation adaptation
 
-Adaptive mutation, plateau detection, MCMC (Markov Chain Monte Carlo)
-acceptance, and per-creature hyperparameter evolution all adjust how mutations
-are applied and accepted. They share a common goal: keep exploration alive when
-the population stagnates, and tighten exploitation when fitness improves.
+Adaptive mutation, plateau detection and MCMC (Markov Chain Monte Carlo)
+acceptance all adjust how mutations are applied and accepted. They share a
+common goal: keep exploration alive when the population stagnates, and tighten
+exploitation when fitness improves.
 
 ```ts
 import { createNeatConfig } from "@stsoftware/neat-ai";
@@ -16,7 +16,6 @@ const config = createNeatConfig({
   },
   plateauDetection: { enabled: true },
   mcmc: { enabled: true, initialTemperature: 1.0, coolingRate: 0.995 },
-  hyperparameterEvolution: { enabled: true },
 });
 ```
 
@@ -113,41 +112,6 @@ Pass as `mcmc` in options.
 > MCMC works well alongside plateau detection. Plateau detection adjusts _how
 > much_ mutation happens, while MCMC temperature adjusts _which_ mutations
 > stick. Enable both for a robust exploration/exploitation balance.
-
-## 🧬 Per-creature hyperparameter evolution
-
-Issue #1863: Instead of using fixed hyperparameters for the entire population,
-each creature carries its own learning rate, mutation rates, and regularisation
-strength. These evolve alongside topology and weights — creatures whose
-hyperparameters suit the problem achieve higher fitness and propagate their
-settings to offspring.
-
-Pass as `hyperparameterEvolution` in options.
-
-### Bounds
-
-| Option                      | Type      | Default  | Description                                                 |
-| --------------------------- | --------- | -------- | ----------------------------------------------------------- |
-| `enabled`                   | `boolean` | `false`  | Whether per-creature hyperparameter evolution is active     |
-| `minLearningRate`           | `number`  | `0.0001` | Lower bound for per-creature learning rate                  |
-| `maxLearningRate`           | `number`  | `0.1`    | Upper bound for per-creature learning rate                  |
-| `minWeightPerturbation`     | `number`  | `0.1`    | Lower bound for weight perturbation scale                   |
-| `maxWeightPerturbation`     | `number`  | `2.0`    | Upper bound for weight perturbation scale                   |
-| `maxRegularisationStrength` | `number`  | `0.1`    | Upper bound for L1/L2 regularisation strength               |
-| `mutationStdDev`            | `number`  | `0.1`    | Standard deviation for Gaussian mutation of hyperparameters |
-
-### Per-creature hyperparameters
-
-Each creature evolves these values within the configured bounds:
-
-| Hyperparameter             | Default | Description                                        |
-| -------------------------- | ------- | -------------------------------------------------- |
-| `learningRate`             | `0.01`  | Backpropagation learning rate                      |
-| `addNeuronRate`            | `0.1`   | Probability of adding a neuron during mutation     |
-| `addConnectionRate`        | `0.2`   | Probability of adding a connection during mutation |
-| `weightPerturbationScale`  | `1.0`   | Weight perturbation magnitude scaling factor       |
-| `l1RegularisationStrength` | `0`     | L1 regularisation strength for backpropagation     |
-| `l2RegularisationStrength` | `0`     | L2 regularisation strength for backpropagation     |
 
 ## 👀 See also
 

@@ -174,25 +174,6 @@ export { DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT } from "@config/OutputRangeConfig.t
 export { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 
 /**
- * Hyperparameter Evolution
- *
- * Issue #1863: Per-creature evolvable hyperparameters (learning rate,
- * mutation rates, regularisation strength) subject to mutation and crossover.
- *
- * @see {@link module:src/config/HyperparameterConfig}
- */
-export type {
-  EvolvableHyperparameters,
-  HyperparameterEvolutionConfig,
-  RequiredEvolvableHyperparameters,
-  RequiredHyperparameterEvolutionConfig,
-} from "@config/HyperparameterConfig.ts";
-export {
-  DEFAULT_EVOLVABLE_HYPERPARAMETERS,
-  DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG,
-} from "@config/HyperparameterConfig.ts";
-
-/**
  * MCMC Acceptance Criterion
  *
  * Issue #2199: Markov Chain Monte Carlo (MCMC) temperature-based acceptance

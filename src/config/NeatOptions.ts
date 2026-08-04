@@ -21,7 +21,6 @@ import type { WasmCacheConfig } from "@config/WasmCacheConfig.ts";
 import type { WeightRegularisationConfig } from "@config/WeightRegularisationConfig.ts";
 import type { OutputRange } from "@config/OutputRangeConfig.ts";
 import type { WorkerThreadCapConfig } from "@config/WorkerThreadCapConfig.ts";
-import type { HyperparameterEvolutionConfig } from "@config/HyperparameterConfig.ts";
 import type { MCMCConfig } from "@config/MCMCConfig.ts";
 import type { OpdConfig } from "@config/OpdConfig.ts";
 import type { AdaptivePopulationConfig } from "@config/AdaptivePopulationConfig.ts";
@@ -111,7 +110,6 @@ export type NeatOptions =
     | "wasmCache"
     | "memory"
     | "workerThreadCap"
-    | "hyperparameterEvolution"
     | "mcmc"
     | "opd"
     | "adaptivePopulation"
@@ -158,8 +156,6 @@ export type NeatOptions =
     memory?: MemoryConfig;
     /** Partial overrides for worker thread cap configuration (defaults applied if not specified) */
     workerThreadCap?: WorkerThreadCapConfig;
-    /** Partial overrides for hyperparameter evolution configuration (defaults applied if not specified) */
-    hyperparameterEvolution?: HyperparameterEvolutionConfig;
     /** Partial overrides for MCMC acceptance configuration (defaults applied if not specified) */
     mcmc?: MCMCConfig;
     /**
@@ -276,7 +272,6 @@ export type NeatOptionsInput =
     | "wasmCache"
     | "memory"
     | "workerThreadCap"
-    | "hyperparameterEvolution"
     | "mcmc"
     | "opd"
     | "adaptivePopulation"
@@ -319,7 +314,6 @@ export type NeatOptionsInput =
     wasmCache?: CoerceNumeric<WasmCacheConfig>;
     memory?: CoerceNumeric<MemoryConfig>;
     workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
-    hyperparameterEvolution?: CoerceNumeric<HyperparameterEvolutionConfig>;
     /** MCMC acceptance configuration (Issue #2199). Numeric fields coerced from CLI. */
     mcmc?: CoerceNumeric<MCMCConfig>;
     /**

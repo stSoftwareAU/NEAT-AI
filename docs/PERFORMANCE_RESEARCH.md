@@ -914,9 +914,7 @@ behaviour rather than a stand-in:
 
 - `mcmc` → `metropolisHastingsAccept` (`@neat/MetropolisHastings.ts`),
 - `adaptivePopulation` → `computeAdaptivePopulationSize`
-  (`@neat/AdaptivePopulationSizer.ts`),
-- `hyperparameterEvolution` → `createDefaultHyperparameters` /
-  `mutateHyperparameters` (`@neat/HyperparameterEvolution.ts`).
+  (`@neat/AdaptivePopulationSizer.ts`).
 
 `plateauDetection` is modelled directly (window-based stall detection plus
 random-immigrant injection). The run is pure measurement — **no
@@ -930,9 +928,8 @@ flowchart LR
     M --> PD[plateauDetection]
     M --> AP[adaptivePopulation]
     M --> MC[mcmc]
-    M --> HP[hyperparameterEvolution]
-    M --> F[fast = PD + mcmc + HP]
-    B & PD & AP & MC & HP & F --> R[generations-to-target<br/>wall-clock · best error]
+    M --> F[fast = PD + mcmc]
+    B & PD & AP & MC & F --> R[generations-to-target<br/>wall-clock · best error]
 ```
 
 ### Results (reproducible)
@@ -942,38 +939,34 @@ bench/EvolutionPaceLeverComparison.ts`
 — population 24, 60 generations, 48-sample dataset, `targetError = 0.05`, seed
 2931:
 
-| config                  | generations-to-target | wall-clock ms | best error |
-| ----------------------- | --------------------- | ------------- | ---------- |
-| baseline                | 18                    | 562.2         | 0.049757   |
-| plateauDetection        | 14                    | 413.6         | 0.049974   |
-| adaptivePopulation      | 20                    | 610.2         | 0.047773   |
-| mcmc                    | 14                    | 417.3         | 0.044555   |
-| hyperparameterEvolution | 9                     | 268.1         | 0.045144   |
-| fast (combined)         | 11                    | 329.0         | 0.045903   |
+| config             | generations-to-target | wall-clock ms | best error |
+| ------------------ | --------------------- | ------------- | ---------- |
+| baseline           | 18                    | 589.6         | 0.049757   |
+| plateauDetection   | 14                    | 376.9         | 0.049974   |
+| adaptivePopulation | 20                    | 601.6         | 0.047773   |
+| mcmc               | 14                    | 385.7         | 0.044555   |
+| fast (combined)    | 15                    | 419.3         | 0.048206   |
 
 ```mermaid
 xychart-beta
     title "Generations-to-target per pace lever (fewer is better)"
-    x-axis ["baseline", "plateau", "adaptPop", "mcmc", "hyperparam", "fast"]
+    x-axis ["baseline", "plateau", "adaptPop", "mcmc", "fast"]
     y-axis "Generations" 0 --> 22
-    bar [18, 14, 20, 14, 9, 11]
+    bar [18, 14, 20, 14, 15]
 ```
 
 Convergence vs baseline (fewer generations is better):
 
-- `hyperparameterEvolution` — **9 generations, 50% faster** than baseline, and
-  the lowest wall-clock. Strongest single lever on this problem.
 - `mcmc` — 14 generations, **22% faster**, and the best final error (0.0446).
   The Metropolis-Hastings acceptance lets the search ride over shallow local
   optima.
 - `plateauDetection` — 14 generations, **22% faster**. Random-immigrant
   injection only fires when progress stalls, so it is cheap when it is not
   needed.
-- `fast (combined = plateauDetection + mcmc + hyperparameterEvolution)` — 11
-  generations, **39% faster**. Faster than baseline and than every lever except
-  `hyperparameterEvolution` alone: stacking levers compounds their per-step
-  stochasticity, so the combination is _not_ simply the sum of the best
-  individual gains on this problem.
+- `fast (combined = plateauDetection + mcmc)` — 15 generations, **17% faster**.
+  Faster than baseline but _slower_ than either of its two constituent levers on
+  their own: stacking levers compounds their per-step stochasticity, so the
+  combination is not simply the sum of the individual gains on this problem.
 - `adaptivePopulation` — 20 generations, **11% slower**. Growing the population
   under low diversity spreads the fixed per-generation training budget across
   more creatures, delaying convergence on a problem that benefits from
@@ -981,25 +974,23 @@ Convergence vs baseline (fewer generations is better):
   speed.
 
 The effect ordering is stable as the target is tightened (harder targets widen
-the gaps); e.g. at `targetError = 0.04`, baseline = 24 generations while
-`hyperparameterEvolution` = 10 (58% faster) and `adaptivePopulation` stays at
-the baseline 24.
+the gaps); e.g. at `targetError = 0.04`, baseline = 24 generations while `mcmc`
+= 16 (33% faster), `plateauDetection` = 18 (25% faster) and `adaptivePopulation`
+stays at the baseline 24.
 
 ### Recommendation
 
-- **Turn on `hyperparameterEvolution`** for convergence-bound runs — it is the
-  single biggest pace win here (50% fewer generations, lowest wall-clock) and
-  degrades gracefully (per-creature search around the existing defaults).
 - **Turn on `mcmc`** where final solution quality matters — it reaches the best
-  error and is a clear convergence win.
+  error and is the strongest single convergence win here (22% fewer generations,
+  widening to 33% at the tighter `targetError = 0.04`).
 - **Keep `plateauDetection` available** as a cheap stall-escape; it helps and
   costs nothing when no plateau is detected.
 - **Leave `adaptivePopulation` OFF by default for convergence-bound runs.** It
   slows raw convergence here; enable it only when population diversity or
   stagnation escape is the goal, not generations-to-target.
-- The combined **fast** profile is a reasonable opinionated default (39% faster
-  than baseline), but on convergence-bound problems `hyperparameterEvolution`
-  alone is faster — prefer it when convergence speed is the sole objective.
+- The combined **fast** profile is a reasonable opinionated default (17% faster
+  than baseline), but on convergence-bound problems `mcmc` alone is faster —
+  prefer it when convergence speed is the sole objective.
 
 These are recommendations from a single deterministic micro-benchmark; they
 _inform_ default changes (e.g. #2928) but do not, by themselves, change any
