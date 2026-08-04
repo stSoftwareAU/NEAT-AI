@@ -380,23 +380,6 @@ function broadcastWorkerCacheCaps(
 }
 
 /**
- * Attempt a proactive garbage collection if the runtime exposes it. Issue #2381.
- *
- * Only effective when the V8 `--expose-gc` flag is set. Safe to call
- * unconditionally — the call is a no-op otherwise.
- */
-export function attemptProactiveGc(): boolean {
-  const gc = (globalThis as { gc?: () => void }).gc;
-  if (typeof gc !== "function") return false;
-  try {
-    gc();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Provider function for heap memory usage — injectable for testing.
  */
 export type MemoryUsageProvider = () => MemoryUsageSample;
@@ -545,7 +528,6 @@ export function formatMemorySnapshot(snapshot: MemorySnapshot): string {
  *   `criticalBackoffWindowMs`, the critical response is suppressed for
  *   `criticalBackoffCooldownMs` so we stop thrashing when caches are not the
  *   true retainer.
- * - Optional proactive GC (`proactiveGc`) invoked on critical pressure.
  *
  * @param config - Memory monitoring configuration with thresholds
  * @param logger - Logger instance for diagnostics
@@ -621,7 +603,6 @@ export function checkMemoryAndEvict(
         _backoffNotified = false;
 
         applyCriticalResponse(logger, sink);
-        if (config.proactiveGc) attemptProactiveGc();
         evicted = true;
 
         _recentCriticalTimestamps.push(nowMs);

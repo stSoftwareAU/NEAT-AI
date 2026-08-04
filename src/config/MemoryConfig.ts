@@ -101,15 +101,6 @@ export interface MemoryConfig {
   criticalBackoffCooldownMs?: number;
 
   /**
-   * Whether to attempt proactive GC (`globalThis.gc?.()`) on critical
-   * pressure when available. Issue #2381.
-   *
-   * Only effective when the runtime was started with `--v8-flags=--expose-gc`.
-   * Defaults to false (so production behaviour is unchanged unless opted in).
-   */
-  proactiveGc?: boolean;
-
-  /**
    * Off-heap (native/Rust) resident-set budget in bytes. Issue #3025.
    *
    * The discovery worker runs on a small default V8 heap (~269 MB), so after
@@ -168,7 +159,6 @@ export const DEFAULT_MEMORY_CONFIG: RequiredMemoryConfig = {
   criticalBackoffBurst: 5,
   criticalBackoffWindowMs: 10_000,
   criticalBackoffCooldownMs: 60_000,
-  proactiveGc: false,
   nativeBudgetBytes: 0,
   maxAnalysisMemoryMb: 0,
 };

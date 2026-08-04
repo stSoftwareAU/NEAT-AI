@@ -2,7 +2,6 @@ import { assertEquals, assertStrictEquals } from "@std/assert";
 import {
   applyCriticalResponse,
   applyWarningResponse,
-  attemptProactiveGc,
   captureMemorySnapshot,
   checkMemoryAndEvict,
   defaultMemoryUsageProvider,
@@ -634,73 +633,6 @@ Deno.test(
     }
   },
 );
-
-Deno.test("checkMemoryAndEvict proactiveGc invokes globalThis.gc when present", () => {
-  resetMemoryPressureLogCountersForTests();
-  const originalCap = getMaxCachedWasmCreatureActivations();
-  const globalAny = globalThis as { gc?: () => void };
-  const originalGc = globalAny.gc;
-  try {
-    let gcCalls = 0;
-    globalAny.gc = () => {
-      gcCalls++;
-    };
-    const config: RequiredMemoryConfig = {
-      ...DEFAULT_MEMORY_CONFIG,
-      proactiveGc: true,
-      snapshotThreshold: 1.0,
-    };
-    const logger = createTestLogger();
-    setMaxCachedWasmCreatureActivations(100);
-    const result = checkMemoryAndEvict(
-      config,
-      logger,
-      fakeMemoryProvider(950, 1000),
-    );
-    assertStrictEquals(result.pressureLevel, "critical");
-    assertStrictEquals(gcCalls, 1);
-  } finally {
-    if (originalGc === undefined) {
-      delete (globalAny as { gc?: () => void }).gc;
-    } else {
-      globalAny.gc = originalGc;
-    }
-    setMaxCachedWasmCreatureActivations(originalCap);
-    resetMemoryPressureLogCountersForTests();
-  }
-});
-
-Deno.test("attemptProactiveGc returns false when gc is not exposed", () => {
-  const globalAny = globalThis as { gc?: () => void };
-  const originalGc = globalAny.gc;
-  try {
-    // Cannot delete non-configurable properties (e.g. when --expose-gc is set).
-    // Setting to undefined satisfies typeof check in attemptProactiveGc.
-    (globalAny as Record<string, unknown>).gc = undefined;
-    assertStrictEquals(attemptProactiveGc(), false);
-  } finally {
-    if (originalGc !== undefined) globalAny.gc = originalGc;
-  }
-});
-
-Deno.test("attemptProactiveGc returns true and invokes gc when exposed", () => {
-  const globalAny = globalThis as { gc?: () => void };
-  const originalGc = globalAny.gc;
-  try {
-    let called = false;
-    globalAny.gc = () => {
-      called = true;
-    };
-    assertStrictEquals(attemptProactiveGc(), true);
-    assertStrictEquals(called, true);
-  } finally {
-    if (originalGc === undefined) {
-      delete (globalAny as { gc?: () => void }).gc;
-    } else {
-      globalAny.gc = originalGc;
-    }
-  }
-});
 
 Deno.test(
   "resetMemoryPressureLogCountersForTests also clears snapshot and backoff state",

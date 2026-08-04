@@ -289,9 +289,7 @@ record-phase leftovers — the per-chunk cache release of #2642 applied to the
 boundary. State analysis still consumes is preserved
 (`recordedNeuronTotalAbsError` for focus ranking, `parquetFilePath`,
 `combinedRustAnalysis`, `creature`), so there is no use-after-free and no change
-to recorded output. When `memory.proactiveGc` is enabled a best-effort
-`globalThis.gc?.()` runs after the references are dropped, but correctness never
-depends on GC running.
+to recorded output.
 
 #### Off-heap (RSS / native budget) awareness (Issue #3025)
 

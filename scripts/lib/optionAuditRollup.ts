@@ -298,12 +298,12 @@ const SLICE_E: RollupEntry[] = [
     fieldOverrides: {
       enabled: { verdict: "IN USE" },
       nativeBudgetBytes: { verdict: "IN USE" },
-      proactiveGc: { verdict: "QUALIFIES", issue: 3565 },
-      maxAnalysisMemoryMb: { verdict: "QUALIFIES", issue: 3565 },
+      maxAnalysisMemoryMb: { verdict: "IN USE" },
     },
     note:
       "The downstream production consumer sets `enabled` + `nativeBudgetBytes`; " +
-      "seven defaults are live.",
+      "seven defaults are live. #3565 removed `proactiveGc` and wired " +
+      "`maxAnalysisMemoryMb` to the runner's `DISCOVERY_ANALYSIS_MEMORY_BUDGET_MB`.",
   }),
   inUse("workerThreadCap", "E", {
     interfaces: ["src/config/WorkerThreadCapConfig.ts::WorkerThreadCapConfig"],

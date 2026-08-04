@@ -120,9 +120,6 @@ export function parseMemoryConfig(
       d.criticalBackoffCooldownMs,
       { integer: true, min: 0 },
     ),
-    proactiveGc: overrides?.proactiveGc !== undefined
-      ? Boolean(overrides.proactiveGc)
-      : d.proactiveGc,
     nativeBudgetBytes: parseNumber(
       "Memory nativeBudgetBytes",
       overrides?.nativeBudgetBytes,
