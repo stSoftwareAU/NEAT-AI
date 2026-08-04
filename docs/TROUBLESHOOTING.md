@@ -130,7 +130,7 @@ full decision tree.
   worker thread count, scale dataset / population, and bound discovery overhead.
   → [Training is slow](troubleshooting/PERFORMANCE.md#training-is-slow).
 
-## 📉 Training divergence — plateau, NaN / infinity, fuzzing, hyperparameters
+## 📉 Training divergence — plateau, NaN / infinity, fuzzing
 
 See [`troubleshooting/TRAINING.md`](troubleshooting/TRAINING.md) for the full
 decision trees.
@@ -149,8 +149,6 @@ decision trees.
   [`DatasetError`](api/ERRORS.md#-dataseterror).
 - **Noise injection / cross-validation tuning** — see
   [Data fuzzing and regularisation](troubleshooting/TRAINING.md#-data-fuzzing-and-regularisation).
-- **Evolved hyperparameters cluster at extremes** — see
-  [Hyperparameter evolution](troubleshooting/TRAINING.md#-hyperparameter-evolution).
 
 ## 🔄 CI / quality.sh failures
 

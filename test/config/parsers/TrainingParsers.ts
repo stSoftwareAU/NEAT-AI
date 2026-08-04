@@ -5,44 +5,13 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { DEFAULT_CROSS_VALIDATION_CONFIG } from "@config/CrossValidationConfig.ts";
-import { DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG } from "@config/HyperparameterConfig.ts";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
 import { DEFAULT_QUANTUM_STEP_CONFIG } from "@config/QuantumStepConfig.ts";
 import {
   parseCrossValidation,
-  parseHyperparameterEvolution,
   parsePredictiveCoding,
   parseQuantumStep,
 } from "@config/parsers/TrainingParsers.ts";
-
-Deno.test("parseHyperparameterEvolution - returns defaults", () => {
-  const cfg = parseHyperparameterEvolution(undefined);
-  assertEquals(cfg.enabled, DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG.enabled);
-  assertEquals(
-    cfg.minLearningRate,
-    DEFAULT_HYPERPARAMETER_EVOLUTION_CONFIG.minLearningRate,
-  );
-});
-
-Deno.test("parseHyperparameterEvolution - applies overrides", () => {
-  const cfg = parseHyperparameterEvolution({
-    enabled: true,
-    minLearningRate: 0.0001,
-    maxLearningRate: 0.5,
-    mutationStdDev: 0.1,
-  });
-  assertEquals(cfg.enabled, true);
-  assertEquals(cfg.minLearningRate, 0.0001);
-  assertEquals(cfg.maxLearningRate, 0.5);
-  assertEquals(cfg.mutationStdDev, 0.1);
-});
-
-Deno.test("parseHyperparameterEvolution - rejects minLearningRate of 0 (exclusive)", () => {
-  assertThrows(
-    () => parseHyperparameterEvolution({ minLearningRate: 0 }),
-    ConfigurationError,
-  );
-});
 
 Deno.test("parseQuantumStep - returns defaults", () => {
   const cfg = parseQuantumStep(undefined);

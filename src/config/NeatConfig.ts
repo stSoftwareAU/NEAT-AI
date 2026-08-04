@@ -51,7 +51,6 @@ import {
   parseDiskSpaceConfig,
   parseFineTunePopulation,
   parseFitnessSharing,
-  parseHyperparameterEvolution,
   parseMcmc,
   parseMemoryConfig,
   parseOpd,
@@ -670,10 +669,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     opd: parseOpd(
       opts.opd as Record<string, unknown> | undefined,
     ),
-    // Issue #1863: Parse hyperparameter evolution and adaptive population configs
-    hyperparameterEvolution: parseHyperparameterEvolution(
-      opts.hyperparameterEvolution as Record<string, unknown> | undefined,
-    ),
+    // Issue #1863: Parse adaptive population config
     adaptivePopulation: parseAdaptivePopulation(
       opts.adaptivePopulation as Record<string, unknown> | undefined,
     ),

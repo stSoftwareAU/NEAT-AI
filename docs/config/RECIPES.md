@@ -113,16 +113,13 @@ const config = createNeatConfig({
 
 ## 🧬 Self-tuning evolution
 
-Let hyperparameters and population size evolve alongside the creatures:
+Let the population size adapt alongside the creatures:
 
 ```ts
 const config = createNeatConfig({
   populationSize: 100,
   iterations: 10_000,
   targetError: 0.01,
-  hyperparameterEvolution: {
-    enabled: true,
-  },
   adaptivePopulation: {
     enabled: true,
     lowDiversityThreshold: 0.3,

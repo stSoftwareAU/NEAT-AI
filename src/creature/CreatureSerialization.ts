@@ -731,10 +731,6 @@ export function loadFrom(
   } else {
     creature.memetic = json.memetic;
   }
-  // Issue #1863: Load per-creature evolvable hyperparameters
-  creature.hyperparameters = json.hyperparameters
-    ? { ...json.hyperparameters }
-    : undefined;
   creature.clearCache();
 
   if (!isSorted) {
@@ -875,11 +871,6 @@ export function shallowClone(
     clone.memetic = JSON.parse(
       JSON.stringify(creature.memetic),
     ) as MemeticInterface;
-  }
-
-  // Issue #1863: Copy per-creature evolvable hyperparameters
-  if (creature.hyperparameters) {
-    clone.hyperparameters = { ...creature.hyperparameters };
   }
 
   if (creature.tags) {

@@ -3,7 +3,7 @@
  * legacy UUID-only exports and new dual-format (UUID + integer ID) exports.
  *
  * Issue #2051: Update snapshot-schema.json to support both UUID and integer
- * ID formats, including frozen fields, hyperparameters, and memetic ID keys.
+ * ID formats, including frozen fields and memetic ID keys.
  */
 
 import { assert, assertEquals } from "@std/assert";
@@ -97,34 +97,6 @@ Deno.test("schema - memeticWeight includes optional toId field", async () => {
   const mw = resolveRef(schema, "#/$defs/memeticWeight");
   assert(mw.properties.toId, "memeticWeight must have 'toId' property");
   assertEquals(mw.properties.toId.type, "integer");
-});
-
-Deno.test("schema - top-level includes optional hyperparameters", async () => {
-  const schema = await loadSchema();
-  assert(
-    schema.properties.hyperparameters,
-    "Top-level must have 'hyperparameters' property",
-  );
-  // Resolve $ref if present, otherwise use inline definition
-  const hpProp = schema.properties.hyperparameters;
-  const hp = hpProp.$ref ? resolveRef(schema, hpProp.$ref) : hpProp;
-  // It should be an object with numeric properties
-  assertEquals(hp.type, "object");
-  assert(hp.properties.learningRate, "Must include learningRate");
-  assert(hp.properties.addNeuronRate, "Must include addNeuronRate");
-  assert(hp.properties.addConnectionRate, "Must include addConnectionRate");
-  assert(
-    hp.properties.weightPerturbationScale,
-    "Must include weightPerturbationScale",
-  );
-  assert(
-    hp.properties.l1RegularisationStrength,
-    "Must include l1RegularisationStrength",
-  );
-  assert(
-    hp.properties.l2RegularisationStrength,
-    "Must include l2RegularisationStrength",
-  );
 });
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -307,43 +279,6 @@ Deno.test("schema - frozen neuron export fields match schema", async () => {
       "frozen synapse",
     );
   }
-});
-
-Deno.test("schema - export with hyperparameters matches schema", async () => {
-  const schema = await loadSchema();
-  const json: CreatureExport = {
-    input: 1,
-    output: 1,
-    neurons: [
-      { type: "output", uuid: "output-0", bias: 0, squash: "IDENTITY" },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 0.5 },
-    ],
-  };
-
-  const creature = Creature.fromJSON(json);
-  // deno-lint-ignore no-explicit-any
-  (creature as any).hyperparameters = {
-    learningRate: 0.01,
-    addNeuronRate: 0.1,
-    addConnectionRate: 0.2,
-    weightPerturbationScale: 1.0,
-    l1RegularisationStrength: 0,
-    l2RegularisationStrength: 0,
-  };
-
-  const exported = creature.exportJSON();
-  checkFieldsAllowed(
-    exported as unknown as Record<string, unknown>,
-    schema,
-    "hyperparameters export top-level",
-  );
-  assert(
-    // deno-lint-ignore no-explicit-any
-    (exported as any).hyperparameters !== undefined,
-    "Exported creature must include hyperparameters when set",
-  );
 });
 
 Deno.test("schema - memetic export with toId fields match schema", async () => {

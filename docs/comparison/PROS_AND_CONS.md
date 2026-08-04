@@ -33,24 +33,22 @@ networks.
     ML pipelines.
 11. **Comprehensive regularisation**: dropout, L1/L2 weight & bias decay, sparse
     training, neuron pruning, and cost-of-growth penalty.
-12. **Self-tuning hyperparameters**: per-creature evolvable learning rate,
-    mutation rates, and regularisation strength.
-13. **MCMC exploration/exploitation**: Metropolis-Hastings acceptance with
+12. **MCMC exploration/exploitation**: Metropolis-Hastings acceptance with
     adaptive temperature tuning.
-14. **Resilient long-running training**: graceful WASM panic recovery and
+13. **Resilient long-running training**: graceful WASM panic recovery and
     forward-only topology enforcement enable robust multi-day runs.
-15. **Advanced inter-species breeding**: input-weight crossover, subgraph
+14. **Advanced inter-species breeding**: input-weight crossover, subgraph
     transplantation, and diversity-driven breeding preserve diversity.
-16. **Synthetic synapse training**: temporary layer densification gives gradient
+15. **Synthetic synapse training**: temporary layer densification gives gradient
     descent a richer search space without permanent inflation.
-17. **Diversity preservation**: fitness sharing with per-species breeding
+16. **Diversity preservation**: fitness sharing with per-species breeding
     quotas, stagnant-species retirement, soft compatibility gating, and
     diversity-aware MCMC reheating.
-18. **Fitness-driven squash selection**: biases mutation toward activations that
+17. **Fitness-driven squash selection**: biases mutation toward activations that
     historically improved fitness in similar neuron roles.
-19. **Optional Muon orthogonalisation**: Newton-Schulz orthogonalisation of
+18. **Optional Muon orthogonalisation**: Newton-Schulz orthogonalisation of
     per-neuron gradient matrices for smoother updates.
-20. **External Rust scorer**: optional `rust_scorer` CLI for higher
+19. **External Rust scorer**: optional `rust_scorer` CLI for higher
     generation-scoring throughput, with automatic WASM fallback.
 
 ## 🧬 NEAT-AI — Cons
@@ -69,10 +67,10 @@ networks.
    used for supervised tasks where labelled data computes fitness. True
    unsupervised learning is not yet implemented — see
    [Future work](./FUTURE_WORK.md#2--unsupervised-learning).
-6. **Hyperparameter sensitivity**: many parameters to tune, though per-creature
-   hyperparameter self-adaptation, adaptive population sizing, adaptive mutation
-   thresholds, plateau detection, and randomised hyperparameters per run
-   substantially mitigate this (see tip below).
+6. **Hyperparameter sensitivity**: many parameters to tune, though adaptive
+   population sizing, adaptive mutation thresholds, plateau detection, and
+   randomised hyperparameters per run substantially mitigate this (see tip
+   below).
 7. **No native CUDA**: GPU acceleration uses wgpu (Metal, Vulkan, DX12) with CPU
    fallback rather than native CUDA for NVIDIA GPUs.
 

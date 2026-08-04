@@ -24,11 +24,6 @@ import { SubSelfCon } from "@mutate/SubSelfCon.ts";
 import { SwapNeurons } from "@mutate/SwapNeurons.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
-import { DEFAULT_EVOLVABLE_HYPERPARAMETERS } from "@config/HyperparameterConfig.ts";
-import {
-  createDefaultHyperparameters,
-  mutateHyperparameters,
-} from "@neat/HyperparameterEvolution.ts";
 import {
   computeCreatureWeightBiasPenalty,
   isTopologyMutation,
@@ -493,22 +488,6 @@ export class Mutator {
           removeTag(creature, "trainID");
           removeTag(creature, "trained");
 
-          // Issue #1863: Mutate per-creature hyperparameters when enabled
-          if (this.config.hyperparameterEvolution.enabled) {
-            const currentParams = creature.hyperparameters
-              ? {
-                ...DEFAULT_EVOLVABLE_HYPERPARAMETERS,
-                ...creature.hyperparameters,
-              }
-              : createDefaultHyperparameters(
-                this.config.hyperparameterEvolution,
-              );
-            creature.hyperparameters = mutateHyperparameters(
-              currentParams,
-              this.config.hyperparameterEvolution,
-            );
-          }
-
           creature.clearState();
           delete creature.memetic;
           delete creature.uuid;
@@ -577,7 +556,6 @@ export class Mutator {
     creature.memetic = original.memetic;
     creature.uuid = original.uuid;
     creature.forwardOnly = original.forwardOnly;
-    creature.hyperparameters = original.hyperparameters;
 
     creature.clearState();
     creature.state.preparedNeurons = false;

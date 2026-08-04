@@ -79,20 +79,18 @@ Deno.test("runLeverComparison - reports finite, non-negative metrics", () => {
 });
 
 Deno.test("runConfig - leaves the global RNG generator unchanged", () => {
-  // The harness seeds the global RNG for the hyperparameter helpers; it must
-  // restore the prior generator so it has no global side effects.
+  // The harness seeds the global RNG per run; it must restore the prior
+  // generator so it has no global side effects.
   const setupResults = runLeverComparison(FAST_OPTIONS);
   assertExists(setupResults);
 
   // Build a shared problem the same way runLeverComparison does, then run a
   // single config twice and confirm identical output (proves restoration).
-  const hpConfig = LEVER_MATRIX.find(
-    (c) => c.name === "hyperparameterEvolution",
-  )!;
+  const mcmcConfig = LEVER_MATRIX.find((c) => c.name === "mcmc")!;
   const opts = FAST_OPTIONS;
   const sharedResults: LeverResult[] = [];
   for (let i = 0; i < 2; i++) {
-    const all = runLeverComparison(opts, [hpConfig]);
+    const all = runLeverComparison(opts, [mcmcConfig]);
     sharedResults.push(all[0]);
   }
   assertEquals(
@@ -130,16 +128,16 @@ Deno.test("formatComparisonTable - shows an em dash when target not reached", ()
   assertStringIncludes(table, "| never | — |");
 });
 
-Deno.test("DEFAULT_OPTIONS - exposes the six issue #2931 configurations", () => {
+Deno.test("DEFAULT_OPTIONS - exposes the five issue #2931 configurations", () => {
   // The standalone benchmark uses the production-scale option set; confirm the
-  // matrix matches the six levers named in the issue.
-  assertEquals(LEVER_MATRIX.length, 6);
+  // matrix matches the levers still shipped (the `hyperparameterEvolution`
+  // lever was removed with the feature in Issue #3569).
+  assertEquals(LEVER_MATRIX.length, 5);
   const names = LEVER_MATRIX.map((c) => c.name);
   assertStringIncludes(names.join(","), "baseline");
   assertStringIncludes(names.join(","), "plateauDetection");
   assertStringIncludes(names.join(","), "adaptivePopulation");
   assertStringIncludes(names.join(","), "mcmc");
-  assertStringIncludes(names.join(","), "hyperparameterEvolution");
   assertStringIncludes(names.join(","), "fast (combined)");
   // The production target is harder than the fast-test target.
   assertEquals(DEFAULT_OPTIONS.targetError < FAST_OPTIONS.targetError, true);

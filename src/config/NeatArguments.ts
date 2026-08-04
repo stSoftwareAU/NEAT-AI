@@ -30,7 +30,6 @@ import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
 import type { RequiredDiskSpaceConfig } from "@config/DiskSpaceConfig.ts";
 import type { RequiredWorkerThreadCapConfig } from "@config/WorkerThreadCapConfig.ts";
-import type { RequiredHyperparameterEvolutionConfig } from "@config/HyperparameterConfig.ts";
 import type { RequiredAdaptivePopulationConfig } from "@config/AdaptivePopulationConfig.ts";
 import type { RequiredCrossValidationConfig } from "@config/CrossValidationConfig.ts";
 import type { RequiredDataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
@@ -777,15 +776,6 @@ export interface NeatArguments {
    * overhead is incurred.
    */
   onTrainingEvent?: TrainingEventCallback;
-
-  /**
-   * Per-creature hyperparameter evolution configuration.
-   *
-   * Issue #1863: When enabled, learning rate, mutation rates, and
-   * regularisation strength are encoded as per-creature evolvable
-   * parameters subject to mutation and crossover.
-   */
-  hyperparameterEvolution: RequiredHyperparameterEvolutionConfig;
 
   /**
    * Adaptive population sizing configuration.

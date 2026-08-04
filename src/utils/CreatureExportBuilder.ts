@@ -94,11 +94,6 @@ export class CreatureExportBuilder {
         : memetic;
     }
 
-    // Issue #1863: Export per-creature evolvable hyperparameters
-    if (creature.hyperparameters) {
-      json.hyperparameters = { ...creature.hyperparameters };
-    }
-
     return json;
   }
 }
