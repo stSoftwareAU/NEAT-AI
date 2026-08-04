@@ -14,6 +14,7 @@
 
 import { assert, assertEquals } from "@std/assert";
 import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import { DEFAULT_SPECIALIST_CONFIG } from "../../src/config/SpecialistConfig.ts";
 import { createBackPropagationConfig } from "../../src/propagate/BackPropagation.ts";
 
 // ---------------------------------------------------------------------------
@@ -98,12 +99,13 @@ Deno.test(
   },
 );
 
+// Issue #3568 removed the dead `NeatOptions.specialist` key; the pipeline's own
+// default is now the only opt-in switch, so assert against that instead.
 Deno.test(
   "deepseek-papers-index — specialist pipeline defaults to off (#2530)",
   () => {
-    const config = createNeatConfig({});
     assertEquals(
-      config.specialist.mode,
+      DEFAULT_SPECIALIST_CONFIG.mode,
       "off",
       "Specialist + ensemble distillation pipeline must remain opt-in.",
     );

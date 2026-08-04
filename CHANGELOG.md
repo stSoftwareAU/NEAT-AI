@@ -163,6 +163,18 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- **Issue #3568:** Removed the `specialist` option surface (#3505 audit, slice
+  F). The key was declared on `NeatOptions`, parsed by `parseSpecialist` and
+  stored on `NeatArguments`, but never read — neither `Neat` nor `NeatEvolution`
+  ever constructed a `SpecialistPipeline` from it, so
+  `specialist: { mode: "auto", … }` was inert at every value, not just at its
+  `"off"` default. **The feature itself is unchanged:** `SpecialistPipeline`,
+  `SpecialistConfig`, `RequiredSpecialistConfig`, `SpecialistMode` and
+  `DEFAULT_SPECIALIST_CONFIG` are still exported, and the pipeline still takes
+  its own `Partial<RequiredSpecialistConfig>` constructor argument. **Breaking
+  for embedders that set it:** `NeatOptions.specialist` is now a `deno check`
+  error, and `parseSpecialist` is no longer exported — construct
+  `SpecialistPipeline` directly instead.
 - **Issue #3554:** Retired the `dnaSharingMode` knob preset and
   `KnobTuningStrategy` (#3505 audit, slice A). No consumer set the option, and
   its `"default"` preset was defined to equal the per-knob defaults

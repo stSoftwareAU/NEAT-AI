@@ -477,8 +477,11 @@ import type {
 } from "@stsoftware/neat-ai";
 ```
 
-`SpecialistConfig` is consumed via `NeatOptions.specialist` and documented
-alongside other sub-configs in [Configuration](CONFIGURATION.md).
+`SpecialistConfig` is passed straight to the `SpecialistPipeline` constructor —
+it is **not** a `NeatOptions` key. The `NeatOptions.specialist` key existed
+until Issue #3568 removed it: it was parsed into `NeatConfig` and never read, so
+no value of it ever reached the pipeline. Construct the pipeline yourself to use
+it, and rely on `DEFAULT_SPECIALIST_CONFIG` for the defaults.
 
 ---
 

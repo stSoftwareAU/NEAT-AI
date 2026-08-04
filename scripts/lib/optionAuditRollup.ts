@@ -347,7 +347,12 @@ const SLICE_E: RollupEntry[] = [
   },
 ];
 
-/** Slice F (#3524) — 4 experimental / research configs, all `QUALIFIES`. */
+/**
+ * Slice F (#3524) — experimental / research configs, all `QUALIFIES`.
+ *
+ * `specialist` was one of the four entries; #3568 removed the option outright,
+ * so it no longer has a source key to classify.
+ */
 const SLICE_F: RollupEntry[] = [
   qualifies("mcmc", "F", 3570, {
     interfaces: [
@@ -368,10 +373,15 @@ const SLICE_F: RollupEntry[] = [
       "src/config/HyperparameterConfig.ts::EvolvableHyperparameters",
     ],
   }),
-  qualifies("specialist", "F", 3568, {
+  {
+    key: "SpecialistConfig",
+    slice: "F",
+    verdict: "KEEP",
+    internal: true,
     interfaces: ["src/config/SpecialistConfig.ts::SpecialistConfig"],
-    note: "Option surface is unreadable at any value.",
-  }),
+    note:
+      "No NeatOptions key since #3568 — passed to the SpecialistPipeline constructor.",
+  },
 ];
 
 /**

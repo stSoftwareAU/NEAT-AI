@@ -36,8 +36,6 @@ field-by-field reference.
   `DEFAULT_DATA_FUZZING_CONFIG`
 - Disk space: `DiskSpaceConfig`, `RequiredDiskSpaceConfig`,
   `DEFAULT_DISK_SPACE_CONFIG`
-- Specialist pipeline: `SpecialistConfig`, `RequiredSpecialistConfig`,
-  `SpecialistMode`, `DEFAULT_SPECIALIST_CONFIG`
 - Training events: `TrainingEvent`, `TrainingEventCallback`,
   `GenerationCompleteEvent`, `PlateauDetectedEvent`, `DiscoveryCompleteEvent`,
   `MemoryPressureEvent`, `SpeciesAdjustedEvent`
@@ -275,13 +273,6 @@ memorisation. Supports Gaussian and uniform noise. Defaults via
 
 Issue #1703: pre-flight disk-space check during discovery. Defaults via
 `DEFAULT_DISK_SPACE_CONFIG`.
-
-### `specialist` — SpecialistConfig
-
-Issue #2530: enable the specialist sub-population pipeline (see
-[Evolution API → Specialist Pipeline](EVOLUTION.md#-specialist-pipeline)).
-Defaults via `DEFAULT_SPECIALIST_CONFIG`. `SpecialistMode` enumerates the
-distillation modes available.
 
 ### `selectionPressure` — SelectionPressureConfig
 
