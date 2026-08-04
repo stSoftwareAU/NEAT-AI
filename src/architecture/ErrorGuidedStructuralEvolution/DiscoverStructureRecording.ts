@@ -26,7 +26,6 @@ import {
   observeRustTrainingRecord as observeRustTrainingRecordImpl,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustFlushDiagnostics.ts";
 import { taskDescriptorToRustWire } from "@costs/TaskDescriptorRustWire.ts";
-import { attemptProactiveGc } from "@neat/MemoryMonitor.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { appendAll } from "@utils/ArrayAppend.ts";
 import { isReleased } from "@utils/ReleasableRef.ts";
@@ -549,14 +548,12 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
    * deliberately preserved: `recordedNeuronTotalAbsError` (focus ranking),
    * `parquetFilePath`, `combinedRustAnalysis`, and `creature`.
    *
-   * @param options.attemptGc request a proactive `globalThis.gc?.()` after
-   *   dropping the references. Only effective under
-   *   `--v8-flags=--expose-gc`; correctness never depends on GC running.
    * @returns counts of what was released, for observability and tests.
    */
-  public releaseRecordingRetainers(
-    options?: Readonly<{ attemptGc?: boolean }>,
-  ): { releasedIndexEntries: number; releasedAccumulatedSamples: number } {
+  public releaseRecordingRetainers(): {
+    releasedIndexEntries: number;
+    releasedAccumulatedSamples: number;
+  } {
     let releasedIndexEntries = 0;
     for (const key of Object.keys(this.selectedIndices)) {
       releasedIndexEntries += this.selectedIndices[key]?.length ?? 0;
@@ -570,11 +567,6 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
     this.rustAccumulatedNeuronData = [];
     this.rustAccumulatedEstimatedBytes = 0;
     this.rustBinaryFilePaths = new Set();
-
-    if (options?.attemptGc) {
-      // Best-effort; a no-op unless the runtime was started with --expose-gc.
-      attemptProactiveGc();
-    }
 
     if (
       this.loggingEnabled &&

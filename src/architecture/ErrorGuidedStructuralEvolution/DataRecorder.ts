@@ -384,9 +384,7 @@ export class DataRecorder {
       // the heap sample the guard reads — the #2642 chunk-cache release applied
       // to the record→analysis handoff — without touching analysis-needed
       // state or recorded output.
-      discoverStructure.releaseRecordingRetainers({
-        attemptGc: this.config.memory.proactiveGc,
-      });
+      discoverStructure.releaseRecordingRetainers();
 
       // Issue #2594/#3025/#3296: Heap-aware extension boundary — degrade, don't
       // abort. Before extending the timeout for analysis, sample the heap. If

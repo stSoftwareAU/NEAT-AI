@@ -77,6 +77,12 @@ import {
   resolveDiscoveryWorkerThreadCap,
 } from "@config/DiscoveryWorkerEnvelope.ts";
 
+// Automatic Discovery analysis budget → memory.maxAnalysisMemoryMb wiring.
+import {
+  mergeAnalysisMemoryBudgetDefault,
+  resolveAnalysisMemoryBudgetEnvMb,
+} from "@config/AnalysisMemoryBudgetEnv.ts";
+
 /**
  * Default cost of growth value used when not specified in options.
  */
@@ -642,8 +648,14 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       opts.wasmCache as Record<string, unknown> | undefined,
       populationSize,
     ),
+    // Issue #3565: seed the analysis memory budget from the Discovery runner's
+    // exported value when the caller did not set it explicitly, so the Rust-side
+    // OOM brake is live in production instead of dormant.
     memory: parseMemoryConfig(
-      opts.memory as Record<string, unknown> | undefined,
+      mergeAnalysisMemoryBudgetDefault(
+        opts.memory as Record<string, unknown> | undefined,
+        resolveAnalysisMemoryBudgetEnvMb(),
+      ),
     ),
     workerThreadCap,
     quantumStep: parseQuantumStep(

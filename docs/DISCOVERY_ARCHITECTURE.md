@@ -696,6 +696,34 @@ Configuration lives on `memory` in `NeatOptions`:
 - `memory.nativeBudgetBytes` — the host's off-heap RSS budget, reused as the
   cancellation trigger alongside V8 CRITICAL pressure.
 
+#### Seeding the budget from the runner (Issue #3565)
+
+Leaving `maxAnalysisMemoryMb` at its `0` default means production runs with no
+Rust-side brake at all, which is exactly the failure #3432 shipped it for. The
+external Discovery runner already computes a host-derived budget, so
+`createNeatConfig` reads it from the environment automatically — the
+`workerThreadCap` pattern of `DISCOVERY_WORKER_ENVELOPE_MB`
+(`src/config/AnalysisMemoryBudgetEnv.ts`):
+
+| Variable                              | Maps to                      | Behaviour                                                            |
+| ------------------------------------- | ---------------------------- | -------------------------------------------------------------------- |
+| `DISCOVERY_ANALYSIS_MEMORY_BUDGET_MB` | `memory.maxAnalysisMemoryMb` | Positive integer MB. Unset ⇒ budget stays off (behaviour unchanged). |
+
+An explicitly supplied `memory.maxAnalysisMemoryMb` always wins — including an
+explicit `0`, which is a deliberate "send no budget". A value that is present
+but not a positive integer is ignored **loudly**: it warns and falls back to the
+default rather than applying a nonsensical budget or crashing startup.
+
+```mermaid
+flowchart LR
+    RUN["Discovery runner<br/>exports DISCOVERY_ANALYSIS_MEMORY_BUDGET_MB"] --> RES["resolveAnalysisMemoryBudgetEnvMb()"]
+    RES -->|positive int| MERGE["mergeAnalysisMemoryBudgetDefault()"]
+    RES -->|invalid| WARN["warn + fall back to default"]
+    OPT["memory.maxAnalysisMemoryMb option"] -->|wins| MERGE
+    MERGE --> CFG["config.memory.maxAnalysisMemoryMb"]
+    CFG --> FFI["analyze_parallel({ maxAnalysisMemoryMb })"]
+```
+
 The cancellation flag inside NEAT-AI-Discovery is process-wide, which is what
 makes the interrupt possible: the evolve loop signals it from the host isolate
 while the analysis blocks a different thread of the same process.

@@ -63,7 +63,10 @@ Deno.test("parseMemoryConfig - returns defaults when no overrides", () => {
   const cfg = parseMemoryConfig(undefined);
   assertEquals(cfg.enabled, DEFAULT_MEMORY_CONFIG.enabled);
   assertEquals(cfg.warningThreshold, DEFAULT_MEMORY_CONFIG.warningThreshold);
-  assertEquals(cfg.proactiveGc, DEFAULT_MEMORY_CONFIG.proactiveGc);
+  assertEquals(
+    cfg.maxAnalysisMemoryMb,
+    DEFAULT_MEMORY_CONFIG.maxAnalysisMemoryMb,
+  );
 });
 
 Deno.test("parseMemoryConfig - applies enabled override and thresholds", () => {
