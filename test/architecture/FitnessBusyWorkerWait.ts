@@ -12,12 +12,17 @@
  * Fitness works correctly with its dedicated fast-pool workers without
  * any busy-worker filtering or waiting.
  *
+ * BUSINESS LOGIC CHANGE (Issue #3566): the `maxConcurrentEvaluations` cap that
+ * one test here exercised has been removed — it defaulted to 0 (no cap), so no
+ * consumer ever narrowed the pool. That test went with the option; the
+ * remaining tests cover the surviving all-workers-participate behaviour.
+ *
  * Verifies:
  * - Fitness evaluates all creatures using fast-pool workers
  * - Evaluation completes without any busy-worker polling
  * - Multiple fast-pool workers share the evaluation load
  */
-import { assert, assertEquals, assertGreater } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Fitness } from "@architecture/Fitness.ts";
@@ -150,45 +155,5 @@ Deno.test(
         "Creature score should be finite",
       );
     }
-  },
-);
-
-Deno.test(
-  "Fitness maxConcurrentEvaluations still caps fast-pool worker usage",
-  async () => {
-    const worker1 = new MockWorker();
-    const worker2 = new MockWorker();
-    const worker3 = new MockWorker();
-
-    // Cap to 2 workers even though 3 are available
-    const fitness = new Fitness(
-      [worker1, worker2, worker3] as unknown[] as WorkerHandler[],
-      0.0001,
-      false,
-      {
-        maxConcurrentEvaluations: 2,
-        topologyGrouping: false,
-      },
-    );
-
-    const population = [
-      makeCreature(0.1),
-      makeCreature(0.2),
-      makeCreature(0.3),
-    ];
-
-    await fitness.calculate(population);
-
-    const usedEvaluations = worker1.evaluationCount + worker2.evaluationCount;
-    assertGreater(
-      usedEvaluations,
-      0,
-      "Capped workers should have evaluated creatures",
-    );
-    assertEquals(
-      worker3.evaluationCount,
-      0,
-      "Worker beyond maxConcurrentEvaluations should not be used",
-    );
   },
 );

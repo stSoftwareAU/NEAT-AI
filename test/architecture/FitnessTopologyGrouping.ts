@@ -80,7 +80,6 @@ Deno.test("Fitness topology grouping - creatures grouped by topology hash", asyn
 
   const evalConfig: RequiredParallelEvaluationConfig = {
     topologyGrouping: true,
-    maxConcurrentEvaluations: 0,
   };
 
   const fitness = new Fitness(
@@ -157,7 +156,6 @@ Deno.test("Fitness topology grouping disabled - all creatures still evaluated", 
 
   const evalConfig: RequiredParallelEvaluationConfig = {
     topologyGrouping: false,
-    maxConcurrentEvaluations: 0,
   };
 
   const fitness = new Fitness(
@@ -192,7 +190,6 @@ Deno.test("Fitness topology grouping - preserves correctness of scores", async (
 
   const evalConfig: RequiredParallelEvaluationConfig = {
     topologyGrouping: true,
-    maxConcurrentEvaluations: 0,
   };
 
   const fitness = new Fitness(

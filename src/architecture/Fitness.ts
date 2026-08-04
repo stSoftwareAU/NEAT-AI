@@ -29,14 +29,17 @@ import { BUILT_IN_COST_NAMES, type BuiltInCostName } from "@costs";
  * with identical UUIDs are evaluated once and the score is copied to all
  * duplicates.
  *
- * Issue #1862: Supports topology-aware grouping and configurable concurrency.
- * When topology grouping is enabled, creatures with identical network structure
- * are adjacent in the evaluation queue, maximising WASM compilation cache hits.
- * The maxConcurrentEvaluations setting caps how many workers participate.
+ * Issue #1862: Supports topology-aware grouping. When topology grouping is
+ * enabled, creatures with identical network structure are adjacent in the
+ * evaluation queue, maximising WASM compilation cache hits.
  *
  * Issue #2245: Receives only fast-pool workers that are dedicated to
  * evaluation. This eliminates the need for reactive `isRunningLongTask()`
  * filtering since fast-pool workers never run discovery or training.
+ *
+ * Issue #3566: Every supplied worker participates. The `maxConcurrentEvaluations`
+ * cap was removed — it defaulted to "no cap", and the fast/heavy pool split
+ * already reserves capacity for training and discovery.
  */
 export class Fitness {
   private workers: WorkerHandler[];
@@ -161,7 +164,7 @@ export class Fitness {
    * Issue #1289: Distributes evaluations across the worker pool using a
    * work-stealing pattern for parallel execution.
    * Issue #1862: Optionally groups creatures by topology hash for better
-   * WASM cache utilisation, and caps concurrent evaluations.
+   * WASM cache utilisation.
    *
    * @param population - Array of creatures to evaluate
    * @param additionalWorkers - Issue #2313: Extra workers (e.g. idle heavy-pool
@@ -381,18 +384,13 @@ export class Fitness {
 
     // Issue #2313: Combine dedicated fast-pool workers with any idle
     // heavy-pool workers temporarily assisting this evaluation.
+    // Issue #2245: Every worker here is dedicated to evaluation, so no
+    // isRunningLongTask() filtering or busy-worker fallback is needed.
+    // Issue #3566: All of them evaluate — the removed maxConcurrentEvaluations
+    // cap defaulted to 0 (no cap), so this was already the only behaviour.
     const allWorkers = additionalWorkers && additionalWorkers.length > 0
       ? [...this.workers, ...additionalWorkers]
       : this.workers;
-
-    // Issue #1862: Cap the number of concurrent workers if configured.
-    // Issue #2245: Workers are now guaranteed to be from the fast pool
-    // (dedicated to evaluation), so no isRunningLongTask() filtering
-    // or busy-worker fallback is needed.
-    const maxConcurrent = this.evalConfig.maxConcurrentEvaluations;
-    const activeWorkers = maxConcurrent > 0
-      ? allWorkers.slice(0, maxConcurrent)
-      : allWorkers;
 
     const processNext = async (worker: WorkerHandler): Promise<void> => {
       if (front >= queue.length) return;
@@ -459,7 +457,7 @@ export class Fitness {
     };
 
     // Start all active workers processing the queue concurrently
-    await Promise.all(activeWorkers.map((worker) => processNext(worker)));
+    await Promise.all(allWorkers.map((worker) => processNext(worker)));
 
     // Issue #2424: Publish scorer telemetry for throughput metrics assembly.
     this.lastScorerMs = scorerMsAccum;

@@ -109,8 +109,8 @@ mini-batch gradient descent.
 **What we have**:
 
 - ✅ **Parallel batch creature evaluation** (`ParallelEvaluationConfig`):
-  topology-aware grouping maximises WASM compilation cache hits, with
-  configurable concurrency via `maxConcurrentEvaluations`.
+  topology-aware grouping maximises WASM compilation cache hits, spread across
+  every worker in the fast pool.
 - **Batch discovery validation** (`BatchDiscoveryValidator`): validates multiple
   candidates per call with type-based grouping, result caching, and early-exit.
 - **Mini-batch gradient descent**: configurable batch sizes for backpropagation.

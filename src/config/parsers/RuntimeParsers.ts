@@ -144,12 +144,6 @@ export function parseParallelEvaluation(
 ): RequiredParallelEvaluationConfig {
   const d = DEFAULT_PARALLEL_EVALUATION_CONFIG;
   return {
-    maxConcurrentEvaluations: parseNumber(
-      "Parallel evaluation maxConcurrentEvaluations",
-      overrides?.maxConcurrentEvaluations,
-      d.maxConcurrentEvaluations,
-      { integer: true, min: 0 },
-    ),
     topologyGrouping: typeof overrides?.topologyGrouping === "boolean"
       ? overrides.topologyGrouping
       : d.topologyGrouping,

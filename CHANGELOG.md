@@ -246,6 +246,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `LARGE_NETWORK_PRESET` block that advertised "adapt mutation to stability",
   and the documentation and troubleshooting advice describing it as a working
   lever are all gone.
+- **Issue #3566:** Removed `parallelEvaluation.maxConcurrentEvaluations` (#3505
+  audit, slice E). It defaulted to `0`, and `0` made the only branch reading it
+  a no-op, so evaluation already ran on every supplied worker — the removal is
+  **behaviour-preserving**. Its purpose (reserving workers for training and
+  discovery) was superseded by the #2245 fast/heavy worker-pool split, which
+  hands evaluation only fast-pool workers; size the heavy pool with
+  `heavyTaskWorkerCount` instead. **Breaking for embedders that set it:**
+  passing `parallelEvaluation.maxConcurrentEvaluations` is now a `deno check`
+  error. `parallelEvaluation.topologyGrouping` and the parent
+  `parallelEvaluation` key are untouched.
 
 ## [5.2.0] - 2026-05-30
 

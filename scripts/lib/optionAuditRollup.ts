@@ -314,9 +314,9 @@ const SLICE_E: RollupEntry[] = [
     interfaces: [
       "src/config/ParallelEvaluationConfig.ts::ParallelEvaluationConfig",
     ],
-    fieldOverrides: {
-      maxConcurrentEvaluations: { verdict: "QUALIFIES", issue: 3566 },
-    },
+    note:
+      "`maxConcurrentEvaluations` was the one QUALIFIES field; #3566 removed " +
+      "it, leaving `topologyGrouping` as the load-bearing default.",
   }),
   keep("wasmCache", "E", {
     interfaces: ["src/config/WasmCacheConfig.ts::WasmCacheConfig"],

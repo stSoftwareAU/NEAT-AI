@@ -122,7 +122,6 @@ async function runOnce(
 ): Promise<BenchResult> {
   const config: RequiredParallelEvaluationConfig = {
     topologyGrouping: mode === "batch",
-    maxConcurrentEvaluations: 0,
   };
 
   // Use a small worker pool so scheduling matters; values mirror a typical
