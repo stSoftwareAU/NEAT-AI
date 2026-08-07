@@ -280,6 +280,22 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- **Issue #3671 (CWE-20, improper input validation):** `Creature.fromJSON` /
+  `loadFrom` now validate a synapse's resolved `from` / `to` endpoint. When
+  neither `fromUUID`/`toUUID` nor `fromId`/`toId` resolved, the loader fell
+  through to the raw parsed value with a bare `as SynapseInternal` assertion
+  (erased at runtime) — no type check and no bounds check — and that value is
+  template-interpolated into `new Function()` bodies by the activation compilers
+  (`activations[${from}] * ${weight}` in `NeuronActivation.ts`). It completes
+  the `bias` / `weight` hardening from Issue #2704: `from` and `to` were the
+  remaining two interpolated values without a guard. Each endpoint must now be
+  an integer in `[0, neuronCount)` or loading throws `TopologyError`
+  (`INVALID_SYNAPSE_REFERENCE`, a new `TopologyErrorReason`). This also closes a
+  missing bounds check — an out-of-range index previously surfaced downstream as
+  a bare `TypeError` from `creatureValidate` rather than a typed error. Not
+  exploitable as shipped (every production activation path routes through WASM,
+  so the compiled function is never invoked), but the sink is one refactor away
+  from being live.
 - **Issue #3670 (CWE-22, path traversal):** `Creature.fromJSON` / `loadFrom` now
   validate the creature `uuid` taken from untrusted model JSON. The value was
   previously copied out with a bare `as CreatureInternal` assertion (erased at
