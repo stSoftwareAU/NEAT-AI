@@ -37,6 +37,7 @@ import {
 } from "@blackbox/MemeticWireData.ts";
 import { convertMemeticExportToWireJson } from "@creature/MemeticWireExport.ts";
 import { assertValidCreatureUuid } from "@creature/CreatureUuidValidation.ts";
+import { assertValidCreatureShape } from "@creature/CreatureShapeValidation.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { isRecord } from "@utils/TypeGuards.ts";
 import {
@@ -478,6 +479,10 @@ export function loadFrom(
   const sourceTag = source ?? "loadFrom";
   const throwOnRecurrent: ThrowOnRecurrent = options?.throwOnRecurrent ??
     "forwardOnly";
+  // Issue #3672: `json.input` bounds the input-neuron allocation loop below,
+  // so it must be checked before that loop rather than by the `creatureValidate`
+  // pass at the end of this function.
+  assertValidCreatureShape(json.input, json.output, sourceTag);
   // Issue #3670: the uuid arrives from untrusted JSON and is later used as a
   // filesystem path component (discovery temp dirs, trace stores) — validate
   // it once here so every downstream sink is covered.
@@ -513,8 +518,9 @@ export function loadFrom(
   const uuidToIndex = new Map<string, number>();
   const numericIdToIndex = new Map<number, number>();
 
-  let i = json.input;
-  while (i--) {
+  // Issue #3672: an explicit bound, not `while (i--)` — that shape decrements
+  // away from zero and never terminates for a negative count.
+  for (let i = json.input - 1; i >= 0; i--) {
     const neuronId = inputNeuronId(i);
     numericIdToIndex.set(neuronId, i);
     uuidToIndex.set(`input-${i}`, i);
@@ -873,6 +879,11 @@ export function fromJSON(
   if (rawVersion && rawVersion.startsWith("0.")) {
     json = upgradeOne(json);
   }
+
+  // Issue #3672: the lazy constructor stores `input`/`output` unchecked, so
+  // reject a hostile shape before it is stored — `loadFrom` re-checks for
+  // callers that reach it directly.
+  assertValidCreatureShape(json.input, json.output, sourceTag);
 
   const creature = new CreatureClass(json.input, json.output, {
     lazyInitialization: true,

@@ -103,6 +103,19 @@ new Creature(input: number, output: number, options?: {
 > fine: `exportJSON()` deliberately omits it and `CreatureUtil.makeUUID()` fills
 > it in later.
 
+<!-- -->
+
+> [!IMPORTANT]
+> **Issue #3672 — `input` and `output` are validated first.** The loader
+> pre-fills input neurons straight from `json.input`, one allocation per
+> iteration, so that count is checked **before** anything is allocated rather
+> than by the structural pass at the end of the load. Both counts must be an
+> integer in `[1, 1_000_000]` — the ceiling is the hidden/constant neuron id
+> floor, above which input ids would collide — or the load throws
+> [`ValidationError`](ERRORS.md#-validationerror) with `reason: "OTHER"`.
+> Previously a negative count wedged the process in a non-terminating allocation
+> loop and a huge count exhausted memory.
+
 ### 💡 Example
 
 ```typescript
