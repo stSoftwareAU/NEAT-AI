@@ -57,6 +57,50 @@ import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 /**
+ * Issue #3671: validate a resolved synapse endpoint index.
+ *
+ * `from` and `to` are template-interpolated into `new Function()` bodies by
+ * the activation compilers (`activations[${from}] * ${weight}` in
+ * `NeuronActivation.ts`), so — like `bias` (Issue #2704) and `weight` — they
+ * must never reach the compiler straight from untrusted model JSON. The
+ * `SynapseInternal` fallback in `loadFrom` copies the parsed value verbatim
+ * (`as SynapseInternal` is erased at runtime and checks nothing), so the guard
+ * belongs here.
+ *
+ * `Number.isInteger` rejects strings, `NaN`, `Infinity` and fractions in one
+ * test; the range check simultaneously closes the missing bounds check that
+ * previously surfaced downstream as a bare `TypeError`.
+ *
+ * @param value - The resolved endpoint index
+ * @param endpoint - Which endpoint is being validated, for the message
+ * @param synapseIndex - Position of the synapse in the JSON, for the message
+ * @param neuronCount - Number of neurons loaded; valid indices are `[0, neuronCount)`
+ * @returns The validated index
+ */
+function assertSynapseEndpoint(
+  value: number | undefined,
+  endpoint: "from" | "to",
+  synapseIndex: number,
+  neuronCount: number,
+): number {
+  if (
+    typeof value !== "number" || !Number.isInteger(value) ||
+    value < 0 || value >= neuronCount
+  ) {
+    throw new TopologyError(
+      `Synapse at index ${synapseIndex}: '${endpoint}' must be an integer ` +
+        `neuron index in [0, ${neuronCount}), got ${
+          typeof value === "string"
+            ? `string ${JSON.stringify(value)}`
+            : String(value)
+        }`,
+      "INVALID_SYNAPSE_REFERENCE",
+    );
+  }
+  return value;
+}
+
+/**
  * Safely copies own properties from source to target, skipping prototype-polluting keys.
  *
  * Uses Object.defineProperty instead of bracket assignment so that static analysis
@@ -560,6 +604,11 @@ export function loadFrom(
     creature.neurons[pos++] = n;
   }
 
+  // `pos` is now the true neuron count: inputs are pre-filled at 0..input-1 and
+  // every non-input neuron was appended after them. `json.neurons.length` is
+  // not equivalent — the export format omits input neurons.
+  const loadedNeuronCount = pos;
+
   const synapses = json.synapses;
   let isSorted = true;
   let lastFrom = -1;
@@ -598,6 +647,7 @@ export function loadFrom(
         }, synapse[${i}/${synapseCount}], uuidToIndex size ${uuidToIndex.size}`,
       );
     }
+    from = assertSynapseEndpoint(from, "from", i, loadedNeuronCount);
 
     let to: number | undefined;
     if (typeof se.toUUID === "string") {
@@ -617,6 +667,7 @@ export function loadFrom(
         }`,
       );
     }
+    to = assertSynapseEndpoint(to, "to", i, loadedNeuronCount);
 
     const recurrentGateFires = throwOnRecurrent === "always"
       ? from! >= to!

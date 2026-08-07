@@ -60,10 +60,10 @@ Source → sink before the fix, and where each layer now cuts it:
 ```mermaid
 flowchart LR
     JSON[("Untrusted creature JSON<br/>uuid: '../../..'")] --> LF["loadFrom()"]
-    LF -->|"Layer 1 (new)<br/>assertValidCreatureUuid"| Reject1{{"ValidationError<br/>reason: OTHER"}}
+    LF -->|"Layer 1 (new)<br/>assertValidCreatureUuid"| Reject1(["ValidationError<br/>reason: OTHER"])
     LF --> C["creature.uuid<br/>(makeUUID short-circuits)"]
     C --> DS["DiscoverStructureBase<br/>tempDir = baseDir + '/' + uuid"]
-    DS -->|"Layer 2 (new)<br/>assertPathContained"| Reject2{{"ValidationError<br/>escapes base directory"}}
+    DS -->|"Layer 2 (new)<br/>assertPathContained"| Reject2(["ValidationError<br/>escapes base directory"])
     DS --> RM["Deno.remove(tempDir,<br/>{ recursive: true })"]
     C --> W1["NeatScheduling trace store"]
     C --> W2["TrainingOutcome failed dir"]

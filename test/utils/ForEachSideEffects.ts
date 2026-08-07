@@ -105,11 +105,16 @@ Deno.test("ForEachSideEffects - DeDuplicator applies side effects to all creatur
  * the order of processing or skip any elements.
  */
 Deno.test("ForEachSideEffects - all creatures processed in sequence", async () => {
+  // Issue #3671: this fixture previously declared `index: 2` / `to: 2` on a
+  // 1-input, 1-output creature, whose only neuron indices are 0 (input) and 1
+  // (output). The dangling endpoint loaded silently before synapse endpoints
+  // were validated; corrected to the real output index so the fixture
+  // describes the topology it always meant to.
   const creature: CreatureInternal = {
     neurons: [
       {
         bias: 0.1,
-        index: 2,
+        index: 1,
         type: "output",
         squash: "IDENTITY",
       },
@@ -118,7 +123,7 @@ Deno.test("ForEachSideEffects - all creatures processed in sequence", async () =
       {
         weight: 0.5,
         from: 0,
-        to: 2,
+        to: 1,
       },
     ],
     input: 1,
