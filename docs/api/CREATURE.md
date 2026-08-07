@@ -91,6 +91,18 @@ new Creature(input: number, output: number, options?: {
 
 `Creature.evolveDir()` is documented in the [Evolution API](EVOLUTION.md) topic.
 
+> [!IMPORTANT]
+> **Issue #3670 — `uuid` is validated on load.** A creature `uuid` becomes a
+> filesystem path component downstream (discovery temp directories, trace
+> stores, failed-training dumps), one of which is removed recursively. Because
+> `Creature.fromJSON` accepts JSON authored anywhere — a downloaded pretrained
+> model, a shared checkpoint — a present `uuid` must match the canonical
+> 8-4-4-4-12 hexadecimal UUID layout. Anything else (a path such as `"../.."`,
+> or any non-UUID label) throws [`ValidationError`](ERRORS.md#-validationerror)
+> with `reason: "OTHER"` rather than loading. An **absent** `uuid` is still
+> fine: `exportJSON()` deliberately omits it and `CreatureUtil.makeUUID()` fills
+> it in later.
+
 ### 💡 Example
 
 ```typescript

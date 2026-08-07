@@ -36,6 +36,7 @@ import {
   type MemeticWireData,
 } from "@blackbox/MemeticWireData.ts";
 import { convertMemeticExportToWireJson } from "@creature/MemeticWireExport.ts";
+import { assertValidCreatureUuid } from "@creature/CreatureUuidValidation.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { isRecord } from "@utils/TypeGuards.ts";
 import {
@@ -433,7 +434,13 @@ export function loadFrom(
   const sourceTag = source ?? "loadFrom";
   const throwOnRecurrent: ThrowOnRecurrent = options?.throwOnRecurrent ??
     "forwardOnly";
-  creature.uuid = (json as CreatureInternal).uuid;
+  // Issue #3670: the uuid arrives from untrusted JSON and is later used as a
+  // filesystem path component (discovery temp dirs, trace stores) — validate
+  // it once here so every downstream sink is covered.
+  creature.uuid = assertValidCreatureUuid(
+    (json as CreatureInternal).uuid,
+    sourceTag,
+  );
   if (json.semanticVersion) {
     creature.semanticVersion = json.semanticVersion;
     const major = Number.parseInt(
