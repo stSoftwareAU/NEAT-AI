@@ -36,6 +36,17 @@ opening a PR (see the secure-coding principles section of
   dependency carrying a known OSV advisory, shrinking the window between
   disclosure and a reviewable fix rather than waiting for the next weekly
   freshness run.
+- **Supply-chain quarantine on every update path** (Issue #3667) — external
+  dependency versions younger than 24h are not adopted, whichever path raises
+  the bump: `bump-deps.sh` / `quality.sh` pass `--minimum-dependency-age` to
+  `deno outdated`, `deno.json` `minimumDependencyAge` (`P1D`) applies the same
+  window to a bare `deno outdated --update`, and `renovate.json` sets
+  `minimumReleaseAge: "24 hours"` for the ecosystems Renovate manages (notably
+  GitHub Actions). Renovate's `deno` manager is disabled so it cannot race the
+  script-gated Deno/JSR path, and internal `stSoftwareAU/*` deps are exempt (0h)
+  on all three. Security fixes are unaffected — Renovate exempts
+  `vulnerabilityAlerts` from `minimumReleaseAge`, so an actively-exploited CVE
+  still moves immediately.
 - **Code-owner review of the CI/CD surface** — `.github/CODEOWNERS` requires a
   review from the maintaining team (`@stSoftwareAU/developers`) on any PR that
   edits `.github/workflows/` or `.github/actions/`. Several workflows run with
