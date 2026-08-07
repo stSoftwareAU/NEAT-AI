@@ -278,6 +278,24 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   error. `parallelEvaluation.topologyGrouping` and the parent
   `parallelEvaluation` key are untouched.
 
+### Security
+
+- **Issue #3670 (CWE-22, path traversal):** `Creature.fromJSON` / `loadFrom` now
+  validate the creature `uuid` taken from untrusted model JSON. The value was
+  previously copied out with a bare `as CreatureInternal` assertion (erased at
+  runtime), never recomputed — `CreatureUtil.makeUUID` short-circuits on any
+  truthy existing value — and then concatenated into filesystem paths, one of
+  which is deleted with `Deno.remove(..., { recursive: true })`. A shared
+  checkpoint carrying `"uuid": "../../.."` could therefore delete a directory
+  outside the discovery base. A present `uuid` must now match the canonical
+  8-4-4-4-12 hexadecimal UUID layout or loading throws `ValidationError`
+  (`reason: "OTHER"`); an absent `uuid` is unchanged, since `exportJSON()` omits
+  it by design. Validating at the deserialisation boundary closes the discovery
+  temp-directory, trace-store, failed-training-dump, and score-file sinks at
+  once. As defence in depth, `DiscoverStructure` also asserts its temp directory
+  resolves inside its base directory before creating or removing it. **Breaking
+  only for callers that persisted a non-UUID creature `uuid`.**
+
 ## [5.2.0] - 2026-05-30
 
 ### Changed
