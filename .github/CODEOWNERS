@@ -18,3 +18,19 @@
 
 # The CODEOWNERS file itself, so ownership rules cannot be quietly changed.
 /.github/CODEOWNERS  @stSoftwareAU/developers
+
+# Repository code the privileged jobs EXECUTE (Issue #3669). Owning the
+# workflow files alone stopped one line short of the credential: the composite
+# action `.github/actions/setup-neat` does nothing but `run: ./build.sh
+# --verify-only`, and `scripts/verify_provenance.ts` is the provenance gate
+# itself — both run inside publish.yml's `id-token: write` job, where the JSR
+# OIDC credential is mintable by every step. `deno.json` carries the `version`
+# that gates publishing, the `neatCore.assetSha256` integrity pin, and the
+# `tasks` bodies CI executes.
+#
+# `test/ci/CodeownersPrivilegedJobCoverage.ts` derives this requirement from
+# the workflows, so a new script added to a privileged job fails CI until it is
+# covered here.
+/build.sh            @stSoftwareAU/developers
+/scripts/            @stSoftwareAU/developers
+/deno.json           @stSoftwareAU/developers
