@@ -89,6 +89,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Issue #3674:** `deno.json` now declares the `Apache-2.0` SPDX identifier and
+  lists `LICENSE` in `publish.include`, so the published package carries its
+  licence text and metadata explicitly instead of relying on whatever
+  `deno publish` auto-includes.
 - **Issue #3427:** The `requestedOptions` echo (Issue #3422) no longer records
   non-serialisable options with a `"[function]"` / `"[unserialisable]"` marker —
   such entries are now dropped entirely, since the markers carry no tuning value
