@@ -22,6 +22,9 @@ jobs:
     permissions:
       contents: read
       id-token: write # OIDC for JSR (provenance + tokenless publish)
+    # Consumed by the `sbom` job, which cannot see this job's step outputs.
+    outputs:
+      publish: ${{ steps.needs_publish.outputs.publish }}
     steps:
       # `persist-credentials: false` (Issue #3355) — the default `true`
       # writes the workflow `GITHUB_TOKEN` into `.git/config` as an auth
@@ -114,20 +117,73 @@ jobs:
             --allow-net=rekor.sigstore.dev,jsr.io \
             scripts/verify_provenance.ts publish-output.log
 
-      # Issue #3008 (SCR-SBOM): emit a machine-readable Software Bill of
-      # Materials for the published version. Deno has no first-class SBOM
-      # emitter, so generate a CycloneDX document over the committed deno.lock
-      # (-t deno) — the same resolved tree that ships. Downstream consumers use
-      # this to answer "did the version I depend on include the compromised
-      # package?" without re-resolving the dependency graph.
+  # Issue #3008 (SCR-SBOM): emit a machine-readable Software Bill of Materials
+  # for the published version. Deno has no first-class SBOM emitter, so
+  # generate a CycloneDX document over the committed deno.lock (-t deno) — the
+  # same resolved tree that ships. Downstream consumers use this to answer "did
+  # the version I depend on include the compromised package?" without
+  # re-resolving the dependency graph.
+  #
+  # Issue #3668: this runs in its OWN job, deliberately. `permissions` is
+  # job-scoped, so while the SBOM step lived in `publish` the JSR OIDC
+  # credential (ACTIONS_ID_TOKEN_REQUEST_URL / _TOKEN) was still mintable from
+  # its environment — a hijacked release of the third-party generator could
+  # have minted a `jsr.io`-audience token and tokenlessly published a
+  # trojanised @stsoftware/neat-ai carrying valid Sigstore provenance. Splitting
+  # the job removes the credential from the blast radius entirely; `contents:
+  # read` is all an SBOM build needs.
+  sbom:
+    name: Generate CycloneDX SBOM
+    needs: publish
+    # Same release gate as the publish step, hoisted to the job: the SBOM is a
+    # per-release artefact and every push to Develop runs this workflow.
+    if: needs.publish.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      # actions/checkout@v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+
+      # verify-wasm: "false" — this job only reads deno.lock; it never loads
+      # the WASM bundle, and the publish job has already verified the pin.
+      - name: Setup Deno
+        uses: ./.github/actions/setup-neat
+        with:
+          verify-wasm: "false"
+
+      # Issue #3668: pinned and sandboxed, not `-A npm:@cyclonedx/cdxgen`.
+      #
+      # The pin makes every upgrade a reviewable diff instead of a silent
+      # `latest` resolution from the npm registry on each run. Renovate does not
+      # manage specifiers inside a `run:` block, so bump this by hand.
+      #
+      # The permission set is the minimum a `-t deno` run needs, verified
+      # locally: read (the repo plus cdxgen's own files in DENO_DIR), write
+      # scoped to the output file, env (cdxgen and its dependency tree read
+      # dozens of variables) and sys (homedir/uid/userInfo probes). Crucially
+      # there is no --allow-net, --allow-run or --allow-ffi, so a hijacked
+      # release has no route off the runner and cannot tamper with the source
+      # tree. A missing permission fails loud with Deno's NotCapable error
+      # rather than degrading the SBOM silently (Issue #3234).
+      #
+      # `--no-lock` keeps the module loader from writing its own resolution of
+      # the generator into the committed deno.lock. Lockfile writes bypass
+      # --allow-write, and cdxgen reads deno.lock as its input: without this the
+      # generator's ~190 npm dependencies end up inside the SBOM describing the
+      # published package (308 components instead of 120, measured locally).
       - name: Generate CycloneDX SBOM
-        if: steps.needs_publish.outputs.publish == 'true'
-        run: deno run -A npm:@cyclonedx/cdxgen -t deno -o sbom.cdx.json .
+        run: |
+          set -Eeuo pipefail
+          deno run --no-lock --allow-read --allow-write=sbom.cdx.json --allow-env --allow-sys \
+            npm:@cyclonedx/cdxgen@12.8.2 -t deno -o sbom.cdx.json .
 
       # Pinned per github-actions-audit (SCR-ACTIONS-PIN): 40-char commit SHA,
       # not a moving tag. Same release as coverage.yaml's upload-artifact.
       - name: Upload SBOM
-        if: steps.needs_publish.outputs.publish == 'true'
         # actions/upload-artifact@v7.0.1 — Node 24 runtime (Issue #2767)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

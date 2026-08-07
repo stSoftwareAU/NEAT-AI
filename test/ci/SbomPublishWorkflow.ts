@@ -29,6 +29,7 @@ interface Step {
 }
 
 interface Job {
+  if?: string;
   steps?: Step[];
 }
 
@@ -41,25 +42,47 @@ async function readWorkflow(): Promise<Workflow> {
   return parse(text) as Workflow;
 }
 
-function allSteps(wf: Workflow): Step[] {
-  const steps: Step[] = [];
+/** A step paired with the `if:` of the job that contains it. */
+interface OwnedStep {
+  step: Step;
+  jobIf: string;
+}
+
+function allSteps(wf: Workflow): OwnedStep[] {
+  const steps: OwnedStep[] = [];
   for (const job of Object.values(wf.jobs ?? {})) {
-    for (const step of job.steps ?? []) steps.push(step);
+    for (const step of job.steps ?? []) {
+      steps.push({ step, jobIf: job.if ?? "" });
+    }
   }
   return steps;
 }
 
-function sbomGenerationStep(wf: Workflow): Step | undefined {
+function sbomGenerationStep(wf: Workflow): OwnedStep | undefined {
   return allSteps(wf).find(
-    (s) => typeof s.run === "string" && /cdxgen/.test(s.run),
+    ({ step }) => typeof step.run === "string" && /cdxgen/.test(step.run),
   );
 }
 
-function sbomUploadStep(wf: Workflow): Step | undefined {
+function sbomUploadStep(wf: Workflow): OwnedStep | undefined {
   return allSteps(wf).find(
-    (s) =>
-      typeof s.uses === "string" && /actions\/upload-artifact/.test(s.uses),
+    ({ step }) =>
+      typeof step.uses === "string" &&
+      /actions\/upload-artifact/.test(step.uses),
   );
+}
+
+/**
+ * The condition that actually decides whether a step runs: its own `if:` plus
+ * the `if:` of its job. Issue #3668 moved the SBOM steps into a dedicated job
+ * with no `id-token` grant, so the release gate is now expressed once on the
+ * job (`needs.publish.outputs.publish`) instead of on each step
+ * (`steps.needs_publish.outputs.publish`). Either placement satisfies the
+ * requirement this test encodes — that the SBOM is emitted only for a new
+ * release version.
+ */
+function effectiveCondition({ step, jobIf }: OwnedStep): string {
+  return [jobIf, step.if ?? ""].filter((c) => c !== "").join(" && ");
 }
 
 Deno.test("publish.yml generates a CycloneDX SBOM from the lockfile (Issue #3008)", async () => {
@@ -70,7 +93,7 @@ Deno.test("publish.yml generates a CycloneDX SBOM from the lockfile (Issue #3008
     "publish.yml must run a CycloneDX generator (e.g. npm:@cyclonedx/cdxgen) " +
       "to produce an SBOM for the published version",
   );
-  const run = step!.run ?? "";
+  const run = step!.step.run ?? "";
   // Deno has no first-class SBOM emitter, so the generator must target Deno so
   // it reads the resolved deno.lock rather than guessing the ecosystem.
   assert(
@@ -87,7 +110,7 @@ Deno.test("publish.yml writes a recognisable SBOM filename (Issue #3008)", async
   assert(gen !== undefined, "no SBOM generation step found");
   assert(upload !== undefined, "no SBOM upload step found");
 
-  const genRun = gen!.run ?? "";
+  const genRun = gen!.step.run ?? "";
   // CycloneDX SBOMs are conventionally named *.cdx.json (or sbom*.json).
   assert(
     /(sbom[^\s]*\.(json|xml)|[^\s]*\.cdx\.json)/.test(genRun),
@@ -95,7 +118,7 @@ Deno.test("publish.yml writes a recognisable SBOM filename (Issue #3008)", async
       "(e.g. sbom.cdx.json) so consumers can find it",
   );
 
-  const path = String(upload!.with?.["path"] ?? "");
+  const path = String(upload!.step.with?.["path"] ?? "");
   assert(
     /(sbom|\.cdx\.json)/.test(path),
     "the upload-artifact step must upload the generated SBOM file via its " +
@@ -111,7 +134,7 @@ Deno.test("publish.yml uploads the SBOM as a build artefact (Issue #3008)", asyn
     "publish.yml must upload the generated SBOM via actions/upload-artifact " +
       "so downstream consumers can retrieve the bill of materials",
   );
-  const name = String(upload!.with?.["name"] ?? "");
+  const name = String(upload!.step.with?.["name"] ?? "");
   assert(
     name.trim().length > 0,
     "the upload-artifact step must set a non-empty artefact `name`",
@@ -126,16 +149,18 @@ Deno.test("publish.yml only emits the SBOM when a new version is published (Issu
 
   // Every push to Develop runs this workflow, but the version only changes on a
   // release commit. The SBOM is a per-release artefact, so both steps must be
-  // gated on the same needs_publish signal that gates the JSR publish step.
+  // gated on the same needs_publish signal that gates the JSR publish step —
+  // either directly on the step, or on the job that contains it.
   for (
-    const [label, step] of [["generation", gen!], ["upload", upload!]] as const
+    const [label, owned] of [["generation", gen!], ["upload", upload!]] as const
   ) {
-    const cond = step.if ?? "";
+    const cond = effectiveCondition(owned);
     assert(
-      /needs_publish\.outputs\.publish\s*==\s*'true'/.test(cond),
-      `the SBOM ${label} step must be gated on ` +
-        "steps.needs_publish.outputs.publish == 'true' so it only runs for a " +
-        `new release version, got if: '${cond}'`,
+      /(steps\.needs_publish|needs\.publish)\.outputs\.publish\s*==\s*'true'/
+        .test(cond),
+      `the SBOM ${label} step must be gated on the publish signal ` +
+        "(steps.needs_publish.outputs.publish or needs.publish.outputs.publish " +
+        `== 'true') so it only runs for a new release version, got: '${cond}'`,
     );
   }
 });
