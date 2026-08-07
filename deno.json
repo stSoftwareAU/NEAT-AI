@@ -2,6 +2,7 @@
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
   "version": "6.2.11",
+  "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
@@ -11,6 +12,7 @@
   "publish": {
     "include": [
       "README.md",
+      "LICENSE",
       "mod.ts",
       "src/**",
       "wasm_activation/pkg/**"
