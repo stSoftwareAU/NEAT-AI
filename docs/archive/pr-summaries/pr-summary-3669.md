@@ -2,15 +2,15 @@
 
 ## Summary
 
-`.github/CODEOWNERS` owned the workflow *files* but not the repository *code
-those workflows execute*, so the review gate stopped one line short of the
+`.github/CODEOWNERS` owned the workflow _files_ but not the repository _code
+those workflows execute_, so the review gate stopped one line short of the
 privileged credential. `publish.yml`'s `publish` job holds
 `permissions: id-token: write` — the JSR OIDC credential backing tokenless
 publishing of `@stsoftware/neat-ai` — and `permissions:` is job-scoped, so every
 step in that job can mint the token. Three repository paths ran inside it
 unowned:
 
-- `build.sh` — reached through the *owned* composite action
+- `build.sh` — reached through the _owned_ composite action
   `.github/actions/setup-neat`, whose only instruction is
   `run: ./build.sh --verify-only`. Editing `build.sh` achieved what editing the
   owned `action.yml` would, without triggering the rule.
@@ -19,14 +19,14 @@ unowned:
 - `deno.json` — carries the `version` that gates publishing, the
   `neatCore.assetSha256` integrity pin, and the `tasks` bodies CI executes.
 
-The fix adds `/build.sh`, `/scripts/` and `/deno.json` to
-`.github/CODEOWNERS`, and adds a test that derives the requirement from the
-workflows rather than from a hand-written list, so a new script added to a
-privileged job fails CI until the gate is extended to cover it.
+The fix adds `/build.sh`, `/scripts/` and `/deno.json` to `.github/CODEOWNERS`,
+and adds a test that derives the requirement from the workflows rather than from
+a hand-written list, so a new script added to a privileged job fails CI until
+the gate is extended to cover it.
 
 Closes #3669.
 
-**Still requires a human/admin action:** CODEOWNERS only *requests* review. The
+**Still requires a human/admin action:** CODEOWNERS only _requests_ review. The
 **"Require review from Code Owners"** branch-protection rule must be enabled on
 `Develop` or GitHub enforces nothing — see
 [`docs/REPO_GOVERNANCE.md`](../../REPO_GOVERNANCE.md#required-branch-protection-settings)
@@ -34,9 +34,8 @@ for the `gh api` invocation. This is a server-side setting invisible to a static
 checkout, so no test can assert it.
 
 The issue's "defence in depth" suggestion — moving the SBOM step out of the
-`id-token: write` job — was already delivered by Issue #3668
-(`publish.yml`'s `sbom` job, `contents: read` only), so nothing was changed
-there.
+`id-token: write` job — was already delivered by Issue #3668 (`publish.yml`'s
+`sbom` job, `contents: read` only), so nothing was changed there.
 
 ## Evidence
 
@@ -91,9 +90,9 @@ counts only when it resolves to a file in the checkout), and asserts:
 - `every file executed by an id-token: write job has a code owner` — the general
   case; it caught all three unowned paths without any of them being named in the
   test.
-- `the publish gate's own verifier is owned` — pins `scripts/verify_provenance.ts`
-  independently of discovery, so the gate cannot be edited in the same
-  unreviewed PR that trojanises the pipeline.
+- `the publish gate's own verifier is owned` — pins
+  `scripts/verify_provenance.ts` independently of discovery, so the gate cannot
+  be edited in the same unreviewed PR that trojanises the pipeline.
 - `a job holding the JSR OIDC credential exists and executes repository code` —
   fails loud if a restructure makes the discovery blind, rather than passing
   vacuously on an empty set (Issue #3234).
