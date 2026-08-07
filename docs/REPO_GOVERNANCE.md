@@ -56,6 +56,42 @@ automated worker account, so it is not used as a human code owner.)
 > unenforced. `test/ci/CodeownersWorkflowsCoverage.ts` guards against that
 > regression.
 
+## Ownership must reach the code the workflow runs (Issue #3669)
+
+Owning the workflow files alone left the gate one line short of the credential.
+`permissions:` is **job-scoped**, so every step in `publish.yml`'s `publish` job
+can mint the JSR OIDC token — including the steps that execute repository code:
+
+| Executed by the `id-token: write` job | Reached via                                                    |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `build.sh`                            | `.github/actions/setup-neat` → `run: ./build.sh --verify-only` |
+| `scripts/verify_provenance.ts`        | the provenance gate step in `publish.yml`                      |
+| `deno.json`                           | the version check that decides whether to publish              |
+
+The composite action was owned; the script it runs was not — so editing
+`build.sh` achieved what editing the owned `action.yml` would, without tripping
+the rule. Worse, `scripts/verify_provenance.ts` **is** the control that turns a
+bad publish red, so an unreviewed edit could disable the check that would report
+it. `.github/CODEOWNERS` therefore also owns `/build.sh`, `/scripts/` and
+`/deno.json`.
+
+```mermaid
+flowchart LR
+    W[".github/workflows/publish.yml<br/>job: publish<br/>id-token: write"] --> A[".github/actions/setup-neat"]
+    A --> B["build.sh"]
+    W --> V["scripts/verify_provenance.ts"]
+    W --> D["deno.json"]
+    B & V & D --> T{"Covered by<br/>CODEOWNERS?"}
+    T -- "before #3669: No" --> X["Unreviewed edit runs<br/>beside the JSR OIDC token"]
+    T -- "now: Yes" --> O["Code-owner review required"]
+```
+
+`test/ci/CodeownersPrivilegedJobCoverage.ts` derives this requirement from the
+workflows rather than from a hand-written list: it parses every job granting
+`id-token: write`, follows local composite actions, collects each repository
+file the job executes, and asserts all of them resolve to an owner. Adding a new
+script to a privileged job fails that test until the gate is extended.
+
 ## Required branch-protection settings
 
 CODEOWNERS only _requests_ review; it is enforced **only** once branch
