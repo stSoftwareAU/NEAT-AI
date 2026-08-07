@@ -1,6 +1,19 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
+  "minimumReleaseAge": "24 hours",
   "vulnerabilityAlerts": { "enabled": true },
-  "osvVulnerabilityAlerts": true
+  "osvVulnerabilityAlerts": true,
+  "packageRules": [
+    {
+      "description": "Deno/JSR deps are governed by bump-deps.sh --minimum-dependency-age and deno.json minimumDependencyAge; disable Renovate's deno manager so the two windows cannot race.",
+      "matchManagers": ["deno"],
+      "enabled": false
+    },
+    {
+      "description": "Internal first-party code ships with no embargo (Issue #1613 classification).",
+      "matchPackageNames": ["/^stSoftwareAU\\//"],
+      "minimumReleaseAge": "0"
+    }
+  ]
 }

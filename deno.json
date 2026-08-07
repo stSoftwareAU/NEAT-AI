@@ -16,6 +16,10 @@
       "wasm_activation/pkg/**"
     ]
   },
+  "minimumDependencyAge": {
+    "age": "P1D",
+    "exclude": ["jsr:@stsoftware/*", "npm:@stsoftware/*"]
+  },
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.19",
     "@std/bytes": "jsr:@std/bytes@1.0.6",
