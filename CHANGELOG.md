@@ -280,6 +280,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Security
 
+- **Issue #3672 (CWE-1284, improper validation of a quantity used as a loop
+  bound):** `Creature.fromJSON` / `loadFrom` now validate the `input` and
+  `output` counts **before** the input-neuron allocation loop runs. `json.input`
+  bounded that loop straight from the file, and the `creatureValidate` check
+  that would have rejected a bad count ran only at the _end_ of the load — so
+  `"input": -1` looped forever (`while (i--)` tests before decrementing, so it
+  ran away from zero, allocating a `Neuron` and two Map entries per iteration
+  and never returning control to the caller), and `"input": 100000000` requested
+  a hundred million neurons before any check fired. Each count must now be an
+  integer in `[1, MAX_NEURON_COUNT]` (1,000,000 — the hidden/constant neuron id
+  floor in `NeuronId.ts`, above which input ids would collide) or loading throws
+  `ValidationError` (`reason: "OTHER"`). The loop itself is now an explicit
+  `for (let i = json.input - 1; i >= 0; i--)`.
 - **Issue #3671 (CWE-20, improper input validation):** `Creature.fromJSON` /
   `loadFrom` now validate a synapse's resolved `from` / `to` endpoint. When
   neither `fromUUID`/`toUUID` nor `fromId`/`toId` resolved, the loader fell
