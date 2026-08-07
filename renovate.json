@@ -11,9 +11,9 @@
       "enabled": false
     },
     {
-      "description": "Internal first-party code ships with no embargo (Issue #1613 classification).",
+      "description": "Internal first-party code ships with no embargo (Issue #1613 classification). null is Renovate's documented no-embargo value; the schema types minimumReleaseAge as string|null, so \"0\" and false are both invalid.",
       "matchPackageNames": ["/^stSoftwareAU\\//"],
-      "minimumReleaseAge": "0"
+      "minimumReleaseAge": null
     }
   ]
 }

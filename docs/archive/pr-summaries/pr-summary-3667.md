@@ -14,10 +14,13 @@ Changes:
 - `renovate.json` — added `minimumReleaseAge: "24 hours"`, a `packageRules`
   entry disabling the `deno` manager (Deno/JSR is governed by
   `bump-deps.sh --minimum-dependency-age`, so the two windows cannot race), and
-  a rule exempting internal `stSoftwareAU/*` deps at `0` (Issue #1613
-  classification). `vulnerabilityAlerts` / `osvVulnerabilityAlerts` are
-  unchanged — Renovate exempts security fixes from `minimumReleaseAge`, so an
-  actively-exploited CVE still moves immediately.
+  a rule exempting internal `stSoftwareAU/*` deps via `minimumReleaseAge: null`
+  (Issue #1613 classification). `null` is Renovate's documented no-embargo value
+  — the schema types the option as `string|null`, so `"0"` and `false` are both
+  invalid and the latter also trips semgrep's
+  `renovate-missing-minimum-release-age` rule. `vulnerabilityAlerts` /
+  `osvVulnerabilityAlerts` are unchanged — Renovate exempts security fixes from
+  `minimumReleaseAge`, so an actively-exploited CVE still moves immediately.
 - `deno.json` — added the native
   `minimumDependencyAge: { "age": "P1D", "exclude": ["jsr:@stsoftware/*", "npm:@stsoftware/*"] }`
   window so a bare `deno outdated --update` outside `bump-deps.sh` inherits the
@@ -68,8 +71,8 @@ committed configs):
   resolving to ≥ 24 h.
 - `renovate.json` carries a `packageRules` entry with `matchManagers: ["deno"]`
   and `enabled: false`.
-- `renovate.json` carries a `stSoftwareAU/*` rule whose `minimumReleaseAge`
-  resolves to 0 h.
+- `renovate.json` carries a `stSoftwareAU/*` rule whose `minimumReleaseAge` is
+  `null` and so resolves to 0 h.
 - `renovate.json` keeps `vulnerabilityAlerts.enabled: true` (regression guard —
   the quarantine must not slow security fixes).
 - `deno.json` declares `minimumDependencyAge` with `age: "P1D"` and excludes

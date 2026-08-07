@@ -131,8 +131,19 @@ Deno.test(
         "that overrides minimumReleaseAge — internal first-party code ships " +
         "with no embargo (Issue #1613 classification)",
     );
+    const override = internalRule!.minimumReleaseAge;
+    // Renovate types minimumReleaseAge as string|null, so null is the only
+    // schema-valid way to say "no embargo" — "0" and false are rejected both by
+    // Renovate's schema and by semgrep's renovate-missing-minimum-release-age.
     assertEquals(
-      durationToHours(String(internalRule!.minimumReleaseAge ?? "0")) || 0,
+      override,
+      null,
+      'the internal-deps override must be null, not "0" or false — those are ' +
+        "outside Renovate's string|null schema and trip the semgrep " +
+        "renovate-missing-minimum-release-age rule",
+    );
+    assertEquals(
+      durationToHours(String(override ?? "0")) || 0,
       0,
       "internal stSoftwareAU deps must have a zero-length quarantine",
     );
