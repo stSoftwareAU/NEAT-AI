@@ -103,6 +103,8 @@ new Creature(input: number, output: number, options?: {
 > fine: `exportJSON()` deliberately omits it and `CreatureUtil.makeUUID()` fills
 > it in later.
 
+<!-- -->
+
 > [!IMPORTANT]
 > **Issue #3672 — `input` and `output` are validated first.** The loader
 > pre-fills input neurons straight from `json.input`, one allocation per
