@@ -62,7 +62,7 @@ New file `test/ci/CoverageMergeStepLeastPrivilege.ts`:
   `--allow-write`, `-A`, or `--allow-all`. This catches permission drift back to
   unrestricted, which never fails at runtime.
 - **`the committed permission set still merges the shard reports`** — executes
-  `scripts/merge_junit.ts` in a throwaway directory under the *exact* flags
+  `scripts/merge_junit.ts` in a throwaway directory under the _exact_ flags
   parsed out of the committed workflow, over two fixture shard reports, and
   asserts the merged `junit.xml` aggregates both (`tests="5" failures="1"`).
   Narrowing the grant too far turns this red instead of failing CI later.
@@ -76,7 +76,7 @@ and still passes; the script's behaviour is untouched.
 
 ## Files changed
 
-- `.github/workflows/coverage.yaml` — `--allow-write` → `--allow-write=junit.xml`
-  on the merge step, with a comment recording why.
+- `.github/workflows/coverage.yaml` — `--allow-write` →
+  `--allow-write=junit.xml` on the merge step, with a comment recording why.
 - `scripts/merge_junit.ts` — CLI usage comment updated to the scoped invocation.
 - `test/ci/CoverageMergeStepLeastPrivilege.ts` — new tests (above).
