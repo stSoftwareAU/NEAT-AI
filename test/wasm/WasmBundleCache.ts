@@ -9,6 +9,10 @@
  *      `TypeError: fetch failed`, backoff retry succeeds, cache is written;
  *   3. cache miss + exhausted retries — all attempts fail, bounded attempts,
  *      the fetch error surfaces (fail-loud, preserved by `requireWasm`).
+ *
+ * Issue #3680 added runtime digest verification, so each fixture declares the
+ * digest of its own payload via `expectedSha256`; the integrity behaviour
+ * itself is covered in `WasmBundleIntegrity.ts`.
  */
 
 import { assert, assertEquals, assertRejects } from "@std/assert";
@@ -33,6 +37,14 @@ function bytesResponse(bytes: Uint8Array): Response {
   return new Response(bytes as unknown as BodyInit, { status: 200 });
 }
 
+/** Lowercase hex SHA-256 of the given bytes — the loader's expected pin. */
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /** No-op sleep so backoff adds no real delay in tests. */
 const noSleep = (_ms: number): Promise<void> => Promise.resolve();
 
@@ -47,6 +59,7 @@ Deno.test("WasmBundleCache: cache hit loads offline with no network", async () =
       cacheDir,
       fetchFn: denyFetch(),
       sleepFn: noSleep,
+      expectedSha256: await sha256Hex(seeded),
     });
 
     assertEquals(bytes, seeded, "cached bytes should be returned verbatim");
@@ -80,6 +93,7 @@ Deno.test("WasmBundleCache: cache miss retries with backoff then succeeds and ca
       },
       maxAttempts: 5,
       baseDelayMs: 10,
+      expectedSha256: await sha256Hex(payload),
     });
 
     assertEquals(bytes, payload, "retried fetch should return the payload");

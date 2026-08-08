@@ -328,6 +328,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   once. As defence in depth, `DiscoverStructure` also asserts its temp directory
   resolves inside its base directory before creating or removing it. **Breaking
   only for callers that persisted a non-UUID creature `uuid`.**
+- **Issue #3680 (CWE-353, missing integrity check):** WASM activation bundle
+  bytes are now verified against a pinned SHA-256 **at runtime**, not only at
+  build time. `deno.json` `neatCore.assetSha256` pins the release _tarball_ and
+  is checked by `build.sh` alone, so bytes read back from the
+  environment-controlled disk cache (`NEAT_AI_WASM_CACHE_DIR` / `XDG_CACHE_HOME`
+  / `$HOME/.cache/neat-ai/wasm`) were instantiated unchecked — anyone able to
+  write there could plant a `<key>.wasm` file that ran on the next start.
+  `./build.sh` now also generates `src/wasm/WasmBundleSha256.ts`, whose
+  `EXPECTED_WASM_BUNDLE_SHA256` constant travels with the published package, and
+  `WasmBundleCache` compares it on both the cache-hit and post-fetch paths: a
+  poisoned cache entry is logged, deleted, and re-fetched, while substituted
+  network bytes are a hard error that is never cached or instantiated. The local
+  (`file:`) build path is unchanged.
 
 ## [5.2.0] - 2026-05-30
 

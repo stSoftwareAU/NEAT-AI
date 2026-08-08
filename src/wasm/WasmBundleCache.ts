@@ -23,11 +23,19 @@
  * Fail-loud (Issue #3234): if the bytes genuinely cannot be obtained, the last
  * error is thrown so the caller (`initWasmActivation`) records it and the
  * existing "requires the NEAT-AI-core WASM bundle" guard still surfaces.
+ *
+ * Integrity (Issue #3680): the cache directory is environment-controlled, so
+ * cached bytes are untrusted. Every byte array returned from the cache or the
+ * network is checked against the generated
+ * {@link EXPECTED_WASM_BUNDLE_SHA256} pin before it can be instantiated — a
+ * poisoned cache entry is deleted and re-fetched, and substituted network bytes
+ * are a hard error.
  */
 
 import { dirname, fromFileUrl, join } from "@std/path";
 import { getLogger } from "@utils/Logger.ts";
 import type { WasmBundleLoadDiagnostics } from "@wasm/WasmInitDiagnostics.ts";
+import { EXPECTED_WASM_BUNDLE_SHA256 } from "@wasm/WasmBundleSha256.ts";
 
 /** Options for {@link loadWasmBundleBytes}; all are injectable for testing. */
 export interface LoadWasmBundleOptions {
@@ -55,6 +63,12 @@ export interface LoadWasmBundleOptions {
    * without real timing (Issue #3494).
    */
   now?: () => number;
+  /**
+   * Lowercase hex SHA-256 the bundle bytes must match before they are returned
+   * (Issue #3680). Defaults to the generated {@link EXPECTED_WASM_BUNDLE_SHA256}
+   * pin; injectable so tests can verify against their own fixture bytes.
+   */
+  expectedSha256?: string;
 }
 
 /** Bytes plus the phase-timing diagnostics for a single bundle load. */
@@ -186,6 +200,44 @@ async function writeCache(path: string, bytes: Uint8Array): Promise<void> {
   }
 }
 
+/** Delete a rejected cache entry so the poisoned bytes cannot be served again. */
+async function removeCache(path: string): Promise<void> {
+  try {
+    await Deno.remove(path);
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      return;
+    }
+    // Not fatal — the caller re-fetches and overwrites — but never silent.
+    getLogger().warn(
+      `WASM bundle integrity: could not delete rejected cache entry ${path}:`,
+      error,
+    );
+  }
+}
+
+/** Lowercase hex SHA-256 of the given bytes. */
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
+  return toHex(new Uint8Array(digest));
+}
+
+/**
+ * Resolve the digest the bundle must match, failing fast when it is unusable —
+ * an absent or malformed expectation would silently disable verification.
+ */
+function resolveExpectedSha256(override?: string): string {
+  const expected = (override ?? EXPECTED_WASM_BUNDLE_SHA256).toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(expected)) {
+    throw new Error(
+      `WASM bundle expected SHA-256 is not a 64-character hex digest: ` +
+        `"${expected}". The pin in src/wasm/WasmBundleSha256.ts is generated ` +
+        `by ./build.sh — regenerate it rather than skipping verification.`,
+    );
+  }
+  return expected;
+}
+
 /** Fetch the bundle bytes with bounded exponential backoff. Fails loud. */
 async function fetchWithRetry(
   wasmUrl: URL,
@@ -276,6 +328,8 @@ export async function loadWasmBundleBytesWithDiagnostics(
     };
   }
 
+  // Remote bytes (cache or network) are untrusted until they match the pin.
+  const expectedSha256 = resolveExpectedSha256(options.expectedSha256);
   const fetchFn = options.fetchFn ?? fetch;
   const sleepFn = options.sleepFn ?? defaultSleep;
   const maxAttempts = Math.max(1, options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS);
@@ -292,24 +346,35 @@ export async function loadWasmBundleBytesWithDiagnostics(
     ? null
     : await wasmCacheFilePath(wasmUrl, cacheDir);
 
-  // Cache hit: return the immutable bundle with no network access.
+  // Cache hit: return the immutable bundle with no network access — but only
+  // once its digest matches the pin (Issue #3680). The cache directory is
+  // environment-controlled, so a hit is a claim, not a guarantee.
   if (cachePath !== null) {
     const cached = await readCache(cachePath);
     if (cached !== null) {
-      return {
-        bytes: cached,
-        diagnostics: {
-          outcome: "hit",
-          cacheDir,
-          byteLength: cached.byteLength,
-          elapsedMs: now() - start,
-        },
-      };
+      const actual = await sha256Hex(cached);
+      if (actual === expectedSha256) {
+        return {
+          bytes: cached,
+          diagnostics: {
+            outcome: "hit",
+            cacheDir,
+            byteLength: cached.byteLength,
+            elapsedMs: now() - start,
+          },
+        };
+      }
+      getLogger().error(
+        `WASM bundle integrity check failed for cached bundle ${cachePath}: ` +
+          `SHA-256 ${actual} does not match the expected ${expectedSha256}. ` +
+          `Deleting the rejected cache entry and re-fetching ${wasmUrl.href}.`,
+      );
+      await removeCache(cachePath);
     }
   }
 
-  // Cache miss (or disabled): fetch with backoff, then persist when caching is
-  // enabled so the next start is offline.
+  // Cache miss, or a rejected entry: fetch with backoff, verify, then persist
+  // when caching is enabled so the next start is offline.
   const bytes = await fetchWithRetry(
     wasmUrl,
     fetchFn,
@@ -317,6 +382,15 @@ export async function loadWasmBundleBytesWithDiagnostics(
     maxAttempts,
     baseDelayMs,
   );
+  const fetchedSha256 = await sha256Hex(bytes);
+  if (fetchedSha256 !== expectedSha256) {
+    // Nothing is cached and nothing is returned: substituted bytes must never
+    // reach `WebAssembly.instantiate`.
+    throw new Error(
+      `WASM bundle integrity check failed for ${wasmUrl.href}: SHA-256 ` +
+        `${fetchedSha256} does not match the expected ${expectedSha256}`,
+    );
+  }
   if (cachePath !== null) {
     await writeCache(cachePath, bytes);
   }
