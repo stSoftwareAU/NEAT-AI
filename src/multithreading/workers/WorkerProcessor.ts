@@ -27,6 +27,7 @@ import type {
 } from "@multithreading/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { clearForGc } from "@utils/ReleasableRef.ts";
+import { assertLocalModuleSpecifier } from "@utils/ModuleSpecifierGuard.ts";
 import { DatasetFileListCache } from "@architecture/DatasetFileListCache.ts";
 
 type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
@@ -110,6 +111,12 @@ export class WorkerProcessor {
   private async loadCustomCostFromFile(
     filePath: string,
   ): Promise<CostInterface> {
+    // Issue #3685: only local specifiers may be imported, so a config value
+    // that ever came from a remote manifest cannot execute remote code here.
+    // Deliberately outside the try/catch below so the typed ValidationError
+    // reaches the caller instead of being flattened into a load failure.
+    assertLocalModuleSpecifier(filePath, "custom cost function");
+
     try {
       // Dynamic import of user-provided custom cost function file.
       // JSR Warning: This dynamic import is intentional and loads external user files at runtime.
