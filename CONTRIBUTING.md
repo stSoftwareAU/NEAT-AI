@@ -499,6 +499,8 @@ function's practical usefulness.
 
 Add an entry to `src/methods/activations/README.md` following the existing
 format — include priority, invertibility, and backpropagation strategy.
+`test/docs/ActivationStrategyTable.ts` fails when that table and the registry in
+`src/methods/activations/Activations.ts` disagree.
 
 ## 🎨 Code Style
 
