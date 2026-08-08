@@ -56,6 +56,12 @@ This README captures:
 
 ## 📊 Squash Function Summary
 
+> [!IMPORTANT]
+> The registry in [`Activations.ts`](./Activations.ts) is the **authoritative**
+> list of squash functions; this table documents it. When you add or remove an
+> activation there, add or remove its row here in the same change —
+> `test/docs/ActivationStrategyTable.ts` fails when the two drift apart.
+
 | Activation      | Invertible | Derivative-Based Error              | Foggy Glasses Error            | Priority | Recommendation | Why?                                                                                             | 🐇🦥 |
 | :-------------- | :--------- | :---------------------------------- | :----------------------------- | :------: | :------------- | :----------------------------------------------------------------------------------------------- | :--- |
 | LeakyReLU       | ✅         | ❌ Overshoots easily if slope small | ✅ Inversion is trivial        |    10    | 🎯 UnSquash    | Always use unSquash — it's fast, safe, and avoids giant updates from small slopes.               | 🟩   |
@@ -109,12 +115,6 @@ This README captures:
 > zero-priority rows: SOFTMAX is neither deprecated nor unsuitable, it is simply
 > chosen explicitly on a multi-class output layer rather than by random
 > mutation.
-
-> [!IMPORTANT]
-> The registry in [`Activations.ts`](./Activations.ts) is the **authoritative**
-> list of squash functions; this table documents it. When you add or remove an
-> activation there, add or remove its row here in the same change —
-> `test/docs/ActivationStrategyTable.ts` fails when the two drift apart.
 
 ---
 
