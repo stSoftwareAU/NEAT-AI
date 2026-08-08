@@ -123,6 +123,48 @@ fires and the worker slot still degrades gracefully; it is now just loud about
 _what_ it was waiting on. The contract is defined in
 `src/wasm/WasmInitDiagnostics.ts`.
 
+### 🔐 Bundle integrity check (Issue #3680)
+
+The disk cache lives in an environment-controlled directory
+(`NEAT_AI_WASM_CACHE_DIR`, else `XDG_CACHE_HOME`, else
+`$HOME/.cache/neat-ai/wasm`), so cached bytes are treated as untrusted. Before
+the bundle is instantiated its SHA-256 is compared with the pin generated into
+`src/wasm/WasmBundleSha256.ts` by `./build.sh` — a constant that travels with
+the published package and is covered by Deno's own JSR/lockfile integrity
+checks.
+
+```mermaid
+flowchart TD
+    Start[loadWasmBundleBytes] --> Local{file: URL?}
+    Local -- "yes (local build)" --> Read[Read vendored bundle<br/>no cache, no network]
+    Local -- no --> Hit{Cache entry present?}
+    Hit -- yes --> VerifyC{SHA-256 == pin?}
+    VerifyC -- yes --> Serve[Serve cached bytes offline]
+    VerifyC -- "no (poisoned)" --> Purge[Log integrity failure<br/>delete cache entry]
+    Hit -- no --> Fetch[Fetch with bounded backoff]
+    Purge --> Fetch
+    Fetch --> VerifyF{SHA-256 == pin?}
+    VerifyF -- yes --> Persist[Persist to cache] --> Serve
+    VerifyF -- no --> Fail[Throw integrity error<br/>nothing cached, nothing instantiated]
+```
+
+**Symptoms:** a startup error, or an error-level log line containing
+`WASM bundle integrity check failed`.
+
+**Solutions:**
+
+- On a **cached** bundle the entry is deleted and re-fetched automatically; the
+  log line names the cache path, so check who can write to that directory.
+- On a **fetched** bundle the load fails loud and nothing is cached — the bytes
+  served for the pinned version are not the published ones.
+- After bumping the NEAT-AI-core pin, run `./build.sh` so the runtime pin is
+  regenerated with `wasm_activation/pkg/**` and `deno.json`. A stale pin is
+  caught by `test/wasm/WasmBundleIntegrity.ts` rather than by a permanent
+  re-fetch loop in production.
+
+The local (`file:`) build path is unaffected: those bytes come from the
+checked-out tree, not a mutable cache.
+
 ## 🌐 JSR-hosted NEAT-AI in your own workers (Issue #2545)
 
 **Symptoms:**

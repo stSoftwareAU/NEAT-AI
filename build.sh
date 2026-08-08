@@ -146,6 +146,8 @@ PINNED_ASSET_SHA256="$NEAT_CORE_ASSET_SHA256_DEFAULT"
 
 # Tests may override via NEAT_PKG_DIR to avoid concurrent file-system races.
 DEST_DIR="${NEAT_PKG_DIR:-wasm_activation/pkg}"
+# Runtime-readable digest pin regenerated with the bundle (issue #3680).
+RUNTIME_PIN_FILE="${NEAT_RUNTIME_PIN_FILE:-src/wasm/WasmBundleSha256.ts}"
 required=(
   "wasm_activation.js"
   "wasm_activation_bg.wasm"
@@ -436,6 +438,46 @@ write_content_manifest() {
   fi
   ( cd "$DEST_DIR" && shasum -a 256 "${manifest_files[@]}" ) \
     > "$DEST_DIR/$CONTENT_MANIFEST"
+}
+
+# write_runtime_bundle_pin — regenerate src/wasm/WasmBundleSha256.ts so the
+# WASM bundle digest is readable at *runtime* (issue #3680). deno.json
+# neatCore.assetSha256 pins the release tarball and is only ever checked here
+# at build time; the loader needs the bundle's own digest to verify bytes read
+# back from the environment-controlled disk cache or fetched from JSR.
+write_runtime_bundle_pin() {
+  if ! command -v shasum >/dev/null 2>&1; then
+    echo "ERROR: shasum is required to write the runtime bundle pin" >&2
+    return 1
+  fi
+  local digest
+  digest="$(shasum -a 256 "$DEST_DIR/wasm_activation_bg.wasm" | awk '{print $1}')"
+  if ! [[ "$digest" =~ ^[0-9a-f]{64}$ ]]; then
+    echo "ERROR: could not compute SHA-256 of $DEST_DIR/wasm_activation_bg.wasm" >&2
+    return 1
+  fi
+  mkdir -p "$(dirname "$RUNTIME_PIN_FILE")"
+  cat > "$RUNTIME_PIN_FILE" <<EOF
+/**
+ * GENERATED FILE — do not edit by hand.
+ *
+ * Written by \`./build.sh\` from \`wasm_activation/pkg/wasm_activation_bg.wasm\`
+ * each time the vendored NEAT-AI-core bundle is refreshed, and committed
+ * alongside \`deno.json\` and \`wasm_activation/pkg/**\`.
+ *
+ * Issue #3680: \`deno.json\` \`neatCore.assetSha256\` pins the *release tarball*
+ * and is enforced only at build time, so the runtime had no value to compare
+ * the instantiated bundle against. This constant is part of the module graph —
+ * it travels with the published package and is integrity-checked by Deno's own
+ * JSR/lockfile verification — which makes it the trusted expectation used by
+ * {@link file://./WasmBundleCache.ts} to verify bytes coming from the
+ * environment-controlled disk cache or the network.
+ */
+
+/** Lowercase hex SHA-256 of \`wasm_activation/pkg/wasm_activation_bg.wasm\`. */
+export const EXPECTED_WASM_BUNDLE_SHA256 =
+  "${digest}";
+EOF
 }
 
 # verify_content_manifest — re-hash every file listed in the manifest
@@ -829,6 +871,10 @@ refresh_fingerprint "$TARGET_REV"
 # tarball. Commit content-manifest.sha256 with the rest of pkg/**.
 echo "Writing $DEST_DIR/$CONTENT_MANIFEST..."
 write_content_manifest
+
+# --- Record the runtime-readable bundle digest (issue #3680) -------------
+echo "Writing $RUNTIME_PIN_FILE..."
+write_runtime_bundle_pin
 
 echo ""
 echo "✅ wasm_activation/pkg refreshed to ${NEAT_CORE_REPO}@${TARGET_REV}"

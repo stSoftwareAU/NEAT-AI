@@ -538,3 +538,47 @@ Deno.test({
     );
   },
 });
+
+Deno.test({
+  name:
+    "write_runtime_bundle_pin regenerates the runtime digest constant (issue #3680)",
+  permissions: { run: true, read: true, write: true },
+  fn: async () => {
+    const tmpDir = await Deno.makeTempDir({ prefix: "neat-runtime-pin-" });
+    try {
+      const pkgDir = `${tmpDir}/pkg`;
+      await Deno.mkdir(pkgDir, { recursive: true });
+      const bundle = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
+      await Deno.writeFile(`${pkgDir}/wasm_activation_bg.wasm`, bundle);
+      const pinFile = `${tmpDir}/WasmBundleSha256.ts`;
+
+      const run = await runSourcedFn(
+        "write_runtime_bundle_pin",
+        `DEST_DIR='${pkgDir}' RUNTIME_PIN_FILE='${pinFile}' write_runtime_bundle_pin`,
+      );
+      assertEquals(
+        run.code,
+        0,
+        `write_runtime_bundle_pin must succeed; ${run.stderr}`,
+      );
+
+      const digest = Array.from(
+        new Uint8Array(
+          await crypto.subtle.digest("SHA-256", bundle as BufferSource),
+        ),
+      ).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+      const generated = await Deno.readTextFile(pinFile);
+      assert(
+        generated.includes(`"${digest}"`),
+        `generated pin must carry the bundle digest ${digest}; got ${generated}`,
+      );
+      assert(
+        generated.includes("export const EXPECTED_WASM_BUNDLE_SHA256"),
+        "generated pin must export the runtime constant",
+      );
+    } finally {
+      await Deno.remove(tmpDir, { recursive: true });
+    }
+  },
+});
