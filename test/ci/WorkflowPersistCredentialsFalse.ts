@@ -361,6 +361,72 @@ Deno.test(
   },
 );
 
+/**
+ * Issue #3683 — repo-wide sweep. The per-workflow tests above each pin one
+ * known job; this one closes the gap they leave, so a newly added workflow
+ * cannot reintroduce credential persistence without a matching test.
+ *
+ * Every `actions/checkout` step in `.github/workflows/` must set
+ * `persist-credentials: false`. No workflow in this repo pushes over the
+ * checkout credential — the two that do push (`quality.yml`,
+ * `update-package-version.yml`) re-introduce `secrets.ACTIONS_PUSH` via a
+ * per-command `http.<url>.extraheader`, and `deno-outdated.yml` lets
+ * `peter-evans/create-pull-request` authenticate with its own `token:` input.
+ */
+Deno.test(
+  "workflow-conventions: every actions/checkout sets persist-credentials: false (Issue #3683)",
+  async () => {
+    const offenders: string[] = [];
+    let checkoutCount = 0;
+
+    const workflowDir = join(REPO_ROOT, ".github/workflows");
+    const fileNames: string[] = [];
+    for await (const entry of Deno.readDir(workflowDir)) {
+      if (entry.isFile && /\.ya?ml$/.test(entry.name)) {
+        fileNames.push(entry.name);
+      }
+    }
+    fileNames.sort();
+
+    assert(
+      fileNames.length > 0,
+      "expected at least one workflow under .github/workflows/",
+    );
+
+    const workflows = await Promise.all(
+      fileNames.map((fileName) =>
+        readWorkflow(`.github/workflows/${fileName}`)
+      ),
+    );
+
+    for (const [index, wf] of workflows.entries()) {
+      const fileName = fileNames[index];
+      for (const [jobName, job] of Object.entries(wf.jobs ?? {})) {
+        for (const step of job.steps ?? []) {
+          if (!isCheckoutStep(step)) continue;
+          checkoutCount++;
+          if (step.with?.["persist-credentials"] === false) continue;
+          offenders.push(
+            `${fileName} job "${jobName}" step "${step.name ?? "<unnamed>"}"`,
+          );
+        }
+      }
+    }
+
+    assert(
+      checkoutCount > 0,
+      "expected at least one actions/checkout step across the workflows",
+    );
+    assertEquals(
+      offenders,
+      [],
+      "every actions/checkout must set persist-credentials: false so the job " +
+        "token is never written to .git/config where a later step could read " +
+        `it. Offending checkouts:\n  ${offenders.join("\n  ")}`,
+    );
+  },
+);
+
 function isGitPushStep(step: Step): boolean {
   if (typeof step.run !== "string") return false;
   return /\bgit\b/.test(step.run) && /\bpush\s+origin\b/.test(step.run);
