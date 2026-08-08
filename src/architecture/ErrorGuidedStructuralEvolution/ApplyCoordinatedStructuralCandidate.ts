@@ -1,3 +1,21 @@
+/**
+ * @module
+ *
+ * Applies a coordinated structural candidate — a discovery proposal made of
+ * several dependent edits (add/remove neuron, add/remove synapse, set weight,
+ * change squash, set bias) — to a creature as one ordered, all-or-nothing
+ * ablation.
+ *
+ * This is the last step of the Discovery pipeline, where a proposal that has
+ * survived evaluation is finally realised on a clone of the creature. It exists
+ * separately from single-operation appliers because the operations in a
+ * coordinated candidate only make sense together and must be applied in order.
+ *
+ * The module is deliberately conservative: on a forward-only creature it
+ * refuses to add a synapse that would introduce a self-loop or back-connection,
+ * and it cleans up the memetic state of anything it removes so no stale
+ * learning data survives the edit.
+ */
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { assertNoRecurrentSynapseOnForwardOnly } from "@architecture/ForwardOnlyAssertion.ts";

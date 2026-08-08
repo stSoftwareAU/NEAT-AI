@@ -1,3 +1,19 @@
+/**
+ * @module
+ *
+ * Synapse-level clean-up that leaves a forward pass unchanged: dropping
+ * exactly-zero-weight synapses, and merging duplicate synapses that share the
+ * same endpoints by summing their weights and unifying their `type` and tags.
+ *
+ * Duplicate rows arise from legacy wire payloads and from structural edits that
+ * re-add an existing edge; left alone they are rejected by `creatureValidate`
+ * and `Creature.fix()`. Reach for these helpers as an idempotent pre-pass
+ * before `Creature.fromJSON`, or when ingesting export JSON outside `loadFrom`
+ * (which already merges duplicates for forward-only creatures — Issue #2086).
+ *
+ * Each operation comes in two forms: one over a {@link CreatureExport} for wire
+ * payloads, and one over a live creature's runtime synapse arrays.
+ */
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { Synapse } from "@architecture/Synapse.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";

@@ -1,3 +1,17 @@
+/**
+ * @module
+ *
+ * Names the ways a creature's fitness can improve, and reports each improvement
+ * once. {@link Approach} is the canonical union of pipeline stages that can
+ * produce a new fittest creature (fine tuning, training, compaction,
+ * backtracking, discovery, replay, …); it is written onto a creature as the
+ * `approach` tag by whichever stage produced it.
+ *
+ * {@link logApproach} turns that tag into a human-readable improvement line
+ * showing the score delta against the previous fittest. It is idempotent — an
+ * `approach-logged` tag stops the same improvement being announced twice as the
+ * creature travels further through the evolution loop.
+ */
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "../../mod.ts";
 import { blue, bold, cyan } from "@std/fmt/colors";

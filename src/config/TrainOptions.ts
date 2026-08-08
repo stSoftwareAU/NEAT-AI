@@ -1,3 +1,20 @@
+/**
+ * @module
+ *
+ * The public configuration surface for a training run — everything
+ * `Creature.train` / `trainDir` accept beyond the dataset itself.
+ *
+ * {@link TrainArguments} is the fully-resolved shape (every field present) and
+ * extends `BackPropagationArguments`, so learning-rate and gradient settings
+ * sit alongside training-loop settings such as `iterations`, `targetError`,
+ * `log`, cross-validation, data fuzzing/quantisation, predictive coding and
+ * synthetic synapses. {@link TrainOptions} is the caller-facing
+ * `Partial<TrainArguments>`: supply only what you want to override and the
+ * training code fills in the documented defaults.
+ *
+ * This module holds the interface pair and its per-field documentation only —
+ * default values and validation live with the code that consumes them.
+ */
 import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
 import type { CrossValidationConfig } from "@config/CrossValidationConfig.ts";
 import type { DataFuzzingConfig } from "@config/DataFuzzingConfig.ts";

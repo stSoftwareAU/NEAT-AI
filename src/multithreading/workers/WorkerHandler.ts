@@ -1,3 +1,21 @@
+/**
+ * @module
+ *
+ * The main thread's half of the worker protocol. A {@link WorkerHandler} owns
+ * one Deno Worker (or an in-process mock when `direct` is set) and exposes the
+ * jobs evolution farms out to it — evaluate, train, discover, and their
+ * variants — as promises.
+ *
+ * {@link RequestData} and {@link ResponseData} are the message contract with
+ * `WorkerProcessor.ts`, which runs the other half inside the worker. Reach for
+ * this module when adding a new kind of worker job: the request/response pair
+ * must be extended on both sides.
+ *
+ * Lifecycle (spawn, in-flight request tracking, termination) is inherited from
+ * `WorkerHandlerBase`. The handler is deliberately loud about start-up
+ * problems: a worker that fails to initialise rejects its pending work with the
+ * captured error rather than hanging or reporting an empty result.
+ */
 import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { CostName } from "@costs";

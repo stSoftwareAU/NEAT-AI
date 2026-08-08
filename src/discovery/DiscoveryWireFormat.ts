@@ -1,3 +1,24 @@
+/**
+ * @module
+ *
+ * The wire schema for Discovery payloads that cross a process, worker, cache,
+ * disk or Rust FFI boundary — and the translator that produces them.
+ *
+ * TypeScript owns the in-memory candidate shapes (`CandidateNeuron`,
+ * `CoordinatedStructuralCandidate`, …), which are addressed by ephemeral
+ * runtime integer ids. The `Wire*` types here are their boundary-safe
+ * counterparts, addressed by stable neuron UUIDs only; the Rust side and the
+ * on-disk caches consume this shape.
+ * {@link buildDiscoveryWireRequest} performs the conversion using the runtime-id
+ * to UUID map from `DiscoveryWireIdentity.ts`.
+ *
+ * {@link DISCOVERY_WIRE_SCHEMA_VERSION} versions that contract — bump it when
+ * the shape changes so stale caches are not read as current.
+ * {@link assertNoLegacyDiscoveryIdFields} enforces the AGENTS.md rule that no
+ * runtime id may leak onto the wire: a payload carrying `fromNeuronId`,
+ * `neuronId` or any sibling throws a `TopologyError` rather than being quietly
+ * accepted.
+ */
 import { TopologyError } from "@errors/TopologyError.ts";
 import { appendAll } from "@utils/ArrayAppend.ts";
 import type {

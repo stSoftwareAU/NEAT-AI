@@ -1,3 +1,24 @@
+/**
+ * @module
+ *
+ * Orchestrates one Discovery run: given a creature and a dataset directory,
+ * it asks the Rust Discovery library for structural hints, turns those hints
+ * into candidate edits, filters and samples them, evaluates the survivors
+ * across a worker pool, and returns the candidates that actually reduced error.
+ *
+ * This is the top of the Discovery pipeline described in
+ * `docs/DISCOVERY_ARCHITECTURE.md`; `discoveryDir()` in the public API is a
+ * thin wrapper over
+ * {@link DiscoveryRunner.discoverDir}. Reach for this module when you need to
+ * run or configure discovery — the candidate generation, filtering, caching and
+ * evaluation steps each live in their own sibling module.
+ *
+ * Discovery is always optional: without the Rust library the run fails fast
+ * with a `DiscoveryError` rather than silently degrading. Every dependency
+ * (worker factory, candidate builder, library probe) is injectable so tests can
+ * drive the pipeline without workers or FFI. The module also re-exports the
+ * pipeline types and formatting helpers that external consumers import.
+ */
 import { assertExists } from "@std/assert";
 import { getLogger } from "@utils/Logger.ts";
 import { format } from "@std/fmt/duration";
