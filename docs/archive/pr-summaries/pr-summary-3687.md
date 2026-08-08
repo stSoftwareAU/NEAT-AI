@@ -64,9 +64,9 @@ Full quality gate: `./quality.sh` — **8216 passed | 0 failed | 4 ignored**.
 - Added
   `test/discovery/DiscoveryPostValidate.ts::"DiscoveryPostValidate exports only the live post-validation helper (Issue #3687)"`
   — imports the module and asserts the runtime surface: neither
-  `validateDiscoveryCandidatesBatch` nor the `BatchDiscoveryValidator`
-  re-export is present, while `validateAfterDiscoveryOrThrow` remains a
-  function. This fails against the unfixed code and passes after the removal.
+  `validateDiscoveryCandidatesBatch` nor the `BatchDiscoveryValidator` re-export
+  is present, while `validateAfterDiscoveryOrThrow` remains a function. This
+  fails against the unfixed code and passes after the removal.
 - Existing `validateAfterDiscoveryOrThrow` tests in the same file are unchanged
   and still pass, confirming the live behaviour is unaffected.
 - `./quality.sh` (lint, format, type-check, WASM sync, full test suite) passes
