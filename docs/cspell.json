@@ -590,6 +590,10 @@
     "evex",
     "extremum",
     "unfloored",
-    "ungated"
+    "ungated",
+    "unadded",
+    "mintable",
+    "tokenlessly",
+    "trojanised"
   ]
 }
