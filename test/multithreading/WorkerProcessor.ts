@@ -145,17 +145,15 @@ Deno.test(
 Deno.test("WorkerProcessor: rejects a remote custom cost specifier before import", async () => {
   const processor = new WorkerProcessor();
 
-  for (
-    const filePath of [
-      "https://evil.example/cost.ts",
-      "http://evil.example/cost.ts",
-      "data:text/javascript,export default class {}",
-    ]
-  ) {
-    const error = await assertRejects(
+  const attempts = [
+    "https://evil.example/cost.ts",
+    "http://evil.example/cost.ts",
+    "data:text/javascript,export default class {}",
+  ].map((filePath, index) =>
+    assertRejects(
       () =>
         processor.process({
-          taskID: 1,
+          taskID: index + 1,
           initialize: {
             dataSetDir: ".test/does-not-matter",
             costName: "MSE",
@@ -163,7 +161,10 @@ Deno.test("WorkerProcessor: rejects a remote custom cost specifier before import
           },
         }),
       ValidationError,
-    );
+    )
+  );
+
+  for (const error of await Promise.all(attempts)) {
     assertStringIncludes(error.message, "custom cost function");
   }
 });

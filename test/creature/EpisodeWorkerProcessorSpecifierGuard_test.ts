@@ -19,15 +19,14 @@ async function initWith(url: string) {
 }
 
 Deno.test("EpisodeWorkerProcessor: rejects remote adapter URLs", async () => {
-  for (
-    const url of [
-      "https://evil.example/adapter.ts",
-      "http://evil.example/adapter.ts",
-      "data:text/javascript,export default class {}",
-      "npm:evil-adapter",
-    ]
-  ) {
-    const result = await initWith(url);
+  const results = await Promise.all([
+    "https://evil.example/adapter.ts",
+    "http://evil.example/adapter.ts",
+    "data:text/javascript,export default class {}",
+    "npm:evil-adapter",
+  ].map(initWith));
+
+  for (const result of results) {
     assertEquals(result.status, "ERROR");
     assertStringIncludes(result.error ?? "", "episode adapter");
   }
