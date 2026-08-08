@@ -1,6 +1,7 @@
 import { assertEquals, assertThrows } from "@std/assert";
 import { createNeatConfig } from "@config/NeatConfig.ts";
 import { DEFAULT_MCMC_CONFIG } from "@config/MCMCConfig.ts";
+import type { NeatOptionsInput } from "@config/NeatOptions.ts";
 
 Deno.test("MCMCConfig - defaults applied when not specified", () => {
   const config = createNeatConfig({});
@@ -75,175 +76,117 @@ Deno.test("MCMCConfig - string values coerced from CLI", () => {
   assertEquals(config.mcmc.targetAcceptanceRate, 0.3);
 });
 
-Deno.test("MCMCConfig - initialTemperature must be > 0", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { initialTemperature: 0 },
-      }),
-    Error,
-    "initialTemperature",
-  );
-});
+/** One rejected `mcmc` block and the field its error message must name. */
+type MCMCRejectionCase = {
+  /** Step name describing the rule under test. */
+  readonly scenario: string;
+  /** The `mcmc` block handed to `createNeatConfig`. */
+  readonly mcmc: NonNullable<NeatOptionsInput["mcmc"]>;
+  /** Substring the thrown message must contain (the offending field). */
+  readonly field: string;
+};
 
-Deno.test("MCMCConfig - negative initialTemperature rejected", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { initialTemperature: -1 },
-      }),
-    Error,
-    "initialTemperature",
-  );
-});
+/**
+ * Every invalid `mcmc` value `createNeatConfig` must reject. Table-driven
+ * (Issue #3677) so a new rule is one row, and tightening a message is one
+ * assertion site. Covers Issue #2201 (adjustmentRate / toleranceRate) and
+ * Issue #2527 (mcmcAdvantageMode).
+ */
+const MCMC_REJECTION_CASES: readonly MCMCRejectionCase[] = [
+  {
+    scenario: "initialTemperature must be > 0",
+    mcmc: { initialTemperature: 0 },
+    field: "initialTemperature",
+  },
+  {
+    scenario: "negative initialTemperature rejected",
+    mcmc: { initialTemperature: -1 },
+    field: "initialTemperature",
+  },
+  {
+    scenario: "minTemperature must be > 0",
+    mcmc: { minTemperature: 0 },
+    field: "minTemperature",
+  },
+  {
+    scenario: "negative minTemperature rejected",
+    mcmc: { minTemperature: -0.01 },
+    field: "minTemperature",
+  },
+  {
+    scenario: "coolingRate must be > 0",
+    mcmc: { coolingRate: 0 },
+    field: "coolingRate",
+  },
+  {
+    scenario: "coolingRate must be < 1",
+    mcmc: { coolingRate: 1 },
+    field: "coolingRate",
+  },
+  {
+    scenario: "coolingRate >= 1 rejected",
+    mcmc: { coolingRate: 1.5 },
+    field: "coolingRate",
+  },
+  {
+    scenario: "negative coolingRate rejected",
+    mcmc: { coolingRate: -0.5 },
+    field: "coolingRate",
+  },
+  {
+    scenario: "targetAcceptanceRate must be > 0",
+    mcmc: { targetAcceptanceRate: 0 },
+    field: "targetAcceptanceRate",
+  },
+  {
+    scenario: "targetAcceptanceRate must be < 1",
+    mcmc: { targetAcceptanceRate: 1 },
+    field: "targetAcceptanceRate",
+  },
+  {
+    scenario: "minTemperature must be <= initialTemperature",
+    mcmc: { initialTemperature: 0.5, minTemperature: 1.0 },
+    field: "minTemperature",
+  },
+  // Issue #2201: adjustmentRate and toleranceRate
+  {
+    scenario: "adjustmentRate must be > 0",
+    mcmc: { adjustmentRate: 0 },
+    field: "adjustmentRate",
+  },
+  {
+    scenario: "adjustmentRate must be < 1",
+    mcmc: { adjustmentRate: 1 },
+    field: "adjustmentRate",
+  },
+  {
+    scenario: "toleranceRate must be > 0",
+    mcmc: { toleranceRate: 0 },
+    field: "toleranceRate",
+  },
+  {
+    scenario: "toleranceRate must be < 1",
+    mcmc: { toleranceRate: 1 },
+    field: "toleranceRate",
+  },
+  // Issue #2527: mcmcAdvantageMode
+  {
+    scenario: "mcmcAdvantageMode rejects unknown strings",
+    // deno-lint-ignore no-explicit-any
+    mcmc: { mcmcAdvantageMode: "raw" as any },
+    field: "mcmcAdvantageMode",
+  },
+];
 
-Deno.test("MCMCConfig - minTemperature must be > 0", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { minTemperature: 0 },
-      }),
-    Error,
-    "minTemperature",
-  );
-});
-
-Deno.test("MCMCConfig - negative minTemperature rejected", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { minTemperature: -0.01 },
-      }),
-    Error,
-    "minTemperature",
-  );
-});
-
-Deno.test("MCMCConfig - coolingRate must be > 0", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { coolingRate: 0 },
-      }),
-    Error,
-    "coolingRate",
-  );
-});
-
-Deno.test("MCMCConfig - coolingRate must be < 1", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { coolingRate: 1 },
-      }),
-    Error,
-    "coolingRate",
-  );
-});
-
-Deno.test("MCMCConfig - coolingRate >= 1 rejected", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { coolingRate: 1.5 },
-      }),
-    Error,
-    "coolingRate",
-  );
-});
-
-Deno.test("MCMCConfig - negative coolingRate rejected", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { coolingRate: -0.5 },
-      }),
-    Error,
-    "coolingRate",
-  );
-});
-
-Deno.test("MCMCConfig - targetAcceptanceRate must be > 0", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { targetAcceptanceRate: 0 },
-      }),
-    Error,
-    "targetAcceptanceRate",
-  );
-});
-
-Deno.test("MCMCConfig - targetAcceptanceRate must be < 1", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { targetAcceptanceRate: 1 },
-      }),
-    Error,
-    "targetAcceptanceRate",
-  );
-});
-
-Deno.test("MCMCConfig - minTemperature must be <= initialTemperature", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: {
-          initialTemperature: 0.5,
-          minTemperature: 1.0,
-        },
-      }),
-    Error,
-    "minTemperature",
-  );
-});
-
-// Issue #2201: Tests for adjustmentRate and toleranceRate
-
-Deno.test("MCMCConfig - adjustmentRate must be > 0", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { adjustmentRate: 0 },
-      }),
-    Error,
-    "adjustmentRate",
-  );
-});
-
-Deno.test("MCMCConfig - adjustmentRate must be < 1", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { adjustmentRate: 1 },
-      }),
-    Error,
-    "adjustmentRate",
-  );
-});
-
-Deno.test("MCMCConfig - toleranceRate must be > 0", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { toleranceRate: 0 },
-      }),
-    Error,
-    "toleranceRate",
-  );
-});
-
-Deno.test("MCMCConfig - toleranceRate must be < 1", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: { toleranceRate: 1 },
-      }),
-    Error,
-    "toleranceRate",
-  );
-});
+for (const rejection of MCMC_REJECTION_CASES) {
+  Deno.test(`MCMCConfig - ${rejection.scenario}`, () => {
+    assertThrows(
+      () => createNeatConfig({ mcmc: rejection.mcmc }),
+      Error,
+      rejection.field,
+    );
+  });
+}
 
 Deno.test("MCMCConfig - custom adjustmentRate and toleranceRate override defaults", () => {
   const config = createNeatConfig({
@@ -294,18 +237,4 @@ Deno.test("MCMCConfig - mcmcAdvantageMode 'groupRelative' is accepted", () => {
   assertEquals(config.mcmc.minCohortSize, 8);
   assertEquals(config.mcmc.advantageEps, 1e-6);
   assertEquals(config.mcmc.advantageClip, 5);
-});
-
-Deno.test("MCMCConfig - mcmcAdvantageMode rejects unknown strings", () => {
-  assertThrows(
-    () =>
-      createNeatConfig({
-        mcmc: {
-          // deno-lint-ignore no-explicit-any
-          mcmcAdvantageMode: "raw" as any,
-        },
-      }),
-    Error,
-    "mcmcAdvantageMode",
-  );
 });
