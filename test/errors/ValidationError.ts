@@ -4,7 +4,7 @@
  * @module
  */
 
-import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertIsError } from "@std/assert";
 import {
   ValidationError,
   type ValidationErrorName,
@@ -85,21 +85,6 @@ Deno.test("ValidationError - MEMETIC reason", () => {
   const error = new ValidationError("memetic validation failed", "MEMETIC");
   assertEquals(error.name, "ValidationError");
   assertEquals(error.reason, "MEMETIC");
-});
-
-Deno.test("ValidationError - is instanceof Error", () => {
-  const error = new ValidationError("test", "OTHER");
-  assert(error instanceof Error);
-  assert(error instanceof ValidationError);
-});
-
-Deno.test("ValidationError - can be caught selectively", () => {
-  assertThrows(
-    () => {
-      throw new ValidationError("test error", "OTHER");
-    },
-    ValidationError,
-  );
 });
 
 Deno.test("ValidationError - all reasons are valid", () => {

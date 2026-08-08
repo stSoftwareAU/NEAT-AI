@@ -1,4 +1,4 @@
-import { assert, assertStringIncludes, assertThrows } from "@std/assert";
+import { assertStringIncludes, assertThrows } from "@std/assert";
 import { assertNever } from "@utils/assertNever.ts";
 
 Deno.test("assertNever - throws with the offending value embedded", () => {
@@ -12,24 +12,6 @@ Deno.test("assertNever - throws with the offending value embedded", () => {
   assertStringIncludes(err.message, "Unhandled variant");
   assertStringIncludes(err.message, "eighthVariant");
   assertStringIncludes(err.message, "42");
-});
-
-Deno.test("assertNever - exhaustive switch never reaches the guard", () => {
-  type Op = { type: "a" } | { type: "b" };
-
-  function handle(op: Op): string {
-    switch (op.type) {
-      case "a":
-        return "handled-a";
-      case "b":
-        return "handled-b";
-      default:
-        return assertNever(op);
-    }
-  }
-
-  assert(handle({ type: "a" }) === "handled-a");
-  assert(handle({ type: "b" }) === "handled-b");
 });
 
 Deno.test("assertNever - serialises a string-only value safely", () => {

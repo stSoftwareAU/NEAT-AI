@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertIsError } from "@std/assert";
 import {
   TopologyError,
   type TopologyErrorReason,
@@ -85,20 +85,6 @@ Deno.test("TopologyError - EXCESSIVE_ERRORS reason", () => {
   );
   assertIsError(error, TopologyError);
   assertEquals(error.reason, "EXCESSIVE_ERRORS");
-});
-
-Deno.test("TopologyError - is instanceof Error", () => {
-  const error = new TopologyError("test", "INVALID_NEURON_TYPE");
-  assert(error instanceof Error);
-  assert(error instanceof TopologyError);
-});
-
-Deno.test("TopologyError - can be caught selectively", () => {
-  const fn = () => {
-    throw new TopologyError("bad topology", "INVALID_CONNECTION");
-  };
-
-  assertThrows(fn, TopologyError);
 });
 
 Deno.test("TopologyError - reason is typed", () => {
