@@ -73,8 +73,8 @@ new Creature(input: number, output: number, options?: {
 | `propagate`          | `(expected: Float32Array, config: BackPropagationConfig, sparseConfig: SparseConfig): void` | Backpropagation — propagates errors backwards through the network.                                    |
 | `propagateUpdate`    | `(config: BackPropagationConfig, sparseConfig: SparseConfig): void`                         | Updates weights/biases based on propagated errors.                                                    |
 | `record`             | `(expected: Float32Array): Map<number, DiscoverRecord>`                                     | Records expected outputs for discovery analysis. The map key is the runtime neuron `id` (a `number`). |
-| `exportJSON`         | `(): CreatureExport`                                                                        | Canonical serialisation: wire UUIDs plus resolved runtime ids (`id` / `fromId` / `toId`).             |
-| `exportSnapshotJSON` | `(): CreatureExport`                                                                        | Wire-only snapshot: same topology as `exportJSON` but omits numeric ids (sharing / schema checks).    |
+| `exportJSON`         | `(): CreatureExport`                                                                        | Canonical external serialisation: the UUID-only wire format (no `id` / `fromId` / `toId`).            |
+| `exportSnapshotJSON` | `(): CreatureExport`                                                                        | Equivalent to `exportJSON`; retained for backward compatibility.                                      |
 | `traceJSON`          | `(): CreatureTrace`                                                                         | Exports with detailed trace information from last activation.                                         |
 | `loadFrom`           | `(json: CreatureInternal \| CreatureExport, validate: boolean): void`                       | Loads creature structure from a JSON object.                                                          |
 | `connect`            | `(from: number, to: number, weight: number, type?: SynapseType): Synapse`                   | Creates a synapse between two neurons.                                                                |
@@ -82,6 +82,13 @@ new Creature(input: number, output: number, options?: {
 | `shallowClone`       | `(): Creature`                                                                              | Fast clone without JSON serialisation overhead.                                                       |
 | `dispose`            | `(): void`                                                                                  | Releases all resources and memory.                                                                    |
 | `clearCache`         | `(from?: number, to?: number): void`                                                        | Clears internal synapse connection caches.                                                            |
+
+> [!CAUTION]
+> Both export methods emit the **UUID-only** wire format. The runtime integer
+> `id` / `fromId` / `toId` are in-memory implementation details and must never
+> cross a process, machine, disk, cache, or FFI boundary — see
+> [Neuron UUID stability](../../AGENTS.md#-neuron-uuid-stability-critical-invariant)
+> for the invariant and why it is load-bearing.
 
 ### ⚡ Static Methods
 
@@ -292,9 +299,12 @@ import { CreatureUtil, randomConnectMissing } from "@stsoftware/neat-ai";
 
 - `CreatureUtil` — utility class with helpers for working with creatures (UUID
   assignment, structural normalisation).
-- `randomConnectMissing(creature)` — connects neurons that lack required inward
-  or outward connections by inserting random synapses. Used during topology
-  repair after structural mutation.
+- `randomConnectMissing(creature)` — input-side repair only: every input neuron
+  with no outgoing synapse gains one to a randomly chosen neuron (weight scale
+  `0.1`). Returns a new, validated creature, or the original unchanged when no
+  input is missing. Neurons lacking inward connections and hidden neurons with
+  no outgoing synapse are left alone, and nothing inside the library calls it —
+  it is a helper for consumers repairing their own creatures.
 
 ---
 
