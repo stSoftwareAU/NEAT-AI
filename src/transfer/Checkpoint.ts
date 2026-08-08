@@ -11,6 +11,7 @@ import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { exportJSON } from "@creature/CreatureSerialization.ts";
+import { assertValidCreatureShape } from "@creature/CreatureShapeValidation.ts";
 import { nextNeuronId } from "@architecture/NeuronId.ts";
 import type {
   CheckpointInterface,
@@ -139,15 +140,36 @@ export interface CheckpointImportOptions {
  * Handles UUID mapping when source and target tasks have different
  * input/output configurations. Hidden layer topology and weights are
  * preserved from the checkpoint.
+ *
+ * @throws {ValidationError} When the checkpoint's `creature.input` /
+ *   `creature.output`, or an explicitly supplied `targetInputCount` /
+ *   `targetOutputCount`, is not an integer in `[1, MAX_NEURON_COUNT]`
+ *   (Issue #3714).
  */
 export function importCheckpoint(
   checkpoint: CheckpointInterface,
   options?: CheckpointImportOptions,
 ): Creature {
-  normaliseCreatureExport(checkpoint.creature);
+  // Issue #3714: a checkpoint is untrusted input — it is read off disk or the
+  // network — and its counts drive allocation loops in `normaliseCreatureExport`
+  // and `remapCreatureForTask` well before `Creature.fromJSON` gets to apply
+  // the same guard. Validate at the deserialisation boundary, matching #3672.
   const sourceCreature = checkpoint.creature;
+  assertValidCreatureShape(
+    sourceCreature?.input,
+    sourceCreature?.output,
+    "importCheckpoint",
+  );
+
   const targetInputCount = options?.targetInputCount ?? sourceCreature.input;
   const targetOutputCount = options?.targetOutputCount ?? sourceCreature.output;
+  assertValidCreatureShape(
+    targetInputCount,
+    targetOutputCount,
+    "importCheckpoint target",
+  );
+
+  normaliseCreatureExport(sourceCreature);
 
   // If input/output counts match and no mapping needed, simple import
   if (
@@ -266,6 +288,12 @@ function remapCreatureForTask(
   inputIdMapping?: Map<number, number>,
   outputIdMapping?: Map<number, number>,
 ): CreatureExport {
+  // Issue #3714: `metadata` comes from the same untrusted payload, so a
+  // checkpoint that omits the id arrays must not throw a raw TypeError out of
+  // a public API. Missing arrays simply mean "nothing to map by position".
+  const metadataInputIds = metadata?.sourceInputIds ?? [];
+  const metadataOutputIds = metadata?.sourceOutputIds ?? [];
+
   // Build input UUID mapping (source UUID -> target UUID)
   const inputMap = new Map<number, number>();
   if (inputIdMapping) {
@@ -275,11 +303,12 @@ function remapCreatureForTask(
   } else {
     // Default: map by position for overlapping inputs
     const overlapInputs = Math.min(
-      metadata.sourceInputCount,
+      metadata?.sourceInputCount ?? metadataInputIds.length,
       targetInputCount,
+      metadataInputIds.length,
     );
     for (let i = 0; i < overlapInputs; i++) {
-      inputMap.set(metadata.sourceInputIds[i], i);
+      inputMap.set(metadataInputIds[i], i);
     }
   }
 
@@ -292,17 +321,18 @@ function remapCreatureForTask(
   } else {
     // Default: map by position for overlapping outputs
     const overlapOutputs = Math.min(
-      metadata.sourceOutputCount,
+      metadata?.sourceOutputCount ?? metadataOutputIds.length,
       targetOutputCount,
+      metadataOutputIds.length,
     );
     for (let i = 0; i < overlapOutputs; i++) {
-      outputMap.set(metadata.sourceOutputIds[i], metadata.sourceOutputIds[i]);
+      outputMap.set(metadataOutputIds[i], metadataOutputIds[i]);
     }
   }
 
   // Collect the set of source input UUIDs to know which synapses to remap
-  const sourceInputIds = new Set(metadata.sourceInputIds);
-  const sourceOutputIds = new Set(metadata.sourceOutputIds);
+  const sourceInputIds = new Set(metadataInputIds);
+  const sourceOutputIds = new Set(metadataOutputIds);
 
   // Remap neurons: keep hidden neurons as-is, remap outputs
   const remappedNeurons = source.neurons.map((n) => {
