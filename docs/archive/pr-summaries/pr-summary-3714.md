@@ -89,14 +89,13 @@ New regression suite `test/transfer/CheckpointImportShapeValidation.ts`:
 - `importCheckpoint - rejects <count> output on the remap path` — same counts on
   `creature.output` with an `outputIdMapping` supplied, which is the remap path
   that pushes one neuron per `targetOutputCount`.
-- `importCheckpoint - rejects <count> targetInputCount` /
-  `targetOutputCount` — explicitly supplied target counts are validated too.
+- `importCheckpoint - rejects <count> targetInputCount` / `targetOutputCount` —
+  explicitly supplied target counts are validated too.
 - `importCheckpoint - rejects a missing input/output count` — `undefined` on the
   checkpoint is hostile; `undefined` in the options legitimately means "not
   supplied" and falls back to the source count.
-- `importCheckpoint - metadata without id arrays does not throw TypeError` —
-  a checkpoint with `sourceInputIds` / `sourceOutputIds` removed imports
-  cleanly.
+- `importCheckpoint - metadata without id arrays does not throw TypeError` — a
+  checkpoint with `sourceInputIds` / `sourceOutputIds` removed imports cleanly.
 - `importCheckpoint - a valid checkpoint still round-trips` — the happy path is
   unchanged.
 
