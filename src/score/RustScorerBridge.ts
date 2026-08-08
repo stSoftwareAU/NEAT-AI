@@ -1,3 +1,24 @@
+/**
+ * @module
+ *
+ * Bridge to the optional external `rust_scorer` binary — an out-of-process
+ * scorer that can evaluate a creature (or a directory of creatures) faster than
+ * the WASM path for large datasets.
+ *
+ * The boundary is a subprocess, not FFI: the creature is written to a temporary
+ * JSON file and the binary is invoked with absolute paths, because it resolves
+ * relative paths against its own cwd. {@link tryScoreWithRustScorer} returns
+ * `undefined` — meaning "caller should score with WASM" — whenever the scorer
+ * is disabled, absent, or too old to honour the configured cost function
+ * (Issue #2745); a genuinely corrupt dataset still throws rather than being
+ * downgraded to a silent fallback.
+ *
+ * Configuration comes from `NEAT_AI_RUST_SCORER_*` environment variables via
+ * {@link getEnvRustScorerConfig} and is cached for the process. The `__`-prefixed
+ * exports are test seams: under `deno test --parallel` every test file shares
+ * one OS environment, so tests must override module state rather than
+ * `Deno.env` (Issue #3234).
+ */
 import { join, resolve } from "@std/path";
 import type { Creature } from "@creature";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";

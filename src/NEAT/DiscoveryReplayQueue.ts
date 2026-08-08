@@ -1,3 +1,16 @@
+/**
+ * @module
+ *
+ * Background replay queue for cached discoveries (Issue #997). The evolution
+ * loop hands each newly found fittest creature to {@link DiscoveryReplayQueue}
+ * and carries on; the queue replays previously cached discoveries against that
+ * creature on its own, collecting improved creatures for the next generation.
+ *
+ * Reach for it when discovery work must not block evolution: only one replay
+ * runs at a time, a newer fittest supersedes any creature still waiting, and
+ * the seed warm-up structural lock is honoured through an explicitly supplied
+ * {@link DiscoveryReplayWarmupContext} rather than per-creature tags (#2911).
+ */
 import type { Creature } from "@creature";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import {

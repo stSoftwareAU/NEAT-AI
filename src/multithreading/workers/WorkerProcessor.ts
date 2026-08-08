@@ -1,3 +1,20 @@
+/**
+ * @module
+ *
+ * The worker's half of the worker protocol. {@link WorkerProcessor} receives
+ * the `RequestData` messages sent by `WorkerHandler.ts` on the main thread,
+ * runs the actual work inside the worker — dataset load, scoring, training,
+ * discovery — and returns the matching `ResponseData`.
+ *
+ * Reach for this module when adding a new kind of worker job: the handler
+ * defines the request, this defines what happens to it. It also owns the
+ * worker-local state that makes repeat jobs cheap (resolved cost function,
+ * dataset file-list cache, one-time WASM initialisation).
+ *
+ * Discovery results can be very large, so payloads are trimmed to what the main
+ * thread actually reads and the source structures are released for collection
+ * before the response is posted.
+ */
 import { assert } from "@std/assert";
 import { recordDirectory } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 import { toErrorMessage } from "@utils/ErrorSerialisation.ts";
