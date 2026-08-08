@@ -119,6 +119,12 @@ const creature = importCheckpoint(checkpoint, {
 
 **Returns:** `Creature` — a creature adapted to the target task.
 
+**Throws:** `ValidationError` when the checkpoint's `creature.input` /
+`creature.output`, or an explicitly supplied `targetInputCount` /
+`targetOutputCount`, is not an integer in `[1, 1_000_000]`. A checkpoint is
+untrusted input — it is read off disk or the network — so the shape is checked
+at the boundary before anything is allocated (Issue #3714).
+
 ### `createSeededPopulation(options)`
 
 Creates an initial population mixing pre-trained creatures with randomly
