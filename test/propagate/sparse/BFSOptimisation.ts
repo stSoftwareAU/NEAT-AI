@@ -1,196 +1,279 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { Creature } from "@creature";
+import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
+import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
+import { chooseNeurons } from "@propagate/sparse/ChooseNeurons.ts";
+import {
+  createSeededRng,
+  getRandomNumberGenerator,
+  setRandomNumberGenerator,
+} from "@utils/RandomNumberGenerator.ts";
 
 /**
- * Test for BFS optimisation in getConnectedNeurons (issue #1030).
- * Verifies that the index pointer approach produces the same results
- * as the original Array.shift() implementation.
+ * Cluster-expansion tests for the breadth-first traversal inside
+ * `chooseNeurons` (the non-exported `getConnectedNeurons`, issue #1030).
+ *
+ * Every test drives the real `chooseNeurons` entry point over a creature whose
+ * topology makes the one-step / two-step outcome assertable: each component has
+ * a diameter of two, so a cluster seeded anywhere inside it expands to exactly
+ * that component and never crosses into a disconnected one.
  */
 
-// Helper to build a synapse map for testing
-function buildSynapseMap(
-  connections: Array<[string, string]>,
-): Map<string, Set<string>> {
-  const synapseMap = new Map<string, Set<string>>();
+const SEEDS = [1, 2, 3, 5, 8, 13, 21, 34];
 
-  for (const [from, to] of connections) {
-    if (!synapseMap.has(from)) {
-      synapseMap.set(from, new Set());
-    }
-    if (!synapseMap.has(to)) {
-      synapseMap.set(to, new Set());
-    }
-    synapseMap.get(from)!.add(to);
-    synapseMap.get(to)!.add(from);
+/** Runs `chooseNeurons` under a seeded RNG so the shuffle is reproducible. */
+function selectNeurons(
+  creature: Creature,
+  sparseRatio: number,
+  seed: number,
+): Set<number> {
+  const previousRng = getRandomNumberGenerator();
+  try {
+    setRandomNumberGenerator(createSeededRng(seed));
+    const config = createBackPropagationConfig({ sparseRatio });
+    return new Set(chooseNeurons(exportJSONWithRuntimeIds(creature), config));
+  } finally {
+    setRandomNumberGenerator(previousRng);
   }
-
-  return synapseMap;
 }
 
-// Implementation of the optimised BFS using index pointer
-function getConnectedNeuronsOptimised(
-  neuronId: string,
-  synapseMap: Map<string, Set<string>>,
-  steps: number,
-): Set<string> {
-  const connectedNeurons = new Set<string>();
-  const queue = [{ neuronId, depth: 0 }];
-  let front = 0;
+/** Maps stable neuron UUIDs to the runtime integer ids `chooseNeurons` returns. */
+function idsOf(creature: Creature, uuids: string[]): Set<number> {
+  const byUuid = new Map<string, number>();
+  creature.neurons.forEach((neuron) => {
+    if (neuron.uuid !== undefined) byUuid.set(neuron.uuid, neuron.id);
+  });
 
-  while (front < queue.length) {
-    const { neuronId: current, depth } = queue[front++];
-
-    if (depth >= steps) continue;
-
-    const neighbours = synapseMap.get(current) || new Set();
-    for (const neighbour of neighbours) {
-      if (!connectedNeurons.has(neighbour)) {
-        connectedNeurons.add(neighbour);
-        queue.push({ neuronId: neighbour, depth: depth + 1 });
-      }
-    }
-  }
-
-  return connectedNeurons;
+  return new Set(uuids.map((uuid) => {
+    const id = byUuid.get(uuid);
+    assert(id !== undefined, `No neuron with uuid ${uuid}`);
+    return id;
+  }));
 }
 
-Deno.test("BFS optimisation - linear chain depth 1", () => {
-  // A -> B -> C -> D
-  const connections: Array<[string, string]> = [
-    ["A", "B"],
-    ["B", "C"],
-    ["C", "D"],
-  ];
-  const synapseMap = buildSynapseMap(connections);
+function makeCreature(json: CreatureExport): Creature {
+  const creature = Creature.fromJSON(json);
+  creature.validate();
+  return creature;
+}
 
-  const result = getConnectedNeuronsOptimised("B", synapseMap, 1);
+function setsEqual(a: Set<number>, b: Set<number>): boolean {
+  return a.size === b.size && [...a].every((value) => b.has(value));
+}
 
-  assertEquals(result.size, 2);
-  assertEquals(result.has("A"), true);
-  assertEquals(result.has("C"), true);
-  assertEquals(result.has("B"), false); // Starting node not included
-  assertEquals(result.has("D"), false); // Too far
-});
+/**
+ * Two disconnected diamonds. Each hub feeds two hidden neurons that rejoin at
+ * an output, so the component contains an (undirected) cycle and every member
+ * is at most two steps from every other.
+ */
+function makeTwinDiamonds(): Creature {
+  return makeCreature({
+    neurons: [
+      { type: "hidden", uuid: "a-hub", bias: 0, squash: "RELU" },
+      { type: "hidden", uuid: "a-1", bias: 0, squash: "RELU" },
+      { type: "hidden", uuid: "a-2", bias: 0, squash: "RELU" },
+      { type: "hidden", uuid: "b-hub", bias: 0, squash: "RELU" },
+      { type: "hidden", uuid: "b-1", bias: 0, squash: "RELU" },
+      { type: "hidden", uuid: "b-2", bias: 0, squash: "RELU" },
+      { type: "output", uuid: "output-0", bias: 0, squash: "RELU" },
+      { type: "output", uuid: "output-1", bias: 0, squash: "RELU" },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "a-hub", weight: 0.5 },
+      { fromUUID: "a-hub", toUUID: "a-1", weight: 0.5 },
+      { fromUUID: "a-hub", toUUID: "a-2", weight: 0.5 },
+      { fromUUID: "a-1", toUUID: "output-0", weight: 0.5 },
+      { fromUUID: "a-2", toUUID: "output-0", weight: 0.5 },
 
-Deno.test("BFS optimisation - linear chain depth 2", () => {
-  // A -> B -> C -> D -> E
-  const connections: Array<[string, string]> = [
-    ["A", "B"],
-    ["B", "C"],
-    ["C", "D"],
-    ["D", "E"],
-  ];
-  const synapseMap = buildSynapseMap(connections);
+      { fromUUID: "input-1", toUUID: "b-hub", weight: 0.5 },
+      { fromUUID: "b-hub", toUUID: "b-1", weight: 0.5 },
+      { fromUUID: "b-hub", toUUID: "b-2", weight: 0.5 },
+      { fromUUID: "b-1", toUUID: "output-1", weight: 0.5 },
+      { fromUUID: "b-2", toUUID: "output-1", weight: 0.5 },
+    ],
+    input: 2,
+    output: 2,
+  });
+}
 
-  const result = getConnectedNeuronsOptimised("C", synapseMap, 2);
+/** Two disconnected three-neuron paths: `c-0 — c-1 — output-0`. */
+function makeTwinPaths(): Creature {
+  return makeCreature({
+    neurons: [
+      { type: "hidden", uuid: "c-0", bias: 0, squash: "RELU" },
+      { type: "hidden", uuid: "c-1", bias: 0, squash: "RELU" },
+      { type: "hidden", uuid: "d-0", bias: 0, squash: "RELU" },
+      { type: "hidden", uuid: "d-1", bias: 0, squash: "RELU" },
+      { type: "output", uuid: "output-0", bias: 0, squash: "RELU" },
+      { type: "output", uuid: "output-1", bias: 0, squash: "RELU" },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "c-0", weight: 0.5 },
+      { fromUUID: "c-0", toUUID: "c-1", weight: 0.5 },
+      { fromUUID: "c-1", toUUID: "output-0", weight: 0.5 },
 
-  // In bidirectional graph, from C we can reach B and D (depth 1),
-  // then from B we reach A and C (but C is start), from D we reach E and C
-  // So we get: B, D (depth 1) and A, C (from B), E, C (from D) = A, B, C, D, E
-  // But C is the starting node added at depth 2 from B or D
-  assertEquals(result.size, 5);
-  assertEquals(result.has("A"), true); // 2 steps via B
-  assertEquals(result.has("B"), true); // 1 step
-  assertEquals(result.has("D"), true); // 1 step
-  assertEquals(result.has("E"), true); // 2 steps via D
-  assertEquals(result.has("C"), true); // Added at depth 2 from B or D
-});
+      { fromUUID: "input-1", toUUID: "d-0", weight: 0.5 },
+      { fromUUID: "d-0", toUUID: "d-1", weight: 0.5 },
+      { fromUUID: "d-1", toUUID: "output-1", weight: 0.5 },
+    ],
+    input: 2,
+    output: 2,
+  });
+}
 
-Deno.test("BFS optimisation - branching graph", () => {
-  //     B
-  //    /
-  //   A -- C
-  //    \
-  //     D -- E
-  const connections: Array<[string, string]> = [
-    ["A", "B"],
-    ["A", "C"],
-    ["A", "D"],
-    ["D", "E"],
-  ];
-  const synapseMap = buildSynapseMap(connections);
+/**
+ * One three-neuron path plus `output-1`, which is driven straight from an input
+ * and therefore has no eligible (hidden/output) neighbour at all.
+ */
+function makePathWithIsolatedOutput(): Creature {
+  return makeCreature({
+    neurons: [
+      { type: "hidden", uuid: "c-0", bias: 0, squash: "RELU" },
+      { type: "hidden", uuid: "c-1", bias: 0, squash: "RELU" },
+      { type: "output", uuid: "output-0", bias: 0, squash: "RELU" },
+      { type: "output", uuid: "output-1", bias: 0, squash: "RELU" },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "c-0", weight: 0.5 },
+      { fromUUID: "c-0", toUUID: "c-1", weight: 0.5 },
+      { fromUUID: "c-1", toUUID: "output-0", weight: 0.5 },
 
-  const result = getConnectedNeuronsOptimised("A", synapseMap, 2);
+      { fromUUID: "input-1", toUUID: "output-1", weight: 0.5 },
+    ],
+    input: 2,
+    output: 2,
+  });
+}
 
-  // From A, depth 1: B, C, D
-  // From B, depth 2: A (start node gets added)
-  // From C, depth 2: A
-  // From D, depth 2: A, E
-  assertEquals(result.size, 5);
-  assertEquals(result.has("B"), true);
-  assertEquals(result.has("C"), true);
-  assertEquals(result.has("D"), true);
-  assertEquals(result.has("E"), true); // 2 steps via D
-  assertEquals(result.has("A"), true); // Added at depth 2 from neighbours
-});
+/**
+ * `clusterCount` disconnected fans, each `input-i → hub-i → leaf-i-j → output-i`,
+ * giving `leafCount + 2` eligible neurons per component and a diameter of two.
+ */
+function makeFanClusters(clusterCount: number, leafCount: number): Creature {
+  const neurons: CreatureExport["neurons"] = [];
+  const synapses: CreatureExport["synapses"] = [];
 
-Deno.test("BFS optimisation - disconnected neuron", () => {
-  const connections: Array<[string, string]> = [
-    ["A", "B"],
-    ["C", "D"], // Separate component
-  ];
-  const synapseMap = buildSynapseMap(connections);
+  for (let cluster = 0; cluster < clusterCount; cluster++) {
+    const hub = `hub-${cluster}`;
+    neurons.push({ type: "hidden", uuid: hub, bias: 0, squash: "RELU" });
+    synapses.push({
+      fromUUID: `input-${cluster}`,
+      toUUID: hub,
+      weight: 0.5,
+    });
 
-  const result = getConnectedNeuronsOptimised("A", synapseMap, 2);
-
-  // From A, depth 1: B
-  // From B, depth 2: A (the start node)
-  assertEquals(result.size, 2);
-  assertEquals(result.has("B"), true);
-  assertEquals(result.has("A"), true); // Added at depth 2 from B
-  assertEquals(result.has("C"), false); // Different component
-  assertEquals(result.has("D"), false); // Different component
-});
-
-Deno.test("BFS optimisation - isolated neuron", () => {
-  const synapseMap = new Map<string, Set<string>>();
-  synapseMap.set("A", new Set());
-
-  const result = getConnectedNeuronsOptimised("A", synapseMap, 2);
-
-  assertEquals(result.size, 0); // No connections
-});
-
-Deno.test("BFS optimisation - cycle handling", () => {
-  // A -> B -> C -> A (cycle)
-  const connections: Array<[string, string]> = [
-    ["A", "B"],
-    ["B", "C"],
-    ["C", "A"],
-  ];
-  const synapseMap = buildSynapseMap(connections);
-
-  const result = getConnectedNeuronsOptimised("A", synapseMap, 3);
-
-  // From A, depth 1: B, C (bidirectional)
-  // From B, depth 2: A, C
-  // From C, depth 2: A, B
-  // From A (depth 3 entries are skipped by depth >= steps check)
-  assertEquals(result.size, 3);
-  assertEquals(result.has("B"), true);
-  assertEquals(result.has("C"), true);
-  assertEquals(result.has("A"), true); // Added at depth 2 from B or C
-});
-
-Deno.test("BFS optimisation - large graph consistency", () => {
-  // Build a larger graph to ensure the optimised version handles it correctly
-  const connections: Array<[string, string]> = [];
-  const neuronCount = 100;
-
-  // Create a graph where each neuron connects to the next few
-  for (let i = 0; i < neuronCount; i++) {
-    for (let j = 1; j <= 3; j++) {
-      const target = (i + j) % neuronCount;
-      connections.push([`neuron-${i}`, `neuron-${target}`]);
+    for (let leaf = 0; leaf < leafCount; leaf++) {
+      const uuid = `leaf-${cluster}-${leaf}`;
+      neurons.push({ type: "hidden", uuid, bias: 0, squash: "RELU" });
+      synapses.push({ fromUUID: hub, toUUID: uuid, weight: 0.5 });
+      synapses.push({
+        fromUUID: uuid,
+        toUUID: `output-${cluster}`,
+        weight: 0.5,
+      });
     }
   }
 
-  const synapseMap = buildSynapseMap(connections);
-  const result = getConnectedNeuronsOptimised("neuron-0", synapseMap, 3);
+  for (let cluster = 0; cluster < clusterCount; cluster++) {
+    neurons.push({
+      type: "output",
+      uuid: `output-${cluster}`,
+      bias: 0,
+      squash: "RELU",
+    });
+  }
 
-  // With 3 steps and connections to the next 3 neurons, we should reach many neurons
-  // The exact count depends on graph structure, but should be > 0
-  assertEquals(result.size > 0, true);
-  assertEquals(result.has("neuron-1"), true);
-  assertEquals(result.has("neuron-2"), true);
-  assertEquals(result.has("neuron-3"), true);
+  return makeCreature({
+    neurons,
+    synapses,
+    input: clusterCount,
+    output: clusterCount,
+  });
+}
+
+function clusterUuids(cluster: number, leafCount: number): string[] {
+  const uuids = [`hub-${cluster}`, `output-${cluster}`];
+  for (let leaf = 0; leaf < leafCount; leaf++) {
+    uuids.push(`leaf-${cluster}-${leaf}`);
+  }
+  return uuids;
+}
+
+Deno.test("chooseNeurons - cluster expansion stays inside one component", () => {
+  const creature = makeTwinDiamonds();
+  const diamondA = idsOf(creature, ["a-hub", "a-1", "a-2", "output-0"]);
+  const diamondB = idsOf(creature, ["b-hub", "b-1", "b-2", "output-1"]);
+
+  for (const seed of SEEDS) {
+    // 4 of the 8 eligible neurons — exactly one diamond's worth.
+    const selected = selectNeurons(creature, 0.5, seed);
+
+    assert(
+      setsEqual(selected, diamondA) || setsEqual(selected, diamondB),
+      `seed ${seed}: expected one whole diamond, got ${[...selected]}`,
+    );
+  }
+});
+
+Deno.test("chooseNeurons - two-step reach covers the far end of a path", () => {
+  const creature = makeTwinPaths();
+  const pathC = idsOf(creature, ["c-0", "c-1", "output-0"]);
+  const pathD = idsOf(creature, ["d-0", "d-1", "output-1"]);
+
+  for (const seed of SEEDS) {
+    // 3 of the 6 eligible neurons — one whole path. The ends of a path are two
+    // steps apart, so the quota can only be filled from a single path when the
+    // traversal walks both hops out from the seed.
+    const selected = selectNeurons(creature, 0.5, seed);
+
+    assert(
+      setsEqual(selected, pathC) || setsEqual(selected, pathD),
+      `seed ${seed}: expected one whole path, got ${[...selected]}`,
+    );
+  }
+});
+
+Deno.test("chooseNeurons - a neuron with no eligible neighbours still terminates", () => {
+  const creature = makePathWithIsolatedOutput();
+  const pathC = idsOf(creature, ["c-0", "c-1", "output-0"]);
+  const isolated = idsOf(creature, ["output-1"]);
+  const eligible = new Set([...pathC, ...isolated]);
+
+  for (const seed of SEEDS) {
+    // 3 of the 4 eligible neurons.
+    const selected = selectNeurons(creature, 0.75, seed);
+
+    assertEquals(selected.size, 3, `seed ${seed}: wrong selection size`);
+    for (const id of selected) {
+      assert(eligible.has(id), `seed ${seed}: ${id} is not an eligible neuron`);
+    }
+    // The isolated output contributes no neighbours, so the remaining places
+    // must be filled from the connected path.
+    const fromPath = [...selected].filter((id) => pathC.has(id));
+    assert(
+      fromPath.length >= 2,
+      `seed ${seed}: expected at least two path neurons, got ${fromPath}`,
+    );
+  }
+});
+
+Deno.test("chooseNeurons - larger creature still selects a single cluster", () => {
+  const clusterCount = 3;
+  const leafCount = 4;
+  const creature = makeFanClusters(clusterCount, leafCount);
+  const clusters = Array.from(
+    { length: clusterCount },
+    (_, cluster) => idsOf(creature, clusterUuids(cluster, leafCount)),
+  );
+
+  for (const seed of SEEDS) {
+    // 6 of the 18 eligible neurons — exactly one fan.
+    const selected = selectNeurons(creature, 1 / clusterCount, seed);
+
+    assert(
+      clusters.some((cluster) => setsEqual(selected, cluster)),
+      `seed ${seed}: expected one whole cluster, got ${[...selected]}`,
+    );
+  }
 });
