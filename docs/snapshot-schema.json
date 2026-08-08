@@ -256,7 +256,7 @@
         },
         "ancestry": {
           "type": "array",
-          "description": "Optional circular buffer of ancestor snapshots, ordered from most recent to oldest. Limited to 3 entries by default.",
+          "description": "Optional circular buffer of ancestor snapshots, ordered from most recent to oldest. Limited to 3 entries by default. Ancestor snapshots carry no ancestry of their own; the loader truncates any nesting beyond 3 levels (Issue #3682).",
           "maxItems": 3,
           "items": {
             "$ref": "#/$defs/memeticAncestorSnapshot"

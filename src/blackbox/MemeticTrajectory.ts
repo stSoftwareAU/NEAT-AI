@@ -1,6 +1,7 @@
-import type {
-  MemeticAncestorSnapshot,
-  MemeticInterface,
+import {
+  DEFAULT_ANCESTRY_DEPTH,
+  type MemeticAncestorSnapshot,
+  type MemeticInterface,
 } from "@blackbox/MemeticInterface.ts";
 
 /**
@@ -250,13 +251,15 @@ export function createAncestorSnapshot(
  *
  * @param ancestry - The current ancestry array (or undefined)
  * @param newAncestor - The new ancestor to add
- * @param maxDepth - Maximum number of ancestors to keep (default: 3)
+ * @param maxDepth - Maximum number of ancestors to keep
+ *   (default: {@link DEFAULT_ANCESTRY_DEPTH}). The load side enforces the same
+ *   constant on untrusted JSON — see Issue #3682.
  * @returns Updated ancestry array
  */
 export function addToAncestry(
   ancestry: MemeticAncestorSnapshot[] | undefined,
   newAncestor: MemeticAncestorSnapshot,
-  maxDepth: number = 3,
+  maxDepth: number = DEFAULT_ANCESTRY_DEPTH,
 ): MemeticAncestorSnapshot[] {
   const newAncestry = ancestry ? [...ancestry] : [];
 
