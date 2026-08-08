@@ -20,14 +20,12 @@ import { assert } from "@std/assert";
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
 
 const REPO_ROOT = resolve(fromFileUrl(import.meta.url), "..", "..", "..");
-const DOCS_INDEX = join(REPO_ROOT, "docs", "README.md");
+const DOCS_DIR = join(REPO_ROOT, "docs");
+const DOCS_INDEX = join(DOCS_DIR, "README.md");
 
-Deno.test("docs/README.md internal links resolve", async () => {
-  const content = await Deno.readTextFile(DOCS_INDEX);
-  // Match markdown links of the form [text](path). Skip http(s):// links and
-  // pure anchor links (#fragment).
+/** Relative link targets (no http(s), no bare anchors) found in `content`. */
+function linkTargets(content: string): string[] {
   const linkRe = /\[[^\]]+\]\(([^)]+)\)/g;
-  const docsDir = dirname(DOCS_INDEX);
   const targets: string[] = [];
   let match: RegExpExecArray | null;
   while ((match = linkRe.exec(content)) !== null) {
@@ -38,6 +36,13 @@ Deno.test("docs/README.md internal links resolve", async () => {
     if (!pathPart) continue;
     targets.push(pathPart);
   }
+  return targets;
+}
+
+Deno.test("docs/README.md internal links resolve", async () => {
+  const content = await Deno.readTextFile(DOCS_INDEX);
+  const docsDir = dirname(DOCS_INDEX);
+  const targets = linkTargets(content);
   // Run filesystem checks in parallel — satisfies no-await-in-loop and is
   // also faster.
   const results = await Promise.all(
@@ -55,5 +60,37 @@ Deno.test("docs/README.md internal links resolve", async () => {
   assert(
     failures.length === 0,
     `docs/README.md has broken internal links:\n${failures.join("\n")}`,
+  );
+});
+
+/**
+ * Issue #3691 — the index claims "every long-form guide in the repository has
+ * a home here", so the claim is only true while every top-level `docs/*.md`
+ * guide is actually linked from it. The out-of-scope section of the index
+ * carves out `pr-summary-*.md` and the non-prose subdirectories; nothing else
+ * may be silently absent.
+ */
+Deno.test("docs/README.md indexes every top-level guide", async () => {
+  const content = await Deno.readTextFile(DOCS_INDEX);
+  const linked = new Set(
+    linkTargets(content).map((t) => t.replace(/^\.\//, "")),
+  );
+
+  const missing: string[] = [];
+  for await (const entry of Deno.readDir(DOCS_DIR)) {
+    if (!entry.isFile) continue;
+    if (!entry.name.endsWith(".md")) continue;
+    if (entry.name === "README.md") continue;
+    // Carved out by the index's own "Out of scope" section.
+    if (entry.name.startsWith("pr-summary-")) continue;
+    if (!linked.has(entry.name)) missing.push(entry.name);
+  }
+
+  assert(
+    missing.length === 0,
+    `docs/README.md omits top-level guide(s), breaking its ` +
+      `"every long-form guide has a home here" claim:\n${
+        missing.sort().join("\n")
+      }`,
   );
 });
