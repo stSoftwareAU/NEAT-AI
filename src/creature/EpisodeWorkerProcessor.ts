@@ -32,6 +32,7 @@ import { Creature } from "@creature";
 import { runEpisode } from "@creature/EpisodeRunner.ts";
 import { initialiseWasmActivationFromPayload } from "@workers/WasmWorkerInit.ts";
 import type { WasmActivationInitPayload } from "@workers/WasmActivationPayload.ts";
+import { assertLocalModuleSpecifier } from "@utils/ModuleSpecifierGuard.ts";
 
 /**
  * Resolve a class-shaped export from a dynamically-imported module.
@@ -113,6 +114,12 @@ export class EpisodeWorkerProcessor {
     start: number,
   ): Promise<EpisodeInitResponse> {
     try {
+      // Issue #3685: reject any non-local adapter URL before it reaches
+      // `import()`, so an adapter description sourced from a remote manifest
+      // cannot execute remote code inside the worker. Checked first — ahead of
+      // WASM init — so a hostile specifier costs nothing.
+      assertLocalModuleSpecifier(description.url, "episode adapter");
+
       // Initialise WASM activation in the worker so `creature.activate()`
       // calls inside `runEpisode()` find a loaded module. Mirrors the
       // dataset worker bootstrap.

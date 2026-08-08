@@ -195,6 +195,9 @@ Project-level policies, audits, and release plumbing.
   contributors (terminology, invariants, testing rules).
 - **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — first-time contributor guide.
 - **[../SECURITY.md](../SECURITY.md)** — security disclosure policy.
+- **[SECURITY_SWEEP_COVERAGE.md](SECURITY_SWEEP_COVERAGE.md)** — which `src/`
+  directories the periodic trust-boundary sweep has audited, and what each pass
+  concluded (Issue #3685).
 - **[REPO_GOVERNANCE.md](REPO_GOVERNANCE.md)** — CI/CD code ownership
   (`.github/CODEOWNERS`) and required branch-protection settings that guard the
   privileged workflows (Issue #3187).

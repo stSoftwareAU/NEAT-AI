@@ -4,10 +4,17 @@
  * Issue #1698: Validates buildDiscoverResponsePayload and
  * clearDiscoverResultForGC helper functions.
  */
-import { assertEquals, assertExists } from "@std/assert";
+import {
+  assertEquals,
+  assertExists,
+  assertRejects,
+  assertStringIncludes,
+} from "@std/assert";
+import { ValidationError } from "@errors/ValidationError.ts";
 import {
   buildDiscoverResponsePayload,
   clearDiscoverResultForGC,
+  WorkerProcessor,
 } from "@multithreading/workers/WorkerProcessor.ts";
 import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 
@@ -129,3 +136,58 @@ Deno.test(
     assertEquals(payload.heapAbortedAtExtensionBoundary, false);
   },
 );
+
+/**
+ * Issue #3685: the custom-cost specifier reaches `await import()`, so a
+ * config value sourced from a remote manifest must not be able to execute
+ * remote code inside the worker.
+ */
+Deno.test("WorkerProcessor: rejects a remote custom cost specifier before import", async () => {
+  const processor = new WorkerProcessor();
+
+  const attempts = [
+    "https://evil.example/cost.ts",
+    "http://evil.example/cost.ts",
+    "data:text/javascript,export default class {}",
+  ].map((filePath, index) =>
+    assertRejects(
+      () =>
+        processor.process({
+          taskID: index + 1,
+          initialize: {
+            dataSetDir: ".test/does-not-matter",
+            costName: "MSE",
+            customCostData: JSON.stringify({ filePath }),
+          },
+        }),
+      ValidationError,
+    )
+  );
+
+  for (const error of await Promise.all(attempts)) {
+    assertStringIncludes(error.message, "custom cost function");
+  }
+});
+
+Deno.test("WorkerProcessor: a relative custom cost specifier passes the guard", async () => {
+  const processor = new WorkerProcessor();
+
+  // The path does not exist, so `import()` fails — but the failure is the
+  // load error, not the scheme guard, proving a local specifier is accepted.
+  const error = await assertRejects(
+    () =>
+      processor.process({
+        taskID: 2,
+        initialize: {
+          dataSetDir: ".test/does-not-matter",
+          costName: "MSE",
+          customCostData: JSON.stringify({
+            filePath: "./no/such/CustomCost.ts",
+          }),
+        },
+      }),
+    Error,
+  );
+  assertEquals(error instanceof ValidationError, false);
+  assertStringIncludes(error.message, "Failed to load custom cost function");
+});
