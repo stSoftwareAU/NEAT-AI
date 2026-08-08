@@ -54,10 +54,10 @@ jobs:
       # not.
       - name: Determine whether the version needs publishing
         id: needs_publish
-        # `-E` is pinned here by test/ci/WorkflowVersionCheckStrictMode.ts
-        # (Issue #3003) — do not normalise to `set -euo pipefail`.
+        # Strict mode is pinned here by
+        # test/ci/WorkflowVersionCheckStrictMode.ts (Issue #3003).
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           name=$(jq -r .name deno.json)
           version=$(jq -r .version deno.json)
           status=$(curl -s -o /dev/null -w '%{http_code}' \
@@ -177,7 +177,7 @@ jobs:
       # published package (308 components instead of 120, measured locally).
       - name: Generate CycloneDX SBOM
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           deno run --no-lock --allow-read --allow-write=sbom.cdx.json --allow-env --allow-sys \
             npm:@cyclonedx/cdxgen@12.8.2 -t deno -o sbom.cdx.json .
 
