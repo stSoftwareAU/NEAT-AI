@@ -21,6 +21,7 @@ import {
   safeWriteText,
   safeWriteTextSync,
 } from "@intelligentDesign/SafeWrite.ts";
+import { buildSquashOutputPath } from "@intelligentDesign/SquashOutputPath.ts";
 import { WorkerHandler } from "@intelligentDesign/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
@@ -465,7 +466,14 @@ export async function scanForSquashImprovements(
               } improved by ${(res.score.score - bestScore).toPrecision(3)}`;
             getLogger().info(lastMessage);
 
-            const path = `${outputDir}/${targetSquash}_${shortId}.json`;
+            // Issue #3715: the uuid comes from untrusted creature JSON and
+            // `targetSquash` is a free-form caller string — build the path
+            // through the sanitising, containment-checked helper.
+            const path = buildSquashOutputPath(
+              outputDir,
+              targetSquash,
+              String(res.score.uuid),
+            );
 
             await writeTextFile(path, res.score.creature);
             bestNeuronSquashMap.set(res.score.uuid, {
@@ -530,8 +538,11 @@ export async function scanForSquashImprovements(
                         }`;
                       getLogger().info(alternativeMessage);
 
-                      const altPath =
-                        `${outputDir}/${altSquash}_${shortId}.json`;
+                      const altPath = buildSquashOutputPath(
+                        outputDir,
+                        altSquash,
+                        String(alternativeRes.score.uuid),
+                      );
 
                       writeTextFileSync(
                         altPath,
