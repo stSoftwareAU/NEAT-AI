@@ -29,10 +29,10 @@ jobs:
 
       - name: Read version from deno.json
         id: version
-        # `-E` is pinned here by test/ci/WorkflowVersionCheckStrictMode.ts
-        # (Issue #3003) — do not normalise to `set -euo pipefail`.
+        # Strict mode is pinned here by
+        # test/ci/WorkflowVersionCheckStrictMode.ts (Issue #3003).
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           VERSION=$(jq -r .version deno.json)
           # deno.json is outside the CODEOWNERS gate (Issue #3669), so its
           # `version` is untrusted here. $GITHUB_OUTPUT is a line-oriented
