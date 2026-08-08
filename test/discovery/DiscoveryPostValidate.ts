@@ -1,4 +1,4 @@
-import { assertThrows } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "@creature";
 import { Synapse } from "@architecture/Synapse.ts";
 import { validateAfterDiscoveryOrThrow } from "@discovery/DiscoveryPostValidate.ts";
@@ -80,5 +80,32 @@ Deno.test(
       operation: "unit-test",
       feedbackLoop: true,
     });
+  },
+);
+
+Deno.test(
+  "DiscoveryPostValidate exports only the live post-validation helper (Issue #3687)",
+  async () => {
+    const surface: Record<string, unknown> = await import(
+      "@discovery/DiscoveryPostValidate.ts"
+    );
+
+    assertEquals(
+      Object.hasOwn(surface, "validateDiscoveryCandidatesBatch"),
+      false,
+      "The unused batch wrapper must not be exported; callers use BatchDiscoveryValidator directly",
+    );
+    assertEquals(
+      Object.hasOwn(surface, "BatchDiscoveryValidator"),
+      false,
+      "The convenience re-export must not be exported; callers import @discovery/BatchDiscoveryValidator.ts directly",
+    );
+
+    // The live surface stays intact.
+    assertEquals(
+      typeof surface.validateAfterDiscoveryOrThrow,
+      "function",
+      "validateAfterDiscoveryOrThrow must remain exported",
+    );
   },
 );
