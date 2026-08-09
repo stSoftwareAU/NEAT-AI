@@ -232,13 +232,14 @@ const myConfig: MCMCConfig = {
 `DiversityAwareMCMCConfig` and `DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG` extend MCMC
 acceptance with population-diversity-aware temperature scaling.
 
-### `outputRange` — OutputRange / RequiredOutputRange
+### `outputRanges` — OutputRange / RequiredOutputRange
 
 Issue #1620: per-output range constraints. Creatures producing outputs outside
 these ranges receive a fitness penalty proportional to the excess. Use
-`calculateOutputRangePenalty(creature, ranges)` to compute the penalty manually;
-`DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT` is the internal weighting applied during
-evolution.
+`calculateOutputRangePenalty(outputs, ranges)` to compute the penalty manually —
+`outputs` is one record's output values (`Float32Array | number[]`), not a
+creature. `DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT` is the internal weighting
+applied during evolution.
 
 ### `adaptivePopulation` — AdaptivePopulationConfig
 
@@ -257,7 +258,7 @@ Issue #1900: training data fuzzing adds small random perturbations to prevent
 memorisation. Supports Gaussian and uniform noise. Defaults via
 `DEFAULT_DATA_FUZZING_CONFIG`.
 
-### `diskSpace` — DiskSpaceConfig
+### `discoveryDiskSpace` — DiskSpaceConfig
 
 Issue #1703: pre-flight disk-space check during discovery. Defaults via
 `DEFAULT_DISK_SPACE_CONFIG`.

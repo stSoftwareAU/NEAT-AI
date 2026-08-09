@@ -73,7 +73,8 @@ async evolveDir(
 - `finalPopulationSize` — Final effective population size, present **only** when
   adaptive population sizing is enabled
 - `requestedOptions` — Echo of the caller-requested options (changes from
-  defaults; functions/non-serialisable values recorded by name with a marker)
+  defaults; functions and other non-serialisable values are dropped entirely, no
+  marker — Issue #3427)
 - `hardware` — CPU cores, total memory and host identifier for cross-machine
   comparison
 - `scoreImprovement` — Milestone summary of the score-improvement curve
@@ -430,12 +431,23 @@ if (detector.isOnPlateau()) {
 }
 ```
 
-`detectPlateau(values, config)` is the stateless variant: it inspects a fitness
-history slice and returns the same diagnostic shape.
+`detectPlateau(history, windowSize, minImprovementRate)` is the stateless
+variant: it inspects the last `windowSize` values of a fitness history array
+(oldest first) and returns `{ onPlateau, improvementRate }`. Histories shorter
+than `windowSize` return `{ onPlateau: false, improvementRate: 0 }`.
+
+```typescript
+const { onPlateau, improvementRate } = detectPlateau(
+  [-0.9, -0.6, -0.5, -0.49, -0.49],
+  3, // windowSize
+  0.01, // minImprovementRate
+);
+```
 
 Plateau detection is also available as a `NeatOptions.plateauDetection`
-sub-config (see [Configuration](CONFIGURATION.md#plateaudetection)) and applied
-automatically during evolution when enabled.
+sub-config (see
+[Configuration](CONFIGURATION.md#plateaudetection--plateaudetectionconfig)) and
+applied automatically during evolution when enabled.
 
 ---
 
