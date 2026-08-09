@@ -8,17 +8,24 @@ densification step.
 > Collection).
 
 NEAT-AI uses elastic backpropagation to train creatures within each generation.
-Training is typically invoked internally by `evolveDir()`, but the configuration
-types are documented here for fine-grained control and for callers wiring their
-own training loop.
+Training is invoked internally by `evolveDir()`; the configuration types below
+are documented so you can see which defaults that training runs with, and how
+the synthetic-synapse step fits into the pipeline.
 
-## 📦 Exports referenced here
+## 📦 Types referenced here
 
-These types are consumed via `NeatOptions` and (when training is invoked
-directly) via `Creature.propagate()` / `Creature.propagateUpdate()`.
+> [!IMPORTANT]
+> None of the types below are re-exported from `mod.ts`, so consumers **cannot**
+> import them. They are documented here for architectural reference and for the
+> defaults they resolve to. The public way to configure training is
+> [`NeatOptions`](CONFIGURATION.md), which `evolveDir()` accepts.
 
-- `BackPropagationOptions` (interface; configures elastic backprop)
-- `TrainOptions` (extends `BackPropagationOptions`)
+- `BackPropagationOptions` (internal; `Partial<BackPropagationArguments>` — the
+  input to `createBackPropagationConfig()`, which the training pipeline calls
+  for every training run)
+- `TrainOptions` (internal; `Partial<TrainArguments>`, which extends
+  `BackPropagationArguments` — the options the internal `trainDir()` entry point
+  accepts)
 - Synthetic synapse helpers (internal — documented here for architectural
   reference)
 
@@ -26,8 +33,8 @@ directly) via `Creature.propagate()` / `Creature.propagateUpdate()`.
 
 ```typescript
 interface BackPropagationOptions {
-  generations?: number; // Training iterations (default: random 1–100)
-  learningRate?: number; // 0–1 (default: random low value)
+  generations?: number; // Dampening generations (default: random 1–10, MAX_RANDOM_GENERATIONS)
+  learningRate?: number; // 0–1 (default: 0.01)
   batchSize?: number; // Samples per batch (default: 64)
   sparseRatio?: number; // Neuron selection ratio (default: 1.0)
   trainingMutationRate?: number; // Gene change probability (default: random)
@@ -39,7 +46,7 @@ interface BackPropagationOptions {
   disableBiasAdjustment?: boolean; // Skip bias updates (default: false)
   disableWeightAdjustment?: boolean; // Skip weight updates (default: false)
   disableRandomSamples?: boolean; // Use sequential sampling (default: false)
-  learningRateStrategy?: "fixed" | "decay" | "adaptive"; // Default: random
+  learningRateStrategy?: "fixed" | "decay" | "adaptive" | "warm_restart"; // Default: random
   initialLearningRate?: number; // For decay/adaptive (default: 0.01)
   learningRateDecay?: number; // Decay factor (default: 0.95)
 }
@@ -106,15 +113,29 @@ The synthetic synapse lifecycle has three phases, all handled automatically when
 
 ### Enabling synthetic synapses
 
-Synthetic synapses are opt-in. Set `syntheticSynapses: true` in the training
-options passed to `evolveDir()`:
+Synthetic synapses are opt-in, and the switch lives on `TrainOptions` — the
+options the internal `trainDir()` entry point accepts
+(`src/config/TrainOptions.ts`).
+
+> [!WARNING]
+> `syntheticSynapses` is **not** a `NeatOptions` field, so it cannot be enabled
+> through `evolveDir()`, `evolveDataSet()`, or `createNeatConfig()`. Passing it
+> in those options is a type error, and the train options the evolution loop
+> builds internally (`src/NEAT/NeatScheduling.ts`) do not forward it. There is
+> currently no public API that turns synthetic synapses on.
+
+Internally — and in the repository's own tests — the flag is set on the options
+handed to `trainDir()`:
 
 ```typescript
-const result = await creature.evolveDir(dataDir, {
-  costName: "MSE",
+// Internal: `trainDir` is not exported from `mod.ts`. Shown for reference.
+import { trainDir } from "@architecture/Training.ts";
+import { Costs } from "@costs";
+
+const result = trainDir(creature, dataDir, {
   iterations: 100,
   syntheticSynapses: true, // Enable synthetic synapse generation
-});
+}, Costs.find("MSE"));
 ```
 
 ### Internal functions
