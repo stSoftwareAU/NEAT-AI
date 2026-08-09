@@ -384,20 +384,22 @@ project deliberately does **not** depend on `@std/log`.
    call `setLogger()` directly:
 
    ```typescript
-   import { Neat, setLogger } from "@stsoftware/neat-ai";
+   import { Creature, type Logger, setLogger } from "@stsoftware/neat-ai";
 
-   // Option A — inject via NeatOptions
-   const neat = new Neat(input, output, fitness, {
-     logger: {
-       debug: (...a) => myPino.debug({ args: a }),
-       info: (...a) => myPino.info({ args: a }),
-       warn: (...a) => myPino.warn({ args: a }),
-       error: (...a) => myPino.error({ args: a }),
-     },
-   });
+   const myLogger: Logger = {
+     debug: (...a) => myPino.debug({ args: a }),
+     info: (...a) => myPino.info({ args: a }),
+     warn: (...a) => myPino.warn({ args: a }),
+     error: (...a) => myPino.error({ args: a }),
+   };
 
-   // Option B — set globally
-   setLogger(myCustomLogger);
+   // Option A — inject via NeatOptions on any public evolve call
+   const creature = new Creature(2, 1);
+   await creature.evolveDataSet(dataSet, { logger: myLogger, iterations: 100 });
+   // …or creature.evolveDir(dataSetDir, { logger: myLogger, iterations: 100 });
+
+   // Option B — set globally, before any evolve call
+   setLogger(myLogger);
    ```
 
    > **One entry point.** `deno.json` declares `"exports": "./mod.ts"`, so the
