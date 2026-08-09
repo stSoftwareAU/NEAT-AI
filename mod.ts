@@ -460,6 +460,21 @@ export {
 export type { DiscoveryEvaluationSummary } from "@discovery/DiscoveryRunner.ts";
 
 /**
+ * Discovery GPU probe.
+ *
+ * Issue #3692: discovery's synapse/neuron analysis is GPU-only — there is no
+ * CPU fallback. Call this before relying on discovery proposals to learn which
+ * wgpu backend was selected, or why none was. The probe never throws: without
+ * the Rust library, or without FFI permission, it reports
+ * `{ available: false, reason }`. The result is cached after the first probe.
+ *
+ * @see {@link module:docs/GPU_ACCELERATION}
+ */
+export { getGpuBackendInfo } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+
+export type { GpuBackendInfo } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
+
+/**
  * Discovery cleanup utilities for orphaned temp directory management.
  *
  * Issue #1702: Provides functions to detect and clean up orphaned discovery

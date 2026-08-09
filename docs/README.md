@@ -65,8 +65,8 @@ Activation, gradient flow, and the GPU/WASM compute layer.
 - **[BACKPROP_ELASTICITY.md](BACKPROP_ELASTICITY.md)** — why NEAT-AI prefers
   minimum-change weight updates and how it avoids pushing saturated activations
   further into saturation.
-- **[GPU_ACCELERATION.md](GPU_ACCELERATION.md)** — Metal/Vulkan/DX12
-  acceleration via `wgpu`, with a CPU fallback.
+- **[GPU_ACCELERATION.md](GPU_ACCELERATION.md)** — Metal/Vulkan/DX12 backend
+  selection via `wgpu`, and why discovery analysis is GPU-only.
 - **[WASM_RESIDENT_TOPOLOGY.md](WASM_RESIDENT_TOPOLOGY.md)** — feasibility
   analysis for keeping the entire creature topology resident inside the WASM
   module.

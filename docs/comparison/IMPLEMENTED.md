@@ -144,8 +144,8 @@ to a dedicated guide, the contrast with standard NEAT is documented there.
   practice.
 - ✅ **GPU-Accelerated Discovery** _(NEAT-AI extension)_: Cross-platform GPU
   support via [wgpu](https://wgpu.rs/) abstraction — Metal on macOS, Vulkan on
-  Linux, DX12 on Windows — with automatic CPU fallback when no compatible GPU is
-  detected.
+  Linux, DX12 on Windows. Analysis is GPU-only: with no compatible adapter the
+  pass is refused and discovery yields no proposals.
 - ✅ **Discovery Caching** _(NEAT-AI extension)_: Success and failure caching
   for discovery candidates with age-based and size-based eviction,
   cache-informed multi-neuron removal candidates, and supplemental candidate
