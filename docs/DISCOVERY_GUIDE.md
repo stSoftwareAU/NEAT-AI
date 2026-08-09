@@ -485,12 +485,12 @@ while [[ $(date +%s) -lt ${end_time} ]]; do
   (cd "${REPO_PATH}" && git pull --rebase)
 
   # Run discovery
-  deno run \\
-    --allow-read --allow-write --allow-net --allow-ffi --allow-env \\
-    discovery-worker.ts \\
-    --repoPath="${REPO_PATH}" \\
-    --dataDir="${DATA_DIR}" \\
-    --discoveryRecordTimeOutMinutes=1 \\
+  deno run \
+    --allow-read --allow-write --allow-net --allow-ffi --allow-env \
+    discovery-worker.ts \
+    --repoPath="${REPO_PATH}" \
+    --dataDir="${DATA_DIR}" \
+    --discoveryRecordTimeOutMinutes=1 \
     --discoveryAnalysisTimeoutMinutes=10
 
   # Brief pause

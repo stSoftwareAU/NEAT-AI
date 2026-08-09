@@ -490,7 +490,7 @@ candidate.
 
 > [!NOTE]
 > The **on-disk directory tree** (success and failure caches, candidate
-> snapshots, focus-analysis traces, lock files) is documented once in
+> snapshots, focus-selection traces, lock files) is documented once in
 > [DISCOVERY_DIR.md §On-disk discovery cache layout](DISCOVERY_DIR.md#-on-disk-discovery-cache-layout)
 > — this section covers the cache's _role and contents_ rather than repeating
 > the layout.
@@ -517,7 +517,7 @@ candidate.
 
 **Query methods:**
 
-- `getSuccessfulRemovalNeuronUUIDs()` — Returns UUIDs of neurons that were
+- `getSuccessfulRemovalNeuronIds()` — Returns UUIDs of neurons that were
   successfully removed in past runs (used by cache-informed removal building).
 - `getSuccessfulRemovalDetails()` — Returns structured details including score
   delta and timing for better prioritisation (#1733).
