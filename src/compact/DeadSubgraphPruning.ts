@@ -1,3 +1,19 @@
+/**
+ * @module
+ *
+ * Removes structure that cannot possibly affect an output: hidden and constant
+ * neurons with no directed path to any output neuron, plus their synapses.
+ *
+ * Because the removed elements never reached an output, pruning them is
+ * behaviour-preserving for a forward pass — this is a pure size reduction, not
+ * an approximation like `CompactUnused.ts`. Evolution and
+ * Discovery routinely strand small subgraphs (a neuron's last outward synapse
+ * is dropped, its feeders become unreachable), so this runs as clean-up
+ * afterwards.
+ *
+ * Two entry points: one over a {@link CreatureExport} for wire payloads and
+ * ingest paths, and a convenience wrapper for a live {@link Creature}.
+ */
 import type { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";

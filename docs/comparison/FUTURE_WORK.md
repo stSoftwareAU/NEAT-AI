@@ -210,15 +210,16 @@ layer.
 
 > [!NOTE]
 > GPU acceleration uses wgpu, which automatically selects the best available
-> backend: Metal on macOS, Vulkan on Linux, and DX12 on Windows. When no
-> compatible GPU is detected, discovery gracefully falls back to CPU.
+> backend: Metal on macOS, Vulkan on Linux, and DX12 on Windows. Discovery
+> analysis is GPU-only — when no compatible GPU is detected the analysis pass is
+> refused and yields no proposals (see
+> [GPU_ACCELERATION.md](../GPU_ACCELERATION.md)).
 
 **What's implemented**:
 
 - ✅ Automatic backend selection via wgpu (Metal, Vulkan, DX12, OpenGL).
-- ✅ CPU fallback when no compatible GPU is available.
+- ✅ A graceful refusal — not a thread panic — when no GPU adapter is present.
 - ✅ GPU backend detection and reporting (`getGpuBackendInfo()`).
-- ✅ Cross-platform `requireGpu: false` — GPU accelerates but is not required.
 
 **What's missing**: native CUDA for NVIDIA GPUs (wgpu uses Vulkan on Linux),
 OpenCL for older hardware, and benchmarking across all platforms.

@@ -1,3 +1,21 @@
+/**
+ * @module
+ *
+ * Shrinks a creature by removing the single hidden neuron that contributes
+ * least to its behaviour, using activation traces rather than topology alone.
+ *
+ * {@link compactUnused} scores every traced hidden neuron by how small an
+ * effect its removal would have (activation range × fan-out weight), removes
+ * the weakest one, and folds its average activation into the downstream
+ * neurons via a constant so the remaining network behaves as closely as
+ * possible to the original. {@link removeNeuron} performs that surgery for a
+ * nominated neuron.
+ *
+ * Reach for this when a creature has grown structure that training no longer
+ * uses: it is one pass of the `compact` approach in the evolution loop, called
+ * repeatedly while each removal keeps the score. Removed neurons' UUIDs are
+ * retired; surviving neurons keep theirs (see AGENTS.md's UUID invariant).
+ */
 import { assert } from "@std/assert";
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { Creature, type CreatureTrace, CreatureUtil } from "../../mod.ts";

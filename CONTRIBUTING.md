@@ -499,6 +499,8 @@ function's practical usefulness.
 
 Add an entry to `src/methods/activations/README.md` following the existing
 format — include priority, invertibility, and backpropagation strategy.
+`test/docs/ActivationStrategyTable.ts` fails when that table and the registry in
+`src/methods/activations/Activations.ts` disagree.
 
 ## 🎨 Code Style
 
@@ -573,28 +575,21 @@ for the full policy and canonical examples.
 
 ## 📁 Project Structure
 
-```
-src/                    # Source code
-  architecture/         # Core neural network architecture
-  breed/                # Crossover and breeding algorithms
-  compact/              # Network compaction and optimisation
-  config/               # Configuration and options
-  costs/                # Cost/fitness functions
-  creature/             # Creature behaviour modules
-  discovery/            # Discovery integration (Rust FFI bridge)
-  errors/               # Error types
-  intelligentDesign/    # Intelligent Design squash optimisation
-  methods/              # Activation functions (squash implementations)
-  mutate/               # Mutation operators
-  NEAT/                 # Core NEAT-AI evolutionary loop (selection, speciation)
-  propagate/            # Backpropagation
-  wasm/                 # WASM activation bridge
-test/                   # Tests (mirrors src/ structure)
-bench/                  # Benchmarks
-docs/                   # Extended documentation
-wasm_activation/        # WASM activation module (Rust source + pkg)
-scripts/                # Utility scripts
-```
+Top-level repository directories:
+
+- `src/` — Source code (one subdirectory per subsystem)
+- `test/` — Tests (mirrors `src/` structure)
+- `bench/` — Benchmarks
+- `docs/` — Extended documentation
+- `wasm_activation/pkg/` — Vendored WASM artefacts from NEAT-AI-core (no in-tree
+  Rust source; refreshed via `./build.sh`)
+- `scripts/` — Utility scripts
+
+The per-module layout under `src/` is **not** duplicated here — a
+hand-maintained tree only rots and misleads. Browse `src/` for the current,
+authoritative module layout, where each subdirectory is a subsystem. See the
+[Directory Structure section in AGENTS.md](./AGENTS.md#-directory-structure) for
+the canonical description.
 
 ## 💬 Getting Help
 

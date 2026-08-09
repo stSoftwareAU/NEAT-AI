@@ -4,10 +4,11 @@ Cost (fitness) functions and the activation function (squash) menu used by NEAT
 (NeuroEvolution of Augmenting Topologies) creatures.
 
 > **Acronyms:** API (Application Programming Interface), MSE (Mean Squared
-> Error), MAE (Mean Absolute Error), MAPE (Mean Absolute Percentage Error), MSLE
-> (Mean Squared Logarithmic Error), SVM (Support Vector Machine), ReLU
-> (Rectified Linear Unit), GELU (Gaussian Error Linear Unit), SELU (Scaled
-> Exponential Linear Unit), ELU (Exponential Linear Unit), WASM (WebAssembly).
+> Error), RMSE (Root Mean Squared Error), MAE (Mean Absolute Error), MAPE (Mean
+> Absolute Percentage Error), MSLE (Mean Squared Logarithmic Error), SVM
+> (Support Vector Machine), ReLU (Rectified Linear Unit), GELU (Gaussian Error
+> Linear Unit), SELU (Scaled Exponential Linear Unit), ELU (Exponential Linear
+> Unit), WASM (WebAssembly).
 
 ## 📦 Exports documented here
 
@@ -31,20 +32,28 @@ import type { CostInterface } from "@stsoftware/neat-ai";
 | Name              | Class                          | Best For                     | Formula                                 |
 | ----------------- | ------------------------------ | ---------------------------- | --------------------------------------- |
 | `"MSE"`           | Mean Squared Error             | General regression (default) | `(1/n) * Sum((y - y')^2)`               |
+| `"RMSE"`          | Root Mean Squared Error        | Regression, error in units   | `sqrt((1/n) * Sum((y - y')^2))`         |
 | `"MAE"`           | Mean Absolute Error            | Regression with outliers     | `(1/n) * Sum(\|y - y'\|)`               |
 | `"MAPE"`          | Mean Absolute Percentage Error | Forecasting, relative error  | `(1/n) * Sum(\|(y' - y) / y\|)`         |
 | `"MSLE"`          | Mean Squared Logarithmic Error | Wide value ranges            | `(1/n) * Sum((log(y) - log(y'))^2)`     |
 | `"CROSS_ENTROPY"` | Cross Entropy                  | Classification               | `-Sum(y * log(y') + (1-y) * log(1-y'))` |
 | `"HINGE"`         | Hinge Loss                     | SVM / binary classification  | `max(0, 1 - y * y')`                    |
 
-These six names make up `BUILT_IN_COST_NAMES`.
+These seven names make up the `BUILT_IN_COST_NAMES` tuple in
+[`src/Costs.ts`](../../src/Costs.ts), which backs the `costName` option. The
+tuple is internal — it is not re-exported from `mod.ts`, so pass the name as a
+string literal (e.g. `costName: "RMSE"`).
+
+`RMSE` is the square root of `MSE`. It ranks creatures in exactly the same order
+as `MSE` but reports the error in the target's own units, and it mirrors the
+Rust scorer's `CostKind` list (NEAT-AI-scorer#340).
 
 ### 🦀 Native scorer off-load (`--cost`)
 
 When the optional `rust_scorer` binary is enabled
 (`NEAT_AI_RUST_SCORER_ENABLED`), NEAT-AI passes the configured `costName` to the
-binary via `--cost <NAME>`. **All six `BUILT_IN_COST_NAMES` values are eligible
-for native off-load** once the scorer release containing
+binary via `--cost <NAME>`. **All seven `BUILT_IN_COST_NAMES` values are
+eligible for native off-load** once the scorer release containing
 [NEAT-AI-scorer#134](https://github.com/stSoftwareAU/NEAT-AI-scorer/issues/134)
 is deployed.
 
@@ -172,60 +181,66 @@ library uses WASM (WebAssembly) for all activation computation.
 
 ### 📊 Summary table
 
-Priority controls how often an activation is chosen during random mutation.
-Higher priority means more likely to be selected.
+The **weight** column is each activation's `mutationProbability`, the value it
+declares in `src/methods/activations/types/` (or `aggregate/`). `Activations`
+pushes one pool entry per unit of weight, so an activation is picked by random
+mutation in proportion to its weight, and weight `0` means it is never picked.
+The weights below are the shipped values — treat the source files as
+authoritative if they ever diverge.
 
 > [!TIP]
-> When in doubt, **LeakyReLU** (priority 10) is the default choice and works
-> well for most general-purpose networks. For deeper architectures, consider
-> **GELU** or **Swish**.
+> When in doubt, **LeakyReLU** (weight 36, the heaviest) is the default choice
+> and works well for most general-purpose networks. For deeper architectures,
+> consider **Swish** (35) or **GELU** (34).
 
-| Activation          | Priority | Range          | Best For                                  |
-| ------------------- | :------: | -------------- | ----------------------------------------- |
-| **LeakyReLU**       |    10    | (-Inf, +Inf)   | General purpose, default choice           |
-| **GELU**            |    9     | ~(-0.17, +Inf) | Deep networks, transformer-style          |
-| **Swish**           |    8     | ~(-0.28, +Inf) | Deep networks, smooth non-linearity       |
-| **TANH**            |    8     | (-1, 1)        | Bounded output, recurrent networks        |
-| **LOGISTIC**        |    7     | (0, 1)         | Binary classification, probability output |
-| **Softplus**        |    7     | (0, +Inf)      | Smooth approximation to ReLU              |
-| **Mish**            |    6     | ~(-0.31, +Inf) | Deep networks, stable gradients           |
-| **ELU**             |    6     | (-1, +Inf)     | Regression, avoids dead neurons           |
-| **SELU**            |    5     | ~(-1.76, +Inf) | Self-normalising networks                 |
-| **HARD_TANH**       |    5     | [-1, 1]        | Fast bounded output                       |
-| **ReLU**            |    5     | [0, +Inf)      | Simple, fast activation                   |
-| **BENT_IDENTITY**   |    4     | (-Inf, +Inf)   | Always smooth, no dead zones              |
-| **SOFTSIGN**        |    4     | (-1, 1)        | Soft alternative to TANH                  |
-| **ArcTan**          |    4     | (-pi/2, pi/2)  | Smooth, always nonzero slope              |
-| **ReLU6**           |    4     | [0, 6]         | Mobile/embedded applications              |
-| **SINE**            |    3     | [-1, 1]        | Periodic patterns                         |
-| **ABSOLUTE**        |    2     | [0, +Inf)      | Magnitude detection                       |
-| **Cosine**          |    2     | [-1, 1]        | Periodic patterns                         |
-| **Cube**            |    2     | (-Inf, +Inf)   | Non-linear, fast                          |
-| **Exponential**     |    2     | (0, +Inf)      | Exponential growth patterns               |
-| **GAUSSIAN**        |    2     | (0, 1]         | Radial basis patterns                     |
-| **ISRU**            |    2     | (-1, 1)        | Smooth, fades in tails                    |
-| **LogSigmoid**      |    2     | (-Inf, 0)      | Negative log-probability                  |
-| **TAN**             |    2     | (-Inf, +Inf)   | Unbounded periodic                        |
-| **BIPOLAR_SIGMOID** |    1     | (-1, 1)        | Symmetric sigmoid                         |
-| **StdInverse**      |    1     | (-Inf, +Inf)   | Inverse function                          |
-| **IDENTITY**        |    1     | (-Inf, +Inf)   | Pass-through (linear)                     |
-| **COMPLEMENT**      |    0     | (-Inf, +Inf)   | Inversion (1 - x)                         |
-| **STEP**            |    0     | {0, 1}         | Binary threshold                          |
-| **IF**              |    0     | Conditional    | Multi-input conditional                   |
-| **BIPOLAR**         |    0     | {-1, 1}        | Binary symmetric threshold                |
-| **HYPOT**           |    0     | Special        | Euclidean distance                        |
-| **HYPOTv2**         |    0     | Special        | Euclidean distance (variant)              |
-| **SQRT**            |    1     | [0, +Inf)      | Square root transform                     |
-| **SQUARE**          |    1     | [0, +Inf)      | Quadratic transform                       |
-| **MAXIMUM**         |    0     | Special        | Max of inputs                             |
-| **MEAN**            |    0     | (-Inf, +Inf)   | Mean of inputs (deprecated)               |
-| **MINIMUM**         |    0     | Special        | Min of inputs                             |
-| **SOFTMAX**         |    0     | (0, 1)         | Multi-class output (vector-normalised)    |
+| Activation          | Weight | Range          | Best For                                  |
+| ------------------- | :----: | -------------- | ----------------------------------------- |
+| **LeakyReLU**       |   36   | (-Inf, +Inf)   | General purpose, default choice           |
+| **Swish**           |   35   | ~(-0.28, +Inf) | Deep networks, smooth non-linearity       |
+| **GELU**            |   34   | ~(-0.17, +Inf) | Deep networks, transformer-style          |
+| **ELU**             |   33   | (-1, +Inf)     | Regression, avoids dead neurons           |
+| **SELU**            |   32   | ~(-1.76, +Inf) | Self-normalising networks                 |
+| **Mish**            |   31   | ~(-0.31, +Inf) | Deep networks, stable gradients           |
+| **TANH**            |   30   | (-1, 1)        | Bounded output, recurrent networks        |
+| **LOGISTIC**        |   25   | (0, 1)         | Binary classification, probability output |
+| **Softplus**        |   24   | (0, +Inf)      | Smooth approximation to ReLU              |
+| **ArcTan**          |   23   | (-pi/2, pi/2)  | Smooth, always nonzero slope              |
+| **SOFTSIGN**        |   22   | (-1, 1)        | Soft alternative to TANH                  |
+| **HARD_TANH**       |   21   | [-1, 1]        | Fast bounded output                       |
+| **BENT_IDENTITY**   |   20   | (-Inf, +Inf)   | Always smooth, no dead zones              |
+| **SINE**            |   16   | [-1, 1]        | Periodic patterns                         |
+| **Cosine**          |   15   | [-1, 1]        | Periodic patterns                         |
+| **ABSOLUTE**        |   14   | [0, +Inf)      | Magnitude detection                       |
+| **Cube**            |   13   | (-Inf, +Inf)   | Non-linear, fast                          |
+| **ISRU**            |   12   | (-1, 1)        | Smooth, fades in tails                    |
+| **LogSigmoid**      |   11   | (-Inf, 0)      | Negative log-probability                  |
+| **GAUSSIAN**        |   10   | (0, 1]         | Radial basis patterns                     |
+| **ReLU**            |   5    | [0, +Inf)      | Simple, fast activation                   |
+| **ReLU6**           |   3    | [0, 6]         | Mobile/embedded applications              |
+| **Exponential**     |   2    | (0, +Inf)      | Exponential growth patterns               |
+| **STEP**            |   2    | {0, 1}         | Binary threshold                          |
+| **TAN**             |   2    | (-Inf, +Inf)   | Unbounded periodic                        |
+| **BIPOLAR**         |   1    | {-1, 1}        | Binary symmetric threshold                |
+| **BIPOLAR_SIGMOID** |   1    | (-1, 1)        | Symmetric sigmoid                         |
+| **COMPLEMENT**      |   1    | (-Inf, +Inf)   | Inversion (1 - x)                         |
+| **IDENTITY**        |   1    | (-Inf, +Inf)   | Pass-through (linear)                     |
+| **IF**              |   1    | Conditional    | Multi-input conditional                   |
+| **MAXIMUM**         |   1    | Special        | Max of inputs                             |
+| **MINIMUM**         |   1    | Special        | Min of inputs                             |
+| **SQRT**            |   1    | [0, +Inf)      | Square root transform                     |
+| **SQUARE**          |   1    | [0, +Inf)      | Quadratic transform                       |
+| **StdInverse**      |   1    | (-Inf, +Inf)   | Inverse function                          |
+| **HYPOT**           |   0    | Special        | Euclidean distance (deprecated)           |
+| **HYPOTv2**         |   0    | Special        | Euclidean distance variant (deprecated)   |
+| **MEAN**            |   0    | (-Inf, +Inf)   | Mean of inputs (deprecated)               |
+| **SOFTMAX**         |   0    | (0, 1)         | Multi-class output (vector-normalised)    |
 
 > [!NOTE]
-> **SOFTMAX** is never picked by random mutation (priority `0`). It is intended
-> as an output-layer activation: per-neuron it behaves like **LOGISTIC**, and
-> true vector normalisation across the output layer happens at the caller layer.
+> The four weight-`0` entries are the only activations random mutation never
+> picks. **SOFTMAX** is intended as an output-layer activation: per-neuron it
+> behaves like **LOGISTIC**, and true vector normalisation across the output
+> layer happens at the caller layer. **HYPOT**, **HYPOTv2** and **MEAN** are
+> deprecated and kept only so existing genomes keep loading.
 
 For detailed backpropagation strategy notes, see
 [`src/methods/activations/README.md`](../../src/methods/activations/README.md)

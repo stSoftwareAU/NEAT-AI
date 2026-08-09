@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertIsError } from "@std/assert";
 import {
   ActivationError,
   type ActivationErrorReason,
@@ -42,30 +42,6 @@ Deno.test("ActivationError - UNKNOWN_ACTIVATION reason", () => {
   assertIsError(error, ActivationError);
   assertEquals(error.reason, "UNKNOWN_ACTIVATION");
   assertEquals(error.activation, "FOO");
-});
-
-Deno.test("ActivationError - is instanceof Error", () => {
-  const error = new ActivationError(
-    "test",
-    "NON_FINITE_INPUT",
-    "TANH",
-    Infinity,
-  );
-  assert(error instanceof Error);
-  assert(error instanceof ActivationError);
-});
-
-Deno.test("ActivationError - can be caught selectively", () => {
-  const fn = () => {
-    throw new ActivationError(
-      "non-finite input",
-      "NON_FINITE_INPUT",
-      "Mish",
-      NaN,
-    );
-  };
-
-  assertThrows(fn, ActivationError);
 });
 
 Deno.test("ActivationError - reason is typed", () => {

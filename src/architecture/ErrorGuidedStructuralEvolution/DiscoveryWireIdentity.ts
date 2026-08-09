@@ -1,3 +1,19 @@
+/**
+ * @module
+ *
+ * Translates neuron identity across the Discovery boundary: stable wire UUIDs
+ * (`input-2`, `output-0`, or a hidden neuron's UUID) on one side, ephemeral
+ * runtime integer ids on the other.
+ *
+ * Every payload that leaves the process — Discovery requests, caches, replay
+ * inputs, the Rust FFI — must carry UUIDs only (Issue #1958), while the
+ * in-memory topology is addressed by runtime id. This module is the single
+ * place that maps between the two, so callers resolve identity here rather than
+ * threading ad-hoc lookups through the pipeline.
+ *
+ * Unresolvable references are returned to the caller rather than dropped, so a
+ * bad identifier fails loudly instead of silently degrading a candidate.
+ */
 import type { Creature } from "@creature";
 import type {
   CandidateNeuron,

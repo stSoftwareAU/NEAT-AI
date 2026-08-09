@@ -109,6 +109,17 @@ To prevent data corruption, all file writes use atomic operations:
 This ensures that the target file is never in a partial or corrupted state,
 which is critical when storing trained models.
 
+### 🧱 Output path containment
+
+Improvement files are named `<squash>_<last 8 chars of neuron uuid>.json` inside
+`outputDir`. Both components come from untrusted input — the uuid from the
+creature JSON, `targetSquash` from the caller — so each is reduced to
+`[A-Za-z0-9_-]` (any other character becomes `_`) and capped at 32 characters
+before the name is assembled. The resolved path is then asserted to stay inside
+`outputDir`; a scan throws a `ValidationError` rather than writing outside it.
+Well-formed identifiers are unaffected: `targetSquash: "GELU"` with uuid
+`…456789abcdef` still writes `GELU_89abcdef.json` (Issue #3715).
+
 ## 🚀 Usage
 
 ### 🔬 Basic Squash Improvement Scan

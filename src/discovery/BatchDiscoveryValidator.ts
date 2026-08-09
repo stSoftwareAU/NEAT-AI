@@ -387,18 +387,6 @@ function generateStructureHash(creature: Creature): string {
 }
 
 /**
- * Validate multiple candidates in a single batch operation.
- */
-export function validateDiscoveryCandidatesBatch(
-  baseCreature: Creature,
-  candidates: DiscoveryCandidate[],
-  options: BatchValidatorOptions = {},
-): BatchValidationResult[] {
-  const validator = new BatchDiscoveryValidator(options);
-  return validator.validateBatch(baseCreature, candidates);
-}
-
-/**
  * Validate multiple candidates with enhanced validation (holdout/brittleness).
  */
 export function validateDiscoveryCandidatesBatchWithEnhanced(

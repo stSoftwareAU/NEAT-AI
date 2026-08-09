@@ -5,6 +5,11 @@
  *
  * These tests verify that the WASM derivative() produces the same results
  * as the JS-based derivative() implementations for all 32 standard activation functions.
+ *
+ * The per-activation comparisons are table-driven (Issue #3677): each row names
+ * the activation, its `SquashType`, the JS implementation to compare against,
+ * and any per-activation value set or tolerance. One body runs them all, still
+ * reporting each activation as its own named test.
  */
 
 import { assert } from "@std/assert";
@@ -99,408 +104,136 @@ const testValues = [
   10.0,
 ];
 
-Deno.test({
-  name: "WASM Derivative: Identity",
-  fn() {
-    const jsImpl = new IDENTITY();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Identity, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Identity derivative at x=${x}`);
-    }
-  },
-});
+/** JS activation implementations expose a derivative for comparison. */
+type JsDerivative = { derivative(x: number): number };
 
-Deno.test({
-  name: "WASM Derivative: ReLU",
-  fn() {
-    const jsImpl = new ReLU();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Relu, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `ReLU derivative at x=${x}`);
-    }
-  },
-});
+/** One WASM-vs-JS derivative comparison. */
+type DerivativeCase = {
+  /** Label used in the step name and assertion messages. */
+  readonly name: string;
+  /** WASM squash type under test. */
+  readonly type: SquashType;
+  /** JS implementation the WASM result must match. */
+  readonly js: JsDerivative;
+  /** Values to compare at; defaults to the shared `testValues`. */
+  readonly values?: readonly number[];
+  /** Per-activation tolerance override. */
+  readonly tolerance?: number;
+};
 
-Deno.test({
-  name: "WASM Derivative: ReLU6",
-  fn() {
-    const jsImpl = new ReLU6();
+const DERIVATIVE_CASES: readonly DerivativeCase[] = [
+  { name: "Identity", type: SquashType.Identity, js: new IDENTITY() },
+  { name: "ReLU", type: SquashType.Relu, js: new ReLU() },
+  {
+    name: "ReLU6",
+    type: SquashType.Relu6,
+    js: new ReLU6(),
     // Add values specific to ReLU6 boundary at 6
-    const values = [...testValues, 5.5, 5.9, 6.0, 6.1, 7.0];
-    for (const x of values) {
-      const wasmResult = wasmDerivative(SquashType.Relu6, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `ReLU6 derivative at x=${x}`);
-    }
+    values: [...testValues, 5.5, 5.9, 6.0, 6.1, 7.0],
   },
-});
-
-Deno.test({
-  name: "WASM Derivative: LeakyReLU",
-  fn() {
-    const jsImpl = new LeakyReLU();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.LeakyRelu, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `LeakyReLU derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: SELU",
-  fn() {
-    const jsImpl = new SELU();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Selu, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `SELU derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: ELU",
-  fn() {
-    const jsImpl = new ELU();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Elu, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `ELU derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: LOGISTIC (Sigmoid)",
-  fn() {
-    const jsImpl = new LOGISTIC();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Logistic, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `LOGISTIC derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: TANH",
-  fn() {
-    const jsImpl = new TANH();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Tanh, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `TANH derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: HardTanh",
-  fn() {
-    const jsImpl = new HARD_TANH();
+  { name: "LeakyReLU", type: SquashType.LeakyRelu, js: new LeakyReLU() },
+  { name: "SELU", type: SquashType.Selu, js: new SELU() },
+  { name: "ELU", type: SquashType.Elu, js: new ELU() },
+  { name: "LOGISTIC", type: SquashType.Logistic, js: new LOGISTIC() },
+  { name: "TANH", type: SquashType.Tanh, js: new TANH() },
+  {
+    name: "HardTanh",
+    type: SquashType.HardTanh,
+    js: new HARD_TANH(),
     // Add values around the boundaries -1 and 1
-    const values = [...testValues, -1.1, -0.99, 0.99, 1.1];
-    for (const x of values) {
-      const wasmResult = wasmDerivative(SquashType.HardTanh, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `HardTanh derivative at x=${x}`);
-    }
+    values: [...testValues, -1.1, -0.99, 0.99, 1.1],
   },
-});
-
-Deno.test({
-  name: "WASM Derivative: Softsign",
-  fn() {
-    const jsImpl = new SOFTSIGN();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Softsign, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Softsign derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Softplus",
-  fn() {
-    const jsImpl = new Softplus();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Softplus, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Softplus derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Swish",
-  fn() {
-    const jsImpl = new Swish();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Swish, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Swish derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Mish",
-  fn() {
-    const jsImpl = new Mish();
+  { name: "Softsign", type: SquashType.Softsign, js: new SOFTSIGN() },
+  { name: "Softplus", type: SquashType.Softplus, js: new Softplus() },
+  { name: "Swish", type: SquashType.Swish, js: new Swish() },
+  {
+    name: "Mish",
+    type: SquashType.Mish,
+    js: new Mish(),
     // Mish has complex derivative, use smaller range to avoid numerical issues
-    const values = [-5.0, -2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 5.0];
-    for (const x of values) {
-      const wasmResult = wasmDerivative(SquashType.Mish, x);
-      const jsResult = jsImpl.derivative(x);
-      // Use larger tolerance for Mish due to complex derivative formula
-      assertClose(wasmResult, jsResult, `Mish derivative at x=${x}`, 1e-3);
-    }
+    values: [-5.0, -2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0, 5.0],
+    // Use larger tolerance for Mish due to complex derivative formula
+    tolerance: 1e-3,
   },
-});
-
-Deno.test({
-  name: "WASM Derivative: GELU",
-  fn() {
-    const jsImpl = new GELU();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Gelu, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `GELU derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: SINE",
-  fn() {
-    const jsImpl = new SINE();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Sine, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `SINE derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Cosine",
-  fn() {
-    const jsImpl = new Cosine();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Cosine, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Cosine derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: TAN",
-  fn() {
-    const jsImpl = new TAN();
+  { name: "GELU", type: SquashType.Gelu, js: new GELU() },
+  { name: "SINE", type: SquashType.Sine, js: new SINE() },
+  { name: "Cosine", type: SquashType.Cosine, js: new Cosine() },
+  {
+    name: "TAN",
+    type: SquashType.Tan,
+    js: new TAN(),
     // Avoid values near pi/2 where tan is undefined
-    const values = [-1.0, -0.5, 0.0, 0.5, 1.0];
-    for (const x of values) {
-      const wasmResult = wasmDerivative(SquashType.Tan, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `TAN derivative at x=${x}`);
-    }
+    values: [-1.0, -0.5, 0.0, 0.5, 1.0],
   },
-});
-
-Deno.test({
-  name: "WASM Derivative: ArcTan",
-  fn() {
-    const jsImpl = new ArcTan();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.ArcTan, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `ArcTan derivative at x=${x}`);
-    }
+  { name: "ArcTan", type: SquashType.ArcTan, js: new ArcTan() },
+  { name: "GAUSSIAN", type: SquashType.Gaussian, js: new GAUSSIAN() },
+  {
+    name: "BentIdentity",
+    type: SquashType.BentIdentity,
+    js: new BENT_IDENTITY(),
   },
-});
-
-Deno.test({
-  name: "WASM Derivative: GAUSSIAN",
-  fn() {
-    const jsImpl = new GAUSSIAN();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Gaussian, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `GAUSSIAN derivative at x=${x}`);
-    }
+  {
+    name: "BipolarSigmoid",
+    type: SquashType.BipolarSigmoid,
+    js: new BIPOLAR_SIGMOID(),
   },
-});
-
-Deno.test({
-  name: "WASM Derivative: BentIdentity",
-  fn() {
-    const jsImpl = new BENT_IDENTITY();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.BentIdentity, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `BentIdentity derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: BipolarSigmoid",
-  fn() {
-    const jsImpl = new BIPOLAR_SIGMOID();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.BipolarSigmoid, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `BipolarSigmoid derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Bipolar",
-  fn() {
-    const jsImpl = new BIPOLAR();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Bipolar, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Bipolar derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Step",
-  fn() {
-    const jsImpl = new STEP();
+  { name: "Bipolar", type: SquashType.Bipolar, js: new BIPOLAR() },
+  {
+    name: "Step",
+    type: SquashType.Step,
+    js: new STEP(),
     // Step has a special derivative near 0
-    const values = [-1.0, -0.1, 0.1, 1.0];
-    for (const x of values) {
-      const wasmResult = wasmDerivative(SquashType.Step, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Step derivative at x=${x}`);
-    }
+    values: [-1.0, -0.1, 0.1, 1.0],
   },
-});
-
-Deno.test({
-  name: "WASM Derivative: Complement",
-  fn() {
-    const jsImpl = new COMPLEMENT();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Complement, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Complement derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Absolute",
-  fn() {
-    const jsImpl = new ABSOLUTE();
-    // Note: derivative at x=0 is undefined, both implementations return 0
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Absolute, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Absolute derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Square",
-  fn() {
-    const jsImpl = new SQUARE();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Square, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Square derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Cube",
-  fn() {
-    const jsImpl = new Cube();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Cube, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Cube derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Sqrt",
-  fn() {
-    const jsImpl = new SQRT();
+  { name: "Complement", type: SquashType.Complement, js: new COMPLEMENT() },
+  // Note: derivative at x=0 is undefined, both implementations return 0
+  { name: "Absolute", type: SquashType.Absolute, js: new ABSOLUTE() },
+  { name: "Square", type: SquashType.Square, js: new SQUARE() },
+  { name: "Cube", type: SquashType.Cube, js: new Cube() },
+  {
+    name: "Sqrt",
+    type: SquashType.Sqrt,
+    js: new SQRT(),
     // Only test positive values for sqrt
-    const values = [0.1, 0.5, 1.0, 2.0, 5.0, 10.0];
-    for (const x of values) {
-      const wasmResult = wasmDerivative(SquashType.Sqrt, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Sqrt derivative at x=${x}`);
-    }
-    // Test edge case: x <= 0 should return 0
+    values: [0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+  },
+  { name: "StdInverse", type: SquashType.StdInverse, js: new StdInverse() },
+  {
+    name: "Exponential",
+    type: SquashType.Exponential,
+    js: new Exponential(),
+    // Limit range to avoid overflow
+    values: [-10.0, -5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0],
+  },
+  { name: "LogSigmoid", type: SquashType.LogSigmoid, js: new LogSigmoid() },
+  { name: "ISRU", type: SquashType.Isru, js: new ISRU() },
+];
+
+for (const derivativeCase of DERIVATIVE_CASES) {
+  Deno.test({
+    name: `WASM Derivative: ${derivativeCase.name}`,
+    fn() {
+      for (const x of derivativeCase.values ?? testValues) {
+        const wasmResult = wasmDerivative(derivativeCase.type, x);
+        const jsResult = derivativeCase.js.derivative(x);
+        assertClose(
+          wasmResult,
+          jsResult,
+          `${derivativeCase.name} derivative at x=${x}`,
+          derivativeCase.tolerance,
+        );
+      }
+    },
+  });
+}
+
+Deno.test({
+  name: "WASM Derivative: Sqrt returns 0 for x <= 0",
+  fn() {
     const zeroResult = wasmDerivative(SquashType.Sqrt, 0.0);
     assertClose(zeroResult, 0.0, "Sqrt derivative at x=0");
     const negResult = wasmDerivative(SquashType.Sqrt, -1.0);
     assertClose(negResult, 0.0, "Sqrt derivative at x=-1");
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: StdInverse",
-  fn() {
-    const jsImpl = new StdInverse();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.StdInverse, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `StdInverse derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: Exponential",
-  fn() {
-    const jsImpl = new Exponential();
-    // Limit range to avoid overflow
-    const values = [-10.0, -5.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0];
-    for (const x of values) {
-      const wasmResult = wasmDerivative(SquashType.Exponential, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `Exponential derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: LogSigmoid",
-  fn() {
-    const jsImpl = new LogSigmoid();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.LogSigmoid, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `LogSigmoid derivative at x=${x}`);
-    }
-  },
-});
-
-Deno.test({
-  name: "WASM Derivative: ISRU",
-  fn() {
-    const jsImpl = new ISRU();
-    for (const x of testValues) {
-      const wasmResult = wasmDerivative(SquashType.Isru, x);
-      const jsResult = jsImpl.derivative(x);
-      assertClose(wasmResult, jsResult, `ISRU derivative at x=${x}`);
-    }
   },
 });
 
@@ -523,7 +256,7 @@ Deno.test({
 
 // NOTE (Issue #3172): the former "Comprehensive comparison with JS
 // implementations" test was removed as redundant. Every squash type it
-// compared (all 32) already has a dedicated per-function test above running the
-// identical wasmDerivative-vs-jsImpl.derivative assertClose check over an
-// equal-or-wider set of values with the same tolerance, so it exercised no
-// additional derivative code path.
+// compared (all 32) already has a dedicated per-function case in
+// DERIVATIVE_CASES above running the identical wasmDerivative-vs-jsImpl
+// .derivative assertClose check over an equal-or-wider set of values with the
+// same tolerance, so it exercised no additional derivative code path.

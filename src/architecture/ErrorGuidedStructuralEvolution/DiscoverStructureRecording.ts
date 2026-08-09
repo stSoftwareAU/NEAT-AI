@@ -217,9 +217,33 @@ export class DiscoverStructureRecording extends DiscoverStructureBase {
     // peak so it stays under `rustFlushBytesThreshold` instead of overshooting
     // it by the copy — the discovery heap retainer MemoryMonitor cannot free
     // (#2594).
-    const projectedPeakBytes = this.rustAccumulatedEstimatedBytes *
-      RUST_FLUSH_PEAK_COPY_MULTIPLIER;
-    return projectedPeakBytes >= this.rustFlushBytesThreshold;
+    const state = this.getRustFlushByteState();
+    return state.projectedPeakBytes >= state.bytesThreshold;
+  }
+
+  /**
+   * Snapshot of the byte accounting behind the flush decision (Issue #3402).
+   *
+   * `projectedPeakBytes` is the heap the flush is expected to peak at — the
+   * still-live accumulator plus the plain-object FFI payload copy
+   * `writeRustParquetChunk` builds alongside it — and is what
+   * {@link shouldFlushRustChunk} compares against `bytesThreshold`. Exposed so
+   * callers (and tests) can observe the decision inputs without reaching into
+   * the recorder's internal bookkeeping.
+   */
+  public getRustFlushByteState(): {
+    accumulatedSamples: number;
+    accumulatedEstimatedBytes: number;
+    projectedPeakBytes: number;
+    bytesThreshold: number;
+  } {
+    return {
+      accumulatedSamples: this.rustAccumulatedData.length,
+      accumulatedEstimatedBytes: this.rustAccumulatedEstimatedBytes,
+      projectedPeakBytes: this.rustAccumulatedEstimatedBytes *
+        RUST_FLUSH_PEAK_COPY_MULTIPLIER,
+      bytesThreshold: this.rustFlushBytesThreshold,
+    };
   }
 
   private getNextChunkDir(): string {

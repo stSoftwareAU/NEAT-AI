@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertIsError } from "@std/assert";
 import { DatasetError, type DatasetErrorReason } from "@errors/DatasetError.ts";
 
 Deno.test("DatasetError - DIRECTORY_MISSING reason", () => {
@@ -36,19 +36,6 @@ Deno.test("DatasetError - NO_DATA_FILES reason", () => {
   );
   assertEquals(error.reason, "NO_DATA_FILES");
   assertEquals(error.path, "/tmp/foo");
-});
-
-Deno.test("DatasetError - is instanceof Error", () => {
-  const error = new DatasetError("test", "FILE_MISSING", "/tmp/x.bin");
-  assert(error instanceof Error);
-  assert(error instanceof DatasetError);
-});
-
-Deno.test("DatasetError - can be caught selectively", () => {
-  const fn = () => {
-    throw new DatasetError("gone", "DIRECTORY_MISSING", "/tmp/gone");
-  };
-  assertThrows(fn, DatasetError);
 });
 
 Deno.test("DatasetError - reason is typed", () => {

@@ -36,6 +36,33 @@ opening a PR (see the secure-coding principles section of
   dependency carrying a known OSV advisory, shrinking the window between
   disclosure and a reviewable fix rather than waiting for the next weekly
   freshness run.
+- **Supply-chain quarantine on every update path** (Issue #3667) — external
+  dependency versions younger than 24h are not adopted, whichever path raises
+  the bump: `bump-deps.sh` / `quality.sh` pass `--minimum-dependency-age` to
+  `deno outdated`, `deno.json` `minimumDependencyAge` (`P1D`) applies the same
+  window to a bare `deno outdated --update`, and `renovate.json` sets
+  `minimumReleaseAge: "24 hours"` for the ecosystems Renovate manages (notably
+  GitHub Actions). Renovate's `deno` manager is disabled so it cannot race the
+  script-gated Deno/JSR path, and internal `stSoftwareAU/*` deps are exempt (0h)
+  on all three. Security fixes are unaffected — Renovate exempts
+  `vulnerabilityAlerts` from `minimumReleaseAge`, so an actively-exploited CVE
+  still moves immediately.
+- **Local-only worker `import()` specifiers** (Issue #3685) — the two worker
+  entry points that dynamically import caller-supplied code — the custom cost
+  function (`src/multithreading/workers/WorkerProcessor.ts`) and the RL episode
+  adapter (`src/creature/EpisodeWorkerProcessor.ts`) — run every specifier
+  through `assertLocalModuleSpecifier()` (`src/utils/ModuleSpecifierGuard.ts`)
+  first. Only relative paths, absolute filesystem paths, and `file:` URLs load;
+  `https:`, `http:`, `data:`, `blob:`, `jsr:` and `npm:` are rejected before
+  `import()` runs. Both values are developer configuration today, but neither
+  type nor call graph prevented one arriving from a remote manifest — an
+  experiment description or shared job spec — which would have made remote code
+  executable inside a worker. The guard removes that path rather than relying on
+  the trust argument holding.
+- **Periodic trust-boundary sweep** — coverage per source directory, and the
+  disposition of each swept area, is recorded in
+  [`docs/SECURITY_SWEEP_COVERAGE.md`](./docs/SECURITY_SWEEP_COVERAGE.md) so a
+  later sweep does not re-audit ground already cleared.
 - **Code-owner review of the CI/CD surface** — `.github/CODEOWNERS` requires a
   review from the maintaining team (`@stSoftwareAU/developers`) on any PR that
   edits `.github/workflows/` or `.github/actions/`. Several workflows run with

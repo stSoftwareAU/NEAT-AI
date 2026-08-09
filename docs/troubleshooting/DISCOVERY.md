@@ -6,8 +6,8 @@ Unit) accelerated structural analysis. It is **optional** — if unavailable, th
 discovery phase is skipped.
 
 This document covers building, locating, and loading the Rust library, GPU
-backend selection / fallback, and the "discovery is enabled but not finding
-improvements" diagnostic flow. See the index in
+backend selection, and the "discovery is enabled but not finding improvements"
+diagnostic flow. See the index in
 [`../TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) for other categories.
 
 ## Table of contents
@@ -94,9 +94,9 @@ ldd /path/to/libneat_ai_discovery.so
 ## 💡 Discovery is always optional
 
 Discovery tests skip gracefully when the Rust library is not available — no
-environment variable is required. The library already probes for GPU
-availability internally and falls back to CPU (Central Processing Unit) when no
-GPU is present.
+environment variable is required. A host with no Graphics Processing Unit (GPU)
+adapter is equally non-fatal to evolution, but it does mean the analysis phase
+produces nothing — see [No GPU detected](#-no-gpu-detected).
 
 > [!NOTE]
 > If you want to disable discovery during training, set
@@ -114,17 +114,26 @@ deno run --allow-ffi --allow-read --allow-env your_script.ts
 
 ## 🖥️ No GPU detected
 
-**Symptom:** `ℹ️  No GPU detected — discovery will use CPU fallback`
+**Symptom:**
+`⚠️  No GPU detected (<reason>). Discovery analysis is GPU-only, so it will yield no proposals on this worker; evolution continues.`
+followed, once discovery runs, by
+`Rust synapse analysis unavailable (Rust synapse/neuron analysis unavailable (GPU adapter not available)) for focus neuron(s): …`
 
-This is a **non-fatal**, informational condition. The library loaded but no
-usable GPU was found. The GPU probe is for logging/telemetry only — it does
-**not** gate discovery, which continues to run on the CPU path handled inside
-the Rust library. GPU accelerates analysis but is not required. On macOS, ensure
-Metal is available if you want the acceleration.
+The library loaded but no usable GPU was found. This is **not fatal to
+evolution** — mutation, breeding, training and scoring all continue — but it
+**is fatal to discovery proposals**: the analysis kernels are GPU-only, so
+`analyzeParallel()` refuses the call and that pass produces no candidates.
 
-The Rust extension uses `wgpu` to negotiate Metal (macOS), Vulkan (Linux), or
-DirectX 12 (Windows). When no compatible adapter is available the library falls
-back to CPU computation automatically. See
+The GPU probe does not gate discovery _enablement_ — `isRustDiscoveryEnabled()`
+still returns `true`, so recording still runs — which is why the effect shows up
+as repeated "analysis unavailable" warnings and zero proposals rather than a
+clean skip.
+
+To fix it, provision a GPU adapter: the Rust extension uses `wgpu` to negotiate
+Metal (macOS), Vulkan (Linux), or DirectX 12 (Windows). On macOS ensure Metal is
+available; on headless Linux ensure Vulkan drivers are installed. If the host
+will never have a GPU, disable discovery with `discoverySampleRate: -1` to avoid
+paying the recording cost for nothing. See
 [`../GPU_ACCELERATION.md`](../GPU_ACCELERATION.md) for backend selection
 details.
 

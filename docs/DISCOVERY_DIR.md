@@ -29,19 +29,23 @@ pipeline internals see [DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md).
   `cargo build --release` and either:
   - copy the resulting `libneat_ai_discovery` artefact into `~/.cargo/lib`, or
   - set `NEAT_AI_DISCOVERY_LIB_PATH=/absolute/path/to/libneat_ai_discovery.*`.
+- A GPU adapter. Discovery's synapse/neuron analysis is **GPU-only** — see
+  [GPU_ACCELERATION.md](GPU_ACCELERATION.md).
 - Discovery-aware builds of `NEAT-AI`. `discoveryDir()` internally calls
   `isRustDiscoveryEnabled()` and skips the discovery phase when the Rust module
   cannot be loaded, so a missing library degrades gracefully rather than
   throwing. The guard returns `true` only when the native library loads; GPU
-  availability is probed for telemetry but does **not** gate discovery (the Rust
-  library handles CPU fallback internally), and the result is cached after the
-  first call for low overhead. The implementation lives in
+  availability is probed separately and is **not** part of that gate, and the
+  result is cached after the first call for low overhead. The implementation
+  lives in
   [`RustDiscoveryLibrary.ts`](../src/architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts).
 
 > [!NOTE]
 > If `isRustDiscoveryEnabled()` returns `false`, the Rust library is not
-> available and the discovery phase is skipped. When the library is available,
-> GPU acceleration is automatic (Metal/Vulkan/DX12 via wgpu) with CPU fallback.
+> available and the discovery phase is skipped. When the library is available
+> but no GPU adapter is, discovery is still _enabled_ — but every analysis pass
+> returns "GPU adapter not available" and yields no proposals. Both cases leave
+> evolution itself running normally.
 
 When the analyser is available, neuron discovery currently explores industry
 standard squashes including ReLU, GELU, ELU, SELU, Softplus, LOGISTIC (sigmoid),
@@ -93,8 +97,6 @@ replay. A typical tree looks like:
 │       ├── candidate-<changeType>.json  # one file per evaluated candidate
 │       ├── summary.json                 # per-run summary
 │       └── diagnostics.json             # per-changeType success / failure rates
-├── focus-analysis/<discoveryID>/        # focus-neuron selection trace
-│   └── <ISO8601-timestamp>-focus-selection[-retry-N].json
 ├── <successCacheDir>/                   # success cache, sub-keyed by changeType
 │   ├── add-neurons/<hash>.json
 │   ├── add-synapses/<hash>.json
@@ -105,8 +107,10 @@ replay. A typical tree looks like:
 │   ├── remove-low-impact/<hash>.json
 │   └── cache-informed-removal/<hash>.json
 ├── <failureCacheDir>/                   # failure cache (mirrors changeType layout)
-└── <runDir>/<creatureUuid>/             # per-creature work area
-    └── .discovery.lock                  # advisory lock for single-writer safety
+└── <creatureUuid>/                      # per-creature work area
+    ├── .discovery.lock                  # advisory lock for single-writer safety
+    ├── selected_indices.json            # sample indices chosen for analysis
+    └── focus-selection[-retry-N].json   # focus-neuron selection trace
 ```
 
 ```mermaid
@@ -117,20 +121,19 @@ graph TD
 
     R[".discovery/"]:::root
     C["candidates/<runName>/<timestamp>/"]:::dir
-    F["focus-analysis/<discoveryID>/"]:::dir
     S["successCacheDir/<changeType>/"]:::dir
     X["failureCacheDir/<changeType>/"]:::dir
-    L["<runDir>/<creatureUuid>/"]:::dir
+    L["<creatureUuid>/"]:::dir
 
-    R --> C & F & S & X & L
+    R --> C & S & X & L
     C --> CO["original.json"]:::file
     C --> CC["candidate-*.json"]:::file
     C --> CS["summary.json"]:::file
     C --> CD["diagnostics.json"]:::file
-    F --> FA["*-focus-selection*.json"]:::file
     S --> SH["{hash}.json"]:::file
     X --> XH["{hash}.json"]:::file
     L --> LL[".discovery.lock"]:::file
+    L --> LF["focus-selection[-retry-N].json"]:::file
 ```
 
 > [!NOTE]
@@ -164,8 +167,8 @@ FFI flow diagram in
 Discovery operates on two directories that can be shared across nodes:
 
 1. **Creature samples** – a directory of JSON exports produced by
-   `Creature.toJSON()` with a `score` tag that reflects each candidate's
-   baseline performance.
+   `Creature.exportJSON()` (or the equivalent `exportSnapshotJSON()`) with a
+   `score` tag that reflects each candidate's baseline performance.
 2. **Discovery dataset** – a directory containing the sampled training data used
    exclusively for the discovery phase. The runner never mutates these inputs.
 
@@ -312,8 +315,9 @@ controllers or dashboards.
 
 Discovery automatically generates JSON analysis files documenting which neurons
 were considered for focus during each selection phase. These files are written
-to `.discovery/focus-analysis/{discoveryID}/` and provide detailed insight into
-the weighted random selection process.
+into the creature's own work area — `.discovery/{creatureUuid}/` — and provide
+detailed insight into the weighted random selection process. The `discoveryID`
+recorded inside each file is that same creature UUID.
 
 ### 📄 File Format
 
@@ -441,12 +445,17 @@ removal if spare re-score workers are available. Each entry includes:
 
 ### 🗂️ File Naming Convention
 
-- **First selection**: `{timestamp}-focus-selection.json`
-- **Retry selections**: `{timestamp}-focus-selection-retry-{N}.json`
+Both names are relative to the creature's work area,
+`.discovery/{creatureUuid}/`, and carry no timestamp prefix — the wall-clock
+instant lives in the `timestamp` field inside the file:
+
+- **First selection**: `focus-selection.json`
+- **Retry selections**: `focus-selection-retry-{N}.json`
 
 Multiple retry files in the same discovery run indicate that initial analysis
 attempts did not yield viable candidates, triggering re-selection of different
-focus neurons.
+focus neurons. Because the first selection always writes the same name, a rerun
+for the same creature overwrites the previous trace.
 
 ### 🔎 Using the Analysis
 
@@ -475,7 +484,7 @@ multiple times.
 - [TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) — which subsystems live in
   TypeScript versus Rust / WebAssembly (WASM).
 - [GPU_ACCELERATION.md](GPU_ACCELERATION.md) — `wgpu` GPU backend selection
-  (Metal / Vulkan / DirectX 12) and CPU fallback.
+  (Metal / Vulkan / DirectX 12) and the GPU-only analysis requirement.
 - [EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — vendored WASM artefact
   workflow.
 - [`AGENTS.md`](../AGENTS.md) §"Neuron UUID stability" — wire-format invariant

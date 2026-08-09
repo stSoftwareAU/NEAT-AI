@@ -1,3 +1,20 @@
+/**
+ * @module
+ *
+ * Decides which neurons take part in one sparse backpropagation iteration.
+ *
+ * Sparse training updates only a `sparseRatio` subset of neurons per iteration
+ * instead of the whole creature. {@link SparseConfig} resolves that subset once
+ * at construction — the chosen neurons, plus every neuron on a path from one of
+ * them to an output — and then answers the three per-neuron questions the
+ * propagation loop asks: does this neuron need tracing, propagating, or
+ * updating? Neurons on a path must still propagate so gradient reaches the
+ * chosen ones, but only the chosen ones have their weights updated.
+ *
+ * Selection is error-guided when per-neuron errors from the previous iteration
+ * are supplied (Issue #1388), otherwise it is random. Build one config per
+ * iteration; it is immutable once constructed.
+ */
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { NeuronStateInterface } from "@architecture/CreatureState.ts";
 import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";

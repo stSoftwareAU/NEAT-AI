@@ -1,3 +1,20 @@
+/**
+ * @module
+ *
+ * The worker's half of the worker protocol. {@link WorkerProcessor} receives
+ * the `RequestData` messages sent by `WorkerHandler.ts` on the main thread,
+ * runs the actual work inside the worker — dataset load, scoring, training,
+ * discovery — and returns the matching `ResponseData`.
+ *
+ * Reach for this module when adding a new kind of worker job: the handler
+ * defines the request, this defines what happens to it. It also owns the
+ * worker-local state that makes repeat jobs cheap (resolved cost function,
+ * dataset file-list cache, one-time WASM initialisation).
+ *
+ * Discovery results can be very large, so payloads are trimmed to what the main
+ * thread actually reads and the source structures are released for collection
+ * before the response is posted.
+ */
 import { assert } from "@std/assert";
 import { recordDirectory } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 import { toErrorMessage } from "@utils/ErrorSerialisation.ts";
@@ -27,6 +44,7 @@ import type {
 } from "@multithreading/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { clearForGc } from "@utils/ReleasableRef.ts";
+import { assertLocalModuleSpecifier } from "@utils/ModuleSpecifierGuard.ts";
 import { DatasetFileListCache } from "@architecture/DatasetFileListCache.ts";
 
 type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
@@ -110,6 +128,12 @@ export class WorkerProcessor {
   private async loadCustomCostFromFile(
     filePath: string,
   ): Promise<CostInterface> {
+    // Issue #3685: only local specifiers may be imported, so a config value
+    // that ever came from a remote manifest cannot execute remote code here.
+    // Deliberately outside the try/catch below so the typed ValidationError
+    // reaches the caller instead of being flattened into a load failure.
+    assertLocalModuleSpecifier(filePath, "custom cost function");
+
     try {
       // Dynamic import of user-provided custom cost function file.
       // JSR Warning: This dynamic import is intentional and loads external user files at runtime.

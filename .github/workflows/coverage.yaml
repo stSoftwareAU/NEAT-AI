@@ -317,7 +317,13 @@ jobs:
             echo "No shard JUnit reports found"
             exit 0
           fi
-          deno run --allow-read --allow-write scripts/merge_junit.ts \
+          # `--allow-write=junit.xml` (Issue #3681) — this step runs an in-repo
+          # script, so a same-repo PR controls what executes here, and the
+          # Codecov uploads later in this job hold `secrets.CODECOV_TOKEN`. An
+          # unrestricted write grant reaches `$GITHUB_ENV` / `$GITHUB_PATH`,
+          # which those later steps honour, so it must be scoped to exactly the
+          # merged report the script writes.
+          deno run --allow-read --allow-write=junit.xml scripts/merge_junit.ts \
             --output=junit.xml "${reports[@]}"
           if [ -s junit.xml ]; then
             echo "junit_exists=true" >> "$GITHUB_OUTPUT"

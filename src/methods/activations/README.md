@@ -34,6 +34,7 @@ This README captures:
 
 - 🧠 **Invertible**:\
   ✅ = squash function can be reliably inverted (used for Foggy Glasses)\
+  ⚠️ = only a surrogate is invertible, not the true function (see SOFTMAX)\
   ❌ = inversion undefined, unreliable, or non-existent
 
 - 🔁 **Priority**:\
@@ -54,6 +55,12 @@ This README captures:
 ---
 
 ## 📊 Squash Function Summary
+
+> [!IMPORTANT]
+> The registry in [`Activations.ts`](./Activations.ts) is the **authoritative**
+> list of squash functions; this table documents it. When you add or remove an
+> activation there, add or remove its row here in the same change —
+> `test/docs/ActivationStrategyTable.ts` fails when the two drift apart.
 
 | Activation      | Invertible | Derivative-Based Error              | Foggy Glasses Error            | Priority | Recommendation | Why?                                                                                             | 🐇🦥 |
 | :-------------- | :--------- | :---------------------------------- | :----------------------------- | :------: | :------------- | :----------------------------------------------------------------------------------------------- | :--- |
@@ -95,6 +102,19 @@ This README captures:
 | SQUARE          | ✅         | ⚠️ Slope zero at x=0                | ✅ Square root to invert       |    1     | 🟰 Either      | Use derivative when abs(x) > 0; fallback near zero. Safe zone fades outside [-5, 5].             | 🟩   |
 | BIPOLAR_SIGMOID | ✅         | ✅ Stable in centre, fades at edges | ✅ Invertible                  |    1     | 🟰 Either      | Use derivative for mid-range; fallback to unSquash + clamp to avoid huge errors near ±1.         | 🟩   |
 | BIPOLAR         | ❌         | ❌ Often flat                       | ⚠️ Roughly invertible          |   ⬇ 0    | 🟰 Either      | ❌ Harsh transition, poor learning, rarely used in practice                                      | 🟩   |
+| SOFTMAX         | ⚠️         | ✅ Cross-entropy shortcut           | ⚠️ Inverts the surrogate only  |   ⬇ 0    | 🚀 Derivative  | Output-layer only, paired with `CROSS_ENTROPY` — see the note below.                             | ❓   |
+
+> [!NOTE]
+> **SOFTMAX is the odd one out.** True softmax is a _vector_ operation, so it is
+> not element-wise invertible: `unSquash()` inverts the per-neuron logistic
+> surrogate (`softmax([x, 0])₀`), not the normalised vector — vector
+> normalisation lives in `softmaxNormalise()`. `calculateError()` returns the
+> canonical softmax + cross-entropy gradient (`target − activation`) with no
+> derivative scaling, because the softmax Jacobian cancels against the
+> cross-entropy loss. Its priority is `⬇ 0` for a different reason to the other
+> zero-priority rows: SOFTMAX is neither deprecated nor unsuitable, it is simply
+> chosen explicitly on a multi-class output layer rather than by random
+> mutation.
 
 ---
 

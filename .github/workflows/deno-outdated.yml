@@ -28,6 +28,13 @@ jobs:
       - name: Checkout
         # actions/checkout@v6.0.2
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          # No step pushes over the checkout credential — create-pull-request
+          # authenticates with its own token: input — so the token need not be
+          # persisted to .git/config, where the following `deno outdated` step
+          # (which resolves third-party registry metadata) could read it
+          # (Issue #3683).
+          persist-credentials: false
 
       - name: Setup Deno
         # denoland/setup-deno@v2.0.4

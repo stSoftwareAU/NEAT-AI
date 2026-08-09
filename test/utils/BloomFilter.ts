@@ -197,9 +197,40 @@ Deno.test("BloomFilter - handles empty and special strings", () => {
   assert(filter.mayContain(longString), "Long string should work");
 });
 
-Deno.test("BloomFilter - size getter returns configured size", () => {
-  const filter = new BloomFilter(2048, 5);
-  assertEquals(filter.size, 2048, "Size should match configured value");
+Deno.test("BloomFilter - constructor clamps size to the one-byte floor", () => {
+  // The constructor floors the bit array at 8 bits (one byte) so a degenerate
+  // size still allocates storage; the getter reports the clamped value.
+  assertEquals(new BloomFilter(0, 5).size, 8, "Zero size should clamp to 8");
+  assertEquals(
+    new BloomFilter(3, 5).size,
+    8,
+    "Sub-byte size should clamp to 8",
+  );
+  assertEquals(
+    new BloomFilter(-64, 5).size,
+    8,
+    "Negative size should clamp to 8",
+  );
+  assertEquals(
+    new BloomFilter(2048, 5).size,
+    2048,
+    "Size above the floor is reported unchanged",
+  );
+});
+
+Deno.test("BloomFilter - constructor clamps hash count to at least one", () => {
+  // A zero hash count would probe no bits, so every lookup would answer "may
+  // contain" and the filter would be useless; the constructor floors it at 1.
+  const filter = new BloomFilter(1024, 0);
+  filter.add("clamped-hash-count");
+  assert(
+    filter.mayContain("clamped-hash-count"),
+    "Added item must be found even when hash count is clamped",
+  );
+  assertFalse(
+    filter.mayContain("never-added-key"),
+    "Unadded item must still be rejected, so at least one bit is probed",
+  );
 });
 
 Deno.test("BloomFilter - count getter tracks added items", () => {

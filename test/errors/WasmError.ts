@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertIsError } from "@std/assert";
 import { WasmError, type WasmErrorReason } from "@errors/WasmError.ts";
 
 Deno.test("WasmError - COMPILATION_FAILED reason", () => {
@@ -28,20 +28,6 @@ Deno.test("WasmError - MODULE_NOT_LOADED reason", () => {
   );
   assertIsError(error, WasmError);
   assertEquals(error.reason, "MODULE_NOT_LOADED");
-});
-
-Deno.test("WasmError - is instanceof Error", () => {
-  const error = new WasmError("test", "MODULE_NOT_LOADED");
-  assert(error instanceof Error);
-  assert(error instanceof WasmError);
-});
-
-Deno.test("WasmError - can be caught selectively", () => {
-  const fn = () => {
-    throw new WasmError("module not loaded", "MODULE_NOT_LOADED");
-  };
-
-  assertThrows(fn, WasmError);
 });
 
 Deno.test("WasmError - reason is typed", () => {

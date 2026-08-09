@@ -1,8 +1,12 @@
 /**
  * Issue #3003 — the version-handling bash blocks in the publish and
  * release workflows must open with the strict-mode preamble
- * `set -Eeuo pipefail`, matching the convention used by every other
- * substantial run block in the repository's workflows.
+ * `set -euo pipefail`, matching the convention used by every other
+ * substantial run block in the repository's workflows. The preamble was
+ * `set -Eeuo pipefail` until the workflow-hygiene check (Issue #3716)
+ * standardised on the shorter form; `-E` only propagates an ERR trap to
+ * functions and subshells, and neither block installs one, so dropping it
+ * changes no behaviour here.
  *
  * Without strict mode, a failure of `jq` or `curl` inside the block does
  * not abort the step: an unset or empty `name`/`version` silently
@@ -78,7 +82,7 @@ const TARGETS = [
 
 for (const target of TARGETS) {
   Deno.test(
-    `${target.workflow} "${target.label}" run block opens with set -Eeuo pipefail (Issue #3003)`,
+    `${target.workflow} "${target.label}" run block opens with set -euo pipefail (Issue #3003)`,
     async () => {
       const wf = await readWorkflow(target.workflow);
       const step = collectSteps(wf).find(target.match);
@@ -91,9 +95,9 @@ for (const target of TARGETS) {
         `${target.workflow} step "${target.label}" expected a run: block`,
       );
       assert(
-        firstCommandLine(step.run) === "set -Eeuo pipefail",
+        firstCommandLine(step.run) === "set -euo pipefail",
         `${target.workflow} step "${target.label}" must open its run: block ` +
-          "with `set -Eeuo pipefail` so a jq/curl failure aborts the step " +
+          "with `set -euo pipefail` so a jq/curl failure aborts the step " +
           "instead of silently publishing on an unverified result.",
       );
     },

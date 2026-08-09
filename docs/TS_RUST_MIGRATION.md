@@ -35,23 +35,23 @@ The work is informed by the WASM performance research series (#1630–#1633,
 
 ## 🦀 Where things live today (May 2026)
 
-| Subsystem                             | Lives in             | Reason / evidence                                                |
-| ------------------------------------- | -------------------- | ---------------------------------------------------------------- |
-| Activation functions (squashes)       | Rust → WASM          | Vendored from NEAT-AI-core; see audit #2369                      |
-| Forward pass (accumulate)             | Rust → WASM          | Numerically heavy inner loop                                     |
-| Topological backprop loop             | Rust → WASM only     | TS fallback removed in #2442                                     |
-| Elastic error distribution            | Rust → WASM only     | Migrated #1377 (#1519/#1526); TS fallback removed in #2442       |
-| Predictive coding (inference + learn) | Rust → WASM          | `wasm_activation/src/pc_inference.rs`, `pc_learning.rs`          |
-| Score computation                     | Rust → WASM          | Cache-aware incremental scorer (#1011/#1078)                     |
-| Training state                        | Rust → WASM          | `wasm_activation/src/training_state.rs`                          |
-| Topology validation, cycle detection  | Rust → WASM          | Core-owned operation per `AGENTS.md` §"No TS fallbacks"          |
-| Discovery recording (Parquet)         | Rust extension (FFI) | `recordDiscovery()` writes Parquet via Rust                      |
-| Discovery analysis (GPU/CPU)          | Rust extension (FFI) | `analyzeParallel()` — wgpu (Metal/Vulkan/DX12) with CPU fallback |
-| Discovery focus ranking               | Rust extension (FFI) | `rankFocusNeurons()`                                             |
-| NEAT loop / breeding / mutation       | TypeScript           | Orchestration; non-numerical                                     |
-| Cache-dominated paths (LRU)           | TypeScript           | Already faster than any WASM path (66 ns/hit)                    |
-| Graph surgery (compact, prune)        | TypeScript           | Map/Set work that V8 handles efficiently                         |
-| Discovery candidate filtering         | TypeScript           | Slot allocation, weighted sampling, cache lookups                |
+| Subsystem                             | Lives in             | Reason / evidence                                           |
+| ------------------------------------- | -------------------- | ----------------------------------------------------------- |
+| Activation functions (squashes)       | Rust → WASM          | Vendored from NEAT-AI-core; see audit #2369                 |
+| Forward pass (accumulate)             | Rust → WASM          | Numerically heavy inner loop                                |
+| Topological backprop loop             | Rust → WASM only     | TS fallback removed in #2442                                |
+| Elastic error distribution            | Rust → WASM only     | Migrated #1377 (#1519/#1526); TS fallback removed in #2442  |
+| Predictive coding (inference + learn) | Rust → WASM          | `wasm_activation/src/pc_inference.rs`, `pc_learning.rs`     |
+| Score computation                     | Rust → WASM          | Cache-aware incremental scorer (#1011/#1078)                |
+| Training state                        | Rust → WASM          | `wasm_activation/src/training_state.rs`                     |
+| Topology validation, cycle detection  | Rust → WASM          | Core-owned operation per `AGENTS.md` §"No TS fallbacks"     |
+| Discovery recording (Parquet)         | Rust extension (FFI) | `recordDiscovery()` writes Parquet via Rust                 |
+| Discovery analysis (GPU-only)         | Rust extension (FFI) | `analyzeParallel()` — wgpu (Metal/Vulkan/DX12); no CPU path |
+| Discovery focus ranking               | Rust extension (FFI) | `rankFocusNeurons()`                                        |
+| NEAT loop / breeding / mutation       | TypeScript           | Orchestration; non-numerical                                |
+| Cache-dominated paths (LRU)           | TypeScript           | Already faster than any WASM path (66 ns/hit)               |
+| Graph surgery (compact, prune)        | TypeScript           | Map/Set work that V8 handles efficiently                    |
+| Discovery candidate filtering         | TypeScript           | Slot allocation, weighted sampling, cache lookups           |
 
 > [!IMPORTANT]
 > **No TS fallbacks for core-owned operations.** Once an operation moves into

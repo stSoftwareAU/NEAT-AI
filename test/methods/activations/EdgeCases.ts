@@ -7,6 +7,10 @@
  * - Non-finite inputs (NaN, ±Infinity)
  * - Boundary values specific to each activation
  *
+ * The x = 0, large-positive and large-negative families are table-driven
+ * (Issue #3677): each former one-off test is now a row in a case table, run by
+ * a single shared body and still reported as its own named test.
+ *
  * @module
  */
 
@@ -14,153 +18,141 @@ import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Activations } from "@methods/activations/Activations.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 
+/** Inclusive/exclusive range expectation for cases without an exact value. */
+type SquashBounds = {
+  /** Result must be strictly greater than this. */
+  readonly gt?: number;
+  /** Result must be greater than or equal to this. */
+  readonly gte?: number;
+  /** Result must be strictly less than this. */
+  readonly lt?: number;
+  /** Result must be less than or equal to this. */
+  readonly lte?: number;
+};
+
+/**
+ * One `squash(input)` expectation.
+ *
+ * Supply `expected` (with an optional `tolerance` — omit it for an exact
+ * match) or `bounds` for the asymptotic cases where only a range is defined.
+ */
+type SquashCase = {
+  readonly name: string;
+  readonly input: number;
+  readonly expected?: number;
+  readonly tolerance?: number;
+  readonly bounds?: SquashBounds;
+};
+
+function findActivation(name: string): ActivationInterface {
+  return Activations.find(name) as unknown as ActivationInterface;
+}
+
+function describeBounds(bounds: SquashBounds): string {
+  const parts: string[] = [];
+  if (bounds.gt !== undefined) parts.push(`> ${bounds.gt}`);
+  if (bounds.gte !== undefined) parts.push(`>= ${bounds.gte}`);
+  if (bounds.lt !== undefined) parts.push(`< ${bounds.lt}`);
+  if (bounds.lte !== undefined) parts.push(`<= ${bounds.lte}`);
+  return parts.join(" and ");
+}
+
+function describeCase(testCase: SquashCase): string {
+  const call = `${testCase.name}: squash(${testCase.input})`;
+  if (testCase.expected !== undefined) {
+    const operator = testCase.tolerance === undefined ? "=" : "≈";
+    return `${call} ${operator} ${testCase.expected}`;
+  }
+  return `${call} ${describeBounds(testCase.bounds ?? {})}`;
+}
+
+function assertSquashCase(testCase: SquashCase): void {
+  const activation = findActivation(testCase.name);
+  const result = activation.squash(testCase.input);
+  const label = `${testCase.name}(${testCase.input}) = ${result}`;
+
+  if (testCase.expected !== undefined) {
+    if (testCase.tolerance === undefined) {
+      assertEquals(result, testCase.expected, label);
+    } else {
+      assertAlmostEquals(
+        result,
+        testCase.expected,
+        testCase.tolerance,
+        label,
+      );
+    }
+  }
+
+  const bounds = testCase.bounds;
+  if (bounds) {
+    if (bounds.gt !== undefined) {
+      assert(result > bounds.gt, `${label}, expected > ${bounds.gt}`);
+    }
+    if (bounds.gte !== undefined) {
+      assert(result >= bounds.gte, `${label}, expected >= ${bounds.gte}`);
+    }
+    if (bounds.lt !== undefined) {
+      assert(result < bounds.lt, `${label}, expected < ${bounds.lt}`);
+    }
+    if (bounds.lte !== undefined) {
+      assert(result <= bounds.lte, `${label}, expected <= ${bounds.lte}`);
+    }
+  }
+}
+
+/** Register one named test per case, so failures still name the activation. */
+function registerSquashCases(cases: readonly SquashCase[]): void {
+  for (const testCase of cases) {
+    Deno.test(describeCase(testCase), () => assertSquashCase(testCase));
+  }
+}
+
 // --- Behaviour at x = 0 ---
 
-Deno.test("ArcTan: squash(0) = 0", () => {
-  const a = Activations.find("ArcTan") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("BENT_IDENTITY: squash(0) = 0", () => {
-  const a = Activations.find("BENT_IDENTITY") as unknown as ActivationInterface;
+/** Every activation with a defined value at x = 0. */
+const ZERO_CASES: readonly SquashCase[] = [
+  { name: "ArcTan", input: 0, expected: 0, tolerance: 1e-10 },
   // (sqrt(0 + 1) - 1) / 2 + 0 = 0
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("COMPLEMENT: squash(0) = 1", () => {
-  const a = Activations.find("COMPLEMENT") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 1, 1e-10);
-});
-
-Deno.test("Cosine: squash(0) = 1", () => {
-  const a = Activations.find("Cosine") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 1, 1e-10);
-});
-
-Deno.test("Cube: squash(0) = 0", () => {
-  const a = Activations.find("Cube") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("ELU: squash(0) = 0", () => {
-  const a = Activations.find("ELU") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("Exponential: squash(0) = 1", () => {
-  const a = Activations.find("Exponential") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 1, 1e-10);
-});
-
-Deno.test("GAUSSIAN: squash(0) = 1", () => {
-  const a = Activations.find("GAUSSIAN") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 1, 1e-10);
-});
-
-Deno.test("HARD_TANH: squash(0) = 0", () => {
-  const a = Activations.find("HARD_TANH") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("IDENTITY: squash(0) = 0", () => {
-  const a = Activations.find("IDENTITY") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("LOGISTIC: squash(0) = 0.5", () => {
-  const a = Activations.find("LOGISTIC") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0.5, 1e-10);
-});
-
-Deno.test("ReLU: squash(0) = 0", () => {
-  const a = Activations.find("ReLU") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("ReLU6: squash(0) = 0", () => {
-  const a = Activations.find("ReLU6") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("SINE: squash(0) = 0", () => {
-  const a = Activations.find("SINE") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("TANH: squash(0) = 0", () => {
-  const a = Activations.find("TANH") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("STEP: squash(0) = 0", () => {
-  const a = Activations.find("STEP") as unknown as ActivationInterface;
-  assertEquals(a.squash(0), 0);
-});
-
-Deno.test("BIPOLAR: squash(0) = -1", () => {
-  const a = Activations.find("BIPOLAR") as unknown as ActivationInterface;
-  assertEquals(a.squash(0), -1);
-});
-
-Deno.test("ABSOLUTE: squash(0) = 0", () => {
-  const a = Activations.find("ABSOLUTE") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("SQUARE: squash(0) = 0", () => {
-  const a = Activations.find("SQUARE") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("SQRT: squash(0) = 0", () => {
-  const a = Activations.find("SQRT") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("Softplus: squash(0) ≈ ln(2)", () => {
-  const a = Activations.find("Softplus") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), Math.log(2), 1e-6);
-});
-
-Deno.test("SOFTSIGN: squash(0) = 0", () => {
-  const a = Activations.find("SOFTSIGN") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("Swish: squash(0) = 0", () => {
-  const a = Activations.find("Swish") as unknown as ActivationInterface;
+  { name: "BENT_IDENTITY", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "COMPLEMENT", input: 0, expected: 1, tolerance: 1e-10 },
+  { name: "Cosine", input: 0, expected: 1, tolerance: 1e-10 },
+  { name: "Cube", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "ELU", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "Exponential", input: 0, expected: 1, tolerance: 1e-10 },
+  { name: "GAUSSIAN", input: 0, expected: 1, tolerance: 1e-10 },
+  { name: "HARD_TANH", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "IDENTITY", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "LOGISTIC", input: 0, expected: 0.5, tolerance: 1e-10 },
+  { name: "ReLU", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "ReLU6", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "SINE", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "TANH", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "STEP", input: 0, expected: 0 },
+  { name: "BIPOLAR", input: 0, expected: -1 },
+  { name: "ABSOLUTE", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "SQUARE", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "SQRT", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "Softplus", input: 0, expected: Math.log(2), tolerance: 1e-6 },
+  { name: "SOFTSIGN", input: 0, expected: 0, tolerance: 1e-10 },
   // Swish(0) = 0 * sigmoid(0) = 0 * 0.5 = 0
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("GELU: squash(0) = 0", () => {
-  const a = Activations.find("GELU") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-6);
-});
-
-Deno.test("Mish: squash(0) ≈ 0", () => {
-  const a = Activations.find("Mish") as unknown as ActivationInterface;
+  { name: "Swish", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "GELU", input: 0, expected: 0, tolerance: 1e-6 },
   // Mish(0) = 0 * tanh(ln(2)) ≈ 0
-  assertAlmostEquals(a.squash(0), 0, 1e-6);
-});
+  { name: "Mish", input: 0, expected: 0, tolerance: 1e-6 },
+  { name: "LeakyReLU", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "ISRU", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "SELU", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "TAN", input: 0, expected: 0, tolerance: 1e-10 },
+  // 2 * sigmoid(0) - 1 = 2 * 0.5 - 1 = 0
+  { name: "BIPOLAR_SIGMOID", input: 0, expected: 0, tolerance: 1e-10 },
+  { name: "LogSigmoid", input: 0, expected: -Math.log(2), tolerance: 1e-6 },
+];
 
-Deno.test("LeakyReLU: squash(0) = 0", () => {
-  const a = Activations.find("LeakyReLU") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("ISRU: squash(0) = 0", () => {
-  const a = Activations.find("ISRU") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("SELU: squash(0) = 0", () => {
-  const a = Activations.find("SELU") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
+registerSquashCases(ZERO_CASES);
 
 Deno.test("StdInverse: squash(0) produces large magnitude (1/x near zero)", () => {
-  const a = Activations.find("StdInverse") as unknown as ActivationInterface;
+  const a = findActivation("StdInverse");
   // StdInverse is 1/x; near 0 it produces very large magnitude values
   const result = a.squash(0);
   assert(
@@ -171,24 +163,6 @@ Deno.test("StdInverse: squash(0) produces large magnitude (1/x near zero)", () =
     Math.abs(result) > 1e10,
     `StdInverse: squash(0) should be very large magnitude, got ${result}`,
   );
-});
-
-Deno.test("TAN: squash(0) = 0", () => {
-  const a = Activations.find("TAN") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("BIPOLAR_SIGMOID: squash(0) = 0", () => {
-  const a = Activations.find(
-    "BIPOLAR_SIGMOID",
-  ) as unknown as ActivationInterface;
-  // 2 * sigmoid(0) - 1 = 2 * 0.5 - 1 = 0
-  assertAlmostEquals(a.squash(0), 0, 1e-10);
-});
-
-Deno.test("LogSigmoid: squash(0) = -ln(2)", () => {
-  const a = Activations.find("LogSigmoid") as unknown as ActivationInterface;
-  assertAlmostEquals(a.squash(0), -Math.log(2), 1e-6);
 });
 
 // --- Non-finite input handling ---
@@ -207,7 +181,7 @@ const ACTIVATIONS_HANDLING_NON_FINITE: string[] = [
 
 for (const name of ACTIVATIONS_HANDLING_NON_FINITE) {
   Deno.test(`${name}: squash handles non-finite inputs gracefully`, () => {
-    const activation = Activations.find(name) as unknown as ActivationInterface;
+    const activation = findActivation(name);
 
     for (const x of [NaN, Infinity, -Infinity]) {
       const result = activation.squash(x);
@@ -221,74 +195,33 @@ for (const name of ACTIVATIONS_HANDLING_NON_FINITE) {
 
 // --- Large positive inputs ---
 
-Deno.test("LOGISTIC: squash(large) ≈ 1", () => {
-  const a = Activations.find("LOGISTIC") as unknown as ActivationInterface;
-  const result = a.squash(100);
-  assert(result > 0.99 && result <= 1, `LOGISTIC(100) = ${result}`);
-});
+const LARGE_POSITIVE_CASES: readonly SquashCase[] = [
+  { name: "LOGISTIC", input: 100, bounds: { gt: 0.99, lte: 1 } },
+  { name: "TANH", input: 100, bounds: { gt: 0.99, lte: 1 } },
+  { name: "ArcTan", input: 1000, expected: Math.PI / 2, tolerance: 0.01 },
+  { name: "ReLU", input: 1000, expected: 1000 },
+  { name: "HARD_TANH", input: 100, expected: 1 },
+  { name: "GAUSSIAN", input: 100, expected: 0, tolerance: 1e-6 },
+];
 
-Deno.test("TANH: squash(large) ≈ 1", () => {
-  const a = Activations.find("TANH") as unknown as ActivationInterface;
-  const result = a.squash(100);
-  assert(result > 0.99 && result <= 1, `TANH(100) = ${result}`);
-});
-
-Deno.test("ArcTan: squash(large) ≈ π/2", () => {
-  const a = Activations.find("ArcTan") as unknown as ActivationInterface;
-  const result = a.squash(1000);
-  assertAlmostEquals(result, Math.PI / 2, 0.01);
-});
-
-Deno.test("ReLU: squash(large) = large", () => {
-  const a = Activations.find("ReLU") as unknown as ActivationInterface;
-  assertEquals(a.squash(1000), 1000);
-});
-
-Deno.test("HARD_TANH: squash(large) = 1", () => {
-  const a = Activations.find("HARD_TANH") as unknown as ActivationInterface;
-  assertEquals(a.squash(100), 1);
-});
-
-Deno.test("GAUSSIAN: squash(large) ≈ 0", () => {
-  const a = Activations.find("GAUSSIAN") as unknown as ActivationInterface;
-  const result = a.squash(100);
-  assertAlmostEquals(result, 0, 1e-6);
-});
+registerSquashCases(LARGE_POSITIVE_CASES);
 
 // --- Large negative inputs ---
 
-Deno.test("LOGISTIC: squash(large_negative) ≈ 0", () => {
-  const a = Activations.find("LOGISTIC") as unknown as ActivationInterface;
-  const result = a.squash(-100);
-  assert(result >= 0 && result < 0.01, `LOGISTIC(-100) = ${result}`);
-});
+const LARGE_NEGATIVE_CASES: readonly SquashCase[] = [
+  { name: "LOGISTIC", input: -100, bounds: { gte: 0, lt: 0.01 } },
+  { name: "TANH", input: -100, bounds: { gte: -1, lt: -0.99 } },
+  { name: "ArcTan", input: -1000, expected: -Math.PI / 2, tolerance: 0.01 },
+  { name: "ReLU", input: -100, expected: 0 },
+  { name: "HARD_TANH", input: -100, expected: -1 },
+];
 
-Deno.test("TANH: squash(large_negative) ≈ -1", () => {
-  const a = Activations.find("TANH") as unknown as ActivationInterface;
-  const result = a.squash(-100);
-  assert(result >= -1 && result < -0.99, `TANH(-100) = ${result}`);
-});
-
-Deno.test("ArcTan: squash(large_negative) ≈ -π/2", () => {
-  const a = Activations.find("ArcTan") as unknown as ActivationInterface;
-  const result = a.squash(-1000);
-  assertAlmostEquals(result, -Math.PI / 2, 0.01);
-});
-
-Deno.test("ReLU: squash(negative) = 0", () => {
-  const a = Activations.find("ReLU") as unknown as ActivationInterface;
-  assertEquals(a.squash(-100), 0);
-});
-
-Deno.test("HARD_TANH: squash(large_negative) = -1", () => {
-  const a = Activations.find("HARD_TANH") as unknown as ActivationInterface;
-  assertEquals(a.squash(-100), -1);
-});
+registerSquashCases(LARGE_NEGATIVE_CASES);
 
 // --- Specific boundary values ---
 
 Deno.test("HARD_TANH: boundary at ±1", () => {
-  const a = Activations.find("HARD_TANH") as unknown as ActivationInterface;
+  const a = findActivation("HARD_TANH");
   assertEquals(a.squash(1), 1);
   assertEquals(a.squash(-1), -1);
   // Just inside linear range
@@ -297,7 +230,7 @@ Deno.test("HARD_TANH: boundary at ±1", () => {
 });
 
 Deno.test("ReLU6: boundary at 0 and 6", () => {
-  const a = Activations.find("ReLU6") as unknown as ActivationInterface;
+  const a = findActivation("ReLU6");
   assertEquals(a.squash(0), 0);
   assertEquals(a.squash(6), 6);
   assertEquals(a.squash(-1), 0);
@@ -305,21 +238,21 @@ Deno.test("ReLU6: boundary at 0 and 6", () => {
 });
 
 Deno.test("BIPOLAR: boundary at 0", () => {
-  const a = Activations.find("BIPOLAR") as unknown as ActivationInterface;
+  const a = findActivation("BIPOLAR");
   assertEquals(a.squash(0), -1);
   assertEquals(a.squash(0.001), 1);
   assertEquals(a.squash(-0.001), -1);
 });
 
 Deno.test("STEP: boundary at 0", () => {
-  const a = Activations.find("STEP") as unknown as ActivationInterface;
+  const a = findActivation("STEP");
   assertEquals(a.squash(0), 0);
   assertEquals(a.squash(0.001), 1);
   assertEquals(a.squash(-0.001), 0);
 });
 
 Deno.test("SOFTSIGN: asymptotic approach to ±0.99 (clamped range)", () => {
-  const a = Activations.find("SOFTSIGN") as unknown as ActivationInterface;
+  const a = findActivation("SOFTSIGN");
   const large = a.squash(1000);
   const smallNeg = a.squash(-1000);
   // SOFTSIGN range is clamped at ±0.99
