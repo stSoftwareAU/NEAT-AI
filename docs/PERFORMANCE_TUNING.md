@@ -527,7 +527,10 @@ the active `selection` strategy (`POWER` or `TOURNAMENT`).
   `power <= 0`, `tournamentProbability > 1`) is rejected with a clear error.
 
 ```ts
-const neat = new Neat(input, output, fitness, {
+import { Creature, Selection } from "@stsoftware/neat-ai";
+
+const creature = new Creature(input, output);
+await creature.evolveDataSet(dataSet, {
   selection: Selection.POWER,
   selectionPressure: { power: 8 }, // stronger exploitation
 });
