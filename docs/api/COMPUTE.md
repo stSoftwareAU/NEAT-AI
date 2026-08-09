@@ -42,7 +42,7 @@ Registry) and may not have `--allow-net` to `jsr.io` inside the worker scope:
    thread.
 2. Send the resulting bytes to the worker via `postMessage`.
 3. Inside the worker, bootstrap WASM by calling
-   `initialiseWasmActivationFromPayload(payload)`.
+   `await initialiseWasmActivationFromPayload(payload, wasmRequired)`.
 
 ```typescript
 import {
@@ -56,10 +56,12 @@ const payload: WasmActivationInitPayload =
   await loadWasmActivationInitPayloadAsync();
 worker.postMessage({ type: "wasm-payload", payload });
 
-// Worker
-worker.addEventListener("message", (event) => {
+// Worker — both arguments are required; the call resolves a Promise<void>.
+// `wasmRequired: true` throws when no payload arrives instead of silently
+// falling back to the slower TypeScript path.
+worker.addEventListener("message", async (event) => {
   if (event.data.type === "wasm-payload") {
-    initialiseWasmActivationFromPayload(event.data.payload);
+    await initialiseWasmActivationFromPayload(event.data.payload, true);
   }
 });
 ```
@@ -120,16 +122,20 @@ disposeAllCachedWasmActivations();
 
 ## 📊 Unified cache diagnostics
 
-Issue #1616: `getCacheStats()` returns hit/miss rates, eviction counts, and size
-metrics for every instrumented cache (WASM activation cache, distance cache,
-etc.). Use these metrics to tune cache configuration for your workload.
+Issue #1616: `getCacheStats()` returns a `CacheStats[]` — one entry per
+instrumented cache (WASM activation cache, distance cache, etc.) carrying that
+cache's hit/miss rates, eviction count, and size metrics. Use these metrics to
+tune cache configuration for your workload.
 
 ```typescript
 import { getCacheStats } from "@stsoftware/neat-ai";
 import type { CacheStats } from "@stsoftware/neat-ai";
 
-const stats: CacheStats = getCacheStats();
-console.log(stats);
+// One entry per instrumented cache, so iterate the array.
+const stats: CacheStats[] = getCacheStats();
+for (const cache of stats) {
+  console.log(cache.name, cache.hits, cache.misses, cache.currentSize);
+}
 ```
 
 ---

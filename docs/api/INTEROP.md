@@ -59,7 +59,7 @@ const checkpoint = exportCheckpoint(creature, {
   sourceTask: "price-prediction",
   description: "Trained on 6 months of market data",
   generations: 5000,
-  frozenNeuronUUIDs: ["uuid-1", "uuid-2"], // freeze learned features
+  frozenNeuronIds: [3, 7], // freeze learned features by neuron ID
 });
 
 // Save to disk
@@ -72,7 +72,7 @@ Deno.writeTextFileSync("checkpoint.json", JSON.stringify(checkpoint));
 | `options.sourceTask`        | `string`   | Human-readable name for the source task         |
 | `options.description`       | `string`   | Description of what the creature was trained on |
 | `options.generations`       | `number`   | Number of generations trained                   |
-| `options.frozenNeuronUUIDs` | `string[]` | Neuron UUIDs to mark as frozen                  |
+| `options.frozenNeuronIds`   | `number[]` | Neuron IDs to mark as frozen                    |
 | `options.frozenSynapseKeys` | `string[]` | Synapse keys to mark as frozen                  |
 
 **Returns:** `CheckpointInterface` — serialisable checkpoint object.

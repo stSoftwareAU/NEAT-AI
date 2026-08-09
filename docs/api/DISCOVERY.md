@@ -151,8 +151,8 @@ For a full guide, see [`docs/DISCOVERY_GUIDE.md`](../DISCOVERY_GUIDE.md) and
 
 ## 🔗 Related topics
 
-- [Configuration reference](CONFIGURATION.md) — discovery fields and `diskSpace`
-  sub-config.
+- [Configuration reference](CONFIGURATION.md) — discovery fields and
+  `discoveryDiskSpace` sub-config.
 - [Compute / multithreading](COMPUTE.md) — WASM (WebAssembly) cache controls
   referenced when discovery proposes new topology.
 - [Errors](ERRORS.md) — discovery operations may surface `BreedExhaustionError`.
