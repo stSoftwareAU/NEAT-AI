@@ -39,8 +39,8 @@ flowchart LR
 New `test/docs/PerformanceTuningPublicApi.ts`:
 
 - `collectConstructedSymbols finds constructors only in TypeScript blocks` —
-  unit test for the extractor (fenced `ts`/`typescript` blocks, blockquoted
-  blocks, non-TypeScript block ignored, no-match case).
+  unit test for the extractor (fenced `ts`/`typescript` blocks, blockquote
+  markers stripped, non-TypeScript block ignored, no-match case).
 - `collectRootImportedSymbols extracts named symbols and skips type-only ones` —
   unit test for the import extractor (happy path, type-only clause,
   other-package import).
