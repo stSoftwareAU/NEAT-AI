@@ -389,6 +389,7 @@
     "parsable",
     "parseable",
     "passthrough",
+    "pasteable",
     "pathlib",
     "pathspecs",
     "pathx",
