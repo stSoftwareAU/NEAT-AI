@@ -67,9 +67,9 @@ flowchart LR
         R3["Focus ranker"]:::rust
     end
 
-    subgraph compute["wgpu compute backend"]
+    subgraph compute["wgpu compute backend (GPU-only)"]
         G1["Metal (macOS)<br/>Vulkan (Linux)<br/>DirectX 12 (Windows)"]:::gpu
-        G2["CPU fallback"]:::gpu
+        G2["No adapter →<br/>analysis refused"]:::gpu
     end
 
     subgraph back["Result path"]
@@ -82,7 +82,6 @@ flowchart LR
     R2 --> G1
     R2 --> G2
     G1 --> D1
-    G2 --> D1
     R1 --> D1
     R3 --> D1
     D1 --> D2 --> H1
@@ -659,8 +658,9 @@ is flagged with warnings.
 
 ### 📦 Library Management
 
-- `isRustDiscoveryEnabled()` checks library availability. GPU is optional — the
-  Rust library falls back to CPU when no compatible GPU is present.
+- `isRustDiscoveryEnabled()` checks library availability only; it does not check
+  for a GPU. Analysis is GPU-only, so this returning `true` does not mean
+  proposals will be produced.
 - `isRustLibraryAvailable()` checks library loading only.
 - `isRustGpuAvailable()` checks whether a GPU backend (Metal/Vulkan/DX12) is
   available for acceleration.
@@ -669,9 +669,10 @@ is flagged with warnings.
 - Library loading is dynamic via Deno FFI (`.dylib` / `.so` / `.dll`).
 
 > [!NOTE]
-> `isRustDiscoveryEnabled()` requires the native library to be loadable. GPU
-> acceleration is automatic via wgpu (Metal on macOS, Vulkan on Linux, DX12 on
-> Windows) but not required — CPU fallback is always available.
+> `isRustDiscoveryEnabled()` requires the native library to be loadable. Backend
+> selection is automatic via wgpu (Metal on macOS, Vulkan on Linux, DX12 on
+> Windows), but an adapter **is** required: without one, `analyzeParallel()`
+> refuses every pass and discovery yields no proposals.
 
 ### 🧠 Analysis memory controls
 
@@ -906,7 +907,7 @@ flowchart LR
 - [TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) — which subsystems live in
   TypeScript versus Rust / WASM today.
 - [GPU_ACCELERATION.md](GPU_ACCELERATION.md) — `wgpu` GPU backend selection and
-  CPU fallback.
+  the GPU-only analysis requirement.
 - [EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — vendored WASM artefact
   workflow.
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — All configuration options

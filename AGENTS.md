@@ -123,8 +123,11 @@ but replaces unconditional mutation acceptance with MCMC").
   ([NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)) for
   GPU (Graphics Processing Unit) accelerated structural analysis
 - **wgpu** for cross-platform GPU compute shaders (Metal on macOS, Vulkan on
-  Linux, DX12 (DirectX 12) on Windows) with CPU (Central Processing Unit)
-  fallback
+  Linux, DX12 (DirectX 12) on Windows). Discovery analysis is **GPU-only** —
+  there is no CPU (Central Processing Unit) path; without an adapter,
+  `analyzeParallel()` returns a failure and discovery yields no proposals while
+  evolution continues (see
+  [`docs/GPU_ACCELERATION.md`](./docs/GPU_ACCELERATION.md))
 
 ### 📂 Directory Structure
 

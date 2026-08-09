@@ -117,7 +117,8 @@ export class DiscoveryRunner {
   }
 
   async discoverDir(input: DiscoveryDirInput): Promise<DiscoveryDirResult> {
-    // Discovery requires the Rust library — GPU is optional (CPU fallback supported)
+    // Discovery requires the Rust library. A GPU adapter is checked separately,
+    // at analysis time — this gate covers the library only (Issue #3692).
     if (!this.#rustDiscoveryEnabled()) {
       throw new DiscoveryError(
         "Discovery requires the NEAT-AI-Discovery Rust library to be available. " +

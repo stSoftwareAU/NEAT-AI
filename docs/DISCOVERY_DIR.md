@@ -29,19 +29,23 @@ pipeline internals see [DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md).
   `cargo build --release` and either:
   - copy the resulting `libneat_ai_discovery` artefact into `~/.cargo/lib`, or
   - set `NEAT_AI_DISCOVERY_LIB_PATH=/absolute/path/to/libneat_ai_discovery.*`.
+- A GPU adapter. Discovery's synapse/neuron analysis is **GPU-only** — see
+  [GPU_ACCELERATION.md](GPU_ACCELERATION.md).
 - Discovery-aware builds of `NEAT-AI`. `discoveryDir()` internally calls
   `isRustDiscoveryEnabled()` and skips the discovery phase when the Rust module
   cannot be loaded, so a missing library degrades gracefully rather than
   throwing. The guard returns `true` only when the native library loads; GPU
-  availability is probed for telemetry but does **not** gate discovery (the Rust
-  library handles CPU fallback internally), and the result is cached after the
-  first call for low overhead. The implementation lives in
+  availability is probed separately and is **not** part of that gate, and the
+  result is cached after the first call for low overhead. The implementation
+  lives in
   [`RustDiscoveryLibrary.ts`](../src/architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts).
 
 > [!NOTE]
 > If `isRustDiscoveryEnabled()` returns `false`, the Rust library is not
-> available and the discovery phase is skipped. When the library is available,
-> GPU acceleration is automatic (Metal/Vulkan/DX12 via wgpu) with CPU fallback.
+> available and the discovery phase is skipped. When the library is available
+> but no GPU adapter is, discovery is still _enabled_ — but every analysis pass
+> returns "GPU adapter not available" and yields no proposals. Both cases leave
+> evolution itself running normally.
 
 When the analyser is available, neuron discovery currently explores industry
 standard squashes including ReLU, GELU, ELU, SELU, Softplus, LOGISTIC (sigmoid),
@@ -475,7 +479,7 @@ multiple times.
 - [TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) — which subsystems live in
   TypeScript versus Rust / WebAssembly (WASM).
 - [GPU_ACCELERATION.md](GPU_ACCELERATION.md) — `wgpu` GPU backend selection
-  (Metal / Vulkan / DirectX 12) and CPU fallback.
+  (Metal / Vulkan / DirectX 12) and the GPU-only analysis requirement.
 - [EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — vendored WASM artefact
   workflow.
 - [`AGENTS.md`](../AGENTS.md) §"Neuron UUID stability" — wire-format invariant
