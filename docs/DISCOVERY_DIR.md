@@ -97,8 +97,6 @@ replay. A typical tree looks like:
 │       ├── candidate-<changeType>.json  # one file per evaluated candidate
 │       ├── summary.json                 # per-run summary
 │       └── diagnostics.json             # per-changeType success / failure rates
-├── focus-analysis/<discoveryID>/        # focus-neuron selection trace
-│   └── <ISO8601-timestamp>-focus-selection[-retry-N].json
 ├── <successCacheDir>/                   # success cache, sub-keyed by changeType
 │   ├── add-neurons/<hash>.json
 │   ├── add-synapses/<hash>.json
@@ -109,8 +107,10 @@ replay. A typical tree looks like:
 │   ├── remove-low-impact/<hash>.json
 │   └── cache-informed-removal/<hash>.json
 ├── <failureCacheDir>/                   # failure cache (mirrors changeType layout)
-└── <runDir>/<creatureUuid>/             # per-creature work area
-    └── .discovery.lock                  # advisory lock for single-writer safety
+└── <creatureUuid>/                      # per-creature work area
+    ├── .discovery.lock                  # advisory lock for single-writer safety
+    ├── selected_indices.json            # sample indices chosen for analysis
+    └── focus-selection[-retry-N].json   # focus-neuron selection trace
 ```
 
 ```mermaid
@@ -121,20 +121,19 @@ graph TD
 
     R[".discovery/"]:::root
     C["candidates/<runName>/<timestamp>/"]:::dir
-    F["focus-analysis/<discoveryID>/"]:::dir
     S["successCacheDir/<changeType>/"]:::dir
     X["failureCacheDir/<changeType>/"]:::dir
-    L["<runDir>/<creatureUuid>/"]:::dir
+    L["<creatureUuid>/"]:::dir
 
-    R --> C & F & S & X & L
+    R --> C & S & X & L
     C --> CO["original.json"]:::file
     C --> CC["candidate-*.json"]:::file
     C --> CS["summary.json"]:::file
     C --> CD["diagnostics.json"]:::file
-    F --> FA["*-focus-selection*.json"]:::file
     S --> SH["{hash}.json"]:::file
     X --> XH["{hash}.json"]:::file
     L --> LL[".discovery.lock"]:::file
+    L --> LF["focus-selection[-retry-N].json"]:::file
 ```
 
 > [!NOTE]
@@ -168,8 +167,8 @@ FFI flow diagram in
 Discovery operates on two directories that can be shared across nodes:
 
 1. **Creature samples** – a directory of JSON exports produced by
-   `Creature.toJSON()` with a `score` tag that reflects each candidate's
-   baseline performance.
+   `Creature.exportJSON()` (or the equivalent `exportSnapshotJSON()`) with a
+   `score` tag that reflects each candidate's baseline performance.
 2. **Discovery dataset** – a directory containing the sampled training data used
    exclusively for the discovery phase. The runner never mutates these inputs.
 
@@ -316,8 +315,9 @@ controllers or dashboards.
 
 Discovery automatically generates JSON analysis files documenting which neurons
 were considered for focus during each selection phase. These files are written
-to `.discovery/focus-analysis/{discoveryID}/` and provide detailed insight into
-the weighted random selection process.
+into the creature's own work area — `.discovery/{creatureUuid}/` — and provide
+detailed insight into the weighted random selection process. The `discoveryID`
+recorded inside each file is that same creature UUID.
 
 ### 📄 File Format
 
@@ -445,12 +445,17 @@ removal if spare re-score workers are available. Each entry includes:
 
 ### 🗂️ File Naming Convention
 
-- **First selection**: `{timestamp}-focus-selection.json`
-- **Retry selections**: `{timestamp}-focus-selection-retry-{N}.json`
+Both names are relative to the creature's work area,
+`.discovery/{creatureUuid}/`, and carry no timestamp prefix — the wall-clock
+instant lives in the `timestamp` field inside the file:
+
+- **First selection**: `focus-selection.json`
+- **Retry selections**: `focus-selection-retry-{N}.json`
 
 Multiple retry files in the same discovery run indicate that initial analysis
 attempts did not yield viable candidates, triggering re-selection of different
-focus neurons.
+focus neurons. Because the first selection always writes the same name, a rerun
+for the same creature overwrites the previous trace.
 
 ### 🔎 Using the Analysis
 
