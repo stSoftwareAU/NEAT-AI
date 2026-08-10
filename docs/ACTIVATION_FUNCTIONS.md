@@ -129,10 +129,16 @@ with existing trained models.
 > will continue to function correctly, but you should plan to migrate away from
 > them in future training runs.
 
+`HYPOTv2` is rewritten automatically: loading a pre-v2.0.0 creature runs
+[`UpgradeTwo`](../src/upgrade/UpgradeTwo.ts), which replaces each `HYPOTv2`
+neuron with an equivalent `SQRT` neuron fed by `SQUARE` neurons. The
+registration and the compaction support for `HYPOTv2` are therefore retained
+deliberately so those legacy creatures still load and compact (Issue #3447).
+
 | Name                                    | Output Range | Replacement                | Why Deprecated                                      |
 | :-------------------------------------- | :----------- | :------------------------- | :-------------------------------------------------- |
 | [HYPOT](../src/deprecated/HYPOT.ts)     | (-inf, inf)  | Standard activation + bias | Expensive, unpredictable behaviour as a squash      |
-| [HYPOTv2](../src/deprecated/HYPOTv2.ts) | [0, inf)     | Standard activation + bias | Same issues as HYPOT                                |
+| [HYPOTv2](../src/deprecated/HYPOTv2.ts) | [0, inf)     | `SQRT` + `SQUARE` neurons  | Same issues as HYPOT                                |
 | [MEAN](../src/deprecated/MEAN.ts)       | (-inf, inf)  | Normal neuron with weights | A standard neuron can replicate averaging behaviour |
 
 ### 🧮 Output-Only Activations (Issue #2793)
