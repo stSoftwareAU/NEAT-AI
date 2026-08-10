@@ -9,6 +9,9 @@ import { IF } from "@methods/activations/aggregate/IF.ts";
 import { MAXIMUM } from "@methods/activations/aggregate/MAXIMUM.ts";
 import { MINIMUM } from "@methods/activations/aggregate/MINIMUM.ts";
 import { HYPOT } from "@deprecated/HYPOT.ts";
+// best-practice-ignore: BP-6b1e9a008759 — HYPOTv2 is deprecated but remains a
+// supported squash here so legacy creatures that still carry it are compacted
+// rather than silently skipped. Issue #3447.
 import { HYPOTv2 } from "@deprecated/HYPOTv2.ts";
 import { MEAN } from "@deprecated/MEAN.ts";
 
@@ -53,6 +56,7 @@ export function simplifyLargeWeights(
     MINIMUM.NAME,
     IF.NAME,
     HYPOT.NAME,
+    // best-practice-ignore: BP-6b1e9a008759 — deliberate; see import above.
     HYPOTv2.NAME,
     MEAN.NAME,
   ]);
