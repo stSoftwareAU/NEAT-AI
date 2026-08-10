@@ -12,7 +12,11 @@ import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { accumulateWeight, adjustedWeight } from "@propagate/Weight.ts";
 
 /**
- * @deprecated No longer used. A normal neural network can mimic the behavior of this activation.
+ * @deprecated No longer used. Replace with a normal `IDENTITY` neuron whose
+ * inbound weights are each scaled by `1 / n` (n = inbound connection count) and
+ * whose bias is unchanged — that computes the identical weighted mean plus bias
+ * (Issue #3448). Existing serialised creatures keep working: this class stays
+ * registered so they still deserialise, activate and compact.
  */
 export class MEAN implements NeuronActivationInterface {
   public static NAME = "MEAN";

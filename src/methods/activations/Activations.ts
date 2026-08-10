@@ -16,6 +16,12 @@ import { HYPOT } from "@deprecated/HYPOT.ts";
 // upgraded to SQRT & SQUARE (see src/upgrade/UpgradeTwo.ts). Its
 // `mutationProbability` is 0, so evolution never selects it. Issue #3447.
 import { HYPOTv2 } from "@deprecated/HYPOTv2.ts";
+// best-practice-ignore: BP-619a32c95d3a — MEAN is deprecated but must stay
+// registered so already-serialised creatures (and CRISPR DNA fragments) that
+// carry it still deserialise. The replacement is an IDENTITY neuron with each
+// inbound weight divided by the inbound synapse count; there is no automatic
+// rewrite, so the registration is load-bearing. Its `mutationProbability` is 0,
+// so evolution never selects it. Issue #3448.
 import { MEAN } from "@deprecated/MEAN.ts";
 import type { AbstractActivationInterface } from "@methods/activations/AbstractActivationInterface.ts";
 import { IF } from "@methods/activations/aggregate/IF.ts";
@@ -236,6 +242,7 @@ const activationClasses = [
   LogSigmoid,
 
   MAXIMUM,
+  // best-practice-ignore: BP-619a32c95d3a — deliberate; see import above.
   MEAN,
   MINIMUM,
   Mish,
