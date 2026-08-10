@@ -1,76 +1,89 @@
-# Retain deprecated `MEAN` call sites deliberately (Issue #3448)
+# Retain deprecated `MEAN` call sites deliberately (#3448)
 
 ## Summary
 
-`MEAN` (`src/deprecated/MEAN.ts`) is tagged `@deprecated` with no stated
-replacement, yet has four production call sites across two files. Both call
-sites turn out to be load-bearing, so they are retained deliberately, marked
-with the finding's suppression marker, pinned by regression tests, and the
-missing replacement is now documented. Closes #3448.
+Issue #3448 flagged four `MEAN` references in production code (`Activations.ts`
+import + registry entry, `SimplifyLargeWeights.ts` import + squash list) via the
+TypeScript deprecation diagnostic. Unlike `HYPOTv2`, the `@deprecated` tag names
+no replacement, so the issue asked for a migration decision: remove the call
+sites, or keep them and mark them deliberate.
 
-Why each site stays:
+Investigation showed **both call sites are load-bearing for backwards
+compatibility**, so they are retained:
 
-- **`src/methods/activations/Activations.ts`** — the registry is the single
-  lookup point used by `Creature.fix()`. Dropping the `MEAN` entry makes any
-  already-serialised creature carrying `MEAN` throw `ActivationError` on load.
-  Committed CRISPR DNA fragments (`test/data/CRISPR/DNA-SANE.json`) also carry
-  `MEAN`, and `src/wasm/SquashType.ts` still maps it to `SquashType.Mean`.
-  Unlike `HYPOTv2` (Issue #3447) there is **no** automatic rewrite in
-  `UpgradeTwo`, so the registration is the only thing keeping those creatures
-  loadable.
-- **`src/compact/SimplifyLargeWeights.ts`** — `MEAN` is scale-homogeneous, so
-  removing it from the supported-squash list would silently skip compaction of
-  those same creatures rather than fail loudly.
+- **Registry** (`src/methods/activations/Activations.ts:243`) — a serialised
+  creature carrying `squash: "MEAN"` must still deserialise. Removing the
+  registration makes `Activations.find` throw `ActivationError`, breaking
+  existing coverage in `test/wasm/DeprecatedSquashTypeCompat.ts` and every
+  fixture that carries `MEAN` (`test/data/traced.json`,
+  `test/data/CRISPR/DNA-SANE.json`, …). `mutationProbability` is `0`, so
+  evolution never selects it.
+- **Compaction** (`src/compact/SimplifyLargeWeights.ts:62`) — `MEAN` is
+  scale-homogeneous (`Σ(wᵢxᵢ)/n + b`), so dropping it from the supported-squash
+  list would silently skip weight rescaling for those creatures.
 
-Both were marked `// best-practice-ignore: BP-619a32c95d3a`, matching the
-pattern established for `HYPOTv2` in #3447.
+There is no automatic rewrite for `MEAN` (`HYPOTv2` has one in
+`src/upgrade/UpgradeTwo.ts`; `MEAN` does not) — replacing it with a standard
+weighted neuron is a modelling choice for the model owner, not a mechanical
+call-site edit.
 
-The deprecation tag said only "a normal neural network can mimic the behavior of
-this activation" without naming the replacement. It is now stated concretely in
-`docs/ACTIVATION_FUNCTIONS.md` and `src/methods/activations/README.md`: `MEAN`
-computes `Σ(wᵢ·xᵢ)/n + bias`, which is exactly an `IDENTITY` neuron over weights
-`wᵢ/n` — with the caveat that the two forms only stay equivalent while the
-inbound synapse count `n` is fixed.
+Changes: added `// best-practice-ignore: BP-619a32c95d3a` markers with the
+rationale at all four call sites, added regression tests that fail if either
+call site is removed, and documented the missing automatic rewrite in
+`docs/ACTIVATION_FUNCTIONS.md`.
 
-`mutationProbability` is 0 on `MEAN`, so evolution never introduces new
-occurrences; the retained sites only serve existing creatures.
-
-```mermaid
-flowchart LR
-    A[Serialised creature<br/>squash: MEAN] --> B{Activations registry}
-    B -->|entry retained| C["Creature.fix() resolves MEAN"]
-    B -.->|entry removed| D[ActivationError on load]
-    C --> E{simplifyLargeWeights<br/>squash list}
-    E -->|MEAN listed| F[Neuron rescaled, penalty drops]
-    E -.->|MEAN dropped| G[Silently skipped]
-```
+Closes #3448.
 
 ## Evidence
 
-Backend-only change — no web interface to screenshot. Evidence is the test
-suite.
+Backend-only change — no web interface to screenshot. Evidence is the red/green
+behaviour of the new tests.
 
-The three new tests were verified to actually go red: with both call sites
-temporarily removed, all three failed (`FAILED | 0 passed | 3 failed`), the
-first with `ActivationError` raised from `Activations.find` via
-`Creature.fix()`. With the call sites restored: `ok | 3 passed | 0 failed`.
+Why both call sites must survive:
 
-Full gate: `./quality.sh < /dev/null` →
-`ok | 8313 passed (5 steps) | 0 failed |
-4 ignored (4m4s)`.
+```mermaid
+flowchart LR
+    J[(Serialised JSON<br/>squash: MEAN)] --> R[Activations registry<br/>resolves MEAN]
+    R --> A["creature.fix() → activate()"]
+    R --> C["simplifyLargeWeights<br/>rescales MEAN neuron"]
+    C --> K[(Compacted creature<br/>same behaviour)]
+```
+
+**Red check** — with `MEAN` deleted from `activationClasses`:
+
+```text
+MEAN: a serialised creature still deserialises, repairs and activates ... FAILED
+  ActivationError: Unknown activation: MEAN
+    at Activations.find (src/methods/activations/Activations.ts:117:13)
+```
+
+**Red check** — with `MEAN.NAME` deleted from the `simplifyLargeWeights`
+candidate set:
+
+```text
+MEAN: simplifyLargeWeights rescales an imbalanced MEAN neuron ... FAILED
+  AssertionError: MEAN is scale-homogeneous — expected a rescaling
+```
+
+**Green** — both call sites present, and the full gate:
+
+```text
+ok | 2 passed | 0 failed (27ms)
+./quality.sh  →  ok | 8312 passed (5 steps) | 0 failed | 4 ignored (4m7s)
+```
 
 ## Test Plan
 
-New file `test/deprecated/MEANBackwardsCompatibility.ts`:
+Added `test/deprecated/MEANBackwardsCompatibility.ts`:
 
 - `MEAN: a serialised creature still deserialises, repairs and activates` —
-  fails with `ActivationError` if the `Activations.ts` registration is removed.
-- `MEAN: simplifyLargeWeights rescales an imbalanced MEAN neuron` — fails if
-  `MEAN.NAME` is removed from the `SimplifyLargeWeights.ts` squash list.
-- `MEAN: an IDENTITY neuron with weights scaled by 1/n is the documented
-  replacement`
-  — builds the replacement generically from the export (swap the squash, divide
-  each inbound weight by the inbound count) and asserts identical activations
-  across five input pairs, pinning the newly documented migration path.
+  loads a creature with a `MEAN` hidden neuron, calls `fix()` (which resolves
+  the squash through the registry) and asserts the activation equals
+  `(1*2 + 2*-3) / 2 + 0.5 = -1.5`. Guards the `Activations.ts` call site.
+- `MEAN: simplifyLargeWeights rescales an imbalanced MEAN neuron` — calls
+  `simplifyLargeWeights` directly on an export with a 1e6/1e-6 imbalance and
+  asserts it rescales and reduces the weight/bias penalty. Guards the
+  `SimplifyLargeWeights.ts` call site; existing coverage only reached this path
+  indirectly through `compactCreature`.
 
 No existing tests were modified or removed.
