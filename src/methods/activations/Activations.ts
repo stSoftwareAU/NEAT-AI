@@ -10,6 +10,10 @@
 
 import { assert } from "@std/assert";
 import { ActivationError } from "@errors/ActivationError.ts";
+// best-practice-ignore: BP-91862f495db6 — HYPOT is deprecated but must stay
+// registered so pre-v2.0.0 creatures still deserialise and can be repaired /
+// upgraded to SQRT & SQUARE (see src/upgrade/UpgradeTwo.ts). Its
+// `mutationProbability` is 0, so evolution never selects it. Issue #3446.
 import { HYPOT } from "@deprecated/HYPOT.ts";
 // best-practice-ignore: BP-6b1e9a008759 — HYPOTv2 is deprecated but must stay
 // registered so pre-v2.0.0 creatures still deserialise and can be repaired /
@@ -228,6 +232,7 @@ const activationClasses = [
 
   HARD_TANH,
 
+  // best-practice-ignore: BP-91862f495db6 — deliberate; see import above.
   HYPOT,
   // best-practice-ignore: BP-6b1e9a008759 — deliberate; see import above.
   HYPOTv2,
