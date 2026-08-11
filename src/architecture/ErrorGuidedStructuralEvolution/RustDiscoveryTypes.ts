@@ -344,17 +344,6 @@ export interface RustParallelAnalysisInput {
    */
   maxAnalysisMemoryMb?: number;
   /**
-   * Maps each focus neuron UUID to its impact on the creature's output.
-   * As of Rust v0.2.0, the Rust library calculates creature-level metrics
-   * internally using this data. Output neurons have impact = 1.0,
-   * while hidden neurons have smaller impacts based on their distance
-   * from outputs.
-   *
-   * @deprecated This field is now primarily for logging/debugging.
-   * The Rust library v0.2.0 handles impact scaling internally.
-   */
-  focusNeuronErrorShares?: Record<string, number>;
-  /**
    * Structural descriptor of the configured cost on the FFI wire (Issues #2785,
    * #3012). PascalCase shape NEAT-AI-Discovery deserialises — built-in costs
    * carry their canonical structure; custom JS costs collapse to the neutral
