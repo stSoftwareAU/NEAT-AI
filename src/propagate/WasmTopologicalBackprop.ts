@@ -13,18 +13,14 @@ import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
 import { TopologicalBackpropCache } from "@propagate/TopologicalBackpropCache.ts";
 import { wasmPropagateTopological } from "@wasm/WasmStandaloneFunctions.ts";
-import { getPropagateTopologicalFn } from "@wasm/WasmModuleLoader.ts";
+import { isNativeCoreAvailable } from "@wasm/NativeCoreLibrary.ts";
 import { noChangePropagate } from "@architecture/NoChangePropagate.ts";
 
 /**
- * Attempt to run topological backpropagation via WASM.
+ * Attempt to run topological backpropagation via native `libneat_core`.
  *
- * Issue #2416 — the TypeScript fallbacks have been removed; this shim now
- * returns false only when the WASM module is genuinely unavailable. All
- * other cases (batchSize === 1, no-error early-out, in-loop noChange paths)
- * are handled by the canonical Rust implementation in
- * `neat-core/src/topological_backprop.rs` and surfaced through the WASM
- * result buffer.
+ * Issue #2416 — the TypeScript fallbacks have been removed.
+ * Issue #3741 — native neat-core is mandatory for this loop.
  */
 export function wasmTopologicalBackprop(
   creature: Creature,
@@ -32,8 +28,8 @@ export function wasmTopologicalBackprop(
   config: BackPropagationConfig,
   sparseConfig: SparseConfig,
 ): boolean {
-  // Early bail: avoid side effects if WASM is unavailable.
-  if (!getPropagateTopologicalFn()) {
+  // Early bail: avoid side effects if native backprop is unavailable.
+  if (!isNativeCoreAvailable()) {
     return false;
   }
 

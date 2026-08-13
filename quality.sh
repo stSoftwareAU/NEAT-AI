@@ -119,6 +119,12 @@ if [ "$RUN_TESTS" = true ]; then
   else
     TOTAL=$((TOTAL + 1))
   fi
+  if [[ -d ../NEAT-AI-core ]]; then
+    TOTAL=$((TOTAL + 1))
+  fi
+  if [[ -d ../NEAT-AI-Backpropagation ]]; then
+    TOTAL=$((TOTAL + 1))
+  fi
 fi
 
 STEP=0
@@ -139,6 +145,12 @@ if [ "$DRY_RUN" = true ]; then
   [ "$RUN_DISCOVERY" = true ] && progress "Building discovery library..."
   [ "$RUN_WASM" = true ] && progress "Syncing WASM package from NEAT-AI-core..."
   if [ "$RUN_TESTS" = true ]; then
+    if [[ -d ../NEAT-AI-core ]]; then
+      progress "Building native neat-core library..."
+    fi
+    if [[ -d ../NEAT-AI-Backpropagation ]]; then
+      progress "Building native neat_ai_backpropagation..."
+    fi
     if [ "$TEST_BOTH_SCORERS" = true ]; then
       progress "Running tests (WASM-only scorer mode)..."
       progress "Running tests (Rust scorer mode)..."
@@ -262,6 +274,16 @@ if [ "$RUN_DISCOVERY" = true ]; then
       echo "   Skipping verification. To enable, clone NEAT-AI-Discovery next to this repo."
     fi
   fi
+fi
+
+if [ "$RUN_TESTS" = true ] && [[ -d ../NEAT-AI-core ]]; then
+  progress "Building native neat-core library..."
+  (cd ../NEAT-AI-core && cargo build --release -p neat-core)
+fi
+
+if [ "$RUN_TESTS" = true ] && [[ -d ../NEAT-AI-Backpropagation ]]; then
+  progress "Building native neat_ai_backpropagation..."
+  (cd ../NEAT-AI-Backpropagation && cargo build --release -p neat_ai_backpropagation)
 fi
 
 if [ "$RUN_WASM" = true ]; then

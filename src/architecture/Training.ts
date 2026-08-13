@@ -19,6 +19,7 @@ import {
 } from "@architecture/training/TrainingSetup.ts";
 import { runTrainingLoop } from "@architecture/training/TrainingLoop.ts";
 import { finaliseTraining } from "@architecture/training/TrainingTeardown.ts";
+import { tryRustTrainDir } from "@architecture/training/RustTrainDirBridge.ts";
 import { trainDirPredictiveCoding } from "@architecture/training/TrainingPredictiveCoding.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 
@@ -76,7 +77,7 @@ export function trainDir(
     );
   }
 
-  return trainDirBinary(creature, dataResult.files, options, cost);
+  return trainDirBinary(creature, dataDir, dataResult.files, options, cost);
 }
 
 /**
@@ -98,15 +99,21 @@ export function trainDirSingleFold(
     "No binary files found in the data directory",
   );
 
-  return trainDirBinary(creature, dataResult.files, options, cost);
+  return trainDirBinary(creature, dataDir, dataResult.files, options, cost);
 }
 
 /**
  * Orchestrates the three training phases for a single-fold binary run:
  * setup → loop → teardown.
+ *
+ * When sibling `neat_ai_backpropagation` is present and the request is one
+ * the CLI can honour, the epoch loop runs in that process. Predictive
+ * coding, cross-validation, custom costs, and the TypeScript-only
+ * regularisers stay on the existing loop.
  */
 function trainDirBinary(
   creature: Creature,
+  dataDir: string,
   binaryFiles: string[],
   options: TrainOptions,
   cost: CostInterface,
@@ -115,6 +122,11 @@ function trainDirBinary(
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
 
   const setup = prepareTraining(creature, options, ID);
+
+  const rust = tryRustTrainDir(creature, dataDir, options, cost, setup);
+  if (rust !== undefined) {
+    return rust;
+  }
 
   const loopResult = runTrainingLoop(
     creature,
