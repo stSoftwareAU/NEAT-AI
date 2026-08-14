@@ -75,6 +75,7 @@ Deno.test("evolve-MT", async () => {
         elitism: 10,
         mutationRate: 0.5,
         targetError: 0.03,
+        iterations: 500,
         threads: 1,
       });
 

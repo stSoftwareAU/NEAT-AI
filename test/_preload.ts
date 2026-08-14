@@ -7,6 +7,9 @@
  *
  * This preload runs once per worker before any test module and tightens
  * the caps so that each worker keeps a bounded working set.
+ *
+ * It also records in-flight `Deno.test` names (see `_inFlightTestLog.ts`)
+ * so a jetsam SIGKILL still leaves the case that was running.
  */
 
 import { resetHiddenNeuronIdCounterForTesting } from "@architecture/NeuronId.ts";
@@ -16,6 +19,7 @@ import {
   setMaxCachedWasmCreatureActivations,
 } from "@wasm/WasmCreatureActivationLRU.ts";
 import { setWasmCompilationCacheSize } from "@wasm/WasmCompilationCache.ts";
+import { installInFlightDenoTestHook } from "./_inFlightTestLog.ts";
 
 // Keep at most 16 compiled WASM activations per worker (down from 512).
 // Evolution runs override this via WasmCacheConfig, so production is unaffected.
@@ -29,3 +33,5 @@ setWasmCompilationCacheSize(8);
 resetGlobalRandomNumberGeneratorForTesting();
 resetHiddenNeuronIdCounterForTesting();
 Activations.resetAllowedSquashesForTesting();
+
+installInFlightDenoTestHook();

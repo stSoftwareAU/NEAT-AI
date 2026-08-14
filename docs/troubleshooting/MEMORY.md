@@ -163,22 +163,34 @@ For large populations or long training runs, increase the V8 heap:
 deno test --v8-flags=--max-old-space-size=8192 ...
 ```
 
-The `quality.sh` script uses 8,192 MB (8 GB) by default.
+The `quality.sh` script sizes `DENO_JOBS` from host RAM and keeps an **8192 MB**
+V8 heap. Evolve tests in this suite sit above 4 GB
+(`heap=4060 MB/4110 MB
+limit=4192 MB` then V8 SIGTRAP). Shrinking the heap to
+4096 MB does not save RSS — it aborts the test. A 24 GB laptop with Cursor open
+defaults to **1 × 8192 MB**. If you set `DENO_JOBS` yourself, the heap shrinks
+to fit. Override the heap with `NEAT_AI_TEST_HEAP_MB`.
+
+When `./quality.sh` is killed mid-suite (`Killed: 9` / exit 137), look in
+`.quality-in-flight/` (or `NEAT_AI_IN_FLIGHT_DIR`). Each leftover file names a
+`Deno.test` that was still running — `--parallel` does not print a file until it
+finishes. A successful run removes the directory.
 
 ## ⚠️ Test parallelism and memory pressure
 
 Running tests with `--parallel` uses more memory. If you encounter OOM kills:
 
-1. **Reduce heap allocation:**
+1. **Reduce `DENO_JOBS` first** (do not drop the V8 heap below 8192 MB for the
+   full `quality.sh` suite — evolve tests need it):
    ```bash
-   deno test --v8-flags=--max-old-space-size=4096 ...
+   DENO_JOBS=1 ./quality.sh
    ```
 2. **Disable parallelism:**
    ```bash
    deno test ...  # omit --parallel flag
    ```
-3. **Use `--expose-gc`** for explicit garbage collection hints (used by
-   `quality.sh`).
+3. **Use `--expose-gc`** for explicit garbage collection hints (used by coverage
+   CI, not `quality.sh`).
 
 ## 💀 Exit code 143 (SIGTERM / OOM kill)
 

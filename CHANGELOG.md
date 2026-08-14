@@ -25,6 +25,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `./quality.sh` records in-flight `Deno.test` names under `.quality-in-flight`
+  (override with `NEAT_AI_IN_FLIGHT_DIR`). `deno test --parallel` only prints a
+  file when it finishes, so a jetsam SIGKILL used to leave evolution spam and no
+  test name. Leftover files after the runner stops name the cases that were
+  still running.
 - **Issue #3741:** Native topological backprop is wired but **opt-in**, using
   the same pattern as the Rust scorer: handwritten tests are not rewritten;
   `./quality.sh --next` swaps `wasmPropagateTopological` onto native
@@ -33,6 +38,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `NEAT_AI_BACKPROP_ENABLED=1` (not part of `--next`). Override the binary with
   `NEAT_AI_BACKPROP_BINARY_PATH`; apply step scale with
   `NEAT_AI_BACKPROP_STEP_SCALE` (default `0.01`).
+- Coverage CI (`coverage.yaml`) is the PR test gate: the merge job fails the
+  pull request when any shard reports test failures or crashes. `quality.yml`
+  still does not run tests (fmt/lint/`deno check` only).
 - **Issue #3422:** Every `evolve*` result now carries a run-level `statistics`
   block for throughput tuning, so the production run's `result.json` is
   self-contained enough to compare configurations across the fleet. It records
@@ -99,6 +107,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 - `./quality.sh` now runs the test suite with the Rust `rust_scorer` enabled by
   default. Pass `--wasm-scorer` for a comparison run on the legacy WASM scorer.
+  The gate fails loud if `rust_scorer` cannot be resolved (no silent WASM
+  fallback). Test runs force `NEAT_SCORER_GPU=off` so parallel `rust_scorer`
+  processes do not create Metal/wgpu contexts (the default `--gpu auto` path
+  OOMs the suite). `./quality.sh --wasm-scorer` forces native backprop off and
+  sizes `DENO_JOBS` from host RAM and keeps an 8192 MB V8 heap (1 × 8192 MB on a
+  24 GB laptop). Capping the heap at 4096 MB makes V8 abort evolve tests
+  (`Ineffective mark-compacts near heap limit`, SIGTRAP 133) while RSS is still
+  only ~5.7 GB. `./quality.sh --next` likewise fails if native `libneat_core`
+  cannot be loaded.
 - **Issue #3674:** `deno.json` now declares the `Apache-2.0` SPDX identifier and
   lists `LICENSE` in `publish.include`, so the published package carries its
   licence text and metadata explicitly instead of relying on whatever
@@ -114,6 +131,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `evolve_AND_gate` no longer runs 100 000 generations with verbose logging (it
+  plateaued around error 0.07 and jetsammed the host at generation 29974 with no
+  Deno test name). `evolve-MT` now caps iterations; the previous default was
+  `Number.MAX_SAFE_INTEGER`.
 - **Issue #3541:** The WASM fallback is no longer used as a "fallback" for
   corrupt training data. A native scorer failure whose stderr identifies a
   malformed/truncated dataset (`Trailing N bytes (incomplete record)` and

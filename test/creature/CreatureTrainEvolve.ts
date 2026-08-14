@@ -223,6 +223,8 @@ Deno.test("train_AND_gate", async () => {
 });
 
 Deno.test("evolve_AND_gate", async () => {
+  // One unseeded attempt of 100_000 generations used to run until jetsam
+  // when the search plateaued above 0.005. Cap each attempt and retry.
   await evolveSet(
     [
       { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
@@ -230,8 +232,9 @@ Deno.test("evolve_AND_gate", async () => {
       { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
       { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
     ],
-    100_000,
+    1_000,
     0.005,
+    20,
   );
 });
 

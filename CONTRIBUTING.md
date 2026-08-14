@@ -276,7 +276,9 @@ The quality gate runs (see `quality.sh` for the canonical step list):
 5. Type checking (`deno check`)
 6. Discovery library build (if `../NEAT-AI-Discovery` exists)
 7. WASM package sync from pinned NEAT-AI-core (`./build.sh --verify-only`)
-8. All tests in parallel with leak detection
+8. All tests in parallel with leak detection. If the runner is jetsammed
+   (`Killed: 9`), leftover files in `.quality-in-flight/` name the `Deno.test`
+   cases that were still running (`NEAT_AI_IN_FLIGHT_DIR` overrides the path).
 
 > [!WARNING]
 > Do not submit a pull request until `./quality.sh` passes cleanly. The CI
@@ -288,20 +290,20 @@ For faster iteration, you can skip specific steps. The full flag set is shown by
 `./quality.sh --help`; the most common ones are listed below (kept in sync with
 the script's `show_help` block):
 
-| Flag                          | Effect                                                                       |
-| ----------------------------- | ---------------------------------------------------------------------------- |
-| `--help`, `-h`                | Show usage and exit.                                                         |
-| `--skip-tests`                | Skip test execution.                                                         |
-| `--skip-discovery`            | Skip discovery library build and verification.                               |
-| `--skip-wasm`                 | Skip WASM package sync from NEAT-AI-core.                                    |
-| `--wasm-scorer`               | Comparison-only: run the legacy WASM scorer.                                 |
-| `--next`                      | Run existing tests against native `libneat_core` backprop (not yet default). |
-| `--test-both-scorers`         | Run tests twice: WASM scorer then Rust scorer.                               |
-| `--rust-scorer-bin=PATH`      | Path to `rust_scorer` binary.                                                |
-| `--rust-scorer-timeout-ms=MS` | Per-call scorer timeout.                                                     |
-| `--lint-only`                 | Only run formatting + linting (includes bash check).                         |
-| `--check-only`                | Only run type-checking (`deno check`).                                       |
-| `--dry-run`                   | Show which steps would run without executing them.                           |
+| Flag                          | Effect                                                                                                                     |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `--help`, `-h`                | Show usage and exit.                                                                                                       |
+| `--skip-tests`                | Skip test execution.                                                                                                       |
+| `--skip-discovery`            | Skip discovery library build and verification.                                                                             |
+| `--skip-wasm`                 | Skip WASM package sync from NEAT-AI-core.                                                                                  |
+| `--wasm-scorer`               | Comparison-only: run the legacy WASM scorer. Native backprop is forced off; `DENO_JOBS` / V8 heap are sized from host RAM. |
+| `--next`                      | Run existing tests against native `libneat_core` backprop (not yet default). Fails loud if the library cannot be loaded.   |
+| `--test-both-scorers`         | Run tests twice: WASM scorer then Rust scorer.                                                                             |
+| `--rust-scorer-bin=PATH`      | Path to `rust_scorer` binary.                                                                                              |
+| `--rust-scorer-timeout-ms=MS` | Per-call scorer timeout.                                                                                                   |
+| `--lint-only`                 | Only run formatting + linting (includes bash check).                                                                       |
+| `--check-only`                | Only run type-checking (`deno check`).                                                                                     |
+| `--dry-run`                   | Show which steps would run without executing them.                                                                         |
 
 ### 5. 📬 Submit a Pull Request
 
