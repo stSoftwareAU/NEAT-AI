@@ -223,19 +223,26 @@ Deno.test("train_AND_gate", async () => {
 });
 
 Deno.test("evolve_AND_gate", async () => {
-  // One unseeded attempt of 100_000 generations used to run until jetsam
-  // when the search plateaued above 0.005. Cap each attempt and retry.
-  await evolveSet(
-    [
-      { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
-      { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
-      { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
-      { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
-    ],
-    1_000,
-    0.005,
-    20,
-  );
+  // Seeded retries: a single unseeded 100_000-generation attempt could
+  // plateau near error 0.07 (false training "regressions" at 1e-9) until
+  // quality.sh --trace-leaks jetsammed the host.
+  const rngBefore = getRandomNumberGenerator();
+  setRandomNumberGenerator(createSeededRng(200));
+  try {
+    await evolveSet(
+      [
+        { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+        { input: new Float32Array([0, 1]), output: new Float32Array([0]) },
+        { input: new Float32Array([1, 0]), output: new Float32Array([0]) },
+        { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
+      ],
+      2_000,
+      0.005,
+      20,
+    );
+  } finally {
+    setRandomNumberGenerator(rngBefore);
+  }
 });
 
 Deno.test("evolve XORgate", async () => {

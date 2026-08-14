@@ -35,6 +35,7 @@ import {
 import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { Neat } from "@neat/Neat.ts";
+import { isTrainingErrorRegression } from "@neat/TrainingErrorComparison.ts";
 
 /**
  * Schedules structural discovery for a creature on a worker.
@@ -397,7 +398,7 @@ export function scheduleTraining(
     assert(errorTx, "No error tag found");
 
     let trainingImprovement = true;
-    if (r.train.error > parseFloat(errorTx)) {
+    if (isTrainingErrorRegression(r.train.error, parseFloat(errorTx))) {
       getLogger().warn(
         `Training ${
           blue(r.train.ID)

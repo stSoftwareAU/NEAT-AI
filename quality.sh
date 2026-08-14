@@ -76,7 +76,14 @@ Environment:
                       explicit DENO_JOBS and shrink the heap instead.
   NEAT_AI_TEST_HEAP_MB
                       V8 old-space size in MB for `deno test`. Default: 8192.
-                      Do not drop this below ~8 GB for the full suite.
+                      Do not drop this below ~8 GB for the full suite — a
+                      4096 MB cap raises SIGTRAP in evolve tests that sit
+                      above 4 GB.
+  QUALITY_TRACE_LEAKS
+                      `1` forces `deno test --trace-leaks`; `0` disables it.
+                      Default: on only when the host has ≥ 32 GiB RAM.
+                      `--trace-leaks` retains every allocation until each
+                      test ends, so evolve tests jetsam 24 GB laptops.
   NEAT_AI_IN_FLIGHT_DIR
                       Directory of in-flight `Deno.test` name files (default:
                       `.quality-in-flight`). `deno test --parallel` only
@@ -331,7 +338,8 @@ host_memory_mb() {
 }
 
 # Two failure modes, opposite levers:
-#   jetsam / SIGKILL 137 — too many workers (4 × 8192, or rust_scorer GPU).
+#   jetsam / SIGKILL 137 — too many workers (4 × 8192 MB on a 24 GB laptop,
+#                         or rust_scorer GPU).
 #   V8 SIGTRAP 133     — heap cap below what a single evolve test needs
 #                         (~4060 MB used / 4192 MB limit on --wasm-scorer).
 # Default: keep an 8192 MB heap and drop DENO_JOBS so workers fit in
@@ -402,6 +410,24 @@ compute_test_heap_mb() {
 
 TEST_JOBS="$(compute_test_jobs)"
 TEST_HEAP_MB="$(compute_test_heap_mb)"
+
+QUALITY_TRACE_LEAKS_MIN_RAM_MB=32768
+
+should_trace_leaks() {
+  case "${QUALITY_TRACE_LEAKS:-}" in
+    0) return 1 ;;
+    1) return 0 ;;
+  esac
+  local total
+  total="$(host_memory_mb)" || return 1
+  [ "$total" -ge "$QUALITY_TRACE_LEAKS_MIN_RAM_MB" ]
+}
+
+if should_trace_leaks; then
+  TRACE_LEAKS_STATE="on"
+else
+  TRACE_LEAKS_STATE="off"
+fi
 
 TOTAL=0
 [ "$RUN_DEPS" = true ] && TOTAL=$((TOTAL + 1))
@@ -480,6 +506,7 @@ if [ "$DRY_RUN" = true ]; then
     else
       progress "Running tests (Rust scorer mode)..."
     fi
+    echo "V8 heap ${TEST_HEAP_MB} MB × DENO_JOBS=${TEST_JOBS} (leak tracing: ${TRACE_LEAKS_STATE})"
   fi
   echo ""
   echo "Total: $TOTAL steps"
@@ -559,23 +586,29 @@ run_test_suite() {
     env_args+=("NEAT_AI_BACKPROP_ENABLED=0")
   fi
 
-  echo "V8 heap ${TEST_HEAP_MB} MB × DENO_JOBS=${TEST_JOBS}"
+  echo "V8 heap ${TEST_HEAP_MB} MB × DENO_JOBS=${TEST_JOBS} (leak tracing: ${TRACE_LEAKS_STATE})"
   echo "In-flight test names: ${IN_FLIGHT_DIR}"
   rm -rf "${IN_FLIGHT_DIR}"
   mkdir -p "${IN_FLIGHT_DIR}"
+  local -a deno_args=(
+    --allow-read
+    --allow-write
+    --allow-net
+    --allow-env
+    --allow-run
+    --allow-ffi
+    --v8-flags=--max-old-space-size="${TEST_HEAP_MB}"
+    --parallel
+    --preload
+    test/_preload.ts
+    --config
+    ./deno.json
+  )
+  if [ "$TRACE_LEAKS_STATE" = "on" ]; then
+    deno_args+=(--trace-leaks)
+  fi
   local status=0
-  env "${env_args[@]}" deno test \
-    --allow-read \
-    --allow-write \
-    --allow-net \
-    --allow-env \
-    --allow-run \
-    --trace-leaks \
-    --allow-ffi \
-    --v8-flags=--max-old-space-size=${TEST_HEAP_MB} \
-    --parallel \
-    --preload test/_preload.ts \
-    --config ./deno.json || status=$?
+  env "${env_args[@]}" deno test "${deno_args[@]}" || status=$?
   if [ "$status" -ne 0 ]; then
     dump_in_flight_tests "${IN_FLIGHT_DIR}" "$status"
     return "$status"

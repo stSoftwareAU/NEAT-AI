@@ -131,10 +131,21 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- `evolve_AND_gate` no longer runs 100 000 generations with verbose logging (it
-  plateaued around error 0.07 and jetsammed the host at generation 29974 with no
-  Deno test name). `evolve-MT` now caps iterations; the previous default was
-  `Number.MAX_SAFE_INTEGER`.
+- Training no longer treats ~1e-9 evaluate noise as a memetic regression.
+  Fitness error (from `evaluateDir`) and the training loop's `bestError` can
+  disagree at f32 ulp on small datasets; the old `train.error > fitnessError`
+  test plus Issue #2382 skip-after-two-regressions then turned off training, so
+  `evolve_AND_gate` could sit at error ~0.07 for tens of thousands of
+  generations until `quality.sh --trace-leaks` jetsammed the host.
+- `quality.sh` no longer defaults to four 8 GB `deno test` workers. It keeps the
+  8 GB heap each evolve test needs and sizes `DENO_JOBS` from host RAM (12 GiB
+  reserved for the OS/editor), so a 24 GB laptop is 1 × 8192 MB instead of a 32
+  GB request that jetsams mid-suite. `--trace-leaks` is off by default on hosts
+  with less than 32 GiB — it retains every allocation until each test ends,
+  which jetsammed `evolve-MT` on a 24 GB Mac even with a single worker. Force it
+  with `QUALITY_TRACE_LEAKS=1`. Per-iteration "training made the error worse"
+  warnings are now logged on the first failure and every 100th afterwards, so a
+  stuck 10 000-iteration train no longer floods the quality-gate log.
 - **Issue #3541:** The WASM fallback is no longer used as a "fallback" for
   corrupt training data. A native scorer failure whose stderr identifies a
   malformed/truncated dataset (`Trailing N bytes (incomplete record)` and
