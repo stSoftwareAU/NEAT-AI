@@ -25,6 +25,9 @@ import { noChangePropagate } from "@architecture/NoChangePropagate.ts";
  * are handled by the canonical Rust implementation in
  * `neat-core/src/topological_backprop.rs` and surfaced through the WASM
  * result buffer.
+ *
+ * Issue #3741 — native `libneat_core` is opt-in via
+ * `NEAT_AI_NATIVE_CORE_BACKPROP=1`; the default path stays on WASM.
  */
 export function wasmTopologicalBackprop(
   creature: Creature,

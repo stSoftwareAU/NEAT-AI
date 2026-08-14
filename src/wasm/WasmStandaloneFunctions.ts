@@ -37,6 +37,10 @@ import {
   getValidateRangeFn,
   getVersionFn,
 } from "@wasm/WasmModuleLoader.ts";
+import {
+  isNativeCoreBackpropEnabled,
+  nativePropagateTopological,
+} from "@wasm/NativeCoreLibrary.ts";
 
 /**
  * Issue #1377 - Result from fused backward pass error distribution.
@@ -586,16 +590,23 @@ export function wasmScanMaxBias(
 // ---------------------------------------------------------------------------
 
 /**
- * Issue #1954 - Run the full topological backpropagation loop in WASM.
+ * Issue #1954 - Run the full topological backpropagation loop.
  *
  * Takes a packed binary buffer containing all network state and returns
  * a packed Float64Array with updated neuron/synapse accumulation state.
  *
- * Returns undefined if WASM is unavailable.
+ * WASM is the default (safe to merge). Native `libneat_core` is used only
+ * when `NEAT_AI_NATIVE_CORE_BACKPROP=1` (Issue #3741, opt-in).
+ *
+ * Returns undefined if WASM is unavailable and native is not enabled.
  */
 export function wasmPropagateTopological(
   data: Uint8Array,
 ): Float64Array | undefined {
+  if (isNativeCoreBackpropEnabled()) {
+    const native = nativePropagateTopological(data);
+    if (native !== undefined) return native;
+  }
   const fn = getPropagateTopologicalFn();
   if (!fn) return undefined;
   return fn(data);

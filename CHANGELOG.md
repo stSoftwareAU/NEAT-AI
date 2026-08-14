@@ -25,6 +25,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3741:** Native topological backprop is wired but **opt-in**, using
+  the same pattern as the Rust scorer: handwritten tests are not rewritten;
+  `./quality.sh --next` swaps `wasmPropagateTopological` onto native
+  `libneat_core` (`neat_propagate_topological`). WASM stays the default until
+  that suite is green and a bench shows a win. The `trainDir` CLI stays behind
+  `NEAT_AI_BACKPROP_ENABLED=1` (not part of `--next`). Override the binary with
+  `NEAT_AI_BACKPROP_BINARY_PATH`; apply step scale with
+  `NEAT_AI_BACKPROP_STEP_SCALE` (default `0.01`).
 - **Issue #3422:** Every `evolve*` result now carries a run-level `statistics`
   block for throughput tuning, so the production run's `result.json` is
   self-contained enough to compare configurations across the fleet. It records
@@ -89,6 +97,8 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- `./quality.sh` now runs the test suite with the Rust `rust_scorer` enabled by
+  default. Pass `--wasm-scorer` for a comparison run on the legacy WASM scorer.
 - **Issue #3674:** `deno.json` now declares the `Apache-2.0` SPDX identifier and
   lists `LICENSE` in `publish.include`, so the published package carries its
   licence text and metadata explicitly instead of relying on whatever
