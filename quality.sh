@@ -67,7 +67,8 @@ Environment:
   NEAT_AI_TEST_HEAP_MB
                       V8 old-space size in MB for `deno test`. Default: 8192.
                       Do not drop this below ~8 GB for the full suite — a
-                      4096 MB cap SIGTRAPs evolve tests that sit above 4 GB.
+                      4096 MB cap raises SIGTRAP in evolve tests that sit
+                      above 4 GB.
   QUALITY_TRACE_LEAKS
                       `1` forces `deno test --trace-leaks`; `0` disables it.
                       Default: on only when the host has ≥ 32 GiB RAM.

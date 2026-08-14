@@ -167,7 +167,7 @@ The `quality.sh` script keeps an 8,192 MB (8 GB) V8 heap per test worker. It
 then sizes `DENO_JOBS` so those heaps fit in `(RAM − 12 GiB)` — a 24 GB laptop
 gets **one** worker. Hard-coding `DENO_JOBS=4` with an 8 GB heap jetsams that
 class of machine (`Killed: 9` / exit 137). Do **not** drop the heap to 4,096 MB
-as a workaround: evolve tests sit above 4 GB and V8 SIGTRAPs instead.
+as a workaround: evolve tests sit above 4 GB and V8 raises SIGTRAP instead.
 
 Override with `DENO_JOBS` (honoured; the heap shrinks to fit) or
 `NEAT_AI_TEST_HEAP_MB`. `--trace-leaks` is on only when the host has ≥ 32 GiB
@@ -182,8 +182,8 @@ Running tests with `--parallel` uses more memory. If you encounter OOM kills
 1. **Let `quality.sh` size `DENO_JOBS` from RAM** (the default). Do not export
    `DENO_JOBS=4` on a 24 GB host.
 2. **Honour an explicit `DENO_JOBS` and leave the 8 GB heap** unless you also
-   set `NEAT_AI_TEST_HEAP_MB`. Shrinking the heap below ~8 GB SIGTRAPs evolve
-   tests.
+   set `NEAT_AI_TEST_HEAP_MB`. Shrinking the heap below ~8 GB raises SIGTRAP in
+   evolve tests.
 3. **Use `--expose-gc`** for explicit garbage collection hints (used by CI
    coverage, not by `quality.sh`).
 
