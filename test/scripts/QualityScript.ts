@@ -240,6 +240,48 @@ Deno.test(
 
 Deno.test(
   {
+    name: "quality.sh --help documents DENO_JOBS RAM sizing",
+    permissions: { run: true, read: true },
+    fn: async () => {
+      const result = await runQuality(["--help"]);
+      assertEquals(result.code, 0);
+      assert(
+        result.stdout.includes("DENO_JOBS"),
+        "Expected help to document DENO_JOBS",
+      );
+      assert(
+        result.stdout.includes("NEAT_AI_TEST_HEAP_MB"),
+        "Expected help to document NEAT_AI_TEST_HEAP_MB",
+      );
+      assert(
+        result.stdout.includes("QUALITY_TRACE_LEAKS"),
+        "Expected help to document QUALITY_TRACE_LEAKS",
+      );
+    },
+  },
+);
+
+Deno.test(
+  {
+    name: "quality.sh --dry-run prints the V8 heap and DENO_JOBS product",
+    permissions: { run: true, read: true },
+    fn: async () => {
+      const result = await runQuality(["--dry-run"]);
+      assertEquals(result.code, 0);
+      assert(
+        /V8 heap \d+ MB × DENO_JOBS=\d+/.test(result.stdout),
+        `Expected dry-run to print heap × jobs; stdout=${result.stdout}`,
+      );
+      assert(
+        /leak tracing: (on|off)/.test(result.stdout),
+        "Expected dry-run to print leak-tracing state",
+      );
+    },
+  },
+);
+
+Deno.test(
+  {
     name: "quality.sh --dry-run shows progress numbering",
     permissions: { run: true, read: true },
     fn: async () => {

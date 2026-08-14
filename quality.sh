@@ -59,6 +59,20 @@ Environment:
                       Set to 1 to spawn sibling neat_ai_backpropagation from
                       trainDir. Separate from --next; keep off until the
                       native loop is proven. Default: off.
+  DENO_JOBS
+                      Parallel `deno test` workers. Default: sized so each
+                      worker can keep an 8192 MB V8 heap. Leave 12 GiB for
+                      the OS/editor. A 24 GB laptop gets 1 worker. Honour an
+                      explicit DENO_JOBS and shrink the heap instead.
+  NEAT_AI_TEST_HEAP_MB
+                      V8 old-space size in MB for `deno test`. Default: 8192.
+                      Do not drop this below ~8 GB for the full suite — a
+                      4096 MB cap SIGTRAPs evolve tests that sit above 4 GB.
+  QUALITY_TRACE_LEAKS
+                      `1` forces `deno test --trace-leaks`; `0` disables it.
+                      Default: on only when the host has ≥ 32 GiB RAM.
+                      `--trace-leaks` retains every allocation until each
+                      test ends, so evolve tests jetsam 24 GB laptops.
 
 Exit codes:
   0   All enabled steps passed
@@ -127,6 +141,113 @@ fi
 [ "$SKIP_DISCOVERY" = true ] && RUN_DISCOVERY=false
 [ "$SKIP_WASM" = true ] && RUN_WASM=false
 
+host_memory_mb() {
+  case "$(uname -s)" in
+    Darwin)
+      local bytes
+      bytes="$(sysctl -n hw.memsize 2>/dev/null)" || return 1
+      echo $((bytes / 1024 / 1024))
+      ;;
+    Linux)
+      awk '/MemTotal:/ { print int($2 / 1024); exit }' /proc/meminfo
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+# Two failure modes, opposite levers:
+#   jetsam / SIGKILL 137 — too many workers (4 × 8192 MB on a 24 GB laptop).
+#   V8 SIGTRAP 133     — heap cap below what a single evolve test needs
+#                         (~4060 MB used / 4192 MB limit on --wasm-scorer).
+# Default: keep an 8192 MB heap and drop DENO_JOBS so workers fit in
+# (RAM − 12 GiB). A 24 GB laptop gets 1 × 8192 MB.
+QUALITY_OS_RESERVE_MB=12288
+QUALITY_MAX_JOBS=2
+QUALITY_HEAP_MB=8192
+
+compute_test_jobs() {
+  if [ -n "${DENO_JOBS:-}" ]; then
+    echo "$DENO_JOBS"
+    return
+  fi
+  local total usable jobs
+  total="$(host_memory_mb)" || {
+    echo 1
+    return
+  }
+  usable=$((total - QUALITY_OS_RESERVE_MB))
+  if [ "$usable" -lt "$QUALITY_HEAP_MB" ]; then
+    echo 1
+    return
+  fi
+  jobs=$((usable / QUALITY_HEAP_MB))
+  if [ "$jobs" -gt "$QUALITY_MAX_JOBS" ]; then
+    jobs=$QUALITY_MAX_JOBS
+  fi
+  if [ "$jobs" -lt 1 ]; then
+    jobs=1
+  fi
+  echo "$jobs"
+}
+
+compute_test_heap_mb() {
+  if [ -n "${NEAT_AI_TEST_HEAP_MB:-}" ]; then
+    echo "$NEAT_AI_TEST_HEAP_MB"
+    return
+  fi
+  # Default jobs: always the 8192 MB the suite needs.
+  if [ -z "${DENO_JOBS:-}" ]; then
+    echo "$QUALITY_HEAP_MB"
+    return
+  fi
+  # Explicit DENO_JOBS: shrink the heap so workers still fit, but never
+  # below 2048 MB.
+  local total jobs usable heap
+  total="$(host_memory_mb)" || {
+    echo "$QUALITY_HEAP_MB"
+    return
+  }
+  jobs="${TEST_JOBS:-1}"
+  if [ "$jobs" -lt 1 ]; then
+    jobs=1
+  fi
+  usable=$((total - QUALITY_OS_RESERVE_MB))
+  if [ "$usable" -lt 2048 ]; then
+    usable=2048
+  fi
+  heap=$((usable / jobs))
+  if [ "$heap" -gt "$QUALITY_HEAP_MB" ]; then
+    heap=$QUALITY_HEAP_MB
+  fi
+  if [ "$heap" -lt 2048 ]; then
+    heap=2048
+  fi
+  echo "$heap"
+}
+
+TEST_JOBS="$(compute_test_jobs)"
+TEST_HEAP_MB="$(compute_test_heap_mb)"
+
+QUALITY_TRACE_LEAKS_MIN_RAM_MB=32768
+
+should_trace_leaks() {
+  case "${QUALITY_TRACE_LEAKS:-}" in
+    0) return 1 ;;
+    1) return 0 ;;
+  esac
+  local total
+  total="$(host_memory_mb)" || return 1
+  [ "$total" -ge "$QUALITY_TRACE_LEAKS_MIN_RAM_MB" ]
+}
+
+if should_trace_leaks; then
+  TRACE_LEAKS_STATE="on"
+else
+  TRACE_LEAKS_STATE="off"
+fi
+
 TOTAL=0
 [ "$RUN_DEPS" = true ] && TOTAL=$((TOTAL + 1))
 [ "$RUN_FMT" = true ] && TOTAL=$((TOTAL + 1))
@@ -188,6 +309,7 @@ if [ "$DRY_RUN" = true ]; then
     else
       progress "Running tests (Rust scorer mode)..."
     fi
+    echo "V8 heap ${TEST_HEAP_MB} MB × DENO_JOBS=${TEST_JOBS} (leak tracing: ${TRACE_LEAKS_STATE})"
   fi
   echo ""
   echo "Total: $TOTAL steps"
@@ -197,7 +319,7 @@ fi
 run_test_suite() {
   local scorer_mode="$1"
   local -a env_args=(
-    "DENO_JOBS=${DENO_JOBS:-4}"
+    "DENO_JOBS=${TEST_JOBS}"
     "NEAT_AI_DISCOVERY_DETERMINISTIC=1"
   )
 
@@ -215,18 +337,25 @@ run_test_suite() {
     env_args+=("NEAT_AI_NATIVE_CORE_BACKPROP=1")
   fi
 
-  env "${env_args[@]}" deno test \
-    --allow-read \
-    --allow-write \
-    --allow-net \
-    --allow-env \
-    --allow-run \
-    --trace-leaks \
-    --allow-ffi \
-    --v8-flags=--max-old-space-size=8192 \
-    --parallel \
-    --preload test/_preload.ts \
-    --config ./deno.json
+  echo "V8 heap ${TEST_HEAP_MB} MB × DENO_JOBS=${TEST_JOBS} (leak tracing: ${TRACE_LEAKS_STATE})"
+  local -a deno_args=(
+    --allow-read
+    --allow-write
+    --allow-net
+    --allow-env
+    --allow-run
+    --allow-ffi
+    --v8-flags=--max-old-space-size="${TEST_HEAP_MB}"
+    --parallel
+    --preload
+    test/_preload.ts
+    --config
+    ./deno.json
+  )
+  if [ "$TRACE_LEAKS_STATE" = "on" ]; then
+    deno_args+=(--trace-leaks)
+  fi
+  env "${env_args[@]}" deno test "${deno_args[@]}"
 }
 
 if [ "$RUN_DEPS" = true ]; then
