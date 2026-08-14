@@ -276,7 +276,9 @@ The quality gate runs (see `quality.sh` for the canonical step list):
 5. Type checking (`deno check`)
 6. Discovery library build (if `../NEAT-AI-Discovery` exists)
 7. WASM package sync from pinned NEAT-AI-core (`./build.sh --verify-only`)
-8. All tests in parallel with leak detection
+8. All tests in parallel (`DENO_JOBS` sized from host RAM so each worker can
+   keep an 8 GB heap; a 24 GB laptop gets one worker). `--trace-leaks` is on
+   only when the host has ≥ 32 GiB; set `QUALITY_TRACE_LEAKS=1` to force it.
 
 > [!WARNING]
 > Do not submit a pull request until `./quality.sh` passes cleanly. The CI

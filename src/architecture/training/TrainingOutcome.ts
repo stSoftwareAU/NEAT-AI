@@ -109,7 +109,10 @@ export function applyEpochOutcome(
 
   if (state.bestError !== undefined && state.bestError < error) {
     state.trainingFailures++;
-    if (!trainingStopped) {
+    if (
+      !trainingStopped &&
+      (state.trainingFailures === 1 || state.trainingFailures % 100 === 0)
+    ) {
       getLogger().warn(
         `Training ${blue(setup.ID)} made the error: ${
           yellow(state.bestError.toFixed(3))
