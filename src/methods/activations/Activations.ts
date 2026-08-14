@@ -10,8 +10,22 @@
 
 import { assert } from "@std/assert";
 import { ActivationError } from "@errors/ActivationError.ts";
+// best-practice-ignore: BP-91862f495db6 — HYPOT is deprecated but must stay
+// registered so pre-v2.0.0 creatures still deserialise and can be repaired /
+// upgraded to SQRT & SQUARE (see src/upgrade/UpgradeTwo.ts). Its
+// `mutationProbability` is 0, so evolution never selects it. Issue #3446.
 import { HYPOT } from "@deprecated/HYPOT.ts";
+// best-practice-ignore: BP-6b1e9a008759 — HYPOTv2 is deprecated but must stay
+// registered so pre-v2.0.0 creatures still deserialise and can be repaired /
+// upgraded to SQRT & SQUARE (see src/upgrade/UpgradeTwo.ts). Its
+// `mutationProbability` is 0, so evolution never selects it. Issue #3447.
 import { HYPOTv2 } from "@deprecated/HYPOTv2.ts";
+// best-practice-ignore: BP-619a32c95d3a — MEAN is deprecated but must stay
+// registered so already-serialised creatures (and CRISPR DNA fragments) that
+// carry it still deserialise. The replacement is an IDENTITY neuron with each
+// inbound weight divided by the inbound synapse count; there is no automatic
+// rewrite, so the registration is load-bearing. Its `mutationProbability` is 0,
+// so evolution never selects it. Issue #3448.
 import { MEAN } from "@deprecated/MEAN.ts";
 import type { AbstractActivationInterface } from "@methods/activations/AbstractActivationInterface.ts";
 import { IF } from "@methods/activations/aggregate/IF.ts";
@@ -218,7 +232,9 @@ const activationClasses = [
 
   HARD_TANH,
 
+  // best-practice-ignore: BP-91862f495db6 — deliberate; see import above.
   HYPOT,
+  // best-practice-ignore: BP-6b1e9a008759 — deliberate; see import above.
   HYPOTv2,
 
   IDENTITY,
@@ -231,6 +247,7 @@ const activationClasses = [
   LogSigmoid,
 
   MAXIMUM,
+  // best-practice-ignore: BP-619a32c95d3a — deliberate; see import above.
   MEAN,
   MINIMUM,
   Mish,

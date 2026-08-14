@@ -171,6 +171,25 @@ The Vibe Coder worker invokes [`./bump-deps.sh`](../bump-deps.sh) before
   quarantine window (default 24h, see `VIBE_BUMP_QUARANTINE_HOURS`). The
   quarantine dodges fast-flagged supply-chain attacks.
 
+The same 24h window applies to the two update paths that do not run the script
+(Issue #3667):
+
+- `deno.json` `minimumDependencyAge` makes a bare `deno outdated --update`
+  inherit it:
+
+  ```json
+  "minimumDependencyAge": {
+    "age": "P1D",
+    "exclude": ["jsr:@stsoftware/*", "npm:@stsoftware/*"]
+  }
+  ```
+
+- `renovate.json` sets `minimumReleaseAge: "24 hours"` for the ecosystems
+  Renovate manages (GitHub Actions in particular, which `bump-deps.sh` never
+  touches), disables Renovate's `deno` manager so it cannot race the
+  script-gated path, and exempts `stSoftwareAU/*` at 0h. Security bumps are
+  unaffected: Renovate exempts `vulnerabilityAlerts` from `minimumReleaseAge`.
+
 After bumping, the script runs a two-phase audit gate (a curated WASM smoke
 subset followed by `deno check`). If either phase fails the script exits
 non-zero and the bump is reverted. The behaviour is verified by

@@ -1,7 +1,7 @@
 /**
  * Tests for cross-platform GPU support via wgpu abstraction.
  *
- * Issue #1864: Verify GPU backend detection, CPU fallback behaviour,
+ * Issue #1864: Verify GPU backend detection, graceful degradation,
  * and cross-platform requireGpu logic.
  */
 import { assertEquals, assertExists, assertThrows } from "@std/assert";
@@ -94,7 +94,7 @@ Deno.test("requireGpu is omitted in ensureRustCombinedAnalysis so GPU guard is a
   assertExists(result.result, "Result should be returned");
 });
 
-Deno.test("CPU fallback: analysis succeeds with gpuUsed=false", () => {
+Deno.test("gpuUsed=false is still a successful, candidate-bearing result", () => {
   const parallelResult: RustParallelAnalysisResult = {
     success: true,
     synapseGpuUsed: false,
@@ -122,12 +122,12 @@ Deno.test("CPU fallback: analysis succeeds with gpuUsed=false", () => {
   assertEquals(
     converted.synapse!.gpuUsed,
     false,
-    "gpuUsed should be false for CPU fallback",
+    "gpuUsed should mirror what the library reported",
   );
   assertEquals(
     converted.synapse!.helpfulSynapses?.length,
     1,
-    "Helpful synapse candidates should still be returned on CPU",
+    "Helpful synapse candidates should be returned regardless of gpuUsed",
   );
 });
 

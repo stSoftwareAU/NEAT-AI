@@ -9,8 +9,10 @@
  * Results" checks and N Codecov uploads; merging them yields the single
  * consolidated report the acceptance criteria require.
  *
- * CLI usage:
- *   deno run --allow-read --allow-write scripts/merge_junit.ts \
+ * CLI usage — scope the write grant to the output path (Issue #3681); the CI
+ * job that runs this script also holds `secrets.CODECOV_TOKEN`, and an
+ * unrestricted grant would reach `$GITHUB_ENV` / `$GITHUB_PATH`:
+ *   deno run --allow-read --allow-write=junit.xml scripts/merge_junit.ts \
  *     --output=junit.xml junit-0.xml junit-1.xml ...
  */
 

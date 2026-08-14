@@ -7,7 +7,6 @@
  * handling cache key generation, cache lookup, and cache population.
  */
 import type { Creature } from "@creature";
-import { CreatureErrorImpactEstimator } from "@discovery/NeuronErrorImpactEstimator.ts";
 import type {
   RustAnalyzeAllResult,
   RustAnalyzeNeuronsResult,
@@ -148,17 +147,6 @@ export function ensureRustCombinedAnalysis(
     focusWireUuids.push(wireUuid);
   }
 
-  // Calculate each focus neuron's share of the creature's total error.
-  const impactEstimator = new CreatureErrorImpactEstimator(creature);
-  const focusNeuronErrorShares: Record<string, number> = {};
-  for (let i = 0; i < focusList.length; i++) {
-    const runtimeId = focusList[i]!;
-    const wireUuid = focusWireUuids[i]!;
-    focusNeuronErrorShares[wireUuid] = impactEstimator.getNeuronShare(
-      runtimeId,
-    );
-  }
-
   // Issue #2501: when a per-chunk deadline is supplied, give Rust the tighter
   // of the two so the synchronous FFI call self-aborts close to the per-chunk
   // budget instead of running for the full analysis window. JS cannot
@@ -182,7 +170,6 @@ export function ensureRustCombinedAnalysis(
       ? Math.max(25, focusList.length * 5)
       : undefined,
     analysisDeadlineMs: effectiveDeadlineMs,
-    focusNeuronErrorShares,
     // Issue #3432: hand Rust an explicit analysis memory budget. Without it
     // Discovery runs with no budget at all and the resident set can grow until
     // the host OOMs; JS cannot police this because `analyze_parallel` blocks

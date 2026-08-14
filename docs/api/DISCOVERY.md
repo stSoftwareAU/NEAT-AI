@@ -130,17 +130,19 @@ import type {
 import { DEFAULT_DISK_SPACE_CONFIG } from "@stsoftware/neat-ai";
 ```
 
-| Function                               | Purpose                                                              |
-| -------------------------------------- | -------------------------------------------------------------------- |
-| `checkDiskSpace(dir, config)`          | Returns `DiskSpaceCheckResult` with available/required MB and flags. |
-| `estimateRequiredDiskSpaceMB(opts)`    | Estimate required space for a discovery run before it starts.        |
-| `getAvailableDiskSpaceMB(dir)`         | Plain query for free space on the filesystem hosting `dir`.          |
-| `logDiscoveryDiskUsage(dir, logger)`   | Logs current discovery directory usage at the configured log level.  |
-| `measureDirectorySize(dir)`            | Recursive size measurement, returns `DirectorySizeResult`.           |
-| `preFlightDiskSpaceCheck(dir, config)` | Runs the gate that aborts evolution when free space is insufficient. |
+| Function                                                                                 | Purpose                                                                                      |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `checkDiskSpace(path, thresholdMB)`                                                      | Returns `DiskSpaceCheckResult` with available MB and the pass/fail flag for `thresholdMB`.   |
+| `estimateRequiredDiskSpaceMB(estimatedBytesPerSample, sampleCount, safetyMultiplier?)`   | Estimated megabytes for a recording run; `safetyMultiplier` defaults to `2.0`.               |
+| `getAvailableDiskSpaceMB(path)`                                                          | Plain query for free space on the filesystem hosting `path`.                                 |
+| `logDiscoveryDiskUsage(dirPath, milestone)`                                              | Logs `dirPath` usage tagged with a milestone label such as `"after recording"`.              |
+| `measureDirectorySize(dirPath)`                                                          | Recursive size measurement, returns `DirectorySizeResult`.                                   |
+| `preFlightDiskSpaceCheck(path, minFreeDiskMB, criticalFreeDiskMB, estimatedRequiredMB?)` | Warns below `minFreeDiskMB` and returns `false` below `criticalFreeDiskMB` to abort the run. |
 
-`DiskSpaceConfig` controls warning and critical thresholds; defaults are exposed
-as `DEFAULT_DISK_SPACE_CONFIG`.
+Every threshold is a **plain number of megabytes** — these functions take
+scalars, not a config object. `DiskSpaceConfig` is the shape used by
+`NeatOptions` to carry those thresholds, and its defaults are exposed as
+`DEFAULT_DISK_SPACE_CONFIG`.
 
 For a full guide, see [`docs/DISCOVERY_GUIDE.md`](../DISCOVERY_GUIDE.md) and
 [`docs/GPU_ACCELERATION.md`](../GPU_ACCELERATION.md).
@@ -149,8 +151,8 @@ For a full guide, see [`docs/DISCOVERY_GUIDE.md`](../DISCOVERY_GUIDE.md) and
 
 ## 🔗 Related topics
 
-- [Configuration reference](CONFIGURATION.md) — discovery fields and `diskSpace`
-  sub-config.
+- [Configuration reference](CONFIGURATION.md) — discovery fields and
+  `discoveryDiskSpace` sub-config.
 - [Compute / multithreading](COMPUTE.md) — WASM (WebAssembly) cache controls
   referenced when discovery proposes new topology.
 - [Errors](ERRORS.md) — discovery operations may surface `BreedExhaustionError`.

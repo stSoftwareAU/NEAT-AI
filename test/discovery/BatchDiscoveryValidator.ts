@@ -701,3 +701,34 @@ Deno.test(
     }
   },
 );
+
+Deno.test(
+  "BatchDiscoveryValidator module exports no dead plain-batch convenience function (Issue #3686)",
+  async () => {
+    const surface: Record<string, unknown> = await import(
+      "@discovery/BatchDiscoveryValidator.ts"
+    );
+
+    assertEquals(
+      Object.hasOwn(surface, "validateDiscoveryCandidatesBatch"),
+      false,
+      "The unused plain-batch wrapper must not be exported; callers use BatchDiscoveryValidator.validateBatch directly",
+    );
+
+    // The live surface stays intact.
+    assertExists(
+      surface.BatchDiscoveryValidator,
+      "BatchDiscoveryValidator class must remain exported",
+    );
+    assertEquals(
+      typeof surface.validateDiscoveryCandidatesBatchWithEnhanced,
+      "function",
+      "The enhanced convenience wrapper must remain exported",
+    );
+    assertEquals(
+      typeof surface.groupCandidatesByType,
+      "function",
+      "groupCandidatesByType must remain exported",
+    );
+  },
+);

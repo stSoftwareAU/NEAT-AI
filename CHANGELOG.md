@@ -99,6 +99,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 - `./quality.sh` now runs the test suite with the Rust `rust_scorer` enabled by
   default. Pass `--wasm-scorer` for a comparison run on the legacy WASM scorer.
+- **Issue #3674:** `deno.json` now declares the `Apache-2.0` SPDX identifier and
+  lists `LICENSE` in `publish.include`, so the published package carries its
+  licence text and metadata explicitly instead of relying on whatever
+  `deno publish` auto-includes.
 - **Issue #3427:** The `requestedOptions` echo (Issue #3422) no longer records
   non-serialisable options with a `"[function]"` / `"[unserialisable]"` marker —
   such entries are now dropped entirely, since the markers carry no tuning value
@@ -287,6 +291,66 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   passing `parallelEvaluation.maxConcurrentEvaluations` is now a `deno check`
   error. `parallelEvaluation.topologyGrouping` and the parent
   `parallelEvaluation` key are untouched.
+
+### Security
+
+- **Issue #3672 (CWE-1284, improper validation of a quantity used as a loop
+  bound):** `Creature.fromJSON` / `loadFrom` now validate the `input` and
+  `output` counts **before** the input-neuron allocation loop runs. `json.input`
+  bounded that loop straight from the file, and the `creatureValidate` check
+  that would have rejected a bad count ran only at the _end_ of the load — so
+  `"input": -1` looped forever (`while (i--)` tests before decrementing, so it
+  ran away from zero, allocating a `Neuron` and two Map entries per iteration
+  and never returning control to the caller), and `"input": 100000000` requested
+  a hundred million neurons before any check fired. Each count must now be an
+  integer in `[1, MAX_NEURON_COUNT]` (1,000,000 — the hidden/constant neuron id
+  floor in `NeuronId.ts`, above which input ids would collide) or loading throws
+  `ValidationError` (`reason: "OTHER"`). The loop itself is now an explicit
+  `for (let i = json.input - 1; i >= 0; i--)`.
+- **Issue #3671 (CWE-20, improper input validation):** `Creature.fromJSON` /
+  `loadFrom` now validate a synapse's resolved `from` / `to` endpoint. When
+  neither `fromUUID`/`toUUID` nor `fromId`/`toId` resolved, the loader fell
+  through to the raw parsed value with a bare `as SynapseInternal` assertion
+  (erased at runtime) — no type check and no bounds check — and that value is
+  template-interpolated into `new Function()` bodies by the activation compilers
+  (`activations[${from}] * ${weight}` in `NeuronActivation.ts`). It completes
+  the `bias` / `weight` hardening from Issue #2704: `from` and `to` were the
+  remaining two interpolated values without a guard. Each endpoint must now be
+  an integer in `[0, neuronCount)` or loading throws `TopologyError`
+  (`INVALID_SYNAPSE_REFERENCE`, a new `TopologyErrorReason`). This also closes a
+  missing bounds check — an out-of-range index previously surfaced downstream as
+  a bare `TypeError` from `creatureValidate` rather than a typed error. Not
+  exploitable as shipped (every production activation path routes through WASM,
+  so the compiled function is never invoked), but the sink is one refactor away
+  from being live.
+- **Issue #3670 (CWE-22, path traversal):** `Creature.fromJSON` / `loadFrom` now
+  validate the creature `uuid` taken from untrusted model JSON. The value was
+  previously copied out with a bare `as CreatureInternal` assertion (erased at
+  runtime), never recomputed — `CreatureUtil.makeUUID` short-circuits on any
+  truthy existing value — and then concatenated into filesystem paths, one of
+  which is deleted with `Deno.remove(..., { recursive: true })`. A shared
+  checkpoint carrying `"uuid": "../../.."` could therefore delete a directory
+  outside the discovery base. A present `uuid` must now match the canonical
+  8-4-4-4-12 hexadecimal UUID layout or loading throws `ValidationError`
+  (`reason: "OTHER"`); an absent `uuid` is unchanged, since `exportJSON()` omits
+  it by design. Validating at the deserialisation boundary closes the discovery
+  temp-directory, trace-store, failed-training-dump, and score-file sinks at
+  once. As defence in depth, `DiscoverStructure` also asserts its temp directory
+  resolves inside its base directory before creating or removing it. **Breaking
+  only for callers that persisted a non-UUID creature `uuid`.**
+- **Issue #3680 (CWE-353, missing integrity check):** WASM activation bundle
+  bytes are now verified against a pinned SHA-256 **at runtime**, not only at
+  build time. `deno.json` `neatCore.assetSha256` pins the release _tarball_ and
+  is checked by `build.sh` alone, so bytes read back from the
+  environment-controlled disk cache (`NEAT_AI_WASM_CACHE_DIR` / `XDG_CACHE_HOME`
+  / `$HOME/.cache/neat-ai/wasm`) were instantiated unchecked — anyone able to
+  write there could plant a `<key>.wasm` file that ran on the next start.
+  `./build.sh` now also generates `src/wasm/WasmBundleSha256.ts`, whose
+  `EXPECTED_WASM_BUNDLE_SHA256` constant travels with the published package, and
+  `WasmBundleCache` compares it on both the cache-hit and post-fetch paths: a
+  poisoned cache entry is logged, deleted, and re-fetched, while substituted
+  network bytes are a hard error that is never cached or instantiated. The local
+  (`file:`) build path is unchanged.
 
 ## [5.2.0] - 2026-05-30
 

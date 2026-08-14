@@ -1,3 +1,18 @@
+/**
+ * @module
+ *
+ * Estimates, per neuron, the largest share of the creature's total error that
+ * neuron could remove if its own error went to zero — a cheap, purely
+ * structural upper bound computed by walking backwards from the outputs and
+ * splitting each neuron's error share across its inbound synapses in proportion
+ * to their absolute weights.
+ *
+ * Discovery uses these shares to decide where structural change is worth
+ * proposing: a neuron that can only influence a fraction of a percent of the
+ * error is not worth a candidate. Reach for it when ranking neurons by
+ * potential rather than by measured contribution — it needs only the topology
+ * and weights, no forward pass or trace.
+ */
 import type { Creature } from "@creature";
 
 const EPSILON = 1e-9;

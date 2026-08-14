@@ -108,6 +108,13 @@ const CALL_SITES: { workflow: string; job: string; verifyWasm: boolean }[] = [
     job: "publish",
     verifyWasm: true,
   },
+  // Issue #3668 split SBOM generation out of the OIDC-bearing publish job. It
+  // only reads deno.lock, so it opts out of the WASM sync.
+  {
+    workflow: ".github/workflows/publish.yml",
+    job: "sbom",
+    verifyWasm: false,
+  },
 ];
 
 async function readJob(workflow: string, jobId: string): Promise<Job> {

@@ -129,11 +129,34 @@ with existing trained models.
 > will continue to function correctly, but you should plan to migrate away from
 > them in future training runs.
 
-| Name                                    | Output Range | Replacement                | Why Deprecated                                      |
-| :-------------------------------------- | :----------- | :------------------------- | :-------------------------------------------------- |
-| [HYPOT](../src/deprecated/HYPOT.ts)     | (-inf, inf)  | Standard activation + bias | Expensive, unpredictable behaviour as a squash      |
-| [HYPOTv2](../src/deprecated/HYPOTv2.ts) | [0, inf)     | Standard activation + bias | Same issues as HYPOT                                |
-| [MEAN](../src/deprecated/MEAN.ts)       | (-inf, inf)  | Normal neuron with weights | A standard neuron can replicate averaging behaviour |
+`HYPOT` is rewritten automatically: loading a pre-v2.0.0 creature runs
+[`UpgradeTwo`](../src/upgrade/UpgradeTwo.ts), which feeds each inbound synapse
+through a `SQUARE` neuron, turns the `HYPOT` neuron itself into `SQRT`, and
+moves its bias onto a following `IDENTITY` neuron — reproducing
+`hypot(…) + bias` from standard activations. The registration and the compaction
+support for `HYPOT` are therefore retained deliberately so those legacy
+creatures still load and compact (Issue #3446).
+
+`HYPOTv2` is rewritten automatically: loading a pre-v2.0.0 creature runs
+[`UpgradeTwo`](../src/upgrade/UpgradeTwo.ts), which replaces each `HYPOTv2`
+neuron with an equivalent `SQRT` neuron fed by `SQUARE` neurons. The
+registration and the compaction support for `HYPOTv2` are therefore retained
+deliberately so those legacy creatures still load and compact (Issue #3447).
+
+`MEAN` has **no** automatic rewrite. Its replacement is an `IDENTITY` neuron
+whose inbound weights are each divided by the neuron's inbound synapse count —
+`MEAN` computes `Σ(wᵢ·xᵢ)/n + bias`, which is exactly `IDENTITY` over weights
+`wᵢ/n`. Migrate by hand when re-training; note the two forms only stay
+equivalent while `n` is fixed, so evolution adding a synapse changes a `MEAN`
+neuron's scale but not the `IDENTITY` form's. Because nothing rewrites `MEAN`
+for you, its registry entry and compaction support are retained deliberately so
+creatures still carrying it keep loading and compacting (Issue #3448).
+
+| Name                                    | Output Range | Replacement                              | Why Deprecated                                      |
+| :-------------------------------------- | :----------- | :--------------------------------------- | :-------------------------------------------------- |
+| [HYPOT](../src/deprecated/HYPOT.ts)     | (-inf, inf)  | `SQRT` + `SQUARE` neurons                | Expensive, unpredictable behaviour as a squash      |
+| [HYPOTv2](../src/deprecated/HYPOTv2.ts) | [0, inf)     | `SQRT` + `SQUARE` neurons                | Same issues as HYPOT                                |
+| [MEAN](../src/deprecated/MEAN.ts)       | (-inf, inf)  | `IDENTITY` neuron, inbound weights ÷ `n` | A standard neuron can replicate averaging behaviour |
 
 ### 🧮 Output-Only Activations (Issue #2793)
 

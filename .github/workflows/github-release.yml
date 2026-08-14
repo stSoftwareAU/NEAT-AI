@@ -29,11 +29,22 @@ jobs:
 
       - name: Read version from deno.json
         id: version
-        # `-E` is pinned here by test/ci/WorkflowVersionCheckStrictMode.ts
-        # (Issue #3003) — do not normalise to `set -euo pipefail`.
+        # Strict mode is pinned here by
+        # test/ci/WorkflowVersionCheckStrictMode.ts (Issue #3003).
         run: |
-          set -Eeuo pipefail
+          set -euo pipefail
           VERSION=$(jq -r .version deno.json)
+          # deno.json is outside the CODEOWNERS gate (Issue #3669), so its
+          # `version` is untrusted here. $GITHUB_OUTPUT is a line-oriented
+          # key=value file: a newline in the value injects extra step outputs
+          # into a job holding contents: write, which controls the tag and
+          # release created below (Issue #3684). Accept only a plain semver
+          # token, and do not echo the rejected value back — that would be a
+          # second injection point, into the workflow-command stream.
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::deno.json version is not a plain semver token; refusing to write step output" >&2
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release

@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertIsError } from "@std/assert";
 import {
   ConfigurationError,
   type ConfigurationErrorReason,
@@ -52,20 +52,6 @@ Deno.test("ConfigurationError - CROSS_FIELD_VALIDATION reason", () => {
   );
   assertIsError(error, ConfigurationError);
   assertEquals(error.reason, "CROSS_FIELD_VALIDATION");
-});
-
-Deno.test("ConfigurationError - is instanceof Error", () => {
-  const error = new ConfigurationError("test", "INVALID_TYPE");
-  assert(error instanceof Error);
-  assert(error instanceof ConfigurationError);
-});
-
-Deno.test("ConfigurationError - can be caught selectively", () => {
-  const fn = () => {
-    throw new ConfigurationError("bad config", "OUT_OF_RANGE");
-  };
-
-  assertThrows(fn, ConfigurationError);
 });
 
 Deno.test("ConfigurationError - reason is typed", () => {

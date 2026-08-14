@@ -33,6 +33,18 @@ const BUNDLE_URL = new URL(
   "https://jsr.io/@stsoftware/neat-ai/9.9.9/wasm_activation/pkg/wasm_activation_bg.wasm",
 );
 
+/**
+ * Lowercase hex SHA-256 of the given bytes. Issue #3680 made the loader verify
+ * every remote/cached bundle against a pinned digest, so these fixtures declare
+ * the digest of their own payload.
+ */
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /** A monotonic clock returning a fixed sequence of values (deterministic ms). */
 function fakeClock(values: number[]): () => number {
   let i = 0;
@@ -67,6 +79,7 @@ Deno.test("WasmInitDiagnostics: cache hit reports outcome/dir/bytes/elapsed", as
         fetchFn: denyFetch(),
         sleepFn: noSleep,
         now: fakeClock([100, 103]),
+        expectedSha256: await sha256Hex(seeded),
       },
     );
 
@@ -90,7 +103,13 @@ Deno.test("WasmInitDiagnostics: cache miss fetches, persists, reports miss", asy
 
     const { bytes, diagnostics } = await loadWasmBundleBytesWithDiagnostics(
       BUNDLE_URL,
-      { cacheDir, fetchFn, sleepFn: noSleep, now: fakeClock([0, 42]) },
+      {
+        cacheDir,
+        fetchFn,
+        sleepFn: noSleep,
+        now: fakeClock([0, 42]),
+        expectedSha256: await sha256Hex(payload),
+      },
     );
 
     assertEquals(bytes, payload);
@@ -120,7 +139,13 @@ Deno.test("WasmInitDiagnostics: caching disabled fetches and reports a reason", 
   const { bytes, diagnostics } = await loadWasmBundleBytesWithDiagnostics(
     BUNDLE_URL,
     // cacheDir: null forces the disabled branch deterministically.
-    { cacheDir: null, fetchFn, sleepFn: noSleep, now: fakeClock([0, 7]) },
+    {
+      cacheDir: null,
+      fetchFn,
+      sleepFn: noSleep,
+      now: fakeClock([0, 7]),
+      expectedSha256: await sha256Hex(payload),
+    },
   );
 
   assertEquals(bytes, payload);

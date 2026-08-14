@@ -29,13 +29,18 @@ import type {
   SynapseInternal,
   SynapseTrace,
 } from "@architecture/SynapseInterfaces.ts";
-import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
+import {
+  DEFAULT_ANCESTRY_DEPTH,
+  type MemeticInterface,
+} from "@blackbox/MemeticInterface.ts";
 import {
   isMemeticWireData,
   type MemeticWeightEntryWire,
   type MemeticWireData,
 } from "@blackbox/MemeticWireData.ts";
 import { convertMemeticExportToWireJson } from "@creature/MemeticWireExport.ts";
+import { assertValidCreatureUuid } from "@creature/CreatureUuidValidation.ts";
+import { assertValidCreatureShape } from "@creature/CreatureShapeValidation.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { isRecord } from "@utils/TypeGuards.ts";
 import {
@@ -54,6 +59,50 @@ import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
 
 /** Keys that must never be copied from untrusted data to prevent prototype pollution. */
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+/**
+ * Issue #3671: validate a resolved synapse endpoint index.
+ *
+ * `from` and `to` are template-interpolated into `new Function()` bodies by
+ * the activation compilers (`activations[${from}] * ${weight}` in
+ * `NeuronActivation.ts`), so — like `bias` (Issue #2704) and `weight` — they
+ * must never reach the compiler straight from untrusted model JSON. The
+ * `SynapseInternal` fallback in `loadFrom` copies the parsed value verbatim
+ * (`as SynapseInternal` is erased at runtime and checks nothing), so the guard
+ * belongs here.
+ *
+ * `Number.isInteger` rejects strings, `NaN`, `Infinity` and fractions in one
+ * test; the range check simultaneously closes the missing bounds check that
+ * previously surfaced downstream as a bare `TypeError`.
+ *
+ * @param value - The resolved endpoint index
+ * @param endpoint - Which endpoint is being validated, for the message
+ * @param synapseIndex - Position of the synapse in the JSON, for the message
+ * @param neuronCount - Number of neurons loaded; valid indices are `[0, neuronCount)`
+ * @returns The validated index
+ */
+function assertSynapseEndpoint(
+  value: number | undefined,
+  endpoint: "from" | "to",
+  synapseIndex: number,
+  neuronCount: number,
+): number {
+  if (
+    typeof value !== "number" || !Number.isInteger(value) ||
+    value < 0 || value >= neuronCount
+  ) {
+    throw new TopologyError(
+      `Synapse at index ${synapseIndex}: '${endpoint}' must be an integer ` +
+        `neuron index in [0, ${neuronCount}), got ${
+          typeof value === "string"
+            ? `string ${JSON.stringify(value)}`
+            : String(value)
+        }`,
+      "INVALID_SYNAPSE_REFERENCE",
+    );
+  }
+  return value;
+}
 
 /**
  * Safely copies own properties from source to target, skipping prototype-polluting keys.
@@ -224,63 +273,93 @@ export function traceJSON(creature: Creature): CreatureTrace {
   return exportCreature as CreatureTrace;
 }
 
+/** True when `key` is a wire UUID this creature can resolve to an integer id. */
+function keyNeedsConversion(
+  key: string,
+  uuidToIntId: Map<string, number>,
+): boolean {
+  return isNaN(Number(key)) && uuidToIntId.has(key);
+}
+
 /**
- * Converts wire memetic JSON to runtime integer neuron IDs.
- * Wire exports use string bias keys and a `weights` array of
- * `{ fromUUID, toUUID, weight }`; legacy object maps are still accepted.
+ * True when this snapshot carries wire identities that must be rewritten to
+ * runtime integer ids: UUID bias/weight keys, or the wire `weights` array.
  */
-function convertMemeticToIntIds(
+function snapshotNeedsConversion(
   memetic: MemeticWireData,
-  creature: Creature,
-  uuidToIndex: Map<string, number>,
-): MemeticInterface | MemeticWireData {
-  if (!memetic) return memetic;
+  uuidToIntId: Map<string, number>,
+): boolean {
+  if (Array.isArray(memetic.weights)) return true;
 
-  const uuidToIntId = new Map<string, number>();
-  for (const [uuid, index] of uuidToIndex) {
-    if (index < creature.neurons.length) {
-      uuidToIntId.set(uuid, creature.neurons[index].id);
-    }
-  }
-
-  const needsConversion = (key: string): boolean => {
-    return isNaN(Number(key)) && uuidToIntId.has(key);
-  };
-
-  // Check if any keys need conversion
-  let hasUuidKeys = false;
   if (memetic.biases) {
     for (const key of Object.keys(memetic.biases)) {
-      if (needsConversion(key)) {
-        hasUuidKeys = true;
-        break;
-      }
+      if (keyNeedsConversion(key, uuidToIntId)) return true;
     }
   }
-  const weightsAreWireArray = Array.isArray(memetic.weights);
 
-  if (
-    !hasUuidKeys && memetic.weights && !weightsAreWireArray
-  ) {
+  if (memetic.weights) {
     for (
       const key of Object.keys(
         memetic.weights as Record<string, MemeticWeightEntryWire[]>,
       )
     ) {
-      if (needsConversion(key)) {
-        hasUuidKeys = true;
-        break;
-      }
+      if (keyNeedsConversion(key, uuidToIntId)) return true;
     }
   }
 
-  if (!hasUuidKeys && !weightsAreWireArray) return memetic;
+  return false;
+}
 
-  // Deep clone to avoid mutating the original JSON, then validate
-  const parsed: unknown = JSON.parse(JSON.stringify(memetic));
-  if (!isMemeticWireData(parsed)) return memetic;
-  const result: MemeticWireData = parsed;
+/**
+ * Issue #3682: bound the `ancestry` nesting arriving from untrusted model JSON.
+ *
+ * The write side (`addToAncestry` in `@blackbox/MemeticTrajectory.ts`) keeps at
+ * most {@link DEFAULT_ANCESTRY_DEPTH} ancestors, so anything this codebase
+ * produces is already within the bound. The read side used to accept unbounded
+ * nesting, which a hand-written model file could exploit to burn CPU and then
+ * overflow the stack. Deeper chains are truncated — matching the writer's
+ * circular-buffer semantics — rather than rejected, so existing files still
+ * load.
+ *
+ * Only the retained levels are shallow-copied, and the original object is
+ * returned untouched when the chain is already within the bound, so the common
+ * case allocates nothing and the caller's JSON is never mutated.
+ *
+ * @param node - Snapshot at the current level
+ * @param remainingDepth - Nested ancestry levels still permitted below `node`
+ */
+function truncateAncestryDepth(
+  node: MemeticWireData,
+  remainingDepth: number,
+): MemeticWireData {
+  const ancestry = node.ancestry;
+  if (!Array.isArray(ancestry) || ancestry.length === 0) return node;
 
+  if (remainingDepth <= 0) {
+    const truncated: MemeticWireData = { ...node };
+    delete truncated.ancestry;
+    return truncated;
+  }
+
+  let changed = false;
+  const bounded = ancestry.map((ancestor) => {
+    if (!isRecord(ancestor)) return ancestor;
+    const next = truncateAncestryDepth(ancestor, remainingDepth - 1);
+    if (next !== ancestor) changed = true;
+    return next;
+  });
+
+  return changed ? { ...node, ancestry: bounded } : node;
+}
+
+/**
+ * Rewrites one snapshot's `biases` and `weights` to runtime integer ids,
+ * in place. The caller owns a private clone, so mutation is safe here.
+ */
+function convertSnapshotInPlace(
+  result: MemeticWireData,
+  uuidToIntId: Map<string, number>,
+): void {
   // Convert biases keys
   if (result.biases) {
     const newBiases: Record<number, number> = {};
@@ -298,65 +377,122 @@ function convertMemeticToIntIds(
     (result as unknown as Record<string, unknown>).biases = newBiases;
   }
 
-  // Convert weights: wire array { fromUUID, toUUID, weight } or UUID-keyed map
-  if (result.weights) {
-    const newWeights: Record<number, MemeticWeightEntryWire[]> = {};
-    if (Array.isArray(result.weights)) {
-      for (const row of result.weights) {
-        if (
-          row === null || row === undefined || typeof row.weight !== "number"
-        ) {
-          continue;
-        }
-        const fu = row.fromUUID;
-        const tu = row.toUUID;
-        if (typeof fu !== "string" || typeof tu !== "string") continue;
-        const fromInt = uuidToIntId.get(fu);
-        const toInt = uuidToIntId.get(tu);
-        if (fromInt === undefined || toInt === undefined) continue;
-        if (!newWeights[fromInt]) newWeights[fromInt] = [];
-        newWeights[fromInt].push({ toId: toInt, weight: row.weight });
-      }
-      (result as unknown as Record<string, unknown>).weights = newWeights;
-    } else {
-      const weightMap = result.weights as Record<
-        string,
-        MemeticWeightEntryWire[]
-      >;
-      for (const key of Object.keys(weightMap)) {
-        const intId = uuidToIntId.get(key);
-        const numericKey = intId !== undefined ? intId : Number(key);
-        if (isNaN(numericKey)) continue;
+  if (!result.weights) return;
 
-        const entries = weightMap[key].map(
-          (entry: MemeticWeightEntryWire) => {
-            const newEntry: MemeticWeightEntryWire = { ...entry };
-            if (typeof newEntry.toUUID === "string") {
-              const toIntId = uuidToIntId.get(newEntry.toUUID);
-              if (toIntId !== undefined) {
-                newEntry.toId = toIntId;
-                delete newEntry.toUUID;
-              }
-            }
-            return newEntry;
-          },
-        );
-        newWeights[numericKey] = entries;
+  // Convert weights: wire array { fromUUID, toUUID, weight } or UUID-keyed map
+  const newWeights: Record<number, MemeticWeightEntryWire[]> = {};
+  if (Array.isArray(result.weights)) {
+    for (const row of result.weights) {
+      if (
+        row === null || row === undefined || typeof row.weight !== "number"
+      ) {
+        continue;
       }
-      (result as unknown as Record<string, unknown>).weights = newWeights;
+      const fu = row.fromUUID;
+      const tu = row.toUUID;
+      if (typeof fu !== "string" || typeof tu !== "string") continue;
+      const fromInt = uuidToIntId.get(fu);
+      const toInt = uuidToIntId.get(tu);
+      if (fromInt === undefined || toInt === undefined) continue;
+      if (!newWeights[fromInt]) newWeights[fromInt] = [];
+      newWeights[fromInt].push({ toId: toInt, weight: row.weight });
+    }
+  } else {
+    const weightMap = result.weights as Record<
+      string,
+      MemeticWeightEntryWire[]
+    >;
+    for (const key of Object.keys(weightMap)) {
+      const intId = uuidToIntId.get(key);
+      const numericKey = intId !== undefined ? intId : Number(key);
+      if (isNaN(numericKey)) continue;
+
+      const entries = weightMap[key].map(
+        (entry: MemeticWeightEntryWire) => {
+          const newEntry: MemeticWeightEntryWire = { ...entry };
+          if (typeof newEntry.toUUID === "string") {
+            const toIntId = uuidToIntId.get(newEntry.toUUID);
+            if (toIntId !== undefined) {
+              newEntry.toId = toIntId;
+              delete newEntry.toUUID;
+            }
+          }
+          return newEntry;
+        },
+      );
+      newWeights[numericKey] = entries;
+    }
+  }
+  (result as unknown as Record<string, unknown>).weights = newWeights;
+}
+
+/**
+ * Converts a snapshot and its (already depth-bounded) ancestry chain in place.
+ *
+ * `depth` is a second line of defence behind {@link truncateAncestryDepth}: it
+ * refuses to descend past {@link DEFAULT_ANCESTRY_DEPTH} even if a future
+ * caller hands over an untruncated tree.
+ */
+function convertSnapshotTree(
+  node: MemeticWireData,
+  uuidToIntId: Map<string, number>,
+  depth: number,
+): void {
+  convertSnapshotInPlace(node, uuidToIntId);
+
+  const ancestry = node.ancestry;
+  if (!Array.isArray(ancestry)) return;
+  if (depth >= DEFAULT_ANCESTRY_DEPTH) {
+    delete node.ancestry;
+    return;
+  }
+
+  for (const ancestor of ancestry) {
+    // A snapshot that carries no wire identities is left exactly as it
+    // arrived — and, as before, its own ancestry is not descended into.
+    if (
+      isMemeticWireData(ancestor) &&
+      snapshotNeedsConversion(ancestor, uuidToIntId)
+    ) {
+      convertSnapshotTree(ancestor, uuidToIntId, depth + 1);
+    }
+  }
+}
+
+/**
+ * Converts wire memetic JSON to runtime integer neuron IDs.
+ * Wire exports use string bias keys and a `weights` array of
+ * `{ fromUUID, toUUID, weight }`; legacy object maps are still accepted.
+ *
+ * Issue #3682: `ancestry` nesting is bounded to {@link DEFAULT_ANCESTRY_DEPTH}
+ * — the same cap the write side applies — and the deep clone is taken once, at
+ * this entry point, so depth no longer multiplies serialisation cost.
+ */
+function convertMemeticToIntIds(
+  memetic: MemeticWireData,
+  creature: Creature,
+  uuidToIndex: Map<string, number>,
+): MemeticInterface | MemeticWireData {
+  if (!memetic) return memetic;
+
+  const uuidToIntId = new Map<string, number>();
+  for (const [uuid, index] of uuidToIndex) {
+    if (index < creature.neurons.length) {
+      uuidToIntId.set(uuid, creature.neurons[index].id);
     }
   }
 
-  // Convert ancestry if present
-  if (result.ancestry && Array.isArray(result.ancestry)) {
-    result.ancestry = result.ancestry.map((ancestor: MemeticWireData) => {
-      return convertMemeticToIntIds(
-        ancestor,
-        creature,
-        uuidToIndex,
-      ) as MemeticWireData;
-    });
-  }
+  // Bound the untrusted ancestry chain before anything walks or clones it.
+  const bounded = truncateAncestryDepth(memetic, DEFAULT_ANCESTRY_DEPTH);
+
+  if (!snapshotNeedsConversion(bounded, uuidToIntId)) return bounded;
+
+  // One deep clone of the now-bounded tree, so the caller's JSON is untouched.
+  const parsed: unknown = JSON.parse(JSON.stringify(bounded));
+  if (!isMemeticWireData(parsed)) return bounded;
+  const result: MemeticWireData = parsed;
+
+  convertSnapshotTree(result, uuidToIntId, 0);
 
   return result;
 }
@@ -433,7 +569,17 @@ export function loadFrom(
   const sourceTag = source ?? "loadFrom";
   const throwOnRecurrent: ThrowOnRecurrent = options?.throwOnRecurrent ??
     "forwardOnly";
-  creature.uuid = (json as CreatureInternal).uuid;
+  // Issue #3672: `json.input` bounds the input-neuron allocation loop below,
+  // so it must be checked before that loop rather than by the `creatureValidate`
+  // pass at the end of this function.
+  assertValidCreatureShape(json.input, json.output, sourceTag);
+  // Issue #3670: the uuid arrives from untrusted JSON and is later used as a
+  // filesystem path component (discovery temp dirs, trace stores) — validate
+  // it once here so every downstream sink is covered.
+  creature.uuid = assertValidCreatureUuid(
+    (json as CreatureInternal).uuid,
+    sourceTag,
+  );
   if (json.semanticVersion) {
     creature.semanticVersion = json.semanticVersion;
     const major = Number.parseInt(
@@ -462,8 +608,9 @@ export function loadFrom(
   const uuidToIndex = new Map<string, number>();
   const numericIdToIndex = new Map<number, number>();
 
-  let i = json.input;
-  while (i--) {
+  // Issue #3672: an explicit bound, not `while (i--)` — that shape decrements
+  // away from zero and never terminates for a negative count.
+  for (let i = json.input - 1; i >= 0; i--) {
     const neuronId = inputNeuronId(i);
     numericIdToIndex.set(neuronId, i);
     uuidToIndex.set(`input-${i}`, i);
@@ -553,6 +700,11 @@ export function loadFrom(
     creature.neurons[pos++] = n;
   }
 
+  // `pos` is now the true neuron count: inputs are pre-filled at 0..input-1 and
+  // every non-input neuron was appended after them. `json.neurons.length` is
+  // not equivalent — the export format omits input neurons.
+  const loadedNeuronCount = pos;
+
   const synapses = json.synapses;
   let isSorted = true;
   let lastFrom = -1;
@@ -591,6 +743,7 @@ export function loadFrom(
         }, synapse[${i}/${synapseCount}], uuidToIndex size ${uuidToIndex.size}`,
       );
     }
+    from = assertSynapseEndpoint(from, "from", i, loadedNeuronCount);
 
     let to: number | undefined;
     if (typeof se.toUUID === "string") {
@@ -610,6 +763,7 @@ export function loadFrom(
         }`,
       );
     }
+    to = assertSynapseEndpoint(to, "to", i, loadedNeuronCount);
 
     const recurrentGateFires = throwOnRecurrent === "always"
       ? from! >= to!
@@ -815,6 +969,11 @@ export function fromJSON(
   if (rawVersion && rawVersion.startsWith("0.")) {
     json = upgradeOne(json);
   }
+
+  // Issue #3672: the lazy constructor stores `input`/`output` unchecked, so
+  // reject a hostile shape before it is stored — `loadFrom` re-checks for
+  // callers that reach it directly.
+  assertValidCreatureShape(json.input, json.output, sourceTag);
 
   const creature = new CreatureClass(json.input, json.output, {
     lazyInitialization: true,

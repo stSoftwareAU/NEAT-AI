@@ -13,7 +13,7 @@
  * arbitrary JS in the host process.
  */
 
-import { assertThrows } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "@creature";
 import { fromJSON } from "@creature/CreatureSerialization.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
@@ -137,6 +137,108 @@ Deno.test("CreatureSerialization.fromJSON rejects missing weight on synapse", ()
     () => fromJSON(json as never, false, Creature),
     TopologyError,
     "weight",
+  );
+});
+
+/**
+ * Issue #3671 — `from`/`to` are the third and fourth values interpolated into
+ * `new Function()` bodies (`activations[${from}] * ${weight}` in
+ * NeuronActivation.ts). Prior to the fix the `SynapseInternal` fallback in
+ * `loadFrom` copied the parsed value verbatim with no type or range check.
+ */
+
+/** Skeleton whose synapses use raw integer indices (the `SynapseInternal` fallback path). */
+function buildIndexSkeleton(): Record<string, unknown> {
+  return {
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-test-1", bias: 0.1, squash: "TANH" },
+      { type: "output", uuid: "output-0", bias: 0.2, squash: "IDENTITY" },
+    ],
+    // Indices: 0,1 = inputs, 2 = hidden, 3 = output.
+    synapses: [
+      { from: 0, to: 2, weight: 0.5 },
+      { from: 1, to: 2, weight: -0.25 },
+      { from: 2, to: 3, weight: 0.75 },
+    ],
+  };
+}
+
+Deno.test("CreatureSerialization.fromJSON accepts well-formed integer synapse indices", () => {
+  // Guard the happy path: the new validation must not reject legitimate
+  // internal round-trips that carry raw integer endpoints.
+  const creature = fromJSON(buildIndexSkeleton() as never, false, Creature);
+  assertEquals(creature.synapses.length, 3);
+});
+
+Deno.test("CreatureSerialization.fromJSON rejects non-number synapse 'from' (string injection payload)", () => {
+  const json = buildIndexSkeleton();
+  // Attacker payload closing `activations[${from}]` and appending arbitrary JS.
+  (json.synapses as Array<Record<string, unknown>>)[0].from =
+    "0]; maliciousJsCode(); //" as unknown as number;
+
+  assertThrows(
+    () => fromJSON(json as never, false, Creature),
+    TopologyError,
+    "'from' must be an integer neuron index",
+  );
+});
+
+Deno.test("CreatureSerialization.fromJSON rejects non-number synapse 'to' (string injection payload)", () => {
+  const json = buildIndexSkeleton();
+  (json.synapses as Array<Record<string, unknown>>)[2].to =
+    "3]; maliciousJsCode(); //" as unknown as number;
+
+  assertThrows(
+    () => fromJSON(json as never, false, Creature),
+    TopologyError,
+    "'to' must be an integer neuron index",
+  );
+});
+
+Deno.test("CreatureSerialization.fromJSON rejects fractional synapse 'from'", () => {
+  const json = buildIndexSkeleton();
+  (json.synapses as Array<Record<string, unknown>>)[0].from = 0.5;
+
+  assertThrows(
+    () => fromJSON(json as never, false, Creature),
+    TopologyError,
+    "'from' must be an integer neuron index",
+  );
+});
+
+Deno.test("CreatureSerialization.fromJSON rejects NaN synapse 'to'", () => {
+  const json = buildIndexSkeleton();
+  (json.synapses as Array<Record<string, unknown>>)[2].to = Number.NaN;
+
+  assertThrows(
+    () => fromJSON(json as never, false, Creature),
+    TopologyError,
+    "'to' must be an integer neuron index",
+  );
+});
+
+Deno.test("CreatureSerialization.fromJSON rejects negative synapse 'from'", () => {
+  const json = buildIndexSkeleton();
+  (json.synapses as Array<Record<string, unknown>>)[0].from = -1;
+
+  assertThrows(
+    () => fromJSON(json as never, false, Creature),
+    TopologyError,
+    "'from' must be an integer neuron index",
+  );
+});
+
+Deno.test("CreatureSerialization.fromJSON rejects out-of-range synapse 'to'", () => {
+  const json = buildIndexSkeleton();
+  // Only 4 neurons exist (indices 0..3); 99 is past the end.
+  (json.synapses as Array<Record<string, unknown>>)[2].to = 99;
+
+  assertThrows(
+    () => fromJSON(json as never, false, Creature),
+    TopologyError,
+    "'to' must be an integer neuron index",
   );
 });
 

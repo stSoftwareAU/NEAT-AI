@@ -25,6 +25,7 @@ import {
   DEFAULT_RUST_FLUSH_RECORDS,
 } from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
 import { emptyDirSync, ensureDirSync } from "@std/fs";
+import { assertPathContained } from "@utils/PathContainment.ts";
 import {
   cleanOrphanedDiscoveryDirs,
   createDiscoveryLockFile,
@@ -188,6 +189,10 @@ export class DiscoverStructureBase {
       // If env access is restricted, fall back to the default base directory.
     }
     this.tempDir = `${baseDir}/${creature.uuid}`;
+    // Issue #3670: defence in depth — this directory is created, written to,
+    // and later removed recursively, so a uuid carrying path separators must
+    // never let it escape the discovery base directory.
+    assertPathContained(baseDir, this.tempDir, "Discovery temp directory");
     this.indicesFilePath = `${this.tempDir}/selected_indices.json`;
     this.textDecoder = new TextDecoder();
     this.discoveryID = creature.uuid;

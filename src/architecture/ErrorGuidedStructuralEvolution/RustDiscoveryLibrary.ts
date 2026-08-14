@@ -624,9 +624,11 @@ export function getDiscoveryVersion(): string | undefined {
 /**
  * Checks whether the loaded Rust discovery library reports a usable GPU.
  *
- * Returns false (and logs an info message once) when the probe fails or reports
- * that no GPU is available on this worker. Discovery will still function via
- * CPU fallback — GPU accelerates analysis but is not required.
+ * Returns false (and logs a warning once) when the probe fails or reports that
+ * no GPU is available on this worker. Discovery's synapse/neuron analysis is
+ * GPU-only (Issue #3692): a false result means `analyzeParallel()` will refuse
+ * every analysis pass, so discovery yields no proposals on this host. Evolution
+ * itself is unaffected.
  */
 export function isRustGpuAvailable(): boolean {
   if (!isRustLibraryAvailable()) {
@@ -641,9 +643,9 @@ export function isRustGpuAvailable(): boolean {
       if (!rustGpuWarningEmitted) {
         rustGpuWarningEmitted = true;
         cachedGpuBackendInfo = { available: false, reason: "null pointer" };
-        getLogger().info(
-          "ℹ️  Discovery GPU probe returned a null pointer. " +
-            "Discovery will use CPU fallback on this worker.",
+        getLogger().warn(
+          "⚠️  Discovery GPU probe returned a null pointer. " +
+            "Discovery analysis is GPU-only and will yield no proposals on this worker.",
         );
       }
       return false;
@@ -659,9 +661,9 @@ export function isRustGpuAvailable(): boolean {
       if (!rustGpuWarningEmitted) {
         rustGpuWarningEmitted = true;
         cachedGpuBackendInfo = { available: false, reason: "invalid JSON" };
-        getLogger().info(
-          "ℹ️  Discovery GPU probe returned invalid JSON. " +
-            "Discovery will use CPU fallback on this worker.",
+        getLogger().warn(
+          "⚠️  Discovery GPU probe returned invalid JSON. " +
+            "Discovery analysis is GPU-only and will yield no proposals on this worker.",
         );
       }
       return false;
@@ -672,9 +674,9 @@ export function isRustGpuAvailable(): boolean {
         rustGpuWarningEmitted = true;
         const detail = parsed.error ?? "no usable GPU detected";
         cachedGpuBackendInfo = { available: false, reason: detail };
-        getLogger().info(
-          "ℹ️  No GPU detected — discovery will use CPU fallback " +
-            `(${detail}). GPU accelerates analysis but is not required.`,
+        getLogger().warn(
+          `⚠️  No GPU detected (${detail}). Discovery analysis is GPU-only, ` +
+            "so it will yield no proposals on this worker; evolution continues.",
         );
       }
       return false;
@@ -711,9 +713,9 @@ export function isRustGpuAvailable(): boolean {
         available: false,
         reason: String(error),
       };
-      getLogger().info(
-        "ℹ️  Discovery GPU probe threw an error. " +
-          "Discovery will use CPU fallback on this worker.",
+      getLogger().warn(
+        "⚠️  Discovery GPU probe threw an error. " +
+          "Discovery analysis is GPU-only and will yield no proposals on this worker.",
         error,
       );
     }
@@ -736,11 +738,12 @@ export function isRustLibraryAvailable(): boolean {
 /**
  * Checks if the Rust discovery module is enabled and available.
  *
- * Discovery requires the Rust library. GPU acceleration is optional —
- * when no GPU is detected, the Rust library falls back to CPU computation.
- * This enables cross-platform discovery on macOS (Metal), Linux (Vulkan),
- * and Windows (DX12) via the wgpu abstraction layer, with automatic CPU
- * fallback when no compatible GPU is present.
+ * Discovery requires the Rust library. This gate covers the library only — a
+ * GPU adapter is checked separately, at analysis time. Cross-platform GPU
+ * selection (Metal on macOS, Vulkan on Linux, DX12 on Windows) is handled by
+ * the wgpu abstraction layer; without an adapter the library still loads and
+ * this function still returns true, but every analysis pass is refused
+ * (Issue #3692).
  *
  * This function caches the result after the first check for low overhead.
  *
@@ -759,8 +762,9 @@ export function isRustDiscoveryEnabled(): boolean {
       return false;
     }
 
-    // Probe GPU availability for logging/telemetry — result does not gate
-    // discovery enablement. The Rust library handles CPU fallback internally.
+    // Probe GPU availability for logging/telemetry — the result does not gate
+    // discovery *enablement*. It does gate the analysis phase: without an
+    // adapter, `analyzeParallel()` refuses every pass (Issue #3692).
     isRustGpuAvailable();
 
     rustDiscoveryEnabledState = true;
@@ -788,8 +792,9 @@ export function shouldSkipRustDiscoveryTests(): boolean {
  * Returns information about the GPU backend selected by wgpu.
  *
  * Call this after `isRustDiscoveryEnabled()` to learn which GPU backend
- * (Metal, Vulkan, DX12, OpenGL) was selected, or whether CPU fallback is
- * being used. The result is cached after the first GPU probe.
+ * (Metal, Vulkan, DX12, OpenGL) was selected, or why none was. Discovery
+ * analysis is GPU-only, so an unavailable result means the analysis phase will
+ * produce no proposals. The result is cached after the first GPU probe.
  *
  * @returns GPU backend information, or a "not probed" result if the library
  *          has not been loaded yet.

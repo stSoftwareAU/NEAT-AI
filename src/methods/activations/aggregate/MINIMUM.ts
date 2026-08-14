@@ -1,3 +1,21 @@
+/**
+ * @module
+ *
+ * The `MINIMUM` aggregate squash: the neuron outputs the smallest of its
+ * inbound synapse values plus its bias, instead of the weighted sum a
+ * conventional activation takes. It is the mirror of `MAXIMUM.ts` and one of
+ * NEAT-AI's own aggregate squashes (see `docs/ACTIVATION_FUNCTIONS.md`),
+ * letting evolution express "the weakest upstream signal gates the output" as a
+ * single neuron rather than a subgraph.
+ *
+ * Backpropagation through a min is the interesting part, and why this module is
+ * large: the gradient belongs to the winning connection, but a losing
+ * connection whose value sits close to the winner still receives a leaked
+ * fraction (the shared runner-up proximity rule, Issue #1874). Tracing and
+ * propagation must agree about that window — `RunnerUpProximity.ts` is its
+ * single source of truth — or `applyLearnings` would disconnect a synapse that
+ * is still learning.
+ */
 import { assert } from "@std/assert";
 import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { Neuron } from "@architecture/Neuron.ts";

@@ -94,10 +94,10 @@ diagnostics.
 - **Segfault / "Killed: 9" loading the library** — `arm64` vs `x86_64` (or
   `glibc` vs `musl`) mismatch; rebuild on the target machine. →
   [Architecture mismatch errors](troubleshooting/DISCOVERY.md#-architecture-mismatch-errors-arm64-vs-x86).
-- **`ℹ️  No GPU detected — discovery will use CPU fallback`** — no compatible
-  `wgpu` adapter (Metal / Vulkan / DirectX 12). This is **non-fatal**: the GPU
-  probe is informational only and does not gate discovery, which continues on
-  CPU. → [No GPU detected](troubleshooting/DISCOVERY.md#-no-gpu-detected).
+- **`⚠️  No GPU detected`** — no compatible `wgpu` adapter (Metal / Vulkan /
+  DirectX 12). Evolution continues, but discovery analysis is **GPU-only**, so
+  every analysis pass is refused and no proposals are produced. →
+  [No GPU detected](troubleshooting/DISCOVERY.md#-no-gpu-detected).
 - **Library cannot be found at the default locations** — set
   `NEAT_AI_DISCOVERY_LIB_PATH` to an absolute path. →
   [Setting NEAT_AI_DISCOVERY_LIB_PATH](troubleshooting/DISCOVERY.md#-setting-neat_ai_discovery_lib_path).

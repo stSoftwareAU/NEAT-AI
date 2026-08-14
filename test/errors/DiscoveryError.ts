@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertIsError, assertThrows } from "@std/assert";
+import { assertEquals, assertIsError } from "@std/assert";
 import {
   DiscoveryError,
   type DiscoveryErrorReason,
@@ -58,20 +58,6 @@ Deno.test("DiscoveryError - INVALID_CREATURE reason", () => {
   );
   assertIsError(error, DiscoveryError);
   assertEquals(error.reason, "INVALID_CREATURE");
-});
-
-Deno.test("DiscoveryError - is instanceof Error", () => {
-  const error = new DiscoveryError("test", "LIBRARY_NOT_FOUND");
-  assert(error instanceof Error);
-  assert(error instanceof DiscoveryError);
-});
-
-Deno.test("DiscoveryError - can be caught selectively", () => {
-  const fn = () => {
-    throw new DiscoveryError("lib not found", "LIBRARY_NOT_FOUND");
-  };
-
-  assertThrows(fn, DiscoveryError);
 });
 
 Deno.test("DiscoveryError - reason is typed", () => {

@@ -65,8 +65,8 @@ Activation, gradient flow, and the GPU/WASM compute layer.
 - **[BACKPROP_ELASTICITY.md](BACKPROP_ELASTICITY.md)** — why NEAT-AI prefers
   minimum-change weight updates and how it avoids pushing saturated activations
   further into saturation.
-- **[GPU_ACCELERATION.md](GPU_ACCELERATION.md)** — Metal/Vulkan/DX12
-  acceleration via `wgpu`, with a CPU fallback.
+- **[GPU_ACCELERATION.md](GPU_ACCELERATION.md)** — Metal/Vulkan/DX12 backend
+  selection via `wgpu`, and why discovery analysis is GPU-only.
 - **[WASM_RESIDENT_TOPOLOGY.md](WASM_RESIDENT_TOPOLOGY.md)** — feasibility
   analysis for keeping the entire creature topology resident inside the WASM
   module.
@@ -94,6 +94,10 @@ Tuning guides and benchmark research.
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
   benchmark results for the predictive-coding training mode.
+- **[PROFILING_REPORT_3397.md](PROFILING_REPORT_3397.md)** — the production
+  learn/sampler profiling report behind the #3396 milestone: the per-phase
+  wall-clock breakdown at production topology, and each hotspot routed to the
+  follow-up that addresses it (Issue #3397).
 - **[SCORE_PER_HOUR_HARNESS.md](SCORE_PER_HOUR_HARNESS.md)** — the
   score-improvement-per-wall-clock-hour benchmark harness: the reproducible
   evidence gate for the #3396 evolution-performance milestone.
@@ -195,6 +199,9 @@ Project-level policies, audits, and release plumbing.
   contributors (terminology, invariants, testing rules).
 - **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — first-time contributor guide.
 - **[../SECURITY.md](../SECURITY.md)** — security disclosure policy.
+- **[SECURITY_SWEEP_COVERAGE.md](SECURITY_SWEEP_COVERAGE.md)** — which `src/`
+  directories the periodic trust-boundary sweep has audited, and what each pass
+  concluded (Issue #3685).
 - **[REPO_GOVERNANCE.md](REPO_GOVERNANCE.md)** — CI/CD code ownership
   (`.github/CODEOWNERS`) and required branch-protection settings that guard the
   privileged workflows (Issue #3187).
@@ -210,8 +217,11 @@ Project-level policies, audits, and release plumbing.
 - **[PARITY_GATE.md](PARITY_GATE.md)** — release checklist run after every repin
   to verify TypeScript ↔ WASM parity.
 - **[PARITY_AUDITS.md](PARITY_AUDITS.md)** — archived parity audits (Issues
-  #2367, #2368, #2369) consolidated into a single page. Replaces three former
-  stubs.
+  #2367, #2368, #2369) consolidated into a single page. It replaces three former
+  per-audit pages, which survive only as redirect stubs pointing here:
+  [NEAT_AI_CORE_PARITY_AUDIT.md](NEAT_AI_CORE_PARITY_AUDIT.md),
+  [RUST_SCORER_PARITY_AUDIT.md](RUST_SCORER_PARITY_AUDIT.md), and
+  [WASM_ACTIVATION_PARITY_AUDIT.md](WASM_ACTIVATION_PARITY_AUDIT.md).
 - **[VERSION_VISIBILITY.md](VERSION_VISIBILITY.md)** — every worker logs the
   running `@stsoftware/neat-ai` version at startup (Issue #2682). Convention,
   rationale, and how to add the line to new entry points.

@@ -2,9 +2,9 @@
 
 Training parameters control backpropagation within each NEAT (NeuroEvolution of
 Augmenting Topologies) generation: how much data is used, how aggressively
-weights/biases are updated, how dense layers become, and how the data is fuzzed
-and validated. These options sit on the top-level `NeatOptions` object or on
-dedicated nested configs (`dataFuzzing`, `crossValidation`).
+weights/biases are updated, and how the data is fuzzed and validated. These
+options sit on the top-level `NeatOptions` object or on dedicated nested configs
+(`dataFuzzing`, `crossValidation`).
 
 ```ts
 import { createNeatConfig } from "@stsoftware/neat-ai";
@@ -15,7 +15,6 @@ const config = createNeatConfig({
   trainPerGen: 10,
   trainingBatchSize: 100,
   trainingSampleRate: 1,
-  syntheticSynapses: false,
 });
 ```
 
@@ -28,7 +27,6 @@ const config = createNeatConfig({
 | `trainingBatchSize`            | `integer` | `100`                      | Observations per training batch (min: 1)                  |
 | `trainingSampleRate`           | `number`  | `1`                        | Fraction of data used for training (0.0001–1)             |
 | `dataSetPartitionBreak`        | `integer` | `2000`                     | Records per dataset file (min: 1)                         |
-| `syntheticSynapses`            | `boolean` | `false`                    | Generate dense inter-layer synapses before backprop       |
 | `maximumBiasAdjustmentScale`   | `number`  | `1`                        | Maximum bias adjustment per training iteration (min: 0)   |
 | `maximumWeightAdjustmentScale` | `number`  | `1`                        | Maximum weight adjustment per training iteration (min: 0) |
 
@@ -158,28 +156,17 @@ values allow more aggressive bias updates.
 Maximum amount by which a weight can be adjusted in one training iteration.
 Higher values allow more aggressive weight updates.
 
-## 🧪 Synthetic synapses
+## 🧪 Synthetic synapses — not a `NeatOptions` option
 
-### `syntheticSynapses`
+`syntheticSynapses` is **not** part of `NeatOptions`. It lives on the internal
+`TrainOptions` surface (`src/config/TrainOptions.ts`), which only the internal
+`trainDir()` entry point accepts. `createNeatConfig()` never reads the key, and
+the train options the evolution loop builds internally
+(`src/NEAT/NeatScheduling.ts`) do not forward it — so passing it here is a type
+error, and there is no public API that turns synthetic synapses on.
 
-**Default: false** | Type: boolean
-
-When enabled, dense zero-weight synapses are generated between adjacent
-topological layers before backpropagation begins. After training, synthetic
-synapses whose weights remain near zero are pruned, and any that have been
-trained to meaningful weights are retained as permanent connections. This allows
-backpropagation to discover useful connections that NEAT's evolutionary process
-may not have found.
-
-A per-target cap of 50 connections per target neuron per layer pair prevents
-combinatorial explosion on wide networks. Orphaned neurons are cleaned up
-automatically after pruning.
-
-> [!TIP]
-> Synthetic synapses are most beneficial for networks with sparse inter-layer
-> connectivity — typically early in evolution when NEAT has not yet built dense
-> connections between layers. For already-dense networks, the overhead may
-> outweigh the benefit.
+See [Training API — Synthetic Synapses](../api/TRAINING.md#-synthetic-synapses)
+for what the feature does and where the flag is read.
 
 ## 🎲 Data fuzzing
 

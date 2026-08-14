@@ -4,7 +4,7 @@
  * Validates:
  * - GPU backend detection returns a known backend name
  * - Discovery is enabled when library is available (regardless of GPU)
- * - CPU fallback behaviour when GPU is unavailable
+ * - Graceful behaviour when no GPU adapter is present
  * - RustCheckGpuResult type includes backend field
  */
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
@@ -20,13 +20,14 @@ import {
 const KNOWN_BACKENDS = ["metal", "vulkan", "dx12", "gl"];
 
 Deno.test({
-  name: "discovery enabled with library available (CPU fallback supported)",
+  name: "discovery enabled with library available (GPU checked separately)",
   ignore: shouldSkipRustDiscoveryTests(),
   sanitizeResources: false,
   fn: () => {
     try {
       // When the Rust library is available, discovery should be enabled
-      // regardless of whether GPU is available (CPU fallback is supported)
+      // regardless of whether a GPU is present — the adapter is checked later,
+      // at analysis time (Issue #3692).
       const libraryAvailable = isRustLibraryAvailable();
       assert(libraryAvailable, "Rust library should be available");
 
@@ -34,7 +35,7 @@ Deno.test({
       assert(
         discoveryEnabled,
         "Discovery should be enabled when library is available " +
-          "(GPU is optional — CPU fallback supported)",
+          "(the GPU adapter is checked at analysis time, not here)",
       );
     } finally {
       closeRustLibrary();
@@ -117,14 +118,15 @@ Deno.test({
     try {
       // The key behaviour change from Issue #1864:
       // isRustDiscoveryEnabled() should return true when the library is
-      // available, even if GPU is not available (CPU fallback is supported).
+      // available, even if no GPU is present — analysis will then refuse each
+      // pass, but enablement itself does not depend on the adapter.
       const libraryAvailable = isRustLibraryAvailable();
       if (libraryAvailable) {
         const discoveryEnabled = isRustDiscoveryEnabled();
         assert(
           discoveryEnabled,
           "Discovery must be enabled when library is available. " +
-            "GPU is optional — the Rust library supports CPU fallback.",
+            "The GPU adapter is checked at analysis time, not by this gate.",
         );
       }
     } finally {

@@ -123,8 +123,11 @@ but replaces unconditional mutation acceptance with MCMC").
   ([NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)) for
   GPU (Graphics Processing Unit) accelerated structural analysis
 - **wgpu** for cross-platform GPU compute shaders (Metal on macOS, Vulkan on
-  Linux, DX12 (DirectX 12) on Windows) with CPU (Central Processing Unit)
-  fallback
+  Linux, DX12 (DirectX 12) on Windows). Discovery analysis is **GPU-only** —
+  there is no CPU (Central Processing Unit) path; without an adapter,
+  `analyzeParallel()` returns a failure and discovery yields no proposals while
+  evolution continues (see
+  [`docs/GPU_ACCELERATION.md`](./docs/GPU_ACCELERATION.md))
 
 ### 📂 Directory Structure
 
@@ -381,20 +384,22 @@ project deliberately does **not** depend on `@std/log`.
    call `setLogger()` directly:
 
    ```typescript
-   import { Neat, setLogger } from "@stsoftware/neat-ai";
+   import { Creature, type Logger, setLogger } from "@stsoftware/neat-ai";
 
-   // Option A — inject via NeatOptions
-   const neat = new Neat(input, output, fitness, {
-     logger: {
-       debug: (...a) => myPino.debug({ args: a }),
-       info: (...a) => myPino.info({ args: a }),
-       warn: (...a) => myPino.warn({ args: a }),
-       error: (...a) => myPino.error({ args: a }),
-     },
-   });
+   const myLogger: Logger = {
+     debug: (...a) => myPino.debug({ args: a }),
+     info: (...a) => myPino.info({ args: a }),
+     warn: (...a) => myPino.warn({ args: a }),
+     error: (...a) => myPino.error({ args: a }),
+   };
 
-   // Option B — set globally
-   setLogger(myCustomLogger);
+   // Option A — inject via NeatOptions on any public evolve call
+   const creature = new Creature(2, 1);
+   await creature.evolveDataSet(dataSet, { logger: myLogger, iterations: 100 });
+   // …or creature.evolveDir(dataSetDir, { logger: myLogger, iterations: 100 });
+
+   // Option B — set globally, before any evolve call
+   setLogger(myLogger);
    ```
 
    > **One entry point.** `deno.json` declares `"exports": "./mod.ts"`, so the
