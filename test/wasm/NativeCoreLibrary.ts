@@ -1,18 +1,20 @@
 /**
  * Native neat-core backprop (Issue #3741). Native `libneat_core` is
- * mandatory. Resolution tests use temp files so they do not depend on a
- * built library path. The NoChange-sentinel test talks to the real
- * library. Existing propagate tests remain the proof that native matches
- * the previous WASM loop.
+ * opt-in (`NEAT_AI_NATIVE_CORE_BACKPROP=1`). Resolution tests use temp
+ * files so they do not depend on a built library path. The
+ * NoChange-sentinel test talks to the real library when it is present
+ * and skips otherwise. Existing propagate tests stay on WASM by default.
  */
 
 import { assert, assertEquals } from "@std/assert";
 import { join } from "@std/path";
 import {
   closeNativeCoreLibrary,
+  findNativeCoreLibrary,
   findNativeCoreLibraryFromOptions,
   getNativeCoreVersion,
   isNativeCoreAvailable,
+  isNativeCoreBackpropEnabled,
   nativeCoreLibFileName,
   nativePropagateTopological,
 } from "@wasm/NativeCoreLibrary.ts";
@@ -73,15 +75,20 @@ Deno.test("native core library: missing candidates return null", () => {
   }
 });
 
+Deno.test("native core backprop is opt-in (WASM is the default)", () => {
+  assertEquals(isNativeCoreBackpropEnabled(), false);
+});
+
 Deno.test({
-  name: "native core library: availability does not require an env var",
+  name: "native core library: sibling dylib can be loaded without an env var",
   sanitizeResources: false,
   sanitizeOps: false,
+  ignore: findNativeCoreLibrary() === null,
   fn: () => {
     try {
       assert(
         isNativeCoreAvailable(),
-        "native libneat_core is required (Issue #3741)",
+        "libneat_core was resolved but failed to load",
       );
     } finally {
       closeNativeCoreLibrary();
@@ -163,6 +170,7 @@ Deno.test({
     "native core library: zero-error identity output uses the NoChange sentinel",
   sanitizeResources: false,
   sanitizeOps: false,
+  ignore: findNativeCoreLibrary() === null,
   fn: () => {
     try {
       const version = getNativeCoreVersion();

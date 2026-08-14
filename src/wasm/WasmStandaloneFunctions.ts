@@ -27,6 +27,7 @@ import {
   getFusedErrorDistributionFn,
   getGetRangeFn,
   getLimitRangeFn,
+  getPropagateTopologicalFn,
   getSafeZoneAdjustmentBatchFn,
   getSafeZoneAdjustmentFn,
   getScanMaxBiasFn,
@@ -36,7 +37,10 @@ import {
   getValidateRangeFn,
   getVersionFn,
 } from "@wasm/WasmModuleLoader.ts";
-import { nativePropagateTopological } from "@wasm/NativeCoreLibrary.ts";
+import {
+  isNativeCoreBackpropEnabled,
+  nativePropagateTopological,
+} from "@wasm/NativeCoreLibrary.ts";
 
 /**
  * Issue #1377 - Result from fused backward pass error distribution.
@@ -591,20 +595,19 @@ export function wasmScanMaxBias(
  * Takes a packed binary buffer containing all network state and returns
  * a packed Float64Array with updated neuron/synapse accumulation state.
  *
- * Native `libneat_core` is mandatory (Issue #3741). WASM remains loaded for
- * activation/scoring, but the reverse-topological loop must go through
- * `neat_propagate_topological`.
+ * WASM is the default (safe to merge). Native `libneat_core` is used only
+ * when `NEAT_AI_NATIVE_CORE_BACKPROP=1` (Issue #3741, opt-in).
+ *
+ * Returns undefined if WASM is unavailable and native is not enabled.
  */
 export function wasmPropagateTopological(
   data: Uint8Array,
 ): Float64Array | undefined {
-  const native = nativePropagateTopological(data);
-  if (native === undefined) {
-    throw new Error(
-      "Native neat-core backprop is required but neat_propagate_topological " +
-        "failed. Build sibling NEAT-AI-core (`cargo build --release -p neat-core`) " +
-        "or set NEAT_AI_CORE_LIB_PATH.",
-    );
+  if (isNativeCoreBackpropEnabled()) {
+    const native = nativePropagateTopological(data);
+    if (native !== undefined) return native;
   }
-  return native;
+  const fn = getPropagateTopologicalFn();
+  if (!fn) return undefined;
+  return fn(data);
 }

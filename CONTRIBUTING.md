@@ -294,8 +294,9 @@ the script's `show_help` block):
 | `--skip-tests`                | Skip test execution.                                 |
 | `--skip-discovery`            | Skip discovery library build and verification.       |
 | `--skip-wasm`                 | Skip WASM package sync from NEAT-AI-core.            |
-| `--with-rust-scorer`          | Enable external Rust scorer during test execution.   |
-| `--test-both-scorers`         | Run tests twice: WASM-only then Rust scorer.         |
+| `--wasm-scorer`               | Comparison-only: run the legacy WASM scorer.         |
+| `--next`                      | Run existing tests against native `libneat_core` backprop (not yet default). |
+| `--test-both-scorers`         | Run tests twice: WASM scorer then Rust scorer.       |
 | `--rust-scorer-bin=PATH`      | Path to `rust_scorer` binary.                        |
 | `--rust-scorer-timeout-ms=MS` | Per-call scorer timeout.                             |
 | `--lint-only`                 | Only run formatting + linting (includes bash check). |

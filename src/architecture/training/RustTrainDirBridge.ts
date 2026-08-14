@@ -6,8 +6,9 @@
  * MSE accept/rollback). TypeScript keeps predictive coding, cross-validation,
  * custom costs, dropout, fuzzing, quantisation, Muon, and recurrent graphs.
  *
- * Later this host call can be made optional; for now it is the default whenever
- * the binary is present and the request is one the trainer can honour.
+ * Opt-in via `NEAT_AI_BACKPROP_ENABLED=1`. The TypeScript / WASM loop is
+ * the default so the quality gate and production `evolveDir` stay on the
+ * path that already finishes cleanly.
  */
 
 import { fromFileUrl } from "@std/path/from-file-url";
@@ -144,6 +145,21 @@ function timeoutSeconds(setup: TrainingSetupState): number | undefined {
   return Math.max(1, Math.floor(Math.min(...caps)));
 }
 
+function envFlagEnabled(raw: string | undefined): boolean {
+  if (raw === undefined) return false;
+  const v = raw.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/**
+ * True when the caller asked `trainDir` to spawn the Rust trainer.
+ *
+ * Default is off so evolve's per-generation 1-epoch trains stay in-process.
+ */
+export function isRustTrainDirEnabled(): boolean {
+  return envFlagEnabled(readEnvString("NEAT_AI_BACKPROP_ENABLED"));
+}
+
 function stepScale(): number {
   const raw = readEnvString("NEAT_AI_BACKPROP_STEP_SCALE");
   if (raw === undefined) return 0.01;
@@ -162,7 +178,9 @@ export function canUseRustTrainDir(
   options: TrainOptions,
   cost: CostInterface,
   setup: TrainingSetupState,
+  enabled: boolean = isRustTrainDirEnabled(),
 ): boolean {
+  if (!enabled) return false;
   if (creature.forwardOnly !== true) return false;
   if (options.feedbackLoop === true) return false;
   if (cost.getName() !== MSE.NAME) return false;

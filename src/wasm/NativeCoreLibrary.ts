@@ -1,11 +1,11 @@
 /**
  * Native `neat-core` library for topological backpropagation (Issue #3741).
  *
- * `libneat_core` is mandatory: the reverse-topological loop goes through
- * `neat_propagate_topological`. The packed buffer and `±Infinity` sentinels
- * are the same contract as the former WASM `propagate_topological`, so
- * IF/MIN/MAX still fall back to TypeScript. Missing library or a native
- * error returns `undefined` and the caller fails fast.
+ * Opt-in: the reverse-topological loop stays on WASM unless
+ * `NEAT_AI_NATIVE_CORE_BACKPROP=1`. When enabled, the packed buffer and
+ * `±Infinity` sentinels are the same contract as WASM `propagate_topological`,
+ * so IF/MIN/MAX still fall back to TypeScript. Missing library or a native
+ * error returns `undefined` and the caller falls back to WASM.
  *
  * Resolution (first match wins), same idea as Discovery:
  * 0. `NEAT_AI_CORE_LIB_PATH` (file or directory)
@@ -13,8 +13,8 @@
  * 2. `./target/release/` (cwd)
  * 3. sibling `../NEAT-AI-core/target/release/`
  *
- * The library is opened once at module load so Deno's per-test resource
- * sanitiser sees the handle at both start and end of each test.
+ * The library is not opened at module load. Callers that opt in load it
+ * on first use so the default WASM path does not `dlopen` in every worker.
  */
 
 import { fromFileUrl } from "@std/path/from-file-url";
@@ -95,6 +95,21 @@ function readEnvString(key: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function envFlagEnabled(raw: string | undefined): boolean {
+  if (raw === undefined) return false;
+  const v = raw.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
+
+/**
+ * True when the caller asked for native `libneat_core` backprop.
+ *
+ * Default is off so the WASM path stays the merge-safe default.
+ */
+export function isNativeCoreBackpropEnabled(): boolean {
+  return envFlagEnabled(readEnvString("NEAT_AI_NATIVE_CORE_BACKPROP"));
 }
 
 function resolveLibraryCandidate(
@@ -293,12 +308,6 @@ export function nativePropagateTopological(
     );
     return undefined;
   }
-}
-
-try {
-  loadNativeCoreLibrary();
-} catch {
-  // --allow-ffi not granted, or library absent: callers fail fast.
 }
 
 globalThis.addEventListener("unload", () => {

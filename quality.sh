@@ -9,7 +9,8 @@ SKIP_WASM=false
 LINT_ONLY=false
 CHECK_ONLY=false
 DRY_RUN=false
-WITH_RUST_SCORER=false
+WASM_SCORER=false
+NEXT=false
 TEST_BOTH_SCORERS=false
 RUST_SCORER_BINARY_PATH="${NEAT_AI_RUST_SCORER_BINARY_PATH:-rust_scorer}"
 RUST_SCORER_TIMEOUT_MS="${NEAT_AI_RUST_SCORER_TIMEOUT_MS:-0}"
@@ -26,8 +27,16 @@ Options:
   --skip-tests        Skip test execution
   --skip-discovery    Skip discovery library build and verification
   --skip-wasm         Skip WASM package sync from NEAT-AI-core
-  --with-rust-scorer  Enable external Rust scorer during test execution
-  --test-both-scorers Run tests twice: WASM-only then Rust scorer enabled
+  --wasm-scorer       Comparison-only: run tests on the legacy WASM scorer
+                      instead of rust_scorer. Remove this once the WASM
+                      scoring path is deleted.
+  --next              Run the existing handwritten test suite against native
+                      libneat_core topological backprop (Issue #3741). Same
+                      idea as the Rust scorer: tests are not rewritten; the
+                      implementation swaps underneath. WASM backprop stays
+                      the default until this suite is green and a bench
+                      shows a win. Does not spawn the trainDir CLI.
+  --test-both-scorers Run tests twice: WASM scorer then Rust scorer
   --rust-scorer-bin=PATH
                       Path to rust_scorer binary (default: rust_scorer)
   --rust-scorer-timeout-ms=MS
@@ -42,6 +51,14 @@ Environment:
                       `deno outdated --update --latest`. Default 24h. Mirrors
                       bump-deps.sh; dodges fast-flagged supply-chain attacks
                       (Issue #2742). Must be a non-negative integer.
+  NEAT_AI_NATIVE_CORE_BACKPROP
+                      Set to 1 to build sibling libneat_core and use native
+                      topological backprop (Issue #3741). `./quality.sh --next`
+                      sets this. Default: WASM packed loop.
+  NEAT_AI_BACKPROP_ENABLED
+                      Set to 1 to spawn sibling neat_ai_backpropagation from
+                      trainDir. Separate from --next; keep off until the
+                      native loop is proven. Default: off.
 
 Exit codes:
   0   All enabled steps passed
@@ -55,7 +72,8 @@ for arg in "$@"; do
     --skip-tests) SKIP_TESTS=true ;;
     --skip-discovery) SKIP_DISCOVERY=true ;;
     --skip-wasm) SKIP_WASM=true ;;
-    --with-rust-scorer) WITH_RUST_SCORER=true ;;
+    --wasm-scorer) WASM_SCORER=true ;;
+    --next) NEXT=true ;;
     --test-both-scorers) TEST_BOTH_SCORERS=true ;;
     --rust-scorer-bin=*) RUST_SCORER_BINARY_PATH="${arg#*=}" ;;
     --rust-scorer-timeout-ms=*) RUST_SCORER_TIMEOUT_MS="${arg#*=}" ;;
@@ -73,6 +91,10 @@ done
 if [ -z "$RUST_SCORER_BINARY_PATH" ]; then
   echo "rust scorer binary path must not be empty" >&2
   exit 1
+fi
+
+if [ "$NEXT" = true ]; then
+  export NEAT_AI_NATIVE_CORE_BACKPROP=1
 fi
 
 RUN_DEPS=true
@@ -119,10 +141,11 @@ if [ "$RUN_TESTS" = true ]; then
   else
     TOTAL=$((TOTAL + 1))
   fi
-  if [[ -d ../NEAT-AI-core ]]; then
+  # Native backprop is opt-in (Issue #3741). WASM is the default path.
+  if [[ "${NEAT_AI_NATIVE_CORE_BACKPROP:-}" == "1" && -d ../NEAT-AI-core ]]; then
     TOTAL=$((TOTAL + 1))
   fi
-  if [[ -d ../NEAT-AI-Backpropagation ]]; then
+  if [[ "${NEAT_AI_BACKPROP_ENABLED:-}" == "1" && -d ../NEAT-AI-Backpropagation ]]; then
     TOTAL=$((TOTAL + 1))
   fi
 fi
@@ -145,19 +168,25 @@ if [ "$DRY_RUN" = true ]; then
   [ "$RUN_DISCOVERY" = true ] && progress "Building discovery library..."
   [ "$RUN_WASM" = true ] && progress "Syncing WASM package from NEAT-AI-core..."
   if [ "$RUN_TESTS" = true ]; then
-    if [[ -d ../NEAT-AI-core ]]; then
+    if [[ "${NEAT_AI_NATIVE_CORE_BACKPROP:-}" == "1" && -d ../NEAT-AI-core ]]; then
       progress "Building native neat-core library..."
     fi
-    if [[ -d ../NEAT-AI-Backpropagation ]]; then
+    if [[ "${NEAT_AI_BACKPROP_ENABLED:-}" == "1" && -d ../NEAT-AI-Backpropagation ]]; then
       progress "Building native neat_ai_backpropagation..."
     fi
     if [ "$TEST_BOTH_SCORERS" = true ]; then
-      progress "Running tests (WASM-only scorer mode)..."
+      progress "Running tests (WASM scorer mode)..."
       progress "Running tests (Rust scorer mode)..."
-    elif [ "$WITH_RUST_SCORER" = true ]; then
-      progress "Running tests (Rust scorer mode)..."
+    elif [ "$WASM_SCORER" = true ]; then
+      if [ "$NEXT" = true ]; then
+        progress "Running tests (--next native backprop, WASM scorer)..."
+      else
+        progress "Running tests (WASM scorer mode)..."
+      fi
+    elif [ "$NEXT" = true ]; then
+      progress "Running tests (--next native backprop, Rust scorer)..."
     else
-      progress "Running tests (WASM-only scorer mode)..."
+      progress "Running tests (Rust scorer mode)..."
     fi
   fi
   echo ""
@@ -180,6 +209,10 @@ run_test_suite() {
     )
   else
     env_args+=("NEAT_AI_RUST_SCORER_ENABLED=0")
+  fi
+
+  if [ "$NEXT" = true ]; then
+    env_args+=("NEAT_AI_NATIVE_CORE_BACKPROP=1")
   fi
 
   env "${env_args[@]}" deno test \
@@ -276,14 +309,22 @@ if [ "$RUN_DISCOVERY" = true ]; then
   fi
 fi
 
-if [ "$RUN_TESTS" = true ] && [[ -d ../NEAT-AI-core ]]; then
-  progress "Building native neat-core library..."
-  (cd ../NEAT-AI-core && cargo build --release -p neat-core)
+if [ "$RUN_TESTS" = true ] && [[ "${NEAT_AI_NATIVE_CORE_BACKPROP:-}" == "1" ]]; then
+  if [[ -d ../NEAT-AI-core ]]; then
+    progress "Building native neat-core library..."
+    (cd ../NEAT-AI-core && cargo build --release -p neat-core)
+  elif [ "$NEXT" = true ]; then
+    echo "⚠️  --next: ../NEAT-AI-core is not checked out; topological backprop stays on WASM."
+  fi
 fi
 
-if [ "$RUN_TESTS" = true ] && [[ -d ../NEAT-AI-Backpropagation ]]; then
-  progress "Building native neat_ai_backpropagation..."
-  (cd ../NEAT-AI-Backpropagation && cargo build --release -p neat_ai_backpropagation)
+if [ "$RUN_TESTS" = true ] && [[ "${NEAT_AI_BACKPROP_ENABLED:-}" == "1" ]]; then
+  if [[ -d ../NEAT-AI-Backpropagation ]]; then
+    progress "Building native neat_ai_backpropagation..."
+    (cd ../NEAT-AI-Backpropagation && cargo build --release -p neat_ai_backpropagation)
+  elif [ "$NEXT" = true ]; then
+    echo "⚠️  NEAT_AI_BACKPROP_ENABLED=1 but ../NEAT-AI-Backpropagation is not checked out; trainDir stays on TypeScript."
+  fi
 fi
 
 if [ "$RUN_WASM" = true ]; then
@@ -296,15 +337,22 @@ fi
 
 if [ "$RUN_TESTS" = true ]; then
   if [ "$TEST_BOTH_SCORERS" = true ]; then
-    progress "Running tests (WASM-only scorer mode)..."
+    progress "Running tests (WASM scorer mode)..."
     run_test_suite "wasm"
     progress "Running tests (Rust scorer mode)..."
     run_test_suite "rust"
-  elif [ "$WITH_RUST_SCORER" = true ]; then
-    progress "Running tests (Rust scorer mode)..."
+  elif [ "$WASM_SCORER" = true ]; then
+    if [ "$NEXT" = true ]; then
+      progress "Running tests (--next native backprop, WASM scorer)..."
+    else
+      progress "Running tests (WASM scorer mode)..."
+    fi
+    run_test_suite "wasm"
+  elif [ "$NEXT" = true ]; then
+    progress "Running tests (--next native backprop, Rust scorer)..."
     run_test_suite "rust"
   else
-    progress "Running tests (WASM-only scorer mode)..."
-    run_test_suite "wasm"
+    progress "Running tests (Rust scorer mode)..."
+    run_test_suite "rust"
   fi
 fi
