@@ -205,6 +205,9 @@ Project-level policies, audits, and release plumbing.
 - **[REPO_GOVERNANCE.md](REPO_GOVERNANCE.md)** — CI/CD code ownership
   (`.github/CODEOWNERS`) and required branch-protection settings that guard the
   privileged workflows (Issue #3187).
+- **[brand/README.md](brand/README.md)** — the canonical brand home for the
+  NEAT-AI repository family: the 1280×640 GitHub Social preview set and the
+  transparent mark, plus how to add an asset.
 - **[../CHANGELOG.md](../CHANGELOG.md)** — release notes.
 - **[EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md)** — 🧭 cluster overview
   for the NEAT-AI-core dependency. Day-to-day workflow for bumping the pinned
