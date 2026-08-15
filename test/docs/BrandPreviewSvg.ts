@@ -8,7 +8,12 @@
  * returns, so a regression shows up here rather than in re-rendered artwork.
  */
 
-import { assert, assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertStringIncludes,
+  assertThrows,
+} from "@std/assert";
 import { fromFileUrl, resolve } from "@std/path";
 import {
   buildPreviewSvg,
@@ -18,7 +23,7 @@ import {
   type TextExtent,
   xmlEscape,
 } from "../../scripts/brand/preview_art.ts";
-import { motifSvg, type MotifId } from "../../scripts/brand/preview_motifs.ts";
+import { type MotifId, motifSvg } from "../../scripts/brand/preview_motifs.ts";
 import { PREVIEW_SPECS } from "../../scripts/brand/preview_specs.ts";
 
 const REPO_ROOT = resolve(fromFileUrl(import.meta.url), "..", "..", "..");
