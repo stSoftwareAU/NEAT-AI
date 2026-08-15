@@ -75,8 +75,14 @@ Deno.test("native core library: missing candidates return null", () => {
   }
 });
 
-Deno.test("native core backprop is opt-in (WASM is the default)", () => {
-  assertEquals(isNativeCoreBackpropEnabled(), false);
+Deno.test("native core backprop is opt-in unless NEAT_AI_NATIVE_CORE_BACKPROP=1", () => {
+  // Do not mutate process env: parallel tests share it. The default quality.sh
+  // run leaves the flag unset. `--next` now enables the Rust trainDir app,
+  // not this FFI loop.
+  const raw = Deno.env.get("NEAT_AI_NATIVE_CORE_BACKPROP");
+  const expected = raw !== undefined &&
+    ["1", "true", "yes"].includes(raw.trim().toLowerCase());
+  assertEquals(isNativeCoreBackpropEnabled(), expected);
 });
 
 Deno.test({

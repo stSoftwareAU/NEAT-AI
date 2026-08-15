@@ -8,6 +8,7 @@
 import { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 import { dataFiles } from "@architecture/Training.ts";
 import {
+  assertDatasetFilesExist,
   assertWholeRecordRead,
   openDatasetFileSync,
 } from "@architecture/DatasetIO.ts";
@@ -453,6 +454,9 @@ export async function evaluateDir(
       dataDir,
     );
   }
+  // rust_scorer scores the directory, not `cachedFiles`. Fail loud here so a
+  // vanished file in the list cannot be dropped because the rest still score.
+  assertDatasetFilesExist(files);
 
   // Issue #1247: Auto-initialise WASM before scoring if not yet available.
   const { ensureWasmActivation } = await import("../wasm/mod.ts");

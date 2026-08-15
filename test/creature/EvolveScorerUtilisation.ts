@@ -2,12 +2,11 @@
  * Integration test: the evolve* functions return whole-run per-backend
  * scorer-utilisation totals alongside `phaseTimingTotals` (Issue #3234).
  *
- * With the native batch rust scorer disabled (the default in this test
- * environment) every creature is scored on the per-creature worker path, so
- * the run-level totals must show all scoring under `creaturesPerCreatureScored`
- * with zero batch invocations and zero fallback generations. The counts must
- * also accumulate across generations — `generations` matches the number of
- * `generation_complete` events.
+ * The run-level totals must match the backend `quality.sh` selected: WASM
+ * comparison runs score on the per-creature path (zero batch invocations);
+ * the default rust_scorer run batch-scores `forwardOnly` creatures. The
+ * counts must also accumulate across generations — `generations` matches the
+ * number of `generation_complete` events.
  */
 
 import { assert, assertEquals } from "@std/assert";
@@ -16,6 +15,7 @@ import type {
   GenerationCompleteEvent,
   TrainingEvent,
 } from "@config/TrainingEvent.ts";
+import { getEnvRustScorerConfig } from "../../src/score/RustScorerBridge.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 Deno.test("evolveDataSet returns run-level scorerUtilisation", async () => {
@@ -61,26 +61,39 @@ Deno.test("evolveDataSet returns run-level scorerUtilisation", async () => {
     assertEquals(value, Math.trunc(value), `${name} must be an integer`);
   }
 
-  // Batch scoring is disabled in this environment: everything is per-creature,
-  // no batch process was spawned, and no generation hit a fallback.
-  assertEquals(
-    util.batchScorerInvocations,
-    0,
-    "no batch scorer process without the native binary enabled",
-  );
-  assertEquals(
-    util.creaturesBatchScored,
-    0,
-    "no creatures batch-scored without batch mode",
-  );
+  const rust = getEnvRustScorerConfig();
   assertEquals(
     util.batchFallbackGenerations,
     0,
-    "a healthy per-creature run has zero batch fallbacks",
+    "a healthy run has zero batch fallbacks",
   );
-  // Real scoring happened across the run on the per-creature path.
   assert(
-    util.creaturesPerCreatureScored > 0,
-    "creatures must be scored on the per-creature path",
+    util.creaturesBatchScored + util.creaturesPerCreatureScored > 0,
+    "creatures must be scored on at least one backend",
   );
+  if (rust.enabled && rust.batch) {
+    assert(
+      util.batchScorerInvocations > 0,
+      "native batch rust_scorer must record invocations",
+    );
+    assert(
+      util.creaturesBatchScored > 0,
+      "native batch rust_scorer must score forward-only creatures",
+    );
+  } else {
+    assertEquals(
+      util.batchScorerInvocations,
+      0,
+      "no batch scorer process without the native binary enabled",
+    );
+    assertEquals(
+      util.creaturesBatchScored,
+      0,
+      "no creatures batch-scored without batch mode",
+    );
+    assert(
+      util.creaturesPerCreatureScored > 0,
+      "creatures must be scored on the per-creature path",
+    );
+  }
 });

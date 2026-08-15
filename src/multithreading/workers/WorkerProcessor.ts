@@ -28,7 +28,6 @@ import type { CostInterface } from "@costs/CostInterface.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import { Creature } from "@creature";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
-import { writeDiagnostics } from "@utils/Diagnostics.ts";
 import {
   getCachedWasmActivationCount,
   getMaxCachedWasmCreatureActivations,
@@ -275,13 +274,12 @@ export class WorkerProcessor {
           },
         };
       } catch (error) {
+        // Do not dump to `.diagnostics/` here. Evaluate failures are operational
+        // (empty dataset, WASM trap, corrupt creature) and fire on every worker
+        // retry. Writing the creature plus the full request payload on each miss
+        // filled `.diagnostics/` with hundreds of thousands of `evaluate-*`
+        // files. The error is still logged and rethrown for the caller.
         getLogger().error(error);
-        writeDiagnostics({
-          error,
-          prefix: "evaluate",
-          creature: data.evaluate.creature,
-          context: { taskID: data.taskID, data },
-        });
         throw error;
       } finally {
         // Ensure creature is disposed even if an error occurs

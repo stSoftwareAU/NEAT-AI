@@ -34,14 +34,11 @@ Options:
   --wasm-scorer       Comparison-only: run tests on the legacy WASM scorer
                       instead of rust_scorer. Remove this once the WASM
                       scoring path is deleted.
-  --next              Run the existing handwritten test suite against native
-                      libneat_core topological backprop (Issue #3741). Same
-                      idea as the Rust scorer: tests are not rewritten; the
-                      implementation swaps underneath. WASM backprop stays
-                      the default until this suite is green and a bench
-                      shows a win. Does not spawn the trainDir CLI.
-                      Fails loud if libneat_core cannot be loaded (no WASM
-                      fallback).
+  --next              Migrate trainDir onto the Rust app
+                      (neat_ai_backpropagation). Builds the sibling binary
+                      and sets NEAT_AI_BACKPROP_ENABLED=1. Options the old
+                      WASM backprop never honoured stay on the TypeScript
+                      loop. A missing binary is an error, not a fallback.
   --test-both-scorers Run tests twice: WASM scorer then Rust scorer
   --rust-scorer-bin=PATH
                       Path to rust_scorer binary (default: rust_scorer)
@@ -58,15 +55,14 @@ Environment:
                       bump-deps.sh; dodges fast-flagged supply-chain attacks
                       (Issue #2742). Must be a non-negative integer.
   NEAT_AI_NATIVE_CORE_BACKPROP
-                      Set to 1 to build sibling libneat_core and use native
-                      topological backprop (Issue #3741). `./quality.sh --next`
-                      sets this. Default: WASM packed loop.
-                      Leftover exports are ignored when --wasm-scorer is set
-                      (unless --next is also passed).
+                      Set to 1 to build sibling libneat_core and use the
+                      in-process C ABI for the packed propagate loop.
+                      Not what `--next` does. Leftover exports are ignored
+                      when --wasm-scorer is set.
   NEAT_AI_BACKPROP_ENABLED
                       Set to 1 to spawn sibling neat_ai_backpropagation from
-                      trainDir. Separate from --next; keep off until the
-                      native loop is proven. Default: off.
+                      trainDir. `./quality.sh --next` sets this. Default: off.
+                      No WASM fallback: ineligible trainDir requests error.
   DENO_JOBS
                       Parallel `deno test` workers. Default: sized so each
                       worker can keep an 8192 MB V8 heap (evolve tests sit
@@ -96,10 +92,12 @@ Native gates (fail loud, no silent WASM fallback):
   ../NEAT-AI-scorer). Use --wasm-scorer only for a comparison run.
   Test runs force NEAT_SCORER_GPU=off so parallel rust_scorer processes do
   not create Metal/wgpu contexts (the default --gpu auto path OOMs the suite).
-  --wasm-scorer forces native backprop off so a leftover operator export
-  cannot load libneat_core on the comparison run.
-  --next / NEAT_AI_NATIVE_CORE_BACKPROP=1 requires native libneat_core.
-  NEAT_AI_BACKPROP_ENABLED=1 requires neat_ai_backpropagation.
+  --wasm-scorer forces leftover native backprop env off on the comparison
+  run (unless --next is also passed).
+  --next / NEAT_AI_BACKPROP_ENABLED=1 requires neat_ai_backpropagation.
+  trainDir must not fall back to WASM on that path.
+  NEAT_AI_NATIVE_CORE_BACKPROP=1 still requires native libneat_core (FFI
+  loop; not `--next`).
 
 Exit codes:
   0   All enabled steps passed
@@ -138,7 +136,8 @@ if [ -z "$RUST_SCORER_BINARY_PATH" ]; then
 fi
 
 if [ "$NEXT" = true ]; then
-  export NEAT_AI_NATIVE_CORE_BACKPROP=1
+  export NEAT_AI_BACKPROP_ENABLED=1
+  export NEAT_AI_NATIVE_CORE_BACKPROP=0
 fi
 
 RUN_DEPS=true
@@ -188,13 +187,8 @@ native_core_backprop_wanted() {
   if [ "$RUN_TESTS" != true ]; then
     return 1
   fi
-  # Explicit --next still requires libneat_core, even with --wasm-scorer.
-  if [ "$NEXT" = true ]; then
-    return 0
-  fi
-  # --wasm-scorer is a WASM comparison run. Do not pick up a leftover
-  # NEAT_AI_NATIVE_CORE_BACKPROP=1 from the operator environment.
-  if [ "$WASM_SCORER" = true ]; then
+  # --next is the trainDir Rust app, not the libneat_core FFI loop.
+  if [ "$WASM_SCORER" = true ] || [ "$NEXT" = true ]; then
     return 1
   fi
   [[ "${NEAT_AI_NATIVE_CORE_BACKPROP:-}" == "1" ]]
@@ -204,6 +198,13 @@ native_train_dir_wanted() {
   if [ "$RUN_TESTS" != true ]; then
     return 1
   fi
+  # Explicit --next still requires the Rust trainDir app, even with
+  # --wasm-scorer (scorer comparison + rust trainer).
+  if [ "$NEXT" = true ]; then
+    return 0
+  fi
+  # --wasm-scorer is a WASM comparison run. Do not pick up a leftover
+  # NEAT_AI_BACKPROP_ENABLED=1 from the operator environment.
   if [ "$WASM_SCORER" = true ]; then
     return 1
   fi
@@ -312,8 +313,8 @@ fail_missing_native_core_backprop() {
 }
 
 fail_missing_native_train_dir() {
-  echo "❌ Native neat_ai_backpropagation was requested (NEAT_AI_BACKPROP_ENABLED=1)" >&2
-  echo "   but the binary was not found. trainDir will not silently stay on TypeScript." >&2
+  echo "❌ Native neat_ai_backpropagation was requested (--next / NEAT_AI_BACKPROP_ENABLED=1)" >&2
+  echo "   but the binary was not found. trainDir will not silently fall back to WASM." >&2
   echo "" >&2
   echo "   Fix one of:" >&2
   echo "     - Clone NEAT-AI-Backpropagation next to this repo, then cargo build --release -p neat_ai_backpropagation" >&2
@@ -497,12 +498,12 @@ if [ "$DRY_RUN" = true ]; then
       progress "Running tests (Rust scorer mode)..."
     elif [ "$WASM_SCORER" = true ]; then
       if [ "$NEXT" = true ]; then
-        progress "Running tests (--next native backprop, WASM scorer)..."
+        progress "Running tests (--next rust trainDir, WASM scorer)..."
       else
         progress "Running tests (WASM scorer mode)..."
       fi
     elif [ "$NEXT" = true ]; then
-      progress "Running tests (--next native backprop, Rust scorer)..."
+      progress "Running tests (--next rust trainDir, Rust scorer)..."
     else
       progress "Running tests (Rust scorer mode)..."
     fi
@@ -577,11 +578,11 @@ run_test_suite() {
   fi
 
   if [ "$NEXT" = true ]; then
-    env_args+=("NEAT_AI_NATIVE_CORE_BACKPROP=1")
+    env_args+=("NEAT_AI_BACKPROP_ENABLED=1")
+    env_args+=("NEAT_AI_NATIVE_CORE_BACKPROP=0")
   else
-    # Force off so a leftover operator export cannot enable native backprop
-    # on --wasm-scorer / default runs (the packed loop plus --trace-leaks
-    # jetsams this suite).
+    # Force off so a leftover operator export cannot enable the Rust
+    # trainer or the FFI loop on --wasm-scorer / default runs.
     env_args+=("NEAT_AI_NATIVE_CORE_BACKPROP=0")
     env_args+=("NEAT_AI_BACKPROP_ENABLED=0")
   fi
@@ -801,13 +802,13 @@ if [ "$RUN_TESTS" = true ]; then
     run_test_suite "rust"
   elif [ "$WASM_SCORER" = true ]; then
     if [ "$NEXT" = true ]; then
-      progress "Running tests (--next native backprop, WASM scorer)..."
+      progress "Running tests (--next rust trainDir, WASM scorer)..."
     else
       progress "Running tests (WASM scorer mode)..."
     fi
     run_test_suite "wasm"
   elif [ "$NEXT" = true ]; then
-    progress "Running tests (--next native backprop, Rust scorer)..."
+    progress "Running tests (--next rust trainDir, Rust scorer)..."
     run_test_suite "rust"
   else
     progress "Running tests (Rust scorer mode)..."

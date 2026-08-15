@@ -51,6 +51,28 @@ export function readDatasetFileSync(filePath: string): Uint8Array {
 }
 
 /**
+ * Confirm every cached `.bin` path still exists.
+ *
+ * `rust_scorer` reads the directory itself and ignores the TypeScript file
+ * list. Without this check, a file that vanished between listing and scoring
+ * is silently dropped on the native path (the remaining files still score)
+ * while the WASM path throws {@link DatasetError} `FILE_MISSING`. Honour the
+ * Issue #3412 contract on both backends before the native scorer runs.
+ *
+ * @param filePaths - Cached dataset file list (absolute or relative)
+ * @throws {DatasetError} When a file no longer exists (`FILE_MISSING`)
+ */
+export function assertDatasetFilesExist(filePaths: readonly string[]): void {
+  for (const filePath of filePaths) {
+    try {
+      Deno.statSync(filePath);
+    } catch (error) {
+      throw translateMissingFile(error, filePath);
+    }
+  }
+}
+
+/**
  * Lists the entries of a dataset directory, translating a vanished directory
  * into a {@link DatasetError} that names the path.
  *

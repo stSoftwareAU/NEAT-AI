@@ -22,7 +22,6 @@ function listing(dir: string): string[] {
 
 Deno.test("Issue #3583: writeDiagnostics honours the configured directory", () => {
   const dir = Deno.makeTempDirSync({ prefix: "neat-diagnostics-unit-" });
-  const before = listing(DIAGNOSTICS_DIR);
   setDiagnosticsDir(dir);
   try {
     assertEquals(getDiagnosticsDir(), dir);
@@ -48,16 +47,20 @@ Deno.test("Issue #3583: writeDiagnostics honours the configured directory", () =
     );
     assertEquals(context.marker, "mine");
 
-    // Nothing from this spec may reach the default directory — that is what
-    // stops a parallel spec resolving this dump by its shared prefix. Only our
-    // own prefix is checked; other specs legitimately write there in parallel.
-    assertEquals(
-      listing(DIAGNOSTICS_DIR)
-        .filter((n) => !before.includes(n))
-        .filter((n) => n.startsWith("issue-3583-shared-prefix-")),
-      [],
-      "no dump may land in the default directory while redirected",
-    );
+    // Do not list the default directory — leftover dumps can number in the
+    // hundreds of thousands and hang this spec. Stat the names we just wrote.
+    for (const name of names) {
+      try {
+        Deno.statSync(`${DIAGNOSTICS_DIR}/${name}`);
+        throw new Error(
+          `dump ${name} landed in the default directory while redirected`,
+        );
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+      }
+    }
   } finally {
     setDiagnosticsDir();
     Deno.removeSync(dir, { recursive: true });

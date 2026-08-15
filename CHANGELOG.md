@@ -30,14 +30,18 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   file when it finishes, so a jetsam SIGKILL used to leave evolution spam and no
   test name. Leftover files after the runner stops name the cases that were
   still running.
-- **Issue #3741:** Native topological backprop is wired but **opt-in**, using
-  the same pattern as the Rust scorer: handwritten tests are not rewritten;
-  `./quality.sh --next` swaps `wasmPropagateTopological` onto native
-  `libneat_core` (`neat_propagate_topological`). WASM stays the default until
-  that suite is green and a bench shows a win. The `trainDir` CLI stays behind
-  `NEAT_AI_BACKPROP_ENABLED=1` (not part of `--next`). Override the binary with
+- **Issue #3741:** `./quality.sh --next` migrates `trainDir` onto the Rust app
+  (`neat_ai_backpropagation`). It builds the sibling binary and sets
+  `NEAT_AI_BACKPROP_ENABLED=1`. Options the old WASM `propagateTopological`
+  engine never honoured — and options that are not backpropagation (custom cost,
+  dropout, fuzzing, quantisation, Muon, predictive coding, cross-validation,
+  recurrent / `feedbackLoop`) — stay on the TypeScript loop. Rust is not called
+  with those options. `trainingSampleRate` is forwarded as `--max-records`. A
+  missing binary is an error. Override the binary with
   `NEAT_AI_BACKPROP_BINARY_PATH`; apply step scale with
-  `NEAT_AI_BACKPROP_STEP_SCALE` (default `0.01`).
+  `NEAT_AI_BACKPROP_STEP_SCALE` (default `0.01`). The in-process `libneat_core`
+  C ABI (`NEAT_AI_NATIVE_CORE_BACKPROP=1`) is a separate path and is not what
+  `--next` enables.
 - Coverage CI (`coverage.yaml`) is the PR test gate: the merge job fails the
   pull request when any shard reports test failures or crashes. `quality.yml`
   still does not run tests (fmt/lint/`deno check` only).
@@ -131,6 +135,20 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `evaluateDir` honours a vanished file in a cached list when `rust_scorer` is
+  enabled. The native binary scores the directory itself and was silently
+  dropping missing paths that the WASM path reported as `DatasetError`
+  `FILE_MISSING`. The file list is now checked on both backends before scoring.
+- Nested `quality.sh` behaviour tests pin `NEAT_AI_NATIVE_CORE_BACKPROP=0` so a
+  parent `./quality.sh --next` cannot cargo-build neat-core against a fake HOME
+  with no rustup default. Native backprop opt-in tests follow the live flag
+  instead of assuming WASM.
+- Worker evaluate failures no longer dump the creature and full request payload
+  into `.diagnostics/` on every miss. That catch ran on operational errors
+  (empty dataset, WASM trap, corrupt creature) across every worker retry and
+  filled the directory with hundreds of thousands of `evaluate-*` files. The
+  error is still logged and rethrown; producer-gate dumps (`offspring-` /
+  `mutator-` compile traps) are unchanged.
 - Training no longer treats ~1e-9 evaluate noise as a memetic regression.
   Fitness error (from `evaluateDir`) and the training loop's `bestError` can
   disagree at f32 ulp on small datasets; the old `train.error > fitnessError`

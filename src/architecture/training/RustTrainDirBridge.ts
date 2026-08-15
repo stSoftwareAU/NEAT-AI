@@ -3,12 +3,15 @@
  *
  * Production `evolveDir` reaches this path indirectly. The CLI owns the epoch
  * loop in native Rust (creature JSON + `.bin` directory → accumulate → apply →
- * MSE accept/rollback). TypeScript keeps predictive coding, cross-validation,
- * custom costs, dropout, fuzzing, quantisation, Muon, and recurrent graphs.
+ * MSE accept/rollback). Options the old WASM `propagateTopological`
+ * engine never honoured — and options that are not backpropagation —
+ * skip the Rust app (predictive coding, cross-validation, custom
+ * costs, dropout, fuzzing, quantisation, Muon, recurrent /
+ * `feedbackLoop`). `trainingSampleRate` is forwarded as `--max-records`.
  *
- * Opt-in via `NEAT_AI_BACKPROP_ENABLED=1`. The TypeScript / WASM loop is
- * the default so the quality gate and production `evolveDir` stay on the
- * path that already finishes cleanly.
+ * Opt-in via `NEAT_AI_BACKPROP_ENABLED=1` (`./quality.sh --next`). When
+ * that flag is set there is no silent WASM fallback for a request the
+ * old engine *did* handle: a missing binary is an error.
  */
 
 import { fromFileUrl } from "@std/path/from-file-url";
@@ -23,14 +26,54 @@ import { finaliseTraining } from "@architecture/training/TrainingTeardown.ts";
 import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
 import type { TrainingLoopResult } from "@architecture/training/TrainingLoop.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
+import { readDatasetDirEntriesSync } from "@architecture/DatasetIO.ts";
 
-/** Matches `TrainSummary` in neat_ai_backpropagation `train.rs`. */
+/** Derived from `journal.jsonl` epoch lines (`TrainEpochRecord`). */
 interface TrainSummary {
   baselineMse: number;
   bestMse: number;
   acceptedEpochs: number;
   completedEpochs: number;
   timedOut: boolean;
+}
+
+interface TrainJournalLine {
+  kind?: string;
+  epoch?: number;
+  beforeMse?: number;
+  afterMse?: number;
+  accepted?: boolean;
+}
+
+function summariseTrainJournal(journalPath: string): TrainSummary {
+  const lines = Deno.readTextFileSync(journalPath).split("\n");
+  let baselineMse = Number.NaN;
+  let bestMse = Number.POSITIVE_INFINITY;
+  let acceptedEpochs = 0;
+  let completedEpochs = 0;
+  for (const line of lines) {
+    if (line.trim().length === 0) continue;
+    const rec = JSON.parse(line) as TrainJournalLine;
+    if (rec.kind !== "epoch") continue;
+    completedEpochs = Math.max(completedEpochs, rec.epoch ?? 0);
+    if (!Number.isFinite(baselineMse) && Number.isFinite(rec.beforeMse)) {
+      baselineMse = rec.beforeMse as number;
+    }
+    if (rec.accepted === true && Number.isFinite(rec.afterMse)) {
+      acceptedEpochs++;
+      bestMse = Math.min(bestMse, rec.afterMse as number);
+    }
+  }
+  if (!Number.isFinite(bestMse)) {
+    bestMse = baselineMse;
+  }
+  return {
+    baselineMse,
+    bestMse,
+    acceptedEpochs,
+    completedEpochs,
+    timedOut: false,
+  };
 }
 
 export interface RustTrainDirSearchOptions {
@@ -132,31 +175,30 @@ function toCliStrategy(
   return strategy === "warm_restart" ? "warm-restart" : strategy;
 }
 
-function timeoutSeconds(setup: TrainingSetupState): number | undefined {
-  const caps: number[] = [];
-  if (setup.trainingTimeOutMinutes > 0) {
-    caps.push(setup.trainingTimeOutMinutes * 60);
-  }
-  if (setup.hardDeadlineTS !== undefined && setup.hardDeadlineTS > 0) {
-    const remain = (setup.hardDeadlineTS - Date.now()) / 1000;
-    if (remain > 0) caps.push(remain);
-  }
-  if (caps.length === 0) return undefined;
-  return Math.max(1, Math.floor(Math.min(...caps)));
-}
-
 function envFlagEnabled(raw: string | undefined): boolean {
   if (raw === undefined) return false;
   const v = raw.trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes";
 }
 
+let testEnabledOverride: boolean | undefined;
+let loggedTrainDirBinary: string | undefined;
+let legacyWrapperDepth = 0;
+
+/** Isolate-local enable override for tests (do not mutate process env). */
+export function __setRustTrainDirEnabledForTests(
+  enabled: boolean | undefined,
+): void {
+  testEnabledOverride = enabled;
+}
+
 /**
  * True when the caller asked `trainDir` to spawn the Rust trainer.
  *
- * Default is off so evolve's per-generation 1-epoch trains stay in-process.
+ * Default is off. `./quality.sh --next` sets `NEAT_AI_BACKPROP_ENABLED=1`.
  */
 export function isRustTrainDirEnabled(): boolean {
+  if (testEnabledOverride !== undefined) return testEnabledOverride;
   return envFlagEnabled(readEnvString("NEAT_AI_BACKPROP_ENABLED"));
 }
 
@@ -167,11 +209,102 @@ function stepScale(): number {
   return Number.isFinite(n) && n > 0 ? Math.min(n, 1) : 0.01;
 }
 
+/** Count little-endian f32 records in a `trainDir` dataset. */
+function countDatasetRecords(
+  dataDir: string,
+  bytesPerRecord: number,
+): number {
+  if (bytesPerRecord <= 0) return 0;
+  let total = 0;
+  for (const entry of readDatasetDirEntriesSync(dataDir)) {
+    if (!entry.isFile || !entry.name.endsWith(".bin")) continue;
+    const size = Deno.statSync(join(dataDir, entry.name)).size;
+    total += Math.floor(size / bytesPerRecord);
+  }
+  return total;
+}
+
+/**
+ * Run the TypeScript `trainDir` wrappers (and allow WASM
+ * `propagateTopological` inside them) for options the old backprop
+ * engine never honoured.
+ */
+export function runLegacyTrainDirWrappers<T>(fn: () => T): T {
+  legacyWrapperDepth++;
+  try {
+    return fn();
+  } finally {
+    legacyWrapperDepth--;
+  }
+}
+
+/** True while {@link runLegacyTrainDirWrappers} is on the stack. */
+export function isLegacyTrainDirWrapperActive(): boolean {
+  return legacyWrapperDepth > 0;
+}
+
+/**
+ * Options that are not backpropagation (or that we do not want the
+ * Rust trainer to support). When set, do not spawn the Rust app —
+ * keep the TypeScript wrappers.
+ */
+export function rustTrainDirSkipReason(
+  creature: Creature,
+  options: TrainOptions,
+  cost: CostInterface,
+  setup: TrainingSetupState,
+): string | undefined {
+  if (options.predictiveCoding?.enabled) {
+    return "predictive coding is not backpropagation";
+  }
+  if (options.crossValidation?.enabled) {
+    return "cross-validation is TypeScript fold orchestration";
+  }
+  if (cost.getName() !== MSE.NAME) {
+    return `cost ${cost.getName()} is not used by WASM backprop`;
+  }
+  if (setup.fuzzingConfig.enabled) {
+    return "fuzzing is not backpropagation";
+  }
+  if (setup.quantisationConfig.enabled) {
+    return "quantisation is not backpropagation";
+  }
+  if (setup.iterationConfig.dropoutRate > 0) {
+    return "dropout is not backpropagation";
+  }
+  if (setup.iterationConfig.gradientOrthogonalisation === "muon") {
+    return "Muon orthogonalisation is not backpropagation";
+  }
+  if (creature.forwardOnly !== true) {
+    return "recurrent topology is not trained by backpropagation";
+  }
+  if (options.feedbackLoop === true) {
+    return "feedbackLoop is not backpropagation";
+  }
+  return undefined;
+}
+
+/**
+ * Why a request the old WASM backprop *did* handle cannot go to Rust,
+ * or `undefined` when it can (or when it should skip Rust instead).
+ */
+export function rustTrainDirRefusalReason(
+  creature: Creature,
+  options: TrainOptions,
+  cost: CostInterface,
+  setup: TrainingSetupState,
+): string | undefined {
+  if (rustTrainDirSkipReason(creature, options, cost, setup) !== undefined) {
+    return undefined;
+  }
+  if (findRustTrainDirBinary() === null) {
+    return "neat_ai_backpropagation binary was not found";
+  }
+  return undefined;
+}
+
 /**
  * True when this `trainDir` request is one the Rust trainer can honour.
- *
- * Custom costs, recurrent graphs, and the TypeScript-only regularisers stay
- * on the existing loop so those tests remain unaltered.
  */
 export function canUseRustTrainDir(
   creature: Creature,
@@ -180,18 +313,9 @@ export function canUseRustTrainDir(
   setup: TrainingSetupState,
   enabled: boolean = isRustTrainDirEnabled(),
 ): boolean {
-  if (!enabled) return false;
-  if (creature.forwardOnly !== true) return false;
-  if (options.feedbackLoop === true) return false;
-  if (cost.getName() !== MSE.NAME) return false;
-  if (setup.fuzzingConfig.enabled) return false;
-  if (setup.quantisationConfig.enabled) return false;
-  if (setup.iterationConfig.dropoutRate > 0) return false;
-  if (setup.iterationConfig.gradientOrthogonalisation === "muon") {
-    return false;
-  }
-  if (setup.trainingSampleRate < 1) return false;
-  return findRustTrainDirBinary() !== null;
+  return enabled &&
+    rustTrainDirSkipReason(creature, options, cost, setup) === undefined &&
+    rustTrainDirRefusalReason(creature, options, cost, setup) === undefined;
 }
 
 function spawnTrain(
@@ -214,8 +338,11 @@ function spawnTrain(
 /**
  * Run the Rust trainer and package a TypeScript {@link TrainingResult}.
  *
- * @returns the result, or `undefined` when this request should stay on the
- *          TypeScript loop.
+ * @returns the result, or `undefined` when the Rust trainer is not
+ *          enabled or the request uses options the old WASM backprop
+ *          never honoured. When the trainer **is** enabled, a request
+ *          the old engine handled but Rust cannot (or a missing binary)
+ *          throws — no silent WASM fallback.
  */
 export function tryRustTrainDir(
   creature: Creature,
@@ -224,11 +351,26 @@ export function tryRustTrainDir(
   cost: CostInterface,
   setup: TrainingSetupState,
 ): TrainingResult | undefined {
-  if (!canUseRustTrainDir(creature, options, cost, setup)) {
+  if (!isRustTrainDirEnabled()) {
     return undefined;
   }
+  if (rustTrainDirSkipReason(creature, options, cost, setup) !== undefined) {
+    return undefined;
+  }
+  const reason = rustTrainDirRefusalReason(creature, options, cost, setup);
+  if (reason !== undefined) {
+    throw new Error(
+      `trainDir must use neat_ai_backpropagation when NEAT_AI_BACKPROP_ENABLED=1; ` +
+        `refusing WASM/TypeScript fallback (${reason}).`,
+    );
+  }
   const binary = findRustTrainDirBinary();
-  if (binary === null) return undefined;
+  if (binary === null) {
+    throw new Error(
+      "trainDir must use neat_ai_backpropagation when NEAT_AI_BACKPROP_ENABLED=1; " +
+        "refusing WASM/TypeScript fallback (neat_ai_backpropagation binary was not found).",
+    );
+  }
 
   const workDir = Deno.makeTempDirSync({ prefix: "neat-ai-backprop-" });
   const creaturePath = join(workDir, "creature.json");
@@ -240,6 +382,9 @@ export function tryRustTrainDir(
   );
 
   const cfg = setup.iterationConfig;
+  // Only flags the current `neat_ai_backpropagation train` CLI accepts.
+  // Unknown flags (sparse-ratio, generations, target-error, …) are an
+  // error from the binary — do not invent a WASM fallback.
   const args = [
     "train",
     resolve(Deno.cwd(), creaturePath),
@@ -258,25 +403,25 @@ export function tryRustTrainDir(
     String(cfg.maximumBiasAdjustmentScale),
     "--maximum-weight-adjustment-scale",
     String(cfg.maximumWeightAdjustmentScale),
-    "--sparse-ratio",
-    String(cfg.sparseRatio),
-    "--generations",
-    String(cfg.generations),
     "--step-scale",
     String(stepScale()),
-    "--target-error",
-    String(setup.targetError),
   ];
   if (cfg.normaliseGradients) args.push("--normalise-gradients");
-  if (options.disableRandomSamples !== true) args.push("--random-samples");
-  const timeout = timeoutSeconds(setup);
-  if (timeout !== undefined) {
-    args.push("--timeout-seconds", String(timeout));
+  if (setup.trainingSampleRate < 1) {
+    const total = countDatasetRecords(dataDir, setup.BYTES_PER_RECORD);
+    const maxRecords = Math.max(
+      1,
+      Math.ceil(total * setup.trainingSampleRate),
+    );
+    args.push("--max-records", String(maxRecords));
   }
 
-  getLogger().info(
-    `[NEAT-AI] trainDir using native neat_ai_backpropagation at ${binary}`,
-  );
+  if (loggedTrainDirBinary !== binary) {
+    loggedTrainDirBinary = binary;
+    getLogger().info(
+      `[NEAT-AI] trainDir using native neat_ai_backpropagation at ${binary}`,
+    );
+  }
 
   try {
     const spawned = spawnTrain(binary, args);
@@ -288,13 +433,11 @@ export function tryRustTrainDir(
     }
 
     const bestPath = join(outputDir, "best.json");
-    const summaryPath = join(outputDir, "summary.json");
+    const journalPath = join(outputDir, "journal.jsonl");
     const bestJson = JSON.parse(
       Deno.readTextFileSync(bestPath),
     ) as CreatureExport;
-    const summary = JSON.parse(
-      Deno.readTextFileSync(summaryPath),
-    ) as TrainSummary;
+    const summary = summariseTrainJournal(journalPath);
 
     creature.loadFrom(bestJson, false, "training:rustTrainDir");
 

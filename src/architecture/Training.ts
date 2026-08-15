@@ -19,7 +19,12 @@ import {
 } from "@architecture/training/TrainingSetup.ts";
 import { runTrainingLoop } from "@architecture/training/TrainingLoop.ts";
 import { finaliseTraining } from "@architecture/training/TrainingTeardown.ts";
-import { tryRustTrainDir } from "@architecture/training/RustTrainDirBridge.ts";
+import {
+  isRustTrainDirEnabled,
+  runLegacyTrainDirWrappers,
+  rustTrainDirSkipReason,
+  tryRustTrainDir,
+} from "@architecture/training/RustTrainDirBridge.ts";
 import { trainDirPredictiveCoding } from "@architecture/training/TrainingPredictiveCoding.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 
@@ -52,28 +57,34 @@ export function trainDir(
     "No binary files found in the data directory",
   );
 
-  // Issue #1556: Delegate to Predictive Coding trainer when enabled.
+  // Issue #1556: Predictive coding is a separate TypeScript trainer —
+  // the old WASM backprop never honoured it, so do not spawn Rust.
   if (options.predictiveCoding?.enabled) {
-    return trainDirPredictiveCoding(
-      creature,
-      dataResult.files,
-      options,
-      cost,
+    return runLegacyTrainDirWrappers(() =>
+      trainDirPredictiveCoding(
+        creature,
+        dataResult.files,
+        options,
+        cost,
+      )
     );
   }
 
-  // Issue #1865: Delegate to cross-validation trainer when enabled.
+  // Issue #1865: Cross-validation is TypeScript fold orchestration —
+  // not a Rust-trainer option.
   if (options.crossValidation?.enabled) {
     const folds = options.crossValidation.folds ?? 5;
     const validationEarlyStopping =
       options.crossValidation.validationEarlyStopping ?? true;
-    return trainWithCrossValidation(
-      creature,
-      dataDir,
-      options,
-      cost,
-      folds,
-      validationEarlyStopping,
+    return runLegacyTrainDirWrappers(() =>
+      trainWithCrossValidation(
+        creature,
+        dataDir,
+        options,
+        cost,
+        folds,
+        validationEarlyStopping,
+      )
     );
   }
 
@@ -107,11 +118,10 @@ export function trainDirSingleFold(
  * setup → loop → teardown.
  *
  * The TypeScript / WASM loop is the default. Set
- * `NEAT_AI_BACKPROP_ENABLED=1` to spawn sibling
- * `neat_ai_backpropagation train` when the binary is present and the
- * request is one the CLI can honour (Issue #3741). Predictive coding,
- * cross-validation, custom costs, and the TypeScript-only regularisers
- * always stay on the existing loop.
+ * `NEAT_AI_BACKPROP_ENABLED=1` (`./quality.sh --next`) to spawn sibling
+ * `neat_ai_backpropagation train` for requests the old WASM backprop
+ * handled. Options that engine never honoured stay on the TypeScript
+ * loop. A missing binary is an error — no silent WASM fallback.
  */
 function trainDirBinary(
   creature: Creature,
@@ -125,26 +135,39 @@ function trainDirBinary(
 
   const setup = prepareTraining(creature, options, ID);
 
+  const runTypeScriptLoop = (): TrainingResult => {
+    const loopResult = runTrainingLoop(
+      creature,
+      binaryFiles,
+      options,
+      cost,
+      setup,
+    );
+    return finaliseTraining(
+      creature,
+      loopResult,
+      setup.iterationConfig,
+      setup.iterations,
+      setup.feedbackLoop,
+      setup.syntheticKeys,
+      setup.ID,
+    );
+  };
+
+  if (rustTrainDirSkipReason(creature, options, cost, setup) !== undefined) {
+    return runLegacyTrainDirWrappers(runTypeScriptLoop);
+  }
+
   const rust = tryRustTrainDir(creature, dataDir, options, cost, setup);
   if (rust !== undefined) {
     return rust;
   }
+  if (isRustTrainDirEnabled()) {
+    throw new Error(
+      "trainDir must use neat_ai_backpropagation when NEAT_AI_BACKPROP_ENABLED=1; " +
+        "refusing WASM/TypeScript fallback.",
+    );
+  }
 
-  const loopResult = runTrainingLoop(
-    creature,
-    binaryFiles,
-    options,
-    cost,
-    setup,
-  );
-
-  return finaliseTraining(
-    creature,
-    loopResult,
-    setup.iterationConfig,
-    setup.iterations,
-    setup.feedbackLoop,
-    setup.syntheticKeys,
-    setup.ID,
-  );
+  return runTypeScriptLoop();
 }

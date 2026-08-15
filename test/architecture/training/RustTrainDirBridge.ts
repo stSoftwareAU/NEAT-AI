@@ -3,16 +3,20 @@ import { join } from "@std/path";
 import { Creature } from "@creature";
 import { Costs } from "@costs";
 import type { CostInterface } from "@costs/CostInterface.ts";
+import type { TrainOptions } from "@config/TrainOptions.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
 } from "@architecture/DataSet.ts";
 import { trainDir } from "@architecture/Training.ts";
 import {
+  __setRustTrainDirEnabledForTests,
   canUseRustTrainDir,
   findRustTrainDirBinary,
   findRustTrainDirBinaryFromOptions,
   isRustTrainDirEnabled,
+  rustTrainDirRefusalReason,
+  rustTrainDirSkipReason,
 } from "@architecture/training/RustTrainDirBridge.ts";
 import { prepareTraining } from "@architecture/training/TrainingSetup.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -74,10 +78,31 @@ Deno.test("Rust trainDir: custom cost stays on the TypeScript loop", () => {
     ),
     false,
   );
+  assertEquals(
+    rustTrainDirSkipReason(
+      creature,
+      { iterations: 1 },
+      new ConstantCost(),
+      setup,
+    )?.includes("not used by WASM backprop"),
+    true,
+  );
+  assertEquals(
+    rustTrainDirRefusalReason(
+      creature,
+      { iterations: 1 },
+      new ConstantCost(),
+      setup,
+    ),
+    undefined,
+  );
 });
 
-Deno.test("Rust trainDir is opt-in (TypeScript loop is the default)", () => {
-  assertEquals(isRustTrainDirEnabled(), false);
+Deno.test("Rust trainDir is opt-in unless NEAT_AI_BACKPROP_ENABLED=1", () => {
+  const raw = Deno.env.get("NEAT_AI_BACKPROP_ENABLED");
+  const expected = raw !== undefined &&
+    ["1", "true", "yes"].includes(raw.trim().toLowerCase());
+  assertEquals(isRustTrainDirEnabled(), expected);
   const creature = new Creature(2, 1);
   const uuid = CreatureUtil.makeUUID(creature);
   const setup = prepareTraining(
@@ -86,7 +111,13 @@ Deno.test("Rust trainDir is opt-in (TypeScript loop is the default)", () => {
     uuid.substring(Math.max(0, uuid.length - 8)),
   );
   assertEquals(
-    canUseRustTrainDir(creature, { iterations: 1 }, Costs.find("MSE"), setup),
+    canUseRustTrainDir(
+      creature,
+      { iterations: 1 },
+      Costs.find("MSE"),
+      setup,
+      false,
+    ),
     false,
   );
   if (findRustTrainDirBinary() !== null) {
@@ -94,6 +125,235 @@ Deno.test("Rust trainDir is opt-in (TypeScript loop is the default)", () => {
       canUseRustTrainDir(
         creature,
         { iterations: 1 },
+        Costs.find("MSE"),
+        setup,
+        true,
+      ),
+      true,
+    );
+  }
+});
+
+Deno.test("Rust trainDir: custom cost skips Rust and trains on the TypeScript loop", () => {
+  const creature = new Creature(2, 1);
+  const dataSet: DataRecordInterface[] = [
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
+  ];
+  const dataDir = makeDataDir(dataSet, dataSet.length, {
+    input: creature.input,
+    output: creature.output,
+  });
+  __setRustTrainDirEnabledForTests(true);
+  try {
+    const result = trainDir(
+      creature,
+      dataDir,
+      { iterations: 1, disableRandomSamples: true },
+      new ConstantCost(),
+    );
+    assert(Number.isFinite(result.error), "error should be finite");
+    assert(result.iteration >= 1);
+  } finally {
+    __setRustTrainDirEnabledForTests(undefined);
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test("Rust trainDir: dropout skips Rust and trains on the TypeScript loop", () => {
+  const creature = new Creature(2, 1);
+  const dataSet: DataRecordInterface[] = [
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
+  ];
+  const dataDir = makeDataDir(dataSet, dataSet.length, {
+    input: creature.input,
+    output: creature.output,
+  });
+  __setRustTrainDirEnabledForTests(true);
+  try {
+    const result = trainDir(
+      creature,
+      dataDir,
+      { iterations: 1, disableRandomSamples: true, dropoutRate: 0.2 },
+      Costs.find("MSE"),
+    );
+    assert(Number.isFinite(result.error), "error should be finite");
+  } finally {
+    __setRustTrainDirEnabledForTests(undefined);
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test("Rust trainDir: recurrent skips Rust and trains on the TypeScript loop", () => {
+  const creature = new Creature(2, 1, { feedbackEnabled: true });
+  const uuid = CreatureUtil.makeUUID(creature);
+  const setup = prepareTraining(
+    creature,
+    { iterations: 1, disableRandomSamples: true },
+    uuid.substring(Math.max(0, uuid.length - 8)),
+  );
+  assertEquals(
+    rustTrainDirSkipReason(
+      creature,
+      { iterations: 1, disableRandomSamples: true },
+      Costs.find("MSE"),
+      setup,
+    )?.includes("recurrent"),
+    true,
+  );
+
+  const dataSet: DataRecordInterface[] = [
+    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+    { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
+  ];
+  const dataDir = makeDataDir(dataSet, dataSet.length, {
+    input: creature.input,
+    output: creature.output,
+  });
+  __setRustTrainDirEnabledForTests(true);
+  try {
+    const result = trainDir(
+      creature,
+      dataDir,
+      { iterations: 1, disableRandomSamples: true },
+      Costs.find("MSE"),
+    );
+    assert(Number.isFinite(result.error), "error should be finite");
+  } finally {
+    __setRustTrainDirEnabledForTests(undefined);
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test("Rust trainDir: non-backprop options skip the Rust app", () => {
+  const forward = new Creature(2, 1);
+  const recurrent = new Creature(2, 1, { feedbackEnabled: true });
+  const mse = Costs.find("MSE");
+  const cases: Array<{
+    name: string;
+    creature: Creature;
+    options: TrainOptions;
+    cost: CostInterface;
+    needle: string;
+  }> = [
+    {
+      name: "predictive coding",
+      creature: forward,
+      options: { iterations: 1, predictiveCoding: { enabled: true } },
+      cost: mse,
+      needle: "predictive coding",
+    },
+    {
+      name: "cross-validation",
+      creature: forward,
+      options: { iterations: 1, crossValidation: { enabled: true } },
+      cost: mse,
+      needle: "cross-validation",
+    },
+    {
+      name: "custom cost",
+      creature: forward,
+      options: { iterations: 1 },
+      cost: new ConstantCost(),
+      needle: "not used by WASM backprop",
+    },
+    {
+      name: "fuzzing",
+      creature: forward,
+      options: { iterations: 1, dataFuzzing: { enabled: true } },
+      cost: mse,
+      needle: "fuzzing",
+    },
+    {
+      name: "quantisation",
+      creature: forward,
+      options: { iterations: 1, dataQuantisation: { enabled: true } },
+      cost: mse,
+      needle: "quantisation",
+    },
+    {
+      name: "dropout",
+      creature: forward,
+      options: { iterations: 1, dropoutRate: 0.2 },
+      cost: mse,
+      needle: "dropout",
+    },
+    {
+      name: "Muon",
+      creature: forward,
+      options: { iterations: 1, gradientOrthogonalisation: "muon" },
+      cost: mse,
+      needle: "Muon",
+    },
+    {
+      name: "recurrent",
+      creature: recurrent,
+      options: { iterations: 1 },
+      cost: mse,
+      needle: "recurrent",
+    },
+    {
+      name: "feedbackLoop",
+      creature: forward,
+      options: {
+        iterations: 1,
+        feedbackLoop: true,
+        disableRandomSamples: true,
+      },
+      cost: mse,
+      needle: "feedbackLoop",
+    },
+  ];
+
+  for (const c of cases) {
+    const uuid = CreatureUtil.makeUUID(c.creature);
+    const setup = prepareTraining(
+      c.creature,
+      { ...c.options, disableRandomSamples: true },
+      uuid.substring(Math.max(0, uuid.length - 8)),
+    );
+    const reason = rustTrainDirSkipReason(
+      c.creature,
+      c.options,
+      c.cost,
+      setup,
+    );
+    assert(reason !== undefined, `${c.name} should skip Rust`);
+    assert(
+      reason.includes(c.needle),
+      `${c.name} skip reason should mention ${c.needle}, got ${reason}`,
+    );
+    assertEquals(
+      canUseRustTrainDir(c.creature, c.options, c.cost, setup, true),
+      false,
+      `${c.name} must not call the Rust app`,
+    );
+  }
+});
+
+Deno.test("Rust trainDir: trainingSampleRate is forwarded, not skipped", () => {
+  const creature = new Creature(2, 1);
+  const uuid = CreatureUtil.makeUUID(creature);
+  const setup = prepareTraining(
+    creature,
+    { iterations: 1, disableRandomSamples: true, trainingSampleRate: 0.5 },
+    uuid.substring(Math.max(0, uuid.length - 8)),
+  );
+  assertEquals(
+    rustTrainDirSkipReason(
+      creature,
+      { iterations: 1, trainingSampleRate: 0.5 },
+      Costs.find("MSE"),
+      setup,
+    ),
+    undefined,
+  );
+  if (findRustTrainDirBinary() !== null) {
+    assertEquals(
+      canUseRustTrainDir(
+        creature,
+        { iterations: 1, trainingSampleRate: 0.5 },
         Costs.find("MSE"),
         setup,
         true,

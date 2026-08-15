@@ -10,12 +10,14 @@ import {
   assertRejects,
   assertStringIncludes,
 } from "@std/assert";
+import { Creature } from "@creature";
 import { ValidationError } from "@errors/ValidationError.ts";
 import {
   buildDiscoverResponsePayload,
   clearDiscoverResultForGC,
   WorkerProcessor,
 } from "@multithreading/workers/WorkerProcessor.ts";
+import { useIsolatedDiagnosticsDir } from "../_diagnosticsDir.ts";
 import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 
 function makeMinimalDiscoverResult(): DiscoverResult {
@@ -190,4 +192,43 @@ Deno.test("WorkerProcessor: a relative custom cost specifier passes the guard", 
   );
   assertEquals(error instanceof ValidationError, false);
   assertStringIncludes(error.message, "Failed to load custom cost function");
+});
+
+Deno.test("WorkerProcessor: evaluate errors do not dump diagnostics", async () => {
+  const diagnostics = useIsolatedDiagnosticsDir("evaluate-no-dump");
+  const dataSetDir = await Deno.makeTempDir({
+    prefix: "neat-evaluate-no-dump-",
+  });
+  try {
+    const processor = new WorkerProcessor();
+    await processor.process({
+      taskID: 1,
+      initialize: {
+        dataSetDir,
+        costName: "MSE",
+      },
+    });
+
+    await assertRejects(() =>
+      processor.process({
+        taskID: 2,
+        evaluate: {
+          creature: new Creature(1, 1).exportJSON(),
+          feedbackLoop: false,
+        },
+      })
+    );
+
+    const dumped = (await Array.fromAsync(Deno.readDir(diagnostics.dir))).map(
+      (entry) => entry.name,
+    );
+    assertEquals(
+      dumped.filter((name) => name.startsWith("evaluate-")),
+      [],
+      "evaluate failures must not write diagnostic dumps",
+    );
+  } finally {
+    diagnostics.dispose();
+    await Deno.remove(dataSetDir, { recursive: true });
+  }
 });

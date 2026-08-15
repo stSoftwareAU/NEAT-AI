@@ -405,7 +405,7 @@ Deno.test(
 Deno.test(
   {
     name:
-      "quality.sh --next fails loud when libneat_core is missing (no WASM fallback)",
+      "quality.sh --next fails loud when neat_ai_backpropagation is missing (no WASM fallback)",
     permissions: { run: true, read: true, write: true, env: true },
     fn: async () => {
       const tmp = await Deno.makeTempDir({ prefix: "neat-quality-backprop-" });
@@ -420,19 +420,20 @@ Deno.test(
           env: {
             PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
             HOME: tmp,
-            NEAT_AI_CORE_LIB_PATH: "/nonexistent/libneat_core.dylib",
+            NEAT_AI_BACKPROP_BINARY_PATH:
+              "/nonexistent/neat_ai_backpropagation",
           },
         });
         const output = await command.output();
         assert(
           output.code !== 0,
-          "quality.sh --next must fail when libneat_core cannot be resolved",
+          "quality.sh --next must fail when neat_ai_backpropagation cannot be resolved",
         );
         const stderr = new TextDecoder().decode(output.stderr);
         assert(
-          stderr.includes("libneat_core backprop was requested") &&
+          stderr.includes("neat_ai_backpropagation was requested") &&
             stderr.includes("will not silently fall back"),
-          `Expected fail-loud native backprop error; got: ${stderr}`,
+          `Expected fail-loud rust trainDir error; got: ${stderr}`,
         );
       } finally {
         await Deno.remove(tmp, { recursive: true });
@@ -476,6 +477,11 @@ Deno.test({
         env: {
           PATH: Deno.env.get("PATH") ?? "",
           HOME: home,
+          // Nested quality.sh must not inherit --next from the parent suite
+          // or it cargo-builds neat-core against this fake HOME (no rustup
+          // default) and fails before the GPU-off assertion can run.
+          NEAT_AI_NATIVE_CORE_BACKPROP: "0",
+          NEAT_AI_BACKPROP_ENABLED: "0",
         },
       });
       const output = await command.output();
