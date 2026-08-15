@@ -230,6 +230,9 @@ Project-level policies, audits, and release plumbing.
   rationale, and how to add the line to new entry points.
 - **[TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md)** — TypeScript → Rust migration
   milestone roadmap.
+- **[RUST_EXTENSION_WRITE_PATH_AUDIT.md](RUST_EXTENSION_WRITE_PATH_AUDIT.md)** —
+  per-extension verdict on which Rust extensions write creature JSON, pinned to
+  commit SHAs so the greps can be re-run (Issue #3751).
 
 ## 🔍 Comparison with other approaches
 
