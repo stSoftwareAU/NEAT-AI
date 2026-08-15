@@ -91,15 +91,11 @@ async function setupFakeRepo(): Promise<{
   await Deno.mkdir(`${dir}/src/wasm`, { recursive: true });
   await Deno.mkdir(`${dir}/src/errors`, { recursive: true });
   await Deno.mkdir(`${dir}/scripts`, { recursive: true });
-  for (
-    const file of [
-      "src/wasm/WasmMemoryModel.ts",
-      "src/errors/WasmError.ts",
-      "scripts/check_wasm_memory_model.ts",
-    ]
-  ) {
-    await Deno.copyFile(`${REPO_ROOT}/${file}`, `${dir}/${file}`);
-  }
+  await Promise.all([
+    "src/wasm/WasmMemoryModel.ts",
+    "src/errors/WasmError.ts",
+    "scripts/check_wasm_memory_model.ts",
+  ].map((file) => Deno.copyFile(`${REPO_ROOT}/${file}`, `${dir}/${file}`)));
 
   // Empty pkg dir so verify_pkg_matches() returns failure.
   await Deno.mkdir(`${dir}/wasm_activation/pkg`, { recursive: true });

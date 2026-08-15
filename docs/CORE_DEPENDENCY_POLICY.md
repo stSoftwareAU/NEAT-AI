@@ -14,25 +14,44 @@ NEAT-AI tracks NEAT-AI-core in `deno.json`:
   "repo": "stSoftwareAU/NEAT-AI-core",
   "ref": "Develop",
   "rev": "<40-char SHA>",
-  "assetSha256": "<64-char SHA-256 of that rev's tarball>"
+  "assetSha256": "<64-char SHA-256 of that rev's tarball>",
+  "memoryModel": "wasm64"
 }
 ```
 
 `build.sh` is the single integration point. By default it resolves NEAT-AI-core
-`Develop` HEAD via the GitHub API, downloads the matching
-`wasm_activation-pkg.tar.gz` asset from the per-commit Release tagged
-`wasm-bundle-<SHA>`, content-verifies the tarball via SHA-256, unpacks it into
-`wasm_activation/`, writes a per-file content manifest, and updates `deno.json`
-`neatCore.rev` to the new SHA along with `neatCore.assetSha256` to that
-tarball's hash. The maintainer (or worker) running `./build.sh` commits the
-updated `deno.json` and `wasm_activation/pkg/**` together.
+`Develop` HEAD via the GitHub API, downloads the release asset for the declared
+`memoryModel` from the per-commit Release tagged `wasm-bundle-<SHA>`,
+content-verifies the tarball via SHA-256, unpacks it into `wasm_activation/`,
+writes a per-file content manifest, and updates `deno.json` `neatCore.rev` to
+the new SHA along with `neatCore.assetSha256` to that tarball's hash. The
+maintainer (or worker) running `./build.sh` commits the updated `deno.json`,
+`wasm_activation/pkg/**` and `src/wasm/WasmBundleSha256.ts` together.
+
+### Memory model (Issue #3743)
+
+NEAT-AI-core dual-ships the bundle. `neatCore.memoryModel` picks the asset and
+is enforced against the bytes, so a wasm32 copy can never run under a wasm64
+pin:
+
+| `memoryModel` | Release asset                       | Linear-memory ceiling |
+| ------------- | ----------------------------------- | --------------------- |
+| `wasm64`      | `wasm_activation-wasm64-pkg.tar.gz` | none in practice      |
+| `wasm32`      | `wasm_activation-pkg.tar.gz`        | 4 GiB (65 536 pages)  |
+
+The wasm32 asset keeps its historical name so older pins resolve unchanged. The
+wasm64 lane is built by the `wasm-bindgen` CLI rather than `wasm-pack`, so it
+ships no `package.json`; `build.sh` hashes that file when a bundle provides it
+and prunes it (loudly) when one does not. `build.sh` writes the verified model
+into `src/wasm/WasmBundleSha256.ts` as `EXPECTED_WASM_MEMORY_MODEL`, which the
+loader re-checks on the main thread and on the worker handshake.
 
 ```mermaid
 flowchart LR
   CORE["NEAT-AI-core Develop"] -- "wasm-pack CI" --> REL["GitHub Release<br/>wasm-bundle-&lt;SHA&gt;"]
-  REL -- "wasm_activation-pkg.tar.gz" --> BUILD["./build.sh"]
-  REL -- "wasm_activation-pkg.tar.gz.sha256<br/>(sidecar anchor)" --> BUILD
-  BUILD -- "extract" --> PKG["wasm_activation/pkg/**"]
+  REL -- "asset for neatCore.memoryModel" --> BUILD["./build.sh"]
+  REL -- "&lt;asset&gt;.sha256<br/>(sidecar anchor)" --> BUILD
+  BUILD -- "extract + address-size gate" --> PKG["wasm_activation/pkg/**"]
   BUILD -- "bump rev + pin" --> DENO["deno.json neatCore.rev<br/>+ assetSha256"]
   PKG -- "import (unchanged)" --> GRQ["GRQ / downstream clients"]
 ```

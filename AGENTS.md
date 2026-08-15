@@ -560,6 +560,23 @@ actionable error.
 > No manual WASM initialisation is required. The library handles this
 > automatically in all supported contexts.
 
+### Memory model: wasm64 (Memory64) — Issue #3743
+
+NEAT-AI-core dual-ships the activation bundle as **wasm32** and **wasm64**;
+NEAT-AI pins the wasm64 one. `deno.json` `neatCore.memoryModel` declares which,
+`./build.sh` fetches the matching release asset and rejects bytes whose memory
+section disagrees, and `src/wasm/WasmModuleLoader.ts` re-checks the bundle it
+actually instantiates (main thread **and** worker handshake). There is **no
+silent fallback to wasm32** — a mismatch throws like a missing bundle.
+
+Keep the two ceilings distinct: `--max-old-space-size` is the **V8 JS heap**
+lever; the wasm64 bundle is the **WASM linear-memory** lever. Neither moves the
+other. See [`docs/troubleshooting/MEMORY.md`](docs/troubleshooting/MEMORY.md)
+and [`docs/troubleshooting/WASM.md`](docs/troubleshooting/WASM.md).
+
+Grow linear memory through `growWasmMemory` (`src/wasm/WasmMemoryModel.ts`); it
+takes a **BigInt** page delta and rejects a `Number` rather than truncating it.
+
 ### WASM-only operations (no TS fallback)
 
 Several read-heavy and hot-path computations live exclusively in NEAT-AI-core
@@ -632,9 +649,11 @@ workflow is in [docs/EXTERNAL_NEAT_AI_CORE.md](docs/EXTERNAL_NEAT_AI_CORE.md).
 The two rules contributors most often trip over:
 
 1. **`deno.json` is the single source of truth** for the core revision
-   (immutable 40-char `neatCore.rev`, never branch pinning). Run `./build.sh` to
-   refresh `wasm_activation/pkg` from the pin, and commit `deno.json` and
-   `wasm_activation/pkg` together.
+   (immutable 40-char `neatCore.rev`, never branch pinning) **and** the memory
+   model (`neatCore.memoryModel`, currently `wasm64` — Issue #3743). Run
+   `./build.sh` to refresh `wasm_activation/pkg` from the pin, and commit
+   `deno.json`, `wasm_activation/pkg` and `src/wasm/WasmBundleSha256.ts`
+   together.
 2. **No TS fallbacks for core-owned operations.** Once an operation moves into
    NEAT-AI-core (topology validation/scanning, reverse topological order,
    structural integrity, cycle detection, the topological backprop loop, elastic
