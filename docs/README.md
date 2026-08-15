@@ -155,6 +155,10 @@ Drop-in API and configuration material.
   that diffs them against the harness inventory, the one gap it found
   (`mutation`), the cross-slice and cross-campaign deduplication, and the order
   the removal issues must land in.
+- **[../test/fixtures/golden/README.md](../test/fixtures/golden/README.md)** —
+  the golden creature-metadata fixture: the cross-engine round-trip contract
+  every implementation of the creature JSON format must satisfy (Issue #3752).
+  Editing it is a coordinated cross-repo breaking change.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the
@@ -230,6 +234,9 @@ Project-level policies, audits, and release plumbing.
   rationale, and how to add the line to new entry points.
 - **[TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md)** — TypeScript → Rust migration
   milestone roadmap.
+- **[RUST_EXTENSION_WRITE_PATH_AUDIT.md](RUST_EXTENSION_WRITE_PATH_AUDIT.md)** —
+  per-extension verdict on which Rust extensions write creature JSON, pinned to
+  commit SHAs so the greps can be re-run (Issue #3751).
 
 ## 🔍 Comparison with other approaches
 
