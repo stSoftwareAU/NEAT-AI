@@ -107,7 +107,7 @@ Deno.test("rollup - verdict totals are internally consistent", () => {
 
 Deno.test("toConsolidatedMarkdown - renders every classified key", () => {
   const md = toConsolidatedMarkdown(result);
-  // `specialist` / `opd` were removed as unused GRQ experiments.
+  // `specialist` / `opd` were removed as unused default-off experiments.
   for (const key of ["populationSize", "mutation", "mcmc"]) {
     assert(md.includes(`\`${key}\``), `${key} missing from the merged table`);
   }

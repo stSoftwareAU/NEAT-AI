@@ -37,10 +37,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 - On-Policy Distillation (`opd`), Knowledge Distillation
   (`KnowledgeDistillationStrategy`), and the Specialist Pipeline
-  (`SpecialistPipeline` / `SpecialistConfig`). Unused in GRQ (OPD was dropped
-  there as an inert flag); removed to keep the score/hour path simple. Memetic
-  `trainDir`, Discovery, and Muon remain. **Breaking for embedders:** those
-  symbols and `NeatOptions.opd` are no longer exported.
+  (`SpecialistPipeline` / `SpecialistConfig`). Default-off experiments that no
+  public embedder wired into the score/hour path; removed to keep that path
+  simple. Memetic `trainDir`, Discovery, and Muon remain. **Breaking for
+  embedders:** those symbols and `NeatOptions.opd` are no longer exported.
 
 ### Added
 
@@ -156,6 +156,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `NEAT_AI_BACKPROP_ENABLED` keeps default-on semantics for unrecognised values
+  (`on`, `enabled`, …). Only an explicit off (`0` / `false` / `no`) forces the
+  TypeScript / WASM `trainDir` loop; a stray affirmative no longer silently
+  disables Rust training.
 - `./quality.sh` native backprop opt-in is CLI-only (`--next`,
   `--native-core-backprop`). Leftover `NEAT_AI_BACKPROP_ENABLED=1` /
   `NEAT_AI_NATIVE_CORE_BACKPROP=1` exports no longer trigger a cargo build that

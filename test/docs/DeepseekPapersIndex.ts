@@ -4,7 +4,7 @@
  * `docs/archive/research/deepseek-papers-index.md` (archived under #2575)
  * actually exist and remain configurable.
  *
- * OPD / specialist distillation were removed as unused GRQ experiments;
+ * OPD / specialist distillation were removed as unused default-off experiments;
  * remaining catalogue entries must still resolve on disk.
  */
 
