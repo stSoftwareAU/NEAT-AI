@@ -17,6 +17,8 @@ import {
   recordWasmActivationInitDiagnostics,
   type WasmBundleLoadDiagnostics,
 } from "@wasm/WasmInitDiagnostics.ts";
+import { EXPECTED_WASM_MEMORY_MODEL } from "@wasm/WasmBundleSha256.ts";
+import { assertWasmMemoryModel } from "@wasm/WasmMemoryModel.ts";
 
 // deno-lint-ignore no-explicit-any
 type WasmModule = any;
@@ -48,6 +50,29 @@ function toError(value: unknown): Error {
     return value;
   }
   return new Error(String(value));
+}
+
+/**
+ * Issue #3743: refuse to run a bundle whose linear memory is not the pinned
+ * address size.
+ *
+ * NEAT-AI-core dual-ships a wasm32 and a wasm64 (Memory64) activation bundle;
+ * they export the same surface and both pass every test, so a wasm32 copy
+ * loaded under a wasm64 pin is invisible until the 4 GiB linear-memory wall.
+ * Throwing here routes through the same failure path as a missing bundle: the
+ * load error is recorded and every WASM-only operation fails loud, rather than
+ * silently falling back to the capped module.
+ *
+ * @param bytes The instantiated bundle when the caller already has them (the
+ *   remote/JSR path), or `null` on the local path where wasm-bindgen read the
+ *   file itself and they must be read back to be inspected.
+ */
+async function assertBundleMemoryModel(
+  wasmUrl: URL,
+  bytes: Uint8Array | null,
+): Promise<void> {
+  const inspected = bytes ?? await Deno.readFile(wasmUrl);
+  assertWasmMemoryModel(inspected, EXPECTED_WASM_MEMORY_MODEL, wasmUrl.href);
 }
 
 // Standalone function pointers
@@ -512,6 +537,7 @@ export async function initWasmActivation(): Promise<boolean> {
       );
       let bundle: WasmBundleLoadDiagnostics;
       let instantiateMs: number;
+      let bundleBytes: Uint8Array | null = null;
       if (wasmUrl.protocol === "file:") {
         // Local build: the vendored bundle is on disk beside the JS glue.
         // wasm-bindgen's default init reads it directly (no network) and names
@@ -536,10 +562,14 @@ export async function initWasmActivation(): Promise<boolean> {
         const { bytes: wasmBytes, diagnostics } =
           await loadWasmBundleBytesWithDiagnostics(wasmUrl);
         bundle = diagnostics;
+        bundleBytes = wasmBytes;
         const instantiateStart = performance.now();
         await module.default({ module_or_path: wasmBytes });
         instantiateMs = performance.now() - instantiateStart;
       }
+      // Issue #3743: gate the address size before any function pointer is
+      // published, so a wasm32 bundle under a wasm64 pin never becomes usable.
+      await assertBundleMemoryModel(wasmUrl, bundleBytes);
       assignFunctionPointers(module);
       lastLoadError = null;
       // Issue #3494: stash the phase timings for the worker init sequence to
@@ -599,6 +629,14 @@ export function initWasmActivationSync(
   }
 
   try {
+    // Issue #3743: workers receive the bundle bytes over the handshake, so the
+    // address-size gate applies here too — a nested isolate must not be the
+    // one place a wasm32 copy slips through.
+    assertWasmMemoryModel(
+      wasmBinary,
+      EXPECTED_WASM_MEMORY_MODEL,
+      "worker WASM handshake payload",
+    );
     try {
       jsBindings.initSync({ module: wasmBinary });
     } catch {

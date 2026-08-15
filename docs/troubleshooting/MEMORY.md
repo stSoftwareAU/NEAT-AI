@@ -7,12 +7,47 @@ in [`../TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) for other categories.
 
 ## Table of contents
 
+- [The two memory ceilings (Issue #3743)](#-the-two-memory-ceilings-issue-3743)
 - [Memory issues during training](#-memory-issues-during-training)
 - [V8 heap size configuration](#-v8-heap-size-configuration)
 - [Test parallelism and memory pressure](#-test-parallelism-and-memory-pressure)
 - [Exit code 143 (SIGTERM / OOM kill)](#-exit-code-143-sigterm--oom-kill)
 - [Memory leak detection tests](#-memory-leak-detection-tests)
 - [Discovery memory tuning](#-discovery-memory-tuning)
+
+## 📏 The two memory ceilings (Issue #3743)
+
+A NEAT-AI process holds data in **two separate address spaces**, each with its
+own ceiling and its own lever. Reaching for the wrong lever is the most common
+way an out-of-memory investigation stalls.
+
+| Address space          | What lives there                                           | Ceiling                         | Lever that lifts it                                   |
+| ---------------------- | ---------------------------------------------------------- | ------------------------------- | ----------------------------------------------------- |
+| **V8 JS heap**         | Creatures, populations, training-data arrays held in TS    | `--max-old-space-size` (MB)     | Raise `--max-old-space-size` / `NEAT_AI_TEST_HEAP_MB` |
+| **WASM linear memory** | `CompiledNetwork`, activation buffers, WASM-resident state | wasm32: **4 GiB**; wasm64: none | Pin the **wasm64** bundle (`neatCore.memoryModel`)    |
+
+```mermaid
+flowchart LR
+    subgraph Process["Deno process"]
+        Heap["V8 JS heap<br/>--max-old-space-size"]
+        Linear["WASM linear memory<br/>wasm32 4 GiB · wasm64 unbounded"]
+    end
+    Heap -. "separate spaces —<br/>neither lever moves the other" .- Linear
+```
+
+**Telling them apart:**
+
+- `Ineffective mark-compacts near heap limit`, `heap=… / limit=…`, exit **133**
+  (SIGTRAP) → the **V8 JS heap**. Raising the wasm64 pin does nothing for this;
+  raise `--max-old-space-size`.
+- `RuntimeError: memory access out of bounds`, or a failed `memory.grow` while
+  linear memory sits at 65 536 pages → the **WASM linear-memory** wall. Only a
+  wasm64 bundle lifts that one.
+
+NEAT-AI pins the Memory64 bundle (`deno.json` `neatCore.memoryModel:
+"wasm64"`),
+and refuses to run a wasm32 copy under that pin — see
+[`WASM.md`](./WASM.md#-wasm-memory-model-mismatch-issue-3743).
 
 ## 💾 Memory issues during training
 

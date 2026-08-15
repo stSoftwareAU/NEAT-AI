@@ -113,6 +113,9 @@ const repo = config.neatCore?.repo;
 const ref = config.neatCore?.ref ?? "Develop";
 const rev = config.neatCore?.rev ?? "";
 const assetSha256 = config.neatCore?.assetSha256 ?? "";
+// Issue #3743: NEAT-AI-core dual-ships a wasm32 and a wasm64 (Memory64)
+// bundle. The declared model selects the release asset AND gates the bytes.
+const memoryModel = config.neatCore?.memoryModel ?? "wasm32";
 if (typeof repo !== "string" || repo.length === 0) {
   console.error("deno.json missing neatCore.repo");
   Deno.exit(2);
@@ -129,7 +132,11 @@ if (assetSha256 && !/^[0-9a-f]{64}$/.test(String(assetSha256))) {
   console.error("deno.json neatCore.assetSha256 must be 64-char sha-256 when set");
   Deno.exit(5);
 }
-console.log(`${repo}\n${ref}\n${rev}\n${assetSha256}`);
+if (memoryModel !== "wasm32" && memoryModel !== "wasm64") {
+  console.error("deno.json neatCore.memoryModel must be \"wasm32\" or \"wasm64\"");
+  Deno.exit(6);
+}
+console.log(`${repo}\n${ref}\n${rev}\n${assetSha256}\n${memoryModel}`);
 '
 }
 
@@ -138,11 +145,14 @@ NEAT_CORE_REPO_DEFAULT="$(printf '%s\n' "$cfg_output" | sed -n '1p')"
 NEAT_CORE_REF_DEFAULT="$(printf '%s\n' "$cfg_output" | sed -n '2p')"
 NEAT_CORE_REV_DEFAULT="$(printf '%s\n' "$cfg_output" | sed -n '3p')"
 NEAT_CORE_ASSET_SHA256_DEFAULT="$(printf '%s\n' "$cfg_output" | sed -n '4p')"
+NEAT_CORE_MEMORY_MODEL_DEFAULT="$(printf '%s\n' "$cfg_output" | sed -n '5p')"
 
 NEAT_CORE_REPO="${NEAT_CORE_REPO:-$NEAT_CORE_REPO_DEFAULT}"
 NEAT_CORE_REF="${NEAT_CORE_REF:-$NEAT_CORE_REF_DEFAULT}"
 PINNED_REV="$NEAT_CORE_REV_DEFAULT"
 PINNED_ASSET_SHA256="$NEAT_CORE_ASSET_SHA256_DEFAULT"
+# Address size of the linear memory this repo runs on (issue #3743).
+MEMORY_MODEL="$NEAT_CORE_MEMORY_MODEL_DEFAULT"
 
 # Tests may override via NEAT_PKG_DIR to avoid concurrent file-system races.
 DEST_DIR="${NEAT_PKG_DIR:-wasm_activation/pkg}"
@@ -154,16 +164,31 @@ required=(
   "wasm_activation.d.ts"
   "wasm_activation_bg.wasm.d.ts"
 )
-# Files covered by the content manifest. Includes the required set plus
-# package.json (also published to JSR and a tampering target).
-manifest_files=(
-  "wasm_activation.js"
-  "wasm_activation_bg.wasm"
-  "wasm_activation.d.ts"
-  "wasm_activation_bg.wasm.d.ts"
+# Files the upstream bundle ships only on some lanes, still covered by the
+# content manifest when present (issue #3743). wasm-pack emits package.json for
+# the wasm32 lane; the wasm64 lane drives the wasm-bindgen CLI directly and
+# emits none. Deno never reads it, so it is hashed when the bundle ships it and
+# pruned when it does not — never carried over from an older bundle, which
+# would leave wasm32-era metadata sitting beside a wasm64 module.
+manifest_optional=(
   "package.json"
 )
 CONTENT_MANIFEST="content-manifest.sha256"
+
+# manifest_file_list — the required set plus whichever optional files the
+# current bundle actually shipped. Printed one per line for the caller to read
+# into an array (bash 3.2 has no `nameref`).
+manifest_file_list() {
+  local file
+  for file in "${required[@]}"; do
+    printf '%s\n' "$file"
+  done
+  for file in "${manifest_optional[@]}"; do
+    if [[ -f "$DEST_DIR/$file" ]]; then
+      printf '%s\n' "$file"
+    fi
+  done
+}
 
 # WASM bundle size sanity threshold — issue #2389 found that the old
 # in-repo wasm-pack wrapper produced a ~30 KiB stub with no
@@ -427,6 +452,42 @@ extract_bundle() {
     -xzf "$archive" -C "$dest"
 }
 
+# prune_stale_optional_files — delete an optional artefact the freshly
+# extracted bundle no longer ships (issue #3743). Extraction merges into the
+# existing tree, so switching from the wasm32 lane (wasm-pack, emits
+# package.json) to the wasm64 lane (wasm-bindgen CLI, emits none) would
+# otherwise leave wasm32-era metadata sitting beside a Memory64 module and
+# inside the content manifest. The removal is announced, never silent.
+prune_stale_optional_files() {
+  local archive="$1"
+  local entries
+  if ! entries="$(tar -tzf "$archive" 2>/dev/null)"; then
+    echo "ERROR: could not list contents of $(basename "$archive") to prune stale files" >&2
+    return 1
+  fi
+  local file entry shipped
+  for file in "${manifest_optional[@]}"; do
+    if [[ ! -f "$DEST_DIR/$file" ]]; then
+      continue
+    fi
+    shipped=false
+    while IFS= read -r entry; do
+      [[ -z "$entry" ]] && continue
+      if [[ "${entry##*/}" == "$file" ]]; then
+        shipped=true
+        break
+      fi
+    done <<EOF
+$entries
+EOF
+    if [[ "$shipped" == false ]]; then
+      echo "Pruning $DEST_DIR/$file: the $(basename "$archive") bundle does not ship it."
+      rm -f "$DEST_DIR/$file"
+    fi
+  done
+  return 0
+}
+
 # write_content_manifest — record sha256(file) for every artefact in the
 # vendored pkg so --verify-only can detect post-install tampering even
 # without a network round-trip. Format is standard `shasum -a 256`
@@ -436,7 +497,12 @@ write_content_manifest() {
     echo "ERROR: shasum is required to write content manifest" >&2
     return 1
   fi
-  ( cd "$DEST_DIR" && shasum -a 256 "${manifest_files[@]}" ) \
+  local files=()
+  local file
+  while IFS= read -r file; do
+    files+=("$file")
+  done < <(manifest_file_list)
+  ( cd "$DEST_DIR" && shasum -a 256 "${files[@]}" ) \
     > "$DEST_DIR/$CONTENT_MANIFEST"
 }
 
@@ -448,6 +514,14 @@ write_content_manifest() {
 write_runtime_bundle_pin() {
   if ! command -v shasum >/dev/null 2>&1; then
     echo "ERROR: shasum is required to write the runtime bundle pin" >&2
+    return 1
+  fi
+  # Issue #3743: the pin also carries the address size the loader must see.
+  # An unset model is a hard error rather than a wasm32 default — defaulting
+  # here would quietly re-pin a wasm64 repo back to the 4 GiB ceiling.
+  local model="${MEMORY_MODEL:-}"
+  if [[ "$model" != "wasm32" && "$model" != "wasm64" ]]; then
+    echo "ERROR: MEMORY_MODEL must be wasm32 or wasm64 to write the runtime bundle pin (got '${model}')" >&2
     return 1
   fi
   local digest
@@ -472,11 +546,24 @@ write_runtime_bundle_pin() {
  * JSR/lockfile verification — which makes it the trusted expectation used by
  * {@link file://./WasmBundleCache.ts} to verify bytes coming from the
  * environment-controlled disk cache or the network.
+ *
+ * Issue #3743: the address size of the pinned bundle travels the same way, so
+ * {@link file://./WasmModuleLoader.ts} can refuse to run a wasm32 copy under a
+ * wasm64 pin instead of silently inheriting the 4 GiB linear-memory ceiling.
  */
+
+import type { WasmMemoryModel } from "@wasm/WasmMemoryModel.ts";
 
 /** Lowercase hex SHA-256 of \`wasm_activation/pkg/wasm_activation_bg.wasm\`. */
 export const EXPECTED_WASM_BUNDLE_SHA256 =
   "${digest}";
+
+/**
+ * Address size of the pinned linear memory, mirroring \`deno.json\`
+ * \`neatCore.memoryModel\` and verified against the bundle bytes by
+ * \`./build.sh\` before this file is written.
+ */
+export const EXPECTED_WASM_MEMORY_MODEL: WasmMemoryModel = "${model}";
 EOF
 }
 
@@ -493,6 +580,39 @@ verify_content_manifest() {
   fi
   # `shasum -c` resolves filenames relative to cwd, so cd into pkg.
   ( cd "$DEST_DIR" && shasum -a 256 -c "$CONTENT_MANIFEST" >/dev/null )
+}
+
+# select_bundle_asset_name — map the declared memory model onto the release
+# asset NEAT-AI-core publishes for it (issue #3743). The wasm32 asset keeps its
+# historical name so every pre-existing neatCore.rev pin resolves unchanged;
+# the Memory64 build is a separate, explicitly named asset. An unknown model is
+# a hard error — never a quiet fall back to the wasm32 name, which is exactly
+# how a wasm64 pin would end up running a 4 GiB-capped bundle.
+select_bundle_asset_name() {
+  local model="$1"
+  case "$model" in
+    wasm32) printf '%s\n' "wasm_activation-pkg.tar.gz" ;;
+    wasm64) printf '%s\n' "wasm_activation-wasm64-pkg.tar.gz" ;;
+    *)
+      echo "ERROR: unknown neatCore.memoryModel '${model}' (expected wasm32 or wasm64)" >&2
+      return 1
+      ;;
+  esac
+}
+
+# assert_wasm_memory_model — reject a bundle whose linear memory is not the
+# declared address size (issue #3743). Delegates to the TypeScript parser in
+# src/wasm/WasmMemoryModel.ts so build time and runtime agree on one decoder.
+#   $1 = path to wasm_activation_bg.wasm   $2 = expected model
+assert_wasm_memory_model() {
+  local wasm_file="$1"
+  local expected="$2"
+  if [[ ! -f "$wasm_file" ]]; then
+    echo "ERROR: cannot verify memory model — ${wasm_file} does not exist" >&2
+    return 1
+  fi
+  deno run --quiet --allow-read --config deno.json \
+    scripts/check_wasm_memory_model.ts "$wasm_file" "$expected"
 }
 
 verify_pkg_matches() {
@@ -522,6 +642,13 @@ verify_pkg_matches() {
   if ! verify_content_manifest; then
     return 1
   fi
+  # Address-size gate (issue #3743): a vendored bundle whose linear memory is
+  # not the pinned model is rejected here, so `--verify-only` (and therefore
+  # quality.sh) fails when the pin claims wasm64 but the bytes are still i32.
+  if ! assert_wasm_memory_model "$DEST_DIR/wasm_activation_bg.wasm" \
+    "$MEMORY_MODEL"; then
+    return 1
+  fi
   return 0
 }
 
@@ -549,7 +676,7 @@ if [[ "$VERIFY_ONLY" == true ]]; then
     echo "Skipping build: $DEST_DIR already matches ${NEAT_CORE_REPO_DEFAULT}@${PINNED_REV}"
     exit 0
   fi
-  echo "ERROR: $DEST_DIR does not match deno.json neatCore.rev (${PINNED_REV})." >&2
+  echo "ERROR: $DEST_DIR does not match deno.json neatCore.rev (${PINNED_REV}) or neatCore.memoryModel (${MEMORY_MODEL})." >&2
   if [[ ! -f "$DEST_DIR/$CONTENT_MANIFEST" ]]; then
     echo "  - content-manifest.sha256 is missing — bundle integrity cannot be verified." >&2
   else
@@ -608,8 +735,11 @@ if [[ "$CLEAN" == true ]]; then
   rm -rf "$DEST_DIR"
 fi
 
-ASSET_NAME="wasm_activation-pkg.tar.gz"
+if ! ASSET_NAME="$(select_bundle_asset_name "$MEMORY_MODEL")"; then
+  exit 1
+fi
 RELEASE_TAG="wasm-bundle-${TARGET_REV}"
+echo "Memory model: ${MEMORY_MODEL} (asset ${ASSET_NAME})"
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
@@ -830,6 +960,7 @@ assert_safe_tar_entries "$tmp_dir/$ASSET_NAME"
 mkdir -p "wasm_activation"
 echo "Extracting ${ASSET_NAME} into wasm_activation/..."
 extract_bundle "$tmp_dir/$ASSET_NAME" "wasm_activation/"
+prune_stale_optional_files "$tmp_dir/$ASSET_NAME"
 
 # Ensure neat_core_rev.txt is consistent with the requested SHA. CI
 # writes this file, but we re-stamp it defensively in case someone
@@ -848,6 +979,18 @@ wasm_bytes="$(wc -c <"$DEST_DIR/wasm_activation_bg.wasm" | tr -d ' ')"
 if [[ "${wasm_bytes:-0}" -lt $MIN_WASM_BYTES ]]; then
   echo "ERROR: $DEST_DIR/wasm_activation_bg.wasm is too small (${wasm_bytes} bytes)." >&2
   echo "This usually means the bundle is a stub and not a real CompiledNetwork build." >&2
+  exit 1
+fi
+
+# --- Address-size gate (issue #3743) ------------------------------------
+# The wasm32 and wasm64 assets differ only in their address size, and both
+# instantiate and pass every test. Verify the extracted module actually
+# declares the pinned model before it is committed — there is no silent
+# fallback to a 4 GiB-capped bundle.
+if ! assert_wasm_memory_model "$DEST_DIR/wasm_activation_bg.wasm" "$MEMORY_MODEL"; then
+  echo "ERROR: ${ASSET_NAME} from release ${RELEASE_TAG} is not a ${MEMORY_MODEL} module." >&2
+  echo "       deno.json neatCore.memoryModel claims ${MEMORY_MODEL}; the downloaded bundle disagrees." >&2
+  echo "       Check the NEAT-AI-core wasm-bundle.yml run for ${TARGET_REV}." >&2
   exit 1
 fi
 

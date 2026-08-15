@@ -12,6 +12,7 @@ worker pre-fetch, runtime panics, and recovery behaviour. See the index in
 
 - [WASM module not found or failed to compile](#-wasm-module-not-found-or-failed-to-compile)
 - [WASM module not initialised](#-wasm-module-not-initialised)
+- [WASM memory model mismatch (Issue #3743)](#-wasm-memory-model-mismatch-issue-3743)
 - [WASM in Deno Workers vs Main Thread](#-wasm-in-deno-workers-vs-main-thread)
 - [JSR-hosted NEAT-AI in your own workers (Issue #2545)](#-jsr-hosted-neat-ai-in-your-own-workers-issue-2545)
 - [RuntimeError: unreachable](#-runtimeerror-unreachable)
@@ -62,6 +63,69 @@ worker pre-fetch, runtime panics, and recovery behaviour. See the index in
   transparently.
 - In custom worker setups, ensure `initWasmActivationSync()` is called with the
   correct JS bindings and WASM binary payload before activating creatures.
+
+## 📏 WASM memory model mismatch (Issue #3743)
+
+NEAT-AI-core dual-ships two activation bundles from the same sources. They
+export the same surface and produce bit-identical `f32` results; only the
+address size of their linear memory differs.
+
+| Release asset                       | Linear memory | Ceiling              |
+| ----------------------------------- | ------------- | -------------------- |
+| `wasm_activation-wasm64-pkg.tar.gz` | `(memory i64` | none in practice     |
+| `wasm_activation-pkg.tar.gz`        | `(memory i32` | 4 GiB (65 536 pages) |
+
+NEAT-AI pins the **wasm64** asset. `deno.json` `neatCore.memoryModel` declares
+which one, `./build.sh` downloads the matching asset, and the bytes are checked
+against that declaration three times — because a wasm32 copy under a wasm64 pin
+runs perfectly right up to the 4 GiB wall it was supposed to remove.
+
+```mermaid
+flowchart TD
+    Pin["deno.json neatCore.memoryModel"] --> Asset["build.sh picks the release asset"]
+    Asset --> Extract["Extract wasm_activation/pkg"]
+    Extract --> GateA{"memory section i64?"}
+    GateA -- no --> FailA["Abort the download — no wasm32 fallback"]
+    GateA -- yes --> PinFile["Write EXPECTED_WASM_MEMORY_MODEL<br/>into src/wasm/WasmBundleSha256.ts"]
+    PinFile --> Verify["build.sh --verify-only (quality.sh)"]
+    Verify --> GateB{"vendored bytes still i64?"}
+    GateB -- no --> FailB["quality.sh fails"]
+    GateB -- yes --> Load["initWasmActivation / worker handshake"]
+    Load --> GateC{"instantiated bytes i64?"}
+    GateC -- no --> FailC["WasmError MODULE_NOT_LOADED<br/>every WASM-only op fails loud"]
+    GateC -- yes --> Ready["Activation ready"]
+```
+
+**Symptoms:**
+
+- `WASM bundle memory model mismatch for …: pinned as wasm64 but the module
+  declares wasm32 linear memory`
+- `./build.sh --verify-only` (and therefore `./quality.sh`) failing with
+  `does not match deno.json neatCore.rev (…) or neatCore.memoryModel (…)`.
+
+**Causes:**
+
+- A vendored `wasm_activation/pkg` left over from a wasm32 pin, or hand-copied
+  from a wasm32 release asset.
+- A NEAT-AI-core revision whose `wasm-bundle.yml` run did not publish the
+  Memory64 asset.
+
+**Solutions:**
+
+- Run `./build.sh` to re-fetch the asset the pin declares. It re-writes
+  `EXPECTED_WASM_MEMORY_MODEL` alongside the SHA-256 pin; commit `deno.json`,
+  `wasm_activation/pkg/**` and `src/wasm/WasmBundleSha256.ts` together.
+- To roll back to wasm32 deliberately, set `neatCore.memoryModel` to `"wasm32"`
+  in `deno.json` and re-run `./build.sh`. Nothing falls back on its own.
+- Growing linear memory uses a **BigInt** page delta on Memory64
+  (`growWasmMemory` in `src/wasm/WasmMemoryModel.ts`). A `Number` delta is
+  rejected rather than truncated.
+
+> [!IMPORTANT]
+> wasm64 lifts the **WASM linear-memory** ceiling only. Out-of-memory aborts
+> that name the V8 heap (`Ineffective mark-compacts near heap limit`, exit 133)
+> are a different address space — see
+> [`MEMORY.md`](./MEMORY.md#-the-two-memory-ceilings-issue-3743).
 
 ## 🧵 WASM in Deno Workers vs Main Thread
 

@@ -12,8 +12,21 @@
  * JSR/lockfile verification — which makes it the trusted expectation used by
  * {@link file://./WasmBundleCache.ts} to verify bytes coming from the
  * environment-controlled disk cache or the network.
+ *
+ * Issue #3743: the address size of the pinned bundle travels the same way, so
+ * {@link file://./WasmModuleLoader.ts} can refuse to run a wasm32 copy under a
+ * wasm64 pin instead of silently inheriting the 4 GiB linear-memory ceiling.
  */
+
+import type { WasmMemoryModel } from "@wasm/WasmMemoryModel.ts";
 
 /** Lowercase hex SHA-256 of `wasm_activation/pkg/wasm_activation_bg.wasm`. */
 export const EXPECTED_WASM_BUNDLE_SHA256 =
-  "ae0726be3ed4882f7c13ca5be3cf3fd19342b99f1b55c0b969b44201f0bab813";
+  "d0a583d23d8a4693f2c771152964632c494870a3314d61c9cde4eb98fa714d68";
+
+/**
+ * Address size of the pinned linear memory, mirroring `deno.json`
+ * `neatCore.memoryModel` and verified against the bundle bytes by
+ * `./build.sh` before this file is written.
+ */
+export const EXPECTED_WASM_MEMORY_MODEL: WasmMemoryModel = "wasm64";

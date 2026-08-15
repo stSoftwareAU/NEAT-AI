@@ -190,7 +190,7 @@ export class CompiledNetwork {
      */
     get num_inputs() {
         const ret = wasm.compilednetwork_num_inputs(this.__wbg_ptr);
-        return ret >>> 0;
+        return ret;
     }
     /**
      * Get the number of neurons in the network
@@ -198,7 +198,7 @@ export class CompiledNetwork {
      */
     get num_neurons() {
         const ret = wasm.compilednetwork_num_neurons(this.__wbg_ptr);
-        return ret >>> 0;
+        return ret;
     }
     /**
      * Get the number of synapses in the network
@@ -206,7 +206,7 @@ export class CompiledNetwork {
      */
     get num_synapses() {
         const ret = wasm.compilednetwork_num_synapses(this.__wbg_ptr);
-        return ret >>> 0;
+        return ret;
     }
     /**
      * Reset non-input activations to 0.0.
@@ -1457,10 +1457,10 @@ export function version() {
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
-        __wbg___wbindgen_copy_to_typed_array_4db0cbe2cc60dbee: function(arg0, arg1, arg2) {
+        __wbg___wbindgen_copy_to_typed_array_c7f28e53671b41e8: function(arg0, arg1, arg2) {
             new Uint8Array(arg2.buffer, arg2.byteOffset, arg2.byteLength).set(getArrayU8FromWasm0(arg0, arg1));
         },
-        __wbg___wbindgen_throw_344f42d3211c4765: function(arg0, arg1) {
+        __wbg___wbindgen_throw_bb96b2010945f0bc: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
@@ -1495,27 +1495,27 @@ function _assertClass(instance, klass) {
 }
 
 function getArrayF32FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
+
     return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
 
 function getArrayF64FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
+
     return getFloat64ArrayMemory0().subarray(ptr / 8, ptr / 8 + len);
 }
 
 function getArrayI32FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
+
     return getInt32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
 
 function getArrayU32FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
+
     return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
 
 function getArrayU8FromWasm0(ptr, len) {
-    ptr = ptr >>> 0;
+
     return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
 
@@ -1544,7 +1544,7 @@ function getInt32ArrayMemory0() {
 }
 
 function getStringFromWasm0(ptr, len) {
-    return decodeText(ptr >>> 0, len);
+    return decodeText(ptr, len);
 }
 
 let cachedUint32ArrayMemory0 = null;
@@ -1564,28 +1564,28 @@ function getUint8ArrayMemory0() {
 }
 
 function passArray32ToWasm0(arg, malloc) {
-    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    const ptr = malloc(arg.length * 4, 4);
     getUint32ArrayMemory0().set(arg, ptr / 4);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
 }
 
 function passArray8ToWasm0(arg, malloc) {
-    const ptr = malloc(arg.length * 1, 1) >>> 0;
+    const ptr = malloc(arg.length * 1, 1);
     getUint8ArrayMemory0().set(arg, ptr / 1);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
 }
 
 function passArrayF32ToWasm0(arg, malloc) {
-    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    const ptr = malloc(arg.length * 4, 4);
     getFloat32ArrayMemory0().set(arg, ptr / 4);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
 }
 
 function passArrayF64ToWasm0(arg, malloc) {
-    const ptr = malloc(arg.length * 8, 8) >>> 0;
+    const ptr = malloc(arg.length * 8, 8);
     getFloat64ArrayMemory0().set(arg, ptr / 8);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
@@ -1629,11 +1629,15 @@ function __wbg_finalize_init(instance, module) {
 
 async function __wbg_load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
+        if (!module.ok) {
+            throw new Error(`failed to fetch Wasm: ${module.status} ${module.statusText} fetching '${module.url}'`);
+        }
+
         if (typeof WebAssembly.instantiateStreaming === 'function') {
             try {
                 return await WebAssembly.instantiateStreaming(module, imports);
             } catch (e) {
-                const validResponse = module.ok && expectedResponseType(module.type);
+                const validResponse = expectedResponseType(module.type);
 
                 if (validResponse && module.headers.get('Content-Type') !== 'application/wasm') {
                     console.warn("`WebAssembly.instantiateStreaming` failed because your server does not serve Wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n", e);
