@@ -72,9 +72,34 @@ async function setupFakeRepo(): Promise<{
         repo: "stSoftwareAU/NEAT-AI-core",
         ref: "Develop",
         rev: FAKE_REV_A,
+        // Issue #3743: the fixture tarball is built from the real vendored
+        // bundle, so the fake repo must declare the same model or build.sh's
+        // address-size gate rejects it — which is exactly the point of the gate.
+        memoryModel: "wasm64",
+      },
+      imports: {
+        "@errors/": "./src/errors/",
+        "@wasm/": "./src/wasm/",
       },
     }) + "\n",
   );
+
+  // Issue #3743: build.sh's memory-model gate runs the repo's own TypeScript
+  // decoder, so the fake repo needs that module graph. Copied rather than
+  // symlinked so the temp-dir cleanup can never reach the real tree; a new
+  // import in the decoder surfaces here as a loud "Module not found".
+  await Deno.mkdir(`${dir}/src/wasm`, { recursive: true });
+  await Deno.mkdir(`${dir}/src/errors`, { recursive: true });
+  await Deno.mkdir(`${dir}/scripts`, { recursive: true });
+  for (
+    const file of [
+      "src/wasm/WasmMemoryModel.ts",
+      "src/errors/WasmError.ts",
+      "scripts/check_wasm_memory_model.ts",
+    ]
+  ) {
+    await Deno.copyFile(`${REPO_ROOT}/${file}`, `${dir}/${file}`);
+  }
 
   // Empty pkg dir so verify_pkg_matches() returns failure.
   await Deno.mkdir(`${dir}/wasm_activation/pkg`, { recursive: true });
@@ -181,7 +206,7 @@ case "$1" in
         # build.sh, which a sandboxed test must not exercise.
         exit 0
       fi
-      cp "$FIXTURE" "$asset_dir/wasm_activation-pkg.tar.gz"
+      cp "$FIXTURE" "$asset_dir/$pattern"
       exit 0
     fi
     ;;
@@ -330,7 +355,7 @@ async function assertRevAdvanceBlocked(extraArgs: string[]): Promise<void> {
     );
     assert(
       result.stderr.includes("revision advance") &&
-        result.stderr.includes("wasm_activation-pkg.tar.gz.sha256") &&
+        result.stderr.includes("wasm_activation-wasm64-pkg.tar.gz.sha256") &&
         result.stderr.includes(`wasm-bundle-${FAKE_REV_B}`) &&
         result.stderr.includes("--allow-unverified") &&
         result.stderr.includes("wasm-bundle.yml"),
