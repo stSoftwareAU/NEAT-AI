@@ -107,9 +107,8 @@ Deno.test("rollup - verdict totals are internally consistent", () => {
 
 Deno.test("toConsolidatedMarkdown - renders every classified key", () => {
   const md = toConsolidatedMarkdown(result);
-  // `specialist` was here until #3568 removed the option; `opd` stands in as
-  // the slice F representative.
-  for (const key of ["populationSize", "mutation", "opd", "mcmc"]) {
+  // `specialist` / `opd` were removed as unused GRQ experiments.
+  for (const key of ["populationSize", "mutation", "mcmc"]) {
     assert(md.includes(`\`${key}\``), `${key} missing from the merged table`);
   }
   assert(md.includes("| `mutation`"), "the gap key has its own table row");

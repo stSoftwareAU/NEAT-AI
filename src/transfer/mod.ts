@@ -70,27 +70,6 @@ export type {
 } from "@transfer/CompactModuleGraft.ts";
 
 /**
- * Knowledge distillation primitive (Issue #2494).
- *
- * Treats Europa as a teacher network and adds a small new student pathway
- * in the production recipient, trained to imitate the teacher's outputs on
- * the probe dataset. Pre-existing neuron `uuid`s and biases are unchanged
- * (AGENTS.md UUID stability invariant) — only the new student pathway
- * trains.
- */
-export {
-  addStudentPathway,
-  captureTeacherActivations,
-  knowledgeDistillation,
-  KnowledgeDistillationStrategy,
-  trainStudentPathway,
-} from "@transfer/KnowledgeDistillation.ts";
-export type {
-  KnowledgeDistillationOptions,
-  TeacherCapture,
-} from "@transfer/KnowledgeDistillation.ts";
-
-/**
  * Pruning template primitive (Issue #2495).
  *
  * Uses Europa as an oracle to identify production hidden neurons whose role

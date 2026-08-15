@@ -39,7 +39,6 @@ import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import {
   CompactModuleGraftStrategy,
   formatBakeOffMarkdown,
-  KnowledgeDistillationStrategy,
   NoOpStrategy,
   PruningTemplateStrategy,
   runBakeOff,
@@ -154,13 +153,6 @@ if (import.meta.main) {
         probe,
         minSize,
         densityFactor: 1.5,
-      }),
-      // Issue #2494: Knowledge distillation adds a small student pathway
-      // trained to imitate the donor on the probe dataset. Pre-existing
-      // neurons keep their UUIDs/biases (AGENTS.md UUID stability invariant).
-      new KnowledgeDistillationStrategy({
-        probe,
-        seed,
       }),
       // Issue #2495: Pruning template uses Europa as an oracle to identify
       // redundant production neurons. Validate-then-commit — the score

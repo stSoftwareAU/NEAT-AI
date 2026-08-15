@@ -365,19 +365,6 @@ const SLICE_F: RollupEntry[] = [
       "Decision — the downstream consumer's evolution-mode sweep declares intent " +
       "but never wires it.",
   }),
-  qualifies("opd", "F", 3570, {
-    interfaces: ["src/config/OpdConfig.ts::OpdConfig"],
-    note: "Decision — filed jointly with `mcmc`.",
-  }),
-  {
-    key: "SpecialistConfig",
-    slice: "F",
-    verdict: "KEEP",
-    internal: true,
-    interfaces: ["src/config/SpecialistConfig.ts::SpecialistConfig"],
-    note:
-      "No NeatOptions key since #3568 — passed to the SpecialistPipeline constructor.",
-  },
 ];
 
 /**

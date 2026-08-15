@@ -23,6 +23,25 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [6.4.0] - 2026-08-15
+
+### Changed
+
+- Eligible `trainDir` now defaults to sibling `neat_ai_backpropagation`
+  (production-scale creature + corpus slice: rust matched WASM quality and was
+  ~10× faster). Set `NEAT_AI_BACKPROP_ENABLED=0` to force the TypeScript / WASM
+  loop. `./quality.sh` without `--next` still sets `=0` so that path stays
+  covered; `--next` sets `=1` and requires the binary.
+
+### Removed
+
+- On-Policy Distillation (`opd`), Knowledge Distillation
+  (`KnowledgeDistillationStrategy`), and the Specialist Pipeline
+  (`SpecialistPipeline` / `SpecialistConfig`). Unused in GRQ (OPD was dropped
+  there as an inert flag); removed to keep the score/hour path simple. Memetic
+  `trainDir`, Discovery, and Muon remain. **Breaking for embedders:** those
+  symbols and `NeatOptions.opd` are no longer exported.
+
 ### Added
 
 - `./quality.sh` records in-flight `Deno.test` names under `.quality-in-flight`
@@ -30,18 +49,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   file when it finishes, so a jetsam SIGKILL used to leave evolution spam and no
   test name. Leftover files after the runner stops name the cases that were
   still running.
-- **Issue #3741:** `./quality.sh --next` migrates `trainDir` onto the Rust app
-  (`neat_ai_backpropagation`). It builds the sibling binary and sets
-  `NEAT_AI_BACKPROP_ENABLED=1`. Options the old WASM `propagateTopological`
-  engine never honoured — and options that are not backpropagation (custom cost,
-  dropout, fuzzing, quantisation, Muon, predictive coding, cross-validation,
-  recurrent / `feedbackLoop`) — stay on the TypeScript loop. Rust is not called
-  with those options. `trainingSampleRate` is forwarded as `--max-records`. A
-  missing binary is an error. Override the binary with
-  `NEAT_AI_BACKPROP_BINARY_PATH`; apply step scale with
-  `NEAT_AI_BACKPROP_STEP_SCALE` (default `0.01`). The in-process `libneat_core`
-  C ABI (`NEAT_AI_NATIVE_CORE_BACKPROP=1`) is a separate path and is not what
-  `--next` enables.
+- **Issue #3741:** Eligible `trainDir` uses the Rust app
+  (`neat_ai_backpropagation`) by default. Per-sample WASM `propagateTopological`
+  remains for in-process callers. Options that are not backpropagation (custom
+  cost, dropout, fuzzing, quantisation, Muon, predictive coding,
+  cross-validation, recurrent / `feedbackLoop`) stay on the TypeScript loop —
+  Rust is not called with those options. `trainingSampleRate` is forwarded as
+  `--max-records`. A missing binary is an error when Rust is enabled. Override
+  with `NEAT_AI_BACKPROP_BINARY_PATH`; apply step scale with
+  `NEAT_AI_BACKPROP_STEP_SCALE` (default `0.01`). Set
+  `NEAT_AI_BACKPROP_ENABLED=0` to force the TypeScript / WASM loop.
+  `./quality.sh --next` builds the sibling binary and sets `=1`. The in-process
+  `libneat_core` C ABI is a separate path
+  (`./quality.sh --native-core-backprop`) and is not what `--next` enables.
 - Coverage CI (`coverage.yaml`) is the PR test gate: the merge job fails the
   pull request when any shard reports test failures or crashes. `quality.yml`
   still does not run tests (fmt/lint/`deno check` only).
@@ -118,7 +138,8 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   sizes `DENO_JOBS` from host RAM and keeps an 8192 MB V8 heap (1 × 8192 MB on a
   24 GB laptop). Capping the heap at 4096 MB makes V8 abort evolve tests
   (`Ineffective mark-compacts near heap limit`, SIGTRAP 133) while RSS is still
-  only ~5.7 GB. `./quality.sh --next` likewise fails if native `libneat_core`
+  only ~5.7 GB. `./quality.sh --next` fails if `neat_ai_backpropagation` cannot
+  be resolved; `./quality.sh --native-core-backprop` fails if `libneat_core`
   cannot be loaded.
 - **Issue #3674:** `deno.json` now declares the `Apache-2.0` SPDX identifier and
   lists `LICENSE` in `publish.include`, so the published package carries its
@@ -135,14 +156,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- `./quality.sh` native backprop opt-in is CLI-only (`--next`,
+  `--native-core-backprop`). Leftover `NEAT_AI_BACKPROP_ENABLED=1` /
+  `NEAT_AI_NATIVE_CORE_BACKPROP=1` exports no longer trigger a cargo build that
+  the test suite then discarded by forcing both flags to `0`.
 - `evaluateDir` honours a vanished file in a cached list when `rust_scorer` is
   enabled. The native binary scores the directory itself and was silently
   dropping missing paths that the WASM path reported as `DatasetError`
   `FILE_MISSING`. The file list is now checked on both backends before scoring.
-- Nested `quality.sh` behaviour tests pin `NEAT_AI_NATIVE_CORE_BACKPROP=0` so a
-  parent `./quality.sh --next` cannot cargo-build neat-core against a fake HOME
-  with no rustup default. Native backprop opt-in tests follow the live flag
-  instead of assuming WASM.
+- Nested `quality.sh` behaviour tests no longer inherit native backprop from
+  leftover env; pass `--next` or `--native-core-backprop` to opt in.
 - Worker evaluate failures no longer dump the creature and full request payload
   into `.diagnostics/` on every miss. That catch ran on operational errors
   (empty dataset, WASM trap, corrupt creature) across every worker retry and

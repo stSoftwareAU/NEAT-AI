@@ -11,6 +11,10 @@
  * and is invoked via the byte-packed ABI shim in
  * {@link wasmTopologicalBackprop}. This module is now a thin entry point that
  * dispatches to WASM and fails fast when WASM is unavailable.
+ *
+ * `./quality.sh --next` migrates directory `trainDir` onto the Rust app; this
+ * per-sample WASM engine stays for in-process callers (and for `trainDir`
+ * options that skip Rust).
  */
 
 import type { Creature } from "@creature";
@@ -18,10 +22,6 @@ import type { BackPropagationConfig } from "@propagate/BackPropagation.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { wasmTopologicalBackprop } from "@propagate/WasmTopologicalBackprop.ts";
 import { WasmError } from "@errors/WasmError.ts";
-import {
-  isLegacyTrainDirWrapperActive,
-  isRustTrainDirEnabled,
-} from "@architecture/training/RustTrainDirBridge.ts";
 
 /**
  * Propagate expected values backward through the network using
@@ -41,14 +41,6 @@ export function propagateTopological(
   config: BackPropagationConfig,
   sparseConfig: SparseConfig,
 ): void {
-  if (isRustTrainDirEnabled() && !isLegacyTrainDirWrapperActive()) {
-    throw new Error(
-      "WASM topological backprop is disabled when NEAT_AI_BACKPROP_ENABLED=1 " +
-        "(./quality.sh --next). The Rust trainDir app must own this path; " +
-        "falling back to WASM would fake delete-readiness.",
-    );
-  }
-
   if (wasmTopologicalBackprop(creature, expected, config, sparseConfig)) {
     return;
   }

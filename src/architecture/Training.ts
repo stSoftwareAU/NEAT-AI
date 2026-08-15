@@ -117,11 +117,12 @@ export function trainDirSingleFold(
  * Orchestrates the three training phases for a single-fold binary run:
  * setup → loop → teardown.
  *
- * The TypeScript / WASM loop is the default. Set
- * `NEAT_AI_BACKPROP_ENABLED=1` (`./quality.sh --next`) to spawn sibling
- * `neat_ai_backpropagation train` for requests the old WASM backprop
- * handled. Options that engine never honoured stay on the TypeScript
- * loop. A missing binary is an error — no silent WASM fallback.
+ * Eligible `trainDir` uses sibling `neat_ai_backpropagation train` by
+ * default. Set `NEAT_AI_BACKPROP_ENABLED=0` to force the TypeScript /
+ * WASM loop. `./quality.sh --next` builds the binary and sets `=1`.
+ * Options the old WASM backprop never honoured stay on the TypeScript
+ * loop. A missing binary is an error when Rust is enabled — no silent
+ * WASM fallback.
  */
 function trainDirBinary(
   creature: Creature,
@@ -164,7 +165,7 @@ function trainDirBinary(
   }
   if (isRustTrainDirEnabled()) {
     throw new Error(
-      "trainDir must use neat_ai_backpropagation when NEAT_AI_BACKPROP_ENABLED=1; " +
+      "trainDir must use neat_ai_backpropagation when Rust trainDir is enabled; " +
         "refusing WASM/TypeScript fallback.",
     );
   }

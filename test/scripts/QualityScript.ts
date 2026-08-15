@@ -53,6 +53,10 @@ Deno.test(
         "Expected help output to mention --lint-only flag",
       );
       assert(
+        result.stdout.includes("--native-core-backprop"),
+        "Expected help output to mention --native-core-backprop flag",
+      );
+      assert(
         result.stdout.includes("--check-only"),
         "Expected help output to mention --check-only flag",
       );
@@ -340,6 +344,10 @@ Deno.test(
         result.stdout.includes(".quality-in-flight"),
         "Expected help to name the default in-flight directory",
       );
+      assert(
+        result.stdout.includes("--native-core-backprop"),
+        "Expected help to document the libneat_core CLI opt-in",
+      );
     },
   },
 );
@@ -477,11 +485,6 @@ Deno.test({
         env: {
           PATH: Deno.env.get("PATH") ?? "",
           HOME: home,
-          // Nested quality.sh must not inherit --next from the parent suite
-          // or it cargo-builds neat-core against this fake HOME (no rustup
-          // default) and fails before the GPU-off assertion can run.
-          NEAT_AI_NATIVE_CORE_BACKPROP: "0",
-          NEAT_AI_BACKPROP_ENABLED: "0",
         },
       });
       const output = await command.output();
@@ -617,6 +620,244 @@ exit 0
       assert(
         testCall.includes("--max-old-space-size=2048"),
         `NEAT_AI_TEST_HEAP_MB must reach deno test; got: ${testCall}`,
+      );
+    } finally {
+      await Deno.remove(home, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "quality.sh --dry-run ignores leftover native backprop env without CLI flags",
+  permissions: { run: true, read: true, env: true },
+  fn: async () => {
+    const command = new Deno.Command("bash", {
+      args: ["./quality.sh", "--dry-run"],
+      stdout: "piped",
+      stderr: "piped",
+      cwd: Deno.cwd(),
+      env: {
+        ...Deno.env.toObject(),
+        NEAT_AI_NATIVE_CORE_BACKPROP: "1",
+        NEAT_AI_BACKPROP_ENABLED: "1",
+      },
+    });
+    const output = await command.output();
+    const stdout = new TextDecoder().decode(output.stdout);
+    assertEquals(
+      output.code,
+      0,
+      `stderr=${new TextDecoder().decode(output.stderr)}`,
+    );
+    assert(
+      !stdout.includes("Building native neat-core") &&
+        !stdout.includes("Verifying native neat-core") &&
+        !stdout.includes("Building native neat_ai_backpropagation") &&
+        !stdout.includes("Verifying native neat_ai_backpropagation"),
+      `leftover env must not opt in native backprop; got: ${stdout}`,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "quality.sh --dry-run --native-core-backprop plans the libneat_core gate",
+  permissions: { run: true, read: true },
+  fn: async () => {
+    const result = await runQuality(["--dry-run", "--native-core-backprop"]);
+    assertEquals(result.code, 0, result.stderr);
+    assert(
+      result.stdout.includes("Building native neat-core") ||
+        result.stdout.includes("Verifying native neat-core"),
+      `Expected native neat-core step; got: ${result.stdout}`,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "quality.sh --native-core-backprop fails loud when libneat_core is missing",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const tmp = await Deno.makeTempDir({ prefix: "neat-quality-core-ffi-" });
+    try {
+      await Deno.copyFile("./quality.sh", `${tmp}/quality.sh`);
+      await Deno.chmod(`${tmp}/quality.sh`, 0o755);
+      const command = new Deno.Command("bash", {
+        args: ["./quality.sh", "--native-core-backprop", "--wasm-scorer"],
+        stdout: "piped",
+        stderr: "piped",
+        cwd: tmp,
+        env: {
+          PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
+          HOME: tmp,
+          NEAT_AI_CORE_LIB_PATH: "/nonexistent/libneat_core.dylib",
+        },
+      });
+      const output = await command.output();
+      assert(
+        output.code !== 0,
+        "quality.sh --native-core-backprop must fail when libneat_core cannot be resolved",
+      );
+      const stderr = new TextDecoder().decode(output.stderr);
+      assert(
+        stderr.includes("libneat_core backprop was requested") &&
+          stderr.includes("--native-core-backprop") &&
+          stderr.includes("will not silently fall back"),
+        `Expected fail-loud native-core-backprop error; got: ${stderr}`,
+      );
+    } finally {
+      await Deno.remove(tmp, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "quality.sh --native-core-backprop passes NEAT_AI_NATIVE_CORE_BACKPROP=1 to deno test",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const home = await Deno.makeTempDir({ prefix: "neat-quality-core-env-" });
+    try {
+      const binDir = `${home}/.deno/bin`;
+      await Deno.mkdir(binDir, { recursive: true });
+      const callLog = `${home}/deno-calls.log`;
+      await Deno.writeTextFile(
+        `${binDir}/deno`,
+        `#!/usr/bin/env bash
+printf 'NEAT_AI_NATIVE_CORE_BACKPROP=%s NEAT_AI_BACKPROP_ENABLED=%s argv:%s\\n' \\
+  "\${NEAT_AI_NATIVE_CORE_BACKPROP-<unset>}" \\
+  "\${NEAT_AI_BACKPROP_ENABLED-<unset>}" \\
+  "$*" >> "${callLog}"
+exit 0
+`,
+      );
+      await Deno.chmod(`${binDir}/deno`, 0o755);
+
+      const fakeLib = `${home}/libneat_core.dylib`;
+      await Deno.writeTextFile(fakeLib, "");
+
+      await Deno.copyFile("./quality.sh", `${home}/quality.sh`);
+      await Deno.chmod(`${home}/quality.sh`, 0o755);
+
+      const command = new Deno.Command("bash", {
+        args: [
+          "./quality.sh",
+          "--native-core-backprop",
+          "--wasm-scorer",
+          "--skip-discovery",
+          "--skip-wasm",
+        ],
+        stdout: "piped",
+        stderr: "piped",
+        cwd: home,
+        env: {
+          PATH: Deno.env.get("PATH") ?? "",
+          HOME: home,
+          NEAT_AI_CORE_LIB_PATH: fakeLib,
+        },
+      });
+      const output = await command.output();
+      assertEquals(
+        output.code,
+        0,
+        `quality.sh must succeed with the shim; stderr=${
+          new TextDecoder().decode(output.stderr)
+        }`,
+      );
+
+      const calls = (await Deno.readTextFile(callLog))
+        .split("\n")
+        .filter((l) => l.trim().length > 0);
+      const testCall = calls.find((l) => l.includes("argv:test "));
+      assert(
+        testCall !== undefined,
+        `expected a 'deno test' invocation; got: ${JSON.stringify(calls)}`,
+      );
+      assert(
+        testCall.includes("NEAT_AI_NATIVE_CORE_BACKPROP=1"),
+        `--native-core-backprop must enable the FFI loop for tests; got: ${testCall}`,
+      );
+      assert(
+        testCall.includes("NEAT_AI_BACKPROP_ENABLED=0"),
+        `--native-core-backprop must not imply --next; got: ${testCall}`,
+      );
+    } finally {
+      await Deno.remove(home, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name: "quality.sh --next passes NEAT_AI_BACKPROP_ENABLED=1 to deno test",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const home = await Deno.makeTempDir({ prefix: "neat-quality-next-env-" });
+    try {
+      const binDir = `${home}/.deno/bin`;
+      await Deno.mkdir(binDir, { recursive: true });
+      const callLog = `${home}/deno-calls.log`;
+      await Deno.writeTextFile(
+        `${binDir}/deno`,
+        `#!/usr/bin/env bash
+printf 'NEAT_AI_NATIVE_CORE_BACKPROP=%s NEAT_AI_BACKPROP_ENABLED=%s argv:%s\\n' \\
+  "\${NEAT_AI_NATIVE_CORE_BACKPROP-<unset>}" \\
+  "\${NEAT_AI_BACKPROP_ENABLED-<unset>}" \\
+  "$*" >> "${callLog}"
+exit 0
+`,
+      );
+      await Deno.chmod(`${binDir}/deno`, 0o755);
+
+      const fakeBin = `${home}/neat_ai_backpropagation`;
+      await Deno.writeTextFile(fakeBin, "#!/usr/bin/env bash\nexit 0\n");
+      await Deno.chmod(fakeBin, 0o755);
+
+      await Deno.copyFile("./quality.sh", `${home}/quality.sh`);
+      await Deno.chmod(`${home}/quality.sh`, 0o755);
+
+      const command = new Deno.Command("bash", {
+        args: [
+          "./quality.sh",
+          "--next",
+          "--wasm-scorer",
+          "--skip-discovery",
+          "--skip-wasm",
+        ],
+        stdout: "piped",
+        stderr: "piped",
+        cwd: home,
+        env: {
+          PATH: Deno.env.get("PATH") ?? "",
+          HOME: home,
+          NEAT_AI_BACKPROP_BINARY_PATH: fakeBin,
+        },
+      });
+      const output = await command.output();
+      assertEquals(
+        output.code,
+        0,
+        `quality.sh must succeed with the shim; stderr=${
+          new TextDecoder().decode(output.stderr)
+        }`,
+      );
+
+      const calls = (await Deno.readTextFile(callLog))
+        .split("\n")
+        .filter((l) => l.trim().length > 0);
+      const testCall = calls.find((l) => l.includes("argv:test "));
+      assert(
+        testCall !== undefined,
+        `expected a 'deno test' invocation; got: ${JSON.stringify(calls)}`,
+      );
+      assert(
+        testCall.includes("NEAT_AI_BACKPROP_ENABLED=1"),
+        `--next must enable rust trainDir for tests; got: ${testCall}`,
+      );
+      assert(
+        testCall.includes("NEAT_AI_NATIVE_CORE_BACKPROP=0"),
+        `--next must not imply --native-core-backprop; got: ${testCall}`,
       );
     } finally {
       await Deno.remove(home, { recursive: true });

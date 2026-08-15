@@ -98,10 +98,10 @@ Deno.test("Rust trainDir: custom cost stays on the TypeScript loop", () => {
   );
 });
 
-Deno.test("Rust trainDir is opt-in unless NEAT_AI_BACKPROP_ENABLED=1", () => {
+Deno.test("Rust trainDir is on by default unless NEAT_AI_BACKPROP_ENABLED=0", () => {
   const raw = Deno.env.get("NEAT_AI_BACKPROP_ENABLED");
-  const expected = raw !== undefined &&
-    ["1", "true", "yes"].includes(raw.trim().toLowerCase());
+  const expected = raw === undefined ||
+    !["0", "false", "no"].includes(raw.trim().toLowerCase());
   assertEquals(isRustTrainDirEnabled(), expected);
   const creature = new Creature(2, 1);
   const uuid = CreatureUtil.makeUUID(creature);

@@ -6,14 +6,7 @@
  * and that weight/bias updates are applied correctly.
  */
 
-import {
-  assert,
-  assertEquals,
-  assertNotEquals,
-  assertThrows,
-} from "@std/assert";
-import { propagateTopological } from "@propagate/TopologicalBackpropagation.ts";
-import { __setRustTrainDirEnabledForTests } from "@architecture/training/RustTrainDirBridge.ts";
+import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
@@ -562,26 +555,4 @@ Deno.test("TopologicalBackpropagation - fan-out convergence improved", () => {
     finalError < initialError,
     `Fan-out network error should decrease: initial=${initialError}, final=${finalError}`,
   );
-});
-
-Deno.test("TopologicalBackpropagation refuses WASM when the Rust trainer is required", () => {
-  const creature = new Creature(1, 1);
-  const config = createBackPropagationConfig({ generations: 1 });
-  const sparseConfig = new SparseConfig(creature.exportJSON(), config);
-  __setRustTrainDirEnabledForTests(true);
-  try {
-    const error = assertThrows(
-      () =>
-        propagateTopological(
-          creature,
-          new Float32Array([0]),
-          config,
-          sparseConfig,
-        ),
-      Error,
-    );
-    assertEquals(error.message.includes("fake delete-readiness"), true);
-  } finally {
-    __setRustTrainDirEnabledForTests(undefined);
-  }
 });

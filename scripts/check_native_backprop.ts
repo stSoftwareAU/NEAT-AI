@@ -7,8 +7,8 @@ import {
 /**
  * Fail loud when native libneat_core was requested but cannot be loaded.
  *
- * quality.sh --next / NEAT_AI_NATIVE_CORE_BACKPROP=1 calls this after an
- * optional sibling cargo build so tests cannot silently stay on WASM.
+ * quality.sh --native-core-backprop calls this after an optional sibling
+ * cargo build so tests cannot silently stay on WASM.
  */
 function main(): void {
   const libPath = findNativeCoreLibrary();

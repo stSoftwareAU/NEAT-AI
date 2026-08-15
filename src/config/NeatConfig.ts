@@ -53,7 +53,6 @@ import {
   parseFitnessSharing,
   parseMcmc,
   parseMemoryConfig,
-  parseOpd,
   parseParallelEvaluation,
   parsePlateauDetection,
   parsePredictiveCoding,
@@ -676,10 +675,6 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #2199: Parse MCMC acceptance configuration
     mcmc: parseMcmc(
       opts.mcmc as Record<string, unknown> | undefined,
-    ),
-    // Issue #2528: Parse On-Policy Distillation breeding operator configuration
-    opd: parseOpd(
-      opts.opd as Record<string, unknown> | undefined,
     ),
     // Issue #1863: Parse adaptive population config
     adaptivePopulation: parseAdaptivePopulation(

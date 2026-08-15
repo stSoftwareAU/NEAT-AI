@@ -9,9 +9,11 @@
  * costs, dropout, fuzzing, quantisation, Muon, recurrent /
  * `feedbackLoop`). `trainingSampleRate` is forwarded as `--max-records`.
  *
- * Opt-in via `NEAT_AI_BACKPROP_ENABLED=1` (`./quality.sh --next`). When
- * that flag is set there is no silent WASM fallback for a request the
- * old engine *did* handle: a missing binary is an error.
+ * Default on for eligible `trainDir` (set `NEAT_AI_BACKPROP_ENABLED=0` to
+ * force the TypeScript / WASM loop). `./quality.sh --next` still builds the
+ * sibling binary and sets `NEAT_AI_BACKPROP_ENABLED=1`. When enabled there
+ * is no silent WASM fallback for a request the old engine *did* handle: a
+ * missing binary is an error.
  */
 
 import { fromFileUrl } from "@std/path/from-file-url";
@@ -176,8 +178,9 @@ function toCliStrategy(
 }
 
 function envFlagEnabled(raw: string | undefined): boolean {
-  if (raw === undefined) return false;
+  if (raw === undefined) return true;
   const v = raw.trim().toLowerCase();
+  if (v === "0" || v === "false" || v === "no") return false;
   return v === "1" || v === "true" || v === "yes";
 }
 
@@ -193,9 +196,11 @@ export function __setRustTrainDirEnabledForTests(
 }
 
 /**
- * True when the caller asked `trainDir` to spawn the Rust trainer.
+ * True when `trainDir` should spawn the Rust trainer for eligible requests.
  *
- * Default is off. `./quality.sh --next` sets `NEAT_AI_BACKPROP_ENABLED=1`.
+ * Default is on. Set `NEAT_AI_BACKPROP_ENABLED=0` to force the TypeScript /
+ * WASM loop. `./quality.sh` without `--next` sets that so the WASM path
+ * stays covered; `./quality.sh --next` sets `=1` and requires the binary.
  */
 export function isRustTrainDirEnabled(): boolean {
   if (testEnabledOverride !== undefined) return testEnabledOverride;
@@ -360,14 +365,14 @@ export function tryRustTrainDir(
   const reason = rustTrainDirRefusalReason(creature, options, cost, setup);
   if (reason !== undefined) {
     throw new Error(
-      `trainDir must use neat_ai_backpropagation when NEAT_AI_BACKPROP_ENABLED=1; ` +
+      `trainDir must use neat_ai_backpropagation when Rust trainDir is enabled; ` +
         `refusing WASM/TypeScript fallback (${reason}).`,
     );
   }
   const binary = findRustTrainDirBinary();
   if (binary === null) {
     throw new Error(
-      "trainDir must use neat_ai_backpropagation when NEAT_AI_BACKPROP_ENABLED=1; " +
+      "trainDir must use neat_ai_backpropagation when Rust trainDir is enabled; " +
         "refusing WASM/TypeScript fallback (neat_ai_backpropagation binary was not found).",
     );
   }

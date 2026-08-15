@@ -21,7 +21,6 @@ export {
 export {
   parseAdaptiveMutationThresholds,
   parseMcmc,
-  parseOpd,
   parsePlateauDetection,
   parseSquashBudget,
   parseSquashEffectiveness,
