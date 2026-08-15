@@ -31,6 +31,12 @@ For deep dives on a single topic, follow the dedicated docs (full index in
   #1958).
 - **Semantic version rules** — quality-gate test
   [`test/creature/SemanticVersionStability.ts`](./test/creature/SemanticVersionStability.ts).
+- **Cross-engine creature JSON contract** — the golden metadata fixture
+  [`test/fixtures/golden/README.md`](./test/fixtures/golden/README.md); gate
+  test
+  [`test/creature/GoldenMetadataRoundTrip.ts`](./test/creature/GoldenMetadataRoundTrip.ts)
+  (Issue #3752). Adding a persisted field to the creature interfaces means
+  extending that fixture in the same change.
 - **Discovery / FFI (Foreign Function Interface)** —
   [`docs/DISCOVERY_GUIDE.md`](./docs/DISCOVERY_GUIDE.md),
   [`docs/DISCOVERY_ARCHITECTURE.md`](./docs/DISCOVERY_ARCHITECTURE.md), and
