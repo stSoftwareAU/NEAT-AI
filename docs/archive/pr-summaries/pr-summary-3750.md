@@ -8,8 +8,8 @@ Backpropagation sidecar that worked around the lossy
 `CreatureMeta` mirrored only the top-level `uuid` + `tags` and re-attached them
 through a `serde_json::Value` after `creature_to_json`, so per-neuron `tags`
 (the `intelligentDesign` pedigree), per-synapse `tags` and the top-level
-`memetic` block were dropped on every rewrite — and the `Value` detour
-re-sorted whatever did survive, because `serde_json::Map` is a sorted map.
+`memetic` block were dropped on every rewrite — and the `Value` detour re-sorted
+whatever did survive, because `serde_json::Map` is a sorted map.
 
 The root cause was fixed in the internal dependency
 [stSoftwareAU/NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core) under
@@ -31,9 +31,9 @@ Branch:
   neat-core now makes redundant, including the `serde_json::Value` detour that
   re-ordered the `memetic` block.
 - **Kept** the deliberate stamping behaviour, rewritten as free functions over
-  the creature's own tag list: `tags::stamp_acceptance` writes `score` /
-  `error` at full numeric precision and the run-level `lamarck` summary tag,
-  with the wording and precision `worker/Lamarck/run.sh` reads unchanged.
+  the creature's own tag list: `tags::stamp_acceptance` writes `score` / `error`
+  at full numeric precision and the run-level `lamarck` summary tag, with the
+  wording and precision `worker/Lamarck/run.sh` reads unchanged.
   `tags::upsert_tag` replaces by name in place, so the existing tag order is
   never disturbed; `tags::tag_value` reads one back for the run log and the
   error fallback.
@@ -110,8 +110,8 @@ assertion `left == right` failed: memetic block survives verbatim, key order and
 
 The branch has **no PR**: this run's write allowlist covers only
 `stSoftwareAU/NEAT-AI`, so `gh pr create` against the sibling repository is
-refused. It also cannot compile in CI until the NEAT-AI-core branches from
-#3747 / #3748 merge to `Develop`, because Lamarck consumes neat-core through an
+refused. It also cannot compile in CI until the NEAT-AI-core branches from #3747
+/ #3748 merge to `Develop`, because Lamarck consumes neat-core through an
 unpinned sibling `path` dependency that tracks head. Per Issue #2944 the worker
 must not merge, publish, or pin a consumer to a raw commit ref to pull the fix
 in early.
@@ -125,8 +125,8 @@ follow-up per root cause).
 
 New in `NEAT-AI-Lamarck`:
 
-- `lamarck/tests/tags_roundtrip.rs::full_metadata_survives_a_lamarck_accept` —
-  a fully tagged creature (per-neuron tags including an `intelligentDesign`
+- `lamarck/tests/tags_roundtrip.rs::full_metadata_survives_a_lamarck_accept` — a
+  fully tagged creature (per-neuron tags including an `intelligentDesign`
   pedigree, per-synapse tags, top-level `tags` / `uuid` / `memetic`) goes
   through a real `run_optimisation` accept-and-write cycle; every field is
   asserted byte for byte, with the memetic block compared as raw text so a
@@ -149,7 +149,7 @@ longer exists):
 - `tags.rs::serialize_round_trips_original_tags_plus_lamarck` and
   `compact_round_trips_to_the_same_creature_and_tags_as_pretty` now stamp the
   creature and serialise it directly.
-- The two GRQ #3952 `intelligentDesign` tests operate on the creature's tag
-  list instead of `CreatureMeta`.
+- The two GRQ #3952 `intelligentDesign` tests operate on the creature's tag list
+  instead of `CreatureMeta`.
 - `candidates.rs::compact_baseline_keeps_uuid_and_tags` drops the `meta`
   argument; the assertions on the written file are unchanged.
