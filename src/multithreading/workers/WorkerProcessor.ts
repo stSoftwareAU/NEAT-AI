@@ -16,10 +16,12 @@
  * before the response is posted.
  */
 import { assert } from "@std/assert";
+import { dirname, join } from "@std/path";
 import { recordDirectory } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
 import { toErrorMessage } from "@utils/ErrorSerialisation.ts";
 import type {
   DiscoverResult,
+  RemovalCandidate,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { trainDir } from "@architecture/Training.ts";
 import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
@@ -49,15 +51,92 @@ import { DatasetFileListCache } from "@architecture/DatasetFileListCache.ts";
 type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
 
 /**
+ * Max removal candidates copied onto the worker→main wire payload (Issue #3774).
+ *
+ * CandidateFiltering only samples a small lowest-impact pool; transferring
+ * thousands of removals (GRQ-25: 1,544) OOMed the isolate after analysis had
+ * already finished. Keep the lowest-impact slice; the full set lives on disk
+ * via {@link persistDiscoverResultCheckpoint}.
+ */
+export const DISCOVERY_WIRE_REMOVAL_CANDIDATE_CAP = 128;
+
+/**
+ * Select the lowest-impact removal candidates for the wire payload.
+ *
+ * Returns a fresh array (never the input reference) so the worker can drop the
+ * source for GC after building the response.
+ */
+export function selectRemovalCandidatesForWire(
+  candidates: readonly RemovalCandidate[],
+  cap: number = DISCOVERY_WIRE_REMOVAL_CANDIDATE_CAP,
+): { selected: RemovalCandidate[]; total: number } {
+  const total = candidates.length;
+  if (total === 0) {
+    return { selected: [], total: 0 };
+  }
+  if (total <= cap) {
+    return { selected: [...candidates], total };
+  }
+  const ranked = [...candidates].sort((a, b) => a.impact - b.impact);
+  return { selected: ranked.slice(0, cap), total };
+}
+
+/**
+ * Persist the full discover result before crossing the worker boundary
+ * (Issue #3774 / GRQ #4066).
+ *
+ * An OOM while serialising the return payload then loses the message, not
+ * hours of completed analysis — the checkpoint can be recovered from disk.
+ */
+export async function persistDiscoverResultCheckpoint(
+  result: DiscoverResult,
+  checkpointPath: string,
+): Promise<void> {
+  await Deno.mkdir(dirname(checkpointPath), { recursive: true });
+  await Deno.writeTextFile(checkpointPath, JSON.stringify(result));
+}
+
+/** Resolve the on-disk checkpoint path for a discovery session. */
+export function discoverResultCheckpointPath(
+  discoveryId: string,
+  baseDirectory?: string,
+): string {
+  const base = baseDirectory && baseDirectory.length > 0
+    ? baseDirectory
+    : ".discovery";
+  return join(base, discoveryId, "worker-result-checkpoint.json");
+}
+
+export type BuildDiscoverResponseOptions = {
+  /** Absolute or repo-relative path written by {@link persistDiscoverResultCheckpoint}. */
+  resultCheckpointPath?: string;
+  /** Override the wire removal-candidate cap (tests). */
+  removalCandidateCap?: number;
+};
+
+/**
  * Converts a `DiscoverResult` into the wire-safe payload returned to the parent
  * thread.
  *
  * Note (6-Jan-2026): This mapping must include all candidate groups we want the
  * parent `DiscoveryRunner` to evaluate and record in caches.
+ *
+ * Issue #3774: `removalCandidates` are capped to
+ * {@link DISCOVERY_WIRE_REMOVAL_CANDIDATE_CAP} (lowest impact first). When
+ * truncated, `removalCandidatesTotal` carries the pre-cap count and
+ * `resultCheckpointPath` points at the full on-disk checkpoint.
  */
 export function buildDiscoverResponsePayload(
   result: DiscoverResult,
+  options: BuildDiscoverResponseOptions = {},
 ): DiscoverResponsePayload {
+  const removal = result.removalCandidates
+    ? selectRemovalCandidatesForWire(
+      result.removalCandidates,
+      options.removalCandidateCap ?? DISCOVERY_WIRE_REMOVAL_CANDIDATE_CAP,
+    )
+    : undefined;
+
   return {
     ID: result.ID,
     addHelpfulSynapses: result.addHelpfulSynapses
@@ -73,12 +152,16 @@ export function buildDiscoverResponsePayload(
     removeHarmfulNeurons: result.removeHarmfulNeurons
       ? [...result.removeHarmfulNeurons]
       : undefined,
-    removalCandidates: result.removalCandidates
-      ? [...result.removalCandidates]
+    removalCandidates: removal && removal.selected.length > 0
+      ? removal.selected
+      : undefined,
+    removalCandidatesTotal: removal && removal.total > removal.selected.length
+      ? removal.total
       : undefined,
     candidateSquashes: result.candidateSquashes
       ? [...result.candidateSquashes]
       : undefined,
+    resultCheckpointPath: options.resultCheckpointPath,
     // Issue #2737: Propagate the structured heap-abort signal across the
     // worker boundary so the parent thread can surface it via the
     // `discovery_complete` event.
@@ -366,17 +449,35 @@ export class WorkerProcessor {
           );
         }
 
+        // Issue #3774: checkpoint the full result before the worker→main
+        // transfer so an OOM while building/returning the payload does not
+        // discard hours of completed analysis.
+        const checkpointPath = discoverResultCheckpointPath(
+          result.ID,
+          data.discover.config.discoveryBaseDirectory,
+        );
+        await persistDiscoverResultCheckpoint(result, checkpointPath);
+
+        const removalTotal = result.removalCandidates?.length ?? 0;
         const response = {
           taskID: data.taskID,
           duration: Date.now() - start,
-          discover: buildDiscoverResponsePayload(result),
+          discover: buildDiscoverResponsePayload(result, {
+            resultCheckpointPath: checkpointPath,
+          }),
         };
 
         clearDiscoverResultForGC(result);
 
         if (data.discover!.config.log) {
+          const wireRemovals = response.discover.removalCandidates?.length ?? 0;
           getLogger().info(
-            `[Worker] Returning discovery response (taskID: ${data.taskID})...`,
+            `[Worker] Returning discovery response (taskID: ${data.taskID}` +
+              `, removalCandidates=${wireRemovals}` +
+              (removalTotal > wireRemovals
+                ? ` of ${removalTotal} (capped, checkpoint=${checkpointPath})`
+                : "") +
+              ")...",
           );
         }
 

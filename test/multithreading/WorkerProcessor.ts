@@ -15,10 +15,13 @@ import { ValidationError } from "@errors/ValidationError.ts";
 import {
   buildDiscoverResponsePayload,
   clearDiscoverResultForGC,
+  persistDiscoverResultCheckpoint,
+  selectRemovalCandidatesForWire,
   WorkerProcessor,
 } from "@multithreading/workers/WorkerProcessor.ts";
 import { useIsolatedDiagnosticsDir } from "../_diagnosticsDir.ts";
 import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { join } from "@std/path";
 
 function makeMinimalDiscoverResult(): DiscoverResult {
   return {
@@ -74,6 +77,71 @@ Deno.test("buildDiscoverResponsePayload: copies arrays to break reference sharin
   );
 });
 
+Deno.test(
+  "buildDiscoverResponsePayload: caps removal candidates to lowest-impact wire budget (#3774)",
+  () => {
+    const result = makeMinimalDiscoverResult();
+    result.removalCandidates = Array.from({ length: 200 }, (_, i) => ({
+      neuronUuid: `hidden-${i}`,
+      totalError: 1,
+      impact: 1 - i / 1000, // higher index → lower impact
+      reason: "low-impact",
+    }));
+
+    const payload = buildDiscoverResponsePayload(result, {
+      removalCandidateCap: 10,
+      resultCheckpointPath: ".discovery/test/worker-result-checkpoint.json",
+    });
+
+    assertExists(payload.removalCandidates);
+    assertEquals(payload.removalCandidates!.length, 10);
+    assertEquals(payload.removalCandidatesTotal, 200);
+    assertEquals(
+      payload.resultCheckpointPath,
+      ".discovery/test/worker-result-checkpoint.json",
+    );
+    // Lowest-impact first: last of the synthetic series.
+    assertEquals(payload.removalCandidates![0].neuronUuid, "hidden-199");
+    assertEquals(payload.removalCandidates![9].neuronUuid, "hidden-190");
+  },
+);
+
+Deno.test(
+  "selectRemovalCandidatesForWire: keeps all when under the cap (#3774)",
+  () => {
+    const candidates = [
+      { neuronUuid: "a", totalError: 1, impact: 0.2, reason: "x" },
+      { neuronUuid: "b", totalError: 1, impact: 0.1, reason: "x" },
+    ];
+    const { selected, total } = selectRemovalCandidatesForWire(candidates, 10);
+    assertEquals(total, 2);
+    assertEquals(selected.length, 2);
+    assertEquals(selected[0].neuronUuid, "a");
+  },
+);
+
+Deno.test(
+  "persistDiscoverResultCheckpoint: writes recoverable JSON before wire return (#3774)",
+  async () => {
+    const dir = await Deno.makeTempDir({ prefix: "neat-discover-checkpoint-" });
+    try {
+      const result = makeMinimalDiscoverResult();
+      result.removalCandidates = Array.from({ length: 5 }, (_, i) => ({
+        neuronUuid: `n-${i}`,
+        totalError: 1,
+        impact: i,
+        reason: "low-impact",
+      }));
+      const path = join(dir, result.ID, "worker-result-checkpoint.json");
+      await persistDiscoverResultCheckpoint(result, path);
+      const roundTrip = JSON.parse(await Deno.readTextFile(path));
+      assertEquals(roundTrip.ID, result.ID);
+      assertEquals(roundTrip.removalCandidates.length, 5);
+    } finally {
+      await Deno.remove(dir, { recursive: true });
+    }
+  },
+);
 Deno.test("clearDiscoverResultForGC: nullifies populated arrays", () => {
   const result: DiscoverResult = {
     ID: "test",

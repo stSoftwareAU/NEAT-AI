@@ -255,6 +255,18 @@ export interface ResponseData {
     removeHarmfulNeurons?: CandidateHarmfulNeuron[];
     /** Optional low-impact neurons to remove (from Rust focus ranking) */
     removalCandidates?: RemovalCandidate[];
+    /**
+     * Issue #3774: Pre-cap count of removal candidates when the wire payload
+     * was truncated to {@link DISCOVERY_WIRE_REMOVAL_CANDIDATE_CAP}. Absent
+     * when the full set fit on the wire.
+     */
+    removalCandidatesTotal?: number;
+    /**
+     * Issue #3774: On-disk checkpoint of the full `DiscoverResult`, written
+     * before the worker→main return so an OOM on the wire path does not lose
+     * completed analysis.
+     */
+    resultCheckpointPath?: string;
     /** Optional candidate activation functions */
     candidateSquashes?: CandidateSquash[];
     /** Time spent re-scoring candidates (ms) - set by DiscoveryRunner after evaluation */
