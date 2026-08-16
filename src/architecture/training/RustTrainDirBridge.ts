@@ -177,7 +177,9 @@ function stepScale(): number {
  *
  * Custom costs, recurrent graphs, and the TypeScript-only regularisers stay
  * on the existing loop so those tests remain unaltered. Partial corpus
- * samples map to `--max-records`.
+ * samples map to `--max-records`. An already-expired `hardDeadlineTS` stays
+ * on TypeScript so the per-task watchdog can stop on the first iteration
+ * (the CLI has no "already late" short-circuit).
  */
 export function canUseRustTrainDir(
   creature: Creature,
@@ -194,6 +196,13 @@ export function canUseRustTrainDir(
   if (setup.quantisationConfig.enabled) return false;
   if (setup.iterationConfig.dropoutRate > 0) return false;
   if (setup.iterationConfig.gradientOrthogonalisation === "muon") {
+    return false;
+  }
+  if (
+    setup.hardDeadlineTS !== undefined &&
+    setup.hardDeadlineTS > 0 &&
+    setup.hardDeadlineTS <= Date.now()
+  ) {
     return false;
   }
   return findRustTrainDirBinary() !== null;
