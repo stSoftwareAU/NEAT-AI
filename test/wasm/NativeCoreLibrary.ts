@@ -84,7 +84,7 @@ Deno.test("native core backprop is on by default (set NEAT_AI_NATIVE_CORE_BACKPR
   assertEquals(isNativeCoreBackpropEnabled(), !disabled);
 });
 
-/** True when sibling/env libneat_core resolves and actually dlopens. */
+/** True when sibling/env libneat_core resolves and actually loads via dlopen. */
 function nativeCoreLoads(): boolean {
   if (findNativeCoreLibrary() === null) return false;
   try {
@@ -101,7 +101,8 @@ Deno.test({
   name: "native core library: sibling dylib can be loaded without an env var",
   sanitizeResources: false,
   sanitizeOps: false,
-  // Skip when absent *or* unloadable (stale/stub dylib on disk).
+  // Skip when absent *or* when the path exists but cannot load (stale/stub
+  // dylib on disk).
   ignore: !nativeCoreLoads(),
   fn: () => {
     try {
