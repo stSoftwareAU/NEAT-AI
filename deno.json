@@ -149,6 +149,9 @@
     ".coverage",
     "junit-raw.xml",
     "junit.xml",
-    "test-errors.log"
+    "test-errors.log",
+    // Local-only experiments (gitignored by `.*`). Dot-glob so `deno check`
+    // does not type-check scripts/.ProdTrainDirBench.ts and similar.
+    "**/.*"
   ]
 }
