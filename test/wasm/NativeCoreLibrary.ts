@@ -75,14 +75,13 @@ Deno.test("native core library: missing candidates return null", () => {
   }
 });
 
-Deno.test("native core backprop is opt-in unless NEAT_AI_NATIVE_CORE_BACKPROP=1", () => {
-  // Do not mutate process env: parallel tests share it. The default quality.sh
-  // run leaves the flag unset. `--next` now enables the Rust trainDir app,
-  // not this FFI loop.
+Deno.test("native core backprop is on by default (set NEAT_AI_NATIVE_CORE_BACKPROP=0 to force WASM)", () => {
+  // Do not mutate process env: parallel tests share it. Honour whatever
+  // ./quality.sh (or the caller) already exported.
   const raw = Deno.env.get("NEAT_AI_NATIVE_CORE_BACKPROP");
-  const expected = raw !== undefined &&
-    ["1", "true", "yes"].includes(raw.trim().toLowerCase());
-  assertEquals(isNativeCoreBackpropEnabled(), expected);
+  const disabled = raw !== undefined &&
+    ["0", "false", "no", "off"].includes(raw.trim().toLowerCase());
+  assertEquals(isNativeCoreBackpropEnabled(), !disabled);
 });
 
 /** True when sibling/env libneat_core resolves and actually loads via dlopen. */
@@ -103,8 +102,7 @@ Deno.test({
   sanitizeResources: false,
   sanitizeOps: false,
   // Skip when absent *or* when the path exists but cannot load (stale/stub
-  // dylib on disk). A broken sibling must not fail ./quality.sh --next, which
-  // does not build neat-core.
+  // dylib on disk).
   ignore: !nativeCoreLoads(),
   fn: () => {
     try {

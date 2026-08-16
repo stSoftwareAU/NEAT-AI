@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "6.5.0",
+  "version": "6.6.0",
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
@@ -148,6 +148,7 @@
     ".coverage",
     "junit-raw.xml",
     "junit.xml",
-    "test-errors.log"
+    "test-errors.log",
+    "**/.*"
   ]
 }

@@ -144,6 +144,7 @@ Deno.test("Rust trainDir flag: only explicit off disables a default-on feature",
   assertEquals(parseRustTrainDirEnabledFlag("0"), false);
   assertEquals(parseRustTrainDirEnabledFlag("false"), false);
   assertEquals(parseRustTrainDirEnabledFlag("NO"), false);
+  assertEquals(parseRustTrainDirEnabledFlag("off"), false);
   assertEquals(parseRustTrainDirEnabledFlag("1"), true);
   assertEquals(parseRustTrainDirEnabledFlag("true"), true);
   assertEquals(parseRustTrainDirEnabledFlag("yes"), true);
@@ -155,7 +156,7 @@ Deno.test("Rust trainDir flag: only explicit off disables a default-on feature",
 Deno.test("Rust trainDir is on by default unless NEAT_AI_BACKPROP_ENABLED=0", () => {
   const raw = Deno.env.get("NEAT_AI_BACKPROP_ENABLED");
   const expected = raw === undefined ||
-    !["0", "false", "no"].includes(raw.trim().toLowerCase());
+    !["0", "false", "no", "off"].includes(raw.trim().toLowerCase());
   assertEquals(isRustTrainDirEnabled(), expected);
   const creature = new Creature(2, 1);
   const uuid = CreatureUtil.makeUUID(creature);
@@ -188,6 +189,29 @@ Deno.test("Rust trainDir is on by default unless NEAT_AI_BACKPROP_ENABLED=0", ()
       true,
     );
   }
+});
+
+Deno.test("Rust trainDir: an expired hard deadline stays on TypeScript", () => {
+  const creature = new Creature(2, 1);
+  const uuid = CreatureUtil.makeUUID(creature);
+  const options: TrainOptions = {
+    iterations: 1,
+    disableRandomSamples: true,
+    hardDeadlineTS: 1,
+  };
+  const setup = prepareTraining(
+    creature,
+    options,
+    uuid.substring(Math.max(0, uuid.length - 8)),
+  );
+  assertEquals(
+    rustTrainDirSkipReason(creature, options, Costs.find("MSE"), setup),
+    "hardDeadlineTS has already expired",
+  );
+  assertEquals(
+    canUseRustTrainDir(creature, options, Costs.find("MSE"), setup, true),
+    false,
+  );
 });
 
 Deno.test("Rust trainDir: custom cost skips Rust and trains on the TypeScript loop", () => {

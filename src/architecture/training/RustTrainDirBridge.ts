@@ -203,14 +203,14 @@ function toAbiStrategy(
 /**
  * Parse `NEAT_AI_BACKPROP_ENABLED`. Default is on: unset and unrecognised
  * values (e.g. `on`, `enabled`) stay enabled. Only an explicit off
- * (`0` / `false` / `no`) forces the TypeScript / WASM loop.
+ * (`0` / `false` / `no` / `off`) forces the TypeScript / WASM loop.
  */
 export function parseRustTrainDirEnabledFlag(
   raw: string | undefined,
 ): boolean {
   if (raw === undefined) return true;
   const v = raw.trim().toLowerCase();
-  if (v === "0" || v === "false" || v === "no") return false;
+  if (v === "0" || v === "false" || v === "no" || v === "off") return false;
   return true;
 }
 
@@ -316,6 +316,13 @@ export function rustTrainDirSkipReason(
   cost: CostInterface,
   setup: TrainingSetupState,
 ): string | undefined {
+  if (
+    setup.hardDeadlineTS !== undefined &&
+    setup.hardDeadlineTS > 0 &&
+    setup.hardDeadlineTS <= Date.now()
+  ) {
+    return "hardDeadlineTS has already expired";
+  }
   if (options.predictiveCoding?.enabled) {
     return "predictive coding is not backpropagation";
   }

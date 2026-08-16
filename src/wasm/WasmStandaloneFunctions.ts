@@ -595,8 +595,8 @@ export function wasmScanMaxBias(
  * Takes a packed binary buffer containing all network state and returns
  * a packed Float64Array with updated neuron/synapse accumulation state.
  *
- * WASM is the default (safe to merge). Native `libneat_core` is used only
- * when `NEAT_AI_NATIVE_CORE_BACKPROP=1` (Issue #3741, opt-in).
+ * Native `libneat_core` is preferred when available (Issue #3741). Set
+ * `NEAT_AI_NATIVE_CORE_BACKPROP=0` to force the WASM packed loop.
  *
  * Returns undefined if WASM is unavailable and native is not enabled.
  */

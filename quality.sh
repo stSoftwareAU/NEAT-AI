@@ -63,6 +63,14 @@ Environment:
                       `deno outdated --update --latest`. Default 24h. Mirrors
                       bump-deps.sh; dodges fast-flagged supply-chain attacks
                       (Issue #2742). Must be a non-negative integer.
+  NEAT_AI_NATIVE_CORE_BACKPROP
+                      Native topological backprop is on by default in the
+                      library; 0/false/no/off forces WASM. quality.sh ignores
+                      inherited values and uses --native-core-backprop.
+  NEAT_AI_BACKPROP_ENABLED
+                      Eligible trainDir native backprop is on by default in
+                      the library; 0/false/no/off forces TypeScript / WASM.
+                      quality.sh ignores inherited values and uses --next.
   DENO_JOBS
                       Parallel `deno test` workers. Default: sized so each
                       worker can keep an 8192 MB V8 heap (evolve tests sit

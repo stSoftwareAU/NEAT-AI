@@ -23,6 +23,8 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [6.6.0] - 2026-08-16
+
 ### Added
 
 - **Issue #3765:** Eligible `trainDir` prefers in-process Deno FFI
@@ -38,6 +40,8 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 - Document which `TrainOptions` the Rust `trainDir` path honours (FFI and CLI).
   `hardDeadlineTS` / `targetError` remain TypeScript-only until wired through
   the ABI.
+- Merge Develop's 6.5.0 package-version floor and no-downgrade gate while
+  retaining the FFI-first `trainDir` path.
 
 ## [6.5.0] - 2026-08-16
 

@@ -61,11 +61,13 @@ Deno.test("TrainingLoop - trainDir stops when it reaches the target error", () =
     writeXorDataset(`${dir}/xor.bin`, 4);
 
     const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-    // Set a trivially-achievable target so termination fires quickly.
+    // Force the TypeScript loop: neat_ai_backpropagation has no mid-run
+    // --target-error abort, so early-stop semantics are TS-only.
     const result = trainDir(creature, dir, {
       iterations: 50,
       targetError: 10,
       disableRandomSamples: true,
+      gradientOrthogonalisation: "muon",
     }, Costs.find("MSE"));
 
     // With such a loose target, the loop must exit within the first
