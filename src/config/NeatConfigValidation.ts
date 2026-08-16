@@ -6,7 +6,6 @@
  */
 
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
-import { getLogger } from "@utils/Logger.ts";
 import type { NeatArguments } from "@config/NeatArguments.ts";
 
 /**
@@ -36,15 +35,18 @@ export function validateNeatConfig(config: NeatArguments): void {
     );
   }
 
-  // Cross-field validation for worker thread cap config
+  // Cross-field validation for worker thread cap config (GRQ #4069):
+  // after capping/clamping, threads × per-worker must fit the envelope.
+  // Warn-and-proceed hid the planning bug that collapsed Discovery to 1 thread.
   if (config.workerThreadCap.maxMemoryMB > 0) {
     const estimatedUsage = config.threads *
       config.workerThreadCap.estimatedMemoryPerWorkerMB;
     if (estimatedUsage > config.workerThreadCap.maxMemoryMB) {
-      getLogger().warn(
-        `[NEAT-AI] Warning: threads (${config.threads}) * estimatedMemoryPerWorkerMB ` +
+      throw new ConfigurationError(
+        `threads (${config.threads}) * estimatedMemoryPerWorkerMB ` +
           `(${config.workerThreadCap.estimatedMemoryPerWorkerMB}) = ${estimatedUsage} MB ` +
           `exceeds maxMemoryMB (${config.workerThreadCap.maxMemoryMB})`,
+        "CROSS_FIELD_VALIDATION",
       );
     }
   }
