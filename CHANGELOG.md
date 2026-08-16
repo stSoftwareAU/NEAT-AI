@@ -23,6 +23,22 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Issue #3765:** Eligible `trainDir` prefers in-process Deno FFI
+  (`libneat_ai_backpropagation`, sibling NEAT-AI-Backpropagation #84) over
+  spawning the CLI. Resolve via `NEAT_AI_BACKPROP_LIB_PATH` or well-known
+  `target/release` paths. CLI spawn remains a fallback when the cdylib is
+  absent; `./quality.sh --next` sets `NEAT_AI_BACKPROP_REQUIRE_FFI=1` and fails
+  if the library cannot load. Random `trainingSampleRate` and `traceStore` are
+  forwarded (Backpropagation #77 / #78).
+
+### Changed
+
+- Document which `TrainOptions` the Rust `trainDir` path honours (FFI and CLI).
+  `hardDeadlineTS` / `targetError` remain TypeScript-only until wired through
+  the ABI.
+
 ## [6.4.0] - 2026-08-15
 
 ### Changed

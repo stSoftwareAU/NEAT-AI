@@ -10,14 +10,23 @@ import {
 } from "@architecture/DataSet.ts";
 import { trainDir } from "@architecture/Training.ts";
 import {
+  __closeNativeBackpropLibraryForTests,
   __setRustTrainDirEnabledForTests,
   canUseRustTrainDir,
   findRustTrainDirBinary,
   findRustTrainDirBinaryFromOptions,
   isRustTrainDirEnabled,
+  parseRustTrainDirEnabledFlag,
   rustTrainDirRefusalReason,
   rustTrainDirSkipReason,
 } from "@architecture/training/RustTrainDirBridge.ts";
+import {
+  closeNativeBackpropLibrary,
+  findNativeBackpropLibrary,
+  findNativeBackpropLibraryFromOptions,
+  isNativeBackpropAvailable,
+  nativeBackpropLibFileName,
+} from "@architecture/training/NativeBackpropLibrary.ts";
 import { prepareTraining } from "@architecture/training/TrainingSetup.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 
@@ -53,6 +62,38 @@ Deno.test("Rust trainDir binary: missing candidates return null", () => {
       overridePath: join(dir, "nope"),
       cwd: dir,
       siblingPath: join(dir, "also-nope"),
+    });
+    assertEquals(found, null);
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
+Deno.test("Native backprop library: override file path wins", () => {
+  const dir = Deno.makeTempDirSync();
+  try {
+    const override = join(dir, nativeBackpropLibFileName());
+    Deno.writeTextFileSync(override, "");
+    const found = findNativeBackpropLibraryFromOptions({
+      overridePath: override,
+      cwd: join(dir, "missing-cwd"),
+      siblingDir: join(dir, "missing-sibling"),
+      homeDir: join(dir, "missing-home"),
+    });
+    assertEquals(found, override);
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
+Deno.test("Native backprop library: missing candidates return null", () => {
+  const dir = Deno.makeTempDirSync();
+  try {
+    const found = findNativeBackpropLibraryFromOptions({
+      overridePath: join(dir, "nope"),
+      cwd: dir,
+      siblingDir: join(dir, "also-nope"),
+      homeDir: join(dir, "no-home"),
     });
     assertEquals(found, null);
   } finally {
@@ -98,6 +139,19 @@ Deno.test("Rust trainDir: custom cost stays on the TypeScript loop", () => {
   );
 });
 
+Deno.test("Rust trainDir flag: only explicit off disables a default-on feature", () => {
+  assertEquals(parseRustTrainDirEnabledFlag(undefined), true);
+  assertEquals(parseRustTrainDirEnabledFlag("0"), false);
+  assertEquals(parseRustTrainDirEnabledFlag("false"), false);
+  assertEquals(parseRustTrainDirEnabledFlag("NO"), false);
+  assertEquals(parseRustTrainDirEnabledFlag("1"), true);
+  assertEquals(parseRustTrainDirEnabledFlag("true"), true);
+  assertEquals(parseRustTrainDirEnabledFlag("yes"), true);
+  assertEquals(parseRustTrainDirEnabledFlag("on"), true);
+  assertEquals(parseRustTrainDirEnabledFlag("enabled"), true);
+  assertEquals(parseRustTrainDirEnabledFlag("  ON  "), true);
+});
+
 Deno.test("Rust trainDir is on by default unless NEAT_AI_BACKPROP_ENABLED=0", () => {
   const raw = Deno.env.get("NEAT_AI_BACKPROP_ENABLED");
   const expected = raw === undefined ||
@@ -120,7 +174,9 @@ Deno.test("Rust trainDir is on by default unless NEAT_AI_BACKPROP_ENABLED=0", ()
     ),
     false,
   );
-  if (findRustTrainDirBinary() !== null) {
+  if (
+    findNativeBackpropLibrary() !== null || findRustTrainDirBinary() !== null
+  ) {
     assertEquals(
       canUseRustTrainDir(
         creature,
@@ -332,7 +388,7 @@ Deno.test("Rust trainDir: non-backprop options skip the Rust app", () => {
   }
 });
 
-Deno.test("Rust trainDir: trainingSampleRate is forwarded, not skipped", () => {
+Deno.test("Rust trainDir: trainingSampleRate with disableRandomSamples is eligible", () => {
   const creature = new Creature(2, 1);
   const uuid = CreatureUtil.makeUUID(creature);
   const setup = prepareTraining(
@@ -343,17 +399,19 @@ Deno.test("Rust trainDir: trainingSampleRate is forwarded, not skipped", () => {
   assertEquals(
     rustTrainDirSkipReason(
       creature,
-      { iterations: 1, trainingSampleRate: 0.5 },
+      { iterations: 1, disableRandomSamples: true, trainingSampleRate: 0.5 },
       Costs.find("MSE"),
       setup,
     ),
     undefined,
   );
-  if (findRustTrainDirBinary() !== null) {
+  if (
+    findNativeBackpropLibrary() !== null || findRustTrainDirBinary() !== null
+  ) {
     assertEquals(
       canUseRustTrainDir(
         creature,
-        { iterations: 1, trainingSampleRate: 0.5 },
+        { iterations: 1, disableRandomSamples: true, trainingSampleRate: 0.5 },
         Costs.find("MSE"),
         setup,
         true,
@@ -363,7 +421,77 @@ Deno.test("Rust trainDir: trainingSampleRate is forwarded, not skipped", () => {
   }
 });
 
-Deno.test("Rust trainDir: MSE forward-only still trains when CLI is unused", () => {
+Deno.test("Rust trainDir: random trainingSampleRate is eligible (Backpropagation#77)", () => {
+  const creature = new Creature(2, 1);
+  const uuid = CreatureUtil.makeUUID(creature);
+  const setup = prepareTraining(
+    creature,
+    { iterations: 1, disableRandomSamples: false, trainingSampleRate: 0.5 },
+    uuid.substring(Math.max(0, uuid.length - 8)),
+  );
+  assertEquals(
+    rustTrainDirSkipReason(
+      creature,
+      { iterations: 1, disableRandomSamples: false, trainingSampleRate: 0.5 },
+      Costs.find("MSE"),
+      setup,
+    ),
+    undefined,
+  );
+  if (
+    findNativeBackpropLibrary() !== null || findRustTrainDirBinary() !== null
+  ) {
+    assertEquals(
+      canUseRustTrainDir(
+        creature,
+        { iterations: 1, disableRandomSamples: false, trainingSampleRate: 0.5 },
+        Costs.find("MSE"),
+        setup,
+        true,
+      ),
+      true,
+    );
+  }
+});
+
+Deno.test({
+  name: "Rust trainDir FFI: MSE forward-only trains when library is present",
+  fn: () => {
+    closeNativeBackpropLibrary();
+    __closeNativeBackpropLibraryForTests();
+    if (!isNativeBackpropAvailable()) {
+      return;
+    }
+    const creature = new Creature(2, 1);
+    const dataSet: DataRecordInterface[] = [
+      { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
+      { input: new Float32Array([1, 1]), output: new Float32Array([1]) },
+    ];
+    const dataDir = makeDataDir(dataSet, dataSet.length, {
+      input: creature.input,
+      output: creature.output,
+    });
+    __setRustTrainDirEnabledForTests(true);
+    try {
+      const result = trainDir(
+        creature,
+        dataDir,
+        { iterations: 2, targetError: 0.5, disableRandomSamples: true },
+        Costs.find("MSE"),
+      );
+      assert(Number.isFinite(result.error), "error should be finite");
+      assert(result.iteration >= 1);
+    } finally {
+      __setRustTrainDirEnabledForTests(undefined);
+      closeNativeBackpropLibrary();
+      Deno.removeSync(dataDir, { recursive: true });
+    }
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test("Rust trainDir: MSE forward-only still trains when Rust is unused", () => {
   const creature = new Creature(2, 1);
   const dataSet: DataRecordInterface[] = [
     { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
@@ -373,6 +501,7 @@ Deno.test("Rust trainDir: MSE forward-only still trains when CLI is unused", () 
     input: creature.input,
     output: creature.output,
   });
+  __setRustTrainDirEnabledForTests(false);
   try {
     const result = trainDir(
       creature,
@@ -383,6 +512,7 @@ Deno.test("Rust trainDir: MSE forward-only still trains when CLI is unused", () 
     assert(Number.isFinite(result.error), "error should be finite");
     assert(result.iteration >= 1);
   } finally {
+    __setRustTrainDirEnabledForTests(undefined);
     Deno.removeSync(dataDir, { recursive: true });
   }
 });

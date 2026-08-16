@@ -35,12 +35,14 @@ Options:
   --wasm-scorer       Comparison-only: run tests on the legacy WASM scorer
                       instead of rust_scorer. Remove this once the WASM
                       scoring path is deleted.
-  --next              Migrate trainDir onto the Rust app
-                      (neat_ai_backpropagation). Builds the sibling binary
-                      and runs tests with NEAT_AI_BACKPROP_ENABLED=1.
-                      Eligible trainDir must use Rust (missing binary is
-                      an error). Per-sample WASM propagate stays for
-                      in-process callers and for options that skip Rust.
+  --next              Migrate trainDir onto Rust FFI
+                      (libneat_ai_backpropagation, Issue #3765). Builds the
+                      sibling crate (cdylib + CLI), requires the library,
+                      and runs tests with NEAT_AI_BACKPROP_ENABLED=1 and
+                      NEAT_AI_BACKPROP_REQUIRE_FFI=1. Missing library is an
+                      error (no silent CLI/WASM fallback). Per-sample WASM
+                      propagate stays for in-process callers and for
+                      options that skip Rust.
   --native-core-backprop
                       Run the packed propagate loop via in-process
                       libneat_core (C ABI). Builds sibling neat-core and
@@ -92,8 +94,8 @@ Native gates (fail loud, no silent WASM fallback):
   not create Metal/wgpu contexts (the default --gpu auto path OOMs the suite).
   Leftover NEAT_AI_BACKPROP_ENABLED / NEAT_AI_NATIVE_CORE_BACKPROP
   exports are ignored; pass --next and/or --native-core-backprop.
-  --next requires neat_ai_backpropagation. trainDir must not fall back
-  to WASM on that path.
+  --next requires libneat_ai_backpropagation (Deno FFI). trainDir must
+  not fall back to CLI/WASM on that path.
   --native-core-backprop requires native libneat_core (FFI loop).
 
 Exit codes:
@@ -205,6 +207,14 @@ native_train_dir_file_name() {
   esac
 }
 
+native_train_dir_lib_file_name() {
+  case "$(uname -s)" in
+    Darwin) printf '%s\n' "libneat_ai_backpropagation.dylib" ;;
+    MINGW* | MSYS* | CYGWIN* | Windows_NT) printf '%s\n' "neat_ai_backpropagation.dll" ;;
+    *) printf '%s\n' "libneat_ai_backpropagation.so" ;;
+  esac
+}
+
 rust_scorer_can_be_resolved() {
   if [ "$RUST_SCORER_BINARY_EXPLICIT" = true ]; then
     [ -x "$RUST_SCORER_BINARY_PATH" ]
@@ -249,18 +259,26 @@ native_core_backprop_can_be_resolved() {
 }
 
 native_train_dir_can_be_resolved() {
-  local name
+  local name lib
   name="$(native_train_dir_file_name)"
+  lib="$(native_train_dir_lib_file_name)"
+  if [ -n "${NEAT_AI_BACKPROP_LIB_PATH:-}" ]; then
+    if [ -f "${NEAT_AI_BACKPROP_LIB_PATH}" ] ||
+      [ -f "${NEAT_AI_BACKPROP_LIB_PATH}/${lib}" ]; then
+      return 0
+    fi
+  fi
   if [ -n "${NEAT_AI_BACKPROP_BINARY_PATH:-}" ]; then
     if [ -f "${NEAT_AI_BACKPROP_BINARY_PATH}" ] ||
       [ -f "${NEAT_AI_BACKPROP_BINARY_PATH}/${name}" ]; then
       return 0
     fi
   fi
-  if [ -f "./target/release/${name}" ]; then
+  if [ -f "./target/release/${lib}" ] || [ -f "./target/release/${name}" ]; then
     return 0
   fi
-  if [ -f "../NEAT-AI-Backpropagation/target/release/${name}" ]; then
+  if [ -f "../NEAT-AI-Backpropagation/target/release/${lib}" ] ||
+    [ -f "../NEAT-AI-Backpropagation/target/release/${name}" ]; then
     return 0
   fi
   if [ -d ../NEAT-AI-Backpropagation ]; then
@@ -292,12 +310,12 @@ fail_missing_native_core_backprop() {
 }
 
 fail_missing_native_train_dir() {
-  echo "❌ Native neat_ai_backpropagation was requested (--next)" >&2
-  echo "   but the binary was not found. trainDir will not silently fall back to WASM." >&2
+  echo "❌ Native libneat_ai_backpropagation was requested (--next)" >&2
+  echo "   but the library was not found. trainDir will not silently fall back to CLI/WASM." >&2
   echo "" >&2
   echo "   Fix one of:" >&2
   echo "     - Clone NEAT-AI-Backpropagation next to this repo, then cargo build --release -p neat_ai_backpropagation" >&2
-  echo "     - Set NEAT_AI_BACKPROP_BINARY_PATH to the binary" >&2
+  echo "     - Set NEAT_AI_BACKPROP_LIB_PATH to the cdylib (or its directory)" >&2
   exit 1
 }
 
@@ -468,9 +486,9 @@ if [ "$DRY_RUN" = true ]; then
     fi
     if native_train_dir_wanted; then
       if [ -d ../NEAT-AI-Backpropagation ]; then
-        progress "Building native neat_ai_backpropagation..."
+        progress "Building native neat_ai_backpropagation (cdylib + CLI)..."
       else
-        progress "Verifying native neat_ai_backpropagation..."
+        progress "Verifying native libneat_ai_backpropagation..."
       fi
     fi
     if [ "$TEST_BOTH_SCORERS" = true ]; then
@@ -478,12 +496,12 @@ if [ "$DRY_RUN" = true ]; then
       progress "Running tests (Rust scorer mode)..."
     elif [ "$WASM_SCORER" = true ]; then
       if [ "$NEXT" = true ]; then
-        progress "Running tests (--next rust trainDir, WASM scorer)..."
+        progress "Running tests (--next FFI trainDir, WASM scorer)..."
       else
         progress "Running tests (WASM scorer mode)..."
       fi
     elif [ "$NEXT" = true ]; then
-      progress "Running tests (--next rust trainDir, Rust scorer)..."
+      progress "Running tests (--next FFI trainDir, Rust scorer)..."
     else
       progress "Running tests (Rust scorer mode)..."
     fi
@@ -560,9 +578,15 @@ run_test_suite() {
   # CLI flags own these. Always set both so a leftover operator export
   # cannot enable a path the corresponding cargo/verify step did not run.
   if [ "$NEXT" = true ]; then
-    env_args+=("NEAT_AI_BACKPROP_ENABLED=1")
+    env_args+=(
+      "NEAT_AI_BACKPROP_ENABLED=1"
+      "NEAT_AI_BACKPROP_REQUIRE_FFI=1"
+    )
   else
-    env_args+=("NEAT_AI_BACKPROP_ENABLED=0")
+    env_args+=(
+      "NEAT_AI_BACKPROP_ENABLED=0"
+      "NEAT_AI_BACKPROP_REQUIRE_FFI=0"
+    )
   fi
   if [ "$NATIVE_CORE_BACKPROP" = true ]; then
     env_args+=("NEAT_AI_NATIVE_CORE_BACKPROP=1")
@@ -740,33 +764,24 @@ fi
 
 if native_train_dir_wanted; then
   if [ -d ../NEAT-AI-Backpropagation ]; then
-    progress "Building native neat_ai_backpropagation..."
+    progress "Building native neat_ai_backpropagation (cdylib + CLI)..."
     (cd ../NEAT-AI-Backpropagation && cargo build --release -p neat_ai_backpropagation)
   elif ! native_train_dir_can_be_resolved; then
     fail_missing_native_train_dir
   else
-    progress "Verifying native neat_ai_backpropagation..."
+    progress "Verifying native libneat_ai_backpropagation..."
   fi
 
-  train_name="$(native_train_dir_file_name)"
-  train_bin=""
-  if [ -n "${NEAT_AI_BACKPROP_BINARY_PATH:-}" ]; then
-    if [ -f "${NEAT_AI_BACKPROP_BINARY_PATH}" ]; then
-      train_bin="${NEAT_AI_BACKPROP_BINARY_PATH}"
-    elif [ -f "${NEAT_AI_BACKPROP_BINARY_PATH}/${train_name}" ]; then
-      train_bin="${NEAT_AI_BACKPROP_BINARY_PATH}/${train_name}"
-    fi
-  fi
-  if [ -z "$train_bin" ] && [ -f "./target/release/${train_name}" ]; then
-    train_bin="./target/release/${train_name}"
-  fi
-  if [ -z "$train_bin" ] && [ -f "../NEAT-AI-Backpropagation/target/release/${train_name}" ]; then
-    train_bin="../NEAT-AI-Backpropagation/target/release/${train_name}"
-  fi
-  if [ -z "$train_bin" ] || [ ! -f "$train_bin" ]; then
+  native_train_check_exit=0
+  deno run \
+    --allow-read \
+    --allow-env \
+    --allow-ffi \
+    --config ./deno.json \
+    scripts/check_native_backprop_train.ts || native_train_check_exit=$?
+  if [ "$native_train_check_exit" -ne 0 ]; then
     fail_missing_native_train_dir
   fi
-  echo "✅ neat_ai_backpropagation ready at $train_bin"
 fi
 
 if [ "$RUN_WASM" = true ]; then
@@ -785,13 +800,13 @@ if [ "$RUN_TESTS" = true ]; then
     run_test_suite "rust"
   elif [ "$WASM_SCORER" = true ]; then
     if [ "$NEXT" = true ]; then
-      progress "Running tests (--next rust trainDir, WASM scorer)..."
+      progress "Running tests (--next FFI trainDir, WASM scorer)..."
     else
       progress "Running tests (WASM scorer mode)..."
     fi
     run_test_suite "wasm"
   elif [ "$NEXT" = true ]; then
-    progress "Running tests (--next rust trainDir, Rust scorer)..."
+    progress "Running tests (--next FFI trainDir, Rust scorer)..."
     run_test_suite "rust"
   else
     progress "Running tests (Rust scorer mode)..."

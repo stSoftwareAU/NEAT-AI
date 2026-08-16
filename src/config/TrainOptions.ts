@@ -14,6 +14,41 @@
  *
  * This module holds the interface pair and its per-field documentation only —
  * default values and validation live with the code that consumes them.
+ *
+ * ## Rust `trainDir` (`neat_ai_backpropagation`) — what is honoured
+ *
+ * Eligible requests prefer in-process Deno FFI
+ * (`libneat_ai_backpropagation`, Issue #3765) and fall back to spawning the
+ * CLI when the cdylib is absent (see `RustTrainDirBridge.ts` /
+ * `NativeBackpropLibrary.ts`). `./quality.sh --next` requires the FFI path.
+ *
+ * **Forwarded / applied by Rust (FFI and CLI)**
+ * - `iterations` → epochs
+ * - `learningRate`, `learningRateStrategy`, `learningRateDecay`
+ * - `maximumBiasAdjustmentScale`, `maximumWeightAdjustmentScale`
+ * - `normaliseGradients`
+ * - `trainingSampleRate` → `maxRecords` when `< 1` (seeded random sample
+ *   across files; `disableRandomSamples: true` takes each file's leading
+ *   prefix — NEAT-AI-Backpropagation#77)
+ * - `disableRandomSamples` / seed (`NEAT_AI_BACKPROP_SEED` override)
+ * - `traceStore` → CreatureTrace artefacts (NEAT-AI-Backpropagation#78)
+ * - `syntheticSynapses` — TypeScript generates synapses before the call;
+ *   Rust trains the resulting topology
+ *
+ * **Skip Rust (TypeScript / WASM loop)** — not backpropagation:
+ * `predictiveCoding`, `crossValidation`, `dataFuzzing`, `dataQuantisation`,
+ * `dropoutRate`, `gradientOrthogonalisation: "muon"`, `feedbackLoop`,
+ * recurrent (`forwardOnly !== true`), non-MSE cost.
+ *
+ * **TypeScript-only orchestration (Rust path ignores today)**
+ * - `log`, `targetError`, `trainingTimeOutMinutes`, `hardDeadlineTS`
+ *   (FFI unlocks honouring these without re-spawning; not wired yet)
+ * - Most other `BackPropagationArguments` (e.g. `sparseRatio`,
+ *   `generations`, L1/L2, `batchSize`) are not ABI/CLI fields yet
+ *
+ * **FFI-only convenience** (same fields as CLI, no process spawn): shared
+ * in-process creature JSON, lower overhead per memetic `trainDir`. Mid-epoch
+ * cancellation for `hardDeadlineTS` / `targetError` remains a follow-up.
  */
 import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
 import type { CrossValidationConfig } from "@config/CrossValidationConfig.ts";
@@ -36,10 +71,26 @@ export interface TrainArguments extends BackPropagationArguments {
    */
   iterations: number;
 
-  /** The directory to store the networks trace information (optional) */
+  /**
+   * Directory to store network trace JSON when an iteration makes the error
+   * worse (TypeScript path writes `failed/<uuid>.json`).
+   *
+   * Rust path (FFI and CLI): forwarded as `traceStore` /
+   * `--trace-store` (NEAT-AI-Backpropagation#78).
+   */
   traceStore?: string;
 
-  /** The percentage of observations that will be used for training. Range 0..1 */
+  /**
+   * The percentage of observations that will be used for training. Range 0..1.
+   *
+   * TypeScript path: per-file random sample via `selectFileSampleIndexes`
+   * unless `disableRandomSamples` is set.
+   *
+   * Rust path: forwarded as `maxRecords` / `--max-records` when this is
+   * `< 1`. Default is a seeded random draw across files; set
+   * `disableRandomSamples: true` for a deterministic per-file prefix
+   * (NEAT-AI-Backpropagation#77).
+   */
   trainingSampleRate: number;
 
   /** The maximum number of minutes to train for */
@@ -58,6 +109,9 @@ export interface TrainArguments extends BackPropagationArguments {
    * A plain number so it survives `Worker.postMessage`. When absent,
    * behaviour is unchanged (direct `creature.train()` callers are
    * unaffected).
+   *
+   * Not forwarded to `neat_ai_backpropagation` yet (TypeScript loop only;
+   * Issue #3765 notes FFI as the path to honour this in-process).
    */
   hardDeadlineTS?: number;
 
@@ -65,6 +119,8 @@ export interface TrainArguments extends BackPropagationArguments {
    * Enable feedback loop where the previous result feeds back into the next interaction.
    * Useful for time-series forecasting and recurrent neural networks.
    * More information: https://www.mathworks.com/help/deeplearning/ug/design-time-series-narx-feedback-neural-networks.html
+   *
+   * Skips the Rust trainer (not trained by the WASM/Rust backprop path).
    */
   feedbackLoop: boolean;
 
@@ -74,6 +130,8 @@ export interface TrainArguments extends BackPropagationArguments {
    * Issue #1556: When predictiveCoding.enabled is true, training uses
    * local Hebbian learning rules driven by prediction error minimisation
    * instead of standard backpropagation.
+   *
+   * Skips the Rust trainer.
    */
   predictiveCoding: PredictiveCodingConfig;
 
@@ -83,6 +141,8 @@ export interface TrainArguments extends BackPropagationArguments {
    * Issue #1865: When enabled, training data is split into k folds.
    * The creature is trained on k-1 folds and validated on the held-out
    * fold. Fitness is the average validation error across all folds.
+   *
+   * Skips the Rust trainer (fold orchestration stays in TypeScript).
    */
   crossValidation: CrossValidationConfig;
 
@@ -91,6 +151,8 @@ export interface TrainArguments extends BackPropagationArguments {
    *
    * Issue #1900: When enabled, small random perturbations are added
    * to training data each iteration to prevent memorisation.
+   *
+   * Skips the Rust trainer.
    */
   dataFuzzing: DataFuzzingConfig;
 
@@ -99,6 +161,8 @@ export interface TrainArguments extends BackPropagationArguments {
    *
    * Issue #1901: When enabled, training data values are quantised to
    * a fixed number of discrete levels to prevent memorisation.
+   *
+   * Skips the Rust trainer.
    */
   dataQuantisation: DataQuantisationConfig;
 
@@ -111,7 +175,8 @@ export interface TrainArguments extends BackPropagationArguments {
    * backpropagation to discover useful connections that NEAT's
    * evolutionary process may not have found.
    *
-   * Default: false (opt-in)
+   * Default: false (opt-in). Generation/prune stay in TypeScript; the Rust
+   * trainer then trains the expanded topology.
    */
   syntheticSynapses: boolean;
 }

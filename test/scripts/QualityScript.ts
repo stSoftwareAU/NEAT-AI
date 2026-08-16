@@ -413,7 +413,7 @@ Deno.test(
 Deno.test(
   {
     name:
-      "quality.sh --next fails loud when neat_ai_backpropagation is missing (no WASM fallback)",
+      "quality.sh --next fails loud when libneat_ai_backpropagation is missing (no CLI/WASM fallback)",
     permissions: { run: true, read: true, write: true, env: true },
     fn: async () => {
       const tmp = await Deno.makeTempDir({ prefix: "neat-quality-backprop-" });
@@ -428,6 +428,8 @@ Deno.test(
           env: {
             PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
             HOME: tmp,
+            NEAT_AI_BACKPROP_LIB_PATH:
+              "/nonexistent/libneat_ai_backpropagation.dylib",
             NEAT_AI_BACKPROP_BINARY_PATH:
               "/nonexistent/neat_ai_backpropagation",
           },
@@ -435,13 +437,13 @@ Deno.test(
         const output = await command.output();
         assert(
           output.code !== 0,
-          "quality.sh --next must fail when neat_ai_backpropagation cannot be resolved",
+          "quality.sh --next must fail when libneat_ai_backpropagation cannot be resolved",
         );
         const stderr = new TextDecoder().decode(output.stderr);
         assert(
-          stderr.includes("neat_ai_backpropagation was requested") &&
+          stderr.includes("libneat_ai_backpropagation was requested") &&
             stderr.includes("will not silently fall back"),
-          `Expected fail-loud rust trainDir error; got: ${stderr}`,
+          `Expected fail-loud FFI trainDir error; got: ${stderr}`,
         );
       } finally {
         await Deno.remove(tmp, { recursive: true });
@@ -790,7 +792,8 @@ exit 0
 });
 
 Deno.test({
-  name: "quality.sh --next passes NEAT_AI_BACKPROP_ENABLED=1 to deno test",
+  name:
+    "quality.sh --next passes NEAT_AI_BACKPROP_ENABLED=1 and REQUIRE_FFI=1 to deno test",
   permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
     const home = await Deno.makeTempDir({ prefix: "neat-quality-next-env-" });
@@ -801,18 +804,18 @@ Deno.test({
       await Deno.writeTextFile(
         `${binDir}/deno`,
         `#!/usr/bin/env bash
-printf 'NEAT_AI_NATIVE_CORE_BACKPROP=%s NEAT_AI_BACKPROP_ENABLED=%s argv:%s\\n' \\
+printf 'NEAT_AI_NATIVE_CORE_BACKPROP=%s NEAT_AI_BACKPROP_ENABLED=%s NEAT_AI_BACKPROP_REQUIRE_FFI=%s argv:%s\\n' \\
   "\${NEAT_AI_NATIVE_CORE_BACKPROP-<unset>}" \\
   "\${NEAT_AI_BACKPROP_ENABLED-<unset>}" \\
+  "\${NEAT_AI_BACKPROP_REQUIRE_FFI-<unset>}" \\
   "$*" >> "${callLog}"
 exit 0
 `,
       );
       await Deno.chmod(`${binDir}/deno`, 0o755);
 
-      const fakeBin = `${home}/neat_ai_backpropagation`;
-      await Deno.writeTextFile(fakeBin, "#!/usr/bin/env bash\nexit 0\n");
-      await Deno.chmod(fakeBin, 0o755);
+      const fakeLib = `${home}/libneat_ai_backpropagation.dylib`;
+      await Deno.writeTextFile(fakeLib, "");
 
       await Deno.copyFile("./quality.sh", `${home}/quality.sh`);
       await Deno.chmod(`${home}/quality.sh`, 0o755);
@@ -831,7 +834,7 @@ exit 0
         env: {
           PATH: Deno.env.get("PATH") ?? "",
           HOME: home,
-          NEAT_AI_BACKPROP_BINARY_PATH: fakeBin,
+          NEAT_AI_BACKPROP_LIB_PATH: fakeLib,
         },
       });
       const output = await command.output();
@@ -854,6 +857,10 @@ exit 0
       assert(
         testCall.includes("NEAT_AI_BACKPROP_ENABLED=1"),
         `--next must enable rust trainDir for tests; got: ${testCall}`,
+      );
+      assert(
+        testCall.includes("NEAT_AI_BACKPROP_REQUIRE_FFI=1"),
+        `--next must require FFI for tests; got: ${testCall}`,
       );
       assert(
         testCall.includes("NEAT_AI_NATIVE_CORE_BACKPROP=0"),
