@@ -25,9 +25,6 @@ presets, and plateau detection.
 - `PlateauDetector`, `detectPlateau`, `DEFAULT_PLATEAU_DETECTION`,
   `PlateauDetectionConfig`, `RequiredPlateauDetectionConfig`
 - `Species`, `Genus`
-- `SpecialistPipeline`, `DEFAULT_SPECIALIST_CONFIG`, `SpecialistConfig`,
-  `RequiredSpecialistConfig`, `SpecialistMode`, `DistillationResult`,
-  `SubTaskScores`
 
 ## 🔄 Creature.evolveDir()
 
@@ -463,37 +460,6 @@ import { Genus, Species } from "@stsoftware/neat-ai";
 
 These are exposed for advanced users embedding NEAT-AI inside a custom
 orchestrator. The default `Creature.evolveDir()` loop manages them internally.
-
----
-
-## 🧪 Specialist Pipeline
-
-Issue #2530: two-stage post-training pipeline that mirrors specialist /
-generalist distillation. Stage 1 seeds dedicated specialist species per declared
-sub-task; Stage 2 periodically distils the elites into a generalist via the OPD
-(On-Policy Distillation) breed operator. Disabled by default. See the
-[glossary entry for OPD](../GLOSSARY.md).
-
-```typescript
-import {
-  DEFAULT_SPECIALIST_CONFIG,
-  type DistillationResult,
-  SpecialistPipeline,
-  type SubTaskScores,
-} from "@stsoftware/neat-ai";
-
-import type {
-  RequiredSpecialistConfig,
-  SpecialistConfig,
-  SpecialistMode,
-} from "@stsoftware/neat-ai";
-```
-
-`SpecialistConfig` is passed straight to the `SpecialistPipeline` constructor —
-it is **not** a `NeatOptions` key. The `NeatOptions.specialist` key existed
-until Issue #3568 removed it: it was parsed into `NeatConfig` and never read, so
-no value of it ever reached the pipeline. Construct the pipeline yourself to use
-it, and rely on `DEFAULT_SPECIALIST_CONFIG` for the defaults.
 
 ---
 

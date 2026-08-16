@@ -8,6 +8,7 @@
 
 import { assertEquals, assertThrows } from "@std/assert";
 import {
+  assertDatasetFilesExist,
   openDatasetFileSync,
   readDatasetDirEntriesSync,
   readDatasetFileSync,
@@ -51,6 +52,34 @@ Deno.test("readDatasetFileSync - missing file throws DatasetError", () => {
   ) as DatasetError;
   assertEquals(error.reason, "FILE_MISSING");
   assertEquals(error.path, missing);
+});
+
+Deno.test("assertDatasetFilesExist - missing file throws DatasetError naming it", () => {
+  const dir = Deno.makeTempDirSync();
+  const present = `${dir}/0.bin`;
+  const missing = `${dir}/does-not-exist.bin`;
+  Deno.writeFileSync(present, new Uint8Array([1, 2, 3, 4]));
+  try {
+    const error = assertThrows(
+      () => assertDatasetFilesExist([present, missing]),
+      DatasetError,
+    ) as DatasetError;
+    assertEquals(error.reason, "FILE_MISSING");
+    assertEquals(error.path, missing);
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
+Deno.test("assertDatasetFilesExist - existing files pass", () => {
+  const dir = Deno.makeTempDirSync();
+  const filePath = `${dir}/0.bin`;
+  Deno.writeFileSync(filePath, new Uint8Array([1, 2, 3, 4]));
+  try {
+    assertDatasetFilesExist([filePath]);
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
 });
 
 Deno.test("readDatasetDirEntriesSync - vanished directory throws DatasetError", () => {

@@ -71,6 +71,9 @@ Deno.test("bench, test, script and live doc trees carry no private GRQ topology 
       const entry of walk(`${ROOT}${dir}`, {
         exts: [".ts", ".md", ".sh"],
         includeDirs: false,
+        // Dotfiles / dot-dirs (e.g. scripts/.LocalProdTune.ts) are gitignored
+        // local-only experiments — not part of the public tree (#3616).
+        skip: [/\/\.[^/]+/],
       })
     ) {
       const rel = entry.path.slice(ROOT.length);

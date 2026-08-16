@@ -1,9 +1,9 @@
 /**
  * Native neat-core backprop (Issue #3741). Native `libneat_core` is
- * preferred when present; set `NEAT_AI_NATIVE_CORE_BACKPROP=0` to force
- * WASM. Resolution tests use temp files so they do not depend on a built
- * library path. The NoChange-sentinel test talks to the real library when
- * it is present and skips otherwise.
+ * opt-in (`NEAT_AI_NATIVE_CORE_BACKPROP=1`). Resolution tests use temp
+ * files so they do not depend on a built library path. The
+ * NoChange-sentinel test talks to the real library when it is present
+ * and skips otherwise. Existing propagate tests stay on WASM by default.
  */
 
 import { assert, assertEquals } from "@std/assert";

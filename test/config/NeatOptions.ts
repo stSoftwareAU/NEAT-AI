@@ -96,12 +96,16 @@ Deno.test("NeatOptions - hyperparameterEvolution is not a config key", () => {
   assertEquals(Object.hasOwn(config, "hyperparameterEvolution"), false);
 });
 
-// Issue #3568: specialist was removed as an option that was parsed but never
-// read — the parsed config must no longer carry it (regression guard against
-// reintroduction). `SpecialistPipeline` keeps its own constructor config.
+// Issue #3568 / later cleanup: specialist and OPD were removed as unused
+// experiments — the parsed config must no longer carry them.
 Deno.test("NeatOptions - specialist is not a config key", () => {
   const config = createNeatConfig({}) as unknown as Record<string, unknown>;
   assertEquals(Object.hasOwn(config, "specialist"), false);
+});
+
+Deno.test("NeatOptions - opd is not a config key", () => {
+  const config = createNeatConfig({}) as unknown as Record<string, unknown>;
+  assertEquals(Object.hasOwn(config, "opd"), false);
 });
 
 // Issue #3562: stabilityAdaptation was removed as an unimplemented option — the

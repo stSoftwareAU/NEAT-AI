@@ -56,6 +56,13 @@ jobs:
       # Enable per-process discovery directory isolation so parallel test
       # workers don't collide on the same creature-UUID subdirectory.
       DENO_TEST: "1"
+      # Rust trainDir defaults on in library code, but coverage shards do not
+      # build sibling neat_ai_backpropagation. Force the TypeScript / WASM
+      # path here (same as ./quality.sh without --next). Missing binary must
+      # not fail-loud across the suite (Issue #3765).
+      NEAT_AI_BACKPROP_ENABLED: "0"
+      NEAT_AI_BACKPROP_REQUIRE_FFI: "0"
+      NEAT_AI_NATIVE_CORE_BACKPROP: "0"
 
     steps:
       # Checkout the code. This shard job only reads the repo and uploads

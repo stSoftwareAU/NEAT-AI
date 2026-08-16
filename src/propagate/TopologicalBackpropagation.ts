@@ -11,6 +11,10 @@
  * and is invoked via the byte-packed ABI shim in
  * {@link wasmTopologicalBackprop}. This module is now a thin entry point that
  * dispatches to WASM and fails fast when WASM is unavailable.
+ *
+ * `./quality.sh --next` migrates directory `trainDir` onto the Rust app; this
+ * per-sample WASM engine stays for in-process callers (and for `trainDir`
+ * options that skip Rust).
  */
 
 import type { Creature } from "@creature";

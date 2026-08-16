@@ -209,6 +209,11 @@ Override with `DENO_JOBS` (honoured; the heap shrinks to fit) or
 (or `QUALITY_TRACE_LEAKS=1`); on a 24 GB laptop it retains every evolve
 allocation until the test ends and jetsams the process.
 
+When `./quality.sh` is killed mid-suite (`Killed: 9` / exit 137), look in
+`.quality-in-flight/` (or `NEAT_AI_IN_FLIGHT_DIR`). Each leftover file names a
+`Deno.test` that was still running — `--parallel` does not print a file until it
+finishes. A successful run removes the directory.
+
 ## ⚠️ Test parallelism and memory pressure
 
 Running tests with `--parallel` uses more memory. If you encounter OOM kills

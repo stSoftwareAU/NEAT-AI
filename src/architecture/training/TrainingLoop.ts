@@ -29,6 +29,10 @@ import {
 } from "@architecture/training/TrainingSetup.ts";
 import { runSingleEpoch } from "@architecture/training/TrainingEpoch.ts";
 import {
+  isLegacyTrainDirWrapperActive,
+  isRustTrainDirEnabled,
+} from "@architecture/training/RustTrainDirBridge.ts";
+import {
   applyEpochOutcome,
   createEpochState,
 } from "@architecture/training/TrainingOutcome.ts";
@@ -55,6 +59,14 @@ export function runTrainingLoop(
   cost: CostInterface,
   setup: TrainingSetupState,
 ): TrainingLoopResult {
+  if (isRustTrainDirEnabled() && !isLegacyTrainDirWrapperActive()) {
+    throw new Error(
+      "trainDir must not use the TypeScript/WASM training loop when " +
+        "NEAT_AI_BACKPROP_ENABLED=1. neat_ai_backpropagation must handle " +
+        "this request; silent WASM fallback is not allowed.",
+    );
+  }
+
   const { backPropConfig, iterationConfig, targetError, iterations, ID } =
     setup;
 

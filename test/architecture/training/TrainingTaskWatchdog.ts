@@ -14,6 +14,7 @@ import { assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import { trainDir } from "@architecture/Training.ts";
 import { Costs } from "@costs";
+import { __setRustTrainDirEnabledForTests } from "@architecture/training/RustTrainDirBridge.ts";
 
 /** Write a sequence of XOR-shaped records to a binary file. */
 function writeXorDataset(path: string, samples: number): void {
@@ -33,6 +34,9 @@ function writeXorDataset(path: string, samples: number): void {
 }
 
 Deno.test("TrainingTaskWatchdog - an already-expired deadline stops on the first iteration", () => {
+  // hardDeadlineTS is TypeScript loop behaviour; rust train does not
+  // honour per-task wall-clock deadlines yet.
+  __setRustTrainDirEnabledForTests(false);
   const dir = Deno.makeTempDirSync({ prefix: "training-watchdog-" });
   try {
     writeXorDataset(`${dir}/xor.bin`, 8);
@@ -52,6 +56,7 @@ Deno.test("TrainingTaskWatchdog - an already-expired deadline stops on the first
 
     assertEquals(result.iteration, 1);
   } finally {
+    __setRustTrainDirEnabledForTests(undefined);
     Deno.removeSync(dir, { recursive: true });
   }
 });

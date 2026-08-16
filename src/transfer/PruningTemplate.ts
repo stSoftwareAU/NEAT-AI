@@ -6,11 +6,10 @@
  * candidates for removal, shrinking production toward a denser representation
  * without losing score.
  *
- * Distinct from `CompactModuleGraft` (#2493) and `KnowledgeDistillation`
- * (#2494): instead of moving Europa's structure or behaviour across, we use
- * Europa as an oracle to identify which production neurons are redundant and
- * remove them — Europa is *not* mutated and contributes no neurons or
- * synapses to the recipient.
+ * Distinct from `CompactModuleGraft` (#2493): instead of moving Europa's
+ * structure or behaviour across, we use Europa as an oracle to identify which
+ * production neurons are redundant and remove them — Europa is *not* mutated
+ * and contributes no neurons or synapses to the recipient.
  *
  * Procedure:
  *
