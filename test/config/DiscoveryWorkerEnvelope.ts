@@ -32,7 +32,7 @@ Deno.test("resolveDiscoveryWorkerThreadCap: undefined when envelope env unset", 
   );
 });
 
-Deno.test("resolveDiscoveryWorkerThreadCap: maps envelope + actual heap budget (GRQ-22)", () => {
+Deno.test("resolveDiscoveryWorkerThreadCap: maps envelope + heap when planner cap unset", () => {
   const overrides = resolveDiscoveryWorkerThreadCap(
     envFrom({
       [DISCOVERY_WORKER_ENVELOPE_ENV]: "7840",
@@ -45,20 +45,33 @@ Deno.test("resolveDiscoveryWorkerThreadCap: maps envelope + actual heap budget (
   });
 });
 
-Deno.test("resolveDiscoveryWorkerThreadCap: actual heap budget wins over derived per-worker cap", () => {
+Deno.test("resolveDiscoveryWorkerThreadCap: planner per-worker cap wins over process heap (GRQ #4069)", () => {
+  const overrides = resolveDiscoveryWorkerThreadCap(
+    envFrom({
+      [DISCOVERY_WORKER_ENVELOPE_ENV]: "2669",
+      [DISCOVERY_HEAP_SIZE_ENV]: "4096",
+      [DISCOVERY_PER_WORKER_HEAP_CAP_ENV]: "266",
+    }),
+  );
+  // Packing density, not the V8 spike ceiling — otherwise the pool collapses to 1.
+  assertEquals(overrides?.estimatedMemoryPerWorkerMB, 266);
+  assertEquals(overrides?.maxMemoryMB, 2669);
+});
+
+Deno.test("resolveDiscoveryWorkerThreadCap: falls back to heap when planner cap unset", () => {
   const overrides = resolveDiscoveryWorkerThreadCap(
     envFrom({
       [DISCOVERY_WORKER_ENVELOPE_ENV]: "6000",
       [DISCOVERY_HEAP_SIZE_ENV]: "4096",
-      [DISCOVERY_PER_WORKER_HEAP_CAP_ENV]: "256",
     }),
   );
-  // The real per-isolate footprint is the process heap (4096), not the derived
-  // cap (256) — using the smaller value would under-count and OOM.
-  assertEquals(overrides?.estimatedMemoryPerWorkerMB, 4096);
+  assertEquals(overrides, {
+    maxMemoryMB: 6000,
+    estimatedMemoryPerWorkerMB: 4096,
+  });
 });
 
-Deno.test("resolveDiscoveryWorkerThreadCap: falls back to exported per-worker cap when heap unset", () => {
+Deno.test("resolveDiscoveryWorkerThreadCap: uses exported per-worker cap when heap unset", () => {
   const overrides = resolveDiscoveryWorkerThreadCap(
     envFrom({
       [DISCOVERY_WORKER_ENVELOPE_ENV]: "6000",
@@ -114,8 +127,8 @@ Deno.test("mergeDiscoveryWorkerThreadCapDefaults: returns user overrides unchang
 Deno.test("mergeDiscoveryWorkerThreadCapDefaults: envelope fills gaps, user wins on conflict", () => {
   const merged = mergeDiscoveryWorkerThreadCapDefaults(
     { maxMemoryMB: 999 },
-    { maxMemoryMB: 7840, estimatedMemoryPerWorkerMB: 4096 },
+    { maxMemoryMB: 7840, estimatedMemoryPerWorkerMB: 266 },
   );
   // Explicit user maxMemoryMB wins; envelope supplies the per-worker estimate.
-  assertEquals(merged, { maxMemoryMB: 999, estimatedMemoryPerWorkerMB: 4096 });
+  assertEquals(merged, { maxMemoryMB: 999, estimatedMemoryPerWorkerMB: 266 });
 });
