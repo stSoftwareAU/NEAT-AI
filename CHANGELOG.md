@@ -39,6 +39,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `hardDeadlineTS` / `targetError` remain TypeScript-only until wired through
   the ABI.
 
+## [6.5.0] - 2026-08-16
+
+### Changed
+
+- **Package version floor restored to 6.5.0** after a merge conflict briefly
+  regressed `deno.json` below the earlier 6.4.0 line. A quality-gate test and
+  the update-package-version workflow now refuse any PR whose version sits
+  behind `origin/Develop`.
+
 ## [6.4.0] - 2026-08-15
 
 ### Changed
