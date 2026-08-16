@@ -128,8 +128,7 @@ export function resolveDiscoveryWorkerThreadCap(
   // Prefer the planner's concurrent packing density over the process V8
   // spike ceiling. Using --max-old-space-size as estimatedMemoryPerWorkerMB
   // collapses the pool to 1 thread whenever heap > envelope (GRQ #4069).
-  const perWorker =
-    readPositiveIntMb(env, DISCOVERY_PER_WORKER_HEAP_CAP_ENV) ??
+  const perWorker = readPositiveIntMb(env, DISCOVERY_PER_WORKER_HEAP_CAP_ENV) ??
     readPositiveIntMb(env, DISCOVERY_HEAP_SIZE_ENV);
 
   return perWorker === undefined

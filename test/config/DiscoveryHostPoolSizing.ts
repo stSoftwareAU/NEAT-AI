@@ -100,7 +100,8 @@ for (const host of HOSTS) {
           );
           assertEquals(config.threads, expectedThreads);
           assertEquals(
-            config.threads * config.workerThreadCap.estimatedMemoryPerWorkerMB <=
+            config.threads *
+                config.workerThreadCap.estimatedMemoryPerWorkerMB <=
               host.envelopeMB,
             true,
           );
