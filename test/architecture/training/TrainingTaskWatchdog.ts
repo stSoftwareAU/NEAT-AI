@@ -62,6 +62,9 @@ Deno.test("TrainingTaskWatchdog - an already-expired deadline stops on the first
 });
 
 Deno.test("TrainingTaskWatchdog - no deadline runs the full iteration budget", () => {
+  // Iteration-budget exhaustion is TypeScript loop behaviour; rust trainDir
+  // may accept/rollback and report a different completed-epoch count.
+  __setRustTrainDirEnabledForTests(false);
   const dir = Deno.makeTempDirSync({ prefix: "training-watchdog-" });
   try {
     writeXorDataset(`${dir}/xor.bin`, 8);
@@ -77,6 +80,7 @@ Deno.test("TrainingTaskWatchdog - no deadline runs the full iteration budget", (
     // requested iterations (target is unreachable on XOR with this budget).
     assertEquals(result.iteration, 5);
   } finally {
+    __setRustTrainDirEnabledForTests(undefined);
     Deno.removeSync(dir, { recursive: true });
   }
 });
