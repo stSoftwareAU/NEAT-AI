@@ -308,7 +308,10 @@ Deno.test(
   "update-package-version refuses a PR version behind the base branch",
   async () => {
     const result = await runCheckVersionStep("6.4.0", "6.3.13");
-    assert(result.code !== 0, "a downgraded package version must fail the step");
+    assert(
+      result.code !== 0,
+      "a downgraded package version must fail the step",
+    );
     assertEquals(result.outputs, "");
     assertStringIncludes(result.stderr, "must never go backwards");
   },
