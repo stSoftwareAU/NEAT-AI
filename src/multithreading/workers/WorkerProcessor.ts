@@ -470,8 +470,7 @@ export class WorkerProcessor {
         clearDiscoverResultForGC(result);
 
         if (data.discover!.config.log) {
-          const wireRemovals =
-            response.discover.removalCandidates?.length ?? 0;
+          const wireRemovals = response.discover.removalCandidates?.length ?? 0;
           getLogger().info(
             `[Worker] Returning discovery response (taskID: ${data.taskID}` +
               `, removalCandidates=${wireRemovals}` +
