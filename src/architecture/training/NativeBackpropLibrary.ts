@@ -349,9 +349,8 @@ export function nativeBackpropTrain(
 
   const requestBytes = new TextEncoder().encode(JSON.stringify(request));
   const outStruct = new Uint8Array(BACKPROP_BUFFER_BYTES);
-  let status = NEAT_BACKPROP_ERR_TRAIN_FAILED;
   try {
-    status = nativeLib.symbols["neat_backprop_train"](
+    const status = nativeLib.symbols["neat_backprop_train"](
       requestBytes,
       BigInt(requestBytes.byteLength),
       outStruct,
