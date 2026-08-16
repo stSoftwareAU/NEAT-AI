@@ -1,7 +1,10 @@
 # 🧬 NEAT-AI Neural Network for DenoJS
 
+<p align="center">
+  <img width="720" src="docs/brand/social-previews/neat-ai.png" alt="NEAT-AI — NeuroEvolution: evolving neural networks in Deno and TypeScript">
+</p>
+
 <p align="left">
-  <img width="100" height="100" src="docs/logo.png" align="right" alt="NEAT-AI logo">
 <strong>NEAT-AI</strong> started from <strong>NEAT</strong> — the
 NeuroEvolution of Augmenting Topologies algorithm published by
 <a href="http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf">Stanley &amp; Miikkulainen (2002)</a>
@@ -332,6 +335,32 @@ flowchart LR
 > NEAT-AI and NEAT-AI-scorer must pin the **same** NEAT-AI-core revision. See
 > [docs/CORE_DEPENDENCY_POLICY.md](./docs/CORE_DEPENDENCY_POLICY.md) for the
 > rev-pinning and semver policy.
+
+### Family previews
+
+Every sibling shares the same lockup — smiley-neuron soma, teal/coral dendrites,
+capability pills — with its own subtitle and motif. The artwork is transparent,
+so it reads in light and dark modes alike. Sources and regeneration:
+[docs/brand/README.md](./docs/brand/README.md).
+
+<table>
+  <tr>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-core.png" alt="NEAT-AI-core: shared Rust compute crate, vendored as WASM"></td>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-discovery.png" alt="NEAT-AI-Discovery: Rust FFI extension for structural analysis"></td>
+  </tr>
+  <tr>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-scorer.png" alt="NEAT-AI-scorer: Rust scoring application for creature fitness"></td>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-backpropagation.png" alt="NEAT-AI-Backpropagation: gradient training for evolved topologies"></td>
+  </tr>
+  <tr>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-lamarck.png" alt="NEAT-AI-Lamarck: learned traits passed to the next generation"></td>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-snapshot.png" alt="NEAT-AI-Snapshot: portable snapshots shared between machines"></td>
+  </tr>
+  <tr>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-explore.png" alt="NEAT-AI-Explore: visualise creature topology and behaviour"></td>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-examples.png" alt="NEAT-AI-Examples: worked TypeScript projects you can run today"></td>
+  </tr>
+</table>
 
 ## 🤝 Contributions
 

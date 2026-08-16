@@ -542,6 +542,7 @@
     "uniques",
     "unlabeled",
     "unmutated",
+    "unmodelled",
     "unnormalised",
     "unpartitioned",
     "unparseable",
@@ -609,6 +610,18 @@
     "scannable",
     "efgh",
     "plateaudetection",
-    "plateaudetectionconfig"
+    "plateaudetectionconfig",
+    "apos",
+    "idat",
+    "lockup",
+    "Neue",
+    "paeth",
+    "prims",
+    "quot",
+    "resvg",
+    "scanline",
+    "truecolour",
+    "unfilter",
+    "wordmark"
   ]
 }

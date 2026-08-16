@@ -155,6 +155,10 @@ Drop-in API and configuration material.
   that diffs them against the harness inventory, the one gap it found
   (`mutation`), the cross-slice and cross-campaign deduplication, and the order
   the removal issues must land in.
+- **[../test/fixtures/golden/README.md](../test/fixtures/golden/README.md)** —
+  the golden creature-metadata fixture: the cross-engine round-trip contract
+  every implementation of the creature JSON format must satisfy (Issue #3752).
+  Editing it is a coordinated cross-repo breaking change.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the
@@ -205,6 +209,9 @@ Project-level policies, audits, and release plumbing.
 - **[REPO_GOVERNANCE.md](REPO_GOVERNANCE.md)** — CI/CD code ownership
   (`.github/CODEOWNERS`) and required branch-protection settings that guard the
   privileged workflows (Issue #3187).
+- **[brand/README.md](brand/README.md)** — the canonical brand home for the
+  NEAT-AI repository family: the 1280×640 GitHub Social preview set and the
+  transparent mark, plus how to add an asset.
 - **[../CHANGELOG.md](../CHANGELOG.md)** — release notes.
 - **[EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md)** — 🧭 cluster overview
   for the NEAT-AI-core dependency. Day-to-day workflow for bumping the pinned
@@ -227,6 +234,9 @@ Project-level policies, audits, and release plumbing.
   rationale, and how to add the line to new entry points.
 - **[TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md)** — TypeScript → Rust migration
   milestone roadmap.
+- **[RUST_EXTENSION_WRITE_PATH_AUDIT.md](RUST_EXTENSION_WRITE_PATH_AUDIT.md)** —
+  per-extension verdict on which Rust extensions write creature JSON, pinned to
+  commit SHAs so the greps can be re-run (Issue #3751).
 
 ## 🔍 Comparison with other approaches
 
@@ -276,4 +286,5 @@ above:
 - **`visualize/`, `index.html`, `index.js`, `server.ts`,
   `snapshot-schema.json`** — assets for the GitHub Pages visualisation app, not
   prose documentation.
-- **`logo.png`, `cspell.json`** — brand asset and spell-check dictionary.
+- **`logo.png`, `cspell.json`** — legacy square logo (superseded as the README
+  header by `brand/social-previews/neat-ai.png`) and spell-check dictionary.

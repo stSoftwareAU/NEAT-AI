@@ -31,6 +31,29 @@ async function runBuild(
   };
 }
 
+/**
+ * Copy every file the vendored bundle currently ships into `dest`, skipping
+ * the named ones. Issue #3743: the wasm32 lane ships `package.json` and the
+ * wasm64 lane does not, so the file set is read rather than hard-coded.
+ */
+async function copyVendoredPkg(
+  dest: string,
+  skip: string[] = [],
+): Promise<void> {
+  const copies: Promise<void>[] = [];
+  for await (const entry of Deno.readDir("wasm_activation/pkg")) {
+    if (!entry.isFile || entry.name.startsWith(".")) continue;
+    if (skip.includes(entry.name)) continue;
+    copies.push(
+      Deno.copyFile(
+        `wasm_activation/pkg/${entry.name}`,
+        `${dest}/${entry.name}`,
+      ),
+    );
+  }
+  await Promise.all(copies);
+}
+
 async function fileExists(path: string): Promise<boolean> {
   try {
     const s = await Deno.stat(path);
@@ -181,21 +204,10 @@ Deno.test({
     // are not affected by file-system mutations (race condition fix, Issue #2718).
     const tmpDir = await Deno.makeTempDir({ prefix: "neat-tamper-wasm-" });
     try {
-      // Copy all necessary pkg files into the temp directory.
-      const pkgFiles = [
-        "neat_core_rev.txt",
-        "wasm_activation.js",
-        "wasm_activation_bg.wasm",
-        "wasm_activation.d.ts",
-        "wasm_activation_bg.wasm.d.ts",
-        "package.json",
-        "content-manifest.sha256",
-      ];
-      await Promise.all(
-        pkgFiles.map((f) =>
-          Deno.copyFile(`wasm_activation/pkg/${f}`, `${tmpDir}/${f}`)
-        ),
-      );
+      // Copy whatever the current bundle actually ships. The wasm32 and wasm64
+      // lanes ship different optional files (Issue #3743), so an explicit list
+      // would break on the next lane switch.
+      await copyVendoredPkg(tmpDir);
 
       // Flip the last byte of the COPY to simulate post-install tampering.
       const wasmCopy = `${tmpDir}/wasm_activation_bg.wasm`;
@@ -235,21 +247,9 @@ Deno.test({
     // are not affected by file-system mutations (race condition fix, Issue #2718).
     const tmpDir = await Deno.makeTempDir({ prefix: "neat-tamper-manifest-" });
     try {
-      // Copy all necessary pkg files EXCEPT content-manifest.sha256 into the
-      // temp directory, so the manifest is genuinely absent for the check.
-      const pkgFiles = [
-        "neat_core_rev.txt",
-        "wasm_activation.js",
-        "wasm_activation_bg.wasm",
-        "wasm_activation.d.ts",
-        "wasm_activation_bg.wasm.d.ts",
-        "package.json",
-      ];
-      await Promise.all(
-        pkgFiles.map((f) =>
-          Deno.copyFile(`wasm_activation/pkg/${f}`, `${tmpDir}/${f}`)
-        ),
-      );
+      // Copy the bundle EXCEPT content-manifest.sha256, so the manifest is
+      // genuinely absent for the check.
+      await copyVendoredPkg(tmpDir, ["content-manifest.sha256"]);
 
       const result = await runBuild(["--verify-only"], {
         PATH: Deno.env.get("PATH") ?? "",
@@ -554,7 +554,7 @@ Deno.test({
 
       const run = await runSourcedFn(
         "write_runtime_bundle_pin",
-        `DEST_DIR='${pkgDir}' RUNTIME_PIN_FILE='${pinFile}' write_runtime_bundle_pin`,
+        `DEST_DIR='${pkgDir}' RUNTIME_PIN_FILE='${pinFile}' MEMORY_MODEL=wasm64 write_runtime_bundle_pin`,
       );
       assertEquals(
         run.code,
