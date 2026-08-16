@@ -301,15 +301,17 @@ NEAT-AI is the primary Deno/TypeScript library at the centre of a small family
 of repositories. Each repo has a focused role; together they form the full
 training, discovery, scoring, visualisation, and example surface.
 
-| Repository                                                                 | Role                                                                                                                                     |
-| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| **[NEAT-AI](https://github.com/stSoftwareAU/NEAT-AI)** (this repo)         | Deno/TypeScript NEAT library — the main library that orchestrates evolution, training, discovery, breeding, and serialisation.           |
-| **[NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)**           | Shared Rust computation crate (`neat-core`) consumed by NEAT-AI as vendored WASM in `wasm_activation/pkg`, pinned by SHA in `deno.json`. |
-| **[NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)** | Rust FFI extension providing GPU-accelerated structural analysis; called from NEAT-AI via Deno FFI by `discoveryDir()`.                  |
-| **[NEAT-AI-Snapshot](https://github.com/stSoftwareAU/NEAT-AI-Snapshot)**   | Snapshot artefacts produced by NEAT-AI training/discovery runs and shared between machines for distributed evolution.                    |
-| **[NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer)**       | Rust scoring application; depends on NEAT-AI-core via a path dependency and must pin the same core revision as NEAT-AI.                  |
-| **[NEAT-AI-Explore](https://github.com/stSoftwareAU/NEAT-AI-Explore)**     | TypeScript visualisation tool that consumes NEAT-AI-Snapshot data to inspect creature topology and behaviour.                            |
-| **[NEAT-AI-Examples](https://github.com/stSoftwareAU/NEAT-AI-Examples)**   | TypeScript example projects showing how to use NEAT-AI for real tasks.                                                                   |
+| Repository                                                                             | Role                                                                                                                                                                             |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **[NEAT-AI](https://github.com/stSoftwareAU/NEAT-AI)** (this repo)                     | Deno/TypeScript NEAT library — the main library that orchestrates evolution, training, discovery, breeding, and serialisation.                                                   |
+| **[NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)**                       | Shared Rust computation crate (`neat-core`) consumed by NEAT-AI as vendored WASM in `wasm_activation/pkg`, pinned by SHA in `deno.json`.                                         |
+| **[NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)**             | Rust FFI extension providing GPU-accelerated structural analysis; called from NEAT-AI via Deno FFI by `discoveryDir()`.                                                          |
+| **[NEAT-AI-Snapshot](https://github.com/stSoftwareAU/NEAT-AI-Snapshot)**               | Snapshot artefacts produced by NEAT-AI training/discovery runs and shared between machines for distributed evolution.                                                            |
+| **[NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer)**                   | Rust scoring application; depends on NEAT-AI-core via a path dependency and must pin the same core revision as NEAT-AI.                                                          |
+| **[NEAT-AI-Backpropagation](https://github.com/stSoftwareAU/NEAT-AI-Backpropagation)** | Native Rust backpropagation (`neat_ai_backpropagation`) used by NEAT-AI's `trainDir` for gradient training of evolved topologies; depends on NEAT-AI-core via a path dependency. |
+| **[NEAT-AI-Lamarck](https://github.com/stSoftwareAU/NEAT-AI-Lamarck)**                 | Experimental Rust optimiser (`neat_ai_lamarck`) that refines already-fit NEAT-AI creatures; its results are judged by NEAT-AI-scorer.                                            |
+| **[NEAT-AI-Explore](https://github.com/stSoftwareAU/NEAT-AI-Explore)**                 | TypeScript visualisation tool that consumes NEAT-AI-Snapshot data to inspect creature topology and behaviour.                                                                    |
+| **[NEAT-AI-Examples](https://github.com/stSoftwareAU/NEAT-AI-Examples)**               | TypeScript example projects showing how to use NEAT-AI for real tasks.                                                                                                           |
 
 ### Dependency graph
 
@@ -320,12 +322,18 @@ flowchart LR
   neat["NEAT-AI<br/>(Deno/TypeScript)"]
   snapshot["NEAT-AI-Snapshot<br/>(snapshot data)"]
   scorer["NEAT-AI-scorer<br/>(Rust app)"]
+  backprop["NEAT-AI-Backpropagation<br/>(Rust backprop)"]
+  lamarck["NEAT-AI-Lamarck<br/>(Rust optimiser)"]
   explore["NEAT-AI-Explore<br/>(TypeScript UI)"]
   examples["NEAT-AI-Examples<br/>(TypeScript)"]
 
   core -- "vendored WASM (pinned rev)" --> neat
   core -- "path dependency" --> scorer
+  core -- "path dependency" --> backprop
+  core -- "path dependency" --> lamarck
   discovery -- "Deno FFI" --> neat
+  backprop -- "native backprop for trainDir" --> neat
+  lamarck -- "scored by" --> scorer
   neat -- "produces snapshots" --> snapshot
   snapshot -- "consumed by" --> explore
   neat -- "used by" --> examples
