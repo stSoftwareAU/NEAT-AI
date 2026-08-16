@@ -210,15 +210,34 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
 
   // Issue #1569: Parse worker thread cap config and apply memory-based capping.
   // When the external production runner exports a host-derived worker-memory
-  // envelope (DISCOVERY_WORKER_ENVELOPE_MB) and per-worker V8 budget, wire them in
-  // automatically so the cap fires without any per-caller opt-in. Explicit user
-  // overrides still win; non-Discovery callers (env unset) keep the cap disabled.
-  const workerThreadCap = parseWorkerThreadCap(
+  // envelope (DISCOVERY_WORKER_ENVELOPE_MB) and planner per-worker cap, wire
+  // them in automatically so the cap fires without any per-caller opt-in.
+  // Explicit user overrides still win; non-Discovery callers (env unset) keep
+  // the cap disabled.
+  let workerThreadCap = parseWorkerThreadCap(
     mergeDiscoveryWorkerThreadCapDefaults(
       opts.workerThreadCap as Record<string, unknown> | undefined,
       resolveDiscoveryWorkerThreadCap(),
     ),
   );
+
+  // GRQ #4069: if the per-worker estimate exceeds the envelope, clamping the
+  // estimate (rather than warn-and-proceed with threads=1 over budget) makes
+  // `threads × per-worker ≤ envelope` hold after capping.
+  if (
+    workerThreadCap.maxMemoryMB > 0 &&
+    workerThreadCap.estimatedMemoryPerWorkerMB > workerThreadCap.maxMemoryMB
+  ) {
+    getLogger().warn(
+      `[NEAT-AI] Clamping estimatedMemoryPerWorkerMB from ` +
+        `${workerThreadCap.estimatedMemoryPerWorkerMB} to ` +
+        `${workerThreadCap.maxMemoryMB} so one worker fits the envelope`,
+    );
+    workerThreadCap = {
+      ...workerThreadCap,
+      estimatedMemoryPerWorkerMB: workerThreadCap.maxMemoryMB,
+    };
+  }
 
   if (workerThreadCap.maxMemoryMB > 0) {
     const memoryBasedMax = Math.max(

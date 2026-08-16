@@ -171,12 +171,11 @@ Deno.test(
   "warm-up gate: a single slow first chunk does NOT trip iterationStalled",
   async () => {
     // Drive the loop with an explicit mock clock that only advances when
-    // analyzeParallel is invoked. Chunk 1 simulates a slow warm-up call;
-    // subsequent chunks return promptly. With the warm-up gate in place
-    // the slow first chunk must NOT abort the retry loop.
+    // analyzeParallel is invoked. Chunk 1 simulates a slow warm-up call
+    // within the 5× allowance (GRQ #4067); subsequent chunks return promptly.
     let tick = 1_000_000;
     const fakeNow = () => tick;
-    const chunkDurationsMs = [5_000, 1, 1, 1];
+    const chunkDurationsMs = [400, 1, 1, 1]; // 4× of 100ms budget — under 5×
     let chunkCallIdx = 0;
 
     const { perfStats } = await runWith({
@@ -199,6 +198,36 @@ Deno.test(
     assertFalse(
       perfStats.analysisStalled,
       "warm-up chunk overshoot must not trip analysisStalled when subsequent chunks are fast",
+    );
+  },
+);
+
+Deno.test(
+  "warm-up gate: first chunk past 5× allowance DOES trip iterationStalled (GRQ #4067)",
+  async () => {
+    let tick = 1_000_000;
+    const fakeNow = () => tick;
+
+    const { perfStats } = await runWith({
+      analyzeParallel: () => {
+        // 10× of 100ms — beyond STALL_WARMUP_MAX_OVERSHOOT_MULTIPLE.
+        tick += 1_000;
+        return {
+          success: true,
+          helpfulNeurons: [],
+          helpfulSynapses: [],
+          harmfulSynapses: [],
+        };
+      },
+      analysisChunkSize: 1,
+      perChunkMaxMs: 100,
+      discoveryMaxNeurons: 6,
+      now: fakeNow,
+    });
+
+    assert(
+      perfStats.analysisStalled,
+      "warm-up chunk beyond 5× budget must abort even inside the warm-up window",
     );
   },
 );
