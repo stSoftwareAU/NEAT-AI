@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "6.6.1",
+  "version": "6.6.2",
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
