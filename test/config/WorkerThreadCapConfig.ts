@@ -207,14 +207,51 @@ Deno.test("WorkerThreadCapConfig - backwards compatible when not set", () => {
   assertEquals(config.threads, expected);
 });
 
-Deno.test("worker thread cap — GRQ-22 envelope", () => {
-  // GRQ-22 signature: available 7840 MB, 10 cores → 12 default threads, each
-  // worker isolate carries the process --max-old-space-size=4096. Without the
-  // cap this over-commits 12 × 4096 ≈ 48 GB on a 16 GB host and OOM-kills.
+Deno.test("worker thread cap — GRQ-22 envelope with planner packing density (GRQ #4069)", () => {
+  // GRQ-22 current plan: envelope 2669 / per_worker_cap 266 / heap 4096.
+  // Prefer packing density so the pool sizes to floor(2669/266)=10, not 1.
   const { logger, lines } = makeRecordingLogger();
-  // The cap-fired warning is emitted through the global getLogger() before
-  // createNeatConfig installs its own logger, so install the recorder globally
-  // to capture it (restored afterwards).
+  const priorLogger = getLogger();
+  setLogger(logger);
+  withEnvelopeEnv(
+    {
+      [DISCOVERY_WORKER_ENVELOPE_ENV]: "2669",
+      [DISCOVERY_HEAP_SIZE_ENV]: "4096",
+      [DISCOVERY_PER_WORKER_HEAP_CAP_ENV]: "266",
+    },
+    () => {
+      const config = createNeatConfig({
+        threads: 12,
+        logger,
+      });
+
+      assertEquals(config.workerThreadCap.maxMemoryMB, 2669);
+      assertEquals(config.workerThreadCap.estimatedMemoryPerWorkerMB, 266);
+      assertEquals(config.threads, 10);
+
+      const aggregate = config.threads *
+        config.workerThreadCap.estimatedMemoryPerWorkerMB;
+      assert(
+        aggregate <= config.workerThreadCap.maxMemoryMB,
+        `aggregate ${aggregate} must be <= envelope ${config.workerThreadCap.maxMemoryMB}`,
+      );
+
+      const warn = lines.find((l) =>
+        l.level === "warn" && l.message.includes("capped")
+      );
+      assert(warn, "expected a worker-thread-cap warning");
+      assert(
+        warn!.message.includes("estimatedMemoryPerWorkerMB: 266"),
+        `warn should record planner packing density: ${warn!.message}`,
+      );
+    },
+  );
+  setLogger(priorLogger);
+});
+
+Deno.test("worker thread cap — heap-only envelope still caps when planner unset", () => {
+  // Legacy path: envelope + heap without DISCOVERY_PER_WORKER_HEAP_CAP_MB.
+  const { logger, lines } = makeRecordingLogger();
   const priorLogger = getLogger();
   setLogger(logger);
   withEnvelopeEnv(
@@ -225,38 +262,49 @@ Deno.test("worker thread cap — GRQ-22 envelope", () => {
     () => {
       const config = createNeatConfig({ logger });
 
-      // Cap wired automatically from env — no opt-in needed.
       assertEquals(config.workerThreadCap.maxMemoryMB, 7840);
       assertEquals(config.workerThreadCap.estimatedMemoryPerWorkerMB, 4096);
 
-      // Core invariant: aggregate worker heap fits the envelope (and available).
       const aggregate = config.threads *
         config.workerThreadCap.estimatedMemoryPerWorkerMB;
       assert(
         aggregate <= config.workerThreadCap.maxMemoryMB,
         `aggregate ${aggregate} must be <= envelope ${config.workerThreadCap.maxMemoryMB}`,
       );
-      assert(
-        aggregate <= 7840,
-        `aggregate ${aggregate} must be <= available 7840`,
-      );
-
-      // floor(7840 / 4096) = 1, far below the ≥3 default (min 1 core + 2).
       assertEquals(config.threads, 1);
 
-      // The cap-fired warning records the host-derived numbers.
       const warn = lines.find((l) =>
         l.level === "warn" && l.message.includes("capped")
       );
       assert(warn, "expected a worker-thread-cap warning");
-      assert(
-        warn!.message.includes("maxMemoryMB: 7840"),
-        `warn should record host maxMemoryMB: ${warn!.message}`,
+    },
+  );
+  setLogger(priorLogger);
+});
+
+Deno.test("worker thread cap — clamps when per-worker estimate exceeds envelope", () => {
+  // Planning bug: heap > envelope with no planner cap. Clamp so one worker fits
+  // rather than warn-and-proceed over budget (GRQ #4069).
+  const { logger, lines } = makeRecordingLogger();
+  const priorLogger = getLogger();
+  setLogger(logger);
+  withEnvelopeEnv(
+    {
+      [DISCOVERY_WORKER_ENVELOPE_ENV]: "2669",
+      [DISCOVERY_HEAP_SIZE_ENV]: "4096",
+    },
+    () => {
+      const config = createNeatConfig({ threads: 12, logger });
+      assertEquals(config.workerThreadCap.estimatedMemoryPerWorkerMB, 2669);
+      assertEquals(config.threads, 1);
+      assertEquals(
+        config.threads * config.workerThreadCap.estimatedMemoryPerWorkerMB,
+        2669,
       );
-      assert(
-        warn!.message.includes("estimatedMemoryPerWorkerMB: 4096"),
-        `warn should record host estimatedMemoryPerWorkerMB: ${warn!.message}`,
+      const clampWarn = lines.find((l) =>
+        l.level === "warn" && l.message.includes("Clamping")
       );
+      assert(clampWarn, "expected a clamp warning");
     },
   );
   setLogger(priorLogger);
@@ -279,16 +327,16 @@ Deno.test("worker thread cap — explicit user override wins over envelope env",
   // supplies the per-worker estimate it did not provide.
   withEnvelopeEnv(
     {
-      [DISCOVERY_WORKER_ENVELOPE_ENV]: "7840",
+      [DISCOVERY_WORKER_ENVELOPE_ENV]: "2669",
       [DISCOVERY_HEAP_SIZE_ENV]: "4096",
+      [DISCOVERY_PER_WORKER_HEAP_CAP_ENV]: "266",
     },
     () => {
       const config = createNeatConfig({
         workerThreadCap: { maxMemoryMB: 16384 },
       });
       assertEquals(config.workerThreadCap.maxMemoryMB, 16384);
-      // Per-worker estimate still comes from the host envelope (4096).
-      assertEquals(config.workerThreadCap.estimatedMemoryPerWorkerMB, 4096);
+      assertEquals(config.workerThreadCap.estimatedMemoryPerWorkerMB, 266);
     },
   );
 });

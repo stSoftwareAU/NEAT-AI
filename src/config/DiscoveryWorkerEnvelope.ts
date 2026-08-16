@@ -9,8 +9,8 @@
  * The default thread count is `hardwareConcurrency + DEFAULT_HEAVY_TASK_WORKER_COUNT`
  * (e.g. `10 + 2 = 12` on GRQ-22). Every spawned Deno worker isolate inherits the
  * **process-level** `--max-old-space-size` (see {@link ./../workers/WorkerHeapBudget.ts}),
- * so on a 16 GB host all 12 isolates carry the same 4096 MB budget — an aggregate
- * ~48 GB potential worker heap with no accounting that
+ * so on a 16 GB host all 12 isolates carry the same 4096 MB *limit* — an aggregate
+ * ~48 GB *potential* worker heap with no accounting that
  * `threads × per_worker ≤ host RAM`. The #1569 memory cap
  * ({@link ./WorkerThreadCapConfig.ts}) that would bound this is opt-in and disabled
  * by default (`maxMemoryMB = 0`), and Discovery never set it — so no cap was applied
@@ -29,12 +29,13 @@
  *   - `DISCOVERY_WORKER_ENVELOPE_MB` — aggregate worker-isolate memory envelope (MB).
  *     Maps to `workerThreadCap.maxMemoryMB`. Presence of a positive value here is
  *     what activates the cap.
- *   - `DISCOVERY_HEAP_SIZE_MB` — the **actual** per-worker V8 old-space budget: the
- *     process `--max-old-space-size` every worker isolate inherits. Maps to
- *     `workerThreadCap.estimatedMemoryPerWorkerMB` so the cap reflects the real
- *     per-isolate footprint (4096 on GRQ-22), not the static 2048 MB guess.
- *   - `DISCOVERY_PER_WORKER_HEAP_CAP_MB` — fallback per-worker cap, used only when
- *     `DISCOVERY_HEAP_SIZE_MB` is unset.
+ *   - `DISCOVERY_PER_WORKER_HEAP_CAP_MB` — planner packing density (envelope ÷ CPU
+ *     slots, floored at 256 MB). Maps to `workerThreadCap.estimatedMemoryPerWorkerMB`
+ *     so the pool sizes to ~`envelope / per_worker_cap` workers (GRQ #4069).
+ *     Prefer this over the process V8 limit: `--max-old-space-size` is a spike
+ *     ceiling, not the concurrent fleet accounting unit.
+ *   - `DISCOVERY_HEAP_SIZE_MB` — process `--max-old-space-size` every isolate
+ *     inherits. Used as the per-worker estimate only when the planner cap is unset.
  *
  * When `DISCOVERY_WORKER_ENVELOPE_MB` is unset (every non-Discovery caller),
  * {@link resolveDiscoveryWorkerThreadCap} returns `undefined` and behaviour is
@@ -57,9 +58,10 @@ export type { EnvReader };
 export const DISCOVERY_WORKER_ENVELOPE_ENV = "DISCOVERY_WORKER_ENVELOPE_MB";
 
 /**
- * Environment variable the Discovery runner sets to the derived per-worker V8
- * heap cap (MB). Used as the per-worker estimate only when
- * {@link DISCOVERY_HEAP_SIZE_ENV} is unset.
+ * Environment variable the Discovery runner sets to the derived per-worker
+ * packing density (MB). Preferred for `estimatedMemoryPerWorkerMB` so the
+ * worker pool sizes to the planner's concurrent fleet, not to one worker per
+ * process V8 limit (GRQ #4069).
  */
 export const DISCOVERY_PER_WORKER_HEAP_CAP_ENV =
   "DISCOVERY_PER_WORKER_HEAP_CAP_MB";
@@ -67,14 +69,14 @@ export const DISCOVERY_PER_WORKER_HEAP_CAP_ENV =
 /**
  * `workerThreadCap` overrides derived from the Discovery memory envelope.
  *
- * `estimatedMemoryPerWorkerMB` is optional: when neither the actual per-worker V8
- * budget nor the exported per-worker cap is available, it is left unset so the
- * parser applies its static default.
+ * `estimatedMemoryPerWorkerMB` is optional: when neither the planner per-worker
+ * cap nor the process V8 budget is available, it is left unset so the parser
+ * applies its static default.
  */
 export interface DiscoveryWorkerThreadCapOverrides {
   /** Aggregate worker-memory envelope (MB) → `workerThreadCap.maxMemoryMB`. */
   maxMemoryMB: number;
-  /** Actual per-worker V8 budget (MB) → `workerThreadCap.estimatedMemoryPerWorkerMB`. */
+  /** Planner packing density / fallback V8 budget (MB). */
   estimatedMemoryPerWorkerMB?: number;
 }
 
@@ -111,10 +113,9 @@ function readPositiveIntMb(env: EnvReader, key: string): number | undefined {
  * Returns `undefined` unless {@link DISCOVERY_WORKER_ENVELOPE_ENV} holds a
  * positive integer — so non-Discovery callers (env unset) keep the cap disabled
  * and their behaviour unchanged. When active, `maxMemoryMB` is the envelope and
- * `estimatedMemoryPerWorkerMB` is the actual per-worker V8 budget
- * ({@link DISCOVERY_HEAP_SIZE_ENV}, the process `--max-old-space-size` every
- * isolate inherits), falling back to the exported per-worker cap
- * ({@link DISCOVERY_PER_WORKER_HEAP_CAP_ENV}).
+ * `estimatedMemoryPerWorkerMB` prefers the planner packing density
+ * ({@link DISCOVERY_PER_WORKER_HEAP_CAP_ENV}), falling back to the process V8
+ * budget ({@link DISCOVERY_HEAP_SIZE_ENV}) when the planner cap is unset.
  *
  * @param env - Environment reader (defaults to `Deno.env`).
  */
@@ -124,11 +125,12 @@ export function resolveDiscoveryWorkerThreadCap(
   const envelope = readPositiveIntMb(env, DISCOVERY_WORKER_ENVELOPE_ENV);
   if (envelope === undefined) return undefined;
 
-  // The real per-isolate footprint is the process V8 budget every worker
-  // inherits (DISCOVERY_HEAP_SIZE_MB); the derived per-worker cap is only a
-  // fallback when the process budget is not exported.
-  const perWorker = readPositiveIntMb(env, DISCOVERY_HEAP_SIZE_ENV) ??
-    readPositiveIntMb(env, DISCOVERY_PER_WORKER_HEAP_CAP_ENV);
+  // Prefer the planner's concurrent packing density over the process V8
+  // spike ceiling. Using --max-old-space-size as estimatedMemoryPerWorkerMB
+  // collapses the pool to 1 thread whenever heap > envelope (GRQ #4069).
+  const perWorker =
+    readPositiveIntMb(env, DISCOVERY_PER_WORKER_HEAP_CAP_ENV) ??
+    readPositiveIntMb(env, DISCOVERY_HEAP_SIZE_ENV);
 
   return perWorker === undefined
     ? { maxMemoryMB: envelope }
