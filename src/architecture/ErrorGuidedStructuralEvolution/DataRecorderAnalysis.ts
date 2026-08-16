@@ -85,10 +85,14 @@ export function decideWarmUpOvershoot(args: {
   readonly allowanceMs: number;
   readonly remainingChunks: number;
   readonly minNeededForRestMs: number;
-  readonly reason: "within_allowance" | "over_allowance" | "insufficient_remaining";
+  readonly reason:
+    | "within_allowance"
+    | "over_allowance"
+    | "insufficient_remaining";
 } {
   const warmUpMin = args.warmUpMinChunks ?? STALL_WARMUP_MIN_COMPLETED_CHUNKS;
-  const multiple = args.warmUpMaxMultiple ?? STALL_WARMUP_MAX_OVERSHOOT_MULTIPLE;
+  const multiple = args.warmUpMaxMultiple ??
+    STALL_WARMUP_MAX_OVERSHOOT_MULTIPLE;
   const allowanceMs = Math.max(0, args.perChunkMaxMs) * Math.max(1, multiple);
   const remainingChunks = Math.max(0, args.totalChunks - args.completedChunks);
   const minNeededForRestMs = Math.max(0, args.perChunkMaxMs) * remainingChunks;
@@ -901,8 +905,14 @@ export async function runAnalysisLoop(
               }, allowance=${
                 yellow(format(decision.allowanceMs, { ignoreZero: true }))
               } (${STALL_WARMUP_MAX_OVERSHOOT_MULTIPLE}×), need_for_rest=${
-                yellow(format(decision.minNeededForRestMs, { ignoreZero: true }))
-              } → ${decision.continue ? "continuing" : `aborting (${decision.reason})`}`,
+                yellow(
+                  format(decision.minNeededForRestMs, { ignoreZero: true }),
+                )
+              } → ${
+                decision.continue
+                  ? "continuing"
+                  : `aborting (${decision.reason})`
+              }`,
             );
           }
           if (!decision.continue) {
