@@ -106,12 +106,11 @@ export function trainDirSingleFold(
  * Orchestrates the three training phases for a single-fold binary run:
  * setup → loop → teardown.
  *
- * The TypeScript / WASM loop is the default. Set
- * `NEAT_AI_BACKPROP_ENABLED=1` to spawn sibling
- * `neat_ai_backpropagation train` when the binary is present and the
- * request is one the CLI can honour (Issue #3741). Predictive coding,
- * cross-validation, custom costs, and the TypeScript-only regularisers
- * always stay on the existing loop.
+ * Eligible requests prefer sibling `neat_ai_backpropagation train` when
+ * the binary is present (Issue #3741). Set `NEAT_AI_BACKPROP_ENABLED=0` to
+ * force the TypeScript / WASM loop. Predictive coding, cross-validation,
+ * custom costs, and the TypeScript-only regularisers always stay on the
+ * existing loop.
  */
 function trainDirBinary(
   creature: Creature,

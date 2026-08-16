@@ -23,14 +23,28 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [6.5.0] - 2026-08-16
+
+### Changed
+
+- **Package version floor restored to 6.5.0** after a merge conflict briefly
+  regressed `deno.json` below the earlier 6.4.0 line. A quality-gate test and
+  the update-package-version workflow now refuse any PR whose version sits
+  behind `origin/Develop`.
+- **Native backprop is now the default** for both topological propagate
+  (`libneat_core`) and eligible `trainDir` (`neat_ai_backpropagation`). Set
+  `NEAT_AI_NATIVE_CORE_BACKPROP=0` or `NEAT_AI_BACKPROP_ENABLED=0` to force the
+  TypeScript / WASM paths while production soaks. Missing binaries — or a CLI
+  failure — still fall back automatically. `trainDir` CLI args match current
+  `neat_ai_backpropagation` (`--max-records`, `--trace-store`, no removed
+  flags). `./quality.sh --next` continues to force native core on for explicit
+  soak runs.
+
 ### Added
 
-- **Issue #3741:** Native topological backprop is wired but **opt-in**, using
-  the same pattern as the Rust scorer: handwritten tests are not rewritten;
-  `./quality.sh --next` swaps `wasmPropagateTopological` onto native
-  `libneat_core` (`neat_propagate_topological`). WASM stays the default until
-  that suite is green and a bench shows a win. The `trainDir` CLI stays behind
-  `NEAT_AI_BACKPROP_ENABLED=1` (not part of `--next`). Override the binary with
+- **Issue #3741:** Native topological backprop via `libneat_core`
+  (`neat_propagate_topological`) and eligible `trainDir` via sibling
+  `neat_ai_backpropagation`. Override the trainDir binary with
   `NEAT_AI_BACKPROP_BINARY_PATH`; apply step scale with
   `NEAT_AI_BACKPROP_STEP_SCALE` (default `0.01`).
 - **Issue #3422:** Every `evolve*` result now carries a run-level `statistics`

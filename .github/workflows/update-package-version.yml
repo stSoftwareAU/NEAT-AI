@@ -82,7 +82,16 @@ jobs:
             echo "needs_update=true" >> "$GITHUB_OUTPUT"
             echo "base_version=$BASE_VERSION" >> "$GITHUB_OUTPUT"
           else
-            echo "Version has been updated in PR"
+            # Refuse a PR that sits *behind* the base branch. A merge conflict
+            # that silently takes Develop's older version must fail CI rather
+            # than look like a deliberate bump. `sort -V` is the portable
+            # semver order used across the fleet (GNU + BSD).
+            LOWEST=$(printf '%s\n%s\n' "$CURRENT_VERSION" "$BASE_VERSION" | sort -V | head -n1)
+            if [ "$LOWEST" = "$CURRENT_VERSION" ]; then
+              echo "::error::deno.json version ${CURRENT_VERSION} is behind base ${BASE_VERSION}; package versions must never go backwards" >&2
+              exit 1
+            fi
+            echo "Version has been updated in PR (${CURRENT_VERSION} vs base ${BASE_VERSION})"
             echo "needs_update=false" >> "$GITHUB_OUTPUT"
           fi
 
