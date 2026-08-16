@@ -60,6 +60,84 @@ const DEFAULT_PER_CHUNK_GRACE_MS = 1_000;
 const STALL_WARMUP_MIN_COMPLETED_CHUNKS = 2;
 
 /**
+ * Maximum multiple of `perChunkMaxMs` a warm-up chunk may overrun before the
+ * stall guard trips anyway (GRQ #4067). Without this bound the first two
+ * chunks could run for hours (2h57m on GRQ-25, 13m47s on GRQ-22) while still
+ * logging "within warm-up window … continuing".
+ */
+export const STALL_WARMUP_MAX_OVERSHOOT_MULTIPLE = 5;
+
+/**
+ * Decision for a per-chunk overshoot that still falls inside the warm-up
+ * window (GRQ #4067). Extracted so the bound and remaining-budget gate are
+ * unit-testable without driving the full analysis loop.
+ */
+export function decideWarmUpOvershoot(args: {
+  readonly chunkElapsedMs: number;
+  readonly perChunkMaxMs: number;
+  readonly completedChunks: number;
+  readonly totalChunks: number;
+  readonly remainingDeadlineMs: number;
+  readonly warmUpMinChunks?: number;
+  readonly warmUpMaxMultiple?: number;
+}): {
+  readonly continue: boolean;
+  readonly allowanceMs: number;
+  readonly remainingChunks: number;
+  readonly minNeededForRestMs: number;
+  readonly reason: "within_allowance" | "over_allowance" | "insufficient_remaining";
+} {
+  const warmUpMin = args.warmUpMinChunks ?? STALL_WARMUP_MIN_COMPLETED_CHUNKS;
+  const multiple = args.warmUpMaxMultiple ?? STALL_WARMUP_MAX_OVERSHOOT_MULTIPLE;
+  const allowanceMs = Math.max(0, args.perChunkMaxMs) * Math.max(1, multiple);
+  const remainingChunks = Math.max(0, args.totalChunks - args.completedChunks);
+  const minNeededForRestMs = Math.max(0, args.perChunkMaxMs) * remainingChunks;
+
+  // Outside the warm-up window this helper is not consulted; callers still
+  // get a stable shape if they ask.
+  if (args.completedChunks >= warmUpMin) {
+    return {
+      continue: false,
+      allowanceMs,
+      remainingChunks,
+      minNeededForRestMs,
+      reason: "over_allowance",
+    };
+  }
+
+  if (args.chunkElapsedMs > allowanceMs) {
+    return {
+      continue: false,
+      allowanceMs,
+      remainingChunks,
+      minNeededForRestMs,
+      reason: "over_allowance",
+    };
+  }
+
+  if (
+    remainingChunks > 0 &&
+    args.remainingDeadlineMs < minNeededForRestMs
+  ) {
+    return {
+      continue: false,
+      allowanceMs,
+      remainingChunks,
+      minNeededForRestMs,
+      reason: "insufficient_remaining",
+    };
+  }
+
+  return {
+    continue: true,
+    allowanceMs,
+    remainingChunks,
+    minNeededForRestMs,
+    reason: "within_allowance",
+  };
+}
+
+/**
  * Returns a one-line diagnostic of the current Deno heap / RSS state.
  *
  * Used to annotate the throughput-stall abort log so future occurrences
@@ -799,7 +877,17 @@ export async function runAnalysisLoop(
       // so a single-chunk overshoot here is expected, not a real stall.
       if (ctx.perChunkMaxMs > 0 && chunkElapsed >= ctx.perChunkMaxMs) {
         if (completedChunks < STALL_WARMUP_MIN_COMPLETED_CHUNKS) {
-          // Warm-up: record the overshoot but do not trip the stall guard.
+          // Warm-up (Issue #2513 / GRQ #4067): allow a bounded overshoot so
+          // cold-start cost can be amortised, but never unlimited — and never
+          // when the remaining deadline cannot cover the leftover chunks.
+          const remainingDeadlineMs = Math.max(0, ctx.getTimeoutTS() - now());
+          const decision = decideWarmUpOvershoot({
+            chunkElapsedMs: chunkElapsed,
+            perChunkMaxMs: ctx.perChunkMaxMs,
+            completedChunks,
+            totalChunks: chunks.length,
+            remainingDeadlineMs,
+          });
           if (shouldLogDiscovery(config)) {
             getLogger().info(
               `Discovery ${
@@ -808,8 +896,18 @@ export async function runAnalysisLoop(
                 yellow(format(ctx.perChunkMaxMs, { ignoreZero: true }))
               } (elapsed ${
                 yellow(format(chunkElapsed, { ignoreZero: true }))
-              }); within warm-up window (${completedChunks}/${STALL_WARMUP_MIN_COMPLETED_CHUNKS} chunks completed), continuing`,
+              }); within warm-up window (${completedChunks}/${STALL_WARMUP_MIN_COMPLETED_CHUNKS} chunks completed), remaining=${
+                yellow(format(remainingDeadlineMs, { ignoreZero: true }))
+              }, allowance=${
+                yellow(format(decision.allowanceMs, { ignoreZero: true }))
+              } (${STALL_WARMUP_MAX_OVERSHOOT_MULTIPLE}×), need_for_rest=${
+                yellow(format(decision.minNeededForRestMs, { ignoreZero: true }))
+              } → ${decision.continue ? "continuing" : `aborting (${decision.reason})`}`,
             );
+          }
+          if (!decision.continue) {
+            iterationStalled = true;
+            break;
           }
         } else {
           // Past warm-up: rate-of-change check. Only trip if the average
