@@ -286,4 +286,5 @@ above:
 - **`visualize/`, `index.html`, `index.js`, `server.ts`,
   `snapshot-schema.json`** — assets for the GitHub Pages visualisation app, not
   prose documentation.
-- **`logo.png`, `cspell.json`** — brand asset and spell-check dictionary.
+- **`logo.png`, `cspell.json`** — legacy square logo (superseded as the README
+  header by `brand/social-previews/neat-ai.png`) and spell-check dictionary.
