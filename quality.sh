@@ -30,12 +30,11 @@ Options:
   --wasm-scorer       Comparison-only: run tests on the legacy WASM scorer
                       instead of rust_scorer. Remove this once the WASM
                       scoring path is deleted.
-  --next              Run the existing handwritten test suite against native
-                      libneat_core topological backprop (Issue #3741). Same
-                      idea as the Rust scorer: tests are not rewritten; the
-                      implementation swaps underneath. WASM backprop stays
-                      the default until this suite is green and a bench
-                      shows a win. Does not spawn the trainDir CLI.
+  --next              Prefer / verify native libneat_core topological
+                      backprop (Issue #3741). Builds sibling neat-core when
+                      present. Native is already the default; this flag
+                      forces NEAT_AI_NATIVE_CORE_BACKPROP=1 and is kept for
+                      explicit soak runs. Does not spawn the trainDir CLI.
   --test-both-scorers Run tests twice: WASM scorer then Rust scorer
   --rust-scorer-bin=PATH
                       Path to rust_scorer binary (default: rust_scorer)
@@ -52,13 +51,15 @@ Environment:
                       bump-deps.sh; dodges fast-flagged supply-chain attacks
                       (Issue #2742). Must be a non-negative integer.
   NEAT_AI_NATIVE_CORE_BACKPROP
-                      Set to 1 to build sibling libneat_core and use native
-                      topological backprop (Issue #3741). `./quality.sh --next`
-                      sets this. Default: WASM packed loop.
+                      Native topological backprop via sibling libneat_core
+                      (Issue #3741). Default: on. Set to 0/false/no/off to
+                      force the WASM packed loop. `./quality.sh --next`
+                      forces =1.
   NEAT_AI_BACKPROP_ENABLED
-                      Set to 1 to spawn sibling neat_ai_backpropagation from
-                      trainDir. Separate from --next; keep off until the
-                      native loop is proven. Default: off.
+                      Prefer sibling neat_ai_backpropagation from trainDir
+                      when the binary is present and the request is
+                      eligible. Default: on. Set to 0/false/no/off to force
+                      the TypeScript / WASM loop.
   DENO_JOBS
                       Parallel `deno test` workers. Default: sized so each
                       worker can keep an 8192 MB V8 heap. Leave 12 GiB for
@@ -111,6 +112,14 @@ fi
 if [ "$NEXT" = true ]; then
   export NEAT_AI_NATIVE_CORE_BACKPROP=1
 fi
+
+# Native paths are on by default; only an explicit off value disables them.
+native_backprop_wanted() {
+  case "${1:-}" in
+    0|false|no|off|FALSE|NO|OFF) return 1 ;;
+    *) return 0 ;;
+  esac
+}
 
 RUN_DEPS=true
 RUN_FMT=true
@@ -263,11 +272,14 @@ if [ "$RUN_TESTS" = true ]; then
   else
     TOTAL=$((TOTAL + 1))
   fi
-  # Native backprop is opt-in (Issue #3741). WASM is the default path.
-  if [[ "${NEAT_AI_NATIVE_CORE_BACKPROP:-}" == "1" && -d ../NEAT-AI-core ]]; then
+  # Native backprop is the default (Issue #3741). Skip builds only when the
+  # caller explicitly disabled the path or the sibling checkout is absent.
+  if native_backprop_wanted "${NEAT_AI_NATIVE_CORE_BACKPROP:-}" &&
+    [[ -d ../NEAT-AI-core ]]; then
     TOTAL=$((TOTAL + 1))
   fi
-  if [[ "${NEAT_AI_BACKPROP_ENABLED:-}" == "1" && -d ../NEAT-AI-Backpropagation ]]; then
+  if native_backprop_wanted "${NEAT_AI_BACKPROP_ENABLED:-}" &&
+    [[ -d ../NEAT-AI-Backpropagation ]]; then
     TOTAL=$((TOTAL + 1))
   fi
 fi
@@ -290,10 +302,12 @@ if [ "$DRY_RUN" = true ]; then
   [ "$RUN_DISCOVERY" = true ] && progress "Building discovery library..."
   [ "$RUN_WASM" = true ] && progress "Syncing WASM package from NEAT-AI-core..."
   if [ "$RUN_TESTS" = true ]; then
-    if [[ "${NEAT_AI_NATIVE_CORE_BACKPROP:-}" == "1" && -d ../NEAT-AI-core ]]; then
+    if native_backprop_wanted "${NEAT_AI_NATIVE_CORE_BACKPROP:-}" &&
+      [[ -d ../NEAT-AI-core ]]; then
       progress "Building native neat-core library..."
     fi
-    if [[ "${NEAT_AI_BACKPROP_ENABLED:-}" == "1" && -d ../NEAT-AI-Backpropagation ]]; then
+    if native_backprop_wanted "${NEAT_AI_BACKPROP_ENABLED:-}" &&
+      [[ -d ../NEAT-AI-Backpropagation ]]; then
       progress "Building native neat_ai_backpropagation..."
     fi
     if [ "$TEST_BOTH_SCORERS" = true ]; then
@@ -439,7 +453,8 @@ if [ "$RUN_DISCOVERY" = true ]; then
   fi
 fi
 
-if [ "$RUN_TESTS" = true ] && [[ "${NEAT_AI_NATIVE_CORE_BACKPROP:-}" == "1" ]]; then
+if [ "$RUN_TESTS" = true ] &&
+  native_backprop_wanted "${NEAT_AI_NATIVE_CORE_BACKPROP:-}"; then
   if [[ -d ../NEAT-AI-core ]]; then
     progress "Building native neat-core library..."
     (cd ../NEAT-AI-core && cargo build --release -p neat-core)
@@ -448,12 +463,13 @@ if [ "$RUN_TESTS" = true ] && [[ "${NEAT_AI_NATIVE_CORE_BACKPROP:-}" == "1" ]]; 
   fi
 fi
 
-if [ "$RUN_TESTS" = true ] && [[ "${NEAT_AI_BACKPROP_ENABLED:-}" == "1" ]]; then
+if [ "$RUN_TESTS" = true ] &&
+  native_backprop_wanted "${NEAT_AI_BACKPROP_ENABLED:-}"; then
   if [[ -d ../NEAT-AI-Backpropagation ]]; then
     progress "Building native neat_ai_backpropagation..."
     (cd ../NEAT-AI-Backpropagation && cargo build --release -p neat_ai_backpropagation)
-  elif [ "$NEXT" = true ]; then
-    echo "⚠️  NEAT_AI_BACKPROP_ENABLED=1 but ../NEAT-AI-Backpropagation is not checked out; trainDir stays on TypeScript."
+  else
+    echo "⚠️  ../NEAT-AI-Backpropagation is not checked out; trainDir stays on TypeScript when the binary is absent."
   fi
 fi
 

@@ -1,9 +1,9 @@
 /**
  * Native neat-core backprop (Issue #3741). Native `libneat_core` is
- * opt-in (`NEAT_AI_NATIVE_CORE_BACKPROP=1`). Resolution tests use temp
- * files so they do not depend on a built library path. The
- * NoChange-sentinel test talks to the real library when it is present
- * and skips otherwise. Existing propagate tests stay on WASM by default.
+ * preferred when present; set `NEAT_AI_NATIVE_CORE_BACKPROP=0` to force
+ * WASM. Resolution tests use temp files so they do not depend on a built
+ * library path. The NoChange-sentinel test talks to the real library when
+ * it is present and skips otherwise.
  */
 
 import { assert, assertEquals } from "@std/assert";
@@ -75,15 +75,34 @@ Deno.test("native core library: missing candidates return null", () => {
   }
 });
 
-Deno.test("native core backprop is opt-in (WASM is the default)", () => {
-  assertEquals(isNativeCoreBackpropEnabled(), false);
+Deno.test("native core backprop is on by default (set NEAT_AI_NATIVE_CORE_BACKPROP=0 to force WASM)", () => {
+  // Do not mutate process env: parallel tests share it. Honour whatever
+  // ./quality.sh (or the caller) already exported.
+  const raw = Deno.env.get("NEAT_AI_NATIVE_CORE_BACKPROP");
+  const disabled = raw !== undefined &&
+    ["0", "false", "no", "off"].includes(raw.trim().toLowerCase());
+  assertEquals(isNativeCoreBackpropEnabled(), !disabled);
 });
+
+/** True when sibling/env libneat_core resolves and actually dlopens. */
+function nativeCoreLoads(): boolean {
+  if (findNativeCoreLibrary() === null) return false;
+  try {
+    const ok = isNativeCoreAvailable();
+    closeNativeCoreLibrary();
+    return ok;
+  } catch {
+    closeNativeCoreLibrary();
+    return false;
+  }
+}
 
 Deno.test({
   name: "native core library: sibling dylib can be loaded without an env var",
   sanitizeResources: false,
   sanitizeOps: false,
-  ignore: findNativeCoreLibrary() === null,
+  // Skip when absent *or* unloadable (stale/stub dylib on disk).
+  ignore: !nativeCoreLoads(),
   fn: () => {
     try {
       assert(
@@ -170,7 +189,7 @@ Deno.test({
     "native core library: zero-error identity output uses the NoChange sentinel",
   sanitizeResources: false,
   sanitizeOps: false,
-  ignore: findNativeCoreLibrary() === null,
+  ignore: !nativeCoreLoads(),
   fn: () => {
     try {
       const version = getNativeCoreVersion();

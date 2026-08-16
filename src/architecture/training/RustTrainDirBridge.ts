@@ -6,9 +6,9 @@
  * MSE accept/rollback). TypeScript keeps predictive coding, cross-validation,
  * custom costs, dropout, fuzzing, quantisation, Muon, and recurrent graphs.
  *
- * Opt-in via `NEAT_AI_BACKPROP_ENABLED=1`. The TypeScript / WASM loop is
- * the default so the quality gate and production `evolveDir` stay on the
- * path that already finishes cleanly.
+ * Default on when `neat_ai_backpropagation` resolves and the request is
+ * eligible. Set `NEAT_AI_BACKPROP_ENABLED=0` to force the TypeScript / WASM
+ * loop (escape hatch while production soaks the native path).
  */
 
 import { fromFileUrl } from "@std/path/from-file-url";
@@ -24,13 +24,17 @@ import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts
 import type { TrainingLoopResult } from "@architecture/training/TrainingLoop.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 
-/** Matches `TrainSummary` in neat_ai_backpropagation `train.rs`. */
-interface TrainSummary {
-  baselineMse: number;
-  bestMse: number;
-  acceptedEpochs: number;
-  completedEpochs: number;
-  timedOut: boolean;
+/** Matches journal lines written by neat_ai_backpropagation `train.rs`. */
+interface TrainJournalHeader {
+  kind: string;
+  epochs: number;
+}
+
+interface TrainEpochRecord {
+  kind: string;
+  epoch: number;
+  afterMse: number;
+  accepted: boolean;
 }
 
 export interface RustTrainDirSearchOptions {
@@ -145,19 +149,20 @@ function timeoutSeconds(setup: TrainingSetupState): number | undefined {
   return Math.max(1, Math.floor(Math.min(...caps)));
 }
 
-function envFlagEnabled(raw: string | undefined): boolean {
+/** True when an env flag is an explicit off value (`0` / `false` / `no` / `off`). */
+function envFlagDisabled(raw: string | undefined): boolean {
   if (raw === undefined) return false;
   const v = raw.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
+  return v === "0" || v === "false" || v === "no" || v === "off";
 }
 
 /**
- * True when the caller asked `trainDir` to spawn the Rust trainer.
+ * True when `trainDir` should prefer the Rust trainer when eligible.
  *
- * Default is off so evolve's per-generation 1-epoch trains stay in-process.
+ * Default is on. Set `NEAT_AI_BACKPROP_ENABLED=0` to force TypeScript / WASM.
  */
 export function isRustTrainDirEnabled(): boolean {
-  return envFlagEnabled(readEnvString("NEAT_AI_BACKPROP_ENABLED"));
+  return !envFlagDisabled(readEnvString("NEAT_AI_BACKPROP_ENABLED"));
 }
 
 function stepScale(): number {
@@ -171,7 +176,8 @@ function stepScale(): number {
  * True when this `trainDir` request is one the Rust trainer can honour.
  *
  * Custom costs, recurrent graphs, and the TypeScript-only regularisers stay
- * on the existing loop so those tests remain unaltered.
+ * on the existing loop so those tests remain unaltered. Partial corpus
+ * samples map to `--max-records`.
  */
 export function canUseRustTrainDir(
   creature: Creature,
@@ -190,32 +196,117 @@ export function canUseRustTrainDir(
   if (setup.iterationConfig.gradientOrthogonalisation === "muon") {
     return false;
   }
-  if (setup.trainingSampleRate < 1) return false;
   return findRustTrainDirBinary() !== null;
+}
+
+function countDatasetRecords(
+  dataDir: string,
+  input: number,
+  output: number,
+): number {
+  const bytesPerRecord = (input + output) * Float32Array.BYTES_PER_ELEMENT;
+  if (bytesPerRecord <= 0) return 0;
+  let total = 0;
+  try {
+    for (const entry of Deno.readDirSync(dataDir)) {
+      if (!entry.isFile || !entry.name.endsWith(".bin")) continue;
+      total += Math.floor(
+        Deno.statSync(join(dataDir, entry.name)).size / bytesPerRecord,
+      );
+    }
+  } catch {
+    return 0;
+  }
+  return total;
+}
+
+function summariseJournal(
+  journalPath: string,
+  requestedEpochs: number,
+): { completedEpochs: number; bestMse: number } {
+  let completedEpochs = 0;
+  let bestMse = Number.POSITIVE_INFINITY;
+  let baselineMse = Number.POSITIVE_INFINITY;
+  try {
+    const text = Deno.readTextFileSync(journalPath);
+    for (const line of text.split("\n")) {
+      if (line.trim() === "") continue;
+      const row = JSON.parse(line) as TrainJournalHeader & TrainEpochRecord & {
+        beforeMse?: number;
+      };
+      if (row.kind === "epoch") {
+        completedEpochs++;
+        if (
+          !Number.isFinite(baselineMse) &&
+          typeof row.beforeMse === "number" &&
+          Number.isFinite(row.beforeMse)
+        ) {
+          baselineMse = row.beforeMse;
+        }
+        if (row.accepted && Number.isFinite(row.afterMse)) {
+          bestMse = Math.min(bestMse, row.afterMse);
+        }
+      }
+    }
+  } catch {
+    // Journal is best-effort; callers may still have best.json.
+  }
+  if (!Number.isFinite(bestMse)) {
+    bestMse = Number.isFinite(baselineMse)
+      ? baselineMse
+      : Number.POSITIVE_INFINITY;
+  }
+  if (completedEpochs === 0) completedEpochs = Math.max(1, requestedEpochs);
+  return { completedEpochs, bestMse };
 }
 
 function spawnTrain(
   binary: string,
   args: string[],
-): { success: boolean; code: number; stdout: string; stderr: string } {
-  const output = new Deno.Command(binary, {
-    args,
-    stdout: "piped",
-    stderr: "piped",
-  }).outputSync();
-  return {
-    success: output.success,
-    code: output.code,
-    stdout: new TextDecoder().decode(output.stdout),
-    stderr: new TextDecoder().decode(output.stderr),
-  };
+  timeoutSec: number | undefined,
+): {
+  success: boolean;
+  code: number;
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+} {
+  const signal = timeoutSec !== undefined && timeoutSec > 0
+    ? AbortSignal.timeout(Math.max(1, Math.floor(timeoutSec * 1000)))
+    : undefined;
+  try {
+    const output = new Deno.Command(binary, {
+      args,
+      stdout: "piped",
+      stderr: "piped",
+      signal,
+    }).outputSync();
+    return {
+      success: output.success,
+      code: output.code,
+      stdout: new TextDecoder().decode(output.stdout),
+      stderr: new TextDecoder().decode(output.stderr),
+      timedOut: false,
+    };
+  } catch (err) {
+    const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+    return {
+      success: false,
+      code: timedOut ? 124 : 1,
+      stdout: "",
+      stderr: timedOut
+        ? `neat_ai_backpropagation timed out after ${timeoutSec}s`
+        : String(err),
+      timedOut,
+    };
+  }
 }
 
 /**
  * Run the Rust trainer and package a TypeScript {@link TrainingResult}.
  *
  * @returns the result, or `undefined` when this request should stay on the
- *          TypeScript loop.
+ *          TypeScript loop (ineligible, missing binary, or CLI failure).
  */
 export function tryRustTrainDir(
   creature: Creature,
@@ -258,20 +349,22 @@ export function tryRustTrainDir(
     String(cfg.maximumBiasAdjustmentScale),
     "--maximum-weight-adjustment-scale",
     String(cfg.maximumWeightAdjustmentScale),
-    "--sparse-ratio",
-    String(cfg.sparseRatio),
-    "--generations",
-    String(cfg.generations),
     "--step-scale",
     String(stepScale()),
-    "--target-error",
-    String(setup.targetError),
   ];
   if (cfg.normaliseGradients) args.push("--normalise-gradients");
-  if (options.disableRandomSamples !== true) args.push("--random-samples");
-  const timeout = timeoutSeconds(setup);
-  if (timeout !== undefined) {
-    args.push("--timeout-seconds", String(timeout));
+  if (options.disableRandomSamples === true) {
+    args.push("--disable-random-samples");
+  }
+  if (setup.trainingSampleRate > 0 && setup.trainingSampleRate < 1) {
+    const total = countDatasetRecords(dataDir, creature.input, creature.output);
+    const capped = Math.max(1, Math.floor(total * setup.trainingSampleRate));
+    if (total > 0) {
+      args.push("--max-records", String(capped));
+    }
+  }
+  if (options.traceStore) {
+    args.push("--trace-store", resolve(Deno.cwd(), options.traceStore));
   }
 
   getLogger().info(
@@ -279,32 +372,52 @@ export function tryRustTrainDir(
   );
 
   try {
-    const spawned = spawnTrain(binary, args);
-    if (!spawned.success) {
-      throw new Error(
-        `neat_ai_backpropagation train failed (exit ${spawned.code}): ` +
-          spawned.stderr.trim(),
-      );
+    const spawned = spawnTrain(binary, args, timeoutSeconds(setup));
+    const bestPath = join(outputDir, "best.json");
+    const journalPath = join(outputDir, "journal.jsonl");
+    let hasBest = false;
+    try {
+      hasBest = Deno.statSync(bestPath).isFile;
+    } catch {
+      hasBest = false;
     }
 
-    const bestPath = join(outputDir, "best.json");
-    const summaryPath = join(outputDir, "summary.json");
+    if (!spawned.success && !spawned.timedOut) {
+      getLogger().warn(
+        `[NEAT-AI] neat_ai_backpropagation train failed (exit ${spawned.code}); ` +
+          `falling back to TypeScript / WASM. ${spawned.stderr.trim()}`,
+      );
+      return undefined;
+    }
+
+    if (!hasBest) {
+      getLogger().warn(
+        spawned.timedOut
+          ? "[NEAT-AI] neat_ai_backpropagation timed out with no best.json; " +
+            "falling back to TypeScript / WASM."
+          : "[NEAT-AI] neat_ai_backpropagation wrote no best.json; " +
+            "falling back to TypeScript / WASM.",
+      );
+      return undefined;
+    }
+
     const bestJson = JSON.parse(
       Deno.readTextFileSync(bestPath),
     ) as CreatureExport;
-    const summary = JSON.parse(
-      Deno.readTextFileSync(summaryPath),
-    ) as TrainSummary;
+    const { completedEpochs, bestMse } = summariseJournal(
+      journalPath,
+      setup.iterations,
+    );
 
     creature.loadFrom(bestJson, false, "training:rustTrainDir");
 
     const loop: TrainingLoopResult = {
-      iteration: Math.max(1, summary.completedEpochs),
-      bestError: summary.bestMse,
+      iteration: Math.max(1, completedEpochs),
+      bestError: Number.isFinite(bestMse) ? bestMse : Number.POSITIVE_INFINITY,
       bestCreatureJSON: creature.exportJSON(),
       bestTraceJSON: creature.traceJSON(),
       sparseConfig: setup.sparseConfig,
-      timedOut: summary.timedOut,
+      timedOut: spawned.timedOut,
     };
 
     return finaliseTraining(
@@ -316,6 +429,12 @@ export function tryRustTrainDir(
       setup.syntheticKeys,
       setup.ID,
     );
+  } catch (err) {
+    getLogger().warn(
+      `[NEAT-AI] neat_ai_backpropagation train raised; falling back to ` +
+        `TypeScript / WASM. ${err}`,
+    );
+    return undefined;
   } finally {
     try {
       Deno.removeSync(workDir, { recursive: true });

@@ -76,8 +76,13 @@ Deno.test("Rust trainDir: custom cost stays on the TypeScript loop", () => {
   );
 });
 
-Deno.test("Rust trainDir is opt-in (TypeScript loop is the default)", () => {
-  assertEquals(isRustTrainDirEnabled(), false);
+Deno.test("Rust trainDir is on by default (set NEAT_AI_BACKPROP_ENABLED=0 to force TypeScript)", () => {
+  // Do not mutate process env: parallel tests share it.
+  const raw = Deno.env.get("NEAT_AI_BACKPROP_ENABLED");
+  const disabled = raw !== undefined &&
+    ["0", "false", "no", "off"].includes(raw.trim().toLowerCase());
+  assertEquals(isRustTrainDirEnabled(), !disabled);
+
   const creature = new Creature(2, 1);
   const uuid = CreatureUtil.makeUUID(creature);
   const setup = prepareTraining(
@@ -85,25 +90,20 @@ Deno.test("Rust trainDir is opt-in (TypeScript loop is the default)", () => {
     { iterations: 1, disableRandomSamples: true },
     uuid.substring(Math.max(0, uuid.length - 8)),
   );
-  assertEquals(
-    canUseRustTrainDir(creature, { iterations: 1 }, Costs.find("MSE"), setup),
-    false,
-  );
-  if (findRustTrainDirBinary() !== null) {
+  if (disabled) {
     assertEquals(
-      canUseRustTrainDir(
-        creature,
-        { iterations: 1 },
-        Costs.find("MSE"),
-        setup,
-        true,
-      ),
+      canUseRustTrainDir(creature, { iterations: 1 }, Costs.find("MSE"), setup),
+      false,
+    );
+  } else if (findRustTrainDirBinary() !== null) {
+    assertEquals(
+      canUseRustTrainDir(creature, { iterations: 1 }, Costs.find("MSE"), setup),
       true,
     );
   }
 });
 
-Deno.test("Rust trainDir: MSE forward-only still trains when CLI is unused", () => {
+Deno.test("Rust trainDir: MSE forward-only still trains (Rust CLI or TypeScript fallback)", () => {
   const creature = new Creature(2, 1);
   const dataSet: DataRecordInterface[] = [
     { input: new Float32Array([0, 0]), output: new Float32Array([0]) },

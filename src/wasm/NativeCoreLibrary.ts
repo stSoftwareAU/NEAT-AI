@@ -1,11 +1,12 @@
 /**
  * Native `neat-core` library for topological backpropagation (Issue #3741).
  *
- * Opt-in: the reverse-topological loop stays on WASM unless
- * `NEAT_AI_NATIVE_CORE_BACKPROP=1`. When enabled, the packed buffer and
- * `±Infinity` sentinels are the same contract as WASM `propagate_topological`,
- * so IF/MIN/MAX still fall back to TypeScript. Missing library or a native
- * error returns `undefined` and the caller falls back to WASM.
+ * Default on: when `libneat_core` resolves, the reverse-topological loop uses
+ * native `neat_propagate_topological`. Set `NEAT_AI_NATIVE_CORE_BACKPROP=0`
+ * to force the WASM packed loop. The packed buffer and `±Infinity` sentinels
+ * match WASM `propagate_topological`, so IF/MIN/MAX still fall back to
+ * TypeScript. Missing library or a native error returns `undefined` and the
+ * caller falls back to WASM.
  *
  * Resolution (first match wins), same idea as Discovery:
  * 0. `NEAT_AI_CORE_LIB_PATH` (file or directory)
@@ -13,8 +14,8 @@
  * 2. `./target/release/` (cwd)
  * 3. sibling `../NEAT-AI-core/target/release/`
  *
- * The library is not opened at module load. Callers that opt in load it
- * on first use so the default WASM path does not `dlopen` in every worker.
+ * The library is not opened at module load — first use `dlopen`s so hosts
+ * without a sibling build keep the WASM fallback path clean.
  */
 
 import { fromFileUrl } from "@std/path/from-file-url";
@@ -97,19 +98,20 @@ function readEnvString(key: string): string | undefined {
   }
 }
 
-function envFlagEnabled(raw: string | undefined): boolean {
+/** True when an env flag is an explicit off value (`0` / `false` / `no` / `off`). */
+function envFlagDisabled(raw: string | undefined): boolean {
   if (raw === undefined) return false;
   const v = raw.trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
+  return v === "0" || v === "false" || v === "no" || v === "off";
 }
 
 /**
- * True when the caller asked for native `libneat_core` backprop.
+ * True when native `libneat_core` backprop should be attempted.
  *
- * Default is off so the WASM path stays the merge-safe default.
+ * Default is on. Set `NEAT_AI_NATIVE_CORE_BACKPROP=0` to force WASM.
  */
 export function isNativeCoreBackpropEnabled(): boolean {
-  return envFlagEnabled(readEnvString("NEAT_AI_NATIVE_CORE_BACKPROP"));
+  return !envFlagDisabled(readEnvString("NEAT_AI_NATIVE_CORE_BACKPROP"));
 }
 
 function resolveLibraryCandidate(
