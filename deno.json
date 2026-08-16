@@ -1,11 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-<<<<<<< HEAD
-  "version": "6.3.12",
-=======
   "version": "6.3.13",
->>>>>>> origin/Develop
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
@@ -154,8 +150,6 @@
     "junit-raw.xml",
     "junit.xml",
     "test-errors.log",
-    // Local-only experiments (gitignored by `.*`). Dot-glob so `deno check`
-    // does not type-check scripts/.ProdTrainDirBench.ts and similar.
     "**/.*"
   ]
 }
