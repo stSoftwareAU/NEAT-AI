@@ -144,7 +144,11 @@ export class DataRecorder {
     this.sampleRate = config.discoverySampleRate;
     this.discoveryBatchSize = config.discoveryBatchSize;
 
-    this.ID = CreatureUtil.makeUUID(creature).slice(-8);
+    // Issue #3790: the run directory is `${baseDir}/${creature.uuid}` in
+    // DiscoverStructureBase. Keep this ID the same so the worker checkpoint
+    // (and GRQ's snapshot) see one top-level discovery dir, not a sibling
+    // named with uuid.slice(-8).
+    this.ID = CreatureUtil.makeUUID(creature);
 
     // Config has already applied defaults and validation for timeouts
     const discoveryRecordTimeOutMinutes = Math.min(

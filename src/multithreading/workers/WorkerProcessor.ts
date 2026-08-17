@@ -29,6 +29,7 @@ import { Costs } from "@costs";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import {
   getCachedWasmActivationCount,
@@ -96,7 +97,13 @@ export async function persistDiscoverResultCheckpoint(
   await Deno.writeTextFile(checkpointPath, JSON.stringify(result));
 }
 
-/** Resolve the on-disk checkpoint path for a discovery session. */
+/** Resolve the on-disk checkpoint path for a discovery session.
+ *
+ * `discoveryId` must be the **run directory name** — the full creature UUID
+ * used by `DiscoverStructureBase.tempDir` (Issue #3790). A shortened
+ * `uuid.slice(-8)` here mkdir's a second top-level directory under the
+ * discovery base and fails GRQ's "exactly one run directory" snapshot.
+ */
 export function discoverResultCheckpointPath(
   discoveryId: string,
   baseDirectory?: string,
@@ -452,8 +459,12 @@ export class WorkerProcessor {
         // Issue #3774: checkpoint the full result before the worker→main
         // transfer so an OOM while building/returning the payload does not
         // discard hours of completed analysis.
+        // Issue #3790: the path must use the full creature UUID (the same
+        // run directory DiscoverStructureBase already created). result.ID
+        // used to be uuid.slice(-8), which mkdir'd a second top-level dir
+        // and failed GRQ's "exactly one run directory" snapshot.
         const checkpointPath = discoverResultCheckpointPath(
-          result.ID,
+          CreatureUtil.makeUUID(creature),
           data.discover.config.discoveryBaseDirectory,
         );
         await persistDiscoverResultCheckpoint(result, checkpointPath);
