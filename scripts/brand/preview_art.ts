@@ -1,11 +1,12 @@
 /**
- * Issue #3764 — the NEAT-AI family social previews, drawn as SVG.
+ * Issue #3764 / #3781 — the NEAT-AI family social previews, drawn as SVG.
  *
- * The family look lives here once: the smiley-neuron soma standing in for the
- * "A" of NEAT-AI, the teal/coral dendrite tree behind it, the sub-project
- * subtitle, and the shared capability pills. Every sibling preview is the same
- * lockup with its own subtitle, descriptor, and motif, so the ten images stay
- * recognisably one family instead of ten hand-tweaked drawings.
+ * The family look lives here once: a friendly round smiley-neuron standing in
+ * for the "A" of NEAT-AI, dendrite trunks growing out of that cell body, the
+ * teal/coral dendrite tree, the sub-project subtitle, and the shared capability
+ * pills. Every sibling preview is the same lockup with its own subtitle,
+ * descriptor, and motif, so the ten images stay recognisably one family instead
+ * of ten hand-tweaked drawings.
  *
  * Two palettes render the same artwork:
  *
@@ -184,17 +185,17 @@ interface Primary {
  * the original organic hero does.
  */
 const PRIMARIES: Primary[] = [
-  { angle: -172, length: 190, depth: 2, coral: false },
-  { angle: -148, length: 160, depth: 2, coral: false },
-  { angle: -119, length: 95, depth: 1, coral: false },
-  { angle: -95, length: 100, depth: 1, coral: false },
-  { angle: -71, length: 95, depth: 1, coral: true },
-  { angle: -36, length: 160, depth: 2, coral: true },
-  { angle: -8, length: 190, depth: 2, coral: true },
-  { angle: 166, length: 250, depth: 2, coral: false },
-  { angle: 140, length: 100, depth: 1, coral: false },
-  { angle: 14, length: 250, depth: 2, coral: true },
-  { angle: 40, length: 100, depth: 1, coral: true },
+  // Apical fan — the neuron look of the original A (Issue #3781).
+  { angle: -158, length: 175, depth: 2, coral: false },
+  { angle: -132, length: 145, depth: 2, coral: false },
+  { angle: -105, length: 165, depth: 2, coral: false },
+  { angle: -78, length: 145, depth: 2, coral: true },
+  { angle: -48, length: 175, depth: 2, coral: true },
+  { angle: -22, length: 125, depth: 1, coral: true },
+  { angle: -178, length: 125, depth: 1, coral: false },
+  // Lateral wraps behind the letters, not downward "legs".
+  { angle: 168, length: 200, depth: 2, coral: false },
+  { angle: 12, length: 200, depth: 2, coral: true },
 ];
 
 /**
@@ -328,12 +329,15 @@ function dendrites(
   for (const primary of PRIMARIES) {
     const angle = primary.angle + (random() - 0.5) * 12;
     const radians = (angle * Math.PI) / 180;
+    // Issue #3781: leave the round soma at the rim so trunks read as dendrites
+    // growing out of the cell (the original neuron A), not a tree behind it.
+    const startR = radius * 0.92;
     grow(
-      cx + Math.cos(radians) * radius * 0.35,
-      cy + Math.sin(radians) * radius * 0.35,
+      cx + Math.cos(radians) * startR,
+      cy + Math.sin(radians) * startR,
       angle,
       primary.length * (0.9 + random() * 0.2),
-      11,
+      8,
       primary.depth,
       (random() - 0.5) * 0.5,
       primary.coral ? palette.coral : palette.teal,
@@ -353,14 +357,14 @@ function dendrites(
   const halo = segments
     .map((s) =>
       `<path d="${s.d}" stroke="${palette.halo}" stroke-width="${
-        n(s.width + 7)
+        n(s.width + 4)
       }" fill="none" stroke-linecap="round"/>`
     )
     .join("") +
     dots
       .map((d) =>
         `<circle cx="${n(d.x)}" cy="${n(d.y)}" r="${
-          n(d.r + 3.5)
+          n(d.r + 2)
         }" fill="${palette.halo}"/>`
       )
       .join("");
@@ -381,13 +385,18 @@ function dendrites(
   return `<g ${fit}><g>${halo}</g><g>${art}</g></g>`;
 }
 
-/** The smiley soma that stands in for the "A" of NEAT-AI. */
+/**
+ * The smiley soma that stands in for the "A" of NEAT-AI (Issue #3781).
+ *
+ * Round and friendly — the original neuron look is this disc plus dendrites
+ * growing out of the top, not a white-ringed sticker or a lumpy silhouette.
+ * Teal already reads on light and dark pages, so the soma has no halo stroke.
+ */
 function soma(cx: number, cy: number, r: number, palette: Palette): string {
   const eyeR = r * 0.115;
   const eyeY = cy - r * 0.18;
   return [
-    `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${palette.teal}" `,
-    `stroke="${palette.halo}" stroke-width="7"/>`,
+    `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${palette.teal}"/>`,
     `<circle cx="${n(cx - r * 0.32)}" cy="${n(eyeY)}" r="${
       n(eyeR)
     }" fill="${SOMA_DETAIL}"/>`,
@@ -501,8 +510,8 @@ export function buildPreviewSvg(
   const left = measure("NE", WORDMARK_SIZE, WORDMARK_WEIGHT);
   const right = measure("T-AI", WORDMARK_SIZE, WORDMARK_WEIGHT);
   const capHeight = left.height;
-  const somaRadius = capHeight * 0.72;
-  const overlap = somaRadius * 0.22;
+  const somaRadius = capHeight * 0.55;
+  const overlap = somaRadius * 0.12;
   const lockupWidth = left.width + right.width + somaRadius * 2 - overlap * 2;
   const startX = (PREVIEW_WIDTH - lockupWidth) / 2;
   const somaX = startX + left.width + somaRadius - overlap;
