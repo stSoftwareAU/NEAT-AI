@@ -213,8 +213,9 @@ Deno.test("MockWorker: train error response preserves error details", async () =
   });
 
   assertEquals(response.taskID, 21);
-  assertExists(response.train);
-  assertEquals(response.train?.error, Number.POSITIVE_INFINITY);
+  // Issue #3780: do not fabricate a blank train.creature (input: 0) /
+  // Infinity payload — callers honour ResponseData.error instead.
+  assertEquals(response.train, undefined);
   // Issue #1761: Error responses must include name, message, and stack
   assertExists(response.error, "error field must be present");
   assertExists(response.error?.name, "error name must be present");

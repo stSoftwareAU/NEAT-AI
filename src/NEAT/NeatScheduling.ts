@@ -36,6 +36,68 @@ import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { Neat } from "@neat/Neat.ts";
 import { isTrainingErrorRegression } from "@neat/TrainingErrorComparison.ts";
+import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
+
+/**
+ * Record a failed training completion without loading a worker-fabricated
+ * creature export (Issue #3780).
+ */
+function recordTrainingTaskFailure(
+  neat: Neat,
+  creature: Creature,
+  uuid: string,
+  scheduledEpoch: number,
+  cause: unknown,
+): void {
+  getLogger().error(
+    `Training failed for creature ${
+      uuid.substring(Math.max(0, uuid.length - 8))
+    }:`,
+    cause,
+  );
+
+  // Issue #2546: serialise for the diagnostic record without re-running the
+  // writer-side forward-only assertion.
+  let creatureExport: ReturnType<typeof exportJSONWithRuntimeIds>;
+  try {
+    creatureExport = exportJSONWithRuntimeIdsUnchecked(creature);
+  } catch {
+    creatureExport = {
+      neurons: [],
+      synapses: [],
+      input: creature.input,
+      output: creature.output,
+    };
+  }
+
+  neat.recordTrainingComplete(uuid, scheduledEpoch, {
+    taskID: 0,
+    duration: 0,
+    train: {
+      ID: uuid,
+      creature: creatureExport,
+      error: Number.POSITIVE_INFINITY,
+      trace: {
+        input: creature.input,
+        output: creature.output,
+        neurons: [],
+        synapses: [],
+      },
+    },
+  });
+}
+
+/**
+ * True when the worker reported a train failure without a usable creature
+ * payload (Issue #3780).
+ */
+export function isFailedTrainWorkerResponse(r: ResponseData): boolean {
+  if (r.error !== undefined) return true;
+  if (!r.train) return true;
+  if (r.train.ID === "error") return true;
+  if (!Number.isFinite(r.train.error)) return true;
+  return false;
+}
 
 /**
  * Schedules structural discovery for a creature on a worker.
@@ -386,13 +448,31 @@ export function scheduleTraining(
   const scheduledEpoch = neat.abandonEpoch;
 
   const p = w.train(creature, trainOptions).then((r) => {
-    assert(r.train, "No train found");
-
     // Issue #3435: discard late completions after a hard-deadline abandon before
     // rebuilding the trained creature, fine-tuning, or writing traces.
     if (neat.isRunAbandonedSince(scheduledEpoch)) {
       return;
     }
+
+    // Issue #3780: honour ResponseData.error / missing train payload instead of
+    // calling Creature.fromJSON on a fabricated blank export (input: 0).
+    if (isFailedTrainWorkerResponse(r)) {
+      recordTrainingTaskFailure(
+        neat,
+        creature,
+        uuid,
+        scheduledEpoch,
+        r.error ??
+          new Error(
+            r.train
+              ? `Training worker returned unusable result (ID=${r.train.ID}, error=${r.train.error})`
+              : "Training worker returned no train payload",
+          ),
+      );
+      return;
+    }
+
+    assert(r.train, "No train found");
 
     const errorTx = getTag(creature, "error");
     assert(errorTx, "No error tag found");
@@ -488,45 +568,7 @@ export function scheduleTraining(
       return;
     }
 
-    getLogger().error(
-      `Training failed for creature ${
-        uuid.substring(Math.max(0, uuid.length - 8))
-      }:`,
-      error,
-    );
-
-    // Issue #2546: training has already failed for this creature; serialise
-    // it for the diagnostic record without re-running the writer-side
-    // forward-only assertion, so a corrupt forward-only topology surfaces
-    // here as the original training error rather than a chained
-    // TopologyError that masks the root cause.
-    let creatureExport: ReturnType<typeof exportJSONWithRuntimeIds>;
-    try {
-      creatureExport = exportJSONWithRuntimeIdsUnchecked(creature);
-    } catch {
-      creatureExport = {
-        neurons: [],
-        synapses: [],
-        input: creature.input,
-        output: creature.output,
-      };
-    }
-
-    neat.recordTrainingComplete(uuid, scheduledEpoch, {
-      taskID: 0,
-      duration: 0,
-      train: {
-        ID: uuid,
-        creature: creatureExport,
-        error: Number.POSITIVE_INFINITY,
-        trace: {
-          input: creature.input,
-          output: creature.output,
-          neurons: [],
-          synapses: [],
-        },
-      },
-    });
+    recordTrainingTaskFailure(neat, creature, uuid, scheduledEpoch, error);
   });
 
   neat.trainingInProgress.set(uuid, p);
