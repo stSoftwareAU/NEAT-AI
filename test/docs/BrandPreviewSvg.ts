@@ -69,6 +69,25 @@ Deno.test("each preview carries its own subtitle and descriptor", () => {
   }
 });
 
+Deno.test("the soma is an organic path, not a plain circle", () => {
+  const svg = buildPreviewSvg(HUB, paletteFor("transparent"), stubMeasure);
+  const teal = paletteFor("transparent").teal;
+  assert(
+    !new RegExp(`<circle[^>]*fill="${teal}"[^>]*stroke=`).test(svg),
+    "Issue #3781: the A must not be a plain filled circle",
+  );
+  assert(
+    new RegExp(`<path d="M[^"]{80,}" fill="${teal}"`).test(svg),
+    "Issue #3781: the soma cell body must be an organic filled path",
+  );
+  // Smiley face: two filled eyes plus a stroke smile.
+  assert(
+    [...svg.matchAll(/fill="#0B1220"/g)].length >= 2,
+    "Issue #3781: soma must keep the smiley-face eyes",
+  );
+  assertStringIncludes(svg, `stroke="#0B1220"`);
+});
+
 Deno.test("the same spec renders identically every time", () => {
   const first = buildPreviewSvg(HUB, paletteFor("transparent"), stubMeasure);
   const second = buildPreviewSvg(HUB, paletteFor("transparent"), stubMeasure);

@@ -1,11 +1,12 @@
 /**
- * Issue #3764 — the NEAT-AI family social previews, drawn as SVG.
+ * Issue #3764 / #3781 — the NEAT-AI family social previews, drawn as SVG.
  *
- * The family look lives here once: the smiley-neuron soma standing in for the
- * "A" of NEAT-AI, the teal/coral dendrite tree behind it, the sub-project
- * subtitle, and the shared capability pills. Every sibling preview is the same
- * lockup with its own subtitle, descriptor, and motif, so the ten images stay
- * recognisably one family instead of ten hand-tweaked drawings.
+ * The family look lives here once: the organic smiley-neuron soma standing in
+ * for the "A" of NEAT-AI (irregular cell body, tapering dendrite trunks, face),
+ * the teal/coral dendrite tree behind it, the sub-project subtitle, and the
+ * shared capability pills. Every sibling preview is the same lockup with its
+ * own subtitle, descriptor, and motif, so the ten images stay recognisably one
+ * family instead of ten hand-tweaked drawings.
  *
  * Two palettes render the same artwork:
  *
@@ -198,6 +199,30 @@ const PRIMARIES: Primary[] = [
 ];
 
 /**
+ * Issue #3781 — lobes on the cell body where dendrite trunks leave the soma.
+ * Encoded as polar bumps so the silhouette is one organic shape, not a disc
+ * with separate finger-like appendages.
+ *
+ * Angles are SVG degrees (0 = right, 90 = down). `length` is extra radius as a
+ * fraction of the soma radius; `spread` is the angular width in radians.
+ */
+interface SomaLobe {
+  angle: number;
+  length: number;
+  spread: number;
+}
+
+const SOMA_LOBES: SomaLobe[] = [
+  { angle: -98, length: 0.58, spread: 0.30 },
+  { angle: -66, length: 0.74, spread: 0.26 },
+  { angle: -128, length: 0.70, spread: 0.26 },
+  { angle: -36, length: 0.40, spread: 0.24 },
+  { angle: -162, length: 0.38, spread: 0.24 },
+  { angle: 78, length: 0.20, spread: 0.28 },
+  { angle: 112, length: 0.22, spread: 0.28 },
+];
+
+/**
  * Cap how steeply a branch may point downward. Below the wordmark sits the
  * subtitle, so the tree fans sideways there instead of diving into the text.
  */
@@ -328,12 +353,15 @@ function dendrites(
   for (const primary of PRIMARIES) {
     const angle = primary.angle + (random() - 0.5) * 12;
     const radians = (angle * Math.PI) / 180;
+    // Issue #3781: start near the soma surface so branches leave the cell
+    // body rather than radiating from behind a plain circle.
+    const startR = radius * 1.02;
     grow(
-      cx + Math.cos(radians) * radius * 0.35,
-      cy + Math.sin(radians) * radius * 0.35,
+      cx + Math.cos(radians) * startR,
+      cy + Math.sin(radians) * startR,
       angle,
       primary.length * (0.9 + random() * 0.2),
-      11,
+      16,
       primary.depth,
       (random() - 0.5) * 0.5,
       primary.coral ? palette.coral : palette.teal,
@@ -381,13 +409,79 @@ function dendrites(
   return `<g ${fit}><g>${halo}</g><g>${art}</g></g>`;
 }
 
-/** The smiley soma that stands in for the "A" of NEAT-AI. */
+/**
+ * Polar radius of the lumpy cell body (Issue #3781). Harmonics keep the
+ * silhouette organic without a random roll, so every preview matches.
+ */
+function somaRadiusAt(theta: number, r: number): number {
+  let rr = r * (
+    1 +
+    0.06 * Math.sin(3 * theta + 0.55) +
+    0.035 * Math.sin(5 * theta + 1.35) +
+    0.025 * Math.cos(2 * theta - 0.65)
+  );
+  for (const lobe of SOMA_LOBES) {
+    const lobeTheta = (lobe.angle * Math.PI) / 180;
+    let delta = theta - lobeTheta;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    const bump = Math.exp(
+      -(delta * delta) / (2 * lobe.spread * lobe.spread),
+    );
+    rr += r * lobe.length * bump;
+  }
+  return rr;
+}
+
+/** Closed quadratic curve through `points`, smooth at the wrap-around. */
+function closedCurvePath(
+  points: Array<{ x: number; y: number }>,
+): string {
+  const mid = (
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+  ) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const start = mid(points[points.length - 1], points[0]);
+  let d = `M${n(start.x)} ${n(start.y)}`;
+  for (let i = 0; i < points.length; i++) {
+    const curr = points[i];
+    const next = points[(i + 1) % points.length];
+    const m = mid(curr, next);
+    d += `Q${n(curr.x)} ${n(curr.y)} ${n(m.x)} ${n(m.y)}`;
+  }
+  return `${d}Z`;
+}
+
+/** Irregular cell-body outline — a perturbed circle, not a disc. */
+function organicBlobPath(cx: number, cy: number, r: number): string {
+  const steps = 64;
+  const points: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < steps; i++) {
+    const theta = (i / steps) * Math.PI * 2;
+    const rr = somaRadiusAt(theta, r);
+    points.push({
+      x: cx + Math.cos(theta) * rr,
+      y: cy + Math.sin(theta) * rr,
+    });
+  }
+  return closedCurvePath(points);
+}
+
+/**
+ * The organic smiley soma that stands in for the "A" of NEAT-AI (Issue #3781).
+ *
+ * Close match to the pre-#3764 artwork: irregular teal cell body with dendrite
+ * trunks growing out of it, plus a smiley face. Not a plain filled circle.
+ */
 function soma(cx: number, cy: number, r: number, palette: Palette): string {
+  const blob = organicBlobPath(cx, cy, r);
+  const halo =
+    `<path d="${blob}" fill="${palette.halo}" stroke="${palette.halo}" ` +
+    `stroke-width="7" stroke-linejoin="round"/>`;
+  const fill = `<path d="${blob}" fill="${palette.teal}"/>`;
   const eyeR = r * 0.115;
   const eyeY = cy - r * 0.18;
-  return [
-    `<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" fill="${palette.teal}" `,
-    `stroke="${palette.halo}" stroke-width="7"/>`,
+  const face = [
     `<circle cx="${n(cx - r * 0.32)}" cy="${n(eyeY)}" r="${
       n(eyeR)
     }" fill="${SOMA_DETAIL}"/>`,
@@ -401,6 +495,7 @@ function soma(cx: number, cy: number, r: number, palette: Palette): string {
       n(r * 0.11)
     }" stroke-linecap="round"/>`,
   ].join("");
+  return `${halo}${fill}${face}`;
 }
 
 interface PillSpec {
