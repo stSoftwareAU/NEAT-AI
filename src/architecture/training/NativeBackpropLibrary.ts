@@ -16,9 +16,9 @@
  * `dlopen`s in every worker.
  */
 
-import { fromFileUrl } from "@std/path/from-file-url";
 import { join } from "@std/path/join";
 import { getLogger } from "@utils/Logger.ts";
+import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
 
 /** Matches `NEAT_BACKPROP_ABI_VERSION` / header revision 1. */
 export const NEAT_BACKPROP_ABI_VERSION = 1;
@@ -175,12 +175,10 @@ function resolveLibraryCandidate(
   return null;
 }
 
-function siblingReleaseDir(): string {
-  return fromFileUrl(
-    new URL(
-      "../../../../NEAT-AI-Backpropagation/target/release",
-      import.meta.url,
-    ),
+/** Sibling-crate release dir beside a local checkout; null under JSR HTTPS. */
+function siblingReleaseDir(): string | null {
+  return pathFromModuleUrl(
+    "../../../../NEAT-AI-Backpropagation/target/release",
   );
 }
 
@@ -214,8 +212,10 @@ export function findNativeBackpropLibraryFromOptions(
   if (localTarget) return localTarget;
 
   const sibling = options.siblingDir ?? siblingReleaseDir();
-  const siblingTarget = resolveLibraryCandidate(sibling, libName);
-  if (siblingTarget) return siblingTarget;
+  if (sibling) {
+    const siblingTarget = resolveLibraryCandidate(sibling, libName);
+    if (siblingTarget) return siblingTarget;
+  }
 
   const cwdSibling = resolveLibraryCandidate(
     join(cwd, "..", "NEAT-AI-Backpropagation", "target", "release"),
