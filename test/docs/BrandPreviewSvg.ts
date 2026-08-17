@@ -73,10 +73,10 @@ Deno.test("the soma is a friendly round neuron with a smiley face", () => {
   const svg = buildPreviewSvg(HUB, paletteFor("transparent"), stubMeasure);
   const teal = paletteFor("transparent").teal;
   assert(
-    new RegExp(`<circle cx="[^"]+" cy="[^"]+" r="[^"]+" fill="${teal}"`).test(
+    new RegExp(`<circle cx="[^"]+" cy="[^"]+" r="[^"]+" fill="${teal}"/>`).test(
       svg,
     ),
-    "Issue #3781: the A is a round cell body, not a lumpy silhouette",
+    "Issue #3781: the A is a round teal soma without a sticker-like halo ring",
   );
   // Smiley face: two filled eyes plus a stroke smile.
   assert(
