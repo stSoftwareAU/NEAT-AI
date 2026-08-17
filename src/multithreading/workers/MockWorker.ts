@@ -5,8 +5,9 @@ import type {
 } from "@multithreading/workers/WorkerHandler.ts";
 
 import { WorkerProcessor } from "@multithreading/workers/WorkerProcessor.ts";
+import { buildWorkerErrorResponse } from "@multithreading/workers/WorkerErrorResponse.ts";
 import { getLogger } from "@utils/Logger.ts";
-import { toError, toErrorMessage } from "@utils/ErrorSerialisation.ts";
+import { toError } from "@utils/ErrorSerialisation.ts";
 import { clearForGc } from "@utils/ReleasableRef.ts";
 
 /**
@@ -71,58 +72,7 @@ export class MockWorker implements WorkerInterface<RequestData> {
     }).catch((error) => {
       const err = toError(error);
       getLogger().error("MockWorker processing error:", err);
-      // Issue #1761: Include standardised error details
-      const errorResponse: ResponseData = {
-        taskID: data.taskID,
-        duration: 0,
-        error: {
-          name: err.name,
-          message: err.message,
-          stack: err.stack,
-        },
-      };
-
-      // Add operation-specific error field based on request type
-      if (data.evaluate) {
-        errorResponse.evaluate = {
-          error: Number.POSITIVE_INFINITY,
-        };
-      } else if (data.train) {
-        errorResponse.train = {
-          ID: "error",
-          creature: { input: 0, output: 0, neurons: [], synapses: [] },
-          error: Number.POSITIVE_INFINITY,
-          trace: { input: 0, output: 0, neurons: [], synapses: [] },
-        };
-      } else if (data.discover) {
-        errorResponse.discover = {
-          ID: "error",
-        };
-      } else if (data.echo) {
-        errorResponse.echo = {
-          message: `Error: ${toErrorMessage(error)}`,
-        };
-      } else if (data.configureCache) {
-        errorResponse.configureCache = {
-          status: `ERROR: ${toErrorMessage(error)}`,
-        };
-      } else if (data.requestCacheStats) {
-        errorResponse.cacheStats = {
-          activationCacheCount: 0,
-          activationCacheMax: 0,
-          compilationCacheSize: 0,
-          compilationCacheMax: 0,
-        };
-      } else if (data.initialize) {
-        errorResponse.initialize = {
-          status: "ERROR",
-          error: toErrorMessage(error),
-        };
-      } else if (data.breed) {
-        errorResponse.breed = {
-          success: false,
-        };
-      }
+      const errorResponse = buildWorkerErrorResponse(data, error, 0);
 
       if (this.callBack) {
         type MockEvent = Event & { data: ResponseData };
