@@ -1,13 +1,13 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "6.6.4",
+  "version": "6.6.5",
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
-    "rev": "8ad785bc7fa26ede809570bfc99a0c24fcc5d85f",
-    "assetSha256": "34729b8a6679087088a3d97ec70d2728837ab2bd8124addb3a796b5d97a888cc",
+    "rev": "2248ca9d9960ea4b0113be774c5f8343f13b52fb",
+    "assetSha256": "eb24d318a55117924505206c8dfef9394b887f850577975308fc8ee7144a9656",
     "memoryModel": "wasm64"
   },
   "publish": {
