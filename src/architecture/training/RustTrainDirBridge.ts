@@ -20,7 +20,6 @@
  * binary is an error.
  */
 
-import { fromFileUrl } from "@std/path/from-file-url";
 import { join, resolve } from "@std/path";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import { MSE } from "@costs/MSE.ts";
@@ -28,6 +27,7 @@ import type { Creature } from "@creature";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
 import { finaliseTraining } from "@architecture/training/TrainingTeardown.ts";
 import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
 import type { TrainingLoopResult } from "@architecture/training/TrainingLoop.ts";
@@ -131,13 +131,11 @@ function resolveBinaryCandidate(candidate: string): string | null {
   return null;
 }
 
-function siblingReleaseBinary(): string {
-  return fromFileUrl(
-    new URL(
-      "../../../../NEAT-AI-Backpropagation/target/release/" +
-        rustTrainDirFileName(),
-      import.meta.url,
-    ),
+/** Sibling-crate binary beside a local checkout; null under JSR HTTPS loads. */
+function siblingReleaseBinary(): string | null {
+  return pathFromModuleUrl(
+    "../../../../NEAT-AI-Backpropagation/target/release/" +
+      rustTrainDirFileName(),
   );
 }
 
@@ -160,8 +158,10 @@ export function findRustTrainDirBinaryFromOptions(
   if (localTarget) return localTarget;
 
   const sibling = options.siblingPath ?? siblingReleaseBinary();
-  const siblingTarget = resolveBinaryCandidate(sibling);
-  if (siblingTarget) return siblingTarget;
+  if (sibling) {
+    const siblingTarget = resolveBinaryCandidate(sibling);
+    if (siblingTarget) return siblingTarget;
+  }
 
   const cwdSibling = resolveBinaryCandidate(
     join(

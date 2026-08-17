@@ -6,10 +6,10 @@
  */
 
 import { assert } from "@std/assert";
-import { fromFileUrl } from "@std/path/from-file-url";
 import { join } from "@std/path/join";
 import { DiscoveryError } from "@errors/DiscoveryError.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
 import type {
   RustCheckGpuResult,
   RustGetVersionResult,
@@ -317,15 +317,14 @@ export function findRustLibraryFromOptions(
     return localTargetPath;
   }
 
-  const siblingDir = fromFileUrl(
-    new URL(
-      "../../../NEAT-AI-Discovery/target/release",
-      import.meta.url,
-    ),
+  const siblingDir = pathFromModuleUrl(
+    "../../../NEAT-AI-Discovery/target/release",
   );
-  const siblingTargetPath = resolveLibraryCandidate(siblingDir, libName);
-  if (siblingTargetPath) {
-    return siblingTargetPath;
+  if (siblingDir) {
+    const siblingTargetPath = resolveLibraryCandidate(siblingDir, libName);
+    if (siblingTargetPath) {
+      return siblingTargetPath;
+    }
   }
 
   return null;

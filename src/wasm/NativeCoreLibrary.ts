@@ -18,9 +18,9 @@
  * without a sibling build keep the WASM fallback path clean.
  */
 
-import { fromFileUrl } from "@std/path/from-file-url";
 import { join } from "@std/path/join";
 import { getLogger } from "@utils/Logger.ts";
+import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
 
 /** Matches `NEAT_PROPAGATE_NULL_PTR` in neat-core `native_exports.rs`. */
 export const NEAT_PROPAGATE_NULL_PTR = -1;
@@ -136,10 +136,9 @@ function resolveLibraryCandidate(
   return null;
 }
 
-function siblingReleaseDir(): string {
-  return fromFileUrl(
-    new URL("../../../NEAT-AI-core/target/release", import.meta.url),
-  );
+/** Sibling-crate release dir beside a local checkout; null under JSR HTTPS. */
+function siblingReleaseDir(): string | null {
+  return pathFromModuleUrl("../../../NEAT-AI-core/target/release");
 }
 
 /**
@@ -175,8 +174,10 @@ export function findNativeCoreLibraryFromOptions(
   if (localTarget) return localTarget;
 
   const sibling = options.siblingDir ?? siblingReleaseDir();
-  const siblingTarget = resolveLibraryCandidate(sibling, libName);
-  if (siblingTarget) return siblingTarget;
+  if (sibling) {
+    const siblingTarget = resolveLibraryCandidate(sibling, libName);
+    if (siblingTarget) return siblingTarget;
+  }
 
   const cwdSibling = resolveLibraryCandidate(
     join(cwd, "..", "NEAT-AI-core", "target", "release"),
