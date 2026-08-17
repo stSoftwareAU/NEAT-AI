@@ -15,13 +15,14 @@ import { ValidationError } from "@errors/ValidationError.ts";
 import {
   buildDiscoverResponsePayload,
   clearDiscoverResultForGC,
+  discoverResultCheckpointPath,
   persistDiscoverResultCheckpoint,
   selectRemovalCandidatesForWire,
   WorkerProcessor,
 } from "@multithreading/workers/WorkerProcessor.ts";
 import { useIsolatedDiagnosticsDir } from "../_diagnosticsDir.ts";
 import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { join } from "@std/path";
+import { basename, dirname, join } from "@std/path";
 
 function makeMinimalDiscoverResult(): DiscoverResult {
   return {
@@ -139,6 +140,59 @@ Deno.test(
       assertEquals(roundTrip.removalCandidates.length, 5);
     } finally {
       await Deno.remove(dir, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "discoverResultCheckpointPath: run dir is the full creature UUID (#3790)",
+  () => {
+    const uuid = "abcdef01-2345-6789-abcd-ef0123456789";
+    const shortId = uuid.slice(-8);
+    const path = discoverResultCheckpointPath(uuid, "/runs/.discovery");
+    assertEquals(basename(dirname(path)), uuid);
+    assertEquals(basename(path), "worker-result-checkpoint.json");
+    assertEquals(
+      basename(dirname(path)) === shortId,
+      false,
+      "must not use uuid.slice(-8) as the run directory name",
+    );
+  },
+);
+
+Deno.test(
+  "persistDiscoverResultCheckpoint: does not create a sibling short-id run dir (#3790)",
+  async () => {
+    const base = await Deno.makeTempDir({
+      prefix: "neat-discover-run-dir-3790-",
+    });
+    const uuid = "11111111-2222-3333-4444-555555555555";
+    const shortId = uuid.slice(-8);
+    try {
+      await Deno.mkdir(join(base, uuid), { recursive: true });
+      await Deno.writeTextFile(
+        join(base, uuid, "discovery_data.parquet"),
+        "placeholder",
+      );
+
+      const result = makeMinimalDiscoverResult();
+      result.ID = shortId;
+      const path = discoverResultCheckpointPath(uuid, base);
+      await persistDiscoverResultCheckpoint(result, path);
+
+      const topLevel: string[] = [];
+      for await (const entry of Deno.readDir(base)) {
+        topLevel.push(entry.name);
+      }
+      assertEquals(topLevel.sort(), [uuid]);
+      assertEquals(
+        topLevel.includes(shortId),
+        false,
+        "GRQ snapshot fails when .discovery/<slice(-8)> sits beside the full-UUID run dir",
+      );
+      await Deno.stat(join(base, uuid, "worker-result-checkpoint.json"));
+    } finally {
+      await Deno.remove(base, { recursive: true });
     }
   },
 );
