@@ -108,3 +108,130 @@ export function formatRecordCoverage(coverage: RecordCoverage): string {
   return `${records} / ~${total} records (~${pct}% coverage, ` +
     `${coverage.filesProcessed}/${coverage.totalFiles} files)`;
 }
+
+/** Inputs for mid-recording throughput projection (GRQ #4065 / NEAT-AI). */
+export interface RecordThroughputProjectionInput {
+  readonly recordsProcessed: number;
+  readonly filesProcessed: number;
+  readonly totalFiles: number;
+  /** Elapsed wall time since file processing started. */
+  readonly elapsedMs: number;
+  /** Remaining wall time until the record-phase timeout. */
+  readonly remainingMs: number;
+  /** Minimum coverage fraction required to run analysis (e.g. 0.5). */
+  readonly minCoverage: number;
+  /**
+   * Minimum files processed before trusting the projection. Too few files
+   * produce a noisy rate; the elephant failure was visible after ~5–10 files.
+   */
+  readonly minFilesForProjection?: number;
+  /**
+   * Minimum elapsed ms before projecting. Guards against a fast first file
+   * falsely projecting "will clear" or "cannot finish".
+   */
+  readonly minElapsedMsForProjection?: number;
+}
+
+/** Result of projecting final coverage from measured throughput. */
+export interface RecordThroughputProjection {
+  readonly ready: boolean;
+  readonly recordsPerSec: number;
+  readonly projectedRecords: number;
+  readonly estimatedTotalRecords: number;
+  readonly projectedCoverageFraction: number;
+  readonly requiredCoverageFraction: number;
+  readonly minutesNeededForRequiredCoverage: number;
+  readonly cannotReachRequiredCoverage: boolean;
+}
+
+export const DEFAULT_MIN_FILES_FOR_PROJECTION = 5;
+export const DEFAULT_MIN_ELAPSED_MS_FOR_PROJECTION = 30_000;
+
+/**
+ * Project final record coverage from the measured records/sec so far.
+ *
+ * Returns `ready: false` until enough files/time have elapsed to trust the
+ * rate. When ready, `cannotReachRequiredCoverage` is true if finishing the
+ * remaining timeout budget still leaves projected coverage below `minCoverage`.
+ *
+ * Pure — no I/O. Callers abort the record loop early when
+ * `cannotReachRequiredCoverage` is true (GRQ #4065).
+ */
+export function projectRecordCoverageFromThroughput(
+  input: RecordThroughputProjectionInput,
+): RecordThroughputProjection {
+  const minFiles = input.minFilesForProjection ??
+    DEFAULT_MIN_FILES_FOR_PROJECTION;
+  const minElapsed = input.minElapsedMsForProjection ??
+    DEFAULT_MIN_ELAPSED_MS_FOR_PROJECTION;
+  const minCoverage = Number.isFinite(input.minCoverage) && input.minCoverage > 0
+    ? input.minCoverage
+    : 0;
+
+  const estimatedTotalRecords = estimateTotalRecords(
+    input.recordsProcessed,
+    input.filesProcessed,
+    input.totalFiles,
+  );
+
+  const notReady = input.filesProcessed < minFiles ||
+    input.elapsedMs < minElapsed ||
+    input.recordsProcessed <= 0 ||
+    estimatedTotalRecords <= 0 ||
+    minCoverage <= 0;
+
+  if (notReady) {
+    return {
+      ready: false,
+      recordsPerSec: 0,
+      projectedRecords: input.recordsProcessed,
+      estimatedTotalRecords,
+      projectedCoverageFraction: 0,
+      requiredCoverageFraction: minCoverage,
+      minutesNeededForRequiredCoverage: Number.POSITIVE_INFINITY,
+      cannotReachRequiredCoverage: false,
+    };
+  }
+
+  const recordsPerSec = input.recordsProcessed / (input.elapsedMs / 1000);
+  const remainingMs = Math.max(0, input.remainingMs);
+  const projectedRecords = input.recordsProcessed +
+    recordsPerSec * (remainingMs / 1000);
+  const projectedCoverageFraction = Math.min(
+    1,
+    Math.max(0, projectedRecords / estimatedTotalRecords),
+  );
+  const requiredRecords = minCoverage * estimatedTotalRecords;
+  const recordsStillNeeded = Math.max(0, requiredRecords - input.recordsProcessed);
+  const minutesNeededForRequiredCoverage = recordsPerSec > 0
+    ? (recordsStillNeeded / recordsPerSec) / 60
+    : Number.POSITIVE_INFINITY;
+
+  return {
+    ready: true,
+    recordsPerSec,
+    projectedRecords: Math.round(projectedRecords),
+    estimatedTotalRecords,
+    projectedCoverageFraction,
+    requiredCoverageFraction: minCoverage,
+    minutesNeededForRequiredCoverage,
+    cannotReachRequiredCoverage: projectedCoverageFraction < minCoverage,
+  };
+}
+
+/**
+ * Format the early-abort decision line so the GRQ-logs sweep can see
+ * projected vs required coverage without arithmetic (GRQ #4065).
+ */
+export function formatRecordThroughputAbort(
+  projection: RecordThroughputProjection,
+): string {
+  const projectedPct = (projection.projectedCoverageFraction * 100).toFixed(1);
+  const requiredPct = (projection.requiredCoverageFraction * 100).toFixed(0);
+  const rate = Math.round(projection.recordsPerSec);
+  const needed = Number.isFinite(projection.minutesNeededForRequiredCoverage)
+    ? `~${projection.minutesNeededForRequiredCoverage.toFixed(0)} min`
+    : "unknown";
+  return `projected ~${projectedPct}% < required ${requiredPct}% ` +
+    `at ${rate} records/sec (need ${needed} to clear floor)`;
+}

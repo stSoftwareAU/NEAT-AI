@@ -19,6 +19,8 @@ import { submitDiscoveryRecordBatch } from "@architecture/ErrorGuidedStructuralE
 import {
   computeRecordCoverage,
   formatRecordCoverage,
+  formatRecordThroughputAbort,
+  projectRecordCoverageFromThroughput,
 } from "@architecture/ErrorGuidedStructuralEvolution/RecordCoverage.ts";
 import { getLogger } from "@utils/Logger.ts";
 
@@ -335,6 +337,43 @@ export async function runRecordingPhase(
     }
     drainCounter.count = 0;
     perfStats.filesProcessed++;
+
+    // GRQ #4065: after a short warm-up, project final coverage from measured
+    // throughput. If the remaining timeout cannot clear the analysis coverage
+    // floor, abort early — do not spend the rest of the budget writing
+    // intermediates that will be discarded by the #3073 skip.
+    if (ctx.timeoutTS > 0) {
+      const now = Date.now();
+      const projection = projectRecordCoverageFromThroughput({
+        recordsProcessed: counter.count,
+        filesProcessed: perfStats.filesProcessed,
+        totalFiles: binaryFiles.length,
+        elapsedMs: now - fileProcessStartTime,
+        remainingMs: ctx.timeoutTS - now,
+        minCoverage: ctx.config.discoveryMinRecordCoverage,
+      });
+      if (projection.ready && projection.cannotReachRequiredCoverage) {
+        perfStats.recordTimedOut = true;
+        if (shouldLogDiscovery(ctx.config)) {
+          getLogger().warn(
+            `⏭️  Discovery ${
+              blue(ctx.ID)
+            } aborting record early: ${
+              formatRecordThroughputAbort(projection)
+            }. ` +
+              `Recorded so far ${
+                formatRecordCoverage(computeRecordCoverage({
+                  recordsProcessed: counter.count,
+                  filesProcessed: perfStats.filesProcessed,
+                  totalFiles: binaryFiles.length,
+                  timedOut: true,
+                }))
+              }.`,
+          );
+        }
+        break;
+      }
+    }
 
     if (ctx.timeoutTS && Date.now() > ctx.timeoutTS) {
       perfStats.recordTimedOut = true;

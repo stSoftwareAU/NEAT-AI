@@ -11,6 +11,8 @@ import {
   computeRecordCoverage,
   estimateTotalRecords,
   formatRecordCoverage,
+  formatRecordThroughputAbort,
+  projectRecordCoverageFromThroughput,
   shouldSkipAnalysisForCoverage,
 } from "@architecture/ErrorGuidedStructuralEvolution/RecordCoverage.ts";
 
@@ -141,4 +143,54 @@ Deno.test("formatRecordCoverage renders records, estimate and percentages", () =
   assert(text.includes("1,766"), `missing recorded count: ${text}`);
   assert(text.includes("110/520 files"), `missing file ratio: ${text}`);
   assert(text.includes("% coverage"), `missing coverage percent: ${text}`);
+});
+
+Deno.test("projectRecordCoverageFromThroughput waits for warm-up (#4065)", () => {
+  const projection = projectRecordCoverageFromThroughput({
+    recordsProcessed: 500,
+    filesProcessed: 2,
+    totalFiles: 520,
+    elapsedMs: 10_000,
+    remainingMs: 590_000,
+    minCoverage: 0.5,
+  });
+  assertEquals(projection.ready, false);
+  assertEquals(projection.cannotReachRequiredCoverage, false);
+});
+
+Deno.test("projectRecordCoverageFromThroughput aborts elephant-shaped doom (#4065)", () => {
+  // GRQ-25 elephant: ~68 records/sec, 520 files, ~750 records/file at 15%.
+  // After 5 files / 60s (~4080 records) with 9 min left, projected coverage
+  // stays well under 50%.
+  const projection = projectRecordCoverageFromThroughput({
+    recordsProcessed: 4080,
+    filesProcessed: 5,
+    totalFiles: 520,
+    elapsedMs: 60_000,
+    remainingMs: 540_000,
+    minCoverage: 0.5,
+  });
+  assertEquals(projection.ready, true);
+  assertEquals(projection.cannotReachRequiredCoverage, true);
+  assert(projection.projectedCoverageFraction < 0.5);
+  assert(projection.minutesNeededForRequiredCoverage > 10);
+  const text = formatRecordThroughputAbort(projection);
+  assert(text.includes("projected"), text);
+  assert(text.includes("required 50%"), text);
+  assert(text.includes("records/sec"), text);
+});
+
+Deno.test("projectRecordCoverageFromThroughput keeps a coverage-clearing rate (#4065)", () => {
+  // Fast enough that remaining budget clears 50%.
+  const projection = projectRecordCoverageFromThroughput({
+    recordsProcessed: 50_000,
+    filesProcessed: 100,
+    totalFiles: 200,
+    elapsedMs: 60_000,
+    remainingMs: 240_000,
+    minCoverage: 0.5,
+  });
+  assertEquals(projection.ready, true);
+  assertEquals(projection.cannotReachRequiredCoverage, false);
+  assert(projection.projectedCoverageFraction >= 0.5);
 });
