@@ -356,9 +356,7 @@ export async function runRecordingPhase(
         perfStats.recordTimedOut = true;
         if (shouldLogDiscovery(ctx.config)) {
           getLogger().warn(
-            `⏭️  Discovery ${
-              blue(ctx.ID)
-            } aborting record early: ${
+            `⏭️  Discovery ${blue(ctx.ID)} aborting record early: ${
               formatRecordThroughputAbort(projection)
             }. ` +
               `Recorded so far ${

@@ -164,9 +164,10 @@ export function projectRecordCoverageFromThroughput(
     DEFAULT_MIN_FILES_FOR_PROJECTION;
   const minElapsed = input.minElapsedMsForProjection ??
     DEFAULT_MIN_ELAPSED_MS_FOR_PROJECTION;
-  const minCoverage = Number.isFinite(input.minCoverage) && input.minCoverage > 0
-    ? input.minCoverage
-    : 0;
+  const minCoverage =
+    Number.isFinite(input.minCoverage) && input.minCoverage > 0
+      ? input.minCoverage
+      : 0;
 
   const estimatedTotalRecords = estimateTotalRecords(
     input.recordsProcessed,
@@ -202,7 +203,10 @@ export function projectRecordCoverageFromThroughput(
     Math.max(0, projectedRecords / estimatedTotalRecords),
   );
   const requiredRecords = minCoverage * estimatedTotalRecords;
-  const recordsStillNeeded = Math.max(0, requiredRecords - input.recordsProcessed);
+  const recordsStillNeeded = Math.max(
+    0,
+    requiredRecords - input.recordsProcessed,
+  );
   const minutesNeededForRequiredCoverage = recordsPerSec > 0
     ? (recordsStillNeeded / recordsPerSec) / 60
     : Number.POSITIVE_INFINITY;
