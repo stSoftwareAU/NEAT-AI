@@ -35,9 +35,41 @@ export function isTrainingErrorRegression(
   if (delta <= 0) {
     return false;
   }
-  const tolerance = Math.max(
+  return delta > noiseFloor(fitnessError);
+}
+
+/**
+ * True when `trainedError` is materially *better* than `fitnessError`
+ * (Issue #3779).
+ *
+ * The mirror of {@link isTrainingErrorRegression}: a training cycle that lands
+ * inside the same noise floor is neither a regression nor an improvement — it
+ * is no progress at all (the `🫥` outcome in the elitism log). Counting that as
+ * an improvement resets the consecutive-no-progress streaks, which is why a
+ * population that never moves kept dispatching heavy training tasks.
+ */
+export function isTrainingErrorMaterialImprovement(
+  trainedError: number,
+  fitnessError: number,
+): boolean {
+  if (!Number.isFinite(trainedError)) {
+    return false;
+  }
+  if (!Number.isFinite(fitnessError)) {
+    // Any finite error is a genuine gain over an unusable incumbent.
+    return true;
+  }
+  const delta = fitnessError - trainedError;
+  if (delta <= 0) {
+    return false;
+  }
+  return delta > noiseFloor(fitnessError);
+}
+
+/** Absolute-or-relative floor below which an error delta is evaluate noise. */
+function noiseFloor(fitnessError: number): number {
+  return Math.max(
     TRAINING_ERROR_REGRESSION_ABS,
     Math.abs(fitnessError) * TRAINING_ERROR_REGRESSION_REL,
   );
-  return delta > tolerance;
 }

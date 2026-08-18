@@ -15,6 +15,7 @@
 
 import type { PhaseTimingTotals } from "@creature/PhaseTimingTotals.ts";
 import type { ScorerUtilisationTotals } from "@creature/ScorerUtilisationTotals.ts";
+import type { TrainingOutcomeTotals } from "@creature/TrainingOutcomeTotals.ts";
 import {
   captureHardwareDescriptors,
   type HardwareDescriptors,
@@ -31,6 +32,7 @@ import {
 
 export type { HardwareDescriptors } from "@creature/EvolveHardwareDescriptors.ts";
 export type { OptionsEcho } from "@creature/EvolveOptionsEcho.ts";
+export type { TrainingOutcomeTotals } from "@creature/TrainingOutcomeTotals.ts";
 export type {
   ScoreImprovementMilestone,
   ScoreImprovementMilestones,
@@ -75,6 +77,8 @@ export interface EvolveResult extends EvolveRunStatistics {
   readonly phaseTimingTotals: PhaseTimingTotals;
   /** Whole-run per-backend scorer-utilisation totals (Issue #3234). */
   readonly scorerUtilisation: ScorerUtilisationTotals;
+  /** Whole-run training-outcome totals, including skips (Issue #3779). */
+  readonly trainingOutcomes: TrainingOutcomeTotals;
 }
 
 /** Inputs needed to assemble the {@link EvolveRunStatistics} group. */

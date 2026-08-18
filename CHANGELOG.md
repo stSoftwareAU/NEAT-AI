@@ -23,7 +23,24 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Issue #3779:** New `skipTrainingAfterPopulationNoProgress` option — a
+  run-level gate that stops dispatching training once the **whole population**
+  has produced N consecutive no-progress outcomes (default `0`, opt-in). The
+  per-creature `skipTrainingAfterConsecutiveRegressions` guard rarely trips,
+  because a creature is trained at most once per run (#3553). One dispatch is
+  still let through every 20 skips so a recovered population reopens the gate.
+  Every skip now emits a `training_skipped` event, and every `evolve*` result
+  carries `trainingOutcomes` (`improvements`, `regressions`, `noChange`,
+  `skipped`, `regressionRate`) so a run-end summary can report skips without
+  `verbose`.
+
 ### Fixed
+
+- **Issue #3779:** A training result inside the evaluate noise floor (the `🫥`
+  outcome) no longer counts as an improvement, so it stops resetting the
+  no-progress streaks.
 
 - **Issue #3776:** Scheduled per-generation training now runs two epochs instead
   of one, so the training loop can revert an epoch that made the creature worse.

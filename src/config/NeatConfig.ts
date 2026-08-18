@@ -390,6 +390,15 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       { integer: true, min: 0 },
     ),
 
+    // Issue #3779: population-wide no-progress gate. Opt-in (default 0) since
+    // it suppresses training for every creature, not just one.
+    skipTrainingAfterPopulationNoProgress: parseNumber(
+      "Skip Training After Population No Progress",
+      opts.skipTrainingAfterPopulationNoProgress,
+      0,
+      { integer: true, min: 0 },
+    ),
+
     // Issue #2531: bounded LRU size for the subnetwork hash index. Default
     // 50,000 mirrors the failure-cache size order. Set to 0 to disable.
     subnetworkIndexSize: parseNumber(

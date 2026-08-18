@@ -92,6 +92,9 @@ export type {
   ScoreImprovementMilestone,
   ScoreImprovementMilestones,
 } from "@creature/EvolveRunStatistics.ts";
+// Issue #3779: run-level training-outcome totals (improvements, regressions,
+// no-change, skipped) recorded on every evolve* result.
+export type { TrainingOutcomeTotals } from "@creature/TrainingOutcomeTotals.ts";
 export type {
   EpisodeTrialsEvent,
   EpisodicOptions,
@@ -681,6 +684,7 @@ export type {
   SpeciesAdjustedEvent,
   TrainingEvent,
   TrainingEventCallback,
+  TrainingSkippedEvent,
 } from "@config/TrainingEvent.ts";
 
 /**

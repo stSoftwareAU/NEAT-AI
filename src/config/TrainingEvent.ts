@@ -513,6 +513,36 @@ export interface PopulationResizedEvent {
 }
 
 /**
+ * Emitted whenever `scheduleTraining` declines to dispatch a training task
+ * because of the no-progress guards (Issue #3779).
+ *
+ * The per-skip log line is `verbose`-only, so this event (plus the
+ * `trainingOutcomes` totals on the `evolve*` result) is how a run-end summary
+ * sees skipped dispatches without turning verbose logging on.
+ */
+export interface TrainingSkippedEvent {
+  readonly kind: "training_skipped";
+  /** ISO-8601 timestamp when the event was emitted. */
+  readonly timestamp: string;
+  /** UUID of the creature whose training dispatch was skipped. */
+  readonly uuid: string;
+  /**
+   * Why the dispatch was skipped:
+   * - "creature_regressions": this creature's own consecutive-regression
+   *   streak reached `skipTrainingAfterConsecutiveRegressions` (#2382).
+   * - "population_no_progress": the whole population's consecutive
+   *   no-progress streak reached `skipTrainingAfterPopulationNoProgress`.
+   */
+  readonly reason: "creature_regressions" | "population_no_progress";
+  /** The configured threshold that tripped. */
+  readonly threshold: number;
+  /** The streak (per-creature or population-wide) that met the threshold. */
+  readonly consecutiveNoProgress: number;
+  /** Cumulative skipped dispatches for the run, including this one. */
+  readonly totalSkipped: number;
+}
+
+/**
  * Emitted by `Creature.evolveRL()` at each milestone generation when the
  * caller opts in via `EvolveRLOptions.statistics === true` (Issue #2629).
  *
@@ -562,6 +592,7 @@ export type TrainingEvent =
   | MemoryPressureEvent
   | SpeciesAdjustedEvent
   | PopulationResizedEvent
+  | TrainingSkippedEvent
   | EvolveRLMilestoneEvent;
 
 /**

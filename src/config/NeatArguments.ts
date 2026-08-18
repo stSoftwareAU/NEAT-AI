@@ -200,6 +200,20 @@ export interface NeatArguments {
   skipTrainingAfterConsecutiveRegressions: number;
 
   /**
+   * Issue #3779: Stop dispatching training once the **whole population** has
+   * produced N consecutive training outcomes that made no progress — a
+   * regression, or a result inside the noise floor. Creatures are trained at
+   * most once per run (#3553), so the per-creature guard above almost never
+   * fires; this run-level gate is what stops a doomed population from burning
+   * heavy worker slots. Any material improvement anywhere in the population
+   * clears the streak, and while the gate is closed one dispatch is still let
+   * through every 20 skips so a recovered population can reopen it.
+   *
+   * Default `0` (disabled) — opt in per run.
+   */
+  skipTrainingAfterPopulationNoProgress: number;
+
+  /**
    * Issue #2531: Maximum entries kept in the in-memory subnetwork hash index
    * that augments the discovery `SuccessCache` / `FailureCache` lookup. The
    * index is a bounded LRU keyed on the local 1-hop wire-pattern around a
