@@ -4,8 +4,9 @@
  * one must, and the catalogue the renderer reads from must describe exactly the
  * PNGs committed under `docs/brand/social-previews/`.
  *
- * These call the real builder with the real specs and assert on the SVG it
- * returns, so a regression shows up here rather than in re-rendered artwork.
+ * The family look is the signed-off organic neuron-A lockup. These call the
+ * real builder with the real specs and assert on the SVG it returns, so a
+ * regression shows up here rather than in re-rendered artwork.
  */
 
 import {
@@ -64,27 +65,19 @@ Deno.test("each preview carries its own subtitle and descriptor", () => {
     const svg = buildPreviewSvg(spec, paletteFor("transparent"), stubMeasure);
     assertStringIncludes(svg, `>${xmlEscape(spec.subtitle)}</text>`);
     assertStringIncludes(svg, `>${xmlEscape(spec.descriptor)}</text>`);
-    assertStringIncludes(svg, ">NE</text>");
-    assertStringIncludes(svg, ">T-AI</text>");
+    assertStringIncludes(svg, ">N</text>");
+    assertStringIncludes(svg, ">E</text>");
+    assertStringIncludes(svg, ">T</text>");
+    assertStringIncludes(svg, ">A</text>");
+    assertStringIncludes(svg, ">I</text>");
   }
 });
 
-Deno.test("the soma is a friendly round neuron with a smiley face", () => {
+Deno.test("the organic neuron mark is embedded in the lockup", () => {
   const svg = buildPreviewSvg(HUB, paletteFor("transparent"), stubMeasure);
-  const teal = paletteFor("transparent").teal;
-  assert(
-    new RegExp(`<circle cx="[^"]+" cy="[^"]+" r="[^"]+" fill="${teal}"/>`).test(
-      svg,
-    ),
-    "Issue #3781: the A is a round teal soma without a sticker-like halo ring",
-  );
-  // Smiley face: two filled eyes plus a stroke smile.
-  assert(
-    [...svg.matchAll(/fill="#0B1220"/g)].length >= 2,
-    "Issue #3781: soma must keep the smiley-face eyes",
-  );
-  assertStringIncludes(svg, `stroke="#0B1220"`);
-  assertStringIncludes(svg, '<path d="M');
+  assertStringIncludes(svg, `<image href="data:image/png;base64,`);
+  assertStringIncludes(svg, `width="${PREVIEW_WIDTH}"`);
+  assertStringIncludes(svg, `height="${PREVIEW_HEIGHT}"`);
 });
 
 Deno.test("the same spec renders identically every time", () => {

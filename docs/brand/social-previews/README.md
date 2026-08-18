@@ -1,12 +1,12 @@
 # NEAT-AI family social previews
 
 1280×640 previews with **transparent** backgrounds, so the artwork works in
-light and dark modes alike. Same organic family lockup; each repo adds its own
-subtitle, one-line descriptor, and motif.
+light and dark modes alike. Same organic neuron-A family lockup; each repo adds
+its own subtitle, one-line descriptor, and motif.
 
 | File                           | Repo                                                                               | Subtitle        | Motif                    |
 | ------------------------------ | ---------------------------------------------------------------------------------- | --------------- | ------------------------ |
-| `neat-ai.png`                  | [NEAT-AI](https://github.com/stSoftwareAU/NEAT-AI)                                 | NeuroEvolution  | Hub — dendrite tree only |
+| `neat-ai.png`                  | [NEAT-AI](https://github.com/stSoftwareAU/NEAT-AI)                                 | NeuroEvolution  | Hub — neuron A           |
 | `neat-ai-organic-approved.png` | NEAT-AI (alt)                                                                      | NeuroEvolution  | Alternate hub lockup     |
 | `neat-ai-core.png`             | [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)                       | core            | Gear                     |
 | `neat-ai-discovery.png`        | [NEAT-AI-Discovery](https://github.com/stSoftwareAU/NEAT-AI-Discovery)             | Discovery       | Magnifier on a new node  |
