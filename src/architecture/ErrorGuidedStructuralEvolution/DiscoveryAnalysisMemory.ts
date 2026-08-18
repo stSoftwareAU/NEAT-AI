@@ -30,7 +30,7 @@ import {
   getDiscoveryMemoryUsageBytes,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
 import type { MemoryUsageProvider } from "@neat/MemoryMonitor.ts";
-import type { Logger } from "@utils/Logger.ts";
+import { getLogger, type Logger } from "@utils/Logger.ts";
 
 /**
  * FFI seam for the analysis-memory controls. Production code uses
@@ -49,22 +49,84 @@ const DEFAULT_DISCOVERY_ANALYSIS_MEMORY_DEPS: DiscoveryAnalysisMemoryDeps = {
   cancelMemoryPressure: cancelAnalysisMemoryPressure,
 };
 
+const BYTES_PER_MB = 1024 * 1024;
+
+/**
+ * Host-reported total physical memory in bytes, or `undefined` when the
+ * `--allow-sys=systemMemoryInfo` permission is not granted.
+ */
+export function readHostTotalMemoryBytes(): number | undefined {
+  try {
+    const total = Deno.systemMemoryInfo().total;
+    return Number.isFinite(total) && total > 0 ? total : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Resolves the analysis memory budget to send on `analyze_parallel`.
+ *
+ * Prefers an explicit `maxAnalysisMemoryMb` when it is `> 0`. Otherwise
+ * converts `nativeBudgetBytes` to megabytes so a caller that only set the
+ * RSS ceiling (GRQ `[inline-discovery-memory]`) still reaches Rust
+ * `budget_mb` / `maxAnalysisMemoryMb` (GRQ #4138). When both are set the
+ * tighter of the two is used.
+ *
+ * The result is then clamped to host-reported total memory: a budget larger
+ * than the host (GRQ-26 computed 5.47 GB on a host reporting `totalMB=3457`)
+ * must never be trusted verbatim.
  *
  * Returns `undefined` when no budget is configured, which keeps the field off
  * the wire entirely — Discovery treats an omitted `maxAnalysisMemoryMb` as
  * "no budget", so sending `0` would be wrong (it would starve the analysis
  * immediately rather than disable the limit).
+ *
+ * @param memoryConfig - Parsed memory options.
+ * @param hostTotalBytes - Injectable host RAM (bytes). When omitted, reads
+ *   {@link readHostTotalMemoryBytes}; a missing permission skips the clamp.
+ * @param logger - Logger for the clamp warning.
  */
 export function resolveAnalysisMemoryBudgetMb(
-  memoryConfig: Pick<RequiredMemoryConfig, "maxAnalysisMemoryMb">,
+  memoryConfig: Pick<RequiredMemoryConfig, "maxAnalysisMemoryMb"> & {
+    nativeBudgetBytes?: number;
+  },
+  hostTotalBytes?: number,
+  logger: Logger = getLogger(),
 ): number | undefined {
-  const budget = memoryConfig.maxAnalysisMemoryMb;
-  if (!Number.isFinite(budget) || budget <= 0) {
+  const candidates: number[] = [];
+  const explicit = memoryConfig.maxAnalysisMemoryMb;
+  if (Number.isFinite(explicit) && explicit > 0) {
+    candidates.push(Math.floor(explicit));
+  }
+  const nativeBytes = memoryConfig.nativeBudgetBytes;
+  if (
+    Number.isFinite(nativeBytes) && nativeBytes !== undefined && nativeBytes > 0
+  ) {
+    candidates.push(Math.floor(nativeBytes / BYTES_PER_MB));
+  }
+  if (candidates.length === 0) {
     return undefined;
   }
-  return Math.floor(budget);
+
+  let budget = Math.min(...candidates);
+  if (budget <= 0) {
+    return undefined;
+  }
+
+  const hostBytes = hostTotalBytes ?? readHostTotalMemoryBytes();
+  if (hostBytes !== undefined && hostBytes > 0) {
+    const hostMb = Math.floor(hostBytes / BYTES_PER_MB);
+    if (budget > hostMb) {
+      logger.warn(
+        `[DiscoveryMemory] Clamping analysis budget from ${budget}MB to ` +
+          `host-reported ${hostMb}MB (never trust a budget larger than the host)`,
+      );
+      budget = hostMb;
+    }
+  }
+
+  return budget > 0 ? budget : undefined;
 }
 
 /**

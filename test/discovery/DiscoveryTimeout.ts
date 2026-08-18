@@ -4,6 +4,10 @@ import {
   calculateDiscoveryTimeout,
   DEFAULT_DISCOVERY_TIMEOUT_BOUNDS,
   DISCOVERY_MIN_PHASE_MINUTES,
+  GRQ_TASK_DEADLINE_EPOCH_ENV,
+  GRQ_TASK_MAX_SECONDS_ENV,
+  remainingTaskBudgetMinutes,
+  type TaskBudgetEnv,
 } from "@discovery/DiscoveryTimeout.ts";
 
 Deno.test("calculateDiscoveryTimeout - minimal creature returns near-minimum timeout", () => {
@@ -282,5 +286,93 @@ Deno.test("allocateDiscoveryTimeouts - sub-minimum budget splits proportionally"
   assert(
     a.recordMinutes > 0 && a.analysisMinutes > 0,
     "Both phases should receive some time when wall-clock > 0",
+  );
+});
+
+// ============================================================================
+// GRQ #4141: remainingTaskBudgetMinutes — env-derived remaining budget
+// ============================================================================
+
+function fakeEnv(values: Record<string, string | undefined>): TaskBudgetEnv {
+  return {
+    get: (key: string) => values[key],
+  };
+}
+
+Deno.test("remainingTaskBudgetMinutes - unset env is unchanged (undefined)", () => {
+  assertEquals(
+    remainingTaskBudgetMinutes(fakeEnv({}), 1_000_000),
+    undefined,
+    "No GRQ deadline exported → callers keep their inferred budget",
+  );
+  assertEquals(
+    remainingTaskBudgetMinutes(
+      fakeEnv({
+        [GRQ_TASK_DEADLINE_EPOCH_ENV]: "",
+        [GRQ_TASK_MAX_SECONDS_ENV]: "",
+      }),
+      1_000_000,
+    ),
+    undefined,
+  );
+});
+
+Deno.test("remainingTaskBudgetMinutes - env-derived remaining matches deadline − now", () => {
+  const nowSeconds = 1_000_000;
+  const remainingSeconds = 600;
+  const deadline = nowSeconds + remainingSeconds;
+  const remaining = remainingTaskBudgetMinutes(
+    fakeEnv({
+      [GRQ_TASK_DEADLINE_EPOCH_ENV]: String(deadline),
+      [GRQ_TASK_MAX_SECONDS_ENV]: String(3 * 3600),
+    }),
+    nowSeconds,
+  );
+  assertEquals(remaining, remainingSeconds / 60);
+});
+
+Deno.test("remainingTaskBudgetMinutes - remaining is clamped by GRQ_TASK_MAX_SECONDS", () => {
+  const nowSeconds = 1_000_000;
+  const remaining = remainingTaskBudgetMinutes(
+    fakeEnv({
+      [GRQ_TASK_DEADLINE_EPOCH_ENV]: String(nowSeconds + 10_000),
+      [GRQ_TASK_MAX_SECONDS_ENV]: "120",
+    }),
+    nowSeconds,
+  );
+  assertEquals(remaining, 2);
+});
+
+Deno.test("remainingTaskBudgetMinutes - past deadline yields zero, not negative", () => {
+  const remaining = remainingTaskBudgetMinutes(
+    fakeEnv({
+      [GRQ_TASK_DEADLINE_EPOCH_ENV]: "500",
+      [GRQ_TASK_MAX_SECONDS_ENV]: "10800",
+    }),
+    1_000,
+  );
+  assertEquals(remaining, 0);
+});
+
+Deno.test("remainingTaskBudgetMinutes - deadline without max seconds still works", () => {
+  const remaining = remainingTaskBudgetMinutes(
+    fakeEnv({
+      [GRQ_TASK_DEADLINE_EPOCH_ENV]: "1300",
+    }),
+    1000,
+  );
+  assertEquals(remaining, 5);
+});
+
+Deno.test("remainingTaskBudgetMinutes - max seconds alone does not infer a budget", () => {
+  assertEquals(
+    remainingTaskBudgetMinutes(
+      fakeEnv({
+        [GRQ_TASK_MAX_SECONDS_ENV]: "10800",
+      }),
+      1_000,
+    ),
+    undefined,
+    "MAX_SECONDS without a deadline is not enough to derive remaining",
   );
 });

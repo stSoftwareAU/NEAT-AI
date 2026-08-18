@@ -13,6 +13,7 @@
  * happens downstream from these fields; this module only records the data.
  */
 
+import type { EvolveTerminationReason } from "@neat/HardDeadline.ts";
 import type { PhaseTimingTotals } from "@creature/PhaseTimingTotals.ts";
 import type { ScorerUtilisationTotals } from "@creature/ScorerUtilisationTotals.ts";
 import type { TrainingOutcomeTotals } from "@creature/TrainingOutcomeTotals.ts";
@@ -79,6 +80,12 @@ export interface EvolveResult extends EvolveRunStatistics {
   readonly scorerUtilisation: ScorerUtilisationTotals;
   /** Whole-run training-outcome totals, including skips (Issue #3779). */
   readonly trainingOutcomes: TrainingOutcomeTotals;
+  /**
+   * Why the run stopped (GRQ #4141). Present when the loop took an explicit
+   * exit path — graceful over-run self-termination or the T+15 hard-deadline
+   * abandon — so tests can distinguish those from iterations / target-error.
+   */
+  readonly terminationReason?: EvolveTerminationReason;
 }
 
 /** Inputs needed to assemble the {@link EvolveRunStatistics} group. */

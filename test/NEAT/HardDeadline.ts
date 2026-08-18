@@ -1,7 +1,10 @@
 import { assertEquals } from "@std/assert";
 import {
   computeHardDeadlineTS,
+  DEFAULT_OVERRUN_ENFORCEMENT_FACTOR,
   HARD_DEADLINE_GRACE_MINUTES,
+  hasTrainingOverrun,
+  shouldStopStartingGenerations,
 } from "@neat/HardDeadline.ts";
 
 // All assertions use absolute timestamps passed in (no real clock), per the
@@ -45,4 +48,55 @@ Deno.test("HardDeadline - T=1 gives grace of 1 minute", () => {
   // grace = min(15, max(1, 1)) = 1 minute
   const expected = START + 1 * 60_000 + 1 * 60_000;
   assertEquals(computeHardDeadlineTS(START, 1), expected);
+});
+
+Deno.test("hasTrainingOverrun - unset timeout never over-runs", () => {
+  assertEquals(hasTrainingOverrun(START, 0, START + 60_000), false);
+});
+
+Deno.test("hasTrainingOverrun - elapsed at expected duration is not yet over", () => {
+  assertEquals(
+    hasTrainingOverrun(START, 1, START + 60_000),
+    false,
+  );
+});
+
+Deno.test("hasTrainingOverrun - elapsed past expected × factor is over", () => {
+  assertEquals(
+    hasTrainingOverrun(START, 1, START + 60_000 + 1),
+    true,
+  );
+  assertEquals(
+    hasTrainingOverrun(START, 15, START + 15 * 60_000 + 1),
+    true,
+  );
+});
+
+Deno.test("hasTrainingOverrun - configured factor of 2 needs 2× expected", () => {
+  assertEquals(
+    hasTrainingOverrun(START, 1, START + 90_000, 2),
+    false,
+  );
+  assertEquals(
+    hasTrainingOverrun(START, 1, START + 120_000 + 1, 2),
+    true,
+  );
+});
+
+Deno.test("shouldStopStartingGenerations - first generation is always allowed", () => {
+  assertEquals(
+    shouldStopStartingGenerations(0, START, 1, START + 120_000),
+    false,
+  );
+});
+
+Deno.test("shouldStopStartingGenerations - stops after a generation once over-run", () => {
+  assertEquals(
+    shouldStopStartingGenerations(1, START, 1, START + 60_000 + 1),
+    true,
+  );
+});
+
+Deno.test("over-run enforcement factor default is 1", () => {
+  assertEquals(DEFAULT_OVERRUN_ENFORCEMENT_FACTOR, 1);
 });

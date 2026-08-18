@@ -169,11 +169,15 @@ export class Fitness {
    * @param population - Array of creatures to evaluate
    * @param additionalWorkers - Issue #2313: Extra workers (e.g. idle heavy-pool
    *   workers) temporarily assisting the fast pool for this evaluation only.
+   * @param signal - Optional abort signal (GRQ #4141). When aborted, remaining
+   *   unevaluated creatures take the worst score so the generation can finish
+   *   without waiting on a stalled worker.
    * @returns Promise that resolves when all evaluations are complete
    */
   async calculate(
     population: Creature[],
     additionalWorkers?: WorkerHandler[],
+    signal?: AbortSignal,
   ): Promise<void> {
     // Filter creatures that need evaluation (score is undefined)
     const needsEvaluation = population.filter((c) => c.score === undefined);
@@ -392,11 +396,29 @@ export class Fitness {
       ? [...this.workers, ...additionalWorkers]
       : this.workers;
 
+    let settleAbort: (() => void) | undefined;
+    const abortPromise = signal
+      ? new Promise<undefined>((resolve) => {
+        settleAbort = () => resolve(undefined);
+        if (signal.aborted) {
+          settleAbort();
+          return;
+        }
+        signal.addEventListener("abort", () => settleAbort?.(), {
+          once: true,
+        });
+      })
+      : undefined;
+
     const processNext = async (worker: WorkerHandler): Promise<void> => {
-      if (front >= queue.length) return;
+      if (signal?.aborted || front >= queue.length) return;
       const creature = queue[front++];
 
-      const responseData = await worker.evaluate(creature, this.feedbackLoop);
+      const evaluatePromise = worker.evaluate(creature, this.feedbackLoop);
+      const responseData = abortPromise
+        ? await Promise.race([evaluatePromise, abortPromise])
+        : await evaluatePromise;
+      if (!responseData) return;
       if (!responseData.evaluate) {
         throw new ValidationError("Invalid response from worker.", "OTHER");
       }
@@ -457,7 +479,25 @@ export class Fitness {
     };
 
     // Start all active workers processing the queue concurrently
-    await Promise.all(allWorkers.map((worker) => processNext(worker)));
+    try {
+      await Promise.all(allWorkers.map((worker) => processNext(worker)));
+    } finally {
+      // Unstick the abort race so a completed calculate() does not leak a
+      // pending promise into --trace-leaks.
+      settleAbort?.();
+    }
+
+    // GRQ #4141: a watchdog abort must not leave unscored creatures in the
+    // population — evolve() asserts every member has a score.
+    if (signal?.aborted) {
+      for (const creature of uniqueQueue) {
+        if (creature.score === undefined) {
+          addTag(creature, "error", "Infinity");
+          creature.score = -Infinity;
+          addTag(creature, "score", creature.score.toString());
+        }
+      }
+    }
 
     // Issue #2424: Publish scorer telemetry for throughput metrics assembly.
     this.lastScorerMs = scorerMsAccum;

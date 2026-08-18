@@ -173,3 +173,70 @@ export function allocateDiscoveryTimeouts(
     totalMinutes: recordMinutes + analysisMinutes,
   };
 }
+
+/**
+ * Absolute task-cap deadline (epoch seconds) exported by GRQ
+ * `worker/run_core.sh` (GRQ #4141 / #2571).
+ */
+export const GRQ_TASK_DEADLINE_EPOCH_ENV = "GRQ_TASK_DEADLINE_EPOCH";
+
+/**
+ * Full task-cap width in seconds, exported alongside
+ * {@link GRQ_TASK_DEADLINE_EPOCH_ENV}.
+ */
+export const GRQ_TASK_MAX_SECONDS_ENV = "GRQ_TASK_MAX_SECONDS";
+
+/** Minimal environment reader, satisfied by `Deno.env` and test fakes. */
+export interface TaskBudgetEnv {
+  get(key: string): string | undefined;
+}
+
+function parsePositiveIntEnv(raw: string | undefined): number | undefined {
+  if (raw === undefined) return undefined;
+  const trimmed = raw.trim();
+  if (trimmed === "") return undefined;
+  if (!/^[0-9]+$/.test(trimmed)) return undefined;
+  const value = Number(trimmed);
+  if (!Number.isSafeInteger(value) || value <= 0) return undefined;
+  return value;
+}
+
+/**
+ * Remaining wall-clock budget in minutes derived from GRQ's exported task
+ * deadline, not inferred from `timeoutMinutes` (GRQ #4141).
+ *
+ * When both env vars are unset (or unreadable — missing `--allow-env`),
+ * returns `undefined` so callers keep their inferred budget unchanged.
+ * When {@link GRQ_TASK_DEADLINE_EPOCH_ENV} is set, remaining is
+ * `(deadlineEpoch − nowSeconds) / 60`, floored at zero, and never larger
+ * than {@link GRQ_TASK_MAX_SECONDS_ENV} when that width is also present.
+ *
+ * @param env - Environment reader (defaults to `Deno.env`).
+ * @param nowSeconds - Clock in epoch seconds (injectable; no real wait).
+ */
+export function remainingTaskBudgetMinutes(
+  env: TaskBudgetEnv = Deno.env,
+  nowSeconds: number = Date.now() / 1000,
+): number | undefined {
+  let deadlineRaw: string | undefined;
+  let maxRaw: string | undefined;
+  try {
+    deadlineRaw = env.get(GRQ_TASK_DEADLINE_EPOCH_ENV) ?? undefined;
+    maxRaw = env.get(GRQ_TASK_MAX_SECONDS_ENV) ?? undefined;
+  } catch {
+    // No --allow-env (or reader threw): treat as unconfigured.
+    return undefined;
+  }
+
+  const deadlineEpoch = parsePositiveIntEnv(deadlineRaw);
+  if (deadlineEpoch === undefined) {
+    return undefined;
+  }
+
+  let remainingSeconds = deadlineEpoch - nowSeconds;
+  const maxSeconds = parsePositiveIntEnv(maxRaw);
+  if (maxSeconds !== undefined) {
+    remainingSeconds = Math.min(remainingSeconds, maxSeconds);
+  }
+  return Math.max(0, remainingSeconds / 60);
+}

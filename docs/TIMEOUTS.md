@@ -11,15 +11,15 @@ bounds `evolveDir` (and its siblings `evolveDataSet`, `evolveEnv`, `evolveRL`).
 > far. A run started with `--timeout=45` therefore finishes inside the hour,
 > leaving the caller time for its normal save / model check-in.
 
-## 🧩 The two deadlines
+## 🧩 The deadlines
 
-Evolution tracks **two** wall-clock deadlines, both anchored at the run's start
-timestamp:
+Evolution tracks wall-clock deadlines anchored at the run's start timestamp:
 
-| Deadline                        | Value                             | Role                                                                                                                                                                                                  |
-| ------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Soft timeout** (`endTimeMS`)  | `start + max(1, T) × 60 000 ms`   | Stops starting _new_ generations once it passes. The loop then enters the finish-up phase and waits — briefly — for in-flight discovery / training to settle so their partial results are not wasted. |
-| **Hard cap** (`hardDeadlineTS`) | `start + (T + grace) × 60 000 ms` | The point of no return. Once it passes, every phase abandons in-flight work and the run returns. Nothing is allowed to push past it.                                                                  |
+| Deadline                        | Value                                       | Role                                                                                                                                                                                                  |
+| ------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Soft timeout** (`endTimeMS`)  | `start + max(1, T) × 60 000 ms`             | Stops starting _new_ generations once it passes. The loop then enters the finish-up phase and waits — briefly — for in-flight discovery / training to settle so their partial results are not wasted. |
+| **Over-run** (GRQ #4141)        | `elapsed > T × factor` (default factor `1`) | Same generation-stop as the soft timeout, but an explicit self-termination path: the run finishes with the evolved population committed and does **not** wait for an external wall-clock cap.         |
+| **Hard cap** (`hardDeadlineTS`) | `start + (T + grace) × 60 000 ms`           | The point of no return. Once it passes, every phase abandons in-flight work and the run returns. Nothing is allowed to push past it.                                                                  |
 
 The grace period is clamped:
 
@@ -45,7 +45,14 @@ waits past it.
   the first check in the finish-up branch. Once the cap has passed it clears
   `discoveryInProgress` / `trainingInProgress` (so the abandoned promises can
   never be re-awaited) and breaks the loop **unconditionally**, even when
-  `finishUp()` would otherwise still ask for more wait generations.
+  `finishUp()` would otherwise still ask for more wait generations. A stall
+  _inside_ fitness is tracked as `inFlightPhase = "fitness"` so the watchdog
+  reports `stalled in fitness` _while interrupting_, rather than
+  `abandoning 0 in-flight task(s)` after the fact (GRQ #4141).
+- **Over-run** — independently of the hard cap, when elapsed exceeds
+  `timeoutMinutes × factor` after at least one generation, the loop stops
+  starting new generations and finishes with the population committed. This is
+  graceful self-termination, not the hard-deadline abandon.
 - **Finish-up wait** — `Neat.awaitInFlightTasks()` caps its own timeout at the
   time remaining before `hardDeadlineTS`. A never-resolving in-flight promise
   can therefore never wedge the wait past the cap.
@@ -163,7 +170,11 @@ coverage in
 ## 🔗 Related
 
 - [`src/NEAT/HardDeadline.ts`](../src/NEAT/HardDeadline.ts) — the pure
-  `computeHardDeadlineTS` helper and `HARD_DEADLINE_GRACE_MINUTES` constant.
+  `computeHardDeadlineTS` helper, `HARD_DEADLINE_GRACE_MINUTES`, and the
+  over-run helpers (`hasTrainingOverrun`, `shouldStopStartingGenerations`).
+- [`src/discovery/DiscoveryTimeout.ts`](../src/discovery/DiscoveryTimeout.ts) —
+  `remainingTaskBudgetMinutes` honours `GRQ_TASK_DEADLINE_EPOCH` /
+  `GRQ_TASK_MAX_SECONDS` when GRQ's `run_core.sh` exported them.
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — the full configuration
   surface, including `timeoutMinutes`.
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — what to do when a run does not stop

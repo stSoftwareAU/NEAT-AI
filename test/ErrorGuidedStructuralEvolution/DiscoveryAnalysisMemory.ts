@@ -116,6 +116,43 @@ Deno.test("resolveAnalysisMemoryBudgetMb: positive budget is floored", () => {
   );
 });
 
+Deno.test("resolveAnalysisMemoryBudgetMb: nativeBudgetBytes is forwarded as MB", () => {
+  // 2 GiB native RSS ceiling → 2048 MB on the FFI wire.
+  assertEquals(
+    resolveAnalysisMemoryBudgetMb({
+      maxAnalysisMemoryMb: 0,
+      nativeBudgetBytes: 2 * 1024 * MB,
+    }),
+    2048,
+  );
+});
+
+Deno.test("resolveAnalysisMemoryBudgetMb: GRQ-26 5.47 GB budget is clamped to a 3.4 GB host", () => {
+  // GRQ-26: nativeBudgetBytes=5476083302 on a host reporting totalMB=3457.
+  // A naive forward would flip the cache from always-lazy to always-preload
+  // and OOM; the budget must never exceed host-reported memory.
+  const nativeBudgetBytes = 5_476_083_302;
+  const hostTotalMb = 3457;
+  const hostTotalBytes = hostTotalMb * MB;
+  const { logger, lines } = makeRecordingLogger();
+
+  const budget = resolveAnalysisMemoryBudgetMb(
+    { maxAnalysisMemoryMb: 0, nativeBudgetBytes },
+    hostTotalBytes,
+    logger,
+  );
+
+  assertEquals(
+    budget,
+    hostTotalMb,
+    "FFI budget_mb / maxAnalysisMemoryMb must be clamped to host-reported MB",
+  );
+  assert(
+    lines.some((line) => line.includes("Clamping analysis budget")),
+    "the over-host clamp must be logged",
+  );
+});
+
 // ── shouldCancelAnalysisForMemoryPressure ────────────────────────────────
 
 Deno.test("shouldCancelAnalysisForMemoryPressure: never cancels when monitoring disabled", () => {
