@@ -23,7 +23,10 @@ import type {
 import { WorkerPool } from "@multithreading/WorkerPool.ts";
 import type { CrisprInterface } from "@reconstruct/CRISPR.ts";
 import { Genus } from "@neat/Genus.ts";
-import { computeHardDeadlineTS } from "@neat/HardDeadline.ts";
+import {
+  computeHardDeadlineTS,
+  type EvolveTerminationReason,
+} from "@neat/HardDeadline.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
@@ -93,6 +96,24 @@ export class Neat {
    * Enforcement lands in follow-up sub-issues; this is shared plumbing.
    */
   readonly hardDeadlineTS: number;
+  /**
+   * Named in-generation phase currently blocking the evolve loop (GRQ #4141).
+   * The hard-deadline watchdog reports this name *while* a stall is in
+   * progress so `abandoning 0 in-flight task(s)` after the fact is not the
+   * only signal. `undefined` when no tracked phase is running.
+   */
+  inFlightPhase: string | undefined = undefined;
+  /**
+   * Abort controller for the current {@link inFlightPhase}. Watchdog abort
+   * interrupts a stall inside fitness (or another named phase) without
+   * killing the process.
+   */
+  private inFlightAbort: AbortController | undefined = undefined;
+  /**
+   * Why the most recent `evolve*` run stopped (GRQ #4141). Distinguishes
+   * graceful over-run self-termination from the T+15 hard-deadline abandon.
+   */
+  terminationReason: EvolveTerminationReason | undefined = undefined;
   /** Current population of creatures */
   population: Creature[];
   /** Available CRISPR modifications for targeted evolution (read-only after init) */
@@ -718,16 +739,66 @@ export class Neat {
     return abandoned;
   }
 
-  abandonInFlightPastHardDeadline(hardDeadlineMS: number): boolean {
-    if (!hardDeadlineMS || Date.now() <= hardDeadlineMS) {
+  /**
+   * Mark the evolve loop as inside a named phase so the hard-deadline
+   * watchdog can report a stall *while it is happening* (GRQ #4141).
+   */
+  enterInFlightPhase(phase: string): AbortSignal {
+    this.inFlightPhase = phase;
+    this.inFlightAbort = new AbortController();
+    return this.inFlightAbort.signal;
+  }
+
+  /** Clear the named in-generation phase when the work returns. */
+  leaveInFlightPhase(): void {
+    this.inFlightPhase = undefined;
+  }
+
+  /** Cooperative interrupt for the current {@link inFlightPhase}. */
+  interruptInFlightPhase(): void {
+    this.inFlightAbort?.abort();
+  }
+
+  /**
+   * Poll the hard-deadline watchdog with an injectable clock (GRQ #4141).
+   * Tests drive a stall without real waits; production uses {@link Date.now}.
+   */
+  pollHardDeadlineWatchdog(nowTS: number = Date.now()): boolean {
+    return this.abandonInFlightPastHardDeadline(this.hardDeadlineTS, nowTS);
+  }
+
+  abandonInFlightPastHardDeadline(
+    hardDeadlineMS: number,
+    nowTS: number = Date.now(),
+  ): boolean {
+    if (!hardDeadlineMS || nowTS <= hardDeadlineMS) {
       return false;
     }
 
     const abandoned = this.discoveryInProgress.size +
       this.trainingInProgress.size;
-    getLogger().warn(
-      `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — abandoning ${abandoned} in-flight task(s)`,
-    );
+    const stalledPhase = this.inFlightPhase;
+
+    if (stalledPhase) {
+      // A stall inside fitness (or another named phase) is not an in-flight
+      // *task*. Reporting `abandoning 0 in-flight task(s)` after the fact
+      // hid GRQ-26's 1h 54m fitness hang. Name the phase *while* interrupting.
+      getLogger().warn(
+        `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — ` +
+          `stalled in ${stalledPhase}; interrupting` +
+          (abandoned > 0
+            ? ` and abandoning ${abandoned} in-flight task(s)`
+            : ""),
+      );
+      this.interruptInFlightPhase();
+    } else {
+      getLogger().warn(
+        `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — abandoning ${abandoned} in-flight task(s)`,
+      );
+    }
+
+    this.terminationReason = "hard-deadline";
+    this.doNotStartMore = true;
     this.discoveryInProgress.clear();
     this.trainingInProgress.clear();
     this.trainingDeadlines.clear();

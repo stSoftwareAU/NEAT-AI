@@ -48,6 +48,22 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   of `1` rather than inheriting the MSE-shaped ~20%-of-population default from
   the untouched `costName`.
 
+### Changed
+
+- **GRQ #4141:** Training over-run is now enforced, not warn-only. When elapsed
+  wall-clock exceeds `timeoutMinutes` by the configured factor (default `1`),
+  the evolve loop stops starting new generations and finishes cleanly with the
+  evolved population committed — well before GRQ's 3-hour wall-clock cap. The
+  hard-deadline watchdog names an in-flight fitness stall _while it is
+  happening_ and interrupts it; `abandoning 0 in-flight task(s)` after the fact
+  is no longer the only signal. Discovery remaining budget honours
+  `GRQ_TASK_DEADLINE_EPOCH` / `GRQ_TASK_MAX_SECONDS` when set; unset env is
+  unchanged.
+- **GRQ #4138:** `memory.nativeBudgetBytes` is forwarded into the Discovery
+  `analyze_parallel` FFI budget (`maxAnalysisMemoryMb` / Rust `budget_mb`) and
+  clamped to host-reported memory so a 5.47 GB budget on a 3.4 GB host cannot be
+  trusted verbatim.
+
 ## [6.6.0] - 2026-08-16
 
 ### Added

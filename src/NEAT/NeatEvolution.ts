@@ -59,6 +59,7 @@ import {
   computeOverallCpuUtilisation,
 } from "@neat/CpuUtilisation.ts";
 import { assemblePopulationWithinBudget } from "@neat/PopulationBudget.ts";
+import { HARD_DEADLINE_WATCHDOG_INTERVAL_MS } from "@neat/HardDeadline.ts";
 import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
 import { selectTrainingCandidates } from "@neat/TrainingCandidates.ts";
 import {
@@ -193,8 +194,27 @@ export async function evolve(
   }
 
   // Issue #2239: Time fitness evaluation phase
+  // GRQ #4141: name the in-fitness phase so the hard-deadline watchdog can
+  // report a stall *while it is happening* and interrupt it. An
+  // `abandoning 0 in-flight task(s)` line after the fact is the failure mode.
   const fitnessStartMs = Date.now();
-  await neat.fitness.calculate(neat.population, idleHeavyForFitness);
+  const fitnessSignal = neat.enterInFlightPhase("fitness");
+  let fitnessWatchdogId: ReturnType<typeof setInterval> | undefined;
+  try {
+    fitnessWatchdogId = setInterval(() => {
+      neat.pollHardDeadlineWatchdog();
+    }, HARD_DEADLINE_WATCHDOG_INTERVAL_MS);
+    await neat.fitness.calculate(
+      neat.population,
+      idleHeavyForFitness,
+      fitnessSignal,
+    );
+  } finally {
+    if (fitnessWatchdogId !== undefined) {
+      clearInterval(fitnessWatchdogId);
+    }
+    neat.leaveInFlightPhase();
+  }
   const fitnessMs = Date.now() - fitnessStartMs;
 
   // Issue #2457: Commit any squash-mutation outcomes captured last generation

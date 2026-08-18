@@ -16,6 +16,35 @@
 export const HARD_DEADLINE_GRACE_MINUTES = 15;
 
 /**
+ * How many times the expected duration (`timeoutMinutes`) a run may last
+ * before NEAT-AI stops starting new generations and finishes with the evolved
+ * population (GRQ #4141).
+ *
+ * A factor of `1` means "elapsed > expected" — the 15-minute expected-duration
+ * default itself is unchanged; only the breach action changes from warn-only
+ * to self-termination. The 3-hour GRQ wall-clock cap is not this lever.
+ */
+export const DEFAULT_OVERRUN_ENFORCEMENT_FACTOR = 1;
+
+/**
+ * How often the in-generation hard-deadline watchdog polls while a phase
+ * (especially fitness) is in flight. Injectable `now` keeps tests free of
+ * real waits (#2888).
+ */
+export const HARD_DEADLINE_WATCHDOG_INTERVAL_MS = 1_000;
+
+/**
+ * Why an `evolve*` run stopped. Distinguishes graceful over-run
+ * self-termination from the T+15 hard-deadline abandon path.
+ */
+export type EvolveTerminationReason =
+  | "overrun"
+  | "hard-deadline"
+  | "iterations"
+  | "target-error"
+  | "interrupted";
+
+/**
  * Compute the absolute hard-deadline timestamp.
  *
  * Returns `startMS + timeoutMinutes * 60_000 + graceMS`, where the grace period
@@ -43,4 +72,51 @@ export function computeHardDeadlineTS(
   );
 
   return startMS + timeoutMinutes * 60_000 + graceMinutes * 60_000;
+}
+
+/**
+ * True when elapsed wall-clock has exceeded the expected duration
+ * (`timeoutMinutes`) by {@link factor} (GRQ #4141).
+ *
+ * Unset / zero `timeoutMinutes` never over-runs — there is no expected
+ * duration to breach. Non-positive or non-finite factors fall back to
+ * {@link DEFAULT_OVERRUN_ENFORCEMENT_FACTOR}.
+ *
+ * Pure: timestamps in, boolean out — no real clock (#2888).
+ */
+export function hasTrainingOverrun(
+  startMS: number,
+  timeoutMinutes: number,
+  nowMS: number,
+  factor: number = DEFAULT_OVERRUN_ENFORCEMENT_FACTOR,
+): boolean {
+  if (
+    !timeoutMinutes || !Number.isFinite(timeoutMinutes) || timeoutMinutes <= 0
+  ) {
+    return false;
+  }
+  const effectiveFactor = Number.isFinite(factor) && factor > 0
+    ? factor
+    : DEFAULT_OVERRUN_ENFORCEMENT_FACTOR;
+  const expectedMS = Math.max(1, timeoutMinutes) * 60_000;
+  return nowMS - startMS > expectedMS * effectiveFactor;
+}
+
+/**
+ * True when the evolve loop must not start another generation: at least one
+ * generation has completed and {@link hasTrainingOverrun} is true.
+ *
+ * The first generation is always allowed to start so a run that begins
+ * already past its expected duration still produces a committed population
+ * (existing T+15 hard-cap tests rely on generation 1 completing).
+ */
+export function shouldStopStartingGenerations(
+  generationsCompleted: number,
+  startMS: number,
+  timeoutMinutes: number,
+  nowMS: number,
+  factor: number = DEFAULT_OVERRUN_ENFORCEMENT_FACTOR,
+): boolean {
+  return generationsCompleted > 0 &&
+    hasTrainingOverrun(startMS, timeoutMinutes, nowMS, factor);
 }

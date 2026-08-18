@@ -28,7 +28,11 @@ import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Costs } from "@costs";
 import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { Neat } from "@neat/Neat.ts";
-import { computeHardDeadlineTS } from "@neat/HardDeadline.ts";
+import {
+  computeHardDeadlineTS,
+  DEFAULT_OVERRUN_ENFORCEMENT_FACTOR,
+  shouldStopStartingGenerations,
+} from "@neat/HardDeadline.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
@@ -384,8 +388,34 @@ export function traceDir(
 export interface EvolveDirDeps {
   /** Override the run-start timestamp (ms since epoch). */
   startTimeMS?: number;
+  /**
+   * Injectable clock (ms since epoch) for over-run enforcement (GRQ #4141).
+   * Tests advance this between generations; production omits it (`Date.now`).
+   */
+  now?: () => number;
+  /**
+   * Multiple of `timeoutMinutes` after which new generations must not start.
+   * Defaults to {@link DEFAULT_OVERRUN_ENFORCEMENT_FACTOR}.
+   */
+  overrunEnforcementFactor?: number;
   /** Invoked with the constructed {@link Neat} instance before the evolve loop. */
   onNeatReady?: (neat: Neat) => void;
+}
+
+/**
+ * Mark the run as a graceful over-run stop: no new generations, population
+ * stays committed, and the T+15 hard-deadline abandon path is not taken
+ * (GRQ #4141).
+ */
+function requestOverrunStop(neat: Neat, factor: number): void {
+  if (neat.terminationReason === "overrun") return;
+  neat.doNotStartMore = true;
+  neat.terminationReason = "overrun";
+  getLogger().warn(
+    `[Neat] Training over-run: elapsed exceeded expected duration ` +
+      `× ${factor} — stopping new generations and finishing with the ` +
+      `evolved population`,
+  );
 }
 
 /**
@@ -512,8 +542,40 @@ export async function evolveDir(
   const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
   // Issue #3422: compact best-score trajectory for the improvement milestones.
   const scoreTrajectory = createScoreTrajectory();
+  const nowFn = deps?.now ?? Date.now;
+  const overrunFactor = deps?.overrunEnforcementFactor ??
+    DEFAULT_OVERRUN_ENFORCEMENT_FACTOR;
 
   while (true) {
+    if (
+      shouldStopStartingGenerations(
+        generation,
+        start,
+        config.timeoutMinutes,
+        nowFn(),
+        overrunFactor,
+      )
+    ) {
+      const nowMS = nowFn();
+      // If the T+15 cap has also passed, the hard-deadline abandon still wins
+      // so existing T+15 tests keep their in-flight-map cleanup.
+      if (
+        hardDeadlineMS && nowMS > hardDeadlineMS &&
+        neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowMS)
+      ) {
+        break;
+      }
+      requestOverrunStop(neat, overrunFactor);
+      if (interrupted) break;
+      // Graceful self-termination: do not take the hard-deadline abandon path.
+      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+        break;
+      }
+      // deno-lint-ignore no-await-in-loop
+      await neat.awaitInFlightTasks();
+      continue;
+    }
+
     // deno-lint-ignore no-await-in-loop
     const result = await neat.evolve(bestCreature);
 
@@ -592,7 +654,7 @@ export async function evolveDir(
       // even when finishUp() would still ask for more wait generations. The
       // post-loop sequence (worker termination, best-creature restore,
       // writeCreatures) still runs because the break lands there.
-      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS)) {
+      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
         break;
       }
 
@@ -664,6 +726,9 @@ export async function evolveDir(
       options,
       trajectory: scoreTrajectory,
     }),
+    ...(neat.terminationReason
+      ? { terminationReason: neat.terminationReason }
+      : {}),
   };
 }
 
@@ -803,6 +868,24 @@ export async function evolveEnv<S, A>(
   const scoreTrajectory = createScoreTrajectory();
 
   while (true) {
+    if (
+      shouldStopStartingGenerations(
+        generation,
+        start,
+        config.timeoutMinutes,
+        Date.now(),
+      )
+    ) {
+      requestOverrunStop(neat, DEFAULT_OVERRUN_ENFORCEMENT_FACTOR);
+      if (interrupted) break;
+      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+        break;
+      }
+      // deno-lint-ignore no-await-in-loop
+      await neat.awaitInFlightTasks();
+      continue;
+    }
+
     generation++;
     episodicFitness.setGeneration(generation);
 
@@ -928,6 +1011,9 @@ export async function evolveEnv<S, A>(
       options,
       trajectory: scoreTrajectory,
     }),
+    ...(neat.terminationReason
+      ? { terminationReason: neat.terminationReason }
+      : {}),
   };
 }
 
@@ -1256,6 +1342,24 @@ export async function evolveRL<S, A>(
   const scoreTrajectory = createScoreTrajectory();
 
   while (true) {
+    if (
+      shouldStopStartingGenerations(
+        generation,
+        start,
+        config.timeoutMinutes,
+        Date.now(),
+      )
+    ) {
+      requestOverrunStop(neat, DEFAULT_OVERRUN_ENFORCEMENT_FACTOR);
+      if (interrupted) break;
+      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+        break;
+      }
+      // deno-lint-ignore no-await-in-loop
+      await neat.awaitInFlightTasks();
+      continue;
+    }
+
     generation++;
     rlFitness.setGeneration(generation);
     rlFitness.setSeedSet(
@@ -1462,6 +1566,9 @@ export async function evolveRL<S, A>(
     options,
     trajectory: scoreTrajectory,
   });
+  const termination = neat.terminationReason
+    ? { terminationReason: neat.terminationReason }
+    : {};
   if (statisticsEnabled) {
     return {
       error,
@@ -1473,6 +1580,7 @@ export async function evolveRL<S, A>(
       trainingOutcomes,
       ...runStatistics,
       milestones,
+      ...termination,
     };
   }
   return {
@@ -1484,6 +1592,7 @@ export async function evolveRL<S, A>(
     scorerUtilisation,
     trainingOutcomes,
     ...runStatistics,
+    ...termination,
   };
 }
 
