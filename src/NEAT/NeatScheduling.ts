@@ -39,6 +39,19 @@ import { isTrainingErrorRegression } from "@neat/TrainingErrorComparison.ts";
 import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
 
 /**
+ * Epochs requested for a scheduled per-generation training task (Issue #3776).
+ *
+ * A single epoch has nothing to compare itself against, so the training loop
+ * can never reject an epoch that made the creature worse — GRQ #4063 saw every
+ * scheduled backprop regress (~13× error) and be discarded downstream, burning
+ * a heavy worker slot each time. Two epochs let the loop's own regression guard
+ * revert a bad epoch before the result leaves the worker. The per-task
+ * wall-clock budget still bounds the total work, so the second epoch is skipped
+ * when the budget is already spent.
+ */
+const SCHEDULED_TRAINING_ITERATIONS = 2;
+
+/**
  * Record a failed training completion without loading a worker-fabricated
  * creature export (Issue #3780).
  */
@@ -423,7 +436,7 @@ export function scheduleTraining(
   const trainOptions: TrainOptions = {
     log: neat.config.log,
     traceStore: neat.config.traceStore,
-    iterations: 1,
+    iterations: SCHEDULED_TRAINING_ITERATIONS,
     targetError: neat.config.targetError,
     trainingSampleRate: neat.config.trainingSampleRate,
     disableRandomSamples: neat.config.disableRandomSamples,

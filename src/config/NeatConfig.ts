@@ -269,10 +269,13 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
   // supervised costs so gradient descent is not starved (one creature per
   // generation). Custom / evolution-only costs keep the conservative default
   // of 1. Explicit `opts.trainPerGen` always wins via `parseNumber` below.
+  // Issue #3776: `costName` keeps its "MSE" default even when a `customCost`
+  // replaces the built-in cost, so pass the custom-cost flag explicitly.
   const costName = options.costName ?? "MSE";
   const defaultTrainPerGen = resolveDefaultTrainPerGen(
     populationSize,
     costName,
+    options.customCost !== undefined,
   );
 
   const config: NeatArguments = {

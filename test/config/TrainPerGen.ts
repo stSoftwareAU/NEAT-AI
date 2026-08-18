@@ -70,3 +70,45 @@ Deno.test("createNeatConfig - explicit trainPerGen always wins over the scaled d
   // Explicit 0 (evolution-only) is honoured even with a supervised cost.
   assertEquals(createNeatConfig({ trainPerGen: 0 }).trainPerGen, 0);
 });
+
+/**
+ * Issue #3776: a `customCost` replaces the built-in cost entirely, so the
+ * MSE-shaped supervised default must not leak through the untouched
+ * `costName` default.
+ */
+Deno.test("resolveDefaultTrainPerGen - a custom cost overrides a supervised cost name", () => {
+  assertEquals(
+    resolveDefaultTrainPerGen(50, "MSE", true),
+    EVOLUTION_ONLY_TRAIN_PER_GEN,
+  );
+  assertEquals(
+    resolveDefaultTrainPerGen(200, "CROSS_ENTROPY", true),
+    EVOLUTION_ONLY_TRAIN_PER_GEN,
+  );
+  // Without a custom cost the supervised scaling is unchanged.
+  assertEquals(resolveDefaultTrainPerGen(50, "MSE", false), 10);
+});
+
+Deno.test("createNeatConfig - customCost falls back to the evolution-only trainPerGen", () => {
+  const config = createNeatConfig({
+    customCost: { filePath: `${Deno.cwd()}/test/costs/SimpleTouchTest.ts` },
+  });
+  assertEquals(config.trainPerGen, EVOLUTION_ONLY_TRAIN_PER_GEN);
+});
+
+Deno.test("createNeatConfig - customCost with an explicit supervised costName still trains one per generation", () => {
+  const config = createNeatConfig({
+    costName: "MSE",
+    populationSize: 100,
+    customCost: { filePath: `${Deno.cwd()}/test/costs/SimpleTouchTest.ts` },
+  });
+  assertEquals(config.trainPerGen, EVOLUTION_ONLY_TRAIN_PER_GEN);
+});
+
+Deno.test("createNeatConfig - explicit trainPerGen still wins with a customCost", () => {
+  const config = createNeatConfig({
+    trainPerGen: 7,
+    customCost: { filePath: `${Deno.cwd()}/test/costs/SimpleTouchTest.ts` },
+  });
+  assertEquals(config.trainPerGen, 7);
+});

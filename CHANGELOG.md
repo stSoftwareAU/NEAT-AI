@@ -23,6 +23,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Issue #3776:** Scheduled per-generation training now runs two epochs instead
+  of one, so the training loop can revert an epoch that made the creature worse.
+  A configured `customCost` now keeps the evolution-only `trainPerGen` default
+  of `1` rather than inheriting the MSE-shaped ~20%-of-population default from
+  the untouched `costName`.
+
 ## [6.6.0] - 2026-08-16
 
 ### Added

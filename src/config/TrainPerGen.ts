@@ -34,6 +34,8 @@ export const EVOLUTION_ONLY_TRAIN_PER_GEN = 1;
  *
  * @param populationSize - The configured population size (>= 2).
  * @param costName - The configured cost name (built-in or custom).
+ * @param hasCustomCost - True when a `customCost` function replaces the
+ *   built-in cost (Issue #3776).
  * @returns The number of creatures to train per generation by default.
  *
  * - Recognised built-in supervised costs scale with the population:
@@ -45,7 +47,17 @@ export const EVOLUTION_ONLY_TRAIN_PER_GEN = 1;
 export function resolveDefaultTrainPerGen(
   populationSize: number,
   costName: string,
+  hasCustomCost = false,
 ): number {
+  // Issue #3776: a `customCost` replaces the built-in cost entirely, so the
+  // configured `costName` (which defaults to "MSE" and is never cleared)
+  // says nothing about whether the task is supervised. Treat it as
+  // evolution-only rather than scheduling ~20% of the population for
+  // gradient steps the custom objective may not benefit from.
+  if (hasCustomCost) {
+    return EVOLUTION_ONLY_TRAIN_PER_GEN;
+  }
+
   const descriptor = costNameToTaskDescriptor(costName);
   if (descriptor.costName === OTHER_COST_NAME) {
     return EVOLUTION_ONLY_TRAIN_PER_GEN;

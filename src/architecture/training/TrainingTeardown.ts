@@ -169,6 +169,10 @@ export function finaliseTraining(
 ): TrainingResult {
   let { bestCreatureJSON, bestTraceJSON } = loop;
 
+  // Issue #3776: single-epoch runs are deliberately not restored — the best
+  // snapshot is taken *before* `applyLearnings`, so reloading it would discard
+  // the only epoch's learning entirely. Rollback needs a second epoch to
+  // compare against, which is why scheduled training requests two.
   if (iterations > 1) {
     creature.loadFrom(bestCreatureJSON, false, "training:teardownRestore"); // If not called via the worker.
   }
