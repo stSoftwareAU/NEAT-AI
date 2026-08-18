@@ -13,8 +13,8 @@ that produced them); they moved here under NEAT-AI-Lamarck Issue #149.
 **1280×640** previews live in [`social-previews/`](social-previews/). Each repo
 keeps the same organic lockup (the signed-off neuron standing in for the first
 **A**, teal/coral synapses wrapping the wordmark, capability pills) and adds a
-subtitle, a one-line descriptor, and a small motif so siblings stay
-recognisable as one family. The per-repo catalogue is in
+subtitle, a one-line descriptor, and a small motif so siblings stay recognisable
+as one family. The per-repo catalogue is in
 [`social-previews/README.md`](social-previews/README.md).
 
 Two variants of every preview ship (Issue #3764):
@@ -50,8 +50,8 @@ deno run -A scripts/brand/render_social_previews.ts
 - [`scripts/brand/preview_motifs.ts`](../../scripts/brand/preview_motifs.ts) —
   the per-repo motifs.
 - [`docs/brand/templates/neuron-a.svg`](templates/neuron-a.svg) — the signed-off
-  starting SVG; [`neuron-a-mark.png`](templates/neuron-a-mark.png) is the organic
-  A embedded in every preview.
+  starting SVG; [`neuron-a-mark.png`](templates/neuron-a-mark.png) is the
+  organic A embedded in every preview.
 
 The renderer rasterises with `@resvg/resvg-js` (a developer tool pulled from npm
 at run time, not a library dependency) and lays text out from measured glyph
