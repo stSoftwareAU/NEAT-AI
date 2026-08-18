@@ -103,7 +103,9 @@ export type {
   OptionsEcho,
   ScoreImprovementMilestone,
   ScoreImprovementMilestones,
+  TrainingOutcomeTotals,
 } from "@creature/EvolveRunStatistics.ts";
+import { summariseTrainingOutcomes } from "@creature/TrainingOutcomeTotals.ts";
 import { createScoreTrajectory } from "@creature/ScoreImprovementMilestones.ts";
 import { serialiseOptionsEcho } from "@creature/EvolveOptionsEcho.ts";
 
@@ -650,6 +652,9 @@ export async function evolveDir(
     scorerUtilisation: finaliseScorerUtilisationTotals(
       scorerUtilisationAccumulator,
     ),
+    // Issue #3779: run-level training-outcome totals, including the skipped
+    // dispatches a non-verbose run-end summary could not otherwise see.
+    trainingOutcomes: summariseTrainingOutcomes(neat.trainingRegressionTracker),
     // Issue #3422: run-level tuning statistics — population size, requested
     // options, hardware and the score-improvement milestones.
     ...buildEvolveRunStatistics({
@@ -911,6 +916,9 @@ export async function evolveEnv<S, A>(
     scorerUtilisation: finaliseScorerUtilisationTotals(
       scorerUtilisationAccumulator,
     ),
+    // Issue #3779: run-level training-outcome totals, including the skipped
+    // dispatches a non-verbose run-end summary could not otherwise see.
+    trainingOutcomes: summariseTrainingOutcomes(neat.trainingRegressionTracker),
     // Issue #3422: run-level tuning statistics — population size, requested
     // options, hardware and the score-improvement milestones.
     ...buildEvolveRunStatistics({
@@ -1440,6 +1448,11 @@ export async function evolveRL<S, A>(
   const scorerUtilisation = finaliseScorerUtilisationTotals(
     scorerUtilisationAccumulator,
   );
+  // Issue #3779: run-level training-outcome totals, including skipped
+  // dispatches.
+  const trainingOutcomes = summariseTrainingOutcomes(
+    neat.trainingRegressionTracker,
+  );
   // Issue #3422: run-level tuning statistics — population size, requested
   // options, hardware and the score-improvement milestones.
   const runStatistics = buildEvolveRunStatistics({
@@ -1457,6 +1470,7 @@ export async function evolveRL<S, A>(
       time,
       phaseTimingTotals,
       scorerUtilisation,
+      trainingOutcomes,
       ...runStatistics,
       milestones,
     };
@@ -1468,6 +1482,7 @@ export async function evolveRL<S, A>(
     time,
     phaseTimingTotals,
     scorerUtilisation,
+    trainingOutcomes,
     ...runStatistics,
   };
 }

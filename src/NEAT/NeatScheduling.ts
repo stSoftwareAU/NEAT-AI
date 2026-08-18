@@ -35,7 +35,11 @@ import {
 import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { Neat } from "@neat/Neat.ts";
-import { isTrainingErrorRegression } from "@neat/TrainingErrorComparison.ts";
+import {
+  isTrainingErrorMaterialImprovement,
+  isTrainingErrorRegression,
+} from "@neat/TrainingErrorComparison.ts";
+import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
 
 /**
@@ -98,6 +102,60 @@ function recordTrainingTaskFailure(
       },
     },
   });
+}
+
+/**
+ * Count a skipped training dispatch, report it as a `training_skipped` event,
+ * and log it (Issue #3779).
+ *
+ * The event fires unconditionally so a run-end summary can see skips without
+ * `verbose`; the per-skip log line stays `verbose`-only for the per-creature
+ * guard, which can fire once per creature per generation. `loud` promotes the
+ * line to an unconditional warning — used by the population-wide gate, which
+ * suppresses training for the entire population and must not be silent.
+ */
+function recordTrainingSkip(
+  neat: Neat,
+  uuid: string,
+  details: {
+    reason: "creature_regressions" | "population_no_progress";
+    threshold: number;
+    consecutiveNoProgress: number;
+    loud: boolean;
+  },
+): void {
+  neat.trainingRegressionTracker.recordSkip();
+
+  emitTrainingEvent(neat.config.onTrainingEvent, {
+    kind: "training_skipped",
+    timestamp: new Date().toISOString(),
+    uuid,
+    reason: details.reason,
+    threshold: details.threshold,
+    consecutiveNoProgress: details.consecutiveNoProgress,
+    totalSkipped: neat.trainingRegressionTracker.totalSkipped,
+  });
+
+  const shortID = blue(uuid.substring(Math.max(0, uuid.length - 8)));
+  if (details.reason === "population_no_progress") {
+    const message =
+      `Training ${shortID} skipped: population made no progress ` +
+      `for ${details.consecutiveNoProgress} consecutive training outcomes ` +
+      `(threshold ${details.threshold}); training suppressed until an ` +
+      `improvement or the next probe. Total skipped: ${neat.trainingRegressionTracker.totalSkipped}`;
+    if (details.loud) {
+      getLogger().warn(message);
+    } else if (neat.config.verbose) {
+      getLogger().info(message);
+    }
+    return;
+  }
+
+  if (neat.config.verbose) {
+    getLogger().info(
+      `Training ${shortID} skipped: ${details.threshold} consecutive regressions`,
+    );
+  }
 }
 
 /**
@@ -377,20 +435,39 @@ export function scheduleTraining(
   // Issue #2382: bypass training for creatures whose last N attempts all
   // produced a higher error and no usable fine-tune variant. The heavy
   // worker cost of another rollback is wasted on these creatures.
+  const tracker = neat.trainingRegressionTracker;
   if (
-    neat.trainingRegressionTracker.shouldSkip(
+    tracker.shouldSkip(
       uuid,
       neat.config.skipTrainingAfterConsecutiveRegressions,
     )
   ) {
-    neat.trainingRegressionTracker.recordSkip();
-    if (neat.config.verbose) {
-      getLogger().info(
-        `Training ${
-          blue(uuid.substring(Math.max(0, uuid.length - 8)))
-        } skipped: ${neat.config.skipTrainingAfterConsecutiveRegressions} consecutive regressions`,
-      );
-    }
+    recordTrainingSkip(neat, uuid, {
+      reason: "creature_regressions",
+      threshold: neat.config.skipTrainingAfterConsecutiveRegressions,
+      consecutiveNoProgress:
+        tracker.entries.get(uuid)?.consecutiveRegressions ?? 0,
+      loud: false,
+    });
+    return;
+  }
+
+  // Issue #3779: a per-creature streak almost never trips, because a creature
+  // is trained at most once per run (#3553). Gate on the population-wide
+  // no-progress streak as well so a doomed population stops dispatching.
+  if (
+    tracker.shouldSkipPopulation(
+      neat.config.skipTrainingAfterPopulationNoProgress,
+    )
+  ) {
+    recordTrainingSkip(neat, uuid, {
+      reason: "population_no_progress",
+      threshold: neat.config.skipTrainingAfterPopulationNoProgress,
+      consecutiveNoProgress: tracker.populationConsecutiveNoProgress,
+      // Loud once per probe window: the population-wide gate suppresses
+      // training for every creature, so it must never be silent (#3779).
+      loud: tracker.skipsSincePopulationProbe === 0,
+    });
     return;
   }
 
@@ -552,9 +629,16 @@ export function scheduleTraining(
       );
       // Issue #2382: rollback with no fine-tune — count as a regression.
       neat.trainingRegressionTracker.recordRegression(uuid);
-    } else {
+    } else if (
+      isTrainingErrorMaterialImprovement(r.train.error, parseFloat(errorTx))
+    ) {
       // Training lowered the error and no fine-tune was needed.
       neat.trainingRegressionTracker.recordImprovement(uuid);
+    } else {
+      // Issue #3779: the error moved by less than the noise floor (the `🫥`
+      // outcome). A wasted heavy slot is not an improvement, so it must not
+      // clear the no-progress streaks.
+      neat.trainingRegressionTracker.recordNoChange(uuid);
     }
 
     // Issue #3435: guarded push — discarded (with no map mutation) when the run

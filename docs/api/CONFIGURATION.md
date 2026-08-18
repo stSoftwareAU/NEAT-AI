@@ -76,6 +76,24 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 | `maximumWeightAdjustmentScale` | `number` | `1`                                    | Max weight change per backpropagation step |
 | `sparseRatio`                  | `number` | `random * random`                      | Neuron selection ratio for sparse updates  |
 
+#### 🛑 No-progress training guards
+
+Training is heavy; these guards stop the run spending worker slots on cycles
+that buy nothing. A training result inside the evaluate noise floor counts as
+**no progress**, not as an improvement (Issue #3779).
+
+| Field                                     | Type     | Default | Description                                                                                                 |
+| ----------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| `skipTrainingAfterConsecutiveRegressions` | `number` | `2`     | Skip a **creature** after N consecutive regressions of its own (0 = off, Issue #2382)                       |
+| `skipTrainingAfterPopulationNoProgress`   | `number` | `0`     | Skip **all** training after N consecutive no-progress outcomes across the whole population (0 = off, #3779) |
+
+Creatures are trained at most once per run (Issue #3553), so the per-creature
+guard rarely trips; `skipTrainingAfterPopulationNoProgress` is the one that
+stops a population-wide dead end. Any material improvement anywhere clears the
+streak, and while the gate is closed one dispatch is still let through every 20
+skips so a recovered population can reopen it. Every skip is reported as a
+`training_skipped` event and counted in the result's `trainingOutcomes`.
+
 ### 🔒 Network constraints
 
 | Field          | Type      | Default       | Description                           |
@@ -292,12 +310,18 @@ import type {
   SpeciesAdjustedEvent,
   TrainingEvent,
   TrainingEventCallback,
+  TrainingSkippedEvent,
 } from "@stsoftware/neat-ai";
 ```
 
 Issue #1615: register an `onTrainingEvent: TrainingEventCallback` callback in
 `NeatOptions` to receive typed events for generation completion, plateau
 detection, discovery outcomes, memory pressure, and species adjustments.
+
+Issue #3779: `training_skipped` fires whenever a training dispatch is declined
+by a no-progress guard — the per-skip log line is `verbose`-only, so this event
+(and the `trainingOutcomes` totals on the `evolve*` result) is how a run-end
+summary sees suppressed dispatches at any log level.
 
 ---
 

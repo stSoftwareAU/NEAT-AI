@@ -9,7 +9,10 @@
  *   launching training
  */
 import { assert, assertEquals, assertFalse } from "@std/assert";
-import { TrainingRegressionTracker } from "@neat/TrainingRegressionTracker.ts";
+import {
+  POPULATION_PROBE_INTERVAL,
+  TrainingRegressionTracker,
+} from "@neat/TrainingRegressionTracker.ts";
 
 Deno.test("TrainingRegressionTracker - happy path: improvement keeps streak at zero", () => {
   const tracker = new TrainingRegressionTracker();
@@ -92,4 +95,93 @@ Deno.test("TrainingRegressionTracker - reset clears history and counters", () =>
 Deno.test("TrainingRegressionTracker - shouldSkip returns false for unknown uuid", () => {
   const tracker = new TrainingRegressionTracker();
   assertFalse(tracker.shouldSkip("never-seen", 1));
+});
+
+// ---------------------------------------------------------------------------
+// Issue #3779: population-wide (run-level) no-progress streak.
+//
+// Creatures are trained at most once per run (#3553), so a per-UUID streak
+// almost never reaches the threshold. The run-level streak counts consecutive
+// no-progress outcomes across *every* creature, so a doomed population stops
+// dispatching further training.
+// ---------------------------------------------------------------------------
+
+Deno.test("TrainingRegressionTracker - population streak counts regressions across creatures", () => {
+  const tracker = new TrainingRegressionTracker();
+  tracker.recordRegression("a");
+  tracker.recordRegression("b");
+  tracker.recordRegression("c");
+
+  assertEquals(tracker.populationConsecutiveNoProgress, 3);
+  assert(tracker.shouldSkipPopulation(3));
+  assertFalse(tracker.shouldSkipPopulation(4));
+});
+
+Deno.test("TrainingRegressionTracker - population streak counts no-change outcomes", () => {
+  const tracker = new TrainingRegressionTracker();
+  tracker.recordNoChange("a");
+  tracker.recordNoChange("b");
+
+  assertEquals(tracker.totalNoChange, 2);
+  assertEquals(tracker.populationConsecutiveNoProgress, 2);
+  assert(tracker.shouldSkipPopulation(2));
+});
+
+Deno.test("TrainingRegressionTracker - no-change neither resets nor grows the per-creature streak", () => {
+  const tracker = new TrainingRegressionTracker();
+  tracker.recordRegression("a");
+  tracker.recordNoChange("a");
+
+  assertEquals(tracker.entries.get("a")?.consecutiveRegressions, 1);
+  assertFalse(tracker.shouldSkip("a", 2));
+});
+
+Deno.test("TrainingRegressionTracker - an improvement clears the population streak", () => {
+  const tracker = new TrainingRegressionTracker();
+  tracker.recordRegression("a");
+  tracker.recordNoChange("b");
+  assertEquals(tracker.populationConsecutiveNoProgress, 2);
+
+  tracker.recordImprovement("c");
+  assertEquals(tracker.populationConsecutiveNoProgress, 0);
+  assertFalse(tracker.shouldSkipPopulation(2));
+});
+
+Deno.test("TrainingRegressionTracker - population threshold of 0 disables the gate", () => {
+  const tracker = new TrainingRegressionTracker();
+  for (let i = 0; i < 10; i++) tracker.recordRegression(`c${i}`);
+
+  assertFalse(tracker.shouldSkipPopulation(0));
+});
+
+Deno.test("TrainingRegressionTracker - gated population lets a probe through periodically", () => {
+  const tracker = new TrainingRegressionTracker();
+  tracker.recordRegression("a");
+  tracker.recordRegression("b");
+  assert(tracker.shouldSkipPopulation(2), "gate must trip at the threshold");
+
+  let skipped = 0;
+  while (tracker.shouldSkipPopulation(2)) {
+    tracker.recordSkip();
+    skipped++;
+    assert(skipped < 1000, "the gate must eventually let a probe through");
+  }
+
+  assertEquals(skipped, POPULATION_PROBE_INTERVAL);
+  // The probe dispatch records an outcome, which re-arms the gate.
+  tracker.recordRegression("probe");
+  assert(tracker.shouldSkipPopulation(2));
+});
+
+Deno.test("TrainingRegressionTracker - reset clears the population streak and totals", () => {
+  const tracker = new TrainingRegressionTracker();
+  tracker.recordRegression("a");
+  tracker.recordNoChange("b");
+  tracker.recordSkip();
+
+  tracker.reset();
+
+  assertEquals(tracker.populationConsecutiveNoProgress, 0);
+  assertEquals(tracker.totalNoChange, 0);
+  assertFalse(tracker.shouldSkipPopulation(1));
 });

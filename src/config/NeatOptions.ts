@@ -85,7 +85,8 @@ type NumericOptionKeys =
   | "maxDedupRetries"
   | "heavyTaskWorkerCount"
   | "maxConcurrentDiscoveries"
-  | "skipTrainingAfterConsecutiveRegressions";
+  | "skipTrainingAfterConsecutiveRegressions"
+  | "skipTrainingAfterPopulationNoProgress";
 
 /**
  * Options for NEAT configuration.

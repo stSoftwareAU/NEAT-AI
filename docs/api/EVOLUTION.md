@@ -41,6 +41,7 @@ async evolveDir(
   generation: number;
   phaseTimingTotals: PhaseTimingTotals;
   scorerUtilisation: ScorerUtilisationTotals;
+  trainingOutcomes: TrainingOutcomeTotals;
   // Issue #3422 — run-level tuning statistics:
   populationSize: number;
   finalPopulationSize?: number; // only when adaptive sizing is enabled
@@ -65,6 +66,9 @@ async evolveDir(
   (`PhaseTimingTotals`, Issue #3210); see [Run telemetry](#run-telemetry)
 - `scorerUtilisation` — Whole-run scorer-utilisation totals split by backend
   (`ScorerUtilisationTotals`, Issue #3234); see [Run telemetry](#run-telemetry)
+- `trainingOutcomes` — Whole-run training-outcome totals, including skipped
+  dispatches (`TrainingOutcomeTotals`, Issue #3779); see
+  [Run telemetry](#run-telemetry)
 - `populationSize` — Configured population size, always recorded explicitly
   (Issue #3422); see [Tuning statistics](#tuning-statistics-issue-3422)
 - `finalPopulationSize` — Final effective population size, present **only** when
@@ -139,13 +143,14 @@ async evolveRL<S, A>(
   generation: number;
   phaseTimingTotals: PhaseTimingTotals;
   scorerUtilisation: ScorerUtilisationTotals;
+  trainingOutcomes: TrainingOutcomeTotals;
   milestones?: EvolveRLMilestone[];
 }>
 ```
 
-`phaseTimingTotals` and `scorerUtilisation` carry the same whole-run telemetry
-as `evolveDir()` — see [Run telemetry](#run-telemetry). `milestones` is present
-only when `options.statistics === true`.
+`phaseTimingTotals`, `scorerUtilisation` and `trainingOutcomes` carry the same
+whole-run telemetry as `evolveDir()` — see [Run telemetry](#run-telemetry).
+`milestones` is present only when `options.statistics === true`.
 
 `EvolveRLOptions` extends `NeatOptions` with:
 
@@ -161,7 +166,7 @@ only when `options.statistics === true`.
 
 ### Run telemetry
 
-Both `evolveDir()` and `evolveRL()` return two whole-run telemetry objects
+Both `evolveDir()` and `evolveRL()` return three whole-run telemetry objects
 alongside the scalar result. `PhaseTimingTotals` is a public export documented
 as "returned by the `evolve*` fns"; the signatures below are mirrored from
 `src/creature/PhaseTimingTotals.ts` and
@@ -194,6 +199,19 @@ interface ScorerUtilisationTotals {
   readonly creaturesBatchScored: number;
   readonly creaturesPerCreatureScored: number;
   readonly batchFallbackGenerations: number;
+}
+
+// trainingOutcomes — what the run's memetic training actually bought
+// (Issue #3779). The per-skip log line is verbose-only, so these totals are
+// how a non-verbose run-end summary sees suppressed dispatches. `noChange`
+// counts training that finished inside the evaluate noise floor — neither a
+// regression nor a material improvement.
+interface TrainingOutcomeTotals {
+  readonly improvements: number;
+  readonly regressions: number;
+  readonly noChange: number;
+  readonly skipped: number;
+  readonly regressionRate: number; // regressions ÷ all recorded outcomes
 }
 ```
 

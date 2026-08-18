@@ -382,6 +382,10 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
     note: "Gap found by this roll-up. The downstream consumer's four " +
       "`EvolveApp.ts` entry points set it.",
   }),
+  keep("skipTrainingAfterPopulationNoProgress", "roll-up", {
+    note: "Added after the slices by #3779 — the population-wide no-progress " +
+      "training gate `NeatScheduling.scheduleTraining` reads.",
+  }),
 ];
 
 /** The merged classification table — every option key, one entry each. */
