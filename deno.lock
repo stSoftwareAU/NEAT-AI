@@ -18,6 +18,7 @@
     "jsr:@std/uuid@1.1.1": "1.1.1",
     "jsr:@std/yaml@1.2.0": "1.2.0",
     "jsr:@stsoftware/tags@1.0.14": "1.0.14",
+    "npm:@playwright/mcp@0.0.75": "0.0.75",
     "npm:@resvg/resvg-js@2.6.2": "2.6.2",
     "npm:cspell@*": "10.0.1",
     "npm:cspell@latest": "10.0.1"
@@ -386,6 +387,14 @@
     "@cspell/url@10.0.1": {
       "integrity": "sha512-abYYgI29wJhWIfWTYrYuzRYDcHQUQ1N5ylnhxYn1NJnIQMqUWGLbDmt12JABtZ+R6h6UNatQrS7rhP86etvJyQ=="
     },
+    "@playwright/mcp@0.0.75": {
+      "integrity": "sha512-oBjzVXfEGZ9Ev45tKKQULNDVdF83B82lg0uPejEK3xsp/zWmdNdNVnPi032fmd/o20ZZXs+LX7cr77qRNbV4VA==",
+      "dependencies": [
+        "playwright",
+        "playwright-core"
+      ],
+      "bin": true
+    },
     "@resvg/resvg-js-android-arm-eabi@2.6.2": {
       "integrity": "sha512-FrJibrAk6v29eabIPgcTUMPXiEz8ssrAk7TXxsiZzww9UTQ1Z5KAbFJs+Z0Ez+VZTYgnE5IQJqBcoSiMebtPHA==",
       "os": ["android"],
@@ -627,6 +636,11 @@
     "flatted@3.4.2": {
       "integrity": "sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA=="
     },
+    "fsevents@2.3.2": {
+      "integrity": "sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==",
+      "os": ["darwin"],
+      "scripts": true
+    },
     "gensequence@8.0.8": {
       "integrity": "sha512-omMVniXEXpdx/vKxGnPRoO2394Otlze28TyxECbFVyoSpZ9H3EO7lemjcB12OpQJzRW4e5tt/dL1rOxry6aMHg=="
     },
@@ -650,6 +664,20 @@
     },
     "picomatch@4.0.4": {
       "integrity": "sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A=="
+    },
+    "playwright-core@1.61.0-alpha-1778188671000": {
+      "integrity": "sha512-nsw2Crz0uZS3IRHiEcOXUt+RaKB/Hna+GAD4oD6cPqCHfJfW77cJdgktC0jzp3Ndyv23EJI3bcWSqFIiqSNE5A==",
+      "bin": true
+    },
+    "playwright@1.61.0-alpha-1778188671000": {
+      "integrity": "sha512-A6fFc7ExLRmvm0ZHqCyY2uHXSvEdpb8W+/HyIPK4ecRqNil8Mc1Vig1WFYoqk82x3+U9Qb571fQE95wgKqIQ1g==",
+      "dependencies": [
+        "playwright-core"
+      ],
+      "optionalDependencies": [
+        "fsevents"
+      ],
+      "bin": true
     },
     "resolve-from@5.0.0": {
       "integrity": "sha512-qYg9KP24dD5qka9J47d0aVky0N+b4fTU89LN9iDnjB5waksiC49rvMB0PrUJQGoTmH50XPiqOvAjDfaijGxYZw=="

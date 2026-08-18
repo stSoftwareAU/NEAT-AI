@@ -57,6 +57,16 @@ weight mutation alone.
   `max(1, round(populationSize × 0.2))`.
 - **Custom or unrecognised costs** keep the conservative default of `1`, so
   evolution-only tasks are unchanged.
+- **A `customCost` function** also keeps the default of `1`, whatever `costName`
+  says (Issue #3776). `costName` retains its `MSE` default even when a
+  `customCost` replaces the built-in cost, so it is not evidence that the task
+  is supervised — set `trainPerGen` explicitly if your custom objective does
+  benefit from gradient steps.
+
+Each scheduled task runs **two epochs** so the training loop can revert an epoch
+that made the creature worse (Issue #3776) — a single epoch has nothing to
+compare against. The per-task wall-clock budget (`trainingTaskTimeoutMinutes`)
+still bounds the total work.
 
 **Choosing a value for supervised tasks**
 
