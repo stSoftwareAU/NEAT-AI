@@ -41,13 +41,14 @@ function measure(
   text: string,
   fontSize: number,
   fontWeight: number,
+  fontFamily = FONT_STACK,
 ): TextExtent {
-  const key = `${fontWeight}/${fontSize}/${text}`;
+  const key = `${fontFamily}/${fontWeight}/${fontSize}/${text}`;
   const cached = measurements.get(key);
   if (cached) return cached;
 
   const probe = `<svg xmlns="http://www.w3.org/2000/svg" width="6000" ` +
-    `height="1200"><text x="0" y="900" font-family="${FONT_STACK}" ` +
+    `height="1200"><text x="0" y="900" font-family="${fontFamily}" ` +
     `font-size="${fontSize}" font-weight="${fontWeight}" fill="#000">` +
     `${xmlEscape(text)}</text></svg>`;
   const box = new Resvg(probe, RESVG_OPTIONS).getBBox();
