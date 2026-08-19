@@ -190,6 +190,50 @@ Regression costs (`MSE`, `MAE`, `MAPE`, `MSLE`) and unknown / custom costs leave
 the historical random-per-output behaviour unchanged. An explicit
 `outputLayer.squash` always wins over the cost-aware default.
 
+#### 🔒 Pinning the output squash (Issue #3797)
+
+Seeding an output squash does not keep it there — `MOD_SQUASH` may rewrite an
+output neuron to any squash in the mutation pool. When the training target is
+bounded (e.g. -1..1 pairs naturally with `TANH`), evolving the output activation
+only creates false paths. `squashBudget.fixedOutputSquash` pins it:
+
+```typescript
+await creature.evolveDataSet(dataSet, {
+  squashBudget: { fixedOutputSquash: "TANH" },
+});
+```
+
+With a pin configured:
+
+- **Output neurons are born on the pin** — it wins over both `costName` and an
+  explicit `outputLayer.squash`.
+- **Every mutation path skips them** — `MOD_SQUASH` reports no mutation for an
+  output neuron, and any other rewrite (discovery, intelligent design, repair)
+  resolves back to the pin.
+- **Imported seeds are normalised, loudly** — a creature whose output neurons
+  carry a different squash is normalised at load with a single `🔒 [loadFrom]`
+  warning rather than silently diverging (Issue #3234). An alias of the pinned
+  squash (e.g. `RELU` for `ReLU`) is not a conflict.
+- **Hidden neurons are unaffected** — they keep evolving over the full pool (or
+  over `squashBudget.allowedSquashes` when a budget is also set).
+- **Unknown names fail loud** at configuration time.
+
+Leaving `fixedOutputSquash` unset (the default) keeps today's behaviour exactly.
+
+```mermaid
+flowchart TD
+    Cfg["squashBudget.fixedOutputSquash: TANH"] --> Pin[Activations pin]
+    Pin --> Ctor["new Neuron(type=output)"]
+    Pin --> Set["Neuron.setSquash()"]
+    Pin --> Mod["MOD_SQUASH mutation"]
+    Pin --> Load["loadFrom() import"]
+    Ctor --> Out["Output neuron squash = TANH"]
+    Set --> Out
+    Mod -->|skipped| Out
+    Load -->|normalised + warn| Out
+    Hidden["Hidden neurons"] -->|unchanged| Free[Free / allow-listed mix]
+```
+
 All three deprecated squashes still load and activate correctly so legacy models
 keep working — they are just excluded from the mutation pool. New training runs
 will never select them. See [`src/deprecated/`](../src/deprecated/) for the

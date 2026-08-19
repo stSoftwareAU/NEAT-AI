@@ -29,9 +29,10 @@ setMaxCachedWasmCreatureActivations(16);
 setWasmCompilationCacheSize(8);
 
 // Known baseline for globals mutated during tests (RNG, neuron id counter,
-// Issue #3263 squash budget).
+// Issue #3263 squash budget, Issue #3797 output-squash pin).
 resetGlobalRandomNumberGeneratorForTesting();
 resetHiddenNeuronIdCounterForTesting();
 Activations.resetAllowedSquashesForTesting();
+Activations.resetFixedOutputSquashForTesting();
 
 installInFlightDenoTestHook();

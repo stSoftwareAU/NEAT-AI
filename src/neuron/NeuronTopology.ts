@@ -180,6 +180,14 @@ export function mutate(neuron: Neuron, method: string): boolean {
             "INVALID_NEURON_TYPE",
           );
       }
+      // Issue #3797: a pinned output neuron keeps its squash — report no
+      // mutation rather than burning a draw that would be overridden.
+      if (
+        neuron.type === "output" && Activations.getFixedOutputSquash() !== null
+      ) {
+        return false;
+      }
+
       const tmpSquash = Activations.pickRandomSquash(neuron.squash);
 
       neuron.setSquash(tmpSquash);

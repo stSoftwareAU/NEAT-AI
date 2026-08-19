@@ -894,6 +894,10 @@ export interface NeatArguments {
    * introduce squashes from the allow-list, keeping populations cheap to score
    * and easier to keep GPU-hostable. Default is an empty allow-list (the free
    * 34-type mix), so existing runs are unaffected.
+   *
+   * When `fixedOutputSquash` is set (Issue #3797), every output neuron is
+   * pinned to that activation — mutation skips them and imported seeds are
+   * normalised to it. Default is an empty string (no pin).
    */
   squashBudget: RequiredSquashBudgetConfig;
 

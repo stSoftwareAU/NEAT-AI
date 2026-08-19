@@ -142,11 +142,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
           );
         }
       } else {
-        if (squash) {
-          this.squash = squash;
-        } else {
-          this.squash = Activations.pickRandomSquash();
-        }
+        // Issue #3797: an output-squash pin wins over both the requested
+        // squash and the random draw, so an output neuron can never be born
+        // carrying anything else.
+        const pinned = type === "output"
+          ? Activations.getFixedOutputSquash()
+          : null;
+        this.squash = pinned ?? squash ?? Activations.pickRandomSquash();
       }
     } else {
       this.bias = Infinity;
@@ -192,6 +194,13 @@ export class Neuron implements TagsInterface, NeuronInternal {
   }
 
   setSquash(name?: string): void {
+    // Issue #3797: every squash rewrite (mutation, discovery, repair, fine
+    // tune) lands here, so this is the chokepoint that holds an output
+    // neuron on its pinned squash. Hidden neurons are unaffected.
+    if (this.type === "output") {
+      const pinned = Activations.getFixedOutputSquash();
+      if (pinned !== null) name = pinned;
+    }
     if (name !== this.squash) {
       delete this.squashMethodCache;
       delete this.complexityPenaltyCache;

@@ -15,8 +15,14 @@ import { ActivationError } from "@errors/ActivationError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 
 Deno.test("parseSquashBudget: defaults to an empty allow-list (free mix)", () => {
-  assertEquals(parseSquashBudget(undefined), { allowedSquashes: [] });
-  assertEquals(parseSquashBudget({}), { allowedSquashes: [] });
+  assertEquals(parseSquashBudget(undefined), {
+    allowedSquashes: [],
+    fixedOutputSquash: "",
+  });
+  assertEquals(parseSquashBudget({}), {
+    allowedSquashes: [],
+    fixedOutputSquash: "",
+  });
 });
 
 Deno.test("parseSquashBudget: passes through and de-duplicates names", () => {
@@ -24,6 +30,23 @@ Deno.test("parseSquashBudget: passes through and de-duplicates names", () => {
     allowedSquashes: ["TANH", "ReLU", "TANH", " TANH "],
   });
   assertEquals(parsed.allowedSquashes, ["TANH", "ReLU"]);
+});
+
+Deno.test("parseSquashBudget: trims fixedOutputSquash, blank means no pin", () => {
+  assertEquals(
+    parseSquashBudget({ fixedOutputSquash: " TANH " }).fixedOutputSquash,
+    "TANH",
+  );
+  // Blank is the documented "no pin" default, so a parsed config can be fed
+  // back through createNeatConfig unchanged.
+  assertEquals(
+    parseSquashBudget({ fixedOutputSquash: "  " }).fixedOutputSquash,
+    "",
+  );
+  assertThrows(
+    () => parseSquashBudget({ fixedOutputSquash: 7 }),
+    ValidationError,
+  );
 });
 
 Deno.test("parseSquashBudget: rejects a non-array allowedSquashes", () => {
@@ -85,5 +108,42 @@ Deno.test("createNeatConfig: unknown squash name fails loud", () => {
     );
   } finally {
     Activations.resetAllowedSquashesForTesting();
+  }
+});
+
+Deno.test("createNeatConfig: fixedOutputSquash pins the output squash", () => {
+  try {
+    const config = createNeatConfig({
+      squashBudget: { fixedOutputSquash: "TANH" },
+    });
+    assertEquals(config.squashBudget.fixedOutputSquash, "TANH");
+    assertEquals(Activations.getFixedOutputSquash(), "TANH");
+  } finally {
+    Activations.resetFixedOutputSquashForTesting();
+  }
+});
+
+Deno.test("createNeatConfig: default config leaves the output squash unpinned", () => {
+  try {
+    const config = createNeatConfig({});
+    assertEquals(config.squashBudget.fixedOutputSquash, "");
+    assertEquals(Activations.getFixedOutputSquash(), null);
+  } finally {
+    Activations.resetFixedOutputSquashForTesting();
+  }
+});
+
+Deno.test("createNeatConfig: unknown fixedOutputSquash fails loud", () => {
+  try {
+    assertThrows(
+      () =>
+        createNeatConfig({
+          squashBudget: { fixedOutputSquash: "NOPE_NOT_REAL" },
+        }),
+      ActivationError,
+    );
+    assertEquals(Activations.getFixedOutputSquash(), null);
+  } finally {
+    Activations.resetFixedOutputSquashForTesting();
   }
 });

@@ -31,6 +31,14 @@ export class ModActivation extends AbstractMutationOperator {
       return false;
     }
 
+    // Issue #3797: an output-squash pin makes output neurons ineligible, so
+    // no tracker sample or creature-state invalidation is spent on them.
+    if (
+      neuron.type === "output" && Activations.getFixedOutputSquash() !== null
+    ) {
+      return false;
+    }
+
     const previousSquash: string | undefined = neuron.squash;
 
     // Compute role and consult the tracker for a fitness-biased pick.
