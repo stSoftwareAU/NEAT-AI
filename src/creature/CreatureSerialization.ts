@@ -24,6 +24,7 @@ import {
 } from "@architecture/NeuronId.ts";
 import type { NeuronTrace } from "@architecture/NeuronInterfaces.ts";
 import { Synapse } from "@architecture/Synapse.ts";
+import { Activations } from "@methods/activations/Activations.ts";
 import type {
   SynapseExport,
   SynapseInternal,
@@ -628,6 +629,11 @@ export function loadFrom(
   let clampedWeightCount = 0;
   let maxObservedBias = 0;
   let maxObservedWeight = 0;
+  // Issue #3797: when an output-squash pin is configured, a seed whose output
+  // neurons carry a different squash is normalised to the pin. Count the
+  // conflicts so the load warns once instead of diverging silently (#3234).
+  const pinnedOutputSquash = Activations.getFixedOutputSquash();
+  let pinnedOutputSquashConflicts = 0;
 
   for (let i = 0; i < neurons.length; i++) {
     const jn = neurons[i];
@@ -682,6 +688,17 @@ export function loadFrom(
         }
         jnForLoad = { ...jn, bias: biasDetail.value };
       }
+    }
+
+    // Issue #3797: normalise a pinned output squash at import. Aliases of the
+    // pinned squash are not a conflict — they canonicalise to the same
+    // activation. The Neuron constructor applies the pin; this branch exists
+    // so the divergence is counted and reported.
+    if (
+      pinnedOutputSquash !== null && jn.type === "output" &&
+      !Activations.matchesFixedOutputSquash(jn.squash)
+    ) {
+      pinnedOutputSquashConflicts++;
     }
 
     const n = Neuron.fromJSON(jnForLoad, creature);
@@ -935,6 +952,15 @@ export function loadFrom(
         `±${MAX_SAFE_WEIGHT_BIAS} on creature ${uuidLabel} (source=${sourceTag}): ` +
         `${clampedWeightCount} weight(s) (max |w|=${maxObservedWeight}), ` +
         `${clampedBiasCount} bias(es) (max |b|=${maxObservedBias}).`,
+    );
+  }
+
+  if (pinnedOutputSquashConflicts > 0) {
+    const uuidLabel = creature.uuid ?? `hash:${getStructuralHash()}`;
+    getLogger().warn(
+      `🔒 [loadFrom] Normalised ${pinnedOutputSquashConflicts} output neuron ` +
+        `squash(es) to the pinned '${pinnedOutputSquash}' on creature ` +
+        `${uuidLabel} (source=${sourceTag}) — Issue #3797.`,
     );
   }
 

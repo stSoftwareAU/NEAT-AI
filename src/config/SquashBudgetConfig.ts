@@ -34,6 +34,25 @@ export interface SquashBudgetConfig {
   allowedSquashes?: string[];
 
   /**
+   * Issue #3797: pin every **output** neuron to this squash (activation).
+   * The name may be canonical (e.g. `"TANH"`) or an alias (e.g. `"RELU"`).
+   *
+   * When set, output neurons keep this squash through every mutation path —
+   * `MOD_SQUASH` skips them and any other rewrite resolves back to the pin —
+   * and an imported seed whose output neurons disagree is normalised to it
+   * with a warning rather than silently diverging (Issue #3234). Hidden
+   * neurons are unaffected.
+   *
+   * Use it when the training target is bounded (e.g. -1..1 pairs naturally
+   * with `TANH`) and evolving the output activation only creates false paths.
+   *
+   * An empty string (the default) means **no pin** — today's behaviour, where
+   * output squashes evolve like hidden ones. Unknown names fail loud at
+   * configuration time.
+   */
+  fixedOutputSquash?: string;
+
+  /**
    * Opt-in **soft** bias (Issue #3796): squash name → relative selection
    * weight. `Activations.pickRandomSquash` then samples proportionally to
    * these weights instead of the built-in mutation-probability mix.
@@ -65,10 +84,12 @@ export interface SquashBudgetConfig {
 export type RequiredSquashBudgetConfig = Required<SquashBudgetConfig>;
 
 /**
- * Default values for the squash budget: an empty allow-list and no weights,
- * i.e. the free mix. The feature is opt-in and off by default.
+ * Default values for the squash budget: an empty allow-list, no weights, and
+ * no output-squash pin, i.e. the free mix. The feature is opt-in and off by
+ * default.
  */
 export const DEFAULT_SQUASH_BUDGET_CONFIG: RequiredSquashBudgetConfig = {
   allowedSquashes: [],
   squashWeights: {},
+  fixedOutputSquash: "",
 };

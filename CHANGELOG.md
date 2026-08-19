@@ -25,6 +25,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3797:** New `squashBudget.fixedOutputSquash` option — pins every
+  output neuron to one activation (e.g. `"TANH"` for a -1..1 bounded target).
+  Output neurons are seeded with the pin, `MOD_SQUASH` and every other squash
+  rewrite skip them, and an imported seed carrying a different output squash is
+  normalised with a single `🔒 [loadFrom]` warning instead of silently
+  diverging. Hidden neurons are unaffected, unknown names fail loud at
+  configuration time, and leaving it unset keeps today's behaviour exactly.
+
 - **Issue #3796:** New `squashBudget.squashWeights` option — a **soft** bias on
   squash selection (`{"IF": 10, "MINIMUM": 10, "MAXIMUM": 10, "*": 1}`).
   `Activations.pickRandomSquash` samples proportionally to the weights, `"*"`

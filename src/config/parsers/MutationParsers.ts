@@ -287,6 +287,10 @@ export function parseSquashBudget(
   return {
     allowedSquashes: parseAllowedSquashes(overrides?.allowedSquashes),
     squashWeights: parseSquashWeights(overrides?.squashWeights),
+    fixedOutputSquash: parseFixedOutputSquash(
+      overrides?.fixedOutputSquash,
+      DEFAULT_SQUASH_BUDGET_CONFIG.fixedOutputSquash,
+    ),
   };
 }
 
@@ -318,6 +322,28 @@ function parseAllowedSquashes(raw: unknown): string[] {
   }
 
   return allowedSquashes;
+}
+
+/**
+ * Validate the structural shape of the output-squash pin (Issue #3797): a
+ * string naming an activation, where blank (the default) means "no pin" so a
+ * parsed config can be fed back through `createNeatConfig` unchanged.
+ * Activation-name resolution — rejecting unknown squashes — happens when the
+ * pin is applied via `Activations.setFixedOutputSquash`, keeping this parser
+ * decoupled from the activation registry.
+ */
+function parseFixedOutputSquash(
+  raw: unknown,
+  fallback: string,
+): string {
+  if (raw === undefined || raw === null) return fallback;
+  if (typeof raw !== "string") {
+    throw new ValidationError(
+      "Squash budget fixedOutputSquash must be an activation name string",
+      "OTHER",
+    );
+  }
+  return raw.trim();
 }
 
 /**

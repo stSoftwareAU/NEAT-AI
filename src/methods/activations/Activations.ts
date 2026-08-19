@@ -105,6 +105,15 @@ export class Activations {
   private static restrictedPool: string[] = [];
 
   /**
+   * Issue #3797: optional output-neuron squash pin. When set to a canonical
+   * name, every **output** neuron keeps that squash: mutation skips them and
+   * any other squash rewrite resolves back to the pin. `null` (the default)
+   * keeps today's behaviour — output squashes evolve like hidden ones.
+   * Hidden neurons are never affected by the pin.
+   */
+  private static fixedOutputSquash: string | null = null;
+
+  /**
    * Issue #3796: optional soft-bias weights, canonical name → relative weight,
    * plus the optional {@link SQUASH_WEIGHT_WILDCARD} entry. `null` means no
    * weighting (uniform draw from the mutation-weighted pool).
@@ -441,8 +450,7 @@ export class Activations {
    * this answers "can selection ever return this squash?" under either lever.
    */
   public static isSquashAllowed(name: string): boolean {
-    const activation = Activations.MAP.get(name);
-    const canonical = activation ? activation.getName() : name;
+    const canonical = Activations.canonicalName(name);
     if (
       Activations.allowedSquashes !== null &&
       !Activations.allowedSquashes.has(canonical)
@@ -453,6 +461,50 @@ export class Activations {
       return Activations.weightedNames.includes(canonical);
     }
     return true;
+  }
+
+  /**
+   * Issue #3797: pin the squash of every output neuron.
+   *
+   * The name is resolved through {@link find}, canonicalising aliases and
+   * throwing {@link ActivationError} for unknown names, so an invalid pin
+   * fails loud at configuration time (Issue #3234). Passing `null`,
+   * `undefined`, or a blank string clears the pin and restores today's
+   * behaviour.
+   */
+  public static setFixedOutputSquash(name: string | null | undefined): void {
+    const trimmed = name?.trim();
+    if (!trimmed) {
+      Activations.fixedOutputSquash = null;
+      return;
+    }
+    // Throws ActivationError for unknown names (fail loud, Issue #3234).
+    Activations.fixedOutputSquash = Activations.find(trimmed).getName();
+  }
+
+  /**
+   * Issue #3797: the canonical squash every output neuron is pinned to, or
+   * `null` when output squashes are free to evolve.
+   */
+  public static getFixedOutputSquash(): string | null {
+    return Activations.fixedOutputSquash;
+  }
+
+  /**
+   * Issue #3797: whether `name` (canonical or alias) already satisfies the
+   * active output-squash pin. Always `true` when no pin is set, and `false`
+   * for a missing squash while a pin is active.
+   */
+  public static matchesFixedOutputSquash(name: string | undefined): boolean {
+    if (Activations.fixedOutputSquash === null) return true;
+    if (name === undefined) return false;
+    return Activations.canonicalName(name) === Activations.fixedOutputSquash;
+  }
+
+  /** Resolve an alias to its canonical name, leaving unknown names as-is. */
+  private static canonicalName(name: string): string {
+    const activation = Activations.MAP.get(name);
+    return activation ? activation.getName() : name;
   }
 
   /**
@@ -468,6 +520,15 @@ export class Activations {
     Activations.weightedNames = [];
     Activations.weightedWeights = [];
     Activations.weightedTotal = 0;
+  }
+
+  /**
+   * Issue #3797: clear the output-squash pin. Used by the test preload so
+   * parallel workers start from a known baseline, mirroring
+   * {@link resetAllowedSquashesForTesting}.
+   */
+  public static resetFixedOutputSquashForTesting(): void {
+    Activations.fixedOutputSquash = null;
   }
 }
 

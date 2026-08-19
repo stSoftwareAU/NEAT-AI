@@ -194,6 +194,9 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     squashBudget.allowedSquashes,
     squashBudget.squashWeights,
   );
+  // Issue #3797: pin the output squash (when configured) before any creature
+  // is seeded, so output neurons are born and stay on it.
+  Activations.setFixedOutputSquash(squashBudget.fixedOutputSquash);
 
   let selection: SelectionInterface = Selection.POWER;
   if (options.selection) {
