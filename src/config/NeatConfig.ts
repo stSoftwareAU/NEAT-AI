@@ -187,7 +187,13 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
   const squashBudget = parseSquashBudget(
     opts.squashBudget as Record<string, unknown> | undefined,
   );
-  Activations.setAllowedSquashes(squashBudget.allowedSquashes);
+  // Issue #3796: the optional soft-bias weights apply within the allow-list;
+  // both levers are installed atomically so a fresh config never inherits the
+  // previous one's budget.
+  Activations.setSquashBudget(
+    squashBudget.allowedSquashes,
+    squashBudget.squashWeights,
+  );
   // Issue #3797: pin the output squash (when configured) before any creature
   // is seeded, so output neurons are born and stay on it.
   Activations.setFixedOutputSquash(squashBudget.fixedOutputSquash);

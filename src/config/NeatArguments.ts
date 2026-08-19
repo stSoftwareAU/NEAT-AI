@@ -898,6 +898,12 @@ export interface NeatArguments {
    * When `fixedOutputSquash` is set (Issue #3797), every output neuron is
    * pinned to that activation — mutation skips them and imported seeds are
    * normalised to it. Default is an empty string (no pin).
+   *
+   * Issue #3796: `squashWeights` adds a **soft** bias — squash name → relative
+   * weight, with `"*"` the default weight for unlisted squashes and `0` an
+   * exclusion — so a team can strongly prefer a few activations without hard-
+   * excluding the rest. Weights apply within `allowedSquashes` when both are
+   * set. An empty map keeps today's behaviour exactly.
    */
   squashBudget: RequiredSquashBudgetConfig;
 
