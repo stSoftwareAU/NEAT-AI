@@ -36,7 +36,7 @@ Leaving `fixedOutputSquash` unset (default `""`) keeps today's behaviour exactly
 Backend/library change with no web interface to screenshot. Evidence is the test
 suite plus the full quality gate.
 
-Enforcement chokepoints:
+Enforcement points:
 
 ```mermaid
 flowchart TD
