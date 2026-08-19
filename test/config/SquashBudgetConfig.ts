@@ -12,11 +12,18 @@ import { createNeatConfig } from "@config/NeatConfig.ts";
 import { parseSquashBudget } from "@config/parsers/MutationParsers.ts";
 import { Activations } from "@methods/activations/Activations.ts";
 import { ActivationError } from "@errors/ActivationError.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 
 Deno.test("parseSquashBudget: defaults to an empty allow-list (free mix)", () => {
-  assertEquals(parseSquashBudget(undefined), { allowedSquashes: [] });
-  assertEquals(parseSquashBudget({}), { allowedSquashes: [] });
+  assertEquals(parseSquashBudget(undefined), {
+    allowedSquashes: [],
+    squashWeights: {},
+  });
+  assertEquals(parseSquashBudget({}), {
+    allowedSquashes: [],
+    squashWeights: {},
+  });
 });
 
 Deno.test("parseSquashBudget: passes through and de-duplicates names", () => {
@@ -24,6 +31,39 @@ Deno.test("parseSquashBudget: passes through and de-duplicates names", () => {
     allowedSquashes: ["TANH", "ReLU", "TANH", " TANH "],
   });
   assertEquals(parsed.allowedSquashes, ["TANH", "ReLU"]);
+});
+
+Deno.test("parseSquashBudget: normalises the squashWeights map", () => {
+  const parsed = parseSquashBudget({
+    squashWeights: { " IF ": 10, MINIMUM: "10", "*": 1 },
+  });
+  assertEquals(parsed.squashWeights, { IF: 10, MINIMUM: 10, "*": 1 });
+});
+
+Deno.test("parseSquashBudget: rejects a non-object squashWeights", () => {
+  assertThrows(
+    () => parseSquashBudget({ squashWeights: ["TANH"] }),
+    ValidationError,
+  );
+  assertThrows(
+    () => parseSquashBudget({ squashWeights: "TANH=1" }),
+    ValidationError,
+  );
+});
+
+Deno.test("parseSquashBudget: rejects blank keys and invalid weights", () => {
+  assertThrows(
+    () => parseSquashBudget({ squashWeights: { "  ": 1 } }),
+    ValidationError,
+  );
+  assertThrows(
+    () => parseSquashBudget({ squashWeights: { TANH: -1 } }),
+    ConfigurationError,
+  );
+  assertThrows(
+    () => parseSquashBudget({ squashWeights: { TANH: "heavy" } }),
+    ConfigurationError,
+  );
 });
 
 Deno.test("parseSquashBudget: rejects a non-array allowedSquashes", () => {
@@ -69,6 +109,47 @@ Deno.test("createNeatConfig: allowedSquashes applies the global budget", () => {
     for (let i = 0; i < 100; i++) {
       assert(["TANH", "ReLU"].includes(Activations.pickRandomSquash()));
     }
+  } finally {
+    Activations.resetAllowedSquashesForTesting();
+  }
+});
+
+Deno.test("createNeatConfig: squashWeights biases selection without a hard allow-list", () => {
+  try {
+    const config = createNeatConfig({
+      squashBudget: { squashWeights: { IF: 20, MINIMUM: 20, "*": 1 } },
+    });
+    assertEquals(config.squashBudget.squashWeights, {
+      IF: 20,
+      MINIMUM: 20,
+      "*": 1,
+    });
+    // No hard allow-list, so unlisted squashes stay reachable.
+    assertEquals(Activations.getAllowedSquashes(), null);
+    assert(Activations.getSquashWeights() !== null);
+
+    const counts = new Map<string, number>();
+    for (let i = 0; i < 2000; i++) {
+      const name = Activations.pickRandomSquash();
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    const preferred = (counts.get("IF") ?? 0) + (counts.get("MINIMUM") ?? 0);
+    assert(preferred / 2000 > 0.4, "weighted squashes should dominate");
+    assert(counts.size > 4, "unlisted squashes must remain reachable");
+  } finally {
+    Activations.resetAllowedSquashesForTesting();
+  }
+});
+
+Deno.test("createNeatConfig: unknown squashWeights name fails loud", () => {
+  try {
+    assertThrows(
+      () =>
+        createNeatConfig({
+          squashBudget: { squashWeights: { NOPE_NOT_REAL: 2 } },
+        }),
+      ActivationError,
+    );
   } finally {
     Activations.resetAllowedSquashesForTesting();
   }

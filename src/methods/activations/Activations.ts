@@ -10,6 +10,7 @@
 
 import { assert } from "@std/assert";
 import { ActivationError } from "@errors/ActivationError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 // best-practice-ignore: BP-91862f495db6 — HYPOT is deprecated but must stay
 // registered so pre-v2.0.0 creatures still deserialise and can be repaired /
 // upgraded to SQRT & SQUARE (see src/upgrade/UpgradeTwo.ts). Its
@@ -76,6 +77,12 @@ export interface ActivationOptions {
  * https://stats.stackexchange.com/questions/115258/comprehensive-list-of-activation-functions-in-neural-networks-with-pros-cons
  */
 export class Activations {
+  /**
+   * Issue #3796: reserved key in a squash-weights map supplying the default
+   * weight for every squash the map does not name explicitly.
+   */
+  public static readonly SQUASH_WEIGHT_WILDCARD = "*";
+
   private static readonly MAP: Map<string, AbstractActivationInterface> =
     new Map<string, AbstractActivationInterface>();
 
@@ -96,6 +103,22 @@ export class Activations {
    * per-call filtering when a budget is active.
    */
   private static restrictedPool: string[] = [];
+
+  /**
+   * Issue #3796: optional soft-bias weights, canonical name → relative weight,
+   * plus the optional {@link SQUASH_WEIGHT_WILDCARD} entry. `null` means no
+   * weighting (uniform draw from the mutation-weighted pool).
+   */
+  private static squashWeights: Map<string, number> | null = null;
+
+  /**
+   * Issue #3796: the selectable names and their weights, derived from
+   * {@link squashWeights} and {@link allowedSquashes}. `weightedTotal` is `0`
+   * when no weighting is active, which is what `pickRandomSquash` tests.
+   */
+  private static weightedNames: string[] = [];
+  private static weightedWeights: number[] = [];
+  private static weightedTotal = 0;
 
   public static register(
     activation: AbstractActivationInterface,
@@ -135,6 +158,10 @@ export class Activations {
   }
 
   public static pickRandomSquash(exclude?: string): string {
+    // Issue #3796: a weights map wins — it already composes the allow-list.
+    if (Activations.weightedTotal > 0) {
+      return Activations.pickWeightedSquash(exclude);
+    }
     // Issue #3263: draw from the restricted pool when a squash budget is
     // active, otherwise from the full mutation-weighted pool.
     const base = Activations.allowedSquashes !== null
@@ -161,25 +188,241 @@ export class Activations {
    * where possible; if every allowed activation has a mutation weight of zero
    * (e.g. SOFTMAX), the pool falls back to a uniform draw over the allowed
    * names so it is never empty.
+   *
+   * Any active soft-bias weights (Issue #3796) are kept and re-applied within
+   * the new allow-list.
    */
   public static setAllowedSquashes(names: readonly string[] | null): void {
-    if (!names || names.length === 0) {
-      Activations.allowedSquashes = null;
-      Activations.restrictedPool = [];
-      return;
-    }
+    Activations.applyBudget(
+      Activations.canonicaliseAllowed(names),
+      Activations.squashWeights,
+    );
+  }
 
+  /**
+   * Issue #3796: apply a soft-bias weights map ("squash weights").
+   *
+   * Keys are squash names (canonical or alias) plus the optional
+   * {@link SQUASH_WEIGHT_WILDCARD} entry, values are relative weights;
+   * {@link pickRandomSquash} then samples proportionally to them. A weight of
+   * `0` excludes a squash, and the wildcard supplies the weight for every
+   * squash the map does not name — so a caller can strongly prefer a few
+   * activations without hard-excluding the rest. The wildcard only covers
+   * squashes evolution may normally introduce (`mutationProbability > 0`);
+   * naming a squash explicitly opts it in regardless.
+   *
+   * Passing `null` or an empty map clears the weighting and restores the
+   * uniform draw. Weights compose with {@link setAllowedSquashes}: the
+   * allow-list remains a hard boundary and the weights apply within it.
+   *
+   * Fails loud (Issue #3234) on an unknown name, a weight that is not a finite
+   * number `>= 0`, two aliases of the same squash carrying different weights,
+   * or a map that leaves nothing selectable. Nothing is applied when it throws.
+   */
+  public static setSquashWeights(
+    weights: Readonly<Record<string, number>> | null | undefined,
+  ): void {
+    Activations.applyBudget(
+      Activations.allowedSquashes,
+      Activations.canonicaliseWeights(weights),
+    );
+  }
+
+  /**
+   * Issue #3796: apply both squash-budget levers in one atomic step, so a
+   * fresh configuration never inherits the previous run's weights or
+   * allow-list. Validation of both arguments completes before any state
+   * changes; nothing is applied when it throws.
+   */
+  public static setSquashBudget(
+    allowedSquashes: readonly string[] | null,
+    squashWeights: Readonly<Record<string, number>> | null | undefined,
+  ): void {
+    Activations.applyBudget(
+      Activations.canonicaliseAllowed(allowedSquashes),
+      Activations.canonicaliseWeights(squashWeights),
+    );
+  }
+
+  /**
+   * Issue #3796: the active soft-bias weights (canonical names plus the
+   * optional `"*"` wildcard), or `null` when no weighting is set.
+   */
+  public static getSquashWeights(): ReadonlyMap<string, number> | null {
+    return Activations.squashWeights;
+  }
+
+  /** Resolve an allow-list to canonical names; `null` means no restriction. */
+  private static canonicaliseAllowed(
+    names: readonly string[] | null,
+  ): Set<string> | null {
+    if (!names || names.length === 0) return null;
     const canonical = new Set<string>();
     for (const name of names) {
       // Throws ActivationError for unknown names (fail loud, Issue #3234).
       canonical.add(Activations.find(name).getName());
     }
+    return canonical;
+  }
 
-    const weighted = Activations.WEIGHTED_POOL.filter((n) => canonical.has(n));
-    Activations.restrictedPool = weighted.length > 0
-      ? weighted
-      : Array.from(canonical);
-    Activations.allowedSquashes = canonical;
+  /**
+   * Issue #3796: resolve a weights map to canonical names, validating every
+   * weight. `null` (no weighting) for an absent or empty map.
+   */
+  private static canonicaliseWeights(
+    weights: Readonly<Record<string, number>> | null | undefined,
+  ): Map<string, number> | null {
+    const entries = weights ? Object.entries(weights) : [];
+    if (entries.length === 0) return null;
+
+    const canonical = new Map<string, number>();
+    for (const [rawName, rawWeight] of entries) {
+      const name = rawName.trim();
+      if (name.length === 0) {
+        throw new ValidationError(
+          "Squash weight names must be non-empty strings",
+          "OTHER",
+        );
+      }
+      if (typeof rawWeight !== "number" || !Number.isFinite(rawWeight)) {
+        throw new ValidationError(
+          `Squash weight for "${name}" must be a finite number, got: ${
+            JSON.stringify(rawWeight)
+          }`,
+          "OTHER",
+        );
+      }
+      if (rawWeight < 0) {
+        throw new ValidationError(
+          `Squash weight for "${name}" must be >= 0, got: ${rawWeight}`,
+          "OTHER",
+        );
+      }
+
+      // The wildcard is a reserved key, not an activation name. Every other
+      // key resolves through `find`, which throws an ActivationError for an
+      // unknown name (fail loud, Issue #3234).
+      const key = name === Activations.SQUASH_WEIGHT_WILDCARD
+        ? Activations.SQUASH_WEIGHT_WILDCARD
+        : Activations.find(name).getName();
+
+      const existing = canonical.get(key);
+      if (existing !== undefined && existing !== rawWeight) {
+        throw new ValidationError(
+          `Conflicting squash weights for "${key}": ${existing} and ${rawWeight}`,
+          "OTHER",
+        );
+      }
+      canonical.set(key, rawWeight);
+    }
+    return canonical;
+  }
+
+  /**
+   * Derive every selection pool from the two levers and install them. The
+   * derivation runs first so a rejected budget leaves the previous one intact.
+   */
+  private static applyBudget(
+    allowed: Set<string> | null,
+    weights: Map<string, number> | null,
+  ): void {
+    const selection = Activations.buildWeightedSelection(allowed, weights);
+
+    if (allowed === null) {
+      Activations.restrictedPool = [];
+    } else {
+      const weighted = Activations.WEIGHTED_POOL.filter((n) => allowed.has(n));
+      Activations.restrictedPool = weighted.length > 0
+        ? weighted
+        : Array.from(allowed);
+    }
+    Activations.allowedSquashes = allowed;
+    Activations.squashWeights = weights;
+    Activations.weightedNames = selection.names;
+    Activations.weightedWeights = selection.weights;
+    Activations.weightedTotal = selection.total;
+  }
+
+  /**
+   * Issue #3796: proportional draw over {@link weightedNames}. `exclude` is
+   * skipped unless it is the only selectable squash, matching the legacy
+   * no-change behaviour of the uniform path.
+   */
+  private static pickWeightedSquash(exclude?: string): string {
+    const names = Activations.weightedNames;
+    const weights = Activations.weightedWeights;
+    let total = Activations.weightedTotal;
+
+    let skip = -1;
+    if (exclude) {
+      const activation = Activations.MAP.get(exclude);
+      const canonical = activation ? activation.getName() : exclude;
+      const index = names.indexOf(canonical);
+      if (index >= 0 && weights[index] < total) {
+        skip = index;
+        total -= weights[index];
+      }
+    }
+
+    const target = getRandomNumberGenerator().random() * total;
+    let cumulative = 0;
+    let last = names[0];
+    for (let i = 0; i < names.length; i++) {
+      if (i === skip) continue;
+      cumulative += weights[i];
+      last = names[i];
+      if (target < cumulative) return names[i];
+    }
+    // Floating-point rounding only; `last` is the final selectable name.
+    return last;
+  }
+
+  /**
+   * Issue #3796: derive the weighted selection from a weights map and an
+   * optional allow-list. Returns an empty selection when no weights are set.
+   * Throws when the combination leaves nothing selectable.
+   */
+  private static buildWeightedSelection(
+    allowed: ReadonlySet<string> | null,
+    weights: ReadonlyMap<string, number> | null,
+  ): { names: string[]; weights: number[]; total: number } {
+    if (weights === null) return { names: [], weights: [], total: 0 };
+
+    const wildcard = weights.get(Activations.SQUASH_WEIGHT_WILDCARD);
+
+    // Candidates: every explicitly weighted squash, plus — when a wildcard is
+    // given — every squash evolution may normally introduce. Zero-mutation
+    // activations (deprecated, SOFTMAX) are only reachable by naming them.
+    const candidates = new Set<string>();
+    for (const name of weights.keys()) {
+      if (name !== Activations.SQUASH_WEIGHT_WILDCARD) candidates.add(name);
+    }
+    if (wildcard !== undefined && wildcard > 0) {
+      for (const name of Activations.WEIGHTED_POOL) candidates.add(name);
+    }
+
+    const names: string[] = [];
+    const values: number[] = [];
+    let total = 0;
+    for (const name of candidates) {
+      if (allowed !== null && !allowed.has(name)) continue;
+      const weight = weights.get(name) ?? wildcard ?? 0;
+      if (weight <= 0) continue;
+      names.push(name);
+      values.push(weight);
+      total += weight;
+    }
+
+    if (total <= 0) {
+      throw new ValidationError(
+        allowed === null
+          ? "Squash weights exclude every activation — nothing is selectable"
+          : "Squash weights exclude every activation in allowedSquashes — nothing is selectable",
+        "OTHER",
+      );
+    }
+
+    return { names, weights: values, total };
   }
 
   /**
@@ -193,12 +436,23 @@ export class Activations {
   /**
    * Issue #3263: whether `name` (canonical or alias) is permitted under the
    * active squash budget. Always `true` when no budget is set.
+   *
+   * Issue #3796: a squash whose effective weight is `0` is excluded too, so
+   * this answers "can selection ever return this squash?" under either lever.
    */
   public static isSquashAllowed(name: string): boolean {
-    if (Activations.allowedSquashes === null) return true;
     const activation = Activations.MAP.get(name);
     const canonical = activation ? activation.getName() : name;
-    return Activations.allowedSquashes.has(canonical);
+    if (
+      Activations.allowedSquashes !== null &&
+      !Activations.allowedSquashes.has(canonical)
+    ) {
+      return false;
+    }
+    if (Activations.weightedTotal > 0) {
+      return Activations.weightedNames.includes(canonical);
+    }
+    return true;
   }
 
   /**
@@ -209,6 +463,11 @@ export class Activations {
   public static resetAllowedSquashesForTesting(): void {
     Activations.allowedSquashes = null;
     Activations.restrictedPool = [];
+    // Issue #3796: the soft-bias weights are part of the same global budget.
+    Activations.squashWeights = null;
+    Activations.weightedNames = [];
+    Activations.weightedWeights = [];
+    Activations.weightedTotal = 0;
   }
 }
 

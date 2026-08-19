@@ -894,6 +894,12 @@ export interface NeatArguments {
    * introduce squashes from the allow-list, keeping populations cheap to score
    * and easier to keep GPU-hostable. Default is an empty allow-list (the free
    * 34-type mix), so existing runs are unaffected.
+   *
+   * Issue #3796: `squashWeights` adds a **soft** bias — squash name → relative
+   * weight, with `"*"` the default weight for unlisted squashes and `0` an
+   * exclusion — so a team can strongly prefer a few activations without hard-
+   * excluding the rest. Weights apply within `allowedSquashes` when both are
+   * set. An empty map keeps today's behaviour exactly.
    */
   squashBudget: RequiredSquashBudgetConfig;
 

@@ -402,6 +402,32 @@ process than others.
 - **IDENTITY** — Provides no non-linearity, so NEAT-AI cannot increase the
   network's expressiveness by adding neurons with this function.
 
+### 🎛️ Steering which squashes evolution introduces
+
+`NeatOptions.squashBudget` overrides the built-in mutation-probability mix with
+two opt-in levers (both default to off, so the free 34-type mix is unchanged):
+
+| Lever                     | Kind | Effect                                                                                                             |
+| :------------------------ | :--- | :----------------------------------------------------------------------------------------------------------------- |
+| `allowedSquashes` (#3263) | Hard | Mutation and neuron creation may only introduce a name from the allow-list.                                        |
+| `squashWeights` (#3796)   | Soft | Squash name → relative selection weight; `"*"` weights everything unnamed, `0` excludes. Sampling is proportional. |
+
+```jsonc
+// Strongly prefer the aggregate squashes, but keep the rest reachable.
+"squashBudget": {
+  "squashWeights": { "IF": 10, "MINIMUM": 10, "MAXIMUM": 10, "TANH": 5, "*": 1 }
+}
+```
+
+The wildcard only covers squashes evolution may normally introduce
+(`mutationProbability > 0`), so deprecated and output-only activations stay out
+unless you name them explicitly. When both levers are set the allow-list is the
+hard boundary and the weights apply within it. Invalid budgets — unknown names,
+negative weights, or a map that leaves nothing selectable — fail loud at
+configuration time. See
+[PERFORMANCE_RESEARCH.md](./PERFORMANCE_RESEARCH.md#what-shipped) for the
+rationale and measurements.
+
 ---
 
 ## 🤖 Intelligent Design Integration

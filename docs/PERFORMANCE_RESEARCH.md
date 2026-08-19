@@ -1107,9 +1107,37 @@ a kernel change.
   mutation, neuron creation, topology repair) only ever returns an allowed
   squash. Unknown names fail loud at config time (Issue #3234). Default is an
   empty allow-list — the free 34-type mix — so existing runs are unchanged.
+- `NeatOptions.squashBudget.squashWeights` — a **soft** bias (Issue #3796):
+  squash name → relative selection weight. `pickRandomSquash` then samples
+  proportionally to the weights, so a team can strongly prefer a handful of
+  activations without hard-excluding the rest:
+
+  ```jsonc
+  "squashWeights": { "IF": 10, "MINIMUM": 10, "MAXIMUM": 10, "TANH": 5, "*": 1 }
+  ```
+
+  `"*"` is the default weight for every squash the map does not name (it never
+  introduces a zero-`mutationProbability` activation — name those explicitly to
+  opt them in); `0` excludes. An absent or empty map keeps today's behaviour
+  exactly. Unknown names, negative/NaN weights, conflicting aliases, and a map
+  that leaves nothing selectable all fail loud at config time (Issue #3234).
 - Squash-histogram telemetry on every `generation_complete` training event
   (`squashHistogram`: canonical squash name → population count) so an operator
   can watch the mix converge during an A/B run.
+
+The two levers compose — the allow-list is the hard boundary, the weights are
+the preference inside it:
+
+```mermaid
+flowchart LR
+    P[pickRandomSquash] --> W{squashWeights<br/>set?}
+    W -- "no" --> A{allowedSquashes<br/>set?}
+    A -- "no" --> F[Uniform draw from the<br/>mutation-weighted 34-type pool]
+    A -- "yes" --> R[Uniform draw from the<br/>allow-listed pool]
+    W -- "yes" --> C[Candidates: named squashes<br/>+ wildcard-covered squashes]
+    C --> I[Intersect with allowedSquashes<br/>when set; drop weight 0]
+    I --> S[Draw proportional to weight]
+```
 
 ### Measurement — selection cost is _not_ the bottleneck (expected)
 
@@ -1119,6 +1147,16 @@ a kernel change.
 | ----------------------------- | --------------- |
 | Free 34-type mix (baseline)   | ~85.5 µs        |
 | GPU-hostable budget (4 types) | ~87.1 µs        |
+
+Same benchmark re-run for the Issue #3796 soft-bias path (aarch64 Linux
+container, Deno 2.9.5, 1000 draws/iter) — the weighted draw walks a
+cumulative-weight scan rather than indexing an array, and is still flat:
+
+| Squash pool                         | time/iter (avg) |
+| ----------------------------------- | --------------- |
+| Free 34-type mix (baseline)         | ~76.6 µs        |
+| GPU-hostable budget (4 types)       | ~69.9 µs        |
+| Soft-bias weights over the full mix | ~74.5 µs        |
 
 The restricted draw is the same array-index operation, so **selection cost is
 flat** — a negative result for the selection path, exactly as the issue

@@ -272,21 +272,27 @@ export function parseSquashEffectiveness(
 }
 
 /**
- * Parse the opt-in squash budget configuration (Issue #3263).
+ * Parse the opt-in squash budget configuration (Issues #3263, #3796).
  *
  * Validates the structural shape of `allowedSquashes` (an array of non-empty
- * strings) and de-duplicates it. Activation-name resolution — rejecting
+ * strings) and de-duplicates it, and of `squashWeights` (a map of non-empty
+ * names to finite weights `>= 0`). Activation-name resolution — rejecting
  * unknown squashes — happens when the budget is applied via
- * `Activations.setAllowedSquashes`, so this parser stays decoupled from the
- * activation registry.
+ * `Activations.setAllowedSquashes` / `Activations.setSquashWeights`, so this
+ * parser stays decoupled from the activation registry.
  */
 export function parseSquashBudget(
   overrides: Record<string, unknown> | undefined,
 ): RequiredSquashBudgetConfig {
-  const d = DEFAULT_SQUASH_BUDGET_CONFIG;
-  const raw = overrides?.allowedSquashes;
+  return {
+    allowedSquashes: parseAllowedSquashes(overrides?.allowedSquashes),
+    squashWeights: parseSquashWeights(overrides?.squashWeights),
+  };
+}
+
+function parseAllowedSquashes(raw: unknown): string[] {
   if (raw === undefined || raw === null) {
-    return { allowedSquashes: [...d.allowedSquashes] };
+    return [...DEFAULT_SQUASH_BUDGET_CONFIG.allowedSquashes];
   }
   if (!Array.isArray(raw)) {
     throw new ValidationError(
@@ -311,5 +317,49 @@ export function parseSquashBudget(
     }
   }
 
-  return { allowedSquashes };
+  return allowedSquashes;
+}
+
+/**
+ * Issue #3796: structural validation of the soft-bias weights map. Numeric
+ * strings are coerced (config often arrives from a properties file); negative,
+ * NaN, and non-numeric weights fail loud.
+ */
+function parseSquashWeights(raw: unknown): Record<string, number> {
+  if (raw === undefined || raw === null) {
+    return { ...DEFAULT_SQUASH_BUDGET_CONFIG.squashWeights };
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new ValidationError(
+      "Squash budget squashWeights must be a map of activation name to weight",
+      "OTHER",
+    );
+  }
+
+  const squashWeights: Record<string, number> = {};
+  for (const [rawName, rawWeight] of Object.entries(raw)) {
+    const name = rawName.trim();
+    if (name.length === 0) {
+      throw new ValidationError(
+        "Squash budget squashWeights names must be non-empty strings",
+        "OTHER",
+      );
+    }
+    const weight = parseNumber(
+      `Squash budget squashWeights["${name}"]`,
+      rawWeight,
+      0,
+      { min: 0 },
+    );
+    const existing = squashWeights[name];
+    if (existing !== undefined && existing !== weight) {
+      throw new ValidationError(
+        `Squash budget squashWeights has conflicting weights for "${name}": ${existing} and ${weight}`,
+        "OTHER",
+      );
+    }
+    squashWeights[name] = weight;
+  }
+
+  return squashWeights;
 }
