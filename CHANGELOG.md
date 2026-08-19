@@ -25,6 +25,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3796:** New `squashBudget.squashWeights` option — a **soft** bias on
+  squash selection (`{"IF": 10, "MINIMUM": 10, "MAXIMUM": 10, "*": 1}`).
+  `Activations.pickRandomSquash` samples proportionally to the weights, `"*"`
+  supplies the default weight for unlisted squashes and `0` excludes, so a team
+  can strongly prefer a few activations without hard-excluding the rest. Weights
+  apply within `allowedSquashes` when both are set; an absent or empty map keeps
+  the existing behaviour exactly. Invalid budgets fail loud at config time.
+
 - **Issue #3779:** New `skipTrainingAfterPopulationNoProgress` option — a
   run-level gate that stops dispatching training once the **whole population**
   has produced N consecutive no-progress outcomes (default `0`, opt-in). The

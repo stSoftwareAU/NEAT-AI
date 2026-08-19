@@ -46,3 +46,18 @@ Deno.bench("pickRandomSquash - GPU-hostable budget (4 types)", () => {
   Activations.resetAllowedSquashesForTesting();
   if (acc < 0) throw new Error("unreachable");
 });
+
+// Issue #3796: the soft-bias path walks a cumulative-weight scan instead of a
+// single array index, so it is measured separately.
+const AGGREGATE_BIAS = { IF: 10, MINIMUM: 10, MAXIMUM: 10, TANH: 5, "*": 1 };
+
+Deno.bench("pickRandomSquash - soft-bias weights over the full mix", () => {
+  setRandomNumberGenerator(createSeededRng(1));
+  Activations.setSquashWeights(AGGREGATE_BIAS);
+  let acc = 0;
+  for (let i = 0; i < 1000; i++) {
+    acc += Activations.pickRandomSquash().length;
+  }
+  Activations.resetAllowedSquashesForTesting();
+  if (acc < 0) throw new Error("unreachable");
+});

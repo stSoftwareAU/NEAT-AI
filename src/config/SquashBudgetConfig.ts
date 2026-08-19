@@ -11,6 +11,9 @@
  * mutation and neuron creation may introduce. It is an **evolutionary prior**,
  * not a kernel change: the default is the free 34-type mix (empty allow-list),
  * so existing runs are unaffected.
+ *
+ * Issue #3796 adds `squashWeights`, a **soft** bias: a team can strongly prefer
+ * a handful of squashes without hard-excluding the rest.
  */
 
 /**
@@ -29,6 +32,31 @@ export interface SquashBudgetConfig {
    * Unknown names fail loud at configuration time (Issue #3234).
    */
   allowedSquashes?: string[];
+
+  /**
+   * Opt-in **soft** bias (Issue #3796): squash name → relative selection
+   * weight. `Activations.pickRandomSquash` then samples proportionally to
+   * these weights instead of the built-in mutation-probability mix.
+   *
+   * ```jsonc
+   * { "IF": 10, "MINIMUM": 10, "MAXIMUM": 10, "TANH": 5, "*": 1 }
+   * ```
+   *
+   * - Names may be canonical or aliases; they are canonicalised when applied.
+   * - `"*"` (`Activations.SQUASH_WEIGHT_WILDCARD`) is the default weight for
+   *   every squash the map does not name. Without it, unlisted squashes are
+   *   excluded; the wildcard never introduces a squash whose
+   *   `mutationProbability` is zero (deprecated / non-mutating activations).
+   * - A weight of `0` excludes that squash.
+   * - An empty or absent map (the default) keeps today's behaviour exactly.
+   * - Composes with {@link allowedSquashes}: the allow-list stays a hard
+   *   boundary and the weights apply within it.
+   *
+   * Unknown names, negative/NaN weights, conflicting duplicates, and a map
+   * that leaves nothing selectable all fail loud at configuration time
+   * (Issue #3234).
+   */
+  squashWeights?: Record<string, number>;
 }
 
 /**
@@ -37,9 +65,10 @@ export interface SquashBudgetConfig {
 export type RequiredSquashBudgetConfig = Required<SquashBudgetConfig>;
 
 /**
- * Default values for the squash budget: an empty allow-list, i.e. the free
- * mix. The feature is opt-in and off by default.
+ * Default values for the squash budget: an empty allow-list and no weights,
+ * i.e. the free mix. The feature is opt-in and off by default.
  */
 export const DEFAULT_SQUASH_BUDGET_CONFIG: RequiredSquashBudgetConfig = {
   allowedSquashes: [],
+  squashWeights: {},
 };
