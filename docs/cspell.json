@@ -623,6 +623,9 @@
     "scanline",
     "truecolour",
     "unfilter",
-    "wordmark"
+    "wordmark",
+    "froms",
+    "summable",
+    "worktree"
   ]
 }
