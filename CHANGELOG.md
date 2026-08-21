@@ -25,6 +25,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3808:** Compaction now merges redundant constant neurons. IF-squash
+  tree generation left one `type:"constant"` neuron per branch, each with its
+  own bias (277 of them, 263 distinct biases, in the worst production creature),
+  because the constant fold cannot absorb a producer feeding an aggregate
+  consumer. The new safe pass (`src/compact/ConstantMerge.ts`) re-points them at
+  up to three canonical bias-1 constants with the fleet-wide well-known UUIDs
+  `constant-0` … `constant-2`, moving each bias onto the outgoing weight
+  (`b × w` → `1 × w·b`). The rewrite is exact — identical error — while the
+  score improves as the redundant neurons are removed. Frozen constants,
+  consumers and synapses are untouched.
+
 - **Issue #3797:** New `squashBudget.fixedOutputSquash` option — pins every
   output neuron to one activation (e.g. `"TANH"` for a -1..1 bounded target).
   Output neurons are seeded with the pin, `MOD_SQUASH` and every other squash

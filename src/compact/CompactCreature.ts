@@ -18,6 +18,7 @@ import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseRe
 import { mergeParallelBridges } from "@compact/ParallelBridgeMerge.ts";
 import { simplifyLargeWeights } from "@compact/SimplifyLargeWeights.ts";
 import { foldConstants } from "@compact/ConstantFold.ts";
+import { mergeRedundantConstants } from "@compact/ConstantMerge.ts";
 import { aggressivePrune } from "@compact/AggressivePrune.ts";
 import { collapseConstantIf } from "@compact/IfCollapse.ts";
 import { removeBackwardSynapses } from "@compact/RemoveBackwardSynapses.ts";
@@ -431,6 +432,20 @@ function buildSafeCompact(
     assertValidSynapseReferences(
       compactCreature,
       "after constant fold",
+    );
+    didCompact = true;
+  }
+
+  // Issue #3808: Merge the constants the fold above cannot absorb — those
+  // feeding aggregate consumers (IF/MAXIMUM/MINIMUM/HYPOT) — into at most three
+  // canonical bias-1 constants with fleet-wide well-known UUIDs. Each original
+  // bias moves onto the outgoing synapse weight (b × w → 1 × w·b), so the
+  // creature's error is unchanged while the redundant neurons disappear.
+  const constantMergeResult = mergeRedundantConstants(compactCreature);
+  if (constantMergeResult.changed) {
+    assertValidSynapseReferences(
+      compactCreature,
+      "after constant merge",
     );
     didCompact = true;
   }

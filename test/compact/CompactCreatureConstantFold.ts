@@ -3,6 +3,7 @@ import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { compactCreature } from "@compact/CompactCreature.ts";
+import { CANONICAL_CONSTANT_UUIDS } from "@compact/ConstantMerge.ts";
 import { calculate } from "@architecture/Score.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
@@ -142,21 +143,30 @@ Deno.test(
     const neurons = compacted!.neurons;
     const exported = compacted!.exportJSON();
 
-    // Constant retained because the IF consumer still references it.
-    assertEquals(
-      neurons.some((n) => n.uuid === "neuron-132866057"),
-      true,
-      "constant must be retained while an aggregate consumer references it",
+    // A constant is retained because the IF consumer still references it.
+    // Issue #3808 changed *which* constant: the redundant-constant merge now
+    // re-points it at the canonical bias-1 constant `constant-0`, moving the
+    // original bias onto the weight. The fold behaviour under test — an
+    // aggregate consumer's synapse is never folded into a bias — is unchanged.
+    const retainedConstant = neurons.find((n) => n.type === "constant");
+    assert(
+      retainedConstant,
+      "a constant must be retained while an aggregate consumer references it",
     );
+    assertEquals(retainedConstant!.uuid, CANONICAL_CONSTANT_UUIDS[0]);
+    assertEquals(retainedConstant!.bias, 1);
 
-    // The IF synapse is kept.
-    assertEquals(
-      exported.synapses.some(
-        (s) => s.fromUUID === "neuron-132866057" && s.toUUID === "if-consumer",
-      ),
-      true,
+    // The IF synapse is kept, carrying the merged value 0.3 · 0.5.
+    const ifSynapse = exported.synapses.find(
+      (s) =>
+        s.fromUUID === CANONICAL_CONSTANT_UUIDS[0] &&
+        s.toUUID === "if-consumer",
+    );
+    assert(
+      ifSynapse,
       "the synapse into the IF (aggregate) consumer must be kept",
     );
+    assertAlmostEquals(ifSynapse!.weight, 0.3 * 0.5, 1e-9);
 
     // The non-IF synapse is folded away.
     assertEquals(
