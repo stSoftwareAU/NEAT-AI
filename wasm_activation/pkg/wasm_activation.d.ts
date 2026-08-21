@@ -418,6 +418,11 @@ export function compute_reverse_topological_order(from_indices: Uint32Array, to_
 export function compute_score_components(weights: Float64Array, biases: Float64Array): Float64Array;
 
 /**
+ * JS `creature_validate(request: string) -> string`.
+ */
+export function creature_validate(request: string): string;
+
+/**
  * Fused activate + Cross Entropy calculation for batch scoring.
  *
  * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
@@ -787,6 +792,7 @@ export interface InitOutput {
     readonly compilednetwork_to_topology_json: (a: number, b: number) => [number, number];
     readonly compute_reverse_topological_order: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly compute_score_components: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly creature_validate: (a: number, b: number) => [number, number];
     readonly cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly derivative: (a: number, b: number) => number;
     readonly detect_cycles: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
@@ -823,6 +829,7 @@ export interface InitOutput {
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __externref_table_dealloc: (a: number) => void;
+    readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_start: () => void;
 }
 
