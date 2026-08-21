@@ -9,7 +9,7 @@
       <stop offset="100%" stop-color="#F2705F" />
     </linearGradient>
   </defs>
-  <g>
+  <g id="neuron">
     <g fill="none" stroke="url(#neuronGrad)" stroke-width="6"
       stroke-linecap="round">
       <path d="M454 199 C431 174 420 149 421 121 C421 100 411 88 397 72" />

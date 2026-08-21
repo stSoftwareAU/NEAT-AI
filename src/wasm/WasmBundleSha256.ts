@@ -22,7 +22,7 @@ import type { WasmMemoryModel } from "@wasm/WasmMemoryModel.ts";
 
 /** Lowercase hex SHA-256 of `wasm_activation/pkg/wasm_activation_bg.wasm`. */
 export const EXPECTED_WASM_BUNDLE_SHA256 =
-  "515593d2e1406551e2ebfde49375b92c07e7d9fe4a7016c158a54c75b52f9127";
+  "47d8fab39be6daea9e78a924e211dfd63a2d421563503887aa58ba1187645e37";
 
 /**
  * Address size of the pinned linear memory, mirroring `deno.json`
