@@ -288,6 +288,17 @@ The safe variant is exactly these exact, lossless transforms:
    `MAXIMUM` fed by four constants, say — keeps the surplus constants unchanged.
    Frozen constants, consumers and synapses are never touched.
    (`src/compact/ConstantMerge.ts`)
+5. **Parallel bridge merge.** Hidden neurons with exactly one inbound and one
+   outbound synapse and an additive squash (`IDENTITY`, or `COMPLEMENT`
+   rewritten to it) that feed the **same** target collapse into one `IDENTITY`
+   neuron carrying `w_out·w_in` per source and `Σ(w_out·bias)` as its bias.
+   Three guards keep it lossless (Issue #3809): the merged neuron is the group
+   member **latest in the export's neuron order**, so every redirected synapse
+   stays forward rather than becoming a stripped recurrent edge; the target must
+   **sum** the contributions, so `MAXIMUM`/`MINIMUM`/`HYPOT`/`HYPOTv2` targets
+   are declined; and an `IF` target merges only within one synapse role, never
+   the `condition` role that decides its branch.
+   (`src/compact/ParallelBridgeMerge.ts`)
 
 The aggressive prune adds one non-exact step: it drops **untyped** synapses
 whose `|weight|` is below `AGGRESSIVE_PRUNE_WEIGHT_THRESHOLD = 1e-3`

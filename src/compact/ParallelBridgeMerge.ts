@@ -4,7 +4,10 @@ import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
-import { isParallelMergeableSquash } from "@methods/activations/SquashUtils.ts";
+import {
+  isAggregationSquash,
+  isParallelMergeableSquash,
+} from "@methods/activations/SquashUtils.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
 
 /**
@@ -41,6 +44,21 @@ export interface ParallelBridgeMergeResult {
  *     w_merged_i = w_out_i * w_in'_i = w_out_i * (-w_in_i)
  *     bias_merged = Σ(w_out_i * bias'_i) = Σ(w_out_i * (1 - bias_i))
  *
+ * **Ordering (Issue #3809).** The merge rewires every group member's inbound
+ * synapse onto the kept neuron, so the kept neuron must sit *after* all of
+ * those sources in the export's neuron order — that order is the activation
+ * order `loadFrom` rebuilds. Only bridges whose own edges already run forward
+ * are merged, and the kept neuron is the one latest in that order; anything
+ * else would turn a forward edge into a recurrent one (stripped at load on a
+ * forward-only creature, silently changing the outputs).
+ *
+ * **The target must sum the merged synapses (Issue #3809).** Collapsing a
+ * group into one synapse is only lossless where the target adds the
+ * contributions up. MAXIMUM, MINIMUM and HYPOT targets are declined outright;
+ * an IF target is merged only per synapse type (`positive` / `negative`,
+ * never `condition`), because it reads those as three separate sums and
+ * compares the condition sum against zero.
+ *
  * @param exported - The creature export to modify in-place
  * @returns The number of neurons removed
  */
@@ -70,6 +88,23 @@ export function mergeParallelBridges(
     }
   }
 
+  // Activation order (Issue #3809): `loadFrom` lays inputs out at 0..input-1
+  // and then appends every non-input export neuron in array order, so a
+  // synapse runs forward exactly when its source's position is lower than its
+  // target's. The merge must preserve that, hence positions are needed here.
+  const positionById = new Map<number, number>();
+  for (let i = 0; i < exported.input; i++) {
+    positionById.set(i, i);
+  }
+  // A CreatureExport never carries input neurons, so the exported array picks
+  // up exactly where the inputs left off.
+  const neuronById = new Map<number, NeuronExport>();
+  let position = exported.input;
+  for (const neuron of exported.neurons) {
+    positionById.set(neuron.id!, position++);
+    neuronById.set(neuron.id!, neuron);
+  }
+
   // Identify mergeable bridge neurons: hidden, mergeable squash, exactly 1 in + 1 out.
   const bridgeNeurons: NeuronExport[] = [];
   for (const neuron of exported.neurons) {
@@ -83,6 +118,40 @@ export function mergeParallelBridges(
       // Ensure no self-loops.
       if (inConns[0].fromId === neuron.id!) continue;
       if (outConns[0].toId === neuron.id!) continue;
+
+      // Both of the bridge's own edges must already run forward — a backward
+      // edge carries the previous activation's value, and merging it into a
+      // forward group would silently re-time the network.
+      const bridgePosition = positionById.get(neuron.id!);
+      const sourcePosition = positionById.get(inConns[0].fromId!);
+      const targetPosition = positionById.get(outConns[0].toId!);
+      if (
+        bridgePosition === undefined || sourcePosition === undefined ||
+        targetPosition === undefined
+      ) {
+        continue;
+      }
+      if (sourcePosition >= bridgePosition) continue;
+      if (bridgePosition >= targetPosition) continue;
+
+      // The target must combine the merged contributions by a plain weighted
+      // sum, otherwise folding them into one synapse changes its value
+      // (Issue #3809). IF is the one aggregation squash that qualifies: it
+      // sums its condition, positive and negative synapses separately, so a
+      // group sharing one synapse type is still exact. MAXIMUM, MINIMUM and
+      // HYPOT combine their inputs non-additively — decline those.
+      const target = neuronById.get(outConns[0].toId!);
+      if (!target) continue;
+      if (isAggregationSquash(target.squash)) {
+        if (target.squash !== "IF") continue;
+        // An IF's condition synapses are summed and then compared against
+        // zero. Re-associating that sum is exact in real arithmetic but not
+        // in float32, and a sum sitting near the boundary would flip the
+        // branch — a large output change from a rounding difference. Merge
+        // only the value-carrying synapses.
+        if (outConns[0].type === "condition") continue;
+      }
+
       bridgeNeurons.push(neuron);
     }
   }
@@ -91,11 +160,15 @@ export function mergeParallelBridges(
     return { removedNeurons: 0 };
   }
 
-  // Group bridge neurons by (outbound target UUID, squash function).
-  // Only neurons with the same squash can be merged together.
+  // Group bridge neurons by (outbound target, squash function, outbound
+  // synapse type). Only neurons with the same squash can be merged together,
+  // and only synapses the target treats alike: an IF neuron reads its
+  // `condition`, `positive` and `negative` synapses as three separate sums,
+  // so folding two of them into one would move a term between those sums
+  // (Issue #3809).
   const groupKey = (neuron: NeuronExport): string => {
     const outConns = outwardConnections.get(neuron.id!)!;
-    return `${outConns[0].toId!}::${neuron.squash}`;
+    return `${outConns[0].toId!}::${neuron.squash}::${outConns[0].type ?? ""}`;
   };
 
   const groupsByKey = new Map<string, NeuronExport[]>();
@@ -135,11 +208,20 @@ export function mergeParallelBridges(
       convertToIdentity(neuron, inwardConnections);
     }
 
-    // Keep the first neuron, merge others into it.
-    const kept = group[0];
+    // Keep the neuron latest in activation order, merge the others into it.
+    // Every member's source precedes its own bridge, which in turn is at or
+    // before the kept neuron, so all redirected synapses stay forward
+    // (Issue #3809). Keeping an earlier member would push the later members'
+    // sources behind the merged neuron and emit recurrent synapses.
+    let kept = group[0];
+    for (const neuron of group) {
+      if (positionById.get(neuron.id!)! > positionById.get(kept.id!)!) {
+        kept = neuron;
+      }
+    }
     const keptInConn = (inwardConnections.get(kept.id!) ?? [])[0];
     const keptOutConn = (outwardConnections.get(kept.id!) ?? [])[0];
-    const toRemove = group.slice(1);
+    const toRemove = group.filter((neuron) => neuron !== kept);
 
     // Calculate merged bias and adjust the kept neuron's outbound weight to 1.
     const keptOutWeight = keptOutConn.weight;
@@ -177,8 +259,22 @@ export function mergeParallelBridges(
         "Redirected synapse weight not finite",
       );
 
-      // Redirect the inbound synapse to point at the kept neuron.
+      // Redirect the inbound synapse to point at the kept neuron. Guarded
+      // rather than assumed: a redirected synapse that ran backwards would be
+      // stripped at load and silently change the creature's outputs (#3809).
+      assert(
+        positionById.get(removedInConn.fromId!)! < positionById.get(kept.id!)!,
+        "Redirected synapse must stay forward",
+      );
       removedInConn.toId = kept.id!;
+      // UUIDs are the canonical wire identity `loadFrom` resolves first, so
+      // the redirect has to move both handles — leaving a stale `toUUID`
+      // behind would only work while the removed neuron's UUID is absent.
+      if (kept.uuid !== undefined) {
+        removedInConn.toUUID = kept.uuid;
+      } else {
+        delete removedInConn.toUUID;
+      }
       removedInConn.weight = newWeight;
 
       // Issue #1972: Merge neuron tags from removed neurons onto kept neuron.
