@@ -781,6 +781,26 @@ export function compute_score_components(weights, biases) {
 }
 
 /**
+ * JS `creature_validate(request: string) -> string`.
+ * @param {string} request
+ * @returns {string}
+ */
+export function creature_validate(request) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(request, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.creature_validate(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
  * Fused activate + Cross Entropy calculation for batch scoring.
  *
  * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
@@ -1591,6 +1611,43 @@ function passArrayF64ToWasm0(arg, malloc) {
     return ptr;
 }
 
+function passStringToWasm0(arg, malloc, realloc) {
+    if (realloc === undefined) {
+        const buf = cachedTextEncoder.encode(arg);
+        const ptr = malloc(buf.length, 1);
+        getUint8ArrayMemory0().subarray(ptr, ptr + buf.length).set(buf);
+        WASM_VECTOR_LEN = buf.length;
+        return ptr;
+    }
+
+    let len = arg.length;
+    let ptr = malloc(len, 1);
+
+    const mem = getUint8ArrayMemory0();
+
+    let offset = 0;
+
+    for (; offset < len; offset++) {
+        const code = arg.charCodeAt(offset);
+        if (code > 0x7F) break;
+        mem[ptr + offset] = code;
+    }
+    if (offset !== len) {
+        if (offset !== 0) {
+            arg = arg.slice(offset);
+        }
+        ptr = realloc(ptr, len, len = offset + arg.length * 3, 1);
+        const view = getUint8ArrayMemory0().subarray(ptr + offset, ptr + len);
+        const ret = cachedTextEncoder.encodeInto(arg, view);
+
+        offset += ret.written;
+        ptr = realloc(ptr, len, offset, 1);
+    }
+
+    WASM_VECTOR_LEN = offset;
+    return ptr;
+}
+
 function takeFromExternrefTable0(idx) {
     const value = wasm.__wbindgen_externrefs.get(idx);
     wasm.__externref_table_dealloc(idx);
@@ -1609,6 +1666,19 @@ function decodeText(ptr, len) {
         numBytesDecoded = len;
     }
     return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
+}
+
+const cachedTextEncoder = new TextEncoder();
+
+if (!('encodeInto' in cachedTextEncoder)) {
+    cachedTextEncoder.encodeInto = function (arg, view) {
+        const buf = cachedTextEncoder.encode(arg);
+        view.set(buf);
+        return {
+            read: arg.length,
+            written: buf.length
+        };
+    };
 }
 
 let WASM_VECTOR_LEN = 0;
