@@ -186,7 +186,20 @@ New — `test/compact/CompactCreatureConstantMerge.ts` (end-to-end via
 
 Modified — `test/compact/CompactCreatureConstantFold.ts` (see above).
 
-Suite results (`NEAT_AI_BACKPROP_ENABLED=0`, matching `quality.sh`):
+**Full `./quality.sh` gate.** All nine steps ran (deps, fmt, lint, bash check,
+type-check, discovery, rust_scorer build, WASM sync, tests):
+
+```text
+FAILED | 8492 passed (5 steps) | 1 failed | 41 ignored (11m42s)
+```
+
+The single failure is `evolveDataSet returns run-level scorerUtilisation`, the
+pre-existing `Develop` gate root-caused above and filed as #3810 — it fails
+identically on clean `origin/Develop` with none of this PR's code. **Every other
+one of the 8 492 tests passes.** Not fixed here: #3810 is a cross-engine JSON
+contract decision, outside this issue's compaction scope.
+
+Targeted subsets (`NEAT_AI_BACKPROP_ENABLED=0`, matching `quality.sh`):
 
 - every `test/compact/*.ts` file — **178 passed, 0 failed**
 - every `test/creature/*.ts` file, including the `NeuronUuidStability` and
