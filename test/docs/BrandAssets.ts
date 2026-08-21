@@ -55,6 +55,52 @@ async function pngSize(
   return { width: view.getUint32(16), height: view.getUint32(20) };
 }
 
+/**
+ * Every PNG the renderer consumes or ships: the embedded neuron-A mark, the
+ * canonical previews, and their opaque upload variants.
+ */
+async function renderedPngPaths(): Promise<string[]> {
+  const previews = await pngFilesIn(PREVIEWS_DIR);
+  const opaque = await pngFilesIn(`${PREVIEWS_DIR}/opaque`);
+  return [
+    `${BRAND_DIR}/templates/neuron-a-mark.png`,
+    ...previews.map((name) => `${PREVIEWS_DIR}/${name}`),
+    ...opaque.map((name) => `${PREVIEWS_DIR}/opaque/${name}`),
+  ];
+}
+
+/**
+ * Inflate a PNG's image data, throwing if the file is not decodable.
+ *
+ * The rasteriser (`@resvg/resvg-js`) skips an undecodable `<image>` without
+ * complaining, so a corrupt asset silently renders as blank artwork instead of
+ * failing loud. Concatenating the IDAT chunks and inflating them reproduces the
+ * decode any renderer must do, so corruption surfaces here instead.
+ */
+async function assertPngDecodes(path: string): Promise<void> {
+  const bytes = await Deno.readFile(path);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const idat: Uint8Array[] = [];
+  let offset = 8; // skip the 8-byte signature
+  while (offset + 8 <= bytes.length) {
+    const length = view.getUint32(offset);
+    const type = new TextDecoder().decode(
+      bytes.subarray(offset + 4, offset + 8),
+    );
+    if (type === "IDAT") {
+      idat.push(bytes.subarray(offset + 8, offset + 8 + length));
+    }
+    offset += 12 + length; // length + type + payload + CRC
+  }
+  assert(idat.length > 0, `${path} has no IDAT image data`);
+
+  const stream = new Blob(idat as BlobPart[]).stream()
+    .pipeThrough(new DecompressionStream("deflate"));
+  let pixelBytes = 0;
+  for await (const chunk of stream) pixelBytes += chunk.length;
+  assert(pixelBytes > 0, `${path} decoded to no pixels`);
+}
+
 /** Relative link targets (no http(s), no bare anchors) found in `content`. */
 function relativeLinkTargets(content: string): string[] {
   const targets: string[] = [];
@@ -128,6 +174,12 @@ Deno.test("brand docs' relative links resolve", async () => {
   );
   const failures = checked.flat().filter((c): c is string => c !== null);
   assertEquals(failures, [], "brand docs have broken relative links");
+});
+
+Deno.test("every rendered brand PNG decodes", async () => {
+  const paths = await renderedPngPaths();
+  assert(paths.length > 0, "docs/brand/ has no images");
+  await Promise.all(paths.map(assertPngDecodes));
 });
 
 Deno.test("the documentation index points at the brand home", async () => {
