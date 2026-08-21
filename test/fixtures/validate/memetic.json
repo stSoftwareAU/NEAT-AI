@@ -1,0 +1,342 @@
+{
+  "group": "memetic",
+  "description": "The memetic block: bias and weight entries are keyed by runtime neuron id and must resolve to a real neuron and a real synapse.",
+  "cases": [
+    {
+      "name": "memetic-valid",
+      "rule": "OK_MEMETIC",
+      "notes": "Bias keyed by the hidden neuron id; weight keyed by the source id with toId naming a real synapse target.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "forwardOnly": true,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ],
+        "memetic": {
+          "generation": 3,
+          "score": -0.5,
+          "biases": { "1000001": 0.1 },
+          "weights": { "0": [{ "toId": 1000001, "weight": 0.5 }] }
+        }
+      },
+      "expect": {
+        "outcome": "ok",
+        "stats": {
+          "input": 1,
+          "constant": 0,
+          "hidden": 1,
+          "output": 1,
+          "connections": 2
+        }
+      }
+    },
+    {
+      "name": "memetic-bias-unknown-neuron",
+      "rule": "MEMETIC_BIAS_UNKNOWN_NEURON",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ],
+        "memetic": {
+          "generation": 1,
+          "score": 0,
+          "biases": { "999": 0.1 },
+          "weights": {}
+        }
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "MEMETIC",
+        "messageContains": "Neuron with id 999 not found in the creature."
+      }
+    },
+    {
+      "name": "memetic-weight-unknown-source-neuron",
+      "rule": "MEMETIC_WEIGHT_UNKNOWN_NEURON",
+      "notes": "Weight keys are neuron ids; the message calls them synapse ids.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ],
+        "memetic": {
+          "generation": 1,
+          "score": 0,
+          "biases": {},
+          "weights": { "999": [{ "toId": 1000001, "weight": 0.5 }] }
+        }
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "MEMETIC",
+        "messageContains": "Synapse with id 999 not found in the creature."
+      }
+    },
+    {
+      "name": "memetic-weights-not-an-array",
+      "rule": "MEMETIC_WEIGHTS_NOT_ARRAY",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ],
+        "memetic": {
+          "generation": 1,
+          "score": 0,
+          "biases": {},
+          "weights": { "0": { "toId": 1000001, "weight": 0.5 } }
+        }
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "MEMETIC",
+        "messageContains": "Synapse with id 0 has invalid weights."
+      }
+    },
+    {
+      "name": "memetic-weight-missing-to-id",
+      "rule": "MEMETIC_WEIGHT_MISSING_TO_ID",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ],
+        "memetic": {
+          "generation": 1,
+          "score": 0,
+          "biases": {},
+          "weights": { "0": [{ "weight": 0.5 }] }
+        }
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "MEMETIC",
+        "messageContains": "Memetic from id 0 to id undefined is invalid."
+      }
+    },
+    {
+      "name": "memetic-weight-missing-weight",
+      "rule": "MEMETIC_WEIGHT_MISSING_WEIGHT",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ],
+        "memetic": {
+          "generation": 1,
+          "score": 0,
+          "biases": {},
+          "weights": { "0": [{ "toId": 1000001 }] }
+        }
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "MEMETIC",
+        "messageContains": "has invalid weight at index 0."
+      }
+    },
+    {
+      "name": "memetic-weight-to-id-has-no-neuron",
+      "rule": "MEMETIC_WEIGHT_TO_ID_UNKNOWN",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ],
+        "memetic": {
+          "generation": 1,
+          "score": 0,
+          "biases": {},
+          "weights": { "0": [{ "toId": 999, "weight": 0.5 }] }
+        }
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "MEMETIC",
+        "messageContains": "Memetic from id 0 has no valid neuron."
+      }
+    },
+    {
+      "name": "memetic-weight-without-matching-synapse",
+      "rule": "MEMETIC_WEIGHT_NO_SYNAPSE",
+      "notes": "Both endpoints exist, but there is no input-0 to output-0 synapse.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ],
+        "memetic": {
+          "generation": 1,
+          "score": 0,
+          "biases": {},
+          "weights": { "0": [{ "toId": -1, "weight": 0.5 }] }
+        }
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "MEMETIC",
+        "messageContains": "Memetic from id 0 to id -1 has no matching synapses."
+      }
+    }
+  ]
+}
