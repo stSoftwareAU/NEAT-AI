@@ -1,30 +1,91 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640"
+  viewBox="0 0 1280 640">
   <title>NEAT-AI neuron A — B5 smile</title>
   <desc>Vector NEAT-AI family lockup with an organic neuron A and black smiling face.</desc>
   <defs>
     <linearGradient id="neuronGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#14B8A6"/><stop offset="58%" stop-color="#20C9B7"/><stop offset="100%" stop-color="#F2705F"/>
+      <stop offset="0%" stop-color="#14B8A6" />
+      <stop offset="58%" stop-color="#20C9B7" />
+      <stop offset="100%" stop-color="#F2705F" />
     </linearGradient>
   </defs>
   <g>
-    <g fill="none" stroke="url(#neuronGrad)" stroke-width="6" stroke-linecap="round">
-      <path d="M454 199 C431 174 420 149 421 121 C421 100 411 88 397 72"/><path d="M424 140 C401 123 380 112 354 105 C332 99 316 86 304 68"/><path d="M397 119 C381 99 372 80 373 61"/><path d="M355 105 C337 101 319 104 301 114 C280 125 260 125 243 116"/><path d="M421 123 C441 105 455 90 465 71"/>
-      <path d="M477 201 C500 174 513 146 511 119 C510 100 522 85 540 71"/><path d="M507 137 C531 121 555 112 582 109 C609 106 627 93 645 79"/><path d="M512 119 C495 101 488 82 490 61"/><path d="M541 111 C560 98 577 82 583 62"/><path d="M581 109 C606 113 629 108 649 97 C670 84 691 80 711 81"/>
-      <path d="M433 314 C406 326 382 345 361 370 C346 388 326 397 303 397"/><path d="M404 338 C382 347 359 350 337 347 C316 344 296 348 278 360"/><path d="M365 368 C353 385 348 404 350 421"/><path d="M337 347 C319 334 298 327 275 329"/><path d="M303 397 C282 398 262 408 246 423"/>
-      <path d="M484 315 C510 327 534 343 554 366 C570 384 589 393 614 394"/><path d="M514 338 C537 348 560 350 582 346 C604 343 625 349 642 360"/><path d="M554 366 C568 384 573 402 572 420"/><path d="M582 346 C601 333 622 328 645 330"/><path d="M614 394 C635 397 655 406 671 421"/>
+    <g fill="none" stroke="url(#neuronGrad)" stroke-width="6"
+      stroke-linecap="round">
+      <path d="M454 199 C431 174 420 149 421 121 C421 100 411 88 397 72" />
+      <path d="M424 140 C401 123 380 112 354 105 C332 99 316 86 304 68" />
+      <path d="M397 119 C381 99 372 80 373 61" />
+      <path d="M355 105 C337 101 319 104 301 114 C280 125 260 125 243 116" />
+      <path d="M421 123 C441 105 455 90 465 71" />
+      <path d="M477 201 C500 174 513 146 511 119 C510 100 522 85 540 71" />
+      <path d="M507 137 C531 121 555 112 582 109 C609 106 627 93 645 79" />
+      <path d="M512 119 C495 101 488 82 490 61" />
+      <path d="M541 111 C560 98 577 82 583 62" />
+      <path d="M581 109 C606 113 629 108 649 97 C670 84 691 80 711 81" />
+      <path d="M433 314 C406 326 382 345 361 370 C346 388 326 397 303 397" />
+      <path d="M404 338 C382 347 359 350 337 347 C316 344 296 348 278 360" />
+      <path d="M365 368 C353 385 348 404 350 421" />
+      <path d="M337 347 C319 334 298 327 275 329" />
+      <path d="M303 397 C282 398 262 408 246 423" />
+      <path d="M484 315 C510 327 534 343 554 366 C570 384 589 393 614 394" />
+      <path d="M514 338 C537 348 560 350 582 346 C604 343 625 349 642 360" />
+      <path d="M554 366 C568 384 573 402 572 420" />
+      <path d="M582 346 C601 333 622 328 645 330" />
+      <path d="M614 394 C635 397 655 406 671 421" />
     </g>
-    <g fill="url(#neuronGrad)"><circle cx="397" cy="72" r="8"/><circle cx="304" cy="68" r="8"/><circle cx="373" cy="61" r="7"/><circle cx="243" cy="116" r="7"/><circle cx="465" cy="71" r="7"/><circle cx="540" cy="71" r="7"/><circle cx="645" cy="79" r="8"/><circle cx="490" cy="61" r="7"/><circle cx="583" cy="62" r="7"/><circle cx="711" cy="81" r="9"/><circle cx="303" cy="397" r="8"/><circle cx="278" cy="360" r="7"/><circle cx="350" cy="421" r="7"/><circle cx="275" cy="329" r="7"/><circle cx="246" cy="423" r="8"/><circle cx="614" cy="394" r="8"/><circle cx="642" cy="360" r="7"/><circle cx="572" cy="420" r="7"/><circle cx="645" cy="330" r="7"/><circle cx="671" cy="421" r="8"/></g>
-    <path d="M459 105 C430 106 420 129 426 158 C432 185 420 205 398 218 C381 228 372 246 376 264 C380 284 397 296 416 299 C405 315 396 332 391 350 C388 361 399 366 408 359 C421 348 437 341 457 340 C477 341 494 348 508 359 C518 367 527 362 524 350 C519 330 510 314 499 299 C519 296 536 283 539 263 C542 244 533 227 516 217 C493 203 483 184 489 157 C495 129 485 106 459 105 Z" fill="url(#neuronGrad)"/>
-    <circle cx="441" cy="249" r="9" fill="#0B1220"/><circle cx="477" cy="249" r="9" fill="#0B1220"/>
-    <path d="M433 271 C446 289 472 289 486 271" fill="none" stroke="#0B1220" stroke-width="8" stroke-linecap="round"/>
+    <g fill="url(#neuronGrad)">
+      <circle cx="397" cy="72" r="8" />
+      <circle cx="304" cy="68" r="8" />
+      <circle cx="373" cy="61" r="7" />
+      <circle cx="243" cy="116" r="7" />
+      <circle cx="465" cy="71" r="7" />
+      <circle cx="540" cy="71" r="7" />
+      <circle cx="645" cy="79" r="8" />
+      <circle cx="490" cy="61" r="7" />
+      <circle cx="583" cy="62" r="7" />
+      <circle cx="711" cy="81" r="9" />
+      <circle cx="303" cy="397" r="8" />
+      <circle cx="278" cy="360" r="7" />
+      <circle cx="350" cy="421" r="7" />
+      <circle cx="275" cy="329" r="7" />
+      <circle cx="246" cy="423" r="8" />
+      <circle cx="614" cy="394" r="8" />
+      <circle cx="642" cy="360" r="7" />
+      <circle cx="572" cy="420" r="7" />
+      <circle cx="645" cy="330" r="7" />
+      <circle cx="671" cy="421" r="8" />
+    </g>
+    <path
+      d="M459 105 C430 106 420 129 426 158 C432 185 420 205 398 218 C381 228 372 246 376 264 C380 284 397 296 416 299 C405 315 396 332 391 350 C388 361 399 366 408 359 C421 348 437 341 457 340 C477 341 494 348 508 359 C518 367 527 362 524 350 C519 330 510 314 499 299 C519 296 536 283 539 263 C542 244 533 227 516 217 C493 203 483 184 489 157 C495 129 485 106 459 105 Z"
+      fill="url(#neuronGrad)" />
+    <circle cx="441" cy="249" r="9" fill="#0B1220" />
+    <circle cx="477" cy="249" r="9" fill="#0B1220" />
+    <path d="M433 271 C446 289 472 289 486 271" fill="none" stroke="#0B1220"
+      stroke-width="8" stroke-linecap="round" />
   </g>
-  <g font-family="DejaVu Sans, Arial, sans-serif" font-size="174" font-weight="900" fill="#111827"><text x="86" y="322">NE</text><text x="532" y="322">T-AI</text></g>
-  <text x="640" y="452" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="64" font-weight="800" fill="#0D9488">NeuroEvolution</text>
+  <g font-family="DejaVu Sans, Arial, sans-serif" font-size="174"
+    font-weight="900" fill="#111827">
+    <text x="86" y="322">NE</text>
+    <text x="532" y="322">T-AI</text>
+  </g>
+  <text x="640" y="452" text-anchor="middle"
+    font-family="DejaVu Sans, Arial, sans-serif" font-size="64"
+    font-weight="800" fill="#0D9488">NeuroEvolution</text>
   <g font-family="DejaVu Sans, Arial, sans-serif" font-weight="700" fill="#fff">
-    <rect x="110.5" y="516" width="205" height="58" rx="29" fill="#14B8A6"/><text x="138.5" y="555" font-size="28">◉</text><text x="175.5" y="555" font-size="25">Discover</text>
-    <rect x="331.5" y="516" width="200" height="58" rx="29" fill="#F2705F"/><text x="359.5" y="555" font-size="28">⌁</text><text x="396.5" y="555" font-size="25">Evolve</text>
-    <rect x="547.5" y="516" width="185" height="58" rx="29" fill="#0D9488"/><text x="575.5" y="555" font-size="28">▥</text><text x="612.5" y="555" font-size="25">Score</text>
-    <rect x="748.5" y="516" width="205" height="58" rx="29" fill="#F2705F"/><text x="776.5" y="555" font-size="28">⌘</text><text x="813.5" y="555" font-size="25">Inherit</text>
-    <rect x="969.5" y="516" width="200" height="58" rx="29" fill="#14B8A6"/><text x="997.5" y="555" font-size="28">◆</text><text x="1034.5" y="555" font-size="25">Explore</text>
+    <rect x="110.5" y="516" width="205" height="58" rx="29" fill="#14B8A6" />
+    <text x="138.5" y="555" font-size="28">◉</text>
+    <text x="175.5" y="555" font-size="25">Discover</text>
+    <rect x="331.5" y="516" width="200" height="58" rx="29" fill="#F2705F" />
+    <text x="359.5" y="555" font-size="28">⌁</text>
+    <text x="396.5" y="555" font-size="25">Evolve</text>
+    <rect x="547.5" y="516" width="185" height="58" rx="29" fill="#0D9488" />
+    <text x="575.5" y="555" font-size="28">▥</text>
+    <text x="612.5" y="555" font-size="25">Score</text>
+    <rect x="748.5" y="516" width="205" height="58" rx="29" fill="#F2705F" />
+    <text x="776.5" y="555" font-size="28">⌘</text>
+    <text x="813.5" y="555" font-size="25">Inherit</text>
+    <rect x="969.5" y="516" width="200" height="58" rx="29" fill="#14B8A6" />
+    <text x="997.5" y="555" font-size="28">◆</text>
+    <text x="1034.5" y="555" font-size="25">Explore</text>
   </g>
 </svg>
