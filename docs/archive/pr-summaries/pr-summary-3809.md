@@ -2,106 +2,113 @@
 
 ## Summary
 
-`mergeParallelBridges` is part of the **safe (exact, lossless) compaction
-floor**, but on the fleet's IF-forest creatures it changed the outputs and
-emitted recurrent synapses that `loadFrom` then stripped. Two defects, both
-fixed in `src/compact/ParallelBridgeMerge.ts`. Closes #3809.
+`mergeParallelBridges` is advertised as part of the **safe** (exact, lossless)
+compaction floor, but on the GRQ IF-forest fixture it moved the creature's
+outputs by up to `2.3e-1` and emitted hundreds of backward synapses that
+`loadFrom` stripped with
+`🚨 [loadFrom] Stripping recurrent synapse … depth=-338` warnings. Two
+independent root causes, both fixed in `src/compact/ParallelBridgeMerge.ts`.
+Closes #3809.
 
-1. **Wrong topological position for the merged neuron.** The pass kept
-   `group[0]` — the member earliest in the export's neuron order — and
-   redirected every other member's inbound synapse onto it. That order *is* the
-   activation order `loadFrom` rebuilds, so each later member's source landed
-   *behind* the merged neuron and its forward edge became a backward one. On a
-   forward-only creature those synapses are stripped at load, silently dropping
-   whole contributions. The fix keeps the member **latest** in neuron order
-   (every member's source precedes its own bridge, hence the kept one) and
-   declines any bridge whose own edges do not already run forward. A `assert`
-   on each redirect fails loud if a backward edge could still slip through.
-2. **Merging into non-additive targets.** The group key was
-   `(target, squash)`, so 158 bridges feeding one **`IF`** neuron on different
-   synapse roles were collapsed into a single synapse. An `IF` reads its
-   `condition`, `positive` and `negative` synapses as three separate sums, so
-   the merge moved terms between them. Now the target must sum the merged
-   contributions: `MAXIMUM` / `MINIMUM` / `HYPOT` / `HYPOTv2` targets are
-   declined outright, an `IF` target is grouped per synapse type, and the
-   `condition` role — whose sum is compared against zero, where a rounding
-   difference would flip the branch — is never merged.
+**1. The target was never checked.** The pass validated the _bridge's_ squash
+(`isParallelMergeableSquash`) but not the _target's_. It replaces a group of the
+target's inbound synapses with a single synapse carrying their sum, which is
+only the same computation when the target consumes those values as a plain sum.
+On the fixture the target was `output-0`, an **`IF`** neuron, and the group
+mixed `condition` and `negative` roles — 159 bridges collapsed onto one edge.
+Aggregation targets (`IF`, `MAXIMUM`, `MINIMUM`, `HYPOT`, `HYPOTv2`) are now
+declined. `IF` is declined even though it sums per role: that sum drives a
+**discontinuous** branch selector, so a float32 rounding-sized shift can flip
+the branch and swing the output by an unbounded amount — measured at `4.3e-6`
+absolute on the fixture when same-role `IF` merging was tried, versus exactly
+`0` when declined.
 
-The redirect also now moves `toUUID` alongside `toId`; UUIDs are the identity
-`loadFrom` resolves first, and the old code only worked because the removed
-neuron's UUID happened to be gone from the map.
+**2. The group merged into the first bridge, not the last.** Every merged-away
+bridge's source is redirected onto the kept neuron. `loadFrom` indexes the
+inputs first and then walks the export array, so a source that loads _after_ the
+kept neuron produces a `from >= to` edge — recurrent, and stripped from a
+forward-only creature. The group now merges into the bridge that **loads last**
+(the only choice guaranteed to sit after every other member, and the one that
+admits the largest mergeable set), and any bridge whose redirected edge would
+change direction is left out of the group.
 
-### Effect on the reported fixture
+Also fixed: a redirected synapse had its `toId` rewritten but kept its old
+`toUUID`, leaving a stale wire endpoint naming a neuron that no longer exists.
+Both endpoints now move together.
 
-`test/data/grq-23-forests-constants.json`, after `mergeRedundantConstants` then
-`mergeParallelBridges`:
+### Behaviour change
 
-| | Before | After |
-| --- | ---: | ---: |
-| Worst absolute output delta | `9.4e-2` (`2.3e-1` on another draw) | `<1e-5` |
-| Synapses stripped as recurrent at load | 158 | 0 |
-| Neurons removed by the merge | 157 (incorrectly) | 157 |
-
-The residual is float32 accumulation, not a semantic difference: collapsing 158
-bridges rounds the sum once instead of 158 times. The unit test with dyadic
-weights, biases and inputs — where every intermediate is exact in float32 —
-asserts a **bit-for-bit identical** output.
-
-### Where the merged neuron now lands
-
-```mermaid
-flowchart LR
-    subgraph before["Before — kept the earliest member"]
-        S1[src-1] --> K1((kept<br/>pos 2))
-        S2[src-2<br/>pos 5] -. "backward → stripped" .-> K1
-        K1 --> T1[target]
-    end
-    subgraph after["After — keeps the latest member"]
-        S3[src-1] --> K2((kept<br/>pos 6))
-        S4[src-2<br/>pos 5] --> K2
-        K2 --> T2[target]
-    end
-```
+On a forward-only creature the surviving neuron of a merge is now the group's
+**last** bridge rather than its first. Three assertions in
+`test/compact/CompactTagPreservation.ts` hard-coded `bridge-A` as the survivor;
+they now resolve the surviving bridge via a `survivingBridge()` helper, so they
+test tag preservation rather than the kept-selection rule. No test was removed
+or disabled.
 
 ## Evidence
 
-Backend-only change — no web interface to screenshot. Verified by tests:
+Backend-only change — no web interface to screenshot. Evidence is the fixture
+measurement and the tests below.
 
-- All five tests in `test/compact/ParallelBridgeMergeOrdering.ts` **fail against
-  the unfixed pass** (the fixture test fails with
-  `TopologyError: 🚨 [loadFrom] Recurrent synapse 4270->4264 … depth=-6`) and
-  pass after the fix.
-- `deno test "test/compact/*.ts"` — 183 passed, 0 failed.
-- `./quality.sh` passes (lint, format, type-check, full test suite).
+Measured on `test/data/grq-23-forests-constants.json` (2 538 exported neurons),
+running the pass to a fixpoint on the export and comparing `activate()` outputs
+against the unmodified creature over random inputs:
+
+|        |  Worst output delta | Stripped recurrent synapses |
+| ------ | ------------------: | --------------------------: |
+| Before | `9.4e-2` … `5.1e-1` |                         158 |
+| After  |          `0.000e+0` |                           0 |
+
+```mermaid
+flowchart LR
+    subgraph before["Before — merge into the first bridge"]
+        S1["source (loads late)"] -->|redirected: backward| K1["kept = first bridge"]
+        K1 --> T1["target (IF)"]
+    end
+    subgraph after["After — merge into the last bridge"]
+        S2["source (loads late)"] -->|forward| K2["kept = last bridge"]
+        K2 --> T2["target"]
+        T3["aggregation target<br/>(IF / MAX / MIN / HYPOT)"]
+        B3["bridges"] -.->|declined| T3
+    end
+```
+
+The whole `test/compact/` suite (183 tests) passes, and `./quality.sh` reports
+`8496 passed | 2 failed`. Both failures are unrelated to this change:
+
+- `FormatConsistency` flagged this PR summary, which was written after the
+  gate's formatting step had already run. It is formatted now, and a repo-wide
+  format check passes.
+- `EvolveScorerUtilisation => evolveDataSet returns run-level scorerUtilisation`
+  fails with "a healthy run has zero batch fallbacks" because the locally built
+  `rust_scorer` rejects the creature JSON
+  (`Creature JSON error: invalid type: sequence, expected a map`) and every
+  batch call falls back to per-creature scoring. It reproduces unchanged on the
+  base commit `7719b4f7` in a clean worktree, so it is a pre-existing
+  environment/scorer-binary mismatch, not a regression from this PR.
 
 ## Test Plan
 
-Added `test/compact/ParallelBridgeMergeOrdering.ts`:
+New — `test/compact/ParallelBridgeMergeExactness.ts` (all five fail against the
+unfixed pass):
 
-- *a source after the first bridge stays forward* — a bridge whose source sits
-  after the first bridge in neuron order; asserts nothing is stripped at load
-  and the outputs are unchanged.
-- *a backward bridge edge is declined* — a recurrent creature whose bridge is
-  fed from behind it; asserts the group is declined.
-- *MAXIMUM target is declined* — a non-additive target must not be merged.
-- *IF target merges per synapse type, never conditions* — 12 typed bridges into
-  an `IF`; asserts only one same-type group merges, the four `condition`
-  synapses are untouched, and (with dyadic values) the outputs are bit-for-bit
-  identical.
-- *GRQ-23-forests fixture — parallel bridge merge no longer drifts* — the
-  regression fixture from #3808; asserts bridges still merge, no synapse is
-  stripped at load, and the worst output delta stays below `1e-4`.
+- `IF target is declined` — two bridges on the same `condition` role are left
+  alone.
+- `MAXIMUM target is declined` — a non-additive target is never pre-summed.
+- `merges into the bridge that loads last` — the later bridge survives, no
+  synapse loads backward, the redirected synapse's `toUUID` follows its `toId`,
+  the export reloads under the default strict `throwOnRecurrent: "forwardOnly"`
+  gate, and the outputs are unchanged over 50 random rows.
+- `a source that loads after the kept bridge is left alone` — on a recurrent
+  creature the bridge whose inbound edge would flip direction is excluded while
+  the other two still merge.
+- `GRQ-23-forests fixture — parallel bridge merge is exact and forward-only` —
+  the issue's regression fixture: no backward synapses, a strict reload, and a
+  worst output delta of exactly `0` over 25 random rows.
 
-Modified (documented, per the "no silent test edits" rule):
+Modified — `test/compact/CompactTagPreservation.ts`: three parallel-merge tag
+tests now follow the surviving bridge instead of naming `bridge-A` (see
+**Behaviour change** above).
 
-- `test/compact/CompactTagPreservation.ts` — three tests asserted that
-  *`bridge-A`* survives the merge. That is the implementation detail this issue
-  changes; they now look up whichever member survives and make the same tag
-  assertions on it.
-- `test/compact/ParallelMergeCornerCases.ts` — the "kept neuron's source is also
-  merged elsewhere" fixture listed `h2` *after* the bridge it feeds, i.e. a
-  backward edge no real creature would carry. Reordered so the fixture is
-  topologically valid; the scenario under test is unchanged.
-
-Documentation: `docs/api/TRAINING.md` gains the parallel bridge merge as item 5
-of the safe-fold list (it was missing) with its three exactness guards.
+Docs — `docs/api/TRAINING.md` gains the parallel bridge merge as safe fold 5,
+including the two conditions that keep it exact.
