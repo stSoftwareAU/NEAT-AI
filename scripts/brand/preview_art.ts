@@ -17,6 +17,7 @@
 
 import { dirname, fromFileUrl, resolve } from "@std/path";
 import { motifSvg } from "./preview_motifs.ts";
+import { assertSoundPng } from "./png_integrity.ts";
 import type { PreviewSpec } from "./preview_specs.ts";
 
 /** GitHub's social preview canvas. */
@@ -122,14 +123,34 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-function neuronMarkImage(): string {
+function neuronMarkImage(offsetX: number): string {
   if (!cachedMarkUri) {
-    cachedMarkUri = `data:image/png;base64,${
-      bytesToBase64(Deno.readFileSync(MARK_PATH))
-    }`;
+    // A rasteriser drops an undecodable image without complaining, which ships
+    // artwork missing the family mark — check the bytes before embedding them.
+    const bytes = Deno.readFileSync(MARK_PATH);
+    assertSoundPng(bytes, MARK_PATH);
+    cachedMarkUri = `data:image/png;base64,${bytesToBase64(bytes)}`;
   }
-  return `<image href="${cachedMarkUri}" x="0" y="0" width="${PREVIEW_WIDTH}" ` +
-    `height="${PREVIEW_HEIGHT}" preserveAspectRatio="none"/>`;
+  return `<image href="${cachedMarkUri}" x="${n(offsetX)}" y="0" ` +
+    `width="${PREVIEW_WIDTH}" height="${PREVIEW_HEIGHT}" ` +
+    `preserveAspectRatio="none"/>`;
+}
+
+/**
+ * Centre of the mark's soma — the organic A itself — as a fraction of the mark
+ * canvas. The soma path in `docs/brand/templates/neuron-a.svg` spans x 372…542
+ * of that lockup's 1280-unit canvas; the dendrites reach further left than
+ * right, so the artwork's own centre is not the letter's.
+ */
+const MARK_SOMA_CENTRE = ((372 + 542) / 2) / PREVIEW_WIDTH;
+
+/**
+ * How far to slide the mark so its soma stands in the wordmark's A slot — the
+ * gap between the E and the T of NE·T-AI. Measured glyph edges are passed in,
+ * so the mark follows the wordmark whichever font the rasteriser resolves.
+ */
+export function markOffsetX(eEnd: number, tStart: number): number {
+  return (eEnd + tStart) / 2 - MARK_SOMA_CENTRE * PREVIEW_WIDTH;
 }
 
 /** Escape the five XML entities so labels cannot break the document. */
@@ -288,7 +309,10 @@ export function buildPreviewSvg(
     measure("-", WORDMARK_SIZE, WORDMARK_WEIGHT, WORDMARK_FONT)
       .width;
   const hyphenX = (tX + tWidth + aX) / 2 - hyphenWidth / 2;
-  const letters = glyph(108 * s, "N") + glyph(271 * s, "E") + glyph(tX, "T") +
+  const eX = 271 * s;
+  const eWidth = measure("E", WORDMARK_SIZE, WORDMARK_WEIGHT, WORDMARK_FONT)
+    .width;
+  const letters = glyph(108 * s, "N") + glyph(eX, "E") + glyph(tX, "T") +
     glyph(hyphenX, "-") + glyph(aX, "A") + glyph(891 * s, "I");
 
   const background = palette.background
@@ -299,7 +323,7 @@ export function buildPreviewSvg(
 
   const body = [
     background,
-    neuronMarkImage(),
+    neuronMarkImage(markOffsetX(eX + eWidth, tX)),
     letters,
     motif,
     textRun(PREVIEW_WIDTH / 2, SUBTITLE_BASELINE, spec.subtitle, palette, {

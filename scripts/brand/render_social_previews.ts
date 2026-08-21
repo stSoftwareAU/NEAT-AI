@@ -10,15 +10,15 @@
  *
  * Usage: `deno run -A scripts/brand/render_social_previews.ts [--out DIR]`
  *
- * The rasteriser is `@resvg/resvg-js`, pulled straight from npm by Deno — it
- * is a developer tool for regenerating committed artwork, not a runtime
- * dependency of the library. Text is laid out from measured glyph extents, so
+ * The rasteriser is `@resvg/resvg-js`, mapped in `deno.json` and pulled from
+ * npm on first run — it is a developer tool for regenerating committed
+ * artwork, not a runtime dependency of the library. Text is laid out from measured glyph extents, so
  * the lockup stays centred whichever font of {@link FONT_STACK} the host
  * resolves; re-render on a host with Helvetica or DejaVu Sans for artwork that
  * matches the committed set.
  */
 
-import { Resvg } from "npm:@resvg/resvg-js@2.6.2";
+import { Resvg } from "@resvg/resvg-js";
 import { dirname, fromFileUrl, resolve } from "@std/path";
 import {
   buildPreviewSvg,

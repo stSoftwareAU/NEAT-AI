@@ -53,6 +53,22 @@ deno run -A scripts/brand/render_social_previews.ts
   starting SVG; [`neuron-a-mark.png`](templates/neuron-a-mark.png) is the
   organic A embedded in every preview.
 
+The mark itself is generated too — export it from the lockup rather than by
+hand, then re-render the previews:
+
+```bash
+deno run -A scripts/brand/render_neuron_mark.ts
+deno run -A scripts/brand/render_social_previews.ts
+```
+
+The exporter cuts the `neuron-a-mark` group out of the lockup SVG, so the mark
+carries the neuron alone on the lockup's canvas — the previews draw their own
+wordmark and slide the mark until its soma stands in the gap between the E and
+the T. It carries no text, so unlike the previews it re-exports identically on
+any host, and the PNG it writes is checked before it lands: a hand-exported mark
+whose image data was corrupt (Issue #3805) shipped previews with a blank gap
+where the neuron should be, and nothing failed.
+
 The renderer rasterises with `@resvg/resvg-js` (a developer tool pulled from npm
 at run time, not a library dependency) and lays text out from measured glyph
 extents, so re-render on a host with Helvetica or DejaVu Sans available.
