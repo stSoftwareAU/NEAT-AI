@@ -90,11 +90,23 @@ flowchart LR
     D --> E["removeBackwardSynapses → … → pruneDeadSubgraphs"]
 ```
 
-**TDD.** The three end-to-end tests in
+**TDD — verified, not asserted.** All **four** end-to-end tests in
 `test/compact/CompactCreatureConstantMerge.ts` were written first and fail
-against the unfixed compaction with `AssertionError: should have compacted`
-(verified by reverting `src/compact/CompactCreature.ts` and re-running); they
-pass with the new pass wired in.
+against the unfixed compaction. Re-verified this run by checking the branch out
+into a separate worktree, deleting the `mergeRedundantConstants` block from
+`src/compact/CompactCreature.ts`, and re-running:
+
+```text
+compactCreature merges a forest of differently-biased constants ... FAILED
+compactCreature merges the three constants of a single IF, one per role ... FAILED
+compactCreature keeps a surplus constant rather than duplicating a synapse ... FAILED
+GRQ-23-forests fixture — 277 constants merge to canonical bias-1 constants ... FAILED
+
+error: AssertionError: should have compacted            (× 3)
+error: AssertionError: compaction must not leave the constant pile behind
+```
+
+All four pass with the new pass wired in.
 
 **Modified existing test (documented change).**
 `test/compact/CompactCreatureConstantFold.ts` — "partially folds a constant"
@@ -159,6 +171,14 @@ New — `test/compact/CompactCreatureConstantMerge.ts` (end-to-end via
   valid topology (`creatureValidate`, `forwardOnly`) and no duplicate synapses
 
 Modified — `test/compact/CompactCreatureConstantFold.ts` (see above).
+
+Suite results (`NEAT_AI_BACKPROP_ENABLED=0`, matching `quality.sh`):
+
+- every `test/compact/*.ts` file — **178 passed, 0 failed**
+- every `test/creature/*.ts` file, including the `NeuronUuidStability` and
+  `SemanticVersionStability` gates named in `AGENTS.md` — **446 passed, 0
+  failed**. The new `constant-0`…`constant-2` well-known UUIDs do not perturb
+  the UUID-stability invariant.
 
 Docs — `docs/api/TRAINING.md` gains the merge as safe fold #4; `CHANGELOG.md`
 records it under Unreleased → Added.
