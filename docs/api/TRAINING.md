@@ -274,6 +274,20 @@ The safe variant is exactly these exact, lossless transforms:
    `IF` collapses losslessly to its always-taken branch: the taken branch's
    synapses become ordinary additive edges and the squash is rewritten to
    `IDENTITY`. (`src/compact/IfCollapse.ts`)
+4. **Redundant-constant merge into canonical bias-1 constants.** The constants
+   step 1 must retain — those feeding an aggregate consumer — are re-pointed at
+   at most **three** canonical constants with the fleet-wide well-known UUIDs
+   `constant-0` … `constant-2`, so breeding aligns them across machines exactly
+   like `input-N`. Each original bias moves onto the outgoing weight
+   (`bias b × weight w` → `bias 1 × weight w·b`), which is exact because a
+   constant contributes only the product `b · w`. Three slots, because a (from,
+   to) pair may hold only one synapse and one `IF` can take a different constant
+   on each of its `condition`/`positive`/`negative` roles; values sharing an
+   `IF` role (or feeding an additive consumer) are summed into one edge instead.
+   A consumer needing more distinct sources than there are free slots — a
+   `MAXIMUM` fed by four constants, say — keeps the surplus constants unchanged.
+   Frozen constants, consumers and synapses are never touched.
+   (`src/compact/ConstantMerge.ts`)
 
 The aggressive prune adds one non-exact step: it drops **untyped** synapses
 whose `|weight|` is below `AGGRESSIVE_PRUNE_WEIGHT_THRESHOLD = 1e-3`
