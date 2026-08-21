@@ -49,11 +49,14 @@ pass is a no-op, so compaction still reaches a fixpoint.
 Backend/CLI change — no web interface to screenshot. Evidence is the test suite
 plus the production fixture below.
 
-**Worst offender scan.** All 41 `samples/*.json` creatures in `GRQ-sampler` were
-scanned; `GRQ-23-forests.json` tops the list (277 constants, 263 distinct
-biases, 2 538 exported neurons, 24 100 synapses) and is committed as
-`test/data/grq-23-forests-constants.json`. Every sample in the fleet carries 277
-constants, so the pile is systemic, not one bad creature.
+**Worst offender scan.** All **39** `samples/*.json` creatures in `GRQ-sampler`
+were scanned. The worst constant count is **277** (263 distinct biases), and
+**19 of the 39** samples tie at exactly that count — so the pile is systemic
+rather than one bad creature. `GRQ-23-forests.json` is the tie-breaking pick
+committed as `test/data/grq-23-forests-constants.json` (277 constants, 263
+distinct biases, 2 538 exported neurons, 24 100 synapses — the committed fixture
+matches the sampler file field-for-field). The lightest sample,
+`Enceladus.json`, carries none.
 
 | Metric              | Before | After the merge |
 | ------------------- | -----: | --------------: |
@@ -121,6 +124,15 @@ floor and is **not** touched here; it is filed as #3809. The fixture test
 therefore asserts exactness on the merge pass itself and asserts only the
 constant-count collapse after full compaction, so the pre-existing drift cannot
 mask this pass's correctness.
+
+**Pre-existing noise, not introduced here.** The suite logs many
+`Batch rust scorer reconciliation failed (INVALID_JSON): … invalid type:
+sequence, expected a map`
+warnings from the bench harness, after which scoring falls back to per-creature
+mode. This is **pre-existing and unrelated** to this change: checking out clean
+`origin/Develop` in a separate worktree and running
+`bench/score_per_hour_harness_test.ts` reproduces the same warning 27 times with
+none of this PR's code present. Left alone rather than widening scope.
 
 ## Test Plan
 
