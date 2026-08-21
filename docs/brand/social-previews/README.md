@@ -16,8 +16,9 @@ its own subtitle, one-line descriptor, and motif.
 | `neat-ai-explore.png`          | [NEAT-AI-Explore](https://github.com/stSoftwareAU/NEAT-AI-Explore)                 | Explore         | Telescope               |
 | `neat-ai-snapshot.png`         | [NEAT-AI-Snapshot](https://github.com/stSoftwareAU/NEAT-AI-Snapshot)               | Snapshot        | Camera                  |
 | `neat-ai-examples.png`         | [NEAT-AI-Examples](https://github.com/stSoftwareAU/NEAT-AI-Examples)               | Examples        | Notebook                |
+| `neat-ai-forests.png`          | [NEAT-AI-Forests](https://github.com/stSoftwareAU/NEAT-AI-Forests)                 | Forests         | Decision-tree forest    |
 
-`opaque/` holds the same ten images flattened onto the brand navy. Upload
+`opaque/` holds the same eleven images flattened onto the brand navy. Upload
 **those** via each repo → Settings → General → Social preview; GitHub composites
 the upload onto its own chrome, where a transparent background would leave the
 dark ink unreadable.
