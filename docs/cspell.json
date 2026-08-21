@@ -619,6 +619,7 @@
     "paeth",
     "prims",
     "quot",
+    "reparent",
     "resvg",
     "scanline",
     "truecolour",
