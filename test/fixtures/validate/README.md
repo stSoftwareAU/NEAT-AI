@@ -120,6 +120,14 @@ it copies them.
 | `WASM_FORWARD_ONLY`, `WASM_STRUCTURAL`, `WASM_CYCLE` | The `forwardOnly` leg runs last, and the TypeScript loops already reject every defect those checks look for                            | the corresponding TypeScript error                               |
 | `NEURON_CREATURE_MISMATCH`                           | `neuron.creature !== creature` is a TypeScript object-identity comparison with no language-neutral equivalent — no JSON can express it | covered by the hand-written tests instead                        |
 
+`NEURON_CREATURE_MISMATCH`, `NEURON_INDEX_MISMATCH` and the `neuron.validate()`
+calls are the **host-only** half of `creatureValidate` (Issue #3802): they read
+JavaScript object identity and in-memory caches, so they stay in TypeScript
+whatever else moves to Rust. They are isolated in `hostOnlyNeuronChecks` in
+`src/architecture/CreatureValidate.ts`, and the order in which they interleave
+with the rule checks — which a Rust port has to reproduce — is pinned by
+`test/validate/CreatureValidateHostOnlyOrdering.ts`.
+
 The `duplicate-synapse` case carries a second discrepancy in its `notes`:
 duplicate `(from, to)` raises `TopologyError` / `INVALID_CONNECTION` even though
 `ValidationErrorName` already declares a `DUPLICATE_SYNAPSE` reason. That
