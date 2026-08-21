@@ -26,6 +26,8 @@ The mark is now **generated, not hand-exported**:
   committed — two brand tests were failing on `Develop` because of it. The
   README family table and dependency graph gained their matching NEAT-AI-Forests
   rows.
+- `@resvg/resvg-js` moved into `deno.json`'s import map, so both brand scripts
+  reference it by bare specifier instead of an inline `npm:` import.
 
 ```mermaid
 flowchart LR
