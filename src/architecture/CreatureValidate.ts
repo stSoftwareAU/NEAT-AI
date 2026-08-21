@@ -6,9 +6,45 @@
  * connections, no duplicate synapses, every hidden neuron wired in and out,
  * finite biases — and raises a {@link TopologyError} or {@link ValidationError}
  * when a mutation, breeding or discovery step produces an invalid creature.
+ *
+ * ## Two kinds of check (Issue #3802)
+ *
+ * The checks split in two, and the split is the seam a Rust/WASM validator
+ * plugs into:
+ *
+ * 1. **Rule checks** on creature *data* — ids, biases, neuron ordering, `IF`
+ *    wiring, per-type connectivity, synapse sorting and memetic
+ *    cross-references. These are portable: they read only values that survive
+ *    serialisation, so they can move to NEAT-AI-core.
+ * 2. **Host-only checks** — {@link hostOnlyNeuronChecks}. These read JavaScript
+ *    object identity and in-memory caches that cannot cross a WASM boundary at
+ *    all, so they stay here whatever else moves.
+ *
+ * ## Throw-ordering contract
+ *
+ * `creatureValidate` is first-failure-wins, so the order the two halves
+ * interleave is observable and must be reproduced by any replacement of the
+ * rule half. For each neuron, in array order, the loop runs:
+ *
+ * 1. that neuron's rule checks (id, bias, ordering, `IF`, per-type
+ *    connectivity), then
+ * 2. {@link hostOnlyNeuronChecks} for the same neuron — `neuron.validate()`,
+ *    then the `index` cache field, then the owning-creature identity.
+ *
+ * So a neuron breaching both halves throws its **rule** error, and a host-only
+ * breach on neuron *i* throws before any rule check on neuron *i + 1*. The
+ * remaining rule checks (neuron-type counts, synapses, the `connections`
+ * option, forward-only WASM topology and memetic cross-references) run only
+ * after every neuron has passed both halves. A single pass of host-only checks
+ * before or after the whole loop would change which error a doubly-invalid
+ * creature reports, so the checks stay interleaved.
+ *
+ * {@link debugWrite} is a diagnostics side effect rather than a check, and is
+ * reachable from both halves.
  */
 import { assert } from "@std/assert";
 import type { Creature } from "@creature";
+import type { Neuron } from "@architecture/Neuron.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 import { neuronWireLabelForDiagnostics } from "@neuron/NeuronSerialization.ts";
@@ -279,13 +315,10 @@ export function creatureValidate(
           );
         }
 
-        neuron.validate();
-
         break;
       }
       case "output": {
         stats.output++;
-        neuron.validate();
         break;
       }
       default:
@@ -295,19 +328,7 @@ export function creatureValidate(
         );
     }
 
-    if (neuron.index !== indx) {
-      throw new ValidationError(
-        `${neuron.ID()}) node.index: ${neuron.index} does not match expected index ${indx}`,
-        "OTHER",
-      );
-    }
-
-    if (neuron.creature !== creature) {
-      throw new TopologyError(
-        `node ${neuron.ID()} creature mismatch`,
-        "INVALID_STATE",
-      );
-    }
+    hostOnlyNeuronChecks(creature, neuron, indx);
   });
 
   if (stats.input !== creature.input) {
@@ -525,6 +546,53 @@ export function creatureValidate(
   }
 
   return stats;
+}
+
+/**
+ * The checks that cannot move to Rust (Issue #3802).
+ *
+ * Every check here reads state that only exists inside the JavaScript heap, so
+ * none of it can cross a WASM boundary — a Rust validator receives serialised
+ * creature data and has no way to observe any of it:
+ *
+ * - `neuron.validate()` delegates to {@link Neuron}'s own validation of its
+ *   squash and the `squashMethodCache` it lazily builds. `creatureValidate`
+ *   calls it for `hidden` and `output` neurons only; `input` and `constant`
+ *   neurons are covered by the rule half instead.
+ * - `neuron.index` is an in-memory cache of the neuron's position in
+ *   `creature.neurons`. It is never serialised, so there is nothing for a
+ *   portable check to compare against.
+ * - `neuron.creature` is pointer identity between the neuron and its owning
+ *   creature. Object identity has no language-neutral equivalent at all —
+ *   `test/fixtures/validate/coverage.json` records this site as
+ *   `not-expressible` for exactly that reason.
+ *
+ * Called once per neuron, immediately after that neuron's rule checks; see the
+ * throw-ordering contract in the module comment above. The order of the three
+ * checks below is itself observable and must not be rearranged.
+ */
+function hostOnlyNeuronChecks(
+  creature: Creature,
+  neuron: Neuron,
+  indx: number,
+): void {
+  if (neuron.type === "hidden" || neuron.type === "output") {
+    neuron.validate();
+  }
+
+  if (neuron.index !== indx) {
+    throw new ValidationError(
+      `${neuron.ID()}) node.index: ${neuron.index} does not match expected index ${indx}`,
+      "OTHER",
+    );
+  }
+
+  if (neuron.creature !== creature) {
+    throw new TopologyError(
+      `node ${neuron.ID()} creature mismatch`,
+      "INVALID_STATE",
+    );
+  }
 }
 
 function debugWrite(creature: Creature) {
