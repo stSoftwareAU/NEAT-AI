@@ -10,11 +10,12 @@
  *
  * Usage: `deno run -A scripts/brand/render_neuron_mark.ts [--out FILE]`
  *
- * The rasteriser is `@resvg/resvg-js`, pulled straight from npm by Deno — a
- * developer tool for regenerating committed artwork, not a runtime dependency.
+ * The rasteriser is `@resvg/resvg-js`, mapped in `deno.json` and pulled from
+ * npm on first run — a developer tool for regenerating committed artwork, not a
+ * runtime dependency.
  */
 
-import { Resvg } from "npm:@resvg/resvg-js@2.6.2";
+import { Resvg } from "@resvg/resvg-js";
 import { dirname, fromFileUrl, resolve } from "@std/path";
 import { buildNeuronMarkSvg, MARK_HEIGHT, MARK_WIDTH } from "./neuron_mark.ts";
 import { assertSoundPng } from "./png_integrity.ts";
