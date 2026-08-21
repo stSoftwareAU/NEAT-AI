@@ -1,13 +1,13 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "6.6.16",
+  "version": "6.6.17",
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
-    "rev": "0ed73c97008f81dfee692c13e6b0879a7801659e",
-    "assetSha256": "9cdc14e748385d692ce0084e30c249cefcd33f9e83704b7250851546b05563fc",
+    "rev": "eba8e64c3490b9c431a66b436a8d2a471a1cf46d",
+    "assetSha256": "fa316cbb1ef05d8bd34ef6bab8b1de5983aa53bf2c87e64469e695d0b1f98b9f",
     "memoryModel": "wasm64"
   },
   "publish": {
@@ -36,6 +36,7 @@
     "@std/uuid": "jsr:@std/uuid@1.1.1",
     "@std/yaml": "jsr:@std/yaml@1.2.0",
     "@std/testing/mock": "jsr:@std/testing@1.0.20/mock",
+    "@resvg/resvg-js": "npm:@resvg/resvg-js@2.6.2",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.14",
     "@architecture/": "./src/architecture/",
     "@blackbox/": "./src/blackbox/",

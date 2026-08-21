@@ -53,6 +53,27 @@ deno run -A scripts/brand/render_social_previews.ts
   starting SVG; [`neuron-a-mark.png`](templates/neuron-a-mark.png) is the
   organic A embedded in every preview.
 
+The mark is generated too — never hand-exported (Issue #3805):
+
+```bash
+deno run -A scripts/brand/render_neuron_mark.ts
+```
+
+It lifts the `neuron` group out of the template, drops the template's own
+wordmark, and places the face in the A slot the generated lockup leaves open:
+
+```mermaid
+flowchart LR
+    svg["neuron-a.svg<br/>(B5 lockup)"] -->|extract #neuron| place["place in the A slot"]
+    place -->|resvg| mark["neuron-a-mark.png"]
+    mark -->|base64 &lt;image&gt;| preview["social preview PNGs"]
+```
+
+A hand-exported mark once shipped corrupt, and the rasteriser dropped it
+silently — every preview rendered with a blank A.
+`scripts/brand/png_integrity.ts` now checks the bytes before they are embedded,
+so that fails loud instead.
+
 The renderer rasterises with `@resvg/resvg-js` (a developer tool pulled from npm
 at run time, not a library dependency) and lays text out from measured glyph
 extents, so re-render on a host with Helvetica or DejaVu Sans available.

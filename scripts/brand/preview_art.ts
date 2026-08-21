@@ -17,6 +17,7 @@
 
 import { dirname, fromFileUrl, resolve } from "@std/path";
 import { motifSvg } from "./preview_motifs.ts";
+import { assertSoundPng } from "./png_integrity.ts";
 import type { PreviewSpec } from "./preview_specs.ts";
 
 /** GitHub's social preview canvas. */
@@ -124,9 +125,11 @@ function bytesToBase64(bytes: Uint8Array): string {
 
 function neuronMarkImage(): string {
   if (!cachedMarkUri) {
-    cachedMarkUri = `data:image/png;base64,${
-      bytesToBase64(Deno.readFileSync(MARK_PATH))
-    }`;
+    // A rasteriser drops an undecodable image without complaining, which ships
+    // artwork missing the family mark — check the bytes before embedding them.
+    const bytes = Deno.readFileSync(MARK_PATH);
+    assertSoundPng(bytes, MARK_PATH);
+    cachedMarkUri = `data:image/png;base64,${bytesToBase64(bytes)}`;
   }
   return `<image href="${cachedMarkUri}" x="0" y="0" width="${PREVIEW_WIDTH}" ` +
     `height="${PREVIEW_HEIGHT}" preserveAspectRatio="none"/>`;
