@@ -6,7 +6,7 @@
       <stop offset="0%" stop-color="#14B8A6"/><stop offset="58%" stop-color="#20C9B7"/><stop offset="100%" stop-color="#F2705F"/>
     </linearGradient>
   </defs>
-  <g>
+  <g id="neuron">
     <g fill="none" stroke="url(#neuronGrad)" stroke-width="6" stroke-linecap="round">
       <path d="M454 199 C431 174 420 149 421 121 C421 100 411 88 397 72"/><path d="M424 140 C401 123 380 112 354 105 C332 99 316 86 304 68"/><path d="M397 119 C381 99 372 80 373 61"/><path d="M355 105 C337 101 319 104 301 114 C280 125 260 125 243 116"/><path d="M421 123 C441 105 455 90 465 71"/>
       <path d="M477 201 C500 174 513 146 511 119 C510 100 522 85 540 71"/><path d="M507 137 C531 121 555 112 582 109 C609 106 627 93 645 79"/><path d="M512 119 C495 101 488 82 490 61"/><path d="M541 111 C560 98 577 82 583 62"/><path d="M581 109 C606 113 629 108 649 97 C670 84 691 80 711 81"/>

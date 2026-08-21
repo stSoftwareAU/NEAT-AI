@@ -312,6 +312,7 @@ training, discovery, scoring, visualisation, and example surface.
 | **[NEAT-AI-Lamarck](https://github.com/stSoftwareAU/NEAT-AI-Lamarck)**                 | Experimental Rust optimiser (`neat_ai_lamarck`) that refines already-fit NEAT-AI creatures; its results are judged by NEAT-AI-scorer.                                            |
 | **[NEAT-AI-Explore](https://github.com/stSoftwareAU/NEAT-AI-Explore)**                 | TypeScript visualisation tool that consumes NEAT-AI-Snapshot data to inspect creature topology and behaviour.                                                                    |
 | **[NEAT-AI-Examples](https://github.com/stSoftwareAU/NEAT-AI-Examples)**               | TypeScript example projects showing how to use NEAT-AI for real tasks.                                                                                                           |
+| **[NEAT-AI-Forests](https://github.com/stSoftwareAU/NEAT-AI-Forests)**                 | Experimental Rust optimiser that grafts decision-tree residual corrections onto already-fit NEAT-AI creatures; candidates are judged by NEAT-AI-scorer.                          |
 
 ### Dependency graph
 
@@ -326,6 +327,7 @@ flowchart LR
   lamarck["NEAT-AI-Lamarck<br/>(Rust optimiser)"]
   explore["NEAT-AI-Explore<br/>(TypeScript UI)"]
   examples["NEAT-AI-Examples<br/>(TypeScript)"]
+  forests["NEAT-AI-Forests<br/>(Rust optimiser)"]
 
   core -- "vendored WASM (pinned rev)" --> neat
   core -- "path dependency" --> scorer
@@ -334,6 +336,8 @@ flowchart LR
   discovery -- "Deno FFI" --> neat
   backprop -- "native backprop for trainDir" --> neat
   lamarck -- "scored by" --> scorer
+  neat -- "fittest creatures grafted by" --> forests
+  forests -- "scored by" --> scorer
   neat -- "produces snapshots" --> snapshot
   snapshot -- "consumed by" --> explore
   neat -- "used by" --> examples
@@ -367,6 +371,10 @@ so it reads in light and dark modes alike. Sources and regeneration:
   <tr>
     <td><img width="380" src="docs/brand/social-previews/neat-ai-explore.png" alt="NEAT-AI-Explore: visualise creature topology and behaviour"></td>
     <td><img width="380" src="docs/brand/social-previews/neat-ai-examples.png" alt="NEAT-AI-Examples: worked TypeScript projects you can run today"></td>
+  </tr>
+  <tr>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-forests.png" alt="NEAT-AI-Forests: decision-tree tricks for faster evolutionary discovery"></td>
+    <td></td>
   </tr>
 </table>
 
