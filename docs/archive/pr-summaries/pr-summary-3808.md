@@ -102,14 +102,25 @@ and the merged weight; the behaviour under test — an aggregate consumer's
 synapse is never folded into a bias — is unchanged, and no test was removed or
 disabled.
 
-**Out of scope, found while testing.** Running the _full_ `compactCreature` over
-the new fixture changes its output by ~0.5, and bisecting the passes shows the
-drift comes from `mergeParallelBridges` (Issues #1947/#1948), not from this
-merge: after `mergeRedundantConstants` the worst delta is `0.000e+0`, after
-`mergeParallelBridges` it is `3.826e-1`. That is a separate root cause in the
-"safe" floor and is filed as its own issue; the fixture test therefore asserts
-exactness on the merge pass itself and asserts only the constant-count collapse
-after full compaction.
+**Out of scope, found while testing — filed as #3809.** Running the _full_
+`compactCreature` over the new fixture changes its output, and bisecting the
+safe passes shows the drift comes from `mergeParallelBridges` (Issues
+#1947/#1948), not from this merge. Measuring the worst absolute output delta on
+the fixture against the unmodified creature:
+
+| Pass applied                        |                      Worst output delta |
+| ----------------------------------- | --------------------------------------: |
+| `mergeRedundantConstants` (this PR) |                              `0.000e+0` |
+| …then `mergeParallelBridges`        | `9.416e-2` (`2.328e-1` on another draw) |
+
+The same run also emits hundreds of
+`🚨 [loadFrom] Stripping recurrent synapse … This indicates upstream corruption`
+warnings, so `mergeParallelBridges` is emitting backward edges into a
+forward-only creature. That is a pre-existing, separate root cause in the "safe"
+floor and is **not** touched here; it is filed as #3809. The fixture test
+therefore asserts exactness on the merge pass itself and asserts only the
+constant-count collapse after full compaction, so the pre-existing drift cannot
+mask this pass's correctness.
 
 ## Test Plan
 
