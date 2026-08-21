@@ -112,3 +112,23 @@ tests now follow the surviving bridge instead of naming `bridge-A` (see
 
 Docs — `docs/api/TRAINING.md` gains the parallel bridge merge as safe fold 5,
 including the two conditions that keep it exact.
+
+## CI fix — the shipped code did not decline `IF` (Merge coverage & results)
+
+The `Merge coverage & results` gate failed on shard 4:
+`GRQ-23-forests fixture —
+parallel bridge merge is exact and forward-only`
+measured a worst output delta of `2.4e-6` instead of `0`.
+
+`src/compact/ParallelBridgeMerge.ts` declined only the `condition` role of an
+`IF` target, not the target itself — the `positive`/`negative` roles still
+merged, so 158 bridges re-associated a float32 sum and left the ~1e-6 residual
+this PR set out to remove. The pass now declines every aggregation target
+outright, matching the design described above, the `IF target is declined`
+tests, and `ConstantFold`'s existing treatment of aggregate consumers. The
+fixture is left untouched, and its outputs are bit-identical.
+
+`test/compact/ParallelBridgeMergeOrdering.ts` carried the earlier per-role
+expectations (a `< 1e-4` tolerance on the fixture) and now asserts the decline
+and exact outputs instead; `docs/api/TRAINING.md` safe fold 5 was updated to
+match.

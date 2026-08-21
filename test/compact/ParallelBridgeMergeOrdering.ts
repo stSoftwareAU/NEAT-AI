@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
+import { assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
@@ -238,7 +238,7 @@ Deno.test(
 );
 
 Deno.test(
-  "parallel bridge merge: IF target merges per synapse type, never conditions",
+  "parallel bridge merge: IF target is declined for every synapse role",
   async () => {
     await initWasmForTests();
 
@@ -248,9 +248,11 @@ Deno.test(
 
     const merged = exportJSONUnchecked(original);
     const result = mergeParallelBridges(merged);
-    // 12 bridges: 4 condition, 4 positive, 4 negative. One group merges per
-    // pass, and the condition group is off limits, so 3 neurons go.
-    assertEquals(result.removedNeurons, 3, "one same-type group must merge");
+    // An IF sums its condition / positive / negative synapses separately, so
+    // a same-role group looks additive — but re-associating a float32 sum is
+    // exact only in real arithmetic, and this pass is part of the exact
+    // compaction floor. Every role is declined.
+    assertEquals(result.removedNeurons, 0, "no IF group may merge");
 
     const mergedCreature = Creature.fromJSON(merged, false, "#3809");
     assertEquals(
@@ -259,17 +261,16 @@ Deno.test(
       "no synapse may be stripped at load",
     );
 
-    // Every surviving condition synapse still comes straight from a bridge.
-    const conditionSources = merged.synapses
-      .filter((s) => s.type === "condition")
-      .map((s) => s.fromUUID);
-    assertEquals(conditionSources.length, 4, "conditions must be untouched");
+    assertEquals(
+      merged.synapses.filter((s) => s.type === "condition").length,
+      4,
+      "conditions must be untouched",
+    );
 
-    // Dyadic weights, biases and inputs — the merge must be bit-for-bit exact.
     assertEquals(
       worstOutputDelta(original, mergedCreature, rows),
       0,
-      "merging value synapses of one type must be exact",
+      "declining the merge must leave the outputs bit-identical",
     );
   },
 );
@@ -281,7 +282,10 @@ Deno.test(
 
     // The worst GRQ-sampler offender (Issue #3808): 2 538 exported neurons of
     // IF forests. Merging their bridges used to emit hundreds of recurrent
-    // synapses (stripped at load) and drift the outputs by ~1e-1.
+    // synapses (stripped at load) and drift the outputs by ~1e-1; merging only
+    // same-role IF synapses still left a ~1e-6 float32 residual, which the
+    // exact compaction floor does not permit. Every bridge here feeds an IF,
+    // so the pass now declines the lot and the fixture is left untouched.
     const json: CreatureExport = JSON.parse(
       await Deno.readTextFile("./test/data/grq-23-forests-constants.json"),
     );
@@ -289,8 +293,10 @@ Deno.test(
 
     const exported = exportJSONUnchecked(creature);
     mergeRedundantConstants(exported);
+    const neuronsBefore = exported.neurons.length;
     const result = mergeParallelBridges(exported);
-    assert(result.removedNeurons > 0, "the forest bridges must merge");
+    assertEquals(result.removedNeurons, 0, "IF-fed bridges must be declined");
+    assertEquals(exported.neurons.length, neuronsBefore, "no neuron removed");
 
     // Loading with the default gate throws on any backward synapse, and the
     // synapse count proves none was stripped.
@@ -301,15 +307,14 @@ Deno.test(
       "no synapse may be stripped at load",
     );
 
-    // Not bit-exact: collapsing 158 bridges re-associates a float32 sum and
-    // rounds it once instead of 158 times. The residual is ~1e-6 on outputs
-    // of magnitude ~2 — five orders of magnitude below the ~1e-1 drift the
-    // recurrent synapses used to cause.
-    const delta = worstOutputDelta(
-      creature,
-      mergedCreature,
-      inputRows(creature.input, 25),
+    assertEquals(
+      worstOutputDelta(
+        creature,
+        mergedCreature,
+        inputRows(creature.input, 25),
+      ),
+      0,
+      "the exact compaction floor must not move the outputs at all",
     );
-    assert(delta < 1e-4, `worst output delta ${delta.toExponential(3)}`);
   },
 );

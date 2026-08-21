@@ -295,10 +295,11 @@ The safe variant is exactly these exact, lossless transforms:
    Three guards keep it lossless (Issue #3809): the merged neuron is the group
    member **latest in the export's neuron order**, so every redirected synapse
    stays forward rather than becoming a stripped recurrent edge; the target must
-   **sum** the contributions, so `MAXIMUM`/`MINIMUM`/`HYPOT`/`HYPOTv2` targets
-   are declined; and an `IF` target merges only within one synapse role, never
-   the `condition` role that decides its branch.
-   (`src/compact/ParallelBridgeMerge.ts`)
+   **sum** the contributions, so every aggregate target
+   (`MAXIMUM`/`MINIMUM`/`HYPOT`/`HYPOTv2`/`IF`) is declined — `IF` included,
+   because re-associating one of its per-role float32 sums is exact only in real
+   arithmetic, and a rounding-sized shift either flips its branch selector or
+   moves the selected branch's value. (`src/compact/ParallelBridgeMerge.ts`)
 
 The aggressive prune adds one non-exact step: it drops **untyped** synapses
 whose `|weight|` is below `AGGRESSIVE_PRUNE_WEIGHT_THRESHOLD = 1e-3`

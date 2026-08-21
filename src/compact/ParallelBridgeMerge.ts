@@ -54,10 +54,11 @@ export interface ParallelBridgeMergeResult {
  *
  * **The target must sum the merged synapses (Issue #3809).** Collapsing a
  * group into one synapse is only lossless where the target adds the
- * contributions up. MAXIMUM, MINIMUM and HYPOT targets are declined outright;
- * an IF target is merged only per synapse type (`positive` / `negative`,
- * never `condition`), because it reads those as three separate sums and
- * compares the condition sum against zero.
+ * contributions up, so every aggregation target (`IF`, `MAXIMUM`, `MINIMUM`,
+ * `HYPOT`, …) is declined. `IF` is declined too even though it sums per
+ * synapse role: re-associating a float32 sum is not exact, and for `IF` that
+ * shift either flips the discontinuous branch selector or moves the selected
+ * branch's value.
  *
  * @param exported - The creature export to modify in-place
  * @returns The number of neurons removed
@@ -142,15 +143,15 @@ export function mergeParallelBridges(
       // HYPOT combine their inputs non-additively — decline those.
       const target = neuronById.get(outConns[0].toId!);
       if (!target) continue;
-      if (isAggregationSquash(target.squash)) {
-        if (target.squash !== "IF") continue;
-        // An IF's condition synapses are summed and then compared against
-        // zero. Re-associating that sum is exact in real arithmetic but not
-        // in float32, and a sum sitting near the boundary would flip the
-        // branch — a large output change from a rounding difference. Merge
-        // only the value-carrying synapses.
-        if (outConns[0].type === "condition") continue;
-      }
+      // An IF sums its `condition`, `positive` and `negative` synapses
+      // separately, so a same-role group looks additive — but re-associating
+      // any of those sums is exact only in real arithmetic, not in float32.
+      // The condition sum drives a discontinuous branch (a rounding-sized
+      // shift can flip it), and the value sums feed the chosen branch
+      // directly, which measurably moved the fixture's outputs by ~1e-6.
+      // Exactness is the contract of this pass, so decline every aggregation
+      // target outright (Issue #3809).
+      if (isAggregationSquash(target.squash)) continue;
 
       bridgeNeurons.push(neuron);
     }
