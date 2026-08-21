@@ -88,6 +88,18 @@ Deno.test("a self-closing element is extracted as one tag", () => {
   assert(dot === '<circle id="dot" r="4"/>', `unexpected extraction: ${dot}`);
 });
 
+Deno.test("depth counts only same-name tags, not prefixed neighbours", () => {
+  // `<glyph>` shares the `g` prefix and `<path/>` closes itself, so neither may
+  // move the depth counter that finds the group's own `</g>`.
+  const svg = '<svg><g id="neuron"><glyph></glyph><g><path d="M0 0"/></g></g>' +
+    "<g>after</g></svg>";
+  const neuron = extractElement(svg, "neuron");
+  assert(
+    neuron === '<g id="neuron"><glyph></glyph><g><path d="M0 0"/></g></g>',
+    `unexpected extraction: ${neuron}`,
+  );
+});
+
 Deno.test("the mark SVG carries the neuron on the preview canvas", async () => {
   const svg = buildNeuronMarkSvg(await template());
   assert(

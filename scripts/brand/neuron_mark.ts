@@ -84,14 +84,18 @@ export function extractElement(svg: string, id: string): string {
   if (!name) throw new Error(`element id="${id}" has no tag name`);
   if (svg[openEnd - 1] === "/") return svg.slice(openAt, openEnd + 1);
 
-  // Walk the same-name tags that follow, so nested groups keep their depth.
-  const tags = new RegExp(`<${name}\\b[^>]*>|</${name}>`, "g");
+  // Walk the tags that follow, so nested groups keep their depth. The pattern
+  // is a literal that captures each tag's name — building it from `name` would
+  // compile attacker-shaped template text into a regex (ReDoS).
+  const tags = /<(\/?)([\w:-]+)[^>]*>/g;
   tags.lastIndex = openEnd + 1;
   let depth = 1;
   for (let match = tags.exec(svg); match; match = tags.exec(svg)) {
-    if (match[0].startsWith("</")) depth--;
-    else if (!match[0].endsWith("/>")) depth++;
-    if (depth === 0) return svg.slice(openAt, match.index + match[0].length);
+    const [tag, closing, tagName] = match;
+    if (tagName !== name) continue;
+    if (closing) depth--;
+    else if (!tag.endsWith("/>")) depth++;
+    if (depth === 0) return svg.slice(openAt, match.index + tag.length);
   }
   throw new Error(`element id="${id}" is never closed`);
 }
