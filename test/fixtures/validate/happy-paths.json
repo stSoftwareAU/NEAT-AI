@@ -1,0 +1,208 @@
+{
+  "group": "happy-paths",
+  "description": "Creatures creatureValidate accepts, pinned by their exact stats object.",
+  "cases": [
+    {
+      "name": "ok-minimal",
+      "rule": "OK_MINIMAL",
+      "notes": "One input wired straight to one output — the smallest valid creature.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "forwardOnly": true,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [{ "from": 0, "to": 1, "weight": 1 }]
+      },
+      "expect": {
+        "outcome": "ok",
+        "stats": {
+          "input": 1,
+          "constant": 0,
+          "hidden": 0,
+          "output": 1,
+          "connections": 1
+        }
+      }
+    },
+    {
+      "name": "ok-with-constant",
+      "rule": "OK_CONSTANTS",
+      "notes": "A constant carries a bias, no squash, no inward and at least one outward synapse.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "forwardOnly": true,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "constant", "id": 1000001, "uuid": "c1", "bias": 1 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 2, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 0.5 }
+        ]
+      },
+      "expect": {
+        "outcome": "ok",
+        "stats": {
+          "input": 1,
+          "constant": 1,
+          "hidden": 0,
+          "output": 1,
+          "connections": 2
+        }
+      }
+    },
+    {
+      "name": "ok-with-hidden-layer",
+      "rule": "OK_HIDDEN",
+      "notes": "Required computational order is input, constant, hidden, output.",
+      "creature": {
+        "input": 2,
+        "output": 1,
+        "forwardOnly": true,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "constant", "id": 1000001, "uuid": "c1", "bias": 1 },
+          {
+            "type": "hidden",
+            "id": 1000002,
+            "uuid": "h1",
+            "bias": 0.25,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 3, "weight": 0.5 },
+          { "from": 1, "to": 3, "weight": -0.5 },
+          { "from": 2, "to": 4, "weight": 0.1 },
+          { "from": 3, "to": 4, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "ok",
+        "stats": {
+          "input": 2,
+          "constant": 1,
+          "hidden": 1,
+          "output": 1,
+          "connections": 4
+        }
+      }
+    },
+    {
+      "name": "ok-recurrent-default-options",
+      "rule": "OK_RECURRENT_DEFAULT",
+      "notes": "A backward synapse (from > to) is accepted when feedbackLoop is left undefined.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "hidden",
+            "id": 1000002,
+            "uuid": "h2",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 },
+          { "from": 2, "to": 1, "weight": 0.5 },
+          { "from": 2, "to": 3, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "ok",
+        "stats": {
+          "input": 1,
+          "constant": 0,
+          "hidden": 2,
+          "output": 1,
+          "connections": 4
+        }
+      }
+    },
+    {
+      "name": "ok-forward-only",
+      "rule": "OK_FORWARD_ONLY",
+      "notes": "Exercises the forwardOnly leg: validateForwardOnly, validateStructuralIntegrity and detectCycles all pass.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "forwardOnly": true,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0.5,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ]
+      },
+      "options": { "forwardOnly": true },
+      "expect": {
+        "outcome": "ok",
+        "stats": {
+          "input": 1,
+          "constant": 0,
+          "hidden": 1,
+          "output": 1,
+          "connections": 2
+        }
+      }
+    }
+  ]
+}

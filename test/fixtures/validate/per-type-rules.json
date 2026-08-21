@@ -1,0 +1,239 @@
+{
+  "group": "per-type-rules",
+  "description": "The per-neuron-type switch: input, constant, hidden and unknown types.",
+  "cases": [
+    {
+      "name": "input-neuron-with-inward-connection",
+      "rule": "INPUT_HAS_INWARD",
+      "notes": "Input neurons may not be a synapse target.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 0, "weight": 0.5 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "TopologyError",
+        "reason": "INVALID_CONNECTION",
+        "messageContains": "'input' neuron 0 has inward connections: 1"
+      }
+    },
+    {
+      "name": "constant-with-inward-connection",
+      "rule": "CONSTANT_HAS_INWARD",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "constant", "id": 1000001, "uuid": "c1", "bias": 1 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "TopologyError",
+        "reason": "INVALID_CONNECTION",
+        "messageContains": "'constant' neuron 1000001 has inward connections: 1"
+      }
+    },
+    {
+      "name": "constant-with-squash",
+      "rule": "CONSTANT_HAS_SQUASH",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "constant",
+            "id": 1000001,
+            "uuid": "c1",
+            "bias": 1,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 2, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 0.5 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "TopologyError",
+        "reason": "INVALID_SQUASH",
+        "messageContains": "'constant' has squash: IDENTITY"
+      }
+    },
+    {
+      "name": "constant-without-outward-connection",
+      "rule": "CONSTANT_NO_OUTWARD",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "constant", "id": 1000001, "uuid": "c1", "bias": 1 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [{ "from": 0, "to": 2, "weight": 1 }]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "NO_OUTWARD_CONNECTIONS",
+        "messageContains": "constants neuron c1 has no outward connections"
+      }
+    },
+    {
+      "name": "hidden-without-inward-connection",
+      "rule": "HIDDEN_NO_INWARD",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 2, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "NO_INWARD_CONNECTIONS",
+        "messageContains": "hidden neuron h1 has no inward connections"
+      }
+    },
+    {
+      "name": "hidden-without-outward-connection",
+      "rule": "HIDDEN_NO_OUTWARD",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 0, "to": 2, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "NO_OUTWARD_CONNECTIONS",
+        "messageContains": "hidden neuron h1 has no outward connections"
+      }
+    },
+    {
+      "name": "unknown-neuron-type",
+      "rule": "INVALID_NEURON_TYPE",
+      "notes": "Any type outside input/constant/hidden/output falls through to the switch default.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "banana",
+            "id": 1000001,
+            "uuid": "b1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "TopologyError",
+        "reason": "INVALID_NEURON_TYPE",
+        "messageContains": "Invalid type: banana"
+      }
+    }
+  ]
+}

@@ -1,0 +1,278 @@
+{
+  "group": "synapses",
+  "description": "The synapse loop: targets, sort order, duplicates and recursion.",
+  "cases": [
+    {
+      "name": "synapse-points-at-input-shadowed",
+      "rule": "SYNAPSE_TO_INPUT",
+      "notes": "The 'connection points to an input node' TopologyError is unreachable: the same synapse makes the input neuron fail the earlier 'input neuron has inward connections' check in the neuron loop. Recording current behaviour (see README).",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 0, "weight": 0.5 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "TopologyError",
+        "reason": "INVALID_CONNECTION",
+        "messageContains": "'input' neuron 0 has inward connections: 1"
+      }
+    },
+    {
+      "name": "forward-only-self-connection",
+      "rule": "SELF_CONNECTION_FORWARD_ONLY",
+      "notes": "Self-connections are only rejected under forwardOnly.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 1, "weight": 0.25 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ]
+      },
+      "options": { "forwardOnly": true },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "SELF_CONNECTION",
+        "messageContains": "Self connection synapse h1 -> h1"
+      }
+    },
+    {
+      "name": "synapses-not-sorted-by-from",
+      "rule": "SORT_FAILURE_FROM",
+      "creature": {
+        "input": 2,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 1, "to": 2, "weight": 1 },
+          { "from": 0, "to": 2, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "TopologyError",
+        "reason": "SORT_FAILURE",
+        "messageContains": "1) synapses not sorted"
+      }
+    },
+    {
+      "name": "synapses-not-sorted-by-to",
+      "rule": "SORT_FAILURE_TO",
+      "notes": "Same 'from', descending 'to'.",
+      "creature": {
+        "input": 1,
+        "output": 2,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -2,
+            "uuid": "output-1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 2, "weight": 1 },
+          { "from": 0, "to": 1, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "TopologyError",
+        "reason": "SORT_FAILURE",
+        "messageContains": "synapses not sorted 0->1 last to: 2"
+      }
+    },
+    {
+      "name": "duplicate-synapse",
+      "rule": "DUPLICATE_SYNAPSE",
+      "notes": "Current NEAT-AI behaviour is TopologyError/INVALID_CONNECTION even though ValidationErrorName already carries a DUPLICATE_SYNAPSE reason. Flagged for stSoftwareAU/NEAT-AI-core#556; the corpus freezes what happens today rather than resolving the discrepancy.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 0, "to": 1, "weight": 0.5 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "TopologyError",
+        "reason": "INVALID_CONNECTION",
+        "messageContains": "duplicate synapse input-0 -> h1"
+      }
+    },
+    {
+      "name": "recursive-synapse-rejected-when-feedback-loop-false",
+      "rule": "RECURSIVE_SYNAPSE",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "hidden",
+            "id": 1000002,
+            "uuid": "h2",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 },
+          { "from": 2, "to": 1, "weight": 0.5 },
+          { "from": 2, "to": 3, "weight": 1 }
+        ]
+      },
+      "options": { "feedbackLoop": false },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "RECURSIVE_SYNAPSE",
+        "messageContains": "Recursive synapse h2 -> h1"
+      }
+    },
+    {
+      "name": "recursive-synapse-accepted-when-feedback-loop-true",
+      "rule": "OK_RECURRENT_FEEDBACK_TRUE",
+      "notes": "The same creature as the case above, accepted because feedbackLoop is explicitly true.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "hidden",
+            "id": 1000002,
+            "uuid": "h2",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 },
+          { "from": 2, "to": 1, "weight": 0.5 },
+          { "from": 2, "to": 3, "weight": 1 }
+        ]
+      },
+      "options": { "feedbackLoop": true },
+      "expect": {
+        "outcome": "ok",
+        "stats": {
+          "input": 1,
+          "constant": 0,
+          "hidden": 2,
+          "output": 1,
+          "connections": 4
+        }
+      }
+    }
+  ]
+}
