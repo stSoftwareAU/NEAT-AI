@@ -82,10 +82,12 @@ Deno.test("parallel merge: kept neuron's source is also merged elsewhere", () =>
   const json: CreatureExport = {
     input: 2,
     output: 1,
+    // h2 feeds h0, so it comes first: the neuron order is the activation
+    // order, and a bridge fed from behind it is declined (Issue #3809).
     neurons: [
+      { type: "hidden", id: 5002, squash: "IDENTITY", bias: 0.1 },
       { type: "hidden", id: 5000, squash: "IDENTITY", bias: 0 },
       { type: "hidden", id: 5001, squash: "IDENTITY", bias: 0 },
-      { type: "hidden", id: 5002, squash: "IDENTITY", bias: 0.1 },
       { type: "output", id: -1, squash: "IDENTITY", bias: 0 },
     ],
     synapses: [

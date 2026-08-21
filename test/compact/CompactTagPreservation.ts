@@ -280,10 +280,10 @@ Deno.test("compact: parallel IDENTITY bridge merge preserves neuron tags on kept
   const result = mergeParallelBridges(exported);
   assertEquals(result.removedNeurons, 1, "One neuron should be removed");
 
-  // Assert: The kept neuron (bridge-A) should have merged tags.
-  const keptNeuron = exported.neurons.find(
-    (n) => (n as { uuid?: string }).uuid === "bridge-A",
-  );
+  // Assert: whichever member survives carries the merged tags. Issue #3809
+  // made the *latest* member the kept one (so redirected synapses stay
+  // forward), so this no longer names bridge-A.
+  const keptNeuron = exported.neurons.find((n) => n.type === "hidden");
   assert(keptNeuron, "Kept neuron should exist");
   assert(keptNeuron.tags, "Kept neuron should have tags");
 
@@ -335,10 +335,9 @@ Deno.test("compact: parallel bridge merge preserves neuron tags on kept neuron",
   const result = mergeParallelBridges(exported);
   assertEquals(result.removedNeurons, 1, "One neuron should be removed");
 
-  // Assert: The kept neuron (bridge-A) should have merged tags.
-  const keptNeuron = exported.neurons.find(
-    (n) => (n as { uuid?: string }).uuid === "bridge-A",
-  );
+  // Assert: whichever member survives carries the merged tags (Issue #3809 —
+  // the kept member is the latest in neuron order, not bridge-A).
+  const keptNeuron = exported.neurons.find((n) => n.type === "hidden");
   assert(keptNeuron, "Kept neuron should exist");
   assert(keptNeuron.tags, "Kept neuron should have tags");
 
@@ -395,13 +394,12 @@ Deno.test("compact: parallel IDENTITY bridge merge preserves synapse tags", () =
   const result = mergeParallelBridges(exported);
   assertEquals(result.removedNeurons, 1, "One neuron should be removed");
 
-  // Assert: Both inbound synapses should retain their tags.
-  // (bridge-B's inbound synapse is redirected to bridge-A, preserving tags)
-  const bridgeAId = exported.neurons.find(
-    (n) => (n as { uuid?: string }).uuid === "bridge-A",
-  )!.id!;
+  // Assert: Both inbound synapses should retain their tags — the removed
+  // member's inbound synapse is redirected onto the kept neuron (the latest
+  // member in neuron order since Issue #3809), tags and all.
+  const keptId = exported.neurons.find((n) => n.type === "hidden")!.id!;
   const synapseA = exported.synapses.find(
-    (s) => s.fromId === 0 && s.toId === bridgeAId,
+    (s) => s.fromId === 0 && s.toId === keptId,
   );
   assert(synapseA, "Synapse from input-0 should exist");
   assert(synapseA.tags, "Synapse A tags should be preserved");
@@ -409,7 +407,7 @@ Deno.test("compact: parallel IDENTITY bridge merge preserves synapse tags", () =
   assertEquals(synapseA.tags[0].value, "A");
 
   const redirectedSynapse = exported.synapses.find(
-    (s) => s.fromId === 1 && s.toId === bridgeAId,
+    (s) => s.fromId === 1 && s.toId === keptId,
   );
   assert(redirectedSynapse, "Redirected synapse should exist");
   assert(
