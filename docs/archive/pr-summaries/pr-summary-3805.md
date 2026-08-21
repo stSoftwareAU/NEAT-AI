@@ -56,7 +56,7 @@ flowchart LR
     SVG["docs/brand/templates/neuron-a.svg<br/>(B5 lockup)"]
       --> Cut["buildMarkSvg()<br/>cut #neuron-a-mark, keep canvas + defs"]
     Cut --> Rast["render_neuron_mark.ts<br/>resvg → PNG"]
-    Rast --> Check{"assertSoundPng()<br/>CRC + inflate"}
+    Rast --> Check{"assertSoundPng()<br/>signature, chunk chain, CRCs"}
     Check -->|corrupt| Fail["throw — nothing written"]
     Check -->|sound| Mark["neuron-a-mark.png"]
     Mark --> Embed["preview_art.ts<br/>re-check bytes, slide by markOffsetX()"]
@@ -64,9 +64,8 @@ flowchart LR
 ```
 
 Quality gate (`./quality.sh < /dev/null`): see the run log in the PR
-conversation; the brand suites
-(`BrandNeuronMark`, `BrandAssets`, `BrandMarkIntegrity`, `BrandPreviewSvg`,
-`BrandTransparency`) pass — 33 tests.
+conversation; the brand suites (`BrandNeuronMark`, `BrandAssets`,
+`BrandMarkIntegrity`, `BrandPreviewSvg`, `BrandTransparency`) pass — 33 tests.
 
 ## Test Plan
 
