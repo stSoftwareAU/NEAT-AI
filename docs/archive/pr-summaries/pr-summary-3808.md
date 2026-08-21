@@ -137,14 +137,28 @@ therefore asserts exactness on the merge pass itself and asserts only the
 constant-count collapse after full compaction, so the pre-existing drift cannot
 mask this pass's correctness.
 
-**Pre-existing noise, not introduced here.** The suite logs many
-`Batch rust scorer reconciliation failed (INVALID_JSON): … invalid type:
-sequence, expected a map`
-warnings from the bench harness, after which scoring falls back to per-creature
-mode. This is **pre-existing and unrelated** to this change: checking out clean
-`origin/Develop` in a separate worktree and running
-`bench/score_per_hour_harness_test.ts` reproduces the same warning 27 times with
-none of this PR's code present. Left alone rather than widening scope.
+**Pre-existing red gate on `Develop`, not introduced here — filed as #3810.**
+The suite logs hundreds of
+`Rust scorer call failed … invalid type: sequence, expected a map` warnings and
+one test fails: `test/creature/EvolveScorerUtilisation.ts` →
+`AssertionError: a healthy run has zero batch fallbacks`.
+
+This is **pre-existing and unrelated** to this change. Verified by checking out
+clean `origin/Develop` into a separate worktree with none of this PR's code and
+re-running that exact test — it fails identically. Root-caused while there:
+`rust_scorer` cannot parse **any** creature carrying a `memetic` field, because
+`memetic.weights` is serialised as a JSON array while the Rust deserialiser
+expects a map (it fails even when the array is empty). Bisected by feeding the
+binary a real export with fields deleted one at a time:
+
+| Creature JSON variant  | `rust_scorer` result          |
+| ---------------------- | ----------------------------- |
+| full export            | `invalid type: sequence…`     |
+| `tags` stripped        | still fails                   |
+| **`memetic` stripped** | **parses** (reaches data-dir) |
+
+Filed as #3810 with the reproduction. Not fixed here — it is a cross-engine JSON
+contract decision, entirely outside this issue's compaction scope.
 
 ## Test Plan
 
