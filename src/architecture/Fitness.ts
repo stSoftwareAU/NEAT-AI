@@ -5,6 +5,7 @@ import {
   type RequiredParallelEvaluationConfig,
 } from "@config/ParallelEvaluationConfig.ts";
 import { DatasetError } from "@errors/DatasetError.ts";
+import { toScorerStrictError } from "@errors/ScorerStrictError.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -321,6 +322,16 @@ export class Fitness {
           // the per-creature and WASM paths read the same bytes. Propagate so
           // the run fails once on the scorer's own diagnostic.
           if (err instanceof DatasetError) throw err;
+          // Issue #3815: strict mode makes the fallback itself fatal — an
+          // entirely dead native batch path must never reconcile to a green
+          // run. The escalated error keeps the scorer's stderr verbatim.
+          if (rustScorerConfig.strict) {
+            throw toScorerStrictError(
+              err,
+              "Batch rust scorer failed under NEAT_AI_RUST_SCORER_STRICT",
+              "BATCH_FALLBACK",
+            );
+          }
           // Surface batch reconciliation failures as explicit log errors per
           // the acceptance criteria, then fall back to the per-creature path
           // so the generation is not lost to a transient scorer issue.

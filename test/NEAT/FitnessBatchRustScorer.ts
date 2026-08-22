@@ -86,7 +86,7 @@ Deno.test("Fitness.calculate batch rust scorer - one scorer process per generati
   // In-process override (Issue #3234) — never mutate the shared process env,
   // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true });
+  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
 
   const population = buildPopulation(4);
   const uuids = population.map((c) => CreatureUtil.makeUUID(c));
@@ -156,7 +156,7 @@ Deno.test("Fitness.calculate batch rust scorer - falls back to worker path on re
   // In-process override (Issue #3234) — never mutate the shared process env,
   // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true });
+  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
 
   const population = buildPopulation(3);
   // Generate UUIDs up-front so the reconciler knows what to expect.

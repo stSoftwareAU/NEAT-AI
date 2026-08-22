@@ -31,12 +31,15 @@ For deep dives on a single topic, follow the dedicated docs (full index in
   #1958).
 - **Semantic version rules** — quality-gate test
   [`test/creature/SemanticVersionStability.ts`](./test/creature/SemanticVersionStability.ts).
-- **Cross-engine creature JSON contract** — the golden metadata fixture
+- **Cross-engine creature JSON contract** — the golden creature fixtures
   [`test/fixtures/golden/README.md`](./test/fixtures/golden/README.md); gate
   test
   [`test/creature/GoldenMetadataRoundTrip.ts`](./test/creature/GoldenMetadataRoundTrip.ts)
-  (Issue #3752). Adding a persisted field to the creature interfaces means
-  extending that fixture in the same change.
+  (Issue #3752, memetic coverage Issue #3814). Adding a persisted field to the
+  creature interfaces means extending those fixtures in the same change, and
+  every committed fixture must parse in every engine. (Issue #3752). Adding a
+  persisted field to the creature interfaces means extending that fixture in the
+  same change.
 - **`creatureValidate` conformance corpus** — the language-neutral JSON cases
   [`test/fixtures/validate/README.md`](./test/fixtures/validate/README.md); gate
   test

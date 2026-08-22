@@ -1,0 +1,87 @@
+{
+  "uuid": "e928613c-1e24-556a-a081-2c343bd9e1d6",
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "bias": 0.375,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "bias": -0.25,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0.125,
+      "squash": "IDENTITY"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 0.5,
+      "fromUUID": "input-0",
+      "toUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    },
+    {
+      "weight": -0.375,
+      "fromUUID": "input-1",
+      "toUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    },
+    {
+      "weight": 0.625,
+      "fromUUID": "input-1",
+      "toUUID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    },
+    {
+      "weight": 0.25,
+      "fromUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "toUUID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    },
+    {
+      "weight": -0.125,
+      "fromUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.875,
+      "fromUUID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "toUUID": "output-0"
+    }
+  ],
+  "input": 2,
+  "output": 1,
+  "tags": [
+    {
+      "name": "contract",
+      "value": "Cross-engine memetic round-trip contract — the empty `weights: []` shape that fires in production runs. See test/fixtures/golden/README.md"
+    },
+    {
+      "name": "origin",
+      "value": "golden-memetic-empty-weights-fixture"
+    }
+  ],
+  "memetic": {
+    "generation": 3,
+    "weights": [],
+    "biases": {
+      "output-0": -0.1116
+    },
+    "score": 0.708,
+    "ancestry": [
+      {
+        "generation": 2,
+        "weights": [],
+        "biases": {
+          "output-0": -0.1042
+        },
+        "score": 0.693
+      }
+    ]
+  }
+}

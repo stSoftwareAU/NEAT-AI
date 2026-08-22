@@ -156,9 +156,11 @@ Drop-in API and configuration material.
   (`mutation`), the cross-slice and cross-campaign deduplication, and the order
   the removal issues must land in.
 - **[../test/fixtures/golden/README.md](../test/fixtures/golden/README.md)** —
-  the golden creature-metadata fixture: the cross-engine round-trip contract
-  every implementation of the creature JSON format must satisfy (Issue #3752).
-  Editing it is a coordinated cross-repo breaking change.
+  the golden creature fixtures: the cross-engine round-trip contract every
+  implementation of the creature JSON format must satisfy (Issue #3752),
+  including the canonical `memetic` wire shape — array-form `weights`, empty
+  array included (Issue #3814). Editing them is a coordinated cross-repo
+  breaking change.
 - **[TIMEOUTS.md](TIMEOUTS.md)** — `timeoutMinutes` semantics and the absolute
   **T+15** hard cap: the two deadlines, what each phase does at the cap (abandon
   in-flight work, keep partial results, return the best creature), how the
