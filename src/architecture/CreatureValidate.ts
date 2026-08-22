@@ -18,8 +18,10 @@
  *
  * 1. {@link hostOnlyNeuronChecks} — `neuron.validate()`, the `neuron.index`
  *    cache and `neuron.creature` object identity (Issue #3802).
- * 2. Marshalling the creature and the options across, and putting back the one
- *    value JSON cannot carry (see `CreatureValidateMarshal.ts`).
+ * 2. Marshalling the creature and the options across — packed on the hot path
+ *    (`CreatureValidatePack.ts`), JSON when a failure has to be named
+ *    (`CreatureValidateMarshal.ts`, which also puts back the one value JSON
+ *    cannot carry).
  * 3. Rehydrating core's structured failure into the `TopologyError` /
  *    `ValidationError` callers already catch. `class`, `reason` and `message`
  *    come straight from core — there is no translation table.
@@ -29,13 +31,38 @@
  * `WasmError` carrying the loader's own failure: a creature is never treated
  * as valid because validation could not run.
  *
+ * ## Two shapes, one set of rules (Issue #3832)
+ *
+ * The verdict crosses first, packed; the words are fetched second, as JSON.
+ *
+ * A creature is sent to core as a **packed buffer** of numbers
+ * ({@link module:src/architecture/CreatureValidatePack}). That shape carries no
+ * text — no UUIDs, no type or activation names — which is what makes it cheap:
+ * on GRQ's 4 272-neuron, 22 928-synapse production creature the JSON request is
+ * 850 KB and `JSON.stringify` alone costs more than the whole of the TypeScript
+ * rules this replaced. It is also why the packed answer can say "healthy, and
+ * here are the counters" but not *which* rule a broken creature broke.
+ *
+ * So a broken creature comes back as `detailRequired`, and only then is the
+ * JSON request built and sent, to be told the class, the reason and the
+ * message. That call is the slow one, and it is the one a healthy creature
+ * never makes — a failure throws, ending whatever the host was doing.
+ *
+ * The two shapes run the same rules through the same seam in core, and core's
+ * `creature_validate_packed_conformance` replay asserts they never disagree
+ * about a creature over NEAT-AI's own corpus. Should they disagree here
+ * anyway, neither verdict is used: a `WasmError` says the packer is broken.
+ *
  * ```mermaid
  * flowchart LR
- *   C["creature + options"] --> M["marshal → runtimeCreature JSON"]
- *   M --> W["NEAT-AI-core creature_validate (WASM)"]
+ *   C["creature + options"] --> P["pack → buffer of numbers"]
+ *   P --> W["NEAT-AI-core creature_validate_packed (WASM)"]
  *   W -- "ok + stats" --> H["host-only walk"] --> S["stats"]
- *   W -- "failure(class, reason, message, neuronIndex)" --> H2["host-only walk<br/>up to neuronIndex"]
+ *   W -- "detailRequired" --> M["marshal → runtimeCreature JSON"]
+ *   M --> J["NEAT-AI-core creature_validate (WASM)"]
+ *   J -- "failure(class, reason, message, neuronIndex)" --> H2["host-only walk<br/>up to neuronIndex"]
  *   H2 --> T["TopologyError / ValidationError"]
+ *   J -- "healthy" --> D["WasmError — the two shapes disagree"]
  *   W -- "bundle unavailable" --> E["WasmError — throw, never skip"]
  * ```
  *
@@ -72,6 +99,7 @@ import {
   ValidationError,
   type ValidationErrorName,
 } from "@errors/ValidationError.ts";
+import { WasmError } from "@errors/WasmError.ts";
 import { getDiagnosticsDir } from "@utils/Diagnostics.ts";
 import {
   type CreatureValidateOptions,
@@ -81,9 +109,14 @@ import {
 } from "@architecture/CreatureValidateMarshal.ts";
 import {
   coreValidateCreature,
+  coreValidateCreaturePacked,
   type CoreValidationFailure,
   type CoreValidationStats,
 } from "@wasm/WasmCreatureValidate.ts";
+import {
+  packCreatureValidateRequest,
+  packedMemetic,
+} from "@architecture/CreatureValidatePack.ts";
 
 /**
  * Validate the creature.
@@ -99,6 +132,44 @@ export function creatureValidate(
   creature: Creature,
   options?: CreatureValidateOptions,
 ): CoreValidationStats {
+  const packed = coreValidateCreaturePacked(
+    packCreatureValidateRequest(creature, options),
+    packedMemetic(creature),
+  );
+
+  if (packed?.stats) {
+    // The creature broke no rule, so there is no failure to interleave — the
+    // host-only half still runs for every neuron, in the same order.
+    for (let indx = 0; indx < creature.neurons.length; indx++) {
+      hostOnlyNeuronChecks(creature, creature.neurons[indx], indx);
+    }
+    return packed.stats;
+  }
+
+  return reportFailure(creature, options, packed !== null);
+}
+
+/**
+ * The JSON shape, which is the one that can name what went wrong.
+ *
+ * Reached when the packed shape reported a broken creature (Issue #3832), and
+ * when the vendored bundle has no packed export at all. Either way the rules
+ * are core's and are run again over the same creature — the packed shape
+ * carries no text, so it is the *verdict* that crosses first and the *words*
+ * that are fetched second.
+ *
+ * Also the whole of the throw-ordering contract in the module comment above:
+ * the host-only walk interleaves with core's failure by `neuronIndex`, so a
+ * neuron breaching both halves throws its rule error.
+ *
+ * @returns The counters, on the one path that reaches here without a failure:
+ *   a bundle with no packed export.
+ */
+function reportFailure(
+  creature: Creature,
+  options: CreatureValidateOptions | undefined,
+  packedReportedAFailure: boolean,
+): CoreValidationStats {
   const marshalled = marshalCreatureValidateRequest(creature, options);
   const result = coreValidateCreature(marshalled.request);
   const failure = result.failure;
@@ -112,6 +183,19 @@ export function creatureValidate(
 
   if (failure) {
     throw rehydrate(creature, failure, marshalled);
+  }
+
+  if (packedReportedAFailure) {
+    // The two shapes describe one creature and run one set of rules, so they
+    // cannot disagree about it — core's own conformance replay asserts that
+    // over NEAT-AI's corpus. If they do, the packer wrote something core read
+    // as a different creature, and the safe answer is neither verdict.
+    throw new WasmError(
+      `creature_validate disagrees with itself: the packed request reported a ` +
+        `broken creature and the JSON request reported a healthy one. This is ` +
+        `a bug in the packed request shape, not a verdict on the creature.`,
+      "INVALID_REQUEST",
+    );
   }
 
   // `coreValidateCreature` answers with one or the other; a response carrying
