@@ -9,6 +9,9 @@
  * handshake (may be stuck loading WASM, CPU-starved, or OOM).
  * ```
  *
+ * (That candidate list now appears only when the parent was blind — see
+ * GRQ #4238 and `WasmInitDiagnostics.ts`.)
+ *
  * That leaves the two most likely causes indistinguishable. A GRQ-23 `team`
  * run lost five slots with `cache=hit`, `wasmTotalMs=20` and
  * `workerError=none` — the parent's own WASM work took 20 ms, so "stuck
