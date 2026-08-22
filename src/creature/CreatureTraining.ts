@@ -408,6 +408,13 @@ export interface EvolveDirDeps {
  * (GRQ #4141).
  */
 function requestOverrunStop(neat: Neat, factor: number): void {
+  // Issue #3823: once we have decided to stop starting generations, a pending
+  // "do at least one more loop" request can never be honoured — `evolve()` is
+  // not called again on this path. Leaving it set makes `finishUp()` refuse to
+  // finish, and the over-run branch below spins (nothing is in flight, so
+  // `awaitInFlightTasks()` returns immediately) until the hard deadline.
+  // Cleared before the already-stopped guard so it holds on every pass.
+  neat.additionalGenerationCount = 0;
   if (neat.terminationReason === "overrun") return;
   neat.doNotStartMore = true;
   neat.terminationReason = "overrun";

@@ -459,3 +459,48 @@ Deno.test("finishUp: sets cleanup delay when work was in progress", async () => 
     await terminateWorkers(workers);
   }
 });
+
+/**
+ * Issue #3823: the additional-generation wait must be self-limiting.
+ *
+ * `NeatEvolution.evolve()` also decrements the counter, but the finish-up wait
+ * loop does not always reach `evolve()` — the over-run guard stops starting
+ * new generations and re-enters `finishUp()` directly. When `finishUp()` did
+ * not decrement, that branch never cleared and the caller spun, flooding the
+ * log with `Waiting for additional generation`.
+ */
+Deno.test("finishUp: the additional-generation wait clears without another evolve() call", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    neat.additionalGenerationCount = 3;
+
+    // Repeated calls with no evolve() in between must converge, in no more
+    // calls than the requested generations (plus the finishing call).
+    let calls = 0;
+    while (!neat.finishUp()) {
+      calls++;
+      assert(
+        calls <= 3,
+        "finishUp must not wait for more additional generations than were requested",
+      );
+    }
+
+    assertEquals(
+      calls,
+      3,
+      "each waiting call must consume exactly one requested additional generation",
+    );
+    assertEquals(
+      neat.additionalGenerationCount,
+      0,
+      "the additional-generation counter must be drained once the wait clears",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
