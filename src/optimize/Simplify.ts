@@ -27,12 +27,20 @@ import { COMPLEMENT } from "@methods/activations/types/COMPLEMENT.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { ReLU } from "@methods/activations/types/ReLU.ts";
 import { hasSimplifyBias } from "@methods/activations/TypeGuards.ts";
+import {
+  hasRoleTypedIfStructure,
+  verifyExactBehaviour,
+} from "@architecture/BehaviourGuard.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 export function simplify(creature: Creature): Creature | undefined {
   const complexUUID = CreatureUtil.makeUUID(creature);
   let exported = creature.exportJSON();
   normaliseCreatureExport(exported);
+
+  // Issue #3840: read the gate off the untouched original — the passes below
+  // mutate `exported` in place.
+  const guardIfRouting = hasRoleTypedIfStructure(exported);
 
   exported = simplifyComplementToIdentity(exported);
   const neuronsMap = new Map<number, NeuronExport>();
@@ -118,6 +126,19 @@ export function simplify(creature: Creature): Creature | undefined {
     creature.forwardOnly ? { forwardOnly: true } : undefined,
   );
 
+  // Issue #3840: this module documents "all without changing what the creature
+  // computes". Verify it for the one shape where the passes above cannot reason
+  // about behaviour from weight magnitudes — an `IF` neuron routed by role-typed
+  // synapses — and discard the simplification when behaviour moved. Creatures
+  // without such an `IF` never activate here.
+  if (
+    guardIfRouting &&
+    !verifyExactBehaviour(creature, simplifiedCreature, "simplify")
+  ) {
+    // Discard the simplification; the caller keeps the original creature.
+    return undefined;
+  }
+
   return simplifiedCreature;
 }
 
@@ -143,6 +164,25 @@ function simplifyComplementToIdentity(
   return exported;
 }
 
+/**
+ * Whether any consumer of `neuronId` is an aggregate squash, or is reached by a
+ * role-typed synapse. Issue #3840: such an edge cannot survive the plain
+ * additive rewrite `removeNeuron` performs.
+ */
+function feedsAggregateConsumer(
+  exported: CreatureExport,
+  neuronMap: Map<number, NeuronExport>,
+  neuronId: number,
+): boolean {
+  for (const synapse of exported.synapses) {
+    if (synapse.fromId !== neuronId) continue;
+    if (synapse.type !== undefined) return true;
+    const consumer = neuronMap.get(synapse.toId!);
+    if (consumer && isAggregationSquash(consumer.squash)) return true;
+  }
+  return false;
+}
+
 function removeKnownSign(exported: CreatureExport) {
   normaliseCreatureExport(exported);
   const neuronMap = new Map<number, NeuronExport>();
@@ -161,6 +201,14 @@ function removeKnownSign(exported: CreatureExport) {
   for (const neuron of exported.neurons) {
     if (neuron.type === "hidden") {
       if (neuron.squash === ABSOLUTE.NAME || neuron.squash === ReLU.NAME) {
+        // Issue #3840: `removeNeuron` splices the neuron out and re-creates its
+        // outbound edges as plain additive synapses. An edge into an aggregate
+        // consumer (`IF` / MAXIMUM / MINIMUM / HYPOT) is not additive — an `IF`
+        // routes on the edge's `condition` / `positive` / `negative` role — so
+        // splicing re-roles it and changes what the creature computes. The
+        // IDENTITY path below already refuses this; do the same here.
+        if (feedsAggregateConsumer(exported, neuronMap, neuron.id!)) continue;
+
         let allNonNegative = true;
         const fromMap = synapseMap.get(neuron.id!);
 
@@ -332,7 +380,7 @@ export function removeNeuron(
           );
 
           if (!duplicate) {
-            newSynapses.push({
+            const bypass: SynapseExport = {
               weight: adjustedWeight,
               fromId: outerSynapse.fromId!,
               fromUUID: outerSynapse.fromUUID ??
@@ -340,7 +388,13 @@ export function removeNeuron(
               toId: innerSynapse.toId!,
               toUUID: innerSynapse.toUUID ??
                 idToUuid.get(innerSynapse.toId!),
-            });
+            };
+            // Issue #3840: the role lives on the edge *into* the consumer, so a
+            // bypass edge must inherit it or the consumer's routing changes.
+            if (innerSynapse.type !== undefined) {
+              bypass.type = innerSynapse.type;
+            }
+            newSynapses.push(bypass);
           } else {
             duplicate.weight = adjustedWeight + duplicate.weight;
           }
