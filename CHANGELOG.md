@@ -116,6 +116,24 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The vendored `wasm_activation/pkg` bundle advances from NEAT-AI-core `4db5b9b`
+  (0.9.11) to `2ba8437` (0.10.1), picking up five upstream commits:
+  - **GRQ #4261** (core #571) — creature weights now parse to the exact `f64`
+    the JSON literal names, instead of the nearest value a lossy intermediate
+    produced. This is the only change of the five with numeric reach into
+    NEAT-AI.
+  - **NEAT-AI #3812** (core #570) — the empty memetic weight array and the
+    ancestry snapshot are pinned by test.
+  - **GRQ #4257** (core #569) — `memetic.weights` parses and validates in both
+    valid wire forms.
+  - **Issue #555 / #562** (core #568) — `if_graft` emits creatures the shared
+    validator accepts.
+  - **NEAT-AI #3803** (core #567) — `creature_validate` accepts the runtime
+    creature shape, so a host's defect reaches the rules.
+
+  No NEAT-AI source change is required: the bundle is consumed through the
+  existing WASM boundary and no exported signature moved.
+
 - **GRQ #4141:** Training over-run is now enforced, not warn-only. When elapsed
   wall-clock exceeds `timeoutMinutes` by the configured factor (default `1`),
   the evolve loop stops starting new generations and finishes cleanly with the
