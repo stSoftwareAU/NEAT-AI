@@ -65,6 +65,22 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **GRQ #4241:** A failed discovery temp-dir removal is no longer reported as a
+  clean cleanup. `DiscoverStructureBase.cleanUp()` swallowed the removal error
+  into one warn line and resolved, so
+  `Failed to cleanup discovery temp dir:
+  Directory not empty (os error 66)`
+  was followed immediately by `Discovery <id> cleanup complete.` and the leaked
+  directories accumulated under `.discovery/` until the host ran out of disk.
+  The removal now lives in `src/discovery/DiscoveryTempDirRemoval.ts`: it
+  retries the recursive remove (the failure is a race with a writer still
+  creating files), positively confirms the directory is gone, and otherwise
+  throws an error naming the leftover entries so the writer can be found.
+  `DataRecorder.runCleanup()` logs
+  `❌ CRITICAL: … cleanup failed - potential resource leak` on both the awaited
+  and the fire-and-forget path and never logs a completion line for a cleanup
+  that failed.
+
 - **Issue #3823:** The over-run finish-up path no longer spins, flooding the log
   with `Waiting for additional generation`. `additionalGenerationCount` ("do at
   least one more loop") was only decremented by `evolve()`, but the over-run
