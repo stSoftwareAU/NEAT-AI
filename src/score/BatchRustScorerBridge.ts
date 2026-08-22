@@ -19,6 +19,10 @@
  * can fail fast rather than silently mis-score creatures. The caller can
  * then choose to fall back to the per-creature scoring path.
  *
+ * Issue #3815: under strict mode (`NEAT_AI_RUST_SCORER_STRICT=1`) those
+ * failures surface as {@link ScorerStrictError} instead, carrying the scorer's
+ * stderr verbatim so the caller aborts rather than falling back.
+ *
  * @module BatchRustScorerBridge
  */
 
@@ -39,6 +43,10 @@ import {
   resolveProbeState,
 } from "./RustScorerBridgeInternal.ts";
 import { assertNotCorruptDataset } from "./ScorerFailureClassification.ts";
+import {
+  ScorerStrictError,
+  toScorerStrictError,
+} from "@errors/ScorerStrictError.ts";
 
 /**
  * Outcome of a batch scorer invocation.
@@ -166,6 +174,17 @@ export async function tryBatchScoreWithRustScorer(
       // Issue #3541: classify before signalling a retryable batch failure — a
       // corrupt dataset fails identically on the per-creature and WASM paths.
       assertNotCorruptDataset(result.stderr, result.code, absoluteDataDir);
+      // Issue #3815: strict mode escalates the failure so the fallback cannot
+      // reconcile a dead native batch path to a green run. The stderr is
+      // carried verbatim — the trimmed log line is what made #3810 so hard to
+      // find.
+      if (config.strict) {
+        throw new ScorerStrictError(
+          `Rust scorer batch call failed (exit ${result.code}) for ${expectedStems.length} creature(s) in ${absoluteDataDir}`,
+          "EXEC_FAILURE",
+          { exitCode: result.code, stderr: result.stderr },
+        );
+      }
       throw new BatchScorerError(
         `Rust scorer batch call failed (exit ${result.code}): ${
           trimForLog(result.stderr)
@@ -177,10 +196,18 @@ export async function tryBatchScoreWithRustScorer(
     // `reconcileBatchScorerOutput` throws `BatchScorerError` on any parse or
     // key-set mismatch, so missing/extra keys surface as explicit errors per
     // the issue acceptance criteria.
-    const reconciled = reconcileBatchScorerOutput(
-      result.stdout,
-      expectedStems,
-    );
+    let reconciled: Map<string, BatchScorerResult>;
+    try {
+      reconciled = reconcileBatchScorerOutput(result.stdout, expectedStems);
+    } catch (error) {
+      if (!config.strict) throw error;
+      throw toScorerStrictError(
+        error,
+        "Rust scorer batch output could not be reconciled",
+        "INVALID_OUTPUT",
+        result.stderr,
+      );
+    }
 
     const byCreature = new Map<Creature, BatchScorerResult>();
     for (const [stem, record] of reconciled) {

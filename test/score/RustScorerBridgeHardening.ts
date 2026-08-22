@@ -85,6 +85,7 @@ Deno.test("RustScorerBridge: inherits parent env when no overrides configured", 
         timeoutMs: 0,
         env: {},
         batch: false,
+        strict: false,
       },
     );
     // env should be undefined when no overrides exist → child inherits parent env.
@@ -140,6 +141,7 @@ Deno.test("RustScorerBridge: merges overrides with parent env when overrides exi
         timeoutMs: 0,
         env: { OVERRIDE_KEY: "override_value" },
         batch: false,
+        strict: false,
       },
     );
     assert(scoreEnv !== undefined, "runner should receive merged env");
@@ -199,6 +201,7 @@ Deno.test("RustScorerBridge: resolves creature and data paths to absolute paths"
         timeoutMs: 0,
         env: {},
         batch: false,
+        strict: false,
       },
     );
     assertEquals(seenArgs.length, 2);
@@ -254,6 +257,7 @@ Deno.test("RustScorerBridge: logs trimmed stderr on non-zero exit", async () => 
         timeoutMs: 0,
         env: {},
         batch: false,
+        strict: false,
       },
     );
     const failureWarning = warnings.find((w) =>
@@ -313,6 +317,7 @@ Deno.test("RustScorerBridge: handles non-JSON stdout gracefully and includes std
         timeoutMs: 0,
         env: {},
         batch: false,
+        strict: false,
       },
     );
     assert(Number.isFinite(result.error));

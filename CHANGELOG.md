@@ -89,6 +89,21 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   watchdog timers are also cleared when the init-error promise wins the race,
   which previously left the timeout pending.
 
+- **Issue #3827:** An Intelligent Design squash substitution can no longer
+  produce a creature this library's own validator refuses. A substitution
+  changes only `squash`, so it cannot give a neuron the three inward connections
+  — nor the `condition` / `positive` / `negative` synapse roles — that
+  `CreatureValidate` demands of an `IF` neuron; handing `IF` to an ineligible
+  neuron killed the ID worker on
+  `ValidationError: 'IF' should have at least 3 inward connections
+  was: 2`
+  before it scored anything. The new
+  `src/intelligentDesign/SquashSubstitutionEligibility.ts` gate makes
+  `scanForSquashImprovements` skip those (neuron, squash) pairs with a logged
+  reason and keep scanning, and `makeModifiedCreatureWithPrevious` /
+  `makeModifiedCreature` refuse such a substitution outright. `IF` stays in the
+  substitution table for the neurons that can carry it.
+
 - **Issue #3779:** A training result inside the evaluate noise floor (the `🫥`
   outcome) no longer counts as an improvement, so it stops resetting the
   no-progress streaks.
@@ -100,6 +115,24 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   the untouched `costName`.
 
 ### Changed
+
+- The vendored `wasm_activation/pkg` bundle advances from NEAT-AI-core `4db5b9b`
+  (0.9.11) to `2ba8437` (0.10.1), picking up five upstream commits:
+  - **GRQ #4261** (core #571) — creature weights now parse to the exact `f64`
+    the JSON literal names, instead of the nearest value a lossy intermediate
+    produced. This is the only change of the five with numeric reach into
+    NEAT-AI.
+  - **NEAT-AI #3812** (core #570) — the empty memetic weight array and the
+    ancestry snapshot are pinned by test.
+  - **GRQ #4257** (core #569) — `memetic.weights` parses and validates in both
+    valid wire forms.
+  - **Issue #555 / #562** (core #568) — `if_graft` emits creatures the shared
+    validator accepts.
+  - **NEAT-AI #3803** (core #567) — `creature_validate` accepts the runtime
+    creature shape, so a host's defect reaches the rules.
+
+  No NEAT-AI source change is required: the bundle is consumed through the
+  existing WASM boundary and no exported signature moved.
 
 - **GRQ #4141:** Training over-run is now enforced, not warn-only. When elapsed
   wall-clock exceeds `timeoutMinutes` by the configured factor (default `1`),
