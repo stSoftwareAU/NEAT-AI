@@ -801,6 +801,29 @@ export function creature_validate(request) {
 }
 
 /**
+ * JS `creature_validate_packed(request: Uint8Array, memetic: string) -> string`.
+ * @param {Uint8Array} request
+ * @param {string} memetic
+ * @returns {string}
+ */
+export function creature_validate_packed(request, memetic) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passArray8ToWasm0(request, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(memetic, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.creature_validate_packed(ptr0, len0, ptr1, len1);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
  * Fused activate + Cross Entropy calculation for batch scoring.
  *
  * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
@@ -846,6 +869,15 @@ export function derivative(squash_type, value) {
  *
  * Uses Kahn's algorithm on non-input neurons. Self-loops are explicitly
  * detected as cycles.
+ *
+ * # Cost
+ *
+ * Linear in neurons plus synapses (NEAT-AI#3832). The relaxation pass reads
+ * an outward adjacency built once up front; it used to rescan the whole
+ * synapse list for every dequeued neuron, which is `O(neurons × synapses)` —
+ * 10.8 ms of the 10.9 ms `creature_validate` spent on a 4 272-neuron,
+ * 22 928-synapse production creature, and the same cost again on every
+ * `TypedTopology.detectCycles` call from the host.
  *
  * # Returns
  * `0` if acyclic, `1` if a cycle is detected.

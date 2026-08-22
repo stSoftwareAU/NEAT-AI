@@ -31,6 +31,7 @@ export const compilednetwork_to_topology_json: (a: number, b: number) => [number
 export const compute_reverse_topological_order: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
 export const compute_score_components: (a: number, b: number, c: number, d: number) => [number, number];
 export const creature_validate: (a: number, b: number) => [number, number];
+export const creature_validate_packed: (a: number, b: number, c: number, d: number) => [number, number];
 export const cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const derivative: (a: number, b: number) => number;
 export const detect_cycles: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
