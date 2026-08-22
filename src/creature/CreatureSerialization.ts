@@ -399,6 +399,9 @@ function convertSnapshotInPlace(
       newWeights[fromInt].push({ toId: toInt, weight: row.weight });
     }
   } else {
+    // Backward compatibility only (Issue #3816): the legacy map shape, kept
+    // readable indefinitely for creatures already on disk. Never emitted —
+    // `convertMemeticExportToWireJson` writes the row array shape only.
     const weightMap = result.weights as Record<
       string,
       MemeticWeightEntryWire[]

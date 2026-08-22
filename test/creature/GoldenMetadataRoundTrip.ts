@@ -39,7 +39,7 @@ import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { MemeticWireData } from "@blackbox/MemeticWireData.ts";
-import type { MemeticWeightWireRow } from "@creature/MemeticWireExport.ts";
+import { assertWeightRows, snapshotsOf } from "./MemeticWireShapeAssertions.ts";
 
 /** Stable, documented path — the Rust repos' regression tests read these bytes. */
 const FIXTURE_DIR = new URL("../fixtures/golden/", import.meta.url);
@@ -95,51 +95,6 @@ function memeticOf(json: GoldenFixture): MemeticWireData {
   const memetic = json.memetic as unknown as MemeticWireData | undefined;
   assert(memetic, "fixture must carry a memetic block");
   return memetic;
-}
-
-/** A snapshot plus every ancestry snapshot beneath it, most recent first. */
-function snapshotsOf(memetic: MemeticWireData): MemeticWireData[] {
-  const flat = [memetic];
-  for (const ancestor of memetic.ancestry ?? []) {
-    flat.push(...snapshotsOf(ancestor));
-  }
-  return flat;
-}
-
-/**
- * Asserts the canonical wire shape of one snapshot's `weights`: an array of
- * `{fromUUID, toUUID, weight}` rows, never a map. This is the exact contract
- * Issue #3810 found the Rust deserialiser had drifted from.
- */
-function assertWeightRows(
-  weights: MemeticWireData["weights"],
-  where: string,
-): MemeticWeightWireRow[] {
-  assert(
-    Array.isArray(weights),
-    `${where}: memetic weights must be an array of rows, not a map`,
-  );
-  for (const row of weights) {
-    assertEquals(
-      Object.keys(row).sort(),
-      ["fromUUID", "toUUID", "weight"],
-      `${where}: every weight row carries exactly fromUUID, toUUID and weight`,
-    );
-    assert(
-      typeof row.fromUUID === "string" && row.fromUUID.length > 0,
-      `${where}: weight row fromUUID must be a wire uuid`,
-    );
-    assert(
-      typeof row.toUUID === "string" && row.toUUID.length > 0,
-      `${where}: weight row toUUID must be a wire uuid`,
-    );
-    assertEquals(
-      typeof row.weight,
-      "number",
-      `${where}: weight row weight must be a number`,
-    );
-  }
-  return weights;
 }
 
 Deno.test("golden fixture covers every creature metadata surface (#3752)", async () => {

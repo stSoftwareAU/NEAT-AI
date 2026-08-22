@@ -4,14 +4,20 @@
  *
  * Issue #2217: Replaces `any` casts when handling memetic data that
  * arrives from or is destined for JSON. The wire format uses UUID
- * string keys (not runtime integer IDs).
+ * string keys, never runtime integer IDs.
  *
- * **The canonical wire shape is normative in
- * [`test/fixtures/golden/README.md`](../../test/fixtures/golden/README.md)**
- * ("The canonical memetic wire shape"): `weights` is an array of
- * `{ fromUUID, toUUID, weight }` rows, empty as `[]`. This interface is the
- * *reader's* view, so it still admits the legacy map for creature JSON
- * already on disk — see `weights` below (Issue #3816).
+ * **The canonical wire shape is defined normatively in
+ * `test/fixtures/golden/README.md` ("The canonical memetic wire shape") —
+ * `weights` is an array of `{ fromUUID, toUUID, weight }` rows (`[]` when
+ * empty) and `biases` is an object keyed by wire identity, in the top-level
+ * snapshot and in every `ancestry[]` snapshot alike.**
+ *
+ * This interface is deliberately wider than that: it is the **read** type,
+ * and reading is more permissive than writing (Issue #3816). The legacy map
+ * arm of `weights` exists for creature JSON already saved to disk and is
+ * accepted indefinitely on import; `convertMemeticExportToWireJson`
+ * (`@creature/MemeticWireExport.ts`) is the only producer and emits the
+ * canonical shape only.
  */
 
 import type { MemeticWeightWireRow } from "@creature/MemeticWireExport.ts";
@@ -20,7 +26,7 @@ import type { MemeticWeightWireRow } from "@creature/MemeticWireExport.ts";
  * A single weight entry in the legacy map format.
  * May carry `toId` (runtime integer) or `toUUID` (wire string).
  *
- * Read-only: nothing in this repository emits this shape (Issue #3816).
+ * Import-only (Issue #3816): never emitted by the export path.
  */
 export interface MemeticWeightEntryWire {
   toId?: number;
@@ -30,9 +36,9 @@ export interface MemeticWeightEntryWire {
 
 /**
  * Wire-format memetic data as it appears in JSON that crosses process
- * boundaries. Biases are keyed by UUID strings or numeric-string IDs;
- * weights are an array of `MemeticWeightWireRow` on anything this repository
- * writes, and may additionally be a legacy map on anything it reads.
+ * boundaries — the **read** type, so it admits the legacy shapes an old
+ * creature file may still carry. See the module comment for where the single
+ * canonical **write** shape is defined.
  */
 export interface MemeticWireData {
   generation?: number;
@@ -42,13 +48,12 @@ export interface MemeticWireData {
   biases?: Record<string, number>;
 
   /**
-   * Weight data:
-   * - **Canonical** — an array of `{ fromUUID, toUUID, weight }` rows, `[]`
-   *   when empty. The only shape `convertMemeticExportToWireJson` emits, and
-   *   the only shape a new file may carry.
-   * - **Legacy, import only** — a map keyed by UUID/numeric-string from-neuron
-   *   to arrays of entries. Accepted indefinitely for creature JSON already
-   *   saved to disk (Issue #3816); never produced.
+   * Weight data in one of two formats:
+   * - **Canonical**: array of `{ fromUUID, toUUID, weight }` rows — the only
+   *   shape the export path emits, `[]` when empty.
+   * - **Legacy, import-only**: map keyed by UUID/numeric-string from-neuron to
+   *   arrays of entries. Accepted indefinitely for creature JSON already on
+   *   disk (Issue #3816); never produced.
    */
   weights?: MemeticWeightWireRow[] | Record<string, MemeticWeightEntryWire[]>;
 

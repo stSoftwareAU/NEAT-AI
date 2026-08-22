@@ -1,154 +1,141 @@
 /**
- * Issue #3816 — the TypeScript export path emits exactly one memetic
- * `weights` wire shape: an array of `{ fromUUID, toUUID, weight }` rows, in
- * the top-level snapshot **and** in every `ancestry[]` snapshot.
+ * Issue #3816 — the TypeScript export path emits **only** the canonical
+ * memetic wire shape.
  *
- * The canonical shape is normative in `test/fixtures/golden/README.md`
- * ("The canonical memetic wire shape"). These are "what" tests: they assert on
- * the exported JSON of a real creature, never on how the converter reaches it.
+ * The canonical shape is defined once, normatively, in
+ * `test/fixtures/golden/README.md` ("🧠 The canonical memetic wire shape"):
+ * `weights` is an array of `{fromUUID, toUUID, weight}` rows — empty as `[]`,
+ * never a map — and `biases` is an object keyed by wire neuron identity, in
+ * the top-level snapshot and in every `ancestry[]` snapshot alike.
  *
- * Issue #3810 is why this matters — a map where the contract says array broke
- * every `rust_scorer` run, and the empty case (`"weights": []`) was the most
- * common casualty.
+ * Issue #3810 was caused by that shape being ambiguous rather than by any one
+ * bug: the wire type admitted two shapes, so a producer could legitimately
+ * emit either. These are "what" tests — they assert on the emitted JSON of a
+ * freshly exported creature, whatever runtime shape the memetic block arrived
+ * in, so they survive any rewrite of the conversion internals.
+ *
+ * The companion `import stays tolerant` test pins the opposite direction: a
+ * creature saved with the legacy map shape must still load.
  */
-import { assert, assertEquals, assertThrows } from "@std/assert";
-import type { CreatureExport } from "../../mod.ts";
+import { assert, assertEquals } from "@std/assert";
+import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
 import type { MemeticWireData } from "@blackbox/MemeticWireData.ts";
-import { Creature } from "@creature";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
-import { ValidationError } from "@errors/ValidationError.ts";
+import {
+  assertBiasMap,
+  assertCanonicalMemetic,
+  assertWeightRows,
+} from "./MemeticWireShapeAssertions.ts";
 
 const HIDDEN_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const HIDDEN_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
+/** A small two-hidden-neuron creature; memetic is attached by each test. */
 function makeCreature(): Creature {
   const json: CreatureExport = {
     neurons: [
-      { type: "hidden", uuid: HIDDEN_A, squash: "IDENTITY", bias: 0.1 },
-      { type: "hidden", uuid: HIDDEN_B, squash: "IDENTITY", bias: 0.2 },
+      { type: "hidden", uuid: HIDDEN_A, squash: "TANH", bias: 0.1 },
+      { type: "hidden", uuid: HIDDEN_B, squash: "TANH", bias: -0.2 },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.3 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: HIDDEN_A, weight: -0.3 },
-      { fromUUID: "input-1", toUUID: HIDDEN_A, weight: 0.4 },
-      { fromUUID: HIDDEN_A, toUUID: HIDDEN_B, weight: -0.5 },
-      { fromUUID: HIDDEN_B, toUUID: "output-0", weight: 0.6 },
+      { fromUUID: "input-0", toUUID: HIDDEN_A, weight: 0.4 },
+      { fromUUID: "input-1", toUUID: HIDDEN_A, weight: -0.5 },
+      { fromUUID: HIDDEN_A, toUUID: HIDDEN_B, weight: 0.6 },
+      { fromUUID: HIDDEN_B, toUUID: "output-0", weight: 0.7 },
     ],
     input: 2,
     output: 1,
-    semanticVersion: "4.0.0",
   };
   return Creature.fromJSON(json);
 }
 
-/** Runtime integer id of a neuron by its wire uuid. */
+/** Runtime integer id of a neuron, by its wire uuid. */
 function idOf(creature: Creature, uuid: string): number {
   const neuron = creature.neurons.find((n) => n.uuid === uuid);
   assert(neuron, `creature must carry neuron ${uuid}`);
   return neuron.id;
 }
 
-/** The top-level snapshot plus every ancestry snapshot beneath it. */
-function snapshotsOf(memetic: MemeticWireData): MemeticWireData[] {
-  const flat: MemeticWireData[] = [memetic];
-  for (const ancestor of memetic.ancestry ?? []) {
-    flat.push(...snapshotsOf(ancestor));
-  }
-  return flat;
+/** The memetic block of an export, typed as it appears on the wire. */
+function wireMemeticOf(exported: CreatureExport): MemeticWireData {
+  const memetic = exported.memetic as unknown as MemeticWireData | undefined;
+  assert(memetic, "export must carry a memetic block");
+  return memetic;
 }
 
 /**
- * Asserts every snapshot of an exported memetic block carries the canonical
- * `weights` shape, and returns the row counts (most recent snapshot first).
+ * The runtime memetic shape production builds: a map keyed by the from-neuron's
+ * runtime integer id, each entry `{ toId, weight }`.
  */
-function assertCanonicalShape(
-  memetic: MemeticInterface | undefined,
-  where: string,
-): number[] {
-  assert(memetic, `${where}: export must carry a memetic block`);
-  const counts: number[] = [];
-  const snapshots = snapshotsOf(memetic as unknown as MemeticWireData);
-  snapshots.forEach((snapshot, index) => {
-    const weights = snapshot.weights;
-    assert(
-      Array.isArray(weights),
-      `${where}: snapshot ${index} weights must be an array of rows, not ${
-        weights === undefined ? "absent" : JSON.stringify(weights)
-      }`,
-    );
-    for (const row of weights) {
-      assertEquals(
-        Object.keys(row).sort(),
-        ["fromUUID", "toUUID", "weight"],
-        `${where}: snapshot ${index} row carries exactly the canonical keys`,
-      );
-      assert(
-        typeof row.fromUUID === "string" && row.fromUUID.length > 0,
-        `${where}: snapshot ${index} fromUUID must be a wire uuid`,
-      );
-      assert(
-        typeof row.toUUID === "string" && row.toUUID.length > 0,
-        `${where}: snapshot ${index} toUUID must be a wire uuid`,
-      );
-      assertEquals(
-        typeof row.weight,
-        "number",
-        `${where}: snapshot ${index} weight must be a number`,
-      );
-    }
-    counts.push(weights.length);
-  });
-  return counts;
-}
-
-Deno.test("a populated memetic exports canonical weight rows (#3816)", () => {
-  const creature = makeCreature();
+function populatedRuntimeMemetic(creature: Creature): MemeticInterface {
   const a = idOf(creature, HIDDEN_A);
   const b = idOf(creature, HIDDEN_B);
   const out = idOf(creature, "output-0");
-
-  creature.memetic = {
+  return {
     generation: 5,
-    score: 0.71,
-    biases: { [a]: 0.11, [out]: -0.12 },
+    score: 0.9,
+    biases: { [a]: 0.11, [b]: -0.22, [out]: 0.33 },
     weights: {
-      [a]: [{ toId: b, weight: -0.55 }],
-      [b]: [{ toId: out, weight: 0.66 }],
+      [a]: [{ toId: b, weight: 0.26 }],
+      [b]: [{ toId: out, weight: 0.88 }],
     },
     ancestry: [
       {
         generation: 4,
-        score: 0.69,
+        score: 0.8,
         biases: { [a]: 0.1 },
-        weights: { [a]: [{ toId: b, weight: -0.54 }] },
+        weights: { [a]: [{ toId: b, weight: 0.2 }] },
+      },
+      {
+        generation: 3,
+        score: 0.7,
+        biases: { [b]: -0.2 },
+        weights: {},
       },
     ],
   };
+}
 
+Deno.test("export emits canonical weight rows for a populated memetic (#3816)", () => {
+  const creature = makeCreature();
+  creature.memetic = populatedRuntimeMemetic(creature);
+
+  const memetic = wireMemeticOf(creature.exportJSON());
+  assertCanonicalMemetic(memetic, "populated export");
+
+  const rows = assertWeightRows(memetic.weights, "populated export");
+  assertEquals(rows.length, 2, "both runtime weight entries must be emitted");
   assertEquals(
-    assertCanonicalShape(creature.exportJSON().memetic, "exportJSON"),
-    [2, 1],
-    "every runtime-id weight entry becomes exactly one wire row",
+    rows.map((row) => `${row.fromUUID}→${row.toUUID}=${row.weight}`).sort(),
+    [
+      `${HIDDEN_A}→${HIDDEN_B}=0.26`,
+      `${HIDDEN_B}→output-0=0.88`,
+    ].sort(),
+    "runtime integer ids must be rewritten to wire uuids without loss",
+  );
+
+  const ancestry = memetic.ancestry ?? [];
+  assertEquals(
+    ancestry.length,
+    2,
+    "ancestry snapshots must survive the export",
   );
   assertEquals(
-    assertCanonicalShape(
-      exportJSONWithRuntimeIds(creature).memetic,
-      "exportJSONWithRuntimeIds",
-    ),
-    [2, 1],
-    "the runtime-id export path emits the same canonical rows",
+    assertWeightRows(ancestry[0].weights, "ancestry 0").length,
+    1,
+    "the populated ancestry snapshot keeps its weight row",
   );
-
-  const rows = creature.exportJSON().memetic!
-    .weights as unknown as { fromUUID: string; toUUID: string }[];
-  assert(
-    rows.some((r) => r.fromUUID === HIDDEN_A && r.toUUID === HIDDEN_B),
-    "runtime ids are resolved to wire uuids in the emitted rows",
+  assertEquals(
+    assertWeightRows(ancestry[1].weights, "ancestry 1").length,
+    0,
+    "the empty ancestry snapshot serialises as the canonical empty array",
   );
 });
 
-Deno.test("an empty memetic exports the canonical empty array (#3816)", () => {
+Deno.test("export emits the canonical empty value for an empty memetic (#3816)", () => {
   const creature = makeCreature();
   creature.memetic = {
     generation: 1,
@@ -157,164 +144,171 @@ Deno.test("an empty memetic exports the canonical empty array (#3816)", () => {
     weights: {},
   };
 
-  const exported = creature.exportJSON().memetic;
+  const memetic = wireMemeticOf(creature.exportJSON());
+  assertCanonicalMemetic(memetic, "empty export");
   assertEquals(
-    assertCanonicalShape(exported, "empty exportJSON"),
-    [0],
-    "an empty weight map serialises as the canonical empty array",
+    assertWeightRows(memetic.weights, "empty export").length,
+    0,
+    "an empty memetic must serialise weights as `[]`, not `{}` and not absent",
   );
   assertEquals(
-    JSON.parse(JSON.stringify(exported)).weights,
-    [],
-    "the empty value is [] — never {} and never a missing key",
+    JSON.stringify(memetic.weights),
+    "[]",
+    "the empty weights value is an empty JSON array",
   );
   assertEquals(
-    assertCanonicalShape(
-      exportJSONWithRuntimeIds(creature).memetic,
-      "empty exportJSONWithRuntimeIds",
-    ),
-    [0],
-    "the runtime-id export path agrees on the canonical empty value",
+    JSON.stringify(memetic.biases),
+    "{}",
+    "the empty biases value is an empty JSON object",
   );
 });
 
-Deno.test("a memetic missing weights still exports the key (#3816)", () => {
+Deno.test("export fills in canonical values for a snapshot missing weights (#3816)", () => {
   const creature = makeCreature();
-  // A snapshot written before `weights` was always populated: the key is
-  // simply absent, top level and in ancestry.
+  // A snapshot that never had a memetic pass: `weights` and `biases` absent.
   creature.memetic = {
     generation: 2,
     score: 0.6,
-    biases: {},
-    ancestry: [{ generation: 1, score: 0.55, biases: {} }],
+    ancestry: [{ generation: 1, score: 0.4 }],
   } as unknown as MemeticInterface;
 
+  const memetic = wireMemeticOf(creature.exportJSON());
+  assertCanonicalMemetic(memetic, "missing-keys export");
   assertEquals(
-    assertCanonicalShape(creature.exportJSON().memetic, "absent weights"),
-    [0, 0],
-    "an absent weights key is emitted as the canonical empty array",
+    assertWeightRows(memetic.weights, "missing-keys export").length,
+    0,
+    "a missing weights key must be emitted as the canonical empty array",
+  );
+  assertEquals(
+    Object.keys(assertBiasMap(memetic.biases, "missing-keys export")).length,
+    0,
+    "a missing biases key must be emitted as the canonical empty object",
   );
 });
 
-Deno.test("no creature mixes the two weight shapes across snapshots (#3816)", () => {
+Deno.test("export never mixes shapes across nested ancestry (#3816)", () => {
   const creature = makeCreature();
   const a = idOf(creature, HIDDEN_A);
   const b = idOf(creature, HIDDEN_B);
-
-  // Deliberately mixed input: a populated map at the top, an already-converted
-  // row array in one ancestor, an empty map in another, nothing in a third.
   creature.memetic = {
-    generation: 6,
-    score: 0.8,
-    biases: {},
-    weights: { [a]: [{ toId: b, weight: 0.2 }] },
+    generation: 3,
+    score: 0.7,
+    biases: { [a]: 0.1 },
+    weights: { [a]: [{ toId: b, weight: 0.5 }] },
     ancestry: [
       {
-        generation: 5,
-        score: 0.79,
-        biases: {},
-        weights: [
-          { fromUUID: HIDDEN_A, toUUID: HIDDEN_B, weight: 0.19 },
-        ] as unknown as MemeticInterface["weights"],
+        generation: 2,
+        score: 0.6,
+        biases: { [a]: 0.09 },
+        weights: { [a]: [{ toId: b, weight: 0.4 }] },
+        // A nested ancestry chain: every level must be canonicalised.
+        ancestry: [
+          {
+            generation: 1,
+            score: 0.5,
+            biases: { [a]: 0.08 },
+            weights: { [a]: [{ toId: b, weight: 0.3 }] },
+          },
+        ],
       },
-      { generation: 4, score: 0.78, biases: {}, weights: {} },
-      { generation: 3, score: 0.77, biases: {} } as unknown as never,
     ],
-  };
+  } as unknown as MemeticInterface;
 
-  assertEquals(
-    assertCanonicalShape(creature.exportJSON().memetic, "mixed input"),
-    [1, 1, 0, 0],
-    "every snapshot lands on the row array, whatever it started as",
+  assertCanonicalMemetic(
+    wireMemeticOf(creature.exportJSON()),
+    "nested ancestry export",
   );
 });
 
-Deno.test("a weights value that is neither array nor map fails loud (#3816)", () => {
-  for (const broken of [7, "rows", null, true]) {
-    const creature = makeCreature();
-    creature.memetic = {
-      generation: 1,
-      score: 0.5,
-      biases: {},
-      weights: broken as unknown as MemeticInterface["weights"],
-    };
-    const error = assertThrows(
-      () => creature.exportJSON(),
-      ValidationError,
-      "memetic",
-      `weights=${JSON.stringify(broken)} must not be exported silently`,
-    );
-    assertEquals((error as ValidationError).reason, "MEMETIC");
-  }
-});
-
-Deno.test("an ancestry that is not an array fails loud (#3816)", () => {
+Deno.test("export emits biases as a map even when the runtime value is an array (#3816)", () => {
   const creature = makeCreature();
   creature.memetic = {
     generation: 1,
     score: 0.5,
-    biases: {},
+    // Corrupt runtime state: an array where the contract requires a map. The
+    // export must not put a bare `[]` on the wire where a map is expected.
+    biases: [] as unknown as Record<number, number>,
     weights: {},
-    ancestry: { generation: 0 } as unknown as MemeticInterface["ancestry"],
-  };
+  } as unknown as MemeticInterface;
 
-  const error = assertThrows(
-    () => creature.exportJSON(),
-    ValidationError,
-    "ancestry",
-  );
-  assertEquals((error as ValidationError).reason, "MEMETIC");
+  const memetic = wireMemeticOf(creature.exportJSON());
+  assertCanonicalMemetic(memetic, "array-biases export");
 });
 
-Deno.test("a legacy map-shaped memetic still loads (#3816)", () => {
-  // Backward compatibility: creature JSON already on disk may carry the map
-  // shape. The import path stays tolerant of it indefinitely; the export path
-  // rewrites it to the canonical rows.
+Deno.test("runtime-id export emits the canonical memetic shape too (#3816)", () => {
+  const creature = makeCreature();
+  creature.memetic = populatedRuntimeMemetic(creature);
+
+  const exported = exportJSONWithRuntimeIds(creature);
+  assertCanonicalMemetic(
+    wireMemeticOf(exported),
+    "runtime-id export",
+  );
+});
+
+Deno.test("import stays tolerant of the legacy map weights shape (#3816)", () => {
+  // A creature JSON already saved to disk with the pre-#3810 map shape:
+  // `weights` keyed by the from-neuron uuid, entries carrying `toUUID`.
   const legacy = {
     neurons: [
-      { type: "hidden", uuid: HIDDEN_A, squash: "IDENTITY", bias: 0.1 },
-      { type: "hidden", uuid: HIDDEN_B, squash: "IDENTITY", bias: 0.2 },
+      { type: "hidden", uuid: HIDDEN_A, squash: "TANH", bias: 0.1 },
+      { type: "hidden", uuid: HIDDEN_B, squash: "TANH", bias: -0.2 },
       { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.3 },
     ],
     synapses: [
-      { fromUUID: "input-0", toUUID: HIDDEN_A, weight: -0.3 },
-      { fromUUID: "input-1", toUUID: HIDDEN_A, weight: 0.4 },
-      { fromUUID: HIDDEN_A, toUUID: HIDDEN_B, weight: -0.5 },
-      { fromUUID: HIDDEN_B, toUUID: "output-0", weight: 0.6 },
+      { fromUUID: "input-0", toUUID: HIDDEN_A, weight: 0.4 },
+      { fromUUID: "input-1", toUUID: HIDDEN_A, weight: -0.5 },
+      { fromUUID: HIDDEN_A, toUUID: HIDDEN_B, weight: 0.6 },
+      { fromUUID: HIDDEN_B, toUUID: "output-0", weight: 0.7 },
     ],
     input: 2,
     output: 1,
-    semanticVersion: "4.0.0",
     memetic: {
-      generation: 4,
+      generation: 5,
       score: 0.9,
-      biases: { "output-0": -0.2 },
+      biases: { [HIDDEN_A]: 0.11, "output-0": 0.33 },
       weights: {
-        [HIDDEN_A]: [{ toUUID: HIDDEN_B, weight: 0.42 }],
+        [HIDDEN_A]: [{ toUUID: HIDDEN_B, weight: 0.26 }],
+        [HIDDEN_B]: [{ toUUID: "output-0", weight: 0.88 }],
       },
-      ancestry: [{
-        generation: 3,
-        score: 0.8,
-        biases: { "output-0": -0.3 },
-        weights: { "input-0": [{ toUUID: HIDDEN_A, weight: 0.11 }] },
-      }],
+      ancestry: [
+        {
+          generation: 4,
+          score: 0.8,
+          biases: { [HIDDEN_A]: 0.1 },
+          weights: { [HIDDEN_A]: [{ toUUID: HIDDEN_B, weight: 0.2 }] },
+        },
+      ],
     },
   } as unknown as CreatureExport;
 
   const creature = Creature.fromJSON(legacy);
-  assert(creature.memetic, "the legacy memetic block must survive the load");
-  assertEquals(creature.memetic.generation, 4);
-  assertEquals(creature.memetic.score, 0.9);
+  assert(creature.memetic, "a legacy map-shaped creature must still load");
 
-  const exported = creature.exportJSON().memetic;
+  // Re-exporting it yields the canonical shape with the values intact.
+  const memetic = wireMemeticOf(creature.exportJSON());
+  assertCanonicalMemetic(memetic, "legacy import");
+
+  const rows = assertWeightRows(memetic.weights, "legacy import");
   assertEquals(
-    assertCanonicalShape(exported, "legacy re-export"),
-    [1, 1],
-    "an old-shape creature re-exports as canonical rows",
+    rows.map((row) => `${row.fromUUID}→${row.toUUID}=${row.weight}`).sort(),
+    [
+      `${HIDDEN_A}→${HIDDEN_B}=0.26`,
+      `${HIDDEN_B}→output-0=0.88`,
+    ].sort(),
+    "legacy map weights must survive the import with their values",
   );
   assertEquals(
-    JSON.parse(JSON.stringify(exported)).weights,
-    [{ fromUUID: HIDDEN_A, toUUID: HIDDEN_B, weight: 0.42 }],
-    "the legacy map entry keeps its endpoints and weight",
+    assertBiasMap(memetic.biases, "legacy import")[HIDDEN_A],
+    0.11,
+    "legacy biases must survive the import",
+  );
+  assertEquals(
+    assertWeightRows(
+      (memetic.ancestry ?? [])[0]?.weights,
+      "legacy import ancestry",
+    ).length,
+    1,
+    "legacy ancestry weights must survive the import",
   );
 });

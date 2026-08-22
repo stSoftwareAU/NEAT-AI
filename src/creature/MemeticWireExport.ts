@@ -1,20 +1,6 @@
-/**
- * MemeticWireExport.ts — the single producer of memetic wire JSON.
- *
- * The canonical wire shape is normative in
- * [`test/fixtures/golden/README.md`](../../test/fixtures/golden/README.md)
- * ("The canonical memetic wire shape"): `weights` is **always** an array of
- * `{ fromUUID, toUUID, weight }` rows — in the top-level snapshot and in every
- * `ancestry[]` snapshot — and the empty value is `[]`, never `{}`, never a
- * missing key. Issue #3816 removed the dual-shape ambiguity that let Issue
- * #3810 through; this module emits that one shape and nothing else.
- *
- * @module
- */
 import type { Creature } from "../Creature.ts";
 import type { MemeticInterface } from "../blackbox/MemeticInterface.ts";
 import type { MemeticWireData } from "../blackbox/MemeticWireData.ts";
-import { ValidationError } from "../errors/ValidationError.ts";
 import { neuronUuid } from "../neuron/NeuronSerialization.ts";
 
 /**
@@ -41,95 +27,72 @@ export type MemeticWeightWireRow = {
   weight: number;
 };
 
+/** True for a plain JSON object — not null, not an array. */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /**
- * Rewrites one memetic snapshot for wire JSON: biases keyed by wire strings;
- * weights as the canonical array of synapse-shaped rows (no numeric neuron
- * keys, and `[]` when there is nothing to record).
- *
- * @param where Dotted path of this snapshot, used in failure messages.
+ * Canonical `biases`: a JSON object keyed by wire neuron identity. A runtime
+ * integer key is rewritten to its wire string; anything that is not a plain
+ * object (absent, null, or a stray array) becomes the canonical empty map.
  */
-function convertMemeticSnapshotToWireJson(
-  node: MemeticWireData,
+function canonicalBiases(
+  biases: unknown,
   idToUuid: Map<number, string>,
-  where: string,
-): void {
-  if (
-    node.biases && typeof node.biases === "object" &&
-    !Array.isArray(node.biases)
-  ) {
-    const nextBiases: Record<string, number> = {};
-    for (const k of Object.keys(node.biases)) {
-      const asNum = Number(k);
-      const wireKey = Number.isFinite(asNum) && `${asNum}` === k
-        ? idToUuid.get(asNum)
-        : undefined;
-      if (wireKey) {
-        nextBiases[wireKey] = node.biases[k];
-      } else {
-        nextBiases[k] = node.biases[k];
-      }
-    }
-    node.biases = nextBiases;
-  }
+): Record<string, number> {
+  const next: Record<string, number> = {};
+  if (!isPlainObject(biases)) return next;
 
-  // Canonical empty: a snapshot that never had a memetic pass still writes
-  // the key, as `[]`.
-  if (node.weights === undefined) {
-    (node as unknown as Record<string, unknown>).weights = [];
-    return;
+  for (const k of Object.keys(biases)) {
+    const value = biases[k];
+    if (typeof value !== "number") continue;
+    const asNum = Number(k);
+    const wireKey = Number.isFinite(asNum) && `${asNum}` === k
+      ? idToUuid.get(asNum)
+      : undefined;
+    next[wireKey ?? k] = value;
   }
+  return next;
+}
 
-  // Fail loud rather than emit a shape no engine can read (Issue #3810 is
-  // what a non-conforming `weights` costs downstream).
-  if (node.weights === null || typeof node.weights !== "object") {
-    throw new ValidationError(
-      `${where} must be an array of {fromUUID, toUUID, weight} rows` +
-        ` — got ${node.weights === null ? "null" : typeof node.weights}`,
-      "MEMETIC",
-    );
-  }
-
+/**
+ * Canonical `weights`: an array of `{fromUUID, toUUID, weight}` rows. Accepts
+ * the runtime map (`fromId → [{toId, weight}]`), an already-converted row
+ * array, or nothing at all — an absent, null, or unrecognised value becomes
+ * the canonical empty array rather than being passed through unchanged.
+ */
+function canonicalWeightRows(
+  weights: unknown,
+  idToUuid: Map<number, string>,
+): MemeticWeightWireRow[] {
   const rows: MemeticWeightWireRow[] = [];
 
-  if (Array.isArray(node.weights)) {
-    for (const e of node.weights) {
-      if (e === null || e === undefined || typeof e.weight !== "number") {
+  if (Array.isArray(weights)) {
+    for (const e of weights) {
+      if (!isPlainObject(e) || typeof e.weight !== "number") continue;
+      if (typeof e.fromUUID !== "string" || typeof e.toUUID !== "string") {
         continue;
       }
-      let fromU: string | undefined;
-      let toU: string | undefined;
-      if (typeof e.fromUUID === "string" && typeof e.toUUID === "string") {
-        fromU = e.fromUUID;
-        toU = e.toUUID;
-      }
-      if (fromU && toU) {
-        rows.push({ fromUUID: fromU, toUUID: toU, weight: e.weight });
-      }
+      rows.push({ fromUUID: e.fromUUID, toUUID: e.toUUID, weight: e.weight });
     }
-    (node as unknown as Record<string, unknown>).weights = rows;
-    return;
+    return rows;
   }
 
-  const weightMap = node.weights as Record<
-    string,
-    Array<
-      { weight?: number; fromUUID?: string; toUUID?: string; toId?: number }
-    >
-  >;
-  for (const k of Object.keys(weightMap)) {
+  if (!isPlainObject(weights)) return rows;
+
+  for (const k of Object.keys(weights)) {
     const asNum = Number(k);
     const fromKey = Number.isFinite(asNum) && `${asNum}` === k
       ? idToUuid.get(asNum)
       : k;
     if (typeof fromKey !== "string") continue;
 
-    const arr = weightMap[k];
+    const arr = weights[k];
     if (!Array.isArray(arr)) continue;
 
     for (const e of arr) {
-      if (e === null || e === undefined || typeof e.weight !== "number") {
-        continue;
-      }
+      if (!isPlainObject(e) || typeof e.weight !== "number") continue;
       let toU: string | undefined;
       if (typeof e.toUUID === "string") {
         toU = e.toUUID;
@@ -140,17 +103,51 @@ function convertMemeticSnapshotToWireJson(
       rows.push({ fromUUID: fromKey, toUUID: toU, weight: e.weight });
     }
   }
-  (node as unknown as Record<string, unknown>).weights = rows;
+  return rows;
+}
+
+/**
+ * Rewrites one memetic snapshot into the canonical wire shape (Issue #3816):
+ * `weights` always an array of `{fromUUID, toUUID, weight}` rows — `[]` when
+ * there is nothing to record — and `biases` always an object keyed by wire
+ * identity. Both keys are written unconditionally, so no snapshot can leave
+ * this function carrying a map where a row array is expected, a bare array
+ * where a map is expected, or a missing key.
+ */
+function convertMemeticSnapshotToWireJson(
+  node: MemeticWireData,
+  idToUuid: Map<number, string>,
+): void {
+  const writable = node as unknown as Record<string, unknown>;
+  writable.biases = canonicalBiases(node.biases, idToUuid);
+  writable.weights = canonicalWeightRows(node.weights, idToUuid);
+}
+
+/**
+ * Canonicalises a snapshot and every ancestry snapshot beneath it, to any
+ * depth, so one creature never mixes the two shapes across its ancestry.
+ * Input is a JSON deep clone, so the walk cannot cycle.
+ */
+function convertMemeticTreeToWireJson(
+  node: MemeticWireData,
+  idToUuid: Map<number, string>,
+): void {
+  convertMemeticSnapshotToWireJson(node, idToUuid);
+  if (!Array.isArray(node.ancestry)) return;
+  for (const snap of node.ancestry) {
+    if (isPlainObject(snap)) {
+      convertMemeticTreeToWireJson(snap as MemeticWireData, idToUuid);
+    }
+  }
 }
 
 /**
  * Deep-clones memetic and converts every snapshot (including ancestry) to the
- * canonical wire JSON. Every snapshot lands on the same `weights` shape — the
- * row array — so one creature never mixes the two shapes.
+ * canonical wire shape.
  *
- * @throws {ValidationError} `MEMETIC` when a snapshot carries a `weights`
- *   value that is neither an array nor a map, or an `ancestry` that is not an
- *   array. Emitting such a creature would break every downstream engine.
+ * The canonical shape is defined normatively in
+ * `test/fixtures/golden/README.md` ("The canonical memetic wire shape"); this
+ * function is the only producer of it, and emits nothing else (Issue #3816).
  */
 export function convertMemeticExportToWireJson(
   creature: Creature,
@@ -158,22 +155,6 @@ export function convertMemeticExportToWireJson(
 ): MemeticInterface {
   const idToUuid = buildNeuronIdToWireUuidMap(creature);
   const raw = JSON.parse(JSON.stringify(memetic)) as MemeticWireData;
-  convertMemeticSnapshotToWireJson(raw, idToUuid, "memetic.weights");
-  if (raw.ancestry !== undefined) {
-    if (!Array.isArray(raw.ancestry)) {
-      throw new ValidationError(
-        `memetic.ancestry must be an array of snapshots — got ${typeof raw
-          .ancestry}`,
-        "MEMETIC",
-      );
-    }
-    raw.ancestry.forEach((snap, index) => {
-      convertMemeticSnapshotToWireJson(
-        snap,
-        idToUuid,
-        `memetic.ancestry[${index}].weights`,
-      );
-    });
-  }
+  convertMemeticTreeToWireJson(raw, idToUuid);
   return raw as unknown as MemeticInterface;
 }

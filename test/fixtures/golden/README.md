@@ -55,50 +55,66 @@ The `intelligentDesign` neuron tag is the exact pedigree stamp written by
 `src/intelligentDesign/ImproveSquash.ts` — the tag whose loss opened Issue
 #3746.
 
-## 🧠 The canonical memetic wire shape (Issue #3814)
+## 🧠 The canonical memetic wire shape (Issues #3814, #3816)
+
+> [!IMPORTANT]
+> **This section is the normative definition.** `memetic.weights` and
+> `memetic.ancestry[].weights` have exactly one legal wire shape, defined here
+> and nowhere else. `src/blackbox/MemeticWireData.ts` links back to it; every
+> engine that reads or writes creature JSON implements it.
 
 `memetic` is written by `src/creature/MemeticWireExport.ts`. Its canonical wire
-shape — in the top-level snapshot **and** in every `ancestry[]` snapshot — is:
+shape — in the top-level snapshot **and** in every `ancestry[]` snapshot, at any
+depth — is:
 
 - **`weights`: a JSON array of `{ fromUUID, toUUID, weight }` rows.** Never a
   map. The array is frequently **empty** (`"weights": []`), because a creature
   that has not had a memetic pass still writes the key; the empty form is part
-  of the contract, not a degenerate case.
+  of the contract, not a degenerate case. `[]` is the **only** canonical empty
+  value — an omitted key, `null`, and `{}` are all non-canonical, and the export
+  path rewrites each of them to `[]`.
 - **`biases`: a JSON object** keyed by wire neuron identity (`input-N`,
-  `output-N`, or a hidden neuron `uuid`).
+  `output-N`, or a hidden neuron `uuid`). Its canonical empty value is `{}`,
+  never `[]` and never an omitted key.
 - **`generation` and `score`: numbers.**
 
 The asymmetry is deliberate and load-bearing: a bias belongs to one neuron so a
 map is natural, whereas a weight belongs to an ordered `from → to` pair that a
 single map key cannot express without inventing a composite string.
 
-### ✍️ Write one shape, read two (Issue #3816)
+### ✍️ One producer, one shape (Issue #3816)
 
-This section is the **normative** definition of the shape — `MemeticWireData.ts`
-and `MemeticWireExport.ts` link here rather than restating it. Two rules follow
-from it, and they are not symmetric:
+`convertMemeticExportToWireJson` in `src/creature/MemeticWireExport.ts` is the
+**only** producer of this block — `exportJSON()`, `exportSnapshotJSON()` and
+`exportJSONWithRuntimeIds()` all route through it — and it emits the canonical
+shape unconditionally. It writes both keys on every snapshot rather than passing
+an unexpected value through, so no export can carry a map where rows are
+expected, a bare `[]` where a map is expected, a missing key, or a **mix** of
+shapes between a creature and its ancestry.
 
-- **Emit only the canonical shape.** `convertMemeticExportToWireJson`
-  (`src/creature/MemeticWireExport.ts`) — the single producer, reached from both
-  `exportJSON()` and `exportJSONWithRuntimeIds()` — writes the row array in
-  every snapshot of a creature, top level and `ancestry[]` alike. The canonical
-  empty value is `[]`: a snapshot with no weights, or with the key missing
-  entirely, still exports `"weights": []`. Never `{}`, never absent, never
-  `null`, and never a mix of the two shapes within one creature. A `weights`
-  value that is neither an array nor a map, or an `ancestry` that is not an
-  array, throws a `ValidationError` (`MEMETIC`) instead of being emitted —
-  masking it is how Issue #3810 reached production.
-- **Accept both shapes on import, indefinitely.** `normaliseMemeticData`
-  (`src/architecture/NormaliseCreatureExport.ts`) still reads the legacy map
-  keyed by from-neuron with `{toId | toUUID, weight}` entries, because creature
-  JSON saved before the contract was pinned is still on disk and must keep
-  loading. That branch is backward compatibility, **not** a supported output —
-  loading an old-shape creature and re-exporting it yields the canonical rows.
+The runtime type (`MemeticWeightsInterface` in
+`src/blackbox/MemeticInterface.ts`) stays a map keyed by the runtime integer
+neuron id: it is an in-process accumulator, and integer ids must never cross a
+process boundary (see [`AGENTS.md`](../../../AGENTS.md) — neuron UUID
+stability). The map → rows rewrite at the wire boundary is what keeps those two
+facts compatible.
 
-Why the row array rather than the map: it is the shape that already crossed
-every boundary in production, it names both endpoints in the same vocabulary the
-synapses use (`input-N`, `output-N`, or a neuron `uuid`), and it needs no
-convention for what an empty map key means.
+### 📥 Import stays tolerant, forever
+
+Reading is deliberately **more permissive than writing**. Creature JSON already
+saved to disk carries the legacy map shape, so `normaliseMemeticData` in
+`src/architecture/NormaliseCreatureExport.ts` and `convertSnapshotInPlace` in
+`src/creature/CreatureSerialization.ts` accept both shapes and will keep doing
+so indefinitely. Those branches are backward-compatibility only: accepting a
+shape on import never makes it a supported output.
+
+```mermaid
+flowchart LR
+    RT["runtime memetic<br/>map: fromId → [{toId, weight}]"] -->|convertMemeticExportToWireJson| W["wire JSON<br/>weights: [{fromUUID, toUUID, weight}]"]
+    W --> D[(creature JSON<br/>on disk)]
+    L(["legacy on-disk JSON<br/>weights: map"]) -.->|tolerated on import| RT
+    D -->|import| RT
+```
 
 > [!CAUTION]
 > **Every engine must be able to parse every fixture committed here.** Issue
@@ -135,13 +151,6 @@ the full suite on every PR, and asserts three independent things:
 3. **Byte-identical round trip** — `Creature.fromJSON(...)` followed by
    `exportJSON()` reproduces each file verbatim, and a second cycle does not
    drift.
-
-`test/creature/MemeticCanonicalWireShape.ts` is the matching gate on the
-**producer** (Issue #3816): it exports live creatures — populated, empty,
-ancestry-bearing, and deliberately mixed-shape — and asserts every emitted
-snapshot lands on the row array, that a non-conforming `weights` throws rather
-than serialising, and that an old-shape creature still loads. The fixtures pin
-the bytes; that test pins the code path that writes them.
 
 ```mermaid
 flowchart LR
