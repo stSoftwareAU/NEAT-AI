@@ -449,20 +449,20 @@ stateDiagram-v2
 
 ### 🗂️ Change Types
 
-| Change Type              | Source          | Description                                       |
-| ------------------------ | --------------- | ------------------------------------------------- |
-| `add-synapses`           | Rust analysis   | Add one synapse between existing neurons          |
-| `add-neurons`            | Rust analysis   | Insert one hidden neuron with connections         |
-| `change-squash`          | Rust analysis   | Change a neuron's activation function             |
-| `coordinated-structural` | Rust analysis   | Multi-operation epistatic group                   |
-| `remove-neuron`          | Error analysis  | Remove the most harmful neuron                    |
-| `remove-synapse`         | Error analysis  | Remove a harmful synapse                          |
-| `remove-low-impact`      | Impact analysis | Remove a neuron with impact < costOfGrowth        |
-| `cache-informed-removal` | Success cache   | Multi-neuron removal from historical wins (#1731) |
-| `combo-successful`       | Phase 2         | Combination of Phase 1 successes                  |
-| `combo-add-remove`       | Phase 1         | Combined addition + removal                       |
-| `combo-add-change`       | Phase 1         | Combined addition + squash change                 |
-| `combo-best-of-category` | Phase 2         | Best candidate from each category                 |
+| Change Type              | Source          | Description                                                                                |
+| ------------------------ | --------------- | ------------------------------------------------------------------------------------------ |
+| `add-synapses`           | Rust analysis   | Add one synapse between existing neurons                                                   |
+| `add-neurons`            | Rust analysis   | Insert one hidden neuron with connections                                                  |
+| `change-squash`          | Rust analysis   | Change a neuron's activation function                                                      |
+| `coordinated-structural` | Rust analysis   | Multi-operation epistatic group                                                            |
+| `remove-neuron`          | Error analysis  | Remove the most harmful neuron                                                             |
+| `remove-synapse`         | Error analysis  | Remove a harmful synapse                                                                   |
+| `remove-low-impact`      | Impact analysis | Remove a neuron with impact < costOfGrowth (never one that feeds an `IF` node — see below) |
+| `cache-informed-removal` | Success cache   | Multi-neuron removal from historical wins (#1731)                                          |
+| `combo-successful`       | Phase 2         | Combination of Phase 1 successes                                                           |
+| `combo-add-remove`       | Phase 1         | Combined addition + removal                                                                |
+| `combo-add-change`       | Phase 1         | Combined addition + squash change                                                          |
+| `combo-best-of-category` | Phase 2         | Best candidate from each category                                                          |
 
 ### 🛡️ Validate-Then-Fix Strategy
 

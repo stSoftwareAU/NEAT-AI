@@ -36,6 +36,7 @@ import {
   buildWireToRuntimeIdMap,
   resolveSingleNeuronReference,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
+import { feedsIfNeuron } from "@architecture/ErrorGuidedStructuralEvolution/IfRoutingGuard.ts";
 
 // Re-export RemovalCandidate so callers don't need a separate import
 export type { RemovalCandidate };
@@ -229,6 +230,10 @@ export function buildLowImpactRemovalCandidates(
   const { removalCandidates } = discovery;
   if (!removalCandidates || removalCandidates.length === 0) return [];
   const wireToId = buildWireToRuntimeIdMap(baseCreature);
+  // GRQ #4303: the impact metric cannot assess a neuron that feeds an `IF`
+  // node, so those are excluded here — and attributed distinctly in the
+  // diagnostics rather than lumped in with genuine removal failures.
+  const baseExport = baseCreature.exportJSON();
 
   const entries: DiscoveryCandidate[] = [];
   let removalSuccessCount = 0;
@@ -245,6 +250,19 @@ export function buildLowImpactRemovalCandidates(
     );
     if (!neuronExists) {
       const reason = "neuron_not_found";
+      failureReasons.set(reason, (failureReasons.get(reason) ?? 0) + 1);
+      removalFailureCount++;
+      continue;
+    }
+
+    if (
+      feedsIfNeuron(
+        baseExport.neurons,
+        baseExport.synapses,
+        candidate.neuronUuid,
+      )
+    ) {
+      const reason = "if_routing_structure";
       failureReasons.set(reason, (failureReasons.get(reason) ?? 0) + 1);
       removalFailureCount++;
       continue;

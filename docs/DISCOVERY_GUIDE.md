@@ -284,6 +284,23 @@ Each candidate that adds structural complexity must satisfy:
   They improve score by reducing complexity, not by reducing error. Removing
   elements that return a similar score will improve the creature's score
 
+**`remove-low-impact` never touches `IF` routing (GRQ #4303)**
+
+Impact is the magnitude of a neuron's contribution to downstream activation
+_sums_. An `IF` node's inputs matter by **presence**, not magnitude: its
+`condition` / `positive` / `negative` roles decide routing, and a grafted
+decision tree carries its thresholds and leaf values as weights on shared bias-1
+constants. Those neurons therefore measure at ~0.00% impact while deleting one
+flips or breaks the routing of every node hanging off it — a single shared
+constant can back hundreds of nodes.
+
+`feedsIfNeuron()`
+(`src/architecture/ErrorGuidedStructuralEvolution/IfRoutingGuard.ts`) excludes
+any neuron with an outgoing synapse into an `IF` neuron from low-impact removal,
+matching the rule the compaction pass already applies ("synapses targeting an
+`IF` neuron are never pruned"). Excluded candidates are reported as
+`if_routing_structure` in the `[DiscoveryCandidates]` diagnostics line.
+
 **Take the Best**
 
 If multiple candidates are profitable:

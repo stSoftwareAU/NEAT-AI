@@ -21,6 +21,7 @@ import {
   resolveSingleNeuronReference,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
+import { feedsIfNeuron } from "@architecture/ErrorGuidedStructuralEvolution/IfRoutingGuard.ts";
 
 /** Minimal mutable neuron shape the compensation helper edits (bias fold). */
 interface CompensableNeuron {
@@ -382,6 +383,15 @@ export function removeLowImpactNeuron(
 
   // Don't remove output neurons
   if (neuronToRemove.type === "output") {
+    return undefined;
+  }
+
+  // GRQ #4303: never remove a neuron that feeds an `IF` node. An `IF` routes on
+  // the presence of its condition/positive/negative edges (and on the shared
+  // constants those edges read), so the activation-contribution impact metric
+  // scores such a neuron at ~0.00% while deleting it breaks the routing of
+  // every node hanging off it.
+  if (feedsIfNeuron(exportJSON.neurons, exportJSON.synapses, removalLabel)) {
     return undefined;
   }
 
