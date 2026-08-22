@@ -65,18 +65,29 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- **GRQ#4284:** The additional-generation wait no longer spins. `finishUp`
-  logged `Waiting for additional generation` and returned `false` without
-  consuming the credit, which only `evolve()` decremented — but the two
-  `CreatureTraining` branches that reach `finishUp` (`completed` and
-  `shouldStopStartingGenerations`) run no generation, and `awaitInFlightTasks()`
-  returns immediately when nothing is in flight. Once a run stopped starting
-  generations, nothing could reach the decrement and the loop spun as fast as
-  the process could call `console.info`. Two GRQ hosts rode it to node logs of
-  104,440,184 and 99,063,629 lines — ~99% that one message — filled their disks
-  and died on `No space left on device` raised from inside this very log call.
-  The credit is now consumed in the wait branch, exactly as `cleanUpDelayCount`
-  already was, and the line carries the remaining count.
+- **Issue #3823:** The over-run finish-up path no longer spins, flooding the log
+  with `Waiting for additional generation`. `additionalGenerationCount` ("do at
+  least one more loop") was only decremented by `evolve()`, but the over-run
+  guard added in #3795 stops starting generations and re-enters `finishUp()`
+  directly — so the counter never cleared, `awaitInFlightTasks()` returned
+  immediately (nothing was in flight) and the loop ran flat out until the hard
+  deadline, up to the full 15-minute grace window. `finishUp()` now drains the
+  counter in its wait branch (as the neighbouring `cleanUpDelayCount` branch
+  already did), and the over-run stop clears it outright.
+
+- **GRQ #4238:** The `[WasmWorkerInit]` timeout diagnostic no longer bills the
+  parent's own stall to the child. `handshakeMs` was a raw elapsed-time read
+  taken inside the timeout callback, so a blocked parent event loop fired the
+  timer late and the overshoot was reported as handshake time — a GRQ-13 run
+  logged `handshakeMs=895250` against a 60s deadline. The window is now split
+  into `handshakeMs` (capped at the deadline), `parentStallMs` (how late the
+  callback fired), `loopBlockedMs` (longest block sampled _inside_ the window by
+  a new parent watchdog) and `spawnToInitMs`. Because a blocked parent cannot
+  receive the child's start heartbeat either, `heartbeat=none` is now only read
+  as "the child never reached its entry point" when the parent stayed
+  responsive; otherwise the line says the parent was blind. The init timeout and
+  watchdog timers are also cleared when the init-error promise wins the race,
+  which previously left the timeout pending.
 
 - **GRQ#4283:** An Intelligent Design squash substitution can no longer produce
   a creature this library's own validator refuses. A substitution changes only
