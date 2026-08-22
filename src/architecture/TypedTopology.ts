@@ -269,6 +269,14 @@ export class TypedTopology {
    *
    * Issue #1959/#2415: Delegates to NEAT-AI-core via WASM. Checks synapse
    * sorting, self-connections, and backward connections.
+   *
+   * Issue #3803 moved `creatureValidate` onto core's whole-creature
+   * `creature_validate`, so this is no longer called from inside the library.
+   * It is kept because it is published API — `TypedTopology` is exported from
+   * `mod.ts` and documented in `docs/api/CREATURE.md` and
+   * `docs/WASM_RESIDENT_TOPOLOGY.md` — and it is the typed entry point to
+   * `WasmTopologyOps.validateTopology`, which keeps its own direct tests and
+   * shares the `TOPOLOGY_*` codes with `WasmBatchOps`.
    */
   validateForwardOnly(): TopologyValidationResult {
     return wasmValidate(this);
