@@ -55,22 +55,73 @@ The `intelligentDesign` neuron tag is the exact pedigree stamp written by
 `src/intelligentDesign/ImproveSquash.ts` — the tag whose loss opened Issue
 #3746.
 
-## 🧠 The canonical memetic wire shape (Issue #3814)
+## 🧠 The canonical memetic wire shape (Issues #3814, #3816)
+
+> [!IMPORTANT]
+> **This section is the normative definition.** `memetic.weights` and
+> `memetic.ancestry[].weights` have exactly one legal wire shape, defined here
+> and nowhere else. `src/blackbox/MemeticWireData.ts` links back to it; every
+> engine that reads or writes creature JSON implements it.
 
 `memetic` is written by `src/creature/MemeticWireExport.ts`. Its canonical wire
-shape — in the top-level snapshot **and** in every `ancestry[]` snapshot — is:
+shape — in the top-level snapshot **and** in every `ancestry[]` snapshot, at any
+depth — is:
 
 - **`weights`: a JSON array of `{ fromUUID, toUUID, weight }` rows.** Never a
   map. The array is frequently **empty** (`"weights": []`), because a creature
   that has not had a memetic pass still writes the key; the empty form is part
-  of the contract, not a degenerate case.
+  of the contract, not a degenerate case. `[]` is the **only** canonical empty
+  value — an omitted key and `{}` are both non-canonical, and the export path
+  rewrites each of them to `[]`.
 - **`biases`: a JSON object** keyed by wire neuron identity (`input-N`,
-  `output-N`, or a hidden neuron `uuid`).
+  `output-N`, or a hidden neuron `uuid`). Its canonical empty value is `{}`,
+  never `[]` and never an omitted key.
 - **`generation` and `score`: numbers.**
 
 The asymmetry is deliberate and load-bearing: a bias belongs to one neuron so a
 map is natural, whereas a weight belongs to an ordered `from → to` pair that a
 single map key cannot express without inventing a composite string.
+
+### ✍️ One producer, one shape (Issue #3816)
+
+`convertMemeticExportToWireJson` in `src/creature/MemeticWireExport.ts` is the
+**only** producer of this block — `exportJSON()`, `exportSnapshotJSON()` and
+`exportJSONWithRuntimeIds()` all route through it — and it emits the canonical
+shape unconditionally. It writes both keys on every snapshot rather than passing
+an unexpected value through, so no export can carry a map where rows are
+expected, a bare `[]` where a map is expected, a missing key, or a **mix** of
+shapes between a creature and its ancestry.
+
+An **absent** key is the documented empty case and is filled in with `[]` /
+`{}`. A **wrong-typed** value (`null`, a number, a string, an array where the
+map is required) is a producer bug, not an empty case: the export throws
+`ValidationError` with reason `MEMETIC`, naming the offending path
+(`memetic.ancestry[0].weights`). Emitting a shape no engine can read is what
+Issue #3810 cost, so it fails at the producer's stack frame instead.
+
+The runtime type (`MemeticWeightsInterface` in
+`src/blackbox/MemeticInterface.ts`) stays a map keyed by the runtime integer
+neuron id: it is an in-process accumulator, and integer ids must never cross a
+process boundary (see [`AGENTS.md`](../../../AGENTS.md) — neuron UUID
+stability). The map → rows rewrite at the wire boundary is what keeps those two
+facts compatible.
+
+### 📥 Import stays tolerant, forever
+
+Reading is deliberately **more permissive than writing**. Creature JSON already
+saved to disk carries the legacy map shape, so `normaliseMemeticData` in
+`src/architecture/NormaliseCreatureExport.ts` and `convertSnapshotInPlace` in
+`src/creature/CreatureSerialization.ts` accept both shapes and will keep doing
+so indefinitely. Those branches are backward-compatibility only: accepting a
+shape on import never makes it a supported output.
+
+```mermaid
+flowchart LR
+    RT["runtime memetic<br/>map: fromId → [{toId, weight}]"] -->|convertMemeticExportToWireJson| W["wire JSON<br/>weights: [{fromUUID, toUUID, weight}]"]
+    W --> D[(creature JSON<br/>on disk)]
+    L(["legacy on-disk JSON<br/>weights: map"]) -.->|tolerated on import| RT
+    D -->|import| RT
+```
 
 > [!CAUTION]
 > **Every engine must be able to parse every fixture committed here.** Issue

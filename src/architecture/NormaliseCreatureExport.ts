@@ -127,6 +127,13 @@ export function normaliseCreatureExport(json: CreatureExport): void {
 /**
  * Normalise memetic data by converting string UUID keys to integer IDs.
  * Handles weights, biases, and ancestry snapshots.
+ *
+ * Issue #3816: reading is deliberately more permissive than writing. The
+ * canonical wire shape (`test/fixtures/golden/README.md`) is the row array;
+ * the map branch below is **backward compatibility only**, for creature JSON
+ * already saved to disk, and is never produced by
+ * `convertMemeticExportToWireJson`. Accepting a shape here does not make it a
+ * supported output.
  */
 function normaliseMemeticData(
   memetic: MemeticWireData,
@@ -134,6 +141,7 @@ function normaliseMemeticData(
 ): void {
   if (memetic.weights) {
     if (Array.isArray(memetic.weights)) {
+      // The canonical shape: an array of {fromUUID, toUUID, weight} rows.
       const acc: Record<number, { toId: number; weight: number }[]> = {};
       for (const row of memetic.weights) {
         if (!row || typeof row !== "object") continue;
@@ -150,6 +158,8 @@ function normaliseMemeticData(
       }
       (memetic as unknown as Record<string, unknown>).weights = acc;
     } else {
+      // Backward compatibility only (Issue #3816): the legacy map shape, kept
+      // readable indefinitely for creatures already on disk. Not an output.
       const weightMap = memetic.weights as Record<string, unknown>;
       const converted = convertMapKeys(weightMap, uuidToId);
       // Also convert toUUID → toId in weight entries
