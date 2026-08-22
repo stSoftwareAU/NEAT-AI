@@ -13,6 +13,23 @@
  * malformed memetic record, and a validator that answers "healthy" for a
  * creature the rules reject is worse than no validator at all.
  *
+ * ## Two request shapes, one set of rules (Issue #3832)
+ *
+ * {@link coreValidateCreature} sends the creature as JSON, which is the shape
+ * a *failure* has to come back through — a class, a reason and a message
+ * naming a neuron by its UUID. It is the wrong shape to send a creature in:
+ * on a 4 272-neuron production creature the request is 850 KB and
+ * `JSON.stringify` alone costs more than the entire TypeScript rule set this
+ * replaced.
+ *
+ * {@link coreValidateCreaturePacked} sends the same creature as a packed
+ * buffer of numbers. It carries no text at all, so it can answer "healthy,
+ * and here are the counters" but not "hidden neuron `neuron-18032` has no
+ * outward connections" — a broken creature comes back as `detailRequired` and
+ * the caller asks the JSON shape for the failure. Both run the same rules
+ * through the same seam in core, and core's own conformance replay asserts the
+ * two shapes never disagree about a creature.
+ *
  * ## Fail loud, never skip
  *
  * There is no TypeScript fallback. When the bundle cannot be loaded the call
@@ -26,6 +43,7 @@
 import { WasmError } from "@errors/WasmError.ts";
 import {
   getCreatureValidateFn,
+  getCreatureValidatePackedFn,
   getWasmLoadError,
 } from "@wasm/WasmModuleLoader.ts";
 
@@ -141,6 +159,17 @@ function bundleUnavailable(loadError: Error | null): WasmError {
   );
 }
 
+/** What {@link coreValidateCreaturePacked} answers with. */
+export interface CorePackedValidationResult {
+  /** Present when the creature broke no rule. */
+  stats?: CoreValidationStats;
+  /**
+   * `true` when a rule was broken and only the JSON shape can say which one.
+   * Never set alongside `stats`.
+   */
+  detailRequired?: boolean;
+}
+
 /** A record with the shape of an answer, or `null` when it is not one. */
 function asRecord(value: unknown): Record<string, unknown> | null {
   return (typeof value === "object" && value !== null && !Array.isArray(value))
@@ -241,4 +270,83 @@ export function coreValidateCreature(
         : null,
     },
   };
+}
+
+/**
+ * Validate one creature through the packed request shape (Issue #3832).
+ *
+ * @param request The packed buffer, from `packCreatureValidateRequest`.
+ * @param memetic The creature's memetic record as JSON, `""` for none.
+ * @param validateFn Injectable for testing; defaults to the loader's pointer.
+ *   `null` means the bundle has no packed export, and the caller should use
+ *   {@link coreValidateCreature} instead — the same rules, only slower.
+ * @returns The counters, or `detailRequired` when a rule was broken.
+ * @throws {WasmError} When core refused the buffer (`INVALID_REQUEST`). That is
+ *   a bug in the packer, not a verdict on the creature, so it must not be
+ *   reported as one.
+ */
+export function coreValidateCreaturePacked(
+  request: Uint8Array,
+  memetic: string,
+  validateFn:
+    | ((request: Uint8Array, memetic: string) => string)
+    | null = getCreatureValidatePackedFn(),
+): CorePackedValidationResult | null {
+  if (!validateFn) {
+    return null;
+  }
+
+  const answer = validateFn(request, memetic);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(answer);
+  } catch (error) {
+    throw new WasmError(
+      `creature_validate_packed answered with something that is not JSON: ${answer}`,
+      "INVALID_REQUEST",
+      { cause: error instanceof Error ? error : undefined },
+    );
+  }
+
+  const response = asRecord(parsed);
+  if (!response) {
+    throw new WasmError(
+      `creature_validate_packed answered with something that is not a response: ${answer}`,
+      "INVALID_REQUEST",
+    );
+  }
+
+  if (response.ok === true) {
+    const stats = asRecord(response.stats);
+    if (!stats) {
+      throw new WasmError(
+        `creature_validate_packed reported a healthy creature with no counters: ${answer}`,
+        "INVALID_REQUEST",
+      );
+    }
+    return {
+      stats: {
+        input: stats.input as number,
+        constant: stats.constant as number,
+        hidden: stats.hidden as number,
+        output: stats.output as number,
+        connections: stats.connections as number,
+      },
+    };
+  }
+
+  if (response.detailRequired === true) {
+    return { detailRequired: true };
+  }
+
+  // Anything else is core telling us the buffer never reached a rule, which
+  // says nothing about the creature. Reporting it as a validation failure
+  // would let a packer bug masquerade as a broken creature.
+  const failure = asRecord(response.failure);
+  const message = failure ? String(failure.message) : answer;
+  throw new WasmError(
+    `creature_validate_packed refused the request built for it: ${message}`,
+    "INVALID_REQUEST",
+  );
 }

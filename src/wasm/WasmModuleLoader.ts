@@ -230,6 +230,13 @@ let detectCyclesFn:
 // Issue #3803 - whole-creature validation (JSON request in, JSON response out)
 let creatureValidateFn: ((request: string) => string) | null = null;
 
+// Issue #3832 - the same validation over the packed buffer, for the hot path.
+// The JSON shape stays: it is how a failure comes back (see
+// `WasmCreatureValidate.coreValidateCreaturePacked`).
+let creatureValidatePackedFn:
+  | ((request: Uint8Array, memetic: string) => string)
+  | null = null;
+
 // Issue #1519 - Standalone elastic error distribution
 let distributeElasticErrorFn:
   | ((
@@ -476,6 +483,8 @@ function assignFunctionPointers(module: WasmModule): void {
   detectCyclesFn = module.detect_cycles;
   // Issue #3803 - whole-creature validation
   creatureValidateFn = module.creature_validate;
+  // Issue #3832 - the packed request shape for the same validation
+  creatureValidatePackedFn = module.creature_validate_packed;
   // Issue #1519 - Standalone elastic error distribution
   distributeElasticErrorFn = module.distribute_elastic_error;
   // Issue #1518 - Accumulation functions
@@ -878,6 +887,17 @@ export function getDetectCyclesFn(): typeof detectCyclesFn {
  */
 export function getCreatureValidateFn(): typeof creatureValidateFn {
   return creatureValidateFn;
+}
+
+/**
+ * Issue #3832 - the packed-buffer half of the same validator.
+ *
+ * `null` until the bundle loads, and also `null` on a bundle built before the
+ * packed export existed — which is why the bridge treats an absent pointer as
+ * "use the JSON shape" rather than as a failure.
+ */
+export function getCreatureValidatePackedFn(): typeof creatureValidatePackedFn {
+  return creatureValidatePackedFn;
 }
 
 // Issue #1960 - Batch operation function pointer getters
