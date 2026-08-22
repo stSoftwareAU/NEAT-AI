@@ -120,9 +120,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `creature_validate` instead of running its own copy of the rules, so NEAT-AI
   and its sibling consumers read one set of validation rules rather than four
   ports of them. The exported signature, the `stats` return value and every
-  thrown error class, `reason` and message are unchanged — the #3801
-  conformance corpus is replayed against the new path. What stays in TypeScript
-  is the host-only half from #3802 (`neuron.validate()`, `neuron.index`,
+  thrown error class, `reason` and message are unchanged — the #3801 conformance
+  corpus is replayed against the new path. What stays in TypeScript is the
+  host-only half from #3802 (`neuron.validate()`, `neuron.index`,
   `neuron.creature`), marshalling, failure rehydration and the `DEBUG`
   diagnostics dump. There is **no fallback**: an unloadable bundle throws a
   `WasmError` carrying the loader's own failure, so a creature is never treated

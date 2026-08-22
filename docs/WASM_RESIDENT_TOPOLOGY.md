@@ -394,12 +394,12 @@ Implementation files:
 ### 5.4 Whole-Creature Validation (Implemented — #3803)
 
 The operations above take packed typed arrays and answer with an error code. A
-whole creature does not fit that ABI and a structured failure is a record
-rather than a number, so `creature_validate` is **JSON in, JSON out**: the
-request names the creature in the runtime shape (every neuron listed, synapses
-wired by array position) and the response carries either the five counters or
-the first violated rule — its class, `reason`, message and the neuron or
-synapse it stopped on.
+whole creature does not fit that ABI and a structured failure is a record rather
+than a number, so `creature_validate` is **JSON in, JSON out**: the request
+names the creature in the runtime shape (every neuron listed, synapses wired by
+array position) and the response carries either the five counters or the first
+violated rule — its class, `reason`, message and the neuron or synapse it
+stopped on.
 
 `creatureValidate` is now a thin wrapper over that call. The rules live in
 NEAT-AI-core, so NEAT-AI and its sibling consumers read one set of them rather
@@ -408,9 +408,9 @@ than four ports; what stays in TypeScript is only the host-only half — the
 JavaScript heap (#3802) — plus marshalling, rehydrating the failure and the
 `DEBUG` diagnostics dump.
 
-There is **no fallback**: an unloadable bundle throws a `WasmError` carrying
-the loader's own failure, because a creature must never be treated as valid
-because validation could not run.
+There is **no fallback**: an unloadable bundle throws a `WasmError` carrying the
+loader's own failure, because a creature must never be treated as valid because
+validation could not run.
 
 ```mermaid
 flowchart LR
@@ -431,8 +431,8 @@ Implementation files:
   failure rehydration
 - `test/validate/CreatureValidateConformance.ts` — the language-neutral corpus
   (#3801), replayed against the WASM-backed validator
-- `test/validate/CreatureValidateNoWasmBundle.ts` — proves an unavailable
-  bundle throws rather than passing
+- `test/validate/CreatureValidateNoWasmBundle.ts` — proves an unavailable bundle
+  throws rather than passing
 
 `src/wasm/TopologyErrorMessages.ts` was removed by #3803: it existed to label
 `TOPOLOGY_*` / `STRUCTURAL_*` codes for `creatureValidate`, which now reads

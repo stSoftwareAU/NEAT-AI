@@ -64,7 +64,10 @@
  */
 import type { Creature } from "@creature";
 import type { Neuron } from "@architecture/Neuron.ts";
-import { TopologyError, type TopologyErrorReason } from "@errors/TopologyError.ts";
+import {
+  TopologyError,
+  type TopologyErrorReason,
+} from "@errors/TopologyError.ts";
 import {
   ValidationError,
   type ValidationErrorName,
@@ -77,9 +80,9 @@ import {
   restoreSubstitutedId,
 } from "@architecture/CreatureValidateMarshal.ts";
 import {
+  coreValidateCreature,
   type CoreValidationFailure,
   type CoreValidationStats,
-  coreValidateCreature,
 } from "@wasm/WasmCreatureValidate.ts";
 
 /**

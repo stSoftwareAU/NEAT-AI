@@ -114,7 +114,7 @@ const MALFORMED_REQUEST = "MALFORMED_REQUEST:";
 /**
  * Raise the loader's real failure rather than a generic "not loaded".
  *
- * Mirrors {@link requireWasm} in `WasmTopologyOps.ts`: a JSR consumer cannot
+ * Mirrors `requireWasm` in `WasmTopologyOps.ts`: a JSR consumer cannot
  * "run ./build.sh", so the underlying cause has to travel with the error.
  */
 function bundleUnavailable(loadError: Error | null): WasmError {

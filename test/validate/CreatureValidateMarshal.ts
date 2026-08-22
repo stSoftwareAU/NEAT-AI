@@ -65,7 +65,8 @@ Deno.test("marshal: a string neuron id keeps its printed value", () => {
 
 Deno.test("marshal: an earlier rule still wins over a substituted id", () => {
   const creature = makeCreature();
-  // Neuron 1 breaks a rule of its own; neuron 2 carries an unsendable id.
+  // Neuron 1 breaks a rule of its own; neuron 2 carries an id JSON cannot
+  // carry.
   // First-failure-wins means neuron 1 is reported, exactly as before.
   creature.neurons[1].id = 1000;
   creature.neurons[2].id = "grafted-7" as unknown as number;
@@ -75,11 +76,13 @@ Deno.test("marshal: an earlier rule still wins over a substituted id", () => {
 });
 
 Deno.test("marshal: a non-finite bias is named rather than read as absent", () => {
-  for (const [bias, printed] of [
-    [NaN, "NaN"],
-    [Infinity, "Infinity"],
-    [-Infinity, "-Infinity"],
-  ] as [number, string][]) {
+  for (
+    const [bias, printed] of [
+      [NaN, "NaN"],
+      [Infinity, "Infinity"],
+      [-Infinity, "-Infinity"],
+    ] as [number, string][]
+  ) {
     const creature = makeCreature();
     creature.neurons[2].bias = bias;
 
