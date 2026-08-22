@@ -12,10 +12,10 @@ This adds an opt-in strict mode, `NEAT_AI_RUST_SCORER_STRICT=1`, and turns it on
 in `quality.sh`. Closes #3815.
 
 - `src/errors/ScorerStrictError.ts` (new) — typed error carrying the scorer's
-  stderr **verbatim** (never trimmed or whitespace-collapsed), its exit code, and
-  a `reason` (`EXEC_FAILURE` / `INVALID_OUTPUT` / `BATCH_FALLBACK`). The stderr
-  is appended to the message under a `--- rust_scorer stderr ---` heading so the
-  real diagnostic *is* the failure text. Exported from `mod.ts`.
+  stderr **verbatim** (never trimmed or whitespace-collapsed), its exit code,
+  and a `reason` (`EXEC_FAILURE` / `INVALID_OUTPUT` / `BATCH_FALLBACK`). The
+  stderr is appended to the message under a `--- rust_scorer stderr ---` heading
+  so the real diagnostic _is_ the failure text. Exported from `mod.ts`.
 - `src/config/RustScorerConfig.ts` — new `strict` field, resolved from
   `NEAT_AI_RUST_SCORER_STRICT` in `getEnvRustScorerConfig()`, default `false`.
 - `src/score/RustScorerBridge.ts` — under strict, a non-zero exit, non-JSON
@@ -33,9 +33,9 @@ in `quality.sh`. Closes #3815.
   export cannot leak in).
 
 Default behaviour is unchanged: without the flag, production still degrades
-gracefully to WASM. A missing or too-old binary stays a graceful skip in **both**
-modes, so contributors without `rust_scorer` installed are unaffected — only
-genuine exec/parse failures throw.
+gracefully to WASM. A missing or too-old binary stays a graceful skip in
+**both** modes, so contributors without `rust_scorer` installed are unaffected —
+only genuine exec/parse failures throw.
 
 `test/creature/EvolveScorerUtilisation.ts` keeps its
 `batchFallbackGenerations === 0` assertion as the belt-and-braces second layer:
@@ -88,12 +88,12 @@ Error: failed to deserialise creature 9f1c-4d2a
     `BatchScorerError` preserved as `cause`.
 - `test/architecture/FitnessBatchStrictMode.ts` (new, 2 cases) — with strict on,
   `Fitness.calculate()` rejects with the scorer's stderr and the worker path is
-  never reached (`evaluateCallCount === 0`, `lastBatchFallbackOccurred === false`);
-  with strict off, the same failure falls back and every creature still scores
-  finitely.
+  never reached (`evaluateCallCount === 0`,
+  `lastBatchFallbackOccurred === false`); with strict off, the same failure
+  falls back and every creature still scores finitely.
 - `test/architecture/FitnessBatchFallbackCounted.ts` — unchanged assertions;
-  `strict: false` is now pinned explicitly with a comment, because it asserts the
-  graceful production fallback that `quality.sh` would otherwise make fatal.
+  `strict: false` is now pinned explicitly with a comment, because it asserts
+  the graceful production fallback that `quality.sh` would otherwise make fatal.
 - Existing scorer tests that build a `RequiredRustScorerConfig` now declare
   `strict: false` explicitly — no assertion changed.
 - `./quality.sh` — green with `NEAT_AI_RUST_SCORER_STRICT=1` on the real
