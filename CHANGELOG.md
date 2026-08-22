@@ -65,6 +65,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3823:** The over-run finish-up path no longer spins, flooding the log
+  with `Waiting for additional generation`. `additionalGenerationCount` ("do at
+  least one more loop") was only decremented by `evolve()`, but the over-run
+  guard added in #3795 stops starting generations and re-enters `finishUp()`
+  directly — so the counter never cleared, `awaitInFlightTasks()` returned
+  immediately (nothing was in flight) and the loop ran flat out until the hard
+  deadline, up to the full 15-minute grace window. `finishUp()` now drains the
+  counter in its wait branch (as the neighbouring `cleanUpDelayCount` branch
+  already did), and the over-run stop clears it outright.
+
 - **GRQ #4238:** The `[WasmWorkerInit]` timeout diagnostic no longer bills the
   parent's own stall to the child. `handshakeMs` was a raw elapsed-time read
   taken inside the timeout callback, so a blocked parent event loop fired the
