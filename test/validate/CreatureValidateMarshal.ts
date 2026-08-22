@@ -116,12 +116,19 @@ Deno.test("marshal: only the four known option keys reach core", () => {
   assertEquals(request.runtimeCreature.output, 1);
 });
 
-Deno.test("marshal: a non-finite weight travels as its sentinel", () => {
+Deno.test("marshal: a synapse carries only what the rules read", () => {
   const creature = makeCreature();
   creature.synapses[0].weight = Infinity;
 
   const { request } = marshalCreatureValidateRequest(creature);
-  assertEquals(request.runtimeCreature.synapses[0].weight, "Infinity");
+  const synapse = request.runtimeCreature.synapses[0];
+
+  // The weight is not sent: no rule reads it, and it is about half the bytes.
+  assertEquals(Object.keys(synapse).sort(), ["from", "to", "type"].sort());
+  assertEquals(synapse.from, creature.synapses[0].from);
+  assertEquals(synapse.to, creature.synapses[0].to);
+  // An Infinity weight is therefore harmless rather than a wire fault.
+  creatureValidate(creature);
 });
 
 Deno.test("marshal: restoreSubstitutedId leaves untouched neurons alone", () => {

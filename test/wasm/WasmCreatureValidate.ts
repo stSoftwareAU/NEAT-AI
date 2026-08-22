@@ -38,7 +38,7 @@ function healthyRequest(): CreatureValidateRequest {
           squash: "IDENTITY",
         },
       ],
-      synapses: [{ from: 0, to: 1, weight: 1 }],
+      synapses: [{ from: 0, to: 1 }],
     },
   };
 }

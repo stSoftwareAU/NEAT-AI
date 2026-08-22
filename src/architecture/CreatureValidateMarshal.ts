@@ -12,9 +12,12 @@
  *
  * | Value | On the wire |
  * |-------|-------------|
- * | a non-finite `bias` or synapse `weight` | the `"NaN"` / `"Infinity"` / `"-Infinity"` sentinel strings core reads |
+ * | a non-finite `bias` | the `"NaN"` / `"Infinity"` / `"-Infinity"` sentinel strings core reads |
  * | an absent `id`, `bias` or `squash` | `null` / omitted, which core reads as `undefined` |
  * | an `id` that is not a finite number at all | a non-integer placeholder, restored by {@link restoreSubstitutedId} |
+ *
+ * A synapse's `weight` is not sent at all: no rule reads it, and on a creature
+ * with a thousand synapses it is about half the payload both sides pay for.
  *
  * ## Why an id can need restoring
  *
@@ -131,16 +134,21 @@ function marshalNeuron(
   };
 }
 
+/**
+ * A synapse carries only what the rules read: its two endpoints and its role.
+ *
+ * The weight is deliberately left behind — no rule reads it, and on a creature
+ * with a thousand synapses it is about half of what both sides would spend
+ * serialising and parsing the payload.
+ */
 function marshalSynapse(synapse: {
   from: number;
   to: number;
-  weight: number;
   type?: string;
 }): RuntimeSynapsePayload {
   return {
     from: synapse.from,
     to: synapse.to,
-    weight: wireValue(synapse.weight),
     type: synapse.type,
   };
 }

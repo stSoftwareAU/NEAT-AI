@@ -103,6 +103,40 @@ The second case denies read access to `wasm_activation/` — the shape a JSR
 consumer hits — and asserts the loader's `PermissionDenied` travels in the
 message and as `cause`.
 
+### Quality gate
+
+```text
+./quality.sh
+[8/9] Syncing WASM package from NEAT-AI-core... (pin re-verified)
+[9/9] Running tests (Rust scorer mode)...
+ok | 8609 passed (5 steps) | 0 failed | 41 ignored (5m44s)
+```
+
+### Throughput — read this before approving
+
+This is not a performance change, but it has a measurable performance cost and a
+reviewer should see it. `creatureValidate` on an unchanging creature, 20 000
+iterations after a 2 000 iteration warm-up, same machine and same pinned bundle.
+"Before" is the milestone branch at `d9e8d1b`; "after" is this branch.
+
+| Creature | Neurons | Synapses | Before (TS rules) | After (WASM) | Ratio |
+| -------- | ------: | -------: | ----------------: | -----------: | ----: |
+| small    |       8 |       15 |           0.49 µs |      7.51 µs | 15.3x |
+| medium   |      22 |      120 |           1.86 µs |     29.89 µs | 16.1x |
+| large    |      73 |     1260 |          20.90 µs |    233.24 µs | 11.2x |
+
+Roughly 92 % of the cost is the wire format rather than the rules: on the large
+creature, `JSON.stringify` is 58 µs and the WASM call (string copy + serde
+parse + rules) is 145 µs, against 12 µs to build the request and 0.3 µs to read
+the answer. This PR already took the obvious bite out of it by leaving the
+synapse `weight` behind — no rule reads it, and dropping it took the request
+from 60 825 to 32 213 bytes and the large case from 379 µs to 222 µs.
+
+Going further means changing the ABI in NEAT-AI-core, which is out of scope here
+and is filed as **stSoftwareAU/NEAT-AI#3832** with the full measurements and the
+options. Nothing in that follow-up may reintroduce a TypeScript copy of the
+rules or a path that skips validation to go faster.
+
 ## Test Plan
 
 Added:
@@ -116,8 +150,8 @@ Added:
 - `test/validate/CreatureValidateMarshal.ts` — 9 cases over the values JSON has
   no literal for: a `NaN`, `Infinity` or string neuron id keeps its printed
   value in the message; an earlier rule still wins over a substituted id;
-  non-finite biases and weights travel as their sentinels; only the four known
-  option keys reach core.
+  non-finite biases travel as their sentinels; a synapse carries only what the
+  rules read; only the four known option keys reach core.
 - `test/validate/CreatureValidateNoWasmBundle.ts` — 2 subprocess cases proving
   the no-fallback contract (above).
 

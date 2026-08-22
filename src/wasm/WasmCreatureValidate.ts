@@ -43,11 +43,16 @@ export interface RuntimeNeuronPayload {
   squash?: string;
 }
 
-/** One synapse, wired by neuron array position. */
+/**
+ * One synapse, wired by neuron array position.
+ *
+ * `weight` is deliberately absent: no rule reads it, core defaults it away,
+ * and on a creature with a thousand synapses it is roughly half the bytes both
+ * sides spend on the payload.
+ */
 export interface RuntimeSynapsePayload {
   from: number;
   to: number;
-  weight?: unknown;
   type?: string;
 }
 
