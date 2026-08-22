@@ -4,9 +4,14 @@
  *
  * Issue #2217: Replaces `any` casts when handling memetic data that
  * arrives from or is destined for JSON. The wire format uses UUID
- * string keys (not runtime integer IDs) and may carry weights as
- * either a flat array of `{ fromUUID, toUUID, weight }` rows or as
- * a map keyed by UUID/numeric strings.
+ * string keys (not runtime integer IDs).
+ *
+ * **The canonical wire shape is normative in
+ * [`test/fixtures/golden/README.md`](../../test/fixtures/golden/README.md)**
+ * ("The canonical memetic wire shape"): `weights` is an array of
+ * `{ fromUUID, toUUID, weight }` rows, empty as `[]`. This interface is the
+ * *reader's* view, so it still admits the legacy map for creature JSON
+ * already on disk — see `weights` below (Issue #3816).
  */
 
 import type { MemeticWeightWireRow } from "@creature/MemeticWireExport.ts";
@@ -14,6 +19,8 @@ import type { MemeticWeightWireRow } from "@creature/MemeticWireExport.ts";
 /**
  * A single weight entry in the legacy map format.
  * May carry `toId` (runtime integer) or `toUUID` (wire string).
+ *
+ * Read-only: nothing in this repository emits this shape (Issue #3816).
  */
 export interface MemeticWeightEntryWire {
   toId?: number;
@@ -24,8 +31,8 @@ export interface MemeticWeightEntryWire {
 /**
  * Wire-format memetic data as it appears in JSON that crosses process
  * boundaries. Biases are keyed by UUID strings or numeric-string IDs;
- * weights are either an array of `MemeticWeightWireRow` or a legacy
- * map keyed by UUID/numeric strings.
+ * weights are an array of `MemeticWeightWireRow` on anything this repository
+ * writes, and may additionally be a legacy map on anything it reads.
  */
 export interface MemeticWireData {
   generation?: number;
@@ -35,9 +42,13 @@ export interface MemeticWireData {
   biases?: Record<string, number>;
 
   /**
-   * Weight data in one of two formats:
-   * - Array of `{ fromUUID, toUUID, weight }` rows (preferred wire format)
-   * - Legacy map keyed by UUID/numeric-string from-neuron to arrays of entries
+   * Weight data:
+   * - **Canonical** — an array of `{ fromUUID, toUUID, weight }` rows, `[]`
+   *   when empty. The only shape `convertMemeticExportToWireJson` emits, and
+   *   the only shape a new file may carry.
+   * - **Legacy, import only** — a map keyed by UUID/numeric-string from-neuron
+   *   to arrays of entries. Accepted indefinitely for creature JSON already
+   *   saved to disk (Issue #3816); never produced.
    */
   weights?: MemeticWeightWireRow[] | Record<string, MemeticWeightEntryWire[]>;
 

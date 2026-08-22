@@ -72,6 +72,34 @@ The asymmetry is deliberate and load-bearing: a bias belongs to one neuron so a
 map is natural, whereas a weight belongs to an ordered `from → to` pair that a
 single map key cannot express without inventing a composite string.
 
+### ✍️ Write one shape, read two (Issue #3816)
+
+This section is the **normative** definition of the shape — `MemeticWireData.ts`
+and `MemeticWireExport.ts` link here rather than restating it. Two rules follow
+from it, and they are not symmetric:
+
+- **Emit only the canonical shape.** `convertMemeticExportToWireJson`
+  (`src/creature/MemeticWireExport.ts`) — the single producer, reached from both
+  `exportJSON()` and `exportJSONWithRuntimeIds()` — writes the row array in
+  every snapshot of a creature, top level and `ancestry[]` alike. The canonical
+  empty value is `[]`: a snapshot with no weights, or with the key missing
+  entirely, still exports `"weights": []`. Never `{}`, never absent, never
+  `null`, and never a mix of the two shapes within one creature. A `weights`
+  value that is neither an array nor a map, or an `ancestry` that is not an
+  array, throws a `ValidationError` (`MEMETIC`) instead of being emitted —
+  masking it is how Issue #3810 reached production.
+- **Accept both shapes on import, indefinitely.** `normaliseMemeticData`
+  (`src/architecture/NormaliseCreatureExport.ts`) still reads the legacy map
+  keyed by from-neuron with `{toId | toUUID, weight}` entries, because creature
+  JSON saved before the contract was pinned is still on disk and must keep
+  loading. That branch is backward compatibility, **not** a supported output —
+  loading an old-shape creature and re-exporting it yields the canonical rows.
+
+Why the row array rather than the map: it is the shape that already crossed
+every boundary in production, it names both endpoints in the same vocabulary the
+synapses use (`input-N`, `output-N`, or a neuron `uuid`), and it needs no
+convention for what an empty map key means.
+
 > [!CAUTION]
 > **Every engine must be able to parse every fixture committed here.** Issue
 > #3810 is what happens when one cannot: `MemeticExport::weights` in the Rust
@@ -107,6 +135,13 @@ the full suite on every PR, and asserts three independent things:
 3. **Byte-identical round trip** — `Creature.fromJSON(...)` followed by
    `exportJSON()` reproduces each file verbatim, and a second cycle does not
    drift.
+
+`test/creature/MemeticCanonicalWireShape.ts` is the matching gate on the
+**producer** (Issue #3816): it exports live creatures — populated, empty,
+ancestry-bearing, and deliberately mixed-shape — and asserts every emitted
+snapshot lands on the row array, that a non-conforming `weights` throws rather
+than serialising, and that an old-shape creature still loads. The fixtures pin
+the bytes; that test pins the code path that writes them.
 
 ```mermaid
 flowchart LR

@@ -133,6 +133,10 @@ function normaliseMemeticData(
   uuidToId: Map<string, number>,
 ): void {
   if (memetic.weights) {
+    // The array branch is the canonical wire shape (see
+    // test/fixtures/golden/README.md); the map branch below is
+    // backward-compatibility only — creature JSON already on disk may carry
+    // it, but nothing in this repository emits it (Issue #3816).
     if (Array.isArray(memetic.weights)) {
       const acc: Record<number, { toId: number; weight: number }[]> = {};
       for (const row of memetic.weights) {
