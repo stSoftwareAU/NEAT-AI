@@ -13,6 +13,11 @@
  * (Issue #2745); a genuinely corrupt dataset still throws rather than being
  * downgraded to a silent fallback.
  *
+ * Issue #3815: with `NEAT_AI_RUST_SCORER_STRICT=1` an exec or parse failure
+ * throws a {@link ScorerStrictError} carrying the scorer's stderr verbatim
+ * instead of logging a warning and falling back. A missing or too-old binary
+ * remains a graceful skip in either mode.
+ *
  * Configuration comes from `NEAT_AI_RUST_SCORER_*` environment variables via
  * {@link getEnvRustScorerConfig} and is cached for the process. The `__`-prefixed
  * exports are test seams: under `deno test --parallel` every test file shares
@@ -24,6 +29,10 @@ import type { Creature } from "@creature";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { BuiltInCostName } from "@costs";
 import { DatasetError } from "@errors/DatasetError.ts";
+import {
+  ScorerStrictError,
+  toScorerStrictError,
+} from "@errors/ScorerStrictError.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { assertNotCorruptDataset } from "./ScorerFailureClassification.ts";
 import {
@@ -133,12 +142,19 @@ export function getEnvRustScorerConfig(): RequiredRustScorerConfig {
   const batch = parseBoolLike(readEnvString("NEAT_AI_RUST_SCORER_BATCH")) ??
     true;
 
+  // Issue #3815: Opt-in strict mode — a scorer exec/parse failure throws
+  // instead of degrading to WASM. Off by default so production keeps
+  // degrading gracefully; `quality.sh` turns it on so CI fails loud.
+  const strict = parseBoolLike(readEnvString("NEAT_AI_RUST_SCORER_STRICT")) ??
+    false;
+
   const base: RequiredRustScorerConfig = {
     enabled,
     binaryPath,
     timeoutMs,
     env,
     batch,
+    strict,
   };
   // Apply any in-process test override on top of the env-derived config.
   envRustScorerCache = testConfigOverride === undefined
@@ -259,6 +275,15 @@ export async function tryScoreWithRustScorer(
       // Fail loud with the scorer's own diagnostic instead of demoting it to a
       // warning and letting the WASM re-read die on a bare assertion.
       assertNotCorruptDataset(result.stderr, result.code, dataDir);
+      // Issue #3815: strict mode makes a dead native path fatal rather than
+      // letting the WASM fallback reconcile the run to green.
+      if (config.strict) {
+        throw new ScorerStrictError(
+          `Rust scorer call failed (exit ${result.code}) for data dir ${dataDir}`,
+          "EXEC_FAILURE",
+          { exitCode: result.code, stderr: result.stderr },
+        );
+      }
       if (!probe.warned) {
         const stderrSnippet = trimForLog(result.stderr);
         const suffix = stderrSnippet.length > 0
@@ -276,6 +301,18 @@ export async function tryScoreWithRustScorer(
     try {
       parsed = JSON.parse(result.stdout) as { error?: unknown };
     } catch (parseError) {
+      if (config.strict) {
+        const detail = parseError instanceof Error
+          ? parseError.message
+          : String(parseError);
+        throw new ScorerStrictError(
+          `Rust scorer returned invalid (non-JSON) output (parse error: ${detail}); stdout: ${
+            trimForLog(result.stdout)
+          }`,
+          "INVALID_OUTPUT",
+          { exitCode: result.code, stderr: result.stderr, cause: parseError },
+        );
+      }
       if (!probe.warned) {
         const stdoutSnippet = trimForLog(result.stdout);
         const stderrSnippet = trimForLog(result.stderr);
@@ -299,6 +336,15 @@ export async function tryScoreWithRustScorer(
 
     const error = Number(parsed.error);
     if (!Number.isFinite(error)) {
+      if (config.strict) {
+        throw new ScorerStrictError(
+          `Rust scorer returned a non-finite error value: ${
+            JSON.stringify(parsed.error)
+          }`,
+          "INVALID_OUTPUT",
+          { exitCode: result.code, stderr: result.stderr },
+        );
+      }
       if (!probe.warned) {
         const stderrSnippet = trimForLog(result.stderr);
         const suffix = stderrSnippet.length > 0
@@ -316,6 +362,15 @@ export async function tryScoreWithRustScorer(
     // Issue #3541: a data fault must not be absorbed into "scorer unavailable"
     // — no backend can read a corrupt dataset, so it propagates.
     if (error instanceof DatasetError) throw error;
+    // Issue #3815: strict-mode failures propagate with their verbatim stderr.
+    if (error instanceof ScorerStrictError) throw error;
+    if (config.strict) {
+      throw toScorerStrictError(
+        error,
+        "Rust scorer invocation failed",
+        "EXEC_FAILURE",
+      );
+    }
     if (!probe.warned) {
       getLogger().warn(
         `[NEAT-AI] Rust scorer unavailable (${

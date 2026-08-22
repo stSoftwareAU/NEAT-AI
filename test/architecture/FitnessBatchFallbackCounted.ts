@@ -116,9 +116,12 @@ Deno.test("batch failure is counted as a fallback and re-scored per-creature eve
   const POPULATION_SIZE = 4;
 
   // In-process override (Issue #3234) — never mutate the shared process env,
-  // which races across parallel test workers.
+  // which races across parallel test workers. `strict: false` is pinned
+  // deliberately (Issue #3815): this test asserts the *graceful* production
+  // fallback, which quality.sh's NEAT_AI_RUST_SCORER_STRICT=1 would otherwise
+  // turn into a thrown error.
   __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true });
+  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
 
   const population = buildForwardOnlyPopulation(POPULATION_SIZE);
   for (const c of population) CreatureUtil.makeUUID(c);
