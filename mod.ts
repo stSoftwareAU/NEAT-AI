@@ -348,6 +348,8 @@ export { BreedExhaustionError } from "@errors/BreedExhaustionError.ts";
 export type { BreedExhaustionReason } from "@errors/BreedExhaustionError.ts";
 export { DatasetError } from "@errors/DatasetError.ts";
 export type { DatasetErrorReason } from "@errors/DatasetError.ts";
+export { ScorerStrictError } from "@errors/ScorerStrictError.ts";
+export type { ScorerStrictReason } from "@errors/ScorerStrictError.ts";
 export { validateDNA } from "@reconstruct/validateDNA.ts";
 
 /**

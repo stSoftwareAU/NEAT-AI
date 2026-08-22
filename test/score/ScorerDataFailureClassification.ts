@@ -64,6 +64,7 @@ const RUST_CONFIG = {
   timeoutMs: 0,
   env: {},
   batch: false,
+  strict: false,
 } as const;
 
 Deno.test("isCorruptDatasetFailure: data faults are recognised", () => {
