@@ -674,9 +674,18 @@ export class Neat {
       return false;
     }
     if (this.additionalGenerationCount > 0) {
+      // Issue #3823: decrement here, exactly like the `cleanUpDelayCount`
+      // branch above. `NeatEvolution.evolve()` also decrements this counter,
+      // but the finish-up wait loop does not always reach `evolve()` — the
+      // over-run guard (#3795) at the top of the evolve loops stops starting
+      // new generations and re-enters `finishUp` directly. Without a
+      // decrement here that branch never clears, `awaitInFlightTasks()`
+      // returns immediately (nothing is in flight), and the loop spins hot
+      // flooding the log with this message until the hard deadline.
+      this.additionalGenerationCount--;
       getLogger().info(
         `Waiting for additional generation${
-          this.additionalGenerationCount > 1 ? "s" : ""
+          this.additionalGenerationCount > 0 ? "s" : ""
         }`,
       );
       return false;

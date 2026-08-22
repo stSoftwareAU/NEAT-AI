@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
+import type { Neat } from "@neat/Neat.ts";
 import { evolveDir } from "@creature/CreatureTraining.ts";
 import type { EvolveDirDeps } from "@creature/CreatureTraining.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
@@ -127,6 +128,98 @@ Deno.test({
       assert(
         !joined.includes("Hard deadline (timeoutMinutes + grace) exceeded"),
         "the T+15 hard-deadline / cap branch must not be the terminating mechanism",
+      );
+    } finally {
+      setLogger(priorLogger);
+      await Deno.remove(dataSetDir, { recursive: true });
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+/**
+ * Issue #3823: regression — the over-run branch must not spin.
+ *
+ * `Neat.additionalGenerationCount` ("do at least one more loop") is set by
+ * `evolve()` whenever trained creatures were folded in. Once the over-run
+ * guard fires, `evolve()` is never called again, so nothing decremented the
+ * counter, `finishUp()` refused to finish, and — with nothing in flight —
+ * `awaitInFlightTasks()` returned immediately. The loop then spun at full
+ * speed, flooding the log with `Waiting for additional generation` until the
+ * hard deadline (up to the full 15-minute grace window).
+ *
+ * The clock advances 1ms per read so the pre-fix behaviour terminates at the
+ * hard cap instead of hanging the suite; the assertion is on the number of
+ * wait lines, which was in the hundreds before the fix and is at most one now.
+ */
+Deno.test({
+  name:
+    "over-run enforcement: a pending additional generation does not spin the finish-up loop",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const dataSetDir = makeDataDir(tinyDataSet(), 2000);
+    const creatureStore = await Deno.makeTempDir({
+      prefix: "neat-overrun-additional-generation-",
+    });
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+
+    const startMS = Date.now();
+    // Start inside the over-run window (expected 60s) but still one second
+    // short of the hard cap at start + 120s.
+    let nowMS = startMS;
+    let neat: Neat | undefined;
+
+    const { logger, lines } = makeRecordingLogger();
+    const options: NeatOptions = {
+      populationSize: 6,
+      iterations: 8,
+      timeoutMinutes: 1,
+      threads: 1,
+      creatureStore,
+      logger,
+      onTrainingEvent: (event) => {
+        if (event.kind === "generation_complete" && event.generation === 1) {
+          nowMS = startMS + 119_000;
+          // Simulate the generation having folded in trained creatures.
+          assert(neat, "onNeatReady must have run before the first generation");
+          neat.additionalGenerationCount = 1;
+        }
+      },
+    };
+
+    const deps: EvolveDirDeps = {
+      startTimeMS: startMS,
+      // Advance a millisecond per read: harmless for the fixed path (a couple
+      // of reads), and a bounded escape hatch for the pre-fix spin.
+      now: () => ++nowMS,
+      overrunEnforcementFactor: 1,
+      onNeatReady: (n) => {
+        neat = n;
+      },
+    };
+
+    const priorLogger = getLogger();
+    try {
+      const result = await evolveDir(creature, dataSetDir, options, deps);
+
+      const waitLines = lines.filter((line) =>
+        line.includes("Waiting for additional generation")
+      );
+      assert(
+        waitLines.length <= 1,
+        `finish-up must not spin on a pending additional generation — got ${waitLines.length} wait log lines`,
+      );
+      assertEquals(
+        result.terminationReason,
+        "overrun",
+        "the run must still end via graceful over-run self-termination",
+      );
+      assert(
+        Number.isFinite(result.score),
+        "evolved population must commit a finite best score",
       );
     } finally {
       setLogger(priorLogger);
