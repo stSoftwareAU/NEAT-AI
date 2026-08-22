@@ -10,7 +10,14 @@
 export type WasmErrorReason =
   | "COMPILATION_FAILED"
   | "ACTIVATION_FAILED"
-  | "MODULE_NOT_LOADED";
+  | "MODULE_NOT_LOADED"
+  /**
+   * Issue #3803: a request never reached the Rust rules — the bridge built a
+   * payload core could not read, or core answered with something that is not a
+   * response. It is a bridge fault, not a verdict on the creature, so it is
+   * raised rather than reported as a validation failure.
+   */
+  | "INVALID_REQUEST";
 
 export class WasmError extends Error {
   override readonly name = "WasmError";
