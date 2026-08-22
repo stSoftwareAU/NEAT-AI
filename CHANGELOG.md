@@ -65,6 +65,20 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **GRQ #4238:** The `[WasmWorkerInit]` timeout diagnostic no longer bills the
+  parent's own stall to the child. `handshakeMs` was a raw elapsed-time read
+  taken inside the timeout callback, so a blocked parent event loop fired the
+  timer late and the overshoot was reported as handshake time — a GRQ-13 run
+  logged `handshakeMs=895250` against a 60s deadline. The window is now split
+  into `handshakeMs` (capped at the deadline), `parentStallMs` (how late the
+  callback fired), `loopBlockedMs` (longest block sampled _inside_ the window by
+  a new parent watchdog) and `spawnToInitMs`. Because a blocked parent cannot
+  receive the child's start heartbeat either, `heartbeat=none` is now only read
+  as "the child never reached its entry point" when the parent stayed
+  responsive; otherwise the line says the parent was blind. The init timeout and
+  watchdog timers are also cleared when the init-error promise wins the race,
+  which previously left the timeout pending.
+
 - **Issue #3779:** A training result inside the evaluate noise floor (the `🫥`
   outcome) no longer counts as an improvement, so it stops resetting the
   no-progress streaks.

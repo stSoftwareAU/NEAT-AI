@@ -31,7 +31,8 @@
  *
  *    ```text
  *    [WasmWorkerInit] Worker init: no response after 60s (worker=worker-3). \
- *      Parent-observed: handshakeMs=60001 workerError=none heartbeat=none \
+ *      Parent-observed: handshakeMs=60000 parentStallMs=835250 loopBlockedMs=0 \
+ *      spawnToInitMs=12 workerError=none heartbeat=none \
  *      wasm[cache=hit …]. Child WASM phase timings unknown — the worker never \
  *      answered … The child never sent its start heartbeat …
  *    ```
@@ -40,8 +41,31 @@
  *    the field that separates a child which started and then stalled from one
  *    that never started at all.
  *
- * The phrases "no response after Ns" and "stuck loading WASM" are preserved so
- * existing operator greps keep matching.
+ * ## Whose time is it? (GRQ #4238)
+ *
+ * A GRQ-13 run reported `handshakeMs=895250` — 14m 55s — against a 60s
+ * deadline, because the counter was a raw elapsed-time read taken inside the
+ * timeout callback: when the parent's own event loop is blocked the timer fires
+ * late and the overshoot is billed to the child. The handshake window is now
+ * split into three independently measured fields, so no field can absorb
+ * another's time:
+ *
+ * - `handshakeMs` — what the parent actually observed, capped at the deadline
+ *   ({@link splitHandshakeObservation}). It can never exceed `timeoutMs`.
+ * - `parentStallMs` — how far past the deadline the timeout callback fired.
+ *   Parent-side by construction: the child cannot delay the parent's own timer.
+ * - `loopBlockedMs` — the longest event-loop block *sampled inside* the
+ *   handshake window by the parent's watchdog. A parent that stalls and
+ *   recovers before the deadline shows up here and nowhere else.
+ *
+ * That matters for the verdict as much as for the numbers: while the parent is
+ * blocked it cannot receive the child's start heartbeat either, so
+ * `heartbeat=none` is only evidence about the child when the parent stayed
+ * responsive. See {@link PARENT_STALL_TOLERANCE_MS}.
+ *
+ * The phrase "no response after Ns" is preserved so existing operator greps
+ * keep matching, as is "stuck loading WASM" — now only in the case where the
+ * parent was blind and the candidates genuinely cannot be separated.
  *
  * The WASM phases (bundle cache resolve/read, wasm-bindgen glue import, and
  * `WebAssembly.instantiate`) are measured on the **parent/main thread** by
@@ -177,13 +201,27 @@ export function formatWorkerInitDiagnostics(
     `workerError=${workerErrorField(workerError)}`;
 }
 
+/**
+ * Overshoot below this is ordinary timer/interval scheduling jitter, not a
+ * stalled parent (GRQ #4238). Above it, the parent demonstrably stopped
+ * servicing its own event loop, so parent-observed *absences* — no response,
+ * no heartbeat — stop being evidence about the child.
+ */
+export const PARENT_STALL_TOLERANCE_MS = 250;
+
 /** Inputs to {@link formatWorkerInitTimeout}. */
 export interface WorkerInitTimeoutInput {
   /** Stable label identifying the worker slot (e.g. `worker-3`). */
   workerLabel: string;
   /** The configured init timeout, in ms. */
   timeoutMs: number;
-  /** Parent-observed elapsed time from init start to the timeout, in ms. */
+  /**
+   * Parent-observed elapsed time from the init request to the moment the
+   * timeout callback ran, in ms. This is raw: it includes any time the
+   * parent's event loop was blocked past the deadline, which
+   * {@link splitHandshakeObservation} separates out rather than reporting as
+   * handshake time (GRQ #4238).
+   */
   elapsedMs: number;
   /** Recorded main-thread WASM phase timings, or `null` when unmeasured. */
   wasm: WasmActivationInitDiagnostics | null;
@@ -194,32 +232,116 @@ export interface WorkerInitTimeoutInput {
    * arrived, or `undefined` when it never did (Issue #3771).
    */
   heartbeatMs?: number;
+  /**
+   * Longest event-loop block sampled by the parent's watchdog *inside* the
+   * handshake window, in ms (GRQ #4238). `undefined` when no watchdog ran.
+   */
+  loopBlockedMs?: number;
+  /**
+   * Milliseconds between the worker being spawned and the init request being
+   * posted (GRQ #4238). Reported separately so parent-side pre-handshake work
+   * can never be mistaken for handshake time. `undefined` when the spawn
+   * instant was not observed.
+   */
+  spawnToInitMs?: number;
+}
+
+/** The three independently-measured parts of a timed-out handshake window. */
+export interface HandshakeObservation {
+  /** What the parent actually observed, never above the deadline. */
+  handshakeMs: number;
+  /** How far past the deadline the timeout callback fired (parent-side). */
+  parentStallMs: number;
+  /** True when the parent stall is beyond ordinary scheduling jitter. */
+  parentStalled: boolean;
 }
 
 /**
- * The `heartbeat=…` field and the sentence that reads it (Issue #3771).
+ * Split a raw elapsed-time reading into the handshake the parent observed and
+ * the parent-side overshoot (GRQ #4238).
  *
- * A received heartbeat proves the child isolate started and evaluated its
- * entry point, so a subsequent stall is inside the worker (CPU starvation or a
- * stuck init) rather than a spawn that never happened. No heartbeat means the
- * isolate never got that far — spawn starvation or OOM.
+ * The parent stops observing at its own deadline: it declared the handshake
+ * failed at `timeoutMs`, so that is the longest handshake it can honestly
+ * report. Anything beyond is time the parent's event loop failed to run the
+ * timer — the child cannot delay the parent's own timer, so the overshoot is
+ * parent-side by construction.
+ *
+ * @param elapsedMs - raw elapsed ms read inside the timeout callback.
+ * @param timeoutMs - the configured deadline.
+ * @param loopBlockedMs - longest block sampled inside the window, if measured.
  */
-function heartbeatFields(
-  heartbeatMs: number | undefined,
-): { field: string; verdict: string } {
-  if (heartbeatMs === undefined) {
-    return {
-      field: "heartbeat=none",
-      verdict: "The child never sent its start heartbeat, so it did not " +
-        "reach its entry point — suspect spawn starvation or OOM, not WASM " +
-        "loading.",
-    };
-  }
+export function splitHandshakeObservation(
+  elapsedMs: number,
+  timeoutMs: number,
+  loopBlockedMs?: number,
+): HandshakeObservation {
+  const observed = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs) : 0;
+  const deadline = Number.isFinite(timeoutMs) ? Math.max(0, timeoutMs) : 0;
+  const handshakeMs = Math.min(observed, deadline);
+  const parentStallMs = observed - handshakeMs;
+  const blocked = Number.isFinite(loopBlockedMs ?? Number.NaN)
+    ? Math.max(0, loopBlockedMs as number)
+    : 0;
   return {
-    field: `heartbeat=received heartbeatMs=${ms(heartbeatMs)}`,
-    verdict: "The child sent its start heartbeat and then stalled before " +
-      "answering — suspect CPU starvation or a stuck init, not a failed spawn.",
+    handshakeMs,
+    parentStallMs,
+    // Either symptom is enough: a late timer, or a block that recovered
+    // before the deadline and so never showed up as overshoot.
+    parentStalled: parentStallMs > PARENT_STALL_TOLERANCE_MS ||
+      blocked > PARENT_STALL_TOLERANCE_MS,
   };
+}
+
+/** The `heartbeat=…` field for the timeout line (Issue #3771). */
+function heartbeatField(heartbeatMs: number | undefined): string {
+  return heartbeatMs === undefined
+    ? "heartbeat=none"
+    : `heartbeat=received heartbeatMs=${ms(heartbeatMs)}`;
+}
+
+/**
+ * The verdict sentence, derived from the signals actually measured rather
+ * than from a fixed list of candidates (Issue #3771, GRQ #4238).
+ *
+ * - A *received* heartbeat is positive evidence in every case: the isolate
+ *   started and evaluated its entry point, so the stall is inside the child.
+ * - A *missing* heartbeat only means something when the parent stayed
+ *   responsive. A blocked parent cannot receive a heartbeat, so reading its
+ *   absence as "the child never started" attributes the parent's own stall to
+ *   the child — the misdiagnosis GRQ #4238 was raised for.
+ */
+function initVerdict(
+  heartbeatMs: number | undefined,
+  observation: HandshakeObservation,
+  loopBlockedMs: number | undefined,
+  seconds: number,
+): string {
+  const stall = observation.parentStalled
+    ? `The parent's own event loop stalled during the handshake ` +
+      `(parentStallMs=${ms(observation.parentStallMs)} ` +
+      `loopBlockedMs=${
+        ms(loopBlockedMs)
+      } against a ${seconds}s deadline), so ` +
+      `handshakeMs is capped at the deadline and the overshoot is parent-side ` +
+      `time, not child time. `
+    : "";
+
+  if (heartbeatMs !== undefined) {
+    return stall +
+      "The child sent its start heartbeat and then stalled before " +
+      "answering — suspect CPU starvation or a stuck init, not a failed spawn.";
+  }
+  if (observation.parentStalled) {
+    return stall +
+      "A blocked parent cannot receive a heartbeat either, so the missing " +
+      "heartbeat is not evidence about the child: whether it was stuck " +
+      "loading WASM, CPU-starved or OOM cannot be separated from this line — " +
+      "fix the parent-side stall first.";
+  }
+  return "The parent stayed responsive throughout, so the missing heartbeat " +
+    "is a real signal: the child never sent it, did not reach its entry " +
+    "point, and therefore never began loading WASM — suspect spawn " +
+    "starvation or OOM.";
 }
 
 /**
@@ -227,26 +349,40 @@ function heartbeatFields(
  * logged) so it survives into the caller's `Error:`-suffixed fallback log line
  * and GRQ's `firstError=` field. Child-side phase timings are still unknown —
  * a worker that never answered cannot report them — but the start heartbeat
- * (Issue #3771) says whether the child ever ran, which is what separates the
- * "never started" and "started and stalled" cases the phase timings cannot.
+ * (Issue #3771) says whether the child ever ran, and the parent's own stall
+ * measurements (GRQ #4238) say whether that heartbeat could have been heard.
  */
 export function formatWorkerInitTimeout(
   input: WorkerInitTimeoutInput,
 ): string {
-  const { workerLabel, timeoutMs, elapsedMs, wasm, workerError, heartbeatMs } =
-    input;
+  const {
+    workerLabel,
+    timeoutMs,
+    elapsedMs,
+    wasm,
+    workerError,
+    heartbeatMs,
+    loopBlockedMs,
+    spawnToInitMs,
+  } = input;
   const seconds = Math.round(timeoutMs / 1000);
   const parentWasm = wasm
     ? `wasm[${bundleFields(wasm)}]`
     : "wasm[not-measured]";
-  const heartbeat = heartbeatFields(heartbeatMs);
+  const observation = splitHandshakeObservation(
+    elapsedMs,
+    timeoutMs,
+    loopBlockedMs,
+  );
   return `${WASM_WORKER_INIT_LOG_PREFIX} Worker init: no response after ` +
     `${seconds}s (worker=${workerLabel}). Parent-observed: ` +
-    `handshakeMs=${ms(elapsedMs)} workerError=${
-      workerErrorField(workerError)
-    } ` +
-    `${heartbeat.field} ` +
+    `handshakeMs=${ms(observation.handshakeMs)} ` +
+    `parentStallMs=${ms(observation.parentStallMs)} ` +
+    `loopBlockedMs=${ms(loopBlockedMs)} ` +
+    `spawnToInitMs=${ms(spawnToInitMs)} ` +
+    `workerError=${workerErrorField(workerError)} ` +
+    `${heartbeatField(heartbeatMs)} ` +
     `${parentWasm}. Child WASM phase timings unknown — the worker never ` +
-    `answered the init handshake (may be stuck loading WASM, CPU-starved, ` +
-    `or OOM). ${heartbeat.verdict}`;
+    `answered the init handshake. ` +
+    initVerdict(heartbeatMs, observation, loopBlockedMs, seconds);
 }

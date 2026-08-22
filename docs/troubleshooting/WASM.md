@@ -177,15 +177,48 @@ than printing zeros:
 
 ```text
 [WasmWorkerInit] Worker init: no response after 60s (worker=worker-3). \
-  Parent-observed: handshakeMs=60001 workerError=none wasm[cache=hit …]. \
+  Parent-observed: handshakeMs=60000 parentStallMs=0 loopBlockedMs=0 \
+  spawnToInitMs=12 workerError=none heartbeat=none wasm[cache=hit …]. \
   Child WASM phase timings unknown — the worker never answered the init \
-  handshake (may be stuck loading WASM, CPU-starved, or OOM).
+  handshake. The parent stayed responsive throughout, so the missing \
+  heartbeat is a real signal: …
 ```
 
 The self-healing direct-execution fallback is unchanged — the timeout still
 fires and the worker slot still degrades gracefully; it is now just loud about
 _what_ it was waiting on. The contract is defined in
 `src/wasm/WasmInitDiagnostics.ts`.
+
+#### Whose time is it? (GRQ #4238)
+
+A GRQ-13 run reported `handshakeMs=895250` — 14m 55s — against a 60s deadline,
+because the counter was a raw elapsed-time read taken inside the timeout
+callback: when the parent's own event loop is blocked the timer fires late, and
+the overshoot was billed to the child. The window is now split into fields that
+cannot absorb each other's time:
+
+| Field           | Measures                                                        |
+| --------------- | --------------------------------------------------------------- |
+| `handshakeMs`   | What the parent observed. **Never exceeds the timeout.**        |
+| `parentStallMs` | How late the timeout callback fired. Parent-side by definition. |
+| `loopBlockedMs` | Longest event-loop block sampled _inside_ the window.           |
+| `spawnToInitMs` | Spawn → init request, so parent pre-work is not handshake time. |
+| `heartbeatMs`   | When the child announced itself (Issue #3771).                  |
+
+The verdict sentence follows the signals rather than a fixed candidate list:
+
+```mermaid
+flowchart TD
+    T[Init handshake timed out] --> HB{heartbeat received?}
+    HB -- yes --> C["Child started, then stalled<br/>CPU starvation or stuck init"]
+    HB -- no --> P{"parentStallMs or loopBlockedMs<br/>> 250 ms?"}
+    P -- "no (parent responsive)" --> N["Child never reached its entry point<br/>so it never began loading WASM<br/>spawn starvation or OOM"]
+    P -- "yes (parent blind)" --> U["No evidence about the child —<br/>a blocked parent cannot hear a heartbeat.<br/>Fix the parent-side stall first"]
+```
+
+A missing heartbeat is only evidence about the child while the parent stayed
+responsive; a blocked parent could not have heard one, so the diagnostic says so
+instead of convicting the child.
 
 ### 🔐 Bundle integrity check (Issue #3680)
 
