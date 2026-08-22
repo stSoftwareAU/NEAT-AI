@@ -629,6 +629,7 @@
     "wordmark",
     "froms",
     "summable",
-    "worktree"
+    "worktree",
+    "revertcheck"
   ]
 }
