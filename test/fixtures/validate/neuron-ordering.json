@@ -1,0 +1,117 @@
+{
+  "group": "neuron-ordering",
+  "description": "Required neuron order: input, constant, hidden, output.",
+  "cases": [
+    {
+      "name": "type-after-output-neuron",
+      "rule": "TYPE_AFTER_OUTPUT",
+      "notes": "Nothing but an output neuron may follow the first output neuron.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 0, "to": 2, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "OTHER",
+        "messageContains": "type hidden after output neuron"
+      }
+    },
+    {
+      "name": "input-neuron-past-input-count",
+      "rule": "INPUT_NEURON_PAST_INPUT_COUNT",
+      "notes": "An input neuron sitting past creature.input, with its id still matching its index.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          { "type": "input", "id": 2 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 3, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "OTHER",
+        "messageContains": "input neuron after the maximum input neurons"
+      }
+    },
+    {
+      "name": "constant-after-hidden",
+      "rule": "NEURON_ORDER_CONSTANT_AFTER_HIDDEN",
+      "notes": "Only checked inside the computational slice (after the inputs, before the outputs).",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          { "type": "constant", "id": 1000002, "uuid": "c1", "bias": 1 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 3, "weight": 1 },
+          { "from": 2, "to": 3, "weight": 0.5 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "NEURON_ORDER",
+        "messageContains": "type constant after hidden neuron"
+      }
+    }
+  ]
+}

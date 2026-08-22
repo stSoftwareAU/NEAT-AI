@@ -1,0 +1,221 @@
+{
+  "group": "options-and-counts",
+  "description": "The options block and the input/output neuron counts.",
+  "cases": [
+    {
+      "name": "options-neurons-mismatch",
+      "rule": "OPTIONS_NEURONS_MISMATCH",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [{ "from": 0, "to": 1, "weight": 1 }]
+      },
+      "options": { "neurons": 3 },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "OTHER",
+        "messageContains": "Neurons length: 2 expected: 3"
+      }
+    },
+    {
+      "name": "options-connections-mismatch",
+      "rule": "OPTIONS_CONNECTIONS_MISMATCH",
+      "notes": "Checked after the neuron and synapse loops, so the creature itself must be valid.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [{ "from": 0, "to": 1, "weight": 1 }]
+      },
+      "options": { "connections": 9 },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "OTHER",
+        "messageContains": "Synapses length: 1 expected: 9"
+      }
+    },
+    {
+      "name": "input-count-zero",
+      "rule": "INPUT_COUNT_INVALID",
+      "creature": {
+        "input": 0,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [{ "from": 0, "to": 1, "weight": 1 }]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "OTHER",
+        "messageContains": "Must have at least one input neurons was: 0"
+      }
+    },
+    {
+      "name": "input-count-not-integer",
+      "rule": "INPUT_COUNT_INVALID",
+      "creature": {
+        "input": 1.5,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [{ "from": 0, "to": 1, "weight": 1 }]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "OTHER",
+        "messageContains": "Must have at least one input neurons was: 1.5"
+      }
+    },
+    {
+      "name": "output-count-zero",
+      "rule": "OUTPUT_COUNT_INVALID",
+      "creature": {
+        "input": 1,
+        "output": 0,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [{ "from": 0, "to": 1, "weight": 1 }]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "OTHER",
+        "messageContains": "Must have at least one output neurons was: 0"
+      }
+    },
+    {
+      "name": "output-count-not-integer",
+      "rule": "OUTPUT_COUNT_INVALID",
+      "creature": {
+        "input": 1,
+        "output": 2.5,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [{ "from": 0, "to": 1, "weight": 1 }]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "OTHER",
+        "messageContains": "Must have at least one output neurons was: 2.5"
+      }
+    },
+    {
+      "name": "stats-input-count-mismatch",
+      "rule": "STATS_INPUT_MISMATCH",
+      "notes": "creature.input claims two inputs but only one neuron has type input.",
+      "creature": {
+        "input": 2,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "h1",
+            "bias": 0,
+            "squash": "IDENTITY"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "OTHER",
+        "messageContains": "Expected 2 input neurons found: 1"
+      }
+    },
+    {
+      "name": "stats-output-count-mismatch",
+      "rule": "STATS_OUTPUT_MISMATCH",
+      "notes": "A missing output neuron is a TopologyError, not a ValidationError.",
+      "creature": {
+        "input": 1,
+        "output": 2,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [{ "from": 0, "to": 1, "weight": 1 }]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "TopologyError",
+        "reason": "INVALID_STATE",
+        "messageContains": "Expected 2 output neurons found: 1"
+      }
+    }
+  ]
+}
