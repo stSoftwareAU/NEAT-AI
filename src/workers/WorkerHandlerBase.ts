@@ -34,6 +34,42 @@ let globalWorkerID = 0;
 const BYTES_PER_MB = 1024 * 1024;
 
 /**
+ * `performance.now()` at which each worker was spawned, keyed by the worker
+ * itself (GRQ #4238).
+ *
+ * The handshake clock must start at the init request, not at the spawn — but
+ * the gap between the two is parent-side work (WASM payload load, scheduling)
+ * that an operator needs to see, and burying it inside `handshakeMs` is
+ * exactly how a 60s deadline came to report 14m 55s. A `WeakMap` keeps the
+ * timestamp off the worker object and lets it be collected with the worker.
+ */
+const workerSpawnAtMs = new WeakMap<object, number>();
+
+/** Record the spawn instant for `worker`. */
+function recordWorkerSpawn(worker: object): void {
+  workerSpawnAtMs.set(worker, performance.now());
+}
+
+/**
+ * Milliseconds from `worker`'s spawn to now, or `undefined` when the spawn
+ * instant was not observed (e.g. a worker supplied directly by a test).
+ */
+function msSinceSpawn(worker: object): number | undefined {
+  const spawnAt = workerSpawnAtMs.get(worker);
+  return spawnAt === undefined
+    ? undefined
+    : Math.max(0, performance.now() - spawnAt);
+}
+
+/**
+ * How often the parent samples its own event loop during a handshake
+ * (GRQ #4238), derived from the deadline so short test timeouts still sample.
+ */
+function loopSampleIntervalMs(timeoutMs: number): number {
+  return Math.max(10, Math.min(1000, Math.floor(timeoutMs / 4)));
+}
+
+/**
  * Environment variable carrying the externally-set discovery V8 heap target,
  * in MB. Set by the discovery runner (`worker/Discovery/run.sh`,
  * `src/Discovery/Scan.ts`) which lives outside this repo; here it is treated
@@ -270,7 +306,9 @@ export abstract class WorkerHandlerBase<
     onInitError: (err: Error) => void,
   ): WorkerInterface<TReq> {
     if (direct) {
-      return mockFactory();
+      const mock = mockFactory();
+      recordWorkerSpawn(mock as object);
+      return mock;
     }
 
     // Issue #3024: size the spawned worker's V8 heap to the configured
@@ -293,6 +331,10 @@ export abstract class WorkerHandlerBase<
       type: "module",
       name: workerName,
     }) as unknown as WorkerInterface<TReq>;
+
+    // GRQ #4238: the spawn instant, so the init diagnostics can report the
+    // spawn→init gap as its own field instead of folding it into handshakeMs.
+    recordWorkerSpawn(worker as object);
 
     worker.addEventListener("error", (e) => {
       const ev = e as ErrorEvent;
@@ -344,10 +386,35 @@ export abstract class WorkerHandlerBase<
   ): Promise<TResponse> {
     // Elapsed-time measurement (parent-observed handshake), not a wall-clock
     // instant — `performance.now()` is the correct tool per project policy.
+    // GRQ #4238: the spawn→init gap is measured separately so it can never be
+    // billed to the handshake.
+    const spawnToInitMs = msSinceSpawn(this.worker as object);
     const startMs = performance.now();
+
+    // GRQ #4238: sample the parent's own event loop for the length of the
+    // handshake. A parent that blocks and recovers before the deadline never
+    // shows up as timer overshoot, yet it could not have received the child's
+    // heartbeat while blocked — without this the parent's stall is misread as
+    // "the child never started".
+    const sampleMs = loopSampleIntervalMs(timeoutMs);
+    let lastTickMs = startMs;
+    let loopBlockedMs = 0;
+    const observeLoop = (): number => {
+      const now = performance.now();
+      loopBlockedMs = Math.max(loopBlockedMs, now - lastTickMs - sampleMs);
+      lastTickMs = now;
+      return loopBlockedMs;
+    };
+    const watchdogId = setInterval(observeLoop, sampleMs);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const stopTimers = () => {
+      clearInterval(watchdogId);
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    };
+
     const initSequence = async (): Promise<TResponse> =>
       await new Promise<TResponse>((resolve, reject) => {
-        const timeoutId = setTimeout(
+        timeoutId = setTimeout(
           () =>
             reject(
               new Error(
@@ -362,35 +429,33 @@ export abstract class WorkerHandlerBase<
                   heartbeatMs: this.heartbeatAtMs === undefined
                     ? undefined
                     : Math.max(0, this.heartbeatAtMs - startMs),
+                  // Fold in the block that delayed this very callback.
+                  loopBlockedMs: observeLoop(),
+                  spawnToInitMs,
                 }),
               ),
             ),
           timeoutMs,
         );
-        this.makePromise(initRequest).then(
-          (r) => {
-            clearTimeout(timeoutId);
-            resolve(r);
-          },
-          (err) => {
-            clearTimeout(timeoutId);
-            reject(err);
-          },
-        );
+        this.makePromise(initRequest).then(resolve, reject);
       });
 
-    return Promise.race([initSequence(), initErrorPromise]).then((result) => {
-      // Normal path: one always-on structured line per worker init.
-      getLogger().info(
-        formatWorkerInitDiagnostics({
-          workerLabel,
-          handshakeMs: performance.now() - startMs,
-          wasm: getLastWasmActivationInitDiagnostics(),
-          workerError: this.initWorkerError,
-        }),
-      );
-      return result;
-    });
+    // `finally` also clears the timers when `initErrorPromise` wins the race —
+    // previously that path left the init timeout pending.
+    return Promise.race([initSequence(), initErrorPromise])
+      .finally(stopTimers)
+      .then((result) => {
+        // Normal path: one always-on structured line per worker init.
+        getLogger().info(
+          formatWorkerInitDiagnostics({
+            workerLabel,
+            handshakeMs: performance.now() - startMs,
+            wasm: getLastWasmActivationInitDiagnostics(),
+            workerError: this.initWorkerError,
+          }),
+        );
+        return result;
+      });
   }
 
   /**
