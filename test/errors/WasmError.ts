@@ -36,6 +36,8 @@ Deno.test("WasmError - reason is typed", () => {
     "COMPILATION_FAILED",
     "ACTIVATION_FAILED",
     "MODULE_NOT_LOADED",
+    // Issue #3803 — a request that never reached the Rust rules.
+    "INVALID_REQUEST",
   ];
 
   for (const reason of reasons) {
