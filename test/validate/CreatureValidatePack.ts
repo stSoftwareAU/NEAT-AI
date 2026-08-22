@@ -94,9 +94,7 @@ Deno.test("packed: the two shapes count a healthy creature the same way", () => 
 Deno.test("packed: a broken creature is sent back for the failure, not answered", () => {
   const creature = makeCreature();
   // A hidden neuron nothing reads: rule 18.
-  creature.synapses = creature.synapses.filter((synapse) =>
-    synapse.from !== 2
-  );
+  creature.synapses = creature.synapses.filter((synapse) => synapse.from !== 2);
 
   const packed = coreValidateCreaturePacked(
     packCreatureValidateRequest(creature),
@@ -109,9 +107,7 @@ Deno.test("packed: a broken creature is sent back for the failure, not answered"
 
 Deno.test("packed: the failure a broken creature throws still names the rule", () => {
   const creature = makeCreature();
-  creature.synapses = creature.synapses.filter((synapse) =>
-    synapse.from !== 2
-  );
+  creature.synapses = creature.synapses.filter((synapse) => synapse.from !== 2);
 
   const error = expectThrow(creature);
   assertEquals(error.name, "ValidationError");
