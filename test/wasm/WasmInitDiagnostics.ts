@@ -25,6 +25,7 @@ import {
   getLastWasmActivationInitDiagnostics,
   recordWasmActivationInitDiagnostics,
   resetWasmActivationInitDiagnostics,
+  splitHandshakeObservation,
   WASM_WORKER_INIT_LOG_PREFIX,
   type WasmActivationInitDiagnostics,
 } from "@wasm/WasmInitDiagnostics.ts";
@@ -236,18 +237,121 @@ Deno.test("WasmInitDiagnostics: timeout message embeds the parent-observed break
     workerError: new Error("boom"),
   });
 
-  // Preserved phrases so existing operator greps keep matching.
+  // Preserved phrase so existing operator greps keep matching.
   assertStringIncludes(message, "no response after 60s");
-  assertStringIncludes(message, "stuck loading WASM");
   // The greppable prefix and parent-observed breakdown.
   assertStringIncludes(message, WASM_WORKER_INIT_LOG_PREFIX);
   assertStringIncludes(message, "worker=worker-3");
-  assertStringIncludes(message, "handshakeMs=60001");
+  // GRQ #4238: 60,001 ms observed against a 60,000 ms deadline is a 60,000 ms
+  // handshake plus 1 ms of timer jitter — never a 60,001 ms handshake.
+  assertStringIncludes(message, "handshakeMs=60000");
+  assertStringIncludes(message, "parentStallMs=1");
   assertStringIncludes(message, "wasm[cache=hit");
   assertStringIncludes(message, "bundleBytes=1234567");
   assertStringIncludes(message, `workerError=${JSON.stringify("boom")}`);
   // Child phases are explicitly unknown, not reported as zero.
   assertStringIncludes(message, "Child WASM phase timings unknown");
+});
+
+Deno.test("WasmInitDiagnostics #4238: handshakeMs never exceeds the deadline", () => {
+  // The GRQ-13 reading: 14m 55s reported against a 60s timeout.
+  const message = formatWorkerInitTimeout({
+    workerLabel: "worker-114",
+    timeoutMs: 60_000,
+    elapsedMs: 895_250,
+    wasm: null,
+    loopBlockedMs: 0,
+    spawnToInitMs: 12,
+  });
+
+  assertStringIncludes(message, "handshakeMs=60000");
+  assertStringIncludes(message, "parentStallMs=835250");
+  assertStringIncludes(message, "spawnToInitMs=12");
+  assert(
+    !message.includes("handshakeMs=895250"),
+    "the parent's own stall must not be reported as handshake time",
+  );
+});
+
+Deno.test("WasmInitDiagnostics #4238: a stalled parent is not evidence about the child", () => {
+  const message = formatWorkerInitTimeout({
+    workerLabel: "worker-114",
+    timeoutMs: 60_000,
+    elapsedMs: 895_250,
+    wasm: null,
+    loopBlockedMs: 0,
+  });
+
+  assertStringIncludes(message, "The parent's own event loop stalled");
+  assertStringIncludes(message, "not evidence about the child");
+  // With the parent blind, the candidate list is honest again — and the
+  // long-standing operator grep still matches.
+  assertStringIncludes(message, "stuck loading WASM");
+  assert(
+    !message.includes("did not reach its entry point"),
+    "a blocked parent must not blame the child for the silence",
+  );
+});
+
+Deno.test("WasmInitDiagnostics #4238: a block inside the window is caught without overshoot", () => {
+  // The timer fired on time, but the loop was blocked for 40s of the window.
+  const message = formatWorkerInitTimeout({
+    workerLabel: "worker-7",
+    timeoutMs: 60_000,
+    elapsedMs: 60_000,
+    wasm: null,
+    loopBlockedMs: 40_000,
+  });
+
+  assertStringIncludes(message, "handshakeMs=60000");
+  assertStringIncludes(message, "parentStallMs=0");
+  assertStringIncludes(message, "loopBlockedMs=40000");
+  assertStringIncludes(message, "not evidence about the child");
+});
+
+Deno.test("WasmInitDiagnostics #4238: a received heartbeat still convicts the child", () => {
+  const message = formatWorkerInitTimeout({
+    workerLabel: "worker-7",
+    timeoutMs: 60_000,
+    elapsedMs: 895_250,
+    wasm: null,
+    heartbeatMs: 37,
+    loopBlockedMs: 0,
+  });
+
+  // Positive evidence survives a parent stall: the heartbeat did arrive.
+  assertStringIncludes(message, "heartbeat=received heartbeatMs=37");
+  assertStringIncludes(message, "The parent's own event loop stalled");
+  assertStringIncludes(message, "then stalled before answering");
+});
+
+Deno.test("WasmInitDiagnostics #4238: splitHandshakeObservation caps and attributes", () => {
+  const stalled = splitHandshakeObservation(895_250, 60_000, 0);
+  assertEquals(stalled.handshakeMs, 60_000);
+  assertEquals(stalled.parentStallMs, 835_250);
+  assertEquals(stalled.parentStalled, true);
+
+  // Ordinary timer jitter is not a stall.
+  const jitter = splitHandshakeObservation(60_001, 60_000, 3);
+  assertEquals(jitter.handshakeMs, 60_000);
+  assertEquals(jitter.parentStallMs, 1);
+  assertEquals(jitter.parentStalled, false);
+
+  // An in-window block with no overshoot is still a stall.
+  const blocked = splitHandshakeObservation(60_000, 60_000, 40_000);
+  assertEquals(blocked.parentStallMs, 0);
+  assertEquals(blocked.parentStalled, true);
+
+  // A handshake that ended early (an error raced the deadline) is untouched.
+  const early = splitHandshakeObservation(1_200, 60_000, 0);
+  assertEquals(early.handshakeMs, 1_200);
+  assertEquals(early.parentStallMs, 0);
+
+  // Degenerate readings never produce a negative or NaN field.
+  const degenerate = splitHandshakeObservation(Number.NaN, 60_000);
+  assertEquals(degenerate.handshakeMs, 0);
+  assertEquals(degenerate.parentStallMs, 0);
+  assertEquals(splitHandshakeObservation(-5, 60_000).handshakeMs, 0);
 });
 
 Deno.test("WasmInitDiagnostics: timeout message flags unmeasured WASM explicitly", () => {
