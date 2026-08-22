@@ -674,10 +674,30 @@ export class Neat {
       return false;
     }
     if (this.additionalGenerationCount > 0) {
+      // Issue #4284: consume the credit here, exactly as the cleanUpDelayCount
+      // branch above does.
+      //
+      // The counter is normally worked off by `evolve()`, which decrements it
+      // at the top of every generation. But the two callers that reach
+      // `finishUp` in CreatureTraining's `while (true)` loop — the
+      // `shouldStopStartingGenerations` branch and the `completed` branch —
+      // do NOT run a generation: they call `finishUp`, then
+      // `awaitInFlightTasks()`, then loop. Once the run has stopped starting
+      // generations and nothing is in flight, `awaitInFlightTasks()` returns
+      // immediately and no code path can ever reach the decrement, so the loop
+      // spins as fast as the process can call `console.info`.
+      //
+      // GRQ-18 (GRQ#4284) rode that spin to a 104,440,184-line node log and
+      // then died of `No space left on device` raised from inside this very
+      // log call. Decrementing bounds the wait to the credits actually granted
+      // (NeatEvolution grants at most 1), and still leaves the intended extra
+      // generation intact on the path that does run one — `evolve()` sets the
+      // credit again whenever another generation produces trained creatures.
+      this.additionalGenerationCount--;
       getLogger().info(
         `Waiting for additional generation${
-          this.additionalGenerationCount > 1 ? "s" : ""
-        }`,
+          this.additionalGenerationCount > 0 ? "s" : ""
+        } (${this.additionalGenerationCount} remaining)`,
       );
       return false;
     }

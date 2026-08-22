@@ -65,6 +65,34 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **GRQ#4284:** The additional-generation wait no longer spins. `finishUp`
+  logged `Waiting for additional generation` and returned `false` without
+  consuming the credit, which only `evolve()` decremented — but the two
+  `CreatureTraining` branches that reach `finishUp` (`completed` and
+  `shouldStopStartingGenerations`) run no generation, and `awaitInFlightTasks()`
+  returns immediately when nothing is in flight. Once a run stopped starting
+  generations, nothing could reach the decrement and the loop spun as fast as
+  the process could call `console.info`. Two GRQ hosts rode it to node logs of
+  104,440,184 and 99,063,629 lines — ~99% that one message — filled their disks
+  and died on `No space left on device` raised from inside this very log call.
+  The credit is now consumed in the wait branch, exactly as `cleanUpDelayCount`
+  already was, and the line carries the remaining count.
+
+- **GRQ#4283:** An Intelligent Design squash substitution can no longer produce
+  a creature this library's own validator refuses. A substitution changes only
+  `squash`, so it cannot give a neuron the three inward connections — nor the
+  `condition` / `positive` / `negative` synapse roles — that `CreatureValidate`
+  demands of an `IF` neuron; handing `IF` to an ineligible neuron killed the ID
+  worker on
+  `ValidationError: 'IF' should have at least 3 inward connections
+  was: 2`
+  before it scored anything. The new
+  `src/intelligentDesign/SquashSubstitutionEligibility.ts` gate makes
+  `scanForSquashImprovements` skip those (neuron, squash) pairs with a logged
+  reason and keep scanning, and `makeModifiedCreatureWithPrevious` /
+  `makeModifiedCreature` refuse such a substitution outright. `IF` stays in the
+  substitution table for the neurons that can carry it.
+
 - **Issue #3779:** A training result inside the evaluate noise floor (the `🫥`
   outcome) no longer counts as an improvement, so it stops resetting the
   no-progress streaks.

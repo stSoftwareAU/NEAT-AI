@@ -24,6 +24,7 @@ import {
 import { buildSquashOutputPath } from "@intelligentDesign/SquashOutputPath.ts";
 import { WorkerHandler } from "@intelligentDesign/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { squashSubstitutionBlockedReason } from "@intelligentDesign/SquashSubstitutionEligibility.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
 function remainingTimeMs(deadlineMs: number): number {
@@ -205,6 +206,21 @@ export function makeModifiedCreatureWithPrevious(
   if (neuronData.squash === nextSquash) {
     getLogger().warn(
       `${neuronUuid} Squash should be different from ${nextSquash}`,
+    );
+  }
+
+  // GRQ#4283: refuse a substitution the validator would reject rather than
+  // handing an invalid creature to a scoring worker, which dies on it before
+  // scoring anything. `improveSquash` filters these pairs out before it gets
+  // here; this is the backstop for every other caller.
+  const blocked = squashSubstitutionBlockedReason(
+    tmpJson,
+    neuronUuid,
+    nextSquash,
+  );
+  if (blocked) {
+    throw new Error(
+      `Cannot substitute squash on neuron ${neuronUuid}: ${blocked}`,
     );
   }
 
@@ -427,6 +443,24 @@ export async function scanForSquashImprovements(
         continue;
       }
 
+      // Issue GRQ#4283: a substitution changes only the squash, so a neuron
+      // whose inward topology cannot satisfy the squash's structural rule
+      // would produce a creature the validator refuses — and the ID worker
+      // dies on it before scoring anything. Skip the pair and keep scanning.
+      if (neuron.uuid) {
+        const blocked = squashSubstitutionBlockedReason(
+          workingCreature,
+          neuron.uuid,
+          targetSquash,
+        );
+        if (blocked) {
+          getLogger().info(
+            `Neuron ${neuron.uuid} cannot adopt ${targetSquash}: ${blocked}, skipping.`,
+          );
+          continue;
+        }
+      }
+
       const p = (async () => {
         if (bestNeuronSquashMap.size >= maxImprovements) return;
 
@@ -497,6 +531,22 @@ export async function scanForSquashImprovements(
                   JSON.parse(res.score.creature),
                 ).exportJSON();
                 normaliseCreatureExport(altCreatureExport);
+
+                // GRQ#4283: same structural gate as the primary substitution
+                // above — checked against THIS creature, whose topology the
+                // accepted primary change may have altered.
+                const altBlocked = squashSubstitutionBlockedReason(
+                  altCreatureExport,
+                  neuronUuid,
+                  altSquash,
+                );
+                if (altBlocked) {
+                  getLogger().info(
+                    `Neuron ${neuronUuid} cannot adopt ${altSquash}: ${altBlocked}, skipping.`,
+                  );
+                  continue;
+                }
+
                 const { creature: altCreature } =
                   makeModifiedCreatureWithPrevious(
                     neuronUuid,

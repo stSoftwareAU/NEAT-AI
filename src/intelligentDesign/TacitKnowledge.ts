@@ -15,6 +15,7 @@ import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import { Creature } from "@creature";
 import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { squashSubstitutionBlockedReason } from "@intelligentDesign/SquashSubstitutionEligibility.ts";
 
 /**
  * Tacit knowledge is a mapping from neuron UUID to squash function name.
@@ -93,6 +94,21 @@ export function makeModifiedCreature(
   if (neuronData.squash === nextSquash) {
     getLogger().warn(
       `${neuronUuid} Squash already set to ${nextSquash}`,
+    );
+  }
+
+  // GRQ#4283: refuse a substitution the validator would reject rather than
+  // handing an invalid creature to a scoring worker, which dies on it before
+  // scoring anything. `improveSquash` filters these pairs out before it gets
+  // here; this is the backstop for every other caller.
+  const blocked = squashSubstitutionBlockedReason(
+    tmpJson,
+    neuronUuid,
+    nextSquash,
+  );
+  if (blocked) {
+    throw new Error(
+      `Cannot substitute squash on neuron ${neuronUuid}: ${blocked}`,
     );
   }
 
