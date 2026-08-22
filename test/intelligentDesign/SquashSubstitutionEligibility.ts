@@ -1,6 +1,6 @@
 /**
  * An Intelligent Design squash substitution must never produce a creature this
- * library's own validator refuses (GRQ#4283).
+ * library's own validator refuses (Issue #3827).
  *
  * GRQ-13 handed an ID worker the same 5,050-neuron creature twice, three
  * minutes apart, and it died both times before scoring anything:
@@ -16,7 +16,7 @@
  * an unlucky candidate. A substitution changes only `squash`; it cannot add the
  * three inward connections, nor the `condition` / `positive` / `negative`
  * synapse roles, that `CreatureValidate` demands of an `IF` neuron. `IF` is in
- * the substitution table on purpose (GRQ#4157 added it with `MINIMUM` /
+ * the substitution table on purpose (it was added with `MINIMUM` /
  * `MAXIMUM` for the tree/branching teams), so the fix is to skip the neurons
  * that cannot carry it.
  */
@@ -100,7 +100,7 @@ function exportOf(json: CreatureInternal) {
   return Creature.fromJSON(json).exportJSON();
 }
 
-Deno.test("the GRQ-13 creature really is what the validator refuses (GRQ#4283)", () => {
+Deno.test("the reported creature really is what the validator refuses (Issue #3827)", () => {
   // Build by hand exactly what an unguarded substitution used to hand the
   // worker, and confirm the validator's verdict — otherwise the guard below
   // could be protecting against nothing.
@@ -124,7 +124,7 @@ Deno.test("the GRQ-13 creature really is what the validator refuses (GRQ#4283)",
   );
 });
 
-Deno.test("a two-inward neuron cannot adopt IF, and the reason says why (GRQ#4283)", () => {
+Deno.test("a two-inward neuron cannot adopt IF, and the reason says why (Issue #3827)", () => {
   const exported = exportOf(twoInwardJson);
 
   const reason = squashSubstitutionBlockedReason(exported, "hidden-2in", "IF");
@@ -140,7 +140,7 @@ Deno.test("a two-inward neuron cannot adopt IF, and the reason says why (GRQ#428
   assertEquals(canAdoptSquash(exported, "hidden-2in", "IF"), false);
 });
 
-Deno.test("three inward connections are not enough without the roles (GRQ#4283)", () => {
+Deno.test("three inward connections are not enough without the roles (Issue #3827)", () => {
   const exported = exportOf(threeInwardNoRolesJson);
 
   const reason = squashSubstitutionBlockedReason(exported, "hidden-3in", "IF");
@@ -160,7 +160,7 @@ Deno.test("three inward connections are not enough without the roles (GRQ#4283)"
   );
 });
 
-Deno.test("a neuron that already satisfies the IF rule is not blocked (GRQ#4283)", () => {
+Deno.test("a neuron that already satisfies the IF rule is not blocked (Issue #3827)", () => {
   const exported = exportOf(threeInwardWithRolesJson);
 
   assertEquals(
@@ -181,7 +181,7 @@ Deno.test("a neuron that already satisfies the IF rule is not blocked (GRQ#4283)
   }
 });
 
-Deno.test("the substitution builders refuse to produce the invalid creature (GRQ#4283)", () => {
+Deno.test("the substitution builders refuse to produce the invalid creature (Issue #3827)", () => {
   const exported = exportOf(twoInwardJson);
 
   for (
@@ -216,7 +216,7 @@ Deno.test("the substitution builders refuse to produce the invalid creature (GRQ
   assertEquals(neuron?.squash, "TANH");
 });
 
-Deno.test("an eligible substitution still goes through and still validates (GRQ#4283)", () => {
+Deno.test("an eligible substitution still goes through and still validates (Issue #3827)", () => {
   const exported = exportOf(twoInwardJson);
 
   const { creature, previousSquash } = makeModifiedCreatureWithPrevious(

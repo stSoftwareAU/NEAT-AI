@@ -209,7 +209,7 @@ export function makeModifiedCreatureWithPrevious(
     );
   }
 
-  // GRQ#4283: refuse a substitution the validator would reject rather than
+  // Issue #3827: refuse a substitution the validator would reject rather than
   // handing an invalid creature to a scoring worker, which dies on it before
   // scoring anything. `improveSquash` filters these pairs out before it gets
   // here; this is the backstop for every other caller.
@@ -443,7 +443,7 @@ export async function scanForSquashImprovements(
         continue;
       }
 
-      // Issue GRQ#4283: a substitution changes only the squash, so a neuron
+      // Issue #3827: a substitution changes only the squash, so a neuron
       // whose inward topology cannot satisfy the squash's structural rule
       // would produce a creature the validator refuses — and the ID worker
       // dies on it before scoring anything. Skip the pair and keep scanning.
@@ -532,7 +532,7 @@ export async function scanForSquashImprovements(
                 ).exportJSON();
                 normaliseCreatureExport(altCreatureExport);
 
-                // GRQ#4283: same structural gate as the primary substitution
+                // Issue #3827: same structural gate as the primary substitution
                 // above — checked against THIS creature, whose topology the
                 // accepted primary change may have altered.
                 const altBlocked = squashSubstitutionBlockedReason(

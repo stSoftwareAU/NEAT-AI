@@ -80,7 +80,7 @@ export type {
   TacitKnowledgeResult,
 } from "@intelligentDesign/TacitKnowledge.ts";
 
-// Squash substitution preconditions (GRQ#4283)
+// Squash substitution preconditions (Issue #3827)
 export {
   canAdoptSquash,
   squashSubstitutionBlockedReason,

@@ -674,7 +674,7 @@ export class Neat {
       return false;
     }
     if (this.additionalGenerationCount > 0) {
-      // Issue #3823 / GRQ#4284: consume the credit here, exactly as the
+      // Issue #3823: consume the credit here, exactly as the
       // `cleanUpDelayCount` branch above does.
       //
       // The counter is normally worked off by `evolve()`, which decrements it
@@ -687,7 +687,7 @@ export class Neat {
       // immediately and no code path can ever reach the decrement, so the loop
       // spins as fast as the process can call `console.info`.
       //
-      // GRQ-18 (GRQ#4284) rode that spin to a 104,440,184-line node log and
+      // A fleet host rode that spin to a 104,440,184-line node log and
       // then died of `No space left on device` raised from inside this very
       // log call. Decrementing bounds the wait to the credits actually granted
       // (NeatEvolution grants at most 1), and still leaves the intended extra

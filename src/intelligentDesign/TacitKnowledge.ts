@@ -97,7 +97,7 @@ export function makeModifiedCreature(
     );
   }
 
-  // GRQ#4283: refuse a substitution the validator would reject rather than
+  // Issue #3827: refuse a substitution the validator would reject rather than
   // handing an invalid creature to a scoring worker, which dies on it before
   // scoring anything. `improveSquash` filters these pairs out before it gets
   // here; this is the backstop for every other caller.

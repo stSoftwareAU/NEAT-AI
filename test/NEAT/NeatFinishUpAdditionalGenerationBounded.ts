@@ -1,6 +1,6 @@
 /**
  * The additional-generation wait must terminate, and must not flood the log
- * while it waits (Issue #4284, filed as stSoftwareAU/GRQ#4284).
+ * while it waits (Issue #3823).
  *
  * GRQ-18 filled its disk twice in one day. `node.log` really had reached
  * 104,440,184 lines on one host and 99,063,629 on another, and ~99% of the
@@ -96,7 +96,7 @@ function pollUntilDone(
   return { polls: maxPolls, finished: false };
 }
 
-Deno.test("finishUp: the additional-generation wait terminates when no generation can run (#4284)", async () => {
+Deno.test("finishUp: the additional-generation wait terminates when no generation can run (Issue #3823)", async () => {
   const dataDir = createTestDataDir(2, 1);
   const workers = createTestWorkers(dataDir);
   // Installed AFTER construction: the Neat constructor installs its own logger
@@ -141,7 +141,7 @@ Deno.test("finishUp: the additional-generation wait terminates when no generatio
   }
 });
 
-Deno.test("finishUp: log volume is bounded by the credits granted, not by poll count (#4284)", async () => {
+Deno.test("finishUp: log volume is bounded by the credits granted, not by poll count (Issue #3823)", async () => {
   const dataDir = createTestDataDir(2, 1);
   const workers = createTestWorkers(dataDir);
   // Installed AFTER construction: the Neat constructor installs its own logger

@@ -9,7 +9,7 @@
  * cannot create either.
  *
  * Handing `IF` to a neuron that does not already satisfy that rule therefore
- * produces a creature the library's own validator refuses. GRQ#4283: an ID
+ * produces a creature the library's own validator refuses. Issue #3827: an ID
  * worker was handed the same 5,050-neuron creature twice, three minutes apart,
  * and died both times before scoring a thing:
  *
@@ -18,7 +18,7 @@
  *         at validateOrDiagnose (…/utils/Diagnostics.ts:161:14)
  *         at WorkerProcessor.process (…/intelligentDesign/workers/WorkerProcessor.ts:50:7)
  *
- * `IF` reached the substitution table deliberately (GRQ#4157 added it, with
+ * `IF` reached the substitution table deliberately (added with
  * `MINIMUM` / `MAXIMUM`, for the tree/branching teams), so the answer is not to
  * remove it — it is to skip the neurons that cannot carry it and keep scanning.
  *
