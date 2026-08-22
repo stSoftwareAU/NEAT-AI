@@ -37,9 +37,9 @@ For deep dives on a single topic, follow the dedicated docs (full index in
   [`test/creature/GoldenMetadataRoundTrip.ts`](./test/creature/GoldenMetadataRoundTrip.ts)
   (Issue #3752, memetic coverage Issue #3814). Adding a persisted field to the
   creature interfaces means extending those fixtures in the same change, and
-  every committed fixture must parse in every engine.
-  (Issue #3752). Adding a persisted field to the creature interfaces means
-  extending that fixture in the same change.
+  every committed fixture must parse in every engine. (Issue #3752). Adding a
+  persisted field to the creature interfaces means extending that fixture in the
+  same change.
 - **`creatureValidate` conformance corpus** — the language-neutral JSON cases
   [`test/fixtures/validate/README.md`](./test/fixtures/validate/README.md); gate
   test
