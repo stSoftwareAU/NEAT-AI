@@ -674,14 +674,14 @@ export class Neat {
       return false;
     }
     if (this.additionalGenerationCount > 0) {
-      // Issue #4284: consume the credit here, exactly as the cleanUpDelayCount
-      // branch above does.
+      // Issue #3823 / GRQ#4284: consume the credit here, exactly as the
+      // `cleanUpDelayCount` branch above does.
       //
       // The counter is normally worked off by `evolve()`, which decrements it
       // at the top of every generation. But the two callers that reach
       // `finishUp` in CreatureTraining's `while (true)` loop — the
-      // `shouldStopStartingGenerations` branch and the `completed` branch —
-      // do NOT run a generation: they call `finishUp`, then
+      // `shouldStopStartingGenerations` branch (#3795) and the `completed`
+      // branch — do NOT run a generation: they call `finishUp`, then
       // `awaitInFlightTasks()`, then loop. Once the run has stopped starting
       // generations and nothing is in flight, `awaitInFlightTasks()` returns
       // immediately and no code path can ever reach the decrement, so the loop
