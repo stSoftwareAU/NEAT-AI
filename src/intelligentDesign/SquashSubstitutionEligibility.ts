@@ -38,8 +38,8 @@ const REQUIRED_IF_ROLES = ["condition", "positive", "negative"] as const;
 /**
  * Why `neuronUuid` cannot adopt `nextSquash`, or `undefined` when it can.
  *
- * The returned string is a complete, loggable reason — the caller does not need
- * to know which rule was checked.
+ * The returned string is a complete reason, ready to log as-is — the caller does
+ * not need to know which rule was checked.
  *
  * @param creatureExport - The creature the substitution would be applied to.
  * @param neuronUuid - UUID of the neuron whose squash would change.
