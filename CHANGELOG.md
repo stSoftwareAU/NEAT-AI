@@ -65,34 +65,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- **Issue #3823 / GRQ#4284:** The additional-generation wait no longer spins,
-  flooding the log with `Waiting for additional generation`. `finishUp` logged
-  and returned `false` without consuming the credit, which only `evolve()`
-  decremented — but the two `CreatureTraining` branches that reach `finishUp`
-  (`completed` and the `shouldStopStartingGenerations` guard added in #3795) run
-  no generation, and `awaitInFlightTasks()` returns immediately when nothing is
-  in flight. Once a run stopped starting generations, nothing could reach the
-  decrement and the loop spun as fast as the process could call `console.info`.
-  Two GRQ hosts rode it to node logs of 104,440,184 and 99,063,629 lines — ~99%
-  that one message — filled their disks and died on `No space left on device`
-  raised from inside this very log call. The credit is now consumed in the wait
-  branch, exactly as `cleanUpDelayCount` already was, the line carries the
-  remaining count, and the over-run stop clears the credit outright.
-
-- **GRQ#4283:** An Intelligent Design squash substitution can no longer produce
-  a creature this library's own validator refuses. A substitution changes only
-  `squash`, so it cannot give a neuron the three inward connections — nor the
-  `condition` / `positive` / `negative` synapse roles — that `CreatureValidate`
-  demands of an `IF` neuron; handing `IF` to an ineligible neuron killed the ID
-  worker on
-  `ValidationError: 'IF' should have at least 3 inward connections
-  was: 2`
-  before it scored anything. The new
-  `src/intelligentDesign/SquashSubstitutionEligibility.ts` gate makes
-  `scanForSquashImprovements` skip those (neuron, squash) pairs with a logged
-  reason and keep scanning, and `makeModifiedCreatureWithPrevious` /
-  `makeModifiedCreature` refuse such a substitution outright. `IF` stays in the
-  substitution table for the neurons that can carry it.
+- **Issue #3823:** The over-run finish-up path no longer spins, flooding the log
+  with `Waiting for additional generation`. `additionalGenerationCount` ("do at
+  least one more loop") was only decremented by `evolve()`, but the over-run
+  guard added in #3795 stops starting generations and re-enters `finishUp()`
+  directly — so the counter never cleared, `awaitInFlightTasks()` returned
+  immediately (nothing was in flight) and the loop ran flat out until the hard
+  deadline, up to the full 15-minute grace window. `finishUp()` now drains the
+  counter in its wait branch (as the neighbouring `cleanUpDelayCount` branch
+  already did), and the over-run stop clears it outright.
 
 - **GRQ #4238:** The `[WasmWorkerInit]` timeout diagnostic no longer bills the
   parent's own stall to the child. `handshakeMs` was a raw elapsed-time read
@@ -107,6 +88,21 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   responsive; otherwise the line says the parent was blind. The init timeout and
   watchdog timers are also cleared when the init-error promise wins the race,
   which previously left the timeout pending.
+
+- **Issue #3827:** An Intelligent Design squash substitution can no longer produce
+  a creature this library's own validator refuses. A substitution changes only
+  `squash`, so it cannot give a neuron the three inward connections — nor the
+  `condition` / `positive` / `negative` synapse roles — that `CreatureValidate`
+  demands of an `IF` neuron; handing `IF` to an ineligible neuron killed the ID
+  worker on
+  `ValidationError: 'IF' should have at least 3 inward connections
+  was: 2`
+  before it scored anything. The new
+  `src/intelligentDesign/SquashSubstitutionEligibility.ts` gate makes
+  `scanForSquashImprovements` skip those (neuron, squash) pairs with a logged
+  reason and keep scanning, and `makeModifiedCreatureWithPrevious` /
+  `makeModifiedCreature` refuse such a substitution outright. `IF` stays in the
+  substitution table for the neurons that can carry it.
 
 - **Issue #3779:** A training result inside the evaluate noise floor (the `🫥`
   outcome) no longer counts as an improvement, so it stops resetting the
