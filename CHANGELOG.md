@@ -89,12 +89,12 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   watchdog timers are also cleared when the init-error promise wins the race,
   which previously left the timeout pending.
 
-- **Issue #3827:** An Intelligent Design squash substitution can no longer produce
-  a creature this library's own validator refuses. A substitution changes only
-  `squash`, so it cannot give a neuron the three inward connections — nor the
-  `condition` / `positive` / `negative` synapse roles — that `CreatureValidate`
-  demands of an `IF` neuron; handing `IF` to an ineligible neuron killed the ID
-  worker on
+- **Issue #3827:** An Intelligent Design squash substitution can no longer
+  produce a creature this library's own validator refuses. A substitution
+  changes only `squash`, so it cannot give a neuron the three inward connections
+  — nor the `condition` / `positive` / `negative` synapse roles — that
+  `CreatureValidate` demands of an `IF` neuron; handing `IF` to an ineligible
+  neuron killed the ID worker on
   `ValidationError: 'IF' should have at least 3 inward connections
   was: 2`
   before it scored anything. The new
