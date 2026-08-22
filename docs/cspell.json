@@ -203,6 +203,7 @@
     "cloneability",
     "cloneable",
     "codegen",
+    "codespell",
     "coef",
     "compactable",
     "companyreports",
@@ -399,6 +400,7 @@
     "pathx",
     "pipefail",
     "pipelining",
+    "pipx",
     "polytope",
     "pollable",
     "popover",
@@ -448,6 +450,7 @@
     "rescore",
     "rescored",
     "rescoring",
+    "revertcheck",
     "reshared",
     "reseen",
     "retryable",
@@ -628,6 +631,7 @@
     "wordmark",
     "froms",
     "summable",
-    "worktree"
+    "worktree",
+    "revertcheck"
   ]
 }

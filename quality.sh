@@ -100,6 +100,9 @@ Native gates (fail loud, no silent WASM fallback):
   ../NEAT-AI-scorer). Use --wasm-scorer only for a comparison run.
   Test runs force NEAT_SCORER_GPU=off so parallel rust_scorer processes do
   not create Metal/wgpu contexts (the default --gpu auto path OOMs the suite).
+  Test runs also force NEAT_AI_RUST_SCORER_STRICT=1 (Issue #3815): a scorer
+  exec/parse failure throws with the scorer's stderr verbatim instead of
+  logging a warning and reconciling to green via the WASM fallback.
   Leftover NEAT_AI_BACKPROP_ENABLED / NEAT_AI_NATIVE_CORE_BACKPROP
   exports are ignored; pass --next and/or --native-core-backprop.
   --next requires libneat_ai_backpropagation (Deno FFI). trainDir must
@@ -573,14 +576,24 @@ run_test_suite() {
     # context OOMs the host (jetsam SIGKILL / exit 137). The handwritten
     # suite still exercises the native CPU scorer; GPU is a production
     # throughput path, not a correctness path.
+    #
+    # Issue #3815: strict mode turns a scorer exec/parse failure into a thrown
+    # error carrying the scorer's stderr verbatim, instead of a logged fallback
+    # to WASM that reconciles a dead native path to a green run (Issue #3810).
+    # A missing or too-old binary is still a graceful skip, so contributors
+    # without rust_scorer installed are unaffected.
     env_args+=(
       "NEAT_AI_RUST_SCORER_ENABLED=1"
       "NEAT_AI_RUST_SCORER_BINARY_PATH=$RUST_SCORER_BINARY_PATH"
       "NEAT_AI_RUST_SCORER_TIMEOUT_MS=$RUST_SCORER_TIMEOUT_MS"
+      "NEAT_AI_RUST_SCORER_STRICT=1"
       "NEAT_SCORER_GPU=off"
     )
   else
-    env_args+=("NEAT_AI_RUST_SCORER_ENABLED=0")
+    env_args+=(
+      "NEAT_AI_RUST_SCORER_ENABLED=0"
+      "NEAT_AI_RUST_SCORER_STRICT=0"
+    )
   fi
 
   # CLI flags own these. Always set both so a leftover operator export

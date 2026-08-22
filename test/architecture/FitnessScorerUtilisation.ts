@@ -86,7 +86,7 @@ async function withBatchEnabled(
   // In-process override (Issue #3234) — never mutate the shared process env,
   // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true });
+  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
   __setRustScorerRunnerForTests(runner);
   const worker = new MockWorkerHandler();
   const dataDir = makeDataDir(buildDataSet(), 4);

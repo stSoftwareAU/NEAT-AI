@@ -219,7 +219,7 @@
     },
     "memeticWeights": {
       "type": "array",
-      "description": "Canonical export: list of { fromUUID, toUUID, weight }. Legacy persisted files may still use an object map of source key → rows with toUUID/toId.",
+      "description": "Canonical export: list of { fromUUID, toUUID, weight }, empty as []. Defined normatively in test/fixtures/golden/README.md. Legacy persisted files may still use an object map of source key → rows with toUUID/toId; that shape is accepted on import only and never emitted (Issue #3816).",
       "items": {
         "$ref": "#/$defs/memeticWeightWireRow"
       }
