@@ -36,7 +36,7 @@ import { initWasmForTests } from "../_initWasm.ts";
  * whose thresholds and leaf values ride as weights on **three bias-1 constants
  * shared across every patch**. Such a constant contributes ~0 to any activation
  * sum — so every magnitude-based heuristic reads it as worthless — while
- * re-roling or deleting one of its edges flips the routing of every node that
+ * re-assigning the role of, or deleting, one of its edges flips the routing of every node that
  * reads it.
  */
 
@@ -242,7 +242,7 @@ Deno.test("the routing probe rejects a candidate whose IF routing moved", async 
   );
   assert(
     !isExactBehaviourPreserved(deviation),
-    `a re-roled branch must be visible to the probe: ${
+    `a branch whose role was reassigned must be visible to the probe: ${
       describeDeviation(deviation)
     }`,
   );
