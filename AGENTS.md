@@ -38,6 +38,15 @@ For deep dives on a single topic, follow the dedicated docs (full index in
   (Issue #3752, memetic coverage Issue #3814). Adding a persisted field to the
   creature interfaces means extending those fixtures in the same change, and
   every committed fixture must parse in every engine.
+  (Issue #3752). Adding a persisted field to the creature interfaces means
+  extending that fixture in the same change.
+- **`creatureValidate` conformance corpus** — the language-neutral JSON cases
+  [`test/fixtures/validate/README.md`](./test/fixtures/validate/README.md); gate
+  test
+  [`test/validate/CreatureValidateConformance.ts`](./test/validate/CreatureValidateConformance.ts)
+  (Issue #3801). The corpus describes current behaviour so NEAT-AI-core can port
+  validation against it — changing a validation rule means changing the rule and
+  its case together.
 - **Discovery / FFI (Foreign Function Interface)** —
   [`docs/DISCOVERY_GUIDE.md`](./docs/DISCOVERY_GUIDE.md),
   [`docs/DISCOVERY_ARCHITECTURE.md`](./docs/DISCOVERY_ARCHITECTURE.md), and

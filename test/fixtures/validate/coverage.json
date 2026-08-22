@@ -1,0 +1,335 @@
+{
+  "description": "Every validation site in src/architecture/CreatureValidate.ts, in source order, and how the corpus accounts for it. status covered = a case reaches the site; shadowed = an earlier check always fires first, so the case records what actually happens; not-expressible = the check tests a TypeScript object identity no JSON fixture can describe.",
+  "sites": [
+    {
+      "id": "OPTIONS_NEURONS_MISMATCH",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "INPUT_COUNT_INVALID",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "OUTPUT_COUNT_INVALID",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "NEURON_NO_ID",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "NEURON_ID_INVALID",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "NEURON_ID_DUPLICATE",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "INPUT_NEURON_ID_MISMATCH",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "NEURON_BIAS_NOT_FINITE",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "TYPE_AFTER_OUTPUT",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "INPUT_NEURON_PAST_INPUT_COUNT",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "NEURON_ORDER_CONSTANT_AFTER_HIDDEN",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "NEURON_ORDER"
+    },
+    {
+      "id": "IF_TOO_FEW_INWARD",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "IF_CONDITIONS"
+    },
+    {
+      "id": "IF_MISSING_CONDITION",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "IF_CONDITIONS"
+    },
+    {
+      "id": "IF_MISSING_POSITIVE",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "IF_CONDITIONS"
+    },
+    {
+      "id": "IF_MISSING_NEGATIVE",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "IF_CONDITIONS"
+    },
+    {
+      "id": "INPUT_HAS_INWARD",
+      "kind": "throw",
+      "status": "covered",
+      "error": "TopologyError",
+      "reason": "INVALID_CONNECTION"
+    },
+    {
+      "id": "CONSTANT_HAS_INWARD",
+      "kind": "throw",
+      "status": "covered",
+      "error": "TopologyError",
+      "reason": "INVALID_CONNECTION"
+    },
+    {
+      "id": "CONSTANT_HAS_SQUASH",
+      "kind": "throw",
+      "status": "covered",
+      "error": "TopologyError",
+      "reason": "INVALID_SQUASH"
+    },
+    {
+      "id": "CONSTANT_NO_OUTWARD",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "NO_OUTWARD_CONNECTIONS"
+    },
+    {
+      "id": "HIDDEN_NO_INWARD",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "NO_INWARD_CONNECTIONS"
+    },
+    {
+      "id": "HIDDEN_NO_OUTWARD",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "NO_OUTWARD_CONNECTIONS"
+    },
+    {
+      "id": "HIDDEN_BIAS_UNDEFINED",
+      "kind": "throw",
+      "status": "shadowed",
+      "error": "TopologyError",
+      "reason": "INVALID_STATE",
+      "note": "Unreachable: the generic non-input bias check (NEURON_BIAS_NOT_FINITE) rejects an undefined bias first, because Number.isFinite(undefined) is false."
+    },
+    {
+      "id": "HIDDEN_BIAS_NOT_FINITE",
+      "kind": "throw",
+      "status": "shadowed",
+      "error": "TopologyError",
+      "reason": "INVALID_STATE",
+      "note": "Unreachable for the same reason as HIDDEN_BIAS_UNDEFINED: NEURON_BIAS_NOT_FINITE fires on any non-finite bias of a non-input neuron."
+    },
+    {
+      "id": "INVALID_NEURON_TYPE",
+      "kind": "throw",
+      "status": "covered",
+      "error": "TopologyError",
+      "reason": "INVALID_NEURON_TYPE"
+    },
+    {
+      "id": "NEURON_INDEX_MISMATCH",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "NEURON_CREATURE_MISMATCH",
+      "kind": "throw",
+      "status": "not-expressible",
+      "error": "TopologyError",
+      "reason": "INVALID_STATE",
+      "note": "Checks neuron.creature !== creature — a TypeScript object-identity comparison with no language-neutral equivalent, so no JSON fixture can express it. Kept in the hand-written TypeScript tests instead."
+    },
+    {
+      "id": "STATS_INPUT_MISMATCH",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "STATS_OUTPUT_MISMATCH",
+      "kind": "throw",
+      "status": "covered",
+      "error": "TopologyError",
+      "reason": "INVALID_STATE"
+    },
+    {
+      "id": "SYNAPSE_TO_INPUT",
+      "kind": "throw",
+      "status": "shadowed",
+      "error": "TopologyError",
+      "reason": "INVALID_CONNECTION",
+      "note": "Unreachable: any synapse targeting an input neuron makes that neuron fail INPUT_HAS_INWARD in the earlier neuron loop."
+    },
+    {
+      "id": "SELF_CONNECTION_FORWARD_ONLY",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "SELF_CONNECTION"
+    },
+    {
+      "id": "SORT_FAILURE_FROM",
+      "kind": "throw",
+      "status": "covered",
+      "error": "TopologyError",
+      "reason": "SORT_FAILURE"
+    },
+    {
+      "id": "SORT_FAILURE_TO",
+      "kind": "throw",
+      "status": "covered",
+      "error": "TopologyError",
+      "reason": "SORT_FAILURE"
+    },
+    {
+      "id": "DUPLICATE_SYNAPSE",
+      "kind": "throw",
+      "status": "covered",
+      "error": "TopologyError",
+      "reason": "INVALID_CONNECTION"
+    },
+    {
+      "id": "RECURSIVE_SYNAPSE",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "RECURSIVE_SYNAPSE"
+    },
+    {
+      "id": "OPTIONS_CONNECTIONS_MISMATCH",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "OTHER"
+    },
+    {
+      "id": "WASM_FORWARD_ONLY",
+      "kind": "throw",
+      "status": "shadowed",
+      "error": "TopologyError",
+      "reason": "INVALID_CONNECTION",
+      "note": "Unreachable: validateForwardOnly reports self-connections, backward connections, sort failures and duplicates, and the TypeScript synapse loop rejects every one of them first."
+    },
+    {
+      "id": "WASM_STRUCTURAL",
+      "kind": "throw",
+      "status": "shadowed",
+      "error": "ValidationError",
+      "reason": "OTHER",
+      "note": "Unreachable: every structural code (synapse targets input, constant has inward, hidden no inward/outward, non-finite bias, IF conditions) is already rejected by the neuron loop."
+    },
+    {
+      "id": "WASM_CYCLE",
+      "kind": "throw",
+      "status": "shadowed",
+      "error": "TopologyError",
+      "reason": "INVALID_CONNECTION",
+      "note": "Unreachable: a cycle needs a synapse with from > to, which the recursive-synapse check rejects because forwardOnly forces feedbackLoop false."
+    },
+    {
+      "id": "MEMETIC_BIAS_UNKNOWN_NEURON",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "MEMETIC"
+    },
+    {
+      "id": "MEMETIC_WEIGHT_UNKNOWN_NEURON",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "MEMETIC"
+    },
+    {
+      "id": "MEMETIC_WEIGHTS_NOT_ARRAY",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "MEMETIC"
+    },
+    {
+      "id": "MEMETIC_WEIGHT_MISSING_TO_ID",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "MEMETIC"
+    },
+    {
+      "id": "MEMETIC_WEIGHT_MISSING_WEIGHT",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "MEMETIC"
+    },
+    {
+      "id": "MEMETIC_WEIGHT_TO_ID_UNKNOWN",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "MEMETIC"
+    },
+    {
+      "id": "MEMETIC_WEIGHT_NO_SYNAPSE",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "MEMETIC"
+    },
+    { "id": "OK_MINIMAL", "kind": "ok", "status": "covered" },
+    { "id": "OK_CONSTANTS", "kind": "ok", "status": "covered" },
+    { "id": "OK_HIDDEN", "kind": "ok", "status": "covered" },
+    { "id": "OK_IF", "kind": "ok", "status": "covered" },
+    { "id": "OK_RECURRENT_DEFAULT", "kind": "ok", "status": "covered" },
+    { "id": "OK_RECURRENT_FEEDBACK_TRUE", "kind": "ok", "status": "covered" },
+    { "id": "OK_FORWARD_ONLY", "kind": "ok", "status": "covered" },
+    { "id": "OK_MEMETIC", "kind": "ok", "status": "covered" }
+  ]
+}

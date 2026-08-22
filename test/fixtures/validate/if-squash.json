@@ -1,0 +1,206 @@
+{
+  "group": "if-squash",
+  "description": "IF neurons need a condition, a positive and a negative inward synapse. Only checked for neurons past index 2.",
+  "cases": [
+    {
+      "name": "if-too-few-inward",
+      "rule": "IF_TOO_FEW_INWARD",
+      "creature": {
+        "input": 3,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "if1",
+            "bias": 2,
+            "squash": "IF"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 3, "weight": -0.3 },
+          { "from": 3, "to": 4, "weight": 0.8 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "IF_CONDITIONS",
+        "messageContains": "'IF' should have at least 3 inward connections was: 1"
+      }
+    },
+    {
+      "name": "if-missing-condition",
+      "rule": "IF_MISSING_CONDITION",
+      "notes": "An untyped synapse counts as positive.",
+      "creature": {
+        "input": 3,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "if1",
+            "bias": 2,
+            "squash": "IF"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 3, "weight": -0.3, "type": "positive" },
+          { "from": 1, "to": 3, "weight": -0.3, "type": "positive" },
+          { "from": 2, "to": 3, "weight": -0.3, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.8 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "IF_CONDITIONS",
+        "messageContains": "'IF' should have a condition(s)"
+      }
+    },
+    {
+      "name": "if-missing-positive",
+      "rule": "IF_MISSING_POSITIVE",
+      "creature": {
+        "input": 3,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "if1",
+            "bias": 2,
+            "squash": "IF"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 3, "weight": -0.3, "type": "condition" },
+          { "from": 1, "to": 3, "weight": -0.3, "type": "condition" },
+          { "from": 2, "to": 3, "weight": -0.3, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.8 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "IF_CONDITIONS",
+        "messageContains": "'IF' should have a positive connection(s)"
+      }
+    },
+    {
+      "name": "if-missing-negative",
+      "rule": "IF_MISSING_NEGATIVE",
+      "creature": {
+        "input": 3,
+        "output": 1,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "if1",
+            "bias": 2,
+            "squash": "IF"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 3, "weight": -0.3, "type": "condition" },
+          { "from": 1, "to": 3, "weight": -0.3, "type": "positive" },
+          { "from": 2, "to": 3, "weight": -0.3, "type": "positive" },
+          { "from": 3, "to": 4, "weight": 0.8 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "IF_CONDITIONS",
+        "messageContains": "'IF' should have a negative connection(s)"
+      }
+    },
+    {
+      "name": "if-with-all-three-synapse-types",
+      "rule": "OK_IF",
+      "notes": "The IF rules only bind for neurons past index 2; this creature is the accepted shape.",
+      "creature": {
+        "input": 3,
+        "output": 1,
+        "forwardOnly": true,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "if1",
+            "bias": 2,
+            "squash": "IF"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 3, "weight": -0.3, "type": "condition" },
+          { "from": 1, "to": 3, "weight": -0.3, "type": "positive" },
+          { "from": 2, "to": 3, "weight": -0.3, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.8 }
+        ]
+      },
+      "expect": {
+        "outcome": "ok",
+        "stats": {
+          "input": 3,
+          "constant": 0,
+          "hidden": 1,
+          "output": 1,
+          "connections": 4
+        }
+      }
+    }
+  ]
+}

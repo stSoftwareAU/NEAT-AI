@@ -227,6 +227,9 @@ let detectCyclesFn:
   ) => number)
   | null = null;
 
+// Issue #3803 - whole-creature validation (JSON request in, JSON response out)
+let creatureValidateFn: ((request: string) => string) | null = null;
+
 // Issue #1519 - Standalone elastic error distribution
 let distributeElasticErrorFn:
   | ((
@@ -471,6 +474,8 @@ function assignFunctionPointers(module: WasmModule): void {
   // Issue #1961 - Structural integrity validation and cycle detection
   validateStructuralIntegrityFn = module.validate_structural_integrity;
   detectCyclesFn = module.detect_cycles;
+  // Issue #3803 - whole-creature validation
+  creatureValidateFn = module.creature_validate;
   // Issue #1519 - Standalone elastic error distribution
   distributeElasticErrorFn = module.distribute_elastic_error;
   // Issue #1518 - Accumulation functions
@@ -864,6 +869,15 @@ export function getValidateStructuralIntegrityFn(): typeof validateStructuralInt
 
 export function getDetectCyclesFn(): typeof detectCyclesFn {
   return detectCyclesFn;
+}
+
+/**
+ * Issue #3803 - the whole-creature validator, the shared source of truth for
+ * `creatureValidate`. `null` until the bundle loads, which is what lets the
+ * bridge fail loud rather than skip validation.
+ */
+export function getCreatureValidateFn(): typeof creatureValidateFn {
+  return creatureValidateFn;
 }
 
 // Issue #1960 - Batch operation function pointer getters
