@@ -1,0 +1,135 @@
+{
+  "uuid": "e928613c-1e24-556a-a081-2c343bd9e1d6",
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "bias": 0.375,
+      "squash": "TANH"
+    },
+    {
+      "type": "hidden",
+      "uuid": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "bias": -0.25,
+      "squash": "LOGISTIC"
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "bias": 0.125,
+      "squash": "IDENTITY"
+    }
+  ],
+  "synapses": [
+    {
+      "weight": 0.5,
+      "fromUUID": "input-0",
+      "toUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    },
+    {
+      "weight": -0.375,
+      "fromUUID": "input-1",
+      "toUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    },
+    {
+      "weight": 0.625,
+      "fromUUID": "input-1",
+      "toUUID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    },
+    {
+      "weight": 0.25,
+      "fromUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "toUUID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    },
+    {
+      "weight": -0.125,
+      "fromUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "toUUID": "output-0"
+    },
+    {
+      "weight": 0.875,
+      "fromUUID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "toUUID": "output-0"
+    }
+  ],
+  "input": 2,
+  "output": 1,
+  "tags": [
+    {
+      "name": "contract",
+      "value": "Cross-engine memetic round-trip contract. Editing this file is a breaking change for every engine that reads creatures — see test/fixtures/golden/README.md"
+    },
+    {
+      "name": "origin",
+      "value": "golden-memetic-fixture"
+    }
+  ],
+  "memetic": {
+    "generation": 5,
+    "weights": [
+      {
+        "fromUUID": "input-0",
+        "toUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "weight": 0.51
+      },
+      {
+        "fromUUID": "input-1",
+        "toUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "weight": -0.37
+      },
+      {
+        "fromUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "toUUID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "weight": 0.26
+      },
+      {
+        "fromUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "toUUID": "output-0",
+        "weight": -0.13
+      },
+      {
+        "fromUUID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "toUUID": "output-0",
+        "weight": 0.88
+      }
+    ],
+    "biases": {
+      "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa": 0.38,
+      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb": -0.24,
+      "output-0": 0.13
+    },
+    "score": 0.921,
+    "ancestry": [
+      {
+        "generation": 4,
+        "weights": [
+          {
+            "fromUUID": "input-0",
+            "toUUID": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "weight": 0.49
+          },
+          {
+            "fromUUID": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            "toUUID": "output-0",
+            "weight": 0.86
+          }
+        ],
+        "biases": {
+          "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa": 0.36,
+          "output-0": 0.12
+        },
+        "score": 0.904
+      },
+      {
+        "generation": 3,
+        "weights": [],
+        "biases": {
+          "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb": -0.22
+        },
+        "score": 0.887
+      }
+    ]
+  }
+}

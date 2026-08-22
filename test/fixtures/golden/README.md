@@ -1,7 +1,7 @@
-# 🥇 Golden creature-metadata fixture — the cross-engine round-trip contract
+# 🥇 Golden creature fixtures — the cross-engine round-trip contract
 
 > [!CAUTION]
-> **Changing `creature-metadata.json` means changing every engine that reads
+> **Changing a fixture in this directory means changing every engine that reads
 > creatures.** A diff touching this directory is a cross-repo breaking change
 > requiring coordinated updates in
 > [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core),
@@ -11,28 +11,33 @@
 
 ## 📌 What this is
 
-`creature-metadata.json` is the single set of bytes that every implementation of
-the creature JSON format must round-trip losslessly. It exists because Issue
-#3746 found the Rust extensions had silently drifted from the TypeScript
-contract — `NeuronExport` gained `tags`, `SynapseExport` gained `tags`,
-`CreatureCommon` gained `memetic`, and the Rust structs simply never followed.
-Fixing the structs once does not stop the next divergence; a shared, versioned
-fixture does.
+These files are the bytes that every implementation of the creature JSON format
+must round-trip losslessly. `creature-metadata.json` exists because Issue #3746
+found the Rust extensions had silently drifted from the TypeScript contract —
+`NeuronExport` gained `tags`, `SynapseExport` gained `tags`, `CreatureCommon`
+gained `memetic`, and the Rust structs simply never followed. Fixing the structs
+once does not stop the next divergence; a shared, versioned fixture does.
 
 The TypeScript engine is the **reference implementation**: it already
 round-trips losslessly (`src/neuron/NeuronSerialization.ts`,
 `src/creature/CreatureSerialization.ts`), so the contract lives next to the
 definition rather than next to one of its consumers.
 
-## 📍 Stable path
+## 📍 Stable paths
 
-```text
-test/fixtures/golden/creature-metadata.json
-```
+| Fixture                               | Pins                                                                    | Issue |
+| ------------------------------------- | ----------------------------------------------------------------------- | ----- |
+| `creature-metadata.json`              | the five metadata surfaces below                                        | #3752 |
+| `creature-memetic.json`               | a populated `memetic` block, `ancestry[]` included                      | #3814 |
+| `creature-memetic-empty-weights.json` | the same creature with the empty `"weights": []` shape production emits | #3814 |
 
-Consume these bytes directly (vendor a copy, or fetch the file from the
+Consume these bytes directly (vendor a copy, or fetch the files from the
 `Develop` branch). Do **not** hand-roll a near-copy in a downstream repo — a
-near-copy diverges the moment this file grows a field.
+near-copy diverges the moment a file grows a field.
+
+The two memetic fixtures deliberately share one topology, and therefore one
+structural `uuid`: `memetic` is fine-tuning state, not creature identity, so the
+only difference between the files is the block under test.
 
 ## 🧬 The five metadata surfaces
 
@@ -50,20 +55,62 @@ The `intelligentDesign` neuron tag is the exact pedigree stamp written by
 `src/intelligentDesign/ImproveSquash.ts` — the tag whose loss opened Issue
 #3746.
 
+## 🧠 The canonical memetic wire shape (Issue #3814)
+
+`memetic` is written by `src/creature/MemeticWireExport.ts`. Its canonical wire
+shape — in the top-level snapshot **and** in every `ancestry[]` snapshot — is:
+
+- **`weights`: a JSON array of `{ fromUUID, toUUID, weight }` rows.** Never a
+  map. The array is frequently **empty** (`"weights": []`), because a creature
+  that has not had a memetic pass still writes the key; the empty form is part
+  of the contract, not a degenerate case.
+- **`biases`: a JSON object** keyed by wire neuron identity (`input-N`,
+  `output-N`, or a hidden neuron `uuid`).
+- **`generation` and `score`: numbers.**
+
+The asymmetry is deliberate and load-bearing: a bias belongs to one neuron so a
+map is natural, whereas a weight belongs to an ordered `from → to` pair that a
+single map key cannot express without inventing a composite string.
+
+> [!CAUTION]
+> **Every engine must be able to parse every fixture committed here.** Issue
+> #3810 is what happens when one cannot: `MemeticExport::weights` in the Rust
+> scorer was typed as a map, so `rust_scorer` died with
+> `invalid type: sequence, expected a map` on **every** creature carrying
+> `memetic` — including the `"weights": []` case — and every evolve run silently
+> degraded to WASM scoring. The metadata fixture alone did not catch it, which
+> is why `creature-memetic.json` and `creature-memetic-empty-weights.json` now
+> pin both shapes.
+
+Verify a fixture against the native scorer with:
+
+```bash
+rust_scorer --gpu off test/fixtures/golden/creature-memetic.json /tmp/empty-corpus
+# Expected: "Error: No .bin files found in training data directory" — the parse
+# succeeded and the binary reached real work. A "Creature JSON error" is a
+# contract break.
+```
+
 ## ✅ The reference behaviour
 
 `test/creature/GoldenMetadataRoundTrip.ts` is the TypeScript gate. It runs with
-the full suite on every PR, and asserts two independent things:
+the full suite on every PR, and asserts three independent things:
 
-1. **Coverage** — the fixture still carries all five surfaces. Without this, a
-   lossy regeneration of the fixture would leave the round-trip green while the
-   contract quietly shrank.
-2. **Byte-identical round trip** — `Creature.fromJSON(...)` followed by
-   `exportJSON()` reproduces the file verbatim.
+1. **Coverage** — `creature-metadata.json` still carries all five surfaces, and
+   the memetic fixtures still carry a populated block, an `ancestry[]` snapshot
+   with its own weights and biases, and the empty `"weights": []` variant.
+   Without this, a lossy regeneration of a fixture would leave the round-trip
+   green while the contract quietly shrank.
+2. **Canonical wire shape** — every snapshot of every fixture, ancestry
+   included, serialises `weights` as an array of `{ fromUUID, toUUID, weight }`
+   rows.
+3. **Byte-identical round trip** — `Creature.fromJSON(...)` followed by
+   `exportJSON()` reproduces each file verbatim, and a second cycle does not
+   drift.
 
 ```mermaid
 flowchart LR
-    F[(creature-metadata.json)] --> TS[TypeScript engine<br/>fromJSON → exportJSON]
+    F[("creature-metadata.json<br/>creature-memetic.json<br/>creature-memetic-empty-weights.json")] --> TS[TypeScript engine<br/>fromJSON → exportJSON]
     F --> RS[Rust extensions<br/>read → write]
     TS -->|byte-identical| F
     RS -->|byte-identical| F
@@ -73,9 +120,9 @@ flowchart LR
 
 `exportJSON()` emits the UUID-only wire format (Issue #2054) and **omits** the
 top-level creature `uuid` — consumers recompute it with
-`CreatureUtil.makeUUID()`. The fixture stores the uuid as its leading key, and
+`CreatureUtil.makeUUID()`. Each fixture stores the uuid as its leading key, and
 the test restores it from the loaded creature before comparing bytes. The stored
-value is the deterministic structural uuid for this topology, which the test
+value is the deterministic structural uuid for that topology, which the test
 also verifies.
 
 Downstream engines that rewrite a creature file in place are expected to **carry
@@ -85,7 +132,7 @@ that is what makes the whole file, uuid included, the contract.
 ## ➕ Adding a field to the creature interfaces
 
 Extending `CreatureInterfaces.ts`, `NeuronInterfaces.ts`, or
-`SynapseInterfaces.ts` with a new persisted field means extending this fixture
+`SynapseInterfaces.ts` with a new persisted field means extending these fixtures
 in the same change, and coordinating the downstream repos above.
 
 > [!NOTE]
