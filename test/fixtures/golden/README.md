@@ -71,8 +71,8 @@ depth — is:
   map. The array is frequently **empty** (`"weights": []`), because a creature
   that has not had a memetic pass still writes the key; the empty form is part
   of the contract, not a degenerate case. `[]` is the **only** canonical empty
-  value — an omitted key, `null`, and `{}` are all non-canonical, and the export
-  path rewrites each of them to `[]`.
+  value — an omitted key and `{}` are both non-canonical, and the export path
+  rewrites each of them to `[]`.
 - **`biases`: a JSON object** keyed by wire neuron identity (`input-N`,
   `output-N`, or a hidden neuron `uuid`). Its canonical empty value is `{}`,
   never `[]` and never an omitted key.
@@ -91,6 +91,13 @@ shape unconditionally. It writes both keys on every snapshot rather than passing
 an unexpected value through, so no export can carry a map where rows are
 expected, a bare `[]` where a map is expected, a missing key, or a **mix** of
 shapes between a creature and its ancestry.
+
+An **absent** key is the documented empty case and is filled in with `[]` /
+`{}`. A **wrong-typed** value (`null`, a number, a string, an array where the
+map is required) is a producer bug, not an empty case: the export throws
+`ValidationError` with reason `MEMETIC`, naming the offending path
+(`memetic.ancestry[0].weights`). Emitting a shape no engine can read is what
+Issue #3810 cost, so it fails at the producer's stack frame instead.
 
 The runtime type (`MemeticWeightsInterface` in
 `src/blackbox/MemeticInterface.ts`) stays a map keyed by the runtime integer

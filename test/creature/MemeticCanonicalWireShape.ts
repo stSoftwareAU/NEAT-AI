@@ -17,8 +17,9 @@
  * The companion `import stays tolerant` test pins the opposite direction: a
  * creature saved with the legacy map shape must still load.
  */
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "@creature";
+import { ValidationError } from "@errors/ValidationError.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
 import type { MemeticWireData } from "@blackbox/MemeticWireData.ts";
@@ -220,19 +221,66 @@ Deno.test("export never mixes shapes across nested ancestry (#3816)", () => {
   );
 });
 
-Deno.test("export emits biases as a map even when the runtime value is an array (#3816)", () => {
-  const creature = makeCreature();
-  creature.memetic = {
+Deno.test("export fails loud on a memetic value no engine can read (#3816)", () => {
+  // Corrupt runtime state: an array where the contract requires a map. The
+  // export must not put a bare `[]` on the wire where a map is expected, and
+  // must not quietly substitute an empty map for it either — the fault is the
+  // producer's and belongs at the producer's stack frame.
+  const arrayBiases = makeCreature();
+  arrayBiases.memetic = {
     generation: 1,
     score: 0.5,
-    // Corrupt runtime state: an array where the contract requires a map. The
-    // export must not put a bare `[]` on the wire where a map is expected.
-    biases: [] as unknown as Record<number, number>,
+    biases: [],
     weights: {},
   } as unknown as MemeticInterface;
 
-  const memetic = wireMemeticOf(creature.exportJSON());
-  assertCanonicalMemetic(memetic, "array-biases export");
+  const biasError = assertThrows(
+    () => arrayBiases.exportJSON(),
+    ValidationError,
+  );
+  assertEquals(biasError.reason, "MEMETIC");
+  assert(
+    biasError.message.includes("memetic.biases"),
+    `the offending field must be named, got: ${biasError.message}`,
+  );
+
+  // `weights: null` likewise: neither a row array nor a map.
+  const nullWeights = makeCreature();
+  nullWeights.memetic = {
+    generation: 1,
+    score: 0.5,
+    biases: {},
+    weights: null,
+  } as unknown as MemeticInterface;
+
+  const weightError = assertThrows(
+    () => nullWeights.exportJSON(),
+    ValidationError,
+  );
+  assertEquals(weightError.reason, "MEMETIC");
+  assert(
+    weightError.message.includes("memetic.weights"),
+    `the offending field must be named, got: ${weightError.message}`,
+  );
+
+  // The path names the ancestry snapshot at fault, not just the top level.
+  const badAncestry = makeCreature();
+  badAncestry.memetic = {
+    generation: 2,
+    score: 0.6,
+    biases: {},
+    weights: {},
+    ancestry: [{ generation: 1, score: 0.4, biases: {}, weights: 7 }],
+  } as unknown as MemeticInterface;
+
+  const ancestryError = assertThrows(
+    () => badAncestry.exportJSON(),
+    ValidationError,
+  );
+  assert(
+    ancestryError.message.includes("memetic.ancestry[0].weights"),
+    `the offending snapshot must be named, got: ${ancestryError.message}`,
+  );
 });
 
 Deno.test("runtime-id export emits the canonical memetic shape too (#3816)", () => {

@@ -23,11 +23,18 @@ by the integer neuron id. `src/blackbox/MemeticWireData.ts` and
 instead of passing an unexpected value through, and recurses through the whole
 ancestry chain. Three holes are closed:
 
-| Input                                     | Before                | After                        |
-| ----------------------------------------- | --------------------- | ---------------------------- |
-| snapshot with no `weights` / `biases` key | key absent on export  | `[]` / `{}`                  |
-| `biases` arriving as an array             | bare `[]` on the wire | `{}`                         |
-| ancestry nested more than one level       | left as a runtime map | canonicalised at every depth |
+| Input                                     | Before                | After                                     |
+| ----------------------------------------- | --------------------- | ----------------------------------------- |
+| snapshot with no `weights` / `biases` key | key absent on export  | `[]` / `{}`                               |
+| ancestry nested more than one level       | left as a runtime map | canonicalised at every depth              |
+| `biases` as an array, `weights: null`     | put on the wire as-is | `ValidationError` naming the failing path |
+
+The last row is the fail-loud rule: an **absent** key is the documented empty
+case and is filled in, but a **wrong-typed** value is a producer bug. Emitting a
+shape no engine can read is precisely what #3810 cost, so the export throws
+`ValidationError` (`reason: "MEMETIC"`) naming the path — e.g.
+`memetic.ancestry[0].weights` — instead of silently substituting an empty value
+and looking green.
 
 **Import stays tolerant, forever.** `normaliseMemeticData`
 (`src/architecture/NormaliseCreatureExport.ts`) and `convertSnapshotInPlace`
@@ -56,7 +63,7 @@ export fills in canonical values for a snapshot missing weights (#3816) ... FAIL
   AssertionError: missing-keys export snapshot 0: memetic weights must be an array of rows, not a map
 export never mixes shapes across nested ancestry (#3816) ... FAILED
   AssertionError: nested ancestry export snapshot 2: memetic weights must be an array of rows, not a map
-export emits biases as a map even when the runtime value is an array (#3816) ... FAILED
+export fails loud on a memetic value no engine can read (#3816) ... FAILED
   AssertionError: array-biases export snapshot 0: memetic biases must be an object, not an array or absent
 FAILED | 4 passed | 3 failed
 ```
@@ -68,7 +75,7 @@ After the fix, in the full `./quality.sh` run:
 ./test/creature/MemeticCanonicalWireShape.ts => export emits the canonical empty value for an empty memetic (#3816) ... ok
 ./test/creature/MemeticCanonicalWireShape.ts => export fills in canonical values for a snapshot missing weights (#3816) ... ok
 ./test/creature/MemeticCanonicalWireShape.ts => export never mixes shapes across nested ancestry (#3816) ... ok
-./test/creature/MemeticCanonicalWireShape.ts => export emits biases as a map even when the runtime value is an array (#3816) ... ok
+./test/creature/MemeticCanonicalWireShape.ts => export fails loud on a memetic value no engine can read (#3816) ... ok
 ./test/creature/MemeticCanonicalWireShape.ts => runtime-id export emits the canonical memetic shape too (#3816) ... ok
 ./test/creature/MemeticCanonicalWireShape.ts => import stays tolerant of the legacy map weights shape (#3816) ... ok
 ```
@@ -107,7 +114,8 @@ asserting on the emitted JSON of a freshly exported creature:
 - empty memetic → `"weights": []` and `"biases": {}`
 - snapshot missing `weights` / `biases` → canonical empty values
 - ancestry nested two levels deep → canonical at every depth (no mix)
-- `biases` arriving as an array → emitted as a map, never a bare `[]`
+- `biases` as an array, `weights: null`, and a wrong-typed ancestry snapshot →
+  `ValidationError` with `reason: "MEMETIC"` naming the failing path
 - `exportJSONWithRuntimeIds` (the `PopulateRuntimeIdsFromCreature` caller) →
   same canonical shape
 - **backward compatibility**: a creature saved with the legacy map shape still
