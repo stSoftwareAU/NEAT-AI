@@ -65,6 +65,35 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3840:** The "exact, behaviour-preserving" structural passes no longer
+  lower a creature's score, and the guarantee is enforced rather than asserted
+  in a doc comment. On a grafted `IF` forest — decision-tree patches whose
+  thresholds and leaf values ride as weights on three bias-1 constants shared
+  across every patch — `compactCreature` cost 0.0244 of score, `simplify` cost
+  0.0422 and a `removeLowImpactNeuron` advertised at `impact: 0.00%` cost
+  0.1676. Five defects: the compaction chain fold dropped the `IF` role
+  (`condition`/`positive`/`negative`) from the merged synapse, so `fix()`
+  re-invented it at random; the same fold was inexact even without `IF` — it
+  folded `LOGISTIC` relays (not an identity: a two-LOGISTIC chain moved from
+  0.512 to 0.211) and wrote the removed neuron's bias back onto the neuron it
+  was about to delete, dropping the `w_out · b` term; `Simplify.removeKnownSign`
+  spliced out an `ABSOLUTE`/`ReLU` neuron feeding an `IF` condition and the
+  bypass edge carried no role; discovery removal deleted a shared bias-1
+  constant that a contribution-based impact metric reads as 0.00% while it backs
+  the routing of every grafted node; and `CreatureUtil.getTopologyHash` omitted
+  the synapse role, so two creatures differing only in which branch an edge
+  feeds shared a WASM compilation-cache entry and the second was activated with
+  the first's routing. Each fold is now role-aware, the topology hash includes
+  the role (appended only when present, so creatures with no typed synapse hash
+  unchanged), and `buildSafeCompact`, `simplify` and the discovery removals
+  verify behaviour over a deterministic probe matrix (`BehaviourGuard`) — gated
+  on the creature carrying role-typed `IF` edges, so nothing else pays an
+  activation — rejecting the candidate and logging the pass, creature and
+  deviation when behaviour moved. **Behaviour change for creatures without
+  `IF`:** `LOGISTIC → LOGISTIC` single-in/single-out chains are no longer folded
+  (they were folded incorrectly), and an `IDENTITY` chain fold now moves the
+  removed neuron's bias onto the consumer instead of dropping it.
+
 - **Issue #3823:** The over-run finish-up path no longer spins, flooding the log
   with `Waiting for additional generation`. `additionalGenerationCount` ("do at
   least one more loop") was only decremented by `evolve()`, but the over-run

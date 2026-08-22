@@ -166,10 +166,17 @@ export class CreatureUtil {
    * a `RuntimeError: unreachable` inside `CompiledNetwork::new`. Including
    * the position order makes the hash one-to-one with the binary template.
    *
+   * Issue #3840: Include each synapse's `type` — the `IF` role
+   * (`condition` / `positive` / `negative`). The compiled template encodes it
+   * as the `synapse_type` byte, so omitting it let two creatures that differ
+   * only in which branch an edge feeds share a template: the second creature
+   * was then activated with the first creature's routing. Appended only when
+   * the role is present, so creatures with no typed synapse hash unchanged.
+   *
    * The hash is based on:
    * - Input count (`creature.input`)
    * - Neuron UUIDs, types, and squash functions **in position order**
-   * - Synapse connection patterns (fromUUID -> toUUID pairs)
+   * - Synapse connection patterns (fromUUID -> toUUID pairs) and roles
    * - NOT weights, biases, or tags
    *
    * @param creature - The creature for which to generate the topology hash
@@ -237,10 +244,22 @@ export class CreatureUtil {
     }
 
     // Build sorted synapse topology key strings.
+    //
+    // Issue #3840: the synapse `type` (an `IF` neuron's `condition` /
+    // `positive` / `negative` role) is part of the compiled template — see the
+    // `synapse_type` u8 in CompileToWasm — but was absent from this key. Two
+    // creatures whose only difference was which branch an edge feeds therefore
+    // shared a cache entry, and `compileFromTemplate` patched the second
+    // creature's weights into the first creature's *routing*. The role is
+    // appended only when present, so a creature with no typed synapse hashes
+    // exactly as it did before and no cache entry churns.
     const synapseKeys = new Array<string>(synapsesLength);
     for (let i = 0; i < synapsesLength; i++) {
       const synapse = synapses[i];
-      synapseKeys[i] = uuids[synapse.from] + "\t" + uuids[synapse.to];
+      const key = uuids[synapse.from] + "\t" + uuids[synapse.to];
+      synapseKeys[i] = synapse.type === undefined
+        ? key
+        : key + "\t" + synapse.type;
     }
     synapseKeys.sort();
 
