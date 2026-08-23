@@ -24,7 +24,13 @@ const CORRUPT_DATASET_PATTERNS: readonly RegExp[] = [
   /trailing\s+\d+\s+bytes/i,
   /incomplete\s+record/i,
   /(truncated|malformed|corrupt(ed)?)\s+\S*\s*(training|dataset|data|record|file)/i,
-  /not\s+a\s+(whole\s+)?multiple\s+of\s+the\s+record\s+size/i,
+  // Issue #3831: the scorer qualifies the size — "not a whole multiple of the
+  // 12-byte record size" — so the qualifier must be optional here. Without it
+  // a genuinely corrupt dataset was misread as a retryable backend fault and,
+  // under strict mode, escalated to a `ScorerStrictError`.
+  /not\s+a\s+(whole\s+)?multiple\s+of\s+the\s+(\S+\s+)?record\s+size/i,
+  /\d+\s+bytes\s+past\s+the\s+last\s+whole\s+record/i,
+  /spliced\s+across\s+file\s+boundaries/i,
   /record\s+size\s+mismatch/i,
 ];
 

@@ -184,6 +184,16 @@ genuine failures throw. Reproduce the graceful production behaviour locally with
 `NEAT_AI_RUST_SCORER_STRICT=0 deno test …` — but fix the scorer fault rather
 than muting the gate.
 
+**A corrupt dataset is not a `ScorerStrictError`** (Issue #3831). `evaluateDir`
+checks each `.bin` file's length against the record size before the native
+scorer runs, so a truncated corpus fails as a `DatasetError` with
+`reason === "CORRUPT_DATA"` naming the file, the trailing byte count and the
+record size — identically on the native and WASM paths, strict or not. If a
+scorer failure still slips past that pre-flight, `isCorruptDatasetFailure`
+classifies its stderr and raises the same `DatasetError` before strict mode can
+escalate it. Seeing `ScorerStrictError` therefore means a genuine backend fault,
+not bad data.
+
 If discovery checks fail with exit codes 137 or 9 (segfault), the script
 provides diagnostic guidance. See
 [Discovery troubleshooting → Architecture mismatch](DISCOVERY.md#-architecture-mismatch-errors-arm64-vs-x86).

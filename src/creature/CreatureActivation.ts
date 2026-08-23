@@ -8,7 +8,7 @@
 import { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 import { dataFiles } from "@architecture/Training.ts";
 import {
-  assertDatasetFilesExist,
+  assertDatasetFilesIntact,
   assertWholeRecordRead,
   openDatasetFileSync,
 } from "@architecture/DatasetIO.ts";
@@ -454,9 +454,23 @@ export async function evaluateDir(
       dataDir,
     );
   }
+  const valuesCount = creature.input + creature.output;
+  const BYTES_PER_RECORD = valuesCount * 4;
+
   // rust_scorer scores the directory, not `cachedFiles`. Fail loud here so a
   // vanished file in the list cannot be dropped because the rest still score.
-  assertDatasetFilesExist(files);
+  //
+  // Issue #3831: the same pass checks each file holds a whole number of
+  // records. A corrupt dataset is then classified as `CORRUPT_DATA` — naming
+  // the file, the trailing byte count and the record size — before the native
+  // scorer runs, so `NEAT_AI_RUST_SCORER_STRICT=1` cannot turn it into a
+  // `ScorerStrictError` that loses the diagnostic. The record check rides the
+  // `stat` this call already made, so it costs no extra syscall.
+  assertDatasetFilesIntact(files, {
+    bytesPerRecord: BYTES_PER_RECORD,
+    inputs: creature.input,
+    outputs: creature.output,
+  });
 
   // Issue #1247: Auto-initialise WASM before scoring if not yet available.
   const { ensureWasmActivation } = await import("../wasm/mod.ts");
@@ -517,8 +531,6 @@ export async function evaluateDir(
   noteWasmCreatureActivationUse(creature);
 
   const outputBuffer = new Float32Array(creature.output);
-  const valuesCount = creature.input + creature.output;
-  const BYTES_PER_RECORD = valuesCount * 4;
   const NVME_OPTIMAL_READ_SIZE = 512 * 1024;
   const BATCH_SIZE = Math.max(
     1,
