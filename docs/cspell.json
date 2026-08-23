@@ -258,6 +258,7 @@
     "distill",
     "distillation",
     "docblocks",
+    "doctest",
     "dlopen",
     "dylib",
     "egse",
