@@ -20,6 +20,7 @@
  */
 
 import type { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 import { getLogger } from "@utils/Logger.ts";
 
@@ -46,6 +47,28 @@ export function describeProducer(creature: Creature): string {
 }
 
 /**
+ * The creature's identity, for the diagnostic only.
+ *
+ * Issue #3843: a persisted creature no longer adopts the uuid written beside it
+ * in the file — a uuid that arrived from outside the process carries no
+ * guarantee that the genome next to it is the one it was computed from — so
+ * `creature.uuid` is undefined on this path until something asks for it.
+ * Derive it, so the responder chasing this genome upstream gets the identity of
+ * what actually arrived rather than what the file claimed.
+ *
+ * This runs only after a validation failure, so the hash is off any hot path.
+ * It must never throw: the creature is already known to be invalid, and
+ * `makeUUID` rejects a hidden neuron with no uuid.
+ */
+function describeIdentity(creature: Creature): string {
+  try {
+    return CreatureUtil.makeUUID(creature);
+  } catch {
+    return "unknown";
+  }
+}
+
+/**
  * Shout about a creature that arrived needing repair.
  *
  * @param creature - The creature that failed validation.
@@ -64,7 +87,7 @@ export function shoutAboutRepair(
     `🚨 [${pass}] repairing an INVALID creature — this is an upstream defect, ` +
       `not a routine condition. ` +
       `rule=${reason} detail="${message}" ` +
-      `uuid=${creature.uuid ?? "unknown"} ` +
+      `uuid=${describeIdentity(creature)} ` +
       `semanticVersion=${creature.semanticVersion ?? "unknown"} ` +
       `input=${creature.input} output=${creature.output} ` +
       `neurons=${creature.neurons.length} synapses=${creature.synapses.length} ` +

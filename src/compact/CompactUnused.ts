@@ -163,6 +163,12 @@ export function removeNeuron(
   const neuron = creature.neurons.find((n) => n.id === id);
   assert(neuron !== undefined, "Neuron should not be undefined");
 
+  // Issue #3843: this rewrites biases and synapse weights on the live creature
+  // before `removeHiddenNeuron` runs, and every bail-out path below returns
+  // `false` with those edits already applied. Shed identity up front so a
+  // partial removal cannot leave the creature wearing its previous uuid.
+  delete creature.uuid;
+
   let useConstant = false;
   const fromList = creature.outwardConnections(neuron.index);
 

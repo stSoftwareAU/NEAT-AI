@@ -72,26 +72,29 @@ Deno.test("fromJSON rejects a non-UUID uuid", () => {
   }
 });
 
-Deno.test("fromJSON accepts a canonical uuid and preserves it", () => {
+/**
+ * Issue #3843 — a well-formed uuid is accepted (the load succeeds) but never
+ * adopted. A creature's uuid is content-derived, so one that arrived from
+ * outside the process carries no guarantee that the neurons and synapses beside
+ * it are the ones it was computed from. The validation above still rejects a
+ * uuid that is not a uuid, because that means a corrupt or hostile file.
+ */
+Deno.test("fromJSON accepts a canonical uuid but does not adopt it", () => {
   const json = baseJSON();
   json.uuid = "01234567-89ab-cdef-0123-456789abcdef";
 
   const creature = Creature.fromJSON(json);
-  assertEquals(creature.uuid, "01234567-89ab-cdef-0123-456789abcdef");
+  assertEquals(creature.uuid, undefined);
 });
 
-Deno.test("fromJSON accepts an upper-case uuid and a generated uuid", () => {
+Deno.test("fromJSON accepts an upper-case uuid and a generated uuid, adopting neither", () => {
   const upper = baseJSON();
   upper.uuid = "0123ABCD-89AB-4DEF-8123-456789ABCDEF";
-  assertEquals(
-    Creature.fromJSON(upper).uuid,
-    "0123ABCD-89AB-4DEF-8123-456789ABCDEF",
-  );
+  assertEquals(Creature.fromJSON(upper).uuid, undefined);
 
   const generated = baseJSON();
-  const uuid = crypto.randomUUID();
-  generated.uuid = uuid;
-  assertEquals(Creature.fromJSON(generated).uuid, uuid);
+  generated.uuid = crypto.randomUUID();
+  assertEquals(Creature.fromJSON(generated).uuid, undefined);
 });
 
 Deno.test("fromJSON still loads JSON with no uuid", () => {

@@ -87,7 +87,13 @@ function hasTag(tags: TagInterface[] | undefined, name: string): boolean {
  */
 function toFixtureText(creature: Creature): string {
   const exported = creature.exportJSON();
-  return `${JSON.stringify({ uuid: creature.uuid, ...exported }, null, 2)}\n`;
+  // Issue #3843: `loadFrom` no longer adopts the creature-level uuid from the
+  // JSON — a uuid that arrived from outside the process is not trusted — so the
+  // fixture's uuid is re-derived from the loaded structure rather than echoed
+  // back. The bytes still match because the fixture uuid *is* the deterministic
+  // structural uuid of its own content (pinned by the tests below).
+  const uuid = CreatureUtil.makeUUID(creature);
+  return `${JSON.stringify({ uuid, ...exported }, null, 2)}\n`;
 }
 
 /** The memetic block of a fixture, typed as it appears on the wire. */
@@ -142,10 +148,18 @@ Deno.test("golden fixture round-trips byte-identically (#3752)", async () => {
   const { text, json } = await readFixture(METADATA_FIXTURE);
 
   const creature = Creature.fromJSON(json);
+  // Issue #3843: the load discards the incoming uuid and re-derives it, which
+  // reproduces the fixture value because the fixture uuid is the deterministic
+  // structural uuid of its own content.
   assertEquals(
     creature.uuid,
+    undefined,
+    "the creature uuid must not be adopted from the file",
+  );
+  assertEquals(
+    CreatureUtil.makeUUID(creature),
     json.uuid,
-    "the creature uuid must survive the load",
+    "the re-derived creature uuid must match the fixture",
   );
 
   assertEquals(
@@ -265,7 +279,18 @@ Deno.test("every golden fixture serialises memetic weights as rows (#3814)", asy
 Deno.test("golden memetic fixtures round-trip byte-identically (#3814)", async () => {
   for (const { name, text, json } of await readFixtures(MEMETIC_FIXTURES)) {
     const creature = Creature.fromJSON(json);
-    assertEquals(creature.uuid, json.uuid, `${name}: uuid must survive load`);
+    // Issue #3843: the incoming uuid is discarded, then re-derived to the same
+    // value from the structure the file actually carried.
+    assertEquals(
+      creature.uuid,
+      undefined,
+      `${name}: uuid must not be adopted from the file`,
+    );
+    assertEquals(
+      CreatureUtil.makeUUID(creature),
+      json.uuid,
+      `${name}: the re-derived uuid must match the fixture`,
+    );
 
     const exported = creature.exportJSON();
     assertEquals(

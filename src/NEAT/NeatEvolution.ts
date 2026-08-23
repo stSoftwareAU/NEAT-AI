@@ -520,6 +520,13 @@ export async function evolve(
     const creativeThinking = n.shallowClone();
     delete creativeThinking.memetic;
     delete creativeThinking.score;
+    // Issue #3843: `shallowClone` copies the elite's identity verbatim
+    // (`clone.uuid = creature.uuid`), and the `AddConnection` operator below is
+    // instantiated directly rather than through `Mutator.mutateCreature`, which
+    // is where the usual `delete creature.uuid` lives. Without this the
+    // structurally-modified clone would enter the new population wearing the
+    // elite's uuid and be deduplicated onto the elite's score by `Fitness`.
+    delete creativeThinking.uuid;
     const weightScale = 1 / Math.max(creativeThinking.synapses.length, 1);
     const addConnection = new AddConnection(creativeThinking);
     for (let i = 0; i < neat.config.creativeThinkingConnectionCount; i++) {

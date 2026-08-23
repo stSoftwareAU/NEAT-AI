@@ -203,6 +203,13 @@ export function prepareTraining(
     syntheticKeys = synResult.syntheticKeys;
     // Invalidate WASM/state caches after structural change.
     creature.clearState();
+    // Issue #3843: `generateSyntheticSynapses` ends in `connectBatch` —
+    // potentially thousands of new synapses, every one a hash input. The
+    // creature's uuid was already materialised by `Training.ts` before
+    // `prepareTraining` ran, and neither `clearState()` nor `connectBatch`
+    // touches identity, so shed it here rather than let the stale value live
+    // for the whole run (it reaches disk as a trace filename).
+    delete creature.uuid;
   }
 
   const bestCreatureJSON = exportJSONWithRuntimeIds(creature);
