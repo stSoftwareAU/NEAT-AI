@@ -360,7 +360,10 @@ export { validateDNA } from "@reconstruct/validateDNA.ts";
  * returns a validated `Creature`; it throws if asked to shrink the input count.
  * A creature that already passes `validate()` is returned **untouched** — the
  * structural repair pass runs only when validation actually fails, and shouts
- * when it does (Issue #3845). `Upgrade.CRISPR(dna)` migrates legacy CRISPR (targeted
+ * when it does (Issue #3845). When it does fire it repairs the element the
+ * failing rule named and refuses its own result — throwing a `RepairError`
+ * rather than returning a creature worse than it was given (Issue #3848, see
+ * `docs/REPAIR_CONTRACT.md`). `Upgrade.CRISPR(dna)` migrates legacy CRISPR (targeted
  * gene-editing, see `docs/GLOSSARY.md`) data to the current format: it renames
  * the old `nodes`/`connections` keys to `neurons`/`synapses`, defaults any
  * `mode` other than `insert` to `append`, and resolves UUID endpoints to
