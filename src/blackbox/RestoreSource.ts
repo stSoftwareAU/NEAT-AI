@@ -3,6 +3,7 @@ import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../mod.ts";
 import type { Approach } from "@neat/LogApproach.ts";
 import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
+import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
 
 /**
  * Restores a creature from its memetic source data.
@@ -11,6 +12,11 @@ import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
  * and restores it to a state based on the original memetic data. It applies
  * the stored biases and weights from the memetic interface to create a new
  * creature instance.
+ *
+ * The restore is a **structural change**: a weight the record names but the
+ * live creature has lost is re-added as a synapse. The returned creature still
+ * carries the memetic record, pruned of any reference that no longer resolves
+ * (Issue #3844) — including `ancestry[]` snapshots, which nothing else checks.
  *
  * @param creature - The creature to restore from memetic data
  * @returns A new creature instance with restored memetic data, or undefined if no memetic data exists
@@ -96,6 +102,26 @@ export function restoreSource(creature: Creature): Creature | undefined {
   }
 
   const realCreature = Creature.fromJSON(restoredCreature);
+
+  // Issue #3844: the restore is a structural change — the weight loop above
+  // re-adds synapses the record names but the live creature had lost — and the
+  // whole memetic record rides along onto the restored creature. The two loops
+  // above bail out the moment a *top-level* key fails to resolve, but nothing
+  // checks `ancestry[]`, and `memeticUpdate` propagates that subtree to
+  // offspring by reference without ever touching it. An ancestor snapshot
+  // therefore routinely outlives the neurons it was keyed to.
+  //
+  // A stale key of that kind is not harmless: `convertMapKeys` copies a runtime
+  // integer through as "already a numeric key" and `canonicalBiases` writes it
+  // to the wire verbatim, where the Rust reader fails loud on a neuron uuid the
+  // creature does not have.
+  //
+  // Prune rather than `delete realCreature.memetic`: every reference the
+  // restore itself established is valid by construction, and the surviving
+  // neurons' deltas are exactly the fine-tuning history this function exists to
+  // carry forward. Only the keys that resolve to nothing are dropped, ancestry
+  // included.
+  pruneOrphanMemeticReferences(realCreature);
 
   realCreature.score = memetic.score;
   return realCreature;

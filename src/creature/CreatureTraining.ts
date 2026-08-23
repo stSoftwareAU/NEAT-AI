@@ -248,8 +248,16 @@ export function applyLearnings(
     }
   }
 
+  // Issue #3843: `propagateUpdate` above rewrote weights and biases throughout
+  // the creature, and both are inputs to the creature hash — so the identity is
+  // stale regardless of what `changed` says. `changed` reports only an
+  // IF/MAXIMUM/MINIMUM structural downgrade from `Neuron.applyLearnings`, not
+  // whether the gradient step moved anything, so an ordinary backprop pass left
+  // `changed === false` and the uuid survived a full training step. Identity is
+  // shed unconditionally; the structural repair below stays gated on `changed`.
+  delete creature.uuid;
+
   if (changed) {
-    delete creature.uuid;
     delete creature.memetic;
     creature.state.preparedNeurons = false;
     // Issue #2302: Respect the creature's forward-only flag so self-connections

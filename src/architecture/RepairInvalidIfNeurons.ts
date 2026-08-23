@@ -46,6 +46,14 @@ export function repairInvalidIfNeuronsInCreature(creature: Creature): boolean {
     changed = true;
   }
   if (changed) {
+    // Issue #3843: the repair rewrites a neuron's squash to IDENTITY and strips
+    // synapse `type` roles — both are inputs to the creature hash, so the
+    // content-derived identity no longer describes the creature. `clearCache()`
+    // below invalidates the topology caches but deliberately never touches
+    // `uuid`, and `Neuron.setSquash` does not compensate. Shedding it here
+    // covers every caller, including the `Upgrade.validateFourX` IF-repair
+    // branch that returns without the `fix()` the other three rely on.
+    delete creature.uuid;
     delete creature.memetic;
     creature.clearCache();
   }

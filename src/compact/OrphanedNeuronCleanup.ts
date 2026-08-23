@@ -46,6 +46,10 @@ export interface CleanupOrphanedResult {
 
 export function createConstantOne(creature: Creature, count: number) {
   assert(count >= 0 && count <= 2, `Unity slot must be 0..2, got: ${count}`);
+  // Issue #3843: this splices a neuron into a live creature, so the
+  // content-derived identity no longer describes it. `clearCache()` at the end
+  // looks like the invalidation point but deliberately never touches `uuid`.
+  delete creature.uuid;
   const slotKey = String(count);
   const legacyId = count === 0 ? -1000 : count === 1 ? -1001 : -1002;
 
@@ -136,6 +140,11 @@ export function createConstantOne(creature: Creature, count: number) {
 export function removeHiddenNeuron(creature: Creature, indx: number) {
   assert(indx >= 0, "Must be a positive integer");
 
+  // Issue #3843: a creature's uuid is derived from its neurons and synapses,
+  // so removing a neuron invalidates it exactly as it invalidates `memetic`.
+  // Clearing both in the primitive covers all 13 call sites — `clearCache()`
+  // looks like the invalidation point but deliberately never touches identity.
+  delete creature.uuid;
   delete creature.memetic;
   const neuron = creature.neurons[indx];
 
