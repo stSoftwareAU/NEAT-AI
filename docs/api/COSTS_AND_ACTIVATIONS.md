@@ -48,6 +48,16 @@ string literal (e.g. `costName: "RMSE"`).
 as `MSE` but reports the error in the target's own units, and it mirrors the
 Rust scorer's `CostKind` list (NEAT-AI-scorer#340).
 
+> [!IMPORTANT]
+> **`RMSE` is aggregated once, over the whole dataset** — `sqrt(mean(e))`, not
+> `mean(sqrt(e))` (Issue #3853). Unlike every other built-in cost it cannot be
+> accumulated per record: scoring accumulates MSE's squared-error sum and takes
+> the root at finalisation, on both the TypeScript and the `rust_scorer` path.
+> `src/costs/CostAggregation.ts` owns that decision for the TypeScript side and
+> mirrors the scorer's `CostKind::finalise_mean`. A custom cost that is a
+> non-linear function of a mean has the same problem — implement it so that
+> `calculate` is the per-record value that averages correctly.
+
 ### 🦀 Native scorer off-load (`--cost`)
 
 When the optional `rust_scorer` binary is enabled

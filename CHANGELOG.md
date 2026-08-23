@@ -84,6 +84,24 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   actual numbers. RMSE (Issue #3853) is recorded there as a known divergence and
   asserted to still reproduce, so the entry cannot go stale.
 
+- **Issue #3853:** `RMSE` scoring is now the root of the mean squared error on
+  both engines. `evaluateDir` accumulated `RMSE.calculate` per record and
+  divided by the record count, reporting `mean(sqrt(e))`, while the native
+  `rust_scorer` roots the shared MSE sum once at finalisation and reports
+  `sqrt(mean(e))` — so the number a caller got depended on whether
+  `NEAT_AI_RUST_SCORER_ENABLED` was set. The TypeScript path now accumulates
+  MSE's squared-error sum and roots once at finalisation
+  (`src/costs/CostAggregation.ts`), which also lets RMSE ride MSE's fused WASM
+  batch kernel. Output-range penalties are accumulated separately and added in
+  error units after the root, unchanged for every mean-style cost.
+  **Consumer-visible:** reported RMSE magnitudes rise on the TypeScript path
+  (the two aggregations differ by a few percent on real data), so GRQ scores
+  computed with `costName: "RMSE"` will move. New
+  `test/score/RustScorerLiveCostParity.ts` runs the real `rust_scorer` binary
+  against `evaluateDir` over one dataset for all seven built-in costs on
+  forward-only and recurrent creatures, so a future divergence fails a test
+  instead of hiding.
+
 - **Issue #3851:** The Creature Factory no longer emits an `IF` hidden neuron
   without its `condition` / `positive` / `negative` role edges. When
   `hiddenSquash` selects `IF` (e.g. a caller's activation allow-list forces it),
