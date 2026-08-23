@@ -53,7 +53,7 @@ function synapseKey(
 interface StructuralDiff {
   removed: string[];
   added: string[];
-  reweighted: string[];
+  weightChanges: string[];
   neuronsRemoved: string[];
   neuronsAdded: string[];
   neuronsAltered: string[];
@@ -81,7 +81,7 @@ function diffExports(
   return {
     removed: [...beforeSynapses.keys()].filter((k) => !afterSynapses.has(k)),
     added: [...afterSynapses.keys()].filter((k) => !beforeSynapses.has(k)),
-    reweighted: [...beforeSynapses.entries()]
+    weightChanges: [...beforeSynapses.entries()]
       .filter(([k, w]) => afterSynapses.has(k) && afterSynapses.get(k) !== w)
       .map(([k, w]) => `${k}: ${w} -> ${afterSynapses.get(k)}`),
     neuronsRemoved: [...beforeNeurons.keys()].filter((u) =>
@@ -100,8 +100,8 @@ function describeDiff(diff: StructuralDiff): string {
       JSON.stringify(diff.removed.slice(0, 4))
     }`,
     `added ${diff.added.length} ${JSON.stringify(diff.added.slice(0, 4))}`,
-    `reweighted ${diff.reweighted.length} ${
-      JSON.stringify(diff.reweighted.slice(0, 4))
+    `weightChanges ${diff.weightChanges.length} ${
+      JSON.stringify(diff.weightChanges.slice(0, 4))
     }`,
     `neurons -${diff.neuronsRemoved.length} +${diff.neuronsAdded.length} ~${diff.neuronsAltered.length}`,
   ].join("; ");
@@ -134,7 +134,7 @@ function assertUntouched(name: string, json: CreatureExport): CreatureExport {
     `${name}: Upgrade.correct() added synapses — ${describeDiff(diff)}`,
   );
   assertEquals(
-    diff.reweighted.length,
+    diff.weightChanges.length,
     0,
     `${name}: Upgrade.correct() changed weights — ${describeDiff(diff)}`,
   );
@@ -336,7 +336,7 @@ Deno.test("Issue #3845: widening the input count still works and still repairs n
   assertEquals(widened.input, GRAFTED_INPUTS + 4, "the input count widened");
   const diff = diffExports(before, widened.exportJSON());
   assertEquals(
-    diff.removed.length + diff.added.length + diff.reweighted.length,
+    diff.removed.length + diff.added.length + diff.weightChanges.length,
     0,
     `widening must not rewire — ${describeDiff(diff)}`,
   );
@@ -503,9 +503,9 @@ Deno.test("Issue #3845: the production forests champion loads untouched", async 
     `the champion must not be rewired — ${describeDiff(diff)}`,
   );
   assertEquals(
-    diff.reweighted.length,
+    diff.weightChanges.length,
     0,
-    `the champion must not be reweighted — ${describeDiff(diff)}`,
+    `the champion must not have its weights changed — ${describeDiff(diff)}`,
   );
 
   // The other documented ingest path carried the same unconditional repair.
@@ -514,7 +514,7 @@ Deno.test("Issue #3845: the production forests champion loads untouched", async 
   const persistedDiff = diffExports(before, persisted);
   assertEquals(
     persistedDiff.removed.length + persistedDiff.added.length +
-      persistedDiff.reweighted.length,
+      persistedDiff.weightChanges.length,
     0,
     `fromPersistedJSON must not rewire either — ${describeDiff(persistedDiff)}`,
   );
@@ -533,7 +533,7 @@ Deno.test("Issue #3845: Creature.fromPersistedJSON obeys the same invariant", ()
       .exportJSON();
     const diff = diffExports(before, after);
     assertEquals(
-      diff.removed.length + diff.added.length + diff.reweighted.length,
+      diff.removed.length + diff.added.length + diff.weightChanges.length,
       0,
       `${name}: fromPersistedJSON must return a valid creature untouched — ${
         describeDiff(diff)
