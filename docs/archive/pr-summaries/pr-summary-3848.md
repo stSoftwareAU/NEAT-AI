@@ -16,10 +16,10 @@ the new `src/repair/` module:
    before and after and refuses a result that lost outputs the creature used to
    produce (`RepairError` `BEHAVIOUR_LOST`), reusing the `BehaviourGuard` probes
    from #3841.
-2. **Repair minimally and locally.** `ValidationError` now carries
-   `neuronIndex` — the element the failing rule named — and
-   `applyTargetedRepair()` dispatches per rule against **that one element**
-   instead of running every heuristic over the whole creature.
+2. **Repair minimally and locally.** `ValidationError` now carries `neuronIndex`
+   — the element the failing rule named — and `applyTargetedRepair()` dispatches
+   per rule against **that one element** instead of running every heuristic over
+   the whole creature.
 3. **Preserve semantics you do not understand.** `findRoleRewiring()` refuses a
    result that moved, invented or downgraded role-typed `IF` structure on an
    `IF` no failing rule named (`RepairError` `ROLE_REWIRING`) — the #3845 damage
