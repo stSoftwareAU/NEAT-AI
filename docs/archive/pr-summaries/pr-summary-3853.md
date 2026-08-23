@@ -82,7 +82,10 @@ CostAggregation ... 5 passed
 ok | 10 passed | 0 failed
 ```
 
-`./quality.sh` passes.
+Full gate: `./quality.sh` exits 0 —
+`ok | 8748 passed (5 steps) | 0 failed |
+41 ignored (9m2s)`, with the two live
+parity tests running (not skipped) in the Rust-scorer lane.
 
 ## Test Plan
 
