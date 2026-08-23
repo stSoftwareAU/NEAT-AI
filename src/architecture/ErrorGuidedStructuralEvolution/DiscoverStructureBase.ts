@@ -31,6 +31,7 @@ import {
   createDiscoveryLockFile,
   removeDiscoveryLockFile,
 } from "@discovery/DiscoveryCleanup.ts";
+import { removeDiscoveryTempDir } from "@discovery/DiscoveryTempDirRemoval.ts";
 import type {
   BinaryRecordIndices,
   DiscoverRecord,
@@ -71,6 +72,12 @@ export interface DiscoverStructureDeps {
   analyzeParallel: typeof analyzeParallel;
   readDiscoveryRecords: typeof readDiscoveryRecords;
   rankFocusNeurons?: typeof rankFocusNeurons;
+  /**
+   * GRQ #4241: removal implementation for the discovery temp directory.
+   * Defaults to a recursive `Deno.remove`; injected by tests to reproduce a
+   * removal that fails because a writer is still creating files.
+   */
+  removeTempDir?: (dir: string) => Promise<void>;
 }
 
 const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
@@ -515,10 +522,17 @@ export class DiscoverStructureBase {
       return;
     }
 
+    // GRQ #4241: fail loud. A removal that leaves the directory behind used to
+    // be warned about and then reported as `cleanup complete`, so leaked temp
+    // dirs accumulated under `.discovery/` unnoticed until the host filled up.
+    // The error names the leftover entries so the writer can be found.
     try {
-      await Deno.remove(this.tempDir, { recursive: true });
+      await removeDiscoveryTempDir(this.tempDir, {
+        remove: this.deps.removeTempDir,
+      });
     } catch (error) {
-      getLogger().warn(`Failed to cleanup discovery temp dir: ${error}`);
+      getLogger().error(`Failed to cleanup discovery temp dir: ${error}`);
+      throw error;
     }
   }
 

@@ -553,7 +553,20 @@ export class DataRecorder {
     })();
 
     if (this.shouldAwaitCleanup()) {
-      await cleanupPromise;
+      // GRQ #4241: a cleanup that failed must never be followed by a
+      // completion line. Report the leak loudly and keep the (valid) discovery
+      // result — the async branch below reports the same failure the same way.
+      try {
+        await cleanupPromise;
+      } catch (error) {
+        perfStats.cleanupTime = Date.now() - cleanupStartTime;
+        perfStats.totalTime = Date.now() - startTime;
+        getLogger().error(
+          `❌ CRITICAL: Discovery ${this.ID} cleanup failed - potential resource leak:`,
+          error,
+        );
+        return;
+      }
       if (shouldLogDiscovery(config)) {
         getLogger().info(
           `Discovery ${blue(this.ID)} cleanup awaited and complete (${
