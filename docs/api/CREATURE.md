@@ -188,6 +188,30 @@ const creature = creatureForProblem({
 | `feedbackEnabled`   | `boolean`      | Allow recurrent connections                          |
 | `warmupGenerations` | `number`       | Suggested warm-up generations recorded on the genome |
 
+#### Structurally-constrained hidden squashes (`IF`)
+
+`IF` is valid only when the neuron has at least three inward synapses carrying
+all three roles — `condition`, `positive` and `negative`. When `hiddenSquash`
+selects it (for example because a caller's activation allow-list forces `IF`),
+the factory wires those roles itself: it walks each `IF` neuron's inward
+synapses ordered by source and assigns `condition` / `positive` / `negative`
+round-robin, so the seed passes `validate()` with no repair pass (Issue #3851).
+
+If the seed topology cannot satisfy the rule — fewer than three sources per `IF`
+neuron, e.g. `inputs: 2` — the factory throws a `TopologyError`
+(`reason: "INVALID_SQUASH"`) naming the squash and the spec field that chose it,
+rather than emitting a node that only survives because something later rewires
+it.
+
+```mermaid
+flowchart LR
+    A[ProblemSpec<br/>hiddenSquash: IF] --> B[Creature constructor]
+    B --> C{≥ 3 inward per IF neuron?}
+    C -- Yes --> D[Assign condition / positive / negative<br/>round-robin by source]
+    C -- No --> E[Throw TopologyError<br/>naming 'IF' and hiddenSquash]
+    D --> F[Seed passes validate&#40;&#41; — no repair]
+```
+
 ### `creatureForDataset(records, options?)`
 
 Scans a dataset first (adding dead-feature pruning and output-bias warm-start),

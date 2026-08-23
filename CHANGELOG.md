@@ -65,6 +65,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3851:** The Creature Factory no longer emits an `IF` hidden neuron
+  without its `condition` / `positive` / `negative` role edges. When
+  `hiddenSquash` selects `IF` (e.g. a caller's activation allow-list forces it),
+  `creatureForProblem` / `creatureForDataset` now wire the roles themselves — a
+  deterministic round-robin over each neuron's inward synapses ordered by source
+  — so the seed passes `validate()` with no repair pass. A seed too narrow to
+  carry `IF` (fewer than three sources per neuron) throws a `TopologyError`
+  (`reason: "INVALID_SQUASH"`) naming the squash and the spec field that chose
+  it, instead of emitting a node that only survives because a downstream `fix()`
+  invents its wiring.
+
 - **GRQ #4241:** A failed discovery temp-dir removal is no longer reported as a
   clean cleanup. `DiscoverStructureBase.cleanUp()` swallowed the removal error
   into one warn line and resolved, so
