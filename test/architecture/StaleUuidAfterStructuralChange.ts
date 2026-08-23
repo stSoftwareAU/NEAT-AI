@@ -43,6 +43,9 @@ import {
 import { simplify } from "@optimize/Simplify.ts";
 import { restoreSource } from "@blackbox/RestoreSource.ts";
 import { repairInvalidIfNeuronsInCreature } from "@architecture/RepairInvalidIfNeurons.ts";
+import { shoutAboutRepair } from "@architecture/RepairDiagnostics.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
+import { getLogger, setLogger } from "@utils/Logger.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import { createBackPropagationConfig } from "@propagate/BackPropagation.ts";
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
@@ -280,6 +283,53 @@ Deno.test("Issue #3843: a backprop step sheds identity even when no neuron downg
     CreatureUtil.makeUUID(creature),
     before,
     "the trained creature must not report its pre-training identity",
+  );
+});
+
+Deno.test("Issue #3843 + #3845: the repair diagnostic still names the genome it is repairing", () => {
+  // Issue #3845 shouts when a load path has to repair a creature, and the line
+  // carries the creature's identity so a responder can chase the genome
+  // upstream. Since #3843 a persisted creature no longer adopts the uuid its
+  // file claimed, so the diagnostic derives the identity from what actually
+  // arrived rather than printing "unknown".
+  const json = baseExport() as CreatureExport & CreatureInternal;
+  json.uuid = "b026c94a-b626-57a2-9e88-53742edcb0aa";
+  const creature = Creature.fromJSON(json);
+  assertEquals(creature.uuid, undefined, "the file's uuid must not be adopted");
+
+  const lines: string[] = [];
+  const realLogger = getLogger();
+  setLogger(
+    {
+      ...realLogger,
+      error: (message: string) => {
+        lines.push(message);
+      },
+    } as unknown as typeof realLogger,
+  );
+  try {
+    shoutAboutRepair(
+      creature,
+      new ValidationError("synthetic failure", "OTHER"),
+      "test",
+    );
+  } finally {
+    setLogger(realLogger);
+  }
+
+  assertEquals(lines.length, 1, "exactly one diagnostic line");
+  const derived = CreatureUtil.makeUUID(creature);
+  assert(
+    lines[0].includes(`uuid=${derived}`),
+    `the diagnostic must name the derived identity, was: ${lines[0]}`,
+  );
+  assert(
+    !lines[0].includes("uuid=unknown"),
+    "the diagnostic must not lose the creature's identity",
+  );
+  assert(
+    !lines[0].includes(json.uuid as string),
+    "the diagnostic must not repeat the unverified uuid from the file",
   );
 });
 
