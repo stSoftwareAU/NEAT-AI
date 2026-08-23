@@ -223,7 +223,13 @@ function rehydrate(
   );
   return failure.class === "TopologyError"
     ? new TopologyError(message, failure.reason as TopologyErrorReason)
-    : new ValidationError(message, failure.reason as ValidationErrorName);
+    : new ValidationError(
+      message,
+      failure.reason as ValidationErrorName,
+      // Issue #3848: keep the element core named, so a repair pass can act on
+      // the neuron that broke the rule instead of re-scanning the creature.
+      failure.neuronIndex ?? undefined,
+    );
 }
 
 /**

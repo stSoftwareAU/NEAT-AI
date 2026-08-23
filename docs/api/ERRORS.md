@@ -14,6 +14,8 @@ and the validation patterns the library expects callers to follow.
 - `DatasetError`, `DatasetErrorReason`
 - `ValidationError` (internal — thrown by creature validation but not
   re-exported from `mod.ts`; documented here so callers know what to catch)
+- `RepairError`, `RepairErrorReason` (internal — thrown by the load-time repair
+  path when it refuses its own result)
 
 ## 🧬 CrisprError
 
@@ -103,7 +105,15 @@ class ValidationError extends Error {
   override readonly name = "ValidationError";
   // The failure code lives here — branch on `reason`, not `name`.
   readonly reason: ValidationErrorName;
-  constructor(message: string, reason: ValidationErrorName);
+  // Index into `creature.neurons` of the neuron the rule named, when it named
+  // one (Issue #3848). Only meaningful against the creature the error came
+  // from, and only until that creature's neuron array is edited.
+  readonly neuronIndex?: number;
+  constructor(
+    message: string,
+    reason: ValidationErrorName,
+    neuronIndex?: number,
+  );
 }
 ```
 
@@ -121,6 +131,35 @@ class ValidationError extends Error {
 > Always pass `validate: true` to `Creature.fromJSON()` when loading untrusted
 > or user-supplied creature data. Skipping validation may result in silent
 > failures or corrupt network behaviour during evolution.
+
+## 🛠️ RepairError
+
+`RepairError` is **not** re-exported from `mod.ts`. It is thrown by the
+load-time repair path — `Upgrade.correct()` and `Creature.fromPersistedJSON()` —
+when a repair would have handed back a creature worse than the one it was given
+(Issue #3848). See [the repair contract](../REPAIR_CONTRACT.md) for the full
+design.
+
+```typescript
+type RepairErrorReason =
+  | "ROLE_REWIRING" // Role-typed structure moved on an `IF` no rule named
+  | "BEHAVIOUR_LOST"; // Finite outputs the creature used to produce were lost
+
+class RepairError extends Error {
+  override readonly name = "RepairError";
+  readonly reason: RepairErrorReason;
+  constructor(
+    message: string,
+    reason: RepairErrorReason,
+    options?: ErrorOptions,
+  );
+}
+```
+
+Both refusals mean the repair failed, not that the creature is beyond saving:
+the genome is still exactly as it arrived on disk, and the fault lies with
+whatever produced an invalid creature. Chase it upstream from the `🚨` line the
+repair emitted rather than retrying the load.
 
 ## 🛡️ Error handling patterns
 

@@ -1,10 +1,9 @@
 import { assert } from "@std/assert";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "@creature";
-import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { outputNeuronId } from "@architecture/NeuronId.ts";
 import type { CrisprInterface } from "@reconstruct/CRISPR.ts";
-import { shoutAboutRepair } from "@architecture/RepairDiagnostics.ts";
+import { verifiedRepair } from "@repair/VerifiedRepair.ts";
 
 /**
  * Deterministic integer ID from a UUID string.
@@ -47,11 +46,10 @@ export class Upgrade {
   /**
    * Corrects the input size of a given creature export and returns a new creature with the corrected input size.
    *
-   * The repair pass (`Creature.fix()` — random inbound synapses,
-   * orphan/constant cleanup, self-connection removal, stranded constants and
-   * hiddens with no outward edges, old v1.x/v2.x genomes) runs **only** when
-   * {@link creatureValidate} actually fails, and when it does it shouts: an
-   * invalid creature is an upstream defect, not a routine condition.
+   * Repair runs through {@link verifiedRepair}, so it fires **only** when
+   * `creatureValidate()` actually fails, shouts when it does, repairs the
+   * element the failing rule named rather than sweeping the whole creature, and
+   * refuses its own result if that result is worse than what arrived.
    *
    * Issue #3845: it used to run unconditionally. A valid, modern creature
    * carrying grafted `IF` structure had 46 of its 26,077 synapses rewired off
@@ -67,10 +65,16 @@ export class Upgrade {
    * the whole fleet today: 50 sampled creatures plus the cluster champion all
    * validate, so in current production this pass never fires at all.
    *
+   * Issue #3848: the gate alone was never enough. A *partly* invalid creature
+   * passes through it and is repaired, so the repair itself must be safe — see
+   * {@link module:src/repair/VerifiedRepair} for the contract it now holds to.
+   *
    * @param json - The exported creature to be corrected.
    * @param input - The new input size to be applied to the creature.
    * @returns A new Creature instance with the corrected input size.
    * @throws Will throw an error if the input size is not a positive integer or if it attempts to reduce the input size.
+   * @throws {RepairError} When repair was needed and produced something worse
+   *   than it was given.
    */
   static correct(
     json: CreatureExport,
@@ -86,16 +90,7 @@ export class Upgrade {
     json2.input = input;
     const creature = Creature.fromJSON(json2);
 
-    try {
-      creatureValidate(creature);
-      // Nothing to repair — hand the creature back exactly as it arrived.
-      return creature;
-    } catch (e) {
-      shoutAboutRepair(creature, e, "Upgrade.correct");
-    }
-
-    creature.fix();
-    creatureValidate(creature);
+    verifiedRepair(creature, { pass: "Upgrade.correct" });
     return creature;
   }
 
