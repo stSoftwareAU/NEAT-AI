@@ -61,6 +61,7 @@
     "@presets/": "./src/presets/",
     "@propagate/": "./src/propagate/",
     "@reconstruct/": "./src/reconstruct/",
+    "@repair/": "./src/repair/",
     "@transfer/": "./src/transfer/",
     "@upgrade/": "./src/upgrade/",
     "@utils/": "./src/utils/",
