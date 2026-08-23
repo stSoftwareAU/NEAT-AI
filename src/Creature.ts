@@ -146,6 +146,26 @@ export interface CachedScoreComponents {
  */
 export class Creature implements CreatureInternal {
   uuid?: string;
+  /**
+   * Issue #3843: the two fingerprint words of the content that {@link uuid}
+   * was derived from, written by `CreatureUtil.makeUUID`.
+   *
+   * `uuid` is content-derived, so it must not outlive the content. Relying on
+   * every mutation site to `delete creature.uuid` made the invariant only as
+   * strong as the least careful pass — and a stale uuid is not cosmetic:
+   * `Fitness` deduplicates the evaluation queue by uuid and copies the
+   * representative's score onto every "duplicate", so a structurally-changed
+   * creature carrying its parent's uuid is handed a score it never earned.
+   *
+   * `makeUUID` recomputes the fingerprint on every call and trusts the cached
+   * uuid only while both words still agree. `undefined` means "this uuid did
+   * not come from makeUUID" (loaded from JSON, copied onto a clone) and is
+   * never trusted — such a uuid is verified by recomputation on first use.
+   * @internal
+   */
+  uuidFingerprintA?: number;
+  /** @internal Issue #3843 — see {@link uuidFingerprintA}. */
+  uuidFingerprintB?: number;
   input: number;
   output: number;
   neurons: Neuron[];

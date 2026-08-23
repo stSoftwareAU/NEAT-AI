@@ -30,6 +30,124 @@ export class CreatureUtil {
   private static TOPOLOGY_NAMESPACE = "a1b2c3d4-e5f6-47a8-9b0c-d1e2f3a4b5c6";
 
   /**
+   * Issue #3843: scratch used to read a double's bit pattern without
+   * allocating. `FP_I32` aliases `FP_F64`'s buffer, so writing a bias or
+   * weight into `FP_F64[0]` exposes its exact 64 bits as two int32 words —
+   * making the fingerprint sensitive to changes far below any printed
+   * precision.
+   */
+  private static FP_F64 = new Float64Array(1);
+  private static FP_I32 = new Int32Array(CreatureUtil.FP_F64.buffer);
+
+  /** FNV-1a / murmur3 mixing constants for the two fingerprint words. */
+  private static FP_PRIME_A = 0x01000193;
+  private static FP_PRIME_B = 0x85ebca6b;
+
+  /**
+   * Issue #3843: the words written by the most recent
+   * {@link computeFingerprint} call. Two independent 32-bit accumulators give
+   * a 64-bit fingerprint without allocating a tuple or a string on what is a
+   * per-creature, per-generation path.
+   */
+  private static fpA = 0;
+  private static fpB = 0;
+
+  /**
+   * Compute the creature's content fingerprint into {@link fpA} / {@link fpB}.
+   *
+   * Issue #3843: a cheap, allocation-free pass over exactly what
+   * {@link makeUUID} hashes — neuron count, synapse count, input/output
+   * counts, and per neuron/synapse the bias, weight, squash, neuron uuid,
+   * endpoints, synapse role and frozen flag. It is O(neurons + synapses) with
+   * no string building, no sort and no digest, so it costs a small fraction of
+   * the hash it guards (see the Issue #2308 note on {@link makeUUID}).
+   *
+   * This is a change detector, not a digest: it never replaces the v5 uuid,
+   * it only decides whether the cached one may still be trusted. Any
+   * disagreement forces a full recomputation, so a false positive costs time
+   * and nothing else.
+   */
+  private static computeFingerprint(creature: Creature): void {
+    const f64 = CreatureUtil.FP_F64;
+    const i32 = CreatureUtil.FP_I32;
+    const primeA = CreatureUtil.FP_PRIME_A;
+    const primeB = CreatureUtil.FP_PRIME_B;
+    const neurons = creature.neurons;
+    const synapses = creature.synapses;
+    const neuronsLength = neurons.length;
+    const synapsesLength = synapses.length;
+    const inputCount = creature.input;
+
+    let a = Math.imul(0x811c9dc5 ^ neuronsLength, primeA);
+    let b = Math.imul(0x9e3779b9 ^ synapsesLength, primeB);
+    a = Math.imul(a ^ inputCount, primeA);
+    b = Math.imul(b ^ creature.output, primeB);
+
+    for (let i = inputCount; i < neuronsLength; i++) {
+      const neuron = neurons[i];
+
+      f64[0] = neuron.bias;
+      a = Math.imul(a ^ i32[0], primeA);
+      b = Math.imul(b ^ i32[1], primeB);
+      a = Math.imul(a ^ i32[1], primeA);
+      b = Math.imul(b ^ i32[0], primeB);
+
+      const squash = neuron.squash;
+      if (squash !== undefined) {
+        for (let c = squash.length; c--;) {
+          const code = squash.charCodeAt(c);
+          a = Math.imul(a ^ code, primeA);
+          b = Math.imul(b ^ code, primeB);
+        }
+      }
+
+      // A neuron's uuid is immutable, but a pass may swap one neuron for
+      // another at the same index — the identity must move with it.
+      const uuid = neuron.uuid;
+      if (uuid !== undefined) {
+        for (let c = uuid.length; c--;) {
+          const code = uuid.charCodeAt(c);
+          a = Math.imul(a ^ code, primeA);
+          b = Math.imul(b ^ code, primeB);
+        }
+      }
+
+      // `input`/`output`/`hidden`/`constant` differ in their first character.
+      // An output neuron's makeUUID key is `output-N`, derived from its id, so
+      // the id belongs in the fingerprint as well.
+      const flags = (neuron.frozen ? 1 : 0) | (neuron.type.charCodeAt(0) << 1) |
+        (neuron.id << 8);
+      a = Math.imul(a ^ flags, primeA);
+      b = Math.imul(b ^ flags, primeB);
+    }
+
+    for (let i = 0; i < synapsesLength; i++) {
+      const synapse = synapses[i];
+
+      f64[0] = synapse.weight;
+      a = Math.imul(a ^ i32[0], primeA);
+      b = Math.imul(b ^ i32[1], primeB);
+      a = Math.imul(a ^ i32[1], primeA);
+      b = Math.imul(b ^ i32[0], primeB);
+
+      a = Math.imul(a ^ synapse.from, primeA);
+      b = Math.imul(b ^ synapse.from, primeB);
+      a = Math.imul(a ^ synapse.to, primeA);
+      b = Math.imul(b ^ synapse.to, primeB);
+
+      // `condition`/`positive`/`negative` differ in their first character.
+      const type = synapse.type;
+      const flags = (synapse.frozen ? 1 : 0) |
+        (type === undefined ? 0 : type.charCodeAt(0) << 1);
+      a = Math.imul(a ^ flags, primeA);
+      b = Math.imul(b ^ flags, primeB);
+    }
+
+    CreatureUtil.fpA = a;
+    CreatureUtil.fpB = b;
+  }
+
+  /**
    * Shuffle an array in place using the Fisher-Yates shuffle algorithm.
    *
    * This method modifies the original array by randomly reordering its elements.
@@ -57,7 +175,18 @@ export class CreatureUtil {
    * The UUID is generated from a sorted representation of neurons and synapses,
    * ensuring that structurally identical creatures receive the same UUID.
    *
-   * If the creature already has a UUID, it returns the existing one.
+   * Issue #3843: a cached UUID is returned only while it still matches the
+   * creature's content. This method used to short-circuit on any cached value,
+   * which made a content-derived identity depend on all ~26 mutation sites
+   * remembering to `delete creature.uuid` — and one that forgets is not
+   * cosmetic, because `Fitness` deduplicates the evaluation queue by uuid and
+   * copies the representative's score onto every "duplicate". A creature whose
+   * structure moved but whose uuid did not is then handed a score it never
+   * earned. The cached value is now guarded by a cheap content fingerprint
+   * ({@link computeFingerprint}) so a forgotten `delete` can no longer hand out
+   * a stale identity. A uuid that did not come from this method (loaded from
+   * JSON, copied onto a clone) carries no fingerprint and is verified by
+   * recomputation on first use.
    *
    * @param creature - The creature for which to generate the UUID
    * @returns The generated UUID string
@@ -70,15 +199,22 @@ export class CreatureUtil {
    * ```
    */
   static makeUUID(creature: Creature): string {
-    if (creature.uuid) {
-      return creature.uuid;
-    }
-
     if (!creature.synapses || !creature.neurons) {
       throw new ValidationError(
         "Not a creature: " + (typeof creature),
         "OTHER",
       );
+    }
+
+    // Issue #3843: trust the cached uuid only while the content it was derived
+    // from is unchanged.
+    CreatureUtil.computeFingerprint(creature);
+    if (
+      creature.uuid &&
+      creature.uuidFingerprintA === CreatureUtil.fpA &&
+      creature.uuidFingerprintB === CreatureUtil.fpB
+    ) {
+      return creature.uuid;
     }
 
     // Issue #2308: Build the UUID hash string directly from the creature's
@@ -94,8 +230,11 @@ export class CreatureUtil {
     const inputCount = creature.input;
 
     // Build index-to-UUID lookup array (reuse from topology hash if available).
+    // Issue #3843: the cache is invalidated by `clearCache()`; a length
+    // disagreement means neurons were added or removed without one, so rebuild
+    // rather than hash `undefined` endpoints.
     let uuids = creature._cachedUuidLookup;
-    if (uuids === undefined) {
+    if (uuids === undefined || uuids.length !== neuronsLength) {
       uuids = new Array<string>(neuronsLength);
       for (let i = 0; i < neuronsLength; i++) {
         const neuron = neurons[i];
@@ -136,6 +275,10 @@ export class CreatureUtil {
     const uuid: string = generateV5Sync(CreatureUtil.NAMESPACE, utf8);
 
     creature.uuid = uuid;
+    // Issue #3843: stamp the content this uuid was derived from. Nothing above
+    // mutates the creature, so the words computed on entry still describe it.
+    creature.uuidFingerprintA = CreatureUtil.fpA;
+    creature.uuidFingerprintB = CreatureUtil.fpB;
     return uuid;
   }
 

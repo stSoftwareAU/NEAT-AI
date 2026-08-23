@@ -239,6 +239,30 @@ The integer `id` is recreated on every load and is **never** part of an external
 wire format. UUIDs are the only stable identity that survives a process
 boundary, disk write, or cross-machine handoff.
 
+### 🧬 Creature UUID: the opposite rule (Issue #3843)
+
+A **neuron's** UUID is an identity that must never move. A **creature's**
+`uuid` is the opposite: it is *derived from content*, so it must never outlive
+the content it describes. Two creatures share a `uuid` if and only if their
+neurons, synapses, biases, weights, squashes and synapse roles are identical.
+
+`creature.uuid` is a **cache**, not the answer — when identity matters, ask
+`CreatureUtil.makeUUID(creature)`. That method used to return any cached value
+unconditionally, which made the invariant depend on all ~26 mutation sites
+remembering to `delete creature.uuid`. A single forgotten delete is not
+cosmetic: `Fitness.calculate` skips creatures that already carry a `score` and
+deduplicates the evaluation queue **by uuid**, copying the representative's
+score/error/tags onto every "duplicate" — so a compacted or simplified creature
+holding its parent's uuid is handed a score it never earned.
+
+`makeUUID` now guards the cached value with a cheap, allocation-free content
+fingerprint (`CreatureUtil.computeFingerprint`) and recomputes on any
+disagreement, so a pass that forgets to shed the uuid can no longer hand out a
+stale identity. Deleting the uuid at the mutation site is still good practice —
+it is the cheaper of the two paths — but it is no longer load-bearing.
+Regression test:
+[`test/architecture/StaleUuidAfterStructuralChange.ts`](./test/architecture/StaleUuidAfterStructuralChange.ts).
+
 ### Neuron identity: wire UUID vs runtime integer `id` (Issue #1958)
 
 - **Stable identity** (anything that crosses generations, disks, or species
