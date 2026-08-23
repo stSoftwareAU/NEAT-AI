@@ -180,6 +180,11 @@ Subsystems that only some users need.
   append+demote pattern, and validation rules.
 - **[INTELLIGENT_DESIGN.md](INTELLIGENT_DESIGN.md)** — systematic per-neuron
   squash optimisation.
+- **[REPAIR_CONTRACT.md](REPAIR_CONTRACT.md)** — what the load-time repair pass
+  may do and what it must refuse. The six principles a repair follows, the rule
+  → element → repair table, and the two `RepairError` refusals that stop a
+  "repair" handing back a creature worse than it was given (Issues #3845,
+  #3848).
 - **[PREDICTIVE_CODING.md](PREDICTIVE_CODING.md)** — neuroscience-inspired
   predictive-coding training mode.
 - **[REINFORCEMENT_LEARNING.md](REINFORCEMENT_LEARNING.md)** — streaming-

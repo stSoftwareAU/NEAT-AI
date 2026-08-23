@@ -64,12 +64,38 @@ Deno.test("ERRORS.md documents the discriminant field `reason`", async () => {
     content.includes('override readonly name = "ValidationError"'),
     'ERRORS.md must document `name` as the fixed literal "ValidationError"',
   );
+  // Issue #3848 added an optional third parameter, so the published signature
+  // now wraps across lines. Match the shape rather than one exact line: what
+  // matters is that the second parameter is `reason`, never `name`.
   assert(
-    content.includes(
-      "constructor(message: string, reason: ValidationErrorName)",
+    /constructor\(\s*message: string,\s*reason: ValidationErrorName/.test(
+      content,
     ),
     "ERRORS.md constructor signature must take `reason`, not `name`",
   );
+});
+
+Deno.test("Issue #3848: ValidationError carries the element the rule named", () => {
+  const named = new ValidationError("no outward", "NO_OUTWARD_CONNECTIONS", 7);
+  assertEquals(named.neuronIndex, 7);
+
+  // A rule that names no neuron leaves it undefined rather than guessing at 0.
+  const unnamed = new ValidationError("memetic drift", "MEMETIC");
+  assertEquals(unnamed.neuronIndex, undefined);
+});
+
+Deno.test("Issue #3848: ERRORS.md documents the named element and RepairError", async () => {
+  const content = await Deno.readTextFile(ERRORS_DOC);
+  assert(
+    content.includes("readonly neuronIndex?: number"),
+    "ERRORS.md must document the neuron index a rule-driven repair dispatches on",
+  );
+  for (const reason of ["ROLE_REWIRING", "BEHAVIOUR_LOST"]) {
+    assert(
+      content.includes(`"${reason}"`),
+      `ERRORS.md must list the "${reason}" RepairError reason`,
+    );
+  }
 });
 
 Deno.test("ERRORS.md lists every ValidationErrorName reason", async () => {

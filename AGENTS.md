@@ -47,6 +47,13 @@ For deep dives on a single topic, follow the dedicated docs (full index in
   (Issue #3801). The corpus describes current behaviour so NEAT-AI-core can port
   validation against it — changing a validation rule means changing the rule and
   its case together.
+- **Repair contract** — [`docs/REPAIR_CONTRACT.md`](./docs/REPAIR_CONTRACT.md)
+  (Issues #3845, #3848). A repair pass may never return a creature worse than
+  the one it was given: repair the element the failing rule named, leave
+  role-typed `IF` structure you cannot interpret alone, and refuse with a
+  `RepairError` rather than hand back damage. Adding a structural family means
+  adding a fixture to
+  [`test/fixtures/StructuralFamilies.ts`](./test/fixtures/StructuralFamilies.ts).
 - **Discovery / FFI (Foreign Function Interface)** —
   [`docs/DISCOVERY_GUIDE.md`](./docs/DISCOVERY_GUIDE.md),
   [`docs/DISCOVERY_ARCHITECTURE.md`](./docs/DISCOVERY_ARCHITECTURE.md), and
