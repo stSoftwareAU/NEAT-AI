@@ -44,6 +44,7 @@
 import { Creature } from "@creature";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { pickOutputSquashForCost } from "@costs/CostOutputSquash.ts";
+import { assignSeedSynapseRoles } from "@architecture/SeedSynapseRoles.ts";
 import {
   addTag,
   getTag,
@@ -521,6 +522,12 @@ export function creatureForProblem(spec: ProblemSpec): Creature {
       feedbackEnabled: spec.feedbackEnabled,
     },
   );
+
+  // Issue #3851: a structurally-constrained hidden squash (`IF`) is only a
+  // valid neuron once its condition / branch roles exist. Wire them here —
+  // or refuse the seed — rather than emitting a node that survives only
+  // because a downstream repair pass rewires it.
+  assignSeedSynapseRoles(creature, "creatureForProblem");
 
   rescaleWeightsForInit(creature);
   applyWarmupGenerationsTag(creature, spec.warmupGenerations);
