@@ -6,525 +6,277 @@
  * connections, no duplicate synapses, every hidden neuron wired in and out,
  * finite biases — and raises a {@link TopologyError} or {@link ValidationError}
  * when a mutation, breeding or discovery step produces an invalid creature.
+ *
+ * ## Where the rules live (Issue #3803)
+ *
+ * The rules are **not** here. They live in NEAT-AI-core's `creature_validate`
+ * and reach this file over the JSON bridge in
+ * {@link module:src/wasm/WasmCreatureValidate}, so NEAT-AI, NEAT-AI-Forests,
+ * NEAT-AI-Lamarck and NEAT-AI-Backpropagation all read one set of rules rather
+ * than four ports of them. What stays in TypeScript is only what cannot cross
+ * the boundary:
+ *
+ * 1. {@link hostOnlyNeuronChecks} — `neuron.validate()`, the `neuron.index`
+ *    cache and `neuron.creature` object identity (Issue #3802).
+ * 2. Marshalling the creature and the options across — packed on the hot path
+ *    (`CreatureValidatePack.ts`), JSON when a failure has to be named
+ *    (`CreatureValidateMarshal.ts`, which also puts back the one value JSON
+ *    cannot carry).
+ * 3. Rehydrating core's structured failure into the `TopologyError` /
+ *    `ValidationError` callers already catch. `class`, `reason` and `message`
+ *    come straight from core — there is no translation table.
+ * 4. {@link debugWrite}, a diagnostics side effect of `creature.DEBUG`.
+ *
+ * There is **no fallback**. If the bundle cannot be loaded the call throws a
+ * `WasmError` carrying the loader's own failure: a creature is never treated
+ * as valid because validation could not run.
+ *
+ * ## Two shapes, one set of rules (Issue #3832)
+ *
+ * The verdict crosses first, packed; the words are fetched second, as JSON.
+ *
+ * A creature is sent to core as a **packed buffer** of numbers
+ * ({@link module:src/architecture/CreatureValidatePack}). That shape carries no
+ * text — no UUIDs, no type or activation names — which is what makes it cheap:
+ * on GRQ's 4 272-neuron, 22 928-synapse production creature the JSON request is
+ * 850 KB and `JSON.stringify` alone costs more than the whole of the TypeScript
+ * rules this replaced. It is also why the packed answer can say "healthy, and
+ * here are the counters" but not *which* rule a broken creature broke.
+ *
+ * So a broken creature comes back as `detailRequired`, and only then is the
+ * JSON request built and sent, to be told the class, the reason and the
+ * message. That call is the slow one, and it is the one a healthy creature
+ * never makes — a failure throws, ending whatever the host was doing.
+ *
+ * The two shapes run the same rules through the same seam in core, and core's
+ * `creature_validate_packed_conformance` replay asserts they never disagree
+ * about a creature over NEAT-AI's own corpus. Should they disagree here
+ * anyway, neither verdict is used: a `WasmError` says the packer is broken.
+ *
+ * ```mermaid
+ * flowchart LR
+ *   C["creature + options"] --> P["pack → buffer of numbers"]
+ *   P --> W["NEAT-AI-core creature_validate_packed (WASM)"]
+ *   W -- "ok + stats" --> H["host-only walk"] --> S["stats"]
+ *   W -- "detailRequired" --> M["marshal → runtimeCreature JSON"]
+ *   M --> J["NEAT-AI-core creature_validate (WASM)"]
+ *   J -- "failure(class, reason, message, neuronIndex)" --> H2["host-only walk<br/>up to neuronIndex"]
+ *   H2 --> T["TopologyError / ValidationError"]
+ *   J -- "healthy" --> D["WasmError — the two shapes disagree"]
+ *   W -- "bundle unavailable" --> E["WasmError — throw, never skip"]
+ * ```
+ *
+ * ## Throw-ordering contract
+ *
+ * `creatureValidate` is first-failure-wins, so the order the two halves
+ * interleave is observable and is reproduced here from the failure's
+ * `neuronIndex`. For each neuron, in array order:
+ *
+ * 1. if core's failure is that neuron's, it is thrown; otherwise
+ * 2. {@link hostOnlyNeuronChecks} runs for the same neuron — `neuron.validate()`,
+ *    then the `index` cache field, then the owning-creature identity.
+ *
+ * So a neuron breaching both halves throws its **rule** error, and a host-only
+ * breach on neuron *i* throws before any rule failure reported against neuron
+ * *i + 1*. A failure that names no neuron — the synapse rules, the neuron-type
+ * counts, the `connections` option, the memetic cross-references — is thrown
+ * only after every neuron has passed the host-only half, matching the
+ * TypeScript rules it replaces.
+ *
+ * The one ordering difference is the three declared-width rules (the `neurons`
+ * option, and `input` / `output` being positive integers). They named no
+ * neuron in TypeScript either, so a creature that breaks one of them *and* has
+ * a host-only breach now reports the host-only breach first. Both are still
+ * reported, both still throw, and no creature passes that did not before.
  */
-import { assert } from "@std/assert";
 import type { Creature } from "@creature";
-import { TopologyError } from "@errors/TopologyError.ts";
-import { ValidationError } from "@errors/ValidationError.ts";
-import { neuronWireLabelForDiagnostics } from "@neuron/NeuronSerialization.ts";
-import { getDiagnosticsDir } from "@utils/Diagnostics.ts";
-import { TypedTopology } from "@architecture/TypedTopology.ts";
+import type { Neuron } from "@architecture/Neuron.ts";
 import {
-  structuralErrorMessage,
-  topologyErrorMessage,
-} from "@wasm/TopologyErrorMessages.ts";
-
-const MAX_NEURON_ID = 2_147_483_647; // int32 max
+  TopologyError,
+  type TopologyErrorReason,
+} from "@errors/TopologyError.ts";
+import {
+  ValidationError,
+  type ValidationErrorName,
+} from "@errors/ValidationError.ts";
+import { WasmError } from "@errors/WasmError.ts";
+import { getDiagnosticsDir } from "@utils/Diagnostics.ts";
+import {
+  type CreatureValidateOptions,
+  marshalCreatureValidateRequest,
+  type MarshalledRequest,
+  restoreSubstitutedId,
+} from "@architecture/CreatureValidateMarshal.ts";
+import {
+  coreValidateCreature,
+  coreValidateCreaturePacked,
+  type CoreValidationFailure,
+  type CoreValidationStats,
+} from "@wasm/WasmCreatureValidate.ts";
+import {
+  packCreatureValidateRequest,
+  packedMemetic,
+} from "@architecture/CreatureValidatePack.ts";
 
 /**
- * Validate the creature
- * @param options specific values to check
+ * Validate the creature.
+ *
+ * @param creature The creature to validate.
+ * @param options Specific values to check.
+ * @returns The five counters core counted while walking the creature.
+ * @throws {ValidationError} / {@link TopologyError} for the first violated rule.
+ * @throws {WasmError} When the NEAT-AI-core bundle cannot be loaded, so
+ *   validation could not run at all.
  */
 export function creatureValidate(
   creature: Creature,
-  options?: {
-    neurons?: number;
-    connections?: number;
-    /**
-     * When false, recursive (back) synapses are rejected.
-     * When true/undefined, recursive synapses are allowed.
-     */
-    feedbackLoop?: boolean;
-    /**
-     * Convenience option for production feed-forward validation.
-     * When true, all recurrent connections are rejected (both feedback/backward synapses and self-loops).
-     *
-     * Note: By default (undefined/false) we allow recurrent connections, as this library supports
-     * recurrent (memory) topologies.
-     */
-    forwardOnly?: boolean;
-  },
-) {
-  const forwardOnly = options?.forwardOnly === true;
-  const feedbackLoop = forwardOnly ? false : options?.feedbackLoop;
-  if (options && options.neurons) {
-    if (creature.neurons.length !== options.neurons) {
-      throw new ValidationError(
-        `Neurons length: ${creature.neurons.length} expected: ${options.neurons}`,
-        "OTHER",
-      );
+  options?: CreatureValidateOptions,
+): CoreValidationStats {
+  const packed = coreValidateCreaturePacked(
+    packCreatureValidateRequest(creature, options),
+    packedMemetic(creature),
+  );
+
+  if (packed?.stats) {
+    // The creature broke no rule, so there is no failure to interleave — the
+    // host-only half still runs for every neuron, in the same order.
+    for (let indx = 0; indx < creature.neurons.length; indx++) {
+      hostOnlyNeuronChecks(creature, creature.neurons[indx], indx);
     }
+    return packed.stats;
   }
 
-  if (Number.isInteger(creature.input) === false || creature.input < 1) {
+  return reportFailure(creature, options, packed !== null);
+}
+
+/**
+ * The JSON shape, which is the one that can name what went wrong.
+ *
+ * Reached when the packed shape reported a broken creature (Issue #3832), and
+ * when the vendored bundle has no packed export at all. Either way the rules
+ * are core's and are run again over the same creature — the packed shape
+ * carries no text, so it is the *verdict* that crosses first and the *words*
+ * that are fetched second.
+ *
+ * Also the whole of the throw-ordering contract in the module comment above:
+ * the host-only walk interleaves with core's failure by `neuronIndex`, so a
+ * neuron breaching both halves throws its rule error.
+ *
+ * @returns The counters, on the one path that reaches here without a failure:
+ *   a bundle with no packed export.
+ */
+function reportFailure(
+  creature: Creature,
+  options: CreatureValidateOptions | undefined,
+  packedReportedAFailure: boolean,
+): CoreValidationStats {
+  const marshalled = marshalCreatureValidateRequest(creature, options);
+  const result = coreValidateCreature(marshalled.request);
+  const failure = result.failure;
+
+  for (let indx = 0; indx < creature.neurons.length; indx++) {
+    if (failure && failure.neuronIndex === indx) {
+      throw rehydrate(creature, failure, marshalled);
+    }
+    hostOnlyNeuronChecks(creature, creature.neurons[indx], indx);
+  }
+
+  if (failure) {
+    throw rehydrate(creature, failure, marshalled);
+  }
+
+  if (packedReportedAFailure) {
+    // The two shapes describe one creature and run one set of rules, so they
+    // cannot disagree about it — core's own conformance replay asserts that
+    // over NEAT-AI's corpus. If they do, the packer wrote something core read
+    // as a different creature, and the safe answer is neither verdict.
+    throw new WasmError(
+      `creature_validate disagrees with itself: the packed request reported a ` +
+        `broken creature and the JSON request reported a healthy one. This is ` +
+        `a bug in the packed request shape, not a verdict on the creature.`,
+      "INVALID_REQUEST",
+    );
+  }
+
+  // `coreValidateCreature` answers with one or the other; a response carrying
+  // neither is already refused there as a bridge fault.
+  return result.stats as CoreValidationStats;
+}
+
+/**
+ * Turn core's structured failure back into the error callers catch.
+ *
+ * `class`, `reason` and `message` are core's own words (core issue #559), so
+ * this is a constructor call rather than a translation — the only edit is
+ * putting back an id JSON could not carry.
+ */
+function rehydrate(
+  creature: Creature,
+  failure: CoreValidationFailure,
+  marshalled: MarshalledRequest,
+): TopologyError | ValidationError {
+  debugWrite(creature);
+  const message = restoreSubstitutedId(
+    failure.message,
+    failure.neuronIndex,
+    marshalled.substitutedIds,
+  );
+  return failure.class === "TopologyError"
+    ? new TopologyError(message, failure.reason as TopologyErrorReason)
+    : new ValidationError(
+      message,
+      failure.reason as ValidationErrorName,
+      // Issue #3848: keep the element core named, so a repair pass can act on
+      // the neuron that broke the rule instead of re-scanning the creature.
+      failure.neuronIndex ?? undefined,
+    );
+}
+
+/**
+ * The checks that cannot move to Rust (Issue #3802).
+ *
+ * Every check here reads state that only exists inside the JavaScript heap, so
+ * none of it can cross a WASM boundary — a Rust validator receives serialised
+ * creature data and has no way to observe any of it:
+ *
+ * - `neuron.validate()` delegates to {@link Neuron}'s own validation of its
+ *   squash and the `squashMethodCache` it lazily builds. `creatureValidate`
+ *   calls it for `hidden` and `output` neurons only; `input` and `constant`
+ *   neurons are covered by the rule half instead.
+ * - `neuron.index` is an in-memory cache of the neuron's position in
+ *   `creature.neurons`. It is never serialised, so there is nothing for a
+ *   portable check to compare against.
+ * - `neuron.creature` is pointer identity between the neuron and its owning
+ *   creature. Object identity has no language-neutral equivalent at all —
+ *   `test/fixtures/validate/coverage.json` records this site as
+ *   `not-expressible` for exactly that reason.
+ *
+ * Called once per neuron, in place of that neuron's rule checks having failed;
+ * see the throw-ordering contract in the module comment above. The order of
+ * the three checks below is itself observable and must not be rearranged.
+ */
+function hostOnlyNeuronChecks(
+  creature: Creature,
+  neuron: Neuron,
+  indx: number,
+): void {
+  if (neuron.type === "hidden" || neuron.type === "output") {
+    neuron.validate();
+  }
+
+  if (neuron.index !== indx) {
     throw new ValidationError(
-      `Must have at least one input neurons was: ${creature.input}`,
+      `${neuron.ID()}) node.index: ${neuron.index} does not match expected index ${indx}`,
       "OTHER",
     );
   }
 
-  if (Number.isInteger(creature.output) === false || creature.output < 1) {
-    throw new ValidationError(
-      `Must have at least one output neurons was: ${creature.output}`,
-      "OTHER",
-    );
-  }
-
-  const stats = {
-    input: 0,
-    constant: 0,
-    hidden: 0,
-    output: 0,
-    connections: 0,
-  };
-
-  let outputIndx = 0;
-  /** In the computational slice (after inputs, before outputs), hiddens must not precede constants. */
-  let computationalSeenHidden = false;
-  const neuronIds = new Set<number>();
-  creature.neurons.forEach((neuron, indx) => {
-    const id = neuron.id;
-    if (id === undefined || id === null) {
-      throw new ValidationError(`${neuron.ID()}) no id`, "OTHER");
-    }
-    // Issue #1958: Output neurons have negative IDs (-(outputIndex + 1))
-    if (!Number.isInteger(id) || id > MAX_NEURON_ID) {
-      debugWrite(creature);
-      throw new ValidationError(
-        `${neuron.ID()}) invalid neuron id: ${id}`,
-        "OTHER",
-      );
-    }
-    if (neuronIds.has(id)) {
-      debugWrite(creature);
-
-      throw new ValidationError(
-        `${neuron.ID()}) duplicate neuron id: ${id}`,
-        "OTHER",
-      );
-    }
-    if (neuron.type === "input") {
-      if (id !== indx) {
-        debugWrite(creature);
-        throw new ValidationError(
-          `${neuron.ID()}) invalid input neuron id: ${id}`,
-          "OTHER",
-        );
-      }
-    } else {
-      if (!Number.isFinite(neuron.bias)) {
-        throw new ValidationError(
-          `${neuron.ID()}) invalid bias: ${neuron.bias}`,
-          "OTHER",
-        );
-      }
-    }
-
-    if (neuron.type === "output") {
-      outputIndx++;
-    } else if (outputIndx) {
-      debugWrite(creature);
-      throw new ValidationError(
-        `${id}) type ${neuron.type} after output neuron`,
-        "OTHER",
-      );
-    }
-
-    if (neuron.type === "input" && indx > creature.input) {
-      debugWrite(creature);
-
-      throw new ValidationError(
-        `${id}) input neuron after the maximum input neurons`,
-        "OTHER",
-      );
-    }
-
-    const inComputationalSlice = indx >= creature.input &&
-      indx < creature.neurons.length - creature.output;
-    if (inComputationalSlice) {
-      if (neuron.type === "constant" && computationalSeenHidden) {
-        debugWrite(creature);
-        throw new ValidationError(
-          `${
-            neuronWireLabelForDiagnostics(neuron, indx)
-          }) type constant after hidden neuron; ` +
-            `required order is input, constant, hidden, output`,
-          "NEURON_ORDER",
-        );
-      }
-      if (neuron.type === "hidden") {
-        computationalSeenHidden = true;
-      }
-    }
-
-    neuronIds.add(id);
-
-    if (neuron.squash === "IF" && indx > 2) {
-      const toList = creature.inwardConnections(indx);
-      if (toList.length < 3) {
-        throw new ValidationError(
-          `${neuron.ID()}) 'IF' should have at least 3 inward connections was: ${toList.length}`,
-          "IF_CONDITIONS",
-        );
-      }
-
-      let foundPositive = false;
-      let foundCondition = false;
-      let foundNegative = false;
-
-      for (let i = toList.length; i--;) {
-        const c = toList[i];
-        const synapseType = c.type ?? "positive";
-        if (synapseType === "condition") {
-          foundCondition = true;
-        } else if (synapseType === "negative") {
-          foundNegative = true;
-        } else if (synapseType === "positive") {
-          foundPositive = true;
-        }
-      }
-      if (!foundCondition || !foundPositive || !foundNegative) {
-        debugWrite(creature);
-      }
-      if (!foundCondition) {
-        throw new ValidationError(
-          `${neuron.ID()}) 'IF' should have a condition(s)`,
-          "IF_CONDITIONS",
-        );
-      }
-      if (!foundPositive) {
-        throw new ValidationError(
-          `${neuron.ID()}) 'IF' should have a positive connection(s)`,
-          "IF_CONDITIONS",
-        );
-      }
-      if (!foundNegative) {
-        throw new ValidationError(
-          `${neuron.ID()}) 'IF' should have a negative connection(s)`,
-          "IF_CONDITIONS",
-        );
-      }
-    }
-    switch (neuron.type) {
-      case "input": {
-        stats.input++;
-        const toList = creature.inwardConnections(indx);
-        if (toList.length > 0) {
-          throw new TopologyError(
-            `'input' neuron ${neuron.ID()} has inward connections: ${toList.length}`,
-            "INVALID_CONNECTION",
-          );
-        }
-        break;
-      }
-      case "constant": {
-        stats.constant++;
-        const toList = creature.inwardConnections(indx);
-        if (toList.length > 0) {
-          debugWrite(creature);
-          throw new TopologyError(
-            `'${neuron.type}' neuron ${neuron.ID()} has inward connections: ${toList.length}`,
-            "INVALID_CONNECTION",
-          );
-        }
-        if (neuron.squash) {
-          throw new TopologyError(
-            `Node ${neuron.ID()} '${neuron.type}' has squash: ${neuron.squash}`,
-            "INVALID_SQUASH",
-          );
-        }
-        const fromList = creature.outwardConnections(indx);
-        if (fromList.length === 0) {
-          debugWrite(creature);
-          throw new ValidationError(
-            `constants neuron ${
-              neuronWireLabelForDiagnostics(neuron, indx)
-            } has no outward connections`,
-            "NO_OUTWARD_CONNECTIONS",
-          );
-        }
-        break;
-      }
-      case "hidden": {
-        stats.hidden++;
-        const toList = creature.inwardConnections(indx);
-        if (toList.length === 0) {
-          throw new ValidationError(
-            `hidden neuron ${
-              neuronWireLabelForDiagnostics(neuron, indx)
-            } has no inward connections`,
-            "NO_INWARD_CONNECTIONS",
-          );
-        }
-        const fromList = creature.outwardConnections(indx);
-        if (fromList.length === 0) {
-          debugWrite(creature);
-          throw new ValidationError(
-            `hidden neuron ${
-              neuronWireLabelForDiagnostics(neuron, indx)
-            } has no outward connections`,
-            "NO_OUTWARD_CONNECTIONS",
-          );
-        }
-        if (neuron.bias === undefined) {
-          throw new TopologyError(
-            `hidden neuron ${neuron.ID()} should have a bias was: ${neuron.bias}`,
-            "INVALID_STATE",
-          );
-        }
-        if (!Number.isFinite(neuron.bias)) {
-          throw new TopologyError(
-            `${neuron.ID()}) hidden neuron should have a finite bias was: ${neuron.bias}`,
-            "INVALID_STATE",
-          );
-        }
-
-        neuron.validate();
-
-        break;
-      }
-      case "output": {
-        stats.output++;
-        neuron.validate();
-        break;
-      }
-      default:
-        throw new TopologyError(
-          `${neuron.ID()}) Invalid type: ${neuron.type}`,
-          "INVALID_NEURON_TYPE",
-        );
-    }
-
-    if (neuron.index !== indx) {
-      throw new ValidationError(
-        `${neuron.ID()}) node.index: ${neuron.index} does not match expected index ${indx}`,
-        "OTHER",
-      );
-    }
-
-    if (neuron.creature !== creature) {
-      throw new TopologyError(
-        `node ${neuron.ID()} creature mismatch`,
-        "INVALID_STATE",
-      );
-    }
-  });
-
-  if (stats.input !== creature.input) {
-    throw new ValidationError(
-      `Expected ${creature.input} input neurons found: ${stats.input}`,
-      "OTHER",
-    );
-  }
-
-  if (stats.output !== creature.output) {
+  if (neuron.creature !== creature) {
     throw new TopologyError(
-      `Expected ${creature.output} output neurons found: ${stats.output}`,
+      `node ${neuron.ID()} creature mismatch`,
       "INVALID_STATE",
     );
   }
-
-  let lastFrom = -1;
-  let lastTo = -1;
-  creature.synapses.forEach((c, indx) => {
-    stats.connections++;
-    const toNode = creature.neurons[c.to];
-
-    if (toNode.type === "input") {
-      throw new TopologyError(
-        indx + ") connection points to an input node",
-        "INVALID_CONNECTION",
-      );
-    }
-
-    if (forwardOnly && c.from === c.to) {
-      debugWrite(creature);
-      const fromL = neuronWireLabelForDiagnostics(
-        creature.neurons[c.from],
-        c.from,
-      );
-      throw new ValidationError(
-        `${indx}) Self connection synapse ${fromL} -> ${fromL}`,
-        "SELF_CONNECTION",
-      );
-    }
-
-    if (c.from < lastFrom) {
-      throw new TopologyError(indx + ") synapses not sorted", "SORT_FAILURE");
-    } else if (c.from > lastFrom) {
-      lastTo = -1;
-    }
-
-    if (c.from === lastFrom) {
-      if (c.to < lastTo) {
-        throw new TopologyError(
-          indx + ") synapses not sorted " + c.from + "->" + c.to +
-            " last to: " + lastTo,
-          "SORT_FAILURE",
-        );
-      } else if (c.to === lastTo) {
-        const fromL = neuronWireLabelForDiagnostics(
-          creature.neurons[c.from],
-          c.from,
-        );
-        const toL = neuronWireLabelForDiagnostics(
-          creature.neurons[c.to],
-          c.to,
-        );
-        throw new TopologyError(
-          `${indx}) duplicate synapse ${fromL} -> ${toL}`,
-          "INVALID_CONNECTION",
-        );
-      }
-    }
-
-    if (c.from > c.to) {
-      /** Recursive synapses rejected only when explicitly disallowed (feedbackLoop === false) */
-      if (feedbackLoop === false) {
-        debugWrite(creature);
-        const fromL = neuronWireLabelForDiagnostics(
-          creature.neurons[c.from],
-          c.from,
-        );
-        const toL = neuronWireLabelForDiagnostics(
-          creature.neurons[c.to],
-          c.to,
-        );
-        throw new ValidationError(
-          `${indx}) Recursive synapse ${fromL} -> ${toL}`,
-          "RECURSIVE_SYNAPSE",
-        );
-      }
-    }
-
-    lastFrom = c.from;
-    lastTo = c.to;
-  });
-
-  if (options && Number.isInteger(options.connections)) {
-    if (creature.synapses.length !== options.connections) {
-      throw new ValidationError(
-        "Synapses length: " + creature.synapses.length +
-          " expected: " +
-          options.connections,
-        "OTHER",
-      );
-    }
-  }
-
-  // Issue #1961 — WASM-accelerated topology validation for forward-only creatures.
-  // Delegates forward-only checks, structural integrity, and cycle detection
-  // to Rust/WASM (with TypeScript fallback).
-  if (forwardOnly) {
-    const topo = TypedTopology.fromCreature(creature);
-
-    // Forward-only topology validation (sort order, self-connections, backward connections)
-    const topoResult = topo.validateForwardOnly();
-    if (!topoResult.valid) {
-      debugWrite(creature);
-      throw new TopologyError(
-        `WASM topology validation failed: ${
-          topologyErrorMessage(topoResult.errorCode)
-        } at synapse ${topoResult.synapseIndex}`,
-        "INVALID_CONNECTION",
-      );
-    }
-
-    // Structural integrity validation
-    const structResult = topo.validateStructuralIntegrity();
-    if (!structResult.valid) {
-      debugWrite(creature);
-      throw new ValidationError(
-        `WASM structural validation failed: ${
-          structuralErrorMessage(structResult.errorCode)
-        } at neuron ${structResult.neuronIndex}`,
-        "OTHER",
-      );
-    }
-
-    // Cycle detection — forward-only creatures must be acyclic
-    if (topo.detectCycles()) {
-      debugWrite(creature);
-      throw new TopologyError(
-        "Forward-only creature contains cycles",
-        "INVALID_CONNECTION",
-      );
-    }
-  }
-
-  if (creature.memetic) {
-    const memetic = creature.memetic;
-    const idMap = new Map<number, number>();
-    creature.neurons.forEach((n, indx) => {
-      assert(n.id !== undefined);
-      idMap.set(n.id, indx);
-    });
-
-    const synapsesSet = new Set<string>();
-    creature.synapses.forEach((s) => {
-      synapsesSet.add(
-        `${creature.neurons[s.from].id}->${creature.neurons[s.to].id}`,
-      );
-    });
-
-    for (const neuronId in memetic.biases) {
-      const neuronIndex = idMap.get(Number(neuronId));
-      if (neuronIndex === undefined) {
-        throw new ValidationError(
-          `Neuron with id ${neuronId} not found in the creature.`,
-          "MEMETIC",
-        );
-      }
-    }
-    for (const synapseId in memetic.weights) {
-      const synapseIndex = idMap.get(Number(synapseId));
-      if (synapseIndex === undefined) {
-        throw new ValidationError(
-          `Synapse with id ${synapseId} not found in the creature.`,
-          "MEMETIC",
-        );
-      }
-
-      const memeticWeights = memetic.weights[synapseId];
-      if (!Array.isArray(memeticWeights)) {
-        throw new ValidationError(
-          `Synapse with id ${synapseId} has invalid weights.`,
-          "MEMETIC",
-        );
-      }
-      memeticWeights.forEach((weight, indx) => {
-        if (weight.toId === undefined) {
-          throw new ValidationError(
-            `Memetic from id ${synapseId} to id ${weight.toId} is invalid.`,
-            "MEMETIC",
-          );
-        }
-        if (weight.weight === undefined) {
-          throw new ValidationError(
-            `Memetic from id ${synapseId} to id ${weight.toId} has invalid weight at index ${indx}.`,
-            "MEMETIC",
-          );
-        }
-        const toIndex = idMap.get(weight.toId);
-
-        if (toIndex === undefined) {
-          throw new ValidationError(
-            `Memetic from id ${synapseId} has no valid neuron.`,
-            "MEMETIC",
-          );
-        }
-        if (!synapsesSet.has(`${synapseId}->${weight.toId}`)) {
-          debugWrite(creature);
-          throw new ValidationError(
-            `Memetic from id ${synapseId} to id ${weight.toId} has no matching synapses.`,
-            "MEMETIC",
-          );
-        }
-      });
-    }
-  }
-
-  return stats;
 }
 
 function debugWrite(creature: Creature) {

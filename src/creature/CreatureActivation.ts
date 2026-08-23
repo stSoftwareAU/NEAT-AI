@@ -8,7 +8,7 @@
 import { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 import { dataFiles } from "@architecture/Training.ts";
 import {
-  assertDatasetFilesExist,
+  assertDatasetFilesIntact,
   assertWholeRecordRead,
   openDatasetFileSync,
 } from "@architecture/DatasetIO.ts";
@@ -16,6 +16,10 @@ import { DatasetError } from "@errors/DatasetError.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { CostInterface } from "@costs/CostInterface.ts";
+import {
+  accumulationCostFor,
+  finaliseCostMean,
+} from "@costs/CostAggregation.ts";
 import type { Creature } from "@creature";
 import { WasmError } from "@errors/WasmError.ts";
 import { runnerUpProximity } from "@methods/activations/aggregate/RunnerUpProximity.ts";
@@ -36,7 +40,7 @@ import {
   noteWasmCreatureActivationUse,
 } from "@wasm/WasmCreatureActivationLRU.ts";
 import { tryScoreWithRustScorer } from "../score/RustScorerBridge.ts";
-import { BUILT_IN_COST_NAMES, type BuiltInCostName } from "@costs";
+import { nativeDatasetScoringEligibility } from "../score/NativeDatasetScoringEligibility.ts";
 
 /**
  * Verify WASM is available and the creature is eligible.
@@ -454,29 +458,53 @@ export async function evaluateDir(
       dataDir,
     );
   }
+  const valuesCount = creature.input + creature.output;
+  const BYTES_PER_RECORD = valuesCount * 4;
+
   // rust_scorer scores the directory, not `cachedFiles`. Fail loud here so a
   // vanished file in the list cannot be dropped because the rest still score.
-  assertDatasetFilesExist(files);
+  //
+  // Issue #3831: the same pass checks each file holds a whole number of
+  // records. A corrupt dataset is then classified as `CORRUPT_DATA` — naming
+  // the file, the trailing byte count and the record size — before the native
+  // scorer runs, so `NEAT_AI_RUST_SCORER_STRICT=1` cannot turn it into a
+  // `ScorerStrictError` that loses the diagnostic. The record check rides the
+  // `stat` this call already made, so it costs no extra syscall.
+  assertDatasetFilesIntact(files, {
+    bytesPerRecord: BYTES_PER_RECORD,
+    inputs: creature.input,
+    outputs: creature.output,
+  });
 
   // Issue #1247: Auto-initialise WASM before scoring if not yet available.
   const { ensureWasmActivation } = await import("../wasm/mod.ts");
   await ensureWasmActivation();
 
-  // Issue #2745: Off-load to the rust scorer only when the configured cost
-  // is a built-in (the rust binary cannot resolve user-registered custom
-  // costs). Custom costs stay on the TS/WASM path.
-  const configuredCostName = cost.getName();
-  const builtInCost: BuiltInCostName | undefined =
-    (BUILT_IN_COST_NAMES as readonly string[]).includes(configuredCostName)
-      ? (configuredCostName as BuiltInCostName)
-      : undefined;
+  const costName = cost.getName();
+  const forwardOnlyGuaranteed = creature.forwardOnlyGuaranteed;
 
-  if (builtInCost !== undefined) {
+  const effectiveFeedbackLoop = forwardOnlyGuaranteed ? false : feedbackLoop;
+
+  // Issue #3854: one predicate owns the whole delegation decision. Besides the
+  // custom-cost gap (Issue #2745) it refuses to hand the request to
+  // `rust_scorer` when the native engine cannot reproduce the semantics this
+  // call was asked for — configured `outputRanges` (the penalty has no native
+  // equivalent) or `feedbackLoop: true` on a recurrent creature (the native
+  // recurrent path resets state per record). Delegating either case returned a
+  // number computed under different rules, silently.
+  const eligibility = nativeDatasetScoringEligibility({
+    costName,
+    forwardOnlyGuaranteed,
+    feedbackLoop,
+    outputRangeCount: outputRanges?.length ?? 0,
+  });
+
+  if (eligibility.eligible) {
     const rustResult = await tryScoreWithRustScorer(
       creature,
       dataDir,
       rustScorer,
-      builtInCost,
+      eligibility.costName,
     );
     if (rustResult) return { error: rustResult.error };
   }
@@ -484,12 +512,15 @@ export async function evaluateDir(
   requireWasmOrThrow(creature);
 
   let error = 0;
+  let penalty = 0;
   let count = 0;
 
-  const costName = cost.getName();
-  const forwardOnlyGuaranteed = creature.forwardOnlyGuaranteed;
-
-  const effectiveFeedbackLoop = forwardOnlyGuaranteed ? false : feedbackLoop;
+  // Issue #3853: RMSE is the root of the mean squared error, so it accumulates
+  // MSE's squared-error sum and roots once at finalisation. Accumulating the
+  // per-record roots instead reported `mean(sqrt(...))` — a different number
+  // from the one `rust_scorer` reports for the same creature and dataset.
+  const accumulationCost = accumulationCostFor(cost);
+  const accumulationCostName = accumulationCost.getName();
 
   // Ensure WASM network is compiled once for scoring.
   if (!creature.cachedWasmActivation) {
@@ -517,8 +548,6 @@ export async function evaluateDir(
   noteWasmCreatureActivationUse(creature);
 
   const outputBuffer = new Float32Array(creature.output);
-  const valuesCount = creature.input + creature.output;
-  const BYTES_PER_RECORD = valuesCount * 4;
   const NVME_OPTIMAL_READ_SIZE = 512 * 1024;
   const BATCH_SIZE = Math.max(
     1,
@@ -542,9 +571,11 @@ export async function evaluateDir(
   // compute the range penalty.
   const hasOutputRanges = outputRanges !== undefined &&
     outputRanges.length > 0;
+  // The fused batch kernels are keyed on the accumulation cost, so RMSE rides
+  // MSE's kernel and only differs at finalisation (Issue #3853).
   const useFusedWasm = !hasOutputRanges && forwardOnlyGuaranteed &&
     supportedFusedCosts.includes(
-      costName as typeof supportedFusedCosts[number],
+      accumulationCostName as typeof supportedFusedCosts[number],
     );
 
   for (let fileIndx = files.length; fileIndx--;) {
@@ -574,7 +605,7 @@ export async function evaluateDir(
           // a WASM panic (RuntimeError: unreachable) during scoring returns
           // a fallback error value instead of crashing the worker.
           try {
-            switch (costName) {
+            switch (accumulationCostName) {
               case "MSE":
                 error += wasm.mseSumBatchPacked(slice, creature.input, true);
                 break;
@@ -620,11 +651,16 @@ export async function evaluateDir(
             outputBuffer,
             effectiveFeedbackLoop,
           );
-          error += cost.calculate(target, outputBuffer);
+          error += accumulationCost.calculate(target, outputBuffer);
 
-          // Issue #1620: Additive penalty for out-of-range outputs.
+          // Issue #1620: Additive penalty for out-of-range outputs. Issue
+          // #3853: accumulated separately so it is added in error units after
+          // finalisation — folding it into RMSE's squared-error sum would
+          // penalise under the root. For mean-style costs the result is
+          // unchanged, because mean(cost + penalty) = mean(cost) +
+          // mean(penalty).
           if (hasOutputRanges) {
-            error += calculateOutputRangePenalty(outputBuffer, outputRanges!);
+            penalty += calculateOutputRangePenalty(outputBuffer, outputRanges!);
           }
 
           count++;
@@ -638,7 +674,8 @@ export async function evaluateDir(
   if (count === 0) {
     return { error: 0 };
   } else {
-    const averageError = error / count;
+    const averageError = finaliseCostMean(costName, error, count) +
+      penalty / count;
     if (Number.isFinite(averageError)) {
       return { error: averageError };
     } else {

@@ -81,6 +81,10 @@ function validateFourX(creature: Creature): void {
     } catch (e) {
       const error = e as ValidationError;
       if (error.reason === "IF_CONDITIONS") {
+        // Issue #3843: this branch returns without the `fix()` that the repair's
+        // other callers rely on to shed the creature's identity. The repair
+        // itself now clears `uuid` when it changes anything, so the stale value
+        // can no longer survive this path.
         repairInvalidIfNeuronsInCreature(creature);
         pruneOrphanMemeticReferences(creature);
         try {

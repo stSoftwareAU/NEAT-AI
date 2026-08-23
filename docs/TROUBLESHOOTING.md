@@ -159,6 +159,10 @@ See [`troubleshooting/CI.md`](troubleshooting/CI.md) for full details.
   [Understanding coverage.yaml](troubleshooting/CI.md#-understanding-coveragesyaml).
 - **`quality.sh` fails on a specific step** — see the per-step list in
   [quality.sh failures](troubleshooting/CI.md#-quality-sh-failures).
+- **`ScorerStrictError` during `deno test`** — `quality.sh` runs with
+  `NEAT_AI_RUST_SCORER_STRICT=1`, so a scorer failure aborts instead of falling
+  back to WASM. →
+  [ScorerStrictError during deno test](troubleshooting/CI.md#-scorerstricterror-during-deno-test-issue-3815).
 
 ## ⚙️ Configuration — invalid options and `ValidationError`
 
@@ -198,6 +202,7 @@ See [`troubleshooting/ONNX.md`](troubleshooting/ONNX.md) for full details.
 | `NEAT_AI_RUST_SCORER_BINARY_PATH` | `rust_scorer`  | Path to the Rust scorer binary                                         |
 | `NEAT_AI_RUST_SCORER_BATCH`       | `true`         | Directory/batch scoring mode; set `false` for per-creature invocations |
 | `NEAT_AI_RUST_SCORER_TIMEOUT_MS`  | `0` (no limit) | Per-invocation timeout for the Rust scorer (ms)                        |
+| `NEAT_AI_RUST_SCORER_STRICT`      | `false`        | Throw on a scorer exec/parse failure instead of falling back to WASM   |
 | `NEAT_AI_RUST_SCORER_TMP_DIR`     | _(data dir)_   | Working directory for Rust scorer batch I/O                            |
 | `NEAT_AI_RUST_SCORER_ENV`         | _(none)_       | JSON object of extra env vars passed to the Rust scorer child process  |
 | `NEAT_AI_TRACE_PREDICTION`        | _(none)_       | Log detailed discovery failure-cache prediction traces (`1`)           |

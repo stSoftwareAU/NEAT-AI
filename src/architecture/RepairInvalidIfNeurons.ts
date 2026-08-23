@@ -29,6 +29,31 @@ function ifNeuronStructurallyInvalid(
 }
 
 /**
+ * Downgrade the single `IF` neuron at `indx`, when that one neuron is the one
+ * breaking the rule (Issue #3848).
+ *
+ * The whole-creature sweep below scans for every offender; a rule-driven repair
+ * already knows which neuron `IF_CONDITIONS` named and must change only that
+ * one. Both share this body so the two paths cannot drift apart.
+ *
+ * @returns true when the named neuron was an invalid `IF` and was downgraded.
+ */
+export function repairInvalidIfNeuron(
+  creature: Creature,
+  indx: number,
+): boolean {
+  if (indx < 0 || indx >= creature.neurons.length) return false;
+  if (!ifNeuronStructurallyInvalid(creature, indx)) return false;
+
+  creature.neurons[indx].setSquash("IDENTITY");
+  for (const syn of creature.inwardConnections(indx)) {
+    if (syn.type) delete syn.type;
+  }
+  shedIdentity(creature);
+  return true;
+}
+
+/**
  * @returns true if any neuron was repaired
  */
 export function repairInvalidIfNeuronsInCreature(creature: Creature): boolean {
@@ -46,8 +71,21 @@ export function repairInvalidIfNeuronsInCreature(creature: Creature): boolean {
     changed = true;
   }
   if (changed) {
-    delete creature.memetic;
-    creature.clearCache();
+    shedIdentity(creature);
   }
   return changed;
+}
+
+/** Drop the caches and the content-derived identity the downgrade invalidated. */
+function shedIdentity(creature: Creature): void {
+  // Issue #3843: the repair rewrites a neuron's squash to IDENTITY and strips
+  // synapse `type` roles — both are inputs to the creature hash, so the
+  // content-derived identity no longer describes the creature. `clearCache()`
+  // below invalidates the topology caches but deliberately never touches
+  // `uuid`, and `Neuron.setSquash` does not compensate. Shedding it here
+  // covers every caller, including the `Upgrade.validateFourX` IF-repair
+  // branch that returns without the `fix()` the other three rely on.
+  delete creature.uuid;
+  delete creature.memetic;
+  creature.clearCache();
 }

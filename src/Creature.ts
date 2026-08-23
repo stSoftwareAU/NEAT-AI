@@ -49,6 +49,7 @@ import { ActivationError } from "@errors/ActivationError.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { rejectRecurrentSynapseIfForwardOnlyCreature } from "@architecture/ForwardOnlySynapseGuard.ts";
 import { TypedTopology } from "@architecture/TypedTopology.ts";
+import { verifiedRepair } from "@repair/VerifiedRepair.ts";
 
 // Extracted modules
 import * as creatureFactory from "@architecture/CreatureFactory.ts";
@@ -1210,6 +1211,16 @@ export class Creature implements CreatureInternal {
    * legitimately needs to load historically corrupt JSON, so it opts
    * into `throwOnRecurrent: "never"` to keep the strip+warn behaviour
    * for genuine on-disk genomes from older releases.
+   *
+   * Issue #3845: repair runs **only** when the loaded creature actually fails
+   * validation. It used to run on every ingest, which rewired valid grafted `IF`
+   * genomes off their shared bias-1 constants and cost 90.7 % of their score.
+   * A creature that validates is returned exactly as it arrived.
+   *
+   * Issue #3848: when it does fire, it fires through `verifiedRepair` — repairing
+   * the element the failing rule named rather than sweeping the whole creature,
+   * and refusing its own result with a `RepairError` if that result is worse than
+   * what arrived.
    */
   static fromPersistedJSON(
     json: CreatureInternal | CreatureExport,
@@ -1221,8 +1232,10 @@ export class Creature implements CreatureInternal {
       "fromPersistedJSON",
       { throwOnRecurrent: "never" },
     ) as Creature;
-    creature.fix({ forwardOnly: creature.forwardOnly });
-    creatureValidate(creature, { forwardOnly: creature.forwardOnly });
+    verifiedRepair(creature, {
+      pass: "Creature.fromPersistedJSON",
+      forwardOnly: creature.forwardOnly,
+    });
     return creature;
   }
 

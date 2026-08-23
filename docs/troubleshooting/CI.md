@@ -170,6 +170,30 @@ The `quality.sh` script runs these steps in order:
    NEAT-AI-core (verify-only; CI never auto-advances `neatCore.rev`)
 8. `deno test` — Run all tests with leak detection
 
+### 🦀 `ScorerStrictError` during `deno test` (Issue #3815)
+
+`quality.sh` runs the test step with `NEAT_AI_RUST_SCORER_STRICT=1`, so a
+`rust_scorer` exec or parse failure throws instead of logging a warning and
+falling back to WASM scoring. The failure text carries the scorer's stderr
+verbatim under a `--- rust_scorer stderr ---` heading — read that first: it is
+the real fault, and a fallback would otherwise have reconciled an entirely dead
+native scoring path to a green run (Issue #3810).
+
+A missing or too-old binary is still a graceful skip in strict mode; only
+genuine failures throw. Reproduce the graceful production behaviour locally with
+`NEAT_AI_RUST_SCORER_STRICT=0 deno test …` — but fix the scorer fault rather
+than muting the gate.
+
+**A corrupt dataset is not a `ScorerStrictError`** (Issue #3831). `evaluateDir`
+checks each `.bin` file's length against the record size before the native
+scorer runs, so a truncated corpus fails as a `DatasetError` with
+`reason === "CORRUPT_DATA"` naming the file, the trailing byte count and the
+record size — identically on the native and WASM paths, strict or not. If a
+scorer failure still slips past that pre-flight, `isCorruptDatasetFailure`
+classifies its stderr and raises the same `DatasetError` before strict mode can
+escalate it. Seeing `ScorerStrictError` therefore means a genuine backend fault,
+not bad data.
+
 If discovery checks fail with exit codes 137 or 9 (segfault), the script
 provides diagnostic guidance. See
 [Discovery troubleshooting → Architecture mismatch](DISCOVERY.md#-architecture-mismatch-errors-arm64-vs-x86).

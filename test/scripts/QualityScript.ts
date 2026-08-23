@@ -1,4 +1,5 @@
 import { assert, assertEquals } from "@std/assert";
+import { exists } from "@std/fs";
 
 /**
  * Tests for quality.sh flag parsing and behaviour.
@@ -6,6 +7,23 @@ import { assert, assertEquals } from "@std/assert";
  * These tests invoke quality.sh with --dry-run to verify flag parsing
  * without actually running the quality steps.
  */
+
+/**
+ * Copy quality.sh into a fresh directory and return that directory.
+ *
+ * A full quality.sh run (no --dry-run, no --lint-only) reaches the
+ * type-check step, which runs `rm -rf .trace .test .coverage`. Executed with
+ * the repository as its working directory that deletes the shared scratch
+ * trees other test files are writing to in parallel, so those files fail with
+ * `NotFound: writefile '.trace/...'`. Spawning the script from its own
+ * directory keeps the deletion inside the temporary tree.
+ */
+async function isolatedQualityDir(prefix: string): Promise<string> {
+  const dir = await Deno.makeTempDir({ prefix });
+  await Deno.copyFile("./quality.sh", `${dir}/quality.sh`);
+  await Deno.chmod(`${dir}/quality.sh`, 0o755);
+  return dir;
+}
 
 /** Helper to run quality.sh with given args and return stdout + exit code. */
 async function runQuality(
@@ -457,6 +475,7 @@ Deno.test({
   permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
     const home = await Deno.makeTempDir({ prefix: "neat-quality-gpu-off-" });
+    const workDir = await isolatedQualityDir("neat-quality-gpu-off-work-");
     try {
       const binDir = `${home}/.deno/bin`;
       await Deno.mkdir(binDir, { recursive: true });
@@ -483,7 +502,7 @@ Deno.test({
         ],
         stdout: "piped",
         stderr: "piped",
-        cwd: Deno.cwd(),
+        cwd: workDir,
         env: {
           PATH: Deno.env.get("PATH") ?? "",
           HOME: home,
@@ -512,6 +531,7 @@ Deno.test({
       );
     } finally {
       await Deno.remove(home, { recursive: true });
+      await Deno.remove(workDir, { recursive: true });
     }
   },
 });
@@ -559,6 +579,7 @@ Deno.test({
   permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
     const home = await Deno.makeTempDir({ prefix: "neat-quality-wasm-heap-" });
+    const workDir = await isolatedQualityDir("neat-quality-wasm-heap-work-");
     try {
       const binDir = `${home}/.deno/bin`;
       await Deno.mkdir(binDir, { recursive: true });
@@ -584,7 +605,7 @@ exit 0
         ],
         stdout: "piped",
         stderr: "piped",
-        cwd: Deno.cwd(),
+        cwd: workDir,
         env: {
           PATH: Deno.env.get("PATH") ?? "",
           HOME: home,
@@ -625,6 +646,69 @@ exit 0
       );
     } finally {
       await Deno.remove(home, { recursive: true });
+      await Deno.remove(workDir, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name: "quality.sh scratch cleanup cannot escape its working directory",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    // PR #3833 — the type-check step runs `rm -rf .trace .test .coverage`.
+    // Spawned with the repository as its cwd it deleted the scratch trees
+    // that other test files write to in parallel, so those files failed with
+    // `NotFound: writefile '.trace/...'`. The deletion must stay inside the
+    // directory the script runs from.
+    const home = await Deno.makeTempDir({ prefix: "neat-quality-scratch-" });
+    const workDir = await isolatedQualityDir("neat-quality-scratch-work-");
+    const neighbour = await Deno.makeTempDir({
+      prefix: "neat-quality-scratch-neighbour-",
+    });
+    try {
+      const binDir = `${home}/.deno/bin`;
+      await Deno.mkdir(binDir, { recursive: true });
+      await Deno.writeTextFile(
+        `${binDir}/deno`,
+        "#!/usr/bin/env bash\nexit 0\n",
+      );
+      await Deno.chmod(`${binDir}/deno`, 0o755);
+
+      await Deno.mkdir(`${workDir}/.trace`, { recursive: true });
+      await Deno.writeTextFile(`${workDir}/.trace/sentinel.json`, "{}");
+      await Deno.mkdir(`${neighbour}/.trace`, { recursive: true });
+      await Deno.writeTextFile(`${neighbour}/.trace/sentinel.json`, "{}");
+
+      const command = new Deno.Command("bash", {
+        args: ["./quality.sh", "--check-only"],
+        stdout: "piped",
+        stderr: "piped",
+        cwd: workDir,
+        env: { PATH: Deno.env.get("PATH") ?? "", HOME: home },
+      });
+      const output = await command.output();
+      assertEquals(
+        output.code,
+        0,
+        `quality.sh --check-only must succeed with the shim; stderr=${
+          new TextDecoder().decode(output.stderr)
+        }`,
+      );
+
+      assertEquals(
+        await exists(`${workDir}/.trace/sentinel.json`),
+        false,
+        "the type-check step must clear its own scratch directory",
+      );
+      assertEquals(
+        await exists(`${neighbour}/.trace/sentinel.json`),
+        true,
+        "scratch cleanup must not reach outside the script's working directory",
+      );
+    } finally {
+      await Deno.remove(home, { recursive: true });
+      await Deno.remove(workDir, { recursive: true });
+      await Deno.remove(neighbour, { recursive: true });
     }
   },
 });

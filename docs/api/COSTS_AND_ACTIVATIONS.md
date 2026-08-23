@@ -48,6 +48,16 @@ string literal (e.g. `costName: "RMSE"`).
 as `MSE` but reports the error in the target's own units, and it mirrors the
 Rust scorer's `CostKind` list (NEAT-AI-scorer#340).
 
+> [!IMPORTANT]
+> **`RMSE` is aggregated once, over the whole dataset** — `sqrt(mean(e))`, not
+> `mean(sqrt(e))` (Issue #3853). Unlike every other built-in cost it cannot be
+> accumulated per record: scoring accumulates MSE's squared-error sum and takes
+> the root at finalisation, on both the TypeScript and the `rust_scorer` path.
+> `src/costs/CostAggregation.ts` owns that decision for the TypeScript side and
+> mirrors the scorer's `CostKind::finalise_mean`. A custom cost that is a
+> non-linear function of a mean has the same problem — implement it so that
+> `calculate` is the per-record value that averages correctly.
+
 ### 🦀 Native scorer off-load (`--cost`)
 
 When the optional `rust_scorer` binary is enabled
@@ -61,7 +71,45 @@ is deployed.
   to WASM scoring (MSE is the binary's historical default and stays compatible
   without the flag).
 - Custom (user-registered) costs are never off-loaded — they stay on the TS/WASM
-  path because the binary cannot resolve them.
+  path because the binary cannot resolve them. This now holds on the batch
+  (once-per-generation) path too: `costName` keeps its `"MSE"` default when a
+  `customCost` module is configured (Issue #3776), so `Fitness` is told about
+  the custom cost explicitly rather than inferring it from the name (Issue
+  #3854).
+
+#### When the TypeScript path keeps a dataset score (Issue #3854)
+
+One predicate —
+[`nativeDatasetScoringEligibility`](../../src/score/NativeDatasetScoringEligibility.ts)
+— owns the whole decision, and both call sites (`evaluateDir` and the `Fitness`
+batch partition) ask it rather than re-deriving the rule. It refuses to off-load
+whenever the native engine cannot reproduce the semantics the call was asked
+for:
+
+| Refusal         | Trigger                                        | Why the native engine cannot serve it                        |
+| --------------- | ---------------------------------------------- | ------------------------------------------------------------ |
+| `CUSTOM_COST`   | user-registered cost, or a `customCost` module | `rust_scorer` cannot resolve a JavaScript `CostInterface`    |
+| `OUTPUT_RANGES` | `outputRanges` configured                      | the out-of-range penalty (Issue #1620) has no native concept |
+| `FEEDBACK_LOOP` | recurrent creature scored with `feedbackLoop`  | the native recurrent path resets state per record            |
+
+Before this gate the last two delegated anyway and returned a number computed
+under different rules — the range penalty was dropped entirely, and a recurrent
+creature with `feedbackLoop: true` was scored as if it were `false`.
+
+```mermaid
+flowchart TD
+    A[evaluateDir / Fitness batch] --> B{nativeDatasetScoringEligibility}
+    B -- "CUSTOM_COST" --> T[TypeScript/WASM path]
+    B -- "OUTPUT_RANGES" --> T
+    B -- "FEEDBACK_LOOP" --> T
+    B -- "eligible" --> R[rust_scorer --cost NAME]
+    R -- "disabled / absent / too old" --> T
+```
+
+`test/score/RustScorerDatasetParity.ts` runs the real binary and the TypeScript
+path over the same dataset for every built-in cost and both topology styles, and
+asserts they agree. It is skipped when no binary can be resolved; `quality.sh`
+resolves one for the default run.
 
 ### 📐 CostInterface
 

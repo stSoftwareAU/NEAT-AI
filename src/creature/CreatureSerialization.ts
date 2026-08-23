@@ -40,8 +40,8 @@ import {
   type MemeticWireData,
 } from "@blackbox/MemeticWireData.ts";
 import { convertMemeticExportToWireJson } from "@creature/MemeticWireExport.ts";
-import { assertValidCreatureUuid } from "@creature/CreatureUuidValidation.ts";
 import { assertValidCreatureShape } from "@creature/CreatureShapeValidation.ts";
+import { assertValidCreatureUuid } from "@creature/CreatureUuidValidation.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { isRecord } from "@utils/TypeGuards.ts";
 import {
@@ -399,6 +399,9 @@ function convertSnapshotInPlace(
       newWeights[fromInt].push({ toId: toInt, weight: row.weight });
     }
   } else {
+    // Backward compatibility only (Issue #3816): the legacy map shape, kept
+    // readable indefinitely for creatures already on disk. Never emitted —
+    // `convertMemeticExportToWireJson` writes the row array shape only.
     const weightMap = result.weights as Record<
       string,
       MemeticWeightEntryWire[]
@@ -574,13 +577,29 @@ export function loadFrom(
   // so it must be checked before that loop rather than by the `creatureValidate`
   // pass at the end of this function.
   assertValidCreatureShape(json.input, json.output, sourceTag);
-  // Issue #3670: the uuid arrives from untrusted JSON and is later used as a
-  // filesystem path component (discovery temp dirs, trace stores) — validate
-  // it once here so every downstream sink is covered.
-  creature.uuid = assertValidCreatureUuid(
-    (json as CreatureInternal).uuid,
-    sourceTag,
-  );
+  // Issue #3843: do NOT adopt the incoming creature-level uuid.
+  //
+  // A creature's uuid is content-derived, so it is only trustworthy while it
+  // has been under NEAT-AI's control the whole time — computed in-process by
+  // `CreatureUtil.makeUUID` and shed by the mutation that invalidated it. A
+  // uuid that arrived from outside this process (read from a file,
+  // deserialised from JSON, received over a wire) carries no such guarantee:
+  // nothing says the neurons, synapses, biases and weights alongside it are
+  // the ones it was computed from. Adopting it let `Fitness` — which
+  // deduplicates the evaluation queue by uuid and copies the representative's
+  // score onto every "duplicate" — hand a creature a score it never earned.
+  //
+  // Leaving it undefined costs one `makeUUID` on first use and is then cached
+  // for the creature's lifetime. Per-neuron uuids are stable identity labels
+  // and are deliberately still loaded from the JSON below (Issue #2090).
+  //
+  // Issue #3670: an unvalidated uuid from untrusted creature JSON reached
+  // filesystem path components (discovery temp dirs, trace stores). The
+  // validation stays — a uuid that is not a uuid still means a corrupt or
+  // hostile file and must fail loudly — but its result is deliberately
+  // discarded rather than adopted.
+  assertValidCreatureUuid((json as CreatureInternal).uuid, sourceTag);
+  creature.uuid = undefined;
   if (json.semanticVersion) {
     creature.semanticVersion = json.semanticVersion;
     const major = Number.parseInt(

@@ -107,24 +107,38 @@ Deno.test("ignoreTags", () => {
 
   const clean = Creature.fromJSON(creature);
   clean.validate();
+
+  // Issue #3843: the source JSON carries a random creature-level uuid that does
+  // not describe its content. `fromJSON` discards it — a uuid that arrived from
+  // outside the process carries no guarantee that the neurons and synapses
+  // beside it are the ones it was computed from — so both the loaded creature
+  // and this reload start without one and derive the same identity from the
+  // structure they actually hold.
   assertEquals(
     creature.uuid,
-    clean.uuid,
-    `Should match creature: ${creature.uuid}, clean: ${clean.uuid}`,
+    undefined,
+    `Loaded creature must not adopt the file's uuid, was: ${creature.uuid}`,
   );
-  delete clean.uuid;
+  assertEquals(
+    clean.uuid,
+    undefined,
+    `Reloaded creature must not adopt the file's uuid, was: ${clean.uuid}`,
+  );
   delete clean.score;
   delete clean.tags;
 
   const uuid0 = CreatureUtil.makeUUID(
     Creature.fromJSON(creature),
   );
-  delete creature.uuid;
   const uuid1 = CreatureUtil.makeUUID(
     Creature.fromJSON(creature),
   );
 
-  assertNotEquals(uuid0, uuid1);
+  assertEquals(
+    uuid0,
+    uuid1,
+    "The same structure must always derive the same identity",
+  );
 
   const uuid2 = CreatureUtil.makeUUID(clean);
 

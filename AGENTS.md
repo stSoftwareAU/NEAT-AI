@@ -31,12 +31,29 @@ For deep dives on a single topic, follow the dedicated docs (full index in
   #1958).
 - **Semantic version rules** — quality-gate test
   [`test/creature/SemanticVersionStability.ts`](./test/creature/SemanticVersionStability.ts).
-- **Cross-engine creature JSON contract** — the golden metadata fixture
+- **Cross-engine creature JSON contract** — the golden creature fixtures
   [`test/fixtures/golden/README.md`](./test/fixtures/golden/README.md); gate
   test
   [`test/creature/GoldenMetadataRoundTrip.ts`](./test/creature/GoldenMetadataRoundTrip.ts)
-  (Issue #3752). Adding a persisted field to the creature interfaces means
-  extending that fixture in the same change.
+  (Issue #3752, memetic coverage Issue #3814). Adding a persisted field to the
+  creature interfaces means extending those fixtures in the same change, and
+  every committed fixture must parse in every engine. (Issue #3752). Adding a
+  persisted field to the creature interfaces means extending that fixture in the
+  same change.
+- **`creatureValidate` conformance corpus** — the language-neutral JSON cases
+  [`test/fixtures/validate/README.md`](./test/fixtures/validate/README.md); gate
+  test
+  [`test/validate/CreatureValidateConformance.ts`](./test/validate/CreatureValidateConformance.ts)
+  (Issue #3801). The corpus describes current behaviour so NEAT-AI-core can port
+  validation against it — changing a validation rule means changing the rule and
+  its case together.
+- **Repair contract** — [`docs/REPAIR_CONTRACT.md`](./docs/REPAIR_CONTRACT.md)
+  (Issues #3845, #3848). A repair pass may never return a creature worse than
+  the one it was given: repair the element the failing rule named, leave
+  role-typed `IF` structure you cannot interpret alone, and refuse with a
+  `RepairError` rather than hand back damage. Adding a structural family means
+  adding a fixture to
+  [`test/fixtures/StructuralFamilies.ts`](./test/fixtures/StructuralFamilies.ts).
 - **Discovery / FFI (Foreign Function Interface)** —
   [`docs/DISCOVERY_GUIDE.md`](./docs/DISCOVERY_GUIDE.md),
   [`docs/DISCOVERY_ARCHITECTURE.md`](./docs/DISCOVERY_ARCHITECTURE.md), and
@@ -228,6 +245,55 @@ stateDiagram-v2
 The integer `id` is recreated on every load and is **never** part of an external
 wire format. UUIDs are the only stable identity that survives a process
 boundary, disk write, or cross-machine handoff.
+
+### 🧬 Creature UUID: the opposite rule (Issue #3843)
+
+A **neuron's** UUID is an identity that must never move. A **creature's** `uuid`
+is the opposite: it is _derived from content_, so it must never outlive the
+content it describes. Two creatures share a `uuid` if and only if their neurons,
+synapses, biases, weights, squashes and synapse roles are identical.
+
+Why it matters: `Fitness.calculate` skips creatures that already carry a `score`
+and deduplicates the evaluation queue **by uuid**, copying the representative's
+score/error/tags onto every "duplicate". A creature wearing an identity it did
+not earn is handed a score it never earned.
+
+The rule that makes that safe is **provenance**:
+
+1. **In-process identity is trusted, and cached.** `CreatureUtil.makeUUID`
+   returns the cached `creature.uuid` on sight. Recomputing the hash costs ~3 ms
+   on a production-scale creature (~1,500 neurons / ~20,000 synapses), so the
+   short-circuit is a requirement, not an implementation detail — do not "fix"
+   identity by making `makeUUID` recompute or re-verify.
+2. **Every in-process mutation sheds identity.** Any edit to a hash input —
+   neuron, synapse, bias, weight, squash, synapse role, frozen flag — must
+   `delete creature.uuid` at the mutation site. `clearCache()`, `clearState()`,
+   `connect`/`disconnect`/`connectBatch` and `Neuron.setSquash()` all look like
+   invalidation points and are **not**; the removal/insertion primitives
+   `removeHiddenNeuron()` and `createConstantOne()` are, and clear `uuid`
+   alongside `memetic`. The two full safe harbours are `Creature.fix()` and
+   `loadFrom()`.
+3. **Identity from outside the process is discarded.** `loadFrom` deliberately
+   does **not** adopt the incoming creature-level `uuid` — a uuid read from a
+   file, deserialised from JSON, or received over a wire carries no guarantee
+   that the content beside it is the content it was computed from. It is left
+   undefined so the first `makeUUID` computes it once from what actually
+   arrived. Per-neuron uuids are the opposite case and _are_ loaded: they are
+   stable identity labels and an **input** to the creature hash.
+
+`CreatureMutation.ts` shows the robust idiom for a pass that needs to know
+whether it changed anything — delete, recompute, compare — rather than trusting
+a hand-maintained `changed` flag, which drifts:
+
+```ts
+delete creature.uuid;
+const endUUID = CreatureUtil.makeUUID(creature);
+if (startUUID !== endUUID) delete creature.memetic;
+```
+
+Tags and `score` are excluded from the hash, so a tag-only change must
+invalidate nothing. Regression test:
+[`test/architecture/StaleUuidAfterStructuralChange.ts`](./test/architecture/StaleUuidAfterStructuralChange.ts).
 
 ### Neuron identity: wire UUID vs runtime integer `id` (Issue #1958)
 

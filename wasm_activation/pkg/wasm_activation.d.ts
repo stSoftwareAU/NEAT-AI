@@ -423,6 +423,11 @@ export function compute_score_components(weights: Float64Array, biases: Float64A
 export function creature_validate(request: string): string;
 
 /**
+ * JS `creature_validate_packed(request: Uint8Array, memetic: string) -> string`.
+ */
+export function creature_validate_packed(request: Uint8Array, memetic: string): string;
+
+/**
  * Fused activate + Cross Entropy calculation for batch scoring.
  *
  * Cross Entropy formula per record: -(1/n) * Σ(t * log(o) + (1-t) * log(1-o))
@@ -450,6 +455,15 @@ export function derivative(squash_type: number, value: number): number;
  *
  * Uses Kahn's algorithm on non-input neurons. Self-loops are explicitly
  * detected as cycles.
+ *
+ * # Cost
+ *
+ * Linear in neurons plus synapses (NEAT-AI#3832). The relaxation pass reads
+ * an outward adjacency built once up front; it used to rescan the whole
+ * synapse list for every dequeued neuron, which is `O(neurons × synapses)` —
+ * 10.8 ms of the 10.9 ms `creature_validate` spent on a 4 272-neuron,
+ * 22 928-synapse production creature, and the same cost again on every
+ * `TypedTopology.detectCycles` call from the host.
  *
  * # Returns
  * `0` if acyclic, `1` if a cycle is detected.
@@ -793,6 +807,7 @@ export interface InitOutput {
     readonly compute_reverse_topological_order: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly compute_score_components: (a: number, b: number, c: number, d: number) => [number, number];
     readonly creature_validate: (a: number, b: number) => [number, number];
+    readonly creature_validate_packed: (a: number, b: number, c: number, d: number) => [number, number];
     readonly cross_entropy_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly derivative: (a: number, b: number) => number;
     readonly detect_cycles: (a: number, b: number, c: number, d: number, e: number, f: number) => number;

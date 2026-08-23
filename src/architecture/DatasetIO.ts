@@ -50,8 +50,19 @@ export function readDatasetFileSync(filePath: string): Uint8Array {
   }
 }
 
+/** Record geometry a dataset file must line up with. */
+export interface DatasetRecordShape {
+  /** Bytes per record, `(inputs + outputs) * 4`. */
+  bytesPerRecord: number;
+  /** Creature input count, reported for context. */
+  inputs: number;
+  /** Creature output count, reported for context. */
+  outputs: number;
+}
+
 /**
- * Confirm every cached `.bin` path still exists.
+ * Confirm every cached `.bin` path still exists and — when `record` is given —
+ * holds a whole number of records.
  *
  * `rust_scorer` reads the directory itself and ignores the TypeScript file
  * list. Without this check, a file that vanished between listing and scoring
@@ -59,15 +70,32 @@ export function readDatasetFileSync(filePath: string): Uint8Array {
  * while the WASM path throws {@link DatasetError} `FILE_MISSING`. Honour the
  * Issue #3412 contract on both backends before the native scorer runs.
  *
+ * Issue #3831: the record-size check runs here too, off the same `stat`, so a
+ * truncated file is classified as `CORRUPT_DATA` with the diagnostic that
+ * names the file, the byte counts and the record size — whichever backend
+ * would have scored it. Previously the native scorer hit the fault first and,
+ * under `NEAT_AI_RUST_SCORER_STRICT=1`, the corrupt dataset surfaced as a
+ * `ScorerStrictError` with the diagnostic lost.
+ *
  * @param filePaths - Cached dataset file list (absolute or relative)
- * @throws {DatasetError} When a file no longer exists (`FILE_MISSING`)
+ * @param record - Optional record geometry to validate each file length against
+ * @throws {DatasetError} When a file no longer exists (`FILE_MISSING`) or holds
+ *   a partial trailing record (`CORRUPT_DATA`)
  */
-export function assertDatasetFilesExist(filePaths: readonly string[]): void {
+export function assertDatasetFilesIntact(
+  filePaths: readonly string[],
+  record?: DatasetRecordShape,
+): void {
   for (const filePath of filePaths) {
+    let info: Deno.FileInfo;
     try {
-      Deno.statSync(filePath);
+      info = Deno.statSync(filePath);
     } catch (error) {
       throw translateMissingFile(error, filePath);
+    }
+    if (record === undefined) continue;
+    if (info.size % record.bytesPerRecord !== 0) {
+      throw partialRecordError(filePath, "holds", info.size, record);
     }
   }
 }
@@ -128,17 +156,40 @@ export function assertWholeRecordRead(
       filePath,
     );
   }
-  const trailingBytes = bytesRead % bytesPerRecord;
-  if (trailingBytes !== 0) {
-    throw new DatasetError(
-      `training data file ${filePath} is not a whole number of records: ` +
-        `read ${bytesRead} bytes at ${bytesPerRecord} bytes/record ` +
-        `(${shape.inputs} inputs + ${shape.outputs} outputs) — ` +
-        `Trailing ${trailingBytes} bytes (incomplete record)`,
-      "CORRUPT_DATA",
-      filePath,
-    );
+  if (bytesRead % bytesPerRecord !== 0) {
+    throw partialRecordError(filePath, "read", bytesRead, {
+      bytesPerRecord,
+      inputs: shape.inputs,
+      outputs: shape.outputs,
+    });
   }
+}
+
+/**
+ * Build the single canonical partial-record diagnostic, so a truncated file
+ * reads the same whether the fault was found by the pre-flight length check or
+ * mid-read (Issue #3831).
+ *
+ * @param filePath - The offending `.bin` file
+ * @param verb - How `byteCount` was obtained (`"holds"` or `"read"`)
+ * @param byteCount - Bytes the file holds, or the bytes a read returned
+ * @param record - Record geometry the count failed to line up with
+ */
+function partialRecordError(
+  filePath: string,
+  verb: "holds" | "read",
+  byteCount: number,
+  record: DatasetRecordShape,
+): DatasetError {
+  const trailingBytes = byteCount % record.bytesPerRecord;
+  return new DatasetError(
+    `training data file ${filePath} is not a whole number of records: ` +
+      `${verb} ${byteCount} bytes at ${record.bytesPerRecord} bytes/record ` +
+      `(${record.inputs} inputs + ${record.outputs} outputs) — ` +
+      `Trailing ${trailingBytes} bytes (incomplete record)`,
+    "CORRUPT_DATA",
+    filePath,
+  );
 }
 
 function translateMissingFile(error: unknown, filePath: string): unknown {

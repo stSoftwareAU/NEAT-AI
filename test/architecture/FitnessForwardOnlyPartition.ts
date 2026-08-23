@@ -77,7 +77,7 @@ function buildCreature(bias: number, forwardOnly: boolean): Creature {
  * workers cannot race on it.
  */
 function enableBatchConfig(): void {
-  __setRustScorerConfigForTests({ enabled: true, batch: true });
+  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
 }
 
 Deno.test("Fitness partition - all forwardOnly population batches every creature", async () => {

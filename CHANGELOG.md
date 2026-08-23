@@ -65,6 +65,154 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3854:** Dataset scoring no longer off-loads to the native
+  `rust_scorer` in cases it cannot reproduce. A single predicate
+  (`src/score/NativeDatasetScoringEligibility.ts`) now owns the decision for
+  both the per-creature (`evaluateDir`) and the once-per-generation batch
+  (`Fitness.calculate`) call sites, and refuses three previously silent
+  divergences: **`outputRanges`** — the quadratic out-of-range penalty (Issue
+  #1620) has no native equivalent and was dropped entirely whenever the scorer
+  was enabled; **`feedbackLoop` on a recurrent creature** — the native recurrent
+  path resets network state per record, i.e. `feedbackLoop: false` semantics;
+  and **a configured `customCost` module** on the batch path — `costName` keeps
+  its `"MSE"` default in that case (Issue #3776), so the batch scorer was handed
+  `--cost MSE` while the workers evaluated the user's cost, breaking the
+  documented "custom costs are never off-loaded" promise. New
+  `test/score/RustScorerDatasetParity.ts` runs the real binary against the
+  TypeScript path over the same dataset for all seven built-in costs × two
+  topology styles — the first test anywhere that compares the two engines'
+  actual numbers. RMSE (Issue #3853) is recorded there as a known divergence and
+  asserted to still reproduce, so the entry cannot go stale.
+
+- **Issue #3853:** `RMSE` scoring is now the root of the mean squared error on
+  both engines. `evaluateDir` accumulated `RMSE.calculate` per record and
+  divided by the record count, reporting `mean(sqrt(e))`, while the native
+  `rust_scorer` roots the shared MSE sum once at finalisation and reports
+  `sqrt(mean(e))` — so the number a caller got depended on whether
+  `NEAT_AI_RUST_SCORER_ENABLED` was set. The TypeScript path now accumulates
+  MSE's squared-error sum and roots once at finalisation
+  (`src/costs/CostAggregation.ts`), which also lets RMSE ride MSE's fused WASM
+  batch kernel. Output-range penalties are accumulated separately and added in
+  error units after the root, unchanged for every mean-style cost.
+  **Consumer-visible:** reported RMSE magnitudes rise on the TypeScript path
+  (the two aggregations differ by a few percent on real data), so GRQ scores
+  computed with `costName: "RMSE"` will move. New
+  `test/score/RustScorerLiveCostParity.ts` runs the real `rust_scorer` binary
+  against `evaluateDir` over one dataset for all seven built-in costs on
+  forward-only and recurrent creatures, so a future divergence fails a test
+  instead of hiding.
+
+- **Issue #3851:** The Creature Factory no longer emits an `IF` hidden neuron
+  without its `condition` / `positive` / `negative` role edges. When
+  `hiddenSquash` selects `IF` (e.g. a caller's activation allow-list forces it),
+  `creatureForProblem` / `creatureForDataset` now wire the roles themselves — a
+  deterministic round-robin over each neuron's inward synapses ordered by source
+  — so the seed passes `validate()` with no repair pass. A seed too narrow to
+  carry `IF` (fewer than three sources per neuron) throws a `TopologyError`
+  (`reason: "INVALID_SQUASH"`) naming the squash and the spec field that chose
+  it, instead of emitting a node that only survives because a downstream `fix()`
+  invents its wiring.
+
+- **GRQ #4241:** A failed discovery temp-dir removal is no longer reported as a
+  clean cleanup. `DiscoverStructureBase.cleanUp()` swallowed the removal error
+  into one warn line and resolved, so
+  `Failed to cleanup discovery temp dir:
+  Directory not empty (os error 66)`
+  was followed immediately by `Discovery <id> cleanup complete.` and the leaked
+  directories accumulated under `.discovery/` until the host ran out of disk.
+  The removal now lives in `src/discovery/DiscoveryTempDirRemoval.ts`: it
+  retries the recursive remove (the failure is a race with a writer still
+  creating files), positively confirms the directory is gone, and otherwise
+  throws an error naming the leftover entries so the writer can be found.
+  `DataRecorder.runCleanup()` logs
+  `❌ CRITICAL: … cleanup failed - potential resource leak` on both the awaited
+  and the fire-and-forget path and never logs a completion line for a cleanup
+  that failed.
+
+- **Issue #3844:** `restoreSource` no longer hands back a creature whose
+  `memetic` record names structure the creature does not have. The restore is a
+  structural change — it re-adds synapses the record names but the live creature
+  had lost — and the whole record rides along onto the restored creature. Its
+  two restore loops bail out the moment a _top-level_ key fails to resolve, but
+  nothing checked `ancestry[]`, and `memeticUpdate` propagates that subtree to
+  offspring by reference without ever touching it, so an ancestor snapshot
+  routinely outlives the neurons it was keyed to. A stale key of that kind is
+  not harmless: a runtime integer is copied through import as "already a numeric
+  key" and written to the wire verbatim, where the Rust reader fails loud on a
+  neuron uuid the creature does not carry. `restoreSource` now runs the existing
+  `pruneOrphanMemeticReferences` helper over the restored creature, dropping
+  only the keys that resolve to nothing — ancestry included — and keeping the
+  surviving neurons' fine-tuning deltas, which is the history the function
+  exists to carry forward.
+
+- **Issue #3840:** The "exact, behaviour-preserving" structural passes no longer
+  lower a creature's score, and the guarantee is enforced rather than asserted
+  in a doc comment. On a grafted `IF` forest — decision-tree patches whose
+  thresholds and leaf values ride as weights on three bias-1 constants shared
+  across every patch — `compactCreature` cost 0.0244 of score, `simplify` cost
+  0.0422 and a `removeLowImpactNeuron` advertised at `impact: 0.00%` cost
+  0.1676. Five defects: the compaction chain fold dropped the `IF` role
+  (`condition`/`positive`/`negative`) from the merged synapse, so `fix()`
+  re-invented it at random; the same fold was inexact even without `IF` — it
+  folded `LOGISTIC` relays (not an identity: a two-LOGISTIC chain moved from
+  0.512 to 0.211) and wrote the removed neuron's bias back onto the neuron it
+  was about to delete, dropping the `w_out · b` term; `Simplify.removeKnownSign`
+  spliced out an `ABSOLUTE`/`ReLU` neuron feeding an `IF` condition and the
+  bypass edge carried no role; discovery removal deleted a shared bias-1
+  constant that a contribution-based impact metric reads as 0.00% while it backs
+  the routing of every grafted node; and `CreatureUtil.getTopologyHash` omitted
+  the synapse role, so two creatures differing only in which branch an edge
+  feeds shared a WASM compilation-cache entry and the second was activated with
+  the first's routing. Each fold is now role-aware, the topology hash includes
+  the role (appended only when present, so creatures with no typed synapse hash
+  unchanged), and `buildSafeCompact`, `simplify` and the discovery removals
+  verify behaviour over a deterministic probe matrix (`BehaviourGuard`) — gated
+  on the creature carrying role-typed `IF` edges, so nothing else pays an
+  activation — rejecting the candidate and logging the pass, creature and
+  deviation when behaviour moved. **Behaviour change for creatures without
+  `IF`:** `LOGISTIC → LOGISTIC` single-in/single-out chains are no longer folded
+  (they were folded incorrectly), and an `IDENTITY` chain fold now moves the
+  removed neuron's bias onto the consumer instead of dropping it.
+
+- **Issue #3823:** The over-run finish-up path no longer spins, flooding the log
+  with `Waiting for additional generation`. `additionalGenerationCount` ("do at
+  least one more loop") was only decremented by `evolve()`, but the over-run
+  guard added in #3795 stops starting generations and re-enters `finishUp()`
+  directly — so the counter never cleared, `awaitInFlightTasks()` returned
+  immediately (nothing was in flight) and the loop ran flat out until the hard
+  deadline, up to the full 15-minute grace window. `finishUp()` now drains the
+  counter in its wait branch (as the neighbouring `cleanUpDelayCount` branch
+  already did), and the over-run stop clears it outright.
+
+- **GRQ #4238:** The `[WasmWorkerInit]` timeout diagnostic no longer bills the
+  parent's own stall to the child. `handshakeMs` was a raw elapsed-time read
+  taken inside the timeout callback, so a blocked parent event loop fired the
+  timer late and the overshoot was reported as handshake time — a GRQ-13 run
+  logged `handshakeMs=895250` against a 60s deadline. The window is now split
+  into `handshakeMs` (capped at the deadline), `parentStallMs` (how late the
+  callback fired), `loopBlockedMs` (longest block sampled _inside_ the window by
+  a new parent watchdog) and `spawnToInitMs`. Because a blocked parent cannot
+  receive the child's start heartbeat either, `heartbeat=none` is now only read
+  as "the child never reached its entry point" when the parent stayed
+  responsive; otherwise the line says the parent was blind. The init timeout and
+  watchdog timers are also cleared when the init-error promise wins the race,
+  which previously left the timeout pending.
+
+- **Issue #3827:** An Intelligent Design squash substitution can no longer
+  produce a creature this library's own validator refuses. A substitution
+  changes only `squash`, so it cannot give a neuron the three inward connections
+  — nor the `condition` / `positive` / `negative` synapse roles — that
+  `CreatureValidate` demands of an `IF` neuron; handing `IF` to an ineligible
+  neuron killed the ID worker on
+  `ValidationError: 'IF' should have at least 3 inward connections
+  was: 2`
+  before it scored anything. The new
+  `src/intelligentDesign/SquashSubstitutionEligibility.ts` gate makes
+  `scanForSquashImprovements` skip those (neuron, squash) pairs with a logged
+  reason and keep scanning, and `makeModifiedCreatureWithPrevious` /
+  `makeModifiedCreature` refuse such a substitution outright. `IF` stays in the
+  substitution table for the neurons that can carry it.
+
 - **Issue #3779:** A training result inside the evaluate noise floor (the `🫥`
   outcome) no longer counts as an improvement, so it stops resetting the
   no-progress streaks.
@@ -76,6 +224,36 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   the untouched `costName`.
 
 ### Changed
+
+- **Issue #3803:** `creatureValidate` now calls NEAT-AI-core's
+  `creature_validate` instead of running its own copy of the rules, so NEAT-AI
+  and its sibling consumers read one set of validation rules rather than four
+  ports of them. The exported signature, the `stats` return value and every
+  thrown error class, `reason` and message are unchanged — the #3801 conformance
+  corpus is replayed against the new path. What stays in TypeScript is the
+  host-only half from #3802 (`neuron.validate()`, `neuron.index`,
+  `neuron.creature`), marshalling, failure rehydration and the `DEBUG`
+  diagnostics dump. There is **no fallback**: an unloadable bundle throws a
+  `WasmError` carrying the loader's own failure, so a creature is never treated
+  as valid because validation could not run.
+
+- The vendored `wasm_activation/pkg` bundle advances from NEAT-AI-core `4db5b9b`
+  (0.9.11) to `2ba8437` (0.10.1), picking up five upstream commits:
+  - **GRQ #4261** (core #571) — creature weights now parse to the exact `f64`
+    the JSON literal names, instead of the nearest value a lossy intermediate
+    produced. This is the only change of the five with numeric reach into
+    NEAT-AI.
+  - **NEAT-AI #3812** (core #570) — the empty memetic weight array and the
+    ancestry snapshot are pinned by test.
+  - **GRQ #4257** (core #569) — `memetic.weights` parses and validates in both
+    valid wire forms.
+  - **Issue #555 / #562** (core #568) — `if_graft` emits creatures the shared
+    validator accepts.
+  - **NEAT-AI #3803** (core #567) — `creature_validate` accepts the runtime
+    creature shape, so a host's defect reaches the rules.
+
+  No NEAT-AI source change is required: the bundle is consumed through the
+  existing WASM boundary and no exported signature moved.
 
 - **GRQ #4141:** Training over-run is now enforced, not warn-only. When elapsed
   wall-clock exceeds `timeoutMinutes` by the configured factor (default `1`),

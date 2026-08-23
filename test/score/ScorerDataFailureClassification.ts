@@ -30,6 +30,16 @@ import { initWasmForTests } from "../_initWasm.ts";
 const CORRUPT_STDERR =
   "Error: Trailing 3696 bytes (incomplete record) after reading all training files";
 
+/**
+ * The wording `rust_scorer` actually emits for a truncated `.bin` (Issue
+ * #3831). It qualifies the record size, which the original
+ * `multiple of the record size` pattern did not allow for.
+ */
+const REAL_SCORER_CORRUPT_STDERR =
+  "Error: Training file /tmp/dataSet-1/0.bin has size 292 bytes, which is not " +
+  "a whole multiple of the 12-byte record size (4 bytes past the last whole " +
+  "record); records would be spliced across file boundaries";
+
 function buildDataSet(): DataRecordInterface[] {
   const rows: DataRecordInterface[] = [];
   for (let i = 0; i < 24; i++) {
@@ -64,6 +74,7 @@ const RUST_CONFIG = {
   timeoutMs: 0,
   env: {},
   batch: false,
+  strict: false,
 } as const;
 
 Deno.test("isCorruptDatasetFailure: data faults are recognised", () => {
@@ -73,6 +84,16 @@ Deno.test("isCorruptDatasetFailure: data faults are recognised", () => {
   assert(
     isCorruptDatasetFailure("file length is not a multiple of the record size"),
   );
+});
+
+Deno.test("isCorruptDatasetFailure: the scorer's own whole-multiple wording is a data fault", () => {
+  assert(isCorruptDatasetFailure(REAL_SCORER_CORRUPT_STDERR));
+  assert(
+    isCorruptDatasetFailure(
+      "size is not a whole multiple of the 4096-byte record size",
+    ),
+  );
+  assert(isCorruptDatasetFailure("7 bytes past the last whole record"));
 });
 
 Deno.test("isCorruptDatasetFailure: backend faults stay retryable", () => {
@@ -155,43 +176,89 @@ Deno.test("RustScorerBridge: backend failure still falls back to WASM scoring", 
   }
 });
 
+/**
+ * Build a dataset directory whose only `.bin` carries a partial trailing
+ * record (4 of 12 bytes), and return the directory and the offending file.
+ */
+async function makeCorruptDataDir(): Promise<
+  { dataDir: string; path: string }
+> {
+  const dataDir = makeDataDir(buildDataSet(), 24);
+  const entries: string[] = [];
+  for await (const entry of Deno.readDir(dataDir)) {
+    entries.push(entry.name);
+  }
+  const bin = entries.find((name) => name.endsWith(".bin"))!;
+  const path = `${dataDir}/${bin}`;
+  const existing = await Deno.readFile(path);
+  const padded = new Uint8Array(existing.length + 4);
+  padded.set(existing);
+  await Deno.writeFile(path, padded);
+  return { dataDir, path };
+}
+
+/** Assert the full corrupt-dataset diagnostic survived on `error`. */
+function assertCorruptDiagnostic(error: DatasetError, path: string): void {
+  assertEquals(error.reason, "CORRUPT_DATA");
+  assertEquals(error.path, path);
+  assert(
+    error.message.includes(path),
+    `the offending file must be named, got: ${error.message}`,
+  );
+  assert(
+    error.message.includes("Trailing 4 bytes (incomplete record)"),
+    `the trailing byte count must be reported, got: ${error.message}`,
+  );
+  assert(
+    error.message.includes("12 bytes/record"),
+    `the record size must be reported, got: ${error.message}`,
+  );
+}
+
 Deno.test("evaluateDir: a short final record names the file and the byte counts", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
 
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-  const dataDir = makeDataDir(buildDataSet(), 24);
+  const { dataDir, path } = await makeCorruptDataDir();
   try {
-    const entries: string[] = [];
-    for await (const entry of Deno.readDir(dataDir)) {
-      entries.push(entry.name);
-    }
-    const bin = entries.find((name) => name.endsWith(".bin"))!;
-    const path = `${dataDir}/${bin}`;
-    // Truncate the last record by appending a partial one (4 of 12 bytes).
-    const existing = await Deno.readFile(path);
-    const padded = new Uint8Array(existing.length + 4);
-    padded.set(existing);
-    await Deno.writeFile(path, padded);
-
     const error = await assertRejects(
       () => creature.evaluateDir(dataDir, Costs.find("MSE"), false),
       DatasetError,
     );
-    assertEquals(error.reason, "CORRUPT_DATA");
-    assertEquals(error.path, path);
-    assert(
-      error.message.includes(path),
-      `the offending file must be named, got: ${error.message}`,
+    assertCorruptDiagnostic(error, path);
+  } finally {
+    await Deno.remove(dataDir, { recursive: true });
+    __resetRustScorerBridgeForTests();
+  }
+});
+
+Deno.test("evaluateDir: strict rust scoring keeps a corrupt dataset a DatasetError (Issue #3831)", async () => {
+  await initWasmForTests();
+  __resetRustScorerBridgeForTests();
+  // A live scorer that rejects the dataset in its own wording. Strict mode
+  // would otherwise escalate this to a ScorerStrictError and lose the
+  // file name, the trailing byte count and the record size.
+  __setRustScorerRunnerForTests(
+    failingRunner(REAL_SCORER_CORRUPT_STDERR, 1),
+  );
+
+  const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+  const { dataDir, path } = await makeCorruptDataDir();
+  try {
+    const error = await assertRejects(
+      () =>
+        creature.evaluateDir(
+          dataDir,
+          Costs.find("MSE"),
+          false,
+          undefined,
+          undefined,
+          { ...RUST_CONFIG, strict: true },
+        ),
+      DatasetError,
     );
-    assert(
-      error.message.includes("Trailing 4 bytes (incomplete record)"),
-      `the trailing byte count must be reported, got: ${error.message}`,
-    );
-    assert(
-      error.message.includes("12 bytes/record"),
-      `the record size must be reported, got: ${error.message}`,
-    );
+    assertCorruptDiagnostic(error, path);
   } finally {
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
