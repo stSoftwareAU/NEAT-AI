@@ -65,6 +65,22 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3844:** `restoreSource` no longer hands back a creature whose
+  `memetic` record names structure the creature does not have. The restore is a
+  structural change — it re-adds synapses the record names but the live creature
+  had lost — and the whole record rides along onto the restored creature. Its
+  two restore loops bail out the moment a _top-level_ key fails to resolve, but
+  nothing checked `ancestry[]`, and `memeticUpdate` propagates that subtree to
+  offspring by reference without ever touching it, so an ancestor snapshot
+  routinely outlives the neurons it was keyed to. A stale key of that kind is
+  not harmless: a runtime integer is copied through import as "already a numeric
+  key" and written to the wire verbatim, where the Rust reader fails loud on a
+  neuron uuid the creature does not carry. `restoreSource` now runs the existing
+  `pruneOrphanMemeticReferences` helper over the restored creature, dropping
+  only the keys that resolve to nothing — ancestry included — and keeping the
+  surviving neurons' fine-tuning deltas, which is the history the function
+  exists to carry forward.
+
 - **Issue #3840:** The "exact, behaviour-preserving" structural passes no longer
   lower a creature's score, and the guarantee is enforced rather than asserted
   in a doc comment. On a grafted `IF` forest — decision-tree patches whose
