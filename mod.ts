@@ -357,8 +357,10 @@ export { validateDNA } from "@reconstruct/validateDNA.ts";
  *
  * Static repair helpers for creature exports — it does not evolve anything.
  * `Upgrade.correct(json, input)` widens an export to a larger input count and
- * returns a fixed, validated `Creature`; it throws if asked to shrink the
- * input count. `Upgrade.CRISPR(dna)` migrates legacy CRISPR (targeted
+ * returns a validated `Creature`; it throws if asked to shrink the input count.
+ * A creature that already passes `validate()` is returned **untouched** — the
+ * structural repair pass runs only when validation actually fails, and shouts
+ * when it does (Issue #3845). `Upgrade.CRISPR(dna)` migrates legacy CRISPR (targeted
  * gene-editing, see `docs/GLOSSARY.md`) data to the current format: it renames
  * the old `nodes`/`connections` keys to `neurons`/`synapses`, defaults any
  * `mode` other than `insert` to `append`, and resolves UUID endpoints to
