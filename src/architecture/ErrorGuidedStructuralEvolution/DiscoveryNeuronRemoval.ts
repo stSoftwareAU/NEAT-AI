@@ -9,6 +9,11 @@ import {
   cleanupMemeticForRemovedNeuron,
   cleanupOrphanedNeurons,
 } from "@compact/CompactUtils.ts";
+import {
+  feedsIfNeuron,
+  LOW_IMPACT_BEHAVIOUR_ALLOWANCE,
+  verifyBoundedBehaviour,
+} from "@architecture/BehaviourGuard.ts";
 import { Creature } from "@creature";
 import type { Approach } from "@neat/LogApproach.ts";
 import type { CandidateHarmfulNeuron } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
@@ -320,6 +325,18 @@ export function removeHarmfulNeuron(
     return undefined;
   }
 
+  if (
+    removalBreaksIfRouting(
+      "removeHarmfulNeuron",
+      creature,
+      exportJSON,
+      tmpCreature,
+      harmfulNeuronLabel,
+    )
+  ) {
+    return undefined;
+  }
+
   const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
   if (tmpUUID !== creatureUUID) {
     addTag(tmpCreature, "approach", "discovery" as Approach);
@@ -514,6 +531,18 @@ export function removeLowImpactNeuron(
   const fixReaddedNeurons = afterFixNeuronCount -
     simplifiedExport.neurons.length;
 
+  if (
+    removalBreaksIfRouting(
+      "removeLowImpactNeuron",
+      creature,
+      exportJSON,
+      tmpCreature,
+      removalLabel,
+    )
+  ) {
+    return undefined;
+  }
+
   const tmpUUID = CreatureUtil.makeUUID(tmpCreature);
   if (tmpUUID !== creatureUUID) {
     // Reset diagnostics on successful removal
@@ -548,6 +577,45 @@ export function removeLowImpactNeuron(
   }
 
   return undefined;
+}
+
+/**
+ * Issue #3840: reject a removal whose "impact" metric cannot see what it is
+ * about to destroy.
+ *
+ * A neuron feeding an `IF` supplies a routing decision, not an additive
+ * contribution: an `IF` node's threshold and leaf values ride as weights on
+ * shared bias-1 constants, and one such constant can back hundreds of nodes.
+ * Its contribution to any activation *sum* is ~0 — so every magnitude-based
+ * impact metric scores it at 0.00% — while deleting it flips or breaks the
+ * routing of every node reading it. Field evidence on Issue #3840: a removal
+ * reported at `impact: 0.00%` cost 0.118 of score.
+ *
+ * So when the candidate feeds an `IF`, the claim is verified rather than
+ * trusted: the candidate creature is activated alongside the original over a
+ * deterministic probe matrix, and the removal is refused when the outputs moved
+ * further than {@link LOW_IMPACT_BEHAVIOUR_ALLOWANCE} — a bound generous enough
+ * to catch gross breakage (flipped routing, a dropped branch) without policing
+ * the fine drift a mean-preserving ablation is entitled to. A candidate that
+ * feeds no `IF` never reaches an activation here.
+ *
+ * @returns `true` when the removal must be abandoned.
+ */
+function removalBreaksIfRouting(
+  context: string,
+  original: Creature,
+  originalExport: ReturnType<Creature["exportJSON"]>,
+  candidate: Creature,
+  removedNeuronUuid: string,
+): boolean {
+  if (!feedsIfNeuron(originalExport, removedNeuronUuid)) return false;
+
+  return !verifyBoundedBehaviour(
+    original,
+    candidate,
+    LOW_IMPACT_BEHAVIOUR_ALLOWANCE,
+    `${context}(${removedNeuronUuid})`,
+  );
 }
 
 /** Reset removal diagnostics (call at start of discovery to get fresh stats). */

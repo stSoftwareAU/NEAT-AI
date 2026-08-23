@@ -4,6 +4,7 @@ import { Creature } from "@creature";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { outputNeuronId } from "@architecture/NeuronId.ts";
 import type { CrisprInterface } from "@reconstruct/CRISPR.ts";
+import { shoutAboutRepair } from "@architecture/RepairDiagnostics.ts";
 
 /**
  * Deterministic integer ID from a UUID string.
@@ -46,6 +47,26 @@ export class Upgrade {
   /**
    * Corrects the input size of a given creature export and returns a new creature with the corrected input size.
    *
+   * The repair pass (`Creature.fix()` — random inbound synapses,
+   * orphan/constant cleanup, self-connection removal, stranded constants and
+   * hiddens with no outward edges, old v1.x/v2.x genomes) runs **only** when
+   * {@link creatureValidate} actually fails, and when it does it shouts: an
+   * invalid creature is an upstream defect, not a routine condition.
+   *
+   * Issue #3845: it used to run unconditionally. A valid, modern creature
+   * carrying grafted `IF` structure had 46 of its 26,077 synapses rewired off
+   * their shared bias-1 constants and onto arbitrary input neurons — in a
+   * grafted decision tree the leaf value **is** the weight on that constant, so
+   * a constant leaf became an input-dependent term and the creature lost 90.7 %
+   * of its score (0.3690 → 0.0344). Every champion loaded through this path
+   * arrived wrecked. As the repo owner put it: *"If you're repairing that means
+   * the creature is invalid in some way. We should not need to repair any
+   * creature now."*
+   *
+   * A creature that passes `validate()` is therefore returned untouched. That is
+   * the whole fleet today: 50 sampled creatures plus the cluster champion all
+   * validate, so in current production this pass never fires at all.
+   *
    * @param json - The exported creature to be corrected.
    * @param input - The new input size to be applied to the creature.
    * @returns A new Creature instance with the corrected input size.
@@ -64,6 +85,14 @@ export class Upgrade {
 
     json2.input = input;
     const creature = Creature.fromJSON(json2);
+
+    try {
+      creatureValidate(creature);
+      // Nothing to repair — hand the creature back exactly as it arrived.
+      return creature;
+    } catch (e) {
+      shoutAboutRepair(creature, e, "Upgrade.correct");
+    }
 
     creature.fix();
     creatureValidate(creature);

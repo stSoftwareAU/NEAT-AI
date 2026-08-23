@@ -5,7 +5,6 @@ import type { Approach } from "@neat/LogApproach.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
-import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
 import { COMPLEMENT } from "@methods/activations/types/COMPLEMENT.ts";
 import { isAggregationSquash } from "@methods/activations/SquashUtils.ts";
 import {
@@ -22,6 +21,10 @@ import { mergeRedundantConstants } from "@compact/ConstantMerge.ts";
 import { aggressivePrune } from "@compact/AggressivePrune.ts";
 import { collapseConstantIf } from "@compact/IfCollapse.ts";
 import { removeBackwardSynapses } from "@compact/RemoveBackwardSynapses.ts";
+import {
+  hasRoleTypedIfStructure,
+  verifyExactBehaviour,
+} from "@architecture/BehaviourGuard.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
@@ -141,6 +144,15 @@ export function compactCreature(
 /**
  * Build the safe compaction candidate — all exact, behaviour-preserving folds.
  * The returned creature's score is guaranteed ≥ the original's.
+ *
+ * Issue #3840: that guarantee is enforced, not merely documented. Every fold
+ * here is exact for a creature whose neurons sum their inbound values, and the
+ * complexity terms of the score can only fall, so score ≥ original follows from
+ * behaviour being unchanged. For the one shape where "exact" cannot be reasoned
+ * about from weight magnitudes — an `IF` neuron routed by role-typed synapses —
+ * the candidate is compared against the original over a deterministic probe
+ * matrix before it is accepted, and the whole compaction is discarded (returning
+ * `undefined`, ie "nothing compacted") if behaviour moved.
  */
 function buildSafeCompact(
   creature: Creature,
@@ -335,12 +347,38 @@ function buildSafeCompact(
       const fromNeuron = neuronMap.get(inConn.fromId!);
       const toNeuron = neuronMap.get(outConn.toId!);
 
+      // Issue #3840: the merged synapse created below is a plain additive edge
+      // — it carries no `type`. Folding a relay whose outbound edge holds an
+      // `IF` role (`condition` / `positive` / `negative`) therefore silently
+      // strips that role, and the load-side `fix()` then re-invents the missing
+      // role at random. Skip aggregation consumers and role-typed edges, as the
+      // COMPLEMENT bypass above already does.
+      if (
+        toNeuron && (
+          isAggregationSquash(toNeuron.squash) ||
+          inConn.type !== undefined ||
+          outConn.type !== undefined
+        )
+      ) {
+        continue;
+      }
+
+      // Issue #3840: only IDENTITY chains fold exactly.
+      //
+      //   removed = IDENTITY(b + w_in·x) = b + w_in·x
+      //   contribution into `to` = w_out·b + (w_in·w_out)·x
+      //
+      // so the neuron disappears into one synapse of weight `w_in·w_out` plus a
+      // bias term `w_out·b` on the consumer. LOGISTIC used to be folded the same
+      // way, which is not an identity at all: `w_out·σ(b + w_in·σ(…))` is not
+      // `w_in·w_out·σ(…)`. On a two-LOGISTIC chain that silently moved the
+      // output from 0.512 to 0.211 — an "exact, behaviour-preserving" pass
+      // rewriting the creature into a different function.
       if (
         fromNeuron &&
         toNeuron &&
         neuron.squash === fromNeuron.squash &&
-        (neuron.squash === IDENTITY.NAME ||
-          neuron.squash === LOGISTIC.NAME) &&
+        neuron.squash === IDENTITY.NAME &&
         inConn.fromId !== neuron.id! &&
         outConn.toId !== neuron.id!
       ) {
@@ -350,15 +388,16 @@ function buildSafeCompact(
 
         if (existingSynapse) continue; // Skip compaction if synapse already exists
 
-        // Correct bias accumulation using neuron.bias multiplied by outgoing weight
         const combinedWeight = inConn.weight * outConn.weight;
         assert(Number.isFinite(combinedWeight), "combinedWeight not finite");
 
-        const combinedBias = neuron.bias + inConn.weight * fromNeuron.bias;
-        assert(Number.isFinite(combinedBias), "combinedBias not finite");
-
-        // Update toNeuron bias correctly to reflect chain accumulation
-        neuron.bias = combinedBias;
+        // Issue #3840: the removed neuron's bias must land on the consumer.
+        // It used to be written back onto the neuron being deleted on the very
+        // next lines, so `w_out·b` was dropped — a 0.11 output shift on a plain
+        // IDENTITY chain with bias -0.1 and outbound weight 1.1.
+        const consumerBias = toNeuron.bias + outConn.weight * neuron.bias;
+        assert(Number.isFinite(consumerBias), "consumerBias not finite");
+        toNeuron.bias = consumerBias;
 
         // Remove old synapses
         compactCreature.synapses = compactCreature.synapses.filter(
@@ -542,6 +581,21 @@ function buildSafeCompact(
     const c = Creature.fromJSON(compactCreature, false, "compactCreature", {
       throwOnRecurrent: "never",
     });
+
+    // Issue #3840: the guarantee in this function's doc comment is now
+    // enforced, not merely asserted. Every fold above is exact for a creature
+    // whose neurons sum their inbound values, so the check is gated on the only
+    // shape where "exact" has to be verified rather than reasoned about: an
+    // `IF` neuron reached by role-typed synapses. Creatures without one pay a
+    // single scan of the synapse array and no activation at all.
+    if (
+      hasRoleTypedIfStructure(startExport) &&
+      !verifyExactBehaviour(creature, c, "buildSafeCompact")
+    ) {
+      // The whole compaction is discarded — "nothing compacted" — so the
+      // caller keeps the original creature.
+      return undefined;
+    }
 
     return c;
   }
