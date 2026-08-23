@@ -16,7 +16,12 @@ import { getEnvRustScorerConfig } from "../score/RustScorerBridge.ts";
 import { BatchScorerError } from "../score/BatchScorerReconciler.ts";
 import { buildBatchScorerDiagnostic } from "../score/BatchScorerDiagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
-import { BUILT_IN_COST_NAMES, type BuiltInCostName } from "@costs";
+import type { BuiltInCostName } from "@costs";
+import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
+import {
+  isBuiltInCostName,
+  nativeDatasetScoringEligibility,
+} from "../score/NativeDatasetScoringEligibility.ts";
 
 /**
  * Evaluates fitness scores for a population of creatures.
@@ -132,6 +137,30 @@ export class Fitness {
    */
   private costName: BuiltInCostName | undefined;
 
+  /**
+   * Raw configured cost name, defaulted to `"MSE"` exactly as `NeatConfig`
+   * does. Kept alongside {@link costName} so the eligibility predicate sees
+   * the configured value rather than `undefined` (Issue #3854).
+   */
+  private readonly configuredCostName: string;
+
+  /**
+   * Issue #3854: a `customCost` module is configured. `NeatConfig.costName`
+   * stays `"MSE"` in that case (Issue #3776), so without this flag the batch
+   * scorer was handed `--cost MSE` while the workers evaluated the user's cost
+   * — off-loading a custom cost the public contract promises never to
+   * off-load.
+   */
+  private readonly customCostConfigured: boolean;
+
+  /**
+   * Issue #3854: number of configured `outputRanges` constraints. The batch
+   * scorer bypasses the workers — and therefore the TypeScript out-of-range
+   * penalty (Issue #1620) — so a non-zero count keeps the whole generation on
+   * the per-creature worker path rather than silently dropping the penalty.
+   */
+  private readonly outputRangeCount: number;
+
   constructor(
     workers: WorkerHandler[],
     growth: number,
@@ -139,13 +168,20 @@ export class Fitness {
     evalConfig?: RequiredParallelEvaluationConfig,
     dataDir?: string,
     costName?: string,
+    outputRanges?: ReadonlyArray<RequiredOutputRange>,
+    customCostConfigured?: boolean,
   ) {
     this.workers = workers;
     this.feedbackLoop = feedbackLoop;
     this.growth = growth;
     this.evalConfig = evalConfig ?? DEFAULT_PARALLEL_EVALUATION_CONFIG;
     this.dataDir = dataDir;
-    this.costName = toBuiltInCostName(costName);
+    this.configuredCostName = costName ?? "MSE";
+    this.customCostConfigured = customCostConfigured === true;
+    this.costName = this.customCostConfigured
+      ? undefined
+      : toBuiltInCostName(this.configuredCostName);
+    this.outputRangeCount = outputRanges?.length ?? 0;
   }
 
   /**
@@ -241,9 +277,22 @@ export class Fitness {
     // recurrent creatures take the per-creature worker path directly. This
     // prevents one "poison" creature from collapsing the whole batch and
     // losing the once-per-generation performance benefit.
+    //
+    // Issue #3854: only the forwardOnly subset ever batches, so the
+    // feedback-loop divergence cannot arise here — but `outputRanges` and a
+    // custom cost both can, and the batch path bypasses the workers that would
+    // apply them. Ask the shared eligibility predicate rather than re-deriving
+    // the rule, so the batch and per-creature call sites cannot drift apart.
     const rustScorerConfig = getEnvRustScorerConfig();
+    const batchEligibility = nativeDatasetScoringEligibility({
+      costName: this.configuredCostName,
+      customCostConfigured: this.customCostConfigured,
+      forwardOnlyGuaranteed: true,
+      feedbackLoop: this.feedbackLoop,
+      outputRangeCount: this.outputRangeCount,
+    });
     const batchEnabled = rustScorerConfig.enabled && rustScorerConfig.batch &&
-      this.dataDir !== undefined;
+      this.dataDir !== undefined && batchEligibility.eligible;
 
     // After any batch attempt (success, skip, or failure), this list
     // holds the creatures still needing the per-creature worker path.
@@ -529,7 +578,5 @@ function toBuiltInCostName(
   costName: string | undefined,
 ): BuiltInCostName | undefined {
   if (costName === undefined) return undefined;
-  return (BUILT_IN_COST_NAMES as readonly string[]).includes(costName)
-    ? (costName as BuiltInCostName)
-    : undefined;
+  return isBuiltInCostName(costName) ? costName : undefined;
 }

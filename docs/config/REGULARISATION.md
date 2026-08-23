@@ -76,6 +76,14 @@ averaging, so it directly reduces the creature's fitness score.
 When `outputRanges` is not specified (or empty), existing behaviour is
 completely unchanged.
 
+> [!IMPORTANT]
+> Issue #3854: the native `rust_scorer` has no output-range concept, so setting
+> `outputRanges` keeps dataset scoring on the TypeScript/WASM path — both the
+> per-creature and the once-per-generation batch route. Before that gate the
+> penalty was silently dropped whenever the native scorer was enabled. Expect
+> the slower path (and correct scores) when this option is in use; see
+> [Native scorer off-load](../api/COSTS_AND_ACTIVATIONS.md#-native-scorer-off-load---cost).
+
 ## ⚛️ Quantum step
 
 Controls adaptive step sizing during memetic fine-tuning. Larger steps are used

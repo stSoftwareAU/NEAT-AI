@@ -65,6 +65,25 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3854:** Dataset scoring no longer off-loads to the native
+  `rust_scorer` in cases it cannot reproduce. A single predicate
+  (`src/score/NativeDatasetScoringEligibility.ts`) now owns the decision for
+  both the per-creature (`evaluateDir`) and the once-per-generation batch
+  (`Fitness.calculate`) call sites, and refuses three previously silent
+  divergences: **`outputRanges`** — the quadratic out-of-range penalty (Issue
+  #1620) has no native equivalent and was dropped entirely whenever the scorer
+  was enabled; **`feedbackLoop` on a recurrent creature** — the native recurrent
+  path resets network state per record, i.e. `feedbackLoop: false` semantics;
+  and **a configured `customCost` module** on the batch path — `costName` keeps
+  its `"MSE"` default in that case (Issue #3776), so the batch scorer was handed
+  `--cost MSE` while the workers evaluated the user's cost, breaking the
+  documented "custom costs are never off-loaded" promise. New
+  `test/score/RustScorerDatasetParity.ts` runs the real binary against the
+  TypeScript path over the same dataset for all seven built-in costs × two
+  topology styles — the first test anywhere that compares the two engines'
+  actual numbers. RMSE (Issue #3853) is recorded there as a known divergence and
+  asserted to still reproduce, so the entry cannot go stale.
+
 - **Issue #3851:** The Creature Factory no longer emits an `IF` hidden neuron
   without its `condition` / `positive` / `negative` role edges. When
   `hiddenSquash` selects `IF` (e.g. a caller's activation allow-list forces it),
