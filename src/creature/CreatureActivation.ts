@@ -16,6 +16,10 @@ import { DatasetError } from "@errors/DatasetError.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { CostInterface } from "@costs/CostInterface.ts";
+import {
+  accumulationCostFor,
+  finaliseCostMean,
+} from "@costs/CostAggregation.ts";
 import type { Creature } from "@creature";
 import { WasmError } from "@errors/WasmError.ts";
 import { runnerUpProximity } from "@methods/activations/aggregate/RunnerUpProximity.ts";
@@ -498,9 +502,16 @@ export async function evaluateDir(
   requireWasmOrThrow(creature);
 
   let error = 0;
+  let penalty = 0;
   let count = 0;
 
   const costName = cost.getName();
+  // Issue #3853: RMSE is the root of the mean squared error, so it accumulates
+  // MSE's squared-error sum and roots once at finalisation. Accumulating the
+  // per-record roots instead reported `mean(sqrt(...))` — a different number
+  // from the one `rust_scorer` reports for the same creature and dataset.
+  const accumulationCost = accumulationCostFor(cost);
+  const accumulationCostName = accumulationCost.getName();
   const forwardOnlyGuaranteed = creature.forwardOnlyGuaranteed;
 
   const effectiveFeedbackLoop = forwardOnlyGuaranteed ? false : feedbackLoop;
@@ -554,9 +565,11 @@ export async function evaluateDir(
   // compute the range penalty.
   const hasOutputRanges = outputRanges !== undefined &&
     outputRanges.length > 0;
+  // The fused batch kernels are keyed on the accumulation cost, so RMSE rides
+  // MSE's kernel and only differs at finalisation (Issue #3853).
   const useFusedWasm = !hasOutputRanges && forwardOnlyGuaranteed &&
     supportedFusedCosts.includes(
-      costName as typeof supportedFusedCosts[number],
+      accumulationCostName as typeof supportedFusedCosts[number],
     );
 
   for (let fileIndx = files.length; fileIndx--;) {
@@ -586,7 +599,7 @@ export async function evaluateDir(
           // a WASM panic (RuntimeError: unreachable) during scoring returns
           // a fallback error value instead of crashing the worker.
           try {
-            switch (costName) {
+            switch (accumulationCostName) {
               case "MSE":
                 error += wasm.mseSumBatchPacked(slice, creature.input, true);
                 break;
@@ -632,11 +645,16 @@ export async function evaluateDir(
             outputBuffer,
             effectiveFeedbackLoop,
           );
-          error += cost.calculate(target, outputBuffer);
+          error += accumulationCost.calculate(target, outputBuffer);
 
-          // Issue #1620: Additive penalty for out-of-range outputs.
+          // Issue #1620: Additive penalty for out-of-range outputs. Issue
+          // #3853: accumulated separately so it is added in error units after
+          // finalisation — folding it into RMSE's squared-error sum would
+          // penalise under the root. For mean-style costs the result is
+          // unchanged, because mean(cost + penalty) = mean(cost) +
+          // mean(penalty).
           if (hasOutputRanges) {
-            error += calculateOutputRangePenalty(outputBuffer, outputRanges!);
+            penalty += calculateOutputRangePenalty(outputBuffer, outputRanges!);
           }
 
           count++;
@@ -650,7 +668,8 @@ export async function evaluateDir(
   if (count === 0) {
     return { error: 0 };
   } else {
-    const averageError = error / count;
+    const averageError = finaliseCostMean(costName, error, count) +
+      penalty / count;
     if (Number.isFinite(averageError)) {
       return { error: averageError };
     } else {

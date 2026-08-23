@@ -23,6 +23,14 @@ import type { CostInterface } from "@costs/CostInterface.ts";
  * TypeScript `BUILT_IN_COST_NAMES` tuple in sync with the rust `CostKind` list
  * (NEAT-AI-scorer#340).
  *
+ * **Dataset aggregation (Issue #3853):** {@link RMSE.calculate} roots a single
+ * record, so it must NOT be summed over records and divided by the record
+ * count — that reports `mean(sqrt(e))`, which is strictly smaller than
+ * `sqrt(mean(e))` whenever the per-record errors differ. Dataset scoring
+ * accumulates MSE's squared-error sum and roots once at finalisation; see
+ * `accumulationCostFor` / `finaliseCostMean` in
+ * [`CostAggregation.ts`](./CostAggregation.ts).
+ *
  * **References:**
  * - [Wikipedia: Root-mean-square deviation](https://en.wikipedia.org/wiki/Root-mean-square_deviation)
  * - [Wikipedia: Loss function](https://en.wikipedia.org/wiki/Loss_function)
