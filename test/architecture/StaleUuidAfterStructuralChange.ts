@@ -44,6 +44,7 @@ import { simplify } from "@optimize/Simplify.ts";
 import { restoreSource } from "@blackbox/RestoreSource.ts";
 import { repairInvalidIfNeuronsInCreature } from "@architecture/RepairInvalidIfNeurons.ts";
 import { shoutAboutRepair } from "@architecture/RepairDiagnostics.ts";
+import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
 import { ValidationError } from "@errors/ValidationError.ts";
 import { getLogger, setLogger } from "@utils/Logger.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
@@ -157,6 +158,53 @@ Deno.test("Issue #3843: a tag-only change invalidates nothing", () => {
     CreatureUtil.makeUUID(creature),
     before,
     "a tag-only change must not move the uuid",
+  );
+});
+
+Deno.test("Issue #3843 + #3844: pruning memetic does not shed the creature's identity", () => {
+  // The inverse guard to the tag-only test above, and load-bearing since #3844
+  // made a memetic prune a routine step of the `restoreSource` path. `memetic`
+  // records per-neuron bias and per-synapse weight *deltas about* a structure;
+  // it is not part of the structure and not an input to the hash. A change that
+  // touches only memetic must therefore leave identity exactly where it was —
+  // shedding it there would cost a rehash and, worse, teach the next reader
+  // that memetic is structural.
+  const creature = Creature.fromJSON(baseExport());
+  const before = CreatureUtil.makeUUID(creature);
+
+  const hidden = creature.neurons[creature.input];
+  const danglingId = 999_999;
+  creature.memetic = {
+    generation: 1,
+    score: 0.25,
+    biases: { [hidden.id]: hidden.bias + 2, [danglingId]: 0.5 },
+    weights: {},
+  } as unknown as typeof creature.memetic;
+
+  pruneOrphanMemeticReferences(creature);
+
+  const biases = (creature.memetic as unknown as {
+    biases: Record<string, number>;
+  }).biases;
+  assertEquals(
+    Object.hasOwn(biases, String(danglingId)),
+    false,
+    "the prune must drop the reference that resolves to nothing",
+  );
+  assert(
+    Object.hasOwn(biases, String(hidden.id)),
+    "the prune must keep the reference that still resolves",
+  );
+
+  assertEquals(
+    creature.uuid,
+    before,
+    "a memetic-only change must not shed the cached identity",
+  );
+  assertEquals(
+    CreatureUtil.makeUUID(creature),
+    before,
+    "a memetic-only change must not move the uuid",
   );
 });
 
