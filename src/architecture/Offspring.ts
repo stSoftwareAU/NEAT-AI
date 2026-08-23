@@ -619,6 +619,14 @@ export class Offspring {
     }
 
     if (shouldBeForwardOnly) {
+      // Issue #3843: both repairs below only ever `offspring.connect(...)` —
+      // they add synapses and never remove one — so the synapse count is an
+      // exact O(1) detector for "did they change the genome". `childUUID` was
+      // materialised before them and they end with `clearCache()`, which
+      // deliberately never touches `uuid`, so a repair that fires would
+      // otherwise leave the offspring wearing its pre-repair identity.
+      const synapsesBeforeRepair = offspring.synapses.length;
+
       // Issue #2685: Attribute any producer-gate rejection that arises from
       // these repair steps to the specific sub-step that emitted the bad
       // topology, rather than reporting the generic `Offspring/breed`
@@ -638,6 +646,16 @@ export class Offspring {
         Offspring.repairOrphanedConstants(offspring, mother, father);
       } finally {
         setProducerStep(undefined);
+      }
+
+      // Issue #3843: re-derive identity only when a repair actually fired, so
+      // the happy path costs one integer comparison rather than a second hash.
+      // The clone check above legitimately used the pre-repair value — that is
+      // the genome crossover produced — but callers read `offspring.uuid`
+      // directly, so it must end up describing what the offspring really is.
+      if (offspring.synapses.length !== synapsesBeforeRepair) {
+        delete offspring.uuid;
+        CreatureUtil.makeUUID(offspring);
       }
     }
 
