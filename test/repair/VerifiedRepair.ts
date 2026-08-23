@@ -294,7 +294,7 @@ Deno.test("Issue #3848: a creature no repair can rescue fails loud rather than r
 
   assert(
     failure instanceof ValidationError,
-    "an unrescuable creature must throw, not be returned as repaired",
+    "an unrecoverable creature must throw, not be returned as repaired",
   );
   assertEquals(failure.reason, "OTHER");
   assertStringIncludes(failure.message, "does not match expected index");
