@@ -241,10 +241,10 @@ boundary, disk write, or cross-machine handoff.
 
 ### 🧬 Creature UUID: the opposite rule (Issue #3843)
 
-A **neuron's** UUID is an identity that must never move. A **creature's**
-`uuid` is the opposite: it is *derived from content*, so it must never outlive
-the content it describes. Two creatures share a `uuid` if and only if their
-neurons, synapses, biases, weights, squashes and synapse roles are identical.
+A **neuron's** UUID is an identity that must never move. A **creature's** `uuid`
+is the opposite: it is _derived from content_, so it must never outlive the
+content it describes. Two creatures share a `uuid` if and only if their neurons,
+synapses, biases, weights, squashes and synapse roles are identical.
 
 `creature.uuid` is a **cache**, not the answer — when identity matters, ask
 `CreatureUtil.makeUUID(creature)`. That method used to return any cached value
