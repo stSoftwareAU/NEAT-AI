@@ -40,7 +40,7 @@ import {
   noteWasmCreatureActivationUse,
 } from "@wasm/WasmCreatureActivationLRU.ts";
 import { tryScoreWithRustScorer } from "../score/RustScorerBridge.ts";
-import { BUILT_IN_COST_NAMES, type BuiltInCostName } from "@costs";
+import { nativeDatasetScoringEligibility } from "../score/NativeDatasetScoringEligibility.ts";
 
 /**
  * Verify WASM is available and the creature is eligible.
@@ -480,21 +480,31 @@ export async function evaluateDir(
   const { ensureWasmActivation } = await import("../wasm/mod.ts");
   await ensureWasmActivation();
 
-  // Issue #2745: Off-load to the rust scorer only when the configured cost
-  // is a built-in (the rust binary cannot resolve user-registered custom
-  // costs). Custom costs stay on the TS/WASM path.
-  const configuredCostName = cost.getName();
-  const builtInCost: BuiltInCostName | undefined =
-    (BUILT_IN_COST_NAMES as readonly string[]).includes(configuredCostName)
-      ? (configuredCostName as BuiltInCostName)
-      : undefined;
+  const costName = cost.getName();
+  const forwardOnlyGuaranteed = creature.forwardOnlyGuaranteed;
 
-  if (builtInCost !== undefined) {
+  const effectiveFeedbackLoop = forwardOnlyGuaranteed ? false : feedbackLoop;
+
+  // Issue #3854: one predicate owns the whole delegation decision. Besides the
+  // custom-cost gap (Issue #2745) it refuses to hand the request to
+  // `rust_scorer` when the native engine cannot reproduce the semantics this
+  // call was asked for — configured `outputRanges` (the penalty has no native
+  // equivalent) or `feedbackLoop: true` on a recurrent creature (the native
+  // recurrent path resets state per record). Delegating either case returned a
+  // number computed under different rules, silently.
+  const eligibility = nativeDatasetScoringEligibility({
+    costName,
+    forwardOnlyGuaranteed,
+    feedbackLoop,
+    outputRangeCount: outputRanges?.length ?? 0,
+  });
+
+  if (eligibility.eligible) {
     const rustResult = await tryScoreWithRustScorer(
       creature,
       dataDir,
       rustScorer,
-      builtInCost,
+      eligibility.costName,
     );
     if (rustResult) return { error: rustResult.error };
   }
@@ -505,16 +515,12 @@ export async function evaluateDir(
   let penalty = 0;
   let count = 0;
 
-  const costName = cost.getName();
   // Issue #3853: RMSE is the root of the mean squared error, so it accumulates
   // MSE's squared-error sum and roots once at finalisation. Accumulating the
   // per-record roots instead reported `mean(sqrt(...))` — a different number
   // from the one `rust_scorer` reports for the same creature and dataset.
   const accumulationCost = accumulationCostFor(cost);
   const accumulationCostName = accumulationCost.getName();
-  const forwardOnlyGuaranteed = creature.forwardOnlyGuaranteed;
-
-  const effectiveFeedbackLoop = forwardOnlyGuaranteed ? false : feedbackLoop;
 
   // Ensure WASM network is compiled once for scoring.
   if (!creature.cachedWasmActivation) {

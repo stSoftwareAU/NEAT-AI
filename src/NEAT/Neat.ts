@@ -332,6 +332,11 @@ export class Neat {
       // scorer so the native scorer computes the same cost as the TS
       // training loop instead of silently defaulting to MSE.
       this.config.costName,
+      // Issue #3854: the batch scorer bypasses the workers, so it can neither
+      // apply the `outputRanges` penalty nor resolve a `customCost` module.
+      // Both keep the generation on the per-creature worker path.
+      this.config.outputRanges,
+      this.config.customCost !== undefined,
     );
 
     this.population = [];
