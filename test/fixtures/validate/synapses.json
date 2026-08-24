@@ -10,10 +10,7 @@
         "input": 1,
         "output": 1,
         "neurons": [
-          {
-            "type": "input",
-            "id": 0
-          },
+          { "type": "input", "id": 0 },
           {
             "type": "hidden",
             "id": 1000001,
@@ -30,21 +27,9 @@
           }
         ],
         "synapses": [
-          {
-            "from": 0,
-            "to": 1,
-            "weight": 1
-          },
-          {
-            "from": 1,
-            "to": 0,
-            "weight": 0.5
-          },
-          {
-            "from": 1,
-            "to": 2,
-            "weight": 1
-          }
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 0, "weight": 0.5 },
+          { "from": 1, "to": 2, "weight": 1 }
         ]
       },
       "expect": {
@@ -62,10 +47,7 @@
         "input": 1,
         "output": 1,
         "neurons": [
-          {
-            "type": "input",
-            "id": 0
-          },
+          { "type": "input", "id": 0 },
           {
             "type": "hidden",
             "id": 1000001,
@@ -82,26 +64,12 @@
           }
         ],
         "synapses": [
-          {
-            "from": 0,
-            "to": 1,
-            "weight": 1
-          },
-          {
-            "from": 1,
-            "to": 1,
-            "weight": 0.25
-          },
-          {
-            "from": 1,
-            "to": 2,
-            "weight": 1
-          }
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 1, "weight": 0.25 },
+          { "from": 1, "to": 2, "weight": 1 }
         ]
       },
-      "options": {
-        "forwardOnly": true
-      },
+      "options": { "forwardOnly": true },
       "expect": {
         "outcome": "throws",
         "error": "ValidationError",
@@ -116,14 +84,8 @@
         "input": 2,
         "output": 1,
         "neurons": [
-          {
-            "type": "input",
-            "id": 0
-          },
-          {
-            "type": "input",
-            "id": 1
-          },
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
           {
             "type": "output",
             "id": -1,
@@ -133,16 +95,8 @@
           }
         ],
         "synapses": [
-          {
-            "from": 1,
-            "to": 2,
-            "weight": 1
-          },
-          {
-            "from": 0,
-            "to": 2,
-            "weight": 1
-          }
+          { "from": 1, "to": 2, "weight": 1 },
+          { "from": 0, "to": 2, "weight": 1 }
         ]
       },
       "expect": {
@@ -160,10 +114,7 @@
         "input": 1,
         "output": 2,
         "neurons": [
-          {
-            "type": "input",
-            "id": 0
-          },
+          { "type": "input", "id": 0 },
           {
             "type": "output",
             "id": -1,
@@ -180,16 +131,8 @@
           }
         ],
         "synapses": [
-          {
-            "from": 0,
-            "to": 2,
-            "weight": 1
-          },
-          {
-            "from": 0,
-            "to": 1,
-            "weight": 1
-          }
+          { "from": 0, "to": 2, "weight": 1 },
+          { "from": 0, "to": 1, "weight": 1 }
         ]
       },
       "expect": {
@@ -207,10 +150,7 @@
         "input": 1,
         "output": 1,
         "neurons": [
-          {
-            "type": "input",
-            "id": 0
-          },
+          { "type": "input", "id": 0 },
           {
             "type": "hidden",
             "id": 1000001,
@@ -227,21 +167,9 @@
           }
         ],
         "synapses": [
-          {
-            "from": 0,
-            "to": 1,
-            "weight": 1
-          },
-          {
-            "from": 0,
-            "to": 1,
-            "weight": 0.5
-          },
-          {
-            "from": 1,
-            "to": 2,
-            "weight": 1
-          }
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 0, "to": 1, "weight": 0.5 },
+          { "from": 1, "to": 2, "weight": 1 }
         ]
       },
       "expect": {
@@ -258,10 +186,7 @@
         "input": 1,
         "output": 1,
         "neurons": [
-          {
-            "type": "input",
-            "id": 0
-          },
+          { "type": "input", "id": 0 },
           {
             "type": "hidden",
             "id": 1000001,
@@ -285,31 +210,13 @@
           }
         ],
         "synapses": [
-          {
-            "from": 0,
-            "to": 1,
-            "weight": 1
-          },
-          {
-            "from": 1,
-            "to": 2,
-            "weight": 1
-          },
-          {
-            "from": 2,
-            "to": 1,
-            "weight": 0.5
-          },
-          {
-            "from": 2,
-            "to": 3,
-            "weight": 1
-          }
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 },
+          { "from": 2, "to": 1, "weight": 0.5 },
+          { "from": 2, "to": 3, "weight": 1 }
         ]
       },
-      "options": {
-        "feedbackLoop": false
-      },
+      "options": { "feedbackLoop": false },
       "expect": {
         "outcome": "throws",
         "error": "ValidationError",
@@ -325,10 +232,7 @@
         "input": 1,
         "output": 1,
         "neurons": [
-          {
-            "type": "input",
-            "id": 0
-          },
+          { "type": "input", "id": 0 },
           {
             "type": "hidden",
             "id": 1000001,
@@ -352,31 +256,13 @@
           }
         ],
         "synapses": [
-          {
-            "from": 0,
-            "to": 1,
-            "weight": 1
-          },
-          {
-            "from": 1,
-            "to": 2,
-            "weight": 1
-          },
-          {
-            "from": 2,
-            "to": 1,
-            "weight": 0.5
-          },
-          {
-            "from": 2,
-            "to": 3,
-            "weight": 1
-          }
+          { "from": 0, "to": 1, "weight": 1 },
+          { "from": 1, "to": 2, "weight": 1 },
+          { "from": 2, "to": 1, "weight": 0.5 },
+          { "from": 2, "to": 3, "weight": 1 }
         ]
       },
-      "options": {
-        "feedbackLoop": true
-      },
+      "options": { "feedbackLoop": true },
       "expect": {
         "outcome": "ok",
         "stats": {
@@ -391,24 +277,15 @@
     {
       "name": "if-shared-source-feeds-both-branches",
       "rule": "OK_IF_SHARED_SOURCE",
-      "notes": "Issue #3873: uniqueness is (from, to, type), so input-1 may feed the IF as both 'positive' and 'negative' without an IDENTITY relay standing in as a second distinct source. The roles ascend, which is the canonical order.",
+      "notes": "Issue #3873: uniqueness is (from, to, type), so neuron 1 may feed the IF as both 'negative' and 'positive' without an IDENTITY relay standing in as a second distinct source. The roles ascend, which is canonical order.",
       "creature": {
         "input": 3,
         "output": 1,
         "forwardOnly": true,
         "neurons": [
-          {
-            "type": "input",
-            "id": 0
-          },
-          {
-            "type": "input",
-            "id": 1
-          },
-          {
-            "type": "input",
-            "id": 2
-          },
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
           {
             "type": "hidden",
             "id": 1000001,
@@ -425,35 +302,11 @@
           }
         ],
         "synapses": [
-          {
-            "from": 0,
-            "to": 3,
-            "weight": -0.3,
-            "type": "condition"
-          },
-          {
-            "from": 1,
-            "to": 3,
-            "weight": -0.3,
-            "type": "negative"
-          },
-          {
-            "from": 1,
-            "to": 3,
-            "weight": 0.4,
-            "type": "positive"
-          },
-          {
-            "from": 2,
-            "to": 3,
-            "weight": -0.2,
-            "type": "negative"
-          },
-          {
-            "from": 3,
-            "to": 4,
-            "weight": 0.8
-          }
+          { "from": 0, "to": 3, "weight": -0.3, "type": "condition" },
+          { "from": 1, "to": 3, "weight": -0.3, "type": "negative" },
+          { "from": 1, "to": 3, "weight": 0.4, "type": "positive" },
+          { "from": 2, "to": 3, "weight": -0.2, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.8 }
         ]
       },
       "expect": {
@@ -476,18 +329,9 @@
         "output": 1,
         "forwardOnly": true,
         "neurons": [
-          {
-            "type": "input",
-            "id": 0
-          },
-          {
-            "type": "input",
-            "id": 1
-          },
-          {
-            "type": "input",
-            "id": 2
-          },
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
           {
             "type": "hidden",
             "id": 1000001,
@@ -504,35 +348,11 @@
           }
         ],
         "synapses": [
-          {
-            "from": 0,
-            "to": 3,
-            "weight": -0.3,
-            "type": "condition"
-          },
-          {
-            "from": 1,
-            "to": 3,
-            "weight": 0.4,
-            "type": "positive"
-          },
-          {
-            "from": 1,
-            "to": 3,
-            "weight": -0.3,
-            "type": "negative"
-          },
-          {
-            "from": 2,
-            "to": 3,
-            "weight": -0.2,
-            "type": "negative"
-          },
-          {
-            "from": 3,
-            "to": 4,
-            "weight": 0.8
-          }
+          { "from": 0, "to": 3, "weight": -0.3, "type": "condition" },
+          { "from": 1, "to": 3, "weight": 0.4, "type": "positive" },
+          { "from": 1, "to": 3, "weight": -0.3, "type": "negative" },
+          { "from": 2, "to": 3, "weight": -0.2, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.8 }
         ]
       },
       "expect": {
@@ -545,24 +365,15 @@
     {
       "name": "duplicate-synapse-roles-into-non-if",
       "rule": "DUPLICATE_SYNAPSE_NON_IF",
-      "notes": "Issue #3873: only an 'IF' target reads its inward synapses per role. Every other squash sums them regardless, so two roles from one source say nothing one summed synapse could not \u2014 and are rejected as a duplicate.",
+      "notes": "Issue #3873: only an 'IF' target reads its inward synapses per role. Every other squash sums them regardless, so two roles from one source say nothing one summed synapse could not — and are rejected as a duplicate.",
       "creature": {
         "input": 3,
         "output": 1,
         "forwardOnly": true,
         "neurons": [
-          {
-            "type": "input",
-            "id": 0
-          },
-          {
-            "type": "input",
-            "id": 1
-          },
-          {
-            "type": "input",
-            "id": 2
-          },
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
           {
             "type": "hidden",
             "id": 1000001,
@@ -579,36 +390,11 @@
           }
         ],
         "synapses": [
-          {
-            "from": 0,
-            "to": 3,
-            "weight": -0.3,
-            "type": "condition"
-          },
-          {
-            "from": 1,
-            "to": 3,
-            "weight": -0.3,
-            "type": "positive"
-          },
-          {
-            "from": 2,
-            "to": 3,
-            "weight": -0.3,
-            "type": "negative"
-          },
-          {
-            "from": 3,
-            "to": 4,
-            "weight": 0.8,
-            "type": "negative"
-          },
-          {
-            "from": 3,
-            "to": 4,
-            "weight": 0.25,
-            "type": "positive"
-          }
+          { "from": 0, "to": 3, "weight": -0.3, "type": "condition" },
+          { "from": 1, "to": 3, "weight": -0.3, "type": "positive" },
+          { "from": 2, "to": 3, "weight": -0.3, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.8, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.25, "type": "positive" }
         ]
       },
       "expect": {
