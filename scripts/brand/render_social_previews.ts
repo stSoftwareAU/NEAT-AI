@@ -8,6 +8,9 @@
  * - `docs/brand/social-previews/opaque/*.png` — flattened on the brand navy
  *   for GitHub's Social preview upload slot.
  *
+ * Specs that have a master in `social-previews/source/` are skipped — those
+ * are hand-authored and fitted by `scale_social_previews.ts`.
+ *
  * Usage: `deno run -A scripts/brand/render_social_previews.ts [--out DIR]`
  *
  * The rasteriser is `@resvg/resvg-js`, mapped in `deno.json` and pulled from
@@ -77,16 +80,27 @@ async function main(): Promise<void> {
     ? resolve(args[outIndex + 1])
     : `${repoRoot}/docs/brand/social-previews`;
 
+  const sourceDir = `${outDir}/source`;
+  const sourced = new Set<string>();
+  try {
+    for await (const entry of Deno.readDir(sourceDir)) {
+      if (entry.isFile && entry.name.endsWith(".png")) sourced.add(entry.name);
+    }
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) throw error;
+  }
+
   const themes: ThemeName[] = ["transparent", "opaque"];
-  const jobs = PREVIEW_SPECS.flatMap((spec) =>
-    themes.map((theme) => {
+  const jobs = PREVIEW_SPECS.flatMap((spec) => {
+    if (sourced.has(spec.file)) return [];
+    return themes.map((theme) => {
       const svg = buildPreviewSvg(spec, paletteFor(theme), measure);
       const path = theme === "transparent"
         ? `${outDir}/${spec.file}`
         : `${outDir}/opaque/${spec.file}`;
       return { path, png: renderPng(svg) };
-    })
-  );
+    });
+  });
 
   await Promise.all(
     jobs.map(async (job) => {
@@ -94,7 +108,10 @@ async function main(): Promise<void> {
       await Deno.writeFile(job.path, job.png);
     }),
   );
-  console.info(`Rendered ${jobs.length} previews into ${outDir}`);
+  console.info(
+    `Rendered ${jobs.length} previews into ${outDir}` +
+      (sourced.size ? ` (skipped ${sourced.size} sourced)` : ""),
+  );
 }
 
 if (import.meta.main) await main();

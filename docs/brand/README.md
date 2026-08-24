@@ -21,8 +21,9 @@ Two variants of every preview ship (Issue #3764):
 
 | Variant                        | Use                                                                                                                                                      |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `social-previews/*.png`        | **Canonical.** Transparent background — README headers, docs, slides, and anything that follows the reader's light/dark mode.                            |
+| `social-previews/*.png`        | **Canonical.** Transparent background — README headers, docs, slides, and anything that follows the reader's light/dark mode. Always 1280×640.           |
 | `social-previews/opaque/*.png` | GitHub's **Settings → General → Social preview** upload slot, which composites uploads onto its own chrome. Same artwork, flattened onto the brand navy. |
+| `social-previews/source/*.png` | Optional large masters. Native resolution, so they can be downscaled again. Fitted onto the canvas by `scale_social_previews.ts`.                        |
 
 The transparent set draws dark ink under a white halo, so the lockup reads on a
 white page (the halo disappears) and on a dark one (the halo outlines the ink).
@@ -37,11 +38,22 @@ preview canvas.
 
 ## Regenerating the set
 
-Every preview is generated — no hand-tweaked bitmaps:
+Generated lockups (no `source/` master) come from the SVG renderer:
 
 ```bash
 deno run -A scripts/brand/render_social_previews.ts
 ```
+
+Hand-authored previews keep a large master under
+[`social-previews/source/`](social-previews/source/). Fit those onto 1280×640
+and rebuild their opaque twins without touching the generated lockups:
+
+```bash
+deno run -A scripts/brand/scale_social_previews.ts
+```
+
+`render_social_previews.ts` skips any spec that already has a `source/` master,
+so regenerating the generated set cannot clobber the hand-authored files.
 
 - [`scripts/brand/preview_specs.ts`](../../scripts/brand/preview_specs.ts) — one
   row per PNG: subtitle, descriptor, motif.
@@ -82,6 +94,7 @@ extents, so re-render on a host with Helvetica or DejaVu Sans available.
 
 `test/docs/BrandAssets.ts` and `test/docs/BrandTransparency.ts` guard the set
 behaviourally: the catalogue and the directory must list the same files, every
-preview must be 1280×640, the canonical set must really be transparent, every
-preview must have an opaque upload variant, and the links in these two documents
-must resolve. Add the image **and** its catalogue row in the same change.
+canonical preview must be 1280×640, the canonical set must really be
+transparent, every preview must have an opaque upload variant, and the links in
+these two documents must resolve. Add the image **and** its catalogue row in the
+same change. Large `source/` masters are not required to be 1280×640.

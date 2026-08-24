@@ -5,10 +5,12 @@
  *
  * These are behavioural ("what") tests: they read the committed files and
  * assert observable facts — the catalogue and the directory agree, every
- * social preview really is GitHub's 1280x640 canvas, and the brand docs'
- * relative links resolve. A half-finished move (catalogue row without an
- * image, image without a row, wrong-sized artwork) fails here rather than
- * being discovered when someone uploads a broken preview.
+ * canonical social preview really is GitHub's 1280x640 canvas, and the brand
+ * docs' relative links resolve. Large masters may live under `source/` at
+ * native resolution; only the fitted 1280×640 files in this directory are
+ * the GitHub canvas. A half-finished move (catalogue row without an image,
+ * image without a row, wrong-sized artwork) fails here rather than being
+ * discovered when someone uploads a broken preview.
  */
 
 import { assert, assertEquals } from "@std/assert";
@@ -29,11 +31,16 @@ function quotedPngNames(content: string): string[] {
   return [...content.matchAll(/`([\w.-]+\.png)`/g)].map((m) => m[1]);
 }
 
-/** PNG file names present in the directory at `dir`. */
+/** PNG file names present in the directory at `dir`. Missing dirs are empty. */
 async function pngFilesIn(dir: string): Promise<string[]> {
   const names: string[] = [];
-  for await (const entry of Deno.readDir(dir)) {
-    if (entry.isFile && entry.name.endsWith(".png")) names.push(entry.name);
+  try {
+    for await (const entry of Deno.readDir(dir)) {
+      if (entry.isFile && entry.name.endsWith(".png")) names.push(entry.name);
+    }
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) return names;
+    throw error;
   }
   return names.sort();
 }
@@ -62,10 +69,12 @@ async function pngSize(
 async function renderedPngPaths(): Promise<string[]> {
   const previews = await pngFilesIn(PREVIEWS_DIR);
   const opaque = await pngFilesIn(`${PREVIEWS_DIR}/opaque`);
+  const source = await pngFilesIn(`${PREVIEWS_DIR}/source`);
   return [
     `${BRAND_DIR}/templates/neuron-a-mark.png`,
     ...previews.map((name) => `${PREVIEWS_DIR}/${name}`),
     ...opaque.map((name) => `${PREVIEWS_DIR}/opaque/${name}`),
+    ...source.map((name) => `${PREVIEWS_DIR}/source/${name}`),
   ];
 }
 

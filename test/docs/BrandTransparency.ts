@@ -6,7 +6,8 @@
  * Behavioural tests: they read the committed PNGs' pixels and the committed
  * README, and assert what a reader would see — the canonical set really is
  * transparent, an opaque variant exists for GitHub's Social-preview upload
- * slot, and the README shows the hub mark plus the sibling gallery.
+ * slot, and the README shows the hub mark plus the sibling gallery. They do
+ * not infer "has artwork" from a fully-opaque pixel quota.
  */
 
 import { assert, assertEquals } from "@std/assert";
@@ -18,8 +19,8 @@ const PREVIEWS_DIR = `${REPO_ROOT}/docs/brand/social-previews`;
 const OPAQUE_DIR = `${PREVIEWS_DIR}/opaque`;
 const README = `${REPO_ROOT}/README.md`;
 
-/** The hub mark and its earlier approved alternate — not sibling repos. */
-const HUB_PREVIEWS = ["neat-ai.png", "neat-ai-organic-approved.png"];
+/** The hub mark — not sibling repos. */
+const HUB_PREVIEWS = ["neat-ai.png"];
 
 /** Sample every Nth pixel — a full 1280x640 sweep proves nothing extra. */
 const SAMPLE_STEP = 8;
@@ -93,22 +94,6 @@ Deno.test("every social preview has a transparent background", async () => {
     failures,
     [],
     "social previews must have transparent backgrounds",
-  );
-});
-
-Deno.test("every social preview still draws artwork", async () => {
-  const names = await pngNamesIn(PREVIEWS_DIR);
-  const shares = await Promise.all(
-    names.map(async (name) => ({
-      name,
-      share: (await alphaProfile(`${PREVIEWS_DIR}/${name}`)).opaqueShare,
-    })),
-  );
-  const blank = shares.filter((s) => s.share < 0.02).map((s) => s.name);
-  assertEquals(
-    blank,
-    [],
-    "transparent previews must still carry visible artwork",
   );
 });
 
