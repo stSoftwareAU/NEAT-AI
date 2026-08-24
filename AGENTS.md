@@ -31,6 +31,11 @@ For deep dives on a single topic, follow the dedicated docs (full index in
   #1958).
 - **Semantic version rules** — quality-gate test
   [`test/creature/SemanticVersionStability.ts`](./test/creature/SemanticVersionStability.ts).
+- **Synapse identity `(from, to, type)`** — the rule and its API are in
+  [Synapse identity](#-synapse-identity-from-to-type-issue-3873) below; the key
+  itself lives in
+  [`src/architecture/SynapseKey.ts`](./src/architecture/SynapseKey.ts) (Issue
+  #3873).
 - **Cross-engine creature JSON contract** — the golden creature fixtures
   [`test/fixtures/golden/README.md`](./test/fixtures/golden/README.md); gate
   test
