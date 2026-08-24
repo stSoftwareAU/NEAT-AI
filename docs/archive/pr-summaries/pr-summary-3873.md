@@ -89,18 +89,39 @@ pair activates like the IDENTITY relay it replaces`
 activates both shapes over four inputs and asserts identical outputs, then
 asserts the direct creature carries one neuron fewer.
 
-### Pre-existing failures, unchanged by this PR
+### Full quality gate
 
-Three failures in the full suite predate this work. Each was reproduced on the
-base commit `90cd8c4f` with the branch stashed:
+```text
+$ ./quality.sh   # fmt / lint / deno check / build.sh --verify-only / deno test
+FAILED | 8798 passed (5 steps) | 4 failed | 41 ignored (5m32s)
+```
+
+`deno fmt --check`, `deno lint`, `deno check src test`, and
+`./build.sh --verify-only` (which confirms `wasm_activation/pkg` matches
+`stSoftwareAU/NEAT-AI-core@53443e70`) are all clean.
+
+The four test failures **predate this work**. Each was reproduced on the base
+commit `90cd8c4f` with this branch stashed:
 
 - `every social preview uses GitHub's 1280x640 canvas`,
   `every social preview has a transparent background`,
   `every social preview still draws artwork` — `test/docs/BrandAssets.ts` and
-  `BrandTransparency.ts`, from the `new socials` change (#3872).
+  `test/docs/BrandTransparency.ts`, from the `new socials` change (#3872). The
+  `docs/branding/*.png` assets those tests read are absent here.
 - `Dataset scoring parity: RMSE is still a known divergence (#3853 …)` — the
-  divergence has since been fixed, so the `KNOWN_DIVERGENCES` entry it guards is
-  stale. Out of scope here.
+  divergence has since been fixed, so the `KNOWN_DIVERGENCES` entry the test
+  guards is stale and the test now fails _because_ the engines agree. Out of
+  scope here.
+
+Two failures the change did introduce were found and fixed rather than explained
+away — `mergeDuplicateSynapses - same from/to merges even when type
+differs`
+(see Test Plan below) and
+`Issue #3845: a genuinely invalid creature is still repaired`, which caught a
+real defect: downgrading an `IF` to `IDENTITY` strips the branch roles, and one
+source could now have fed that `IF` twice, so the strip left a duplicate pair
+`fix()` rejects. `repairInvalidIfNeuron` now sums those rows into one, so the
+repair no longer swaps one invalid creature for another.
 
 ## Test Plan
 
