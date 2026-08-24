@@ -7,6 +7,12 @@
 
 import type { Creature } from "@creature";
 import type { Synapse } from "@architecture/Synapse.ts";
+import {
+  compareSynapses,
+  type SynapseRole,
+  SYNAPSE_ROLE_COUNT,
+  synapseRoleRank,
+} from "@architecture/SynapseKey.ts";
 
 /**
  * Internal state for topology caches and indices.
@@ -89,7 +95,10 @@ export function inwardConnections(
 function buildSynapsesIndexedByTo(creature: Creature): Synapse[] {
   return creature.synapses.slice().sort((a, b) => {
     if (a.to !== b.to) return a.to - b.to;
-    return a.from - b.from;
+    if (a.from !== b.from) return a.from - b.from;
+    // Issue #3873: the role completes the key, so two roles from one source
+    // land in a stable order rather than whichever the sort happened to pick.
+    return synapseRoleRank(a.type) - synapseRoleRank(b.type);
   });
 }
 
@@ -229,11 +238,29 @@ export function bulkLoadInwardConnections(
 }
 
 /**
+ * Numeric key for one synapse identity `(from, to, type)`.
+ *
+ * Issue #3873: the role occupies the low {@link SYNAPSE_ROLE_COUNT} slots so the
+ * four keys of one ordered pair are contiguous, which is what lets
+ * {@link hasConnection} answer a pair-level question with four O(1) probes.
+ */
+export function connectionKey(
+  neuronCount: number,
+  from: number,
+  to: number,
+  type?: SynapseRole,
+): number {
+  return (from * neuronCount + to) * SYNAPSE_ROLE_COUNT + synapseRoleRank(type);
+}
+
+/**
  * Builds and returns a Set of existing connections as numeric keys.
- * Encodes (from, to) as `from * neuronCount + to` for O(1) lookup
+ * Encodes (from, to, type) via {@link connectionKey} for O(1) lookup
  * without string allocation.
  * Issue #1036: Performance optimisation for ADD_CONNECTION mutation.
  * Issue #1659: Replaced string keys with numeric keys.
+ * Issue #3873: The role is part of the key — an ordered pair may appear once
+ * per role, and only into an `IF` target.
  */
 export function getConnectionSet(
   creature: Creature,
@@ -244,7 +271,9 @@ export function getConnectionSet(
     caches.connectionSet = new Set<number>();
     for (let i = 0, len = creature.synapses.length; i < len; i++) {
       const synapse = creature.synapses[i];
-      caches.connectionSet.add(synapse.from * neuronCount + synapse.to);
+      caches.connectionSet.add(
+        connectionKey(neuronCount, synapse.from, synapse.to, synapse.type),
+      );
     }
   }
   return caches.connectionSet;
@@ -252,6 +281,11 @@ export function getConnectionSet(
 
 /**
  * Checks if a connection exists between two neurons in O(1) time.
+ *
+ * With `type` given the question is the exact `(from, to, type)` triple; with it
+ * omitted the question is whether the ordered pair carries *any* role
+ * (Issue #3873).
+ *
  * Issue #1036: Performance optimisation for ADD_CONNECTION mutation.
  * Issue #1659: Uses numeric key encoding.
  */
@@ -260,9 +294,18 @@ export function hasConnection(
   caches: TopologyCaches,
   from: number,
   to: number,
+  type?: SynapseRole,
 ): boolean {
   const neuronCount = creature.neurons.length;
-  return getConnectionSet(creature, caches).has(from * neuronCount + to);
+  const set = getConnectionSet(creature, caches);
+  if (type !== undefined) {
+    return set.has(connectionKey(neuronCount, from, to, type));
+  }
+  const base = (from * neuronCount + to) * SYNAPSE_ROLE_COUNT;
+  for (let rank = 0; rank < SYNAPSE_ROLE_COUNT; rank++) {
+    if (set.has(base + rank)) return true;
+  }
+  return false;
 }
 
 /**
@@ -341,21 +384,29 @@ export function getAvailableConnections(
  */
 function computeAvailableConnections(
   creature: Creature,
-  caches: TopologyCaches,
+  _caches: TopologyCaches,
 ): [number, number][] {
-  const connSet = getConnectionSet(creature, caches);
-  const available: [number, number][] = [];
   const neurons = creature.neurons;
   const neuronCount = neurons.length;
   const inputCount = creature.input;
 
+  // Issue #3873: a slot is taken when the ordered pair carries any role, so
+  // this walk keys by the pair. Building that set here costs one pass over the
+  // synapses and keeps the O(n²) candidate loop at a single probe each.
+  const pairSet = new Set<number>();
+  for (let i = 0, len = creature.synapses.length; i < len; i++) {
+    const synapse = creature.synapses[i];
+    pairSet.add(synapse.from * neuronCount + synapse.to);
+  }
+
+  const available: [number, number][] = [];
   for (let fromIndx = 0; fromIndx < neuronCount; fromIndx++) {
     const startTo = Math.max(fromIndx + 1, inputCount);
     for (let toIndx = startTo; toIndx < neuronCount; toIndx++) {
       const neuronTo = neurons[toIndx];
       if (neuronTo.type === "constant") continue;
       const key = fromIndx * neuronCount + toIndx;
-      if (!connSet.has(key)) {
+      if (!pairSet.has(key)) {
         available.push([fromIndx, toIndx]);
       }
     }
@@ -431,40 +482,83 @@ function binarySearchForStartIndex(
 
 /**
  * Get a specific synapse between two neurons.
+ *
+ * With `type` given the match is the exact `(from, to, type)` triple. With it
+ * omitted the ordered pair is the whole key — which identifies at most one
+ * synapse everywhere except an `IF` target, where the first role in canonical
+ * order is returned; {@link getSynapses} is the call that sees all of them
+ * (Issue #3873).
  */
 export function getSynapse(
   creature: Creature,
   caches: TopologyCaches,
   from: number,
   to: number,
+  type?: SynapseRole,
 ): Synapse | null {
   const outward = outwardConnections(creature, caches, from);
 
+  let match: Synapse | null = null;
   for (let indx = outward.length; indx--;) {
     const c = outward[indx];
     if (c.to === to) {
-      return c;
+      if (type !== undefined) {
+        if (c.type === type) return c;
+      } else {
+        // Walking backwards, so the last pair match seen is the lowest-ranked
+        // role — the first in canonical order.
+        match = c;
+      }
     } else if (c.to < to) {
       break;
     }
   }
 
-  return null;
+  return match;
 }
 
 /**
- * Binary search for a synapse by (from, to) indices.
- * Synapses are sorted first by `from`, then by `to` within the same `from`.
+ * Every synapse from `from` to `to`, in canonical `(from, to, type)` order.
+ *
+ * At most one outside an `IF` target; up to four (one per role) into one
+ * (Issue #3873).
+ */
+export function getSynapses(
+  creature: Creature,
+  caches: TopologyCaches,
+  from: number,
+  to: number,
+): Synapse[] {
+  const outward = outwardConnections(creature, caches, from);
+  const matches: Synapse[] = [];
+  for (let indx = 0; indx < outward.length; indx++) {
+    const c = outward[indx];
+    if (c.to === to) matches.push(c);
+    else if (c.to > to) break;
+  }
+  return matches;
+}
+
+/**
+ * Binary search for a synapse by `(from, to)` and, when given, `type`.
+ *
+ * Synapses are sorted by `from`, then `to`, then role rank (Issue #3873). With
+ * `type` omitted the index returned is the **first** synapse of the pair in
+ * that order, so a caller that must see every role should use
+ * {@link getSynapses}.
+ *
  * Issue #1101: Performance optimisation for disconnect operations.
  */
 export function binarySearchSynapse(
   creature: Creature,
   from: number,
   to: number,
+  type?: SynapseRole,
 ): number {
   const synapses = creature.synapses;
   let low = 0;
   let high = synapses.length - 1;
+  let firstOfPair = -1;
 
   while (low <= high) {
     const mid = (low + high) >>> 1;
@@ -474,39 +568,47 @@ export function binarySearchSynapse(
       low = mid + 1;
     } else if (syn.from > from) {
       high = mid - 1;
+    } else if (syn.to < to) {
+      low = mid + 1;
+    } else if (syn.to > to) {
+      high = mid - 1;
+    } else if (type === undefined) {
+      // Keep narrowing left so the answer is the pair's first synapse, which
+      // is stable regardless of which role the probe happened to land on.
+      firstOfPair = mid;
+      high = mid - 1;
     } else {
-      if (syn.to < to) {
-        low = mid + 1;
-      } else if (syn.to > to) {
-        high = mid - 1;
-      } else {
-        return mid;
-      }
+      const rank = synapseRoleRank(syn.type);
+      const wanted = synapseRoleRank(type);
+      if (rank < wanted) low = mid + 1;
+      else if (rank > wanted) high = mid - 1;
+      else return mid;
     }
   }
 
-  return -1;
+  return firstOfPair;
 }
 
 /**
  * Find the insertion point for a synapse to maintain sorted order.
  * Uses binary search for O(log n) efficiency.
  * Issue #1102: Helper method for connectBatch.
+ * Issue #3873: Ordered by the `(from, to, type)` triple.
  */
 export function findInsertionPoint(
   creature: Creature,
   from: number,
   to: number,
+  type?: SynapseRole,
 ): number {
   const synapses = creature.synapses;
+  const key = { from, to, type };
   let low = 0;
   let high = synapses.length;
 
   while (low < high) {
     const mid = (low + high) >>> 1;
-    const syn = synapses[mid];
-
-    if (syn.from < from || (syn.from === from && syn.to < to)) {
+    if (compareSynapses(synapses[mid], key) < 0) {
       low = mid + 1;
     } else {
       high = mid;
