@@ -21,7 +21,9 @@
     "npm:@playwright/mcp@0.0.75": "0.0.75",
     "npm:@resvg/resvg-js@2.6.2": "2.6.2",
     "npm:cspell@*": "10.0.1",
-    "npm:cspell@latest": "10.0.1"
+    "npm:cspell@latest": "10.0.1",
+    "npm:jpeg-js@0.4.4": "0.4.4",
+    "npm:pngjs@7.0.0": "7.0.0"
   },
   "jsr": {
     "@std/assert@1.0.19": {
@@ -662,6 +664,9 @@
     "is-safe-filename@0.1.1": {
       "integrity": "sha512-4SrR7AdnY11LHfDKTZY1u6Ga3RuxZdl3YKWWShO5iyuG5h8QS4GD2tOb04peBJ5I7pXbR+CGBNEhTcwK+FzN3g=="
     },
+    "jpeg-js@0.4.4": {
+      "integrity": "sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg=="
+    },
     "picomatch@4.0.4": {
       "integrity": "sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A=="
     },
@@ -678,6 +683,9 @@
         "fsevents"
       ],
       "bin": true
+    },
+    "pngjs@7.0.0": {
+      "integrity": "sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow=="
     },
     "resolve-from@5.0.0": {
       "integrity": "sha512-qYg9KP24dD5qka9J47d0aVky0N+b4fTU89LN9iDnjB5waksiC49rvMB0PrUJQGoTmH50XPiqOvAjDfaijGxYZw=="
@@ -722,7 +730,9 @@
       "jsr:@std/uuid@1.1.1",
       "jsr:@std/yaml@1.2.0",
       "jsr:@stsoftware/tags@1.0.14",
-      "npm:@resvg/resvg-js@2.6.2"
+      "npm:@resvg/resvg-js@2.6.2",
+      "npm:jpeg-js@0.4.4",
+      "npm:pngjs@7.0.0"
     ]
   }
 }

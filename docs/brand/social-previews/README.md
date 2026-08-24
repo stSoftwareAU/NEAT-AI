@@ -5,11 +5,19 @@ light and dark modes alike. Same organic neuron-A family lockup; each repo adds
 its own subtitle, one-line descriptor, and motif.
 
 Hand-authored masters that are larger than the GitHub canvas live in
-[`source/`](source/). Fit them onto 1280×640 (contain, centred, transparent pad)
-and rebuild the opaque twins with:
+[`source/`](source/). They stay at native resolution. Fit them onto 1280×640
+(contain, centred, transparent pad), rebuild the opaque twins, and write
+[`github/`](github/) JPEGs under 1 MB with:
 
 ```bash
 deno run -A scripts/brand/scale_social_previews.ts
+```
+
+After changing only the fitted opaque PNGs, rebuild the GitHub set without
+touching `source/`:
+
+```bash
+deno run -A scripts/brand/scale_social_previews.ts --github-only
 ```
 
 | File                          | Repo                                                                               | Subtitle        | Motif                   |
@@ -26,10 +34,10 @@ deno run -A scripts/brand/scale_social_previews.ts
 | `neat-ai-forests.png`         | [NEAT-AI-Forests](https://github.com/stSoftwareAU/NEAT-AI-Forests)                 | Forests         | Decision-tree forest    |
 | `neat-ai-ockham.png`          | [NEAT-AI-Ockham](https://github.com/stSoftwareAU/NEAT-AI-Ockham)                   | Ockham          | Pruning shears          |
 
-`opaque/` holds the same eleven images flattened onto the brand navy. Upload
+`opaque/` holds the same eleven images flattened onto the brand navy. `github/`
+holds the same eleven as 1280×640 JPEGs, each smaller than 1 MB. Upload
 **those** via each repo → Settings → General → Social preview; GitHub composites
-the upload onto its own chrome, where a transparent background would leave the
-dark ink unreadable.
+the upload onto its own chrome and rejects files of 1 MB or larger.
 
 See the [brand overview](../README.md) for the palettes, the regeneration
 command, and the rules for adding an asset.
