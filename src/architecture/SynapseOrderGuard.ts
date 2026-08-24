@@ -1,9 +1,6 @@
 import { TopologyError } from "@errors/TopologyError.ts";
 import type { Creature } from "@creature";
-import {
-  compareSynapses,
-  synapseRoleLabel,
-} from "@architecture/SynapseKey.ts";
+import { compareSynapses, synapseRoleLabel } from "@architecture/SynapseKey.ts";
 
 /**
  * Debug-gated assertion that the synapse array is sorted lexicographically by
@@ -37,7 +34,9 @@ export function assertSynapsesSortedByFromTo(
     if (compareSynapses(prev, curr) > 0) {
       throw new TopologyError(
         `[${operation}] Synapses out of order at index ${i}: ` +
-          `[${prev.from}->${prev.to}/${synapseRoleLabel(prev.type)}] must not ` +
+          `[${prev.from}->${prev.to}/${
+            synapseRoleLabel(prev.type)
+          }] must not ` +
           `come before [${curr.from}->${curr.to}/${
             synapseRoleLabel(curr.type)
           }] (expected sort by (from, to, type))`,

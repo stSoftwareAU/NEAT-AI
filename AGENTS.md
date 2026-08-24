@@ -745,6 +745,54 @@ NEAT-AI supports two topology styles:
 
 In our production workloads, the default is feed-forward/forward-only.
 
+## 🔑 Synapse identity: `(from, to, type)` (Issue #3873)
+
+A synapse is identified by the **triple** `(from, to, type)`, and the canonical
+sort order of `creature.synapses` is that same triple so it stays total. The
+wire format is unchanged — `type` was always in the JSON.
+
+An `IF` neuron carries a role on each inward synapse (`condition`, `positive`,
+`negative`) and the kernel keeps a **separate sum per role**:
+
+```text
+if (condition_sum > 0) positive_sum + bias else negative_sum + bias
+```
+
+So a term that must apply whichever way the `IF` branches needs two synapses
+into that neuron from one source. **Only an `IF` target may carry more than one
+role from one source.** Every other squash sums its inward synapses regardless
+of role, so two synapses from one source there are exactly one with the summed
+weight — redundancy with no meaning, which evolution must not be able to create.
+
+```mermaid
+flowchart LR
+    S(["shared source"]) -- "positive" --> G{{"gate — IF"}}
+    S -- "negative" --> G
+    C(["condition source"]) -- "condition" --> G
+    G --> O(["output"])
+```
+
+The single TypeScript home for the key is
+[`src/architecture/SynapseKey.ts`](./src/architecture/SynapseKey.ts) —
+`compareSynapses`, `synapseRoleRank`, `isRoleReadingTarget`. Reach for it rather
+than re-deriving a `(from, to)` key:
+
+- `Creature.connect(from, to, weight, type)` refuses an exact repeat of the
+  triple, and refuses a second role into anything but an `IF`.
+- `Creature.getSynapse(from, to, type?)` answers one role;
+  `getSynapses(from,
+  to)` answers all of them;
+  `occupyingSynapse(from, to, type?)` answers the one a new synapse would
+  collide with.
+- `Creature.disconnect(from, to, type?)` removes one role, or every role when
+  `type` is omitted.
+
+The rules themselves are NEAT-AI-core's (`validate_no_duplicate_synapses`,
+`creature_validate` rules 25/26); the conformance cases that pin them are
+`if-shared-source-feeds-both-branches`, `synapses-not-sorted-by-type` and
+`duplicate-synapse-roles-into-non-if` in
+[`test/fixtures/validate/synapses.json`](./test/fixtures/validate/synapses.json).
+
 ## 📚 Documentation Layout
 
 The **full topic-by-topic index** of every long-form guide lives in

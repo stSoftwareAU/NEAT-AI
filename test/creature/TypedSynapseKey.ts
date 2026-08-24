@@ -12,6 +12,8 @@ import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { compareSynapses } from "@architecture/SynapseKey.ts";
+import { Offspring } from "@architecture/Offspring.ts";
+import { mergeDuplicateSynapses } from "@compact/SynapsePruning.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**
@@ -110,7 +112,9 @@ Deno.test("typed key: the direct pair activates like the IDENTITY relay it repla
   const direct = Creature.fromJSON(sharedBranchIf());
   const viaRelay = Creature.fromJSON(sharedBranchIfViaRelay());
 
-  for (const [a, b, c] of [[1, 1, 1], [-1, -1, 0.5], [0.25, 2, -3], [3, -2, 0]]) {
+  for (
+    const [a, b, c] of [[1, 1, 1], [-1, -1, 0.5], [0.25, 2, -3], [3, -2, 0]]
+  ) {
     const input = new Float32Array([a, b, c]);
     assertEquals(
       Array.from(direct.activate(input)),
@@ -290,4 +294,72 @@ Deno.test("typed key: a repeated pair into a non-IF target is still merged on lo
   );
   assertEquals(creature.getSynapse(gate, output)?.weight, 1.25);
   creatureValidate(creature);
+});
+
+Deno.test("typed key: fix() keeps both roles into an IF target", async () => {
+  await initWasmForTests();
+  const creature = Creature.fromJSON(sharedBranchIf());
+  const shared = indexOf(creature, "shared");
+  const gate = indexOf(creature, "gate");
+
+  creature.fix();
+
+  assertEquals(
+    creature.getSynapses(shared, gate).map((s) => s.type),
+    ["negative", "positive"],
+    "fix() must not read the second role as a duplicate row",
+  );
+  creatureValidate(creature);
+});
+
+Deno.test("typed key: breeding carries both roles into the offspring", async () => {
+  await initWasmForTests();
+  const mum = Creature.fromJSON(sharedBranchIf());
+  const dad = Creature.fromJSON(sharedBranchIf());
+  // Give the parents distinct weights so crossover has something to choose.
+  for (const synapse of dad.synapses) synapse.weight += 0.1;
+  mum.score = 1;
+  dad.score = 0.9;
+
+  const child = Offspring.breed(mum, dad);
+  assert(child !== undefined, "breed produced no offspring");
+  creatureValidate(child);
+
+  const shared = indexOf(child, "shared");
+  const gate = indexOf(child, "gate");
+  assertEquals(
+    child.getSynapses(shared, gate).map((s) => s.type),
+    ["negative", "positive"],
+    "crossover must key by (from, to, type), not the pair",
+  );
+});
+
+Deno.test("typed key: mergeDuplicateSynapses coalesces by target, not blindly", async () => {
+  await initWasmForTests();
+  const json = sharedBranchIf();
+  // An exact repeat of the triple into the IF target, and a repeated pair into
+  // the IDENTITY output.
+  json.synapses.push(
+    { fromUUID: "shared", toUUID: "gate", weight: 0.25, type: "positive" },
+    { fromUUID: "input-2", toUUID: "output-0", weight: 0.3 },
+  );
+
+  const result = mergeDuplicateSynapses(json);
+  assertEquals(result.merged, 2);
+
+  const intoGate = json.synapses.filter((s) =>
+    s.fromUUID === "shared" && s.toUUID === "gate"
+  );
+  assertEquals(
+    intoGate.map((s) => [s.type, s.weight]),
+    [["positive", 0.75], ["negative", 0.5]],
+    "the exact triple merges; the other role is left alone",
+  );
+  assertEquals(
+    json.synapses.filter((s) =>
+      s.fromUUID === "input-2" && s.toUUID === "output-0"
+    ).map((s) => s.weight),
+    [0.5],
+    "a repeated pair into a non-IF target still coalesces",
+  );
 });

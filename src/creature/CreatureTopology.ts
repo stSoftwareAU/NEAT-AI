@@ -12,8 +12,8 @@ import {
   compareSynapses,
   isRoleReadingTarget,
   nonIfSecondRoleMessage,
-  type SynapseRole,
   SYNAPSE_ROLE_COUNT,
+  type SynapseRole,
   synapseRoleRank,
 } from "@architecture/SynapseKey.ts";
 import { TopologyError } from "@errors/TopologyError.ts";

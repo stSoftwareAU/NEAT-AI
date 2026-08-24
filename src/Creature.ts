@@ -10,7 +10,6 @@
  * - CreatureMutation.ts    - Network structure repair, random connections
  */
 
-import { assert } from "@std/assert";
 import type { TagInterface } from "@stsoftware/tags/mod";
 import { getGlobalDebug } from "@globalAccessors";
 import type {

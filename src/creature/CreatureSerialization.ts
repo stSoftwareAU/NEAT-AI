@@ -24,10 +24,7 @@ import {
 } from "@architecture/NeuronId.ts";
 import type { NeuronTrace } from "@architecture/NeuronInterfaces.ts";
 import { Synapse } from "@architecture/Synapse.ts";
-import {
-  compareSynapses,
-  type SynapseRole,
-} from "@architecture/SynapseKey.ts";
+import { compareSynapses, type SynapseRole } from "@architecture/SynapseKey.ts";
 import { Activations } from "@methods/activations/Activations.ts";
 import type {
   SynapseExport,
