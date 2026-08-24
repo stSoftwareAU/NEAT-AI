@@ -77,6 +77,14 @@ export function removeSyntheticSynapses(
         false,
         "compact:removeSynthetic",
       );
+      // Compact candidates are loaded with validation off. Aggressive prune
+      // can strand a hidden neuron with no outward connections (the typed IF
+      // branch already gone, the synthetic the only remaining edge). Repair
+      // the live creature so single-iteration trainDir does not hand back an
+      // invalid genome (Issue #3873).
+      creature.fix(
+        creature.forwardOnly === true ? { forwardOnly: true } : undefined,
+      );
     }
   }
 

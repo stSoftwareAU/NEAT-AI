@@ -19,6 +19,10 @@ import type {
 } from "@architecture/CreatureInterfaces.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { synapseTripleKey } from "@architecture/SynapseKey.ts";
+import type {
+  SynapseExport,
+  SynapseTrace,
+} from "@architecture/SynapseInterfaces.ts";
 import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 import type { TrainingLoopResult } from "@architecture/training/TrainingLoop.ts";
@@ -40,6 +44,33 @@ export function wireToRuntimeIdFromExport(
     }
   }
   return map;
+}
+
+/**
+ * The trace snapshot that still carries a synapse's `trace` payload for a
+ * cleaned row, or `undefined` when that row is new.
+ *
+ * Prefer an exact `(from, to, type)` hit. After an `IF` → `IDENTITY`
+ * downgrade the remaining row is untyped on the same pair, so fall back to
+ * the first trace row of that pair (Issue #3873).
+ */
+function matchingTraceSynapse(
+  cleaned: SynapseExport,
+  byTriple: Map<string, SynapseTrace>,
+  byPair: Map<string, SynapseTrace[]>,
+): SynapseTrace | undefined {
+  if (
+    typeof cleaned.fromUUID !== "string" || typeof cleaned.toUUID !== "string"
+  ) {
+    return undefined;
+  }
+  const exact = byTriple.get(
+    synapseTripleKey(cleaned.fromUUID, cleaned.toUUID, cleaned.type),
+  );
+  if (exact) return exact;
+  if (cleaned.type) return undefined;
+  const pair = `${cleaned.fromUUID}->${cleaned.toUUID}`;
+  return byPair.get(pair)?.[0];
 }
 
 /**
@@ -67,15 +98,21 @@ export function pruneSyntheticSynapses(
   // Update bestCreatureJSON to reflect the cleaned creature.
   const cleanedCreatureJSON = exportJSONWithRuntimeIds(creature);
 
-  // Filter bestTraceJSON to match the cleaned creature structure.
-  // traceJSON() is UUID-only (Issue #2054); match on wire UUIDs.
-  const remainingSynapseKeys = new Set<string>();
-  for (const s of cleanedCreatureJSON.synapses) {
-    if (typeof s.fromUUID === "string" && typeof s.toUUID === "string") {
-      remainingSynapseKeys.add(
-        synapseTripleKey(s.fromUUID, s.toUUID, s.type),
-      );
+  // Re-align the trace to the cleaned topology. Exact triple match first;
+  // an untyped cleaned row also accepts a typed trace row on the same pair
+  // so an IF→IDENTITY downgrade does not drop the only remaining outward
+  // synapse (Issue #3873).
+  const byTriple = new Map<string, SynapseTrace>();
+  const byPair = new Map<string, SynapseTrace[]>();
+  for (const s of bestTraceJSON.synapses) {
+    if (typeof s.fromUUID !== "string" || typeof s.toUUID !== "string") {
+      continue;
     }
+    byTriple.set(synapseTripleKey(s.fromUUID, s.toUUID, s.type), s);
+    const pair = `${s.fromUUID}->${s.toUUID}`;
+    const list = byPair.get(pair);
+    if (list) list.push(s);
+    else byPair.set(pair, [s]);
   }
   const remainingNeuronUuids = new Set<string>();
   for (const n of cleanedCreatureJSON.neurons) {
@@ -99,13 +136,27 @@ export function pruneSyntheticSynapses(
 
   const cleanedTraceJSON: CreatureTrace = {
     ...bestTraceJSON,
-    synapses: bestTraceJSON.synapses.filter((s) =>
-      typeof s.fromUUID === "string" &&
-      typeof s.toUUID === "string" &&
-      remainingSynapseKeys.has(
-        synapseTripleKey(s.fromUUID, s.toUUID, s.type),
-      )
-    ),
+    synapses: cleanedCreatureJSON.synapses.flatMap((s) => {
+      if (typeof s.fromUUID !== "string" || typeof s.toUUID !== "string") {
+        return [];
+      }
+      const traced = matchingTraceSynapse(s, byTriple, byPair);
+      if (traced) {
+        return [{
+          ...traced,
+          fromUUID: s.fromUUID,
+          toUUID: s.toUUID,
+          weight: s.weight,
+          type: s.type,
+        }];
+      }
+      return [{
+        fromUUID: s.fromUUID,
+        toUUID: s.toUUID,
+        weight: s.weight,
+        type: s.type,
+      }] as SynapseTrace[];
+    }),
     neurons: bestTraceJSON.neurons.filter((n) =>
       typeof n.uuid === "string" && remainingNeuronUuids.has(n.uuid)
     ).map((n) => {

@@ -321,7 +321,13 @@ Deno.test("typed key: breeding carries both roles into the offspring", async () 
   mum.score = 1;
   dad.score = 0.9;
 
-  const child = Offspring.breed(mum, dad);
+  // Offspring.breed drops clones (`childUUID === parent.uuid`). These parents
+  // share topology, so a roll that copies every neuron from one side is a
+  // clone — retry until crossover actually mixes.
+  let child = Offspring.breed(mum, dad);
+  for (let attempt = 0; attempt < 32 && child === undefined; attempt++) {
+    child = Offspring.breed(mum, dad);
+  }
   assert(child !== undefined, "breed produced no offspring");
   creatureValidate(child);
 

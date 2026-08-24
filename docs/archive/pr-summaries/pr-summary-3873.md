@@ -28,12 +28,12 @@ The rule, verbatim from the issue:
 ```mermaid
 flowchart LR
     subgraph before["before — (from, to) key"]
-        S1(["shared"]) -- "positive" --> G1{{"gate — IF"}}
+        S1(["shared"]) -- "positive" --> G1["gate — IF"]
         S1 --> R(["relay — IDENTITY<br/>exists only to be a<br/>second distinct source"])
         R -- "negative" --> G1
     end
     subgraph after["after — (from, to, type) key"]
-        S2(["shared"]) -- "positive" --> G2{{"gate — IF"}}
+        S2(["shared"]) -- "positive" --> G2["gate — IF"]
         S2 -- "negative" --> G2
     end
 ```
