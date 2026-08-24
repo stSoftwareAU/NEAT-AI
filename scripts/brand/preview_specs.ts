@@ -27,12 +27,6 @@ export const PREVIEW_SPECS: PreviewSpec[] = [
     motif: null,
   },
   {
-    file: "neat-ai-organic-approved.png",
-    subtitle: "NeuroEvolution",
-    descriptor: "Organic hero lockup — alternate hub mark",
-    motif: null,
-  },
-  {
     file: "neat-ai-core.png",
     subtitle: "core",
     descriptor: "Shared Rust compute crate, vendored as WASM",
