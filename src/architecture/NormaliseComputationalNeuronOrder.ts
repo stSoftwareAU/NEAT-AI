@@ -7,6 +7,7 @@
 import { assert } from "@std/assert";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { Creature } from "@creature";
+import { compareSynapses } from "@architecture/SynapseKey.ts";
 import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
 
 /**
@@ -32,9 +33,7 @@ function moveNeuronToIndex(
     s.from = oldToNew[s.from]!;
     s.to = oldToNew[s.to]!;
   }
-  creature.synapses.sort((a, b) =>
-    a.from !== b.from ? a.from - b.from : a.to - b.to
-  );
+  creature.synapses.sort(compareSynapses);
   creature.neurons = order.map((oi) => neurons[oi]!);
   creature.neurons.forEach((neuron, i) => {
     neuron.index = i;
@@ -146,9 +145,7 @@ export function normaliseComputationalNeuronOrder(creature: Creature): void {
     s.from = mapIdx(s.from);
     s.to = mapIdx(s.to);
   }
-  creature.synapses.sort((a, b) =>
-    a.from !== b.from ? a.from - b.from : a.to - b.to
-  );
+  creature.synapses.sort(compareSynapses);
 
   creature.neurons = [
     ...neurons.slice(0, start),

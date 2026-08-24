@@ -470,7 +470,9 @@ export class CRISPR {
         );
       }
 
-      const currentSynapse = tmpCreature.getSynapse(from, to);
+      // Issue #3873: the role completes the key, so a graft may add a second
+      // role into an `IF` neuron without an IDENTITY relay to source it.
+      const currentSynapse = tmpCreature.occupyingSynapse(from, to, s.type);
       if (!currentSynapse) {
         const synapse = tmpCreature.connect(from, to, s.weight, s.type);
         addTag(synapse, "CRISPR", dna.id);
@@ -604,7 +606,11 @@ export class CRISPR {
         );
       }
 
-      const currentSynapse = tmpCreature.getSynapse(fromIndx, toIndx);
+      const currentSynapse = tmpCreature.occupyingSynapse(
+        fromIndx,
+        toIndx,
+        s.type,
+      );
       if (!currentSynapse) {
         const synapse = tmpCreature.connect(fromIndx, toIndx, s.weight, s.type);
         addTag(synapse, "CRISPR", dna.id);
@@ -621,7 +627,9 @@ export class CRISPR {
       const toIndx = idMap.get(toId);
 
       if (fromIndx !== undefined && toIndx !== undefined) {
-        if (tmpCreature.getSynapse(fromIndx, toIndx) === null) {
+        if (
+          tmpCreature.occupyingSynapse(fromIndx, toIndx, synapse.type) === null
+        ) {
           tmpCreature.connect(fromIndx, toIndx, synapse.weight, synapse.type);
         }
       }

@@ -820,6 +820,19 @@ export class Creature implements CreatureInternal {
   }
 
   /**
+   * The synapse a new `(from, to, type)` would collide with, or `null` when
+   * {@link connect} would accept it — the same role into an `IF` target, any
+   * role into every other squash (Issue #3873).
+   */
+  occupyingSynapse(
+    from: number,
+    to: number,
+    type?: SynapseRole,
+  ): Synapse | null {
+    return topology.occupyingSynapse(this, this._topoCaches, from, to, type);
+  }
+
+  /**
    * Wire `from` to `to` in the given role.
    *
    * Issue #3873: the identity of a synapse is `(from, to, type)`, so a source

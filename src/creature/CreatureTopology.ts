@@ -623,6 +623,26 @@ export function findInsertionPoint(
 }
 
 /**
+ * The synapse a new `(from, to, type)` would collide with, or `null` when the
+ * slot is free (Issue #3873).
+ *
+ * Into an `IF` target that is the same role, since the kernel sums each role
+ * separately. Into every other squash it is *any* role, because they all land
+ * in one sum — so the pair is the whole key there.
+ */
+export function occupyingSynapse(
+  creature: Creature,
+  caches: TopologyCaches,
+  from: number,
+  to: number,
+  type?: SynapseRole,
+): Synapse | null {
+  return isRoleReadingTarget(creature.neurons, to)
+    ? getSynapse(creature, caches, from, to, type)
+    : getSynapse(creature, caches, from, to);
+}
+
+/**
  * Refuse a synapse the `(from, to, type)` key has no room for, and answer where
  * it belongs when it does (Issue #3873).
  *
