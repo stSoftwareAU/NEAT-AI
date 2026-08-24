@@ -18,6 +18,7 @@ import type { Approach } from "@neat/LogApproach.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
+import { synapseTripleKey } from "@architecture/SynapseKey.ts";
 import { pruneOrphanMemeticReferences } from "@compact/CompactUtils.ts";
 import {
   DEFAULT_QUANTUM_STEP_CONFIG,
@@ -199,7 +200,7 @@ function addMissingSynapses(
   const synapsesSet = new Set<string>();
 
   to.synapses.forEach((s) => {
-    synapsesSet.add(`${s.fromId}->${s.toId}`);
+    synapsesSet.add(synapseTripleKey(s.fromId!, s.toId!, s.type));
   });
 
   from.synapses.forEach((s) => {
@@ -212,7 +213,7 @@ function addMissingSynapses(
         // Reject self-loops and backward/recurrent connections in forward-only mode.
         if (fromIndex >= toIndex) return;
       }
-      if (!synapsesSet.has(`${s.fromId!}->${s.toId!}`)) {
+      if (!synapsesSet.has(synapseTripleKey(s.fromId!, s.toId!, s.type))) {
         const toSynapse: SynapseExport = JSON.parse(JSON.stringify(s));
         toSynapse.weight = 0;
         to.synapses.push(toSynapse);
@@ -283,10 +284,13 @@ function tuneRandomize(
     idNodeMap.set(n.id!, n);
   });
 
-  // Build a lookup for previous synapses by (fromId, toId)
+  // Build a lookup for previous synapses by (fromId, toId, type)
   const previousSynapseMap = new Map<string, SynapseExport>();
   for (const ps of previousJSON.synapses) {
-    previousSynapseMap.set(`${ps.fromId}->${ps.toId}`, ps);
+    previousSynapseMap.set(
+      synapseTripleKey(ps.fromId!, ps.toId!, ps.type),
+      ps,
+    );
   }
 
   // Phase 1: Compute candidate bias adjustments per neuron
@@ -347,7 +351,11 @@ function tuneRandomize(
 
   for (let i = fittestJSON.synapses.length; i--;) {
     const fittestSynapse = fittestJSON.synapses[i];
-    const key = `${fittestSynapse.fromId!}->${fittestSynapse.toId!}`;
+    const key = synapseTripleKey(
+      fittestSynapse.fromId!,
+      fittestSynapse.toId!,
+      fittestSynapse.type,
+    );
     const previousSynapse = previousSynapseMap.get(key);
 
     if (previousSynapse) {

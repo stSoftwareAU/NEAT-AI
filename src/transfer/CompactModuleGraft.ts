@@ -22,6 +22,7 @@ import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
+import { synapseTripleKey } from "@architecture/SynapseKey.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import type {
   DnaSharingPrepareOptions,
@@ -435,12 +436,13 @@ function tryGraft(
   // Bridge from input-0 / to output-0 only when missing.
   ensureBoundaries(offspringSynapses, insertedUuids, outputUuids);
 
-  // De-duplicate synapses on (fromUUID, toUUID) — the recipient may already
-  // have an `input-N -> module` edge if the donor reused a popular UUID.
+  // De-duplicate synapses on (fromUUID, toUUID, type) — the recipient may already
+  // have an `input-N -> module` edge if the donor reused a popular UUID. An IF
+  // target may keep more than one role from the same source (Issue #3873).
   const seenEdges = new Set<string>();
   const dedupedSynapses: SynapseExport[] = [];
   for (const s of offspringSynapses) {
-    const key = `${s.fromUUID}->${s.toUUID}`;
+    const key = synapseTripleKey(s.fromUUID!, s.toUUID!, s.type);
     if (seenEdges.has(key)) continue;
     seenEdges.add(key);
     dedupedSynapses.push(s);

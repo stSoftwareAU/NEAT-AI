@@ -19,6 +19,7 @@ import type {
   PredictionDetails,
   TargetNeuronInfo,
 } from "@discovery/FailureCacheTypes.ts";
+import { synapseTripleKey } from "@architecture/SynapseKey.ts";
 
 /** Check if prediction tracing is enabled */
 export function isPredictionTracingEnabled(): boolean {
@@ -53,10 +54,12 @@ export function extractActualCreatureChanges(
   );
 
   const baseSynapseKeys = new Set(
-    baseJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
+    baseJSON.synapses.map((s) => synapseTripleKey(s.fromId!, s.toId!, s.type)),
   );
   const candidateSynapseKeys = new Set(
-    candidateJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
+    candidateJSON.synapses.map((s) =>
+      synapseTripleKey(s.fromId!, s.toId!, s.type)
+    ),
   );
 
   // Find added neurons (in candidate but not in base)
@@ -80,7 +83,7 @@ export function extractActualCreatureChanges(
   // Find added synapses (in candidate but not in base)
   const addedSynapses: ActualSynapseState[] = [];
   for (const synapse of candidateJSON.synapses) {
-    const key = `${synapse.fromId}->${synapse.toId}`;
+    const key = synapseTripleKey(synapse.fromId!, synapse.toId!, synapse.type);
     if (!baseSynapseKeys.has(key)) {
       const fromUuid = candidateIdToWire.get(synapse.fromId!);
       const toUuid = candidateIdToWire.get(synapse.toId!);
@@ -107,12 +110,14 @@ export function extractActualCreatureChanges(
   // Find removed synapses (in base but not in candidate)
   const removedSynapseUuids: string[] = [];
   for (const synapse of baseJSON.synapses) {
-    const key = `${synapse.fromId}->${synapse.toId}`;
+    const key = synapseTripleKey(synapse.fromId!, synapse.toId!, synapse.type);
     if (!candidateSynapseKeys.has(key)) {
       const fromUuid = baseIdToWire.get(synapse.fromId!);
       const toUuid = baseIdToWire.get(synapse.toId!);
       if (fromUuid && toUuid) {
-        removedSynapseUuids.push(`${fromUuid}->${toUuid}`);
+        removedSynapseUuids.push(
+          synapseTripleKey(fromUuid, toUuid, synapse.type),
+        );
       }
     }
   }

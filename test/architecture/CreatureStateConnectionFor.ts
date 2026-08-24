@@ -66,6 +66,22 @@ Deno.test("connectionFor - independent state per synapse pair", () => {
   assertEquals(csB.count, 0);
 });
 
+Deno.test("connectionFor - independent state per IF role from one source (Issue #3873)", () => {
+  const creature = new Creature(2, 1);
+  const state = new CreatureState(creature);
+  const positive = new Synapse(0, 1, 0.5, "positive");
+  const negative = new Synapse(0, 1, 0.5, "negative");
+
+  const csPositive = state.connectionFor(positive);
+  const csNegative = state.connectionFor(negative);
+
+  assert(csPositive !== csNegative);
+  csPositive.count = 4;
+  assertEquals(csNegative.count, 0);
+  assertEquals(state.connection(0, 1, "positive").count, 4);
+  assertEquals(state.connection(0, 1, "negative").count, 0);
+});
+
 Deno.test("connectionFor - clear() invalidates the cache via the generation tag", () => {
   const creature = new Creature(2, 1);
   const state = new CreatureState(creature);

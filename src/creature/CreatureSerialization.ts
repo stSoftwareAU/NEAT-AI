@@ -266,7 +266,7 @@ export function traceJSON(creature: Creature): CreatureTrace {
 
   creature.synapses.forEach((c, indx) => {
     const exportConnection = exportCreature.synapses[indx] as SynapseTrace;
-    const cs = state.connection(c.from, c.to);
+    const cs = state.connection(c.from, c.to, c.type);
     if (cs.count) {
       exportConnection.trace = cs;
     }
@@ -897,7 +897,11 @@ export function loadFrom(
     }
 
     if ((synapse as SynapseTrace).trace) {
-      const target = state.connection(tmpSynapse.from, tmpSynapse.to);
+      const target = state.connection(
+        tmpSynapse.from,
+        tmpSynapse.to,
+        tmpSynapse.type,
+      );
       const source = (synapse as SynapseTrace).trace;
       if (isRecord(target) && isRecord(source)) {
         safeAssignProperties(target, source);

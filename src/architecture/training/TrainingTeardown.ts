@@ -18,6 +18,7 @@ import type {
   CreatureTrace,
 } from "@architecture/CreatureInterfaces.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
+import { synapseTripleKey } from "@architecture/SynapseKey.ts";
 import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 import type { TrainingLoopResult } from "@architecture/training/TrainingLoop.ts";
@@ -71,7 +72,9 @@ export function pruneSyntheticSynapses(
   const remainingSynapseKeys = new Set<string>();
   for (const s of cleanedCreatureJSON.synapses) {
     if (typeof s.fromUUID === "string" && typeof s.toUUID === "string") {
-      remainingSynapseKeys.add(`${s.fromUUID}->${s.toUUID}`);
+      remainingSynapseKeys.add(
+        synapseTripleKey(s.fromUUID, s.toUUID, s.type),
+      );
     }
   }
   const remainingNeuronUuids = new Set<string>();
@@ -99,7 +102,9 @@ export function pruneSyntheticSynapses(
     synapses: bestTraceJSON.synapses.filter((s) =>
       typeof s.fromUUID === "string" &&
       typeof s.toUUID === "string" &&
-      remainingSynapseKeys.has(`${s.fromUUID}->${s.toUUID}`)
+      remainingSynapseKeys.has(
+        synapseTripleKey(s.fromUUID, s.toUUID, s.type),
+      )
     ),
     neurons: bestTraceJSON.neurons.filter((n) =>
       typeof n.uuid === "string" && remainingNeuronUuids.has(n.uuid)

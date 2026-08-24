@@ -28,6 +28,10 @@ import type { Creature } from "@creature";
 import type { DiscoveryWireRequest } from "@discovery/DiscoveryWireFormat.ts";
 import { formatWeight } from "@discovery/FailureCache.ts";
 import type { SuccessCacheEntry } from "@discovery/SuccessCache.ts";
+import {
+  parseSynapseTripleKey,
+  synapseTripleKey,
+} from "@architecture/SynapseKey.ts";
 
 function getRustRequest(entry: SuccessCacheEntry): DiscoveryWireRequest {
   return entry.rustRequest ?? {};
@@ -47,9 +51,12 @@ function isSynapsePresent(
   creature: Creature,
   fromId: number,
   toId: number,
+  type?: string,
 ): boolean {
   const exported = exportJSONWithRuntimeIds(creature);
-  return exported.synapses.some((s) => s.fromId === fromId && s.toId === toId);
+  return exported.synapses.some((s) =>
+    s.fromId === fromId && s.toId === toId && (s.type ?? "") === (type ?? "")
+  );
 }
 
 function resolveSynapseDetailsEndpoints(
@@ -197,8 +204,8 @@ export function isAlreadyApplied(
       string,
       { present: boolean; weight?: number }
     >();
-    const edgeKey = (fromId: number, toId: number): string =>
-      `${fromId}\0${toId}`;
+    const edgeKey = (fromId: number, toId: number, type?: string): string =>
+      synapseTripleKey(fromId, toId, type);
 
     for (const op of ops) {
       if (!op || typeof op.type !== "string") return false;
@@ -243,11 +250,13 @@ export function isAlreadyApplied(
 
     const exported = exportJSONWithRuntimeIds(creature);
     for (const [key, expected] of expectedByEdge.entries()) {
-      const [fromIdStr, toIdStr] = key.split("\0");
-      const fromId = Number(fromIdStr);
-      const toId = Number(toIdStr);
+      const parsed = parseSynapseTripleKey(key);
+      const fromId = Number(parsed.from);
+      const toId = Number(parsed.to);
       const synapse = exported.synapses.find((s) =>
-        s.fromId === fromId && s.toId === toId
+        s.fromId === fromId &&
+        s.toId === toId &&
+        (s.type ?? "") === parsed.type
       );
 
       if (!expected.present) {

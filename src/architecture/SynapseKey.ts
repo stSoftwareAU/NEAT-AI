@@ -41,6 +41,41 @@ export type SynapseRole = "positive" | "negative" | "condition";
 export const SYNAPSE_ROLE_COUNT = 4;
 
 /**
+ * String identity of one synapse for `Set`/`Map` keys (Issue #3873).
+ *
+ * Uniqueness is the `(from, to, type)` triple. The untyped / standard role is
+ * written as an empty third field so the key stays a triple and cannot collide
+ * with a typed role on the same ordered pair.
+ */
+export function synapseTripleKey(
+  from: string | number,
+  to: string | number,
+  type?: string,
+): string {
+  return `${from}->${to}:${type ?? ""}`;
+}
+
+/**
+ * Split a {@link synapseTripleKey} back into its three fields.
+ *
+ * The pair uses the first `->`; the role is everything after the last `:`,
+ * which is empty for the untyped role.
+ */
+export function parseSynapseTripleKey(
+  key: string,
+): { from: string; to: string; type: string } {
+  const colon = key.lastIndexOf(":");
+  const pair = colon === -1 ? key : key.slice(0, colon);
+  const type = colon === -1 ? "" : key.slice(colon + 1);
+  const sep = pair.indexOf("->");
+  return {
+    from: sep === -1 ? pair : pair.slice(0, sep),
+    to: sep === -1 ? "" : pair.slice(sep + 2),
+    type,
+  };
+}
+
+/**
  * Canonical rank of a synapse role, used as the third component of the sort
  * key and the low digits of the connection-set key.
  *

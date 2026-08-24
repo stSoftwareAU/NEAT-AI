@@ -75,8 +75,11 @@ export function removeSynapse(
 
   const creatureUUID = CreatureUtil.makeUUID(creature);
   const exportJSON = creature.exportJSON();
+  const removedType = synapse.type ?? "";
   exportJSON.synapses = exportJSON.synapses.filter((s) => {
-    return s.fromUUID !== fromLabel || s.toUUID !== toLabel;
+    return s.fromUUID !== fromLabel ||
+      s.toUUID !== toLabel ||
+      (s.type ?? "") !== removedType;
   });
 
   // Integrity check: after filtering synapses, verify no dangling references
@@ -177,7 +180,8 @@ export function addHelpfulSynapses(
     }
     const foundSynapse = exportJSON.synapses.find((synapse) => {
       return synapse.fromUUID === fromLabel &&
-        synapse.toUUID === toLabel;
+        synapse.toUUID === toLabel &&
+        synapse.type === undefined;
     });
 
     if (foundSynapse) {

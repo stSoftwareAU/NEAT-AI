@@ -187,6 +187,13 @@ let propagateTopologicalFn:
 let validateTopologyFn:
   | ((fromIndices: Uint32Array, toIndices: Uint32Array) => Int32Array)
   | null = null;
+let validateTopologyTypedFn:
+  | ((
+    fromIndices: Uint32Array,
+    toIndices: Uint32Array,
+    synapseTypes: Uint8Array,
+  ) => Int32Array)
+  | null = null;
 let scanAvailableConnectionsFn:
   | ((
     fromIndices: Uint32Array,
@@ -476,6 +483,7 @@ function assignFunctionPointers(module: WasmModule): void {
   propagateTopologicalFn = module.propagate_topological;
   // Issue #1959 - Selective WASM residency for read-heavy topology operations
   validateTopologyFn = module.validate_topology;
+  validateTopologyTypedFn = module.validate_topology_typed;
   scanAvailableConnectionsFn = module.scan_available_connections;
   computeReverseTopologicalOrderFn = module.compute_reverse_topological_order;
   // Issue #1961 - Structural integrity validation and cycle detection
@@ -861,6 +869,10 @@ export function getPropagateTopologicalFn(): typeof propagateTopologicalFn {
 // Issue #1959 - Topology operation getters
 export function getValidateTopologyFn(): typeof validateTopologyFn {
   return validateTopologyFn;
+}
+
+export function getValidateTopologyTypedFn(): typeof validateTopologyTypedFn {
+  return validateTopologyTypedFn;
 }
 
 export function getScanAvailableConnectionsFn(): typeof scanAvailableConnectionsFn {
