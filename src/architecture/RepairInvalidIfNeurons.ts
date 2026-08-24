@@ -8,26 +8,34 @@
 
 import type { Creature } from "@creature";
 import type { Synapse } from "@architecture/Synapse.ts";
+import { compareSynapses } from "@architecture/SynapseKey.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
 
 /**
- * Downgrade one `IF` neuron to `IDENTITY`: strip the roles from its inward
- * synapses, then coalesce any source that fed it more than once.
+ * Strip inward synapse roles on the neuron at `indx`, then coalesce any source
+ * that fed it more than once.
  *
  * Issue #3873: an `IF` neuron sums each role separately, so one source may feed
- * it once per role. An `IDENTITY` neuron sums them all together, so once the
+ * it once per role. Every other squash sums them all together, so once the
  * roles are gone those rows are one synapse with the summed weight — leaving
- * them apart would be a duplicate pair that `fix()` and `creatureValidate` both
- * reject, and the downgrade would have swapped one invalid creature for
- * another.
+ * them apart is a duplicate pair that `creatureValidate` rejects as
+ * `duplicate synapse … -> …`.
+ *
+ * Called when a neuron *leaves* `IF`: `neuron.fix()` after `MOD_SQUASH`,
+ * `downgradeToIdentity`, and `IF.fix` when it cannot keep the three roles.
  */
-function downgradeToIdentity(creature: Creature, indx: number): void {
-  creature.neurons[indx].setSquash("IDENTITY");
-
+export function stripRolesAndCoalesceSources(
+  creature: Creature,
+  indx: number,
+): void {
   const bySource = new Map<number, Synapse>();
   const doomed = new Set<Synapse>();
+  let stripped = false;
   for (const syn of creature.inwardConnections(indx)) {
-    if (syn.type) delete syn.type;
+    if (syn.type) {
+      delete syn.type;
+      stripped = true;
+    }
 
     const kept = bySource.get(syn.from);
     if (kept === undefined) {
@@ -43,7 +51,26 @@ function downgradeToIdentity(creature: Creature, indx: number): void {
 
   if (doomed.size > 0) {
     creature.synapses = creature.synapses.filter((syn) => !doomed.has(syn));
+    creature.synapses.sort(compareSynapses);
+    stripped = true;
   }
+  if (stripped) creature.clearCache();
+}
+
+/**
+ * Downgrade one `IF` neuron to `IDENTITY`: strip the roles from its inward
+ * synapses, then coalesce any source that fed it more than once.
+ *
+ * Issue #3873: an `IF` neuron sums each role separately, so one source may feed
+ * it once per role. An `IDENTITY` neuron sums them all together, so once the
+ * roles are gone those rows are one synapse with the summed weight — leaving
+ * them apart would be a duplicate pair that `fix()` and `creatureValidate` both
+ * reject, and the downgrade would have swapped one invalid creature for
+ * another.
+ */
+function downgradeToIdentity(creature: Creature, indx: number): void {
+  creature.neurons[indx].setSquash("IDENTITY");
+  stripRolesAndCoalesceSources(creature, indx);
 }
 
 function ifNeuronStructurallyInvalid(
