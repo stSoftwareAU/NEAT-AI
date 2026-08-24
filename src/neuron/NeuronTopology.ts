@@ -13,6 +13,7 @@ import { Activations } from "@methods/activations/Activations.ts";
 import { Mutation } from "@neat/Mutation.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { isFixableActivation } from "@neuron/NeuronActivation.ts";
+import { stripRolesAndCoalesceSources } from "@architecture/RepairInvalidIfNeurons.ts";
 
 /**
  * Ensures this neuron has valid topology (connections, outward links).
@@ -24,10 +25,10 @@ export function fix(neuron: Neuron): void {
   const rng = getRandomNumberGenerator();
 
   if (neuron.squash !== "IF") {
-    const toList = neuron.creature.inwardConnections(neuron.index);
-    toList.forEach((c) => {
-      delete c.type;
-    });
+    // Issue #3873: stripping roles without coalescing turns a legal IF pair
+    // (same source, two roles) into an exact `(from, to)` duplicate — the
+    // `duplicate synapse … -> output-0` TopologyError seen after MOD_SQUASH.
+    stripRolesAndCoalesceSources(neuron.creature, neuron.index);
   }
 
   if (neuron.type === "hidden") {
