@@ -1,8 +1,8 @@
 /**
- * When collapsing duplicate synapse rows that share the same (from,to) endpoints,
- * pick a single `type` field. Live creatures only allow one row per (from,to)
- * (`connectBatch`, `creatureValidate`); conflicting types indicate corruption
- * (Issue #2086).
+ * When collapsing duplicate synapse rows that share an identity, pick a single
+ * `type` field. Into a non-`IF` target identity is still `(from, to)`
+ * (`connectBatch`, `creatureValidate`); into an `IF` target it is
+ * `(from, to, type)` and those rows are not collapsed (Issue #3873).
  */
 export type SynapseArmType = "positive" | "negative" | "condition" | undefined;
 

@@ -9,6 +9,11 @@ import { assert } from "@std/assert";
 import type { Creature } from "@creature";
 import type { Synapse } from "@architecture/Synapse.ts";
 import { Synapse as SynapseClass } from "@architecture/Synapse.ts";
+import {
+  compareSynapses,
+  isRoleReadingTarget,
+  synapseRoleRank,
+} from "@architecture/SynapseKey.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   pruneOrphanMemeticReferences,
@@ -88,9 +93,7 @@ function ensureInboundConnectionsWithRandomSynapses(creature: Creature): void {
       const syn = makeRandomConnection(creature, indx);
       if (syn !== null) {
         anyAdded = true;
-        creature.synapses.sort((a, b) =>
-          a.from !== b.from ? a.from - b.from : a.to - b.to
-        );
+        creature.synapses.sort(compareSynapses);
       }
     }
     if (!anyAdded) break;
@@ -135,9 +138,14 @@ export function fix(
   const maxTo = creature.neurons.length - 1;
   const minTo = creature.input;
 
+  // Issue #3873: an `IF` neuron sums each role separately, so one source may
+  // feed it once per role; every other squash sums regardless of role, where a
+  // repeated pair is still a duplicate row.
   const seenEndpoints = new Set<string>();
   for (const s of creature.synapses) {
-    const key = `${s.from}->${s.to}`;
+    const key = isRoleReadingTarget(creature.neurons, s.to)
+      ? `${s.from}->${s.to}/${synapseRoleRank(s.type)}`
+      : `${s.from}->${s.to}`;
     if (seenEndpoints.has(key)) {
       const fromL = neuronWireLabelForDiagnostics(
         creature.neurons[s.from],
@@ -193,13 +201,7 @@ export function fix(
 
   creature.synapses = tmpSynapses;
 
-  creature.synapses.sort((a, b) => {
-    if (a.from === b.from) {
-      return a.to - b.to;
-    } else {
-      return a.from - b.from;
-    }
-  });
+  creature.synapses.sort(compareSynapses);
 
   creature.clearCache();
 
@@ -234,13 +236,7 @@ export function fix(
         creature.synapses[i - 1],
         creature.synapses[i],
       );
-      creature.synapses.sort((a, b) => {
-        if (a.from === b.from) {
-          return a.to - b.to;
-        } else {
-          return a.from - b.from;
-        }
-      });
+      creature.synapses.sort(compareSynapses);
       break;
     }
   }

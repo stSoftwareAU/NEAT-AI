@@ -25,6 +25,10 @@ import {
   buildIdToIndexMap,
   validateAndFixCreatureSync,
 } from "@discovery/CandidateApplication.ts";
+import {
+  parseSynapseTripleKey,
+  synapseTripleKey,
+} from "@architecture/SynapseKey.ts";
 
 export function applyAddSynapses(
   creatureJSON: CreatureExport,
@@ -34,7 +38,9 @@ export function applyAddSynapses(
 ): Creature | undefined {
   // Find synapses in candidate that don't exist in creature
   const existingSynapses = new Set(
-    creatureJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
+    creatureJSON.synapses.map((s) =>
+      synapseTripleKey(s.fromId!, s.toId!, s.type)
+    ),
   );
   // Build set of existing neuron IDs to validate synapse endpoints
   // Include input neurons (not in neurons array but referenced by index)
@@ -49,7 +55,7 @@ export function applyAddSynapses(
   // (handles combinations where neurons were removed by prior steps)
   const newSynapses = candidateJSON.synapses.filter(
     (s) =>
-      !existingSynapses.has(`${s.fromId!}->${s.toId!}`) &&
+      !existingSynapses.has(synapseTripleKey(s.fromId!, s.toId!, s.type)) &&
       existingNeurons.has(s.fromId!) &&
       existingNeurons.has(s.toId!) &&
       (!enforceForwardOnly ||
@@ -294,13 +300,17 @@ export function applyRemoveSynapse(
 ): Creature | undefined {
   // Find synapses that were in base but removed in candidate
   const baseSynapses = new Set(
-    baseJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
+    baseJSON.synapses.map((s) => synapseTripleKey(s.fromId!, s.toId!, s.type)),
   );
   const candidateSynapses = new Set(
-    candidateJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
+    candidateJSON.synapses.map((s) =>
+      synapseTripleKey(s.fromId!, s.toId!, s.type)
+    ),
   );
   const creatureSynapses = new Set(
-    creatureJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
+    creatureJSON.synapses.map((s) =>
+      synapseTripleKey(s.fromId!, s.toId!, s.type)
+    ),
   );
 
   // Synapses to remove: existed in base but not in candidate
@@ -312,8 +322,8 @@ export function applyRemoveSynapse(
   // These maintain connectivity after removal
   const toAdd = candidateJSON.synapses.filter(
     (s) =>
-      !baseSynapses.has(`${s.fromId!}->${s.toId!}`) &&
-      !creatureSynapses.has(`${s.fromId!}->${s.toId!}`) &&
+      !baseSynapses.has(synapseTripleKey(s.fromId!, s.toId!, s.type)) &&
+      !creatureSynapses.has(synapseTripleKey(s.fromId!, s.toId!, s.type)) &&
       (!enforceForwardOnly ||
         (() => {
           const from = idToIndex?.get(s.fromId!);
@@ -325,16 +335,16 @@ export function applyRemoveSynapse(
   if (toRemove.size === 0 && toAdd.length === 0) return undefined;
 
   creatureJSON.synapses = creatureJSON.synapses.filter(
-    (s) => !toRemove.has(`${s.fromId}->${s.toId}`),
+    (s) => !toRemove.has(synapseTripleKey(s.fromId!, s.toId!, s.type)),
   );
 
   // Clean up memetic data for removed synapses
   for (const synapseKey of toRemove) {
-    const [fromIdStr, toIdStr] = synapseKey.split("->");
+    const parsed = parseSynapseTripleKey(synapseKey);
     cleanupMemeticForRemovedSynapse(
       creatureJSON,
-      Number(fromIdStr),
-      Number(toIdStr),
+      Number(parsed.from),
+      Number(parsed.to),
     );
   }
 
@@ -381,10 +391,12 @@ export function applyRemoveNeuron(
     candidateJSON.neurons.map((n) => n.id),
   );
   const baseSynapses = new Set(
-    baseJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
+    baseJSON.synapses.map((s) => synapseTripleKey(s.fromId!, s.toId!, s.type)),
   );
   const creatureSynapses = new Set(
-    creatureJSON.synapses.map((s) => `${s.fromId}->${s.toId}`),
+    creatureJSON.synapses.map((s) =>
+      synapseTripleKey(s.fromId!, s.toId!, s.type)
+    ),
   );
 
   // Neurons to remove: existed in base (as hidden) but not in candidate
@@ -427,8 +439,8 @@ export function applyRemoveNeuron(
   // Add reconnection synapses: new in candidate but not in creature
   const toAdd = candidateJSON.synapses.filter(
     (s) =>
-      !baseSynapses.has(`${s.fromId!}->${s.toId!}`) &&
-      !creatureSynapses.has(`${s.fromId!}->${s.toId!}`) &&
+      !baseSynapses.has(synapseTripleKey(s.fromId!, s.toId!, s.type)) &&
+      !creatureSynapses.has(synapseTripleKey(s.fromId!, s.toId!, s.type)) &&
       remainingNeurons.has(s.fromId!) &&
       remainingNeurons.has(s.toId!) &&
       (!enforceForwardOnly ||

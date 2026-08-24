@@ -188,7 +188,7 @@ export class MAXIMUM
     for (let i = fromListA.length; i--;) {
       const c = fromListA[i];
       if (c.from === c.to) {
-        neuron.creature.disconnect(c.from, c.to);
+        neuron.creature.disconnect(c.from, c.to, c.type);
       }
     }
 
@@ -217,7 +217,7 @@ export class MAXIMUM
 
       const cs = state.connectionFor(c); // Issue #3089: cached state lookup
       if (!cs.used) {
-        neuron.creature.disconnect(c.from, c.to);
+        neuron.creature.disconnect(c.from, c.to, c.type);
         changed = true;
       }
     }

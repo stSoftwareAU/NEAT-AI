@@ -8,6 +8,7 @@ import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.t
 import { allocateStructuralNeuronIdForCreature } from "@architecture/NeuronId.ts";
 import { Neuron } from "@architecture/Neuron.ts";
 import type { Synapse } from "@architecture/Synapse.ts";
+import { compareSynapses } from "@architecture/SynapseKey.ts";
 import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
 import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
@@ -120,13 +121,7 @@ export function createConstantOne(creature: Creature, count: number) {
       }
     }
 
-    creature.synapses.sort((a, b) => {
-      if (a.from === b.from) {
-        return a.to - b.to;
-      } else {
-        return a.from - b.from;
-      }
-    });
+    creature.synapses.sort(compareSynapses);
   }
 
   creature.clearCache();
@@ -195,13 +190,7 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
   creature.synapses = tmpConnections;
 
   // Maintain sorted order: by 'from' index, then by 'to' index
-  creature.synapses.sort((a, b) => {
-    if (a.from === b.from) {
-      return a.to - b.to;
-    } else {
-      return a.from - b.from;
-    }
-  });
+  creature.synapses.sort(compareSynapses);
 
   creature.clearCache();
 

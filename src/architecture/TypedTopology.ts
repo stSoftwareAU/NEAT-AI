@@ -33,7 +33,8 @@ import {
  *
  * Neuron arrays are indexed by neuron position (0..numNeurons-1).
  * Synapse arrays are indexed by synapse position (0..numSynapses-1),
- * matching the creature's sorted synapse order (ascending from, then to).
+ * matching the creature's sorted synapse order (ascending from, then to,
+ * then role — Issue #3873).
  */
 export class TypedTopology {
   /** Bias for each neuron. Input neurons store 0 (not Infinity). */

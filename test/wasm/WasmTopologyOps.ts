@@ -118,6 +118,29 @@ Deno.test("validateTopology: larger valid creature returns VALID", () => {
   assertEquals(result.valid, true);
 });
 
+Deno.test("validateTopology: one source feeding both IF branches is VALID (Issue #3873)", () => {
+  const creature = Creature.fromJSON({
+    semanticVersion: "4.0.0",
+    forwardOnly: true,
+    input: 3,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "gate", squash: "IF", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "gate", weight: 1, type: "condition" },
+      { fromUUID: "input-1", toUUID: "gate", weight: 0.5, type: "positive" },
+      { fromUUID: "input-1", toUUID: "gate", weight: 0.5, type: "negative" },
+      { fromUUID: "gate", toUUID: "output-0", weight: 1 },
+    ],
+  });
+  creature.validate();
+  const result = validateTopology(TypedTopology.fromCreature(creature));
+  assertEquals(result.errorCode, TOPOLOGY_VALID);
+  assertEquals(result.valid, true);
+});
+
 Deno.test("validateTopology: empty creature is valid", () => {
   const creature = Creature.fromJSON({
     input: 2,

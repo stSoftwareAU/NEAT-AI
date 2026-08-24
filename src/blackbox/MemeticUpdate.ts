@@ -99,6 +99,13 @@ export function memeticUpdate(
       weights = new Map();
       weightsMap.set(fromId, weights);
     }
+    if (weights.has(toId)) {
+      // Issue #3873: an `IF` neuron may be fed twice by one source, once per
+      // role, but `MemeticWeightInterface` is keyed by `(fromId, toId)` alone
+      // and cannot say which. Refusing the record is the honest answer —
+      // recording one weight for both roles would silently mis-restore them.
+      return undefined;
+    }
     weights.set(toId, synapse.weight);
     foundSet.add(`${fromId}-${toId}`);
   }

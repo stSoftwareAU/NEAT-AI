@@ -206,6 +206,34 @@ Deno.test("validateTopologyBatch: detects invalid topology in batch", () => {
   assertEquals(results[1].valid, false);
 });
 
+Deno.test("validateTopologyBatch: one source feeding both IF branches is VALID (Issue #3873)", () => {
+  const creature = Creature.fromJSON({
+    semanticVersion: "4.0.0",
+    forwardOnly: true,
+    input: 3,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "gate", squash: "IF", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "gate", weight: 1, type: "condition" },
+      { fromUUID: "input-1", toUUID: "gate", weight: 0.5, type: "positive" },
+      { fromUUID: "input-1", toUUID: "gate", weight: 0.5, type: "negative" },
+      { fromUUID: "gate", toUUID: "output-0", weight: 1 },
+    ],
+  });
+  creature.validate();
+  const results = validateTopologyBatch([
+    TypedTopology.fromCreature(creature),
+    TypedTopology.fromCreature(makeSimpleCreature()),
+  ]);
+  assertEquals(results.length, 2);
+  assertEquals(results[0].valid, true);
+  assertEquals(results[0].errorCode, TOPOLOGY_VALID);
+  assertEquals(results[1].valid, true);
+});
+
 Deno.test("validateTopologyBatch: handles four topologies", () => {
   const creatures = [
     makeSimpleCreature(),

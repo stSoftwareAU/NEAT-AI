@@ -7,6 +7,44 @@
  */
 
 import type { Creature } from "@creature";
+import type { Synapse } from "@architecture/Synapse.ts";
+import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
+
+/**
+ * Downgrade one `IF` neuron to `IDENTITY`: strip the roles from its inward
+ * synapses, then coalesce any source that fed it more than once.
+ *
+ * Issue #3873: an `IF` neuron sums each role separately, so one source may feed
+ * it once per role. An `IDENTITY` neuron sums them all together, so once the
+ * roles are gone those rows are one synapse with the summed weight — leaving
+ * them apart would be a duplicate pair that `fix()` and `creatureValidate` both
+ * reject, and the downgrade would have swapped one invalid creature for
+ * another.
+ */
+function downgradeToIdentity(creature: Creature, indx: number): void {
+  creature.neurons[indx].setSquash("IDENTITY");
+
+  const bySource = new Map<number, Synapse>();
+  const doomed = new Set<Synapse>();
+  for (const syn of creature.inwardConnections(indx)) {
+    if (syn.type) delete syn.type;
+
+    const kept = bySource.get(syn.from);
+    if (kept === undefined) {
+      bySource.set(syn.from, syn);
+      continue;
+    }
+    kept.weight += syn.weight;
+    if (syn.tags?.length) {
+      kept.tags = mergeTagsByNameValue(kept.tags, syn.tags);
+    }
+    doomed.add(syn);
+  }
+
+  if (doomed.size > 0) {
+    creature.synapses = creature.synapses.filter((syn) => !doomed.has(syn));
+  }
+}
 
 function ifNeuronStructurallyInvalid(
   creature: Creature,
@@ -45,10 +83,7 @@ export function repairInvalidIfNeuron(
   if (indx < 0 || indx >= creature.neurons.length) return false;
   if (!ifNeuronStructurallyInvalid(creature, indx)) return false;
 
-  creature.neurons[indx].setSquash("IDENTITY");
-  for (const syn of creature.inwardConnections(indx)) {
-    if (syn.type) delete syn.type;
-  }
+  downgradeToIdentity(creature, indx);
   shedIdentity(creature);
   return true;
 }
@@ -60,14 +95,10 @@ export function repairInvalidIfNeuronsInCreature(creature: Creature): boolean {
   let changed = false;
   for (let i = creature.input; i < creature.neurons.length; i++) {
     if (!ifNeuronStructurallyInvalid(creature, i)) continue;
-    const neuron = creature.neurons[i];
-    const inward = creature.inwardConnections(i);
-    neuron.setSquash("IDENTITY");
-    for (const syn of inward) {
-      if (syn.type) {
-        delete syn.type;
-      }
-    }
+    downgradeToIdentity(creature, i);
+    // The coalesce above can drop rows, so the cached inward lists for the
+    // neurons still to scan are stale.
+    creature.clearCache();
     changed = true;
   }
   if (changed) {

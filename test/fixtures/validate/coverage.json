@@ -230,11 +230,25 @@
       "reason": "SORT_FAILURE"
     },
     {
+      "id": "SORT_FAILURE_TYPE",
+      "kind": "throw",
+      "status": "covered",
+      "error": "TopologyError",
+      "reason": "SORT_FAILURE"
+    },
+    {
       "id": "DUPLICATE_SYNAPSE",
       "kind": "throw",
       "status": "covered",
       "error": "TopologyError",
       "reason": "INVALID_CONNECTION"
+    },
+    {
+      "id": "DUPLICATE_SYNAPSE_NON_IF",
+      "kind": "throw",
+      "status": "covered",
+      "error": "ValidationError",
+      "reason": "DUPLICATE_SYNAPSE"
     },
     {
       "id": "RECURSIVE_SYNAPSE",
@@ -327,6 +341,7 @@
     { "id": "OK_CONSTANTS", "kind": "ok", "status": "covered" },
     { "id": "OK_HIDDEN", "kind": "ok", "status": "covered" },
     { "id": "OK_IF", "kind": "ok", "status": "covered" },
+    { "id": "OK_IF_SHARED_SOURCE", "kind": "ok", "status": "covered" },
     { "id": "OK_RECURRENT_DEFAULT", "kind": "ok", "status": "covered" },
     { "id": "OK_RECURRENT_FEEDBACK_TRUE", "kind": "ok", "status": "covered" },
     { "id": "OK_FORWARD_ONLY", "kind": "ok", "status": "covered" },

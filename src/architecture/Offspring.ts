@@ -29,6 +29,8 @@ import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Neuron } from "@architecture/Neuron.ts";
 import { outputIndexFromId, outputNeuronId } from "@architecture/NeuronId.ts";
 import { Synapse as SynapseClass } from "@architecture/Synapse.ts";
+import { isRoleReadingTarget } from "@architecture/SynapseKey.ts";
+import { connectionKey } from "@creature/CreatureTopology.ts";
 import type {
   SynapseExport,
   SynapseInternal,
@@ -480,7 +482,9 @@ export class Offspring {
     }> = [];
 
     // Issue #1644: Use numeric keys to avoid string allocation for deduplication.
-    // Encode (from, to) as a single number: from * neuronCount + to.
+    // Issue #3873: the key is `(from, to, type)` into an `IF` neuron, which
+    // sums each role separately, and `(from, to)` everywhere else, where two
+    // roles from one source would be one synapse with the summed weight.
     const neuronCount = offspring.neurons.length;
     const connectionSet = new Set<number>();
 
@@ -511,7 +515,14 @@ export class Offspring {
 
             const toType = offspring.neurons[toIndx].type;
             if (toType === "hidden" || toType === "output") {
-              const key = fromIndx * neuronCount + toIndx;
+              const key = connectionKey(
+                neuronCount,
+                fromIndx,
+                toIndx,
+                isRoleReadingTarget(offspring.neurons, toIndx)
+                  ? synapse.type
+                  : undefined,
+              );
               if (!connectionSet.has(key)) {
                 connectionSet.add(key);
                 batchConnections.push({
@@ -542,7 +553,7 @@ export class Offspring {
     // Apply tags to the created synapses
     for (const conn of batchConnections) {
       if (conn.tags) {
-        const synapse = offspring.getSynapse(conn.from, conn.to);
+        const synapse = offspring.getSynapse(conn.from, conn.to, conn.type);
         if (synapse) {
           addTags(synapse, { tags: conn.tags });
         }

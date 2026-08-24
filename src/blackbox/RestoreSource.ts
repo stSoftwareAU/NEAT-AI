@@ -77,9 +77,16 @@ export function restoreSource(creature: Creature): Creature | undefined {
       if (!toUUID) {
         return undefined;
       }
-      let synapse = restoredCreature.synapses.find((s) =>
+      const matches = restoredCreature.synapses.filter((s) =>
         s.fromUUID === fromUUID && s.toUUID === toUUID
       );
+      if (matches.length > 1) {
+        // Issue #3873: one source may feed an `IF` neuron once per role, but
+        // the memetic record names only `(fromId, toId)`. Restoring one of the
+        // roles at random would quietly change what the creature computes.
+        return undefined;
+      }
+      let synapse = matches[0];
       assert(Number.isFinite(weightObj.weight), "weight must be a number");
       if (!synapse) {
         synapse = {

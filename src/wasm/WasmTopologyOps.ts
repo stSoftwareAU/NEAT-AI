@@ -18,7 +18,7 @@ import {
   getDetectCyclesFn,
   getScanAvailableConnectionsFn,
   getValidateStructuralIntegrityFn,
-  getValidateTopologyFn,
+  getValidateTopologyTypedFn,
   getWasmLoadError,
 } from "@wasm/WasmModuleLoader.ts";
 
@@ -53,6 +53,8 @@ export const TOPOLOGY_DUPLICATE_CONNECTION = 5;
  * now reaches callers as a typed result instead of an uncatchable trap.
  */
 export const TOPOLOGY_MALFORMED_BUFFER = 6;
+/** Synapse types not sorted within a repeated `(from, to)` pair (Issue #3873 / core #577). */
+export const TOPOLOGY_SORT_ERROR_TYPE = 7;
 
 // ---------------------------------------------------------------------------
 // Constants — structural integrity error codes (must match Rust topology_ops.rs)
@@ -195,14 +197,25 @@ export function withWasmTrapGuard<T>(opName: string, run: () => T): T {
 
 /**
  * Validate synapse ordering and forward-only constraints via WASM.
+ *
+ * Issue #3873: roles complete the sort key, so this uses
+ * `validate_topology_typed` rather than the pair-only `validate_topology`.
  */
 export function validateTopology(
   topology: TypedTopology,
 ): TopologyValidationResult {
-  const wasmFn = requireWasm(getValidateTopologyFn(), "validateTopology");
+  const wasmFn = requireWasm(
+    getValidateTopologyTypedFn(),
+    "validateTopology",
+  );
   const result = withWasmTrapGuard(
     "validateTopology",
-    () => wasmFn(topology.fromIndices, topology.toIndices),
+    () =>
+      wasmFn(
+        topology.fromIndices,
+        topology.toIndices,
+        topology.synapseTypes,
+      ),
   );
   return {
     valid: result[0] === TOPOLOGY_VALID,
