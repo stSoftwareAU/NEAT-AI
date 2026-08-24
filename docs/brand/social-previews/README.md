@@ -24,8 +24,9 @@ deno run -A scripts/brand/scale_social_previews.ts
 | `neat-ai-snapshot.png`        | [NEAT-AI-Snapshot](https://github.com/stSoftwareAU/NEAT-AI-Snapshot)               | Snapshot        | Camera                  |
 | `neat-ai-examples.png`        | [NEAT-AI-Examples](https://github.com/stSoftwareAU/NEAT-AI-Examples)               | Examples        | Notebook                |
 | `neat-ai-forests.png`         | [NEAT-AI-Forests](https://github.com/stSoftwareAU/NEAT-AI-Forests)                 | Forests         | Decision-tree forest    |
+| `neat-ai-ockham.png`          | [NEAT-AI-Ockham](https://github.com/stSoftwareAU/NEAT-AI-Ockham)                   | Ockham          | Pruning shears          |
 
-`opaque/` holds the same ten images flattened onto the brand navy. Upload
+`opaque/` holds the same eleven images flattened onto the brand navy. Upload
 **those** via each repo → Settings → General → Social preview; GitHub composites
 the upload onto its own chrome, where a transparent background would leave the
 dark ink unreadable.
