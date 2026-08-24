@@ -18,11 +18,7 @@ import type {
   CreatureTrace,
 } from "@architecture/CreatureInterfaces.ts";
 import type { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
-import { synapseTripleKey } from "@architecture/SynapseKey.ts";
-import type {
-  SynapseExport,
-  SynapseTrace,
-} from "@architecture/SynapseInterfaces.ts";
+import type { SynapseTrace } from "@architecture/SynapseInterfaces.ts";
 import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 import type { TrainingLoopResult } from "@architecture/training/TrainingLoop.ts";
@@ -47,30 +43,46 @@ export function wireToRuntimeIdFromExport(
 }
 
 /**
- * The trace snapshot that still carries a synapse's `trace` payload for a
- * cleaned row, or `undefined` when that row is new.
+ * Re-align a pre-`applyLearnings` trace to the cleaned creature's synapse
+ * roles (Issue #3873).
  *
- * Prefer an exact `(from, to, type)` hit. After an `IF` → `IDENTITY`
- * downgrade the remaining row is untyped on the same pair, so fall back to
- * the first trace row of that pair (Issue #3873).
+ * `cleanedRolesByPair` maps `"fromUUID->toUUID"` to the roles that pair still
+ * carries (`""` for the untyped role). A trace row is kept when its role is
+ * still there; when the cleaned pair is untyped the first matching row is
+ * kept with its `type` key removed rather than dropped — an `IF` → `IDENTITY`
+ * downgrade strips the role but must not orphan the source neuron. Extra
+ * roles on a coalesced pair, and pairs the clean-up removed, are dropped.
  */
-function matchingTraceSynapse(
-  cleaned: SynapseExport,
-  byTriple: Map<string, SynapseTrace>,
-  byPair: Map<string, SynapseTrace[]>,
-): SynapseTrace | undefined {
-  if (
-    typeof cleaned.fromUUID !== "string" || typeof cleaned.toUUID !== "string"
-  ) {
-    return undefined;
+export function syncTraceSynapseRoles(
+  traceSynapses: readonly SynapseTrace[],
+  cleanedRolesByPair: ReadonlyMap<string, ReadonlySet<string>>,
+): SynapseTrace[] {
+  const kept: SynapseTrace[] = [];
+  const usedUntypedPairs = new Set<string>();
+
+  for (const synapse of traceSynapses) {
+    if (
+      typeof synapse.fromUUID !== "string" ||
+      typeof synapse.toUUID !== "string"
+    ) {
+      continue;
+    }
+    const pair = `${synapse.fromUUID}->${synapse.toUUID}`;
+    const roles = cleanedRolesByPair.get(pair);
+    if (!roles) continue;
+
+    const role = synapse.type ?? "";
+    if (roles.has(role)) {
+      kept.push(synapse);
+      continue;
+    }
+    if (!roles.has("") || usedUntypedPairs.has(pair)) continue;
+
+    usedUntypedPairs.add(pair);
+    const { type: _stripped, ...rest } = synapse;
+    kept.push(rest);
   }
-  const exact = byTriple.get(
-    synapseTripleKey(cleaned.fromUUID, cleaned.toUUID, cleaned.type),
-  );
-  if (exact) return exact;
-  if (cleaned.type) return undefined;
-  const pair = `${cleaned.fromUUID}->${cleaned.toUUID}`;
-  return byPair.get(pair)?.[0];
+  return kept;
 }
 
 /**
@@ -102,17 +114,18 @@ export function pruneSyntheticSynapses(
   // an untyped cleaned row also accepts a typed trace row on the same pair
   // so an IF→IDENTITY downgrade does not drop the only remaining outward
   // synapse (Issue #3873).
-  const byTriple = new Map<string, SynapseTrace>();
-  const byPair = new Map<string, SynapseTrace[]>();
-  for (const s of bestTraceJSON.synapses) {
+  const cleanedRolesByPair = new Map<string, Set<string>>();
+  for (const s of cleanedCreatureJSON.synapses) {
     if (typeof s.fromUUID !== "string" || typeof s.toUUID !== "string") {
       continue;
     }
-    byTriple.set(synapseTripleKey(s.fromUUID, s.toUUID, s.type), s);
     const pair = `${s.fromUUID}->${s.toUUID}`;
-    const list = byPair.get(pair);
-    if (list) list.push(s);
-    else byPair.set(pair, [s]);
+    let roles = cleanedRolesByPair.get(pair);
+    if (!roles) {
+      roles = new Set<string>();
+      cleanedRolesByPair.set(pair, roles);
+    }
+    roles.add(s.type ?? "");
   }
   const remainingNeuronUuids = new Set<string>();
   for (const n of cleanedCreatureJSON.neurons) {
@@ -136,27 +149,10 @@ export function pruneSyntheticSynapses(
 
   const cleanedTraceJSON: CreatureTrace = {
     ...bestTraceJSON,
-    synapses: cleanedCreatureJSON.synapses.flatMap((s) => {
-      if (typeof s.fromUUID !== "string" || typeof s.toUUID !== "string") {
-        return [];
-      }
-      const traced = matchingTraceSynapse(s, byTriple, byPair);
-      if (traced) {
-        return [{
-          ...traced,
-          fromUUID: s.fromUUID,
-          toUUID: s.toUUID,
-          weight: s.weight,
-          type: s.type,
-        }];
-      }
-      return [{
-        fromUUID: s.fromUUID,
-        toUUID: s.toUUID,
-        weight: s.weight,
-        type: s.type,
-      }] as SynapseTrace[];
-    }),
+    synapses: syncTraceSynapseRoles(
+      bestTraceJSON.synapses,
+      cleanedRolesByPair,
+    ),
     neurons: bestTraceJSON.neurons.filter((n) =>
       typeof n.uuid === "string" && remainingNeuronUuids.has(n.uuid)
     ).map((n) => {
