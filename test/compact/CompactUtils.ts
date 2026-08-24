@@ -53,11 +53,23 @@ Deno.test("mergeDuplicateSynapses - no duplicates returns zero merges", () => {
 Deno.test(
   "mergeDuplicateSynapses - same from/to merges even when type differs (Issue #2086)",
   () => {
+    // Issue #3873: this case used to target an `IF` neuron. It no longer can —
+    // an `IF` sums each role separately, so two roles from one source are two
+    // distinct synapses there (see the companion test below). Every other
+    // squash sums regardless of role, which is where Issue #2086's rule still
+    // binds, so the target is an `IDENTITY` output and the assertions are
+    // unchanged.
     const exported: CreatureExport = {
       input: 2,
       output: 1,
       neurons: [
-        { type: "output", uuid: "output-0", id: -1, squash: "IF", bias: 0 },
+        {
+          type: "output",
+          uuid: "output-0",
+          id: -1,
+          squash: "IDENTITY",
+          bias: 0,
+        },
       ],
       synapses: [
         {
@@ -80,6 +92,32 @@ Deno.test(
     assertEquals(exported.synapses.length, 1);
     assertEquals(exported.synapses[0].weight, 0.8);
     assertEquals(exported.synapses[0].type, "condition");
+  },
+);
+
+Deno.test(
+  "mergeDuplicateSynapses - an IF target keeps one synapse per role (Issue #3873)",
+  () => {
+    const exported: CreatureExport = {
+      input: 2,
+      output: 1,
+      neurons: [
+        { type: "output", uuid: "output-0", id: -1, squash: "IF", bias: 0 },
+      ],
+      synapses: [
+        { fromId: 0, toId: -1, weight: 0.3, type: "condition" },
+        { fromId: 0, toId: -1, weight: 0.5, type: "positive" },
+        { fromId: 0, toId: -1, weight: 0.2, type: "positive" },
+      ],
+    };
+
+    const result = mergeDuplicateSynapses(exported);
+    assertEquals(result.merged, 1, "only the exact (from, to, type) repeat");
+    assertEquals(
+      exported.synapses.map((s) => [s.type, s.weight]),
+      [["condition", 0.3], ["positive", 0.7]],
+      "merging the roles together would change which branch each feeds",
+    );
   },
 );
 
