@@ -27,6 +27,7 @@ import type { NeuronActivationInterface } from "@methods/activations/NeuronActiv
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { recordAggregateSelf } from "@neuron/AggregateRecord.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { stripRolesAndCoalesceSources } from "@architecture/RepairInvalidIfNeurons.ts";
 
 /**
  * Issue #3087: Stack-based pool of reusable eligible-connection scratch arrays
@@ -248,16 +249,16 @@ export class IF
       // intentionally avoids connecting from outputs, so a final output neuron may
       // never reach 3 inbound links. Rather than throwing (flaky initialisation),
       // deterministically downgrade to a standard squash.
-      if (neuron.type === "output") {
-        neuron.squash = "IDENTITY";
-      } else {
-        neuron.squash = "TANH";
-      }
+      neuron.setSquash(neuron.type === "output" ? "IDENTITY" : "TANH");
+      stripRolesAndCoalesceSources(neuron.creature, neuron.index);
       return;
     }
 
     if (!foundCondition || !foundNegative || !foundPositive) {
       neuron.mutate(Mutation.MOD_SQUASH.name);
+      if (neuron.squash !== "IF") {
+        stripRolesAndCoalesceSources(neuron.creature, neuron.index);
+      }
     }
   }
 

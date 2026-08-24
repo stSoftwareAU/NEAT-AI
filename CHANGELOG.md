@@ -80,6 +80,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3873 follow-up:** Leaving `IF` (via `MOD_SQUASH` / `neuron.fix()`, or
+  `IF.fix` when it cannot keep the three roles) now coalesces a shared source's
+  roles into one untyped synapse. Stripping `type` without merging turned a
+  legal `(from, to, positive)` plus `(from, to, negative)` pair into an exact
+  duplicate, which is what `evolve_SIN_function` reported as
+  `duplicate synapse … -> output-0`.
+
 - **Issue #3854:** Dataset scoring no longer off-loads to the native
   `rust_scorer` in cases it cannot reproduce. A single predicate
   (`src/score/NativeDatasetScoringEligibility.ts`) now owns the decision for

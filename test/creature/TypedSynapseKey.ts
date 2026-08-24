@@ -312,6 +312,66 @@ Deno.test("typed key: fix() keeps both roles into an IF target", async () => {
   creatureValidate(creature);
 });
 
+/**
+ * The CI failure on evolve_SIN after Issue #3873: `TopologyError: duplicate
+ * synapse <uuid> -> output-0`.
+ *
+ * `MOD_SQUASH` changes an IF to another squash and then calls `neuron.fix()`.
+ * That used to `delete` every inward `type` without coalescing, so a legal
+ * shared-source pair (`positive` + `negative`) became two untyped synapses
+ * into the same non-IF target — which validation still forbids.
+ */
+function ifOutputFedTwiceByOneSource(): CreatureExport {
+  return {
+    semanticVersion: "4.0.0",
+    forwardOnly: true,
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "shared", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IF", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "shared", weight: 0.6 },
+      { fromUUID: "input-1", toUUID: "output-0", weight: 1, type: "condition" },
+      { fromUUID: "shared", toUUID: "output-0", weight: 0.4, type: "positive" },
+      { fromUUID: "shared", toUUID: "output-0", weight: 0.3, type: "negative" },
+    ],
+  };
+}
+
+Deno.test("typed key: MOD_SQUASH off a shared-source IF does not duplicate the pair", async () => {
+  await initWasmForTests();
+  const creature = Creature.fromJSON(ifOutputFedTwiceByOneSource());
+  creatureValidate(creature);
+
+  const shared = indexOf(creature, "shared");
+  const output = indexOf(creature, "output-0");
+  assertEquals(
+    creature.getSynapses(shared, output).map((s) => s.type),
+    ["negative", "positive"],
+  );
+
+  // Same closing sequence as ModActivation.mutate: change the squash, then
+  // neuron.fix(). That is the mutate-phase path that started producing the
+  // duplicate after uniqueness relaxed to (from, to, type).
+  const outputNeuron = creature.neurons[output];
+  outputNeuron.setSquash("IDENTITY");
+  outputNeuron.fix();
+
+  assertEquals(
+    creature.getSynapses(shared, output).length,
+    1,
+    "the two IF roles from one source must become one untyped synapse",
+  );
+  assertEquals(creature.getSynapse(shared, output)?.weight, 0.7);
+  assertEquals(creature.getSynapse(shared, output)?.type, undefined);
+
+  creatureValidate(creature);
+  creature.DEBUG = true;
+  creature.exportJSON();
+});
+
 Deno.test("typed key: breeding carries both roles into the offspring", async () => {
   await initWasmForTests();
   const mum = Creature.fromJSON(sharedBranchIf());
