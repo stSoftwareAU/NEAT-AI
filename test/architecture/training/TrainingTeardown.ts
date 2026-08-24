@@ -10,8 +10,11 @@ import { Creature } from "@creature";
 import {
   pruneSyntheticSynapses,
   stripUntrackedTraces,
+  syncTraceSynapseRoles,
   wireToRuntimeIdFromExport,
 } from "@architecture/training/TrainingTeardown.ts";
+import type { SynapseTrace } from "@architecture/SynapseInterfaces.ts";
+import { SynapseState } from "@propagate/SynapseState.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutput.ts";
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
@@ -61,6 +64,73 @@ Deno.test("TrainingTeardown - pruneSyntheticSynapses is a no-op when there are n
   );
   assertEquals(empty.bestCreatureJSON, exportJson);
   assertEquals(empty.bestTraceJSON, trace);
+});
+
+/**
+ * Issue #3873: build a trace synapse; the trace state itself is irrelevant to
+ * role alignment, so a fresh `SynapseState` stands in for the recorded one.
+ */
+function traceSynapse(
+  fromUUID: string,
+  toUUID: string,
+  type?: SynapseTrace["type"],
+): SynapseTrace {
+  return { fromUUID, toUUID, weight: 0.5, type, trace: new SynapseState() };
+}
+
+Deno.test("TrainingTeardown - syncTraceSynapseRoles keeps a role the cleaned creature still carries", () => {
+  const kept = syncTraceSynapseRoles(
+    [traceSynapse("a", "gate", "positive")],
+    new Map([["a->gate", new Set(["positive", "negative"])]]),
+  );
+
+  assertEquals(kept.length, 1);
+  assertEquals(kept[0].type, "positive");
+});
+
+Deno.test("TrainingTeardown - syncTraceSynapseRoles syncs a role that changed rather than dropping it", () => {
+  // An `IF` downgraded to `IDENTITY` strips the branch roles from the
+  // creature, but the trace was captured before that and still names them.
+  // Dropping the row would leave its source neuron with no outward synapse.
+  const kept = syncTraceSynapseRoles(
+    [traceSynapse("a", "gate", "positive")],
+    new Map([["a->gate", new Set([""])]]),
+  );
+
+  assertEquals(kept.length, 1);
+  assertEquals(kept[0].type, undefined);
+  assert(!("type" in kept[0]), "the untyped role must not carry a type key");
+});
+
+Deno.test("TrainingTeardown - syncTraceSynapseRoles coalesces rows the role strip merged", () => {
+  // Both roles fed one `IF`; the downgrade sums them into a single synapse,
+  // so the trace must not end up with a duplicate pair.
+  const kept = syncTraceSynapseRoles(
+    [
+      traceSynapse("a", "gate", "positive"),
+      traceSynapse("a", "gate", "negative"),
+    ],
+    new Map([["a->gate", new Set([""])]]),
+  );
+
+  assertEquals(kept.length, 1);
+  assertEquals(kept[0].type, undefined);
+});
+
+Deno.test("TrainingTeardown - syncTraceSynapseRoles drops synapses the clean-up removed", () => {
+  const kept = syncTraceSynapseRoles(
+    [
+      // The pair is gone entirely.
+      traceSynapse("a", "gate", "positive"),
+      // The pair survives with several roles, but not this one.
+      traceSynapse("b", "gate", "condition"),
+      // No wire endpoints — nothing to match on.
+      { weight: 0.5, trace: new SynapseState() },
+    ],
+    new Map([["b->gate", new Set(["positive", "negative"])]]),
+  );
+
+  assertEquals(kept.length, 0);
 });
 
 Deno.test("TrainingTeardown - stripUntrackedTraces removes trace fields for untracked neurons", () => {
