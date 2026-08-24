@@ -80,3 +80,29 @@ export function isRoleReadingTarget(
 ): boolean {
   return neurons[toIndx]?.squash === "IF";
 }
+
+/** The role's name as it reads in an error message; `undefined` is `standard`. */
+export function synapseRoleLabel(type?: SynapseRole): string {
+  return type ?? "standard";
+}
+
+/**
+ * The message for a second role from one source into a target that cannot read
+ * roles apart — every squash but `IF` sums its inward synapses regardless of
+ * role, so the pair says nothing a single summed synapse could not.
+ */
+export function nonIfSecondRoleMessage(
+  from: number,
+  to: number,
+  existing: SynapseRole | undefined,
+  wanted: SynapseRole | undefined,
+  squash?: string,
+): string {
+  return `Synapse ${from}->${to} already carries the '${
+    synapseRoleLabel(existing)
+  }' role and ${to} is not an 'IF' neuron (squash '${
+    squash ?? "unknown"
+  }'), so it cannot also carry '${
+    synapseRoleLabel(wanted)
+  }' — sum the weights into one synapse instead`;
+}

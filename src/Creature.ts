@@ -30,6 +30,13 @@ import {
 } from "@architecture/NeuronId.ts";
 import { Synapse } from "@architecture/Synapse.ts";
 import type { SynapseInternal } from "@architecture/SynapseInterfaces.ts";
+import {
+  compareSynapses,
+  isRoleReadingTarget,
+  nonIfSecondRoleMessage,
+  type SynapseRole,
+  synapseRoleRank,
+} from "@architecture/SynapseKey.ts";
 import type { MemeticInterface } from "@blackbox/MemeticInterface.ts";
 import {
   compactCreature,
@@ -529,10 +536,7 @@ export class Creature implements CreatureInternal {
 
     // Issue #1643: Sort synapses once after bulk insertion instead of
     // maintaining sorted order per-connection via connect().
-    this.synapses.sort((a, b) => {
-      if (a.from !== b.from) return a.from - b.from;
-      return a.to - b.to;
-    });
+    this.synapses.sort(compareSynapses);
 
     if (fixNeeded) {
       // Issue #1643: Fresh construction has no duplicate synapses and no
@@ -757,8 +761,16 @@ export class Creature implements CreatureInternal {
     return topology.getConnectionSet(this, this._topoCaches);
   }
 
-  public hasConnection(from: number, to: number): boolean {
-    return topology.hasConnection(this, this._topoCaches, from, to);
+  /**
+   * Whether an ordered pair is wired at all, or — with `type` — whether it
+   * carries that one role (Issue #3873).
+   */
+  public hasConnection(
+    from: number,
+    to: number,
+    type?: SynapseRole,
+  ): boolean {
+    return topology.hasConnection(this, this._topoCaches, from, to, type);
   }
 
   public getHiddenNeuronIds(): Set<number> {
@@ -786,38 +798,47 @@ export class Creature implements CreatureInternal {
     return topology.outwardConnections(this, this._topoCaches, fromIndx);
   }
 
-  getSynapse(from: number, to: number): Synapse | null {
-    return topology.getSynapse(this, this._topoCaches, from, to);
+  /**
+   * The synapse for an ordered pair, or — with `type` — the one carrying that
+   * role.
+   *
+   * Untyped, the pair identifies at most one synapse everywhere but an `IF`
+   * target, where the first role in canonical order is answered;
+   * {@link getSynapses} is the call that sees all of them (Issue #3873).
+   */
+  getSynapse(from: number, to: number, type?: SynapseRole): Synapse | null {
+    return topology.getSynapse(this, this._topoCaches, from, to, type);
   }
 
+  /**
+   * Every synapse from `from` to `to`, in canonical `(from, to, type)` order —
+   * at most one outside an `IF` target, up to one per role into one
+   * (Issue #3873).
+   */
+  getSynapses(from: number, to: number): Synapse[] {
+    return topology.getSynapses(this, this._topoCaches, from, to);
+  }
+
+  /**
+   * Wire `from` to `to` in the given role.
+   *
+   * Issue #3873: the identity of a synapse is `(from, to, type)`, so a source
+   * may feed both branches of an `IF` neuron directly. An exact repeat of the
+   * triple is refused, and so is a second role into any target but an `IF` —
+   * every other squash sums its inward synapses regardless of role, so the
+   * pair would say nothing one summed synapse could not.
+   */
   connect(
     from: number,
     to: number,
     weight: number,
-    type?: "positive" | "negative" | "condition",
+    type?: SynapseRole,
   ): Synapse {
     rejectRecurrentSynapseIfForwardOnlyCreature(this, from, to);
+    const location = topology.assertSynapseSlotFree(this, from, to, type);
     const connection = new Synapse(from, to, weight, type);
 
-    let location = -1;
-    for (let indx = this.synapses.length; indx--;) {
-      const c = this.synapses[indx];
-      if (c.from < from) {
-        location = indx + 1;
-        break;
-      } else if (c.from === from) {
-        assert(c.to !== to, "Connection already exists");
-        if (c.to < to) {
-          location = indx + 1;
-          break;
-        } else {
-          location = indx;
-        }
-      } else {
-        location = indx;
-      }
-    }
-    if (location !== -1 && location < this.synapses.length) {
+    if (location < this.synapses.length) {
       this.synapses.splice(location, 0, connection);
     } else {
       this.synapses.push(connection);
@@ -828,13 +849,33 @@ export class Creature implements CreatureInternal {
     return connection;
   }
 
-  disconnect(from: number, to: number) {
-    const indx = topology.binarySearchSynapse(this, from, to);
-    if (indx !== -1) {
-      this.synapses.splice(indx, 1);
-      // Issue #1445: clearCache(from, to) already calls invalidateScoreCache()
-      this.clearCache(from, to);
+  /**
+   * Remove the synapse in the given role, or — with `type` omitted — every role
+   * the ordered pair carries (Issue #3873).
+   */
+  disconnect(from: number, to: number, type?: SynapseRole) {
+    if (type !== undefined) {
+      const indx = topology.binarySearchSynapse(this, from, to, type);
+      if (indx !== -1) {
+        this.synapses.splice(indx, 1);
+        // Issue #1445: clearCache(from, to) already calls invalidateScoreCache()
+        this.clearCache(from, to);
+      }
+      return;
     }
+
+    const first = topology.binarySearchSynapse(this, from, to);
+    if (first === -1) return;
+
+    let end = first;
+    while (
+      end < this.synapses.length &&
+      this.synapses[end].from === from && this.synapses[end].to === to
+    ) {
+      end++;
+    }
+    this.synapses.splice(first, end - first);
+    this.clearCache(from, to);
   }
 
   connectBatch(
@@ -842,7 +883,7 @@ export class Creature implements CreatureInternal {
       from: number;
       to: number;
       weight: number;
-      type?: "positive" | "negative" | "condition";
+      type?: SynapseRole;
     }>,
   ): void {
     if (connections.length === 0) return;
@@ -851,36 +892,71 @@ export class Creature implements CreatureInternal {
       rejectRecurrentSynapseIfForwardOnlyCreature(this, conn.from, conn.to);
     }
 
-    const batchSet = new Set<string>();
+    // Issue #3873: the batch is keyed by the triple, and a pair repeated across
+    // roles is only legal into an `IF` target.
+    const seenTriples = new Set<string>();
+    const firstRoleOfPair = new Map<string, SynapseRole | undefined>();
     for (const conn of connections) {
-      const key = `${conn.from}-${conn.to}`;
-      if (batchSet.has(key)) {
+      const pair = `${conn.from}-${conn.to}`;
+      const key = `${pair}-${synapseRoleRank(conn.type)}`;
+      if (seenTriples.has(key)) {
         throw new TopologyError(
           `Duplicate connection in batch: ${key} already exists`,
           "INVALID_CONNECTION",
         );
       }
-      batchSet.add(key);
-    }
+      seenTriples.add(key);
 
-    for (const conn of connections) {
-      const existing = topology.binarySearchSynapse(this, conn.from, conn.to);
-      if (existing !== -1) {
+      if (!firstRoleOfPair.has(pair)) {
+        firstRoleOfPair.set(pair, conn.type);
+      } else if (!isRoleReadingTarget(this.neurons, conn.to)) {
         throw new TopologyError(
-          `Connection ${conn.from}->${conn.to} already exists in creature`,
+          nonIfSecondRoleMessage(
+            conn.from,
+            conn.to,
+            firstRoleOfPair.get(pair),
+            conn.type,
+            this.neurons[conn.to]?.squash,
+          ),
           "INVALID_CONNECTION",
         );
       }
     }
 
-    const sortedConnections = [...connections].sort((a, b) => {
-      if (a.from !== b.from) return a.from - b.from;
-      return a.to - b.to;
-    });
+    // Checked in full before anything is spliced, so a rejected batch leaves
+    // the creature exactly as it was.
+    for (const conn of connections) {
+      const existing = this.getSynapses(conn.from, conn.to);
+      if (existing.some((s) => s.type === conn.type)) {
+        throw new TopologyError(
+          `Connection ${conn.from}->${conn.to} already exists in creature`,
+          "INVALID_CONNECTION",
+        );
+      }
+      if (existing.length > 0 && !isRoleReadingTarget(this.neurons, conn.to)) {
+        throw new TopologyError(
+          nonIfSecondRoleMessage(
+            conn.from,
+            conn.to,
+            existing[0].type,
+            conn.type,
+            this.neurons[conn.to]?.squash,
+          ),
+          "INVALID_CONNECTION",
+        );
+      }
+    }
+
+    const sortedConnections = [...connections].sort(compareSynapses);
 
     for (const conn of sortedConnections) {
+      const location = topology.assertSynapseSlotFree(
+        this,
+        conn.from,
+        conn.to,
+        conn.type,
+      );
       const synapse = new Synapse(conn.from, conn.to, conn.weight, conn.type);
-      const location = topology.findInsertionPoint(this, conn.from, conn.to);
       if (location < this.synapses.length) {
         this.synapses.splice(location, 0, synapse);
       } else {
@@ -893,21 +969,35 @@ export class Creature implements CreatureInternal {
     this.clearConnectionCaches();
   }
 
-  disconnectBatch(pairs: Array<{ from: number; to: number }>): void {
+  /**
+   * Remove each listed synapse — one role when `type` is given, every role the
+   * ordered pair carries when it is not (Issue #3873).
+   */
+  disconnectBatch(
+    pairs: Array<{ from: number; to: number; type?: SynapseRole }>,
+  ): void {
     if (pairs.length === 0) return;
 
-    const indices: number[] = [];
+    const doomed = new Set<Synapse>();
     for (const pair of pairs) {
-      const idx = topology.binarySearchSynapse(this, pair.from, pair.to);
-      if (idx !== -1) indices.push(idx);
+      if (pair.type !== undefined) {
+        const idx = topology.binarySearchSynapse(
+          this,
+          pair.from,
+          pair.to,
+          pair.type,
+        );
+        if (idx !== -1) doomed.add(this.synapses[idx]);
+        continue;
+      }
+      for (const synapse of this.getSynapses(pair.from, pair.to)) {
+        doomed.add(synapse);
+      }
     }
 
-    if (indices.length === 0) return;
+    if (doomed.size === 0) return;
 
-    indices.sort((a, b) => b - a);
-    for (const idx of indices) {
-      this.synapses.splice(idx, 1);
-    }
+    this.synapses = this.synapses.filter((synapse) => !doomed.has(synapse));
 
     // Issue #1445: Preserve hiddenNeuronIds — batch disconnect only changes
     // connections, not the set of neurons.
@@ -928,11 +1018,23 @@ export class Creature implements CreatureInternal {
   /**
    * Freezes or unfreezes a synapse's weight.
    * When frozen, the weight will not be modified by backpropagation or mutation.
+   *
+   * Issue #3873: with `type` omitted every role the ordered pair carries is
+   * frozen, so freezing an `IF` source freezes both of its branches.
    */
-  setSynapseFrozen(from: number, to: number, frozen: boolean): void {
-    const synapse = this.getSynapse(from, to);
-    if (synapse) {
-      synapse.frozen = frozen ? true : undefined;
+  setSynapseFrozen(
+    from: number,
+    to: number,
+    frozen: boolean,
+    type?: SynapseRole,
+  ): void {
+    const synapses = type === undefined
+      ? this.getSynapses(from, to)
+      : [this.getSynapse(from, to, type)];
+    for (const synapse of synapses) {
+      if (synapse) {
+        synapse.frozen = frozen ? true : undefined;
+      }
     }
   }
 

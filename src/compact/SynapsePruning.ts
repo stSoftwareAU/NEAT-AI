@@ -17,6 +17,11 @@
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { Synapse } from "@architecture/Synapse.ts";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
+import {
+  compareSynapses,
+  isRoleReadingTarget,
+  synapseRoleRank,
+} from "@architecture/SynapseKey.ts";
 import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
 import { unifySynapseTypeForMerge } from "@utils/SynapseTypeUnify.ts";
 
@@ -29,8 +34,15 @@ export interface MergeDuplicateSynapsesResult {
 }
 
 /**
- * Merge duplicate synapses (same from/to) by summing weights and removing
- * duplicates. `type` is unified with {@link unifySynapseTypeForMerge}.
+ * Merge duplicate synapses by summing weights and removing duplicates. `type`
+ * is unified with {@link unifySynapseTypeForMerge}.
+ *
+ * Issue #3873: what counts as a duplicate depends on the target. Every squash
+ * but `IF` sums its inward synapses regardless of role, so a repeated
+ * `(from, to)` there is one synapse with the summed weight. An `IF` neuron
+ * keeps a separate sum per role, so its duplicates are only exact
+ * `(from, to, type)` repeats — merging a `positive` into a `negative` would
+ * change what the creature computes.
  *
  * Use on **export JSON** when ingesting legacy data outside `loadFrom`, or as
  * an idempotent pre-pass before `Creature.fromJSON`. `loadFrom` also merges
@@ -45,12 +57,19 @@ export function mergeDuplicateSynapses(
   creatureExport: CreatureExport,
 ): MergeDuplicateSynapsesResult {
   normaliseCreatureExport(creatureExport);
+  const roleReadingTargets = new Set<number>();
+  for (const neuron of creatureExport.neurons) {
+    if (neuron.squash === "IF") roleReadingTargets.add(neuron.id!);
+  }
+
   const seen = new Map<string, number>(); // key -> index of first occurrence
   const mergedSynapses: typeof creatureExport.synapses = [];
   let mergedCount = 0;
 
   for (const synapse of creatureExport.synapses) {
-    const key = `${synapse.fromId}->${synapse.toId}`;
+    const key = roleReadingTargets.has(synapse.toId!)
+      ? `${synapse.fromId}->${synapse.toId}/${synapseRoleRank(synapse.type)}`
+      : `${synapse.fromId}->${synapse.toId}`;
     const existingIndex = seen.get(key);
     if (existingIndex === undefined) {
       seen.set(key, mergedSynapses.length);
@@ -171,15 +190,19 @@ export function pruneZeroWeightSynapses(
 }
 
 /**
- * Merge duplicate synapse rows that share the same runtime neuron indices
- * (`from` / `to`), summing weights and unifying `type` / tags — same semantics
- * as {@link mergeDuplicateSynapses} on export JSON (Issue #2086).
+ * Merge duplicate synapse rows that share the same runtime key, summing weights
+ * and unifying `type` / tags — same semantics as
+ * {@link mergeDuplicateSynapses} on export JSON (Issue #2086).
+ *
+ * Issue #3873: the key is `(from, to)` for every target but an `IF` neuron,
+ * whose per-role sums make two roles from one source two distinct synapses.
  *
  * Used by `loadFrom` when ingesting corrupt forward-only wire payloads so
  * `fix()`'s duplicate check is not required before validation.
  */
 export type SynapseMergeHost = {
   synapses: Synapse[];
+  neurons: ReadonlyArray<{ squash?: string }>;
   clearCache(): void;
 };
 
@@ -194,7 +217,9 @@ export function mergeDuplicateSynapsesInCreature(
   let mergedCount = 0;
 
   for (const synapse of list) {
-    const key = `${synapse.from}->${synapse.to}`;
+    const key = isRoleReadingTarget(host.neurons, synapse.to)
+      ? `${synapse.from}->${synapse.to}/${synapseRoleRank(synapse.type)}`
+      : `${synapse.from}->${synapse.to}`;
     const existingIndex = seen.get(key);
     if (existingIndex === undefined) {
       seen.set(key, mergedSynapses.length);
@@ -212,9 +237,7 @@ export function mergeDuplicateSynapsesInCreature(
   }
 
   if (mergedCount > 0) {
-    mergedSynapses.sort((a, b) =>
-      a.from !== b.from ? a.from - b.from : a.to - b.to
-    );
+    mergedSynapses.sort(compareSynapses);
     host.synapses = mergedSynapses;
     host.clearCache();
   }

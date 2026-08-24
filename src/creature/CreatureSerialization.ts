@@ -24,6 +24,10 @@ import {
 } from "@architecture/NeuronId.ts";
 import type { NeuronTrace } from "@architecture/NeuronInterfaces.ts";
 import { Synapse } from "@architecture/Synapse.ts";
+import {
+  compareSynapses,
+  type SynapseRole,
+} from "@architecture/SynapseKey.ts";
 import { Activations } from "@methods/activations/Activations.ts";
 import type {
   SynapseExport,
@@ -743,8 +747,9 @@ export function loadFrom(
 
   const synapses = json.synapses;
   let isSorted = true;
-  let lastFrom = -1;
-  let lastTo = -1;
+  // Issue #3873: the previous synapse's whole key — `(from, to, type)` — so a
+  // pair repeated across roles in ascending order still reads as sorted.
+  let lastKey: { from: number; to: number; type?: SynapseRole } | null = null;
   const isForwardOnly = creature.forwardOnly === true;
   let validSynapseCount = 0;
   // Issue #2500: lazily compute a structural hash on first strip so we
@@ -842,13 +847,11 @@ export function loadFrom(
     }
 
     if (isSorted) {
-      if (from > lastFrom) {
-        lastFrom = from;
-        lastTo = -1;
-      } else if (from < lastFrom || to <= lastTo) {
+      const key = { from: from!, to: to!, type: synapse.type };
+      if (lastKey !== null && compareSynapses(lastKey, key) >= 0) {
         isSorted = false;
       }
-      lastTo = to;
+      lastKey = key;
     }
 
     // Issue #2704: reject non-finite synapse weight. The weight is
@@ -924,10 +927,7 @@ export function loadFrom(
   creature.clearCache();
 
   if (!isSorted) {
-    creature.synapses.sort((a, b) => {
-      if (a.from !== b.from) return a.from - b.from;
-      return a.to - b.to;
-    });
+    creature.synapses.sort(compareSynapses);
   }
 
   creature.prebuildInwardIndexIfLarge();

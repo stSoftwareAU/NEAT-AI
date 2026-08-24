@@ -5,14 +5,18 @@
  * under 500 lines and each module focused on a single responsibility.
  */
 
+import { assert } from "@std/assert";
 import type { Creature } from "@creature";
 import type { Synapse } from "@architecture/Synapse.ts";
 import {
   compareSynapses,
+  isRoleReadingTarget,
+  nonIfSecondRoleMessage,
   type SynapseRole,
   SYNAPSE_ROLE_COUNT,
   synapseRoleRank,
 } from "@architecture/SynapseKey.ts";
+import { TopologyError } from "@errors/TopologyError.ts";
 
 /**
  * Internal state for topology caches and indices.
@@ -616,6 +620,55 @@ export function findInsertionPoint(
   }
 
   return low;
+}
+
+/**
+ * Refuse a synapse the `(from, to, type)` key has no room for, and answer where
+ * it belongs when it does (Issue #3873).
+ *
+ * One binary search settles both questions: the roles of an ordered pair are
+ * contiguous in canonical order, so the neighbours of the insertion point are
+ * the whole of the pair's occupied slots.
+ *
+ * @returns The index the new synapse must be spliced in at.
+ * @throws {@link TopologyError} when the target cannot read roles apart and the
+ *   pair is already taken.
+ */
+export function assertSynapseSlotFree(
+  creature: Creature,
+  from: number,
+  to: number,
+  type?: SynapseRole,
+): number {
+  const location = findInsertionPoint(creature, from, to, type);
+  const synapses = creature.synapses;
+
+  const after = synapses[location];
+  if (after?.from === from && after.to === to && after.type === type) {
+    assert(false, "Connection already exists");
+  }
+
+  const sibling = (after?.from === from && after.to === to)
+    ? after
+    : location > 0 &&
+        synapses[location - 1].from === from && synapses[location - 1].to === to
+    ? synapses[location - 1]
+    : null;
+
+  if (sibling && !isRoleReadingTarget(creature.neurons, to)) {
+    throw new TopologyError(
+      nonIfSecondRoleMessage(
+        from,
+        to,
+        sibling.type,
+        type,
+        creature.neurons[to]?.squash,
+      ),
+      "INVALID_CONNECTION",
+    );
+  }
+
+  return location;
 }
 
 /**
