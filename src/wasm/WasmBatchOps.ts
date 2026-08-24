@@ -55,6 +55,11 @@ const _noChangeBuf = new Uint8Array(4);
  * boundary crossing cost across all topologies. Falls back to calling
  * validateTopology individually for each topology.
  *
+ * Issue #3873: the batch export is still pair-only (`validate_topology_batch`).
+ * A topology that repeats an ordered `(from, to)` pair with different roles
+ * (legal into an `IF` target) would be rejected there, so those snapshots take
+ * the typed per-topology path instead.
+ *
  * @param topologies Array of TypedTopology snapshots to validate
  * @returns Array of TopologyValidationResult, one per topology
  */
@@ -64,12 +69,26 @@ export function validateTopologyBatch(
   if (topologies.length === 0) return [];
 
   const wasmBatchFn = getValidateTopologyBatchFn();
-  if (wasmBatchFn) {
+  if (wasmBatchFn && !topologies.some(hasRepeatedPair)) {
     return validateTopologyBatchWasm(topologies, wasmBatchFn);
   }
 
-  // Fallback: call individual validation for each topology
+  // Typed per-topology path: either WASM batch is unavailable, or a snapshot
+  // repeats an ordered pair (Issue #3873) and the pair-only batch would lie.
   return topologies.map((topo) => validateTopology(topo));
+}
+
+/** True when two synapses share `(from, to)` and differ only by role. */
+function hasRepeatedPair(topology: TypedTopology): boolean {
+  for (let i = 1; i < topology.numSynapses; i++) {
+    if (
+      topology.fromIndices[i] === topology.fromIndices[i - 1] &&
+      topology.toIndices[i] === topology.toIndices[i - 1]
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

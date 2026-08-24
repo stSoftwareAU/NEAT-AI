@@ -5,6 +5,7 @@ import {
   DEFAULT_WEIGHT_REGULARISATION_CONFIG,
   type RequiredWeightRegularisationConfig,
 } from "@config/WeightRegularisationConfig.ts";
+import { connectionKey } from "@creature/CreatureTopology.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
@@ -76,7 +77,12 @@ export class ModWeight extends AbstractMutationOperator {
       for (const focusIndex of focusList) {
         for (const syn of this.creature.outwardConnections(focusIndex)) {
           if (!syn.frozen) {
-            const key = syn.from * neuronCount + syn.to;
+            const key = connectionKey(
+              neuronCount,
+              syn.from,
+              syn.to,
+              syn.type,
+            );
             if (!seen.has(key)) {
               seen.add(key);
               relevantConnections.push(syn);
@@ -85,7 +91,12 @@ export class ModWeight extends AbstractMutationOperator {
         }
         for (const syn of this.creature.inwardConnections(focusIndex)) {
           if (!syn.frozen) {
-            const key = syn.from * neuronCount + syn.to;
+            const key = connectionKey(
+              neuronCount,
+              syn.from,
+              syn.to,
+              syn.type,
+            );
             if (!seen.has(key)) {
               seen.add(key);
               relevantConnections.push(syn);

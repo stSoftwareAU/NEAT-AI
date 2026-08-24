@@ -57,10 +57,10 @@ Deno.test("computeCreatureStructuralHash: differs when topology changes", () => 
   );
 });
 
-Deno.test("computeCreatureStructuralHash: differs when input/output change", () => {
+Deno.test("computeCreatureStructuralHash: differs when synapse type changes (Issue #3873)", () => {
   const a = makeExport();
   const b = makeExport();
-  b.input = 3;
+  b.synapses[0] = { ...b.synapses[0], type: "positive" };
   assertNotEquals(
     computeCreatureStructuralHash(a),
     computeCreatureStructuralHash(b),

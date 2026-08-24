@@ -187,7 +187,9 @@ export function removeNeuron(
     let constantNeuron = createConstantOne(creature, 0);
     for (let count = 1; count < 3; count++) {
       for (const synapse of fromList) {
-        if (creature.getSynapse(constantNeuron.index, synapse.to)) {
+        if (
+          creature.getSynapse(constantNeuron.index, synapse.to, synapse.type)
+        ) {
           constantNeuron = createConstantOne(creature, count);
         } else {
           break;
@@ -196,7 +198,11 @@ export function removeNeuron(
     }
 
     for (const synapse of fromList) {
-      const connection = creature.getSynapse(constantNeuron.index, synapse.to);
+      const connection = creature.getSynapse(
+        constantNeuron.index,
+        synapse.to,
+        synapse.type,
+      );
       if (connection) {
         getLogger().info(
           `compactUnused: ${neuron.id} already connected to ${constantNeuron.id}`,
@@ -228,6 +234,7 @@ export function removeNeuron(
       const connection = creature.getSynapse(
         constantNeuron.index,
         synapse.to,
+        synapse.type,
       );
       if (connection) {
         getLogger().info(

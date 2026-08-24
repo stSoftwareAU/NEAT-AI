@@ -38,6 +38,7 @@ import {
 import { applyRemoveNeuronCompensation } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryNeuronRemoval.ts";
 import { assertNever } from "@utils/assertNever.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
+import { synapseTripleKey } from "@architecture/SynapseKey.ts";
 import {
   passesProducerCompileGate,
   withProducerStep,
@@ -73,13 +74,35 @@ function canAddForwardOnlySynapse(
 }
 
 /**
+ * Discovery ops name a pair and do not yet carry a role. If the pair has
+ * exactly one synapse, that is the match; if it has several, only the untyped
+ * role is the match so a second IF branch is left alone (Issue #3873).
+ */
+function findSynapseForPairOp<
+  T extends { fromId?: number; toId?: number; type?: string },
+>(
+  synapses: T[],
+  fromId: number,
+  toId: number,
+): T | undefined {
+  const matches = synapses.filter((s) =>
+    s.fromId === fromId && s.toId === toId
+  );
+  if (matches.length === 1) return matches[0];
+  return matches.find((s) => (s.type ?? "") === "");
+}
+
+/**
  * Apply a coordinated structural candidate as a single ordered ablation.
  *
  * Behaviour:
  * - Clones the creature
  * - Applies all operations in-order
- * - `removeSynapse`: removes matching (from,to) if present (no-op if missing)
- * - `addSynapse`: adds if absent; if present, updates weight (idempotent)
+ * - `removeSynapse`: removes the matching synapse if present (no-op if
+ *   missing). Ops name a pair; when several roles share that pair, only the
+ *   untyped role is removed.
+ * - `addSynapse`: adds if that triple is absent; if present, updates weight
+ *   (idempotent). A second role into an `IF` is a different synapse.
  * - `setWeight`: updates weight of existing synapse (no-op if synapse missing)
  *
  * Notes:
@@ -112,8 +135,8 @@ export function applyCoordinatedStructuralCandidate(
     }
   >();
 
-  const edgeKey = (fromId: number, toId: number): string =>
-    `${fromId}->${toId}`;
+  const edgeKey = (fromId: number, toId: number, type?: string): string =>
+    synapseTripleKey(fromId, toId, type);
 
   for (const op of ops) {
     if (!op || typeof op.type !== "string") continue;
@@ -270,25 +293,37 @@ export function applyCoordinatedStructuralCandidate(
         if (!endpoints) {
           continue;
         }
-        const existing = next.synapses.find((s) =>
-          s.fromId === endpoints.fromId && s.toId === endpoints.toId
+        const existing = findSynapseForPairOp(
+          next.synapses,
+          endpoints.fromId,
+          endpoints.toId,
         );
         if (existing) {
+          const meta = {
+            type: existing.type,
+            tags: existing.tags
+              ? existing.tags.map((t) => ({ ...t }))
+              : undefined,
+          };
+          removedSynapseMeta.set(
+            edgeKey(endpoints.fromId, endpoints.toId, existing.type),
+            meta,
+          );
+          // Ops name a pair, not a role — keep a pair-level alias so the
+          // matching addSynapse can restore type/tags (Issue #3873).
           removedSynapseMeta.set(
             edgeKey(endpoints.fromId, endpoints.toId),
-            {
-              type: existing.type,
-              tags: existing.tags
-                ? existing.tags.map((t) => ({ ...t }))
-                : undefined,
-            },
+            meta,
           );
         }
         const before = next.synapses.length;
+        const removedType = existing?.type ?? "";
         next.synapses = next.synapses.filter((s) =>
           !(
             s.fromId === endpoints.fromId &&
-            s.toId === endpoints.toId
+            s.toId === endpoints.toId &&
+            (s.type ?? "") === removedType &&
+            existing !== undefined
           )
         );
         if (next.synapses.length !== before) {
@@ -332,8 +367,10 @@ export function applyCoordinatedStructuralCandidate(
           "rustFfi.weight",
           "coordinated/addSynapse",
         );
-        const existing = next.synapses.find((s) =>
-          s.fromId === endpoints.fromId && s.toId === endpoints.toId
+        const existing = findSynapseForPairOp(
+          next.synapses,
+          endpoints.fromId,
+          endpoints.toId,
         );
         if (existing) {
           existing.weight = clampedAddWeight;
@@ -359,8 +396,10 @@ export function applyCoordinatedStructuralCandidate(
         if (!endpoints) {
           continue;
         }
-        const existing = next.synapses.find((s) =>
-          s.fromId === endpoints.fromId && s.toId === endpoints.toId
+        const existing = findSynapseForPairOp(
+          next.synapses,
+          endpoints.fromId,
+          endpoints.toId,
         );
         if (existing) {
           // Issue #2421: Clamp Rust-supplied weight before assignment.

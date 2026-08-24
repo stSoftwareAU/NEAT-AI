@@ -18,6 +18,7 @@ import type {
   CheckpointMetadata,
 } from "@transfer/CheckpointInterface.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
+import { synapseTripleKey } from "@architecture/SynapseKey.ts";
 import { passesProducerCompileGate } from "@wasm/ProducerCompileGuard.ts";
 
 /**
@@ -36,7 +37,7 @@ export interface CheckpointExportOptions {
   /** Neuron IDs to mark as frozen in the checkpoint */
   frozenNeuronIds?: number[];
 
-  /** Synapse keys (fromId->toId) to mark as frozen */
+  /** Synapse keys (`fromId->toId:type`) to mark as frozen */
   frozenSynapseKeys?: string[];
 }
 
@@ -251,9 +252,10 @@ function applyFreezeFlags(
     for (const synapse of creature.synapses) {
       const fromId = creature.neurons[synapse.from].id;
       const toId = creature.neurons[synapse.to].id;
-      const key = `${fromId}->${toId}`;
-      if (synapseKeySet.has(key)) {
-        creature.setSynapseFrozen(synapse.from, synapse.to, true);
+      const typedKey = synapseTripleKey(fromId, toId, synapse.type);
+      const pairKey = `${fromId}->${toId}`;
+      if (synapseKeySet.has(typedKey) || synapseKeySet.has(pairKey)) {
+        synapse.frozen = true;
       }
     }
   }

@@ -63,6 +63,21 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `skipped`, `regressionRate`) so a run-end summary can report skips without
   `verbose`.
 
+### Changed
+
+- **Issue #3873:** Synapses are keyed by `(from, to, type)`, so one source can
+  feed both branches of an `IF` without an IDENTITY relay standing in as a
+  second distinct source. An ordered pair may appear at most once per role, and
+  **only an `IF` target** may carry more than one role from the same source —
+  every other squash still has `(from, to)` uniqueness, because two roles there
+  are exactly one synapse with the summed weight. Canonical sort order is the
+  same triple (role rank from NEAT-AI-core's `SynapseType`). The wire format
+  does not change; every previously valid creature stays valid. TypeScript
+  `connect()` and `rust_scorer` now agree about `A→B positive` plus
+  `A→B negative`. Pins NEAT-AI-core #577 (`validate_topology_typed`). Companion:
+  NEAT-AI-core #577, NEAT-AI-scorer parity fixture, NEAT-AI-Forests graft
+  cleanup.
+
 ### Fixed
 
 - **Issue #3854:** Dataset scoring no longer off-loads to the native

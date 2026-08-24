@@ -23,6 +23,7 @@ import {
   computeSimilarityAlignment,
 } from "@breed/NeuronSimilarity.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { synapseTripleKey } from "@architecture/SynapseKey.ts";
 
 /**
  * Builds a map from neuron UUID to the weight of connections going to
@@ -35,7 +36,10 @@ function buildOutputLayerWeights(
   const weights = new Map<string, number>();
   for (const syn of creature.synapses) {
     if (syn.fromUUID && syn.toUUID && outputUuids.has(syn.toUUID)) {
-      weights.set(`${syn.fromUUID}->${syn.toUUID}`, syn.weight);
+      weights.set(
+        synapseTripleKey(syn.fromUUID, syn.toUUID, syn.type),
+        syn.weight,
+      );
     }
   }
   return weights;
@@ -171,7 +175,7 @@ export function inputWeightCrossover(
     const alignedFatherUuid = alignmentMap.get(motherFromUuid);
 
     if (alignedFatherUuid) {
-      const key = `${alignedFatherUuid}->${syn.toUUID}`;
+      const key = synapseTripleKey(alignedFatherUuid, syn.toUUID, syn.type);
       const fatherWeight = fatherOutputWeights.get(key);
       if (fatherWeight !== undefined) {
         syn.weight = alpha * syn.weight + (1 - alpha) * fatherWeight;
@@ -186,7 +190,9 @@ export function inputWeightCrossover(
   const existingInputConns = new Set<string>();
   for (const syn of offspringExport.synapses) {
     if (syn.fromUUID?.startsWith("input-") && syn.toUUID) {
-      existingInputConns.add(`${syn.fromUUID}->${syn.toUUID}`);
+      existingInputConns.add(
+        synapseTripleKey(syn.fromUUID, syn.toUUID, syn.type),
+      );
     }
   }
 
@@ -201,7 +207,7 @@ export function inputWeightCrossover(
       // father's hidden neurons which don't exist in the offspring
       if (!inputUuid.startsWith("input-")) continue;
 
-      const key = `${inputUuid}->${motherUuid}`;
+      const key = synapseTripleKey(inputUuid, motherUuid);
       if (!existingInputConns.has(key)) {
         // Father uses this input but mother doesn't — add with reduced weight
         offspringExport.synapses.push({

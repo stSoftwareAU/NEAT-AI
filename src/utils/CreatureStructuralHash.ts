@@ -42,7 +42,7 @@ function fnv1a32(input: string): number {
  *  - per-neuron `type:uuid` (sorted by uuid for synapse-order independence
  *    only on the synapse list; neurons keep their array order so creatures
  *    with reordered hidden layers do not collide)
- *  - sorted list of `fromUUID->toUUID` (or numeric fallbacks) per synapse
+ *  - sorted list of `fromUUID->toUUID:type` (or numeric fallbacks) per synapse
  */
 export function computeCreatureStructuralHash(
   json: CreatureExport | CreatureInternal,
@@ -77,7 +77,7 @@ export function computeCreatureStructuralHash(
     const toKey = typeof s.toUUID === "string"
       ? s.toUUID
       : `#${s.toId ?? s.to ?? "?"}`;
-    synEntries[i] = `${fromKey}->${toKey}`;
+    synEntries[i] = `${fromKey}->${toKey}:${s.type ?? ""}`;
   }
   synEntries.sort();
   for (const entry of synEntries) parts.push(entry);

@@ -14,6 +14,11 @@ import type { BackpropBuffers } from "@propagate/BackpropBuffers.ts";
 import type { TopologicalBackpropCache } from "@propagate/TopologicalBackpropCache.ts";
 import { SynapseState } from "@propagate/SynapseState.ts";
 import { DenseNumberMap } from "@architecture/DenseNumberMap.ts";
+import {
+  SYNAPSE_ROLE_COUNT,
+  type SynapseRole,
+  synapseRoleRank,
+} from "@architecture/SynapseKey.ts";
 
 export interface NeuronStateInterface {
   count: number;
@@ -184,20 +189,37 @@ export class CreatureState {
     this.cacheAdjustedActivation = new DenseNumberMap(initialCapacity);
   }
 
-  connection(from: number, to: number): SynapseState {
+  /**
+   * Inner-map key for one synapse identity: `to` occupies the high digits and
+   * the role rank the low {@link SYNAPSE_ROLE_COUNT} slots, so the four roles of
+   * one ordered pair stay distinct (Issue #3873).
+   */
+  private synapseStateKey(to: number, type?: SynapseRole): number {
+    return to * SYNAPSE_ROLE_COUNT + synapseRoleRank(type);
+  }
+
+  /**
+   * Resolve (or create) the {@link SynapseState} for one synapse identity.
+   *
+   * With `type` given the match is the `(from, to, type)` triple; with it
+   * omitted the untyped / standard role is used. Two roles from one source
+   * into an `IF` therefore keep independent backprop totals (Issue #3873).
+   */
+  connection(from: number, to: number, type?: SynapseRole): SynapseState {
     let fromMap = this.connectionMap.get(from);
     if (fromMap === undefined) {
       fromMap = new Map<number, SynapseState>();
       this.connectionMap.set(from, fromMap);
     }
-    const state = fromMap.get(to);
+    const key = this.synapseStateKey(to, type);
+    const state = fromMap.get(key);
 
     if (state !== undefined) {
       return state;
     } else {
       const tmpState = new SynapseState();
 
-      fromMap.set(to, tmpState);
+      fromMap.set(key, tmpState);
       return tmpState;
     }
   }
@@ -212,8 +234,10 @@ export class CreatureState {
    * reference directly after a single generation comparison — eliminating both
    * hash lookups on the innermost backprop loop.
    *
-   * Behaviourally identical to `connection(synapse.from, synapse.to)`; only the
-   * cost of resolution differs.
+   * Behaviourally identical to
+   * `connection(synapse.from, synapse.to, synapse.type)`; only the cost of
+   * resolution differs. The role is part of the key so two IF branches from
+   * one source do not share totals (Issue #3873).
    */
   connectionFor(synapse: Synapse): SynapseState {
     if (
@@ -223,7 +247,7 @@ export class CreatureState {
       return synapse.stateCache;
     }
 
-    const state = this.connection(synapse.from, synapse.to);
+    const state = this.connection(synapse.from, synapse.to, synapse.type);
     synapse.stateCache = state;
     synapse.stateGeneration = this.stateGeneration;
     return state;

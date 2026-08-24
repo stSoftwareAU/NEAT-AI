@@ -55,7 +55,9 @@ export class SubConnection extends AbstractMutationOperator {
     // creature into evolution/serialisation.
     const fromNeuron = creature.neurons[fromIndx];
 
-    creature.disconnect(fromIndx, toIndx);
+    // Issue #3873: remove the role that was chosen, not every role the
+    // ordered pair carries — an `IF` target may be fed once per branch.
+    creature.disconnect(fromIndx, toIndx, randomConn.type);
 
     const inwardList = creature.inwardConnections(toIndx);
 

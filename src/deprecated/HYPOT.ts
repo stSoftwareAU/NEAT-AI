@@ -167,7 +167,7 @@ export class HYPOT
     for (let i = inwardA.length; i--;) {
       const c = inwardA[i];
       if (c.from === c.to) {
-        neuron.creature.disconnect(c.from, c.to);
+        neuron.creature.disconnect(c.from, c.to, c.type);
       }
     }
 

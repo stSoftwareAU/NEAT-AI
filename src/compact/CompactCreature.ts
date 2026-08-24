@@ -281,7 +281,9 @@ function buildSafeCompact(
         const newWeight = (-outConn.weight) * inConn.weight;
 
         const existing = compactCreature.synapses.find((s) =>
-          s.fromId === inConn.fromId! && s.toId === outConn.toId!
+          s.fromId === inConn.fromId! &&
+          s.toId === outConn.toId! &&
+          (s.type ?? "") === (inConn.type ?? "")
         );
         // Issue #1972: Preserve tags from both inbound and outbound synapses.
         const mergedTags = mergeTagsByNameValue(inConn.tags, outConn.tags);
@@ -383,7 +385,10 @@ function buildSafeCompact(
         outConn.toId !== neuron.id!
       ) {
         const existingSynapse = compactCreature.synapses.find(
-          (s) => s.fromId === fromNeuron.id! && s.toId === toNeuron.id!,
+          (s) =>
+            s.fromId === fromNeuron.id! &&
+            s.toId === toNeuron.id! &&
+            (s.type ?? "") === (inConn.type ?? ""),
         );
 
         if (existingSynapse) continue; // Skip compaction if synapse already exists

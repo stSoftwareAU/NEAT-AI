@@ -59,3 +59,31 @@ Deno.test("mergeDuplicateSynapses: merges same from/to (sums weights), clears me
   const tagValues = new Set((hiddenIn?.tags ?? []).map((t) => t.value));
   assertEquals(tagValues, new Set(["a", "b"]));
 });
+
+Deno.test("mergeDuplicateSynapses: keeps both IF roles from one source on UUID export (Issue #3873)", () => {
+  const exportJSON: CreatureExport = {
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "output", uuid: "output-0", squash: "IF", bias: 0 },
+    ],
+    synapses: [
+      {
+        fromUUID: "input-0",
+        toUUID: "output-0",
+        weight: 0.3,
+        type: "condition",
+      },
+      {
+        fromUUID: "input-0",
+        toUUID: "output-0",
+        weight: 0.5,
+        type: "positive",
+      },
+    ],
+  };
+
+  const result = mergeDuplicateSynapses(exportJSON);
+  assertEquals(result.merged, 0);
+  assertEquals(exportJSON.synapses.length, 2);
+});

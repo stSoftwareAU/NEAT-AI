@@ -747,6 +747,11 @@ export function validate_structural_integrity(from_indices: Uint32Array, to_indi
  * within the same `from`), contain no self-connections, and contain no
  * backward connections (`from > to`).
  *
+ * Every synapse is read as carrying the **same** role, so a repeated
+ * `(from, to)` pair is a [`DUPLICATE_CONNECTION`] whatever the roles say.
+ * A caller holding the roles wants [`validate_topology_typed`], which keys
+ * the pair by role as a creature does (Issue #577).
+ *
  * # Arguments
  * * `from_indices` - source neuron index per synapse
  * * `to_indices` - destination neuron index per synapse
@@ -767,6 +772,31 @@ export function validate_topology(from_indices: Uint32Array, to_indices: Uint32A
  * `[error_code_0, synapse_index_0, error_code_1, synapse_index_1, ...]`.
  */
 export function validate_topology_batch(all_from_indices: Uint32Array, all_to_indices: Uint32Array, lengths: Uint32Array): Int32Array;
+
+/**
+ * [`validate_topology`] with the synapse roles, which complete the sort key.
+ *
+ * A creature keys its synapses by `(from, to, type)` (Issue #577), so an
+ * ordered pair may appear once **per role** — how one source feeds both
+ * branches of an `IF` neuron without an IDENTITY relay in between. Within a
+ * repeated pair the roles must still ascend ([`SORT_ERROR_TYPE`]), and an
+ * exact repeat of the triple is still a [`DUPLICATE_CONNECTION`].
+ *
+ * Whether the *target* may read more than one role is a question about its
+ * squash, which this gate is not given: `creature_validate` rule 26 and
+ * [`crate::creature::validate_no_duplicate_synapses`] are where a repeated
+ * pair into a non-`IF` neuron is rejected.
+ *
+ * # Arguments
+ * * `from_indices` - source neuron index per synapse
+ * * `to_indices` - destination neuron index per synapse
+ * * `synapse_types` - [`SynapseType`] code per synapse, same length as both
+ *
+ * # Returns
+ * A two-element vector `[error_code, synapse_index]`; a `synapse_types`
+ * length that does not match reports [`MALFORMED_BUFFER`].
+ */
+export function validate_topology_typed(from_indices: Uint32Array, to_indices: Uint32Array, synapse_types: Uint8Array): Int32Array;
 
 /**
  * JS `version() -> string` — returns the `neat-core` Cargo package version.
@@ -839,6 +869,7 @@ export interface InitOutput {
     readonly validate_structural_integrity: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number, m: number, n: number) => [number, number];
     readonly validate_topology: (a: number, b: number, c: number, d: number) => [number, number];
     readonly validate_topology_batch: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
+    readonly validate_topology_typed: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly version: () => [number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;

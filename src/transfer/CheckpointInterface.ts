@@ -58,6 +58,6 @@ export interface CheckpointInterface {
   /** Optional list of neuron IDs whose weights are frozen */
   frozenNeuronIds?: number[];
 
-  /** Optional list of synapse keys (fromUUID->toUUID) whose weights are frozen */
+  /** Optional list of synapse keys (`fromUUID->toUUID:type`) whose weights are frozen */
   frozenSynapseKeys?: string[];
 }

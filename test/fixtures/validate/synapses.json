@@ -273,6 +273,136 @@
           "connections": 4
         }
       }
+    },
+    {
+      "name": "if-shared-source-feeds-both-branches",
+      "rule": "OK_IF_SHARED_SOURCE",
+      "notes": "Issue #3873: uniqueness is (from, to, type), so neuron 1 may feed the IF as both 'negative' and 'positive' without an IDENTITY relay standing in as a second distinct source. The roles ascend, which is canonical order.",
+      "creature": {
+        "input": 3,
+        "output": 1,
+        "forwardOnly": true,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "if1",
+            "bias": 2,
+            "squash": "IF"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 3, "weight": -0.3, "type": "condition" },
+          { "from": 1, "to": 3, "weight": -0.3, "type": "negative" },
+          { "from": 1, "to": 3, "weight": 0.4, "type": "positive" },
+          { "from": 2, "to": 3, "weight": -0.2, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.8 }
+        ]
+      },
+      "expect": {
+        "outcome": "ok",
+        "stats": {
+          "input": 3,
+          "constant": 0,
+          "hidden": 1,
+          "output": 1,
+          "connections": 5
+        }
+      }
+    },
+    {
+      "name": "synapses-not-sorted-by-type",
+      "rule": "SORT_FAILURE_TYPE",
+      "notes": "Issue #3873: the role is the third component of the sort key, so a repeated pair whose roles descend is out of canonical order. 'positive' outranks 'negative'.",
+      "creature": {
+        "input": 3,
+        "output": 1,
+        "forwardOnly": true,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "if1",
+            "bias": 2,
+            "squash": "IF"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 3, "weight": -0.3, "type": "condition" },
+          { "from": 1, "to": 3, "weight": 0.4, "type": "positive" },
+          { "from": 1, "to": 3, "weight": -0.3, "type": "negative" },
+          { "from": 2, "to": 3, "weight": -0.2, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.8 }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "TopologyError",
+        "reason": "SORT_FAILURE",
+        "messageContains": "synapses not sorted 1->3 type: negative last type: positive"
+      }
+    },
+    {
+      "name": "duplicate-synapse-roles-into-non-if",
+      "rule": "DUPLICATE_SYNAPSE_NON_IF",
+      "notes": "Issue #3873: only an 'IF' target reads its inward synapses per role. Every other squash sums them regardless, so two roles from one source say nothing one summed synapse could not — and are rejected as a duplicate.",
+      "creature": {
+        "input": 3,
+        "output": 1,
+        "forwardOnly": true,
+        "neurons": [
+          { "type": "input", "id": 0 },
+          { "type": "input", "id": 1 },
+          { "type": "input", "id": 2 },
+          {
+            "type": "hidden",
+            "id": 1000001,
+            "uuid": "if1",
+            "bias": 2,
+            "squash": "IF"
+          },
+          {
+            "type": "output",
+            "id": -1,
+            "uuid": "output-0",
+            "bias": 0,
+            "squash": "IDENTITY"
+          }
+        ],
+        "synapses": [
+          { "from": 0, "to": 3, "weight": -0.3, "type": "condition" },
+          { "from": 1, "to": 3, "weight": -0.3, "type": "positive" },
+          { "from": 2, "to": 3, "weight": -0.3, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.8, "type": "negative" },
+          { "from": 3, "to": 4, "weight": 0.25, "type": "positive" }
+        ]
+      },
+      "expect": {
+        "outcome": "throws",
+        "error": "ValidationError",
+        "reason": "DUPLICATE_SYNAPSE",
+        "messageContains": "repeats a source into a non-'IF' neuron"
+      }
     }
   ]
 }

@@ -131,7 +131,7 @@ export class IF
     for (let i = toListA.length; i--;) {
       const c = toListA[i];
       if (c.from === c.to) {
-        neuron.creature.disconnect(c.from, c.to);
+        neuron.creature.disconnect(c.from, c.to, c.type);
       }
     }
 
@@ -379,16 +379,16 @@ export class IF
 
       switch (c.type) {
         case "condition":
-          neuron.creature.disconnect(c.from, c.to);
+          neuron.creature.disconnect(c.from, c.to, c.type);
           break;
         case "negative":
           if (foundPositive) {
-            neuron.creature.disconnect(c.from, c.to);
+            neuron.creature.disconnect(c.from, c.to, c.type);
           }
           break;
         default:
           if (foundNegative) {
-            neuron.creature.disconnect(c.from, c.to);
+            neuron.creature.disconnect(c.from, c.to, c.type);
           }
       }
     }
