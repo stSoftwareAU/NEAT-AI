@@ -313,6 +313,7 @@ training, discovery, scoring, visualisation, and example surface.
 | **[NEAT-AI-Explore](https://github.com/stSoftwareAU/NEAT-AI-Explore)**                 | TypeScript visualisation tool that consumes NEAT-AI-Snapshot data to inspect creature topology and behaviour.                                                                    |
 | **[NEAT-AI-Examples](https://github.com/stSoftwareAU/NEAT-AI-Examples)**               | TypeScript example projects showing how to use NEAT-AI for real tasks.                                                                                                           |
 | **[NEAT-AI-Forests](https://github.com/stSoftwareAU/NEAT-AI-Forests)**                 | Experimental Rust optimiser that grafts decision-tree residual corrections onto already-fit NEAT-AI creatures; candidates are judged by NEAT-AI-scorer.                          |
+| **[NEAT-AI-Ockham](https://github.com/stSoftwareAU/NEAT-AI-Ockham)**                   | Experimental Rust optimiser that prunes structure that no longer earns its keep from already-fit NEAT-AI creatures; candidates are judged by NEAT-AI-scorer.                     |
 
 ### Dependency graph
 
@@ -328,6 +329,7 @@ flowchart LR
   explore["NEAT-AI-Explore<br/>(TypeScript UI)"]
   examples["NEAT-AI-Examples<br/>(TypeScript)"]
   forests["NEAT-AI-Forests<br/>(Rust optimiser)"]
+  ockham["NEAT-AI-Ockham<br/>(Rust optimiser)"]
 
   core -- "vendored WASM (pinned rev)" --> neat
   core -- "path dependency" --> scorer
@@ -338,6 +340,8 @@ flowchart LR
   lamarck -- "scored by" --> scorer
   neat -- "fittest creatures grafted by" --> forests
   forests -- "scored by" --> scorer
+  neat -- "fittest creatures pruned by" --> ockham
+  ockham -- "scored by" --> scorer
   neat -- "produces snapshots" --> snapshot
   snapshot -- "consumed by" --> explore
   neat -- "used by" --> examples
