@@ -5,9 +5,9 @@
  *
  * Behavioural tests: they read the committed PNGs' pixels and the committed
  * README, and assert what a reader would see — the canonical set really is
- * transparent, an opaque variant exists for GitHub's Social-preview upload
- * slot, and the README shows the hub mark plus the sibling gallery. They do
- * not infer "has artwork" from a fully-opaque pixel quota.
+ * transparent, an opaque navy twin exists, and the README shows the hub mark
+ * plus the sibling gallery. GitHub Settings uploads live in `github/` (JPEG,
+ * under 1 MB) and are gated by `BrandGithubUploads.ts`.
  */
 
 import { assert, assertEquals } from "@std/assert";
