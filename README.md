@@ -374,7 +374,7 @@ so it reads in light and dark modes alike. Sources and regeneration:
   </tr>
   <tr>
     <td><img width="380" src="docs/brand/social-previews/neat-ai-forests.png" alt="NEAT-AI-Forests: decision-tree tricks for faster evolutionary discovery"></td>
-    <td></td>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-ockham.png" alt="NEAT-AI-Ockham: prune structure that no longer earns its keep"></td>
   </tr>
 </table>
 

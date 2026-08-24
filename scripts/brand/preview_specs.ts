@@ -80,4 +80,10 @@ export const PREVIEW_SPECS: PreviewSpec[] = [
     descriptor: "Decision-tree tricks for faster evolutionary discovery",
     motif: null,
   },
+  {
+    file: "neat-ai-ockham.png",
+    subtitle: "Ockham",
+    descriptor: "Prune structure that no longer earns its keep",
+    motif: null,
+  },
 ];
