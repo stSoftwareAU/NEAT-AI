@@ -11,7 +11,7 @@
  */
 
 import type { Creature } from "@creature";
-import { magnitudePenalty } from "@architecture/Score.ts";
+import { meanMagnitudePenalty } from "@architecture/Score.ts";
 import {
   type AdvantageMode,
   type AdvantageOptions,
@@ -75,44 +75,27 @@ export function resolveMcmcAcceptanceDelta(
 }
 
 /**
- * Computes a lightweight weight/bias penalty directly from a Creature,
- * without requiring a full JSON export. This mirrors the logic in
- * SimplifyLargeWeights.ts calculateWeightBiasPenalty() but operates on
- * live Creature objects for efficiency in the mutation pipeline.
+ * Computes a lightweight weight/bias penalty directly from a Creature, without
+ * requiring a full JSON export, for the mutation pipeline.
  *
- * Averages `valuePenalty` over every weight and bias, matching `Score.ts`.
- * The previous `(valuePenalty(max) + valuePenalty(avg)) / 2` meant a mutation
- * to any weight that was not the maximum barely moved the result, so the
- * Metropolis-Hastings acceptance test could not see most of the changes it was
- * being asked to judge.
+ * Charges the same aggregate the score charges — the mean per-value penalty
+ * (Issue #3881). It previously averaged `(max, avg)`, which meant a mutation
+ * that grew any weight other than the largest looked free to the M-H
+ * acceptance test even after the score itself stopped treating it that way.
+ *
+ * Input neurons are skipped: their bias is Infinity by construction.
  *
  * @param creature - The creature to compute penalty for
- * @returns The weight/bias penalty (lower is better)
+ * @returns The weight/bias penalty in [0, 1) (lower is better)
  */
 export function computeCreatureWeightBiasPenalty(creature: Creature): number {
-  let sum = 0;
-  let count = 0;
-
-  // `magnitudePenalty` is the shared clamped call-site contract, so this path
-  // charges an absurd magnitude exactly as scoring does rather than throwing.
-  const accumulate = (v: number) => {
-    if (!Number.isFinite(v)) return;
-    sum += magnitudePenalty(v);
-    count++;
-  };
-
-  for (const synapse of creature.synapses) {
-    accumulate(synapse.weight);
+  function* magnitudes(): Generator<number> {
+    for (const synapse of creature.synapses) yield synapse.weight;
+    for (let i = creature.input; i < creature.neurons.length; i++) {
+      yield creature.neurons[i].bias;
+    }
   }
-
-  // Skip input neurons (they have Infinity bias)
-  for (let i = creature.input; i < creature.neurons.length; i++) {
-    accumulate(creature.neurons[i].bias);
-  }
-
-  if (count === 0) return 0;
-
-  return sum / count;
+  return meanMagnitudePenalty(magnitudes());
 }
 
 /**

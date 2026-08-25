@@ -1,6 +1,6 @@
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
-import { valuePenalty } from "@architecture/Score.ts";
+import { meanMagnitudePenalty } from "@architecture/Score.ts";
 import { ABSOLUTE } from "@methods/activations/types/ABSOLUTE.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { LeakyReLU } from "@methods/activations/types/LeakyReLU.ts";
@@ -166,44 +166,22 @@ export function simplifyLargeWeights(
 }
 
 /**
- * Calculates a weight/bias magnitude penalty using the same max + average
- * combination applied in scoring. Exposed for use by callers that want to
- * compare penalty before/after a structural change.
+ * Calculates a weight/bias magnitude penalty using the same aggregate scoring
+ * charges — the mean per-value penalty (Issue #3881). Exposed for use by
+ * callers that want to compare penalty before/after a structural change.
+ *
+ * It previously averaged `(max, avg)`, so a simplification that shrank the body
+ * of the distribution without touching the largest weight scored as no
+ * improvement even though the score had moved.
  *
  * @param exported - The creature export to measure.
- * @returns A non-negative penalty value. Higher values indicate larger or
- *   more imbalanced weights/biases.
+ * @returns A penalty in [0, 1). Higher values indicate larger weights/biases.
  */
 export function calculateWeightBiasPenalty(exported: CreatureExport): number {
-  let max = 0;
-  let total = 0;
-  let count = 0;
-
-  for (const synapse of exported.synapses) {
-    const w = Math.abs(synapse.weight);
-    if (!Number.isFinite(w)) continue;
-    max = Math.max(max, w);
-    total += w;
-    count++;
+  function* magnitudes(): Generator<number> {
+    for (const synapse of exported.synapses) yield synapse.weight;
+    // CreatureExport.neurons excludes inputs; bias is defined for all entries.
+    for (const neuron of exported.neurons) yield neuron.bias;
   }
-
-  // CreatureExport.neurons excludes inputs; bias is defined for all entries.
-  for (const neuron of exported.neurons) {
-    const b = Math.abs(neuron.bias);
-    if (!Number.isFinite(b)) continue;
-    max = Math.max(max, b);
-    total += b;
-    count++;
-  }
-
-  // No weights/biases should never happen for a valid creature, but keep safe.
-  if (count === 0) return 0;
-
-  // Mirror Score.calculateMaxOutOfBounds() safety: clamp to avoid tripping
-  // `valuePenalty()` asserts on absurd magnitudes.
-  if (max > Number.MAX_SAFE_INTEGER) max = Number.MAX_SAFE_INTEGER;
-  if (total > Number.MAX_SAFE_INTEGER) total = Number.MAX_SAFE_INTEGER;
-
-  const avg = total / count;
-  return (valuePenalty(max) + valuePenalty(avg)) / 2;
+  return meanMagnitudePenalty(magnitudes());
 }

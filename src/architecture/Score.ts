@@ -136,6 +136,31 @@ export function magnitudePenalty(value: number): number {
 }
 
 /**
+ * Mean {@link magnitudePenalty} over an arbitrary run of weights and biases,
+ * skipping non-finite entries.
+ *
+ * This is the aggregate the score charges for — see
+ * {@link sumOfValuePenalties}. It is exported so the callers that measure
+ * magnitude *outside* the score (compaction's `calculateWeightBiasPenalty`, the
+ * MCMC path's `computeCreatureWeightBiasPenalty`) charge the same shape rather
+ * than each keeping a copy of a formula that has since moved. Both previously
+ * averaged `(max, avg)`, which is the aggregate Issue #3881 replaced.
+ *
+ * @param values - Weights and biases; signs are ignored
+ * @returns The mean penalty in [0, 1), or 0 when there are no finite values
+ */
+export function meanMagnitudePenalty(values: Iterable<number>): number {
+  let sum = 0;
+  let count = 0;
+  for (const value of values) {
+    if (!Number.isFinite(value)) continue;
+    sum += magnitudePenalty(value);
+    count++;
+  }
+  return count > 0 ? sum / count : 0;
+}
+
+/**
  * Sum of {@link magnitudePenalty} over **every** weight and bias.
  *
  * The magnitude term reads this rather than `(max, avg)`. Penalising the max
