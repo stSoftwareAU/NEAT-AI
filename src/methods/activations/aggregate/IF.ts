@@ -28,6 +28,24 @@ import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { recordAggregateSelf } from "@neuron/AggregateRecord.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { stripRolesAndCoalesceSources } from "@architecture/RepairInvalidIfNeurons.ts";
+import { normaliseInwardRoles } from "@architecture/CoalesceInwardSynapses.ts";
+import type { SynapseRole } from "@architecture/SynapseKey.ts";
+
+/** The three roles an `IF` neuron reads, each summed separately. */
+const IF_ROLES: readonly SynapseRole[] = ["condition", "negative", "positive"];
+
+/** The roles `from` already feeds the neuron being fixed, created on demand. */
+function heldRoles(
+  rolesBySource: Map<number, Set<SynapseRole>>,
+  from: number,
+): Set<SynapseRole> {
+  let roles = rolesBySource.get(from);
+  if (roles === undefined) {
+    roles = new Set<SynapseRole>();
+    rolesBySource.set(from, roles);
+  }
+  return roles;
+}
 
 /**
  * Issue #3087: Stack-based pool of reusable eligible-connection scratch arrays
@@ -127,7 +145,29 @@ export class IF
     return IF.NAME;
   }
 
+  /**
+   * Give this `IF` neuron the three inward roles it needs, then hand back a
+   * creature whose synapses still obey the `(from, to, type)` identity rule.
+   *
+   * Issue #3880: the role assignment below writes `synapse.type` in place, so
+   * it is a producer of both a duplicate triple (the source already carried
+   * the role it was handed) and of a `(from, to)` run left in descending role
+   * order. {@link normaliseInwardRoles} settles both before this pass returns,
+   * rather than leaving them for a `creatureValidate` several stages later.
+   */
   fix(neuron: Neuron) {
+    if (this.assignInwardRoles(neuron)) {
+      normaliseInwardRoles(neuron.creature, neuron.index);
+    }
+  }
+
+  /**
+   * Wire the three roles onto the neuron's inward synapses.
+   *
+   * @returns true when any `synapse.type` was written, so the caller must
+   *   restore the canonical order and sum any row the write duplicated.
+   */
+  private assignInwardRoles(neuron: Neuron): boolean {
     const toListA = neuron.creature.inwardConnections(neuron.index);
     for (let i = toListA.length; i--;) {
       const c = toListA[i];
@@ -137,6 +177,25 @@ export class IF
     }
 
     const toList = neuron.creature.inwardConnections(neuron.index);
+
+    // Issue #3880: the roles each source already feeds this neuron. A source
+    // handed a role it already carries makes two rows of one `(from, to, type)`
+    // triple — the `duplicate synapse …` the GRQ fleet saw — so an assignment
+    // picks a role the source still has free wherever one exists.
+    const rolesBySource = new Map<number, Set<SynapseRole>>();
+    for (const c of toList) {
+      if (c.type === undefined) continue;
+      heldRoles(rolesBySource, c.from).add(c.type);
+    }
+    let rewrote = false;
+    const assign = (c: Synapse, role: SynapseRole) => {
+      const roles = heldRoles(rolesBySource, c.from);
+      if (c.type !== undefined) roles.delete(c.type);
+      roles.add(role);
+      c.type = role;
+      rewrote = true;
+    };
+
     const spareList = [];
     let foundPositive = false;
     let foundCondition = false;
@@ -170,24 +229,27 @@ export class IF
       if (c.type === undefined) {
         if (!foundCondition) {
           foundCondition = true;
-          c.type = "condition";
+          assign(c, "condition");
         } else if (!foundNegative) {
           foundNegative = true;
-          c.type = "negative";
+          assign(c, "negative");
         } else if (!foundPositive) {
           foundPositive = true;
-          c.type = "positive";
+          assign(c, "positive");
         } else {
-          switch (Math.floor(getRandomNumberGenerator().random() * 3)) {
-            case 0:
-              c.type = "condition";
-              break;
-            case 1:
-              c.type = "negative";
-              break;
-            default:
-              c.type = "positive";
-          }
+          // Every role is already wired, so this spare row may take any of
+          // them — but only the ones this source does not already feed keep it
+          // a distinct synapse. With none free the row is summed into the
+          // source's `positive` row, which is what an untyped row into an `IF`
+          // already contributed (the activation's `default` branch).
+          const held = heldRoles(rolesBySource, c.from);
+          const free = IF_ROLES.filter((role) => !held.has(role));
+          assign(
+            c,
+            free.length === 0 ? "positive" : free[
+              Math.floor(getRandomNumberGenerator().random() * free.length)
+            ],
+          );
         }
       }
     }
@@ -195,7 +257,7 @@ export class IF
     if (!foundCondition) {
       const c = neuron.creature.makeRandomConnection(neuron.index);
       if (c) {
-        c.type = "condition";
+        assign(c, "condition");
         foundCondition = true;
       }
     }
@@ -204,7 +266,7 @@ export class IF
       const c = neuron.creature.makeRandomConnection(neuron.index);
 
       if (c) {
-        c.type = "negative";
+        assign(c, "negative");
         foundNegative = true;
       }
     }
@@ -213,7 +275,7 @@ export class IF
       const c = neuron.creature.makeRandomConnection(neuron.index);
 
       if (c) {
-        c.type = "positive";
+        assign(c, "positive");
         foundPositive = true;
       }
     }
@@ -222,7 +284,7 @@ export class IF
       const c = spareList.pop();
       if (c) {
         foundCondition = true;
-        c.type = "condition";
+        assign(c, "condition");
       }
     }
 
@@ -230,14 +292,14 @@ export class IF
       const c = spareList.pop();
       if (c) {
         foundNegative = true;
-        c.type = "negative";
+        assign(c, "negative");
       }
     }
     if (!foundPositive) {
       const c = spareList.pop();
       if (c) {
         foundPositive = true;
-        c.type = "positive";
+        assign(c, "positive");
       }
     }
 
@@ -251,7 +313,7 @@ export class IF
       // deterministically downgrade to a standard squash.
       neuron.setSquash(neuron.type === "output" ? "IDENTITY" : "TANH");
       stripRolesAndCoalesceSources(neuron.creature, neuron.index);
-      return;
+      return rewrote;
     }
 
     if (!foundCondition || !foundNegative || !foundPositive) {
@@ -260,6 +322,8 @@ export class IF
         stripRolesAndCoalesceSources(neuron.creature, neuron.index);
       }
     }
+
+    return rewrote;
   }
 
   activateAndTrace(neuron: Neuron) {

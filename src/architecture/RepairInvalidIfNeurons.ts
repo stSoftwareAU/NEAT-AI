@@ -7,9 +7,7 @@
  */
 
 import type { Creature } from "@creature";
-import type { Synapse } from "@architecture/Synapse.ts";
-import { compareSynapses } from "@architecture/SynapseKey.ts";
-import { mergeTagsByNameValue } from "@utils/TagUtils.ts";
+import { coalesceInwardDuplicates } from "@architecture/CoalesceInwardSynapses.ts";
 
 /**
  * Strip inward synapse roles on the neuron at `indx`, then coalesce any source
@@ -28,33 +26,19 @@ export function stripRolesAndCoalesceSources(
   creature: Creature,
   indx: number,
 ): void {
-  const bySource = new Map<number, Synapse>();
-  const doomed = new Set<Synapse>();
   let stripped = false;
   for (const syn of creature.inwardConnections(indx)) {
     if (syn.type) {
       delete syn.type;
       stripped = true;
     }
-
-    const kept = bySource.get(syn.from);
-    if (kept === undefined) {
-      bySource.set(syn.from, syn);
-      continue;
-    }
-    kept.weight += syn.weight;
-    if (syn.tags?.length) {
-      kept.tags = mergeTagsByNameValue(kept.tags, syn.tags);
-    }
-    doomed.add(syn);
   }
 
-  if (doomed.size > 0) {
-    creature.synapses = creature.synapses.filter((syn) => !doomed.has(syn));
-    creature.synapses.sort(compareSynapses);
-    stripped = true;
-  }
-  if (stripped) creature.clearCache();
+  // Every inward row now carries the untyped role, so the run stays in
+  // canonical order and only the merge below can need a re-sort — which
+  // `coalesceInwardDuplicates` does for itself.
+  const merged = coalesceInwardDuplicates(creature, indx);
+  if (stripped && merged === 0) creature.clearCache();
 }
 
 /**

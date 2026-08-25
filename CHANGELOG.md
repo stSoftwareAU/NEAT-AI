@@ -80,6 +80,23 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3880:** `IF.fix` no longer hands a source a role it already carries,
+  and no longer leaves a `(from, to)` run out of ascending role order. The pass
+  types an untyped inward synapse by writing `synapse.type` in place, which both
+  repeated a `(from, to, type)` triple the source already held and moved that
+  row within its canonically-sorted run — the
+  `duplicate synapse
+  input-1216 -> …-if0` and
+  `synapses not sorted … type: condition last type:
+  negative` pairs the GRQ
+  fleet saw on 6.6.42, from one rewrite. Assignment now prefers a role the
+  source still has free; where none is, the row is summed into the row it would
+  duplicate (an untyped row into an `IF` already fed the positive branch, so the
+  sum is exact). The producer restores the canonical order and sums any
+  duplicate before it returns (`src/architecture/CoalesceInwardSynapses.ts`), so
+  the next stage never sees either — one such creature reaching the native
+  scorer failed the whole batch.
+
 - **Issue #3873 follow-up:** Leaving `IF` (via `MOD_SQUASH` / `neuron.fix()`, or
   `IF.fix` when it cannot keep the three roles) now coalesces a shared source's
   roles into one untyped synapse. Stripping `type` without merging turned a
