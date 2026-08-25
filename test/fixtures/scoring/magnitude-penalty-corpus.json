@@ -1,0 +1,30 @@
+{
+  "issue": 3881,
+  "description": "Language-neutral corpus pinning the weight/bias magnitude penalty across magnitudes 1 -> 1e20. Every engine must return `penalty` for a weight or bias of absolute value `magnitude`. Magnitudes above maxSafeMagnitude are clamped to it before the curve is applied, which is why the last entries share a penalty.",
+  "formula": "penalty(v) = 0 for v <= 1; let c = min(v, maxSafeMagnitude), d = log10(c); d < decadeCap ? 0.999 * d / decadeCap : 0.999 + 0.001 * (1 - decadeCap / d)",
+  "decadeCap": 12,
+  "maxSafeMagnitude": 9007199254740991,
+  "tolerance": 1e-12,
+  "cases": [
+    { "magnitude": 0, "penalty": 0 },
+    { "magnitude": 0.5, "penalty": 0 },
+    { "magnitude": 1, "penalty": 0 },
+    { "magnitude": 2, "penalty": 0.025060747139026434 },
+    { "magnitude": 5, "penalty": 0.05818925286097357 },
+    { "magnitude": 10, "penalty": 0.08325 },
+    { "magnitude": 100, "penalty": 0.1665 },
+    { "magnitude": 1000, "penalty": 0.24975 },
+    { "magnitude": 4544, "penalty": 0.3044817403650216 },
+    { "magnitude": 100000, "penalty": 0.41625 },
+    { "magnitude": 1000000, "penalty": 0.4995 },
+    { "magnitude": 163100000, "penalty": 0.6836867922566029 },
+    { "magnitude": 10000000000, "penalty": 0.8325 },
+    { "magnitude": 1000000000000, "penalty": 0.999 },
+    { "magnitude": 10000000000000, "penalty": 0.9990769230769231 },
+    { "magnitude": 1000000000000000, "penalty": 0.9992 },
+    { "magnitude": 9007199254740991, "penalty": 0.9992478653370066 },
+    { "magnitude": 1e16, "penalty": 0.9992478653370066 },
+    { "magnitude": 1e18, "penalty": 0.9992478653370066 },
+    { "magnitude": 1e20, "penalty": 0.9992478653370066 }
+  ]
+}

@@ -115,7 +115,28 @@ export function valuePenalty(value: number): number {
 }
 
 /**
- * Sum of {@link valuePenalty} over **every** weight and bias.
+ * Penalty charged for a single weight or bias of absolute value `value`.
+ *
+ * This is the call-site contract around {@link valuePenalty}: the magnitude is
+ * made absolute and clamped to `Number.MAX_SAFE_INTEGER` first. Individual
+ * values reach 1e+195 through compaction multiplications long before the Issue
+ * #2378 overflow guard — which only clamps the aggregates — ever sees them, and
+ * `valuePenalty` rejects anything past its own bound. Without the clamp the
+ * magnitude that opened Issue #3881 throws instead of being charged for.
+ *
+ * Must stay identical to `magnitude_penalty()` in NEAT-AI-scorer
+ * `rust_scorer/src/scoring.rs`. Both engines are pinned to the shared corpus in
+ * `test/fixtures/scoring/magnitude-penalty-corpus.json`.
+ *
+ * @param value - A weight or bias; sign is ignored
+ * @returns A penalty in [0, 1)
+ */
+export function magnitudePenalty(value: number): number {
+  return valuePenalty(Math.min(Math.abs(value), Number.MAX_SAFE_INTEGER));
+}
+
+/**
+ * Sum of {@link magnitudePenalty} over **every** weight and bias.
  *
  * The magnitude term reads this rather than `(max, avg)`. Penalising the max
  * and the average gave the other ~38,000 values in a production creature no
@@ -131,18 +152,12 @@ function sumOfValuePenalties(
   weights: ArrayLike<number>,
   biases: ArrayLike<number>,
 ): number {
-  // Individual values can exceed MAX_SAFE_INTEGER before the overflow guard
-  // below clamps the aggregates (compaction multiplications reach 1e+195 —
-  // Issue #2378). Clamp per value here for the same reason, and identically to
-  // `value_penalty`'s caller in NEAT-AI-scorer, so the engines stay in step.
   let sum = 0;
   for (let i = 0; i < weights.length; i++) {
-    sum += valuePenalty(
-      Math.min(Math.abs(weights[i]), Number.MAX_SAFE_INTEGER),
-    );
+    sum += magnitudePenalty(weights[i]);
   }
   for (let i = 0; i < biases.length; i++) {
-    sum += valuePenalty(Math.min(Math.abs(biases[i]), Number.MAX_SAFE_INTEGER));
+    sum += magnitudePenalty(biases[i]);
   }
   assertFiniteNonNegative(sum, "SumValuePenalty");
   return sum;
@@ -477,8 +492,8 @@ export function updateScoreForWeightChange(
     totalWeightBias: newTotal,
     secondMaxWeightBias: newSecondMax,
     // One value moved, so the running penalty sum moves with it in O(1).
-    sumValuePenalty: cached.sumValuePenalty - valuePenalty(oldAbs) +
-      valuePenalty(newAbs),
+    sumValuePenalty: cached.sumValuePenalty - magnitudePenalty(oldAbs) +
+      magnitudePenalty(newAbs),
   };
 
   return calculateScore(error, creature, growthCost);
@@ -570,8 +585,8 @@ export function updateScoreForBiasChange(
     totalWeightBias: newTotal,
     secondMaxWeightBias: newSecondMax,
     // One value moved, so the running penalty sum moves with it in O(1).
-    sumValuePenalty: cached.sumValuePenalty - valuePenalty(oldAbs) +
-      valuePenalty(newAbs),
+    sumValuePenalty: cached.sumValuePenalty - magnitudePenalty(oldAbs) +
+      magnitudePenalty(newAbs),
   };
 
   return calculateScore(error, creature, growthCost);
