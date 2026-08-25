@@ -10,9 +10,11 @@
  * `calculate()` produced in-process. A curve that matched case by case but was
  * wired into the score differently would pass the corpus and fail here.
  *
- * The binary is resolved exactly as `quality.sh` resolves it; without one the
- * lane is skipped rather than failed, so a contributor with no scorer checkout
- * is not blocked. CI always has it.
+ * The binary is resolved exactly as `RustScorerDatasetParity.ts` resolves it —
+ * `NEAT_AI_RUST_SCORER_BINARY_PATH`, then `PATH`, then the sibling
+ * `../NEAT-AI-scorer` checkout `quality.sh` builds. Without one the lane is
+ * skipped rather than failed, so neither a contributor with no scorer checkout
+ * nor the coverage shards (which install no binary) are blocked.
  */
 
 import { assert } from "@std/assert";
@@ -50,7 +52,9 @@ function creatureAtMagnitude(magnitude: number): Creature {
     layers: [{ count: 3, squash: IDENTITY.NAME }],
     outputLayer: { squash: IDENTITY.NAME },
   });
-  creature.synapses.forEach((s, i) => s.weight = i % 2 ? -magnitude : magnitude);
+  creature.synapses.forEach((s, i) =>
+    s.weight = i % 2 ? -magnitude : magnitude
+  );
   for (let i = creature.input; i < creature.neurons.length; i++) {
     creature.neurons[i].bias = magnitude / 3;
   }
@@ -93,7 +97,7 @@ async function nativeComplexityPenalty(
   }
 }
 
-for (const magnitude of MAGNITUDES) {
+MAGNITUDES.forEach((magnitude) => {
   Deno.test({
     name:
       `Magnitude #3881: rust_scorer and TypeScript agree on the penalty at |w|=${magnitude}`,
@@ -119,7 +123,7 @@ for (const magnitude of MAGNITUDES) {
       }
     },
   });
-}
+});
 
 Deno.test({
   name:
@@ -128,12 +132,13 @@ Deno.test({
   async fn() {
     const dataDir = makeScoringDataDir();
     try {
-      const penalties: number[] = [];
-      for (const magnitude of MAGNITUDES) {
-        penalties.push(
-          await nativeComplexityPenalty(creatureAtMagnitude(magnitude), dataDir),
-        );
-      }
+      // The scorer reads the data directory and writes only its own temp
+      // creature file, so the magnitudes can be measured concurrently.
+      const penalties = await Promise.all(
+        MAGNITUDES.map((magnitude) =>
+          nativeComplexityPenalty(creatureAtMagnitude(magnitude), dataDir)
+        ),
+      );
       for (let i = 1; i < penalties.length; i++) {
         assert(
           penalties[i] > penalties[i - 1],
