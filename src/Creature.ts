@@ -128,6 +128,14 @@ export interface CachedScoreComponents {
   /** Average absolute value among all weights and biases */
   avgWeightBias: number;
   /**
+   * Sum of `valuePenalty()` over every weight and bias.
+   *
+   * The magnitude term averages this rather than penalising `(max, avg)`, so
+   * every value carries a gradient. Stored as a sum so a single weight or bias
+   * change updates it in O(1).
+   */
+  sumValuePenalty: number;
+  /**
    * Sum of absolute values of all weights and biases.
    * Issue #1045: Required for incremental updates.
    */

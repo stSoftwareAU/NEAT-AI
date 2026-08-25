@@ -98,14 +98,23 @@ Deno.test("valuePenalty: Edge Cases", () => {
 });
 
 Deno.test("valuePenalty: Various Values", () => {
-  assertAlmostEquals(valuePenalty(5000), 9.998949270042241e-1, 0.001);
-  assertAlmostEquals(valuePenalty(1e10), 9.999583781651307e-1, 0.001);
-
+  // These same three values under the old 1/(1 + 1/v) curve were 0.9998949,
+  // 0.9999584 and 0.9999501 — within 1e-4 of each other across six orders of
+  // magnitude, which is why weights could drift without the score noticing.
+  assertAlmostEquals(valuePenalty(5000), 0.3079392528609736, 1e-9);
+  assertAlmostEquals(valuePenalty(1e10), 0.8325, 1e-9);
   assertAlmostEquals(
     valuePenalty(184323183.02923888),
-    9.999500803736046e-1,
-    0.001,
+    0.6881095317970924,
+    1e-9,
   );
+
+  // ...and they are now clearly separated.
+  assert(
+    valuePenalty(1e10) - valuePenalty(5000) > 0.5,
+    "six orders of magnitude must be plainly distinguishable",
+  );
+
   assertAlmostEquals(valuePenalty(0.0000000000000001), 0, 0.001);
   const maxPenalty = valuePenalty(Number.MAX_SAFE_INTEGER);
   assert(maxPenalty < 1, `Max penalty ${maxPenalty} should be less than 1`);

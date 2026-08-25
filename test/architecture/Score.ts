@@ -5,7 +5,7 @@
  * calculations including penalty computation, caching, and incremental updates.
  */
 
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "../../mod.ts";
 import {
   calculate,
@@ -83,11 +83,22 @@ Deno.test("valuePenalty - penalty is always less than 1", () => {
   assert(p10000 < 1, "Penalty for 10000 should be less than 1");
 });
 
-Deno.test("valuePenalty - compression kicks in for very large values", () => {
-  // For very large values, penalty > 0.999 triggers compression
-  const pLarge = valuePenalty(100000);
-  assert(pLarge >= 0.999, "Large value penalty should reach compression zone");
-  assert(pLarge < 1, "Even compressed penalty must be < 1");
+Deno.test("valuePenalty - the asymptotic tail stays below 1", () => {
+  // Past the 12-decade cap the tail keeps rising but never reaches 1, so an
+  // absurd magnitude is never free.
+  const atCap = valuePenalty(1e12);
+  const beyond = valuePenalty(Number.MAX_SAFE_INTEGER);
+  assert(atCap >= 0.999, `At the cap the penalty should be ~0.999, got ${atCap}`);
+  assert(beyond > atCap, "The tail must stay strictly increasing");
+  assert(beyond < 1, `Even the tail must be < 1, got ${beyond}`);
+});
+
+Deno.test("valuePenalty - every decade costs the same", () => {
+  // The property the old 1/(1 + 1/v) curve lacked: it was 0.990 at 100 and
+  // 0.9999 at 1000, so past two decades growth was effectively free.
+  const stepLow = valuePenalty(100) - valuePenalty(10);
+  const stepHigh = valuePenalty(1e11) - valuePenalty(1e10);
+  assertAlmostEquals(stepLow, stepHigh, 1e-12);
 });
 
 Deno.test("valuePenalty - throws for negative values", () => {
