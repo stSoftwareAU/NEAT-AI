@@ -42,6 +42,15 @@ Two things this branch adds on top of that:
   vendored byte for byte into the scorer repo) states the curve as data across
   magnitudes 1 → 1e20, so a port is checked against the contract rather than
   against one implementation's habits.
+- **The two out-of-score copies of the aggregate now match the score.**
+  `computeCreatureWeightBiasPenalty` (MCMC mutation acceptance) and
+  `calculateWeightBiasPenalty` (compaction) each kept their own
+  `(valuePenalty(max) + valuePenalty(avg)) / 2`, both documented as mirroring
+  scoring. Left alone they would have gone on charging exactly the aggregate
+  this issue replaces — a mutation growing any weight but the largest still
+  looks free to Metropolis-Hastings, and a simplification that shrinks the body
+  of the distribution still looks like no improvement. Both now call
+  `meanMagnitudePenalty()`.
 
 ### Rollout
 
@@ -116,13 +125,22 @@ Criterion 4 is a post-rollout observation and cannot be asserted in a test.
 
 ### Quality gate
 
-`test/score` and `test/architecture` show the same pre-existing failures as a
-pristine `origin/Develop` worktree (commit `f04b3f18`) — 8 `CrossValidation`
-tests, plus `Dataset scoring parity: RMSE is still a known divergence` once a
-current `rust_scorer` binary is resolvable. That last one is the #3853
-`KNOWN_DIVERGENCES` entry failing loudly now the divergence is fixed on both
-sides; it reproduces on `origin/Develop` with the same binary, is unrelated to
-this change, and is filed as #3883.
+`./quality.sh` is green apart from two failure groups that reproduce unchanged
+on a pristine `origin/Develop` worktree (commit `f04b3f18`) with the same
+`rust_scorer` binary, and are unrelated to this change:
+
+| Failure                                                    | Baseline on `origin/Develop`                            |
+| ---------------------------------------------------------- | ------------------------------------------------------- |
+| `Dataset scoring parity: RMSE is still a known divergence` | fails identically — filed as #3883                      |
+| `score-per-hour harness: …`                                | fails identically (8 passed, 1 failed on both branches) |
+
+The RMSE one is the #3853 `KNOWN_DIVERGENCES` entry failing loudly now the
+divergence is fixed on both sides. The score-per-hour harness dies inside the
+scorer binary with
+`ScorerStrictError: … Duplicate synapse from h-0-4 to
+h-1-162` — a
+`(from, to, type)` synapse-identity issue, not a scoring one. Both lanes are
+`ignore`d in CI, which installs no scorer binary.
 
 ## Test Plan
 
@@ -139,11 +157,18 @@ Added:
   the language-neutral contract.
 
 Modified (documented, per the no-silent-test-edits rule):
-`test/score/Penalty.ts` and `test/architecture/Score.ts` asserted the _old_
-curve's values — 5000, 1e10 and 1.84e8 pinned at 0.9998949, 0.9999584 and
-0.9999501, i.e. the saturation this issue is about. They now assert the new
-values at a tighter tolerance (1e-9, was 1e-3) plus the separation the old curve
-lacked. No test was removed or commented out.
+
+- `test/score/Penalty.ts` and `test/architecture/Score.ts` asserted the _old_
+  curve's values — 5000, 1e10 and 1.84e8 pinned at 0.9998949, 0.9999584 and
+  0.9999501, i.e. the saturation this issue is about. They now assert the new
+  values at a tighter tolerance (1e-9, was 1e-3) plus the separation the old
+  curve lacked.
+- `test/NEAT/MetropolisHastings.ts` pinned `penalty > 0.5` for weights of 100 —
+  true only of the saturating curve. It now asserts the property instead (more
+  magnitude costs more, and a further two decades cost more again), which
+  survives the next curve change.
+
+No test was removed or commented out.
 
 In the scorer repo: `rust_scorer/tests/magnitude_penalty_corpus.rs` (5 tests)
 reads the vendored corpus, and `scoring.rs`'s unit tests were updated the same
