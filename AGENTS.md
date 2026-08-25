@@ -792,6 +792,14 @@ than re-deriving a `(from, to)` key:
 - `Creature.disconnect(from, to, type?)` removes one role, or every role when
   `type` is omitted.
 
+A pass that writes `synapse.type` **in place** is a producer of both halves of
+the rule: the role it hands out may be one the source already carries, and the
+rewritten row moves within its `(from, to)` run. Such a pass owns the repair
+before it returns — `normaliseInwardRoles` in
+[`src/architecture/CoalesceInwardSynapses.ts`](./src/architecture/CoalesceInwardSynapses.ts)
+sums the rows that now share a triple and restores the canonical order (Issue
+#3880). Do not leave either for a later `creatureValidate`.
+
 The rules themselves are NEAT-AI-core's (`validate_no_duplicate_synapses`,
 `creature_validate` rules 25/26); the conformance cases that pin them are
 `if-shared-source-feeds-both-branches`, `synapses-not-sorted-by-type` and
