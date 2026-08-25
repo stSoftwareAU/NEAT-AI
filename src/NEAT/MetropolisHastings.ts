@@ -11,7 +11,7 @@
  */
 
 import type { Creature } from "@creature";
-import { valuePenalty } from "@architecture/Score.ts";
+import { magnitudePenalty } from "@architecture/Score.ts";
 import {
   type AdvantageMode,
   type AdvantageOptions,
@@ -77,42 +77,42 @@ export function resolveMcmcAcceptanceDelta(
 /**
  * Computes a lightweight weight/bias penalty directly from a Creature,
  * without requiring a full JSON export. This mirrors the logic in
- * CompactCreature.ts calculateWeightBiasPenalty() but operates on
+ * SimplifyLargeWeights.ts calculateWeightBiasPenalty() but operates on
  * live Creature objects for efficiency in the mutation pipeline.
+ *
+ * Averages `valuePenalty` over every weight and bias, matching `Score.ts`.
+ * The previous `(valuePenalty(max) + valuePenalty(avg)) / 2` meant a mutation
+ * to any weight that was not the maximum barely moved the result, so the
+ * Metropolis-Hastings acceptance test could not see most of the changes it was
+ * being asked to judge.
  *
  * @param creature - The creature to compute penalty for
  * @returns The weight/bias penalty (lower is better)
  */
 export function computeCreatureWeightBiasPenalty(creature: Creature): number {
-  let max = 0;
-  let total = 0;
+  let sum = 0;
   let count = 0;
 
-  for (const synapse of creature.synapses) {
-    const w = Math.abs(synapse.weight);
-    if (!Number.isFinite(w)) continue;
-    max = Math.max(max, w);
-    total += w;
+  // `magnitudePenalty` is the shared clamped call-site contract, so this path
+  // charges an absurd magnitude exactly as scoring does rather than throwing.
+  const accumulate = (v: number) => {
+    if (!Number.isFinite(v)) return;
+    sum += magnitudePenalty(v);
     count++;
+  };
+
+  for (const synapse of creature.synapses) {
+    accumulate(synapse.weight);
   }
 
   // Skip input neurons (they have Infinity bias)
   for (let i = creature.input; i < creature.neurons.length; i++) {
-    const b = Math.abs(creature.neurons[i].bias);
-    if (!Number.isFinite(b)) continue;
-    max = Math.max(max, b);
-    total += b;
-    count++;
+    accumulate(creature.neurons[i].bias);
   }
 
   if (count === 0) return 0;
 
-  // Clamp to avoid tripping valuePenalty() asserts on absurd magnitudes.
-  if (max > Number.MAX_SAFE_INTEGER) max = Number.MAX_SAFE_INTEGER;
-  if (total > Number.MAX_SAFE_INTEGER) total = Number.MAX_SAFE_INTEGER;
-
-  const avg = total / count;
-  return (valuePenalty(max) + valuePenalty(avg)) / 2;
+  return sum / count;
 }
 
 /**

@@ -95,17 +95,26 @@ Deno.test("computeCreatureWeightBiasPenalty: small weights yield low penalty", (
 });
 
 Deno.test("computeCreatureWeightBiasPenalty: large weights yield high penalty", () => {
-  const creature = new Creature(2, 1, { layers: [{ count: 1 }] });
-  // Set large weights
-  for (const synapse of creature.synapses) {
-    synapse.weight = 100.0;
-  }
-  for (let i = creature.input; i < creature.neurons.length; i++) {
-    creature.neurons[i].bias = 50.0;
-  }
+  const build = (weight: number, bias: number) => {
+    const creature = new Creature(2, 1, { layers: [{ count: 1 }] });
+    for (const synapse of creature.synapses) {
+      synapse.weight = weight;
+    }
+    for (let i = creature.input; i < creature.neurons.length; i++) {
+      creature.neurons[i].bias = bias;
+    }
+    return creature;
+  };
 
-  const penalty = computeCreatureWeightBiasPenalty(creature);
-  assertEquals(penalty > 0.5, true); // Large weights → high penalty
+  const small = computeCreatureWeightBiasPenalty(build(0.5, 0.1));
+  const large = computeCreatureWeightBiasPenalty(build(100.0, 50.0));
+  const huge = computeCreatureWeightBiasPenalty(build(1e8, 1e8));
+
+  assertEquals(large > small, true); // Large weights → higher penalty
+  // ...and it keeps rising, rather than saturating as the old curve did: under
+  // `1 / (1 + 1/v)` both 100 and 1e8 scored ~0.99, so this measure could not
+  // tell a merely large weight from an absurd one.
+  assertEquals(huge > large * 2, true);
 });
 
 Deno.test("computeCreatureWeightBiasPenalty: zero weights yield zero penalty", () => {
