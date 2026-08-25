@@ -777,3 +777,47 @@ export type {
   TopologyExportNode,
   TopologyExportSynapse,
 } from "@wasm/WasmTopologyExport.ts";
+
+/**
+ * Batch scorer diagnostics
+ *
+ * GRQ#4387: these helpers already existed but were unreachable from the
+ * package, so consumers were duplicating them. `extractOffendingStems` pulls
+ * the creature UUIDs the rust scorer named out of its raw stderr;
+ * `buildBatchScorerDiagnostic` cross-references those against the in-memory
+ * population and returns a structured payload (composition counters, per
+ * offender metadata, a formatted single-line message) suitable for both a log
+ * line and a log aggregator.
+ *
+ * @see {@link module:src/score/BatchScorerDiagnostics}
+ */
+export {
+  buildBatchScorerDiagnostic,
+  extractOffendingStems,
+  summariseForwardOnlyComposition,
+} from "./src/score/BatchScorerDiagnostics.ts";
+export type {
+  BatchScorerDiagnostic,
+  OffenderMetadata,
+  PopulationComposition,
+} from "./src/score/BatchScorerDiagnostics.ts";
+
+/**
+ * Batch scorer partial-failure surface
+ *
+ * GRQ#4387: `rust_scorer` directory mode isolates a creature it cannot score
+ * instead of failing the whole batch. These types describe what the bridge
+ * hands back: the creatures that scored, plus the offenders it refused.
+ *
+ * @see {@link module:src/score/BatchRustScorerBridge}
+ */
+export { SCORER_EXIT_CREATURE_FAILURES } from "./src/score/BatchRustScorerBridge.ts";
+export type {
+  BatchScorerOffender,
+  BatchScorerRunResult,
+} from "./src/score/BatchRustScorerBridge.ts";
+export { reconcilePartialBatchScorerOutput } from "./src/score/BatchScorerReconciler.ts";
+export type {
+  BatchScorerFailure,
+  PartialBatchScorerOutput,
+} from "./src/score/BatchScorerReconciler.ts";

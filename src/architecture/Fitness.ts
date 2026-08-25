@@ -121,6 +121,18 @@ export class Fitness {
   lastBatchFallbackOccurred = false;
 
   /**
+   * Creature UUIDs the batch scorer refused during the most recent
+   * `calculate()` call (GRQ#4387).
+   *
+   * Each was dropped from the generation — scored `-Infinity` so selection
+   * eliminates it — while every other creature kept its score. A non-empty
+   * list means the population produced a creature the native scorer cannot
+   * compile: the run is healthy, the creature is not. Kept visible so a
+   * recurring producer of bad creatures cannot hide behind a green run.
+   */
+  lastBatchScorerOffenders: string[] = [];
+
+  /**
    * Data directory passed to the external `rust_scorer` binary in batch
    * mode (Issue #2422). `undefined` disables batch scoring regardless of
    * configuration, matching the behaviour of environments where no dataset
@@ -244,6 +256,7 @@ export class Fitness {
       this.lastCreaturesBatchScored = 0;
       this.lastCreaturesPerCreatureScored = 0;
       this.lastBatchFallbackOccurred = false;
+      this.lastBatchScorerOffenders = [];
       return;
     }
 
@@ -263,6 +276,7 @@ export class Fitness {
     let workerScoredCount = 0;
     this.lastBatchScorerInvocations = 0;
     this.lastBatchFallbackOccurred = false;
+    this.lastBatchScorerOffenders = [];
 
     // Issue #2422: When the external rust scorer is enabled in directory
     // mode, invoke it once for the whole generation, map results back to
@@ -328,19 +342,45 @@ export class Fitness {
           );
           this.lastBatchScorerInvocations = batchRun.invocations;
           if (batchRun.results) {
+            // GRQ#4387: the scorer refused these creatures and scored the rest.
+            // Drop just the offenders — score them `-Infinity` so selection
+            // eliminates them — rather than losing the whole generation to
+            // them. They are never handed a score the scorer did not produce.
+            const offenderByCreature = new Map(
+              batchRun.offenders.map((o) => [o.creature, o]),
+            );
+            if (batchRun.offenders.length > 0) {
+              this.lastBatchScorerOffenders = batchRun.offenders.map(
+                (o) => o.stem,
+              );
+              getLogger().error(
+                `[NEAT-AI] Dropping ${batchRun.offenders.length} creature(s) ` +
+                  `the batch rust scorer refused: ` +
+                  batchRun.offenders
+                    .map((o) => `${o.stem} (${o.reason})`)
+                    .join(", "),
+              );
+            }
             for (const creature of forwardOnlyCreatures) {
+              const offender = offenderByCreature.get(creature);
               const record = batchRun.results.get(creature);
-              if (!record) continue;
-              const error = record.error;
-              if (!Number.isFinite(error) || error < 0) {
+              if (!offender && !record) continue;
+              if (offender) {
                 addTag(creature, "error", "Infinity");
+                addTag(creature, "batch-scorer-refused", offender.reason);
                 creature.score = -Infinity;
               } else {
-                addTag(creature, "error", error.toString());
-                const scoreStart = performance.now();
-                creature.score = calculateScore(creature, error, this.growth);
-                scorerMsAccum += performance.now() - scoreStart;
-                batchScoredCount++;
+                const error = record!.error;
+                if (!Number.isFinite(error) || error < 0) {
+                  addTag(creature, "error", "Infinity");
+                  creature.score = -Infinity;
+                } else {
+                  addTag(creature, "error", error.toString());
+                  const scoreStart = performance.now();
+                  creature.score = calculateScore(creature, error, this.growth);
+                  scorerMsAccum += performance.now() - scoreStart;
+                  batchScoredCount++;
+                }
               }
               addTag(creature, "score", creature.score.toString());
 

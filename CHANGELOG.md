@@ -23,7 +23,37 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **GRQ#4387:** one creature the Rust batch scorer cannot compile no longer
+  costs the whole generation. `rust_scorer` directory mode now isolates the
+  offender — a complete stem-keyed map in which the refused creature carries
+  `{"failed": true, "reason": …, "message": …}` instead of a score, with exit
+  `3` (`SCORER_EXIT_CREATURE_FAILURES`) rather than `1`.
+  `tryBatchScoreWithRustScorer` consumes that and returns the surviving scores
+  plus a new `offenders` list (stem, reason, message, creature);
+  `Fitness.calculate` drops just the offenders — each scored `-Infinity` and
+  tagged `batch-scorer-refused: <reason>` — and exposes their UUIDs on
+  `Fitness.lastBatchScorerOffenders`. GRQ-25 lost 23 creatures' scores to one
+  duplicate-synapse creature under the old whole-batch abort.
+
+  The Issue #3815 contract is intact: an offender is never handed a fabricated
+  score, a stem that vanishes from the payload is still a hard `MISSING_KEYS`
+  failure, and a batch in which _nothing_ scored still fails — escalating to
+  `ScorerStrictError` with the scorer's stderr verbatim under
+  `NEAT_AI_RUST_SCORER_STRICT`. An older `rust_scorer` still exits `1` and the
+  bridge keeps the pre-GRQ#4387 behaviour, so a version skew is safe both ways.
+
 ### Added
+
+- **GRQ#4387:** `extractOffendingStems`, `buildBatchScorerDiagnostic` and
+  `summariseForwardOnlyComposition` (plus their `BatchScorerDiagnostic`,
+  `OffenderMetadata` and `PopulationComposition` types) are exported from
+  `mod.ts`. They already existed but were unreachable from the package, so
+  consumers were about to duplicate them. `reconcilePartialBatchScorerOutput`,
+  `SCORER_EXIT_CREATURE_FAILURES`, `BatchScorerOffender`, `BatchScorerFailure`,
+  `BatchScorerRunResult` and `PartialBatchScorerOutput` are exported alongside
+  them.
 
 - **Issue #3808:** Compaction now merges redundant constant neurons. IF-squash
   tree generation left one `type:"constant"` neuron per branch, each with its

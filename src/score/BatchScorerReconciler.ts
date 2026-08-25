@@ -73,6 +73,32 @@ export interface BatchScorerResult {
   [extraField: string]: unknown;
 }
 
+/**
+ * One creature the scorer reported as unscorable (GRQ#4387).
+ *
+ * `rust_scorer` directory mode emits these in place of a {@link
+ * BatchScorerResult} for any creature it could not read, parse, compile or
+ * score, so the batch's other creatures keep their scores. The entry never
+ * carries a `score` — a fabricated score for a rejected creature is the exact
+ * failure mode Issue #3815 exists to prevent.
+ */
+export interface BatchScorerFailure {
+  /** Creature filename stem (the UUID the bridge wrote the file under). */
+  stem: string;
+  /** Scorer classification: `READ`, `PARSE`, `WIDTH`, `SHAPE`, `COMPILE`, `SCORE`. */
+  reason: string;
+  /** The scorer's own message, naming the offending file. */
+  message: string;
+}
+
+/** Both halves of a partially-successful batch (GRQ#4387). */
+export interface PartialBatchScorerOutput {
+  /** Creatures the scorer scored, keyed by stem. */
+  results: Map<string, BatchScorerResult>;
+  /** Creatures the scorer refused, in the order the payload listed them. */
+  failures: BatchScorerFailure[];
+}
+
 /** Required numeric fields on each creature result. */
 const REQUIRED_NUMERIC_FIELDS = ["score", "error", "recordCount"] as const;
 
@@ -124,6 +150,90 @@ export function reconcileBatchScorerOutput(
   }
 
   return results;
+}
+
+/**
+ * Reconcile a **partially successful** batch (GRQ#4387).
+ *
+ * Identical to {@link reconcileBatchScorerOutput} except that an entry marked
+ * `failed: true` is accepted as an offender report rather than rejected as a
+ * malformed result. The key-set check is unchanged and deliberately strict: the
+ * union of scored and failed stems must still match `expectedStems` exactly, so
+ * a stem that silently vanishes from the payload is still a `MISSING_KEYS`
+ * failure. "Score the rest" must never become "quietly score fewer".
+ *
+ * @param raw - Raw JSON string emitted by the scorer, or the parsed value.
+ * @param expectedStems - Every creature filename stem that must be accounted
+ *   for, as either a score or a failure.
+ */
+export function reconcilePartialBatchScorerOutput(
+  raw: unknown,
+  expectedStems: Iterable<string>,
+): PartialBatchScorerOutput {
+  const parsed = parsePayload(raw);
+  const expected = new Set(expectedStems);
+
+  checkKeySet(Object.keys(parsed), expected);
+
+  const results = new Map<string, BatchScorerResult>();
+  const failures: BatchScorerFailure[] = [];
+  const malformedKeys: string[] = [];
+  const malformedDetails: string[] = [];
+
+  for (const stem of expected) {
+    const rawResult = parsed[stem];
+    const failure = readFailureEntry(stem, rawResult);
+    if (failure) {
+      failures.push(failure);
+      continue;
+    }
+    const validation = validateResult(rawResult);
+    if (!validation.ok) {
+      malformedKeys.push(stem);
+      malformedDetails.push(`${stem}: ${validation.detail}`);
+      continue;
+    }
+    results.set(stem, validation.value);
+  }
+
+  if (malformedKeys.length > 0) {
+    throw new BatchScorerError(
+      `Batch scorer returned malformed result(s) for ${malformedKeys.length} creature(s): ${
+        malformedDetails.join("; ")
+      }`,
+      "MALFORMED_RESULT",
+      { malformedKeys },
+    );
+  }
+
+  return { results, failures };
+}
+
+/**
+ * Recognise an offender entry. Returns `undefined` when the value is not one,
+ * so the caller falls through to the normal numeric validation.
+ *
+ * The discriminator is `failed === true`: a {@link BatchScorerResult} never
+ * carries it. An entry that claims `failed` *and* a score is treated as an
+ * offender — the refusal wins, because trusting the score would be exactly the
+ * fabricated-score failure this guard exists to stop.
+ */
+function readFailureEntry(
+  stem: string,
+  raw: unknown,
+): BatchScorerFailure | undefined {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  const obj = raw as Record<string, unknown>;
+  if (obj.failed !== true) return undefined;
+  const reason = typeof obj.reason === "string" && obj.reason.trim() !== ""
+    ? obj.reason
+    : "UNKNOWN";
+  const message = typeof obj.message === "string" && obj.message.trim() !== ""
+    ? obj.message
+    : `Batch scorer refused creature ${stem} without a message`;
+  return { stem, reason, message };
 }
 
 /** Parse the raw payload (string or object) into a plain JSON object. */

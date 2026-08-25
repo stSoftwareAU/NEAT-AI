@@ -23,6 +23,28 @@
  * failures surface as {@link ScorerStrictError} instead, carrying the scorer's
  * stderr verbatim so the caller aborts rather than falling back.
  *
+ * GRQ#4387: one creature the scorer cannot compile no longer costs the whole
+ * generation. A scorer that exits {@link SCORER_EXIT_CREATURE_FAILURES} has
+ * written a **complete** map in which the creatures it refused carry a
+ * `failed: true` entry instead of a score; this bridge returns the creatures
+ * that scored and hands the offenders back on
+ * {@link BatchScorerRunResult.offenders} so the caller can drop just those.
+ * The strict-mode contract is unchanged — an offender never receives a
+ * fabricated score, a stem that vanishes from the payload is still a hard
+ * reconciliation failure, and a batch in which *nothing* scored is still a
+ * batch failure.
+ *
+ * ```mermaid
+ * flowchart TD
+ *     Run[rust_scorer directory mode] --> Code{exit code}
+ *     Code -->|0| All[every creature scored]
+ *     Code -->|3| Split[reconcile complete map]
+ *     Code -->|other| Fail[BatchScorerError / ScorerStrictError]
+ *     Split --> Scored[scores for the survivors]
+ *     Split --> Off[offenders: stem + reason]
+ *     Split -->|nothing scored| Fail
+ * ```
+ *
  * @module BatchRustScorerBridge
  */
 
@@ -34,8 +56,10 @@ import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { getLogger } from "@utils/Logger.ts";
 import {
   BatchScorerError,
+  type BatchScorerFailure,
   type BatchScorerResult,
   reconcileBatchScorerOutput,
+  reconcilePartialBatchScorerOutput,
 } from "./BatchScorerReconciler.ts";
 import {
   __getBatchRunner,
@@ -61,7 +85,37 @@ export interface BatchScorerRunResult {
   results: Map<Creature, BatchScorerResult> | undefined;
   /** Number of scorer processes spawned (0 when skipped, 1 on success). */
   invocations: number;
+  /**
+   * Creatures the scorer refused (GRQ#4387). Empty on a clean batch.
+   *
+   * Every offender is absent from {@link results} — it has no score, and must
+   * never be given one. The caller drops these from the generation and keeps
+   * the scores of everyone else, instead of losing the whole batch to one bad
+   * creature.
+   */
+  offenders: BatchScorerOffender[];
 }
+
+/**
+ * One creature the batch scorer refused, resolved back to the in-memory
+ * population (GRQ#4387).
+ */
+export interface BatchScorerOffender extends BatchScorerFailure {
+  /**
+   * The creature the stem maps to. Always set when the offender came from the
+   * scorer's own report — the stems are the UUIDs this bridge wrote.
+   */
+  creature: Creature;
+}
+
+/**
+ * Exit status `rust_scorer` uses for "the batch completed, but some creatures
+ * in the directory could not be scored" (GRQ#4387).
+ *
+ * Distinct from `1`, which still means the run itself failed and stdout carries
+ * nothing usable.
+ */
+export const SCORER_EXIT_CREATURE_FAILURES = 3;
 
 /**
  * Score an entire population in a single `rust_scorer` invocation.
@@ -86,15 +140,15 @@ export async function tryBatchScoreWithRustScorer(
   costName?: BuiltInCostName,
 ): Promise<BatchScorerRunResult> {
   if (!config.enabled || !config.batch) {
-    return { results: undefined, invocations: 0 };
+    return { results: undefined, invocations: 0, offenders: [] };
   }
   if (creatures.length === 0) {
-    return { results: new Map(), invocations: 0 };
+    return { results: new Map(), invocations: 0, offenders: [] };
   }
 
   const probe = await resolveProbeState(config);
   if (!probe.available) {
-    return { results: undefined, invocations: 0 };
+    return { results: undefined, invocations: 0, offenders: [] };
   }
 
   // Issue #2745: When a non-MSE cost is configured but the probed binary is
@@ -110,7 +164,7 @@ export async function tryBatchScoreWithRustScorer(
       );
       probe.warned = true;
     }
-    return { results: undefined, invocations: 0 };
+    return { results: undefined, invocations: 0, offenders: [] };
   }
 
   // Map each creature to the filename stem used on disk. UUID is the stable,
@@ -174,6 +228,22 @@ export async function tryBatchScoreWithRustScorer(
       // Issue #3541: classify before signalling a retryable batch failure — a
       // corrupt dataset fails identically on the per-creature and WASM paths.
       assertNotCorruptDataset(result.stderr, result.code, absoluteDataDir);
+
+      // GRQ#4387: exit 3 means the batch ran and stdout is a complete map — it
+      // is just missing scores for the creatures the scorer refused. Take the
+      // scores it did produce and hand the offenders back to the caller,
+      // instead of throwing away every other creature's work.
+      if (result.code === SCORER_EXIT_CREATURE_FAILURES) {
+        return buildPartialRun(
+          result.stdout,
+          result.stderr,
+          expectedStems,
+          creatureByStem,
+          config,
+          absoluteDataDir,
+        );
+      }
+
       // Issue #3815: strict mode escalates the failure so the fallback cannot
       // reconcile a dead native batch path to a green run. The stderr is
       // carried verbatim — the trimmed log line is what made #3810 so hard to
@@ -224,7 +294,7 @@ export async function tryBatchScoreWithRustScorer(
       byCreature.set(creature, record);
     }
 
-    return { results: byCreature, invocations: 1 };
+    return { results: byCreature, invocations: 1, offenders: [] };
   } finally {
     try {
       await Deno.remove(creaturesDir, { recursive: true });
@@ -233,6 +303,82 @@ export async function tryBatchScoreWithRustScorer(
       // underlying failure.
     }
   }
+}
+
+/**
+ * Turn an exit-3 batch into scored creatures plus named offenders (GRQ#4387).
+ *
+ * Strictness is preserved in the places that matter:
+ *
+ * - the payload must still account for **every** expected stem, as either a
+ *   score or a failure — a vanished stem is a `MISSING_KEYS` error, so "score
+ *   the rest" cannot degrade into "quietly score fewer" (Issue #3815);
+ * - an offender is never given a score, fabricated or otherwise;
+ * - if the scorer refused *everything*, there is no partial success to salvage
+ *   and the batch failure is raised as before.
+ */
+function buildPartialRun(
+  stdout: string,
+  stderr: string,
+  expectedStems: readonly string[],
+  creatureByStem: ReadonlyMap<string, Creature>,
+  config: RequiredRustScorerConfig,
+  absoluteDataDir: string,
+): BatchScorerRunResult {
+  let reconciled;
+  try {
+    reconciled = reconcilePartialBatchScorerOutput(stdout, expectedStems);
+  } catch (error) {
+    // The scorer promised a complete map and did not deliver one. That is a
+    // broken contract, not a partial success — fail exactly as a malformed
+    // exit-0 payload would.
+    if (!config.strict) throw error;
+    throw toScorerStrictError(
+      error,
+      "Rust scorer partial batch output could not be reconciled",
+      "INVALID_OUTPUT",
+      stderr,
+    );
+  }
+
+  const offenders: BatchScorerOffender[] = reconciled.failures.map(
+    (failure) => ({
+      ...failure,
+      // `expectedStems` is exactly the key set of `creatureByStem`, and the
+      // reconciler already rejected any stem outside it.
+      creature: creatureByStem.get(failure.stem)!,
+    }),
+  );
+
+  if (reconciled.results.size === 0) {
+    const message =
+      `Rust scorer batch call scored none of ${expectedStems.length} creature(s) in ${absoluteDataDir}: ${
+        offenders.map((o) => `${o.stem} (${o.reason})`).join(", ")
+      }`;
+    if (config.strict) {
+      throw new ScorerStrictError(message, "EXEC_FAILURE", {
+        exitCode: SCORER_EXIT_CREATURE_FAILURES,
+        stderr,
+      });
+    }
+    throw new BatchScorerError(message, "INVALID_JSON");
+  }
+
+  getLogger().error(
+    `[NEAT-AI] Batch rust scorer refused ${offenders.length} of ` +
+      `${expectedStems.length} creature(s); the remaining ` +
+      `${reconciled.results.size} keep their scores. Offenders: ` +
+      offenders
+        .map((o) => `${o.stem} (${o.reason}: ${trimForLog(o.message, 200)})`)
+        .join("; "),
+  );
+
+  const byCreature = new Map<Creature, BatchScorerResult>();
+  for (const [stem, record] of reconciled.results) {
+    byCreature.set(creatureByStem.get(stem)!, record);
+  }
+
+  return { results: byCreature, invocations: 1, offenders };
 }
 
 function readEnvString(key: string): string | undefined {

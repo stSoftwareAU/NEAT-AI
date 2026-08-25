@@ -190,6 +190,39 @@ See [`troubleshooting/ONNX.md`](troubleshooting/ONNX.md) for full details.
   connections. →
   [Different outputs](troubleshooting/ONNX.md#exported-onnx-model-produces-different-outputs).
 
+## 🧟 A generation lost its scores to one bad creature (GRQ#4387)
+
+**Symptom (before this fix):** a whole generation fails on a single creature —
+`ScorerStrictError: Rust scorer batch call failed (exit 1)` naming one `.json`,
+with every other creature in the batch unscored. GRQ-25 lost 23 creatures'
+scores to one duplicate-synapse creature this way.
+
+**What happens now:** `rust_scorer` directory mode isolates the offender. It
+writes a **complete** stem-keyed map in which the refused creature carries
+`{"failed": true, "reason": …, "message": …}` instead of a score, and exits `3`
+(`SCORER_EXIT_CREATURE_FAILURES`) rather than `1`. `tryBatchScoreWithRustScorer`
+returns the surviving scores plus `offenders`, and `Fitness.calculate` drops
+just the offenders — each scored `-Infinity` and tagged
+`batch-scorer-refused: <reason>` so selection eliminates it. The refused UUIDs
+are on `Fitness.lastBatchScorerOffenders`, and one `error` log line names them.
+
+**What did not change.** An offender is never handed a fabricated score. A stem
+that vanishes from the payload altogether is still a hard `MISSING_KEYS`
+failure, and a batch in which _nothing_ scored is still a batch failure — under
+`NEAT_AI_RUST_SCORER_STRICT` it escalates to `ScorerStrictError` carrying the
+scorer's stderr verbatim, exactly as before. "Score the rest" is not "quietly
+score fewer".
+
+**What to do:** the run is healthy; the creature is not. Find the producer of
+the offending topology (`extractOffendingStems` and
+`buildBatchScorerDiagnostic`, both exported from `mod.ts`, resolve a stem to its
+source tag and topology counts). Persistent offenders on the same `reason` mean
+a mutation or breed path is emitting invalid creatures.
+
+Requires a `rust_scorer` build carrying the isolating directory mode. An older
+binary still exits `1`, and the bridge falls back to the pre-GRQ#4387
+whole-batch failure — so a version skew is safe in both directions.
+
 ## 🌐 Environment variables reference
 
 | Variable                          | Default        | Purpose                                                                |
