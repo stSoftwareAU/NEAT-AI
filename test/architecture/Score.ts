@@ -5,7 +5,12 @@
  * calculations including penalty computation, caching, and incremental updates.
  */
 
-import { assert, assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertAlmostEquals,
+  assertEquals,
+  assertThrows,
+} from "@std/assert";
 import { Creature } from "../../mod.ts";
 import {
   calculate,
@@ -88,7 +93,10 @@ Deno.test("valuePenalty - the asymptotic tail stays below 1", () => {
   // absurd magnitude is never free.
   const atCap = valuePenalty(1e12);
   const beyond = valuePenalty(Number.MAX_SAFE_INTEGER);
-  assert(atCap >= 0.999, `At the cap the penalty should be ~0.999, got ${atCap}`);
+  assert(
+    atCap >= 0.999,
+    `At the cap the penalty should be ~0.999, got ${atCap}`,
+  );
   assert(beyond > atCap, "The tail must stay strictly increasing");
   assert(beyond < 1, `Even the tail must be < 1, got ${beyond}`);
 });
