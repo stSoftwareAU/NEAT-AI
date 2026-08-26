@@ -44,6 +44,14 @@ export interface RustScorerProbeState {
    * silently disagreeing with the TS layer.
    */
   costSupported: boolean;
+  /**
+   * Issue #3870: memoised answer to "can this binary batch `forwardOnly=false`
+   * creatures in directory mode?" (NEAT-AI-scorer#579). Resolved lazily by
+   * `RecurrentDirectoryProbe.ts` — it costs a subprocess, so it is only paid
+   * when a population actually holds a recurrent creature. The promise itself
+   * is cached so concurrent callers share one probe.
+   */
+  recurrentDirectory?: Promise<boolean>;
 }
 
 async function defaultRunner(
@@ -86,7 +94,13 @@ async function defaultRunner(
 
 let runCommand: CommandRunner = defaultRunner;
 
-const probeCache = new Map<string, RustScorerProbeState>();
+/**
+ * Cached per configuration. The **promise** is cached rather than the resolved
+ * state so concurrent first callers share one `--help` spawn and — more
+ * importantly since Issue #3870 — one state object, which is where the
+ * recurrent-capability answer is memoised.
+ */
+const probeCache = new Map<string, Promise<RustScorerProbeState>>();
 
 /**
  * Build the env argument for a child process call.
@@ -121,13 +135,20 @@ function makeProbeKey(config: RequiredRustScorerConfig): string {
  * probe call is only paid once per config across both per-creature and batch
  * scoring paths.
  */
-export async function resolveProbeState(
+export function resolveProbeState(
   config: RequiredRustScorerConfig,
 ): Promise<RustScorerProbeState> {
   const key = makeProbeKey(config);
   const cached = probeCache.get(key);
   if (cached) return cached;
+  const pending = runProbe(config);
+  probeCache.set(key, pending);
+  return pending;
+}
 
+async function runProbe(
+  config: RequiredRustScorerConfig,
+): Promise<RustScorerProbeState> {
   let available = false;
   let costSupported = false;
   try {
@@ -145,14 +166,12 @@ export async function resolveProbeState(
     available = false;
   }
 
-  const state: RustScorerProbeState = {
+  return {
     available,
     binaryPath: config.binaryPath,
     warned: false,
     costSupported,
   };
-  probeCache.set(key, state);
-  return state;
 }
 
 /** Access the current runner for both bridges. */

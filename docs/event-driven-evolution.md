@@ -569,19 +569,30 @@ on; this just sums them.
 Alongside `phaseTimingTotals`, every `evolve*` result also carries
 `scorerUtilisation` — the whole-run **per-backend** count of how creatures were
 scored. `Fitness.calculate()` can score a generation two ways: the Rust native
-**batch (one-pass)** path (only forwardOnly creatures, one `rust_scorer` process
-per generation) or the **per-creature worker** path (recurrent creatures, and
-anything that falls back). Previously a single combined count spanned both, so a
-silent regression — the batch path breaks and every creature quietly falls back
-to the slow worker path — looked identical to a healthy run. `scorerUtilisation`
-splits the count by backend and tallies fallback generations so that regression
-is visible in `result.json`.
+**batch (one-pass)** path (one `rust_scorer` process per generation) or the
+**per-creature worker** path (anything the batch cannot take, and anything that
+falls back). Previously a single combined count spanned both, so a silent
+regression — the batch path breaks and every creature quietly falls back to the
+slow worker path — looked identical to a healthy run. `scorerUtilisation` splits
+the count by backend and tallies fallback generations so that regression is
+visible in `result.json`.
+
+Which creatures the batch may take is decided per creature (Issue #3870). A
+`forwardOnly` creature always qualifies; a recurrent one qualifies only when the
+run does not need `feedbackLoop` semantics (the native recurrent path resets
+network state per record) **and** the resolved `rust_scorer` binary can batch
+recurrent creatures at all — a capability probed once per binary, so a pre-#579
+scorer keeps the old partition and behaves exactly as before.
 
 ```mermaid
 flowchart TD
-    Q[Unique creatures this generation] --> P{forwardOnly?}
-    P -->|yes| B[Batch rust scorer<br/>one process per generation]
-    P -->|no| W[Per-creature worker path]
+    Q[Unique creatures this generation] --> P{Native scoring<br/>eligible?}
+    P -->|"no — custom cost,<br/>outputRanges, feedbackLoop"| W[Per-creature worker path]
+    P -->|yes| R{recurrent?}
+    R -->|no| B[Batch rust scorer<br/>one process per generation]
+    R -->|yes| C{scorer batches<br/>recurrent?}
+    C -->|"yes (probe)"| B
+    C -->|no| W
     B -->|success| BS[creaturesBatchScored++]
     B -->|failure| F[batchFallbackGenerations++<br/>revert to worker path]
     F --> W
@@ -601,7 +612,7 @@ const { scorerUtilisation } = await creature.evolveDataSet(data, opts);
 - **`creaturesBatchScored`** — creatures resolved via the native batch path. `0`
   on a batch-enabled host is a red flag: the one-pass path never ran.
 - **`creaturesPerCreatureScored`** — creatures resolved via the worker path
-  (recurrent creatures plus any batch remainder or fallback).
+  (whatever the batch refused, plus any fallback).
 - **`batchFallbackGenerations`** — generations where a batch attempt failed and
   its creatures reverted to the worker path. **Non-zero exposes the exact
   silent-fallback regression this telemetry exists to catch.**
