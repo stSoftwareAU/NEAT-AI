@@ -15,8 +15,18 @@ import type { RustParallelAnalysisInput } from "@architecture/ErrorGuidedStructu
 
 /**
  * Build a minimal (but structurally valid) parallel-analysis input.
- * The values do not need to correspond to real files or creatures — the GPU
- * guard must reject the call *before* any Rust FFI interaction.
+ *
+ * The parquet path and the focus neuron do not need to exist — a `requireGpu`
+ * call is refused by the TypeScript guard before any FFI interaction, and a
+ * `requireGpu: false` call is refused by Discovery's GPU check before any
+ * parquet I/O.
+ *
+ * The creature, however, must satisfy Discovery's `CreatureJson` contract:
+ * `input` and `output` (the observation and action widths) are **required** and
+ * must be `>= 1`. Omitting them makes Discovery reject the whole payload with
+ * `missing field 'input'` / `errorKind: "data_validation"` long before it
+ * classifies GPU availability (Issue #3886). The return type is annotated —
+ * not cast — so the compiler enforces that contract on every future edit.
  */
 function buildStubInput(
   overrides: Partial<RustParallelAnalysisInput> = {},
@@ -24,14 +34,14 @@ function buildStubInput(
   return {
     parquetFile: "/tmp/nonexistent.parquet",
     creature: {
-      uuid: "test-creature-uuid",
       neurons: [],
       synapses: [],
-      score: 0,
+      input: 1,
+      output: 1,
     },
     focusNeurons: ["test-neuron-uuid"],
     ...overrides,
-  } as RustParallelAnalysisInput;
+  };
 }
 
 Deno.test({
