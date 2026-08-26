@@ -86,4 +86,10 @@ export const PREVIEW_SPECS: PreviewSpec[] = [
     descriptor: "Prune structure that no longer earns its keep",
     motif: null,
   },
+  {
+    file: "neat-ai-rebase.png",
+    subtitle: "Rebase",
+    descriptor: "Reapply useful discoveries onto the latest champion",
+    motif: null,
+  },
 ];
