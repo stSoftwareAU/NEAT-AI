@@ -111,6 +111,15 @@ path over the same dataset for every built-in cost and both topology styles, and
 asserts they agree. It is skipped when no binary can be resolved; `quality.sh`
 resolves one for the default run.
 
+The same file also compares the `score` field `rust_scorer` returns — which
+`Fitness` discards in favour of recomputing with `Score.ts` — against
+`Score.ts`'s `calculate` over the scorer's own error (Issue #3867). Given the
+same error and the same growth cost the two formulae agree **bit-for-bit**, so
+the only thing separating `record.score` from `creature.score` is the growth
+cost: `rust_scorer` hardcodes it at `DEFAULT_COST_OF_GROWTH` and offers no flag,
+while `Fitness` passes whatever the run configured. Both facts are pinned as
+assertions, so a formula move on either side fails the lane.
+
 ### 📐 CostInterface
 
 Custom cost functions implement this interface:
