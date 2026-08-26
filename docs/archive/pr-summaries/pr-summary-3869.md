@@ -14,9 +14,9 @@ byte-for-byte unchanged. Closes #3869.
 
 **Subset and serialisation, and why they fit the budget** (`quality.sh:353`):
 
-| Lever             | Choice        | Why it fits                                                                                                                 |
-| ----------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Subset**        | `test/score/` | The jetsam signature is _evolve_ tests, which sit near the ~4060 MB / 4192 MB heap ceiling. The scorer subset contains none.  |
+| Lever             | Choice        | Why it fits                                                                                                                    |
+| ----------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Subset**        | `test/score/` | The jetsam signature is _evolve_ tests, which sit near the ~4060 MB / 4192 MB heap ceiling. The scorer subset contains none.   |
 | **Serialisation** | `DENO_JOBS=1` | The OOM is four parallel contexts. One worker holds at most one, so the multiplier is removed rather than merely made smaller. |
 
 The lane sets `NEAT_SCORER_GPU=auto` **explicitly** — `auto` _is_ the
@@ -26,9 +26,9 @@ mirrors the reasoning already applied to the backprop flags.
 
 ### Failure detection: the verdict comes from the scorer, not the env var
 
-The regression risk the issue names is a lane that _looks_ like GPU coverage
-and is not — `auto` finds no adapter, the scorer silently scores on CPU, the
-lane goes green. So a pre-flight
+The regression risk the issue names is a lane that _looks_ like GPU coverage and
+is not — `auto` finds no adapter, the scorer silently scores on CPU, the lane
+goes green. So a pre-flight
 ([`scripts/check_gpu_scorer.ts`](../../../scripts/check_gpu_scorer.ts)) scores a
 tiny two-creature fixture twice and
 [`scripts/lib/gpuScorerProbe.ts`](../../../scripts/lib/gpuScorerProbe.ts)
@@ -47,8 +47,8 @@ flowchart TD
 ```
 
 The `--gpu off` control run is what keeps the skip honest: without it a broken
-binary or fixture is indistinguishable from a host with no GPU, and a real
-fault would be reconciled to a clean skip. Single-creature mode always reports
+binary or fixture is indistinguishable from a host with no GPU, and a real fault
+would be reconciled to a clean skip. Single-creature mode always reports
 `cpu-fallback`, so the probe rejects that payload shape rather than measuring
 the CPU by accident.
 
@@ -76,8 +76,8 @@ Error: No compatible GPU adapter found and --gpu on was requested (use --gpu aut
 EXIT=2
 ```
 
-The `--gpu off` control run succeeded and reported `cpu-fallback` for both
-probe creatures, which is what makes that a clean skip rather than a failure.
+The `--gpu off` control run succeeded and reported `cpu-fallback` for both probe
+creatures, which is what makes that a clean skip rather than a failure.
 
 **`./quality.sh --gpu-scorer` on the same host** ran the default lane
 (`NEAT_SCORER_GPU=off`), probed the backend, and skipped the smoke lane with a
@@ -92,10 +92,10 @@ New — `test/scripts/GpuScorerProbe.ts` (12 cases, pure classifier):
   single-creature payload, a missing `gpuBackend`, and an empty result map.
 - `classifyGpuProbe` confirms a real backend, and reports every distinct one.
 - Skips when `--gpu on` finds no adapter, quoting the scorer's own reason.
-- **Fails loud** when `--gpu on` exits 0 reporting `cpu-fallback` — the
-  Issue #3869 regression.
-- **Fails loud** when the `--gpu off` control run fails (a broken probe is not
-  a missing GPU), when `--gpu off` reports a GPU backend, and on unreadable
+- **Fails loud** when `--gpu on` exits 0 reporting `cpu-fallback` — the Issue
+  #3869 regression.
+- **Fails loud** when the `--gpu off` control run fails (a broken probe is not a
+  missing GPU), when `--gpu off` reports a GPU backend, and on unreadable
   `--gpu on` output.
 
 New — `test/score/ScorerGpuEnv.ts` (4 cases): `scorerGpuEnv()` defaults to
@@ -103,14 +103,14 @@ New — `test/score/ScorerGpuEnv.ts` (4 cases): `scorerGpuEnv()` defaults to
 value as unset.
 
 New in `test/scripts/QualityScript.ts` (6 cases, a shimmed `deno` on `PATH`
-choosing the pre-flight's exit code, so all three branches run on a host with
-no GPU):
+choosing the pre-flight's exit code, so all three branches run on a host with no
+GPU):
 
-- `--help` documents `--gpu-scorer`, the subset, `DENO_JOBS=1`, and says
-  plainly that GPU is **not** exercised by default.
+- `--help` documents `--gpu-scorer`, the subset, `DENO_JOBS=1`, and says plainly
+  that GPU is **not** exercised by default.
 - `--dry-run` without the flag plans no GPU lane.
-- `--dry-run --gpu-scorer` plans the probe **and** the smoke lane, alongside
-  the default Rust lane.
+- `--dry-run --gpu-scorer` plans the probe **and** the smoke lane, alongside the
+  default Rust lane.
 - `--gpu-scorer` emits exactly two `deno test` calls: the default lane with
   `NEAT_SCORER_GPU=off` and the whole suite, then the GPU lane with
   `NEAT_SCORER_GPU=auto`, `DENO_JOBS=1` and `test/score/`.
