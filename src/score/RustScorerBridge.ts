@@ -13,10 +13,11 @@
  * (Issue #2745); a genuinely corrupt dataset still throws rather than being
  * downgraded to a silent fallback.
  *
- * Issue #3815: with `NEAT_AI_RUST_SCORER_STRICT=1` an exec or parse failure
- * throws a {@link ScorerStrictError} carrying the scorer's stderr verbatim
- * instead of logging a warning and falling back. A missing or too-old binary
- * remains a graceful skip in either mode.
+ * Issue #3815: an exec or parse failure throws a {@link ScorerStrictError}
+ * carrying the scorer's stderr verbatim instead of logging a warning and
+ * falling back. Issue #3864 made that strict behaviour the default;
+ * `NEAT_AI_RUST_SCORER_STRICT=0` opts back out to the degrading path. A missing
+ * or too-old binary remains a graceful skip in either mode.
  *
  * Configuration comes from `NEAT_AI_RUST_SCORER_*` environment variables via
  * {@link getEnvRustScorerConfig} and is cached for the process. The `__`-prefixed
@@ -142,11 +143,13 @@ export function getEnvRustScorerConfig(): RequiredRustScorerConfig {
   const batch = parseBoolLike(readEnvString("NEAT_AI_RUST_SCORER_BATCH")) ??
     true;
 
-  // Issue #3815: Opt-in strict mode — a scorer exec/parse failure throws
-  // instead of degrading to WASM. Off by default so production keeps
-  // degrading gracefully; `quality.sh` turns it on so CI fails loud.
+  // Issue #3864: Strict mode is on by default — a scorer exec/parse failure
+  // throws instead of degrading to WASM, so a dead native scoring path cannot
+  // reconcile to a green run (Issue #3810). `NEAT_AI_RUST_SCORER_STRICT=0` is
+  // the escape hatch for an operator who prefers a degraded run to a failed
+  // one. A missing or too-old binary is a graceful skip in either mode.
   const strict = parseBoolLike(readEnvString("NEAT_AI_RUST_SCORER_STRICT")) ??
-    false;
+    true;
 
   const base: RequiredRustScorerConfig = {
     enabled,

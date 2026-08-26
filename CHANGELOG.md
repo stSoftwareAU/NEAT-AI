@@ -65,6 +65,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Issue #3864:** `NEAT_AI_RUST_SCORER_STRICT` now defaults to **on**. A
+  genuine `rust_scorer` exec or parse failure throws a `ScorerStrictError`
+  carrying the scorer's stderr verbatim instead of logging a warning, degrading
+  to WASM scoring and reconciling to a green run — the failure mode that hid
+  Issue #3810. Set `NEAT_AI_RUST_SCORER_STRICT=0` (or `strict: false`) to keep
+  the degrading behaviour, for an operator who would rather a degraded run than
+  a failed one. A missing or too-old binary is still a graceful skip in either
+  mode, so contributors without `rust_scorer` installed are unaffected.
+
 - **Issue #3873:** Synapses are keyed by `(from, to, type)`, so one source can
   feed both branches of an `IF` without an IDENTITY relay standing in as a
   second distinct source. An ordered pair may appear at most once per role, and

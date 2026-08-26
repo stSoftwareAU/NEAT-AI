@@ -172,17 +172,19 @@ The `quality.sh` script runs these steps in order:
 
 ### 🦀 `ScorerStrictError` during `deno test` (Issue #3815)
 
-`quality.sh` runs the test step with `NEAT_AI_RUST_SCORER_STRICT=1`, so a
-`rust_scorer` exec or parse failure throws instead of logging a warning and
-falling back to WASM scoring. The failure text carries the scorer's stderr
+Strict mode is **on by default** (Issue #3864), and `quality.sh` exports
+`NEAT_AI_RUST_SCORER_STRICT=1` on its native lane to say so at the lane. Either
+way a `rust_scorer` exec or parse failure throws instead of logging a warning
+and falling back to WASM scoring. The failure text carries the scorer's stderr
 verbatim under a `--- rust_scorer stderr ---` heading — read that first: it is
 the real fault, and a fallback would otherwise have reconciled an entirely dead
 native scoring path to a green run (Issue #3810).
 
 A missing or too-old binary is still a graceful skip in strict mode; only
-genuine failures throw. Reproduce the graceful production behaviour locally with
-`NEAT_AI_RUST_SCORER_STRICT=0 deno test …` — but fix the scorer fault rather
-than muting the gate.
+genuine failures throw. Reproduce the degrading behaviour locally with
+`NEAT_AI_RUST_SCORER_STRICT=0 deno test …` — that opt-out exists for an operator
+who would rather a degraded run than a failed one, so fix the scorer fault
+rather than muting the gate.
 
 **A corrupt dataset is not a `ScorerStrictError`** (Issue #3831). `evaluateDir`
 checks each `.bin` file's length against the record size before the native
