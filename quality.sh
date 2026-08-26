@@ -638,6 +638,8 @@ run_test_suite() {
     # context OOMs the host (jetsam SIGKILL / exit 137). The handwritten
     # suite still exercises the native CPU scorer; GPU is a production
     # throughput path, not a correctness path.
+    # The `gpu` lane below is the one deliberate exception (Issue #3869), and
+    # it buys the exception with a subset and one worker — see GPU_SCORER_*.
     #
     # Issue #3815: strict mode turns a scorer exec/parse failure into a thrown
     # error carrying the scorer's stderr verbatim, instead of a logged fallback
