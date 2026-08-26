@@ -303,6 +303,7 @@ training, discovery, scoring, visualisation, and example surface.
 | **[NEAT-AI-Examples](https://github.com/stSoftwareAU/NEAT-AI-Examples)**               | TypeScript example projects showing how to use NEAT-AI for real tasks.                                                                                                           |
 | **[NEAT-AI-Forests](https://github.com/stSoftwareAU/NEAT-AI-Forests)**                 | Experimental Rust optimiser that grafts decision-tree residual corrections onto already-fit NEAT-AI creatures; candidates are judged by NEAT-AI-scorer.                          |
 | **[NEAT-AI-Ockham](https://github.com/stSoftwareAU/NEAT-AI-Ockham)**                   | Experimental Rust optimiser that prunes structure that no longer earns its keep from already-fit NEAT-AI creatures; candidates are judged by NEAT-AI-scorer.                     |
+| **[NEAT-AI-Rebase](https://github.com/stSoftwareAU/NEAT-AI-Rebase)**                   | Experimental Rust tool that reapplies useful discoveries onto the latest fittest creature; candidates are judged by NEAT-AI-scorer.                                              |
 
 ### Dependency graph
 
@@ -319,6 +320,7 @@ flowchart LR
   examples["NEAT-AI-Examples<br/>(TypeScript)"]
   forests["NEAT-AI-Forests<br/>(Rust optimiser)"]
   ockham["NEAT-AI-Ockham<br/>(Rust optimiser)"]
+  rebase["NEAT-AI-Rebase<br/>(Rust rebase)"]
 
   core -- "vendored WASM (pinned rev)" --> neat
   core -- "path dependency" --> scorer
@@ -331,6 +333,8 @@ flowchart LR
   forests -- "scored by" --> scorer
   neat -- "fittest creatures pruned by" --> ockham
   ockham -- "scored by" --> scorer
+  neat -- "improvements rebased onto" --> rebase
+  rebase -- "scored by" --> scorer
   neat -- "produces snapshots" --> snapshot
   snapshot -- "consumed by" --> explore
   neat -- "used by" --> examples
@@ -368,6 +372,10 @@ so it reads in light and dark modes alike. Sources and regeneration:
   <tr>
     <td><img width="380" src="docs/brand/social-previews/neat-ai-forests.png" alt="NEAT-AI-Forests: decision-tree tricks for faster evolutionary discovery"></td>
     <td><img width="380" src="docs/brand/social-previews/neat-ai-ockham.png" alt="NEAT-AI-Ockham: prune structure that no longer earns its keep"></td>
+  </tr>
+  <tr>
+    <td><img width="380" src="docs/brand/social-previews/neat-ai-rebase.png" alt="NEAT-AI-Rebase: reapply useful discoveries onto the latest champion"></td>
+    <td></td>
   </tr>
 </table>
 

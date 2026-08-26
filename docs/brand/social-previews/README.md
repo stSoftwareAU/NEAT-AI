@@ -33,9 +33,10 @@ deno run -A scripts/brand/scale_social_previews.ts --github-only
 | `neat-ai-examples.png`        | [NEAT-AI-Examples](https://github.com/stSoftwareAU/NEAT-AI-Examples)               | Examples        | Notebook                |
 | `neat-ai-forests.png`         | [NEAT-AI-Forests](https://github.com/stSoftwareAU/NEAT-AI-Forests)                 | Forests         | Decision-tree forest    |
 | `neat-ai-ockham.png`          | [NEAT-AI-Ockham](https://github.com/stSoftwareAU/NEAT-AI-Ockham)                   | Ockham          | Pruning shears          |
+| `neat-ai-rebase.png`          | [NEAT-AI-Rebase](https://github.com/stSoftwareAU/NEAT-AI-Rebase)                   | Rebase          | Replay a useful delta   |
 
-`opaque/` holds the same eleven images flattened onto the brand navy. `github/`
-holds the same eleven as 1280×640 JPEGs, each smaller than 1 MB. Upload
+`opaque/` holds the same twelve images flattened onto the brand navy. `github/`
+holds the same twelve as 1280×640 JPEGs, each smaller than 1 MB. Upload
 **those** via each repo → Settings → General → Social preview; GitHub composites
 the upload onto its own chrome and rejects files of 1 MB or larger.
 
