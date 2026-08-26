@@ -6,11 +6,12 @@
  * rejecting every creature carrying a `memetic` block, visible only as a
  * warning buried in hundreds of repeated log lines.
  *
- * With `strict` on (`NEAT_AI_RUST_SCORER_STRICT=1`, which `quality.sh` sets)
- * the same exec/parse failure throws a {@link ScorerStrictError} carrying the
- * scorer's stderr **verbatim**. With `strict` off — the default — the run still
- * degrades gracefully to WASM scoring. Both branches are asserted here so
- * neither can regress unnoticed.
+ * With `strict` on — the default since Issue #3864 — the same exec/parse
+ * failure throws a {@link ScorerStrictError} carrying the scorer's stderr
+ * **verbatim**. With `strict` off (`NEAT_AI_RUST_SCORER_STRICT=0`) the run
+ * still degrades gracefully to WASM scoring. Both branches are asserted here so
+ * neither can regress unnoticed; every case passes `strict` explicitly, so the
+ * default flip cannot silently convert one.
  */
 
 import { assert, assertEquals, assertRejects } from "@std/assert";

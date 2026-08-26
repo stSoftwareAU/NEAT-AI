@@ -19,7 +19,7 @@
  * can fail fast rather than silently mis-score creatures. The caller can
  * then choose to fall back to the per-creature scoring path.
  *
- * Issue #3815: under strict mode (`NEAT_AI_RUST_SCORER_STRICT=1`) those
+ * Issue #3815: under strict mode — the default since Issue #3864 — those
  * failures surface as {@link ScorerStrictError} instead, carrying the scorer's
  * stderr verbatim so the caller aborts rather than falling back.
  *

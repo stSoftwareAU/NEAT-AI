@@ -1,17 +1,18 @@
 /**
  * Typed error for a `rust_scorer` failure raised under strict mode.
  *
- * Issue #3815: the native scorer degrades to WASM scoring when it cannot be
- * executed or its output cannot be parsed. That is the right *production*
- * behaviour, but it made an entirely dead native path look green in CI — Issue
- * #3810 had `rust_scorer` rejecting every creature carrying a `memetic` block
- * for an unknown length of time, visible only as stderr noise.
+ * Issue #3815: the native scorer used to degrade to WASM scoring whenever it
+ * could not be executed or its output could not be parsed. That made an
+ * entirely dead native path look green — Issue #3810 had `rust_scorer`
+ * rejecting every creature carrying a `memetic` block for an unknown length of
+ * time, visible only as stderr noise.
  *
- * With `NEAT_AI_RUST_SCORER_STRICT=1` the same failure throws a
+ * Under strict mode — the default since Issue #3864 — the same failure throws a
  * `ScorerStrictError` instead of being logged and reconciled to a successful
  * run. The scorer's stderr is carried **verbatim** on {@link stderr} and
  * appended to the message so the real diagnostic is the failure text, not
  * something buried in hundreds of repeated log lines.
+ * `NEAT_AI_RUST_SCORER_STRICT=0` restores the degrading path.
  *
  * @module ScorerStrictError
  */

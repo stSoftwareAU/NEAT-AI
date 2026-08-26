@@ -44,12 +44,16 @@ export interface RustScorerConfig {
   batch?: boolean;
   /**
    * Issue #3815: Treat a scorer exec/parse failure as fatal instead of falling
-   * back to WASM scoring. Intended for CI (`quality.sh` sets
-   * `NEAT_AI_RUST_SCORER_STRICT=1`), so an entirely dead native scoring path
-   * cannot reconcile to a green run. A missing or too-old binary is still a
-   * graceful skip — only genuine failures throw.
+   * back to WASM scoring, so an entirely dead native scoring path cannot
+   * reconcile to a green run. A missing or too-old binary is still a graceful
+   * skip — only genuine failures throw.
    *
-   * Default: false.
+   * Issue #3864: On by default. Set `NEAT_AI_RUST_SCORER_STRICT=0` (or pass
+   * `strict: false`) to opt out — that is for an operator who would rather a
+   * degraded WASM-scored run than a failed one, and it re-hides the fault
+   * behind a warning.
+   *
+   * Default: true.
    */
   strict?: boolean;
 }
