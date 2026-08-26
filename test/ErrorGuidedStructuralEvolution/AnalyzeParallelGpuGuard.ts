@@ -101,8 +101,11 @@ Deno.test({
   sanitizeResources: false,
   fn: () => {
     // Issue #2116: When requireGpu is false and GPU is unavailable, the Rust
-    // FFI layer should return a structured error with errorKind "GpuPermanent"
-    // instead of panicking via assert!.
+    // FFI layer should return a structured error classifying the failure as
+    // permanently GPU-related instead of panicking via assert!.
+    //
+    // Issue #3892: the classification arrives in Discovery's snake_case wire
+    // spelling — `gpu_permanent`, not the Rust variant name `GpuPermanent`.
     const input = buildStubInput({ requireGpu: false });
     const result = analyzeParallel(input);
 
@@ -121,8 +124,8 @@ Deno.test({
       );
       assertEquals(
         result.errorKind,
-        "GpuPermanent",
-        "Rust should classify GPU unavailability as GpuPermanent",
+        "gpu_permanent",
+        "Rust should classify GPU unavailability as gpu_permanent",
       );
     }
   },
