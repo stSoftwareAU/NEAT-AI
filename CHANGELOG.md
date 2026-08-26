@@ -80,6 +80,18 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3886:** `./quality.sh` is green again on any machine with a built
+  NEAT-AI-Discovery library. The `analyzeParallel` GPU-guard stub described
+  itself as structurally valid but omitted the creature's `input` / `output`
+  widths behind an `as` cast, and Discovery's `CreatureJson` requires both — so
+  the payload was rejected with `missing field 'input'` /
+  `errorKind: "data_validation"` before GPU availability could be classified.
+  The widths are back and the stub is type-annotated rather than cast. The
+  production payload was never affected (`creatureToRustFormat()` always emits
+  both widths) and there is no `{ input: … }` envelope on the wire; a new
+  FFI-mocked test pins that flat shape so the contract is checked in CI, where
+  no Discovery library exists.
+
 - **Issue #3883:** `./quality.sh` is green again on any machine with a current
   `rust_scorer`. `test/score/RustScorerDatasetParity.ts` still carried the RMSE
   `KNOWN_DIVERGENCES` entry from Issue #3853, and those entries are asserted to
