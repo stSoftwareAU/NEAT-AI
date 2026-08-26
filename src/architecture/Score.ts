@@ -43,29 +43,48 @@ export function calculate(
 
   // Get cached weight/bias statistics (Issue #1011)
   const cached = computeAndCacheScoreComponents(creature);
-  const max = cached.maxWeightBias;
-  const avg = cached.avgWeightBias;
-
-  assertFiniteNumber(max, "Max");
-  assertFiniteNumber(avg, "Avg");
-  const penalty = calculatePenalty(max, avg);
-  assertFiniteNumber(penalty, "Penalty");
-  const score = calculateScore(error, creature, penalty, growthCost);
+  assertFiniteNumber(cached.maxWeightBias, "Max");
+  assertFiniteNumber(cached.avgWeightBias, "Avg");
+  const score = calculateScore(error, creature, growthCost);
 
   assertFiniteNumber(score, "Score");
   return score;
 }
 
 /**
+ * Decades of magnitude above 1.0 that span the useful range of a weight or
+ * bias. A value at or beyond `10 ** MAGNITUDE_DECADE_CAP` is treated as fully
+ * penalised — nothing in this domain needs a weight that large.
+ */
+export const MAGNITUDE_DECADE_CAP = 12;
+
+/**
+ * Cost of a fully-saturated magnitude penalty, as a multiple of `growthCost`.
+ *
+ * At a `growthCost` of 1e-7 a fully-saturated creature pays 1e-5 of score.
+ * Raising this is the single knob that makes magnitude matter more relative to
+ * structure.
+ */
+export const MAGNITUDE_COST = 100;
+
+/**
  * Calculates a penalty value based on the magnitude of a given value.
  *
- * This function applies a penalty that increases with the magnitude of the input,
- * encouraging the network to use smaller weights and biases. The penalty is
- * designed to prevent values from growing too large while still allowing
- * reasonable values.
+ * Each **decade** of magnitude above 1.0 costs a constant amount, so growth is
+ * never free: `0.999 * log10(v) / MAGNITUDE_DECADE_CAP` up to the cap, then an
+ * asymptotic tail that approaches — but never reaches — 1.
+ *
+ * The previous curve, `1 / (1 + 1 / value)`, was already 0.990 at 100 and
+ * 0.9999 at 1000, so beyond about two decades it could no longer tell a
+ * sensible weight from an absurd one. Weights drifted to an average magnitude
+ * in the thousands, with individual values reaching 1e+195, because nothing in
+ * the score objected.
+ *
+ * Must stay identical to `value_penalty()` in NEAT-AI-scorer
+ * `rust_scorer/src/scoring.rs` — the two engines score the same creatures.
  *
  * @param value - The value to calculate penalty for (must be non-negative)
- * @returns A penalty value between 0 and 1
+ * @returns A penalty value in [0, 1)
  * @throws {Error} When the value is negative or non-finite
  *
  * @example
@@ -81,34 +100,92 @@ export function valuePenalty(value: number): number {
   assert(Number.isFinite(value), `Value: ${value} is not finite`);
   assert(value <= Number.MAX_SAFE_INTEGER, `Value: ${value} is too large`);
 
-  const primaryPenalty = 1 / (1 + 1 / value); // Simplified from Math.exp(-Math.log(value))
-
-  if (primaryPenalty > 0.999) {
-    const compressPenalty = 0.999 + valuePenalty(Math.log(value)) / 1000;
-    assert(
-      compressPenalty < 1,
-      `Compressed Penalty: ${compressPenalty} is greater than or equal to 1`,
-    );
-    return compressPenalty;
-  }
-
-  assert(
-    primaryPenalty < 1,
-    `Primary Penalty: ${primaryPenalty} is greater than or equal to 1`,
-  );
-  return primaryPenalty;
-}
-
-function calculatePenalty(max: number, avg: number): number {
-  const penalty = (valuePenalty(max) + valuePenalty(avg)) / 2;
+  const decades = Math.log10(value);
+  const penalty = decades < MAGNITUDE_DECADE_CAP
+    ? 0.999 * decades / MAGNITUDE_DECADE_CAP
+    // Asymptotic tail: monotonic, continuous at the cap, always < 1.
+    : 0.999 + 0.001 * (1 - MAGNITUDE_DECADE_CAP / decades);
 
   assertFiniteNonNegative(penalty, "Penalty");
   assert(
     penalty < 1,
     `Penalty: ${penalty} is greater than or equal to 1`,
   );
-
   return penalty;
+}
+
+/**
+ * Penalty charged for a single weight or bias of absolute value `value`.
+ *
+ * This is the call-site contract around {@link valuePenalty}: the magnitude is
+ * made absolute and clamped to `Number.MAX_SAFE_INTEGER` first. Individual
+ * values reach 1e+195 through compaction multiplications long before the Issue
+ * #2378 overflow guard — which only clamps the aggregates — ever sees them, and
+ * `valuePenalty` rejects anything past its own bound. Without the clamp the
+ * magnitude that opened Issue #3881 throws instead of being charged for.
+ *
+ * Must stay identical to `magnitude_penalty()` in NEAT-AI-scorer
+ * `rust_scorer/src/scoring.rs`. Both engines are pinned to the shared corpus in
+ * `test/fixtures/scoring/magnitude-penalty-corpus.json`.
+ *
+ * @param value - A weight or bias; sign is ignored
+ * @returns A penalty in [0, 1)
+ */
+export function magnitudePenalty(value: number): number {
+  return valuePenalty(Math.min(Math.abs(value), Number.MAX_SAFE_INTEGER));
+}
+
+/**
+ * Mean {@link magnitudePenalty} over an arbitrary run of weights and biases,
+ * skipping non-finite entries.
+ *
+ * This is the aggregate the score charges for — see
+ * {@link sumOfValuePenalties}. It is exported so the callers that measure
+ * magnitude *outside* the score (compaction's `calculateWeightBiasPenalty`, the
+ * MCMC path's `computeCreatureWeightBiasPenalty`) charge the same shape rather
+ * than each keeping a copy of a formula that has since moved. Both previously
+ * averaged `(max, avg)`, which is the aggregate Issue #3881 replaced.
+ *
+ * @param values - Weights and biases; signs are ignored
+ * @returns The mean penalty in [0, 1), or 0 when there are no finite values
+ */
+export function meanMagnitudePenalty(values: Iterable<number>): number {
+  let sum = 0;
+  let count = 0;
+  for (const value of values) {
+    if (!Number.isFinite(value)) continue;
+    sum += magnitudePenalty(value);
+    count++;
+  }
+  return count > 0 ? sum / count : 0;
+}
+
+/**
+ * Sum of {@link magnitudePenalty} over **every** weight and bias.
+ *
+ * The magnitude term reads this rather than `(max, avg)`. Penalising the max
+ * and the average gave the other ~38,000 values in a production creature no
+ * gradient at all: growing a typical weight by a full decade moved the score by
+ * ~1e-12, so evolution shaved the single largest weight and let the body of the
+ * distribution drift. Averaging the per-value penalty gives every weight and
+ * bias an equal say.
+ *
+ * Stored as a sum rather than a mean so a single weight or bias change updates
+ * it in O(1) on the incremental-scoring paths (Issue #1045).
+ */
+function sumOfValuePenalties(
+  weights: ArrayLike<number>,
+  biases: ArrayLike<number>,
+): number {
+  let sum = 0;
+  for (let i = 0; i < weights.length; i++) {
+    sum += magnitudePenalty(weights[i]);
+  }
+  for (let i = 0; i < biases.length; i++) {
+    sum += magnitudePenalty(biases[i]);
+  }
+  assertFiniteNonNegative(sum, "SumValuePenalty");
+  return sum;
 }
 
 // Issue #2126: Module-level pooled buffers for extractWeights/extractBiases.
@@ -315,6 +392,7 @@ function computeAndCacheScoreComponents(
     totalWeightBias,
     countWeightBias,
     secondMaxWeightBias,
+    sumValuePenalty: sumOfValuePenalties(weights, biases),
   };
   creature.cachedScoreComponents = cached;
 
@@ -324,18 +402,22 @@ function computeAndCacheScoreComponents(
 function calculateScore(
   error: number,
   creature: Creature,
-  penalty: number,
   growthCost: number,
 ): number {
   // Get or compute cached structure-dependent values
   const cached = computeAndCacheScoreComponents(creature);
 
-  // Add squash complexity penalty to the weight/bias penalty
-  const totalPenalty = penalty + cached.squashComplexityPenalty;
+  // The magnitude term carries its own coefficient rather than sharing the
+  // squash term's /100, which is what previously capped the whole magnitude
+  // contribution at 1e-9 of score at a growthCost of 1e-7.
+  const magnitudePenalty = cached.countWeightBias > 0
+    ? cached.sumValuePenalty / cached.countWeightBias
+    : 0;
 
   const complexityPenalty = cached.hiddenNeuronCount * growthCost +
     creature.synapses.length * growthCost / 10 +
-    totalPenalty * growthCost / 100;
+    cached.squashComplexityPenalty * growthCost / 100 +
+    magnitudePenalty * growthCost * MAGNITUDE_COST;
   let versionPenalty = 0;
   if (
     !creature.semanticVersion ||
@@ -434,11 +516,12 @@ export function updateScoreForWeightChange(
     avgWeightBias: newAvg,
     totalWeightBias: newTotal,
     secondMaxWeightBias: newSecondMax,
+    // One value moved, so the running penalty sum moves with it in O(1).
+    sumValuePenalty: cached.sumValuePenalty - magnitudePenalty(oldAbs) +
+      magnitudePenalty(newAbs),
   };
 
-  // Calculate penalty with new values
-  const penalty = calculatePenalty(newMax, newAvg);
-  return calculateScore(error, creature, penalty, growthCost);
+  return calculateScore(error, creature, growthCost);
 }
 
 /**
@@ -526,11 +609,12 @@ export function updateScoreForBiasChange(
     avgWeightBias: newAvg,
     totalWeightBias: newTotal,
     secondMaxWeightBias: newSecondMax,
+    // One value moved, so the running penalty sum moves with it in O(1).
+    sumValuePenalty: cached.sumValuePenalty - magnitudePenalty(oldAbs) +
+      magnitudePenalty(newAbs),
   };
 
-  // Calculate penalty with new values
-  const penalty = calculatePenalty(newMax, newAvg);
-  return calculateScore(error, creature, penalty, growthCost);
+  return calculateScore(error, creature, growthCost);
 }
 
 /** Result of scanning for new max and second-max values. */

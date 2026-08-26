@@ -95,17 +95,35 @@ Deno.test("computeCreatureWeightBiasPenalty: small weights yield low penalty", (
 });
 
 Deno.test("computeCreatureWeightBiasPenalty: large weights yield high penalty", () => {
-  const creature = new Creature(2, 1, { layers: [{ count: 1 }] });
-  // Set large weights
-  for (const synapse of creature.synapses) {
-    synapse.weight = 100.0;
-  }
-  for (let i = creature.input; i < creature.neurons.length; i++) {
-    creature.neurons[i].bias = 50.0;
-  }
+  // Issue #3881 changed the aggregate from `(max, avg)` to the mean per-value
+  // penalty, and the curve from a saturating one to a constant cost per decade,
+  // so the absolute value here moved. Assert the properties instead — a pinned
+  // `> 0.5` did not survive the curve change, and these will.
+  const atMagnitude = (magnitude: number): number => {
+    const creature = new Creature(2, 1, { layers: [{ count: 1 }] });
+    for (const synapse of creature.synapses) {
+      synapse.weight = magnitude;
+    }
+    for (let i = creature.input; i < creature.neurons.length; i++) {
+      creature.neurons[i].bias = magnitude / 2;
+    }
+    return computeCreatureWeightBiasPenalty(creature);
+  };
 
-  const penalty = computeCreatureWeightBiasPenalty(creature);
-  assertEquals(penalty > 0.5, true); // Large weights → high penalty
+  const free = atMagnitude(1);
+  const large = atMagnitude(100);
+  const huge = atMagnitude(1e8);
+
+  assertEquals(free, 0, "magnitudes at or below 1 are free");
+  assertEquals(large > free, true, "large weights must cost more");
+  // ...and it keeps rising rather than saturating: under `1 / (1 + 1/v)` both
+  // 100 and 1e8 scored ~0.99, so this measure could not tell a merely large
+  // weight from an absurd one.
+  assertEquals(
+    huge > large * 2,
+    true,
+    `six more decades must cost far more, got ${large} then ${huge}`,
+  );
 });
 
 Deno.test("computeCreatureWeightBiasPenalty: zero weights yield zero penalty", () => {

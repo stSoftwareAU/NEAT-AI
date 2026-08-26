@@ -11,7 +11,7 @@
  */
 
 import type { Creature } from "@creature";
-import { valuePenalty } from "@architecture/Score.ts";
+import { meanMagnitudePenalty } from "@architecture/Score.ts";
 import {
   type AdvantageMode,
   type AdvantageOptions,
@@ -75,44 +75,27 @@ export function resolveMcmcAcceptanceDelta(
 }
 
 /**
- * Computes a lightweight weight/bias penalty directly from a Creature,
- * without requiring a full JSON export. This mirrors the logic in
- * CompactCreature.ts calculateWeightBiasPenalty() but operates on
- * live Creature objects for efficiency in the mutation pipeline.
+ * Computes a lightweight weight/bias penalty directly from a Creature, without
+ * requiring a full JSON export, for the mutation pipeline.
+ *
+ * Charges the same aggregate the score charges — the mean per-value penalty
+ * (Issue #3881). It previously averaged `(max, avg)`, which meant a mutation
+ * that grew any weight other than the largest looked free to the M-H
+ * acceptance test even after the score itself stopped treating it that way.
+ *
+ * Input neurons are skipped: their bias is Infinity by construction.
  *
  * @param creature - The creature to compute penalty for
- * @returns The weight/bias penalty (lower is better)
+ * @returns The weight/bias penalty in [0, 1) (lower is better)
  */
 export function computeCreatureWeightBiasPenalty(creature: Creature): number {
-  let max = 0;
-  let total = 0;
-  let count = 0;
-
-  for (const synapse of creature.synapses) {
-    const w = Math.abs(synapse.weight);
-    if (!Number.isFinite(w)) continue;
-    max = Math.max(max, w);
-    total += w;
-    count++;
+  function* magnitudes(): Generator<number> {
+    for (const synapse of creature.synapses) yield synapse.weight;
+    for (let i = creature.input; i < creature.neurons.length; i++) {
+      yield creature.neurons[i].bias;
+    }
   }
-
-  // Skip input neurons (they have Infinity bias)
-  for (let i = creature.input; i < creature.neurons.length; i++) {
-    const b = Math.abs(creature.neurons[i].bias);
-    if (!Number.isFinite(b)) continue;
-    max = Math.max(max, b);
-    total += b;
-    count++;
-  }
-
-  if (count === 0) return 0;
-
-  // Clamp to avoid tripping valuePenalty() asserts on absurd magnitudes.
-  if (max > Number.MAX_SAFE_INTEGER) max = Number.MAX_SAFE_INTEGER;
-  if (total > Number.MAX_SAFE_INTEGER) total = Number.MAX_SAFE_INTEGER;
-
-  const avg = total / count;
-  return (valuePenalty(max) + valuePenalty(avg)) / 2;
+  return meanMagnitudePenalty(magnitudes());
 }
 
 /**

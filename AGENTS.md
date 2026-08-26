@@ -52,6 +52,14 @@ For deep dives on a single topic, follow the dedicated docs (full index in
   (Issue #3801). The corpus describes current behaviour so NEAT-AI-core can port
   validation against it — changing a validation rule means changing the rule and
   its case together.
+- **Weight/bias magnitude penalty** — the language-neutral corpus
+  [`test/fixtures/scoring/README.md`](./test/fixtures/scoring/README.md); gate
+  test
+  [`test/score/MagnitudeSelectionPressure.ts`](./test/score/MagnitudeSelectionPressure.ts)
+  (Issue #3881). Every decade of magnitude costs the same, and every value — not
+  just the largest — carries a gradient. Changing the curve, the decade cap, or
+  `MAGNITUDE_COST` means changing the corpus and the Rust scorer's vendored copy
+  in the same change.
 - **Repair contract** — [`docs/REPAIR_CONTRACT.md`](./docs/REPAIR_CONTRACT.md)
   (Issues #3845, #3848). A repair pass may never return a creature worse than
   the one it was given: repair the element the failing rule named, leave
