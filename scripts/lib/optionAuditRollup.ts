@@ -230,7 +230,8 @@ const SLICE_C: RollupEntry[] = [
  * Slice D (#3522) — training, regularisation & data-shaping nested configs.
  *
  * `stabilityAdaptation` was one of the twelve entries; #3562 removed the option
- * outright, so it no longer has a source key to classify.
+ * outright, so it no longer has a source key to classify. `crossValidation`,
+ * `dataFuzzing` and `dataQuantisation` went the same way in 7.0.0 (#3874).
  */
 const SLICE_D: RollupEntry[] = [
   inUse("predictiveCoding", "D", {
@@ -245,20 +246,6 @@ const SLICE_D: RollupEntry[] = [
   }),
   inUse("outputRanges", "D", {
     interfaces: ["src/config/OutputRangeConfig.ts::OutputRange"],
-  }),
-  qualifies("crossValidation", "D", 1943, {
-    interfaces: ["src/config/CrossValidationConfig.ts::CrossValidationConfig"],
-    note: "Commented on the existing #1943 rather than filing a duplicate.",
-  }),
-  qualifies("dataFuzzing", "D", 1943, {
-    interfaces: ["src/config/DataFuzzingConfig.ts::DataFuzzingConfig"],
-    note: "Commented on the existing #1943 rather than filing a duplicate.",
-  }),
-  qualifies("dataQuantisation", "D", 1943, {
-    interfaces: [
-      "src/config/DataQuantisationConfig.ts::DataQuantisationConfig",
-    ],
-    note: "Commented on the existing #1943 rather than filing a duplicate.",
   }),
   qualifies("squashBudget", "D", 3563, {
     interfaces: ["src/config/SquashBudgetConfig.ts::SquashBudgetConfig"],

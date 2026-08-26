@@ -60,9 +60,6 @@ interface BackPropagationOptions {
 | ------------------- | ------------------------ | -------- | ------------------------------------------------------------------------------------- |
 | `syntheticSynapses` | `boolean`                | `false`  | Generate dense inter-layer synapses before backprop, then prune near-zero ones after. |
 | `predictiveCoding`  | `PredictiveCodingConfig` | disabled | Use local Hebbian learning rules instead of standard backpropagation.                 |
-| `crossValidation`   | `CrossValidationConfig`  | disabled | Split data into k folds for cross-validated training.                                 |
-| `dataFuzzing`       | `DataFuzzingConfig`      | disabled | Inject noise into training data each iteration to prevent memorisation.               |
-| `dataQuantisation`  | `DataQuantisationConfig` | disabled | Quantise training data values to discrete levels.                                     |
 | `feedbackLoop`      | `boolean`                | `false`  | Feed previous output back as input for time-series tasks.                             |
 
 ### 💡 Direct training example

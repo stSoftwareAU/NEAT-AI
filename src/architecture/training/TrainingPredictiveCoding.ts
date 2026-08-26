@@ -50,8 +50,6 @@ export function trainDirPredictiveCoding(
       iterations,
       targetError,
       log: options.log,
-      dataFuzzing: options.dataFuzzing,
-      dataQuantisation: options.dataQuantisation,
     },
   );
 

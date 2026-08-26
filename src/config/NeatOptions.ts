@@ -23,9 +23,6 @@ import type { OutputRange } from "@config/OutputRangeConfig.ts";
 import type { WorkerThreadCapConfig } from "@config/WorkerThreadCapConfig.ts";
 import type { MCMCConfig } from "@config/MCMCConfig.ts";
 import type { AdaptivePopulationConfig } from "@config/AdaptivePopulationConfig.ts";
-import type { CrossValidationConfig } from "@config/CrossValidationConfig.ts";
-import type { DataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
-import type { DataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
 import type { ParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.ts";
 import type { SquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
 import type { SquashBudgetConfig } from "@config/SquashBudgetConfig.ts";
@@ -112,9 +109,6 @@ export type NeatOptions =
     | "workerThreadCap"
     | "mcmc"
     | "adaptivePopulation"
-    | "crossValidation"
-    | "dataFuzzing"
-    | "dataQuantisation"
     | "parallelEvaluation"
     | "squashEffectiveness"
     | "squashBudget"
@@ -159,12 +153,6 @@ export type NeatOptions =
     mcmc?: MCMCConfig;
     /** Partial overrides for adaptive population sizing configuration (defaults applied if not specified) */
     adaptivePopulation?: AdaptivePopulationConfig;
-    /** Partial overrides for cross-validation configuration (defaults applied if not specified) */
-    crossValidation?: CrossValidationConfig;
-    /** Partial overrides for data fuzzing configuration (defaults applied if not specified) */
-    dataFuzzing?: DataFuzzingConfig;
-    /** Partial overrides for data quantisation configuration (defaults applied if not specified) */
-    dataQuantisation?: DataQuantisationConfig;
     /** Partial overrides for parallel evaluation configuration (defaults applied if not specified) */
     parallelEvaluation?: ParallelEvaluationConfig;
     /** Partial overrides for squash effectiveness tracker configuration (defaults applied if not specified) */
@@ -267,9 +255,6 @@ export type NeatOptionsInput =
     | "workerThreadCap"
     | "mcmc"
     | "adaptivePopulation"
-    | "crossValidation"
-    | "dataFuzzing"
-    | "dataQuantisation"
     | "parallelEvaluation"
     | "squashEffectiveness"
     | "squashBudget"
@@ -309,12 +294,6 @@ export type NeatOptionsInput =
     /** MCMC acceptance configuration (Issue #2199). Numeric fields coerced from CLI. */
     mcmc?: CoerceNumeric<MCMCConfig>;
     adaptivePopulation?: CoerceNumeric<AdaptivePopulationConfig>;
-    /** Cross-validation configuration (Issue #1865). Numeric fields coerced from CLI. */
-    crossValidation?: CoerceNumeric<CrossValidationConfig>;
-    /** Data fuzzing configuration (Issue #1900). Numeric fields coerced from CLI. */
-    dataFuzzing?: CoerceNumeric<DataFuzzingConfig>;
-    /** Data quantisation configuration (Issue #1901). Numeric fields coerced from CLI. */
-    dataQuantisation?: CoerceNumeric<DataQuantisationConfig>;
     /** Parallel evaluation configuration (Issue #1862). Numeric fields coerced from CLI. */
     parallelEvaluation?: CoerceNumeric<ParallelEvaluationConfig>;
     /** Squash effectiveness tracker configuration (Issue #2457). Numeric fields coerced from CLI. */

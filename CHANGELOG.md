@@ -332,6 +332,32 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   clamped to host-reported memory so a 5.47 GB budget on a 3.4 GB host cannot be
   trusted verbatim.
 
+## [7.0.0] - 2026-08-26
+
+### Removed
+
+- **Issue #3874:** Retired three off-by-default experimental options that no
+  consumer ever set — `crossValidation` (#1865), `dataFuzzing` (#1900) and
+  `dataQuantisation` (#1901). Each was gated behind its own `enabled` flag and a
+  fresh usage audit found zero adopters, so the default path was already
+  byte-identical to the feature not existing. #1943 closed the same three as
+  `NOT_PLANNED`. Removed the option surfaces (`NeatOptions`, its `CoerceNumeric`
+  mirror, both `keyof` unions, the `NeatArguments` fields, the `TrainOptions`
+  fields), the parsers (`parseCrossValidation`, `parseDataFuzzing`,
+  `parseDataQuantisation` with their re-exports and
+  `src/config/parsers/DataParsers.ts`), the config modules
+  (`CrossValidationConfig.ts`, `DataFuzzingConfig.ts`,
+  `DataQuantisationConfig.ts`), the implementations
+  (`CrossValidationTrainer.ts`, `KFoldSplitter.ts`, `DataFuzzing.ts`,
+  `DataQuantisation.ts`, `applyDataAugmentation` and `trainDirSingleFold`), the
+  training gates in `Training.ts`, `TrainingSetup.ts`, `TrainingEpoch.ts`,
+  `PredictiveCodingTrainer.ts`, `NeatScheduling.ts` and the three Rust-trainer
+  skip reasons in `RustTrainDirBridge.ts`, plus the public docs. **Breaking for
+  embedders:** `DataFuzzingConfig`, `RequiredDataFuzzingConfig` and
+  `DEFAULT_DATA_FUZZING_CONFIG` are no longer exported from `mod.ts`, and
+  setting any of the three keys is now a type error. No call-site change is
+  expected — the default path is unchanged.
+
 ## [6.6.0] - 2026-08-16
 
 ### Added

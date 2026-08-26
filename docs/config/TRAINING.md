@@ -2,9 +2,8 @@
 
 Training parameters control backpropagation within each NEAT (NeuroEvolution of
 Augmenting Topologies) generation: how much data is used, how aggressively
-weights/biases are updated, and how the data is fuzzed and validated. These
-options sit on the top-level `NeatOptions` object or on dedicated nested configs
-(`dataFuzzing`, `crossValidation`).
+weights/biases are updated. These options sit on the top-level `NeatOptions`
+object.
 
 ```ts
 import { createNeatConfig } from "@stsoftware/neat-ai";
@@ -177,72 +176,6 @@ error, and there is no public API that turns synthetic synapses on.
 
 See [Training API — Synthetic Synapses](../api/TRAINING.md#-synthetic-synapses)
 for what the feature does and where the flag is read.
-
-## 🎲 Data fuzzing
-
-Issue #1900: Training data fuzzing (noise injection) is a regularisation
-technique that prevents networks from memorising exact training examples. Each
-training iteration adds small random perturbations to inputs and optionally to
-outputs, forcing the network to learn robust patterns rather than overfitting to
-specific data points.
-
-Pass as `dataFuzzing` in options.
-
-```ts
-const config = createNeatConfig({
-  dataFuzzing: {
-    enabled: true,
-    inputNoiseScale: 0.02,
-    outputNoiseScale: 0.005,
-    noiseType: "gaussian",
-  },
-});
-```
-
-| Option             | Type                      | Default      | Description                                                                |
-| ------------------ | ------------------------- | ------------ | -------------------------------------------------------------------------- |
-| `enabled`          | `boolean`                 | `false`      | Whether data fuzzing is active                                             |
-| `inputNoiseScale`  | `number`                  | `0.01`       | Standard deviation (Gaussian) or half-width (uniform) of input noise (0–1) |
-| `outputNoiseScale` | `number`                  | `0`          | Noise on target outputs for label smoothing — 0 disables (0–1)             |
-| `noiseType`        | `"gaussian" \| "uniform"` | `"gaussian"` | Distribution used for noise generation                                     |
-
-> [!TIP]
-> Start with the defaults (`inputNoiseScale: 0.01`, `outputNoiseScale: 0`) and
-> increase gradually. Too much noise slows convergence; too little has no
-> regularisation effect. Gaussian noise is generally preferred because it
-> concentrates most perturbations near zero.
-
-## 🔀 Cross-validation
-
-Issue #1865: K-fold cross-validation evaluates creatures on held-out data folds
-during evolution, reducing overfitting to a single train/test split. Each
-generation, training data is divided into `k` folds; the creature trains on
-`k-1` folds and is evaluated on the remaining fold. The validation error guides
-early stopping and selection.
-
-Pass as `crossValidation` in options.
-
-```ts
-const config = createNeatConfig({
-  crossValidation: {
-    enabled: true,
-    folds: 5,
-    validationEarlyStopping: true,
-  },
-});
-```
-
-| Option                    | Type      | Default | Description                                                            |
-| ------------------------- | --------- | ------- | ---------------------------------------------------------------------- |
-| `enabled`                 | `boolean` | `false` | Whether cross-validation is enabled                                    |
-| `folds`                   | `integer` | `5`     | Number of folds — 1 preserves single-split behaviour (1–20)            |
-| `validationEarlyStopping` | `boolean` | `true`  | Use validation fold performance for early stopping instead of training |
-
-> [!TIP]
-> 5 folds is a good starting point. Higher fold counts give more reliable
-> estimates at the cost of more training time per generation. When
-> `validationEarlyStopping` is enabled, backpropagation stops when the
-> validation fold error stops improving, which helps prevent overfitting.
 
 ## 👀 See also
 
