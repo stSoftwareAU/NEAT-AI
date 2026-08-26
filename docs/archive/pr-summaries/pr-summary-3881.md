@@ -125,20 +125,23 @@ Criterion 4 is a post-rollout observation and cannot be asserted in a test.
 
 ### Quality gate
 
-`./quality.sh` is green apart from two failure groups that reproduce unchanged
-on a pristine `origin/Develop` worktree (commit `f04b3f18`) with the same
-`rust_scorer` binary, and are unrelated to this change:
+`./quality.sh` was run on this branch and, for a baseline, on a pristine
+`origin/Develop` worktree (commit `f04b3f18`) with the same `rust_scorer`
+binary. **The two runs fail the same six tests** — this change adds no failure
+and fixes none of them:
 
-| Failure                                                    | Baseline on `origin/Develop`                            |
-| ---------------------------------------------------------- | ------------------------------------------------------- |
-| `Dataset scoring parity: RMSE is still a known divergence` | fails identically — filed as #3883                      |
-| `score-per-hour harness: …`                                | fails identically (8 passed, 1 failed on both branches) |
+```text
+this branch:      FAILED | 8819 passed (5 steps) | 6 failed | 41 ignored (8m49s)
+origin/Develop:   FAILED | 8805 passed (5 steps) | 6 failed | 41 ignored (10m0s)
+```
 
-The RMSE one is the #3853 `KNOWN_DIVERGENCES` entry failing loudly now the
-divergence is fixed on both sides. The score-per-hour harness dies inside the
-scorer binary with
-`ScorerStrictError: … Duplicate synapse from h-0-4 to
-h-1-162` — a
+| Failure                                                    | Cause                                                          |
+| ---------------------------------------------------------- | -------------------------------------------------------------- |
+| `Dataset scoring parity: RMSE is still a known divergence` | stale #3853 `KNOWN_DIVERGENCES` entry — filed as #3883         |
+| `score-per-hour harness: …` (5 tests)                      | `ScorerStrictError: … Duplicate synapse from h-0-4 to h-1-162` |
+
+The RMSE one is the #3853 entry failing loudly now the divergence is fixed on
+both sides. The score-per-hour harness dies inside the scorer binary on a
 `(from, to, type)` synapse-identity issue, not a scoring one. Both lanes are
 `ignore`d in CI, which installs no scorer binary.
 
