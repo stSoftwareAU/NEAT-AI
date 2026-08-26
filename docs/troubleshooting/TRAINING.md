@@ -219,8 +219,8 @@ calculations.
 ### Weights or biases keep exploding
 
 - **Check the caps:** `weightRegularisation.maxAbsoluteWeight` and
-  `biasRegularisation.maxAbsoluteBias` bound the magnitude a mutation may
-  reach. Lower them when activations saturate.
+  `biasRegularisation.maxAbsoluteBias` bound the magnitude a mutation may reach.
+  Lower them when activations saturate.
 - **Raise `l2Strength`:** a stronger L2 term pulls large weights back towards
   zero each iteration.
 

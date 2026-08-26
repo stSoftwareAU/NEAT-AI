@@ -323,14 +323,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `parseDataQuantisation` with their re-exports and
   `src/config/parsers/DataParsers.ts`), the config modules
   (`CrossValidationConfig.ts`, `DataFuzzingConfig.ts`,
-  `DataQuantisationConfig.ts`), the implementations (`CrossValidationTrainer.ts`,
-  `KFoldSplitter.ts`, `DataFuzzing.ts`, `DataQuantisation.ts`,
-  `applyDataAugmentation` and `trainDirSingleFold`), the training gates in
-  `Training.ts`, `TrainingSetup.ts`, `TrainingEpoch.ts`,
-  `PredictiveCodingTrainer.ts`, `NeatScheduling.ts` and the two Rust-trainer skip
-  reasons in `RustTrainDirBridge.ts`, plus the public docs.
-  **Breaking for embedders:** `DataFuzzingConfig`, `RequiredDataFuzzingConfig`
-  and `DEFAULT_DATA_FUZZING_CONFIG` are no longer exported from `mod.ts`, and
+  `DataQuantisationConfig.ts`), the implementations
+  (`CrossValidationTrainer.ts`, `KFoldSplitter.ts`, `DataFuzzing.ts`,
+  `DataQuantisation.ts`, `applyDataAugmentation` and `trainDirSingleFold`), the
+  training gates in `Training.ts`, `TrainingSetup.ts`, `TrainingEpoch.ts`,
+  `PredictiveCodingTrainer.ts`, `NeatScheduling.ts` and the two Rust-trainer
+  skip reasons in `RustTrainDirBridge.ts`, plus the public docs. **Breaking for
+  embedders:** `DataFuzzingConfig`, `RequiredDataFuzzingConfig` and
+  `DEFAULT_DATA_FUZZING_CONFIG` are no longer exported from `mod.ts`, and
   setting any of the three keys is now a type error. No call-site change is
   expected — the default path is unchanged.
 
