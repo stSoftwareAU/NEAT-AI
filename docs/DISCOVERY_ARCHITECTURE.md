@@ -656,6 +656,21 @@ Two further exports cover analysis memory (see
 counts — corrupt data (error counts exceeding `sampleCount × outputCount × 2`)
 is flagged with warnings.
 
+#### 📐 Wire shape of an analysis request (Issue #3886)
+
+Every request is serialised **flat** — `parquetFile`, `creature`, `focusNeurons`
+and the tuning knobs sit at the top level in camelCase. There is no
+`{ input: … }` envelope; Discovery deserialises the object as-is.
+
+The `creature` object is Discovery's `CreatureJson`, and its `input` / `output`
+widths are **required and must be `>= 1`**. Omit them and Discovery rejects the
+whole payload with `missing field 'input'` and `errorKind: "data_validation"` —
+before any analysis or GPU probing — which reads like an envelope mismatch but
+is a missing observation width nested inside `creature`.
+`creatureToRustFormat()` always emits both; hand-built payloads must too. Pinned
+by
+[`test/ErrorGuidedStructuralEvolution/AnalyzeParallelWireShape.ts`](../test/ErrorGuidedStructuralEvolution/AnalyzeParallelWireShape.ts).
+
 ### 📦 Library Management
 
 - `isRustDiscoveryEnabled()` checks library availability only; it does not check
