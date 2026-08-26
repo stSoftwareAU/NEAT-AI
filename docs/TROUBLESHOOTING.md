@@ -206,6 +206,13 @@ See [`troubleshooting/ONNX.md`](troubleshooting/ONNX.md) for full details.
 | `NEAT_AI_RUST_SCORER_ENV`         | _(none)_       | JSON object of extra env vars passed to the Rust scorer child process  |
 | `NEAT_AI_TRACE_PREDICTION`        | _(none)_       | Log detailed discovery failure-cache prediction traces (`1`)           |
 
+> [!NOTE]
+> Every `NEAT_AI_RUST_SCORER_*` variable above has an option counterpart on
+> `NeatOptions.rustScorer` (Issue #3865), and **the option wins**: an explicit
+> `rustScorer: { enabled: false }` keeps the native scorer off even where
+> `NEAT_AI_RUST_SCORER_ENABLED=1` is exported. See
+> [Native Rust scorer](config/WORKERS.md#-native-rust-scorer).
+
 ## 🆘 Getting help
 
 If your symptom is not listed above:

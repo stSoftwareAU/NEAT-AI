@@ -28,6 +28,7 @@ import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.
 import { Costs } from "@costs";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
+import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
@@ -201,6 +202,13 @@ export class WorkerProcessor {
   /** Issue #1620: Per-output range constraints for fitness penalty. */
   private outputRanges?: ReadonlyArray<RequiredOutputRange>;
 
+  /**
+   * Issue #3865: the run's resolved Rust scorer config, sent by the main
+   * thread at init. Undefined means the worker resolves it from its own
+   * `NEAT_AI_RUST_SCORER_*` environment, exactly as it always did.
+   */
+  private rustScorer?: RequiredRustScorerConfig;
+
   private wasmInitAttempted = false;
 
   /** Issue #2260: Cache dataset file list across evaluate calls. */
@@ -295,6 +303,9 @@ export class WorkerProcessor {
       this.dataSetDir = data.initialize.dataSetDir;
 
       // Issue #1620: Store output range constraints for evaluation penalty.
+      if (data.initialize.rustScorer) {
+        this.rustScorer = data.initialize.rustScorer;
+      }
       if (data.initialize.outputRanges) {
         this.outputRanges = data.initialize.outputRanges;
       }
@@ -354,6 +365,7 @@ export class WorkerProcessor {
           data.evaluate.feedbackLoop,
           this.outputRanges,
           cachedFiles,
+          this.rustScorer,
         );
 
         return {

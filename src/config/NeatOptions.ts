@@ -26,6 +26,7 @@ import type { AdaptivePopulationConfig } from "@config/AdaptivePopulationConfig.
 import type { ParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.ts";
 import type { SquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
 import type { SquashBudgetConfig } from "@config/SquashBudgetConfig.ts";
+import type { RustScorerConfig } from "@config/RustScorerConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -105,6 +106,7 @@ export type NeatOptions =
     | "discoveryCache"
     | "discoveryDiskSpace"
     | "wasmCache"
+    | "rustScorer"
     | "memory"
     | "workerThreadCap"
     | "mcmc"
@@ -145,6 +147,20 @@ export type NeatOptions =
     discoveryDiskSpace?: DiskSpaceConfig;
     /** Partial overrides for WASM cache configuration (defaults applied if not specified) */
     wasmCache?: WasmCacheConfig;
+    /**
+     * Partial overrides for the external Rust scorer (Issue #3865).
+     *
+     * **Precedence: an explicit option beats the environment, and the
+     * environment beats the built-in default.** A field set here wins outright;
+     * a field left out falls through to the matching `NEAT_AI_RUST_SCORER_*`
+     * variable, and then to the default. So `rustScorer: { enabled: false }`
+     * keeps the native path off even when `NEAT_AI_RUST_SCORER_ENABLED=1` is
+     * exported — the direction that would otherwise fail open silently.
+     *
+     * Omitting the key entirely resolves to exactly the env-derived config, so
+     * a caller who sets nothing sees no behaviour change.
+     */
+    rustScorer?: RustScorerConfig;
     /** Partial overrides for memory monitoring configuration (defaults applied if not specified) */
     memory?: MemoryConfig;
     /** Partial overrides for worker thread cap configuration (defaults applied if not specified) */
@@ -251,6 +267,7 @@ export type NeatOptionsInput =
     | "discoveryCache"
     | "discoveryDiskSpace"
     | "wasmCache"
+    | "rustScorer"
     | "memory"
     | "workerThreadCap"
     | "mcmc"
@@ -289,6 +306,8 @@ export type NeatOptionsInput =
     discoveryCache?: CoerceNumeric<DiscoveryCacheConfig>;
     discoveryDiskSpace?: CoerceNumeric<DiskSpaceConfig>;
     wasmCache?: CoerceNumeric<WasmCacheConfig>;
+    /** External Rust scorer configuration (Issue #3865). Numeric fields coerced from CLI. */
+    rustScorer?: CoerceNumeric<RustScorerConfig>;
     memory?: CoerceNumeric<MemoryConfig>;
     workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
     /** MCMC acceptance configuration (Issue #2199). Numeric fields coerced from CLI. */

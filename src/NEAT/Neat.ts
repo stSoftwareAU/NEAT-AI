@@ -337,6 +337,10 @@ export class Neat {
       // Both keep the generation on the per-creature worker path.
       this.config.outputRanges,
       this.config.customCost !== undefined,
+      // Issue #3865: hand fitness the run's resolved scorer config so the batch
+      // call site reads the same value the per-creature path is given, instead
+      // of each re-deriving it from the environment.
+      this.config.rustScorer,
     );
 
     this.population = [];

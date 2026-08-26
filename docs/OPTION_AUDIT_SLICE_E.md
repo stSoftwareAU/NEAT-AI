@@ -2,9 +2,9 @@
 
 Slice E of the [#3505](https://github.com/stSoftwareAU/NEAT-AI/issues/3505)
 option-removal audit (Issue #3523). It classifies the **four runtime/
-infrastructure nested configs**, the **internal `RustScorerConfig`**, and the
-**six injection-point options** — both the top-level `NeatOptions` key and every
-field inside each interface, **33 classifications** in total.
+infrastructure nested configs**, the **Rust scorer config** (`rustScorer`), and
+the **six injection-point options** — both the top-level `NeatOptions` key and
+every field inside each interface, **33 classifications** in total.
 
 Out of scope here: the non-`discovery*` top-level options (slice A, #3519 —
 [`OPTION_AUDIT_SLICE_A.md`](OPTION_AUDIT_SLICE_A.md)), the `discovery*` options
@@ -33,8 +33,10 @@ single camelCase occurrence in either consumer repo:
 
 - `workerThreadCap` is populated **entirely from environment variables**
   exported by GRQ's `worker/Discovery/run.sh`;
-- `RustScorerConfig` has no `NeatOptions` key at all and is resolved from
-  `NEAT_AI_RUST_SCORER_*` env, which GRQ sets in 121 places.
+- `rustScorer` had no `NeatOptions` key when this slice ran and was resolved
+  wholly from `NEAT_AI_RUST_SCORER_*` env, which GRQ sets in 121 places. Issue
+  #3865 added the option key; the env layer stays, one step down the precedence
+  order.
 
 A camelCase-only sweep reports both as unused. The slice brief predicted exactly
 this failure mode, and it is the reason no `QUALIFIES` verdict below rests on a
@@ -50,7 +52,7 @@ flowchart TD
     TS --> MEM["memory — IN USE<br/>enabled + nativeBudgetBytes"]
     TS --> INJ["creatureStore / experimentStore /<br/>traceStore / onTrainingEvent — IN USE"]
     ENV --> WTC["workerThreadCap — IN USE<br/>DISCOVERY_WORKER_ENVELOPE_MB"]
-    ENV --> RSC["RustScorerConfig — IN USE<br/>NEAT_AI_RUST_SCORER_*"]
+    ENV --> RSC["rustScorer — IN USE<br/>option (#3865) over NEAT_AI_RUST_SCORER_*"]
 
     NOBODY["Set by nobody"] --> LIVE["KEEP — default drives live behaviour<br/>wasmCache, parallelEvaluation, logger, rng"]
     NOBODY --> INERT["QUALIFIES — default is inert<br/>proactiveGc, maxAnalysisMemoryMb,<br/>maxConcurrentEvaluations"]
@@ -102,11 +104,11 @@ Rather than guess at env spellings, the sweep was made exhaustive from the
 | `DISCOVERY_WORKER_ENVELOPE_MB`     | `workerThreadCap.maxMemoryMB`                |  15 |        0 |
 | `DISCOVERY_HEAP_SIZE_MB`           | `workerThreadCap.estimatedMemoryPerWorkerMB` |  38 |        0 |
 | `DISCOVERY_PER_WORKER_HEAP_CAP_MB` | same, fallback                               |  10 |        0 |
-| `NEAT_AI_RUST_SCORER_BINARY_PATH`  | `RustScorerConfig.binaryPath`                | 121 |       18 |
-| `NEAT_AI_RUST_SCORER_ENABLED`      | `RustScorerConfig.enabled`                   |  68 |       11 |
-| `NEAT_AI_RUST_SCORER_TIMEOUT_MS`   | `RustScorerConfig.timeoutMs`                 |   4 |        0 |
-| `NEAT_AI_RUST_SCORER_BATCH`        | `RustScorerConfig.batch`                     |   0 |        1 |
-| `NEAT_AI_RUST_SCORER_ENV`          | `RustScorerConfig.env`                       |   0 |        0 |
+| `NEAT_AI_RUST_SCORER_BINARY_PATH`  | `rustScorer.binaryPath`                      | 121 |       18 |
+| `NEAT_AI_RUST_SCORER_ENABLED`      | `rustScorer.enabled` (option wins, #3865)    |  68 |       11 |
+| `NEAT_AI_RUST_SCORER_TIMEOUT_MS`   | `rustScorer.timeoutMs`                       |   4 |        0 |
+| `NEAT_AI_RUST_SCORER_BATCH`        | `rustScorer.batch`                           |   0 |        1 |
+| `NEAT_AI_RUST_SCORER_ENV`          | `rustScorer.env`                             |   0 |        0 |
 | `NEAT_AI_WASM_CACHE_DIR`           | `WasmBundleCache` (**not** `wasmCache`)      |  29 |        0 |
 
 The SCREAMING_SNAKE forms of every remaining slice-E key were then swept over
@@ -145,8 +147,8 @@ ignoring it.
 As in slices C and D, a nested field can only reach `NeatOptions` through its
 parent object, so each field's verdict follows its parent's consumer result and
 the real work is reading the implementation file that destructures the resolved
-config. The exception in this slice is `RustScorerConfig`, whose fields each
-have their **own** env var and so are classified individually.
+config. The exception in this slice is `rustScorer`, whose fields each have
+their **own** env var and so are classified individually.
 
 ### Bench and test hits are recorded, not counted as usage
 
@@ -157,15 +159,15 @@ path. No other slice-E key is referenced from `bench/`.
 
 ## `IN USE` — 7 keys, 8 fields
 
-| Key                | Fields | Consumer evidence                                                                                                                                          |
-| ------------------ | -----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `memory`           |      2 | **GRQ** `src/Learn.ts:461-467` assigns `options.memory` from `resolveInlineDiscoveryMemoryConfig()` (`src/train/inlineDiscoveryMemory.ts`). 58 local hits. |
-| `workerThreadCap`  |      2 | **GRQ** `worker/Discovery/run.sh:212-229` exports `DISCOVERY_WORKER_ENVELOPE_MB` + `DISCOVERY_PER_WORKER_HEAP_CAP_MB`; env-only, zero camelCase hits.      |
-| `RustScorerConfig` |      4 | **GRQ** `worker/IntelligentDesign/run.sh:551-662`, **Examples** `.github/workflows/quality.yml:190`; env-only, no `NeatOptions` key exists.                |
-| `creatureStore`    |      — | **GRQ** `src/Learn.ts:427`; also drives `worker/teams/run.sh:582-1419` OOM salvage and `worker/shared/statistics_snapshot.sh:68`.                          |
-| `experimentStore`  |      — | **GRQ** `src/Learn.ts:420-435`; **Examples** `maze_navigation/maze_navigation.ts:436`.                                                                     |
-| `traceStore`       |      — | **GRQ** `src/Learn.ts:443`, fed by `worker/sampler.sh:896` (`--traceStore=.trace`).                                                                        |
-| `onTrainingEvent`  |      — | **GRQ** `src/Learn.ts:513` — routes `memory_pressure` and `generation_complete` into three subsystems (#2219, #2345, #2346).                               |
+| Key               | Fields | Consumer evidence                                                                                                                                          |
+| ----------------- | -----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `memory`          |      2 | **GRQ** `src/Learn.ts:461-467` assigns `options.memory` from `resolveInlineDiscoveryMemoryConfig()` (`src/train/inlineDiscoveryMemory.ts`). 58 local hits. |
+| `workerThreadCap` |      2 | **GRQ** `worker/Discovery/run.sh:212-229` exports `DISCOVERY_WORKER_ENVELOPE_MB` + `DISCOVERY_PER_WORKER_HEAP_CAP_MB`; env-only, zero camelCase hits.      |
+| `rustScorer`      |      4 | **GRQ** `worker/IntelligentDesign/run.sh:551-662`, **Examples** `.github/workflows/quality.yml:190`; env-set, plus the #3865 option key.                   |
+| `creatureStore`   |      — | **GRQ** `src/Learn.ts:427`; also drives `worker/teams/run.sh:582-1419` OOM salvage and `worker/shared/statistics_snapshot.sh:68`.                          |
+| `experimentStore` |      — | **GRQ** `src/Learn.ts:420-435`; **Examples** `maze_navigation/maze_navigation.ts:436`.                                                                     |
+| `traceStore`      |      — | **GRQ** `src/Learn.ts:443`, fed by `worker/sampler.sh:896` (`--traceStore=.trace`).                                                                        |
+| `onTrainingEvent` |      — | **GRQ** `src/Learn.ts:513` — routes `memory_pressure` and `generation_complete` into three subsystems (#2219, #2345, #2346).                               |
 
 ### `memory` — the parent is set, most of the fields are not
 
@@ -199,13 +201,31 @@ size sets `estimatedMemoryPerWorkerMB` (4096 on GRQ-22, not the static 2048
 guess). Removing either brings back the GRQ-22 worker-OOM class this wiring
 exists to prevent, and NEAT-AI's own CI would not catch it.
 
-### `RustScorerConfig` — internal, env-resolved, four of five fields live
+### `rustScorer` — a `NeatOptions` key since #3865, env still the second layer
 
-There is no `rustScorer` key in `NeatOptions`; the config is built lazily in
-`src/score/RustScorerBridge.ts:85-120` from `NEAT_AI_RUST_SCORER_*` and consumed
-by `architecture/Fitness.ts:236-269`, `Creature.ts:1107`, and
-`creature/CreatureActivation.ts:416`. `enabled`, `binaryPath`, `timeoutMs` and
-`batch` are all set by at least one consumer.
+> **Updated by Issue #3865.** When this slice was written there was no
+> `rustScorer` key in `NeatOptions` and the config was reachable only through
+> `NEAT_AI_RUST_SCORER_*`. That is no longer true: `NeatOptions.rustScorer`
+> (`src/config/NeatOptions.ts`) is resolved by `resolveRustScorerConfig`
+> (`src/score/RustScorerBridge.ts`) into `NeatArguments.rustScorer`, and the
+> audit no longer reports the key as env-only.
+
+The resolution order is **explicit option → environment → built-in default**. An
+option field the caller sets wins outright; a field they omit falls through to
+the matching `NEAT_AI_RUST_SCORER_*` variable, and then to the default. With no
+`rustScorer` key at all the resolved value is exactly the env-derived config, so
+the promotion changed no behaviour. Only the env layer is memoised for the
+process — the merged result is per run and is never written back into that
+cache.
+
+`createNeatConfig` resolves it once and both scoring call sites read that one
+value: `architecture/Fitness.ts` for the batch path, and the `rustScorer`
+parameter of `creature/CreatureActivation.ts::evaluateDir` for the per-creature
+path (propagated to worker isolates through the `initialize` payload). The two
+drifting apart is the failure #3854 exists to prevent.
+
+`enabled`, `binaryPath`, `timeoutMs`, `batch` and `strict` are all set by at
+least one consumer.
 
 `env` (from `NEAT_AI_RUST_SCORER_ENV`, a JSON blob) is set by neither, and its
 default `{}` is inert. It is still classified `KEEP` below rather than
@@ -227,14 +247,14 @@ blast radius is much wider than the option itself.
 
 Nobody sets these, but the default drives live behaviour, so the knob stays.
 
-| Key                    | Fields | Default state                | What the default drives                                                                                                                  |
-| ---------------------- | -----: | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `wasmCache`            |      2 | `512` (or `pop × 2`) / `100` | `creature/CreatureTraining.ts:439-440` sizes both LRUs on **every** run; propagated to every worker isolate via `WorkerHandler.ts:419`.  |
-| `parallelEvaluation`   |      1 | `topologyGrouping: true`     | `architecture/Fitness.ts:374` → `multithreading/EvaluationScheduling.ts:77` reorders the evaluation queue on every generation.           |
-| `memory` (7 fields)    |      7 | monitor `enabled`            | `NEAT/MemoryMonitor.ts:171-172, 586-638`, called twice per generation from `NEAT/NeatEvolution.ts:144, 946`.                             |
-| `logger`               |      — | console logger               | `config/NeatConfig.ts:831-840` — always resolves to a `Logger` and calls the global `setLogger()`. Never absent at runtime.              |
-| `rng`                  |      — | unseeded xoshiro256**        | `config/NeatConfig.ts:208-217` — always resolves and calls `setRandomNumberGenerator()`; used at `:231, :469, :477` during config build. |
-| `RustScorerConfig.env` |      1 | `{}`                         | Deploy-time-only env knob (`NEAT_AI_RUST_SCORER_ENV`); see above.                                                                        |
+| Key                  | Fields | Default state                | What the default drives                                                                                                                  |
+| -------------------- | -----: | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `wasmCache`          |      2 | `512` (or `pop × 2`) / `100` | `creature/CreatureTraining.ts:439-440` sizes both LRUs on **every** run; propagated to every worker isolate via `WorkerHandler.ts:419`.  |
+| `parallelEvaluation` |      1 | `topologyGrouping: true`     | `architecture/Fitness.ts:374` → `multithreading/EvaluationScheduling.ts:77` reorders the evaluation queue on every generation.           |
+| `memory` (7 fields)  |      7 | monitor `enabled`            | `NEAT/MemoryMonitor.ts:171-172, 586-638`, called twice per generation from `NEAT/NeatEvolution.ts:144, 946`.                             |
+| `logger`             |      — | console logger               | `config/NeatConfig.ts:831-840` — always resolves to a `Logger` and calls the global `setLogger()`. Never absent at runtime.              |
+| `rng`                |      — | unseeded xoshiro256**        | `config/NeatConfig.ts:208-217` — always resolves and calls `setRandomNumberGenerator()`; used at `:231, :469, :477` during config build. |
+| `rustScorer.env`     |      1 | `{}`                         | Deploy-time-only env knob (`NEAT_AI_RUST_SCORER_ENV`); see above.                                                                        |
 
 The seven `memory` fields kept here are `warningThreshold` (`0.70`),
 `criticalThreshold` (`0.85`), `snapshotThreshold` (`0.90`), `snapshotIntervalMs`

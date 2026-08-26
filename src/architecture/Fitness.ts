@@ -18,6 +18,7 @@ import { buildBatchScorerDiagnostic } from "../score/BatchScorerDiagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { BuiltInCostName } from "@costs";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
+import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import {
   isBuiltInCostName,
   nativeDatasetScoringEligibility,
@@ -161,6 +162,14 @@ export class Fitness {
    */
   private readonly outputRangeCount: number;
 
+  /**
+   * Issue #3865: the run's resolved scorer config — `NeatOptions.rustScorer`
+   * layered over `NEAT_AI_RUST_SCORER_*`. Left `undefined` only by callers that
+   * never resolved one (direct construction in tests), in which case the env
+   * layer is read lazily so behaviour is unchanged.
+   */
+  private readonly rustScorer: RequiredRustScorerConfig | undefined;
+
   constructor(
     workers: WorkerHandler[],
     growth: number,
@@ -170,6 +179,7 @@ export class Fitness {
     costName?: string,
     outputRanges?: ReadonlyArray<RequiredOutputRange>,
     customCostConfigured?: boolean,
+    rustScorer?: RequiredRustScorerConfig,
   ) {
     this.workers = workers;
     this.feedbackLoop = feedbackLoop;
@@ -182,6 +192,7 @@ export class Fitness {
       ? undefined
       : toBuiltInCostName(this.configuredCostName);
     this.outputRangeCount = outputRanges?.length ?? 0;
+    this.rustScorer = rustScorer;
   }
 
   /**
@@ -283,7 +294,9 @@ export class Fitness {
     // custom cost both can, and the batch path bypasses the workers that would
     // apply them. Ask the shared eligibility predicate rather than re-deriving
     // the rule, so the batch and per-creature call sites cannot drift apart.
-    const rustScorerConfig = getEnvRustScorerConfig();
+    // Issue #3865: read the run's one resolved config. Falling back to the env
+    // layer keeps direct constructions (tests) behaving exactly as before.
+    const rustScorerConfig = this.rustScorer ?? getEnvRustScorerConfig();
     const batchEligibility = nativeDatasetScoringEligibility({
       costName: this.configuredCostName,
       customCostConfigured: this.customCostConfigured,
