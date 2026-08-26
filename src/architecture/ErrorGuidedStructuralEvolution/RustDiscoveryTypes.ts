@@ -6,6 +6,7 @@
  */
 
 import type { RustWireTaskDescriptor } from "@costs/TaskDescriptorRustWire.ts";
+import type { RustDiscoveryErrorKind } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryErrorKind.ts";
 
 /**
  * Result of recording discovery data via Rust module.
@@ -384,8 +385,14 @@ export interface RustParallelAnalysisResult {
   neuronDiagnostics?: RustNeuronDiagnostic[];
   neuronGpuUsed?: boolean;
   error?: string;
-  /** Typed error classification from Rust (Issue #2116). */
-  errorKind?: string;
+  /**
+   * Typed error classification from Rust (Issue #2116), in Discovery's
+   * snake_case wire spelling — `"gpu_permanent"`, not the Rust variant name
+   * `GpuPermanent` (Issue #3892). A build newer than the
+   * `RUST_DISCOVERY_ERROR_KINDS` mirror can emit a kind this list does not
+   * know; narrow with `isRustDiscoveryErrorKind` before branching on it.
+   */
+  errorKind?: RustDiscoveryErrorKind;
   /**
    * True when analysis stopped early because the Rust-side allocator reached
    * the configured `maxAnalysisMemoryMb` budget (Discovery #1028). The results
