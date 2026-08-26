@@ -250,9 +250,31 @@ If GPU is active but still slow:
 
 ## ⚙️ Configuration
 
-**There is nothing to configure.** GPU acceleration has no `NeatOptions` key:
-backend selection is automatic, and a GPU adapter is mandatory for analysis
-either way.
+GPU acceleration has no `NeatOptions` key: backend selection is automatic, and a
+GPU adapter is mandatory for analysis either way.
+
+### 🚫 `NEAT_AI_DISCOVERY_GPU` — the CPU-only opt-out
+
+| Value          | Behaviour                                                  |
+| -------------- | ---------------------------------------------------------- |
+| unset / `auto` | Probe for an adapter (the shipped behaviour).              |
+| `off`          | Refuse the GPU **without probing** — no device is created. |
+| anything else  | Throws a `DiscoveryError` (`GPU_UNAVAILABLE`).             |
+
+Set `off` in the **host environment**, before the process starts, on a machine
+that must stay CPU-only. `isRustGpuAvailable()` then returns `false` before the
+library is loaded, so no Vulkan/Metal device is ever created and
+`analyzeParallel()` refuses every pass — discovery yields no proposals on that
+host, and evolution continues on the CPU.
+
+This exists because probing Vulkan on an old Linux host is not free: a driver
+that loses the device mid-run takes the whole stage with it (GRQ Issue #4405).
+It mirrors `rust_scorer`'s `NEAT_SCORER_GPU`; there is no `on`, because
+discovery cannot force an adapter that wgpu does not offer.
+
+An unrecognised value is rejected rather than treated as `auto` — an operator
+who typed `NEAT_AI_DISCOVERY_GPU=of` wanted the GPU off, and silently probing
+anyway would defeat the reason the variable was set.
 
 ### 🧩 About the internal `requireGpu` field
 

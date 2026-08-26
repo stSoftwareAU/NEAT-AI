@@ -71,11 +71,17 @@ export {
   isRustGpuAvailable,
   isRustLibraryAvailable,
   loadRustLibrary,
+  resolveDiscoveryGpuMode,
   rustLibraryExists,
   shouldSkipRustDiscoveryTests,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
 
-export type { GpuBackendInfo } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
+export { DISCOVERY_GPU_ENV } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
+
+export type {
+  DiscoveryGpuMode,
+  GpuBackendInfo,
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
 
 // FFI operations
 export {

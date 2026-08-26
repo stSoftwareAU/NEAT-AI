@@ -103,6 +103,70 @@ let rustMemoryWarningEmitted = false;
 
 let rustGpuWarningEmitted = false;
 
+/**
+ * Environment variable that selects the discovery GPU mode (GRQ Issue #4405).
+ */
+export const DISCOVERY_GPU_ENV = "NEAT_AI_DISCOVERY_GPU";
+
+/**
+ * Operator switch for the discovery GPU.
+ *
+ * - `auto` (the default) probes for a GPU adapter, as before.
+ * - `off` refuses one **without probing**, so the process never creates a
+ *   Vulkan/Metal device.
+ *
+ * Hosts that are deliberately CPU-only need `off`: probing Vulkan on an old
+ * Linux box has cost a whole evolve stage when the driver lost the device
+ * mid-run. This mirrors `rust_scorer`'s `NEAT_SCORER_GPU`, which already
+ * accepts `auto`/`on`/`off`; `on` has no meaning here because discovery cannot
+ * force an adapter that wgpu does not offer.
+ */
+export type DiscoveryGpuMode = "auto" | "off";
+
+/**
+ * Parses the `NEAT_AI_DISCOVERY_GPU` value into a {@link DiscoveryGpuMode}.
+ *
+ * Unset, empty, or whitespace values mean `auto`. Any other unrecognised value
+ * throws: silently probing the GPU because an operator typed `NEAT_AI_DISCOVERY_GPU=of`
+ * would defeat the reason the variable was set.
+ *
+ * @param raw The raw environment value (`undefined` when unset).
+ * @returns The resolved mode.
+ */
+export function resolveDiscoveryGpuMode(
+  raw: string | undefined,
+): DiscoveryGpuMode {
+  const value = raw?.trim().toLowerCase() ?? "";
+  if (value === "") {
+    return "auto";
+  }
+  if (value === "auto" || value === "off") {
+    return value;
+  }
+  throw new DiscoveryError(
+    `${DISCOVERY_GPU_ENV} must be "auto" or "off", was: ${JSON.stringify(raw)}`,
+    "GPU_UNAVAILABLE",
+  );
+}
+
+/**
+ * Reads the discovery GPU mode from the process environment.
+ *
+ * When `--allow-env` was not granted the read is not possible at all, so the
+ * pre-existing `auto` behaviour stands. An unrecognised *value* still throws —
+ * that is an operator mistake, not a missing permission.
+ */
+function discoveryGpuMode(): DiscoveryGpuMode {
+  let raw: string | undefined;
+  try {
+    raw = Deno.env.get(DISCOVERY_GPU_ENV);
+  } catch {
+    // --allow-env not granted; the variable cannot be read on this run.
+    return "auto";
+  }
+  return resolveDiscoveryGpuMode(raw);
+}
+
 /** Cached NEAT-AI-Discovery library version (null = not yet fetched, undefined = fetch failed) */
 let cachedDiscoveryVersion: string | null | undefined = null;
 
@@ -628,8 +692,28 @@ export function getDiscoveryVersion(): string | undefined {
  * GPU-only (Issue #3692): a false result means `analyzeParallel()` will refuse
  * every analysis pass, so discovery yields no proposals on this host. Evolution
  * itself is unaffected.
+ *
+ * `NEAT_AI_DISCOVERY_GPU=off` short-circuits this to `false` **before** the
+ * library is loaded or probed, so a deliberately CPU-only host never creates a
+ * Vulkan/Metal device (GRQ Issue #4405).
  */
 export function isRustGpuAvailable(): boolean {
+  if (discoveryGpuMode() === "off") {
+    if (!rustGpuWarningEmitted) {
+      rustGpuWarningEmitted = true;
+      cachedGpuBackendInfo = {
+        available: false,
+        reason: `${DISCOVERY_GPU_ENV}=off`,
+      };
+      getLogger().info(
+        `ℹ️  ${DISCOVERY_GPU_ENV}=off — the discovery GPU probe is skipped. ` +
+          "Discovery analysis is GPU-only, so it will yield no proposals on " +
+          "this worker; evolution continues on the CPU.",
+      );
+    }
+    return false;
+  }
+
   if (!isRustLibraryAvailable()) {
     return false;
   }
@@ -801,6 +885,14 @@ export function shouldSkipRustDiscoveryTests(): boolean {
 export function getGpuBackendInfo(): GpuBackendInfo {
   if (cachedGpuBackendInfo !== null) {
     return cachedGpuBackendInfo;
+  }
+
+  // An explicit opt-out answers before the library is even consulted, so a
+  // CPU-only host reports the operator's reason rather than a load failure.
+  if (discoveryGpuMode() === "off") {
+    isRustGpuAvailable();
+    return cachedGpuBackendInfo ??
+      { available: false, reason: `${DISCOVERY_GPU_ENV}=off` };
   }
 
   // If the library isn't available, return unavailable
