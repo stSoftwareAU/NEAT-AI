@@ -50,6 +50,13 @@ export type {
   RustSynapseDiagnosticReason,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryTypes.ts";
 
+// Structured error classification wire contract (Issues #2116, #3892)
+export {
+  isRustDiscoveryErrorKind,
+  RUST_DISCOVERY_ERROR_KINDS,
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryErrorKind.ts";
+export type { RustDiscoveryErrorKind } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryErrorKind.ts";
+
 // Input conversion
 export {
   computeRustRecordStats,

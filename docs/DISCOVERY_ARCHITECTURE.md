@@ -671,6 +671,20 @@ is a missing observation width nested inside `creature`.
 by
 [`test/ErrorGuidedStructuralEvolution/AnalyzeParallelWireShape.ts`](../test/ErrorGuidedStructuralEvolution/AnalyzeParallelWireShape.ts).
 
+#### 🏷️ Wire spelling of `errorKind` (Issue #3892)
+
+Every structured failure carries an `errorKind` classifying it for retry
+decisions (Issue #2116). Discovery serialises the Rust enum `DiscoveryErrorKind`
+with `#[serde(rename_all = "snake_case")]`, so the value on the wire is
+`"gpu_permanent"` / `"data_validation"` — the Rust variant names
+(`GpuPermanent`, `DataValidation`) never leave the library. Compare against
+`RUST_DISCOVERY_ERROR_KINDS`
+([`src/architecture/ErrorGuidedStructuralEvolution/RustDiscoveryErrorKind.ts`](../src/architecture/ErrorGuidedStructuralEvolution/RustDiscoveryErrorKind.ts)),
+which mirrors that enum, and narrow an incoming value with
+`isRustDiscoveryErrorKind` — a newer Discovery build may emit a kind the mirror
+does not yet list. Pinned by
+[`test/ErrorGuidedStructuralEvolution/RustDiscoveryErrorKind.ts`](../test/ErrorGuidedStructuralEvolution/RustDiscoveryErrorKind.ts).
+
 ### 📦 Library Management
 
 - `isRustDiscoveryEnabled()` checks library availability only; it does not check

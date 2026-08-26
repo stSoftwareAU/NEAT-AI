@@ -268,7 +268,11 @@ name in the source:
   (Issue #2115).
 - Setting it to `false` only bypasses that TypeScript guard. It does **not** buy
   a CPU path: the call reaches Rust, which still has no CPU kernels and returns
-  a structured error with `errorKind: "GpuPermanent"` (Issue #2116).
+  a structured error with `errorKind: "gpu_permanent"` (Issue #2116). That
+  snake_case spelling is the wire value — Discovery serialises its
+  `DiscoveryErrorKind` enum with `rename_all = "snake_case"`, so the Rust
+  variant name `GpuPermanent` never crosses the FFI boundary (Issue #3892). The
+  known values are mirrored in `RUST_DISCOVERY_ERROR_KINDS`.
 
 ## 🔬 Technical Details
 
