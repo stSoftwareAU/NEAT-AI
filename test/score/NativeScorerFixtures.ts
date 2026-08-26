@@ -175,9 +175,31 @@ function searchPath(name: string): string | undefined {
 }
 
 /**
- * Scorer config pointing at a real binary. GPU is forced off: the parity lane
- * runs in parallel with the rest of the suite and a wgpu context per process
- * exhausts the host (the same reason `quality.sh` sets `NEAT_SCORER_GPU=off`).
+ * GPU mode for every `rust_scorer` subprocess the suite spawns.
+ *
+ * Defaults to `off`: the default lane runs in parallel with the rest of the
+ * suite and a wgpu context per process exhausts the host (the same reason
+ * `quality.sh` sets `NEAT_SCORER_GPU=off`).
+ *
+ * Issue #3869 — `./quality.sh --gpu-scorer` exports `NEAT_SCORER_GPU=auto`
+ * for its serialised `test/score/` lane, so the ambient value is carried
+ * through instead of being pinned back to `off`. Pinning it here would make
+ * the opt-in lane look like GPU coverage while every scorer call ran on the
+ * CPU — exactly the false confidence the lane exists to remove.
+ */
+export function scorerGpuEnv(): Record<string, string> {
+  let mode: string | undefined;
+  try {
+    mode = Deno.env.get("NEAT_SCORER_GPU")?.trim();
+  } catch {
+    // Env unreadable (a test without `env` permission) — keep the safe default.
+  }
+  return { NEAT_SCORER_GPU: mode && mode.length > 0 ? mode : "off" };
+}
+
+/**
+ * Scorer config pointing at a real binary, with the lane's GPU mode
+ * ({@link scorerGpuEnv}) applied.
  */
 export function liveScorerConfig(
   binaryPath: string,
@@ -186,7 +208,7 @@ export function liveScorerConfig(
     enabled: true,
     binaryPath,
     timeoutMs: 60_000,
-    env: { NEAT_SCORER_GPU: "off" },
+    env: scorerGpuEnv(),
     batch: false,
     strict: true,
   };

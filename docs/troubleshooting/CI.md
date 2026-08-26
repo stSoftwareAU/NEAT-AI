@@ -196,6 +196,72 @@ classifies its stderr and raises the same `DatasetError` before strict mode can
 escalate it. Seeing `ScorerStrictError` therefore means a genuine backend fault,
 not bad data.
 
+### 🎮 GPU is not exercised by default — `--gpu-scorer` (Issue #3869)
+
+> [!IMPORTANT]
+> `./quality.sh` forces `NEAT_SCORER_GPU=off` on every lane, so **the GPU
+> scoring path never runs in CI**. That is deliberate, not an oversight:
+> `rust_scorer` defaults to `--gpu auto`, directory/batch scoring then builds a
+> Metal/wgpu context per process, and four parallel evolve tests each holding
+> one OOM the host (jetsam SIGKILL / exit 137).
+
+`./quality.sh --gpu-scorer` adds an **opt-in** smoke lane that does exercise it.
+It is added _alongside_ the existing lanes — the default lane still runs, still
+with `NEAT_SCORER_GPU=off` — so a plain `./quality.sh` is unchanged.
+
+Two levers keep the lane inside the memory budget rather than reproducing the
+OOM:
+
+| Lever             | Choice        | Why it fits                                                                                                                    |
+| ----------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Subset**        | `test/score/` | The jetsam signature is _evolve_ tests, which sit near the ~4060 MB / 4192 MB heap ceiling. The scorer subset contains none.   |
+| **Serialisation** | `DENO_JOBS=1` | The OOM is four parallel contexts. One worker holds at most one, so the multiplier is removed rather than merely made smaller. |
+
+The lane's GPU mode is set explicitly to `auto` — which _is_ the `rust_scorer`
+default — so a leftover `export NEAT_SCORER_GPU=off` in the operator's shell
+cannot quietly turn it back into a second CPU lane.
+
+#### The pre-flight is the point
+
+The regression this lane must not have is a run that _looks_ like GPU coverage
+and is not: `auto` finds no adapter, the scorer silently scores on CPU, and the
+lane reports green. So the verdict is taken from the **scorer's own reported
+backend** (the `gpuBackend` field of its directory-mode JSON), never from the
+environment variable it was handed.
+[`scripts/check_gpu_scorer.ts`](../../scripts/check_gpu_scorer.ts) scores a tiny
+two-creature fixture twice and
+[`scripts/lib/gpuScorerProbe.ts`](../../scripts/lib/gpuScorerProbe.ts)
+classifies the pair:
+
+```mermaid
+flowchart TD
+    A["--gpu off control run"] --> B{"exit 0 and every<br/>gpuBackend = cpu-fallback?"}
+    B -->|"no"| F["❌ exit 1 — the probe itself is broken<br/>(not a missing GPU)"]
+    B -->|"yes"| C["--gpu on run"]
+    C --> D{"exit 0?"}
+    D -->|"no"| S["⏭️ exit 2 — no usable GPU on this host<br/>quality.sh skips the lane, exit 0"]
+    D -->|"yes"| E{"gpuBackend"}
+    E -->|"metal / vulkan / dx12 / gl"| G["✅ exit 0 — run test/score/ with GPU"]
+    E -->|"cpu-fallback"| F2["❌ exit 1 — a GPU was demanded<br/>and the CPU ran anyway"]
+```
+
+The control run matters: without it a broken binary or fixture would be
+indistinguishable from a host with no GPU, and a real fault would be reconciled
+to a clean skip.
+
+**Contributors without a GPU get the skip**, printed with the scorer's own
+reason, and `quality.sh` still exits 0. A failing pre-flight is never downgraded
+to a skip.
+
+If the lane returns instead with exit 137 / a jetsam SIGKILL, the parallel OOM
+has come back — check that the subset and `DENO_JOBS=1` above are still in
+force, and do **not** promote the lane onto the default path.
+
+> [!NOTE]
+> A GPU/CPU **numeric** divergence surfaced by this lane is a scorer-side
+> finding, not a `quality.sh` one — it belongs with
+> [stSoftwareAU/NEAT-AI-scorer#579](https://github.com/stSoftwareAU/NEAT-AI-scorer/issues/579).
+
 If discovery checks fail with exit codes 137 or 9 (segfault), the script
 provides diagnostic guidance. See
 [Discovery troubleshooting → Architecture mismatch](DISCOVERY.md#-architecture-mismatch-errors-arm64-vs-x86).
