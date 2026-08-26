@@ -37,14 +37,16 @@ const SKIP = BINARY === undefined;
  * fix. Entries are asserted to *still* disagree below, so a stale entry fails
  * loudly the moment its divergence is fixed instead of quietly suppressing a
  * cost forever.
+ *
+ * Empty is the healthy state: every built-in cost is covered by the ordinary
+ * parity assertions. The RMSE entry left here after Issue #3853 was fixed is
+ * what Issue #3883 removed — add an entry only alongside an open issue, and
+ * delete it in the same change that fixes the divergence.
  */
-const KNOWN_DIVERGENCES: ReadonlyMap<string, string> = new Map([
-  [
-    "RMSE",
-    "#3853 — TypeScript averages the per-record roots, Rust takes the root " +
-    "of the mean",
-  ],
-]);
+const KNOWN_DIVERGENCES: ReadonlyMap<string, string> = new Map<
+  string,
+  string
+>();
 
 /**
  * Agreement tolerance. The two engines accumulate in f64 but activate in f32,
