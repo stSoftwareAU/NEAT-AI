@@ -65,6 +65,18 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Issue #3870:** Recurrent (`forwardOnly: false`) creatures now join the
+  directory-mode batch instead of being partitioned onto the per-creature worker
+  path. NEAT-AI-scorer#579 threads each creature's own flag through the batch
+  loop, so a mixed population costs one `rust_scorer` process rather than one
+  plus N. The capability is **probed** once per binary — an older scorer that
+  refuses recurrent batches keeps the previous partition, unchanged and without
+  a failure. `feedbackLoop: true` recurrent creatures still refuse with
+  `FEEDBACK_LOOP` and still score on the TypeScript path whatever the scorer
+  version, because the native recurrent path resets network state per record.
+  The per-generation `Batch scorer partition:` INFO line now reports
+  `N forwardOnly batched, M recurrent batched, K per-creature`.
+
 - **Issue #3864:** `NEAT_AI_RUST_SCORER_STRICT` now defaults to **on**. A
   genuine `rust_scorer` exec or parse failure throws a `ScorerStrictError`
   carrying the scorer's stderr verbatim instead of logging a warning, degrading

@@ -2,11 +2,20 @@
  * Fitness forwardOnly partition tests (Issue #2517).
  *
  * Verifies that mixed populations (forwardOnly + recurrent) are partitioned
- * before the batch rust scorer is invoked. The scorer rejects directories
- * containing any `forwardOnly=false` creature, so passing a mixed batch
- * poisons the entire generation. The partition routes only forwardOnly
+ * before the batch rust scorer is invoked, on a scorer that rejects
+ * directories containing any `forwardOnly=false` creature — passing it a mixed
+ * batch poisons the entire generation. The partition routes only forwardOnly
  * creatures into the batch path and lets recurrent creatures take the
  * per-creature worker path.
+ *
+ * Issue #3870: that rejection is no longer universal — NEAT-AI-scorer#579
+ * threads each creature's own flag through the batch loop, so a new enough
+ * binary batches a mixed population in one invocation. The capability is
+ * probed, and this file now pins the **older-binary** half of that contract:
+ * every double here is {@link legacyScorer}, which refuses exactly as a
+ * pre-#579 binary does, and the partition behaviour below must be unchanged
+ * against it. The supporting-binary half lives in
+ * `test/architecture/FitnessRecurrentBatch.ts`.
  */
 
 import { assert, assertEquals } from "@std/assert";
@@ -22,6 +31,7 @@ import {
   __setRustScorerConfigForTests,
   __setRustScorerRunnerForTests,
 } from "../../src/score/RustScorerBridge.ts";
+import { legacyScorer } from "./FitnessScorerDoubles.ts";
 
 class MockWorkerHandler {
   public evaluateCallCount = 0;
@@ -91,40 +101,8 @@ Deno.test("Fitness partition - all forwardOnly population batches every creature
   ];
   const uuids = population.map((c) => CreatureUtil.makeUUID(c));
 
-  let scoreCalls = 0;
-  let seenStems: string[] = [];
-  __setRustScorerRunnerForTests(async (_command, args) => {
-    if (args.length === 1 && args[0] === "--help") {
-      return { success: true, code: 0, stdout: "usage", stderr: "" };
-    }
-    scoreCalls++;
-    // Inspect the directory to capture the stems the scorer would see — this
-    // is what the rust scorer's pre-check inspects.
-    const entries: string[] = [];
-    for await (const entry of Deno.readDir(args[0])) {
-      if (entry.isFile && entry.name.endsWith(".json")) {
-        entries.push(entry.name.replace(/\.json$/, ""));
-      }
-    }
-    seenStems = entries.sort();
-    const payload: Record<
-      string,
-      { score: number; error: number; recordCount: number }
-    > = {};
-    for (let i = 0; i < uuids.length; i++) {
-      payload[uuids[i]] = {
-        score: 0.9 - i * 0.1,
-        error: 0.1 + i * 0.05,
-        recordCount: 4,
-      };
-    }
-    return {
-      success: true,
-      code: 0,
-      stdout: JSON.stringify(payload),
-      stderr: "",
-    };
-  });
+  const { runner, log } = legacyScorer();
+  __setRustScorerRunnerForTests(runner);
 
   const worker = new MockWorkerHandler();
   const dataDir = makeDataDir(buildDataSet(), 4);
@@ -139,9 +117,10 @@ Deno.test("Fitness partition - all forwardOnly population batches every creature
     await fitness.calculate(population);
 
     assertEquals(
-      scoreCalls,
+      log.directoryCalls.length,
       1,
-      "exactly one scorer process for all-forwardOnly population",
+      "exactly one scorer process for all-forwardOnly population — nothing " +
+        "is recurrent, so the capability probe must not spawn either",
     );
     assertEquals(fitness.lastBatchScorerInvocations, 1);
     assertEquals(
@@ -149,7 +128,10 @@ Deno.test("Fitness partition - all forwardOnly population batches every creature
       0,
       "all forwardOnly creatures must take the batch path",
     );
-    assertEquals(seenStems.sort().join(","), [...uuids].sort().join(","));
+    assertEquals(
+      log.directoryCalls[0].stems.join(","),
+      [...uuids].sort().join(","),
+    );
     for (const creature of population) {
       assert(creature.score !== undefined, "every creature should be scored");
     }
@@ -169,26 +151,8 @@ Deno.test("Fitness partition - all recurrent population skips batch entirely", a
     buildCreature(0.3, false),
   ];
 
-  let scoreCalls = 0;
-  __setRustScorerRunnerForTests(async (_command, args) => {
-    // Even the probe must not be needed when there is nothing to batch.
-    // Allow probe for safety, but count any actual scoring call.
-    if (args.length === 1 && args[0] === "--help") {
-      return await Promise.resolve({
-        success: true,
-        code: 0,
-        stdout: "usage",
-        stderr: "",
-      });
-    }
-    scoreCalls++;
-    return await Promise.resolve({
-      success: true,
-      code: 0,
-      stdout: "{}",
-      stderr: "",
-    });
-  });
+  const { runner, log } = legacyScorer();
+  __setRustScorerRunnerForTests(runner);
 
   const worker = new MockWorkerHandler();
   const dataDir = makeDataDir(buildDataSet(), 4);
@@ -202,10 +166,18 @@ Deno.test("Fitness partition - all recurrent population skips batch entirely", a
     );
     await fitness.calculate(population);
 
+    // Issue #3870: the capability probe is the one directory-mode call — it
+    // asks whether this binary can batch recurrent creatures, and this one
+    // refuses. No population creature is ever handed to it.
     assertEquals(
-      scoreCalls,
-      0,
-      "no scorer process should spawn when no creature is forwardOnly",
+      log.directoryCalls.length,
+      1,
+      "only the capability probe should spawn when no creature is forwardOnly",
+    );
+    assertEquals(
+      log.directoryCalls[0].refused,
+      true,
+      "a pre-#579 binary refuses the recurrent probe",
     );
     assertEquals(fitness.lastBatchScorerInvocations, 0);
     assertEquals(
@@ -240,34 +212,8 @@ Deno.test("Fitness partition - mixed population batches forwardOnly only, recurr
     CreatureUtil.makeUUID(rec2),
   ]);
 
-  let scoreCalls = 0;
-  let seenStems: string[] = [];
-  __setRustScorerRunnerForTests(async (_command, args) => {
-    if (args.length === 1 && args[0] === "--help") {
-      return { success: true, code: 0, stdout: "usage", stderr: "" };
-    }
-    scoreCalls++;
-    const entries: string[] = [];
-    for await (const entry of Deno.readDir(args[0])) {
-      if (entry.isFile && entry.name.endsWith(".json")) {
-        entries.push(entry.name.replace(/\.json$/, ""));
-      }
-    }
-    seenStems = entries.sort();
-    const payload: Record<
-      string,
-      { score: number; error: number; recordCount: number }
-    > = {};
-    for (const stem of entries) {
-      payload[stem] = { score: 0.5, error: 0.25, recordCount: 4 };
-    }
-    return {
-      success: true,
-      code: 0,
-      stdout: JSON.stringify(payload),
-      stderr: "",
-    };
-  });
+  const { runner, log } = legacyScorer();
+  __setRustScorerRunnerForTests(runner);
 
   const worker = new MockWorkerHandler();
   const dataDir = makeDataDir(buildDataSet(), 4);
@@ -281,14 +227,18 @@ Deno.test("Fitness partition - mixed population batches forwardOnly only, recurr
     );
     await fitness.calculate(population);
 
+    // Two directory calls: the refused capability probe, then the batch of
+    // the forwardOnly subset it fell back to.
     assertEquals(
-      scoreCalls,
-      1,
-      "one scorer process for the forwardOnly subset",
+      log.directoryCalls.length,
+      2,
+      "one capability probe plus one scorer process for the forwardOnly subset",
     );
     assertEquals(fitness.lastBatchScorerInvocations, 1);
+    const batchCall = log.directoryCalls.find((call) => !call.refused);
+    assert(batchCall !== undefined, "the forwardOnly subset must be batched");
     assertEquals(
-      seenStems,
+      batchCall.stems,
       fwdUuids,
       "scorer must see forwardOnly stems only — recurrent creatures must not appear in the batch directory",
     );
@@ -337,7 +287,9 @@ Deno.test("Fitness partition - batch failure on forwardOnly subset still scores 
     }
     // Empty payload triggers MISSING_KEYS reconciliation failure for the
     // forwardOnly creature in the batch — the recurrent creature is never
-    // sent and should still be scored by the worker path.
+    // sent and should still be scored by the worker path. It also answers the
+    // Issue #3870 capability probe with unusable output, which is likewise
+    // read as "cannot batch recurrent creatures".
     return await Promise.resolve({
       success: true,
       code: 0,

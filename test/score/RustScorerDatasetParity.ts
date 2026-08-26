@@ -19,13 +19,19 @@
  * `quality.sh` resolves it (PATH, `--rust-scorer-bin`, sibling
  * `../NEAT-AI-scorer`) for the default run, so CI always exercises it.
  */
-import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
+import {
+  assert,
+  assertAlmostEquals,
+  assertEquals,
+  assertRejects,
+} from "@std/assert";
 import { BUILT_IN_COST_NAMES, type BuiltInCostName, Costs } from "@costs";
 import type { Creature } from "@creature";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import { DEFAULT_COST_OF_GROWTH } from "@config/NeatConfig.ts";
 import { calculate as calculateScore } from "@architecture/Score.ts";
 import { tryBatchScoreWithRustScorer } from "../../src/score/BatchRustScorerBridge.ts";
+import { resolveRecurrentDirectorySupport } from "../../src/score/RecurrentDirectoryProbe.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 import {
   buildScoringCreature,
@@ -272,6 +278,262 @@ Deno.test({
           `native recurrent path resets state per record ` +
           `(native=${withNative.error}, typescript=${withoutNative.error})`,
       );
+    } finally {
+      await Deno.remove(dataDir, { recursive: true });
+    }
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Batch-mode recurrent parity (Issue #3870)
+// ---------------------------------------------------------------------------
+
+/**
+ * Everything above scores one creature per invocation. Issue #3870 lets
+ * recurrent creatures into a **directory-mode batch** for the first time, and
+ * the failure that change can produce is not a crash: a recurrent creature
+ * scored with per-record state resets where the TypeScript path carried state
+ * returns a plausible but different fitness, quietly reshaping evolution.
+ *
+ * These cases run the real binary in batch mode over the same corpus the
+ * TypeScript engine reads, and compare the numbers — the only check that
+ * catches a semantics mismatch rather than a crash.
+ */
+
+/** Batch a set of creatures in one live invocation and return their errors. */
+async function batchErrors(
+  creatures: Creature[],
+  costName: BuiltInCostName,
+  dataDir: string,
+): Promise<{ errors: number[]; invocations: number }> {
+  const run = await tryBatchScoreWithRustScorer(
+    creatures,
+    dataDir,
+    { ...liveScorerConfig(BINARY!), batch: true },
+    costName,
+  );
+  const errors = creatures.map((creature) => {
+    const record = run.results?.get(creature);
+    assert(
+      record !== undefined,
+      `${costName}: the batch returned no result for a creature in the batch`,
+    );
+    return record.error;
+  });
+  return { errors, invocations: run.invocations };
+}
+
+/** The TypeScript engine's error for the same creature over the same corpus. */
+async function typescriptError(
+  creature: Creature,
+  costName: BuiltInCostName,
+  dataDir: string,
+): Promise<number> {
+  creature.clearState();
+  const result = await creature.evaluateDir(
+    dataDir,
+    Costs.find(costName),
+    false,
+    undefined,
+    undefined,
+    typescriptScorerConfig(BINARY!),
+  );
+  return result.error;
+}
+
+/**
+ * Whether the resolved binary can batch recurrent creatures at all. An older
+ * one cannot, and the tests below assert the refusal instead — a silent skip
+ * would read as coverage.
+ */
+async function recurrentBatchSupported(dataDir: string): Promise<boolean> {
+  return await resolveRecurrentDirectorySupport(
+    { ...liveScorerConfig(BINARY!), batch: true },
+    dataDir,
+  );
+}
+
+/** Register the batch-mode recurrent parity test for one cost. */
+function registerRecurrentBatchParityTest(costName: BuiltInCostName): void {
+  Deno.test({
+    name:
+      `Batch recurrent parity: rust_scorer batch and TypeScript agree for ${costName}`,
+    ignore: SKIP,
+    async fn() {
+      await initWasmForTests();
+      const dataDir = makeScoringDataDir();
+      try {
+        const creature = buildScoringCreature(true);
+        if (!await recurrentBatchSupported(dataDir)) {
+          // Pre-NEAT-AI-scorer#579 binary: it must refuse rather than return a
+          // number computed under other rules, and `Fitness` keeps such
+          // creatures on the per-creature path (pinned in
+          // `test/architecture/FitnessForwardOnlyPartition.ts`).
+          await assertRejects(
+            () => batchErrors([creature], costName, dataDir),
+            Error,
+            undefined,
+            `this binary reports no recurrent directory support, so a ` +
+              `recurrent batch must fail loudly rather than score`,
+          );
+          return;
+        }
+
+        creature.clearState();
+        const { errors: [native] } = await batchErrors(
+          [creature],
+          costName,
+          dataDir,
+        );
+        const typescript = await typescriptError(creature, costName, dataDir);
+
+        assert(
+          Number.isFinite(native) && Number.isFinite(typescript),
+          `${costName}: expected finite errors, got native=${native} ` +
+            `typescript=${typescript}`,
+        );
+        const rel = relativeDifference(native, typescript);
+        assert(
+          rel <= PARITY_REL_TOLERANCE,
+          `${costName}: a recurrent creature scored in a directory-mode ` +
+            `batch disagrees with the TypeScript engine — native=${native} ` +
+            `typescript=${typescript} (relative difference ${rel}, tolerance ` +
+            `${PARITY_REL_TOLERANCE}). This is the silent-wrong-number risk ` +
+            `Issue #3870 opened: fix the engine that moved, do not widen the ` +
+            `tolerance.`,
+        );
+      } finally {
+        await Deno.remove(dataDir, { recursive: true });
+      }
+    },
+  });
+}
+
+for (const costName of BUILT_IN_COST_NAMES) {
+  if (KNOWN_DIVERGENCES.has(costName)) continue;
+  registerRecurrentBatchParityTest(costName);
+}
+
+Deno.test({
+  name:
+    "Batch recurrent parity: a batched recurrent creature is scored stateless, not with carried state",
+  ignore: SKIP,
+  async fn() {
+    await initWasmForTests();
+    const cost = Costs.find("MSE");
+    const dataDir = makeScoringDataDir();
+    try {
+      const creature = buildScoringCreature(true);
+      if (!await recurrentBatchSupported(dataDir)) return;
+
+      creature.clearState();
+      const { errors: [native] } = await batchErrors(
+        [creature],
+        "MSE",
+        dataDir,
+      );
+      const stateless = await typescriptError(creature, "MSE", dataDir);
+      creature.clearState();
+      const carried = (await creature.evaluateDir(
+        dataDir,
+        cost,
+        true,
+        undefined,
+        undefined,
+        typescriptScorerConfig(BINARY!),
+      )).error;
+
+      // Guard: the two semantics must be far apart for this fixture, or the
+      // assertion below could not tell them apart.
+      assert(
+        relativeDifference(carried, stateless) > 1e-3,
+        `fixture cannot distinguish the two semantics: carried=${carried} ` +
+          `stateless=${stateless}`,
+      );
+      assert(
+        relativeDifference(native, stateless) <= PARITY_REL_TOLERANCE,
+        `the batch scored the recurrent creature under the wrong semantics — ` +
+          `native=${native}, stateless TypeScript=${stateless}, ` +
+          `carried-state TypeScript=${carried}`,
+      );
+      assert(
+        relativeDifference(native, carried) > PARITY_REL_TOLERANCE,
+        `the batch appears to carry network state across records ` +
+          `(native=${native}, carried-state TypeScript=${carried}). The ` +
+          `native recurrent path resets per record; a run needing carried ` +
+          `state must refuse with FEEDBACK_LOOP instead.`,
+      );
+    } finally {
+      await Deno.remove(dataDir, { recursive: true });
+    }
+  },
+});
+
+/**
+ * Weight scale that separates the two members of the mixed batch. Their errors
+ * must be far apart, otherwise a result swapped between the two stems would
+ * still satisfy the parity assertions and the case would prove nothing.
+ */
+const MIXED_BATCH_RECURRENT_SCALE = 3;
+
+Deno.test({
+  name:
+    "Batch recurrent parity: a mixed batch scores every creature in one invocation",
+  ignore: SKIP,
+  async fn() {
+    await initWasmForTests();
+    const dataDir = makeScoringDataDir();
+    try {
+      const forwardOnly = buildScoringCreature(false);
+      const recurrent = buildScoringCreature(
+        true,
+        MIXED_BATCH_RECURRENT_SCALE,
+      );
+      if (!await recurrentBatchSupported(dataDir)) {
+        await assertRejects(
+          () => batchErrors([forwardOnly, recurrent], "MSE", dataDir),
+          Error,
+          undefined,
+          "a binary without recurrent directory support must refuse a mixed " +
+            "batch rather than mis-score it",
+        );
+        return;
+      }
+
+      forwardOnly.clearState();
+      recurrent.clearState();
+      const { errors: [nativeForwardOnly, nativeRecurrent], invocations } =
+        await batchErrors([forwardOnly, recurrent], "MSE", dataDir);
+      const tsForwardOnly = await typescriptError(forwardOnly, "MSE", dataDir);
+      const tsRecurrent = await typescriptError(recurrent, "MSE", dataDir);
+
+      assertEquals(
+        invocations,
+        1,
+        "a mixed population must cost one scorer process, not one per topology",
+      );
+      // Without a wide gap between the two, results swapped between the stems
+      // would pass the assertions below unnoticed.
+      assert(
+        relativeDifference(tsForwardOnly, tsRecurrent) > 0.1,
+        `the two batch members are not distinguishable: ` +
+          `forwardOnly=${tsForwardOnly} recurrent=${tsRecurrent}`,
+      );
+      for (
+        const [label, native, typescript] of [
+          ["forwardOnly", nativeForwardOnly, tsForwardOnly],
+          ["recurrent", nativeRecurrent, tsRecurrent],
+        ] as const
+      ) {
+        const rel = relativeDifference(native, typescript);
+        assert(
+          rel <= PARITY_REL_TOLERANCE,
+          `mixed batch, ${label} creature: native=${native} ` +
+            `typescript=${typescript} (relative difference ${rel}). Either ` +
+            `the batch mixed the two creatures' results up, or it applied one ` +
+            `creature's forwardOnly flag to the other.`,
+        );
+      }
     } finally {
       await Deno.remove(dataDir, { recursive: true });
     }
