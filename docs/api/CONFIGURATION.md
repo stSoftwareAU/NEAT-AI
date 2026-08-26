@@ -28,8 +28,6 @@ field-by-field reference.
   `RequiredSelectionPressureConfig`, `DEFAULT_SELECTION_PRESSURE_CONFIG`
 - Parallel evaluation: `ParallelEvaluationConfig`,
   `RequiredParallelEvaluationConfig`, `DEFAULT_PARALLEL_EVALUATION_CONFIG`
-- Data fuzzing: `DataFuzzingConfig`, `RequiredDataFuzzingConfig`,
-  `DEFAULT_DATA_FUZZING_CONFIG`
 - Disk space: `DiskSpaceConfig`, `RequiredDiskSpaceConfig`,
   `DEFAULT_DISK_SPACE_CONFIG`
 - Training events: `TrainingEvent`, `TrainingEventCallback`,
@@ -269,12 +267,6 @@ convergence progress. Defaults via `DEFAULT_ADAPTIVE_POPULATION_CONFIG`.
 Issue #1862: controls topology-aware grouping for population fitness evaluation.
 Topology grouping clusters same-structure creatures to maximise WASM
 (WebAssembly) cache hits. Defaults via `DEFAULT_PARALLEL_EVALUATION_CONFIG`.
-
-### `dataFuzzing` — DataFuzzingConfig
-
-Issue #1900: training data fuzzing adds small random perturbations to prevent
-memorisation. Supports Gaussian and uniform noise. Defaults via
-`DEFAULT_DATA_FUZZING_CONFIG`.
 
 ### `discoveryDiskSpace` — DiskSpaceConfig
 

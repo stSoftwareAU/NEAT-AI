@@ -244,20 +244,6 @@ export type {
 export { DEFAULT_PARALLEL_EVALUATION_CONFIG } from "@config/ParallelEvaluationConfig.ts";
 
 /**
- * Data Fuzzing (Noise Injection)
- *
- * Issue #1900: Training data fuzzing adds small random perturbations
- * to prevent memorisation. Supports Gaussian and uniform noise.
- *
- * @see {@link module:src/config/DataFuzzingConfig}
- */
-export type {
-  DataFuzzingConfig,
-  RequiredDataFuzzingConfig,
-} from "@config/DataFuzzingConfig.ts";
-export { DEFAULT_DATA_FUZZING_CONFIG } from "@config/DataFuzzingConfig.ts";
-
-/**
  * Cost Interface
  *
  * This interface defines the contract for cost functions used in neural network training.

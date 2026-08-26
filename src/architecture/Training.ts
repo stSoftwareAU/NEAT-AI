@@ -12,7 +12,6 @@ import type { CostInterface } from "@costs/CostInterface.ts";
 import type { Creature } from "@creature";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
-import { trainWithCrossValidation } from "@architecture/CrossValidationTrainer.ts";
 import {
   dataFiles,
   prepareTraining,
@@ -69,46 +68,6 @@ export function trainDir(
       )
     );
   }
-
-  // Issue #1865: Cross-validation is TypeScript fold orchestration —
-  // not a Rust-trainer option.
-  if (options.crossValidation?.enabled) {
-    const folds = options.crossValidation.folds ?? 5;
-    const validationEarlyStopping =
-      options.crossValidation.validationEarlyStopping ?? true;
-    return runLegacyTrainDirWrappers(() =>
-      trainWithCrossValidation(
-        creature,
-        dataDir,
-        options,
-        cost,
-        folds,
-        validationEarlyStopping,
-      )
-    );
-  }
-
-  return trainDirBinary(creature, dataDir, dataResult.files, options, cost);
-}
-
-/**
- * Trains a creature on a single data directory (no cross-validation).
- *
- * Issue #1865: Exposed as a named export so CrossValidationTrainer
- * can call it for each fold without recursion.
- */
-export function trainDirSingleFold(
-  creature: Creature,
-  dataDir: string,
-  options: TrainOptions,
-  cost: CostInterface,
-): TrainingResult {
-  const dataResult = dataFiles(dataDir, options);
-
-  assert(
-    dataResult.files.length > 0,
-    "No binary files found in the data directory",
-  );
 
   return trainDirBinary(creature, dataDir, dataResult.files, options, cost);
 }

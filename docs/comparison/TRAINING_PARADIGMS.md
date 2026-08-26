@@ -58,7 +58,6 @@ a NEAT-AI extension):
   standard NEAT).
 - **Regularisation**: dropout, L1/L2 weight & bias decay, sparse training,
   neuron pruning, and cost-of-growth penalty.
-- **Cross-Validation**: K-fold validation for robust fitness estimation.
 - **Transfer Learning**: checkpoint export/import with weight freezing for
   fine-tuning on related tasks.
 - **MCMC Mutation Acceptance**: Metropolis-Hastings criterion with adaptive

@@ -36,8 +36,8 @@
  *   Rust trains the resulting topology
  *
  * **Skip Rust (TypeScript / WASM loop)** — not backpropagation:
- * `predictiveCoding`, `crossValidation`, `dataFuzzing`, `dataQuantisation`,
- * `dropoutRate`, `gradientOrthogonalisation: "muon"`, `feedbackLoop`,
+ * `predictiveCoding`, `dropoutRate`,
+ * `gradientOrthogonalisation: "muon"`, `feedbackLoop`,
  * recurrent (`forwardOnly !== true`), non-MSE cost.
  *
  * **TypeScript-only orchestration (Rust path ignores today)**
@@ -51,9 +51,6 @@
  * cancellation for `hardDeadlineTS` / `targetError` remains a follow-up.
  */
 import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
-import type { CrossValidationConfig } from "@config/CrossValidationConfig.ts";
-import type { DataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
-import type { DataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
 import type { PredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
 
 export interface TrainArguments extends BackPropagationArguments {
@@ -134,37 +131,6 @@ export interface TrainArguments extends BackPropagationArguments {
    * Skips the Rust trainer.
    */
   predictiveCoding: PredictiveCodingConfig;
-
-  /**
-   * Cross-validation configuration.
-   *
-   * Issue #1865: When enabled, training data is split into k folds.
-   * The creature is trained on k-1 folds and validated on the held-out
-   * fold. Fitness is the average validation error across all folds.
-   *
-   * Skips the Rust trainer (fold orchestration stays in TypeScript).
-   */
-  crossValidation: CrossValidationConfig;
-
-  /**
-   * Data fuzzing (noise injection) configuration.
-   *
-   * Issue #1900: When enabled, small random perturbations are added
-   * to training data each iteration to prevent memorisation.
-   *
-   * Skips the Rust trainer.
-   */
-  dataFuzzing: DataFuzzingConfig;
-
-  /**
-   * Data quantisation configuration.
-   *
-   * Issue #1901: When enabled, training data values are quantised to
-   * a fixed number of discrete levels to prevent memorisation.
-   *
-   * Skips the Rust trainer.
-   */
-  dataQuantisation: DataQuantisationConfig;
 
   /**
    * Enable synthetic synapse generation during training.

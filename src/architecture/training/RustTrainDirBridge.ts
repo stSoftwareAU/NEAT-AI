@@ -326,17 +326,8 @@ export function rustTrainDirSkipReason(
   if (options.predictiveCoding?.enabled) {
     return "predictive coding is not backpropagation";
   }
-  if (options.crossValidation?.enabled) {
-    return "cross-validation is TypeScript fold orchestration";
-  }
   if (cost.getName() !== MSE.NAME) {
     return `cost ${cost.getName()} is not used by WASM backprop`;
-  }
-  if (setup.fuzzingConfig.enabled) {
-    return "fuzzing is not backpropagation";
-  }
-  if (setup.quantisationConfig.enabled) {
-    return "quantisation is not backpropagation";
   }
   if (setup.iterationConfig.dropoutRate > 0) {
     return "dropout is not backpropagation";

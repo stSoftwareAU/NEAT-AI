@@ -76,11 +76,6 @@ to a dedicated guide, the contrast with standard NEAT is documented there.
   soft-thresholding to drive small weights to exactly zero, promoting sparsity.
   Mirrors the same decay for biases. Standard NEAT has no gradient step at all
   and therefore no weight decay.
-- ✅ **K-Fold Cross-Validation** _(NEAT-AI extension)_: Splits training data
-  into k folds, trains on k−1 folds and validates on the held-out fold. Fitness
-  is the average validation error across all folds, reducing overfitting and
-  producing more robust fitness estimates. Configurable fold count (1–20) with
-  automatic fallback to single-split when data is insufficient.
 - ✅ **Gradient Accumulation Normalisation** _(NEAT-AI extension)_: Optional
   sqrt-scaling for gradient accumulation in high fan-out neurons, preventing
   neurons with many downstream connections from receiving disproportionately

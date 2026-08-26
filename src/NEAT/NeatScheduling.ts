@@ -536,8 +536,6 @@ export function scheduleTraining(
     feedbackLoop: neat.config.feedbackLoop,
     sparseRatio: neat.config.sparseRatio,
     predictiveCoding: neat.config.predictiveCoding,
-    crossValidation: neat.config.crossValidation,
-    dataFuzzing: neat.config.dataFuzzing,
   };
 
   // Issue #3435: capture the abandon token at schedule time so a late-resolving

@@ -1,14 +1,14 @@
 # 📉 Training Troubleshooting
 
 This document covers training-quality symptoms: fitness plateaus, NaN / infinity
-outputs, and data fuzzing / regularisation tuning. See the index in
+outputs, and regularisation tuning. See the index in
 [`../TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) for other categories.
 
 ## Table of contents
 
 - [Fitness plateau](#-fitness-plateau)
 - [Creatures producing NaN or Infinity](#-creatures-producing-nan-or-infinity)
-- [Data fuzzing and regularisation](#-data-fuzzing-and-regularisation)
+- [Regularisation](#-regularisation)
 
 ## 📉 Fitness plateau
 
@@ -214,31 +214,22 @@ calculations.
 > fitness function that divides by zero or takes the logarithm of a non-positive
 > number will corrupt the entire population silently.
 
-## 🎲 Data fuzzing and regularisation
+## ⚖️ Regularisation
 
-### Noise injection does not seem to help
+### Weights or biases keep exploding
 
-- **Check noise scale:** If `inputNoiseScale` is too small (e.g. `0.001`), the
-  perturbations may not be meaningful enough to regularise. Try increasing to
-  `0.02`–`0.05`.
-- **Check noise scale is not too large:** If `inputNoiseScale` is above `0.1`,
-  you may be injecting so much noise that the signal is overwhelmed. Start small
-  and increase gradually.
-- **Consider combining with cross-validation:** Noise injection works best when
-  paired with `crossValidation` to get a more reliable estimate of
-  generalisation performance.
+- **Check the caps:** `weightRegularisation.maxAbsoluteWeight` and
+  `biasRegularisation.maxAbsoluteBias` bound the magnitude a mutation may
+  reach. Lower them when activations saturate.
+- **Raise `l2Strength`:** a stronger L2 term pulls large weights back towards
+  zero each iteration.
 
-### Training converges more slowly with fuzzing enabled
+### The population memorises the training set
 
-This is expected — noise injection deliberately makes the training task harder
-to prevent memorisation. If convergence is unacceptably slow, reduce
-`inputNoiseScale` or increase `iterations`/`timeoutMinutes`.
-
-### Cross-validation increases training time significantly
-
-Each generation evaluates creatures `k` times (once per fold). If training time
-is a concern, reduce `folds` from the default of 5 to 3, or increase
-`timeoutMinutes` to allow more time for the additional evaluations.
+- **Raise `costOfGrowth`:** larger topologies memorise more readily; charging
+  for growth favours the smaller creature that generalises.
+- **Enable `preferSmallChanges`:** biasing the mutation distribution towards
+  small steps keeps a well-generalising creature from being overshot.
 
 ## See also
 
