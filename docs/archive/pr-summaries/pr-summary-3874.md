@@ -72,7 +72,18 @@ ok | 3 passed | 0 failed (21ms)
 ```
 
 `./quality.sh` (format, lint, bash check, `deno check` over 2534 files,
-discovery verification, WASM sync, full test suite) passes.
+discovery verification, WASM sync, full test suite) is green apart from two
+failures that reproduce identically at `7d4081e6`, the commit this branch
+started from. Both were confirmed pre-existing by running them in a worktree at
+that commit, and both now have their own issue:
+
+| Failing test                                                                     | Pre-existing at `7d4081e6` | Tracked by |
+| -------------------------------------------------------------------------------- | -------------------------- | ---------- |
+| `RustScorerDatasetParity` — RMSE is still a known divergence                     | yes                        | #3891      |
+| `AnalyzeParallelGpuGuard` — `errorKind` is `data_validation`, not `GpuPermanent` | yes                        | #3892      |
+
+Neither touches the retired options, and fixing either here would be out of
+scope for this issue.
 
 ## Test Plan
 
@@ -95,6 +106,10 @@ was weakened to make the suite green):
 - `test/architecture/training/RustTrainDirBridge.ts` — dropped the three
   skip-reason cases for gates that no longer exist.
 - `test/config/parsers/TrainingParsers.ts` — dropped the retired parser cases.
+- `test/scripts/AuditOptionUsage.ts` — the pinned `NeatArguments` top-level key
+  count moves 109 → 106. This pin exists to catch an unintended surface change,
+  so it moves _with_ a deliberate one; the removal of exactly three keys is the
+  reason, and the comment records it alongside the earlier removals.
 
 Deleted with their subjects: `test/architecture/CrossValidation.ts`,
 `test/architecture/KFoldSplitter.ts`, `test/config/CrossValidationConfig.ts`,
