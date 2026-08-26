@@ -37,6 +37,7 @@ import type {
 import type { BreedingSubPhaseTiming } from "@config/TrainingEvent.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
+import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import type { WasmCacheConfig } from "@config/WasmCacheConfig.ts";
 import { getLogger } from "@utils/Logger.ts";
@@ -115,6 +116,15 @@ export interface RequestData {
      * evaluation error for outputs that fall outside the specified ranges.
      */
     outputRanges?: ReadonlyArray<RequiredOutputRange>;
+    /**
+     * Issue #3865: the run's resolved Rust scorer config.
+     *
+     * When provided, the worker scores with this config rather than
+     * re-deriving one from its own `NEAT_AI_RUST_SCORER_*` environment, so an
+     * explicit `NeatOptions.rustScorer` reaches the per-creature path and the
+     * two scoring call sites cannot drift apart.
+     */
+    rustScorer?: RequiredRustScorerConfig;
   };
   /** Creature evaluation request */
   evaluate?: {
@@ -350,6 +360,7 @@ export class WorkerHandler
    * @param customCost - Optional custom cost function file path
    * @param wasmCache - Issue #1567: Optional WASM cache configuration to propagate to the worker
    * @param outputRanges - Issue #1620: Optional per-output range constraints for fitness penalty
+   * @param rustScorer - Issue #3865: Optional resolved Rust scorer config to propagate to the worker
    */
   constructor(
     dataSetDir: string,
@@ -358,6 +369,7 @@ export class WorkerHandler
     customCost?: { filePath: string },
     wasmCache?: WasmCacheConfig,
     outputRanges?: ReadonlyArray<RequiredOutputRange>,
+    rustScorer?: RequiredRustScorerConfig,
   ) {
     let rejectInitError: ((err: Error) => void) | null = null;
     const initErrorPromise: Promise<never> = new Promise((_, reject) => {
@@ -450,6 +462,7 @@ export class WorkerHandler
           outputRanges: outputRanges && outputRanges.length > 0
             ? outputRanges
             : undefined,
+          rustScorer,
         },
       };
 

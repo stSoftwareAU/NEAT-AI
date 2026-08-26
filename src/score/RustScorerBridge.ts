@@ -19,15 +19,21 @@
  * `NEAT_AI_RUST_SCORER_STRICT=0` opts back out to the degrading path. A missing
  * or too-old binary remains a graceful skip in either mode.
  *
- * Configuration comes from `NEAT_AI_RUST_SCORER_*` environment variables via
- * {@link getEnvRustScorerConfig} and is cached for the process. The `__`-prefixed
+ * Configuration comes from `NeatOptions.rustScorer` layered over the
+ * `NEAT_AI_RUST_SCORER_*` environment variables — see
+ * {@link resolveRustScorerConfig} for the precedence rule. Only the env layer
+ * ({@link getEnvRustScorerConfig}) is cached for the process. The `__`-prefixed
  * exports are test seams: under `deno test --parallel` every test file shares
  * one OS environment, so tests must override module state rather than
  * `Deno.env` (Issue #3234).
  */
 import { join, resolve } from "@std/path";
 import type { Creature } from "@creature";
-import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
+import type {
+  RequiredRustScorerConfig,
+  RustScorerConfig,
+} from "@config/RustScorerConfig.ts";
+import { parseNumber } from "@config/ParseOptions.ts";
 import type { BuiltInCostName } from "@costs";
 import { DatasetError } from "@errors/DatasetError.ts";
 import {
@@ -164,6 +170,50 @@ export function getEnvRustScorerConfig(): RequiredRustScorerConfig {
     ? base
     : { ...base, ...testConfigOverride };
   return envRustScorerCache;
+}
+
+/**
+ * Resolve the scorer configuration for one run (Issue #3865).
+ *
+ * **Precedence: an explicit option beats the environment, and the environment
+ * beats the built-in default.** A field supplied on `NeatOptions.rustScorer`
+ * wins outright; a field left out falls through to `NEAT_AI_RUST_SCORER_*`, and
+ * then to the default baked into {@link getEnvRustScorerConfig}. The direction
+ * that matters is the first one — an explicit `enabled: false` must survive
+ * `NEAT_AI_RUST_SCORER_ENABLED=1`, because failing open turns the native path
+ * on for an embedder who asked for it off and every resulting score still looks
+ * plausible.
+ *
+ * Only the **env layer** is memoised (`envRustScorerCache`, process-lifetime).
+ * The merged result belongs to one run and is deliberately never written back
+ * into that cache, so a per-run option cannot leak into another run.
+ *
+ * `env` is replaced wholesale rather than merged key by key: the supplied map
+ * is the complete set of extra variables the caller wants the scorer child
+ * process to see.
+ *
+ * @param overrides - Caller-supplied partial config; `undefined` yields the
+ *   env-derived config unchanged.
+ */
+export function resolveRustScorerConfig(
+  overrides?: RustScorerConfig,
+): RequiredRustScorerConfig {
+  const base = getEnvRustScorerConfig();
+  if (overrides === undefined) return base;
+
+  return {
+    enabled: overrides.enabled ?? base.enabled,
+    binaryPath: overrides.binaryPath ?? base.binaryPath,
+    timeoutMs: parseNumber(
+      "Rust scorer timeoutMs",
+      overrides.timeoutMs,
+      base.timeoutMs,
+      { integer: true, min: 0 },
+    ),
+    env: overrides.env ?? base.env,
+    batch: overrides.batch ?? base.batch,
+    strict: overrides.strict ?? base.strict,
+  };
 }
 
 function getTmpDiagnostics(): string {

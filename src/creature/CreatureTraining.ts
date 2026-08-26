@@ -487,6 +487,9 @@ export async function evolveDir(
       config.customCost,
       config.wasmCache,
       outputRanges,
+      // Issue #3865: the per-creature worker path scores with the run's
+      // resolved config, not one re-derived from the worker's own environment.
+      config.rustScorer,
     );
     try {
       // deno-lint-ignore no-await-in-loop
@@ -509,6 +512,7 @@ export async function evolveDir(
           config.customCost,
           config.wasmCache,
           outputRanges,
+          config.rustScorer,
         );
         // deno-lint-ignore no-await-in-loop
         await w.waitUntilReady();
@@ -1652,6 +1656,11 @@ export async function scoreDir(
     dataDir,
     Costs.find(config.costName),
     config.feedbackLoop,
+    undefined,
+    undefined,
+    // Issue #3865: honour an explicit `rustScorer` option on the direct
+    // score path too, layered over `NEAT_AI_RUST_SCORER_*`.
+    config.rustScorer,
   );
 
   creature.score = calculateScore(

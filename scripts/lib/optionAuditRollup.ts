@@ -321,16 +321,16 @@ const SLICE_E: RollupEntry[] = [
     note: "Checked as a pair with input-only `seed`; both stay.",
   }),
   {
-    key: "RustScorerConfig",
+    key: "rustScorer",
     slice: "E",
     verdict: "IN USE",
-    internal: true,
     interfaces: [
       "src/config/RustScorerConfig.ts::RustScorerConfig",
       "src/config/RustScorerConfig.ts::RequiredRustScorerConfig",
     ],
     fieldOverrides: { env: { verdict: "KEEP" } },
-    note: "No NeatOptions key — resolved from NEAT_AI_RUST_SCORER_* env.",
+    note:
+      "#3865 promoted it to a NeatOptions key; option beats NEAT_AI_RUST_SCORER_* beats default.",
   },
 ];
 

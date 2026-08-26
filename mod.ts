@@ -177,6 +177,21 @@ export { DEFAULT_OUTPUT_RANGE_PENALTY_WEIGHT } from "@config/OutputRangeConfig.t
 export { calculateOutputRangePenalty } from "@architecture/OutputRangePenalty.ts";
 
 /**
+ * Native Rust Scorer Configuration
+ *
+ * Issue #3865: `NeatOptions.rustScorer` routes dataset scoring through the
+ * external `rust_scorer` binary. An explicit option beats the matching
+ * `NEAT_AI_RUST_SCORER_*` environment variable, which beats the built-in
+ * default.
+ *
+ * @see {@link module:src/config/RustScorerConfig}
+ */
+export type {
+  RequiredRustScorerConfig,
+  RustScorerConfig,
+} from "@config/RustScorerConfig.ts";
+
+/**
  * MCMC Acceptance Criterion
  *
  * Issue #2199: Markov Chain Monte Carlo (MCMC) temperature-based acceptance

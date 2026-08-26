@@ -26,6 +26,7 @@ const config = createNeatConfig({
 | `workerThreadCap.maxMemoryMB`                | `integer` | `0` (disabled)                                                   | Total memory budget for workers (MB)              |
 | `workerThreadCap.estimatedMemoryPerWorkerMB` | `integer` | `2048`                                                           | Estimated memory per worker (MB)                  |
 | `parallelEvaluation.topologyGrouping`        | `boolean` | `true`                                                           | Group same-topology creatures for WASM cache hits |
+| `rustScorer.enabled`                         | `boolean` | `false`                                                          | Score datasets with the external Rust scorer      |
 
 ## 🧮 Sizing the pool
 
@@ -118,6 +119,60 @@ const config = createNeatConfig({
 > removed the inert `maxConcurrentEvaluations` cap, which defaulted to "no
 > cap".)
 
+## 🦀 Native Rust scorer
+
+Issue #3865: `rustScorer` routes dataset scoring through the external
+`rust_scorer` binary instead of the WASM path. It used to be reachable only
+through `NEAT_AI_RUST_SCORER_*` environment variables; it is now an option you
+can pass alongside the rest of your configuration.
+
+```ts
+const config = createNeatConfig({
+  rustScorer: {
+    enabled: true, // default: false
+    binaryPath: "/opt/bin/rust_scorer", // default: "rust_scorer" (via PATH)
+    batch: true, // one invocation per generation (default)
+    strict: true, // an exec/parse failure throws (default)
+    timeoutMs: 0, // 0 = no timeout
+  },
+});
+```
+
+| Field        | Type      | Default        | Description                                       |
+| ------------ | --------- | -------------- | ------------------------------------------------- |
+| `enabled`    | `boolean` | `false`        | Delegate dataset scoring to the Rust scorer       |
+| `binaryPath` | `string`  | `rust_scorer`  | Scorer executable (resolved via `PATH`)           |
+| `batch`      | `boolean` | `true`         | One invocation per generation, not per creature   |
+| `strict`     | `boolean` | `true`         | Throw on exec/parse failure instead of degrading  |
+| `timeoutMs`  | `integer` | `0` (no limit) | Per-invocation timeout in milliseconds (min: `0`) |
+| `env`        | `object`  | `{}`           | Extra environment variables for the child process |
+
+### Precedence
+
+**An explicit option beats the environment, and the environment beats the
+built-in default.** Set a field here and it wins outright; omit it and the
+matching `NEAT_AI_RUST_SCORER_*` variable applies; omit both and the default
+does. So `rustScorer: { enabled: false }` keeps the native path off even on a
+host that exports `NEAT_AI_RUST_SCORER_ENABLED=1`.
+
+```mermaid
+flowchart LR
+    OPT["NeatOptions.rustScorer<br/>(explicit option)"] --> RES{"resolveRustScorerConfig"}
+    ENV["NEAT_AI_RUST_SCORER_*<br/>(environment)"] --> RES
+    DEF["Built-in default"] --> RES
+    RES --> CFG["config.rustScorer<br/>resolved once per run"]
+    CFG --> BATCH["Fitness — batch path"]
+    CFG --> PER["evaluateDir — per-creature path<br/>(propagated to workers)"]
+```
+
+Omitting `rustScorer` entirely resolves to exactly the environment-derived
+config, so a caller who sets nothing sees no change in behaviour. The
+environment layer is read once and cached for the process; the merged result
+belongs to one run and never writes back into that cache.
+
+The environment variables themselves are listed in
+[TROUBLESHOOTING.md](../TROUBLESHOOTING.md#-environment-variables-reference).
+
 ## ✅ Validation rules
 
 - `threads` must be at least `1`.
@@ -125,6 +180,7 @@ const config = createNeatConfig({
   when `threads > 2`. Partitioning is disabled when `threads <= 2`.
 - `workerThreadCap.estimatedMemoryPerWorkerMB` must be at least `1` if
   `maxMemoryMB > 0`.
+- `rustScorer.timeoutMs` must be a non-negative integer.
 
 ## 👀 See also
 
