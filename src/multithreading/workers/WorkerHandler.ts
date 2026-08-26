@@ -220,6 +220,14 @@ export interface ResponseData {
   evaluate?: {
     /** Error value from the evaluation */
     error: number;
+    /**
+     * Issue #3866: true when an available `rust_scorer` failed during this
+     * evaluation and scoring degraded to WASM. Absent/false means the native
+     * path either served the request or was never available (a graceful skip,
+     * which is not a fallback). The main thread folds this into the
+     * per-generation and run-level native-scoring fallback verdict.
+     */
+    nativeFallback?: boolean;
   };
   /** Training response */
   train?: {

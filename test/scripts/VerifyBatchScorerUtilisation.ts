@@ -21,6 +21,9 @@ const HEALTHY: ScorerUtilisationTotals = {
   creaturesBatchScored: 318,
   creaturesPerCreatureScored: 0,
   batchFallbackGenerations: 0,
+  // Issue #3866: nothing degraded, so the run-level verdict stays unset.
+  nativeFallbackGenerations: 0,
+  nativeScoringFallback: false,
 };
 
 Deno.test("classifySpawns splits the --help probe from batch invocations", () => {
@@ -59,6 +62,9 @@ Deno.test("detectDiscrepancies: per-creature fallback is flagged", () => {
     creaturesBatchScored: 0,
     creaturesPerCreatureScored: 318,
     batchFallbackGenerations: 14,
+    // Issue #3866: a batch fallback is always a native-scoring fallback.
+    nativeFallbackGenerations: 14,
+    nativeScoringFallback: true,
   };
   // partitionLines present (14), but every creature fell back; 0 batch spawns.
   const d = detectDiscrepancies(fellBack, 14, 0, 1);
@@ -91,6 +97,8 @@ Deno.test("detectDiscrepancies: invocations != generations is flagged", () => {
     creaturesBatchScored: 300,
     creaturesPerCreatureScored: 0,
     batchFallbackGenerations: 0,
+    nativeFallbackGenerations: 0,
+    nativeScoringFallback: false,
   };
   const d = detectDiscrepancies(uneven, 14, 13, 1);
   assertEquals(d.length, 1);

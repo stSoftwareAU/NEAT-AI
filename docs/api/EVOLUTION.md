@@ -193,12 +193,17 @@ interface PhaseTimingTotals {
 // scorerUtilisation — per-backend scorer counts summed across the run
 // (Issue #3234). batchFallbackGenerations > 0 means the native batch
 // path failed at least once and scoring fell back to the slow worker path.
+// nativeScoringFallback is the run-level verdict (Issue #3866): it also
+// covers the per-creature rust_scorer path, so it is set on a run that
+// degraded entirely outside the batch path.
 interface ScorerUtilisationTotals {
   readonly generations: number;
   readonly batchScorerInvocations: number;
   readonly creaturesBatchScored: number;
   readonly creaturesPerCreatureScored: number;
   readonly batchFallbackGenerations: number;
+  readonly nativeFallbackGenerations: number;
+  readonly nativeScoringFallback: boolean;
 }
 
 // trainingOutcomes — what the run's memetic training actually bought
