@@ -536,6 +536,235 @@ Deno.test({
   },
 });
 
+/**
+ * Issue #3869 — the opt-in GPU scorer lane.
+ *
+ * Writes a `deno` shim on PATH that logs the GPU-relevant env of every call
+ * and lets each test choose the pre-flight's exit code, so the lane's three
+ * outcomes (proceed / clean skip / fail loud) are exercised on a host with no
+ * GPU at all.
+ *
+ * @param probeExit - exit code the shim returns for
+ *   `deno run … scripts/check_gpu_scorer.ts`
+ */
+async function runGpuScorerLane(
+  probeExit: number,
+  extraArgs: string[] = [],
+): Promise<{ code: number; stdout: string; stderr: string; calls: string[] }> {
+  const home = await Deno.makeTempDir({ prefix: "neat-quality-gpu-lane-" });
+  const workDir = await isolatedQualityDir("neat-quality-gpu-lane-work-");
+  try {
+    const binDir = `${home}/.deno/bin`;
+    await Deno.mkdir(binDir, { recursive: true });
+    const callLog = `${home}/deno-calls.log`;
+    await Deno.writeTextFile(
+      `${binDir}/deno`,
+      `#!/usr/bin/env bash
+printf 'NEAT_SCORER_GPU=%s DENO_JOBS=%s argv:%s\\n' \\
+  "\${NEAT_SCORER_GPU-<unset>}" "\${DENO_JOBS-<unset>}" "$*" >> "${callLog}"
+case "$*" in
+  *check_gpu_scorer.ts*) exit ${probeExit} ;;
+esac
+exit 0
+`,
+    );
+    await Deno.chmod(`${binDir}/deno`, 0o755);
+
+    const fakeScorer = `${home}/rust_scorer`;
+    await Deno.writeTextFile(fakeScorer, "#!/usr/bin/env bash\nexit 0\n");
+    await Deno.chmod(fakeScorer, 0o755);
+
+    const command = new Deno.Command("bash", {
+      args: [
+        "./quality.sh",
+        "--gpu-scorer",
+        `--rust-scorer-bin=${fakeScorer}`,
+        "--skip-discovery",
+        "--skip-wasm",
+        ...extraArgs,
+      ],
+      stdout: "piped",
+      stderr: "piped",
+      cwd: workDir,
+      env: { PATH: Deno.env.get("PATH") ?? "", HOME: home },
+    });
+    const output = await command.output();
+    let calls: string[] = [];
+    try {
+      calls = (await Deno.readTextFile(callLog))
+        .split("\n")
+        .filter((l) => l.trim().length > 0);
+    } catch {
+      // No shim call at all — the assertions report that.
+    }
+    return {
+      code: output.code,
+      stdout: new TextDecoder().decode(output.stdout),
+      stderr: new TextDecoder().decode(output.stderr),
+      calls,
+    };
+  } finally {
+    await Deno.remove(home, { recursive: true });
+    await Deno.remove(workDir, { recursive: true });
+  }
+}
+
+Deno.test({
+  name: "quality.sh --help documents the opt-in GPU scorer lane (Issue #3869)",
+  permissions: { run: true, read: true },
+  fn: async () => {
+    const result = await runQuality(["--help"]);
+    assertEquals(result.code, 0);
+    assert(
+      result.stdout.includes("--gpu-scorer"),
+      "Expected help to document the --gpu-scorer flag",
+    );
+    assert(
+      result.stdout.includes("NOT exercised by default"),
+      `Expected help to say GPU is not exercised by default; got: ${result.stdout}`,
+    );
+    assert(
+      result.stdout.includes("test/score/"),
+      "Expected help to name the subset the GPU lane runs",
+    );
+    assert(
+      result.stdout.includes("DENO_JOBS=1"),
+      "Expected help to state the GPU lane's serialisation",
+    );
+  },
+});
+
+Deno.test({
+  name: "quality.sh --dry-run without --gpu-scorer plans no GPU lane",
+  permissions: { run: true, read: true },
+  fn: async () => {
+    const result = await runQuality(["--dry-run"]);
+    assertEquals(result.code, 0);
+    assert(
+      !result.stdout.includes("GPU scorer"),
+      `Default run must not plan a GPU lane; got: ${result.stdout}`,
+    );
+  },
+});
+
+Deno.test({
+  name: "quality.sh --dry-run --gpu-scorer plans the probe and the smoke lane",
+  permissions: { run: true, read: true },
+  fn: async () => {
+    const result = await runQuality(["--dry-run", "--gpu-scorer"]);
+    assertEquals(result.code, 0, result.stderr);
+    assert(
+      result.stdout.includes("Probing rust_scorer GPU backend"),
+      `Expected the backend pre-flight step; got: ${result.stdout}`,
+    );
+    assert(
+      result.stdout.includes("GPU scorer smoke lane"),
+      `Expected the GPU smoke lane step; got: ${result.stdout}`,
+    );
+    assert(
+      result.stdout.includes("Running tests (Rust scorer mode)"),
+      "The GPU lane is added alongside the default lane, not in place of it",
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "quality.sh --gpu-scorer runs test/score/ serially with NEAT_SCORER_GPU=auto",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const result = await runGpuScorerLane(0);
+    assertEquals(
+      result.code,
+      0,
+      `quality.sh --gpu-scorer must succeed with the shim; stderr=${result.stderr}`,
+    );
+
+    const testCalls = result.calls.filter((l) => l.includes("argv:test "));
+    assertEquals(
+      testCalls.length,
+      2,
+      `expected the default lane plus the GPU lane; got: ${
+        JSON.stringify(result.calls)
+      }`,
+    );
+    const [defaultLane, gpuLane] = testCalls;
+    assert(
+      defaultLane.startsWith("NEAT_SCORER_GPU=off"),
+      `the default lane must stay GPU-off; got: ${defaultLane}`,
+    );
+    assert(
+      gpuLane.startsWith("NEAT_SCORER_GPU=auto"),
+      `the GPU lane must hand the scorer its default auto mode; got: ${gpuLane}`,
+    );
+    assert(
+      gpuLane.includes("DENO_JOBS=1"),
+      `the GPU lane must serialise workers; got: ${gpuLane}`,
+    );
+    assert(
+      gpuLane.trimEnd().endsWith("test/score/"),
+      `the GPU lane must run only the scorer subset; got: ${gpuLane}`,
+    );
+    assert(
+      !defaultLane.includes("test/score/"),
+      `the default lane must still run the whole suite; got: ${defaultLane}`,
+    );
+  },
+});
+
+Deno.test({
+  name: "quality.sh --gpu-scorer skips cleanly when the host has no usable GPU",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const result = await runGpuScorerLane(2);
+    assertEquals(
+      result.code,
+      0,
+      `a contributor without a GPU must not fail the gate; stderr=${result.stderr}`,
+    );
+    assert(
+      result.stdout.includes("Skipping GPU scorer smoke lane"),
+      `Expected a clear skip message; got: ${result.stdout}`,
+    );
+    const testCalls = result.calls.filter((l) => l.includes("argv:test "));
+    assertEquals(
+      testCalls.length,
+      1,
+      `only the default lane may run when the probe skips; got: ${
+        JSON.stringify(result.calls)
+      }`,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "quality.sh --gpu-scorer fails loud when the backend pre-flight rejects the host",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    // Exit 1 from the probe is the silent-CPU regression (`--gpu on` reported
+    // cpu-fallback) or an unreadable probe. Neither may be reconciled to green.
+    const result = await runGpuScorerLane(1);
+    assert(
+      result.code !== 0,
+      `quality.sh must fail when the GPU pre-flight fails; stdout=${result.stdout}`,
+    );
+    assert(
+      result.stderr.includes("GPU scorer pre-flight failed") &&
+        result.stderr.includes("score on the CPU"),
+      `Expected a fail-loud pre-flight message; got: ${result.stderr}`,
+    );
+    const testCalls = result.calls.filter((l) => l.includes("argv:test "));
+    assertEquals(
+      testCalls.length,
+      1,
+      `the GPU lane must not run after a failed pre-flight; got: ${
+        JSON.stringify(result.calls)
+      }`,
+    );
+  },
+});
+
 Deno.test({
   name:
     "quality.sh --dry-run --wasm-scorer ignores leftover native backprop env",
