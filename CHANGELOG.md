@@ -327,7 +327,7 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   (`CrossValidationTrainer.ts`, `KFoldSplitter.ts`, `DataFuzzing.ts`,
   `DataQuantisation.ts`, `applyDataAugmentation` and `trainDirSingleFold`), the
   training gates in `Training.ts`, `TrainingSetup.ts`, `TrainingEpoch.ts`,
-  `PredictiveCodingTrainer.ts`, `NeatScheduling.ts` and the two Rust-trainer
+  `PredictiveCodingTrainer.ts`, `NeatScheduling.ts` and the three Rust-trainer
   skip reasons in `RustTrainDirBridge.ts`, plus the public docs. **Breaking for
   embedders:** `DataFuzzingConfig`, `RequiredDataFuzzingConfig` and
   `DEFAULT_DATA_FUZZING_CONFIG` are no longer exported from `mod.ts`, and

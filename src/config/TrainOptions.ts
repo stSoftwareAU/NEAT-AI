@@ -36,9 +36,8 @@
  *   Rust trains the resulting topology
  *
  * **Skip Rust (TypeScript / WASM loop)** — not backpropagation:
- * `predictiveCoding`, `dropoutRate`,
- * `gradientOrthogonalisation: "muon"`, `feedbackLoop`,
- * recurrent (`forwardOnly !== true`), non-MSE cost.
+ * `predictiveCoding`, `dropoutRate`, `gradientOrthogonalisation: "muon"`,
+ * `feedbackLoop`, recurrent (`forwardOnly !== true`), non-MSE cost.
  *
  * **TypeScript-only orchestration (Rust path ignores today)**
  * - `log`, `targetError`, `trainingTimeOutMinutes`, `hardDeadlineTS`
