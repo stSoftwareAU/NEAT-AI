@@ -34,21 +34,30 @@ export function seededRandom(seed: number): () => number {
  *
  * @param selfLoop - add a recurrent `hidden→hidden` synapse so the creature
  *   genuinely carries state between records.
+ * @param magnitudeScale - multiplier applied to every weight and bias. The
+ *   default `1` keeps every magnitude at or below 1.0, where `valuePenalty()`
+ *   returns 0 and the score's magnitude term is inert. A scale above ~2 pushes
+ *   the magnitudes into the penalised decades so the term actually contributes
+ *   (Issue #3867) — the score-formula comparison is otherwise blind to that
+ *   part of the formula.
  */
-export function buildScoringCreature(selfLoop = false): Creature {
+export function buildScoringCreature(
+  selfLoop = false,
+  magnitudeScale = 1,
+): Creature {
   const neurons: CreatureInternal["neurons"] = [];
   for (let h = 0; h < HIDDEN; h++) {
     neurons.push({
       type: "hidden",
       index: INPUTS + h,
-      bias: 0.15 - h * 0.1,
+      bias: (0.15 - h * 0.1) * magnitudeScale,
       squash: "LOGISTIC",
     });
   }
   neurons.push({
     type: "output",
     index: INPUTS + HIDDEN,
-    bias: -0.2,
+    bias: -0.2 * magnitudeScale,
     squash: "LOGISTIC",
   });
 
@@ -58,13 +67,13 @@ export function buildScoringCreature(selfLoop = false): Creature {
       synapses.push({
         from: i,
         to: INPUTS + h,
-        weight: 0.3 + 0.2 * h - 0.1 * i,
+        weight: (0.3 + 0.2 * h - 0.1 * i) * magnitudeScale,
       });
     }
     synapses.push({
       from: INPUTS + h,
       to: INPUTS + HIDDEN,
-      weight: 0.25 + 0.15 * h,
+      weight: (0.25 + 0.15 * h) * magnitudeScale,
     });
   }
 
@@ -76,7 +85,7 @@ export function buildScoringCreature(selfLoop = false): Creature {
   });
   creature.forwardOnly = !selfLoop;
   if (selfLoop) {
-    creature.connect(INPUTS, INPUTS, 0.35);
+    creature.connect(INPUTS, INPUTS, 0.35 * magnitudeScale);
   }
   creature.fix();
   return creature;
