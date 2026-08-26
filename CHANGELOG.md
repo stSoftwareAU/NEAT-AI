@@ -89,6 +89,28 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3886:** `./quality.sh` is green again on any machine with a built
+  NEAT-AI-Discovery library. The `analyzeParallel` GPU-guard stub described
+  itself as structurally valid but omitted the creature's `input` / `output`
+  widths behind an `as` cast, and Discovery's `CreatureJson` requires both — so
+  the payload was rejected with `missing field 'input'` /
+  `errorKind: "data_validation"` before GPU availability could be classified.
+  The widths are back and the stub is type-annotated rather than cast. The
+  production payload was never affected (`creatureToRustFormat()` always emits
+  both widths) and there is no `{ input: … }` envelope on the wire; a new
+  FFI-mocked test pins that flat shape so the contract is checked in CI, where
+  no Discovery library exists.
+
+- **Issue #3883:** `./quality.sh` is green again on any machine with a current
+  `rust_scorer`. `test/score/RustScorerDatasetParity.ts` still carried the RMSE
+  `KNOWN_DIVERGENCES` entry from Issue #3853, and those entries are asserted to
+  _still_ disagree — so once both engines were fixed the guard fired exactly as
+  designed. Removing the entry puts RMSE back under the ordinary
+  `PARITY_REL_TOLERANCE` assertions on both topology styles, where the engines
+  now agree to 1e-9 relative. The failure never reached CI because
+  `resolveRustScorerBinary()` finds no binary there and the whole live lane is
+  skipped.
+
 - **Issue #3880:** `IF.fix` no longer hands a source a role it already carries,
   and no longer leaves a `(from, to)` run out of ascending role order. The pass
   types an untyped inward synapse by writing `synapse.type` in place, which both
@@ -129,8 +151,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `test/score/RustScorerDatasetParity.ts` runs the real binary against the
   TypeScript path over the same dataset for all seven built-in costs × two
   topology styles — the first test anywhere that compares the two engines'
-  actual numbers. RMSE (Issue #3853) is recorded there as a known divergence and
-  asserted to still reproduce, so the entry cannot go stale.
+  actual numbers. Its `KNOWN_DIVERGENCES` map records any cost the two engines
+  are known to disagree on and asserts each entry still reproduces, so an entry
+  cannot go stale (Issue #3883); the map is empty today, meaning every built-in
+  cost — RMSE included — is covered by the ordinary parity assertions.
 
 - **Issue #3853:** `RMSE` scoring is now the root of the mean squared error on
   both engines. `evaluateDir` accumulated `RMSE.calculate` per record and
