@@ -26,10 +26,7 @@ import {
 } from "@neat/PerTaskTrainingTimeout.ts";
 import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
 import type { EpochState } from "@architecture/training/TrainingOutcome.ts";
-import {
-  applyDataAugmentation,
-  selectFileSampleIndexes,
-} from "@architecture/training/TrainingSamples.ts";
+import { selectFileSampleIndexes } from "@architecture/training/TrainingSamples.ts";
 
 /** Run a single epoch over all binary files. */
 export function runSingleEpoch(
@@ -93,14 +90,6 @@ export function runSingleEpoch(
           setup.recordArray.subarray(0, creature.input),
         );
         setup.targetsBuffer.set(setup.recordArray.subarray(creature.input));
-
-        applyDataAugmentation(
-          setup.observationsBuffer,
-          setup.targetsBuffer,
-          setup.fuzzingConfig,
-          setup.quantisationConfig,
-          rng,
-        );
 
         // Issue #2483: A `WasmError` from `activateAndTrace` means WASM
         // could not compile/instantiate this creature (e.g. `RuntimeError:

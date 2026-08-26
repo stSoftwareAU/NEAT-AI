@@ -34,7 +34,6 @@ export {
   parseSpeciesStagnation,
 } from "@config/parsers/PopulationParsers.ts";
 export {
-  parseCrossValidation,
   parsePredictiveCoding,
   parseQuantumStep,
 } from "@config/parsers/TrainingParsers.ts";
@@ -43,7 +42,3 @@ export {
   parseBiasRegularisation,
   parseWeightRegularisation,
 } from "@config/parsers/RegularisationParsers.ts";
-export {
-  parseDataFuzzing,
-  parseDataQuantisation,
-} from "@config/parsers/DataParsers.ts";

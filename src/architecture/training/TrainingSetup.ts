@@ -20,14 +20,6 @@ import { buildOutgoingSynapsesMap } from "@propagate/sparse/CalculatePathsToOutp
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
 import { exportJSONWithRuntimeIds } from "@architecture/PopulateRuntimeIdsFromCreature.ts";
 import { generateSyntheticSynapses } from "@propagate/SyntheticSynapses.ts";
-import {
-  DEFAULT_DATA_FUZZING_CONFIG,
-  type RequiredDataFuzzingConfig,
-} from "@config/DataFuzzingConfig.ts";
-import {
-  DEFAULT_DATA_QUANTISATION_CONFIG,
-  type RequiredDataQuantisationConfig,
-} from "@config/DataQuantisationConfig.ts";
 import type {
   CreatureExport,
   CreatureTrace,
@@ -140,8 +132,6 @@ export interface TrainingSetupState {
   bufferPool: BufferPool;
   observationsBuffer: Float32Array;
   targetsBuffer: Float32Array;
-  fuzzingConfig: RequiredDataFuzzingConfig;
-  quantisationConfig: RequiredDataQuantisationConfig;
   syntheticKeys: Set<string> | undefined;
   sparseConfig: SparseConfig;
   bestCreatureJSON: CreatureExport;
@@ -183,18 +173,6 @@ export function prepareTraining(
   const bufferPool = new BufferPool({ maxBuffersPerSize: 4 });
   const observationsBuffer = bufferPool.acquire(creature.input);
   const targetsBuffer = bufferPool.acquire(creature.output);
-
-  // Issue #1900: Resolve data fuzzing configuration.
-  const fuzzingConfig: RequiredDataFuzzingConfig = {
-    ...DEFAULT_DATA_FUZZING_CONFIG,
-    ...options.dataFuzzing,
-  };
-
-  // Issue #1901: Resolve data quantisation configuration.
-  const quantisationConfig: RequiredDataQuantisationConfig = {
-    ...DEFAULT_DATA_QUANTISATION_CONFIG,
-    ...options.dataQuantisation,
-  };
 
   // Issue #1923: Generate synthetic synapses before backpropagation.
   let syntheticKeys: Set<string> | undefined;
@@ -247,8 +225,6 @@ export function prepareTraining(
     bufferPool,
     observationsBuffer,
     targetsBuffer,
-    fuzzingConfig,
-    quantisationConfig,
     syntheticKeys,
     sparseConfig,
     bestCreatureJSON,

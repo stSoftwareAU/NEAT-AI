@@ -162,10 +162,12 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   // `specialist`, leaving 110; #3569 then removed `hyperparameterEvolution`,
   // leaving 109; OPD / Knowledge Distillation / Specialist cleanup then
   // removed `opd`, leaving 108; #3779 then added
-  // `skipTrainingAfterPopulationNoProgress`, making 109.
+  // `skipTrainingAfterPopulationNoProgress`, making 109; #3874 then removed
+  // `crossValidation`, `dataFuzzing` and `dataQuantisation` in 7.0.0,
+  // leaving 106.
   assertEquals(
     topLevel.length,
-    109,
+    106,
     "NeatArguments top-level key count changed",
   );
   assert(

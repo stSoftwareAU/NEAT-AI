@@ -147,8 +147,8 @@ decision trees.
   file/directory instead (Issue #3412); check whether a disk-cleanup sweep
   removed `.trainData-binary*/`. →
   [`DatasetError`](api/ERRORS.md#-dataseterror).
-- **Noise injection / cross-validation tuning** — see
-  [Data fuzzing and regularisation](troubleshooting/TRAINING.md#-data-fuzzing-and-regularisation).
+- **Regularisation tuning** — see
+  [Regularisation](troubleshooting/TRAINING.md#-regularisation).
 
 ## 🔄 CI / quality.sh failures
 

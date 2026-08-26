@@ -146,8 +146,7 @@ tracking, task-specific output heads, and shared representation learning.
 ### 6. 🛡️ Advanced Regularisation Techniques
 
 **Current state**: Comprehensive regularisation suite including dropout, L1/L2
-weight & bias decay, sparse training, pruning, cost-of-growth penalty, and
-cross-validation.
+weight & bias decay, sparse training, pruning, and a cost-of-growth penalty.
 
 **What we have**:
 
@@ -155,8 +154,6 @@ cross-validation.
 - ✅ **L1/L2 weight & bias regularisation** (Issue #1859), applied during
   backpropagation via `WeightRegularisationConfig` and
   `BiasRegularisationConfig`.
-- ✅ **Cross-validation** (Issue #1865): K-fold with validation-based early
-  stopping and single-split fallback.
 - **Sparse training**: configurable `sparseRatio`.
 - **Neuron pruning**: automatic removal of non-contributing neurons.
 - **Cost-of-growth**: penalty for network size.

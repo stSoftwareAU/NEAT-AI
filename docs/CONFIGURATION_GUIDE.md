@@ -49,8 +49,7 @@ when you change it".
   (Clustered Regularly Interspaced Short Palindromic Repeats) injections, and
   feedback-loop mode.
 - **[Training parameters](./config/TRAINING.md)** — backpropagation cadence,
-  batch size, sample rate, synthetic synapses, data fuzzing, and k-fold
-  cross-validation.
+  batch size, sample rate, and synthetic synapses.
 - **[Discovery parameters](./config/DISCOVERY.md)** — Rust FFI (Foreign Function
   Interface) discovery: sample rate, recording/analysis timeouts, caching,
   replay, debug options, and minimum candidates per category.

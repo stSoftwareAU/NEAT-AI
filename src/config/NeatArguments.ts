@@ -31,9 +31,6 @@ import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.
 import type { RequiredDiskSpaceConfig } from "@config/DiskSpaceConfig.ts";
 import type { RequiredWorkerThreadCapConfig } from "@config/WorkerThreadCapConfig.ts";
 import type { RequiredAdaptivePopulationConfig } from "@config/AdaptivePopulationConfig.ts";
-import type { RequiredCrossValidationConfig } from "@config/CrossValidationConfig.ts";
-import type { RequiredDataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
-import type { RequiredDataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
 import type { RequiredMCMCConfig } from "@config/MCMCConfig.ts";
 import type { RequiredParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.ts";
 
@@ -797,33 +794,6 @@ export interface NeatArguments {
    * based on diversity metrics and convergence progress.
    */
   adaptivePopulation: RequiredAdaptivePopulationConfig;
-
-  /**
-   * Cross-validation configuration for fitness evaluation.
-   *
-   * Issue #1865: When enabled, training data is split into k folds
-   * and fitness is evaluated as the average across held-out folds,
-   * improving generalisation and reducing overfitting.
-   */
-  crossValidation: RequiredCrossValidationConfig;
-
-  /**
-   * Data fuzzing (noise injection) configuration.
-   *
-   * Issue #1900: When enabled, small random perturbations are added
-   * to training data each iteration to prevent memorisation and
-   * improve generalisation.
-   */
-  dataFuzzing: RequiredDataFuzzingConfig;
-
-  /**
-   * Data quantisation configuration.
-   *
-   * Issue #1901: When enabled, training data values are quantised to
-   * a fixed number of discrete levels to prevent memorisation.
-   * Deterministic complement to fuzzing (#1900).
-   */
-  dataQuantisation: RequiredDataQuantisationConfig;
 
   /**
    * Maximum number of concurrent discovery operations (Issue #2238).

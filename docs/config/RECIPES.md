@@ -92,21 +92,20 @@ const config = createNeatConfig({
 
 ## 🛡️ Maximum generalisation
 
-Combine noise injection and cross-validation to fight overfitting:
+Lean on regularisation and growth cost to fight overfitting:
 
 ```ts
 const config = createNeatConfig({
   populationSize: 100,
   iterations: 5_000,
   targetError: 0.02,
-  dataFuzzing: {
+  costOfGrowth: 0.001,
+  weightRegularisation: {
     enabled: true,
-    inputNoiseScale: 0.02,
-    noiseType: "gaussian",
+    l2Strength: 0.2,
   },
-  crossValidation: {
+  biasRegularisation: {
     enabled: true,
-    folds: 5,
   },
 });
 ```

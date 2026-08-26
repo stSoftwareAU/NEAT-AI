@@ -325,32 +325,11 @@ Deno.test("Rust trainDir: non-backprop options skip the Rust app", () => {
       needle: "predictive coding",
     },
     {
-      name: "cross-validation",
-      creature: forward,
-      options: { iterations: 1, crossValidation: { enabled: true } },
-      cost: mse,
-      needle: "cross-validation",
-    },
-    {
       name: "custom cost",
       creature: forward,
       options: { iterations: 1 },
       cost: new ConstantCost(),
       needle: "not used by WASM backprop",
-    },
-    {
-      name: "fuzzing",
-      creature: forward,
-      options: { iterations: 1, dataFuzzing: { enabled: true } },
-      cost: mse,
-      needle: "fuzzing",
-    },
-    {
-      name: "quantisation",
-      creature: forward,
-      options: { iterations: 1, dataQuantisation: { enabled: true } },
-      cost: mse,
-      needle: "quantisation",
     },
     {
       name: "dropout",

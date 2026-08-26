@@ -4,11 +4,9 @@
 
 import { assertEquals, assertThrows } from "@std/assert";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
-import { DEFAULT_CROSS_VALIDATION_CONFIG } from "@config/CrossValidationConfig.ts";
 import { DEFAULT_PREDICTIVE_CODING_CONFIG } from "@config/PredictiveCodingConfig.ts";
 import { DEFAULT_QUANTUM_STEP_CONFIG } from "@config/QuantumStepConfig.ts";
 import {
-  parseCrossValidation,
   parsePredictiveCoding,
   parseQuantumStep,
 } from "@config/parsers/TrainingParsers.ts";
@@ -65,30 +63,6 @@ Deno.test("parsePredictiveCoding - applies overrides", () => {
 Deno.test("parsePredictiveCoding - rejects inferenceSteps below 1", () => {
   assertThrows(
     () => parsePredictiveCoding({ inferenceSteps: 0 }),
-    ConfigurationError,
-  );
-});
-
-Deno.test("parseCrossValidation - returns defaults", () => {
-  const cfg = parseCrossValidation(undefined);
-  assertEquals(cfg.enabled, DEFAULT_CROSS_VALIDATION_CONFIG.enabled);
-  assertEquals(cfg.folds, DEFAULT_CROSS_VALIDATION_CONFIG.folds);
-});
-
-Deno.test("parseCrossValidation - applies overrides", () => {
-  const cfg = parseCrossValidation({
-    enabled: true,
-    folds: 5,
-    validationEarlyStopping: true,
-  });
-  assertEquals(cfg.enabled, true);
-  assertEquals(cfg.folds, 5);
-  assertEquals(cfg.validationEarlyStopping, true);
-});
-
-Deno.test("parseCrossValidation - rejects folds above 20", () => {
-  assertThrows(
-    () => parseCrossValidation({ folds: 21 }),
     ConfigurationError,
   );
 });

@@ -3,14 +3,9 @@
  *
  * Extracted from NeatConfigParsers.ts (Issue #2396) to keep each parser
  * group focused on a single concern. This file holds parsers for
- * quantum step sizing, predictive coding inference, and
- * cross-validation folds.
+ * quantum step sizing and predictive coding inference.
  */
 
-import {
-  DEFAULT_CROSS_VALIDATION_CONFIG,
-  type RequiredCrossValidationConfig,
-} from "@config/CrossValidationConfig.ts";
 import { parseNumber } from "@config/ParseOptions.ts";
 import {
   DEFAULT_PREDICTIVE_CODING_CONFIG,
@@ -82,26 +77,4 @@ export function parsePredictiveCoding(
       { minExclusive: 0 },
     ),
   } as RequiredPredictiveCodingConfig;
-}
-
-/** Parse cross-validation configuration (Issue #1865). */
-export function parseCrossValidation(
-  overrides: Record<string, unknown> | undefined,
-): RequiredCrossValidationConfig {
-  const d = DEFAULT_CROSS_VALIDATION_CONFIG;
-  return {
-    enabled: typeof overrides?.enabled === "boolean"
-      ? overrides.enabled
-      : d.enabled,
-    folds: parseNumber(
-      "Cross-validation folds",
-      overrides?.folds,
-      d.folds,
-      { integer: true, min: 1, max: 20 },
-    ),
-    validationEarlyStopping:
-      typeof overrides?.validationEarlyStopping === "boolean"
-        ? overrides.validationEarlyStopping
-        : d.validationEarlyStopping,
-  } as RequiredCrossValidationConfig;
 }

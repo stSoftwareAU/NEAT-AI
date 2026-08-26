@@ -7,11 +7,6 @@
  */
 
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
-import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
-import { applyNoise } from "@propagate/DataFuzzing.ts";
-import { quantiseBuffer } from "@propagate/DataQuantisation.ts";
-import type { RequiredDataFuzzingConfig } from "@config/DataFuzzingConfig.ts";
-import type { RequiredDataQuantisationConfig } from "@config/DataQuantisationConfig.ts";
 
 /**
  * Scratch allocator: reuses a single Int32Array across files, growing
@@ -59,42 +54,4 @@ export function selectFileSampleIndexes(
   selectedIndexes.sort((a, b) => a - b);
 
   return new Set(selectedIndexes);
-}
-
-/**
- * Apply data quantisation and fuzzing (in that order) to a pair of
- * observation and target buffers. Both buffers are mutated in place.
- *
- * Issue #1900 / #1901.
- */
-export function applyDataAugmentation(
-  observationsBuffer: Float32Array,
-  targetsBuffer: Float32Array,
-  fuzzingConfig: RequiredDataFuzzingConfig,
-  quantisationConfig: RequiredDataQuantisationConfig,
-  rng: RandomNumberGenerator,
-): void {
-  if (quantisationConfig.enabled) {
-    quantiseBuffer(observationsBuffer, quantisationConfig.inputLevels);
-    if (quantisationConfig.outputLevels > 0) {
-      quantiseBuffer(targetsBuffer, quantisationConfig.outputLevels);
-    }
-  }
-
-  if (fuzzingConfig.enabled) {
-    applyNoise(
-      observationsBuffer,
-      fuzzingConfig.inputNoiseScale,
-      fuzzingConfig.noiseType,
-      rng,
-    );
-    if (fuzzingConfig.outputNoiseScale > 0) {
-      applyNoise(
-        targetsBuffer,
-        fuzzingConfig.outputNoiseScale,
-        fuzzingConfig.noiseType,
-        rng,
-      );
-    }
-  }
 }
