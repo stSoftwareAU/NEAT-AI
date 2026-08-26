@@ -89,6 +89,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3892:** The `analyzeParallel` GPU-guard test asserted the Rust
+  variant name `GpuPermanent`, but Discovery serialises `DiscoveryErrorKind`
+  with `rename_all = "snake_case"`, so the wire value has always been
+  `gpu_permanent` — the assertion could never pass on a GPU-less worker with the
+  library built. The guard now asserts the real wire contract, and `errorKind`
+  is typed as `RustDiscoveryErrorKind` (mirroring Discovery's enum in
+  `RUST_DISCOVERY_ERROR_KINDS`, with an `isRustDiscoveryErrorKind` guard)
+  instead of a bare `string`, so a comparison against a Rust identifier is now a
+  type error rather than a test that fails only on a GPU-less host.
+
 - **Issue #3886:** `./quality.sh` is green again on any machine with a built
   NEAT-AI-Discovery library. The `analyzeParallel` GPU-guard stub described
   itself as structurally valid but omitted the creature's `input` / `output`
