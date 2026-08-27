@@ -53,8 +53,9 @@ Deno.test("evolveDataSet returns run-level scorerUtilisation", async () => {
     "generations must match the number of generation_complete events",
   );
 
-  // Every count is a finite non-negative integer.
-  for (const [name, value] of Object.entries(util) as [string, number][]) {
+  // Issue #3871 removed the run-level fallback verdict along with the fallback
+  // it reported, so every surviving field is a count again.
+  for (const [name, value] of Object.entries(util)) {
     assertEquals(typeof value, "number", `${name} must be a number`);
     assert(Number.isFinite(value), `${name} must be finite`);
     assert(value >= 0, `${name} must be non-negative, got ${value}`);
@@ -62,11 +63,6 @@ Deno.test("evolveDataSet returns run-level scorerUtilisation", async () => {
   }
 
   const rust = getEnvRustScorerConfig();
-  assertEquals(
-    util.batchFallbackGenerations,
-    0,
-    "a healthy run has zero batch fallbacks",
-  );
   assert(
     util.creaturesBatchScored + util.creaturesPerCreatureScored > 0,
     "creatures must be scored on at least one backend",

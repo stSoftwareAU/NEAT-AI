@@ -13,21 +13,31 @@
  * (Issue #2745); a genuinely corrupt dataset still throws rather than being
  * downgraded to a silent fallback.
  *
- * Issue #3815: with `NEAT_AI_RUST_SCORER_STRICT=1` an exec or parse failure
- * throws a {@link ScorerStrictError} carrying the scorer's stderr verbatim
- * instead of logging a warning and falling back. A missing or too-old binary
- * remains a graceful skip in either mode.
+ * Issue #3815: an exec or parse failure throws a {@link ScorerStrictError}
+ * carrying the scorer's stderr verbatim instead of logging a warning and
+ * falling back. Issue #3864 made that the default, and Issue #3871 made it the
+ * only behaviour — `NEAT_AI_RUST_SCORER_STRICT=0` no longer opts out, because
+ * the degrading path it selected has been deleted. A missing or too-old binary
+ * remains a graceful skip: "not installed" is not "degraded", and the
+ * TypeScript/WASM engine is still the one that serves it.
  *
- * Configuration comes from `NEAT_AI_RUST_SCORER_*` environment variables via
- * {@link getEnvRustScorerConfig} and is cached for the process. The `__`-prefixed
+ * Configuration comes from `NeatOptions.rustScorer` layered over the
+ * `NEAT_AI_RUST_SCORER_*` environment variables — see
+ * {@link resolveRustScorerConfig} for the precedence rule. Only the env layer
+ * ({@link getEnvRustScorerConfig}) is cached for the process. The `__`-prefixed
  * exports are test seams: under `deno test --parallel` every test file shares
  * one OS environment, so tests must override module state rather than
  * `Deno.env` (Issue #3234).
  */
 import { join, resolve } from "@std/path";
 import type { Creature } from "@creature";
-import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
+import type {
+  RequiredRustScorerConfig,
+  RustScorerConfig,
+} from "@config/RustScorerConfig.ts";
+import { parseNumber } from "@config/ParseOptions.ts";
 import type { BuiltInCostName } from "@costs";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { DatasetError } from "@errors/DatasetError.ts";
 import {
   ScorerStrictError,
@@ -86,6 +96,31 @@ function parseBoolLike(value: unknown): boolean | undefined {
   return undefined;
 }
 
+/**
+ * Fail loud on a retired `strict: false` opt-out (Issue #3871).
+ *
+ * The degrading WASM dataset-scoring path no longer exists, so honouring the
+ * request is impossible and silently dropping it would hand the operator a
+ * run that fails where they asked it to degrade. `true` stays accepted as a
+ * no-op so existing configurations and `NEAT_AI_RUST_SCORER_STRICT=1` keep
+ * working unchanged.
+ *
+ * @param strict - The requested value, or `undefined` when unset.
+ * @param source - How it was supplied, quoted back in the error.
+ */
+function assertStrictOptOutRetired(
+  strict: boolean | undefined,
+  source: string,
+): void {
+  if (strict !== false) return;
+  throw new ConfigurationError(
+    `${source} is no longer supported (Issue #3871): the TypeScript/WASM ` +
+      `dataset-scoring fallback was deleted, so a rust_scorer failure is ` +
+      `always fatal. Remove the setting, and fix the scorer fault instead.`,
+    "CROSS_FIELD_VALIDATION",
+  );
+}
+
 function parseEnvTimeoutMs(): number {
   const raw = readEnvString("NEAT_AI_RUST_SCORER_TIMEOUT_MS");
   if (raw === undefined) return 0;
@@ -142,11 +177,14 @@ export function getEnvRustScorerConfig(): RequiredRustScorerConfig {
   const batch = parseBoolLike(readEnvString("NEAT_AI_RUST_SCORER_BATCH")) ??
     true;
 
-  // Issue #3815: Opt-in strict mode — a scorer exec/parse failure throws
-  // instead of degrading to WASM. Off by default so production keeps
-  // degrading gracefully; `quality.sh` turns it on so CI fails loud.
-  const strict = parseBoolLike(readEnvString("NEAT_AI_RUST_SCORER_STRICT")) ??
-    false;
+  // Issue #3871: the WASM dataset-scoring fallback is gone, so there is nothing
+  // for `NEAT_AI_RUST_SCORER_STRICT=0` to opt into. Reject the stale opt-out
+  // loudly rather than ignoring it — an operator who asked for a degraded run
+  // instead of a failed one must be told the choice no longer exists.
+  assertStrictOptOutRetired(
+    parseBoolLike(readEnvString("NEAT_AI_RUST_SCORER_STRICT")),
+    "NEAT_AI_RUST_SCORER_STRICT=0",
+  );
 
   const base: RequiredRustScorerConfig = {
     enabled,
@@ -154,13 +192,60 @@ export function getEnvRustScorerConfig(): RequiredRustScorerConfig {
     timeoutMs,
     env,
     batch,
-    strict,
   };
   // Apply any in-process test override on top of the env-derived config.
   envRustScorerCache = testConfigOverride === undefined
     ? base
     : { ...base, ...testConfigOverride };
   return envRustScorerCache;
+}
+
+/**
+ * Resolve the scorer configuration for one run (Issue #3865).
+ *
+ * **Precedence: an explicit option beats the environment, and the environment
+ * beats the built-in default.** A field supplied on `NeatOptions.rustScorer`
+ * wins outright; a field left out falls through to `NEAT_AI_RUST_SCORER_*`, and
+ * then to the default baked into {@link getEnvRustScorerConfig}. The direction
+ * that matters is the first one — an explicit `enabled: false` must survive
+ * `NEAT_AI_RUST_SCORER_ENABLED=1`, because failing open turns the native path
+ * on for an embedder who asked for it off and every resulting score still looks
+ * plausible.
+ *
+ * Only the **env layer** is memoised (`envRustScorerCache`, process-lifetime).
+ * The merged result belongs to one run and is deliberately never written back
+ * into that cache, so a per-run option cannot leak into another run.
+ *
+ * `env` is replaced wholesale rather than merged key by key: the supplied map
+ * is the complete set of extra variables the caller wants the scorer child
+ * process to see.
+ *
+ * @param overrides - Caller-supplied partial config; `undefined` yields the
+ *   env-derived config unchanged.
+ */
+export function resolveRustScorerConfig(
+  overrides?: RustScorerConfig,
+): RequiredRustScorerConfig {
+  const base = getEnvRustScorerConfig();
+  if (overrides === undefined) return base;
+
+  // Issue #3871: an explicit `strict: false` on the option layer is rejected
+  // for the same reason the env layer rejects it — the fallback it asks for is
+  // gone, and ignoring the request would mask that.
+  assertStrictOptOutRetired(overrides.strict, "rustScorer.strict = false");
+
+  return {
+    enabled: overrides.enabled ?? base.enabled,
+    binaryPath: overrides.binaryPath ?? base.binaryPath,
+    timeoutMs: parseNumber(
+      "Rust scorer timeoutMs",
+      overrides.timeoutMs,
+      base.timeoutMs,
+      { integer: true, min: 0 },
+    ),
+    env: overrides.env ?? base.env,
+    batch: overrides.batch ?? base.batch,
+  };
 }
 
 function getTmpDiagnostics(): string {
@@ -275,87 +360,40 @@ export async function tryScoreWithRustScorer(
       // Fail loud with the scorer's own diagnostic instead of demoting it to a
       // warning and letting the WASM re-read die on a bare assertion.
       assertNotCorruptDataset(result.stderr, result.code, dataDir);
-      // Issue #3815: strict mode makes a dead native path fatal rather than
-      // letting the WASM fallback reconcile the run to green.
-      if (config.strict) {
-        throw new ScorerStrictError(
-          `Rust scorer call failed (exit ${result.code}) for data dir ${dataDir}`,
-          "EXEC_FAILURE",
-          { exitCode: result.code, stderr: result.stderr },
-        );
-      }
-      if (!probe.warned) {
-        const stderrSnippet = trimForLog(result.stderr);
-        const suffix = stderrSnippet.length > 0
-          ? `; stderr: ${stderrSnippet}`
-          : "";
-        getLogger().warn(
-          `[NEAT-AI] Rust scorer call failed (exit ${result.code})${suffix}; falling back to WASM scoring.`,
-        );
-        probe.warned = true;
-      }
-      return undefined;
+      // Issue #3815 / #3871: a dead native path is fatal. There is no WASM
+      // fallback left to reconcile the run to green.
+      throw new ScorerStrictError(
+        `Rust scorer call failed (exit ${result.code}) for data dir ${dataDir}`,
+        "EXEC_FAILURE",
+        { exitCode: result.code, stderr: result.stderr },
+      );
     }
 
     let parsed: { error?: unknown };
     try {
       parsed = JSON.parse(result.stdout) as { error?: unknown };
     } catch (parseError) {
-      if (config.strict) {
-        const detail = parseError instanceof Error
-          ? parseError.message
-          : String(parseError);
-        throw new ScorerStrictError(
-          `Rust scorer returned invalid (non-JSON) output (parse error: ${detail}); stdout: ${
-            trimForLog(result.stdout)
-          }`,
-          "INVALID_OUTPUT",
-          { exitCode: result.code, stderr: result.stderr, cause: parseError },
-        );
-      }
-      if (!probe.warned) {
-        const stdoutSnippet = trimForLog(result.stdout);
-        const stderrSnippet = trimForLog(result.stderr);
-        const detail = parseError instanceof Error
-          ? parseError.message
-          : String(parseError);
-        const parts = [
-          `parse error: ${detail}`,
-          stdoutSnippet.length > 0 ? `stdout: ${stdoutSnippet}` : "",
-          stderrSnippet.length > 0 ? `stderr: ${stderrSnippet}` : "",
-        ].filter((p) => p.length > 0);
-        getLogger().warn(
-          `[NEAT-AI] Rust scorer returned invalid (non-JSON) output; ${
-            parts.join("; ")
-          }; falling back to WASM scoring.`,
-        );
-        probe.warned = true;
-      }
-      return undefined;
+      const detail = parseError instanceof Error
+        ? parseError.message
+        : String(parseError);
+      throw new ScorerStrictError(
+        `Rust scorer returned invalid (non-JSON) output (parse error: ${detail}); stdout: ${
+          trimForLog(result.stdout)
+        }`,
+        "INVALID_OUTPUT",
+        { exitCode: result.code, stderr: result.stderr, cause: parseError },
+      );
     }
 
     const error = Number(parsed.error);
     if (!Number.isFinite(error)) {
-      if (config.strict) {
-        throw new ScorerStrictError(
-          `Rust scorer returned a non-finite error value: ${
-            JSON.stringify(parsed.error)
-          }`,
-          "INVALID_OUTPUT",
-          { exitCode: result.code, stderr: result.stderr },
-        );
-      }
-      if (!probe.warned) {
-        const stderrSnippet = trimForLog(result.stderr);
-        const suffix = stderrSnippet.length > 0
-          ? `; stderr: ${stderrSnippet}`
-          : "";
-        getLogger().warn(
-          `[NEAT-AI] Rust scorer returned invalid error${suffix}; falling back to WASM scoring.`,
-        );
-        probe.warned = true;
-      }
-      return undefined;
+      throw new ScorerStrictError(
+        `Rust scorer returned a non-finite error value: ${
+          JSON.stringify(parsed.error)
+        }`,
+        "INVALID_OUTPUT",
+        { exitCode: result.code, stderr: result.stderr },
+      );
     }
     return { error };
   } catch (error) {
@@ -364,22 +402,13 @@ export async function tryScoreWithRustScorer(
     if (error instanceof DatasetError) throw error;
     // Issue #3815: strict-mode failures propagate with their verbatim stderr.
     if (error instanceof ScorerStrictError) throw error;
-    if (config.strict) {
-      throw toScorerStrictError(
-        error,
-        "Rust scorer invocation failed",
-        "EXEC_FAILURE",
-      );
-    }
-    if (!probe.warned) {
-      getLogger().warn(
-        `[NEAT-AI] Rust scorer unavailable (${
-          error instanceof Error ? error.message : String(error)
-        }); falling back to WASM scoring.`,
-      );
-      probe.warned = true;
-    }
-    return undefined;
+    // Issue #3871: the probe said the binary was there, so an invocation that
+    // blew up mid-flight is a genuine backend fault, not a graceful skip.
+    throw toScorerStrictError(
+      error,
+      "Rust scorer invocation failed",
+      "EXEC_FAILURE",
+    );
   } finally {
     if (creaturePath) {
       try {

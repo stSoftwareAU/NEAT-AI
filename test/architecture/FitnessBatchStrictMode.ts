@@ -100,11 +100,11 @@ function failingRunner(_command: string, args: string[]) {
   });
 }
 
-Deno.test("Fitness strict mode: a batch scorer failure aborts the generation with the scorer's stderr", async () => {
+Deno.test("Fitness: a batch scorer failure aborts the generation with the scorer's stderr", async () => {
   // In-process override (Issue #3234) — never mutate the shared process env,
   // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: true });
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
 
   const population = buildForwardOnlyPopulation(3);
   for (const c of population) CreatureUtil.makeUUID(c);
@@ -127,61 +127,13 @@ Deno.test("Fitness strict mode: a batch scorer failure aborts the generation wit
     );
     assert(
       error.message.includes(SCORER_STDERR),
-      `strict failure must carry the scorer's stderr verbatim; got: ${error.message}`,
+      `the failure must carry the scorer's stderr verbatim; got: ${error.message}`,
     );
     assertEquals(
       worker.evaluateCallCount,
       0,
-      "strict mode aborts instead of silently re-scoring on the worker path",
+      "the generation aborts instead of silently re-scoring on the worker path",
     );
-    assertEquals(
-      fitness.lastBatchFallbackOccurred,
-      false,
-      "no fallback is reconciled — the generation failed loud",
-    );
-  } finally {
-    await Deno.remove(dataDir, { recursive: true });
-    __resetRustScorerBridgeForTests();
-  }
-});
-
-Deno.test("Fitness strict mode off: the same batch failure still falls back and completes", async () => {
-  __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
-
-  const population = buildForwardOnlyPopulation(3);
-  for (const c of population) CreatureUtil.makeUUID(c);
-  __setRustScorerRunnerForTests(failingRunner);
-
-  const worker = new MockWorkerHandler();
-  const dataDir = makeDataDir(buildDataSet(), 4);
-  try {
-    const fitness = new Fitness(
-      [worker as unknown as WorkerHandler],
-      0.0001,
-      false,
-      undefined,
-      dataDir,
-    );
-
-    await fitness.calculate(population);
-
-    assertEquals(
-      fitness.lastBatchFallbackOccurred,
-      true,
-      "default behaviour records the fallback",
-    );
-    assertEquals(
-      worker.evaluateCallCount,
-      population.length,
-      "every creature is re-scored on the per-creature worker path",
-    );
-    for (const creature of population) {
-      assert(
-        typeof creature.score === "number" && Number.isFinite(creature.score),
-        "the generation still completes with finite scores",
-      );
-    }
   } finally {
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();

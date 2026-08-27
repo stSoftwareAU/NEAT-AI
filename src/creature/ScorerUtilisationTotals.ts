@@ -8,17 +8,23 @@
  * per-creature worker path — so a silent regression where the batch path broke
  * and every creature quietly fell back to the slow worker path looked
  * identical to a healthy run. These aggregates split that count by backend and
- * add an explicit batch-fallback tally so the split is visible in the run
- * result (and therefore in the production run's `result.json`).
+ * so the split is visible in the run result (and therefore in the production
+ * run's `result.json`).
  *
  * All values are raw counts summed across every generation of the run.
+ *
+ * Issue #3866 turned that telemetry into a run-level **verdict** for the window
+ * in which a native failure could still degrade to WASM. Issue #3871 deleted
+ * the fallback: a `rust_scorer` that is present and fails now aborts the run,
+ * so there is no degraded-but-green outcome left to report and the verdict
+ * fields are gone with it. What remains is the backend split, which still
+ * distinguishes a generation served by the batch scorer from one the
+ * eligibility predicate kept on the per-creature worker path.
  */
 
 /**
  * A single generation's scorer-utilisation snapshot, read from `Fitness`
- * after each `evolve()` cycle. `batchFallbackOccurred` is a boolean because a
- * generation either did or did not revert its whole batch to the worker path;
- * the accumulator turns it into a per-run count of affected generations.
+ * after each `evolve()` cycle.
  */
 export interface ScorerUtilisationCounts {
   /** `rust_scorer` processes spawned this generation (0 when batch disabled). */
@@ -27,12 +33,6 @@ export interface ScorerUtilisationCounts {
   readonly creaturesBatchScored: number;
   /** Creatures scored via the per-creature worker path this generation. */
   readonly creaturesPerCreatureScored: number;
-  /**
-   * True when a batch attempt failed this generation and its creatures
-   * reverted to the per-creature worker path. A partial/whole fallback must be
-   * visible, not masked as success.
-   */
-  readonly batchFallbackOccurred: boolean;
 }
 
 /**
@@ -48,12 +48,6 @@ export interface ScorerUtilisationTotals {
   readonly creaturesBatchScored: number;
   /** Total creatures scored via the per-creature worker path across the run. */
   readonly creaturesPerCreatureScored: number;
-  /**
-   * Number of generations that hit a batch fallback. Non-zero means the native
-   * batch path failed at least once and scoring silently continued on the slow
-   * worker path — exactly the regression this telemetry exists to expose.
-   */
-  readonly batchFallbackGenerations: number;
 }
 
 /**
@@ -67,7 +61,6 @@ export interface ScorerUtilisationAccumulator {
   batchScorerInvocations: number;
   creaturesBatchScored: number;
   creaturesPerCreatureScored: number;
-  batchFallbackGenerations: number;
 }
 
 /** Create a zeroed {@link ScorerUtilisationAccumulator}. */
@@ -77,7 +70,6 @@ export function createScorerUtilisationAccumulator(): ScorerUtilisationAccumulat
     batchScorerInvocations: 0,
     creaturesBatchScored: 0,
     creaturesPerCreatureScored: 0,
-    batchFallbackGenerations: 0,
   };
 }
 
@@ -90,7 +82,6 @@ export function accumulateScorerUtilisation(
   acc.batchScorerInvocations += counts.batchScorerInvocations;
   acc.creaturesBatchScored += counts.creaturesBatchScored;
   acc.creaturesPerCreatureScored += counts.creaturesPerCreatureScored;
-  if (counts.batchFallbackOccurred) acc.batchFallbackGenerations++;
 }
 
 /** Freeze the accumulator into an immutable {@link ScorerUtilisationTotals}. */
@@ -102,6 +93,5 @@ export function finaliseScorerUtilisationTotals(
     batchScorerInvocations: acc.batchScorerInvocations,
     creaturesBatchScored: acc.creaturesBatchScored,
     creaturesPerCreatureScored: acc.creaturesPerCreatureScored,
-    batchFallbackGenerations: acc.batchFallbackGenerations,
   };
 }

@@ -160,7 +160,6 @@ const ENABLED_CONFIG: RequiredRustScorerConfig = {
   timeoutMs: 0,
   env: {},
   batch: false,
-  strict: false,
 };
 
 async function evaluateWithCountingScorer(options: {
@@ -294,7 +293,7 @@ async function runBatchFitness(
   fitnessFactory: (dataDir: string, worker: WorkerHandler) => Fitness,
 ): Promise<{ batchInvocations: number; workerCalls: number }> {
   __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
   const population = buildForwardOnlyPopulation(3);
   let scoreCalls = 0;
   __setRustScorerRunnerForTests((_command, args) => {

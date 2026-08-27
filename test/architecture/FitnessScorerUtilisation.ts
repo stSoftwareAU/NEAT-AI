@@ -3,15 +3,16 @@
  *
  * `Fitness.calculate()` splits its unique-scored creature count by backend:
  * creatures resolved via the native batch (one-pass) rust-scorer path vs the
- * per-creature worker path, plus a batch-fallback flag. These tests exercise
- * the three regressions the issue exists to expose:
- *  (a) an all-forwardOnly population batch-scores everything with zero fallback;
+ * per-creature worker path. These tests exercise the three regressions the
+ * issue exists to expose:
+ *  (a) an all-forwardOnly population batch-scores everything;
  *  (b) a mixed population routes recurrent creatures to the per-creature path;
- *  (c) a forced batch failure flags a fallback and re-scores every creature
- *      via the per-creature path.
+ *  (c) a forced batch failure aborts the generation rather than re-scoring it
+ *      on the other engine (Issue #3871 deleted that fallback).
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
+import { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -86,7 +87,7 @@ async function withBatchEnabled(
   // In-process override (Issue #3234) — never mutate the shared process env,
   // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
   __setRustScorerRunnerForTests(runner);
   const worker = new MockWorkerHandler();
   const dataDir = makeDataDir(buildDataSet(), 4);
@@ -149,7 +150,6 @@ Deno.test("scorer utilisation - all-forwardOnly population batch-scored, zero fa
     );
     assertEquals(fitness.lastCreaturesPerCreatureScored, 0);
     assertEquals(fitness.lastBatchScorerInvocations, 1);
-    assertEquals(fitness.lastBatchFallbackOccurred, false);
     // The combined count still equals batch + worker for existing consumers.
     assertEquals(fitness.lastScoredCreatureCount, 4);
     assertEquals(worker.evaluateCallCount, 0, "batch owns scoring");
@@ -179,7 +179,6 @@ Deno.test("scorer utilisation - mixed population routes recurrent creatures per-
         "recurrent creatures counted per-creature",
       );
       assertEquals(fitness.lastBatchScorerInvocations, 1);
-      assertEquals(fitness.lastBatchFallbackOccurred, false);
       assertEquals(fitness.lastScoredCreatureCount, 5);
       assertEquals(
         worker.evaluateCallCount,
@@ -190,12 +189,13 @@ Deno.test("scorer utilisation - mixed population routes recurrent creatures per-
   );
 });
 
-Deno.test("scorer utilisation - forced batch failure flags fallback, counts per-creature", async () => {
+Deno.test("scorer utilisation - a forced batch failure aborts, never re-scores per-creature", async () => {
   const population = buildPopulation(3, true);
   for (const c of population) CreatureUtil.makeUUID(c);
 
   // Runner returns an empty object so every expected UUID is missing — the
-  // reconciler throws and Fitness falls back to the per-creature worker path.
+  // reconciler throws. Issue #3871: that is the generation's outcome; the
+  // per-creature re-score that used to absorb it is gone.
   const failingRunner = (_command: string, args: string[]) => {
     if (args.length === 1 && args[0] === "--help") {
       return Promise.resolve({
@@ -214,21 +214,23 @@ Deno.test("scorer utilisation - forced batch failure flags fallback, counts per-
   };
 
   await withBatchEnabled(failingRunner, async (fitness, worker) => {
-    await fitness.calculate(population);
+    await assertRejects(
+      () => fitness.calculate(population),
+      ScorerStrictError,
+    );
 
-    assert(
-      fitness.lastBatchFallbackOccurred,
-      "a batch failure must be visible as a fallback, not masked",
-    );
-    assertEquals(fitness.lastCreaturesBatchScored, 0, "batch scored nothing");
     assertEquals(
-      fitness.lastCreaturesPerCreatureScored,
-      3,
-      "every creature re-scored via the per-creature path",
+      worker.evaluateCallCount,
+      0,
+      "a failed batch must not be quietly re-scored on the worker path",
     );
-    assertEquals(fitness.lastBatchScorerInvocations, 0);
-    assertEquals(fitness.lastScoredCreatureCount, 3);
-    assertEquals(worker.evaluateCallCount, 3);
+    for (const creature of population) {
+      assertEquals(
+        creature.score,
+        undefined,
+        "no creature is scored by an engine the run did not choose",
+      );
+    }
   });
 });
 
@@ -246,6 +248,5 @@ Deno.test("scorer utilisation - empty population resets the split counters", asy
 
     assertEquals(fitness.lastCreaturesBatchScored, 0);
     assertEquals(fitness.lastCreaturesPerCreatureScored, 0);
-    assertEquals(fitness.lastBatchFallbackOccurred, false);
   });
 });

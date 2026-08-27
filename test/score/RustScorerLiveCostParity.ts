@@ -31,6 +31,7 @@ import {
   FIXTURE_RECORDS,
 } from "../_costFixtures.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+import { scorerGpuEnv } from "./NativeScorerFixtures.ts";
 
 /** Forces `evaluateDir` down the TypeScript/WASM path regardless of environment. */
 const SCORER_OFF: RequiredRustScorerConfig = {
@@ -39,7 +40,6 @@ const SCORER_OFF: RequiredRustScorerConfig = {
   timeoutMs: 0,
   env: {},
   batch: false,
-  strict: false,
 };
 
 /**
@@ -105,9 +105,10 @@ async function scoreWithRustScorer(
 ): Promise<number> {
   const command = new Deno.Command(binary, {
     args: ["--cost", costName, creaturePath, dataDir],
-    // Mirrors quality.sh: parallel GPU contexts are a throughput path, not a
-    // correctness one, and several at once exhaust host memory.
-    env: { NEAT_SCORER_GPU: "off" },
+    // Mirrors quality.sh: `off` on the default lane, because parallel GPU
+    // contexts exhaust host memory, and whatever the opt-in `--gpu-scorer`
+    // lane asked for when that lane is the one running (Issue #3869).
+    env: scorerGpuEnv(),
     stdout: "piped",
     stderr: "piped",
   });

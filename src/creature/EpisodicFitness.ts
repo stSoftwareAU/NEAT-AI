@@ -107,7 +107,6 @@ export class EpisodicFitness<S, A> extends Fitness {
     // scored creature is per-creature. Reset the split counters each call.
     this.lastCreaturesBatchScored = 0;
     this.lastCreaturesPerCreatureScored = 0;
-    this.lastBatchFallbackOccurred = false;
 
     const needsEvaluation = population.filter((c) => c.score === undefined);
 

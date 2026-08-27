@@ -66,6 +66,8 @@ import {
 
 // Extracted cross-field validation
 import { validateNeatConfig } from "@config/NeatConfigValidation.ts";
+import type { RustScorerConfig } from "@config/RustScorerConfig.ts";
+import { resolveRustScorerConfig } from "../score/RustScorerBridge.ts";
 
 // Automatic Discovery worker-memory envelope → workerThreadCap wiring.
 import {
@@ -683,6 +685,11 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     wasmCache: parseWasmCache(
       opts.wasmCache as Record<string, unknown> | undefined,
       populationSize,
+    ),
+    // Issue #3865: explicit option beats NEAT_AI_RUST_SCORER_*, which beats the
+    // built-in default. Resolved once per run; only the env layer is cached.
+    rustScorer: resolveRustScorerConfig(
+      opts.rustScorer as RustScorerConfig | undefined,
     ),
     // Issue #3565: seed the analysis memory budget from the Discovery runner's
     // exported value when the caller did not set it explicitly, so the Rust-side

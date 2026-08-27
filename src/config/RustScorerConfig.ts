@@ -43,19 +43,26 @@ export interface RustScorerConfig {
    */
   batch?: boolean;
   /**
-   * Issue #3815: Treat a scorer exec/parse failure as fatal instead of falling
-   * back to WASM scoring. Intended for CI (`quality.sh` sets
-   * `NEAT_AI_RUST_SCORER_STRICT=1`), so an entirely dead native scoring path
-   * cannot reconcile to a green run. A missing or too-old binary is still a
-   * graceful skip — only genuine failures throw.
+   * @deprecated Issue #3871 removed the TypeScript/WASM dataset-scoring
+   * fallback, so there is no longer a degrading path to opt into. A scorer
+   * that is present and fails always throws a `ScorerStrictError`; a missing
+   * or too-old binary is still a graceful skip.
    *
-   * Default: false.
+   * `strict: true` (and `NEAT_AI_RUST_SCORER_STRICT=1`) remain accepted as
+   * no-ops so existing configurations keep working. An explicit
+   * `strict: false` is **rejected** with a `ConfigurationError` rather than
+   * ignored — silently dropping an operator's opt-out is exactly the
+   * masked-fault class Issue #3810 exposed.
    */
   strict?: boolean;
 }
 
 /**
  * Fully resolved scorer configuration used internally.
+ *
+ * Issue #3871: `strict` is gone. Native dataset scoring has no fallback left,
+ * so "fail or degrade" is no longer a per-run choice and nothing downstream
+ * needs to branch on it.
  */
 export interface RequiredRustScorerConfig {
   enabled: boolean;
@@ -63,5 +70,4 @@ export interface RequiredRustScorerConfig {
   timeoutMs: number;
   env: Record<string, string>;
   batch: boolean;
-  strict: boolean;
 }

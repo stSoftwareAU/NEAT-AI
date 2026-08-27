@@ -159,9 +159,11 @@ See [`troubleshooting/CI.md`](troubleshooting/CI.md) for full details.
   [Understanding coverage.yaml](troubleshooting/CI.md#-understanding-coveragesyaml).
 - **`quality.sh` fails on a specific step** — see the per-step list in
   [quality.sh failures](troubleshooting/CI.md#-quality-sh-failures).
-- **`ScorerStrictError` during `deno test`** — `quality.sh` runs with
-  `NEAT_AI_RUST_SCORER_STRICT=1`, so a scorer failure aborts instead of falling
-  back to WASM. →
+- **`ScorerStrictError` during `deno test`** — a `rust_scorer` failure aborts;
+  there is no WASM fallback to absorb it (Issue #3871). →
+  [ScorerStrictError during deno test](troubleshooting/CI.md#-scorerstricterror-during-deno-test-issue-3815).
+- **`deno test` cannot resolve `rust_scorer`** — the binary is a hard
+  requirement of the test run. →
   [ScorerStrictError during deno test](troubleshooting/CI.md#-scorerstricterror-during-deno-test-issue-3815).
 
 ## ⚙️ Configuration — invalid options and `ValidationError`
@@ -192,20 +194,27 @@ See [`troubleshooting/ONNX.md`](troubleshooting/ONNX.md) for full details.
 
 ## 🌐 Environment variables reference
 
-| Variable                          | Default        | Purpose                                                                |
-| --------------------------------- | -------------- | ---------------------------------------------------------------------- |
-| `NEAT_AI_DISCOVERY_LIB_PATH`      | _(none)_       | Override discovery library location                                    |
-| `NEAT_AI_WORKER_INIT_TIMEOUT_MS`  | `60000`        | Worker initialisation timeout (ms); ignored below `1000`               |
-| `NEAT_AI_DISCOVERY_VERBOSE`       | _(none)_       | Enable verbose discovery logging in workers (`1`)                      |
-| `NEAT_AI_DISCOVERY_DETERMINISTIC` | _(none)_       | Force deterministic discovery for testing (`1` / `true`)               |
-| `NEAT_AI_RUST_SCORER_ENABLED`     | `false`        | Route fitness scoring through the external Rust scorer process         |
-| `NEAT_AI_RUST_SCORER_BINARY_PATH` | `rust_scorer`  | Path to the Rust scorer binary                                         |
-| `NEAT_AI_RUST_SCORER_BATCH`       | `true`         | Directory/batch scoring mode; set `false` for per-creature invocations |
-| `NEAT_AI_RUST_SCORER_TIMEOUT_MS`  | `0` (no limit) | Per-invocation timeout for the Rust scorer (ms)                        |
-| `NEAT_AI_RUST_SCORER_STRICT`      | `false`        | Throw on a scorer exec/parse failure instead of falling back to WASM   |
-| `NEAT_AI_RUST_SCORER_TMP_DIR`     | _(data dir)_   | Working directory for Rust scorer batch I/O                            |
-| `NEAT_AI_RUST_SCORER_ENV`         | _(none)_       | JSON object of extra env vars passed to the Rust scorer child process  |
-| `NEAT_AI_TRACE_PREDICTION`        | _(none)_       | Log detailed discovery failure-cache prediction traces (`1`)           |
+| Variable                          | Default        | Purpose                                                                     |
+| --------------------------------- | -------------- | --------------------------------------------------------------------------- |
+| `NEAT_AI_DISCOVERY_LIB_PATH`      | _(none)_       | Override discovery library location                                         |
+| `NEAT_AI_WORKER_INIT_TIMEOUT_MS`  | `60000`        | Worker initialisation timeout (ms); ignored below `1000`                    |
+| `NEAT_AI_DISCOVERY_VERBOSE`       | _(none)_       | Enable verbose discovery logging in workers (`1`)                           |
+| `NEAT_AI_DISCOVERY_DETERMINISTIC` | _(none)_       | Force deterministic discovery for testing (`1` / `true`)                    |
+| `NEAT_AI_RUST_SCORER_ENABLED`     | `false`        | Route fitness scoring through the external Rust scorer process              |
+| `NEAT_AI_RUST_SCORER_BINARY_PATH` | `rust_scorer`  | Path to the Rust scorer binary                                              |
+| `NEAT_AI_RUST_SCORER_BATCH`       | `true`         | Directory/batch scoring mode; set `false` for per-creature invocations      |
+| `NEAT_AI_RUST_SCORER_TIMEOUT_MS`  | `0` (no limit) | Per-invocation timeout for the Rust scorer (ms)                             |
+| `NEAT_AI_RUST_SCORER_STRICT`      | _(retired)_    | Removed in Issue #3871; setting it to `0` now raises a `ConfigurationError` |
+| `NEAT_AI_RUST_SCORER_TMP_DIR`     | _(data dir)_   | Working directory for Rust scorer batch I/O                                 |
+| `NEAT_AI_RUST_SCORER_ENV`         | _(none)_       | JSON object of extra env vars passed to the Rust scorer child process       |
+| `NEAT_AI_TRACE_PREDICTION`        | _(none)_       | Log detailed discovery failure-cache prediction traces (`1`)                |
+
+> [!NOTE]
+> Every `NEAT_AI_RUST_SCORER_*` variable above has an option counterpart on
+> `NeatOptions.rustScorer` (Issue #3865), and **the option wins**: an explicit
+> `rustScorer: { enabled: false }` keeps the native scorer off even where
+> `NEAT_AI_RUST_SCORER_ENABLED=1` is exported. See
+> [Native Rust scorer](config/WORKERS.md#-native-rust-scorer).
 
 ## 🆘 Getting help
 

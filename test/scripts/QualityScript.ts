@@ -25,6 +25,21 @@ async function isolatedQualityDir(prefix: string): Promise<string> {
   return dir;
 }
 
+/**
+ * Write an executable stand-in for `rust_scorer` (Issue #3871 made the binary a
+ * hard requirement of the test run, so a shimmed `quality.sh` run has to
+ * resolve one). It answers `--help` with exit 0, which is all the gate probes.
+ *
+ * @param dir - Directory to write the shim into.
+ * @returns Absolute path to the shim, for `--rust-scorer-bin=`.
+ */
+async function writeFakeRustScorer(dir: string): Promise<string> {
+  const path = `${dir}/rust_scorer`;
+  await Deno.writeTextFile(path, "#!/usr/bin/env bash\nexit 0\n");
+  await Deno.chmod(path, 0o755);
+  return path;
+}
+
 /** Helper to run quality.sh with given args and return stdout + exit code. */
 async function runQuality(
   args: string[],
@@ -202,6 +217,25 @@ Deno.test(
 
 Deno.test(
   {
+    name: "quality.sh names the retired WASM scoring lanes (Issue #3871)",
+    permissions: { run: true, read: true },
+    fn: async () => {
+      for (const flag of ["--wasm-scorer", "--test-both-scorers"]) {
+        // Sequential by design: each run asserts on its own stderr.
+        // deno-lint-ignore no-await-in-loop
+        const result = await runQuality([flag]);
+        assert(result.code !== 0, `${flag} must not be accepted`);
+        assert(
+          result.stderr.includes("#3871"),
+          `${flag} must name the removal; got: ${result.stderr}`,
+        );
+      }
+    },
+  },
+);
+
+Deno.test(
+  {
     name: "quality.sh rejects unknown flags",
     permissions: { run: true, read: true },
     fn: async () => {
@@ -372,18 +406,19 @@ Deno.test(
 
 Deno.test(
   {
-    name: "quality.sh --dry-run --wasm-scorer does not build rust_scorer",
+    name: "quality.sh --dry-run plans the rust_scorer lane only",
     permissions: { run: true, read: true },
     fn: async () => {
-      const result = await runQuality(["--dry-run", "--wasm-scorer"]);
+      const result = await runQuality(["--dry-run"]);
       assertEquals(result.code, 0);
       assert(
-        result.stdout.includes("WASM scorer mode"),
-        "Expected WASM scorer test step",
+        result.stdout.includes("Rust scorer mode"),
+        "Expected the rust_scorer test step",
       );
+      // Issue #3871 deleted the comparison lane; only one test step is planned.
       assert(
-        !result.stdout.includes("Building rust_scorer"),
-        "WASM comparison run must not require rust_scorer",
+        !result.stdout.includes("WASM scorer mode"),
+        `no WASM scoring lane may be planned; got: ${result.stdout}`,
       );
     },
   },
@@ -439,7 +474,11 @@ Deno.test(
         await Deno.copyFile("./quality.sh", `${tmp}/quality.sh`);
         await Deno.chmod(`${tmp}/quality.sh`, 0o755);
         const command = new Deno.Command("bash", {
-          args: ["./quality.sh", "--next", "--wasm-scorer"],
+          args: [
+            "./quality.sh",
+            "--next",
+            `--rust-scorer-bin=${await writeFakeRustScorer(tmp)}`,
+          ],
           stdout: "piped",
           stderr: "piped",
           cwd: tmp,
@@ -536,13 +575,241 @@ Deno.test({
   },
 });
 
+/**
+ * Issue #3869 — the opt-in GPU scorer lane.
+ *
+ * Writes a `deno` shim on PATH that logs the GPU-relevant env of every call
+ * and lets each test choose the pre-flight's exit code, so the lane's three
+ * outcomes (proceed / clean skip / fail loud) are exercised on a host with no
+ * GPU at all.
+ *
+ * @param probeExit - exit code the shim returns for
+ *   `deno run … scripts/check_gpu_scorer.ts`
+ */
+async function runGpuScorerLane(
+  probeExit: number,
+  extraArgs: string[] = [],
+): Promise<{ code: number; stdout: string; stderr: string; calls: string[] }> {
+  const home = await Deno.makeTempDir({ prefix: "neat-quality-gpu-lane-" });
+  const workDir = await isolatedQualityDir("neat-quality-gpu-lane-work-");
+  try {
+    const binDir = `${home}/.deno/bin`;
+    await Deno.mkdir(binDir, { recursive: true });
+    const callLog = `${home}/deno-calls.log`;
+    await Deno.writeTextFile(
+      `${binDir}/deno`,
+      `#!/usr/bin/env bash
+printf 'NEAT_SCORER_GPU=%s DENO_JOBS=%s argv:%s\\n' \\
+  "\${NEAT_SCORER_GPU-<unset>}" "\${DENO_JOBS-<unset>}" "$*" >> "${callLog}"
+case "$*" in
+  *check_gpu_scorer.ts*) exit ${probeExit} ;;
+esac
+exit 0
+`,
+    );
+    await Deno.chmod(`${binDir}/deno`, 0o755);
+
+    const fakeScorer = `${home}/rust_scorer`;
+    await Deno.writeTextFile(fakeScorer, "#!/usr/bin/env bash\nexit 0\n");
+    await Deno.chmod(fakeScorer, 0o755);
+
+    const command = new Deno.Command("bash", {
+      args: [
+        "./quality.sh",
+        "--gpu-scorer",
+        `--rust-scorer-bin=${fakeScorer}`,
+        "--skip-discovery",
+        "--skip-wasm",
+        ...extraArgs,
+      ],
+      stdout: "piped",
+      stderr: "piped",
+      cwd: workDir,
+      env: { PATH: Deno.env.get("PATH") ?? "", HOME: home },
+    });
+    const output = await command.output();
+    let calls: string[] = [];
+    try {
+      calls = (await Deno.readTextFile(callLog))
+        .split("\n")
+        .filter((l) => l.trim().length > 0);
+    } catch {
+      // No shim call at all — the assertions report that.
+    }
+    return {
+      code: output.code,
+      stdout: new TextDecoder().decode(output.stdout),
+      stderr: new TextDecoder().decode(output.stderr),
+      calls,
+    };
+  } finally {
+    await Deno.remove(home, { recursive: true });
+    await Deno.remove(workDir, { recursive: true });
+  }
+}
+
+Deno.test({
+  name: "quality.sh --help documents the opt-in GPU scorer lane (Issue #3869)",
+  permissions: { run: true, read: true },
+  fn: async () => {
+    const result = await runQuality(["--help"]);
+    assertEquals(result.code, 0);
+    assert(
+      result.stdout.includes("--gpu-scorer"),
+      "Expected help to document the --gpu-scorer flag",
+    );
+    assert(
+      result.stdout.includes("NOT exercised by default"),
+      `Expected help to say GPU is not exercised by default; got: ${result.stdout}`,
+    );
+    assert(
+      result.stdout.includes("test/score/"),
+      "Expected help to name the subset the GPU lane runs",
+    );
+    assert(
+      result.stdout.includes("DENO_JOBS=1"),
+      "Expected help to state the GPU lane's serialisation",
+    );
+  },
+});
+
+Deno.test({
+  name: "quality.sh --dry-run without --gpu-scorer plans no GPU lane",
+  permissions: { run: true, read: true },
+  fn: async () => {
+    const result = await runQuality(["--dry-run"]);
+    assertEquals(result.code, 0);
+    assert(
+      !result.stdout.includes("GPU scorer"),
+      `Default run must not plan a GPU lane; got: ${result.stdout}`,
+    );
+  },
+});
+
+Deno.test({
+  name: "quality.sh --dry-run --gpu-scorer plans the probe and the smoke lane",
+  permissions: { run: true, read: true },
+  fn: async () => {
+    const result = await runQuality(["--dry-run", "--gpu-scorer"]);
+    assertEquals(result.code, 0, result.stderr);
+    assert(
+      result.stdout.includes("Probing rust_scorer GPU backend"),
+      `Expected the backend pre-flight step; got: ${result.stdout}`,
+    );
+    assert(
+      result.stdout.includes("GPU scorer smoke lane"),
+      `Expected the GPU smoke lane step; got: ${result.stdout}`,
+    );
+    assert(
+      result.stdout.includes("Running tests (Rust scorer mode)"),
+      "The GPU lane is added alongside the default lane, not in place of it",
+    );
+  },
+});
+
 Deno.test({
   name:
-    "quality.sh --dry-run --wasm-scorer ignores leftover native backprop env",
+    "quality.sh --gpu-scorer runs test/score/ serially with NEAT_SCORER_GPU=auto",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const result = await runGpuScorerLane(0);
+    assertEquals(
+      result.code,
+      0,
+      `quality.sh --gpu-scorer must succeed with the shim; stderr=${result.stderr}`,
+    );
+
+    const testCalls = result.calls.filter((l) => l.includes("argv:test "));
+    assertEquals(
+      testCalls.length,
+      2,
+      `expected the default lane plus the GPU lane; got: ${
+        JSON.stringify(result.calls)
+      }`,
+    );
+    const [defaultLane, gpuLane] = testCalls;
+    assert(
+      defaultLane.startsWith("NEAT_SCORER_GPU=off"),
+      `the default lane must stay GPU-off; got: ${defaultLane}`,
+    );
+    assert(
+      gpuLane.startsWith("NEAT_SCORER_GPU=auto"),
+      `the GPU lane must hand the scorer its default auto mode; got: ${gpuLane}`,
+    );
+    assert(
+      gpuLane.includes("DENO_JOBS=1"),
+      `the GPU lane must serialise workers; got: ${gpuLane}`,
+    );
+    assert(
+      gpuLane.trimEnd().endsWith("test/score/"),
+      `the GPU lane must run only the scorer subset; got: ${gpuLane}`,
+    );
+    assert(
+      !defaultLane.includes("test/score/"),
+      `the default lane must still run the whole suite; got: ${defaultLane}`,
+    );
+  },
+});
+
+Deno.test({
+  name: "quality.sh --gpu-scorer skips cleanly when the host has no usable GPU",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const result = await runGpuScorerLane(2);
+    assertEquals(
+      result.code,
+      0,
+      `a contributor without a GPU must not fail the gate; stderr=${result.stderr}`,
+    );
+    assert(
+      result.stdout.includes("Skipping GPU scorer smoke lane"),
+      `Expected a clear skip message; got: ${result.stdout}`,
+    );
+    const testCalls = result.calls.filter((l) => l.includes("argv:test "));
+    assertEquals(
+      testCalls.length,
+      1,
+      `only the default lane may run when the probe skips; got: ${
+        JSON.stringify(result.calls)
+      }`,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "quality.sh --gpu-scorer fails loud when the backend pre-flight rejects the host",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    // Exit 1 from the probe is the silent-CPU regression (`--gpu on` reported
+    // cpu-fallback) or an unreadable probe. Neither may be reconciled to green.
+    const result = await runGpuScorerLane(1);
+    assert(
+      result.code !== 0,
+      `quality.sh must fail when the GPU pre-flight fails; stdout=${result.stdout}`,
+    );
+    assert(
+      result.stderr.includes("GPU scorer pre-flight failed") &&
+        result.stderr.includes("score on the CPU"),
+      `Expected a fail-loud pre-flight message; got: ${result.stderr}`,
+    );
+    const testCalls = result.calls.filter((l) => l.includes("argv:test "));
+    assertEquals(
+      testCalls.length,
+      1,
+      `the GPU lane must not run after a failed pre-flight; got: ${
+        JSON.stringify(result.calls)
+      }`,
+    );
+  },
+});
+
+Deno.test({
+  name: "quality.sh --dry-run ignores leftover native backprop env",
   permissions: { run: true, read: true, env: true },
   fn: async () => {
     const command = new Deno.Command("bash", {
-      args: ["./quality.sh", "--dry-run", "--wasm-scorer"],
+      args: ["./quality.sh", "--dry-run"],
       stdout: "piped",
       stderr: "piped",
       cwd: Deno.cwd(),
@@ -560,22 +827,22 @@ Deno.test({
       `stderr=${new TextDecoder().decode(output.stderr)}`,
     );
     assert(
-      stdout.includes("WASM scorer mode"),
-      "Expected WASM scorer test step",
+      stdout.includes("Rust scorer mode"),
+      "Expected the rust_scorer test step",
     );
     assert(
       !stdout.includes("Building native neat-core") &&
         !stdout.includes("Verifying native neat-core") &&
         !stdout.includes("Building native neat_ai_backpropagation") &&
         !stdout.includes("Verifying native neat_ai_backpropagation"),
-      `WASM comparison run must not load leftover native backprop; got: ${stdout}`,
+      `a plain run must not load leftover native backprop; got: ${stdout}`,
     );
   },
 });
 
 Deno.test({
   name:
-    "quality.sh --wasm-scorer forces native backprop off and honours NEAT_AI_TEST_HEAP_MB",
+    "quality.sh forces native backprop off and honours NEAT_AI_TEST_HEAP_MB",
   permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
     const home = await Deno.makeTempDir({ prefix: "neat-quality-wasm-heap-" });
@@ -599,7 +866,7 @@ exit 0
       const command = new Deno.Command("bash", {
         args: [
           "./quality.sh",
-          "--wasm-scorer",
+          `--rust-scorer-bin=${await writeFakeRustScorer(home)}`,
           "--skip-discovery",
           "--skip-wasm",
         ],
@@ -634,11 +901,11 @@ exit 0
       );
       assert(
         testCall.includes("NEAT_AI_NATIVE_CORE_BACKPROP=0"),
-        `--wasm-scorer must force native backprop off; got: ${testCall}`,
+        `a plain run must force native backprop off; got: ${testCall}`,
       );
       assert(
         testCall.includes("NEAT_AI_BACKPROP_ENABLED=0"),
-        `--wasm-scorer must force trainDir native backprop off; got: ${testCall}`,
+        `a plain run must force trainDir native backprop off; got: ${testCall}`,
       );
       assert(
         testCall.includes("--max-old-space-size=2048"),
@@ -771,7 +1038,11 @@ Deno.test({
       await Deno.copyFile("./quality.sh", `${tmp}/quality.sh`);
       await Deno.chmod(`${tmp}/quality.sh`, 0o755);
       const command = new Deno.Command("bash", {
-        args: ["./quality.sh", "--native-core-backprop", "--wasm-scorer"],
+        args: [
+          "./quality.sh",
+          "--native-core-backprop",
+          `--rust-scorer-bin=${await writeFakeRustScorer(tmp)}`,
+        ],
         stdout: "piped",
         stderr: "piped",
         cwd: tmp,
@@ -831,7 +1102,7 @@ exit 0
         args: [
           "./quality.sh",
           "--native-core-backprop",
-          "--wasm-scorer",
+          `--rust-scorer-bin=${await writeFakeRustScorer(home)}`,
           "--skip-discovery",
           "--skip-wasm",
         ],
@@ -908,7 +1179,7 @@ exit 0
         args: [
           "./quality.sh",
           "--next",
-          "--wasm-scorer",
+          `--rust-scorer-bin=${await writeFakeRustScorer(home)}`,
           "--skip-discovery",
           "--skip-wasm",
         ],

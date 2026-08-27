@@ -38,7 +38,6 @@ const SCORER_OFF: RequiredRustScorerConfig = {
   timeoutMs: 0,
   env: {},
   batch: false,
-  strict: false,
 };
 
 /** Mean of the per-record RMSE values — the value the buggy accumulation produced. */

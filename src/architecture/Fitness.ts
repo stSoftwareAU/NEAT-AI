@@ -18,10 +18,12 @@ import { buildBatchScorerDiagnostic } from "../score/BatchScorerDiagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { BuiltInCostName } from "@costs";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
+import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import {
   isBuiltInCostName,
   nativeDatasetScoringEligibility,
 } from "../score/NativeDatasetScoringEligibility.ts";
+import { resolveRecurrentDirectorySupport } from "../score/RecurrentDirectoryProbe.ts";
 
 /**
  * Evaluates fitness scores for a population of creatures.
@@ -114,13 +116,6 @@ export class Fitness {
   lastCreaturesPerCreatureScored = 0;
 
   /**
-   * True when a batch attempt failed during the most recent `calculate()` call
-   * and its creatures reverted to the per-creature worker path (Issue #3234).
-   * A partial/whole fallback must stay visible, never masked as success.
-   */
-  lastBatchFallbackOccurred = false;
-
-  /**
    * Data directory passed to the external `rust_scorer` binary in batch
    * mode (Issue #2422). `undefined` disables batch scoring regardless of
    * configuration, matching the behaviour of environments where no dataset
@@ -161,6 +156,14 @@ export class Fitness {
    */
   private readonly outputRangeCount: number;
 
+  /**
+   * Issue #3865: the run's resolved scorer config — `NeatOptions.rustScorer`
+   * layered over `NEAT_AI_RUST_SCORER_*`. Left `undefined` only by callers that
+   * never resolved one (direct construction in tests), in which case the env
+   * layer is read lazily so behaviour is unchanged.
+   */
+  private readonly rustScorer: RequiredRustScorerConfig | undefined;
+
   constructor(
     workers: WorkerHandler[],
     growth: number,
@@ -170,6 +173,7 @@ export class Fitness {
     costName?: string,
     outputRanges?: ReadonlyArray<RequiredOutputRange>,
     customCostConfigured?: boolean,
+    rustScorer?: RequiredRustScorerConfig,
   ) {
     this.workers = workers;
     this.feedbackLoop = feedbackLoop;
@@ -182,6 +186,7 @@ export class Fitness {
       ? undefined
       : toBuiltInCostName(this.configuredCostName);
     this.outputRangeCount = outputRanges?.length ?? 0;
+    this.rustScorer = rustScorer;
   }
 
   /**
@@ -243,7 +248,6 @@ export class Fitness {
       // the existing telemetry resets.
       this.lastCreaturesBatchScored = 0;
       this.lastCreaturesPerCreatureScored = 0;
-      this.lastBatchFallbackOccurred = false;
       return;
     }
 
@@ -262,7 +266,6 @@ export class Fitness {
     let batchScoredCount = 0;
     let workerScoredCount = 0;
     this.lastBatchScorerInvocations = 0;
-    this.lastBatchFallbackOccurred = false;
 
     // Issue #2422: When the external rust scorer is enabled in directory
     // mode, invoke it once for the whole generation, map results back to
@@ -271,64 +274,95 @@ export class Fitness {
     // worker side. Any reconciliation failure is logged and we fall back
     // to the per-creature worker path so the generation still completes.
     //
-    // Issue #2517: The external `rust_scorer` rejects directory-mode
-    // batches that contain any `forwardOnly=false` creature. Partition the
-    // population so only the forwardOnly subset enters the batch path —
-    // recurrent creatures take the per-creature worker path directly. This
-    // prevents one "poison" creature from collapsing the whole batch and
-    // losing the once-per-generation performance benefit.
+    // Issue #2517: The external `rust_scorer` used to reject directory-mode
+    // batches containing any `forwardOnly=false` creature, so the population
+    // was partitioned and recurrent creatures took the per-creature worker
+    // path. Issue #3870: NEAT-AI-scorer#579 threads each creature's own flag
+    // through the batch loop, so a mixed population can be scored in one
+    // invocation — but only on a binary new enough to do it. The capability is
+    // probed (see `RecurrentDirectoryProbe.ts`); an older binary keeps the
+    // partition and behaves exactly as before.
     //
-    // Issue #3854: only the forwardOnly subset ever batches, so the
-    // feedback-loop divergence cannot arise here — but `outputRanges` and a
-    // custom cost both can, and the batch path bypasses the workers that would
-    // apply them. Ask the shared eligibility predicate rather than re-deriving
-    // the rule, so the batch and per-creature call sites cannot drift apart.
-    const rustScorerConfig = getEnvRustScorerConfig();
-    const batchEligibility = nativeDatasetScoringEligibility({
-      costName: this.configuredCostName,
-      customCostConfigured: this.customCostConfigured,
-      forwardOnlyGuaranteed: true,
-      feedbackLoop: this.feedbackLoop,
-      outputRangeCount: this.outputRangeCount,
-    });
-    const batchEnabled = rustScorerConfig.enabled && rustScorerConfig.batch &&
-      this.dataDir !== undefined && batchEligibility.eligible;
+    // Issue #3854: `outputRanges`, a custom cost, and `feedbackLoop` on a
+    // recurrent creature all diverge between the engines, and the batch path
+    // bypasses the workers that would apply them. Ask the shared eligibility
+    // predicate rather than re-deriving the rule, so the batch and per-creature
+    // call sites cannot drift apart.
+    // Issue #3865: read the run's one resolved config. Falling back to the env
+    // layer keeps direct constructions (tests) behaving exactly as before.
+    const rustScorerConfig = this.rustScorer ?? getEnvRustScorerConfig();
 
     // After any batch attempt (success, skip, or failure), this list
     // holds the creatures still needing the per-creature worker path.
     let creaturesForWorkerPath: Creature[] = uniqueQueue;
 
-    if (batchEnabled) {
+    if (
+      rustScorerConfig.enabled && rustScorerConfig.batch &&
+      this.dataDir !== undefined
+    ) {
+      // Issue #3870: the eligibility question is asked per creature with that
+      // creature's real `forwardOnlyGuaranteed`. The hard-coded `true` this
+      // replaced was only true because the partition below guaranteed it; with
+      // recurrent creatures now allowed into the batch it would be a lie, and
+      // `feedbackLoop: true` recurrent creatures would silently batch under
+      // per-record state resets — the divergence #3854 gated.
       const forwardOnlyCreatures: Creature[] = [];
       const recurrentCreatures: Creature[] = [];
+      const refusedCreatures: Creature[] = [];
       for (const creature of uniqueQueue) {
-        if (creature.forwardOnly === true) {
+        const eligibility = nativeDatasetScoringEligibility({
+          costName: this.configuredCostName,
+          customCostConfigured: this.customCostConfigured,
+          forwardOnlyGuaranteed: creature.forwardOnlyGuaranteed,
+          feedbackLoop: this.feedbackLoop,
+          outputRangeCount: this.outputRangeCount,
+        });
+        if (!eligibility.eligible) {
+          refusedCreatures.push(creature);
+        } else if (creature.forwardOnlyGuaranteed) {
           forwardOnlyCreatures.push(creature);
         } else {
           recurrentCreatures.push(creature);
         }
       }
 
-      // One INFO line per generation summarising the partition. Operators
-      // need this to see at a glance how often "poison" recurrent creatures
-      // shrink the batch — per-creature logging would be far too noisy.
-      getLogger().info(
-        `[NEAT-AI] Batch scorer partition: ${forwardOnlyCreatures.length} ` +
-          `forwardOnly batched, ${recurrentCreatures.length} recurrent ` +
-          `per-creature`,
-      );
+      // Probing costs a subprocess, so only ask when there is a recurrent
+      // creature whose fate the answer would change.
+      const recurrentBatchable = recurrentCreatures.length > 0 &&
+        await resolveRecurrentDirectorySupport(
+          rustScorerConfig,
+          this.dataDir!,
+        );
+      const batchCreatures = recurrentBatchable
+        ? [...forwardOnlyCreatures, ...recurrentCreatures]
+        : forwardOnlyCreatures;
+      const batchRemainder = recurrentBatchable
+        ? refusedCreatures
+        : [...refusedCreatures, ...recurrentCreatures];
 
-      if (forwardOnlyCreatures.length > 0) {
+      // One INFO line per generation summarising the partition. Operators use
+      // it to see at a glance how much of the population is batching —
+      // per-creature logging would be far too noisy.
+      if (batchCreatures.length > 0 || batchRemainder.length > 0) {
+        getLogger().info(
+          `[NEAT-AI] Batch scorer partition: ${forwardOnlyCreatures.length} ` +
+            `forwardOnly batched, ${
+              recurrentBatchable ? recurrentCreatures.length : 0
+            } recurrent batched, ${batchRemainder.length} per-creature`,
+        );
+      }
+
+      if (batchCreatures.length > 0) {
         try {
           const batchRun = await tryBatchScoreWithRustScorer(
-            forwardOnlyCreatures,
+            batchCreatures,
             this.dataDir!,
             rustScorerConfig,
             this.costName,
           );
           this.lastBatchScorerInvocations = batchRun.invocations;
           if (batchRun.results) {
-            for (const creature of forwardOnlyCreatures) {
+            for (const creature of batchCreatures) {
               const record = batchRun.results.get(creature);
               if (!record) continue;
               const error = record.error;
@@ -362,64 +396,39 @@ export class Fitness {
                 }
               }
             }
-            // Batch handled the forwardOnly subset — workers only need to
-            // score the recurrent remainder.
-            creaturesForWorkerPath = recurrentCreatures;
+            // Batch handled every creature it accepted — workers only need to
+            // score the remainder the eligibility predicate or the scorer's
+            // capability kept back.
+            creaturesForWorkerPath = batchRemainder;
           }
         } catch (err) {
           // Issue #3541: a corrupt dataset is not a transient scorer issue —
           // the per-creature and WASM paths read the same bytes. Propagate so
           // the run fails once on the scorer's own diagnostic.
           if (err instanceof DatasetError) throw err;
-          // Issue #3815: strict mode makes the fallback itself fatal — an
-          // entirely dead native batch path must never reconcile to a green
-          // run. The escalated error keeps the scorer's stderr verbatim.
-          if (rustScorerConfig.strict) {
-            throw toScorerStrictError(
-              err,
-              "Batch rust scorer failed under NEAT_AI_RUST_SCORER_STRICT",
-              "BATCH_FALLBACK",
-            );
-          }
-          // Surface batch reconciliation failures as explicit log errors per
-          // the acceptance criteria, then fall back to the per-creature path
-          // so the generation is not lost to a transient scorer issue.
-          // Issue #2518: enrich the log line with population composition
-          // counters and per-creature metadata for any UUID we can extract
-          // from the rust scorer's stderr or the typed error itself, so
-          // operators can trace the producer of the offending creature(s)
-          // without re-running the workload.
-          const detail = err instanceof Error ? err.message : String(err);
+          // Issue #3871: the per-creature re-score that used to absorb a batch
+          // failure is gone, so the failure is the generation's outcome. The
+          // escalated error keeps the scorer's stderr verbatim.
+          //
+          // Issue #2518: the population-composition counters and the
+          // per-creature metadata for any UUID extractable from the scorer's
+          // stderr ride the message, so operators can still trace the producer
+          // of the offending creature(s) without re-running the workload.
           const diagnostic = err instanceof Error
-            ? buildBatchScorerDiagnostic(err, forwardOnlyCreatures)
+            ? buildBatchScorerDiagnostic(err, batchCreatures)
             : undefined;
-          if (err instanceof BatchScorerError) {
-            getLogger().error(
-              `[NEAT-AI] Batch rust scorer reconciliation failed ` +
-                `(${err.reason}): ${detail}; ${diagnostic!.message}; ` +
-                `falling back to per-creature scoring.`,
-            );
-          } else if (diagnostic) {
-            getLogger().error(
-              `[NEAT-AI] Batch rust scorer invocation failed: ${detail}; ` +
-                `${diagnostic.message}; falling back to per-creature scoring.`,
-            );
-          } else {
-            getLogger().error(
-              `[NEAT-AI] Batch rust scorer invocation failed: ${detail}; ` +
-                `falling back to per-creature scoring.`,
-            );
-          }
-          // creaturesForWorkerPath stays at uniqueQueue so the worker path
-          // re-scores everything, including the forwardOnly creatures the
-          // batch attempt failed to score.
-          // Issue #3234: mark the fallback so it is counted per-run rather
-          // than silently absorbed by the worker path's success.
-          this.lastBatchFallbackOccurred = true;
+          const context = err instanceof BatchScorerError
+            ? `Batch rust scorer reconciliation failed (${err.reason})`
+            : "Batch rust scorer invocation failed";
+          throw toScorerStrictError(
+            err,
+            diagnostic ? `${context}; ${diagnostic.message}` : context,
+            "BATCH_FALLBACK",
+          );
         }
       }
-      // forwardOnlyCreatures.length === 0 — no temp dir, no spawn. The
-      // worker path already covers every recurrent creature.
+      // batchCreatures.length === 0 — no temp dir, no spawn. The worker path
+      // already covers every creature the batch could not take.
     }
 
     // Issue #2934: Cost-aware ordering of the evaluation queue. Creatures are
@@ -435,7 +444,7 @@ export class Fitness {
     // for WASM compilation cache reuse while still front-loading heavy blocks.
     // Issue #2517: `creaturesForWorkerPath` excludes any creatures already
     // scored by the batch path; it is identical to `uniqueQueue` whenever
-    // batch is disabled, the forwardOnly subset is empty, or batch failed.
+    // batch is disabled, nothing was batchable, or batch failed.
     const queue: Creature[] = creaturesForWorkerPath;
     orderForEvaluation(queue, {
       topologyGrouping: this.evalConfig.topologyGrouping,

@@ -128,7 +128,7 @@ Deno.test("forwardOnly population is batch-scored every generation, never per-cr
   // In-process override (Issue #3234) — never mutate the shared process env,
   // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
 
   const population = buildForwardOnlyPopulation(POPULATION_SIZE);
   const uuids = population.map((c) => CreatureUtil.makeUUID(c));
@@ -159,7 +159,6 @@ Deno.test("forwardOnly population is batch-scored every generation, never per-cr
         batchScorerInvocations: fitness.lastBatchScorerInvocations,
         creaturesBatchScored: fitness.lastCreaturesBatchScored,
         creaturesPerCreatureScored: fitness.lastCreaturesPerCreatureScored,
-        batchFallbackOccurred: fitness.lastBatchFallbackOccurred,
       });
 
       // Every creature still ends the generation with a valid, finite score.
@@ -193,8 +192,6 @@ Deno.test("forwardOnly population is batch-scored every generation, never per-cr
       0,
       "no forwardOnly creature reached the per-creature worker path",
     );
-    // No fallback: the batch path succeeded every generation.
-    assertEquals(totals.batchFallbackGenerations, 0);
   } finally {
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();

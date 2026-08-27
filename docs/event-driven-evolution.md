@@ -569,30 +569,41 @@ on; this just sums them.
 Alongside `phaseTimingTotals`, every `evolve*` result also carries
 `scorerUtilisation` — the whole-run **per-backend** count of how creatures were
 scored. `Fitness.calculate()` can score a generation two ways: the Rust native
-**batch (one-pass)** path (only forwardOnly creatures, one `rust_scorer` process
-per generation) or the **per-creature worker** path (recurrent creatures, and
-anything that falls back). Previously a single combined count spanned both, so a
-silent regression — the batch path breaks and every creature quietly falls back
-to the slow worker path — looked identical to a healthy run. `scorerUtilisation`
-splits the count by backend and tallies fallback generations so that regression
-is visible in `result.json`.
+**batch (one-pass)** path (one `rust_scorer` process per generation) or the
+**per-creature worker** path (anything the batch cannot take, and anything that
+falls back). Previously a single combined count spanned both, so a silent
+regression — the batch path breaks and every creature quietly falls back to the
+slow worker path — looked identical to a healthy run. `scorerUtilisation` splits
+the count by backend so that regression is visible in `result.json`. Since Issue
+#3871 the fallback itself is gone: a `rust_scorer` that is present and fails
+aborts the generation, so a low `creaturesBatchScored` now means the eligibility
+predicate refused the population, not that scoring silently changed engine.
+
+Which creatures the batch may take is decided per creature (Issue #3870). A
+`forwardOnly` creature always qualifies; a recurrent one qualifies only when the
+run does not need `feedbackLoop` semantics (the native recurrent path resets
+network state per record) **and** the resolved `rust_scorer` binary can batch
+recurrent creatures at all — a capability probed once per binary, so a pre-#579
+scorer keeps the old partition and behaves exactly as before.
 
 ```mermaid
 flowchart TD
-    Q[Unique creatures this generation] --> P{forwardOnly?}
-    P -->|yes| B[Batch rust scorer<br/>one process per generation]
-    P -->|no| W[Per-creature worker path]
+    Q[Unique creatures this generation] --> P{Native scoring<br/>eligible?}
+    P -->|"no — custom cost,<br/>outputRanges, feedbackLoop"| W[Per-creature worker path]
+    P -->|yes| R{recurrent?}
+    R -->|no| B[Batch rust scorer<br/>one process per generation]
+    R -->|yes| C{scorer batches<br/>recurrent?}
+    C -->|"yes (probe)"| B
+    C -->|no| W
     B -->|success| BS[creaturesBatchScored++]
-    B -->|failure| F[batchFallbackGenerations++<br/>revert to worker path]
-    F --> W
+    B -->|failure| F[ScorerStrictError<br/>generation aborts]
     W --> WS[creaturesPerCreatureScored++]
 ```
 
 ```typescript
 const { scorerUtilisation } = await creature.evolveDataSet(data, opts);
 // e.g. { generations: 200, batchScorerInvocations: 200,
-//        creaturesBatchScored: 40_000, creaturesPerCreatureScored: 0,
-//        batchFallbackGenerations: 0 }
+//        creaturesBatchScored: 40_000, creaturesPerCreatureScored: 0 }
 ```
 
 - **`batchScorerInvocations`** — total `rust_scorer` processes spawned across
@@ -600,16 +611,48 @@ const { scorerUtilisation } = await creature.evolveDataSet(data, opts);
   batch mode was disabled, unavailable, or never used.
 - **`creaturesBatchScored`** — creatures resolved via the native batch path. `0`
   on a batch-enabled host is a red flag: the one-pass path never ran.
-- **`creaturesPerCreatureScored`** — creatures resolved via the worker path
-  (recurrent creatures plus any batch remainder or fallback).
-- **`batchFallbackGenerations`** — generations where a batch attempt failed and
-  its creatures reverted to the worker path. **Non-zero exposes the exact
-  silent-fallback regression this telemetry exists to catch.**
+- **`creaturesPerCreatureScored`** — creatures resolved via the worker path:
+  whatever the eligibility predicate refused (a custom cost, configured
+  `outputRanges`, or `feedbackLoop` on a recurrent creature).
 - **`generations`** is the number of generations aggregated.
 
 The per-generation split is also emitted on the verbose `[Throughput]` log line
-(`batchScored…/perCreatureScored…/batchFallback…`). The overhead is zero — the
-counters are always on; this just sums them.
+(`batchScored…/perCreatureScored…/batchInvocations…`). The overhead is zero —
+the counters are always on; this just sums them.
+
+### 🚨 A native failure is fatal (Issues #3810, #3815, #3871)
+
+Native dataset scoring has **no fallback**. A `rust_scorer` that is present and
+fails — an exec failure, unparseable output, or a non-finite error — throws a
+`ScorerStrictError` carrying the scorer's stderr verbatim, and the run aborts.
+It used to degrade to the TypeScript/WASM engine and log a warning, which is how
+Issue #3810 kept an entirely dead native path reconciling to a green run for an
+unknown length of time. `NEAT_AI_RUST_SCORER_STRICT=0` selected that degrading
+path; Issue #3871 deleted it, and the variable is now **refused** with a
+`ConfigurationError` rather than silently ignored.
+
+```mermaid
+flowchart TD
+    S[Dataset scoring request] --> E{Eligible for<br/>native scoring?}
+    E -->|"no — custom cost,<br/>outputRanges, feedbackLoop"| TS[TypeScript/WASM engine<br/>serves the request]
+    E -->|yes| A{rust_scorer available<br/>and able to serve this cost?}
+    A -->|no — graceful skip| TS
+    A -->|yes| R{Did it serve the score?}
+    R -->|yes| OK[Native path served the run]
+    R -->|no — exec, parse or<br/>non-finite failure| THROW[ScorerStrictError<br/>run aborts]
+```
+
+Two rules define the boundary, and they fail in opposite directions:
+
+1. **A failure is never absorbed.** The other engine does not re-score a request
+   the native engine was asked to serve and could not. A wrong number computed
+   under different rules is worse than no number.
+2. **A graceful skip is not a failure.** No `rust_scorer` installed, scoring
+   disabled, or a binary too old to advertise the configured `--cost` all mean
+   native scoring was never available — the request never reached it, so the
+   TypeScript/WASM engine serves it and the run completes normally. Note that
+   `./quality.sh` is stricter than the library here: it _requires_ the binary
+   and fails the gate when it cannot be resolved.
 
 ## 🎛️ Run-level tuning statistics (Issue #3422)
 

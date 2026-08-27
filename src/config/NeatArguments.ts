@@ -25,6 +25,7 @@ import type { TrainingEventCallback } from "@config/TrainingEvent.ts";
 import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
 import type { RequiredMemoryConfig } from "@config/MemoryConfig.ts";
 import type { RequiredWasmCacheConfig } from "@config/WasmCacheConfig.ts";
+import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "@config/WeightRegularisationConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
@@ -714,6 +715,18 @@ export interface NeatArguments {
    * scales with `populationSize` to avoid eviction churn.
    */
   wasmCache: RequiredWasmCacheConfig;
+
+  /**
+   * Resolved external Rust scorer configuration.
+   *
+   * Issue #3865: promoted from an env-only internal to a first-class option.
+   * **Precedence: an explicit `NeatOptions.rustScorer` field beats the matching
+   * `NEAT_AI_RUST_SCORER_*` variable, which beats the built-in default.** With
+   * no option supplied this is exactly the env-derived config, so the resolved
+   * value is a superset of the previous behaviour rather than a replacement
+   * for it.
+   */
+  rustScorer: RequiredRustScorerConfig;
 
   /**
    * Discovery cache eviction configuration.

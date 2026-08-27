@@ -56,7 +56,6 @@ export interface ScorerUtilisationSource {
   readonly lastBatchScorerInvocations: number;
   readonly lastCreaturesBatchScored: number;
   readonly lastCreaturesPerCreatureScored: number;
-  readonly lastBatchFallbackOccurred: boolean;
 }
 
 /**
@@ -128,7 +127,6 @@ function readScorerUtilisation(
     batchScorerInvocations: fitness.lastBatchScorerInvocations,
     creaturesBatchScored: fitness.lastCreaturesBatchScored,
     creaturesPerCreatureScored: fitness.lastCreaturesPerCreatureScored,
-    batchFallbackOccurred: fitness.lastBatchFallbackOccurred,
   };
 }
 

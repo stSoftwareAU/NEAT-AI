@@ -164,10 +164,11 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   // removed `opd`, leaving 108; #3779 then added
   // `skipTrainingAfterPopulationNoProgress`, making 109; #3874 then removed
   // `crossValidation`, `dataFuzzing` and `dataQuantisation` in 7.0.0,
-  // leaving 106.
+  // leaving 106; #3865 then promoted the env-only Rust scorer config to a
+  // `rustScorer` option key, making 107.
   assertEquals(
     topLevel.length,
-    106,
+    107,
     "NeatArguments top-level key count changed",
   );
   assert(
