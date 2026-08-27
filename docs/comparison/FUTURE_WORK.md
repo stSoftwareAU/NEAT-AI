@@ -18,9 +18,73 @@ The gaps are grouped into high, medium, and low priority below.
 > the greatest impact on practical usability; low-priority items are
 > enhancements that would broaden the library's reach.
 
+**Two kinds of gap appear below.** Most are about **reach** — unsupervised
+learning, multi-task learning, attention, sequence modelling: things NEAT-AI
+cannot yet do. Gaps 1, 2 and 7 are a different kind: they are about the
+**trustworthiness of the results NEAT-AI already produces**, and they are the
+named mitigations for cons 8–10 in
+[Pros and cons](./PROS_AND_CONS.md#-neat-ai--cons). A result that cannot be
+trusted is worth less than a capability that does not exist yet, so the
+trustworthiness gaps sort above the reach-extending ones inside each tier.
+
 ## 🔴 High priority
 
-### 1. 🔁 Transfer Learning Support
+### 1. 🎨 Quality-Diversity and Behavioural Archives
+
+**Current state**: NEAT-AI keeps a population with speciation, fitness sharing
+and islands, but every optimiser in the fleet — NEAT-AI's own accept step and
+the sibling Rust optimisers — ultimately drives a **single incumbent** forward
+and only keeps what beats it. That is a local-optimum machine by construction,
+and it is the named answer to
+[con 9, diversity loss from accept-only optimisation](./PROS_AND_CONS.md#-neat-ai--cons).
+
+**What's missing**: an archive of high-performing solutions that differ
+**behaviourally** rather than one champion — a behaviour descriptor per
+creature, a MAP-Elites-style grid or novelty archive keyed on it, and breeding
+that draws from the archive rather than only from the incumbent's species.
+Speciation and islands already provide most of the machinery; what is absent is
+the behaviour descriptor and the archive keyed on it.
+
+**Impact**: escapes local optima the hill-climb cannot. Worth noting that
+quality-diversity methods frequently find better _single_ solutions than a pure
+hill-climb aiming for exactly that — the diversity is the means, not only the
+end.
+
+**References**:
+
+- [Abandoning Objectives: Evolution through the Search for Novelty Alone](https://doi.org/10.1162/EVCO_a_00025)
+  — Lehman & Stanley (2011) — novelty search.
+- [Illuminating Search Spaces by Mapping Elites](https://arxiv.org/abs/1504.04909)
+  — Mouret & Clune (2015) — MAP-Elites.
+
+### 2. 📏 A Holdout No Optimiser Can See
+
+**Current state**: **no corpus slice is withheld from every optimiser** — see
+[con 8, evaluation validity under repeated selection](./PROS_AND_CONS.md#-neat-ai--cons).
+Fitness is scored over the whole dataset directory a run is given; the library's
+`HoldoutValidator` (Issue #1308) is opt-in, off by default, and splits that same
+corpus for discovery candidates only, so its reserved slice is still visible to
+the fitness evaluation that later accepts the creature.
+
+**What's missing**: a slice of the corpus that no optimiser — not NEAT-AI, not
+Discovery, not the sibling Rust optimisers — ever scores against, plus a
+reporting rule over it. Blum & Hardt's Ladder is a drop-in shape: report an
+improvement only when it beats the previous best by more than the evaluation
+noise, so the number of effective queries against the reserved slice stays
+bounded no matter how many candidates were tried.
+
+**Impact**: reported improvements become claims about the data rather than about
+the scorer. Without it, every headline number carries an unbounded adaptivity
+debt.
+
+**References**:
+
+- [The Reusable Holdout: Preserving Validity in Adaptive Data Analysis](https://doi.org/10.1126/science.aaa9375)
+  — Dwork et al. (2015).
+- [The Ladder: A Reliable Leaderboard for Machine Learning Competitions](https://arxiv.org/abs/1502.04585)
+  — Blum & Hardt (2015).
+
+### 3. 🔁 Transfer Learning Support
 
 **Current state**: ✅ Implemented (Issue #1861). Checkpoint export/import with
 UUID-based neuron and synapse mapping enables reuse of trained creatures across
@@ -53,7 +117,7 @@ related tasks with different input/output configurations.
 - [Knowledge Distillation](https://arxiv.org/abs/1503.02531) — Hinton et al.
   (2015).
 
-### 2. 🔓 Unsupervised Learning
+### 4. 🔓 Unsupervised Learning
 
 **Current state**: Both standard NEAT and NEAT-AI are typically used for
 supervised tasks where labelled data computes fitness scores. True unsupervised
@@ -83,7 +147,7 @@ and unsupervised fitness functions (reconstruction error, clustering quality).
 - [Unsupervised Learning](https://en.wikipedia.org/wiki/Unsupervised_learning) —
   Wikipedia.
 
-### 3. 👁️ Attention Mechanisms
+### 5. 👁️ Attention Mechanisms
 
 **Current state**: No built-in attention mechanisms for sequence tasks.
 
@@ -100,7 +164,7 @@ position encoding for sequences, and attention-based memory mechanisms.
   — Jay Alammar.
 - [Augmented RNNs](https://distill.pub/2016/augmented-rnns/) — Olah & Carter.
 
-### 4. ⚡ Batch Processing Optimisation
+### 6. ⚡ Batch Processing Optimisation
 
 **Current state**: Parallel batch creature evaluation with topology-aware
 grouping is implemented (Issue #1862), along with batch discovery validation and
@@ -127,7 +191,35 @@ GPU-accelerated forward passes, and batch inference optimisation.
 
 ## 🟡 Medium priority
 
-### 5. 🎯 Multi-Task Learning
+### 7. 🛡️ Robustness as an Acceptance Criterion
+
+**Current state**: acceptance compares **point scores**. On the production
+workload the accepted improvements are of the order of 1e-04, so a win and the
+evaluation noise are the same size, and nothing distinguishes a creature sitting
+in a flat basin from one balanced on a knife edge — see
+[con 10, operating in the noise regime](./PROS_AND_CONS.md#-neat-ai--cons).
+
+**What's missing**: accepting on a **perturbed** objective rather than the point
+score — score the candidate under small weight perturbations and accept on the
+worst case (or the mean) instead of the single measurement. Tracked as a scorer
+capability in
+[NEAT-AI-scorer#588](https://github.com/stSoftwareAU/NEAT-AI-scorer/issues/588),
+since the judge is where the perturbation has to happen for every optimiser to
+inherit it.
+
+**Impact**: accepted wins survive contact with data the creature has not seen; a
+knife-edge candidate is rejected before it becomes the incumbent.
+
+**References**:
+
+- [Flat Minima](https://doi.org/10.1162/neco.1997.9.1.1) — Hochreiter &
+  Schmidhuber (1997).
+- [On Large-Batch Training for Deep Learning: Generalization Gap and Sharp Minima](https://arxiv.org/abs/1609.04836)
+  — Keskar et al. (2017).
+- [Sharpness-Aware Minimization](https://arxiv.org/abs/2010.01412) — Foret et
+  al. (2021), SAM.
+
+### 8. 🎯 Multi-Task Learning
 
 **Current state**: Single-objective optimisation. Each creature optimises for
 one task.
@@ -143,7 +235,7 @@ tracking, task-specific output heads, and shared representation learning.
 - [Multi-Objective Optimization](https://en.wikipedia.org/wiki/Multi-objective_optimization)
   — Wikipedia.
 
-### 6. 🛡️ Advanced Regularisation Techniques
+### 9. 🛡️ Advanced Regularisation Techniques
 
 **Current state**: Comprehensive regularisation suite including dropout, L1/L2
 weight & bias decay, sparse training, pruning, and a cost-of-growth penalty.
@@ -170,7 +262,7 @@ weight & bias decay, sparse training, pruning, and a cost-of-growth penalty.
 - [Regularization in Deep Learning](https://www.deeplearningbook.org/contents/regularization.html)
   — Deep Learning Book.
 
-### 7. 🔧 Hyperparameter Evolution
+### 10. 🔧 Hyperparameter Evolution
 
 **Current state**: Adaptive population sizing is implemented (Issue #1863).
 Per-creature hyperparameter self-adaptation was implemented alongside it but
@@ -200,7 +292,7 @@ with a consumer that enables it), and meta-learning for hyperparameters
   Bengio (2012).
 - [AutoML](https://www.automl.org/).
 
-### 8. 🖥️ Cross-Platform GPU Support
+### 11. 🖥️ Cross-Platform GPU Support
 
 **Current state**: Cross-platform GPU acceleration via the wgpu abstraction
 layer.
@@ -231,7 +323,7 @@ OpenCL for older hardware, and benchmarking across all platforms.
 
 ## 🟢 Low priority
 
-### 9. 🔍 Advanced Interpretability Tools
+### 12. 🔍 Advanced Interpretability Tools
 
 **Current state**: Basic visualisation of network structure.
 
@@ -247,7 +339,7 @@ evolutionary-path visualisation, decision-boundary visualisation, saliency maps.
 - [Feature Visualization](https://distill.pub/2017/feature-visualization/) —
   Olah et al. (2017).
 
-### 10. 📦 Standard Format Export
+### 13. 📦 Standard Format Export
 
 **Current state**: ✅ ONNX export implemented (Issue #1866). Custom JSON format
 remains for internal serialisation.
@@ -270,7 +362,7 @@ Apple devices, and PyTorch model conversion.
 - [TensorFlow Lite](https://www.tensorflow.org/lite).
 - [CoreML](https://developer.apple.com/machine-learning/core-ml/).
 
-### 11. 🕹️ Reinforcement Learning Support
+### 14. 🕹️ Reinforcement Learning Support
 
 **Current state**: NEAT-AI is a direct policy-search method for episode-based RL
 (see [Training paradigms](./TRAINING_PARADIGMS.md#-reinforcement-learning)), but
@@ -289,7 +381,7 @@ actor-critic architectures, and built-in reward shaping.
 - [Proximal Policy Optimization](https://arxiv.org/abs/1707.06347) — Schulman et
   al. (2017).
 
-### 12. 📈 Time Series and Sequence Modelling
+### 15. 📈 Time Series and Sequence Modelling
 
 **Current state**: Primarily feedforward, but basic recurrent/time-series
 support exists via the `feedbackLoop` configuration.
