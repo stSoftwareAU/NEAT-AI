@@ -15,13 +15,15 @@
  * recordCount, ...}`.
  *
  * Failures (missing keys, extra keys, malformed results, non-JSON stdout,
- * non-zero exit) surface as {@link BatchScorerError} so generation scoring
- * can fail fast rather than silently mis-score creatures. The caller can
- * then choose to fall back to the per-creature scoring path.
+ * non-zero exit) surface as a {@link ScorerStrictError} carrying the scorer's
+ * stderr verbatim, so generation scoring fails fast rather than silently
+ * mis-scoring creatures (Issue #3815, default since Issue #3864). Issue #3871
+ * removed the per-creature/WASM re-score that used to absorb them, so there is
+ * no longer a fallback for the caller to choose.
  *
- * Issue #3815: under strict mode — the default since Issue #3864 — those
- * failures surface as {@link ScorerStrictError} instead, carrying the scorer's
- * stderr verbatim so the caller aborts rather than falling back.
+ * A **skip** is different from a failure and still returns `undefined`
+ * results: batch mode off, the binary absent, or a binary too old to honour
+ * the configured cost. Those never reached the native engine at all.
  *
  * @module BatchRustScorerBridge
  */
@@ -174,22 +176,14 @@ export async function tryBatchScoreWithRustScorer(
       // Issue #3541: classify before signalling a retryable batch failure — a
       // corrupt dataset fails identically on the per-creature and WASM paths.
       assertNotCorruptDataset(result.stderr, result.code, absoluteDataDir);
-      // Issue #3815: strict mode escalates the failure so the fallback cannot
-      // reconcile a dead native batch path to a green run. The stderr is
-      // carried verbatim — the trimmed log line is what made #3810 so hard to
-      // find.
-      if (config.strict) {
-        throw new ScorerStrictError(
-          `Rust scorer batch call failed (exit ${result.code}) for ${expectedStems.length} creature(s) in ${absoluteDataDir}`,
-          "EXEC_FAILURE",
-          { exitCode: result.code, stderr: result.stderr },
-        );
-      }
-      throw new BatchScorerError(
-        `Rust scorer batch call failed (exit ${result.code}): ${
-          trimForLog(result.stderr)
-        }`,
-        "INVALID_JSON",
+      // Issue #3815 / #3871: the failure is escalated unconditionally — there
+      // is no per-creature fallback left to reconcile a dead native batch path
+      // to a green run. The stderr is carried verbatim; the trimmed log line is
+      // what made #3810 so hard to find.
+      throw new ScorerStrictError(
+        `Rust scorer batch call failed (exit ${result.code}) for ${expectedStems.length} creature(s) in ${absoluteDataDir}`,
+        "EXEC_FAILURE",
+        { exitCode: result.code, stderr: result.stderr },
       );
     }
 
@@ -200,7 +194,6 @@ export async function tryBatchScoreWithRustScorer(
     try {
       reconciled = reconcileBatchScorerOutput(result.stdout, expectedStems);
     } catch (error) {
-      if (!config.strict) throw error;
       throw toScorerStrictError(
         error,
         "Rust scorer batch output could not be reconciled",
@@ -243,12 +236,4 @@ function readEnvString(key: string): string | undefined {
   } catch {
     return undefined;
   }
-}
-
-/** Matches the trim policy in `RustScorerBridge.ts` for consistent logs. */
-function trimForLog(value: string, limit: number = 2000): string {
-  if (!value) return "";
-  const collapsed = value.replace(/\s+/g, " ").trim();
-  if (collapsed.length <= limit) return collapsed;
-  return collapsed.slice(0, limit) + "…";
 }

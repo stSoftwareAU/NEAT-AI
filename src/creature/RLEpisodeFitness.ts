@@ -219,7 +219,6 @@ export class RLEpisodeFitness<S, A> extends Fitness {
     // scored creature is per-creature. Reset the split counters each call.
     this.lastCreaturesBatchScored = 0;
     this.lastCreaturesPerCreatureScored = 0;
-    this.lastBatchFallbackOccurred = false;
 
     if (this.seedSet.length === 0) {
       throw new Error(

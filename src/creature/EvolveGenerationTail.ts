@@ -56,14 +56,6 @@ export interface ScorerUtilisationSource {
   readonly lastBatchScorerInvocations: number;
   readonly lastCreaturesBatchScored: number;
   readonly lastCreaturesPerCreatureScored: number;
-  readonly lastBatchFallbackOccurred: boolean;
-  /**
-   * Issue #3866: true when any native scoring attempt degraded to WASM this
-   * generation, including the per-creature `rust_scorer` path the batch flag
-   * above cannot see. Optional — the episodic/RL scorers never touch the native
-   * path, so they need not publish it.
-   */
-  readonly lastNativeScoringFallbackOccurred?: boolean;
 }
 
 /**
@@ -135,12 +127,6 @@ function readScorerUtilisation(
     batchScorerInvocations: fitness.lastBatchScorerInvocations,
     creaturesBatchScored: fitness.lastCreaturesBatchScored,
     creaturesPerCreatureScored: fitness.lastCreaturesPerCreatureScored,
-    batchFallbackOccurred: fitness.lastBatchFallbackOccurred,
-    // Issue #3866: a batch fallback is always a native fallback, so a scorer
-    // that does not publish the wider flag still contributes its batch case.
-    nativeFallbackOccurred:
-      fitness.lastNativeScoringFallbackOccurred === true ||
-      fitness.lastBatchFallbackOccurred,
   };
 }
 
