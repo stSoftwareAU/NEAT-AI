@@ -250,9 +250,36 @@ If GPU is active but still slow:
 
 ## ⚙️ Configuration
 
-**There is nothing to configure.** GPU acceleration has no `NeatOptions` key:
-backend selection is automatic, and a GPU adapter is mandatory for analysis
-either way.
+GPU acceleration has no `NeatOptions` key: backend selection is automatic, and a
+GPU adapter is mandatory for analysis either way.
+
+### 🚫 `NEAT_AI_DISCOVERY_GPU` — refusing the GPU on a host
+
+The one switch is an environment variable, read once per process:
+
+| Value                    | Effect                                                    |
+| ------------------------ | --------------------------------------------------------- |
+| unset / `auto` (default) | Probe the adapter — the historical behaviour.             |
+| `on`                     | Same as `auto`; a GPU is never forced into existence.     |
+| `off`                    | Skip the probe entirely. No wgpu instance, no GPU device. |
+
+`off` makes `isRustGpuAvailable()` return `false` **before** the library is
+loaded, so `analyzeParallel()` refuses every pass and this worker contributes no
+discovery proposals. Evolution — mutation, breeding, training and scoring —
+continues on the CPU, just slower.
+
+Use it on a host whose driver cannot be trusted with a device. An old Linux
+worker in the GRQ fleet probed Vulkan, lost the device mid-run
+(`Parent device
+is lost`) and killed a 1075-second evolve stage; the value of
+probing there was negative (GRQ#4405). The spelling mirrors the native scorer's
+`NEAT_SCORER_GPU`, so one host is declared CPU-only the same way for both
+engines.
+
+An unrecognised value is reported with a warning and treated as `auto` — a typo
+must not quietly leave a host in the state the switch was set to avoid. Set it
+in the **host** environment before the process starts, so every child inherits
+it, and grant it on any scoped `--allow-env` (a denied read reads as `auto`).
 
 ### 🧩 About the internal `requireGpu` field
 
@@ -297,6 +324,9 @@ Data is transferred to GPU as:
 
 ## 📅 History
 
+- **27 Aug 2026**: `NEAT_AI_DISCOVERY_GPU=off` lets an operator refuse the GPU
+  on a host whose driver loses the device mid-run (GRQ#4405). The probe is
+  skipped before the library loads, so no wgpu instance is created.
 - **9 Aug 2026**: Documented the real behaviour (#3692) — discovery analysis is
   GPU-only, there is no CPU fallback, and `getGpuBackendInfo()` is exported from
   the package entry point so the probe samples above are runnable.

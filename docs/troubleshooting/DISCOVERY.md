@@ -18,6 +18,7 @@ diagnostic flow. See the index in
 - [Discovery is always optional](#-discovery-is-always-optional)
 - [FFI permission denied](#-ffi-permission-denied)
 - [No GPU detected](#-no-gpu-detected)
+- [Refusing the GPU on a host](#-refusing-the-gpu-on-a-host)
 - [Discovery not finding improvements](#-discovery-not-finding-improvements)
 
 ## 🔧 Building NEAT-AI-Discovery locally
@@ -136,6 +137,33 @@ will never have a GPU, disable discovery with `discoverySampleRate: -1` to avoid
 paying the recording cost for nothing. See
 [`../GPU_ACCELERATION.md`](../GPU_ACCELERATION.md) for backend selection
 details.
+
+## 🚫 Refusing the GPU on a host
+
+**Symptom:** the host has a GPU, but you do not want it used — the driver is old
+enough that probing costs a lost device rather than acceleration. In the GRQ
+fleet one worker panicked inside `Device::poll` with `Parent device is lost` and
+took a 1075-second evolve stage with it (GRQ#4405).
+
+Export `NEAT_AI_DISCOVERY_GPU=off` in the **host** environment before the
+process starts, so every child inherits it:
+
+```bash
+export NEAT_AI_DISCOVERY_GPU=off
+```
+
+The probe is then skipped before the library is loaded — no wgpu instance and no
+GPU device are created, and the log reads
+`GPU probe skipped:
+NEAT_AI_DISCOVERY_GPU=off` instead of
+`✅ GPU acceleration enabled via Vulkan`. Accepted values are `auto` (default),
+`on` and `off`; anything else is warned about and treated as `auto`. Grant the
+variable on any scoped `--allow-env`, or the read is denied and reads as `auto`.
+
+The consequence is the same as [No GPU detected](#-no-gpu-detected): discovery
+yields no proposals on this worker while evolution continues on the CPU. Pair it
+with the native scorer's `NEAT_SCORER_GPU=off` to keep a host off the GPU in
+both engines.
 
 ## 🔬 Discovery not finding improvements
 

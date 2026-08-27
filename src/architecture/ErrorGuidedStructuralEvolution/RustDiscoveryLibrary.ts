@@ -338,10 +338,13 @@ export function closeRustLibrary(): void {
   if (rustLib !== null) {
     rustLib.close();
     rustLib = null;
-    rustGpuWarningEmitted = false;
-    cachedDiscoveryVersion = null;
-    cachedGpuBackendInfo = null;
   }
+  // Probe results describe the environment, not the library handle, so they are
+  // cleared whether or not a handle was open — a cached verdict that outlives a
+  // close would otherwise be re-served after the environment changed.
+  rustGpuWarningEmitted = false;
+  cachedDiscoveryVersion = null;
+  cachedGpuBackendInfo = null;
   if (rustMemoryLib !== null) {
     rustMemoryLib.close();
     rustMemoryLib = null;
@@ -620,6 +623,50 @@ export function getDiscoveryVersion(): string | undefined {
   }
 }
 
+/** Environment switch that lets an operator refuse the GPU on a host. */
+const DISCOVERY_GPU_ENV = "NEAT_AI_DISCOVERY_GPU";
+
+/**
+ * Reads `NEAT_AI_DISCOVERY_GPU` (`auto` | `on` | `off`, default `auto`).
+ *
+ * Mirrors the native scorer's `NEAT_SCORER_GPU`, so a host that must stay on
+ * the CPU is declared once, the same way, for both engines. Returns true only
+ * for an explicit `off`.
+ *
+ * An unset value, an empty value, or a `--allow-env` denial all mean `auto` —
+ * the historical behaviour. An unrecognised value is reported rather than
+ * silently ignored, because a typo that leaves the GPU on is exactly the
+ * failure this switch exists to prevent.
+ */
+function isDiscoveryGpuDisabledByEnv(): boolean {
+  let raw: string | undefined;
+  try {
+    raw = Deno.env.get(DISCOVERY_GPU_ENV);
+  } catch {
+    // --allow-env not granted for this variable; behave as "auto".
+    return false;
+  }
+
+  const value = raw?.trim().toLowerCase();
+  if (value === undefined || value === "") {
+    return false;
+  }
+
+  switch (value) {
+    case "off":
+      return true;
+    case "auto":
+    case "on":
+      return false;
+    default:
+      getLogger().warn(
+        `⚠️  ${DISCOVERY_GPU_ENV}="${raw}" is not one of auto|on|off — ` +
+          "treating it as auto and probing the GPU.",
+      );
+      return false;
+  }
+}
+
 /**
  * Checks whether the loaded Rust discovery library reports a usable GPU.
  *
@@ -628,8 +675,29 @@ export function getDiscoveryVersion(): string | undefined {
  * GPU-only (Issue #3692): a false result means `analyzeParallel()` will refuse
  * every analysis pass, so discovery yields no proposals on this host. Evolution
  * itself is unaffected.
+ *
+ * `NEAT_AI_DISCOVERY_GPU=off` short-circuits the probe before the library is
+ * loaded, so no wgpu instance and no Vulkan device are ever created. Old hosts
+ * whose driver loses the device mid-run need that: probing there costs a
+ * `Parent device is lost` panic, not acceleration (GRQ#4405).
  */
 export function isRustGpuAvailable(): boolean {
+  if (isDiscoveryGpuDisabledByEnv()) {
+    if (!rustGpuWarningEmitted) {
+      rustGpuWarningEmitted = true;
+      cachedGpuBackendInfo = {
+        available: false,
+        reason: `disabled by ${DISCOVERY_GPU_ENV}=off`,
+      };
+      getLogger().info(
+        `GPU probe skipped: ${DISCOVERY_GPU_ENV}=off. Discovery analysis is ` +
+          "GPU-only, so it will yield no proposals on this worker; evolution " +
+          "continues on the CPU.",
+      );
+    }
+    return false;
+  }
+
   if (!isRustLibraryAvailable()) {
     return false;
   }
