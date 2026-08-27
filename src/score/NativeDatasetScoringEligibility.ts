@@ -32,6 +32,23 @@
  * log, count, or assert on why the native path was skipped. Adding a native
  * capability means deleting a reason here, not loosening a condition at a call
  * site.
+ *
+ * Issue #3871 recorded which of these are permanent, per the decisions in
+ * #3863:
+ *
+ * - `CUSTOM_COST` is **permanent** (decision 2). Custom cost functions remain
+ *   public API and are supplied as a JavaScript module, which `rust_scorer`
+ *   cannot execute. The TypeScript dataset-scoring path may be demoted for
+ *   this case; it must never be deleted.
+ * - `OUTPUT_RANGES` stays until the downstream FX consumer folds the penalty
+ *   into its own custom cost (decision 3, sequenced). Removing it before that
+ *   silently drops the penalty for the only live consumer.
+ * - `FEEDBACK_LOOP` stays until the native recurrent path can carry state
+ *   across records.
+ *
+ * A refusal routes the request to the TypeScript/WASM engine. That is *not*
+ * the fallback Issue #3871 deleted: a `rust_scorer` that was asked to serve a
+ * request and failed now throws rather than handing it here.
  */
 import { BUILT_IN_COST_NAMES, type BuiltInCostName } from "@costs";
 
