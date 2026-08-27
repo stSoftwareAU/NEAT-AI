@@ -25,6 +25,21 @@ async function isolatedQualityDir(prefix: string): Promise<string> {
   return dir;
 }
 
+/**
+ * Write an executable stand-in for `rust_scorer` (Issue #3871 made the binary a
+ * hard requirement of the test run, so a shimmed `quality.sh` run has to
+ * resolve one). It answers `--help` with exit 0, which is all the gate probes.
+ *
+ * @param dir - Directory to write the shim into.
+ * @returns Absolute path to the shim, for `--rust-scorer-bin=`.
+ */
+async function writeFakeRustScorer(dir: string): Promise<string> {
+  const path = `${dir}/rust_scorer`;
+  await Deno.writeTextFile(path, "#!/usr/bin/env bash\nexit 0\n");
+  await Deno.chmod(path, 0o755);
+  return path;
+}
+
 /** Helper to run quality.sh with given args and return stdout + exit code. */
 async function runQuality(
   args: string[],
@@ -202,6 +217,25 @@ Deno.test(
 
 Deno.test(
   {
+    name: "quality.sh names the retired WASM scoring lanes (Issue #3871)",
+    permissions: { run: true, read: true },
+    fn: async () => {
+      for (const flag of ["--wasm-scorer", "--test-both-scorers"]) {
+        // Sequential by design: each run asserts on its own stderr.
+        // deno-lint-ignore no-await-in-loop
+        const result = await runQuality([flag]);
+        assert(result.code !== 0, `${flag} must not be accepted`);
+        assert(
+          result.stderr.includes("#3871"),
+          `${flag} must name the removal; got: ${result.stderr}`,
+        );
+      }
+    },
+  },
+);
+
+Deno.test(
+  {
     name: "quality.sh rejects unknown flags",
     permissions: { run: true, read: true },
     fn: async () => {
@@ -372,18 +406,19 @@ Deno.test(
 
 Deno.test(
   {
-    name: "quality.sh --dry-run --wasm-scorer does not build rust_scorer",
+    name: "quality.sh --dry-run plans the rust_scorer lane only",
     permissions: { run: true, read: true },
     fn: async () => {
-      const result = await runQuality(["--dry-run", "--wasm-scorer"]);
+      const result = await runQuality(["--dry-run"]);
       assertEquals(result.code, 0);
       assert(
-        result.stdout.includes("WASM scorer mode"),
-        "Expected WASM scorer test step",
+        result.stdout.includes("Rust scorer mode"),
+        "Expected the rust_scorer test step",
       );
+      // Issue #3871 deleted the comparison lane; only one test step is planned.
       assert(
-        !result.stdout.includes("Building rust_scorer"),
-        "WASM comparison run must not require rust_scorer",
+        !result.stdout.includes("WASM scorer mode"),
+        `no WASM scoring lane may be planned; got: ${result.stdout}`,
       );
     },
   },
@@ -439,7 +474,11 @@ Deno.test(
         await Deno.copyFile("./quality.sh", `${tmp}/quality.sh`);
         await Deno.chmod(`${tmp}/quality.sh`, 0o755);
         const command = new Deno.Command("bash", {
-          args: ["./quality.sh", "--next", "--wasm-scorer"],
+          args: [
+            "./quality.sh",
+            "--next",
+            `--rust-scorer-bin=${await writeFakeRustScorer(tmp)}`,
+          ],
           stdout: "piped",
           stderr: "piped",
           cwd: tmp,
@@ -766,12 +805,11 @@ Deno.test({
 });
 
 Deno.test({
-  name:
-    "quality.sh --dry-run --wasm-scorer ignores leftover native backprop env",
+  name: "quality.sh --dry-run ignores leftover native backprop env",
   permissions: { run: true, read: true, env: true },
   fn: async () => {
     const command = new Deno.Command("bash", {
-      args: ["./quality.sh", "--dry-run", "--wasm-scorer"],
+      args: ["./quality.sh", "--dry-run"],
       stdout: "piped",
       stderr: "piped",
       cwd: Deno.cwd(),
@@ -789,22 +827,22 @@ Deno.test({
       `stderr=${new TextDecoder().decode(output.stderr)}`,
     );
     assert(
-      stdout.includes("WASM scorer mode"),
-      "Expected WASM scorer test step",
+      stdout.includes("Rust scorer mode"),
+      "Expected the rust_scorer test step",
     );
     assert(
       !stdout.includes("Building native neat-core") &&
         !stdout.includes("Verifying native neat-core") &&
         !stdout.includes("Building native neat_ai_backpropagation") &&
         !stdout.includes("Verifying native neat_ai_backpropagation"),
-      `WASM comparison run must not load leftover native backprop; got: ${stdout}`,
+      `a plain run must not load leftover native backprop; got: ${stdout}`,
     );
   },
 });
 
 Deno.test({
   name:
-    "quality.sh --wasm-scorer forces native backprop off and honours NEAT_AI_TEST_HEAP_MB",
+    "quality.sh forces native backprop off and honours NEAT_AI_TEST_HEAP_MB",
   permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
     const home = await Deno.makeTempDir({ prefix: "neat-quality-wasm-heap-" });
@@ -828,7 +866,7 @@ exit 0
       const command = new Deno.Command("bash", {
         args: [
           "./quality.sh",
-          "--wasm-scorer",
+          `--rust-scorer-bin=${await writeFakeRustScorer(home)}`,
           "--skip-discovery",
           "--skip-wasm",
         ],
@@ -863,11 +901,11 @@ exit 0
       );
       assert(
         testCall.includes("NEAT_AI_NATIVE_CORE_BACKPROP=0"),
-        `--wasm-scorer must force native backprop off; got: ${testCall}`,
+        `a plain run must force native backprop off; got: ${testCall}`,
       );
       assert(
         testCall.includes("NEAT_AI_BACKPROP_ENABLED=0"),
-        `--wasm-scorer must force trainDir native backprop off; got: ${testCall}`,
+        `a plain run must force trainDir native backprop off; got: ${testCall}`,
       );
       assert(
         testCall.includes("--max-old-space-size=2048"),
@@ -1000,7 +1038,11 @@ Deno.test({
       await Deno.copyFile("./quality.sh", `${tmp}/quality.sh`);
       await Deno.chmod(`${tmp}/quality.sh`, 0o755);
       const command = new Deno.Command("bash", {
-        args: ["./quality.sh", "--native-core-backprop", "--wasm-scorer"],
+        args: [
+          "./quality.sh",
+          "--native-core-backprop",
+          `--rust-scorer-bin=${await writeFakeRustScorer(tmp)}`,
+        ],
         stdout: "piped",
         stderr: "piped",
         cwd: tmp,
@@ -1060,7 +1102,7 @@ exit 0
         args: [
           "./quality.sh",
           "--native-core-backprop",
-          "--wasm-scorer",
+          `--rust-scorer-bin=${await writeFakeRustScorer(home)}`,
           "--skip-discovery",
           "--skip-wasm",
         ],
@@ -1137,7 +1179,7 @@ exit 0
         args: [
           "./quality.sh",
           "--next",
-          "--wasm-scorer",
+          `--rust-scorer-bin=${await writeFakeRustScorer(home)}`,
           "--skip-discovery",
           "--skip-wasm",
         ],

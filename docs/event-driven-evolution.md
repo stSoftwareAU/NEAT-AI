@@ -574,8 +574,10 @@ scored. `Fitness.calculate()` can score a generation two ways: the Rust native
 falls back). Previously a single combined count spanned both, so a silent
 regression — the batch path breaks and every creature quietly falls back to the
 slow worker path — looked identical to a healthy run. `scorerUtilisation` splits
-the count by backend and tallies fallback generations so that regression is
-visible in `result.json`.
+the count by backend so that regression is visible in `result.json`. Since Issue
+#3871 the fallback itself is gone: a `rust_scorer` that is present and fails
+aborts the generation, so a low `creaturesBatchScored` now means the eligibility
+predicate refused the population, not that scoring silently changed engine.
 
 Which creatures the batch may take is decided per creature (Issue #3870). A
 `forwardOnly` creature always qualifies; a recurrent one qualifies only when the
@@ -594,17 +596,14 @@ flowchart TD
     C -->|"yes (probe)"| B
     C -->|no| W
     B -->|success| BS[creaturesBatchScored++]
-    B -->|failure| F[batchFallbackGenerations++<br/>revert to worker path]
-    F --> W
+    B -->|failure| F[ScorerStrictError<br/>generation aborts]
     W --> WS[creaturesPerCreatureScored++]
 ```
 
 ```typescript
 const { scorerUtilisation } = await creature.evolveDataSet(data, opts);
 // e.g. { generations: 200, batchScorerInvocations: 200,
-//        creaturesBatchScored: 40_000, creaturesPerCreatureScored: 0,
-//        batchFallbackGenerations: 0, nativeFallbackGenerations: 0,
-//        nativeScoringFallback: false }
+//        creaturesBatchScored: 40_000, creaturesPerCreatureScored: 0 }
 ```
 
 - **`batchScorerInvocations`** — total `rust_scorer` processes spawned across
@@ -612,70 +611,48 @@ const { scorerUtilisation } = await creature.evolveDataSet(data, opts);
   batch mode was disabled, unavailable, or never used.
 - **`creaturesBatchScored`** — creatures resolved via the native batch path. `0`
   on a batch-enabled host is a red flag: the one-pass path never ran.
-- **`creaturesPerCreatureScored`** — creatures resolved via the worker path
-  (whatever the batch refused, plus any fallback).
-- **`batchFallbackGenerations`** — generations where a batch attempt failed and
-  its creatures reverted to the worker path. **Non-zero exposes the exact
-  silent-fallback regression this telemetry exists to catch.**
-- **`nativeFallbackGenerations`** — generations where **any** native scoring
-  attempt degraded to WASM (Issue #3866): the batch failure above, **or** a
-  per-creature `rust_scorer` failure reported by an evaluation worker. Always ≥
-  `batchFallbackGenerations`.
-- **`nativeScoringFallback`** — the run-level **verdict**; see below.
+- **`creaturesPerCreatureScored`** — creatures resolved via the worker path:
+  whatever the eligibility predicate refused (a custom cost, configured
+  `outputRanges`, or `feedbackLoop` on a recurrent creature).
 - **`generations`** is the number of generations aggregated.
 
 The per-generation split is also emitted on the verbose `[Throughput]` log line
-(`batchScored…/perCreatureScored…/batchFallback…`). The overhead is zero — the
-counters are always on; this just sums them.
+(`batchScored…/perCreatureScored…/batchInvocations…`). The overhead is zero —
+the counters are always on; this just sums them.
 
-### 🚨 The run-level fallback verdict (Issue #3866)
+### 🚨 A native failure is fatal (Issues #3810, #3815, #3871)
 
-Every field above is per-generation telemetry summed across a run, and the
-per-generation flags are **reset at the top of each generation**
-(`Fitness.calculate()`). So a run that degraded in every single generation but
-recovered on WASM each time still finished reporting success — nothing consumed
-the fallback as a verdict. Worse, the per-creature `rust_scorer` path set no
-flag at all, so a run where every creature quietly scored on WASM reported
-perfectly clean.
-
-`nativeScoringFallback` is the run-level aggregate that survives that reset. It
-is `true` when `nativeFallbackGenerations > 0`, and it covers **both** native
-paths.
+Native dataset scoring has **no fallback**. A `rust_scorer` that is present and
+fails — an exec failure, unparseable output, or a non-finite error — throws a
+`ScorerStrictError` carrying the scorer's stderr verbatim, and the run aborts.
+It used to degrade to the TypeScript/WASM engine and log a warning, which is how
+Issue #3810 kept an entirely dead native path reconciling to a green run for an
+unknown length of time. `NEAT_AI_RUST_SCORER_STRICT=0` selected that degrading
+path; Issue #3871 deleted it, and the variable is now **refused** with a
+`ConfigurationError` rather than silently ignored.
 
 ```mermaid
 flowchart TD
-    S[Native scoring attempt] --> A{rust_scorer available<br/>and able to serve this cost?}
-    A -->|no| SKIP[Graceful skip<br/>verdict stays false]
+    S[Dataset scoring request] --> E{Eligible for<br/>native scoring?}
+    E -->|"no — custom cost,<br/>outputRanges, feedbackLoop"| TS[TypeScript/WASM engine<br/>serves the request]
+    E -->|yes| A{rust_scorer available<br/>and able to serve this cost?}
+    A -->|no — graceful skip| TS
     A -->|yes| R{Did it serve the score?}
-    R -->|yes| OK[Native path served the run<br/>verdict stays false]
-    R -->|no — exec, parse or<br/>non-finite failure| ST{NEAT_AI_RUST_SCORER_STRICT}
-    ST -->|1 — default| THROW[ScorerStrictError<br/>run aborts]
-    ST -->|0 — explicit opt-out| DEG[Degrade to WASM<br/>nativeFallbackGenerations++<br/>nativeScoringFallback = true]
+    R -->|yes| OK[Native path served the run]
+    R -->|no — exec, parse or<br/>non-finite failure| THROW[ScorerStrictError<br/>run aborts]
 ```
 
-Two rules define the verdict, and they fail in opposite directions:
+Two rules define the boundary, and they fail in opposite directions:
 
-1. **A degradation is never silent.** Under the default
-   `NEAT_AI_RUST_SCORER_STRICT=1` an exec, parse, or non-finite failure throws a
-   `ScorerStrictError` and the run never reaches the verdict at all. Under the
-   operator's explicit `NEAT_AI_RUST_SCORER_STRICT=0` opt-out the run **still
-   completes** — the library does not unilaterally revoke a deliberate choice —
-   but it finishes with `nativeScoringFallback: true`, logs one error line at
-   run end, and hands the decision to the caller:
-
-   ```typescript
-   const result = await creature.evolveDir(dir, opts);
-   if (result.scorerUtilisation.nativeScoringFallback) {
-     throw new Error("native scoring degraded to WASM — not a valid run");
-   }
-   ```
-
-2. **A graceful skip is not a fallback.** No `rust_scorer` installed, scoring
+1. **A failure is never absorbed.** The other engine does not re-score a request
+   the native engine was asked to serve and could not. A wrong number computed
+   under different rules is worse than no number.
+2. **A graceful skip is not a failure.** No `rust_scorer` installed, scoring
    disabled, or a binary too old to advertise the configured `--cost` all mean
-   native scoring was never available — nothing degraded, so the verdict stays
-   `false`. This is what keeps `deno test` clean for contributors without the
-   binary; counting availability as degradation would fail every one of their
-   runs.
+   native scoring was never available — the request never reached it, so the
+   TypeScript/WASM engine serves it and the run completes normally. Note that
+   `./quality.sh` is stricter than the library here: it _requires_ the binary
+   and fails the gate when it cannot be resolved.
 
 ## 🎛️ Run-level tuning statistics (Issue #3422)
 

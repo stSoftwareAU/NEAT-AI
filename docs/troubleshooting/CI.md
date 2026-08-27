@@ -172,39 +172,36 @@ The `quality.sh` script runs these steps in order:
 
 ### 🦀 `ScorerStrictError` during `deno test` (Issue #3815)
 
-Strict mode is **on by default** (Issue #3864), and `quality.sh` exports
-`NEAT_AI_RUST_SCORER_STRICT=1` on its native lane to say so at the lane. Either
-way a `rust_scorer` exec or parse failure throws instead of logging a warning
-and falling back to WASM scoring. The failure text carries the scorer's stderr
+A `rust_scorer` exec or parse failure throws instead of logging a warning and
+falling back to WASM scoring. The failure text carries the scorer's stderr
 verbatim under a `--- rust_scorer stderr ---` heading — read that first: it is
 the real fault, and a fallback would otherwise have reconciled an entirely dead
 native scoring path to a green run (Issue #3810).
 
-A missing or too-old binary is still a graceful skip in strict mode; only
-genuine failures throw. Reproduce the degrading behaviour locally with
-`NEAT_AI_RUST_SCORER_STRICT=0 deno test …` — that opt-out exists for an operator
-who would rather a degraded run than a failed one, so fix the scorer fault
-rather than muting the gate.
+**There is no longer an opt-out** (Issue #3871). Issue #3815 made the throw
+opt-in, Issue #3864 made it the default, and Issue #3871 deleted the degrading
+path it selected. `NEAT_AI_RUST_SCORER_STRICT=0` is now **refused** with a
+`ConfigurationError` at config resolution rather than quietly ignored, because
+an operator who asked for a degraded run instead of a failed one has to be told
+the choice no longer exists. `=1` is still accepted, as a no-op.
 
-**The opt-out no longer buys silence** (Issue #3866). A run that degrades under
-`NEAT_AI_RUST_SCORER_STRICT=0` still completes — the library will not revoke an
-explicit choice — but it finishes with
-`scorerUtilisation.nativeScoringFallback === true` and one error line at run end
-naming how many generations degraded. That verdict covers the per-creature
-`rust_scorer` path as well as the batch one, so a run where every creature
-quietly scored on WASM can no longer reconcile to green. A graceful skip (no
-binary, or one too old for the configured cost) leaves the verdict `false`. See
-[Run-level scorer-utilisation totals](../event-driven-evolution.md#-run-level-scorer-utilisation-totals-issue-3234).
+A missing or too-old binary is still a graceful skip for the **library** — the
+request never reached the native engine, so the TypeScript/WASM engine serves
+it. `quality.sh` is stricter: `rust_scorer` is a hard requirement of the test
+run and the gate fails loud when it cannot be resolved from `PATH`,
+`--rust-scorer-bin=`, or a sibling `../NEAT-AI-scorer` checkout. The
+`--wasm-scorer` and `--test-both-scorers` comparison lanes were removed with the
+fallback; passing either now names the removal and exits 1.
 
 **A corrupt dataset is not a `ScorerStrictError`** (Issue #3831). `evaluateDir`
 checks each `.bin` file's length against the record size before the native
 scorer runs, so a truncated corpus fails as a `DatasetError` with
 `reason === "CORRUPT_DATA"` naming the file, the trailing byte count and the
-record size — identically on the native and WASM paths, strict or not. If a
-scorer failure still slips past that pre-flight, `isCorruptDatasetFailure`
-classifies its stderr and raises the same `DatasetError` before strict mode can
-escalate it. Seeing `ScorerStrictError` therefore means a genuine backend fault,
-not bad data.
+record size — identically on the native and WASM paths. If a scorer failure
+still slips past that pre-flight, `isCorruptDatasetFailure` classifies its
+stderr and raises the same `DatasetError` before the scorer failure can escalate
+it. Seeing `ScorerStrictError` therefore means a genuine backend fault, not bad
+data.
 
 ### 🎮 GPU is not exercised by default — `--gpu-scorer` (Issue #3869)
 

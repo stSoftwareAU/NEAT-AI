@@ -132,7 +132,7 @@ const config = createNeatConfig({
     enabled: true, // default: false
     binaryPath: "/opt/bin/rust_scorer", // default: "rust_scorer" (via PATH)
     batch: true, // one invocation per generation (default)
-    strict: true, // an exec/parse failure throws (default)
+    // `strict` is retired (Issue #3871): an exec/parse failure always throws.
     timeoutMs: 0, // 0 = no timeout
   },
 });
@@ -143,7 +143,7 @@ const config = createNeatConfig({
 | `enabled`    | `boolean` | `false`        | Delegate dataset scoring to the Rust scorer       |
 | `binaryPath` | `string`  | `rust_scorer`  | Scorer executable (resolved via `PATH`)           |
 | `batch`      | `boolean` | `true`         | One invocation per generation, not per creature   |
-| `strict`     | `boolean` | `true`         | Throw on exec/parse failure instead of degrading  |
+| `strict`     | `boolean` | _(retired)_    | Issue #3871 — an explicit `false` is now refused  |
 | `timeoutMs`  | `integer` | `0` (no limit) | Per-invocation timeout in milliseconds (min: `0`) |
 | `env`        | `object`  | `{}`           | Extra environment variables for the child process |
 
