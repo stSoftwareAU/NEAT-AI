@@ -5,8 +5,9 @@
  * a claim only the pixels can settle. Rather than pull in an image library
  * for two assertions, this decodes the subset of PNG the brand set uses:
  * 8-bit, non-interlaced, truecolour with (type 6) or without (type 2) an
- * alpha channel. Anything else throws loudly rather than being silently
- * treated as opaque.
+ * alpha channel, and the palette form (type 3) the GitHub uploads use since
+ * Issue #3903. Anything else throws loudly rather than being silently treated
+ * as opaque.
  */
 
 const SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -15,8 +16,13 @@ const SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 export interface PngPixels {
   readonly width: number;
   readonly height: number;
-  /** PNG colour type from IHDR: 2 = truecolour, 6 = truecolour + alpha. */
+  /**
+   * PNG colour type from IHDR: 2 = truecolour, 3 = palette,
+   * 6 = truecolour + alpha.
+   */
   readonly colourType: number;
+  /** Distinct colours in the palette, or 0 when the image is not indexed. */
+  readonly paletteSize: number;
   /** Alpha at (x, y): 0 fully transparent, 255 fully opaque. */
   alphaAt(x: number, y: number): number;
 }
@@ -86,11 +92,13 @@ function unfilter(
   return out;
 }
 
-/** Decode the PNG at `path` far enough to read its alpha channel. */
-export async function readPngPixels(path: string): Promise<PngPixels> {
-  const bytes = await Deno.readFile(path);
+/** Decode `bytes` far enough to read its alpha channel. `label` names it. */
+export async function decodePngPixels(
+  bytes: Uint8Array,
+  label: string,
+): Promise<PngPixels> {
   if (!SIGNATURE.every((b, i) => bytes[i] === b)) {
-    throw new Error(`${path} is not a PNG`);
+    throw new Error(`${label} is not a PNG`);
   }
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 
@@ -98,6 +106,8 @@ export async function readPngPixels(path: string): Promise<PngPixels> {
   let width = 0;
   let height = 0;
   let colourType = -1;
+  let paletteSize = 0;
+  let paletteAlpha: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
   let offset = 8;
   while (offset + 8 <= bytes.length) {
     const length = view.getUint32(offset);
@@ -111,13 +121,17 @@ export async function readPngPixels(path: string): Promise<PngPixels> {
       const interlace = bytes[body + 12];
       if (bitDepth !== 8 || interlace !== 0) {
         throw new Error(
-          `${path}: only 8-bit non-interlaced PNGs are supported ` +
+          `${label}: only 8-bit non-interlaced PNGs are supported ` +
             `(bit depth ${bitDepth}, interlace ${interlace})`,
         );
       }
-      if (colourType !== 2 && colourType !== 6) {
-        throw new Error(`${path}: unsupported PNG colour type ${colourType}`);
+      if (colourType !== 2 && colourType !== 3 && colourType !== 6) {
+        throw new Error(`${label}: unsupported PNG colour type ${colourType}`);
       }
+    } else if (type === "PLTE") {
+      paletteSize = length / 3;
+    } else if (type === "tRNS") {
+      paletteAlpha = bytes.subarray(body, body + length);
     } else if (type === "IDAT") {
       idatParts.push(bytes.subarray(body, body + length));
     } else if (type === "IEND") {
@@ -125,7 +139,7 @@ export async function readPngPixels(path: string): Promise<PngPixels> {
     }
     offset = body + length + 4;
   }
-  if (idatParts.length === 0) throw new Error(`${path}: no IDAT chunk`);
+  if (idatParts.length === 0) throw new Error(`${label}: no IDAT chunk`);
 
   const compressedLength = idatParts.reduce((n, p) => n + p.length, 0);
   const compressed = new Uint8Array(compressedLength);
@@ -135,7 +149,7 @@ export async function readPngPixels(path: string): Promise<PngPixels> {
     cursor += part.length;
   }
 
-  const channels = colourType === 6 ? 4 : 3;
+  const channels = colourType === 6 ? 4 : colourType === 3 ? 1 : 3;
   const samples = unfilter(
     await inflate(compressed),
     width,
@@ -147,9 +161,20 @@ export async function readPngPixels(path: string): Promise<PngPixels> {
     width,
     height,
     colourType,
+    paletteSize,
     alphaAt(x: number, y: number): number {
+      if (colourType === 3) {
+        // tRNS lists alpha for a prefix of the palette; the rest are opaque.
+        const index = samples[y * width + x];
+        return index < paletteAlpha.length ? paletteAlpha[index] : 255;
+      }
       if (channels === 3) return 255;
       return samples[(y * width + x) * channels + 3];
     },
   };
+}
+
+/** Decode the PNG at `path` far enough to read its alpha channel. */
+export async function readPngPixels(path: string): Promise<PngPixels> {
+  return await decodePngPixels(await Deno.readFile(path), path);
 }
