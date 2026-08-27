@@ -28,7 +28,7 @@ flowchart TD
     Hub["📊 COMPARISON.md<br/>(this hub)"]
     Hub --> Impl["🧬 IMPLEMENTED<br/>standard NEAT vs<br/>NEAT-AI extensions"]
     Hub --> Arch["🏗️ ARCHITECTURES<br/>feedforward · CNN ·<br/>RNN · Transformer · NEAT-AI"]
-    Hub --> Train["🎓 TRAINING_PARADIGMS<br/>gradient vs evolution · RL"]
+    Hub --> Train["🎓 TRAINING_PARADIGMS<br/>gradient vs evolution ·<br/>ES · quality-diversity · RL"]
     Hub --> Uniq["✨ UNIQUE_APPROACHES<br/>12 NEAT-AI innovations"]
     Hub --> Eco["🔬 ECOSYSTEM<br/>vs TensorFlow / PyTorch"]
     Hub --> Pros["⚖️ PROS_AND_CONS<br/>trade-offs"]
@@ -48,21 +48,29 @@ flowchart TD
 
 ## 📚 Sub-documents
 
-| Page                                                                 | What it covers                                                                            |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| [🧬 What NEAT-AI implements](./docs/comparison/IMPLEMENTED.md)       | The line between **standard NEAT machinery** and the **NEAT-AI extensions** on top.       |
-| [🏗️ Architectural comparison](./docs/comparison/ARCHITECTURES.md)    | NEAT-AI's evolving topology vs feedforward, CNN, RNN/LSTM, and Transformer networks.      |
-| [🎓 Training paradigms](./docs/comparison/TRAINING_PARADIGMS.md)     | Gradient-only training vs NEAT-AI's hybrid evolution + backprop, and where it sits in RL. |
-| [✨ Unique approaches](./docs/comparison/UNIQUE_APPROACHES.md)       | Deep dives on the 12 headline NEAT-AI innovations.                                        |
-| [🔬 Ecosystem comparison](./docs/comparison/ECOSYSTEM.md)            | NEAT-AI vs TensorFlow / PyTorch / scikit-learn, with a capability matrix.                 |
-| [⚖️ Pros and cons](./docs/comparison/PROS_AND_CONS.md)               | Candid trade-offs for NEAT-AI vs traditional neural networks.                             |
-| [🚧 Shortcomings and future work](./docs/comparison/FUTURE_WORK.md)  | Gaps versus the modern state of the art (with what's already shipped).                    |
-| [📚 References and further reading](./docs/comparison/REFERENCES.md) | Consolidated supporting literature for every external claim.                              |
+| Page                                                                 | What it covers                                                                                                                                                   |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [🧬 What NEAT-AI implements](./docs/comparison/IMPLEMENTED.md)       | The line between **standard NEAT machinery** and the **NEAT-AI extensions** on top.                                                                              |
+| [🏗️ Architectural comparison](./docs/comparison/ARCHITECTURES.md)    | NEAT-AI's evolving topology vs feedforward, CNN, RNN/LSTM, and Transformer networks.                                                                             |
+| [🎓 Training paradigms](./docs/comparison/TRAINING_PARADIGMS.md)     | Gradient-only training vs NEAT-AI's hybrid evolution + backprop, the modern gradient-free alternatives (ES, quality-diversity, CMA-ES), and where it sits in RL. |
+| [✨ Unique approaches](./docs/comparison/UNIQUE_APPROACHES.md)       | Deep dives on the 12 headline NEAT-AI innovations.                                                                                                               |
+| [🔬 Ecosystem comparison](./docs/comparison/ECOSYSTEM.md)            | NEAT-AI vs TensorFlow / PyTorch / scikit-learn, with a capability matrix.                                                                                        |
+| [⚖️ Pros and cons](./docs/comparison/PROS_AND_CONS.md)               | Candid trade-offs for NEAT-AI vs traditional neural networks.                                                                                                    |
+| [🚧 Shortcomings and future work](./docs/comparison/FUTURE_WORK.md)  | Gaps versus the modern state of the art (with what's already shipped).                                                                                           |
+| [📚 References and further reading](./docs/comparison/REFERENCES.md) | Consolidated supporting literature for every external claim.                                                                                                     |
 
 ## ⚖️ At-a-glance: NEAT-AI vs standard NEAT vs traditional NNs
 
 This matrix is the 30-second summary. **Every claim is verified against the code
 and cited in the linked sub-documents.**
+
+> [!NOTE]
+> The matrix compares against **standard NEAT (2002)** by design — that is the
+> lineage NEAT-AI builds on, not the live alternative. Academic neuroevolution
+> largely moved to evolution strategies and quality-diversity methods, so read
+> [Modern gradient-free training](./docs/comparison/TRAINING_PARADIGMS.md#-modern-gradient-free-training)
+> for that comparison — scoreboard included — before treating this matrix as the
+> whole competitive picture.
 
 | Capability                         | Standard NEAT (2002)   | NEAT-AI (this repo)               | Traditional NNs         |
 | ---------------------------------- | ---------------------- | --------------------------------- | ----------------------- |
