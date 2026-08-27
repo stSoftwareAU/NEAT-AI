@@ -186,6 +186,16 @@ genuine failures throw. Reproduce the degrading behaviour locally with
 who would rather a degraded run than a failed one, so fix the scorer fault
 rather than muting the gate.
 
+**The opt-out no longer buys silence** (Issue #3866). A run that degrades under
+`NEAT_AI_RUST_SCORER_STRICT=0` still completes — the library will not revoke an
+explicit choice — but it finishes with
+`scorerUtilisation.nativeScoringFallback === true` and one error line at run end
+naming how many generations degraded. That verdict covers the per-creature
+`rust_scorer` path as well as the batch one, so a run where every creature
+quietly scored on WASM can no longer reconcile to green. A graceful skip (no
+binary, or one too old for the configured cost) leaves the verdict `false`. See
+[Run-level scorer-utilisation totals](../event-driven-evolution.md#-run-level-scorer-utilisation-totals-issue-3234).
+
 **A corrupt dataset is not a `ScorerStrictError`** (Issue #3831). `evaluateDir`
 checks each `.bin` file's length against the record size before the native
 scorer runs, so a truncated corpus fails as a `DatasetError` with

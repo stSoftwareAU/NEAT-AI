@@ -53,8 +53,18 @@ Deno.test("evolveDataSet returns run-level scorerUtilisation", async () => {
     "generations must match the number of generation_complete events",
   );
 
+  // Issue #3866 added the boolean run-level verdict alongside the counts, so
+  // the shape check now splits on field type instead of assuming every field
+  // is numeric.
+  assertEquals(
+    typeof util.nativeScoringFallback,
+    "boolean",
+    "nativeScoringFallback is the run-level verdict, not a count",
+  );
+
   // Every count is a finite non-negative integer.
-  for (const [name, value] of Object.entries(util) as [string, number][]) {
+  for (const [name, value] of Object.entries(util)) {
+    if (name === "nativeScoringFallback") continue;
     assertEquals(typeof value, "number", `${name} must be a number`);
     assert(Number.isFinite(value), `${name} must be finite`);
     assert(value >= 0, `${name} must be non-negative, got ${value}`);
@@ -66,6 +76,20 @@ Deno.test("evolveDataSet returns run-level scorerUtilisation", async () => {
     util.batchFallbackGenerations,
     0,
     "a healthy run has zero batch fallbacks",
+  );
+  // Issue #3866, the false-red direction: this test runs on both quality.sh
+  // lanes, including the one with rust_scorer disabled. A run that never had a
+  // native scorer to use is a graceful skip, so the verdict must stay unset —
+  // otherwise every contributor without the binary gets a failed run.
+  assertEquals(
+    util.nativeFallbackGenerations,
+    0,
+    "a healthy run has zero native-scoring fallbacks",
+  );
+  assertEquals(
+    util.nativeScoringFallback,
+    false,
+    "a healthy run must not raise the run-level fallback verdict",
   );
   assert(
     util.creaturesBatchScored + util.creaturesPerCreatureScored > 0,

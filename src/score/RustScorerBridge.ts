@@ -19,6 +19,11 @@
  * `NEAT_AI_RUST_SCORER_STRICT=0` opts back out to the degrading path. A missing
  * or too-old binary remains a graceful skip in either mode.
  *
+ * Issue #3866: when strict is off and the degrading path is taken, the
+ * fallback is recorded in the {@link module:NativeScoringFallbackLedger} so the
+ * run-level verdict on `EvolveResult.scorerUtilisation` reports it. A graceful
+ * skip records nothing — "not installed" is not "degraded".
+ *
  * Configuration comes from `NeatOptions.rustScorer` layered over the
  * `NEAT_AI_RUST_SCORER_*` environment variables — see
  * {@link resolveRustScorerConfig} for the precedence rule. Only the env layer
@@ -42,6 +47,10 @@ import {
 } from "@errors/ScorerStrictError.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { assertNotCorruptDataset } from "./ScorerFailureClassification.ts";
+import {
+  recordNativeScoringFallback,
+  resetNativeScoringFallback,
+} from "./NativeScoringFallbackLedger.ts";
 import {
   __getBatchRunner,
   __resetInternal,
@@ -337,6 +346,9 @@ export async function tryScoreWithRustScorer(
           { exitCode: result.code, stderr: result.stderr },
         );
       }
+      // Issue #3866: the scorer was present and failed — a real degradation,
+      // not a graceful skip. Record it so the run-level verdict can see it.
+      recordNativeScoringFallback();
       if (!probe.warned) {
         const stderrSnippet = trimForLog(result.stderr);
         const suffix = stderrSnippet.length > 0
@@ -366,6 +378,8 @@ export async function tryScoreWithRustScorer(
           { exitCode: result.code, stderr: result.stderr, cause: parseError },
         );
       }
+      // Issue #3866: unparseable output from a live scorer is a degradation.
+      recordNativeScoringFallback();
       if (!probe.warned) {
         const stdoutSnippet = trimForLog(result.stdout);
         const stderrSnippet = trimForLog(result.stderr);
@@ -398,6 +412,8 @@ export async function tryScoreWithRustScorer(
           { exitCode: result.code, stderr: result.stderr },
         );
       }
+      // Issue #3866: a live scorer that answered with garbage is a degradation.
+      recordNativeScoringFallback();
       if (!probe.warned) {
         const stderrSnippet = trimForLog(result.stderr);
         const suffix = stderrSnippet.length > 0
@@ -424,6 +440,9 @@ export async function tryScoreWithRustScorer(
         "EXEC_FAILURE",
       );
     }
+    // Issue #3866: the probe said the binary was there, so an invocation that
+    // blew up mid-flight degraded a working native path — record the fallback.
+    recordNativeScoringFallback();
     if (!probe.warned) {
       getLogger().warn(
         `[NEAT-AI] Rust scorer unavailable (${
@@ -448,6 +467,9 @@ export function __resetRustScorerBridgeForTests(): void {
   __resetInternal();
   envRustScorerCache = undefined;
   testConfigOverride = undefined;
+  // Issue #3866: a fallback recorded by a previous test must not leak into the
+  // next one's run-level verdict.
+  resetNativeScoringFallback();
 }
 
 export function __setRustScorerRunnerForTests(runner: CommandRunner): void {
