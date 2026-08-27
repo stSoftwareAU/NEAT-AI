@@ -18,7 +18,8 @@
  * `test/architecture/FitnessRecurrentBatch.ts`.
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
+import { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -267,7 +268,7 @@ Deno.test("Fitness partition - mixed population batches forwardOnly only, recurr
   }
 });
 
-Deno.test("Fitness partition - batch failure on forwardOnly subset still scores recurrent via worker", async () => {
+Deno.test("Fitness partition - a batch failure aborts rather than rerouting the batched subset", async () => {
   __resetRustScorerBridgeForTests();
   enableBatchConfig();
 
@@ -285,11 +286,11 @@ Deno.test("Fitness partition - batch failure on forwardOnly subset still scores 
         stderr: "",
       });
     }
-    // Empty payload triggers MISSING_KEYS reconciliation failure for the
-    // forwardOnly creature in the batch — the recurrent creature is never
-    // sent and should still be scored by the worker path. It also answers the
-    // Issue #3870 capability probe with unusable output, which is likewise
-    // read as "cannot batch recurrent creatures".
+    // Empty payload triggers a MISSING_KEYS reconciliation failure for the
+    // forwardOnly creature in the batch. It also answers the Issue #3870
+    // capability probe with unusable output, which is read as "cannot batch
+    // recurrent creatures". Issue #3871: the failure ends the generation —
+    // the batched creature is never rerouted to the other engine.
     return await Promise.resolve({
       success: true,
       code: 0,
@@ -308,17 +309,19 @@ Deno.test("Fitness partition - batch failure on forwardOnly subset still scores 
       undefined,
       dataDir,
     );
-    await fitness.calculate(population);
+    await assertRejects(() => fitness.calculate(population), ScorerStrictError);
 
-    // Worker scores both creatures (recurrent always; forwardOnly because
-    // batch fell back).
     assertEquals(
       worker.evaluateCallCount,
-      2,
-      "worker fallback must score both forwardOnly and recurrent creatures",
+      0,
+      "the batch failure aborts before any creature reaches the worker path",
     );
     for (const creature of population) {
-      assert(creature.score !== undefined, "every creature should be scored");
+      assertEquals(
+        creature.score,
+        undefined,
+        "no creature is scored by an engine the run did not choose",
+      );
     }
   } finally {
     await Deno.remove(dataDir, { recursive: true });
