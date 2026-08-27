@@ -8,14 +8,15 @@
  *
  * - `docs/brand/social-previews/<file>` — contain-fitted, transparent pad
  * - `docs/brand/social-previews/opaque/<file>` — the same pixels on brand navy
- * - `docs/brand/social-previews/github/<stem>.jpg` — 1280×640 JPEG under 1 MB
- *   for GitHub Settings → Social preview. `source/` is never written.
+ * - `docs/brand/social-previews/github/<file>` — the same transparent pixels
+ *   quantised to a 1280×640 PNG under 1 MB for GitHub Settings → Social
+ *   preview. `source/` is never written.
  *
  * Usage:
  *   deno run -A scripts/brand/scale_social_previews.ts
  *   deno run -A scripts/brand/scale_social_previews.ts --github-only
  *
- * `--github-only` rebuilds `github/*.jpg` from the already-fitted opaque
+ * `--github-only` rebuilds `github/*.png` from the already-fitted transparent
  * PNGs and does not read or write `source/`.
  *
  * Previews without a `source/` master are left alone (they still come from
@@ -24,7 +25,7 @@
 
 import { Resvg } from "@resvg/resvg-js";
 import { fromFileUrl, resolve } from "@std/path";
-import { writeGithubJpeg } from "./github_preview.ts";
+import { writeGithubPng } from "./github_preview.ts";
 import { PREVIEW_HEIGHT, PREVIEW_WIDTH } from "./preview_art.ts";
 import { assertSoundPng } from "./png_integrity.ts";
 
@@ -98,21 +99,20 @@ async function pngNamesIn(dir: string): Promise<string[]> {
   return names.sort();
 }
 
-async function writeGithubFromOpaque(outDir: string): Promise<void> {
-  const opaqueDir = `${outDir}/opaque`;
-  const names = await pngNamesIn(opaqueDir);
+async function writeGithubFromFitted(outDir: string): Promise<void> {
+  const names = await pngNamesIn(outDir);
   if (names.length === 0) {
-    throw new Error(`no opaque PNGs in ${opaqueDir}`);
+    throw new Error(`no fitted PNGs in ${outDir}`);
   }
   const uploads = await Promise.all(names.map(async (name) => {
-    const bytes = await Deno.readFile(`${opaqueDir}/${name}`);
-    assertSoundPng(bytes, `opaque/${name}`);
-    const upload = await writeGithubJpeg(outDir, name, bytes);
+    const bytes = await Deno.readFile(`${outDir}/${name}`);
+    assertSoundPng(bytes, name);
+    const upload = await writeGithubPng(outDir, name, bytes);
     return { png: name, ...upload };
   }));
   for (const upload of uploads) {
     console.info(
-      `${upload.png} → github/${upload.name} ${upload.quality}q ` +
+      `${upload.png} → github/${upload.name} ${upload.colours} colours ` +
         `${(upload.bytes / 1024).toFixed(0)} KB`,
     );
   }
@@ -127,7 +127,7 @@ async function main(): Promise<void> {
     : `${repoRoot}/docs/brand/social-previews`;
 
   if (args.includes("--github-only")) {
-    await writeGithubFromOpaque(outDir);
+    await writeGithubFromFitted(outDir);
     return;
   }
   const sourceDir = `${outDir}/source`;
@@ -160,7 +160,7 @@ async function main(): Promise<void> {
   ]));
 
   const github = await Promise.all(
-    jobs.map((job) => writeGithubJpeg(outDir, job.name, job.opaque)),
+    jobs.map((job) => writeGithubPng(outDir, job.name, job.transparent)),
   );
 
   for (let i = 0; i < jobs.length; i++) {
@@ -168,7 +168,7 @@ async function main(): Promise<void> {
     const upload = github[i];
     console.info(
       `${job.name}: ${job.width}×${job.height} → ${PREVIEW_WIDTH}×` +
-        `${PREVIEW_HEIGHT}; github/${upload.name} ${upload.quality}q ` +
+        `${PREVIEW_HEIGHT}; github/${upload.name} ${upload.colours} colours ` +
         `${(upload.bytes / 1024).toFixed(0)} KB`,
     );
   }

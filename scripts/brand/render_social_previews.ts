@@ -6,8 +6,8 @@
  *
  * - `docs/brand/social-previews/*.png` — canonical, transparent background.
  * - `docs/brand/social-previews/opaque/*.png` — flattened on the brand navy.
- * - `docs/brand/social-previews/github/<stem>.jpg` — under-1 MB JPEG for
- *   GitHub's Social preview upload slot.
+ * - `docs/brand/social-previews/github/*.png` — the transparent set quantised
+ *   under 1 MB for GitHub's Social preview upload slot.
  *
  * Specs that have a master in `social-previews/source/` are skipped — those
  * are hand-authored and fitted by `scale_social_previews.ts`.
@@ -34,7 +34,7 @@ import {
   type ThemeName,
   xmlEscape,
 } from "./preview_art.ts";
-import { writeGithubJpeg } from "./github_preview.ts";
+import { writeGithubPng } from "./github_preview.ts";
 import { PREVIEW_SPECS } from "./preview_specs.ts";
 
 const RESVG_OPTIONS = { font: { loadSystemFonts: true } } as const;
@@ -101,7 +101,11 @@ async function main(): Promise<void> {
       const path = theme === "transparent"
         ? `${outDir}/${spec.file}`
         : `${outDir}/opaque/${spec.file}`;
-      return { path, png, githubFile: theme === "opaque" ? spec.file : null };
+      return {
+        path,
+        png,
+        githubFile: theme === "transparent" ? spec.file : null,
+      };
     });
   });
 
@@ -110,7 +114,7 @@ async function main(): Promise<void> {
       await Deno.mkdir(dirname(job.path), { recursive: true });
       await Deno.writeFile(job.path, job.png);
       if (job.githubFile) {
-        await writeGithubJpeg(outDir, job.githubFile, job.png);
+        await writeGithubPng(outDir, job.githubFile, job.png);
       }
     }),
   );
