@@ -94,7 +94,8 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
    independent nodes. The best-of-breed creatures can later be combined on a
    centralised controller node, mirroring the
    [island model](https://en.wikipedia.org/wiki/Island_model) used in
-   evolutionary algorithms.
+   evolutionary algorithms
+   ([Cohoon et al. 1987; Tanese 1989](./docs/comparison/REFERENCES.md#-horizontal-gene-transfer-and-breeding)).
 
 3. **Life Long Learning**: Designed for continuous learning in changing
    environments. The same population can keep training and adapting as new data
@@ -123,30 +124,49 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
    [Activation Functions](https://en.wikipedia.org/wiki/Activation_function).
 
 6. **Neuron Pruning**: Neurons whose activations don't vary during training are
-   removed, and the biases in associated neurons are adjusted. More about
+   removed, and the biases in associated neurons are adjusted. The
+   activation-variance criterion is a zeroth-order member of the
+   saliency-pruning family started by
+   [LeCun, Denker & Solla 1989 (_Optimal Brain Damage_) and Hassibi & Stork 1993](./docs/comparison/REFERENCES.md#-pruning-and-sparsity)
+   — those use second-order saliency where NEAT-AI uses variance. More about
    [Pruning (Neural Networks)](https://en.wikipedia.org/wiki/Pruning_(neural_networks)).
 
 7. **CRISPR**: Allows injection of hand-crafted genes into a population of
    creatures during evolution. The name borrows the biology acronym CRISPR
    (Clustered Regularly Interspaced Short Palindromic Repeats) from the
    [CRISPR gene-editing technique](https://en.wikipedia.org/wiki/CRISPR); in
-   NEAT-AI, the "edits" are added neurons and synapses.
+   NEAT-AI, the "edits" are added neurons and synapses. In the literature this
+   is population seeding / domain-knowledge injection — standard
+   evolutionary-algorithm practice, not a NEAT-AI invention.
 
 8. **Grafting**: If parents aren't "genetically compatible", the grafting
    algorithm enables cross-island interbreeding, preserving diversity in the
    same spirit as
-   [island-model evolution](https://en.wikipedia.org/wiki/Island_model).
+   [island-model evolution](https://en.wikipedia.org/wiki/Island_model); the
+   closest precedent is
+   [Barr et al. 2015, _Automated Software Transplantation_](./docs/comparison/REFERENCES.md#-horizontal-gene-transfer-and-breeding).
+   It is a bet against the competing-conventions problem — two genomes can
+   encode the same function under different neuron orderings, so recombining
+   them is as likely to destroy both as to combine them.
 
 9. **Memetic Evolution**: Records and utilises the biases and weights of the
-   fittest creatures to fine-tune future generations. Learn more about
+   fittest creatures to fine-tune future generations
+   ([Moscato 1989](./docs/comparison/REFERENCES.md#-memetic-algorithms)).
+   Writing learnt weights back into the genome is the Lamarckian choice, which
+   [Whitley, Gordon & Mathias 1994](./docs/comparison/REFERENCES.md#-lamarckian-and-baldwinian-evolution)
+   measured as faster convergence at the cost of population diversity. Learn
+   more about
    [Memetic Algorithms](https://en.wikipedia.org/wiki/Memetic_algorithm).
 
 10. **Error-Guided Structural Evolution**: Dynamically identifies and creates
     new synapses by analysing neuron activations and errors. A dedicated Rust
     extension performs graphics processing unit (GPU)-accelerated analysis and
-    proposes structural candidates over a Foreign Function Interface (FFI).
-    Discovery runs typically find improvements of 0.5–3% per run that accumulate
-    over many iterations.
+    proposes structural candidates over a Foreign Function Interface (FFI). The
+    direct ancestor is
+    [Fahlman & Lebiere 1990, Cascade-Correlation](./docs/comparison/REFERENCES.md#-structural-growth),
+    where each new unit is chosen to maximise correlation with the residual
+    error. Discovery runs typically find improvements of 0.5–3% per run that
+    accumulate over many iterations.
 
     > [!WARNING]
     > Relies entirely on the
@@ -184,9 +204,14 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
     criterion for mutation acceptance. Instead of unconditionally accepting all
     mutations, worse-fitness moves are accepted with a probability that
     decreases as temperature cools — enabling the population to escape local
-    optima early and converge later. Includes adaptive temperature tuning toward
-    the theoretically optimal acceptance rate (~23.4%, Roberts et al. 1997).
-    Opt-in via `mcmc: { enabled: true }` in the configuration.
+    optima early and converge later. The ancestor of temperature-scaled
+    acceptance _in a search algorithm_ is
+    [Kirkpatrick, Gelatt & Vecchi 1983, simulated annealing](./docs/comparison/REFERENCES.md#-markov-chain-monte-carlo-mcmc).
+    Includes adaptive temperature tuning toward a ~23.4% acceptance rate — a
+    heuristic borrowed from Roberts et al. 1997, whose optimal-scaling result is
+    about random-walk Metropolis on smooth high-dimensional targets, not about
+    evolutionary-algorithm acceptance rates. Opt-in via
+    `mcmc: { enabled: true }` in the configuration.
 
 18. **Advanced Breeding Strategies**: Multiple breeding strategies for
     genetically incompatible creatures, including input-weight cosine similarity
@@ -202,8 +227,11 @@ ONNX export — are extensions beyond the standard NEAT algorithm. See
     adjacent topological layers. After training, near-zero synapses are pruned
     and only the useful connections are retained — addressing NEAT's inherent
     weakness of sparse connectivity compared to conventional
-    [dense layers](https://en.wikipedia.org/wiki/Dense_layer). Opt-in via
-    `syntheticSynapses: true` in the training configuration.
+    [dense layers](https://en.wikipedia.org/wiki/Dense_layer). The
+    densify-train-prune cycle comes from
+    [Han et al. 2017 (DSD), with Mocanu et al. 2018 (SET) and Evci et al. 2020 (RigL)](./docs/comparison/REFERENCES.md#-pruning-and-sparsity)
+    as the dynamic-sparsity successors. Opt-in via `syntheticSynapses: true` in
+    the training configuration.
 
 20. **Random Immigrants (Fresh Genomes on a Plateau)**: When the population
     stalls, boosting the mutation rate only perturbs the _existing_ genomes — it

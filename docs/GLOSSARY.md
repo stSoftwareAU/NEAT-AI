@@ -72,6 +72,12 @@ plain-language definitions are **canonical and live here**; the
 table rather than restating it, and keeps only the two project-name terms (NEAT,
 NEAT-AI) plus a few codebase-specific terms.
 
+Where a house term has an established name in the literature, the definition
+line carries it in parentheses — `(literature: …)` — linking into
+[REFERENCES.md](comparison/REFERENCES.md). A reader who meets the house name
+here can then follow a paper that uses the standard one. A term with no
+parenthetical (Creature, Squash) has no literature equivalent to name.
+
 - **Creature** — an individual neural network (genome) inside a population. The
   fundamental unit that NEAT-AI evolves, named in the original
   [NEAT paper](http://nn.cs.utexas.edu/downloads/papers/stanley.ec02.pdf).
@@ -83,28 +89,41 @@ NEAT-AI) plus a few codebase-specific terms.
   occasionally exchange Creatures. Borrowed from the
   [island model](https://en.wikipedia.org/wiki/Island_model) of evolutionary
   algorithms; it preserves diversity and dodges premature convergence.
-- **Discovery** — error-guided structural evolution. Instead of mutating
-  topology blindly, NEAT-AI uses the Rust FFI (Foreign Function Interface)
-  extension to analyse where a Creature is making errors and propose targeted
-  structural improvements. See [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md).
+- **Discovery** (literature: error-guided structural growth; cf.
+  [Cascade-Correlation](comparison/REFERENCES.md#-structural-growth)) —
+  error-guided structural evolution. Instead of mutating topology blindly,
+  NEAT-AI uses the Rust FFI (Foreign Function Interface) extension to analyse
+  where a Creature is making errors and propose targeted structural
+  improvements. See [DISCOVERY_GUIDE.md](DISCOVERY_GUIDE.md).
+- **Impact** (literature:
+  [attribution / saliency](comparison/REFERENCES.md#-attribution-and-saliency))
+  — a 0.0–1.0 score for how much a neuron affects the outputs through its
+  outgoing synapse weights. Used with a neuron's accumulated error to choose
+  which neurons Discovery focuses on, and to decide which neurons are too cheap
+  to keep. See [DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md).
 - **Intelligent Design** — systematically testing different squash (activation)
   functions for each hidden neuron rather than leaving the choice to chance. See
   [INTELLIGENT_DESIGN.md](INTELLIGENT_DESIGN.md). (The name is a wink at the
   [intelligent-design debate](https://en.wikipedia.org/wiki/Intelligent_design);
   the technique is ordinary hyper-parameter search per neuron.)
-- **CRISPR injection** — a targeted "gene edit" that adds hand-crafted synapses
-  or neurons to a Creature, inspired by the real-world
+- **CRISPR injection** (literature: population seeding / knowledge injection) —
+  a targeted "gene edit" that adds hand-crafted synapses or neurons to a
+  Creature, inspired by the real-world
   [CRISPR-Cas9](https://www.nature.com/scitable/topicpage/crispr-cas9-a-precise-tool-for-33169884/)
   gene-editing technique. See [CRISPR_GUIDE.md](CRISPR_GUIDE.md).
-- **Grafting** — crossover (breeding) between genomes with incompatible shapes,
-  related to the
-  [island-model speciation](https://en.wikipedia.org/wiki/Island_model)
+- **Grafting** (literature: module transplantation; cf.
+  [automated software transplantation](comparison/REFERENCES.md#-horizontal-gene-transfer-and-breeding))
+  — crossover (breeding) between genomes with incompatible shapes, related to
+  the [island-model speciation](https://en.wikipedia.org/wiki/Island_model)
   strategies used in evolutionary algorithms.
 - **Squash** — our term for the activation function applied to a neuron. See
   [ACTIVATION_FUNCTIONS.md](ACTIVATION_FUNCTIONS.md).
-- **Memetic evolution** — evolutionary search combined with local gradient
-  descent, the well-studied
-  [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm).
+- **Memetic evolution** (literature: memetic /
+  [Lamarckian evolutionary algorithm](comparison/REFERENCES.md#-lamarckian-and-baldwinian-evolution))
+  — evolutionary search combined with local gradient descent, the well-studied
+  [memetic algorithm](https://en.wikipedia.org/wiki/Memetic_algorithm). NEAT-AI
+  writes the trained weights back into the genome, which is the Lamarckian
+  variant.
 - **MCMC acceptance** — applying the
   [Metropolis–Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
   criterion to mutation acceptance: worsening mutations are accepted with a
@@ -116,9 +135,11 @@ NEAT-AI) plus a few codebase-specific terms.
   the scale of the objective. Selected with
   `mcmc.mcmcAdvantageMode: "rankShaped"`; see
   [what the temperature means](./config/MUTATION_ADAPTATION.md#-what-the-temperature-actually-means).
-- **Synthetic synapses** — temporary zero-weight connections added between
-  adjacent topological layers before backpropagation to widen the gradient
-  search space, then pruned. Similar in spirit to
+- **Synthetic synapses** (literature:
+  [dense-sparse-dense training](comparison/REFERENCES.md#-pruning-and-sparsity))
+  — temporary zero-weight connections added between adjacent topological layers
+  before backpropagation to widen the gradient search space, then pruned.
+  Similar in spirit to
   [layer densification](https://en.wikipedia.org/wiki/Dense_layer).
 - **Horizontal gene transfer** — subgraph transplantation that copies connected
   subgraphs between genetically incompatible Creatures, inspired by biological
