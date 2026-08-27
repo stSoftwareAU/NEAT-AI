@@ -708,6 +708,9 @@
     "nameref",
     "nomodel",
     "shapings",
-    "unsatisfiable"
+    "unsatisfiable",
+    "EVCO",
+    "topolog",
+    "efficien"
   ]
 }

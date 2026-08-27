@@ -2,8 +2,9 @@
 
 Part of the [Comparison hub](../../COMPARISON.md). This page compares how
 **[NEAT-AI](../../AGENTS.md#-terminology)** is trained against the gradient-only
-paradigm of traditional neural networks, and explains where NEAT-AI sits in the
-reinforcement-learning landscape.
+paradigm of traditional neural networks, against the modern gradient-free
+alternatives (evolution strategies and quality-diversity), and explains where
+NEAT-AI sits in the reinforcement-learning landscape.
 
 > [!IMPORTANT]
 > **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
@@ -89,6 +90,116 @@ a NEAT-AI extension):
 - Slower convergence than pure gradient descent.
 - Limited scalability compared to massive transformers.
 - Less efficient for pure parallel processing.
+
+## 🧭 Modern Gradient-Free Training
+
+Standard NEAT (2002) is not the live alternative to NEAT-AI. Academic
+neuroevolution largely moved to **evolution strategies (ES)** and
+**quality-diversity (QD)** methods, so out-scoring a twenty-four-year-old
+algorithm is not the comparison a knowledgeable reader wants — "why not ES?" is.
+This section answers it, including the parts where the answer does not flatter
+NEAT-AI.
+
+### 📈 Evolution strategies (ES)
+
+[Salimans, Ho, Chen, Sidor & Sutskever (2017)](https://arxiv.org/abs/1703.03864)
+perturb a single fixed-length parameter vector with Gaussian noise, score each
+perturbation on the task, and step the vector along a return-weighted average of
+those perturbations. No backpropagation, no value function, and no structural
+change: the architecture is chosen up front and only the numbers move.
+
+The paper's headline result is an engineering one. Every worker can regenerate
+any other worker's perturbation from a shared random seed, so workers exchange
+**a random seed and a scalar return** instead of a whole parameter vector. That
+collapses the communication cost enough to scale past a thousand parallel
+workers — which is how the paper solved 3D humanoid walking in about ten minutes
+of wall-clock time.
+
+NEAT-AI already borrows one piece of that paper. The centred rank transform is
+what `mcmc.mcmcAdvantageMode: "rankShaped"` applies to a proposal before the
+MCMC (Markov Chain Monte Carlo) acceptance test, so one outlier score cannot
+dominate the decision — see
+[rank shaping in the glossary](../GLOSSARY.md#-themed--house-terms) and
+[what the temperature means](../config/MUTATION_ADAPTATION.md#-what-the-temperature-actually-means).
+
+### 🎨 Quality-diversity (QD)
+
+Novelty search — [Lehman & Stanley (2011)](https://doi.org/10.1162/EVCO_a_00025)
+— selects on behavioural novelty rather than on fitness at all.
+[MAP-Elites](https://arxiv.org/abs/1504.04909) (Multi-dimensional Archive of
+Phenotypic Elites) — Mouret & Clune (2015) — keeps the best solution found in
+each cell of a behaviour space. Both produce an **archive of behaviourally
+diverse elites** instead of a single champion, and both frequently find a better
+single solution than a hill-climb aiming for exactly that.
+
+NEAT-AI has speciation, fitness sharing and islands, but every optimiser in the
+deployment still drives one incumbent forward. The archive is a named gap, not a
+feature — see
+[quality-diversity and behavioural archives](./FUTURE_WORK.md#1--quality-diversity-and-behavioural-archives).
+
+### 📐 CMA-ES
+
+[Hansen & Ostermeier (2001)](https://doi.org/10.1162/106365601750190398) —
+Covariance Matrix Adaptation Evolution Strategy (CMA-ES) — is the
+adaptive-covariance lineage and the standard baseline for continuous black-box
+optimisation. It learns the covariance of its sampling distribution as it goes,
+so the search shape follows the landscape rather than staying isotropic. Its
+rank-μ update ranks the cohort before updating that distribution, which is the
+same rank-not-magnitude idea NEAT-AI's rank-shaped acceptance uses. Like ES, it
+optimises a fixed-length vector; topology is not its problem.
+
+### ⚖️ The honest scoreboard
+
+| Axis                           | ES                                                                | NEAT-AI                                                        |
+| ------------------------------ | ----------------------------------------------------------------- | -------------------------------------------------------------- |
+| Evolves topology               | ❌ fixed parameter vector                                         | ✅ structure grows and shrinks during the run                  |
+| Parallel scaling               | ✅ 1,000+ workers on seed-and-scalar exchange                     | 🟡 islands exchanging whole creatures                          |
+| Sample efficiency              | ❌ worse than reinforcement learning, by the authors' own account | 🟡 worse than gradient descent wherever a good gradient exists |
+| Wall-clock through parallelism | ✅ the paper's central claim                                      | ✅ the deployment's central bet                                |
+| Non-differentiable objectives  | ✅                                                                | ✅                                                             |
+
+Legend: ✅ supported · 🟡 partial · ❌ not supported.
+
+Both halves of that table matter. ES beats NEAT-AI on the axis NEAT-AI would
+most like to claim — its workers ship a seed and a number, while NEAT-AI's
+islands ship whole creatures — and ES cannot do the thing NEAT-AI actually
+exists to do, which is to search architectures rather than tune a vector whose
+shape someone already chose.
+
+### ⏱️ Sample efficiency versus wall-clock — the same bargain
+
+The ES paper does not claim to be more sample-efficient than reinforcement
+learning. It argues the opposite, and then argues that the deficit is
+affordable, because the perturbations are independent and a thousand machines
+can evaluate them at once. The binding budget is wall-clock time, not sample
+count.
+
+NEAT-AI makes that same bargain one level up, and it is a deliberate choice
+rather than an accident: proposals are cheap and plentiful — mutations across a
+whole population, spread over a fleet of roughly twenty machines evolving
+independently and exchanging their fittest creatures — while the scoring pass
+that accepts or rejects one is the expensive, shared judge. The trade is the
+fleet's own design, not merely an ES fact borrowed for illustration. That is the
+[surrogate-assisted pattern](./REFERENCES.md#-surrogate-assisted-search-and-racing):
+propose cheaply, confirm expensively. Read on the sample-efficiency axis alone
+this looks like the "slower convergence" entry in
+[Pros and cons](./PROS_AND_CONS.md#-neat-ai--cons); read on wall-clock with the
+population running in parallel, it is the trade the design was made to take.
+
+```mermaid
+flowchart LR
+    subgraph ES["Evolution strategies"]
+        V["one parameter vector<br/>(fixed topology)"] --> P["1,000+ workers<br/>perturb and score"]
+        P -->|"seed + scalar return"| V
+    end
+    subgraph NA["NEAT-AI"]
+        Pop["population of creatures<br/>(topology evolves)"] --> Judge["shared scoring pass<br/>(the expensive judge)"]
+        Judge -->|"fittest creatures"| Pop
+    end
+```
+
+Both loops spend samples freely to buy wall-clock; they differ in what the loop
+is allowed to change.
 
 ## 🎮 Reinforcement Learning
 
