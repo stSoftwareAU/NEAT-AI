@@ -37,10 +37,11 @@ it."_
 A permanent refusal means a permanent per-creature remainder, so `Fitness`'s
 batch partition cannot collapse to one unconditional call and `evaluateDir`'s
 accumulator cannot be removed. Decision 3's sequenced answer (keep
-`outputRanges` until stSoftwareAU/GRQ#4363 lands) reaches the same conclusion
-independently. The #3868 audit comment on #3863 states it directly: _"Retiring
-`outputRanges` does not let stage 3 delete the TypeScript dataset-scoring path.
-`CUSTOM_COST` is permanent by decision 2 and `FEEDBACK_LOOP` is unresolved."_
+`outputRanges` until the downstream consumer migration lands) reaches the same
+conclusion independently. The #3868 audit comment on #3863 states it directly:
+_"Retiring `outputRanges` does not let stage 3 delete the TypeScript
+dataset-scoring path. `CUSTOM_COST` is permanent by decision 2 and
+`FEEDBACK_LOOP` is unresolved."_
 
 Decisions 1 and 4 needed no work here: #3853 already landed the RMSE
 finalisation, and #3867 measured `scoring.rs` and `Score.ts` as bit-identical at

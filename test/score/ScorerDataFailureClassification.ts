@@ -20,6 +20,7 @@ import { makeDataDir } from "@architecture/DataSet.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { Costs } from "@costs";
 import { DatasetError } from "@errors/DatasetError.ts";
+import { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 import {
   __resetRustScorerBridgeForTests,
   __setRustScorerRunnerForTests,
@@ -147,7 +148,7 @@ Deno.test("RustScorerBridge: corrupt training data fails loud instead of falling
   }
 });
 
-Deno.test("RustScorerBridge: backend failure still falls back to WASM scoring", async () => {
+Deno.test("RustScorerBridge: a non-data backend failure aborts, not a DatasetError", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
   __setRustScorerRunnerForTests(
@@ -157,17 +158,26 @@ Deno.test("RustScorerBridge: backend failure still falls back to WASM scoring", 
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   const dataDir = makeDataDir(buildDataSet(), 24);
   try {
-    const result = await creature.evaluateDir(
-      dataDir,
-      Costs.find("MSE"),
-      false,
-      undefined,
-      undefined,
-      { ...RUST_CONFIG },
+    // The probe succeeded, so the scorer was there and failed. Issue #3871:
+    // that aborts. The classification that matters here is the *kind* — a
+    // backend fault is a ScorerStrictError, never the DatasetError reserved
+    // for a corrupt corpus.
+    const error = await assertRejects(
+      () =>
+        creature.evaluateDir(
+          dataDir,
+          Costs.find("MSE"),
+          false,
+          undefined,
+          undefined,
+          { ...RUST_CONFIG },
+        ),
+      ScorerStrictError,
     );
+    assertEquals(error.reason, "EXEC_FAILURE");
     assert(
-      Number.isFinite(result.error),
-      `WASM fallback should have scored, got ${result.error}`,
+      !(error instanceof DatasetError),
+      "a backend fault must not be misclassified as a data fault",
     );
   } finally {
     await Deno.remove(dataDir, { recursive: true });

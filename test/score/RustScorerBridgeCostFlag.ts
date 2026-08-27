@@ -14,7 +14,8 @@
  *   - batch bridge prepends `--cost <NAME>` the same way
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
+import { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 import { Creature } from "@creature";
 import { Costs } from "@costs";
 import { makeDataDir } from "@architecture/DataSet.ts";
@@ -294,7 +295,7 @@ Deno.test("RustScorerBridge: custom (registered) cost bypasses the rust path ent
   }
 });
 
-Deno.test("RustScorerBridge: non-zero exit on unknown cost logs once and falls back", async () => {
+Deno.test("RustScorerBridge: non-zero exit on an unknown cost aborts", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
 
@@ -317,48 +318,36 @@ Deno.test("RustScorerBridge: non-zero exit on unknown cost logs once and falls b
     });
   });
 
-  const { warnings, restore } = captureWarnings();
-
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   const dataDir = makeDataDir(buildDataSet(), 8);
   try {
-    // First call — should log warning and fall back to WASM.
-    const result1 = await creature.evaluateDir(
-      dataDir,
-      Costs.find("HINGE"),
-      false,
-      undefined,
-      undefined,
-      buildConfig(),
+    // Issue #3871: the binary advertises `--cost` and then rejects the value,
+    // so it was asked to serve the request and failed. Re-scoring on the
+    // TypeScript engine would answer with a number the caller never chose an
+    // engine for, so the call throws with the scorer's own diagnostic.
+    const error = await assertRejects(
+      () =>
+        creature.evaluateDir(
+          dataDir,
+          Costs.find("HINGE"),
+          false,
+          undefined,
+          undefined,
+          buildConfig(),
+        ),
+      ScorerStrictError,
     );
-    assert(Number.isFinite(result1.error));
-    // Second call — should not log again (one-shot behaviour).
-    const result2 = await creature.evaluateDir(
-      dataDir,
-      Costs.find("HINGE"),
-      false,
-      undefined,
-      undefined,
-      buildConfig(),
-    );
-    assert(Number.isFinite(result2.error));
-
+    assertEquals(error.reason, "EXEC_FAILURE");
     assert(
-      scoreCalls >= 1,
-      `expected at least one scorer invocation; got ${scoreCalls}`,
-    );
-    const failures = warnings.filter((w) =>
-      w.includes("Rust scorer call failed")
+      error.message.includes("unknown cost function: HINGE"),
+      `the scorer's stderr must be carried; got: ${error.message}`,
     );
     assertEquals(
-      failures.length,
+      scoreCalls,
       1,
-      `expected exactly one failure warning across both calls; got: ${
-        warnings.join("\n")
-      }`,
+      `the scorer must be invoked exactly once; got ${scoreCalls}`,
     );
   } finally {
-    restore();
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }

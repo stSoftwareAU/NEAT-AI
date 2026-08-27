@@ -1,4 +1,5 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
+import { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 import { isAbsolute } from "@std/path";
 import { Creature } from "@creature";
 import { makeDataDir } from "@architecture/DataSet.ts";
@@ -8,31 +9,7 @@ import {
   __resetRustScorerBridgeForTests,
   __setRustScorerRunnerForTests,
 } from "../../src/score/RustScorerBridge.ts";
-import {
-  createConsoleLogger,
-  getLogger,
-  type Logger,
-  setLogger,
-} from "@utils/Logger.ts";
 import { initWasmForTests } from "../_initWasm.ts";
-
-function captureWarnings(): { warnings: string[]; restore: () => void } {
-  const warnings: string[] = [];
-  const previous = getLogger();
-  const capturing: Logger = {
-    debug: () => {},
-    info: () => {},
-    warn: (...args: unknown[]) => {
-      warnings.push(args.map((a) => String(a)).join(" "));
-    },
-    error: () => {},
-  };
-  setLogger(capturing);
-  return {
-    warnings,
-    restore: () => setLogger(previous ?? createConsoleLogger("info")),
-  };
-}
 
 function buildDataSet(): DataRecordInterface[] {
   const rows: DataRecordInterface[] = [];
@@ -216,7 +193,7 @@ Deno.test("RustScorerBridge: resolves creature and data paths to absolute paths"
   }
 });
 
-Deno.test("RustScorerBridge: logs trimmed stderr on non-zero exit", async () => {
+Deno.test("RustScorerBridge: carries verbatim stderr on non-zero exit", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
 
@@ -237,44 +214,44 @@ Deno.test("RustScorerBridge: logs trimmed stderr on non-zero exit", async () => 
     });
   });
 
-  const { warnings, restore } = captureWarnings();
-
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   const dataDir = makeDataDir(buildDataSet(), 24);
   try {
-    await creature.evaluateDir(
-      dataDir,
-      Costs.find("MSE"),
-      false,
-      undefined,
-      undefined,
-      {
-        enabled: true,
-        binaryPath: "rust_scorer",
-        timeoutMs: 0,
-        env: {},
-        batch: false,
-      },
+    // Issue #3871: the diagnostic moved from a trimmed warning to the thrown
+    // error, which is the point — the whitespace-collapsed log line is what
+    // made Issue #3810 so hard to find.
+    const error = await assertRejects(
+      () =>
+        creature.evaluateDir(
+          dataDir,
+          Costs.find("MSE"),
+          false,
+          undefined,
+          undefined,
+          {
+            enabled: true,
+            binaryPath: "rust_scorer",
+            timeoutMs: 0,
+            env: {},
+            batch: false,
+          },
+        ),
+      ScorerStrictError,
     );
-    const failureWarning = warnings.find((w) =>
-      w.includes("Rust scorer call failed")
-    );
-    assert(
-      failureWarning !== undefined,
-      "warn log should include failure message",
-    );
-    assert(
-      failureWarning!.includes("synthetic scorer failure for test"),
-      `warn should contain trimmed stderr; got: ${failureWarning}`,
+    assertEquals(error.reason, "EXEC_FAILURE");
+    assertEquals(error.exitCode, 2);
+    assertEquals(
+      error.stderr,
+      "Error: synthetic scorer failure for test",
+      "stderr is carried verbatim — never trimmed or whitespace-collapsed",
     );
   } finally {
-    restore();
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }
 });
 
-Deno.test("RustScorerBridge: handles non-JSON stdout gracefully and includes stderr in warning", async () => {
+Deno.test("RustScorerBridge: non-JSON stdout aborts and quotes the output", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
 
@@ -295,36 +272,34 @@ Deno.test("RustScorerBridge: handles non-JSON stdout gracefully and includes std
     });
   });
 
-  const { warnings, restore } = captureWarnings();
-
   const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
   const dataDir = makeDataDir(buildDataSet(), 24);
   try {
-    // Must not throw - should fall back to WASM scoring.
-    const result = await creature.evaluateDir(
-      dataDir,
-      Costs.find("MSE"),
-      false,
-      undefined,
-      undefined,
-      {
-        enabled: true,
-        binaryPath: "rust_scorer",
-        timeoutMs: 0,
-        env: {},
-        batch: false,
-      },
+    const error = await assertRejects(
+      () =>
+        creature.evaluateDir(
+          dataDir,
+          Costs.find("MSE"),
+          false,
+          undefined,
+          undefined,
+          {
+            enabled: true,
+            binaryPath: "rust_scorer",
+            timeoutMs: 0,
+            env: {},
+            batch: false,
+          },
+        ),
+      ScorerStrictError,
     );
-    assert(Number.isFinite(result.error));
-    const parseWarning = warnings.find((w) =>
-      w.includes("Rust scorer") && w.includes("invalid")
-    );
+    assertEquals(error.reason, "INVALID_OUTPUT");
     assert(
-      parseWarning !== undefined,
-      `should warn on invalid stdout; got warnings: ${warnings.join("\n")}`,
+      error.message.includes("not valid json at all"),
+      `the unparseable stdout must be quoted; got: ${error.message}`,
     );
+    assertEquals(error.stderr, "Warning: deprecated flag");
   } finally {
-    restore();
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }
