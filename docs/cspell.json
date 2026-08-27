@@ -655,6 +655,12 @@
     "summable",
     "worktree",
     "revertcheck",
-    "batchable"
+    "batchable",
+    "basenames",
+    "memmodel",
+    "nameref",
+    "nomodel",
+    "shapings",
+    "unsatisfiable"
   ]
 }
