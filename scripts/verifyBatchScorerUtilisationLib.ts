@@ -54,11 +54,6 @@ export function detectDiscrepancies(
         "to the per-creature worker path.",
     );
   }
-  if (util.batchFallbackGenerations > 0) {
-    discrepancies.push(
-      `${util.batchFallbackGenerations} generation(s) hit a batch fallback.`,
-    );
-  }
   if (util.batchScorerInvocations !== batchSpawnCount) {
     discrepancies.push(
       `scorerUtilisation.batchScorerInvocations (${util.batchScorerInvocations}) ` +

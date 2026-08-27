@@ -52,7 +52,6 @@ Deno.test("Rust scorer integration: disabled path does not invoke scorer", async
         timeoutMs: 0,
         env: {},
         batch: false,
-        strict: false,
       },
     );
     assert(Number.isFinite(result.error));
@@ -84,7 +83,6 @@ Deno.test("Rust scorer integration: unavailable scorer probes once then falls ba
       timeoutMs: 0,
       env: {},
       batch: false,
-      strict: false,
     };
     const a = await creature.evaluateDir(
       dataDir,
@@ -148,7 +146,6 @@ Deno.test("Rust scorer integration: uses scorer error when available", async () 
         timeoutMs: 0,
         env: {},
         batch: false,
-        strict: false,
       },
     );
     assertEquals(result.error, 0.12345);
@@ -201,7 +198,6 @@ Deno.test("Rust scorer integration: writes temp creature JSON in configured tmp 
         timeoutMs: 0,
         env: {},
         batch: false,
-        strict: false,
       },
     );
     assertEquals(result.error, 0.25);

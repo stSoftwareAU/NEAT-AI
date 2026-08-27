@@ -43,7 +43,6 @@ function buildConfig(
     timeoutMs: 0,
     env: {},
     batch: true,
-    strict: false,
     ...overrides,
   };
 }

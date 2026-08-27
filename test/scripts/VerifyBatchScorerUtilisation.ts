@@ -4,8 +4,8 @@
  * These pin the machine-checkable regression signals the parent #3233 relies
  * on: the shim spawn log is classified correctly (one-off `--help` probe vs
  * per-generation batch invocations), and a healthy run yields zero
- * discrepancies while each failure mode (no partition line, per-creature
- * fallback, count mismatch) is surfaced loudly rather than hidden.
+ * discrepancies while each failure mode (no partition line, nothing batched,
+ * count mismatch) is surfaced loudly rather than hidden.
  */
 
 import { assertEquals } from "@std/assert";
@@ -20,10 +20,6 @@ const HEALTHY: ScorerUtilisationTotals = {
   batchScorerInvocations: 14,
   creaturesBatchScored: 318,
   creaturesPerCreatureScored: 0,
-  batchFallbackGenerations: 0,
-  // Issue #3866: nothing degraded, so the run-level verdict stays unset.
-  nativeFallbackGenerations: 0,
-  nativeScoringFallback: false,
 };
 
 Deno.test("classifySpawns splits the --help probe from batch invocations", () => {
@@ -55,27 +51,19 @@ Deno.test("detectDiscrepancies: missing partition line is flagged", () => {
   assertEquals(d[0].includes("Batch scorer partition"), true);
 });
 
-Deno.test("detectDiscrepancies: per-creature fallback is flagged", () => {
-  const fellBack: ScorerUtilisationTotals = {
+Deno.test("detectDiscrepancies: an all-per-creature run is flagged", () => {
+  const noBatch: ScorerUtilisationTotals = {
     generations: 14,
     batchScorerInvocations: 0,
     creaturesBatchScored: 0,
     creaturesPerCreatureScored: 318,
-    batchFallbackGenerations: 14,
-    // Issue #3866: a batch fallback is always a native-scoring fallback.
-    nativeFallbackGenerations: 14,
-    nativeScoringFallback: true,
   };
-  // partitionLines present (14), but every creature fell back; 0 batch spawns.
-  const d = detectDiscrepancies(fellBack, 14, 0, 1);
-  // creaturesBatchScored==0, batchFallbackGenerations>0, invocations!=generations.
-  assertEquals(d.length, 3);
+  // partitionLines present (14), but nothing batched; 0 batch spawns.
+  const d = detectDiscrepancies(noBatch, 14, 0, 1);
+  // creaturesBatchScored==0 and invocations!=generations.
+  assertEquals(d.length, 2);
   assertEquals(
     d.some((m) => m.includes("creaturesBatchScored is 0")),
-    true,
-  );
-  assertEquals(
-    d.some((m) => m.includes("hit a batch fallback")),
     true,
   );
 });
@@ -96,9 +84,6 @@ Deno.test("detectDiscrepancies: invocations != generations is flagged", () => {
     batchScorerInvocations: 13,
     creaturesBatchScored: 300,
     creaturesPerCreatureScored: 0,
-    batchFallbackGenerations: 0,
-    nativeFallbackGenerations: 0,
-    nativeScoringFallback: false,
   };
   const d = detectDiscrepancies(uneven, 14, 13, 1);
   assertEquals(d.length, 1);

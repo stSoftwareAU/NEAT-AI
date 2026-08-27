@@ -223,9 +223,6 @@ async function main(): Promise<void> {
   console.info(
     `creaturesPerCreatureScored  : ${util.creaturesPerCreatureScored}`,
   );
-  console.info(
-    `batchFallbackGenerations    : ${util.batchFallbackGenerations}`,
-  );
   console.info(`result artifact             : ${resultPath}`);
   if (partitionLines[0]) {
     console.info(`sample partition line       : ${partitionLines[0]}`);

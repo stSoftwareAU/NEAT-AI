@@ -72,7 +72,6 @@ function buildConfig(): RequiredRustScorerConfig {
     timeoutMs: 0,
     env: {},
     batch: false,
-    strict: false,
   };
 }
 
@@ -403,7 +402,6 @@ Deno.test("BatchRustScorer: prepends --cost <NAME> when probe advertises the fla
         timeoutMs: 0,
         env: {},
         batch: true,
-        strict: false,
       },
       "MAE",
     );
@@ -455,7 +453,6 @@ Deno.test("BatchRustScorer: falls back when probe lacks --cost and cost is non-M
         timeoutMs: 0,
         env: {},
         batch: true,
-        strict: false,
       },
       "MAE",
     );

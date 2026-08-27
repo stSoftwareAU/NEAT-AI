@@ -40,7 +40,6 @@ const SCORER_OFF: RequiredRustScorerConfig = {
   timeoutMs: 0,
   env: {},
   batch: false,
-  strict: false,
 };
 
 /**

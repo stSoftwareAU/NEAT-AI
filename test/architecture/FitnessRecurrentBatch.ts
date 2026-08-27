@@ -81,7 +81,7 @@ function buildCreature(bias: number, forwardOnly: boolean): Creature {
 
 /** Force batch scoring on in-process, without touching the shared env. */
 function enableBatchConfig(): void {
-  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
 }
 
 /** Capture the INFO lines a block emits, restoring the previous logger after. */

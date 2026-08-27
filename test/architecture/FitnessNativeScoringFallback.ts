@@ -1,23 +1,22 @@
 /**
- * `Fitness` publishes a per-generation native-scoring fallback verdict that
- * spans **both** scoring backends (Issue #3866).
+ * A `rust_scorer` that was never available is a graceful **skip**, not a
+ * failure (Issues #3866, #3871).
  *
- * The pre-existing `lastBatchFallbackOccurred` only ever saw the batch catch.
- * The per-creature `rust_scorer` runs inside an evaluation worker, so its
- * degradation reaches the main thread on the evaluate response — a run in which
- * every creature quietly scored on WASM used to report clean.
+ * Issue #3871 deleted the degrading fallback: a scorer that is present and
+ * fails now aborts the generation, and the run-level fallback verdict went with
+ * it. The distinction it protected still matters and is what this file pins —
+ * "not installed" is not "degraded". A missing binary means the request never
+ * reached the native engine, so the TypeScript/WASM engine serves it and the
+ * run completes normally.
  *
- * Three cases, covering both failure directions:
- *  (a) a worker-reported per-creature fallback sets the wider flag while the
- *      batch flag stays false;
- *  (b) a batch failure sets both, and the run-level aggregate survives the
- *      per-generation reset across several generations (false green);
- *  (c) an unresolvable binary is a graceful skip — the run completes with the
- *      verdict unset (false red, which would break every contributor without
- *      `rust_scorer` installed).
+ * Two directions, both regressions worth catching:
+ *  (a) an unresolvable binary completes the run on the WASM path;
+ *  (b) a binary that *is* resolvable and then fails aborts instead — the case
+ *      that must never quietly become a skip.
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
+import { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -38,14 +37,9 @@ import {
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
-/**
- * Stands in for a real evaluation worker. `nativeFallback` mirrors what
- * `WorkerProcessor` reports after the per-creature `rust_scorer` degraded to
- * WASM inside the worker isolate.
- */
+/** Stands in for a real evaluation worker on the per-creature path. */
 class MockWorkerHandler {
   public evaluateCallCount = 0;
-  constructor(private readonly nativeFallback: boolean) {}
   addIdleListener(_callback: () => void): void {}
   isBusy(): boolean {
     return false;
@@ -54,9 +48,9 @@ class MockWorkerHandler {
   async evaluate(
     _creature: Creature,
     _feedbackLoop: boolean,
-  ): Promise<{ evaluate: { error: number; nativeFallback?: boolean } }> {
+  ): Promise<{ evaluate: { error: number } }> {
     this.evaluateCallCount++;
-    return { evaluate: { error: 0.5, nativeFallback: this.nativeFallback } };
+    return { evaluate: { error: 0.5 } };
   }
 }
 
@@ -131,7 +125,6 @@ async function runGenerations(
   for (const creature of population) CreatureUtil.makeUUID(creature);
 
   const dataDir = makeDataDir(buildDataSet(), 4);
-  const perGenerationVerdicts: boolean[] = [];
   try {
     const fitness = new Fitness(
       [worker as unknown as WorkerHandler],
@@ -149,16 +142,13 @@ async function runGenerations(
       // deno-lint-ignore no-await-in-loop
       await fitness.calculate(population);
 
-      perGenerationVerdicts.push(fitness.lastNativeScoringFallbackOccurred);
       accumulateScorerUtilisation(acc, {
         batchScorerInvocations: fitness.lastBatchScorerInvocations,
         creaturesBatchScored: fitness.lastCreaturesBatchScored,
         creaturesPerCreatureScored: fitness.lastCreaturesPerCreatureScored,
-        batchFallbackOccurred: fitness.lastBatchFallbackOccurred,
-        nativeFallbackOccurred: fitness.lastNativeScoringFallbackOccurred,
       });
 
-      // Whatever degraded, the generation still finished with usable scores.
+      // The generation finished with usable scores from the WASM engine.
       for (const creature of population) {
         assert(
           typeof creature.score === "number" && Number.isFinite(creature.score),
@@ -166,74 +156,21 @@ async function runGenerations(
         );
       }
     }
-    return {
-      totals: finaliseScorerUtilisationTotals(acc),
-      perGenerationVerdicts,
-      batchFallbackOccurred: fitness.lastBatchFallbackOccurred,
-    };
+    return { totals: finaliseScorerUtilisationTotals(acc) };
   } finally {
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }
 }
 
-Deno.test("FitnessNativeScoringFallback: a worker-reported per-creature fallback sets the verdict", async () => {
-  // Batch scoring off, so the only native path is the per-creature one inside
-  // the worker — the path the batch flag has never been able to see.
-  __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: false, strict: false });
-
-  const worker = new MockWorkerHandler(true);
-  const { totals, perGenerationVerdicts, batchFallbackOccurred } =
-    await runGenerations(2, 4, worker);
-
-  assertEquals(perGenerationVerdicts, [true, true]);
-  assertEquals(
-    batchFallbackOccurred,
-    false,
-    "no batch attempt was made, so the pre-#3866 flag reports clean",
-  );
-  assertEquals(totals.batchFallbackGenerations, 0);
-  assertEquals(totals.nativeFallbackGenerations, 2);
-  assert(
-    totals.nativeScoringFallback,
-    "a run scored entirely on WASM cannot finish reporting success",
-  );
-});
-
-Deno.test("FitnessNativeScoringFallback: a batch fallback survives the per-generation reset", async () => {
-  // `strict: false` is the operator's explicit opt-out — the run must still
-  // complete (Issue #3864 made strict the default, which throws instead).
-  __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
-  // An empty result map: every expected UUID is missing, so the reconciler
-  // throws and the whole generation reverts to the per-creature worker path.
-  __setRustScorerRunnerForTests(
-    runnerWith(() => ({ success: true, code: 0, stdout: "{}", stderr: "" })),
-  );
-
-  const worker = new MockWorkerHandler(false);
-  const { totals, perGenerationVerdicts } = await runGenerations(2, 4, worker);
-
-  // Each generation recovered on WASM and cleared its own flag; only the run
-  // aggregate can still see that the native path served nothing.
-  assertEquals(perGenerationVerdicts, [true, true]);
-  assertEquals(totals.batchFallbackGenerations, 2);
-  assertEquals(totals.nativeFallbackGenerations, 2);
-  assert(totals.nativeScoringFallback);
-  assertEquals(totals.creaturesBatchScored, 0, "batch scored nothing");
-  assertEquals(worker.evaluateCallCount, 8, "every creature re-scored on WASM");
-});
-
-Deno.test("FitnessNativeScoringFallback: no rust_scorer installed is not a fallback", async () => {
-  // False red: the `--help` probe fails, so the binary is absent. This is the
-  // state of every contributor machine without `rust_scorer` — the run must
-  // complete with the verdict unset.
+Deno.test("FitnessNativeScoringFallback: no rust_scorer installed is a graceful skip", async () => {
+  // The `--help` probe fails, so the binary is absent. This is the state of a
+  // consumer machine without `rust_scorer`: the request never reached the
+  // native engine, so it is served by WASM and the run completes.
   __resetRustScorerBridgeForTests();
   __setRustScorerConfigForTests({
     enabled: true,
     batch: true,
-    strict: false,
     binaryPath: "/nonexistent/rust_scorer",
   });
   __setRustScorerRunnerForTests(() =>
@@ -245,16 +182,43 @@ Deno.test("FitnessNativeScoringFallback: no rust_scorer installed is not a fallb
     })
   );
 
-  const worker = new MockWorkerHandler(false);
-  const { totals, perGenerationVerdicts } = await runGenerations(2, 4, worker);
+  const worker = new MockWorkerHandler();
+  const { totals } = await runGenerations(2, 4, worker);
 
-  assertEquals(perGenerationVerdicts, [false, false]);
-  assertEquals(totals.batchFallbackGenerations, 0);
-  assertEquals(totals.nativeFallbackGenerations, 0);
+  assertEquals(totals.generations, 2);
   assertEquals(
-    totals.nativeScoringFallback,
-    false,
-    "a graceful skip must never fail the run",
+    totals.batchScorerInvocations,
+    0,
+    "an absent binary is never spawned",
   );
+  assertEquals(totals.creaturesBatchScored, 0);
+  assertEquals(totals.creaturesPerCreatureScored, 8);
   assertEquals(worker.evaluateCallCount, 8, "every creature scored on WASM");
+});
+
+Deno.test("FitnessNativeScoringFallback: a resolvable binary that fails aborts, never skips", async () => {
+  // The opposite direction: the probe succeeds, so the scorer *was* available.
+  // Issue #3871 — that failure is the generation's outcome; degrading to the
+  // WASM engine here is exactly what let Issue #3810 reconcile to green.
+  __resetRustScorerBridgeForTests();
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
+  __setRustScorerRunnerForTests(
+    runnerWith(() => ({
+      success: false,
+      code: 101,
+      stdout: "",
+      stderr: "Error: failed to deserialise creature",
+    })),
+  );
+
+  const worker = new MockWorkerHandler();
+  await assertRejects(
+    () => runGenerations(1, 4, worker),
+    ScorerStrictError,
+  );
+  assertEquals(
+    worker.evaluateCallCount,
+    0,
+    "a live scorer's failure must not silently reroute to the WASM engine",
+  );
 });

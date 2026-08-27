@@ -74,7 +74,6 @@ const RUST_CONFIG = {
   timeoutMs: 0,
   env: {},
   batch: false,
-  strict: false,
 } as const;
 
 Deno.test("isCorruptDatasetFailure: data faults are recognised", () => {
@@ -254,7 +253,7 @@ Deno.test("evaluateDir: strict rust scoring keeps a corrupt dataset a DatasetErr
           false,
           undefined,
           undefined,
-          { ...RUST_CONFIG, strict: true },
+          { ...RUST_CONFIG },
         ),
       DatasetError,
     );
