@@ -24,6 +24,14 @@ import {
   computeAdvantageStats,
   computeGroupRelativeAdvantages,
 } from "@neat/GroupRelativeAdvantage.ts";
+import { centredRanks } from "@neat/RankShaping.ts";
+
+/**
+ * Issue #3909: How {@link buildGroupRelativeAdvantageMap} shapes raw fitness
+ * against its cohort — the GRPO z-score, or the Salimans et al. 2017 centred
+ * rank.
+ */
+export type AdvantageShaping = "zscore" | "centredRank";
 
 /**
  * Mutable accumulator for breeding loop diagnostics (Issue #2523).
@@ -169,12 +177,21 @@ export function buildAdjustedFitnessMap(
 }
 
 /**
- * Issue #2527: Build a UUID → group-relative advantage map for parent
- * selection. For each species, the advantage of every member is the
- * z-score of its raw fitness against the species cohort. When a species
- * has fewer than `minCohortSize` members, the whole-generation cohort is
- * used as a fallback so a lone-member species does not collapse to a
- * zero-signal `0` advantage.
+ * Issue #2527: Build a UUID → cohort-relative advantage map for parent
+ * selection. For each species, the advantage of every member is its raw
+ * fitness shaped against the species cohort. When a species has fewer than
+ * `minCohortSize` members, the whole-generation cohort is used as a
+ * fallback so a lone-member species does not collapse to a zero-signal `0`
+ * advantage.
+ *
+ * Two shapings are offered (Issue #3909):
+ *
+ * - `"zscore"` (default) — the GRPO z-score `(score - mean) / (std + eps)`,
+ *   clipped to `[-clip, +clip]`.
+ * - `"centredRank"` — the Salimans et al. 2017 centred rank in
+ *   `[-0.5, +0.5]`. It depends only on the ordering, so a single freak
+ *   score cannot inflate the std and flatten every other member's signal.
+ *   `eps` and `clip` are inert under this shaping.
  *
  * Creatures whose score is non-finite are skipped — they fall back to
  * raw fitness in the resulting ranking. The map is intended to feed
@@ -182,14 +199,26 @@ export function buildAdjustedFitnessMap(
  * adjusted-fitness map, so no FitnessRanking change is required.
  *
  * @param genus - The genus containing the population
- * @param options - `minCohortSize`, `eps`, `clip` overrides
- * @returns A map from creature UUID to group-relative advantage
+ * @param options - `minCohortSize`, `eps`, `clip` and `shaping` overrides
+ * @returns A map from creature UUID to cohort-relative advantage
  */
 export function buildGroupRelativeAdvantageMap(
   genus: Genus,
-  options: { minCohortSize?: number; eps?: number; clip?: number } = {},
+  options: {
+    minCohortSize?: number;
+    eps?: number;
+    clip?: number;
+    shaping?: AdvantageShaping;
+  } = {},
 ): Map<string, number> {
   const minCohortSize = options.minCohortSize ?? 4;
+  const shape = (scores: readonly number[]): number[] =>
+    options.shaping === "centredRank"
+      ? centredRanks(scores)
+      : computeGroupRelativeAdvantages(scores, {
+        eps: options.eps,
+        clip: options.clip,
+      });
 
   // Pre-compute the generation-wide cohort once for the small-species
   // fallback. Creatures with non-finite scores are skipped.
@@ -204,10 +233,7 @@ export function buildGroupRelativeAdvantageMap(
     generationOrder.push(c.uuid);
     generationScores.push(score);
   }
-  const generationAdvantages = computeGroupRelativeAdvantages(
-    generationScores,
-    { eps: options.eps, clip: options.clip },
-  );
+  const generationAdvantages = shape(generationScores);
   const generationAdvantageByUuid = new Map<string, number>();
   for (let i = 0; i < generationOrder.length; i++) {
     generationAdvantageByUuid.set(generationOrder[i], generationAdvantages[i]);
@@ -237,10 +263,7 @@ export function buildGroupRelativeAdvantageMap(
       continue;
     }
 
-    const advantages = computeGroupRelativeAdvantages(speciesScores, {
-      eps: options.eps,
-      clip: options.clip,
-    });
+    const advantages = shape(speciesScores);
     for (let i = 0; i < speciesUuids.length; i++) {
       out.set(speciesUuids[i], advantages[i]);
     }

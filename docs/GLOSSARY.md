@@ -109,6 +109,13 @@ NEAT-AI) plus a few codebase-specific terms.
   [Metropolis–Hastings](https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm)
   criterion to mutation acceptance: worsening mutations are accepted with a
   temperature-dependent probability, helping early escape from local optima.
+- **Rank shaping** — replacing a raw fitness or cost magnitude with its rank
+  within the cohort before that number drives a decision, from
+  [Salimans et al. 2017](https://arxiv.org/abs/1703.03864). Only the ordering
+  survives, so one outlier cannot dominate and the decision no longer depends on
+  the scale of the objective. Selected with
+  `mcmc.mcmcAdvantageMode: "rankShaped"`; see
+  [what the temperature means](./config/MUTATION_ADAPTATION.md#-what-the-temperature-actually-means).
 - **Synthetic synapses** — temporary zero-weight connections added between
   adjacent topological layers before backpropagation to widen the gradient
   search space, then pruned. Similar in spirit to

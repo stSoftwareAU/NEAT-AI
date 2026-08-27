@@ -17,6 +17,7 @@ import {
   type AdvantageOptions,
   normaliseDeltaWithCohortStd,
 } from "@neat/GroupRelativeAdvantage.ts";
+import { rankShapedDelta } from "@neat/RankShaping.ts";
 
 /**
  * Determines whether a mutation should be accepted using the
@@ -47,30 +48,49 @@ export function metropolisHastingsAccept(
   return randomValue < acceptanceProbability;
 }
 
+/** Extra inputs `resolveMcmcAcceptanceDelta` needs beyond the cohort std. */
+export interface AcceptanceDeltaOptions extends AdvantageOptions {
+  /**
+   * Issue #3909: Recently observed raw deltas, used as the reference cohort
+   * when `mode === "rankShaped"`. Ignored by the other modes; an empty or
+   * missing reference makes every worsening proposal shape to `0.5`.
+   */
+  rankReference?: readonly number[];
+}
+
 /**
- * Issue #2527: Resolves the effective acceptance delta given the
- * configured `mcmcAdvantageMode`.
+ * Resolves the effective acceptance delta given the configured
+ * `mcmcAdvantageMode`.
  *
  * - `"absolute"` (default) returns `rawDelta` unchanged so the existing
- *   M-H behaviour is preserved bit-for-bit.
- * - `"groupRelative"` returns `rawDelta / (cohortStd + eps)` clipped
- *   symmetrically into `[-clip, +clip]`, mirroring the DeepSeek V4 GRPO
- *   advantage transform. The cohort std is supplied by the caller; when
- *   it is missing or zero (single-member cohort) the eps stabiliser
- *   keeps the result finite.
+ *   M-H behaviour is preserved bit-for-bit. The temperature is then in the
+ *   **units of the cost function**, so it only means something relative to
+ *   the current numeric spread of that cost.
+ * - `"groupRelative"` (Issue #2527) returns `rawDelta / (cohortStd + eps)`
+ *   clipped symmetrically into `[-clip, +clip]`, mirroring the DeepSeek V4
+ *   GRPO advantage transform. The cohort std is supplied by the caller; when
+ *   it is missing or zero (single-member cohort) the eps stabiliser keeps the
+ *   result finite. The temperature is then in **cohort standard deviations**.
+ * - `"rankShaped"` (Issue #3909) returns the proposal's quantile among
+ *   recent worsening proposals, in `(0, 1)` — the Salimans et al. 2017 rank
+ *   transform. The temperature is then in **quantile units** and means the
+ *   same thing at every stage of a run, whatever the cost function's scale.
  *
  * @param rawDelta - The raw `post - pre` cost delta
  * @param mode - Acceptance signal mode from `MCMCConfig.mcmcAdvantageMode`
- * @param cohortStd - Cohort standard deviation; ignored in `"absolute"` mode
- * @param options - Optional `eps` and `clip` overrides
+ * @param cohortStd - Cohort standard deviation; used by `"groupRelative"` only
+ * @param options - Optional `eps`, `clip` and `rankReference` overrides
  */
 export function resolveMcmcAcceptanceDelta(
   rawDelta: number,
   mode: AdvantageMode,
   cohortStd: number,
-  options: AdvantageOptions = {},
+  options: AcceptanceDeltaOptions = {},
 ): number {
   if (mode === "absolute") return rawDelta;
+  if (mode === "rankShaped") {
+    return rankShapedDelta(rawDelta, options.rankReference ?? []);
+  }
   return normaliseDeltaWithCohortStd(rawDelta, cohortStd, options);
 }
 

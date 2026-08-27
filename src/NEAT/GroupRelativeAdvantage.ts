@@ -170,5 +170,9 @@ export function normaliseDeltaWithCohortStd(
   return clampSymmetric(delta / denom, clip);
 }
 
-/** mcmcAdvantageMode setting accepted by `MCMCConfig`. */
-export type AdvantageMode = "absolute" | "groupRelative";
+/**
+ * mcmcAdvantageMode setting accepted by `MCMCConfig`.
+ *
+ * Issue #3909 added `"rankShaped"` — see `@neat/RankShaping.ts`.
+ */
+export type AdvantageMode = "absolute" | "groupRelative" | "rankShaped";

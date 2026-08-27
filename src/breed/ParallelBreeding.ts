@@ -143,12 +143,17 @@ export class ParallelBreeding {
     // Issue #2527: GRPO-style group-relative advantage takes precedence
     // when `mcmcAdvantageMode === "groupRelative"`, so cross-species
     // selection compares z-scored advantages instead of raw fitness.
+    // Issue #3909: `"rankShaped"` compares centred ranks instead, so a
+    // single freak score cannot flatten the rest of the cohort's signal.
     let scoreOverride: ReadonlyMap<string, number> | undefined;
-    if (config.mcmc.mcmcAdvantageMode === "groupRelative") {
+    if (config.mcmc.mcmcAdvantageMode !== "absolute") {
       scoreOverride = buildGroupRelativeAdvantageMap(this.genus, {
         minCohortSize: config.mcmc.minCohortSize,
         eps: config.mcmc.advantageEps,
         clip: config.mcmc.advantageClip,
+        shaping: config.mcmc.mcmcAdvantageMode === "rankShaped"
+          ? "centredRank"
+          : "zscore",
       });
     } else if (config.fitnessSharing.enabled) {
       scoreOverride = buildAdjustedFitnessMap(this.genus);

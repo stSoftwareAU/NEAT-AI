@@ -19,6 +19,7 @@
 
 import type { RequiredMCMCConfig } from "@config/MCMCConfig.ts";
 import { MCMCDiagnostics } from "@neat/MCMCDiagnostics.ts";
+import { RankShapingWindow } from "@neat/RankShaping.ts";
 import { getLogger } from "@utils/Logger.ts";
 
 /**
@@ -45,6 +46,14 @@ export class MCMCState {
   /** Issue #2201: Diagnostics for acceptance rate tracking and adaptive tuning. */
   readonly diagnostics: MCMCDiagnostics;
 
+  /**
+   * Issue #3909: Run-wide reference cohort of recent raw cost deltas for
+   * `mcmcAdvantageMode: "rankShaped"`. It lives here rather than on the
+   * Mutator because a fresh Mutator is built every generation, and one
+   * generation's handful of weight/bias proposals is too thin to rank against.
+   */
+  readonly rankShaping: RankShapingWindow;
+
   /** Issue #2456: Last diversity snapshot fed into cool(), for diagnostics/tests. */
   private lastDiversity: DiversitySnapshot | undefined;
   /** Issue #2456: True if the most recent cool() reheated rather than cooled. */
@@ -54,6 +63,7 @@ export class MCMCState {
     this.config = config;
     this.currentTemperature = config.initialTemperature;
     this.diagnostics = new MCMCDiagnostics(config);
+    this.rankShaping = new RankShapingWindow(config.rankShapingWindow);
   }
 
   /**
@@ -151,6 +161,9 @@ export class MCMCState {
     this.currentTemperature = this.config.initialTemperature;
     this.lastDiversity = undefined;
     this.lastReheated = false;
+    // Issue #3909: a restart must not rank new proposals against the deltas
+    // of the run it just abandoned.
+    this.rankShaping.reset();
   }
 
   /**

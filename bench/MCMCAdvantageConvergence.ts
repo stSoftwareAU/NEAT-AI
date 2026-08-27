@@ -1,6 +1,5 @@
 /**
- * Issue #2527 — MCMC absolute vs groupRelative advantage convergence
- * benchmark.
+ * MCMC advantage-mode convergence benchmark (Issues #2527, #3909).
  *
  * Compares wall-clock convergence of a population of synthetic
  * "creatures" optimising a 1-D scalar parameter under the same
@@ -12,13 +11,19 @@
  *
  * Why this is a fair comparison:
  *
- * - Both modes share the same initial population, mutation magnitudes,
+ * - Every mode shares the same initial population, mutation magnitudes,
  *   M-H temperature curriculum, and seed.
- * - The only delta is the acceptance signal: raw `delta` versus
- *   `delta / (cohortStd + eps)`.
+ * - The only delta is the acceptance signal: raw `delta`,
+ *   `delta / (cohortStd + eps)`, or the proposal's rank among recent
+ *   worsening proposals.
  * - Final mean fitness and mean iterations to convergence are reported
- *   for each mode so the PR summary can record both numbers regardless
+ *   for each mode so the PR summary can record all numbers regardless
  *   of which is faster.
+ *
+ * Issue #3909 also reports each mode at three objective scales. Rank
+ * shaping is scale-free by construction, so its `COST_SCALES` rows should
+ * be identical; the absolute rule's rows are the control that shows what
+ * a change of scale costs a fixed temperature curriculum.
  *
  * Run with:
  *   deno run --allow-read --allow-env --allow-write \
@@ -33,6 +38,7 @@ import {
   metropolisHastingsAccept,
   resolveMcmcAcceptanceDelta,
 } from "@neat/MetropolisHastings.ts";
+import { RankShapingWindow } from "@neat/RankShaping.ts";
 
 /** Number of "creatures" (cohort size). */
 const POPULATION_SIZE = 32;
@@ -40,6 +46,14 @@ const POPULATION_SIZE = 32;
 const ITERATIONS = 500;
 /** Number of independent trials to average over. */
 const TRIALS = 12;
+/**
+ * Issue #3909: Multiplier applied to the whole objective. A temperature
+ * curriculum that means the same thing at every scale produces identical
+ * rows here.
+ */
+const COST_SCALES = [1, 1_000, 1_000_000] as const;
+/** Retained proposal deltas backing `"rankShaped"`. */
+const RANK_WINDOW = 128;
 /** Per-step Gaussian mutation scale (calibrated to NEAT penalty units). */
 const MUTATION_SIGMA = 0.05;
 /** Initial scatter of the population around the target. */
@@ -76,11 +90,15 @@ function gaussian(rng: () => number): number {
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
 
-/** Scoring function: negative squared distance from the target. */
-function score(value: number): number {
+/**
+ * Scoring function: negative squared distance from the target, multiplied
+ * by `costScale` so the benchmark can vary the objective's magnitude
+ * without changing its shape.
+ */
+function score(value: number, costScale: number): number {
   const target = 0;
   const d = value - target;
-  return -(d * d);
+  return -(d * d) * costScale;
 }
 
 interface TrialResult {
@@ -95,7 +113,11 @@ interface TrialResult {
  * Each step picks a creature, proposes a mutation, computes the
  * M-H acceptance using the configured mode, and accepts or reverts.
  */
-function runTrial(mode: AdvantageMode, seed: number): TrialResult {
+function runTrial(
+  mode: AdvantageMode,
+  seed: number,
+  costScale: number,
+): TrialResult {
   const rng = mulberry32(seed);
   const population = new Array(POPULATION_SIZE);
   for (let i = 0; i < POPULATION_SIZE; i++) {
@@ -104,11 +126,13 @@ function runTrial(mode: AdvantageMode, seed: number): TrialResult {
   let temperature = INITIAL_TEMPERATURE;
   let accepts = 0;
   let proposals = 0;
+  // Issue #3909: the reference cohort backing `"rankShaped"`.
+  const rankWindow = new RankShapingWindow(RANK_WINDOW);
 
   for (let it = 0; it < ITERATIONS; it++) {
     // Cohort std of the current population scores — used in
     // groupRelative mode to normalise the proposed delta.
-    const scores = population.map(score);
+    const scores = population.map((v) => score(v, costScale));
     const cohortStd = computeAdvantageStats(scores).std;
 
     const idx = Math.floor(rng() * POPULATION_SIZE);
@@ -117,8 +141,11 @@ function runTrial(mode: AdvantageMode, seed: number): TrialResult {
 
     // Cost = -score (so worsening = positive delta, consistent with
     // the M-H convention used by MetropolisHastings.ts).
-    const rawDelta = -score(after) - (-score(before));
-    const delta = resolveMcmcAcceptanceDelta(rawDelta, mode, cohortStd);
+    const rawDelta = -score(after, costScale) - (-score(before, costScale));
+    const delta = mode === "rankShaped"
+      ? rankWindow.shape(rawDelta)
+      : resolveMcmcAcceptanceDelta(rawDelta, mode, cohortStd);
+    if (mode === "rankShaped") rankWindow.record(rawDelta);
 
     proposals++;
     if (metropolisHastingsAccept(delta, temperature, rng())) {
@@ -129,7 +156,8 @@ function runTrial(mode: AdvantageMode, seed: number): TrialResult {
     temperature = Math.max(MIN_TEMPERATURE, temperature * COOLING_RATE);
   }
 
-  const finalScores = population.map(score);
+  // Report at unit scale so modes and scales stay directly comparable.
+  const finalScores = population.map((v) => score(v, 1));
   const meanFinalScore = finalScores.reduce((a, b) => a + b, 0) /
     finalScores.length;
   const meanAcceptanceRate = accepts / proposals;
@@ -141,7 +169,7 @@ function runTrial(mode: AdvantageMode, seed: number): TrialResult {
 }
 
 /** Aggregate results across `TRIALS` runs of a single mode. */
-function aggregate(mode: AdvantageMode): {
+function aggregate(mode: AdvantageMode, costScale = 1): {
   mode: AdvantageMode;
   meanFinalScore: number;
   bestFinalScore: number;
@@ -155,7 +183,7 @@ function aggregate(mode: AdvantageMode): {
   let sumAccept = 0;
   const start = performance.now();
   for (let t = 0; t < TRIALS; t++) {
-    const r = runTrial(mode, 1234 + t);
+    const r = runTrial(mode, 1234 + t, costScale);
     sumFinal += r.meanFinalScore;
     sumAccept += r.meanAcceptanceRate;
     if (r.meanFinalScore > best) best = r.meanFinalScore;
@@ -173,35 +201,52 @@ function aggregate(mode: AdvantageMode): {
 }
 
 if (import.meta.main) {
-  console.log(`Issue #2527 — MCMC advantage mode convergence benchmark`);
+  console.log(`MCMC advantage mode convergence benchmark (#2527, #3909)`);
   console.log(
     `population=${POPULATION_SIZE}, iterations=${ITERATIONS}, trials=${TRIALS}`,
   );
   console.log("");
 
-  const absolute = aggregate("absolute");
-  const groupRel = aggregate("groupRelative");
-
   const fmt = (n: number) => n.toFixed(6);
+  const MODES: AdvantageMode[] = ["absolute", "groupRelative", "rankShaped"];
 
-  console.log(
-    `absolute      mean=${fmt(absolute.meanFinalScore)} ` +
-      `best=${fmt(absolute.bestFinalScore)} ` +
-      `worst=${fmt(absolute.worstFinalScore)} ` +
-      `accept=${fmt(absolute.meanAcceptanceRate)} ` +
-      `wallMs=${absolute.wallMs.toFixed(2)}`,
-  );
-  console.log(
-    `groupRelative mean=${fmt(groupRel.meanFinalScore)} ` +
-      `best=${fmt(groupRel.bestFinalScore)} ` +
-      `worst=${fmt(groupRel.worstFinalScore)} ` +
-      `accept=${fmt(groupRel.meanAcceptanceRate)} ` +
-      `wallMs=${groupRel.wallMs.toFixed(2)}`,
-  );
+  const baseline = new Map<AdvantageMode, number>();
+  for (const mode of MODES) {
+    const r = aggregate(mode);
+    baseline.set(mode, r.meanFinalScore);
+    console.log(
+      `${mode.padEnd(13)} mean=${fmt(r.meanFinalScore)} ` +
+        `best=${fmt(r.bestFinalScore)} ` +
+        `worst=${fmt(r.worstFinalScore)} ` +
+        `accept=${fmt(r.meanAcceptanceRate)} ` +
+        `wallMs=${r.wallMs.toFixed(2)}`,
+    );
+  }
 
-  const delta = groupRel.meanFinalScore - absolute.meanFinalScore;
-  // Higher mean score (closer to 0) is better.
-  const verdict = delta >= 0 ? "neutral or improved" : "regression";
+  const absolute = baseline.get("absolute")!;
   console.log("");
-  console.log(`mean(score) delta = ${fmt(delta)}  → ${verdict}`);
+  for (const mode of MODES.slice(1)) {
+    const delta = baseline.get(mode)! - absolute;
+    // Higher mean score (closer to 0) is better.
+    const verdict = delta >= 0 ? "neutral or improved" : "regression";
+    console.log(
+      `${mode.padEnd(13)} mean(score) delta vs absolute = ${
+        fmt(delta)
+      }  \u2192 ${verdict}`,
+    );
+  }
+
+  // Issue #3909: scale invariance. Rank shaping ranks proposals rather than
+  // measuring them, so a change of objective scale must not move its rows.
+  console.log("");
+  console.log("cost-scale sweep (same seeds, objective multiplied):");
+  for (const mode of MODES) {
+    const row = COST_SCALES.map((scale) => {
+      const r = aggregate(mode, scale);
+      return `x${scale}: mean=${fmt(r.meanFinalScore)} accept=${
+        fmt(r.meanAcceptanceRate)
+      }`;
+    });
+    console.log(`  ${mode.padEnd(13)} ${row.join("  |  ")}`);
+  }
 }

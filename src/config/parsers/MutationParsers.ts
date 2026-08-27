@@ -12,6 +12,7 @@ import {
   type RequiredAdaptiveMutationThresholds,
 } from "@config/AdaptiveMutationThresholds.ts";
 import {
+  type AdvantageMode,
   DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG,
   DEFAULT_MCMC_CONFIG,
   type RequiredDiversityAwareMCMCConfig,
@@ -172,24 +173,40 @@ export function parseMcmc(
       d.advantageClip,
       { minExclusive: 0 },
     ),
+    // Issue #3909: rank-shaped acceptance reference window.
+    rankShapingWindow: parseNumber(
+      "MCMC rankShapingWindow",
+      overrides?.rankShapingWindow,
+      d.rankShapingWindow,
+      { integer: true, min: 1 },
+    ),
   } as RequiredMCMCConfig;
 }
 
+/** Every accepted `mcmcAdvantageMode` literal, in documentation order. */
+const ADVANTAGE_MODES: readonly AdvantageMode[] = [
+  "absolute",
+  "groupRelative",
+  "rankShaped",
+];
+
 /**
- * Parses the `mcmcAdvantageMode` option (Issue #2527). Accepts only the
- * two documented string literals so an out-of-spectrum CLI value fails
- * fast instead of silently degrading to the default.
+ * Parses the `mcmcAdvantageMode` option (Issues #2527, #3909). Accepts only
+ * the documented string literals so an out-of-spectrum CLI value fails fast
+ * instead of silently degrading to the default.
  */
 function parseAdvantageMode(
   raw: unknown,
-  fallback: "absolute" | "groupRelative",
-): "absolute" | "groupRelative" {
+  fallback: AdvantageMode,
+): AdvantageMode {
   if (raw === undefined || raw === null) return fallback;
-  if (raw === "absolute" || raw === "groupRelative") return raw;
+  if (ADVANTAGE_MODES.includes(raw as AdvantageMode)) {
+    return raw as AdvantageMode;
+  }
   throw new Error(
-    `MCMC mcmcAdvantageMode must be "absolute" or "groupRelative", got ${
-      JSON.stringify(raw)
-    }`,
+    `MCMC mcmcAdvantageMode must be one of ${
+      ADVANTAGE_MODES.map((m) => `"${m}"`).join(", ")
+    }, got ${JSON.stringify(raw)}`,
   );
 }
 

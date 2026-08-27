@@ -17,6 +17,8 @@
  * for high-dimensional MCMC (Roberts et al. 1997).
  */
 
+import { DEFAULT_RANK_SHAPING_WINDOW } from "@neat/RankShaping.ts";
+
 /**
  * Issue #2456: Diversity-aware MCMC temperature curriculum.
  *
@@ -74,7 +76,7 @@ export const DEFAULT_DIVERSITY_AWARE_MCMC_CONFIG:
  * normalisation used in DeepSeek V4 GRPO and makes the temperature
  * curriculum scale-invariant to the cost function.
  */
-export type AdvantageMode = "absolute" | "groupRelative";
+export type AdvantageMode = "absolute" | "groupRelative" | "rankShaped";
 
 /**
  * Configuration for MCMC acceptance behaviour.
@@ -119,12 +121,21 @@ export interface MCMCConfig {
   diversityAwareMCMC?: DiversityAwareMCMCConfig;
 
   /**
-   * Issue #2527: Acceptance signal mode. `"absolute"` (default)
-   * compares the raw cost delta against the temperature. `"groupRelative"`
-   * normalises the delta by the cohort's standard deviation so the
-   * temperature curriculum is invariant to cost-function scale, mirroring
-   * DeepSeek V4 GRPO. Default: `"absolute"` so existing behaviour is
-   * unchanged.
+   * Acceptance signal mode, which also decides what the temperature is
+   * measured in:
+   *
+   * - `"absolute"` (default) compares the raw cost delta against the
+   *   temperature, so the temperature is in **cost-function units**.
+   * - `"groupRelative"` (Issue #2527) divides the delta by the cohort's
+   *   standard deviation, so the temperature is in **cohort standard
+   *   deviations**, mirroring DeepSeek V4 GRPO.
+   * - `"rankShaped"` (Issue #3909) replaces the delta with the proposal's
+   *   quantile among recent worsening proposals — the Salimans et al. 2017
+   *   rank transform — so the temperature is in **quantile units** and means
+   *   the same thing at every stage of a run, whatever the cost function's
+   *   scale.
+   *
+   * Default: `"absolute"` so existing behaviour is unchanged.
    */
   mcmcAdvantageMode?: AdvantageMode;
 
@@ -146,6 +157,15 @@ export interface MCMCConfig {
    * Set to `Infinity` to disable. Default: 10.
    */
   advantageClip?: number;
+
+  /**
+   * Issue #3909: Number of recent raw M-H cost deltas retained as the
+   * reference cohort in `"rankShaped"` mode. A single generation only
+   * proposes `populationSize * mutationRate` weight/bias mutations, so the
+   * window spans generations to keep the ranking cohort meaningful. Ignored
+   * by the other modes. Default: 128.
+   */
+  rankShapingWindow?: number;
 }
 
 /**
@@ -173,4 +193,7 @@ export const DEFAULT_MCMC_CONFIG: RequiredMCMCConfig = {
   minCohortSize: 4,
   advantageEps: 1e-8,
   advantageClip: 10,
+  // Issue #3909: rank-shaped acceptance reference window (default off with
+  // `mcmcAdvantageMode: "absolute"`).
+  rankShapingWindow: DEFAULT_RANK_SHAPING_WINDOW,
 };

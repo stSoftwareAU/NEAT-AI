@@ -82,19 +82,20 @@ of ~23.4% (Roberts et al. 1997).
 
 Pass as `mcmc` in options.
 
-| Option                 | Type                            | Default      | Description                                                                                                                                               |
-| ---------------------- | ------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`              | `boolean`                       | `false`      | Whether MCMC acceptance is active                                                                                                                         |
-| `initialTemperature`   | `number`                        | `1.0`        | Starting temperature for Metropolis–Hastings acceptance                                                                                                   |
-| `minTemperature`       | `number`                        | `0.01`       | Floor temperature to prevent acceptance probability reaching zero                                                                                         |
-| `coolingRate`          | `number`                        | `0.995`      | Multiplicative cooling factor applied per generation                                                                                                      |
-| `targetAcceptanceRate` | `number`                        | `0.234`      | Optimal acceptance rate for high-dimensional MCMC                                                                                                         |
-| `adjustmentRate`       | `number`                        | `0.02`       | Rate at which temperature adapts toward the target acceptance rate                                                                                        |
-| `toleranceRate`        | `number`                        | `0.05`       | Tolerance band around target rate within which no adjustment occurs                                                                                       |
-| `mcmcAdvantageMode`    | `"absolute" \| "groupRelative"` | `"absolute"` | Issue #2527 — DeepSeek V4 GRPO-style group-relative advantage signal. `"groupRelative"` divides the cost delta by the cohort std for scale-invariant M-H. |
-| `minCohortSize`        | `number`                        | `4`          | Issue #2527 — minimum species size for `groupRelative` mode                                                                                               |
-| `advantageEps`         | `number`                        | `1e-8`       | Issue #2527 — numerical stabiliser added to cohort std before the divide                                                                                  |
-| `advantageClip`        | `number`                        | `10`         | Issue #2527 — symmetric clip on the group-relative advantage delta                                                                                        |
+| Option                 | Type                                            | Default      | Description                                                                                       |
+| ---------------------- | ----------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------- |
+| `enabled`              | `boolean`                                       | `false`      | Whether MCMC acceptance is active                                                                 |
+| `initialTemperature`   | `number`                                        | `1.0`        | Starting temperature for Metropolis–Hastings acceptance                                           |
+| `minTemperature`       | `number`                                        | `0.01`       | Floor temperature to prevent acceptance probability reaching zero                                 |
+| `coolingRate`          | `number`                                        | `0.995`      | Multiplicative cooling factor applied per generation                                              |
+| `targetAcceptanceRate` | `number`                                        | `0.234`      | Optimal acceptance rate for high-dimensional MCMC                                                 |
+| `adjustmentRate`       | `number`                                        | `0.02`       | Rate at which temperature adapts toward the target acceptance rate                                |
+| `toleranceRate`        | `number`                                        | `0.05`       | Tolerance band around target rate within which no adjustment occurs                               |
+| `mcmcAdvantageMode`    | `"absolute" \| "groupRelative" \| "rankShaped"` | `"absolute"` | Acceptance signal — see [what the temperature means](#-what-the-temperature-actually-means) below |
+| `minCohortSize`        | `number`                                        | `4`          | Issue #2527 — minimum species size for `groupRelative` mode                                       |
+| `advantageEps`         | `number`                                        | `1e-8`       | Issue #2527 — numerical stabiliser added to cohort std before the divide                          |
+| `advantageClip`        | `number`                                        | `10`         | Issue #2527 — symmetric clip on the group-relative advantage delta                                |
+| `rankShapingWindow`    | `number`                                        | `128`        | Issue #3909 — recent proposal deltas retained as the ranking cohort in `rankShaped` mode          |
 
 **How it works:**
 
@@ -112,6 +113,78 @@ Pass as `mcmc` in options.
 > MCMC works well alongside plateau detection. Plateau detection adjusts _how
 > much_ mutation happens, while MCMC temperature adjusts _which_ mutations
 > stick. Enable both for a robust exploration/exploitation balance.
+
+### 🌡️ What the temperature actually means
+
+`mcmcAdvantageMode` decides what is divided by the temperature, and therefore
+what unit the temperature is measured in. The cooling schedule
+(`initialTemperature`, `minTemperature`, `coolingRate`) is otherwise identical
+in all three modes, so **a temperature tuned under one mode does not carry over
+to another**.
+
+| Mode              | Value fed to `exp(-δ / T)`                                           | Temperature is measured in | Fixed `T` still means the same thing when…                                |
+| ----------------- | -------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------- |
+| `"absolute"`      | the raw `post − pre` weight/bias penalty delta                       | cost-function units        | never — the corpus, the cost function and convergence all move it         |
+| `"groupRelative"` | `delta / (cohortStd + eps)`, clipped to `±advantageClip`             | cohort standard deviations | the cost function is rescaled, but not when the cohort's spread collapses |
+| `"rankShaped"`    | the proposal's quantile in `(0, 1)` among recent worsening proposals | quantile units             | always — only the ordering of proposals is used                           |
+
+`"rankShaped"` (Issue #3909) is the
+[Salimans et al. 2017](https://arxiv.org/abs/1703.03864) rank transform: raw
+magnitudes are replaced by ranks within the cohort before they are used. Because
+only the ordering survives, one freak proposal cannot dominate and the schedule
+means the same thing at every stage of a run. The same argument underpins
+CMA-ES's rank-μ update (Hansen & Ostermeier 2001), so this is well-trodden
+ground in the evolutionary-algorithm literature.
+
+Practical notes for `"rankShaped"`:
+
+- **Improving proposals are still accepted unconditionally.** Only worsening
+  proposals are ranked, and only against other worsening proposals — otherwise
+  every worsening move would sit at the top of a mostly-improving distribution.
+- **`T` is now readable.** A proposal at the median of recent damage (`q ≈ 0.5`)
+  is accepted with probability `exp(-0.5 / T)`: about 61% at `T = 1.0`, 8% at
+  `T = 0.2`, effectively never at `T = 0.01`. `reheatFactor` moves the schedule
+  by the same interpretable amount whatever the corpus is doing.
+- **The ranking cohort spans generations.** One generation only proposes
+  `populationSize × mutationRate` weight/bias mutations, so the window
+  (`rankShapingWindow`, default 128) is carried on the run's MCMC state. Until
+  it fills, a worsening proposal shapes to the no-information value `0.5`.
+- **Parent selection follows the mode.** As with `"groupRelative"`, the
+  cohort-relative ranking replaces raw fitness for mother selection —
+  `"rankShaped"` uses centred ranks in `[-0.5, +0.5]` instead of the z-score.
+  The **authoritative scorer verdict is never rank-shaped**; that is the one
+  place the absolute number is the point.
+
+```mermaid
+flowchart LR
+    P["Proposal<br/>post − pre penalty"] --> S{"mcmcAdvantageMode"}
+    S -- "absolute" --> A["δ = raw delta<br/>(cost units)"]
+    S -- "groupRelative" --> G["δ = delta / cohortStd<br/>(std units)"]
+    S -- "rankShaped" --> R["δ = rank among recent<br/>worsening proposals<br/>(quantile units)"]
+    A --> MH["exp(−δ / T)"]
+    G --> MH
+    R --> MH
+    MH --> D{"accept?"}
+    D -- "yes" --> Keep["keep mutation"]
+    D -- "no" --> Revert["revert to snapshot"]
+    R -.->|"record raw delta"| W[("rankShapingWindow<br/>run-wide, 128 deltas")]
+    W -.->|"reference cohort"| R
+```
+
+**Measured** on the synthetic convergence harness
+`bench/MCMCAdvantageConvergence.ts` (population 32, 500 iterations, 12 seeded
+trials). Higher mean score is better; the cost-scale sweep multiplies the whole
+objective while holding the temperature curriculum fixed:
+
+| Mode              | mean score | acceptance | mean score at ×1 / ×1 000 / ×1 000 000 |
+| ----------------- | ---------- | ---------- | -------------------------------------- |
+| `"absolute"`      | −0.151315  | 0.832      | −0.151315 / −0.089692 / −0.089687      |
+| `"groupRelative"` | −0.111894  | 0.709      | −0.111894 / −0.111894 / −0.111894      |
+| `"rankShaped"`    | −0.093585  | 0.501      | −0.093585 / −0.093585 / −0.093585      |
+
+The `"absolute"` row moves when the objective is rescaled — its acceptance rate
+falls from 83% to 41% for the same schedule — which is exactly the coupling rank
+shaping removes.
 
 ## 👀 See also
 

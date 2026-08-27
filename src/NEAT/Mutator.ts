@@ -31,6 +31,7 @@ import {
   resolveMcmcAcceptanceDelta,
 } from "@neat/MetropolisHastings.ts";
 import type { MCMCDiagnostics } from "@neat/MCMCDiagnostics.ts";
+import { RankShapingWindow } from "@neat/RankShaping.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
 import {
   runProducerCompileProbe,
@@ -77,6 +78,15 @@ export class Mutator {
    */
   private mcmcCohortStdByUuid?: ReadonlyMap<string, number>;
   private mcmcCohortFallbackStd = 0;
+
+  /**
+   * Issue #3909: Run-wide reference cohort of recent raw cost deltas for
+   * `mcmcAdvantageMode: "rankShaped"`. Owned by `MCMCState` and injected by
+   * `NeatEvolution` so it spans generations. When absent (single-population
+   * callers, or any other mode) the acceptance path falls back to a private
+   * per-Mutator window so the shaped delta is still well defined.
+   */
+  private rankShapingWindow?: RankShapingWindow;
 
   /**
    * Seed warm-up: when `warmupGenerations > 0` and
@@ -173,6 +183,31 @@ export class Mutator {
     this.mcmcCohortFallbackStd = Number.isFinite(fallbackStd) && fallbackStd > 0
       ? fallbackStd
       : 0;
+  }
+
+  /**
+   * Issue #3909: Inject the run-wide rank-shaping reference window used by
+   * `mcmcAdvantageMode: "rankShaped"`. `NeatEvolution` passes the window
+   * owned by `MCMCState` so the reference cohort survives the per-generation
+   * Mutator rebuild. No-op for the other advantage modes.
+   *
+   * @param window - The shared window, or `undefined` to use a private one
+   */
+  public setRankShapingWindow(window: RankShapingWindow | undefined): void {
+    this.rankShapingWindow = window;
+  }
+
+  /**
+   * The rank-shaping reference window in force, creating a private one on
+   * first use when no shared window was injected.
+   */
+  private getRankShapingWindow(): RankShapingWindow {
+    if (!this.rankShapingWindow) {
+      this.rankShapingWindow = new RankShapingWindow(
+        this.config.mcmc.rankShapingWindow,
+      );
+    }
+    return this.rankShapingWindow;
   }
 
   /**
@@ -443,15 +478,28 @@ export class Mutator {
                 ? speciesStd
                 : this.mcmcCohortFallbackStd;
           }
-          const deltaCost = resolveMcmcAcceptanceDelta(
-            rawDelta,
-            advantageMode,
-            cohortStd,
-            {
-              eps: this.config.mcmc.advantageEps,
-              clip: this.config.mcmc.advantageClip,
-            },
-          );
+
+          // Issue #3909: In `rankShaped` mode the delta is replaced by its
+          // quantile among recent worsening proposals. The proposal is
+          // recorded *after* shaping so it never ranks against itself, and
+          // recorded whether or not it is accepted — the reference cohort
+          // describes what evolution proposed, not what it kept.
+          const rankWindow = advantageMode === "rankShaped"
+            ? this.getRankShapingWindow()
+            : undefined;
+
+          const deltaCost = rankWindow
+            ? rankWindow.shape(rawDelta)
+            : resolveMcmcAcceptanceDelta(
+              rawDelta,
+              advantageMode,
+              cohortStd,
+              {
+                eps: this.config.mcmc.advantageEps,
+                clip: this.config.mcmc.advantageClip,
+              },
+            );
+          rankWindow?.record(rawDelta);
 
           const accepted = metropolisHastingsAccept(
             deltaCost,
