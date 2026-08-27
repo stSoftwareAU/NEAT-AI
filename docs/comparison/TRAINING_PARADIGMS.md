@@ -176,9 +176,10 @@ count.
 
 NEAT-AI makes that same bargain one level up, and it is a deliberate choice
 rather than an accident: proposals are cheap and plentiful — mutations across a
-whole population, on roughly twenty machines evolving independently and
-exchanging their fittest creatures — while the scoring pass that accepts or
-rejects one is the expensive, shared judge. That is the
+whole population, spread over a fleet of roughly twenty machines evolving
+independently and exchanging their fittest creatures — while the scoring pass
+that accepts or rejects one is the expensive, shared judge. The trade is the
+fleet's own design, not merely an ES fact borrowed for illustration. That is the
 [surrogate-assisted pattern](./REFERENCES.md#-surrogate-assisted-search-and-racing):
 propose cheaply, confirm expensively. Read on the sample-efficiency axis alone
 this looks like the "slower convergence" entry in
