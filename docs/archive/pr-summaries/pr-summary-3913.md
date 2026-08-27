@@ -28,12 +28,12 @@ about the code, not a guess:
 
 - Fitness is scored over the whole dataset directory a run is given —
   `trainingSampleRate` (`src/architecture/training/TrainingSamples.ts:27`)
-  samples records for gradient training only, and appears nowhere on the
-  scoring path (`src/architecture/Fitness.ts`).
+  samples records for gradient training only, and appears nowhere on the scoring
+  path (`src/architecture/Fitness.ts`).
 - The library's one holdout mechanism, `HoldoutValidator`
   (`src/discovery/HoldoutValidator.ts:1`, Issue #1308), is opt-in and off by
   default (`EnhancedHoldoutOptions.enabled`,
-  `src/discovery/EnhancedDiscoveryValidator.ts:33`), and it splits the *same*
+  `src/discovery/EnhancedDiscoveryValidator.ts:33`), and it splits the _same_
   corpus for discovery candidates only — so its reserved slice is still visible
   to the fitness evaluation that later accepts the creature.
 
@@ -44,8 +44,8 @@ full-corpus judge, and the per-optimiser `experiments.jsonl` journal with its
 NEAT-AI-Forests and NEAT-AI-Rebase).
 
 **`FUTURE_WORK.md` — three new gaps, sorted above the reach-extending ones.**
-New framing paragraph separates gaps about *reach* from gaps about
-*trustworthiness of results we already have*, and the latter now sort first
+New framing paragraph separates gaps about _reach_ from gaps about
+_trustworthiness of results we already have_, and the latter now sort first
 inside each tier:
 
 - **1. Quality-Diversity and Behavioural Archives** (high) — Lehman & Stanley
@@ -58,8 +58,8 @@ inside each tier:
 
 Existing sections renumbered (1–12 → 3–6, 8–15) and the one inbound anchor
 (`FUTURE_WORK.md#2--unsupervised-learning` → `#4--unsupervised-learning`)
-updated in the same change. No citation needed adding to `REFERENCES.md` —
-every paper the new entries cite was already there from Issue #3911.
+updated in the same change. No citation needed adding to `REFERENCES.md` — every
+paper the new entries cite was already there from Issue #3911.
 
 ## Evidence
 
