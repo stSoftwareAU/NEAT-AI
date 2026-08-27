@@ -19,12 +19,12 @@ as one family. The per-repo catalogue is in
 
 Two variants of every preview ship (Issue #3764), plus a GitHub upload set:
 
-| Variant                        | Use                                                                                                                                            |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `social-previews/*.png`        | **Canonical.** Transparent background — README headers, docs, slides, and anything that follows the reader's light/dark mode. Always 1280×640. |
-| `social-previews/opaque/*.png` | Same artwork flattened onto the brand navy. Used as the source pixels for the GitHub JPEG set. May exceed 1 MB.                                |
-| `social-previews/github/*.jpg` | GitHub's **Settings → General → Social preview** upload slot. 1280×640 JPEG, always under 1 MB — GitHub refuses larger files.                  |
-| `social-previews/source/*.png` | Optional large masters. Native resolution, never overwritten. Fitted onto the canvas by `scale_social_previews.ts`.                            |
+| Variant                        | Use                                                                                                                                                     |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `social-previews/*.png`        | **Canonical.** Transparent background — README headers, docs, slides, and anything that follows the reader's light/dark mode. Always 1280×640.          |
+| `social-previews/opaque/*.png` | Same artwork flattened onto the brand navy, for surfaces that cannot composite alpha. May exceed 1 MB.                                                  |
+| `social-previews/github/*.png` | GitHub's **Settings → General → Social preview** upload slot. 1280×640 **transparent** PNG, palette-quantised under 1 MB — GitHub refuses larger files. |
+| `social-previews/source/*.png` | Optional large masters. Native resolution, never overwritten. Fitted onto the canvas by `scale_social_previews.ts`.                                     |
 
 The transparent set draws dark ink under a white halo, so the lockup reads on a
 white page (the halo disappears) and on a dark one (the halo outlines the ink).
@@ -47,14 +47,14 @@ deno run -A scripts/brand/render_social_previews.ts
 
 Hand-authored previews keep a large master under
 [`social-previews/source/`](social-previews/source/). Fit those onto 1280×640,
-rebuild their opaque twins, and write the under-1 MB GitHub JPEGs — without
+rebuild their opaque twins, and write the under-1 MB GitHub PNGs — without
 touching the masters:
 
 ```bash
 deno run -A scripts/brand/scale_social_previews.ts
 ```
 
-Rebuild only the GitHub JPEGs from the current opaque PNGs:
+Rebuild only the GitHub uploads from the current transparent PNGs:
 
 ```bash
 deno run -A scripts/brand/scale_social_previews.ts --github-only
@@ -104,6 +104,6 @@ extents, so re-render on a host with Helvetica or DejaVu Sans available.
 `test/docs/BrandGithubUploads.ts` guard the set behaviourally: the catalogue and
 the directory must list the same files, every canonical preview must be
 1280×640, the canonical set must really be transparent, every preview must have
-an opaque twin and a GitHub JPEG under 1 MB, and the links in these two
-documents must resolve. Add the image **and** its catalogue row in the same
-change. Large `source/` masters are not required to be 1280×640.
+an opaque twin and a transparent GitHub upload under 1 MB, and the links in
+these two documents must resolve. Add the image **and** its catalogue row in the
+same change. Large `source/` masters are not required to be 1280×640.
