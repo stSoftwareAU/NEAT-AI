@@ -36,11 +36,11 @@ deno run -A scripts/brand/scale_social_previews.ts --github-only
 | `neat-ai-rebase.png`          | [NEAT-AI-Rebase](https://github.com/stSoftwareAU/NEAT-AI-Rebase)                   | Rebase          | Replay a useful delta   |
 
 `opaque/` holds the same twelve images flattened onto the brand navy. `github/`
-holds the same twelve as 1280×640 **transparent** PNGs, palette-quantised to
-256 colours so each stays under 1 MB (Issue #3903). Upload **those** via each
-repo → Settings → General → Social preview; GitHub composites the upload onto
-its own chrome and rejects files of 1 MB or larger. Sites that cannot composite
-alpha (X, Slack, LinkedIn) render the art on their own background instead.
+holds the same twelve as 1280×640 **transparent** PNGs, palette-quantised to 256
+colours so each stays under 1 MB (Issue #3903). Upload **those** via each repo →
+Settings → General → Social preview; GitHub composites the upload onto its own
+chrome and rejects files of 1 MB or larger. Sites that cannot composite alpha
+(X, Slack, LinkedIn) render the art on their own background instead.
 
 See the [brand overview](../README.md) for the palettes, the regeneration
 command, and the rules for adding an asset.
