@@ -49,7 +49,6 @@ import { getLogger } from "@utils/Logger.ts";
 import { clearForGc } from "@utils/ReleasableRef.ts";
 import { assertLocalModuleSpecifier } from "@utils/ModuleSpecifierGuard.ts";
 import { DatasetFileListCache } from "@architecture/DatasetFileListCache.ts";
-import { consumeNativeScoringFallback } from "../../score/NativeScoringFallbackLedger.ts";
 
 type DiscoverResponsePayload = NonNullable<ResponseData["discover"]>;
 
@@ -374,11 +373,6 @@ export class WorkerProcessor {
           duration: Date.now() - start,
           evaluate: {
             error: result.error,
-            // Issue #3866: the per-creature `rust_scorer` runs in this worker
-            // isolate, so its fallback flag has to ride the response back to
-            // the main thread — otherwise a run where every creature quietly
-            // scored on WASM reports clean.
-            nativeFallback: consumeNativeScoringFallback(),
           },
         };
       } catch (error) {

@@ -116,28 +116,6 @@ export class Fitness {
   lastCreaturesPerCreatureScored = 0;
 
   /**
-   * True when a batch attempt failed during the most recent `calculate()` call
-   * and its creatures reverted to the per-creature worker path (Issue #3234).
-   * A partial/whole fallback must stay visible, never masked as success.
-   */
-  lastBatchFallbackOccurred = false;
-
-  /**
-   * True when **any** native scoring attempt degraded to WASM during the most
-   * recent `calculate()` call (Issue #3866).
-   *
-   * A superset of {@link lastBatchFallbackOccurred}: it also covers the
-   * per-creature `rust_scorer` path, whose fallback runs inside an evaluation
-   * worker and is reported back on the evaluate response. Watching only the
-   * batch catch reports clean while every creature quietly scores on WASM.
-   *
-   * Like the batch flag this is per-generation and reset on every call; the
-   * run-level aggregate lives in `ScorerUtilisationTotals` so it survives the
-   * reset.
-   */
-  lastNativeScoringFallbackOccurred = false;
-
-  /**
    * Data directory passed to the external `rust_scorer` binary in batch
    * mode (Issue #2422). `undefined` disables batch scoring regardless of
    * configuration, matching the behaviour of environments where no dataset
@@ -270,10 +248,6 @@ export class Fitness {
       // the existing telemetry resets.
       this.lastCreaturesBatchScored = 0;
       this.lastCreaturesPerCreatureScored = 0;
-      this.lastBatchFallbackOccurred = false;
-      // Issue #3866: the run-level verdict is accumulated elsewhere, so the
-      // per-generation flag resets with its siblings.
-      this.lastNativeScoringFallbackOccurred = false;
       return;
     }
 
@@ -292,11 +266,6 @@ export class Fitness {
     let batchScoredCount = 0;
     let workerScoredCount = 0;
     this.lastBatchScorerInvocations = 0;
-    this.lastBatchFallbackOccurred = false;
-    this.lastNativeScoringFallbackOccurred = false;
-    // Issue #3866: accumulates the batch catch below plus every per-creature
-    // fallback a worker reports, and is published once the generation ends.
-    let nativeFallbackObserved = false;
 
     // Issue #2422: When the external rust scorer is enabled in directory
     // mode, invoke it once for the whole generation, map results back to
@@ -437,53 +406,25 @@ export class Fitness {
           // the per-creature and WASM paths read the same bytes. Propagate so
           // the run fails once on the scorer's own diagnostic.
           if (err instanceof DatasetError) throw err;
-          // Issue #3815: strict mode makes the fallback itself fatal — an
-          // entirely dead native batch path must never reconcile to a green
-          // run. The escalated error keeps the scorer's stderr verbatim.
-          if (rustScorerConfig.strict) {
-            throw toScorerStrictError(
-              err,
-              "Batch rust scorer failed under NEAT_AI_RUST_SCORER_STRICT",
-              "BATCH_FALLBACK",
-            );
-          }
-          // Surface batch reconciliation failures as explicit log errors per
-          // the acceptance criteria, then fall back to the per-creature path
-          // so the generation is not lost to a transient scorer issue.
-          // Issue #2518: enrich the log line with population composition
-          // counters and per-creature metadata for any UUID we can extract
-          // from the rust scorer's stderr or the typed error itself, so
-          // operators can trace the producer of the offending creature(s)
-          // without re-running the workload.
-          const detail = err instanceof Error ? err.message : String(err);
+          // Issue #3871: the per-creature re-score that used to absorb a batch
+          // failure is gone, so the failure is the generation's outcome. The
+          // escalated error keeps the scorer's stderr verbatim.
+          //
+          // Issue #2518: the population-composition counters and the
+          // per-creature metadata for any UUID extractable from the scorer's
+          // stderr ride the message, so operators can still trace the producer
+          // of the offending creature(s) without re-running the workload.
           const diagnostic = err instanceof Error
             ? buildBatchScorerDiagnostic(err, batchCreatures)
             : undefined;
-          if (err instanceof BatchScorerError) {
-            getLogger().error(
-              `[NEAT-AI] Batch rust scorer reconciliation failed ` +
-                `(${err.reason}): ${detail}; ${diagnostic!.message}; ` +
-                `falling back to per-creature scoring.`,
-            );
-          } else if (diagnostic) {
-            getLogger().error(
-              `[NEAT-AI] Batch rust scorer invocation failed: ${detail}; ` +
-                `${diagnostic.message}; falling back to per-creature scoring.`,
-            );
-          } else {
-            getLogger().error(
-              `[NEAT-AI] Batch rust scorer invocation failed: ${detail}; ` +
-                `falling back to per-creature scoring.`,
-            );
-          }
-          // creaturesForWorkerPath stays at uniqueQueue so the worker path
-          // re-scores everything, including the forwardOnly creatures the
-          // batch attempt failed to score.
-          // Issue #3234: mark the fallback so it is counted per-run rather
-          // than silently absorbed by the worker path's success.
-          this.lastBatchFallbackOccurred = true;
-          // Issue #3866: a batch fallback is also a native-scoring fallback.
-          nativeFallbackObserved = true;
+          const context = err instanceof BatchScorerError
+            ? `Batch rust scorer reconciliation failed (${err.reason})`
+            : "Batch rust scorer invocation failed";
+          throw toScorerStrictError(
+            err,
+            diagnostic ? `${context}; ${diagnostic.message}` : context,
+            "BATCH_FALLBACK",
+          );
         }
       }
       // batchCreatures.length === 0 — no temp dir, no spawn. The worker path
@@ -552,11 +493,6 @@ export class Fitness {
       }
 
       const error = responseData.evaluate.error;
-      // Issue #3866: the per-creature `rust_scorer` runs in the worker, so its
-      // degradation only reaches the run-level verdict via this flag.
-      if (responseData.evaluate.nativeFallback === true) {
-        nativeFallbackObserved = true;
-      }
       delete responseData.evaluate;
 
       // Issue #2211: When a worker encounters a WASM panic (RuntimeError:
@@ -639,9 +575,6 @@ export class Fitness {
     this.lastCreaturesBatchScored = batchScoredCount;
     this.lastCreaturesPerCreatureScored = workerScoredCount;
     this.lastScoredCreatureCount = batchScoredCount + workerScoredCount;
-    // Issue #3866: publish the combined batch + per-creature fallback verdict
-    // for this generation. The run-level aggregate sums these across the run.
-    this.lastNativeScoringFallbackOccurred = nativeFallbackObserved;
   }
 }
 

@@ -507,8 +507,20 @@ export async function evaluateDir(
       eligibility.costName,
     );
     if (rustResult) return { error: rustResult.error };
+    // `undefined` is a *skip*, never a failure: scoring disabled, no binary,
+    // or a binary too old for the configured cost. Issue #3871 removed the
+    // failure fallback — a scorer that was there and failed throws — so the
+    // accumulator below only ever serves a request the native engine did not
+    // take.
   }
 
+  // Issue #3871 (stage 3 of #3861) **demoted** this accumulator; it did not
+  // delete it. Decision 2 of #3863 keeps custom costs supported, and a custom
+  // cost is a JavaScript module `rust_scorer` cannot execute, so the
+  // `CUSTOM_COST` refusal — and therefore this loop — is permanent. The
+  // `OUTPUT_RANGES` refusal keeps it alive too until the downstream FX
+  // migration lands (decision 3, sequenced). What stage 3 removed is this
+  // path's *other* job: standing in for a native scorer that failed.
   requireWasmOrThrow(creature);
 
   let error = 0;

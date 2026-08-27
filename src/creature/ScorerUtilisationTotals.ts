@@ -8,29 +8,23 @@
  * per-creature worker path — so a silent regression where the batch path broke
  * and every creature quietly fell back to the slow worker path looked
  * identical to a healthy run. These aggregates split that count by backend and
- * add an explicit batch-fallback tally so the split is visible in the run
- * result (and therefore in the production run's `result.json`).
+ * so the split is visible in the run result (and therefore in the production
+ * run's `result.json`).
  *
  * All values are raw counts summed across every generation of the run.
  *
- * Issue #3866 turns the telemetry into a **verdict**. The per-generation flags
- * are reset every generation, so a run that degraded in every generation but
- * recovered in each one still finished green. `nativeFallbackGenerations` and
- * the `nativeScoringFallback` boolean are the run-level aggregate that survives
- * that reset, and they cover the per-creature `rust_scorer` path as well as the
- * batch catch. Under the default `NEAT_AI_RUST_SCORER_STRICT=1` a degradation
- * throws and never reaches here; with the operator's explicit
- * `NEAT_AI_RUST_SCORER_STRICT=0` opt-out the run completes and the verdict is
- * handed to the caller instead of the library unilaterally failing the run.
+ * Issue #3866 turned that telemetry into a run-level **verdict** for the window
+ * in which a native failure could still degrade to WASM. Issue #3871 deleted
+ * the fallback: a `rust_scorer` that is present and fails now aborts the run,
+ * so there is no degraded-but-green outcome left to report and the verdict
+ * fields are gone with it. What remains is the backend split, which still
+ * distinguishes a generation served by the batch scorer from one the
+ * eligibility predicate kept on the per-creature worker path.
  */
-
-import { getLogger } from "@utils/Logger.ts";
 
 /**
  * A single generation's scorer-utilisation snapshot, read from `Fitness`
- * after each `evolve()` cycle. `batchFallbackOccurred` is a boolean because a
- * generation either did or did not revert its whole batch to the worker path;
- * the accumulator turns it into a per-run count of affected generations.
+ * after each `evolve()` cycle.
  */
 export interface ScorerUtilisationCounts {
   /** `rust_scorer` processes spawned this generation (0 when batch disabled). */
@@ -39,22 +33,6 @@ export interface ScorerUtilisationCounts {
   readonly creaturesBatchScored: number;
   /** Creatures scored via the per-creature worker path this generation. */
   readonly creaturesPerCreatureScored: number;
-  /**
-   * True when a batch attempt failed this generation and its creatures
-   * reverted to the per-creature worker path. A partial/whole fallback must be
-   * visible, not masked as success.
-   */
-  readonly batchFallbackOccurred: boolean;
-  /**
-   * True when **any** native scoring attempt degraded to WASM this generation
-   * (Issue #3866) — the batch catch above, or a per-creature `rust_scorer`
-   * failure reported by an evaluation worker.
-   *
-   * A superset of {@link batchFallbackOccurred}, and optional so scorers that
-   * never touch the native path (episodic / RL) need not publish it; when it is
-   * omitted a `batchFallbackOccurred` still counts as a native fallback.
-   */
-  readonly nativeFallbackOccurred?: boolean;
 }
 
 /**
@@ -70,29 +48,6 @@ export interface ScorerUtilisationTotals {
   readonly creaturesBatchScored: number;
   /** Total creatures scored via the per-creature worker path across the run. */
   readonly creaturesPerCreatureScored: number;
-  /**
-   * Number of generations that hit a batch fallback. Non-zero means the native
-   * batch path failed at least once and scoring silently continued on the slow
-   * worker path — exactly the regression this telemetry exists to expose.
-   */
-  readonly batchFallbackGenerations: number;
-  /**
-   * Number of generations in which native scoring degraded to WASM — the batch
-   * catch **or** the per-creature `rust_scorer` path (Issue #3866). The batch
-   * count above sees only the former, so a run whose every creature quietly
-   * scored on WASM reported zero there.
-   */
-  readonly nativeFallbackGenerations: number;
-  /**
-   * The run-level verdict (Issue #3866): `true` when native scoring degraded at
-   * least once during the run. Equivalent to
-   * `nativeFallbackGenerations > 0`, named so a caller can act on it directly —
-   * under `NEAT_AI_RUST_SCORER_STRICT=0` the library completes the run rather
-   * than revoking the operator's explicit opt-out, and hands the decision back
-   * here. Under the default strict mode the run throws instead and never
-   * reaches this field.
-   */
-  readonly nativeScoringFallback: boolean;
 }
 
 /**
@@ -106,8 +61,6 @@ export interface ScorerUtilisationAccumulator {
   batchScorerInvocations: number;
   creaturesBatchScored: number;
   creaturesPerCreatureScored: number;
-  batchFallbackGenerations: number;
-  nativeFallbackGenerations: number;
 }
 
 /** Create a zeroed {@link ScorerUtilisationAccumulator}. */
@@ -117,8 +70,6 @@ export function createScorerUtilisationAccumulator(): ScorerUtilisationAccumulat
     batchScorerInvocations: 0,
     creaturesBatchScored: 0,
     creaturesPerCreatureScored: 0,
-    batchFallbackGenerations: 0,
-    nativeFallbackGenerations: 0,
   };
 }
 
@@ -131,40 +82,16 @@ export function accumulateScorerUtilisation(
   acc.batchScorerInvocations += counts.batchScorerInvocations;
   acc.creaturesBatchScored += counts.creaturesBatchScored;
   acc.creaturesPerCreatureScored += counts.creaturesPerCreatureScored;
-  if (counts.batchFallbackOccurred) acc.batchFallbackGenerations++;
-  // Issue #3866: a batch fallback is always a native fallback; the per-creature
-  // path adds the cases the batch flag cannot see.
-  if (counts.batchFallbackOccurred || counts.nativeFallbackOccurred === true) {
-    acc.nativeFallbackGenerations++;
-  }
 }
 
-/**
- * Freeze the accumulator into an immutable {@link ScorerUtilisationTotals}.
- *
- * Issue #3866: this is the single run-end choke point every `evolve*` loop
- * passes through, so a set verdict is logged **once** here as an error. The
- * per-occurrence warnings are what got buried in #3810 — one summary line at
- * run end is what an operator actually reads.
- */
+/** Freeze the accumulator into an immutable {@link ScorerUtilisationTotals}. */
 export function finaliseScorerUtilisationTotals(
   acc: ScorerUtilisationAccumulator,
 ): ScorerUtilisationTotals {
-  if (acc.nativeFallbackGenerations > 0) {
-    getLogger().error(
-      `[NEAT-AI] Native scoring degraded to WASM in ` +
-        `${acc.nativeFallbackGenerations} of ${acc.generations} generation(s); ` +
-        `this run did NOT score on the native path. ` +
-        `Result field: scorerUtilisation.nativeScoringFallback=true.`,
-    );
-  }
   return {
     generations: acc.generations,
     batchScorerInvocations: acc.batchScorerInvocations,
     creaturesBatchScored: acc.creaturesBatchScored,
     creaturesPerCreatureScored: acc.creaturesPerCreatureScored,
-    batchFallbackGenerations: acc.batchFallbackGenerations,
-    nativeFallbackGenerations: acc.nativeFallbackGenerations,
-    nativeScoringFallback: acc.nativeFallbackGenerations > 0,
   };
 }

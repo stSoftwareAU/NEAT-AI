@@ -1,17 +1,16 @@
 /**
- * Strict-mode scorer failures are fatal, not silently reconciled (Issue #3815).
+ * Scorer failures are fatal, not silently reconciled (Issue #3815).
  *
- * The WASM fallback is correct production behaviour, but in CI it let an
- * entirely dead native scoring path look green: Issue #3810 had `rust_scorer`
- * rejecting every creature carrying a `memetic` block, visible only as a
- * warning buried in hundreds of repeated log lines.
+ * The WASM fallback let an entirely dead native scoring path look green:
+ * Issue #3810 had `rust_scorer` rejecting every creature carrying a `memetic`
+ * block, visible only as a warning buried in hundreds of repeated log lines.
+ * Issue #3864 made throwing the default and Issue #3871 deleted the fallback
+ * outright, so an exec/parse failure from a scorer that is present always
+ * throws a {@link ScorerStrictError} carrying the scorer's stderr **verbatim**.
  *
- * With `strict` on — the default since Issue #3864 — the same exec/parse
- * failure throws a {@link ScorerStrictError} carrying the scorer's stderr
- * **verbatim**. With `strict` off (`NEAT_AI_RUST_SCORER_STRICT=0`) the run
- * still degrades gracefully to WASM scoring. Both branches are asserted here so
- * neither can regress unnoticed; every case passes `strict` explicitly, so the
- * default flip cannot silently convert one.
+ * A scorer that was never available is a different case and is asserted here
+ * too: it stays a graceful skip, because the TypeScript/WASM engine is still
+ * the one that serves an ineligible or unserved request.
  */
 
 import { assert, assertEquals, assertRejects } from "@std/assert";
@@ -62,7 +61,6 @@ function buildConfig(
     timeoutMs: 0,
     env: {},
     batch: false,
-    strict: false,
     ...overrides,
   };
 }
@@ -95,35 +93,7 @@ function makeCreature(uuid?: string): Creature {
   return creature;
 }
 
-Deno.test("RustScorerStrictMode: per-creature exit failure falls back when strict is off", async () => {
-  await initWasmForTests();
-  __resetRustScorerBridgeForTests();
-  runnerWith(() => ({
-    success: false,
-    code: 101,
-    stdout: "",
-    stderr: SCORER_STDERR,
-  }));
-
-  const dataDir = makeDataDir(buildDataSet(), 8);
-  try {
-    const result = await tryScoreWithRustScorer(
-      makeCreature(),
-      dataDir,
-      buildConfig({ strict: false }),
-    );
-    assertEquals(
-      result,
-      undefined,
-      "default behaviour: signal 'score with WASM' rather than throwing",
-    );
-  } finally {
-    await Deno.remove(dataDir, { recursive: true });
-    __resetRustScorerBridgeForTests();
-  }
-});
-
-Deno.test("RustScorerStrictMode: per-creature exit failure throws with verbatim stderr when strict is on", async () => {
+Deno.test("RustScorerStrictMode: per-creature exit failure throws with verbatim stderr", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
   runnerWith(() => ({
@@ -140,7 +110,7 @@ Deno.test("RustScorerStrictMode: per-creature exit failure throws with verbatim 
         tryScoreWithRustScorer(
           makeCreature(),
           dataDir,
-          buildConfig({ strict: true }),
+          buildConfig(),
         ),
       ScorerStrictError,
     );
@@ -153,7 +123,7 @@ Deno.test("RustScorerStrictMode: per-creature exit failure throws with verbatim 
     );
     assert(
       error.message.includes(SCORER_STDERR),
-      `strict failure message must quote the scorer's stderr; got: ${error.message}`,
+      `the failure message must quote the scorer's stderr; got: ${error.message}`,
     );
   } finally {
     await Deno.remove(dataDir, { recursive: true });
@@ -161,31 +131,7 @@ Deno.test("RustScorerStrictMode: per-creature exit failure throws with verbatim 
   }
 });
 
-Deno.test("RustScorerStrictMode: per-creature non-JSON stdout falls back when strict is off", async () => {
-  await initWasmForTests();
-  __resetRustScorerBridgeForTests();
-  runnerWith(() => ({
-    success: true,
-    code: 0,
-    stdout: "not valid json at all",
-    stderr: SCORER_STDERR,
-  }));
-
-  const dataDir = makeDataDir(buildDataSet(), 8);
-  try {
-    const result = await tryScoreWithRustScorer(
-      makeCreature(),
-      dataDir,
-      buildConfig({ strict: false }),
-    );
-    assertEquals(result, undefined, "unparseable output falls back to WASM");
-  } finally {
-    await Deno.remove(dataDir, { recursive: true });
-    __resetRustScorerBridgeForTests();
-  }
-});
-
-Deno.test("RustScorerStrictMode: per-creature non-JSON stdout throws when strict is on", async () => {
+Deno.test("RustScorerStrictMode: per-creature non-JSON stdout throws", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
   runnerWith(() => ({
@@ -202,7 +148,7 @@ Deno.test("RustScorerStrictMode: per-creature non-JSON stdout throws when strict
         tryScoreWithRustScorer(
           makeCreature(),
           dataDir,
-          buildConfig({ strict: true }),
+          buildConfig(),
         ),
       ScorerStrictError,
     );
@@ -218,7 +164,7 @@ Deno.test("RustScorerStrictMode: per-creature non-JSON stdout throws when strict
   }
 });
 
-Deno.test("RustScorerStrictMode: per-creature non-finite error throws when strict is on", async () => {
+Deno.test("RustScorerStrictMode: per-creature non-finite error throws", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
   runnerWith(() => ({
@@ -235,7 +181,7 @@ Deno.test("RustScorerStrictMode: per-creature non-finite error throws when stric
         tryScoreWithRustScorer(
           makeCreature(),
           dataDir,
-          buildConfig({ strict: true }),
+          buildConfig(),
         ),
       ScorerStrictError,
     );
@@ -247,12 +193,12 @@ Deno.test("RustScorerStrictMode: per-creature non-finite error throws when stric
   }
 });
 
-Deno.test("RustScorerStrictMode: an unavailable binary stays a graceful skip in strict mode", async () => {
+Deno.test("RustScorerStrictMode: an unavailable binary stays a graceful skip", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
-  // The `--help` probe fails, so the binary is treated as absent. Strict mode
-  // must not turn "scorer not installed" into a hard failure — contributors
-  // without rust_scorer still run the suite.
+  // The `--help` probe fails, so the binary is treated as absent. A binary
+  // that was never there is a skip, not a degradation — the request simply
+  // never reached the native engine.
   __setRustScorerRunnerForTests(() =>
     Promise.resolve({
       success: false,
@@ -267,7 +213,7 @@ Deno.test("RustScorerStrictMode: an unavailable binary stays a graceful skip in 
     const result = await tryScoreWithRustScorer(
       makeCreature(),
       dataDir,
-      buildConfig({ strict: true }),
+      buildConfig(),
     );
     assertEquals(result, undefined, "absent binary skips, never throws");
   } finally {
@@ -276,36 +222,7 @@ Deno.test("RustScorerStrictMode: an unavailable binary stays a graceful skip in 
   }
 });
 
-Deno.test("RustScorerStrictMode: batch exit failure is retryable when strict is off", async () => {
-  await initWasmForTests();
-  __resetRustScorerBridgeForTests();
-  runnerWith(() => ({
-    success: false,
-    code: 101,
-    stdout: "",
-    stderr: SCORER_STDERR,
-  }));
-
-  const dataDir = makeDataDir(buildDataSet(), 8);
-  try {
-    // A `BatchScorerError` is the retryable signal `Fitness.calculate` catches
-    // to fall back to the per-creature path.
-    await assertRejects(
-      () =>
-        tryBatchScoreWithRustScorer(
-          [makeCreature("creature-1")],
-          dataDir,
-          buildConfig({ batch: true, strict: false }),
-        ),
-      BatchScorerError,
-    );
-  } finally {
-    await Deno.remove(dataDir, { recursive: true });
-    __resetRustScorerBridgeForTests();
-  }
-});
-
-Deno.test("RustScorerStrictMode: batch exit failure throws with verbatim stderr when strict is on", async () => {
+Deno.test("RustScorerStrictMode: batch exit failure throws with verbatim stderr", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
   runnerWith(() => ({
@@ -322,7 +239,7 @@ Deno.test("RustScorerStrictMode: batch exit failure throws with verbatim stderr 
         tryBatchScoreWithRustScorer(
           [makeCreature("creature-1")],
           dataDir,
-          buildConfig({ batch: true, strict: true }),
+          buildConfig({ batch: true }),
         ),
       ScorerStrictError,
     );
@@ -331,7 +248,7 @@ Deno.test("RustScorerStrictMode: batch exit failure throws with verbatim stderr 
     assertEquals(error.stderr, SCORER_STDERR);
     assert(
       error.message.includes(SCORER_STDERR),
-      `strict failure message must quote the scorer's stderr; got: ${error.message}`,
+      `the failure message must quote the scorer's stderr; got: ${error.message}`,
     );
   } finally {
     await Deno.remove(dataDir, { recursive: true });
@@ -339,7 +256,7 @@ Deno.test("RustScorerStrictMode: batch exit failure throws with verbatim stderr 
   }
 });
 
-Deno.test("RustScorerStrictMode: batch reconciliation failure throws with stderr when strict is on", async () => {
+Deno.test("RustScorerStrictMode: batch reconciliation failure throws with stderr", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
   // Process succeeds but returns no results, so every expected stem is missing.
@@ -357,7 +274,7 @@ Deno.test("RustScorerStrictMode: batch reconciliation failure throws with stderr
         tryBatchScoreWithRustScorer(
           [makeCreature("creature-1")],
           dataDir,
-          buildConfig({ batch: true, strict: true }),
+          buildConfig({ batch: true }),
         ),
       ScorerStrictError,
     );

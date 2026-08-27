@@ -122,7 +122,6 @@ function resolvedConfig(enabled: boolean): RequiredRustScorerConfig {
     timeoutMs: 0,
     env: {},
     batch: true,
-    strict: false,
   };
 }
 
@@ -140,7 +139,6 @@ async function runGeneration(
   __setRustScorerConfigForTests({
     enabled: envEnabled,
     batch: true,
-    strict: false,
   });
 
   const population = buildForwardOnlyPopulation(3);

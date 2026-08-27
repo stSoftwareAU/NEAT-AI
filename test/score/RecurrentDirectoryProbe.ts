@@ -31,7 +31,6 @@ function config(
     timeoutMs: 5_000,
     env: {},
     batch: true,
-    strict: true,
     ...overrides,
   };
 }

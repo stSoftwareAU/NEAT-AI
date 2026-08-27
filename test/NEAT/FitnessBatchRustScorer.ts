@@ -7,7 +7,8 @@
  * the per-creature worker evaluation path.
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
+import { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -86,7 +87,7 @@ Deno.test("Fitness.calculate batch rust scorer - one scorer process per generati
   // In-process override (Issue #3234) — never mutate the shared process env,
   // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
 
   const population = buildPopulation(4);
   const uuids = population.map((c) => CreatureUtil.makeUUID(c));
@@ -152,11 +153,11 @@ Deno.test("Fitness.calculate batch rust scorer - one scorer process per generati
   }
 });
 
-Deno.test("Fitness.calculate batch rust scorer - falls back to worker path on reconciliation failure", async () => {
+Deno.test("Fitness.calculate batch rust scorer - a reconciliation failure aborts the generation", async () => {
   // In-process override (Issue #3234) — never mutate the shared process env,
   // which races across parallel test workers.
   __resetRustScorerBridgeForTests();
-  __setRustScorerConfigForTests({ enabled: true, batch: true, strict: false });
+  __setRustScorerConfigForTests({ enabled: true, batch: true });
 
   const population = buildPopulation(3);
   // Generate UUIDs up-front so the reconciler knows what to expect.
@@ -171,9 +172,9 @@ Deno.test("Fitness.calculate batch rust scorer - falls back to worker path on re
         stderr: "",
       });
     }
-    // Return an empty object so every expected UUID is missing — reconciler
-    // throws a MISSING_KEYS BatchScorerError and Fitness.calculate falls
-    // back to the per-creature worker path.
+    // Return an empty object so every expected UUID is missing — the
+    // reconciler throws MISSING_KEYS. Issue #3871: that is the generation's
+    // outcome; the per-creature re-score that used to absorb it is gone.
     return Promise.resolve({
       success: true,
       code: 0,
@@ -192,15 +193,13 @@ Deno.test("Fitness.calculate batch rust scorer - falls back to worker path on re
       undefined,
       dataDir,
     );
-    await fitness.calculate(population);
+    await assertRejects(() => fitness.calculate(population), ScorerStrictError);
 
-    // Fallback engaged: every unique creature goes through the worker path.
     assertEquals(
       worker.evaluateCallCount,
-      population.length,
-      "per-creature worker fallback should score every creature",
+      0,
+      "a failed batch must not be quietly re-scored on the worker path",
     );
-    // Still records the single batch invocation attempt.
     assertEquals(fitness.lastBatchScorerInvocations, 0);
   } finally {
     await Deno.remove(dataDir, { recursive: true });

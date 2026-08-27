@@ -63,6 +63,33 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `skipped`, `regressionRate`) so a run-end summary can report skips without
   `verbose`.
 
+### Removed
+
+- **Issue #3871 (stage 3 of #3861):** The TypeScript/WASM **fallback** for
+  dataset scoring. A `rust_scorer` that is present and fails — exec failure,
+  unparseable output, non-finite error, or an unreconcilable batch — now always
+  throws a `ScorerStrictError` carrying the scorer's stderr verbatim. It used to
+  degrade to the WASM engine and log a warning, which is how Issue #3810 kept an
+  entirely dead native path reconciling to a green run.
+  - `NEAT_AI_RUST_SCORER_STRICT=0` and `rustScorer: { strict: false }` selected
+    that degrading path. Both are now **refused** with a `ConfigurationError`
+    naming this issue rather than silently ignored; `=1` / `strict: true` stay
+    accepted as no-ops. `RequiredRustScorerConfig.strict` is gone.
+  - `EvolveResult.scorerUtilisation` loses `batchFallbackGenerations`,
+    `nativeFallbackGenerations` and `nativeScoringFallback` (Issue #3866): with
+    no degrading path left, none of them could ever be non-zero. The backend
+    split (`batchScorerInvocations`, `creaturesBatchScored`,
+    `creaturesPerCreatureScored`) is unchanged.
+  - `quality.sh` loses the `--wasm-scorer` and `--test-both-scorers` comparison
+    lanes; `rust_scorer` is a hard requirement of the test run (decision 5 of
+    #3863). Passing either flag names the removal and exits 1.
+  - **Not removed:** the eligibility refusals and the TypeScript dataset-scoring
+    engine behind them. `CUSTOM_COST` is permanent (decision 2 of #3863) and
+    `OUTPUT_RANGES` stays until the downstream FX migration lands (decision 3),
+    so `evaluateDir`'s accumulator and the `Fitness` batch partition were
+    **demoted, not deleted**. A missing or too-old binary also remains a
+    graceful skip served by that engine.
+
 ### Changed
 
 - **Issue #3870:** Recurrent (`forwardOnly: false`) creatures now join the

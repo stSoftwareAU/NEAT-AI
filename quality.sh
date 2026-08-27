@@ -9,10 +9,8 @@ SKIP_WASM=false
 LINT_ONLY=false
 CHECK_ONLY=false
 DRY_RUN=false
-WASM_SCORER=false
 NEXT=false
 NATIVE_CORE_BACKPROP=false
-TEST_BOTH_SCORERS=false
 GPU_SCORER=false
 RUST_SCORER_BINARY_PATH="${NEAT_AI_RUST_SCORER_BINARY_PATH:-rust_scorer}"
 RUST_SCORER_TIMEOUT_MS="${NEAT_AI_RUST_SCORER_TIMEOUT_MS:-0}"
@@ -33,9 +31,6 @@ Options:
   --skip-tests        Skip test execution
   --skip-discovery    Skip discovery library build and verification
   --skip-wasm         Skip WASM package sync from NEAT-AI-core
-  --wasm-scorer       Comparison-only: run tests on the legacy WASM scorer
-                      instead of rust_scorer. Remove this once the WASM
-                      scoring path is deleted.
   --next              Migrate trainDir onto Rust FFI
                       (libneat_ai_backpropagation, Issue #3765). Builds the
                       sibling crate (cdylib + CLI), requires the library,
@@ -49,7 +44,6 @@ Options:
                       libneat_core (C ABI). Builds sibling neat-core and
                       runs tests with NEAT_AI_NATIVE_CORE_BACKPROP=1.
                       Missing library is an error. Not what --next does.
-  --test-both-scorers Run tests twice: WASM scorer then Rust scorer
   --gpu-scorer        Opt-in GPU smoke lane (Issue #3869). Adds an extra
                       test lane after the default ones with
                       NEAT_SCORER_GPU=auto — the rust_scorer default — so
@@ -114,16 +108,16 @@ Environment:
                       SIGKILL name the cases that were still running.
 
 Native gates (fail loud, no silent WASM fallback):
-  rust_scorer is required for the default test run. The gate fails if the
-  binary cannot be resolved (PATH, --rust-scorer-bin, sibling
-  ../NEAT-AI-scorer). Use --wasm-scorer only for a comparison run.
+  rust_scorer is required for every test run (Issue #3871). The gate fails
+  if the binary cannot be resolved (PATH, --rust-scorer-bin, sibling
+  ../NEAT-AI-scorer); there is no WASM comparison lane to fall back to.
   Test runs force NEAT_SCORER_GPU=off so parallel rust_scorer processes do
   not create Metal/wgpu contexts (the default --gpu auto path OOMs the suite).
   The GPU scoring path is therefore NOT exercised by default; --gpu-scorer
   adds an opt-in smoke lane that does exercise it (Issue #3869).
-  Test runs also force NEAT_AI_RUST_SCORER_STRICT=1 (Issue #3815): a scorer
-  exec/parse failure throws with the scorer's stderr verbatim instead of
-  logging a warning and reconciling to green via the WASM fallback.
+  A scorer exec/parse failure throws with the scorer's stderr verbatim
+  (Issue #3815); Issue #3871 deleted the WASM fallback that used to
+  reconcile such a failure to green, so this is now unconditional.
   Leftover NEAT_AI_BACKPROP_ENABLED / NEAT_AI_NATIVE_CORE_BACKPROP
   exports are ignored; pass --next and/or --native-core-backprop.
   --next requires libneat_ai_backpropagation (Deno FFI). trainDir must
@@ -142,16 +136,23 @@ for arg in "$@"; do
     --skip-tests) SKIP_TESTS=true ;;
     --skip-discovery) SKIP_DISCOVERY=true ;;
     --skip-wasm) SKIP_WASM=true ;;
-    --wasm-scorer) WASM_SCORER=true ;;
     --next) NEXT=true ;;
     --native-core-backprop) NATIVE_CORE_BACKPROP=true ;;
-    --test-both-scorers) TEST_BOTH_SCORERS=true ;;
     --gpu-scorer) GPU_SCORER=true ;;
     --rust-scorer-bin=*)
       RUST_SCORER_BINARY_PATH="${arg#*=}"
       RUST_SCORER_BINARY_EXPLICIT=true
       ;;
     --rust-scorer-timeout-ms=*) RUST_SCORER_TIMEOUT_MS="${arg#*=}" ;;
+    --wasm-scorer|--test-both-scorers)
+      # Issue #3871: the WASM scoring lane is gone. Name it rather than
+      # reporting a bare "unknown option" — a CI job still passing the flag
+      # deserves to be told why it disappeared.
+      echo "❌ $arg was removed in Issue #3871." >&2
+      echo "   rust_scorer is a hard requirement of the test run; there is no" >&2
+      echo "   WASM dataset-scoring lane left to compare against." >&2
+      exit 1
+      ;;
     --lint-only) LINT_ONLY=true ;;
     --check-only) CHECK_ONLY=true ;;
     --dry-run) DRY_RUN=true ;;
@@ -200,17 +201,6 @@ fi
 
 rust_scorer_wanted() {
   if [ "$RUN_TESTS" != true ]; then
-    return 1
-  fi
-  if [ "$TEST_BOTH_SCORERS" = true ]; then
-    return 0
-  fi
-  # The GPU smoke lane is a rust_scorer lane, so the binary is required even
-  # when the main lane was asked to run on the WASM scorer.
-  if [ "$GPU_SCORER" = true ]; then
-    return 0
-  fi
-  if [ "$WASM_SCORER" = true ]; then
     return 1
   fi
   return 0
@@ -340,7 +330,6 @@ fail_missing_rust_scorer() {
   echo "     - Clone NEAT-AI-scorer next to this repo, then cargo build --release -p rust_scorer" >&2
   echo "     - Put rust_scorer on PATH" >&2
   echo "     - Pass --rust-scorer-bin=/path/to/rust_scorer" >&2
-  echo "     - Comparison-only WASM: ./quality.sh --wasm-scorer" >&2
   exit 1
 }
 
@@ -384,7 +373,7 @@ host_memory_mb() {
 #   jetsam / SIGKILL 137 — too many workers (4 × 8192 MB on a 24 GB laptop,
 #                         or rust_scorer GPU).
 #   V8 SIGTRAP 133     — heap cap below what a single evolve test needs
-#                         (~4060 MB used / 4192 MB limit on --wasm-scorer).
+#                         (~4060 MB used / 4192 MB limit).
 # Default: keep an 8192 MB heap and drop DENO_JOBS so workers fit in
 # (RAM − 12 GiB). A 24 GB laptop gets 1 × 8192 MB.
 QUALITY_OS_RESERVE_MB=12288
@@ -495,11 +484,7 @@ TOTAL=0
 [ "$RUN_DISCOVERY" = true ] && TOTAL=$((TOTAL + 1))
 [ "$RUN_WASM" = true ] && TOTAL=$((TOTAL + 1))
 if [ "$RUN_TESTS" = true ]; then
-  if [ "$TEST_BOTH_SCORERS" = true ]; then
-    TOTAL=$((TOTAL + 2))
-  else
-    TOTAL=$((TOTAL + 1))
-  fi
+  TOTAL=$((TOTAL + 1))
   if rust_scorer_wanted && [ "$RUST_SCORER_BINARY_EXPLICIT" != true ] &&
     [ -d ../NEAT-AI-scorer ]; then
     TOTAL=$((TOTAL + 1))
@@ -554,16 +539,7 @@ if [ "$DRY_RUN" = true ]; then
         progress "Verifying native libneat_ai_backpropagation..."
       fi
     fi
-    if [ "$TEST_BOTH_SCORERS" = true ]; then
-      progress "Running tests (WASM scorer mode)..."
-      progress "Running tests (Rust scorer mode)..."
-    elif [ "$WASM_SCORER" = true ]; then
-      if [ "$NEXT" = true ]; then
-        progress "Running tests (--next FFI trainDir, WASM scorer)..."
-      else
-        progress "Running tests (WASM scorer mode)..."
-      fi
-    elif [ "$NEXT" = true ]; then
+    if [ "$NEXT" = true ]; then
       progress "Running tests (--next FFI trainDir, Rust scorer)..."
     else
       progress "Running tests (Rust scorer mode)..."
@@ -632,41 +608,40 @@ run_test_suite() {
     "NEAT_AI_IN_FLIGHT_DIR=${IN_FLIGHT_DIR}"
   )
 
-  if [ "$scorer_mode" = "rust" ] || [ "$scorer_mode" = "gpu" ]; then
-    # rust_scorer defaults to --gpu auto. Directory/batch scoring then
-    # creates a Metal/wgpu context. Four parallel evolve tests times that
-    # context OOMs the host (jetsam SIGKILL / exit 137). The handwritten
-    # suite still exercises the native CPU scorer; GPU is a production
-    # throughput path, not a correctness path.
-    # The `gpu` lane below is the one deliberate exception (Issue #3869), and
-    # it buys the exception with a subset and one worker — see GPU_SCORER_*.
-    #
-    # Issue #3815: strict mode turns a scorer exec/parse failure into a thrown
-    # error carrying the scorer's stderr verbatim, instead of a logged fallback
-    # to WASM that reconciles a dead native path to a green run (Issue #3810).
-    # A missing or too-old binary is still a graceful skip, so contributors
-    # without rust_scorer installed are unaffected.
-    env_args+=(
-      "NEAT_AI_RUST_SCORER_ENABLED=1"
-      "NEAT_AI_RUST_SCORER_BINARY_PATH=$RUST_SCORER_BINARY_PATH"
-      "NEAT_AI_RUST_SCORER_TIMEOUT_MS=$RUST_SCORER_TIMEOUT_MS"
-      "NEAT_AI_RUST_SCORER_STRICT=1"
-    )
-    if [ "$scorer_mode" = "gpu" ]; then
-      # Issue #3869: `auto` *is* the rust_scorer default. Setting it
-      # explicitly rather than unsetting the variable means a leftover
-      # `export NEAT_SCORER_GPU=off` in the operator's shell cannot quietly
-      # turn the GPU lane back into a second CPU lane — the same reasoning
-      # the backprop flags below already apply.
-      env_args+=("NEAT_SCORER_GPU=auto")
-    else
-      env_args+=("NEAT_SCORER_GPU=off")
-    fi
+  # Issue #3871: the WASM comparison lane is gone, so every lane is a
+  # rust_scorer lane. An unknown mode is a caller bug, not a lane to guess at.
+  if [ "$scorer_mode" != "rust" ] && [ "$scorer_mode" != "gpu" ]; then
+    echo "❌ run_test_suite: unknown scorer mode '$scorer_mode'." >&2
+    exit 1
+  fi
+
+  # rust_scorer defaults to --gpu auto. Directory/batch scoring then
+  # creates a Metal/wgpu context. Four parallel evolve tests times that
+  # context OOMs the host (jetsam SIGKILL / exit 137). The handwritten
+  # suite still exercises the native CPU scorer; GPU is a production
+  # throughput path, not a correctness path.
+  # The `gpu` lane is the one deliberate exception (Issue #3869), and it buys
+  # the exception with a subset and one worker — see GPU_SCORER_*.
+  #
+  # Issue #3815 / #3871: a scorer exec/parse failure throws with the scorer's
+  # stderr verbatim. The WASM fallback that used to reconcile a dead native
+  # path to a green run (Issue #3810) is gone, so nothing has to be forced
+  # here to get that behaviour. A missing or too-old binary is still a
+  # graceful skip for library consumers; this gate requires the binary.
+  env_args+=(
+    "NEAT_AI_RUST_SCORER_ENABLED=1"
+    "NEAT_AI_RUST_SCORER_BINARY_PATH=$RUST_SCORER_BINARY_PATH"
+    "NEAT_AI_RUST_SCORER_TIMEOUT_MS=$RUST_SCORER_TIMEOUT_MS"
+  )
+  if [ "$scorer_mode" = "gpu" ]; then
+    # Issue #3869: `auto` *is* the rust_scorer default. Setting it
+    # explicitly rather than unsetting the variable means a leftover
+    # `export NEAT_SCORER_GPU=off` in the operator's shell cannot quietly
+    # turn the GPU lane back into a second CPU lane — the same reasoning
+    # the backprop flags below already apply.
+    env_args+=("NEAT_SCORER_GPU=auto")
   else
-    env_args+=(
-      "NEAT_AI_RUST_SCORER_ENABLED=0"
-      "NEAT_AI_RUST_SCORER_STRICT=0"
-    )
+    env_args+=("NEAT_SCORER_GPU=off")
   fi
 
   # CLI flags own these. Always set both so a leftover operator export
@@ -890,19 +865,7 @@ if [ "$RUN_WASM" = true ]; then
 fi
 
 if [ "$RUN_TESTS" = true ]; then
-  if [ "$TEST_BOTH_SCORERS" = true ]; then
-    progress "Running tests (WASM scorer mode)..."
-    run_test_suite "wasm"
-    progress "Running tests (Rust scorer mode)..."
-    run_test_suite "rust"
-  elif [ "$WASM_SCORER" = true ]; then
-    if [ "$NEXT" = true ]; then
-      progress "Running tests (--next FFI trainDir, WASM scorer)..."
-    else
-      progress "Running tests (WASM scorer mode)..."
-    fi
-    run_test_suite "wasm"
-  elif [ "$NEXT" = true ]; then
+  if [ "$NEXT" = true ]; then
     progress "Running tests (--next FFI trainDir, Rust scorer)..."
     run_test_suite "rust"
   else

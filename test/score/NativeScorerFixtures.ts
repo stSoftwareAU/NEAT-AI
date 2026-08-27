@@ -210,7 +210,6 @@ export function liveScorerConfig(
     timeoutMs: 60_000,
     env: scorerGpuEnv(),
     batch: false,
-    strict: true,
   };
 }
 

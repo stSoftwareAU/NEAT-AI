@@ -106,7 +106,6 @@ function makeSource(
       lastBatchScorerInvocations: 1,
       lastCreaturesBatchScored: 3,
       lastCreaturesPerCreatureScored: 2,
-      lastBatchFallbackOccurred: false,
       ...utilisation,
     },
   };
@@ -278,7 +277,6 @@ Deno.test("finishGeneration accumulates timings and scorer counts", async () => 
   assertEquals(ctx.scorerUtilisationAccumulator.generations, 2);
   assertEquals(ctx.scorerUtilisationAccumulator.creaturesBatchScored, 6);
   assertEquals(ctx.scorerUtilisationAccumulator.creaturesPerCreatureScored, 4);
-  assertEquals(ctx.scorerUtilisationAccumulator.batchFallbackGenerations, 0);
 });
 
 Deno.test("finishGeneration times the checkpoint write", async () => {

@@ -10,6 +10,7 @@ import {
 } from "../../src/score/RustScorerBridge.ts";
 import { tryBatchScoreWithRustScorer } from "../../src/score/BatchRustScorerBridge.ts";
 import { BatchScorerError } from "../../src/score/BatchScorerReconciler.ts";
+import { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
@@ -43,7 +44,6 @@ function buildConfig(
     timeoutMs: 0,
     env: {},
     batch: true,
-    strict: false,
     ...overrides,
   };
 }
@@ -170,7 +170,7 @@ Deno.test("BatchRustScorer - maps each entry back to its in-memory creature", as
   }
 });
 
-Deno.test("BatchRustScorer - missing key surfaces BatchScorerError", async () => {
+Deno.test("BatchRustScorer - missing key surfaces the reconciler's MISSING_KEYS", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
 
@@ -198,19 +198,24 @@ Deno.test("BatchRustScorer - missing key surfaces BatchScorerError", async () =>
   const b = makeCreatureWithUuid("creature-b");
   const dataDir = makeDataDir(buildDataSet(), 8);
   try {
+    // Issue #3871: the reconciler's typed error is escalated rather than
+    // returned as a retryable signal, and rides on `cause` so the key sets
+    // stay inspectable.
     const err = await assertRejects(
       () => tryBatchScoreWithRustScorer([a, b], dataDir, buildConfig()),
-      BatchScorerError,
+      ScorerStrictError,
     );
-    assertEquals(err.reason, "MISSING_KEYS");
-    assertEquals(err.missingKeys, ["creature-b"]);
+    assertEquals(err.reason, "INVALID_OUTPUT");
+    assert(err.cause instanceof BatchScorerError);
+    assertEquals(err.cause.reason, "MISSING_KEYS");
+    assertEquals(err.cause.missingKeys, ["creature-b"]);
   } finally {
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }
 });
 
-Deno.test("BatchRustScorer - extra key surfaces BatchScorerError", async () => {
+Deno.test("BatchRustScorer - extra key surfaces the reconciler's EXTRA_KEYS", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
 
@@ -241,10 +246,12 @@ Deno.test("BatchRustScorer - extra key surfaces BatchScorerError", async () => {
   try {
     const err = await assertRejects(
       () => tryBatchScoreWithRustScorer([a, b], dataDir, buildConfig()),
-      BatchScorerError,
+      ScorerStrictError,
     );
-    assertEquals(err.reason, "EXTRA_KEYS");
-    assertEquals(err.extraKeys, ["creature-ghost"]);
+    assertEquals(err.reason, "INVALID_OUTPUT");
+    assert(err.cause instanceof BatchScorerError);
+    assertEquals(err.cause.reason, "EXTRA_KEYS");
+    assertEquals(err.cause.extraKeys, ["creature-ghost"]);
   } finally {
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
@@ -339,7 +346,7 @@ Deno.test("BatchRustScorer - scorer unavailable falls back to per-creature path 
   }
 });
 
-Deno.test("BatchRustScorer - non-zero scorer exit raises BatchScorerError", async () => {
+Deno.test("BatchRustScorer - non-zero scorer exit aborts with the stderr", async () => {
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
 
@@ -365,8 +372,9 @@ Deno.test("BatchRustScorer - non-zero scorer exit raises BatchScorerError", asyn
   try {
     const err = await assertRejects(
       () => tryBatchScoreWithRustScorer([creature], dataDir, buildConfig()),
-      BatchScorerError,
+      ScorerStrictError,
     );
+    assertEquals(err.reason, "EXEC_FAILURE");
     assert(
       err.message.includes("scorer failed"),
       `expected message to include stderr; got: ${err.message}`,
