@@ -104,7 +104,17 @@ flowchart TD
     B -- "FEEDBACK_LOOP" --> T
     B -- "eligible" --> R[rust_scorer --cost NAME]
     R -- "disabled / absent / too old" --> T
+    R -- "present and failed" --> X[ScorerStrictError<br/>run aborts]
 ```
+
+> [!IMPORTANT]
+> **A refusal routes here; a failure does not** (Issue #3871). The
+> TypeScript/WASM path serves requests the native engine was never asked to take
+> — a refusal above, or a scorer that is disabled, absent, or too old. A
+> `rust_scorer` that _was_ asked and failed throws instead: re-scoring on the
+> other engine would hand back a number computed under different rules, which is
+> what Issue #3810 exposed. `CUSTOM_COST` is a **permanent** refusal (decision 2
+> of Issue #3863), so this path is demoted, never deleted.
 
 `test/score/RustScorerDatasetParity.ts` runs the real binary and the TypeScript
 path over the same dataset for every built-in cost and both topology styles, and
