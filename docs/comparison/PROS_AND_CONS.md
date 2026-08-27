@@ -50,6 +50,21 @@ networks.
     per-neuron gradient matrices for smoother updates.
 19. **External Rust scorer**: optional `rust_scorer` CLI for higher
     generation-scoring throughput, with automatic WASM fallback.
+20. **Immutable incumbent, one authoritative judge**: candidate generation is
+    adventurous — evolution, discovery, and the sibling Rust optimisers all
+    propose freely — but acceptance is deliberately boring. The incumbent is
+    never edited in place; a candidate is a separate creature, and it is scored
+    over the whole corpus by one judge
+    ([NEAT-AI-scorer](https://github.com/stSoftwareAU/NEAT-AI-scorer), or the
+    WASM path it falls back to) before it may replace anything. Sampling
+    (`trainingSampleRate`) applies to gradient training only, never to the score
+    that decides acceptance.
+21. **Every experiment is journalled**: each sibling optimiser appends one
+    record per experiment to an `experiments.jsonl` journal and ships a `report`
+    command over it, so the economics of a strategy — including the strategies
+    that turned out not to be worth their runtime — are measurable after the
+    fact rather than argued about. That is better practice than most published
+    neuroevolution work.
 
 ## 🧬 NEAT-AI — Cons
 
@@ -66,13 +81,46 @@ networks.
 5. **Limited unsupervised learning**: NEAT-AI (like standard NEAT) is typically
    used for supervised tasks where labelled data computes fitness. True
    unsupervised learning is not yet implemented — see
-   [Future work](./FUTURE_WORK.md#2--unsupervised-learning).
+   [Future work](./FUTURE_WORK.md#4--unsupervised-learning).
 6. **Hyperparameter sensitivity**: many parameters to tune, though adaptive
    population sizing, adaptive mutation thresholds, plateau detection, and
    randomised hyperparameters per run substantially mitigate this (see tip
    below).
 7. **No native CUDA**: GPU acceleration uses wgpu (Metal, Vulkan, DX12) with CPU
    fallback rather than native CUDA for NVIDIA GPUs.
+8. **Evaluation validity under repeated selection**: every accept/reject
+   decision is made against the same corpus and the same scorer, thousands of
+   times over, by several independent optimisers. That is **adaptive data
+   analysis**: past some volume of queries the incumbent is being fitted to the
+   _scorer_ rather than to the data, and each individual accept still looks
+   genuinely measured. To answer the question directly — **no corpus slice is
+   withheld from every optimiser**. Fitness is scored over the whole dataset
+   directory the run is given, and the one holdout mechanism in the library
+   (`HoldoutValidator`, Issue #1308) is opt-in, off by default, and splits that
+   same corpus for discovery candidates only, so its reserved slice is still
+   visible to the fitness evaluation that later accepts the creature. See
+   [Dwork et al. (2015) and Blum & Hardt (2015)](./REFERENCES.md#-evaluation-validity);
+   the mitigation is future work, not present — see
+   [A holdout no optimiser can see](./FUTURE_WORK.md#2--a-holdout-no-optimiser-can-see).
+9. **Diversity loss from accept-only optimisation**: NEAT-AI itself hedges
+   against this — MCMC acceptance occasionally takes a worse creature,
+   speciation and fitness sharing keep sub-populations alive, and reheating is
+   diversity-aware. The sibling Rust optimisers (Forests, Ockham, Lamarck,
+   Rebase) do not: each is greedy hill-climbing on a single incumbent and only
+   ever accepts an improvement.
+   [Whitley, Gordon & Mathias (1994)](./REFERENCES.md#-lamarckian-and-baldwinian-evolution)
+   measured exactly this trade-off for Lamarckian search — faster convergence,
+   earlier loss of diversity — so it is a known property of the deployment
+   rather than a surprise. Named mitigation:
+   [quality-diversity archives](./FUTURE_WORK.md#1--quality-diversity-and-behavioural-archives).
+10. **Operating in the noise regime**: on the production workload, accepted
+    improvements are of the order of 1e-04 — one recent fleet comparison turned
+    on 5.7e-05. At that scale the point score and the true quality of a creature
+    are different quantities, and nothing in the current setup distinguishes a
+    robust win from a knife-edge one. Mitigation is future work:
+    [robustness as an acceptance criterion](./FUTURE_WORK.md#7--robustness-as-an-acceptance-criterion),
+    tracked as a scorer capability in
+    [NEAT-AI-scorer#588](https://github.com/stSoftwareAU/NEAT-AI-scorer/issues/588).
 
 > [!TIP]
 > NEAT-AI handles hyperparameter sensitivity well by randomising values each
