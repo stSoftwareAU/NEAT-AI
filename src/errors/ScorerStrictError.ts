@@ -23,7 +23,13 @@ export type ScorerStrictReason =
   /** The process succeeded but its stdout could not be parsed/reconciled. */
   | "INVALID_OUTPUT"
   /** A batch generation fell back to the per-creature/WASM path. */
-  | "BATCH_FALLBACK";
+  | "BATCH_FALLBACK"
+  /**
+   * GRQ #4418: the call was abandoned by the run's hard deadline. The scorer
+   * process is killed; the unit fails rather than waiting on a call that has
+   * already outlived its timeout.
+   */
+  | "ABORTED";
 
 /** Options carrying the scorer diagnostics onto the error. */
 export interface ScorerStrictErrorOptions {

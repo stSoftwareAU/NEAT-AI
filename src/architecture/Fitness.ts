@@ -354,11 +354,15 @@ export class Fitness {
 
       if (batchCreatures.length > 0) {
         try {
+          // GRQ #4418: the batch call is the one place fitness blocks on an
+          // external process. Hand it the run's abort signal so a wedged
+          // scorer fails the generation instead of outliving its timeout.
           const batchRun = await tryBatchScoreWithRustScorer(
             batchCreatures,
             this.dataDir!,
             rustScorerConfig,
             this.costName,
+            signal,
           );
           this.lastBatchScorerInvocations = batchRun.invocations;
           if (batchRun.results) {

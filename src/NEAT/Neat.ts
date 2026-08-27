@@ -27,6 +27,7 @@ import {
   computeHardDeadlineTS,
   type EvolveTerminationReason,
 } from "@neat/HardDeadline.ts";
+import { HARD_DEADLINE_INTERRUPT_GRACE_MS } from "@neat/HardDeadlineInterrupt.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
@@ -109,6 +110,13 @@ export class Neat {
    * killing the process.
    */
   private inFlightAbort: AbortController | undefined = undefined;
+  /**
+   * How long an interrupted phase has to unwind before the generation fails
+   * loud (GRQ #4418). Defaults to
+   * {@link HARD_DEADLINE_INTERRUPT_GRACE_MS}; tests shrink it so a wedge can
+   * be driven without real waits (#2888).
+   */
+  hardDeadlineInterruptGraceMS: number = HARD_DEADLINE_INTERRUPT_GRACE_MS;
   /**
    * Why the most recent `evolve*` run stopped (GRQ #4141). Distinguishes
    * graceful over-run self-termination from the T+15 hard-deadline abandon.

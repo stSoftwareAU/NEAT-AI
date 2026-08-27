@@ -565,129 +565,147 @@ export async function evolveDir(
   const overrunFactor = deps?.overrunEnforcementFactor ??
     DEFAULT_OVERRUN_ENFORCEMENT_FACTOR;
 
-  while (true) {
-    if (
-      shouldStopStartingGenerations(
+  // GRQ #4418: a failure inside the evolve loop — the unhandled
+  // `ScorerStrictError` from a wedged `rust_scorer` batch call is the
+  // production case — used to escape `evolveDir` before the workers were
+  // terminated, the champion restored or the checkpoint written, so every
+  // generation already completed was lost. The failure still propagates
+  // loudly; it just no longer takes the salvage with it.
+  let runFailure: unknown;
+  try {
+    while (true) {
+      if (
+        shouldStopStartingGenerations(
+          generation,
+          start,
+          config.timeoutMinutes,
+          nowFn(),
+          overrunFactor,
+        )
+      ) {
+        const nowMS = nowFn();
+        // If the T+15 cap has also passed, the hard-deadline abandon still wins
+        // so existing T+15 tests keep their in-flight-map cleanup.
+        if (
+          hardDeadlineMS && nowMS > hardDeadlineMS &&
+          neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowMS)
+        ) {
+          break;
+        }
+        requestOverrunStop(neat, overrunFactor);
+        if (interrupted) break;
+        // Graceful self-termination: do not take the hard-deadline abandon path.
+        if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+          break;
+        }
+        // deno-lint-ignore no-await-in-loop
+        await neat.awaitInFlightTasks();
+        continue;
+      }
+
+      // deno-lint-ignore no-await-in-loop
+      const result = await neat.evolve(bestCreature);
+
+      generation++;
+
+      // Issue #3636: the end-of-generation bookkeeping (champion adoption, timed
+      // checkpoint, run-total accumulation, score trajectory, lifecycle events,
+      // cost-aware early stop) is shared with evolveEnv and evolveRL.
+      // deno-lint-ignore no-await-in-loop
+      const tail = await finishGeneration({
+        neat,
+        config,
+        result,
         generation,
         start,
-        config.timeoutMinutes,
-        nowFn(),
-        overrunFactor,
-      )
-    ) {
-      const nowMS = nowFn();
-      // If the T+15 cap has also passed, the hard-deadline abandon still wins
-      // so existing T+15 tests keep their in-flight-map cleanup.
-      if (
-        hardDeadlineMS && nowMS > hardDeadlineMS &&
-        neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowMS)
-      ) {
-        break;
-      }
-      requestOverrunStop(neat, overrunFactor);
-      if (interrupted) break;
-      // Graceful self-termination: do not take the hard-deadline abandon path.
-      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
-        break;
-      }
-      // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks();
-      continue;
-    }
-
-    // deno-lint-ignore no-await-in-loop
-    const result = await neat.evolve(bestCreature);
-
-    generation++;
-
-    // Issue #3636: the end-of-generation bookkeeping (champion adoption, timed
-    // checkpoint, run-total accumulation, score trajectory, lifecycle events,
-    // cost-aware early stop) is shared with evolveEnv and evolveRL.
-    // deno-lint-ignore no-await-in-loop
-    const tail = await finishGeneration({
-      neat,
-      config,
-      result,
-      generation,
-      start,
-      iterationStartMS,
-      endTimeMS,
-      interrupted,
-      bestScore,
-      error,
-      bestCreature,
-      phaseTimingAccumulator,
-      scorerUtilisationAccumulator,
-      scoreTrajectory,
-    });
-    bestCreature = tail.bestCreature as
-      | InstanceType<typeof CreatureClass>
-      | undefined;
-    bestScore = tail.bestScore;
-    error = tail.error;
-    const now = tail.now;
-    const completed = tail.completed;
-
-    // evolveDir-specific: supervised scores are `1 - error` (plus the growth
-    // penalty), so a new champion's score and error must stay consistent.
-    if (tail.championImproved) {
-      const tolerance = 1e-10;
-      assert(
-        bestScore - 1 <= -error + tolerance,
-        `Score (absolute) less than error (score=${bestScore}, error=${error})`,
-      );
-    }
-
-    if (
-      config.log &&
-      (generation % config.log === 0 || completed)
-    ) {
-      let avgTxt = "";
-      if (Number.isFinite(result.averageScore)) {
-        avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
-      }
-      getLogger().info(
-        "Generation",
-        generation,
-        "score",
-        result.fittest.score,
-        avgTxt,
-        "error",
+        iterationStartMS,
+        endTimeMS,
+        interrupted,
+        bestScore,
         error,
-        (config.log > 1 ? "avg " : "") + "time",
-        yellow(
-          format(Math.round((now - iterationStartMS) / config.log), {
-            ignoreZero: true,
-          }),
-        ),
-      );
+        bestCreature,
+        phaseTimingAccumulator,
+        scorerUtilisationAccumulator,
+        scoreTrajectory,
+      });
+      bestCreature = tail.bestCreature as
+        | InstanceType<typeof CreatureClass>
+        | undefined;
+      bestScore = tail.bestScore;
+      error = tail.error;
+      const now = tail.now;
+      const completed = tail.completed;
 
-      iterationStartMS = now;
-    }
-
-    if (completed) {
-      if (interrupted) break;
-
-      // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
-      // any in-flight discovery/training bookkeeping and break unconditionally —
-      // even when finishUp() would still ask for more wait generations. The
-      // post-loop sequence (worker termination, best-creature restore,
-      // writeCreatures) still runs because the break lands there.
-      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
-        break;
+      // evolveDir-specific: supervised scores are `1 - error` (plus the growth
+      // penalty), so a new champion's score and error must stay consistent.
+      if (tail.championImproved) {
+        const tolerance = 1e-10;
+        assert(
+          bestScore - 1 <= -error + tolerance,
+          `Score (absolute) less than error (score=${bestScore}, error=${error})`,
+        );
       }
 
-      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
-        break;
+      if (
+        config.log &&
+        (generation % config.log === 0 || completed)
+      ) {
+        let avgTxt = "";
+        if (Number.isFinite(result.averageScore)) {
+          avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
+        }
+        getLogger().info(
+          "Generation",
+          generation,
+          "score",
+          result.fittest.score,
+          avgTxt,
+          "error",
+          error,
+          (config.log > 1 ? "avg " : "") + "time",
+          yellow(
+            format(Math.round((now - iterationStartMS) / config.log), {
+              ignoreZero: true,
+            }),
+          ),
+        );
+
+        iterationStartMS = now;
       }
 
-      // Issue #2240: Lightweight wait for in-flight tasks instead of running
-      // full evolve() cycles. This avoids wasting worker resources on fitness
-      // evaluation, breeding, and mutation while simply waiting for discovery
-      // or training to finish.
-      // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks();
+      if (completed) {
+        if (interrupted) break;
+
+        // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
+        // any in-flight discovery/training bookkeeping and break unconditionally —
+        // even when finishUp() would still ask for more wait generations. The
+        // post-loop sequence (worker termination, best-creature restore,
+        // writeCreatures) still runs because the break lands there.
+        if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
+          break;
+        }
+
+        if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+          break;
+        }
+
+        // Issue #2240: Lightweight wait for in-flight tasks instead of running
+        // full evolve() cycles. This avoids wasting worker resources on fitness
+        // evaluation, breeding, and mutation while simply waiting for discovery
+        // or training to finish.
+        // deno-lint-ignore no-await-in-loop
+        await neat.awaitInFlightTasks();
+      }
     }
+  } catch (err) {
+    runFailure = err;
+    getLogger().error(
+      `[Creature.evolveDir] Run failed after ${generation} generation(s): ` +
+        `${
+          err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+        }` +
+        ` — salvaging the evolved population before failing the unit`,
+    );
   }
 
   for (let i = workers.length; i--;) {
@@ -701,8 +719,12 @@ export async function evolveDir(
   // returns may cause NotFound errors in still-running replay workers.
   // Issue #2901: bound the wait to the absolute hard cap when a timeout is
   // configured (hardDeadlineMS > 0); uncapped runs keep the unbounded wait.
+  // GRQ #4418: a failed run never waits unbounded — the run is already over,
+  // and a replay that will not settle must not hold the salvage open.
   await neat.discoveryReplayQueue.waitForCompletion(
-    hardDeadlineMS || undefined,
+    runFailure !== undefined
+      ? (hardDeadlineMS || Date.now())
+      : (hardDeadlineMS || undefined),
   );
 
   if (bestCreature) {
@@ -710,7 +732,18 @@ export async function evolveDir(
   }
 
   if (config.creatureStore) {
-    await writeCreatures(neat, config.creatureStore);
+    try {
+      await writeCreatures(neat, config.creatureStore);
+    } catch (salvageErr) {
+      // GRQ #4418: on a failed run this write *is* the salvage. Its own
+      // failure must be loud, but must not mask the failure that got us here.
+      if (runFailure === undefined) throw salvageErr;
+      getLogger().error(
+        `[Creature.evolveDir] Salvage checkpoint failed after a run failure: ${
+          salvageErr instanceof Error ? salvageErr.message : String(salvageErr)
+        }`,
+      );
+    }
   }
 
   // Issue #3434: run-level lifecycle teardown. The champion has been restored
@@ -723,6 +756,13 @@ export async function evolveDir(
   releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
+
+  // GRQ #4418: the models are checked in — now fail the unit. Swallowing the
+  // failure here would hand the caller a green result for a run that died.
+  if (runFailure !== undefined) {
+    throw runFailure;
+  }
+
   const time = Date.now() - start;
   return {
     error: error,

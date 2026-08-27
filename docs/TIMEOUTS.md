@@ -49,6 +49,25 @@ waits past it.
   _inside_ fitness is tracked as `inFlightPhase = "fitness"` so the watchdog
   reports `stalled in fitness` _while interrupting_, rather than
   `abandoning 0 in-flight task(s)` after the fact (GRQ #4141).
+- **Interrupt enforcement** — interrupting is a request; GRQ #4418 makes it a
+  bound. A phase that has not returned within `HARD_DEADLINE_INTERRUPT_GRACE_MS`
+  (30 s) of its abort fails the generation with a `HardDeadlineExceededError`
+  ([`src/NEAT/HardDeadlineInterrupt.ts`](../src/NEAT/HardDeadlineInterrupt.ts)),
+  so a unit told to run T minutes dies inside ~2 × T whether or not the code it
+  is wedged in cooperates. On GRQ-26 the watchdog logged
+  `stalled in fitness; interrupting` once a second for 2h 42m against a
+  10-minute unit — fitness was awaiting a `rust_scorer` batch call that never
+  returned.
+- **Native scorer calls** — the batch bridge takes the run's abort signal (GRQ
+  #4418). On abort the child is `SIGKILL`ed and the call fails loud with a
+  `ScorerStrictError` (`reason: "ABORTED"`); if the killed child's pipes stay
+  open — a grandchild holding stdout is the production case — the read is
+  abandoned after a 2 s drain rather than waiting on it. The scorer's default
+  `timeoutMs: 0` therefore no longer means "wait forever".
+- **A failed run still salvages** — `evolveDir` catches a failure from the
+  evolve loop, logs it, terminates workers, restores the best creature and
+  writes `creatureStore`, and only then rethrows. The models evolved before the
+  failure are checked in; the unit still fails.
 - **Over-run** — independently of the hard cap, when elapsed exceeds
   `timeoutMinutes × factor` after at least one generation, the loop stops
   starting new generations and finishes with the population committed. This is
@@ -167,11 +186,28 @@ and the in-flight maps are empty. The replay-queue hard-cap bound has dedicated
 coverage in
 [`test/NEAT/DiscoveryReplayQueueDeadline.ts`](../test/NEAT/DiscoveryReplayQueueDeadline.ts).
 
+The GRQ #4418 wedge — a phase that ignores the interrupt — is covered by
+[`test/NEAT/HardDeadlineInterrupt.test.ts`](../test/NEAT/HardDeadlineInterrupt.test.ts)
+(the enforcement helper),
+[`test/NEAT/FitnessStallFailsLoud.test.ts`](../test/NEAT/FitnessStallFailsLoud.test.ts)
+(a never-returning `Fitness.calculate` fails the generation),
+[`test/score/BatchRustScorerAbort.ts`](../test/score/BatchRustScorerAbort.ts)
+and
+[`test/score/RustScorerRunnerKill.ts`](../test/score/RustScorerRunnerKill.ts)
+(the scorer call is abortable and the child is killed), and
+[`test/creature/EvolveDirSalvageOnFailure.ts`](../test/creature/EvolveDirSalvageOnFailure.ts)
+(a failed run still checks its models in). Every grace is injected, so none of
+them waits on a production timeout.
+
 ## 🔗 Related
 
 - [`src/NEAT/HardDeadline.ts`](../src/NEAT/HardDeadline.ts) — the pure
   `computeHardDeadlineTS` helper, `HARD_DEADLINE_GRACE_MINUTES`, and the
   over-run helpers (`hasTrainingOverrun`, `shouldStopStartingGenerations`).
+- [`src/NEAT/HardDeadlineInterrupt.ts`](../src/NEAT/HardDeadlineInterrupt.ts) —
+  `failLoudIfInterruptIgnored`, `HARD_DEADLINE_INTERRUPT_GRACE_MS` and
+  `HardDeadlineExceededError`: the bound that turns an ignored interrupt into a
+  loud failure.
 - [`src/discovery/DiscoveryTimeout.ts`](../src/discovery/DiscoveryTimeout.ts) —
   `remainingTaskBudgetMinutes` honours `GRQ_TASK_DEADLINE_EPOCH` /
   `GRQ_TASK_MAX_SECONDS` when GRQ's `run_core.sh` exported them.

@@ -76,16 +76,24 @@ export interface BatchScorerRunResult {
  * The temporary directory and creature files are always cleaned up, even on
  * failure.
  *
+ * @param signal GRQ #4418: the run's hard-deadline abort. A batch call that
+ *   never returns wedged whole evolve units (GRQ-7 for 10h 52m, GRQ-26 for
+ *   2h 42m), so the bridge fails loud on abort rather than trusting the child
+ *   process — or an injected runner — to notice.
+ *
  * @throws {BatchScorerError} when the scorer process succeeds but its output
  *   cannot be reconciled with the expected creature set (missing/extra keys,
  *   malformed results, non-JSON stdout). Callers can catch this and decide
  *   whether to abort the generation or retry with the per-creature path.
+ * @throws {ScorerStrictError} with reason `ABORTED` when `signal` fires before
+ *   the scorer call returns.
  */
 export async function tryBatchScoreWithRustScorer(
   creatures: readonly Creature[],
   dataDir: string,
   config: RequiredRustScorerConfig,
   costName?: BuiltInCostName,
+  signal?: AbortSignal,
 ): Promise<BatchScorerRunResult> {
   if (!config.enabled || !config.batch) {
     return { results: undefined, invocations: 0 };
@@ -93,6 +101,7 @@ export async function tryBatchScoreWithRustScorer(
   if (creatures.length === 0) {
     return { results: new Map(), invocations: 0 };
   }
+  assertNotAborted(signal, dataDir, creatures.length);
 
   const probe = await resolveProbeState(config);
   if (!probe.available) {
@@ -163,13 +172,23 @@ export async function tryBatchScoreWithRustScorer(
       ? ["--cost", costName, absoluteCreaturesDir, absoluteDataDir]
       : [absoluteCreaturesDir, absoluteDataDir];
 
-    const result = await runCommand(
-      config.binaryPath,
-      args,
-      {
-        env: buildChildEnv(config.env),
-        timeoutMs: config.timeoutMs,
-      },
+    // GRQ #4418: the abort is enforced here as well as inside the runner. The
+    // runner kills the child, but a child whose pipes are held open by a
+    // grandchild can still keep the read pending — this race is what stops a
+    // dead scorer from outliving the unit that spawned it.
+    const result = await raceAbort(
+      runCommand(
+        config.binaryPath,
+        args,
+        {
+          env: buildChildEnv(config.env),
+          timeoutMs: config.timeoutMs,
+          signal,
+        },
+      ),
+      signal,
+      absoluteDataDir,
+      expectedStems.length,
     );
 
     if (!result.success) {
@@ -226,6 +245,60 @@ export async function tryBatchScoreWithRustScorer(
       // underlying failure.
     }
   }
+}
+
+/** The abort failure, built once so both guards read identically. */
+function abortedError(
+  dataDir: string,
+  creatureCount: number,
+): ScorerStrictError {
+  return new ScorerStrictError(
+    `Rust scorer batch call aborted by the run's hard deadline for ` +
+      `${creatureCount} creature(s) in ${dataDir}`,
+    "ABORTED",
+  );
+}
+
+/** Fail fast rather than spawning a scorer the run can no longer wait for. */
+function assertNotAborted(
+  signal: AbortSignal | undefined,
+  dataDir: string,
+  creatureCount: number,
+): void {
+  if (signal?.aborted) {
+    throw abortedError(dataDir, creatureCount);
+  }
+}
+
+/**
+ * Resolve as `run` does, unless `signal` aborts first — in which case the call
+ * fails loud immediately. The scorer process is killed by the runner; this
+ * race guarantees the *caller* is released either way.
+ */
+function raceAbort<T>(
+  run: Promise<T>,
+  signal: AbortSignal | undefined,
+  dataDir: string,
+  creatureCount: number,
+): Promise<T> {
+  if (!signal) return run;
+  // The race drops `run` on abort; claim its rejection so a late scorer
+  // failure cannot surface as an unhandled one.
+  run.catch(() => {});
+
+  let onAbort: (() => void) | undefined;
+  const aborted = new Promise<never>((_, reject) => {
+    onAbort = () => reject(abortedError(dataDir, creatureCount));
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+
+  return Promise.race([run, aborted]).finally(() => {
+    if (onAbort) signal.removeEventListener("abort", onAbort);
+  });
 }
 
 function readEnvString(key: string): string | undefined {

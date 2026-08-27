@@ -60,6 +60,7 @@ import {
 } from "@neat/CpuUtilisation.ts";
 import { assemblePopulationWithinBudget } from "@neat/PopulationBudget.ts";
 import { HARD_DEADLINE_WATCHDOG_INTERVAL_MS } from "@neat/HardDeadline.ts";
+import { failLoudIfInterruptIgnored } from "@neat/HardDeadlineInterrupt.ts";
 import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
 import { selectTrainingCandidates } from "@neat/TrainingCandidates.ts";
 import {
@@ -204,10 +205,19 @@ export async function evolve(
     fitnessWatchdogId = setInterval(() => {
       neat.pollHardDeadlineWatchdog();
     }, HARD_DEADLINE_WATCHDOG_INTERVAL_MS);
-    await neat.fitness.calculate(
-      neat.population,
-      idleHeavyForFitness,
+    // GRQ #4418: interrupting is a request, not a bound. A phase that never
+    // observes the abort — fitness awaiting a wedged `rust_scorer` batch call
+    // is the production case — fails the generation loud once the grace
+    // elapses, so the unit dies inside its timeout instead of outliving it.
+    await failLoudIfInterruptIgnored(
+      neat.fitness.calculate(
+        neat.population,
+        idleHeavyForFitness,
+        fitnessSignal,
+      ),
       fitnessSignal,
+      "fitness",
+      neat.hardDeadlineInterruptGraceMS,
     );
   } finally {
     if (fitnessWatchdogId !== undefined) {

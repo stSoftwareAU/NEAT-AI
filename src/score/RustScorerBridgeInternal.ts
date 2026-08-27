@@ -23,6 +23,12 @@ export type CommandRunner = (
   options: {
     env?: Record<string, string>;
     timeoutMs: number;
+    /**
+     * GRQ #4418: the run's hard-deadline abort. When it fires the child is
+     * killed and the call fails loud — a scorer whose pipes never close must
+     * not outlive the unit that spawned it.
+     */
+    signal?: AbortSignal;
   },
 ) => Promise<{
   success: boolean;
@@ -54,12 +60,23 @@ export interface RustScorerProbeState {
   recurrentDirectory?: Promise<boolean>;
 }
 
+/**
+ * GRQ #4418: how long the killed child's pipes get to close before the read is
+ * abandoned. A scorer that spawned a grandchild holding stdout keeps
+ * `child.output()` pending even after the process itself is dead — the GRQ-26
+ * wedge, where the batch error only surfaced as the wall-clock cap unwound the
+ * process 2h 42m later. Waiting forever on the drain would reinstate exactly
+ * that hang.
+ */
+const KILL_DRAIN_MS = 2_000;
+
 async function defaultRunner(
   command: string,
   args: string[],
   options: {
     env?: Record<string, string>;
     timeoutMs: number;
+    signal?: AbortSignal;
   },
 ): Promise<{
   success: boolean;
@@ -70,26 +87,73 @@ async function defaultRunner(
   const cmdOptions: Deno.CommandOptions = options.env !== undefined
     ? { args, env: options.env, stdout: "piped", stderr: "piped" }
     : { args, stdout: "piped", stderr: "piped" };
-  const cmd = new Deno.Command(command, cmdOptions);
+  const child = new Deno.Command(command, cmdOptions).spawn();
+  const outputPromise = child.output();
+  // The read is abandoned when a killed child's pipes stay open; claim it so a
+  // late failure cannot surface as an unhandled rejection.
+  outputPromise.catch(() => {});
 
-  const output = options.timeoutMs > 0
-    ? await Promise.race([
-      cmd.output(),
-      new Promise<never>((_, reject) => {
-        setTimeout(
-          () => reject(new Error("rust scorer timeout")),
-          options.timeoutMs,
-        );
-      }),
-    ])
-    : await cmd.output();
+  let killedBecause: string | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let drainTimer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
 
-  return {
-    success: output.success,
-    code: output.code,
-    stdout: new TextDecoder().decode(output.stdout),
-    stderr: new TextDecoder().decode(output.stderr),
+  let abandonDrain!: () => void;
+  const drained = new Promise<undefined>((resolve) => {
+    abandonDrain = () => resolve(undefined);
+  });
+
+  const kill = (because: string) => {
+    if (killedBecause !== undefined) return;
+    killedBecause = because;
+    try {
+      child.kill("SIGKILL");
+    } catch {
+      // Already exited — the failure is reported from `killedBecause` anyway.
+    }
+    drainTimer = setTimeout(abandonDrain, KILL_DRAIN_MS);
   };
+
+  if (options.timeoutMs > 0) {
+    timer = setTimeout(() => kill("timeout"), options.timeoutMs);
+  }
+  if (options.signal) {
+    if (options.signal.aborted) {
+      kill("aborted");
+    } else {
+      onAbort = () => kill("aborted");
+      options.signal.addEventListener("abort", onAbort, { once: true });
+    }
+  }
+
+  try {
+    const output = await Promise.race([outputPromise, drained]);
+
+    if (output === undefined) {
+      throw new Error(
+        `rust scorer ${killedBecause}; the child was killed but its pipes did ` +
+          `not close within ${KILL_DRAIN_MS}ms — abandoning the read`,
+      );
+    }
+    if (killedBecause !== undefined) {
+      throw new Error(
+        `rust scorer ${killedBecause} (killed, exit ${output.code})`,
+      );
+    }
+
+    return {
+      success: output.success,
+      code: output.code,
+      stdout: new TextDecoder().decode(output.stdout),
+      stderr: new TextDecoder().decode(output.stderr),
+    };
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    if (drainTimer !== undefined) clearTimeout(drainTimer);
+    if (onAbort && options.signal) {
+      options.signal.removeEventListener("abort", onAbort);
+    }
+  }
 }
 
 let runCommand: CommandRunner = defaultRunner;

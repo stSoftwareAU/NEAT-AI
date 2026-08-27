@@ -140,6 +140,22 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **GRQ #4418:** An evolve unit wedged on a `rust_scorer` failure no longer
+  outlives its timeout. A batch scorer call that never returned left
+  `Fitness.calculate` blocked with nothing to bound it: on GRQ-7 the unit ran
+  10h 52m against a 10-minute timeout and on GRQ-26 the watchdog logged
+  `stalled in fitness; interrupting` once a second for 2h 42m — in both cases
+  the `ScorerStrictError` only surfaced as the external wall-clock cap unwound
+  the process. Three changes close it: the batch bridge takes the run's abort
+  signal and fails loud (`ScorerStrictError`, `reason: "ABORTED"`) instead of
+  waiting; the default command runner `SIGKILL`s the scorer child on abort or
+  timeout and abandons the read if the killed child's pipes do not close within
+  2 s; and an interrupt the phase ignores becomes a `HardDeadlineExceededError`
+  after `HARD_DEADLINE_INTERRUPT_GRACE_MS` (30 s), so a unit told to run T
+  minutes dies inside ~2 × T whatever it is stuck in. `evolveDir` now salvages
+  on failure — workers terminated, champion restored, `creatureStore` written —
+  before rethrowing, so the generations already evolved are checked in.
+
 - **Issue #3892:** The `analyzeParallel` GPU-guard test asserted the Rust
   variant name `GpuPermanent`, but Discovery serialises `DiscoveryErrorKind`
   with `rename_all = "snake_case"`, so the wire value has always been
