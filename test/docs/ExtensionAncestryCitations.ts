@@ -307,9 +307,7 @@ Deno.test("every IMPLEMENTED.md extension carries a classified Prior art line", 
 Deno.test("IMPLEMENTED.md legend defines every Prior art marker", async () => {
   const content = await Deno.readTextFile(IMPLEMENTED);
   const legend = content.slice(0, content.indexOf("- ✅ **Backpropagation**"));
-  const undefinedMarkers = PRIOR_ART_MARKERS.filter((m) =>
-    !legend.includes(m)
-  );
+  const undefinedMarkers = PRIOR_ART_MARKERS.filter((m) => !legend.includes(m));
   assert(
     undefinedMarkers.length === 0,
     `Markers used but never explained ahead of the list: ${
@@ -381,9 +379,9 @@ Deno.test("no house name changed in README, IMPLEMENTED.md or the glossary", asy
       (e) => e.title,
     ),
   );
-  const glossaryTitles = new Set(parseGlossaryTerms(glossary).map((t) =>
-    t.title
-  ));
+  const glossaryTitles = new Set(
+    parseGlossaryTerms(glossary).map((t) => t.title),
+  );
   const failures = [
     ...README_HOUSE_NAMES.filter((n) => !readmeTitles.has(n)).map((n) =>
       `README.md: ${n}`
@@ -402,14 +400,17 @@ Deno.test("no house name changed in README, IMPLEMENTED.md or the glossary", asy
 });
 
 Deno.test("citations into REFERENCES.md resolve to a heading that exists", async () => {
-  const anchors = await referenceAnchors();
+  const files = [README, IMPLEMENTED, GLOSSARY];
+  const [anchors, ...contents] = await Promise.all([
+    referenceAnchors(),
+    ...files.map((f) => Deno.readTextFile(f)),
+  ]) as [Set<string>, ...string[]];
   const failures: string[] = [];
-  for (const file of [README, IMPLEMENTED, GLOSSARY]) {
-    const content = await Deno.readTextFile(file);
-    for (const anchor of referenceLinks(content)) {
+  files.forEach((file, index) => {
+    for (const anchor of referenceLinks(contents[index])) {
       if (!anchors.has(anchor)) failures.push(`${file}: ${anchor}`);
     }
-  }
+  });
   assert(
     failures.length === 0,
     `Citations point at REFERENCES.md headings that do not exist:\n${
