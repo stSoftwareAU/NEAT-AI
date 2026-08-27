@@ -762,6 +762,16 @@ export async function evolve(
     );
   }
 
+  // Issue #3909: Share the run-wide rank-shaping reference cohort so the
+  // window survives the per-generation Mutator rebuild. No-op in the other
+  // advantage modes.
+  if (
+    neat.config.mcmc.enabled &&
+    neat.config.mcmc.mcmcAdvantageMode === "rankShaped"
+  ) {
+    mutator.setRankShapingWindow(neat.mcmcState.rankShaping);
+  }
+
   // Issue #1099: Single-pass de-duplication (constructed early so it is ready
   // when needed after mutation, without waiting for breeding to complete).
   const deDuplicator = new DeDuplicator(breed, mutator);

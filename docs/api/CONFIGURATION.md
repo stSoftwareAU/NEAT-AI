@@ -214,15 +214,23 @@ const options: NeatOptions = {
 };
 ```
 
-| Field                  | Type      | Default | Description                                                         |
-| ---------------------- | --------- | ------- | ------------------------------------------------------------------- |
-| `enabled`              | `boolean` | `false` | Whether MCMC acceptance is active                                   |
-| `initialTemperature`   | `number`  | `1.0`   | Starting temperature for Metropolis-Hastings acceptance             |
-| `minTemperature`       | `number`  | `0.01`  | Floor temperature to prevent acceptance probability reaching zero   |
-| `coolingRate`          | `number`  | `0.995` | Multiplicative cooling factor applied per generation                |
-| `targetAcceptanceRate` | `number`  | `0.234` | Optimal acceptance rate for high-dimensional MCMC                   |
-| `adjustmentRate`       | `number`  | `0.02`  | Rate at which temperature adapts toward the target acceptance rate  |
-| `toleranceRate`        | `number`  | `0.05`  | Tolerance band around target rate within which no adjustment occurs |
+| Field                  | Type                                            | Default      | Description                                                                              |
+| ---------------------- | ----------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------- |
+| `enabled`              | `boolean`                                       | `false`      | Whether MCMC acceptance is active                                                        |
+| `initialTemperature`   | `number`                                        | `1.0`        | Starting temperature for Metropolis-Hastings acceptance                                  |
+| `minTemperature`       | `number`                                        | `0.01`       | Floor temperature to prevent acceptance probability reaching zero                        |
+| `coolingRate`          | `number`                                        | `0.995`      | Multiplicative cooling factor applied per generation                                     |
+| `targetAcceptanceRate` | `number`                                        | `0.234`      | Optimal acceptance rate for high-dimensional MCMC                                        |
+| `adjustmentRate`       | `number`                                        | `0.02`       | Rate at which temperature adapts toward the target acceptance rate                       |
+| `toleranceRate`        | `number`                                        | `0.05`       | Tolerance band around target rate within which no adjustment occurs                      |
+| `mcmcAdvantageMode`    | `"absolute" \| "groupRelative" \| "rankShaped"` | `"absolute"` | What is compared against the temperature — and therefore what unit the temperature is in |
+| `rankShapingWindow`    | `number`                                        | `128`        | Recent proposal deltas retained as the ranking cohort in `"rankShaped"` mode             |
+
+`mcmcAdvantageMode` changes the meaning of every temperature setting above, so a
+schedule tuned under one mode does not carry over to another. The full
+comparison — including the `groupRelative` cohort knobs (`minCohortSize`,
+`advantageEps`, `advantageClip`) and measured convergence numbers — is in
+[Mutation adaptation → what the temperature actually means](../config/MUTATION_ADAPTATION.md#-what-the-temperature-actually-means).
 
 `DEFAULT_MCMC_CONFIG` is a fully-populated `RequiredMCMCConfig`. Spread it and
 override individual fields:

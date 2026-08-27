@@ -118,12 +118,17 @@ export class Breed {
     // the raw-fitness ranking with the GRPO group-relative advantage so a
     // creature that is merely above its species mean is preferred over a
     // creature that is merely below an absolutely-higher species mean.
+    // Issue #3909: `"rankShaped"` uses the same cohort-relative ranking with
+    // the Salimans centred-rank transform in place of the z-score.
     let scoreOverride: ReadonlyMap<string, number> | undefined;
-    if (config.mcmc.mcmcAdvantageMode === "groupRelative") {
+    if (config.mcmc.mcmcAdvantageMode !== "absolute") {
       scoreOverride = buildGroupRelativeAdvantageMap(this.genus, {
         minCohortSize: config.mcmc.minCohortSize,
         eps: config.mcmc.advantageEps,
         clip: config.mcmc.advantageClip,
+        shaping: config.mcmc.mcmcAdvantageMode === "rankShaped"
+          ? "centredRank"
+          : "zscore",
       });
     } else if (config.fitnessSharing.enabled) {
       scoreOverride = buildAdjustedFitnessMap(this.genus);

@@ -25,6 +25,18 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3909:** New `mcmc.mcmcAdvantageMode: "rankShaped"` — rank-based
+  fitness shaping ([Salimans et al. 2017](https://arxiv.org/abs/1703.03864)) for
+  the MCMC acceptance test and parent selection. The M-H test compares the
+  proposal's **rank among recent worsening proposals** instead of its raw
+  magnitude, so the temperature is measured in quantile units and means the same
+  thing whatever the corpus, the cost function or the population's convergence
+  does; parent selection uses centred ranks in place of the GRPO z-score. The
+  authoritative scorer verdict is deliberately not rank-shaped. Off by default
+  (`"absolute"`). New `mcmc.rankShapingWindow` (default 128) sizes the run-wide
+  ranking cohort. `bench/MCMCAdvantageConvergence.ts` measures all three modes
+  and sweeps the objective's scale.
+
 - **Issue #3808:** Compaction now merges redundant constant neurons. IF-squash
   tree generation left one `type:"constant"` neuron per branch, each with its
   own bias (277 of them, 263 distinct biases, in the worst production creature),

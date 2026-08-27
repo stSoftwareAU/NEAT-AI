@@ -73,6 +73,8 @@ Deno.test("MCMC documentation - RequiredMCMCConfig type is usable from public AP
     minCohortSize: 4,
     advantageEps: 1e-8,
     advantageClip: 10,
+    // Issue #3909: rank-shaped acceptance reference window.
+    rankShapingWindow: 128,
   };
   assertEquals(config.enabled, true);
   assertEquals(config.initialTemperature, 1.5);
