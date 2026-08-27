@@ -5,6 +5,13 @@ Part of the [Comparison hub](../../COMPARISON.md). These are the headline
 standard [NEAT](../../AGENTS.md#-terminology) and, in most cases, uncommon in
 other open-source neuroevolution libraries.
 
+**Absent from NEAT is not the same as new.** Standard NEAT (2002) is the only
+baseline these sections compare against, and most of what follows has a named
+precedent in the wider literature — often decades old. Every section therefore
+carries a **Prior art** callout naming what the technique is called outside this
+project, with the citation in [REFERENCES.md](./REFERENCES.md). The house names
+stay; the implied novelty does not.
+
 > [!IMPORTANT]
 > **NEAT-AI ≠ NEAT.** **NEAT** means the original 2002 algorithm; **NEAT-AI**
 > means this project — they are no longer the same thing. See the
@@ -31,6 +38,17 @@ across generations, combines the exploration of evolution with the exploitation
 of gradient descent, and bridges the gap between evolutionary and gradient-based
 learning. **Standard NEAT has no memetic step.**
 
+> **Prior art:** evolution plus per-individual local search is a memetic
+> algorithm, named by [Moscato (1989)](./REFERENCES.md#-memetic-algorithms).
+> Writing the trained weights back into the genome is the Lamarckian choice:
+> [Hinton & Nowlan (1987)](./REFERENCES.md#-lamarckian-and-baldwinian-evolution)
+> showed learning can guide evolution with no write-back at all, and
+> [Whitley, Gordon & Mathias (1994)](./REFERENCES.md#-lamarckian-and-baldwinian-evolution)
+> measured the trade NEAT-AI is making — faster convergence, less population
+> diversity. Choosing _which_ local search to apply, adaptively, is
+> meta-Lamarckian learning
+> ([Ong & Keane, 2004](./REFERENCES.md#-lamarckian-and-baldwinian-evolution)).
+
 **Reference**: See Feature #9 in [README.md](../../README.md) and
 [Memetic Algorithms](https://en.wikipedia.org/wiki/Memetic_algorithm).
 
@@ -54,6 +72,16 @@ combination of NEAT-style evolution with a separate, GPU-accelerated Rust
 discovery engine and a cost-of-growth gate is uncommon in open-source NEAT
 implementations.
 
+> **Prior art:** choosing new structure by how well it explains the residual
+> error is Cascade-Correlation,
+> [Fahlman & Lebiere (1990)](./REFERENCES.md#-structural-growth) — Discovery's
+> direct ancestor. The modern line is
+> [Net2Net (Chen, Goodfellow & Shlens, 2016)](./REFERENCES.md#-structural-growth),
+> [Firefly neuron splitting (Wu et al., 2020)](./REFERENCES.md#-structural-growth)
+> and [GradMax (Evci et al., 2022)](./REFERENCES.md#-structural-growth). What is
+> ours is the packaging, not the idea: an out-of-process GPU proposer feeding
+> candidates into a NEAT-style population behind a cost-of-growth gate.
+
 **Real-world impact**: In our deployments this discovery step typically finds
 small improvements (around 0.5–3% per discovery run) that add up over many
 iterations, letting long-lived creatures keep improving structurally without
@@ -76,6 +104,14 @@ introduced.
 numbers and traditional networks require fixed input/output dimensions.**
 NEAT-AI's UUID scheme allows incremental feature engineering without restarting
 training.
+
+> **Prior art:** none needed — this is the same semantics as the innovation
+> number of
+> [Stanley & Miikkulainen (2002)](./REFERENCES.md#-neat-algorithm-standard-neat),
+> decentralised. A historical marking still labels a gene so parents can be
+> aligned by ancestry rather than position; replacing the shared counter with a
+> UUID only removes the machine that has to hand the counter out. Treat it as an
+> engineering variation, not a new mechanism.
 
 **Real-world impact**: UUID-based indexing dramatically improved genetic
 compatibility between creatures evolved on different machines (islands),
@@ -103,6 +139,13 @@ constraints.
 single-machine.** NEAT-AI's distributed approach enables larger populations and
 faster evolution.
 
+> **Prior art:** this is the island model — textbook since
+> [Cohoon, Hegde, Martin & Richards (1987) and Tanese (1989)](./REFERENCES.md#-horizontal-gene-transfer-and-breeding):
+> isolated subpopulations evolving in parallel with periodic migration. Nothing
+> about the topology is new here. NEAT-AI's variation is the machinery that
+> makes migrants usable — UUID identity, so a creature bred on one machine
+> aligns against a population it has never met.
+
 **Reference**: See Feature #2 in [README.md](../../README.md).
 
 ## 5. 💉 CRISPR Gene Injection
@@ -116,6 +159,17 @@ knowledge to guide evolution.
 
 **Why it's unique**: Provides a way to incorporate expert knowledge into the
 evolutionary process — **standard NEAT has no equivalent.**
+
+> **Prior art:** in the literature this is population seeding / domain-knowledge
+> injection —
+> [Grefenstette (1987)](./REFERENCES.md#-population-seeding-and-knowledge-injection)
+> for the practice,
+> [Julstrom (1994)](./REFERENCES.md#-population-seeding-and-knowledge-injection)
+> for the measured convergence-versus-diversity trade, and
+> [Louis & McDonnell (2004)](./REFERENCES.md#-population-seeding-and-knowledge-injection)
+> for injection throughout a run rather than only at generation zero, which is
+> the shape CRISPR takes. Standard evolutionary-algorithm practice with a better
+> name.
 
 **Reference**: See Feature #7 in [README.md](../../README.md).
 
@@ -132,6 +186,20 @@ cross-species breeding.
 **Why it's unique**: **Standard NEAT does not breed across speciation
 boundaries.** Grafting lets evolution combine solutions from different "islands"
 of the search space.
+
+> **Prior art:** moving working structure between unrelated individuals is a
+> horizontal gene transfer operator; the closest engineering precedent is
+> [Barr, Harman, Jia, Marginean & Petke (2015), _Automated Software Transplantation_](./REFERENCES.md#-horizontal-gene-transfer-and-breeding),
+> which had the same problem of carrying a transplant's dependencies across.
+> **The counter-argument is the point:** standard NEAT refuses cross-species
+> crossover deliberately, because of the competing-conventions (permutation)
+> problem —
+> [Montana & Davis (1989)](./REFERENCES.md#-horizontal-gene-transfer-and-breeding)
+> and [Radcliffe (1993)](./REFERENCES.md#-horizontal-gene-transfer-and-breeding)
+> — two genomes can encode the same function under different neuron orderings,
+> so recombining them destroys both as easily as it combines them. Grafting is a
+> deliberate bet against that, not a free win: it pays off only where the
+> alignment step finds genuinely corresponding structure.
 
 **Reference**: See Feature #8 in [README.md](../../README.md).
 
@@ -156,6 +224,16 @@ Hebbian learning rules.
 which aligns naturally with NEAT-AI's neuron-centric topology and provides an
 alternative to standard backpropagation. **Standard NEAT has no equivalent.**
 
+> **Prior art:** the model is
+> [Rao & Ballard (1999)](./REFERENCES.md#-predictive-coding); the reason the
+> local Hebbian rule above is a legitimate substitute for backpropagation is
+> [Whittington & Bogacz (2017)](./REFERENCES.md#-predictive-coding), which
+> proved the approximation for a settled network;
+> [Millidge, Seth & Buckley (2021)](./REFERENCES.md#-predictive-coding) is the
+> review of what the family does and does not buy. NEAT-AI contributes the
+> integration — predictive coding on an irregular evolved topology — not the
+> learning rule.
+
 **Configuration**: Controlled via `PredictiveCodingConfig`; disabled by default.
 
 **Reference**: See [PREDICTIVE_CODING.md](../PREDICTIVE_CODING.md).
@@ -177,6 +255,14 @@ opaque I/O failures.
 search independently. NEAT-AI's caching layer lets the discovery pipeline learn
 from its own history.
 
+> **Prior art:** a memory of what has already been tried, consulted before
+> proposing again, is the defining structure of tabu search
+> ([Glover, 1986](./REFERENCES.md#-surrogate-assisted-search-and-racing)).
+> Steering the next proposal by which past proposals paid off is adaptive
+> operator selection and credit assignment
+> ([Fialho, Da Costa, Schoenauer & Sebag, 2010](./REFERENCES.md#-surrogate-assisted-search-and-racing)).
+> The disk-space monitoring is plumbing, with no literature to claim.
+
 ## 9. 🎲 MCMC Mutation Acceptance
 
 **What it is**: A
@@ -191,13 +277,31 @@ acceptance.
 3. Worsening mutations are accepted with probability
    `exp(−Δfitness / temperature)`, with temperature following an exponential
    cooling schedule.
-4. Adaptive temperature tuning targets the theoretically optimal acceptance rate
-   (~23.4%, Roberts et al. 1997).
+4. Adaptive temperature tuning targets a ~23.4% acceptance rate.
 
 **Why it's unique**: **Standard NEAT accepts all mutations unconditionally; most
 NEAT derivatives use simple fitness-based filtering.** NEAT-AI's MCMC acceptance
 lets the population explore broadly early (high temperature) and converge later
 (low temperature).
+
+> **Prior art:** the accept/reject rule is
+> [Metropolis, Rosenbluth, Rosenbluth, Teller & Teller (1953)](./REFERENCES.md#-markov-chain-monte-carlo-mcmc),
+> generalised by
+> [Hastings (1970)](./REFERENCES.md#-markov-chain-monte-carlo-mcmc); using it to
+> drive a _search_ under a cooling schedule is simulated annealing,
+> [Kirkpatrick, Gelatt & Vecchi (1983)](./REFERENCES.md#-markov-chain-monte-carlo-mcmc)
+> — the direct ancestor of what this section describes.
+>
+> **Correction (Issue #3908).** This section used to present the ~23.4% target
+> as the optimal acceptance rate, backed by theory. It is not. The figure comes
+> from
+> [Roberts, Gelman & Gilks (1997)](./REFERENCES.md#-markov-chain-monte-carlo-mcmc),
+> an optimal-scaling result for **random-walk Metropolis on a smooth,
+> high-dimensional target** — not a result about evolutionary-algorithm
+> acceptance rates, where the proposal distribution is a mutation operator and
+> the target is not a probability density at all. The knob stays because it
+> behaves well in our runs; the appeal to theory is withdrawn. Treat ~23.4% as a
+> starting heuristic to tune away from, not a number to converge on.
 
 **Diversity-aware cooling**: When species count drops below `minSpecies` or mean
 within-species compatibility exceeds `crowdingThreshold`, the temperature is
@@ -236,6 +340,17 @@ creatures that go beyond standard NEAT crossover.
 fitness-based selection when parents are incompatible.** NEAT-AI preserves
 meaningful genetic information across species boundaries.
 
+> **Prior art:** stopping one species from starving the others is fitness
+> sharing,
+> [Goldberg & Richardson (1987)](./REFERENCES.md#-linkage-and-epistasis);
+> recombining groups of genes that only work together is linkage learning,
+> [Harik & Goldberg (1997)](./REFERENCES.md#-linkage-and-epistasis); subgraph
+> transplantation is the transplantation literature cited under
+> [🌿 Grafting](#6--grafting-for-incompatible-parents)
+> ([Barr et al., 2015](./REFERENCES.md#-horizontal-gene-transfer-and-breeding)),
+> and inherits its competing-conventions caveat. Cosine-similarity alignment and
+> soft compatibility gating are ours; they are engineering choices, not results.
+
 **Reference**: See Feature #21 in [README.md](../../README.md).
 
 ## 11. 🧮 Muon-Style Orthogonalised Gradient Updates
@@ -253,9 +368,27 @@ Muon optimiser used in DeepSeek V4.
 
 **Why it's unique**: **Standard NEAT has no gradient step at all.** NEAT-AI's
 default backpropagation applies raw gradient descent; Muon-style updates remove
-correlations between row directions of the per-neuron gradient, producing
-smoother training, particularly for the small batch sizes typical in
-evolutionary fitness evaluation.
+correlations between row directions of the per-neuron gradient.
+
+> **Prior art:** the update is
+> [Jordan, Jin, Boza, You, Cesista, Newhouse & Bernstein (2024)](./REFERENCES.md#-orthogonalised-gradient-updates),
+> with
+> [Bernstein & Newhouse (2024)](./REFERENCES.md#-orthogonalised-gradient-updates)
+> for why it helps (steepest descent under a spectral-norm trust region) and
+> [Higham (2008)](./REFERENCES.md#-orthogonalised-gradient-updates) for the
+> Newton-Schulz iteration itself.
+>
+> **Caveat (Issue #3908).** The demonstrated benefit is on the large **dense**
+> 2-D weight matrices of fixed-architecture networks. A per-neuron fan-in matrix
+> in a sparse evolved topology is **small** — often a handful of rows, and a
+> plain vector at fan-in 1, where orthogonalisation is a no-op — so the effect
+> may be near-nil at production scale. The only measurement we have is
+> [`bench/MuonVsBaseline.ts`](../../bench/MuonVsBaseline.ts) on a hand-built
+> 4→4→2 creature: 415 → 251 iterations to target error (~40% fewer), ~19%
+> cheaper per step (Issue #2529, recorded in
+> [the DeepSeek papers index](../archive/research/deepseek-papers-index.md)).
+> That is one synthetic topology, not a production population: at production
+> topology and sparsity the gain is **unproven**.
 
 **Configuration**: Opt-in via `gradientOrthogonalisation: "muon"` in
 `BackPropagationArguments` (default `"none"`).
@@ -283,6 +416,15 @@ Synthetic synapses provide a temporary
 [layer densification](https://en.wikipedia.org/wiki/Dense_layer) step that lets
 gradient descent discover useful connections without permanently inflating the
 network.
+
+> **Prior art:** densify, train, sparsify is a well-established recipe —
+> [Han et al. (2017), _DSD: Dense-Sparse-Dense Training_](./REFERENCES.md#-pruning-and-sparsity)
+> is the direct ancestor, with
+> [SET (Mocanu et al., 2018)](./REFERENCES.md#-pruning-and-sparsity) and
+> [RigL (Evci et al., 2020)](./REFERENCES.md#-pruning-and-sparsity) as the
+> dynamic-sparsity successors that drop and regrow connections throughout
+> training. NEAT-AI applies it per topological layer of an evolved network
+> rather than to a fixed architecture; the recipe is borrowed whole.
 
 **Configuration**: Opt-in via `syntheticSynapses: true`.
 
