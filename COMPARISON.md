@@ -62,7 +62,10 @@ flowchart TD
 ## ⚖️ At-a-glance: NEAT-AI vs standard NEAT vs traditional NNs
 
 This matrix is the 30-second summary. **Every claim is verified against the code
-and cited in the linked sub-documents.**
+and cited in the linked sub-documents.** It compares against **standard NEAT
+(2002) by design**, so it is not the whole competitive picture: the live
+alternative is modern gradient-free search, scored honestly in
+[Modern gradient-free training](./docs/comparison/TRAINING_PARADIGMS.md#-modern-gradient-free-training).
 
 > [!NOTE]
 > The matrix compares against **standard NEAT (2002)** by design — that is the
