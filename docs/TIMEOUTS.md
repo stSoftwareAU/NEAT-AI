@@ -261,7 +261,11 @@ asserting in every case that the run returns and the champion still reaches
   over-run helpers (`hasTrainingOverrun`, `shouldStopStartingGenerations`).
 - [`src/discovery/DiscoveryTimeout.ts`](../src/discovery/DiscoveryTimeout.ts) —
   `remainingTaskBudgetMinutes` honours `GRQ_TASK_DEADLINE_EPOCH` /
-  `GRQ_TASK_MAX_SECONDS` when GRQ's `run_core.sh` exported them.
+  `GRQ_TASK_MAX_SECONDS` when GRQ's `run_core.sh` exported them, and
+  `resolveWallClockBudgetMinutes` applies it as a **clamp only**
+  (`min(timeOutMinutes, envBudgetMinutes ?? timeOutMinutes)`, GRQ #4471): the
+  env budget may shorten a discovery plan, never widen one past the
+  `timeoutMinutes` the caller asked for.
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — the full configuration
   surface, including `timeoutMinutes`.
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — what to do when a run does not stop

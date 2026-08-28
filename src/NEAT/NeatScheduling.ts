@@ -32,6 +32,7 @@ import {
   allocateDiscoveryTimeouts,
   calculateDiscoveryTimeout,
   remainingTaskBudgetMinutes,
+  resolveWallClockBudgetMinutes,
 } from "@discovery/DiscoveryTimeout.ts";
 import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
 import { getLogger } from "@utils/Logger.ts";
@@ -264,12 +265,14 @@ export function scheduleDiscovery(
   // and *then* extend by a further `discoveryAnalysisTimeoutMinutes` (default
   // 10m) on top — silently inflating the caller's `--timeout` request.
   // GRQ #4141: when run_core.sh exported GRQ_TASK_DEADLINE_EPOCH /
-  // GRQ_TASK_MAX_SECONDS, honour the env-derived remaining budget instead of
-  // inferring it from timeoutMinutes. Unset-env behaviour is unchanged.
-  const envBudgetMinutes = remainingTaskBudgetMinutes();
-  const wallClockMinutes = envBudgetMinutes !== undefined
-    ? envBudgetMinutes
-    : timeOutMinutes;
+  // GRQ_TASK_MAX_SECONDS, honour the env-derived remaining task budget.
+  // GRQ #4471: it may only *tighten* the caller's request — used as a
+  // replacement it inflated a 4m `--timeout` into a 179m plan. Unset-env
+  // behaviour is unchanged.
+  const { wallClockMinutes, clampedByEnv } = resolveWallClockBudgetMinutes({
+    timeOutMinutes,
+    envBudgetMinutes: remainingTaskBudgetMinutes(),
+  });
   const allocation = allocateDiscoveryTimeouts({
     wallClockMinutes,
     configuredRecordMinutes: neat.config.discoveryRecordTimeOutMinutes,
@@ -286,7 +289,9 @@ export function scheduleDiscovery(
         `analysis=${allocation.analysisMinutes.toFixed(2)}m, ` +
         `total=${
           allocation.totalMinutes.toFixed(2)
-        }m of ${wallClockMinutes}m budget`,
+        }m of ${wallClockMinutes}m budget${
+          clampedByEnv ? " (clamped by task budget)" : ""
+        }`,
     );
   }
 
