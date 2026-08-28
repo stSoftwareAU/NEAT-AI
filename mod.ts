@@ -649,6 +649,13 @@ export {
 } from "@multithreading/workers/WorkerHandler.ts";
 export type { WasmActivationInitPayload } from "@workers/WasmActivationPayload.ts";
 export { initialiseWasmActivationFromPayload } from "@workers/WasmWorkerInit.ts";
+/**
+ * The failure a worker task is settled with when its response can never
+ * arrive — a wedged or crashed worker (GRQ #4489). Exported so a consumer can
+ * tell "the worker never came back" from an ordinary training error.
+ */
+export { WorkerTaskCancelledError } from "@workers/WorkerTaskCancelledError.ts";
+export type { WorkerTaskCancellation } from "@workers/WorkerTaskCancelledError.ts";
 
 /**
  * Structured Logger

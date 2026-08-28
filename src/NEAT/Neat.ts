@@ -33,6 +33,7 @@ import { PlateauDetector } from "@neat/PlateauDetector.ts";
 import { RandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { SpeciesPlateauDetector } from "@neat/SpeciesPlateauDetector.ts";
 import { TrainingRegressionTracker } from "@neat/TrainingRegressionTracker.ts";
+import type { TrainingTaskHandle } from "@neat/TrainingTaskHandle.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
 import {
   type DiscoveryReplayDirResult,
@@ -268,6 +269,17 @@ export class Neat {
    * deadline" (the watchdog ignores it).
    */
   trainingDeadlines = new Map<string, number>();
+  /**
+   * GRQ #4489: the worker request behind each in-flight training task, keyed
+   * by creature UUID.
+   *
+   * Abandoning a task used to mean forgetting it: the maps above were cleared
+   * while the worker request stayed in flight, unsettled, for the rest of the
+   * run. Keeping the worker and its task id lets the watchdog cancel the work
+   * it has given up on, so the task reports a per-task reason instead of
+   * silence and the worker that swallowed it is taken out of service.
+   */
+  trainingTasks = new Map<string, TrainingTaskHandle>();
   discoveryInProgress = new Map<string, Promise<void>>();
   discoveryComplete: ResponseData[] = [];
   trainingComplete: ResponseData[] = [];
@@ -661,6 +673,17 @@ export class Neat {
           }`,
         );
 
+        // GRQ #4489: cancel the requests as well as the bookkeeping, so each
+        // task reports why it produced nothing instead of staying pending
+        // behind a cleared map.
+        for (const uuid of Array.from(this.trainingTasks.keys())) {
+          this.cancelTrainingWork(
+            uuid,
+            `training task abandoned: ${reason}`,
+            false,
+          );
+        }
+
         this.trainingInProgress.clear();
         this.trainingDeadlines.clear();
         this.trainingWaitGenerations = 0;
@@ -760,8 +783,53 @@ export class Neat {
               .join(", ")
           }`,
       );
+      // GRQ #4489: the work, not just the bookkeeping. A task still in flight
+      // here missed its own deadline plus grace, so its worker is wedged —
+      // cancel the request and take the worker out of service rather than
+      // handing it the next creature.
+      for (const uuid of abandoned) {
+        this.cancelTrainingWork(
+          uuid,
+          `training task ${
+            uuid.substring(Math.max(0, uuid.length - 8))
+          } passed its per-task deadline without returning a result`,
+          true,
+        );
+      }
     }
     return abandoned;
+  }
+
+  /**
+   * Give up on the worker request behind an abandoned training task
+   * (GRQ #4489).
+   *
+   * Settling the request is what turns `outcome=abandoned … reason=
+   * watchdog-abandoned` — no error, no timing, no partial result — into a
+   * reported per-task failure, and it releases the worker slot the task was
+   * holding.
+   *
+   * @param uuid creature UUID of the abandoned task
+   * @param reason operator-facing reason, carried into the failure
+   * @param quarantineWorker true when the worker itself is suspect (it
+   *   swallowed a task past its deadline), false when the run is simply
+   *   shedding work it no longer has time for
+   * @returns true when a request was still in flight and was cancelled
+   */
+  private cancelTrainingWork(
+    uuid: string,
+    reason: string,
+    quarantineWorker: boolean,
+  ): boolean {
+    const handle = this.trainingTasks.get(uuid);
+    if (!handle) return false;
+    this.trainingTasks.delete(uuid);
+
+    const cancelled = handle.worker.cancelTask(handle.taskID, reason);
+    if (cancelled && quarantineWorker) {
+      handle.worker.quarantine(reason);
+    }
+    return cancelled;
   }
 
   /**
@@ -835,6 +903,15 @@ export class Neat {
 
     this.terminationReason = "hard-deadline";
     this.doNotStartMore = true;
+    // GRQ #4489: shed the training work itself, not only the bookkeeping —
+    // an unsettled request holds its worker slot past the deadline.
+    for (const uuid of Array.from(this.trainingTasks.keys())) {
+      this.cancelTrainingWork(
+        uuid,
+        "hard deadline (timeoutMinutes + grace) exceeded",
+        false,
+      );
+    }
     this.discoveryInProgress.clear();
     this.trainingInProgress.clear();
     this.trainingDeadlines.clear();

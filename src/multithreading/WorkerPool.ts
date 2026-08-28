@@ -135,12 +135,13 @@ export class WorkerPool<T = unknown> {
    * @returns The selected worker, or undefined if no workers exist
    */
   selectWorker(): WorkerHandler | undefined {
-    if (this.workers.length === 0) {
+    const selectable = this.selectableWorkers();
+    if (selectable.length === 0) {
       return undefined;
     }
 
     // First pass: find any non-busy worker
-    for (const worker of this.workers) {
+    for (const worker of selectable) {
       if (!worker.isBusy()) {
         return worker;
       }
@@ -148,6 +149,18 @@ export class WorkerPool<T = unknown> {
 
     // All workers are busy - select the one with smallest queue
     return this.findLeastLoadedWorker();
+  }
+
+  /**
+   * The workers that may still be given work (GRQ #4489).
+   *
+   * A quarantined worker crashed or swallowed a task past its deadline;
+   * handing it the next creature buys another stuck task. It is skipped
+   * entirely rather than ranked last — no worker is better than a wedged one,
+   * and the caller already reports "no workers available" loudly.
+   */
+  private selectableWorkers(): WorkerHandler[] {
+    return this.workers.filter((worker) => worker.isHealthy());
   }
 
   /**
@@ -161,12 +174,13 @@ export class WorkerPool<T = unknown> {
   selectWorkerByWorkload(
     estimator: (task: T) => number,
   ): WorkerHandler | undefined {
-    if (this.workers.length === 0) {
+    const selectable = this.selectableWorkers();
+    if (selectable.length === 0) {
       return undefined;
     }
 
     // First pass: find any non-busy worker
-    for (const worker of this.workers) {
+    for (const worker of selectable) {
       if (!worker.isBusy()) {
         return worker;
       }
@@ -176,7 +190,7 @@ export class WorkerPool<T = unknown> {
     let bestWorker: WorkerHandler | undefined;
     let lowestWorkload = Infinity;
 
-    for (const worker of this.workers) {
+    for (const worker of selectable) {
       const queue = this.queues.get(worker);
       if (queue) {
         const workload = queue.getEstimatedWorkload(estimator);
@@ -187,7 +201,7 @@ export class WorkerPool<T = unknown> {
       }
     }
 
-    return bestWorker ?? this.workers[0];
+    return bestWorker ?? selectable[0];
   }
 
   /**
@@ -199,7 +213,7 @@ export class WorkerPool<T = unknown> {
     let bestWorker: WorkerHandler | undefined;
     let smallestQueue = Infinity;
 
-    for (const worker of this.workers) {
+    for (const worker of this.selectableWorkers()) {
       const queue = this.queues.get(worker);
       const size = queue?.size() ?? 0;
       if (size < smallestQueue) {
@@ -385,7 +399,7 @@ export class WorkerPool<T = unknown> {
    */
   getIdleWorkers(): WorkerHandler[] {
     const idle: WorkerHandler[] = [];
-    for (const worker of this.workers) {
+    for (const worker of this.selectableWorkers()) {
       if (!worker.isBusy()) {
         const queue = this.queues.get(worker);
         if (!queue || queue.size() === 0) {

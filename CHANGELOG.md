@@ -23,6 +23,20 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **GRQ #4489:** Abandoning a training task now cancels it. The stuck-task
+  watchdog used to drop the task from its own maps while the worker request
+  stayed in flight and unsettled for the rest of the run — so a wedged worker
+  produced `scheduled=N completed=0` with no error, no timing and no partial
+  result on the task, and was then handed the next creature. Every abandon path
+  now settles the request with a `WorkerTaskCancelledError` (new, exported from
+  `mod.ts`) naming the task, the worker, the elapsed time and the reason; a
+  worker that missed its own per-task deadline, or that raised an `error` event
+  after init, is quarantined — failed loudly, taken out of `WorkerPool`
+  selection and terminated. `WorkerHandler.trainTracked()` is the tracked
+  dispatch that makes the task addressable; `train()` is unchanged.
+
 ### Added
 
 - **Issue #3827 (follow-up):** The squash-substitution gate is now part of the

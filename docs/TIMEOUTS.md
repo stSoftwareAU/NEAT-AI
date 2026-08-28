@@ -117,6 +117,40 @@ normal runs:
   `isTrainingBudgetTooSmall` live in
   [`src/NEAT/PerTaskTrainingTimeout.ts`](../src/NEAT/PerTaskTrainingTimeout.ts).
 
+## 🧟 Abandoning a task means cancelling it (GRQ #4489)
+
+Abandoning used to mean _forgetting_: the watchdog dropped the UUID from
+`trainingInProgress` / `trainingDeadlines` and the worker request stayed in
+flight, unsettled, for the rest of the run. Nothing else could settle it — the
+worker was the only thing that could answer, and a wedged worker never does. On
+the GRQ fleet that produced runs of `scheduled=12 completed=0` where every task
+reported `outcome=abandoned … reason=watchdog-abandoned` with no error, no
+timing and no partial result, and the same wedged worker was then handed the
+next creature.
+
+Every abandon path now settles the work as well as the bookkeeping:
+
+- `WorkerHandler.trainTracked()` returns the dispatched `taskID` alongside the
+  response promise, so the task is addressable.
+- `Neat.trainingTasks` maps each in-flight creature UUID to that
+  `{ worker, taskID }` handle.
+- `abandonStuckTrainingTasks`, the finish-up "Training timeout reached" clear
+  and `abandonInFlightPastHardDeadline` all call `WorkerHandlerBase.cancelTask`,
+  which rejects the task promise with a
+  [`WorkerTaskCancelledError`](../src/workers/WorkerTaskCancelledError.ts)
+  naming the task, the worker, the elapsed time and the reason. NEAT's normal
+  training-failure path reports it per task.
+- A worker that missed its own per-task deadline is **quarantined**: it is
+  marked unhealthy (skipped by `WorkerPool` selection) and terminated, because
+  handing a wedged isolate the next creature just buys another stuck task.
+- A worker `error` / `messageerror` event _after_ init no longer vanishes; it
+  fails that worker's in-flight tasks with the crash as the cause and
+  quarantines it.
+
+A response that arrives after its task was cancelled is logged and discarded —
+never asserted on, since an assertion inside the worker's message listener would
+escape as an uncaught error.
+
 ## 🔀 How the deadline propagates
 
 ```mermaid

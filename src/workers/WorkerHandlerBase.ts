@@ -10,7 +10,6 @@
  * @module
  */
 
-import { assert } from "@std/assert";
 import v8 from "node:v8";
 import type {
   BaseRequestData,
@@ -19,6 +18,7 @@ import type {
 } from "@workers/WorkerInterface.ts";
 import { getLogger, type Logger } from "@utils/Logger.ts";
 import { isWorkerHeartbeatMessage } from "@workers/WorkerHeartbeat.ts";
+import { WorkerTaskCancelledError } from "@workers/WorkerTaskCancelledError.ts";
 import {
   formatWorkerInitDiagnostics,
   formatWorkerInitTimeout,
@@ -27,6 +27,48 @@ import {
 
 interface WorkerEventListener<THandler> {
   (worker: THandler): void;
+}
+
+/**
+ * Bookkeeping for one in-flight worker request (GRQ #4489).
+ *
+ * `settle` delivers the worker's response; `fail` gives up on it. Both run the
+ * same busy/idle accounting, so a cancelled task releases its worker slot
+ * exactly as a completed one does.
+ */
+interface PendingTask<TResponse> {
+  /** `Date.now()` at dispatch, so a failure can report how long it ran. */
+  readonly startedAtMs: number;
+  /** Deliver the worker's response. */
+  readonly settle: (result: TResponse) => void;
+  /** Give up on the task, rejecting its promise. */
+  readonly fail: (error: Error) => void;
+}
+
+/**
+ * Worker → owning-handler routing for worker-level error events
+ * (GRQ #4489).
+ *
+ * The `error`/`messageerror` listeners are attached in
+ * {@link WorkerHandlerBase.createWorkerOrMock}, a static method that runs
+ * *before* the handler exists, and their only effect used to be rejecting the
+ * init promise. After init that left a crashed worker's in-flight tasks
+ * pending forever. The handler registers itself here in its constructor so the
+ * spawn-site listeners can reach it for the rest of the worker's life.
+ *
+ * A `WeakMap` keyed by the worker keeps the reference collectable with the
+ * worker itself.
+ */
+const workerErrorSinks = new WeakMap<object, (error: Error) => void>();
+
+/**
+ * Deliver a worker-level error to the handler that owns `worker`.
+ *
+ * Exported for the spawn-site listeners and for tests that simulate a worker
+ * crash; a no-op when no handler has registered for that worker.
+ */
+export function notifyWorkerError(worker: object, error: Error): void {
+  workerErrorSinks.get(worker)?.(error);
 }
 
 let globalWorkerID = 0;
@@ -250,8 +292,20 @@ export abstract class WorkerHandlerBase<
    * to drive the `generation_complete.throughput` counters.
    */
   private cumulativeBusyMs = 0;
-  /** Map of task IDs to their callback functions */
-  private callbacks = new Map<number, CallableFunction>();
+  /**
+   * In-flight tasks by task id (GRQ #4489).
+   *
+   * Both halves of the settlement are kept, not just the success callback: a
+   * task whose response can never arrive is failed through `fail`, which is
+   * what turns a wedged worker from silence into a reported failure.
+   */
+  private pending = new Map<number, PendingTask<TResponse>>();
+  /**
+   * False once this handler has been quarantined (GRQ #4489). A quarantined
+   * worker is skipped by {@link WorkerPool} selection — a wedged isolate must
+   * not be handed the next task.
+   */
+  private healthy = true;
   /** Listeners to notify when worker becomes idle */
   private idleListeners: WorkerEventListener<this>[] = [];
   /** Promise that resolves once the worker is initialised */
@@ -289,7 +343,26 @@ export abstract class WorkerHandlerBase<
       this.handleCallback(me.data as TResponse);
     });
 
+    // GRQ #4489: let the spawn-site error listeners reach this instance, so a
+    // worker that dies after init fails its in-flight tasks instead of
+    // stranding them.
+    workerErrorSinks.set(this.worker as object, (error: Error) => {
+      this.onWorkerError(error);
+    });
+
     this.ready = initReady;
+  }
+
+  /**
+   * Handle a worker-level `error`/`messageerror` event (GRQ #4489).
+   *
+   * Before this, such an event was logged and dropped once init had completed,
+   * so every task in flight on the dead worker stayed pending for the rest of
+   * the run. A crashed worker cannot answer: fail its work with the crash as
+   * the cause and take it out of service.
+   */
+  protected onWorkerError(error: Error): void {
+    this.quarantine(`worker error event: ${error.message}`, error);
   }
 
   /**
@@ -346,6 +419,9 @@ export abstract class WorkerHandlerBase<
       ].filter(Boolean).join(" | ");
       const err = new Error(msg, { cause: ev.error });
       onInitError(err);
+      // GRQ #4489: after init, `onInitError` is a no-op — without this the
+      // crash was logged and every in-flight task stayed pending forever.
+      notifyWorkerError(worker, err);
       getLogger().error(msg, ev.error ?? ev);
     });
 
@@ -354,6 +430,7 @@ export abstract class WorkerHandlerBase<
         `Worker messageerror event during init (${workerName}) | script=${workerUrl}`;
       const err = new Error(msg, { cause: e });
       onInitError(err);
+      notifyWorkerError(worker, err);
       getLogger().error(msg, e);
     });
 
@@ -520,12 +597,130 @@ export abstract class WorkerHandlerBase<
 
   /**
    * Handles an incoming response from the worker.
+   *
+   * GRQ #4489: a response for a task that is no longer pending is expected
+   * once tasks can be cancelled — a wedged worker may answer long after its
+   * task was given up on. Report and drop it. This used to assert, and an
+   * assertion here escapes the worker's message listener as an uncaught error,
+   * killing the run over a late reply.
    */
   private handleCallback(data: TResponse) {
-    const call = this.callbacks.get(data.taskID);
-    assert(call, "No callback");
-    call(data);
-    this.callbacks.delete(data.taskID);
+    const task = this.pending.get(data.taskID);
+    if (!task) {
+      getLogger().warn(
+        `[worker-${this.workerID}] response for task ${data.taskID} arrived ` +
+          `after the task was settled or cancelled — discarded (GRQ #4489)`,
+      );
+      return;
+    }
+    this.pending.delete(data.taskID);
+    task.settle(data);
+  }
+
+  /**
+   * Register an in-flight task and return its settlement callbacks.
+   *
+   * Both paths run the same accounting: end the task, notify idle listeners
+   * when the worker drained, then settle the caller's promise.
+   */
+  private registerPending(
+    taskID: number,
+    resolve: (result: TResponse) => void,
+    reject: (error: Error) => void,
+  ): void {
+    const finish = () => {
+      this.onTaskEnd();
+      if (!this.isBusy()) {
+        this.idleListeners.forEach((listener) => listener(this));
+      }
+    };
+
+    this.pending.set(taskID, {
+      startedAtMs: Date.now(),
+      settle: (result: TResponse) => {
+        finish();
+        resolve(result);
+      },
+      fail: (error: Error) => {
+        finish();
+        reject(error);
+      },
+    });
+  }
+
+  /** Number of tasks dispatched to this worker that have not yet settled. */
+  getPendingTaskCount(): number {
+    return this.pending.size;
+  }
+
+  /**
+   * True while this worker may be given new work (GRQ #4489).
+   *
+   * Turns false once the worker is quarantined — it crashed, or it swallowed a
+   * task past its deadline.
+   */
+  isHealthy(): boolean {
+    return this.healthy;
+  }
+
+  /**
+   * Give up on one in-flight task, settling its promise as a failure
+   * (GRQ #4489).
+   *
+   * @param taskID task id returned when the request was dispatched
+   * @param reason operator-facing reason, e.g. the deadline that was missed
+   * @param cause underlying fault, when one was observed
+   * @returns true when a pending task was cancelled, false when there was
+   *   nothing to cancel (it had already settled)
+   */
+  cancelTask(taskID: number, reason: string, cause?: Error): boolean {
+    const task = this.pending.get(taskID);
+    if (!task) return false;
+
+    this.pending.delete(taskID);
+    const error = new WorkerTaskCancelledError({
+      taskID,
+      workerID: this.workerID,
+      elapsedMs: Date.now() - task.startedAtMs,
+      reason,
+      cause,
+    });
+    getLogger().warn(error.message);
+    task.fail(error);
+    return true;
+  }
+
+  /**
+   * Cancel every in-flight task on this worker (GRQ #4489).
+   *
+   * @returns how many tasks were cancelled
+   */
+  cancelAllTasks(reason: string, cause?: Error): number {
+    let cancelled = 0;
+    for (const taskID of Array.from(this.pending.keys())) {
+      if (this.cancelTask(taskID, reason, cause)) cancelled++;
+    }
+    return cancelled;
+  }
+
+  /**
+   * Take this worker out of service (GRQ #4489).
+   *
+   * A worker that crashed, or that never answered a task inside its deadline,
+   * cannot be trusted with the next one: on GRQ-22-rocket the same two task
+   * ids were abandoned twice in a single run. Quarantine fails whatever is
+   * still in flight, marks the handler unhealthy so {@link WorkerPool} stops
+   * selecting it, and stops the isolate.
+   */
+  quarantine(reason: string, cause?: Error): void {
+    if (!this.healthy) return;
+    this.healthy = false;
+    getLogger().warn(
+      `[worker-${this.workerID}] quarantined — ${reason}; it will not be ` +
+        `given further work (GRQ #4489)`,
+    );
+    this.cancelAllTasks(reason, cause);
+    this.worker.terminate();
   }
 
   /**
@@ -576,17 +771,8 @@ export abstract class WorkerHandlerBase<
    */
   protected makePromise(data: TRequest): Promise<TResponse> {
     this.onTaskStart();
-    const p = new Promise<TResponse>((resolve) => {
-      const call = (result: TResponse) => {
-        this.onTaskEnd();
-        resolve(result);
-
-        if (!this.isBusy()) {
-          this.idleListeners.forEach((listener) => listener(this));
-        }
-      };
-
-      this.callbacks.set(data.taskID, call);
+    const p = new Promise<TResponse>((resolve, reject) => {
+      this.registerPending(data.taskID, resolve, reject);
     });
 
     this.worker.postMessage(data);
@@ -613,29 +799,16 @@ export abstract class WorkerHandlerBase<
     this.onTaskStart();
 
     const p = new Promise<TResponse>((resolve, reject) => {
-      const call = (result: TResponse) => {
-        this.onTaskEnd();
-        resolve(result);
-
-        if (!this.isBusy()) {
-          this.idleListeners.forEach((listener) => listener(this));
-        }
-      };
-
-      this.callbacks.set(data.taskID, call);
+      this.registerPending(data.taskID, resolve, reject);
 
       this.ready.then(() => {
         this.worker.postMessage(data);
         afterPost?.();
       }).catch((err) => {
-        this.callbacks.delete(data.taskID);
-        this.onTaskEnd();
-
-        if (!this.isBusy()) {
-          this.idleListeners.forEach((listener) => listener(this));
-        }
-
-        reject(err);
+        const task = this.pending.get(data.taskID);
+        if (!task) return;
+        this.pending.delete(data.taskID);
+        task.fail(err instanceof Error ? err : new Error(String(err)));
       });
     });
 
@@ -644,9 +817,23 @@ export abstract class WorkerHandlerBase<
 
   /**
    * Terminates the worker and cleans up resources.
+   *
+   * GRQ #4489: dropping in-flight tasks here leaves their promises pending
+   * forever. Teardown is not the place to change a run's control flow, so the
+   * callbacks are still dropped — but never silently: what was lost is named.
+   * Use {@link quarantine} when a worker is taken out of service mid-run, so
+   * its work fails loudly instead.
    */
   terminate() {
-    this.callbacks.clear();
+    if (this.pending.size > 0) {
+      getLogger().warn(
+        `[worker-${this.workerID}] terminated with ${this.pending.size} ` +
+          `task(s) still in flight (${
+            Array.from(this.pending.keys()).join(", ")
+          }) — their results are lost (GRQ #4489)`,
+      );
+    }
+    this.pending.clear();
     this.idleListeners.length = 0;
     this.worker.terminate();
   }
