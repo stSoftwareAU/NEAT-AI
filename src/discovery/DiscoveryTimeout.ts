@@ -240,3 +240,55 @@ export function remainingTaskBudgetMinutes(
   }
   return Math.max(0, remainingSeconds / 60);
 }
+
+/** Outcome of applying the env-derived task budget to a caller's request. */
+export interface WallClockBudgetClamp {
+  /** Minutes to plan with — never more than the caller requested. */
+  wallClockMinutes: number;
+  /** True when the env-derived task budget tightened the request. */
+  clampedByEnv: boolean;
+}
+
+/**
+ * Applies the env-derived task budget as a **clamp** on the caller's requested
+ * wall-clock minutes (GRQ #4471).
+ *
+ * The env budget (GRQ #4141) exists to stop a run overshooting the node's task
+ * cap — that intent is tighten-only. Used as a *substitute* it does the
+ * opposite: GRQ-22 asked for `--timeout=4` and got a 179 m plan, because the
+ * 3 h task cap replaced the request instead of bounding it. A library must
+ * never widen a budget its caller asked to narrow.
+ *
+ * @param requestedMinutes - The caller's `timeOutMinutes`.
+ * @param envBudgetMinutes - {@link remainingTaskBudgetMinutes}, or `undefined`
+ *   when GRQ exported no deadline (behaviour is then unchanged).
+ */
+export function clampWallClockToTaskBudget(
+  requestedMinutes: number,
+  envBudgetMinutes: number | undefined,
+): WallClockBudgetClamp {
+  if (
+    envBudgetMinutes === undefined ||
+    !Number.isFinite(envBudgetMinutes) ||
+    envBudgetMinutes >= requestedMinutes
+  ) {
+    return { wallClockMinutes: requestedMinutes, clampedByEnv: false };
+  }
+  return { wallClockMinutes: envBudgetMinutes, clampedByEnv: true };
+}
+
+/**
+ * Renders the budget fragment of the verbose discovery-timeout log so the
+ * clamp is visible in the next run's log (GRQ #4471).
+ *
+ * Unclamped output is byte-for-byte the pre-#4471 text (`"<n>m budget"`).
+ */
+export function formatWallClockBudget(
+  requestedMinutes: number,
+  clamp: WallClockBudgetClamp,
+): string {
+  const budget = `${clamp.wallClockMinutes}m budget`;
+  return clamp.clampedByEnv
+    ? `${budget} (task budget clamped the ${requestedMinutes}m request)`
+    : budget;
+}

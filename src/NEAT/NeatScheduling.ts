@@ -31,6 +31,8 @@ import type { TrainOptions } from "@config/TrainOptions.ts";
 import {
   allocateDiscoveryTimeouts,
   calculateDiscoveryTimeout,
+  clampWallClockToTaskBudget,
+  formatWallClockBudget,
   remainingTaskBudgetMinutes,
 } from "@discovery/DiscoveryTimeout.ts";
 import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
@@ -264,12 +266,15 @@ export function scheduleDiscovery(
   // and *then* extend by a further `discoveryAnalysisTimeoutMinutes` (default
   // 10m) on top — silently inflating the caller's `--timeout` request.
   // GRQ #4141: when run_core.sh exported GRQ_TASK_DEADLINE_EPOCH /
-  // GRQ_TASK_MAX_SECONDS, honour the env-derived remaining budget instead of
-  // inferring it from timeoutMinutes. Unset-env behaviour is unchanged.
-  const envBudgetMinutes = remainingTaskBudgetMinutes();
-  const wallClockMinutes = envBudgetMinutes !== undefined
-    ? envBudgetMinutes
-    : timeOutMinutes;
+  // GRQ_TASK_MAX_SECONDS, honour the env-derived remaining budget.
+  // GRQ #4471: that budget *clamps* the caller's request, it never replaces
+  // it — a 3h task cap must not turn `--timeout=4` into a 179m plan.
+  // Unset-env behaviour is unchanged.
+  const budgetClamp = clampWallClockToTaskBudget(
+    timeOutMinutes,
+    remainingTaskBudgetMinutes(),
+  );
+  const wallClockMinutes = budgetClamp.wallClockMinutes;
   const allocation = allocateDiscoveryTimeouts({
     wallClockMinutes,
     configuredRecordMinutes: neat.config.discoveryRecordTimeOutMinutes,
@@ -284,9 +289,9 @@ export function scheduleDiscovery(
         `(neurons=${creature.neurons.length}, synapses=${creature.synapses.length}), ` +
         `effective=${effectiveTimeout.toFixed(2)}m, ` +
         `analysis=${allocation.analysisMinutes.toFixed(2)}m, ` +
-        `total=${
-          allocation.totalMinutes.toFixed(2)
-        }m of ${wallClockMinutes}m budget`,
+        `total=${allocation.totalMinutes.toFixed(2)}m of ${
+          formatWallClockBudget(timeOutMinutes, budgetClamp)
+        }`,
     );
   }
 

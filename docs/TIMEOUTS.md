@@ -103,6 +103,18 @@ normal runs:
   The pure helpers `computeEffectiveTrainingBudgetMs` and
   `isTrainingBudgetTooSmall` live in
   [`src/NEAT/PerTaskTrainingTimeout.ts`](../src/NEAT/PerTaskTrainingTimeout.ts).
+- **The env-derived task budget only ever tightens (GRQ #4471).** GRQ's
+  `run_core.sh` exports `GRQ_TASK_DEADLINE_EPOCH` / `GRQ_TASK_MAX_SECONDS` from
+  its node-wide task cap, and `scheduleDiscovery` plans from
+  `min(timeoutMinutes, remainingTaskBudgetMinutes())` —
+  `clampWallClockToTaskBudget` in
+  [`src/discovery/DiscoveryTimeout.ts`](../src/discovery/DiscoveryTimeout.ts).
+  It is a **clamp, never a replacement**: a 3 h node cap must not turn a
+  `--timeout=4` request into a 179 m discovery plan (GRQ-22), while a deadline 2
+  minutes out still shrinks that same 4 m request. When the env budget does the
+  clamping, the verbose `... of <n>m budget` line reports the clamped value and
+  names the request it clamped. With the env vars unset, behaviour is the
+  caller's `timeoutMinutes`, unchanged.
 
 ## 🔀 How the deadline propagates
 
@@ -174,7 +186,9 @@ coverage in
   over-run helpers (`hasTrainingOverrun`, `shouldStopStartingGenerations`).
 - [`src/discovery/DiscoveryTimeout.ts`](../src/discovery/DiscoveryTimeout.ts) —
   `remainingTaskBudgetMinutes` honours `GRQ_TASK_DEADLINE_EPOCH` /
-  `GRQ_TASK_MAX_SECONDS` when GRQ's `run_core.sh` exported them.
+  `GRQ_TASK_MAX_SECONDS` when GRQ's `run_core.sh` exported them, and
+  `clampWallClockToTaskBudget` applies that budget as a tighten-only clamp on
+  the caller's `timeoutMinutes` (GRQ #4471).
 - [CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md) — the full configuration
   surface, including `timeoutMinutes`.
 - [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — what to do when a run does not stop

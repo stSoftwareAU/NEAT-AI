@@ -2,8 +2,10 @@ import { assert, assertEquals } from "@std/assert";
 import {
   allocateDiscoveryTimeouts,
   calculateDiscoveryTimeout,
+  clampWallClockToTaskBudget,
   DEFAULT_DISCOVERY_TIMEOUT_BOUNDS,
   DISCOVERY_MIN_PHASE_MINUTES,
+  formatWallClockBudget,
   GRQ_TASK_DEADLINE_EPOCH_ENV,
   GRQ_TASK_MAX_SECONDS_ENV,
   remainingTaskBudgetMinutes,
@@ -374,5 +376,159 @@ Deno.test("remainingTaskBudgetMinutes - max seconds alone does not infer a budge
     ),
     undefined,
     "MAX_SECONDS without a deadline is not enough to derive remaining",
+  );
+});
+
+// ============================================================================
+// GRQ #4471: the env-derived task budget clamps the caller's timeout,
+// it never replaces (and so never inflates) it.
+// ============================================================================
+
+Deno.test("clampWallClockToTaskBudget - unset env keeps the caller's timeout", () => {
+  assertEquals(clampWallClockToTaskBudget(4, undefined), {
+    wallClockMinutes: 4,
+    clampedByEnv: false,
+  });
+});
+
+Deno.test("clampWallClockToTaskBudget - a wider env budget never inflates the request", () => {
+  // GRQ-22: a 3h task cap must not turn a `--timeout=4` request into 179m.
+  assertEquals(clampWallClockToTaskBudget(4, 179), {
+    wallClockMinutes: 4,
+    clampedByEnv: false,
+  });
+});
+
+Deno.test("clampWallClockToTaskBudget - a tighter env budget still tightens", () => {
+  assertEquals(clampWallClockToTaskBudget(4, 2), {
+    wallClockMinutes: 2,
+    clampedByEnv: true,
+  });
+});
+
+Deno.test("clampWallClockToTaskBudget - an exhausted env budget clamps to zero", () => {
+  assertEquals(clampWallClockToTaskBudget(4, 0), {
+    wallClockMinutes: 0,
+    clampedByEnv: true,
+  });
+});
+
+Deno.test("clampWallClockToTaskBudget - a non-finite env budget is ignored", () => {
+  assertEquals(clampWallClockToTaskBudget(4, Number.NaN), {
+    wallClockMinutes: 4,
+    clampedByEnv: false,
+  });
+  assertEquals(clampWallClockToTaskBudget(4, Number.POSITIVE_INFINITY), {
+    wallClockMinutes: 4,
+    clampedByEnv: false,
+  });
+});
+
+Deno.test("scheduleDiscovery budget - 3h task cap does not inflate a 4m timeout", () => {
+  const nowSeconds = 1_000_000;
+  const envBudget = remainingTaskBudgetMinutes(
+    fakeEnv({
+      [GRQ_TASK_DEADLINE_EPOCH_ENV]: String(nowSeconds + 3 * 3600),
+      [GRQ_TASK_MAX_SECONDS_ENV]: String(3 * 3600),
+    }),
+    nowSeconds,
+  );
+  assertEquals(envBudget, 180, "env budget is the full 3h task cap");
+
+  const { wallClockMinutes, clampedByEnv } = clampWallClockToTaskBudget(
+    4,
+    envBudget,
+  );
+  assertEquals(wallClockMinutes, 4, "plan is sized from the caller's 4m");
+  assertEquals(clampedByEnv, false);
+
+  const allocation = allocateDiscoveryTimeouts({
+    wallClockMinutes,
+    configuredRecordMinutes: 10,
+    configuredAnalysisMinutes: 10,
+    adaptiveRecordMinutes: 10,
+  });
+  assert(
+    allocation.totalMinutes <= 4 + 1e-9,
+    `total ${allocation.totalMinutes}m must not exceed the 4m request`,
+  );
+});
+
+Deno.test("scheduleDiscovery budget - a 2m env deadline still shrinks a 4m timeout", () => {
+  const nowSeconds = 1_000_000;
+  const envBudget = remainingTaskBudgetMinutes(
+    fakeEnv({
+      [GRQ_TASK_DEADLINE_EPOCH_ENV]: String(nowSeconds + 120),
+      [GRQ_TASK_MAX_SECONDS_ENV]: String(3 * 3600),
+    }),
+    nowSeconds,
+  );
+  assertEquals(envBudget, 2);
+
+  const { wallClockMinutes, clampedByEnv } = clampWallClockToTaskBudget(
+    4,
+    envBudget,
+  );
+  assertEquals(wallClockMinutes, 2, "tighten direction still works");
+  assertEquals(clampedByEnv, true);
+
+  const allocation = allocateDiscoveryTimeouts({
+    wallClockMinutes,
+    configuredRecordMinutes: 10,
+    configuredAnalysisMinutes: 10,
+    adaptiveRecordMinutes: 10,
+  });
+  assert(
+    allocation.totalMinutes <= 2 + 1e-9,
+    `total ${allocation.totalMinutes}m must not exceed the 2m env budget`,
+  );
+});
+
+Deno.test("scheduleDiscovery budget - unset env leaves the plan exactly as before", () => {
+  const envBudget = remainingTaskBudgetMinutes(fakeEnv({}), 1_000_000);
+  assertEquals(envBudget, undefined);
+
+  const { wallClockMinutes, clampedByEnv } = clampWallClockToTaskBudget(
+    4,
+    envBudget,
+  );
+  assertEquals(wallClockMinutes, 4);
+  assertEquals(clampedByEnv, false);
+
+  const input = {
+    configuredRecordMinutes: 10,
+    configuredAnalysisMinutes: 10,
+    adaptiveRecordMinutes: 3,
+  };
+  assertEquals(
+    allocateDiscoveryTimeouts({ wallClockMinutes, ...input }),
+    allocateDiscoveryTimeouts({ wallClockMinutes: 4, ...input }),
+    "unset env plans identically to passing timeOutMinutes straight through",
+  );
+});
+
+Deno.test("formatWallClockBudget - unclamped text is unchanged", () => {
+  assertEquals(
+    formatWallClockBudget(4, { wallClockMinutes: 4, clampedByEnv: false }),
+    "4m budget",
+  );
+});
+
+Deno.test("formatWallClockBudget - clamped text reports the clamp and its source", () => {
+  const text = formatWallClockBudget(4, {
+    wallClockMinutes: 2,
+    clampedByEnv: true,
+  });
+  assert(
+    text.startsWith("2m budget"),
+    `budget must report the clamped 2m, got: ${text}`,
+  );
+  assert(
+    text.includes("4m"),
+    `budget must name the 4m request it clamped, got: ${text}`,
+  );
+  assert(
+    text.includes("task budget"),
+    `budget must say the task budget did the clamping, got: ${text}`,
   );
 });

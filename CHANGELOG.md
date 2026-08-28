@@ -140,6 +140,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **GRQ #4471:** The env-derived task budget (`GRQ_TASK_DEADLINE_EPOCH` /
+  `GRQ_TASK_MAX_SECONDS`, GRQ #4141) now **clamps** the caller's
+  `timeoutMinutes` instead of replacing it. Used as a substitute it inflated
+  budgets: GRQ-22 asked `evolveDir` for `--timeout=4` and got a 179 m discovery
+  plan sized from the node's 3 h task cap. `scheduleDiscovery` now plans from
+  `min(timeoutMinutes, envBudget)` via the new `clampWallClockToTaskBudget`, and
+  the verbose `... of <n>m budget` line reports the clamped value and names the
+  request the task budget clamped. Tighten still works (a 2 m deadline shrinks a
+  4 m request); unset env is unchanged.
+
 - **Issue #3892:** The `analyzeParallel` GPU-guard test asserted the Rust
   variant name `GpuPermanent`, but Discovery serialises `DiscoveryErrorKind`
   with `rename_all = "snake_case"`, so the wire value has always been
