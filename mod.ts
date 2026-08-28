@@ -534,6 +534,7 @@ export { DEFAULT_DISK_SPACE_CONFIG } from "@config/DiskSpaceConfig.ts";
  */
 export {
   alternativeSquashes,
+  canAdoptSquash,
   cleanKnowledge,
   combineImprovements,
   combineKnowledge,
@@ -545,6 +546,8 @@ export {
   safeWriteJsonSync,
   scanForSquashImprovements,
   shuffle,
+  squashSubstitutionBlockedReason,
+  STRUCTURALLY_CONSTRAINED_SQUASHES,
   WorkerHandler as IntelligentDesignWorkerHandler,
 } from "@intelligentDesign/mod.ts";
 export type {

@@ -25,6 +25,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **GRQ #4440 (follow-on to #3827):** `squashSubstitutionBlockedReason`,
+  `canAdoptSquash` and `STRUCTURALLY_CONSTRAINED_SQUASHES` are now re-exported
+  from `mod.ts`. #3827 gated this library's own substitution helpers but kept
+  the rule private, so a consumer that writes `neuron.squash` itself could not
+  reach it — GRQ keys Intelligent Design by neuron uuid rather than by the
+  integer id `makeModifiedCreature` uses, re-implemented the substitution, and
+  re-created the fault on 7.0.0 (ten `intelligentDesign-worker` deaths in one
+  40-minute run, each on an `IF` neuron this library's validator refuses). The
+  rule belongs to whoever writes the squash.
+
 - **Issue #3909:** New `mcmc.mcmcAdvantageMode: "rankShaped"` — rank-based
   fitness shaping ([Salimans et al. 2017](https://arxiv.org/abs/1703.03864)) for
   the MCMC acceptance test and parent selection. The M-H test compares the

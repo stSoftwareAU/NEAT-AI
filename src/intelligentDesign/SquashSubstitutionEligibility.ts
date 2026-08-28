@@ -22,6 +22,19 @@
  * `MINIMUM` / `MAXIMUM`, for the tree/branching teams), so the answer is not to
  * remove it — it is to skip the neurons that cannot carry it and keep scanning.
  *
+ * ## Consumers need this rule too
+ *
+ * Gating this library's own substitution helpers did not stop the fault: a
+ * consumer that writes `neuron.squash` itself is a producer as well, and it
+ * could not reach the rule because `mod.ts` did not re-export it. GRQ hit
+ * exactly that (GRQ #4440) — its Intelligent Design workers are keyed by
+ * neuron uuid rather than by the integer id `makeModifiedCreature` uses, so it
+ * re-implemented the substitution and re-implemented the fault with it: ten
+ * `intelligentDesign-worker` deaths in one 40-minute run on NEAT-AI 7.0.0.
+ * {@link squashSubstitutionBlockedReason}, {@link canAdoptSquash} and
+ * {@link STRUCTURALLY_CONSTRAINED_SQUASHES} are therefore part of the public
+ * surface: the rule belongs to whoever writes the squash.
+ *
  * @module
  */
 

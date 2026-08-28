@@ -19,11 +19,12 @@ machine-learning pipelines and tooling.
   `OnnxCompatibilityResult`, `OnnxExportOptions`
 - Topology export: `exportTopologyDot`, `exportTopologyJson`,
   `TopologyExportJson`, `TopologyExportNode`, `TopologyExportSynapse`
-- Intelligent Design: `alternativeSquashes`, `cleanKnowledge`,
+- Intelligent Design: `alternativeSquashes`, `canAdoptSquash`, `cleanKnowledge`,
   `combineImprovements`, `combineKnowledge`, `getNeuronsToTest`,
   `getValidNeuronSquashes`, `makeModifiedCreature`,
   `makeModifiedCreatureWithPrevious`, `safeWriteJson`, `safeWriteJsonSync`,
-  `scanForSquashImprovements`, `shuffle`, `IntelligentDesignWorkerHandler`,
+  `scanForSquashImprovements`, `shuffle`, `squashSubstitutionBlockedReason`,
+  `STRUCTURALLY_CONSTRAINED_SQUASHES`, `IntelligentDesignWorkerHandler`,
   `BestNeuronSquash`, `TacitKnowledgeMap`
 
 ---
@@ -249,6 +250,7 @@ search. Tests alternative squash functions and applies the best combination.
 ```typescript
 import {
   alternativeSquashes,
+  canAdoptSquash,
   cleanKnowledge,
   combineImprovements,
   combineKnowledge,
@@ -261,9 +263,33 @@ import {
   safeWriteJsonSync,
   scanForSquashImprovements,
   shuffle,
+  squashSubstitutionBlockedReason,
+  STRUCTURALLY_CONSTRAINED_SQUASHES,
 } from "@stsoftware/neat-ai";
 
 import type { BestNeuronSquash, TacitKnowledgeMap } from "@stsoftware/neat-ai";
+```
+
+### Substituting a squash yourself
+
+A substitution changes one field — `squash` — and creates neither a synapse nor
+a synapse role. `IF` is the only squash whose validity depends on inward
+topology: the validator wants at least three inward connections carrying
+`condition`, `positive` and `negative`. Applying it to a neuron that lacks them
+builds a creature `Creature.validate()` refuses, and the Intelligent Design
+worker dies on it before scoring anything.
+
+`makeModifiedCreature` / `makeModifiedCreatureWithPrevious` already refuse such
+a pair. Ask the rule directly when you write `neuron.squash` yourself:
+
+```typescript
+const blocked = squashSubstitutionBlockedReason(creatureExport, uuid, squash);
+if (blocked) {
+  // Skip the pair and keep scanning — do not invent the missing wiring.
+  console.info(`Neuron ${uuid} cannot adopt ${squash}: ${blocked}`);
+} else {
+  neuron.squash = squash;
+}
 ```
 
 For the complete narrative guide, see
