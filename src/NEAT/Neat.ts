@@ -57,6 +57,13 @@ import type { EvolveResult } from "@neat/NeatEvolution.ts";
 import * as scheduling from "@neat/NeatScheduling.ts";
 
 /**
+ * Default cap on a single {@link Neat.awaitInFlightTasks} wait, in ms. The
+ * effective wait is the smaller of this and the time left before the hard
+ * deadline (Issue #2896).
+ */
+export const AWAIT_IN_FLIGHT_TIMEOUT_MS = 30_000;
+
+/**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
  *
  * This class implements the NEAT algorithm for evolving neural networks.
@@ -793,9 +800,21 @@ export class Neat {
       return false;
     }
 
-    const abandoned = this.discoveryInProgress.size +
-      this.trainingInProgress.size;
+    const discoveryCount = this.discoveryInProgress.size;
+    const trainingCount = this.trainingInProgress.size;
+    const abandoned = discoveryCount + trainingCount;
     const stalledPhase = this.inFlightPhase;
+
+    // GRQ #4470: name *what* is being abandoned, not just how many. A silent
+    // discovery/training child is the fault this line has to identify, and the
+    // operator reading the log has only the UUID suffixes to go on.
+    const abandonedUUIDs = [
+      ...this.discoveryInProgress.keys(),
+      ...this.trainingInProgress.keys(),
+    ].map((uuid) => uuid.substring(Math.max(0, uuid.length - 8)));
+    const abandonedDetail = `${abandoned} in-flight task(s) ` +
+      `(${discoveryCount} discovery, ${trainingCount} training): ` +
+      abandonedUUIDs.join(", ");
 
     if (stalledPhase) {
       // A stall inside fitness (or another named phase) is not an in-flight
@@ -804,14 +823,13 @@ export class Neat {
       getLogger().warn(
         `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — ` +
           `stalled in ${stalledPhase}; interrupting` +
-          (abandoned > 0
-            ? ` and abandoning ${abandoned} in-flight task(s)`
-            : ""),
+          (abandoned > 0 ? ` and abandoning ${abandonedDetail}` : ""),
       );
       this.interruptInFlightPhase();
     } else {
       getLogger().warn(
-        `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — abandoning ${abandoned} in-flight task(s)`,
+        `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — abandoning ` +
+          (abandoned > 0 ? abandonedDetail : "0 in-flight task(s)"),
       );
     }
 
@@ -899,12 +917,16 @@ export class Neat {
    * @param timeoutMs - Maximum time to wait before returning (default 30s)
    * @param hardDeadlineTS - Absolute hard-deadline epoch ms (Issue #2896).
    *   Defaults to this instance's {@link hardDeadlineTS}. The effective wait is
-   *   capped at `hardDeadlineTS - Date.now()` (minimum 0) so the 30s default
+   *   capped at `hardDeadlineTS - now()` (minimum 0) so the 30s default
    *   cannot push the finish-up wait past the T+15 cap. 0 disables the cap.
+   * @param now - Clock used to measure the remaining budget (GRQ #4470).
+   *   The evolve loop passes its own clock so the wait and the loop's deadline
+   *   checks cannot disagree; defaults to {@link Date.now}.
    */
   async awaitInFlightTasks(
-    timeoutMs = 30_000,
+    timeoutMs = AWAIT_IN_FLIGHT_TIMEOUT_MS,
     hardDeadlineTS = this.hardDeadlineTS,
+    now: () => number = Date.now,
   ): Promise<void> {
     const inFlightPromises: Promise<void>[] = [
       ...this.discoveryInProgress.values(),
@@ -918,7 +940,7 @@ export class Neat {
     // Issue #2896: never wait past the absolute hard deadline. Cap the effective
     // timeout at the time remaining before the cap (minimum 0).
     const effectiveTimeoutMs = hardDeadlineTS > 0
-      ? Math.min(timeoutMs, Math.max(0, hardDeadlineTS - Date.now()))
+      ? Math.min(timeoutMs, Math.max(0, hardDeadlineTS - now()))
       : timeoutMs;
 
     const discoveryCount = this.discoveryInProgress.size;

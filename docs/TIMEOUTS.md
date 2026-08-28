@@ -49,13 +49,26 @@ waits past it.
   _inside_ fitness is tracked as `inFlightPhase = "fitness"` so the watchdog
   reports `stalled in fitness` _while interrupting_, rather than
   `abandoning 0 in-flight task(s)` after the fact (GRQ #4141).
+- **Generation loop** — the same check runs at the **top of every pass** of the
+  loop, before any branch decides what to do next, so a generation that neither
+  completed nor tripped the over-run predicate cannot start another one past the
+  cap (GRQ #4470). Only the very first generation is exempt, so a run that
+  starts already past its cap still commits one evolved population.
+- **The generation itself** — `awaitWithinHardDeadline`
+  ([`src/NEAT/HardDeadlineRace.ts`](../src/NEAT/HardDeadlineRace.ts)) bounds the
+  `await neat.evolve()` itself. A discovery or training child that never settles
+  can hold the resources the next generation needs; past the cap the wedged
+  generation is abandoned (its late rejection swallowed), the population evolved
+  so far is kept, and control returns to the caller — no hard kill (GRQ #4470).
 - **Over-run** — independently of the hard cap, when elapsed exceeds
   `timeoutMinutes × factor` after at least one generation, the loop stops
   starting new generations and finishes with the population committed. This is
   graceful self-termination, not the hard-deadline abandon.
 - **Finish-up wait** — `Neat.awaitInFlightTasks()` caps its own timeout at the
-  time remaining before `hardDeadlineTS`. A never-resolving in-flight promise
-  can therefore never wedge the wait past the cap.
+  time remaining before `hardDeadlineTS`, measured on the evolve loop's own
+  clock. A never-resolving in-flight promise can therefore never wedge the wait
+  past the cap, and once the wait returns instantly the loop-top check above
+  ends the run instead of spinning on it.
 - **Discovery** — the absolute `discoveryHardDeadlineTS` crosses the worker
   boundary (Issue #2898), so the worker clamps every per-discovery
   record/analysis deadline to the cap regardless of how long the request waited
@@ -120,9 +133,13 @@ sequenceDiagram
     evolveDir->>Neat: new Neat(... hardDeadlineTS ...)
 
     loop each generation
+        evolveDir->>Neat: abandonInFlightPastHardDeadline(hardDeadlineTS)<br/>(top of every pass — GRQ #4470)
         Neat->>Worker: scheduleDiscovery / scheduleTraining<br/>(carry hardDeadlineTS)
         Worker-->>Worker: clamp per-task deadline to min(local, hardDeadlineTS)
         Neat->>Replay: scheduleReplay(... hardDeadlineTS ...)
+        alt the generation wedges behind a child that never settles
+            evolveDir-->>evolveDir: awaitWithinHardDeadline → abandon it at the cap,<br/>keep the population evolved so far
+        end
     end
 
     Note over evolveDir,Neat: soft timeout passes → finish-up phase
