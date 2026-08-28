@@ -25,6 +25,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **GRQ #4490:** Hung training tasks can now be reproduced offline. Set
+  `NEAT_AI_TRAINING_TASK_CAPTURE_DIR` and `scheduleTraining` writes the exact
+  creature it hands to each task as `training-task-<task-id>.json` — keyed by
+  the id the stuck-task watchdog logs — then deletes it when the task settles,
+  so whatever survives is exactly the set of tasks that never returned. Only the
+  scheduler holds that creature: resolving the watchdog's task id against a
+  saved population matched 6 of 61 abandoned tasks, because the population has
+  moved on generations by the time the run ends. Off unless the variable is set;
+  a capture that cannot be written is reported once and never blocks a dispatch.
+  `TRAINING_TASK_CAPTURE_DIR_ENV`, `trainingTaskCaptureDir`,
+  `trainingTaskCapturePath` and `trainingTaskId` are exported from `mod.ts` so a
+  consumer need not hard-code the naming convention.
+
 - **Issue #3827 (follow-up):** The squash-substitution gate is now part of the
   public API — `squashSubstitutionBlockedReason`, `canAdoptSquash` and
   `STRUCTURALLY_CONSTRAINED_SQUASHES` are exported from `mod.ts`, not only from

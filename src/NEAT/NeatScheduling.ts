@@ -41,6 +41,10 @@ import {
   isTrainingErrorRegression,
 } from "@neat/TrainingErrorComparison.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
+import {
+  beginTrainingTaskCapture,
+  endTrainingTaskCapture,
+} from "@neat/TrainingTaskCapture.ts";
 import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
 
 /**
@@ -543,6 +547,13 @@ export function scheduleTraining(
   // the hard deadline before it settles.
   const scheduledEpoch = neat.abandonEpoch;
 
+  // GRQ #4490: persist the exact creature being handed to the task before it
+  // is dispatched. A task whose promise never settles leaves this file behind,
+  // so the hang is reproducible offline without resolving the watchdog's task
+  // id against a population that has since moved on. Off unless
+  // NEAT_AI_TRAINING_TASK_CAPTURE_DIR is set.
+  beginTrainingTaskCapture(uuid, creature);
+
   const p = w.train(creature, trainOptions).then((r) => {
     // Issue #3435: discard late completions after a hard-deadline abandon before
     // rebuilding the trained creature, fine-tuning, or writing traces.
@@ -672,6 +683,11 @@ export function scheduleTraining(
     }
 
     recordTrainingTaskFailure(neat, creature, uuid, scheduledEpoch, error);
+  }).finally(() => {
+    // GRQ #4490: the task settled — with a result or a failure — so it is not
+    // the never-settling class this capture exists for. Drop its creature so
+    // what survives in the capture directory is exactly the hung set.
+    endTrainingTaskCapture(uuid);
   });
 
   neat.trainingInProgress.set(uuid, p);

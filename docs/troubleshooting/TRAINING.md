@@ -9,6 +9,7 @@ outputs, and regularisation tuning. See the index in
 - [Fitness plateau](#-fitness-plateau)
 - [Creatures producing NaN or Infinity](#-creatures-producing-nan-or-infinity)
 - [Regularisation](#-regularisation)
+- [Training tasks that never return](#-training-tasks-that-never-return)
 
 ## 📉 Fitness plateau
 
@@ -230,6 +231,46 @@ calculations.
   for growth favours the smaller creature that generalises.
 - **Enable `preferSmallChanges`:** biasing the mutation distribution towards
   small steps keeps a well-generalising creature from being overshot.
+
+## 🪤 Training tasks that never return
+
+A training task whose worker promise never settles is force-abandoned by the
+stuck-task watchdog:
+
+```text
+[Neat] Stuck-task watchdog abandoning 4 training task(s) past per-task
+  deadline: cb4037d5, 8c915ab4, 7171dd0f, 4bbf040e
+```
+
+The task returns no result, throws nothing, and the run still exits 0 — so the
+only way to find out why is to run the same creature again offline. The task id
+in that line is the **last 8 characters of the creature uuid**, and looking it
+up in a saved population almost never works: the population has moved on several
+generations by the time the run ends, and a creature handed to a task
+mid-generation need never have been written under that uuid at all (GRQ matched
+6 of 61 abandoned tasks that way, GRQ #4490).
+
+Capture the creature at dispatch instead:
+
+```bash
+export NEAT_AI_TRAINING_TASK_CAPTURE_DIR="$HOME/logs/training-hangs/in-flight"
+```
+
+The scheduler writes `training-task-<task-id>.json` — the exact creature export
+it is handing to the task — before dispatch, and deletes it when the task
+settles, with a result or a failure. **Whatever is still in that directory is
+exactly the set of tasks that never returned.** Feed one straight back into a
+single-creature training run to reproduce the hang.
+
+Notes:
+
+- Off unless the variable is set, and the environment read is permission-safe: a
+  run without `--allow-env` captures nothing rather than failing.
+- The run needs `--allow-write` for that directory. An unwritable directory is
+  reported once as `[Neat] Training-task capture failed …` and never stops a
+  dispatch — the capture is a diagnostic, not a training decision.
+- Clear the directory before each run. A process killed mid-flight cannot delete
+  its own captures, so leftovers would otherwise look like this run's hangs.
 
 ## See also
 

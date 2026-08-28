@@ -584,6 +584,25 @@ export { Species } from "@neat/Species.ts";
 export { Genus } from "@neat/Genus.ts";
 
 /**
+ * Hung-training-task capture (GRQ #4490).
+ *
+ * Set `NEAT_AI_TRAINING_TASK_CAPTURE_DIR` and the scheduler writes the exact
+ * creature it hands to each training task, keyed by the task id the stuck-task
+ * watchdog logs, then deletes it when the task settles. Whatever survives in
+ * that directory is exactly the set of tasks that never returned — the only
+ * way to reproduce such a hang offline. These helpers let a consumer resolve
+ * the same paths without hard-coding the naming convention.
+ *
+ * @see {@link module:src/NEAT/TrainingTaskCapture}
+ */
+export {
+  TRAINING_TASK_CAPTURE_DIR_ENV,
+  trainingTaskCaptureDir,
+  trainingTaskCapturePath,
+  trainingTaskId,
+} from "@neat/TrainingTaskCapture.ts";
+
+/**
  * WASM Cache Control
  *
  * Issue #1338, #1504, #1581: Control the WASM activation LRU cache size, query
