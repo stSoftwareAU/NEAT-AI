@@ -79,6 +79,7 @@ import {
   disposeEvolvePopulation,
   releaseEvolveCaches,
 } from "@creature/EvolveTeardown.ts";
+import { runBoundedEvolveTeardown } from "@creature/BoundedEvolveTeardown.ts";
 import { finishGeneration } from "@creature/EvolveGenerationTail.ts";
 import {
   createPhaseTimingAccumulator,
@@ -412,6 +413,13 @@ export interface EvolveDirDeps {
   overrunEnforcementFactor?: number;
   /** Invoked with the constructed {@link Neat} instance before the evolve loop. */
   onNeatReady?: (neat: Neat) => void;
+  /**
+   * Per-step budget (ms) for the bounded post-loop teardown (GRQ #4472).
+   * Tests shrink it so a wedged worker / replay is abandoned without a real
+   * wait; production omits it and takes
+   * {@link DEFAULT_TEARDOWN_STEP_BUDGET_MS}.
+   */
+  teardownBudgetMS?: number;
 }
 
 /**
@@ -755,28 +763,28 @@ export async function evolveDir(
     }
   }
 
-  for (let i = workers.length; i--;) {
-    const w = workers[i];
-    w.terminate();
-  }
+  // GRQ #4472: the post-loop teardown is bounded, so "the loop ended on time"
+  // translates into "the process returned on time". The champion restore and
+  // the checkpoint write run first — before worker termination or the Issue
+  // #1509 replay drain, either of which can be abandoned without losing the
+  // generations already evolved.
+  await runBoundedEvolveTeardown({
+    label: "evolveDir",
+    persist: async () => {
+      if (bestCreature) {
+        creature.loadFrom(bestCreature, config.debug, "training:restoreBest");
+      }
+      if (config.creatureStore) {
+        await writeCreatures(neat, config.creatureStore);
+      }
+    },
+    workers,
+    replayQueue: neat.discoveryReplayQueue,
+    hardDeadlineMS,
+    now: nowFn,
+    budgetMS: deps?.teardownBudgetMS,
+  });
   workers.length = 0;
-
-  // Issue #1509: Await background replay queue completion before returning.
-  // Without this, callers that delete the data directory after evolveDir()
-  // returns may cause NotFound errors in still-running replay workers.
-  // Issue #2901: bound the wait to the absolute hard cap when a timeout is
-  // configured (hardDeadlineMS > 0); uncapped runs keep the unbounded wait.
-  await neat.discoveryReplayQueue.waitForCompletion(
-    hardDeadlineMS || undefined,
-  );
-
-  if (bestCreature) {
-    creature.loadFrom(bestCreature, config.debug, "training:restoreBest");
-  }
-
-  if (config.creatureStore) {
-    await writeCreatures(neat, config.creatureStore);
-  }
 
   // Issue #3434: run-level lifecycle teardown. The champion has been restored
   // into (and any checkpoint written from) the population above, so dispose the
@@ -1048,21 +1056,24 @@ export async function evolveEnv<S, A>(
     }
   }
 
-  // No worker pool to terminate — episode rollouts ran inline. Replay queue
-  // never had a chance to schedule anything (no dataDir was provided), but
-  // await it for symmetry with evolveDir() in case a future change wires one
-  // through. Issue #2901: bound the wait to the absolute hard cap when set.
-  await neat.discoveryReplayQueue.waitForCompletion(
-    hardDeadlineMS || undefined,
-  );
-
-  if (bestCreature) {
-    creature.loadFrom(bestCreature, config.debug, "evolveEnv:restoreBest");
-  }
-
-  if (config.creatureStore) {
-    await writeCreatures(neat, config.creatureStore);
-  }
+  // No worker pool to terminate — episode rollouts ran inline. The replay queue
+  // never had a chance to schedule anything (no dataDir was provided), but it
+  // is drained for symmetry with evolveDir() in case a future change wires one
+  // through. GRQ #4472: same bounded teardown, so the champion restore and the
+  // checkpoint write cannot be stranded behind a drain that will not end.
+  await runBoundedEvolveTeardown({
+    label: "evolveEnv",
+    persist: async () => {
+      if (bestCreature) {
+        creature.loadFrom(bestCreature, config.debug, "evolveEnv:restoreBest");
+      }
+      if (config.creatureStore) {
+        await writeCreatures(neat, config.creatureStore);
+      }
+    },
+    replayQueue: neat.discoveryReplayQueue,
+    hardDeadlineMS,
+  });
 
   // Issue #3434: run-level lifecycle teardown — dispose the run's population
   // (keeping the caller creature), dispose the temporary champion clone, and
@@ -1599,22 +1610,24 @@ export async function evolveRL<S, A>(
     });
   }
 
-  // Issue #2612: Terminate the parallel rollout pool, if any. When no
-  // pool was constructed (single-threaded or missing adapterDescription)
-  // this is a no-op.
-  workerPool?.terminate();
-  // Issue #2901: bound the wait to the absolute hard cap when a timeout is set.
-  await neat.discoveryReplayQueue.waitForCompletion(
-    hardDeadlineMS || undefined,
-  );
-
-  if (bestCreature) {
-    creature.loadFrom(bestCreature, config.debug, "evolveRL:restoreBest");
-  }
-
-  if (config.creatureStore) {
-    await writeCreatures(neat, config.creatureStore);
-  }
+  // Issue #2612: Terminate the parallel rollout pool, if any. When no pool was
+  // constructed (single-threaded or missing adapterDescription) there is
+  // nothing to terminate. GRQ #4472: both the pool shutdown and the replay
+  // drain run inside the bounded teardown, after the champion is on disk.
+  await runBoundedEvolveTeardown({
+    label: "evolveRL",
+    persist: async () => {
+      if (bestCreature) {
+        creature.loadFrom(bestCreature, config.debug, "evolveRL:restoreBest");
+      }
+      if (config.creatureStore) {
+        await writeCreatures(neat, config.creatureStore);
+      }
+    },
+    workers: workerPool ? [workerPool] : undefined,
+    replayQueue: neat.discoveryReplayQueue,
+    hardDeadlineMS,
+  });
 
   // Issue #3434: run-level lifecycle teardown — dispose the run's population
   // (keeping the caller creature), dispose the temporary champion clone, and

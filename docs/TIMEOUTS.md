@@ -81,11 +81,69 @@ waits past it.
   `waitForCompletion(hardDeadlineTS)` drops any queued replay and signals the
   in-flight one to abort cooperatively at its next candidate boundary (Issue
   #2901).
+- **Post-loop teardown** — everything that happens _after_ the loop breaks is
+  bounded too (GRQ #4472): see
+  [the next section](#-the-post-loop-teardown-is-bounded-too-grq-4472).
 
 In every case the **partial results already gathered are kept** and the **best
 creature found so far is loaded onto the caller's creature**, `creatureStore` is
 written, and the run returns its normal `{ error, score, generation, time }`
 summary. The cap costs you only the _unfinished_ work, never the finished work.
+
+## 🧹 The post-loop teardown is bounded too (GRQ #4472)
+
+Breaking out of the generation loop on time is only half of returning control to
+the caller. After the loop breaks, `evolveDir` still has to terminate every
+worker, drain the background replay queue, restore the champion and write the
+checkpoint — and before GRQ #4472 each of those steps could block indefinitely.
+A GRQ-22 `location` child was silent for ~2.5 h, which was equally consistent
+with a wedge in the teardown as with one in the loop.
+
+[`src/creature/BoundedEvolveTeardown.ts`](../src/creature/BoundedEvolveTeardown.ts)
+is the single teardown shared by `evolveDir`, `evolveEnv` and `evolveRL`. It
+runs three steps, in this order:
+
+1. **Persist first.** The champion restore and the `creatureStore` write run
+   _before_ anything that can block, so the evolved improvement is on disk even
+   in the worst case. A failing write is logged and re-thrown — never swallowed
+   — but only after the workers are down, so a failed checkpoint can neither
+   hide nor leave a live pool behind.
+2. **Terminate workers, on a budget.** A handler that throws, or one whose
+   `terminate()` never settles, is detached and named in the log instead of
+   waited on. Before this, one unguarded `terminate()` throw skipped the drain,
+   the champion restore **and** the checkpoint write.
+3. **Drain the replay queue, on a budget.** The queue's own cap only stops it
+   starting _another_ replay, so a replay already in flight when the drain
+   begins could outlive the cap entirely. The drain now ends no later than
+   `max(hardDeadlineTS, now) + budget`; when it expires the in-flight replay is
+   signalled to abort (`abandonInFlightReplay()`) and left running. An uncapped
+   run (`timeoutMinutes` unset) keeps the unbounded Issue #1509 wait — with no
+   deadline there is nothing to be late for.
+
+The budget defaults to `DEFAULT_TEARDOWN_STEP_BUDGET_MS` (5 s) per step. The
+teardown always emits **one summary line** naming what it left behind, so the
+gap between a child's last log line and its exit is diagnosable rather than
+silence:
+
+```text
+[evolveDir] teardown complete: 3 worker(s) terminated, 1 detached; replay queue
+abandoned still-running — the process may stay alive until the detached work ends
+```
+
+> [!WARNING]
+> **A bounded teardown makes `evolveDir` _return_ on time; it cannot make the
+> Deno process _exit_ on time.** A worker wedged inside a synchronous native /
+> WASM call never yields to its event loop, so `Worker.terminate()` returns
+> immediately on the main thread but the worker thread is never reaped and the
+> runtime will not exit. Measured directly on Deno 2.x: a main module that
+> spawns a worker running `while (true) {}`, calls `terminate()` and then falls
+> off the end **never exits** (killed at a 20 s timeout); the same program with
+> a final `Deno.exit(0)` exits immediately.
+>
+> So a caller that must guarantee its own exit — GRQ's `location` children, for
+> example — has to call `Deno.exit()` after `evolveDir` resolves rather than
+> rely on natural exit. The teardown's warning line is the signal that this
+> matters for a given run: it fires exactly when something was detached.
 
 ## 🤝 Cooperative return vs. forced abandon (Issue #3166)
 
@@ -151,9 +209,12 @@ sequenceDiagram
         evolveDir->>Neat: awaitInFlightTasks() (capped at hardDeadlineTS)
     end
 
-    evolveDir->>Replay: waitForCompletion(hardDeadlineTS)
+    Note over evolveDir: bounded teardown (GRQ #4472)
+    evolveDir-->>evolveDir: 1. load best creature + write creatureStore
+    evolveDir->>Worker: 2. terminate() — budgeted; detach what will not stop
+    evolveDir->>Replay: 3. waitForCompletion(hardDeadlineTS) — budgeted
     Replay-->>Replay: drop queued replay, abort in-flight at next boundary
-    evolveDir->>Caller: load best creature, write creatureStore, return
+    evolveDir->>Caller: teardown summary line, then return
 ```
 
 The data flow, in one line:
@@ -183,6 +244,15 @@ is loaded onto the caller's creature, `creatureStore` is written and loadable,
 and the in-flight maps are empty. The replay-queue hard-cap bound has dedicated
 coverage in
 [`test/NEAT/DiscoveryReplayQueueDeadline.ts`](../test/NEAT/DiscoveryReplayQueueDeadline.ts).
+
+The bounded teardown has its own two layers:
+[`test/creature/BoundedEvolveTeardown.ts`](../test/creature/BoundedEvolveTeardown.ts)
+unit-covers each branch with an injected clock, and
+[`test/creature/EvolveDirBoundedTeardown.ts`](../test/creature/EvolveDirBoundedTeardown.ts)
+drives `evolveDir` end to end with a worker whose `terminate()` never resolves,
+one whose `terminate()` throws, and a replay drain that never settles —
+asserting in every case that the run returns and the champion still reaches
+`creatureStore`.
 
 ## 🔗 Related
 

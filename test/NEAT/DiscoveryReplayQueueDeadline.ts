@@ -90,6 +90,105 @@ Deno.test("DiscoveryReplayQueue - waitForCompletion past the hard cap drops the 
   );
 });
 
+Deno.test("DiscoveryReplayQueue - waitForCompletion returns past the hard cap even when the replay never settles (GRQ #4472)", async () => {
+  const creature = makeBaseCreature();
+  creature.uuid = "fittest-1";
+
+  let inFlightSignal: AbortSignal | undefined;
+  const mockDeps: DiscoveryReplayQueueDeps = {
+    replayDir: (
+      _c: Creature,
+      _dataDir: string,
+      _options: NeatOptions,
+      _timeoutMinutes?: number,
+      control?: DiscoveryReplayControl,
+    ): Promise<DiscoveryReplayDirResult> => {
+      inFlightSignal = control?.signal;
+      // The GRQ-22 shape: a replay wedged in a native call that never returns,
+      // not even when asked to stop. Only the cap can release the wait.
+      return new Promise<DiscoveryReplayDirResult>(() => {});
+    },
+  };
+
+  const queue = new DiscoveryReplayQueue(mockDeps);
+  queue.scheduleReplay(creature, "/tmp/data", {
+    discoveryCacheDir: "/tmp/cache",
+    costOfGrowth: 0,
+  });
+
+  // Epoch ms 1 is always in the past: the drain has zero budget left and must
+  // return rather than block on the wedged replay.
+  await queue.waitForCompletion(1);
+
+  assertEquals(
+    inFlightSignal?.aborted,
+    true,
+    "The wedged replay must be signalled to abort before the wait returns",
+  );
+  assertEquals(
+    queue.isReplayInProgress(),
+    true,
+    "The abandoned replay is left running — it was detached, not awaited",
+  );
+});
+
+Deno.test("DiscoveryReplayQueue - abandonInFlightReplay drops the queued replay and aborts the in-flight one without waiting (GRQ #4472)", async () => {
+  const creature1 = makeBaseCreature();
+  creature1.uuid = "fittest-1";
+  const creature2 = makeBaseCreature();
+  creature2.uuid = "fittest-2";
+
+  const startedUuids: string[] = [];
+  let inFlightSignal: AbortSignal | undefined;
+  const mockDeps: DiscoveryReplayQueueDeps = {
+    replayDir: (
+      c: Creature,
+      _dataDir: string,
+      _options: NeatOptions,
+      _timeoutMinutes?: number,
+      control?: DiscoveryReplayControl,
+    ): Promise<DiscoveryReplayDirResult> => {
+      startedUuids.push(c.uuid ?? "unknown");
+      inFlightSignal = control?.signal;
+      return new Promise<DiscoveryReplayDirResult>((resolve) => {
+        control?.signal?.addEventListener(
+          "abort",
+          () => resolve({ ...EMPTY_RESULT, timedOut: true }),
+        );
+      });
+    },
+  };
+
+  const queue = new DiscoveryReplayQueue(mockDeps);
+  const opts = { discoveryCacheDir: "/tmp/cache", costOfGrowth: 0 };
+  queue.scheduleReplay(creature1, "/tmp/data", opts);
+  queue.scheduleReplay(creature2, "/tmp/data", opts);
+
+  assertEquals(
+    queue.abandonInFlightReplay(),
+    true,
+    "Abandoning a queue holding work must report that it did something",
+  );
+  assertEquals(
+    inFlightSignal?.aborted,
+    true,
+    "The in-flight replay must be signalled to abort",
+  );
+
+  await queue.waitForCompletion(Number.MAX_SAFE_INTEGER);
+  assertEquals(
+    startedUuids,
+    ["fittest-1"],
+    "The dropped queued replay must never start",
+  );
+
+  assertEquals(
+    queue.abandonInFlightReplay(),
+    false,
+    "An idle queue has nothing to abandon",
+  );
+});
+
 Deno.test("DiscoveryReplayQueue - scheduleReplay skips scheduling once past the hard cap", async () => {
   const creature = makeBaseCreature();
   creature.uuid = "fittest-1";
