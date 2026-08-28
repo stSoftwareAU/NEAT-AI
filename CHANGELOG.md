@@ -150,6 +150,26 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **GRQ #4472:** The post-loop teardown is now bounded, so "the loop ended on
+  time" translates into "the run returned on time". Everything after the loop
+  breaks — worker termination, the Issue #1509 replay drain, the champion
+  restore and the `creatureStore` write — used to be unbounded: one unguarded
+  `WorkerHandler.terminate()` throw skipped the drain, the restore **and** the
+  write, and `DiscoveryReplayQueue.waitForCompletion()` only consults its cap
+  _between_ replays, so a replay already in flight when the drain began could
+  hold the run open forever. `evolveDir`, `evolveEnv` and `evolveRL` now share
+  one teardown (`src/creature/BoundedEvolveTeardown.ts`) that persists the
+  champion **first**, then terminates workers and drains the replay queue under
+  an explicit per-step budget (default 5 s), detaching anything that will not
+  stop and naming it in a single summary log line. New
+  `DiscoveryReplayQueue.abandonInFlightReplay()` drops the queued replay and
+  aborts the in-flight one without waiting. Uncapped runs keep the unbounded
+  #1509 drain. Note the limit this does **not** remove: a worker wedged in a
+  synchronous native / WASM call still prevents the Deno process from exiting
+  naturally even after `terminate()` returns, so a caller that must guarantee
+  its own exit has to call `Deno.exit()` — see
+  [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md).
+
 - **GRQ #4470:** `evolveDir` now ends at its own hard deadline
   (`timeoutMinutes + min(15, T)` grace) when a discovery or training child never
   settles. Two holes let a run outlive its cap until an external watchdog killed

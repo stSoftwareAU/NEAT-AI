@@ -345,6 +345,27 @@ export class DiscoveryReplayQueue {
   }
 
   /**
+   * Abandon whatever the queue is holding (GRQ #4472).
+   *
+   * Drops any queued replay so it can never start and signals the in-flight
+   * replay to abort at its next candidate boundary. Unlike
+   * {@link waitForCompletion} this never waits: the post-loop teardown calls it
+   * once its drain budget has expired, so a replay that will not stop is left
+   * detached rather than hung on.
+   *
+   * @returns True when something was actually abandoned.
+   */
+  abandonInFlightReplay(): boolean {
+    const hadQueued = this.#queuedCreature !== null;
+    const hadInFlight = this.#currentAbort !== null;
+    // Issue #3435: dispose the dropped clone so its topology is not retained.
+    this.#queuedCreature?.creature.dispose();
+    this.#queuedCreature = null;
+    this.#currentAbort?.abort();
+    return hadQueued || hadInFlight;
+  }
+
+  /**
    * Wait for any in-progress replay to complete.
    * Useful for testing and graceful shutdown.
    *
@@ -363,11 +384,7 @@ export class DiscoveryReplayQueue {
       // never starts, signal the in-flight replay to abort, and return without
       // awaiting — the abandoned replay stops at its next candidate boundary.
       if (capped && Date.now() >= hardDeadlineTS!) {
-        // Issue #3435: dispose the dropped queued clone before releasing it so
-        // its topology is not retained after we stop waiting at the hard cap.
-        this.#queuedCreature?.creature.dispose();
-        this.#queuedCreature = null;
-        this.#currentAbort?.abort();
+        this.abandonInFlightReplay();
         return;
       }
       const promiseToWait = this.#currentPromise;
