@@ -26,6 +26,9 @@ flowchart LR
         Impact["Impact model"]
         Breed["Grafting / Islands"]
         Score["Scoring and validation"]
+        Crispr["CRISPR injection"]
+        PC["Predictive coding"]
+        Muon["Muon orthogonalisation"]
     end
     subgraph Lit["Literature section"]
         Growth["🌱 Structural growth"]
@@ -36,6 +39,9 @@ flowchart LR
         HGT["🧬 Horizontal gene transfer"]
         Link["🔗 Linkage and epistasis"]
         Valid["📏 Evaluation validity"]
+        Seed["💉 Population seeding"]
+        Pred["🔮 Predictive coding"]
+        Orth["🧮 Orthogonalised gradients"]
     end
     Disc --> Growth
     Disc --> Surrogate
@@ -45,6 +51,9 @@ flowchart LR
     Breed --> HGT
     Breed --> Link
     Score --> Valid
+    Crispr --> Seed
+    PC --> Pred
+    Muon --> Orth
 ```
 
 ## 🧬 NEAT algorithm (standard NEAT)
@@ -95,6 +104,47 @@ that NEAT-AI is competitive.
 - [Backpropagation](https://en.wikipedia.org/wiki/Backpropagation) —
   orientation.
 
+## 🔮 Predictive coding
+
+The local, error-minimising alternative to backpropagation that NEAT-AI ships as
+an optional training mode. The full bibliography for the implementation is in
+[`PREDICTIVE_CODING.md`](../PREDICTIVE_CODING.md#8--references); these are the
+three the comparison docs cite.
+
+- [Predictive Coding in the Visual Cortex: a Functional Interpretation of Some Extra-Classical Receptive-Field Effects](https://doi.org/10.1038/4580)
+  — Rao & Ballard (1999) — **the primary source**: perception as a hierarchy
+  that predicts its own input and propagates only the residual.
+- [An Approximation of the Error Backpropagation Algorithm in a Predictive Coding Network with Local Hebbian Synaptic Plasticity](https://doi.org/10.1162/NECO_a_00949)
+  — Whittington & Bogacz (2017) — the result NEAT-AI's implementation leans on:
+  settle the latents, then a purely local Hebbian update approximates
+  backpropagation.
+- [Predictive Coding: a Theoretical and Experimental Review](https://arxiv.org/abs/2107.12979)
+  — Millidge, Seth & Buckley (2021) — the review of where the family stands,
+  including what it does and does not buy over backpropagation.
+- [Predictive Coding](https://en.wikipedia.org/wiki/Predictive_coding) —
+  orientation.
+
+## 🧮 Orthogonalised gradient updates
+
+Preconditioning a gradient matrix before applying it, rather than stepping along
+the raw gradient — the literature behind the optional Muon-style step.
+
+- [Muon: An Optimizer for Hidden Layers in Neural Networks](https://kellerjordan.github.io/posts/muon/)
+  — Jordan, Jin, Boza, You, Cesista, Newhouse & Bernstein (2024) — **the primary
+  source** for the Newton-Schulz-orthogonalised update NEAT-AI borrows.
+  **Note:** the reported gains are on the large dense 2-D weight matrices of
+  fixed-architecture networks, not on the small per-neuron fan-in matrices of a
+  sparse evolved topology.
+- [Old Optimizer, New Norm: An Anthology](https://arxiv.org/abs/2409.20325) —
+  Bernstein & Newhouse (2024) — why orthogonalising helps: it is steepest
+  descent under a spectral-norm trust region rather than a Euclidean one.
+- [Shampoo: Preconditioned Stochastic Tensor Optimization](https://arxiv.org/abs/1802.09568)
+  — Gupta, Koren & Singer (2018) — the structured-preconditioner family the
+  above sits in.
+- [Functions of Matrices: Theory and Computation](https://doi.org/10.1137/1.9780898717778)
+  — Higham (2008) — the Newton-Schulz iteration for the polar factor, and the
+  scaling conditions it needs to converge.
+
 ## 🤖 Modern LLMs and Transformers
 
 - [Attention Is All You Need](https://arxiv.org/abs/1706.03762) — Vaswani et al.
@@ -136,6 +186,24 @@ below is the reason that choice is not free.
 - [Meta-Lamarckian Learning in Memetic Algorithms](https://doi.org/10.1109/TEVC.2003.819944)
   — Ong & Keane (2004) — choosing _which_ local search to apply, adaptively,
   rather than fixing one. Builds on Moscato's memetic framing above.
+
+## 💉 Population seeding and knowledge injection
+
+Starting or topping up a population with hand-built individuals instead of
+random ones — what NEAT-AI calls CRISPR injection.
+
+- Grefenstette (1987), _Incorporating Problem Specific Knowledge into Genetic
+  Algorithms_, in Davis (ed.), _Genetic Algorithms and Simulated Annealing_, pp.
+  42–60 — the primary statement of the practice: domain knowledge enters an
+  evolutionary algorithm through its initial population and its operators. No
+  stable public copy; cite by chapter.
+- [Seeding the Population: Improved Performance in a Genetic Algorithm for the Rectilinear Steiner Problem](https://doi.org/10.1145/326619.326755)
+  — Julstrom (1994) — the measured version: seeded individuals converge faster,
+  at the cost of diversity in the seeded region.
+- [Learning with Case-Injected Genetic Algorithms](https://doi.org/10.1109/TEVC.2004.823466)
+  — Louis & McDonnell (2004) — injecting stored solutions periodically through
+  the run, not only at generation zero, which is the shape CRISPR injection
+  takes.
 
 ## 🎲 Markov Chain Monte Carlo (MCMC)
 
@@ -237,6 +305,10 @@ and of every sampled screen in the fleet.
 - [Future Paths for Integer Programming and Links to Artificial Intelligence](https://doi.org/10.1016/0305-0548%2886%2990048-1)
   — Glover (1986), tabu search — memory-based search, the ancestor of the
   discovery caches that stop NEAT-AI re-proposing what it has already tried.
+- [Analyzing Bandit-Based Adaptive Operator Selection Mechanisms](https://doi.org/10.1007/s10472-010-9213-y)
+  — Fialho, Da Costa, Schoenauer & Sebag (2010) — adaptive operator selection
+  and credit assignment: spend the next proposal on whatever has been paying
+  off, which is what cache-informed candidate building does.
 
 ## 🔍 Attribution and saliency
 
@@ -304,6 +376,15 @@ discovery, and behind why changing one connection at a time stalls.
   [Distributed Genetic Algorithms](https://dblp.org/rec/conf/icga/Tanese89.html)
   — Tanese (1989) — the island model's primary sources: isolated subpopulations
   with periodic migration.
+- [Training Feedforward Neural Networks Using Genetic Algorithms](https://www.ijcai.org/Proceedings/89-1/Papers/122.pdf)
+  — Montana & Davis (1989) — **the counter-argument to grafting**: two genomes
+  can encode the same function under different neuron orderings, so recombining
+  them destroys both as easily as it combines them. This competing-conventions
+  (permutation) problem is why standard NEAT speciates and refuses cross-species
+  crossover.
+- [Genetic Set Recombination and its Application to Neural Network Topology Optimisation](https://doi.org/10.1007/BF01411376)
+  — Radcliffe (1993) — the formal treatment of the same problem, and of what a
+  recombination operator has to respect to avoid it.
 - [Cosine Similarity](https://en.wikipedia.org/wiki/Cosine_similarity) — the
   measure NEAT-AI uses for neuron alignment in inter-species breeding.
 - [Horizontal Gene Transfer](https://en.wikipedia.org/wiki/Horizontal_gene_transfer)
