@@ -25,6 +25,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3827 (follow-up):** The squash-substitution gate is now part of the
+  public API — `squashSubstitutionBlockedReason`, `canAdoptSquash` and
+  `STRUCTURALLY_CONSTRAINED_SQUASHES` are exported from `mod.ts`, not only from
+  the internal Intelligent Design barrel. An application that applies its own
+  squash substitution (keyed by neuron uuid, because the integer id is not
+  stable across generations) could not reach the copy applied inside
+  `makeModifiedCreature*`, so it kept rebuilding `IF` neurons without a
+  `condition` or with fewer than three inward connections — creatures this
+  library's own validator refuses. One rule, exported once.
+
 - **Issue #3909:** New `mcmc.mcmcAdvantageMode: "rankShaped"` — rank-based
   fitness shaping ([Salimans et al. 2017](https://arxiv.org/abs/1703.03864)) for
   the MCMC acceptance test and parent selection. The M-H test compares the
