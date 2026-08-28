@@ -643,7 +643,12 @@ export function scheduleTraining(
     });
   }
 
-  const p = w.train(creature, trainOptions).then((r) => {
+  // GRQ #4489: dispatch through the tracked call so the task id is known —
+  // without it the stuck-task watchdog can only forget the task, leaving the
+  // request in flight and unsettled for the rest of the run.
+  const { taskID, response } = w.trainTracked(creature, trainOptions);
+
+  const p = response.then((r) => {
     // Issue #3435: discard late completions after a hard-deadline abandon before
     // rebuilding the trained creature, fine-tuning, or writing traces.
     if (neat.isRunAbandonedSince(scheduledEpoch)) {
@@ -786,8 +791,16 @@ export function scheduleTraining(
 
     neat.trainingGainLog?.closeIfOpen(uuid, { outcome: "failed" });
     recordTrainingTaskFailure(neat, creature, uuid, scheduledEpoch, error);
+  }).finally(() => {
+    // GRQ #4489: the handle is only useful while the request is in flight.
+    // Guard on the task id so a later task for the same creature is not
+    // dropped by an earlier one settling.
+    if (neat.trainingTasks.get(uuid)?.taskID === taskID) {
+      neat.trainingTasks.delete(uuid);
+    }
   });
 
+  neat.trainingTasks.set(uuid, { worker: w, taskID });
   neat.trainingInProgress.set(uuid, p);
   // Issue #3053: record this task's absolute per-task wall-clock deadline so the
   // incremental stuck-task watchdog can abandon it promptly if its worker

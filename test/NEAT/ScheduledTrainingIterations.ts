@@ -22,10 +22,14 @@ import { initWasmForTests } from "../_initWasm.ts";
 class CapturingWorker {
   lastOptions: TrainOptions | undefined;
 
-  train(_creature: Creature, options: TrainOptions): Promise<never> {
+  /** GRQ #4489: dispatch is tracked so the task can be cancelled. */
+  trainTracked(
+    _creature: Creature,
+    options: TrainOptions,
+  ): { taskID: number; response: Promise<never> } {
     this.lastOptions = options;
     // Never settles: the test only inspects the dispatched request.
-    return new Promise<never>(() => {});
+    return { taskID: 1, response: new Promise<never>(() => {}) };
   }
 }
 
@@ -40,6 +44,8 @@ function createStubNeat(worker: CapturingWorker): Neat {
     abandonEpoch: 0,
     trainingInProgress: new Map(),
     trainingDeadlines: new Map(),
+    // GRQ #4489: the cancellable handle for each in-flight training task.
+    trainingTasks: new Map(),
     alreadyScheduledMap: new Map<string, number>(),
     trainingRegressionTracker: new TrainingRegressionTracker(),
     heavyWorkerPool: pool,
