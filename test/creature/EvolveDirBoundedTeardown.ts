@@ -20,12 +20,17 @@ import { initWasmForTests } from "../_initWasm.ts";
  * the run open indefinitely — the GRQ-22 shape, where a child produced no log
  * output for ~2.5 h after its deadline had passed.
  *
- * The wedge is injected by replacing one handler's `terminate()` with a promise
- * that never settles, which is what a handler we cannot stop looks like from
- * the teardown's side. The run is put past its hard cap with an injected past
+ * Each wedge is injected at the seam the teardown actually sees: a handler
+ * whose `terminate()` never settles, one that throws, and a replay drain that
+ * never settles. The run is put past its hard cap with an injected past
  * `startTimeMS` (no real sleeps — policy #2888), and `teardownBudgetMS` keeps
- * the abandon prompt. Against the pre-#4472 teardown this test does not fail an
- * assertion — it never returns at all.
+ * the abandon prompt.
+ *
+ * Two of the three fail against the pre-#4472 teardown, and neither fails on an
+ * assertion: the throwing `terminate()` was unguarded, so `evolveDir` rejected
+ * before the champion was ever written; and the wedged drain had no bound at
+ * all, so the run never returned (Deno reports the deadlock as "Promise
+ * resolution is still pending but the event loop has already resolved").
  */
 
 /** Minimal 2-in / 1-out dataset; the model never needs to converge here. */
