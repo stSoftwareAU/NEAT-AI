@@ -34,8 +34,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `mod.ts`) naming the task, the worker, the elapsed time and the reason; a
   worker that missed its own per-task deadline, or that raised an `error` event
   after init, is quarantined — failed loudly, taken out of `WorkerPool`
-  selection and terminated. `WorkerHandler.trainTracked()` is the tracked
-  dispatch that makes the task addressable; `train()` is unchanged.
+  selection and terminated. `Fitness.calculate` skips quarantined workers too,
+  so one wedged worker cannot stall a generation. `WorkerHandler.trainTracked()`
+  is the tracked dispatch that makes the task addressable; `train()` is
+  unchanged.
 
 ### Added
 

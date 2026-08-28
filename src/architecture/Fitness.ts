@@ -461,9 +461,36 @@ export class Fitness {
     // isRunningLongTask() filtering or busy-worker fallback is needed.
     // Issue #3566: All of them evaluate — the removed maxConcurrentEvaluations
     // cap defaulted to 0 (no cap), so this was already the only behaviour.
-    const allWorkers = additionalWorkers && additionalWorkers.length > 0
+    const candidateWorkers = additionalWorkers && additionalWorkers.length > 0
       ? [...this.workers, ...additionalWorkers]
       : this.workers;
+
+    // GRQ #4489: a quarantined worker has been stopped — posting an evaluation
+    // to it buys a promise that can never settle. Skip it. The list is only
+    // kept whole when *every* worker is quarantined, because an empty list
+    // would leave the queue undrained and evolve() asserts on an unscored
+    // creature; in that state the run is finished by the hard-deadline
+    // watchdog, loudly, rather than silently scoring nothing.
+    // `?.` because only an *explicitly* quarantined worker is skipped: the
+    // in-repo test doubles for this path implement `evaluate` alone.
+    const healthyWorkers = candidateWorkers.filter((worker) =>
+      worker.isHealthy?.() !== false
+    );
+    if (healthyWorkers.length < candidateWorkers.length) {
+      getLogger().warn(
+        `[Fitness] ${
+          candidateWorkers.length - healthyWorkers.length
+        } of ${candidateWorkers.length} worker(s) are quarantined and cannot ` +
+          `evaluate${
+            healthyWorkers.length === 0
+              ? " — no healthy worker is left, so this generation cannot be scored"
+              : ""
+          } (GRQ #4489)`,
+      );
+    }
+    const allWorkers = healthyWorkers.length > 0
+      ? healthyWorkers
+      : candidateWorkers;
 
     let settleAbort: (() => void) | undefined;
     const abortPromise = signal
