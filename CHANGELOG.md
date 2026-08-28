@@ -23,6 +23,20 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **GRQ #4471:** The env-derived task budget (`GRQ_TASK_DEADLINE_EPOCH` /
+  `GRQ_TASK_MAX_SECONDS`, added by GRQ #4141) now **clamps** the caller's
+  `timeoutMinutes` instead of replacing it:
+  `min(timeOutMinutes, envBudgetMinutes ?? timeOutMinutes)`. It was used as a
+  substitute, so a `--timeout=4` request under a 3 h node task cap was planned
+  as a **179 m** discovery budget — the library widened a budget its caller
+  asked to narrow. The tighten direction is unchanged (a deadline 2 minutes out
+  still shrinks a 4 m request to 2 m), and with the env vars unset behaviour is
+  exactly what it was. The verbose `… of <n>m budget` line now reports the
+  clamped value and appends `(clamped by task budget)` when the env budget
+  narrowed it.
+
 ### Added
 
 - **Issue #3909:** New `mcmc.mcmcAdvantageMode: "rankShaped"` — rank-based
