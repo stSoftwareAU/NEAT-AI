@@ -140,6 +140,24 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **GRQ #4470:** `evolveDir` now ends at its own hard deadline
+  (`timeoutMinutes + min(15, T)` grace) when a discovery or training child never
+  settles. Two holes let a run outlive its cap until an external watchdog killed
+  it mid-`evolve` — throwing away completed work. The cap was consulted only
+  inside the over-run branch and the `completed` branch, so a generation that
+  tripped neither went straight back into `evolve()` without ever checking it;
+  and the `await neat.evolve()` itself was unbounded, so a generation wedged
+  behind a silent child pinned the loop where no branch could be reached again.
+  The cap is now checked at the top of every pass of the generation loop (the
+  first generation stays exempt, so a run that starts past its cap still commits
+  one population), and the generation itself is bounded by the new
+  `awaitWithinHardDeadline` helper (`src/NEAT/HardDeadlineRace.ts`). Past the
+  cap the wedged generation is abandoned, the evolved population is kept and
+  written, `terminationReason` is `"hard-deadline"`, and control returns to the
+  caller. The abandon log line now names what was abandoned — counts by kind and
+  UUID suffixes — at the moment it happens, and `awaitInFlightTasks()` measures
+  its remaining budget on the evolve loop's own clock.
+
 - **Issue #3892:** The `analyzeParallel` GPU-guard test asserted the Rust
   variant name `GpuPermanent`, but Discovery serialises `DiscoveryErrorKind`
   with `rename_all = "snake_case"`, so the wire value has always been

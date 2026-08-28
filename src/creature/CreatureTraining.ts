@@ -27,12 +27,16 @@ import { EVOLUTION_ONLY_TRAIN_PER_GEN } from "@config/TrainPerGen.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Costs } from "@costs";
 import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
-import { Neat } from "@neat/Neat.ts";
+import { AWAIT_IN_FLIGHT_TIMEOUT_MS, Neat } from "@neat/Neat.ts";
 import {
   computeHardDeadlineTS,
   DEFAULT_OVERRUN_ENFORCEMENT_FACTOR,
   shouldStopStartingGenerations,
 } from "@neat/HardDeadline.ts";
+import {
+  awaitWithinHardDeadline,
+  HARD_DEADLINE_BREACHED,
+} from "@neat/HardDeadlineRace.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
@@ -434,6 +438,30 @@ function requestOverrunStop(neat: Neat, factor: number): void {
 }
 
 /**
+ * GRQ #4470: report and record a generation abandoned mid-flight because the
+ * hard cap passed while it was running.
+ *
+ * The named log line lands at the moment of the abandon — a run that only says
+ * `abandoning 0 in-flight task(s)` after the fact is what hid the GRQ-22 wedge.
+ * `abandonInFlightPastHardDeadline` then clears the in-flight bookkeeping,
+ * sets `terminationReason`, and interrupts any named phase.
+ */
+function abandonWedgedGeneration(
+  neat: Neat,
+  hardDeadlineMS: number,
+  nowFn: () => number,
+  generationsCompleted: number,
+): void {
+  getLogger().warn(
+    `[Neat] Hard deadline (timeoutMinutes + grace) exceeded during ` +
+      `generation ${generationsCompleted + 1} — abandoning the in-flight ` +
+      `generation and keeping the ${generationsCompleted} generation(s) ` +
+      `already evolved`,
+  );
+  neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn());
+}
+
+/**
  * Evolve the creature on a dataset directory using NEAT.
  * Supports multi-threaded workers, checkpointing, and timeout.
  */
@@ -566,6 +594,22 @@ export async function evolveDir(
     DEFAULT_OVERRUN_ENFORCEMENT_FACTOR;
 
   while (true) {
+    // GRQ #4470: the hard cap is consulted on *every* pass, before any branch
+    // decides what to do next. It used to be checked only inside the over-run
+    // branch and the `completed` branch, so a generation that neither
+    // completed nor tripped the over-run predicate went straight back into
+    // evolve() without ever looking at the cap — and both of those branches
+    // fall through to an `awaitInFlightTasks()` that returns immediately once
+    // the cap has passed, so the loop could spin well past its own deadline.
+    // Generation 1 is exempt (as `shouldStopStartingGenerations` is) so a run
+    // that starts already past its cap still commits one evolved population.
+    if (
+      generation > 0 &&
+      neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
+    ) {
+      break;
+    }
+
     if (
       shouldStopStartingGenerations(
         generation,
@@ -575,15 +619,6 @@ export async function evolveDir(
         overrunFactor,
       )
     ) {
-      const nowMS = nowFn();
-      // If the T+15 cap has also passed, the hard-deadline abandon still wins
-      // so existing T+15 tests keep their in-flight-map cleanup.
-      if (
-        hardDeadlineMS && nowMS > hardDeadlineMS &&
-        neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowMS)
-      ) {
-        break;
-      }
       requestOverrunStop(neat, overrunFactor);
       if (interrupted) break;
       // Graceful self-termination: do not take the hard-deadline abandon path.
@@ -591,12 +626,35 @@ export async function evolveDir(
         break;
       }
       // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks();
+      await neat.awaitInFlightTasks(
+        AWAIT_IN_FLIGHT_TIMEOUT_MS,
+        hardDeadlineMS,
+        nowFn,
+      );
       continue;
     }
 
+    // GRQ #4470: bound the generation itself. A discovery/training child that
+    // never settles can hold the resources this generation needs, and an
+    // `await` on a promise that never settles outlives every deadline check in
+    // the loop. Past the cap we abandon the generation, keep the population
+    // evolved so far, and hand control back to the caller — no hard kill.
+    // A run that began already past its cap keeps the unbounded await so it
+    // still produces one committed generation.
+    const deadlineAlreadyPast = hardDeadlineMS > 0 &&
+      nowFn() > hardDeadlineMS;
+    const generationCap = deadlineAlreadyPast ? 0 : hardDeadlineMS;
     // deno-lint-ignore no-await-in-loop
-    const result = await neat.evolve(bestCreature);
+    const outcome = await awaitWithinHardDeadline(
+      neat.evolve(bestCreature),
+      generationCap,
+      nowFn,
+      () => abandonWedgedGeneration(neat, hardDeadlineMS, nowFn, generation),
+    );
+    if (outcome === HARD_DEADLINE_BREACHED) {
+      break;
+    }
+    const result = outcome;
 
     generation++;
 
@@ -685,8 +743,15 @@ export async function evolveDir(
       // full evolve() cycles. This avoids wasting worker resources on fitness
       // evaluation, breeding, and mutation while simply waiting for discovery
       // or training to finish.
+      // GRQ #4470: the wait shares the loop's clock and cap, so once the cap
+      // passes it returns immediately and the guard at the top of the loop
+      // ends the run rather than letting it spin here.
       // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks();
+      await neat.awaitInFlightTasks(
+        AWAIT_IN_FLIGHT_TIMEOUT_MS,
+        hardDeadlineMS,
+        nowFn,
+      );
     }
   }
 
