@@ -534,6 +534,13 @@ export { DEFAULT_DISK_SPACE_CONFIG } from "@config/DiskSpaceConfig.ts";
  */
 export {
   alternativeSquashes,
+  // The Issue #3827 structural gate, reachable from the package root. A
+  // downstream application that applies its own squash substitution — keyed by
+  // neuron uuid, because the integer id is not stable across generations —
+  // cannot call the copy of the gate applied inside `makeModifiedCreature*`,
+  // and so rebuilds the very `IF` neurons this library's validator refuses.
+  // One rule, exported once.
+  canAdoptSquash,
   cleanKnowledge,
   combineImprovements,
   combineKnowledge,
@@ -545,6 +552,8 @@ export {
   safeWriteJsonSync,
   scanForSquashImprovements,
   shuffle,
+  squashSubstitutionBlockedReason,
+  STRUCTURALLY_CONSTRAINED_SQUASHES,
   WorkerHandler as IntelligentDesignWorkerHandler,
 } from "@intelligentDesign/mod.ts";
 export type {
