@@ -118,6 +118,7 @@ import { summariseTrainingOutcomes } from "@creature/TrainingOutcomeTotals.ts";
 import { createScoreTrajectory } from "@creature/ScoreImprovementMilestones.ts";
 import { serialiseOptionsEcho } from "@creature/EvolveOptionsEcho.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Propagate expected values backward through the network for all output neurons.
  *
@@ -260,7 +261,7 @@ export function applyLearnings(
   // whether the gradient step moved anything, so an ordinary backprop pass left
   // `changed === false` and the uuid survived a full training step. Identity is
   // shed unconditionally; the structural repair below stays gated on `changed`.
-  delete creature.uuid;
+  shedIdentity(creature);
 
   if (changed) {
     delete creature.memetic;

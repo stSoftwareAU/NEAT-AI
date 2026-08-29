@@ -6,7 +6,7 @@
  */
 
 import { assert } from "@std/assert";
-import { addTag, getTag } from "@stsoftware/tags/mod";
+import { getTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { trimPopulationToSize } from "@neat/PopulationCap.ts";
@@ -67,6 +67,8 @@ import {
   isSeedWarmupStructuralLockActive,
 } from "@architecture/CreatureFactory.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
+import { recordScore } from "@architecture/ScoreProvenance.ts";
 /**
  * The result returned by a single call to `evolve()`.
  *
@@ -376,7 +378,7 @@ export async function evolve(
     neat.fineTuneTracker.recordOutcome(fineTuneImproved);
   }
 
-  addTag(fittest, "score", fittest.score.toString());
+  recordScore(fittest, fittest.score);
 
   const error = getTag(fittest, "error");
   assert(error, "No error tag found");
@@ -526,7 +528,7 @@ export async function evolve(
     // is where the usual `delete creature.uuid` lives. Without this the
     // structurally-modified clone would enter the new population wearing the
     // elite's uuid and be deduplicated onto the elite's score by `Fitness`.
-    delete creativeThinking.uuid;
+    shedIdentity(creativeThinking);
     const weightScale = 1 / Math.max(creativeThinking.synapses.length, 1);
     const addConnection = new AddConnection(creativeThinking);
     for (let i = 0; i < neat.config.creativeThinkingConnectionCount; i++) {

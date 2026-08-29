@@ -278,14 +278,21 @@ The rule that makes that safe is **provenance**:
    on a production-scale creature (~1,500 neurons / ~20,000 synapses), so the
    short-circuit is a requirement, not an implementation detail — do not "fix"
    identity by making `makeUUID` recompute or re-verify.
-2. **Every in-process mutation sheds identity.** Any edit to a hash input —
-   neuron, synapse, bias, weight, squash, synapse role, frozen flag — must
-   `delete creature.uuid` at the mutation site. `clearCache()`, `clearState()`,
+2. **Every in-process mutation sheds identity — and the score.** Any edit to a
+   hash input — neuron, synapse, bias, weight, squash, synapse role, frozen flag
+   — must call [`shedIdentity(creature)`](./src/architecture/ScoreProvenance.ts)
+   at the mutation site. `clearCache()`, `clearState()`,
    `connect`/`disconnect`/`connectBatch` and `Neuron.setSquash()` all look like
    invalidation points and are **not**; the removal/insertion primitives
    `removeHiddenNeuron()` and `createConstantOne()` are, and clear `uuid`
    alongside `memetic`. The two full safe harbours are `Creature.fix()` and
    `loadFrom()`.
+
+   Do **not** write a bare `delete creature.uuid`. `shedIdentity` drops the
+   `score` tag and its `dataSha` in the same breath (GRQ #4537): a single weight
+   change makes the recorded score wrong, so carrying it past the edit hands the
+   next reader a measurement of a creature that no longer exists. See
+   [Score provenance](#-score-provenance-a-score-and-its-corpus-are-one-fact).
 3. **Identity from outside the process is discarded.** `loadFrom` deliberately
    does **not** adopt the incoming creature-level `uuid` — a uuid read from a
    file, deserialised from JSON, or received over a wire carries no guarantee
@@ -307,6 +314,51 @@ if (startUUID !== endUUID) delete creature.memetic;
 Tags and `score` are excluded from the hash, so a tag-only change must
 invalidate nothing. Regression test:
 [`test/architecture/StaleUuidAfterStructuralChange.ts`](./test/architecture/StaleUuidAfterStructuralChange.ts).
+
+### 🏷️ Score provenance: a score and its corpus are one fact (GRQ #4537)
+
+[`src/architecture/ScoreProvenance.ts`](./src/architecture/ScoreProvenance.ts)
+owns two tags and the rule binding them:
+
+| tag       | meaning                                              |
+| --------- | ---------------------------------------------------- |
+| `score`   | the measured fitness of **this exact** creature      |
+| `dataSha` | the training corpus that number was measured against |
+
+Three consequences worth stating plainly:
+
+- **A present `score` is trustworthy.** It can only be there if nothing has
+  changed since it was measured, because every change site calls `shedIdentity`.
+- **An absent `score` is normal, not a defect.** It means _not yet measured_ —
+  the state of every freshly mutated creature. Consumers must treat absence as
+  "measure it", never as an error.
+- **Neither tag outlives the other.** `recordScore` writes both; `shedScore`
+  drops both. A `dataSha` beside a score it did not describe would be worse than
+  no attribution at all.
+
+NEAT-AI never invents the SHA — it identifies training data by directory path
+only, and a digest computed here would be a _second_ definition that could
+disagree with the host's. The host supplies its own via `setTrainingDataSha()`
+([`src/globalAccessors.ts`](./src/globalAccessors.ts)). With none configured,
+`recordScore` **removes** any inherited `dataSha` rather than stamping a
+placeholder. Scores that were never measured against a corpus at all — episodic
+/ RL rewards, and scores replayed from a memetic record — go through
+`recordScoreWithoutCorpus`.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unmeasured: created / mutated / widened
+    Unmeasured --> Measured: recordScore(score, dataSha)
+    Measured --> Unmeasured: shedIdentity() — any change to a hash input
+    Measured --> Measured: tag-only edit (approach, error, blurbs)
+    note right of Unmeasured
+        no score tag, no dataSha
+        = "not yet measured"
+    end note
+```
+
+Regression test:
+[`test/architecture/ScoreShedOnChange.ts`](./test/architecture/ScoreShedOnChange.ts).
 
 ### Neuron identity: wire UUID vs runtime integer `id` (Issue #1958)
 

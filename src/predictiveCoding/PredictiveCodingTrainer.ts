@@ -32,6 +32,7 @@ import {
 import { getLogger } from "@utils/Logger.ts";
 import { computeEffectiveConfig } from "@predictiveCoding/AdaptiveScaling.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Result from Predictive Coding training.
  */
@@ -212,7 +213,7 @@ export function trainWithPredictiveCoding(
       creature.cachedWasmActivation.free();
       creature.cachedWasmActivation = undefined;
     }
-    delete creature.uuid;
+    shedIdentity(creature);
     delete creature.memetic;
     creature.state.preparedNeurons = false;
 

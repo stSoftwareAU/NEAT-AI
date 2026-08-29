@@ -44,6 +44,7 @@ import {
   withProducerStep,
 } from "@wasm/ProducerCompileGuard.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 function buildIdToIndexMap(creature: CreatureExport): Map<number, number> {
   const idToIndex = new Map<number, number>();
   const inputCount = creature.input ?? 0;
@@ -438,7 +439,7 @@ export function applyCoordinatedStructuralCandidate(
       throwOnRecurrent: "never",
     },
   );
-  delete updated.uuid;
+  shedIdentity(updated);
   try {
     if (updated.forwardOnly === true) {
       updated.validate({ forwardOnly: true });

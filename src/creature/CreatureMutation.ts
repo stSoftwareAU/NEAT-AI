@@ -26,6 +26,7 @@ import { neuronWireLabelForDiagnostics } from "@neuron/NeuronSerialization.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Create a random connection for the neuron at the given index.
  */
@@ -278,7 +279,7 @@ export function fix(
 
   const tmpDebug = creature.DEBUG;
   creature.DEBUG = false;
-  delete creature.uuid;
+  shedIdentity(creature);
   const endUUID = CreatureUtil.makeUUID(creature);
   creature.DEBUG = tmpDebug;
   if (startUUID !== endUUID) {

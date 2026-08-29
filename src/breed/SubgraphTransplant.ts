@@ -24,6 +24,7 @@ import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /** Minimum number of neurons in a transplantable subgraph. */
 const MIN_SUBGRAPH_SIZE = 2;
 /** Maximum number of neurons in a transplantable subgraph. */
@@ -375,7 +376,7 @@ export function subgraphTransplant(
   }
 
   // Reject clones
-  delete offspring.uuid;
+  shedIdentity(offspring);
   const childUUID = CreatureUtil.makeUUID(offspring);
   if (!childUUID) return undefined;
 

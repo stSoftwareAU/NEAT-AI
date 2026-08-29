@@ -28,6 +28,7 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Adds new neurons to the creature if they improve performance.
  *
@@ -346,7 +347,7 @@ export function addHelpfulNeurons(
 
   const tmpCreature = Creature.fromJSON(exportJSON);
   // We added neurons and synapses to the structure, so we must delete UUID to get a new one
-  delete tmpCreature.uuid;
+  shedIdentity(tmpCreature);
 
   // Validate and fix if needed
   const beforeFixSynapseCount = tmpCreature.synapses.length;
@@ -458,7 +459,7 @@ export function changeSquash(
 
   const tmpCreature = Creature.fromJSON(exportJSON);
   // We changed squash functions, so we must delete UUID to get a new one
-  delete tmpCreature.uuid;
+  shedIdentity(tmpCreature);
 
   // Validate and fix if needed
   // Squash changes should rarely (if ever) require fix(), but handle edge cases

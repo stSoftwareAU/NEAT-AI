@@ -26,6 +26,7 @@ import { WorkerHandler } from "@intelligentDesign/workers/WorkerHandler.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { squashSubstitutionBlockedReason } from "@intelligentDesign/SquashSubstitutionEligibility.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
+import { recordScore } from "@architecture/ScoreProvenance.ts";
 
 function remainingTimeMs(deadlineMs: number): number {
   return Math.max(0, deadlineMs - Date.now());
@@ -795,7 +796,7 @@ export async function combineImprovements(
     } improved by ${(result.score - bestScore).toPrecision(3)}`;
 
     const exported = finalCreature.exportJSON();
-    addTag(exported, "score", `${result.score}`);
+    recordScore(exported, result.score);
     addTag(exported, "error", `${result.error}`);
     addTag(exported, "intelligentDesign", message);
 

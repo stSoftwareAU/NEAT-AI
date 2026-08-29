@@ -44,6 +44,7 @@ import {
 import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Issue #3473: The pre-fix offspring snapshot is only consumed by the rare
  * WASM-compile-failure diagnostic dump in `Offspring.breed`. Routing the
@@ -584,7 +585,7 @@ export class Offspring {
 
     offspring.clearState();
 
-    delete offspring.uuid;
+    shedIdentity(offspring);
     const childUUID = CreatureUtil.makeUUID(offspring);
 
     // Issue #2672: Capture the post-splice/pre-fix offspring snapshot so the
@@ -665,7 +666,7 @@ export class Offspring {
       // the genome crossover produced — but callers read `offspring.uuid`
       // directly, so it must end up describing what the offspring really is.
       if (offspring.synapses.length !== synapsesBeforeRepair) {
-        delete offspring.uuid;
+        shedIdentity(offspring);
         CreatureUtil.makeUUID(offspring);
       }
     }

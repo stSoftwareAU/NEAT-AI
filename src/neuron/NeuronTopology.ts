@@ -15,6 +15,7 @@ import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { isFixableActivation } from "@neuron/NeuronActivation.ts";
 import { stripRolesAndCoalesceSources } from "@architecture/RepairInvalidIfNeurons.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Ensures this neuron has valid topology (connections, outward links).
  */
@@ -219,7 +220,7 @@ export function mutate(neuron: Neuron, method: string): boolean {
         "INVALID_STATE",
       );
   }
-  delete neuron.creature.uuid;
+  shedIdentity(neuron.creature);
   neuron.creature.state.preparedNeurons = false;
   return true;
 }

@@ -33,6 +33,7 @@ import { runEpisode } from "@creature/EpisodeRunner.ts";
 import type { EpisodeWorkerPool } from "@creature/EpisodeWorkerPool.ts";
 import type { EpisodeTrialsEvent } from "@creature/EpisodicFitnessTypes.ts";
 import { defaultRewardToError } from "@creature/EpisodicFitnessTypes.ts";
+import { recordScoreWithoutCorpus } from "@architecture/ScoreProvenance.ts";
 
 /**
  * Per-trial outcome captured during fitness evaluation. We retain `steps`
@@ -418,7 +419,7 @@ export class RLEpisodeFitness<S, A> extends Fitness {
       addTag(creature, "error", "Infinity");
       addTag(creature, "trialRewards", trialRewards.join(","));
       creature.score = -Infinity;
-      addTag(creature, "score", creature.score.toString());
+      recordScoreWithoutCorpus(creature, creature.score);
       addTag(creature, "meanReward", meanReward.toString());
       return { scoreMs: 0, scored: false };
     }
@@ -448,7 +449,7 @@ export class RLEpisodeFitness<S, A> extends Fitness {
       creature.score = -Infinity;
     }
 
-    addTag(creature, "score", creature.score.toString());
+    recordScoreWithoutCorpus(creature, creature.score);
     addTag(creature, "trialRewards", trialRewards.join(","));
     // Issue #2629: tag the mean return so `Creature.evolveRL()` can recover
     // the fittest creature's raw RL return for milestone telemetry, even
@@ -503,7 +504,7 @@ export class RLEpisodeFitness<S, A> extends Fitness {
       if (duplicate === creature) continue;
       duplicate.score = creature.score;
       if (errorTag) addTag(duplicate, "error", errorTag);
-      if (scoreTag) addTag(duplicate, "score", scoreTag);
+      if (scoreTag) recordScoreWithoutCorpus(duplicate, scoreTag);
       if (trialsTag) addTag(duplicate, "trialRewards", trialsTag);
       if (meanRewardTag) addTag(duplicate, "meanReward", meanRewardTag);
     }

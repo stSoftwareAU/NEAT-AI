@@ -41,6 +41,7 @@ import { writeDiagnostics } from "@utils/Diagnostics.ts";
 import { exportJSONUnchecked } from "@creature/CreatureSerialization.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Cache entry for valid mutation candidates.
  * Stores both the filtered candidates and pre-computed weight/bias count.
@@ -538,7 +539,7 @@ export class Mutator {
 
           creature.clearState();
           delete creature.memetic;
-          delete creature.uuid;
+          shedIdentity(creature);
           creature.state.preparedNeurons = false;
           if (original) {
             // Issue #2322: Only call memeticUpdate when original has a memetic.
@@ -1034,7 +1035,7 @@ export class Mutator {
     }
 
     if (changed) {
-      delete creature.uuid;
+      shedIdentity(creature);
       creature.state.preparedNeurons = false;
     }
 

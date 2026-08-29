@@ -27,6 +27,7 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /** Minimal mutable neuron shape the compensation helper edits (bias fold). */
 interface CompensableNeuron {
   uuid?: string;
@@ -310,7 +311,7 @@ export function removeHarmfulNeuron(
 
   const tmpCreature = Creature.fromJSON(simplifiedExport);
   // We modified the structure, so we must delete UUID
-  delete tmpCreature.uuid;
+  shedIdentity(tmpCreature);
 
   // Validate and fix if needed
   const validationResult = validateAndFixIfNeeded(
@@ -508,7 +509,7 @@ export function removeLowImpactNeuron(
 
   const tmpCreature = Creature.fromJSON(simplifiedExport);
   // We modified the structure, so we must delete UUID
-  delete tmpCreature.uuid;
+  shedIdentity(tmpCreature);
 
   // Validate and fix if needed
   const validationResult = validateAndFixIfNeeded(

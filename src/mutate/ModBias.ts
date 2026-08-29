@@ -8,6 +8,7 @@ import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Mutation operator that modifies neuron biases.
  *
@@ -63,7 +64,7 @@ export class ModBias extends AbstractMutationOperator {
       assert(Number.isFinite(neuron.bias), "bias must be a number");
 
       // Clear cached state, matching the side effects of Neuron.mutate()
-      delete this.creature.uuid;
+      shedIdentity(this.creature);
       this.creature.state.preparedNeurons = false;
 
       return true;

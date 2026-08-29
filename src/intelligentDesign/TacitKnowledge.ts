@@ -16,6 +16,7 @@ import { Creature } from "@creature";
 import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { squashSubstitutionBlockedReason } from "@intelligentDesign/SquashSubstitutionEligibility.ts";
+import { recordScore } from "@architecture/ScoreProvenance.ts";
 
 /**
  * Tacit knowledge is a mapping from neuron UUID to squash function name.
@@ -286,7 +287,7 @@ export async function applyNeuronChanges(
   const result = await finalCreature.scoreDir(dataDir, options);
 
   const exported = finalCreature.exportJSON();
-  addTag(exported, "score", `${result.score}`);
+  recordScore(exported, result.score);
   addTag(exported, "error", `${result.error}`);
 
   return {

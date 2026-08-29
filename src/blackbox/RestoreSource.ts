@@ -4,6 +4,10 @@ import { Creature } from "../../mod.ts";
 import type { Approach } from "@neat/LogApproach.ts";
 import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
 import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
+import {
+  recordScoreWithoutCorpus,
+  shedScore,
+} from "@architecture/ScoreProvenance.ts";
 
 /**
  * Restores a creature from its memetic source data.
@@ -104,8 +108,13 @@ export function restoreSource(creature: Creature): Creature | undefined {
   addTag(restoredCreature, "approach", "fine" as Approach);
   addTag(restoredCreature, "approach-logged", "fine" as Approach);
 
+  // GRQ #4537: the weight loop above rewrote the creature, so whatever score
+  // rode in on the export describes something else now. Shed it first; the
+  // memetic record's own score is then the only claim that can survive, and it
+  // names no corpus.
+  shedScore(restoredCreature);
   if (!creature.score || memetic.score < creature.score) {
-    addTag(restoredCreature, "score", memetic.score.toString());
+    recordScoreWithoutCorpus(restoredCreature, memetic.score);
   }
 
   const realCreature = Creature.fromJSON(restoredCreature);

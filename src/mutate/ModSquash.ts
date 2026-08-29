@@ -5,6 +5,7 @@ import { Activations } from "@methods/activations/Activations.ts";
 import type { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Mutation operator that swaps a neuron's squash (activation) function.
  *
@@ -69,7 +70,7 @@ export class ModActivation extends AbstractMutationOperator {
     removeTag(neuron, "CRISPR");
 
     // Mirror the post-mutation invariants set in NeuronTopology.mutate().
-    delete this.creature.uuid;
+    shedIdentity(this.creature);
     this.creature.state.preparedNeurons = false;
 
     // Record the pending mutation so the next fitness pass can update the

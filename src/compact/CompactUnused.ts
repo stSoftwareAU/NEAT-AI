@@ -32,6 +32,7 @@ import {
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 export function compactUnused(
   traced: CreatureTrace,
   plankConstant: number,
@@ -167,7 +168,7 @@ export function removeNeuron(
   // before `removeHiddenNeuron` runs, and every bail-out path below returns
   // `false` with those edits already applied. Shed identity up front so a
   // partial removal cannot leave the creature wearing its previous uuid.
-  delete creature.uuid;
+  shedIdentity(creature);
 
   let useConstant = false;
   const fromList = creature.outwardConnections(neuron.index);

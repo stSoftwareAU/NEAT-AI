@@ -31,6 +31,7 @@ import type {
   DiscoveryChangeType,
 } from "@discovery/DiscoveryCandidates.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 // Re-export for backward compatibility.
 export {
   buildCombinedNeuronCandidate,
@@ -302,7 +303,7 @@ export function persistentlyRemoveHarmfulSynapse(
 
       const updated = Creature.fromJSON(exportJSON);
       // We modified the structure by filtering synapses, so we must delete UUID
-      delete updated.uuid;
+      shedIdentity(updated);
       validateAndFixCreatureSync(updated, "remove-synapse");
 
       // Verify it's still removed after fix()

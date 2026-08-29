@@ -34,6 +34,7 @@ import { repairInvalidIfNeuron } from "@architecture/RepairInvalidIfNeurons.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 import { neuronWireLabelForDiagnostics } from "@neuron/NeuronSerialization.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /** One entry in the repair's audit trail: rule → element → action. */
 export interface RepairAction {
   /** The validation rule that failed. */
@@ -128,7 +129,7 @@ export function applyTargetedRepair(
       neuron.type = "constant";
       neuron.setSquash(undefined);
       moveConstantNeuronIntoPrefix(creature, named.indx);
-      delete creature.uuid;
+      shedIdentity(creature);
       delete creature.memetic;
       creature.clearCache();
       return {
@@ -214,7 +215,7 @@ function removeSynapses(
   if (removed === 0) return 0;
 
   creature.synapses = kept;
-  delete creature.uuid;
+  shedIdentity(creature);
   delete creature.memetic;
   creature.clearCache();
   return removed;

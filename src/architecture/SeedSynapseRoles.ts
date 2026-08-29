@@ -25,6 +25,7 @@ import type { Creature } from "@creature";
 import { TopologyError } from "@errors/TopologyError.ts";
 import { STRUCTURALLY_CONSTRAINED_SQUASHES } from "@intelligentDesign/SquashSubstitutionEligibility.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * The three roles, in the order a seed assigns them. `CreatureValidate`
  * requires one inward synapse of each.
@@ -87,7 +88,7 @@ export function assignSeedSynapseRoles(
   if (assigned) {
     // Synapse roles feed the content-derived identity (Issue #3843), so a
     // uuid minted before the roles existed no longer describes the creature.
-    delete creature.uuid;
+    shedIdentity(creature);
     creature.clearCache();
   }
 }

@@ -3,6 +3,7 @@ import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { Creature } from "@creature";
 import { outputNeuronId } from "@architecture/NeuronId.ts";
 import type { CrisprInterface } from "@reconstruct/CRISPR.ts";
+import { shedScore } from "@architecture/ScoreProvenance.ts";
 import { verifiedRepair } from "@repair/VerifiedRepair.ts";
 
 /**
@@ -88,6 +89,11 @@ export class Upgrade {
     assert(adjIndex >= 0, `Can only expand models ${json.input} -> ${input}`);
 
     json2.input = input;
+    // GRQ #4537: widening is a change. The creature now reads observations it
+    // has never been scored against, so the score it arrived with — and the
+    // corpus that score names — describe a narrower creature that no longer
+    // exists. Shed them here rather than let `fromJSON` re-adopt them.
+    shedScore(json2);
     const creature = Creature.fromJSON(json2);
 
     verifiedRepair(creature, { pass: "Upgrade.correct" });

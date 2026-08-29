@@ -25,6 +25,7 @@ import {
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { synapseTripleKey } from "@architecture/SynapseKey.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Builds a map from neuron UUID to the weight of connections going to
  * any of the specified output neuron UUIDs.
@@ -223,7 +224,7 @@ export function inputWeightCrossover(
   const offspring = Creature.fromJSON(offspringExport);
   offspring.fix();
 
-  delete offspring.uuid;
+  shedIdentity(offspring);
   const childUUID = CreatureUtil.makeUUID(offspring);
   if (!childUUID) return undefined;
 

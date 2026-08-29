@@ -24,6 +24,7 @@ import type {
   EpisodeTrialsEvent,
   LegacyEpisodeAdapter,
 } from "@creature/EpisodicFitnessTypes.ts";
+import { recordScoreWithoutCorpus } from "@architecture/ScoreProvenance.ts";
 
 /**
  * Constructor dependencies for {@link EpisodicFitness}. Mirrors the
@@ -199,7 +200,7 @@ export class EpisodicFitness<S, A> extends Fitness {
         addTag(creature, "error", "Infinity");
         addTag(creature, "trialRewards", trialRewards.join(","));
         creature.score = -Infinity;
-        addTag(creature, "score", creature.score.toString());
+        recordScoreWithoutCorpus(creature, creature.score);
         this.fanOutToDuplicates(creature, duplicates);
         continue;
       }
@@ -227,7 +228,7 @@ export class EpisodicFitness<S, A> extends Fitness {
         creature.score = -Infinity;
       }
 
-      addTag(creature, "score", creature.score.toString());
+      recordScoreWithoutCorpus(creature, creature.score);
       addTag(creature, "trialRewards", trialRewards.join(","));
 
       // Per-creature variance telemetry. Population-standard-deviation
@@ -319,7 +320,7 @@ export class EpisodicFitness<S, A> extends Fitness {
       if (duplicate === creature) continue;
       duplicate.score = creature.score;
       if (errorTag) addTag(duplicate, "error", errorTag);
-      if (scoreTag) addTag(duplicate, "score", scoreTag);
+      if (scoreTag) recordScoreWithoutCorpus(duplicate, scoreTag);
       if (trialsTag) addTag(duplicate, "trialRewards", trialsTag);
     }
   }

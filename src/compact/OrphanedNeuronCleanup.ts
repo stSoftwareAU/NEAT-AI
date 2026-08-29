@@ -14,6 +14,7 @@ import { CreatureExportBuilder } from "@utils/CreatureExportBuilder.ts";
 import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 import { Activations } from "@methods/activations/Activations.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Up to three compact-unused unity constants (slots 0..2). Resolved by this tag
  * on the neuron; new neurons use {@link allocateStructuralNeuronIdForCreature}
@@ -50,7 +51,7 @@ export function createConstantOne(creature: Creature, count: number) {
   // Issue #3843: this splices a neuron into a live creature, so the
   // content-derived identity no longer describes it. `clearCache()` at the end
   // looks like the invalidation point but deliberately never touches `uuid`.
-  delete creature.uuid;
+  shedIdentity(creature);
   const slotKey = String(count);
   const legacyId = count === 0 ? -1000 : count === 1 ? -1001 : -1002;
 
@@ -139,7 +140,7 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
   // so removing a neuron invalidates it exactly as it invalidates `memetic`.
   // Clearing both in the primitive covers all 13 call sites — `clearCache()`
   // looks like the invalidation point but deliberately never touches identity.
-  delete creature.uuid;
+  shedIdentity(creature);
   delete creature.memetic;
   const neuron = creature.neurons[indx];
 

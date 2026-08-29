@@ -17,6 +17,7 @@ import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOn
 import { assertSynapsesSortedByFromTo } from "@architecture/SynapseOrderGuard.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Selects a suitable outward connection target for a newly inserted neuron.
  *
@@ -61,7 +62,7 @@ export class AddNeuron extends AbstractMutationOperator {
     const creature = this.creature;
     const rng = getRandomNumberGenerator();
     const startUUID = CreatureUtil.makeUUID(creature);
-    delete creature.uuid;
+    shedIdentity(creature);
     const forwardOnly = creature.forwardOnly === true;
     // Issue #2421: Clamp the initial bias proactively. The `rng.random() * 0.2 - 0.1`
     // range is already safe, but running the bias through the guard keeps

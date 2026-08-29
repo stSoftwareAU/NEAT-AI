@@ -30,6 +30,7 @@ import {
   synapseTripleKey,
 } from "@architecture/SynapseKey.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 export function applyAddSynapses(
   creatureJSON: CreatureExport,
   candidateJSON: CreatureExport,
@@ -83,7 +84,7 @@ export function applyAddSynapses(
       throwOnRecurrent: "never",
     },
   );
-  delete result.uuid;
+  shedIdentity(result);
   validateAndFixCreatureSync(result, "add-synapses");
   // Issue #2515: post-condition fail-fast — name the producer if a
   // forward-only base ever leaves this combiner with a recurrent edge.
@@ -222,7 +223,7 @@ export function applyAddNeurons(
       throwOnRecurrent: "never",
     },
   );
-  delete result.uuid;
+  shedIdentity(result);
   validateAndFixCreatureSync(result, "add-neurons");
   // Issue #2515: post-condition fail-fast — name the producer.
   assertNoRecurrentSynapseOnForwardOnly(
@@ -280,7 +281,7 @@ export function applyChangeSquash(
       throwOnRecurrent: "never",
     },
   );
-  delete result.uuid;
+  shedIdentity(result);
   validateAndFixCreatureSync(result, "change-squash");
   // Issue #2515: post-condition fail-fast — name the producer.
   assertNoRecurrentSynapseOnForwardOnly(
@@ -362,7 +363,7 @@ export function applyRemoveSynapse(
       throwOnRecurrent: "never",
     },
   );
-  delete result.uuid;
+  shedIdentity(result);
   validateAndFixCreatureSync(result, "remove-synapse");
   // Issue #2515: post-condition fail-fast — name the producer.
   assertNoRecurrentSynapseOnForwardOnly(
@@ -467,7 +468,7 @@ export function applyRemoveNeuron(
       throwOnRecurrent: "never",
     },
   );
-  delete result.uuid;
+  shedIdentity(result);
   validateAndFixCreatureSync(result, changeType);
   // Issue #2515: post-condition fail-fast — name the producer.
   // changeType differentiates remove-neuron / remove-low-impact /

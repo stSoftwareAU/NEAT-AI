@@ -13,6 +13,7 @@ import {
   withProducerStep,
 } from "@wasm/ProducerCompileGuard.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Recommended `index` for the first output neuron in append-mode CRISPR DNA
  * (Issue #2509).
@@ -706,7 +707,7 @@ export class CRISPR {
       throw e;
     }
 
-    delete modifiedCreature.uuid;
+    shedIdentity(modifiedCreature);
     delete modifiedCreature.memetic;
 
     try {

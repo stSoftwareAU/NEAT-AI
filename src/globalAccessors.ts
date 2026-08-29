@@ -40,3 +40,30 @@ export function getGlobalDebug(): boolean {
 export function setGlobalDebug(value: boolean | undefined): void {
   g.DEBUG = value;
 }
+
+/**
+ * The host's fingerprint for the training corpus creatures are scored against
+ * (GRQ #4537).
+ *
+ * NEAT-AI identifies training data by directory path only, so it cannot derive
+ * this itself without inventing a second definition that could disagree with
+ * the host's. The host sets it once; `recordScore` stamps it beside every
+ * score it writes.
+ *
+ * Returns `undefined` when the host has not configured one — absence means
+ * *unknown corpus*, and is never substituted with a placeholder.
+ */
+export function getTrainingDataSha(): string | undefined {
+  const sha = g.__NEAT_AI_TRAINING_DATA_SHA;
+  return typeof sha === "string" && sha.length > 0 ? sha : undefined;
+}
+
+/**
+ * Set the training-data SHA stamped alongside every recorded score.
+ *
+ * Pass `undefined` to clear it — subsequent scores are then recorded with no
+ * corpus attribution rather than a stale one.
+ */
+export function setTrainingDataSha(value: string | undefined): void {
+  g.__NEAT_AI_TRAINING_DATA_SHA = value;
+}

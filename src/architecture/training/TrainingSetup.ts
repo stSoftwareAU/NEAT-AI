@@ -25,6 +25,7 @@ import type {
   CreatureTrace,
 } from "@architecture/CreatureInterfaces.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Formats a fractional percentage value with colour highlighting.
  *
@@ -187,7 +188,7 @@ export function prepareTraining(
     // `prepareTraining` ran, and neither `clearState()` nor `connectBatch`
     // touches identity, so shed it here rather than let the stale value live
     // for the whole run (it reaches disk as a trace filename).
-    delete creature.uuid;
+    shedIdentity(creature);
   }
 
   const bestCreatureJSON = exportJSONWithRuntimeIds(creature);

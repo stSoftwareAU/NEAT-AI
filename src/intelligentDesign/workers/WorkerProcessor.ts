@@ -12,6 +12,7 @@ import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { initialiseWasmActivationFromPayload } from "@workers/WasmWorkerInit.ts";
 import type { RequestData } from "@intelligentDesign/workers/WorkerHandler.ts";
 import type { ResponseData } from "@intelligentDesign/workers/ResponseData.ts";
+import { recordScore } from "@architecture/ScoreProvenance.ts";
 
 /**
  * Processes scoring requests in a worker thread.
@@ -54,7 +55,7 @@ export class WorkerProcessor {
       );
       const result = await adjustedCreature.scoreDir(dataDir, options);
       const exported = adjustedCreature.exportJSON();
-      addTag(exported, "score", `${result.score}`);
+      recordScore(exported, result.score);
       addTag(exported, "error", `${result.error}`);
 
       return {

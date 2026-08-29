@@ -19,6 +19,7 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryWireIdentity.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Removes a synapse from the creature if it is determined to be harmful.
  * This method is used to prune synapses that consistently worsen prediction error.
@@ -96,7 +97,7 @@ export function removeSynapse(
 
   const tmpCreature = Creature.fromJSON(exportJSON);
   // We modified the structure by filtering synapses, so we must delete UUID
-  delete tmpCreature.uuid;
+  shedIdentity(tmpCreature);
   delete tmpCreature.memetic;
 
   // Validate the creature - only call fix() as a last resort
@@ -269,7 +270,7 @@ export function addHelpfulSynapses(
 
   const tmpCreature = Creature.fromJSON(exportJSON);
   // We added synapses to the structure, so we must delete UUID to get a new one
-  delete tmpCreature.uuid;
+  shedIdentity(tmpCreature);
 
   // Validate and fix if needed
   const beforeFixSynapseCount = tmpCreature.synapses.length;

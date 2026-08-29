@@ -24,6 +24,7 @@ import {
   nativeDatasetScoringEligibility,
 } from "../score/NativeDatasetScoringEligibility.ts";
 import { resolveRecurrentDirectorySupport } from "../score/RecurrentDirectoryProbe.ts";
+import { recordScore } from "@architecture/ScoreProvenance.ts";
 
 /**
  * Evaluates fitness scores for a population of creatures.
@@ -376,7 +377,7 @@ export class Fitness {
                 scorerMsAccum += performance.now() - scoreStart;
                 batchScoredCount++;
               }
-              addTag(creature, "score", creature.score.toString());
+              recordScore(creature, creature.score);
 
               // Mirror the duplicate-fan-out from the per-creature path so
               // population score invariants hold identically in batch mode.
@@ -390,7 +391,7 @@ export class Fitness {
                     if (duplicate !== creature) {
                       duplicate.score = creature.score;
                       if (errorTag) addTag(duplicate, "error", errorTag);
-                      if (scoreTag) addTag(duplicate, "score", scoreTag);
+                      if (scoreTag) recordScore(duplicate, scoreTag);
                     }
                   }
                 }
@@ -520,7 +521,7 @@ export class Fitness {
         scorerMsAccum += performance.now() - scoreStart;
         workerScoredCount++;
       }
-      addTag(creature, "score", creature.score.toString());
+      recordScore(creature, creature.score);
 
       // Issue #1016: Copy score and tags to duplicate creatures
       const uuid = creature.uuid;
@@ -536,7 +537,7 @@ export class Fitness {
                 addTag(duplicate, "error", errorTag);
               }
               if (scoreTag) {
-                addTag(duplicate, "score", scoreTag);
+                recordScore(duplicate, scoreTag);
               }
             }
           }
@@ -563,7 +564,7 @@ export class Fitness {
         if (creature.score === undefined) {
           addTag(creature, "error", "Infinity");
           creature.score = -Infinity;
-          addTag(creature, "score", creature.score.toString());
+          recordScore(creature, creature.score);
         }
       }
     }

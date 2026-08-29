@@ -9,6 +9,7 @@
 import type { Creature } from "@creature";
 import { coalesceInwardDuplicates } from "@architecture/CoalesceInwardSynapses.ts";
 
+import { shedIdentity } from "@architecture/ScoreProvenance.ts";
 /**
  * Strip inward synapse roles on the neuron at `indx`, then coalesce any source
  * that fed it more than once.
@@ -95,7 +96,7 @@ export function repairInvalidIfNeuron(
   if (!ifNeuronStructurallyInvalid(creature, indx)) return false;
 
   downgradeToIdentity(creature, indx);
-  shedIdentity(creature);
+  shedIdentityAndCaches(creature);
   return true;
 }
 
@@ -113,13 +114,13 @@ export function repairInvalidIfNeuronsInCreature(creature: Creature): boolean {
     changed = true;
   }
   if (changed) {
-    shedIdentity(creature);
+    shedIdentityAndCaches(creature);
   }
   return changed;
 }
 
 /** Drop the caches and the content-derived identity the downgrade invalidated. */
-function shedIdentity(creature: Creature): void {
+function shedIdentityAndCaches(creature: Creature): void {
   // Issue #3843: the repair rewrites a neuron's squash to IDENTITY and strips
   // synapse `type` roles — both are inputs to the creature hash, so the
   // content-derived identity no longer describes the creature. `clearCache()`
@@ -127,7 +128,7 @@ function shedIdentity(creature: Creature): void {
   // `uuid`, and `Neuron.setSquash` does not compensate. Shedding it here
   // covers every caller, including the `Upgrade.validateFourX` IF-repair
   // branch that returns without the `fix()` the other three rely on.
-  delete creature.uuid;
+  shedIdentity(creature);
   delete creature.memetic;
   creature.clearCache();
 }
