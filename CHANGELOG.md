@@ -25,6 +25,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #3940:** `evolveDir` can no longer return `generation === 0` because
+  of the hard deadline. The T+grace cap used to abandon the in-flight first
+  generation (`keeping the 0 generation(s) already evolved`), leaving the
+  population unscored with no winner to publish — while
+  `shouldStopStartingGenerations` had always refused to stop a run with nothing
+  banked. The cap now applies the same one-generation floor through a single
+  chokepoint (`shouldAbandonInFlight` → `Neat.abandonInFlightPastHardDeadline`),
+  and `evolveDir` awaits generation 1 uncapped. Once one generation is in hand
+  the #2892 / #2896 behaviour is unchanged.
+
 - **GRQ #4471:** The env-derived task budget (`GRQ_TASK_DEADLINE_EPOCH` /
   `GRQ_TASK_MAX_SECONDS`, added by GRQ #4141) now **clamps** the caller's
   `timeoutMinutes` instead of replacing it:

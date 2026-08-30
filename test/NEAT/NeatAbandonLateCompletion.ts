@@ -106,6 +106,8 @@ Deno.test("recordDiscoveryComplete: discards late completion after hard-deadline
     neat.discoveryInProgress.set(uuid, new Promise(() => {}));
 
     // Hard-deadline abandon clears the maps and bumps the abandon token.
+    // Issue #3940: the cap only fires once a generation has been banked.
+    neat.generationsCompleted = 1;
     neat.abandonInFlightPastHardDeadline(Date.now() - 1000);
 
     const recorded = neat.recordDiscoveryComplete(
@@ -196,6 +198,8 @@ Deno.test("recordTrainingComplete: discards late completion after hard-deadline 
     neat.trainingInProgress.set(uuid, new Promise(() => {}));
     neat.trainingDeadlines.set(uuid, Date.now() + 60_000);
 
+    // Issue #3940: the cap only fires once a generation has been banked.
+    neat.generationsCompleted = 1;
     neat.abandonInFlightPastHardDeadline(Date.now() - 1000);
 
     const recorded = neat.recordTrainingComplete(
@@ -234,6 +238,8 @@ Deno.test("abandonInFlightPastHardDeadline: bumps the abandon token so prior tas
     );
 
     neat.trainingInProgress.set("t", new Promise(() => {}));
+    // Issue #3940: the cap only fires once a generation has been banked.
+    neat.generationsCompleted = 1;
     neat.abandonInFlightPastHardDeadline(Date.now() - 1000);
 
     assert(
@@ -259,6 +265,8 @@ Deno.test("abandon before the cap does not invalidate scheduled tasks", async ()
     neat.trainingInProgress.set("t", Promise.resolve());
 
     // Deadline in the future: no abandon, token unchanged.
+    // Issue #3940: the cap only fires once a generation has been banked.
+    neat.generationsCompleted = 1;
     neat.abandonInFlightPastHardDeadline(Date.now() + 60_000);
 
     assertEquals(neat.isRunAbandonedSince(epoch), false);

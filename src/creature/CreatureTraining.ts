@@ -647,11 +647,12 @@ export async function evolveDir(
     // `await` on a promise that never settles outlives every deadline check in
     // the loop. Past the cap we abandon the generation, keep the population
     // evolved so far, and hand control back to the caller — no hard kill.
-    // A run that began already past its cap keeps the unbounded await so it
-    // still produces one committed generation.
-    const deadlineAlreadyPast = hardDeadlineMS > 0 &&
-      nowFn() > hardDeadlineMS;
-    const generationCap = deadlineAlreadyPast ? 0 : hardDeadlineMS;
+    // Issue #3940: the first generation keeps the unbounded await — whether the
+    // run began past its cap or the cap passes while generation 1 is in flight.
+    // Bounding it returned `0 generation(s) already evolved`: an unscored
+    // population with no winner to publish, and a whole team slot banked
+    // nothing. Every later generation is bounded exactly as before.
+    const generationCap = generation === 0 ? 0 : hardDeadlineMS;
     // deno-lint-ignore no-await-in-loop
     const outcome = await awaitWithinHardDeadline(
       neat.evolve(bestCreature),
