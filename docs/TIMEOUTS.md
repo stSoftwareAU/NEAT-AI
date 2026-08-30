@@ -11,6 +11,8 @@ bounds `evolveDir` (and its siblings `evolveDataSet`, `evolveEnv`, `evolveRL`).
 > far. A run started with `--timeout=45` therefore finishes inside the hour,
 > leaving the caller time for its normal save / model check-in.
 
+That guarantee has exactly one carve-out.
+
 > [!NOTE]
 > **The one exception: the first generation is never abandoned (Issue #3940).**
 > The cap bounds a run that is _making progress_; it is not a licence to return
