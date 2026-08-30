@@ -26,6 +26,7 @@ import { Genus } from "@neat/Genus.ts";
 import {
   computeHardDeadlineTS,
   type EvolveTerminationReason,
+  shouldAbandonInFlight,
 } from "@neat/HardDeadline.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
@@ -219,6 +220,17 @@ export class Neat {
    * The on-disk tag name remains `currentGeneration`.
    */
   currentGeneration = 0;
+
+  /**
+   * Generations this **run** has actually completed (Issue #3940).
+   *
+   * Distinct from {@link Neat.currentGeneration}, which accumulates across every
+   * run of the lineage: this one starts at 0 for each `Neat` instance and is
+   * incremented once a generation has been evaluated end to end. It is the
+   * floor the hard-deadline cap consults — a run with nothing banked has no
+   * winner to return, so the first generation is never abandoned.
+   */
+  generationsCompleted = 0;
 
   /**
    * Issue #2947: tracks whether the warm-up → warm structural-lock-lift
@@ -710,19 +722,6 @@ export class Neat {
   }
 
   /**
-   * Issue #2896: enforce the absolute T+15 hard cap during the finish-up cycle.
-   *
-   * When `hardDeadlineMS` is set (non-zero) and already in the past, abandon all
-   * in-flight discovery/training bookkeeping — so the abandoned promises cannot
-   * be re-awaited — and signal the caller to break out of the evolve loop, even
-   * when {@link finishUp} would still ask for more wait generations. The
-   * caller's post-loop sequence (worker termination, best-creature restore and
-   * `writeCreatures`) still runs because the break lands there.
-   *
-   * @param hardDeadlineMS Absolute hard-deadline epoch ms (0/unset = no cap).
-   * @returns `true` when the cap was exceeded and the loop must break.
-   */
-  /**
    * Issue #3053: incremental stuck-task watchdog.
    *
    * Abandons individual training tasks that have exceeded their own per-task
@@ -792,11 +791,34 @@ export class Neat {
     return this.abandonInFlightPastHardDeadline(this.hardDeadlineTS, nowTS);
   }
 
+  /**
+   * Issue #2896: enforce the absolute T+15 hard cap during the finish-up cycle.
+   *
+   * When `hardDeadlineMS` is set (non-zero) and already in the past, abandon all
+   * in-flight discovery/training bookkeeping — so the abandoned promises cannot
+   * be re-awaited — and signal the caller to break out of the evolve loop, even
+   * when {@link finishUp} would still ask for more wait generations. The
+   * caller's post-loop sequence (worker termination, best-creature restore and
+   * `writeCreatures`) still runs because the break lands there.
+   *
+   * Issue #3940: the cap is floored at one completed generation
+   * ({@link generationsCompleted}) — the same floor
+   * {@link shouldStopStartingGenerations} applies. This is the single
+   * chokepoint every enforcement path goes through (the evolve loops, the
+   * in-fitness watchdog via {@link pollHardDeadlineWatchdog}), so a run whose
+   * first generation is slower than `timeoutMinutes + grace` finishes that
+   * generation instead of returning an unscored population.
+   *
+   * @param hardDeadlineMS Absolute hard-deadline epoch ms (0/unset = no cap).
+   * @returns `true` when the cap was exceeded and the loop must break.
+   */
   abandonInFlightPastHardDeadline(
     hardDeadlineMS: number,
     nowTS: number = Date.now(),
   ): boolean {
-    if (!hardDeadlineMS || nowTS <= hardDeadlineMS) {
+    if (
+      !shouldAbandonInFlight(this.generationsCompleted, hardDeadlineMS, nowTS)
+    ) {
       return false;
     }
 

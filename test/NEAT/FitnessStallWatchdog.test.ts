@@ -78,6 +78,8 @@ Deno.test("fitness stall watchdog: reports the stalled phase by name while inter
     // Deadline already in the past; the stall is still in flight.
     const hardDeadlineMS = 1_000_000_000_000;
     const nowTS = hardDeadlineMS + 1;
+    // Issue #3940: the cap only fires once a generation has been banked.
+    neat.generationsCompleted = 1;
     const broke = neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowTS);
 
     assert(broke, "watchdog must fire once the hard deadline has passed");
@@ -130,6 +132,8 @@ Deno.test("fitness stall watchdog: pollHardDeadlineWatchdog uses the instance ha
 
     // Instance hardDeadlineTS is start + 1m + 1m grace. A now well past that
     // must interrupt the named fitness phase.
+    // Issue #3940: the cap only fires once a generation has been banked.
+    neat.generationsCompleted = 1;
     const broke = neat.pollHardDeadlineWatchdog(neat.hardDeadlineTS + 1);
 
     assert(broke);

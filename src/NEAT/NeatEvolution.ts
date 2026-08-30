@@ -1189,6 +1189,11 @@ export async function evolve(
     neat.currentGeneration,
   );
 
+  // Issue #3940: the generation is evaluated and its fittest is in hand — bank
+  // it. The hard-deadline cap stays disarmed until this first increment, so a
+  // slow first generation is completed rather than abandoned unscored.
+  neat.generationsCompleted++;
+
   return {
     fittest: fittest,
     averageScore: results.averageScore,

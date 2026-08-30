@@ -120,3 +120,29 @@ export function shouldStopStartingGenerations(
   return generationsCompleted > 0 &&
     hasTrainingOverrun(startMS, timeoutMinutes, nowMS, factor);
 }
+
+/**
+ * True when in-flight work must be abandoned at the hard cap: at least one
+ * generation has completed **and** the cap has passed (Issue #3940).
+ *
+ * The generation floor is the same one {@link shouldStopStartingGenerations}
+ * applies. It used to be the soft guard's alone, so a first generation slower
+ * than `timeoutMinutes + grace` was abandoned mid-flight and the run returned
+ * zero generations — an unscored population with no winner to publish. Once one
+ * generation is in hand the cap behaves exactly as it did before (#2892/#2896):
+ * a run that is making progress is still bounded.
+ *
+ * Pure: counts and timestamps in, boolean out — no real clock (#2888).
+ *
+ * @param generationsCompleted Generations banked by this run so far.
+ * @param hardDeadlineMS       Absolute cap (epoch ms); 0/unset = no cap.
+ * @param nowMS                Current epoch ms.
+ */
+export function shouldAbandonInFlight(
+  generationsCompleted: number,
+  hardDeadlineMS: number,
+  nowMS: number,
+): boolean {
+  return generationsCompleted > 0 && hardDeadlineMS > 0 &&
+    nowMS > hardDeadlineMS;
+}
