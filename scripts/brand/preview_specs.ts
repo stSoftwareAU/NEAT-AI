@@ -92,4 +92,10 @@ export const PREVIEW_SPECS: PreviewSpec[] = [
     descriptor: "Reapply useful discoveries onto the latest champion",
     motif: null,
   },
+  {
+    file: "neat-ai-refinery.png",
+    subtitle: "Refinery",
+    descriptor: "Reproducible transformed training corpora in Rust",
+    motif: "gear",
+  },
 ];
