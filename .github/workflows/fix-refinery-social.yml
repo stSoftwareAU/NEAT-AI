@@ -19,80 +19,19 @@ jobs:
           ref: social/neat-ai-refinery
           fetch-depth: 0
 
-      - name: Restore the complete generated Refinery artwork
-        shell: bash
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Render the Refinery preview from the brand source of truth
         run: |
-          git show b80da57c4c66b753dd776953b4d179c1362dc9f1^:docs/brand/social-previews/neat-ai-refinery.png >/tmp/original-refinery.png || true
-          if [ -s /tmp/original-refinery.png ]; then
-            cp /tmp/original-refinery.png docs/brand/social-previews/neat-ai-refinery.png
-          fi
+          rm -rf /tmp/refinery-social
+          deno run -A scripts/brand/render_social_previews.ts --out /tmp/refinery-social
+          cp /tmp/refinery-social/neat-ai-refinery.png docs/brand/social-previews/neat-ai-refinery.png
+          cp /tmp/refinery-social/opaque/neat-ai-refinery.png docs/brand/social-previews/opaque/neat-ai-refinery.png
+          cp /tmp/refinery-social/github/neat-ai-refinery.png docs/brand/social-previews/github/neat-ai-refinery.png
 
-      - name: Validate source PNG before generating variants
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("docs/brand/social-previews/neat-ai-refinery.png")
-          b = p.read_bytes()
-          assert b.startswith(b"\x89PNG\r\n\x1a\n"), "not a PNG"
-          assert b.endswith(b"IEND\xaeB\x60\x82"), "PNG is truncated"
-          print(f"source PNG: {len(b)} bytes")
-          PY
-
-      - name: Install Pillow
-        run: python3 -m pip install --disable-pip-version-check pillow
-
-      - name: Normalise transparent, opaque and GitHub variants
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          from PIL import Image
-
-          root = Path("docs/brand/social-previews")
-          canonical = root / "neat-ai-refinery.png"
-          opaque_path = root / "opaque" / canonical.name
-          github_path = root / "github" / canonical.name
-          opaque_path.parent.mkdir(parents=True, exist_ok=True)
-          github_path.parent.mkdir(parents=True, exist_ok=True)
-
-          image = Image.open(canonical).convert("RGBA")
-          target = (1280, 640)
-          if image.size != target:
-              scale = min(target[0] / image.width, target[1] / image.height)
-              fitted = image.resize(
-                  (round(image.width * scale), round(image.height * scale)),
-                  Image.Resampling.LANCZOS,
-              )
-              canvas = Image.new("RGBA", target, (0, 0, 0, 0))
-              canvas.alpha_composite(
-                  fitted,
-                  ((target[0] - fitted.width) // 2, (target[1] - fitted.height) // 2),
-              )
-              image = canvas
-
-          # Canonical: 8-bit RGBA with genuine transparent canvas.
-          image.save(canonical, "PNG", compress_level=9, optimize=False)
-
-          # Opaque twin: brand navy.
-          opaque = Image.new("RGBA", target, (0x0B, 0x12, 0x20, 255))
-          opaque.alpha_composite(image)
-          opaque.convert("RGB").save(
-              opaque_path, "PNG", compress_level=9, optimize=False
-          )
-
-          # GitHub upload: transparent palette PNG under the 1 MB cap.
-          github = image.quantize(
-              colors=256,
-              method=Image.Quantize.FASTOCTREE,
-              dither=Image.Dither.NONE,
-          )
-          github.save(github_path, "PNG", optimize=True, compress_level=9)
-          assert github_path.stat().st_size < 1_000_000, github_path.stat().st_size
-          PY
-
-      - name: Commit generated assets and remove one-shot workflow
-        shell: bash
+      - name: Commit generated assets and remove this one-shot workflow
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
