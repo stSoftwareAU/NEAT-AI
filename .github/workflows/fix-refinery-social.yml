@@ -19,6 +19,26 @@ jobs:
           ref: social/neat-ai-refinery
           fetch-depth: 0
 
+      - name: Restore the complete generated Refinery artwork
+        shell: bash
+        run: |
+          git show b80da57c4c66b753dd776953b4d179c1362dc9f1^:docs/brand/social-previews/neat-ai-refinery.png >/tmp/original-refinery.png || true
+          if [ -s /tmp/original-refinery.png ]; then
+            cp /tmp/original-refinery.png docs/brand/social-previews/neat-ai-refinery.png
+          fi
+
+      - name: Validate source PNG before generating variants
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("docs/brand/social-previews/neat-ai-refinery.png")
+          b = p.read_bytes()
+          assert b.startswith(b"\x89PNG\r\n\x1a\n"), "not a PNG"
+          assert b.endswith(b"IEND\xaeB\x60\x82"), "PNG is truncated"
+          print(f"source PNG: {len(b)} bytes")
+          PY
+
       - name: Install Pillow
         run: python3 -m pip install --disable-pip-version-check pillow
 
@@ -51,16 +71,17 @@ jobs:
               )
               image = canvas
 
-          # Re-save as conventional 8-bit RGBA PNG so the repo's pixel-level
-          # transparency checks can decode it deterministically.
+          # Canonical: 8-bit RGBA with genuine transparent canvas.
           image.save(canonical, "PNG", compress_level=9, optimize=False)
 
+          # Opaque twin: brand navy.
           opaque = Image.new("RGBA", target, (0x0B, 0x12, 0x20, 255))
           opaque.alpha_composite(image)
           opaque.convert("RGB").save(
               opaque_path, "PNG", compress_level=9, optimize=False
           )
 
+          # GitHub upload: transparent palette PNG under the 1 MB cap.
           github = image.quantize(
               colors=256,
               method=Image.Quantize.FASTOCTREE,
