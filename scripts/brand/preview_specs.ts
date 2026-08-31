@@ -96,6 +96,6 @@ export const PREVIEW_SPECS: PreviewSpec[] = [
     file: "neat-ai-refinery.png",
     subtitle: "Refinery",
     descriptor: "Reproducible transformed training corpora in Rust",
-    motif: null,
+    motif: "gear",
   },
 ];
