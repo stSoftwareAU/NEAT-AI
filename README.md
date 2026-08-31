@@ -332,7 +332,7 @@ training, discovery, scoring, visualisation, and example surface.
 | **[NEAT-AI-Forests](https://github.com/stSoftwareAU/NEAT-AI-Forests)**                 | Experimental Rust optimiser that grafts decision-tree residual corrections onto already-fit NEAT-AI creatures; candidates are judged by NEAT-AI-scorer.                          |
 | **[NEAT-AI-Ockham](https://github.com/stSoftwareAU/NEAT-AI-Ockham)**                   | Experimental Rust optimiser that prunes structure that no longer earns its keep from already-fit NEAT-AI creatures; candidates are judged by NEAT-AI-scorer.                     |
 | **[NEAT-AI-Rebase](https://github.com/stSoftwareAU/NEAT-AI-Rebase)**                   | Experimental Rust tool that reapplies useful discoveries onto the latest fittest creature; candidates are judged by NEAT-AI-scorer.                                              |
-| **[NEAT-AI-Refinery](https://github.com/stSoftwareAU/NEAT-AI-Refinery)**               | High-performance Rust tool that produces reproducible sampled, shuffled, quantised, fuzzed, and validated derived training corpora without modifying the source corpus.           |
+| **[NEAT-AI-Refinery](https://github.com/stSoftwareAU/NEAT-AI-Refinery)**               | High-performance Rust tool that produces reproducible sampled, shuffled, quantised, fuzzed, and validated derived training corpora without modifying the source corpus.          |
 
 ### Dependency graph
 
