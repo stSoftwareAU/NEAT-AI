@@ -6,15 +6,30 @@
  * and the score that corpus produces. The assertion is on the IEEE-754 bit
  * pattern, not an epsilon — a full-corpus run that differs from the current
  * build in the last bit fails here.
+ *
+ * The golden is **engine-pinned**. The two dataset-scoring engines accumulate
+ * in f64 but activate in f32, so they agree to about 1e-6 relative and not to
+ * the bit (`test/score/RustScorerDatasetParity.ts`). A golden that did not say
+ * which engine produced it would pass or fail on whether a `rust_scorer`
+ * binary happened to be resolvable — so the bit-exact assertions name the
+ * TypeScript/WASM engine explicitly, and the native engine is held to the same
+ * golden at the documented parity tolerance.
  */
 
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import { Costs } from "@costs";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
+import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import { readFitnessCorpusProvenance } from "@architecture/FitnessCorpusProvenance.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+import {
+  liveScorerConfig,
+  relativeDifference,
+  resolveRustScorerBinary,
+  typescriptScorerConfig,
+} from "./NativeScorerFixtures.ts";
 
 interface FitnessCorpusFixture {
   cost: string;
@@ -30,6 +45,15 @@ const fixture: FitnessCorpusFixture = JSON.parse(
     new URL("../fixtures/scoring/fitness-corpus.json", import.meta.url),
   ),
 );
+
+const BINARY = resolveRustScorerBinary();
+
+/**
+ * Agreement required of the native engine against the TypeScript golden — the
+ * tolerance `test/score/RustScorerDatasetParity.ts` already holds the two
+ * engines to.
+ */
+const PARITY_REL_TOLERANCE = 1e-5;
 
 /** The IEEE-754 bit pattern of a double, so "identical" means identical. */
 function bits(value: number): bigint {
@@ -59,38 +83,83 @@ function rowsOf(indices?: number[]): DataRecordInterface[] {
   }));
 }
 
-Deno.test("full-corpus fitness is bit-identical to the fixture golden", async () => {
+/** Scores the fixture creature over `rows` on the engine `config` selects. */
+async function score(
+  rows: DataRecordInterface[],
+  fileName: string,
+  config: RequiredRustScorerConfig,
+): Promise<number> {
   await initWasmForTests();
   const creature = Creature.fromJSON(fixture.creature);
-  const dir = writeCorpus(rowsOf(), "corpus.bin");
+  const dir = writeCorpus(rows, fileName);
   try {
     const { error } = await creature.evaluateDir(
       dir,
       Costs.find(fixture.cost),
       false,
+      undefined,
+      undefined,
+      config,
     );
-    assertEquals(bits(error), bits(fixture.fullCorpusError));
+    return error;
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
+}
+
+/**
+ * The TypeScript/WASM engine, named explicitly. `typescriptScorerConfig` needs
+ * a binary path only to build the disabled config around; that path is never
+ * executed while `enabled` is false.
+ */
+function wasmEngine(): RequiredRustScorerConfig {
+  return typescriptScorerConfig(BINARY ?? "rust_scorer");
+}
+
+Deno.test("full-corpus fitness is bit-identical to the fixture golden", async () => {
+  const error = await score(rowsOf(), "corpus.bin", wasmEngine());
+  assertEquals(bits(error), bits(fixture.fullCorpusError));
 });
 
 Deno.test("a sampled corpus scores the mean over exactly the records it holds", async () => {
-  await initWasmForTests();
-  const creature = Creature.fromJSON(fixture.creature);
-  const dir = writeCorpus(rowsOf(fixture.sampleIndices), "sample-25.bin");
-  try {
-    const { error } = await creature.evaluateDir(
-      dir,
-      Costs.find(fixture.cost),
-      false,
+  const error = await score(
+    rowsOf(fixture.sampleIndices),
+    "sample-25.bin",
+    wasmEngine(),
+  );
+  // Forward-only records are scored independently, so dropping records changes
+  // *which* records the mean is over and nothing else.
+  assertEquals(bits(error), bits(fixture.sampledCorpusError));
+});
+
+Deno.test({
+  name: "the native scorer reproduces the fixture goldens within parity",
+  ignore: BINARY === undefined,
+  fn: async () => {
+    const native = liveScorerConfig(BINARY as string);
+    const full = await score(rowsOf(), "corpus.bin", native);
+    const sampled = await score(
+      rowsOf(fixture.sampleIndices),
+      "sample-25.bin",
+      native,
     );
-    // Forward-only records are scored independently, so dropping records
-    // changes *which* records the mean is over and nothing else.
-    assertEquals(bits(error), bits(fixture.sampledCorpusError));
-  } finally {
-    await Deno.remove(dir, { recursive: true });
-  }
+
+    // The engines activate in f32, so they agree to a tolerance rather than a
+    // bit — pinning a native golden would pin a scorer build, not this repo.
+    for (
+      const [label, actual, golden] of [
+        ["full", full, fixture.fullCorpusError],
+        ["sampled", sampled, fixture.sampledCorpusError],
+      ] as const
+    ) {
+      const drift = relativeDifference(actual, golden);
+      assert(
+        drift <= PARITY_REL_TOLERANCE,
+        `${label} corpus: native ${actual} vs golden ${golden} — relative ` +
+          `difference ${drift} exceeds ${PARITY_REL_TOLERANCE}`,
+      );
+    }
+  },
 });
 
 Deno.test("a Refinery manifest beside the corpus changes neither the score nor the file list", async () => {
@@ -120,6 +189,8 @@ Deno.test("a Refinery manifest beside the corpus changes neither the score nor t
   );
   try {
     const cost = Costs.find(fixture.cost);
+    // Whichever engine this environment resolves — the manifest must be
+    // invisible to both.
     const plain = await creature.evaluateDir(bare, cost, false);
     const published = await creature.evaluateDir(withManifest, cost, false);
 

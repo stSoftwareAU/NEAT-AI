@@ -2,14 +2,20 @@
  * Issue #3926: a run must be able to say which corpus fidelity produced its
  * score. A Refinery-published corpus carries a `manifest.json`; a plain
  * directory of `.bin` files is the full corpus.
+ *
+ * Imported from `mod.ts` deliberately — `docs/config/TRAINING.md` shows this
+ * API being imported from the package root, and a re-export nothing exercises
+ * is a documented import path nobody has run.
  */
 
 import { assertAlmostEquals, assertEquals, assertThrows } from "@std/assert";
 import {
   assertFitnessCorpusSampleRate,
+  DatasetError,
   readFitnessCorpusProvenance,
-} from "@architecture/FitnessCorpusProvenance.ts";
-import { DatasetError } from "@errors/DatasetError.ts";
+} from "../../mod.ts";
+
+const BYTES_PER_RECORD = 10_048;
 
 /** A Refinery `sample` manifest for `kept` of `total` records at `rate`. */
 function sampleManifest(rate: number, total: number, kept: number) {
@@ -23,7 +29,7 @@ function sampleManifest(rate: number, total: number, kept: number) {
       inputs: 2511,
       outputs: 1,
       record_values: 2512,
-      bytes_per_record: 10048,
+      bytes_per_record: BYTES_PER_RECORD,
       encoding: "float32",
     },
     source: {
@@ -36,16 +42,31 @@ function sampleManifest(rate: number, total: number, kept: number) {
     output: {
       file: `sample-${Math.round(rate * 100)}.bin`,
       record_count: kept,
-      bytes: kept * 10048,
+      bytes: kept * BYTES_PER_RECORD,
       checksum: { algorithm: "sha256", value: "57d5a3b3" },
     },
     metadata: {},
   };
 }
 
-function corpusDir(manifest?: unknown): string {
+/**
+ * A published corpus directory. When `manifest` is an object the corpus file
+ * it names is written at the size it claims, so the on-disk bytes agree with
+ * the provenance unless a test deliberately breaks them.
+ */
+function corpusDir(manifest?: unknown, corpusBytes?: number): string {
   const dir = Deno.makeTempDirSync({ prefix: "fitness-corpus-" });
-  Deno.writeFileSync(`${dir}/records.bin`, new Uint8Array(8));
+  if (manifest === undefined || typeof manifest === "string") {
+    Deno.writeFileSync(`${dir}/records.bin`, new Uint8Array(8));
+  } else {
+    const output = (manifest as { output?: { file?: string } }).output;
+    const name = output?.file ?? "records.bin";
+    const declared = (manifest as { output?: { record_count?: number } })
+      .output?.record_count ?? 0;
+    const size = corpusBytes ??
+      Math.max(0, Math.round(declared * BYTES_PER_RECORD));
+    Deno.writeFileSync(`${dir}/${name}`, new Uint8Array(size));
+  }
   if (manifest !== undefined) {
     Deno.writeTextFileSync(
       `${dir}/manifest.json`,
@@ -71,6 +92,19 @@ Deno.test("fitness corpus - a directory with no manifest is the full corpus", ()
   }
 });
 
+Deno.test("fitness corpus - a corpus directory that does not exist fails loud", () => {
+  const dir = corpusDir();
+  Deno.removeSync(dir, { recursive: true });
+  // A vanished corpus is not a full corpus: answering rate 1 would state a
+  // fidelity nothing was scored at.
+  const error = assertThrows(
+    () => readFitnessCorpusProvenance(dir),
+    DatasetError,
+  );
+  assertEquals(error.reason, "DIRECTORY_MISSING");
+  assertEquals(error.path, dir);
+});
+
 Deno.test("fitness corpus - a sampled corpus reports declared and achieved rates", () => {
   const dir = corpusDir(sampleManifest(0.1, 20_000, 2_013));
   try {
@@ -82,6 +116,7 @@ Deno.test("fitness corpus - a sampled corpus reports declared and achieved rates
     assertEquals(provenance.sourceRecordCount, 20_000);
     assertEquals(provenance.transforms, ["sample"]);
     assertEquals(provenance.corpusFile, "sample-10.bin");
+    assertEquals(provenance.bytesPerRecord, BYTES_PER_RECORD);
     assertEquals(provenance.sourcePath, "/data/trainData-binary");
   } finally {
     Deno.removeSync(dir, { recursive: true });
@@ -163,6 +198,22 @@ Deno.test("fitness corpus - a manifest missing its record counts fails loud", ()
   }
 });
 
+Deno.test("fitness corpus - a fractional record count fails loud", () => {
+  // A count that was computed rather than counted makes every rate derived
+  // from it meaningless.
+  const manifest = sampleManifest(0.3, 100, 30) as Record<string, unknown>;
+  (manifest.source as Record<string, unknown>).record_count = 333.3333;
+  const dir = corpusDir(manifest);
+  try {
+    assertEquals(
+      assertThrows(() => readFitnessCorpusProvenance(dir), DatasetError).reason,
+      "CORRUPT_PROVENANCE",
+    );
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
 Deno.test("fitness corpus - a sample stage with no rate fails loud", () => {
   const manifest = sampleManifest(0.1, 100, 10) as Record<string, unknown>;
   manifest.transform = { name: "sample", parameters: {} };
@@ -192,6 +243,38 @@ Deno.test("fitness corpus - a corpus that is not the size it claims fails loud",
   // Declares 0.1 but published half the corpus — 190 sigma out, not noise.
   const dir = corpusDir(sampleManifest(0.1, 20_000, 10_000));
   try {
+    const error = assertThrows(
+      () => assertFitnessCorpusSampleRate(readFitnessCorpusProvenance(dir)),
+      DatasetError,
+    );
+    assertEquals(error.reason, "CORRUPT_PROVENANCE");
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
+Deno.test("fitness corpus - a manifest that disagrees with the bytes on disk fails loud", () => {
+  // Self-consistent provenance for 2 000 records, over a file holding 1 000.
+  // Only measuring the corpus can catch this.
+  const dir = corpusDir(
+    sampleManifest(0.1, 20_000, 2_000),
+    1_000 * BYTES_PER_RECORD,
+  );
+  try {
+    const error = assertThrows(
+      () => assertFitnessCorpusSampleRate(readFitnessCorpusProvenance(dir)),
+      DatasetError,
+    );
+    assertEquals(error.reason, "CORRUPT_PROVENANCE");
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
+Deno.test("fitness corpus - a manifest whose published corpus is absent fails loud", () => {
+  const dir = corpusDir(sampleManifest(0.1, 20_000, 2_000));
+  try {
+    Deno.removeSync(`${dir}/sample-10.bin`);
     const error = assertThrows(
       () => assertFitnessCorpusSampleRate(readFitnessCorpusProvenance(dir)),
       DatasetError,

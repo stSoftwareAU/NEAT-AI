@@ -23,8 +23,7 @@
         "type": "output",
         "uuid": "output-0",
         "bias": 0.125,
-        "squash": "IDENTITY",
-        "id": -1
+        "squash": "IDENTITY"
       }
     ],
     "synapses": [

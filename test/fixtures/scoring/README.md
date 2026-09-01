@@ -1,4 +1,13 @@
-# ⚖️ Magnitude penalty corpus — the cross-engine scoring contract
+# 🎯 Scoring fixtures
+
+Two goldens live here, each with its own gate:
+
+| Fixture                         | Pins                                                    | Gate                                       |
+| ------------------------------- | ------------------------------------------------------- | ------------------------------------------ |
+| `magnitude-penalty-corpus.json` | the weight/bias magnitude penalty curve, across engines | `test/score/MagnitudeSelectionPressure.ts` |
+| `fitness-corpus.json`           | the full-fidelity score of a whole corpus, bit for bit  | `test/score/FullCorpusScoreFixture.ts`     |
+
+## ⚖️ Magnitude penalty corpus — the cross-engine scoring contract
 
 > [!CAUTION]
 > **Changing `magnitude-penalty-corpus.json` changes every score in the fleet.**
@@ -8,7 +17,7 @@
 > the same number for every case here, or `NEAT_AI_RUST_SCORER_STRICT` fires on
 > a creature that scored differently depending on which engine ran it.
 
-## 📌 What this is
+### 📌 What this is
 
 Issue #3881: the old `1 / (1 + 1 / value)` curve was 0.990 at `|w| = 100` and
 0.9999 at `|w| = 1000`, so past about two decades it could no longer tell a
@@ -31,7 +40,7 @@ The last four cases (`9007199254740991`, `1e16`, `1e18`, `1e20`) deliberately
 share one penalty: a magnitude beyond `maxSafeMagnitude` is clamped to it, which
 is what stops a `1e+195` weight throwing instead of being charged for.
 
-## ✅ The gates
+### ✅ The gates
 
 | Engine     | Gate                                                            |
 | ---------- | --------------------------------------------------------------- |

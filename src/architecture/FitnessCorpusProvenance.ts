@@ -74,6 +74,11 @@ export interface FitnessCorpusProvenance {
   readonly transforms: readonly string[];
   /** Published corpus file name; `null` without a manifest. */
   readonly corpusFile: string | null;
+  /**
+   * Bytes one record of the published corpus occupies, from `record_shape`;
+   * `null` when the manifest does not state a geometry.
+   */
+  readonly bytesPerRecord: number | null;
   /** Path of the source corpus it was derived from; `null` without one. */
   readonly sourcePath: string | null;
 }
@@ -89,6 +94,7 @@ function fullCorpus(dataDir: string): FitnessCorpusProvenance {
     sourceRecordCount: null,
     transforms: [],
     corpusFile: null,
+    bytesPerRecord: null,
     sourcePath: null,
   };
 }
@@ -99,6 +105,30 @@ function corrupt(manifestPath: string, detail: string): DatasetError {
     "CORRUPT_PROVENANCE",
     manifestPath,
   );
+}
+
+/** Throws `DIRECTORY_MISSING` when `dataDir` is not a directory on disk. */
+function assertCorpusDirectoryExists(dataDir: string): void {
+  let stat: Deno.FileInfo;
+  try {
+    stat = Deno.statSync(dataDir);
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      throw new DatasetError(
+        `corpus directory ${dataDir} does not exist`,
+        "DIRECTORY_MISSING",
+        dataDir,
+      );
+    }
+    throw error;
+  }
+  if (!stat.isDirectory) {
+    throw new DatasetError(
+      `corpus path ${dataDir} is not a directory`,
+      "DIRECTORY_MISSING",
+      dataDir,
+    );
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -112,10 +142,34 @@ function requireCount(
   manifestPath: string,
 ): number {
   const value = container[field];
-  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+  // A record count is a whole number of records. A fraction means the producer
+  // computed it rather than counted it, and every rate derived from it is
+  // meaningless — so it is a fault, not a value to round.
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
     throw corrupt(manifestPath, `${field} is not a record count (${value})`);
   }
   return value;
+}
+
+/**
+ * Bytes per record of the **published** corpus, from `record_shape`. Absent
+ * geometry is `null`; a present-but-nonsensical one is a fault.
+ */
+function readBytesPerRecord(
+  manifest: Record<string, unknown>,
+  manifestPath: string,
+): number | null {
+  const shape = manifest.record_shape;
+  if (shape === undefined) return null;
+  if (!isRecord(shape)) {
+    throw corrupt(manifestPath, "record_shape is not an object");
+  }
+  const bytes = shape.bytes_per_record;
+  if (bytes === undefined) return null;
+  if (typeof bytes !== "number" || !Number.isInteger(bytes) || bytes <= 0) {
+    throw corrupt(manifestPath, `bytes_per_record is not a size (${bytes})`);
+  }
+  return bytes;
 }
 
 /** The ordered transform records — a pipeline's stages, or the single one. */
@@ -182,8 +236,12 @@ export function readFitnessCorpusProvenance(
   try {
     text = Deno.readTextFileSync(manifestPath);
   } catch (error) {
-    if (error instanceof Deno.errors.NotFound) return fullCorpus(dataDir);
-    throw error;
+    if (!(error instanceof Deno.errors.NotFound)) throw error;
+    // NotFound covers both "no manifest" and "no corpus at all". Only the
+    // first is a full corpus; answering rate 1 for a directory that is not
+    // there would state a fidelity nothing was scored at.
+    assertCorpusDirectoryExists(dataDir);
+    return fullCorpus(dataDir);
   }
 
   let parsed: unknown;
@@ -231,8 +289,47 @@ export function readFitnessCorpusProvenance(
       typeof stage.name === "string" ? stage.name : "unknown"
     ),
     corpusFile,
+    bytesPerRecord: readBytesPerRecord(parsed, manifestPath),
     sourcePath: typeof source.path === "string" ? source.path : null,
   };
+}
+
+/**
+ * Measures the published corpus on disk and holds the manifest to it.
+ *
+ * Without this, every check in this module compares manifest fields to other
+ * manifest fields — a document verifying itself. Record count × bytes per
+ * record is the one claim the file system can settle, so it is settled there.
+ * Skipped when the manifest states no geometry to check against.
+ */
+function assertPublishedCorpusMatchesManifest(
+  provenance: FitnessCorpusProvenance,
+): void {
+  const { corpusFile, bytesPerRecord, recordCount, dataDir } = provenance;
+  if (corpusFile === null || bytesPerRecord === null || recordCount === null) {
+    return;
+  }
+  const manifestPath = `${dataDir}/${FITNESS_CORPUS_MANIFEST_FILE}`;
+  const corpusPath = `${dataDir}/${corpusFile}`;
+
+  let bytes: number;
+  try {
+    bytes = Deno.statSync(corpusPath).size;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      throw corrupt(manifestPath, `published corpus ${corpusFile} is missing`);
+    }
+    throw error;
+  }
+
+  const expected = recordCount * bytesPerRecord;
+  if (bytes !== expected) {
+    throw corrupt(
+      manifestPath,
+      `${corpusFile} holds ${bytes} bytes but the manifest claims ` +
+        `${recordCount} records of ${bytesPerRecord} bytes (${expected})`,
+    );
+  }
 }
 
 /** How wide an agreement band {@link assertFitnessCorpusSampleRate} allows. */
@@ -253,18 +350,23 @@ export interface SampleRateAgreementOptions {
  * of `1` has zero variance and so must be met exactly.
  *
  * A corpus that is *not* the size it claims has not been verified — checking
- * the record counts is the difference between provenance and a label.
+ * the record counts is the difference between provenance and a label. The
+ * published corpus is measured on disk first, so the manifest is checked
+ * against the bytes rather than against itself: a manifest that lies
+ * self-consistently still fails.
  *
  * @param provenance - As returned by {@link readFitnessCorpusProvenance}
  * @param options - Band width override
- * @throws {DatasetError} `CORRUPT_PROVENANCE` when the achieved rate is
- *   outside the band
+ * @throws {DatasetError} `CORRUPT_PROVENANCE` when the corpus is not the size
+ *   its manifest states, or the achieved rate is outside the band
  */
 export function assertFitnessCorpusSampleRate(
   provenance: FitnessCorpusProvenance,
   options: SampleRateAgreementOptions = {},
 ): void {
   if (provenance.sourceRecordCount === null) return;
+
+  assertPublishedCorpusMatchesManifest(provenance);
 
   const sigmas = options.sigmas ?? DEFAULT_SAMPLE_RATE_SIGMAS;
   const rate = provenance.declaredSampleRate;

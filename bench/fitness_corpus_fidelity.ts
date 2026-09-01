@@ -64,10 +64,20 @@ interface HarnessOptions {
   rates: number[];
   population: number;
   seed: number;
+  /**
+   * Wall-clock source, default `performance.now()`. Injected so a smoke test
+   * can drive a virtual clock: a unit test must assert what the harness
+   * *measured over*, never how long a machine took (AGENTS.md testing policy).
+   */
+  now?: () => number;
 }
 
 /** Writes `rows` as the single `.bin` shard Refinery publishes. */
-function publishCorpus(rows: DataRecordInterface[], rate: number): string {
+function publishCorpus(
+  rows: DataRecordInterface[],
+  rate: number,
+  sourceRecords: number,
+): string {
   const dir = Deno.makeTempDirSync({ prefix: `fidelity-${rate}-` });
   const values = new Float32Array(rows.length * (INPUTS + OUTPUTS));
   let at = 0;
@@ -86,7 +96,14 @@ function publishCorpus(rows: DataRecordInterface[], rate: number): string {
         manifest_version: 1,
         tool: { name: "bench/fitness_corpus_fidelity.ts", version: "1" },
         transform: { name: "sample", parameters: { rate } },
-        source: { path: "synthetic", record_count: rows.length / rate },
+        record_shape: {
+          inputs: INPUTS,
+          outputs: OUTPUTS,
+          record_values: INPUTS + OUTPUTS,
+          bytes_per_record: BYTES_PER_RECORD,
+          encoding: "float32",
+        },
+        source: { path: "synthetic", record_count: sourceRecords },
         output: { file: name, record_count: rows.length },
       },
       null,
@@ -113,9 +130,10 @@ function stride(
 async function timeGeneration(
   population: Creature[],
   dataDir: string,
+  now: () => number,
 ): Promise<number> {
   const cost = Costs.find("MSE");
-  const started = performance.now();
+  const started = now();
   for (const creature of population) {
     // Sequential on purpose: concurrent scoring would measure the host's
     // parallelism, not the per-record cost this harness exists to compare.
@@ -125,7 +143,7 @@ async function timeGeneration(
       throw new Error(`non-finite score from ${dataDir}: ${error}`);
     }
   }
-  return performance.now() - started;
+  return now() - started;
 }
 
 /** Runs the sweep and returns one measurement per rate. */
@@ -141,12 +159,13 @@ export async function measureFidelities(
     () => Creature.fromJSON(creature),
   );
   const full = generateTrainingData(INPUTS, OUTPUTS, options.records, rng);
+  const now = options.now ?? (() => performance.now());
 
   const measurements: FidelityMeasurement[] = [];
   let fullMs = 0;
   for (const rate of options.rates) {
     const rows = stride(full, rate);
-    const dir = publishCorpus(rows, rate);
+    const dir = publishCorpus(rows, rate, full.length);
     try {
       const provenance = readFitnessCorpusProvenance(dir);
       if (provenance.recordCount !== rows.length) {
@@ -158,9 +177,9 @@ export async function measureFidelities(
       // Warm the page cache and the WASM topology so the timed pass measures
       // scoring, not first-touch.
       // deno-lint-ignore no-await-in-loop
-      await timeGeneration([population[0]], dir);
+      await timeGeneration([population[0]], dir, now);
       // deno-lint-ignore no-await-in-loop
-      const msPerGeneration = await timeGeneration(population, dir);
+      const msPerGeneration = await timeGeneration(population, dir, now);
       if (!(msPerGeneration > 0)) {
         throw new Error(`no timing recorded for rate ${rate}`);
       }
