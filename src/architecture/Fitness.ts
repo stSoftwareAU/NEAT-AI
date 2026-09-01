@@ -181,6 +181,13 @@ export class Fitness {
   private readonly racing: RequiredRacingConfig;
 
   /**
+   * Elite slots the generation must be able to fill from creatures holding an
+   * exact full-corpus score (Issue #3928). Racing keeps at least this many
+   * creatures scoring to completion.
+   */
+  private readonly elitism: number;
+
+  /**
    * Records in the full corpus, learnt from the largest `recordCount` any
    * scorer result has reported in this run (Issue #3928).
    *
@@ -209,6 +216,7 @@ export class Fitness {
     customCostConfigured?: boolean,
     rustScorer?: RequiredRustScorerConfig,
     racing?: RequiredRacingConfig,
+    elitism?: number,
   ) {
     this.workers = workers;
     this.feedbackLoop = feedbackLoop;
@@ -223,6 +231,9 @@ export class Fitness {
     this.outputRangeCount = outputRanges?.length ?? 0;
     this.rustScorer = rustScorer;
     this.racing = racing ?? DEFAULT_RACING_CONFIG;
+    // `NeatEvolution` never picks fewer than 2 elites, so 2 is the floor here
+    // regardless of what a caller configured.
+    this.elitism = Math.max(2, Math.floor(elitism ?? 2));
   }
 
   /**
@@ -407,6 +418,11 @@ export class Fitness {
                 .map((c) => c.uuid)
                 .filter((uuid): uuid is string => uuid !== undefined),
               corpusRecords: this.racingCorpusRecords,
+              // Enough creatures must finish the corpus to fill every elite
+              // slot with an exact score — an abandoned creature promoted into
+              // one would keep its fabricated rank forever, because a scored
+              // creature is never re-evaluated.
+              minSurvivors: this.elitism,
             })
             : undefined;
           const batchRun = await tryBatchScoreWithRustScorer(
@@ -444,6 +460,10 @@ export class Fitness {
                   recordsScored: record.recordCount,
                   corpusRecords: this.racingCorpusRecords,
                 });
+                // An abandoned creature was still scored by the batch backend,
+                // just not over the whole corpus — counting it keeps
+                // `batch + perCreature` equal to every creature evaluated.
+                batchScoredCount++;
                 continue;
               }
               if (!Number.isFinite(error) || error < 0) {

@@ -14,6 +14,8 @@
  * @module RacingConfig
  */
 
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
+
 /** Caller-supplied racing options; every field is optional. */
 export interface RacingConfig {
   /**
@@ -80,8 +82,11 @@ function assertRange(
   if (!Number.isFinite(value) || !lowOk || !highOk) {
     const low = minInclusive ? `[${min}` : `(${min}`;
     const high = maxInclusive ? `${max}]` : `${max})`;
-    throw new RangeError(
+    // Typed, like every sibling resolver — a consumer catching
+    // `ConfigurationError` must not miss a `racing.*` fault.
+    throw new ConfigurationError(
       `racing.${name} must be in ${low}, ${high}, got ${value}`,
+      "OUT_OF_RANGE",
     );
   }
 }

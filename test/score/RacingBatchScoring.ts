@@ -12,12 +12,9 @@
 
 import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { getTag } from "@stsoftware/tags/mod";
-import { Creature } from "@creature";
-import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Fitness } from "@architecture/Fitness.ts";
+import { makeElitists } from "@architecture/ElitismUtils.ts";
 import { makeDataDir } from "@architecture/DataSet.ts";
-import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import {
   __resetRustScorerBridgeForTests,
@@ -33,69 +30,17 @@ import {
 import { resolveRacingConfig } from "@config/RacingConfig.ts";
 import { RACING_ABANDON_RANK_GAP } from "../../src/score/RacingRanking.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+import {
+  buildDataSet,
+  buildForwardOnlyPopulation,
+  errorsFor,
+  HELP_WITH_RACING,
+  HELP_WITHOUT_RACING,
+  MockWorkerHandler,
+} from "./_racingFixtures.ts";
 
 const CORPUS_RECORDS = 1000;
 const CHUNK_RECORDS = 100;
-
-/** Help text of a binary that carries the racing surface. */
-const HELP_WITH_RACING =
-  "Options:\n      --cost <NAME>\n      --race-stdio\n      --gpu <MODE>\n";
-/** Help text of a binary predating NEAT-AI-scorer#308's stdio surface. */
-const HELP_WITHOUT_RACING =
-  "Options:\n      --cost <NAME>\n      --gpu <MODE>\n";
-
-function buildDataSet(): DataRecordInterface[] {
-  const rows: DataRecordInterface[] = [];
-  for (let i = 0; i < 4; i++) {
-    rows.push({
-      input: new Float32Array([i, 4 - i]),
-      output: new Float32Array([i > 2 ? 1 : -1]),
-    });
-  }
-  return rows;
-}
-
-function buildForwardOnlyPopulation(count: number): Creature[] {
-  const base: CreatureExport = {
-    neurons: [
-      { type: "hidden", uuid: "hidden-0", squash: "TANH", bias: 0.5 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.8 },
-    ],
-    input: 2,
-    output: 1,
-    forwardOnly: true,
-  };
-  const creatures: Creature[] = [];
-  for (let i = 0; i < count; i++) {
-    const forked = structuredClone(base);
-    forked.neurons[0].bias = 0.1 * (i + 1);
-    const creature = Creature.fromJSON(forked);
-    CreatureUtil.makeUUID(creature);
-    creatures.push(creature);
-  }
-  return creatures;
-}
-
-/** Never reached in these tests — a worker call would mean racing leaked. */
-class MockWorkerHandler {
-  public evaluateCallCount = 0;
-  addIdleListener(_callback: () => void): void {}
-  isBusy(): boolean {
-    return false;
-  }
-  // deno-lint-ignore require-await
-  async evaluate(
-    _creature: Creature,
-    _feedbackLoop: boolean,
-  ): Promise<{ evaluate: { error: number } }> {
-    this.evaluateCallCount++;
-    return { evaluate: { error: 0.5 } };
-  }
-}
 
 /** `--help` probe answer plus a full-corpus result map for the plain path. */
 function stubRunner(help: string, errorByKey: Map<string, number>) {
@@ -110,11 +55,7 @@ function stubRunner(help: string, errorByKey: Map<string, number>) {
     }
     const entries: Record<string, unknown> = {};
     for (const [key, error] of errorByKey) {
-      entries[key] = {
-        score: 1 - error,
-        error,
-        recordCount: CORPUS_RECORDS,
-      };
+      entries[key] = { score: 1 - error, error, recordCount: CORPUS_RECORDS };
     }
     return Promise.resolve({
       success: true,
@@ -182,15 +123,6 @@ function racingSession(
       chunks,
     });
   };
-}
-
-function errorsFor(population: Creature[], errors: number[]): Map<
-  string,
-  number
-> {
-  const map = new Map<string, number>();
-  population.forEach((creature, i) => map.set(creature.uuid!, errors[i]));
-  return map;
 }
 
 function makeFitness(
@@ -387,11 +319,21 @@ Deno.test("Racing: abandoned creatures rank below every fully-scored creature", 
       RACING_ABANDON_RANK_GAP * 1e-6,
     );
 
-    // The generation's fittest — what elitism and export would pick — is a
-    // fully-scored creature, never an abandoned one.
-    const fittest = [...second].sort((a, b) => b.score! - a.score!)[0];
-    assert(!getTag(fittest, "racing"), "the fittest creature is fully scored");
-    assertEquals(fittest.uuid, second[0].uuid);
+    // What elitism actually picks — via the production `makeElitists`, on the
+    // production sort order — is fully-scored, never abandoned.
+    const sorted = [...second].sort((a, b) => b.score! - a.score!);
+    const { elitists } = makeElitists(sorted, 2, false);
+    for (const elite of elitists) {
+      assert(
+        !getTag(elite, "racing"),
+        "an abandoned creature must never be selected as an elite",
+      );
+    }
+    // `elitists[0]` is what `NeatEvolution` records as the generation's
+    // fittest and carries forward as `previousFittest` — an abandoned creature
+    // must never be able to reach it.
+    assertEquals(elitists[0].uuid, second[0].uuid);
+    assert(!getTag(elitists[0], "racing"));
     assertEquals(worker.evaluateCallCount, 0);
   } finally {
     await Deno.remove(dataDir, { recursive: true });
@@ -424,16 +366,10 @@ Deno.test("Racing: an elite carrying a score is never re-scored or raced", async
     const elite = first[0];
     const eliteScore = elite.score!;
     const eliteUuid = elite.uuid!;
-    const offspring = buildForwardOnlyPopulation(3).slice(1);
-    const secondErrors = errorsFor(offspring, [0.07, 0.97]);
+    const offspring = buildForwardOnlyPopulation(4).slice(1);
+    const secondErrors = errorsFor(offspring, [0.07, 0.08, 0.97]);
     __setRustScorerRunnerForTests(stubRunner(HELP_WITH_RACING, secondErrors));
-    const scoredKeys: string[][] = [];
-    __setRacingSessionRunnerForTests((request) => {
-      scoredKeys.push(
-        request.args.filter((a) => a.startsWith("-")),
-      );
-      return racingSession(secondErrors, observed)(request);
-    });
+    __setRacingSessionRunnerForTests(racingSession(secondErrors, observed));
 
     const generation = [elite, ...offspring];
     await fitness.calculate(generation);
@@ -448,7 +384,7 @@ Deno.test("Racing: an elite carrying a score is never re-scored or raced", async
     // The elite never even reached the scorer: only the unscored creatures did.
     const raced = observed.requests.at(-1)!;
     assert(raced.args.includes("--race-stdio"));
-    assertEquals(fitness.lastRacingSummary!.raced, 2);
+    assertEquals(fitness.lastRacingSummary!.raced, 3);
     assertEquals(fitness.lastRacingSummary!.abandoned, 1);
 
     const abandoned = generation.filter((c) => Boolean(getTag(c, "racing")));

@@ -1,4 +1,9 @@
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertAlmostEquals,
+  assertEquals,
+  assertThrows,
+} from "@std/assert";
 import {
   hoeffdingBound,
   type PartialScore,
@@ -9,6 +14,7 @@ import {
   type RequiredRacingConfig,
   resolveRacingConfig,
 } from "@config/RacingConfig.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 
 /**
  * Racing decision rule (Issue #3928).
@@ -38,6 +44,7 @@ Deno.test("RacingPolicy - abandons a hopeless creature once past the floor", () 
   const verdict = policy.onChunk([
     partial(0, "leader", 0.10, 400),
     partial(1, "laggard", 0.95, 400),
+    partial(2, "runner-up", 0.11, 400),
   ]);
   assertEquals(verdict.verdict, "abort");
   assertEquals(
@@ -70,6 +77,7 @@ Deno.test("RacingPolicy - refuses to abandon before the minimum corpus fraction"
   const early = policy.onChunk([
     partial(0, "leader", 0.01, 100),
     partial(1, "laggard", 0.99, 100),
+    partial(2, "runner-up", 0.02, 100),
   ]);
   assertEquals(early.verdict, "continue");
   assertEquals(policy.abandoned.length, 0);
@@ -77,6 +85,7 @@ Deno.test("RacingPolicy - refuses to abandon before the minimum corpus fraction"
   const later = policy.onChunk([
     partial(0, "leader", 0.01, 200),
     partial(1, "laggard", 0.99, 200),
+    partial(2, "runner-up", 0.02, 200),
   ]);
   assertEquals(later.verdict, "abort");
   assertEquals(policy.abandoned.length, 1);
@@ -106,6 +115,7 @@ Deno.test("RacingPolicy - never abandons the leader", () => {
   const verdict = policy.onChunk([
     partial(0, "leader", 0.2, 100),
     partial(1, "second", 0.9, 100),
+    partial(2, "third", 0.21, 100),
   ]);
   assertEquals(verdict.verdict, "abort");
   assertEquals(verdict.verdict === "abort" ? verdict.creatures : [], [1]);
@@ -125,6 +135,7 @@ Deno.test("RacingPolicy - abandons nobody when the corpus size is unknown", () =
   const verdict = policy.onChunk([
     partial(0, "leader", 0.01, 5000),
     partial(1, "laggard", 9.99, 5000),
+    partial(2, "runner-up", 0.02, 5000),
   ]);
   assertEquals(
     verdict.verdict,
@@ -140,6 +151,7 @@ Deno.test("RacingPolicy - disabled policy always continues", () => {
   const verdict = policy.onChunk([
     partial(0, "leader", 0.01, 100),
     partial(1, "laggard", 99, 100),
+    partial(2, "runner-up", 0.02, 100),
   ]);
   assertEquals(verdict.verdict, "continue");
   assertEquals(policy.abandoned.length, 0);
@@ -150,6 +162,7 @@ Deno.test("RacingPolicy - a non-finite running error is abandoned past the floor
   const verdict = policy.onChunk([
     partial(0, "leader", 0.5, 100),
     partial(1, "broken", Infinity, 100),
+    partial(2, "runner-up", 0.51, 100),
   ]);
   assertEquals(verdict.verdict, "abort");
   assertEquals(verdict.verdict === "abort" ? verdict.creatures : [], [1]);
@@ -159,6 +172,7 @@ Deno.test("RacingPolicy - a wider bound abandons fewer creatures", () => {
   const gap = [
     partial(0, "leader", 0.30, 500),
     partial(1, "behind", 0.45, 500),
+    partial(2, "runner-up", 0.31, 500),
   ];
   const tight = new RacingPolicy(config({ errorRange: 0.1 }), {
     corpusRecords: 1000,
@@ -180,13 +194,14 @@ Deno.test("RacingPolicy - summarise reports abandonment fraction and work saved"
     partial(0, "leader", 0.01, 500),
     partial(1, "a", 0.99, 500),
     partial(2, "b", 0.99, 500),
+    partial(3, "c", 0.02, 500),
   ]);
-  const summary = policy.summarise(3);
+  const summary = policy.summarise(4);
   assertEquals(summary.abandoned, 2);
-  assertEquals(summary.raced, 3);
+  assertEquals(summary.raced, 4);
   assertEquals(summary.meanAbandonFraction, 0.5);
-  // Two creatures skipped 500 of 1000 records each, out of 3×1000 records.
-  assertEquals(summary.recordsSavedFraction, 1000 / 3000);
+  // Two creatures skipped 500 of 1000 records each, out of 4×1000 records.
+  assertEquals(summary.recordsSavedFraction, 1000 / 4000);
 });
 
 Deno.test("RacingPolicy - summarise is all zeros when nothing was abandoned", () => {
@@ -206,8 +221,13 @@ Deno.test("RacingPolicy - hoeffding bound narrows as records accumulate", () => 
   const many = hoeffdingBound(1, 10_000, 0.01);
   assert(few > many, "more evidence must give a tighter bound");
   assertEquals(hoeffdingBound(1, 0, 0.01), Infinity);
-  // ε = R·sqrt(ln(2/δ)/(2n)) — pinned so a rewrite of the formula is visible.
-  assertEquals(few, Math.sqrt(Math.log(200) / 200));
+  // Quadrupling the sample count halves the radius, and the radius scales
+  // linearly with the assumed cost range — the two properties every consumer
+  // of the bound relies on, whichever way the expression is written.
+  assertAlmostEquals(hoeffdingBound(1, 400, 0.01), few / 2, 1e-12);
+  assertAlmostEquals(hoeffdingBound(3, 100, 0.01), few * 3, 1e-12);
+  // A tighter confidence must widen, never narrow, the bound.
+  assert(hoeffdingBound(1, 100, 0.001) > few);
 });
 
 Deno.test("RacingConfig - defaults are off and conservative", () => {
@@ -221,14 +241,53 @@ Deno.test("RacingConfig - defaults are off and conservative", () => {
 Deno.test("RacingConfig - rejects out-of-range knobs rather than clamping", () => {
   assertThrows(
     () => resolveRacingConfig({ minCorpusFraction: 0 }),
-    RangeError,
+    ConfigurationError,
     "minCorpusFraction",
   );
   assertThrows(
     () => resolveRacingConfig({ minCorpusFraction: 1.5 }),
-    RangeError,
+    ConfigurationError,
   );
-  assertThrows(() => resolveRacingConfig({ confidence: 0 }), RangeError);
-  assertThrows(() => resolveRacingConfig({ confidence: 1 }), RangeError);
-  assertThrows(() => resolveRacingConfig({ errorRange: 0 }), RangeError);
+  assertThrows(
+    () => resolveRacingConfig({ confidence: 0 }),
+    ConfigurationError,
+  );
+  assertThrows(
+    () => resolveRacingConfig({ confidence: 1 }),
+    ConfigurationError,
+  );
+  assertThrows(
+    () => resolveRacingConfig({ errorRange: 0 }),
+    ConfigurationError,
+  );
+});
+
+Deno.test("RacingPolicy - always leaves enough survivors for the elite slots", () => {
+  const partials = [
+    partial(0, "leader", 0.01, 900),
+    partial(1, "second", 0.90, 900),
+    partial(2, "third", 0.91, 900),
+    partial(3, "fourth", 0.92, 900),
+  ];
+  // Elitism 3 means three creatures must finish with an exact score, so only
+  // the single worst candidate may be abandoned even though three are hopeless.
+  const strict = new RacingPolicy(config(), {
+    corpusRecords: 1000,
+    minSurvivors: 3,
+  });
+  const verdict = strict.onChunk(partials);
+  assertEquals(verdict.verdict, "abort");
+  assertEquals(
+    verdict.verdict === "abort" ? verdict.creatures : [],
+    [3],
+    "the worst candidate goes first when the survivor floor bites",
+  );
+
+  // With the default floor of two, three of the four may go.
+  const relaxed = new RacingPolicy(config(), { corpusRecords: 1000 });
+  const relaxedVerdict = relaxed.onChunk(partials);
+  assertEquals(
+    relaxedVerdict.verdict === "abort" ? relaxedVerdict.creatures : [],
+    [2, 3],
+  );
 });

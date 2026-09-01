@@ -16,12 +16,8 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "@creature";
-import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
-import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Fitness } from "@architecture/Fitness.ts";
 import { makeDataDir } from "@architecture/DataSet.ts";
-import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import {
   __resetRustScorerBridgeForTests,
@@ -34,71 +30,26 @@ import {
 } from "../../src/score/RacingScorerSession.ts";
 import { resolveRacingConfig } from "@config/RacingConfig.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+import {
+  buildDataSet,
+  buildForwardOnlyPopulation,
+  HELP_WITH_RACING,
+  MockWorkerHandler,
+} from "./_racingFixtures.ts";
 
-const HELP_WITH_RACING =
-  "Options:\n      --cost <NAME>\n      --race-stdio\n      --gpu <MODE>\n";
-
-function buildDataSet(): DataRecordInterface[] {
-  const rows: DataRecordInterface[] = [];
-  for (let i = 0; i < 4; i++) {
-    rows.push({
-      input: new Float32Array([i, 4 - i]),
-      output: new Float32Array([i > 2 ? 1 : -1]),
-    });
-  }
-  return rows;
-}
-
-function buildForwardOnlyPopulation(count: number): Creature[] {
-  const base: CreatureExport = {
-    neurons: [
-      { type: "hidden", uuid: "hidden-0", squash: "TANH", bias: 0.5 },
-      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0.1 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "hidden-0", weight: 0.5 },
-      { fromUUID: "hidden-0", toUUID: "output-0", weight: 0.8 },
-    ],
-    input: 2,
-    output: 1,
-    forwardOnly: true,
-  };
-  const creatures: Creature[] = [];
-  for (let i = 0; i < count; i++) {
-    const forked = structuredClone(base);
-    forked.neurons[0].bias = 0.1 * (i + 1);
-    const creature = Creature.fromJSON(forked);
-    CreatureUtil.makeUUID(creature);
-    creatures.push(creature);
-  }
-  return creatures;
-}
-
-class MockWorkerHandler {
-  public evaluateCallCount = 0;
-  addIdleListener(_callback: () => void): void {}
-  isBusy(): boolean {
-    return false;
-  }
-  // deno-lint-ignore require-await
-  async evaluate(
-    _creature: Creature,
-    _feedbackLoop: boolean,
-  ): Promise<{ evaluate: { error: number } }> {
-    this.evaluateCallCount++;
-    return { evaluate: { error: 0.5 } };
-  }
-}
-
-Deno.test("previousFittest: a shallow clone carries the exact cached score", () => {
+Deno.test("previousFittest: shallowClone carries the exact cached score", () => {
   const [creature] = buildForwardOnlyPopulation(1);
-  creature.score = 0.987_654_321_012_345;
+  const exact = 0.987_654_321_012_345;
+  creature.score = exact;
+  // `NeatEvolution` carries the champion forward as a shallow clone; the clone
+  // must arrive already holding the score, to the last significant figure.
+  // Nothing is assigned to the clone here — that would assert the test's own
+  // arithmetic rather than the carry-forward.
   const champion = creature.shallowClone();
-  champion.score = creature.score;
   assertEquals(
     champion.score,
-    creature.score,
-    "the champion keeps the exact score, to the last significant figure",
+    exact,
+    "the champion clone keeps the exact score without a re-score",
   );
   assertEquals(champion.uuid, creature.uuid);
 });

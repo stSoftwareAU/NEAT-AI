@@ -16,8 +16,12 @@
  * 1. **A corpus-fraction floor.** Records arrive in corpus order, which is not
  *    a random sample, so an early prefix is not evidence about the whole
  *    corpus however tight the bound looks.
- * 2. **The leader is never abandoned**, so a race always leaves at least one
- *    creature with an exact full-corpus score.
+ * 2. **The leader is never abandoned**, and at least `minSurvivors` creatures
+ *    always finish the corpus. `minSurvivors` comes from the run's `elitism`,
+ *    so every elite slot can be filled from a creature holding an exact score —
+ *    without it, a generation where too few candidates finished would promote
+ *    an abandoned creature into an elite slot, and `Fitness` never re-scores a
+ *    creature that already has one.
  * 3. **Exempt keys are never abandoned.** Elites carry an exact score and must
  *    keep it; a partial number must never enter an elitism comparison.
  *
@@ -102,6 +106,7 @@ export class RacingPolicy {
   readonly #config: RequiredRacingConfig;
   readonly #exemptKeys: ReadonlySet<string>;
   readonly #corpusRecords: number;
+  readonly #minSurvivors: number;
   readonly #abandoned: AbandonedCreature[] = [];
   #racedCount = 0;
 
@@ -111,18 +116,28 @@ export class RacingPolicy {
    *   (elites and any creature whose exact score is relied on downstream).
    * @param options.corpusRecords Records in the full corpus. Omitted or
    *   non-positive means "unknown", and the policy never abandons anyone.
+   * @param options.minSurvivors How many creatures must finish the corpus.
+   *   Set from the run's `elitism` so every elite slot can be filled from a
+   *   creature holding an exact score — an abandoned creature must never be
+   *   promoted into an elite slot merely because too few candidates finished.
+   *   Defaults to 2, the minimum elitism `NeatEvolution` ever uses.
    */
   constructor(
     config: RequiredRacingConfig,
     options?: {
       exemptKeys?: Iterable<string>;
       corpusRecords?: number;
+      minSurvivors?: number;
     },
   ) {
     this.#config = config;
     this.#exemptKeys = new Set(options?.exemptKeys ?? []);
     const corpus = options?.corpusRecords ?? 0;
     this.#corpusRecords = Number.isFinite(corpus) && corpus > 0 ? corpus : 0;
+    const survivors = options?.minSurvivors ?? 2;
+    this.#minSurvivors = Number.isFinite(survivors) && survivors > 1
+      ? Math.floor(survivors)
+      : 2;
   }
 
   /** Creatures abandoned so far, in the order they were abandoned. */
@@ -166,18 +181,35 @@ export class RacingPolicy {
       this.#config.confidence,
     );
 
+    // Never let a race leave fewer creatures finishing the corpus than the
+    // elite slots that must be filled from exact scores. Candidates are
+    // considered worst-first so the cap, when it bites, keeps the best.
+    let survivors = partials.length;
     const doomed: number[] = [];
-    for (const partial of partials) {
+    const worstFirst = [...partials].sort((a, b) => {
+      const aError = Number.isFinite(a.partialError)
+        ? a.partialError
+        : Infinity;
+      const bError = Number.isFinite(b.partialError)
+        ? b.partialError
+        : Infinity;
+      if (aError !== bError) return bError - aError;
+      return a.index - b.index;
+    });
+    for (const partial of worstFirst) {
+      if (survivors <= this.#minSurvivors) break;
       if (partial.index === leader.index) continue;
       if (this.#exemptKeys.has(partial.key)) continue;
+      if (!Number.isFinite(partial.recordsScored)) continue;
       const fraction = partial.recordsScored / this.#corpusRecords;
-      if (fraction < this.#config.minCorpusFraction) continue;
+      if (!(fraction >= this.#config.minCorpusFraction)) continue;
 
       if (!Number.isFinite(partial.partialError)) {
         // A non-finite running error can never recover into a usable score;
         // past the floor there is nothing left to learn from it.
         this.#record(partial, fraction);
         doomed.push(partial.index);
+        survivors--;
         continue;
       }
       const bound = leaderBound +
@@ -189,6 +221,7 @@ export class RacingPolicy {
       if (partial.partialError - leader.partialError > bound) {
         this.#record(partial, fraction);
         doomed.push(partial.index);
+        survivors--;
       }
     }
 

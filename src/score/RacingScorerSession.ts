@@ -14,6 +14,7 @@
  * @module RacingScorerSession
  */
 
+import { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 import type { PartialScore, RacingVerdict } from "./RacingPolicy.ts";
 
 /** One chunk event published by the scorer. */
@@ -67,22 +68,47 @@ export function parseRacingLine(line: string): RacingChunkEvent | undefined {
   try {
     parsed = JSON.parse(trimmed);
   } catch (error) {
-    throw new Error(
+    throw new ScorerStrictError(
       `Racing scorer emitted an unparseable chunk event: ${
         error instanceof Error ? error.message : String(error)
       }`,
+      "INVALID_OUTPUT",
     );
   }
   const event = parsed as Partial<RacingChunkEvent>;
   if (event.racing !== "chunk" || !Array.isArray(event.partials)) {
-    throw new Error(
+    throw new ScorerStrictError(
       `Racing scorer emitted a chunk event of unexpected shape: ${trimmed}`,
+      "INVALID_OUTPUT",
     );
   }
+  // Validate every field the policy decides on. A partial whose `partialError`
+  // or `recordsScored` did not survive the wire would make the leader search
+  // and the corpus-fraction floor silently no-op — a run that reports
+  // `abandoned: 0` and looks like a race that simply found nothing to drop.
+  const partials = event.partials.map((raw, i) => {
+    const candidate = raw as Partial<PartialScore>;
+    if (
+      typeof candidate.index !== "number" ||
+      !Number.isInteger(candidate.index) || candidate.index < 0 ||
+      typeof candidate.key !== "string" || candidate.key.length === 0 ||
+      typeof candidate.partialError !== "number" ||
+      typeof candidate.recordsScored !== "number" ||
+      !Number.isFinite(candidate.recordsScored) || candidate.recordsScored < 0
+    ) {
+      throw new ScorerStrictError(
+        `Racing scorer chunk event carries an unusable partial score at position ${i}: ${
+          JSON.stringify(raw)
+        }`,
+        "INVALID_OUTPUT",
+      );
+    }
+    return candidate as PartialScore;
+  });
   return {
     racing: "chunk",
     chunk: typeof event.chunk === "number" ? event.chunk : 0,
-    partials: event.partials as PartialScore[],
+    partials,
   };
 }
 
@@ -169,7 +195,13 @@ async function defaultRacingSessionRunner(
   const timeout = request.timeoutMs > 0
     ? new Promise<never>((_, reject) => {
       timer = setTimeout(
-        () => reject(new Error("rust scorer racing session timeout")),
+        () =>
+          reject(
+            new ScorerStrictError(
+              "rust scorer racing session timeout",
+              "EXEC_FAILURE",
+            ),
+          ),
         request.timeoutMs,
       );
     })

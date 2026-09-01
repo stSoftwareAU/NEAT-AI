@@ -9,14 +9,23 @@
  * states the rule explicitly instead of letting an incomparable number into
  * the same sort:
  *
- * > **Every abandoned creature ranks below every fully-scored creature**, and
+ * > **Every abandoned creature ranks below every usably-scored creature**, and
  * > abandoned creatures are ordered among themselves by their partial error at
  * > abandonment (best partial error first).
  *
+ * "Usably scored" means a **finite** full-corpus score. A fully-scored creature
+ * whose scoring failed outright carries `-Infinity` (`Fitness` assigns it when
+ * the scorer reports a non-finite error), and nothing can rank below that — so
+ * the abandoned band sits between the finite scores and the failures. When
+ * *every* fully-scored creature failed, the band collapses to `-Infinity` too
+ * rather than becoming the top of a dead generation.
+ *
  * The consequence is deliberate: an abandoned creature can never be the
  * generation's fittest, can never be selected as an elite, and can never be
- * exported — the leader of a race is never abandoned, so at least one
- * fully-scored creature always outranks the whole abandoned band.
+ * exported. The policy guarantees that by never abandoning the leader and by
+ * always leaving at least `minSurvivors` creatures racing to completion — set
+ * from the run's `elitism`, so every elite slot can be filled from creatures
+ * holding an exact score.
  *
  * @module RacingRanking
  */
@@ -68,10 +77,25 @@ export function rankAbandonedBelowScored(
     if (score === undefined || !Number.isFinite(score)) continue;
     if (score < worstFullyScored) worstFullyScored = score;
   }
-  // No finite fully-scored creature to anchor against (every one failed): the
-  // band still has to be ordered, so anchor at zero. It cannot outrank a
-  // fully-scored creature because there is none with a finite score.
-  const base = Number.isFinite(worstFullyScored) ? worstFullyScored : 0;
+  // Every fully-scored creature failed outright (`-Infinity`, the score
+  // `Fitness` assigns when the scorer reports a non-finite error). There is no
+  // rank band below `-Infinity`, so the only assignment that cannot put an
+  // abandoned creature at the *top* of a dead generation is `-Infinity`
+  // itself: the whole generation is then equally worthless, which is the truth.
+  if (!Number.isFinite(worstFullyScored)) {
+    for (const entry of abandoned) {
+      entry.creature.score = -Infinity;
+      addTag(entry.creature, "error", "Infinity");
+      addTag(entry.creature, "score", "-Infinity");
+      addTag(
+        entry.creature,
+        "racing",
+        `abandoned ${entry.recordsScored}/${entry.corpusRecords}`,
+      );
+    }
+    return abandoned.map(() => -Infinity);
+  }
+  const base = worstFullyScored;
 
   const ordered = [...abandoned].sort((a, b) => {
     const aError = Number.isFinite(a.partialError) ? a.partialError : Infinity;

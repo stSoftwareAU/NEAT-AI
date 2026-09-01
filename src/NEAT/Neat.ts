@@ -344,6 +344,9 @@ export class Neat {
       // Issue #3928: racing (early exit) is a scoring-path policy, so it rides
       // the same seam as the scorer config rather than being re-derived.
       this.config.racing,
+      // Issue #3928: racing must leave enough creatures scoring to completion
+      // to fill every elite slot with an exact score.
+      this.config.elitism,
     );
 
     this.population = [];

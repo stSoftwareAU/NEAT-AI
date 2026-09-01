@@ -53,8 +53,14 @@ A creature `c` is abandoned only when **all** of these hold:
    `minCorpusFraction` of the corpus. Records arrive in **corpus order**, which
    is not a random sample, so an early prefix is not evidence about the whole
    corpus however tight the bound looks.
-3. **`c` is not the leader**, and is not an **exempt** key. Elites carry an
-   exact score and must keep it.
+3. **`c` is not the leader**, is not an **exempt** key, and abandoning it would
+   still leave at least `minSurvivors` creatures finishing the corpus.
+   `minSurvivors` is the run's `elitism` (floor 2), so every elite slot can be
+   filled from a creature holding an exact score. Without that cap a generation
+   where too few candidates finished would promote an abandoned creature into an
+   elite slot — and `Fitness` never re-scores a creature that already has a
+   score, so the fabricated rank would follow it for the rest of the run. When
+   the cap bites, the worst candidates are abandoned first.
 4. **`c` is outside the confidence bound** — its running mean error exceeds the
    leader's by more than the combined
    [Hoeffding](comparison/REFERENCES.md#-surrogate-assisted-search-and-racing)
@@ -91,13 +97,19 @@ Out-of-range values are rejected, never clamped: a typo that silently became
   change. It is carried forward as a `shallowClone` holding the exact cached
   score, and `NeatEvolution` asserts against that value rather than recomputing
   it.
-- **Abandoned creatures rank below every fully-scored creature**, ordered among
+- **Abandoned creatures rank below every usably-scored creature**, ordered among
   themselves by their partial error at abandonment (best first). A
   partial-corpus error is not comparable with a full-corpus one, so it is not
-  allowed into the same sort as a measurement — it is turned into a rank. The
-  consequence is deliberate: an abandoned creature can never become the
-  generation's fittest, be selected as an elite, or be exported, because the
-  leader of a race is never abandoned.
+  allowed into the same sort as a measurement — it is turned into a rank.
+  "Usably scored" means a **finite** score: a fully-scored creature whose
+  scoring failed carries `-Infinity`, and nothing ranks below that, so the
+  abandoned band sits between the finite scores and the failures. If every
+  fully-scored creature failed, the band collapses to `-Infinity` as well rather
+  than becoming the top of a dead generation.
+- The consequence is deliberate: an abandoned creature can never become the
+  generation's fittest, be selected as an elite, or be exported — the leader is
+  never abandoned, and the survivor cap keeps enough exact scores to fill every
+  elite slot.
 
 Racing therefore still changes **breeding probabilities** — an abandoned
 creature sits at the bottom of the sort instead of wherever its full score would
