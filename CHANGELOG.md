@@ -25,6 +25,25 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3928:** New `NeatOptions.racing` — racing / early-exit fitness
+  scoring
+  ([Maron & Moore 1994](https://papers.nips.cc/paper/1993/hash/02a32ad2669e6fe298e607fe7cc0e1a0-Abstract.html);
+  Jin 2011). Native batch scoring now drives the scorer's early-exit hook
+  (NEAT-AI-scorer#308) through its `--race-stdio` surface, abandoning a creature
+  mid-corpus as soon as a Hoeffding bound says it cannot catch the leader
+  instead of paying the whole corpus to establish that it is worse. Survivors
+  still receive an **exact full-corpus score**, so the fifth-decimal comparisons
+  that decide elitism are unaffected; abandoned creatures rank **below every
+  fully-scored creature**, ordered by their partial error, so one can never
+  become the fittest, an elite, or an export. Elites are exempt, a
+  minimum-corpus-fraction floor (default 20%) stops a creature being killed by
+  an unrepresentative prefix, and the race always leaves at least `elitism`
+  creatures scoring to completion so no elite slot is ever filled by a partial
+  score. Off by default; a binary that does not advertise `--race-stdio` logs
+  one warning and full-scores rather than pretending to race. Per-generation
+  diagnostics land on `Fitness.lastRacingSummary` and in one INFO line. See
+  [`docs/RACING.md`](./docs/RACING.md).
+
 - **Issue #3909:** New `mcmc.mcmcAdvantageMode: "rankShaped"` — rank-based
   fitness shaping ([Salimans et al. 2017](https://arxiv.org/abs/1703.03864)) for
   the MCMC acceptance test and parent selection. The M-H test compares the

@@ -332,6 +332,17 @@ const SLICE_E: RollupEntry[] = [
     note:
       "#3865 promoted it to a NeatOptions key; option beats NEAT_AI_RUST_SCORER_* beats default.",
   },
+  {
+    key: "racing",
+    slice: "E",
+    verdict: "IN USE",
+    interfaces: [
+      "src/config/RacingConfig.ts::RacingConfig",
+      "src/config/RacingConfig.ts::RequiredRacingConfig",
+    ],
+    note:
+      "#3928 racing / early exit: read by Fitness.calculate and RacingPolicy on the native batch path.",
+  },
 ];
 
 /**
