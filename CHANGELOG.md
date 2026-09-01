@@ -23,26 +23,41 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Issue #3940:** `evolveDir` can no longer return `generation === 0` because
+  of the hard deadline. The T+grace cap used to abandon the in-flight first
+  generation (`keeping the 0 generation(s) already evolved`), leaving the
+  population unscored with no winner to publish — while
+  `shouldStopStartingGenerations` had always refused to stop a run with nothing
+  banked. The cap now applies the same one-generation floor through a single
+  chokepoint (`shouldAbandonInFlight` → `Neat.abandonInFlightPastHardDeadline`),
+  and `evolveDir` awaits generation 1 uncapped. Once one generation is in hand
+  the #2892 / #2896 behaviour is unchanged.
+
+- **GRQ #4471:** The env-derived task budget (`GRQ_TASK_DEADLINE_EPOCH` /
+  `GRQ_TASK_MAX_SECONDS`, added by GRQ #4141) now **clamps** the caller's
+  `timeoutMinutes` instead of replacing it:
+  `min(timeOutMinutes, envBudgetMinutes ?? timeOutMinutes)`. It was used as a
+  substitute, so a `--timeout=4` request under a 3 h node task cap was planned
+  as a **179 m** discovery budget — the library widened a budget its caller
+  asked to narrow. The tighten direction is unchanged (a deadline 2 minutes out
+  still shrinks a 4 m request to 2 m), and with the env vars unset behaviour is
+  exactly what it was. The verbose `… of <n>m budget` line now reports the
+  clamped value and appends `(clamped by task budget)` when the env budget
+  narrowed it.
+
 ### Added
 
-- **Issue #3928:** New `NeatOptions.racing` — racing / early-exit fitness
-  scoring
-  ([Maron & Moore 1994](https://papers.nips.cc/paper/1993/hash/02a32ad2669e6fe298e607fe7cc0e1a0-Abstract.html);
-  Jin 2011). Native batch scoring now drives the scorer's early-exit hook
-  (NEAT-AI-scorer#308) through its `--race-stdio` surface, abandoning a creature
-  mid-corpus as soon as a Hoeffding bound says it cannot catch the leader
-  instead of paying the whole corpus to establish that it is worse. Survivors
-  still receive an **exact full-corpus score**, so the fifth-decimal comparisons
-  that decide elitism are unaffected; abandoned creatures rank **below every
-  fully-scored creature**, ordered by their partial error, so one can never
-  become the fittest, an elite, or an export. Elites are exempt, a
-  minimum-corpus-fraction floor (default 20%) stops a creature being killed by
-  an unrepresentative prefix, and the race always leaves at least `elitism`
-  creatures scoring to completion so no elite slot is ever filled by a partial
-  score. Off by default; a binary that does not advertise `--race-stdio` logs
-  one warning and full-scores rather than pretending to race. Per-generation
-  diagnostics land on `Fitness.lastRacingSummary` and in one INFO line. See
-  [`docs/RACING.md`](./docs/RACING.md).
+- **Issue #3827 (follow-up):** The squash-substitution gate is now part of the
+  public API — `squashSubstitutionBlockedReason`, `canAdoptSquash` and
+  `STRUCTURALLY_CONSTRAINED_SQUASHES` are exported from `mod.ts`, not only from
+  the internal Intelligent Design barrel. An application that applies its own
+  squash substitution (keyed by neuron uuid, because the integer id is not
+  stable across generations) could not reach the copy applied inside
+  `makeModifiedCreature*`, so it kept rebuilding `IF` neurons without a
+  `condition` or with fewer than three inward connections — creatures this
+  library's own validator refuses. One rule, exported once.
 
 - **Issue #3909:** New `mcmc.mcmcAdvantageMode: "rankShaped"` — rank-based
   fitness shaping ([Salimans et al. 2017](https://arxiv.org/abs/1703.03864)) for
@@ -158,6 +173,44 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   cleanup.
 
 ### Fixed
+
+- **GRQ #4472:** The post-loop teardown is now bounded, so "the loop ended on
+  time" translates into "the run returned on time". Everything after the loop
+  breaks — worker termination, the Issue #1509 replay drain, the champion
+  restore and the `creatureStore` write — used to be unbounded: one unguarded
+  `WorkerHandler.terminate()` throw skipped the drain, the restore **and** the
+  write, and `DiscoveryReplayQueue.waitForCompletion()` only consults its cap
+  _between_ replays, so a replay already in flight when the drain began could
+  hold the run open forever. `evolveDir`, `evolveEnv` and `evolveRL` now share
+  one teardown (`src/creature/BoundedEvolveTeardown.ts`) that persists the
+  champion **first**, then terminates workers and drains the replay queue under
+  an explicit per-step budget (default 5 s), detaching anything that will not
+  stop and naming it in a single summary log line. New
+  `DiscoveryReplayQueue.abandonInFlightReplay()` drops the queued replay and
+  aborts the in-flight one without waiting. Uncapped runs keep the unbounded
+  #1509 drain. Note the limit this does **not** remove: a worker wedged in a
+  synchronous native / WASM call still prevents the Deno process from exiting
+  naturally even after `terminate()` returns, so a caller that must guarantee
+  its own exit has to call `Deno.exit()` — see
+  [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md).
+
+- **GRQ #4470:** `evolveDir` now ends at its own hard deadline
+  (`timeoutMinutes + min(15, T)` grace) when a discovery or training child never
+  settles. Two holes let a run outlive its cap until an external watchdog killed
+  it mid-`evolve` — throwing away completed work. The cap was consulted only
+  inside the over-run branch and the `completed` branch, so a generation that
+  tripped neither went straight back into `evolve()` without ever checking it;
+  and the `await neat.evolve()` itself was unbounded, so a generation wedged
+  behind a silent child pinned the loop where no branch could be reached again.
+  The cap is now checked at the top of every pass of the generation loop (the
+  first generation stays exempt, so a run that starts past its cap still commits
+  one population), and the generation itself is bounded by the new
+  `awaitWithinHardDeadline` helper (`src/NEAT/HardDeadlineRace.ts`). Past the
+  cap the wedged generation is abandoned, the evolved population is kept and
+  written, `terminationReason` is `"hard-deadline"`, and control returns to the
+  caller. The abandon log line now names what was abandoned — counts by kind and
+  UUID suffixes — at the moment it happens, and `awaitInFlightTasks()` measures
+  its remaining budget on the evolve loop's own clock.
 
 - **Issue #3892:** The `analyzeParallel` GPU-guard test asserted the Rust
   variant name `GpuPermanent`, but Discovery serialises `DiscoveryErrorKind`

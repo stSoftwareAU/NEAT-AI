@@ -15,6 +15,7 @@
  * Usage:
  *   deno run -A scripts/brand/scale_social_previews.ts
  *   deno run -A scripts/brand/scale_social_previews.ts --github-only
+ *   deno run -A scripts/brand/scale_social_previews.ts neat-ai-refinery.png
  *
  * `--github-only` rebuilds `github/*.png` from the already-fitted transparent
  * PNGs and does not read or write `source/`.
@@ -132,7 +133,12 @@ async function main(): Promise<void> {
   }
   const sourceDir = `${outDir}/source`;
 
-  const masters = await pngNamesIn(sourceDir);
+  const requested = args.filter((arg) =>
+    arg.endsWith(".png") && !arg.startsWith("-")
+  );
+  const masters = requested.length > 0
+    ? requested.map((name) => name.split("/").pop()!)
+    : await pngNamesIn(sourceDir);
   if (masters.length === 0) {
     throw new Error(`no PNG masters in ${sourceDir}`);
   }

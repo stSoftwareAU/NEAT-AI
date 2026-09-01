@@ -27,12 +27,16 @@ import { EVOLUTION_ONLY_TRAIN_PER_GEN } from "@config/TrainPerGen.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Costs } from "@costs";
 import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
-import { Neat } from "@neat/Neat.ts";
+import { AWAIT_IN_FLIGHT_TIMEOUT_MS, Neat } from "@neat/Neat.ts";
 import {
   computeHardDeadlineTS,
   DEFAULT_OVERRUN_ENFORCEMENT_FACTOR,
   shouldStopStartingGenerations,
 } from "@neat/HardDeadline.ts";
+import {
+  awaitWithinHardDeadline,
+  HARD_DEADLINE_BREACHED,
+} from "@neat/HardDeadlineRace.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
@@ -75,6 +79,7 @@ import {
   disposeEvolvePopulation,
   releaseEvolveCaches,
 } from "@creature/EvolveTeardown.ts";
+import { runBoundedEvolveTeardown } from "@creature/BoundedEvolveTeardown.ts";
 import { finishGeneration } from "@creature/EvolveGenerationTail.ts";
 import {
   createPhaseTimingAccumulator,
@@ -408,6 +413,13 @@ export interface EvolveDirDeps {
   overrunEnforcementFactor?: number;
   /** Invoked with the constructed {@link Neat} instance before the evolve loop. */
   onNeatReady?: (neat: Neat) => void;
+  /**
+   * Per-step budget (ms) for the bounded post-loop teardown (GRQ #4472).
+   * Tests shrink it so a wedged worker / replay is abandoned without a real
+   * wait; production omits it and takes
+   * {@link DEFAULT_TEARDOWN_STEP_BUDGET_MS}.
+   */
+  teardownBudgetMS?: number;
 }
 
 /**
@@ -431,6 +443,30 @@ function requestOverrunStop(neat: Neat, factor: number): void {
       `× ${factor} — stopping new generations and finishing with the ` +
       `evolved population`,
   );
+}
+
+/**
+ * GRQ #4470: report and record a generation abandoned mid-flight because the
+ * hard cap passed while it was running.
+ *
+ * The named log line lands at the moment of the abandon — a run that only says
+ * `abandoning 0 in-flight task(s)` after the fact is what hid the GRQ-22 wedge.
+ * `abandonInFlightPastHardDeadline` then clears the in-flight bookkeeping,
+ * sets `terminationReason`, and interrupts any named phase.
+ */
+function abandonWedgedGeneration(
+  neat: Neat,
+  hardDeadlineMS: number,
+  nowFn: () => number,
+  generationsCompleted: number,
+): void {
+  getLogger().warn(
+    `[Neat] Hard deadline (timeoutMinutes + grace) exceeded during ` +
+      `generation ${generationsCompleted + 1} — abandoning the in-flight ` +
+      `generation and keeping the ${generationsCompleted} generation(s) ` +
+      `already evolved`,
+  );
+  neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn());
 }
 
 /**
@@ -566,6 +602,22 @@ export async function evolveDir(
     DEFAULT_OVERRUN_ENFORCEMENT_FACTOR;
 
   while (true) {
+    // GRQ #4470: the hard cap is consulted on *every* pass, before any branch
+    // decides what to do next. It used to be checked only inside the over-run
+    // branch and the `completed` branch, so a generation that neither
+    // completed nor tripped the over-run predicate went straight back into
+    // evolve() without ever looking at the cap — and both of those branches
+    // fall through to an `awaitInFlightTasks()` that returns immediately once
+    // the cap has passed, so the loop could spin well past its own deadline.
+    // Generation 1 is exempt (as `shouldStopStartingGenerations` is) so a run
+    // that starts already past its cap still commits one evolved population.
+    if (
+      generation > 0 &&
+      neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
+    ) {
+      break;
+    }
+
     if (
       shouldStopStartingGenerations(
         generation,
@@ -575,15 +627,6 @@ export async function evolveDir(
         overrunFactor,
       )
     ) {
-      const nowMS = nowFn();
-      // If the T+15 cap has also passed, the hard-deadline abandon still wins
-      // so existing T+15 tests keep their in-flight-map cleanup.
-      if (
-        hardDeadlineMS && nowMS > hardDeadlineMS &&
-        neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowMS)
-      ) {
-        break;
-      }
       requestOverrunStop(neat, overrunFactor);
       if (interrupted) break;
       // Graceful self-termination: do not take the hard-deadline abandon path.
@@ -591,12 +634,36 @@ export async function evolveDir(
         break;
       }
       // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks();
+      await neat.awaitInFlightTasks(
+        AWAIT_IN_FLIGHT_TIMEOUT_MS,
+        hardDeadlineMS,
+        nowFn,
+      );
       continue;
     }
 
+    // GRQ #4470: bound the generation itself. A discovery/training child that
+    // never settles can hold the resources this generation needs, and an
+    // `await` on a promise that never settles outlives every deadline check in
+    // the loop. Past the cap we abandon the generation, keep the population
+    // evolved so far, and hand control back to the caller — no hard kill.
+    // Issue #3940: the first generation keeps the unbounded await — whether the
+    // run began past its cap or the cap passes while generation 1 is in flight.
+    // Bounding it returned `0 generation(s) already evolved`: an unscored
+    // population with no winner to publish, and a whole team slot banked
+    // nothing. Every later generation is bounded exactly as before.
+    const generationCap = generation === 0 ? 0 : hardDeadlineMS;
     // deno-lint-ignore no-await-in-loop
-    const result = await neat.evolve(bestCreature);
+    const outcome = await awaitWithinHardDeadline(
+      neat.evolve(bestCreature),
+      generationCap,
+      nowFn,
+      () => abandonWedgedGeneration(neat, hardDeadlineMS, nowFn, generation),
+    );
+    if (outcome === HARD_DEADLINE_BREACHED) {
+      break;
+    }
+    const result = outcome;
 
     generation++;
 
@@ -685,33 +752,40 @@ export async function evolveDir(
       // full evolve() cycles. This avoids wasting worker resources on fitness
       // evaluation, breeding, and mutation while simply waiting for discovery
       // or training to finish.
+      // GRQ #4470: the wait shares the loop's clock and cap, so once the cap
+      // passes it returns immediately and the guard at the top of the loop
+      // ends the run rather than letting it spin here.
       // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks();
+      await neat.awaitInFlightTasks(
+        AWAIT_IN_FLIGHT_TIMEOUT_MS,
+        hardDeadlineMS,
+        nowFn,
+      );
     }
   }
 
-  for (let i = workers.length; i--;) {
-    const w = workers[i];
-    w.terminate();
-  }
+  // GRQ #4472: the post-loop teardown is bounded, so "the loop ended on time"
+  // translates into "the process returned on time". The champion restore and
+  // the checkpoint write run first — before worker termination or the Issue
+  // #1509 replay drain, either of which can be abandoned without losing the
+  // generations already evolved.
+  await runBoundedEvolveTeardown({
+    label: "evolveDir",
+    persist: async () => {
+      if (bestCreature) {
+        creature.loadFrom(bestCreature, config.debug, "training:restoreBest");
+      }
+      if (config.creatureStore) {
+        await writeCreatures(neat, config.creatureStore);
+      }
+    },
+    workers,
+    replayQueue: neat.discoveryReplayQueue,
+    hardDeadlineMS,
+    now: nowFn,
+    budgetMS: deps?.teardownBudgetMS,
+  });
   workers.length = 0;
-
-  // Issue #1509: Await background replay queue completion before returning.
-  // Without this, callers that delete the data directory after evolveDir()
-  // returns may cause NotFound errors in still-running replay workers.
-  // Issue #2901: bound the wait to the absolute hard cap when a timeout is
-  // configured (hardDeadlineMS > 0); uncapped runs keep the unbounded wait.
-  await neat.discoveryReplayQueue.waitForCompletion(
-    hardDeadlineMS || undefined,
-  );
-
-  if (bestCreature) {
-    creature.loadFrom(bestCreature, config.debug, "training:restoreBest");
-  }
-
-  if (config.creatureStore) {
-    await writeCreatures(neat, config.creatureStore);
-  }
 
   // Issue #3434: run-level lifecycle teardown. The champion has been restored
   // into (and any checkpoint written from) the population above, so dispose the
@@ -983,21 +1057,24 @@ export async function evolveEnv<S, A>(
     }
   }
 
-  // No worker pool to terminate — episode rollouts ran inline. Replay queue
-  // never had a chance to schedule anything (no dataDir was provided), but
-  // await it for symmetry with evolveDir() in case a future change wires one
-  // through. Issue #2901: bound the wait to the absolute hard cap when set.
-  await neat.discoveryReplayQueue.waitForCompletion(
-    hardDeadlineMS || undefined,
-  );
-
-  if (bestCreature) {
-    creature.loadFrom(bestCreature, config.debug, "evolveEnv:restoreBest");
-  }
-
-  if (config.creatureStore) {
-    await writeCreatures(neat, config.creatureStore);
-  }
+  // No worker pool to terminate — episode rollouts ran inline. The replay queue
+  // never had a chance to schedule anything (no dataDir was provided), but it
+  // is drained for symmetry with evolveDir() in case a future change wires one
+  // through. GRQ #4472: same bounded teardown, so the champion restore and the
+  // checkpoint write cannot be stranded behind a drain that will not end.
+  await runBoundedEvolveTeardown({
+    label: "evolveEnv",
+    persist: async () => {
+      if (bestCreature) {
+        creature.loadFrom(bestCreature, config.debug, "evolveEnv:restoreBest");
+      }
+      if (config.creatureStore) {
+        await writeCreatures(neat, config.creatureStore);
+      }
+    },
+    replayQueue: neat.discoveryReplayQueue,
+    hardDeadlineMS,
+  });
 
   // Issue #3434: run-level lifecycle teardown — dispose the run's population
   // (keeping the caller creature), dispose the temporary champion clone, and
@@ -1534,22 +1611,24 @@ export async function evolveRL<S, A>(
     });
   }
 
-  // Issue #2612: Terminate the parallel rollout pool, if any. When no
-  // pool was constructed (single-threaded or missing adapterDescription)
-  // this is a no-op.
-  workerPool?.terminate();
-  // Issue #2901: bound the wait to the absolute hard cap when a timeout is set.
-  await neat.discoveryReplayQueue.waitForCompletion(
-    hardDeadlineMS || undefined,
-  );
-
-  if (bestCreature) {
-    creature.loadFrom(bestCreature, config.debug, "evolveRL:restoreBest");
-  }
-
-  if (config.creatureStore) {
-    await writeCreatures(neat, config.creatureStore);
-  }
+  // Issue #2612: Terminate the parallel rollout pool, if any. When no pool was
+  // constructed (single-threaded or missing adapterDescription) there is
+  // nothing to terminate. GRQ #4472: both the pool shutdown and the replay
+  // drain run inside the bounded teardown, after the champion is on disk.
+  await runBoundedEvolveTeardown({
+    label: "evolveRL",
+    persist: async () => {
+      if (bestCreature) {
+        creature.loadFrom(bestCreature, config.debug, "evolveRL:restoreBest");
+      }
+      if (config.creatureStore) {
+        await writeCreatures(neat, config.creatureStore);
+      }
+    },
+    workers: workerPool ? [workerPool] : undefined,
+    replayQueue: neat.discoveryReplayQueue,
+    hardDeadlineMS,
+  });
 
   // Issue #3434: run-level lifecycle teardown — dispose the run's population
   // (keeping the caller creature), dispose the temporary champion clone, and

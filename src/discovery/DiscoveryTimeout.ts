@@ -240,3 +240,48 @@ export function remainingTaskBudgetMinutes(
   }
   return Math.max(0, remainingSeconds / 60);
 }
+
+export interface WallClockBudgetInput {
+  /** Wall-clock minutes the caller asked for (`timeoutMinutes`). */
+  timeOutMinutes: number;
+  /**
+   * Remaining task budget from {@link remainingTaskBudgetMinutes}, or
+   * `undefined` when GRQ exported no deadline.
+   */
+  envBudgetMinutes: number | undefined;
+}
+
+export interface WallClockBudget {
+  /** Budget to plan against: never wider than the caller's request. */
+  wallClockMinutes: number;
+  /** True when the env-derived task budget narrowed the caller's request. */
+  clampedByEnv: boolean;
+}
+
+/**
+ * Resolves the wall-clock budget a discovery is planned against
+ * (GRQ #4471).
+ *
+ * The env-derived task budget (GRQ #4141) exists to stop a run overshooting
+ * the node's task cap — that intent is **tighten-only**. Used as a
+ * *replacement* it did the opposite: a caller asking for `--timeout=4` was
+ * handed whatever headroom the node had left (a 3 h cap became a 179 m plan).
+ * So the env budget clamps, never inflates:
+ * `min(timeOutMinutes, envBudgetMinutes ?? timeOutMinutes)`.
+ *
+ * With no env deadline exported the caller's `timeOutMinutes` is returned
+ * unchanged.
+ */
+export function resolveWallClockBudgetMinutes(
+  input: WallClockBudgetInput,
+): WallClockBudget {
+  const requested = Math.max(0, input.timeOutMinutes);
+  const envBudget = input.envBudgetMinutes;
+  if (envBudget === undefined || envBudget >= requested) {
+    return { wallClockMinutes: requested, clampedByEnv: false };
+  }
+  return {
+    wallClockMinutes: Math.max(0, envBudget),
+    clampedByEnv: true,
+  };
+}

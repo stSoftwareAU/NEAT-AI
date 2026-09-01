@@ -55,6 +55,8 @@ Deno.test("abandonInFlightPastHardDeadline: breaks and abandons in-flight tasks 
     neat.trainingInProgress.set("stuck-train", new Promise(() => {}));
 
     // Hard deadline already in the past.
+    // Issue #3940: the cap only fires once a generation has been banked.
+    neat.generationsCompleted = 1;
     const broke = neat.abandonInFlightPastHardDeadline(Date.now() - 1000);
 
     assert(broke, "Should signal a break once the hard deadline has passed");
@@ -85,6 +87,8 @@ Deno.test("abandonInFlightPastHardDeadline: does not break or abandon before the
     neat.trainingInProgress.set("train", Promise.resolve());
 
     // Hard deadline well in the future.
+    // Issue #3940: the cap only fires once a generation has been banked.
+    neat.generationsCompleted = 1;
     const broke = neat.abandonInFlightPastHardDeadline(Date.now() + 60_000);
 
     assertEquals(broke, false, "Should not break before the hard deadline");
@@ -114,6 +118,8 @@ Deno.test("abandonInFlightPastHardDeadline: zero deadline disables the cap entir
     neat.trainingInProgress.set("train", Promise.resolve());
 
     // 0 means "no timeout configured" → no cap, regardless of wall clock.
+    // Issue #3940: the cap only fires once a generation has been banked.
+    neat.generationsCompleted = 1;
     const broke = neat.abandonInFlightPastHardDeadline(0);
 
     assertEquals(

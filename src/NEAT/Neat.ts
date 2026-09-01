@@ -26,6 +26,7 @@ import { Genus } from "@neat/Genus.ts";
 import {
   computeHardDeadlineTS,
   type EvolveTerminationReason,
+  shouldAbandonInFlight,
 } from "@neat/HardDeadline.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
@@ -55,6 +56,13 @@ import {
 import * as evolution from "@neat/NeatEvolution.ts";
 import type { EvolveResult } from "@neat/NeatEvolution.ts";
 import * as scheduling from "@neat/NeatScheduling.ts";
+
+/**
+ * Default cap on a single {@link Neat.awaitInFlightTasks} wait, in ms. The
+ * effective wait is the smaller of this and the time left before the hard
+ * deadline (Issue #2896).
+ */
+export const AWAIT_IN_FLIGHT_TIMEOUT_MS = 30_000;
 
 /**
  * NEAT (NeuroEvolution of Augmenting Topologies) implementation.
@@ -212,6 +220,17 @@ export class Neat {
    * The on-disk tag name remains `currentGeneration`.
    */
   currentGeneration = 0;
+
+  /**
+   * Generations this **run** has actually completed (Issue #3940).
+   *
+   * Distinct from {@link Neat.currentGeneration}, which accumulates across every
+   * run of the lineage: this one starts at 0 for each `Neat` instance and is
+   * incremented once a generation has been evaluated end to end. It is the
+   * floor the hard-deadline cap consults — a run with nothing banked has no
+   * winner to return, so the first generation is never abandoned.
+   */
+  generationsCompleted = 0;
 
   /**
    * Issue #2947: tracks whether the warm-up → warm structural-lock-lift
@@ -709,19 +728,6 @@ export class Neat {
   }
 
   /**
-   * Issue #2896: enforce the absolute T+15 hard cap during the finish-up cycle.
-   *
-   * When `hardDeadlineMS` is set (non-zero) and already in the past, abandon all
-   * in-flight discovery/training bookkeeping — so the abandoned promises cannot
-   * be re-awaited — and signal the caller to break out of the evolve loop, even
-   * when {@link finishUp} would still ask for more wait generations. The
-   * caller's post-loop sequence (worker termination, best-creature restore and
-   * `writeCreatures`) still runs because the break lands there.
-   *
-   * @param hardDeadlineMS Absolute hard-deadline epoch ms (0/unset = no cap).
-   * @returns `true` when the cap was exceeded and the loop must break.
-   */
-  /**
    * Issue #3053: incremental stuck-task watchdog.
    *
    * Abandons individual training tasks that have exceeded their own per-task
@@ -791,17 +797,52 @@ export class Neat {
     return this.abandonInFlightPastHardDeadline(this.hardDeadlineTS, nowTS);
   }
 
+  /**
+   * Issue #2896: enforce the absolute T+15 hard cap during the finish-up cycle.
+   *
+   * When `hardDeadlineMS` is set (non-zero) and already in the past, abandon all
+   * in-flight discovery/training bookkeeping — so the abandoned promises cannot
+   * be re-awaited — and signal the caller to break out of the evolve loop, even
+   * when {@link finishUp} would still ask for more wait generations. The
+   * caller's post-loop sequence (worker termination, best-creature restore and
+   * `writeCreatures`) still runs because the break lands there.
+   *
+   * Issue #3940: the cap is floored at one completed generation
+   * ({@link generationsCompleted}) — the same floor
+   * {@link shouldStopStartingGenerations} applies. This is the single
+   * chokepoint every enforcement path goes through (the evolve loops, the
+   * in-fitness watchdog via {@link pollHardDeadlineWatchdog}), so a run whose
+   * first generation is slower than `timeoutMinutes + grace` finishes that
+   * generation instead of returning an unscored population.
+   *
+   * @param hardDeadlineMS Absolute hard-deadline epoch ms (0/unset = no cap).
+   * @returns `true` when the cap was exceeded and the loop must break.
+   */
   abandonInFlightPastHardDeadline(
     hardDeadlineMS: number,
     nowTS: number = Date.now(),
   ): boolean {
-    if (!hardDeadlineMS || nowTS <= hardDeadlineMS) {
+    if (
+      !shouldAbandonInFlight(this.generationsCompleted, hardDeadlineMS, nowTS)
+    ) {
       return false;
     }
 
-    const abandoned = this.discoveryInProgress.size +
-      this.trainingInProgress.size;
+    const discoveryCount = this.discoveryInProgress.size;
+    const trainingCount = this.trainingInProgress.size;
+    const abandoned = discoveryCount + trainingCount;
     const stalledPhase = this.inFlightPhase;
+
+    // GRQ #4470: name *what* is being abandoned, not just how many. A silent
+    // discovery/training child is the fault this line has to identify, and the
+    // operator reading the log has only the UUID suffixes to go on.
+    const abandonedUUIDs = [
+      ...this.discoveryInProgress.keys(),
+      ...this.trainingInProgress.keys(),
+    ].map((uuid) => uuid.substring(Math.max(0, uuid.length - 8)));
+    const abandonedDetail = `${abandoned} in-flight task(s) ` +
+      `(${discoveryCount} discovery, ${trainingCount} training): ` +
+      abandonedUUIDs.join(", ");
 
     if (stalledPhase) {
       // A stall inside fitness (or another named phase) is not an in-flight
@@ -810,14 +851,13 @@ export class Neat {
       getLogger().warn(
         `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — ` +
           `stalled in ${stalledPhase}; interrupting` +
-          (abandoned > 0
-            ? ` and abandoning ${abandoned} in-flight task(s)`
-            : ""),
+          (abandoned > 0 ? ` and abandoning ${abandonedDetail}` : ""),
       );
       this.interruptInFlightPhase();
     } else {
       getLogger().warn(
-        `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — abandoning ${abandoned} in-flight task(s)`,
+        `[Neat] Hard deadline (timeoutMinutes + grace) exceeded — abandoning ` +
+          (abandoned > 0 ? abandonedDetail : "0 in-flight task(s)"),
       );
     }
 
@@ -905,12 +945,16 @@ export class Neat {
    * @param timeoutMs - Maximum time to wait before returning (default 30s)
    * @param hardDeadlineTS - Absolute hard-deadline epoch ms (Issue #2896).
    *   Defaults to this instance's {@link hardDeadlineTS}. The effective wait is
-   *   capped at `hardDeadlineTS - Date.now()` (minimum 0) so the 30s default
+   *   capped at `hardDeadlineTS - now()` (minimum 0) so the 30s default
    *   cannot push the finish-up wait past the T+15 cap. 0 disables the cap.
+   * @param now - Clock used to measure the remaining budget (GRQ #4470).
+   *   The evolve loop passes its own clock so the wait and the loop's deadline
+   *   checks cannot disagree; defaults to {@link Date.now}.
    */
   async awaitInFlightTasks(
-    timeoutMs = 30_000,
+    timeoutMs = AWAIT_IN_FLIGHT_TIMEOUT_MS,
     hardDeadlineTS = this.hardDeadlineTS,
+    now: () => number = Date.now,
   ): Promise<void> {
     const inFlightPromises: Promise<void>[] = [
       ...this.discoveryInProgress.values(),
@@ -924,7 +968,7 @@ export class Neat {
     // Issue #2896: never wait past the absolute hard deadline. Cap the effective
     // timeout at the time remaining before the cap (minimum 0).
     const effectiveTimeoutMs = hardDeadlineTS > 0
-      ? Math.min(timeoutMs, Math.max(0, hardDeadlineTS - Date.now()))
+      ? Math.min(timeoutMs, Math.max(0, hardDeadlineTS - now()))
       : timeoutMs;
 
     const discoveryCount = this.discoveryInProgress.size;
