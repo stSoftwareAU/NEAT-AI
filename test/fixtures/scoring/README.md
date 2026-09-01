@@ -47,3 +47,31 @@ flowchart LR
     C --> RS["Rust<br/>magnitude_penalty()"]
     TS -->|identical to 1e-12| RS
 ```
+
+## 🎯 `fitness-corpus.json` — the full-fidelity scoring golden
+
+Issue #3926 added a cheaper _fitness corpus_ (a NEAT-AI-Refinery sample of the
+full one). Nothing in that work may move the full-fidelity path, and this
+fixture is how that is asserted rather than eyeballed.
+
+| Field                | Meaning                                                   |
+| -------------------- | --------------------------------------------------------- |
+| `cost`               | the cost function the goldens were computed under (`MSE`) |
+| `creature`           | a forward-only creature export — the thing being scored   |
+| `records`            | the whole corpus, as explicit input/output values         |
+| `sampleIndices`      | the records a 0.25 sample of that corpus holds            |
+| `fullCorpusError`    | what scoring **every** record must return                 |
+| `sampledCorpusError` | what scoring only `sampleIndices` must return             |
+
+Every value is a multiple of 1/256, so the records survive a JSON round-trip
+into `float32` exactly and the goldens do not depend on decimal parsing.
+
+Gate: `test/score/FullCorpusScoreFixture.ts`. It compares **IEEE-754 bit
+patterns**, not an epsilon — a full-corpus score that differs in the last bit
+fails. The corpus is written as a single `.bin` shard, the layout Refinery
+publishes, because averaging is per shard and a different partitioning is a
+different summation order.
+
+> [!CAUTION]
+> Do not regenerate the goldens to make a failing run pass. A changed
+> `fullCorpusError` means every score in the fleet moved; find out why first.

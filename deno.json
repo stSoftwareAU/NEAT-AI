@@ -77,7 +77,8 @@
     "bench": "deno bench --allow-read --allow-write --allow-env --allow-ffi",
     "bench:smoke": "deno bench --allow-read --allow-write --allow-env --allow-ffi bench/FatherCompatibility.ts bench/Activate.ts",
     "bench:score-per-hour": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/score_per_hour_harness.ts",
-    "bench:evolution-sweep": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/evolution_config_sweep.ts"
+    "bench:evolution-sweep": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/evolution_config_sweep.ts",
+    "bench:fitness-corpus": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/fitness_corpus_fidelity.ts"
   },
   "test": {
     "include": [
@@ -92,6 +93,7 @@
     "exclude": [
       "bench/score_per_hour_harness_test.ts",
       "bench/evolution_config_sweep_test.ts",
+      "bench/fitness_corpus_fidelity_test.ts",
       "bench/ActivateAndTraceApp.ts",
       "bench/ActivateApp.ts",
       "bench/BreedPreFixExportAllocation.ts",
@@ -111,7 +113,8 @@
       "bench/ScoreCalculationCache.ts",
       "bench/ScorePooledBuffers.ts",
       "bench/SelectiveCacheInvalidation.ts",
-      "bench/WasmScoreScan.ts"
+      "bench/WasmScoreScan.ts",
+      "bench/fitness_corpus_fidelity.ts"
     ]
   },
   "fmt": {

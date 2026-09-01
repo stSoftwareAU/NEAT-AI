@@ -28,7 +28,14 @@ export type DatasetErrorReason =
    * it is never retryable on another scoring backend; the WASM path reads the
    * same bytes and fails the same way with a worse message.
    */
-  | "CORRUPT_DATA";
+  | "CORRUPT_DATA"
+  /**
+   * The corpus carries a provenance record (`manifest.json`) that cannot be
+   * read as one, or whose record counts contradict the sample rate it states.
+   * Issue #3926: reading a corrupt manifest as "no manifest" would report full
+   * fidelity for a run that scored a fraction of the corpus.
+   */
+  | "CORRUPT_PROVENANCE";
 
 export class DatasetError extends Error {
   override readonly name = "DatasetError";

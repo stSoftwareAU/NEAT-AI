@@ -142,6 +142,16 @@ Fraction of the training dataset used in each training iteration. Values below
 `1.0` enable stochastic training, which can improve generalisation and speed up
 each generation at the cost of noisier fitness signals.
 
+> [!IMPORTANT]
+> **`trainingSampleRate` is a backpropagation knob, not a fitness knob.** It
+> resolves in `src/architecture/training/TrainingSetup.ts` and lands as
+> `maxRecords` on the training path; it never reaches
+> `src/architecture/Fitness.ts`. Lowering it makes each **training** pass
+> cheaper and leaves the cost of **scoring** exactly where it was. To make
+> scoring cheaper, see
+> [Fitness corpus fidelity](#-fitness-corpus-fidelity--not-trainingsamplerate)
+> below — a different mechanism entirely, in a different layer.
+
 ### `dataSetPartitionBreak`
 
 **Default: 2000** | Type: integer | Min: 1
@@ -176,6 +186,60 @@ error, and there is no public API that turns synthetic synapses on.
 
 See [Training API — Synthetic Synapses](../api/TRAINING.md#-synthetic-synapses)
 for what the feature does and where the flag is read.
+
+## 🎯 Fitness corpus fidelity — not `trainingSampleRate`
+
+Fitness is evaluated over **every record** of the dataset directory a run is
+given. There is no option that thins it — and deliberately so: the cheaper
+fidelity lives in the data pipeline, not in the scorer's arguments. Point a run
+at a smaller corpus and its generations get cheaper; nothing in
+`RustScorerConfig`, `RustScorerBridge` or `BatchRustScorerBridge` changes,
+because the directory is the only thing that changed (Issue #3926).
+
+|             | `trainingSampleRate`           | Fitness corpus fidelity          |
+| ----------- | ------------------------------ | -------------------------------- |
+| Layer       | `NeatOptions` / `TrainOptions` | the data pipeline                |
+| Affects     | backpropagation                | scoring                          |
+| Set by      | the caller, per run            | which directory the run is given |
+| Recorded as | the option value               | the corpus `manifest.json`       |
+
+```mermaid
+flowchart LR
+    F[(full corpus)] -->|"neat_ai_refinery sample --rate 0.1"| S[(sampled corpus<br/>+ manifest.json)]
+    S --> E["Creature.evolveDir(dir)"]
+    F --> E
+    E --> B["RustScorerBridge<br/>unchanged"]
+    S -.->|readFitnessCorpusProvenance| P["effective fitness<br/>sample rate"]
+```
+
+[NEAT-AI-Refinery](https://github.com/stSoftwareAU/NEAT-AI-Refinery) publishes
+such a corpus deterministically — the same source and seed reproduce it byte for
+byte — with a `manifest.json` beside the records recording how it was made.
+NEAT-AI scans a corpus directory for `.bin` files, so the manifest is never read
+as records; `readFitnessCorpusProvenance()` reads it deliberately, so a run can
+record which fidelity produced its score rather than guess:
+
+```typescript
+import {
+  assertFitnessCorpusSampleRate,
+  readFitnessCorpusProvenance,
+} from "@stsoftware/neat-ai";
+
+const provenance = readFitnessCorpusProvenance("trainData-binary-sampler");
+// Verify the corpus really is the size the manifest claims before trusting it.
+assertFitnessCorpusSampleRate(provenance);
+console.log(provenance.effectiveSampleRate); // e.g. 0.10065
+```
+
+A directory with no manifest is the full corpus and reports rate `1`. A manifest
+that is present but unreadable throws a `DatasetError` with reason
+`CORRUPT_PROVENANCE` — reading it as "no manifest" would report full fidelity
+for a run that scored a tenth of the corpus.
+
+**Choosing when to use a sampled corpus is a separate decision** — model
+management, not this mechanism. Production scores the full corpus until a policy
+opts in. Measured cost per fidelity on the sampler creature is in
+[`docs/evidence/fitness-corpus-fidelity-3926.md`](../evidence/fitness-corpus-fidelity-3926.md).
 
 ## 👀 See also
 
