@@ -45,6 +45,8 @@ import {
   resolveProbeState,
 } from "./RustScorerBridgeInternal.ts";
 import { assertNotCorruptDataset } from "./ScorerFailureClassification.ts";
+import type { RacingPolicy } from "./RacingPolicy.ts";
+import { getRacingSessionRunner } from "./RacingScorerSession.ts";
 import {
   ScorerStrictError,
   toScorerStrictError,
@@ -63,6 +65,12 @@ export interface BatchScorerRunResult {
   results: Map<Creature, BatchScorerResult> | undefined;
   /** Number of scorer processes spawned (0 when skipped, 1 on success). */
   invocations: number;
+  /**
+   * Issue #3928: whether the invocation actually raced. `false` when racing
+   * was not requested, or was requested but the installed binary does not
+   * advertise `--race-stdio` — in which case every creature was full-scored.
+   */
+  raced: boolean;
 }
 
 /**
@@ -86,17 +94,31 @@ export async function tryBatchScoreWithRustScorer(
   dataDir: string,
   config: RequiredRustScorerConfig,
   costName?: BuiltInCostName,
+  racingPolicy?: RacingPolicy,
 ): Promise<BatchScorerRunResult> {
   if (!config.enabled || !config.batch) {
-    return { results: undefined, invocations: 0 };
+    return { results: undefined, invocations: 0, raced: false };
   }
   if (creatures.length === 0) {
-    return { results: new Map(), invocations: 0 };
+    return { results: new Map(), invocations: 0, raced: false };
   }
 
   const probe = await resolveProbeState(config);
   if (!probe.available) {
-    return { results: undefined, invocations: 0 };
+    return { results: undefined, invocations: 0, raced: false };
+  }
+
+  // Issue #3928: racing needs the scorer's stdio early-exit surface. A binary
+  // without it can only full-score; say so once rather than letting an
+  // operator believe a race they configured is running.
+  const racing = racingPolicy !== undefined && probe.racingSupported;
+  if (racingPolicy !== undefined && !probe.racingSupported && !probe.warned) {
+    getLogger().warn(
+      `[NEAT-AI] Rust scorer at ${config.binaryPath} does not advertise ` +
+        `--race-stdio; racing is disabled and every creature is scored over ` +
+        `the whole corpus (NEAT-AI-scorer#308 surface missing).`,
+    );
+    probe.warned = true;
   }
 
   // Issue #2745: When a non-MSE cost is configured but the probed binary is
@@ -112,7 +134,7 @@ export async function tryBatchScoreWithRustScorer(
       );
       probe.warned = true;
     }
-    return { results: undefined, invocations: 0 };
+    return { results: undefined, invocations: 0, raced: false };
   }
 
   // Map each creature to the filename stem used on disk. UUID is the stable,
@@ -159,18 +181,32 @@ export async function tryBatchScoreWithRustScorer(
 
     // Issue #2745: Prepend `--cost <NAME>` so the Rust scorer computes the
     // same cost as the TS training loop instead of its built-in default.
-    const args = costName !== undefined && probe.costSupported
-      ? ["--cost", costName, absoluteCreaturesDir, absoluteDataDir]
-      : [absoluteCreaturesDir, absoluteDataDir];
+    const costArgs = costName !== undefined && probe.costSupported
+      ? ["--cost", costName]
+      : [];
+    // Issue #3928: `--race-stdio` turns the invocation into a conversation —
+    // the scorer publishes running partial scores and this side answers with
+    // the policy's verdict after every chunk.
+    const args = racing
+      ? [...costArgs, "--race-stdio", absoluteCreaturesDir, absoluteDataDir]
+      : [...costArgs, absoluteCreaturesDir, absoluteDataDir];
 
-    const result = await runCommand(
-      config.binaryPath,
-      args,
-      {
+    const result = racing
+      ? await getRacingSessionRunner()({
+        binaryPath: config.binaryPath,
+        args,
         env: buildChildEnv(config.env),
         timeoutMs: config.timeoutMs,
-      },
-    );
+        onChunk: (event) => racingPolicy!.onChunk(event.partials),
+      })
+      : await runCommand(
+        config.binaryPath,
+        args,
+        {
+          env: buildChildEnv(config.env),
+          timeoutMs: config.timeoutMs,
+        },
+      );
 
     if (!result.success) {
       // Issue #3541: classify before signalling a retryable batch failure — a
@@ -217,7 +253,7 @@ export async function tryBatchScoreWithRustScorer(
       byCreature.set(creature, record);
     }
 
-    return { results: byCreature, invocations: 1 };
+    return { results: byCreature, invocations: 1, raced: racing };
   } finally {
     try {
       await Deno.remove(creaturesDir, { recursive: true });

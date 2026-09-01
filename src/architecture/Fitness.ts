@@ -24,6 +24,15 @@ import {
   nativeDatasetScoringEligibility,
 } from "../score/NativeDatasetScoringEligibility.ts";
 import { resolveRecurrentDirectorySupport } from "../score/RecurrentDirectoryProbe.ts";
+import {
+  DEFAULT_RACING_CONFIG,
+  type RequiredRacingConfig,
+} from "@config/RacingConfig.ts";
+import { RacingPolicy, type RacingSummary } from "../score/RacingPolicy.ts";
+import {
+  type AbandonedScore,
+  rankAbandonedBelowScored,
+} from "../score/RacingRanking.ts";
 
 /**
  * Evaluates fitness scores for a population of creatures.
@@ -164,6 +173,38 @@ export class Fitness {
    */
   private readonly rustScorer: RequiredRustScorerConfig | undefined;
 
+  /**
+   * Issue #3928: racing (early-exit) configuration. Off by default; when on,
+   * the batch scorer is driven through `--race-stdio` and a {@link
+   * RacingPolicy} abandons creatures that can no longer catch the leader.
+   */
+  private readonly racing: RequiredRacingConfig;
+
+  /**
+   * Elite slots the generation must be able to fill from creatures holding an
+   * exact full-corpus score (Issue #3928). Racing keeps at least this many
+   * creatures scoring to completion.
+   */
+  private readonly elitism: number;
+
+  /**
+   * Records in the full corpus, learnt from the largest `recordCount` any
+   * scorer result has reported in this run (Issue #3928).
+   *
+   * Racing's minimum-corpus-fraction floor is meaningless without it, so the
+   * policy refuses to abandon anyone until it is known — which makes the first
+   * scored generation a full sweep that pays for every later one.
+   */
+  private racingCorpusRecords = 0;
+
+  /**
+   * Racing diagnostics for the most recent `calculate()` call (Issue #3928):
+   * how many creatures were abandoned, at what mean corpus fraction, and what
+   * share of the generation's record-scoring work that removed. `undefined`
+   * when the generation did not race.
+   */
+  lastRacingSummary: RacingSummary | undefined;
+
   constructor(
     workers: WorkerHandler[],
     growth: number,
@@ -174,6 +215,8 @@ export class Fitness {
     outputRanges?: ReadonlyArray<RequiredOutputRange>,
     customCostConfigured?: boolean,
     rustScorer?: RequiredRustScorerConfig,
+    racing?: RequiredRacingConfig,
+    elitism?: number,
   ) {
     this.workers = workers;
     this.feedbackLoop = feedbackLoop;
@@ -187,6 +230,10 @@ export class Fitness {
       : toBuiltInCostName(this.configuredCostName);
     this.outputRangeCount = outputRanges?.length ?? 0;
     this.rustScorer = rustScorer;
+    this.racing = racing ?? DEFAULT_RACING_CONFIG;
+    // `NeatEvolution` never picks fewer than 2 elites, so 2 is the floor here
+    // regardless of what a caller configured.
+    this.elitism = Math.max(2, Math.floor(elitism ?? 2));
   }
 
   /**
@@ -248,6 +295,7 @@ export class Fitness {
       // the existing telemetry resets.
       this.lastCreaturesBatchScored = 0;
       this.lastCreaturesPerCreatureScored = 0;
+      this.lastRacingSummary = undefined;
       return;
     }
 
@@ -266,6 +314,11 @@ export class Fitness {
     let batchScoredCount = 0;
     let workerScoredCount = 0;
     this.lastBatchScorerInvocations = 0;
+    this.lastRacingSummary = undefined;
+    // Issue #3928: creatures the racing policy abandoned mid-corpus. Their
+    // ranking is applied once every other creature has a final score, so
+    // "below every fully-scored creature" means exactly that.
+    const abandonedScores: AbandonedScore[] = [];
 
     // Issue #2422: When the external rust scorer is enabled in directory
     // mode, invoke it once for the whole generation, map results back to
@@ -354,18 +407,65 @@ export class Fitness {
 
       if (batchCreatures.length > 0) {
         try {
+          // Issue #3928: one policy per generation. Elites never reach here
+          // (they already carry a score, so `needsEvaluation` filtered them
+          // out) — the exemption is passed anyway so the guarantee lives in
+          // the policy rather than in a filter two layers away.
+          const racingPolicy = this.racing.enabled
+            ? new RacingPolicy(this.racing, {
+              exemptKeys: population
+                .filter((c) => c.score !== undefined)
+                .map((c) => c.uuid)
+                .filter((uuid): uuid is string => uuid !== undefined),
+              corpusRecords: this.racingCorpusRecords,
+              // Enough creatures must finish the corpus to fill every elite
+              // slot with an exact score — an abandoned creature promoted into
+              // one would keep its fabricated rank forever, because a scored
+              // creature is never re-evaluated.
+              minSurvivors: this.elitism,
+            })
+            : undefined;
           const batchRun = await tryBatchScoreWithRustScorer(
             batchCreatures,
             this.dataDir!,
             rustScorerConfig,
             this.costName,
+            racingPolicy,
           );
           this.lastBatchScorerInvocations = batchRun.invocations;
           if (batchRun.results) {
+            const abandonedKeys = batchRun.raced && racingPolicy
+              ? racingPolicy.abandonedKeys()
+              : new Set<string>();
             for (const creature of batchCreatures) {
               const record = batchRun.results.get(creature);
               if (!record) continue;
+              // Issue #3928: learn the corpus size from the widest sweep any
+              // creature completed. Abandoned creatures report fewer records,
+              // so the maximum is the full corpus.
+              if (
+                Number.isFinite(record.recordCount) &&
+                record.recordCount > this.racingCorpusRecords
+              ) {
+                this.racingCorpusRecords = record.recordCount;
+              }
               const error = record.error;
+              if (creature.uuid && abandonedKeys.has(creature.uuid)) {
+                // Its number is a partial-corpus error, not comparable with a
+                // full-corpus score. Rank it once every other creature has
+                // finished — see `RacingRanking.ts`.
+                abandonedScores.push({
+                  creature,
+                  partialError: error,
+                  recordsScored: record.recordCount,
+                  corpusRecords: this.racingCorpusRecords,
+                });
+                // An abandoned creature was still scored by the batch backend,
+                // just not over the whole corpus — counting it keeps
+                // `batch + perCreature` equal to every creature evaluated.
+                batchScoredCount++;
+                continue;
+              }
               if (!Number.isFinite(error) || error < 0) {
                 addTag(creature, "error", "Infinity");
                 creature.score = -Infinity;
@@ -380,21 +480,12 @@ export class Fitness {
 
               // Mirror the duplicate-fan-out from the per-creature path so
               // population score invariants hold identically in batch mode.
-              const uuid = creature.uuid;
-              if (uuid) {
-                const dupes = duplicates.get(uuid);
-                if (dupes) {
-                  const errorTag = getTag(creature, "error");
-                  const scoreTag = getTag(creature, "score");
-                  for (const duplicate of dupes) {
-                    if (duplicate !== creature) {
-                      duplicate.score = creature.score;
-                      if (errorTag) addTag(duplicate, "error", errorTag);
-                      if (scoreTag) addTag(duplicate, "score", scoreTag);
-                    }
-                  }
-                }
-              }
+              fanOutToDuplicates(creature, duplicates);
+            }
+            if (racingPolicy && batchRun.raced) {
+              this.lastRacingSummary = racingPolicy.summarise(
+                batchCreatures.length,
+              );
             }
             // Batch handled every creature it accepted — workers only need to
             // score the remainder the eligibility predicate or the scorer's
@@ -523,25 +614,7 @@ export class Fitness {
       addTag(creature, "score", creature.score.toString());
 
       // Issue #1016: Copy score and tags to duplicate creatures
-      const uuid = creature.uuid;
-      if (uuid) {
-        const dupes = duplicates.get(uuid);
-        if (dupes) {
-          const errorTag = getTag(creature, "error");
-          const scoreTag = getTag(creature, "score");
-          for (const duplicate of dupes) {
-            if (duplicate !== creature) {
-              duplicate.score = creature.score;
-              if (errorTag) {
-                addTag(duplicate, "error", errorTag);
-              }
-              if (scoreTag) {
-                addTag(duplicate, "score", scoreTag);
-              }
-            }
-          }
-        }
-      }
+      fanOutToDuplicates(creature, duplicates);
 
       // Recursively process next creature from the queue
       await processNext(worker);
@@ -568,6 +641,27 @@ export class Fitness {
       }
     }
 
+    // Issue #3928: every other creature now has its final score, so "below
+    // every fully-scored creature" can be applied literally. Abandoned
+    // creatures are ranked, tagged, and fanned out to their duplicates.
+    if (abandonedScores.length > 0) {
+      rankAbandonedBelowScored(population, abandonedScores);
+      for (const entry of abandonedScores) {
+        fanOutToDuplicates(entry.creature, duplicates);
+      }
+      const summary = this.lastRacingSummary;
+      if (summary) {
+        getLogger().info(
+          `[NEAT-AI] Racing: ${summary.abandoned}/${summary.raced} creatures ` +
+            `abandoned at mean corpus fraction ${
+              summary.meanAbandonFraction.toFixed(3)
+            }, saving ${
+              (summary.recordsSavedFraction * 100).toFixed(1)
+            }% of the generation's record scoring`,
+        );
+      }
+    }
+
     // Issue #2424: Publish scorer telemetry for throughput metrics assembly.
     this.lastScorerMs = scorerMsAccum;
     // Issue #3234: publish the per-backend split. The combined count is kept
@@ -575,6 +669,32 @@ export class Fitness {
     this.lastCreaturesBatchScored = batchScoredCount;
     this.lastCreaturesPerCreatureScored = workerScoredCount;
     this.lastScoredCreatureCount = batchScoredCount + workerScoredCount;
+  }
+}
+
+/**
+ * Issue #1016: copy a scored creature's score and score/error tags onto every
+ * creature that deduplicated to it.
+ *
+ * Shared by the batch path, the per-creature worker path, and the racing
+ * ranking pass (Issue #3928) so a duplicate can never end a generation holding
+ * a different score from the creature it was deduplicated against.
+ */
+function fanOutToDuplicates(
+  creature: Creature,
+  duplicates: Map<string, Creature[]>,
+): void {
+  const uuid = creature.uuid;
+  if (!uuid) return;
+  const dupes = duplicates.get(uuid);
+  if (!dupes) return;
+  const errorTag = getTag(creature, "error");
+  const scoreTag = getTag(creature, "score");
+  for (const duplicate of dupes) {
+    if (duplicate === creature) continue;
+    duplicate.score = creature.score;
+    if (errorTag) addTag(duplicate, "error", errorTag);
+    if (scoreTag) addTag(duplicate, "score", scoreTag);
   }
 }
 

@@ -90,6 +90,10 @@ Tuning guides and benchmark research.
 
 - **[PERFORMANCE_TUNING.md](PERFORMANCE_TUNING.md)** — operational tuning: WASM
   caches, thread pools, memory management, and scaling for large-scale training.
+- **[RACING.md](RACING.md)** — racing / early-exit fitness scoring (Issue
+  #3928): abandon a creature mid-corpus once it cannot catch the leader, with a
+  Hoeffding bound, a corpus-fraction floor, and elites exempt. Off by default;
+  survivors keep an exact full-corpus score.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
