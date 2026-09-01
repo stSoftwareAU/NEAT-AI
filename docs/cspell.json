@@ -727,6 +727,7 @@
     "goldens",
     "nleck",
     "SIGMAS",
-    "sigmas"
+    "sigmas",
+    "bfloat16"
   ]
 }
