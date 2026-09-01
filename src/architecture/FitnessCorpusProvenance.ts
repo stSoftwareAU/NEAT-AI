@@ -172,6 +172,49 @@ function readBytesPerRecord(
   return bytes;
 }
 
+/** Schema revision of the manifest this reader understands. */
+export const SUPPORTED_MANIFEST_VERSION = 1;
+
+/**
+ * Refuses a manifest written to a schema this reader does not know.
+ *
+ * Reading a future revision with this revision's rules would answer confidently
+ * about fields that have moved — the manifest is provenance, so a wrong answer
+ * is worse than no answer. A manifest that states no version is read as the
+ * original schema, which had none.
+ */
+function assertSupportedManifestVersion(
+  manifest: Record<string, unknown>,
+  manifestPath: string,
+): void {
+  const version = manifest.manifest_version;
+  if (version === undefined) return;
+  if (version !== SUPPORTED_MANIFEST_VERSION) {
+    throw corrupt(
+      manifestPath,
+      `manifest_version ${version} is not supported (this reader reads ` +
+        `${SUPPORTED_MANIFEST_VERSION})`,
+    );
+  }
+}
+
+/**
+ * The corpus this one was derived from. Absent is `null`; a present-but-
+ * malformed path is a fault — reporting it as absent would lose the provenance
+ * this module exists to carry.
+ */
+function readSourcePath(
+  source: Record<string, unknown>,
+  manifestPath: string,
+): string | null {
+  const path = source.path;
+  if (path === undefined) return null;
+  if (typeof path !== "string" || path.length === 0) {
+    throw corrupt(manifestPath, `source path is not a path (${path})`);
+  }
+  return path;
+}
+
 /** The ordered transform records — a pipeline's stages, or the single one. */
 function transformStages(
   manifest: Record<string, unknown>,
@@ -197,12 +240,30 @@ function transformStages(
   return [transform];
 }
 
+/** The name of one transform stage. A stage that does not name itself is a fault. */
+function stageName(
+  stage: Record<string, unknown>,
+  manifestPath: string,
+): string {
+  const name = stage.name;
+  // An absent or misspelt name would otherwise be read as "some transform that
+  // is not `sample`", i.e. rate 1 — full fidelity reported for a corpus that
+  // may hold a tenth of the records.
+  if (typeof name !== "string" || name.length === 0) {
+    throw corrupt(
+      manifestPath,
+      `transform stage does not name itself (${name})`,
+    );
+  }
+  return name;
+}
+
 /** The `rate` of one `sample` stage, or `1` for any other transform. */
 function stageSampleRate(
   stage: Record<string, unknown>,
   manifestPath: string,
 ): number {
-  if (stage.name !== "sample") return 1;
+  if (stageName(stage, manifestPath) !== "sample") return 1;
 
   const parameters = stage.parameters;
   const rate = isRecord(parameters) ? parameters.rate : undefined;
@@ -254,6 +315,8 @@ export function readFitnessCorpusProvenance(
     throw corrupt(manifestPath, "manifest is not a JSON object");
   }
 
+  assertSupportedManifestVersion(parsed, manifestPath);
+
   const stages = transformStages(parsed, manifestPath);
   const declaredSampleRate = stages.reduce(
     (rate, stage) => rate * stageSampleRate(stage, manifestPath),
@@ -270,11 +333,18 @@ export function readFitnessCorpusProvenance(
   if (sourceRecordCount === 0) {
     throw corrupt(manifestPath, "source record_count is zero");
   }
+  // A corpus with no records produces no score. Reporting it as a fidelity
+  // would put a rate on a run that measured nothing.
+  if (recordCount === 0) {
+    throw corrupt(manifestPath, "output record_count is zero");
+  }
 
   const corpusFile = output.file;
   if (typeof corpusFile !== "string" || corpusFile.length === 0) {
     throw corrupt(manifestPath, "output file name is missing");
   }
+
+  const sourcePath = readSourcePath(source, manifestPath);
 
   const effectiveSampleRate = recordCount / sourceRecordCount;
 
@@ -285,49 +355,70 @@ export function readFitnessCorpusProvenance(
     effectiveSampleRate,
     recordCount,
     sourceRecordCount,
-    transforms: stages.map((stage) =>
-      typeof stage.name === "string" ? stage.name : "unknown"
-    ),
+    transforms: stages.map((stage) => stageName(stage, manifestPath)),
     corpusFile,
     bytesPerRecord: readBytesPerRecord(parsed, manifestPath),
-    sourcePath: typeof source.path === "string" ? source.path : null,
+    sourcePath: sourcePath ?? null,
   };
 }
 
+/** Extension the training path treats as corpus data (`dataFiles`). */
+const CORPUS_EXTENSION = ".bin";
+
 /**
- * Measures the published corpus on disk and holds the manifest to it.
+ * Measures the corpus **a run would actually score** and holds the manifest to
+ * it.
  *
  * Without this, every check in this module compares manifest fields to other
  * manifest fields — a document verifying itself. Record count × bytes per
  * record is the one claim the file system can settle, so it is settled there.
- * Skipped when the manifest states no geometry to check against.
+ *
+ * Every `.bin` in the directory is measured, not just the one the manifest
+ * names: fitness reads the whole directory
+ * ({@link module:architecture/training/TrainingSetup.dataFiles}), so a leftover
+ * shard beside the published corpus is scored even though the manifest never
+ * mentions it. Weighing only the named file would pass a directory holding
+ * twice the records it claims.
  */
 function assertPublishedCorpusMatchesManifest(
   provenance: FitnessCorpusProvenance,
 ): void {
   const { corpusFile, bytesPerRecord, recordCount, dataDir } = provenance;
-  if (corpusFile === null || bytesPerRecord === null || recordCount === null) {
-    return;
-  }
+  if (corpusFile === null || recordCount === null) return;
   const manifestPath = `${dataDir}/${FITNESS_CORPUS_MANIFEST_FILE}`;
-  const corpusPath = `${dataDir}/${corpusFile}`;
 
-  let bytes: number;
-  try {
-    bytes = Deno.statSync(corpusPath).size;
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      throw corrupt(manifestPath, `published corpus ${corpusFile} is missing`);
-    }
-    throw error;
+  // No geometry means the bytes cannot settle the record count, and the only
+  // check left would be the manifest against itself. Verifying nothing while
+  // reporting success is the masked fault this function exists to prevent.
+  if (bytesPerRecord === null) {
+    throw corrupt(
+      manifestPath,
+      "record_shape.bytes_per_record is absent, so the corpus cannot be " +
+        "verified against the bytes on disk",
+    );
+  }
+
+  let published = 0;
+  let namedFileSeen = false;
+  const scored: string[] = [];
+  for (const entry of Deno.readDirSync(dataDir)) {
+    if (!entry.isFile || !entry.name.endsWith(CORPUS_EXTENSION)) continue;
+    scored.push(entry.name);
+    if (entry.name === corpusFile) namedFileSeen = true;
+    published += Deno.statSync(`${dataDir}/${entry.name}`).size;
+  }
+
+  if (!namedFileSeen) {
+    throw corrupt(manifestPath, `published corpus ${corpusFile} is missing`);
   }
 
   const expected = recordCount * bytesPerRecord;
-  if (bytes !== expected) {
+  if (published !== expected) {
     throw corrupt(
       manifestPath,
-      `${corpusFile} holds ${bytes} bytes but the manifest claims ` +
-        `${recordCount} records of ${bytesPerRecord} bytes (${expected})`,
+      `${scored.sort().join(", ")} hold ${published} bytes but the manifest ` +
+        `claims ${recordCount} records of ${bytesPerRecord} bytes ` +
+        `(${expected})`,
     );
   }
 }
@@ -350,15 +441,18 @@ export interface SampleRateAgreementOptions {
  * of `1` has zero variance and so must be met exactly.
  *
  * A corpus that is *not* the size it claims has not been verified — checking
- * the record counts is the difference between provenance and a label. The
- * published corpus is measured on disk first, so the manifest is checked
- * against the bytes rather than against itself: a manifest that lies
- * self-consistently still fails.
+ * the record counts is the difference between provenance and a label. Every
+ * `.bin` a run would score is measured on disk first, so the manifest is
+ * checked against the bytes rather than against itself: a manifest that lies
+ * self-consistently, and a directory carrying a shard the manifest never
+ * mentions, both fail. A manifest that states no record geometry cannot be
+ * checked against the bytes at all, and is refused rather than passed.
  *
  * @param provenance - As returned by {@link readFitnessCorpusProvenance}
  * @param options - Band width override
  * @throws {DatasetError} `CORRUPT_PROVENANCE` when the corpus is not the size
- *   its manifest states, or the achieved rate is outside the band
+ *   its manifest states, when the manifest states no geometry to check it
+ *   against, or when the achieved rate is outside the band
  */
 export function assertFitnessCorpusSampleRate(
   provenance: FitnessCorpusProvenance,

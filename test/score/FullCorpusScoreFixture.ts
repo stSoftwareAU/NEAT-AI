@@ -23,6 +23,7 @@ import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import { readFitnessCorpusProvenance } from "@architecture/FitnessCorpusProvenance.ts";
+import { dataFiles } from "@architecture/training/TrainingSetup.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 import {
   liveScorerConfig,
@@ -197,6 +198,10 @@ Deno.test("a Refinery manifest beside the corpus changes neither the score nor t
     // The manifest is provenance, never a record: it must not perturb the
     // score, and it must not be read as a corpus file.
     assertEquals(bits(published.error), bits(plain.error));
+    assertEquals(
+      dataFiles(withManifest).files.map((path) => path.split("/").pop()),
+      ["sample-25.bin"],
+    );
 
     const provenance = readFitnessCorpusProvenance(withManifest);
     assertEquals(provenance.sampled, true);

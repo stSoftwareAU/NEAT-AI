@@ -10,7 +10,9 @@
  *
  * What it does:
  *   1. Generates the GRQ sampler creature deterministically — the `grq-3926`
- *      preset, 5,317 neurons / 39,031 synapses / 2,511 inputs, forward-only.
+ *      preset, 5,317 neurons / 39,031 synapses / 2,511 inputs — and switches it
+ *      to the forward-only topology production runs it under, so the timing is
+ *      of the fused per-record path rather than the recurrent-capable one.
  *   2. Materialises one full corpus and the sampled corpora derived from it,
  *      each as a single `.bin` shard, exactly as NEAT-AI-Refinery publishes.
  *      A sampled corpus is a **stride** of the full one, so every fidelity
@@ -27,14 +29,21 @@
  *   --records=8000 --rates=1,0.5,0.1 --population=4 --seed=3926
  * ```
  *
- * Silent-failure guard (Issue #3234): a fidelity that produced no timing, or a
- * corpus whose record count does not match the rate it was cut at, throws.
+ * `--rates` must include `1`: every ratio is reported against the full corpus,
+ * so the full corpus has to be one of the fidelities measured.
+ *
+ * Silent-failure guard (Issue #3234): a rate that is not a fidelity, a fidelity
+ * that produced no timing, or a corpus whose bytes on disk do not match the
+ * rate it was cut at, throws.
  */
 
 import { Creature } from "@creature";
 import { Costs } from "@costs";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
-import { readFitnessCorpusProvenance } from "@architecture/FitnessCorpusProvenance.ts";
+import {
+  assertFitnessCorpusSampleRate,
+  readFitnessCorpusProvenance,
+} from "@architecture/FitnessCorpusProvenance.ts";
 import {
   createSeededRng,
   generateProductionCreature,
@@ -58,6 +67,27 @@ export interface FidelityMeasurement {
 const INPUTS = 2511;
 const OUTPUTS = 1;
 const BYTES_PER_RECORD = (INPUTS + OUTPUTS) * 4;
+/** The full corpus — the fidelity every other one is reported against. */
+const FULL_RATE = 1;
+
+/**
+ * Every rate must be a fidelity in `(0, 1]`, and the full corpus must be among
+ * them: the `vs full` column is meaningless without the baseline it names, and
+ * a `NaN` from a mistyped `--rates` would otherwise be measured as a corpus.
+ */
+function assertRatesAreFidelities(rates: number[]): void {
+  for (const rate of rates) {
+    if (!Number.isFinite(rate) || !(rate > 0) || rate > 1) {
+      throw new Error(`--rates holds ${rate}, which is not a rate in (0, 1]`);
+    }
+  }
+  if (!rates.includes(FULL_RATE)) {
+    throw new Error(
+      `--rates must include ${FULL_RATE}; the ratio column is against the ` +
+        `full corpus, so the full corpus has to be measured`,
+    );
+  }
+}
 
 interface HarnessOptions {
   records: number;
@@ -154,16 +184,25 @@ export async function measureFidelities(
   const creature = generateProductionCreature(INPUTS, OUTPUTS, rng, {
     scale: "grq-3926",
   });
+  assertRatesAreFidelities(options.rates);
   const population = Array.from(
     { length: options.population },
-    () => Creature.fromJSON(creature),
+    () => {
+      const member = Creature.fromJSON(creature);
+      // The production creature is `forwardOnly: true`, which is what puts
+      // scoring on the fused per-record path. Measuring the recurrent-capable
+      // path instead would time a creature production does not run.
+      member.setForwardOnlyTopology();
+      return member;
+    },
   );
   const full = generateTrainingData(INPUTS, OUTPUTS, options.records, rng);
   const now = options.now ?? (() => performance.now());
 
   const measurements: FidelityMeasurement[] = [];
   let fullMs = 0;
-  for (const rate of options.rates) {
+  // Descending, so the full corpus is timed before anything is compared to it.
+  for (const rate of [...options.rates].sort((a, b) => b - a)) {
     const rows = stride(full, rate);
     const dir = publishCorpus(rows, rate, full.length);
     try {
@@ -174,6 +213,9 @@ export async function measureFidelities(
             `${provenance.recordCount} vs ${rows.length}`,
         );
       }
+      // The same verification a run's corpus gets: the published bytes are
+      // weighed against the manifest before anything is timed against them.
+      assertFitnessCorpusSampleRate(provenance);
       // Warm the page cache and the WASM topology so the timed pass measures
       // scoring, not first-touch.
       // deno-lint-ignore no-await-in-loop
@@ -183,13 +225,19 @@ export async function measureFidelities(
       if (!(msPerGeneration > 0)) {
         throw new Error(`no timing recorded for rate ${rate}`);
       }
-      if (rate === options.rates[0]) fullMs = msPerGeneration;
+      if (rate === FULL_RATE) fullMs = msPerGeneration;
+      if (fullMs === 0) {
+        throw new Error(
+          `rate ${rate} was measured before the full corpus — nothing to ` +
+            `report it against`,
+        );
+      }
       measurements.push({
         rate,
         records: rows.length,
         bytes: rows.length * BYTES_PER_RECORD,
         msPerGeneration,
-        ratioToFull: fullMs === 0 ? 1 : msPerGeneration / fullMs,
+        ratioToFull: msPerGeneration / fullMs,
       });
     } finally {
       // deno-lint-ignore no-await-in-loop

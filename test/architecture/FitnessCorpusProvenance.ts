@@ -284,3 +284,115 @@ Deno.test("fitness corpus - a manifest whose published corpus is absent fails lo
     Deno.removeSync(dir, { recursive: true });
   }
 });
+
+Deno.test("fitness corpus - a shard the manifest never mentions fails loud", () => {
+  // Fitness scores every `.bin` in the directory, so a leftover shard is
+  // scored while the manifest still claims the sampled record count. Weighing
+  // only the named file would call that corpus verified.
+  const dir = corpusDir(sampleManifest(0.1, 20_000, 2_000));
+  try {
+    Deno.writeFileSync(
+      `${dir}/leftover.bin`,
+      new Uint8Array(5 * BYTES_PER_RECORD),
+    );
+    const error = assertThrows(
+      () => assertFitnessCorpusSampleRate(readFitnessCorpusProvenance(dir)),
+      DatasetError,
+    );
+    assertEquals(error.reason, "CORRUPT_PROVENANCE");
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
+Deno.test("fitness corpus - a manifest with no record geometry cannot be verified", () => {
+  // Without `bytes_per_record` the only remaining check is the manifest
+  // against itself. Passing that quietly is the masked fault, so it throws.
+  const manifest = sampleManifest(0.1, 20_000, 2_000) as Record<
+    string,
+    unknown
+  >;
+  delete manifest.record_shape;
+  const dir = corpusDir(manifest);
+  try {
+    const provenance = readFitnessCorpusProvenance(dir);
+    assertEquals(provenance.bytesPerRecord, null);
+    assertEquals(
+      assertThrows(
+        () => assertFitnessCorpusSampleRate(provenance),
+        DatasetError,
+      )
+        .reason,
+      "CORRUPT_PROVENANCE",
+    );
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
+Deno.test("fitness corpus - a transform stage that does not name itself fails loud", () => {
+  // A misspelt `name` would otherwise read as "not a sample stage", i.e. rate
+  // 1 — full fidelity reported for a tenth of the corpus.
+  const manifest = sampleManifest(0.1, 20_000, 2_000) as Record<
+    string,
+    unknown
+  >;
+  manifest.transform = { nome: "sample", parameters: { rate: 0.1 } };
+  const dir = corpusDir(manifest);
+  try {
+    assertEquals(
+      assertThrows(() => readFitnessCorpusProvenance(dir), DatasetError).reason,
+      "CORRUPT_PROVENANCE",
+    );
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
+Deno.test("fitness corpus - a manifest schema this reader does not know fails loud", () => {
+  const manifest = sampleManifest(0.1, 20_000, 2_000) as Record<
+    string,
+    unknown
+  >;
+  manifest.manifest_version = 2;
+  const dir = corpusDir(manifest);
+  try {
+    assertEquals(
+      assertThrows(() => readFitnessCorpusProvenance(dir), DatasetError).reason,
+      "CORRUPT_PROVENANCE",
+    );
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
+Deno.test("fitness corpus - a published corpus holding no records fails loud", () => {
+  // 0 of 100 at rate 0.1 sits inside the 5-sigma band, so only refusing an
+  // empty corpus outright catches a sampler that published nothing.
+  const dir = corpusDir(sampleManifest(0.1, 100, 0));
+  try {
+    assertEquals(
+      assertThrows(() => readFitnessCorpusProvenance(dir), DatasetError).reason,
+      "CORRUPT_PROVENANCE",
+    );
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});
+
+Deno.test("fitness corpus - a malformed source path fails loud", () => {
+  const manifest = sampleManifest(0.1, 20_000, 2_000) as Record<
+    string,
+    unknown
+  >;
+  (manifest.source as Record<string, unknown>).path = 17;
+  const dir = corpusDir(manifest);
+  try {
+    assertEquals(
+      assertThrows(() => readFitnessCorpusProvenance(dir), DatasetError).reason,
+      "CORRUPT_PROVENANCE",
+    );
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+});

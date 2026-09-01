@@ -28,9 +28,10 @@ produced its score.
   rate against the declared one inside a 5-sigma binomial band. Measuring the
   bytes is what stops the manifest verifying itself — a self-consistent lie
   still fails.
-- **GRQ** records the result as its own `fitness_sample_rate` CSV column,
-  distinct from `training_sample_rate` — cross-repo branch
-  `stSoftwareAU/GRQ:issue-3926-fitness-sample-rate-column`.
+- **The downstream production repo** records the result as its own
+  `fitness_sample_rate` CSV column, distinct from `training_sample_rate`, on a
+  cross-repo branch (`issue-3926-fitness-sample-rate-column`) raised alongside
+  this PR.
 - **Docs** state the distinction from `trainingSampleRate` (a backprop knob that
   never reaches `Fitness`) in every option table that names it.
 
@@ -56,18 +57,22 @@ capture. Evidence is the measurement and the test suite.
 ### Wall-clock per generation vs fidelity
 
 `deno task bench:fitness-corpus --records=20000 --rates=1,0.5,0.1 --population=20 --seed=3926`
-on the `grq-3926` sampler creature (5,317 neurons / 39,031 synapses / 2,511
-inputs, forward-only), 20,000 synthetic records at the production record shape:
+on the `grq-3926` sampler creature (5,317 neurons / 39,031 synapses over 2,511
+inputs, switched to the forward-only topology production runs it under), 20,000
+synthetic records at the production record shape:
 
 | Fitness sample rate | Records | Corpus    | ms / generation | vs full |
 | ------------------- | ------- | --------- | --------------- | ------- |
-| 1                   | 20000   | 191.7 MiB | 97031           | 1.000   |
-| 0.5                 | 10000   | 95.8 MiB  | 48123           | 0.496   |
-| 0.1                 | 2000    | 19.2 MiB  | 9628            | 0.099   |
+| 1                   | 20000   | 191.7 MiB | 33631           | 1.000   |
+| 0.5                 | 10000   | 95.8 MiB  | 16728           | 0.497   |
+| 0.1                 | 2000    | 19.2 MiB  | 3383            | 0.101   |
 
-Wall-clock tracks corpus size to within half a percent at both rates, so the
-cost really is in the per-record scoring work. Full context, and what the
-measurement does **not** say, is in
+Wall-clock tracks corpus size to within a percent at both rates, so the cost
+really is in the per-record scoring work. (The absolute figures fell from the
+earlier 97,031 / 48,123 / 9,628 ms because this run sets `forwardOnly` on the
+creature, as production does; the ratios are what the criterion asks for and
+they did not move.) Full context, and what the measurement does **not** say, is
+in
 [`docs/evidence/fitness-corpus-fidelity-3926.md`](../../evidence/fitness-corpus-fidelity-3926.md).
 
 ### Quality gate
@@ -79,78 +84,79 @@ suite against the native `rust_scorer`.
 
 <!-- vibe-spec-review inputs="diff+issue-body" -->
 
-- **met** — NEAT-AI-refinery can generate a deterministic sampled training
-  corpus at a configured rate — evidence:
-  `NEAT-AI-Refinery refinery/tests/sample_transform.rs::repeats_exactly_for_a_given_seed_and_differs_across_seeds`,
-  `docs/sampling-semantics.md` "Determinism" — reviewer: met — note: the
-  reviewer records that this was satisfied by pre-existing Refinery work and
-  that neither diff contributes to it; that is correct and is why no Refinery
-  change was made.
+Two review rounds ran, each on the finished diff. The verdicts below are the
+second round's — the round that saw the fixes the first round asked for.
+
+- **missing** — NEAT-AI-refinery can generate a deterministic sampled training
+  corpus at a configured rate — reviewer: missing — reason: the sampler is
+  Refinery's, and nothing in this diff implements or pins it. This PR is the
+  consuming half: it reads the `manifest.json` Refinery publishes and verifies
+  the corpus against it. No NEAT-AI change can satisfy this criterion, so it is
+  reported missing rather than claimed on another repo's behalf.
 - **met** — evolution pointed at the sampled corpus with no changes to
   `RustScorerConfig` / `RustScorerBridge` / `BatchRustScorerBridge` — evidence:
-  none of the three files appear in `git diff --stat`;
-  `test/score/FullCorpusScoreFixture.ts::a Refinery manifest beside the corpus changes neither the score nor the file list`
-  — reviewer: met.
+  none of the three files appear in `git diff --name-only`;
+  `test/score/FullCorpusScoreFixture.ts::a Refinery manifest beside the corpus changes neither the score nor the file list`,
+  which now also asserts `dataFiles()` still sees exactly the one `.bin` —
+  reviewer: met.
 - **partial** — full-corpus runs bit-identical, asserted against a fixture —
   evidence:
   `test/score/FullCorpusScoreFixture.ts::full-corpus fitness is bit-identical to the fixture golden`
-  — reviewer: partial — reason: the reviewer is right that a bit-exact golden
-  can only pin one engine. The gate proved it: the two engines agree to ~1e-8,
-  not to the bit, so the first version of this test passed without `rust_scorer`
-  and failed with it. The test now names the engine — bit-exact on the
-  TypeScript/WASM accumulator, and the native scorer held to the same golden at
-  the 1e-5 parity tolerance `RustScorerDatasetParity.ts` already uses
+  — reviewer: partial — reason: a bit-exact golden can only pin one engine. The
+  gate proved it: the two engines activate in f32 and agree to ~1e-8, not to the
+  bit, so the first version of this test passed without `rust_scorer` and failed
+  with it. The test now names the engine — bit-exact on the TypeScript/WASM
+  accumulator, with the native scorer held to the same golden at the 1e-5
+  tolerance `RustScorerDatasetParity.ts` already uses
   (`::the native scorer reproduces the fixture goldens within parity`). The
-  production engine is covered, but at a tolerance rather than a bit, so this
-  stays `partial`.
-- **met** — effective fitness sample rate as its own CSV column, distinct from
-  `training_sample_rate` — evidence: `GRQ worker/record_performance.sh:47`
-  (header),
-  `test/worker/RecordPerformance.ts::record_performance.sh measures fitness_sample_rate from the corpus manifest (Issue #3926)`
-  — reviewer: partial — reason: departing. The reviewer's two concrete faults (a
-  stale `-sampler` slice supplying a learn row's fidelity; `-s` treating a
-  zero-byte manifest as absent) were real and are **fixed** in commit `dcdc4c5`,
-  each with a regression test observed failing against the unfixed script. Its
-  remaining point — that today's rows will all read `1` — is true and correct:
-  the recorded sampler row _is_ the final 100% loop, so `1` is the honest value
-  until a policy lets a sampled-corpus score be recorded.
-  `docs/statistics-snapshots.md` says so explicitly rather than leaving a reader
-  to wonder.
+  production engine is covered at a tolerance rather than a bit.
+- **partial** — effective fitness sample rate as its own CSV column, distinct
+  from `training_sample_rate` — evidence: the downstream production repo's
+  `issue-3926-fitness-sample-rate-column` branch (header, plus
+  `test/worker/RecordPerformance.ts::record_performance.sh measures fitness_sample_rate from the corpus manifest (Issue #3926)`)
+  — reviewer: missing — reason: departing on scope only. The reviewer is right
+  that no NEAT-AI file carries the column and it could not see the other repo;
+  the column is real, on a pushed branch whose PR is raised alongside this one.
+  It is `partial` here because this repo cannot demonstrate it.
 - **met** — documented as distinct from `trainingSampleRate` in both option docs
   — evidence: `docs/config/TRAINING.md` (`trainingSampleRate` callout and the
   "Fitness corpus fidelity" section), `docs/api/TRAINING.md` (TrainOptions
-  table) — reviewer: met — note: the reviewer found a **third** option table,
-  `docs/api/CONFIGURATION.md`, left un-disambiguated; the caveat has been added
-  there too.
+  table), `docs/api/CONFIGURATION.md` — reviewer: met.
 - **partial** — measured wall-clock full vs 0.5 vs 0.1 on the production
   creature — evidence: `docs/evidence/fitness-corpus-fidelity-3926.md`,
   `bench/fitness_corpus_fidelity.ts` — reviewer: partial — reason: the creature
-  matches the production neuron/synapse/input counts but is generated, and the
-  corpus is 20,000 synthetic records rather than the 21.2 GiB production one.
-  The evidence doc's "What this does not say" section states both.
-- **unrequested** — `src/architecture/FitnessCorpusProvenance.ts` and its four
-  public exports — reviewer: unrequested — reason: kept. The issue asks for the
-  effective fitness sample rate to be _recorded_ and for the sampled corpus to
-  be "verifiably derived … record count and provenance checked, not eyeballed";
-  this is the NEAT-AI-side answer to both, and the library is where a reader of
-  a corpus directory looks. The reviewer is right that no production NEAT-AI
-  path calls it today — the caller is GRQ's recorder and any future policy.
+  matches the production neuron/synapse/input counts and is now switched to the
+  forward-only topology production runs it under (the reviewer caught that it
+  was not, so the earlier numbers timed the recurrent-capable path), but it is
+  generated rather than the production `network.json`, over 20,000 synthetic
+  records rather than the 21.2 GiB corpus, on the WASM engine. The evidence
+  doc's "What this does not say" section states each of those.
+- **unrequested** — `src/architecture/FitnessCorpusProvenance.ts` and its public
+  exports — reviewer: unrequested — reason: kept. The issue requires the sampled
+  corpus to be "verifiably derived from the full corpus at the stated rate —
+  record count and provenance checked, not eyeballed", and the effective rate to
+  be recorded; this is where that check lives. No production NEAT-AI path calls
+  it — the callers are the downstream recorder and any future policy.
 - **unrequested** — `DatasetErrorReason` gains `CORRUPT_PROVENANCE` — reviewer:
   unrequested — reason: kept; an additive member of an existing typed union, and
   the alternative was an untyped throw or a silent full-fidelity answer.
 - **unrequested** — pipeline / `quantise` rate handling in the manifest reader —
-  reviewer: unrequested — reason: kept; Refinery pipelines exist and a `sample`
-  stage inside one is exactly this fidelity, so refusing to read one would
-  report the wrong rate rather than no rate.
+  reviewer: unrequested — reason: kept; a `sample` stage inside a pipeline is
+  exactly this fidelity, so refusing to read one would report the wrong rate
+  rather than no rate.
+- **unrequested** — sampled-corpus golden (`sampleIndices` /
+  `sampledCorpusError`) — reviewer: unrequested — reason: kept; the criterion
+  pins the full corpus, and this pins the claim the issue rests on — that
+  dropping records changes only _which_ records the mean is over.
 - **unrequested** — `grq-3926` preset in
-  `test/propagate/large/ProductionScaleCreature.ts` — reviewer: unrequested —
-  reason: kept; it is the production creature criterion 6 asks to measure on,
-  and it is additive to the shared generator that already hosts `grq-3397` for
-  the same purpose.
-- **unrequested** — `deno.json` version `7.0.11` → `7.0.20` — reviewer: not
-  raised — reason: `test/ci/PackageVersionNoDowngrade.ts` fails the gate because
-  the milestone branch is behind `origin/Develop`; the bump is what makes the
-  gate green, and AGENTS.md's deployment checklist asks for it.
+  `test/propagate/large/ProductionScaleCreature.ts` and the
+  `bench:fitness-corpus` task — reviewer: unrequested — reason: kept; they are
+  how criterion 6 is measured and re-measurable, additive to the generator that
+  already hosts `grq-3397` for the same purpose.
+- **unrequested** — `deno.json` version `7.0.11` → `7.0.20` — reviewer:
+  unrequested — reason: `test/ci/PackageVersionNoDowngrade.ts` fails the gate
+  because the milestone branch is behind `origin/Develop` (7.0.19); the bump is
+  what makes the gate green.
 
 ## Standards Review
 
@@ -159,57 +165,92 @@ suite against the native `rust_scorer`.
 The repository has no `CODING-STANDARDS.md`; `AGENTS.md` is the stated single
 source of truth, reviewed alongside `CONTRIBUTING.md` and `docs/DOC_STYLE.md`.
 
+- **violation** — fail-loud: a transform stage whose `name` was absent or
+  misspelt read as "not a sample stage", i.e. rate 1 — full fidelity reported
+  for a corpus that may hold a tenth of the records — evidence:
+  `src/architecture/FitnessCorpusProvenance.ts:205` — reason: fixed here; a
+  stage that does not name itself throws `CORRUPT_PROVENANCE`, covered by
+  `::a transform stage that does not name itself fails loud`.
+- **violation** — fail-loud: the on-disk check weighed only the file the
+  manifest names, while fitness scores **every** `.bin` in the directory, so a
+  leftover shard passed verification and was then scored — evidence:
+  `src/architecture/FitnessCorpusProvenance.ts:305` — reason: fixed here; every
+  `.bin` is weighed, covered by
+  `::a shard the manifest never mentions fails
+  loud`.
+- **violation** — fail-loud: the byte check silently opted out when the manifest
+  stated no `record_shape`, reverting to the manifest verifying itself —
+  evidence: `src/architecture/FitnessCorpusProvenance.ts:309` — reason: fixed
+  here; an unverifiable manifest is refused, covered by
+  `::a manifest with no
+  record geometry cannot be verified`.
+- **violation** — fail-loud: a published `record_count` of `0`, an unsupported
+  `manifest_version`, and a malformed `source.path` were each read as an
+  ordinary value — evidence: `src/architecture/FitnessCorpusProvenance.ts:312`,
+  `:298`, `:336` — reason: fixed here; each throws, each with its own case.
+- **violation** — `CONTRIBUTING.md:322`, test files mirror `src/` — evidence:
+  `test/score/FitnessCorpusProvenance.ts` for a unit in `src/architecture/` —
+  reason: fixed here; moved to `test/architecture/FitnessCorpusProvenance.ts`.
+- **violation** — `docs/DOC_STYLE.md` rule 1: unexpanded acronyms on first use,
+  and a PR summary asserting a fix that had not landed — evidence:
+  `docs/evidence/fitness-corpus-fidelity-3926.md:20-21` — reason: fixed here;
+  MSE and WASM are expanded in the file itself this time.
+- **violation** — fail-loud in the harness: `--rates` was parsed with a bare
+  `map(Number)`, so `--rates=abc` measured a `NaN` corpus, and `vs full` was a
+  ratio against `rates[0]` rather than against rate 1 — evidence:
+  `bench/fitness_corpus_fidelity.ts:234`, `:186` — reason: fixed here; rates
+  must be fidelities in `(0, 1]` and must include `1`, and the full corpus is
+  timed first.
+- **violation** — the harness measured the recurrent-capable path while the docs
+  said forward-only — evidence: `bench/fitness_corpus_fidelity.ts:13` — reason:
+  fixed here; the population is switched with `setForwardOnlyTopology()`, and
+  the measurement was re-run (the reported milliseconds changed; the ratios did
+  not).
 - **violation** — neuron-UUID invariant rules 3 & 4: a runtime integer `id` in a
   committed export — evidence: `test/fixtures/scoring/fitness-corpus.json:27` —
-  reason: fixed here; `id` stripped from the fixture creature and the goldens
-  re-verified unchanged.
+  reason: fixed in the first commit; `id` stripped and the goldens re-verified
+  unchanged.
 - **violation** — `docs/DOC_STYLE.md` rule 4: symbols re-exported from `mod.ts`
   for a reader-facing example but never imported from there — evidence:
-  `mod.ts:363-366` with `docs/config/TRAINING.md` — reason: fixed here;
-  `test/score/FitnessCorpusProvenance.ts` now imports from `../../mod.ts`, so
-  the documented import path is exercised.
-- **violation** — fail-fast: `Deno.errors.NotFound` could not distinguish "no
-  manifest" from "the directory does not exist", so a mistyped corpus path
-  reported full fidelity — evidence:
-  `src/architecture/FitnessCorpusProvenance.ts:183` — reason: fixed here; a
-  missing or non-directory path throws `DatasetError` `DIRECTORY_MISSING`,
-  covered by `::a corpus directory that does not exist fails loud`.
+  `mod.ts:363-366` — reason: fixed in the first commit; the provenance test
+  imports from `../../mod.ts`, so the documented path is exercised.
 - **violation** — testing policy: no timing API in a file `deno test` runs —
-  evidence: `bench/fitness_corpus_fidelity_test.ts:11` reaching
-  `performance.now()` — reason: fixed here; the harness takes an injectable
-  `now` (the `bench/score_per_hour_harness.ts` precedent) and the test drives a
-  virtual clock, asserting the arithmetic without asserting a machine's speed.
-- **violation** — `docs/DOC_STYLE.md` rule 1: unexpanded acronyms on first use —
-  evidence: `docs/evidence/fitness-corpus-fidelity-3926.md:20` — reason: fixed
-  here; MSE and WASM expanded.
-- **violation** — `docs/DOC_STYLE.md` rule 5: a second golden appended under an
-  H1 that named only the first — evidence: `test/fixtures/scoring/README.md:1` —
-  reason: fixed here; the H1 is now "Scoring fixtures" with an index, and each
-  corpus keeps its own section.
-- **violation** (GRQ) — fail-loud: `[[ -s manifest ]]` treated a zero-byte
-  manifest as absent, inverting the rule the same diff documents — evidence:
-  `worker/record_performance.sh:193` — reason: fixed in `dcdc4c5`; `-e` is the
-  presence test, with a regression test observed failing beforehand.
+  evidence: `bench/fitness_corpus_fidelity_test.ts:11` — reason: fixed in the
+  first commit; the harness takes an injectable `now` and the test drives a
+  virtual clock.
+- **violation** (not fixed) — the new `mod.ts` export block is spliced into the
+  middle of the contiguous `@errors/*` group — evidence: `mod.ts:352-371` —
+  reason: it stands; `test/docs/ModExportBanners.ts` governs the banner order
+  and passes, and reordering the barrel is a change to a file this issue has no
+  other business in.
+- **violation** (not fixed) — `docs/DOC_STYLE.md` rule 5,
+  `docs/config/TRAINING.md` is now 258 lines — evidence:
+  `docs/config/TRAINING.md` — reason: it stands; the fidelity section belongs
+  beside `trainingSampleRate`, which is the whole point of documenting the
+  distinction, and splitting the file is a docs refactor outside this issue.
 - **clean** — Australian English throughout; Logger policy (no new `console.*`
   under `src/`); Temporal vs Date (`performance.now()` only in `bench/`);
-  semantic-version invariant untouched; typed errors from `src/errors/`; "what"
-  tests over "how" tests in both repos; `deno fmt` / `deno lint` / `deno check`
-  clean; GRQ shellcheck, source-chain and portability gates pass; the one new
+  semantic-version invariant untouched; typed errors from `src/errors/`; every
+  test calls real code rather than grepping source; `deno fmt` / `deno lint` /
+  `deno check` clean; markdownlint and the `test/docs/*` gates pass; the one new
   `src/` file has a single responsibility.
 
 ## Test Plan
 
 Added:
 
-- `test/score/FitnessCorpusProvenance.ts` — 14 cases over the public `mod.ts`
-  surface: full corpus, sampled corpus, rate-1, pipeline rate product,
-  record-keeping transforms, and seven fail-loud paths (missing directory,
+- `test/architecture/FitnessCorpusProvenance.ts` — 20 cases over the public
+  `mod.ts` surface: full corpus, sampled corpus, rate-1, pipeline rate product,
+  record-keeping transforms, and thirteen fail-loud paths (missing directory,
   non-JSON manifest, missing counts, fractional counts, rate-less `sample`
-  stage, corpus that is not the size it claims, manifest disagreeing with the
-  bytes on disk, absent published corpus).
+  stage, unnamed stage, unsupported `manifest_version`, empty published corpus,
+  malformed source path, corpus that is not the size it claims, manifest
+  disagreeing with the bytes on disk, absent published corpus, and a shard the
+  manifest never mentions).
 - `test/score/FullCorpusScoreFixture.ts` — bit-exact goldens for the full and
   sampled corpora on the named engine, native-scorer parity against the same
-  goldens, and proof the manifest perturbs neither the score nor the file list.
+  goldens, and proof the manifest perturbs neither the score nor the file list
+  (`dataFiles()` still returns exactly the one `.bin`).
 - `test/fixtures/scoring/fitness-corpus.json` — the committed golden, documented
   in `test/fixtures/scoring/README.md`.
 - `bench/fitness_corpus_fidelity.ts` + `bench/fitness_corpus_fidelity_test.ts` —
