@@ -67,6 +67,10 @@ import {
 // Extracted cross-field validation
 import { validateNeatConfig } from "@config/NeatConfigValidation.ts";
 import type { RustScorerConfig } from "@config/RustScorerConfig.ts";
+import {
+  type RacingConfig,
+  resolveRacingConfig,
+} from "@config/RacingConfig.ts";
 import { resolveRustScorerConfig } from "../score/RustScorerBridge.ts";
 
 // Automatic Discovery worker-memory envelope → workerThreadCap wiring.
@@ -691,6 +695,9 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     rustScorer: resolveRustScorerConfig(
       opts.rustScorer as RustScorerConfig | undefined,
     ),
+    // Issue #3928: racing is off unless the caller asks for it; out-of-range
+    // knobs are rejected here rather than clamped.
+    racing: resolveRacingConfig(opts.racing as RacingConfig | undefined),
     // Issue #3565: seed the analysis memory budget from the Discovery runner's
     // exported value when the caller did not set it explicitly, so the Rust-side
     // OOM brake is live in production instead of dormant.

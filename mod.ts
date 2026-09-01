@@ -192,6 +192,22 @@ export type {
 } from "@config/RustScorerConfig.ts";
 
 /**
+ * Racing / Early-Exit Configuration
+ *
+ * Issue #3928: `NeatOptions.racing` lets native batch scoring abandon a
+ * creature mid-corpus once it cannot catch the leader, instead of paying the
+ * whole corpus to establish that it is worse. Off by default; survivors keep
+ * an exact full-corpus score, and abandoned creatures rank below every
+ * fully-scored creature.
+ *
+ * @see {@link module:src/config/RacingConfig}
+ */
+export type {
+  RacingConfig,
+  RequiredRacingConfig,
+} from "@config/RacingConfig.ts";
+
+/**
  * MCMC Acceptance Criterion
  *
  * Issue #2199: Markov Chain Monte Carlo (MCMC) temperature-based acceptance

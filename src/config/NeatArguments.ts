@@ -26,6 +26,7 @@ import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingCon
 import type { RequiredMemoryConfig } from "@config/MemoryConfig.ts";
 import type { RequiredWasmCacheConfig } from "@config/WasmCacheConfig.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
+import type { RequiredRacingConfig } from "@config/RacingConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "@config/WeightRegularisationConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
@@ -727,6 +728,15 @@ export interface NeatArguments {
    * for it.
    */
   rustScorer: RequiredRustScorerConfig;
+
+  /**
+   * Resolved racing (early-exit) configuration.
+   *
+   * Issue #3928: when enabled, native batch scoring abandons creatures that
+   * can no longer catch the leader instead of scoring every candidate over the
+   * whole corpus. Off by default; survivors keep an exact full-corpus score.
+   */
+  racing: RequiredRacingConfig;
 
   /**
    * Discovery cache eviction configuration.

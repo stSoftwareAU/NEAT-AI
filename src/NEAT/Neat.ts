@@ -341,6 +341,9 @@ export class Neat {
       // call site reads the same value the per-creature path is given, instead
       // of each re-deriving it from the environment.
       this.config.rustScorer,
+      // Issue #3928: racing (early exit) is a scoring-path policy, so it rides
+      // the same seam as the scorer config rather than being re-derived.
+      this.config.racing,
     );
 
     this.population = [];
