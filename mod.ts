@@ -365,6 +365,26 @@ export { BreedExhaustionError } from "@errors/BreedExhaustionError.ts";
 export type { BreedExhaustionReason } from "@errors/BreedExhaustionError.ts";
 export { DatasetError } from "@errors/DatasetError.ts";
 export type { DatasetErrorReason } from "@errors/DatasetError.ts";
+
+/**
+ * Issue #3926 — which corpus fidelity a run scored against. Fitness is
+ * evaluated over every record of the dataset directory it is given, so a
+ * cheaper fitness comes from pointing the run at a smaller corpus (one
+ * NEAT-AI-Refinery published), not from a scorer flag. These read the
+ * `manifest.json` beside such a corpus so the effective fitness sample rate is
+ * recorded rather than guessed. Distinct from `trainingSampleRate`, which
+ * samples records for backpropagation only.
+ */
+export {
+  assertFitnessCorpusSampleRate,
+  DEFAULT_SAMPLE_RATE_SIGMAS,
+  FITNESS_CORPUS_MANIFEST_FILE,
+  readFitnessCorpusProvenance,
+} from "@architecture/FitnessCorpusProvenance.ts";
+export type {
+  FitnessCorpusProvenance,
+  SampleRateAgreementOptions,
+} from "@architecture/FitnessCorpusProvenance.ts";
 export { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 export type { ScorerStrictReason } from "@errors/ScorerStrictError.ts";
 export { validateDNA } from "@reconstruct/validateDNA.ts";

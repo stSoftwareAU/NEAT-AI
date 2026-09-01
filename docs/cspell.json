@@ -723,6 +723,11 @@
     "unsatisfiable",
     "EVCO",
     "topolog",
-    "efficien"
+    "efficien",
+    "goldens",
+    "nleck",
+    "SIGMAS",
+    "sigmas",
+    "bfloat16"
   ]
 }

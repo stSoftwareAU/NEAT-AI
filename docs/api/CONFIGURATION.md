@@ -74,6 +74,14 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 | `maximumWeightAdjustmentScale` | `number` | `1`                                    | Max weight change per backpropagation step |
 | `sparseRatio`                  | `number` | `random * random`                      | Neuron selection ratio for sparse updates  |
 
+> [!IMPORTANT]
+> `trainingSampleRate` is a **backpropagation** knob: it thins the records each
+> training pass reads and never reaches the scoring path, so it does not make
+> **fitness** cheaper. Scoring is made cheaper by pointing the run at a smaller
+> corpus — see
+> [Fitness corpus fidelity](../config/TRAINING.md#-fitness-corpus-fidelity--not-trainingsamplerate)
+> (Issue #3926).
+
 #### 🛑 No-progress training guards
 
 Training is heavy; these guards stop the run spending worker slots on cycles
