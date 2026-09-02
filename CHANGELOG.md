@@ -25,15 +25,18 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- **GRQ #4620:** A failed `discover` worker task is no longer recorded as a
+- **GRQ #4620:** A failed `discover` worker task is no longer reported as a
   completed discovery that found nothing. A worker failure resolves with `error`
-  set and `buildWorkerErrorResponse` attaches a `discover: { ID:
-  "error" }`
+  set and `buildWorkerErrorResponse` attaches a `discover: { ID: "error" }`
   stub, so the completion handler's `assert(r.discover)` passed and `r.error`
   was never read — the only trace was the worker's own
   `Worker processing error: …` line. `isFailedDiscoverWorkerResponse` (the
   mirror of `isFailedTrainWorkerResponse`) now classifies it and routes it
-  through the existing `[Neat] Discovery failed for creature …` path.
+  through the existing `[Neat] Discovery failed for creature …` path, and the
+  recorded result carries the failure on `error`, so `processCompletedResults`
+  emits the new `discovery_complete` outcome **`"failed"`** instead of
+  `"no_change"`. `DiscoveryCompleteEvent.outcome` gains that label — an additive
+  change for consumers that switch on it.
 
 - **Issue #3940:** `evolveDir` can no longer return `generation === 0` because
   of the hard deadline. The T+grace cap used to abandon the in-flight first

@@ -21,6 +21,12 @@ import type { DiscoveryCompleteEvent } from "@config/TrainingEvent.ts";
  */
 export interface DiscoveryOutcomeInputs {
   /**
+   * `true` when the worker reported the discovery task as failed (GRQ #4620).
+   * A failure is not a discovery that found nothing, and must never be
+   * reported as one.
+   */
+  readonly failed?: boolean;
+  /**
    * `true` when discovery skipped the analysis phase because the V8 heap
    * was at MemoryMonitor CRITICAL pressure at the analysis-extension
    * boundary (Issue #2737).
@@ -39,11 +45,14 @@ export interface DiscoveryOutcomeInputs {
  *
  * The order of precedence is deliberate:
  *
- * 1. `"heap_critical_skip"` — memory pressure pre-empted analysis. This
+ * 1. `"failed"` — the discovery task failed (GRQ #4620). It wins over every
+ *    other label: a task that never ran to completion has nothing to say
+ *    about whether an improvement exists.
+ * 2. `"heap_critical_skip"` — memory pressure pre-empted analysis. This
  *    must win over `"no_change"` so callers can tell a memory-pressure
  *    skip apart from a clean "found nothing" run (Issue #2737).
- * 2. `"improved"` — discovery built an improved creature.
- * 3. `"no_change"` — discovery ran to completion but found no improvement.
+ * 3. `"improved"` — discovery built an improved creature.
+ * 4. `"no_change"` — discovery ran to completion but found no improvement.
  *
  * Note: `"timeout"` is part of the `DiscoveryCompleteEvent.outcome` union
  * but is not selectable from these inputs; the upstream worker reports
@@ -54,8 +63,9 @@ export function chooseDiscoveryCompleteOutcome(
   inputs: DiscoveryOutcomeInputs,
 ): Extract<
   DiscoveryCompleteEvent["outcome"],
-  "improved" | "no_change" | "heap_critical_skip"
+  "improved" | "no_change" | "heap_critical_skip" | "failed"
 > {
+  if (inputs.failed) return "failed";
   if (inputs.heapAbortedAtExtensionBoundary) return "heap_critical_skip";
   if (inputs.improvedCreature) return "improved";
   return "no_change";

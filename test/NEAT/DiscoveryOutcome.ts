@@ -70,3 +70,41 @@ Deno.test(
     );
   },
 );
+
+Deno.test(
+  "chooseDiscoveryCompleteOutcome: a failed task wins over every other label (GRQ #4620)",
+  () => {
+    assertEquals(chooseDiscoveryCompleteOutcome({ failed: true }), "failed");
+    assertEquals(
+      chooseDiscoveryCompleteOutcome({
+        failed: true,
+        improvedCreature: { foo: "bar" },
+      }),
+      "failed",
+    );
+    assertEquals(
+      chooseDiscoveryCompleteOutcome({
+        failed: true,
+        heapAbortedAtExtensionBoundary: true,
+      }),
+      "failed",
+    );
+  },
+);
+
+Deno.test(
+  "chooseDiscoveryCompleteOutcome: failed=false preserves the regular precedence (GRQ #4620)",
+  () => {
+    assertEquals(
+      chooseDiscoveryCompleteOutcome({
+        failed: false,
+        improvedCreature: { foo: "bar" },
+      }),
+      "improved",
+    );
+    assertEquals(
+      chooseDiscoveryCompleteOutcome({ failed: false }),
+      "no_change",
+    );
+  },
+);

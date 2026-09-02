@@ -35,6 +35,7 @@ import {
   resolveWallClockBudgetMinutes,
 } from "@discovery/DiscoveryTimeout.ts";
 import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
+import { toErrorMessage } from "@utils/ErrorSerialisation.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { Neat } from "@neat/Neat.ts";
 import {
@@ -458,14 +459,37 @@ export function attachDiscoveryCompletionHandlers(
 }
 
 /**
+ * Normalise a discovery failure cause into the `ResponseData.error` shape.
+ *
+ * The cause is either a thrown value (the `.catch` path) or the worker's own
+ * already-serialised `{ name, message, stack }` record (GRQ #4620), and the
+ * message must survive both.
+ */
+function toResponseError(cause: unknown): NonNullable<ResponseData["error"]> {
+  if (cause instanceof Error) {
+    return { name: cause.name, message: cause.message, stack: cause.stack };
+  }
+  if (
+    typeof cause === "object" && cause !== null &&
+    typeof (cause as { message?: unknown }).message === "string"
+  ) {
+    const { name, message, stack } = cause as NonNullable<
+      ResponseData["error"]
+    >;
+    return { name, message, stack };
+  }
+  return { message: toErrorMessage(cause) };
+}
+
+/**
  * Report a failed discovery through the `[Neat] Discovery failed for creature …`
  * path and release the in-flight slot (GRQ #4620).
  *
- * The recorded stub is what frees `discoveryInProgress`; without it the failed
+ * The recorded entry is what frees `discoveryInProgress`; without it the failed
  * task would hold a discovery concurrency slot for the rest of the run. It
- * carries the creature's own discovery ID rather than the worker's
- * `{ ID: "error" }` payload, so no failed discovery is ever pushed into the
- * complete queue dressed as a result.
+ * carries the failure on `error` — so `processCompletedResults` reports it as a
+ * `"failed"` discovery rather than as a completion that found nothing — and the
+ * creature's own discovery ID rather than the worker's `{ ID: "error" }` stub.
  */
 function recordDiscoveryTaskFailure(
   neat: Neat,
@@ -484,6 +508,7 @@ function recordDiscoveryTaskFailure(
   neat.recordDiscoveryComplete(uuid, scheduledEpoch, {
     taskID: 0,
     duration: 0,
+    error: toResponseError(cause),
     discover: {
       ID: uuid,
     },

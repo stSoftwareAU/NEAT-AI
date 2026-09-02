@@ -4,26 +4,33 @@
  * A worker failure resolves as a `ResponseData` carrying `error`, and
  * `buildWorkerErrorResponse` sets `discover: { ID: "error" }` alongside it. The
  * discovery completion path must classify that as a failure — reporting it
- * through `[Neat] Discovery failed for creature …` — instead of recording it as
- * a completed discovery that found nothing.
+ * through `[Neat] Discovery failed for creature …` and accounting for it as a
+ * `"failed"` discovery — instead of recording a completed discovery that found
+ * nothing.
  */
 
 import { assert, assertEquals, assertExists } from "@std/assert";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
+import type { TrainingEvent } from "@config/TrainingEvent.ts";
 import { Creature } from "@creature";
 import { buildWorkerErrorResponse } from "@multithreading/workers/WorkerErrorResponse.ts";
 import type {
   RequestData,
   ResponseData,
 } from "@multithreading/workers/WorkerHandler.ts";
-import type { Neat } from "@neat/Neat.ts";
+import { Neat } from "@neat/Neat.ts";
 import {
   attachDiscoveryCompletionHandlers,
   isFailedDiscoverWorkerResponse,
 } from "@neat/NeatScheduling.ts";
+import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
 import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+
+/** The message the worker failure carries end to end. */
+const WORKER_FAILURE_MESSAGE =
+  "NotFound: No such file or directory (os error 2)";
 
 /** A discover request as the main thread sends it to a worker. */
 function discoverRequest(): RequestData {
@@ -34,6 +41,15 @@ function discoverRequest(): RequestData {
       config: createNeatConfig({}),
     },
   };
+}
+
+/** The response a worker returns when the discover task throws. */
+function workerErrorResponse(): ResponseData {
+  return buildWorkerErrorResponse(
+    discoverRequest(),
+    new Error(WORKER_FAILURE_MESSAGE),
+    9,
+  );
 }
 
 /** Captures `error`-level log lines emitted while a task settles. */
@@ -52,31 +68,24 @@ function captureErrorLogs(): { lines: string[]; restore: () => void } {
   return { lines, restore: () => setLogger(previous) };
 }
 
-/** Minimal `Neat` stub recording what the completion path pushes. */
-function createStubNeat(recorded: ResponseData[]): Neat {
+/**
+ * Minimal `Neat` stub that uses the real `recordDiscoveryComplete`, so the
+ * in-flight guard and the complete queue behave exactly as they do in a run.
+ */
+function createStubNeat(uuid: string): Neat {
   return {
     config: createNeatConfig({}),
     abandonEpoch: 0,
     lastDiscoveryDurationMS: 0,
-    discoveryInProgress: new Map(),
-    isRunAbandonedSince: () => false,
-    recordDiscoveryComplete: (
-      _uuid: string,
-      _scheduledEpoch: number,
-      result: ResponseData,
-    ) => {
-      recorded.push(result);
-      return true;
-    },
+    discoveryInProgress: new Map([[uuid, Promise.resolve()]]),
+    discoveryComplete: [] as ResponseData[],
+    isRunAbandonedSince: Neat.prototype.isRunAbandonedSince,
+    recordDiscoveryComplete: Neat.prototype.recordDiscoveryComplete,
   } as unknown as Neat;
 }
 
 Deno.test("buildWorkerErrorResponse - discover keeps the real error beside the error stub", () => {
-  const response = buildWorkerErrorResponse(
-    discoverRequest(),
-    new Error("NotFound: No such file or directory (os error 2)"),
-    9,
-  );
+  const response = workerErrorResponse();
 
   assertEquals(response.taskID, 3);
   assertExists(response.error);
@@ -126,13 +135,10 @@ Deno.test("discovery completion - a worker error response is reported as a failu
   await initWasmForTests();
   const creature = new Creature(2, 1);
   const uuid = CreatureUtil.makeUUID(creature);
-  const recorded: ResponseData[] = [];
-  const neat = createStubNeat(recorded);
-  const errorResponse = buildWorkerErrorResponse(
-    discoverRequest(),
-    new Error("NotFound: No such file or directory (os error 2)"),
-    9,
-  );
+  const neat = createStubNeat(uuid);
+  // Built before the capture is installed: `createNeatConfig` installs its own
+  // logger, which would replace the capturing one.
+  const response = Promise.resolve(workerErrorResponse());
 
   const capture = captureErrorLogs();
   try {
@@ -141,8 +147,8 @@ Deno.test("discovery completion - a worker error response is reported as a failu
       creature,
       uuid,
       0,
-      Date.now(),
-      Promise.resolve(errorResponse),
+      0,
+      response,
     );
   } finally {
     capture.restore();
@@ -155,15 +161,91 @@ Deno.test("discovery completion - a worker error response is reported as a failu
     1,
     "the failure must be reported through the discovery-failed path",
   );
-  assertEquals(recorded.length, 1, "the in-flight slot must still be released");
   assertEquals(
-    recorded[0].discover?.ID,
-    uuid,
-    "the worker's error stub must not be recorded as a completed discovery",
+    neat.discoveryInProgress.has(uuid),
+    false,
+    "the in-flight discovery slot must be released",
+  );
+  assertEquals(neat.discoveryComplete.length, 1);
+  assertEquals(
+    neat.discoveryComplete[0].error?.message,
+    WORKER_FAILURE_MESSAGE,
+    "the recorded result must carry the failure, not look like a completion",
   );
   assertEquals(
-    recorded[0].discover?.addHelpfulSynapses,
+    neat.discoveryComplete[0].discover?.ID,
+    uuid,
+    "the worker's `error` ID stub must not be recorded as a discovery",
+  );
+});
+
+Deno.test("discovery completion - a healthy response is still recorded as a completion", async () => {
+  await initWasmForTests();
+  const creature = new Creature(2, 1);
+  const uuid = CreatureUtil.makeUUID(creature);
+  const neat = createStubNeat(uuid);
+
+  await attachDiscoveryCompletionHandlers(
+    neat,
+    creature,
+    uuid,
+    0,
+    0,
+    Promise.resolve({
+      taskID: 4,
+      duration: 20,
+      discover: { ID: uuid, addHelpfulSynapses: [] },
+    }),
+  );
+
+  assertEquals(neat.discoveryInProgress.has(uuid), false);
+  assertEquals(neat.discoveryComplete.length, 1);
+  assertEquals(
+    neat.discoveryComplete[0].error,
     undefined,
-    "a failed discovery must not masquerade as a discovery that found nothing",
+    "a genuine discovery must not be marked as failed",
+  );
+});
+
+Deno.test("processCompletedResults - a failed discovery is reported as `failed`, not `no_change`", async () => {
+  await initWasmForTests();
+  const fittest = new Creature(2, 1);
+  const uuid = CreatureUtil.makeUUID(fittest);
+  const events: TrainingEvent[] = [];
+
+  const neat = {
+    config: createNeatConfig({
+      onTrainingEvent: (event: TrainingEvent) => events.push(event),
+    }),
+    trainingComplete: [] as ResponseData[],
+    discoveryComplete: [
+      {
+        taskID: 0,
+        duration: 0,
+        error: { name: "Error", message: WORKER_FAILURE_MESSAGE },
+        discover: { ID: uuid },
+      },
+    ] as ResponseData[],
+    discoveryReplayQueue: {
+      getCompletedResults: () => [],
+      clearCompletedResults: () => {},
+    },
+  } as unknown as Neat;
+
+  const added = processCompletedResults(
+    neat,
+    fittest,
+    undefined as unknown as Parameters<typeof processCompletedResults>[2],
+  );
+
+  assertEquals(added.length, 0, "a failed discovery adds no creature");
+  const discoveryEvents = events.filter((e) =>
+    e.kind === "discovery_complete"
+  ) as Extract<TrainingEvent, { kind: "discovery_complete" }>[];
+  assertEquals(discoveryEvents.length, 1);
+  assertEquals(
+    discoveryEvents[0].outcome,
+    "failed",
+    "a failed discovery must not be counted as a run that found nothing",
   );
 });

@@ -137,7 +137,12 @@ export function processCompletedResults(
     // (`"heap_critical_skip"`) is picked over the silent
     // `"no_change"` fallback when `DataRecorder.recordFiles()` aborted at
     // the analysis-extension boundary.
-    const outcome = chooseDiscoveryCompleteOutcome(r.discover);
+    // GRQ #4620: a failed task carries `error`; report it as `"failed"` so it
+    // is never counted as a discovery that ran and found nothing.
+    const outcome = chooseDiscoveryCompleteOutcome({
+      ...r.discover,
+      failed: r.error !== undefined,
+    });
     emitTrainingEvent(neat.config.onTrainingEvent, {
       kind: "discovery_complete",
       timestamp: Temporal.Now.instant().toString(),

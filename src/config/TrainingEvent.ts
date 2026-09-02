@@ -403,6 +403,9 @@ export interface DiscoveryCompleteEvent {
    * - `"improved"` — discovery found and applied an improvement.
    * - `"no_change"` — discovery ran to completion but found no improvement.
    * - `"timeout"` — discovery exceeded its wall-clock budget.
+   * - `"failed"` (GRQ #4620) — the discovery task failed. A worker failure
+   *   resolves rather than rejects, so without this label a failed task was
+   *   reported as `"no_change"` and nothing counted the loss.
    * - `"heap_critical_skip"` (Issue #2737) — the analysis phase was skipped
    *   because the V8 heap was at MemoryMonitor CRITICAL pressure at the
    *   analysis-extension boundary. The recording phase completed but no
@@ -414,7 +417,8 @@ export interface DiscoveryCompleteEvent {
     | "improved"
     | "no_change"
     | "timeout"
-    | "heap_critical_skip";
+    | "heap_critical_skip"
+    | "failed";
   /** Number of discovery candidates that were evaluated. */
   readonly candidateCount: number;
   /** Time elapsed for the discovery operation in milliseconds. */
