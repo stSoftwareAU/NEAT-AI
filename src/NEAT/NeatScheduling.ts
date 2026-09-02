@@ -173,6 +173,23 @@ export function isFailedTrainWorkerResponse(r: ResponseData): boolean {
 }
 
 /**
+ * True when the worker reported a discovery failure rather than a usable
+ * discovery payload (GRQ #4620).
+ *
+ * The mirror of {@link isFailedTrainWorkerResponse}. A worker failure resolves
+ * — it never rejects — and `buildWorkerErrorResponse` sets
+ * `discover: { ID: "error" }` alongside `error`, so without this check the
+ * `assert(r.discover)` in the completion handler passes and a failed discovery
+ * is recorded as a completed discovery that found nothing.
+ */
+export function isFailedDiscoverWorkerResponse(r: ResponseData): boolean {
+  if (r.error !== undefined) return true;
+  if (!r.discover) return true;
+  if (r.discover.ID === "error") return true;
+  return false;
+}
+
+/**
  * Schedules structural discovery for a creature on a worker.
  *
  * Issue #1298: Uses adaptive discovery timeout based on creature complexity.
@@ -329,17 +346,62 @@ export function scheduleDiscovery(
   // queue) if the run abandons in-flight work past the hard deadline meanwhile.
   const scheduledEpoch = neat.abandonEpoch;
 
-  const discoveryPromise = w.discover(creature, discoveryConfig);
+  const p = attachDiscoveryCompletionHandlers(
+    neat,
+    creature,
+    uuid,
+    scheduledEpoch,
+    taskStartTime,
+    w.discover(creature, discoveryConfig),
+  );
 
-  const p = discoveryPromise.then((r) => {
-    assert(r.discover, "No discovery found");
+  neat.discoveryInProgress.set(uuid, p);
+}
 
+/**
+ * Attach the completion and failure handlers to a dispatched discovery task.
+ *
+ * Extracted from {@link scheduleDiscovery} (GRQ #4620) so the completion path
+ * can be exercised without the Rust discovery library that gates dispatch.
+ *
+ * @returns the settled-handling promise tracked in `neat.discoveryInProgress`.
+ */
+export function attachDiscoveryCompletionHandlers(
+  neat: Neat,
+  creature: Creature,
+  uuid: string,
+  scheduledEpoch: number,
+  taskStartTime: number,
+  discoveryPromise: Promise<ResponseData>,
+): Promise<void> {
+  return discoveryPromise.then((r) => {
     // Issue #3435: discard late completions after a hard-deadline abandon before
     // doing any heavy work (building the improved creature) or pushing a large
     // result blob into the complete queue.
     if (neat.isRunAbandonedSince(scheduledEpoch)) {
       return;
     }
+
+    // GRQ #4620: a worker failure resolves with `error` set and a
+    // `discover: { ID: "error" }` stub, so classify it before the assert below
+    // accepts that stub as a discovery that simply found nothing.
+    if (isFailedDiscoverWorkerResponse(r)) {
+      recordDiscoveryTaskFailure(
+        neat,
+        uuid,
+        scheduledEpoch,
+        taskStartTime,
+        r.error ??
+          new Error(
+            r.discover
+              ? `Discovery worker returned unusable result (ID=${r.discover.ID})`
+              : "Discovery worker returned no discover payload",
+          ),
+      );
+      return;
+    }
+
+    assert(r.discover, "No discovery found");
 
     const discoveryDurationMS = Date.now() - taskStartTime;
     neat.lastDiscoveryDurationMS = discoveryDurationMS;
@@ -385,23 +447,47 @@ export function scheduleDiscovery(
       return;
     }
 
-    getLogger().error(
-      `[Neat] Discovery failed for creature ${
-        uuid.substring(Math.max(0, uuid.length - 8))
-      } after ${((Date.now() - taskStartTime) / 1000).toFixed(1)}s:`,
+    recordDiscoveryTaskFailure(
+      neat,
+      uuid,
+      scheduledEpoch,
+      taskStartTime,
       error,
     );
-
-    neat.recordDiscoveryComplete(uuid, scheduledEpoch, {
-      taskID: 0,
-      duration: 0,
-      discover: {
-        ID: uuid,
-      },
-    });
   });
+}
 
-  neat.discoveryInProgress.set(uuid, p);
+/**
+ * Report a failed discovery through the `[Neat] Discovery failed for creature …`
+ * path and release the in-flight slot (GRQ #4620).
+ *
+ * The recorded stub is what frees `discoveryInProgress`; without it the failed
+ * task would hold a discovery concurrency slot for the rest of the run. It
+ * carries the creature's own discovery ID rather than the worker's
+ * `{ ID: "error" }` payload, so no failed discovery is ever pushed into the
+ * complete queue dressed as a result.
+ */
+function recordDiscoveryTaskFailure(
+  neat: Neat,
+  uuid: string,
+  scheduledEpoch: number,
+  taskStartTime: number,
+  cause: unknown,
+): void {
+  getLogger().error(
+    `[Neat] Discovery failed for creature ${
+      uuid.substring(Math.max(0, uuid.length - 8))
+    } after ${((Date.now() - taskStartTime) / 1000).toFixed(1)}s:`,
+    cause,
+  );
+
+  neat.recordDiscoveryComplete(uuid, scheduledEpoch, {
+    taskID: 0,
+    duration: 0,
+    discover: {
+      ID: uuid,
+    },
+  });
 }
 
 /**

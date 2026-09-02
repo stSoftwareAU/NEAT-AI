@@ -25,6 +25,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **GRQ #4620:** A failed `discover` worker task is no longer recorded as a
+  completed discovery that found nothing. A worker failure resolves with `error`
+  set and `buildWorkerErrorResponse` attaches a `discover: { ID:
+  "error" }`
+  stub, so the completion handler's `assert(r.discover)` passed and `r.error`
+  was never read — the only trace was the worker's own
+  `Worker processing error: …` line. `isFailedDiscoverWorkerResponse` (the
+  mirror of `isFailedTrainWorkerResponse`) now classifies it and routes it
+  through the existing `[Neat] Discovery failed for creature …` path.
+
 - **Issue #3940:** `evolveDir` can no longer return `generation === 0` because
   of the hard deadline. The T+grace cap used to abandon the in-flight first
   generation (`keeping the 0 generation(s) already evolved`), leaving the
