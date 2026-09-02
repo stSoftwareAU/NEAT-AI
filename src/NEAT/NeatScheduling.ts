@@ -35,6 +35,7 @@ import {
   resolveWallClockBudgetMinutes,
 } from "@discovery/DiscoveryTimeout.ts";
 import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
+import { DiscoveryError } from "@errors/DiscoveryError.ts";
 import { toErrorMessage } from "@utils/ErrorSerialisation.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { Neat } from "@neat/Neat.ts";
@@ -393,10 +394,11 @@ export function attachDiscoveryCompletionHandlers(
         scheduledEpoch,
         taskStartTime,
         r.error ??
-          new Error(
+          new DiscoveryError(
             r.discover
               ? `Discovery worker returned unusable result (ID=${r.discover.ID})`
               : "Discovery worker returned no discover payload",
+            "DATA_CORRUPTION",
           ),
       );
       return;
@@ -498,16 +500,22 @@ function recordDiscoveryTaskFailure(
   taskStartTime: number,
   cause: unknown,
 ): void {
+  // The same elapsed time the operator reads in the log line below is what the
+  // machine-readable record carries: `processCompletedResults` reads `duration`
+  // straight into `discovery_complete.elapsedMs`, and a failure reported as
+  // `elapsedMs: 0` is a loss nothing can add up (GRQ #4620).
+  const durationMS = Date.now() - taskStartTime;
+
   getLogger().error(
     `[Neat] Discovery failed for creature ${
       uuid.substring(Math.max(0, uuid.length - 8))
-    } after ${((Date.now() - taskStartTime) / 1000).toFixed(1)}s:`,
+    } after ${(durationMS / 1000).toFixed(1)}s:`,
     cause,
   );
 
   neat.recordDiscoveryComplete(uuid, scheduledEpoch, {
     taskID: 0,
-    duration: 0,
+    duration: durationMS,
     error: toResponseError(cause),
     discover: {
       ID: uuid,

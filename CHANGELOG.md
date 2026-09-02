@@ -36,7 +36,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   recorded result carries the failure on `error`, so `processCompletedResults`
   emits the new `discovery_complete` outcome **`"failed"`** instead of
   `"no_change"`. `DiscoveryCompleteEvent.outcome` gains that label — an additive
-  change for consumers that switch on it.
+  change for consumers that switch on it. The recorded failure carries the real
+  elapsed time, so the `discovery_complete` event reports the time the failure
+  cost rather than `elapsedMs: 0`, and a response with no usable payload of its
+  own is reported as a typed `DiscoveryError` (`reason: "DATA_CORRUPTION"`)
+  rather than a bare `Error`.
 
 - **Issue #3940:** `evolveDir` can no longer return `generation === 0` because
   of the hard deadline. The T+grace cap used to abandon the in-flight first

@@ -207,25 +207,34 @@ Deno.test("discovery completion - a healthy response is still recorded as a comp
   );
 });
 
-Deno.test("processCompletedResults - a failed discovery is reported as `failed`, not `no_change`", async () => {
+Deno.test("a worker discover failure is reported end to end as a `failed` discovery that cost real time", async () => {
   await initWasmForTests();
   const fittest = new Creature(2, 1);
   const uuid = CreatureUtil.makeUUID(fittest);
   const events: TrainingEvent[] = [];
+
+  // The two halves must meet: the entry `processCompletedResults` reports on is
+  // the one the completion handler actually recorded, not a hand-built stand-in.
+  const settling = createStubNeat(uuid);
+  // A task dispatched this far in the past: `Date.now()` only moves forward, so
+  // the recorded duration is at least this, with nothing timing-dependent.
+  const elapsedFloorMS = 1_234;
+  await attachDiscoveryCompletionHandlers(
+    settling,
+    fittest,
+    uuid,
+    0,
+    Date.now() - elapsedFloorMS,
+    Promise.resolve(workerErrorResponse()),
+  );
+  assertEquals(settling.discoveryComplete.length, 1);
 
   const neat = {
     config: createNeatConfig({
       onTrainingEvent: (event: TrainingEvent) => events.push(event),
     }),
     trainingComplete: [] as ResponseData[],
-    discoveryComplete: [
-      {
-        taskID: 0,
-        duration: 0,
-        error: { name: "Error", message: WORKER_FAILURE_MESSAGE },
-        discover: { ID: uuid },
-      },
-    ] as ResponseData[],
+    discoveryComplete: settling.discoveryComplete,
     discoveryReplayQueue: {
       getCompletedResults: () => [],
       clearCompletedResults: () => {},
@@ -248,4 +257,35 @@ Deno.test("processCompletedResults - a failed discovery is reported as `failed`,
     "failed",
     "a failed discovery must not be counted as a run that found nothing",
   );
+  assert(
+    discoveryEvents[0].elapsedMs >= elapsedFloorMS,
+    `the loss must be counted with the time it cost, got elapsedMs=${
+      discoveryEvents[0].elapsedMs
+    }`,
+  );
+});
+
+Deno.test("a discover response with no payload at all is reported as a typed discovery failure", async () => {
+  await initWasmForTests();
+  const creature = new Creature(2, 1);
+  const uuid = CreatureUtil.makeUUID(creature);
+  const neat = createStubNeat(uuid);
+
+  await attachDiscoveryCompletionHandlers(
+    neat,
+    creature,
+    uuid,
+    0,
+    Date.now(),
+    // No `error` and no `discover`: the worker gave nothing usable back.
+    Promise.resolve({ taskID: 7, duration: 5 }),
+  );
+
+  assertEquals(neat.discoveryComplete.length, 1);
+  assertEquals(
+    neat.discoveryComplete[0].error?.name,
+    "DiscoveryError",
+    "a synthesised cause must be a typed discovery error, not a bare Error",
+  );
+  assertExists(neat.discoveryComplete[0].error?.message);
 });
