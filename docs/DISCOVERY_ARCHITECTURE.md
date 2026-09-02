@@ -274,6 +274,7 @@ graph TD
         DSM["DiskSpaceMonitor.ts\nPre-flight disk space checks"]:::utilities
         DT["DiscoveryTimeout.ts\nTimeout management"]:::utilities
         DCL["DiscoveryCleanup.ts\nPost-run cleanup"]:::utilities
+        DCBAR["DiscoveryCleanupBarrier.ts\nOrders writers after the removal"]:::utilities
     end
 
     DR --> DC
@@ -281,8 +282,39 @@ graph TD
     DR --> SC & FC & DCE
     DR --> DD & DES & DF & DPV
     DR --> DRR
-    DR --> PDQ & BS & NEI & DSM & DT & DCL
+    DR --> PDQ & BS & NEI & DSM & DT & DCL & DCBAR
 ```
+
+#### 🧹 Run-directory lifecycle
+
+`.discovery/<uuid>/` belongs to one discovery run. `DataRecorder.runCleanup` may
+return the analysis **before** the recursive removal of that directory has
+finished, and the worker's next act is to write `worker-result-checkpoint.json`
+into it. Those two raced, and the write lost —
+`NotFound … writefile
+'.discovery/<uuid>/worker-result-checkpoint.json'` one
+line after `cleanup complete`, discarding a finished analysis (GRQ #4609).
+
+The cleanup now publishes itself to `DiscoveryCleanupBarrier.ts`, and the
+checkpoint write waits on it:
+
+```mermaid
+sequenceDiagram
+    participant DR as DataRecorder
+    participant B as DiscoveryCleanupBarrier
+    participant FS as .discovery/&lt;uuid&gt;/
+    participant WP as WorkerProcessor
+    DR->>B: trackDiscoveryCleanup(uuid, cleanup)
+    DR-)FS: remove (recursive, may still be running)
+    DR-->>WP: DiscoverResult
+    WP->>B: awaitDiscoveryCleanup(uuid)
+    B-->>WP: removal finished
+    WP->>FS: mkdir + write worker-result-checkpoint.json
+```
+
+A write that still fails is logged at error level and reported as **no**
+checkpoint — `resultCheckpointPath` is omitted rather than naming a file that is
+not there — and the completed analysis is still returned on the wire.
 
 ### 🦀 `src/architecture/ErrorGuidedStructuralEvolution/` — Rust FFI & Structure Operations
 

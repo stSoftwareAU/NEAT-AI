@@ -21,6 +21,7 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { isRustDiscoveryEnabled } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { costNameToTaskDescriptor } from "@costs/CostTaskDescriptor.ts";
+import { trackDiscoveryCleanup } from "@discovery/DiscoveryCleanupBarrier.ts";
 import { resolveAnalysisMemoryBudgetMb } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryAnalysisMemory.ts";
 import { PhaseDiagnostics } from "@architecture/ErrorGuidedStructuralEvolution/PhaseDiagnostics.ts";
 import {
@@ -552,6 +553,12 @@ export class DataRecorder {
       }
     })();
 
+    // GRQ #4609: the async branch below returns the result while this removal
+    // of `.discovery/<ID>/` is still running, and the worker's very next act is
+    // to write the result checkpoint into that directory. Publish the cleanup
+    // so the writer can order itself after it instead of racing it.
+    trackDiscoveryCleanup(this.ID, cleanupPromise);
+
     if (this.shouldAwaitCleanup()) {
       // GRQ #4241: a cleanup that failed must never be followed by a
       // completion line. Report the leak loudly and keep the (valid) discovery
@@ -582,10 +589,13 @@ export class DataRecorder {
         );
       });
       if (shouldLogDiscovery(config)) {
+        // GRQ #4609: the analysis returns immediately, but anything writing
+        // back into `.discovery/<ID>/` — the worker result checkpoint — waits
+        // on this removal rather than racing it.
         getLogger().info(
           `Discovery ${
             blue(this.ID)
-          } cleanup scheduled (async, non-blocking - results will be returned immediately).`,
+          } cleanup scheduled (async - results returned immediately; writers to its run directory wait for it).`,
         );
       }
       perfStats.cleanupTime = 0;

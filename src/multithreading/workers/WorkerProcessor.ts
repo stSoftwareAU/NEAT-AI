@@ -16,8 +16,9 @@
  * before the response is posted.
  */
 import { assert } from "@std/assert";
-import { dirname, join } from "@std/path";
+import { basename, dirname, join } from "@std/path";
 import { recordDirectory } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverDirectory.ts";
+import { awaitDiscoveryCleanup } from "@discovery/DiscoveryCleanupBarrier.ts";
 import { toErrorMessage } from "@utils/ErrorSerialisation.ts";
 import type {
   DiscoverResult,
@@ -89,13 +90,57 @@ export function selectRemovalCandidatesForWire(
  *
  * An OOM while serialising the return payload then loses the message, not
  * hours of completed analysis — the checkpoint can be recovered from disk.
+ *
+ * GRQ #4609: the run directory this writes into is the one the discovery's own
+ * `cleanUp()` removes, and that removal can still be in flight — the worker's
+ * `mkdir` yields, the removal takes the directory away, and the write fails
+ * `NotFound … writefile '.discovery/<uuid>/worker-result-checkpoint.json'` one
+ * line after `cleanup complete`. The wait lives **here**, not at the call site,
+ * so no caller of this function can reintroduce the race. The discovery ID is
+ * the run directory name, which is the parent of the checkpoint file — see
+ * {@link discoverResultCheckpointPath}.
  */
 export async function persistDiscoverResultCheckpoint(
   result: DiscoverResult,
   checkpointPath: string,
 ): Promise<void> {
-  await Deno.mkdir(dirname(checkpointPath), { recursive: true });
+  const runDirectory = dirname(checkpointPath);
+  await awaitDiscoveryCleanup(basename(runDirectory));
+  await Deno.mkdir(runDirectory, { recursive: true });
   await Deno.writeTextFile(checkpointPath, JSON.stringify(result));
+}
+
+/**
+ * Persist the checkpoint without letting a failed write discard the analysis
+ * (GRQ #4609).
+ *
+ * A write that fails (a full disk, a directory another process removed) is
+ * reported at error level and reported as "no checkpoint": the caller omits
+ * `resultCheckpointPath`, so nothing downstream can believe in a checkpoint
+ * that is not on disk. The failure is never swallowed into silence — but it no
+ * longer costs the caller the completed evaluation, which is the whole point of
+ * the safety net. Throwing here is what turned each occurrence in the source
+ * logs into a discarded discovery.
+ *
+ * @returns The path when the checkpoint was written; `undefined` when it was
+ *   not.
+ */
+export async function persistDiscoverResultCheckpointOrReport(
+  result: DiscoverResult,
+  checkpointPath: string,
+): Promise<string | undefined> {
+  try {
+    await persistDiscoverResultCheckpoint(result, checkpointPath);
+    return checkpointPath;
+  } catch (error) {
+    getLogger().error(
+      `❌ Discovery result checkpoint NOT written to '${checkpointPath}': ${
+        toErrorMessage(error)
+      } — the completed analysis is still returned on the wire, but nothing ` +
+        `can be recovered from disk if this response is lost.`,
+    );
+    return undefined;
+  }
 }
 
 /** Resolve the on-disk checkpoint path for a discovery session.
@@ -475,18 +520,22 @@ export class WorkerProcessor {
         // run directory DiscoverStructureBase already created). result.ID
         // used to be uuid.slice(-8), which mkdir'd a second top-level dir
         // and failed GRQ's "exactly one run directory" snapshot.
+        // GRQ #4609: the write waits for this run's cleanup inside
+        // `persistDiscoverResultCheckpoint`, and a checkpoint that cannot be
+        // written no longer costs us the completed analysis.
         const checkpointPath = discoverResultCheckpointPath(
           CreatureUtil.makeUUID(creature),
           data.discover.config.discoveryBaseDirectory,
         );
-        await persistDiscoverResultCheckpoint(result, checkpointPath);
+        const persistedCheckpointPath =
+          await persistDiscoverResultCheckpointOrReport(result, checkpointPath);
 
         const removalTotal = result.removalCandidates?.length ?? 0;
         const response = {
           taskID: data.taskID,
           duration: Date.now() - start,
           discover: buildDiscoverResponsePayload(result, {
-            resultCheckpointPath: checkpointPath,
+            resultCheckpointPath: persistedCheckpointPath,
           }),
         };
 
@@ -498,7 +547,9 @@ export class WorkerProcessor {
             `[Worker] Returning discovery response (taskID: ${data.taskID}` +
               `, removalCandidates=${wireRemovals}` +
               (removalTotal > wireRemovals
-                ? ` of ${removalTotal} (capped, checkpoint=${checkpointPath})`
+                ? ` of ${removalTotal} (capped, checkpoint=${
+                  persistedCheckpointPath ?? "none"
+                })`
                 : "") +
               ")...",
           );
