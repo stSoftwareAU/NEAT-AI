@@ -207,7 +207,7 @@ Deno.test("discovery completion - a healthy response is still recorded as a comp
   );
 });
 
-Deno.test("a worker discover failure is reported end to end as a `failed` discovery that cost real time", async () => {
+Deno.test('a worker discover failure is reported end to end as a "failed" discovery that cost real time', async () => {
   await initWasmForTests();
   const fittest = new Creature(2, 1);
   const uuid = CreatureUtil.makeUUID(fittest);
