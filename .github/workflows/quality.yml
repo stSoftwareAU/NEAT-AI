@@ -163,14 +163,52 @@ jobs:
         run: |
           git fetch origin Develop:Develop || true
 
-      - name: Detect Secrets with gitleaks
+      # Secret scanning runs down exactly one of two paths, and one of them
+      # always runs (Issue #3950). The licensed action needs an organisation
+      # licence, which Dependabot-authored PRs never receive: with an empty
+      # licence it exits with `ErrLicense` before scanning anything, leaving a
+      # green job over an unscanned diff — worse than no gate, because it reads
+      # as covered.
+      #
+      # The `secrets` context is not available in a step-level `if:`, so the
+      # licence is resolved into a step output first. Keeping the secret in one
+      # step's `env:` rather than at job level preserves this job's boundary:
+      # no credential beyond the read-scoped `GITHUB_TOKEN` is in scope while
+      # PR-controlled code runs (Issue #3607).
+      - name: Detect gitleaks licence
+        id: gitleaks_licence
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$GITLEAKS_LICENSE" ]]; then
+            echo "licensed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "licensed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Note: gitleaks-action@v2 automatically detects PRs and scans the diff.
+      # For workflow_dispatch, it scans the entire repository by default.
+      - name: Detect Secrets with gitleaks (licensed action)
+        if: steps.gitleaks_licence.outputs.licensed == 'true'
         # gitleaks/gitleaks-action@v2.3.9
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # License key for organization scanning
-      # Note: gitleaks-action@v2 automatically detects PRs and scans the diff
-      # For workflow_dispatch, it scans the entire repository by default
+
+      # The free, open-source CLI needs no licence. It is fetched at a pinned
+      # version and verified against its published SHA-256 checksum by
+      # `scripts/gitleaks-scan.sh`, which also falls back to a whole-tree scan
+      # when the PR commit range is not reachable in the checkout.
+      - name: Detect Secrets with gitleaks (open-source CLI fallback)
+        if: steps.gitleaks_licence.outputs.licensed != 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          bash scripts/gitleaks-scan.sh .
 
       # Set up Deno 2.x and verify the vendored WASM bundle matches
       # deno.json's neatCore.rev. Shared with coverage.yaml, bench.yaml and
