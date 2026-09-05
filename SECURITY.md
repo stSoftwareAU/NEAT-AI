@@ -24,8 +24,17 @@ opening a PR (see the secure-coding principles section of
   caught even between bumps.
 - **Static analysis (SAST)** — Semgrep runs on each PR via
   `.github/workflows/semgrep.yml`.
-- **Secret scanning** — `gitleaks` patterns live in `.gitleaks.toml` at the
-  repository root.
+- **Secret scanning** — `.github/workflows/quality.yml` runs `gitleaks` on every
+  PR down one of two paths, exactly one of which always runs (Issue #3950). With
+  an organisation licence it uses `gitleaks/gitleaks-action`; without one — a
+  Dependabot-authored PR receives no Actions secrets, so the action would exit
+  `ErrLicense` before scanning anything — it runs
+  [`scripts/gitleaks-scan.sh`](./scripts/gitleaks-scan.sh), which fetches the
+  free CLI at a pinned version, verifies it against its published SHA-256
+  checksum, and scans the PR commit range (falling back to the whole working
+  tree when that range is not reachable). Rules and allowlists live in
+  `.gitleaks.toml` at the repository root, which extends the built-in ruleset
+  via `useDefault`.
 - **Dependency bumps** — the weekly `deno outdated` job in
   `.github/workflows/deno-outdated.yml` raises automated _freshness_ bump PRs
   (whatever is newest, honouring the 24h quarantine).
