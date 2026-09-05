@@ -45,7 +45,13 @@ jobs:
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: "lts/*"
+      # Pinned to an exact version (Issue #3951). A `run:` step is not a
+      # manifest, so neither Renovate's `minimumReleaseAge` nor Deno's
+      # `minimumDependencyAge` embargoes it — a floating install would execute a
+      # hijacked release on the runner, with the workflow `GITHUB_TOKEN` in
+      # scope, the moment it was published. The `customManagers` regex entry in
+      # `renovate.json` keeps this pin current inside the 24 h quarantine.
       - name: Install markdownlint-cli2
-        run: npm install -g markdownlint-cli2
+        run: npm install -g markdownlint-cli2@0.23.2
       - name: Run markdownlint-cli2
         run: markdownlint-cli2
