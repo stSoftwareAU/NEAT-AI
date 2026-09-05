@@ -13,9 +13,18 @@
  * This test scans every workflow file and asserts that any `container:`
  * block (either `container: image: foo` shorthand or the long
  * `container:\n  image: foo` form) is pinned to a `sha256:` digest.
+ *
+ * Issue #3960 — a digest alone is immutable but *untrackable*. Renovate's
+ * `github-actions` manager and Dependabot's `docker` ecosystem both resolve a
+ * bump from the tag and then rewrite the digest beside it, so a bare
+ * `name@sha256:<digest>` pin is frozen forever: new rule packs and CVE fixes
+ * never reach the scan. Every digest-pinned container image must therefore
+ * carry an explicit release tag as well — `name:<X.Y.Z>@sha256:<digest>` — which
+ * keeps the image byte-for-byte immutable while letting the updater raise bump
+ * PRs through the existing 24 h quarantine.
  */
 
-import { assert, assertMatch } from "@std/assert";
+import { assert, assertEquals, assertMatch } from "@std/assert";
 import { fromFileUrl, join } from "@std/path";
 
 const REPO_ROOT = fromFileUrl(new URL("../../", import.meta.url));
@@ -58,6 +67,47 @@ export function extractContainerImages(source: string): ImageRef[] {
     }
   }
   return out;
+}
+
+/** The three components of an OCI image reference. */
+export interface ParsedImage {
+  /** Everything before the tag and digest, registry host included. */
+  name: string;
+  /** The `:<tag>` component, or null when the reference carries none. */
+  tag: string | null;
+  /** The `@sha256:<digest>` component, or null when unpinned. */
+  digest: string | null;
+}
+
+/** A tag a version updater can resolve a bump from: `1.163.0`, `v2`, `3.1.0-rc1`. */
+const RELEASE_TAG = /^v?\d+(?:\.\d+)*(?:[.-][0-9A-Za-z.-]+)?$/;
+
+/**
+ * Split an image reference into name, tag, and digest.
+ *
+ * The tag is the last `:` inside the final path segment, so a registry host
+ * carrying a port (`registry.local:5000/app`) is not mistaken for a tag.
+ */
+export function parseImageRef(image: string): ParsedImage {
+  const at = image.indexOf("@");
+  const digest = at === -1 ? null : image.slice(at + 1);
+  const rest = at === -1 ? image : image.slice(0, at);
+
+  const lastSlash = rest.lastIndexOf("/");
+  const colon = rest.indexOf(":", lastSlash + 1);
+  if (colon === -1) return { name: rest, tag: null, digest };
+  return { name: rest.slice(0, colon), tag: rest.slice(colon + 1), digest };
+}
+
+/**
+ * Whether a tag is one an updater can resolve a version bump from.
+ *
+ * Moving tags (`latest`, `stable`, `edge`) resolve to a different image over
+ * time, so they are no more trackable than no tag at all.
+ */
+export function isTrackableTag(tag: string | null): boolean {
+  if (tag === null || tag === "") return false;
+  return RELEASE_TAG.test(tag);
 }
 
 async function listWorkflowFiles(): Promise<string[]> {
@@ -145,8 +195,71 @@ Deno.test(
   },
 );
 
+Deno.test("parseImageRef splits name, tag, and digest", () => {
+  assertEquals(parseImageRef("semgrep/semgrep:1.163.0@sha256:abc"), {
+    name: "semgrep/semgrep",
+    tag: "1.163.0",
+    digest: "sha256:abc",
+  });
+});
+
+Deno.test("parseImageRef reports a missing tag as null", () => {
+  assertEquals(parseImageRef("semgrep/semgrep@sha256:abc"), {
+    name: "semgrep/semgrep",
+    tag: null,
+    digest: "sha256:abc",
+  });
+});
+
+Deno.test("parseImageRef reports a missing digest as null", () => {
+  assertEquals(parseImageRef("alpine:3.20"), {
+    name: "alpine",
+    tag: "3.20",
+    digest: null,
+  });
+});
+
+Deno.test("parseImageRef does not mistake a registry port for a tag", () => {
+  assertEquals(parseImageRef("registry.local:5000/app@sha256:abc"), {
+    name: "registry.local:5000/app",
+    tag: null,
+    digest: "sha256:abc",
+  });
+  assertEquals(parseImageRef("registry.local:5000/app:2.1.0"), {
+    name: "registry.local:5000/app",
+    tag: "2.1.0",
+    digest: null,
+  });
+});
+
+Deno.test("isTrackableTag accepts release tags and rejects moving ones", () => {
+  for (const tag of ["1.163.0", "v2", "3.1.0-rc1", "1.2"]) {
+    assert(isTrackableTag(tag), `expected '${tag}' to be trackable`);
+  }
+  for (const tag of [null, "", "latest", "stable", "edge", "sha-abc123"]) {
+    assert(!isTrackableTag(tag), `expected '${tag}' to be untrackable`);
+  }
+});
+
 Deno.test(
-  "semgrep.yml container image is pinned (Issue #2743 regression)",
+  "every digest-pinned workflow container image also carries a release tag (Issue #3960)",
+  async () => {
+    const workflows = await readAllWorkflows();
+    assert(workflows.length > 0, "expected at least one workflow file");
+    for (const { name, source } of workflows) {
+      for (const r of extractContainerImages(source)) {
+        const { tag } = parseImageRef(r.image);
+        assert(
+          isTrackableTag(tag),
+          `${name}: container image '${r.image}' on line ${r.line} pins a digest with no release tag, so Renovate and Dependabot cannot resolve a bump from it — use 'name:<X.Y.Z>@sha256:<digest>'`,
+        );
+      }
+    }
+  },
+);
+
+Deno.test(
+  "semgrep.yml container image is pinned and trackable (Issues #2743, #3960)",
   async () => {
     const path = join(WORKFLOWS_DIR, "semgrep.yml");
     const source = await Deno.readTextFile(path);
@@ -159,8 +272,8 @@ Deno.test(
     assert(semgrep, "expected a semgrep/semgrep container image ref");
     assertMatch(
       semgrep.image,
-      /^semgrep\/semgrep@sha256:[0-9a-f]{64}$/,
-      `semgrep.yml image must pin semgrep/semgrep to a sha256 digest, got '${semgrep.image}'`,
+      /^semgrep\/semgrep:\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$/,
+      `semgrep.yml image must pin semgrep/semgrep to an explicit release tag beside its sha256 digest, got '${semgrep.image}'`,
     );
   },
 );
