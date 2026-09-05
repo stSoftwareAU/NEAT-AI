@@ -70,9 +70,10 @@ flowchart TD
 ```
 
 **Manual verification — the fallback catches a real planted secret.** A scratch
-repository with `ghp_012345678901234567890123456789abcdef` committed on top of a
-clean base, scanned by the script's own download path (real network fetch, real
-checksum verification, real gitleaks 8.30.1):
+repository with a synthetic GitHub PAT (a `ghp_` prefix followed by 36
+placeholder characters — not reproduced here, so this file is not itself a
+finding) committed on top of a clean base, scanned by the script's own download
+path (real network fetch, real checksum verification, real gitleaks 8.30.1):
 
 ```text
 $ BASE_SHA=$BASE HEAD_SHA=$HEAD bash scripts/gitleaks-scan.sh .

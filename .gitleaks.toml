@@ -16,3 +16,14 @@
   commits = [
     "c5b6232772733ed219563dd0b341241eee2fc8c8",
   ]
+
+  # docs/archive/pr-summaries/pr-summary-3950.md quoted a synthetic GitHub PAT
+  # — the digits 0-9 repeated three times followed by `abcdef` — as evidence
+  # that the licence-less fallback detects a planted secret. The literal has
+  # been removed from that file, but it stays in the branch's history, so a
+  # range scan still reports it. The pattern is written out rather than
+  # allowlisting the whole commit so every other secret in it is still caught,
+  # and its fixed digits cannot match a real token.
+  regexes = [
+    '''ghp_(?:0123456789){3}abcdef''',
+  ]
