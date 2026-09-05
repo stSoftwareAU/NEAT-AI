@@ -724,10 +724,6 @@
     "EVCO",
     "topolog",
     "efficien",
-    "goldens",
-    "nleck",
-    "SIGMAS",
-    "sigmas",
-    "bfloat16"
+    "untrackable"
   ]
 }
