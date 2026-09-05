@@ -209,6 +209,13 @@ The same 24h window applies to the two update paths that do not run the script
   script-gated path, and exempts `stSoftwareAU/*` at 0h. Security bumps are
   unaffected: Renovate exempts `vulnerabilityAlerts` from `minimumReleaseAge`.
 
+- A tool installed by a workflow `run:` step (`npm install -g <pkg>`) is not a
+  manifest, so no manager embargoes it — a floating install runs whatever the
+  registry serves that minute. Pin those installs to an **exact** version; the
+  `customManagers` regex entry in `renovate.json` brings them back under the 24h
+  window (Issue #3951). Gate test:
+  [`test/ci/MarkdownLintInstallPin.ts`](../test/ci/MarkdownLintInstallPin.ts).
+
 After bumping, the script runs a two-phase audit gate (a curated WASM smoke
 subset followed by `deno check`). If either phase fails the script exits
 non-zero and the bump is reverted. The behaviour is verified by

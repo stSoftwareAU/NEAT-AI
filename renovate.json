@@ -4,6 +4,17 @@
   "minimumReleaseAge": "24 hours",
   "vulnerabilityAlerts": { "enabled": true },
   "osvVulnerabilityAlerts": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep exact-pinned global npm installs in GitHub Actions run: steps current (Issue #3951). A run: step is not a manifest, so no built-in manager sees these pins.",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "npm\\s+(?:install|i|add)\\s+(?:-g|--global)\\s+(?<depName>@?[^@\\s]+(?:/[^@\\s]+)?)@(?<currentValue>\\d+\\.\\d+\\.\\d+[^\\s]*)"
+      ],
+      "datasourceTemplate": "npm"
+    }
+  ],
   "packageRules": [
     {
       "description": "Deno/JSR deps are governed by bump-deps.sh --minimum-dependency-age and deno.json minimumDependencyAge; disable Renovate's deno manager so the two windows cannot race.",
