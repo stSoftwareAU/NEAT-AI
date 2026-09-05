@@ -164,12 +164,12 @@ jobs:
           git fetch origin Develop:Develop || true
 
       - name: Detect Secrets with gitleaks
-        # gitleaks/gitleaks-action@v2.3.9
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
+        # gitleaks/gitleaks-action@v3.0.0
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # License key for organization scanning
-      # Note: gitleaks-action@v2 automatically detects PRs and scans the diff
+      # Note: gitleaks-action@v3 automatically detects PRs and scans the diff
       # For workflow_dispatch, it scans the entire repository by default
 
       # Set up Deno 2.x and verify the vendored WASM bundle matches
