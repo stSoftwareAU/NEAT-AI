@@ -210,7 +210,7 @@ sequenceDiagram
     evolveDir->>Neat: new Neat(... hardDeadlineTS ...)
 
     loop each generation
-        evolveDir->>Neat: abandonInFlightPastHardDeadline(hardDeadlineTS)<br/>(top of every pass — GRQ #4470;<br/>no-op until 1 generation is banked — #3940)
+        evolveDir->>Neat: abandonInFlightPastHardDeadline(hardDeadlineTS)<br/>(top of every pass — GRQ #4470,<br/>no-op until 1 generation is banked — #3940)
         Neat->>Worker: scheduleDiscovery / scheduleTraining<br/>(carry hardDeadlineTS)
         Worker-->>Worker: clamp per-task deadline to min(local, hardDeadlineTS)
         Neat->>Replay: scheduleReplay(... hardDeadlineTS ...)
@@ -232,7 +232,7 @@ sequenceDiagram
 
     Note over evolveDir: bounded teardown (GRQ #4472)
     evolveDir-->>evolveDir: 1. load best creature + write creatureStore
-    evolveDir->>Worker: 2. terminate() — budgeted; detach what will not stop
+    evolveDir->>Worker: 2. terminate() — budgeted, detach what will not stop
     evolveDir->>Replay: 3. waitForCompletion(hardDeadlineTS) — budgeted
     Replay-->>Replay: drop queued replay, abort in-flight at next boundary
     evolveDir->>Caller: teardown summary line, then return
