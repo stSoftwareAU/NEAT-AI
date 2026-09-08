@@ -17,22 +17,20 @@
 ## 📐 The policy this ledger follows
 
 The rules a migration must satisfy are family-wide and are defined once, in
-[ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md). This document does not
-restate them; it records what they have already moved, and what is next.
+[ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md). This document is the
+ledger of what they have already moved, and what is next; the rules themselves
+are linked, not copied:
 
-- **Existing TypeScript tests are the acceptance contract** — prove parity or a
-  deliberate, tested and justified improvement, route the production path to
-  Rust, then delete the superseded TypeScript in the same migration:
-  [principle 6](ENGINEERING_PRINCIPLES.md#6-migrate-typescript--rust-incrementally-and-finish-each-step).
-- **No runtime fallback, shadow execution or dual path** after cutover:
-  [principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path).
-- **Rollback is a repin** of a published revision, never a second code path:
-  [principle 8](ENGINEERING_PRINCIPLES.md#8-rollback-is-versioning-and-pinning-not-duplicate-code).
-- **One capability per migration**, reviewable and revertible on its own:
-  [principle 9](ENGINEERING_PRINCIPLES.md#9-migrations-are-small-independently-reviewable-and-revertible).
-- **A defect found after a capability moved starts with the smallest reproducing
-  test**, before the fix:
-  [principle 2](ENGINEERING_PRINCIPLES.md#2-a-post-release-defect-starts-with-the-smallest-reproducing-test).
+- [Principle 6](ENGINEERING_PRINCIPLES.md#6-migrate-typescript--rust-incrementally-and-finish-each-step)
+  — how one capability is migrated, and finished.
+- [Principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)
+  — what may not survive the cutover.
+- [Principle 8](ENGINEERING_PRINCIPLES.md#8-rollback-is-versioning-and-pinning-not-duplicate-code)
+  — how a bad migration is rolled back.
+- [Principle 9](ENGINEERING_PRINCIPLES.md#9-migrations-are-small-independently-reviewable-and-revertible)
+  — how large a single migration may be.
+- [Principle 2](ENGINEERING_PRINCIPLES.md#2-a-post-release-defect-starts-with-the-smallest-reproducing-test)
+  — what a defect found after the move starts with.
 
 The gate that authorises the deletion step is [PARITY_GATE.md](PARITY_GATE.md);
 the pin that makes the rollback possible is
@@ -59,23 +57,23 @@ The work is informed by the WASM performance research series (#1630–#1633,
 
 ## 🦀 Where things live today (May 2026)
 
-| Subsystem                             | Lives in             | Reason / evidence                                           |
-| ------------------------------------- | -------------------- | ----------------------------------------------------------- |
-| Activation functions (squashes)       | Rust → WASM          | Vendored from NEAT-AI-core; see audit #2369                 |
-| Forward pass (accumulate)             | Rust → WASM          | Numerically heavy inner loop                                |
-| Topological backprop loop             | Rust → WASM only     | TS fallback removed in #2442                                |
-| Elastic error distribution            | Rust → WASM only     | Migrated #1377 (#1519/#1526); TS fallback removed in #2442  |
-| Predictive coding (inference + learn) | Rust → WASM          | `wasm_activation/src/pc_inference.rs`, `pc_learning.rs`     |
-| Score computation                     | Rust → WASM          | Cache-aware incremental scorer (#1011/#1078)                |
-| Training state                        | Rust → WASM          | `wasm_activation/src/training_state.rs`                     |
-| Topology validation, cycle detection  | Rust → WASM          | Core-owned operation; no TS fallback (principle 7)          |
-| Discovery recording (Parquet)         | Rust extension (FFI) | `recordDiscovery()` writes Parquet via Rust                 |
-| Discovery analysis (GPU-only)         | Rust extension (FFI) | `analyzeParallel()` — wgpu (Metal/Vulkan/DX12); no CPU path |
-| Discovery focus ranking               | Rust extension (FFI) | `rankFocusNeurons()`                                        |
-| NEAT loop / breeding / mutation       | TypeScript           | Orchestration; non-numerical                                |
-| Cache-dominated paths (LRU)           | TypeScript           | Already faster than any WASM path (66 ns/hit)               |
-| Graph surgery (compact, prune)        | TypeScript           | Map/Set work that V8 handles efficiently                    |
-| Discovery candidate filtering         | TypeScript           | Slot allocation, weighted sampling, cache lookups           |
+| Subsystem                             | Lives in             | Reason / evidence                                                                                                      |
+| ------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Activation functions (squashes)       | Rust → WASM          | Vendored from NEAT-AI-core; see audit #2369                                                                            |
+| Forward pass (accumulate)             | Rust → WASM          | Numerically heavy inner loop                                                                                           |
+| Topological backprop loop             | Rust → WASM only     | TS fallback removed in #2442                                                                                           |
+| Elastic error distribution            | Rust → WASM only     | Migrated #1377 (#1519/#1526); TS fallback removed in #2442                                                             |
+| Predictive coding (inference + learn) | Rust → WASM          | `wasm_activation/src/pc_inference.rs`, `pc_learning.rs`                                                                |
+| Score computation                     | Rust → WASM          | Cache-aware incremental scorer (#1011/#1078)                                                                           |
+| Training state                        | Rust → WASM          | `wasm_activation/src/training_state.rs`                                                                                |
+| Topology validation, cycle detection  | Rust → WASM          | Core-owned; [no TS fallback](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path) |
+| Discovery recording (Parquet)         | Rust extension (FFI) | `recordDiscovery()` writes Parquet via Rust                                                                            |
+| Discovery analysis (GPU-only)         | Rust extension (FFI) | `analyzeParallel()` — wgpu (Metal/Vulkan/DX12); no CPU path                                                            |
+| Discovery focus ranking               | Rust extension (FFI) | `rankFocusNeurons()`                                                                                                   |
+| NEAT loop / breeding / mutation       | TypeScript           | Orchestration; non-numerical                                                                                           |
+| Cache-dominated paths (LRU)           | TypeScript           | Already faster than any WASM path (66 ns/hit)                                                                          |
+| Graph surgery (compact, prune)        | TypeScript           | Map/Set work that V8 handles efficiently                                                                               |
+| Discovery candidate filtering         | TypeScript           | Slot allocation, weighted sampling, cache lookups                                                                      |
 
 > [!IMPORTANT]
 > **No TS fallbacks for core-owned operations** —

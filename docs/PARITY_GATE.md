@@ -11,7 +11,7 @@ boundary. This gate confirms the two sides still agree — see
 
 **Why the gate exists** is family policy, not local policy:
 [principle 6](ENGINEERING_PRINCIPLES.md#6-migrate-typescript--rust-incrementally-and-finish-each-step)
-makes a clean run of this gate — plus the sign-off in the
+makes a clean run of this gate — plus the maintainer sign-off in step 6 of the
 [release checklist](#release-checklist) — the precondition for deleting a
 superseded TypeScript implementation, and
 [principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)

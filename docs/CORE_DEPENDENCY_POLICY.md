@@ -14,11 +14,9 @@ leaves no second code path to fall back to. Those rules are defined once in
 the mechanics that make them work here — the pin, its content anchors, the
 `build.sh` modes, and the approval tiers.
 
-Rolling back is therefore a repin, not a revert of behaviour: restore the
-previous `neatCore.rev` **and** its `assetSha256`, re-run `./build.sh` with
-`--rev <SHA>`, and commit `deno.json`, `wasm_activation/pkg/**` and
-`src/wasm/WasmBundleSha256.ts` together — the same steps
-[Bumping NEAT-AI-core](#bumping-neat-ai-core) takes in the forward direction.
+Rolling back is therefore a repin, not a revert of behaviour: run
+[Bumping NEAT-AI-core](#bumping-neat-ai-core) against the last known-good SHA
+instead of the current HEAD.
 
 ## Decision Summary
 
@@ -244,11 +242,13 @@ at the expected release URL.
 ## Bumping NEAT-AI-core
 
 1. Run `./build.sh` to resolve HEAD, download the matching artifact, and bump
-   `deno.json` `neatCore.rev`.
+   `deno.json` `neatCore.rev` and `neatCore.assetSha256`. Pass `--rev <SHA>` to
+   pin a specific revision instead — this is also the rollback path.
 2. Run `./scripts/parity-gate.sh` and include the output in the PR.
 3. Run `./quality.sh` (which calls `./build.sh --verify-only` to confirm the
    refreshed pkg is in sync).
-4. Commit the updated `deno.json` and `wasm_activation/pkg/**` together.
+4. Commit the updated `deno.json`, `wasm_activation/pkg/**` and
+   `src/wasm/WasmBundleSha256.ts` together.
 
 ## CI Policy
 

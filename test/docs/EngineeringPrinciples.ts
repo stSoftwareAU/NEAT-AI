@@ -39,11 +39,36 @@ const POLICY_CONSUMERS: ReadonlyArray<[label: string, path: string]> = [
   ["docs/TS_RUST_MIGRATION.md", join(DOCS_DIR, "TS_RUST_MIGRATION.md")],
 ];
 
-/** Every Markdown file that may cite a principle by anchor (Issue #3980). */
-const ANCHOR_CITERS: ReadonlyArray<[label: string, path: string]> = [
-  ...ENTRY_POINTS,
+/** Documents whose relative links must all resolve on disk. */
+const LINK_CHECKED: ReadonlyArray<[label: string, path: string]> = [
+  ["docs/ENGINEERING_PRINCIPLES.md", PRINCIPLES],
   ...POLICY_CONSUMERS,
 ];
+
+/** True when `content` links to `target`, however the link spells the path. */
+function linksTo(content: string, target: string): boolean {
+  return relativeLinkTargets(content)
+    .some((linked) => linked.replace(/^\.\//, "").endsWith(target));
+}
+
+/** Relative link targets in `content` that do not resolve on disk. */
+async function brokenLinks(
+  content: string,
+  baseDir: string,
+): Promise<string[]> {
+  const results = await Promise.all(
+    relativeLinkTargets(content).map(async (pathPart) => {
+      const resolved = resolve(baseDir, pathPart);
+      try {
+        await Deno.stat(resolved);
+        return null;
+      } catch {
+        return `broken link: ${pathPart} (resolved to ${resolved})`;
+      }
+    }),
+  );
+  return results.filter((r): r is string => r !== null);
+}
 
 /**
  * GitHub's heading-anchor slug: inline links reduced to their text, then
@@ -54,7 +79,7 @@ function headingSlug(heading: string): string {
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/`/g, "")
     .toLowerCase()
-    .replace(/[^\p{Letter}\p{Number} -]/gu, "")
+    .replace(/[^\p{Letter}\p{Number}_ -]/gu, "")
     .trim()
     .replace(/ /g, "-");
 }
@@ -69,6 +94,25 @@ function headingAnchors(markdown: string): Set<string> {
   return anchors;
 }
 
+/** Every committed Markdown file that could cite a principle by anchor. */
+async function markdownFiles(): Promise<string[]> {
+  const found: string[] = [];
+  const walk = async (dir: string) => {
+    for await (const entry of Deno.readDir(dir)) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory) await walk(path);
+      else if (entry.name.endsWith(".md")) found.push(path);
+    }
+  };
+  await walk(DOCS_DIR);
+  for await (const entry of Deno.readDir(REPO_ROOT)) {
+    if (entry.isFile && entry.name.endsWith(".md")) {
+      found.push(join(REPO_ROOT, entry.name));
+    }
+  }
+  return found;
+}
+
 Deno.test("docs/ENGINEERING_PRINCIPLES.md exists and is non-empty", async () => {
   const content = await Deno.readTextFile(PRINCIPLES);
   assert(
@@ -77,28 +121,16 @@ Deno.test("docs/ENGINEERING_PRINCIPLES.md exists and is non-empty", async () => 
   );
 });
 
-Deno.test("docs/ENGINEERING_PRINCIPLES.md internal links resolve", async () => {
-  const content = await Deno.readTextFile(PRINCIPLES);
-  const baseDir = dirname(PRINCIPLES);
-  const results = await Promise.all(
-    relativeLinkTargets(content).map(async (pathPart) => {
-      const resolved = resolve(baseDir, pathPart);
-      try {
-        await Deno.stat(resolved);
-        return null;
-      } catch {
-        return `broken link: ${pathPart} (resolved to ${resolved})`;
-      }
-    }),
-  );
-  const failures = results.filter((r): r is string => r !== null);
-  assert(
-    failures.length === 0,
-    `docs/ENGINEERING_PRINCIPLES.md has broken internal links:\n${
-      failures.join("\n")
-    }`,
-  );
-});
+for (const [label, path] of LINK_CHECKED) {
+  Deno.test(`${label} internal links resolve`, async () => {
+    const content = await Deno.readTextFile(path);
+    const failures = await brokenLinks(content, dirname(path));
+    assert(
+      failures.length === 0,
+      `${label} has broken internal links:\n${failures.join("\n")}`,
+    );
+  });
+}
 
 Deno.test("docs index links to the canonical engineering principles", async () => {
   const content = await Deno.readTextFile(DOCS_INDEX);
@@ -130,54 +162,28 @@ for (const [label, path] of ENTRY_POINTS) {
 for (const [label, path] of POLICY_CONSUMERS) {
   Deno.test(`${label} defers to the canonical engineering principles`, async () => {
     const content = await Deno.readTextFile(path);
-    const linked = relativeLinkTargets(content);
     assert(
-      linked.includes("ENGINEERING_PRINCIPLES.md"),
+      linksTo(content, "ENGINEERING_PRINCIPLES.md"),
       `${label} must link to ENGINEERING_PRINCIPLES.md: the family-wide ` +
         "migration, fallback and rollback rules are defined once there, and " +
         "this document carries only the mechanics specific to its purpose",
     );
   });
-
-  Deno.test(`${label} internal links resolve`, async () => {
-    const content = await Deno.readTextFile(path);
-    const baseDir = dirname(path);
-    const results = await Promise.all(
-      relativeLinkTargets(content).map(async (pathPart) => {
-        const resolved = resolve(baseDir, pathPart);
-        try {
-          await Deno.stat(resolved);
-          return null;
-        } catch {
-          return `broken link: ${pathPart} (resolved to ${resolved})`;
-        }
-      }),
-    );
-    const failures = results.filter((r): r is string => r !== null);
-    assert(
-      failures.length === 0,
-      `${label} has broken internal links:\n${failures.join("\n")}`,
-    );
-  });
 }
 
-for (const [label, path] of ANCHOR_CITERS) {
-  Deno.test(`${label} cites principles that exist`, async () => {
-    const [content, principles] = await Promise.all([
-      Deno.readTextFile(path),
-      Deno.readTextFile(PRINCIPLES),
-    ]);
-    const anchors = headingAnchors(principles);
-    const dangling = relativeLinks(content)
-      .filter((link) =>
-        link.path.endsWith("ENGINEERING_PRINCIPLES.md") && link.fragment !== ""
-      )
-      .filter((link) => !anchors.has(link.fragment))
-      .map((link) => `#${link.fragment}`);
-    assert(
-      dangling.length === 0,
-      `${label} cites principles that no longer exist in ` +
-        `docs/ENGINEERING_PRINCIPLES.md: ${dangling.join(", ")}`,
-    );
-  });
-}
+Deno.test("every document that cites a principle cites one that exists", async () => {
+  const anchors = headingAnchors(await Deno.readTextFile(PRINCIPLES));
+  const dangling: string[] = [];
+  for (const path of await markdownFiles()) {
+    for (const link of relativeLinks(await Deno.readTextFile(path))) {
+      if (!link.path.endsWith("ENGINEERING_PRINCIPLES.md")) continue;
+      if (link.fragment === "" || anchors.has(link.fragment)) continue;
+      dangling.push(`${path}: #${link.fragment}`);
+    }
+  }
+  assert(
+    dangling.length === 0,
+    "these documents cite principles that no longer exist in " +
+      `docs/ENGINEERING_PRINCIPLES.md:\n${dangling.join("\n")}`,
+  );
+});
