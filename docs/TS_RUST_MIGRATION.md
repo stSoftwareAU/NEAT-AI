@@ -14,6 +14,28 @@
 > [EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md)) governs how vendored
 > Rust artefacts cross into this repository.
 
+## 📐 The policy this ledger follows
+
+The rules a migration must satisfy are family-wide and are defined once, in
+[ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md). This document is the
+ledger of what they have already moved, and what is next; the rules themselves
+are linked, not copied:
+
+- [Principle 6](ENGINEERING_PRINCIPLES.md#6-migrate-typescript--rust-incrementally-and-finish-each-step)
+  — how one capability is migrated, and finished.
+- [Principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)
+  — what may not survive the cutover.
+- [Principle 8](ENGINEERING_PRINCIPLES.md#8-rollback-is-versioning-and-pinning-not-duplicate-code)
+  — how a bad migration is rolled back.
+- [Principle 9](ENGINEERING_PRINCIPLES.md#9-migrations-are-small-independently-reviewable-and-revertible)
+  — how large a single migration may be.
+- [Principle 2](ENGINEERING_PRINCIPLES.md#2-a-post-release-defect-starts-with-the-smallest-reproducing-test)
+  — what a defect found after the move starts with.
+
+The gate that authorises the deletion step is [PARITY_GATE.md](PARITY_GATE.md);
+the pin that makes the rollback possible is
+[CORE_DEPENDENCY_POLICY.md](CORE_DEPENDENCY_POLICY.md).
+
 ## 📖 Overview
 
 NEAT-AI began as a single TypeScript runtime. Over the past two years the
@@ -35,31 +57,31 @@ The work is informed by the WASM performance research series (#1630–#1633,
 
 ## 🦀 Where things live today (May 2026)
 
-| Subsystem                             | Lives in             | Reason / evidence                                           |
-| ------------------------------------- | -------------------- | ----------------------------------------------------------- |
-| Activation functions (squashes)       | Rust → WASM          | Vendored from NEAT-AI-core; see audit #2369                 |
-| Forward pass (accumulate)             | Rust → WASM          | Numerically heavy inner loop                                |
-| Topological backprop loop             | Rust → WASM only     | TS fallback removed in #2442                                |
-| Elastic error distribution            | Rust → WASM only     | Migrated #1377 (#1519/#1526); TS fallback removed in #2442  |
-| Predictive coding (inference + learn) | Rust → WASM          | `wasm_activation/src/pc_inference.rs`, `pc_learning.rs`     |
-| Score computation                     | Rust → WASM          | Cache-aware incremental scorer (#1011/#1078)                |
-| Training state                        | Rust → WASM          | `wasm_activation/src/training_state.rs`                     |
-| Topology validation, cycle detection  | Rust → WASM          | Core-owned operation per `AGENTS.md` §"No TS fallbacks"     |
-| Discovery recording (Parquet)         | Rust extension (FFI) | `recordDiscovery()` writes Parquet via Rust                 |
-| Discovery analysis (GPU-only)         | Rust extension (FFI) | `analyzeParallel()` — wgpu (Metal/Vulkan/DX12); no CPU path |
-| Discovery focus ranking               | Rust extension (FFI) | `rankFocusNeurons()`                                        |
-| NEAT loop / breeding / mutation       | TypeScript           | Orchestration; non-numerical                                |
-| Cache-dominated paths (LRU)           | TypeScript           | Already faster than any WASM path (66 ns/hit)               |
-| Graph surgery (compact, prune)        | TypeScript           | Map/Set work that V8 handles efficiently                    |
-| Discovery candidate filtering         | TypeScript           | Slot allocation, weighted sampling, cache lookups           |
+| Subsystem                             | Lives in             | Reason / evidence                                                                                                      |
+| ------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Activation functions (squashes)       | Rust → WASM          | Vendored from NEAT-AI-core; see audit #2369                                                                            |
+| Forward pass (accumulate)             | Rust → WASM          | Numerically heavy inner loop                                                                                           |
+| Topological backprop loop             | Rust → WASM only     | TS fallback removed in #2442                                                                                           |
+| Elastic error distribution            | Rust → WASM only     | Migrated #1377 (#1519/#1526); TS fallback removed in #2442                                                             |
+| Predictive coding (inference + learn) | Rust → WASM          | `wasm_activation/src/pc_inference.rs`, `pc_learning.rs`                                                                |
+| Score computation                     | Rust → WASM          | Cache-aware incremental scorer (#1011/#1078)                                                                           |
+| Training state                        | Rust → WASM          | `wasm_activation/src/training_state.rs`                                                                                |
+| Topology validation, cycle detection  | Rust → WASM          | Core-owned; [no TS fallback](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path) |
+| Discovery recording (Parquet)         | Rust extension (FFI) | `recordDiscovery()` writes Parquet via Rust                                                                            |
+| Discovery analysis (GPU-only)         | Rust extension (FFI) | `analyzeParallel()` — wgpu (Metal/Vulkan/DX12); no CPU path                                                            |
+| Discovery focus ranking               | Rust extension (FFI) | `rankFocusNeurons()`                                                                                                   |
+| NEAT loop / breeding / mutation       | TypeScript           | Orchestration; non-numerical                                                                                           |
+| Cache-dominated paths (LRU)           | TypeScript           | Already faster than any WASM path (66 ns/hit)                                                                          |
+| Graph surgery (compact, prune)        | TypeScript           | Map/Set work that V8 handles efficiently                                                                               |
+| Discovery candidate filtering         | TypeScript           | Slot allocation, weighted sampling, cache lookups                                                                      |
 
 > [!IMPORTANT]
-> **No TS fallbacks for core-owned operations.** Once an operation moves into
-> NEAT-AI-core (topology validation, reverse topological order, structural
-> integrity, cycle detection, the topological backprop loop, elastic weight
-> distribution), the TypeScript side does not keep a parallel implementation —
-> it calls through `src/wasm/` or `src/propagate/` instead. See
-> [`AGENTS.md`](../AGENTS.md) §"NEAT-AI-core Dependency Policy".
+> **No TS fallbacks for core-owned operations** —
+> [principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path).
+> The operations that have already moved, and the wrappers that call them, are
+> listed in [`AGENTS.md`](../AGENTS.md) §"NEAT-AI-core Dependency Policy": the
+> TypeScript side calls through `src/wasm/` or `src/propagate/` and fails loud
+> when the bundle is unavailable.
 
 ## 🌐 Wire-format invariant: UUID-only across boundaries
 
@@ -173,6 +195,8 @@ The performance research established that these categories are unsuitable:
 
 ## 📚 See also
 
+- [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md) — the canonical
+  family-wide policy this ledger follows.
 - [`docs/README.md`](README.md) — topic index for all NEAT-AI docs.
 - [DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md) — TS ↔ Rust FFI flow
   diagram, two-phase pipeline, cache layer.
