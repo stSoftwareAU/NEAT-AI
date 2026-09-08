@@ -4,10 +4,8 @@
 > repository family. It is written for human contributors and coding agents
 > equally: one contract, one wording, no agent-only dialect. Repository-specific
 > files ([`AGENTS.md`](../AGENTS.md), [`CONTRIBUTING.md`](../CONTRIBUTING.md))
-> hold the local mechanics — commands, directory layout, invariants. Rewiring
-> them to link here instead of restating shared policy is the next step of the
-> project (Issue #3977); until that lands, this document is the canonical
-> wording and they are the detail (Issue #3978).
+> hold the local mechanics — commands, directory layout, invariants — and link
+> here for the shared rules rather than restating them (Issue #3979).
 
 ## 👥 Who this applies to
 
@@ -54,8 +52,8 @@ outcomes, it is a behaviour test — and a migration to Rust is exactly such a
 rewrite. A test that asserts _how_ the code works instead (which internal method
 was called, source text grepped for a pattern, line counts) blocks the
 migrations this document mandates and is not written. Timing belongs in
-benchmarks, never in a unit test. Each repository states the same rule in its
-own terms — here, in [`AGENTS.md` §Testing](../AGENTS.md#-testing).
+benchmarks, never in a unit test. The concrete list of what this rules out in
+this repository is in [`AGENTS.md` §Testing](../AGENTS.md#-testing).
 
 ### 4. One implementation owner per capability
 

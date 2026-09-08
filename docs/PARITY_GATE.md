@@ -9,6 +9,17 @@ The numerically heavy core lives in Rust and is consumed here as a vendored
 boundary. This gate confirms the two sides still agree — see
 [TS_RUST_MIGRATION.md](TS_RUST_MIGRATION.md) for what lives where and why.
 
+**Why the gate exists** is family policy, not local policy:
+[principle 6](ENGINEERING_PRINCIPLES.md#6-migrate-typescript--rust-incrementally-and-finish-each-step)
+makes a clean run of this gate — plus the maintainer sign-off in step 6 of the
+[release checklist](#release-checklist) — the precondition for deleting a
+superseded TypeScript implementation, and
+[principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)
+is why nothing remains to fall back to once that deletion lands. Those rules are
+defined once in [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md); this
+page carries only the mechanics — when to run the gate, what each step asserts,
+and what to do when one fails.
+
 ```mermaid
 flowchart LR
     Pin["deno.json<br/>neatCore.rev (SHA)"] --> S1["Step 1<br/>Core dependency policy<br/>CoreDependencyPolicy.ts"]
@@ -95,6 +106,8 @@ Runs the TypeScript-side tests that cross the native boundary:
 
 > [!NOTE]
 > After the topology / backprop / elastic-distribution TS fallbacks were removed
+> under
+> [principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)
 > (Issues #2415, #2416), the parity gate's scope is unchanged. It still compares
 > the WASM scoring path (`WasmJsScoreParity.ts`) and MSE cost surface (`MSE.ts`)
 > against expected behaviour — these are the only TS-side surfaces that cross
@@ -129,6 +142,8 @@ If any step fails:
 
 ## Related documents
 
+- [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md) — the canonical
+  family-wide migration, fallback and rollback policy this gate enforces.
 - [AGENTS.md](../AGENTS.md) — contributor guide, including the quality gate
   overview.
 - [docs/EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — cluster overview
