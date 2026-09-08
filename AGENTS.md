@@ -9,17 +9,14 @@ linked, never restated, from here. All contributors (human and AI) follow both.
 
 > [!IMPORTANT]
 > **Shared engineering policy lives once, in
-> [`docs/ENGINEERING_PRINCIPLES.md`](./docs/ENGINEERING_PRINCIPLES.md).**
-> Test-driven development, one implementation owner per capability, the
-> incremental TypeScript → Rust migration with no fallback or shadow path,
-> rollback by pinning, and application-agnostic public libraries are family-wide
-> rules that apply to every repository — read them there. This file holds only
-> what is specific to _this_ repository: terminology, invariants, and the local
-> mechanics of those rules. It is written for human contributors and AI coding
-> agents alike; humans arriving via [`CONTRIBUTING.md`](./CONTRIBUTING.md) are
-> pointed at the same policy document, so there is no agent-only dialect. When
-> in doubt, follow the conventions described here rather than assuming defaults
-> from other projects.
+> [`docs/ENGINEERING_PRINCIPLES.md`](./docs/ENGINEERING_PRINCIPLES.md)** — read
+> it before changing behaviour. This file holds only what is specific to _this_
+> repository: terminology, invariants, and the local mechanics of those
+> principles. It is written for human contributors and AI coding agents alike;
+> humans arriving via [`CONTRIBUTING.md`](./CONTRIBUTING.md) are pointed at the
+> same policy document, so there is no agent-only dialect. When in doubt, follow
+> the conventions described here rather than assuming defaults from other
+> projects.
 
 ## 📌 Summary and where to go next
 

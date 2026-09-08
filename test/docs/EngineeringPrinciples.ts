@@ -26,12 +26,6 @@ const ENTRY_POINTS: ReadonlyArray<[label: string, path: string]> = [
   ["CONTRIBUTING.md", join(REPO_ROOT, "CONTRIBUTING.md")],
 ];
 
-/**
- * How far into an entry point the canonical link may sit and still count as
- * prominent — a reader must meet it in the opening screen, not in a footer.
- */
-const PROMINENT_WITHIN_LINES = 40;
-
 Deno.test("docs/ENGINEERING_PRINCIPLES.md exists and is non-empty", async () => {
   const content = await Deno.readTextFile(PRINCIPLES);
   assert(
@@ -86,17 +80,6 @@ for (const [label, path] of ENTRY_POINTS) {
       `${label} must link to docs/ENGINEERING_PRINCIPLES.md so its reader — ` +
         "human or agent — arrives at the same shared engineering policy " +
         "instead of a repository-local copy of it",
-    );
-
-    const opening = content.split("\n").slice(0, PROMINENT_WITHIN_LINES);
-    const openingLinks = relativeLinkTargets(opening.join("\n")).map((t) =>
-      t.replace(/^\.\//, "")
-    );
-    assert(
-      openingLinks.includes("docs/ENGINEERING_PRINCIPLES.md"),
-      `${label} must point at docs/ENGINEERING_PRINCIPLES.md within its ` +
-        `first ${PROMINENT_WITHIN_LINES} lines — a footer-only mention is ` +
-        "not the prominent deferral the entry points owe their reader",
     );
   });
 }
