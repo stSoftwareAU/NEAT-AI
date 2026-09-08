@@ -19,17 +19,21 @@ A new reader should follow the docs in this order:
 
 1. **[../README.md](../README.md)** — zero-knowledge entry point. Explains what
    NEAT-AI is, the major features, and gives a working example.
-2. **[../AGENTS.md](../AGENTS.md)** — terminology and coding conventions. Read
+2. **[ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md)** — the canonical,
+   family-wide engineering policy: what every change to this repository is
+   measured against, whether a human or a coding agent makes it. Read it before
+   your first change; you do not need `AGENTS.md` to find it.
+3. **[../AGENTS.md](../AGENTS.md)** — terminology and coding conventions. Read
    this if any of the playful names (Creature, Discovery, CRISPR, Grafting,
    MCMC) are unfamiliar. In particular, see the
    [**NEAT** and **NEAT-AI** terminology entries](../AGENTS.md#-terminology) and
    the [NEAT vs NEAT-AI rule](../AGENTS.md#-neat-vs-neat-ai--which-term-to-use)
    for the convention used throughout this repository.
-3. **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — development setup, how to run
+4. **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — development setup, how to run
    the quality gate, and how to bump the pinned NEAT-AI-core dependency.
-4. **This page (`docs/README.md`)** — pick a topic guide below for the feature
+5. **This page (`docs/README.md`)** — pick a topic guide below for the feature
    you want to use.
-5. **A topic guide** — each guide assumes the basics from steps 1–3 and focuses
+6. **A topic guide** — each guide assumes the basics from steps 1–4 and focuses
    on a single subsystem.
 
 Two **foundation documents** underpin every other doc — keep them open while

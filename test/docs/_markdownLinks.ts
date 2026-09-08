@@ -10,6 +10,35 @@
  * @module
  */
 
+/** One relative Markdown link: its path, and the `#fragment` it targets. */
+export interface RelativeLink {
+  /** Repository-relative path part of the link target. */
+  readonly path: string;
+  /** Fragment after `#`, without the hash; empty when the link has none. */
+  readonly fragment: string;
+}
+
+/**
+ * Relative links in `content` — external URLs and bare anchors are skipped.
+ *
+ * @param content raw Markdown
+ * @returns every relative link, in document order
+ */
+export function relativeLinks(content: string): RelativeLink[] {
+  const linkRe = /\[[^\]]+\]\(([^)]+)\)/g;
+  const links: RelativeLink[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = linkRe.exec(content)) !== null) {
+    const target = match[1];
+    if (target.startsWith("http://") || target.startsWith("https://")) continue;
+    if (target.startsWith("#")) continue;
+    const [pathPart, fragment = ""] = target.split("#");
+    if (!pathPart) continue;
+    links.push({ path: pathPart, fragment });
+  }
+  return links;
+}
+
 /**
  * Relative link targets in `content` — external URLs and bare anchors are
  * skipped, and any `#fragment` is stripped from the path.
@@ -18,16 +47,5 @@
  * @returns the repository-relative path of every relative link, in order
  */
 export function relativeLinkTargets(content: string): string[] {
-  const linkRe = /\[[^\]]+\]\(([^)]+)\)/g;
-  const targets: string[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = linkRe.exec(content)) !== null) {
-    const target = match[1];
-    if (target.startsWith("http://") || target.startsWith("https://")) continue;
-    if (target.startsWith("#")) continue;
-    const [pathPart] = target.split("#");
-    if (!pathPart) continue;
-    targets.push(pathPart);
-  }
-  return targets;
+  return relativeLinks(content).map((link) => link.path);
 }
