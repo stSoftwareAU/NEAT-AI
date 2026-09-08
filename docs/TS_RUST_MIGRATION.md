@@ -14,6 +14,30 @@
 > [EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md)) governs how vendored
 > Rust artefacts cross into this repository.
 
+## 📐 The policy this ledger follows
+
+The rules a migration must satisfy are family-wide and are defined once, in
+[ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md). This document does not
+restate them; it records what they have already moved, and what is next.
+
+- **Existing TypeScript tests are the acceptance contract** — prove parity or a
+  deliberate, tested and justified improvement, route the production path to
+  Rust, then delete the superseded TypeScript in the same migration:
+  [principle 6](ENGINEERING_PRINCIPLES.md#6-migrate-typescript--rust-incrementally-and-finish-each-step).
+- **No runtime fallback, shadow execution or dual path** after cutover:
+  [principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path).
+- **Rollback is a repin** of a published revision, never a second code path:
+  [principle 8](ENGINEERING_PRINCIPLES.md#8-rollback-is-versioning-and-pinning-not-duplicate-code).
+- **One capability per migration**, reviewable and revertible on its own:
+  [principle 9](ENGINEERING_PRINCIPLES.md#9-migrations-are-small-independently-reviewable-and-revertible).
+- **A defect found after a capability moved starts with the smallest reproducing
+  test**, before the fix:
+  [principle 2](ENGINEERING_PRINCIPLES.md#2-a-post-release-defect-starts-with-the-smallest-reproducing-test).
+
+The gate that authorises the deletion step is [PARITY_GATE.md](PARITY_GATE.md);
+the pin that makes the rollback possible is
+[CORE_DEPENDENCY_POLICY.md](CORE_DEPENDENCY_POLICY.md).
+
 ## 📖 Overview
 
 NEAT-AI began as a single TypeScript runtime. Over the past two years the
@@ -44,7 +68,7 @@ The work is informed by the WASM performance research series (#1630–#1633,
 | Predictive coding (inference + learn) | Rust → WASM          | `wasm_activation/src/pc_inference.rs`, `pc_learning.rs`     |
 | Score computation                     | Rust → WASM          | Cache-aware incremental scorer (#1011/#1078)                |
 | Training state                        | Rust → WASM          | `wasm_activation/src/training_state.rs`                     |
-| Topology validation, cycle detection  | Rust → WASM          | Core-owned operation per `AGENTS.md` §"No TS fallbacks"     |
+| Topology validation, cycle detection  | Rust → WASM          | Core-owned operation; no TS fallback (principle 7)          |
 | Discovery recording (Parquet)         | Rust extension (FFI) | `recordDiscovery()` writes Parquet via Rust                 |
 | Discovery analysis (GPU-only)         | Rust extension (FFI) | `analyzeParallel()` — wgpu (Metal/Vulkan/DX12); no CPU path |
 | Discovery focus ranking               | Rust extension (FFI) | `rankFocusNeurons()`                                        |
@@ -54,12 +78,12 @@ The work is informed by the WASM performance research series (#1630–#1633,
 | Discovery candidate filtering         | TypeScript           | Slot allocation, weighted sampling, cache lookups           |
 
 > [!IMPORTANT]
-> **No TS fallbacks for core-owned operations.** Once an operation moves into
-> NEAT-AI-core (topology validation, reverse topological order, structural
-> integrity, cycle detection, the topological backprop loop, elastic weight
-> distribution), the TypeScript side does not keep a parallel implementation —
-> it calls through `src/wasm/` or `src/propagate/` instead. See
-> [`AGENTS.md`](../AGENTS.md) §"NEAT-AI-core Dependency Policy".
+> **No TS fallbacks for core-owned operations** —
+> [principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path).
+> The operations that have already moved, and the wrappers that call them, are
+> listed in [`AGENTS.md`](../AGENTS.md) §"NEAT-AI-core Dependency Policy": the
+> TypeScript side calls through `src/wasm/` or `src/propagate/` and fails loud
+> when the bundle is unavailable.
 
 ## 🌐 Wire-format invariant: UUID-only across boundaries
 
@@ -173,6 +197,8 @@ The performance research established that these categories are unsuitable:
 
 ## 📚 See also
 
+- [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md) — the canonical
+  family-wide policy this ledger follows.
 - [`docs/README.md`](README.md) — topic index for all NEAT-AI docs.
 - [DISCOVERY_ARCHITECTURE.md](DISCOVERY_ARCHITECTURE.md) — TS ↔ Rust FFI flow
   diagram, two-phase pipeline, cache layer.

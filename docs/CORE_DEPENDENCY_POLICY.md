@@ -5,6 +5,21 @@ computation from [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)
 after removing all in-repo Rust source. Issue #2433 / #2434 extended this to an
 artifact-based auto-sync flow that mirrors the GRQ ← NEAT-AI pattern.
 
+**Why an immutable pin at all** is family policy:
+[principle 8](ENGINEERING_PRINCIPLES.md#8-rollback-is-versioning-and-pinning-not-duplicate-code)
+makes re-pinning the last known-good revision the _only_ rollback path, because
+[principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)
+leaves no second code path to fall back to. Those rules are defined once in
+[ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md); this document carries
+the mechanics that make them work here — the pin, its content anchors, the
+`build.sh` modes, and the approval tiers.
+
+Rolling back is therefore a repin, not a revert of behaviour: restore the
+previous `neatCore.rev` **and** its `assetSha256`, re-run `./build.sh` with
+`--rev <SHA>`, and commit `deno.json`, `wasm_activation/pkg/**` and
+`src/wasm/WasmBundleSha256.ts` together — the same steps
+[Bumping NEAT-AI-core](#bumping-neat-ai-core) takes in the forward direction.
+
 ## Decision Summary
 
 NEAT-AI tracks NEAT-AI-core in `deno.json`:
@@ -264,6 +279,9 @@ used by this repo's `deno.json`.
 
 ## Related Documents
 
+- [docs/ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md) — the canonical
+  family-wide policy: one implementation owner, no fallback, rollback by
+  repinning.
 - [docs/EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — cluster overview
   and day-to-day workflow.
 - [docs/CI_EXTERNAL_NEAT_AI_CORE.md](CI_EXTERNAL_NEAT_AI_CORE.md) — CI plumbing
