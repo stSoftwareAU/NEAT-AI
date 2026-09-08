@@ -5,16 +5,14 @@ Thank you for your interest in contributing to
 Artificial Intelligence)! This guide covers everything you need to get started —
 from setting up your development environment to submitting a pull request.
 
-> [!IMPORTANT]
-> **Read [`docs/ENGINEERING_PRINCIPLES.md`](./docs/ENGINEERING_PRINCIPLES.md)
-> first.** It is the canonical engineering policy for the whole NEAT-AI
-> repository family — test-driven development, one implementation owner per
-> capability, the incremental TypeScript → Rust migration with no fallback or
-> shadow path, rollback by pinning, and application-agnostic public libraries.
-> This guide is the local mechanics: how to install the toolchain, run the
-> quality gate, and open a pull request. Coding agents reading
-> [`AGENTS.md`](./AGENTS.md) are sent to the same document, so there is one
-> policy, not two.
+**Read [`docs/ENGINEERING_PRINCIPLES.md`](./docs/ENGINEERING_PRINCIPLES.md)
+first.** It is the canonical engineering policy for the whole NEAT-AI repository
+family — test-driven development, one implementation owner per capability, the
+incremental TypeScript → Rust migration with no fallback or shadow path,
+rollback by pinning, and application-agnostic public libraries. This guide is
+the local mechanics: how to install the toolchain, run the quality gate, and
+open a pull request. Coding agents reading [`AGENTS.md`](./AGENTS.md) are sent
+to the same document, so there is one policy, not two.
 
 > [!IMPORTANT]
 > **NEAT** refers to the original 2002 algorithm; **NEAT-AI** refers to this
@@ -356,9 +354,6 @@ Avoid **"how" tests** that check implementation details:
 - Do not assert that a specific internal method was called.
 - Do not grep source files for patterns or keywords.
 - Do not check function bodies, line counts, or documentation content.
-
-A "how" test blocks the TypeScript → Rust migrations the principles mandate: a
-migration is exactly the internal rewrite such a test breaks on.
 
 ### ⏱️ Unit Tests vs Benchmarks
 

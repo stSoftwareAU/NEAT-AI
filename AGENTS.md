@@ -15,14 +15,11 @@ linked, never restated, from here. All contributors (human and AI) follow both.
 > pinning, and application-agnostic public libraries are family-wide rules that
 > apply to every repository — read them there. This file holds only what is
 > specific to _this_ repository: terminology, invariants, and the local
-> mechanics of the rules above.
-
-> [!NOTE]
-> This document is intended for both human contributors and AI coding agents.
-> When in doubt, follow the conventions described here rather than assuming
-> defaults from other projects. Human contributors arriving via
-> [`CONTRIBUTING.md`](./CONTRIBUTING.md) and agents arriving here are pointed at
-> the same policy document — there is no agent-only dialect.
+> mechanics of those rules. It is written for human contributors and AI coding
+> agents alike; humans arriving via [`CONTRIBUTING.md`](./CONTRIBUTING.md) are
+> pointed at the same policy document, so there is no agent-only dialect. When
+> in doubt, follow the conventions described here rather than assuming defaults
+> from other projects.
 
 ## 📌 Summary and where to go next
 
