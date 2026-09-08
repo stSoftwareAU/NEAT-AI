@@ -42,6 +42,9 @@ Top entry points:
 
 - **[docs/README.md](./docs/README.md)** — full documentation index; start here
   for any topic guide.
+- **[docs/ENGINEERING_PRINCIPLES.md](./docs/ENGINEERING_PRINCIPLES.md)** — the
+  canonical, family-wide engineering policy every contributor and coding agent
+  follows.
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** — development setup, workflow, and
   how to bump the pinned NEAT-AI-core revision.
 - **[AGENTS.md](./AGENTS.md)** — terminology and coding conventions for human

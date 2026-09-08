@@ -1,14 +1,28 @@
 # 🤖 AGENTS.md - Coding Guidelines for NEAT-AI
 
-This file is the single source of truth for coding conventions, project
-terminology, and development workflows in the NEAT-AI (NeuroEvolution of
-Augmenting Topologies — Artificial Intelligence) repository. All contributors
-(human and AI) should follow these guidelines.
+This file is the single source of truth for **this repository's** coding
+conventions, project terminology, and development workflows in NEAT-AI
+(NeuroEvolution of Augmenting Topologies — Artificial Intelligence). The
+engineering policy shared across the whole repository family is owned by
+[`docs/ENGINEERING_PRINCIPLES.md`](./docs/ENGINEERING_PRINCIPLES.md) and is
+linked, never restated, from here. All contributors (human and AI) follow both.
+
+> [!IMPORTANT]
+> **Shared engineering policy lives once, in
+> [`docs/ENGINEERING_PRINCIPLES.md`](./docs/ENGINEERING_PRINCIPLES.md).** Test-
+> driven development, one implementation owner per capability, the incremental
+> TypeScript → Rust migration with no fallback or shadow path, rollback by
+> pinning, and application-agnostic public libraries are family-wide rules that
+> apply to every repository — read them there. This file holds only what is
+> specific to _this_ repository: terminology, invariants, and the local
+> mechanics of the rules above.
 
 > [!NOTE]
 > This document is intended for both human contributors and AI coding agents.
 > When in doubt, follow the conventions described here rather than assuming
-> defaults from other projects.
+> defaults from other projects. Human contributors arriving via
+> [`CONTRIBUTING.md`](./CONTRIBUTING.md) and agents arriving here are pointed at
+> the same policy document — there is no agent-only dialect.
 
 ## 📌 Summary and where to go next
 
@@ -21,6 +35,9 @@ logging policies. It assumes you have already met the project via
 For deep dives on a single topic, follow the dedicated docs (full index in
 [`docs/README.md`](./docs/README.md)):
 
+- **Family-wide engineering principles** —
+  [`docs/ENGINEERING_PRINCIPLES.md`](./docs/ENGINEERING_PRINCIPLES.md). The
+  canonical policy this file defers to; read it before changing behaviour.
 - **Activation / squash functions** —
   [`docs/ACTIVATION_FUNCTIONS.md`](./docs/ACTIVATION_FUNCTIONS.md) and
   [`src/methods/activations/README.md`](./src/methods/activations/README.md).
@@ -569,11 +586,9 @@ introduce any new `package.json`-only dependency to satisfy date/time needs
 
 #### ✅ "What" Tests (Good) vs ❌ "How" Tests (Bad)
 
-Every test should be a **"what" test**: it exercises real code with test data
-and asserts on the **outcome** (return values, side effects, error conditions).
-
-A **"how" test** checks implementation details rather than outcomes. Examples of
-"how" tests to avoid:
+Tests assert behaviour, not implementation — the rule and its rationale are
+[principle 3](./docs/ENGINEERING_PRINCIPLES.md#3-tests-describe-behaviour-not-implementation).
+In this repository that rules out, concretely:
 
 - Asserting that a specific internal method was called
 - Checking that a particular algorithm or data structure is used
@@ -581,15 +596,8 @@ A **"how" test** checks implementation details rather than outcomes. Examples of
 - Inspecting function bodies, line counts, or documentation content
 - Verifying that one function calls another
 
-"How" tests break when implementation changes even though behaviour is
-identical. For example, switching from quicksort to mergesort should not break
-any unit test — the result is the same. If you need to verify performance
-characteristics (e.g., that a cache makes things faster), write a benchmark.
-
-> [!NOTE]
-> A good rule of thumb: if your test would still pass after a complete internal
-> rewrite that produces the same outputs, it is a "what" test. If it would
-> break, it is a "how" test — reconsider it.
+If you need to verify performance characteristics (e.g., that a cache makes
+things faster), write a benchmark in `bench/`.
 
 #### 📋 Conventions
 
@@ -665,9 +673,10 @@ takes a **BigInt** page delta and rejects a `Number` rather than truncating it.
 ### WASM-only operations (no TS fallback)
 
 Several read-heavy and hot-path computations live exclusively in NEAT-AI-core
-(WASM) — there is **no TypeScript fallback**. If the WASM bundle cannot be
-loaded, these operations fail fast with an actionable error pointing at
-`./build.sh`.
+(WASM) — there is **no TypeScript fallback**. This is the worked example of
+[principle 7](./docs/ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path):
+if the WASM bundle cannot be loaded, these operations fail fast with an
+actionable error pointing at `./build.sh`.
 
 - **Topological helpers** (`src/wasm/WasmTopologyOps.ts`): `validateTopology`,
   `scanAvailableConnections`, `computeReverseTopologicalOrder`,
@@ -739,13 +748,13 @@ The two rules contributors most often trip over:
    `./build.sh` to refresh `wasm_activation/pkg` from the pin, and commit
    `deno.json`, `wasm_activation/pkg` and `src/wasm/WasmBundleSha256.ts`
    together.
-2. **No TS fallbacks for core-owned operations.** Once an operation moves into
-   NEAT-AI-core (topology validation/scanning, reverse topological order,
-   structural integrity, cycle detection, the topological backprop loop, elastic
-   weight distribution), the TypeScript side keeps **no** parallel
-   implementation. Wrappers in `src/wasm/` and `src/propagate/` call into WASM
-   and fail fast if the bundle is unavailable — do not reintroduce `*TS`
-   fallbacks; a divergent TS implementation would silently mask drift.
+2. **No TS fallbacks for core-owned operations**
+   ([principle 7](./docs/ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)).
+   The operations already moved into NEAT-AI-core are topology
+   validation/scanning, reverse topological order, structural integrity, cycle
+   detection, the topological backprop loop and elastic weight distribution.
+   Their wrappers in `src/wasm/` and `src/propagate/` call into WASM and fail
+   fast if the bundle is unavailable — do not reintroduce `*TS` fallbacks.
 
 ## 🔄 Feed-forward vs Recurrent Connections
 
@@ -825,8 +834,10 @@ docs underpin all of them:
 - **[`docs/DOC_STYLE.md`](./docs/DOC_STYLE.md)** — the documentation style guide
   every doc follows.
 
-Sibling governance / contributor documents at the repository root:
+Sibling governance / contributor documents:
 
+- **[docs/ENGINEERING_PRINCIPLES.md](./docs/ENGINEERING_PRINCIPLES.md)** — the
+  canonical, family-wide engineering policy this file defers to.
 - **[README.md](./README.md)** — human-readable project overview, features, and
   quick start.
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** — first-time contributor guide with

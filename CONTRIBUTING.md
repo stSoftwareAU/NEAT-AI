@@ -6,6 +6,17 @@ Artificial Intelligence)! This guide covers everything you need to get started �
 from setting up your development environment to submitting a pull request.
 
 > [!IMPORTANT]
+> **Read [`docs/ENGINEERING_PRINCIPLES.md`](./docs/ENGINEERING_PRINCIPLES.md)
+> first.** It is the canonical engineering policy for the whole NEAT-AI
+> repository family — test-driven development, one implementation owner per
+> capability, the incremental TypeScript → Rust migration with no fallback or
+> shadow path, rollback by pinning, and application-agnostic public libraries.
+> This guide is the local mechanics: how to install the toolchain, run the
+> quality gate, and open a pull request. Coding agents reading
+> [`AGENTS.md`](./AGENTS.md) are sent to the same document, so there is one
+> policy, not two.
+
+> [!IMPORTANT]
 > **NEAT** refers to the original 2002 algorithm; **NEAT-AI** refers to this
 > project, which extends it. See the
 > [NEAT vs NEAT-AI rule](./AGENTS.md#-neat-vs-neat-ai--which-term-to-use) for
@@ -17,6 +28,9 @@ This document is the **first-time contributor onboarding** guide: install the
 toolchain, run the quality gate, branch off, write a failing test, and open a PR
 (Pull Request). It does **not** duplicate detail that already lives in:
 
+- [`docs/ENGINEERING_PRINCIPLES.md`](./docs/ENGINEERING_PRINCIPLES.md) — the
+  canonical, family-wide engineering principles every change is measured
+  against.
 - [`AGENTS.md`](./AGENTS.md) — coding conventions, terminology, and the two
   critical invariants (neuron UUID stability, semantic version stability).
 - [`docs/README.md`](./docs/README.md) — the topic-by-topic documentation index.
@@ -240,16 +254,16 @@ git checkout -b your-branch-name
 
 ### 2. 🧪 Write Failing Tests First (TDD)
 
-Follow test-driven development:
+Test-driven development is
+[principle 1](./docs/ENGINEERING_PRINCIPLES.md#1-test-driven-development-tdd-comes-first),
+and a post-release defect starts with the smallest reproducing test
+([principle 2](./docs/ENGINEERING_PRINCIPLES.md#2-a-post-release-defect-starts-with-the-smallest-reproducing-test)).
+In practice:
 
 1. Write a test that defines the expected behaviour.
-2. Run it and confirm it fails.
+2. Run it and confirm it fails **for the right reason**.
 3. Implement the change to make the test pass.
 4. Refactor if needed, keeping all tests green.
-
-> [!TIP]
-> Writing the test first clarifies the expected behaviour before implementation
-> begins, leading to cleaner, more focused code.
 
 ### 3. 💻 Implement the Change
 
@@ -324,6 +338,8 @@ the script's `show_help` block):
 
 ### 🎯 What to Test
 
+Tests assert behaviour, not implementation
+([principle 3](./docs/ENGINEERING_PRINCIPLES.md#3-tests-describe-behaviour-not-implementation)).
 Write **"what" tests** that exercise real code and assert on outcomes:
 
 ```typescript
@@ -340,6 +356,9 @@ Avoid **"how" tests** that check implementation details:
 - Do not assert that a specific internal method was called.
 - Do not grep source files for patterns or keywords.
 - Do not check function bodies, line counts, or documentation content.
+
+A "how" test blocks the TypeScript → Rust migrations the principles mandate: a
+migration is exactly the internal rewrite such a test breaks on.
 
 ### ⏱️ Unit Tests vs Benchmarks
 
@@ -603,10 +622,14 @@ the canonical description.
   feature requests.
 - Check [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for common issues.
 - See [AGENTS.md](./AGENTS.md) for detailed coding conventions and architecture.
+- See [docs/ENGINEERING_PRINCIPLES.md](./docs/ENGINEERING_PRINCIPLES.md) for the
+  family-wide engineering policy.
 - Browse [docs/README.md](./docs/README.md) for the topic-by-topic index.
 
 ## 🔗 Sibling docs
 
+- **[docs/ENGINEERING_PRINCIPLES.md](./docs/ENGINEERING_PRINCIPLES.md)** — the
+  canonical, family-wide engineering policy this guide defers to.
 - **[README.md](./README.md)** — project overview and quick start.
 - **[AGENTS.md](./AGENTS.md)** — coding conventions, terminology, invariants.
 - **[SECURITY.md](./SECURITY.md)** — vulnerability disclosure policy.
