@@ -210,6 +210,13 @@ Subsystems that only some users need.
 
 Project-level policies, audits, and release plumbing.
 
+- **[ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md)** — 🧭 **start here
+  for policy.** The canonical, family-wide engineering principles read by human
+  contributors and coding agents alike: test-driven development, one
+  implementation owner per capability, incremental TypeScript → Rust migration
+  with no fallback or shadow path, rollback by pinning, and application-agnostic
+  public libraries (Issue #3978). It carries the canonical wording; the
+  repository-specific files hold the local mechanics.
 - **[../AGENTS.md](../AGENTS.md)** — coding guidelines for human and AI
   contributors (terminology, invariants, testing rules).
 - **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — first-time contributor guide.
