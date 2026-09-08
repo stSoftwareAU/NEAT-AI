@@ -20,6 +20,12 @@ const DOCS_DIR = join(REPO_ROOT, "docs");
 const PRINCIPLES = join(DOCS_DIR, "ENGINEERING_PRINCIPLES.md");
 const DOCS_INDEX = join(DOCS_DIR, "README.md");
 
+/** Entry points that must send their reader to the canonical policy (#3979). */
+const ENTRY_POINTS: ReadonlyArray<[label: string, path: string]> = [
+  ["AGENTS.md", join(REPO_ROOT, "AGENTS.md")],
+  ["CONTRIBUTING.md", join(REPO_ROOT, "CONTRIBUTING.md")],
+];
+
 Deno.test("docs/ENGINEERING_PRINCIPLES.md exists and is non-empty", async () => {
   const content = await Deno.readTextFile(PRINCIPLES);
   assert(
@@ -62,3 +68,18 @@ Deno.test("docs index links to the canonical engineering principles", async () =
       "one obvious place to find the family engineering principles",
   );
 });
+
+for (const [label, path] of ENTRY_POINTS) {
+  Deno.test(`${label} links to the canonical engineering principles`, async () => {
+    const content = await Deno.readTextFile(path);
+    const linked = relativeLinkTargets(content).map((t) =>
+      t.replace(/^\.\//, "")
+    );
+    assert(
+      linked.includes("docs/ENGINEERING_PRINCIPLES.md"),
+      `${label} must link to docs/ENGINEERING_PRINCIPLES.md so its reader — ` +
+        "human or agent — arrives at the same shared engineering policy " +
+        "instead of a repository-local copy of it",
+    );
+  });
+}
