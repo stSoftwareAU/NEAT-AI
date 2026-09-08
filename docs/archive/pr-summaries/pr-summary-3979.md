@@ -132,9 +132,9 @@ touches only Markdown and one docs test. CI runs the same gate on the PR.
   reviewed) — reason: fixed here by reflowing, then removed entirely with the
   enumeration.
 - **clean** — Australian English throughout the added lines (no
-  `behavior|organize|optimize|favor|color|center|analyze` hits); acronyms expanded
-  on first use per `docs/DOC_STYLE.md` rule 1; every new anchor fragment
-  resolves to a real heading, with no reference cycle between the three
+  `behavior|organize|optimize|favor|color|center|analyze` hits); acronyms
+  expanded on first use per `docs/DOC_STYLE.md` rule 1; every new anchor
+  fragment resolves to a real heading, with no reference cycle between the three
   documents; `deno fmt --check` and `cspell --config docs/cspell.json` clean;
   only the six intended files staged, no hidden paths or build artefacts.
 
