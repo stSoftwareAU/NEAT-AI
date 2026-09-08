@@ -211,8 +211,8 @@ Project-level policies, audits, and release plumbing.
   contributors and coding agents alike: test-driven development, one
   implementation owner per capability, incremental TypeScript → Rust migration
   with no fallback or shadow path, rollback by pinning, and application-agnostic
-  public libraries (Issue #3978). Other documents link to it rather than
-  restating it.
+  public libraries (Issue #3978). It carries the canonical wording; the
+  repository-specific files hold the local mechanics.
 - **[../AGENTS.md](../AGENTS.md)** — coding guidelines for human and AI
   contributors (terminology, invariants, testing rules).
 - **[../CONTRIBUTING.md](../CONTRIBUTING.md)** — first-time contributor guide.

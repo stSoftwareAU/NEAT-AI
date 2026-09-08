@@ -13,27 +13,12 @@
 
 import { assert } from "@std/assert";
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
+import { relativeLinkTargets } from "./_markdownLinks.ts";
 
 const REPO_ROOT = resolve(fromFileUrl(import.meta.url), "..", "..", "..");
 const DOCS_DIR = join(REPO_ROOT, "docs");
 const PRINCIPLES = join(DOCS_DIR, "ENGINEERING_PRINCIPLES.md");
 const DOCS_INDEX = join(DOCS_DIR, "README.md");
-
-/** Relative link targets (no http(s), no bare anchors) found in `content`. */
-function relativeLinkTargets(content: string): string[] {
-  const linkRe = /\[[^\]]+\]\(([^)]+)\)/g;
-  const targets: string[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = linkRe.exec(content)) !== null) {
-    const target = match[1];
-    if (target.startsWith("http://") || target.startsWith("https://")) continue;
-    if (target.startsWith("#")) continue;
-    const [pathPart] = target.split("#");
-    if (!pathPart) continue;
-    targets.push(pathPart);
-  }
-  return targets;
-}
 
 Deno.test("docs/ENGINEERING_PRINCIPLES.md exists and is non-empty", async () => {
   const content = await Deno.readTextFile(PRINCIPLES);
