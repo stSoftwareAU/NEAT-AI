@@ -55,25 +55,26 @@ The work is informed by the WASM performance research series (#1630–#1633,
 3. **Architectural changes** — typed-array topology, integer runtime IDs — are
    prerequisites for the next migration tranche.
 
-## 🦀 Where things live today (May 2026)
+## 🦀 Where things live today (September 2026)
 
-| Subsystem                             | Lives in             | Reason / evidence                                                                                                      |
-| ------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Activation functions (squashes)       | Rust → WASM          | Vendored from NEAT-AI-core; see audit #2369                                                                            |
-| Forward pass (accumulate)             | Rust → WASM          | Numerically heavy inner loop                                                                                           |
-| Topological backprop loop             | Rust → WASM only     | TS fallback removed in #2442                                                                                           |
-| Elastic error distribution            | Rust → WASM only     | Migrated #1377 (#1519/#1526); TS fallback removed in #2442                                                             |
-| Predictive coding (inference + learn) | Rust → WASM          | `wasm_activation/src/pc_inference.rs`, `pc_learning.rs`                                                                |
-| Score computation                     | Rust → WASM          | Cache-aware incremental scorer (#1011/#1078)                                                                           |
-| Training state                        | Rust → WASM          | `wasm_activation/src/training_state.rs`                                                                                |
-| Topology validation, cycle detection  | Rust → WASM          | Core-owned; [no TS fallback](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path) |
-| Discovery recording (Parquet)         | Rust extension (FFI) | `recordDiscovery()` writes Parquet via Rust                                                                            |
-| Discovery analysis (GPU-only)         | Rust extension (FFI) | `analyzeParallel()` — wgpu (Metal/Vulkan/DX12); no CPU path                                                            |
-| Discovery focus ranking               | Rust extension (FFI) | `rankFocusNeurons()`                                                                                                   |
-| NEAT loop / breeding / mutation       | TypeScript           | Orchestration; non-numerical                                                                                           |
-| Cache-dominated paths (LRU)           | TypeScript           | Already faster than any WASM path (66 ns/hit)                                                                          |
-| Graph surgery (compact, prune)        | TypeScript           | Map/Set work that V8 handles efficiently                                                                               |
-| Discovery candidate filtering         | TypeScript           | Slot allocation, weighted sampling, cache lookups                                                                      |
+| Subsystem                              | Lives in             | Reason / evidence                                                                                                                             |
+| -------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Activation functions (squashes)        | Rust → WASM          | Vendored from NEAT-AI-core; see audit #2369                                                                                                   |
+| Forward pass (accumulate)              | Rust → WASM          | Numerically heavy inner loop                                                                                                                  |
+| Topological backprop loop              | Rust → WASM only     | TS fallback removed in #2442                                                                                                                  |
+| Elastic error distribution             | Rust → WASM only     | Migrated #1377 (#1519/#1526); TS fallback removed in #2442                                                                                    |
+| Predictive coding (inference + learn)  | Rust → WASM          | `wasm_activation/src/pc_inference.rs`, `pc_learning.rs`                                                                                       |
+| Score computation                      | Rust → WASM          | Cache-aware incremental scorer (#1011/#1078)                                                                                                  |
+| Training state                         | Rust → WASM          | `wasm_activation/src/training_state.rs`                                                                                                       |
+| Topology validation, cycle detection   | Rust → WASM          | Core-owned; [no TS fallback](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)                        |
+| Discovery recording (Parquet)          | Rust extension (FFI) | `recordDiscovery()` writes Parquet via Rust                                                                                                   |
+| Discovery analysis (GPU-only)          | Rust extension (FFI) | `analyzeParallel()` — wgpu (Metal/Vulkan/DX12); no CPU path                                                                                   |
+| Discovery focus ranking                | Rust extension (FFI) | `rankFocusNeurons()`                                                                                                                          |
+| NEAT loop / breeding / mutation        | TypeScript           | Orchestration; non-numerical                                                                                                                  |
+| Cache-dominated paths (LRU)            | TypeScript           | Already faster than any WASM path (66 ns/hit)                                                                                                 |
+| Hidden-neuron pruning                  | Rust → WASM only     | Core-owned `prune_neuron` (#3975); [no TS fallback](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path) |
+| Graph surgery (compact, synapse prune) | TypeScript           | Map/Set work that V8 handles efficiently; synapse removal moves in #3976                                                                      |
+| Discovery candidate filtering          | TypeScript           | Slot allocation, weighted sampling, cache lookups                                                                                             |
 
 > [!IMPORTANT]
 > **No TS fallbacks for core-owned operations** —
@@ -136,20 +137,21 @@ gitGraph
 
 ### Evidence — selected migration PRs
 
-| Move                                                  | PR / Issue    |
-| ----------------------------------------------------- | ------------- |
-| Cache score components incrementally                  | #1011 (#1078) |
-| Fused backward-pass error distribution in WASM        | #1377 (#1382) |
-| WASM overhead research for backpropagation            | #1375 (#1380) |
-| Migrate elastic error distribution to Rust            | #1519 (#1526) |
-| WASM performance research series (parent)             | #1639         |
-| WASM-resident topology investigation                  | #1642         |
-| `wasm_activation/` parity audit vs external core      | #2369 (#2374) |
-| Publish core migration verification sign-off          | #2371 (#2376) |
-| **Remove TS fallbacks** for topological backprop      | #2442         |
-| **Remove TS fallbacks** for elastic distribution      | #2442         |
-| Tighten Rust FFI per-chunk deadline                   | #2501 (#2506) |
-| Engram-inspired subnetwork hash index for disc. cache | #2531 (#2551) |
+| Move                                                     | PR / Issue    |
+| -------------------------------------------------------- | ------------- |
+| Cache score components incrementally                     | #1011 (#1078) |
+| Fused backward-pass error distribution in WASM           | #1377 (#1382) |
+| WASM overhead research for backpropagation               | #1375 (#1380) |
+| Migrate elastic error distribution to Rust               | #1519 (#1526) |
+| WASM performance research series (parent)                | #1639         |
+| WASM-resident topology investigation                     | #1642         |
+| `wasm_activation/` parity audit vs external core         | #2369 (#2374) |
+| Publish core migration verification sign-off             | #2371 (#2376) |
+| **Remove TS fallbacks** for topological backprop         | #2442         |
+| **Remove TS fallbacks** for elastic distribution         | #2442         |
+| Tighten Rust FFI per-chunk deadline                      | #2501 (#2506) |
+| Engram-inspired subnetwork hash index for disc. cache    | #2531 (#2551) |
+| **Migrate hidden-neuron removal** to core `prune_neuron` | #3975         |
 
 ## 🚧 Migration roadmap
 
@@ -190,8 +192,10 @@ The performance research established that these categories are unsuitable:
   Used (LRU) hit) — already faster than any WASM path.
 - **Trivially fast operations** (under 2 µs in TypeScript) — WASM
   boundary-crossing overhead alone is a significant fraction of the total.
-- **Graph surgery** (compaction, pruning, neuron merging) — dominated by Map/Set
-  operations that V8 handles efficiently.
+- **Graph surgery** (compaction, neuron merging, synapse pruning) — dominated by
+  Map/Set operations that V8 handles efficiently. **Hidden-neuron pruning is the
+  exception** and has already moved to core (#3975): it is a whole-creature
+  rewrite with compensation, cascade and canonicalisation, not Map/Set work.
 
 ## 📚 See also
 

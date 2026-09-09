@@ -6,21 +6,18 @@
 import { addTag, removeTag } from "@stsoftware/tags/mod";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
-  cleanupMemeticForRemovedNeuron,
-  cleanupOrphanedNeurons,
-} from "@compact/CompactUtils.ts";
-import {
   feedsIfNeuron,
   LOW_IMPACT_BEHAVIOUR_ALLOWANCE,
   verifyBoundedBehaviour,
 } from "@architecture/BehaviourGuard.ts";
 import { Creature } from "@creature";
+import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import { corePruneNeuron } from "@wasm/WasmPruneNeuron.ts";
 import type { Approach } from "@neat/LogApproach.ts";
 import type { CandidateHarmfulNeuron } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
 import { getLogger } from "@utils/Logger.ts";
 import type { RemoveNeuronCompensationData } from "@architecture/ErrorGuidedStructuralEvolution/CoordinatedStructuralCandidate.ts";
 import { validateAndFixIfNeeded } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryValidation.ts";
-import { assertValidSynapseReferences } from "@architecture/AssertValidSynapseReferences.ts";
 import {
   buildWireToRuntimeIdMap,
   resolveSingleNeuronReference,
@@ -47,8 +44,10 @@ interface CompensableSynapse {
  * For each outgoing synapse `X -> T` with weight `w`, removing `X` deletes an
  * average contribution of `w · meanActivation(X)` from `T`'s pre-activation sum;
  * compensate by `T.bias += w · meanActivation` accumulated across all targets.
- * This is the pre-existing "mean-only fold" behaviour, extracted so both the
- * fallback path and the variance-aware path can reuse it (Issue #1691).
+ * This is the pre-existing "mean-only fold" behaviour. Since Issue #3975 core
+ * owns the fold for an uncompensated removal, so the one remaining caller is
+ * the variance-aware path below, where the remedy is the caller's own
+ * measurement and is applied before core sees the creature (Issue #1691).
  */
 function applyMeanBiasFold(
   neurons: CompensableNeuron[],
@@ -97,7 +96,7 @@ function applyMeanBiasFold(
  *
  * The caller is responsible for removing the neuron and its synapses afterwards.
  * Returns which remedy was applied (`"none"` when the payload was empty), so the
- * caller can fall back to the mean-only fold.
+ * caller knows whether to hand its mean to core or has already folded it here.
  *
  * @returns `"constant"`, `"variance"`, or `"none"`.
  */
@@ -164,6 +163,108 @@ export function applyRemoveNeuronCompensation(
 }
 
 /**
+ * Remove one hidden neuron through the shared NEAT-AI-core rewrite
+ * (Issue #3975).
+ *
+ * This is the whole of the removal: core cuts the neuron and every edge naming
+ * it, folds the caller's mean into each point-wise target's bias, prunes the
+ * memetic entries that stop naming live structure, runs its cleanup fixed point
+ * over what is left, and validates the stable result before answering. There is
+ * no TypeScript rewrite behind it and no fallback to one — a refusal comes back
+ * as `undefined`, which the callers read as "no change", exactly as a candidate
+ * that failed validation always has.
+ *
+ * The caller keeps what core deliberately does not own: candidate selection,
+ * the Discovery-supplied compensation payload (applied here *before* the
+ * rewrite, because it is the caller's own measured remedy), the behaviour
+ * guard, and the accept/reject decision.
+ *
+ * @param exportJSON The creature to rewrite, already deep-copied by the caller.
+ * @param neuronLabel Wire UUID of the neuron to remove.
+ * @param meanActivation The caller's measured mean, when it has a finite one.
+ * @param compensation The Discovery-emitted remedy, when one was supplied.
+ * @param context Label used by the overflow guard and the log.
+ * @returns The rewritten export, or `undefined` when core refused.
+ */
+function pruneNeuronThroughCore(
+  exportJSON: CreatureExport,
+  neuronLabel: string,
+  meanActivation: number | undefined,
+  compensation: RemoveNeuronCompensationData | undefined,
+  context: string,
+): CreatureExport | undefined {
+  // Issue #1691: the Discovery-emitted remedy is the caller's own measurement,
+  // not a rewrite rule, so it is applied to the creature before core sees it.
+  // Its variance branch already folds the mean, which is why the mean is not
+  // then handed to core as well — that would fold it twice.
+  const remedy = (compensation?.constantNeuronBiasFold ||
+      compensation?.removeNeuronCompensation)
+    ? applyRemoveNeuronCompensation(
+      exportJSON.neurons,
+      exportJSON.synapses,
+      neuronLabel,
+      meanActivation,
+      compensation,
+      context,
+    )
+    : "none";
+
+  const stats = (remedy === "none" && meanActivation !== undefined)
+    ? { meanActivation }
+    : undefined;
+
+  const outcome = corePruneNeuron(exportJSON, neuronLabel, stats);
+  if (!outcome.ok) {
+    getLogger().warn(
+      `[${context}] core refused to remove ${neuronLabel}: ` +
+        `${outcome.reason} — ${outcome.message}`,
+    );
+    return undefined;
+  }
+
+  // Issue #3975: core tells us when it could not compensate a target, and a
+  // removal accepted while carrying that report is a quietly degraded
+  // creature. Say so rather than letting an "approximate" rewrite pass as an
+  // ordinary success.
+  //
+  // `NO_STATISTICS` is excluded only when the Discovery remedy above already
+  // compensated the creature and the statistics were therefore withheld on
+  // purpose: core saying it had no measurement to fold is then the answer we
+  // asked for, not a degraded creature. Warning on it would fire on every
+  // #1691 removal and train the reader to ignore the real ones. A removal that
+  // genuinely had no mean to offer is still reported.
+  const degraded = outcome.uncompensated.filter((target) =>
+    !(remedy !== "none" && target.reason === "NO_STATISTICS")
+  );
+  if (degraded.length > 0) {
+    const detail = degraded
+      .map((t) => `${t.targetUUID} (${t.reason}, ${t.squash})`)
+      .join(", ");
+    getLogger().warn(
+      `[${context}] core removed ${neuronLabel} but could not compensate ` +
+        `${degraded.length} target(s): ${detail}`,
+    );
+  }
+
+  // Issue #2421: core folds the mean faithfully, and this repo additionally
+  // caps what a runaway weight x activation product may do. Every bias and
+  // weight in the answer is core-authored — the folded biases, the
+  // canonicalisation that moves an activation into an outgoing weight, and any
+  // correlated-survivor share — so the guard is applied across the whole
+  // answer. Creature load clamps again (defence in depth); sweeping the answer
+  // here also avoids the earlier per-fold lookup, which silently skipped the
+  // clamp whenever a fold named a target the answer did not contain.
+  for (const neuron of outcome.creature.neurons) {
+    neuron.bias = clampAndTrack(neuron.bias, "rustFfi.bias", context);
+  }
+  for (const synapse of outcome.creature.synapses) {
+    synapse.weight = clampAndTrack(synapse.weight, "rustFfi.weight", context);
+  }
+
+  return outcome.creature;
+}
+
+/**
  * Removes a harmful neuron from the creature efficiently.
  * This method uses the average activation from discovery records to adjust
  * downstream neurons' biases, then removes all synapses and the neuron itself.
@@ -214,101 +315,27 @@ export function removeHarmfulNeuron(
     JSON.stringify(exportJSON),
   );
 
-  // Find all downstream neurons (neurons that receive input from this neuron)
-  const outgoingSynapses = simplifiedExport.synapses.filter(
-    (synapse) => synapse.fromUUID === harmfulNeuronLabel,
-  );
-
-  // Adjust downstream neurons' biases using average activation * synapse weight
   const averageActivation = harmfulNeuron.averageActivation;
-
-  // Issue #1691: consume the variance-aware compensation emitted by
-  // NEAT-AI-Discovery (#1559 weight redistribution / #1623 bias fold) when
-  // present. Only when no compensation is supplied do we fall back to the
-  // pre-existing mean-only fold, so mixed-version pipelines stay unchanged.
-  const compensation = harmfulNeuron.compensation;
-  const remedy = (compensation?.constantNeuronBiasFold ||
-      compensation?.removeNeuronCompensation)
-    ? applyRemoveNeuronCompensation(
-      simplifiedExport.neurons,
-      simplifiedExport.synapses,
-      harmfulNeuronLabel,
-      averageActivation,
-      compensation,
-      "removeHarmfulNeuron",
-    )
-    : "none";
-
-  if (remedy === "none") {
-    // Mean-only fold (unchanged fallback). Accumulate all synapse weights for
-    // each target neuron before applying the adjustment.
-    const weightSums = new Map<string, number>();
-
-    // First pass: accumulate all synapse weights for each target neuron
-    outgoingSynapses.forEach((synapse) => {
-      const targetUuid = synapse.toUUID;
-      if (!targetUuid) return;
-      const currentWeightSum = weightSums.get(targetUuid) || 0;
-      // Sum up weights for all synapses to the same target
-      weightSums.set(
-        targetUuid,
-        currentWeightSum + synapse.weight,
-      );
-    });
-
-    // Second pass: multiply by average activation once and apply the total bias adjustment
-    weightSums.forEach((totalWeight, neuronUuid) => {
-      const downstreamNeuron = simplifiedExport.neurons.find(
-        (n) => n.uuid === neuronUuid,
-      );
-      if (downstreamNeuron) {
-        // Apply the accumulated adjustment: averageActivation * (sum of weights).
-        // Issue #2421: Clamp the new bias so a runaway weight×activation product
-        // cannot drag the downstream neuron outside the safe range.
-        const totalAdjustment = averageActivation * totalWeight;
-        downstreamNeuron.bias = clampAndTrack(
-          (downstreamNeuron.bias || 0) + totalAdjustment,
-          "rustFfi.bias",
-          "removeHarmfulNeuron",
-        );
-      }
-    });
+  // A measurement that is not a number cannot compensate anything, and folding
+  // it would poison every downstream bias. Refuse the removal instead.
+  if (!Number.isFinite(averageActivation)) {
+    getLogger().warn(
+      `[removeHarmfulNeuron] refusing ${harmfulNeuronLabel}: ` +
+        `averageActivation is ${averageActivation}`,
+    );
+    return undefined;
   }
 
-  // Remove all synapses to/from this neuron
-  simplifiedExport.synapses = simplifiedExport.synapses.filter(
-    (synapse) =>
-      synapse.fromUUID !== harmfulNeuronLabel &&
-      synapse.toUUID !== harmfulNeuronLabel,
-  );
-
-  // Remove the neuron itself
-  simplifiedExport.neurons = simplifiedExport.neurons.filter(
-    (neuron) => neuron.uuid !== harmfulNeuronLabel,
-  );
-
-  // Integrity check: after removing neuron and its synapses
-  assertValidSynapseReferences(
+  const prunedExport = pruneNeuronThroughCore(
     simplifiedExport,
-    "removeHarmfulNeuron after removal",
+    harmfulNeuronLabel,
+    averageActivation,
+    harmfulNeuron.compensation,
+    "removeHarmfulNeuron",
   );
+  if (!prunedExport) return undefined;
 
-  // Clean up memetic only when the removed neuron is referenced (issue #912;
-  // matches SubNeuron / other mutation operators).
-  cleanupMemeticForRemovedNeuron(simplifiedExport, harmfulNeuronLabel);
-
-  // Clean up any neurons that have become orphaned (no outward connections)
-  // This prevents validation failures when neurons that only connected to
-  // the removed neuron are left dangling
-  cleanupOrphanedNeurons(simplifiedExport);
-
-  // Integrity check: after orphan cleanup
-  assertValidSynapseReferences(
-    simplifiedExport,
-    "removeHarmfulNeuron after cleanup",
-  );
-
-  const tmpCreature = Creature.fromJSON(simplifiedExport);
+  const tmpCreature = Creature.fromJSON(prunedExport);
   // We modified the structure, so we must delete UUID
   delete tmpCreature.uuid;
 
@@ -410,103 +437,31 @@ export function removeLowImpactNeuron(
   const originalSynapseCount = simplifiedExport.synapses.length;
   const originalNeuronCount = simplifiedExport.neurons.length;
 
-  // Bias compensation (average-preserving ablation):
-  // For each outgoing synapse X -> T with weight w, removing X deletes an average
-  // contribution of (w * meanActivation(X)) from T's pre-activation sum.
-  // Compensate by adjusting T.bias += w * meanActivation(X) for all targets T.
+  // Bias compensation (average-preserving ablation) is core's, not this file's:
+  // for each outgoing synapse X -> T with weight w, removing X deletes an
+  // average contribution of (w * meanActivation(X)) from T's pre-activation
+  // sum, and core folds that back into T's bias.
   const meanActivation = removalCandidate.meanActivation;
   const finiteMean =
     typeof meanActivation === "number" && Number.isFinite(meanActivation)
       ? meanActivation
       : undefined;
 
-  // Issue #1691: consume the variance-aware compensation emitted by
-  // NEAT-AI-Discovery (#1559 weight redistribution / #1623 bias fold) when
-  // present. Only when no compensation is supplied do we fall back to the
-  // pre-existing mean-only fold, so mixed-version pipelines stay unchanged.
-  const compensation = removalCandidate.compensation;
-  const remedy = (compensation?.constantNeuronBiasFold ||
-      compensation?.removeNeuronCompensation)
-    ? applyRemoveNeuronCompensation(
-      simplifiedExport.neurons,
-      simplifiedExport.synapses,
-      removalLabel,
-      finiteMean,
-      compensation,
-      "removeLowImpactNeuron",
-    )
-    : "none";
-
-  if (remedy === "none" && finiteMean !== undefined) {
-    // Mean-only fold (unchanged fallback).
-    const outgoing = simplifiedExport.synapses.filter(
-      (synapse) => synapse.fromUUID === removalLabel,
-    );
-
-    if (outgoing.length > 0) {
-      const weightSumsByTarget = new Map<string, number>();
-      for (const synapse of outgoing) {
-        const targetUuid = synapse.toUUID;
-        if (!targetUuid || targetUuid === removalLabel) continue;
-        weightSumsByTarget.set(
-          targetUuid,
-          (weightSumsByTarget.get(targetUuid) ?? 0) + synapse.weight,
-        );
-      }
-
-      for (const [targetUuid, weightSum] of weightSumsByTarget) {
-        const target = simplifiedExport.neurons.find((n) =>
-          n.uuid === targetUuid
-        );
-        if (!target) continue;
-        // Issue #2421: Clamp the bias adjustment applied during discovery
-        // removal so runaway weight×activation products cannot escape.
-        target.bias = clampAndTrack(
-          (target.bias ?? 0) + (weightSum * finiteMean),
-          "rustFfi.bias",
-          "removeLowImpactNeuron",
-        );
-      }
-    }
-  }
-
-  // Remove all synapses to/from this neuron.
-  simplifiedExport.synapses = simplifiedExport.synapses.filter(
-    (synapse) =>
-      synapse.fromUUID !== removalLabel &&
-      synapse.toUUID !== removalLabel,
-  );
-
-  // Remove the neuron itself
-  simplifiedExport.neurons = simplifiedExport.neurons.filter(
-    (neuron) => neuron.uuid !== removalLabel,
-  );
-
-  // Integrity check: after removing neuron and its synapses
-  assertValidSynapseReferences(
+  const prunedExport = pruneNeuronThroughCore(
     simplifiedExport,
-    "removeLowImpactNeuron after removal",
+    removalLabel,
+    finiteMean,
+    removalCandidate.compensation,
+    "removeLowImpactNeuron",
   );
-
-  cleanupMemeticForRemovedNeuron(simplifiedExport, removalLabel);
-
-  // Clean up any neurons that have become orphaned (no outward connections)
-  // This prevents validation failures when neurons that only connected to
-  // the removed neuron are left dangling
-  cleanupOrphanedNeurons(simplifiedExport);
-
-  // Integrity check: after orphan cleanup
-  assertValidSynapseReferences(
-    simplifiedExport,
-    "removeLowImpactNeuron after cleanup",
-  );
+  if (!prunedExport) return undefined;
 
   const removedSynapseCount = originalSynapseCount -
-    simplifiedExport.synapses.length;
+    prunedExport.synapses.length;
   const removedNeuronCount = originalNeuronCount -
-    simplifiedExport.neurons.length;
+    prunedExport.neurons.length;
 
-  const tmpCreature = Creature.fromJSON(simplifiedExport);
+  const tmpCreature = Creature.fromJSON(prunedExport);
   // We modified the structure, so we must delete UUID
   delete tmpCreature.uuid;
 
@@ -527,9 +482,9 @@ export function removeLowImpactNeuron(
   const afterFixSynapseCount = tmpCreature.synapses.length;
   const afterFixNeuronCount = tmpCreature.neurons.length;
   const fixReaddedSynapses = afterFixSynapseCount -
-    simplifiedExport.synapses.length;
+    prunedExport.synapses.length;
   const fixReaddedNeurons = afterFixNeuronCount -
-    simplifiedExport.neurons.length;
+    prunedExport.neurons.length;
 
   if (
     removalBreaksIfRouting(

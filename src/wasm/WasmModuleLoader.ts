@@ -244,6 +244,11 @@ let creatureValidatePackedFn:
   | ((request: Uint8Array, memetic: string) => string)
   | null = null;
 
+// Issue #3975 - hidden-neuron pruning (JSON request in, JSON response out).
+// The one implementation of "remove this neuron and give me back something I
+// can score" lives in core; this pointer is how TypeScript reaches it.
+let pruneNeuronFn: ((request: string) => string) | null = null;
+
 // Issue #1519 - Standalone elastic error distribution
 let distributeElasticErrorFn:
   | ((
@@ -493,6 +498,8 @@ function assignFunctionPointers(module: WasmModule): void {
   creatureValidateFn = module.creature_validate;
   // Issue #3832 - the packed request shape for the same validation
   creatureValidatePackedFn = module.creature_validate_packed;
+  // Issue #3975 - hidden-neuron pruning
+  pruneNeuronFn = module.prune_neuron;
   // Issue #1519 - Standalone elastic error distribution
   distributeElasticErrorFn = module.distribute_elastic_error;
   // Issue #1518 - Accumulation functions
@@ -910,6 +917,15 @@ export function getCreatureValidateFn(): typeof creatureValidateFn {
  */
 export function getCreatureValidatePackedFn(): typeof creatureValidatePackedFn {
   return creatureValidatePackedFn;
+}
+
+/**
+ * Issue #3975 - core's `prune_neuron`, the shared hidden-neuron removal
+ * rewrite. `null` until the bundle loads, which is what lets the bridge fail
+ * loud rather than quietly fall back to a superseded TypeScript rewrite.
+ */
+export function getPruneNeuronFn(): typeof pruneNeuronFn {
+  return pruneNeuronFn;
 }
 
 // Issue #1960 - Batch operation function pointer getters
