@@ -230,8 +230,9 @@ export function renderRoleVisibility(
   for (const row of rows) {
     lines.push(
       // The role key itself contains a pipe, which would end the cell.
+      // Escape every pipe, not just the first.
       `| ${
-        row.role.replace("|", "\\|")
+        row.role.replaceAll("|", "\\|")
       } | ${row.neurons} | ${row.runMembers} | ` +
         `${pct(row.neurons === 0 ? 0 : row.runMembers / row.neurons)} |`,
     );

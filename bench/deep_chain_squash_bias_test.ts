@@ -105,3 +105,22 @@ Deno.test("squash-bias harness - role visibility counts the run against its role
     "the pipe inside a role key is escaped so the table survives",
   );
 });
+
+Deno.test("squash-bias harness - every pipe in a role key is escaped", () => {
+  // Regression for the incomplete-sanitization finding (PR #3994): a
+  // single-occurrence `replace` escaped only the first pipe, so any extra
+  // pipe still ended the Markdown cell.
+  const rendered = renderRoleVisibility("fixture", [
+    { role: "deep|high|extra", neurons: 2, runMembers: 1 },
+  ]);
+  const cells = rendered.split("\n").at(-2)?.split(/(?<!\\)\|/) ?? [];
+  assertEquals(
+    cells.length,
+    6,
+    `the role occupies exactly one cell, got: ${JSON.stringify(cells)}`,
+  );
+  assert(
+    rendered.includes("deep\\|high\\|extra"),
+    "every pipe in the role key is escaped",
+  );
+});
