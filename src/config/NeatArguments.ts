@@ -250,6 +250,25 @@ export interface NeatArguments {
    */
   maximumWeightAdjustmentScale: number;
 
+  /**
+   * Scale passed to `Synapse.randomWeight()` for the **outward** synapse of
+   * `AddNeuron` and for `AddConnection` on the main mutation path
+   * (Issue #3970). `1` (the default) draws the historical uniform
+   * `[-0.5, +0.5]` weight; a smaller value approaches the ResNet residual
+   * construction `x + eF(x)`, where the new structure is nearly a no-op at
+   * birth. Never produces an exactly-zero weight — `randomWeight` enforces a
+   * minimum magnitude of one plank.
+   */
+  structuralWeightScale: number;
+
+  /**
+   * Compaction passes a newly inserted neuron is exempt from `compactUnused`
+   * removal (Issue #3970). `0` (the default) reproduces the historical
+   * behaviour. A positive value keeps a near-identity newborn alive long
+   * enough for a gradient step to give its structure a job.
+   */
+  structuralNewbornGraceRounds: number;
+
   /** Determine how many neurons to select based on the sparseRatio. */
   sparseRatio: number;
 

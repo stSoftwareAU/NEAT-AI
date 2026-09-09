@@ -31,6 +31,10 @@ import {
 } from "@compact/CompactUtils.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
+import {
+  ageNewbornGrace,
+  newbornGraceRemaining,
+} from "@architecture/NewbornGrace.ts";
 
 export function compactUnused(
   traced: CreatureTrace,
@@ -70,6 +74,11 @@ export function compactUnused(
     const neuron = alignedTrace.neurons[indices[i]];
     if (neuron.type !== "hidden") continue;
     if (!neuron.uuid) continue;
+    // Issue #3970: a newborn under an identity-initialised structural mutation
+    // has a near-zero outward weight, so its effect score would make it the
+    // first neuron removed — before the gradient step that gives it a job.
+    // Skip it while its grace budget lasts.
+    if (newbornGraceRemaining(neuron) > 0) continue;
     if (neuron.trace && neuron.trace.count >= 1) {
       const counter = synapseCount.get(neuron.uuid);
       assert(counter !== undefined, "Counter should not be undefined");
@@ -136,6 +145,11 @@ export function compactUnused(
   const cleanUUID = CreatureUtil.makeUUID(clean);
   const compactedUUID = CreatureUtil.makeUUID(compacted);
   if (cleanUUID !== compactedUUID) {
+    // Issue #3970: this pass compacted the creature, so every protected
+    // newborn spends one round of its grace budget. Aging only on a pass that
+    // changed something keeps the budget honest: an unchanged creature is
+    // discarded by the caller, taking the decrement with it.
+    ageNewbornGrace(compacted);
     addTag(compacted, "approach", "compact" as Approach);
     delete compacted.memetic;
     removeTag(compacted, "approach-logged");

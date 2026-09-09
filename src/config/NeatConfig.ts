@@ -444,6 +444,20 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       1,
       { min: 0 },
     ),
+    // Issue #3970: identity-initialised structural mutation. The defaults
+    // (scale 1, no grace) reproduce the historical behaviour exactly.
+    structuralWeightScale: parseNumber(
+      "Structural weight scale",
+      opts.structuralWeightScale,
+      1,
+      { min: 0 },
+    ),
+    structuralNewbornGraceRounds: parseNumber(
+      "Structural newborn grace rounds",
+      opts.structuralNewbornGraceRounds,
+      0,
+      { integer: true, min: 0 },
+    ),
     sparseRatio: parseNumber(
       "Sparse Ratio",
       opts.sparseRatio,

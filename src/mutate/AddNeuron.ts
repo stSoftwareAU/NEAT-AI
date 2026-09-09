@@ -16,6 +16,12 @@ import { getLogger } from "@utils/Logger.ts";
 import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
 import { assertSynapsesSortedByFromTo } from "@architecture/SynapseOrderGuard.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
+import { tagNewbornGrace } from "@architecture/NewbornGrace.ts";
+import {
+  type ResolvedStructuralMutationOptions,
+  resolveStructuralMutationOptions,
+  type StructuralMutationOptions,
+} from "@mutate/StructuralMutationOptions.ts";
 
 /**
  * Selects a suitable outward connection target for a newly inserted neuron.
@@ -47,6 +53,18 @@ export function pickOutwardTargetNeuronIndex(
 }
 
 export class AddNeuron extends AbstractMutationOperator {
+  /**
+   * Issue #3970: identity-initialised structural mutation. Scales the
+   * **outward** synapse only, and grants the newborn a compaction grace
+   * period. Defaults reproduce the historical behaviour exactly.
+   */
+  private readonly structural: ResolvedStructuralMutationOptions;
+
+  constructor(creature: Creature, options?: StructuralMutationOptions) {
+    super(creature);
+    this.structural = resolveStructuralMutationOptions(options);
+  }
+
   /**
    * Add a neuron to the network.
    *
@@ -87,6 +105,9 @@ export class AddNeuron extends AbstractMutationOperator {
       indx++;
     }
     neuron.index = indx;
+    // Issue #3970: mark the newborn before it is inserted so compaction cannot
+    // delete it before the gradient step that gives its structure a job.
+    tagNewbornGrace(neuron, this.structural.structuralNewbornGraceRounds);
     this.insertNeuron(neuron);
 
     // Issue #1018: Optimise focus selection using direct candidate filtering
@@ -207,7 +228,7 @@ export class AddNeuron extends AbstractMutationOperator {
         neuron.index,
         targetNeuronIndex,
         clampAndTrack(
-          Synapse.randomWeight(),
+          Synapse.randomWeight(this.structural.structuralWeightScale),
           "mutation.synapse",
           "AddNeuron",
         ),
@@ -237,7 +258,7 @@ export class AddNeuron extends AbstractMutationOperator {
               neuron.index,
               candidate.index,
               clampAndTrack(
-                Synapse.randomWeight(),
+                Synapse.randomWeight(this.structural.structuralWeightScale),
                 "mutation.synapse",
                 "AddNeuron",
               ),
@@ -265,7 +286,7 @@ export class AddNeuron extends AbstractMutationOperator {
               neuron.index,
               neuron.index,
               clampAndTrack(
-                Synapse.randomWeight(),
+                Synapse.randomWeight(this.structural.structuralWeightScale),
                 "mutation.synapse",
                 "AddNeuron",
               ),
