@@ -11,6 +11,7 @@ import { AddBackCon } from "@mutate/AddBackCon.ts";
 import { AddConnection } from "@mutate/AddConnection.ts";
 import { AddNeuron } from "@mutate/AddNeuron.ts";
 import { AddSelfCon } from "@mutate/AddSelfCon.ts";
+import { AddSkipConnection } from "@mutate/AddSkipConnection.ts";
 import { ModBias } from "@mutate/ModBias.ts";
 import { ModActivation as ModSquash } from "@mutate/ModSquash.ts";
 import { ModWeight } from "@mutate/ModWeight.ts";
@@ -22,6 +23,7 @@ import { SubConnection } from "@mutate/SubConnection.ts";
 import { SubNeuron } from "@mutate/SubNeuron.ts";
 import { SubSelfCon } from "@mutate/SubSelfCon.ts";
 import { SwapNeurons } from "@mutate/SwapNeurons.ts";
+import type { SkipConnectionOptions } from "@mutate/SkipConnectionOptions.ts";
 import type { StructuralMutationOptions } from "@mutate/StructuralMutationOptions.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
@@ -66,6 +68,18 @@ function structuralOptionsFrom(config: NeatConfig): StructuralMutationOptions {
   return {
     structuralWeightScale: config.structuralWeightScale,
     structuralNewbornGraceRounds: config.structuralNewbornGraceRounds,
+  };
+}
+
+/**
+ * Issue #3973: reads the targeted skip-connection knobs off the run config for
+ * `AddSkipConnection`. The bypass weight is #3970's structural scale — a full
+ * random bypass around a tuned run is the perturbation that issue describes.
+ */
+function skipOptionsFrom(config: NeatConfig): SkipConnectionOptions {
+  return {
+    structuralWeightScale: config.structuralWeightScale,
+    skipMinRunLength: config.skipMinRunLength,
   };
 }
 
@@ -349,6 +363,12 @@ export class Mutator {
     [Mutation.ADD_SELF_CONN.name, (c, _cfg) => new AddSelfCon(c)],
     [Mutation.SUB_SELF_CONN.name, (c, _cfg) => new SubSelfCon(c)],
     [Mutation.ADD_BACK_CONN.name, (c, _cfg) => new AddBackCon(c)],
+    // Issue #3973: the targeted bypass operator, selected by
+    // `skipConnectionRate` rather than by membership of `config.mutation`.
+    [
+      Mutation.ADD_SKIP_CONN.name,
+      (c, cfg) => new AddSkipConnection(c, skipOptionsFrom(cfg)),
+    ],
     [Mutation.SUB_BACK_CONN.name, (c, _cfg) => new SubBackCon(c)],
     [Mutation.SWAP_NODES.name, (c, _cfg) => new SwapNeurons(c)],
   ]);
@@ -810,6 +830,15 @@ export class Mutator {
    * Issue #1037: Implements adaptive mutation rate based on creature size.
    */
   public selectMutationMethod(creature: Creature) {
+    // Issue #3973: the targeted skip-connection operator sits outside
+    // `config.mutation` — `skipConnectionRate` is what selects it, and the
+    // default of `0` must consume no randomness at all, so a build with the
+    // operator present is bit-identical to one without it.
+    const skipRate = this.config.skipConnectionRate;
+    if (skipRate > 0 && getRandomNumberGenerator().random() < skipRate) {
+      return Mutation.ADD_SKIP_CONN;
+    }
+
     const forwardOnly = this.isMutationTopologyForwardOnly(creature);
 
     // Check cache for pre-filtered candidates (Issue #1028)
