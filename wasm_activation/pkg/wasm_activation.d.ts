@@ -90,12 +90,22 @@ export class CompiledNetwork {
     free(): void;
     [Symbol.dispose](): void;
     /**
-     * Activate the network with the given input values
-     * Returns the output values
-     * Issue #1175 - Uses typed structs for better cache locality
-     * Issue #1177 - Inlines common squash functions to avoid function call overhead
+     * Issue #1212 - Batch activate and trace for 4 records simultaneously.
+     *
+     * Processes 4 input records through the network in parallel, capturing trace
+     * data for backpropagation. Uses SIMD via
+     * [`weighted_sum_simd_4records_unchecked`] for standard squash functions.
+     *
+     * # Arguments
+     * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
+     * * `input_size` - Number of input values per record
+     * * `num_outputs` - Number of output neurons
+     *
+     * # Returns
+     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
+     * [outputs..., activations..., hints..., trace_data...]
      */
-    activate(input: Float32Array, num_outputs: number): Float32Array;
+    activate_and_trace_batch_4way(inputs: Float32Array, input_size: number, num_outputs: number): Float32Array;
     /**
      * Activate the network with tracing for backpropagation support
      * Issue #1121 - WASM Migration Phase 4: activateAndTrace
@@ -122,22 +132,12 @@ export class CompiledNetwork {
      */
     activate_and_trace(input: Float32Array, num_outputs: number): Float32Array;
     /**
-     * Issue #1212 - Batch activate and trace for 4 records simultaneously.
-     *
-     * Processes 4 input records through the network in parallel, capturing trace
-     * data for backpropagation. Uses SIMD via
-     * [`weighted_sum_simd_4records_unchecked`] for standard squash functions.
-     *
-     * # Arguments
-     * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
-     * * `input_size` - Number of input values per record
-     * * `num_outputs` - Number of output neurons
-     *
-     * # Returns
-     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
-     * [outputs..., activations..., hints..., trace_data...]
+     * Activate the network with the given input values
+     * Returns the output values
+     * Issue #1175 - Uses typed structs for better cache locality
+     * Issue #1177 - Inlines common squash functions to avoid function call overhead
      */
-    activate_and_trace_batch_4way(inputs: Float32Array, input_size: number, num_outputs: number): Float32Array;
+    activate(input: Float32Array, num_outputs: number): Float32Array;
     /**
      * Activate the network with the given input values, writing to a pre-allocated output buffer
      * Issue #1171 - Avoids per-call Float32Array allocation overhead

@@ -55,7 +55,7 @@ The work is informed by the WASM performance research series (#1630–#1633,
 3. **Architectural changes** — typed-array topology, integer runtime IDs — are
    prerequisites for the next migration tranche.
 
-## 🦀 Where things live today (May 2026)
+## 🦀 Where things live today (September 2026)
 
 | Subsystem                              | Lives in             | Reason / evidence                                                                                                                             |
 | -------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -192,8 +192,10 @@ The performance research established that these categories are unsuitable:
   Used (LRU) hit) — already faster than any WASM path.
 - **Trivially fast operations** (under 2 µs in TypeScript) — WASM
   boundary-crossing overhead alone is a significant fraction of the total.
-- **Graph surgery** (compaction, pruning, neuron merging) — dominated by Map/Set
-  operations that V8 handles efficiently.
+- **Graph surgery** (compaction, neuron merging, synapse pruning) — dominated by
+  Map/Set operations that V8 handles efficiently. **Hidden-neuron pruning is the
+  exception** and has already moved to core (#3975): it is a whole-creature
+  rewrite with compensation, cascade and canonicalisation, not Map/Set work.
 
 ## 📚 See also
 

@@ -341,3 +341,40 @@ Deno.test("corePruneNeuron: an error quotes the fault without dumping the creatu
     `the error should not dump the creature, got ${thrown.message.length} bytes`,
   );
 });
+
+Deno.test("corePruneNeuron: a malformed failure is a bridge fault, not a refusal", () => {
+  // `malformed` says the payload never reached the rewrite, so it says nothing
+  // about the creature. Returning it as a refusal would let a bug in this
+  // bridge masquerade as a neuron core declined to remove — and the caller
+  // reads a refusal as an ordinary "no change".
+  const thrown = thrownFor({
+    ok: false,
+    failure: {
+      reason: "MALFORMED_REQUEST",
+      message: "missing field `uuid`",
+      malformed: true,
+    },
+  });
+  assert(
+    thrown instanceof WasmError,
+    "a malformed request must throw, never come back as a refusal",
+  );
+  assertEquals(thrown.reason, "INVALID_REQUEST");
+  assertStringIncludes(thrown.message, "missing field");
+});
+
+Deno.test("corePruneNeuron: a fold claiming exactness it did not send fails loud", () => {
+  const response = successResponse();
+  response.biasFolds = [{
+    targetUUID: "output-0",
+    weightSum: 0.25,
+    delta: 0.1,
+  }];
+  const thrown = thrownFor(response);
+  assert(
+    thrown instanceof WasmError,
+    "an absent `exact` must not be read as an approximate fold",
+  );
+  assertEquals(thrown.reason, "INVALID_REQUEST");
+  assertStringIncludes(thrown.message, "exact");
+});

@@ -406,24 +406,38 @@ function replaySurvivorRewrite(
   const candidateNeurons = new Map(
     candidateJSON.neurons.map((n) => [n.id, n]),
   );
+
+  // A role change means core rewrote the neuron into a canonical form (a unity
+  // constant), so the candidate's values are absolute and replaying them twice
+  // must not double them. A neuron that kept its role was only compensated, and
+  // that is a delta which has to compose with any fold an earlier replay
+  // already applied to the same survivor.
+  const canonicalised = new Set<number | undefined>();
+
   for (const neuron of creatureJSON.neurons) {
     const before = baseNeurons.get(neuron.id);
     const after = candidateNeurons.get(neuron.id);
     if (!before || !after) continue;
 
     if (after.type !== before.type) {
+      canonicalised.add(neuron.id);
       // `type` is readonly on the wire shape; this replay is the one writer
       // entitled to change it, because core already decided the new role.
       (neuron as { type: NeuronExport["type"] }).type = after.type;
-      rewrote = true;
-    }
-    if (after.bias !== before.bias) {
       neuron.bias = after.bias;
+      // A constant carries no squash, so mirror the candidate's shape exactly
+      // rather than leaving a squash the new role may not have.
+      if (after.squash === undefined) delete neuron.squash;
+      else neuron.squash = after.squash;
+      rewrote = true;
+      continue;
+    }
+
+    if (after.bias !== before.bias) {
+      neuron.bias += after.bias - before.bias;
       rewrote = true;
     }
     if (after.squash !== before.squash) {
-      // A constant carries no squash, so mirror the candidate's shape exactly
-      // rather than leaving a squash the new role may not have.
       if (after.squash === undefined) delete neuron.squash;
       else neuron.squash = after.squash;
       rewrote = true;
@@ -443,10 +457,16 @@ function replaySurvivorRewrite(
     const before = baseWeights.get(key);
     const after = candidateWeights.get(key);
     if (before === undefined || after === undefined) continue;
-    if (after !== before) {
+    if (after === before) continue;
+
+    if (canonicalised.has(synapse.fromId)) {
+      // Canonicalisation folds the source's fixed activation *into* this
+      // weight — a rewrite of the value, not an increment of it.
       synapse.weight = after;
-      rewrote = true;
+    } else {
+      synapse.weight += after - before;
     }
+    rewrote = true;
   }
 
   return rewrote;

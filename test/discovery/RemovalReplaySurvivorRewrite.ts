@@ -177,3 +177,76 @@ Deno.test("replaying a removal leaves an unrelated earlier edit alone", () => {
     "a neuron the removal did not change must keep the target's own value",
   );
 });
+
+Deno.test("stacked replays compose their folds rather than discarding one", () => {
+  // A combined candidate replays each accepted removal onto an accumulating
+  // creature while the base stays fixed. Two removals that both compensate the
+  // same survivor must both land: assigning the candidate's absolute bias would
+  // silently drop whichever fold was replayed first.
+  const shared = (): CreatureExport => ({
+    input: 3,
+    output: 1,
+    neurons: [
+      { uuid: "a", type: "hidden", squash: IDENTITY.NAME, bias: 0.1 },
+      { uuid: "b", type: "hidden", squash: IDENTITY.NAME, bias: 0.2 },
+      { uuid: "target", type: "hidden", squash: IDENTITY.NAME, bias: 1 },
+      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "a", weight: 0.5 },
+      { fromUUID: "input-1", toUUID: "b", weight: 0.5 },
+      { fromUUID: "input-2", toUUID: "target", weight: 0.5 },
+      { fromUUID: "a", toUUID: "target", weight: 2 },
+      { fromUUID: "b", toUUID: "target", weight: 4 },
+      { fromUUID: "target", toUUID: "output-0", weight: 0.5 },
+    ],
+  });
+
+  const baseCreature = Creature.fromJSON(shared());
+  const removalOf = (uuid: string, mean: number) => {
+    const removed = removeLowImpactNeuron(
+      "stack-test",
+      Creature.fromJSON(shared()),
+      {
+        neuronUuid: uuid,
+        totalError: 0.001,
+        impact: 0.0001,
+        meanActivation: mean,
+        // deno-lint-ignore no-explicit-any
+      } as any,
+    );
+    assert(removed, `core should accept removing ${uuid}`);
+    return removed;
+  };
+
+  // Each removal folds its own mean contribution into `target`'s bias.
+  const removeA = removalOf("a", 1);
+  const removeB = removalOf("b", 1);
+  const biasAfterA = neuronOf(removeA, "target")?.bias ?? 0;
+  const biasAfterB = neuronOf(removeB, "target")?.bias ?? 0;
+  const deltaA = biasAfterA - 1;
+  const deltaB = biasAfterB - 1;
+  assert(deltaA !== 0 && deltaB !== 0, "each removal should fold a bias");
+
+  // Stack them the way a combined candidate does: replay onto the result of
+  // the previous replay, always diffing against the same fixed base.
+  const first = applyChangeToCreature(
+    baseCreature,
+    { creature: removeA, change: { type: "remove-low-impact" } },
+    baseCreature,
+  );
+  assert(first, "the first replay should produce a creature");
+  const second = applyChangeToCreature(
+    first,
+    { creature: removeB, change: { type: "remove-low-impact" } },
+    baseCreature,
+  );
+  assert(second, "the second replay should produce a creature");
+
+  assertAlmostEquals(
+    neuronOf(second, "target")?.bias ?? 0,
+    1 + deltaA + deltaB,
+    1e-9,
+    "both folds must survive; the second replay must not discard the first",
+  );
+});

@@ -50,6 +50,7 @@ import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
 import type { TagInterface } from "@stsoftware/tags/mod";
 import { WasmError } from "@errors/WasmError.ts";
 import { getPruneNeuronFn, getWasmLoadError } from "@wasm/WasmModuleLoader.ts";
+import { synapseTripleKey } from "@architecture/SynapseKey.ts";
 
 /**
  * A surviving neuron the caller believes predicts the one being removed, with
@@ -172,9 +173,20 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-/** The identity a synapse keeps across the rewrite: endpoints plus role. */
+/**
+ * The identity a synapse keeps across the rewrite: endpoints plus role.
+ *
+ * `synapseTripleKey` is the canonical home for this key (AGENTS.md §"Synapse
+ * identity"). A wire synapse's endpoints are optional on the export type, so
+ * an absent endpoint is spelled out rather than silently keyed as `undefined`
+ * — two different synapses missing an endpoint must not collide.
+ */
 function synapseKey(synapse: SynapseExport): string {
-  return `${synapse.fromUUID} ${synapse.toUUID} ${synapse.type ?? ""}`;
+  return synapseTripleKey(
+    synapse.fromUUID ?? "",
+    synapse.toUUID ?? "",
+    synapse.type,
+  );
 }
 
 /**
@@ -233,7 +245,7 @@ function bundleUnavailable(loadError: Error | null): WasmError {
  * Copy the metadata core parsed and dropped back onto the survivors.
  *
  * Identity is the wire UUID for a neuron and `(fromUUID, toUUID, type)` for a
- * synapse — the same key `SynapseKey.ts` uses — so a survivor is matched to
+ * synapse — via `synapseTripleKey`, the canonical key — so a survivor is matched to
  * what it was, and a support edge core *added* correctly carries nothing.
  */
 function restoreCarriedMetadata(
@@ -329,6 +341,29 @@ function requiredNumber(
     throw new WasmError(
       `prune_neuron sent ${where}.${field} as ${String(value)}, not a finite ` +
         `number: ${describe(answer)}`,
+      "INVALID_REQUEST",
+    );
+  }
+  return value;
+}
+
+/**
+ * Read a field core's contract says is a boolean.
+ *
+ * `value === true` would quietly turn a field core failed to send into a
+ * confident `false` — here, an approximate fold reported as exact.
+ */
+function requiredBoolean(
+  source: Record<string, unknown>,
+  field: string,
+  where: string,
+  answer: string,
+): boolean {
+  const value = source[field];
+  if (typeof value !== "boolean") {
+    throw new WasmError(
+      `prune_neuron sent ${where}.${field} as ${typeof value}, not a ` +
+        `boolean: ${describe(answer)}`,
       "INVALID_REQUEST",
     );
   }
@@ -472,7 +507,7 @@ function readSuccess(
         ),
         weightSum: requiredNumber(fold, "weightSum", `biasFolds[${i}]`, answer),
         delta: requiredNumber(fold, "delta", `biasFolds[${i}]`, answer),
-        exact: fold.exact === true,
+        exact: requiredBoolean(fold, "exact", `biasFolds[${i}]`, answer),
         residualVariance: typeof fold.residualVariance === "number"
           ? fold.residualVariance
           : undefined,

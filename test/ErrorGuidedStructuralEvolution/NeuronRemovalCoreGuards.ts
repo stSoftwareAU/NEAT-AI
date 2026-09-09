@@ -187,3 +187,67 @@ Deno.test("a removal core cannot fully compensate still returns a valid creature
     "an untouched neuron must keep its bias",
   );
 });
+
+Deno.test("a Discovery remedy is folded once, not once here and again in core", () => {
+  // Issue #1691: when Discovery supplies its own variance-aware compensation,
+  // that measured remedy is applied in TypeScript before the rewrite and core
+  // is then given no mean — otherwise the same contribution lands twice. The
+  // survivor's bumped edge is the visible half of the remedy.
+  const removed = removeHarmfulNeuron("guard-test", plainFixture(), {
+    neuronUuid: "hidden-0",
+    errorMagnitude: 0.5,
+    averageActivation: 0.5,
+    compensation: {
+      removeNeuronCompensation: {
+        survivorNeuronUuid: "hidden-1",
+        targetNeuronUuid: "output-0",
+        deltaWeight: 0.4,
+      },
+    },
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  assert(removed, "a compensated removal should still be accepted");
+
+  const exported = removed.exportJSON();
+  const survivorEdge = exported.synapses.find((s) =>
+    s.fromUUID === "hidden-1" && s.toUUID === "output-0"
+  );
+  assert(survivorEdge, "the survivor should still feed the output");
+  assertAlmostEquals(
+    survivorEdge.weight,
+    0.35 + 0.4,
+    1e-9,
+    "the survivor bump must be applied exactly once",
+  );
+
+  // The mean fold is w * mean = 0.25 * 0.5 into output-0's bias, applied by
+  // the TypeScript remedy. Core must not fold it a second time.
+  const output = exported.neurons.find((n) => n.uuid === "output-0");
+  assert(output, "the output should survive");
+  assertAlmostEquals(
+    output.bias,
+    0 + (0.25 * 0.5),
+    1e-9,
+    "the mean must be folded once; core was deliberately given no statistics",
+  );
+});
+
+Deno.test("an uncompensated removal we did not measure is still reported", () => {
+  // The suppression above is narrow: it silences core's NO_STATISTICS only
+  // when the TypeScript remedy already compensated. Without a remedy the
+  // creature really is uncompensated, and that must still reach the log.
+  const removed = removeLowImpactNeuron("guard-test", plainFixture(), {
+    neuronUuid: "hidden-0",
+    totalError: 0.001,
+    impact: 0.0001,
+    meanActivation: Number.NaN,
+    // deno-lint-ignore no-explicit-any
+  } as any);
+  assert(removed, "an unusable mean must not block a low-impact removal");
+  // output-0's bias is untouched: nothing was folded back for it.
+  assertAlmostEquals(
+    removed.exportJSON().neurons.find((n) => n.uuid === "output-0")?.bias ?? -1,
+    0,
+    1e-12,
+  );
+});

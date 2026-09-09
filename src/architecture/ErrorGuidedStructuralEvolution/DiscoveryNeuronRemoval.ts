@@ -44,8 +44,10 @@ interface CompensableSynapse {
  * For each outgoing synapse `X -> T` with weight `w`, removing `X` deletes an
  * average contribution of `w · meanActivation(X)` from `T`'s pre-activation sum;
  * compensate by `T.bias += w · meanActivation` accumulated across all targets.
- * This is the pre-existing "mean-only fold" behaviour, extracted so both the
- * fallback path and the variance-aware path can reuse it (Issue #1691).
+ * This is the pre-existing "mean-only fold" behaviour. Since Issue #3975 core
+ * owns the fold for an uncompensated removal, so the one remaining caller is
+ * the variance-aware path below, where the remedy is the caller's own
+ * measurement and is applied before core sees the creature (Issue #1691).
  */
 function applyMeanBiasFold(
   neurons: CompensableNeuron[],
@@ -94,7 +96,7 @@ function applyMeanBiasFold(
  *
  * The caller is responsible for removing the neuron and its synapses afterwards.
  * Returns which remedy was applied (`"none"` when the payload was empty), so the
- * caller can fall back to the mean-only fold.
+ * caller knows whether to hand its mean to core or has already folded it here.
  *
  * @returns `"constant"`, `"variance"`, or `"none"`.
  */
@@ -224,13 +226,23 @@ function pruneNeuronThroughCore(
   // removal accepted while carrying that report is a quietly degraded
   // creature. Say so rather than letting an "approximate" rewrite pass as an
   // ordinary success.
-  if (outcome.uncompensated.length > 0) {
-    const detail = outcome.uncompensated
+  //
+  // `NO_STATISTICS` is excluded only when the Discovery remedy above already
+  // compensated the creature and the statistics were therefore withheld on
+  // purpose: core saying it had no measurement to fold is then the answer we
+  // asked for, not a degraded creature. Warning on it would fire on every
+  // #1691 removal and train the reader to ignore the real ones. A removal that
+  // genuinely had no mean to offer is still reported.
+  const degraded = outcome.uncompensated.filter((target) =>
+    !(remedy !== "none" && target.reason === "NO_STATISTICS")
+  );
+  if (degraded.length > 0) {
+    const detail = degraded
       .map((t) => `${t.targetUUID} (${t.reason}, ${t.squash})`)
       .join(", ");
     getLogger().warn(
       `[${context}] core removed ${neuronLabel} but could not compensate ` +
-        `${outcome.uncompensated.length} target(s): ${detail}`,
+        `${degraded.length} target(s): ${detail}`,
     );
   }
 

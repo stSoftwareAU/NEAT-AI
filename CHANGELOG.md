@@ -155,7 +155,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   fine-tuning history is kept. A **constant** neuron is support structure core
   protects from direct removal: such a candidate is refused and the creature is
   left unchanged, where it now disappears only as dead structure once nothing
-  references it. The pinned `neatCore.rev` advances to the revision carrying the
+  references it. Core also downgrades a surviving `IF` neuron to `IDENTITY` when
+  a role went with the removal, rather than leaving a branch reading structure
+  that no longer exists. `removeHarmfulNeuron` now refuses a non-finite
+  `averageActivation` instead of folding it, because a `NaN` mean poisons every
+  downstream bias; `removeLowImpactNeuron` is deliberately not symmetrical and
+  proceeds with no mean, as a low-impact neuron has negligible downstream effect
+  by definition. The pinned `neatCore.rev` advances to the revision carrying the
   `prune_neuron` WASM export.
 
   Scope is the single-neuron rewrite. The ordered multi-op
