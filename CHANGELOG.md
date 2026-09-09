@@ -49,6 +49,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3970:** Identity-initialised structural mutation. Two new options,
+  both defaulting to the current behaviour: `structuralWeightScale` scales the
+  **outward** synapse of `AddNeuron` and `AddConnection` on the main mutation
+  path, so new structure can be born as a near-no-op (`x + εF(x)`) instead of a
+  ±0.5 kick into a tuned neuron; `structuralNewbornGraceRounds` keeps a freshly
+  inserted neuron out of the `compactUnused` candidate set for N compaction
+  passes, so a near-identity newborn is not deleted before the gradient step
+  that gives it a job. `structuralWeightScale: 1` and
+  `structuralNewbornGraceRounds: 0` are bit-identical to the previous build on a
+  fixed seed.
+
 - **Issue #3827 (follow-up):** The squash-substitution gate is now part of the
   public API — `squashSubstitutionBlockedReason`, `canAdoptSquash` and
   `STRUCTURALLY_CONSTRAINED_SQUASHES` are exported from `mod.ts`, not only from

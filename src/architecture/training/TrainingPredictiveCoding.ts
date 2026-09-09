@@ -9,6 +9,7 @@
 import type { CostInterface } from "@costs/CostInterface.ts";
 import { Creature } from "@creature";
 import { compactUnused } from "@compact/CompactUnused.ts";
+import { ageNewbornGrace } from "@architecture/NewbornGrace.ts";
 import { selectCompactVariant } from "@compact/CompactVariants.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -62,6 +63,11 @@ export function trainDirPredictiveCoding(
       Creature.fromJSON(creature.exportJSON()).compactVariants(feedbackLoop),
     );
   }
+
+  // Issue #3970: one training round has completed — spend a round of every
+  // protected newborn's grace budget before the trace below inherits the tags.
+  // The compacted copy was aged inside `compactUnused`.
+  ageNewbornGrace(creature);
 
   // Issue #1913: Add trace tags indicating Predictive Coding was used.
   const trace = creature.traceJSON();

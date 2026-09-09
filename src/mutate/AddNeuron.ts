@@ -336,6 +336,11 @@ export class AddNeuron extends AbstractMutationOperator {
    * redrawn, no extra random number is consumed, and the result is
    * bit-identical to the historical behaviour.
    *
+   * Below a scale of `2e-7` the one-plank floor in `Synapse.randomWeight()` is
+   * itself larger than `scale / 2`, so the redrawn weight is one plank rather
+   * than `scale / 2` — the floor wins, deliberately, because a zero outward
+   * weight would freeze the newborn's whole inward subtree.
+   *
    * @param neuronIndex - Index of the newly inserted neuron.
    */
   private enforceOutwardScale(neuronIndex: number): void {

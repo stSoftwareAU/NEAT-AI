@@ -9,6 +9,7 @@
 
 import { Creature } from "@creature";
 import { compactUnused } from "@compact/CompactUnused.ts";
+import { ageNewbornGrace } from "@architecture/NewbornGrace.ts";
 import { selectCompactVariant } from "@compact/CompactVariants.ts";
 import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { removeSyntheticSynapses } from "@propagate/RemoveSyntheticSynapses.ts";
@@ -259,6 +260,14 @@ export function finaliseTraining(
   // non-deterministically on load. Repair it — or fail loudly at the producer —
   // rather than letting the fault surface downstream on deserialisation.
   compact = validateAndRepairCompact(compact);
+
+  // Issue #3970: one training round has completed, so every protected newborn
+  // spends one round of its grace budget on the two lineages that leave here.
+  // The compacted copy is aged inside `compactUnused`; without this the
+  // trained (uncompacted) creature would carry its tag forever and its newborn
+  // would be exempt from compaction for the rest of the run.
+  ageNewbornGrace(creature);
+  ageNewbornGrace(bestTraceJSON);
 
   return {
     ID,

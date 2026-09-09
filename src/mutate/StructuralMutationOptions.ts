@@ -14,7 +14,7 @@
  * Both fields default to the historical behaviour, so an unset config is
  * bit-identical to a build without this feature.
  */
-import { ValidationError } from "@errors/ValidationError.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 
 /** Caller-supplied structural mutation options; every field is optional. */
 export interface StructuralMutationOptions {
@@ -57,7 +57,7 @@ export const DEFAULT_STRUCTURAL_MUTATION_OPTIONS:
  *
  * @param options - Partial options, or `undefined` for the defaults.
  * @returns The resolved options.
- * @throws {ValidationError} When a supplied value is out of range.
+ * @throws {ConfigurationError} When a supplied value is out of range.
  */
 export function resolveStructuralMutationOptions(
   options?: StructuralMutationOptions,
@@ -67,18 +67,18 @@ export function resolveStructuralMutationOptions(
   const scale = options.structuralWeightScale ??
     DEFAULT_STRUCTURAL_MUTATION_OPTIONS.structuralWeightScale;
   if (!Number.isFinite(scale) || scale <= 0) {
-    throw new ValidationError(
+    throw new ConfigurationError(
       `structuralWeightScale must be a finite number greater than zero, was ${scale}`,
-      "OTHER",
+      "OUT_OF_RANGE",
     );
   }
 
   const graceRounds = options.structuralNewbornGraceRounds ??
     DEFAULT_STRUCTURAL_MUTATION_OPTIONS.structuralNewbornGraceRounds;
   if (!Number.isInteger(graceRounds) || graceRounds < 0) {
-    throw new ValidationError(
+    throw new ConfigurationError(
       `structuralNewbornGraceRounds must be a non-negative integer, was ${graceRounds}`,
-      "OTHER",
+      Number.isInteger(graceRounds) ? "OUT_OF_RANGE" : "NOT_INTEGER",
     );
   }
 

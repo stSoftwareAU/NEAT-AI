@@ -195,12 +195,13 @@ large perturbation, so the offspring is overwhelmingly likely to score below its
 parent — and a mutation that drops the score is never picked for a gradient
 step, so the structure it proposed is discarded in the generation that made it.
 
-Scaling the **outward** synapse down approaches the ResNet residual construction
-`x + eF(x)`: the new structure is nearly a no-op at birth, scores level with its
-parent, and therefore survives long enough for backprop to learn a job for it.
-The inward synapse keeps its full-scale draw — it only determines what the new
-neuron _sees_, and shrinking it would flatten the gradient the new structure
-needs.
+Scaling the **outward** synapse down approaches the residual construction
+`x + εF(x)` of
+[He et al. (2016), _Deep Residual Learning for Image Recognition_](https://arxiv.org/abs/1512.03385):
+the new structure is nearly a no-op at birth, scores level with its parent, and
+therefore survives long enough for backprop to learn a job for it. The inward
+synapse keeps its full-scale draw — it only determines what the new neuron
+_sees_, and shrinking it would flatten the gradient the new structure needs.
 
 | Option                         | Type      | Default | Description                                                                                                                                                    |
 | ------------------------------ | --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -220,16 +221,24 @@ const config = createNeatConfig({
 ```
 
 **Why the grace period is needed.** `compactUnused` ranks hidden neurons by
-`|activation range| x min(maxOutgoingWeight, 1) - plankConstant x fanIn` and
+`|activation range| × min(maxOutgoingWeight, 1) − plankConstant × fanIn` and
 removes the smallest. A neuron with a near-zero outward weight scores ~0, so it
 is the _first_ candidate — it would be compacted away before the gradient step
 that was meant to give it a job. `structuralNewbornGraceRounds` tags the newborn
-so compaction skips it; every pass that actually compacts the creature spends
-one round of that budget, after which the neuron is an ordinary candidate again.
+so compaction skips it. The budget is spent one round at a time: `compactUnused`
+spends a round on the compacted copy it returns, and the training teardown
+spends a round on the trained (uncompacted) creature, so neither lineage can end
+up exempt from compaction for the rest of the run.
+
+> [!NOTE]
+> The grace is honoured by `compactUnused` only. When `compactUnused` finds no
+> removal candidate at all, both training paths fall back to `compactVariants`,
+> which prunes structurally rather than by activation trace and has no newborn
+> awareness.
 
 ```mermaid
 flowchart LR
-    A[AddNeuron] -->|outward weight x scale| B[Near-identity offspring]
+    A[AddNeuron] -->|outward weight × scale| B[Near-identity offspring]
     A -->|newborn-grace tag| B
     B --> C[Scores level with parent]
     C --> D[Selected for training]

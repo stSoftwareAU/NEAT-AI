@@ -17,7 +17,7 @@
  */
 import { addTag, getTag, removeTag } from "@stsoftware/tags/mod";
 import type { TagsInterface } from "@stsoftware/tags/mod";
-import { ValidationError } from "@errors/ValidationError.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 
 /** Tag holding the number of compaction passes a neuron is still exempt from. */
 export const NEWBORN_GRACE_TAG = "newborn-grace";
@@ -32,9 +32,9 @@ export const NEWBORN_GRACE_TAG = "newborn-grace";
  */
 export function tagNewbornGrace(target: TagsInterface, rounds: number): void {
   if (!Number.isInteger(rounds) || rounds < 0) {
-    throw new ValidationError(
+    throw new ConfigurationError(
       `Newborn grace rounds must be a non-negative integer, was ${rounds}`,
-      "OTHER",
+      Number.isInteger(rounds) ? "OUT_OF_RANGE" : "NOT_INTEGER",
     );
   }
   if (rounds === 0) return;

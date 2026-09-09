@@ -177,8 +177,8 @@ Deno.test("AddNeuron - tags the neuron it inserts with the configured grace", ()
   );
   assert(plainAdded !== undefined, "The inserted neuron should be findable");
   assertEquals(
-    plainAdded.tags,
-    undefined,
-    "The default must write no newborn tag at all",
+    newbornGraceRemaining(plainAdded),
+    0,
+    "The default must leave the newborn an ordinary compaction candidate",
   );
 });

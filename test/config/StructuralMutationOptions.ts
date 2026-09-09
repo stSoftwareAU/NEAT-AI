@@ -6,10 +6,10 @@
  * option, and reject values that would make `Synapse.randomWeight()` assert
  * mid-run.
  */
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { createNeatConfig } from "@config/NeatConfig.ts";
 import { resolveStructuralMutationOptions } from "@mutate/StructuralMutationOptions.ts";
-import { ValidationError } from "@errors/ValidationError.ts";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 
 Deno.test("structural mutation options - defaults reproduce current behaviour", () => {
   const config = createNeatConfig({});
@@ -65,21 +65,22 @@ Deno.test("resolveStructuralMutationOptions - fills defaults and validates input
       resolveStructuralMutationOptions({
         structuralWeightScale: Number.NaN,
       }),
-    ValidationError,
+    ConfigurationError,
   );
   assertThrows(
     () =>
       resolveStructuralMutationOptions({
         structuralNewbornGraceRounds: -2,
       }),
-    ValidationError,
+    ConfigurationError,
   );
 });
 
-Deno.test("structural mutation options - a large scale is still accepted and clamped downstream", () => {
+Deno.test("structural mutation options - a scale wider than the default is accepted", () => {
   const config = createNeatConfig({ structuralWeightScale: 4 });
-  assert(
-    config.structuralWeightScale === 4,
+  assertEquals(
+    config.structuralWeightScale,
+    4,
     "A wider-than-default scale is a legitimate sweep point",
   );
 });

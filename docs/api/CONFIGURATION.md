@@ -63,6 +63,17 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 | `verbose`        | `boolean`             | `false`                             | Verbose logging; when `true`, `log` defaults to `1` (see [Logging](../config/LOGGING.md)) |
 | `log`            | `number`              | `0`                                 | Log status every N generations (0 = off, 1 if verbose)                                    |
 
+### 🧬 Structural mutation fields
+
+Identity-initialised structural mutation (Issue #3970). Both defaults reproduce
+the historical behaviour exactly — see
+[Mutation adaptation → identity-initialised structural mutation](../config/MUTATION_ADAPTATION.md#-identity-initialised-structural-mutation).
+
+| Field                          | Type      | Default | Description                                                                                             |
+| ------------------------------ | --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `structuralWeightScale`        | `number`  | `1`     | Scale for the **outward** synapse of `AddNeuron` and for `AddConnection` on the main mutation path (>0) |
+| `structuralNewbornGraceRounds` | `integer` | `0`     | Compaction passes a newly inserted neuron is exempt from `compactUnused` removal                        |
+
 ### 🎓 Training fields
 
 | Field                          | Type     | Default                                | Description                                |

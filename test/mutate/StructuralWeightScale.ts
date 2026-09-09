@@ -9,7 +9,8 @@
  *
  * The default (`1`) must be bit-identical to the historical behaviour.
  */
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertThrows } from "@std/assert";
+import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { Creature, type CreatureExport, Mutation } from "../../mod.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
 import { Mutator } from "@neat/Mutator.ts";
@@ -186,17 +187,11 @@ Deno.test("AddConnection - structuralWeightScale bounds the new synapse, and 1 m
 
 Deno.test("AddNeuron - rejects an invalid structuralWeightScale", () => {
   const creature = seedCreature();
-  let threw = false;
-  try {
-    new AddNeuron(creature, { structuralWeightScale: 0 });
-  } catch (error) {
-    threw = true;
-    assert(
-      (error as Error).message.includes("structuralWeightScale"),
-      `Unexpected error: ${(error as Error).message}`,
-    );
-  }
-  assert(threw, "A zero weight scale must be rejected loudly");
+  assertThrows(
+    () => new AddNeuron(creature, { structuralWeightScale: 0 }),
+    ConfigurationError,
+    "structuralWeightScale",
+  );
 });
 
 Deno.test("Mutator - default config is bit-identical to an explicit scale of 1 on a fixed seed", async () => {

@@ -373,6 +373,14 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
     note: "Added after the slices by #3779 — the population-wide no-progress " +
       "training gate `NeatScheduling.scheduleTraining` reads.",
   }),
+  keep("structuralWeightScale", "roll-up", {
+    note: "Added after the slices by #3970 — identity-initialised structural " +
+      "mutation; `Mutator` passes it to `AddNeuron` / `AddConnection`.",
+  }),
+  keep("structuralNewbornGraceRounds", "roll-up", {
+    note: "Added after the slices by #3970 — the newborn compaction grace " +
+      "`AddNeuron` tags and `compactUnused` honours.",
+  }),
 ];
 
 /** The merged classification table — every option key, one entry each. */
