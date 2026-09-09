@@ -234,3 +234,87 @@ Deno.test("Mutator - default config is bit-identical to an explicit scale of 1 o
     }
   });
 });
+
+/**
+ * The behavioural point of the issue: a reduced outward scale makes the
+ * offspring a near-identity variant of its parent, so it scores level with the
+ * parent instead of being knocked off a tuned optimum.
+ */
+Deno.test("AddNeuron - a reduced scale leaves the parent's outputs nearly unchanged", async () => {
+  await withRngTestLock(() => {
+    const previous = getRandomNumberGenerator();
+    try {
+      const samples: Float32Array[] = [];
+      for (let i = 0; i < 20; i++) {
+        samples.push(new Float32Array([i / 20, 1 - i / 20]));
+      }
+
+      const parent = seedCreature();
+      const expected = samples.map((row) =>
+        Array.from(parent.activate(row, false))
+      );
+
+      /** Mean absolute output deviation from the parent over 30 offspring. */
+      const meanDeviation = (scale: number): number => {
+        setRandomNumberGenerator(createSeededRng(3970));
+        let total = 0;
+        let count = 0;
+        for (let offspring = 0; offspring < 30; offspring++) {
+          const child = seedCreature();
+          new AddNeuron(child, { structuralWeightScale: scale }).mutate();
+          samples.forEach((row, index) => {
+            const actual = child.activate(row, false);
+            for (let output = 0; output < actual.length; output++) {
+              total += Math.abs(actual[output] - expected[index][output]);
+              count++;
+            }
+          });
+        }
+        return total / count;
+      };
+
+      const full = meanDeviation(1);
+      const reduced = meanDeviation(1e-4);
+      assert(
+        reduced * 100 < full,
+        `A 1e-4 scale should perturb the parent far less than full scale: ` +
+          `${reduced} vs ${full}`,
+      );
+    } finally {
+      setRandomNumberGenerator(previous);
+    }
+  });
+});
+
+/**
+ * Regression: a forward-only creature strips the fallback self-loop the
+ * operator sometimes creates, after which `neuron.fix()` re-adds an outward
+ * synapse at full scale. Before Issue #3970 enforced the scale as a
+ * post-condition, offspring 197 of this seed left the newborn wired at 0.173
+ * under a requested scale of 2.7e-5.
+ */
+Deno.test("AddNeuron - the repair path cannot leave a full-scale outward synapse", async () => {
+  await withRngTestLock(() => {
+    const previous = getRandomNumberGenerator();
+    const scale = 2.7e-5;
+    try {
+      setRandomNumberGenerator(createSeededRng(3970));
+      for (let offspring = 0; offspring < 200; offspring++) {
+        const { outward } = addNeuronWeights(scale);
+        assert(outward.length > 0, "The newborn must have an outward synapse");
+        for (const weight of outward) {
+          assert(
+            Math.abs(weight) <= scale / 2 + PLANK,
+            `Offspring ${offspring} kept an over-scale outward weight ${weight}`,
+          );
+          assert(
+            Math.abs(weight) >= PLANK,
+            `Offspring ${offspring} outward weight ${weight} is below a plank`,
+          );
+        }
+      }
+    } finally {
+      setRandomNumberGenerator(previous);
+    }
+  });
+});

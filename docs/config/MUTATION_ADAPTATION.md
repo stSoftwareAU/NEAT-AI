@@ -186,6 +186,64 @@ The `"absolute"` row moves when the objective is rescaled — its acceptance rat
 falls from 83% to 41% for the same schedule — which is exactly the coupling rank
 shaping removes.
 
+## 🧬 Identity-initialised structural mutation
+
+`AddNeuron` and `AddConnection` wire new structure with a random weight drawn
+uniformly from `[-0.5, +0.5]`. On a creature whose behaviour is already tuned to
+fifth-decimal margins, injecting that into a live neuron's summed input is a
+large perturbation, so the offspring is overwhelmingly likely to score below its
+parent — and a mutation that drops the score is never picked for a gradient
+step, so the structure it proposed is discarded in the generation that made it.
+
+Scaling the **outward** synapse down approaches the ResNet residual construction
+`x + eF(x)`: the new structure is nearly a no-op at birth, scores level with its
+parent, and therefore survives long enough for backprop to learn a job for it.
+The inward synapse keeps its full-scale draw — it only determines what the new
+neuron _sees_, and shrinking it would flatten the gradient the new structure
+needs.
+
+| Option                         | Type      | Default | Description                                                                                                                                                    |
+| ------------------------------ | --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `structuralWeightScale`        | `number`  | `1`     | Scale passed to `Synapse.randomWeight()` for the outward synapse of `AddNeuron`, and for `AddConnection` on the main mutation path. Must be greater than zero. |
+| `structuralNewbornGraceRounds` | `integer` | `0`     | Compaction passes a newly inserted neuron is exempt from `compactUnused` removal (min: 0).                                                                     |
+
+Both defaults reproduce the historical behaviour exactly, bit-for-bit on a fixed
+seed.
+
+```ts
+const config = createNeatConfig({
+  // Near-identity initialisation, matching the creative-thinking path's
+  // 1 / synapseCount scale, with one compaction pass of newborn protection.
+  structuralWeightScale: 0.0001,
+  structuralNewbornGraceRounds: 1,
+});
+```
+
+**Why the grace period is needed.** `compactUnused` ranks hidden neurons by
+`|activation range| x min(maxOutgoingWeight, 1) - plankConstant x fanIn` and
+removes the smallest. A neuron with a near-zero outward weight scores ~0, so it
+is the _first_ candidate — it would be compacted away before the gradient step
+that was meant to give it a job. `structuralNewbornGraceRounds` tags the newborn
+so compaction skips it; every pass that actually compacts the creature spends
+one round of that budget, after which the neuron is an ordinary candidate again.
+
+```mermaid
+flowchart LR
+    A[AddNeuron] -->|outward weight x scale| B[Near-identity offspring]
+    A -->|newborn-grace tag| B
+    B --> C[Scores level with parent]
+    C --> D[Selected for training]
+    D --> E[Backprop learns the residual F]
+    B -.->|grace skips it| F[compactUnused]
+    F -.->|grace spent| G[Ordinary removal candidate]
+```
+
+> [!NOTE]
+> A near-identity neuron is easy to accept and may still contribute nothing.
+> Watch the outward weight magnitude of newly added neurons _after_ training: if
+> it stays at its initial scale, the operator is inflating the creature with
+> dead structure that still costs growth cost and evaluation time.
+
 ## 👀 See also
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — base mutation rates that
