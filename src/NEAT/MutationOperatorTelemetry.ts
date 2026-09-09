@@ -86,6 +86,13 @@ interface PendingOffspring {
   evaluated: boolean;
   /** Evaluation wall-clock charged to this offspring, in ms. */
   evaluationMs: number;
+  /**
+   * Score observed at evaluation time. Captured there rather than read at
+   * generation end because a rejected offspring is disposed — which clears its
+   * score — before the outcome is resolved, and a rejected structural mutation
+   * is precisely the delta worth measuring.
+   */
+  evaluatedScore: number | undefined;
   /** `finaliseGeneration` passes survived without being evaluated. */
   generationsPending: number;
   /** Set when the mutations were rolled back; swept at the next finalise. */
@@ -281,6 +288,9 @@ export class MutationOperatorTelemetry {
     if (Number.isFinite(evaluationMs) && evaluationMs > 0) {
       entry.evaluationMs += evaluationMs;
     }
+    if (creature.score !== undefined && Number.isFinite(creature.score)) {
+      entry.evaluatedScore = creature.score;
+    }
   }
 
   /** Whether `creature` currently carries a pending attribution (tests). */
@@ -397,7 +407,7 @@ export class MutationOperatorTelemetry {
   ): number | undefined {
     const baseline = entry.baselineScore;
     if (baseline === undefined || !Number.isFinite(baseline)) return undefined;
-    const score = creature.score;
+    const score = entry.evaluatedScore ?? creature.score;
     if (score === undefined || !Number.isFinite(score)) return undefined;
     return score - baseline;
   }
@@ -472,6 +482,7 @@ export class MutationOperatorTelemetry {
         baselineScore: undefined,
         evaluated: false,
         evaluationMs: 0,
+        evaluatedScore: undefined,
         generationsPending: 0,
         dropped: false,
       };

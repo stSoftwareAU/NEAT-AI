@@ -156,6 +156,25 @@ Deno.test("MutationOperatorTelemetry: score delta distribution reports min, medi
   assertAlmostEquals(distribution.max, 4, 1e-9);
 });
 
+Deno.test("MutationOperatorTelemetry: the delta survives a rejected offspring being cleared", () => {
+  const telemetry = new MutationOperatorTelemetry();
+  const creature = makeCreature(1);
+
+  telemetry.recordProposed("ADD_NODE");
+  telemetry.recordApplied(creature, "ADD_NODE", { baselineScore: 1 });
+  creature.score = 0.75;
+  telemetry.recordEvaluated(creature, 3);
+  // A creature dropped from the population is disposed before the generation
+  // ends, and `clearState()` deletes its score.
+  creature.clearState();
+
+  const summary = telemetry.finaliseGeneration([]).operators["ADD_NODE"];
+  assertEquals(summary.rejected, 1);
+  assert(summary.scoreDelta, "the evaluated score was captured at evaluation");
+  assertAlmostEquals(summary.scoreDelta.median, -0.25, 1e-9);
+  assertEquals(summary.deltaUnavailable, 0);
+});
+
 Deno.test("MutationOperatorTelemetry: an offspring with no baseline reports no delta", () => {
   const telemetry = new MutationOperatorTelemetry();
   const creature = makeCreature(); // freshly bred — no score, no parent lookup
