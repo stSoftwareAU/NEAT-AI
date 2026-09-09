@@ -80,8 +80,8 @@ Deno.test("GradientDepthProbe - a saturated HARD_TANH zeroes and is blamed", asy
   const saturated = probeGradientDepth(creature, [new Float32Array([5])]);
   const blockedDepth1 = bucketAt(saturated, 1);
   assertEquals(blockedDepth1.zeroFraction, 1);
-  assertEquals(blockedDepth1.zeroCauses["saturated-derivative"], 1);
-  assertEquals(blockedDepth1.saturatedSquashes["HARD_TANH"], 1);
+  assertEquals(blockedDepth1.zeroCauses["zero-derivative"], 1);
+  assertEquals(blockedDepth1.zeroDerivativeSquashes["HARD_TANH"], 1);
   // The neuron the gradient still reaches is unaffected.
   assertAlmostEquals(bucketAt(saturated, 2).meanAbsGradient, 1, 1e-9);
 
@@ -251,4 +251,122 @@ Deno.test("GradientDepthProbe - quantile truncation is reported, never silent", 
 
   const complete = probeGradientDepth(creature, samples);
   assertEquals(bucketAt(complete, 1).quantilesTruncated, false);
+});
+
+Deno.test("GradientDepthProbe - a MINIMUM runner-up inside the window still carries gradient", async () => {
+  await initWasmForTests();
+  // The engine leaks `RUNNER_UP_LEAK_FRACTION * proximity` of the error to a
+  // loser within 20% of the winner's magnitude (Issue #1874); a probe that
+  // ignored that would report a dead route the trainer still feeds.
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "low", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "near", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "pick", squash: "MINIMUM", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "low", weight: 1 },
+      { fromUUID: "input-1", toUUID: "near", weight: 1 },
+      { fromUUID: "low", toUUID: "pick", weight: 1 },
+      { fromUUID: "near", toUUID: "pick", weight: 1 },
+      { fromUUID: "pick", toUUID: "output-0", weight: 1 },
+    ],
+  });
+
+  // Winner 0.1, runner-up 0.11: distance 0.01 against a 0.1 x 0.2 = 0.02
+  // window, so proximity is 0.5 and the leak is 0.15 x 0.5 = 0.075.
+  const inWindow = probeGradientDepth(creature, [
+    new Float32Array([0.1, 0.11]),
+  ]);
+  const near = bucketAt(inWindow, 1);
+  assertEquals(near.zeroObservations, 0);
+  assertAlmostEquals(near.maxAbsGradient, 1, 1e-9);
+  assertAlmostEquals(near.meanAbsGradient, (1 + 0.075) / 2, 1e-6);
+
+  // Runner-up 0.9 sits far outside the window and is blocked as before.
+  const outOfWindow = probeGradientDepth(creature, [
+    new Float32Array([0.1, 0.9]),
+  ]);
+  const far = bucketAt(outOfWindow, 1);
+  assertEquals(far.zeroObservations, 1);
+  assertEquals(far.zeroCauses["unselected-min-max"], 1);
+});
+
+Deno.test("GradientDepthProbe - attribution counts every blocked route, not one winner", async () => {
+  await initWasmForTests();
+  // `src` feeds two saturated HARD_TANH neurons, so one zero measurement is
+  // blamed twice — once per blocked route. A winner-takes-all attribution
+  // would report 1 and hide the second route.
+  const creature = Creature.fromJSON({
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "src", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "a", squash: "HARD_TANH", bias: 0 },
+      { type: "hidden", uuid: "b", squash: "HARD_TANH", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "src", weight: 1 },
+      { fromUUID: "src", toUUID: "a", weight: 1 },
+      { fromUUID: "src", toUUID: "b", weight: 1 },
+      { fromUUID: "a", toUUID: "output-0", weight: 1 },
+      { fromUUID: "b", toUUID: "output-0", weight: 1 },
+    ],
+  });
+
+  const profile = probeGradientDepth(creature, [new Float32Array([5])]);
+  const depth1 = bucketAt(profile, 1);
+  assertEquals(depth1.zeroObservations, 1);
+  assertEquals(depth1.zeroCauses["zero-derivative"], 2);
+  assertEquals(depth1.zeroDerivativeSquashes["HARD_TANH"], 2);
+});
+
+Deno.test("GradientDepthProbe - the serial-chain cut names its range and what it measured", async () => {
+  await initWasmForTests();
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "a", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "b", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "a", weight: 1 },
+      { fromUUID: "input-1", toUUID: "a", weight: 1 },
+      { fromUUID: "a", toUUID: "b", weight: 1 },
+      { fromUUID: "b", toUUID: "output-0", weight: 1 },
+    ],
+  });
+
+  const profile = probeGradientDepth(creature, [new Float32Array([0.2, 0.3])]);
+  const chain = profile.serialChainProfile!;
+  assertEquals(chain.startDepth, 1);
+  assertEquals(chain.endDepth, 3);
+  assertEquals(chain.totalMembers, 3);
+  // The depth-3 output carries the seed, so only two members are measured.
+  assertEquals(chain.measuredNeurons, 2);
+  assertEquals(chain.aggregate.observations, 2);
+});
+
+Deno.test("GradientDepthProbe - percentiles are nearest-rank over the measurements", async () => {
+  await initWasmForTests();
+  // One neuron at depth 1 whose gradient is the output weight; four samples
+  // give four identical magnitudes, so every quantile is that value.
+  const creature = Creature.fromJSON(linearChain);
+  const profile = probeGradientDepth(creature, [
+    new Float32Array([0.1]),
+    new Float32Array([0.2]),
+    new Float32Array([0.3]),
+    new Float32Array([0.4]),
+  ]);
+  const depth1 = bucketAt(profile, 1);
+  assertEquals(depth1.observations, 4);
+  assertAlmostEquals(depth1.medianAbsGradient, 12, 1e-9);
+  assertAlmostEquals(depth1.p95AbsGradient, 12, 1e-9);
+  assertAlmostEquals(depth1.maxAbsGradient, 12, 1e-9);
 });

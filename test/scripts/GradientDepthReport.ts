@@ -5,10 +5,16 @@
  * has to refuse bad data loudly rather than quietly profiling the wrong rows.
  */
 
-import { assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
+import {
+  assertAlmostEquals,
+  assertEquals,
+  assertStringIncludes,
+  assertThrows,
+} from "@std/assert";
 import { Creature } from "@creature";
 import { probeGradientDepth } from "@propagate/GradientDepthProbe.ts";
 import {
+  numericFlag,
   parseFlags,
   parseObservations,
   renderProfile,
@@ -103,4 +109,39 @@ Deno.test("gradientDepthReport - renders a profile as a Markdown table", async (
   assertStringIncludes(markdown, "- deepest layer: 2");
   assertStringIncludes(markdown, "- serial chain: depth 1–2, 2 neurons");
   assertStringIncludes(markdown, "| 1 | 1 | 1 | 0.0% | 3.00e+0 |");
+});
+
+Deno.test("gradientDepthReport - numeric flags refuse anything that is not a number", () => {
+  assertEquals(numericFlag("seed", undefined, 42), 42);
+  assertEquals(numericFlag("seed", "7", 42), 7);
+  assertEquals(numericFlag("scale", "0.01", 1), 0.01);
+
+  // `Number("abc")` is NaN — seeding an RNG with it, or asking for NaN rows,
+  // used to pass silently.
+  assertThrows(
+    () => numericFlag("seed", "abc", 42),
+    RangeError,
+    "must be a finite number",
+  );
+  assertThrows(
+    () => numericFlag("samples", "2.5", 64, { integer: true }),
+    RangeError,
+    "must be a whole number",
+  );
+  assertThrows(
+    () => numericFlag("samples", "-5", 64, { integer: true, minimum: 1 }),
+    RangeError,
+    "must be at least 1",
+  );
+});
+
+Deno.test("gradientDepthReport - the scale factor widens the synthetic rows", () => {
+  const wide = syntheticObservations(8, 4, 3);
+  const narrow = syntheticObservations(8, 4, 3, 0.01);
+
+  assertEquals([...narrow[0]].every((v) => Math.abs(v) <= 0.01), true);
+  // Same seed, same draw — so the rows differ only by the scale factor.
+  for (let i = 0; i < wide[0].length; i++) {
+    assertAlmostEquals(narrow[0][i] * 100, wide[0][i], 1e-5);
+  }
 });

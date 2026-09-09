@@ -16,10 +16,10 @@
 
 import { Creature } from "@creature";
 import {
-  type GradientDepthBucket,
   type GradientDepthProfile,
   probeGradientDepth,
 } from "@propagate/GradientDepthProbe.ts";
+import type { GradientDepthBucket } from "@propagate/GradientDepthBuckets.ts";
 import { createSeededRng } from "@utils/RandomNumberGenerator.ts";
 
 /** Build `count` seeded input rows of `width` values in [-1, 1). */
@@ -27,15 +27,37 @@ export function syntheticObservations(
   width: number,
   count: number,
   seed: number,
+  scale = 1,
 ): Float32Array[] {
   const rng = createSeededRng(seed);
   const rows: Float32Array[] = [];
   for (let i = 0; i < count; i++) {
     const row = new Float32Array(width);
-    for (let j = 0; j < width; j++) row[j] = rng.random() * 2 - 1;
+    for (let j = 0; j < width; j++) row[j] = (rng.random() * 2 - 1) * scale;
     rows.push(row);
   }
   return rows;
+}
+
+/** Parse a numeric flag, refusing anything that is not a finite number. */
+export function numericFlag(
+  name: string,
+  raw: string | undefined,
+  fallback: number,
+  { integer = false, minimum = Number.NEGATIVE_INFINITY } = {},
+): number {
+  if (raw === undefined) return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) {
+    throw new RangeError(`--${name} must be a finite number, got "${raw}"`);
+  }
+  if (integer && !Number.isInteger(value)) {
+    throw new RangeError(`--${name} must be a whole number, got "${raw}"`);
+  }
+  if (value < minimum) {
+    throw new RangeError(`--${name} must be at least ${minimum}, got "${raw}"`);
+  }
+  return value;
 }
 
 /** Read a corpus of input rows: a JSON array of arrays of finite numbers. */
@@ -67,14 +89,17 @@ export function parseObservations(
   });
 }
 
-function formatBucket(bucket: GradientDepthBucket): string {
-  const causes = Object.entries(bucket.zeroCauses)
+function tally(counts: Record<string, number>): string {
+  const entries = Object.entries(counts)
     .filter(([, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1])
-    .map(([cause, count]) => `${cause} ${count}`)
-    .join(", ");
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([name, count]) => `${name} ${count}`);
+  return entries.length === 0 ? "—" : entries.join(", ");
+}
+
+function formatBucket(bucket: GradientDepthBucket, label: string): string {
   return [
-    bucket.depth,
+    label,
     bucket.neurons,
     bucket.observations,
     (bucket.zeroFraction * 100).toFixed(1) + "%",
@@ -84,9 +109,16 @@ function formatBucket(bucket: GradientDepthBucket): string {
     bucket.signFlipComparisons === 0
       ? "n/a"
       : (bucket.signFlipRate * 100).toFixed(1) + "%",
-    causes === "" ? "—" : causes,
+    tally(bucket.zeroCauses),
+    tally(bucket.zeroDerivativeSquashes),
   ].map(String).join(" | ");
 }
+
+const TABLE_HEAD = [
+  "| depth | neurons | obs | zero | median \\|g\\| | p95 \\|g\\| | max \\|g\\| |" +
+  " sign flips | zero attribution (per blocked route) | squash returning a zero derivative |",
+  "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+];
 
 /** Render a profile as a Markdown section. */
 export function renderProfile(
@@ -109,22 +141,24 @@ export function renderProfile(
   } else {
     lines.push("- serial chain: none");
   }
-  lines.push(
-    "",
-    "| depth | neurons | obs | zero | median \\|g\\| | p95 \\|g\\| | max \\|g\\| | sign flips | zero attribution |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
-  );
+  lines.push("", ...TABLE_HEAD);
   for (const bucket of profile.buckets) {
-    lines.push(`| ${formatBucket(bucket)} |`);
+    lines.push(`| ${formatBucket(bucket, String(bucket.depth))} |`);
   }
-  if (profile.chainBucket !== undefined) {
+
+  const chain = profile.serialChainProfile;
+  if (chain !== undefined) {
     lines.push(
       "",
-      "Restricted to the serial chain:",
+      `Pooled across the serial chain — ${chain.measuredNeurons} of ` +
+        `${chain.totalMembers} members measured (an output member carries the ` +
+        `seed, not a measurement). The per-depth rows for these depths are in ` +
+        `the table above.`,
       "",
-      "| depth | neurons | obs | zero | median \\|g\\| | p95 \\|g\\| | max \\|g\\| | sign flips | zero attribution |",
-      "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
-      `| ${formatBucket(profile.chainBucket)} |`,
+      ...TABLE_HEAD,
+      `| ${
+        formatBucket(chain.aggregate, `${chain.startDepth}–${chain.endDepth}`)
+      } |`,
     );
   }
   lines.push("");
@@ -162,6 +196,7 @@ if (import.meta.main) {
     "output",
     "samples",
     "seed",
+    "scale",
   ]);
   const creaturePath = flags.get("creature");
   if (creaturePath === undefined) {
@@ -174,23 +209,34 @@ if (import.meta.main) {
   );
 
   const corpusPath = flags.get("observations");
-  const seed = Number(flags.get("seed") ?? "42");
   let rows: Float32Array[];
   let provenance: string;
   if (corpusPath !== undefined) {
+    for (const ignored of ["samples", "seed", "scale"]) {
+      if (flags.has(ignored)) {
+        throw new RangeError(
+          `--${ignored} only applies to synthetic rows; drop it or drop ` +
+            `--observations`,
+        );
+      }
+    }
     rows = parseObservations(
       await Deno.readTextFile(corpusPath),
       creature.input,
     );
     provenance = `corpus ${corpusPath}`;
   } else {
-    rows = syntheticObservations(
-      creature.input,
-      Number(flags.get("samples") ?? "64"),
-      seed,
-    );
-    provenance =
-      `SYNTHETIC seeded uniform[-1,1), seed ${seed} — not production data`;
+    const seed = numericFlag("seed", flags.get("seed"), 42, { integer: true });
+    const samples = numericFlag("samples", flags.get("samples"), 64, {
+      integer: true,
+      minimum: 1,
+    });
+    const scale = numericFlag("scale", flags.get("scale"), 1, {
+      minimum: Number.MIN_VALUE,
+    });
+    rows = syntheticObservations(creature.input, samples, seed, scale);
+    provenance = `SYNTHETIC seeded uniform[-${scale}, ${scale}), seed ` +
+      `${seed} — not production data`;
   }
 
   const profile = probeGradientDepth(creature, rows);

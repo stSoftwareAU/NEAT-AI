@@ -1,42 +1,21 @@
 /**
  * @module
  *
- * Measures how much gradient actually reaches a neuron, bucketed by depth.
+ * Measures how much gradient actually reaches a neuron, bucketed by depth
+ * (Issue #3972).
  *
- * Issue #3972: GRQ creatures are 61 hops deep and the deep tail is single-file
- * — see {@link findSerialChains}. Every member of that tail is a construct that
- * can hand back an *exactly zero* derivative (`HARD_TANH` outside `(-1, 1)`,
- * the losing branch of a `MINIMUM` / `MAXIMUM`, the untaken branch of an `IF`),
- * so the preconditions for the shattered-gradient failure Balduzzi et al.
- * (2017) describe are all present. Whether the gradient is *actually* degraded
- * was unmeasured; this probe measures it.
+ * `docs/GRADIENT_DEPTH_PROBE.md` owns the explanation — why the measurement
+ * exists, what each metric answers, how the reverse sweep models each squash,
+ * and the inertness guarantee. It is linked here rather than copied so the two
+ * cannot drift.
  *
- * It is a **read-only** analysis, not an instrumented training loop. The
- * creature handed in is cloned before anything runs, so no weight, bias, trace
- * or cache belonging to the caller is touched — see the inertness test in
- * `test/propagate/GradientDepthProbeInert.ts`. That is also why it costs
- * nothing to leave switched off: nothing in the training path calls it.
+ * The two invariants a reader of *this* file needs:
  *
- * The measurement is a reverse-mode sweep over the same forward activations the
- * engine produced, using the same derivative implementations the engine's
- * backpropagation uses:
- *
- * - a scalar squash contributes `squash.derivative(value) * weight`, where
- *   `value = bias + Σ activation(from) * weight` (the aggregation
- *   `NeuronActivation.makeFunction` compiles);
- * - `MINIMUM` / `MAXIMUM` route the whole gradient to the winning inward
- *   synapse and nothing to the rest;
- * - `IF` routes it to the branch the condition sum selected, and nothing to the
- *   condition synapses, whose threshold has no usable derivative.
- *
- * ```mermaid
- * flowchart LR
- *     S[input sample] --> A[activateAndTrace on the clone]
- *     A --> R[reverse sweep<br/>deepest depth first]
- *     R --> B[per-depth buckets]
- *     B --> M[magnitude / exactly-zero / sign-flip]
- *     R --> Z[zero-gradient attribution]
- * ```
+ * - the creature handed in is **cloned**, so nothing belonging to the caller is
+ *   read again or written, and every config field that would draw from the
+ *   global RNG is pinned;
+ * - the sweep is **read-only** — it is not an instrumented training loop, and
+ *   nothing in the training path calls it.
  */
 
 import { Creature } from "@creature";
@@ -48,70 +27,17 @@ import {
   type SerialChain,
 } from "@propagate/SerialChains.ts";
 import { SparseConfig } from "@propagate/sparse/SparseConfig.ts";
-
-/** Why a neuron saw an exactly-zero gradient on one sample. */
-export type ZeroGradientCause =
-  /** Every route out ran into a squash whose `derivative()` returned zero. */
-  | "saturated-derivative"
-  /** Every route out was the losing branch of a `MINIMUM` / `MAXIMUM`. */
-  | "unselected-min-max"
-  /** Every route out fed the branch an `IF` did not take. */
-  | "untaken-if-branch"
-  /** Every route out fed an `IF` condition — a threshold with no derivative. */
-  | "if-condition"
-  /** Every route out had weight zero. */
-  | "zero-weight"
-  /** Routes were open, but the neurons they lead to already had no gradient. */
-  | "downstream-zero"
-  /** Routes were open and carried gradient, but the contributions cancelled. */
-  | "cancellation"
-  /** The neuron has no forward route to anything at all. */
-  | "unreached";
-
-const ZERO_CAUSES: readonly ZeroGradientCause[] = [
-  "saturated-derivative",
-  "unselected-min-max",
-  "untaken-if-branch",
-  "if-condition",
-  "zero-weight",
-  "downstream-zero",
-  "cancellation",
-  "unreached",
-];
-
-/** The measured gradient profile of one depth level. */
-export interface GradientDepthBucket {
-  /** Depth, as {@link computeLayerAssignments} assigns it. */
-  depth: number;
-  /** Distinct neurons at this depth that were measured. */
-  neurons: number;
-  /** Neuron × sample measurements taken at this depth. */
-  observations: number;
-  /** Measurements whose gradient was exactly zero. */
-  zeroObservations: number;
-  /** `zeroObservations / observations`, or `0` when nothing was measured. */
-  zeroFraction: number;
-  /** Mean `|gradient|` over every measurement, zeroes included. */
-  meanAbsGradient: number;
-  /** Median `|gradient|`; `quantilesTruncated` says when it is a sample. */
-  medianAbsGradient: number;
-  /** 95th percentile `|gradient|`. */
-  p95AbsGradient: number;
-  /** Largest `|gradient|` seen. */
-  maxAbsGradient: number;
-  /** Consecutive-sample pairs where both gradients were non-zero. */
-  signFlipComparisons: number;
-  /** Of those pairs, how many reversed sign — the shattered-gradient signal. */
-  signFlips: number;
-  /** `signFlips / signFlipComparisons`, or `0` when nothing was comparable. */
-  signFlipRate: number;
-  /** Zero-gradient measurements attributed to each construct. */
-  zeroCauses: Record<ZeroGradientCause, number>;
-  /** Squash names blamed for `saturated-derivative`, by measurement count. */
-  saturatedSquashes: Record<string, number>;
-  /** True when the quantiles come from a truncated sample of measurements. */
-  quantilesTruncated: boolean;
-}
+import {
+  RUNNER_UP_LEAK_FRACTION,
+  runnerUpProximity,
+} from "@methods/activations/aggregate/RunnerUpProximity.ts";
+import { ActivationError } from "@errors/ActivationError.ts";
+import {
+  BucketAccumulator,
+  DEFAULT_QUANTILE_SAMPLE_LIMIT,
+  type GradientDepthBucket,
+  type ZeroGradientCause,
+} from "@propagate/GradientDepthBuckets.ts";
 
 /** The whole profile: one bucket per depth, plus the serial-chain cut. */
 export interface GradientDepthProfile {
@@ -123,11 +49,37 @@ export interface GradientDepthProfile {
   buckets: GradientDepthBucket[];
   /** The longest serial chain, when the topology has one. */
   serialChain?: SerialChain;
+  /** The same measurements restricted to that chain. */
+  serialChainProfile?: SerialChainProfile;
+}
+
+/**
+ * The chain cut of the profile.
+ *
+ * Every chain depth holds exactly one neuron, so the **per-depth** view of the
+ * chain is already in {@link GradientDepthProfile.buckets} — the rows between
+ * `startDepth` and `endDepth`. What is added here is the aggregate across the
+ * whole chain, which no single depth bucket can show.
+ */
+export interface SerialChainProfile {
+  /** Depth of the chain's first member. */
+  startDepth: number;
+  /** Depth of the chain's last member. */
+  endDepth: number;
+  /** Members of the chain. */
+  totalMembers: number;
   /**
-   * The same measurements restricted to {@link serialChain}'s members,
-   * collapsed into a single bucket whose `depth` is the chain's start depth.
+   * Members actually measured. Output neurons are excluded from measurement —
+   * their gradient is the seed — so a chain ending at an output measures one
+   * fewer member than it has.
    */
-  chainBucket?: GradientDepthBucket;
+  measuredNeurons: number;
+  /**
+   * Every measurement of every chain member, pooled. Its `depth` field carries
+   * `startDepth` so the record is self-describing; it is a chain aggregate, not
+   * a depth level.
+   */
+  aggregate: GradientDepthBucket;
 }
 
 /** Knobs for {@link probeGradientDepth}. */
@@ -138,97 +90,6 @@ export interface GradientDepthProbeOptions {
    * reports `quantilesTruncated`. Default `100_000`.
    */
   quantileSampleLimit?: number;
-}
-
-const DEFAULT_QUANTILE_SAMPLE_LIMIT = 100_000;
-
-/** Mutable accumulator behind one {@link GradientDepthBucket}. */
-class BucketAccumulator {
-  readonly neurons = new Set<number>();
-  observations = 0;
-  zeroObservations = 0;
-  absSum = 0;
-  absMax = 0;
-  signFlipComparisons = 0;
-  signFlips = 0;
-  readonly magnitudes: number[] = [];
-  quantilesTruncated = false;
-  readonly zeroCauses = new Map<ZeroGradientCause, number>();
-  readonly saturatedSquashes = new Map<string, number>();
-
-  constructor(readonly depth: number, private readonly limit: number) {}
-
-  record(neuronIndex: number, gradient: number) {
-    this.neurons.add(neuronIndex);
-    this.observations++;
-    const magnitude = Math.abs(gradient);
-    this.absSum += magnitude;
-    if (magnitude > this.absMax) this.absMax = magnitude;
-    if (gradient === 0) this.zeroObservations++;
-    if (this.magnitudes.length < this.limit) {
-      this.magnitudes.push(magnitude);
-    } else {
-      this.quantilesTruncated = true;
-    }
-  }
-
-  blame(cause: ZeroGradientCause, squash?: string) {
-    this.zeroCauses.set(cause, (this.zeroCauses.get(cause) ?? 0) + 1);
-    if (squash !== undefined) {
-      this.saturatedSquashes.set(
-        squash,
-        (this.saturatedSquashes.get(squash) ?? 0) + 1,
-      );
-    }
-  }
-
-  compareSign(previous: number, current: number) {
-    if (previous === 0 || current === 0) return;
-    this.signFlipComparisons++;
-    if (Math.sign(previous) !== Math.sign(current)) this.signFlips++;
-  }
-
-  finish(): GradientDepthBucket {
-    const sorted = this.magnitudes.slice().sort((a, b) => a - b);
-    const zeroCauses = {} as Record<ZeroGradientCause, number>;
-    for (const cause of ZERO_CAUSES) {
-      zeroCauses[cause] = this.zeroCauses.get(cause) ?? 0;
-    }
-    return {
-      depth: this.depth,
-      neurons: this.neurons.size,
-      observations: this.observations,
-      zeroObservations: this.zeroObservations,
-      zeroFraction: this.observations === 0
-        ? 0
-        : this.zeroObservations / this.observations,
-      meanAbsGradient: this.observations === 0
-        ? 0
-        : this.absSum / this.observations,
-      medianAbsGradient: quantile(sorted, 0.5),
-      p95AbsGradient: quantile(sorted, 0.95),
-      maxAbsGradient: this.absMax,
-      signFlipComparisons: this.signFlipComparisons,
-      signFlips: this.signFlips,
-      signFlipRate: this.signFlipComparisons === 0
-        ? 0
-        : this.signFlips / this.signFlipComparisons,
-      zeroCauses,
-      saturatedSquashes: Object.fromEntries(
-        [...this.saturatedSquashes].sort((a, b) => b[1] - a[1]),
-      ),
-      quantilesTruncated: this.quantilesTruncated,
-    };
-  }
-}
-
-function quantile(sorted: readonly number[], fraction: number): number {
-  if (sorted.length === 0) return 0;
-  const position = Math.min(
-    sorted.length - 1,
-    Math.floor(fraction * sorted.length),
-  );
-  return sorted[position];
 }
 
 /** A scalar activation exposing the derivative the reverse sweep needs. */
@@ -267,6 +128,13 @@ interface LocalDerivatives {
   slope: Float64Array;
   /** Winning inward synapse for {@link LocalKind.Select} neurons. */
   selected: (Synapse | undefined)[];
+  /**
+   * Runner-up leak factor per losing `MINIMUM` / `MAXIMUM` synapse, mirroring
+   * `RUNNER_UP_LEAK_FRACTION * runnerUpProximity(...)` in the engine's own
+   * `MINIMUM.propagate` / `MAXIMUM.propagate`. Absent means the synapse sat
+   * outside the window and the engine leaks it nothing either.
+   */
+  leak: Map<Synapse, number>;
   /** Whether an {@link LocalKind.Branch} neuron took its positive branch. */
   positive: Uint8Array;
   /** Squash name blamed when a {@link LocalKind.Scalar} slope is zero. */
@@ -279,7 +147,7 @@ interface EdgeRoute {
   factor: number;
   /** Set when `factor` is zero — the construct responsible. */
   blockedBy?: ZeroGradientCause;
-  /** Squash blamed for a `saturated-derivative` block. */
+  /** Squash blamed for a `zero-derivative` block. */
   squash?: string;
 }
 
@@ -356,7 +224,7 @@ export function probeGradientDepth(
 
   const chain = longestSerialChain(probe);
   const chainMembers = new Set(chain?.members.map((m) => m.index) ?? []);
-  const chainBucket = chain === undefined
+  const chainAggregate = chain === undefined
     ? undefined
     : new BucketAccumulator(chain.startDepth, limit);
 
@@ -379,55 +247,59 @@ export function probeGradientDepth(
   const previous = new Float64Array(neuronCount);
   let havePrevious = false;
 
-  for (const sample of samples) {
-    probe.activateAndTrace(sample, false, sparseConfig);
-    const activations = probe.state.activations;
-    fillLocalDerivatives(probe, activations, local);
+  // The clone is disposed however this exits — it is the resource the
+  // inertness guarantee rests on.
+  try {
+    for (const sample of samples) {
+      probe.activateAndTrace(sample, false, sparseConfig);
+      const activations = probe.state.activations;
+      fillLocalDerivatives(probe, activations, local);
 
-    gradient.fill(0);
-    for (let i = outputStart; i < neuronCount; i++) gradient[i] = 1;
+      gradient.fill(0);
+      for (let i = outputStart; i < neuronCount; i++) gradient[i] = 1;
 
-    for (const index of order) {
-      if (index >= outputStart) continue; // seeded, nothing feeds into it here
-      let total = 0;
-      for (const synapse of outward[index]) {
-        const carried = gradient[synapse.to];
-        if (carried === 0) continue;
-        total += carried * routeFor(local, synapse).factor;
-      }
-      gradient[index] = total;
-    }
-
-    for (const index of order) {
-      if (index >= outputStart) continue;
-      const neuron = probe.neurons[index];
-      if (neuron.type === "input" || neuron.type === "constant") continue;
-
-      const value = gradient[index];
-      const inChain = chainMembers.has(index) && chainBucket !== undefined;
-      const bucket = bucketFor(depth[index]);
-
-      bucket.record(index, value);
-      if (havePrevious) bucket.compareSign(previous[index], value);
-      if (inChain && chainBucket !== undefined) {
-        chainBucket.record(index, value);
-        if (havePrevious) chainBucket.compareSign(previous[index], value);
+      for (const index of order) {
+        if (index >= outputStart) continue; // seeded, nothing feeds into it here
+        let total = 0;
+        for (const synapse of outward[index]) {
+          const carried = gradient[synapse.to];
+          if (carried === 0) continue;
+          total += carried * routeFor(local, synapse).factor;
+        }
+        gradient[index] = total;
       }
 
-      if (value === 0) {
-        const { cause, squash } = attribute(local, outward[index], gradient);
-        bucket.blame(cause, squash);
-        if (inChain && chainBucket !== undefined) {
-          chainBucket.blame(cause, squash);
+      for (const index of order) {
+        if (index >= outputStart) continue;
+        const neuron = probe.neurons[index];
+        if (neuron.type === "input" || neuron.type === "constant") continue;
+
+        const value = gradient[index];
+        const bucket = bucketFor(depth[index]);
+        const chainCut = chainMembers.has(index) ? chainAggregate : undefined;
+
+        bucket.record(index, value);
+        chainCut?.record(index, value);
+        if (havePrevious) {
+          bucket.compareSign(previous[index], value);
+          chainCut?.compareSign(previous[index], value);
+        }
+
+        if (value === 0) {
+          const blamed = attribute(local, outward[index], gradient);
+          for (const { cause, squash } of blamed) {
+            bucket.blame(cause, squash);
+            chainCut?.blame(cause, squash);
+          }
         }
       }
+
+      previous.set(gradient);
+      havePrevious = true;
     }
-
-    previous.set(gradient);
-    havePrevious = true;
+  } finally {
+    probe.dispose();
   }
-
-  probe.dispose();
 
   return {
     samples: samples.length,
@@ -436,7 +308,15 @@ export function probeGradientDepth(
       .sort((a, b) => a.depth - b.depth)
       .map((bucket) => bucket.finish()),
     serialChain: chain,
-    chainBucket: chainBucket?.finish(),
+    serialChainProfile: chain === undefined || chainAggregate === undefined
+      ? undefined
+      : {
+        startDepth: chain.startDepth,
+        endDepth: chain.endDepth,
+        totalMembers: chain.members.length,
+        measuredNeurons: chainAggregate.neurons.size,
+        aggregate: chainAggregate.finish(),
+      },
   };
 }
 
@@ -454,6 +334,7 @@ function emptyLocalDerivatives(neuronCount: number): LocalDerivatives {
     kind: new Int8Array(neuronCount),
     slope: new Float64Array(neuronCount),
     selected: new Array(neuronCount),
+    leak: new Map<Synapse, number>(),
     positive: new Uint8Array(neuronCount),
     squashName: new Array(neuronCount),
   };
@@ -474,6 +355,7 @@ function fillLocalDerivatives(
   activations: Float32Array,
   local: LocalDerivatives,
 ): void {
+  local.leak.clear();
   for (let index = 0; index < creature.neurons.length; index++) {
     const neuron = creature.neurons[index];
     if (neuron.type === "input" || neuron.type === "constant") {
@@ -499,6 +381,23 @@ function fillLocalDerivatives(
           }
         }
         local.selected[index] = best;
+
+        // The engine does not starve every loser: one inside the proximity
+        // window still receives `RUNNER_UP_LEAK_FRACTION * proximity` of the
+        // error (Issue #1874). Modelling that here is what keeps
+        // `unselected-min-max` from over-reporting dead routes.
+        if (sources.length > 1) {
+          for (const synapse of sources) {
+            if (synapse === best) continue;
+            const value = activations[synapse.from] * synapse.weight;
+            // Runner-ups sit above the winner for MINIMUM, below for MAXIMUM.
+            const distance = minimum ? value - bestValue : bestValue - value;
+            const proximity = runnerUpProximity(bestValue, distance);
+            if (proximity >= 0) {
+              local.leak.set(synapse, RUNNER_UP_LEAK_FRACTION * proximity);
+            }
+          }
+        }
         break;
       }
       case "IF": {
@@ -519,11 +418,19 @@ function fillLocalDerivatives(
           value += activations[synapse.from] * synapse.weight;
         }
         const squash = asDifferentiable(neuron.findSquash());
-        // No derivative to read is reported as a zero slope rather than an
-        // invented one — the profile must not claim signal it never measured.
-        local.slope[index] = squash === undefined
-          ? 0
-          : squash.derivative(value);
+        if (squash === undefined) {
+          // Recording this as a zero slope would file it under
+          // `zero-derivative` and blame the squash for a saturation that
+          // was never measured. Fail loud instead.
+          throw new ActivationError(
+            `${neuron.squash} exposes no derivative(); the gradient-depth ` +
+              `probe cannot measure neuron ${index}`,
+            "UNKNOWN_ACTIVATION",
+            neuron.squash ?? "unknown",
+            value,
+          );
+        }
+        local.slope[index] = squash.derivative(value);
         break;
       }
     }
@@ -538,10 +445,13 @@ function routeFor(local: LocalDerivatives, synapse: Synapse): EdgeRoute {
   }
 
   switch (local.kind[to]) {
-    case LocalKind.Select:
-      return local.selected[to] === synapse
-        ? { factor: synapse.weight }
-        : { factor: 0, blockedBy: "unselected-min-max" };
+    case LocalKind.Select: {
+      if (local.selected[to] === synapse) return { factor: synapse.weight };
+      const leak = local.leak.get(synapse);
+      return leak === undefined
+        ? { factor: 0, blockedBy: "unselected-min-max" }
+        : { factor: leak * synapse.weight };
+    }
     case LocalKind.Branch: {
       if (synapse.type === "condition") {
         return { factor: 0, blockedBy: "if-condition" };
@@ -558,7 +468,7 @@ function routeFor(local: LocalDerivatives, synapse: Synapse): EdgeRoute {
       return slope === 0
         ? {
           factor: 0,
-          blockedBy: "saturated-derivative",
+          blockedBy: "zero-derivative",
           squash: local.squashName[to],
         }
         : { factor: slope * synapse.weight };
@@ -567,49 +477,34 @@ function routeFor(local: LocalDerivatives, synapse: Synapse): EdgeRoute {
 }
 
 /**
- * Name the construct responsible for a zero gradient: the cause blocking the
- * most outward routes wins, with {@link ZERO_CAUSES} order breaking ties. A
- * route that is open but leads to a neuron with no gradient of its own is
- * `downstream-zero` — the loss happened closer to the output.
+ * Count every blocked route out of a neuron whose gradient was zero.
+ *
+ * Attribution is **per route**, not per neuron: an earlier revision picked the
+ * cause blocking the most routes and broke ties by a fixed priority order,
+ * which silently awarded every tie to whichever cause happened to be listed
+ * first. Counting routes removes the tie-break, so the numbers cannot favour a
+ * conclusion. A route that is open but leads to a neuron with no gradient of
+ * its own is `downstream-zero` — the loss happened closer to the output; an
+ * open route leading to one that *does* carry gradient means the contributions
+ * cancelled.
  */
 function attribute(
   local: LocalDerivatives,
   synapses: readonly Synapse[],
   gradient: Float64Array,
-): { cause: ZeroGradientCause; squash?: string } {
-  if (synapses.length === 0) return { cause: "unreached" };
+): { cause: ZeroGradientCause; squash?: string }[] {
+  if (synapses.length === 0) return [{ cause: "unreached" }];
 
-  const counts = new Map<ZeroGradientCause, number>();
-  const squashes = new Map<string, number>();
+  const blamed: { cause: ZeroGradientCause; squash?: string }[] = [];
   for (const synapse of synapses) {
     const route = routeFor(local, synapse);
-    const cause: ZeroGradientCause = route.blockedBy ??
-      (gradient[synapse.to] === 0 ? "downstream-zero" : "cancellation");
-    counts.set(cause, (counts.get(cause) ?? 0) + 1);
-    if (cause === "saturated-derivative" && route.squash !== undefined) {
-      squashes.set(route.squash, (squashes.get(route.squash) ?? 0) + 1);
+    if (route.blockedBy === undefined) {
+      blamed.push({
+        cause: gradient[synapse.to] === 0 ? "downstream-zero" : "cancellation",
+      });
+    } else {
+      blamed.push({ cause: route.blockedBy, squash: route.squash });
     }
   }
-
-  let winner: ZeroGradientCause = "downstream-zero";
-  let best = -1;
-  for (const cause of ZERO_CAUSES) {
-    const count = counts.get(cause) ?? 0;
-    if (count > best) {
-      best = count;
-      winner = cause;
-    }
-  }
-
-  if (winner !== "saturated-derivative") return { cause: winner };
-
-  let squash: string | undefined;
-  let squashBest = -1;
-  for (const [name, count] of squashes) {
-    if (count > squashBest) {
-      squashBest = count;
-      squash = name;
-    }
-  }
-  return { cause: winner, squash };
+  return blamed;
 }
