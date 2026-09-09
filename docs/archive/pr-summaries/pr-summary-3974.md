@@ -153,7 +153,7 @@ worktree —
 The full suite was therefore run with the gate's own test-lane arguments
 (`--parallel --preload test/_preload.ts --v8-flags=--max-old-space-size=8192`,
 `NEAT_AI_DISCOVERY_DETERMINISTIC=1`, `NEAT_SCORER_GPU=off`, backprop flags off)
-minus the scorer environment: **9,177 passed, 0 failed, 52 ignored**. CI builds
+minus the scorer environment: **9,178 passed, 0 failed, 52 ignored**. CI builds
 the scorer from a matched pair and runs that lane.
 
 ## Acceptance Criteria
@@ -219,6 +219,15 @@ the scorer from a matched pair and runs that lane.
   measurements against a matched baseline; at production odds the bias fires on
   ~0.05% of draws, so a mode that concentrates draws on the run is the only way
   to read the mechanism at all, and it is labelled as such in the evidence.
+- **unrequested** — one assertion in `test/scripts/InFlightTestLog.ts` now
+  matches its own name file instead of counting the whole directory — reviewer:
+  unrequested — reason: `NEAT_AI_IN_FLIGHT_DIR` is process-global and
+  `deno test --parallel` runs sibling files in the same process, so the count
+  depended on what else was in flight; the 24 tests this PR adds shifted the
+  schedule and turned that latent race into a consistent full-suite failure
+  (verified: the same command passes on the base commit and failed three times
+  in a row here before the fix). No coverage is lost — the file's creation,
+  contents and removal are all still asserted.
 - **unrequested** — the `docs/ACTIVATION_FUNCTIONS.md` paragraph — reviewer:
   unrequested — reason: the repo requires a code change to update every doc
   surface it touches, and that file owns the differentiability taxonomy the
