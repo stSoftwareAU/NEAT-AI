@@ -209,6 +209,19 @@ export class Fitness {
   }
 
   /**
+   * Issue #3971: Supply the run-wide per-operator mutation telemetry so each
+   * evaluation's wall-clock is charged to the operators that produced the
+   * creature being evaluated.
+   *
+   * @param telemetry - The tracker owned by `Neat`, or `undefined` to detach.
+   */
+  setMutationTelemetry(
+    telemetry: MutationOperatorTelemetry | undefined,
+  ): void {
+    this.mutationTelemetry = telemetry;
+  }
+
+  /**
    * Calculate fitness scores for a population of creatures.
    *
    * Issue #1016: Deduplicates creatures by UUID before evaluation.
@@ -225,19 +238,6 @@ export class Fitness {
    *   without waiting on a stalled worker.
    * @returns Promise that resolves when all evaluations are complete
    */
-  /**
-   * Issue #3971: Supply the run-wide per-operator mutation telemetry so each
-   * evaluation's wall-clock is charged to the operators that produced the
-   * creature being evaluated.
-   *
-   * @param telemetry - The tracker owned by `Neat`, or `undefined` to detach.
-   */
-  setMutationTelemetry(
-    telemetry: MutationOperatorTelemetry | undefined,
-  ): void {
-    this.mutationTelemetry = telemetry;
-  }
-
   async calculate(
     population: Creature[],
     additionalWorkers?: WorkerHandler[],

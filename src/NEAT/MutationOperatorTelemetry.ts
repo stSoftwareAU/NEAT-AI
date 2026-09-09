@@ -67,6 +67,8 @@ interface OperatorCounters {
   soleAttributed: number;
   coAttributed: number;
   readonly depthBuckets: Record<MutationDepthBucket, number>;
+  readonly acceptedDepthBuckets: Record<MutationDepthBucket, number>;
+  readonly rejectedDepthBuckets: Record<MutationDepthBucket, number>;
   readonly scoreDeltas: number[];
 }
 
@@ -78,8 +80,14 @@ interface PendingOffspring {
    * reason a generation's worth of creatures is retained.
    */
   readonly ref: WeakRef<Creature>;
-  /** Every operator applied to this offspring, in application order. */
-  readonly operators: Set<string>;
+  /**
+   * Every operator applied to this offspring → the depth bucket of its site.
+   * The bucket travels with the offspring because it is evaluated a generation
+   * after it is mutated, by which time the applied-this-generation histogram
+   * has already been reported and reset. A repeated operator keeps the bucket
+   * of its last application.
+   */
+  readonly operators: Map<string, MutationDepthBucket>;
   /** Pre-mutation (parent) score, when one was available. */
   baselineScore: number | undefined;
   /** True once the offspring reached `Fitness.calculate()`. */
@@ -135,6 +143,8 @@ function newCounters(): OperatorCounters {
     soleAttributed: 0,
     coAttributed: 0,
     depthBuckets: emptyDepthBuckets(),
+    acceptedDepthBuckets: emptyDepthBuckets(),
+    rejectedDepthBuckets: emptyDepthBuckets(),
     scoreDeltas: [],
   };
 }
@@ -224,12 +234,13 @@ export class MutationOperatorTelemetry {
     operator: string,
     options?: RecordAppliedOptions,
   ): void {
+    const depthBucket = options?.depthBucket ?? "unknown";
     const counters = this.countersFor(operator);
     counters.applied++;
-    counters.depthBuckets[options?.depthBucket ?? "unknown"]++;
+    counters.depthBuckets[depthBucket]++;
 
     const entry = this.entryFor(creature);
-    entry.operators.add(operator);
+    entry.operators.set(operator, depthBucket);
     if (entry.baselineScore === undefined) {
       entry.baselineScore = options?.baselineScore !== undefined &&
           Number.isFinite(options.baselineScore)
@@ -245,7 +256,7 @@ export class MutationOperatorTelemetry {
   recordReverted(creature: Creature): void {
     const entry = this.pendingByCreature.get(creature);
     if (!entry) return;
-    for (const operator of entry.operators) {
+    for (const operator of entry.operators.keys()) {
       this.countersFor(operator).reverted++;
     }
     this.dropEntry(creature, entry);
@@ -265,7 +276,7 @@ export class MutationOperatorTelemetry {
     }
     const entry = this.pendingByCreature.get(creature);
     if (!entry) return;
-    for (const operator of entry.operators) {
+    for (const operator of entry.operators.keys()) {
       const counters = this.countersFor(operator);
       if (accepted) {
         counters.mcmcAccepted++;
@@ -374,14 +385,16 @@ export class MutationOperatorTelemetry {
     if (coAttributed) this.multiOperatorOffspring++;
     this.resolvedEvaluationMs += entry.evaluationMs;
 
-    for (const operator of entry.operators) {
+    for (const [operator, depthBucket] of entry.operators) {
       const counters = this.countersFor(operator);
       counters.evaluated++;
       counters.evaluationMs += entry.evaluationMs;
       if (survived) {
         counters.accepted++;
+        counters.acceptedDepthBuckets[depthBucket]++;
       } else {
         counters.rejected++;
+        counters.rejectedDepthBuckets[depthBucket]++;
       }
       if (delta === undefined) {
         counters.deltaUnavailable++;
@@ -429,6 +442,8 @@ export class MutationOperatorTelemetry {
         scoreDelta: summariseScoreDeltas(counters.scoreDeltas),
         deltaUnavailable: counters.deltaUnavailable,
         depthBuckets: { ...counters.depthBuckets },
+        acceptedDepthBuckets: { ...counters.acceptedDepthBuckets },
+        rejectedDepthBuckets: { ...counters.rejectedDepthBuckets },
         soleAttributed: counters.soleAttributed,
         coAttributed: counters.coAttributed,
       };
@@ -478,7 +493,7 @@ export class MutationOperatorTelemetry {
     if (!entry) {
       entry = {
         ref: new WeakRef(creature),
-        operators: new Set<string>(),
+        operators: new Map<string, MutationDepthBucket>(),
         baselineScore: undefined,
         evaluated: false,
         evaluationMs: 0,

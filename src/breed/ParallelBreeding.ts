@@ -460,18 +460,6 @@ export class ParallelBreeding {
   }
 
   /**
-   * Breeds a single offspring from two parents (main thread fallback).
-   *
-   * This method wraps `Offspring.breed()` in a Promise to enable
-   * concurrent execution. It also:
-   * - Calls discover() to apply memetic knowledge from the mother
-   *
-   * @param mother - The mother creature
-   * @param father - The father creature
-   * @param config - NEAT configuration
-   * @returns The offspring creature, or undefined if breeding fails
-   */
-  /**
    * Issue #3971: remember which parent score an offspring is measured against.
    * The mother is the ranked parent, so her score is the baseline; the father
    * stands in only when hers is missing.
@@ -493,6 +481,18 @@ export class ParallelBreeding {
     }
   }
 
+  /**
+   * Breeds a single offspring from two parents (main thread fallback).
+   *
+   * This method wraps `Offspring.breed()` in a Promise to enable
+   * concurrent execution. It also:
+   * - Calls discover() to apply memetic knowledge from the mother
+   *
+   * @param mother - The mother creature
+   * @param father - The father creature
+   * @param config - NEAT configuration
+   * @returns The offspring creature, or undefined if breeding fails
+   */
   private breedSingle(
     mother: Creature,
     father: Creature,

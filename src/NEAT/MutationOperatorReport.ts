@@ -79,10 +79,15 @@ export interface MutationOperatorSummary {
   /** Of those, how many did not survive selection. */
   readonly rejected: number;
   /**
-   * Evaluation wall-clock (ms) spent on offspring carrying this operator.
-   * An offspring carrying several operators charges its full evaluation to
-   * each of them, so the per-operator figures may sum past
-   * {@link MutationAttributionSummary.evaluationMs}.
+   * Evaluation time (ms) spent on offspring carrying this operator, measured
+   * per creature around the scorer call.
+   *
+   * Two caveats, both deliberate: an offspring carrying several operators
+   * charges its full evaluation to each of them, so the per-operator figures
+   * may sum past {@link MutationAttributionSummary.evaluationMs}; and
+   * evaluations run concurrently across the worker pool, so the total is
+   * summed occupancy, not exclusive wall-clock — with N workers it can exceed
+   * the generation's fitness phase by up to N×.
    */
   readonly evaluationMs: number;
   /**
@@ -93,8 +98,26 @@ export interface MutationOperatorSummary {
   readonly scoreDelta?: ScoreDeltaDistribution;
   /** Evaluated offspring with no usable baseline score, so no delta sample. */
   readonly deltaUnavailable: number;
-  /** Applied mutations by depth bucket of the mutation site. */
+  /**
+   * Mutations **applied this generation**, by depth bucket of the mutation
+   * site. These are the proposals just made; their outcome is not known yet
+   * (see {@link acceptedDepthBuckets} / {@link rejectedDepthBuckets}).
+   *
+   * For a removal operator the site is the position the removed element
+   * occupied, read against the post-mutation topology — the neighbourhood is
+   * right, the neuron at that index is its successor.
+   */
   readonly depthBuckets: Readonly<Record<MutationDepthBucket, number>>;
+  /**
+   * Depth buckets of the structural changes that **survived** selection,
+   * carried with the offspring from the generation it was mutated in. This is
+   * the half that answers "does the rejection rate depend on the depth at
+   * which the change landed?" — {@link depthBuckets} cannot, because an
+   * offspring is evaluated a generation after it is mutated.
+   */
+  readonly acceptedDepthBuckets: Readonly<Record<MutationDepthBucket, number>>;
+  /** Depth buckets of the changes that did **not** survive selection. */
+  readonly rejectedDepthBuckets: Readonly<Record<MutationDepthBucket, number>>;
   /** Evaluated offspring where this was the only operator applied. */
   readonly soleAttributed: number;
   /** Evaluated offspring that also carried at least one other operator. */
@@ -144,6 +167,15 @@ export interface MutationAttributionSummary {
 
 /**
  * One generation of per-operator mutation outcome telemetry.
+ *
+ * The row spans two generations by construction: `proposed`, `noChange`,
+ * `applied` and `depthBuckets` describe the mutations made **this**
+ * generation, while `evaluated`, `accepted`, `rejected`, `scoreDelta`,
+ * `evaluationMs` and the accepted/rejected depth buckets describe offspring
+ * mutated in an **earlier** generation and only now scored and selected —
+ * evolution cannot evaluate an offspring in the generation that made it. The
+ * outcome-joined depth buckets exist so a rejected structural mutation's depth
+ * is still available after that lag.
  */
 export interface MutationOperatorReport {
   /** Operator name (e.g. `ADD_NODE`) → its outcome counters. */

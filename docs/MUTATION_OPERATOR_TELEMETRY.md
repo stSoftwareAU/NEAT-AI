@@ -1,31 +1,38 @@
 # 📊 Per-operator mutation telemetry (Issue #3971)
 
-`MCMCDiagnostics` (Issue #2201) has always counted mutation acceptance **in
-aggregate** — proposed, accepted, rejected, and a rolling rate. That aggregate
-cannot answer the question a structural-evolution change has to be judged
-against: _is `AddNeuron` rejected more often than `ModWeight`, at what depth did
-the rejected change land, and how much evaluation wall-clock went into offspring
-that were then thrown away?_
+`MCMCDiagnostics` — Markov Chain Monte Carlo ([MCMC](GLOSSARY.md#-acronyms))
+acceptance diagnostics, Issue #2201 — has always counted mutation acceptance
+**in aggregate** — proposed, accepted, rejected, and a rolling rate. That
+aggregate cannot answer the question a structural-evolution change has to be
+judged against: _is `AddNeuron` rejected more often than `ModWeight`, at what
+depth did the rejected change land, and how much evaluation wall-clock went into
+offspring that were then thrown away?_
 
 Per-operator mutation telemetry answers exactly those. It is **always on** — it
 adds no evaluations, only counters around evaluations already being paid for.
 
+Terms below follow the house vocabulary in the
+[canonical glossary](GLOSSARY.md): a **creature** is one candidate neural
+network (a genome/phenotype), an **elite** is a top-ranked creature carried into
+the next generation unchanged, and **memetic** evolution is the
+gradient-refinement pass that runs beside mutation.
+
 ## What is recorded, per operator, per generation
 
-| Field                             | Meaning                                                                                                |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `proposed`                        | Times the operator was invoked.                                                                        |
-| `noChange`                        | Times it reported no change, or produced an identical UUID.                                            |
-| `applied`                         | Times it actually changed the creature.                                                                |
-| `reverted`                        | Applied changes rolled back before any evaluation (failed repair, or a Metropolis-Hastings rejection). |
-| `mcmcAccepted` / `mcmcRejected`   | M-H decisions covering a batch containing this operator.                                               |
-| `evaluated`                       | Offspring carrying this operator that reached `Fitness.calculate()`.                                   |
-| `accepted` / `rejected`           | Of those, how many survived selection into the next generation.                                        |
-| `evaluationMs`                    | Evaluation wall-clock spent on offspring carrying this operator.                                       |
-| `scoreDelta`                      | `count` / `min` / `median` / `max` of (offspring score − parent score).                                |
-| `deltaUnavailable`                | Evaluated offspring with no usable baseline, so no delta sample.                                       |
-| `depthBuckets`                    | Applied mutations bucketed by the depth of the mutation site.                                          |
-| `soleAttributed` / `coAttributed` | Whether this operator was alone on the offspring, or shared it.                                        |
+| Field                             | Meaning                                                                                                              |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `proposed`                        | Times the operator was invoked.                                                                                      |
+| `noChange`                        | Times it reported no change, or produced an identical Universally Unique Identifier ([UUID](GLOSSARY.md#-acronyms)). |
+| `applied`                         | Times it actually changed the creature.                                                                              |
+| `reverted`                        | Applied changes rolled back before any evaluation (failed repair, or a Metropolis-Hastings rejection).               |
+| `mcmcAccepted` / `mcmcRejected`   | M-H decisions covering a batch containing this operator.                                                             |
+| `evaluated`                       | Offspring carrying this operator that reached `Fitness.calculate()`.                                                 |
+| `accepted` / `rejected`           | Of those, how many survived selection into the next generation.                                                      |
+| `evaluationMs`                    | Evaluation wall-clock spent on offspring carrying this operator.                                                     |
+| `scoreDelta`                      | `count` / `min` / `median` / `max` of (offspring score − parent score).                                              |
+| `deltaUnavailable`                | Evaluated offspring with no usable baseline, so no delta sample.                                                     |
+| `depthBuckets`                    | Applied mutations bucketed by the depth of the mutation site.                                                        |
+| `soleAttributed` / `coAttributed` | Whether this operator was alone on the offspring, or shared it.                                                      |
 
 The distribution is reported deliberately — **not the mean**. At the 1e-5
 margins production runs decide on, a mean over a heavy-tailed delta says

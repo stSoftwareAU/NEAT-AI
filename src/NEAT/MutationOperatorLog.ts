@@ -60,6 +60,20 @@ export function formatMutationOperatorReport(
         } ?=${buckets["unknown"]}]`,
       );
     }
+    const outcomeDepth = (
+      label: string,
+      counts: Readonly<Record<string, number>>,
+    ) => {
+      const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+      if (total === 0) return;
+      fields.push(
+        `${label}[in=${counts["input-adjacent"]} mid=${counts["mid"]} out=${
+          counts["output-adjacent"]
+        } ?=${counts["unknown"]}]`,
+      );
+    };
+    outcomeDepth("depthAccepted", summary.acceptedDepthBuckets);
+    outcomeDepth("depthRejected", summary.rejectedDepthBuckets);
     if (summary.coAttributed > 0) {
       fields.push(
         `attribution[sole=${summary.soleAttributed} co=${summary.coAttributed}]`,

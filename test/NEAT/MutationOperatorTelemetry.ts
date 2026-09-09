@@ -264,6 +264,54 @@ Deno.test("MutationOperatorTelemetry: applied mutations are bucketed by depth", 
   assertEquals(buckets["unknown"], 0);
 });
 
+Deno.test("MutationOperatorTelemetry: the depth bucket travels with the outcome across the generation lag", () => {
+  const telemetry = new MutationOperatorTelemetry();
+  const creature = makeCreature(1);
+
+  telemetry.recordProposed("ADD_NODE");
+  telemetry.recordApplied(creature, "ADD_NODE", {
+    depthBucket: "mid",
+    baselineScore: 1,
+  });
+
+  // Generation of the mutation: applied is reported, the outcome is not known
+  // yet, and the per-generation counters are reset.
+  const mutated = telemetry.finaliseGeneration([creature]);
+  assertEquals(mutated.operators["ADD_NODE"].depthBuckets["mid"], 1);
+  assertEquals(mutated.operators["ADD_NODE"].evaluated, 0);
+
+  // Next generation: the offspring is evaluated and loses selection. The depth
+  // of the change is still available even though `depthBuckets` was reset.
+  creature.score = 0.5;
+  telemetry.recordEvaluated(creature, 2);
+  const resolved = telemetry.finaliseGeneration([]);
+  const summary = resolved.operators["ADD_NODE"];
+  assertEquals(summary.rejected, 1);
+  assertEquals(summary.rejectedDepthBuckets["mid"], 1);
+  assertEquals(summary.acceptedDepthBuckets["mid"], 0);
+  // The applied histogram belongs to the generation that applied it.
+  assertEquals(summary.depthBuckets["mid"], 0);
+});
+
+Deno.test("MutationOperatorTelemetry: an accepted structural mutation records its depth", () => {
+  const telemetry = new MutationOperatorTelemetry();
+  const creature = makeCreature(1);
+
+  telemetry.recordProposed("ADD_NODE");
+  telemetry.recordApplied(creature, "ADD_NODE", {
+    depthBucket: "output-adjacent",
+    baselineScore: 1,
+  });
+  creature.score = 1.5;
+  telemetry.recordEvaluated(creature, 2);
+
+  const summary =
+    telemetry.finaliseGeneration([creature]).operators["ADD_NODE"];
+  assertEquals(summary.accepted, 1);
+  assertEquals(summary.acceptedDepthBuckets["output-adjacent"], 1);
+  assertEquals(summary.rejectedDepthBuckets["output-adjacent"], 0);
+});
+
 Deno.test("MutationOperatorTelemetry: an operator with no site is bucketed unknown", () => {
   const telemetry = new MutationOperatorTelemetry();
   const creature = makeCreature(1);
