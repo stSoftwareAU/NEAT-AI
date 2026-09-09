@@ -542,6 +542,10 @@ export function renderSquashBiasReport(report: SquashBiasReport): string {
     "",
     "## Diversity, against the matched baseline",
     "",
+    "The `ceiling` arm takes no draws, so its population is one creature " +
+      "repeated: its species count is 1 by construction and is not a diversity " +
+      "reading. Compare `baseline` against `biased`.",
+    "",
     "| Arm | Distinct squashes | Entropy (bits) | Species | Species diversity |",
     "| --- | ---: | ---: | ---: | ---: |",
   );
