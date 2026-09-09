@@ -43,6 +43,8 @@ import {
   computeTopologyAverages,
   type TopologyAverages,
 } from "@neat/TopologyAverages.ts";
+import type { MutationOperatorReport } from "@neat/MutationOperatorReport.ts";
+import { formatMutationOperatorReport } from "@neat/MutationOperatorLog.ts";
 import type {
   GenerationPhaseTiming,
   GenerationThroughputMetrics,
@@ -98,6 +100,12 @@ export interface EvolveResult {
    * memory-profile line can attribute heap growth to topology growth.
    */
   topologyAverages: TopologyAverages;
+  /**
+   * Issue #3971: per-operator mutation outcome telemetry for this generation —
+   * proposals, no-changes, evaluations, selection outcomes, score-delta
+   * distributions and depth buckets, per mutation operator.
+   */
+  mutationOperators: MutationOperatorReport;
 }
 
 /**
@@ -741,6 +749,10 @@ export async function evolve(
     // Issue #2457: Reuse the run-wide squash effectiveness tracker so its
     // histogram persists across generations.
     neat.squashEffectivenessTracker,
+    // Issue #3971: Reuse the run-wide per-operator telemetry so an offspring
+    // mutated this generation can still be resolved after it is evaluated in
+    // the next one.
+    neat.mutationOperatorTelemetry,
   );
   mutator.setWarmupContext(neat.warmupGenerations, neat.currentGeneration);
 
@@ -801,6 +813,11 @@ export async function evolve(
 
   // Issue #2274: Time mutation phase
   const mutationStartMs = Date.now();
+  // Issue #3971: a bred offspring has no score of its own, so the telemetry
+  // measures its mutations against the score of the parent it came from.
+  neat.mutationOperatorTelemetry.setParentBaselines(
+    parallelBreeding.lastParentBaselines,
+  );
   mutator.mutate(newPopulation);
   const mutationMs = Date.now() - mutationStartMs;
   // Issue #2312: Snapshot after mutation — main thread only
@@ -1017,6 +1034,13 @@ export async function evolve(
   const postFitnessMemoryMs = Date.now() - postFitnessMemoryStartMs;
   const memoryEvictionMs = preFitnessMemoryMs + postFitnessMemoryMs;
 
+  // Issue #3971: resolve this generation's mutation attributions against the
+  // population that survived. Offspring mutated *this* generation have not
+  // been evaluated yet and stay pending until they are.
+  const mutationOperators = neat.mutationOperatorTelemetry.finaliseGeneration(
+    neat.population,
+  );
+
   // Issue #2239: Compute total generation time and build phase timing
   const totalMs = Date.now() - evolveStartMs;
 
@@ -1151,6 +1175,14 @@ export async function evolve(
         ` breeding=${breedingUtilisation.fastUtilisationPct}%fast/${breedingUtilisation.heavyUtilisationPct}%heavy` +
         ` overall=${workerUtilisation.overallCpuUtilisationPct}%`,
     );
+    // Issue #3971: Log the per-operator mutation outcome summary alongside
+    // the existing per-generation diagnostics.
+    const mutationOperatorLine = formatMutationOperatorReport(
+      mutationOperators,
+    );
+    if (mutationOperatorLine) {
+      getLogger().info(mutationOperatorLine);
+    }
     // Issue #2330: Log throughput summary
     // Issue #2424: Include scorer runtime telemetry (creatures/sec, scorer
     // wall time, and unique-scored creature count) so operators can compare
@@ -1210,5 +1242,7 @@ export async function evolve(
     squashHistogram: computeSquashHistogram(neat.population),
     // Issue #3402: population topology averages for memory-profile diagnosis.
     topologyAverages: computeTopologyAverages(neat.population),
+    // Issue #3971: per-operator mutation outcome telemetry.
+    mutationOperators,
   };
 }

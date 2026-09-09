@@ -60,6 +60,8 @@ export class SwapNeurons extends AbstractMutationOperator {
     const changed = squash1 !== squash2 || bias1 !== bias2;
     if (changed) {
       delete creature.memetic;
+      // Issue #3971: the first swapped neuron stands for the swap site.
+      this.noteMutationSite(node1.index);
     }
     return changed;
   }

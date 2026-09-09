@@ -296,6 +296,8 @@ export class AddNeuron extends AbstractMutationOperator {
             if (outwardConnections.length > 0) {
               // Outward connection repaired.
               this.enforceOutwardScale(neuron.index);
+              // Issue #3971: the inserted neuron is the mutation site.
+              this.noteMutationSite(neuron.index);
               return true;
             }
           }
@@ -318,6 +320,8 @@ export class AddNeuron extends AbstractMutationOperator {
       getLogger().warn("AddNeuron: No change.");
       return false;
     } else {
+      // Issue #3971: the inserted neuron is the mutation site.
+      this.noteMutationSite(neuron.index);
       return true;
     }
   }

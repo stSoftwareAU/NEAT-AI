@@ -46,6 +46,8 @@ export class AddSelfCon extends AbstractMutationOperator {
     creature.connect(indx, indx, Synapse.randomWeight());
 
     delete creature.memetic;
+    // Issue #3971: the self-connected neuron is the mutation site.
+    this.noteMutationSite(indx);
     return true;
   }
 }

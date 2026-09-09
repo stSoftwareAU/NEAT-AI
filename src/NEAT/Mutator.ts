@@ -32,6 +32,9 @@ import {
   resolveMcmcAcceptanceDelta,
 } from "@neat/MetropolisHastings.ts";
 import type { MCMCDiagnostics } from "@neat/MCMCDiagnostics.ts";
+import { computeLayerBucket } from "@neat/LayerBucket.ts";
+import type { MutationDepthBucket } from "@neat/MutationOperatorReport.ts";
+import { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
 import { RankShapingWindow } from "@neat/RankShaping.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
 import {
@@ -126,6 +129,14 @@ export class Mutator {
    */
   private readonly squashTracker: SquashEffectivenessTracker;
 
+  /**
+   * Issue #3971: per-operator mutation outcome telemetry. Owned by `Neat` so
+   * attributions survive the per-generation Mutator rebuild; a private
+   * instance is created when no shared tracker is supplied, so the recording
+   * calls below never need a null check.
+   */
+  private readonly mutationTelemetry: MutationOperatorTelemetry;
+
   private isMutationTopologyForwardOnly(creature: Creature): boolean {
     return creature.forwardOnly === true;
   }
@@ -155,18 +166,31 @@ export class Mutator {
    * @param squashTracker - Issue #2457: Optional shared per-role squash
    *   effectiveness tracker. When omitted, an internal tracker is created
    *   from `config.squashEffectiveness`.
+   * @param mutationTelemetry - Issue #3971: Optional shared per-operator
+   *   mutation outcome telemetry. When omitted, a private instance is used.
    */
   constructor(
     config: NeatConfig,
     mcmcTemperature?: number,
     mcmcDiagnostics?: MCMCDiagnostics,
     squashTracker?: SquashEffectivenessTracker,
+    mutationTelemetry?: MutationOperatorTelemetry,
   ) {
     this.config = config;
     this.mcmcTemperature = mcmcTemperature;
     this.mcmcDiagnostics = mcmcDiagnostics;
     this.squashTracker = squashTracker ??
       new SquashEffectivenessTracker(config.squashEffectiveness);
+    this.mutationTelemetry = mutationTelemetry ??
+      new MutationOperatorTelemetry();
+  }
+
+  /**
+   * Issue #3971: Expose the per-operator telemetry so the evolution loop can
+   * finalise the generation's report.
+   */
+  public getMutationOperatorTelemetry(): MutationOperatorTelemetry {
+    return this.mutationTelemetry;
   }
 
   /**
@@ -463,6 +487,9 @@ export class Mutator {
             if (snapshot) {
               this.revertCreature(creature, snapshot);
             }
+            // Issue #3971: the batch never reaches evaluation, so its
+            // operators are rolled back rather than rejected by selection.
+            this.mutationTelemetry.recordReverted(creature);
             changed = false;
             hasTopologyMutation = false;
           }
@@ -529,10 +556,14 @@ export class Mutator {
 
           // Issue #2201: Record the M-H decision for diagnostics
           this.mcmcDiagnostics?.recordDecision(accepted);
+          // Issue #3971: the same decision, attributed to every operator in
+          // the batch. The aggregate half reconciles with MCMCDiagnostics.
+          this.mutationTelemetry.recordMcmcDecision(creature, accepted);
 
           if (!accepted) {
             // Rejected: revert creature to pre-mutation snapshot
             this.revertCreature(creature, mcmcSnapshot);
+            this.mutationTelemetry.recordReverted(creature);
             changed = false;
 
             if (this.config.verbose) {
@@ -1021,6 +1052,8 @@ export class Mutator {
     mutationBias?: MutationBias,
   ): boolean {
     assert(method.name, "Mutate name is required");
+    // Issue #3971: every invocation is a proposal, whether or not it lands.
+    this.mutationTelemetry.recordProposed(method.name);
     const startUUID = CreatureUtil.makeUUID(creature);
 
     // Issue #1103: Use cached mutator instances via getMutatorInstance().
@@ -1070,9 +1103,54 @@ export class Mutator {
           `UUID didn't change after ${method.name} mutation despite operator reporting a change`,
         );
       }
+      // Issue #3971: an operator that changed nothing costs nothing — it is
+      // never a rejection, and counting it as one would flatter the baseline.
+      this.mutationTelemetry.recordNoChange(method.name);
       return false;
     } else {
+      this.mutationTelemetry.recordApplied(creature, method.name, {
+        depthBucket: this.resolveDepthBucket(creature, method.name, mutator),
+      });
       return true;
+    }
+  }
+
+  /**
+   * Issue #3971: depth bucket of the mutation site, for the per-operator
+   * telemetry.
+   *
+   * Only structural mutations are bucketed: `computeLayerBucket` walks the
+   * whole topology, which is per-synapse work that must not ride on every
+   * weight/bias mutation. Everything else reports `unknown`.
+   *
+   * @param creature - The freshly mutated creature.
+   * @param methodName - Name of the operator that was applied.
+   * @param operator - The operator instance, which names its own site.
+   * @returns The depth bucket, or `unknown` when there is no usable site.
+   */
+  private resolveDepthBucket(
+    creature: Creature,
+    methodName: string,
+    operator: RadioactiveInterface,
+  ): MutationDepthBucket {
+    if (!isTopologyMutation(methodName)) return "unknown";
+    const site = operator.lastMutationSiteIndex;
+    if (site === undefined || site < 0) return "unknown";
+    const lastIndex = creature.neurons.length - 1;
+    if (lastIndex < 0) return "unknown";
+    try {
+      return computeLayerBucket(creature, Math.min(site, lastIndex));
+    } catch (error) {
+      // A creature mid-batch has not been through `fix()` yet, so a stale
+      // synapse index can defeat the layer walk. Telemetry must not abort a
+      // mutation batch, so the site is reported as unknown — loudly, because a
+      // topology this broken is a real bug worth chasing.
+      getLogger().warn(
+        `[MutationTelemetry] depth bucket unavailable after ${methodName}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return "unknown";
     }
   }
 }

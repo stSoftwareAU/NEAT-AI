@@ -94,6 +94,8 @@ export class SubConnection extends AbstractMutationOperator {
     }
 
     delete creature.memetic;
+    // Issue #3971: the target of the removed synapse is the mutation site.
+    this.noteMutationSite(toIndx);
     return true;
   }
 

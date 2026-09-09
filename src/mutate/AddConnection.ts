@@ -74,6 +74,10 @@ export class AddConnection extends AbstractMutationOperator {
       }
     }
 
+    // Issue #3971: this operator overrides `mutate()`, so it clears the site
+    // itself rather than relying on the base class.
+    this.noteMutationSite(-1);
+
     const enforceForwardOnly = this.creature.forwardOnly === true;
 
     if (enforceForwardOnly) {
@@ -168,6 +172,8 @@ export class AddConnection extends AbstractMutationOperator {
       );
       this.creature.connect(fromIndex, toIndex, weight);
       delete this.creature.memetic;
+      // Issue #3971: the target of the new synapse is the mutation site.
+      this.noteMutationSite(toIndex);
       return true;
     }
 
@@ -242,6 +248,8 @@ export class AddConnection extends AbstractMutationOperator {
     );
     this.creature.connect(fromIndex, toIndex, weight);
     delete this.creature.memetic;
+    // Issue #3971: the target of the new synapse is the mutation site.
+    this.noteMutationSite(toIndex);
     return true;
   }
 

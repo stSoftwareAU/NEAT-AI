@@ -11,4 +11,10 @@ import type { MutationBias } from "@predictiveCoding/PredictionErrorGuidedMutati
 
 export interface RadioactiveInterface {
   mutate(focusList?: number[], mutationBias?: MutationBias): boolean;
+  /**
+   * Index of the neuron the most recent {@link mutate} call changed, or `-1`
+   * when the operator names no neuron site. Issue #3971: the per-operator
+   * telemetry buckets a structural mutation by the depth of this site.
+   */
+  readonly lastMutationSiteIndex?: number;
 }
