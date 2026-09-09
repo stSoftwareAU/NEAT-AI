@@ -14,6 +14,8 @@
     "Rekor",
     "automatable",
     "Abramowitz",
+    "argmin",
+    "Balduzzi",
     "Accum",
     "Aggr",
     "Akerman",
@@ -615,14 +617,17 @@
     "unaccessed",
     "unassertable",
     "unbudgeted",
+    "uncited",
     "unclamped",
     "uncompensable",
     "unclustered",
     "uncompacted",
     "unconfigured",
     "underflows",
+    "undisposed",
     "unimprovable",
     "unindexed",
+    "unintegrated",
     "uniques",
     "unlabeled",
     "unloadable",
@@ -734,6 +739,9 @@
     "EVCO",
     "topolog",
     "efficien",
-    "untrackable"
+    "untrackable",
+    "uncited",
+    "undisposed",
+    "unintegrated"
   ]
 }

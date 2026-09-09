@@ -34,7 +34,10 @@ import type { SynapseState } from "@propagate/SynapseState.ts";
 import { accumulateWeight, adjustedWeight } from "@propagate/Weight.ts";
 import type { ApplyLearningsInterface } from "@methods/activations/ApplyLearningsInterface.ts";
 import type { NeuronActivationInterface } from "@methods/activations/NeuronActivationInterface.ts";
-import { runnerUpProximity } from "@methods/activations/aggregate/RunnerUpProximity.ts";
+import {
+  RUNNER_UP_LEAK_FRACTION,
+  runnerUpProximity,
+} from "@methods/activations/aggregate/RunnerUpProximity.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { recordAggregateSelf } from "@neuron/AggregateRecord.ts";
 
@@ -348,7 +351,7 @@ export class MAXIMUM
       // fraction of the error signal via weight accumulation. This prevents
       // dead gradient paths while keeping the winner dominant.
       if (connectionInfo.length > 1) {
-        const LEAK_FRACTION = 0.15;
+        const LEAK_FRACTION = RUNNER_UP_LEAK_FRACTION;
 
         for (const info of connectionInfo) {
           if (info.c === mainConnection) continue;

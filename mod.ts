@@ -724,6 +724,38 @@ export type {
 export { MULTI_OPERATOR_ATTRIBUTION_NOTE } from "@neat/MutationOperatorReport.ts";
 
 /**
+ * Gradient-health probe (per-depth)
+ *
+ * Issue #3972: how much gradient actually reaches a neuron at depth *d*, and
+ * which construct killed it when the answer is "none". Read-only and inert —
+ * the creature is cloned and no training path calls it.
+ *
+ * @see {@link module:src/propagate/GradientDepthProbe}
+ * @see docs/GRADIENT_DEPTH_PROBE.md
+ */
+export {
+  depthPerNeuron,
+  probeGradientDepth,
+} from "@propagate/GradientDepthProbe.ts";
+export type {
+  GradientDepthProbeOptions,
+  GradientDepthProfile,
+  SerialChainProfile,
+} from "@propagate/GradientDepthProbe.ts";
+export type {
+  GradientDepthBucket,
+  ZeroGradientCause,
+} from "@propagate/GradientDepthBuckets.ts";
+export {
+  findSerialChains,
+  longestSerialChain,
+} from "@propagate/SerialChains.ts";
+export type {
+  SerialChain,
+  SerialChainMember,
+} from "@propagate/SerialChains.ts";
+
+/**
  * Configuration Presets
  *
  * Issue #1619: Pre-built configuration presets for common training

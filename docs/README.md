@@ -208,6 +208,11 @@ Subsystems that only some users need.
   proposed, changed nothing, was reverted, was evaluated and survived selection;
   the score-delta distribution and depth bucket of each structural change; and
   how the counters reconcile with the aggregate `MCMCDiagnostics`.
+- **[GRADIENT_DEPTH_PROBE.md](GRADIENT_DEPTH_PROBE.md)** — the per-depth
+  gradient-health probe (Issue #3972): gradient magnitude, exactly-zero fraction
+  and sign-flip rate per depth bucket, attribution of a zero to the construct
+  that caused it, the serial-chain cut, and the inertness guarantee that keeps
+  it from perturbing a trained result.
 - **[dna-sharing-bake-off-results.md](dna-sharing-bake-off-results.md)** —
   bake-off comparison of inter-island DNA-sharing primitives (Issue #2496).
 

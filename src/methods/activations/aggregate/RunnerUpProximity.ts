@@ -32,6 +32,15 @@ export const RUNNER_UP_PROXIMITY_FLOOR = 0.000_000_1;
 export const RUNNER_UP_PROXIMITY_WINDOW = 0.2;
 
 /**
+ * Fraction of the error a runner-up inside the window receives, scaled by its
+ * proximity. Exported here for the same reason the window is: Issue #3635's
+ * hazard was two copies of one rule drifting apart, and Issue #3972's
+ * gradient-health probe is a third reader that must agree with `MINIMUM` and
+ * `MAXIMUM` about which inward synapses still carry signal.
+ */
+export const RUNNER_UP_LEAK_FRACTION = 0.15;
+
+/**
  * Proximity of a runner-up to the winner.
  *
  * @param winnerValue The winning connection's value; its magnitude sizes the
