@@ -47,10 +47,12 @@ flowchart LR
 ### The depth profile, re-run with skips in place
 
 `deno task bench:skip-null --creature test/data/grq-23-forests-constants.json --profile-only true --samples 64 --skips 4`
-— committed verbatim as
-[`docs/evidence/skip-connection-null-grq.md`](../../evidence/skip-connection-null-grq.md).
-The operator found the 28-member run at depth 34 unaided and bypassed it with
-one synapse, `4395 -> 5048`:
+— committed as
+[`docs/evidence/skip-connection-null-grq.md`](../../evidence/skip-connection-null-grq.md)
+(the harness's own output, with `deno fmt` run over the table alignment, which
+the repo's format gate requires of every committed Markdown file). The operator
+found the 28-member run at depth 34 unaided and bypassed it with one synapse,
+`4395 -> 5048`:
 
 | Arm      | Added | Entry neuron zero-gradient | Chain aggregate | Pooled depths 1–34 |
 | -------- | ----: | -------------------------: | --------------: | -----------------: |
