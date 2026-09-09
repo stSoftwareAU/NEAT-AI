@@ -196,6 +196,12 @@ Modified:
 - `test/creature/EvolveGenerationTail.ts` — the `EvolveResult` fixture carries
   the new `mutationOperators` field.
 
+`./quality.sh` passed in full: **9094 passed, 0 failed, 4 ignored (11m7s)**,
+exit 0. It ran at commit `9c60023`; the two files added after it started —
+`test/NEAT/MutationOperatorLog.ts` (3 tests, run separately, green) and this
+summary — were checked individually with `deno fmt`, `deno lint`, `deno test`
+and `markdownlint-cli2`.
+
 Existing suites re-run green: `test/mutate/` (199), `test/NEAT/` (942; the 9
 `Train.ts` / `TrainingLoopAllocations.ts` failures are the pre-existing
 environmental `neat_ai_backpropagation` library requirement and pass with the
