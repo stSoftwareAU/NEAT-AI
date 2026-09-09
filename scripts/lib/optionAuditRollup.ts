@@ -373,6 +373,11 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
     note: "Added after the slices by #3779 — the population-wide no-progress " +
       "training gate `NeatScheduling.scheduleTraining` reads.",
   }),
+  keep("skipTrainingAfterPopulationRegressions", "roll-up", {
+    note: "Added after the slices by a downstream scheduler — the stricter " +
+      "population-wide regressions-only training gate " +
+      "`NeatScheduling.scheduleTraining` reads.",
+  }),
 ];
 
 /** The merged classification table — every option key, one entry each. */

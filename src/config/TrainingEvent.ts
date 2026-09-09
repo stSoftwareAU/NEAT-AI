@@ -532,11 +532,21 @@ export interface TrainingSkippedEvent {
    *   streak reached `skipTrainingAfterConsecutiveRegressions` (#2382).
    * - "population_no_progress": the whole population's consecutive
    *   no-progress streak reached `skipTrainingAfterPopulationNoProgress`.
+   * - "population_regressions": the whole population's consecutive
+   *   **regression** streak reached `skipTrainingAfterPopulationRegressions`
+   *   (GRQ #4717) — a stricter signal, cleared by a no-change.
    */
-  readonly reason: "creature_regressions" | "population_no_progress";
+  readonly reason:
+    | "creature_regressions"
+    | "population_no_progress"
+    | "population_regressions";
   /** The configured threshold that tripped. */
   readonly threshold: number;
-  /** The streak (per-creature or population-wide) that met the threshold. */
+  /**
+   * The streak that met the threshold: per-creature regressions,
+   * population-wide no-progress, or population-wide regressions, according to
+   * `reason`.
+   */
   readonly consecutiveNoProgress: number;
   /** Cumulative skipped dispatches for the run, including this one. */
   readonly totalSkipped: number;

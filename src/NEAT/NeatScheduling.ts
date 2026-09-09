@@ -120,7 +120,10 @@ function recordTrainingSkip(
   neat: Neat,
   uuid: string,
   details: {
-    reason: "creature_regressions" | "population_no_progress";
+    reason:
+      | "creature_regressions"
+      | "population_no_progress"
+      | "population_regressions";
     threshold: number;
     consecutiveNoProgress: number;
     loud: boolean;
@@ -139,10 +142,14 @@ function recordTrainingSkip(
   });
 
   const shortID = blue(uuid.substring(Math.max(0, uuid.length - 8)));
-  if (details.reason === "population_no_progress") {
-    const message =
-      `Training ${shortID} skipped: population made no progress ` +
-      `for ${details.consecutiveNoProgress} consecutive training outcomes ` +
+  if (
+    details.reason === "population_no_progress" ||
+    details.reason === "population_regressions"
+  ) {
+    const what = details.reason === "population_regressions"
+      ? `regressed for ${details.consecutiveNoProgress} consecutive training outcomes`
+      : `made no progress for ${details.consecutiveNoProgress} consecutive training outcomes`;
+    const message = `Training ${shortID} skipped: population ${what} ` +
       `(threshold ${details.threshold}); training suppressed until an ` +
       `improvement or the next probe. Total skipped: ${neat.trainingRegressionTracker.totalSkipped}`;
     if (details.loud) {
@@ -479,6 +486,26 @@ export function scheduleTraining(
       consecutiveNoProgress: tracker.populationConsecutiveNoProgress,
       // Loud once per probe window: the population-wide gate suppresses
       // training for every creature, so it must never be silent (#3779).
+      loud: tracker.skipsSincePopulationProbe === 0,
+    });
+    return;
+  }
+
+  // GRQ #4717: the no-progress streak above cannot separate a doomed
+  // population from one whose training has settled into the noise floor — a
+  // no-change advances it exactly as a regression does. The regressions-only
+  // streak is the stricter signal and is cleared by a no-change, so it gates at
+  // a lower threshold without withholding work from a population that is still
+  // improving.
+  if (
+    tracker.shouldSkipPopulationRegressions(
+      neat.config.skipTrainingAfterPopulationRegressions,
+    )
+  ) {
+    recordTrainingSkip(neat, uuid, {
+      reason: "population_regressions",
+      threshold: neat.config.skipTrainingAfterPopulationRegressions,
+      consecutiveNoProgress: tracker.populationConsecutiveRegressions,
       loud: tracker.skipsSincePopulationProbe === 0,
     });
     return;
