@@ -381,10 +381,22 @@ function trainCreature(
   creature.invalidateScoreCache();
 }
 
-/** Largest outward-synapse magnitude of the neuron with the given UUID. */
+/**
+ * Largest outward-synapse magnitude of the neuron with the given UUID.
+ *
+ * @throws {Error} When the neuron is gone. A missing newborn is a real fault —
+ *   returning `0` would fold it into the weight distribution as "an outward
+ *   weight of zero" and produce a complete-looking, wrong evidence row
+ *   (Issue #3234).
+ */
 function outwardMagnitude(creature: Creature, uuid: string): number {
   const neuron = creature.neurons.find((n) => n.uuid === uuid);
-  if (!neuron) return 0;
+  if (!neuron) {
+    throw new Error(
+      `Newborn ${uuid} is no longer in the creature — refusing to record a ` +
+        "zero magnitude for a neuron that vanished (Issue #3234)",
+    );
+  }
   let max = 0;
   for (const synapse of creature.outwardConnections(neuron.index)) {
     const magnitude = Math.abs(synapse.weight);
@@ -446,11 +458,19 @@ export function runStructuralProbe(
           ? 0
           : config.graceRounds,
       });
+      // A refused mutation is not a trial — the operator declined, which is
+      // ordinary. A mutation that *reports success* without leaving a findable
+      // new neuron is a broken operator, so that case throws instead.
       if (!operator.mutate()) continue;
       const newborn = child.neurons.find((n) =>
         n.type === "hidden" && n.uuid !== undefined && !before.has(n.uuid)
       );
-      if (!newborn?.uuid) continue;
+      if (!newborn?.uuid) {
+        throw new Error(
+          `AddNeuron reported success on trial ${trial} at scale ${scale} but ` +
+            "added no findable hidden neuron (Issue #3234)",
+        );
+      }
       mutations++;
 
       const birth = outwardMagnitude(child, newborn.uuid);

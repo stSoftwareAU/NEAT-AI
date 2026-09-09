@@ -1,7 +1,7 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "7.0.25",
+  "version": "7.0.29",
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
@@ -93,6 +93,7 @@
     "exclude": [
       "bench/score_per_hour_harness_test.ts",
       "bench/evolution_config_sweep_test.ts",
+      "bench/structural_weight_scale_sweep_test.ts",
       "bench/ActivateAndTraceApp.ts",
       "bench/ActivateApp.ts",
       "bench/BreedPreFixExportAllocation.ts",

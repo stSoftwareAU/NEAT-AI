@@ -15,6 +15,7 @@ import {
   tagNewbornGrace,
 } from "@architecture/NewbornGrace.ts";
 import { addTag, getTag } from "@stsoftware/tags/mod";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 
 function tagged(value?: string) {
@@ -91,11 +92,15 @@ Deno.test("newborn grace - the budget survives export and re-import", () => {
   };
   const creature = Creature.fromJSON(json);
   const hidden = creature.neurons.find((n) => n.type === "hidden")!;
-  const uuidBefore = creature.uuid;
+  // Compute the identity for real: `fromJSON` deliberately leaves
+  // `creature.uuid` undefined, so reading the field would compare undefined
+  // with undefined and prove nothing.
+  const uuidBefore = CreatureUtil.makeUUID(creature);
   tagNewbornGrace(hidden, 2);
 
   // Tags are excluded from makeUUID, so tagging cannot shift identity.
-  assertEquals(creature.uuid, uuidBefore);
+  delete creature.uuid;
+  assertEquals(CreatureUtil.makeUUID(creature), uuidBefore);
 
   const reloaded = Creature.fromJSON(creature.exportJSON());
   const reloadedHidden = reloaded.neurons.find((n) => n.type === "hidden")!;

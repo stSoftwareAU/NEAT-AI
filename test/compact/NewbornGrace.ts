@@ -182,3 +182,25 @@ Deno.test("AddNeuron - tags the neuron it inserts with the configured grace", ()
     "The default must leave the newborn an ordinary compaction candidate",
   );
 });
+
+Deno.test("compactUnused - a pass that compacts nothing spends no grace", () => {
+  // Issue #3970 regression: `compactUnused` returns `undefined` when every
+  // candidate is protected, and the training teardown then falls back to
+  // `compactVariants`. That fallback creature is a third lineage leaving the
+  // teardown and it inherits the *un-decremented* tag, so the callers must age
+  // it themselves. Pin the contract that makes that necessary: a pass that
+  // compacts nothing must not have quietly spent a round anywhere.
+  const grace: TagInterface[] = [{ name: NEWBORN_GRACE_TAG, value: "2" }];
+  const trace = tracedCreature(grace);
+  // Protect the other hidden neuron too, so no candidate is left at all.
+  trace.neurons[1].tags = [{ name: NEWBORN_GRACE_TAG, value: "2" }];
+
+  const nothing = compactUnused(trace, PLANK);
+  assertEquals(nothing, undefined, "Every candidate was protected");
+
+  assertEquals(
+    trace.neurons.map((n) => newbornGraceRemaining(n)),
+    [2, 2, 0],
+    "A non-compacting pass must leave every grace budget untouched",
+  );
+});

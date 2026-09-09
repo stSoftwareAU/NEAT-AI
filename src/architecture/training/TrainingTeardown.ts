@@ -243,6 +243,10 @@ export function finaliseTraining(
   stripUntrackedTraces(bestTraceJSON, bestCreatureJSON, loop.sparseConfig);
 
   let compact = compactUnused(bestTraceJSON, iterationConfig.plankConstant);
+  // Issue #3970: `compactUnused` spends a grace round on the copy it returns.
+  // The `compactVariants` fallback below does not, so record which lineage
+  // produced `compact` and spend the round explicitly when it did not.
+  const compactWasAged = compact !== undefined;
   if (!compact) {
     // Issue #3037: select the best of the safe + aggressive compaction
     // candidates (the safe variant is the floor; identical variants dedupe).
@@ -268,6 +272,11 @@ export function finaliseTraining(
   // would be exempt from compaction for the rest of the run.
   ageNewbornGrace(creature);
   ageNewbornGrace(bestTraceJSON);
+  // Issue #3970: the `compactVariants` fallback lineage is a third creature
+  // leaving this function. Without this it would keep the un-decremented
+  // budget its siblings just spent, and a "1 round" grace would mean "exempt
+  // from compaction forever" on that lineage.
+  if (!compactWasAged && compact) ageNewbornGrace(compact);
 
   return {
     ID,

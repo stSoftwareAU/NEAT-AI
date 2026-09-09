@@ -225,10 +225,13 @@ const config = createNeatConfig({
 removes the smallest. A neuron with a near-zero outward weight scores ~0, so it
 is the _first_ candidate — it would be compacted away before the gradient step
 that was meant to give it a job. `structuralNewbornGraceRounds` tags the newborn
-so compaction skips it. The budget is spent one round at a time: `compactUnused`
-spends a round on the compacted copy it returns, and the training teardown
-spends a round on the trained (uncompacted) creature, so neither lineage can end
-up exempt from compaction for the rest of the run.
+so compaction skips it. The budget is spent one round at a time, on every
+lineage that leaves a training round: `compactUnused` spends a round on the
+compacted copy it returns, the training teardown spends a round on the trained
+(uncompacted) creature, and — when `compactUnused` found nothing to remove and
+the teardown fell back to `compactVariants` — the teardown spends a round on
+that fallback creature too. No lineage can end up exempt from compaction for the
+rest of the run.
 
 > [!NOTE]
 > The grace is honoured by `compactUnused` only. When `compactUnused` finds no

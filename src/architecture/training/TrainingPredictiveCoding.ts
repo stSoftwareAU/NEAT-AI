@@ -56,6 +56,9 @@ export function trainDirPredictiveCoding(
 
   const feedbackLoop = options.feedbackLoop ?? false;
   let compact = compactUnused(creature.traceJSON(), 1e-7);
+  // Issue #3970: `compactUnused` spends a grace round on the copy it returns;
+  // the `compactVariants` fallback below does not.
+  const compactWasAged = compact !== undefined;
   if (!compact) {
     // Issue #3037: select the best of the safe + aggressive compaction
     // candidates (the safe variant is the floor; identical variants dedupe).
@@ -68,6 +71,9 @@ export function trainDirPredictiveCoding(
   // protected newborn's grace budget before the trace below inherits the tags.
   // The compacted copy was aged inside `compactUnused`.
   ageNewbornGrace(creature);
+  // Issue #3970: age the fallback lineage too, so it cannot keep a budget its
+  // siblings have already spent.
+  if (!compactWasAged && compact) ageNewbornGrace(compact);
 
   // Issue #1913: Add trace tags indicating Predictive Coding was used.
   const trace = creature.traceJSON();
