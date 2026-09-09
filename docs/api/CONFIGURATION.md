@@ -78,6 +78,8 @@ and
 | `structuralNewbornGraceRounds` | `integer` | `0`     | Compaction passes a newly inserted neuron is exempt from `compactUnused` removal                        |
 | `skipConnectionRate`           | `number`  | `0`     | Selection rate for the targeted `ADD_SKIP_CONN` operator; `0` keeps it out of the operator mix (0..1)   |
 | `skipMinRunLength`             | `integer` | `4`     | Shortest serial run `AddSkipConnection` considers worth bypassing, in hidden neurons (≥2)               |
+| `deepChainSquashBias`          | `number`  | `0`     | Down-weighting `ModSquash` applies to gradient-blocking activations inside a long serial run (0..1)     |
+| `deepChainMinLength`           | `integer` | `4`     | Serial-run length at which `deepChainSquashBias` starts applying (≥2)                                   |
 
 ### 🎓 Training fields
 
