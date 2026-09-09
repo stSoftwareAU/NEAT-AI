@@ -179,6 +179,10 @@ Added:
   offspring, depth buckets travelling across the generation lag, reverted
   mutations, never-evaluated offspring, and the `MCMCDiagnostics`
   reconciliation.
+- `test/NEAT/MutationOperatorLog.ts` — 3 tests for the `[MutationOps]` verbose
+  line: a quiet generation produces no line, an active operator renders its
+  counters, delta, applied and outcome-joined depth buckets and attribution
+  split, and the outcome buckets are omitted before there is an outcome.
 - `test/NEAT/MutationOperatorTelemetryIntegration.ts` — 6 integration tests
   driving the real `Mutator`, `DeDuplicator` and `evolveDataSet`: proposal +
   depth bucket for `ADD_NODE`, weight mutations bucketed `unknown` (proving the
