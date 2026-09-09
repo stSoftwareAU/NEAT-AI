@@ -4,10 +4,12 @@
  *
  * `DiscoveryNeuronRemoval` is the pass whose tag shows up on live fleet
  * creatures (`🪶 Removed low-impact neuron … (impact: 0.00%)`), so it is the
- * removal that matters most in production. Both entry points already route
- * through `cleanupMemeticForRemovedNeuron` (`DiscoveryNeuronRemoval.ts:298` and
- * `:491`), which drops the record when the removed neuron is named — these
- * tests lock that in rather than repair it.
+ * removal that matters most in production. Since Issue #3975 both entry points
+ * hand the creature to NEAT-AI-core's `prune_neuron`, which prunes the memetic
+ * entries that stop naming live structure entry-by-entry rather than dropping
+ * the record wholesale — these tests lock the outcome in rather than repair it,
+ * and are deliberately written against the outcome so they survived that
+ * change of owner unaltered.
  *
  * They also cover the half no per-removal helper inspects:
  * `cleanupMemeticForRemovedNeuron` reads only the top-level `biases`/`weights`,

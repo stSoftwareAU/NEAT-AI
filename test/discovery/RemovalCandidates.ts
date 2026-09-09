@@ -6,7 +6,7 @@
  * meaningfully contribute to the creature's score.
  */
 
-import { assertEquals, assertExists } from "@std/assert";
+import { assertAlmostEquals, assertEquals, assertExists } from "@std/assert";
 import { Creature } from "@creature";
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
@@ -16,6 +16,7 @@ import {
   buildDiscoveryCandidates,
 } from "@discovery/DiscoveryCandidates.ts";
 import type { DiscoverResult } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
+import { danglingMemeticReferences } from "../_memeticReferences.ts";
 
 Deno.test("removeLowImpactNeuron applies bias compensation for outgoing synapses", () => {
   // X -> T removes average contribution of (w * meanActivation(X)) from T's pre-activation sum,
@@ -73,9 +74,28 @@ Deno.test("removeLowImpactNeuron applies bias compensation for outgoing synapses
   // Bias compensation checks:
   // - neuron-T.bias += (-1.2 * 0.4) = -0.48
   // - output-0.bias += (0.5 * 0.4) = +0.2
+  //
+  // Issue #3975 documented change of representation, not of behaviour: the
+  // removal now runs through NEAT-AI-core's `prune_neuron`, whose cleanup
+  // canonicalises a hidden neuron left with no inward edge into a **unity**
+  // constant (bias 1) and folds its fixed activation into the outgoing weight,
+  // where the superseded TypeScript pass left a constant carrying the folded
+  // bias with the weight untouched. Both feed output-0 the same number, so
+  // this asserts the contribution rather than the encoding of it.
   const neuronT = result.neurons.find((n) => n.id === NEURON_T_ID);
   assertExists(neuronT, "Target neuron should remain");
-  assertEquals(neuronT.bias, -0.1 + (-1.2 * 0.4));
+  const compensatedT = -0.1 + (-1.2 * 0.4);
+  const edgeToOutput = result.exportJSON().synapses.find((s) =>
+    s.fromUUID === "neuron-T" && s.toUUID === "output-0"
+  );
+  assertExists(edgeToOutput, "neuron-T should still feed the output");
+  // The forward pass runs in f32, which is the precision the fold agrees to.
+  assertAlmostEquals(
+    neuronT.bias * edgeToOutput.weight,
+    compensatedT * 0.25,
+    1e-6,
+    "neuron-T must contribute the compensated value to output-0",
+  );
 
   const output0 = result.neurons.find((n) => n.id === -1);
   assertExists(output0, "Output neuron should remain");
@@ -675,11 +695,24 @@ Deno.test("removeLowImpactNeuron cleans up memetic data for removed neuron", () 
   const hiddenNeurons = result.neurons.filter((n) => n.type === "hidden");
   assertEquals(hiddenNeurons.length, 0, "Hidden neuron should be removed");
 
-  // Memetic data should be cleaned up (either deleted entirely or have references removed)
-  // The cleanupMemeticForRemovedNeuron function deletes the entire memetic object
+  // Memetic data must be cleaned up — the test has always allowed "either
+  // deleted entirely or have references removed".
+  //
+  // Issue #3975 documented change: the superseded TypeScript pass dropped the
+  // whole record, while NEAT-AI-core's `prune_neuron` applies the finer-grained
+  // inverse of validation rule 31 — every entry naming live structure is kept
+  // and exactly the dangling ones go. That is strictly more information for the
+  // same guarantee, so the assertion below pins the guarantee.
+  const memetic = result.memetic;
+  assertExists(memetic, "the record naming survivors must be kept");
   assertEquals(
-    result.memetic,
-    undefined,
-    "Memetic data should be deleted when referencing neuron is removed",
+    danglingMemeticReferences(result.exportJSON()),
+    [],
+    "no memetic entry may name the removed neuron",
+  );
+  assertEquals(
+    Object.keys(memetic.biases ?? {}).length > 0,
+    true,
+    "the surviving output's bias delta must not be thrown away",
   );
 });
