@@ -167,9 +167,10 @@ the scorer from a matched pair and runs that lane.
   distinguish a deep-chain neuron`,
   and the finding posted as a comment on #3969 — reviewer: partial — reason: the
   reviewer saw the diff before the #3969 comment was posted and flagged the
-  report as missing; it has since been posted, and the two docstring defects it
-  also found (a `26 hidden members` miscount and a reference to a non-existent
-  evidence file) are fixed in this diff.
+  report as missing; it has since been posted (stSoftwareAU/NEAT-AI#3969,
+  comment 5602635367), and the two docstring defects it also found (a
+  `26 hidden members` miscount and a reference to a non-existent evidence file)
+  are fixed in this diff.
 - **met** — If Step 1 is sufficient — issue closed with the finding, no code —
   evidence: `test/NEAT/DeepChainBucketVisibility.ts:64` shows a run member and
   an ordinary mid-depth neuron resolving to one role, so the branch does not
