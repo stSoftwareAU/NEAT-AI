@@ -57,6 +57,8 @@ type NumericOptionKeys =
   | "maximumWeightAdjustmentScale"
   | "structuralWeightScale"
   | "structuralNewbornGraceRounds"
+  | "skipConnectionRate"
+  | "skipMinRunLength"
   | "sparseRatio"
   | "globalBreedingRate"
   | "diversityBreedingRate"

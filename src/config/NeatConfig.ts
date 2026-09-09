@@ -458,6 +458,20 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       0,
       { integer: true, min: 0 },
     ),
+    // Issue #3973: the targeted skip-connection operator. Rate `0` keeps it
+    // out of the operator mix entirely, reproducing the historical behaviour.
+    skipConnectionRate: parseNumber(
+      "Skip connection rate",
+      opts.skipConnectionRate,
+      0,
+      { min: 0, max: 1 },
+    ),
+    skipMinRunLength: parseNumber(
+      "Skip minimum run length",
+      opts.skipMinRunLength,
+      4,
+      { integer: true, min: 2 },
+    ),
     sparseRatio: parseNumber(
       "Sparse Ratio",
       opts.sparseRatio,

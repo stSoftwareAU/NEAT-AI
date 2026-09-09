@@ -78,7 +78,8 @@
     "bench:smoke": "deno bench --allow-read --allow-write --allow-env --allow-ffi bench/FatherCompatibility.ts bench/Activate.ts",
     "bench:score-per-hour": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/score_per_hour_harness.ts",
     "bench:evolution-sweep": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/evolution_config_sweep.ts",
-    "bench:structural-scale": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/structural_weight_scale_sweep.ts"
+    "bench:structural-scale": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/structural_weight_scale_sweep.ts",
+    "bench:skip-null": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/skip_connection_null_comparison.ts"
   },
   "test": {
     "include": [
@@ -94,6 +95,8 @@
       "bench/score_per_hour_harness_test.ts",
       "bench/evolution_config_sweep_test.ts",
       "bench/structural_weight_scale_sweep_test.ts",
+      "bench/skip_connection_null_comparison.ts",
+      "bench/skip_connection_null_comparison_test.ts",
       "bench/ActivateAndTraceApp.ts",
       "bench/ActivateApp.ts",
       "bench/BreedPreFixExportAllocation.ts",

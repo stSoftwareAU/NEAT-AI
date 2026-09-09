@@ -362,6 +362,7 @@ import { Mutation } from "@stsoftware/neat-ai";
 | `SUB_SELF_CONN` | Remove a self-loop (recurrent only)           |
 | `ADD_BACK_CONN` | Add a backward connection (recurrent only)    |
 | `SUB_BACK_CONN` | Remove a backward connection (recurrent only) |
+| `ADD_SKIP_CONN` | Add a bypass around a deep serial run         |
 
 **Preset groups:**
 
@@ -369,6 +370,12 @@ import { Mutation } from "@stsoftware/neat-ai";
   `SUB_NODE`, `ADD_CONN`, `SUB_CONN`, `MOD_WEIGHT`, `MOD_BIAS`, `MOD_SQUASH`,
   `SWAP_NODES`.
 - `Mutation.ALL` — All mutations including recurrent connections.
+
+> [!NOTE]
+> `ADD_SKIP_CONN` is in neither preset. It is selected by `skipConnectionRate`
+> (default `0`, which disables it), not by membership of the `mutation` list —
+> see
+> [Mutation adaptation → targeted skip connections](../config/MUTATION_ADAPTATION.md#-targeted-skip-connections).
 
 ---
 

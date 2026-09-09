@@ -74,6 +74,18 @@ export const Mutation: MutationType = Object.freeze({
     name: "SUB_BACK_CONN",
   }),
   /**
+   * Mutation strategy to add a bypass synapse around a deep serial run of
+   * neurons — the residual construction `x + F(x)` (Issue #3973).
+   *
+   * Deliberately absent from {@link MutationType.FFW} and
+   * {@link MutationType.ALL}: the operator is selected by
+   * `skipConnectionRate`, which defaults to `0`, so an existing configuration
+   * never sees it.
+   */
+  ADD_SKIP_CONN: Object.freeze<MutationInterface>({
+    name: "ADD_SKIP_CONN",
+  }),
+  /**
    * Mutation strategy to swap two nodes.
    */
   SWAP_NODES: Object.freeze<MutationInterface>({

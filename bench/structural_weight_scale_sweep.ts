@@ -331,8 +331,13 @@ export function scaleLabel(scale: number): string {
   return `scale${scale}`;
 }
 
-/** Mean squared error of a creature over a dataset. */
-function datasetError(
+/**
+ * Mean squared error of a creature over a dataset.
+ *
+ * Exported for #3973's null-comparison harness, which measures the same thing on
+ * the same production path rather than keeping a second copy.
+ */
+export function datasetError(
   creature: Creature,
   data: readonly DataRecordInterface[],
 ): number {
@@ -363,7 +368,7 @@ function scoreCreature(
  * `trainPerGen` uses — so "after the gradient step" in the report means what it
  * means in production, not what a bespoke propagate loop would have meant.
  */
-function trainCreature(
+export function trainCreature(
   creature: Creature,
   data: readonly DataRecordInterface[],
   iterations: number,
@@ -605,8 +610,13 @@ function fmt(n: number): string {
   return n.toFixed(4);
 }
 
-/** Format a 0..1 fraction as a percentage. */
-function pct(fraction: number): string {
+/**
+ * Format a 0..1 fraction as a percentage.
+ *
+ * Exported for #3973's null-comparison harness, whose zero-gradient columns are
+ * fractions of exactly the same kind.
+ */
+export function pct(fraction: number): string {
   return `${(fraction * 100).toFixed(1)}%`;
 }
 

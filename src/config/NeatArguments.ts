@@ -269,6 +269,24 @@ export interface NeatArguments {
    */
   structuralNewbornGraceRounds: number;
 
+  /**
+   * Selection rate for the targeted skip-connection operator
+   * `ADD_SKIP_CONN` in the operator mix (Issue #3973). `0` — the default —
+   * disables it entirely and consumes no randomness, so the operator mix is
+   * bit-identical to a build without the operator. A positive value is the
+   * probability that any one mutation draw proposes a bypass around the
+   * creature's deepest serial run instead of drawing from `mutation`.
+   */
+  skipConnectionRate: number;
+
+  /**
+   * Shortest serial run the skip-connection operator considers worth bypassing,
+   * counted in hidden neurons (Issue #3973). Default `4`; a run of `n` members
+   * puts the bypass around the `n - 1` members downstream of its entry, so `2`
+   * is the smallest meaningful value.
+   */
+  skipMinRunLength: number;
+
   /** Determine how many neurons to select based on the sparseRatio. */
   sparseRatio: number;
 

@@ -65,14 +65,19 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 
 ### 🧬 Structural mutation fields
 
-Identity-initialised structural mutation (Issue #3970). Both defaults reproduce
-the historical behaviour exactly — see
-[Mutation adaptation → identity-initialised structural mutation](../config/MUTATION_ADAPTATION.md#-identity-initialised-structural-mutation).
+Identity-initialised structural mutation (Issue #3970) and the targeted
+skip-connection operator (Issue #3973). Every default reproduces the historical
+behaviour exactly — see
+[Mutation adaptation → identity-initialised structural mutation](../config/MUTATION_ADAPTATION.md#-identity-initialised-structural-mutation)
+and
+[Mutation adaptation → targeted skip connections](../config/MUTATION_ADAPTATION.md#-targeted-skip-connections).
 
 | Field                          | Type      | Default | Description                                                                                             |
 | ------------------------------ | --------- | ------- | ------------------------------------------------------------------------------------------------------- |
 | `structuralWeightScale`        | `number`  | `1`     | Scale for the **outward** synapse of `AddNeuron` and for `AddConnection` on the main mutation path (>0) |
 | `structuralNewbornGraceRounds` | `integer` | `0`     | Compaction passes a newly inserted neuron is exempt from `compactUnused` removal                        |
+| `skipConnectionRate`           | `number`  | `0`     | Selection rate for the targeted `ADD_SKIP_CONN` operator; `0` keeps it out of the operator mix (0..1)   |
+| `skipMinRunLength`             | `integer` | `4`     | Shortest serial run `AddSkipConnection` considers worth bypassing, in hidden neurons (≥2)               |
 
 ### 🎓 Training fields
 

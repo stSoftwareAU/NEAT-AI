@@ -290,6 +290,149 @@ contributes nothing — and no score-per-hour advantage survives a change of see
 Enable a reduced scale only alongside a measurement that shows the outward
 weights actually growing on _your_ workload.
 
+## 🌉 Targeted skip connections
+
+Any forward synapse from a low-index neuron to a high-index one **is** a skip
+connection, so the topology has always permitted the residual construction
+`x + F(x)`. What was missing is an operator that proposes one _deliberately_.
+
+`AddConnection` draws its endpoints uniformly. On a creature with thousands of
+neurons the chance that a single draw straddles one specific deep chain is
+negligible, while the output neuron is a target many draws hit — so evolution
+finds short-circuits **to the output** and none around a deep interior run.
+Issue #3972 measured exactly that asymmetry on
+`test/data/grq-23-forests-constants.json`: the output neuron has fan-in 325 and
+a one-hop path from the inputs, while the 28-neuron single-file tail from depth
+34 to 61 carries no bypass anywhere along it.
+
+`AddSkipConnection` (`ADD_SKIP_CONN`) closes that gap. Selection is the whole
+operator — a randomly placed skip is just `AddConnection`:
+
+1. Serial runs come from `findSerialChains` (#3972): maximal runs of consecutive
+   depth levels holding exactly one neuron each, connected end to end. That is
+   the structure with no depth-parallel route around it, so one zero derivative
+   anywhere along it zeroes the gradient for every member upstream. Note this is
+   **depth occupancy, not fan-out**: #3972 owns that definition and documents
+   why (a member may short-circuit elsewhere and still be the only neuron at its
+   depth, which is what removes the parallel alternative). Reusing it keeps one
+   owner for "what a serial run is".
+2. Runs shorter than `skipMinRunLength` are ignored.
+3. Longer runs are preferred, ties broken by the deeper run.
+4. The bypass runs from the run's **entry** neuron to a neuron the run
+   **feeds**, so that consumer sees both the processed signal and a short-path
+   copy of the entry activation.
+5. The new synapse is initialised at `structuralWeightScale` (#3970), not at a
+   full `[-0.5, +0.5]` draw — a ±0.5 bypass around a tuned run is the same
+   mistake that issue describes.
+
+Exactly one bypass is added per mutation, so #3971's per-operator telemetry can
+still attribute the result.
+
+| Option               | Type      | Default | Description                                                                                     |
+| -------------------- | --------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `skipConnectionRate` | `number`  | `0`     | Probability that a mutation draw proposes a bypass instead of drawing from `mutation`. `0` off. |
+| `skipMinRunLength`   | `integer` | `4`     | Shortest serial run worth bypassing, counted in hidden neurons (min: 2).                        |
+
+`skipConnectionRate: 0` consumes no randomness of its own and is bit-identical
+to a build without the operator — pinned by `test/NEAT/SkipConnectionRate.ts`
+against a golden captured from commit `e02d33af`. `ADD_SKIP_CONN` is
+deliberately absent from `Mutation.ALL` and `Mutation.FFW`, so an existing
+`mutation` list never picks it up.
+
+```ts
+const config = createNeatConfig({
+  // Propose a targeted bypass on 5% of mutation draws, around any single-file
+  // run of six or more hidden neurons, at a near-identity weight.
+  skipConnectionRate: 0.05,
+  skipMinRunLength: 6,
+  structuralWeightScale: 0.01,
+});
+```
+
+```mermaid
+flowchart LR
+    I[Inputs] --> E[Run entry, depth 34]
+    E --> M1[Run member] --> M2[Run member] --> M3[... 28 in single file]
+    M3 --> C[Consumer the run feeds]
+    E -.->|bypass at structuralWeightScale| C
+```
+
+> [!NOTE]
+> The operator does **not** consult #3972's zero-gradient fraction when ranking
+> runs, even though that measurement now exists. Reading it needs input samples
+> a mutation operator is never given, and costs a forward and reverse sweep per
+> sample — it cannot ride on every mutation. Length is the proxy; the harness
+> below measures the gradient directly.
+
+### 📊 What the null comparison measured
+
+`bench/skip_connection_null_comparison.ts` runs three arms on one creature and
+one seed: **baseline**, **skip** (`AddSkipConnection`), and **random**
+(`AddConnection` at the same weight scale, matched to the number of synapses the
+skip arm actually added). Reproduce with:
+
+```bash
+# #3972's own creature, profile only. Produces docs/evidence/skip-connection-null-grq.md.
+deno task bench:skip-null --creature test/data/grq-23-forests-constants.json \
+  --profile-only true --samples 64 --skips 4
+
+# Synthetic tuned parent with a 12-neuron single-file tail, trained. Produces
+# docs/evidence/skip-connection-null-synthetic-seed{3973,17}.md.
+deno task bench:skip-null --skips 3 --seed 3973 --iterations 300 --obs-scale 3 --samples 64
+deno task bench:skip-null --skips 3 --seed 17 --iterations 300 --obs-scale 3 --samples 64
+```
+
+On the GRQ creature, 64 seeded samples, one bypass (`4395 -> 5048`):
+
+| Arm      | Added | Entry neuron zero-gradient | Chain aggregate | Pooled depths 1–34 |
+| -------- | ----: | -------------------------: | --------------: | -----------------: |
+| baseline |     0 |                     100.0% |           85.0% |              89.4% |
+| skip     |     1 |                  **40.6%** |           82.8% |              89.4% |
+| random   |     1 |                     100.0% |           85.0% |              89.4% |
+
+The bypass is doing the ResNet job where it is aimed: the run's entry neuron had
+an **exactly-zero gradient on every one of 64 samples**, and after one targeted
+bypass the gradient reaches it on 59.4% of them. A uniformly drawn connection at
+the same weight scale changes nothing — the targeting, not the synapse, is what
+moved the number.
+
+**Three honest limits.**
+
+1. The pooled figure over depths 1–34 does not move at all: those depths hold
+   thousands of neurons that already have many parallel routes, so a 28-neuron
+   tail is lost in the average. The entry-neuron column is the sharp reading,
+   and it was added because the pooled one cannot resolve an effect this size.
+2. The chain aggregate improves only 2.2 points, because the bypass restores the
+   route _into_ the chain rather than repairing the zero derivatives inside it —
+   Issue #3974's `ModSquash` work is what targets those.
+3. Nothing here is a **score** claim. The GRQ arm is profile-only: that creature
+   is not trained by this harness, so there is no post-training weight or error
+   for it.
+
+On the synthetic trained parent, one bypass per arm, both seeds:
+
+| Seed | Skip \|w\| birth → trained | Random \|w\| birth → trained | Error after: baseline / skip / random |
+| ---- | -------------------------- | ---------------------------- | ------------------------------------- |
+| 3973 | 0.002037 → 0.007213 (3.5×) | 0.004465 → 0.004147 (0.9×)   | 0.004741 / **0.003478** / 0.004780    |
+| 17   | 0.003564 → 0.020314 (5.7×) | 0.001024 → 0.004858 (4.7×)   | 0.021469 / 0.019734 / **0.018296**    |
+
+The skip synapse **grows during training on both seeds** — 3.5× and 5.7× its
+birth scale — so the bypass is not the "accepted but useless" structure #3970
+warned about: backprop finds a job for it. But read the rest honestly: the null
+arm's synapse also grows on seed 17 (4.7×), so growth alone does not separate
+the two arms, and the error ordering **flips between seeds** — the skip arm wins
+on 3973, the null arm wins on 17. That is why the operator ships **off by
+default**: switch it on alongside a measurement on your own workload.
+
+> [!NOTE]
+> `skipConnectionRate` is not damped for large creatures. `selectMutationMethod`
+> applies the rate before the `adaptiveMutationThresholds` weight/bias
+> preference and before the `large` creature topology-expansion suppression, and
+> `isTopologyMutation` reports `ADD_SKIP_CONN` as structural, so MCMC accepts it
+> unconditionally like every other topology mutation. A rate of `0.1` on a
+> 2,500-neuron creature is therefore 10% unconditional structural growth — watch
+> #3971's `ADD_SKIP_CONN` proposed/applied counters when you enable it.
+
 ## 👀 See also
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — base mutation rates that
@@ -298,6 +441,8 @@ weights actually growing on _your_ workload.
   range constraints.
 - [Population sizing](./POPULATION.md) — adaptive population sizing pairs
   naturally with plateau detection.
+- [`docs/evidence/skip-connection-null-grq.md`](../evidence/skip-connection-null-grq.md)
+  — the committed output of the null comparison on #3972's creature.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — when MCMC and plateau
   detection are worth the per-generation overhead.
 
