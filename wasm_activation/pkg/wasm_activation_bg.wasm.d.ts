@@ -47,6 +47,8 @@ export const mape_sum_batch_packed: (a: number, b: number, c: number, d: number,
 export const mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const propagate_topological: (a: number, b: number) => [number, number];
+export const prune_neuron: (a: number, b: number) => [number, number];
+export const prune_synapse: (a: number, b: number) => [number, number];
 export const read_all_neuron_state: () => [number, number];
 export const read_all_synapse_state: () => [number, number];
 export const read_neuron_state: (a: number) => [number, number];
