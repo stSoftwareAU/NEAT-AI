@@ -347,3 +347,59 @@ Deno.test("AddSkipConnection - refuses an out-of-range skipMinRunLength", () => 
     "structuralWeightScale must be a finite number greater than zero",
   );
 });
+
+Deno.test("AddSkipConnection - the bypass does not make the run compactable", () => {
+  // The bypass adds fan-out to the run's entry neuron, and the `compact/`
+  // relay folds key off `1 inward + 1 outward`. Adding fan-out can only make
+  // the entry *less* eligible, but the run it protects must not become more
+  // removable either — so compare the surviving run against the same creature
+  // compacted without a bypass.
+  const squash = "LOGISTIC";
+  const build = () => {
+    const neurons: CreatureExport["neurons"] = [];
+    const synapses: CreatureExport["synapses"] = [];
+    for (let i = 0; i < 6; i++) {
+      neurons.push({ type: "hidden", uuid: `run-${i}`, squash, bias: 0.1 });
+      if (i === 0) {
+        synapses.push({ fromUUID: "input-0", toUUID: "run-0", weight: 0.5 });
+        synapses.push({ fromUUID: "input-1", toUUID: "run-0", weight: 0.25 });
+      } else {
+        synapses.push({
+          fromUUID: `run-${i - 1}`,
+          toUUID: `run-${i}`,
+          weight: 0.5,
+        });
+      }
+    }
+    neurons.push({ type: "output", uuid: "output-0", squash, bias: 0 });
+    synapses.push({ fromUUID: "run-5", toUUID: "output-0", weight: 0.5 });
+    return Creature.fromJSON({ input: 2, output: 1, neurons, synapses });
+  };
+
+  const survivors = (creature: Creature): string[] => {
+    const compacted = creature.compact(false) ?? creature;
+    return compacted.neurons
+      .filter((n) => n.type === "hidden")
+      .map((n) => n.uuid ?? "(no uuid)")
+      .sort();
+  };
+
+  const control = survivors(build());
+
+  const bypassed = build();
+  const operator = new AddSkipConnection(bypassed);
+  assert(operator.mutate(), "the run should attract a bypass");
+  const withBypass = survivors(bypassed);
+
+  assertEquals(
+    withBypass,
+    control,
+    "the bypass must not cost the run a single member during compaction",
+  );
+  for (let i = 0; i < 6; i++) {
+    assert(
+      withBypass.includes(`run-${i}`),
+      `run-${i} should survive compaction with the bypass in place`,
+    );
+  }
+});
