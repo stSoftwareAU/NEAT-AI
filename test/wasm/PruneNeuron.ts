@@ -16,6 +16,7 @@ import {
   assertAlmostEquals,
   assertEquals,
   assertStringIncludes,
+  assertThrows,
 } from "@std/assert";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
@@ -176,6 +177,24 @@ Deno.test("corePruneNeuron: throws when the bundle is unavailable — never a si
   }
   assert(thrown instanceof WasmError, "an absent bundle must fail loud");
   assertEquals(thrown.reason, "MODULE_NOT_LOADED");
+});
+
+Deno.test("corePruneNeuron: an unavailable bundle is reported before the request shape", () => {
+  // Both faults are real, but only one of them is actionable: told the
+  // statistic was unusable, an operator fixes the measurement and still has no
+  // bundle. The missing bundle is the fault to name.
+  const thrown = assertThrows(
+    () =>
+      corePruneNeuron(
+        fixture(),
+        "hidden-0",
+        { meanActivation: Number.NaN },
+        null,
+        new Error("bundle missing"),
+      ),
+    WasmError,
+  );
+  assertStringIncludes(thrown.message, "no TypeScript fallback");
 });
 
 Deno.test("corePruneNeuron: a malformed answer is a bridge fault, not a refusal", () => {

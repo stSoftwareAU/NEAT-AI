@@ -249,6 +249,12 @@ let creatureValidatePackedFn:
 // can score" lives in core; this pointer is how TypeScript reaches it.
 let pruneNeuronFn: ((request: string) => string) | null = null;
 
+// Issue #3976 - typed synapse pruning (JSON request in, JSON response out).
+// The synapse half of the same rewrite: core cuts the named
+// `(from, to, role)` triple, compensates the target, rewrites whatever `IF`
+// structure that made statically decidable, and validates what is left.
+let pruneSynapseFn: ((request: string) => string) | null = null;
+
 // Issue #1519 - Standalone elastic error distribution
 let distributeElasticErrorFn:
   | ((
@@ -500,6 +506,8 @@ function assignFunctionPointers(module: WasmModule): void {
   creatureValidatePackedFn = module.creature_validate_packed;
   // Issue #3975 - hidden-neuron pruning
   pruneNeuronFn = module.prune_neuron;
+  // Issue #3976 - typed synapse pruning
+  pruneSynapseFn = module.prune_synapse;
   // Issue #1519 - Standalone elastic error distribution
   distributeElasticErrorFn = module.distribute_elastic_error;
   // Issue #1518 - Accumulation functions
@@ -926,6 +934,15 @@ export function getCreatureValidatePackedFn(): typeof creatureValidatePackedFn {
  */
 export function getPruneNeuronFn(): typeof pruneNeuronFn {
   return pruneNeuronFn;
+}
+
+/**
+ * Issue #3976 - core's `prune_synapse`, the shared typed synapse removal
+ * rewrite. `null` until the bundle loads, which is what lets the bridge fail
+ * loud rather than quietly fall back to a superseded TypeScript rewrite.
+ */
+export function getPruneSynapseFn(): typeof pruneSynapseFn {
+  return pruneSynapseFn;
 }
 
 // Issue #1960 - Batch operation function pointer getters
