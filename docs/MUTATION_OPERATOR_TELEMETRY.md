@@ -19,20 +19,33 @@ gradient-refinement pass that runs beside mutation.
 
 ## What is recorded, per operator, per generation
 
-| Field                             | Meaning                                                                                                              |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `proposed`                        | Times the operator was invoked.                                                                                      |
-| `noChange`                        | Times it reported no change, or produced an identical Universally Unique Identifier ([UUID](GLOSSARY.md#-acronyms)). |
-| `applied`                         | Times it actually changed the creature.                                                                              |
-| `reverted`                        | Applied changes rolled back before any evaluation (failed repair, or a Metropolis-Hastings rejection).               |
-| `mcmcAccepted` / `mcmcRejected`   | M-H decisions covering a batch containing this operator.                                                             |
-| `evaluated`                       | Offspring carrying this operator that reached `Fitness.calculate()`.                                                 |
-| `accepted` / `rejected`           | Of those, how many survived selection into the next generation.                                                      |
-| `evaluationMs`                    | Evaluation wall-clock spent on offspring carrying this operator.                                                     |
-| `scoreDelta`                      | `count` / `min` / `median` / `max` of (offspring score − parent score).                                              |
-| `deltaUnavailable`                | Evaluated offspring with no usable baseline, so no delta sample.                                                     |
-| `depthBuckets`                    | Applied mutations bucketed by the depth of the mutation site.                                                        |
-| `soleAttributed` / `coAttributed` | Whether this operator was alone on the offspring, or shared it.                                                      |
+| Field                                           | Meaning                                                                                                              |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `proposed`                                      | Times the operator was invoked.                                                                                      |
+| `noChange`                                      | Times it reported no change, or produced an identical Universally Unique Identifier ([UUID](GLOSSARY.md#-acronyms)). |
+| `applied`                                       | Times it actually changed the creature.                                                                              |
+| `reverted`                                      | Applied changes rolled back before any evaluation (failed repair, or a Metropolis-Hastings rejection).               |
+| `mcmcAccepted` / `mcmcRejected`                 | M-H decisions covering a batch containing this operator.                                                             |
+| `evaluated`                                     | Offspring carrying this operator that reached `Fitness.calculate()`.                                                 |
+| `accepted` / `rejected`                         | Of those, how many survived selection into the next generation.                                                      |
+| `evaluationMs`                                  | Evaluation wall-clock spent on offspring carrying this operator.                                                     |
+| `scoreDelta`                                    | `count` / `min` / `median` / `max` of (offspring score − parent score).                                              |
+| `deltaUnavailable`                              | Evaluated offspring with no usable baseline, so no delta sample.                                                     |
+| `depthBuckets`                                  | Mutations applied **this** generation, bucketed by the depth of the mutation site.                                   |
+| `acceptedDepthBuckets` / `rejectedDepthBuckets` | Depth buckets joined with the selection outcome, carried across the evaluation lag below.                            |
+| `soleAttributed` / `coAttributed`               | Whether this operator was alone on the offspring, or shared it.                                                      |
+
+### The row spans two generations
+
+Evolution cannot evaluate an offspring in the generation that made it: it is
+bred and mutated at the end of generation G and scored at the start of G+1. So
+within one report, `proposed` / `noChange` / `applied` / `depthBuckets` describe
+mutations made **this** generation, while `evaluated` / `accepted` / `rejected`
+/ `scoreDelta` / `evaluationMs` describe offspring mutated **earlier** and only
+now selected on. That is why the depth bucket is also reported joined with the
+outcome — `acceptedDepthBuckets` and `rejectedDepthBuckets` travel with the
+offspring, so "does the rejection rate depend on the depth at which the change
+landed?" is answerable from a single row.
 
 The distribution is reported deliberately — **not the mean**. At the 1e-5
 margins production runs decide on, a mean over a heavy-tailed delta says
@@ -66,7 +79,10 @@ Three rules make the numbers honest:
   offspring may carry several mutations. Each one is attributed the offspring's
   whole outcome, including its evaluation wall-clock, so the per-operator
   `evaluationMs` can sum past the once-per-offspring `attribution.evaluationMs`.
-  The report carries `soleAttributed` / `coAttributed` and a plain-language
+  Evaluations also run concurrently across the worker pool, so `evaluationMs` is
+  summed per-creature occupancy rather than exclusive wall-clock — with N
+  workers it can exceed the generation's fitness phase by up to N×. The report
+  carries `soleAttributed` / `coAttributed` and a plain-language
   `attribution.note` so a co-attributed operator is never mistaken for one
   credited alone.
 - **`noChange` is not `rejected`.** `AddNeuron` logs `"AddNeuron: No change."`
