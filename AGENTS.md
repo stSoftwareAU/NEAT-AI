@@ -685,6 +685,14 @@ actionable error pointing at `./build.sh`.
 - **Topology export** (DOT / JSON): when available from core (Issue #2417), the
   thin TS wrapper delegates formatting to core; there is no TS re-implementation
   of the DOT or JSON formatter.
+- **Hidden-neuron pruning** (`src/wasm/WasmPruneNeuron.ts`): `corePruneNeuron`
+  bridges discovery's `removeHarmfulNeuron` / `removeLowImpactNeuron` onto
+  core's `prune_neuron`, which owns the mean bias fold, the removal, the memetic
+  prune, the cleanup cascade, canonicalisation and validation. The superseded
+  TypeScript rewrite was removed in Issue #3975. Scope is the single-neuron
+  rewrite only: the ordered multi-op `applyCoordinatedStructuralCandidate` plan
+  and the `applyRemoveNeuron` replay are still TypeScript, and **synapse**
+  removal stays TypeScript until Issue #3976.
 
 If you add a new read-heavy or hot-path operation that lives in core, **do not
 re-implement a TypeScript fallback** — fail fast via `requireWasm(...)` instead.
@@ -746,9 +754,10 @@ The two rules contributors most often trip over:
    ([principle 7](./docs/ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)).
    The operations already moved into NEAT-AI-core are topology
    validation/scanning, reverse topological order, structural integrity, cycle
-   detection, the topological backprop loop and elastic weight distribution.
-   Their wrappers in `src/wasm/` and `src/propagate/` call into WASM and fail
-   fast if the bundle is unavailable — do not reintroduce `*TS` fallbacks.
+   detection, the topological backprop loop, elastic weight distribution and
+   hidden-neuron pruning (`prune_neuron`, Issue #3975). Their wrappers in
+   `src/wasm/` and `src/propagate/` call into WASM and fail fast if the bundle
+   is unavailable — do not reintroduce `*TS` fallbacks.
 
 ## 🔄 Feed-forward vs Recurrent Connections
 

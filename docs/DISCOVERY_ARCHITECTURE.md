@@ -511,7 +511,22 @@ was.
 Discovery keeps what core deliberately does not own — candidate selection, the
 Discovery-emitted compensation payload (applied before the rewrite, because it
 is the caller's own measurement), the `IF`-routing behaviour guard, the overflow
-clamp on the targets core reports folding, and the accept/reject decision.
+clamp over what core hands back, and the accept/reject decision.
+
+**Where the boundary stops.** Core owns the _single-neuron_ rewrite only. Two
+neighbouring paths are still TypeScript by design:
+
+- `applyCoordinatedStructuralCandidate` applies an ordered, all-or-nothing plan
+  of dependent edits, of which `removeNeuron` is one op. Its intermediate states
+  are legitimately incomplete, so handing each op to a rewrite that
+  canonicalises and validates would reject plans that are valid as a whole.
+- `applyRemoveNeuron` replays an already-accepted removal onto a second creature
+  when a combined candidate stacks two singles. It diffs base against candidate
+  rather than removing anything itself — but since core also edits the neurons
+  that _survive_ a removal, that diff must carry the survivor rewrite (type,
+  bias, squash and existing-synapse weight), not membership alone.
+
+Synapse removal stays TypeScript until Issue #3976.
 
 ```mermaid
 flowchart LR
