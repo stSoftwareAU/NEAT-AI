@@ -73,9 +73,11 @@ export function findSerialChains(creature: Creature): SerialChain[] {
   const maxDepth = Math.max(...layers.keys());
 
   // The single occupant of each depth, or -1 when the depth is shared/empty.
+  // Depth 0 is never a member: it holds the inputs and constants, which have
+  // nothing upstream of them for a lost gradient to matter to.
   const soleOccupant = new Int32Array(maxDepth + 1).fill(-1);
   for (const [depth, indexes] of layers) {
-    if (indexes.length === 1) {
+    if (depth > 0 && indexes.length === 1) {
       soleOccupant[depth] = indexes[0];
     }
   }
@@ -83,7 +85,7 @@ export function findSerialChains(creature: Creature): SerialChain[] {
   const chains: SerialChain[] = [];
   let current: SerialChainMember[] = [];
 
-  for (let depth = 1; depth <= maxDepth; depth++) {
+  for (let depth = 2; depth <= maxDepth; depth++) {
     const here = soleOccupant[depth];
     const previous = soleOccupant[depth - 1];
     const linked = here >= 0 && previous >= 0 &&
