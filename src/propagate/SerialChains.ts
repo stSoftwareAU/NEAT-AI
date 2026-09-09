@@ -141,3 +141,28 @@ export function longestSerialChain(
   }
   return best;
 }
+
+/**
+ * Length of the serial chain the neuron at `neuronIndex` belongs to.
+ *
+ * Issue #3974: `ModSquash`'s depth-aware bias needs one fact about the neuron
+ * it is about to re-squash — how long the single-file run it sits in is — and
+ * the run is defined here so the bias and the bypass operator (#3973) mean the
+ * same thing by "chain".
+ *
+ * @param creature The creature whose topology to analyse.
+ * @param neuronIndex Index into `creature.neurons`.
+ * @returns The member count of the chain containing that neuron, or `0` when
+ *   the neuron is not in a chain.
+ */
+export function serialChainLengthAt(
+  creature: Creature,
+  neuronIndex: number,
+): number {
+  for (const chain of findSerialChains(creature)) {
+    for (const member of chain.members) {
+      if (member.index === neuronIndex) return chain.members.length;
+    }
+  }
+  return 0;
+}

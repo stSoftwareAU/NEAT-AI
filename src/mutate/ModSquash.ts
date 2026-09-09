@@ -2,6 +2,13 @@ import { removeTag } from "@stsoftware/tags/mod";
 import type { Creature } from "@creature";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 import { Activations } from "@methods/activations/Activations.ts";
+import { isGradientBlockingSquash } from "@methods/activations/GradientBlocking.ts";
+import {
+  type DeepChainSquashOptions,
+  type ResolvedDeepChainSquashOptions,
+  resolveDeepChainSquashOptions,
+} from "@mutate/DeepChainSquashOptions.ts";
+import { serialChainLengthAt } from "@propagate/SerialChains.ts";
 import type { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
@@ -13,13 +20,27 @@ import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
  * the tracker is disabled, has insufficient samples, or rolls an
  * exploration draw, sampling falls back to the existing uniform pool in
  * {@link Activations.pickRandomSquash}.
+ *
+ * Issue #3974: both of those pools are depth-blind. When
+ * `deepChainSquashBias` is positive and the neuron being re-squashed sits
+ * inside a serial run of at least `deepChainMinLength` members, a proposal of
+ * a gradient-blocking activation is re-drawn once with that probability. It is
+ * a bias, not a ban — a second blocking proposal stands, so nothing leaves the
+ * search space — and at the default bias of `0` no extra randomness is drawn
+ * and no extra topology scan runs, leaving behaviour bit-identical.
  */
 export class ModActivation extends AbstractMutationOperator {
   private readonly tracker?: SquashEffectivenessTracker;
+  private readonly deepChain: ResolvedDeepChainSquashOptions;
 
-  constructor(creature: Creature, tracker?: SquashEffectivenessTracker) {
+  constructor(
+    creature: Creature,
+    tracker?: SquashEffectivenessTracker,
+    deepChainOptions?: DeepChainSquashOptions,
+  ) {
     super(creature);
     this.tracker = tracker;
+    this.deepChain = resolveDeepChainSquashOptions(deepChainOptions);
   }
 
   protected performMutation(focusList?: number[]): boolean {
@@ -42,23 +63,27 @@ export class ModActivation extends AbstractMutationOperator {
     const previousSquash: string | undefined = neuron.squash;
 
     // Compute role and consult the tracker for a fitness-biased pick.
-    let chosen: string | null = null;
     let role: ReturnType<SquashEffectivenessTracker["computeRole"]> | undefined;
     if (this.tracker?.isEnabled()) {
       role = this.tracker.computeRole(this.creature, index);
-      const candidates = uniqueSquashCandidates(previousSquash);
-      chosen = this.tracker.pickSquashBiased(
-        role,
-        candidates,
-        getRandomNumberGenerator(),
-      );
     }
 
-    // pickRandomSquash signature historically expected a string; pass an
-    // empty string when the neuron has no squash yet so the random pool is
-    // returned unfiltered.
-    const newSquash = chosen ??
-      Activations.pickRandomSquash(previousSquash ?? "");
+    const draw = () => this.drawSquash(previousSquash, role);
+    let newSquash = draw();
+
+    // Issue #3974: down-weight a gradient-blocking proposal for a neuron
+    // inside a long serial run. The order of the guards is the cost order —
+    // the topology scan runs only for a blocking proposal under a live bias.
+    if (
+      this.deepChain.deepChainSquashBias > 0 &&
+      newSquash &&
+      isGradientBlockingSquash(newSquash) &&
+      this.insideDeepChain(index) &&
+      getRandomNumberGenerator().random() < this.deepChain.deepChainSquashBias
+    ) {
+      newSquash = draw();
+    }
+
     if (!newSquash || newSquash === previousSquash) {
       // No usable change. Mirror the historic neuron.mutate() behaviour and
       // report no mutation.
@@ -91,6 +116,37 @@ export class ModActivation extends AbstractMutationOperator {
     // Issue #3971: the re-squashed neuron is the mutation site.
     this.noteMutationSite(neuron.index);
     return true;
+  }
+
+  /**
+   * One squash proposal: the tracker's fitness-biased pick when it offers
+   * one, otherwise the uniform pool.
+   *
+   * `pickRandomSquash` historically expected a string, so a neuron with no
+   * squash yet passes an empty string and the pool is returned unfiltered.
+   */
+  private drawSquash(
+    previousSquash: string | undefined,
+    role: ReturnType<SquashEffectivenessTracker["computeRole"]> | undefined,
+  ): string {
+    if (this.tracker?.isEnabled() && role) {
+      const chosen = this.tracker.pickSquashBiased(
+        role,
+        uniqueSquashCandidates(previousSquash),
+        getRandomNumberGenerator(),
+      );
+      if (chosen) return chosen;
+    }
+    return Activations.pickRandomSquash(previousSquash ?? "");
+  }
+
+  /**
+   * Whether the neuron sits inside a serial run long enough for the bias to
+   * apply — the run length #3973's bypass operator also measures.
+   */
+  private insideDeepChain(index: number): boolean {
+    return serialChainLengthAt(this.creature, index) >=
+      this.deepChain.deepChainMinLength;
   }
 }
 

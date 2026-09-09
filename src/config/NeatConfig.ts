@@ -472,6 +472,21 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       4,
       { integer: true, min: 2 },
     ),
+    // Issue #3974: the depth-aware squash bias. Bias `0` draws no extra
+    // randomness and runs no extra topology scan, so the default build is
+    // bit-identical to one without the feature.
+    deepChainSquashBias: parseNumber(
+      "Deep chain squash bias",
+      opts.deepChainSquashBias,
+      0,
+      { min: 0, max: 1 },
+    ),
+    deepChainMinLength: parseNumber(
+      "Deep chain minimum length",
+      opts.deepChainMinLength,
+      4,
+      { integer: true, min: 2 },
+    ),
     sparseRatio: parseNumber(
       "Sparse Ratio",
       opts.sparseRatio,
