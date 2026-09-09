@@ -3,9 +3,11 @@
  * tail is a single-file run of hidden neurons, which is the topology
  * `AddSkipConnection` exists to bypass.
  *
- * Defined once because both `test/mutate/AddSkipConnection.ts` (the operator)
- * and `test/NEAT/SkipConnectionRate.ts` (its selection through the `Mutator`)
- * need the same shape.
+ * Defined once because every test that needs a single-file run needs the same
+ * shape: `test/mutate/AddSkipConnection.ts` (the operator) and
+ * `test/NEAT/SkipConnectionRate.ts` (its selection through the `Mutator`), plus
+ * `test/mutate/DeepChainSquashBias.ts` and
+ * `test/NEAT/DeepChainSquashBiasConfig.ts` for #3974's depth-aware squash bias.
  */
 import { assert } from "@std/assert";
 import { Creature } from "@creature";

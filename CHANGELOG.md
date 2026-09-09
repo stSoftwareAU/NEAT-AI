@@ -49,6 +49,25 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3974:** Depth-aware squash bias. `ModSquash` can now down-weight
+  activations that block the gradient over a region of their input space when
+  the neuron it is re-squashing sits inside a long single-file run, where a zero
+  derivative has no depth-parallel route around it. Two new options, both
+  defaulting to the current behaviour: `deepChainSquashBias` (`0`, which draws
+  no randomness and runs no extra topology scan, so the operator is
+  bit-identical to the previous build on a fixed seed) and `deepChainMinLength`
+  (`4`, sharing #3973's run definition). It biases rather than bans — a blocking
+  proposal is re-drawn once and a second one stands — and never rewrites an
+  existing neuron. What counts as blocking is measured from each activation's
+  own `derivative()` (`src/methods/activations/GradientBlocking.ts`) rather than
+  listed. Step 1 of the issue is recorded too: #2457's
+  `SquashEffectivenessTracker` buckets by `layer × fan-in` and cannot express
+  chain membership at all, so it could not be tuned into doing this job. Ships
+  **disabled**: aimed at the run, the bias cuts blocking proposals from 5.8% to
+  1.3%, but the run's own zero-gradient fraction does not fall, because a single
+  surviving blocking member zeroes everything upstream of it — see
+  `docs/config/MUTATION_ADAPTATION.md`.
+
 - **Issue #3973:** Targeted skip connections. A new `ADD_SKIP_CONN` operator
   (`src/mutate/AddSkipConnection.ts`) proposes a bypass synapse around a deep
   serial run of neurons — the ResNet construction `x + F(x)`, with the existing

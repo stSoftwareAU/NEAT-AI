@@ -389,6 +389,14 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
     note: "Added after the slices by #3973 — shortest serial run " +
       "`AddSkipConnection` considers worth bypassing.",
   }),
+  keep("deepChainSquashBias", "roll-up", {
+    note: "Added after the slices by #3974 — down-weights gradient-blocking " +
+      "activations for a neuron inside a long serial run; `0` disables it.",
+  }),
+  keep("deepChainMinLength", "roll-up", {
+    note: "Added after the slices by #3974 — run length at which " +
+      "`deepChainSquashBias` starts applying.",
+  }),
 ];
 
 /** The merged classification table — every option key, one entry each. */

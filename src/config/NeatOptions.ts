@@ -59,6 +59,8 @@ type NumericOptionKeys =
   | "structuralNewbornGraceRounds"
   | "skipConnectionRate"
   | "skipMinRunLength"
+  | "deepChainSquashBias"
+  | "deepChainMinLength"
   | "sparseRatio"
   | "globalBreedingRate"
   | "diversityBreedingRate"

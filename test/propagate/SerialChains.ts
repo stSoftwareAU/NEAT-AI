@@ -12,6 +12,8 @@ import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   findSerialChains,
+  hiddenRunLengthAt,
+  hiddenRunMembers,
   longestSerialChain,
 } from "@propagate/SerialChains.ts";
 
@@ -118,5 +120,78 @@ Deno.test("SerialChains - the GRQ creature carries the depth 34-61 single-file t
     hostileCount >= 20,
     true,
     `expected the tail to be dominated by zero-derivative constructs, got ${hostileCount}/28`,
+  );
+});
+
+Deno.test("SerialChains - hiddenRunLengthAt reports the run a neuron sits in", () => {
+  // input → a → b → c → output is a four-member run; `wide` sits beside `a` at
+  // depth 1 in the second creature, which removes the run entirely.
+  const inChain = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "a", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "b", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "c", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "a", weight: 1 },
+      { fromUUID: "input-1", toUUID: "a", weight: 1 },
+      { fromUUID: "a", toUUID: "b", weight: 1 },
+      { fromUUID: "b", toUUID: "c", weight: 1 },
+      { fromUUID: "c", toUUID: "output-0", weight: 1 },
+    ],
+  });
+
+  const indexOf = (creature: Creature, uuid: string) => {
+    const neuron = creature.neurons.find((n) => n.uuid === uuid);
+    assertNotEquals(neuron, undefined, `expected a neuron ${uuid}`);
+    return neuron!.index;
+  };
+
+  for (const uuid of ["a", "b", "c"]) {
+    assertEquals(
+      hiddenRunLengthAt(inChain, indexOf(inChain, uuid)),
+      3,
+      `${uuid} is one of three hidden members`,
+    );
+  }
+  assertEquals(
+    hiddenRunLengthAt(inChain, indexOf(inChain, "output-0")),
+    0,
+    "the run feeds the output rather than containing it — the same count " +
+      "#3973's AddSkipConnection uses",
+  );
+  assertEquals(
+    hiddenRunLengthAt(inChain, 0),
+    0,
+    "an input is never a run member",
+  );
+  assertEquals(
+    hiddenRunMembers(inChain, findSerialChains(inChain)[0]).length,
+    3,
+    "the shared helper stops at the first non-hidden member",
+  );
+
+  const noChain = Creature.fromJSON({
+    input: 1,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "a", squash: "IDENTITY", bias: 0 },
+      { type: "hidden", uuid: "wide", squash: "IDENTITY", bias: 0 },
+      { type: "output", uuid: "output-0", squash: "IDENTITY", bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "a", weight: 1 },
+      { fromUUID: "input-0", toUUID: "wide", weight: 1 },
+      { fromUUID: "a", toUUID: "output-0", weight: 1 },
+      { fromUUID: "wide", toUUID: "output-0", weight: 1 },
+    ],
+  });
+  assertEquals(
+    hiddenRunLengthAt(noChain, indexOf(noChain, "a")),
+    0,
+    "a neuron with a depth-parallel sibling is in no run",
   );
 });

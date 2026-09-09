@@ -9,15 +9,25 @@ Deno.test({
     const dir = Deno.makeTempDirSync({ prefix: "neat-in-flight-" });
     try {
       Deno.env.set("NEAT_AI_IN_FLIGHT_DIR", dir);
+      // `NEAT_AI_IN_FLIGHT_DIR` is process-global and `deno test --parallel`
+      // runs sibling test files in the same process, so any case that starts
+      // inside this window also lands in `dir`. Match this test's own name
+      // rather than counting the directory, which made the assertion depend on
+      // what else happened to be in flight (Issue #3974 shifted the schedule
+      // and turned that race into a consistent failure).
+      const own = () =>
+        [...Deno.readDirSync(dir)].filter((entry) =>
+          entry.isFile && entry.name.includes("evolve_AND_gate")
+        );
       const handle = beginInFlight("evolve_AND_gate");
-      const files = [...Deno.readDirSync(dir)].filter((entry) => entry.isFile);
+      const files = own();
       assertEquals(files.length, 1, "expected one in-flight name file");
       const text = Deno.readTextFileSync(`${dir}/${files[0].name}`);
       assertStringIncludes(text, "evolve_AND_gate");
       assertStringIncludes(text, `pid=${Deno.pid}`);
       endInFlight(handle);
       assertEquals(
-        [...Deno.readDirSync(dir)].filter((entry) => entry.isFile).length,
+        own().length,
         0,
         "finished tests must remove their in-flight name file",
       );

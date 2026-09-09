@@ -287,6 +287,23 @@ export interface NeatArguments {
    */
   skipMinRunLength: number;
 
+  /**
+   * Strength of the down-weighting `ModSquash` applies to gradient-blocking
+   * activations when the neuron it is re-squashing sits inside a serial run of
+   * at least `deepChainMinLength` members (Issue #3974). `0` — the default —
+   * disables the bias and consumes no randomness, so the squash pool is
+   * bit-identical to a build without it. `1` re-draws every blocking proposal
+   * once. It biases rather than bans: a second blocking proposal stands.
+   */
+  deepChainSquashBias: number;
+
+  /**
+   * Serial-run length, counted in members, at which `deepChainSquashBias`
+   * starts applying (Issue #3974). Default `4`, sharing #3973's
+   * `skipMinRunLength` definition of a run worth acting on.
+   */
+  deepChainMinLength: number;
+
   /** Determine how many neurons to select based on the sparseRatio. */
   sparseRatio: number;
 

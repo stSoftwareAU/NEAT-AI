@@ -23,6 +23,7 @@ import { SubConnection } from "@mutate/SubConnection.ts";
 import { SubNeuron } from "@mutate/SubNeuron.ts";
 import { SubSelfCon } from "@mutate/SubSelfCon.ts";
 import { SwapNeurons } from "@mutate/SwapNeurons.ts";
+import type { DeepChainSquashOptions } from "@mutate/DeepChainSquashOptions.ts";
 import type { SkipConnectionOptions } from "@mutate/SkipConnectionOptions.ts";
 import type { StructuralMutationOptions } from "@mutate/StructuralMutationOptions.ts";
 import { getLogger } from "@utils/Logger.ts";
@@ -80,6 +81,20 @@ function skipOptionsFrom(config: NeatConfig): SkipConnectionOptions {
   return {
     structuralWeightScale: config.structuralWeightScale,
     skipMinRunLength: config.skipMinRunLength,
+  };
+}
+
+/**
+ * Issue #3974: reads the depth-aware squash-bias knobs off the run config for
+ * `ModSquash`. A bias of `0` — the default — leaves the operator drawing from
+ * the historical pool.
+ */
+function deepChainSquashOptionsFrom(
+  config: NeatConfig,
+): DeepChainSquashOptions {
+  return {
+    deepChainSquashBias: config.deepChainSquashBias,
+    deepChainMinLength: config.deepChainMinLength,
   };
 }
 
@@ -358,8 +373,11 @@ export class Mutator {
       Mutation.MOD_BIAS.name,
       (c, cfg) => new ModBias(c, cfg.biasRegularisation),
     ],
-    // Issue #2457: ModSquash receives the per-role tracker via createOperator.
-    [Mutation.MOD_SQUASH.name, (c, _cfg) => new ModSquash(c)],
+    // Issue #2457: ModSquash is built by `createOperator`, which short-circuits
+    // before this map so the operator can receive the per-role tracker held on
+    // the instance. It deliberately has no entry here — a second construction
+    // would be a shadow path that silently dropped the tracker and, since
+    // #3974, the depth-aware bias with it.
     [Mutation.ADD_SELF_CONN.name, (c, _cfg) => new AddSelfCon(c)],
     [Mutation.SUB_SELF_CONN.name, (c, _cfg) => new SubSelfCon(c)],
     [Mutation.ADD_BACK_CONN.name, (c, _cfg) => new AddBackCon(c)],
@@ -385,7 +403,11 @@ export class Mutator {
     // is held on the Mutator instance and therefore cannot live on the
     // static factory map.
     if (methodName === Mutation.MOD_SQUASH.name) {
-      return new ModSquash(creature, this.squashTracker);
+      return new ModSquash(
+        creature,
+        this.squashTracker,
+        deepChainSquashOptionsFrom(this.config),
+      );
     }
     const factory = Mutator.operatorFactories.get(methodName);
     if (!factory) {
