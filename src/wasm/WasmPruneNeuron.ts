@@ -172,22 +172,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-/** Every array element that is a record, dropping anything else. */
-function records(value: unknown): Record<string, unknown>[] {
-  return Array.isArray(value)
-    ? value.filter((entry): entry is Record<string, unknown> =>
-      asRecord(entry) !== null
-    )
-    : [];
-}
-
-/** Every array element that is a string, dropping anything else. */
-function strings(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((entry): entry is string => typeof entry === "string")
-    : [];
-}
-
 /** The identity a synapse keeps across the rewrite: endpoints plus role. */
 function synapseKey(synapse: SynapseExport): string {
   return `${synapse.fromUUID} ${synapse.toUUID} ${synapse.type ?? ""}`;
@@ -292,22 +276,167 @@ function restoreCarriedMetadata(
   }
 }
 
+/**
+ * A response is a whole creature, so it can run to megabytes. Error messages
+ * quote enough to identify the fault without flooding the log with the
+ * creature that provoked it.
+ */
+function describe(answer: string): string {
+  const limit = 400;
+  return answer.length <= limit
+    ? answer
+    : `${answer.slice(0, limit)}… (${answer.length} bytes)`;
+}
+
+/**
+ * Read a field core's contract says is a string.
+ *
+ * `String(undefined)` would turn a field core failed to send into the literal
+ * `"undefined"` — a UUID that matches no neuron and is then silently skipped
+ * downstream. A contract mismatch must be a fault, not plausible-looking data.
+ */
+function requiredString(
+  source: Record<string, unknown>,
+  field: string,
+  where: string,
+  answer: string,
+): string {
+  const value = source[field];
+  if (typeof value !== "string") {
+    throw new WasmError(
+      `prune_neuron sent ${where}.${field} as ${typeof value}, not a string: ` +
+        describe(answer),
+      "INVALID_REQUEST",
+    );
+  }
+  return value;
+}
+
+/**
+ * Read a field core's contract says is a finite number.
+ *
+ * `Number(undefined)` is `NaN`, and a `NaN` weight or bias silently poisons
+ * every downstream activation, so an absent or unusable number is refused here.
+ */
+function requiredNumber(
+  source: Record<string, unknown>,
+  field: string,
+  where: string,
+  answer: string,
+): number {
+  const value = source[field];
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new WasmError(
+      `prune_neuron sent ${where}.${field} as ${String(value)}, not a finite ` +
+        `number: ${describe(answer)}`,
+      "INVALID_REQUEST",
+    );
+  }
+  return value;
+}
+
+/**
+ * Read an array core's contract says holds only strings.
+ *
+ * Dropping an element of the wrong shape would under-report what core removed,
+ * so an unreadable element is a fault rather than a shorter list.
+ */
+function requiredStrings(
+  value: unknown,
+  where: string,
+  answer: string,
+): string[] {
+  if (!Array.isArray(value)) {
+    throw new WasmError(
+      `prune_neuron sent ${where} as ${typeof value}, not an array: ` +
+        describe(answer),
+      "INVALID_REQUEST",
+    );
+  }
+  return value.map((entry, index) => {
+    if (typeof entry !== "string") {
+      throw new WasmError(
+        `prune_neuron sent ${where}[${index}] as ${typeof entry}, not a ` +
+          `string: ${describe(answer)}`,
+        "INVALID_REQUEST",
+      );
+    }
+    return entry;
+  });
+}
+
+/**
+ * Read an array core's contract says holds only records, refusing anything
+ * else for the same reason {@link requiredStrings} does.
+ */
+function requiredRecords(
+  value: unknown,
+  where: string,
+  answer: string,
+): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    throw new WasmError(
+      `prune_neuron sent ${where} as ${typeof value}, not an array: ` +
+        describe(answer),
+      "INVALID_REQUEST",
+    );
+  }
+  return value.map((entry, index) => {
+    const record = asRecord(entry);
+    if (!record) {
+      throw new WasmError(
+        `prune_neuron sent ${where}[${index}] as ${typeof entry}, not a ` +
+          `record: ${describe(answer)}`,
+        "INVALID_REQUEST",
+      );
+    }
+    return record;
+  });
+}
+
 /** Read the success half of a response, refusing anything under-specified. */
 function readSuccess(
   response: Record<string, unknown>,
+  requestedUuid: string,
   answer: string,
 ): PruneNeuronSuccess {
   const creature = asRecord(response.creature) as CreatureExport | null;
   if (!creature) {
     throw new WasmError(
-      `prune_neuron reported a successful rewrite with no creature: ${answer}`,
+      `prune_neuron reported a successful rewrite with no creature: ` +
+        describe(answer),
+      "INVALID_REQUEST",
+    );
+  }
+  // A "creature" that is not one would otherwise die as a TypeError deep in
+  // metadata restoration, naming neither core nor this bridge.
+  if (!Array.isArray(creature.neurons) || !Array.isArray(creature.synapses)) {
+    throw new WasmError(
+      `prune_neuron reported a rewrite whose creature has no neurons or ` +
+        `synapses array: ${describe(answer)}`,
       "INVALID_REQUEST",
     );
   }
   const transform = response.transform;
   if (transform !== "exact" && transform !== "approximate") {
     throw new WasmError(
-      `prune_neuron reported a rewrite with no honest transform label: ${answer}`,
+      `prune_neuron reported a rewrite with no honest transform label: ` +
+        describe(answer),
+      "INVALID_REQUEST",
+    );
+  }
+  const passes = requiredNumber(response, "passes", "response", answer);
+
+  // Core answering "removed" about a neuron nobody asked about is a bridge or
+  // contract fault; downstream it would show up only as an unexplained
+  // unchanged-UUID, long after the evidence is gone.
+  const removedNeuron = response.removedNeuron === undefined
+    ? undefined
+    : requiredString(response, "removedNeuron", "response", answer);
+  if (removedNeuron !== undefined && removedNeuron !== requestedUuid) {
+    throw new WasmError(
+      `prune_neuron was asked to remove ${requestedUuid} but reported ` +
+        `removing ${removedNeuron}: ${describe(answer)}`,
       "INVALID_REQUEST",
     );
   }
@@ -316,33 +445,67 @@ function readSuccess(
     ok: true,
     creature,
     transform,
-    passes: typeof response.passes === "number" ? response.passes : 0,
-    removedNeuron: typeof response.removedNeuron === "string"
-      ? response.removedNeuron
-      : undefined,
-    cascadeNeurons: strings(response.cascadeNeurons),
-    foldedNeurons: strings(response.foldedNeurons),
-    downgradedIfNeurons: strings(response.downgradedIfNeurons),
-    biasFolds: records(response.biasFolds).map((fold) => ({
-      targetUUID: String(fold.targetUUID),
-      weightSum: Number(fold.weightSum),
-      delta: Number(fold.delta),
-      exact: fold.exact === true,
-      residualVariance: typeof fold.residualVariance === "number"
-        ? fold.residualVariance
-        : undefined,
+    passes,
+    removedNeuron,
+    cascadeNeurons: requiredStrings(
+      response.cascadeNeurons ?? [],
+      "cascadeNeurons",
+      answer,
+    ),
+    foldedNeurons: requiredStrings(
+      response.foldedNeurons ?? [],
+      "foldedNeurons",
+      answer,
+    ),
+    downgradedIfNeurons: requiredStrings(
+      response.downgradedIfNeurons ?? [],
+      "downgradedIfNeurons",
+      answer,
+    ),
+    biasFolds: requiredRecords(response.biasFolds ?? [], "biasFolds", answer)
+      .map((fold, i) => ({
+        targetUUID: requiredString(
+          fold,
+          "targetUUID",
+          `biasFolds[${i}]`,
+          answer,
+        ),
+        weightSum: requiredNumber(fold, "weightSum", `biasFolds[${i}]`, answer),
+        delta: requiredNumber(fold, "delta", `biasFolds[${i}]`, answer),
+        exact: fold.exact === true,
+        residualVariance: typeof fold.residualVariance === "number"
+          ? fold.residualVariance
+          : undefined,
+      })),
+    weightShares: requiredRecords(
+      response.weightShares ?? [],
+      "weightShares",
+      answer,
+    ).map((share, i) => ({
+      fromUUID: requiredString(share, "fromUUID", `weightShares[${i}]`, answer),
+      toUUID: requiredString(share, "toUUID", `weightShares[${i}]`, answer),
+      delta: requiredNumber(share, "delta", `weightShares[${i}]`, answer),
     })),
-    weightShares: records(response.weightShares).map((share) => ({
-      fromUUID: String(share.fromUUID),
-      toUUID: String(share.toUUID),
-      delta: Number(share.delta),
-    })),
-    uncompensated: records(response.uncompensated).map((target) => ({
-      targetUUID: String(target.targetUUID),
-      type: String(target.type),
-      weightSum: Number(target.weightSum),
-      squash: String(target.squash),
-      reason: String(target.reason),
+    uncompensated: requiredRecords(
+      response.uncompensated ?? [],
+      "uncompensated",
+      answer,
+    ).map((target, i) => ({
+      targetUUID: requiredString(
+        target,
+        "targetUUID",
+        `uncompensated[${i}]`,
+        answer,
+      ),
+      type: requiredString(target, "type", `uncompensated[${i}]`, answer),
+      weightSum: requiredNumber(
+        target,
+        "weightSum",
+        `uncompensated[${i}]`,
+        answer,
+      ),
+      squash: requiredString(target, "squash", `uncompensated[${i}]`, answer),
+      reason: requiredString(target, "reason", `uncompensated[${i}]`, answer),
     })),
   };
 }
@@ -382,7 +545,9 @@ export function corePruneNeuron(
     parsed = JSON.parse(answer);
   } catch (error) {
     throw new WasmError(
-      `prune_neuron answered with something that is not JSON: ${answer}`,
+      `prune_neuron answered with something that is not JSON: ${
+        describe(answer)
+      }`,
       "INVALID_REQUEST",
       { cause: error instanceof Error ? error : undefined },
     );
@@ -391,13 +556,15 @@ export function corePruneNeuron(
   const response = asRecord(parsed);
   if (!response) {
     throw new WasmError(
-      `prune_neuron answered with something that is not a response: ${answer}`,
+      `prune_neuron answered with something that is not a response: ${
+        describe(answer)
+      }`,
       "INVALID_REQUEST",
     );
   }
 
   if (response.ok === true) {
-    const success = readSuccess(response, answer);
+    const success = readSuccess(response, uuid, answer);
     restoreCarriedMetadata(creature, success.creature);
     return success;
   }
@@ -405,12 +572,12 @@ export function corePruneNeuron(
   const failure = asRecord(response.failure);
   if (!failure) {
     throw new WasmError(
-      `prune_neuron reported a failure with no detail: ${answer}`,
+      `prune_neuron reported a failure with no detail: ${describe(answer)}`,
       "INVALID_REQUEST",
     );
   }
 
-  const message = String(failure.message);
+  const message = requiredString(failure, "message", "failure", answer);
   // `malformed` says the payload never reached the rewrite, so it says nothing
   // about the creature. Reporting it as a refusal would let a bridge bug
   // masquerade as a neuron core declined to remove.
@@ -421,5 +588,9 @@ export function corePruneNeuron(
     );
   }
 
-  return { ok: false, reason: String(failure.reason), message };
+  return {
+    ok: false,
+    reason: requiredString(failure, "reason", "failure", answer),
+    message,
+  };
 }

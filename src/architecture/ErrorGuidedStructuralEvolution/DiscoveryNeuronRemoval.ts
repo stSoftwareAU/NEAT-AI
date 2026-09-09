@@ -220,15 +220,33 @@ function pruneNeuronThroughCore(
     return undefined;
   }
 
-  // Issue #2421: core folds the mean faithfully; this repo additionally caps
-  // what a runaway weight x activation product may do to a downstream bias.
-  // Only the targets core reported folding are touched, so nothing else moves.
-  for (const fold of outcome.biasFolds) {
-    const target = outcome.creature.neurons.find((n) =>
-      n.uuid === fold.targetUUID
+  // Issue #3975: core tells us when it could not compensate a target, and a
+  // removal accepted while carrying that report is a quietly degraded
+  // creature. Say so rather than letting an "approximate" rewrite pass as an
+  // ordinary success.
+  if (outcome.uncompensated.length > 0) {
+    const detail = outcome.uncompensated
+      .map((t) => `${t.targetUUID} (${t.reason}, ${t.squash})`)
+      .join(", ");
+    getLogger().warn(
+      `[${context}] core removed ${neuronLabel} but could not compensate ` +
+        `${outcome.uncompensated.length} target(s): ${detail}`,
     );
-    if (!target) continue;
-    target.bias = clampAndTrack(target.bias, "rustFfi.bias", context);
+  }
+
+  // Issue #2421: core folds the mean faithfully, and this repo additionally
+  // caps what a runaway weight x activation product may do. Every bias and
+  // weight in the answer is core-authored — the folded biases, the
+  // canonicalisation that moves an activation into an outgoing weight, and any
+  // correlated-survivor share — so the guard is applied across the whole
+  // answer. Creature load clamps again (defence in depth); sweeping the answer
+  // here also avoids the earlier per-fold lookup, which silently skipped the
+  // clamp whenever a fold named a target the answer did not contain.
+  for (const neuron of outcome.creature.neurons) {
+    neuron.bias = clampAndTrack(neuron.bias, "rustFfi.bias", context);
+  }
+  for (const synapse of outcome.creature.synapses) {
+    synapse.weight = clampAndTrack(synapse.weight, "rustFfi.weight", context);
   }
 
   return outcome.creature;

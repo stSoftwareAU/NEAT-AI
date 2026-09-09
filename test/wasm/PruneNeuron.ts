@@ -188,3 +188,156 @@ Deno.test("corePruneNeuron: a malformed answer is a bridge fault, not a refusal"
   assert(thrown instanceof WasmError);
   assertEquals(thrown.reason, "INVALID_REQUEST");
 });
+
+/**
+ * Issue #3975 — a response core sends that does not match its own contract is
+ * a fault in this bridge or in the ABI between them, and must be reported as
+ * one. Coercing the missing field (`String(undefined)` → `"undefined"`,
+ * `Number(undefined)` → `NaN`) would hand the caller plausible-looking data:
+ * a fold naming a neuron that does not exist is silently skipped downstream,
+ * so the Issue #2421 overflow guard would quietly stop covering that target.
+ */
+function respondingWith(response: unknown): (request: string) => string {
+  return () => JSON.stringify(response);
+}
+
+/** A minimally valid success, for tests that damage exactly one field. */
+function successResponse(): Record<string, unknown> {
+  return {
+    ok: true,
+    transform: "exact",
+    passes: 1,
+    removedNeuron: "hidden-0",
+    cascadeNeurons: [],
+    foldedNeurons: [],
+    downgradedIfNeurons: [],
+    biasFolds: [],
+    weightShares: [],
+    uncompensated: [],
+    creature: {
+      input: 2,
+      output: 1,
+      neurons: [
+        { uuid: "hidden-1", type: "hidden", squash: IDENTITY.NAME, bias: 0.2 },
+        { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0.05 },
+      ],
+      synapses: [
+        { fromUUID: "input-1", toUUID: "hidden-1", weight: 0.3 },
+        { fromUUID: "hidden-1", toUUID: "output-0", weight: 0.35 },
+      ],
+    },
+  };
+}
+
+/** Run `corePruneNeuron` against a canned response and return what it threw. */
+function thrownFor(response: unknown, uuid = "hidden-0"): unknown {
+  try {
+    corePruneNeuron(fixture(), uuid, undefined, respondingWith(response));
+    return undefined;
+  } catch (error) {
+    return error;
+  }
+}
+
+Deno.test("corePruneNeuron: the canned success fixture is itself accepted", () => {
+  // Guards the negative tests below: each damages one field of this response,
+  // so the undamaged response must succeed or those tests prove nothing.
+  const outcome = corePruneNeuron(
+    fixture(),
+    "hidden-0",
+    undefined,
+    respondingWith(successResponse()),
+  );
+  assert(outcome.ok, "the undamaged canned success must be accepted");
+  assertEquals(outcome.passes, 1);
+});
+
+Deno.test("corePruneNeuron: a success whose creature is not a creature fails loud", () => {
+  const response = successResponse();
+  response.creature = { input: 2, output: 1 };
+  const thrown = thrownFor(response);
+  assert(
+    thrown instanceof WasmError,
+    "a creature with no neurons array must fail loud, not die later as a " +
+      "TypeError naming neither core nor the bridge",
+  );
+  assertEquals(thrown.reason, "INVALID_REQUEST");
+  assertStringIncludes(thrown.message, "neurons");
+});
+
+Deno.test("corePruneNeuron: a bias fold naming no target fails loud", () => {
+  const response = successResponse();
+  response.biasFolds = [{ weightSum: 0.25, delta: 0.1, exact: true }];
+  const thrown = thrownFor(response);
+  assert(thrown instanceof WasmError, "a fold with no targetUUID must throw");
+  assertEquals(thrown.reason, "INVALID_REQUEST");
+  assertStringIncludes(thrown.message, "targetUUID");
+});
+
+Deno.test("corePruneNeuron: a bias fold with an unusable delta fails loud", () => {
+  const response = successResponse();
+  response.biasFolds = [{ targetUUID: "output-0", weightSum: 0.25 }];
+  const thrown = thrownFor(response);
+  assert(thrown instanceof WasmError, "a fold with no delta must throw");
+  assertEquals(thrown.reason, "INVALID_REQUEST");
+  assertStringIncludes(thrown.message, "delta");
+});
+
+Deno.test("corePruneNeuron: a rewrite reporting the wrong neuron fails loud", () => {
+  const response = successResponse();
+  response.removedNeuron = "some-other-neuron";
+  const thrown = thrownFor(response);
+  assert(
+    thrown instanceof WasmError,
+    "core answering about a neuron nobody asked about must fail loud",
+  );
+  assertEquals(thrown.reason, "INVALID_REQUEST");
+  assertStringIncludes(thrown.message, "some-other-neuron");
+});
+
+Deno.test("corePruneNeuron: a refusal with no reason fails loud", () => {
+  const thrown = thrownFor({ ok: false, failure: { message: "nope" } });
+  assert(
+    thrown instanceof WasmError,
+    "a refusal must name a stable reason token, not coerce to 'undefined'",
+  );
+  assertEquals(thrown.reason, "INVALID_REQUEST");
+  assertStringIncludes(thrown.message, "reason");
+});
+
+Deno.test("corePruneNeuron: a refusal core understood is not an error", () => {
+  const outcome = corePruneNeuron(
+    fixture(),
+    "hidden-0",
+    undefined,
+    respondingWith({
+      ok: false,
+      failure: { reason: "PROTECTED_NEURON", message: "constant node" },
+    }),
+  );
+  assertEquals(outcome.ok, false, "an understood refusal is not a throw");
+  assert(!outcome.ok);
+  assertEquals(outcome.reason, "PROTECTED_NEURON");
+});
+
+Deno.test("corePruneNeuron: an error quotes the fault without dumping the creature", () => {
+  // A response is a whole creature and can run to megabytes; the message must
+  // stay small enough to be readable in a log.
+  const response = successResponse();
+  response.transform = "wishful";
+  (response.creature as { neurons: unknown[] }).neurons = Array.from(
+    { length: 4000 },
+    (_, i) => ({
+      uuid: `n-${i}`,
+      type: "hidden",
+      squash: IDENTITY.NAME,
+      bias: 0,
+    }),
+  );
+  const thrown = thrownFor(response);
+  assert(thrown instanceof WasmError);
+  assert(
+    thrown.message.length < 1000,
+    `the error should not dump the creature, got ${thrown.message.length} bytes`,
+  );
+});
