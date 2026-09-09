@@ -50,7 +50,7 @@ import {
   resolveSkipConnectionOptions,
   type SkipConnectionOptions,
 } from "@mutate/SkipConnectionOptions.ts";
-import { findSerialChains, type SerialChain } from "@propagate/SerialChains.ts";
+import { findSerialChains, hiddenRunMembers } from "@propagate/SerialChains.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 
 /** One proposed bypass. */
@@ -63,22 +63,6 @@ export interface SkipCandidate {
   runLength: number;
   /** Depth of the run's last hidden member. */
   runEndDepth: number;
-}
-
-/**
- * The hidden members of a chain, shallowest first, stopping at the first
- * non-hidden member.
- *
- * {@link findSerialChains} includes the output neuron when a chain ends there,
- * but an output is not part of the *run* — it is the neuron the run feeds.
- */
-function hiddenRun(creature: Creature, chain: SerialChain): number[] {
-  const run: number[] = [];
-  for (const member of chain.members) {
-    if (creature.neurons[member.index].type !== "hidden") break;
-    run.push(member.index);
-  }
-  return run;
 }
 
 export class AddSkipConnection extends AbstractMutationOperator {
@@ -108,7 +92,7 @@ export class AddSkipConnection extends AbstractMutationOperator {
     const found: SkipCandidate[] = [];
 
     for (const chain of findSerialChains(creature)) {
-      const run = hiddenRun(creature, chain);
+      const run = hiddenRunMembers(creature, chain);
       if (run.length < minRunLength) continue;
 
       const entry = run[0];

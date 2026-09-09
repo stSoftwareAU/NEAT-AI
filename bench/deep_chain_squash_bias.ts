@@ -44,15 +44,17 @@ import {
   type SquashHistogram,
 } from "@neat/SquashHistogram.ts";
 import type { ZeroGradientCause } from "@propagate/GradientDepthBuckets.ts";
-import {
-  type GradientDepthProfile,
-  probeGradientDepth,
-} from "@propagate/GradientDepthProbe.ts";
+import { probeGradientDepth } from "@propagate/GradientDepthProbe.ts";
 import { longestSerialChain } from "@propagate/SerialChains.ts";
 import {
   createSeededRng,
   setRandomNumberGenerator,
 } from "@utils/RandomNumberGenerator.ts";
+import {
+  chainZeroGradient,
+  pooledZeroGradient,
+  type ZeroGradientPool,
+} from "./skip_connection_null_comparison.ts";
 import {
   numericFlag,
   parseFlags,
@@ -107,13 +109,6 @@ export const SQUASH_BIAS_DEFAULTS: SquashBiasConfig = {
   observationScale: 1,
   profileOnly: false,
 };
-
-/** A pooled zero-gradient reading. */
-export interface ZeroGradientPool {
-  observations: number;
-  zeroObservations: number;
-  zeroFraction: number;
-}
 
 /** What one arm measured. */
 export interface BiasArmResult {
@@ -312,27 +307,18 @@ export function histogramEntropyBits(histogram: SquashHistogram): number {
   return entropy;
 }
 
-/** Pool the zero-gradient readings of the depth buckets `keep` accepts. */
-export function poolZeroGradient(
-  profile: GradientDepthProfile,
-  keep: (depth: number) => boolean,
-): ZeroGradientPool {
-  let observations = 0;
-  let zeroObservations = 0;
-  for (const bucket of profile.buckets) {
-    if (!keep(bucket.depth)) continue;
-    observations += bucket.observations;
-    zeroObservations += bucket.zeroObservations;
-  }
-  return {
-    observations,
-    zeroObservations,
-    zeroFraction: observations === 0 ? 0 : zeroObservations / observations,
-  };
-}
-
-/** The squash the `ceiling` arm puts on every run member. */
-export const CEILING_SQUASH = "TANH";
+/**
+ * The squash the `ceiling` arm puts on every run member.
+ *
+ * `IDENTITY` and not a smooth saturating activation: `TANH`'s derivative is
+ * `1 - tanh(x)²`, which underflows to **exactly zero** in float64 beyond
+ * |x| ≈ 20, and the run's entry neuron has a fan-in of 1,265, so a `TANH`
+ * ceiling would carry the very fault it is supposed to exclude. `IDENTITY`
+ * has a derivative of 1 everywhere, so the arm really is the bound it claims:
+ * whatever zero gradient survives it cannot be blamed on the run's own
+ * activations.
+ */
+export const CEILING_SQUASH = "IDENTITY";
 
 /** Measure one arm. */
 function runArm(
@@ -463,15 +449,9 @@ function runArm(
     );
     const profile = probeGradientDepth(first, rows);
     const startDepth = chain.startDepth;
-    result.chain = profile.serialChainProfile === undefined ? undefined : {
-      observations: profile.serialChainProfile.aggregate.observations,
-      zeroObservations: profile.serialChainProfile.aggregate.zeroObservations,
-      zeroFraction: profile.serialChainProfile.aggregate.zeroFraction,
-    };
-    result.upstream = poolZeroGradient(
-      profile,
-      (d) => d >= 1 && d <= startDepth,
-    );
+    // #3973's harness already owns both readings; reuse rather than copy.
+    result.chain = chainZeroGradient(profile);
+    result.upstream = pooledZeroGradient(profile, startDepth);
     result.chainCauses = profile.serialChainProfile?.aggregate.zeroCauses;
   }
 

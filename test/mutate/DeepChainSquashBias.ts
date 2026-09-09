@@ -142,16 +142,16 @@ Deno.test("DeepChainSquashBias - it biases, it does not ban", async () => {
     assert(
       blockingCount(biased) > 0,
       "a blocking squash must still reach the pool — a ban would shrink the " +
-        "search space in a way NEAT cannot recover from",
+        "search space in a way NEAT-AI cannot recover from",
     );
   });
 });
 
 Deno.test("DeepChainSquashBias - a run shorter than deepChainMinLength is untouched", async () => {
   await withRngTestLock(() => {
-    // Two hidden neurons plus the output the run feeds: three members, below
-    // the default minimum of four.
-    const build = () => chainCreature(2);
+    // Three hidden members — the output the run feeds is not one of them —
+    // so the run is below the default minimum of four.
+    const build = () => chainCreature(3);
     assertEquals(
       squashSequence(build, { deepChainSquashBias: 1 }, 60, 17),
       squashSequence(build, undefined, 60, 17),
@@ -161,7 +161,7 @@ Deno.test("DeepChainSquashBias - a run shorter than deepChainMinLength is untouc
 
 Deno.test("DeepChainSquashBias - deepChainMinLength lowers the bar", async () => {
   await withRngTestLock(() => {
-    const build = () => chainCreature(2);
+    const build = () => chainCreature(3);
     const unbiased = squashSequence(build, undefined, 400, 17);
     const biased = squashSequence(
       build,

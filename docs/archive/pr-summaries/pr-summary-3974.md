@@ -38,14 +38,16 @@ so they are blocking by construction — and a new selectable activation with no
 derivative fails the classification test rather than being silently treated as
 safe.
 
-**The mechanism is refuted on the GRQ creature, and that is reported rather than
-smoothed away.** The bias changes what is proposed — 5.8% blocking → 0.8% where
-it is aimed — but the run's zero-gradient fraction does not fall: 64.4%
-baseline, 66.0% biased, and **88.9% with every run member set to `TANH`**. The
-probe blames `downstream-zero` for the bulk of it: the gradient arriving at a
-run member is already zero when it gets there, so no squash chosen inside the
-run can restore it. Per the issue's own failure rule, the option therefore ships
-disabled and any score change under it would be coincidence.
+**The mechanism is real; the bias is too weak to exploit it, so it ships
+disabled.** The bias changes what is proposed — 5.8% blocking → 1.3% where it is
+aimed — and the `ceiling` arm (every run member on `IDENTITY`) shows the prize:
+a run with no blocking activation anywhere measures **0.0%** zero gradient
+against the baseline's 64.4%, with every blame count falling to zero. But the
+biased arm itself measures 66.0%, because **one blocking member is enough** —
+everything upstream of it is zeroed for that sample — and a probability shift
+that leaves one behind buys nothing. Per the issue's own failure rule the
+zero-gradient fraction did not fall, so the option ships off and a score change
+under it would be coincidence rather than gradient repair.
 
 ## Evidence
 
@@ -101,19 +103,26 @@ chain term, so the tracker cannot express the distinction at any sample count.
 | Arm      | Blocking proposals | Blocking members left | Run zero-gradient |
 | -------- | -----------------: | --------------------: | ----------------: |
 | baseline |    23 / 400 (5.8%) |                     2 |             64.4% |
-| biased   |     3 / 400 (0.8%) |                     1 |             66.0% |
-| ceiling  |                  0 |                     0 |         **88.9%** |
+| biased   |     5 / 400 (1.3%) |                     1 |             66.0% |
+| ceiling  |                  0 |                     0 |          **0.0%** |
 
-The `ceiling` arm takes no draws at all — every run member is set to `TANH` —
-and bounds what _any_ squash-level intervention could achieve on this creature.
-It is worse than both, which is the refutation: the run's zeros do not come from
-its members' activations.
+The `ceiling` arm takes no draws at all — every run member is set to `IDENTITY`
+— and bounds what _any_ squash-level intervention could achieve on this
+creature. `IDENTITY` and not `TANH`, which the first version of this harness
+used: `TANH`'s derivative underflows to exactly zero past |x| ≈ 20 and the run's
+entry neuron has a fan-in of 1,265, so a `TANH` ceiling carried the very fault
+it was meant to exclude and read 88.9%. Corrected, the arm says the opposite —
+the run's zeros **do** come from the activations inside it.
 
 | Cause (run aggregate) | baseline | biased | ceiling |
 | --------------------- | -------: | -----: | ------: |
-| `downstream-zero`     |      299 |    297 |     391 |
-| `zero-derivative`     |       64 |     73 |     153 |
+| `downstream-zero`     |      299 |    297 |       0 |
+| `zero-derivative`     |       64 |     73 |       0 |
 | `untaken-if-branch`   |       14 |     13 |       0 |
+
+Between baseline and biased the blame counts barely move, which is the honest
+limit of a probabilistic bias: 2 surviving blocking members against 1 zero the
+gradient for the members upstream of them either way.
 
 ### Diversity, at production odds
 
@@ -146,6 +155,125 @@ The full suite was therefore run with the gate's own test-lane arguments
 `NEAT_AI_DISCOVERY_DETERMINISTIC=1`, `NEAT_SCORER_GPU=off`, backprop flags off)
 minus the scorer environment: **9,177 passed, 0 failed, 52 ignored**. CI builds
 the scorer from a matched pair and runs that lane.
+
+## Acceptance Criteria
+
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
+- **met** — Step 1 measurement: whether `SquashEffectivenessTracker`'s layer
+  buckets can see the deep chain on the GRQ creature, reported to #3969 —
+  evidence: `docs/evidence/deep-chain-squash-bias-3974-step1.md`,
+  `test/NEAT/DeepChainBucketVisibility.ts::Step 1 - the tracker's roles cannot
+  distinguish a deep-chain neuron`,
+  and the finding posted as a comment on #3969 — reviewer: partial — reason: the
+  reviewer saw the diff before the #3969 comment was posted and flagged the
+  report as missing; it has since been posted, and the two docstring defects it
+  also found (a `26 hidden members` miscount and a reference to a non-existent
+  evidence file) are fixed in this diff.
+- **met** — If Step 1 is sufficient — issue closed with the finding, no code —
+  evidence: `test/NEAT/DeepChainBucketVisibility.ts:64` shows a run member and
+  an ordinary mid-depth neuron resolving to one role, so the branch does not
+  apply and Step 2 was built — reviewer: met.
+- **met** — If not — depth-aware bias in `ModSquash`, disabled by default,
+  biasing rather than banning — evidence: `src/mutate/ModSquash.ts:77`, default
+  `0` in `src/config/NeatConfig.ts`, and
+  `test/mutate/DeepChainSquashBias.ts::it biases, it does not ban` — reviewer:
+  met.
+- **met** — Test proving `deepChainSquashBias: 0` is identical to current
+  behaviour — evidence:
+  `test/mutate/DeepChainSquashBias.ts::bias 0 draws exactly what the unbiased
+  operator draws`,
+  a golden sequence and RNG tail captured by running the probe against `HEAD~`'s
+  `ModSquash` — reviewer: met — reason: the reviewer noted the pin covers the
+  tracker-disabled path only; the tracker-enabled path shares the same guard,
+  which short-circuits before any RNG draw at bias `0`.
+- **partial** — Squash histogram and species diversity reported against a
+  matched baseline — evidence:
+  `docs/evidence/deep-chain-squash-bias-3974-uniform.md` (entropy 4.701 → 4.703
+  bits over 8,000 matched draws) — reviewer: partial — reason: the
+  species-diversity column is structurally insensitive here — the harness's
+  population is clones of one genome, so `speciesCount / populationSize` sits at
+  the ceiling or the floor. It is reported with that caveat stated in
+  `docs/config/MUTATION_ADAPTATION.md`; the squash histogram carries the signal.
+- **met** — Zero-gradient fraction from #3972's probe re-measured, confirming or
+  refuting the mechanism — evidence:
+  `docs/evidence/deep-chain-squash-bias-3974-chain.md` — the bias does not move
+  it (64.4% → 66.0%) while the `IDENTITY` ceiling removes it entirely (0.0%) —
+  reviewer: met — reason: the reviewer's finding that the original `TANH`
+  ceiling was contaminated was correct and is fixed; the conclusion changed from
+  "refuted" to "mechanism real, bias too weak", and both the docs and this
+  summary were rewritten around the corrected arm.
+- **unrequested** — `GradientBlocking.ts` classifies `BIPOLAR` and `ReLU6` as
+  blocking beyond the issue's list — reviewer: unrequested — reason: the issue
+  asked for zero-derivative-region activations to be down-weighted; a measured
+  rule catches every activation that qualifies rather than only the five named,
+  and a hand-kept list would drift the moment an activation is added.
+- **unrequested** — the `ceiling` arm in the harness — reviewer: unrequested —
+  reason: the issue requires the mechanism to be confirmed or refuted, and
+  without a bound on what any squash choice can achieve the baseline/biased pair
+  cannot distinguish "the bias is weak" from "the mechanism is wrong".
+- **unrequested** — the `bench/deep_chain_squash_bias.ts` harness and its
+  `deno task bench:squash-bias`, including the `--focus chain` mode — reviewer:
+  unrequested — reason: the issue's failure-detection section requires three
+  measurements against a matched baseline; at production odds the bias fires on
+  ~0.05% of draws, so a mode that concentrates draws on the run is the only way
+  to read the mechanism at all, and it is labelled as such in the evidence.
+- **unrequested** — the `docs/ACTIVATION_FUNCTIONS.md` paragraph — reviewer:
+  unrequested — reason: the repo requires a code change to update every doc
+  surface it touches, and that file owns the differentiability taxonomy the
+  classifier now reads.
+
+## Standards Review
+
+<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
+
+- **violation** — no `CHANGELOG.md` entry for two new public options — evidence:
+  `CHANGELOG.md:47` — reason: fixed here; an `[Unreleased] → Added` entry for
+  #3974 now sits beside #3973's.
+- **violation** — the diff grew an unreachable `MOD_SQUASH` entry in
+  `Mutator.operatorFactories`, a shadow construction that dropped the tracker —
+  evidence: `src/NEAT/Mutator.ts:377` — reason: fixed here; the dead entry is
+  removed and replaced with a comment saying why `createOperator` owns this
+  operator.
+- **violation** — `ZeroGradientPool` and the pooling helper were copied from
+  `bench/skip_connection_null_comparison.ts` — evidence:
+  `bench/deep_chain_squash_bias.ts:111` — reason: fixed here; the harness now
+  imports `chainZeroGradient`, `pooledZeroGradient` and the type from its
+  sibling.
+- **violation** — `NeatConfig` hardcoded the defaults and the floor that
+  `DeepChainSquashOptions.ts` already owns — evidence:
+  `src/config/NeatConfig.ts:478` — reason: fixed here; the parser reads
+  `DEFAULT_DEEP_CHAIN_SQUASH_OPTIONS` and `MINIMUM_DEEP_CHAIN_MIN_LENGTH`.
+- **violation** — a registered activation with no derivative and no recorded
+  routing behaviour was silently classified gradient-safe — evidence:
+  `src/methods/activations/GradientBlocking.ts:104` — reason: fixed here; it now
+  throws an `ActivationError`, and the deprecated mixing aggregates are recorded
+  in `GRADIENT_MIXING_SQUASHES` rather than falling through.
+- **violation** — a docstring cited
+  `docs/evidence/deep-chain-squash-bias-3974.md`, which does not exist —
+  evidence: `test/NEAT/DeepChainBucketVisibility.ts:13` — reason: fixed here,
+  along with the `26 hidden members` miscount in the same paragraph.
+- **violation** — bare "NEAT" used for this project's search space — evidence:
+  `src/mutate/DeepChainSquashOptions.ts:15` — reason: fixed here in both places;
+  the repo reserves bare NEAT for the 2002 algorithm.
+- **violation** — the new `SerialChains` exports were not re-exported from the
+  root barrel beside their file-mates — evidence: `mod.ts:749` — reason: fixed
+  here; `hiddenRunMembers` and `hiddenRunLengthAt` are barrelled.
+- **violation** — the new docs section had no Mermaid diagram where its sibling
+  #3973 section has one — evidence: `docs/config/MUTATION_ADAPTATION.md` —
+  reason: fixed here; the draw/re-draw decision is now a flowchart.
+- **violation** — `test/mutate/_chainCreature.ts`'s header listed only #3973's
+  two consumers — evidence: `test/mutate/_chainCreature.ts:1` — reason: fixed
+  here; it names the two #3974 consumers as well.
+- **clean** — Australian English throughout; every new test calls real code
+  (`Creature.fromJSON`, the real `ModActivation`, `Mutator.mutateCreature`,
+  `createNeatConfig`, the real activation registry) with no source-text
+  assertions; no wall-clock assertions in `test/`; typed `ConfigurationError` /
+  `ActivationError` on every invalid input; no hidden paths staged; no
+  `console.*` under `src/`; no new dependency; neuron-UUID and semantic-version
+  invariants untouched; the option-surface bookkeeping (`NeatOptions`,
+  `NeatArguments`, `docs/api/CONFIGURATION.md`, the #3505 audit roll-up and its
+  pinned count) moves as one change; `deno fmt --check` and `deno lint` clean.
 
 ## Test Plan
 

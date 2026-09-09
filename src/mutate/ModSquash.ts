@@ -8,7 +8,7 @@ import {
   type ResolvedDeepChainSquashOptions,
   resolveDeepChainSquashOptions,
 } from "@mutate/DeepChainSquashOptions.ts";
-import { serialChainLengthAt } from "@propagate/SerialChains.ts";
+import { hiddenRunLengthAt } from "@propagate/SerialChains.ts";
 import type { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
@@ -145,7 +145,7 @@ export class ModActivation extends AbstractMutationOperator {
    * apply — the run length #3973's bypass operator also measures.
    */
   private insideDeepChain(index: number): boolean {
-    return serialChainLengthAt(this.creature, index) >=
+    return hiddenRunLengthAt(this.creature, index) >=
       this.deepChain.deepChainMinLength;
   }
 }

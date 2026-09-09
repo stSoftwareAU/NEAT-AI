@@ -13,7 +13,7 @@
 | Arm      | Squash mutations | Blocking | Share |
 | -------- | ---------------: | -------: | ----: |
 | baseline |              400 |       23 |  5.8% |
-| biased   |              400 |        3 |  0.8% |
+| biased   |              400 |        5 |  1.3% |
 | ceiling  |                0 |        0 |  0.0% |
 
 ## Diversity, against the matched baseline
@@ -26,7 +26,7 @@ its species count is 1 by construction and is not a diversity reading. Compare
 | -------- | ----------------: | -------------: | ------: | ----------------: |
 | baseline |                33 |          4.432 |       1 |             0.250 |
 | biased   |                33 |          4.432 |       1 |             0.250 |
-| ceiling  |                33 |          4.444 |       1 |             0.250 |
+| ceiling  |                33 |          4.398 |       1 |             0.250 |
 
 ## The run itself
 
@@ -34,16 +34,16 @@ its species count is 1 by construction and is not a diversity reading. Compare
 | -------- | ---------------: | ------: | ----------------: | -------------: |
 | baseline |                2 |      28 |             64.4% |          86.0% |
 | biased   |                1 |      28 |             66.0% |          88.6% |
-| ceiling  |                0 |      28 |             88.9% |          85.4% |
+| ceiling  |                0 |      28 |              0.0% |          14.2% |
 
 ## What the probe blames the run's zero gradients on
 
 | Cause             | baseline | biased | ceiling |
 | ----------------- | -------: | -----: | ------: |
 | cancellation      |        0 |      3 |       0 |
-| downstream-zero   |      299 |    297 |     391 |
+| downstream-zero   |      299 |    297 |       0 |
 | untaken-if-branch |       14 |     13 |       0 |
-| zero-derivative   |       64 |     73 |     153 |
+| zero-derivative   |       64 |     73 |       0 |
 
 ## Squash histogram
 
@@ -59,8 +59,8 @@ its species count is 1 by construction and is not a diversity reading. Compare
 | Exponential   |       26 |     26 |      24 | no       |
 | GAUSSIAN      |      158 |    158 |     156 | no       |
 | GELU          |      451 |    452 |     444 | no       |
-| HARD_TANH     |      285 |    280 |     280 | yes      |
-| IDENTITY      |     1353 |   1353 |    1352 | no       |
+| HARD_TANH     |      285 |    281 |     280 | yes      |
+| IDENTITY      |     1353 |   1353 |    1464 | no       |
 | IF            |      715 |    714 |     712 | yes      |
 | ISRU          |       79 |     79 |      76 | no       |
 | LOGISTIC      |      295 |    295 |     288 | no       |
@@ -71,7 +71,7 @@ its species count is 1 by construction and is not a diversity reading. Compare
 | Mish          |      234 |    236 |     228 | no       |
 | ReLU          |      413 |    413 |     412 | no       |
 | ReLU6         |       92 |     92 |      92 | yes      |
-| SELU          |      478 |    478 |     468 | no       |
+| SELU          |      478 |    477 |     468 | no       |
 | SINE          |      426 |    426 |     424 | no       |
 | SOFTMAX       |        4 |      4 |       4 | no       |
 | SOFTSIGN      |      154 |    154 |     152 | no       |
@@ -81,4 +81,4 @@ its species count is 1 by construction and is not a diversity reading. Compare
 | Softplus      |      220 |    220 |     212 | no       |
 | Swish         |      246 |    246 |     236 | no       |
 | TAN           |       32 |     32 |      32 | no       |
-| TANH          |       66 |     67 |     172 | no       |
+| TANH          |       66 |     67 |      60 | no       |

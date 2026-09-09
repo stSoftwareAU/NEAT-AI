@@ -143,26 +143,51 @@ export function longestSerialChain(
 }
 
 /**
- * Length of the serial chain the neuron at `neuronIndex` belongs to.
+ * The hidden members of a chain, shallowest first, stopping at the first
+ * non-hidden member.
+ *
+ * {@link findSerialChains} includes the output neuron when a chain ends there,
+ * but an output is not part of the *run* — it is the neuron the run feeds. The
+ * skip operator (#3973) and the depth-aware squash bias (#3974) both measure a
+ * run this way, so the definition lives here and neither keeps a copy.
+ *
+ * @param creature The creature the chain belongs to.
+ * @param chain The chain to trim.
+ * @returns Neuron indices of the hidden members, shallowest first.
+ */
+export function hiddenRunMembers(
+  creature: Creature,
+  chain: SerialChain,
+): number[] {
+  const run: number[] = [];
+  for (const member of chain.members) {
+    if (creature.neurons[member.index].type !== "hidden") break;
+    run.push(member.index);
+  }
+  return run;
+}
+
+/**
+ * Length of the hidden serial run the neuron at `neuronIndex` belongs to.
  *
  * Issue #3974: `ModSquash`'s depth-aware bias needs one fact about the neuron
- * it is about to re-squash — how long the single-file run it sits in is — and
- * the run is defined here so the bias and the bypass operator (#3973) mean the
- * same thing by "chain".
+ * it is about to re-squash — how long the single-file run it sits in is —
+ * counted the way {@link hiddenRunMembers} counts it, so `deepChainMinLength`
+ * and #3973's `skipMinRunLength` mean the same thing by "a run of four".
  *
  * @param creature The creature whose topology to analyse.
  * @param neuronIndex Index into `creature.neurons`.
- * @returns The member count of the chain containing that neuron, or `0` when
- *   the neuron is not in a chain.
+ * @returns The hidden-member count of the run containing that neuron, or `0`
+ *   when the neuron is not in one — an output neuron included, because the run
+ *   feeds it rather than containing it.
  */
-export function serialChainLengthAt(
+export function hiddenRunLengthAt(
   creature: Creature,
   neuronIndex: number,
 ): number {
   for (const chain of findSerialChains(creature)) {
-    for (const member of chain.members) {
-      if (member.index === neuronIndex) return chain.members.length;
-    }
+    const run = hiddenRunMembers(creature, chain);
+    if (run.includes(neuronIndex)) return run.length;
   }
   return 0;
 }

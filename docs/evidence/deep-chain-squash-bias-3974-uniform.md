@@ -26,7 +26,7 @@ its species count is 1 by construction and is not a diversity reading. Compare
 | -------- | ----------------: | -------------: | ------: | ----------------: |
 | baseline |                36 |          4.701 |       4 |             1.000 |
 | biased   |                36 |          4.703 |       4 |             1.000 |
-| ceiling  |                33 |          4.444 |       1 |             0.250 |
+| ceiling  |                33 |          4.398 |       1 |             0.250 |
 
 ## The run itself
 
@@ -34,17 +34,17 @@ its species count is 1 by construction and is not a diversity reading. Compare
 | -------- | ---------------: | ------: | ----------------: | -------------: |
 | baseline |               16 |      28 |             53.9% |          76.1% |
 | biased   |               15 |      28 |             60.2% |          76.8% |
-| ceiling  |                0 |      28 |             88.9% |          85.4% |
+| ceiling  |                0 |      28 |              0.0% |          14.2% |
 
 ## What the probe blames the run's zero gradients on
 
 | Cause              | baseline | biased | ceiling |
 | ------------------ | -------: | -----: | ------: |
-| downstream-zero    |      203 |    244 |     395 |
+| downstream-zero    |      203 |    244 |       0 |
 | if-condition       |       20 |     23 |       0 |
 | unselected-min-max |       26 |     35 |       0 |
 | untaken-if-branch  |       28 |     35 |       0 |
-| zero-derivative    |       23 |     11 |     149 |
+| zero-derivative    |       23 |     11 |       0 |
 
 ## Squash histogram
 
@@ -63,7 +63,7 @@ its species count is 1 by construction and is not a diversity reading. Compare
 | GAUSSIAN        |      163 |    164 |     156 | no       |
 | GELU            |      484 |    480 |     444 | no       |
 | HARD_TANH       |      365 |    361 |     280 | yes      |
-| IDENTITY        |      580 |    581 |    1352 | no       |
+| IDENTITY        |      580 |    581 |    1464 | no       |
 | IF              |      321 |    322 |     712 | yes      |
 | ISRU            |      175 |    178 |      76 | no       |
 | LOGISTIC        |      383 |    383 |     288 | no       |
@@ -85,4 +85,4 @@ its species count is 1 by construction and is not a diversity reading. Compare
 | StdInverse      |        7 |      7 |       0 | no       |
 | Swish           |      485 |    485 |     236 | no       |
 | TAN             |       30 |     31 |      32 | no       |
-| TANH            |      381 |    380 |     172 | no       |
+| TANH            |      381 |    380 |      60 | no       |

@@ -447,28 +447,56 @@ a blocking proposal is re-drawn once with probability `deepChainSquashBias`, and
 a second blocking proposal stands, so nothing leaves the search space and
 existing neurons are never rewritten.
 
+```mermaid
+flowchart TD
+    D[ModSquash draws a squash] --> B{deepChainSquashBias > 0?}
+    B -- no --> K[keep the draw:<br/>unchanged behaviour]
+    B -- yes --> G{proposal blocks the gradient?}
+    G -- no --> K
+    G -- yes --> C{neuron inside a hidden run of<br/>deepChainMinLength or more?}
+    C -- no --> K
+    C -- yes --> R{rng < bias?}
+    R -- no --> K
+    R -- yes --> S[one re-draw; a second<br/>blocking proposal stands]
+```
+
 | Option                | Type      | Default | Description                                                                                             |
 | --------------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------- |
 | `deepChainSquashBias` | `number`  | `0`     | Strength of the down-weighting inside a long serial run; `0` disables it, `1` re-draws every one (0..1) |
-| `deepChainMinLength`  | `integer` | `4`     | Run length, in members, at which the bias starts applying (min: 2) — #3973's `skipMinRunLength` shape   |
+| `deepChainMinLength`  | `integer` | `4`     | Run length at which the bias starts applying (min: 2)                                                   |
+
+A run is counted the way #3973 counts it — `hiddenRunMembers` in
+`src/propagate/SerialChains.ts`, the **hidden** members only, because the output
+neuron a run ends at is the neuron the run feeds rather than part of it. Both
+operators call the same helper, so `deepChainMinLength: 4` and
+`skipMinRunLength: 4` mean the same run.
 
 `deepChainSquashBias: 0` draws no randomness of its own and runs no extra
 topology scan, so the operator is bit-identical to the pre-#3974 build on a
 fixed seed — pinned by `test/mutate/DeepChainSquashBias.ts` against a golden
-sequence captured from the previous `ModSquash`.
+squash sequence **and** the next RNG value, both captured from the previous
+`ModSquash`.
 
 **What counts as blocking is measured, not listed.**
 `src/methods/activations/GradientBlocking.ts` walks each activation's own
-`derivative()` over a fixed grid and calls it blocking when more than half of it
-is exactly zero — `STEP` and `BIPOLAR` (all of it), `HARD_TANH` (0.875) and
-`ReLU6` (0.625) qualify, `ReLU` (exactly half) does not. `ReLU6` is not on the
-issue's list and is down-weighted anyway: it is dead below 0 and above 6 by the
-same measurement, and the rule follows the derivatives rather than the list.
-`IF`, `MINIMUM` and `MAXIMUM` expose no scalar derivative at all and gate the
-gradient onto one inbound branch, so they are blocking by construction. A new
-selectable activation with no derivative fails
-`test/methods/activations/GradientBlocking.ts` rather than being silently
-treated as safe.
+`derivative()` over a fixed grid spanning `[-8, 8]` and calls it blocking when
+more than half of that grid is exactly zero — `STEP` and `BIPOLAR` (all of it),
+`HARD_TANH` (0.875) and `ReLU6` (0.625) qualify, `ReLU` (exactly half) does not.
+`ReLU6` is not on the issue's list and is down-weighted anyway: the rule follows
+the derivatives rather than a list. `IF`, `MINIMUM` and `MAXIMUM` expose no
+scalar derivative at all and gate the gradient onto one inbound branch, so they
+are blocking by construction; the deprecated aggregates that mix every branch
+are recorded separately, and any other activation without a derivative throws
+rather than being assumed safe.
+
+> [!NOTE]
+> The grid is the ordinary operating range, not the whole real line. A smooth
+> saturating activation also reaches an exactly-zero derivative in float64 when
+> it is driven far enough — `TANH` past |x| ≈ 20, which a fan-in of 1,265
+> reaches easily — and the classifier deliberately does **not** call `TANH`
+> blocking, because at ordinary magnitudes it is not. Squash choice cannot fix
+> saturation driven by fan-in; that is a weight-scale problem, not a pool
+> problem.
 
 ```ts
 const config = createNeatConfig({
@@ -482,8 +510,10 @@ const config = createNeatConfig({
 
 `bench/deep_chain_squash_bias.ts` runs three arms on one creature and one seed —
 **baseline** (`deepChainSquashBias: 0`), **biased**, and **ceiling** (every run
-member set to `TANH`, which bounds what any squash-level intervention could
-achieve). Reproduce with:
+member set to `IDENTITY`, which bounds what any squash-level intervention could
+achieve). `IDENTITY` and not `TANH`: the ceiling arm must not carry the fault it
+exists to exclude, and `TANH` saturates to an exactly-zero derivative at the
+magnitudes this run reaches. Reproduce with:
 
 ```bash
 # Step 1: what the existing SquashEffectivenessTracker roles can see of the run.
@@ -503,34 +533,44 @@ deno task bench:squash-bias --focus any --mutations 2000 --population 4 \
 **Step 1 — the tracker cannot see the run.** #2457's
 `SquashEffectivenessTracker` buckets a neuron by `layer × fan-in` and by nothing
 else, so chain membership is not expressible in a role at all. On the GRQ
-creature the run's 26 hidden members land in three `mid` roles holding 1,229
+creature 26 of the run's 28 members land in three `mid` roles holding 1,229
 mutable neurons between them, 0.8–3.4% of each. Tuning `minSamples` or
 `boltzmannBeta` cannot recover a distinction the key does not carry, which is
 why Step 2 was built.
 
 **The bias does change what is proposed.** Aimed at the run, blocking proposals
-fall from **5.8% (23 of 400)** to **0.8% (3 of 400)**.
+fall from **5.8% (23 of 400)** to **1.3% (5 of 400)**.
 
-**It does not move the gradient, and the ceiling arm says why.** The run's own
-zero-gradient fraction is 64.4% baseline against 66.0% biased — and **88.9% with
-every member set to `TANH`**. The probe blames the zeros on `downstream-zero`
-(299 of 377 measurements in the baseline arm), not on the members' activations:
-the gradient arriving at a run member is already zero when it gets there, so no
-choice of squash inside the run can restore it. Per the issue's own failure
-rule, that **refutes the mechanism on this creature** — the bias is not doing
-what it claimed, so the option ships disabled and any score change under it
-would be coincidence.
+**The mechanism is real — and the bias is too weak to exploit it.** The ceiling
+arm settles the first half: with every run member on `IDENTITY` the run's
+zero-gradient fraction is **0.0%**, against 64.4% for the baseline, and every
+`downstream-zero`, `untaken-if-branch` and `zero-derivative` blame count falls
+to zero. So the run's zeros really do come from the activations inside it,
+exactly as #3972 described.
 
-**The diversity cost is nil, for the same reason it has no effect.** At
+What the bias does not do is remove them. Baseline 64.4% against biased 66.0%,
+with 2 and 1 surviving blocking members respectively: **one blocking member is
+enough**, because everything upstream of it is zeroed for that sample, so a
+probability shift that leaves one behind buys nothing. That is why the option
+ships disabled: a bias cannot deliver the effect the ceiling shows is available,
+and a score change under it would be coincidence rather than gradient repair.
+
+**The diversity cost is nil, for the same reason the effect is small.** At
 production odds a blocking proposal landing on a run member is ~0.05% of draws:
 over 8,000 uniform squash mutations the bias changed 4 of them, squash-histogram
 entropy moved 4.701 → 4.703 bits, and species diversity was identical at 1.000.
 
 > [!NOTE]
-> The scan is not free. When the bias is on, a blocking proposal costs one
-> `findSerialChains` pass — the same order as the layer pass #2457's tracker
-> already runs per squash mutation, and it is skipped entirely when the bias is
-> `0` or the proposal is not blocking.
+> Species diversity is a blunt instrument here and is reported for completeness.
+> `computeSpeciesDiversity` is `speciesCount / populationSize` over a population
+> the harness builds by cloning one genome, so it sits at the ceiling (1.000) or
+> the floor and cannot resolve a squash-pool narrowing. The squash histogram and
+> its entropy are the readings that can.
+
+The scan is also not free: when the bias is on, a blocking proposal costs one
+`findSerialChains` pass — the same order as the layer pass #2457's tracker
+already runs per squash mutation — and it is skipped entirely when the bias is
+`0` or the proposal is not blocking.
 
 ## 👀 See also
 

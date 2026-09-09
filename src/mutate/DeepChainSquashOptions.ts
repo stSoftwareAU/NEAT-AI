@@ -12,7 +12,7 @@
  *
  * The knob is deliberately **a bias, not a ban**: removing `HARD_TANH`, `IF`,
  * `MINIMUM` and `MAXIMUM` from the pool at depth would shrink the search space
- * in a way NEAT cannot recover from, and those activations are load-bearing
+ * in a way NEAT-AI cannot recover from, and those activations are load-bearing
  * elsewhere in the creature. Existing neurons are never rewritten — this
  * governs what a new mutation proposes.
  *

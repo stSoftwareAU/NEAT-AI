@@ -10,10 +10,10 @@
  * membership**, so a chain member and an ordinary mid-depth neuron of the same
  * fan-in are the same role however many samples the tracker collects.
  *
- * `docs/evidence/deep-chain-squash-bias-3974.md` carries the population figures
- * that go with this: the 26 hidden members of the depth-34→61 run share their
- * roles with 1,229 mid-depth neurons, so they are 0.8–3.4% of the samples the
- * roles they land in ever see.
+ * `docs/evidence/deep-chain-squash-bias-3974-step1.md` carries the population
+ * figures that go with this: 26 of the depth-34→61 run's 28 members land in
+ * three `mid` roles holding 1,229 mutable neurons between them, so they are
+ * 0.8–3.4% of the samples those roles ever see.
  */
 
 import { assert, assertEquals } from "@std/assert";

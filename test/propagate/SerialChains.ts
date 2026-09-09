@@ -12,8 +12,9 @@ import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import {
   findSerialChains,
+  hiddenRunLengthAt,
+  hiddenRunMembers,
   longestSerialChain,
-  serialChainLengthAt,
 } from "@propagate/SerialChains.ts";
 
 Deno.test("SerialChains - a single-file tail is reported end to end", () => {
@@ -122,7 +123,7 @@ Deno.test("SerialChains - the GRQ creature carries the depth 34-61 single-file t
   );
 });
 
-Deno.test("SerialChains - serialChainLengthAt reports the run a neuron sits in", () => {
+Deno.test("SerialChains - hiddenRunLengthAt reports the run a neuron sits in", () => {
   // input → a → b → c → output is a four-member run; `wide` sits beside `a` at
   // depth 1 in the second creature, which removes the run entirely.
   const inChain = Creature.fromJSON({
@@ -149,17 +150,28 @@ Deno.test("SerialChains - serialChainLengthAt reports the run a neuron sits in",
     return neuron!.index;
   };
 
-  for (const uuid of ["a", "b", "c", "output-0"]) {
+  for (const uuid of ["a", "b", "c"]) {
     assertEquals(
-      serialChainLengthAt(inChain, indexOf(inChain, uuid)),
-      4,
-      `${uuid} is one of four members`,
+      hiddenRunLengthAt(inChain, indexOf(inChain, uuid)),
+      3,
+      `${uuid} is one of three hidden members`,
     );
   }
   assertEquals(
-    serialChainLengthAt(inChain, 0),
+    hiddenRunLengthAt(inChain, indexOf(inChain, "output-0")),
     0,
-    "an input is never a chain member",
+    "the run feeds the output rather than containing it — the same count " +
+      "#3973's AddSkipConnection uses",
+  );
+  assertEquals(
+    hiddenRunLengthAt(inChain, 0),
+    0,
+    "an input is never a run member",
+  );
+  assertEquals(
+    hiddenRunMembers(inChain, findSerialChains(inChain)[0]).length,
+    3,
+    "the shared helper stops at the first non-hidden member",
   );
 
   const noChain = Creature.fromJSON({
@@ -178,7 +190,7 @@ Deno.test("SerialChains - serialChainLengthAt reports the run a neuron sits in",
     ],
   });
   assertEquals(
-    serialChainLengthAt(noChain, indexOf(noChain, "a")),
+    hiddenRunLengthAt(noChain, indexOf(noChain, "a")),
     0,
     "a neuron with a depth-parallel sibling is in no run",
   );

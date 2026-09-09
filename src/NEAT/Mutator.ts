@@ -373,11 +373,11 @@ export class Mutator {
       Mutation.MOD_BIAS.name,
       (c, cfg) => new ModBias(c, cfg.biasRegularisation),
     ],
-    // Issue #2457: ModSquash receives the per-role tracker via createOperator.
-    [
-      Mutation.MOD_SQUASH.name,
-      (c, cfg) => new ModSquash(c, undefined, deepChainSquashOptionsFrom(cfg)),
-    ],
+    // Issue #2457: ModSquash is built by `createOperator`, which short-circuits
+    // before this map so the operator can receive the per-role tracker held on
+    // the instance. It deliberately has no entry here — a second construction
+    // would be a shadow path that silently dropped the tracker and, since
+    // #3974, the depth-aware bias with it.
     [Mutation.ADD_SELF_CONN.name, (c, _cfg) => new AddSelfCon(c)],
     [Mutation.SUB_SELF_CONN.name, (c, _cfg) => new SubSelfCon(c)],
     [Mutation.ADD_BACK_CONN.name, (c, _cfg) => new AddBackCon(c)],

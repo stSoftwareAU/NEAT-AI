@@ -14,6 +14,10 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
 import { Selection, type SelectionInterface } from "@methods/Selection.ts";
 import { Mutation } from "@neat/Mutation.ts";
+import {
+  DEFAULT_DEEP_CHAIN_SQUASH_OPTIONS,
+  MINIMUM_DEEP_CHAIN_MIN_LENGTH,
+} from "@mutate/DeepChainSquashOptions.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import type { NeatArguments } from "@config/NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "@config/ParseOptions.ts";
@@ -478,14 +482,14 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     deepChainSquashBias: parseNumber(
       "Deep chain squash bias",
       opts.deepChainSquashBias,
-      0,
+      DEFAULT_DEEP_CHAIN_SQUASH_OPTIONS.deepChainSquashBias,
       { min: 0, max: 1 },
     ),
     deepChainMinLength: parseNumber(
       "Deep chain minimum length",
       opts.deepChainMinLength,
-      4,
-      { integer: true, min: 2 },
+      DEFAULT_DEEP_CHAIN_SQUASH_OPTIONS.deepChainMinLength,
+      { integer: true, min: MINIMUM_DEEP_CHAIN_MIN_LENGTH },
     ),
     sparseRatio: parseNumber(
       "Sparse Ratio",

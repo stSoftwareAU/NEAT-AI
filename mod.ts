@@ -748,6 +748,8 @@ export type {
 } from "@propagate/GradientDepthBuckets.ts";
 export {
   findSerialChains,
+  hiddenRunLengthAt,
+  hiddenRunMembers,
   longestSerialChain,
 } from "@propagate/SerialChains.ts";
 export type {

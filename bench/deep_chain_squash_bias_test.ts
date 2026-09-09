@@ -11,50 +11,16 @@ import {
   assertThrows,
 } from "@std/assert";
 import { Creature } from "@creature";
-import type { GradientDepthProfile } from "@propagate/GradientDepthProbe.ts";
-import type { GradientDepthBucket } from "@propagate/GradientDepthBuckets.ts";
 import {
   assertValidSquashBiasConfig,
+  CEILING_SQUASH,
   histogramEntropyBits,
   measureRoleVisibility,
-  poolZeroGradient,
   renderRoleVisibility,
   SQUASH_BIAS_DEFAULTS,
   withSquashBiasDefaults,
 } from "./deep_chain_squash_bias.ts";
-
-function bucket(
-  depth: number,
-  observations: number,
-  zeroObservations: number,
-): GradientDepthBucket {
-  return {
-    depth,
-    neurons: 1,
-    observations,
-    zeroObservations,
-    zeroFraction: observations === 0 ? 0 : zeroObservations / observations,
-    meanAbsGradient: 0,
-    medianAbsGradient: 0,
-    p95AbsGradient: 0,
-    maxAbsGradient: 0,
-    signFlipComparisons: 0,
-    signFlips: 0,
-    signFlipRate: 0,
-    zeroCauses: {
-      "zero-derivative": 0,
-      "unselected-min-max": 0,
-      "untaken-if-branch": 0,
-      "if-condition": 0,
-      "zero-weight": 0,
-      "downstream-zero": 0,
-      cancellation: 0,
-      unreached: 0,
-    },
-    zeroDerivativeSquashes: {},
-    quantilesTruncated: false,
-  };
-}
+import { gradientDeadFraction } from "@methods/activations/GradientBlocking.ts";
 
 Deno.test("squash-bias harness - entropy falls as the mix collapses", () => {
   assertEquals(histogramEntropyBits({}), 0);
@@ -67,21 +33,16 @@ Deno.test("squash-bias harness - entropy falls as the mix collapses", () => {
   );
 });
 
-Deno.test("squash-bias harness - pooling honours the depth filter", () => {
-  const profile = {
-    samples: 2,
-    maxDepth: 3,
-    buckets: [bucket(1, 10, 5), bucket(2, 10, 1), bucket(3, 10, 10)],
-  } as GradientDepthProfile;
-
-  const shallow = poolZeroGradient(profile, (d) => d <= 2);
-  assertEquals(shallow.observations, 20);
-  assertEquals(shallow.zeroObservations, 6);
-  assertAlmostEquals(shallow.zeroFraction, 0.3, 1e-9);
-
-  const none = poolZeroGradient(profile, () => false);
-  assertEquals(none.observations, 0);
-  assertEquals(none.zeroFraction, 0, "an empty pool reports 0, not NaN");
+Deno.test("squash-bias harness - the ceiling squash is free of dead derivative", () => {
+  // The arm bounds what any squash choice could achieve, so its own squash
+  // must never be the fault it excludes. `TANH` would be: its derivative
+  // underflows to exactly zero past |x| ~ 20, which the run's fan-in of 1,265
+  // reaches easily.
+  assertEquals(
+    gradientDeadFraction(CEILING_SQUASH),
+    0,
+    `${CEILING_SQUASH} must have no exactly-zero derivative on the grid`,
+  );
 });
 
 Deno.test("squash-bias harness - the config refuses a meaningless comparison", () => {
