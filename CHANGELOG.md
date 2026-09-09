@@ -138,6 +138,27 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Issue #3976 — synapse removal moved to Rust/WASM.** The `SubConnection`
+  mutation operator now calls NEAT-AI-core's `prune_synapse` through the new
+  `src/wasm/WasmPruneSynapse.ts` bridge, and the superseded TypeScript rewrite
+  in that operator is deleted — core owns the cut, the bias fold, the `IF`
+  rewrites, the orphan cascade, canonicalisation and validation, with no runtime
+  fallback. Candidate selection stays in TypeScript: which forward, in-focus
+  synapse to remove is the operator's own policy, not a rewrite rule.
+
+  Two behavioural consequences are deliberate improvements. First, an `IF`
+  neuron left short a role is now **rewritten** rather than the removal being
+  refused: the old `#wouldBreakIfNeuron` guard declined any removal that would
+  empty an `IF`'s condition, positive or negative role, which made that whole
+  class of typed structure unreachable to the mutation operators. Core instead
+  flattens an `IF` whose condition has gone to the branch that condition always
+  took (an `IDENTITY` sum), or restores an emptied branch with a **zero-weight**
+  support edge — both exact, computing the same number on every record. Second,
+  a `memetic` record is now pruned entry-by-entry rather than dropped wholesale,
+  so a survivor's fine-tuning history is kept. The identity of a synapse on the
+  wire is the full `(fromUUID, toUUID, type)` triple (#3873), so removing one
+  role of a pair that feeds two `IF` branches leaves the other role untouched.
+
 - **Issue #3975 — hidden-neuron removal moved to Rust/WASM.** Discovery's
   `removeHarmfulNeuron` / `removeLowImpactNeuron` now call NEAT-AI-core's
   `prune_neuron` through the new `src/wasm/WasmPruneNeuron.ts` bridge, and the
@@ -168,7 +189,7 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `applyCoordinatedStructuralCandidate` plan and the `applyRemoveNeuron` replay
   remain TypeScript — a plan is only valid as a whole, so routing each op
   through a rewrite that canonicalises and validates would reject legal
-  intermediate states — and **synapse** removal stays TypeScript until #3976.
+  intermediate states. **Synapse** removal followed in #3976.
   `applyRemoveNeuron` now also replays the rewrite core applies to _surviving_
   neurons, which a membership diff cannot see; without it a replayed removal
   left a hidden neuron with no inward edge for `fix()` to repair.
