@@ -253,6 +253,40 @@ flowchart LR
 > it stays at its initial scale, the operator is inflating the creature with
 > dead structure that still costs growth cost and evaluation time.
 
+### 📊 What the sweep measured
+
+`bench/structural_weight_scale_sweep.ts` compares scales on one seed, with the
+mutation sites held identical across rows, and reports all four numbers Issue
+#3970 asked for. Reproduce it with:
+
+```bash
+deno task bench:structural-scale -- \
+  --scales=1,0.1,0.01,0.001 --trials=40 --generations=100 --population=20
+```
+
+Replicated across two seeds (3970 and 17), on a tuned 24-hidden-neuron parent:
+
+| Observation                                                                           | Holds?                                   |
+| ------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Median relative error delta falls from ~2e-4 at scale `1` to ~1e-8 or below           | ✅ yes                                   |
+| Behaviour-neutral births rise monotonically, 42.5% → 67.5–75%                         | ✅ yes                                   |
+| Acceptance _at birth_ **falls** at the smallest scale, 32.5% → 22.5–25%               | ✅ yes                                   |
+| Hidden-neuron count stays flat — no runaway growth at any scale                       | ✅ yes                                   |
+| Post-training outward weights **stay at their birth scale** (~1.5×, ≤5% grow tenfold) | ✅ yes                                   |
+| Score-per-wall-clock-hour improves                                                    | ❌ no — the ordering flips between seeds |
+
+The first two confirm the mechanism does exactly what the residual construction
+claims. The third is the growth cost working as designed, not a bug: a
+behaviour-neutral newborn still pays `~1.2 × growthCost`, so it lands near-tied
+rather than ahead.
+
+The last two are why **both knobs ship defaulted off**. On this benchmark the
+newborn's outward weight does not grow during training, which is the "accepted
+but useless" failure mode — near-identity structure that is easy to accept and
+contributes nothing — and no score-per-hour advantage survives a change of seed.
+Enable a reduced scale only alongside a measurement that shows the outward
+weights actually growing on _your_ workload.
+
 ## 👀 See also
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — base mutation rates that
