@@ -332,16 +332,11 @@ export function probeGradientDepth(
   // Forward edges only: a synapse that does not increase depth is a back-edge,
   // which `computeLayerAssignments` also ignores.
   const outward: Synapse[][] = new Array(neuronCount);
-  const inward: Synapse[][] = new Array(neuronCount);
-  for (let i = 0; i < neuronCount; i++) {
-    outward[i] = [];
-    inward[i] = [];
-  }
+  for (let i = 0; i < neuronCount; i++) outward[i] = [];
   for (const synapse of probe.synapses) {
     if (synapse.from === synapse.to) continue;
     if (depth[synapse.to] <= depth[synapse.from]) continue;
     outward[synapse.from].push(synapse);
-    inward[synapse.to].push(synapse);
   }
 
   // Deepest first, so a neuron's gradient is complete before it is spent.
@@ -387,7 +382,7 @@ export function probeGradientDepth(
   for (const sample of samples) {
     probe.activateAndTrace(sample, false, sparseConfig);
     const activations = probe.state.activations;
-    fillLocalDerivatives(probe, activations, inward, local);
+    fillLocalDerivatives(probe, activations, local);
 
     gradient.fill(0);
     for (let i = outputStart; i < neuronCount; i++) gradient[i] = 1;
@@ -464,11 +459,19 @@ function emptyLocalDerivatives(neuronCount: number): LocalDerivatives {
   };
 }
 
-/** Recompute every neuron's local derivative facts for the current sample. */
+/**
+ * Recompute every neuron's local derivative facts for the current sample.
+ *
+ * The forward quantities — the pre-activation value, the `MIN` / `MAX` winner,
+ * the `IF` condition sum — read **every** inward synapse, because that is what
+ * the engine's own activation does. Gradient routing is forward-only (see
+ * `outward` in {@link probeGradientDepth}): a recurrent edge is not unrolled,
+ * so on a topology that has one the recurrent term is read from the settled
+ * activation array rather than the previous step's.
+ */
 function fillLocalDerivatives(
   creature: Creature,
   activations: Float32Array,
-  inward: readonly Synapse[][],
   local: LocalDerivatives,
 ): void {
   for (let index = 0; index < creature.neurons.length; index++) {
@@ -478,7 +481,7 @@ function fillLocalDerivatives(
       continue;
     }
 
-    const sources = inward[index];
+    const sources = creature.inwardConnections(index);
     switch (neuron.squash) {
       case "MINIMUM":
       case "MAXIMUM": {
