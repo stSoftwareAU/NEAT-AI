@@ -80,10 +80,11 @@ Training is heavy; these guards stop the run spending worker slots on cycles
 that buy nothing. A training result inside the evaluate noise floor counts as
 **no progress**, not as an improvement (Issue #3779).
 
-| Field                                     | Type     | Default | Description                                                                                                 |
-| ----------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------- |
-| `skipTrainingAfterConsecutiveRegressions` | `number` | `2`     | Skip a **creature** after N consecutive regressions of its own (0 = off, Issue #2382)                       |
-| `skipTrainingAfterPopulationNoProgress`   | `number` | `0`     | Skip **all** training after N consecutive no-progress outcomes across the whole population (0 = off, #3779) |
+| Field                                     | Type     | Default | Description                                                                                                                                                                        |
+| ----------------------------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `skipTrainingAfterConsecutiveRegressions` | `number` | `2`     | Skip a **creature** after N consecutive regressions of its own (0 = off, Issue #2382)                                                                                              |
+| `skipTrainingAfterPopulationNoProgress`   | `number` | `0`     | Skip **all** training after N consecutive no-progress outcomes across the whole population (0 = off, #3779)                                                                        |
+| `skipTrainingAfterPopulationRegressions`  | `number` | `0`     | Skip **all** training after N consecutive **regressions** across the whole population — stricter than the no-progress gate, and cleared by a no-change result (0 = off, GRQ #4717) |
 
 Creatures are trained at most once per run (Issue #3553), so the per-creature
 guard rarely trips; `skipTrainingAfterPopulationNoProgress` is the one that
