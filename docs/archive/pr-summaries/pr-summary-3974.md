@@ -160,7 +160,9 @@ the scorer from a matched pair and runs that lane.
   (`HARD_TANH` 0.875, `STEP` 1.0, `ReLU` exactly 0.5 and not blocking), the
   gating aggregates, alias resolution, a loud failure on an unknown name, and a
   drift guard that fails when a new selectable activation has neither a scalar
-  derivative nor a recorded gating entry.
+  derivative nor a recorded gating entry, plus a robustness case proving no
+  registered activation throws while being classified — `ModSquash` calls the
+  classifier on every proposal under a live bias.
 - `test/NEAT/DeepChainBucketVisibility.ts` — Step 1: on the GRQ creature a run
   member and an ordinary mid-depth neuron of the same fan-in resolve to the same
   tracker role.

@@ -86,6 +86,23 @@ Deno.test("GradientBlocking - the grid is symmetric and never samples zero", () 
   assertAlmostEquals(sum, 0, 1e-9);
 });
 
+Deno.test("GradientBlocking - classifying any registered activation never throws", () => {
+  // `ModSquash` calls this on every proposal under a live bias, so a
+  // derivative that throws on part of the grid would take an evolution run
+  // down with it.
+  for (const activation of Activations.list()) {
+    const name = activation.getName();
+    isGradientBlockingSquash(name);
+    const fraction = gradientDeadFraction(name);
+    if (fraction !== undefined) {
+      assert(
+        fraction >= 0 && fraction <= 1,
+        `${name} reported a dead fraction outside [0, 1]: ${fraction}`,
+      );
+    }
+  }
+});
+
 Deno.test("GradientBlocking - every selectable activation is classified", () => {
   // Drift guard: an activation mutation can select must either expose a scalar
   // derivative (measured classification) or be a recorded gating aggregate.
