@@ -22,6 +22,7 @@ import { SubConnection } from "@mutate/SubConnection.ts";
 import { SubNeuron } from "@mutate/SubNeuron.ts";
 import { SubSelfCon } from "@mutate/SubSelfCon.ts";
 import { SwapNeurons } from "@mutate/SwapNeurons.ts";
+import type { StructuralMutationOptions } from "@mutate/StructuralMutationOptions.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import {
@@ -52,6 +53,17 @@ interface MutationCacheEntry {
   weightBiasCount: number;
   /** Issue #2125: Pre-computed non-expansion candidates for large creature selection. */
   nonExpansionCandidates: ReadonlyArray<{ name: string }>;
+}
+
+/**
+ * Issue #3970: reads the identity-initialised structural mutation knobs off
+ * the run config for `AddNeuron` / `AddConnection`.
+ */
+function structuralOptionsFrom(config: NeatConfig): StructuralMutationOptions {
+  return {
+    structuralWeightScale: config.structuralWeightScale,
+    structuralNewbornGraceRounds: config.structuralNewbornGraceRounds,
+  };
 }
 
 export class Mutator {
@@ -286,9 +298,17 @@ export class Mutator {
     string,
     (creature: Creature, config: NeatConfig) => RadioactiveInterface
   >([
-    [Mutation.ADD_NODE.name, (c, _cfg) => new AddNeuron(c)],
+    // Issue #3970: structural operators receive the identity-initialisation
+    // knobs; the defaults reproduce the historical full random weight.
+    [
+      Mutation.ADD_NODE.name,
+      (c, cfg) => new AddNeuron(c, structuralOptionsFrom(cfg)),
+    ],
     [Mutation.SUB_NODE.name, (c, _cfg) => new SubNeuron(c)],
-    [Mutation.ADD_CONN.name, (c, _cfg) => new AddConnection(c)],
+    [
+      Mutation.ADD_CONN.name,
+      (c, cfg) => new AddConnection(c, structuralOptionsFrom(cfg)),
+    ],
     [Mutation.SUB_CONN.name, (c, _cfg) => new SubConnection(c)],
     // Issue #1309: Pass weight regularisation config to ModWeight
     [

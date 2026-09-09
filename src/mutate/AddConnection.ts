@@ -11,6 +11,12 @@ import { Synapse } from "@architecture/Synapse.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
+import type { Creature } from "@creature";
+import {
+  type ResolvedStructuralMutationOptions,
+  resolveStructuralMutationOptions,
+  type StructuralMutationOptions,
+} from "@mutate/StructuralMutationOptions.ts";
 
 /**
  * Maximum number of rejection sampling attempts before falling back to
@@ -20,6 +26,19 @@ import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
 const MAX_REJECTION_ATTEMPTS = 20;
 
 export class AddConnection extends AbstractMutationOperator {
+  /**
+   * Issue #3970: identity-initialised structural mutation. Supplies the
+   * default weight scale for the main mutation path; a caller that passes
+   * explicit {@link ConnectionOptions} still wins. Defaults reproduce the
+   * historical behaviour exactly.
+   */
+  private readonly structural: ResolvedStructuralMutationOptions;
+
+  constructor(creature: Creature, options?: StructuralMutationOptions) {
+    super(creature);
+    this.structural = resolveStructuralMutationOptions(options);
+  }
+
   /**
    * Add a connection between two neurons.
    *
@@ -41,7 +60,9 @@ export class AddConnection extends AbstractMutationOperator {
     extraBias?: MutationBias,
   ): boolean {
     // Disambiguate the overloaded second parameter.
-    let options: ConnectionOptions = { weightScale: 1 };
+    let options: ConnectionOptions = {
+      weightScale: this.structural.structuralWeightScale,
+    };
     let mutationBias: MutationBias | undefined;
 
     if (optionsOrBias) {

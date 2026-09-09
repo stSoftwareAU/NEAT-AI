@@ -55,6 +55,8 @@ type NumericOptionKeys =
   | "threads"
   | "maximumBiasAdjustmentScale"
   | "maximumWeightAdjustmentScale"
+  | "structuralWeightScale"
+  | "structuralNewbornGraceRounds"
   | "sparseRatio"
   | "globalBreedingRate"
   | "diversityBreedingRate"

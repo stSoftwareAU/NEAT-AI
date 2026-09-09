@@ -186,6 +186,110 @@ The `"absolute"` row moves when the objective is rescaled — its acceptance rat
 falls from 83% to 41% for the same schedule — which is exactly the coupling rank
 shaping removes.
 
+## 🧬 Identity-initialised structural mutation
+
+`AddNeuron` and `AddConnection` wire new structure with a random weight drawn
+uniformly from `[-0.5, +0.5]`. On a creature whose behaviour is already tuned to
+fifth-decimal margins, injecting that into a live neuron's summed input is a
+large perturbation, so the offspring is overwhelmingly likely to score below its
+parent — and a mutation that drops the score is never picked for a gradient
+step, so the structure it proposed is discarded in the generation that made it.
+
+Scaling the **outward** synapse down approaches the residual construction
+`x + εF(x)` of
+[He et al. (2016), _Deep Residual Learning for Image Recognition_](https://arxiv.org/abs/1512.03385):
+the new structure is nearly a no-op at birth, scores level with its parent, and
+therefore survives long enough for backprop to learn a job for it. The inward
+synapse keeps its full-scale draw — it only determines what the new neuron
+_sees_, and shrinking it would flatten the gradient the new structure needs.
+
+| Option                         | Type      | Default | Description                                                                                                                                                    |
+| ------------------------------ | --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `structuralWeightScale`        | `number`  | `1`     | Scale passed to `Synapse.randomWeight()` for the outward synapse of `AddNeuron`, and for `AddConnection` on the main mutation path. Must be greater than zero. |
+| `structuralNewbornGraceRounds` | `integer` | `0`     | Compaction passes a newly inserted neuron is exempt from `compactUnused` removal (min: 0).                                                                     |
+
+Both defaults reproduce the historical behaviour exactly, bit-for-bit on a fixed
+seed.
+
+```ts
+const config = createNeatConfig({
+  // Near-identity initialisation, matching the creative-thinking path's
+  // 1 / synapseCount scale, with one compaction pass of newborn protection.
+  structuralWeightScale: 0.0001,
+  structuralNewbornGraceRounds: 1,
+});
+```
+
+**Why the grace period is needed.** `compactUnused` ranks hidden neurons by
+`|activation range| × min(maxOutgoingWeight, 1) − plankConstant × fanIn` and
+removes the smallest. A neuron with a near-zero outward weight scores ~0, so it
+is the _first_ candidate — it would be compacted away before the gradient step
+that was meant to give it a job. `structuralNewbornGraceRounds` tags the newborn
+so compaction skips it. The budget is spent one round at a time, on every
+lineage that leaves a training round: `compactUnused` spends a round on the
+compacted copy it returns, the training teardown spends a round on the trained
+(uncompacted) creature, and — when `compactUnused` found nothing to remove and
+the teardown fell back to `compactVariants` — the teardown spends a round on
+that fallback creature too. No lineage can end up exempt from compaction for the
+rest of the run.
+
+> [!NOTE]
+> The grace is honoured by `compactUnused` only. When `compactUnused` finds no
+> removal candidate at all, both training paths fall back to `compactVariants`,
+> which prunes structurally rather than by activation trace and has no newborn
+> awareness.
+
+```mermaid
+flowchart LR
+    A[AddNeuron] -->|outward weight × scale| B[Near-identity offspring]
+    A -->|newborn-grace tag| B
+    B --> C[Scores level with parent]
+    C --> D[Selected for training]
+    D --> E[Backprop learns the residual F]
+    B -.->|grace skips it| F[compactUnused]
+    F -.->|grace spent| G[Ordinary removal candidate]
+```
+
+> [!NOTE]
+> A near-identity neuron is easy to accept and may still contribute nothing.
+> Watch the outward weight magnitude of newly added neurons _after_ training: if
+> it stays at its initial scale, the operator is inflating the creature with
+> dead structure that still costs growth cost and evaluation time.
+
+### 📊 What the sweep measured
+
+`bench/structural_weight_scale_sweep.ts` compares scales on one seed, with the
+mutation sites held identical across rows, and reports all four numbers Issue
+#3970 asked for. Reproduce it with:
+
+```bash
+deno task bench:structural-scale -- \
+  --scales=1,0.1,0.01,0.001 --trials=40 --generations=100 --population=20
+```
+
+Replicated across two seeds (3970 and 17), on a tuned 24-hidden-neuron parent:
+
+| Observation                                                                           | Holds?                                   |
+| ------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Median relative error delta falls from ~2e-4 at scale `1` to ~1e-8 or below           | ✅ yes                                   |
+| Behaviour-neutral births rise monotonically, 42.5% → 67.5–75%                         | ✅ yes                                   |
+| Acceptance _at birth_ **falls** at the smallest scale, 32.5% → 22.5–25%               | ✅ yes                                   |
+| Hidden-neuron count stays flat — no runaway growth at any scale                       | ✅ yes                                   |
+| Post-training outward weights **stay at their birth scale** (~1.5×, ≤5% grow tenfold) | ✅ yes                                   |
+| Score-per-wall-clock-hour improves                                                    | ❌ no — the ordering flips between seeds |
+
+The first two confirm the mechanism does exactly what the residual construction
+claims. The third is the growth cost working as designed, not a bug: a
+behaviour-neutral newborn still pays `~1.2 × growthCost`, so it lands near-tied
+rather than ahead.
+
+The last two are why **both knobs ship defaulted off**. On this benchmark the
+newborn's outward weight does not grow during training, which is the "accepted
+but useless" failure mode — near-identity structure that is easy to accept and
+contributes nothing — and no score-per-hour advantage survives a change of seed.
+Enable a reduced scale only alongside a measurement that shows the outward
+weights actually growing on _your_ workload.
+
 ## 👀 See also
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — base mutation rates that
