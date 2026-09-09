@@ -20,6 +20,70 @@
  *
  * This compact format minimises memory access and enables efficient iteration.
  * Issue #1175 - Uses typed structs for better cache locality and compiler optimisation.
+ *
+ * # Field invariant the forward pass relies on
+ *
+ * [`Self::new`] rejects any `from_index` outside `0..num_neurons`
+ * ([`NetworkError::InvalidSynapseIndex`]), and every activation buffer is sized
+ * to `num_neurons`. The forward and batched-scoring paths discharge the
+ * `simd::*_unchecked` index contract (Issue #613) from exactly that check, so
+ * the invariant has to survive for as long as the value does.
+ *
+ * Issue #625 makes it survive **by construction**: every field is private, so
+ * the crate's own construction paths ([`Self::new`] and
+ * [`crate::creature::compile_creature`]) are the only way to set one and safe
+ * code outside the crate cannot write `synapses`, `hot_from`, `neurons`,
+ * `activations` or `num_neurons` after validation, nor assemble the struct as
+ * a literal that skips it. Consumers read the same data through the
+ * borrow-only accessors — [`Self::neurons`], [`Self::synapses`],
+ * [`Self::hot_weights`], [`Self::hot_from`], [`Self::activations`],
+ * [`Self::hint_values`], [`Self::trace_data`], [`Self::num_neurons`],
+ * [`Self::num_inputs`] — which hand out `&[T]`, never `&mut`. To change a
+ * network, rebuild it through `new` rather than editing one in place.
+ *
+ * The gate is the pair of doctests below. A doctest is compiled as its own
+ * crate linking `neat_core`, so it *is* an out-of-crate safe caller — the exact
+ * threat model. The first must not compile; the second is identical except that
+ * it reads through the accessors, and it compiles **and runs**, so a refusal
+ * can never come from a broken fixture rather than from the privacy rule
+ * (AGENTS.md oracle rule 5). They run under `cargo test --doc`, which
+ * `quality.sh` and the CI Rust job both execute.
+ *
+ * The Issue #625 write is refused:
+ *
+ * ```compile_fail
+ * use neat_core::network::CompiledNetwork;
+ * # fn main() {
+ * let mut net = CompiledNetwork::new(&neat_core::network::doc_fixture_bytes()).unwrap();
+ * net.synapses[0].from_index = 60_000;
+ * net.hot_from[0] = 60_000;
+ * let _ = net.activate(&[1.0], 1);
+ * # }
+ * ```
+ *
+ * So is assembling the struct as a literal, which would skip validation
+ * altogether:
+ *
+ * ```compile_fail
+ * use neat_core::network::CompiledNetwork;
+ * # fn main() {
+ * let net = CompiledNetwork { num_neurons: 2, num_inputs: 1, ..todo!() };
+ * # let _ = net;
+ * # }
+ * ```
+ *
+ * The same fixture read through the accessors compiles and activates:
+ *
+ * ```
+ * use neat_core::network::CompiledNetwork;
+ * let mut net = CompiledNetwork::new(&neat_core::network::doc_fixture_bytes()).unwrap();
+ * assert_eq!(net.synapses()[0].from_index, 0);
+ * assert_eq!(net.hot_from()[0], 0);
+ * assert_eq!(net.activations().len(), net.num_neurons());
+ * // identity(2.0 * 1.0 + 0.5)
+ * let out = net.activate(&[2.0], 1);
+ * assert!((out[0] - 2.5).abs() < 1e-5, "{out:?}");
+ * ```
  */
 export class CompiledNetwork {
     __destroy_into_raw() {
@@ -33,18 +97,29 @@ export class CompiledNetwork {
         wasm.__wbg_compilednetwork_free(ptr, 0);
     }
     /**
-     * Activate the network with the given input values
-     * Returns the output values
-     * Issue #1175 - Uses typed structs for better cache locality
-     * Issue #1177 - Inlines common squash functions to avoid function call overhead
-     * @param {Float32Array} input
+     * Issue #1212 - Batch activate and trace for 4 records simultaneously.
+     *
+     * Processes 4 input records through the network in parallel, capturing trace
+     * data for backpropagation. Uses SIMD via
+     * [`weighted_sum_simd_4records_unchecked`] for standard squash functions.
+     *
+     * # Arguments
+     * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
+     * * `input_size` - Number of input values per record
+     * * `num_outputs` - Number of output neurons
+     *
+     * # Returns
+     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
+     * [outputs..., activations..., hints..., trace_data...]
+     * @param {Float32Array} inputs
+     * @param {number} input_size
      * @param {number} num_outputs
      * @returns {Float32Array}
      */
-    activate(input, num_outputs) {
-        const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
+    activate_and_trace_batch_4way(inputs, input_size, num_outputs) {
+        const ptr0 = passArrayF32ToWasm0(inputs, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.compilednetwork_activate(this.__wbg_ptr, ptr0, len0, num_outputs);
+        const ret = wasm.compilednetwork_activate_and_trace_batch_4way(this.__wbg_ptr, ptr0, len0, input_size, num_outputs);
         var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v2;
@@ -85,29 +160,18 @@ export class CompiledNetwork {
         return v2;
     }
     /**
-     * Issue #1212 - Batch activate and trace for 4 records simultaneously.
-     *
-     * Processes 4 input records through the network in parallel, capturing trace
-     * data for backpropagation. Uses SIMD via `weighted_sum_simd_4records()` for
-     * standard squash functions.
-     *
-     * # Arguments
-     * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
-     * * `input_size` - Number of input values per record
-     * * `num_outputs` - Number of output neurons
-     *
-     * # Returns
-     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
-     * [outputs..., activations..., hints..., trace_data...]
-     * @param {Float32Array} inputs
-     * @param {number} input_size
+     * Activate the network with the given input values
+     * Returns the output values
+     * Issue #1175 - Uses typed structs for better cache locality
+     * Issue #1177 - Inlines common squash functions to avoid function call overhead
+     * @param {Float32Array} input
      * @param {number} num_outputs
      * @returns {Float32Array}
      */
-    activate_and_trace_batch_4way(inputs, input_size, num_outputs) {
-        const ptr0 = passArrayF32ToWasm0(inputs, wasm.__wbindgen_malloc);
+    activate(input, num_outputs) {
+        const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.compilednetwork_activate_and_trace_batch_4way(this.__wbg_ptr, ptr0, len0, input_size, num_outputs);
+        const ret = wasm.compilednetwork_activate(this.__wbg_ptr, ptr0, len0, num_outputs);
         var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v2;
@@ -1019,6 +1083,14 @@ export function hinge_sum_batch_packed(network, records, input_size, num_outputs
  * # Arguments
  * * `num_synapses` - Number of synapses in the network
  * * `num_neurons` - Number of neurons in the network
+ *
+ * # Panics
+ *
+ * Panics when either count is so large that its packed buffer size does not
+ * fit `usize`. Wrapping instead would resize the buffer to a handful of values
+ * while the recorded count stayed huge, and every later accumulation would be
+ * dropped by the length guard — an epoch that trains nothing and reports
+ * success.
  * @param {number} num_synapses
  * @param {number} num_neurons
  */
@@ -1175,6 +1247,46 @@ export function propagate_topological(data) {
     var v2 = getArrayF64FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 8, 8);
     return v2;
+}
+
+/**
+ * JS `prune_neuron(request: string) -> string`.
+ * @param {string} request
+ * @returns {string}
+ */
+export function prune_neuron(request) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(request, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.prune_neuron(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * JS `prune_synapse(request: string) -> string`.
+ * @param {string} request
+ * @returns {string}
+ */
+export function prune_synapse(request) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(request, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.prune_synapse(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
 }
 
 /**
@@ -1554,13 +1666,13 @@ export function version() {
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
-        __wbg___wbindgen_copy_to_typed_array_c7f28e53671b41e8: function(arg0, arg1, arg2) {
+        __wbg___wbindgen_copy_to_typed_array_cccd104be8cf0b8d: function(arg0, arg1, arg2) {
             new Uint8Array(arg2.buffer, arg2.byteOffset, arg2.byteLength).set(getArrayU8FromWasm0(arg0, arg1));
         },
-        __wbg___wbindgen_throw_bb96b2010945f0bc: function(arg0, arg1) {
+        __wbg___wbindgen_throw_5d9e815e6fdf150f: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
-        __wbindgen_cast_0000000000000001: function(arg0, arg1) {
+        __wbindgen_generic_0000000000000001: function(arg0, arg1) {
             // Cast intrinsic for `Ref(String) -> Externref`.
             const ret = getStringFromWasm0(arg0, arg1);
             return ret;

@@ -5,6 +5,19 @@ computation from [NEAT-AI-core](https://github.com/stSoftwareAU/NEAT-AI-core)
 after removing all in-repo Rust source. Issue #2433 / #2434 extended this to an
 artifact-based auto-sync flow that mirrors the GRQ ← NEAT-AI pattern.
 
+**Why an immutable pin at all** is family policy:
+[principle 8](ENGINEERING_PRINCIPLES.md#8-rollback-is-versioning-and-pinning-not-duplicate-code)
+makes re-pinning the last known-good revision the _only_ rollback path, because
+[principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)
+leaves no second code path to fall back to. Those rules are defined once in
+[ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md); this document carries
+the mechanics that make them work here — the pin, its content anchors, the
+`build.sh` modes, and the approval tiers.
+
+Rolling back is therefore a repin, not a revert of behaviour: run
+[Bumping NEAT-AI-core](#bumping-neat-ai-core) against the last known-good SHA
+instead of the current HEAD.
+
 ## Decision Summary
 
 NEAT-AI tracks NEAT-AI-core in `deno.json`:
@@ -229,11 +242,13 @@ at the expected release URL.
 ## Bumping NEAT-AI-core
 
 1. Run `./build.sh` to resolve HEAD, download the matching artifact, and bump
-   `deno.json` `neatCore.rev`.
+   `deno.json` `neatCore.rev` and `neatCore.assetSha256`. Pass `--rev <SHA>` to
+   pin a specific revision instead — this is also the rollback path.
 2. Run `./scripts/parity-gate.sh` and include the output in the PR.
 3. Run `./quality.sh` (which calls `./build.sh --verify-only` to confirm the
    refreshed pkg is in sync).
-4. Commit the updated `deno.json` and `wasm_activation/pkg/**` together.
+4. Commit the updated `deno.json`, `wasm_activation/pkg/**` and
+   `src/wasm/WasmBundleSha256.ts` together.
 
 ## CI Policy
 
@@ -264,6 +279,9 @@ used by this repo's `deno.json`.
 
 ## Related Documents
 
+- [docs/ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md) — the canonical
+  family-wide policy: one implementation owner, no fallback, rollback by
+  repinning.
 - [docs/EXTERNAL_NEAT_AI_CORE.md](EXTERNAL_NEAT_AI_CORE.md) — cluster overview
   and day-to-day workflow.
 - [docs/CI_EXTERNAL_NEAT_AI_CORE.md](CI_EXTERNAL_NEAT_AI_CORE.md) — CI plumbing

@@ -17,6 +17,11 @@ flowchart LR
   THIS -.pin update.-> THIS
 ```
 
+The family-wide policy this cluster implements — one implementation owner, no
+runtime fallback, and rollback by repinning — is defined once in
+[`ENGINEERING_PRINCIPLES.md`](ENGINEERING_PRINCIPLES.md). The docs below carry
+the mechanics.
+
 This cluster has five docs. Use this overview to pick the one you need.
 
 | Doc                                                          | When to read                                                                                                                                |

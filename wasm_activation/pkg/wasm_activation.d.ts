@@ -21,17 +21,91 @@
  *
  * This compact format minimises memory access and enables efficient iteration.
  * Issue #1175 - Uses typed structs for better cache locality and compiler optimisation.
+ *
+ * # Field invariant the forward pass relies on
+ *
+ * [`Self::new`] rejects any `from_index` outside `0..num_neurons`
+ * ([`NetworkError::InvalidSynapseIndex`]), and every activation buffer is sized
+ * to `num_neurons`. The forward and batched-scoring paths discharge the
+ * `simd::*_unchecked` index contract (Issue #613) from exactly that check, so
+ * the invariant has to survive for as long as the value does.
+ *
+ * Issue #625 makes it survive **by construction**: every field is private, so
+ * the crate's own construction paths ([`Self::new`] and
+ * [`crate::creature::compile_creature`]) are the only way to set one and safe
+ * code outside the crate cannot write `synapses`, `hot_from`, `neurons`,
+ * `activations` or `num_neurons` after validation, nor assemble the struct as
+ * a literal that skips it. Consumers read the same data through the
+ * borrow-only accessors — [`Self::neurons`], [`Self::synapses`],
+ * [`Self::hot_weights`], [`Self::hot_from`], [`Self::activations`],
+ * [`Self::hint_values`], [`Self::trace_data`], [`Self::num_neurons`],
+ * [`Self::num_inputs`] — which hand out `&[T]`, never `&mut`. To change a
+ * network, rebuild it through `new` rather than editing one in place.
+ *
+ * The gate is the pair of doctests below. A doctest is compiled as its own
+ * crate linking `neat_core`, so it *is* an out-of-crate safe caller — the exact
+ * threat model. The first must not compile; the second is identical except that
+ * it reads through the accessors, and it compiles **and runs**, so a refusal
+ * can never come from a broken fixture rather than from the privacy rule
+ * (AGENTS.md oracle rule 5). They run under `cargo test --doc`, which
+ * `quality.sh` and the CI Rust job both execute.
+ *
+ * The Issue #625 write is refused:
+ *
+ * ```compile_fail
+ * use neat_core::network::CompiledNetwork;
+ * # fn main() {
+ * let mut net = CompiledNetwork::new(&neat_core::network::doc_fixture_bytes()).unwrap();
+ * net.synapses[0].from_index = 60_000;
+ * net.hot_from[0] = 60_000;
+ * let _ = net.activate(&[1.0], 1);
+ * # }
+ * ```
+ *
+ * So is assembling the struct as a literal, which would skip validation
+ * altogether:
+ *
+ * ```compile_fail
+ * use neat_core::network::CompiledNetwork;
+ * # fn main() {
+ * let net = CompiledNetwork { num_neurons: 2, num_inputs: 1, ..todo!() };
+ * # let _ = net;
+ * # }
+ * ```
+ *
+ * The same fixture read through the accessors compiles and activates:
+ *
+ * ```
+ * use neat_core::network::CompiledNetwork;
+ * let mut net = CompiledNetwork::new(&neat_core::network::doc_fixture_bytes()).unwrap();
+ * assert_eq!(net.synapses()[0].from_index, 0);
+ * assert_eq!(net.hot_from()[0], 0);
+ * assert_eq!(net.activations().len(), net.num_neurons());
+ * // identity(2.0 * 1.0 + 0.5)
+ * let out = net.activate(&[2.0], 1);
+ * assert!((out[0] - 2.5).abs() < 1e-5, "{out:?}");
+ * ```
  */
 export class CompiledNetwork {
     free(): void;
     [Symbol.dispose](): void;
     /**
-     * Activate the network with the given input values
-     * Returns the output values
-     * Issue #1175 - Uses typed structs for better cache locality
-     * Issue #1177 - Inlines common squash functions to avoid function call overhead
+     * Issue #1212 - Batch activate and trace for 4 records simultaneously.
+     *
+     * Processes 4 input records through the network in parallel, capturing trace
+     * data for backpropagation. Uses SIMD via
+     * [`weighted_sum_simd_4records_unchecked`] for standard squash functions.
+     *
+     * # Arguments
+     * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
+     * * `input_size` - Number of input values per record
+     * * `num_outputs` - Number of output neurons
+     *
+     * # Returns
+     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
+     * [outputs..., activations..., hints..., trace_data...]
      */
-    activate(input: Float32Array, num_outputs: number): Float32Array;
+    activate_and_trace_batch_4way(inputs: Float32Array, input_size: number, num_outputs: number): Float32Array;
     /**
      * Activate the network with tracing for backpropagation support
      * Issue #1121 - WASM Migration Phase 4: activateAndTrace
@@ -58,22 +132,12 @@ export class CompiledNetwork {
      */
     activate_and_trace(input: Float32Array, num_outputs: number): Float32Array;
     /**
-     * Issue #1212 - Batch activate and trace for 4 records simultaneously.
-     *
-     * Processes 4 input records through the network in parallel, capturing trace
-     * data for backpropagation. Uses SIMD via `weighted_sum_simd_4records()` for
-     * standard squash functions.
-     *
-     * # Arguments
-     * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
-     * * `input_size` - Number of input values per record
-     * * `num_outputs` - Number of output neurons
-     *
-     * # Returns
-     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
-     * [outputs..., activations..., hints..., trace_data...]
+     * Activate the network with the given input values
+     * Returns the output values
+     * Issue #1175 - Uses typed structs for better cache locality
+     * Issue #1177 - Inlines common squash functions to avoid function call overhead
      */
-    activate_and_trace_batch_4way(inputs: Float32Array, input_size: number, num_outputs: number): Float32Array;
+    activate(input: Float32Array, num_outputs: number): Float32Array;
     /**
      * Activate the network with the given input values, writing to a pre-allocated output buffer
      * Issue #1171 - Avoids per-call Float32Array allocation overhead
@@ -533,6 +597,14 @@ export function hinge_sum_batch_packed(network: CompiledNetwork, records: Float3
  * # Arguments
  * * `num_synapses` - Number of synapses in the network
  * * `num_neurons` - Number of neurons in the network
+ *
+ * # Panics
+ *
+ * Panics when either count is so large that its packed buffer size does not
+ * fit `usize`. Wrapping instead would resize the buffer to a handful of values
+ * while the recorded count stayed huge, and every later accumulation would be
+ * dropped by the length guard — an epoch that trains nothing and reports
+ * success.
  */
 export function init_training_state(num_synapses: number, num_neurons: number): void;
 
@@ -623,6 +695,16 @@ export function msle_sum_batch_packed(network: CompiledNetwork, records: Float32
  * loop, and re-encodes the result with the TS↔WASM sentinel contract.
  */
 export function propagate_topological(data: Uint8Array): Float64Array;
+
+/**
+ * JS `prune_neuron(request: string) -> string`.
+ */
+export function prune_neuron(request: string): string;
+
+/**
+ * JS `prune_synapse(request: string) -> string`.
+ */
+export function prune_synapse(request: string): string;
 
 /**
  * Read all neuron state as a bulk f64 array.
@@ -853,6 +935,8 @@ export interface InitOutput {
     readonly mse_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly msle_sum_batch_packed: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly propagate_topological: (a: number, b: number) => [number, number];
+    readonly prune_neuron: (a: number, b: number) => [number, number];
+    readonly prune_synapse: (a: number, b: number) => [number, number];
     readonly read_all_neuron_state: () => [number, number];
     readonly read_all_synapse_state: () => [number, number];
     readonly read_neuron_state: (a: number) => [number, number];

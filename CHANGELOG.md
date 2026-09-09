@@ -149,6 +149,41 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Issue #3975 — hidden-neuron removal moved to Rust/WASM.** Discovery's
+  `removeHarmfulNeuron` / `removeLowImpactNeuron` now call NEAT-AI-core's
+  `prune_neuron` through the new `src/wasm/WasmPruneNeuron.ts` bridge, and the
+  superseded TypeScript rewrite in those two paths is deleted — core owns the
+  removal, the mean bias fold, the memetic prune, the cleanup cascade,
+  canonicalisation and validation, with no runtime fallback. One exception is
+  deliberate: when Discovery supplies its own variance-aware compensation
+  payload (#1691), that measured remedy is applied in TypeScript _before_ the
+  rewrite and core is then given no mean, so the fold is not applied twice. Two
+  behavioural consequences are deliberate: a hidden neuron left with no inward
+  edge is canonicalised to a **unity** constant with its fixed activation folded
+  into the outgoing weight (previously a constant carrying the folded bias — the
+  same number reaches the target either way), and a `memetic` record is now
+  pruned entry-by-entry rather than dropped wholesale, so a survivor's
+  fine-tuning history is kept. A **constant** neuron is support structure core
+  protects from direct removal: such a candidate is refused and the creature is
+  left unchanged, where it now disappears only as dead structure once nothing
+  references it. Core also downgrades a surviving `IF` neuron to `IDENTITY` when
+  a role went with the removal, rather than leaving a branch reading structure
+  that no longer exists. `removeHarmfulNeuron` now refuses a non-finite
+  `averageActivation` instead of folding it, because a `NaN` mean poisons every
+  downstream bias; `removeLowImpactNeuron` is deliberately not symmetrical and
+  proceeds with no mean, as a low-impact neuron has negligible downstream effect
+  by definition. The pinned `neatCore.rev` advances to the revision carrying the
+  `prune_neuron` WASM export.
+
+  Scope is the single-neuron rewrite. The ordered multi-op
+  `applyCoordinatedStructuralCandidate` plan and the `applyRemoveNeuron` replay
+  remain TypeScript — a plan is only valid as a whole, so routing each op
+  through a rewrite that canonicalises and validates would reject legal
+  intermediate states — and **synapse** removal stays TypeScript until #3976.
+  `applyRemoveNeuron` now also replays the rewrite core applies to _surviving_
+  neurons, which a membership diff cannot see; without it a replayed removal
+  left a hidden neuron with no inward edge for `fix()` to repair.
+
 - **Issue #3870:** Recurrent (`forwardOnly: false`) creatures now join the
   directory-mode batch instead of being partitioned onto the per-creature worker
   path. NEAT-AI-scorer#579 threads each creature's own flag through the batch
