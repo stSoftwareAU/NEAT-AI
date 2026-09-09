@@ -119,15 +119,16 @@ export function corePruneNeuron(
   pruneFn: ((request: string) => string) | null = getPruneNeuronFn(),
   loadError: Error | null = getWasmLoadError(),
 ): PruneNeuronOutcome {
-  if (stats) assertFiniteStats("prune_neuron", stats);
-
   return callPrune(
     "prune_neuron",
     "a neuron",
     pruneFn,
     loadError,
     creature,
-    { creature, uuid, stats },
+    () => {
+      if (stats) assertFiniteStats("prune_neuron", stats);
+      return { creature, uuid, stats };
+    },
     (response, ctx) => readSuccess(response, ctx, uuid),
   );
 }

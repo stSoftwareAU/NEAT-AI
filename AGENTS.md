@@ -698,8 +698,11 @@ actionable error pointing at `./build.sh`.
   `IF` rewrites, the orphan cascade, canonicalisation and validation. The
   superseded TypeScript rewrite — including `#wouldBreakIfNeuron`, which used to
   refuse any removal that would leave an `IF` short a role — was removed in
-  Issue #3976. Candidate selection stays TypeScript: it is the operator's own
-  policy, not a rewrite rule.
+  Issue #3976. Two things are deliberately still TypeScript: candidate
+  selection, which is the operator's own policy rather than a rewrite rule; and
+  the **recurrent** operators `SubSelfCon` / `SubBackCon`, which remove a
+  self-loop or a feedback edge — `SubConnection` owns forward synapses only, and
+  the recurrent pair keeps its in-place rewrite until it is migrated in turn.
 
 If you add a new read-heavy or hot-path operation that lives in core, **do not
 re-implement a TypeScript fallback** — fail fast via `requireWasm(...)` instead.
@@ -762,8 +765,8 @@ The two rules contributors most often trip over:
    The operations already moved into NEAT-AI-core are topology
    validation/scanning, reverse topological order, structural integrity, cycle
    detection, the topological backprop loop, elastic weight distribution,
-   hidden-neuron pruning (`prune_neuron`, Issue #3975) and synapse pruning
-   (`prune_synapse`, Issue #3976). Their wrappers in `src/wasm/` and
+   hidden-neuron pruning (`prune_neuron`, Issue #3975) and forward-synapse
+   pruning (`prune_synapse`, Issue #3976). Their wrappers in `src/wasm/` and
    `src/propagate/` call into WASM and fail fast if the bundle is unavailable —
    do not reintroduce `*TS` fallbacks.
 

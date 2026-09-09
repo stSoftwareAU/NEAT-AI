@@ -22,78 +22,21 @@ import {
 } from "@std/assert";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
+import {
+  fixedSourceExport,
+  hiddenChainExport,
+  ifRolesExport,
+} from "../_pruneFixtures.ts";
 import { initWasmActivation } from "@wasm/WasmModuleLoader.ts";
-import { corePruneSynapse } from "@wasm/WasmPruneSynapse.ts";
+import { corePruneSynapse, type PruneRole } from "@wasm/WasmPruneSynapse.ts";
 import { WasmError } from "@errors/WasmError.ts";
 
 await initWasmActivation();
 
-/**
- * `c-1` is a constant the creature fixes at 0.5, so cutting its edge folds
- * exactly; `input-0` keeps the output wired once it goes.
- */
-function constantFixture(): CreatureExport {
-  return {
-    input: 1,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "c-1", type: "constant", bias: 0.5 },
-      {
-        uuid: "output-0",
-        type: "output",
-        squash: IDENTITY.NAME,
-        bias: 0.25,
-      },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "output-0", weight: 1 },
-      { fromUUID: "c-1", toUUID: "output-0", weight: 0.2 },
-    ],
-  };
-}
-
-/** An `IF` with one edge per role, plus the output it feeds. */
-function ifFixture(): CreatureExport {
-  return {
-    input: 3,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "if-1", type: "hidden", squash: "IF", bias: 0 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      {
-        fromUUID: "input-0",
-        toUUID: "if-1",
-        weight: 0.5,
-        type: "condition",
-      },
-      { fromUUID: "input-1", toUUID: "if-1", weight: 0.6, type: "positive" },
-      { fromUUID: "input-2", toUUID: "if-1", weight: 0.7, type: "negative" },
-      { fromUUID: "if-1", toUUID: "output-0", weight: 1 },
-    ],
-  };
-}
-
-/** A hidden neuron on the only path from `input-0` to the output. */
-function hiddenFixture(): CreatureExport {
-  return {
-    input: 2,
-    output: 1,
-    forwardOnly: true,
-    neurons: [
-      { uuid: "h-1", type: "hidden", squash: "LOGISTIC", bias: 0.5 },
-      { uuid: "output-0", type: "output", squash: "LOGISTIC", bias: 0.1 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "h-1", weight: 1 },
-      { fromUUID: "h-1", toUUID: "output-0", weight: 0.8 },
-      { fromUUID: "input-1", toUUID: "output-0", weight: 0.9 },
-    ],
-  };
-}
+/** Aliases for the shared builders, kept so the cases read as before. */
+const constantFixture = fixedSourceExport;
+const ifFixture = ifRolesExport;
+const hiddenFixture = hiddenChainExport;
 
 Deno.test("corePruneSynapse: folds a fixed source into the target's bias exactly", () => {
   const outcome = corePruneSynapse(constantFixture(), {
@@ -320,12 +263,17 @@ Deno.test("corePruneSynapse: refuses a triple the creature does not carry", () =
 });
 
 Deno.test("corePruneSynapse: refuses a role spelling core does not carry", () => {
+  // `PruneRole` rejects this spelling at compile time, so the cast is what a
+  // JavaScript caller — or a role read off untyped JSON — would reach the
+  // bridge with. Core answers `malformed` for it, which is a bug report about
+  // this repo rather than a verdict on the creature, so the bridge names the
+  // offending value itself.
   const thrown = assertThrows(
     () =>
       corePruneSynapse(hiddenFixture(), {
         fromUUID: "input-0",
         toUUID: "h-1",
-        type: "POSITIVE",
+        type: "POSITIVE" as PruneRole,
       }),
     WasmError,
   );
@@ -360,6 +308,24 @@ Deno.test("corePruneSynapse: throws when the bundle is unavailable — never a s
   );
   assertStringIncludes(thrown.message, "no TypeScript fallback");
   assertStringIncludes(thrown.message, "bundle missing");
+});
+
+Deno.test("corePruneSynapse: an unavailable bundle is reported before the request shape", () => {
+  // Both faults are real, but only one of them is actionable: told the
+  // statistic was unusable, an operator fixes the measurement and still has no
+  // bundle. The missing bundle is the fault to name.
+  const thrown = assertThrows(
+    () =>
+      corePruneSynapse(
+        hiddenFixture(),
+        { fromUUID: "h-1", toUUID: "output-0" },
+        { meanActivation: Number.NaN },
+        null,
+        new Error("bundle missing"),
+      ),
+    WasmError,
+  );
+  assertStringIncludes(thrown.message, "no TypeScript fallback");
 });
 
 Deno.test("corePruneSynapse: a malformed answer is a bridge fault, not a refusal", () => {

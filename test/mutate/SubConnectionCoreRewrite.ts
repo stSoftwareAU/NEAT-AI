@@ -4,10 +4,13 @@
  * Issue #3976 — what `SubConnection` does now that the removal itself belongs
  * to NEAT-AI-core's `prune_synapse`.
  *
- * The pre-existing `test/mutate/SubConnection.ts` cases are the acceptance gate
- * for the migration and pass unaltered. These are the extra ones: the outcomes
- * core produces that the superseded TypeScript could not, each of which is a
- * deliberate improvement rather than incidental drift.
+ * The pre-existing `test/mutate/SubConnection.ts` and
+ * `test/mutate/SubConnectionStaleFromIndex.ts` cases are the acceptance gate for
+ * the migration and pass unaltered. These are the extra ones: the outcomes core
+ * produces that the superseded TypeScript could not, each of which is a
+ * deliberate improvement rather than incidental drift. One pre-existing case
+ * elsewhere did change — `test/propagate/IfElse.ts::if-fix` asserted the old
+ * refusal directly, and now asserts the invariant that survives it.
  *
  * The `IF` cases are the headline. `SubConnection#wouldBreakIfNeuron` used to
  * decline any removal that would leave an `IF` short a role, so typed `IF`
@@ -36,6 +39,7 @@ import {
   setRandomNumberGenerator,
 } from "@utils/RandomNumberGenerator.ts";
 import { danglingMemeticReferences } from "../_memeticReferences.ts";
+import { hiddenChainExport, ifRolesExport } from "../_pruneFixtures.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -89,39 +93,13 @@ function indexOf(creature: Creature, uuid: string): number {
   return found;
 }
 
-/** `h-1` sits on the only path from `input-0` to the output. */
+/** The shared fixtures, as live creatures. */
 function chainFixture(): Creature {
-  return Creature.fromJSON({
-    input: 2,
-    output: 1,
-    neurons: [
-      { uuid: "h-1", type: "hidden", squash: IDENTITY.NAME, bias: 0.5 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0.1 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "h-1", weight: 1 },
-      { fromUUID: "h-1", toUUID: "output-0", weight: 0.8 },
-      { fromUUID: "input-1", toUUID: "output-0", weight: 0.9 },
-    ],
-  } as CreatureExport);
+  return Creature.fromJSON(hiddenChainExport());
 }
 
-/** An `IF` output with one edge per role. */
 function ifFixture(): Creature {
-  return Creature.fromJSON({
-    input: 3,
-    output: 1,
-    neurons: [
-      { uuid: "if-1", type: "hidden", squash: "IF", bias: 0 },
-      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
-    ],
-    synapses: [
-      { fromUUID: "input-0", toUUID: "if-1", weight: 0.5, type: "condition" },
-      { fromUUID: "input-1", toUUID: "if-1", weight: 0.6, type: "positive" },
-      { fromUUID: "input-2", toUUID: "if-1", weight: 0.7, type: "negative" },
-      { fromUUID: "if-1", toUUID: "output-0", weight: 1 },
-    ],
-  } as CreatureExport);
+  return Creature.fromJSON(ifRolesExport());
 }
 
 Deno.test("SubConnection: a target left with no inward edge becomes constant support", () => {

@@ -61,10 +61,12 @@ import {
   assertFiniteStats,
   callPrune,
   describe,
+  PRUNE_ROLES,
   type PruneBiasFold,
   type PruneProxyStats,
   type PruneRefusal,
   type PruneReport,
+  type PruneRole,
   type PruneStats,
   type PruneSynapseKey,
   type PruneUncompensated,
@@ -77,6 +79,7 @@ import {
 export type {
   PruneBiasFold,
   PruneProxyStats,
+  PruneRole,
   PruneSynapseKey,
   PruneUncompensated,
   PruneWeightShare,
@@ -87,17 +90,6 @@ export type {
  * removed edge carried.
  */
 export type PruneSynapseStats = PruneStats;
-
-/**
- * The role spellings core carries. The untyped role is `"standard"`, and is
- * also what an absent `type` means.
- */
-export const SYNAPSE_ROLES: readonly string[] = [
-  "standard",
-  "condition",
-  "negative",
-  "positive",
-];
 
 /** An `IF` flattened to the branch its condition always takes. */
 export interface StaticIfRewrite {
@@ -196,11 +188,11 @@ function readStaticIfRewrites(
  */
 function assertKnownRole(key: PruneSynapseKey): void {
   if (key.type === undefined) return;
-  if (SYNAPSE_ROLES.includes(key.type)) return;
+  if (PRUNE_ROLES.includes(key.type)) return;
   throw new WasmError(
     `prune_synapse was asked for role '${key.type}' on ` +
       `${key.fromUUID} -> ${key.toUUID}, which is not one of ` +
-      `${SYNAPSE_ROLES.join(", ")}.`,
+      `${PRUNE_ROLES.join(", ")}.`,
     "INVALID_REQUEST",
   );
 }
@@ -231,16 +223,17 @@ export function corePruneSynapse(
   pruneFn: ((request: string) => string) | null = getPruneSynapseFn(),
   loadError: Error | null = getWasmLoadError(),
 ): PruneSynapseOutcome {
-  assertKnownRole(synapse);
-  if (stats) assertFiniteStats("prune_synapse", stats);
-
   return callPrune(
     "prune_synapse",
     "a synapse",
     pruneFn,
     loadError,
     creature,
-    { creature, synapse, stats },
+    () => {
+      assertKnownRole(synapse);
+      if (stats) assertFiniteStats("prune_synapse", stats);
+      return { creature, synapse, stats };
+    },
     readSuccess,
   );
 }

@@ -73,7 +73,8 @@ The work is informed by the WASM performance research series (#1630–#1633,
 | NEAT loop / breeding / mutation       | TypeScript           | Orchestration; non-numerical                                                                                                                   |
 | Cache-dominated paths (LRU)           | TypeScript           | Already faster than any WASM path (66 ns/hit)                                                                                                  |
 | Hidden-neuron pruning                 | Rust → WASM only     | Core-owned `prune_neuron` (#3975); [no TS fallback](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)  |
-| Synapse pruning                       | Rust → WASM only     | Core-owned `prune_synapse` (#3976); [no TS fallback](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path) |
+| Forward-synapse pruning               | Rust → WASM only     | Core-owned `prune_synapse` (#3976); [no TS fallback](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path) |
+| Recurrent synapse removal             | TypeScript           | `SubSelfCon` / `SubBackCon`; not yet migrated                                                                                                  |
 | Graph surgery (compaction, merging)   | TypeScript           | Map/Set work that V8 handles efficiently                                                                                                       |
 | Discovery candidate filtering         | TypeScript           | Slot allocation, weighted sampling, cache lookups                                                                                              |
 
@@ -196,9 +197,10 @@ The performance research established that these categories are unsuitable:
   boundary-crossing overhead alone is a significant fraction of the total.
 - **Graph surgery** (compaction, neuron merging) — dominated by Map/Set
   operations that V8 handles efficiently. **Pruning is the exception** and has
-  already moved to core — hidden neurons in #3975, synapses in #3976: each is a
-  whole-creature rewrite with compensation, `IF` repair, cascade and
-  canonicalisation, not Map/Set work.
+  already moved to core — hidden neurons in #3975, forward synapses in #3976:
+  each is a whole-creature rewrite with compensation, `IF` repair, cascade and
+  canonicalisation, not Map/Set work. `SubSelfCon` / `SubBackCon` still remove a
+  recurrent edge in TypeScript.
 
 ## 📚 See also
 

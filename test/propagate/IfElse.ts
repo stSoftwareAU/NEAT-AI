@@ -1,4 +1,4 @@
-import { assert, assertAlmostEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import type { CreatureInternal } from "@architecture/CreatureInterfaces.ts";
 import { AddConnection } from "@mutate/AddConnection.ts";
@@ -173,16 +173,26 @@ Deno.test("if-fix", () => {
       "Should have 3 connections was: " + toList.length,
     );
   } else {
-    assert(
-      creature.neurons.every((neuron) =>
-        neuron.squash !== "IF" ||
-        new Set(
-            creature.inwardConnections(neuron.index).map((s) =>
-              s.type ?? "positive"
-            ),
-          ).size === 3
-      ),
-      "Every surviving IF must carry a condition, a positive and a negative",
+    // Flattening to the branch the condition always took is the *only* rewrite
+    // that may retire an `IF`, so naming the squash it must land on keeps this
+    // arm a real assertion rather than one that passes because no `IF` is left.
+    assertEquals(
+      outputNeuron.squash,
+      "IDENTITY",
+      "an IF may only be retired by being flattened to the branch it took",
     );
+    for (const neuron of creature.neurons) {
+      if (neuron.squash !== "IF") continue;
+      const roles = new Set(
+        creature.inwardConnections(neuron.index).map((synapse) =>
+          synapse.type ?? "positive"
+        ),
+      );
+      assertEquals(
+        roles.size,
+        3,
+        "Every surviving IF must carry a condition, a positive and a negative",
+      );
+    }
   }
 });

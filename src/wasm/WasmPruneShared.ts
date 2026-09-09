@@ -45,7 +45,10 @@ import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
 import type { TagInterface } from "@stsoftware/tags/mod";
 import { WasmError } from "@errors/WasmError.ts";
-import { synapseTripleKey } from "@architecture/SynapseKey.ts";
+import {
+  type SynapseRole,
+  synapseTripleKey,
+} from "@architecture/SynapseKey.ts";
 
 /**
  * A surviving neuron the caller believes predicts what is being removed, with
@@ -115,6 +118,33 @@ export interface PruneUncompensated {
   reason: string;
 }
 
+/**
+ * Core's spelling of the untyped role, which `SynapseRole` — the canonical
+ * TypeScript home for a synapse's role (AGENTS.md §"Synapse identity") — writes
+ * as `undefined`. The two spellings mean the same edge, and core accepts either.
+ */
+export const STANDARD_ROLE = "standard";
+
+/**
+ * A role as the pruning wire spells it: the three canonical typed roles, plus
+ * core's name for the untyped one. Derived from {@link SynapseRole} rather than
+ * restated, so a role added there is a compile error here and not a silent
+ * divergence.
+ */
+export type PruneRole = SynapseRole | typeof STANDARD_ROLE;
+
+/**
+ * The same vocabulary at runtime, for guarding a value that reached the bridge
+ * untyped. The annotation is what keeps it honest: a spelling outside
+ * {@link PruneRole} fails to compile.
+ */
+export const PRUNE_ROLES: readonly PruneRole[] = [
+  STANDARD_ROLE,
+  "condition",
+  "negative",
+  "positive",
+];
+
 /** The `(from, to, role)` triple core names an edge by, on the wire. */
 export interface PruneSynapseKey {
   /** Wire UUID of the source neuron. */
@@ -122,11 +152,11 @@ export interface PruneSynapseKey {
   /** Wire UUID of the target neuron. */
   toUUID: string;
   /**
-   * `"standard"`, `"condition"`, `"negative"` or `"positive"`. Absent means the
-   * untyped role — core defaults it, and an unknown spelling is a boundary
-   * fault rather than a silent request for the untyped edge.
+   * The role the edge plays at its target. Absent means the untyped role —
+   * core defaults it, and an unknown spelling is a boundary fault rather than a
+   * silent request for the untyped edge.
    */
-  type?: string;
+  type?: PruneRole;
 }
 
 /** The half of a successful answer both rewrites report identically. */
@@ -473,17 +503,20 @@ export function requiredSynapseKeys(
 ): PruneSynapseKey[] {
   return requiredRecords(value ?? [], where, ctx).map((entry, index) => {
     const type = entry.type;
-    if (type !== undefined && typeof type !== "string") {
+    if (
+      type !== undefined &&
+      !PRUNE_ROLES.includes(type as PruneRole)
+    ) {
       throw new WasmError(
-        `${ctx.exportName} sent ${where}[${index}].type as ${typeof type}, ` +
-          `not a string: ${describe(ctx.answer)}`,
+        `${ctx.exportName} sent ${where}[${index}].type as ${String(type)}, ` +
+          `not one of ${PRUNE_ROLES.join(", ")}: ${describe(ctx.answer)}`,
         "INVALID_REQUEST",
       );
     }
     return {
       fromUUID: requiredString(entry, "fromUUID", `${where}[${index}]`, ctx),
       toUUID: requiredString(entry, "toUUID", `${where}[${index}]`, ctx),
-      type,
+      type: type as PruneRole | undefined,
     };
   });
 }
@@ -595,7 +628,9 @@ export function readCommonReport(
  * @param subject What is being removed, for the unavailable-bundle message.
  * @param before The creature as it was sent, so the metadata core drops can be
  *   copied back onto the survivors.
- * @param request The whole JSON request payload.
+ * @param buildRequest Builds the whole JSON request payload. Called only once
+ *   the bundle is known to be there, so a request-shape refusal can never
+ *   pre-empt the "there is no bundle at all" fault.
  * @param readSuccess Reads the rewrite-specific half of a successful answer.
  */
 export function callPrune<T extends PruneReport>(
@@ -604,7 +639,7 @@ export function callPrune<T extends PruneReport>(
   pruneFn: ((request: string) => string) | null,
   loadError: Error | null,
   before: CreatureExport,
-  request: unknown,
+  buildRequest: () => unknown,
   readSuccess: (
     response: Record<string, unknown>,
     ctx: WireContext,
@@ -614,7 +649,7 @@ export function callPrune<T extends PruneReport>(
     throw bundleUnavailable(exportName, subject, loadError);
   }
 
-  const answer = pruneFn(JSON.stringify(request));
+  const answer = pruneFn(JSON.stringify(buildRequest()));
   const ctx: WireContext = { exportName, answer };
 
   let parsed: unknown;

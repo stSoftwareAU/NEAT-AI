@@ -144,7 +144,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   in that operator is deleted — core owns the cut, the bias fold, the `IF`
   rewrites, the orphan cascade, canonicalisation and validation, with no runtime
   fallback. Candidate selection stays in TypeScript: which forward, in-focus
-  synapse to remove is the operator's own policy, not a rewrite rule.
+  synapse to remove is the operator's own policy, not a rewrite rule. Scope is
+  the **forward** synapse: `SubSelfCon` and `SubBackCon`, which remove a
+  self-loop or a feedback edge, keep their in-place TypeScript rewrite until
+  they are migrated in turn.
 
   Two behavioural consequences are deliberate improvements. First, an `IF`
   neuron left short a role is now **rewritten** rather than the removal being
@@ -189,7 +192,7 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `applyCoordinatedStructuralCandidate` plan and the `applyRemoveNeuron` replay
   remain TypeScript — a plan is only valid as a whole, so routing each op
   through a rewrite that canonicalises and validates would reject legal
-  intermediate states. **Synapse** removal followed in #3976.
+  intermediate states. **Forward-synapse** removal followed in #3976.
   `applyRemoveNeuron` now also replays the rewrite core applies to _surviving_
   neurons, which a membership diff cannot see; without it a replayed removal
   left a hidden neuron with no inward edge for `fix()` to repair.
