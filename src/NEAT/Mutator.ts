@@ -834,6 +834,10 @@ export class Mutator {
     // `config.mutation` — `skipConnectionRate` is what selects it, and the
     // default of `0` must consume no randomness at all, so a build with the
     // operator present is bit-identical to one without it.
+    //
+    // Seed warm-up does not exclude it: the warm-up allow-list keeps structural
+    // *additions* (`ADD_NODE`, `ADD_CONN`) and drops reductions and squash
+    // changes, and a bypass is a specialised addition.
     const skipRate = this.config.skipConnectionRate;
     if (skipRate > 0 && getRandomNumberGenerator().random() < skipRate) {
       return Mutation.ADD_SKIP_CONN;
