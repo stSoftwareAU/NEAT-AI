@@ -185,3 +185,73 @@ Deno.test("TrainingRegressionTracker - reset clears the population streak and to
   assertEquals(tracker.totalNoChange, 0);
   assertFalse(tracker.shouldSkipPopulation(1));
 });
+
+/**
+ * GRQ #4717: the population-wide **regressions-only** gate. Calibrated against
+ * a re-measured 34-run GRQ fleet window, where the no-progress streak could not
+ * separate a doomed population from one training inside the noise floor.
+ */
+Deno.test("TrainingRegressionTracker - the population regression streak gates at its threshold", () => {
+  const tracker = new TrainingRegressionTracker();
+  for (let i = 0; i < 5; i++) {
+    tracker.recordRegression(`creature-${i}`);
+    assertFalse(tracker.shouldSkipPopulationRegressions(6));
+  }
+  tracker.recordRegression("creature-5");
+
+  assertEquals(tracker.populationConsecutiveRegressions, 6);
+  assert(tracker.shouldSkipPopulationRegressions(6));
+});
+
+Deno.test("TrainingRegressionTracker - a no-change clears the population regression streak", () => {
+  const tracker = new TrainingRegressionTracker();
+  for (let i = 0; i < 6; i++) {
+    tracker.recordRegression(`creature-${i}`);
+  }
+  assert(tracker.shouldSkipPopulationRegressions(6));
+
+  // The noise floor bought nothing, but it is not evidence of doom: it clears
+  // the regressions-only streak while still advancing the no-progress one.
+  tracker.recordNoChange("creature-6");
+
+  assertEquals(tracker.populationConsecutiveRegressions, 0);
+  assertEquals(tracker.populationConsecutiveNoProgress, 7);
+  assertFalse(tracker.shouldSkipPopulationRegressions(6));
+  assert(tracker.shouldSkipPopulation(7));
+});
+
+Deno.test("TrainingRegressionTracker - an improvement clears the population regression streak", () => {
+  const tracker = new TrainingRegressionTracker();
+  for (let i = 0; i < 6; i++) {
+    tracker.recordRegression(`creature-${i}`);
+  }
+  tracker.recordImprovement("creature-6");
+
+  assertEquals(tracker.populationConsecutiveRegressions, 0);
+  assertFalse(tracker.shouldSkipPopulationRegressions(6));
+});
+
+Deno.test("TrainingRegressionTracker - the regression gate is opt-in and probes like the no-progress gate", () => {
+  const tracker = new TrainingRegressionTracker();
+  for (let i = 0; i < 6; i++) {
+    tracker.recordRegression(`creature-${i}`);
+  }
+
+  // A threshold of 0 disables the gate entirely.
+  assertFalse(tracker.shouldSkipPopulationRegressions(0));
+
+  for (let i = 0; i < POPULATION_PROBE_INTERVAL; i++) {
+    assert(tracker.shouldSkipPopulationRegressions(6));
+    tracker.recordSkip();
+  }
+  // Every 20th dispatch is let through so the streak can be cleared.
+  assertFalse(tracker.shouldSkipPopulationRegressions(6));
+});
+
+Deno.test("TrainingRegressionTracker - reset clears the population regression streak", () => {
+  const tracker = new TrainingRegressionTracker();
+  tracker.recordRegression("alpha");
+  tracker.reset();
+
+  assertEquals(tracker.populationConsecutiveRegressions, 0);
+});

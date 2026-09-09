@@ -212,6 +212,21 @@ export interface NeatArguments {
   skipTrainingAfterPopulationNoProgress: number;
 
   /**
+   * GRQ #4717: Stop dispatching training once the **whole population** has
+   * produced N consecutive **regressions** — outcomes that came back with a
+   * higher error and no usable fine-tune variant.
+   *
+   * Stricter than `skipTrainingAfterPopulationNoProgress` above, and therefore
+   * calibrated lower: a result inside the noise floor clears this streak, so a
+   * population whose training merely stops moving is not gated, while one that
+   * is actively getting worse is. The same 20-skip probe applies, so a
+   * recovered population reopens the gate.
+   *
+   * Default `0` (disabled) — opt in per run.
+   */
+  skipTrainingAfterPopulationRegressions: number;
+
+  /**
    * Issue #2531: Maximum entries kept in the in-memory subnetwork hash index
    * that augments the discovery `SuccessCache` / `FailureCache` lookup. The
    * index is a bounded LRU keyed on the local 1-hop wire-pattern around a
