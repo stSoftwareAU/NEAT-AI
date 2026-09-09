@@ -705,6 +705,25 @@ export type {
 } from "@config/TrainingEvent.ts";
 
 /**
+ * Per-operator Mutation Telemetry
+ *
+ * Issue #3971: the shapes carried on `generation_complete.mutationOperators` —
+ * per-operator proposal/outcome counters, score-delta distributions, and depth
+ * buckets — so a consumer can name the type of that field.
+ *
+ * @see {@link module:src/NEAT/MutationOperatorReport}
+ */
+export type {
+  MutationAttributionSummary,
+  MutationDepthBucket,
+  MutationMcmcTotals,
+  MutationOperatorReport,
+  MutationOperatorSummary,
+  ScoreDeltaDistribution,
+} from "@neat/MutationOperatorReport.ts";
+export { MULTI_OPERATOR_ATTRIBUTION_NOTE } from "@neat/MutationOperatorReport.ts";
+
+/**
  * Configuration Presets
  *
  * Issue #1619: Pre-built configuration presets for common training

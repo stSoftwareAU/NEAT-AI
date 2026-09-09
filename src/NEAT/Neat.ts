@@ -30,6 +30,7 @@ import {
 } from "@neat/HardDeadline.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
+import { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
 import { RandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { SpeciesPlateauDetector } from "@neat/SpeciesPlateauDetector.ts";
@@ -161,6 +162,14 @@ export class Neat {
    * same tracker drives ModSquash sampling for the entire run.
    */
   readonly squashEffectivenessTracker: SquashEffectivenessTracker;
+
+  /**
+   * Issue #3971: Per-operator mutation outcome telemetry. Owned by Neat so
+   * pending attributions survive the per-generation Mutator rebuild, and
+   * shared with `Fitness` so evaluation wall-clock lands on the operators that
+   * produced the creature being evaluated.
+   */
+  readonly mutationOperatorTelemetry: MutationOperatorTelemetry;
 
   /** Adaptive fine-tune population tracker (Issue #1323) */
   readonly fineTuneTracker: AdaptiveFineTuneTracker;
@@ -399,6 +408,11 @@ export class Neat {
     this.squashEffectivenessTracker = new SquashEffectivenessTracker(
       this.config.squashEffectiveness,
     );
+
+    // Issue #3971: Per-operator mutation telemetry, shared with fitness so an
+    // offspring's evaluation cost is attributed to the operators that made it.
+    this.mutationOperatorTelemetry = new MutationOperatorTelemetry();
+    this.fitness.setMutationTelemetry(this.mutationOperatorTelemetry);
 
     this.fineTuneTracker = new AdaptiveFineTuneTracker(
       this.config.fineTunePopulation,
@@ -1118,6 +1132,8 @@ export class Neat {
       undefined,
       undefined,
       this.squashEffectivenessTracker,
+      // Issue #3971: seed mutations are proposals too — count them.
+      this.mutationOperatorTelemetry,
     );
     mutator.setWarmupContext(this.warmupGenerations, this.currentGeneration);
     while (this.population.length < this.config.populationSize - 1) {

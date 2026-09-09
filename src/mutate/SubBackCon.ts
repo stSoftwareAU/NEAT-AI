@@ -94,6 +94,8 @@ export class SubBackCon extends AbstractMutationOperator {
       }
     }
 
+    // Issue #3971: the target of the removed back-connection is the site.
+    this.noteMutationSite(pair[1]);
     return true;
   }
 }

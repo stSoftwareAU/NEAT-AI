@@ -51,6 +51,8 @@ export class SubNeuron extends AbstractMutationOperator {
     this.#cleanupInvalidIfNeurons();
 
     delete creature.memetic;
+    // Issue #3971: the index the removed neuron occupied is the mutation site.
+    this.noteMutationSite(selectedIndx);
     return true;
   }
 

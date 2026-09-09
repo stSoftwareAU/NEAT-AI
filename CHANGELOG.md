@@ -49,6 +49,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3971:** Per-operator mutation outcome telemetry. Every operator in
+  `src/mutate/` now reports, per generation, how often it was proposed, changed
+  nothing, was applied, was rolled back, reached `Fitness.calculate()`, and
+  survived selection — together with the score-delta distribution
+  (min/median/max, never a mean), the depth bucket of each structural site
+  (joined with the accept/reject outcome), and the evaluation time it consumed.
+  Always on; it rides the existing `generation_complete` event as
+  `mutationOperators` and the verbose `[MutationOps]` log line rather than a new
+  output channel. The aggregate Metropolis-Hastings totals reconcile exactly
+  with `MCMCDiagnostics`. See
+  [`docs/MUTATION_OPERATOR_TELEMETRY.md`](./docs/MUTATION_OPERATOR_TELEMETRY.md).
 - **Issue #3970:** Identity-initialised structural mutation. Two new options,
   both defaulting to the current behaviour: `structuralWeightScale` scales the
   **outward** synapse of `AddNeuron` and `AddConnection` on the main mutation

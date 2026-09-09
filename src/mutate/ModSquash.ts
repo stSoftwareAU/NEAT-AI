@@ -88,6 +88,8 @@ export class ModActivation extends AbstractMutationOperator {
 
     neuron.fix();
     delete this.creature.memetic;
+    // Issue #3971: the re-squashed neuron is the mutation site.
+    this.noteMutationSite(neuron.index);
     return true;
   }
 }

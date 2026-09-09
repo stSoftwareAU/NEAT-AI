@@ -7,6 +7,8 @@
  * is registered.
  */
 
+import type { MutationOperatorReport } from "@neat/MutationOperatorReport.ts";
+
 /**
  * Sub-phase timing breakdown within the breeding phase.
  *
@@ -369,6 +371,12 @@ export interface GenerationCompleteEvent {
    * present on every `generation_complete` event.
    */
   readonly squashHistogram?: Readonly<Record<string, number>>;
+  /**
+   * Issue #3971: per-operator mutation outcome telemetry for this generation.
+   * Rides the existing generation event rather than opening a new output
+   * channel; always present once evolution has run a mutation phase.
+   */
+  readonly mutationOperators?: MutationOperatorReport;
 }
 
 /**

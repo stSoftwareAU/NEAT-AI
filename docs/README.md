@@ -203,6 +203,11 @@ Subsystems that only some users need.
   `EpisodeAdapter<S, A>` contract (Gym/Gymnasium return shape, default
   termination guards, seed cadence, opt-in geometric statistics), and sets out
   the migration path for the five episodic examples in NEAT-AI-Examples.
+- **[MUTATION_OPERATOR_TELEMETRY.md](MUTATION_OPERATOR_TELEMETRY.md)** —
+  per-operator mutation outcome telemetry (Issue #3971): which operator was
+  proposed, changed nothing, was reverted, was evaluated and survived selection;
+  the score-delta distribution and depth bucket of each structural change; and
+  how the counters reconcile with the aggregate `MCMCDiagnostics`.
 - **[dna-sharing-bake-off-results.md](dna-sharing-bake-off-results.md)** —
   bake-off comparison of inter-island DNA-sharing primitives (Issue #2496).
 
