@@ -138,6 +138,23 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Issue #3975 — hidden-neuron removal moved to Rust/WASM.** Discovery's
+  `removeHarmfulNeuron` / `removeLowImpactNeuron` now call NEAT-AI-core's
+  `prune_neuron` through the new `src/wasm/WasmPruneNeuron.ts` bridge, and the
+  superseded TypeScript rewrite in those two paths is deleted — core owns the
+  mean bias fold, the removal, the memetic prune, the cleanup cascade,
+  canonicalisation and validation, with no runtime fallback. Two behavioural
+  consequences are deliberate: a hidden neuron left with no inward edge is
+  canonicalised to a **unity** constant with its fixed activation folded into
+  the outgoing weight (previously a constant carrying the folded bias — the same
+  number reaches the target either way), and a `memetic` record is now pruned
+  entry-by-entry rather than dropped wholesale, so a survivor's fine-tuning
+  history is kept. A **constant** neuron is support structure core protects from
+  direct removal: such a candidate is refused and the creature is left
+  unchanged, where it now disappears only as dead structure once nothing
+  references it. The pinned `neatCore.rev` advances to the revision carrying the
+  `prune_neuron` WASM export.
+
 - **Issue #3870:** Recurrent (`forwardOnly: false`) creatures now join the
   directory-mode batch instead of being partitioned onto the per-creature worker
   path. NEAT-AI-scorer#579 threads each creature's own flag through the batch

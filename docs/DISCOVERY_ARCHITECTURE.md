@@ -352,7 +352,7 @@ graph TD
         DAP["DiscoveryApplication.ts\nBarrel re-export"]:::application
         DSO["DiscoverySynapseOps.ts\nSynapse add/remove"]:::application
         DNA["DiscoveryNeuronAddition.ts\nNeuron insertion & squash changes"]:::application
-        DNR["DiscoveryNeuronRemoval.ts\nNeuron removal with bias compensation"]:::application
+        DNR["DiscoveryNeuronRemoval.ts\nCandidate policy over core prune_neuron"]:::application
         DV["DiscoveryValidation.ts\nValidation & issue recording"]:::application
 
         DAP --> DSO & DNA & DNR & DV
@@ -495,6 +495,40 @@ stateDiagram-v2
 | `combo-add-remove`       | Phase 1         | Combined addition + removal                       |
 | `combo-add-change`       | Phase 1         | Combined addition + squash change                 |
 | `combo-best-of-category` | Phase 2         | Best candidate from each category                 |
+
+### ✂️ Hidden-neuron removal is NEAT-AI-core's (Issue #3975)
+
+`remove-neuron` and `remove-low-impact` no longer carry a TypeScript rewrite.
+`removeHarmfulNeuron` / `removeLowImpactNeuron` hand the creature to
+NEAT-AI-core's `prune_neuron` through `src/wasm/WasmPruneNeuron.ts`, and core
+owns the whole rewrite: the mean bias fold, cutting the neuron and every edge
+naming it, pruning the memetic entries that stop naming live structure, the
+cleanup cascade, canonicalisation, and validating the stable result. There is no
+fallback rewrite behind it — a refusal (`PROTECTED_NEURON`, `UNKNOWN_NEURON`, …)
+is read as "no change", exactly as a candidate that failed validation always
+was.
+
+Discovery keeps what core deliberately does not own — candidate selection, the
+Discovery-emitted compensation payload (applied before the rewrite, because it
+is the caller's own measurement), the `IF`-routing behaviour guard, the overflow
+clamp on the targets core reports folding, and the accept/reject decision.
+
+```mermaid
+flowchart LR
+  C["Candidate<br/>(uuid + measurements)"] --> P["applyRemoveNeuronCompensation<br/>caller's own remedy"]
+  P --> A["corePruneNeuron<br/>WasmPruneNeuron.ts"]
+  A --> R["core prune_neuron —<br/>fold, cut, prune memetic,<br/>cascade, validate"]
+  R -->|refusal| N["undefined — no change"]
+  R -->|creature| G["behaviour guard +<br/>accept / reject"]
+```
+
+> [!NOTE]
+> Two consequences are deliberate rather than incidental. A hidden neuron left
+> with no inward edge canonicalises to a **unity** constant with its fixed
+> activation folded into the outgoing weight, where the superseded pass left a
+> constant carrying the folded bias. And a **constant** is support structure
+> core protects from direct removal: a constant candidate is refused and
+> disappears only as dead structure once nothing references it.
 
 ### 🛡️ Validate-Then-Fix Strategy
 
