@@ -11,6 +11,7 @@
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { appendAll, insertAll } from "@utils/ArrayAppend.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import { assertNoRecurrentSynapseOnForwardOnly } from "@architecture/ForwardOnlyAssertion.ts";
 import {
   cleanupMemeticForRemovedNeuron,
@@ -373,6 +374,104 @@ export function applyRemoveSynapse(
   return result;
 }
 
+/**
+ * Replay the rewrite the removal performed on the structure that *survived* it.
+ *
+ * Since Issue #3975 the removal itself is NEAT-AI-core's, and core does not
+ * only delete: it canonicalises what it leaves behind. A hidden neuron left
+ * without an inward edge becomes a unity `constant` with its fixed activation
+ * folded into the outgoing weight — a change to a *surviving* neuron's `type`
+ * and `bias` and to an *existing* synapse's `weight`.
+ *
+ * The deletion/addition diff around this call cannot see either: it compares
+ * membership, not values, so a survivor edited in place looks untouched. Replay
+ * without them strands a hidden neuron with no inward edge, which
+ * `validateAndFixCreatureSync` then silently repairs by calling `fix()` — the
+ * "bug in modification logic" this pass logs about rather than the faithful
+ * replay it is meant to be.
+ *
+ * Only rows where `base` and `candidate` actually differ are copied, so a
+ * creature carrying an unrelated earlier edit keeps it.
+ *
+ * @returns `true` when at least one survivor was rewritten.
+ */
+function replaySurvivorRewrite(
+  creatureJSON: CreatureExport,
+  candidateJSON: CreatureExport,
+  baseJSON: CreatureExport,
+): boolean {
+  let rewrote = false;
+
+  const baseNeurons = new Map(baseJSON.neurons.map((n) => [n.id, n]));
+  const candidateNeurons = new Map(
+    candidateJSON.neurons.map((n) => [n.id, n]),
+  );
+
+  // A role change means core rewrote the neuron into a canonical form (a unity
+  // constant), so the candidate's values are absolute and replaying them twice
+  // must not double them. A neuron that kept its role was only compensated, and
+  // that is a delta which has to compose with any fold an earlier replay
+  // already applied to the same survivor.
+  const canonicalised = new Set<number | undefined>();
+
+  for (const neuron of creatureJSON.neurons) {
+    const before = baseNeurons.get(neuron.id);
+    const after = candidateNeurons.get(neuron.id);
+    if (!before || !after) continue;
+
+    if (after.type !== before.type) {
+      canonicalised.add(neuron.id);
+      // `type` is readonly on the wire shape; this replay is the one writer
+      // entitled to change it, because core already decided the new role.
+      (neuron as { type: NeuronExport["type"] }).type = after.type;
+      neuron.bias = after.bias;
+      // A constant carries no squash, so mirror the candidate's shape exactly
+      // rather than leaving a squash the new role may not have.
+      if (after.squash === undefined) delete neuron.squash;
+      else neuron.squash = after.squash;
+      rewrote = true;
+      continue;
+    }
+
+    if (after.bias !== before.bias) {
+      neuron.bias += after.bias - before.bias;
+      rewrote = true;
+    }
+    if (after.squash !== before.squash) {
+      if (after.squash === undefined) delete neuron.squash;
+      else neuron.squash = after.squash;
+      rewrote = true;
+    }
+  }
+
+  const weightsOf = (creature: CreatureExport) =>
+    new Map(
+      creature.synapses.map((
+        s,
+      ) => [synapseTripleKey(s.fromId!, s.toId!, s.type), s.weight]),
+    );
+  const baseWeights = weightsOf(baseJSON);
+  const candidateWeights = weightsOf(candidateJSON);
+  for (const synapse of creatureJSON.synapses) {
+    const key = synapseTripleKey(synapse.fromId!, synapse.toId!, synapse.type);
+    const before = baseWeights.get(key);
+    const after = candidateWeights.get(key);
+    if (before === undefined || after === undefined) continue;
+    if (after === before) continue;
+
+    if (canonicalised.has(synapse.fromId)) {
+      // Canonicalisation folds the source's fixed activation *into* this
+      // weight — a rewrite of the value, not an increment of it.
+      synapse.weight = after;
+    } else {
+      synapse.weight += after - before;
+    }
+    rewrote = true;
+  }
+
+  return rewrote;
+}
+
 export function applyRemoveNeuron(
   creature: Creature,
   creatureJSON: CreatureExport,
@@ -451,7 +550,17 @@ export function applyRemoveNeuron(
         })()),
   );
 
-  if (toRemove.size === 0 && toAdd.length === 0) return creature;
+  // Issue #3975: core edits survivors as well as deleting rows, and those
+  // edits are invisible to the membership diff above.
+  const rewroteSurvivors = replaySurvivorRewrite(
+    creatureJSON,
+    candidateJSON,
+    baseJSON,
+  );
+
+  if (toRemove.size === 0 && toAdd.length === 0 && !rewroteSurvivors) {
+    return creature;
+  }
 
   // Issue #2900: stack-safe append; toAdd scales with candidate connection
   // count, so spreading risks RangeError on large networks.

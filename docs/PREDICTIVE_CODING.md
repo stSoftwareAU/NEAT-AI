@@ -682,7 +682,9 @@ performance.
 - Expose WASM functions: `pc_settle()`, `pc_weight_update()`
 - Add TypeScript WASM wrapper `src/wasm/PredictiveCodingWasm.ts`
 - Benchmark against TypeScript prototype — target 5–10x speedup
-- Replace TypeScript inference with WASM calls (keep TypeScript as fallback)
+- Replace TypeScript inference with WASM calls and delete the superseded
+  TypeScript in the same step — no fallback
+  ([principle 7](ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path))
 - **Depends on**: Phase 2
 - **Result**: PC training at production speed via WASM
 
