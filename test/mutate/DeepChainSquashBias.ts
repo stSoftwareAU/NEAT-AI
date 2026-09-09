@@ -17,6 +17,7 @@ import { resolveDeepChainSquashOptions } from "@mutate/DeepChainSquashOptions.ts
 import { ModActivation } from "@mutate/ModSquash.ts";
 import {
   createSeededRng,
+  getRandomNumberGenerator,
   setRandomNumberGenerator,
 } from "@utils/RandomNumberGenerator.ts";
 import { withRngTestLock } from "../_rngTestLock.ts";
@@ -49,6 +50,20 @@ function squashSequence(
 const blockingCount = (squashes: readonly string[]) =>
   squashes.filter((s) => isGradientBlockingSquash(s)).length;
 
+/**
+ * The same run, plus the next value the RNG hands out. A bias that consumed a
+ * draw it should not have would leave the sequence intact and shift this.
+ */
+function sequenceAndRngTail(
+  build: () => Creature,
+  options: DeepChainSquashOptions | undefined,
+  draws: number,
+  seed: number,
+): { chosen: string[]; tail: number } {
+  const chosen = squashSequence(build, options, draws, seed);
+  return { chosen, tail: getRandomNumberGenerator().random() };
+}
+
 Deno.test("DeepChainSquashBias - bias 0 draws exactly what the unbiased operator draws", async () => {
   await withRngTestLock(() => {
     const build = () => chainCreature(6);
@@ -70,11 +85,23 @@ Deno.test("DeepChainSquashBias - bias 0 draws exactly what the unbiased operator
       "HARD_TANH",
       "LogSigmoid",
     ];
-    assertEquals(squashSequence(build, undefined, 12, 3974), golden);
-    assertEquals(
-      squashSequence(build, { deepChainSquashBias: 0 }, 12, 3974),
-      golden,
+    // The RNG tail is the other half of the claim: the pre-#3974 operator left
+    // the stream here after those twelve draws, so a bias that consumed a draw
+    // it should not have would shift it even with the sequence intact.
+    const goldenTail = 0.10698457942174755;
+
+    const unset = sequenceAndRngTail(build, undefined, 12, 3974);
+    assertEquals(unset.chosen, golden);
+    assertEquals(unset.tail, goldenTail);
+
+    const explicitZero = sequenceAndRngTail(
+      build,
+      { deepChainSquashBias: 0 },
+      12,
+      3974,
     );
+    assertEquals(explicitZero.chosen, golden);
+    assertEquals(explicitZero.tail, goldenTail);
   });
 });
 
