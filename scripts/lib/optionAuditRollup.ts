@@ -374,7 +374,7 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
       "training gate `NeatScheduling.scheduleTraining` reads.",
   }),
   keep("skipTrainingAfterPopulationRegressions", "roll-up", {
-    note: "Added after the slices by GRQ #4717 — the stricter " +
+    note: "Added after the slices by a downstream scheduler — the stricter " +
       "population-wide regressions-only training gate " +
       "`NeatScheduling.scheduleTraining` reads.",
   }),
