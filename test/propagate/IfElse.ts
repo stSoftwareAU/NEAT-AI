@@ -143,7 +143,46 @@ Deno.test("if-fix", () => {
   const creature2 = Creature.fromJSON(creature.exportJSON());
   creature2.validate();
 
+  // Issue #3976: `SubConnection` now removes a synapse through NEAT-AI-core's
+  // `prune_synapse`, which **rewrites** an `IF` the removal left short a role
+  // instead of refusing that removal outright the way the superseded
+  // TypeScript `#wouldBreakIfNeuron` did. An `IF` whose condition goes is
+  // flattened — exactly, computing the same number on every record — to the
+  // branch that condition always took, so this fixture's output may
+  // legitimately finish as an `IDENTITY` carrying fewer inward edges. That is
+  // the deliberate improvement the migration bought: typed `IF` structure is
+  // reachable to the mutation operators at last.
+  //
+  // The invariant this test was really guarding is unchanged and is asserted
+  // below: after all that churn plus `fix()`, no *surviving* `IF` is ever left
+  // short a role.
+  const outputNeuron = creature.neurons[5];
   const toList = creature.inwardConnections(5);
 
-  assert(toList.length > 2, "Should have 3 connections was: " + toList.length);
+  if (outputNeuron.squash === "IF") {
+    const roles = new Set(
+      toList.map((synapse) => synapse.type ?? "positive"),
+    );
+    assert(
+      roles.size === 3,
+      "A surviving IF must keep all three roles, had: " +
+        [...roles].join(", "),
+    );
+    assert(
+      toList.length > 2,
+      "Should have 3 connections was: " + toList.length,
+    );
+  } else {
+    assert(
+      creature.neurons.every((neuron) =>
+        neuron.squash !== "IF" ||
+        new Set(
+            creature.inwardConnections(neuron.index).map((s) =>
+              s.type ?? "positive"
+            ),
+          ).size === 3
+      ),
+      "Every surviving IF must carry a condition, a positive and a negative",
+    );
+  }
 });
