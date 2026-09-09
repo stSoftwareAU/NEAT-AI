@@ -460,10 +460,13 @@ sequence captured from the previous `ModSquash`.
 **What counts as blocking is measured, not listed.**
 `src/methods/activations/GradientBlocking.ts` walks each activation's own
 `derivative()` over a fixed grid and calls it blocking when more than half of it
-is exactly zero — `STEP` (all of it) and `HARD_TANH` (0.875) qualify, `ReLU`
-(exactly half) does not. `IF`, `MINIMUM` and `MAXIMUM` expose no scalar
-derivative at all and gate the gradient onto one inbound branch, so they are
-blocking by construction. A new selectable activation with no derivative fails
+is exactly zero — `STEP` and `BIPOLAR` (all of it), `HARD_TANH` (0.875) and
+`ReLU6` (0.625) qualify, `ReLU` (exactly half) does not. `ReLU6` is not on the
+issue's list and is down-weighted anyway: it is dead below 0 and above 6 by the
+same measurement, and the rule follows the derivatives rather than the list.
+`IF`, `MINIMUM` and `MAXIMUM` expose no scalar derivative at all and gate the
+gradient onto one inbound branch, so they are blocking by construction. A new
+selectable activation with no derivative fails
 `test/methods/activations/GradientBlocking.ts` rather than being silently
 treated as safe.
 

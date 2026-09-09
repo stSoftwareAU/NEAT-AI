@@ -29,12 +29,14 @@ A blocking proposal is re-drawn **once**; a second blocking proposal stands, so
 nothing leaves the search space and no existing neuron is rewritten. What counts
 as blocking is **measured, not listed**: `GradientBlocking.ts` walks each
 activation's own `derivative()` over a fixed grid and calls it blocking when
-more than half of it is exactly zero (`STEP` 1.0, `HARD_TANH` 0.875, `ReLU`
-exactly 0.5 and therefore not blocking, matching the issue's own pool split).
-`IF` / `MINIMUM` / `MAXIMUM` expose no scalar derivative and gate the gradient
-onto one branch, so they are blocking by construction — and a new selectable
-activation with no derivative fails the classification test rather than being
-silently treated as safe.
+more than half of it is exactly zero (`STEP` and `BIPOLAR` 1.0, `HARD_TANH`
+0.875, `ReLU6` 0.625, `ReLU` exactly 0.5 and therefore not blocking, matching
+the issue's own pool split; `ReLU6` is not on the issue's list and is
+down-weighted anyway because the rule follows the derivatives). `IF` / `MINIMUM`
+/ `MAXIMUM` expose no scalar derivative and gate the gradient onto one branch,
+so they are blocking by construction — and a new selectable activation with no
+derivative fails the classification test rather than being silently treated as
+safe.
 
 **The mechanism is refuted on the GRQ creature, and that is reported rather than
 smoothed away.** The bias changes what is proposed — 5.8% blocking → 0.8% where
