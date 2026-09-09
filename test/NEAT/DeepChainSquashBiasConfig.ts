@@ -4,7 +4,7 @@
  * historical pool.
  */
 import { assert, assertEquals, assertThrows } from "@std/assert";
-import { Creature } from "@creature";
+import type { Creature } from "@creature";
 import { createNeatConfig } from "@config/NeatConfig.ts";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { isGradientBlockingSquash } from "@methods/activations/GradientBlocking.ts";
