@@ -123,8 +123,8 @@ response to that distribution and nothing more.
 [`docs/evidence/gradient-depth-3972.md`](evidence/gradient-depth-3972.md) has
 the full profile. The short version: the shallow control never measured an
 exactly-zero gradient and flips sign on 18–28% of consecutive pairs, while the
-GRQ creature is exactly zero on 99.8% of measurements at depth 1 and on 100%
-from depth 10 to depth 44. The sign-flip rate is undefined for most of that
-range because the gradient is never non-zero twice running — the failure is
+GRQ creature is exactly zero on 99.8% of measurements at depth 1 and on at least
+95% at every depth from 4 to 44. The sign-flip rate is undefined for most of
+that range because the gradient is never non-zero twice running — the failure is
 **dead, not noisy**. That is the topology mode, not the step-size mode: an
 adaptive optimiser multiplying an exactly-zero gradient still gets zero.

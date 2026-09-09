@@ -236,9 +236,10 @@ here.
 - The shallow control (`europa-sample.json`, 3 deep) never once measured an
   exactly-zero gradient, and flips sign on 18–28% of consecutive pairs. That is
   what a working gradient looks like in this engine.
-- The GRQ creature is exactly zero on **99.8%** of measurements at depth 1 and
-  **100%** from depth 10 through depth 44. The largest magnitude seen anywhere
-  below depth 30 is `1e-30` at the small input scale.
+- The GRQ creature is exactly zero on **99.8%** of measurements at depth 1, and
+  on **at least 95%** at every depth from 4 to 44 — **exactly 100%** across
+  depths 10–14, 17–30 and 34–44. The largest magnitude seen anywhere below depth
+  30 is `1e-30` at the small input scale.
 - The sign-flip rate is `n/a` almost everywhere below depth 34 — the gradient is
   never non-zero on two consecutive samples, so there is nothing to flip. The
   failure is **dead**, not noisy: it is not the shattered-gradient signature, it
