@@ -7,6 +7,7 @@
  */
 import { assert, assertEquals, assertThrows } from "@std/assert";
 import { Creature } from "@creature";
+import { Synapse } from "@architecture/Synapse.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { AddSkipConnection } from "@mutate/AddSkipConnection.ts";
@@ -16,81 +17,7 @@ import {
   setRandomNumberGenerator,
 } from "@utils/RandomNumberGenerator.ts";
 import { withRngTestLock } from "../_rngTestLock.ts";
-
-/**
- * A creature whose tail is a single-file run of `runLength` hidden neurons.
- *
- * A second input joins the first chain member so depth 1 still holds exactly
- * one neuron, matching the shape #3972 found in the GRQ creature.
- */
-function chainCreature(
-  runLength: number,
-  options: { forwardOnly?: boolean; extraWidth?: number } = {},
-): Creature {
-  const neurons: CreatureExport["neurons"] = [];
-  const synapses: CreatureExport["synapses"] = [];
-
-  for (let i = 0; i < runLength; i++) {
-    neurons.push({
-      type: "hidden",
-      uuid: `run-${i}`,
-      squash: "IDENTITY",
-      bias: 0.1,
-    });
-    if (i === 0) {
-      synapses.push({ fromUUID: "input-0", toUUID: "run-0", weight: 0.5 });
-      synapses.push({ fromUUID: "input-1", toUUID: "run-0", weight: 0.25 });
-    } else {
-      synapses.push({
-        fromUUID: `run-${i - 1}`,
-        toUUID: `run-${i}`,
-        weight: 0.5,
-      });
-    }
-  }
-
-  // Optional extra breadth hanging off the inputs, so the run is not the only
-  // structure a uniformly-drawn connection could land on.
-  const width = options.extraWidth ?? 0;
-  for (let i = 0; i < width; i++) {
-    neurons.push({
-      type: "hidden",
-      uuid: `wide-${i}`,
-      squash: "IDENTITY",
-      bias: 0,
-    });
-    synapses.push({ fromUUID: "input-0", toUUID: `wide-${i}`, weight: 0.1 });
-    synapses.push({ fromUUID: `wide-${i}`, toUUID: "output-0", weight: 0.1 });
-  }
-
-  neurons.push({
-    type: "output",
-    uuid: "output-0",
-    squash: "IDENTITY",
-    bias: 0,
-  });
-  synapses.push({
-    fromUUID: `run-${runLength - 1}`,
-    toUUID: "output-0",
-    weight: 0.5,
-  });
-
-  const creature = Creature.fromJSON({
-    input: 2,
-    output: 1,
-    neurons,
-    synapses,
-  });
-  if (options.forwardOnly) creature.forwardOnly = true;
-  return creature;
-}
-
-/** Index of the neuron carrying `uuid`. */
-function indexOf(creature: Creature, uuid: string): number {
-  const neuron = creature.neurons.find((n) => n.uuid === uuid);
-  assert(neuron !== undefined, `creature should carry a neuron ${uuid}`);
-  return neuron.index;
-}
+import { chainCreature, neuronIndex as indexOf } from "./_chainCreature.ts";
 
 Deno.test("AddSkipConnection - bypasses the run from its entry to the neuron it feeds", () => {
   const creature = chainCreature(6);
@@ -262,6 +189,15 @@ Deno.test("AddSkipConnection - the bypass weight honours structuralWeightScale",
       const output = indexOf(creature, "output-0");
       const bypass = creature.getSynapses(entry, output);
       assertEquals(bypass.length, 1);
+
+      // Pin the draw itself, not merely its range: re-seeding and asking
+      // `Synapse.randomWeight(scale)` for the same draw must reproduce the
+      // weight exactly. A weight that ignored the option and was then clamped
+      // would still sit inside the range but would not match here.
+      setRandomNumberGenerator(createSeededRng(3973));
+      const expected = Synapse.randomWeight(scale);
+      assertEquals(bypass[0].weight, expected);
+
       const magnitude = Math.abs(bypass[0].weight);
       assert(
         magnitude <= 0.5 * scale,
@@ -354,30 +290,18 @@ Deno.test("AddSkipConnection - the bypass does not make the run compactable", ()
   // the entry *less* eligible, but the run it protects must not become more
   // removable either — so compare the surviving run against the same creature
   // compacted without a bypass.
-  const squash = "LOGISTIC";
-  const build = () => {
-    const neurons: CreatureExport["neurons"] = [];
-    const synapses: CreatureExport["synapses"] = [];
-    for (let i = 0; i < 6; i++) {
-      neurons.push({ type: "hidden", uuid: `run-${i}`, squash, bias: 0.1 });
-      if (i === 0) {
-        synapses.push({ fromUUID: "input-0", toUUID: "run-0", weight: 0.5 });
-        synapses.push({ fromUUID: "input-1", toUUID: "run-0", weight: 0.25 });
-      } else {
-        synapses.push({
-          fromUUID: `run-${i - 1}`,
-          toUUID: `run-${i}`,
-          weight: 0.5,
-        });
-      }
-    }
-    neurons.push({ type: "output", uuid: "output-0", squash, bias: 0 });
-    synapses.push({ fromUUID: "run-5", toUUID: "output-0", weight: 0.5 });
-    return Creature.fromJSON({ input: 2, output: 1, neurons, synapses });
-  };
+  // IDENTITY relays are exactly what the `compact/` relay fold removes, so
+  // compaction genuinely fires on this fixture — a squash it declines to fold
+  // would leave both arms a no-op and the comparison vacuous.
+  const squash = "IDENTITY";
+  const build = () => chainCreature(6, { squash });
 
   const survivors = (creature: Creature): string[] => {
-    const compacted = creature.compact(false) ?? creature;
+    const compacted = creature.compact(false);
+    assert(
+      compacted !== undefined,
+      "the fixture must actually be compactable, or this test proves nothing",
+    );
     return compacted.neurons
       .filter((n) => n.type === "hidden")
       .map((n) => n.uuid ?? "(no uuid)")
@@ -391,15 +315,61 @@ Deno.test("AddSkipConnection - the bypass does not make the run compactable", ()
   assert(operator.mutate(), "the run should attract a bypass");
   const withBypass = survivors(bypassed);
 
+  // Compaction really fired: the IDENTITY relay fold removes a member from the
+  // control arm too, so this fixture can distinguish the two arms.
+  assert(
+    control.length < 6,
+    "the control arm should lose a relay to compaction, or nothing is measured",
+  );
   assertEquals(
     withBypass,
     control,
-    "the bypass must not cost the run a single member during compaction",
+    "the bypass must not cost the run a single member beyond what the same " +
+      "creature loses without it",
   );
-  for (let i = 0; i < 6; i++) {
+  // The run's entry gained fan-out, so the `1 inward + 1 outward` relay fold
+  // can no longer take it — the bypass protects the entry rather than exposing
+  // it.
+  assert(
+    withBypass.includes("run-0"),
+    "the bypassed run's entry neuron survives compaction",
+  );
+});
+
+Deno.test("AddSkipConnection - a back-edge off the run is never mistaken for a consumer", () => {
+  // A recurrent lineage may give the run's exit a **back**-edge into a mid-run
+  // member. That destination is not a neuron the run feeds — it is one that
+  // feeds the run on the next step — so following it would put the "bypass"
+  // inside the chain (`entry -> run-3`), a partial short-circuit rather than a
+  // bypass around it. It also sorts first on ascending target, so an
+  // index-only forward test picked it in preference to the real consumer.
+  const creature = chainCreature(6);
+  const exit = indexOf(creature, "run-5");
+  const mid = indexOf(creature, "run-3");
+  creature.connect(exit, mid, 0.3);
+
+  const operator = new AddSkipConnection(creature);
+  const candidates = operator.candidates();
+  for (const candidate of candidates) {
     assert(
-      withBypass.includes(`run-${i}`),
-      `run-${i} should survive compaction with the bypass in place`,
+      candidate.target !== mid,
+      `a run member (${mid}) must never be a bypass target`,
     );
   }
+
+  const before = creature.synapses.length;
+  assert(operator.mutate(), "the real consumer is still bypassed");
+  assertEquals(creature.synapses.length, before + 1);
+  assert(
+    creature.hasConnection(
+      indexOf(creature, "run-0"),
+      indexOf(creature, "output-0"),
+    ),
+    "the bypass lands on the neuron the run feeds, not inside the run",
+  );
+  assertEquals(
+    creature.hasConnection(indexOf(creature, "run-0"), mid),
+    false,
+    "and never on a mid-run member",
+  );
 });

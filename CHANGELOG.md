@@ -59,8 +59,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   the new synapse is initialised at #3970's `structuralWeightScale`. Measured on
   `test/data/grq-23-forests-constants.json`: the 28-neuron tail's entry neuron
   goes from an exactly-zero gradient on 100% of samples to 40.6%, where a
-  uniformly drawn `AddConnection` at the same weight scale leaves it at 100%.
-  See
+  uniformly drawn `AddConnection` at the same weight scale leaves it at 100%. No
+  score claim is made — the dataset-error ordering flips between seeds, which is
+  why the operator ships disabled. See
   [Mutation adaptation → targeted skip connections](./docs/config/MUTATION_ADAPTATION.md#-targeted-skip-connections).
 - **Issue #3971:** Per-operator mutation outcome telemetry. Every operator in
   `src/mutate/` now reports, per generation, how often it was proposed, changed

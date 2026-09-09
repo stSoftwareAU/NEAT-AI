@@ -113,13 +113,22 @@ export class AddSkipConnection extends AbstractMutationOperator {
 
       const entry = run[0];
       const exit = run[run.length - 1];
+      const members = new Set(run);
 
       for (const synapse of creature.outwardConnections(exit)) {
         const target = synapse.to;
-        // The bypass must be a forward edge that skips something: a target at
-        // or before the entry would be a back-edge, and the run's own exit is
-        // already reachable from the entry through the run.
-        if (target <= entry || target === exit) continue;
+        // The run's exit may also carry a **back**-edge when the lineage is
+        // recurrent, and a back-edge's destination is not a neuron the run
+        // feeds — it is a neuron that feeds the run on the next step. Following
+        // one would land the "bypass" inside the run (`entry -> run[3]`), a
+        // partial short-circuit rather than the bypass around it.
+        if (synapse.to <= synapse.from) continue;
+        // Nor may the bypass land on the run itself: every member is already
+        // reachable from the entry through the run.
+        if (members.has(target)) continue;
+        // Forward, and it must skip something: a target at or before the entry
+        // would be a back-edge from the bypass's own point of view.
+        if (target <= entry) continue;
         if (creature.neurons[target].type === "constant") continue;
         if (creature.hasConnection(entry, target)) continue;
 

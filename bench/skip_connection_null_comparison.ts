@@ -32,9 +32,6 @@
 import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
-import { makeDataDir } from "@architecture/DataSet.ts";
-import { trainDir } from "@architecture/Training.ts";
-import { MSE } from "@costs/MSE.ts";
 import { AddConnection } from "@mutate/AddConnection.ts";
 import { AddSkipConnection } from "@mutate/AddSkipConnection.ts";
 import {
@@ -52,6 +49,15 @@ import {
   parseFlags,
   syntheticObservations,
 } from "../scripts/gradientDepthReport.ts";
+import {
+  buildTask as buildScaleSweepTask,
+  datasetError,
+  type MagnitudeSummary,
+  pct,
+  summariseMagnitudes,
+  trainCreature,
+  withScaleSweepDefaults,
+} from "./structural_weight_scale_sweep.ts";
 
 /** Which arm produced a row. */
 export type SkipArm = "baseline" | "skip" | "random";
@@ -114,15 +120,6 @@ export interface ZeroGradientPool {
   zeroObservations: number;
   /** `zeroObservations / observations`, or `0` when nothing was measured. */
   zeroFraction: number;
-}
-
-/** Distribution of a set of weight magnitudes. */
-export interface MagnitudeSummary {
-  count: number;
-  min: number;
-  median: number;
-  mean: number;
-  max: number;
 }
 
 /** One measured arm. */
@@ -267,29 +264,6 @@ export function chainZeroGradient(
   };
 }
 
-/** Summarise a set of magnitudes; an empty set is reported as zeroes. */
-export function summariseMagnitudes(
-  values: readonly number[],
-): MagnitudeSummary {
-  if (values.length === 0) {
-    return { count: 0, min: 0, median: 0, mean: 0, max: 0 };
-  }
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  const median = sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
-  let total = 0;
-  for (const value of sorted) total += value;
-  return {
-    count: sorted.length,
-    min: sorted[0],
-    median,
-    mean: total / sorted.length,
-    max: sorted[sorted.length - 1],
-  };
-}
-
 /**
  * A parent with breadth **and** a deep single-file tail.
  *
@@ -361,61 +335,24 @@ export function buildTailParent(
   return { neurons, synapses, input: config.inputCount, output: 1 };
 }
 
-/** A smooth learnable regression task over the parent's inputs. */
+/**
+ * A smooth learnable regression task over the parent's inputs.
+ *
+ * Delegates to #3970's sweep harness, which already owns this task generator —
+ * a single output is its `outputCount: 1` case, not a second implementation.
+ */
 export function buildTask(
   config: SkipNullConfig,
   rng: () => number,
 ): DataRecordInterface[] {
-  const projection: number[] = [];
-  for (let i = 0; i < config.inputCount; i++) {
-    projection.push((rng() * 2 - 1) / Math.sqrt(config.inputCount));
-  }
-  const records: DataRecordInterface[] = [];
-  for (let s = 0; s < config.sampleCount; s++) {
-    const input = new Float32Array(config.inputCount);
-    let dot = 0;
-    for (let i = 0; i < config.inputCount; i++) {
-      input[i] = rng() * 2 - 1;
-      dot += projection[i] * input[i];
-    }
-    const output = new Float32Array(1);
-    output[0] = Math.tanh(dot * 2) * 0.5;
-    records.push({ input, output });
-  }
-  return records;
-}
-
-/** Mean squared error of a creature over a dataset. */
-function datasetError(
-  creature: Creature,
-  data: readonly DataRecordInterface[],
-): number {
-  const cost = new MSE();
-  let total = 0;
-  for (const record of data) {
-    total += cost.calculate(record.output, creature.activate(record.input));
-  }
-  creature.clearState();
-  return total / data.length;
-}
-
-/** Run `iterations` epochs through the production `trainDir` path. */
-function trainCreature(
-  creature: Creature,
-  data: readonly DataRecordInterface[],
-  iterations: number,
-): void {
-  const dataDir = makeDataDir(data as DataRecordInterface[], data.length, {
-    input: creature.input,
-    output: creature.output,
-  });
-  try {
-    trainDir(creature, dataDir, { iterations, targetError: 0 }, new MSE());
-  } finally {
-    Deno.removeSync(dataDir, { recursive: true });
-  }
-  creature.clearState();
-  creature.invalidateScoreCache();
+  return buildScaleSweepTask(
+    withScaleSweepDefaults({
+      inputCount: config.inputCount,
+      outputCount: 1,
+      sampleCount: config.sampleCount,
+    }),
+    rng,
+  );
 }
 
 /** Key of a synapse, stable across training because indices do not move. */
@@ -518,12 +455,54 @@ export function runSkipNullComparison(
   // added. A run with one consumer accepts exactly one bypass, so asking for
   // three would otherwise compare one targeted synapse against three random
   // ones and flatter the null.
+  // `applyArm` re-seeds the global RNG so every arm sees the same stream; the
+  // caller's RNG is restored before returning, so a test or a later arm cannot
+  // silently inherit this harness's seed.
+  const callerRng = getRandomNumberGenerator();
+  try {
+    return measureArms(parent, provenance, config, data, {
+      entryDepth,
+      runLength: chain.members.length,
+      samples,
+      train,
+    });
+  } finally {
+    setRandomNumberGenerator(callerRng);
+  }
+}
+
+/** The three arms themselves; see {@link runSkipNullComparison}. */
+function measureArms(
+  parent: CreatureExport,
+  provenance: string,
+  config: SkipNullConfig,
+  data: readonly DataRecordInterface[] | undefined,
+  context: {
+    entryDepth: number;
+    runLength: number;
+    samples: readonly Float32Array[];
+    train: boolean;
+  },
+): SkipNullReport {
+  const { entryDepth, runLength, samples, train } = context;
   const arms: SkipArmResult[] = [];
   let matchedCount = config.skips;
   for (const arm of ["skip", "baseline", "random"] as const) {
     const creature = Creature.fromJSON(parent);
     const edges = applyArm(creature, arm, config, matchedCount);
-    if (arm === "skip") matchedCount = edges.length;
+    if (arm === "skip") {
+      // An empty skip arm makes all three arms identical, and three identical
+      // rows reported as a result is exactly the vacuous evidence the guard
+      // above refuses for a missing chain (Issue #3234).
+      if (edges.length === 0) {
+        throw new Error(
+          `${provenance} offers no bypass for its ${runLength}-member run ` +
+            `at skipMinRunLength ${config.minRunLength} — refusing to report ` +
+            "three identical arms as a comparison",
+        );
+      }
+      matchedCount = edges.length;
+    }
 
     const profile = probeGradientDepth(creature, samples);
     const result: SkipArmResult = {
@@ -535,9 +514,13 @@ export function runSkipNullComparison(
       chain: chainZeroGradient(profile),
     };
 
-    if (train) {
+    if (train && data !== undefined) {
       result.birth = summariseMagnitudes(magnitudesOf(creature, edges));
       result.errorBefore = datasetError(creature, data);
+      // Re-seed before training too: `trainDir` draws from the global RNG, so
+      // without this every arm trains from wherever the previous arm left the
+      // stream and the run is not reproducible.
+      setRandomNumberGenerator(createSeededRng(config.seed + 11));
       trainCreature(creature, data, config.iterations);
       result.errorAfter = datasetError(creature, data);
       result.trained = summariseMagnitudes(magnitudesOf(creature, edges));
@@ -550,16 +533,16 @@ export function runSkipNullComparison(
   const order: SkipArm[] = ["baseline", "skip", "random"];
   arms.sort((a, b) => order.indexOf(a.arm) - order.indexOf(b.arm));
 
-  return {
-    config,
-    provenance,
-    entryDepth,
-    runLength: chain.members.length,
-    arms,
-  };
+  return { config, provenance, entryDepth, runLength, arms };
 }
 
-/** Format a number for the report. */
+/**
+ * Format a number for the report.
+ *
+ * Local rather than the sweep harness's `fmt`: the magnitudes measured here are
+ * around `1e-3`, which that formatter renders as `2.04e-3` at four decimals. A
+ * weight table that has to be read against its own birth scale needs the digits.
+ */
 function fmt(value: number | undefined): string {
   if (value === undefined) return "—";
   if (value === 0) return "0";
@@ -567,11 +550,6 @@ function fmt(value: number | undefined): string {
     return value.toExponential(2);
   }
   return value.toFixed(6).replace(/0+$/, "").replace(/\.$/, "");
-}
-
-/** Format a fraction as a percentage. */
-function pct(fraction: number): string {
-  return `${(fraction * 100).toFixed(1)}%`;
 }
 
 /** Render the report as Markdown. */
@@ -588,7 +566,10 @@ export function formatSkipNullMarkdown(report: SkipNullReport): string {
     `- Seed ${report.config.seed}, ${report.config.samples} probe samples, ` +
       `up to ${report.config.skips} synapses per arm (the null arm matched to ` +
       `what the skip arm added), weight scale ${report.config.weightScale}, ` +
-      `observation scale ${report.config.observationScale}`,
+      `observation scale ${report.config.observationScale}, ` +
+      (report.arms.some((arm) => arm.errorAfter !== undefined)
+        ? `${report.config.iterations} training epochs`
+        : "profile only (no training arm)"),
   );
   lines.push("");
   lines.push(
@@ -721,7 +702,9 @@ if (import.meta.main) {
       data = buildTask(config, () => taskRng.random());
 
       // Tune the parent first: an untuned parent makes every structural change
-      // look harmless, and the whole comparison meaningless.
+      // look harmless, and the whole comparison meaningless. Seeded, so the
+      // parent every arm branches from is the same one on every run.
+      setRandomNumberGenerator(createSeededRng(config.seed + 500));
       const tuned = Creature.fromJSON(parent);
       trainCreature(tuned, data, config.iterations);
       parent = tuned.exportJSON();

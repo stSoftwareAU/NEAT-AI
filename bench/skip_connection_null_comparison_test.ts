@@ -18,10 +18,15 @@ import {
   pooledZeroGradient,
   runSkipNullComparison,
   SKIP_NULL_DEFAULTS,
-  summariseMagnitudes,
   withSkipNullDefaults,
 } from "./skip_connection_null_comparison.ts";
-import { createSeededRng } from "@utils/RandomNumberGenerator.ts";
+import { summariseMagnitudes } from "./structural_weight_scale_sweep.ts";
+import {
+  createSeededRng,
+  getRandomNumberGenerator,
+  setRandomNumberGenerator,
+} from "@utils/RandomNumberGenerator.ts";
+import { withRngTestLock } from "../test/_rngTestLock.ts";
 
 /** A small profile of a creature with a single-file tail. */
 function profileTailCreature() {
@@ -130,24 +135,18 @@ Deno.test("chainZeroGradient - mirrors the profile's own chain aggregate", () =>
   );
 });
 
-Deno.test("summariseMagnitudes - reports the distribution, and empty as zeroes", () => {
+Deno.test("magnitude summary - the harness reuses #3970's, not a second copy", () => {
+  // The weight columns are summarised by the sweep harness's own
+  // `summariseMagnitudes`; this pins the shape this harness relies on.
   const summary = summariseMagnitudes([0.4, 0.1, 0.3]);
   assertEquals(summary.count, 3);
   assertEquals(summary.min, 0.1);
   assertEquals(summary.median, 0.3);
   assertEquals(summary.max, 0.4);
-  assertEquals(Math.round(summary.mean * 1000) / 1000, 0.267);
 
   const even = summariseMagnitudes([1, 2, 3, 4]);
   assertEquals(even.median, 2.5);
-
-  assertEquals(summariseMagnitudes([]), {
-    count: 0,
-    min: 0,
-    median: 0,
-    mean: 0,
-    max: 0,
-  });
+  assertEquals(summariseMagnitudes([]).count, 0);
 });
 
 Deno.test("buildTask - produces records of the configured shape", () => {
@@ -159,45 +158,101 @@ Deno.test("buildTask - produces records of the configured shape", () => {
   assertEquals(data[0].output.length, 1);
 });
 
-Deno.test("runSkipNullComparison - measures three arms with a matched null", () => {
+Deno.test("runSkipNullComparison - measures three arms with a matched null", async () => {
+  await withRngTestLock(() => {
+    const config = withSkipNullDefaults({
+      runLength: 8,
+      width: 3,
+      inputCount: 2,
+      samples: 4,
+      skips: 3,
+      profileOnly: true,
+    });
+    const rng = createSeededRng(3973);
+    const parent = buildTailParent(config, () => rng.random());
+
+    const report = runSkipNullComparison(parent, "unit-test parent", config);
+    assertEquals(report.arms.map((a) => a.arm), ["baseline", "skip", "random"]);
+
+    const skip = report.arms.find((a) => a.arm === "skip")!;
+    const random = report.arms.find((a) => a.arm === "random")!;
+    const baseline = report.arms.find((a) => a.arm === "baseline")!;
+
+    assertEquals(baseline.added, 0, "the baseline arm adds nothing");
+    assert(skip.added > 0, "the skip arm should find its bypass");
+    assertEquals(
+      random.added,
+      skip.added,
+      "the null arm is matched to what the skip arm actually added",
+    );
+    // The bypass starts at the run's entry neuron — the same neuron
+    // `longestSerialChain` names, not an arbitrary source.
+    const chain = longestSerialChain(Creature.fromJSON(parent));
+    assert(chain !== undefined);
+    assertEquals(skip.edges[0].split("->")[0], String(chain.members[0].index));
+    assertEquals(report.entryDepth, chain.members[0].depth);
+    assert(
+      report.runLength >= config.minRunLength,
+      "the run it aimed at is worth bypassing",
+    );
+    // Not trained: no error or magnitude readings are invented.
+    assertEquals(skip.errorBefore, undefined);
+    assertEquals(skip.trained, undefined);
+  });
+});
+
+Deno.test("runSkipNullComparison - leaves the caller's RNG in place", async () => {
+  await withRngTestLock(() => {
+    const config = withSkipNullDefaults({
+      runLength: 8,
+      width: 3,
+      inputCount: 2,
+      samples: 4,
+      profileOnly: true,
+    });
+    const previous = getRandomNumberGenerator();
+    try {
+      // Seed a distinctive stream, note where it is, and confirm the harness
+      // hands it back rather than leaving its own seeded RNG installed.
+      setRandomNumberGenerator(createSeededRng(11));
+      const rng = getRandomNumberGenerator();
+      const expected = rng.random();
+
+      setRandomNumberGenerator(createSeededRng(11));
+      const parentRng = createSeededRng(3973);
+      const parent = buildTailParent(config, () => parentRng.random());
+      runSkipNullComparison(parent, "unit-test parent", config);
+
+      assertEquals(
+        getRandomNumberGenerator().random(),
+        expected,
+        "the harness must not leave its own seeded RNG installed",
+      );
+    } finally {
+      setRandomNumberGenerator(previous);
+    }
+  });
+});
+
+Deno.test("runSkipNullComparison - refuses a run it cannot bypass", () => {
+  // A chain shorter than `minRunLength` yields no bypass, which would make all
+  // three arms identical — that is reported loudly, not as a clean result.
   const config = withSkipNullDefaults({
-    runLength: 8,
+    runLength: 4,
     width: 3,
     inputCount: 2,
-    samples: 4,
-    skips: 3,
+    samples: 2,
+    minRunLength: 12,
     profileOnly: true,
   });
   const rng = createSeededRng(3973);
   const parent = buildTailParent(config, () => rng.random());
 
-  const report = runSkipNullComparison(parent, "unit-test parent", config);
-  assertEquals(report.arms.map((a) => a.arm), ["baseline", "skip", "random"]);
-
-  const skip = report.arms.find((a) => a.arm === "skip")!;
-  const random = report.arms.find((a) => a.arm === "random")!;
-  const baseline = report.arms.find((a) => a.arm === "baseline")!;
-
-  assertEquals(baseline.added, 0, "the baseline arm adds nothing");
-  assert(skip.added > 0, "the skip arm should find its bypass");
-  assertEquals(
-    random.added,
-    skip.added,
-    "the null arm is matched to what the skip arm actually added",
+  assertThrows(
+    () => runSkipNullComparison(parent, "short-run parent", config),
+    Error,
+    "offers no bypass",
   );
-  // The bypass starts at the run's entry neuron — the same neuron
-  // `longestSerialChain` names, not an arbitrary source.
-  const chain = longestSerialChain(Creature.fromJSON(parent));
-  assert(chain !== undefined);
-  assertEquals(skip.edges[0].split("->")[0], String(chain.members[0].index));
-  assertEquals(report.entryDepth, chain.members[0].depth);
-  assert(
-    report.runLength >= config.minRunLength,
-    "the run it aimed at is worth bypassing",
-  );
-  // Not trained: no error or magnitude readings are invented.
-  assertEquals(skip.errorBefore, undefined);
-  assertEquals(skip.trained, undefined);
 });
 
 Deno.test("runSkipNullComparison - refuses a creature with no serial run", () => {
@@ -232,23 +287,64 @@ Deno.test("runSkipNullComparison - refuses a creature with no serial run", () =>
   );
 });
 
-Deno.test("formatSkipNullMarkdown - renders every arm and the edges it added", () => {
-  const config = withSkipNullDefaults({
-    runLength: 8,
-    width: 3,
-    inputCount: 2,
-    samples: 4,
-    profileOnly: true,
-  });
-  const rng = createSeededRng(3973);
-  const parent = buildTailParent(config, () => rng.random());
-  const markdown = formatSkipNullMarkdown(
-    runSkipNullComparison(parent, "unit-test parent", config),
-  );
+Deno.test("formatSkipNullMarkdown - renders every arm and the edges it added", async () => {
+  await withRngTestLock(() => {
+    const config = withSkipNullDefaults({
+      runLength: 8,
+      width: 3,
+      inputCount: 2,
+      samples: 4,
+      profileOnly: true,
+    });
+    const rng = createSeededRng(3973);
+    const parent = buildTailParent(config, () => rng.random());
+    const markdown = formatSkipNullMarkdown(
+      runSkipNullComparison(parent, "unit-test parent", config),
+    );
 
-  assert(markdown.includes("| baseline |"));
-  assert(markdown.includes("| skip |"));
-  assert(markdown.includes("| random |"));
-  assert(markdown.includes("Entry zero-gradient"));
-  assert(markdown.includes("**skip** added:"));
+    assert(markdown.includes("| baseline |"));
+    assert(markdown.includes("| skip |"));
+    assert(markdown.includes("| random |"));
+    assert(markdown.includes("Entry zero-gradient"));
+    assert(markdown.includes("**skip** added:"));
+    assert(
+      markdown.includes("profile only (no training arm)"),
+      "an untrained report must say so rather than quote an epoch count",
+    );
+  });
+});
+
+Deno.test("formatSkipNullMarkdown - a trained report names its epoch count", () => {
+  // The trained columns cannot be reproduced without the epoch count, so the
+  // provenance line has to carry it. Rendered from a synthesised report rather
+  // than a real training run, which is a benchmark's job, not a unit test's.
+  const config = withSkipNullDefaults({ iterations: 250 });
+  const markdown = formatSkipNullMarkdown({
+    config,
+    provenance: "unit-test report",
+    entryDepth: 2,
+    runLength: 6,
+    arms: [{
+      arm: "skip",
+      added: 1,
+      edges: ["2->8"],
+      upstream: { observations: 4, zeroObservations: 1, zeroFraction: 0.25 },
+      entry: { observations: 2, zeroObservations: 0, zeroFraction: 0 },
+      errorBefore: 0.5,
+      errorAfter: 0.25,
+      birth: { count: 1, min: 0.1, median: 0.1, max: 0.1, geometricMean: 0.1 },
+      trained: {
+        count: 1,
+        min: 0.4,
+        median: 0.4,
+        max: 0.4,
+        geometricMean: 0.4,
+      },
+    }],
+  });
+
+  assert(
+    markdown.includes("250 training epochs"),
+    `the header must name the epoch count, got:\n${markdown}`,
+  );
 });

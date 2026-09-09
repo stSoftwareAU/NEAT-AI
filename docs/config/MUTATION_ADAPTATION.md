@@ -311,7 +311,11 @@ operator — a randomly placed skip is just `AddConnection`:
 1. Serial runs come from `findSerialChains` (#3972): maximal runs of consecutive
    depth levels holding exactly one neuron each, connected end to end. That is
    the structure with no depth-parallel route around it, so one zero derivative
-   anywhere along it zeroes the gradient for every member upstream.
+   anywhere along it zeroes the gradient for every member upstream. Note this is
+   **depth occupancy, not fan-out**: #3972 owns that definition and documents
+   why (a member may short-circuit elsewhere and still be the only neuron at its
+   depth, which is what removes the parallel alternative). Reusing it keeps one
+   owner for "what a serial run is".
 2. Runs shorter than `skipMinRunLength` are ignored.
 3. Longer runs are preferred, ties broken by the deeper run.
 4. The bypass runs from the run's **entry** neuron to a neuron the run
@@ -368,12 +372,14 @@ one seed: **baseline**, **skip** (`AddSkipConnection`), and **random**
 skip arm actually added). Reproduce with:
 
 ```bash
-# #3972's own creature, profile only.
+# #3972's own creature, profile only. Produces docs/evidence/skip-connection-null-grq.md.
 deno task bench:skip-null --creature test/data/grq-23-forests-constants.json \
   --profile-only true --samples 64 --skips 4
 
-# Synthetic tuned parent with a 12-neuron single-file tail, trained.
-deno task bench:skip-null --skips 3 --seed 3973 --iterations 300 --obs-scale 3
+# Synthetic tuned parent with a 12-neuron single-file tail, trained. Produces
+# docs/evidence/skip-connection-null-synthetic-seed{3973,17}.md.
+deno task bench:skip-null --skips 3 --seed 3973 --iterations 300 --obs-scale 3 --samples 64
+deno task bench:skip-null --skips 3 --seed 17 --iterations 300 --obs-scale 3 --samples 64
 ```
 
 On the GRQ creature, 64 seeded samples, one bypass (`4395 -> 5048`):
@@ -390,21 +396,42 @@ bypass the gradient reaches it on 59.4% of them. A uniformly drawn connection at
 the same weight scale changes nothing — the targeting, not the synapse, is what
 moved the number.
 
-**Two honest limits.** The pooled figure over depths 1–34 does not move at all:
-those depths hold thousands of neurons that already have many parallel routes,
-so a 28-neuron tail is lost in the average. And the chain aggregate improves
-only 2.2 points, because the bypass restores the route _into_ the chain rather
-than repairing the zero derivatives inside it — Issue #3974's `ModSquash` work
-is what targets those.
+**Three honest limits.**
 
-On the synthetic trained parent the skip synapse **grows during training** on
-both seeds — median `|w|` 0.0020 → 0.0151 (seed 3973) and 0.0036 → 0.0593 (seed
-17), 7× and 17× its birth scale — while the random arm's synapse stays at or
-below its own (0.0045 → 0.0038 and 0.0010 → 0.0032). So the bypass is not the
-"accepted but useless" structure #3970 warned about: backprop finds a job for
-it. Dataset error after training is mixed across seeds (skip better on seed 17,
-baseline better on seed 3973), which is why the operator ships **off by
+1. The pooled figure over depths 1–34 does not move at all: those depths hold
+   thousands of neurons that already have many parallel routes, so a 28-neuron
+   tail is lost in the average. The entry-neuron column is the sharp reading,
+   and it was added because the pooled one cannot resolve an effect this size.
+2. The chain aggregate improves only 2.2 points, because the bypass restores the
+   route _into_ the chain rather than repairing the zero derivatives inside it —
+   Issue #3974's `ModSquash` work is what targets those.
+3. Nothing here is a **score** claim. The GRQ arm is profile-only: that creature
+   is not trained by this harness, so there is no post-training weight or error
+   for it.
+
+On the synthetic trained parent, one bypass per arm, both seeds:
+
+| Seed | Skip \|w\| birth → trained | Random \|w\| birth → trained | Error after: baseline / skip / random |
+| ---- | -------------------------- | ---------------------------- | ------------------------------------- |
+| 3973 | 0.002037 → 0.007213 (3.5×) | 0.004465 → 0.004147 (0.9×)   | 0.004741 / **0.003478** / 0.004780    |
+| 17   | 0.003564 → 0.020314 (5.7×) | 0.001024 → 0.004858 (4.7×)   | 0.021469 / 0.019734 / **0.018296**    |
+
+The skip synapse **grows during training on both seeds** — 3.5× and 5.7× its
+birth scale — so the bypass is not the "accepted but useless" structure #3970
+warned about: backprop finds a job for it. But read the rest honestly: the null
+arm's synapse also grows on seed 17 (4.7×), so growth alone does not separate
+the two arms, and the error ordering **flips between seeds** — the skip arm wins
+on 3973, the null arm wins on 17. That is why the operator ships **off by
 default**: switch it on alongside a measurement on your own workload.
+
+> [!NOTE]
+> `skipConnectionRate` is not damped for large creatures. `selectMutationMethod`
+> applies the rate before the `adaptiveMutationThresholds` weight/bias
+> preference and before the `large` creature topology-expansion suppression, and
+> `isTopologyMutation` reports `ADD_SKIP_CONN` as structural, so MCMC accepts it
+> unconditionally like every other topology mutation. A rate of `0.1` on a
+> 2,500-neuron creature is therefore 10% unconditional structural growth — watch
+> #3971's `ADD_SKIP_CONN` proposed/applied counters when you enable it.
 
 ## 👀 See also
 

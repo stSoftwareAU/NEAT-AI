@@ -16,6 +16,7 @@
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import {
   DEFAULT_STRUCTURAL_MUTATION_OPTIONS,
+  resolveStructuralMutationOptions,
   type StructuralMutationOptions,
 } from "@mutate/StructuralMutationOptions.ts";
 
@@ -66,14 +67,11 @@ export function resolveSkipConnectionOptions(
 ): ResolvedSkipConnectionOptions {
   if (!options) return DEFAULT_SKIP_CONNECTION_OPTIONS;
 
-  const scale = options.structuralWeightScale ??
-    DEFAULT_SKIP_CONNECTION_OPTIONS.structuralWeightScale;
-  if (!Number.isFinite(scale) || scale <= 0) {
-    throw new ConfigurationError(
-      `structuralWeightScale must be a finite number greater than zero, was ${scale}`,
-      "OUT_OF_RANGE",
-    );
-  }
+  // #3970 owns `structuralWeightScale`, including its range check and the
+  // wording of the error — delegate rather than keep a second copy in step.
+  const { structuralWeightScale } = resolveStructuralMutationOptions({
+    structuralWeightScale: options.structuralWeightScale,
+  });
 
   const minRunLength = options.skipMinRunLength ??
     DEFAULT_SKIP_CONNECTION_OPTIONS.skipMinRunLength;
@@ -90,5 +88,5 @@ export function resolveSkipConnectionOptions(
     );
   }
 
-  return { structuralWeightScale: scale, skipMinRunLength: minRunLength };
+  return { structuralWeightScale, skipMinRunLength: minRunLength };
 }
