@@ -25,6 +25,17 @@ export function validateNeatConfig(config: NeatArguments): void {
     );
   }
 
+  // Issue #3970: a zero structural weight scale would make
+  // `Synapse.randomWeight()` assert (its plank floor needs a non-zero sign),
+  // so reject it at config time rather than mid-run. `parseNumber` has no
+  // exclusive-minimum constraint, which is why this lives here.
+  if (config.structuralWeightScale <= 0) {
+    throw new ConfigurationError(
+      `structuralWeightScale must be greater than zero, got: ${config.structuralWeightScale}`,
+      "CROSS_FIELD_VALIDATION",
+    );
+  }
+
   // Cross-field validation for memory monitoring config
   if (config.memory.criticalThreshold < config.memory.warningThreshold) {
     throw new ConfigurationError(

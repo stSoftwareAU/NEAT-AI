@@ -78,13 +78,14 @@ export class SubConnection extends AbstractMutationOperator {
     }
 
     const chosen = possible[Math.floor(rng.random() * possible.length)];
+    const toUUID = endpointUuid(creature, chosen.to);
 
     // Issue #3873: the identity of a synapse is the `(from, to, type)` triple,
     // not the ordered pair — an `IF` target may be fed once per branch by one
     // source, so naming the pair alone would remove a branch nobody chose.
     const outcome = corePruneSynapse(creature.exportJSON(), {
       fromUUID: endpointUuid(creature, chosen.from),
-      toUUID: endpointUuid(creature, chosen.to),
+      toUUID,
       type: chosen.type,
     });
 
@@ -105,6 +106,14 @@ export class SubConnection extends AbstractMutationOperator {
     // the whole record away.
     creature.loadFrom(outcome.creature, false, "SubConnection");
 
+    // Issue #3971: the target of the removed synapse is the mutation site.
+    // Resolve by wire UUID after loadFrom — prune can cascade-remove neurons
+    // and reindex the array. A vanished target reports as unknown (-1).
+    this.noteMutationSite(
+      creature.neurons.findIndex((_, i) =>
+        endpointUuid(creature, i) === toUUID
+      ),
+    );
     return true;
   }
 }

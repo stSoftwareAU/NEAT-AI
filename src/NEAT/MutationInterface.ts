@@ -20,6 +20,7 @@ export interface MutationType {
   ADD_SELF_CONN: MutationInterface;
   SUB_SELF_CONN: MutationInterface;
   ADD_BACK_CONN: MutationInterface;
+  ADD_SKIP_CONN: MutationInterface;
   SUB_BACK_CONN: MutationInterface;
   SWAP_NODES: MutationInterface;
   FFW: readonly MutationInterface[];

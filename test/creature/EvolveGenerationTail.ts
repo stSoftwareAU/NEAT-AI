@@ -26,6 +26,8 @@ import type {
 } from "@config/TrainingEvent.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import type { EvolveResult } from "@neat/NeatEvolution.ts";
+import type { MutationOperatorReport } from "@neat/MutationOperatorReport.ts";
+import { MULTI_OPERATOR_ATTRIBUTION_NOTE } from "@neat/MutationOperatorReport.ts";
 import {
   finishGeneration,
   type GenerationTailContext,
@@ -65,6 +67,19 @@ const THROUGHPUT: GenerationThroughputMetrics = {
   corruptParentSkips: 0,
 };
 
+/** An empty per-operator mutation report (Issue #3971). */
+const MUTATION_OPERATORS: MutationOperatorReport = {
+  operators: {},
+  mcmc: { proposed: 0, accepted: 0, rejected: 0 },
+  attribution: {
+    resolvedOffspring: 0,
+    multiOperatorOffspring: 0,
+    discardedOffspring: 0,
+    evaluationMs: 0,
+    note: MULTI_OPERATOR_ATTRIBUTION_NOTE,
+  },
+};
+
 /** A creature tagged as `evolve()` leaves its fittest. */
 function makeFittest(score: number, errorTag: string): Creature {
   const creature = new Creature(2, 1);
@@ -90,6 +105,8 @@ function makeResult(
     throughput: THROUGHPUT,
     squashHistogram: { LOGISTIC: 3 },
     topologyAverages: { averageNeurons: 4, averageSynapses: 6 },
+    // Issue #3971: per-operator mutation telemetry rides the same result.
+    mutationOperators: MUTATION_OPERATORS,
     ...overrides,
   };
 }

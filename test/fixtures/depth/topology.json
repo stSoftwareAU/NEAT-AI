@@ -1,0 +1,355 @@
+{
+  "group": "topology",
+  "cases": [
+    {
+      "name": "linear-chain",
+      "notes": "input-0 -> h1 -> h2 -> output-0; depth is the longest path from any input.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          {
+            "type": "hidden",
+            "uuid": "h1",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "hidden",
+            "uuid": "h2",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "output",
+            "uuid": "output-0",
+            "squash": "IDENTITY",
+            "bias": 0
+          }
+        ],
+        "synapses": [
+          {
+            "fromUUID": "input-0",
+            "toUUID": "h1",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h1",
+            "toUUID": "h2",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h2",
+            "toUUID": "output-0",
+            "weight": 1
+          }
+        ]
+      },
+      "expect": {
+        "depth": {
+          "input-0": 0,
+          "h1": 1,
+          "h2": 2,
+          "output-0": 3
+        },
+        "maxDepth": 3
+      }
+    },
+    {
+      "name": "longest-path-wins",
+      "notes": "h2 is reachable in one hop and in two; the longer path decides its depth.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          {
+            "type": "hidden",
+            "uuid": "h1",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "hidden",
+            "uuid": "h2",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "output",
+            "uuid": "output-0",
+            "squash": "IDENTITY",
+            "bias": 0
+          }
+        ],
+        "synapses": [
+          {
+            "fromUUID": "input-0",
+            "toUUID": "h1",
+            "weight": 1
+          },
+          {
+            "fromUUID": "input-0",
+            "toUUID": "h2",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h1",
+            "toUUID": "h2",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h2",
+            "toUUID": "output-0",
+            "weight": 1
+          }
+        ]
+      },
+      "expect": {
+        "depth": {
+          "input-0": 0,
+          "h1": 1,
+          "h2": 2,
+          "output-0": 3
+        },
+        "maxDepth": 3
+      }
+    },
+    {
+      "name": "outputs-share-the-final-layer",
+      "notes": "Output neurons are forced one layer beyond the deepest hidden neuron, however shallow their own path is.",
+      "creature": {
+        "input": 1,
+        "output": 2,
+        "neurons": [
+          {
+            "type": "hidden",
+            "uuid": "h1",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "hidden",
+            "uuid": "h2",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "hidden",
+            "uuid": "h3",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "output",
+            "uuid": "output-0",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "output",
+            "uuid": "output-1",
+            "squash": "IDENTITY",
+            "bias": 0
+          }
+        ],
+        "synapses": [
+          {
+            "fromUUID": "input-0",
+            "toUUID": "h1",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h1",
+            "toUUID": "h2",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h2",
+            "toUUID": "h3",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h3",
+            "toUUID": "output-0",
+            "weight": 1
+          },
+          {
+            "fromUUID": "input-0",
+            "toUUID": "output-1",
+            "weight": 1
+          }
+        ]
+      },
+      "expect": {
+        "depth": {
+          "input-0": 0,
+          "h1": 1,
+          "h2": 2,
+          "h3": 3,
+          "output-0": 4,
+          "output-1": 4
+        },
+        "maxDepth": 4
+      }
+    },
+    {
+      "name": "constant-neurons-are-depth-zero",
+      "notes": "A constant neuron seeds depth 0 exactly like an input.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          {
+            "type": "constant",
+            "uuid": "k1",
+            "bias": 0.5
+          },
+          {
+            "type": "hidden",
+            "uuid": "h1",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "output",
+            "uuid": "output-0",
+            "squash": "IDENTITY",
+            "bias": 0
+          }
+        ],
+        "synapses": [
+          {
+            "fromUUID": "input-0",
+            "toUUID": "h1",
+            "weight": 1
+          },
+          {
+            "fromUUID": "k1",
+            "toUUID": "h1",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h1",
+            "toUUID": "output-0",
+            "weight": 1
+          }
+        ]
+      },
+      "expect": {
+        "depth": {
+          "input-0": 0,
+          "k1": 0,
+          "h1": 1,
+          "output-0": 2
+        },
+        "maxDepth": 2
+      }
+    },
+    {
+      "name": "self-loop-is-ignored",
+      "notes": "A self-connection is not a forward edge and does not raise the neuron's depth.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          {
+            "type": "hidden",
+            "uuid": "h1",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "output",
+            "uuid": "output-0",
+            "squash": "IDENTITY",
+            "bias": 0
+          }
+        ],
+        "synapses": [
+          {
+            "fromUUID": "input-0",
+            "toUUID": "h1",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h1",
+            "toUUID": "h1",
+            "weight": 0.5
+          },
+          {
+            "fromUUID": "h1",
+            "toUUID": "output-0",
+            "weight": 1
+          }
+        ]
+      },
+      "expect": {
+        "depth": {
+          "input-0": 0,
+          "h1": 1,
+          "output-0": 2
+        },
+        "maxDepth": 2
+      }
+    },
+    {
+      "name": "back-edge-is-ignored",
+      "notes": "h2 feeds back into h1; the cycle is broken by taking the deepest already-resolved parent.",
+      "creature": {
+        "input": 1,
+        "output": 1,
+        "neurons": [
+          {
+            "type": "hidden",
+            "uuid": "h1",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "hidden",
+            "uuid": "h2",
+            "squash": "IDENTITY",
+            "bias": 0
+          },
+          {
+            "type": "output",
+            "uuid": "output-0",
+            "squash": "IDENTITY",
+            "bias": 0
+          }
+        ],
+        "synapses": [
+          {
+            "fromUUID": "input-0",
+            "toUUID": "h1",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h1",
+            "toUUID": "h2",
+            "weight": 1
+          },
+          {
+            "fromUUID": "h2",
+            "toUUID": "h1",
+            "weight": 0.5
+          },
+          {
+            "fromUUID": "h2",
+            "toUUID": "output-0",
+            "weight": 1
+          }
+        ]
+      },
+      "expect": {
+        "depth": {
+          "input-0": 0,
+          "h1": 1,
+          "h2": 2,
+          "output-0": 3
+        },
+        "maxDepth": 3
+      }
+    }
+  ]
+}

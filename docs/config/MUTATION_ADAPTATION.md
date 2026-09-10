@@ -186,6 +186,392 @@ The `"absolute"` row moves when the objective is rescaled — its acceptance rat
 falls from 83% to 41% for the same schedule — which is exactly the coupling rank
 shaping removes.
 
+## 🧬 Identity-initialised structural mutation
+
+`AddNeuron` and `AddConnection` wire new structure with a random weight drawn
+uniformly from `[-0.5, +0.5]`. On a creature whose behaviour is already tuned to
+fifth-decimal margins, injecting that into a live neuron's summed input is a
+large perturbation, so the offspring is overwhelmingly likely to score below its
+parent — and a mutation that drops the score is never picked for a gradient
+step, so the structure it proposed is discarded in the generation that made it.
+
+Scaling the **outward** synapse down approaches the residual construction
+`x + εF(x)` of
+[He et al. (2016), _Deep Residual Learning for Image Recognition_](https://arxiv.org/abs/1512.03385):
+the new structure is nearly a no-op at birth, scores level with its parent, and
+therefore survives long enough for backprop to learn a job for it. The inward
+synapse keeps its full-scale draw — it only determines what the new neuron
+_sees_, and shrinking it would flatten the gradient the new structure needs.
+
+| Option                         | Type      | Default | Description                                                                                                                                                    |
+| ------------------------------ | --------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `structuralWeightScale`        | `number`  | `1`     | Scale passed to `Synapse.randomWeight()` for the outward synapse of `AddNeuron`, and for `AddConnection` on the main mutation path. Must be greater than zero. |
+| `structuralNewbornGraceRounds` | `integer` | `0`     | Compaction passes a newly inserted neuron is exempt from `compactUnused` removal (min: 0).                                                                     |
+
+Both defaults reproduce the historical behaviour exactly, bit-for-bit on a fixed
+seed.
+
+```ts
+const config = createNeatConfig({
+  // Near-identity initialisation, matching the creative-thinking path's
+  // 1 / synapseCount scale, with one compaction pass of newborn protection.
+  structuralWeightScale: 0.0001,
+  structuralNewbornGraceRounds: 1,
+});
+```
+
+**Why the grace period is needed.** `compactUnused` ranks hidden neurons by
+`|activation range| × min(maxOutgoingWeight, 1) − plankConstant × fanIn` and
+removes the smallest. A neuron with a near-zero outward weight scores ~0, so it
+is the _first_ candidate — it would be compacted away before the gradient step
+that was meant to give it a job. `structuralNewbornGraceRounds` tags the newborn
+so compaction skips it. The budget is spent one round at a time, on every
+lineage that leaves a training round: `compactUnused` spends a round on the
+compacted copy it returns, the training teardown spends a round on the trained
+(uncompacted) creature, and — when `compactUnused` found nothing to remove and
+the teardown fell back to `compactVariants` — the teardown spends a round on
+that fallback creature too. No lineage can end up exempt from compaction for the
+rest of the run.
+
+> [!NOTE]
+> The grace is honoured by `compactUnused` only. When `compactUnused` finds no
+> removal candidate at all, both training paths fall back to `compactVariants`,
+> which prunes structurally rather than by activation trace and has no newborn
+> awareness.
+
+```mermaid
+flowchart LR
+    A[AddNeuron] -->|outward weight × scale| B[Near-identity offspring]
+    A -->|newborn-grace tag| B
+    B --> C[Scores level with parent]
+    C --> D[Selected for training]
+    D --> E[Backprop learns the residual F]
+    B -.->|grace skips it| F[compactUnused]
+    F -.->|grace spent| G[Ordinary removal candidate]
+```
+
+> [!NOTE]
+> A near-identity neuron is easy to accept and may still contribute nothing.
+> Watch the outward weight magnitude of newly added neurons _after_ training: if
+> it stays at its initial scale, the operator is inflating the creature with
+> dead structure that still costs growth cost and evaluation time.
+
+### 📊 What the sweep measured
+
+`bench/structural_weight_scale_sweep.ts` compares scales on one seed, with the
+mutation sites held identical across rows, and reports all four numbers Issue
+#3970 asked for. Reproduce it with:
+
+```bash
+deno task bench:structural-scale -- \
+  --scales=1,0.1,0.01,0.001 --trials=40 --generations=100 --population=20
+```
+
+Replicated across two seeds (3970 and 17), on a tuned 24-hidden-neuron parent:
+
+| Observation                                                                           | Holds?                                   |
+| ------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Median relative error delta falls from ~2e-4 at scale `1` to ~1e-8 or below           | ✅ yes                                   |
+| Behaviour-neutral births rise monotonically, 42.5% → 67.5–75%                         | ✅ yes                                   |
+| Acceptance _at birth_ **falls** at the smallest scale, 32.5% → 22.5–25%               | ✅ yes                                   |
+| Hidden-neuron count stays flat — no runaway growth at any scale                       | ✅ yes                                   |
+| Post-training outward weights **stay at their birth scale** (~1.5×, ≤5% grow tenfold) | ✅ yes                                   |
+| Score-per-wall-clock-hour improves                                                    | ❌ no — the ordering flips between seeds |
+
+The first two confirm the mechanism does exactly what the residual construction
+claims. The third is the growth cost working as designed, not a bug: a
+behaviour-neutral newborn still pays `~1.2 × growthCost`, so it lands near-tied
+rather than ahead.
+
+The last two are why **both knobs ship defaulted off**. On this benchmark the
+newborn's outward weight does not grow during training, which is the "accepted
+but useless" failure mode — near-identity structure that is easy to accept and
+contributes nothing — and no score-per-hour advantage survives a change of seed.
+Enable a reduced scale only alongside a measurement that shows the outward
+weights actually growing on _your_ workload.
+
+## 🌉 Targeted skip connections
+
+Any forward synapse from a low-index neuron to a high-index one **is** a skip
+connection, so the topology has always permitted the residual construction
+`x + F(x)`. What was missing is an operator that proposes one _deliberately_.
+
+`AddConnection` draws its endpoints uniformly. On a creature with thousands of
+neurons the chance that a single draw straddles one specific deep chain is
+negligible, while the output neuron is a target many draws hit — so evolution
+finds short-circuits **to the output** and none around a deep interior run.
+Issue #3972 measured exactly that asymmetry on
+`test/data/grq-23-forests-constants.json`: the output neuron has fan-in 325 and
+a one-hop path from the inputs, while the 28-neuron single-file tail from depth
+34 to 61 carries no bypass anywhere along it.
+
+`AddSkipConnection` (`ADD_SKIP_CONN`) closes that gap. Selection is the whole
+operator — a randomly placed skip is just `AddConnection`:
+
+1. Serial runs come from `findSerialChains` (#3972): maximal runs of consecutive
+   depth levels holding exactly one neuron each, connected end to end. That is
+   the structure with no depth-parallel route around it, so one zero derivative
+   anywhere along it zeroes the gradient for every member upstream. Note this is
+   **depth occupancy, not fan-out**: #3972 owns that definition and documents
+   why (a member may short-circuit elsewhere and still be the only neuron at its
+   depth, which is what removes the parallel alternative). Reusing it keeps one
+   owner for "what a serial run is".
+2. Runs shorter than `skipMinRunLength` are ignored.
+3. Longer runs are preferred, ties broken by the deeper run.
+4. The bypass runs from the run's **entry** neuron to a neuron the run
+   **feeds**, so that consumer sees both the processed signal and a short-path
+   copy of the entry activation.
+5. The new synapse is initialised at `structuralWeightScale` (#3970), not at a
+   full `[-0.5, +0.5]` draw — a ±0.5 bypass around a tuned run is the same
+   mistake that issue describes.
+
+Exactly one bypass is added per mutation, so #3971's per-operator telemetry can
+still attribute the result.
+
+| Option               | Type      | Default | Description                                                                                     |
+| -------------------- | --------- | ------- | ----------------------------------------------------------------------------------------------- |
+| `skipConnectionRate` | `number`  | `0`     | Probability that a mutation draw proposes a bypass instead of drawing from `mutation`. `0` off. |
+| `skipMinRunLength`   | `integer` | `4`     | Shortest serial run worth bypassing, counted in hidden neurons (min: 2).                        |
+
+`skipConnectionRate: 0` consumes no randomness of its own and is bit-identical
+to a build without the operator — pinned by `test/NEAT/SkipConnectionRate.ts`
+against a golden captured from commit `e02d33af`. `ADD_SKIP_CONN` is
+deliberately absent from `Mutation.ALL` and `Mutation.FFW`, so an existing
+`mutation` list never picks it up.
+
+```ts
+const config = createNeatConfig({
+  // Propose a targeted bypass on 5% of mutation draws, around any single-file
+  // run of six or more hidden neurons, at a near-identity weight.
+  skipConnectionRate: 0.05,
+  skipMinRunLength: 6,
+  structuralWeightScale: 0.01,
+});
+```
+
+```mermaid
+flowchart LR
+    I[Inputs] --> E[Run entry, depth 34]
+    E --> M1[Run member] --> M2[Run member] --> M3[... 28 in single file]
+    M3 --> C[Consumer the run feeds]
+    E -.->|bypass at structuralWeightScale| C
+```
+
+> [!NOTE]
+> The operator does **not** consult #3972's zero-gradient fraction when ranking
+> runs, even though that measurement now exists. Reading it needs input samples
+> a mutation operator is never given, and costs a forward and reverse sweep per
+> sample — it cannot ride on every mutation. Length is the proxy; the harness
+> below measures the gradient directly.
+
+### 📊 What the null comparison measured
+
+`bench/skip_connection_null_comparison.ts` runs three arms on one creature and
+one seed: **baseline**, **skip** (`AddSkipConnection`), and **random**
+(`AddConnection` at the same weight scale, matched to the number of synapses the
+skip arm actually added). Reproduce with:
+
+```bash
+# #3972's own creature, profile only. Produces docs/evidence/skip-connection-null-grq.md.
+deno task bench:skip-null --creature test/data/grq-23-forests-constants.json \
+  --profile-only true --samples 64 --skips 4
+
+# Synthetic tuned parent with a 12-neuron single-file tail, trained. Produces
+# docs/evidence/skip-connection-null-synthetic-seed{3973,17}.md.
+deno task bench:skip-null --skips 3 --seed 3973 --iterations 300 --obs-scale 3 --samples 64
+deno task bench:skip-null --skips 3 --seed 17 --iterations 300 --obs-scale 3 --samples 64
+```
+
+On the GRQ creature, 64 seeded samples, one bypass (`4395 -> 5048`):
+
+| Arm      | Added | Entry neuron zero-gradient | Chain aggregate | Pooled depths 1–34 |
+| -------- | ----: | -------------------------: | --------------: | -----------------: |
+| baseline |     0 |                     100.0% |           85.0% |              89.4% |
+| skip     |     1 |                  **40.6%** |           82.8% |              89.4% |
+| random   |     1 |                     100.0% |           85.0% |              89.4% |
+
+The bypass is doing the ResNet job where it is aimed: the run's entry neuron had
+an **exactly-zero gradient on every one of 64 samples**, and after one targeted
+bypass the gradient reaches it on 59.4% of them. A uniformly drawn connection at
+the same weight scale changes nothing — the targeting, not the synapse, is what
+moved the number.
+
+**Three honest limits.**
+
+1. The pooled figure over depths 1–34 does not move at all: those depths hold
+   thousands of neurons that already have many parallel routes, so a 28-neuron
+   tail is lost in the average. The entry-neuron column is the sharp reading,
+   and it was added because the pooled one cannot resolve an effect this size.
+2. The chain aggregate improves only 2.2 points, because the bypass restores the
+   route _into_ the chain rather than repairing the zero derivatives inside it —
+   Issue #3974's `ModSquash` work is what targets those.
+3. Nothing here is a **score** claim. The GRQ arm is profile-only: that creature
+   is not trained by this harness, so there is no post-training weight or error
+   for it.
+
+On the synthetic trained parent, one bypass per arm, both seeds:
+
+| Seed | Skip \|w\| birth → trained | Random \|w\| birth → trained | Error after: baseline / skip / random |
+| ---- | -------------------------- | ---------------------------- | ------------------------------------- |
+| 3973 | 0.002037 → 0.007213 (3.5×) | 0.004465 → 0.004147 (0.9×)   | 0.004741 / **0.003478** / 0.004780    |
+| 17   | 0.003564 → 0.020314 (5.7×) | 0.001024 → 0.004858 (4.7×)   | 0.021469 / 0.019734 / **0.018296**    |
+
+The skip synapse **grows during training on both seeds** — 3.5× and 5.7× its
+birth scale — so the bypass is not the "accepted but useless" structure #3970
+warned about: backprop finds a job for it. But read the rest honestly: the null
+arm's synapse also grows on seed 17 (4.7×), so growth alone does not separate
+the two arms, and the error ordering **flips between seeds** — the skip arm wins
+on 3973, the null arm wins on 17. That is why the operator ships **off by
+default**: switch it on alongside a measurement on your own workload.
+
+> [!NOTE]
+> `skipConnectionRate` is not damped for large creatures. `selectMutationMethod`
+> applies the rate before the `adaptiveMutationThresholds` weight/bias
+> preference and before the `large` creature topology-expansion suppression, and
+> `isTopologyMutation` reports `ADD_SKIP_CONN` as structural, so MCMC accepts it
+> unconditionally like every other topology mutation. A rate of `0.1` on a
+> 2,500-neuron creature is therefore 10% unconditional structural growth — watch
+> #3971's `ADD_SKIP_CONN` proposed/applied counters when you enable it.
+
+## 🧯 Depth-aware squash bias
+
+**Issue #3974.** `ModSquash` draws a replacement activation from a pool that
+knows nothing about where the neuron sits. Inside a serial run — the structure
+#3972 identified, where a depth level holds exactly one neuron — an activation
+with an exactly-zero derivative region zeroes the gradient for every member
+upstream of it, because there is no depth-parallel route around it.
+
+`deepChainSquashBias` down-weights those proposals for neurons inside a run of
+at least `deepChainMinLength` members. It is deliberately **a bias, not a ban**:
+a blocking proposal is re-drawn once with probability `deepChainSquashBias`, and
+a second blocking proposal stands, so nothing leaves the search space and
+existing neurons are never rewritten.
+
+```mermaid
+flowchart TD
+    D[ModSquash draws a squash] --> B{deepChainSquashBias > 0?}
+    B -- no --> K[keep the draw:<br/>unchanged behaviour]
+    B -- yes --> G{proposal blocks the gradient?}
+    G -- no --> K
+    G -- yes --> C{neuron inside a hidden run of<br/>deepChainMinLength or more?}
+    C -- no --> K
+    C -- yes --> R{rng < bias?}
+    R -- no --> K
+    R -- yes --> S[one re-draw; a second<br/>blocking proposal stands]
+```
+
+| Option                | Type      | Default | Description                                                                                             |
+| --------------------- | --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `deepChainSquashBias` | `number`  | `0`     | Strength of the down-weighting inside a long serial run; `0` disables it, `1` re-draws every one (0..1) |
+| `deepChainMinLength`  | `integer` | `4`     | Run length at which the bias starts applying (min: 2)                                                   |
+
+A run is counted the way #3973 counts it — `hiddenRunMembers` in
+`src/propagate/SerialChains.ts`, the **hidden** members only, because the output
+neuron a run ends at is the neuron the run feeds rather than part of it. Both
+operators call the same helper, so `deepChainMinLength: 4` and
+`skipMinRunLength: 4` mean the same run.
+
+`deepChainSquashBias: 0` draws no randomness of its own and runs no extra
+topology scan, so the operator is bit-identical to the pre-#3974 build on a
+fixed seed — pinned by `test/mutate/DeepChainSquashBias.ts` against a golden
+squash sequence **and** the next RNG value, both captured from the previous
+`ModSquash`.
+
+**What counts as blocking is measured, not listed.**
+`src/methods/activations/GradientBlocking.ts` walks each activation's own
+`derivative()` over a fixed grid spanning `[-8, 8]` and calls it blocking when
+more than half of that grid is exactly zero — `STEP` and `BIPOLAR` (all of it),
+`HARD_TANH` (0.875) and `ReLU6` (0.625) qualify, `ReLU` (exactly half) does not.
+`ReLU6` is not on the issue's list and is down-weighted anyway: the rule follows
+the derivatives rather than a list. `IF`, `MINIMUM` and `MAXIMUM` expose no
+scalar derivative at all and gate the gradient onto one inbound branch, so they
+are blocking by construction; the deprecated aggregates that mix every branch
+are recorded separately, and any other activation without a derivative throws
+rather than being assumed safe.
+
+> [!NOTE]
+> The grid is the ordinary operating range, not the whole real line. A smooth
+> saturating activation also reaches an exactly-zero derivative in float64 when
+> it is driven far enough — `TANH` past |x| ≈ 20, which a fan-in of 1,265
+> reaches easily — and the classifier deliberately does **not** call `TANH`
+> blocking, because at ordinary magnitudes it is not. Squash choice cannot fix
+> saturation driven by fan-in; that is a weight-scale problem, not a pool
+> problem.
+
+```ts
+const config = createNeatConfig({
+  // Re-draw 70% of blocking proposals for neurons inside a run of six or more.
+  deepChainSquashBias: 0.7,
+  deepChainMinLength: 6,
+});
+```
+
+### 📊 What the matched baseline measured
+
+`bench/deep_chain_squash_bias.ts` runs three arms on one creature and one seed —
+**baseline** (`deepChainSquashBias: 0`), **biased**, and **ceiling** (every run
+member set to `IDENTITY`, which bounds what any squash-level intervention could
+achieve). `IDENTITY` and not `TANH`: the ceiling arm must not carry the fault it
+exists to exclude, and `TANH` saturates to an exactly-zero derivative at the
+magnitudes this run reaches. Reproduce with:
+
+```bash
+# Step 1: what the existing SquashEffectivenessTracker roles can see of the run.
+deno task bench:squash-bias --step1 true \
+  --output docs/evidence/deep-chain-squash-bias-3974-step1.md
+
+# Draws aimed at the run — the mechanism.
+deno task bench:squash-bias --focus chain --mutations 100 --population 4 \
+  --samples 16 --output docs/evidence/deep-chain-squash-bias-3974-chain.md
+
+# Uniform draws — production odds, and the diversity cost.
+deno task bench:squash-bias --focus any --mutations 2000 --population 4 \
+  --samples 16 --seed 17 \
+  --output docs/evidence/deep-chain-squash-bias-3974-uniform.md
+```
+
+**Step 1 — the tracker cannot see the run.** #2457's
+`SquashEffectivenessTracker` buckets a neuron by `layer × fan-in` and by nothing
+else, so chain membership is not expressible in a role at all. On the GRQ
+creature 26 of the run's 28 members land in three `mid` roles holding 1,229
+mutable neurons between them, 0.8–3.4% of each. Tuning `minSamples` or
+`boltzmannBeta` cannot recover a distinction the key does not carry, which is
+why Step 2 was built.
+
+**The bias does change what is proposed.** Aimed at the run, blocking proposals
+fall from **5.8% (23 of 400)** to **1.3% (5 of 400)**.
+
+**The mechanism is real — and the bias is too weak to exploit it.** The ceiling
+arm settles the first half: with every run member on `IDENTITY` the run's
+zero-gradient fraction is **0.0%**, against 64.4% for the baseline, and every
+`downstream-zero`, `untaken-if-branch` and `zero-derivative` blame count falls
+to zero. So the run's zeros really do come from the activations inside it,
+exactly as #3972 described.
+
+What the bias does not do is remove them. Baseline 64.4% against biased 66.0%,
+with 2 and 1 surviving blocking members respectively: **one blocking member is
+enough**, because everything upstream of it is zeroed for that sample, so a
+probability shift that leaves one behind buys nothing. That is why the option
+ships disabled: a bias cannot deliver the effect the ceiling shows is available,
+and a score change under it would be coincidence rather than gradient repair.
+
+**The diversity cost is nil, for the same reason the effect is small.** At
+production odds a blocking proposal landing on a run member is ~0.05% of draws:
+over 8,000 uniform squash mutations the bias changed 4 of them, squash-histogram
+entropy moved 4.701 → 4.703 bits, and species diversity was identical at 1.000.
+
+> [!NOTE]
+> Species diversity is a blunt instrument here and is reported for completeness.
+> `computeSpeciesDiversity` is `speciesCount / populationSize` over a population
+> the harness builds by cloning one genome, so it sits at the ceiling (1.000) or
+> the floor and cannot resolve a squash-pool narrowing. The squash histogram and
+> its entropy are the readings that can.
+
+The scan is also not free: when the bias is on, a blocking proposal costs one
+`findSerialChains` pass — the same order as the layer pass #2457's tracker
+already runs per squash mutation — and it is skipped entirely when the bias is
+`0` or the proposal is not blocking.
+
 ## 👀 See also
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — base mutation rates that
@@ -194,6 +580,11 @@ shaping removes.
   range constraints.
 - [Population sizing](./POPULATION.md) — adaptive population sizing pairs
   naturally with plateau detection.
+- [`docs/evidence/skip-connection-null-grq.md`](../evidence/skip-connection-null-grq.md)
+  — the committed output of the null comparison on #3972's creature.
+- [`docs/evidence/deep-chain-squash-bias-3974-chain.md`](../evidence/deep-chain-squash-bias-3974-chain.md)
+  — the committed output of the depth-aware squash bias comparison, with its
+  Step 1 and uniform-draw companions beside it.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — when MCMC and plateau
   detection are worth the per-generation overhead.
 

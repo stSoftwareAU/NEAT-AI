@@ -76,6 +76,8 @@ export class SubSelfCon extends AbstractMutationOperator {
       }
     }
 
+    // Issue #3971: the neuron that lost its self-connection is the site.
+    this.noteMutationSite(indx);
     return true;
   }
 }

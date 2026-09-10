@@ -14,6 +14,10 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/constants.ts";
 import { Selection, type SelectionInterface } from "@methods/Selection.ts";
 import { Mutation } from "@neat/Mutation.ts";
+import {
+  DEFAULT_DEEP_CHAIN_SQUASH_OPTIONS,
+  MINIMUM_DEEP_CHAIN_MIN_LENGTH,
+} from "@mutate/DeepChainSquashOptions.ts";
 import type { DiscoveryMinCandidatesPerCategory } from "@config/DiscoveryMinCandidatesPerCategory.ts";
 import type { NeatArguments } from "@config/NeatArguments.ts";
 import { parseDiscoverySampleRate, parseNumber } from "@config/ParseOptions.ts";
@@ -452,6 +456,49 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       opts.maximumWeightAdjustmentScale,
       1,
       { min: 0 },
+    ),
+    // Issue #3970: identity-initialised structural mutation. The defaults
+    // (scale 1, no grace) reproduce the historical behaviour exactly.
+    structuralWeightScale: parseNumber(
+      "Structural weight scale",
+      opts.structuralWeightScale,
+      1,
+      { min: 0 },
+    ),
+    structuralNewbornGraceRounds: parseNumber(
+      "Structural newborn grace rounds",
+      opts.structuralNewbornGraceRounds,
+      0,
+      { integer: true, min: 0 },
+    ),
+    // Issue #3973: the targeted skip-connection operator. Rate `0` keeps it
+    // out of the operator mix entirely, reproducing the historical behaviour.
+    skipConnectionRate: parseNumber(
+      "Skip connection rate",
+      opts.skipConnectionRate,
+      0,
+      { min: 0, max: 1 },
+    ),
+    skipMinRunLength: parseNumber(
+      "Skip minimum run length",
+      opts.skipMinRunLength,
+      4,
+      { integer: true, min: 2 },
+    ),
+    // Issue #3974: the depth-aware squash bias. Bias `0` draws no extra
+    // randomness and runs no extra topology scan, so the default build is
+    // bit-identical to one without the feature.
+    deepChainSquashBias: parseNumber(
+      "Deep chain squash bias",
+      opts.deepChainSquashBias,
+      DEFAULT_DEEP_CHAIN_SQUASH_OPTIONS.deepChainSquashBias,
+      { min: 0, max: 1 },
+    ),
+    deepChainMinLength: parseNumber(
+      "Deep chain minimum length",
+      opts.deepChainMinLength,
+      DEFAULT_DEEP_CHAIN_SQUASH_OPTIONS.deepChainMinLength,
+      { integer: true, min: MINIMUM_DEEP_CHAIN_MIN_LENGTH },
     ),
     sparseRatio: parseNumber(
       "Sparse Ratio",

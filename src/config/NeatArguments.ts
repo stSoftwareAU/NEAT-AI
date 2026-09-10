@@ -265,6 +265,60 @@ export interface NeatArguments {
    */
   maximumWeightAdjustmentScale: number;
 
+  /**
+   * Scale passed to `Synapse.randomWeight()` for the **outward** synapse of
+   * `AddNeuron` and for `AddConnection` on the main mutation path
+   * (Issue #3970). `1` (the default) draws the historical uniform
+   * `[-0.5, +0.5]` weight; a smaller value approaches the ResNet residual
+   * construction `x + eF(x)`, where the new structure is nearly a no-op at
+   * birth. Never produces an exactly-zero weight — `randomWeight` enforces a
+   * minimum magnitude of one plank.
+   */
+  structuralWeightScale: number;
+
+  /**
+   * Compaction passes a newly inserted neuron is exempt from `compactUnused`
+   * removal (Issue #3970). `0` (the default) reproduces the historical
+   * behaviour. A positive value keeps a near-identity newborn alive long
+   * enough for a gradient step to give its structure a job.
+   */
+  structuralNewbornGraceRounds: number;
+
+  /**
+   * Selection rate for the targeted skip-connection operator
+   * `ADD_SKIP_CONN` in the operator mix (Issue #3973). `0` — the default —
+   * disables it entirely and consumes no randomness, so the operator mix is
+   * bit-identical to a build without the operator. A positive value is the
+   * probability that any one mutation draw proposes a bypass around the
+   * creature's deepest serial run instead of drawing from `mutation`.
+   */
+  skipConnectionRate: number;
+
+  /**
+   * Shortest serial run the skip-connection operator considers worth bypassing,
+   * counted in hidden neurons (Issue #3973). Default `4`; a run of `n` members
+   * puts the bypass around the `n - 1` members downstream of its entry, so `2`
+   * is the smallest meaningful value.
+   */
+  skipMinRunLength: number;
+
+  /**
+   * Strength of the down-weighting `ModSquash` applies to gradient-blocking
+   * activations when the neuron it is re-squashing sits inside a serial run of
+   * at least `deepChainMinLength` members (Issue #3974). `0` — the default —
+   * disables the bias and consumes no randomness, so the squash pool is
+   * bit-identical to a build without it. `1` re-draws every blocking proposal
+   * once. It biases rather than bans: a second blocking proposal stands.
+   */
+  deepChainSquashBias: number;
+
+  /**
+   * Serial-run length, counted in members, at which `deepChainSquashBias`
+   * starts applying (Issue #3974). Default `4`, sharing #3973's
+   * `skipMinRunLength` definition of a run worth acting on.
+   */
+  deepChainMinLength: number;
+
   /** Determine how many neurons to select based on the sparseRatio. */
   sparseRatio: number;
 
