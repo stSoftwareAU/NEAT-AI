@@ -109,6 +109,12 @@ Tuning guides and benchmark research.
   the elite band, `previousFittest` and the export, and the false-optimum
   canary. Off by default (`strategy: "none"`), which is exact evaluation
   everywhere.
+- **[PRE_SELECTION.md](PRE_SELECTION.md)** — offspring pre-selection (Issue
+  #3932): breed a surplus, screen it cheaply, and evaluate only the survivors.
+  The two screens, the uniform survivor draw that keeps the screen from
+  collapsing diversity, and the diagnostics that catch a screen anti-correlated
+  with what matters. Off by default (`ratio: 1`), which breeds exactly the
+  population budget.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —

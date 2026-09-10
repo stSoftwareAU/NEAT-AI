@@ -258,6 +258,14 @@ exact one is a policy across generations, and that lives in
 [`evolutionControl`](../EVOLUTION_CONTROL.md) (Issue #3931). It is off by
 default, and while no sampling rate passes the gate above it should stay off.
 
+Deciding _how many_ creatures are made in the first place is a third decision,
+and it lives in [`preSelection`](../PRE_SELECTION.md) (Issue #3932): breed a
+surplus, screen it cheaply, and spend the true evaluation only on the survivors.
+Also off by default (`ratio: 1`), and the measured result —
+[`docs/evidence/pre-selection-3932.md`](../evidence/pre-selection-3932.md) — is
+why: at equal record budget no arm demonstrated a reliable improvement, and both
+screens roughly halved mean genetic distance.
+
 ## 👀 See also
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — population, mutation, and
@@ -269,6 +277,10 @@ default, and while no sampling rate passes the gate above it should stay off.
 - [EVOLUTION_CONTROL.md](../EVOLUTION_CONTROL.md) — the per-generation policy
   deciding which creatures earn an exact evaluation, and the guards keeping an
   approximate score out of the elite band, `previousFittest` and the export.
+- [PRE_SELECTION.md](../PRE_SELECTION.md) — offspring over-generation and
+  screening: how many candidates a generation considers, and the invariants
+  keeping a screened-out creature out of the archive, species statistics and the
+  export.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — picking batch sizes for
   large datasets and CPU/GPU (Graphics Processing Unit) targets.
 
