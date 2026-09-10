@@ -56,10 +56,9 @@
  */
 
 import type { Creature } from "@creature";
-import {
-  DEFAULT_PRE_SELECTION_CONFIG,
-  type PreSelectionScreenName,
-  type RequiredPreSelectionConfig,
+import type {
+  PreSelectionScreenName,
+  RequiredPreSelectionConfig,
 } from "@config/PreSelectionConfig.ts";
 import type { OffspringScreen } from "@neat/OffspringScreen.ts";
 import { PreSelectionError } from "@errors/PreSelectionError.ts";
@@ -141,12 +140,13 @@ export class PreSelection {
   private readonly eliteRanks: ScreenRank[] = [];
 
   /**
-   * @param config - Fully resolved configuration; the defaults leave the stage
-   *   off.
+   * @param config - Fully resolved configuration; the
+   *   `DEFAULT_PRE_SELECTION_CONFIG` of `PreSelectionConfig.ts` leaves the
+   *   stage off.
    * @param screen - The screen the configuration named, or `undefined`.
    */
   constructor(
-    config: RequiredPreSelectionConfig = DEFAULT_PRE_SELECTION_CONFIG,
+    config: RequiredPreSelectionConfig,
     screen?: OffspringScreen,
   ) {
     this.config = config;

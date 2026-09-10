@@ -148,15 +148,15 @@ Deno.test("pre-selection — the random survivor fraction is not rank-ordered", 
   const bottomHalfSurvivals = new Map<string, number>();
   let anyBelowCut = 0;
   const trials = 40;
-  for (let trial = 0; trial < trials; trial++) {
-    const stage = activeStage({ randomSurvivorFraction: 0.25 });
-    const candidates = buildCandidates(30);
-    const outcome = await stage.select(
-      candidates,
-      10,
-      1,
-      createSeededRng(1000 + trial),
-    );
+  const draws = await Promise.all(
+    Array.from({ length: trials }, (_unused, trial) => {
+      const candidates = buildCandidates(30);
+      return activeStage({ randomSurvivorFraction: 0.25 })
+        .select(candidates, 10, 1, createSeededRng(1000 + trial))
+        .then((outcome) => ({ candidates, outcome }));
+    }),
+  );
+  for (const { candidates, outcome } of draws) {
     assertEquals(outcome.survivors.length, 10);
     assertEquals(outcome.summary.randomSurvivors, 3);
     const cut = candidates.slice(10);
@@ -266,7 +266,7 @@ Deno.test("pre-selection — ranks survive one generation and are then forgotten
   );
 });
 
-Deno.test("pre-selection — observe feeds only finite exact scores to the screen", async () => {
+Deno.test("pre-selection — observe feeds only finite exact scores to the screen", () => {
   const surrogate = new SurrogateScreen(32, 3);
   const stage = new PreSelection(
     resolvePreSelectionConfig({ ratio: 2, screen: "surrogate" }),

@@ -123,6 +123,9 @@ Deno.test("pre-selection wiring — an active stage screens a real generation's 
     let fittest: Creature | undefined;
     let screened = 0;
     for (let generation = 0; generation < 3; generation++) {
+      // Generations are sequential by definition: each one breeds from the
+      // population the one before it produced.
+      // deno-lint-ignore no-await-in-loop
       fittest = (await neat.evolve(fittest)).fittest;
       const summary = neat.preSelection.lastGeneration;
       assert(summary !== undefined, "the stage must report what it did");
