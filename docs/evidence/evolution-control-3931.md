@@ -47,7 +47,7 @@ actually charges for.
 
 ## Result 1 — equal generations: `individual` is a regression
 
-Final exact score of the creature each arm would ship, meaned over the ten
+Final exact score of the creature each arm would ship, averaged over the ten
 seeds. Higher is better.
 
 | Arm          | Mean final exact | vs control |  Better on |

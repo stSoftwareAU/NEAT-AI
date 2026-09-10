@@ -754,6 +754,9 @@
     "spearmans",
     "kendalls",
     "Studyable",
-    "fittable"
+    "fittable",
+    "strided",
+    "Sendhoff",
+    "Olhofer"
   ]
 }
