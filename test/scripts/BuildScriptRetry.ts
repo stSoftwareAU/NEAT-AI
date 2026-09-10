@@ -472,6 +472,50 @@ Deno.test({
 });
 
 Deno.test({
+  name:
+    "build.sh signals an unreachable upstream with exit 3 and the marker (Issue #3990)",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    // The contract bump-deps.sh degrades on: BOTH the status and the marker.
+    // This asserts the producing side against the real build.sh, so the two
+    // scripts cannot drift apart behind green suites.
+    const setup = await setupFakeRepo();
+    try {
+      await Promise.all(["gh", "git", "curl"].map(async (tool) => {
+        const stub = `${setup.fakeBinDir}/${tool}`;
+        await Deno.writeTextFile(
+          stub,
+          `#!/bin/sh
+printf '%s: unreachable\n' "${tool}" >&2
+exit 1
+`,
+        );
+        await Deno.chmod(stub, 0o755);
+      }));
+      // No --rev: build.sh must resolve neatCore.ref, and every strategy fails.
+      const denoJsonBefore = await Deno.readTextFile(`${setup.dir}/deno.json`);
+      const result = await runBuild(setup.dir, [], setup.fakeBinDir, {});
+      assertEquals(
+        result.code,
+        3,
+        `expected the upstream-unresolved code; stderr=${result.stderr}`,
+      );
+      assert(
+        result.stderr.includes("BUILD_STATUS=upstream-unresolved"),
+        `expected the marker on stderr; stderr=${result.stderr}`,
+      );
+      assertEquals(
+        await Deno.readTextFile(`${setup.dir}/deno.json`),
+        denoJsonBefore,
+        "an unresolved lookup must not write anything",
+      );
+    } finally {
+      await setup.cleanup();
+    }
+  },
+});
+
+Deno.test({
   name: "build.sh fails fast on non-404 probe error (auth) without retrying",
   permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {

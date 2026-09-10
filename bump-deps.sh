@@ -115,6 +115,15 @@ Options:
                             does not mutate deno.json.
   --help, -h                Show this help and exit.
 
+Environment:
+  VIBE_BUMP_QUARANTINE_HOURS   External quarantine window (default 24).
+  BUMP_DEPS_SMOKE_TIMEOUT_SECONDS
+                               Cap on the WASM smoke gate (default 120).
+  BUMP_DEPS_DENO_FALLBACKS     Test seam: colon-separated deno locations
+                               probed when deno is not on PATH.
+  BUMP_DEPS_BUILD_CMD          Test seam: the build script to invoke for
+                               the internal bump (default ./build.sh).
+
 Exit codes:
   0   No-op or successful bump; both audit gates are green. Also
       returned when the internal bump was skipped because upstream
@@ -280,7 +289,13 @@ else
   build_log="$(mktemp)"
   build_exit=0
   "$BUILD_CMD" </dev/null >"$build_log" 2>&1 || build_exit=$?
-  cat "$build_log"
+  # Replay on the stream the exit code implies, so a caller that captures only
+  # stderr on failure still sees why the build stopped.
+  if [[ "$build_exit" -eq 0 ]]; then
+    cat "$build_log"
+  else
+    cat "$build_log" >&2
+  fi
   if [[ "$build_exit" -eq "$BUILD_EXIT_UPSTREAM_UNRESOLVED" ]] \
     && grep -q "$BUILD_UPSTREAM_UNRESOLVED_MARKER" "$build_log"; then
     # Upstream is unreachable (offline, rate limited, or no credential) and
@@ -290,7 +305,9 @@ else
     # the summary so a run is never reported as simply "current".
     INTERNAL_SKIP_REASON="upstream revision could not be resolved"
     echo "WARNING: internal bump skipped — ${INTERNAL_SKIP_REASON}." >&2
-    echo "         neatCore.rev stays at ${INTERNAL_BEFORE:0:7}; external bumps continue." >&2
+    before_display="${INTERNAL_BEFORE:0:7}"
+    [[ -n "$before_display" ]] || before_display="(unset)"
+    echo "         neatCore.rev stays at ${before_display}; external bumps continue." >&2
   elif [[ "$build_exit" -ne 0 ]]; then
     echo "ERROR: ${BUILD_CMD} failed (exit ${build_exit}); internal bump aborted." >&2
     rm -f "$build_log"

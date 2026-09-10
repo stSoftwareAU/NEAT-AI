@@ -748,8 +748,9 @@ resolve_upstream_rev() {
   fi
   # Bound every network call so an unattended run cannot hang on a stalled
   # connection. $TIMEOUT_CMD is the repo-wide override; otherwise probe for
-  # coreutils' timeout, named `gtimeout` on macOS. With none of them the
-  # lookups still run, just uncapped.
+  # coreutils' timeout, named `gtimeout` on macOS. Each strategy also carries
+  # its own transport-level cap below, so the bound holds even where no
+  # timeout binary exists.
   local runner=()
   local timeout_bin="${TIMEOUT_CMD:-}"
   if [[ -z "$timeout_bin" ]]; then
@@ -764,9 +765,10 @@ resolve_upstream_rev() {
   fi
   local notes=()
   local sha=""
-  # Set when a strategy reached upstream and was told the ref does not exist.
-  # That is a configuration error, not an outage, so it must not be downgraded
-  # to "nothing to bump".
+  # Set only when git ls-remote reached the remote, was allowed to list it, and
+  # returned no matching ref — the one unambiguous "this ref does not exist"
+  # signal. That is a configuration error, not an outage, so it must not be
+  # downgraded to "nothing to bump".
   local ref_missing=false
   local err_file
   err_file="$(mktemp)"
@@ -781,9 +783,10 @@ resolve_upstream_rev() {
       printf '%s\n' "$sha"
       return 0
     fi
-    if grep -qiE 'HTTP 404|Not Found|No commit found' "$err_file"; then
-      ref_missing=true
-    fi
+    # A 404 here is deliberately NOT read as "the ref is gone": GitHub answers
+    # 404 for a repository the credential cannot see, which is the very fault
+    # this fall-through exists to survive. Only git ls-remote can tell the two
+    # apart, and it does so below.
     notes+=("gh api: $(head -n 1 "$err_file" 2>/dev/null || true)")
   else
     notes+=("gh api: skipped (gh is not on PATH)")
@@ -793,7 +796,11 @@ resolve_upstream_rev() {
   if command -v git >/dev/null 2>&1; then
     local ls_remote_out=""
     local ls_remote_rc=0
-    ls_remote_out="$(GIT_TERMINAL_PROMPT=0 ${runner[@]+"${runner[@]}"} \
+    # GIT_HTTP_LOW_SPEED_* bounds a stalled transfer even where no timeout
+    # binary exists (stock macOS ships neither `timeout` nor `gtimeout`).
+    ls_remote_out="$(GIT_TERMINAL_PROMPT=0 \
+      GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME="$lookup_timeout" \
+      ${runner[@]+"${runner[@]}"} \
       git ls-remote "https://github.com/${repo}.git" \
       "refs/heads/${ref}" "refs/tags/${ref}^{}" "refs/tags/${ref}" \
       2>"$err_file")" || ls_remote_rc=$?
@@ -823,7 +830,8 @@ resolve_upstream_rev() {
   # 3. curl against the REST API — last resort; honours a token when one is
   #    exported, and works unauthenticated for a public repository.
   if command -v curl >/dev/null 2>&1; then
-    local curl_args=(-sS -f -H "Accept: application/vnd.github+json")
+    local curl_args=(-sS -f -H "Accept: application/vnd.github+json"
+      --connect-timeout "$lookup_timeout" --max-time "$lookup_timeout")
     if [[ -n "$token" ]]; then
       curl_args+=(-H "Authorization: Bearer ${token}")
     fi
@@ -842,9 +850,8 @@ resolve_upstream_rev() {
       printf '%s\n' "$sha"
       return 0
     fi
-    if [[ "$status_code" == "404" ]]; then
-      ref_missing=true
-    fi
+    # As with gh above, a 404 is ambiguous between "no such ref" and "this
+    # credential cannot see the repository", so it is not a verdict either.
     notes+=("curl REST API: HTTP ${status_code:-000} — $(head -n 1 "$err_file" 2>/dev/null || true)")
   else
     notes+=("curl REST API: skipped (curl is not on PATH)")
