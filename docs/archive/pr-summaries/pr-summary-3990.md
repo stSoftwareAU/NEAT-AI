@@ -238,3 +238,29 @@ on its own, since an unauthenticated `gh` is exactly the environment this issue
 is about. The test now stubs `curl` to report `000` (it could not answer either)
 and still asserts the same outcome — one probe call, no retries, no download,
 non-zero exit. No test was removed or weakened; the assertions are unchanged.
+
+Modified — `test/wasm/WasmCreatureActivationCreateTrapGuard.ts`. **Documented
+behaviour change from the core bump** (`neatCore.rev` `b7a4a3ef` → `86523eff`):
+`CompiledNetwork::new` now validates the binary header up front, so a
+`num_inputs > num_neurons` binary is rejected with a named error —
+`Network declares 2 inputs but only 1 nodes; the input count
+must not exceed the node count`
+— instead of panicking through to an opaque `RuntimeError: unreachable`. The
+Issue #2482 guard asserted the old trap (`RuntimeError`, `"unreachable"`, ≥4
+WASM stack frames) and was the one shard-level test failure on this PR.
+
+The guard now asserts the invariant it was always about, against the stronger
+upstream contract:
+
+- the malformed header is still **rejected** (the constructor must not accept
+  it),
+- the rejection is **diagnostic** — it names the offending input count and must
+  _not_ read `unreachable`, so a regression back to the opaque trap fails the
+  test,
+- `WasmCreatureActivation.create` still absorbs it and returns `null` rather
+  than throwing, and
+- the diagnostic reaches dedup-aware callers via `getLastWasmCreateFailure()`
+  (Issue #2483).
+
+No test was removed and no assertion was weakened; the trap-address decode is
+retained in the file header as the historical record of the original diagnosis.
