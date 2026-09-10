@@ -11,7 +11,10 @@ cd "$SCRIPT_DIR"
 #   Advances deno.json neatCore.rev to NEAT-AI-core Develop HEAD by
 #   re-running ./build.sh, which downloads the matching wasm bundle
 #   and updates the pin atomically. No quarantine — internal deps
-#   bump immediately.
+#   bump immediately. When the upstream revision cannot be looked up
+#   (offline, rate limited, or no credential) the pin is left alone and
+#   the run continues with the external bumps: nothing changed, so
+#   there is nothing to revert (Issue #3990).
 #
 # External (jsr:@std/*, npm:*, https://deno.land/*):
 #   Bumps Deno imports in deno.json to the latest version published
@@ -36,6 +39,14 @@ cd "$SCRIPT_DIR"
 #   already current).
 
 QUARANTINE_HOURS="${VIBE_BUMP_QUARANTINE_HOURS:-24}"
+# Exit code the build script uses for "upstream revision could not be looked
+# up" — offline, rate limited, or no credential (Issue #3990). It is distinct
+# from a genuine build failure, which is still exit 1. The status alone is not
+# trusted: the build script also prints the marker below, and both must be
+# present before the run is degraded to a skip. A bare status of 3 could have
+# come from any command the build script ran.
+BUILD_EXIT_UPSTREAM_UNRESOLVED=3
+BUILD_UPSTREAM_UNRESOLVED_MARKER="BUILD_STATUS=upstream-unresolved"
 SKIP_INTERNAL=false
 SKIP_EXTERNAL=false
 SKIP_SMOKE=false
@@ -76,6 +87,9 @@ a fast WASM smoke test followed by `deno check`.
 
 Internal bump: advances deno.json neatCore.rev to NEAT-AI-core Develop
 HEAD by invoking ./build.sh. No quarantine for stSoftwareAU/* deps.
+An unreachable upstream (offline, rate limited, or no credential) is
+reported as a skipped internal bump, not a failure — the pin is left
+untouched and the external bumps still run.
 
 External bump: runs `deno outdated --update --latest` with
 `--minimum-dependency-age` set from VIBE_BUMP_QUARANTINE_HOURS
@@ -101,10 +115,23 @@ Options:
                             does not mutate deno.json.
   --help, -h                Show this help and exit.
 
+Environment:
+  VIBE_BUMP_QUARANTINE_HOURS   External quarantine window (default 24).
+  BUMP_DEPS_SMOKE_TIMEOUT_SECONDS
+                               Cap on the WASM smoke gate (default 120).
+  BUMP_DEPS_DENO_FALLBACKS     Test seam: colon-separated deno locations
+                               probed when deno is not on PATH.
+  BUMP_DEPS_BUILD_CMD          Test seam: the build script to invoke for
+                               the internal bump (default ./build.sh).
+
 Exit codes:
-  0   No-op or successful bump; both audit gates are green.
+  0   No-op or successful bump; both audit gates are green. Also
+      returned when the internal bump was skipped because upstream
+      could not be reached — nothing was written, so nothing needs
+      reverting.
   1   Bump attempted but rejected (smoke gate or `deno check` failed,
-      invalid flag, or upstream lookup failed). The worker should
+      an invalid flag, or the build script failed for a reason other
+      than an unreachable upstream). The worker should
       revert.
 HELP
 }
@@ -244,19 +271,51 @@ console.log(out.join("\n"));
 
 INTERNAL_BEFORE="$(read_neat_core_rev)"
 INTERNAL_AFTER="$INTERNAL_BEFORE"
+# Non-empty when the internal bump was skipped because upstream could not be
+# reached — reported in the summary, never swallowed (Issue #3990).
+INTERNAL_SKIP_REASON=""
+
+# The build script is a seam so the degraded-upstream path can be driven by a
+# test without a network. It defaults to the real script.
+BUILD_CMD="${BUMP_DEPS_BUILD_CMD:-./build.sh}"
 
 # --- Internal: NEAT-AI-core neatCore.rev --------------------------------
 if [[ "$SKIP_INTERNAL" == true ]]; then
   echo "Skipping internal bump (NEAT-AI-core neatCore.rev)."
 elif [[ "$DRY_RUN" == true ]]; then
-  echo "[dry-run] would invoke ./build.sh to advance neatCore.rev to Develop HEAD"
+  echo "[dry-run] would invoke ${BUILD_CMD} to advance neatCore.rev to Develop HEAD"
 else
-  echo "Bumping internal: NEAT-AI-core neatCore.rev -> Develop HEAD via ./build.sh"
-  if ! ./build.sh; then
-    echo "ERROR: ./build.sh failed; internal bump aborted." >&2
-    exit 1
+  echo "Bumping internal: NEAT-AI-core neatCore.rev -> Develop HEAD via ${BUILD_CMD}"
+  build_log="$(mktemp)"
+  build_exit=0
+  "$BUILD_CMD" </dev/null >"$build_log" 2>&1 || build_exit=$?
+  # Replay on the stream the exit code implies, so a caller that captures only
+  # stderr on failure still sees why the build stopped.
+  if [[ "$build_exit" -eq 0 ]]; then
+    cat "$build_log"
+  else
+    cat "$build_log" >&2
   fi
-  INTERNAL_AFTER="$(read_neat_core_rev)"
+  if [[ "$build_exit" -eq "$BUILD_EXIT_UPSTREAM_UNRESOLVED" ]] \
+    && grep -q "$BUILD_UPSTREAM_UNRESOLVED_MARKER" "$build_log"; then
+    # Upstream is unreachable (offline, rate limited, or no credential) and
+    # said so explicitly. The pin and the vendored bundle are untouched and
+    # still valid, so there is nothing to bump — a degraded internal bump must
+    # not take the external bumps down with it. Loud on stderr, and named in
+    # the summary so a run is never reported as simply "current".
+    INTERNAL_SKIP_REASON="upstream revision could not be resolved"
+    echo "WARNING: internal bump skipped — ${INTERNAL_SKIP_REASON}." >&2
+    before_display="${INTERNAL_BEFORE:0:7}"
+    [[ -n "$before_display" ]] || before_display="(unset)"
+    echo "         neatCore.rev stays at ${before_display}; external bumps continue." >&2
+  elif [[ "$build_exit" -ne 0 ]]; then
+    echo "ERROR: ${BUILD_CMD} failed (exit ${build_exit}); internal bump aborted." >&2
+    rm -f "$build_log"
+    exit 1
+  else
+    INTERNAL_AFTER="$(read_neat_core_rev)"
+  fi
+  rm -f "$build_log"
 fi
 
 # --- External: Deno deps via `deno outdated` ----------------------------
@@ -373,8 +432,15 @@ if [[ "$EXTERNAL_BUMPED_COUNT" -gt 0 ]]; then
   parts+=("${EXTERNAL_BUMPED_COUNT} external dep(s)")
 fi
 
+if [[ -n "$INTERNAL_SKIP_REASON" ]]; then
+  echo "⚠️  internal bump skipped — ${INTERNAL_SKIP_REASON} (neatCore.rev unchanged)"
+fi
+
 if [[ "$DRY_RUN" == true ]]; then
   echo "✅ dry-run complete (no changes written)"
+elif [[ ${#parts[@]} -eq 0 && -n "$INTERNAL_SKIP_REASON" ]]; then
+  # Currency was never established for the internal dep, so do not claim it.
+  echo "✅ no external bumps; internal currency unknown (upstream unreachable)"
 elif [[ ${#parts[@]} -eq 0 ]]; then
   echo "✅ no bumps — dependencies already current"
 else

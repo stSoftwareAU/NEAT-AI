@@ -90,22 +90,12 @@ export class CompiledNetwork {
     free(): void;
     [Symbol.dispose](): void;
     /**
-     * Issue #1212 - Batch activate and trace for 4 records simultaneously.
-     *
-     * Processes 4 input records through the network in parallel, capturing trace
-     * data for backpropagation. Uses SIMD via
-     * [`weighted_sum_simd_4records_unchecked`] for standard squash functions.
-     *
-     * # Arguments
-     * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
-     * * `input_size` - Number of input values per record
-     * * `num_outputs` - Number of output neurons
-     *
-     * # Returns
-     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
-     * [outputs..., activations..., hints..., trace_data...]
+     * Activate the network with the given input values
+     * Returns the output values
+     * Issue #1175 - Uses typed structs for better cache locality
+     * Issue #1177 - Inlines common squash functions to avoid function call overhead
      */
-    activate_and_trace_batch_4way(inputs: Float32Array, input_size: number, num_outputs: number): Float32Array;
+    activate(input: Float32Array, num_outputs: number): Float32Array;
     /**
      * Activate the network with tracing for backpropagation support
      * Issue #1121 - WASM Migration Phase 4: activateAndTrace
@@ -132,12 +122,22 @@ export class CompiledNetwork {
      */
     activate_and_trace(input: Float32Array, num_outputs: number): Float32Array;
     /**
-     * Activate the network with the given input values
-     * Returns the output values
-     * Issue #1175 - Uses typed structs for better cache locality
-     * Issue #1177 - Inlines common squash functions to avoid function call overhead
+     * Issue #1212 - Batch activate and trace for 4 records simultaneously.
+     *
+     * Processes 4 input records through the network in parallel, capturing trace
+     * data for backpropagation. Uses SIMD via
+     * [`weighted_sum_simd_4records_unchecked`] for standard squash functions.
+     *
+     * # Arguments
+     * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
+     * * `input_size` - Number of input values per record
+     * * `num_outputs` - Number of output neurons
+     *
+     * # Returns
+     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
+     * [outputs..., activations..., hints..., trace_data...]
      */
-    activate(input: Float32Array, num_outputs: number): Float32Array;
+    activate_and_trace_batch_4way(inputs: Float32Array, input_size: number, num_outputs: number): Float32Array;
     /**
      * Activate the network with the given input values, writing to a pre-allocated output buffer
      * Issue #1171 - Avoids per-call Float32Array allocation overhead
@@ -239,6 +239,12 @@ export class CompiledNetwork {
  * # Returns
  * Float64Array with 12 values (3 per neuron):
  *   [count, totalBias, totalAdjustedBias] × 4
+ *
+ * # Malformed input (Issue #658)
+ * The three slices are walked with one index, so a caller that passes fewer
+ * than 4 values in any of them would index out of range — and a panic on wasm
+ * aborts the whole module instance. Such a call returns an empty `Vec` instead,
+ * the sentinel a successful call (always 12 values) can never produce.
  */
 export function accumulate_bias_batch_4way(target_pre_activations: Float64Array, pre_activations: Float64Array, current_biases: Float64Array, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number): Float64Array;
 
@@ -246,6 +252,12 @@ export function accumulate_bias_batch_4way(target_pre_activations: Float64Array,
  * Issue #1518 - Batch bias accumulation for 8 neurons.
  *
  * Same as 4-way but processes 8 neurons. Returns 24 f64 values.
+ *
+ * # Malformed input (Issue #658)
+ * The three slices are walked with one index, so a caller that passes fewer
+ * than 8 values in any of them would index out of range — and a panic on wasm
+ * aborts the whole module instance. Such a call returns an empty `Vec` instead,
+ * the sentinel a successful call (always 24 values) can never produce.
  */
 export function accumulate_bias_batch_8way(target_pre_activations: Float64Array, pre_activations: Float64Array, current_biases: Float64Array, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number): Float64Array;
 
@@ -293,6 +305,12 @@ export function accumulate_bias_persistent_8way(start_index: number, target_pre_
  *   [count, totalPositiveActivation, totalNegativeActivation,
  *    countPositiveActivations, countNegativeActivations,
  *    totalPositiveAdjustedValue, totalNegativeAdjustedValue] × 4
+ *
+ * # Malformed input (Issue #658)
+ * The three slices are walked with one index, so a caller that passes fewer
+ * than 4 values in any of them would index out of range — and a panic on wasm
+ * aborts the whole module instance. Such a call returns an empty `Vec` instead,
+ * the sentinel a successful call (always 28 values) can never produce.
  */
 export function accumulate_weight_batch_4way(current_weights: Float64Array, target_values: Float64Array, activations: Float64Array, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number): Float64Array;
 
@@ -300,6 +318,12 @@ export function accumulate_weight_batch_4way(current_weights: Float64Array, targ
  * Issue #1518 - Batch weight accumulation for 8 synapses.
  *
  * Same as 4-way but processes 8 synapses. Returns 56 f64 values.
+ *
+ * # Malformed input (Issue #658)
+ * The three slices are walked with one index, so a caller that passes fewer
+ * than 8 values in any of them would index out of range — and a panic on wasm
+ * aborts the whole module instance. Such a call returns an empty `Vec` instead,
+ * the sentinel a successful call (always 56 values) can never produce.
  */
 export function accumulate_weight_batch_8way(current_weights: Float64Array, target_values: Float64Array, activations: Float64Array, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number): Float64Array;
 
@@ -372,6 +396,13 @@ export function calculate_bias(count: number, total_adjusted_bias: number, curre
  *
  * # Returns
  * Float64Array with 4 calculated biases
+ *
+ * # Malformed input (Issue #658)
+ * The 3-value stride is walked four times, so a `packed_state` shorter than 12
+ * values would index out of range — and a panic on wasm aborts the whole module
+ * instance. Such a call returns an empty `Vec` instead, the sentinel a
+ * successful call (always 4 biases) can never produce. `no_change_flags` is
+ * already read defensively and a short one keeps defaulting to `false`.
  */
 export function calculate_bias_batch_4way(packed_state: Float64Array, no_change_flags: Uint8Array, generations: number, plank_constant: number, learning_rate: number, max_bias_adj_scale: number, limit_bias_scale: number, l1_bias_decay: number, l2_bias_decay: number): Float64Array;
 
@@ -429,6 +460,12 @@ export function calculate_weight(count: number, total_positive_activation: numbe
  *
  * # Returns
  * Float64Array with 4 calculated weights
+ *
+ * # Malformed input (Issue #658)
+ * The 8-value stride is walked four times, so a `packed_state` shorter than 32
+ * values would index out of range — and a panic on wasm aborts the whole module
+ * instance. Such a call returns an empty `Vec` instead, the sentinel a
+ * successful call (always 4 weights) can never produce.
  */
 export function calculate_weight_batch_4way(packed_state: Float64Array, generations: number, plank_constant: number, learning_rate: number, max_weight_adj_scale: number, limit_weight_scale: number, l1_weight_decay: number, l2_weight_decay: number): Float64Array;
 

@@ -1,8 +1,9 @@
 /**
- * Issue #2482 — Diagnostic regression test for the
- * `WasmCreatureActivation.create` `RuntimeError: unreachable` trap.
+ * Issue #2482 — Regression test for the malformed-header rejection in
+ * `WasmCreatureActivation.create`, originally a `RuntimeError: unreachable`
+ * trap.
  *
- * Background:
+ * Background — how the trap was diagnosed:
  *
  *   GRQ-16 production logs (`@stsoftware/neat-ai@3.1.37`) show the trap firing
  *   40 times during a single training run, with the user-frame stack:
@@ -73,20 +74,33 @@
  *   produced by `WasmCompilationCache.buildTemplate`. If `creature.input`
  *   ever exceeds `creature.neurons.length` — for example after a structural
  *   mutation or compaction step that prunes neurons without resyncing the
- *   `input` count — the resulting header lands `num_inputs > num_neurons` and
- *   the WASM constructor traps as described.
+ *   `input` count — the resulting header lands `num_inputs > num_neurons`.
+ *
+ * Current behaviour — validated, not trapped:
+ *
+ *   NEAT-AI-core now validates that header up front, so
+ *   `CompiledNetwork::new` rejects the malformed binary with a named error
+ *   ("Network declares N inputs but only M nodes; the input count must not
+ *   exceed the node count") instead of panicking through to an opaque
+ *   `unreachable`. wasm-bindgen surfaces that `Err` as a thrown JS string,
+ *   which `WasmCreatureActivation.create` records via
+ *   `getLastWasmCreateFailure()` before returning `null`.
+ *
+ *   That is the contract this test now guards. The addresses above are kept
+ *   only as the diagnostic record of the original trap; they are no longer
+ *   reachable and are not asserted.
  *
  * Acceptance criteria covered by this test:
  *
- *   1. Reproduces the trap deterministically against the pinned WASM bundle.
- *   2. Asserts the JS-visible failure surface (`create` returns `null` after
- *      the catch in `WasmActivation.ts:130` swallows the `RuntimeError`).
- *   3. Asserts the trap surfaces as `RuntimeError: unreachable` when the
- *      constructor is invoked directly (without the catch wrapper), so that
- *      the address chain remains observable in CI logs for any future
- *      regression hunt.
+ *   1. Reproduces the malformed header deterministically against the pinned
+ *      WASM bundle.
+ *   2. Asserts the constructor REJECTS it — and rejects it diagnostically,
+ *      naming the offending input count rather than trapping opaquely.
+ *   3. Asserts the JS-visible failure surface: `create` returns `null` rather
+ *      than throwing, and the diagnostic reaches callers through
+ *      `getLastWasmCreateFailure()` (Issue #2483).
  *   4. Confirms that finite extreme weights and `Infinity`/`NaN` biases —
- *      the originally-suspected root cause — do *not* trip the trap, so the
+ *      the originally-suspected root cause — are still accepted, so the
  *      diagnostic is not muddled by red herrings.
  *
  * The test is hermetic: it builds its own binary buffers and does not depend
@@ -97,7 +111,11 @@ import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { ensureWasmActivation } from "@wasm/EnsureWasmActivation.ts";
 import { isWasmActivationAvailable } from "@wasm/WasmModuleLoader.ts";
 import { getCompiledNetworkClass } from "@wasm/WasmModuleLoader.ts";
-import { WasmCreatureActivation } from "@wasm/WasmActivation.ts";
+import {
+  getLastWasmCreateFailure,
+  resetLastWasmCreateFailure,
+  WasmCreatureActivation,
+} from "@wasm/WasmActivation.ts";
 import { SquashType } from "@wasm/SquashType.ts";
 
 /**
@@ -205,59 +223,55 @@ Deno.test("Issue #2482: valid baseline binary compiles successfully", async () =
   assert(wasm !== null, "valid binary should compile without trapping");
 });
 
-Deno.test("Issue #2482: num_inputs > num_neurons triggers the production trap", async () => {
+Deno.test("Issue #2482: num_inputs > num_neurons is rejected by CompiledNetwork::new", async () => {
   await ensureWasmActivation();
   assert(isWasmActivationAvailable(), "WASM must be available for this test");
+  resetLastWasmCreateFailure();
 
   // Header-only buffer with num_inputs > num_neurons. This is the smallest
-  // possible repro — the trap fires before the constructor reads any
-  // per-neuron data.
+  // possible repro — the constructor rejects it before reading any per-neuron
+  // data.
   const buf = new Uint8Array(8);
   const view = new DataView(buf.buffer);
   view.setUint32(0, 1, true); // num_neurons
   view.setUint32(4, 2, true); // num_inputs (exceeds num_neurons by 1)
 
-  // Path 1 — direct constructor call: surface the raw RuntimeError so the
-  // WASM trap address chain is observable. This mirrors what the production
-  // worker sees before the catch in WasmCreatureActivation.create swallows it.
+  // Path 1 — direct constructor call. The invariant under test is that the
+  // malformed header is REJECTED, and rejected diagnostically: the caller must
+  // learn which counts disagreed, not merely that "something trapped".
   const CompiledNetwork = getCompiledNetworkClass();
   assert(CompiledNetwork !== null, "CompiledNetwork class must be loaded");
-  let trapStack = "";
+  // Capture the outcome rather than asserting inside the `catch`: a sentinel
+  // thrown from the `try` would be caught by that same `catch` and inspected
+  // as if it were the constructor's own rejection, so a constructor that
+  // silently ACCEPTED the malformed header would still pass.
+  let rejected = false;
+  let rejection = "";
   try {
     new CompiledNetwork(buf);
-    throw new Error(
-      "expected num_inputs>num_neurons header to trap CompiledNetwork::new, " +
-        "but the constructor returned successfully",
-    );
   } catch (e) {
-    const err = e as Error;
-    assert(
-      err.constructor.name === "RuntimeError",
-      `expected RuntimeError, got ${err.constructor.name}: ${err.message}`,
-    );
-    assertStringIncludes(
-      err.message,
-      "unreachable",
-      "WASM trap should report 'unreachable'",
-    );
-    trapStack = err.stack ?? "";
+    rejected = true;
+    rejection = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
   }
-
-  // The stack should contain four `wasm_activation_bg.wasm:` frames matching
-  // the production trap chain (within ±1 column for 0-vs-1-indexing). We
-  // assert at least four such frames are present rather than pinning exact
-  // offsets, because the addresses shift if the pinned core revision moves.
-  const wasmFrames = trapStack.split("\n").filter((ln) =>
-    ln.includes("wasm_activation_bg.wasm:")
+  assert(
+    rejected,
+    "expected num_inputs>num_neurons header to be rejected by " +
+      "CompiledNetwork::new, but the constructor returned successfully",
   );
   assert(
-    wasmFrames.length >= 4,
-    `expected ≥4 WASM frames in the trap stack, got ${wasmFrames.length}:\n${trapStack}`,
+    !/\bunreachable\b/.test(rejection),
+    "the header violation must surface as a validation error, not as an " +
+      `opaque WASM trap — got: ${rejection}`,
+  );
+  assertStringIncludes(
+    rejection.toLowerCase(),
+    "input",
+    `rejection must name the offending input count — got: ${rejection}`,
   );
 
-  // Path 2 — production-shaped surface: WasmCreatureActivation.create swallows
-  // the trap and returns null after logging "Failed to create WASM activation:
-  // RuntimeError: unreachable" — the exact log line GRQ-16 emits 40 times.
+  // Path 2 — production-shaped surface: WasmCreatureActivation.create must
+  // still absorb the rejection and return null rather than throwing, so a
+  // long evolution run drops the malformed creature instead of crashing.
   const wasm = WasmCreatureActivation.create({
     data: buf,
     numNeurons: 1,
@@ -268,7 +282,17 @@ Deno.test("Issue #2482: num_inputs > num_neurons triggers the production trap", 
   assertEquals(
     wasm,
     null,
-    "WasmCreatureActivation.create must surface trap as null (not throw)",
+    "WasmCreatureActivation.create must surface the rejection as null (not throw)",
+  );
+
+  // ...and the diagnostic must reach dedup-aware callers rather than being
+  // swallowed, so an operator can act on it (Issue #2483).
+  const failure = getLastWasmCreateFailure();
+  assert(failure !== null, "create() must record the rejection for callers");
+  assertStringIncludes(
+    failure.message.toLowerCase(),
+    "input",
+    `recorded failure must carry the diagnostic — got: ${failure.message}`,
   );
 });
 
