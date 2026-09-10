@@ -83,7 +83,8 @@
     "bench:structural-scale": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/structural_weight_scale_sweep.ts",
     "bench:skip-null": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/skip_connection_null_comparison.ts",
     "bench:squash-bias": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/deep_chain_squash_bias.ts",
-    "rank-fidelity": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/rank_fidelity_sweep.ts"
+    "rank-fidelity": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/rank_fidelity_sweep.ts",
+    "surrogate-feasibility": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_feasibility.ts"
   },
   "test": {
     "include": [

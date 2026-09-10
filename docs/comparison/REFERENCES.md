@@ -287,6 +287,18 @@ error-guided Discovery.
 Propose cheaply, accept expensively — the architecture of the Discovery pipeline
 and of every sampled screen in the fleet.
 
+> [!NOTE]
+> **The cheap model does not exist yet, and Issue #3930 measured why not.** A
+> Stage 1 study fitted four of Jin's families to an evaluation archive and held
+> creatures out by lineage and by run. Its kill gate — beat the parent's own
+> exact score at top-5 agreement — could not be decided, because the archive's
+> parent links are too sparse to build that baseline from. What could be
+> measured did not encourage: top-1 agreement was 0.000 for every family in
+> every fold, and the best rank correlation (ρ = 0.715, gradient-boosted trees)
+> belongs to the model that resolved 1.7 % of pairs at the ≤1e-4 margin, because
+> it tied 7 528 of the 7 714. Numbers, caveats and the harness are in
+> [`docs/evidence/surrogate-feasibility-3930.md`](../evidence/surrogate-feasibility-3930.md).
+
 - [Surrogate-Assisted Evolutionary Computation: Recent Advances and Future Challenges](https://doi.org/10.1016/j.swevo.2011.03.001)
   — Jin (2011) — **the primary source** and the name for the pattern: a cheap
   model proposes, the expensive true objective confirms.
