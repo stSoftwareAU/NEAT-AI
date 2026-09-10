@@ -691,8 +691,18 @@ actionable error pointing at `./build.sh`.
   prune, the cleanup cascade, canonicalisation and validation. The superseded
   TypeScript rewrite was removed in Issue #3975. Scope is the single-neuron
   rewrite only: the ordered multi-op `applyCoordinatedStructuralCandidate` plan
-  and the `applyRemoveNeuron` replay are still TypeScript, and **synapse**
-  removal stays TypeScript until Issue #3976.
+  and the `applyRemoveNeuron` replay are still TypeScript.
+- **Synapse pruning** (`src/wasm/WasmPruneSynapse.ts`): `corePruneSynapse`
+  bridges the `SubConnection` mutation operator onto core's `prune_synapse`,
+  which owns the cut of the named `(from, to, type)` triple, the bias fold, the
+  `IF` rewrites, the orphan cascade, canonicalisation and validation. The
+  superseded TypeScript rewrite — including `#wouldBreakIfNeuron`, which used to
+  refuse any removal that would leave an `IF` short a role — was removed in
+  Issue #3976. Two things are deliberately still TypeScript: candidate
+  selection, which is the operator's own policy rather than a rewrite rule; and
+  the **recurrent** operators `SubSelfCon` / `SubBackCon`, which remove a
+  self-loop or a feedback edge — `SubConnection` owns forward synapses only, and
+  the recurrent pair keeps its in-place rewrite until it is migrated in turn.
 
 If you add a new read-heavy or hot-path operation that lives in core, **do not
 re-implement a TypeScript fallback** — fail fast via `requireWasm(...)` instead.
@@ -717,6 +727,21 @@ landing on `main` from exactly this class of regression.
 Either gate failing fails the script with exit 1, and the Vibe Coder worker
 reverts the bump. Use `--skip-smoke` only when running the full `./quality.sh`
 immediately afterwards (which exercises the same paths and more).
+
+### Unattended upstream lookup (Issue #3990)
+
+`build.sh` resolves the upstream revision with the first strategy that answers —
+`gh api`, `git ls-remote`, then `curl` against the REST API — and the release
+probe falls through from a failing `gh` to `curl` in the same way. Only `gh`
+needs an authenticated session, so a worker running with no interactive login
+still resolves the ref and still downloads the bundle.
+
+When every strategy fails because upstream was **unreachable**, `build.sh`
+prints `BUILD_STATUS=upstream-unresolved` and exits `3`; `bump-deps.sh` degrades
+to a **skipped** internal bump only when it sees both the marker and the status,
+then continues with the external bumps — nothing was written, so there is
+nothing to revert. A ref upstream reports as **missing** is a configuration
+error and exits `1`, as does any other build failure.
 
 ## 🦀 Rust Discovery Module
 
@@ -754,10 +779,11 @@ The two rules contributors most often trip over:
    ([principle 7](./docs/ENGINEERING_PRINCIPLES.md#7-no-fallback-no-shadow-implementation-no-long-lived-dual-path)).
    The operations already moved into NEAT-AI-core are topology
    validation/scanning, reverse topological order, structural integrity, cycle
-   detection, the topological backprop loop, elastic weight distribution and
-   hidden-neuron pruning (`prune_neuron`, Issue #3975). Their wrappers in
-   `src/wasm/` and `src/propagate/` call into WASM and fail fast if the bundle
-   is unavailable — do not reintroduce `*TS` fallbacks.
+   detection, the topological backprop loop, elastic weight distribution,
+   hidden-neuron pruning (`prune_neuron`, Issue #3975) and forward-synapse
+   pruning (`prune_synapse`, Issue #3976). Their wrappers in `src/wasm/` and
+   `src/propagate/` call into WASM and fail fast if the bundle is unavailable —
+   do not reintroduce `*TS` fallbacks.
 
 ## 🔄 Feed-forward vs Recurrent Connections
 

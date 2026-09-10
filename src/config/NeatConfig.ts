@@ -411,6 +411,15 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
       { integer: true, min: 0 },
     ),
 
+    // GRQ #4717: population-wide regressions-only gate. Opt-in (default 0) for
+    // the same reason as the no-progress gate above.
+    skipTrainingAfterPopulationRegressions: parseNumber(
+      "Skip Training After Population Regressions",
+      opts.skipTrainingAfterPopulationRegressions,
+      0,
+      { integer: true, min: 0 },
+    ),
+
     // Issue #2531: bounded LRU size for the subnetwork hash index. Default
     // 50,000 mirrors the failure-cache size order. Set to 0 to disable.
     subnetworkIndexSize: parseNumber(

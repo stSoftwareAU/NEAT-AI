@@ -1,22 +1,59 @@
 /**
  * @module
  *
- * Mutation operator that removes a feed-forward connection from the network,
- * operating directly on the creature's arrays with no export/import cycle.
- * Any neuron left without connections is cleaned up so the topology stays
- * valid.
+ * Mutation operator that removes a feed-forward connection from the network.
+ *
+ * The removal itself is NEAT-AI-core's (Issue #3976): this operator chooses a
+ * candidate and hands the creature to the shared `prune_synapse` rewrite, which
+ * cuts exactly the named `(from, to, role)` triple, folds what the creature
+ * itself fixes into the target's bias, rewrites whatever `IF` structure the
+ * removal made statically decidable, cascades away what is left stranded,
+ * canonicalises and validates before answering.
+ *
+ * ```mermaid
+ * flowchart LR
+ *   C["choose a forward,<br/>in-focus synapse"] --> K["(fromUUID, toUUID, type)"]
+ *   K --> P["corePruneSynapse"]
+ *   P -- "refusal" --> F["false — no change"]
+ *   P -- "rewrite" --> L["loadFrom(the rewritten export)"]
+ *   L --> T["true"]
+ * ```
+ *
+ * There is no TypeScript rewrite behind this and no fallback to one
+ * ([principle 7](../../docs/ENGINEERING_PRINCIPLES.md)). The superseded
+ * in-place edit — demote the stranded target to a constant, cascade the
+ * orphaned source, drop the memetic record wholesale, and decline outright any
+ * removal that would leave an `IF` short a role — is deleted. Core's answers
+ * are strictly better on the last of those: an `IF` short a role is rewritten
+ * exactly rather than left unreachable to mutation.
  */
-import { moveConstantNeuronIntoPrefix } from "@architecture/NormaliseComputationalNeuronOrder.ts";
-import { removeHiddenNeuron } from "@compact/CompactUtils.ts";
-import type { ActivationInterface } from "@methods/activations/ActivationInterface.ts";
 import type { Synapse } from "@architecture/Synapse.ts";
+import { neuronUuid } from "@neuron/NeuronSerialization.ts";
+import type { Creature } from "@creature";
+import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import { AbstractMutationOperator } from "@mutate/AbstractMutationOperator.ts";
+import { corePruneSynapse } from "@wasm/WasmPruneSynapse.ts";
+
+/**
+ * The wire endpoint label a synapse of this creature is exported under.
+ *
+ * Inputs are not listed in the export, so they are named by array position
+ * exactly as `CreatureExportBuilder` names them; everything else answers to
+ * `neuronUuid`, which throws rather than inventing a label for a hidden neuron
+ * that has lost its uuid.
+ */
+function endpointUuid(creature: Creature, index: number): string {
+  const neuron = creature.neurons[index];
+  return neuron.type === "input" ? `input-${index}` : neuronUuid(neuron);
+}
 
 export class SubConnection extends AbstractMutationOperator {
   /**
    * Subtract a connection from the network.
-   * Operates directly on the creature's arrays — no export/import cycle.
+   *
+   * Candidate selection stays here — it is the operator's own policy — and the
+   * rewrite belongs to core.
    */
   protected performMutation(focusList?: number[]): boolean {
     const creature = this.creature;
@@ -25,9 +62,8 @@ export class SubConnection extends AbstractMutationOperator {
     const possible: Synapse[] = [];
 
     for (const conn of creature.synapses) {
+      // Self and back connections belong to SubSelfCon / SubBackCon.
       if (conn.to <= conn.from) continue;
-
-      if (this.#wouldBreakIfNeuron(conn)) continue;
 
       if (
         creature.inFocus(conn.to, focusList) ||
@@ -41,90 +77,43 @@ export class SubConnection extends AbstractMutationOperator {
       return false;
     }
 
-    const randomConn = possible[Math.floor(rng.random() * possible.length)];
-    const fromIndx = randomConn.from;
-    const toIndx = randomConn.to;
+    const chosen = possible[Math.floor(rng.random() * possible.length)];
+    const toUUID = endpointUuid(creature, chosen.to);
 
-    // Issue #3383: capture the source neuron by reference before any topology
-    // edit below. Converting `to` into a constant moves it into the prefix
-    // (`moveConstantNeuronIntoPrefix`) and removing `to` outright both reindex
-    // the neuron array, so `fromIndx` can go stale. The neuron object keeps a
-    // live `.index`, so we re-read it when cleaning up the source below rather
-    // than trusting the captured integer — otherwise an orphaned source neuron
-    // (hidden or constant) is missed and leaks a NO_OUTWARD_CONNECTIONS
-    // creature into evolution/serialisation.
-    const fromNeuron = creature.neurons[fromIndx];
+    // Issue #3873: the identity of a synapse is the `(from, to, type)` triple,
+    // not the ordered pair — an `IF` target may be fed once per branch by one
+    // source, so naming the pair alone would remove a branch nobody chose.
+    const outcome = corePruneSynapse(creature.exportJSON(), {
+      fromUUID: endpointUuid(creature, chosen.from),
+      toUUID,
+      type: chosen.type,
+    });
 
-    // Issue #3873: remove the role that was chosen, not every role the
-    // ordered pair carries — an `IF` target may be fed once per branch.
-    creature.disconnect(fromIndx, toIndx, randomConn.type);
-
-    const inwardList = creature.inwardConnections(toIndx);
-
-    if (inwardList.length === 0) {
-      const neuron = creature.neurons[toIndx];
-      if (neuron.type === "hidden") {
-        const outwardList = creature.outwardConnections(toIndx);
-        if (outwardList.length === 0) {
-          removeHiddenNeuron(creature, toIndx);
-        } else {
-          const squash = neuron.findSquash();
-          const activation = squash as ActivationInterface;
-          if (activation.squash) {
-            neuron.bias = activation.squash(neuron.bias);
-          }
-          neuron.type = "constant";
-          neuron.setSquash(undefined);
-          moveConstantNeuronIntoPrefix(creature, toIndx);
-        }
-      }
+    if (!outcome.ok) {
+      // Core understood the request and declined it, so the creature is
+      // unchanged — reported rather than swallowed, and never retried against
+      // a superseded rewrite.
+      getLogger().warn(
+        `[SubConnection] core refused to remove the synapse: ` +
+          `${outcome.reason} — ${outcome.message}`,
+      );
+      return false;
     }
 
-    // Re-read the source neuron's current index: the block above may have
-    // reindexed the array. A source removed by an earlier cascade no longer
-    // sits in the array, so guard on identity before touching it.
-    const fromCurrentIndx = fromNeuron.index;
-    if (creature.neurons[fromCurrentIndx] === fromNeuron) {
-      const fromOutwardList = creature.outwardConnections(fromCurrentIndx);
-      if (fromOutwardList.length === 0) {
-        if (fromNeuron.type === "hidden" || fromNeuron.type === "constant") {
-          removeHiddenNeuron(creature, fromCurrentIndx);
-        }
-      }
-    }
+    // The answer is already canonical and core-validated. `loadFrom` sheds the
+    // content-derived creature uuid the edit invalidated, and carries the
+    // memetic record core pruned entry by entry — the superseded operator threw
+    // the whole record away.
+    creature.loadFrom(outcome.creature, false, "SubConnection");
 
-    delete creature.memetic;
     // Issue #3971: the target of the removed synapse is the mutation site.
-    this.noteMutationSite(toIndx);
+    // Resolve by wire UUID after loadFrom — prune can cascade-remove neurons
+    // and reindex the array. A vanished target reports as unknown (-1).
+    this.noteMutationSite(
+      creature.neurons.findIndex((_, i) =>
+        endpointUuid(creature, i) === toUUID
+      ),
+    );
     return true;
-  }
-
-  /**
-   * Check if removing a synapse would leave an IF neuron without required
-   * connection types (condition, positive, negative).
-   */
-  #wouldBreakIfNeuron(synapse: Synapse): boolean {
-    const creature = this.creature;
-    const targetNeuron = creature.neurons[synapse.to];
-    if (targetNeuron.squash !== "IF") return false;
-
-    const inward = creature.inwardConnections(synapse.to);
-    let conditionCount = 0;
-    let positiveCount = 0;
-    let negativeCount = 0;
-
-    for (const conn of inward) {
-      const synapseType = conn.type ?? "positive";
-      if (synapseType === "condition") conditionCount++;
-      else if (synapseType === "positive") positiveCount++;
-      else if (synapseType === "negative") negativeCount++;
-    }
-
-    const synapseType = synapse.type ?? "positive";
-    if (synapseType === "condition" && conditionCount <= 1) return true;
-    if (synapseType === "positive" && positiveCount <= 1) return true;
-    if (synapseType === "negative" && negativeCount <= 1) return true;
-
-    return false;
   }
 }

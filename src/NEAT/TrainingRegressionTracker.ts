@@ -69,6 +69,21 @@ export class TrainingRegressionTracker {
    * any material improvement anywhere in the population (Issue #3779).
    */
   populationConsecutiveNoProgress = 0;
+  /**
+   * Population-wide streak of consecutive **regressions** — training outcomes
+   * that came back with a higher error and no usable fine-tune variant —
+   * across every creature (GRQ #4717).
+   *
+   * Cleared by an improvement *and* by a no-change: a result that lands inside
+   * the noise floor bought nothing, but it is not evidence the population is
+   * doomed. That is the difference from {@link populationConsecutiveNoProgress}
+   * and the whole reason this streak exists. Re-measuring a 34-run GRQ fleet
+   * window showed the no-progress streak cannot separate the two: its most
+   * productive run (146 tasks, 15 improvements) reached a no-progress streak of
+   * 39 built almost entirely from no-change outcomes, while regressing only 3
+   * times in the whole run.
+   */
+  populationConsecutiveRegressions = 0;
 
   /** Skips issued since the last outcome was recorded (probe counter). */
   private skipsSinceProbe = 0;
@@ -103,6 +118,7 @@ export class TrainingRegressionTracker {
     this.entries.set(uuid, entry);
     this.totalRegressions++;
     this.populationConsecutiveNoProgress++;
+    this.populationConsecutiveRegressions++;
     this.skipsSinceProbe = 0;
     this.pruneIfLarge();
   }
@@ -123,6 +139,9 @@ export class TrainingRegressionTracker {
     }
     this.totalNoChange++;
     this.populationConsecutiveNoProgress++;
+    // A noise-floor result is not a regression, so it breaks the
+    // regressions-only streak (#4717).
+    this.populationConsecutiveRegressions = 0;
     this.skipsSinceProbe = 0;
   }
 
@@ -139,6 +158,7 @@ export class TrainingRegressionTracker {
     }
     this.totalImprovements++;
     this.populationConsecutiveNoProgress = 0;
+    this.populationConsecutiveRegressions = 0;
     this.skipsSinceProbe = 0;
   }
 
@@ -167,6 +187,26 @@ export class TrainingRegressionTracker {
     return this.skipsSinceProbe < POPULATION_PROBE_INTERVAL;
   }
 
+  /**
+   * Returns `true` when the whole population has produced {@link threshold}
+   * consecutive **regressions** and this dispatch should therefore be skipped
+   * (GRQ #4717).
+   *
+   * A stricter signal than {@link shouldSkipPopulation}: a no-change clears the
+   * streak, so a population whose training lands in the noise floor is not
+   * gated. It therefore sits at a lower threshold than the no-progress gate.
+   *
+   * A `threshold` of `0` disables the gate. The probe rule is shared with
+   * {@link shouldSkipPopulation}: while any population gate is closed one
+   * dispatch is let through every {@link POPULATION_PROBE_INTERVAL} skips, so
+   * the streak can be cleared and the gate reopened.
+   */
+  shouldSkipPopulationRegressions(threshold: number): boolean {
+    if (threshold <= 0) return false;
+    if (this.populationConsecutiveRegressions < threshold) return false;
+    return this.skipsSinceProbe < POPULATION_PROBE_INTERVAL;
+  }
+
   /** Skips issued since the last probe — `0` marks the start of a window. */
   get skipsSincePopulationProbe(): number {
     return this.skipsSinceProbe;
@@ -191,6 +231,7 @@ export class TrainingRegressionTracker {
     this.totalSkipped = 0;
     this.totalNoChange = 0;
     this.populationConsecutiveNoProgress = 0;
+    this.populationConsecutiveRegressions = 0;
     this.skipsSinceProbe = 0;
   }
 

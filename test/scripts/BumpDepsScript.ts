@@ -263,6 +263,107 @@ Deno.test({
   },
 });
 
+/**
+ * Create a temp HOME with a stub `deno` (every invocation succeeds, silently)
+ * plus a stub build script that exits with `buildExit`.
+ *
+ * Issue #3990 — the internal bump shells out to the build script. Driving it
+ * through the BUMP_DEPS_BUILD_CMD seam exercises the real bump-deps.sh
+ * branching without a network round-trip.
+ */
+async function runWithStubBuild(
+  buildExit: number,
+  { marker = false }: { marker?: boolean } = {},
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  const home = await Deno.makeTempDir();
+  try {
+    const binDir = `${home}/bin`;
+    await Deno.mkdir(binDir, { recursive: true });
+    await Deno.writeTextFile(`${binDir}/deno`, "#!/bin/sh\nexit 0\n");
+    await Deno.chmod(`${binDir}/deno`, 0o755);
+    const buildStub = `${home}/build-stub.sh`;
+    const markerLine = marker
+      ? 'echo "BUILD_STATUS=upstream-unresolved" >&2\n'
+      : "";
+    await Deno.writeTextFile(
+      buildStub,
+      `#!/bin/sh\necho "stub build script" >&2\n${markerLine}exit ${buildExit}\n`,
+    );
+    await Deno.chmod(buildStub, 0o755);
+    return await runBump(["--no-external", "--skip-smoke"], {
+      PATH: `${binDir}:/usr/bin:/bin`,
+      HOME: home,
+      BUMP_DEPS_BUILD_CMD: buildStub,
+    });
+  } finally {
+    await Deno.remove(home, { recursive: true });
+  }
+}
+
+Deno.test({
+  name:
+    "bump-deps.sh treats an unresolvable upstream revision as a skipped internal bump (Issue #3990)",
+  fn: async () => {
+    // Exit 3 from the build script means "upstream could not be looked up":
+    // nothing was written, so there is nothing for the worker to revert and
+    // the external bumps must still be allowed to land.
+    const before = await Deno.readTextFile("deno.json");
+    const result = await runWithStubBuild(3, { marker: true });
+    assertEquals(
+      result.code,
+      0,
+      `an unreachable upstream must not fail the run; stderr=${result.stderr}`,
+    );
+    assert(
+      /internal bump skipped/i.test(result.stdout),
+      `expected the summary to name the skip; stdout=${result.stdout}`,
+    );
+    assert(
+      /WARNING/.test(result.stderr),
+      `the skip must be loud on stderr; stderr=${result.stderr}`,
+    );
+    assertEquals(
+      await Deno.readTextFile("deno.json"),
+      before,
+      "a skipped internal bump must leave deno.json untouched",
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "bump-deps.sh does not degrade a bare exit 3 without the upstream marker (Issue #3990)",
+  fn: async () => {
+    // A status of 3 could have come from any command the build script ran.
+    // Absence of the explicit marker is not a verdict of "nothing to bump".
+    const result = await runWithStubBuild(3, { marker: false });
+    assert(
+      result.code !== 0,
+      `an unmarked exit 3 must still fail the run; stdout=${result.stdout}`,
+    );
+    assert(
+      /internal bump aborted/i.test(result.stderr),
+      `expected the fail-loud message; stderr=${result.stderr}`,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "bump-deps.sh still fails loud when the build script fails for any other reason (Issue #3990)",
+  fn: async () => {
+    const result = await runWithStubBuild(1);
+    assert(
+      result.code !== 0,
+      `a genuine build failure must still fail the run; stdout=${result.stdout}`,
+    );
+    assert(
+      /internal bump aborted/i.test(result.stderr),
+      `expected the fail-loud message; stderr=${result.stderr}`,
+    );
+  },
+});
+
 Deno.test({
   name: "bump-deps.sh exists and is executable",
   fn: async () => {

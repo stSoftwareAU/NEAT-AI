@@ -33,7 +33,8 @@ NEAT-AI tracks NEAT-AI-core in `deno.json`:
 ```
 
 `build.sh` is the single integration point. By default it resolves NEAT-AI-core
-`Develop` HEAD via the GitHub API, downloads the release asset for the declared
+`Develop` HEAD via the first strategy that answers — `gh api`, `git ls-remote`,
+then `curl` against the REST API — downloads the release asset for the declared
 `memoryModel` from the per-commit Release tagged `wasm-bundle-<SHA>`,
 content-verifies the tarball via SHA-256, unpacks it into `wasm_activation/`,
 writes a per-file content manifest, and updates `deno.json` `neatCore.rev` to
@@ -198,6 +199,25 @@ The Vibe Coder worker invokes [`./bump-deps.sh`](../bump-deps.sh) before
   rev's hash, so the bump completes without anyone hand-maintaining the pin; if
   the target release serves no sidecar the advance fails loud (issue #3515) and
   the bump is reverted.
+
+  Only `gh api` needs an authenticated session, so the lookup still works in the
+  unattended environment the worker runs in (Issue #3990). The release probe
+  behaves the same way: when `gh` cannot answer, `build.sh` falls through to the
+  credential-free `curl` probe instead of treating gh's error as the release's
+  verdict.
+
+  When **every** strategy fails because upstream was unreachable — offline, rate
+  limited, or no credential — `build.sh` prints the marker
+  `BUILD_STATUS=upstream-unresolved` and exits with the dedicated code `3`.
+  `bump-deps.sh` degrades to a skipped internal bump only when it sees **both**
+  the marker and the status (a bare status of 3 could have come from any command
+  the build ran), reports the skip in its summary, and carries on with the
+  external bumps: the pin and the vendored bundle were never touched, so there
+  is nothing to revert.
+
+  A ref upstream reports as **missing** is a configuration error, not an outage:
+  `build.sh` exits `1` and the bump is reverted, so a stale `neatCore.ref` can
+  never sit behind a green run. Every other build failure still exits `1` too.
 - **External (jsr:@std/_, npm:_, https://deno.land/*):** runs
   `deno outdated --update --latest --minimum-dependency-age=<min>` with a
   quarantine window (default 24h, see `VIBE_BUMP_QUARANTINE_HOURS`). The
