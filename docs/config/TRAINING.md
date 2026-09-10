@@ -253,6 +253,11 @@ opts in. Measured cost per fidelity on the sampler creature is in
 > production data — and the harness that reproduces them are in
 > [`docs/evidence/rank-fidelity-3927.md`](../evidence/rank-fidelity-3927.md).
 
+Choosing a fidelity is a per-call decision; deciding _when_ a creature earns an
+exact one is a policy across generations, and that lives in
+[`evolutionControl`](../EVOLUTION_CONTROL.md) (Issue #3931). It is off by
+default, and while no sampling rate passes the gate above it should stay off.
+
 ## 👀 See also
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — population, mutation, and
@@ -261,6 +266,9 @@ opts in. Measured cost per fidelity on the sampler creature is in
   range constraints applied during training.
 - [Mutation adaptation](./MUTATION_ADAPTATION.md) — adaptive thresholds, plateau
   detection, and MCMC acceptance.
+- [EVOLUTION_CONTROL.md](../EVOLUTION_CONTROL.md) — the per-generation policy
+  deciding which creatures earn an exact evaluation, and the guards keeping an
+  approximate score out of the elite band, `previousFittest` and the export.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — picking batch sizes for
   large datasets and CPU/GPU (Graphics Processing Unit) targets.
 
