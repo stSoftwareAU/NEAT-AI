@@ -122,9 +122,11 @@ export interface GenerationSummary {
 /**
  * Fraction of pairs two orderings disagree on — the false-optimum canary.
  *
- * A **tie** counts as a disagreement: a predictor that cannot separate two
- * creatures has failed to order them, and Issue #3927 measured exactly that
- * failure at every sampling rate it tried. Ties are not free.
+ * A **one-sided tie** counts as a disagreement: a predictor that gives two
+ * creatures the same score when the exact evaluation separates them has failed
+ * to order them, and Issue #3927 measured exactly that failure at every
+ * sampling rate it tried. Ties are not free. A pair the *exact* evaluation also
+ * ties is not a disagreement — there was no ordering to get wrong.
  *
  * @param approximate - Cheap scores, one per creature.
  * @param exact - Exact scores for the same creatures, in the same order.
@@ -187,6 +189,7 @@ export class EvolutionControl {
   private divergenceHistory: number[] = [];
   private lastReading: CanaryReading | undefined;
   private escalatedAt: number | undefined;
+  private reportedUnhonouredPlan = false;
 
   /**
    * @param config - Fully resolved configuration; defaults leave the policy off.
@@ -527,11 +530,39 @@ export class EvolutionControl {
       (summary.escalated ? " — ESCALATED: cheap path abandoned" : "");
   }
 
+  /**
+   * The warning a generation owes when the sweep did not do what the plan said.
+   *
+   * The strategies are a decision layer: they name a fidelity, and something
+   * downstream has to honour it. Until a cheap evaluator passes its gate
+   * (Issue #3927 found no safe sampling rate; Issue #3930's surrogate gate was
+   * undecidable) nothing does, so an active strategy runs exact regardless.
+   * That is a mismatch between what was asked for and what happened, and it
+   * says so **loudly and once** rather than leaving a run to read a trace
+   * claiming a fidelity it never used.
+   *
+   * @param summary - This generation's summary.
+   * @returns The warning to log, or `undefined` when the plan was honoured or
+   *   the mismatch has already been reported for this run.
+   */
+  unhonouredPlanWarning(summary: GenerationSummary): string | undefined {
+    if (summary.fidelity !== "approximate") return undefined;
+    if (summary.approximateEvaluations > 0) return undefined;
+    if (this.reportedUnhonouredPlan) return undefined;
+    this.reportedUnhonouredPlan = true;
+    return `[NEAT-AI] EvolutionControl: strategy "${summary.strategy}" asked ` +
+      `for an approximate sweep in generation ${summary.generation} and every ` +
+      `creature was evaluated exactly — no cheap evaluator is wired into the ` +
+      `evolution loop, so the strategy costs what "none" costs. See ` +
+      `docs/EVOLUTION_CONTROL.md.`;
+  }
+
   /** Clear all history. Call when starting a new run. */
   reset(): void {
     this.divergenceHistory = [];
     this.lastReading = undefined;
     this.escalatedAt = undefined;
+    this.reportedUnhonouredPlan = false;
     this.currentPlan = offPlan(0, this.config.strategy);
   }
 }

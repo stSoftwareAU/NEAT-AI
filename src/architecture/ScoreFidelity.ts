@@ -29,12 +29,25 @@
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "@creature";
 import { EvolutionControlError } from "@errors/EvolutionControlError.ts";
+import { EXACT_FIDELITY } from "@archive/EvaluationArchive.ts";
 
-/** Tag key a creature's score fidelity is recorded under. */
-export const SCORE_FIDELITY_TAG = "fidelity";
+/**
+ * Tag key a creature's score fidelity is recorded under.
+ *
+ * Deliberately **not** `"fidelity"`: Issue #3929 uses that name for the
+ * archive record's own fidelity field and asserts it never appears as a
+ * creature tag or in a creature export. Two different concepts must not share
+ * one name on the wire.
+ */
+export const SCORE_FIDELITY_TAG = "scoreFidelity";
 
-/** The fidelity of a full-corpus, ground-truth evaluation. */
-export const EXACT_SCORE_FIDELITY = 1;
+/**
+ * The fidelity of a full-corpus, ground-truth evaluation.
+ *
+ * The same `1` the evaluation archive records (Issue #3929); aliased rather
+ * than restated so there is one definition of "exact" in the codebase.
+ */
+export const EXACT_SCORE_FIDELITY = EXACT_FIDELITY;
 
 /**
  * Lowest fidelity that may be recorded.
@@ -145,19 +158,27 @@ export function refreshExactScoreFidelity(creature: Creature): void {
  * @param corpusRecords - Records in the full corpus.
  * @returns The fidelity to record, in `[MIN_APPROXIMATE_FIDELITY,
  *   MAX_APPROXIMATE_FIDELITY]`.
+ * @throws {EvolutionControlError} `INVALID_FIDELITY` when the counts cannot
+ *   describe a real evaluation. A nonsense input is refused rather than
+ *   floored into a plausible-looking fidelity.
  */
 export function partialCorpusFidelity(
   recordsScored: number,
   corpusRecords: number,
 ): number {
-  const raw =
-    Number.isFinite(recordsScored) && Number.isFinite(corpusRecords) &&
-      corpusRecords > 0
-      ? recordsScored / corpusRecords
-      : 0;
+  if (
+    !Number.isFinite(recordsScored) || recordsScored < 0 ||
+    !Number.isFinite(corpusRecords) || corpusRecords <= 0
+  ) {
+    throw new EvolutionControlError(
+      `a partial-corpus fidelity needs a non-negative record count and a ` +
+        `positive corpus size, got ${recordsScored}/${corpusRecords}`,
+      "INVALID_FIDELITY",
+    );
+  }
   return Math.min(
     MAX_APPROXIMATE_FIDELITY,
-    Math.max(MIN_APPROXIMATE_FIDELITY, raw),
+    Math.max(MIN_APPROXIMATE_FIDELITY, recordsScored / corpusRecords),
   );
 }
 

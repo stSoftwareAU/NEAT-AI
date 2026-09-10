@@ -429,7 +429,7 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
     ],
     note: "Added after the slices by #3931 — the model-management policy " +
       "(Jin 2011 §4) deciding which creatures earn an exact evaluation; " +
-      "`strategy: \"none\"` is exact everywhere, as before.",
+      '`strategy: "none"` is exact everywhere, as before.',
   }),
 ];
 

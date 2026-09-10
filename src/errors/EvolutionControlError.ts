@@ -13,7 +13,11 @@
 export type EvolutionControlErrorReason =
   /** A creature holding an approximate score reached an exact-only slot. */
   | "APPROXIMATE_SCORE"
-  /** An ordering was asked to compare a cheap score with an exact one. */
+  /**
+   * An ordering was asked for something it cannot produce: a cheap score
+   * against an exact one, a creature with no score at all, or two score lists
+   * of different lengths. In every case the comparison would be meaningless.
+   */
   | "MIXED_FIDELITY_COMPARISON"
   /** A fidelity outside `(0, 1]`, or a non-finite one, was offered. */
   | "INVALID_FIDELITY";

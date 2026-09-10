@@ -15,13 +15,22 @@ beside the other per-generation policy objects (`AdaptivePopulationSizer`,
 mechanism.
 
 > [!IMPORTANT]
-> **Off by default, and today that is the only setting production should use.**
-> The cheap evaluators this policy would switch to have not passed their gates:
-> [Issue #3927](evidence/rank-fidelity-3927.md) found **no sampling rate safe**
-> on the real lineage, and [Issue #3930](evidence/surrogate-feasibility-3930.md)
-> could not decide its surrogate kill gate. What landed here is the decision
-> layer and its guards, so that a cheap evaluator which _does_ pass its gate has
-> something to sit behind.
+> **Off by default, and today `"none"` is the only strategy that changes
+> anything.** The cheap evaluators this policy would dispatch to have not passed
+> their gates: [Issue #3927](evidence/rank-fidelity-3927.md) found **no sampling
+> rate safe** on the real lineage, and
+> [Issue #3930](evidence/surrogate-feasibility-3930.md) could not decide its
+> surrogate kill gate. So **no cheap evaluator is wired into the evolution
+> loop**: setting `"generation"` or `"individual"` changes which fidelity each
+> generation _asks_ for, and every creature is still evaluated exactly.
+>
+> That is not a silent no-op. The first generation whose plan is not honoured
+> logs a warning naming the strategy and saying it costs what `"none"` costs, so
+> a run can never read as cheap when it was not. What landed here is the
+> decision layer, its invariants and its canary, so that a cheap evaluator which
+> _does_ pass its gate has something to sit behind — and the strategies
+> themselves are measured end to end by the A/B harness below, which supplies
+> its own evaluator.
 
 ## The decision
 
@@ -46,6 +55,10 @@ flowchart TD
 | `"none"`       | Every creature exact, every generation. The default, and the previous behaviour exactly.              |
 | `"generation"` | Generation-based control: an exact sweep every λth generation, cheap in between.                      |
 | `"individual"` | Individual-based control: a cheap sweep for all, with the top _k_ plus a spread re-evaluated exactly. |
+
+"Cheap" in that table is what the strategy **asks for**. Until an evaluator that
+honours it passes its gate, the sweep is exact whatever the plan said — see the
+note above.
 
 Jin's third family — **population-based** control, separate sub-populations at
 separate fidelities — is not offered: it needs an island model the evolution
@@ -77,7 +90,9 @@ approximation's drift from.
 
 ### Per-creature fidelity
 
-Fidelity is recorded on the creature as a `fidelity` tag
+Fidelity is recorded on the creature as a `scoreFidelity` tag — deliberately not
+`fidelity`, which Issue #3929 uses for the archive record's own field and
+asserts never appears on a creature —
 ([`src/architecture/ScoreFidelity.ts`](../src/architecture/ScoreFidelity.ts)),
 which travels with `shallowClone` and therefore with the export.
 
@@ -101,8 +116,10 @@ rather than the objective, and nothing in the fitness trace shows it happening.
 
 On each exact sweep the policy records the **divergence** between the cheap
 ordering and the exact one — the fraction of creature pairs the cheap evaluator
-placed the other way round. A tie counts as a disagreement: a predictor that
-cannot separate two creatures has failed to order them.
+placed the other way round. A **one-sided tie** counts as a disagreement: a
+predictor that gives two creatures the same score when the exact evaluation
+separates them has failed to order them. A pair the exact evaluation also ties
+is not a disagreement — there was no ordering to get wrong.
 
 Two things abandon the cheap path for the rest of the run:
 
@@ -117,7 +134,7 @@ reported as `null` and does not enter the trend history.
 ## Configuration
 
 ```ts
-const creature = await Creature.evolveDataSet(data, {
+const result = await creature.evolveDataSet(data, {
   evolutionControl: {
     strategy: "generation", // "none" | "generation" | "individual"
     exactEvery: 5, // λ: exact sweep every 5th generation
@@ -146,16 +163,17 @@ score of the final creature. In short:
 - the canary escalated on 7 of 10 `"generation"` seeds, every one of them on the
   widening-trend rule rather than the threshold.
 
-Reproduce it with `deno task evolution-control-ab`.
+Reproduce it with
+`deno task evolution-control-ab --generations=60 --replicates=10`.
 
 ## References
 
-- Jin, Y. (2011). _Surrogate-assisted evolutionary computation: recent advances
-  and future challenges_, §4 — evolution control, and the false-optimum failure
-  mode.
-- Jin, Y., Olhofer, M. & Sendhoff, B. (2002). _A framework for evolutionary
-  optimization with approximate fitness functions_ — the controlled-evaluation
-  framework Jin (2011) builds on.
+Jin (2011) §4 — evolution control and the false-optimum failure mode — and Jin,
+Olhofer & Sendhoff (2002), the controlled-evaluation framework it builds on, are
+indexed with their DOIs in
+[`docs/comparison/REFERENCES.md`](comparison/REFERENCES.md) under
+_Surrogate-assisted search and racing_.
+
 - [RACING.md](RACING.md) — the one mechanism in the build today that produces an
   approximate score.
 - [EVALUATION_ARCHIVE.md](EVALUATION_ARCHIVE.md) — the archive of exact

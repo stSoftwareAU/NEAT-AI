@@ -245,6 +245,13 @@ export async function evolve(
   const fidelityLine = neat.evolutionControl.describe(fidelitySummary);
   if (neat.evolutionControl.active) getLogger().info(fidelityLine);
   else getLogger().debug(fidelityLine);
+  // A plan the sweep did not honour is stated once, loudly, rather than left
+  // to be inferred from a trace that says "approximate" beside an
+  // all-exact count.
+  const unhonoured = neat.evolutionControl.unhonouredPlanWarning(
+    fidelitySummary,
+  );
+  if (unhonoured) getLogger().warn(unhonoured);
 
   // Issue #2457: Commit any squash-mutation outcomes captured last generation
   // now that the freshly evaluated fitness is available. Each creature is
@@ -365,9 +372,16 @@ export async function evolve(
   // assertion below compares the two scores, and satisfying it with an
   // approximate number would let the lineage proceed from a false premise —
   // Jin (2011) §4's false optimum, arrived at silently.
-  neat.evolutionControl.assertExactAll(elitists, "elitism");
-  if (previousFittest) {
-    neat.evolutionControl.assertExact(previousFittest, "previousFittest");
+  //
+  // Only an *active* policy enforces it, because only an active policy is
+  // entitled to change what a run does. With `strategy: "none"` the guarantee
+  // is racing's (`RacingRanking.ts` ranks every abandoned creature below every
+  // scored one), and behaviour is identical to every build before this issue.
+  if (neat.evolutionControl.active) {
+    neat.evolutionControl.assertExactAll(elitists, "elitism");
+    if (previousFittest) {
+      neat.evolutionControl.assertExact(previousFittest, "previousFittest");
+    }
   }
 
   let tmpFittest = elitists[0];
@@ -404,8 +418,14 @@ export async function evolve(
   assert(fittest.score, "No fittest score found");
 
   // Issue #3931: no approximate score leaves the run. The clone carries the
-  // source creature's tags, so the fidelity travels with the export.
-  neat.evolutionControl.assertExact(fittest, "export of the fittest creature");
+  // source creature's tags, so the fidelity travels with the export. Gated on
+  // an active policy for the same reason as the elite guard above.
+  if (neat.evolutionControl.active) {
+    neat.evolutionControl.assertExact(
+      fittest,
+      "export of the fittest creature",
+    );
+  }
 
   // Issue #1039: Record fitness for plateau detection
   neat.plateauDetector.recordFitness(fittest.score);

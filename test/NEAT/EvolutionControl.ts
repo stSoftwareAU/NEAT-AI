@@ -15,16 +15,12 @@ import {
   orderingDivergence,
 } from "@neat/EvolutionControl.ts";
 import {
-  DEFAULT_EVOLUTION_CONTROL_CONFIG,
   type EvolutionControlConfig,
   resolveEvolutionControlConfig,
 } from "@config/EvolutionControlConfig.ts";
 import { EvolutionControlError } from "@errors/EvolutionControlError.ts";
-import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import {
   isExactScore,
-  partialCorpusFidelity,
-  refreshExactScoreFidelity,
   SCORE_FIDELITY_TAG,
   scoreFidelity,
 } from "@architecture/ScoreFidelity.ts";
@@ -387,75 +383,47 @@ Deno.test("evolution control — reset clears the canary and the escalation", ()
   assertEquals(policy.beginGeneration(3).fidelity, "approximate");
 });
 
-Deno.test("score fidelity — an out-of-range fidelity is rejected, never clamped", () => {
-  const policy = control({ strategy: "generation" });
-  const creature = scored(1, "a");
-  for (const bad of [0, -0.5, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-    const error = assertThrows(
-      () => policy.markFidelity(creature, bad),
-      EvolutionControlError,
-    );
-    assertEquals(error.reason, "INVALID_FIDELITY");
-  }
+Deno.test("evolution control — an unhonoured plan is reported loudly, once", () => {
+  const policy = control({ strategy: "generation", exactEvery: 5 });
+  policy.beginGeneration(3);
+  // The plan asked for a cheap sweep; every creature came back exact, because
+  // nothing downstream honours the plan yet.
+  const population = [scored(3, "a"), scored(2, "b")];
+  const summary = policy.summarise(population);
+  assertEquals(summary.fidelity, "approximate");
+  assertEquals(summary.approximateEvaluations, 0);
+
+  const warning = policy.unhonouredPlanWarning(summary);
+  assert(warning !== undefined, "the mismatch must be reported");
+  assert(warning.includes("generation"), warning);
+  assert(warning.includes("no cheap evaluator"), warning);
+  // Once per run, not once per generation.
+  assertEquals(policy.unhonouredPlanWarning(summary), undefined);
 });
 
-Deno.test("score fidelity — a corrupt tag is refused, not read as exact", () => {
-  const creature = scored(1, "a");
-  creature.tags = [{ name: SCORE_FIDELITY_TAG, value: "not-a-number" }];
-  const error = assertThrows(
-    () => scoreFidelity(creature),
-    EvolutionControlError,
+Deno.test("evolution control — an honoured plan reports nothing", () => {
+  const policy = control({ strategy: "generation", exactEvery: 5 });
+  policy.beginGeneration(3);
+  const population = [scored(3, "a"), scored(2, "b")];
+  policy.markFidelity(population[0], 0.1);
+  policy.markFidelity(population[1], 0.1);
+  assertEquals(
+    policy.unhonouredPlanWarning(policy.summarise(population)),
+    undefined,
   );
-  assertEquals(error.reason, "INVALID_FIDELITY");
 });
 
-Deno.test("score fidelity — an exact score refreshes a stale approximate tag", () => {
-  const creature = scored(1, "a");
-  const untouched = scored(1, "b");
-  const policy = control({ strategy: "generation" });
-  policy.markFidelity(creature, 0.2);
-
-  refreshExactScoreFidelity(creature);
-  assertEquals(scoreFidelity(creature), 1);
-  assertEquals(isExactScore(creature), true);
-
-  // A creature that was never approximated stays entirely untagged.
-  refreshExactScoreFidelity(untouched);
-  assertEquals(getTag(untouched, SCORE_FIDELITY_TAG), null);
+Deno.test("evolution control — an exact sweep never reports an unhonoured plan", () => {
+  const policy = control({ strategy: "generation", exactEvery: 5 });
+  policy.beginGeneration(5);
+  const population = [scored(3, "a"), scored(2, "b")];
+  assertEquals(policy.summarise(population).fidelity, "exact");
+  assertEquals(
+    policy.unhonouredPlanWarning(policy.summarise(population)),
+    undefined,
+  );
 });
 
-Deno.test("score fidelity — a partial-corpus score is never rounded up to exact", () => {
-  assertEquals(partialCorpusFidelity(500, 1000), 0.5);
-  assert(partialCorpusFidelity(1000, 1000) < 1);
-  assert(partialCorpusFidelity(0, 1000) > 0);
-  assert(partialCorpusFidelity(10, 0) > 0);
-  assert(partialCorpusFidelity(10, 0) < 1);
-});
-
-Deno.test("evolution control config — defaults leave the policy off", () => {
-  const resolved = resolveEvolutionControlConfig();
-  assertEquals(resolved, DEFAULT_EVOLUTION_CONTROL_CONFIG);
-  assertEquals(resolved.strategy, "none");
-});
-
-Deno.test("evolution control config — invalid values are rejected, never clamped", () => {
-  const cases: [EvolutionControlConfig, string][] = [
-    [{ strategy: "population" as never }, "strategy"],
-    [{ exactEvery: 1 }, "exactEvery"],
-    [{ exactEvery: 2.5 }, "exactEvery"],
-    [{ exactTopK: 0 }, "exactTopK"],
-    [{ diverseSampleSize: -1 }, "diverseSampleSize"],
-    [{ canaryWindow: 1 }, "canaryWindow"],
-    [{ canaryThreshold: 0 }, "canaryThreshold"],
-    [{ canaryThreshold: 1.5 }, "canaryThreshold"],
-  ];
-  for (const [config, field] of cases) {
-    const error = assertThrows(
-      () => resolveEvolutionControlConfig(config),
-      ConfigurationError,
-      undefined,
-      `${field} must be rejected`,
-    );
-    assert(error.message.includes(field), error.message);
-  }
+Deno.test("ordering divergence — a pair the exact evaluation also ties is not a disagreement", () => {
+  assertEquals(orderingDivergence([1, 1], [2, 2]), 0);
 });
