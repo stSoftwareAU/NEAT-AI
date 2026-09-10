@@ -9,6 +9,7 @@
 
 import { Creature } from "@creature";
 import { compactUnused } from "@compact/CompactUnused.ts";
+import { ageNewbornGrace } from "@architecture/NewbornGrace.ts";
 import { selectCompactVariant } from "@compact/CompactVariants.ts";
 import { validateOrDiagnose } from "@utils/Diagnostics.ts";
 import { removeSyntheticSynapses } from "@propagate/RemoveSyntheticSynapses.ts";
@@ -242,6 +243,10 @@ export function finaliseTraining(
   stripUntrackedTraces(bestTraceJSON, bestCreatureJSON, loop.sparseConfig);
 
   let compact = compactUnused(bestTraceJSON, iterationConfig.plankConstant);
+  // Issue #3970: `compactUnused` spends a grace round on the copy it returns.
+  // The `compactVariants` fallback below does not, so record which lineage
+  // produced `compact` and spend the round explicitly when it did not.
+  const compactWasAged = compact !== undefined;
   if (!compact) {
     // Issue #3037: select the best of the safe + aggressive compaction
     // candidates (the safe variant is the floor; identical variants dedupe).
@@ -259,6 +264,19 @@ export function finaliseTraining(
   // non-deterministically on load. Repair it — or fail loudly at the producer —
   // rather than letting the fault surface downstream on deserialisation.
   compact = validateAndRepairCompact(compact);
+
+  // Issue #3970: one training round has completed, so every protected newborn
+  // spends one round of its grace budget on the two lineages that leave here.
+  // The compacted copy is aged inside `compactUnused`; without this the
+  // trained (uncompacted) creature would carry its tag forever and its newborn
+  // would be exempt from compaction for the rest of the run.
+  ageNewbornGrace(creature);
+  ageNewbornGrace(bestTraceJSON);
+  // Issue #3970: the `compactVariants` fallback lineage is a third creature
+  // leaving this function. Without this it would keep the un-decremented
+  // budget its siblings just spent, and a "1 round" grace would mean "exempt
+  // from compaction forever" on that lineage.
+  if (!compactWasAged && compact) ageNewbornGrace(compact);
 
   return {
     ID,

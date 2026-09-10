@@ -16,6 +16,12 @@ import { getLogger } from "@utils/Logger.ts";
 import { assertForwardOnlyTopologyAfterBulkRemap } from "@architecture/ForwardOnlySynapseGuard.ts";
 import { assertSynapsesSortedByFromTo } from "@architecture/SynapseOrderGuard.ts";
 import { clampAndTrack } from "@utils/OverflowGuardStats.ts";
+import { tagNewbornGrace } from "@architecture/NewbornGrace.ts";
+import {
+  type ResolvedStructuralMutationOptions,
+  resolveStructuralMutationOptions,
+  type StructuralMutationOptions,
+} from "@mutate/StructuralMutationOptions.ts";
 
 /**
  * Selects a suitable outward connection target for a newly inserted neuron.
@@ -47,6 +53,18 @@ export function pickOutwardTargetNeuronIndex(
 }
 
 export class AddNeuron extends AbstractMutationOperator {
+  /**
+   * Issue #3970: identity-initialised structural mutation. Scales the
+   * **outward** synapse only, and grants the newborn a compaction grace
+   * period. Defaults reproduce the historical behaviour exactly.
+   */
+  private readonly structural: ResolvedStructuralMutationOptions;
+
+  constructor(creature: Creature, options?: StructuralMutationOptions) {
+    super(creature);
+    this.structural = resolveStructuralMutationOptions(options);
+  }
+
   /**
    * Add a neuron to the network.
    *
@@ -87,6 +105,9 @@ export class AddNeuron extends AbstractMutationOperator {
       indx++;
     }
     neuron.index = indx;
+    // Issue #3970: mark the newborn before it is inserted so compaction cannot
+    // delete it before the gradient step that gives its structure a job.
+    tagNewbornGrace(neuron, this.structural.structuralNewbornGraceRounds);
     this.insertNeuron(neuron);
 
     // Issue #1018: Optimise focus selection using direct candidate filtering
@@ -207,7 +228,7 @@ export class AddNeuron extends AbstractMutationOperator {
         neuron.index,
         targetNeuronIndex,
         clampAndTrack(
-          Synapse.randomWeight(),
+          Synapse.randomWeight(this.structural.structuralWeightScale),
           "mutation.synapse",
           "AddNeuron",
         ),
@@ -237,7 +258,7 @@ export class AddNeuron extends AbstractMutationOperator {
               neuron.index,
               candidate.index,
               clampAndTrack(
-                Synapse.randomWeight(),
+                Synapse.randomWeight(this.structural.structuralWeightScale),
                 "mutation.synapse",
                 "AddNeuron",
               ),
@@ -265,7 +286,7 @@ export class AddNeuron extends AbstractMutationOperator {
               neuron.index,
               neuron.index,
               clampAndTrack(
-                Synapse.randomWeight(),
+                Synapse.randomWeight(this.structural.structuralWeightScale),
                 "mutation.synapse",
                 "AddNeuron",
               ),
@@ -274,6 +295,9 @@ export class AddNeuron extends AbstractMutationOperator {
             outwardConnections = creature.outwardConnections(neuron.index);
             if (outwardConnections.length > 0) {
               // Outward connection repaired.
+              this.enforceOutwardScale(neuron.index);
+              // Issue #3971: the inserted neuron is the mutation site.
+              this.noteMutationSite(neuron.index);
               return true;
             }
           }
@@ -285,13 +309,55 @@ export class AddNeuron extends AbstractMutationOperator {
       }
     }
 
+    // Issue #3970: the repair paths above (and `neuron.fix()`) can replace the
+    // scaled outward synapse with a full-scale one, so enforce the scale as a
+    // post-condition rather than trusting each individual connect site.
+    this.enforceOutwardScale(neuron.index);
+
     // delete this.creature.memetic;
     const endUUID = CreatureUtil.makeUUID(creature);
     if (startUUID === endUUID) {
       getLogger().warn("AddNeuron: No change.");
       return false;
     } else {
+      // Issue #3971: the inserted neuron is the mutation site.
+      this.noteMutationSite(neuron.index);
       return true;
+    }
+  }
+
+  /**
+   * Issue #3970: post-condition — every outward synapse of a newly inserted
+   * neuron respects `structuralWeightScale`.
+   *
+   * `AddNeuron`'s own connect sites already draw at the configured scale, but
+   * a forward-only creature can strip a fallback self-loop, after which
+   * `neuron.fix()` re-adds an outward synapse at full scale (measured on ~0.4%
+   * of offspring). Redrawing any over-scale weight here keeps the guarantee
+   * whichever path created the synapse.
+   *
+   * At the default scale of `1` no weight can exceed `0.5`, so nothing is
+   * redrawn, no extra random number is consumed, and the result is
+   * bit-identical to the historical behaviour.
+   *
+   * Below a scale of `2e-7` the one-plank floor in `Synapse.randomWeight()` is
+   * itself larger than `scale / 2`, so the redrawn weight is one plank rather
+   * than `scale / 2` — the floor wins, deliberately, because a zero outward
+   * weight would freeze the newborn's whole inward subtree.
+   *
+   * @param neuronIndex - Index of the newly inserted neuron.
+   */
+  private enforceOutwardScale(neuronIndex: number): void {
+    const scale = this.structural.structuralWeightScale;
+    const limit = scale / 2;
+    for (const synapse of this.creature.outwardConnections(neuronIndex)) {
+      if (Math.abs(synapse.weight) <= limit) continue;
+      synapse.weight = clampAndTrack(
+        Synapse.randomWeight(scale),
+        "mutation.synapse",
+        "AddNeuron",
+      );
+      delete this.creature.uuid;
     }
   }
 

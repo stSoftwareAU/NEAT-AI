@@ -166,10 +166,15 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   // `crossValidation`, `dataFuzzing` and `dataQuantisation` in 7.0.0,
   // leaving 106; #3865 then promoted the env-only Rust scorer config to a
   // `rustScorer` option key, making 107; #3928 then added the `racing`
-  // (early-exit scoring) option key, making 108.
+  // (early-exit scoring) option key, making 108; GRQ #4717 then added
+  // `skipTrainingAfterPopulationRegressions`, making 109; #3970 then added
+  // `structuralWeightScale` and `structuralNewbornGraceRounds`, making 111;
+  // #3973 then added `skipConnectionRate` and `skipMinRunLength`, making 113;
+  // #3974 then added `deepChainSquashBias` and `deepChainMinLength`, making
+  // 115.
   assertEquals(
     topLevel.length,
-    108,
+    115,
     "NeatArguments top-level key count changed",
   );
   assert(

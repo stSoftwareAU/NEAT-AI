@@ -230,6 +230,8 @@ export async function finishGeneration(
     throughput: result.throughput,
     // Issue #3263: diagnostic squash mix for the squash-budget experiment.
     squashHistogram: result.squashHistogram,
+    // Issue #3971: per-operator mutation outcome telemetry.
+    mutationOperators: result.mutationOperators,
     // Issue #2947: surface the lineage-accumulated warm-up counter and the
     // derived lock state (present only while warm-up is configured).
     ...buildWarmupEventFields(neat.warmupGenerations, neat.currentGeneration),

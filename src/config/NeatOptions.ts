@@ -56,6 +56,12 @@ type NumericOptionKeys =
   | "threads"
   | "maximumBiasAdjustmentScale"
   | "maximumWeightAdjustmentScale"
+  | "structuralWeightScale"
+  | "structuralNewbornGraceRounds"
+  | "skipConnectionRate"
+  | "skipMinRunLength"
+  | "deepChainSquashBias"
+  | "deepChainMinLength"
   | "sparseRatio"
   | "globalBreedingRate"
   | "diversityBreedingRate"
@@ -85,7 +91,8 @@ type NumericOptionKeys =
   | "heavyTaskWorkerCount"
   | "maxConcurrentDiscoveries"
   | "skipTrainingAfterConsecutiveRegressions"
-  | "skipTrainingAfterPopulationNoProgress";
+  | "skipTrainingAfterPopulationNoProgress"
+  | "skipTrainingAfterPopulationRegressions";
 
 /**
  * Options for NEAT configuration.

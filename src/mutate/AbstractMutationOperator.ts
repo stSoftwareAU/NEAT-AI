@@ -16,8 +16,34 @@ import type { RadioactiveInterface } from "@mutate/RadioactiveInterface.ts";
 export abstract class AbstractMutationOperator implements RadioactiveInterface {
   protected readonly creature: Creature;
 
+  /**
+   * Issue #3971: neuron index the most recent mutation changed, or `-1` when
+   * this operator names no site. Reset before every `mutate()` so a stale site
+   * from an earlier call can never be attributed to a later mutation.
+   */
+  private siteIndex = -1;
+
   constructor(creature: Creature) {
     this.creature = creature;
+  }
+
+  /**
+   * Index of the neuron the most recent {@link mutate} call changed, or `-1`
+   * when unknown. Read by the per-operator telemetry to bucket the mutation by
+   * depth (Issue #3971).
+   */
+  public get lastMutationSiteIndex(): number {
+    return this.siteIndex;
+  }
+
+  /**
+   * Record the neuron index this mutation changed. Called by subclasses at the
+   * point the change is committed, using the **post-mutation** index.
+   *
+   * @param index - Neuron index of the mutation site.
+   */
+  protected noteMutationSite(index: number): void {
+    this.siteIndex = index;
   }
 
   /**
@@ -29,6 +55,7 @@ export abstract class AbstractMutationOperator implements RadioactiveInterface {
    * selection to concentrate structural changes on high-error regions.
    */
   public mutate(focusList?: number[], mutationBias?: MutationBias): boolean {
+    this.siteIndex = -1;
     return this.performMutation(focusList, mutationBias);
   }
 

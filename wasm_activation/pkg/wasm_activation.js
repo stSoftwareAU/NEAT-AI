@@ -97,29 +97,18 @@ export class CompiledNetwork {
         wasm.__wbg_compilednetwork_free(ptr, 0);
     }
     /**
-     * Issue #1212 - Batch activate and trace for 4 records simultaneously.
-     *
-     * Processes 4 input records through the network in parallel, capturing trace
-     * data for backpropagation. Uses SIMD via
-     * [`weighted_sum_simd_4records_unchecked`] for standard squash functions.
-     *
-     * # Arguments
-     * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
-     * * `input_size` - Number of input values per record
-     * * `num_outputs` - Number of output neurons
-     *
-     * # Returns
-     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
-     * [outputs..., activations..., hints..., trace_data...]
-     * @param {Float32Array} inputs
-     * @param {number} input_size
+     * Activate the network with the given input values
+     * Returns the output values
+     * Issue #1175 - Uses typed structs for better cache locality
+     * Issue #1177 - Inlines common squash functions to avoid function call overhead
+     * @param {Float32Array} input
      * @param {number} num_outputs
      * @returns {Float32Array}
      */
-    activate_and_trace_batch_4way(inputs, input_size, num_outputs) {
-        const ptr0 = passArrayF32ToWasm0(inputs, wasm.__wbindgen_malloc);
+    activate(input, num_outputs) {
+        const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.compilednetwork_activate_and_trace_batch_4way(this.__wbg_ptr, ptr0, len0, input_size, num_outputs);
+        const ret = wasm.compilednetwork_activate(this.__wbg_ptr, ptr0, len0, num_outputs);
         var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v2;
@@ -160,18 +149,29 @@ export class CompiledNetwork {
         return v2;
     }
     /**
-     * Activate the network with the given input values
-     * Returns the output values
-     * Issue #1175 - Uses typed structs for better cache locality
-     * Issue #1177 - Inlines common squash functions to avoid function call overhead
-     * @param {Float32Array} input
+     * Issue #1212 - Batch activate and trace for 4 records simultaneously.
+     *
+     * Processes 4 input records through the network in parallel, capturing trace
+     * data for backpropagation. Uses SIMD via
+     * [`weighted_sum_simd_4records_unchecked`] for standard squash functions.
+     *
+     * # Arguments
+     * * `inputs` - Packed input array: [input0..., input1..., input2..., input3...]
+     * * `input_size` - Number of input values per record
+     * * `num_outputs` - Number of output neurons
+     *
+     * # Returns
+     * Four `Vec<f32>` values, one per record. Each has the same format as `activate_and_trace`:
+     * [outputs..., activations..., hints..., trace_data...]
+     * @param {Float32Array} inputs
+     * @param {number} input_size
      * @param {number} num_outputs
      * @returns {Float32Array}
      */
-    activate(input, num_outputs) {
-        const ptr0 = passArrayF32ToWasm0(input, wasm.__wbindgen_malloc);
+    activate_and_trace_batch_4way(inputs, input_size, num_outputs) {
+        const ptr0 = passArrayF32ToWasm0(inputs, wasm.__wbindgen_malloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.compilednetwork_activate(this.__wbg_ptr, ptr0, len0, num_outputs);
+        const ret = wasm.compilednetwork_activate_and_trace_batch_4way(this.__wbg_ptr, ptr0, len0, input_size, num_outputs);
         var v2 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v2;
@@ -347,6 +347,12 @@ if (Symbol.dispose) CompiledNetwork.prototype[Symbol.dispose] = CompiledNetwork.
  * # Returns
  * Float64Array with 12 values (3 per neuron):
  *   [count, totalBias, totalAdjustedBias] × 4
+ *
+ * # Malformed input (Issue #658)
+ * The three slices are walked with one index, so a caller that passes fewer
+ * than 4 values in any of them would index out of range — and a panic on wasm
+ * aborts the whole module instance. Such a call returns an empty `Vec` instead,
+ * the sentinel a successful call (always 12 values) can never produce.
  * @param {Float64Array} target_pre_activations
  * @param {Float64Array} pre_activations
  * @param {Float64Array} current_biases
@@ -373,6 +379,12 @@ export function accumulate_bias_batch_4way(target_pre_activations, pre_activatio
  * Issue #1518 - Batch bias accumulation for 8 neurons.
  *
  * Same as 4-way but processes 8 neurons. Returns 24 f64 values.
+ *
+ * # Malformed input (Issue #658)
+ * The three slices are walked with one index, so a caller that passes fewer
+ * than 8 values in any of them would index out of range — and a panic on wasm
+ * aborts the whole module instance. Such a call returns an empty `Vec` instead,
+ * the sentinel a successful call (always 24 values) can never produce.
  * @param {Float64Array} target_pre_activations
  * @param {Float64Array} pre_activations
  * @param {Float64Array} current_biases
@@ -471,6 +483,12 @@ export function accumulate_bias_persistent_8way(start_index, target_pre_activati
  *   [count, totalPositiveActivation, totalNegativeActivation,
  *    countPositiveActivations, countNegativeActivations,
  *    totalPositiveAdjustedValue, totalNegativeAdjustedValue] × 4
+ *
+ * # Malformed input (Issue #658)
+ * The three slices are walked with one index, so a caller that passes fewer
+ * than 4 values in any of them would index out of range — and a panic on wasm
+ * aborts the whole module instance. Such a call returns an empty `Vec` instead,
+ * the sentinel a successful call (always 28 values) can never produce.
  * @param {Float64Array} current_weights
  * @param {Float64Array} target_values
  * @param {Float64Array} activations
@@ -497,6 +515,12 @@ export function accumulate_weight_batch_4way(current_weights, target_values, act
  * Issue #1518 - Batch weight accumulation for 8 synapses.
  *
  * Same as 4-way but processes 8 synapses. Returns 56 f64 values.
+ *
+ * # Malformed input (Issue #658)
+ * The three slices are walked with one index, so a caller that passes fewer
+ * than 8 values in any of them would index out of range — and a panic on wasm
+ * aborts the whole module instance. Such a call returns an empty `Vec` instead,
+ * the sentinel a successful call (always 56 values) can never produce.
  * @param {Float64Array} current_weights
  * @param {Float64Array} target_values
  * @param {Float64Array} activations
@@ -635,6 +659,13 @@ export function calculate_bias(count, total_adjusted_bias, current_bias, no_chan
  *
  * # Returns
  * Float64Array with 4 calculated biases
+ *
+ * # Malformed input (Issue #658)
+ * The 3-value stride is walked four times, so a `packed_state` shorter than 12
+ * values would index out of range — and a panic on wasm aborts the whole module
+ * instance. Such a call returns an empty `Vec` instead, the sentinel a
+ * successful call (always 4 biases) can never produce. `no_change_flags` is
+ * already read defensively and a short one keeps defaulting to `false`.
  * @param {Float64Array} packed_state
  * @param {Uint8Array} no_change_flags
  * @param {number} generations
@@ -738,6 +769,12 @@ export function calculate_weight(count, total_positive_activation, total_negativ
  *
  * # Returns
  * Float64Array with 4 calculated weights
+ *
+ * # Malformed input (Issue #658)
+ * The 8-value stride is walked four times, so a `packed_state` shorter than 32
+ * values would index out of range — and a panic on wasm aborts the whole module
+ * instance. Such a call returns an empty `Vec` instead, the sentinel a
+ * successful call (always 4 weights) can never produce.
  * @param {Float64Array} packed_state
  * @param {number} generations
  * @param {number} plank_constant

@@ -33,6 +33,7 @@ import {
   type AbandonedScore,
   rankAbandonedBelowScored,
 } from "../score/RacingRanking.ts";
+import type { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
 
 /**
  * Evaluates fitness scores for a population of creatures.
@@ -123,6 +124,14 @@ export class Fitness {
    * enter the batch path and any creatures re-scored after a batch fallback.
    */
   lastCreaturesPerCreatureScored = 0;
+
+  /**
+   * Issue #3971: per-operator mutation telemetry. Set by `Neat` so the
+   * evaluation cost of an offspring lands on the operators that produced it.
+   * A creature the de-duplicator replaced never reaches `calculate()`, so it
+   * is never recorded as evaluated.
+   */
+  private mutationTelemetry: MutationOperatorTelemetry | undefined;
 
   /**
    * Data directory passed to the external `rust_scorer` binary in batch
@@ -244,6 +253,19 @@ export class Fitness {
    */
   setDataDir(dataDir: string): void {
     this.dataDir = dataDir;
+  }
+
+  /**
+   * Issue #3971: Supply the run-wide per-operator mutation telemetry so each
+   * evaluation's wall-clock is charged to the operators that produced the
+   * creature being evaluated.
+   *
+   * @param telemetry - The tracker owned by `Neat`, or `undefined` to detach.
+   */
+  setMutationTelemetry(
+    telemetry: MutationOperatorTelemetry | undefined,
+  ): void {
+    this.mutationTelemetry = telemetry;
   }
 
   /**
@@ -406,6 +428,10 @@ export class Fitness {
       }
 
       if (batchCreatures.length > 0) {
+        // Issue #3971: the batch scorer reports no per-creature time, so the
+        // invocation's wall-clock is shared evenly across the creatures it
+        // scored.
+        const batchStartMs = Date.now();
         try {
           // Issue #3928: one policy per generation. Elites never reach here
           // (they already carry a score, so `needsEvaluation` filtered them
@@ -437,6 +463,8 @@ export class Fitness {
             const abandonedKeys = batchRun.raced && racingPolicy
               ? racingPolicy.abandonedKeys()
               : new Set<string>();
+            const perCreatureMs = (Date.now() - batchStartMs) /
+              batchCreatures.length;
             for (const creature of batchCreatures) {
               const record = batchRun.results.get(creature);
               if (!record) continue;
@@ -477,6 +505,7 @@ export class Fitness {
                 batchScoredCount++;
               }
               addTag(creature, "score", creature.score.toString());
+              this.mutationTelemetry?.recordEvaluated(creature, perCreatureMs);
 
               // Mirror the duplicate-fan-out from the per-creature path so
               // population score invariants hold identically in batch mode.
@@ -574,6 +603,9 @@ export class Fitness {
       if (signal?.aborted || front >= queue.length) return;
       const creature = queue[front++];
 
+      // Issue #3971: one Date.now() pair per creature, charged to the
+      // operators that mutated it.
+      const evaluateStartMs = Date.now();
       const evaluatePromise = worker.evaluate(creature, this.feedbackLoop);
       const responseData = abortPromise
         ? await Promise.race([evaluatePromise, abortPromise])
@@ -612,6 +644,10 @@ export class Fitness {
         workerScoredCount++;
       }
       addTag(creature, "score", creature.score.toString());
+      this.mutationTelemetry?.recordEvaluated(
+        creature,
+        Date.now() - evaluateStartMs,
+      );
 
       // Issue #1016: Copy score and tags to duplicate creatures
       fanOutToDuplicates(creature, duplicates);

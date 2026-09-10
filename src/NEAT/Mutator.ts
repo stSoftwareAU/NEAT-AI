@@ -11,6 +11,7 @@ import { AddBackCon } from "@mutate/AddBackCon.ts";
 import { AddConnection } from "@mutate/AddConnection.ts";
 import { AddNeuron } from "@mutate/AddNeuron.ts";
 import { AddSelfCon } from "@mutate/AddSelfCon.ts";
+import { AddSkipConnection } from "@mutate/AddSkipConnection.ts";
 import { ModBias } from "@mutate/ModBias.ts";
 import { ModActivation as ModSquash } from "@mutate/ModSquash.ts";
 import { ModWeight } from "@mutate/ModWeight.ts";
@@ -22,6 +23,9 @@ import { SubConnection } from "@mutate/SubConnection.ts";
 import { SubNeuron } from "@mutate/SubNeuron.ts";
 import { SubSelfCon } from "@mutate/SubSelfCon.ts";
 import { SwapNeurons } from "@mutate/SwapNeurons.ts";
+import type { DeepChainSquashOptions } from "@mutate/DeepChainSquashOptions.ts";
+import type { SkipConnectionOptions } from "@mutate/SkipConnectionOptions.ts";
+import type { StructuralMutationOptions } from "@mutate/StructuralMutationOptions.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { getRandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 import {
@@ -31,6 +35,9 @@ import {
   resolveMcmcAcceptanceDelta,
 } from "@neat/MetropolisHastings.ts";
 import type { MCMCDiagnostics } from "@neat/MCMCDiagnostics.ts";
+import { computeLayerBucket } from "@neat/LayerBucket.ts";
+import type { MutationDepthBucket } from "@neat/MutationOperatorReport.ts";
+import { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
 import { RankShapingWindow } from "@neat/RankShaping.ts";
 import { SquashEffectivenessTracker } from "@neat/SquashEffectivenessTracker.ts";
 import {
@@ -52,6 +59,43 @@ interface MutationCacheEntry {
   weightBiasCount: number;
   /** Issue #2125: Pre-computed non-expansion candidates for large creature selection. */
   nonExpansionCandidates: ReadonlyArray<{ name: string }>;
+}
+
+/**
+ * Issue #3970: reads the identity-initialised structural mutation knobs off
+ * the run config for `AddNeuron` / `AddConnection`.
+ */
+function structuralOptionsFrom(config: NeatConfig): StructuralMutationOptions {
+  return {
+    structuralWeightScale: config.structuralWeightScale,
+    structuralNewbornGraceRounds: config.structuralNewbornGraceRounds,
+  };
+}
+
+/**
+ * Issue #3973: reads the targeted skip-connection knobs off the run config for
+ * `AddSkipConnection`. The bypass weight is #3970's structural scale — a full
+ * random bypass around a tuned run is the perturbation that issue describes.
+ */
+function skipOptionsFrom(config: NeatConfig): SkipConnectionOptions {
+  return {
+    structuralWeightScale: config.structuralWeightScale,
+    skipMinRunLength: config.skipMinRunLength,
+  };
+}
+
+/**
+ * Issue #3974: reads the depth-aware squash-bias knobs off the run config for
+ * `ModSquash`. A bias of `0` — the default — leaves the operator drawing from
+ * the historical pool.
+ */
+function deepChainSquashOptionsFrom(
+  config: NeatConfig,
+): DeepChainSquashOptions {
+  return {
+    deepChainSquashBias: config.deepChainSquashBias,
+    deepChainMinLength: config.deepChainMinLength,
+  };
 }
 
 export class Mutator {
@@ -114,6 +158,14 @@ export class Mutator {
    */
   private readonly squashTracker: SquashEffectivenessTracker;
 
+  /**
+   * Issue #3971: per-operator mutation outcome telemetry. Owned by `Neat` so
+   * attributions survive the per-generation Mutator rebuild; a private
+   * instance is created when no shared tracker is supplied, so the recording
+   * calls below never need a null check.
+   */
+  private readonly mutationTelemetry: MutationOperatorTelemetry;
+
   private isMutationTopologyForwardOnly(creature: Creature): boolean {
     return creature.forwardOnly === true;
   }
@@ -143,18 +195,31 @@ export class Mutator {
    * @param squashTracker - Issue #2457: Optional shared per-role squash
    *   effectiveness tracker. When omitted, an internal tracker is created
    *   from `config.squashEffectiveness`.
+   * @param mutationTelemetry - Issue #3971: Optional shared per-operator
+   *   mutation outcome telemetry. When omitted, a private instance is used.
    */
   constructor(
     config: NeatConfig,
     mcmcTemperature?: number,
     mcmcDiagnostics?: MCMCDiagnostics,
     squashTracker?: SquashEffectivenessTracker,
+    mutationTelemetry?: MutationOperatorTelemetry,
   ) {
     this.config = config;
     this.mcmcTemperature = mcmcTemperature;
     this.mcmcDiagnostics = mcmcDiagnostics;
     this.squashTracker = squashTracker ??
       new SquashEffectivenessTracker(config.squashEffectiveness);
+    this.mutationTelemetry = mutationTelemetry ??
+      new MutationOperatorTelemetry();
+  }
+
+  /**
+   * Issue #3971: Expose the per-operator telemetry so the evolution loop can
+   * finalise the generation's report.
+   */
+  public getMutationOperatorTelemetry(): MutationOperatorTelemetry {
+    return this.mutationTelemetry;
   }
 
   /**
@@ -286,9 +351,17 @@ export class Mutator {
     string,
     (creature: Creature, config: NeatConfig) => RadioactiveInterface
   >([
-    [Mutation.ADD_NODE.name, (c, _cfg) => new AddNeuron(c)],
+    // Issue #3970: structural operators receive the identity-initialisation
+    // knobs; the defaults reproduce the historical full random weight.
+    [
+      Mutation.ADD_NODE.name,
+      (c, cfg) => new AddNeuron(c, structuralOptionsFrom(cfg)),
+    ],
     [Mutation.SUB_NODE.name, (c, _cfg) => new SubNeuron(c)],
-    [Mutation.ADD_CONN.name, (c, _cfg) => new AddConnection(c)],
+    [
+      Mutation.ADD_CONN.name,
+      (c, cfg) => new AddConnection(c, structuralOptionsFrom(cfg)),
+    ],
     [Mutation.SUB_CONN.name, (c, _cfg) => new SubConnection(c)],
     // Issue #1309: Pass weight regularisation config to ModWeight
     [
@@ -300,11 +373,20 @@ export class Mutator {
       Mutation.MOD_BIAS.name,
       (c, cfg) => new ModBias(c, cfg.biasRegularisation),
     ],
-    // Issue #2457: ModSquash receives the per-role tracker via createOperator.
-    [Mutation.MOD_SQUASH.name, (c, _cfg) => new ModSquash(c)],
+    // Issue #2457: ModSquash is built by `createOperator`, which short-circuits
+    // before this map so the operator can receive the per-role tracker held on
+    // the instance. It deliberately has no entry here — a second construction
+    // would be a shadow path that silently dropped the tracker and, since
+    // #3974, the depth-aware bias with it.
     [Mutation.ADD_SELF_CONN.name, (c, _cfg) => new AddSelfCon(c)],
     [Mutation.SUB_SELF_CONN.name, (c, _cfg) => new SubSelfCon(c)],
     [Mutation.ADD_BACK_CONN.name, (c, _cfg) => new AddBackCon(c)],
+    // Issue #3973: the targeted bypass operator, selected by
+    // `skipConnectionRate` rather than by membership of `config.mutation`.
+    [
+      Mutation.ADD_SKIP_CONN.name,
+      (c, cfg) => new AddSkipConnection(c, skipOptionsFrom(cfg)),
+    ],
     [Mutation.SUB_BACK_CONN.name, (c, _cfg) => new SubBackCon(c)],
     [Mutation.SWAP_NODES.name, (c, _cfg) => new SwapNeurons(c)],
   ]);
@@ -321,7 +403,11 @@ export class Mutator {
     // is held on the Mutator instance and therefore cannot live on the
     // static factory map.
     if (methodName === Mutation.MOD_SQUASH.name) {
-      return new ModSquash(creature, this.squashTracker);
+      return new ModSquash(
+        creature,
+        this.squashTracker,
+        deepChainSquashOptionsFrom(this.config),
+      );
     }
     const factory = Mutator.operatorFactories.get(methodName);
     if (!factory) {
@@ -443,6 +529,9 @@ export class Mutator {
             if (snapshot) {
               this.revertCreature(creature, snapshot);
             }
+            // Issue #3971: the batch never reaches evaluation, so its
+            // operators are rolled back rather than rejected by selection.
+            this.mutationTelemetry.recordReverted(creature);
             changed = false;
             hasTopologyMutation = false;
           }
@@ -509,10 +598,14 @@ export class Mutator {
 
           // Issue #2201: Record the M-H decision for diagnostics
           this.mcmcDiagnostics?.recordDecision(accepted);
+          // Issue #3971: the same decision, attributed to every operator in
+          // the batch. The aggregate half reconciles with MCMCDiagnostics.
+          this.mutationTelemetry.recordMcmcDecision(creature, accepted);
 
           if (!accepted) {
             // Rejected: revert creature to pre-mutation snapshot
             this.revertCreature(creature, mcmcSnapshot);
+            this.mutationTelemetry.recordReverted(creature);
             changed = false;
 
             if (this.config.verbose) {
@@ -759,6 +852,19 @@ export class Mutator {
    * Issue #1037: Implements adaptive mutation rate based on creature size.
    */
   public selectMutationMethod(creature: Creature) {
+    // Issue #3973: the targeted skip-connection operator sits outside
+    // `config.mutation` — `skipConnectionRate` is what selects it, and the
+    // default of `0` must consume no randomness at all, so a build with the
+    // operator present is bit-identical to one without it.
+    //
+    // Seed warm-up does not exclude it: the warm-up allow-list keeps structural
+    // *additions* (`ADD_NODE`, `ADD_CONN`) and drops reductions and squash
+    // changes, and a bypass is a specialised addition.
+    const skipRate = this.config.skipConnectionRate;
+    if (skipRate > 0 && getRandomNumberGenerator().random() < skipRate) {
+      return Mutation.ADD_SKIP_CONN;
+    }
+
     const forwardOnly = this.isMutationTopologyForwardOnly(creature);
 
     // Check cache for pre-filtered candidates (Issue #1028)
@@ -1001,6 +1107,8 @@ export class Mutator {
     mutationBias?: MutationBias,
   ): boolean {
     assert(method.name, "Mutate name is required");
+    // Issue #3971: every invocation is a proposal, whether or not it lands.
+    this.mutationTelemetry.recordProposed(method.name);
     const startUUID = CreatureUtil.makeUUID(creature);
 
     // Issue #1103: Use cached mutator instances via getMutatorInstance().
@@ -1050,9 +1158,54 @@ export class Mutator {
           `UUID didn't change after ${method.name} mutation despite operator reporting a change`,
         );
       }
+      // Issue #3971: an operator that changed nothing costs nothing — it is
+      // never a rejection, and counting it as one would flatter the baseline.
+      this.mutationTelemetry.recordNoChange(method.name);
       return false;
     } else {
+      this.mutationTelemetry.recordApplied(creature, method.name, {
+        depthBucket: this.resolveDepthBucket(creature, method.name, mutator),
+      });
       return true;
+    }
+  }
+
+  /**
+   * Issue #3971: depth bucket of the mutation site, for the per-operator
+   * telemetry.
+   *
+   * Only structural mutations are bucketed: `computeLayerBucket` walks the
+   * whole topology, which is per-synapse work that must not ride on every
+   * weight/bias mutation. Everything else reports `unknown`.
+   *
+   * @param creature - The freshly mutated creature.
+   * @param methodName - Name of the operator that was applied.
+   * @param operator - The operator instance, which names its own site.
+   * @returns The depth bucket, or `unknown` when there is no usable site.
+   */
+  private resolveDepthBucket(
+    creature: Creature,
+    methodName: string,
+    operator: RadioactiveInterface,
+  ): MutationDepthBucket {
+    if (!isTopologyMutation(methodName)) return "unknown";
+    const site = operator.lastMutationSiteIndex;
+    if (site === undefined || site < 0) return "unknown";
+    const lastIndex = creature.neurons.length - 1;
+    if (lastIndex < 0) return "unknown";
+    try {
+      return computeLayerBucket(creature, Math.min(site, lastIndex));
+    } catch (error) {
+      // A creature mid-batch has not been through `fix()` yet, so a stale
+      // synapse index can defeat the layer walk. Telemetry must not abort a
+      // mutation batch, so the site is reported as unknown — loudly, because a
+      // topology this broken is a real bug worth chasing.
+      getLogger().warn(
+        `[MutationTelemetry] depth bucket unavailable after ${methodName}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return "unknown";
     }
   }
 }

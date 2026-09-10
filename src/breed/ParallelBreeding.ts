@@ -92,6 +92,15 @@ export class ParallelBreeding {
   lastCorruptParentSkips = 0;
 
   /**
+   * Issue #3971: offspring → the score of the parent it was bred from, for the
+   * most recent `breedBatch()` call. A freshly bred offspring carries no score
+   * of its own, so without this the per-operator telemetry could not compute
+   * the score delta of the mutations applied to it. Rebuilt every batch, and
+   * weak so it never retains a discarded offspring.
+   */
+  lastParentBaselines: WeakMap<Creature, number> = new WeakMap();
+
+  /**
    * Creates a new ParallelBreeding instance.
    *
    * @param genus - The genus containing the population
@@ -127,10 +136,13 @@ export class ParallelBreeding {
       this.lastBreedingSubPhases = undefined;
       this.lastQueueMaxDepth = 0;
       this.lastCorruptParentSkips = 0;
+      this.lastParentBaselines = new WeakMap();
       return [];
     }
 
     const config = this.config;
+    // Issue #3971: fresh parent-score lookup for this batch.
+    this.lastParentBaselines = new WeakMap();
     // Issue #2523: Per-batch accumulator for corrupt-parent skips.
     const stats: BreedSelectionStats = { corruptParentSkips: 0 };
 
@@ -291,6 +303,9 @@ export class ParallelBreeding {
               discover(pair.mother, child);
             }
 
+            // Issue #3971: record the parent baseline for mutation telemetry.
+            this.recordParentBaseline(child, pair.mother, pair.father);
+
             // Issue #2324: Aggregate sub-phase timing from worker response
             if (response.breed.subPhaseTiming) {
               const t = response.breed.subPhaseTiming;
@@ -445,6 +460,28 @@ export class ParallelBreeding {
   }
 
   /**
+   * Issue #3971: remember which parent score an offspring is measured against.
+   * The mother is the ranked parent, so her score is the baseline; the father
+   * stands in only when hers is missing.
+   *
+   * @param child - The freshly bred offspring.
+   * @param mother - The ranked parent.
+   * @param father - The compatible parent.
+   */
+  private recordParentBaseline(
+    child: Creature,
+    mother: Creature,
+    father: Creature,
+  ): void {
+    const baseline = Number.isFinite(mother.score)
+      ? mother.score
+      : father.score;
+    if (baseline !== undefined && Number.isFinite(baseline)) {
+      this.lastParentBaselines.set(child, baseline);
+    }
+  }
+
+  /**
    * Breeds a single offspring from two parents (main thread fallback).
    *
    * This method wraps `Offspring.breed()` in a Promise to enable
@@ -480,6 +517,9 @@ export class ParallelBreeding {
           if (child && !child.memetic) {
             discover(mother, child);
           }
+
+          // Issue #3971: record the parent baseline for mutation telemetry.
+          if (child) this.recordParentBaseline(child, mother, father);
 
           resolve(child);
         } catch (error) {

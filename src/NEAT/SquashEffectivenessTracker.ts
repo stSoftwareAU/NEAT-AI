@@ -14,11 +14,14 @@
 
 import type { Creature } from "@creature";
 import type { RequiredSquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
-import { computeLayerAssignments } from "@propagate/LayerAssignment.ts";
+import { computeLayerBucket, type LayerBucket } from "@neat/LayerBucket.ts";
 import type { RandomNumberGenerator } from "@utils/RandomNumberGenerator.ts";
 
-/** Coarse layer bucket. */
-export type LayerBucket = "input-adjacent" | "mid" | "output-adjacent";
+/**
+ * Coarse layer bucket. Re-exported from `@neat/LayerBucket.ts`, where the
+ * shared bucketing lives (Issue #3971).
+ */
+export type { LayerBucket };
 
 /** Coarse fan-in bucket. */
 export type FanInBucket = "low" | "medium" | "high";
@@ -84,41 +87,14 @@ export class SquashEffectivenessTracker {
   }
 
   /**
-   * Returns the role for a neuron at `index` within `creature`. Layer info
-   * is computed lazily by `computeLayerAssignments` for the entire creature.
-   * Callers that mutate one neuron at a time should accept the cost; ModSquash
-   * mutations are infrequent compared with weight/bias mutations.
+   * Returns the role for a neuron at `index` within `creature`. The layer
+   * bucket is computed by `computeLayerBucket`, which runs
+   * `computeLayerAssignments` over the entire creature. Callers that mutate one
+   * neuron at a time should accept the cost; ModSquash mutations are infrequent
+   * compared with weight/bias mutations.
    */
   computeRole(creature: Creature, neuronIndex: number): NeuronRole {
-    const inputCount = creature.input;
-    const outputStart = creature.neurons.length - creature.output;
-
-    let layer: LayerBucket;
-    if (neuronIndex >= outputStart) {
-      // Output neurons are always output-adjacent.
-      layer = "output-adjacent";
-    } else {
-      const layers = computeLayerAssignments(creature);
-      // Find this neuron's depth and the maximum hidden depth.
-      let depth = -1;
-      let maxHiddenDepth = 0;
-      for (const [layerNum, indices] of layers) {
-        if (indices.includes(neuronIndex)) depth = layerNum;
-        // Track the maximum depth that does not contain output neurons.
-        if (indices[0] !== undefined && indices[0] < outputStart) {
-          if (layerNum > maxHiddenDepth) maxHiddenDepth = layerNum;
-        }
-      }
-
-      if (depth <= 1 || neuronIndex < inputCount) {
-        layer = "input-adjacent";
-      } else if (depth >= maxHiddenDepth) {
-        // Last hidden layer — adjacent to outputs.
-        layer = "output-adjacent";
-      } else {
-        layer = "mid";
-      }
-    }
+    const layer = computeLayerBucket(creature, neuronIndex);
 
     const fanInCount = creature.inwardConnections(neuronIndex).length;
     let fanIn: FanInBucket;

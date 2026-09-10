@@ -215,6 +215,35 @@ exit 1
   await Deno.chmod(path, 0o755);
 }
 
+/**
+ * Write a fake `curl` into the shim directory (Issue #3990).
+ *
+ * Since `probe_release` falls through to curl when `gh` cannot answer, the
+ * tests would otherwise reach the real GitHub API. The shim answers the
+ * release probe with a canned HTTP status and refuses anything else.
+ *
+ * @param probeStatus status the probe reports — "000" means curl itself
+ *        could not answer, which is what an offline runner looks like.
+ */
+async function writeFakeCurl(
+  fakeBinDir: string,
+  probeStatus: string,
+): Promise<void> {
+  const script = `#!/usr/bin/env bash
+PROBE_STATUS=${JSON.stringify(probeStatus)}
+for arg in "$@"; do
+  case "$arg" in
+    *releases/tags/*) printf '%s' "$PROBE_STATUS"; exit 0 ;;
+  esac
+done
+echo "fake-curl: unsupported request: $*" >&2
+exit 1
+`;
+  const path = `${fakeBinDir}/curl`;
+  await Deno.writeTextFile(path, script);
+  await Deno.chmod(path, 0o755);
+}
+
 async function runBuild(
   cwd: string,
   args: string[],
@@ -395,17 +424,117 @@ Deno.test({
 });
 
 Deno.test({
+  name:
+    "build.sh probes the release via curl when gh has no session (Issue #3990)",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    // The unattended worker runs with gh installed but unauthenticated. Its
+    // 401 must not abort the build: the credential-free curl probe answers,
+    // and the internal bump completes.
+    const setup = await setupFakeRepo();
+    try {
+      const sidecarSha256 = await sha256Of(setup.fixturePath);
+      await writeFakeGh(setup.fakeBinDir, {
+        probeCounterFile: setup.probeCounterFile,
+        downloadCounterFile: setup.downloadCounterFile,
+        fixturePath: setup.fixturePath,
+        probeFatalStderr: "gh: Bad credentials (HTTP 401)",
+        sidecarSha256,
+      });
+      await writeFakeCurl(setup.fakeBinDir, "200");
+      const result = await runBuild(
+        setup.dir,
+        ["--rev", FAKE_REV_B],
+        setup.fakeBinDir,
+        {
+          NEAT_CORE_BUNDLE_RETRIES: "5",
+          NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS: "0",
+        },
+      );
+      assertEquals(
+        result.code,
+        0,
+        `an unauthenticated gh must not fail the build; stdout=${result.stdout}\nstderr=${result.stderr}`,
+      );
+      const stat = await Deno.stat(
+        `${setup.dir}/wasm_activation/pkg/wasm_activation_bg.wasm`,
+      );
+      assert(stat.isFile, "the bundle should still be extracted into pkg/");
+      const denoJson = await Deno.readTextFile(`${setup.dir}/deno.json`);
+      assert(
+        denoJson.includes(FAKE_REV_B),
+        "the pin should advance despite the gh probe failing",
+      );
+    } finally {
+      await setup.cleanup();
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "build.sh signals an unreachable upstream with exit 3 and the marker (Issue #3990)",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    // The contract bump-deps.sh degrades on: BOTH the status and the marker.
+    // This asserts the producing side against the real build.sh, so the two
+    // scripts cannot drift apart behind green suites.
+    const setup = await setupFakeRepo();
+    try {
+      await Promise.all(["gh", "git", "curl"].map(async (tool) => {
+        const stub = `${setup.fakeBinDir}/${tool}`;
+        await Deno.writeTextFile(
+          stub,
+          `#!/bin/sh
+printf '%s: unreachable\n' "${tool}" >&2
+exit 1
+`,
+        );
+        await Deno.chmod(stub, 0o755);
+      }));
+      // No --rev: build.sh must resolve neatCore.ref, and every strategy fails.
+      const denoJsonBefore = await Deno.readTextFile(`${setup.dir}/deno.json`);
+      const result = await runBuild(setup.dir, [], setup.fakeBinDir, {});
+      assertEquals(
+        result.code,
+        3,
+        `expected the upstream-unresolved code; stderr=${result.stderr}`,
+      );
+      assert(
+        result.stderr.includes("BUILD_STATUS=upstream-unresolved"),
+        `expected the marker on stderr; stderr=${result.stderr}`,
+      );
+      assertEquals(
+        await Deno.readTextFile(`${setup.dir}/deno.json`),
+        denoJsonBefore,
+        "an unresolved lookup must not write anything",
+      );
+    } finally {
+      await setup.cleanup();
+    }
+  },
+});
+
+Deno.test({
   name: "build.sh fails fast on non-404 probe error (auth) without retrying",
   permissions: { run: true, read: true, write: true, env: true },
   fn: async () => {
     const setup = await setupFakeRepo();
     try {
+      // Behaviour change (Issue #3990): a gh error is no longer the probe's
+      // verdict on its own — the credential-free curl probe is consulted
+      // next, because an unauthenticated gh is exactly the unattended worker
+      // environment. Fail-fast is still what this test asserts: curl reports
+      // 000 (it could not answer either), so the probe returns the non-404
+      // verdict, does not retry, and never downloads. The following test
+      // covers the case where curl *can* answer.
       await writeFakeGh(setup.fakeBinDir, {
         probeCounterFile: setup.probeCounterFile,
         downloadCounterFile: setup.downloadCounterFile,
         fixturePath: setup.fixturePath,
         probeFatalStderr: "gh: Bad credentials (HTTP 401)",
       });
+      await writeFakeCurl(setup.fakeBinDir, "000");
       const result = await runBuild(
         setup.dir,
         ["--rev", FAKE_REV_B],

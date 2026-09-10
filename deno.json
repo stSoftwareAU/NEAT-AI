@@ -1,13 +1,13 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "7.0.30",
+  "version": "7.0.33",
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
-    "rev": "b7a4a3ef90592a08c18397fd36739712c8e7fa9e",
-    "assetSha256": "41eac15ae0459c4a3a96543ed28881ffb253e5d457b5ddde8cafa8dfb0aec4f8",
+    "rev": "86523eff033f2b947facc1f3d8d42f6f18a96e18",
+    "assetSha256": "c02c3dd7f561dc0bbea7f426630d14e7c42943d07d17eb03f103b040279a32bc",
     "memoryModel": "wasm64"
   },
   "publish": {
@@ -78,7 +78,10 @@
     "bench:smoke": "deno bench --allow-read --allow-write --allow-env --allow-ffi bench/FatherCompatibility.ts bench/Activate.ts",
     "bench:score-per-hour": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/score_per_hour_harness.ts",
     "bench:evolution-sweep": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/evolution_config_sweep.ts",
-    "bench:fitness-corpus": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/fitness_corpus_fidelity.ts"
+    "bench:fitness-corpus": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/fitness_corpus_fidelity.ts",
+    "bench:structural-scale": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/structural_weight_scale_sweep.ts",
+    "bench:skip-null": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/skip_connection_null_comparison.ts",
+    "bench:squash-bias": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/deep_chain_squash_bias.ts"
   },
   "test": {
     "include": [
@@ -94,6 +97,11 @@
       "bench/score_per_hour_harness_test.ts",
       "bench/evolution_config_sweep_test.ts",
       "bench/fitness_corpus_fidelity_test.ts",
+      "bench/structural_weight_scale_sweep_test.ts",
+      "bench/skip_connection_null_comparison.ts",
+      "bench/skip_connection_null_comparison_test.ts",
+      "bench/deep_chain_squash_bias.ts",
+      "bench/deep_chain_squash_bias_test.ts",
       "bench/ActivateAndTraceApp.ts",
       "bench/ActivateApp.ts",
       "bench/BreedPreFixExportAllocation.ts",

@@ -7,6 +7,8 @@
  * is registered.
  */
 
+import type { MutationOperatorReport } from "@neat/MutationOperatorReport.ts";
+
 /**
  * Sub-phase timing breakdown within the breeding phase.
  *
@@ -369,6 +371,12 @@ export interface GenerationCompleteEvent {
    * present on every `generation_complete` event.
    */
   readonly squashHistogram?: Readonly<Record<string, number>>;
+  /**
+   * Issue #3971: per-operator mutation outcome telemetry for this generation.
+   * Rides the existing generation event rather than opening a new output
+   * channel; always present once evolution has run a mutation phase.
+   */
+  readonly mutationOperators?: MutationOperatorReport;
 }
 
 /**
@@ -532,11 +540,21 @@ export interface TrainingSkippedEvent {
    *   streak reached `skipTrainingAfterConsecutiveRegressions` (#2382).
    * - "population_no_progress": the whole population's consecutive
    *   no-progress streak reached `skipTrainingAfterPopulationNoProgress`.
+   * - "population_regressions": the whole population's consecutive
+   *   **regression** streak reached `skipTrainingAfterPopulationRegressions`
+   *   (GRQ #4717) — a stricter signal, cleared by a no-change.
    */
-  readonly reason: "creature_regressions" | "population_no_progress";
+  readonly reason:
+    | "creature_regressions"
+    | "population_no_progress"
+    | "population_regressions";
   /** The configured threshold that tripped. */
   readonly threshold: number;
-  /** The streak (per-creature or population-wide) that met the threshold. */
+  /**
+   * The streak that met the threshold: per-creature regressions,
+   * population-wide no-progress, or population-wide regressions, according to
+   * `reason`.
+   */
   readonly consecutiveNoProgress: number;
   /** Cumulative skipped dispatches for the run, including this one. */
   readonly totalSkipped: number;

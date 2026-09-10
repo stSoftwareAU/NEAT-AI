@@ -1,0 +1,276 @@
+{
+  "group": "grq-tail",
+  "creatureFile": "test/data/grq-23-forests-constants.json",
+  "notes": "Depth bucketing of the GRQ-lineage production creature (Issue #3972). Every engine must reproduce maxDepth, the depth histogram, and the single-file tail before its gradient numbers can be compared.",
+  "expect": {
+    "maxDepth": 61,
+    "neurons": 5049,
+    "synapses": 24100,
+    "histogram": {
+      "0": 2788,
+      "1": 1030,
+      "2": 442,
+      "3": 282,
+      "4": 90,
+      "5": 62,
+      "6": 34,
+      "7": 32,
+      "8": 31,
+      "9": 26,
+      "10": 12,
+      "11": 8,
+      "12": 6,
+      "13": 12,
+      "14": 14,
+      "15": 14,
+      "16": 14,
+      "17": 10,
+      "18": 8,
+      "19": 10,
+      "20": 6,
+      "21": 7,
+      "22": 9,
+      "23": 7,
+      "24": 9,
+      "25": 7,
+      "26": 7,
+      "27": 8,
+      "28": 11,
+      "29": 6,
+      "30": 7,
+      "31": 5,
+      "32": 4,
+      "33": 3,
+      "34": 1,
+      "35": 1,
+      "36": 1,
+      "37": 1,
+      "38": 1,
+      "39": 1,
+      "40": 1,
+      "41": 1,
+      "42": 1,
+      "43": 1,
+      "44": 1,
+      "45": 1,
+      "46": 1,
+      "47": 1,
+      "48": 1,
+      "49": 1,
+      "50": 1,
+      "51": 1,
+      "52": 1,
+      "53": 1,
+      "54": 1,
+      "55": 1,
+      "56": 1,
+      "57": 1,
+      "58": 1,
+      "59": 1,
+      "60": 1,
+      "61": 1
+    },
+    "serialChain": {
+      "startDepth": 34,
+      "endDepth": 61,
+      "members": [
+        {
+          "uuid": "0e2f946c-f3f4-4ca1-932e-7eaa880af2c5",
+          "depth": 34,
+          "squash": "HARD_TANH",
+          "fanIn": 1265,
+          "fanOut": 1
+        },
+        {
+          "uuid": "782d2774-5a59-4fdb-bc53-2b425bfb3491",
+          "depth": 35,
+          "squash": "SINE",
+          "fanIn": 4,
+          "fanOut": 1
+        },
+        {
+          "uuid": "aef04b79-3240-4803-9de6-7e40cfaa53f4",
+          "depth": 36,
+          "squash": "MINIMUM",
+          "fanIn": 2,
+          "fanOut": 1
+        },
+        {
+          "uuid": "9926f1b7-66fd-4db8-8bce-4e47fd64d8eb",
+          "depth": 37,
+          "squash": "SINE",
+          "fanIn": 9,
+          "fanOut": 1
+        },
+        {
+          "uuid": "6392272c-93c5-4935-bac5-50ccbb7520bf",
+          "depth": 38,
+          "squash": "MINIMUM",
+          "fanIn": 2,
+          "fanOut": 1
+        },
+        {
+          "uuid": "401c7b8c-3382-4a9d-b2d0-d2be916cae2a",
+          "depth": 39,
+          "squash": "IDENTITY",
+          "fanIn": 8,
+          "fanOut": 1
+        },
+        {
+          "uuid": "4222d084-d11f-4a6c-86ac-f5a465f698aa",
+          "depth": 40,
+          "squash": "MINIMUM",
+          "fanIn": 2,
+          "fanOut": 1
+        },
+        {
+          "uuid": "c776977e-d0e8-4bfb-8b35-98f8dadd448d",
+          "depth": 41,
+          "squash": "HARD_TANH",
+          "fanIn": 17,
+          "fanOut": 2
+        },
+        {
+          "uuid": "4b84e69a-33ad-45bf-9dee-6e3b445b1c32",
+          "depth": 42,
+          "squash": "HARD_TANH",
+          "fanIn": 4,
+          "fanOut": 2
+        },
+        {
+          "uuid": "f71a15ca-668c-47ce-95b1-6fe9e97d3a3a",
+          "depth": 43,
+          "squash": "MAXIMUM",
+          "fanIn": 2,
+          "fanOut": 1
+        },
+        {
+          "uuid": "8f6f5aa4-a0cd-4dc9-b096-4f069422701b",
+          "depth": 44,
+          "squash": "IF",
+          "fanIn": 15,
+          "fanOut": 1
+        },
+        {
+          "uuid": "19e8df6f-2ba8-46c0-82ff-a8898f88c122",
+          "depth": 45,
+          "squash": "HARD_TANH",
+          "fanIn": 5,
+          "fanOut": 1
+        },
+        {
+          "uuid": "43e94ff8-e100-44df-b8b6-ae49e496e7bc",
+          "depth": 46,
+          "squash": "MINIMUM",
+          "fanIn": 2,
+          "fanOut": 2
+        },
+        {
+          "uuid": "96079fd9-752e-477a-8c69-baa79ba90744",
+          "depth": 47,
+          "squash": "IDENTITY",
+          "fanIn": 6,
+          "fanOut": 2
+        },
+        {
+          "uuid": "160c80a7-64f6-4e0a-b423-ca80c456d124",
+          "depth": 48,
+          "squash": "MAXIMUM",
+          "fanIn": 2,
+          "fanOut": 1
+        },
+        {
+          "uuid": "00c55ae9-0152-4d3e-801d-a9d40ed0effc",
+          "depth": 49,
+          "squash": "IF",
+          "fanIn": 20,
+          "fanOut": 2
+        },
+        {
+          "uuid": "92c33181-3ae2-4128-848f-0c8c754a5f15",
+          "depth": 50,
+          "squash": "MINIMUM",
+          "fanIn": 2,
+          "fanOut": 2
+        },
+        {
+          "uuid": "289abe23-06c7-4614-82e5-c13328164f5a",
+          "depth": 51,
+          "squash": "MINIMUM",
+          "fanIn": 2,
+          "fanOut": 1
+        },
+        {
+          "uuid": "86562b49-e3a8-4d4f-ab5c-ac2c5be6a26e",
+          "depth": 52,
+          "squash": "IF",
+          "fanIn": 71,
+          "fanOut": 2
+        },
+        {
+          "uuid": "79bd4bf5-7be2-4764-8f41-a60780765600",
+          "depth": 53,
+          "squash": "MINIMUM",
+          "fanIn": 2,
+          "fanOut": 2
+        },
+        {
+          "uuid": "0447533b-803a-4c90-bc2c-41060a83c84a",
+          "depth": 54,
+          "squash": "MINIMUM",
+          "fanIn": 2,
+          "fanOut": 2
+        },
+        {
+          "uuid": "e67853bc-ea67-4fee-831f-5bb713008687",
+          "depth": 55,
+          "squash": "MAXIMUM",
+          "fanIn": 2,
+          "fanOut": 1
+        },
+        {
+          "uuid": "c8f6a5e2-f382-4834-84b2-697a4914cc30",
+          "depth": 56,
+          "squash": "IF",
+          "fanIn": 37,
+          "fanOut": 2
+        },
+        {
+          "uuid": "9b022314-3c9a-40bf-b528-d46742497eea",
+          "depth": 57,
+          "squash": "MAXIMUM",
+          "fanIn": 2,
+          "fanOut": 1
+        },
+        {
+          "uuid": "1024bf35-3219-407e-a977-1260a1d2ab86",
+          "depth": 58,
+          "squash": "IF",
+          "fanIn": 8,
+          "fanOut": 2
+        },
+        {
+          "uuid": "8831db3e-ae4c-4256-b914-bb417f359dc3",
+          "depth": 59,
+          "squash": "IF",
+          "fanIn": 5,
+          "fanOut": 2
+        },
+        {
+          "uuid": "adcfea8c-10ec-4b56-8ec3-5715a84a5a44",
+          "depth": 60,
+          "squash": "MAXIMUM",
+          "fanIn": 2,
+          "fanOut": 1
+        },
+        {
+          "uuid": "output-0",
+          "depth": 61,
+          "squash": "IF",
+          "fanIn": 325,
+          "fanOut": 0
+        }
+      ]
+    }
+  }
+}

@@ -472,6 +472,17 @@ configuration time. See
 [PERFORMANCE_RESEARCH.md](./PERFORMANCE_RESEARCH.md#what-shipped) for the
 rationale and measurements.
 
+A third lever is **depth-aware** rather than global: `deepChainSquashBias`
+(#3974) down-weights _gradient-blocking_ activations — the ones this document
+lists under "Not differentiable / zero derivative", plus the aggregates that
+gate the gradient onto one branch — but only for a neuron inside a long
+single-file run, where a zero derivative has no parallel route around it.
+`src/methods/activations/GradientBlocking.ts` decides which activations those
+are by walking each one's own `derivative()`, so the classification follows the
+implementations rather than a list. It defaults to `0` (off), and its measured
+effect and limits live in
+[MUTATION_ADAPTATION.md](./config/MUTATION_ADAPTATION.md#-depth-aware-squash-bias).
+
 ---
 
 ## 🤖 Intelligent Design Integration

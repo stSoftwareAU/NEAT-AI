@@ -139,6 +139,8 @@ export function isTopologyMutation(methodName: string): boolean {
     case "SUB_SELF_CONN":
     case "ADD_BACK_CONN":
     case "SUB_BACK_CONN":
+    // Issue #3973: a targeted bypass is a structural change like any other.
+    case "ADD_SKIP_CONN":
     case "SWAP_NODES":
     case "MOD_SQUASH":
       return true;

@@ -63,6 +63,24 @@ import type { NeatOptions, NeatOptionsInput } from "@stsoftware/neat-ai";
 | `verbose`        | `boolean`             | `false`                             | Verbose logging; when `true`, `log` defaults to `1` (see [Logging](../config/LOGGING.md)) |
 | `log`            | `number`              | `0`                                 | Log status every N generations (0 = off, 1 if verbose)                                    |
 
+### 🧬 Structural mutation fields
+
+Identity-initialised structural mutation (Issue #3970) and the targeted
+skip-connection operator (Issue #3973). Every default reproduces the historical
+behaviour exactly — see
+[Mutation adaptation → identity-initialised structural mutation](../config/MUTATION_ADAPTATION.md#-identity-initialised-structural-mutation)
+and
+[Mutation adaptation → targeted skip connections](../config/MUTATION_ADAPTATION.md#-targeted-skip-connections).
+
+| Field                          | Type      | Default | Description                                                                                             |
+| ------------------------------ | --------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `structuralWeightScale`        | `number`  | `1`     | Scale for the **outward** synapse of `AddNeuron` and for `AddConnection` on the main mutation path (>0) |
+| `structuralNewbornGraceRounds` | `integer` | `0`     | Compaction passes a newly inserted neuron is exempt from `compactUnused` removal                        |
+| `skipConnectionRate`           | `number`  | `0`     | Selection rate for the targeted `ADD_SKIP_CONN` operator; `0` keeps it out of the operator mix (0..1)   |
+| `skipMinRunLength`             | `integer` | `4`     | Shortest serial run `AddSkipConnection` considers worth bypassing, in hidden neurons (≥2)               |
+| `deepChainSquashBias`          | `number`  | `0`     | Down-weighting `ModSquash` applies to gradient-blocking activations inside a long serial run (0..1)     |
+| `deepChainMinLength`           | `integer` | `4`     | Serial-run length at which `deepChainSquashBias` starts applying (≥2)                                   |
+
 ### 🎓 Training fields
 
 | Field                          | Type     | Default                                | Description                                |
@@ -88,10 +106,11 @@ Training is heavy; these guards stop the run spending worker slots on cycles
 that buy nothing. A training result inside the evaluate noise floor counts as
 **no progress**, not as an improvement (Issue #3779).
 
-| Field                                     | Type     | Default | Description                                                                                                 |
-| ----------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------- |
-| `skipTrainingAfterConsecutiveRegressions` | `number` | `2`     | Skip a **creature** after N consecutive regressions of its own (0 = off, Issue #2382)                       |
-| `skipTrainingAfterPopulationNoProgress`   | `number` | `0`     | Skip **all** training after N consecutive no-progress outcomes across the whole population (0 = off, #3779) |
+| Field                                     | Type     | Default | Description                                                                                                                                                                        |
+| ----------------------------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `skipTrainingAfterConsecutiveRegressions` | `number` | `2`     | Skip a **creature** after N consecutive regressions of its own (0 = off, Issue #2382)                                                                                              |
+| `skipTrainingAfterPopulationNoProgress`   | `number` | `0`     | Skip **all** training after N consecutive no-progress outcomes across the whole population (0 = off, #3779)                                                                        |
+| `skipTrainingAfterPopulationRegressions`  | `number` | `0`     | Skip **all** training after N consecutive **regressions** across the whole population — stricter than the no-progress gate, and cleared by a no-change result (0 = off, GRQ #4717) |
 
 Creatures are trained at most once per run (Issue #3553), so the per-creature
 guard rarely trips; `skipTrainingAfterPopulationNoProgress` is the one that

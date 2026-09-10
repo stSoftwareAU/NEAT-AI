@@ -384,6 +384,35 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
     note: "Added after the slices by #3779 — the population-wide no-progress " +
       "training gate `NeatScheduling.scheduleTraining` reads.",
   }),
+  keep("skipTrainingAfterPopulationRegressions", "roll-up", {
+    note: "Added after the slices by a downstream scheduler — the stricter " +
+      "population-wide regressions-only training gate " +
+      "`NeatScheduling.scheduleTraining` reads.",
+  }),
+  keep("structuralWeightScale", "roll-up", {
+    note: "Added after the slices by #3970 — identity-initialised structural " +
+      "mutation; `Mutator` passes it to `AddNeuron` / `AddConnection`.",
+  }),
+  keep("structuralNewbornGraceRounds", "roll-up", {
+    note: "Added after the slices by #3970 — the newborn compaction grace " +
+      "`AddNeuron` tags and `compactUnused` honours.",
+  }),
+  keep("skipConnectionRate", "roll-up", {
+    note: "Added after the slices by #3973 — selection rate for the targeted " +
+      "`ADD_SKIP_CONN` operator; `0` keeps it out of the operator mix.",
+  }),
+  keep("skipMinRunLength", "roll-up", {
+    note: "Added after the slices by #3973 — shortest serial run " +
+      "`AddSkipConnection` considers worth bypassing.",
+  }),
+  keep("deepChainSquashBias", "roll-up", {
+    note: "Added after the slices by #3974 — down-weights gradient-blocking " +
+      "activations for a neuron inside a long serial run; `0` disables it.",
+  }),
+  keep("deepChainMinLength", "roll-up", {
+    note: "Added after the slices by #3974 — run length at which " +
+      "`deepChainSquashBias` starts applying.",
+  }),
 ];
 
 /** The merged classification table — every option key, one entry each. */

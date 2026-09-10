@@ -51,6 +51,8 @@ export class AddBackCon extends AbstractMutationOperator {
     const toIndx = pair[1].index;
     creature.connect(fromIndx, toIndx, Synapse.randomWeight());
     delete creature.memetic;
+    // Issue #3971: the target of the new back-connection is the site.
+    this.noteMutationSite(toIndx);
     return true;
   }
 }

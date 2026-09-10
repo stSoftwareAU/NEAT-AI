@@ -49,6 +49,61 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3974:** Depth-aware squash bias. `ModSquash` can now down-weight
+  activations that block the gradient over a region of their input space when
+  the neuron it is re-squashing sits inside a long single-file run, where a zero
+  derivative has no depth-parallel route around it. Two new options, both
+  defaulting to the current behaviour: `deepChainSquashBias` (`0`, which draws
+  no randomness and runs no extra topology scan, so the operator is
+  bit-identical to the previous build on a fixed seed) and `deepChainMinLength`
+  (`4`, sharing #3973's run definition). It biases rather than bans — a blocking
+  proposal is re-drawn once and a second one stands — and never rewrites an
+  existing neuron. What counts as blocking is measured from each activation's
+  own `derivative()` (`src/methods/activations/GradientBlocking.ts`) rather than
+  listed. Step 1 of the issue is recorded too: #2457's
+  `SquashEffectivenessTracker` buckets by `layer × fan-in` and cannot express
+  chain membership at all, so it could not be tuned into doing this job. Ships
+  **disabled**: aimed at the run, the bias cuts blocking proposals from 5.8% to
+  1.3%, but the run's own zero-gradient fraction does not fall, because a single
+  surviving blocking member zeroes everything upstream of it — see
+  `docs/config/MUTATION_ADAPTATION.md`.
+
+- **Issue #3973:** Targeted skip connections. A new `ADD_SKIP_CONN` operator
+  (`src/mutate/AddSkipConnection.ts`) proposes a bypass synapse around a deep
+  serial run of neurons — the ResNet construction `x + F(x)`, with the existing
+  run playing `F` — instead of leaving that bypass to chance. Two new options,
+  both defaulting to the current behaviour: `skipConnectionRate` (`0`, which
+  keeps the operator out of the mix and consumes no randomness) and
+  `skipMinRunLength` (`4`). Run detection reuses #3972's `findSerialChains`, and
+  the new synapse is initialised at #3970's `structuralWeightScale`. Measured on
+  `test/data/grq-23-forests-constants.json`: the 28-neuron tail's entry neuron
+  goes from an exactly-zero gradient on 100% of samples to 40.6%, where a
+  uniformly drawn `AddConnection` at the same weight scale leaves it at 100%. No
+  score claim is made — the dataset-error ordering flips between seeds, which is
+  why the operator ships disabled. See
+  [Mutation adaptation → targeted skip connections](./docs/config/MUTATION_ADAPTATION.md#-targeted-skip-connections).
+- **Issue #3971:** Per-operator mutation outcome telemetry. Every operator in
+  `src/mutate/` now reports, per generation, how often it was proposed, changed
+  nothing, was applied, was rolled back, reached `Fitness.calculate()`, and
+  survived selection — together with the score-delta distribution
+  (min/median/max, never a mean), the depth bucket of each structural site
+  (joined with the accept/reject outcome), and the evaluation time it consumed.
+  Always on; it rides the existing `generation_complete` event as
+  `mutationOperators` and the verbose `[MutationOps]` log line rather than a new
+  output channel. The aggregate Metropolis-Hastings totals reconcile exactly
+  with `MCMCDiagnostics`. See
+  [`docs/MUTATION_OPERATOR_TELEMETRY.md`](./docs/MUTATION_OPERATOR_TELEMETRY.md).
+- **Issue #3970:** Identity-initialised structural mutation. Two new options,
+  both defaulting to the current behaviour: `structuralWeightScale` scales the
+  **outward** synapse of `AddNeuron` and `AddConnection` on the main mutation
+  path, so new structure can be born as a near-no-op (`x + εF(x)`) instead of a
+  ±0.5 kick into a tuned neuron; `structuralNewbornGraceRounds` keeps a freshly
+  inserted neuron out of the `compactUnused` candidate set for N compaction
+  passes, so a near-identity newborn is not deleted before the gradient step
+  that gives it a job. `structuralWeightScale: 1` and
+  `structuralNewbornGraceRounds: 0` are bit-identical to the previous build on a
+  fixed seed.
+
 - **Issue #3827 (follow-up):** The squash-substitution gate is now part of the
   public API — `squashSubstitutionBlockedReason`, `canAdoptSquash` and
   `STRUCTURALLY_CONSTRAINED_SQUASHES` are exported from `mod.ts`, not only from
