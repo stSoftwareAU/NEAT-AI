@@ -8,13 +8,24 @@
  * 4. Small change preference reduces mutation magnitude
  * 5. Regularisation is configurable and can be disabled
  */
-import { assert, assertEquals, assertLess } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertGreaterOrEqual,
+  assertLess,
+} from "@std/assert";
 import { Creature } from "@creature";
 import { ModBias } from "@mutate/ModBias.ts";
 import {
   DEFAULT_BIAS_REGULARISATION_CONFIG,
   type RequiredBiasRegularisationConfig,
 } from "@config/BiasRegularisationConfig.ts";
+import {
+  createSeededRng,
+  getRandomNumberGenerator,
+  setRandomNumberGenerator,
+} from "@utils/RandomNumberGenerator.ts";
+import { withRngTestLock } from "../_rngTestLock.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
@@ -90,45 +101,123 @@ Deno.test("ModBias - respects maxBiasChange hard limit", () => {
   }
 });
 
-Deno.test("ModBias - L2 regularisation biases towards smaller biases", () => {
-  // Test that with strong L2 regularisation, biases tend towards smaller values
-  const config: RequiredBiasRegularisationConfig = {
-    ...DEFAULT_BIAS_REGULARISATION_CONFIG,
-    enabled: true,
-    l2Strength: 0.8, // Strong regularisation
-    maxAbsoluteBias: 1000,
-    maxBiasChange: 1000,
-    preferSmallChanges: false, // Disable to isolate L2 effect
-  };
+/**
+ * Issue #3998: the L2 assertions are driven by a seeded RNG so the outcome is
+ * reproducible from the test alone, and the thresholds are derived from the
+ * operator's own arithmetic rather than hand-picked.
+ *
+ * With `l2Strength = 0.8`, `preferSmallChanges` disabled and a bias of 50 the
+ * quantum is 10, so one mutation is
+ * `0.2 * (2*u1 - 1) * 10 - 0.64 * 50 * u2`. The pull towards zero only loses
+ * when `(2*u1 - 1) * 2 > 32 * u2`, i.e. `u2 < (2*u1 - 1) / 16` with `u1 > 0.5`
+ * — probability `(1/16) * integral(0.5..1, 2u - 1) du = 1.6%`. A floor of 90%
+ * towards zero therefore sits far outside the sampling noise: across 3000
+ * seeds the worst run pulled towards zero 481 of 500 times (96.2%).
+ *
+ * The previous assertion sampled a *drifting* walk instead. The bias collapses
+ * to well under 1 within a few steps, and there the L2 pull is negligible next
+ * to the noise term, so the towards/away count is close to a coin flip — which
+ * is why an unseeded run could report 221 vs 279 and fail.
+ */
+const L2_SEED = 3998;
+const L2_SAMPLES = 500;
+const L2_START_BIAS = 50;
+/** Minimum share of draws that must pull towards zero (analytic mean 98.4%). */
+const L2_MIN_TOWARDS_ZERO = 0.9;
 
-  // Start with a large positive bias
-  const creature = createTestCreature(50);
-  const modBias = new ModBias(creature, config);
+const L2_CONFIG: RequiredBiasRegularisationConfig = {
+  ...DEFAULT_BIAS_REGULARISATION_CONFIG,
+  enabled: true,
+  l2Strength: 0.8, // Strong regularisation
+  maxAbsoluteBias: 1000,
+  maxBiasChange: 1000,
+  preferSmallChanges: false, // Disable to isolate L2 effect
+};
 
-  // Track how many times the bias moves towards zero vs away from zero
+/**
+ * Counts how many of `L2_SAMPLES` mutations move the bias towards zero when
+ * every draw starts from the same large bias.
+ *
+ * Resetting the bias each iteration is what makes the measurement meaningful:
+ * it samples the L2 pull at a fixed magnitude rather than following a walk
+ * that has already settled near zero.
+ */
+function countPullsTowardsZero(): number {
+  const creature = createTestCreature(L2_START_BIAS);
+  const modBias = new ModBias(creature, L2_CONFIG);
+
   let towardsZero = 0;
-  let awayFromZero = 0;
-
-  for (let i = 0; i < 500; i++) {
-    const beforeBias = creature.neurons[creature.input].bias;
-    const beforeMagnitude = Math.abs(beforeBias);
+  for (let i = 0; i < L2_SAMPLES; i++) {
+    creature.neurons[creature.input].bias = L2_START_BIAS;
     modBias.mutate();
-    const afterBias = creature.neurons[creature.input].bias;
-    const afterMagnitude = Math.abs(afterBias);
-
-    if (afterMagnitude < beforeMagnitude) {
+    if (Math.abs(creature.neurons[creature.input].bias) < L2_START_BIAS) {
       towardsZero++;
-    } else if (afterMagnitude > beforeMagnitude) {
-      awayFromZero++;
     }
   }
+  return towardsZero;
+}
 
-  // With strong L2 regularisation, should move towards zero more often
-  assert(
-    towardsZero > awayFromZero * 0.8,
-    `L2 regularisation should bias towards smaller biases. ` +
-      `TowardsZero: ${towardsZero}, AwayFromZero: ${awayFromZero}`,
-  );
+/** Runs an unreset walk from `L2_START_BIAS` and returns the final magnitude. */
+function walkFinalMagnitude(): number {
+  const creature = createTestCreature(L2_START_BIAS);
+  const modBias = new ModBias(creature, L2_CONFIG);
+
+  for (let i = 0; i < L2_SAMPLES; i++) {
+    modBias.mutate();
+  }
+  return Math.abs(creature.neurons[creature.input].bias);
+}
+
+Deno.test("ModBias - L2 regularisation biases towards smaller biases", async () => {
+  await withRngTestLock(() => {
+    const previous = getRandomNumberGenerator();
+    try {
+      setRandomNumberGenerator(createSeededRng(L2_SEED));
+
+      const towardsZero = countPullsTowardsZero();
+      assertGreaterOrEqual(
+        towardsZero,
+        L2_SAMPLES * L2_MIN_TOWARDS_ZERO,
+        `L2 regularisation should pull a bias of ${L2_START_BIAS} towards ` +
+          `zero on at least ${L2_MIN_TOWARDS_ZERO * 100}% of draws. ` +
+          `TowardsZero: ${towardsZero} of ${L2_SAMPLES}`,
+      );
+
+      // And the pull compounds: an unreset walk collapses from 50 to under 1.
+      assertLess(
+        walkFinalMagnitude(),
+        1,
+        `L2 regularisation should shrink a bias of ${L2_START_BIAS} to under 1 ` +
+          `over ${L2_SAMPLES} mutations`,
+      );
+    } finally {
+      setRandomNumberGenerator(previous);
+    }
+  });
+});
+
+/**
+ * Issue #3998: seeds 695, 1491 and 1593 each drove the old drifting-walk
+ * assertion below its `towardsZero > awayFromZero * 0.8` threshold. The
+ * fixed-magnitude measurement holds comfortably on every one of them.
+ */
+Deno.test("ModBias - L2 pull holds under the seeds that broke the old sample", async () => {
+  await withRngTestLock(() => {
+    const previous = getRandomNumberGenerator();
+    try {
+      for (const seed of [695, 1491, 1593]) {
+        setRandomNumberGenerator(createSeededRng(seed));
+        const towardsZero = countPullsTowardsZero();
+        assertGreaterOrEqual(
+          towardsZero,
+          L2_SAMPLES * L2_MIN_TOWARDS_ZERO,
+          `Seed ${seed}: TowardsZero ${towardsZero} of ${L2_SAMPLES}`,
+        );
+      }
+    } finally {
+      setRandomNumberGenerator(previous);
+    }
+  });
 });
 
 Deno.test("ModBias - preferSmallChanges reduces mutation magnitude", () => {
