@@ -745,6 +745,9 @@
     "untrackable",
     "uncited",
     "undisposed",
-    "unintegrated"
+    "unintegrated",
+    "unjoinable",
+    "SIGMAS",
+    "kriging"
   ]
 }
