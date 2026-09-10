@@ -241,6 +241,17 @@ management, not this mechanism. Production scores the full corpus until a policy
 opts in. Measured cost per fidelity on the sampler creature is in
 [`docs/evidence/fitness-corpus-fidelity-3926.md`](../evidence/fitness-corpus-fidelity-3926.md).
 
+> [!WARNING]
+> **A sampled corpus does not rank creatures the way the full corpus does.**
+> Measured over the 46-creature production sampler population (Issue #3927):
+> Spearman ρ stays above 0.95 down to rate 0.05, and every rate is still
+> unusable, because the finest score gap a sampled ordering resolves is
+> **3.74e-3** at rate 0.5 — some 370× coarser than the ~1e-05 improvements the
+> search accepts. High rank correlation is not evidence of a usable fidelity;
+> score-gap resolution is. The table, the caveats, and the harness that
+> reproduces them are in
+> [`docs/evidence/rank-fidelity-3927.md`](../evidence/rank-fidelity-3927.md).
+
 ## 👀 See also
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — population, mutation, and

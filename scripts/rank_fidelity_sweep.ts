@@ -23,7 +23,7 @@
  * ```bash
  * deno run --allow-read --allow-write --allow-env --allow-ffi \
  *   scripts/rank_fidelity_sweep.ts \
- *   --creatures=/path/to/GRQ-sampler/samples \
+ *   --creatures=/path/to/creature-samples \
  *   --corpus=/data/trainData-binary \
  *   --rates=1,0.5,0.25,0.1,0.05,0.01 --phases=4
  * ```
