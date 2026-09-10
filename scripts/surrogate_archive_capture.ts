@@ -25,6 +25,7 @@
  */
 
 import { Creature } from "@creature";
+import { intArg, stringArg } from "./lib/cliArgs.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import { EVALUATION_ARCHIVE_FILE_NAME } from "@config/EvaluationArchiveConfig.ts";
 import { readEvaluationArchive } from "@archive/EvaluationArchiveFormat.ts";
@@ -99,11 +100,19 @@ export async function captureArchive(
 ): Promise<{ path: string; records: number; runs: string[] }> {
   const runIds: string[] = [];
   await Deno.mkdir(options.directory, { recursive: true });
+  // One corpus for every run, not one per run. A per-run corpus would make
+  // scores from different runs incommensurable — a run-held-out study would
+  // then be asking a model to predict, from structure alone, the corpus
+  // sampling noise of a corpus it never saw. Same corpus, so a cross-run
+  // score difference is a creature difference.
+  const corpus = syntheticCorpus(
+    options.inputs,
+    options.records,
+    seededRng(options.seed),
+  );
   for (let run = 0; run < options.runs; run++) {
     const runId = `capture-${options.seed}-${run}`;
     runIds.push(runId);
-    const rng = seededRng(options.seed + run * 7919);
-    const corpus = syntheticCorpus(options.inputs, options.records, rng);
     const seed = new Creature(options.inputs, 1);
     // Sequential by design: each run is a separate archive writer, and the
     // retention bound assumes one live writer per directory.
@@ -137,27 +146,6 @@ export async function captureArchive(
     );
   }
   return { path, records: records.length, runs: runIds };
-}
-
-/** `--name=value`, or `undefined`. */
-function stringArg(args: readonly string[], name: string): string | undefined {
-  const hit = args.find((arg) => arg.startsWith(`--${name}=`));
-  return hit?.slice(name.length + 3);
-}
-
-/** `--name=<integer>`, or `fallback`. */
-function intArg(
-  args: readonly string[],
-  name: string,
-  fallback: number,
-): number {
-  const raw = stringArg(args, name);
-  if (raw === undefined) return fallback;
-  const value = Number(raw);
-  if (!Number.isInteger(value) || value < 1) {
-    throw new Error(`--${name} must be a positive integer, got '${raw}'`);
-  }
-  return value;
 }
 
 if (import.meta.main) {

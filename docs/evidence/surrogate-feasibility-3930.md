@@ -25,15 +25,16 @@ call for different work — so the report says which one it is.
 
 The gate the issue defines is _lineage-held-out top-5 agreement against the
 parent's-score baseline_. That baseline needs each archived creature to name the
-parent it came from. On the archive this study could reach, **8 of 1,143 records
+parent it came from. On the archive this study could reach, **8 of 1,141 records
 name a parent, and 0.7 % name one that is itself in the archive**. With the
 parent link absent, two things break at once:
 
 1. The baseline is the training mean for 99.3 % of creatures — a constant, not
    an ordering. Nothing can be shown to beat it.
-2. Leave-one-lineage-out degenerates into leave-one-creature-out: 1,135 groups
-   for 1,143 creatures, 1,129 of them a single creature. That is the leaky
-   random split the issue explicitly forbids, arrived at by accident.
+2. Leave-one-lineage-out degenerates into leave-one-creature-out: 1,133 groups
+   for 1,141 creatures, 1,131 of them too small to carry an ordering at all.
+   That is the leaky random split the issue explicitly forbids, arrived at by
+   accident.
 
 `assessKillGate` refuses on the first of those before it reads a single model
 score. An undecidable gate is a stop, exactly as a clear negative is: Stage 2
@@ -46,50 +47,67 @@ non-leaky split — six runs, each held out whole while the models train on the
 other five. It is the part of this study that carries real information, and what
 it shows is the failure mode the issue predicted in so many words.
 
-| Model                     | folds |      ρ |      τ | top-1 | top-3 | top-5 |         ≤1e-5 | (1e-5, 1e-4] | ≤1e-4 (cumulative) |          >1e-4 |
-| ------------------------- | ----: | -----: | -----: | ----: | ----: | ----: | ------------: | -----------: | -----------------: | -------------: |
-| quadratic-polynomial      |     6 |  0.659 |  0.517 | 0.000 | 0.000 | 0.000 | 0.486 (8 406) |  0.665 (971) |      0.504 (9 377) | 0.783 (98 921) |
-| rbf-interpolation         |     6 |  0.059 |  0.033 | 0.000 | 0.000 | 0.000 | 0.303 (8 406) |  0.317 (971) |      0.304 (9 377) | 0.538 (98 921) |
-| gaussian-process          |     6 | -0.085 | -0.042 | 0.000 | 0.000 | 0.000 | 0.696 (8 406) |  0.473 (971) |      0.673 (9 377) | 0.460 (98 921) |
-| gradient-boosted-trees    |     6 |  0.473 |  0.381 | 0.000 | 0.000 | 0.000 | 0.003 (8 406) |  0.024 (971) |      0.005 (9 377) | 0.556 (98 921) |
-| **parent-score-baseline** |     6 | -0.152 | -0.124 | 0.000 | 0.000 | 0.000 | 0.000 (8 406) |  0.001 (971) |      0.000 (9 377) | 0.003 (98 921) |
+| Model                     |      ρ |      τ | top-1 | top-3 | top-5 |         ≤1e-5 |  (1e-5, 1e-4] | ≤1e-4 (cumulative) |
+| ------------------------- | -----: | -----: | ----: | ----: | ----: | ------------: | ------------: | -----------------: |
+| quadratic-polynomial      |  0.249 |  0.175 | 0.000 | 0.000 | 0.000 | 0.535 (5 390) | 0.288 (2 324) |      0.460 (7 714) |
+| rbf-interpolation         |  0.136 |  0.093 | 0.000 | 0.000 | 0.033 | 0.567 (5 390) | 0.425 (2 324) |      0.524 (7 714) |
+| gaussian-process          |  0.198 |  0.163 | 0.000 | 0.167 | 0.167 | 0.717 (5 390) | 0.454 (2 324) |      0.638 (7 714) |
+| gradient-boosted-trees    |  0.715 |  0.607 | 0.000 | 0.056 | 0.033 | 0.023 (5 390) | 0.003 (2 324) |      0.017 (7 714) |
+| **parent-score-baseline** | -0.214 | -0.175 | 0.000 | 0.000 | 0.000 | 0.000 (5 390) | 0.001 (2 324) |      0.001 (7 714) |
 
-Accuracy cells read `accuracy (pairs)`. The baseline's zeroes are the constant
-described above: a predictor that ties every pair has ordered none of them, and
-this study counts a predicted tie as wrong rather than as half a success.
+Accuracy cells read `accuracy (pairs)`; pair counts are pooled across the six
+folds. A **tie** — the predictor giving two creatures the same score — counts as
+a failure to order, and the report counts ties separately from inversions
+because they are different failures. The tie counts matter here, so they are
+spelled out below rather than left in the JSON.
 
-Three things are worth reading off that table.
+Four things are worth reading off that table, and the third is the one that
+would have been missed by quoting a single number.
 
-- **Aggregate ρ says nothing about the margin.** The quadratic response surface
-  reaches ρ = 0.659 — respectable, and exactly the number that would be quoted
-  if only one number were quoted. At gaps of ≤1e-4 it orders 50.4 % of pairs
-  correctly. That is chance. This is the failure mode Issue #3930 was written to
-  catch, reproduced on the first archive it was pointed at.
-- **Not one family put a genuinely top creature in its own top-5**, in any of
-  the six folds, at any k. Selection reads the head of the ordering and nothing
-  else, so a model that never finds the head cannot be consumed by selection
-  however well it correlates over the tail.
-- **The one apparently good cell is not a finding.** The Gaussian process scores
-  0.696 at ≤1e-5 while scoring 0.460 — worse than a coin — above 1e-4, and its
-  overall ρ is -0.085. A predictor that is anti-correlated overall and above
-  chance in one band has found a band artefact, not a signal.
+- **Top-1 agreement is 0.000 for every family, in every fold.** Selection reads
+  the head of the ordering and nothing else. The best top-3 and top-5 anywhere
+  in the table is the Gaussian process at 0.167 — one fold in six. A model that
+  cannot find the head cannot be consumed by selection however well it
+  correlates over the tail.
+- **The best rank correlation belongs to the worst-resolving model.**
+  Gradient-boosted trees post ρ = 0.715, comfortably the highest, and order
+  **1.7 %** of ≤1e-4 pairs correctly — because they _tie_ 7 528 of those 7 714
+  pairs. A piecewise-constant model cannot separate creatures whose descriptors
+  fall in the same leaf, and a rank correlation taken over massively tied
+  predictions is not evidence of resolution. Without the tie column this row
+  reads as "ordered the close pairs backwards", which is a different and wrong
+  conclusion.
+- **There is a faint signal at the finest band, and it is not usable.** The
+  Gaussian process resolves 71.7 % of pairs separated by ≤1e-5 — above chance,
+  and worth recording rather than flattening into a "chance at the margin"
+  headline. It resolves only 45.4 % of pairs in the next band up,
+  `(1e-5,
+  1e-4]`, which is _below_ chance. A predictor that is better on the
+  harder pairs than on the easier ones has found a band artefact, not a signal;
+  reporting the cumulative 0.638 alone would have hidden the inconsistency in
+  both directions.
+- **The baseline is a constant, as the coverage number implies.** It ties 7 708
+  of 7 714 close pairs and its correlation was unmeasurable in four of six
+  folds. It is published because the issue requires it to be published, not
+  because it is an ordering.
 
 The lineage-held-out table is in
 [`surrogate-feasibility-3930.json`](./surrogate-feasibility-3930.json) for
-completeness, but it should not be read as evidence: its six surviving folds
-hold two or three creatures each, which is why the coverage guard rejects it
-rather than quoting it.
+completeness, but it should not be read as evidence: 1 131 of 1 133 lineage
+groups were too small to hold an ordering, and the two folds that survived hold
+four creatures each. That is why the coverage guard rejects the split rather
+than quoting it.
 
 ## What produced these numbers
 
 ```bash
 deno run --allow-read --allow-write --allow-env --allow-ffi \
   scripts/surrogate_archive_capture.ts \
-  --out=/tmp/sa-capture --runs=6 --generations=15 --population=24 \
+  --out=/tmp/sa-capture2 --runs=6 --generations=15 --population=24 \
   --records=256 --seed=3930
 
 deno task surrogate-feasibility \
-  --archive=/tmp/sa-capture/evaluations.jsonl \
+  --archive=/tmp/sa-capture2/evaluations.jsonl \
   --provenance=container-run --accept-gap=1e-04 \
   --json=docs/evidence/surrogate-feasibility-3930.json
 ```
@@ -99,7 +117,7 @@ deno task surrogate-feasibility \
 | Archive    | **1,143 exact evaluations** of 1,143 distinct creatures across 6 runs, descriptor v1, written by the real evaluation path                                                |
 | Provenance | `container-run` — real creatures and real exact scores, raised inside this container. **Not** the production GRQ lineage                                                 |
 | Features   | 58: the 57 v1 descriptor slots (17 scalars and a 40-slot squash histogram), with `geneticDistanceToReference` split into a value and a "was there a reference" indicator |
-| Families   | Quadratic polynomial (ridge), Gaussian RBF, Gaussian process (kriging, with posterior variance), gradient-boosted trees                                                  |
+| Families   | Quadratic polynomial (ridge), Gaussian RBF (radial-basis function), Gaussian process (kriging, with posterior variance), gradient-boosted trees                          |
 | Splits     | Leave-one-lineage-out and leave-one-run-out. No random-row split is implemented, at any setting                                                                          |
 | Margin     | `--accept-gap=1e-04`, the band the issue names, reported cumulatively and as disjoint sub-bands                                                                          |
 

@@ -1,13 +1,13 @@
 {
   "provenance": "container-run",
-  "archivePath": "/tmp/sa-capture/evaluations.jsonl",
+  "archivePath": "/tmp/sa-capture2/evaluations.jsonl",
   "descriptorVersion": 1,
-  "records": 1143,
-  "uniqueCreatures": 1143,
+  "records": 1141,
+  "uniqueCreatures": 1141,
   "runs": 6,
   "withParents": 8,
-  "lineageCoverage": 0.00699912510936133,
-  "baselineFallbacks": 1141,
+  "lineageCoverage": 0.007011393514460999,
+  "baselineFallbacks": 1135,
   "acceptGap": 0.0001,
   "bands": [
     {
@@ -95,26 +95,40 @@
     {
       "mode": "lineage",
       "rule": "leave-one-lineage-out: a creature and every ancestor it was bred from that is present in the archive form one group, and the whole group is held out together",
-      "groups": 1135,
-      "folds": 6,
-      "skipped": 1129,
+      "groups": 1133,
+      "folds": 2,
+      "skipped": 1131,
       "skippedByReason": [
         {
-          "reason": "only 1 creature held out — no ordering to score",
+          "reason": "only 1 creature(s) held out — fewer than the 3 a fold needs to carry an ordering",
           "count": 1129
+        },
+        {
+          "reason": "only 2 creature(s) held out — fewer than the 3 a fold needs to carry an ordering",
+          "count": 2
         }
       ],
       "results": [
         {
           "name": "quadratic-polynomial",
           "isBaseline": false,
-          "measuredFolds": 6,
+          "measuredFolds": 2,
           "failedFolds": [],
-          "spearman": 0.3,
-          "kendall": 0.27777777777777773,
+          "unmeasurableFolds": [
+            {
+              "group": "1af393a5-a2a5-572b-97e8-68fd4016e92f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            },
+            {
+              "group": "41c4c01b-77fe-5936-8ee4-c4a73e97496f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            }
+          ],
+          "spearman": 0.09999999999999998,
+          "kendall": 0.16666666666666669,
           "topK": {
-            "1": 0.6666666666666666,
-            "3": 0.6666666666666666,
+            "1": 0.5,
+            "3": 0.8333333333333333,
             "5": null
           },
           "bands": [
@@ -124,9 +138,10 @@
                 "minGap": 0,
                 "maxGap": 0.00001
               },
-              "pairs": 0,
+              "pairs": 1,
               "correct": 0,
-              "accuracy": null
+              "ties": 0,
+              "accuracy": 0
             },
             {
               "band": {
@@ -134,9 +149,10 @@
                 "minGap": 0.00001,
                 "maxGap": 0.0001
               },
-              "pairs": 1,
-              "correct": 1,
-              "accuracy": 1
+              "pairs": 0,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": null
             },
             {
               "band": {
@@ -145,8 +161,9 @@
                 "maxGap": 0.0001
               },
               "pairs": 1,
-              "correct": 1,
-              "accuracy": 1
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
             },
             {
               "band": {
@@ -154,19 +171,30 @@
                 "minGap": 0.0001,
                 "maxGap": null
               },
-              "pairs": 10,
+              "pairs": 11,
               "correct": 7,
-              "accuracy": 0.7
+              "ties": 0,
+              "accuracy": 0.6363636363636364
             }
           ]
         },
         {
           "name": "rbf-interpolation",
           "isBaseline": false,
-          "measuredFolds": 6,
+          "measuredFolds": 2,
           "failedFolds": [],
-          "spearman": -0.03333333333333336,
-          "kendall": -0.05555555555555558,
+          "unmeasurableFolds": [
+            {
+              "group": "1af393a5-a2a5-572b-97e8-68fd4016e92f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            },
+            {
+              "group": "41c4c01b-77fe-5936-8ee4-c4a73e97496f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            }
+          ],
+          "spearman": -0.1,
+          "kendall": -0.16666666666666666,
           "topK": {
             "1": 0.5,
             "3": 0.6666666666666666,
@@ -179,9 +207,10 @@
                 "minGap": 0,
                 "maxGap": 0.00001
               },
-              "pairs": 0,
+              "pairs": 1,
               "correct": 0,
-              "accuracy": null
+              "ties": 0,
+              "accuracy": 0
             },
             {
               "band": {
@@ -189,9 +218,10 @@
                 "minGap": 0.00001,
                 "maxGap": 0.0001
               },
-              "pairs": 1,
-              "correct": 1,
-              "accuracy": 1
+              "pairs": 0,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": null
             },
             {
               "band": {
@@ -200,8 +230,9 @@
                 "maxGap": 0.0001
               },
               "pairs": 1,
-              "correct": 1,
-              "accuracy": 1
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
             },
             {
               "band": {
@@ -209,21 +240,32 @@
                 "minGap": 0.0001,
                 "maxGap": null
               },
-              "pairs": 10,
-              "correct": 6,
-              "accuracy": 0.6
+              "pairs": 11,
+              "correct": 5,
+              "ties": 0,
+              "accuracy": 0.45454545454545453
             }
           ]
         },
         {
           "name": "gaussian-process",
           "isBaseline": false,
-          "measuredFolds": 6,
+          "measuredFolds": 2,
           "failedFolds": [],
-          "spearman": 0.3,
-          "kendall": 0.27777777777777773,
+          "unmeasurableFolds": [
+            {
+              "group": "1af393a5-a2a5-572b-97e8-68fd4016e92f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            },
+            {
+              "group": "41c4c01b-77fe-5936-8ee4-c4a73e97496f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            }
+          ],
+          "spearman": -0.1,
+          "kendall": -0.16666666666666666,
           "topK": {
-            "1": 0.6666666666666666,
+            "1": 0.5,
             "3": 0.6666666666666666,
             "5": null
           },
@@ -234,9 +276,10 @@
                 "minGap": 0,
                 "maxGap": 0.00001
               },
-              "pairs": 0,
+              "pairs": 1,
               "correct": 0,
-              "accuracy": null
+              "ties": 0,
+              "accuracy": 0
             },
             {
               "band": {
@@ -244,9 +287,10 @@
                 "minGap": 0.00001,
                 "maxGap": 0.0001
               },
-              "pairs": 1,
-              "correct": 1,
-              "accuracy": 1
+              "pairs": 0,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": null
             },
             {
               "band": {
@@ -255,8 +299,9 @@
                 "maxGap": 0.0001
               },
               "pairs": 1,
-              "correct": 1,
-              "accuracy": 1
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
             },
             {
               "band": {
@@ -264,21 +309,32 @@
                 "minGap": 0.0001,
                 "maxGap": null
               },
-              "pairs": 10,
-              "correct": 7,
-              "accuracy": 0.7
+              "pairs": 11,
+              "correct": 5,
+              "ties": 0,
+              "accuracy": 0.45454545454545453
             }
           ]
         },
         {
           "name": "gradient-boosted-trees",
           "isBaseline": false,
-          "measuredFolds": 6,
+          "measuredFolds": 2,
           "failedFolds": [],
-          "spearman": -0.7999999999999999,
-          "kendall": -0.8333333333333334,
+          "unmeasurableFolds": [
+            {
+              "group": "1af393a5-a2a5-572b-97e8-68fd4016e92f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            },
+            {
+              "group": "41c4c01b-77fe-5936-8ee4-c4a73e97496f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            }
+          ],
+          "spearman": -0.6034410938988375,
+          "kendall": -0.5742865947853963,
           "topK": {
-            "1": 0.16666666666666666,
+            "1": 0,
             "3": 0.6666666666666666,
             "5": null
           },
@@ -289,9 +345,10 @@
                 "minGap": 0,
                 "maxGap": 0.00001
               },
-              "pairs": 0,
+              "pairs": 1,
               "correct": 0,
-              "accuracy": null
+              "ties": 1,
+              "accuracy": 0
             },
             {
               "band": {
@@ -299,9 +356,10 @@
                 "minGap": 0.00001,
                 "maxGap": 0.0001
               },
-              "pairs": 1,
+              "pairs": 0,
               "correct": 0,
-              "accuracy": 0
+              "ties": 0,
+              "accuracy": null
             },
             {
               "band": {
@@ -311,6 +369,7 @@
               },
               "pairs": 1,
               "correct": 0,
+              "ties": 1,
               "accuracy": 0
             },
             {
@@ -319,21 +378,32 @@
                 "minGap": 0.0001,
                 "maxGap": null
               },
-              "pairs": 10,
-              "correct": 3,
-              "accuracy": 0.3
+              "pairs": 11,
+              "correct": 1,
+              "ties": 3,
+              "accuracy": 0.09090909090909091
             }
           ]
         },
         {
           "name": "parent-score-baseline",
           "isBaseline": true,
-          "measuredFolds": 6,
+          "measuredFolds": 2,
           "failedFolds": [],
-          "spearman": -0.5175682092231576,
-          "kendall": -0.5304290309725093,
+          "unmeasurableFolds": [
+            {
+              "group": "1af393a5-a2a5-572b-97e8-68fd4016e92f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            },
+            {
+              "group": "41c4c01b-77fe-5936-8ee4-c4a73e97496f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            }
+          ],
+          "spearman": -0.4400029622902147,
+          "kendall": -0.44484048351080147,
           "topK": {
-            "1": 0.3333333333333333,
+            "1": 0,
             "3": 0.6666666666666666,
             "5": null
           },
@@ -344,9 +414,10 @@
                 "minGap": 0,
                 "maxGap": 0.00001
               },
-              "pairs": 0,
+              "pairs": 1,
               "correct": 0,
-              "accuracy": null
+              "ties": 0,
+              "accuracy": 0
             },
             {
               "band": {
@@ -354,9 +425,10 @@
                 "minGap": 0.00001,
                 "maxGap": 0.0001
               },
-              "pairs": 1,
+              "pairs": 0,
               "correct": 0,
-              "accuracy": 0
+              "ties": 0,
+              "accuracy": null
             },
             {
               "band": {
@@ -366,6 +438,7 @@
               },
               "pairs": 1,
               "correct": 0,
+              "ties": 0,
               "accuracy": 0
             },
             {
@@ -374,9 +447,10 @@
                 "minGap": 0.0001,
                 "maxGap": null
               },
-              "pairs": 10,
-              "correct": 3,
-              "accuracy": 0.3
+              "pairs": 11,
+              "correct": 2,
+              "ties": 4,
+              "accuracy": 0.18181818181818182
             }
           ]
         }
@@ -395,8 +469,9 @@
           "isBaseline": false,
           "measuredFolds": 6,
           "failedFolds": [],
-          "spearman": 0.6586800242866635,
-          "kendall": 0.5171481757321411,
+          "unmeasurableFolds": [],
+          "spearman": 0.24858304100100892,
+          "kendall": 0.174972725535843,
           "topK": {
             "1": 0,
             "3": 0,
@@ -409,9 +484,10 @@
                 "minGap": 0,
                 "maxGap": 0.00001
               },
-              "pairs": 8406,
-              "correct": 4083,
-              "accuracy": 0.48572448251249106
+              "pairs": 5390,
+              "correct": 2882,
+              "ties": 0,
+              "accuracy": 0.5346938775510204
             },
             {
               "band": {
@@ -419,9 +495,10 @@
                 "minGap": 0.00001,
                 "maxGap": 0.0001
               },
-              "pairs": 971,
-              "correct": 646,
-              "accuracy": 0.6652935118434603
+              "pairs": 2324,
+              "correct": 669,
+              "ties": 0,
+              "accuracy": 0.2878657487091222
             },
             {
               "band": {
@@ -429,9 +506,10 @@
                 "minGap": 0,
                 "maxGap": 0.0001
               },
-              "pairs": 9377,
-              "correct": 4729,
-              "accuracy": 0.5043190785965661
+              "pairs": 7714,
+              "correct": 3551,
+              "ties": 0,
+              "accuracy": 0.4603318641431164
             },
             {
               "band": {
@@ -439,9 +517,10 @@
                 "minGap": 0.0001,
                 "maxGap": null
               },
-              "pairs": 98921,
-              "correct": 77450,
-              "accuracy": 0.7829480090172967
+              "pairs": 100196,
+              "correct": 59802,
+              "ties": 3,
+              "accuracy": 0.5968501736596271
             }
           ]
         },
@@ -450,12 +529,13 @@
           "isBaseline": false,
           "measuredFolds": 6,
           "failedFolds": [],
-          "spearman": 0.05901306879221221,
-          "kendall": 0.03349406293514467,
+          "unmeasurableFolds": [],
+          "spearman": 0.1357947856145635,
+          "kendall": 0.09316109696073001,
           "topK": {
             "1": 0,
             "3": 0,
-            "5": 0
+            "5": 0.03333333333333333
           },
           "bands": [
             {
@@ -464,9 +544,10 @@
                 "minGap": 0,
                 "maxGap": 0.00001
               },
-              "pairs": 8406,
-              "correct": 2545,
-              "accuracy": 0.3027599333809184
+              "pairs": 5390,
+              "correct": 3055,
+              "ties": 0,
+              "accuracy": 0.5667903525046383
             },
             {
               "band": {
@@ -474,9 +555,10 @@
                 "minGap": 0.00001,
                 "maxGap": 0.0001
               },
-              "pairs": 971,
-              "correct": 308,
-              "accuracy": 0.3171987641606591
+              "pairs": 2324,
+              "correct": 988,
+              "ties": 0,
+              "accuracy": 0.42512908777969016
             },
             {
               "band": {
@@ -484,9 +566,10 @@
                 "minGap": 0,
                 "maxGap": 0.0001
               },
-              "pairs": 9377,
-              "correct": 2853,
-              "accuracy": 0.3042550922469873
+              "pairs": 7714,
+              "correct": 4043,
+              "ties": 0,
+              "accuracy": 0.5241120041483018
             },
             {
               "band": {
@@ -494,9 +577,10 @@
                 "minGap": 0.0001,
                 "maxGap": null
               },
-              "pairs": 98921,
-              "correct": 53195,
-              "accuracy": 0.5377523478331193
+              "pairs": 100196,
+              "correct": 54864,
+              "ties": 3,
+              "accuracy": 0.5475667691325004
             }
           ]
         },
@@ -505,12 +589,13 @@
           "isBaseline": false,
           "measuredFolds": 6,
           "failedFolds": [],
-          "spearman": -0.08539269519828001,
-          "kendall": -0.04241760119378705,
+          "unmeasurableFolds": [],
+          "spearman": 0.19847984531070254,
+          "kendall": 0.162932061448987,
           "topK": {
             "1": 0,
-            "3": 0,
-            "5": 0
+            "3": 0.16666666666666666,
+            "5": 0.16666666666666666
           },
           "bands": [
             {
@@ -519,9 +604,10 @@
                 "minGap": 0,
                 "maxGap": 0.00001
               },
-              "pairs": 8406,
-              "correct": 5854,
-              "accuracy": 0.6964073280989769
+              "pairs": 5390,
+              "correct": 3864,
+              "ties": 0,
+              "accuracy": 0.7168831168831169
             },
             {
               "band": {
@@ -529,9 +615,10 @@
                 "minGap": 0.00001,
                 "maxGap": 0.0001
               },
-              "pairs": 971,
-              "correct": 459,
-              "accuracy": 0.4727085478887745
+              "pairs": 2324,
+              "correct": 1056,
+              "ties": 0,
+              "accuracy": 0.45438898450946646
             },
             {
               "band": {
@@ -539,9 +626,10 @@
                 "minGap": 0,
                 "maxGap": 0.0001
               },
-              "pairs": 9377,
-              "correct": 6313,
-              "accuracy": 0.6732430414844833
+              "pairs": 7714,
+              "correct": 4920,
+              "ties": 0,
+              "accuracy": 0.6378014000518538
             },
             {
               "band": {
@@ -549,9 +637,10 @@
                 "minGap": 0.0001,
                 "maxGap": null
               },
-              "pairs": 98921,
-              "correct": 45499,
-              "accuracy": 0.45995289170145875
+              "pairs": 100196,
+              "correct": 57889,
+              "ties": 3,
+              "accuracy": 0.5777575951135774
             }
           ]
         },
@@ -560,12 +649,13 @@
           "isBaseline": false,
           "measuredFolds": 6,
           "failedFolds": [],
-          "spearman": 0.4734549338427689,
-          "kendall": 0.38065089905709293,
+          "unmeasurableFolds": [],
+          "spearman": 0.7151735004463707,
+          "kendall": 0.6070107387137883,
           "topK": {
             "1": 0,
-            "3": 0,
-            "5": 0
+            "3": 0.05555555555555555,
+            "5": 0.03333333333333333
           },
           "bands": [
             {
@@ -574,9 +664,10 @@
                 "minGap": 0,
                 "maxGap": 0.00001
               },
-              "pairs": 8406,
-              "correct": 22,
-              "accuracy": 0.0026171782060433026
+              "pairs": 5390,
+              "correct": 125,
+              "ties": 5220,
+              "accuracy": 0.023191094619666047
             },
             {
               "band": {
@@ -584,9 +675,10 @@
                 "minGap": 0.00001,
                 "maxGap": 0.0001
               },
-              "pairs": 971,
-              "correct": 23,
-              "accuracy": 0.02368692070030896
+              "pairs": 2324,
+              "correct": 6,
+              "ties": 2308,
+              "accuracy": 0.0025817555938037868
             },
             {
               "band": {
@@ -594,9 +686,10 @@
                 "minGap": 0,
                 "maxGap": 0.0001
               },
-              "pairs": 9377,
-              "correct": 45,
-              "accuracy": 0.00479897621840674
+              "pairs": 7714,
+              "correct": 131,
+              "ties": 7528,
+              "accuracy": 0.01698211044853513
             },
             {
               "band": {
@@ -604,9 +697,10 @@
                 "minGap": 0.0001,
                 "maxGap": null
               },
-              "pairs": 98921,
-              "correct": 55008,
-              "accuracy": 0.556080104325674
+              "pairs": 100196,
+              "correct": 57643,
+              "ties": 36415,
+              "accuracy": 0.5753024072817278
             }
           ]
         },
@@ -615,8 +709,26 @@
           "isBaseline": true,
           "measuredFolds": 6,
           "failedFolds": [],
-          "spearman": -0.15179341026506968,
-          "kendall": -0.12362422682013616,
+          "unmeasurableFolds": [
+            {
+              "group": "capture-3930-0",
+              "reason": "a score vector is constant — it carries no ordering to correlate"
+            },
+            {
+              "group": "capture-3930-1",
+              "reason": "a score vector is constant — it carries no ordering to correlate"
+            },
+            {
+              "group": "capture-3930-4",
+              "reason": "a score vector is constant — it carries no ordering to correlate"
+            },
+            {
+              "group": "capture-3930-5",
+              "reason": "a score vector is constant — it carries no ordering to correlate"
+            }
+          ],
+          "spearman": -0.21436767132948625,
+          "kendall": -0.175197814047375,
           "topK": {
             "1": 0,
             "3": 0,
@@ -629,9 +741,10 @@
                 "minGap": 0,
                 "maxGap": 0.00001
               },
-              "pairs": 8406,
-              "correct": 0,
-              "accuracy": 0
+              "pairs": 5390,
+              "correct": 2,
+              "ties": 5386,
+              "accuracy": 0.00037105751391465676
             },
             {
               "band": {
@@ -639,9 +752,10 @@
                 "minGap": 0.00001,
                 "maxGap": 0.0001
               },
-              "pairs": 971,
-              "correct": 1,
-              "accuracy": 0.0010298661174047373
+              "pairs": 2324,
+              "correct": 2,
+              "ties": 2322,
+              "accuracy": 0.0008605851979345956
             },
             {
               "band": {
@@ -649,9 +763,10 @@
                 "minGap": 0,
                 "maxGap": 0.0001
               },
-              "pairs": 9377,
-              "correct": 1,
-              "accuracy": 0.00010664391596459421
+              "pairs": 7714,
+              "correct": 4,
+              "ties": 7708,
+              "accuracy": 0.0005185377236193933
             },
             {
               "band": {
@@ -659,9 +774,10 @@
                 "minGap": 0.0001,
                 "maxGap": null
               },
-              "pairs": 98921,
-              "correct": 323,
-              "accuracy": 0.003265231851679623
+              "pairs": 100196,
+              "correct": 101,
+              "ties": 98703,
+              "accuracy": 0.001008024272426045
             }
           ]
         }

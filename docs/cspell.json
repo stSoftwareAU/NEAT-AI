@@ -749,6 +749,11 @@
     "unintegrated",
     "unjoinable",
     "SIGMAS",
-    "kriging"
+    "kriging",
+    "interpolant",
+    "spearmans",
+    "kendalls",
+    "Studyable",
+    "fittable"
   ]
 }

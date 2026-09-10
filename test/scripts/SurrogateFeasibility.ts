@@ -18,22 +18,14 @@ import {
   parseProvenance,
   runFeasibilityStudy,
 } from "../../scripts/surrogate_feasibility.ts";
-
-/** A deterministic generator, so the whole study is reproducible. */
-function rng(seed: number): () => number {
-  let state = seed >>> 0;
-  return () => {
-    state = (state * 1_664_525 + 1_013_904_223) >>> 0;
-    return state / 0x1_0000_0000;
-  };
-}
+import { testRng } from "./_surrogateFixtures.ts";
 
 /**
  * An archive of `runs` runs, each a chain of parent → child so that lineage,
  * run and parent score are all real rather than stubbed.
  */
 function buildArchive(runs: number, perRun: number): EvaluationArchiveRecord[] {
-  const next = rng(3930);
+  const next = testRng(3930);
   const records: EvaluationArchiveRecord[] = [];
   for (let run = 0; run < runs; run++) {
     let previous: string | undefined;
@@ -176,6 +168,36 @@ Deno.test("surrogate feasibility - an archive with no parent links cannot decide
   assert(
     markdown.includes("not** a measured negative"),
     "the report must not read an undecidable gate as a measured negative",
+  );
+});
+
+Deno.test("surrogate feasibility - skipped folds are counted by reason, not listed one by one", () => {
+  // Six singleton runs and one usable run: every singleton is skipped for the
+  // same reason, and the report must carry that as one counted entry.
+  const usable = buildArchive(1, 12);
+  const singletons = Array.from({ length: 6 }, (_, i) => ({
+    ...usable[0],
+    uuid: `solo-${i}`,
+    runId: `solo-run-${i}`,
+    parents: [],
+  }));
+  const report = runFeasibilityStudy({
+    records: [...usable, ...singletons],
+    archivePath: "memory://test",
+    provenance: "synthetic",
+  });
+  const runSplit = report.splits[1];
+  assertEquals(runSplit.skipped, 6);
+  assertEquals(runSplit.skippedByReason.length, 1);
+  assertEquals(runSplit.skippedByReason[0].count, 6);
+  assert(
+    runSplit.skippedByReason[0].reason.includes("carry an ordering"),
+    `the counted reason must survive: ${runSplit.skippedByReason[0].reason}`,
+  );
+  const markdown = markdownReport(report);
+  assert(
+    markdown.includes("6 × "),
+    "the report states the count rather than six identical lines",
   );
 });
 

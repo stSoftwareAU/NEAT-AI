@@ -38,6 +38,7 @@ import {
   readEvaluationArchive,
 } from "@archive/EvaluationArchiveFormat.ts";
 import { EVALUATION_DESCRIPTOR_VERSION } from "@archive/EvaluationDescriptor.ts";
+import { numberArg, stringArg } from "./lib/cliArgs.ts";
 import { SURROGATE_FAMILIES } from "./lib/surrogateModels.ts";
 import {
   assessKillGate,
@@ -228,8 +229,12 @@ function splitTable(split: SplitReport, bands: readonly GapBand[]): string {
   const rows = split.results.map((result) => {
     const name = result.isBaseline ? `**${result.name}**` : result.name;
     const tops = REPORTED_TOP_K.map((k) => cell(result.topK.get(k) ?? null));
+    // `accuracy (pairs, ties)`: a tie and an inversion are different failures
+    // and the accuracy alone cannot tell them apart.
     const accuracies = result.bands.map((band) =>
-      band.pairs === 0 ? "— (0)" : `${cell(band.accuracy)} (${band.pairs})`
+      band.pairs === 0
+        ? "— (0)"
+        : `${cell(band.accuracy)} (${band.pairs}, ${band.ties}t)`
     );
     return `| ${name} | ${result.measuredFolds} | ${cell(result.spearman)} | ` +
       `${cell(result.kendall)} | ${tops.join(" | ")} | ` +
@@ -259,9 +264,11 @@ export function markdownReport(report: FeasibilityReport): string {
   );
   lines.push("");
   lines.push(
-    "Accuracy cells read `accuracy (pairs)`. Every ordering statistic is " +
-      "held out — no cell anywhere in this report was measured on a creature " +
-      "its model had seen.",
+    "Accuracy cells read `accuracy (pairs, ties)`, where a tie is a pair the " +
+      "predictor gave the same score to — counted as a failure to order, and " +
+      "shown separately because it is a different failure from an inversion. " +
+      "Every ordering statistic is held out: no cell anywhere in this report " +
+      "was measured on a creature its model had seen.",
   );
   for (const split of report.splits) {
     lines.push("");
@@ -293,6 +300,19 @@ export function markdownReport(report: FeasibilityReport): string {
       lines.push("Folds a predictor could not be applied to:");
       lines.push("");
       for (const failure of failures) lines.push(`- ${failure}`);
+    }
+    // An em dash in the table is not an explanation. Every statistic the
+    // study declined to take says here why it declined.
+    const unmeasurable = split.results.flatMap((result) =>
+      countByReason(result.unmeasurableFolds).map(({ reason, count }) =>
+        `${result.name}: ${count} fold(s) — ${reason}`
+      )
+    );
+    if (unmeasurable.length > 0) {
+      lines.push("");
+      lines.push("Statistics that could not be taken, and why:");
+      lines.push("");
+      for (const entry of unmeasurable) lines.push(`- ${entry}`);
     }
   }
   lines.push("");
@@ -328,25 +348,6 @@ export function markdownReport(report: FeasibilityReport): string {
   }
   lines.push("");
   return lines.join("\n");
-}
-
-/** `--name=value`, or `undefined`. */
-function stringArg(args: readonly string[], name: string): string | undefined {
-  const hit = args.find((arg) => arg.startsWith(`--${name}=`));
-  return hit?.slice(name.length + 3);
-}
-
-/** `--name=<number>`, or `fallback`. */
-function numberArg(
-  args: readonly string[],
-  name: string,
-  fallback: number,
-): number {
-  const raw = stringArg(args, name);
-  if (raw === undefined) return fallback;
-  const value = Number(raw);
-  if (!Number.isFinite(value)) throw new Error(`--${name} is not a number`);
-  return value;
 }
 
 /** Validate `--provenance`, which has no default on purpose. */

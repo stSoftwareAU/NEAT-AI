@@ -28,15 +28,7 @@ import {
   SURROGATE_FAMILIES,
   type TrainingPoint,
 } from "../../scripts/lib/surrogateModels.ts";
-
-/** A deterministic generator, so every fit in this file is reproducible. */
-function rng(seed: number): () => number {
-  let state = seed >>> 0;
-  return () => {
-    state = (state * 1_664_525 + 1_013_904_223) >>> 0;
-    return state / 0x1_0000_0000;
-  };
-}
+import { testRng } from "./_surrogateFixtures.ts";
 
 /**
  * A smooth two-variable target with a real interaction, plus two decoy
@@ -48,7 +40,7 @@ function sampleTarget(x: number, y: number): number {
 }
 
 function buildPoints(count: number, seed: number): TrainingPoint[] {
-  const next = rng(seed);
+  const next = testRng(seed);
   const points: TrainingPoint[] = [];
   for (let i = 0; i < count; i++) {
     const x = next() * 2 - 1;

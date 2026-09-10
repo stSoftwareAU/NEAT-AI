@@ -45,8 +45,14 @@ import type { SurrogateFamily, TrainingPoint } from "./surrogateModels.ts";
 /** The `k`s the study reports, as the issue's acceptance list names them. */
 export const REPORTED_TOP_K: readonly number[] = Object.freeze([1, 3, 5]);
 
-/** Held-out sets smaller than this carry no ordering to score. */
-const MIN_HELD_OUT = 2;
+/**
+ * Held-out sets smaller than this carry no ordering worth scoring.
+ *
+ * Three, not two: over two creatures both rank coefficients can only be -1 or
+ * +1, so a mean over such folds is a coin-flip average dressed as a
+ * correlation.
+ */
+const MIN_HELD_OUT = 3;
 
 /** Training sets smaller than this cannot fit any family. */
 const MIN_TRAINING = 3;
@@ -252,7 +258,8 @@ export function buildFolds(
     if (test.length < MIN_HELD_OUT) {
       skipped.push({
         group,
-        reason: `only ${test.length} creature held out — no ordering to score`,
+        reason: `only ${test.length} creature(s) held out — fewer than the ` +
+          `${MIN_HELD_OUT} a fold needs to carry an ordering`,
       });
       continue;
     }
@@ -393,10 +400,13 @@ export function rankSummary(
     unmeasurable = error instanceof Error ? error.message : String(error);
   }
   for (const k of REPORTED_TOP_K) {
-    if (k > truth.length) {
+    // `k === truth.length` is not a measurement: the top k of k creatures is
+    // every creature, so any predictor at all scores 1.000. Reporting that
+    // would put a perfect score against a constant.
+    if (k >= truth.length) {
       topK.set(k, null);
-      unmeasurable ??= `top-${k} needs ${k} held-out creatures, fold has ` +
-        `${truth.length}`;
+      unmeasurable ??= `top-${k} needs at least ${k + 1} held-out creatures ` +
+        `to be a measurement, fold has ${truth.length}`;
       continue;
     }
     topK.set(k, topKAgreement(truth, guess, k));
@@ -418,6 +428,16 @@ export interface BandAccuracy {
   readonly band: GapBand;
   readonly pairs: number;
   readonly correct: number;
+  /**
+   * Pairs the predictor gave the same score to.
+   *
+   * Counted separately because a tie and an inversion are different failures
+   * and the accuracy figure cannot tell them apart. A piecewise-constant model
+   * — boosted trees, or a baseline that fell back to the training mean — fails
+   * mostly by tying, and a report that did not say so would read those zeroes
+   * as "ordered the pairs backwards".
+   */
+  readonly ties: number;
   /** `correct / pairs`, or `null` when the band held no pair. */
   readonly accuracy: number | null;
 }
@@ -475,11 +495,13 @@ export function gapStratifiedAccuracy(
   }
   const pairs = bands.map(() => 0);
   const correct = bands.map(() => 0);
+  const ties = bands.map(() => 0);
   for (let i = 0; i < trueScores.length; i++) {
     for (let j = i + 1; j < trueScores.length; j++) {
       const gap = Math.abs(trueScores[i] - trueScores[j]);
       if (gap === 0) continue;
-      const ordered = predicted[i] !== predicted[j] &&
+      const tied = predicted[i] === predicted[j];
+      const ordered = !tied &&
         Math.sign(trueScores[i] - trueScores[j]) ===
           Math.sign(predicted[i] - predicted[j]);
       for (let b = 0; b < bands.length; b++) {
@@ -488,6 +510,7 @@ export function gapStratifiedAccuracy(
         const below = band.maxGap === null ? true : gap <= band.maxGap;
         if (!above || !below) continue;
         pairs[b]++;
+        if (tied) ties[b]++;
         if (ordered) correct[b]++;
       }
     }
@@ -496,6 +519,7 @@ export function gapStratifiedAccuracy(
     band,
     pairs: pairs[b],
     correct: correct[b],
+    ties: ties[b],
     accuracy: pairs[b] === 0 ? null : correct[b] / pairs[b],
   }));
 }
@@ -504,10 +528,22 @@ export function gapStratifiedAccuracy(
 export interface PredictorResult {
   readonly name: string;
   readonly isBaseline: boolean;
-  /** Folds where the predictor produced an ordering. */
+  /**
+   * Folds where the predictor produced a finite prediction per creature.
+   *
+   * A fold counted here may still have yielded no correlation and no top-k —
+   * a constant prediction has no ordering to correlate. Those folds are named
+   * in {@link unmeasurableFolds}, so this count is never read as "folds that
+   * produced statistics".
+   */
   readonly measuredFolds: number;
   /** Folds it could not be applied to, with reasons. */
   readonly failedFolds: readonly SkippedFold[];
+  /**
+   * Folds it was applied to whose statistics could not all be taken, with the
+   * reason the study refused to take them.
+   */
+  readonly unmeasurableFolds: readonly SkippedFold[];
   /** Mean Spearman ρ over the folds where it was measurable. */
   readonly spearman: number | null;
   /** Mean Kendall τ over the folds where it was measurable. */
@@ -544,8 +580,9 @@ export function evaluatePredictor(
   const topKValues = new Map<number, (number | null)[]>(
     REPORTED_TOP_K.map((k) => [k, []]),
   );
-  const pooled = bands.map(() => ({ pairs: 0, correct: 0 }));
+  const pooled = bands.map(() => ({ pairs: 0, correct: 0, ties: 0 }));
   const failedFolds: SkippedFold[] = [];
+  const unmeasurableFolds: SkippedFold[] = [];
   let measuredFolds = 0;
   for (const fold of split.folds) {
     const trueScores = fold.test.map((record) => record.score);
@@ -574,6 +611,12 @@ export function evaluatePredictor(
     }
     measuredFolds++;
     const summary = rankSummary(trueScores, predicted);
+    if (summary.unmeasurable !== null) {
+      unmeasurableFolds.push({
+        group: fold.group,
+        reason: summary.unmeasurable,
+      });
+    }
     spearmans.push(summary.spearman);
     kendalls.push(summary.kendall);
     for (const k of REPORTED_TOP_K) {
@@ -583,6 +626,7 @@ export function evaluatePredictor(
     for (let b = 0; b < bands.length; b++) {
       pooled[b].pairs += foldBands[b].pairs;
       pooled[b].correct += foldBands[b].correct;
+      pooled[b].ties += foldBands[b].ties;
     }
   }
   return {
@@ -590,6 +634,7 @@ export function evaluatePredictor(
     isBaseline: predictor.isBaseline,
     measuredFolds,
     failedFolds,
+    unmeasurableFolds,
     spearman: meanOrNull(spearmans),
     kendall: meanOrNull(kendalls),
     topK: new Map(
@@ -599,6 +644,7 @@ export function evaluatePredictor(
       band,
       pairs: pooled[b].pairs,
       correct: pooled[b].correct,
+      ties: pooled[b].ties,
       accuracy: pooled[b].pairs === 0
         ? null
         : pooled[b].correct / pooled[b].pairs,

@@ -181,7 +181,7 @@ Deno.test("surrogate study - a fold too small to rank is skipped with its reason
   assertEquals(split.folds.map((fold) => fold.group), ["many", "other"]);
   assertEquals(split.skipped.length, 1);
   assertEquals(split.skipped[0].group, "solo");
-  assert(split.skipped[0].reason.includes("no ordering"));
+  assert(split.skipped[0].reason.includes("carry an ordering"));
 });
 
 Deno.test("surrogate study - rank agreement is measured, and a constant prediction is not", () => {
@@ -205,10 +205,17 @@ Deno.test("surrogate study - rank agreement is measured, and a constant predicti
   );
 });
 
-Deno.test("surrogate study - top-k beyond the held-out set is unmeasurable, not zero", () => {
-  const summary = rankSummary([1, 2, 3], [1, 2, 3]);
+Deno.test("surrogate study - top-k over a fold of k creatures is arithmetic, not a measurement", () => {
+  // A fold of three: top-1 is a real question, top-3 is "is every creature in
+  // the set of every creature", which any predictor answers correctly.
+  const summary = rankSummary([1, 2, 3], [3, 2, 1]);
+  assertEquals(summary.topK.get(1), 0);
+  assertEquals(summary.topK.get(3), null);
   assertEquals(summary.topK.get(5), null);
-  assert((summary.unmeasurable ?? "").includes("top-5"));
+  assert(
+    (summary.unmeasurable ?? "").includes("top-3"),
+    `the reason must name the statistic refused: ${summary.unmeasurable}`,
+  );
 });
 
 Deno.test("surrogate study - pair accuracy is counted per gap band, and a predicted tie is wrong", () => {
@@ -327,6 +334,7 @@ function result(
     isBaseline,
     measuredFolds: 3,
     failedFolds: [],
+    unmeasurableFolds: [],
     spearman: 0.5,
     kendall: 0.4,
     topK: new Map([[1, 0.5], [3, 0.5], [5, top5]]),
@@ -375,5 +383,45 @@ Deno.test("surrogate study - an undecidable gate is a stop, never a pass", () =>
     () => assessKillGate([result("model", false, 0.9)], 1),
     Error,
     "baseline is missing",
+  );
+});
+
+Deno.test("surrogate study - a tie is counted apart from an inversion", () => {
+  const truth = [0, 1e-5, 2e-5, 3e-5];
+  const bands = defaultGapBands(1e-4);
+  // A constant predictor ties every pair; an inverted one ties none.
+  const tied = gapStratifiedAccuracy(truth, [1, 1, 1, 1], bands);
+  assertEquals(tied[2].pairs, tied[2].ties);
+  assertEquals(tied[2].correct, 0);
+
+  const inverted = gapStratifiedAccuracy(truth, [4, 3, 2, 1], bands);
+  assertEquals(inverted[2].ties, 0);
+  assertEquals(inverted[2].correct, 0);
+});
+
+Deno.test("surrogate study - a fold with no ordering names its reason in the result", () => {
+  const records = [
+    record("a", 1),
+    record("b", 2),
+    record("c", 3),
+    record("d", 4, { runId: "run-b" }),
+    record("e", 5, { runId: "run-b" }),
+    record("f", 6, { runId: "run-b" }),
+  ];
+  const split = buildFolds(records, "run");
+  const constant: StudyPredictor = {
+    name: "always-the-same",
+    isBaseline: false,
+    predict: (fold) => fold.test.map(() => 7),
+  };
+  const result = evaluatePredictor(split, constant, defaultGapBands(1e-4));
+  assertEquals(result.measuredFolds, split.folds.length);
+  assertEquals(result.spearman, null);
+  assertEquals(result.unmeasurableFolds.length, split.folds.length);
+  assert(
+    result.unmeasurableFolds[0].reason.includes("constant"),
+    `the reason must survive into the result: ${
+      result.unmeasurableFolds[0].reason
+    }`,
   );
 });
