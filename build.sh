@@ -25,6 +25,10 @@ EXPLICIT_REV=""
 # dependency bump treats it as "nothing to bump" rather than reverting the
 # whole PR's bump. Every genuine failure still exits 1.
 EXIT_UPSTREAM_UNRESOLVED=3
+# Printed to stderr immediately before exiting with the code above. A caller
+# must match this marker as well as the status: a status of 3 alone could have
+# come from any inner command, and "no explicit failure" is not a verdict.
+UPSTREAM_UNRESOLVED_MARKER="BUILD_STATUS=upstream-unresolved"
 
 show_help() {
   cat <<'HELP'
@@ -74,9 +78,13 @@ Environment:
 Exit codes:
   0   Success (bundle refreshed, or already current).
   1   Failure — bad flag, failed verification, or a failed download.
-  3   The upstream revision could not be looked up (offline, rate
-      limited, or no credential). Nothing was changed; callers may
-      treat this as "nothing to bump" rather than a broken build.
+  3   The upstream revision could not be looked up because upstream was
+      unreachable (offline, rate limited, or no credential), and the
+      marker line BUILD_STATUS=upstream-unresolved was printed to
+      stderr. Nothing was changed, so a caller that matches both the
+      status and the marker may treat this as "nothing to bump". A ref
+      that upstream reports as missing is a configuration error and
+      still exits 1.
 HELP
 }
 
@@ -734,28 +742,49 @@ resolve_upstream_rev() {
   local ref="$2"
   local token="${NEAT_CORE_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
   local lookup_timeout="${NEAT_CORE_REV_LOOKUP_TIMEOUT_SECONDS:-30}"
+  if ! [[ "$lookup_timeout" =~ ^[0-9]+$ ]] || [[ "$lookup_timeout" -lt 1 ]]; then
+    echo "ERROR: NEAT_CORE_REV_LOOKUP_TIMEOUT_SECONDS must be a positive integer (got '${lookup_timeout}')." >&2
+    return 2
+  fi
   # Bound every network call so an unattended run cannot hang on a stalled
-  # connection. macOS ships coreutils' timeout as `gtimeout`; when neither
-  # exists the lookups still run, just uncapped.
+  # connection. $TIMEOUT_CMD is the repo-wide override; otherwise probe for
+  # coreutils' timeout, named `gtimeout` on macOS. With none of them the
+  # lookups still run, just uncapped.
   local runner=()
-  if command -v gtimeout >/dev/null 2>&1; then
-    runner=(gtimeout "$lookup_timeout")
-  elif command -v timeout >/dev/null 2>&1; then
-    runner=(timeout "$lookup_timeout")
+  local timeout_bin="${TIMEOUT_CMD:-}"
+  if [[ -z "$timeout_bin" ]]; then
+    if command -v gtimeout >/dev/null 2>&1; then
+      timeout_bin="gtimeout"
+    elif command -v timeout >/dev/null 2>&1; then
+      timeout_bin="timeout"
+    fi
+  fi
+  if [[ -n "$timeout_bin" ]]; then
+    runner=("$timeout_bin" "$lookup_timeout")
   fi
   local notes=()
   local sha=""
+  # Set when a strategy reached upstream and was told the ref does not exist.
+  # That is a configuration error, not an outage, so it must not be downgraded
+  # to "nothing to bump".
+  local ref_missing=false
+  local err_file
+  err_file="$(mktemp)"
 
   # 1. gh api — needs an authenticated session, reads private repos.
   if command -v gh >/dev/null 2>&1; then
     sha="$(${runner[@]+"${runner[@]}"} gh api \
-      "repos/${repo}/commits/${ref}" --jq .sha 2>/dev/null || true)"
+      "repos/${repo}/commits/${ref}" --jq .sha 2>"$err_file" || true)"
     if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+      rm -f "$err_file"
       echo "Resolved ${repo}@${ref} via gh api." >&2
       printf '%s\n' "$sha"
       return 0
     fi
-    notes+=("gh api: no SHA returned (unauthenticated session, or ref missing)")
+    if grep -qiE 'HTTP 404|Not Found|No commit found' "$err_file"; then
+      ref_missing=true
+    fi
+    notes+=("gh api: $(head -n 1 "$err_file" 2>/dev/null || true)")
   else
     notes+=("gh api: skipped (gh is not on PATH)")
   fi
@@ -763,10 +792,11 @@ resolve_upstream_rev() {
   # 2. git ls-remote — no gh session needed; the unattended default.
   if command -v git >/dev/null 2>&1; then
     local ls_remote_out=""
+    local ls_remote_rc=0
     ls_remote_out="$(GIT_TERMINAL_PROMPT=0 ${runner[@]+"${runner[@]}"} \
       git ls-remote "https://github.com/${repo}.git" \
       "refs/heads/${ref}" "refs/tags/${ref}^{}" "refs/tags/${ref}" \
-      2>/dev/null || true)"
+      2>"$err_file")" || ls_remote_rc=$?
     # Prefer the peeled entry so an annotated tag yields its commit, not the
     # tag object.
     sha="$(printf '%s\n' "$ls_remote_out" | awk '$2 ~ /\^\{\}$/ { print $1; exit }')"
@@ -774,11 +804,18 @@ resolve_upstream_rev() {
       sha="$(printf '%s\n' "$ls_remote_out" | awk 'NF { print $1; exit }')"
     fi
     if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+      rm -f "$err_file"
       echo "Resolved ${repo}@${ref} via git ls-remote." >&2
       printf '%s\n' "$sha"
       return 0
     fi
-    notes+=("git ls-remote: no matching ref (network unreachable, or ref missing)")
+    if [[ "$ls_remote_rc" -eq 0 ]]; then
+      # The remote answered and listed no such ref — the ref is genuinely gone.
+      ref_missing=true
+      notes+=("git ls-remote: the remote lists no ref named '${ref}'")
+    else
+      notes+=("git ls-remote: exit ${ls_remote_rc} — $(head -n 1 "$err_file" 2>/dev/null || true)")
+    fi
   else
     notes+=("git ls-remote: skipped (git is not on PATH)")
   fi
@@ -790,27 +827,42 @@ resolve_upstream_rev() {
     if [[ -n "$token" ]]; then
       curl_args+=(-H "Authorization: Bearer ${token}")
     fi
+    curl_args+=(-w '\n%{http_code}')
     local body=""
     body="$(${runner[@]+"${runner[@]}"} curl "${curl_args[@]}" \
-      "https://api.github.com/repos/${repo}/commits/${ref}" 2>/dev/null || true)"
+      "https://api.github.com/repos/${repo}/commits/${ref}" 2>"$err_file" || true)"
+    local status_code
+    status_code="$(printf '%s\n' "$body" | awk 'END { print }')"
     sha="$(printf '%s\n' "$body" \
       | sed -n 's/.*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-f]\{40\}\)".*/\1/p' \
       | awk 'NR == 1 { print }')"
     if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+      rm -f "$err_file"
       echo "Resolved ${repo}@${ref} via curl (REST API)." >&2
       printf '%s\n' "$sha"
       return 0
     fi
-    notes+=("curl REST API: no SHA in response (rate limited, offline, or ref missing)")
+    if [[ "$status_code" == "404" ]]; then
+      ref_missing=true
+    fi
+    notes+=("curl REST API: HTTP ${status_code:-000} — $(head -n 1 "$err_file" 2>/dev/null || true)")
   else
     notes+=("curl REST API: skipped (curl is not on PATH)")
   fi
+  rm -f "$err_file"
 
   echo "ERROR: Could not resolve commit SHA for ${repo}@${ref}" >&2
   local note
   for note in ${notes[@]+"${notes[@]}"}; do
     echo "  - ${note}" >&2
   done
+  if [[ "$ref_missing" == true ]]; then
+    # Upstream answered: the ref does not exist. A stale neatCore.ref is a
+    # configuration error and must fail the build, never be degraded to
+    # "nothing to bump".
+    echo "       Upstream reports no such ref — check deno.json neatCore.ref." >&2
+    return 2
+  fi
   return 1
 }
 
@@ -826,9 +878,20 @@ elif [[ -n "${NEAT_CORE_REV:-}" ]]; then
 else
   echo "Resolving ${NEAT_CORE_REPO}@${NEAT_CORE_REF} HEAD..."
   resolved_rev=""
-  if ! resolved_rev="$(resolve_upstream_rev "$NEAT_CORE_REPO" "$NEAT_CORE_REF")"; then
+  resolve_rc=0
+  resolved_rev="$(resolve_upstream_rev "$NEAT_CORE_REPO" "$NEAT_CORE_REF")" \
+    || resolve_rc=$?
+  if [[ "$resolve_rc" -eq 2 ]]; then
+    # Upstream answered and the ref is wrong (or the lookup was misconfigured).
+    # A genuine error: fail loud on exit 1 so the bump is reverted.
+    echo "ERROR: ${NEAT_CORE_REPO}@${NEAT_CORE_REF} could not be resolved and the fault is not transient." >&2
+    exit 1
+  elif [[ "$resolve_rc" -ne 0 ]]; then
     echo "       Every resolution strategy failed (details above)." >&2
     echo "       Pass --rev <SHA>, set NEAT_CORE_REV, or restore network access." >&2
+    # Positive marker: the caller must see this line, not merely a status of
+    # 3, before treating the run as "upstream unreachable" (Issue #3990).
+    echo "$UPSTREAM_UNRESOLVED_MARKER" >&2
     exit "$EXIT_UPSTREAM_UNRESOLVED"
   fi
   TARGET_REV="$resolved_rev"
@@ -900,10 +963,18 @@ probe_release() {
     if grep -qiE 'HTTP 404|Not Found|release not found' "$err_file"; then
       return 1
     fi
-    cat "$err_file" >&2 || true
+    # gh is installed but could not answer — typically an unauthenticated
+    # session in an unattended environment (Issue #3990). That is gh's
+    # verdict, not the release's: fall through to the credential-free curl
+    # probe rather than failing the whole build here.
+    echo "gh could not probe ${RELEASE_TAG}; falling back to the REST API:" >&2
+    sed 's/^/  /' "$err_file" >&2 || true
+  fi
+  # Probe via curl against the GitHub REST API — needs no gh session.
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "ERROR: neither gh nor curl could probe ${RELEASE_TAG}." >&2
     return 2
   fi
-  # No gh — probe via curl against the GitHub REST API.
   local probe_args=(-sS -o /dev/null -w '%{http_code}')
   if [[ -n "${NEAT_CORE_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}" ]]; then
     probe_args+=(-H "Authorization: Bearer ${NEAT_CORE_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}")

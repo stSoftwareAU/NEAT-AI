@@ -381,6 +381,7 @@
     "greppable",
     "groupinstall",
     "gtimeout",
+    "mktemp",
     "handoff",
     "headerless",
     "heapify",

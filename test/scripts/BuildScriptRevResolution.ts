@@ -1,4 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import { existsSync } from "@std/fs";
 import { runSourcedFns } from "./_buildShHarness.ts";
 
 /**
@@ -19,6 +20,25 @@ const OTHER_SHA = "89abcdef0123456789abcdef0123456789abcdef";
 type Stubs = Record<string, string>;
 
 /**
+ * Real utilities the resolver shells out to. They are symlinked into the stub
+ * directory so PATH can be reduced to that directory alone — which is how the
+ * "tool is not on PATH" branches are reached for gh / git / curl.
+ */
+const REQUIRED_TOOLS = [
+  "awk",
+  "sed",
+  "grep",
+  "head",
+  "mktemp",
+  "rm",
+  "printf",
+  "timeout",
+];
+
+/** Tools whose absence the resolver tolerates (builtin, or macOS-only names). */
+const OPTIONAL_TOOLS = ["printf", "timeout"];
+
+/**
  * Create a temp directory of stub executables and return its path.
  *
  * Real `awk` and `sed` are symlinked in alongside the stubs so the resolver's
@@ -33,14 +53,18 @@ function makeStubBin(stubs: Stubs): string {
     Deno.writeTextFileSync(path, `#!/bin/sh\n${body}\n`);
     Deno.chmodSync(path, 0o755);
   }
-  for (const tool of ["awk", "sed", "printf", "timeout"]) {
-    const real = `/usr/bin/${tool}`;
-    try {
-      Deno.lstatSync(real);
-      Deno.symlinkSync(real, `${dir}/${tool}`);
-    } catch {
-      // Tool absent or already stubbed — the resolver degrades without it.
+  for (const tool of REQUIRED_TOOLS) {
+    if (Object.hasOwn(stubs, tool)) continue;
+    const real = ["/usr/bin", "/bin"]
+      .map((binDir) => `${binDir}/${tool}`)
+      .find((candidate) => existsSync(candidate));
+    if (real === undefined) {
+      if (OPTIONAL_TOOLS.includes(tool)) continue;
+      // Say which tool is missing rather than letting the resolver fail later
+      // as a confusing "no SHA returned".
+      throw new Error(`${tool} is required to drive resolve_upstream_rev`);
     }
+    Deno.symlinkSync(real, `${dir}/${tool}`);
   }
   return dir;
 }
@@ -142,8 +166,8 @@ Deno.test({
       git: "exit 128",
       // Only answer when the Authorization header carries the token.
       curl:
-        `case "$*" in\n  *"Bearer s3cret"*) echo '{ "sha": "${HEAD_SHA}" }' ;;\n  *) exit 22 ;;\nesac`,
-    }, { env: "GITHUB_TOKEN=s3cret" });
+        `case "$*" in\n  *"Bearer test-token"*) echo '{ "sha": "${HEAD_SHA}" }' ;;\n  *) exit 22 ;;\nesac`,
+    }, { env: "GITHUB_TOKEN=test-token" });
     assertEquals(result.code, 0, `stderr=${result.stderr}`);
     assertEquals(result.stdout.trim(), HEAD_SHA);
   },
@@ -175,6 +199,61 @@ Deno.test({
     const result = await runResolve({});
     assert(result.code !== 0, "no resolver available means no success");
     assertStringIncludes(result.stderr, "not on PATH");
+  },
+});
+
+Deno.test({
+  name:
+    "resolve_upstream_rev separates a missing ref from an unreachable upstream (#3990)",
+  fn: async () => {
+    // `git ls-remote` exiting 0 with no rows means the remote answered and
+    // has no such ref — a stale neatCore.ref, which must not be downgraded to
+    // "nothing to bump".
+    const result = await runResolve({
+      gh: GH_UNAUTHENTICATED,
+      git: "exit 0",
+      curl: "exit 22",
+    }, { ref: "NoSuchBranch" });
+    assertEquals(
+      result.code,
+      2,
+      `a missing ref must report the configuration-error code; stderr=${result.stderr}`,
+    );
+    assertStringIncludes(result.stderr, "no ref named 'NoSuchBranch'");
+  },
+});
+
+Deno.test({
+  name:
+    "resolve_upstream_rev reports an unreachable upstream as the transient code (#3990)",
+  fn: async () => {
+    // Every strategy errored out without ever being told the ref is absent.
+    const result = await runResolve({
+      gh: GH_UNAUTHENTICATED,
+      git: "exit 128",
+      curl: "exit 6",
+    });
+    assertEquals(
+      result.code,
+      1,
+      `an outage must not be reported as a configuration error; stderr=${result.stderr}`,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "resolve_upstream_rev fails loud on a non-numeric lookup timeout (#3990)",
+  fn: async () => {
+    const result = await runResolve({
+      gh: `echo "${HEAD_SHA}"`,
+    }, { env: "NEAT_CORE_REV_LOOKUP_TIMEOUT_SECONDS=soon" });
+    assertEquals(result.code, 2, "a misconfigured timeout is not an outage");
+    assertStringIncludes(
+      result.stderr,
+      "NEAT_CORE_REV_LOOKUP_TIMEOUT_SECONDS",
+    );
+    assertEquals(result.stdout.trim(), "");
   },
 });
 

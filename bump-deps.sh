@@ -41,8 +41,12 @@ cd "$SCRIPT_DIR"
 QUARANTINE_HOURS="${VIBE_BUMP_QUARANTINE_HOURS:-24}"
 # Exit code the build script uses for "upstream revision could not be looked
 # up" — offline, rate limited, or no credential (Issue #3990). It is distinct
-# from a genuine build failure, which is still exit 1.
+# from a genuine build failure, which is still exit 1. The status alone is not
+# trusted: the build script also prints the marker below, and both must be
+# present before the run is degraded to a skip. A bare status of 3 could have
+# come from any command the build script ran.
 BUILD_EXIT_UPSTREAM_UNRESOLVED=3
+BUILD_UPSTREAM_UNRESOLVED_MARKER="BUILD_STATUS=upstream-unresolved"
 SKIP_INTERNAL=false
 SKIP_EXTERNAL=false
 SKIP_SMOKE=false
@@ -273,22 +277,28 @@ elif [[ "$DRY_RUN" == true ]]; then
   echo "[dry-run] would invoke ${BUILD_CMD} to advance neatCore.rev to Develop HEAD"
 else
   echo "Bumping internal: NEAT-AI-core neatCore.rev -> Develop HEAD via ${BUILD_CMD}"
+  build_log="$(mktemp)"
   build_exit=0
-  "$BUILD_CMD" </dev/null || build_exit=$?
-  if [[ "$build_exit" -eq "$BUILD_EXIT_UPSTREAM_UNRESOLVED" ]]; then
-    # Upstream is unreachable (offline, rate limited, or no credential). The
-    # pin and the vendored bundle are untouched and still valid, so there is
-    # nothing to bump — a degraded internal bump must not fail the external
-    # bump with it. Loud on stderr and named in the summary.
+  "$BUILD_CMD" </dev/null >"$build_log" 2>&1 || build_exit=$?
+  cat "$build_log"
+  if [[ "$build_exit" -eq "$BUILD_EXIT_UPSTREAM_UNRESOLVED" ]] \
+    && grep -q "$BUILD_UPSTREAM_UNRESOLVED_MARKER" "$build_log"; then
+    # Upstream is unreachable (offline, rate limited, or no credential) and
+    # said so explicitly. The pin and the vendored bundle are untouched and
+    # still valid, so there is nothing to bump — a degraded internal bump must
+    # not take the external bumps down with it. Loud on stderr, and named in
+    # the summary so a run is never reported as simply "current".
     INTERNAL_SKIP_REASON="upstream revision could not be resolved"
     echo "WARNING: internal bump skipped — ${INTERNAL_SKIP_REASON}." >&2
     echo "         neatCore.rev stays at ${INTERNAL_BEFORE:0:7}; external bumps continue." >&2
   elif [[ "$build_exit" -ne 0 ]]; then
     echo "ERROR: ${BUILD_CMD} failed (exit ${build_exit}); internal bump aborted." >&2
+    rm -f "$build_log"
     exit 1
   else
     INTERNAL_AFTER="$(read_neat_core_rev)"
   fi
+  rm -f "$build_log"
 fi
 
 # --- External: Deno deps via `deno outdated` ----------------------------
@@ -411,6 +421,9 @@ fi
 
 if [[ "$DRY_RUN" == true ]]; then
   echo "✅ dry-run complete (no changes written)"
+elif [[ ${#parts[@]} -eq 0 && -n "$INTERNAL_SKIP_REASON" ]]; then
+  # Currency was never established for the internal dep, so do not claim it.
+  echo "✅ no external bumps; internal currency unknown (upstream unreachable)"
 elif [[ ${#parts[@]} -eq 0 ]]; then
   echo "✅ no bumps — dependencies already current"
 else

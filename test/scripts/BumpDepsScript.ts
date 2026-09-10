@@ -273,6 +273,7 @@ Deno.test({
  */
 async function runWithStubBuild(
   buildExit: number,
+  { marker = false }: { marker?: boolean } = {},
 ): Promise<{ stdout: string; stderr: string; code: number }> {
   const home = await Deno.makeTempDir();
   try {
@@ -281,9 +282,12 @@ async function runWithStubBuild(
     await Deno.writeTextFile(`${binDir}/deno`, "#!/bin/sh\nexit 0\n");
     await Deno.chmod(`${binDir}/deno`, 0o755);
     const buildStub = `${home}/build-stub.sh`;
+    const markerLine = marker
+      ? 'echo "BUILD_STATUS=upstream-unresolved" >&2\n'
+      : "";
     await Deno.writeTextFile(
       buildStub,
-      `#!/bin/sh\necho "stub build script" >&2\nexit ${buildExit}\n`,
+      `#!/bin/sh\necho "stub build script" >&2\n${markerLine}exit ${buildExit}\n`,
     );
     await Deno.chmod(buildStub, 0o755);
     return await runBump(["--no-external", "--skip-smoke"], {
@@ -304,7 +308,7 @@ Deno.test({
     // nothing was written, so there is nothing for the worker to revert and
     // the external bumps must still be allowed to land.
     const before = await Deno.readTextFile("deno.json");
-    const result = await runWithStubBuild(3);
+    const result = await runWithStubBuild(3, { marker: true });
     assertEquals(
       result.code,
       0,
@@ -322,6 +326,24 @@ Deno.test({
       await Deno.readTextFile("deno.json"),
       before,
       "a skipped internal bump must leave deno.json untouched",
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "bump-deps.sh does not degrade a bare exit 3 without the upstream marker (Issue #3990)",
+  fn: async () => {
+    // A status of 3 could have come from any command the build script ran.
+    // Absence of the explicit marker is not a verdict of "nothing to bump".
+    const result = await runWithStubBuild(3, { marker: false });
+    assert(
+      result.code !== 0,
+      `an unmarked exit 3 must still fail the run; stdout=${result.stdout}`,
+    );
+    assert(
+      /internal bump aborted/i.test(result.stderr),
+      `expected the fail-loud message; stderr=${result.stderr}`,
     );
   },
 });
