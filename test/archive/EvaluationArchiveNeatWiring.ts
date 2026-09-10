@@ -24,8 +24,9 @@ Deno.test("evaluation archive — Neat builds no archive unless asked", async ()
     assertEquals(neat.evaluationArchive, undefined);
 
     // Nothing may be written to the default location either.
-    const entries = [...Deno.readDirSync(directory)];
-    assertEquals(entries.length, 0);
+    const entries: string[] = [];
+    for await (const entry of Deno.readDir(directory)) entries.push(entry.name);
+    assertEquals(entries, []);
   } finally {
     await Deno.remove(directory, { recursive: true });
   }
