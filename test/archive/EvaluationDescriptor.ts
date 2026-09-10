@@ -106,7 +106,7 @@ Deno.test("descriptor v1 — squash aliases share one slot", () => {
   assertEquals(alias, canonical);
 });
 
-Deno.test("descriptor v1 — genetic distance uses a sentinel when no reference exists", async () => {
+Deno.test("descriptor v1 — the genetic-distance sentinel means only 'no reference'", async () => {
   const json = await readFixture<CreatureExport>("descriptor-v1-creature.json");
   const creature = Creature.fromJSON(json);
   const twin = Creature.fromJSON(json);
@@ -120,6 +120,27 @@ Deno.test("descriptor v1 — genetic distance uses a sentinel when no reference 
   const referenced = computeEvaluationDescriptor(creature, twin);
   assertEquals(referenced[distanceSlot], 0);
   assertNotEquals(referenced[distanceSlot], NO_REFERENCE_DISTANCE);
+
+  // The same creature as its own reference is a genuine zero too. The
+  // descriptor is a function of the design point, never of which JavaScript
+  // object happened to be passed, so identity must not change the answer.
+  const selfReferenced = computeEvaluationDescriptor(creature, creature);
+  assertEquals(selfReferenced[distanceSlot], 0);
+  assertEquals(selfReferenced, referenced);
+});
+
+Deno.test("descriptor v1 — means are taken over the participating neurons", async () => {
+  const json = await readFixture<CreatureExport>("descriptor-v1-creature.json");
+  const descriptor = computeEvaluationDescriptor(Creature.fromJSON(json));
+
+  // Six neurons carry a bias (four hidden, two output); the three inputs carry
+  // none and must not dilute the mean. Biases: 0.25, 0.5, 0.125, 0, 0.75, 0.25.
+  assertEquals(descriptor[slot("biasMeanAbs")], 1.875 / 6);
+
+  // Ten synapses land on six distinct receiving neurons, and leave seven
+  // distinct emitting neurons.
+  assertEquals(descriptor[slot("meanFanIn")], 10 / 6);
+  assertEquals(descriptor[slot("meanFanOut")], 10 / 7);
 });
 
 Deno.test("descriptor v1 — structure moves the vector", async () => {

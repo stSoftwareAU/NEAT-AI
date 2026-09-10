@@ -98,8 +98,8 @@ export function errorsFor(
   return map;
 }
 
-export const CORPUS_RECORDS = 1000;
-export const CHUNK_RECORDS = 100;
+const CORPUS_RECORDS = 1000;
+const CHUNK_RECORDS = 100;
 
 /** `--help` probe answer plus a full-corpus result map for the plain path. */
 export function stubRunner(help: string, errorByKey: Map<string, number>) {

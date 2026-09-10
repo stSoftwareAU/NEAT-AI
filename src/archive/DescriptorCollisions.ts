@@ -13,7 +13,7 @@
  * @module DescriptorCollisions
  */
 
-import type { EvaluationArchiveRecord } from "@archive/EvaluationArchive.ts";
+import type { EvaluationArchiveRecord } from "@archive/EvaluationArchiveFormat.ts";
 
 /** One group of records sharing a descriptor, and the score spread within it. */
 export interface DescriptorCollisionGroup {

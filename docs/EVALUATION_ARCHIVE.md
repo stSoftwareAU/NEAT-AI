@@ -2,7 +2,9 @@
 
 Every surrogate in
 [Jin (2011)](comparison/REFERENCES.md#-surrogate-assisted-search-and-racing) —
-polynomial, kriging, RBF (radial basis function), SVM (support vector machine),
+polynomial, kriging,
+[RBF (radial basis function)](https://en.wikipedia.org/wiki/Radial_basis_function_network),
+[SVM (support vector machine)](https://en.wikipedia.org/wiki/Support_vector_machine),
 neural net — is a supervised model, and every one of them needs the same thing
 to exist first: an archive of `(design point, true fitness)` pairs. Jin treats
 managing that data set as part of the method, not a detail.
@@ -21,12 +23,16 @@ await creature.evolveDir(dataSetDir, {
   iterations: 100,
   evaluationArchive: {
     enabled: true,
-    directory: ".evaluation-archive", // default
+    directory: ".evaluation-archive", // default; one directory is one archive
     maxRecords: 100_000, // default retention bound
     runId: "grq-2026-08", // default: a fresh UUID per run
   },
 });
 ```
+
+Throughout, **UUID** is a [universally unique identifier](GLOSSARY.md), **JSON**
+is [JavaScript Object Notation](https://www.json.org/) and **JSONL** is its
+newline-delimited form.
 
 ## 🧭 What is written, and when
 
@@ -58,6 +64,7 @@ One record per **true** evaluation:
 | `score`             | The exact score.                                             |
 | `error`             | The raw error the score came from.                           |
 | `fidelity`          | Corpus fraction the score covers. `1` is ground truth.       |
+| `referenceUuid`     | Creature the genetic-distance slot was measured against.     |
 | `recordedAt`        | Wall-clock instant it was archived.                          |
 | `descriptor`        | The fixed-length feature vector (below).                     |
 
@@ -94,10 +101,33 @@ computable without touching the corpus. Version 1 has **57** slots.
 canonicalised, so `RELU` and `ReLU` share a slot. Only hidden and output neurons
 are counted — inputs carry no squash.
 
+`meanFanIn` is the mean in-degree over neurons that receive at least one
+synapse, `meanFanOut` the mean out-degree over neurons that emit at least one,
+and `biasMeanAbs` the mean bias magnitude over neurons that carry a bias. Each
+is taken over the population the statistic applies to, never over the whole
+neuron array — an input neuron has no bias and a `constant` neuron receives
+nothing, so including them would scale the slot by the creature's shape rather
+than report the quantity named.
+
 `geneticDistanceToReference` is `1 - geneticCompatibility(creature, fittest)`
 against the run's current fittest, or **`-1`** when the run has no fittest yet.
-The sentinel is negative on purpose: "no reference" must never be mistaken for
-"maximally distant".
+The sentinel is negative on purpose, and it means _only_ that: a creature
+measured against itself, or against an identical twin, is a genuine zero
+distance and is reported as one.
+
+### One relative slot, and how to read it
+
+`geneticDistanceToReference` is the single **relative** entry in an otherwise
+absolute vector. Its origin moves whenever the fittest changes, and an archive
+appended to across runs holds distances measured against different lineages — so
+two records with the same value in that slot are not necessarily saying the same
+thing.
+
+That is why every record carries `referenceUuid`. A consumer fitting a model
+over an archive should either **group by `referenceUuid`**, or **drop slot 16**
+and fit over the 56 absolute slots. What must not happen is the drift going
+unnoticed, which is exactly what recording the origin prevents — the version
+gate cannot see it, because the version does not change.
 
 ### Descriptor stability is the whole contract
 
@@ -110,18 +140,25 @@ up as an error. So:
 - The squash histogram runs over a **frozen** name list, not over the live
   activation registry. Registering a new activation lands it in `squash:other`
   and does **not** change the layout — the registry stays free to grow.
-- Only IEEE-deterministic arithmetic is used, so re-deriving a descriptor from
-  the same creature reproduces the same vector bit for bit. A committed creature
-  fixture and its committed vector
-  (`test/fixtures/archive/descriptor-v1-*.json`) turn any drift into a failing
-  test rather than a silent corruption.
+- Only [IEEE 754](https://en.wikipedia.org/wiki/IEEE_754)-deterministic
+  arithmetic is used, so re-deriving a descriptor from the same creature
+  reproduces the same vector bit for bit. A committed creature fixture and its
+  committed vector (`test/fixtures/archive/descriptor-v1-*.json`) turn any drift
+  into a failing test rather than a silent corruption.
 
-**Version mismatches fail loudly.** Reading a record written under a different
-version — or appending to an archive that holds one — throws
-`EvaluationArchiveError` with reason `DESCRIPTOR_VERSION_MISMATCH`. Nothing is
-coerced, and a malformed or wrong-length record is reported rather than skipped:
-a partially readable archive is not a smaller archive, it is an archive whose
-contents are not what they claim.
+**Version mismatches fail loudly.** `readEvaluationArchive` validates **every**
+record and throws `EvaluationArchiveError` with reason
+`DESCRIPTOR_VERSION_MISMATCH` on the first foreign one. Nothing is coerced, and
+a malformed or wrong-length record is reported rather than skipped: a partially
+readable archive is not a smaller archive, it is an archive whose contents are
+not what they claim.
+
+Opening an archive for **append** checks its **first and last** records rather
+than all of them — validating 100,000 records at every run start would cost more
+than the archive saves, and the two ends are where a foreign version actually
+appears (the first dates the archive, the last is what a newer build most
+recently appended). That gate exists to stop _this_ run adding a second feature
+space to a file that already holds one; the exhaustive check is the reader's.
 
 ## 📦 Retention
 
@@ -133,20 +170,41 @@ rewritten once per 10,000 records, which at ~20 evaluations a generation is once
 every 500 generations. The file therefore settles between `maxRecords` and
 `maxRecords + slack` records: the bound is an "at least", not an exact size.
 
+**One live writer per directory.** Compaction rewrites the file and renames it
+into place, and each writer tracks its own record count, so two concurrent runs
+sharing a directory can lose each other's appends. Runs may share a directory
+**sequentially** — that is how cross-run history accumulates — but a run that
+overlaps another needs its own. The file name is fixed for this reason: one
+directory is one archive.
+
+**A failed flush loses nothing.** If the write or the version gate fails, the
+generation's records stay buffered and the error propagates. Fixing the fault
+and flushing again lands them; the loud failure is never also a destructive one.
+
 ## ⏱️ Overhead
 
 Measured with `bench/EvaluationArchiveOverhead.ts` against a production-scale
 creature (5,300 neurons, 87,096 synapses) and a generation of 20:
 
-| Operation                                  | Cost    |
-| ------------------------------------------ | ------- |
-| Descriptor, one creature (no reference)    | 1.6 ms  |
-| Descriptor, one creature (with reference)  | 1.6 ms  |
-| `record()` — one exact evaluation          | 1.6 ms  |
-| A whole generation: 20 records + one flush | 44.6 ms |
+| Operation                                         | Cost    |
+| ------------------------------------------------- | ------- |
+| Descriptor, one creature (no reference)           | 1.4 ms  |
+| Descriptor, one creature (with reference)         | 1.4 ms  |
+| Descriptor, 20 distinct creatures, cold distances | 40.6 ms |
+| `record()` — one exact evaluation                 | 1.4 ms  |
+| A whole generation: 20 records + one flush        | 41.7 ms |
 
-Against a ~7.8-minute (468,000 ms) generation that is **~0.01%** — four orders
-of magnitude below the thing it observes.
+Against a ~7.8-minute (468,000 ms) generation that is **~0.017%** — three to
+four orders of magnitude below the thing it observes. The distinct-creature row
+is the one that matters: the single-pair rows are served by the genetic-distance
+cache after their first iteration, so they understate a real generation.
+
+**The budget is asserted, not assumed.** The benchmark times one archived
+generation on start-up and **throws** if it exceeds 1% of a generation (4,680
+ms) — about 100x the measured cost, so it fires on a two-order-of- magnitude
+regression rather than on machine noise. It lives in `bench/` because
+`AGENTS.md` forbids timing APIs in `test/`, where parallel execution makes wall-
+clock readings unreliable.
 
 ## 🔍 How blind is the descriptor?
 
@@ -175,6 +233,26 @@ Only exact records are judged — a partial score differing from an exact one sa
 something about the corpus fraction, not about the descriptor. Scores within
 `DEFAULT_COLLISION_TOLERANCE` (`1e-9`) are treated as agreeing, four orders of
 magnitude below the ~`1e-05` gains selection acts on.
+
+### Measured incidence (descriptor v1)
+
+Two real evolution runs against a 200-record regression corpus, reported on
+Issue #3919:
+
+| Run                     | Exact records | Distinct descriptors | Colliding records | Incidence  | Widest spread |
+| ----------------------- | ------------- | -------------------- | ----------------- | ---------- | ------------- |
+| pop 24, 40 generations  | 558           | 550                  | 4                 | **0.717%** | 0.0612        |
+| pop 32, 120 generations | 2,572         | 2,539                | 11                | **0.428%** | 0.0247        |
+
+Under 1% of exact evaluations sit on a descriptor another evaluation disagrees
+with, so v1 is not the binding constraint on a surrogate fitted to this archive.
+But where it _is_ blind, it is blind to a lot: the widest spreads are three
+orders of magnitude larger than the ~`1e-05` accepted gains on the GRQ lineage,
+so a surrogate must not be trusted to rank two creatures sharing a descriptor.
+Most collisions are structural twins whose weights differ in _arrangement_ but
+not in magnitude — v1 summarises weights by magnitude only, so a positional or
+per-layer weight summary is the cheapest lever if the incidence ever needs to
+come down, at the cost of a version bump.
 
 ## 🚫 Not on the creature export
 

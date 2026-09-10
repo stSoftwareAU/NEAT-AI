@@ -10,6 +10,7 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import {
   DEFAULT_EVALUATION_ARCHIVE_CONFIG,
+  EVALUATION_ARCHIVE_FILE_NAME,
   resolveEvaluationArchiveConfig,
 } from "@config/EvaluationArchiveConfig.ts";
 
@@ -17,7 +18,6 @@ Deno.test("evaluation archive config - defaults are off and bounded", () => {
   const config = resolveEvaluationArchiveConfig();
   assertEquals(config.enabled, false);
   assertEquals(config.directory, ".evaluation-archive");
-  assertEquals(config.fileName, "evaluations.jsonl");
   assertEquals(config.maxRecords, 100_000);
   assert(config.runId.length > 0, "a run id is always present");
   assertEquals(
@@ -25,6 +25,9 @@ Deno.test("evaluation archive config - defaults are off and bounded", () => {
     false,
     "the published default must agree with the resolver",
   );
+  // One directory is one archive: the file name is not caller-supplied, so no
+  // caller string ever reaches a filesystem path.
+  assertEquals(EVALUATION_ARCHIVE_FILE_NAME, "evaluations.jsonl");
 });
 
 Deno.test("evaluation archive config - each run gets its own id unless one is given", () => {
@@ -53,16 +56,6 @@ Deno.test("evaluation archive config - an unusable retention bound is rejected",
       ConfigurationError,
     ) as ConfigurationError;
     assertEquals(error.reason, "OUT_OF_RANGE");
-  }
-});
-
-Deno.test("evaluation archive config - a file name may not escape its directory", () => {
-  for (const fileName of ["", "   ", "../outside.jsonl", "nested/file.jsonl"]) {
-    const error = assertThrows(
-      () => resolveEvaluationArchiveConfig({ fileName }),
-      ConfigurationError,
-    ) as ConfigurationError;
-    assertEquals(error.reason, "INVALID_TYPE");
   }
 });
 

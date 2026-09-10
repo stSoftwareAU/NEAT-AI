@@ -18,7 +18,9 @@ export type EvaluationArchiveErrorReason =
   /** A descriptor vector is not the fixed length its version declares. */
   | "DESCRIPTOR_LENGTH_MISMATCH"
   /** A caller offered a score that is not an exact, in-range evaluation. */
-  | "INVALID_FIDELITY";
+  | "INVALID_FIDELITY"
+  /** The archive could not be read or written (permissions, disk, …). */
+  | "IO_FAILURE";
 
 export class EvaluationArchiveError extends Error {
   override readonly name = "EvaluationArchiveError";

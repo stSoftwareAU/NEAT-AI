@@ -9,7 +9,7 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import type { EvaluationArchiveRecord } from "@archive/EvaluationArchive.ts";
+import type { EvaluationArchiveRecord } from "@archive/EvaluationArchiveFormat.ts";
 import {
   DEFAULT_COLLISION_TOLERANCE,
   formatDescriptorCollisionReport,

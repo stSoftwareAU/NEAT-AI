@@ -12,11 +12,10 @@ import { Creature } from "@creature";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
-  compactionSlack,
   EvaluationArchive,
   EXACT_FIDELITY,
-  readEvaluationArchive,
 } from "@archive/EvaluationArchive.ts";
+import { readEvaluationArchive } from "@archive/EvaluationArchiveFormat.ts";
 import { EvaluationArchiveError } from "@errors/EvaluationArchiveError.ts";
 import { resolveEvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
 import { EVALUATION_DESCRIPTOR_VERSION } from "@archive/EvaluationDescriptor.ts";
@@ -68,16 +67,16 @@ Deno.test("evaluation archive — records an exact evaluation with its provenanc
     const child = creatureWithBias(0.2);
     recordLineage(child, mother, father);
 
-    archive.beginGeneration(7);
+    archive.beginGeneration(7, mother);
     archive.record(child, {
       score: -0.25,
       fidelity: EXACT_FIDELITY,
       error: 0.25,
       operators: ["AddNeuron", "ModWeight"],
     });
-    assertEquals(archive.bufferedCount, 1);
+    // One append per generation: nothing is on disk until the flush.
+    assertEquals(await readEvaluationArchive(archive.path), []);
     await archive.flush();
-    assertEquals(archive.bufferedCount, 0);
 
     const [record] = await readEvaluationArchive(archive.path);
     assertEquals(record.descriptorVersion, EVALUATION_DESCRIPTOR_VERSION);
@@ -90,6 +89,8 @@ Deno.test("evaluation archive — records an exact evaluation with its provenanc
     assertEquals(record.operators, ["AddNeuron", "ModWeight"]);
     assertEquals([...record.parents].sort(), [mother.uuid, father.uuid].sort());
     assert(record.recordedAt.endsWith("Z"), "recordedAt is a UTC instant");
+    // The genetic-distance slot is relative, so the record names its origin.
+    assertEquals(record.referenceUuid, mother.uuid);
   } finally {
     await Deno.remove(directory, { recursive: true });
   }
@@ -103,7 +104,7 @@ Deno.test("evaluation archive — a later run appends to the same archive", asyn
       score: 1,
       fidelity: EXACT_FIDELITY,
     });
-    await archive.close();
+    await archive.flush();
 
     // A second run, same directory: cross-run history is the point.
     const second = new EvaluationArchive(
@@ -118,7 +119,7 @@ Deno.test("evaluation archive — a later run appends to the same archive", asyn
       score: 2,
       fidelity: EXACT_FIDELITY,
     });
-    await second.close();
+    await second.flush();
 
     const records = await readEvaluationArchive(second.path);
     assertEquals(records.length, 2);
@@ -139,7 +140,12 @@ Deno.test("evaluation archive — refuses a score that is not an exact evaluatio
       ) as EvaluationArchiveError;
       assertEquals(error.reason, "INVALID_FIDELITY");
     }
-    assertEquals(archive.bufferedCount, 0);
+    await archive.flush();
+    assertEquals(
+      await readEvaluationArchive(archive.path),
+      [],
+      "a refused evaluation must not reach the archive",
+    );
   } finally {
     await Deno.remove(directory, { recursive: true });
   }
@@ -159,7 +165,6 @@ Deno.test("evaluation archive — never records a non-finite score or an unident
     delete unidentified.uuid;
     archive.record(unidentified, { score: 1, fidelity: EXACT_FIDELITY });
 
-    assertEquals(archive.bufferedCount, 0);
     await archive.flush();
     assertEquals(await readEvaluationArchive(archive.path), []);
   } finally {
@@ -171,7 +176,9 @@ Deno.test("evaluation archive — retention keeps the newest records and bounds 
   const maxRecords = 10;
   const { archive, directory } = await makeArchive({ maxRecords });
   try {
-    const total = maxRecords + compactionSlack(maxRecords) + 5;
+    // Far past any amortisation slack the writer may allow itself, so the
+    // assertion is about the documented bound rather than the rewrite policy.
+    const total = 500;
     for (let i = 0; i < total; i++) {
       archive.beginGeneration(i);
       archive.record(creatureWithBias(0.001 * (i + 1)), {
@@ -182,12 +189,21 @@ Deno.test("evaluation archive — retention keeps the newest records and bounds 
     await archive.flush();
 
     const records = await readEvaluationArchive(archive.path);
-    assertEquals(records.length, maxRecords);
-    // The oldest went, the newest stayed.
-    assertEquals(records[0].score, total - maxRecords);
+    // Bounded: it really dropped records, and kept at least what was asked for.
+    assert(
+      records.length < total,
+      `retention must drop records, kept all ${records.length}`,
+    );
+    assert(
+      records.length >= maxRecords,
+      `retention must keep at least ${maxRecords}, kept ${records.length}`,
+    );
+    // And what it kept is the newest contiguous run, oldest first.
     assertEquals(records[records.length - 1].score, total - 1);
+    assertEquals(records[0].score, total - records.length);
 
-    // And the archive keeps working after a compaction.
+    // The archive keeps working after a compaction.
+    const before = records.length;
     archive.beginGeneration(total);
     archive.record(creatureWithBias(0.9), {
       score: total,
@@ -195,7 +211,7 @@ Deno.test("evaluation archive — retention keeps the newest records and bounds 
     });
     await archive.flush();
     const after = await readEvaluationArchive(archive.path);
-    assertEquals(after.length, maxRecords + 1);
+    assertEquals(after.length, before + 1);
     assertEquals(after[after.length - 1].score, total);
   } finally {
     await Deno.remove(directory, { recursive: true });
@@ -260,6 +276,88 @@ Deno.test("evaluation archive — appending to a foreign-version archive fails l
       EvaluationArchiveError,
     ) as EvaluationArchiveError;
     assertEquals(error.reason, "DESCRIPTOR_VERSION_MISMATCH");
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
+Deno.test("evaluation archive — a foreign version appended later is still caught", async () => {
+  const { archive, directory } = await makeArchive();
+  try {
+    // A current-version archive that a newer build has since appended to. The
+    // first line alone would say everything is fine.
+    await Deno.mkdir(directory, { recursive: true });
+    archive.beginGeneration(1);
+    archive.record(creatureWithBias(0.1), {
+      score: 1,
+      fidelity: EXACT_FIDELITY,
+    });
+    await archive.flush();
+    await Deno.writeTextFile(
+      archive.path,
+      JSON.stringify({
+        descriptorVersion: EVALUATION_DESCRIPTOR_VERSION + 7,
+        uuid: "from-a-newer-build",
+        score: 2,
+        fidelity: 1,
+        descriptor: [1, 2, 3],
+      }) + "\n",
+      { append: true },
+    );
+
+    // A fresh writer over the same file must refuse to add a third feature
+    // space to it.
+    const later = new EvaluationArchive(
+      resolveEvaluationArchiveConfig({
+        enabled: true,
+        directory,
+        runId: "later-run",
+      }),
+    );
+    later.beginGeneration(1);
+    later.record(creatureWithBias(0.2), {
+      score: 3,
+      fidelity: EXACT_FIDELITY,
+    });
+    const error = await assertRejects(
+      () => later.flush(),
+      EvaluationArchiveError,
+    ) as EvaluationArchiveError;
+    assertEquals(error.reason, "DESCRIPTOR_VERSION_MISMATCH");
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
+Deno.test("evaluation archive — a failed flush keeps the records it could not write", async () => {
+  const { archive, directory } = await makeArchive();
+  try {
+    await Deno.mkdir(directory, { recursive: true });
+    await Deno.writeTextFile(
+      archive.path,
+      JSON.stringify({
+        descriptorVersion: EVALUATION_DESCRIPTOR_VERSION + 99,
+        uuid: "foreign",
+        score: 1,
+        fidelity: 1,
+        descriptor: [1, 2, 3],
+      }) + "\n",
+    );
+
+    const creature = creatureWithBias(0.7);
+    archive.beginGeneration(4);
+    archive.record(creature, { score: 9, fidelity: EXACT_FIDELITY });
+    await assertRejects(() => archive.flush(), EvaluationArchiveError);
+
+    // The error was loud; it must not also have been destructive. Clear the
+    // fault and the same evaluation still lands.
+    await Deno.remove(archive.path);
+    await archive.flush();
+
+    const records = await readEvaluationArchive(archive.path);
+    assertEquals(records.length, 1);
+    assertEquals(records[0].score, 9);
+    assertEquals(records[0].uuid, creature.uuid);
   } finally {
     await Deno.remove(directory, { recursive: true });
   }

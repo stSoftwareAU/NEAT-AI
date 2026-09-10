@@ -10,7 +10,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { Neat } from "@neat/Neat.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
-import { readEvaluationArchive } from "@archive/EvaluationArchive.ts";
+import { readEvaluationArchive } from "@archive/EvaluationArchiveFormat.ts";
 import {
   buildForwardOnlyPopulation,
   MockWorkerHandler,

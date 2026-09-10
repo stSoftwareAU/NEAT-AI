@@ -212,9 +212,13 @@ export type {
  *
  * Issue #3929: `NeatOptions.evaluationArchive` keeps every **exact** fitness
  * evaluation as a `(descriptor, score)` pair in an append-only, versioned,
- * size-bounded JSONL file — the training set a surrogate model has to be fitted
- * to. Off by default, and deliberately absent from the creature export: this is
- * run infrastructure, not part of a creature.
+ * size-bounded JSONL (JSON Lines) file — the training set a surrogate model has
+ * to be fitted to. Off by default, and deliberately absent from the creature
+ * export: this is run infrastructure, not part of a creature.
+ *
+ * Read an archive with `readEvaluationArchive`; interpret a `descriptor` slot
+ * by its position in `DESCRIPTOR_V1_FIELD_NAMES`; score a fresh candidate
+ * against a fitted model with `computeEvaluationDescriptor`.
  *
  * @see {@link module:src/config/EvaluationArchiveConfig}
  * @see {@link module:src/archive/EvaluationArchive}
@@ -223,26 +227,13 @@ export type {
   EvaluationArchiveConfig,
   RequiredEvaluationArchiveConfig,
 } from "@config/EvaluationArchiveConfig.ts";
-export {
-  DEFAULT_EVALUATION_ARCHIVE_CONFIG,
-  resolveEvaluationArchiveConfig,
-} from "@config/EvaluationArchiveConfig.ts";
-export type {
-  EvaluationArchiveEntry,
-  EvaluationArchiveRecord,
-} from "@archive/EvaluationArchive.ts";
-export {
-  EvaluationArchive,
-  EXACT_FIDELITY,
-  readEvaluationArchive,
-} from "@archive/EvaluationArchive.ts";
+export type { EvaluationArchiveRecord } from "@archive/EvaluationArchiveFormat.ts";
+export { readEvaluationArchive } from "@archive/EvaluationArchiveFormat.ts";
 export type { EvaluationArchiveErrorReason } from "@errors/EvaluationArchiveError.ts";
 export { EvaluationArchiveError } from "@errors/EvaluationArchiveError.ts";
 export {
   computeEvaluationDescriptor,
   DESCRIPTOR_V1_FIELD_NAMES,
-  DESCRIPTOR_V1_SCALAR_NAMES,
-  DESCRIPTOR_V1_SQUASH_NAMES,
   EVALUATION_DESCRIPTOR_LENGTH,
   EVALUATION_DESCRIPTOR_VERSION,
   NO_REFERENCE_DISTANCE,

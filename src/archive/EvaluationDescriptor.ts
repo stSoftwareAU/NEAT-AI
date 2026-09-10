@@ -23,7 +23,7 @@
  * Only IEEE-deterministic arithmetic (`+`, `*`, `/`, `Math.sqrt`) is used, so
  * re-deriving a descriptor from the same creature reproduces the same vector
  * bit for bit on every platform — which is what makes the reproducibility gate
- * in `test/archive/EvaluationDescriptorReproducibility.ts` meaningful.
+ * in `test/archive/EvaluationDescriptor.ts` meaningful.
  *
  * @module EvaluationDescriptor
  */
@@ -32,6 +32,7 @@ import type { Creature } from "@creature";
 import { Activations } from "@methods/activations/Activations.ts";
 import { computeLayerAssignments } from "@propagate/LayerAssignment.ts";
 import { geneticCompatibility } from "@breed/GeneticCompatibility.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Layout version of the descriptor vector.
@@ -100,6 +101,14 @@ export const DESCRIPTOR_V1_SQUASH_NAMES: readonly string[] = Object.freeze([
  * supplied — a sentinel rather than a plausible number, so "no fittest yet" can
  * never be mistaken for "maximally distant".
  */
+/**
+ * `meanFanIn` is the mean in-degree over neurons that receive at least one
+ * synapse; `meanFanOut` the mean out-degree over neurons that emit at least
+ * one. `biasMeanAbs` is the mean bias magnitude over neurons that carry a bias.
+ * All three are taken over the participating population, never over the whole
+ * neuron array, so none of them is diluted by neurons the statistic cannot
+ * apply to.
+ */
 export const DESCRIPTOR_V1_SCALAR_NAMES: readonly string[] = Object.freeze([
   "neurons",
   "inputs",
@@ -147,17 +156,34 @@ const SQUASH_SLOT: ReadonlyMap<string, number> = new Map(
 /** Slot the histogram falls back to for an activation not in the frozen list. */
 const SQUASH_OTHER_SLOT = EVALUATION_DESCRIPTOR_LENGTH - 1;
 
+/** Unresolvable squash names already warned about, so the log stays bounded. */
+const warnedUnknownSquashes = new Set<string>();
+
 /**
  * Canonicalise a squash name so aliases (`RELU` / `ReLU`) share a slot.
  *
- * An activation the registry cannot resolve is a separate bug; it keeps its raw
- * name here so it lands in `squash:other` and stays visible, rather than being
- * dropped.
+ * An activation the registry cannot resolve is a separate bug, and a silent
+ * fallback is exactly how a feature space changes meaning unnoticed — so it is
+ * warned about (once per name, because a production creature has thousands of
+ * neurons) and then counted under `squash:other`, where it stays visible.
+ * Throwing here would make one bad neuron cost the whole generation's archive.
+ *
+ * @param squash - The raw squash name read off a neuron.
+ * @returns The canonical name, or the raw name when the registry cannot resolve
+ *   it.
  */
 function canonicalSquashName(squash: string): string {
   try {
     return Activations.find(squash).getName();
   } catch {
+    if (!warnedUnknownSquashes.has(squash)) {
+      warnedUnknownSquashes.add(squash);
+      getLogger().warn(
+        `[NEAT-AI] Evaluation descriptor: unknown squash "${squash}" counted ` +
+          `under squash:other. This is a bug elsewhere — the descriptor is ` +
+          `reporting it, not hiding it.`,
+      );
+    }
     return squash;
   }
 }
@@ -189,6 +215,7 @@ export function computeEvaluationDescriptor(
   let constants = 0;
   let biasAbsSum = 0;
   let biasMaxAbs = 0;
+  let biasedNeurons = 0;
   for (const neuron of neurons) {
     if (neuron.type === "hidden") hidden++;
     else if (neuron.type === "constant") constants++;
@@ -197,6 +224,7 @@ export function computeEvaluationDescriptor(
     if (typeof bias === "number" && Number.isFinite(bias)) {
       const magnitude = Math.abs(bias);
       biasAbsSum += magnitude;
+      biasedNeurons++;
       if (magnitude > biasMaxAbs) biasMaxAbs = magnitude;
     }
 
@@ -226,18 +254,33 @@ export function computeEvaluationDescriptor(
     if (magnitude > weightMaxAbs) weightMaxAbs = magnitude;
   }
 
+  // Both means are taken over the neurons that actually participate — the ones
+  // the arrays above show a non-zero degree for — rather than over a neuron
+  // *type* rule. A type rule gets this wrong in both directions: `constant`
+  // neurons can never receive and would dilute fan-in, and output neurons *can*
+  // emit in a recurrent topology and would be missing from fan-out. Counting
+  // what the topology actually did needs no such assumption, and makes the two
+  // means genuinely different statistics rather than one number twice.
   let maxFanIn = 0;
   let maxFanOut = 0;
+  let receivers = 0;
+  let emitters = 0;
+  let fanInSum = 0;
+  let fanOutSum = 0;
   for (let i = 0; i < neuronCount; i++) {
-    if (fanIn[i] > maxFanIn) maxFanIn = fanIn[i];
-    if (fanOut[i] > maxFanOut) maxFanOut = fanOut[i];
+    const inDegree = fanIn[i];
+    const outDegree = fanOut[i];
+    if (inDegree > maxFanIn) maxFanIn = inDegree;
+    if (outDegree > maxFanOut) maxFanOut = outDegree;
+    if (inDegree > 0) {
+      receivers++;
+      fanInSum += inDegree;
+    }
+    if (outDegree > 0) {
+      emitters++;
+      fanOutSum += outDegree;
+    }
   }
-
-  // Mean fan-in and fan-out both sum to the synapse count, so they differ only
-  // in their denominator: fan-in is per receiving neuron (non-input), fan-out
-  // per emitting neuron (non-output).
-  const fanInDenominator = neuronCount - creature.input;
-  const fanOutDenominator = neuronCount - creature.output;
 
   let depth = 0;
   for (const layer of computeLayerAssignments(creature).keys()) {
@@ -260,16 +303,23 @@ export function computeEvaluationDescriptor(
   vector[4] = constants;
   vector[5] = synapseCount;
   vector[6] = depth;
-  vector[7] = fanInDenominator > 0 ? synapseCount / fanInDenominator : 0;
+  vector[7] = receivers > 0 ? fanInSum / receivers : 0;
   vector[8] = maxFanIn;
-  vector[9] = fanOutDenominator > 0 ? synapseCount / fanOutDenominator : 0;
+  vector[9] = emitters > 0 ? fanOutSum / emitters : 0;
   vector[10] = maxFanOut;
   vector[11] = weightMean;
   vector[12] = weightMaxAbs;
   vector[13] = weightRms;
-  vector[14] = neuronCount > 0 ? biasAbsSum / neuronCount : 0;
+  // Over the neurons that carry a bias, not over every neuron: inputs carry
+  // none, so dividing by `neuronCount` scales the slot by the input count
+  // rather than reporting a bias magnitude.
+  vector[14] = biasedNeurons > 0 ? biasAbsSum / biasedNeurons : 0;
   vector[15] = biasMaxAbs;
-  vector[16] = reference === undefined || reference === creature
+  // The sentinel means exactly one thing: no reference was supplied. A
+  // creature measured against itself is a genuine zero distance and is
+  // reported as one — conflating the two is the mistake the sentinel exists
+  // to prevent.
+  vector[16] = reference === undefined
     ? NO_REFERENCE_DISTANCE
     : 1 - geneticCompatibility(creature, reference);
 

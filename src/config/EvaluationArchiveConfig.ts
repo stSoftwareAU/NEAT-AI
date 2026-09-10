@@ -31,14 +31,6 @@ export interface EvaluationArchiveConfig {
    */
   directory?: string;
   /**
-   * File name of the archive within {@link directory}.
-   *
-   * Default: `"evaluations.jsonl"`. One file per archive; runs sharing a
-   * directory and file name append to the same archive, which is the point —
-   * cross-run history is what a surrogate is fitted to.
-   */
-  fileName?: string;
-  /**
    * Retention bound: the maximum number of records kept on disk.
    *
    * Default: `100_000`. Once the archive exceeds this, the **oldest** records
@@ -59,7 +51,6 @@ export interface EvaluationArchiveConfig {
 export interface RequiredEvaluationArchiveConfig {
   enabled: boolean;
   directory: string;
-  fileName: string;
   maxRecords: number;
   runId: string;
 }
@@ -70,9 +61,18 @@ export const DEFAULT_EVALUATION_ARCHIVE_CONFIG: Readonly<
 > = Object.freeze({
   enabled: false,
   directory: ".evaluation-archive",
-  fileName: "evaluations.jsonl",
   maxRecords: 100_000,
 });
+
+/**
+ * File name of the archive inside its directory.
+ *
+ * Fixed rather than configurable: one directory is one archive, so two archives
+ * are two directories. That keeps the retention bound's "one live writer per
+ * file" requirement expressible as "one live writer per directory", and leaves
+ * no caller-supplied string anywhere near a filesystem path.
+ */
+export const EVALUATION_ARCHIVE_FILE_NAME = "evaluations.jsonl";
 
 /**
  * Layer caller overrides over {@link DEFAULT_EVALUATION_ARCHIVE_CONFIG}.
@@ -92,8 +92,6 @@ export function resolveEvaluationArchiveConfig(
     enabled: overrides?.enabled ?? DEFAULT_EVALUATION_ARCHIVE_CONFIG.enabled,
     directory: overrides?.directory ??
       DEFAULT_EVALUATION_ARCHIVE_CONFIG.directory,
-    fileName: overrides?.fileName ??
-      DEFAULT_EVALUATION_ARCHIVE_CONFIG.fileName,
     maxRecords: overrides?.maxRecords ??
       DEFAULT_EVALUATION_ARCHIVE_CONFIG.maxRecords,
     runId: overrides?.runId ?? crypto.randomUUID(),
@@ -102,18 +100,6 @@ export function resolveEvaluationArchiveConfig(
   if (resolved.directory.trim().length === 0) {
     throw new ConfigurationError(
       "evaluationArchive.directory must not be empty",
-      "INVALID_TYPE",
-    );
-  }
-  if (
-    resolved.fileName.trim().length === 0 ||
-    resolved.fileName.includes("/") || resolved.fileName.includes("\\")
-  ) {
-    // A path separator here would silently write outside `directory` — the one
-    // place a caller-supplied string could escape the archive's own folder.
-    throw new ConfigurationError(
-      `evaluationArchive.fileName must be a bare file name, got ` +
-        `"${resolved.fileName}"`,
       "INVALID_TYPE",
     );
   }

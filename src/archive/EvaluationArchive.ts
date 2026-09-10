@@ -42,45 +42,26 @@
 
 import { getTag } from "@stsoftware/tags/mod";
 import type { Creature } from "@creature";
-import type { RequiredEvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
+import {
+  EVALUATION_ARCHIVE_FILE_NAME,
+  type RequiredEvaluationArchiveConfig,
+} from "@config/EvaluationArchiveConfig.ts";
 import { EvaluationArchiveError } from "@errors/EvaluationArchiveError.ts";
+import { getLogger } from "@utils/Logger.ts";
 import { lineageOf } from "@archive/CreatureLineage.ts";
 import {
   computeEvaluationDescriptor,
-  EVALUATION_DESCRIPTOR_LENGTH,
   EVALUATION_DESCRIPTOR_VERSION,
 } from "@archive/EvaluationDescriptor.ts";
+import {
+  assertRecordVersion,
+  type EvaluationArchiveRecord,
+  parseRecordLine,
+  toArchiveIoError,
+} from "@archive/EvaluationArchiveFormat.ts";
 
 /** Fidelity of a score obtained over the whole corpus: ground truth. */
 export const EXACT_FIDELITY = 1;
-
-/** One archived evaluation. */
-export interface EvaluationArchiveRecord {
-  /** Layout version of {@link descriptor}. Readers refuse to mix versions. */
-  readonly descriptorVersion: number;
-  /** Run that produced the evaluation. */
-  readonly runId: string;
-  /** Generation index within that run. */
-  readonly generation: number;
-  /** Content-hash UUID of the creature scored. */
-  readonly uuid: string;
-  /** UUIDs of the parents it was bred from; empty when it was not bred. */
-  readonly parents: readonly string[];
-  /** Mutation operators applied to it, when the run's telemetry knew them. */
-  readonly operators: readonly string[];
-  /** The pipeline stage that produced it (`approach` tag), when tagged. */
-  readonly approach?: string;
-  /** The exact score. */
-  readonly score: number;
-  /** The raw error the score was derived from, when finite. */
-  readonly error?: number;
-  /** Corpus fraction the score was obtained over; `1` is ground truth. */
-  readonly fidelity: number;
-  /** Wall-clock instant the evaluation was archived. */
-  readonly recordedAt: string;
-  /** The fixed-length feature vector. */
-  readonly descriptor: readonly number[];
-}
 
 /** Everything `record()` needs that is not derivable from the creature. */
 export interface EvaluationArchiveEntry {
@@ -112,7 +93,7 @@ export interface EvaluationArchiveEntry {
  * @param maxRecords - The configured retention bound.
  * @returns Records of overshoot tolerated before a rewrite.
  */
-export function compactionSlack(maxRecords: number): number {
+function compactionSlack(maxRecords: number): number {
   return Math.max(64, Math.floor(maxRecords / 10));
 }
 
@@ -138,9 +119,15 @@ export class EvaluationArchive {
   /** Records already on disk. `undefined` until the file has been inspected. */
   private onDiskCount: number | undefined;
 
+  /** Evaluations declined since the last flush because the score was not finite. */
+  private skippedNonFinite = 0;
+
+  /** Evaluations declined since the last flush because the creature had no UUID. */
+  private skippedUnidentified = 0;
+
   constructor(config: RequiredEvaluationArchiveConfig) {
     this.config = config;
-    this.path = `${config.directory}/${config.fileName}`;
+    this.path = `${config.directory}/${EVALUATION_ARCHIVE_FILE_NAME}`;
   }
 
   /**
@@ -154,11 +141,6 @@ export class EvaluationArchive {
   beginGeneration(generation: number, reference?: Creature): void {
     this.generation = generation;
     this.reference = reference;
-  }
-
-  /** Records buffered since the last {@link flush}. */
-  get bufferedCount(): number {
-    return this.buffer.length;
   }
 
   /**
@@ -187,13 +169,23 @@ export class EvaluationArchive {
     if (!Number.isFinite(entry.score)) {
       // A creature that took `-Infinity` for a WASM panic never earned a
       // fitness reading; archiving it would teach a surrogate a number that
-      // describes the runtime, not the design point.
+      // describes the runtime, not the design point. Counted, not hidden —
+      // `flush` reports the tally.
+      this.skippedNonFinite++;
       return;
     }
     const uuid = creature.uuid;
-    if (uuid === undefined) return;
+    if (uuid === undefined) {
+      // Unjoinable to any other observation of the same creature, and a
+      // fabricated key is worse than a missing row. Still counted, because an
+      // archive quietly recording nothing is the failure this tally exists to
+      // surface.
+      this.skippedUnidentified++;
+      return;
+    }
 
     const approach = getTag(creature, "approach");
+    const referenceUuid = this.reference?.uuid;
     this.buffer.push({
       descriptorVersion: EVALUATION_DESCRIPTOR_VERSION,
       runId: this.config.runId,
@@ -208,6 +200,11 @@ export class EvaluationArchive {
         : {}),
       fidelity,
       recordedAt: Temporal.Now.instant().toString(),
+      // The genetic-distance slot is measured against *this* creature, so the
+      // record says which one. Without it the slot is a number whose origin
+      // moved every time the fittest changed — a feature space that drifts
+      // silently, which is precisely what the version contract forbids.
+      ...(referenceUuid !== undefined ? { referenceUuid } : {}),
       descriptor: computeEvaluationDescriptor(creature, this.reference),
     });
   }
@@ -223,19 +220,30 @@ export class EvaluationArchive {
    *   under a different descriptor version.
    */
   async flush(): Promise<void> {
+    this.reportSkipped();
     if (this.buffer.length === 0) return;
     const pending = this.buffer;
     this.buffer = [];
 
-    await Deno.mkdir(this.config.directory, { recursive: true });
-    if (this.onDiskCount === undefined) {
-      this.onDiskCount = await inspectArchive(this.path);
-    }
+    try {
+      await Deno.mkdir(this.config.directory, { recursive: true });
+      if (this.onDiskCount === undefined) {
+        this.onDiskCount = await inspectArchive(this.path);
+      }
 
-    const chunk = pending.map((record) => JSON.stringify(record)).join("\n") +
-      "\n";
-    await Deno.writeTextFile(this.path, chunk, { append: true });
-    this.onDiskCount += pending.length;
+      const chunk = pending.map((record) => JSON.stringify(record)).join("\n") +
+        "\n";
+      await Deno.writeTextFile(this.path, chunk, { append: true });
+      this.onDiskCount += pending.length;
+    } catch (error) {
+      // The failure is loud, and the generation's records survive it: a caller
+      // that fixes the fault and flushes again loses nothing. Discarding them
+      // here would make a loud error quietly destructive.
+      this.buffer = [...pending, ...this.buffer];
+      throw error instanceof EvaluationArchiveError
+        ? error
+        : toArchiveIoError(error, this.path, "append to");
+    }
 
     const { maxRecords } = this.config;
     if (this.onDiskCount > maxRecords + compactionSlack(maxRecords)) {
@@ -244,27 +252,42 @@ export class EvaluationArchive {
   }
 
   /**
-   * Flush anything outstanding and release the reference creature.
+   * Report, once per flush, any evaluations `record` declined to archive.
    *
-   * There is no file handle to close — every write is a self-contained append —
-   * so this exists so a caller can end a run without inspecting the buffer.
+   * An archive that silently stopped writing is worse than a run that stops, so
+   * the two legitimate skips are counted and announced rather than absorbed.
+   * The tally resets each flush so the message names this generation.
    */
-  async close(): Promise<void> {
-    await this.flush();
-    this.reference = undefined;
+  private reportSkipped(): void {
+    if (this.skippedNonFinite === 0 && this.skippedUnidentified === 0) return;
+    getLogger().warn(
+      `[NEAT-AI] Evaluation archive skipped ${this.skippedNonFinite} ` +
+        `non-finite score(s) and ${this.skippedUnidentified} creature(s) ` +
+        `without a UUID; those evaluations are not in the archive.`,
+    );
+    this.skippedNonFinite = 0;
+    this.skippedUnidentified = 0;
   }
 }
 
 /**
- * Count the records already in an archive and check its descriptor version.
+ * Count the records already in an archive and check the versions at both ends.
  *
- * Streams the file rather than reading it whole: at the default bound the
- * archive is tens of megabytes, and this runs on the first flush of every run.
+ * Streams the file rather than reading it whole: at the default retention bound
+ * the archive is tens of megabytes, and this runs on the first flush of every
+ * run.
+ *
+ * **Both ends, not every line.** Validating all 100,000 records on every run
+ * start would cost more than the archive saves, and the two ends are where a
+ * foreign version actually appears: the first record dates the archive, and the
+ * last is what a newer build most recently appended. `readEvaluationArchive`
+ * remains the exhaustive check — this is the cheap gate that stops *this* run
+ * adding a second feature space to a file that already holds one.
  *
  * @param path - Archive file path.
  * @returns The number of records on disk; `0` when the file does not exist.
- * @throws {EvaluationArchiveError} When the first record's descriptor version
- *   is not the current one, or its first line is not a record.
+ * @throws {EvaluationArchiveError} When either end carries a foreign descriptor
+ *   version, is malformed, or the file cannot be read.
  */
 async function inspectArchive(path: string): Promise<number> {
   let file: Deno.FsFile;
@@ -272,22 +295,27 @@ async function inspectArchive(path: string): Promise<number> {
     file = await Deno.open(path, { read: true });
   } catch (error) {
     if (error instanceof Deno.errors.NotFound) return 0;
-    throw error;
+    throw toArchiveIoError(error, path, "open");
   }
   try {
     const decoder = new TextDecoder();
-    const chunk = new Uint8Array(64 * 1024);
+    const buffer = new Uint8Array(64 * 1024);
     let lines = 0;
     let firstLine = "";
     let firstLineComplete = false;
+    /** Bytes seen since the last newline — the line currently being read. */
+    let currentLine: number[] = [];
+    /** The most recent complete line, whatever position it ended up in. */
+    let lastCompleteLine = "";
     let trailingBytes = false;
+
     for (;;) {
       // deno-lint-ignore no-await-in-loop
-      const read = await file.read(chunk);
+      const read = await file.read(buffer);
       if (read === null) break;
-      const slice = chunk.subarray(0, read);
-      const newlineAt = slice.indexOf(0x0a);
+      const slice = buffer.subarray(0, read);
       if (!firstLineComplete) {
+        const newlineAt = slice.indexOf(0x0a);
         firstLine += decoder.decode(
           newlineAt === -1 ? slice : slice.subarray(0, newlineAt),
           { stream: newlineAt === -1 },
@@ -295,15 +323,33 @@ async function inspectArchive(path: string): Promise<number> {
         if (newlineAt !== -1) firstLineComplete = true;
       }
       for (let i = 0; i < read; i++) {
-        if (slice[i] === 0x0a) lines++;
+        if (slice[i] === 0x0a) {
+          lines++;
+          lastCompleteLine = new TextDecoder().decode(
+            new Uint8Array(currentLine),
+          );
+          currentLine = [];
+        } else {
+          currentLine.push(slice[i]);
+        }
       }
-      trailingBytes = read > 0 && slice[read - 1] !== 0x0a;
+      trailingBytes = slice[read - 1] !== 0x0a;
     }
+
     if (lines === 0 && !trailingBytes) return 0;
+    // A final line without its newline is a torn write. Count it so retention
+    // still bounds the file, and check it — the reader would fail on it anyway,
+    // and failing here names the fault before more is appended beneath it.
+    const tail = trailingBytes
+      ? new TextDecoder().decode(new Uint8Array(currentLine))
+      : lastCompleteLine;
+    const total = trailingBytes ? lines + 1 : lines;
+
     assertRecordVersion(parseRecordLine(firstLine, path, 1), path, 1);
-    // A final line without its newline is a torn write; count it so retention
-    // still bounds the file, and let the reader fail loudly on it.
-    return trailingBytes ? lines + 1 : lines;
+    if (total > 1) {
+      assertRecordVersion(parseRecordLine(tail, path, total), path, total);
+    }
+    return total;
   } finally {
     file.close();
   }
@@ -327,113 +373,4 @@ async function compactArchive(
   await Deno.writeTextFile(temporary, retained.join("\n") + "\n");
   await Deno.rename(temporary, path);
   return retained.length;
-}
-
-/** Parse one archive line, failing loudly on anything that is not a record. */
-function parseRecordLine(
-  line: string,
-  path: string,
-  lineNumber: number,
-): EvaluationArchiveRecord {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(line);
-  } catch (error) {
-    throw new EvaluationArchiveError(
-      `${path}:${lineNumber} is not valid JSON: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-      "MALFORMED_RECORD",
-    );
-  }
-  if (parsed === null || typeof parsed !== "object") {
-    throw new EvaluationArchiveError(
-      `${path}:${lineNumber} is not an evaluation record`,
-      "MALFORMED_RECORD",
-    );
-  }
-  const record = parsed as Partial<EvaluationArchiveRecord>;
-  if (typeof record.descriptorVersion !== "number") {
-    throw new EvaluationArchiveError(
-      `${path}:${lineNumber} has no descriptorVersion`,
-      "MALFORMED_RECORD",
-    );
-  }
-  if (typeof record.uuid !== "string" || typeof record.score !== "number") {
-    throw new EvaluationArchiveError(
-      `${path}:${lineNumber} is missing uuid or score`,
-      "MALFORMED_RECORD",
-    );
-  }
-  if (!Array.isArray(record.descriptor)) {
-    throw new EvaluationArchiveError(
-      `${path}:${lineNumber} has no descriptor vector`,
-      "MALFORMED_RECORD",
-    );
-  }
-  return record as EvaluationArchiveRecord;
-}
-
-/**
- * Refuse a record written under a different descriptor version.
- *
- * This is the fail-loud gate the archive's contract rests on: coercing here
- * would blend two feature spaces into one training set.
- */
-function assertRecordVersion(
-  record: EvaluationArchiveRecord,
-  path: string,
-  lineNumber: number,
-): EvaluationArchiveRecord {
-  if (record.descriptorVersion !== EVALUATION_DESCRIPTOR_VERSION) {
-    throw new EvaluationArchiveError(
-      `${path}:${lineNumber} was written with descriptor version ` +
-        `${record.descriptorVersion}, but this build reads version ` +
-        `${EVALUATION_DESCRIPTOR_VERSION}. Refusing to mix feature spaces.`,
-      "DESCRIPTOR_VERSION_MISMATCH",
-    );
-  }
-  if (record.descriptor.length !== EVALUATION_DESCRIPTOR_LENGTH) {
-    throw new EvaluationArchiveError(
-      `${path}:${lineNumber} has a ${record.descriptor.length}-slot descriptor, ` +
-        `but version ${EVALUATION_DESCRIPTOR_VERSION} has ` +
-        `${EVALUATION_DESCRIPTOR_LENGTH} slots`,
-      "DESCRIPTOR_LENGTH_MISMATCH",
-    );
-  }
-  return record;
-}
-
-/**
- * Read a whole archive.
- *
- * Every record is validated: a version mismatch, a malformed line, or a
- * wrong-length descriptor throws rather than being skipped. A partially
- * readable archive is not a smaller archive — it is an archive whose contents
- * are not what they claim.
- *
- * @param path - Archive file path.
- * @returns Every record, in write order (oldest first).
- * @throws {EvaluationArchiveError} On any invalid record.
- */
-export async function readEvaluationArchive(
-  path: string,
-): Promise<EvaluationArchiveRecord[]> {
-  let text: string;
-  try {
-    text = await Deno.readTextFile(path);
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) return [];
-    throw error;
-  }
-  const records: EvaluationArchiveRecord[] = [];
-  const lines = text.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.length === 0) continue;
-    records.push(
-      assertRecordVersion(parseRecordLine(line, path, i + 1), path, i + 1),
-    );
-  }
-  return records;
 }

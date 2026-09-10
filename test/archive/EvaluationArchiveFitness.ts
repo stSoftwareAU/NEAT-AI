@@ -16,10 +16,8 @@ import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
 import { resolveEvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
 import { resolveRacingConfig } from "@config/RacingConfig.ts";
-import {
-  EvaluationArchive,
-  readEvaluationArchive,
-} from "@archive/EvaluationArchive.ts";
+import { EvaluationArchive } from "@archive/EvaluationArchive.ts";
+import { readEvaluationArchive } from "@archive/EvaluationArchiveFormat.ts";
 import { EVALUATION_DESCRIPTOR_LENGTH } from "@archive/EvaluationDescriptor.ts";
 import {
   __resetRacingSessionRunner,
@@ -63,7 +61,6 @@ Deno.test("evaluation archive — off by default, so no archive is configured", 
   const config = createNeatConfig({});
   assertEquals(config.evaluationArchive.enabled, false);
   assertEquals(config.evaluationArchive.maxRecords, 100_000);
-  assertEquals(config.evaluationArchive.fileName, "evaluations.jsonl");
 });
 
 Deno.test("evaluation archive — the per-creature path archives every exact score", async () => {
