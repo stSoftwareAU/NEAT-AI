@@ -208,6 +208,56 @@ export type {
 } from "@config/RacingConfig.ts";
 
 /**
+ * Evaluation Archive
+ *
+ * Issue #3929: `NeatOptions.evaluationArchive` keeps every **exact** fitness
+ * evaluation as a `(descriptor, score)` pair in an append-only, versioned,
+ * size-bounded JSONL file — the training set a surrogate model has to be fitted
+ * to. Off by default, and deliberately absent from the creature export: this is
+ * run infrastructure, not part of a creature.
+ *
+ * @see {@link module:src/config/EvaluationArchiveConfig}
+ * @see {@link module:src/archive/EvaluationArchive}
+ */
+export type {
+  EvaluationArchiveConfig,
+  RequiredEvaluationArchiveConfig,
+} from "@config/EvaluationArchiveConfig.ts";
+export {
+  DEFAULT_EVALUATION_ARCHIVE_CONFIG,
+  resolveEvaluationArchiveConfig,
+} from "@config/EvaluationArchiveConfig.ts";
+export type {
+  EvaluationArchiveEntry,
+  EvaluationArchiveRecord,
+} from "@archive/EvaluationArchive.ts";
+export {
+  EvaluationArchive,
+  EXACT_FIDELITY,
+  readEvaluationArchive,
+} from "@archive/EvaluationArchive.ts";
+export type { EvaluationArchiveErrorReason } from "@errors/EvaluationArchiveError.ts";
+export { EvaluationArchiveError } from "@errors/EvaluationArchiveError.ts";
+export {
+  computeEvaluationDescriptor,
+  DESCRIPTOR_V1_FIELD_NAMES,
+  DESCRIPTOR_V1_SCALAR_NAMES,
+  DESCRIPTOR_V1_SQUASH_NAMES,
+  EVALUATION_DESCRIPTOR_LENGTH,
+  EVALUATION_DESCRIPTOR_VERSION,
+  NO_REFERENCE_DISTANCE,
+} from "@archive/EvaluationDescriptor.ts";
+export type {
+  DescriptorCollisionGroup,
+  DescriptorCollisionReport,
+} from "@archive/DescriptorCollisions.ts";
+export {
+  DEFAULT_COLLISION_TOLERANCE,
+  formatDescriptorCollisionReport,
+  reportDescriptorCollisions,
+} from "@archive/DescriptorCollisions.ts";
+
+/**
  * MCMC Acceptance Criterion
  *
  * Issue #2199: Markov Chain Monte Carlo (MCMC) temperature-based acceptance

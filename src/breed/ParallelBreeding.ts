@@ -1,4 +1,5 @@
 import { Creature } from "../../mod.ts";
+import { recordLineage } from "@archive/CreatureLineage.ts";
 import { Offspring } from "@architecture/Offspring.ts";
 import { discover } from "@blackbox/Discover.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
@@ -305,6 +306,9 @@ export class ParallelBreeding {
 
             // Issue #3971: record the parent baseline for mutation telemetry.
             this.recordParentBaseline(child, pair.mother, pair.father);
+            // Issue #3929: remember the lineage off-creature, for archive
+            // provenance. A WeakMap entry — nothing is serialised or exported.
+            recordLineage(child, pair.mother, pair.father);
 
             // Issue #2324: Aggregate sub-phase timing from worker response
             if (response.breed.subPhaseTiming) {
@@ -520,6 +524,8 @@ export class ParallelBreeding {
 
           // Issue #3971: record the parent baseline for mutation telemetry.
           if (child) this.recordParentBaseline(child, mother, father);
+          // Issue #3929: off-creature lineage for archive provenance.
+          if (child) recordLineage(child, mother, father);
 
           resolve(child);
         } catch (error) {

@@ -25,7 +25,6 @@ import {
   __resetRacingSessionRunner,
   __setRacingSessionRunnerForTests,
   type RacingSessionRequest,
-  type RacingSessionResult,
 } from "../../src/score/RacingScorerSession.ts";
 import { resolveRacingConfig } from "@config/RacingConfig.ts";
 import { RACING_ABANDON_RANK_GAP } from "../../src/score/RacingRanking.ts";
@@ -37,93 +36,9 @@ import {
   HELP_WITH_RACING,
   HELP_WITHOUT_RACING,
   MockWorkerHandler,
+  racingSession,
+  stubRunner,
 } from "./_racingFixtures.ts";
-
-const CORPUS_RECORDS = 1000;
-const CHUNK_RECORDS = 100;
-
-/** `--help` probe answer plus a full-corpus result map for the plain path. */
-function stubRunner(help: string, errorByKey: Map<string, number>) {
-  return (_command: string, args: string[]) => {
-    if (args.length === 1 && args[0] === "--help") {
-      return Promise.resolve({
-        success: true,
-        code: 0,
-        stdout: help,
-        stderr: "",
-      });
-    }
-    const entries: Record<string, unknown> = {};
-    for (const [key, error] of errorByKey) {
-      entries[key] = { score: 1 - error, error, recordCount: CORPUS_RECORDS };
-    }
-    return Promise.resolve({
-      success: true,
-      code: 0,
-      stdout: JSON.stringify(entries),
-      stderr: "",
-    });
-  };
-}
-
-/**
- * Fake `--race-stdio` session: streams the corpus in chunks, applies the
- * caller's verdicts, and reports each creature's frozen record count — the
- * scorer's own contract, without a subprocess.
- */
-function racingSession(
-  errorByKey: Map<string, number>,
-  observed: { requests: RacingSessionRequest[] },
-) {
-  return (request: RacingSessionRequest): Promise<RacingSessionResult> => {
-    observed.requests.push(request);
-    const keys = [...errorByKey.keys()].sort();
-    const active = new Set(keys);
-    const recordsScored = new Map(keys.map((k) => [k, 0]));
-    let chunks = 0;
-    for (
-      let scored = CHUNK_RECORDS;
-      scored <= CORPUS_RECORDS && active.size > 0;
-      scored += CHUNK_RECORDS
-    ) {
-      for (const key of active) recordsScored.set(key, scored);
-      chunks++;
-      const partials = keys
-        .filter((key) => active.has(key))
-        .map((key) => ({
-          index: keys.indexOf(key),
-          key,
-          partialError: errorByKey.get(key)!,
-          recordsScored: recordsScored.get(key)!,
-        }));
-      const verdict = request.onChunk({
-        racing: "chunk",
-        chunk: chunks,
-        partials,
-      });
-      if (verdict.verdict === "abortAll") break;
-      if (verdict.verdict === "abort") {
-        for (const index of verdict.creatures) active.delete(keys[index]);
-      }
-    }
-    const entries: Record<string, unknown> = {};
-    for (const key of keys) {
-      const error = errorByKey.get(key)!;
-      entries[key] = {
-        score: 1 - error,
-        error,
-        recordCount: recordsScored.get(key)!,
-      };
-    }
-    return Promise.resolve({
-      success: true,
-      code: 0,
-      stdout: JSON.stringify(entries),
-      stderr: "",
-      chunks,
-    });
-  };
-}
 
 function makeFitness(
   worker: MockWorkerHandler,

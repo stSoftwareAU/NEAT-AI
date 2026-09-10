@@ -28,6 +28,7 @@ import type { SquashEffectivenessConfig } from "@config/SquashEffectivenessConfi
 import type { SquashBudgetConfig } from "@config/SquashBudgetConfig.ts";
 import type { RustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { RacingConfig } from "@config/RacingConfig.ts";
+import type { EvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -116,6 +117,7 @@ export type NeatOptions =
     | "wasmCache"
     | "rustScorer"
     | "racing"
+    | "evaluationArchive"
     | "memory"
     | "workerThreadCap"
     | "mcmc"
@@ -178,6 +180,14 @@ export type NeatOptions =
      * an exact full-corpus score. See `docs/RACING.md`.
      */
     racing?: RacingConfig;
+    /**
+     * Partial overrides for the evaluation archive (Issue #3929).
+     *
+     * Off unless `enabled: true`. When on, every exact fitness evaluation is
+     * appended to a versioned, size-bounded JSONL archive of
+     * `(descriptor, score)` pairs. See `docs/EVALUATION_ARCHIVE.md`.
+     */
+    evaluationArchive?: EvaluationArchiveConfig;
     /** Partial overrides for memory monitoring configuration (defaults applied if not specified) */
     memory?: MemoryConfig;
     /** Partial overrides for worker thread cap configuration (defaults applied if not specified) */
@@ -286,6 +296,7 @@ export type NeatOptionsInput =
     | "wasmCache"
     | "rustScorer"
     | "racing"
+    | "evaluationArchive"
     | "memory"
     | "workerThreadCap"
     | "mcmc"
@@ -328,6 +339,8 @@ export type NeatOptionsInput =
     rustScorer?: CoerceNumeric<RustScorerConfig>;
     /** Racing / early-exit configuration (Issue #3928). Numeric fields coerced from CLI. */
     racing?: CoerceNumeric<RacingConfig>;
+    /** Evaluation archive configuration (Issue #3929). Numeric fields coerced from CLI. */
+    evaluationArchive?: CoerceNumeric<EvaluationArchiveConfig>;
     memory?: CoerceNumeric<MemoryConfig>;
     workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
     /** MCMC acceptance configuration (Issue #2199). Numeric fields coerced from CLI. */

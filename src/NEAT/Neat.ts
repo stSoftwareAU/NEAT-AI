@@ -31,6 +31,7 @@ import {
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
+import { EvaluationArchive } from "@archive/EvaluationArchive.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
 import { RandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { SpeciesPlateauDetector } from "@neat/SpeciesPlateauDetector.ts";
@@ -170,6 +171,14 @@ export class Neat {
    * produced the creature being evaluated.
    */
   readonly mutationOperatorTelemetry: MutationOperatorTelemetry;
+
+  /**
+   * Issue #3929: the run's evaluation archive, or `undefined` when
+   * `evaluationArchive.enabled` is false (the default). Owned by Neat so a
+   * single append-only file spans the whole run and its per-generation
+   * reference creature can be set from the evolution loop.
+   */
+  readonly evaluationArchive: EvaluationArchive | undefined;
 
   /** Adaptive fine-tune population tracker (Issue #1323) */
   readonly fineTuneTracker: AdaptiveFineTuneTracker;
@@ -419,6 +428,13 @@ export class Neat {
     // offspring's evaluation cost is attributed to the operators that made it.
     this.mutationOperatorTelemetry = new MutationOperatorTelemetry();
     this.fitness.setMutationTelemetry(this.mutationOperatorTelemetry);
+
+    // Issue #3929: the archive exists only when it is asked for — the default
+    // run constructs nothing and touches no disk.
+    this.evaluationArchive = this.config.evaluationArchive.enabled
+      ? new EvaluationArchive(this.config.evaluationArchive)
+      : undefined;
+    this.fitness.setEvaluationArchive(this.evaluationArchive);
 
     this.fineTuneTracker = new AdaptiveFineTuneTracker(
       this.config.fineTunePopulation,

@@ -205,6 +205,13 @@ export async function evolve(
   // GRQ #4141: name the in-fitness phase so the hard-deadline watchdog can
   // report a stall *while it is happening* and interrupt it. An
   // `abandoning 0 in-flight task(s)` line after the fact is the failure mode.
+  // Issue #3929: stamp this generation's records and measure the descriptor's
+  // genetic-distance slot against the fittest creature the run has so far.
+  neat.evaluationArchive?.beginGeneration(
+    neat.currentGeneration,
+    previousFittest,
+  );
+
   const fitnessStartMs = Date.now();
   const fitnessSignal = neat.enterInFlightPhase("fitness");
   let fitnessWatchdogId: ReturnType<typeof setInterval> | undefined;
