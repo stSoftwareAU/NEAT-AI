@@ -78,7 +78,16 @@ export interface SplitReport {
   readonly rule: string;
   readonly groups: number;
   readonly folds: number;
-  readonly skipped: readonly { group: string; reason: string }[];
+  /** How many groups were skipped, in total. */
+  readonly skipped: number;
+  /**
+   * Skipped folds counted by reason rather than listed.
+   *
+   * An archive with a thousand single-creature lineages produces a thousand
+   * identical entries; the count is the finding, and the list is only noise
+   * that buries the rest of the report.
+   */
+  readonly skippedByReason: readonly { reason: string; count: number }[];
   readonly results: readonly PredictorResult[];
 }
 
@@ -131,6 +140,17 @@ export function assertStudyable(
   }
 }
 
+/** Count skipped folds by reason, in first-seen order. */
+function countByReason(
+  skipped: readonly { group: string; reason: string }[],
+): { reason: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const skip of skipped) {
+    counts.set(skip.reason, (counts.get(skip.reason) ?? 0) + 1);
+  }
+  return [...counts].map(([reason, count]) => ({ reason, count }));
+}
+
 /** Run the study over one archive. */
 export function runFeasibilityStudy(options: {
   readonly records: readonly EvaluationArchiveRecord[];
@@ -161,7 +181,8 @@ export function runFeasibilityStudy(options: {
       rule: split.rule,
       groups: split.folds.length + split.skipped.length,
       folds: split.folds.length,
-      skipped: split.skipped,
+      skipped: split.skipped.length,
+      skippedByReason: countByReason(split.skipped),
       results,
     });
   }
@@ -250,22 +271,15 @@ export function markdownReport(report: FeasibilityReport): string {
     lines.push("");
     lines.push(
       `${split.groups} group(s), ${split.folds} usable fold(s), ` +
-        `${split.skipped.length} skipped.`,
+        `${split.skipped} skipped.`,
     );
     lines.push("");
     lines.push(splitTable(split, report.bands));
-    if (split.skipped.length > 0) {
+    if (split.skipped > 0) {
       lines.push("");
       lines.push("Skipped folds, by reason:");
       lines.push("");
-      // Counted by reason rather than listed: an archive with a thousand
-      // single-creature lineages would otherwise bury the whole report under
-      // a thousand identical lines, and the count is the finding anyway.
-      const byReason = new Map<string, number>();
-      for (const skip of split.skipped) {
-        byReason.set(skip.reason, (byReason.get(skip.reason) ?? 0) + 1);
-      }
-      for (const [reason, count] of byReason) {
+      for (const { reason, count } of split.skippedByReason) {
         lines.push(`- ${count} × ${reason}`);
       }
     }

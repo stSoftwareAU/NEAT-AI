@@ -1,0 +1,679 @@
+{
+  "provenance": "container-run",
+  "archivePath": "/tmp/sa-capture/evaluations.jsonl",
+  "descriptorVersion": 1,
+  "records": 1143,
+  "uniqueCreatures": 1143,
+  "runs": 6,
+  "withParents": 8,
+  "lineageCoverage": 0.00699912510936133,
+  "baselineFallbacks": 1141,
+  "acceptGap": 0.0001,
+  "bands": [
+    {
+      "label": "<=1e-5",
+      "minGap": 0,
+      "maxGap": 0.00001
+    },
+    {
+      "label": "(1e-5, 1e-4]",
+      "minGap": 0.00001,
+      "maxGap": 0.0001
+    },
+    {
+      "label": "<=1e-4 (cumulative)",
+      "minGap": 0,
+      "maxGap": 0.0001
+    },
+    {
+      "label": ">1e-4",
+      "minGap": 0.0001,
+      "maxGap": null
+    }
+  ],
+  "features": [
+    "neurons",
+    "inputs",
+    "outputs",
+    "hiddenNeurons",
+    "constantNeurons",
+    "synapses",
+    "depth",
+    "meanFanIn",
+    "maxFanIn",
+    "meanFanOut",
+    "maxFanOut",
+    "weightMeanAbs",
+    "weightMaxAbs",
+    "weightRms",
+    "biasMeanAbs",
+    "biasMaxAbs",
+    "geneticDistanceToReference",
+    "squash:ABSOLUTE",
+    "squash:ArcTan",
+    "squash:BENT_IDENTITY",
+    "squash:BIPOLAR",
+    "squash:BIPOLAR_SIGMOID",
+    "squash:COMPLEMENT",
+    "squash:Cosine",
+    "squash:Cube",
+    "squash:ELU",
+    "squash:Exponential",
+    "squash:GAUSSIAN",
+    "squash:GELU",
+    "squash:HARD_TANH",
+    "squash:HYPOT",
+    "squash:HYPOTv2",
+    "squash:IDENTITY",
+    "squash:IF",
+    "squash:ISRU",
+    "squash:LOGISTIC",
+    "squash:LeakyReLU",
+    "squash:LogSigmoid",
+    "squash:MAXIMUM",
+    "squash:MEAN",
+    "squash:MINIMUM",
+    "squash:Mish",
+    "squash:ReLU",
+    "squash:ReLU6",
+    "squash:SELU",
+    "squash:SINE",
+    "squash:SOFTMAX",
+    "squash:SOFTSIGN",
+    "squash:SQRT",
+    "squash:SQUARE",
+    "squash:STEP",
+    "squash:Softplus",
+    "squash:StdInverse",
+    "squash:Swish",
+    "squash:TAN",
+    "squash:TANH",
+    "squash:other",
+    "hasReference"
+  ],
+  "splits": [
+    {
+      "mode": "lineage",
+      "rule": "leave-one-lineage-out: a creature and every ancestor it was bred from that is present in the archive form one group, and the whole group is held out together",
+      "groups": 1135,
+      "folds": 6,
+      "skipped": 1129,
+      "skippedByReason": [
+        {
+          "reason": "only 1 creature held out — no ordering to score",
+          "count": 1129
+        }
+      ],
+      "results": [
+        {
+          "name": "quadratic-polynomial",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "spearman": 0.3,
+          "kendall": 0.27777777777777773,
+          "topK": {
+            "1": 0.6666666666666666,
+            "3": 0.6666666666666666,
+            "5": null
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 0,
+              "correct": 0,
+              "accuracy": null
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 1,
+              "accuracy": 1
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 1,
+              "accuracy": 1
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 10,
+              "correct": 7,
+              "accuracy": 0.7
+            }
+          ]
+        },
+        {
+          "name": "rbf-interpolation",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "spearman": -0.03333333333333336,
+          "kendall": -0.05555555555555558,
+          "topK": {
+            "1": 0.5,
+            "3": 0.6666666666666666,
+            "5": null
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 0,
+              "correct": 0,
+              "accuracy": null
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 1,
+              "accuracy": 1
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 1,
+              "accuracy": 1
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 10,
+              "correct": 6,
+              "accuracy": 0.6
+            }
+          ]
+        },
+        {
+          "name": "gaussian-process",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "spearman": 0.3,
+          "kendall": 0.27777777777777773,
+          "topK": {
+            "1": 0.6666666666666666,
+            "3": 0.6666666666666666,
+            "5": null
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 0,
+              "correct": 0,
+              "accuracy": null
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 1,
+              "accuracy": 1
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 1,
+              "accuracy": 1
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 10,
+              "correct": 7,
+              "accuracy": 0.7
+            }
+          ]
+        },
+        {
+          "name": "gradient-boosted-trees",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "spearman": -0.7999999999999999,
+          "kendall": -0.8333333333333334,
+          "topK": {
+            "1": 0.16666666666666666,
+            "3": 0.6666666666666666,
+            "5": null
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 0,
+              "correct": 0,
+              "accuracy": null
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 10,
+              "correct": 3,
+              "accuracy": 0.3
+            }
+          ]
+        },
+        {
+          "name": "parent-score-baseline",
+          "isBaseline": true,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "spearman": -0.5175682092231576,
+          "kendall": -0.5304290309725093,
+          "topK": {
+            "1": 0.3333333333333333,
+            "3": 0.6666666666666666,
+            "5": null
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 0,
+              "correct": 0,
+              "accuracy": null
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 10,
+              "correct": 3,
+              "accuracy": 0.3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "run",
+      "rule": "leave-one-run-out: every creature archived by one run id is held out together",
+      "groups": 6,
+      "folds": 6,
+      "skipped": 0,
+      "skippedByReason": [],
+      "results": [
+        {
+          "name": "quadratic-polynomial",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "spearman": 0.6586800242866635,
+          "kendall": 0.5171481757321411,
+          "topK": {
+            "1": 0,
+            "3": 0,
+            "5": 0
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 8406,
+              "correct": 4083,
+              "accuracy": 0.48572448251249106
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 971,
+              "correct": 646,
+              "accuracy": 0.6652935118434603
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 9377,
+              "correct": 4729,
+              "accuracy": 0.5043190785965661
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 98921,
+              "correct": 77450,
+              "accuracy": 0.7829480090172967
+            }
+          ]
+        },
+        {
+          "name": "rbf-interpolation",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "spearman": 0.05901306879221221,
+          "kendall": 0.03349406293514467,
+          "topK": {
+            "1": 0,
+            "3": 0,
+            "5": 0
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 8406,
+              "correct": 2545,
+              "accuracy": 0.3027599333809184
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 971,
+              "correct": 308,
+              "accuracy": 0.3171987641606591
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 9377,
+              "correct": 2853,
+              "accuracy": 0.3042550922469873
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 98921,
+              "correct": 53195,
+              "accuracy": 0.5377523478331193
+            }
+          ]
+        },
+        {
+          "name": "gaussian-process",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "spearman": -0.08539269519828001,
+          "kendall": -0.04241760119378705,
+          "topK": {
+            "1": 0,
+            "3": 0,
+            "5": 0
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 8406,
+              "correct": 5854,
+              "accuracy": 0.6964073280989769
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 971,
+              "correct": 459,
+              "accuracy": 0.4727085478887745
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 9377,
+              "correct": 6313,
+              "accuracy": 0.6732430414844833
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 98921,
+              "correct": 45499,
+              "accuracy": 0.45995289170145875
+            }
+          ]
+        },
+        {
+          "name": "gradient-boosted-trees",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "spearman": 0.4734549338427689,
+          "kendall": 0.38065089905709293,
+          "topK": {
+            "1": 0,
+            "3": 0,
+            "5": 0
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 8406,
+              "correct": 22,
+              "accuracy": 0.0026171782060433026
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 971,
+              "correct": 23,
+              "accuracy": 0.02368692070030896
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 9377,
+              "correct": 45,
+              "accuracy": 0.00479897621840674
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 98921,
+              "correct": 55008,
+              "accuracy": 0.556080104325674
+            }
+          ]
+        },
+        {
+          "name": "parent-score-baseline",
+          "isBaseline": true,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "spearman": -0.15179341026506968,
+          "kendall": -0.12362422682013616,
+          "topK": {
+            "1": 0,
+            "3": 0,
+            "5": 0
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 8406,
+              "correct": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 971,
+              "correct": 1,
+              "accuracy": 0.0010298661174047373
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 9377,
+              "correct": 1,
+              "accuracy": 0.00010664391596459421
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 98921,
+              "correct": 323,
+              "accuracy": 0.003265231851679623
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "killGate": {
+    "passed": false,
+    "baselineTop5": null,
+    "best": null,
+    "reasons": [
+      "only 0.7% of archived creatures name a parent that is also in the archive, below the 50% this gate needs — the parent's-score baseline is mostly the training mean, so nothing can be shown to beat it and the gate is undecidable"
+    ]
+  }
+}

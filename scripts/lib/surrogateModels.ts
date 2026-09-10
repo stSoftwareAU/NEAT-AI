@@ -302,11 +302,11 @@ export function solveLinearSystem(
  * Quadratic polynomial regression — Jin (2011) §2's cheapest surrogate.
  *
  * The design is `[1, z, z²]` over the standardised kept columns: linear and
- * squared terms, **no cross products**. A v1 descriptor has 34 slots, so a
- * full quadratic would carry 630 terms — an order of magnitude more parameters
- * than a lineage-held-out fold of this archive has rows, and a fit with more
- * parameters than data is not a measurement of anything. The omission is a
- * stated limitation of the family as tested, not a silent simplification.
+ * squared terms, **no cross products**. The study's feature vector has 58
+ * entries, so a full quadratic would carry 1,770 terms — more parameters than
+ * a held-out fold of this archive has rows, and a fit with more parameters
+ * than data is not a measurement of anything. The omission is a stated
+ * limitation of the family as tested, not a silent simplification.
  *
  * Ridge regularisation is applied to every term but the intercept.
  */
