@@ -30,6 +30,7 @@ import type { RustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { RacingConfig } from "@config/RacingConfig.ts";
 import type { EvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
 import type { EvolutionControlConfig } from "@config/EvolutionControlConfig.ts";
+import type { PreSelectionConfig } from "@config/PreSelectionConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -120,6 +121,7 @@ export type NeatOptions =
     | "racing"
     | "evaluationArchive"
     | "evolutionControl"
+    | "preSelection"
     | "memory"
     | "workerThreadCap"
     | "mcmc"
@@ -198,6 +200,14 @@ export type NeatOptions =
      * `docs/EVOLUTION_CONTROL.md`.
      */
     evolutionControl?: EvolutionControlConfig;
+    /**
+     * Partial overrides for offspring pre-selection (Issue #3932).
+     *
+     * `ratio: 1` / `screen: "none"` (the defaults) breed exactly the offspring
+     * the population budget calls for and screen none of them, as every build
+     * before this one did. See `docs/PRE_SELECTION.md`.
+     */
+    preSelection?: PreSelectionConfig;
     /** Partial overrides for memory monitoring configuration (defaults applied if not specified) */
     memory?: MemoryConfig;
     /** Partial overrides for worker thread cap configuration (defaults applied if not specified) */
@@ -308,6 +318,7 @@ export type NeatOptionsInput =
     | "racing"
     | "evaluationArchive"
     | "evolutionControl"
+    | "preSelection"
     | "memory"
     | "workerThreadCap"
     | "mcmc"
@@ -354,6 +365,8 @@ export type NeatOptionsInput =
     evaluationArchive?: CoerceNumeric<EvaluationArchiveConfig>;
     /** Evolution-control configuration (Issue #3931). Numeric fields coerced from CLI. */
     evolutionControl?: CoerceNumeric<EvolutionControlConfig>;
+    /** Offspring pre-selection configuration (Issue #3932). Numeric fields coerced from CLI. */
+    preSelection?: CoerceNumeric<PreSelectionConfig>;
     memory?: CoerceNumeric<MemoryConfig>;
     workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
     /** MCMC acceptance configuration (Issue #2199). Numeric fields coerced from CLI. */

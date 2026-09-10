@@ -431,6 +431,15 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
       "(Jin 2011 §4) deciding which creatures earn an exact evaluation; " +
       '`strategy: "none"` is exact everywhere, as before.',
   }),
+  keep("preSelection", "roll-up", {
+    interfaces: [
+      "src/config/PreSelectionConfig.ts::PreSelectionConfig",
+      "src/config/PreSelectionConfig.ts::RequiredPreSelectionConfig",
+    ],
+    note: "Added after the slices by #3932 — offspring pre-selection (Jin " +
+      "2011 §4): breed a surplus, screen it cheaply, evaluate only the " +
+      "survivors. `ratio: 1` breeds exactly the budget, as before.",
+  }),
 ];
 
 /** The merged classification table — every option key, one entry each. */

@@ -274,6 +274,49 @@ export {
 } from "@neat/EvolutionControl.ts";
 export type { EvolutionControlErrorReason } from "@errors/EvolutionControlError.ts";
 export { EvolutionControlError } from "@errors/EvolutionControlError.ts";
+/**
+ * Issue #3932 — offspring pre-selection: the surplus-and-screen lever of Jin
+ * (2011) §4. Breeding produced exactly the offspring the population budget
+ * called for and every one of them cost a full evaluation; this stage breeds a
+ * surplus, ranks it with a cheap screen, and discards the rest before anyone
+ * pays for them.
+ *
+ * Off by default (`ratio: 1`, `screen: "none"`): the breeder is asked for
+ * exactly what the budget calls for and nothing is screened or discarded.
+ *
+ * @see {@link module:src/config/PreSelectionConfig}
+ * @see {@link module:src/NEAT/PreSelection}
+ */
+export type {
+  PreSelectionConfig,
+  PreSelectionScreenName,
+  RequiredPreSelectionConfig,
+} from "@config/PreSelectionConfig.ts";
+export {
+  DEFAULT_PRE_SELECTION_CONFIG,
+  MAX_PRE_SELECTION_RATIO,
+  PRE_SELECTION_SCREENS,
+  resolvePreSelectionConfig,
+} from "@config/PreSelectionConfig.ts";
+export type {
+  PreSelectionOutcome,
+  PreSelectionSummary,
+  ScreenRank,
+  SurvivorReason,
+} from "@neat/PreSelection.ts";
+export { PreSelection } from "@neat/PreSelection.ts";
+export type {
+  OffspringScreen,
+  SampledEvaluator,
+} from "@neat/OffspringScreen.ts";
+export {
+  createOffspringScreen,
+  MIN_TRAINING_POINTS,
+  SampledCorpusScreen,
+  SurrogateScreen,
+} from "@neat/OffspringScreen.ts";
+export type { PreSelectionErrorReason } from "@errors/PreSelectionError.ts";
+export { PreSelectionError } from "@errors/PreSelectionError.ts";
 export {
   assertExactScore,
   EXACT_SCORE_FIDELITY,
