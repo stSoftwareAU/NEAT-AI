@@ -201,6 +201,11 @@ export async function evolve(
     );
   }
 
+  // Issue #3931: decide this generation's fidelity before anything is
+  // evaluated. With the default `strategy: "none"` this is always an exact
+  // sweep, which is what every generation before this issue already ran.
+  neat.evolutionControl.beginGeneration(neat.currentGeneration);
+
   // Issue #3929: stamp this generation's records and measure the descriptor's
   // genetic-distance slot against the fittest creature the run has so far.
   neat.evaluationArchive?.beginGeneration(
@@ -231,6 +236,22 @@ export async function evolve(
     neat.leaveInFlightPhase();
   }
   const fitnessMs = Date.now() - fitnessStartMs;
+
+  // Issue #3931: every generation states its fidelity and how many exact
+  // evaluations it paid for, so a run's trace can be read after the fact. An
+  // active policy says so at info; an unmanaged run keeps it to debug rather
+  // than repeating "exact" on every line of a default run.
+  const fidelitySummary = neat.evolutionControl.summarise(neat.population);
+  const fidelityLine = neat.evolutionControl.describe(fidelitySummary);
+  if (neat.evolutionControl.active) getLogger().info(fidelityLine);
+  else getLogger().debug(fidelityLine);
+  // A plan the sweep did not honour is stated once, loudly, rather than left
+  // to be inferred from a trace that says "approximate" beside an
+  // all-exact count.
+  const unhonoured = neat.evolutionControl.unhonouredPlanWarning(
+    fidelitySummary,
+  );
+  if (unhonoured) getLogger().warn(unhonoured);
 
   // Issue #2457: Commit any squash-mutation outcomes captured last generation
   // now that the freshly evaluated fitness is available. Each creature is
@@ -347,6 +368,22 @@ export async function evolve(
   );
   const elitists = results.elitists;
 
+  // Issue #3931: the elite band and `previousFittest` are always exact. The
+  // assertion below compares the two scores, and satisfying it with an
+  // approximate number would let the lineage proceed from a false premise —
+  // Jin (2011) §4's false optimum, arrived at silently.
+  //
+  // Only an *active* policy enforces it, because only an active policy is
+  // entitled to change what a run does. With `strategy: "none"` the guarantee
+  // is racing's (`RacingRanking.ts` ranks every abandoned creature below every
+  // scored one), and behaviour is identical to every build before this issue.
+  if (neat.evolutionControl.active) {
+    neat.evolutionControl.assertExactAll(elitists, "elitism");
+    if (previousFittest) {
+      neat.evolutionControl.assertExact(previousFittest, "previousFittest");
+    }
+  }
+
   let tmpFittest = elitists[0];
 
   assert(tmpFittest.uuid, "Fittest creature has no UUID");
@@ -379,6 +416,16 @@ export async function evolve(
 
   fittest.score = tmpFittest.score;
   assert(fittest.score, "No fittest score found");
+
+  // Issue #3931: no approximate score leaves the run. The clone carries the
+  // source creature's tags, so the fidelity travels with the export. Gated on
+  // an active policy for the same reason as the elite guard above.
+  if (neat.evolutionControl.active) {
+    neat.evolutionControl.assertExact(
+      fittest,
+      "export of the fittest creature",
+    );
+  }
 
   // Issue #1039: Record fitness for plateau detection
   neat.plateauDetector.recordFitness(fittest.score);

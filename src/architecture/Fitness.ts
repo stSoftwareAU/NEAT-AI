@@ -38,6 +38,7 @@ import {
   type EvaluationArchive,
   EXACT_FIDELITY,
 } from "@archive/EvaluationArchive.ts";
+import { refreshExactScoreFidelity } from "@architecture/ScoreFidelity.ts";
 
 /**
  * Evaluates fitness scores for a population of creatures.
@@ -528,6 +529,11 @@ export class Fitness {
               }
               addTag(creature, "score", creature.score.toString());
               this.mutationTelemetry?.recordEvaluated(creature, perCreatureMs);
+              // Issue #3931: this is a full-corpus score, so a fidelity tag
+              // left over from a generation where the creature was abandoned
+              // mid-corpus is now stale. A creature that was never
+              // approximated stays untagged.
+              refreshExactScoreFidelity(creature);
               this.archiveExactEvaluation(creature, error);
 
               // Mirror the duplicate-fan-out from the per-creature path so
@@ -671,6 +677,9 @@ export class Fitness {
         creature,
         Date.now() - evaluateStartMs,
       );
+      // Issue #3931: as in the batch path — a full-corpus score clears any
+      // stale approximate fidelity the creature was carrying.
+      refreshExactScoreFidelity(creature);
       this.archiveExactEvaluation(creature, error);
 
       // Issue #1016: Copy score and tags to duplicate creatures

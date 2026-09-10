@@ -302,6 +302,11 @@ and of every sampled screen in the fleet.
 - [Surrogate-Assisted Evolutionary Computation: Recent Advances and Future Challenges](https://doi.org/10.1016/j.swevo.2011.03.001)
   — Jin (2011) — **the primary source** and the name for the pattern: a cheap
   model proposes, the expensive true objective confirms.
+- [A Framework for Evolutionary Optimization with Approximate Fitness Functions](https://doi.org/10.1109/TEVC.2002.800884)
+  — Jin, Olhofer & Sendhoff (2002) — the controlled-evaluation framework Jin
+  (2011) §4 builds on, and the source of the individual-based and
+  generation-based control strategies NEAT-AI implements in
+  [`docs/EVOLUTION_CONTROL.md`](../EVOLUTION_CONTROL.md) (Issue #3931).
 - [Efficient Global Optimization of Expensive Black-Box Functions](https://doi.org/10.1023/A:1008306431147)
   — Jones, Schonlau & Welch (1998) — expected improvement as an acquisition
   function; how to decide what is worth evaluating for real.

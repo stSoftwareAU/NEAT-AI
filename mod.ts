@@ -238,6 +238,53 @@ export {
   EVALUATION_DESCRIPTOR_VERSION,
   NO_REFERENCE_DISTANCE,
 } from "@archive/EvaluationDescriptor.ts";
+/**
+ * Issue #3931 — evolution control: the model-management policy of Jin (2011)
+ * §4. It owns the per-generation question *is this creature worth an exact
+ * evaluation?* and the guards that keep an approximate score out of every slot
+ * that must hold ground truth: the elite band, `previousFittest`, the export,
+ * and any ordering that would otherwise mix the two fidelities.
+ *
+ * Off by default (`strategy: "none"`): every creature is evaluated exactly,
+ * every generation, and no creature carries a fidelity tag.
+ *
+ * @see {@link module:src/config/EvolutionControlConfig}
+ * @see {@link module:src/NEAT/EvolutionControl}
+ */
+export type {
+  EvolutionControlConfig,
+  EvolutionControlStrategy,
+  RequiredEvolutionControlConfig,
+} from "@config/EvolutionControlConfig.ts";
+export {
+  DEFAULT_EVOLUTION_CONTROL_CONFIG,
+  EVOLUTION_CONTROL_STRATEGIES,
+  resolveEvolutionControlConfig,
+} from "@config/EvolutionControlConfig.ts";
+export type {
+  CanaryReading,
+  EvolutionControlReason,
+  GenerationFidelity,
+  GenerationPlan,
+  GenerationSummary,
+} from "@neat/EvolutionControl.ts";
+export {
+  EvolutionControl,
+  orderingDivergence,
+} from "@neat/EvolutionControl.ts";
+export type { EvolutionControlErrorReason } from "@errors/EvolutionControlError.ts";
+export { EvolutionControlError } from "@errors/EvolutionControlError.ts";
+export {
+  assertExactScore,
+  EXACT_SCORE_FIDELITY,
+  isExactScore,
+  markScoreFidelity,
+  partialCorpusFidelity,
+  refreshExactScoreFidelity,
+  SCORE_FIDELITY_TAG,
+  scoreFidelity,
+} from "@architecture/ScoreFidelity.ts";
+
 export type {
   DescriptorCollisionGroup,
   DescriptorCollisionReport,

@@ -29,6 +29,7 @@ import type { SquashBudgetConfig } from "@config/SquashBudgetConfig.ts";
 import type { RustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { RacingConfig } from "@config/RacingConfig.ts";
 import type { EvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
+import type { EvolutionControlConfig } from "@config/EvolutionControlConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -118,6 +119,7 @@ export type NeatOptions =
     | "rustScorer"
     | "racing"
     | "evaluationArchive"
+    | "evolutionControl"
     | "memory"
     | "workerThreadCap"
     | "mcmc"
@@ -188,6 +190,14 @@ export type NeatOptions =
      * `(descriptor, score)` pairs. See `docs/EVALUATION_ARCHIVE.md`.
      */
     evaluationArchive?: EvaluationArchiveConfig;
+    /**
+     * Partial overrides for evolution control — model management (Issue #3931).
+     *
+     * `strategy: "none"` (the default) evaluates every creature exactly every
+     * generation, as every build before this one did. See
+     * `docs/EVOLUTION_CONTROL.md`.
+     */
+    evolutionControl?: EvolutionControlConfig;
     /** Partial overrides for memory monitoring configuration (defaults applied if not specified) */
     memory?: MemoryConfig;
     /** Partial overrides for worker thread cap configuration (defaults applied if not specified) */
@@ -297,6 +307,7 @@ export type NeatOptionsInput =
     | "rustScorer"
     | "racing"
     | "evaluationArchive"
+    | "evolutionControl"
     | "memory"
     | "workerThreadCap"
     | "mcmc"
@@ -341,6 +352,8 @@ export type NeatOptionsInput =
     racing?: CoerceNumeric<RacingConfig>;
     /** Evaluation archive configuration (Issue #3929). Numeric fields coerced from CLI. */
     evaluationArchive?: CoerceNumeric<EvaluationArchiveConfig>;
+    /** Evolution-control configuration (Issue #3931). Numeric fields coerced from CLI. */
+    evolutionControl?: CoerceNumeric<EvolutionControlConfig>;
     memory?: CoerceNumeric<MemoryConfig>;
     workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
     /** MCMC acceptance configuration (Issue #2199). Numeric fields coerced from CLI. */

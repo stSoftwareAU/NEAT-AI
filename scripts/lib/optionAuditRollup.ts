@@ -422,6 +422,15 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
       "archive of `(design point, true fitness)` pairs `Fitness.calculate` " +
       "appends to; `enabled: false` writes nothing.",
   }),
+  keep("evolutionControl", "roll-up", {
+    interfaces: [
+      "src/config/EvolutionControlConfig.ts::EvolutionControlConfig",
+      "src/config/EvolutionControlConfig.ts::RequiredEvolutionControlConfig",
+    ],
+    note: "Added after the slices by #3931 — the model-management policy " +
+      "(Jin 2011 §4) deciding which creatures earn an exact evaluation; " +
+      '`strategy: "none"` is exact everywhere, as before.',
+  }),
 ];
 
 /** The merged classification table — every option key, one entry each. */

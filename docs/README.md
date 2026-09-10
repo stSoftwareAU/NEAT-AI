@@ -103,6 +103,12 @@ Tuning guides and benchmark research.
   descriptor, fidelity and provenance per record, the retention bound, and the
   identical-descriptor/different-score incidence check. Off by default, and
   never on the creature export.
+- **[EVOLUTION_CONTROL.md](EVOLUTION_CONTROL.md)** — evolution control / model
+  management (Issue #3931): the per-generation policy deciding which creatures
+  earn an exact evaluation, the invariants keeping an approximate score out of
+  the elite band, `previousFittest` and the export, and the false-optimum
+  canary. Off by default (`strategy: "none"`), which is exact evaluation
+  everywhere.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
