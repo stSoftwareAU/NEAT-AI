@@ -241,12 +241,12 @@ Issue #3919:
 
 | Run                     | Exact records | Distinct descriptors | Colliding records | Incidence  | Widest spread |
 | ----------------------- | ------------- | -------------------- | ----------------- | ---------- | ------------- |
-| pop 24, 40 generations  | 558           | 550                  | 4                 | **0.717%** | 0.0612        |
-| pop 32, 120 generations | 2,572         | 2,539                | 11                | **0.428%** | 0.0247        |
+| pop 24, 40 generations  | 533           | 519                  | 4                 | **0.750%** | 0.0573        |
+| pop 32, 120 generations | 2,114         | 2,071                | 7                 | **0.331%** | 0.1172        |
 
 Under 1% of exact evaluations sit on a descriptor another evaluation disagrees
 with, so v1 is not the binding constraint on a surrogate fitted to this archive.
-But where it _is_ blind, it is blind to a lot: the widest spreads are three
+But where it _is_ blind, it is blind to a lot: the widest spreads are four
 orders of magnitude larger than the ~`1e-05` accepted gains on the GRQ lineage,
 so a surrogate must not be trusted to rank two creatures sharing a descriptor.
 Most collisions are structural twins whose weights differ in _arrangement_ but
