@@ -728,6 +728,16 @@ Either gate failing fails the script with exit 1, and the Vibe Coder worker
 reverts the bump. Use `--skip-smoke` only when running the full `./quality.sh`
 immediately afterwards (which exercises the same paths and more).
 
+### Unattended upstream lookup (Issue #3990)
+
+`build.sh` resolves the upstream revision with the first strategy that answers —
+`gh api`, `git ls-remote`, then `curl` against the REST API. Only `gh` needs an
+authenticated session, so a worker running with no interactive login still
+resolves the ref. When every strategy fails, `build.sh` exits with the dedicated
+code `3` and `bump-deps.sh` reports a **skipped** internal bump and continues
+with the external bumps: nothing was written, so there is nothing to revert. Any
+other build failure still exits `1` and still fails the bump.
+
 ## 🦀 Rust Discovery Module
 
 The Rust FFI extension shipped via

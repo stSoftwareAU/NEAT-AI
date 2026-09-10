@@ -18,6 +18,14 @@ VERIFY_ONLY=false
 ALLOW_UNVERIFIED=false
 EXPLICIT_REV=""
 
+# Distinct exit code for "the upstream revision could not be looked up"
+# (Issue #3990). It is not a broken build: the network was unreachable, the
+# API was rate limited, or no credential could read the repo. The pinned rev
+# and the vendored bundle are untouched and still valid, so the automated
+# dependency bump treats it as "nothing to bump" rather than reverting the
+# whole PR's bump. Every genuine failure still exits 1.
+EXIT_UPSTREAM_UNRESOLVED=3
+
 show_help() {
   cat <<'HELP'
 Usage: ./build.sh [OPTIONS]
@@ -25,7 +33,10 @@ Usage: ./build.sh [OPTIONS]
 Sync wasm_activation/pkg with NEAT-AI-core.
 
 Default behaviour (no flags):
-  1. Resolve NEAT-AI-core Develop HEAD via the GitHub API.
+  1. Resolve NEAT-AI-core Develop HEAD via the first strategy that
+     answers: `gh api`, `git ls-remote`, then `curl` against the REST
+     API. Only `gh` needs an authenticated session, so the lookup still
+     works in an unattended environment.
   2. If HEAD == deno.json neatCore.rev and the vendored pkg matches,
      do nothing.
   3. Otherwise download wasm_activation-pkg.tar.gz from the matching
@@ -51,6 +62,21 @@ Options:
                   changing): that always requires the release sidecar,
                   with no override (issue #3515).
   --help, -h      Show this help and exit.
+
+Environment:
+  NEAT_CORE_REV   40-char SHA to pin instead of resolving the ref.
+  NEAT_CORE_GITHUB_TOKEN / GITHUB_TOKEN
+                  Token used by the curl fallbacks. Optional for a
+                  public upstream.
+  NEAT_CORE_REV_LOOKUP_TIMEOUT_SECONDS
+                  Per-strategy cap on the revision lookup (default 30).
+
+Exit codes:
+  0   Success (bundle refreshed, or already current).
+  1   Failure — bad flag, failed verification, or a failed download.
+  3   The upstream revision could not be looked up (offline, rate
+      limited, or no credential). Nothing was changed; callers may
+      treat this as "nothing to bump" rather than a broken build.
 HELP
 }
 
@@ -687,6 +713,107 @@ if [[ "$VERIFY_ONLY" == true ]]; then
 fi
 
 # --- Resolve target rev --------------------------------------------------
+# resolve_upstream_rev — print the 40-char commit SHA that <ref> points at in
+# <repo>, trying each available strategy in turn (Issue #3990).
+#
+# The dependency-bump automation runs this script unattended, with no
+# interactive `gh auth` session: `gh api` needs a token even for a public
+# repository, so on its own it turns a routine bump into a hard failure.
+# `git ls-remote` and the plain REST API over `curl` need no `gh` session, so
+# either can resolve the ref when `gh` cannot. `gh` is still tried first — it
+# is the only strategy that can read a private repository.
+#
+#   $1 = owner/repo
+#   $2 = ref (branch or annotated/lightweight tag)
+#
+# Prints the SHA on stdout and returns 0 on success. Returns 1 with one stderr
+# line per attempted strategy when every strategy failed, so a lookup never
+# fails silently or hands the caller an empty string.
+resolve_upstream_rev() {
+  local repo="$1"
+  local ref="$2"
+  local token="${NEAT_CORE_GITHUB_TOKEN:-${GITHUB_TOKEN:-}}"
+  local lookup_timeout="${NEAT_CORE_REV_LOOKUP_TIMEOUT_SECONDS:-30}"
+  # Bound every network call so an unattended run cannot hang on a stalled
+  # connection. macOS ships coreutils' timeout as `gtimeout`; when neither
+  # exists the lookups still run, just uncapped.
+  local runner=()
+  if command -v gtimeout >/dev/null 2>&1; then
+    runner=(gtimeout "$lookup_timeout")
+  elif command -v timeout >/dev/null 2>&1; then
+    runner=(timeout "$lookup_timeout")
+  fi
+  local notes=()
+  local sha=""
+
+  # 1. gh api — needs an authenticated session, reads private repos.
+  if command -v gh >/dev/null 2>&1; then
+    sha="$(${runner[@]+"${runner[@]}"} gh api \
+      "repos/${repo}/commits/${ref}" --jq .sha 2>/dev/null || true)"
+    if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+      echo "Resolved ${repo}@${ref} via gh api." >&2
+      printf '%s\n' "$sha"
+      return 0
+    fi
+    notes+=("gh api: no SHA returned (unauthenticated session, or ref missing)")
+  else
+    notes+=("gh api: skipped (gh is not on PATH)")
+  fi
+
+  # 2. git ls-remote — no gh session needed; the unattended default.
+  if command -v git >/dev/null 2>&1; then
+    local ls_remote_out=""
+    ls_remote_out="$(GIT_TERMINAL_PROMPT=0 ${runner[@]+"${runner[@]}"} \
+      git ls-remote "https://github.com/${repo}.git" \
+      "refs/heads/${ref}" "refs/tags/${ref}^{}" "refs/tags/${ref}" \
+      2>/dev/null || true)"
+    # Prefer the peeled entry so an annotated tag yields its commit, not the
+    # tag object.
+    sha="$(printf '%s\n' "$ls_remote_out" | awk '$2 ~ /\^\{\}$/ { print $1; exit }')"
+    if [[ -z "$sha" ]]; then
+      sha="$(printf '%s\n' "$ls_remote_out" | awk 'NF { print $1; exit }')"
+    fi
+    if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+      echo "Resolved ${repo}@${ref} via git ls-remote." >&2
+      printf '%s\n' "$sha"
+      return 0
+    fi
+    notes+=("git ls-remote: no matching ref (network unreachable, or ref missing)")
+  else
+    notes+=("git ls-remote: skipped (git is not on PATH)")
+  fi
+
+  # 3. curl against the REST API — last resort; honours a token when one is
+  #    exported, and works unauthenticated for a public repository.
+  if command -v curl >/dev/null 2>&1; then
+    local curl_args=(-sS -f -H "Accept: application/vnd.github+json")
+    if [[ -n "$token" ]]; then
+      curl_args+=(-H "Authorization: Bearer ${token}")
+    fi
+    local body=""
+    body="$(${runner[@]+"${runner[@]}"} curl "${curl_args[@]}" \
+      "https://api.github.com/repos/${repo}/commits/${ref}" 2>/dev/null || true)"
+    sha="$(printf '%s\n' "$body" \
+      | sed -n 's/.*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-f]\{40\}\)".*/\1/p' \
+      | awk 'NR == 1 { print }')"
+    if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+      echo "Resolved ${repo}@${ref} via curl (REST API)." >&2
+      printf '%s\n' "$sha"
+      return 0
+    fi
+    notes+=("curl REST API: no SHA in response (rate limited, offline, or ref missing)")
+  else
+    notes+=("curl REST API: skipped (curl is not on PATH)")
+  fi
+
+  echo "ERROR: Could not resolve commit SHA for ${repo}@${ref}" >&2
+  local note
+  for note in ${notes[@]+"${notes[@]}"}; do
+    echo "  - ${note}" >&2
+  done
+  return 1
+}
+
 TARGET_REV=""
 if [[ -n "$EXPLICIT_REV" ]]; then
   TARGET_REV="$EXPLICIT_REV"
@@ -697,17 +824,12 @@ elif [[ -n "${NEAT_CORE_REV:-}" ]]; then
   fi
   TARGET_REV="$NEAT_CORE_REV"
 else
-  if ! command -v gh >/dev/null 2>&1; then
-    echo "ERROR: gh (GitHub CLI) is required to resolve Develop HEAD." >&2
-    echo "Install gh, set NEAT_CORE_REV explicitly, or pass --rev <SHA>." >&2
-    exit 1
-  fi
   echo "Resolving ${NEAT_CORE_REPO}@${NEAT_CORE_REF} HEAD..."
-  resolved_rev="$(gh api "repos/${NEAT_CORE_REPO}/commits/${NEAT_CORE_REF}" --jq .sha 2>/dev/null || true)"
-  if ! [[ "$resolved_rev" =~ ^[0-9a-f]{40}$ ]]; then
-    echo "ERROR: Could not resolve commit SHA for ${NEAT_CORE_REPO}@${NEAT_CORE_REF}" >&2
-    echo "Ensure 'gh auth status' is authenticated, or pass --rev <SHA>." >&2
-    exit 1
+  resolved_rev=""
+  if ! resolved_rev="$(resolve_upstream_rev "$NEAT_CORE_REPO" "$NEAT_CORE_REF")"; then
+    echo "       Every resolution strategy failed (details above)." >&2
+    echo "       Pass --rev <SHA>, set NEAT_CORE_REV, or restore network access." >&2
+    exit "$EXIT_UPSTREAM_UNRESOLVED"
   fi
   TARGET_REV="$resolved_rev"
 fi
