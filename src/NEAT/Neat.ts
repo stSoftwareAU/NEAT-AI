@@ -32,6 +32,7 @@ import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
 import { EvaluationArchive } from "@archive/EvaluationArchive.ts";
+import { EvolutionControl } from "@neat/EvolutionControl.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
 import { RandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { SpeciesPlateauDetector } from "@neat/SpeciesPlateauDetector.ts";
@@ -179,6 +180,14 @@ export class Neat {
    * reference creature can be set from the evolution loop.
    */
   readonly evaluationArchive: EvaluationArchive | undefined;
+
+  /**
+   * Issue #3931: the run's model-management policy — which creatures earn an
+   * exact evaluation, and when the cheap path has drifted far enough to be
+   * abandoned. Owned by Neat so its canary history and escalation span the
+   * whole run rather than a single generation.
+   */
+  readonly evolutionControl: EvolutionControl;
 
   /** Adaptive fine-tune population tracker (Issue #1323) */
   readonly fineTuneTracker: AdaptiveFineTuneTracker;
@@ -435,6 +444,10 @@ export class Neat {
       ? new EvaluationArchive(this.config.evaluationArchive)
       : undefined;
     this.fitness.setEvaluationArchive(this.evaluationArchive);
+
+    // Issue #3931: constructed always — with `strategy: "none"` it decides
+    // "exact" every generation, which is what the loop already did.
+    this.evolutionControl = new EvolutionControl(this.config.evolutionControl);
 
     this.fineTuneTracker = new AdaptiveFineTuneTracker(
       this.config.fineTunePopulation,

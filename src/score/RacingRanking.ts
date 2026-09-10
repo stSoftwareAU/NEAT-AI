@@ -32,6 +32,10 @@
 
 import { addTag } from "@stsoftware/tags/mod";
 import type { Creature } from "@creature";
+import {
+  markScoreFidelity,
+  partialCorpusFidelity,
+} from "@architecture/ScoreFidelity.ts";
 
 /**
  * Score gap between adjacent ranks in the abandoned band.
@@ -92,6 +96,13 @@ export function rankAbandonedBelowScored(
         "racing",
         `abandoned ${entry.recordsScored}/${entry.corpusRecords}`,
       );
+      // Issue #3931: the fidelity this creature's number was measured at, so
+      // the evolution-control guards can refuse it wherever ground truth is
+      // required rather than relying on the rank band alone.
+      markScoreFidelity(
+        entry.creature,
+        partialCorpusFidelity(entry.recordsScored, entry.corpusRecords),
+      );
     }
     return abandoned.map(() => -Infinity);
   }
@@ -124,6 +135,11 @@ export function rankAbandonedBelowScored(
       entry.creature,
       "racing",
       `abandoned ${entry.recordsScored}/${entry.corpusRecords}`,
+    );
+    // Issue #3931: as above — record the fidelity, not just the rank band.
+    markScoreFidelity(
+      entry.creature,
+      partialCorpusFidelity(entry.recordsScored, entry.corpusRecords),
     );
     assigned.push(score);
   });

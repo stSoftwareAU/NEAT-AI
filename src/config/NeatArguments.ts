@@ -28,6 +28,7 @@ import type { RequiredWasmCacheConfig } from "@config/WasmCacheConfig.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { RequiredRacingConfig } from "@config/RacingConfig.ts";
 import type { RequiredEvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
+import type { RequiredEvolutionControlConfig } from "@config/EvolutionControlConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "@config/WeightRegularisationConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
@@ -818,6 +819,15 @@ export interface NeatArguments {
    * export.
    */
   evaluationArchive: RequiredEvaluationArchiveConfig;
+
+  /**
+   * Resolved evolution-control (model-management) configuration.
+   *
+   * Issue #3931: the per-generation policy that decides which creatures earn
+   * an exact evaluation — Jin (2011) §4. `strategy: "none"` by default, which
+   * is exact evaluation everywhere and identical to every build before it.
+   */
+  evolutionControl: RequiredEvolutionControlConfig;
 
   /**
    * Discovery cache eviction configuration.
