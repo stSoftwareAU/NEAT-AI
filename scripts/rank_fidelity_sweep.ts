@@ -68,6 +68,12 @@ const FULL_RATE = 1;
 const RECORDS_PER_SHARD = 2_000;
 /** Population sizes below this cannot resolve a top-5 agreement. */
 const MIN_TOP_K_POPULATION = 5;
+/**
+ * The `k`s `markdownReport` prints as fixed columns. A sweep that did not
+ * measure them would print `NaN` cells and hand `assessRate` a top-1 that was
+ * never taken, so they are required rather than defaulted.
+ */
+const REPORTED_TOP_K = [1, 3, 5];
 
 /** Where the corpus came from — stamped on every report. */
 export type CorpusProvenance = "production" | "synthetic";
@@ -100,6 +106,10 @@ export interface RateResult {
   readonly stride: number;
   /** Distinct strata measured — capped by the stride, never inflated. */
   readonly phasesMeasured: number;
+  /**
+   * Records in phase 0's stratum. Later phases hold one fewer when the corpus
+   * does not divide by the stride; the per-phase counts are in `phases`.
+   */
   readonly records: number;
   readonly phases: readonly PhaseResult[];
   readonly spearmanRho: Spread;
@@ -249,6 +259,14 @@ function assertPopulation(
       );
     }
   }
+  for (const k of REPORTED_TOP_K) {
+    if (!options.topK.includes(k)) {
+      throw new Error(
+        `top-k must include ${REPORTED_TOP_K.join(", ")} — the report has a ` +
+          `column for each and would otherwise print a figure never measured`,
+      );
+    }
+  }
   const { input, output } = options.corpus[0];
   for (let i = 0; i < options.creatures.length; i++) {
     const creature = options.creatures[i];
@@ -376,7 +394,9 @@ export async function measureRankFidelity(
       ...result,
       verdict: assessRate({
         rate: result.rate,
-        top1: result.topK[1]?.mean ?? Number.NaN,
+        // Present by construction: `assertPopulation` refuses a sweep whose
+        // top-k set omits the ks the verdict and the report are stated over.
+        top1: result.topK[1].mean,
         gapResolution: result.gapResolutionWorst,
         phaseSpreadMax: result.phaseSpread.max,
       }, thresholds),
@@ -428,9 +448,9 @@ export function markdownReport(result: SweepResult): string {
         `${rate.spearmanRho.max.toFixed(4)} | ` +
         `${rate.kendallTau.min.toFixed(4)}–` +
         `${rate.kendallTau.max.toFixed(4)} | ` +
-        `${(rate.topK[1]?.mean ?? Number.NaN).toFixed(3)} | ` +
-        `${(rate.topK[3]?.mean ?? Number.NaN).toFixed(3)} | ` +
-        `${(rate.topK[5]?.mean ?? Number.NaN).toFixed(3)} | ` +
+        `${rate.topK[1].mean.toFixed(3)} | ` +
+        `${rate.topK[3].mean.toFixed(3)} | ` +
+        `${rate.topK[5].mean.toFixed(3)} | ` +
         `${rate.gapResolutionWorst.toExponential(2)} | ${spreadCell} | ` +
         `${rate.msPerPassMean.toFixed(0)} | ${rate.ratioToFull.toFixed(3)} |`,
     );
@@ -511,8 +531,15 @@ export function loadCreatures(
 }
 
 /**
- * Reads up to `limit` records from a corpus directory of `.bin` shards, in
- * sorted shard order — the same order a run streams them in.
+ * Reads exactly `limit` records from a corpus directory of `.bin` shards.
+ *
+ * Shards are read in **lexicographic name order**, which makes the harness
+ * reproducible but is *not* the order a run streams them in:
+ * `readDatasetDirEntriesSync` in `src/architecture/DatasetIO.ts` returns raw
+ * `Deno.readDirSync` order. Record order matters here because a stride draws
+ * its strata from it, so a corpus whose records carry an order that means
+ * something — a time series, say — must be presented to this harness in that
+ * order for the phase columns to describe real strata.
  */
 export function loadCorpus(
   dir: string,
@@ -585,12 +612,25 @@ if (import.meta.main) {
   );
   const inputs = creatures[0].input;
   const outputs = creatures[0].output;
-  const records = numberArg(args, "records", 4_000);
 
   let corpus: DataRecordInterface[];
   let provenance: CorpusProvenance;
   if (corpusDir !== undefined) {
-    corpus = loadCorpus(corpusDir, inputs, outputs, records);
+    // No default: a corpus of hundreds of millions of records with an implied
+    // cap would score a prefix and report it as the full-corpus ground truth.
+    if (stringArg(args, "records") === undefined) {
+      throw new Error(
+        "--records=<n> is required with --corpus: the ground-truth ordering " +
+          "is whatever this harness scores, so how much of the corpus that " +
+          "is has to be stated rather than defaulted",
+      );
+    }
+    corpus = loadCorpus(
+      corpusDir,
+      inputs,
+      outputs,
+      numberArg(args, "records", 0),
+    );
     provenance = "production";
   } else {
     const { createSeededRng, generateTrainingData } = await import(

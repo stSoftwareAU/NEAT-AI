@@ -42,8 +42,15 @@ export function assertFidelityRate(rate: number): void {
 /**
  * The stride a rate cuts the corpus at: rate `0.25` keeps every 4th record.
  *
- * Stride sampling — not a random draw — is what NEAT-AI-Refinery publishes
- * (stSoftwareAU/NEAT-AI-scorer#310), so it is what this harness measures.
+ * Stride-and-phase — not a random draw — is the sampling Issue #3927 puts under
+ * test, matching the scorer's `--sample-rate` / `--sample-phase` semantics
+ * (NEAT-AI-scorer#310). It is deliberately **not** the sampler behind Issue
+ * #3926's published corpora, which keeps each record independently with
+ * probability `rate` (see `assertFitnessCorpusSampleRate` in
+ * `src/architecture/FitnessCorpusProvenance.ts`, which validates the achieved
+ * rate against a binomial band). A stride has *strata*, so its estimator has a
+ * phase to vary; an independent draw does not, and phase sensitivity — a
+ * criterion of this issue — could not be measured against it.
  */
 export function strideForRate(rate: number): number {
   assertFidelityRate(rate);
@@ -231,8 +238,10 @@ export function kendallTau(
 function topKIndices(errors: readonly number[], k: number): number[] {
   return errors
     .map((error, index) => ({ error, index }))
-    // A deterministic tie-break: equal errors keep input order on both sides,
-    // so a tie can never make the two orderings disagree by accident.
+    // A deterministic tie-break so the measurement is reproducible. It breaks
+    // ties the same way on both sides, which biases top-k *towards* agreement
+    // when the sampled score ties; `gapResolution` counts such a tie as a
+    // failure to order, so the pessimistic reading is reported there.
     .sort((a, b) => a.error - b.error || a.index - b.index)
     .slice(0, k)
     .map((entry) => entry.index);

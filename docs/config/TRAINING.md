@@ -245,11 +245,12 @@ opts in. Measured cost per fidelity on the sampler creature is in
 > **A sampled corpus does not rank creatures the way the full corpus does.**
 > Measured over the 46-creature production sampler population (Issue #3927):
 > Spearman ρ stays above 0.95 down to rate 0.05, and every rate is still
-> unusable, because the finest score gap a sampled ordering resolves is
-> **3.74e-3** at rate 0.5 — some 370× coarser than the ~1e-05 improvements the
-> search accepts. High rank correlation is not evidence of a usable fidelity;
-> score-gap resolution is. The table, the caveats, and the harness that
-> reproduces them are in
+> unusable. At rate 0.5 the finest score gap a sampled ordering resolves is
+> **7.4× coarser than the median gap between adjacent creatures** in that very
+> population, and about 160× coarser by rate 0.01. High rank correlation is not
+> evidence of a usable fidelity; score-gap resolution is. The table, the caveats
+> — the run is against a synthetic corpus at the production record shape, not
+> production data — and the harness that reproduces them are in
 > [`docs/evidence/rank-fidelity-3927.md`](../evidence/rank-fidelity-3927.md).
 
 ## 👀 See also

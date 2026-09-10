@@ -133,7 +133,7 @@ Deno.test("rank fidelity sweep - the full corpus is its own ground truth", async
 
 Deno.test("rank fidelity sweep - every sampled rate reaches a verdict against the failure signals", async () => {
   // Margins of ~1e-7 in weight space put the gaps between adjacent creatures
-  // far below the noise a strided sample introduces — the case Issue #3927
+  // far below the noise a sample cut at a stride introduces — the case Issue #3927
   // warns about, where the generation counter races while the search stops
   // improving. Every sampled rate must come back unsafe.
   const { creatures, creatureNames } = population(6, 1e-7);
@@ -266,6 +266,29 @@ Deno.test("rank fidelity sweep - a population too small for top-5 is refused", a
   );
 });
 
+Deno.test("rank fidelity sweep - a top-k set the report cannot fill is refused", async () => {
+  const { creatures, creatureNames } = population(5);
+  await assertRejects(
+    () =>
+      measureRankFidelity({
+        creatures,
+        creatureNames,
+        corpus: corpus(20),
+        corpusProvenance: "synthetic",
+        rates: [1, 0.5],
+        phases: 2,
+        // The report has fixed Top-1/3/5 columns; omitting 3 would print a
+        // figure the sweep never measured.
+        topK: [1, 5],
+        acceptGap: 1e-5,
+        minTop1: 0.9,
+        now: virtualClock(),
+      }),
+    Error,
+    "top-k must include 1, 3, 5",
+  );
+});
+
 Deno.test("rank fidelity sweep - a creature whose shape misses the corpus is refused", async () => {
   const { creatures, creatureNames } = population(5);
   await assertRejects(
@@ -354,11 +377,11 @@ Deno.test("rank fidelity sweep - loadCreatures refuses a population smaller than
   }
 });
 
-Deno.test("rank fidelity sweep - loadCorpus reads shards in order and refuses a short corpus", () => {
+Deno.test("rank fidelity sweep - loadCorpus reads shards in lexicographic order and refuses a short corpus", () => {
   const dir = Deno.makeTempDirSync({ prefix: "rank-fidelity-corpus-" });
   try {
-    // Two shards of two 3→1 records each, deliberately named out of write
-    // order to prove the reader sorts them.
+    // Two shards of two 3→1 records each, deliberately written out of name
+    // order to prove the reader sorts them lexicographically.
     const write = (name: string, start: number) => {
       const values = new Float32Array(2 * (INPUTS + OUTPUTS));
       for (let i = 0; i < values.length; i++) values[i] = start + i;

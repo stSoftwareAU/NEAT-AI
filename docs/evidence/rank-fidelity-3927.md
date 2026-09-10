@@ -39,11 +39,18 @@ deno task rank-fidelity \
 | Cost       | `MSE` (mean squared error), via `Creature.evaluateDir`                                                                                                                              |
 | Host       | 7-core container, Deno 2.x, WASM (WebAssembly) scoring path                                                                                                                         |
 
-A sampled corpus is a **stride** of the full one, matching what the refinery
-publishes: rate `r` keeps every `1/r`-th record, and the **phase** picks which
-stratum. Rate 0.5 therefore has exactly two strata, so it reports two phases
-rather than the four asked for — measuring a stratum twice would report a noise
-figure the estimator does not have.
+A sampled corpus here is a **stride** of the full one: rate `r` keeps every
+`1/r`-th record and the **phase** picks which stratum, matching the scorer's
+`--sample-rate` / `--sample-phase` semantics that Issue #3927 puts under test.
+It is deliberately not the sampler behind Issue #3926's published corpora, which
+keeps each record independently with probability `rate` — an independent draw
+has no strata, so it has no phase to vary and phase sensitivity could not be
+measured against it at all.
+
+Rate 0.5 therefore has exactly two strata and reports two phases rather than the
+four asked for. Measuring a stratum twice would report a noise figure the
+estimator does not have, so the harness caps phases at the stride and says how
+many it took.
 
 ```mermaid
 flowchart LR
@@ -90,10 +97,33 @@ bulk of the population correctly; the search only ever looks at the head of the
 ordering, and it only ever accepts improvements around **1e-05**.
 
 The column that decides it is **score-gap resolution** — the coarsest
-full-corpus gap the sampled score fails to order. Even at rate 0.5, half the
-corpus, it is **3.74e-3**: about **370×** coarser than the improvements the
-search accepts. By rate 0.01 it is 8.01e-2, roughly **8,000×** coarser. There is
-no rate at which the cheap score can see the moves the search is trying to make.
+full-corpus gap the sampled score fails to order. Every gap strictly larger than
+it is ordered correctly, so it is the finest improvement the cheap fidelity can
+be trusted to see. (Issue #3927 words this the other way round, as "the smallest
+gap still ordered correctly". That quantity is not well defined — a small gap
+can come out right by luck — so the harness reports the guarantee instead: the
+threshold above which ordering is reliable.)
+
+**Read it against the same score scale it was measured on.** These MSE figures
+span 1.10–6.37 with a mean of 5.97; the ~1e-05 improvement the production search
+accepts sits on a score distribution with a mean near 0.36. The two are not
+directly comparable, so the table below gives both a same-scale comparison —
+against the margins that actually separate creatures in this very population —
+and a scale-free one, as a fraction of the mean score.
+
+| Rate | Gap resolution | × the median adjacent gap (5.04e-4) | Fraction of the mean score | × the 2.77e-05 relative improvement accepted |
+| ---- | -------------- | ----------------------------------- | -------------------------- | -------------------------------------------- |
+| 0.5  | 3.74e-3        | 7.4×                                | 6.26e-4                    | 23×                                          |
+| 0.25 | 5.35e-3        | 10.6×                               | 8.95e-4                    | 32×                                          |
+| 0.1  | 1.09e-2        | 21.6×                               | 1.83e-3                    | 66×                                          |
+| 0.05 | 4.40e-2        | 87.2×                               | 7.36e-3                    | 266×                                         |
+| 0.01 | 8.01e-2        | 159.0×                              | 1.34e-2                    | 484×                                         |
+
+Both readings agree, and neither is marginal. Even at rate 0.5 the cheap score
+cannot order pairs seven times further apart than the median gap between
+adjacent creatures — and relative to the score scale it is some twenty times
+coarser than the improvements the search accepts. There is no rate at which the
+cheap score can see the moves the search is trying to make.
 
 What that looks like concretely, from the head of the recorded ordering:
 
@@ -133,13 +163,29 @@ magnitude above the 5.04e-4 median gap between adjacent creatures.
   most likely a pessimistic one: the synthetic target is uncorrelated with the
   creatures' outputs, so per-record error variance is higher than a fitted
   model's would be on real data.
+- **It does not test the heavy-tail hypothesis.** Issue #3927's pessimistic case
+  is that rare large-error records dominate the mean, so a sub-sample that
+  misses them estimates a different quantity. The synthetic corpus is drawn
+  independently and identically per record — no heavy tail, no rare large-error
+  records, no temporal structure — so under it a stride's strata are
+  statistically indistinguishable from random subsets, and the phase columns
+  measure plain `1/√n` sampling noise rather than stratum structure. That
+  hypothesis is **untested** and can only be tested on real records.
+- **A corpus whose record order means something must be presented in that
+  order.** A stride draws its strata from record order, so `--corpus` reads
+  shards in lexicographic name order to stay reproducible — which is not the
+  order a run streams them in (`readDatasetDirEntriesSync` returns raw directory
+  order). For a time series, that ordering has to be the real one or the phase
+  columns describe strata that do not exist.
 - **The mechanism does not depend on the corpus, only the magnitude does.** The
   sampling error of a mean over `n` records falls as `1/√n`, so re-running this
-  harness with `--corpus=<production dir>` moves the gap-resolution column but
-  not the shape of the argument. Given how far the column has to move — 370× at
-  rate 0.5 — a change of corpus is very unlikely to reverse the conclusion, but
-  **only that run can settle it**, and this harness is what runs it. That is the
-  one criterion of Issue #3927 this evidence leaves open.
+  harness with `--corpus=<production dir> --records=<n>` moves the
+  gap-resolution column but not the shape of the argument. Given how far the
+  column has to move — a factor of about 23 at rate 0.5, scale-free — a change
+  of corpus would have to alter the per-record error distribution substantially
+  to reverse the conclusion. That is not impossible, which is exactly why **only
+  that run can settle it**; this harness is what runs it, and it is the one
+  criterion of Issue #3927 this evidence leaves open.
 - **Phase spread partly overstates the risk.** All creatures in a pass see the
   same stratum, so much of that movement is common-mode and cancels in the
   ordering. It is the failure signal Issue #3927 asked for and it is reported as
@@ -164,7 +210,13 @@ smaller one silently, and refuses fewer than five creatures outright because
 top-5 agreement cannot be formed. Exactly one of `--corpus=<dir>` (real records)
 and `--synthetic-records=<n>` must be given, and the corpus provenance is
 stamped on the report, so a synthetic table can never be misread as a production
-result.
+result. `--corpus` additionally requires an explicit `--records=<n>`: the
+ground-truth ordering is whatever the harness scores, and a defaulted cap would
+score a prefix of a very large corpus and report it as the full corpus.
+
+**This run used 46 creatures, not the 55 Issue #3927 quotes** — that is all the
+sampler's `samples/` holds today, and `--min-creatures=46` was passed
+deliberately so the shortfall is on the record rather than silently accepted.
 
 ## References
 
