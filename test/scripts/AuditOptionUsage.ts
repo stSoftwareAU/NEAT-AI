@@ -171,10 +171,10 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   // `structuralWeightScale` and `structuralNewbornGraceRounds`, making 111;
   // #3973 then added `skipConnectionRate` and `skipMinRunLength`, making 113;
   // #3974 then added `deepChainSquashBias` and `deepChainMinLength`, making
-  // 115.
+  // 115; #3929 then added `evaluationArchive`, making 116.
   assertEquals(
     topLevel.length,
-    115,
+    116,
     "NeatArguments top-level key count changed",
   );
   assert(

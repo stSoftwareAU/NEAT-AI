@@ -34,6 +34,10 @@ import {
   rankAbandonedBelowScored,
 } from "../score/RacingRanking.ts";
 import type { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
+import {
+  type EvaluationArchive,
+  EXACT_FIDELITY,
+} from "@archive/EvaluationArchive.ts";
 
 /**
  * Evaluates fitness scores for a population of creatures.
@@ -214,6 +218,13 @@ export class Fitness {
    */
   lastRacingSummary: RacingSummary | undefined;
 
+  /**
+   * Issue #3929: the run's evaluation archive, or `undefined` when the archive
+   * is off (the default). Only **exact** scores are recorded — a racing-
+   * abandoned partial score never reaches it.
+   */
+  private evaluationArchive: EvaluationArchive | undefined;
+
   constructor(
     workers: WorkerHandler[],
     growth: number,
@@ -266,6 +277,17 @@ export class Fitness {
     telemetry: MutationOperatorTelemetry | undefined,
   ): void {
     this.mutationTelemetry = telemetry;
+  }
+
+  /**
+   * Issue #3929: attach the run's evaluation archive so every exact score is
+   * kept alongside the design point that earned it, instead of evaporating
+   * when the creature is culled.
+   *
+   * @param archive - The run's archive, or `undefined` to detach.
+   */
+  setEvaluationArchive(archive: EvaluationArchive | undefined): void {
+    this.evaluationArchive = archive;
   }
 
   /**
@@ -506,6 +528,7 @@ export class Fitness {
               }
               addTag(creature, "score", creature.score.toString());
               this.mutationTelemetry?.recordEvaluated(creature, perCreatureMs);
+              this.archiveExactEvaluation(creature, error);
 
               // Mirror the duplicate-fan-out from the per-creature path so
               // population score invariants hold identically in batch mode.
@@ -648,6 +671,7 @@ export class Fitness {
         creature,
         Date.now() - evaluateStartMs,
       );
+      this.archiveExactEvaluation(creature, error);
 
       // Issue #1016: Copy score and tags to duplicate creatures
       fanOutToDuplicates(creature, duplicates);
@@ -705,6 +729,32 @@ export class Fitness {
     this.lastCreaturesBatchScored = batchScoredCount;
     this.lastCreaturesPerCreatureScored = workerScoredCount;
     this.lastScoredCreatureCount = batchScoredCount + workerScoredCount;
+
+    // Issue #3929: one append per generation, after every exact score is in.
+    // A failure here is not swallowed — an archive that silently stopped
+    // writing is worse than a run that stops.
+    await this.evaluationArchive?.flush();
+  }
+
+  /**
+   * Issue #3929: buffer one exact evaluation for the archive.
+   *
+   * Called only where a creature has just taken a **full-corpus** score. A
+   * racing-abandoned creature (Issue #3928) returns before this point, so its
+   * partial number is never recorded as ground truth.
+   *
+   * @param creature - The creature that was scored.
+   * @param error - The raw error the score came from.
+   */
+  private archiveExactEvaluation(creature: Creature, error: number): void {
+    const archive = this.evaluationArchive;
+    if (archive === undefined) return;
+    archive.record(creature, {
+      score: creature.score!,
+      fidelity: EXACT_FIDELITY,
+      error,
+      operators: this.mutationTelemetry?.operatorsFor(creature),
+    });
   }
 }
 

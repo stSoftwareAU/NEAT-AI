@@ -201,6 +201,13 @@ export async function evolve(
     );
   }
 
+  // Issue #3929: stamp this generation's records and measure the descriptor's
+  // genetic-distance slot against the fittest creature the run has so far.
+  neat.evaluationArchive?.beginGeneration(
+    neat.currentGeneration,
+    previousFittest,
+  );
+
   // Issue #2239: Time fitness evaluation phase
   // GRQ #4141: name the in-fitness phase so the hard-deadline watchdog can
   // report a stall *while it is happening* and interrupt it. An

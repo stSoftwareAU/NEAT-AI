@@ -40,6 +40,7 @@
     "pngjs": "npm:pngjs@7.0.0",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.14",
     "@architecture/": "./src/architecture/",
+    "@archive/": "./src/archive/",
     "@blackbox/": "./src/blackbox/",
     "@breed/": "./src/breed/",
     "@cache/": "./src/cache/",

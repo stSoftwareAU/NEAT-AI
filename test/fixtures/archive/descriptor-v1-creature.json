@@ -1,0 +1,94 @@
+{
+  "input": 3,
+  "output": 2,
+  "neurons": [
+    {
+      "type": "hidden",
+      "uuid": "hidden-a",
+      "squash": "TANH",
+      "bias": 0.25
+    },
+    {
+      "type": "hidden",
+      "uuid": "hidden-b",
+      "squash": "ReLU",
+      "bias": -0.5
+    },
+    {
+      "type": "hidden",
+      "uuid": "hidden-c",
+      "squash": "LOGISTIC",
+      "bias": 0.125
+    },
+    {
+      "type": "hidden",
+      "uuid": "hidden-d",
+      "squash": "IDENTITY",
+      "bias": 0
+    },
+    {
+      "type": "output",
+      "uuid": "output-0",
+      "squash": "TANH",
+      "bias": 0.75
+    },
+    {
+      "type": "output",
+      "uuid": "output-1",
+      "squash": "LOGISTIC",
+      "bias": -0.25
+    }
+  ],
+  "synapses": [
+    {
+      "fromUUID": "input-0",
+      "toUUID": "hidden-a",
+      "weight": 0.5
+    },
+    {
+      "fromUUID": "input-1",
+      "toUUID": "hidden-a",
+      "weight": -1.5
+    },
+    {
+      "fromUUID": "input-1",
+      "toUUID": "hidden-b",
+      "weight": 0.25
+    },
+    {
+      "fromUUID": "input-2",
+      "toUUID": "hidden-b",
+      "weight": 2
+    },
+    {
+      "fromUUID": "hidden-a",
+      "toUUID": "hidden-c",
+      "weight": -0.75
+    },
+    {
+      "fromUUID": "hidden-b",
+      "toUUID": "hidden-c",
+      "weight": 0.125
+    },
+    {
+      "fromUUID": "hidden-c",
+      "toUUID": "hidden-d",
+      "weight": 1.25
+    },
+    {
+      "fromUUID": "hidden-d",
+      "toUUID": "output-0",
+      "weight": -0.5
+    },
+    {
+      "fromUUID": "hidden-c",
+      "toUUID": "output-1",
+      "weight": 0.875
+    },
+    {
+      "fromUUID": "input-0",
+      "toUUID": "output-1",
+      "weight": 0.0625
+    }
+  ]
+}

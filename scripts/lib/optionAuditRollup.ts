@@ -413,6 +413,15 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
     note: "Added after the slices by #3974 — run length at which " +
       "`deepChainSquashBias` starts applying.",
   }),
+  keep("evaluationArchive", "roll-up", {
+    interfaces: [
+      "src/config/EvaluationArchiveConfig.ts::EvaluationArchiveConfig",
+      "src/config/EvaluationArchiveConfig.ts::RequiredEvaluationArchiveConfig",
+    ],
+    note: "Added after the slices by #3929 — the off-by-default append-only " +
+      "archive of `(design point, true fitness)` pairs `Fitness.calculate` " +
+      "appends to; `enabled: false` writes nothing.",
+  }),
 ];
 
 /** The merged classification table — every option key, one entry each. */

@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+import { recordLineage } from "@archive/CreatureLineage.ts";
 import type { Creature } from "../../mod.ts";
 import { Offspring } from "@architecture/Offspring.ts";
 import { discover } from "@blackbox/Discover.ts";
@@ -179,6 +180,12 @@ export class Breed {
     if (child && !child.memetic) {
       discover(mum, child);
     }
+
+    // Issue #3929: off-creature lineage for evaluation-archive provenance. This
+    // is the de-duplicator's breeding path, which runs every generation — an
+    // offspring bred here would otherwise be archived with no parents at all,
+    // indistinguishable from an elite or a random immigrant.
+    if (child) recordLineage(child, mum, dad);
 
     return child;
   }

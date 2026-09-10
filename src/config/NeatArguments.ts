@@ -27,6 +27,7 @@ import type { RequiredMemoryConfig } from "@config/MemoryConfig.ts";
 import type { RequiredWasmCacheConfig } from "@config/WasmCacheConfig.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { RequiredRacingConfig } from "@config/RacingConfig.ts";
+import type { RequiredEvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "@config/WeightRegularisationConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
@@ -806,6 +807,17 @@ export interface NeatArguments {
    * whole corpus. Off by default; survivors keep an exact full-corpus score.
    */
   racing: RequiredRacingConfig;
+
+  /**
+   * Resolved evaluation-archive configuration.
+   *
+   * Issue #3929: when enabled, every exact fitness evaluation is appended to an
+   * on-disk archive as a `(descriptor, score)` pair — the training set every
+   * surrogate in Jin (2011) needs to exist before it can be fitted. Off by
+   * default; the archive is run infrastructure and never rides the creature
+   * export.
+   */
+  evaluationArchive: RequiredEvaluationArchiveConfig;
 
   /**
    * Discovery cache eviction configuration.

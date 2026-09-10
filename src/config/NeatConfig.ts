@@ -75,6 +75,10 @@ import {
   type RacingConfig,
   resolveRacingConfig,
 } from "@config/RacingConfig.ts";
+import {
+  type EvaluationArchiveConfig,
+  resolveEvaluationArchiveConfig,
+} from "@config/EvaluationArchiveConfig.ts";
 import { resolveRustScorerConfig } from "../score/RustScorerBridge.ts";
 
 // Automatic Discovery worker-memory envelope → workerThreadCap wiring.
@@ -754,6 +758,11 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // Issue #3928: racing is off unless the caller asks for it; out-of-range
     // knobs are rejected here rather than clamped.
     racing: resolveRacingConfig(opts.racing as RacingConfig | undefined),
+    // Issue #3929: the evaluation archive is off unless the caller asks for it;
+    // an invalid retention bound is rejected rather than clamped.
+    evaluationArchive: resolveEvaluationArchiveConfig(
+      opts.evaluationArchive as EvaluationArchiveConfig | undefined,
+    ),
     // Issue #3565: seed the analysis memory budget from the Discovery runner's
     // exported value when the caller did not set it explicitly, so the Rust-side
     // OOM brake is live in production instead of dormant.

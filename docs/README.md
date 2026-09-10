@@ -98,6 +98,11 @@ Tuning guides and benchmark research.
   #3928): abandon a creature mid-corpus once it cannot catch the leader, with a
   Hoeffding bound, a corpus-fraction floor, and elites exempt. Off by default;
   survivors keep an exact full-corpus score.
+- **[EVALUATION_ARCHIVE.md](EVALUATION_ARCHIVE.md)** — the append-only archive
+  of exact `(descriptor, score)` evaluations (Issue #3929): the versioned
+  descriptor, fidelity and provenance per record, the retention bound, and the
+  identical-descriptor/different-score incidence check. Off by default, and
+  never on the creature export.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
