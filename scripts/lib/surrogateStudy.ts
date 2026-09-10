@@ -116,7 +116,15 @@ export function lineageGroups(
   const parent = new Map<string, string>();
   const find = (uuid: string): string => {
     let root = uuid;
-    while (parent.get(root) !== root) root = parent.get(root) ?? root;
+    for (let next = parent.get(root); next !== root; next = parent.get(root)) {
+      if (next === undefined) {
+        // Every node reachable here was added before any union ran, so an
+        // absent link means the index is corrupt. Walking on would spin
+        // forever instead of saying so.
+        throw new Error(`lineage index has no entry for ${root}`);
+      }
+      root = next;
+    }
     let walk = uuid;
     while (parent.get(walk) !== root) {
       const next = parent.get(walk) ?? root;
