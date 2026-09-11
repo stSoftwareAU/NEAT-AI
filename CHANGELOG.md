@@ -49,6 +49,27 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3933:** The surrogate uncertainty guard. A surrogate does not merely
+  make mistakes, it makes _consistent_ ones, and an evolutionary algorithm finds
+  and exploits them — Jin (2011) §4–§5's **false optimum**, which looks like a
+  healthy fitness trace because the trace is drawn from the model. The
+  `"surrogate"` screen now carries the four things that make that visible: every
+  prediction arrives with a **mandatory** uncertainty or is a **refusal** (there
+  is no nullable path); exact evaluations are allocated by an acquisition rule —
+  expected improvement or a confidence bound — with an **enforced and asserted
+  floor** on the share spent where the model is least sure, instead of by
+  predicted rank; a candidate whose descriptor falls outside the region the
+  evaluation archive covers is refused a prediction and routed to an exact
+  evaluation; and a scale-free **signed-bias** monitor disables the surrogate
+  path for the rest of the run when the residuals stop being symmetric. On by
+  default wherever the screen runs (`preSelection.uncertainty`), and
+  [`docs/SURROGATE_UNCERTAINTY.md`](./docs/SURROGATE_UNCERTAINTY.md) states that
+  the surrogate path must not run in production without it. Measured over 120
+  generations and 3 seeds
+  ([`docs/evidence/surrogate-uncertainty-3933.md`](./docs/evidence/surrogate-uncertainty-3933.md)):
+  spending a quarter of the exact evaluations on uncertainty did not cost the
+  endpoint on that objective.
+
 - **Issue #3974:** Depth-aware squash bias. `ModSquash` can now down-weight
   activations that block the gradient over a region of their input space when
   the neuron it is re-squashing sits inside a long single-file run, where a zero
