@@ -758,6 +758,11 @@
     "strided",
     "Sendhoff",
     "Olhofer",
-    "unawaited"
+    "unawaited",
+    "Rastrigin",
+    "Rosenbrock",
+    "Ackley",
+    "argmax",
+    "multimodal"
   ]
 }

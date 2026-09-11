@@ -236,5 +236,9 @@ way, is in
 - [EVALUATION_ARCHIVE.md](EVALUATION_ARCHIVE.md) — the durable record of the
   same exact `(descriptor, score)` pairs the coverage region is drawn from
   (Issue #3929).
+- [CHEAP_PROBLEM_BENCHMARK.md](CHEAP_PROBLEM_BENCHMARK.md) — the cheap-problem
+  harness that fires this monitor deliberately, on a lattice whose optimum is
+  known, and the control regime where it must stay quiet (Issue #3935). Its
+  results say nothing about GRQ creature scores.
 - [comparison/REFERENCES.md](comparison/REFERENCES.md) — Jin (2011); Jones,
   Schonlau & Welch (1998).

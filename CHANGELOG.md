@@ -49,6 +49,28 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3935:** A cheap-problem benchmark harness for the surrogate
+  techniques of the #3919 sweep (`deno task bench:cheap-problem`). Jin (2011) §6
+  grades surrogate techniques on analytic test functions because the "expensive"
+  objective can be called for **every** point in the design space; nothing in
+  the fleet had that test bed. The harness enumerates a small lattice
+  exhaustively and reports four things the production corpus cannot answer:
+  surrogate accuracy against complete ground truth (including where the _true_
+  optimum sits in the model's ordering), multi-fidelity rank agreement over a
+  record stride, a five-regime false-optimum study, and the acquisition path end
+  to end. The false-optimum study is the one Issue #3933 needed: varying
+  extrapolation and exploitation one at a time, **exploiting a fully covered
+  model fires the drift monitor in 7 of 12 cases and the uniform control fires
+  in 0 of 12** — the monitor has now been seen to fire where it should, and not
+  where it should not. Alongside it, `test/surrogate/CheapProblemInvariants.ts`
+  asserts the three GRQ-protecting safety properties in CI, where a 21 GiB
+  corpus cannot go: an approximate score never reaching `previousFittest`, a
+  screened-out creature never being exported, and a disabled policy producing
+  bit-identical scores. No `src/` behaviour changes and nothing is added to the
+  published package. Results are explicitly **not** transferable to production
+  creature scores, and every generated report says so at the top and the bottom.
+  See [`docs/CHEAP_PROBLEM_BENCHMARK.md`](./docs/CHEAP_PROBLEM_BENCHMARK.md).
+
 - **Issue #3933:** The surrogate uncertainty guard. A surrogate does not merely
   make mistakes, it makes _consistent_ ones, and an evolutionary algorithm finds
   and exploits them — Jin (2011) §4–§5's **false optimum**, which looks like a
