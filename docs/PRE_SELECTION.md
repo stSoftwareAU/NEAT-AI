@@ -122,7 +122,10 @@ control that keeps the same surplus entirely at random — and reports the
 endpoint at equal generations **and** at equal record budget, the diversity of
 each arm, and the screen percentile of every creature that became an elite. The
 measured result, including what it does not say, is in
-[`docs/evidence/pre-selection-3932.md`](evidence/pre-selection-3932.md).
+[`docs/evidence/pre-selection-3932.md`](evidence/pre-selection-3932.md). In
+short: at equal record budget every over-generated arm was a **regression**, and
+both screens cut mean genetic distance by a third or more while a keep-at-random
+control held it. That is why the stage ships off.
 
 Read it this way:
 

@@ -161,6 +161,18 @@ if (import.meta.main) {
     perSeed.push(row);
   }
 
+  /**
+   * The four tables the report prints, as data.
+   *
+   * Written into the artefact so the evidence write-up's numbers can be
+   * re-derived from it — the per-generation traces in the artefact are a
+   * sample, and averaging those would give a different answer from the one the
+   * report states.
+   */
+  const summary: Record<string, unknown>[] = arms.map((arm) => ({
+    arm: arm.arm,
+  }));
+
   console.info(
     "\nEqual generations — mean final exact score across seeds, higher is better:",
   );
@@ -170,6 +182,12 @@ if (import.meta.main) {
       row[armIndex].finalScore - row[0].finalScore
     );
     const wins = deltas.filter((delta) => delta > 0).length;
+    summary[armIndex].equalGenerations = {
+      meanFinalScore: mean(finals),
+      meanDeltaVsControl: mean(deltas),
+      seedsBetter: wins,
+      seeds: perSeed.length,
+    };
     console.info(
       `  ${arm.arm.padEnd(12)} ${mean(finals).toFixed(6)}  vs control mean ` +
         `${signed(mean(deltas))}  better on ${wins}/${perSeed.length} seeds`,
@@ -191,6 +209,12 @@ if (import.meta.main) {
       deltas.push(armScore - controlScore);
     });
     const wins = deltas.filter((delta) => delta > 0).length;
+    summary[armIndex].equalRecordBudget = {
+      meanScoreAtBudget: mean(atBudget),
+      meanDeltaVsControl: mean(deltas),
+      seedsBetter: wins,
+      seeds: deltas.length,
+    };
     console.info(
       `  ${arm.arm.padEnd(12)} ${mean(atBudget).toFixed(6)}  vs control mean ` +
         `${signed(mean(deltas))}  better on ${wins}/${deltas.length} seeds`,
@@ -212,6 +236,12 @@ if (import.meta.main) {
     const controlDistance = mean(
       perSeed.map((row) => traceMean(row[0], "meanGeneticDistance")),
     );
+    summary[armIndex].diversity = {
+      meanSpeciesCount: species,
+      meanSpeciesCountDelta: species - controlSpecies,
+      meanGeneticDistance: distance,
+      meanGeneticDistanceDelta: distance - controlDistance,
+    };
     console.info(
       `  ${arm.arm.padEnd(12)} species ${species.toFixed(2)} (${
         signed(species - controlSpecies)
@@ -225,6 +255,7 @@ if (import.meta.main) {
   arms.forEach((arm, armIndex) => {
     const ranks = perSeed.flatMap((row) => row[armIndex].eliteScreenRanks);
     if (ranks.length === 0) {
+      summary[armIndex].eliteScreenRanks = { elites: 0 };
       console.info(`  ${arm.arm.padEnd(12)} no screened elites`);
       return;
     }
@@ -232,12 +263,33 @@ if (import.meta.main) {
       rank.rank / Math.max(1, rank.of - 1)
     );
     const random = ranks.filter((rank) => rank.reason === "random").length;
+    summary[armIndex].eliteScreenRanks = {
+      elites: ranks.length,
+      meanPercentile: mean(percentiles),
+      keptAtRandom: random,
+    };
     console.info(
       `  ${
         arm.arm.padEnd(12)
       } ${ranks.length} elites, mean screen percentile ` +
         `${mean(percentiles).toFixed(3)} (0 = the screen's top pick, 1 = its ` +
         `worst), ${random} kept by the uniform draw`,
+    );
+  });
+
+  console.info("\nScreening cost, milliseconds per generation:");
+  arms.forEach((arm, armIndex) => {
+    const costs = perSeed.flatMap((row) =>
+      row[armIndex].generations.map((generation) => generation.screenMs)
+    );
+    summary[armIndex].screenMs = {
+      mean: mean(costs),
+      max: Math.max(...costs),
+    };
+    console.info(
+      `  ${arm.arm.padEnd(12)} mean ${mean(costs).toFixed(2)}  max ${
+        Math.max(...costs)
+      }`,
     );
   });
 
@@ -250,7 +302,9 @@ if (import.meta.main) {
       row.map(({ eliteScreenRanks, generations, ...rest }) => ({
         ...rest,
         // Every fifth generation, plus the ends: the trend is what a reader
-        // needs, and ten seeds of every row is 400 KB nobody opens.
+        // needs, and ten seeds of every row is 400 KB nobody opens. The
+        // report's own numbers are in `summary` — averaging this sample would
+        // give a different answer from the one the report states.
         generations: generations.filter((generation, index) =>
           index === 0 || index === generations.length - 1 ||
           generation.generation % 5 === 0
@@ -271,7 +325,7 @@ if (import.meta.main) {
     await Deno.writeTextFile(
       jsonPath,
       JSON.stringify(
-        { settings, ratio, replicates, results: trimmed },
+        { settings, ratio, replicates, summary, results: trimmed },
         null,
         2,
       ),
