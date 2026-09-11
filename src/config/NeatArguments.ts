@@ -29,6 +29,7 @@ import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
 import type { RequiredRacingConfig } from "@config/RacingConfig.ts";
 import type { RequiredEvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
 import type { RequiredEvolutionControlConfig } from "@config/EvolutionControlConfig.ts";
+import type { RequiredPreSelectionConfig } from "@config/PreSelectionConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "@config/WeightRegularisationConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
@@ -828,6 +829,16 @@ export interface NeatArguments {
    * is exact evaluation everywhere and identical to every build before it.
    */
   evolutionControl: RequiredEvolutionControlConfig;
+
+  /**
+   * Resolved offspring pre-selection configuration.
+   *
+   * Issue #3932: how many offspring are bred per population slot, and which
+   * cheap screen cuts the surplus back before anyone pays for a true
+   * evaluation — Jin (2011) §4. `ratio: 1` by default, which breeds exactly
+   * what the budget calls for and is identical to every build before it.
+   */
+  preSelection: RequiredPreSelectionConfig;
 
   /**
    * Discovery cache eviction configuration.

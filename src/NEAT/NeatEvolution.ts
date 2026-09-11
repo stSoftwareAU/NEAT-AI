@@ -253,6 +253,11 @@ export async function evolve(
   );
   if (unhonoured) getLogger().warn(unhonoured);
 
+  // Issue #3932: a screen that learns from exact scores is taught here, on the
+  // only scores in the run that are ground truth. A screened-out creature
+  // never reaches this point, so nothing the screen rejected can teach it.
+  neat.preSelection.observe(neat.population);
+
   // Issue #2457: Commit any squash-mutation outcomes captured last generation
   // now that the freshly evaluated fitness is available. Each creature is
   // a no-op unless it is carrying a pending entry recorded by ModSquash.
@@ -382,6 +387,16 @@ export async function evolve(
     if (previousFittest) {
       neat.evolutionControl.assertExact(previousFittest, "previousFittest");
     }
+  }
+
+  // Issue #3932: the number that decides whether the screen is worth having —
+  // where the screen ranked the creatures that went on to become elites. A
+  // screen whose elites come from the bottom of its own ordering is
+  // anti-correlated with what matters, and this is where that shows up.
+  if (neat.preSelection.active) {
+    const eliteRanks = neat.preSelection.recordElites(elitists);
+    const eliteRankLine = neat.preSelection.describeEliteRanks(eliteRanks);
+    if (eliteRankLine) getLogger().info(eliteRankLine);
   }
 
   let tmpFittest = elitists[0];
@@ -723,10 +738,14 @@ export async function evolve(
   // breeding quotas in proportion to summed adjusted fitness. The
   // species_adjusted statistics computed earlier this generation are
   // the inputs.
-  let speciesQuotas = neat.config.fitnessSharing.enabled && newPopSize > 0
+  // Issue #3932: pre-selection asks the breeder for a surplus so the screen
+  // has something to reject. With the stage off — or a screen that cannot rank
+  // yet — this is `newPopSize`, exactly what the budget calls for.
+  const breedingTarget = neat.preSelection.offspringTarget(newPopSize);
+  let speciesQuotas = neat.config.fitnessSharing.enabled && breedingTarget > 0
     ? allocateBreedingQuotas(
       genus,
-      newPopSize,
+      breedingTarget,
       neat.config.fitnessSharing.minSpeciesSlots,
     )
     : undefined;
@@ -743,7 +762,7 @@ export async function evolve(
     );
   }
   const rawBreedingPromise = parallelBreeding.breedBatch(
-    newPopSize,
+    breedingTarget,
     speciesQuotas,
   );
   const breedingPromise = rawBreedingPromise.then((result) => {
@@ -848,6 +867,10 @@ export async function evolve(
   // Issue #2314: Await breeding results now that all overlapped main-thread
   // work is complete.
   const offspringBatch = await breedingPromise;
+  // Issue #3932: where the bred slice starts, so pre-selection screens the
+  // offspring and nothing else. The creative-thinking clone ahead of it is
+  // derived from an elite and is never a screening candidate.
+  const bredSliceStart = newPopulation.length;
   // Issue #2897: Stack-safe in-place append. Spreading an unbounded
   // offspringBatch into push() arguments throws RangeError once the batch
   // exceeds V8's argument/stack limit; appendAll uses an indexed loop instead.
@@ -874,6 +897,22 @@ export async function evolve(
   );
   mutator.mutate(newPopulation);
   const mutationMs = Date.now() - mutationStartMs;
+
+  // Issue #3932: screen the surplus down to the population budget, after
+  // mutation so the screen judges the creature fitness will actually be asked
+  // to evaluate. A screened-out creature is dropped here and never scored, so
+  // it reaches neither the archive, nor species statistics, nor an export.
+  if (neat.preSelection.active) {
+    const bred = newPopulation.slice(bredSliceStart);
+    const outcome = await neat.preSelection.select(
+      bred,
+      newPopSize,
+      neat.currentGeneration,
+    );
+    newPopulation.length = bredSliceStart;
+    appendAll(newPopulation, outcome.survivors);
+    getLogger().info(neat.preSelection.describe(outcome.summary));
+  }
   // Issue #2312: Snapshot after mutation — main thread only
   const mutationUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 

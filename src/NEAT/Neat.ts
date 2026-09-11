@@ -33,6 +33,8 @@ import { MCMCState } from "@neat/MCMCState.ts";
 import { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
 import { EvaluationArchive } from "@archive/EvaluationArchive.ts";
 import { EvolutionControl } from "@neat/EvolutionControl.ts";
+import { PreSelection } from "@neat/PreSelection.ts";
+import { createOffspringScreen } from "@neat/OffspringScreen.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
 import { RandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { SpeciesPlateauDetector } from "@neat/SpeciesPlateauDetector.ts";
@@ -188,6 +190,14 @@ export class Neat {
    * whole run rather than a single generation.
    */
   readonly evolutionControl: EvolutionControl;
+
+  /**
+   * Issue #3932: the run's offspring pre-selection stage — how large a surplus
+   * the breeder is asked for, and which cheap screen cuts it back before
+   * anyone pays for a true evaluation. Owned by Neat so a screen that learns
+   * from exact scores keeps what it learnt across generations.
+   */
+  readonly preSelection: PreSelection;
 
   /** Adaptive fine-tune population tracker (Issue #1323) */
   readonly fineTuneTracker: AdaptiveFineTuneTracker;
@@ -448,6 +458,17 @@ export class Neat {
     // Issue #3931: constructed always — with `strategy: "none"` it decides
     // "exact" every generation, which is what the loop already did.
     this.evolutionControl = new EvolutionControl(this.config.evolutionControl);
+
+    // Issue #3932: constructed always — with `ratio: 1` it asks the breeder
+    // for exactly the offspring the population budget calls for and screens
+    // none of them, which is what the loop already did. `screen: "sampled"`
+    // throws here: the evolution loop has no cheap corpus evaluator to call
+    // (Issue #3926 publishes the sampled corpus through the data pipeline), and
+    // discarding offspring on a fabricated number is worse than refusing.
+    this.preSelection = new PreSelection(
+      this.config.preSelection,
+      createOffspringScreen(this.config.preSelection),
+    );
 
     this.fineTuneTracker = new AdaptiveFineTuneTracker(
       this.config.fineTunePopulation,
