@@ -15,9 +15,13 @@
  *    metrics of Issue #3927 against a complete ordering.
  * 3. {@link runFalseOptimumScenario} — drive the drift monitor of Issue #3933
  *    with residuals produced by a real fitted model on a problem whose
- *    optimum is known, under two selection regimes. Exploiting the model
- *    produces one-directional residuals and the monitor fires; sampling
- *    uniformly from the same model produces symmetric ones and it does not.
+ *    optimum is known. Two knobs vary independently, so the report can say
+ *    which one the monitor is responding to: how far the model **extrapolates**
+ *    (the locality of the window it was fitted in) and whether the search
+ *    **exploits** it. A third knob decides whether the coverage refusal of
+ *    Issue #3933 is honoured, which is what production does — a refused
+ *    candidate goes straight to exact evaluation and its prediction is never
+ *    shown to the monitor.
  *
  * **None of it transfers to GRQ creature scores.** A surrogate that ranks
  * lattice points well says nothing about ranking 5,317-neuron forward-only
@@ -35,13 +39,13 @@ import type { DriftReading } from "@surrogate/DriftMonitor.ts";
 import { CoverageRegion } from "@surrogate/CoverageRegion.ts";
 import {
   assertVerdict,
-  isPrediction,
   type SurrogateVerdict,
 } from "@surrogate/UncertainSurrogate.ts";
 import {
   gapResolution,
   kendallTau,
   spearmanRho,
+  stridePhaseIndices,
   topKAgreement,
 } from "../../scripts/lib/rankFidelity.ts";
 import {
@@ -71,7 +75,14 @@ export const NON_TRANSFERABLE_NOTICE =
   "by Issues #3927 and #3930, against the real corpus, and cannot be answered " +
   "here.";
 
-/** A family looked up by name, so a study names the model it ran. */
+/**
+ * A family looked up by name, so a study names the model it ran.
+ *
+ * @param name - The family name, as `SURROGATE_FAMILIES` spells it.
+ * @returns The family.
+ * @throws {Error} When no family carries that name. A study that silently fell
+ *   back to a default would report numbers for a model nobody chose.
+ */
 export function surrogateFamily(name: string): SurrogateFamily {
   const family = SURROGATE_FAMILIES.find((f) => f.name === name);
   if (family === undefined) {
@@ -197,7 +208,16 @@ export interface SurrogateAccuracy {
   readonly falseOptimumRegret: number;
 }
 
-/** Fit a family to a sample of the lattice and grade it against all of it. */
+/**
+ * Fit a family to a sample of the lattice and grade it against **all** of it.
+ *
+ * @param problem - The cheap problem, for the report's name.
+ * @param truth - Its enumerated ground truth.
+ * @param options - Family, training size, head size and seed.
+ * @returns The accuracy reading.
+ * @throws {Error} When the family is unknown, the training draw is larger than
+ *   the lattice, or the model returns a non-finite prediction.
+ */
 export function measureSurrogateAccuracy(
   problem: CheapProblem,
   truth: GroundTruth,
@@ -281,7 +301,17 @@ export interface FidelityMeasurement {
   readonly trueOptimumRank: number;
 }
 
-/** Grade one cheap fidelity against the exact ordering of the whole lattice. */
+/**
+ * Grade one cheap fidelity against the exact ordering of the whole lattice.
+ *
+ * @param problem - The cheap problem.
+ * @param truth - Its enumerated ground truth.
+ * @param rate - Fraction of the records the cheap score averages over.
+ * @param phase - Which stratum of the stride to take. Default `0`.
+ * @param topK - Head of the ordering the agreement is taken over. Default `10`.
+ * @returns The measurement.
+ * @throws {Error} As {@link stridePhaseIndices} for an invalid rate or phase.
+ */
 export function measureFidelity(
   problem: CheapProblem,
   truth: GroundTruth,
@@ -289,16 +319,20 @@ export function measureFidelity(
   phase = 0,
   topK = 10,
 ): FidelityMeasurement {
+  // The records the cheap score actually averaged over, read from the same
+  // helper `approximateScores` uses rather than re-derived: a second copy of
+  // the stride arithmetic is a second thing to get wrong.
+  const records = stridePhaseIndices(problem.records.length, rate, phase)
+    .length;
   const sampled = approximateScores(problem, truth.points, rate, phase);
   const order = sampled
     .map((value, index) => ({ value, index }))
     .sort((a, b) => b.value - a.value || a.index - b.index);
-  const stride = Math.max(1, Math.round(1 / rate));
   return {
     problem: problem.name,
     rate,
     phase,
-    records: Math.ceil((problem.records.length - phase) / stride),
+    records,
     spearmanRho: spearmanRho(truth.scores, sampled),
     kendallTau: kendallTau(truth.scores, sampled),
     topKAgreement: topKAgreement(truth.scores, sampled, topK),
@@ -307,6 +341,18 @@ export function measureFidelity(
     trueOptimumRank: order.findIndex((e) => e.index === truth.optimumIndex),
   };
 }
+
+/**
+ * What the scenario does with a candidate the coverage region refuses.
+ *
+ * `"honour"` is what production does: {@link ../../src/NEAT/PreSelection.ts}
+ * records a prediction only for a candidate the model actually predicted, so a
+ * refused candidate goes straight to exact evaluation and its (absent)
+ * prediction never reaches the drift monitor. `"ignore"` shows the monitor
+ * every residual, which is how a model that is extrapolating everywhere can be
+ * characterised at all.
+ */
+export type CoveragePolicy = "ignore" | "honour";
 
 /** How the candidates of one generation are chosen. */
 export type SelectionRegime =
@@ -337,6 +383,11 @@ export interface FalseOptimumOptions {
   readonly generations?: number;
   /** How candidates are chosen. Default `"exploit"`. */
   readonly selection?: SelectionRegime;
+  /**
+   * What to do with a candidate the coverage region refuses. Default
+   * `"ignore"`; `"honour"` is the production path.
+   */
+  readonly coveragePolicy?: CoveragePolicy;
   /** Guard configuration. Defaults to the shipped guard. */
   readonly config?: RequiredSurrogateUncertaintyConfig;
   /** Seed for the training draw and the uniform control. Default `3935`. */
@@ -348,6 +399,10 @@ export interface FalseOptimumScenario {
   readonly problem: string;
   readonly family: string;
   readonly selection: SelectionRegime;
+  /** Fraction of each dimension the model was fitted in. */
+  readonly trainingLocality: number;
+  /** What the scenario did with a refused candidate. */
+  readonly coveragePolicy: CoveragePolicy;
   readonly generations: number;
   readonly candidatesPerGeneration: number;
   /** One reading per generation, in order. */
@@ -386,6 +441,12 @@ export interface FalseOptimumScenario {
    * and the monitor catches the bias when something extrapolates anyway.
    */
   readonly coverageRefusals: number;
+  /**
+   * Residuals the monitor was actually shown. Equal to every candidate under
+   * `"ignore"`, and only the covered ones under `"honour"` — which is why a
+   * run can refuse everything and leave the monitor with nothing to read.
+   */
+  readonly observedResiduals: number;
   /** The guard's own run line, for the report. */
   readonly line: string;
 }
@@ -393,11 +454,22 @@ export interface FalseOptimumScenario {
 /**
  * Drive the drift monitor with residuals from a real fitted model.
  *
- * Nothing is fabricated: the model is fitted to a sample of the lattice, the
- * residuals are its predictions against the exact lattice scores, and the two
- * regimes differ **only** in which candidates the generation evaluates. The
- * point of the pair is that they share a model and therefore an absolute
- * error — what changes is whether the search exploits it.
+ * Nothing is fabricated: the model is fitted to a sample of the lattice and
+ * the residuals are its own predictions against the exact lattice scores.
+ *
+ * Two knobs move independently, and a report that varies both at once cannot
+ * say which one the monitor responded to:
+ *
+ * - `trainingLocality` decides how far the model **extrapolates**. Below `1`
+ *   it is fitted in a corner of the design space — a converged population —
+ *   and everything outside that corner is an extrapolation.
+ * - `selection` decides whether the search **exploits** the model. `"exploit"`
+ *   walks the model's own ordering from the top, which is what an evolutionary
+ *   algorithm converging on the model's optimum does; `"uniform"` draws from
+ *   the same pool without regard to what the model says.
+ *
+ * Hold one fixed and vary the other to attribute a firing to a cause. See
+ * `docs/CHEAP_PROBLEM_BENCHMARK.md` for the readings this produces.
  *
  * @param problem - The cheap problem.
  * @param truth - Its enumerated ground truth.
@@ -416,6 +488,8 @@ export function runFalseOptimumScenario(
   const perGeneration = options.candidatesPerGeneration ?? 16;
   const generations = options.generations ?? 8;
   const selection = options.selection ?? "exploit";
+  const coveragePolicy = options.coveragePolicy ?? "ignore";
+  const locality = options.trainingLocality ?? 0.35;
   const config = options.config ?? DEFAULT_SURROGATE_UNCERTAINTY_CONFIG;
   const seed = options.seed ?? 3935;
   if (!Number.isInteger(perGeneration) || perGeneration < 1) {
@@ -426,14 +500,10 @@ export function runFalseOptimumScenario(
   if (!Number.isInteger(generations) || generations < 1) {
     throw new Error(`generations must be an integer >= 1, got ${generations}`);
   }
-  const window = localIndices(
-    problem,
-    truth.points,
-    options.trainingLocality ?? 0.35,
-  );
+  const window = localIndices(problem, truth.points, locality);
   if (trainingSize > window.length) {
     throw new Error(
-      `a training locality of ${options.trainingLocality ?? 0.35} leaves ` +
+      `a training locality of ${locality} leaves ` +
         `${window.length} lattice point(s) of ${problem.name}, fewer than ` +
         `the ${trainingSize} the model is to be fitted to: widen the ` +
         `locality or shrink the training set rather than fitting to a window ` +
@@ -499,15 +569,21 @@ export function runFalseOptimumScenario(
   const readings: DriftReading[] = [];
   let bestEvaluated = -Infinity;
   let coverageRefusals = 0;
+  let observedResiduals = 0;
   let cursor = 0;
   for (let generation = 1; generation <= generations; generation++) {
     for (let c = 0; c < perGeneration; c++) {
       const candidate = pool[cursor++];
       const exact = truth.scores[candidate.index];
-      if (!region.classify(truth.points[candidate.index]).inside) {
-        coverageRefusals++;
+      const refused = !region.classify(truth.points[candidate.index]).inside;
+      if (refused) coverageRefusals++;
+      // Every candidate is exactly evaluated either way — a refusal routes a
+      // candidate to the exact path, it does not discard it. What the policy
+      // decides is whether the monitor is shown a residual for it.
+      if (!(refused && coveragePolicy === "honour")) {
+        guard.observe(candidate.predicted, exact);
+        observedResiduals++;
       }
-      guard.observe(candidate.predicted, exact);
       if (exact > bestEvaluated) bestEvaluated = exact;
     }
     readings.push(guard.closeGeneration(generation));
@@ -518,6 +594,8 @@ export function runFalseOptimumScenario(
     problem: problem.name,
     family: familyName,
     selection,
+    trainingLocality: locality,
+    coveragePolicy,
     generations,
     candidatesPerGeneration: perGeneration,
     readings,
@@ -533,6 +611,7 @@ export function runFalseOptimumScenario(
       ? 0
       : (truth.optimumScore - bestEvaluated) / range,
     coverageRefusals,
+    observedResiduals,
     line: guard.describeRun(),
   };
 }
@@ -672,6 +751,3 @@ export function measureAcquisition(
       : (truth.optimumScore - bestAllocated) / range,
   };
 }
-
-/** True when a verdict carried a number rather than a refusal. */
-export const verdictIsPrediction = isPrediction;

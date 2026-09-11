@@ -15,18 +15,26 @@
  * 2. **Multi-fidelity rank agreement** — the cheap fidelity of Issue #3926,
  *    scored over a record stride and compared with Issue #3927's rank metrics
  *    against a *complete* ordering.
- * 3. **A deliberate false optimum** — a model fitted to a converged corner of
- *    the design space, exploited by the search, driving Issue #3933's drift
- *    monitor until it fires; and the same model fitted to the whole lattice
- *    and sampled uniformly, where it must stay quiet.
+ * 3. **A deliberate false optimum** — five regimes over the two knobs that
+ *    could each explain a firing (how far the model extrapolates, and whether
+ *    the search exploits it), plus the production regime in which the coverage
+ *    refusal of Issue #3933 is honoured and a refused candidate's prediction
+ *    never reaches the monitor. Varying one knob at a time is what lets the
+ *    report attribute a firing to a cause rather than to a pair of changes
+ *    made together.
  * 4. **The acquisition path** — mandatory uncertainty, coverage refusal and
  *    the uncertainty floor of Issue #3933, exercised end to end.
  *
  * ```bash
- * deno run --allow-read --allow-env bench/surrogate_cheap_problem.ts \
+ * deno run --allow-read --allow-write --allow-env \
+ *   bench/surrogate_cheap_problem.ts \
  *   --surfaces=sphere,rastrigin,rosenbrock --levels=41 --records=64 \
- *   --rates=1,0.5,0.25,0.1 --json=docs/evidence/cheap-problem-3935.json
+ *   --rates=1,0.5,0.25,0.1 \
+ *   --json=docs/evidence/cheap-problem-benchmark-3935.json
  * ```
+ *
+ * `--allow-write` is needed only for `--json=`; without that flag the report
+ * goes to stdout and `--allow-read --allow-env` is enough.
  *
  * **The results are not transferable to GRQ creature scores**, and the report
  * says so on its face — twice, at the top and at the bottom. That is a
@@ -46,6 +54,7 @@ import {
 } from "./lib/cheapProblem.ts";
 import {
   type AcquisitionMeasurement,
+  type CoveragePolicy,
   type FalseOptimumScenario,
   type FidelityMeasurement,
   measureAcquisition,
@@ -53,9 +62,57 @@ import {
   measureSurrogateAccuracy,
   NON_TRANSFERABLE_NOTICE,
   runFalseOptimumScenario,
+  type SelectionRegime,
   type SurrogateAccuracy,
 } from "./lib/cheapProblemStudy.ts";
 import { SURROGATE_FAMILIES } from "../scripts/lib/surrogateModels.ts";
+import { numberArg, stringArg } from "../scripts/lib/cliArgs.ts";
+
+/**
+ * The false-optimum regimes, one per row of the report's third table.
+ *
+ * `extrapolate` and `exploit` are the two knobs that could each explain a
+ * firing, so they are varied one at a time: A against C isolates selection, A
+ * against D isolates extrapolation, and E holds both off as the control. B is
+ * A with the coverage refusal honoured — the path production actually takes.
+ */
+const FALSE_OPTIMUM_REGIMES: readonly {
+  readonly label: string;
+  readonly extrapolate: boolean;
+  readonly selection: SelectionRegime;
+  readonly coveragePolicy: CoveragePolicy;
+}[] = Object.freeze([
+  {
+    label: "A extrapolate + exploit",
+    extrapolate: true,
+    selection: "exploit",
+    coveragePolicy: "ignore",
+  },
+  {
+    label: "B extrapolate + exploit, coverage honoured",
+    extrapolate: true,
+    selection: "exploit",
+    coveragePolicy: "honour",
+  },
+  {
+    label: "C extrapolate + uniform",
+    extrapolate: true,
+    selection: "uniform",
+    coveragePolicy: "ignore",
+  },
+  {
+    label: "D covered + exploit",
+    extrapolate: false,
+    selection: "exploit",
+    coveragePolicy: "ignore",
+  },
+  {
+    label: "E covered + uniform (control)",
+    extrapolate: false,
+    selection: "uniform",
+    coveragePolicy: "ignore",
+  },
+]);
 
 /** How the harness is run. */
 export interface HarnessOptions {
@@ -146,29 +203,18 @@ export function runCheapProblemBenchmark(
           seed: resolved.seed,
         }),
       );
-      // The extrapolating regime: fitted to a converged corner, exploited by
-      // the search. The monitor is supposed to fire here.
-      falseOptimum.push(
-        runFalseOptimumScenario(problem, truth, {
-          family: family.name,
-          trainingSize: resolved.trainingSize,
-          trainingLocality: resolved.locality,
-          selection: "exploit",
-          seed: resolved.seed,
-        }),
-      );
-      // The well-covered control: the same family fitted to the whole lattice
-      // and sampled uniformly. The monitor is supposed to stay quiet, and a
-      // monitor that fires here is a false positive, not a detection.
-      falseOptimum.push(
-        runFalseOptimumScenario(problem, truth, {
-          family: family.name,
-          trainingSize: resolved.trainingSize,
-          trainingLocality: 1,
-          selection: "uniform",
-          seed: resolved.seed,
-        }),
-      );
+      for (const regime of FALSE_OPTIMUM_REGIMES) {
+        falseOptimum.push(
+          runFalseOptimumScenario(problem, truth, {
+            family: family.name,
+            trainingSize: resolved.trainingSize,
+            trainingLocality: regime.extrapolate ? resolved.locality : 1,
+            selection: regime.selection,
+            coveragePolicy: regime.coveragePolicy,
+            seed: resolved.seed,
+          }),
+        );
+      }
     }
     for (const rate of resolved.rates) {
       fidelity.push(measureFidelity(problem, truth, rate));
@@ -200,6 +246,21 @@ function table(header: string[], rows: string[][]): string {
 
 const ratio = (value: number | null) =>
   value === null ? "undecidable" : value.toFixed(3);
+
+/** The regime label a scenario's three knobs identify it as. */
+function regimeLabel(scenario: FalseOptimumScenario): string {
+  const extrapolate = scenario.trainingLocality < 1;
+  const match = FALSE_OPTIMUM_REGIMES.find((regime) =>
+    regime.extrapolate === extrapolate &&
+    regime.selection === scenario.selection &&
+    regime.coveragePolicy === scenario.coveragePolicy
+  );
+  // A scenario run outside the shipped grid still has to be reportable, so its
+  // knobs are spelled out rather than dropped into an unlabelled row.
+  return match?.label ??
+    `${extrapolate ? "extrapolate" : "covered"} + ${scenario.selection}, ` +
+      `coverage ${scenario.coveragePolicy}`;
+}
 
 /**
  * Render a report as Markdown, opening and closing with the scope notice.
@@ -272,7 +333,10 @@ export function renderReport(report: CheapProblemReport): string {
         "Problem",
         "Family",
         "Regime",
-        "Coverage refusals",
+        "Locality",
+        "Coverage",
+        "Refused",
+        "Residuals seen",
         "Per-generation bias ratio",
         "Fired",
         "Generation",
@@ -281,10 +345,11 @@ export function renderReport(report: CheapProblemReport): string {
       report.falseOptimum.map((s) => [
         s.problem,
         s.family,
-        s.selection === "exploit"
-          ? "extrapolating + exploit"
-          : "covered + uniform",
+        regimeLabel(s),
+        s.trainingLocality.toFixed(2),
+        s.coveragePolicy,
         `${s.coverageRefusals} / ${s.generations * s.candidatesPerGeneration}`,
+        String(s.observedResiduals),
         ratio(s.generationBiasRatio),
         s.escalated ? "**yes**" : "no",
         s.escalatedAtGeneration === null
@@ -327,23 +392,34 @@ export function renderReport(report: CheapProblemReport): string {
   return sections.join("\n");
 }
 
-function numberArg(args: string[], name: string, fallback: number): number {
-  const hit = args.find((a) => a.startsWith(`--${name}=`));
-  if (!hit) return fallback;
-  const value = Number(hit.slice(name.length + 3));
-  if (!Number.isFinite(value)) throw new Error(`--${name} is not a number`);
-  return value;
+/** The comma-separated value of `--name=a,b,c`, or `undefined` when absent. */
+function listArg(args: readonly string[], name: string): string[] | undefined {
+  return stringArg(args, name)?.split(",");
 }
 
-function listArg(args: string[], name: string): string[] | undefined {
-  const hit = args.find((a) => a.startsWith(`--${name}=`));
-  return hit === undefined ? undefined : hit.slice(name.length + 3).split(",");
+/**
+ * The comma-separated numbers of `--name=1,0.5`, refusing any entry that is
+ * not a number rather than measuring a `NaN` as a fidelity.
+ */
+function numberListArg(
+  args: readonly string[],
+  name: string,
+): number[] | undefined {
+  const raw = listArg(args, name);
+  if (raw === undefined) return undefined;
+  return raw.map((entry) => {
+    const value = Number(entry);
+    if (!Number.isFinite(value)) {
+      throw new Error(`--${name} is not a number list, got '${entry}'`);
+    }
+    return value;
+  });
 }
 
 if (import.meta.main) {
   const args = Deno.args;
   const surfaces = listArg(args, "surfaces") as TestSurface[] | undefined;
-  const rates = listArg(args, "rates")?.map(Number);
+  const rates = numberListArg(args, "rates");
   const report = runCheapProblemBenchmark({
     ...(surfaces === undefined ? {} : { surfaces }),
     ...(rates === undefined ? {} : { rates }),

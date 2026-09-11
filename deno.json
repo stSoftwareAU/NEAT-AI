@@ -133,8 +133,7 @@
       "bench/fitness_corpus_fidelity.ts",
       "bench/lib/cheapProblem.ts",
       "bench/lib/cheapProblemStudy.ts",
-      "bench/surrogate_cheap_problem.ts",
-      "bench/surrogate_cheap_problem_test.ts"
+      "bench/surrogate_cheap_problem.ts"
     ]
   },
   "fmt": {

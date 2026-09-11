@@ -1,6 +1,11 @@
 /**
  * Issue #3935: the cheap-problem benchmark harness.
  *
+ * Lives under `test/` rather than beside the harness in `bench/` because
+ * `scripts/shard_test_files.ts` — the collector CI's sharded lanes run — globs
+ * `test/**` only. A benchmark assertion that CI never executes is not
+ * regression coverage, and Issue #3935 asks for regression coverage.
+ *
  * The point of the harness is that ground truth is **complete** — every point
  * of the design space is evaluated — so these tests assert against exhaustive
  * enumeration rather than against a held-out sample. Nothing here is timed:
@@ -22,7 +27,7 @@ import {
   groundTruth,
   MAX_ENUMERATED_POINTS,
   scoreAt,
-} from "./lib/cheapProblem.ts";
+} from "../../bench/lib/cheapProblem.ts";
 import {
   localIndices,
   measureAcquisition,
@@ -32,12 +37,12 @@ import {
   runFalseOptimumScenario,
   sampleIndices,
   surrogateFamily,
-} from "./lib/cheapProblemStudy.ts";
+} from "../../bench/lib/cheapProblemStudy.ts";
 import {
   DEFAULT_HARNESS_OPTIONS,
   renderReport,
   runCheapProblemBenchmark,
-} from "./surrogate_cheap_problem.ts";
+} from "../../bench/surrogate_cheap_problem.ts";
 
 /** A lattice small enough to enumerate many times over in a unit test. */
 const SMALL = { dimensions: 2, levels: 15, records: 24, seed: 3935 } as const;
@@ -235,24 +240,80 @@ Deno.test("cheap problem - a model fitted to a corner extrapolates and the monit
     scenario.coverageRefusals > 0,
     "candidates outside the fitted corner must be refused by the coverage region",
   );
+  assertEquals(scenario.observedResiduals, 12 * 8);
   assertEquals(scenario.readings.length, 8);
 });
 
-Deno.test("cheap problem - a well-covered model sampled uniformly does not fire", () => {
+Deno.test("cheap problem - honouring the coverage refusal withholds the refused residuals", () => {
   const problem = createCheapProblem({ surface: "rastrigin", ...SMALL });
   const truth = groundTruth(problem);
-  const scenario = runFalseOptimumScenario(problem, truth, {
+  const shared = {
     family: "quadratic-polynomial",
-    trainingSize: 40,
-    trainingLocality: 1,
-    selection: "uniform",
+    trainingSize: 20,
+    trainingLocality: 0.35,
+    selection: "exploit" as const,
     candidatesPerGeneration: 12,
     generations: 8,
+  };
+  const ignored = runFalseOptimumScenario(problem, truth, {
+    ...shared,
+    coveragePolicy: "ignore",
+  });
+  const honoured = runFalseOptimumScenario(problem, truth, {
+    ...shared,
+    coveragePolicy: "honour",
   });
 
-  assertEquals(scenario.escalated, false, scenario.line);
-  assertEquals(scenario.escalatedAtGeneration, null);
-  assertEquals(scenario.coverageRefusals, 0);
+  // The same candidates are refused either way — the policy decides only
+  // whether the monitor is shown a residual for them.
+  assertEquals(honoured.coverageRefusals, ignored.coverageRefusals);
+  assertEquals(
+    honoured.observedResiduals,
+    ignored.observedResiduals - ignored.coverageRefusals,
+  );
+  assert(
+    honoured.observedResiduals < ignored.observedResiduals,
+    "honouring the refusal must withhold at least one residual here",
+  );
+  // Production honours the refusal, so the monitor is not the defence that
+  // catches a model extrapolating this far — the refusal is, first.
+  assertEquals(honoured.escalated, false);
+});
+
+Deno.test("cheap problem - selection and extrapolation are varied one at a time", () => {
+  const problem = createCheapProblem({ surface: "rastrigin", ...SMALL });
+  const truth = groundTruth(problem);
+  const base = {
+    family: "quadratic-polynomial",
+    trainingSize: 20,
+    candidatesPerGeneration: 12,
+    generations: 8,
+  };
+  const exploitingCorner = runFalseOptimumScenario(problem, truth, {
+    ...base,
+    trainingLocality: 0.35,
+    selection: "exploit",
+  });
+  const uniformCorner = runFalseOptimumScenario(problem, truth, {
+    ...base,
+    trainingLocality: 0.35,
+    selection: "uniform",
+  });
+
+  // Same model, same coverage region, same number of residuals — the only
+  // difference is which candidates the generation drew.
+  assertEquals(
+    uniformCorner.trainingLocality,
+    exploitingCorner.trainingLocality,
+  );
+  assertEquals(
+    uniformCorner.observedResiduals,
+    exploitingCorner.observedResiduals,
+  );
+  assert(
+    uniformCorner.generationBiasRatio !== exploitingCorner.generationBiasRatio,
+    "exploiting the model must move the bias ratio, or the pair says nothing",
+  );
 });
 
 Deno.test("cheap problem - a scenario the lattice cannot supply is refused", () => {
@@ -365,13 +426,53 @@ Deno.test("cheap problem - every configured surface and family reaches the repor
 
   assertEquals(report.accuracy.length, 2 * 4);
   assertEquals(report.fidelity.length, 2 * 2);
-  assertEquals(report.falseOptimum.length, 2 * 4 * 2);
+  assertEquals(report.falseOptimum.length, 2 * 4 * 5);
+  // Every regime of the shipped grid is present for every family, so a
+  // firing can be attributed to a knob rather than to a pair of them.
+  for (const family of new Set(report.falseOptimum.map((s) => s.family))) {
+    const rows = report.falseOptimum.filter((s) => s.family === family);
+    assertEquals(
+      new Set(
+        rows.map((s) =>
+          `${s.trainingLocality < 1}|${s.selection}|${s.coveragePolicy}`
+        ),
+      ).size,
+      5,
+    );
+  }
   assertEquals(report.acquisition.length, 2);
   assertEquals(
     new Set(report.accuracy.map((a) => a.family)).size,
     4,
     "every surrogate family must appear in the accuracy table",
   );
+});
+
+Deno.test("cheap problem - the shipped grid fires on a production-reachable path and never on the control", () => {
+  // The two claims Issue #3935 asks the harness to stand behind, asserted over
+  // the grid the evidence file is generated from rather than over a fixture:
+  // the monitor is seen to fire where the model is fully covered and merely
+  // exploited — a path production can take — and it never fires on the
+  // control, where the same models are sampled uniformly.
+  const report = runCheapProblemBenchmark();
+  const covered = report.falseOptimum.filter((s) =>
+    s.trainingLocality === 1 && s.coveragePolicy === "ignore"
+  );
+  const exploited = covered.filter((s) => s.selection === "exploit");
+  const control = covered.filter((s) => s.selection === "uniform");
+
+  assert(exploited.length > 0 && control.length === exploited.length);
+  assert(
+    exploited.some((s) => s.escalated),
+    "a monitor that has never been seen to fire is not a monitor",
+  );
+  for (const scenario of control) {
+    assertEquals(
+      scenario.escalated,
+      false,
+      `the control fired, which is a false positive: ${scenario.line}`,
+    );
+  }
 });
 
 Deno.test("cheap problem - an unknown surface is refused rather than skipped", () => {

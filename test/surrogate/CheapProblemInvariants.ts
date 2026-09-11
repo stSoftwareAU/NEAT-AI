@@ -33,10 +33,14 @@ import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   isExactScore,
   markScoreFidelity,
+  partialCorpusFidelity,
   refreshExactScoreFidelity,
   scoreFidelity,
 } from "@architecture/ScoreFidelity.ts";
-import { EvolutionControl } from "@neat/EvolutionControl.ts";
+import {
+  EvolutionControl,
+  type GenerationFidelity,
+} from "@neat/EvolutionControl.ts";
 import { PreSelection } from "@neat/PreSelection.ts";
 import { SampledCorpusScreen } from "@neat/OffspringScreen.ts";
 import { resolveEvolutionControlConfig } from "@config/EvolutionControlConfig.ts";
@@ -67,8 +71,15 @@ const LATTICE = enumerateLattice(PROBLEM);
 /** The cheap fidelity: a quarter of the records. */
 const CHEAP_RECORDS = stridePhaseIndices(PROBLEM.records.length, 0.25, 0);
 
-/** The fidelity tag a quarter-rate score carries. */
-const CHEAP_FIDELITY = CHEAP_RECORDS.length / PROBLEM.records.length;
+/**
+ * The fidelity tag a quarter-rate score carries, derived through the same
+ * `partialCorpusFidelity` bridge a sampled-corpus run uses (Issues #3926,
+ * #3931) rather than by a second copy of the arithmetic.
+ */
+const CHEAP_FIDELITY = partialCorpusFidelity(
+  CHEAP_RECORDS.length,
+  PROBLEM.records.length,
+);
 
 /**
  * `count` structurally distinct forward-only creatures, each standing at its
@@ -302,64 +313,168 @@ Deno.test("cheap-problem invariant - a screen that writes a score is refused", a
   assertEquals(thrown.reason, "SCREEN_WROTE_SCORE");
 });
 
+/**
+ * One generation of the benchmark loop, with the fidelity chosen by whatever
+ * `EvolutionControl` the caller supplies.
+ *
+ * The policy is genuinely in the scoring path: `plan.fidelity` decides whether
+ * a creature is scored over the whole record set or over the cheap stride, so
+ * a policy that is *on* provably changes the numbers and a policy that is
+ * *off* provably does not.
+ */
+async function scoreGeneration(
+  generation: number,
+  control?: EvolutionControl,
+  preSelection?: PreSelection,
+): Promise<{ fidelity: GenerationFidelity; scores: number[] }> {
+  const { creatures, points } = buildPopulation(10, generation);
+  // Read synchronously, before any await: the plan belongs to this generation
+  // and must not be re-read from the shared policy after later generations
+  // have moved it on.
+  const fidelity = control?.beginGeneration(generation).fidelity ?? "exact";
+  const rng = createSeededRng(3935);
+  const population = preSelection === undefined
+    ? creatures
+    : (await preSelection.select(creatures, 10, generation, rng)).survivors;
+  return {
+    fidelity,
+    scores: population.map((creature) =>
+      fidelity === "approximate"
+        ? scoreCheaply(creature, points)
+        : scoreExactly(creature, points)
+    ),
+  };
+}
+
 Deno.test("cheap-problem invariant - a disabled policy produces bit-identical scores", async () => {
-  /** Score a fresh population with no policy object in the loop at all. */
-  function baseline(): number[] {
-    const { creatures, points } = buildPopulation(10);
-    return creatures.map((creature) => scoreExactly(creature, points));
+  const off = new EvolutionControl(
+    resolveEvolutionControlConfig({ strategy: "none" }),
+  );
+  const offSelection = new PreSelection(
+    resolvePreSelectionConfig({
+      ratio: 1,
+      screen: "none",
+      uncertainty: { enabled: false },
+    }),
+  );
+  assertEquals(off.active, false);
+  assertEquals(offSelection.active, false);
+  assertEquals(offSelection.surrogateGuard, undefined);
+  // An off policy does not change how many offspring are bred, either.
+  assertEquals(offSelection.offspringTarget(10), 10);
+
+  // The plans are taken in generation order as the calls are made; the awaits
+  // are gathered afterwards because a generation's score does not depend on
+  // the one before it.
+  const generations = [1, 2, 3, 4];
+  const baselines = await Promise.all(
+    generations.map((generation) => scoreGeneration(generation)),
+  );
+  const disabled = await Promise.all(
+    generations.map((generation) =>
+      scoreGeneration(generation, off, offSelection)
+    ),
+  );
+
+  assertEquals(off.plan.reason, "strategy-off");
+  for (let g = 0; g < generations.length; g++) {
+    assertEquals(disabled[g].fidelity, "exact");
+    assertEquals(disabled[g].scores.length, baselines[g].scores.length);
+    for (let i = 0; i < baselines[g].scores.length; i++) {
+      assert(
+        Object.is(baselines[g].scores[i], disabled[g].scores[i]),
+        `generation ${generations[g]} creature ${i} scored ` +
+          `${disabled[g].scores[i]} with the policy off, was ` +
+          `${baselines[g].scores[i]}: a disabled policy must be ` +
+          `bit-identical, not merely close`,
+      );
+    }
   }
+});
 
-  /** The same loop, with every policy of this sweep present and switched off. */
-  async function disabled(): Promise<number[]> {
-    const control = new EvolutionControl(
-      resolveEvolutionControlConfig({ strategy: "none" }),
-    );
-    const preSelection = new PreSelection(
-      resolvePreSelectionConfig({
-        ratio: 1,
-        screen: "none",
-        uncertainty: { enabled: false },
-      }),
-    );
-    const { creatures, points } = buildPopulation(10);
+Deno.test("cheap-problem invariant - the same loop with the policy on does change the scores", async () => {
+  // The counterpart the bit-identity assertion needs to be worth anything: if
+  // switching the policy on could not move a score either, the test above
+  // would pass over a loop the policy is not wired into at all.
+  const on = new EvolutionControl(
+    resolveEvolutionControlConfig({ strategy: "generation", exactEvery: 3 }),
+  );
+  const generations = [1, 2, 3, 4];
+  const baselines = await Promise.all(
+    generations.map((generation) => scoreGeneration(generation)),
+  );
+  const controlled = await Promise.all(
+    generations.map((generation) => scoreGeneration(generation, on)),
+  );
 
-    assertEquals(control.active, false);
-    assertEquals(preSelection.active, false);
-    assertEquals(preSelection.surrogateGuard, undefined);
-    // An off policy does not change how many offspring are bred, either.
-    assertEquals(preSelection.offspringTarget(10), 10);
-
-    const plan = control.beginGeneration(1);
-    assertEquals(plan.fidelity, "exact");
-    assertEquals(plan.reason, "strategy-off");
-
-    const outcome = await preSelection.select(
-      creatures,
-      10,
-      1,
-      createSeededRng(3935),
-    );
-    assertEquals(outcome.discarded.length, 0);
-    assertEquals(outcome.survivors.length, creatures.length);
-    // Pass-through keeps the order the caller gave, so nothing downstream sees
-    // a different population.
-    assertEquals(
-      outcome.survivors.map((c) => c.uuid),
-      creatures.map((c) => c.uuid),
-    );
-    return outcome.survivors.map((creature) => scoreExactly(creature, points));
+  let differed = 0;
+  let approximateGenerations = 0;
+  for (let g = 0; g < generations.length; g++) {
+    if (controlled[g].fidelity !== "approximate") continue;
+    approximateGenerations++;
+    for (let i = 0; i < baselines[g].scores.length; i++) {
+      if (!Object.is(baselines[g].scores[i], controlled[g].scores[i])) {
+        differed++;
+      }
+    }
   }
+  assert(
+    approximateGenerations > 0,
+    "the policy must plan at least one cheap generation, or it is not on",
+  );
+  assert(
+    differed > 0,
+    "an approximate generation must score at least one creature differently",
+  );
+});
 
-  const before = baseline();
-  const after = await disabled();
+Deno.test("cheap-problem invariant - pre-selection with the stage off is an order-preserving pass-through", async () => {
+  const preSelection = new PreSelection(
+    resolvePreSelectionConfig({ ratio: 1, screen: "none" }),
+  );
+  const { creatures } = buildPopulation(10);
 
-  assertEquals(after.length, before.length);
-  for (let i = 0; i < before.length; i++) {
-    assert(
-      Object.is(before[i], after[i]),
-      `creature ${i} scored ${after[i]} with the policy off, was ${before[i]}` +
-        `: a disabled policy must be bit-identical, not merely close`,
-    );
+  const outcome = await preSelection.select(
+    creatures,
+    10,
+    1,
+    createSeededRng(3935),
+  );
+
+  assertEquals(outcome.discarded.length, 0);
+  assertEquals(
+    outcome.survivors.map((c) => c.uuid),
+    creatures.map((c) => c.uuid),
+  );
+});
+
+Deno.test("cheap-problem invariant - a cheap fidelity really does reorder the population", () => {
+  // The regression #3926's multi-fidelity claim rests on: a sampled corpus is
+  // a *different* estimator, so a run holding cheap scores is holding a
+  // different ordering — which is why the fidelity tag has to exist at all.
+  const { creatures, points } = buildPopulation(12);
+  const exact = creatures.map((creature) => scoreExactly(creature, points));
+  const cheap = creatures.map((creature) => scoreCheaply(creature, points));
+
+  assert(CHEAP_FIDELITY < 1, "the cheap stride must be a partial corpus");
+  assert(
+    cheap.some((value, i) => value !== exact[i]),
+    "a quarter of the records must score at least one creature differently",
+  );
+  const byExact = [...creatures].sort((a, b) =>
+    exact[creatures.indexOf(b)] - exact[creatures.indexOf(a)]
+  );
+  const byCheap = [...creatures].sort((a, b) =>
+    cheap[creatures.indexOf(b)] - cheap[creatures.indexOf(a)]
+  );
+  assert(
+    byExact.some((creature, i) => creature !== byCheap[i]),
+    "the cheap ordering must differ from the exact one somewhere, or the " +
+      "fidelity tag is guarding against nothing",
+  );
+  for (const creature of creatures) {
+    assertEquals(scoreFidelity(creature), CHEAP_FIDELITY);
+    assertEquals(isExactScore(creature), false);
   }
 });
 
