@@ -13,6 +13,7 @@ import { Creature } from "@creature";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { PreSelectionError } from "@errors/PreSelectionError.ts";
 import { SurrogateScreen } from "@neat/OffspringScreen.ts";
+import type { PreSelectionSummary } from "@neat/PreSelection.ts";
 import { EVALUATION_ARCHIVE_FILE_NAME } from "@config/EvaluationArchiveConfig.ts";
 import {
   type DataRecordInterface,
@@ -33,6 +34,81 @@ function buildDataSet(): DataRecordInterface[] {
     });
   }
   return rows;
+}
+
+/**
+ * The hard cap on generations {@link evolveUntilScreened} will run.
+ *
+ * A generation only discards when the breeder answers the surplus request
+ * with more offspring than the population budget calls for, and the breeder
+ * builds only as many distinct offspring as the population it has can yield —
+ * a small, low-diversity population honestly offers no surplus to cut. A
+ * fixed generation count is therefore a bet on that yield; the cap is the
+ * point at which the yield is so poor that the run has nothing left to prove.
+ */
+const MAX_SCREENING_GENERATIONS = 15;
+
+/** What a run driven by {@link evolveUntilScreened} produced. */
+interface ScreenedRun {
+  /** The creature the run would export. */
+  readonly fittest: Creature;
+  /** Generations actually evolved. */
+  readonly generations: number;
+  /** Offspring the stage discarded across the whole run. */
+  readonly screenedOut: number;
+}
+
+/** Hooks a caller runs around each generation. */
+interface ScreenedRunHooks {
+  /** Run before a generation evolves, with the population it starts with. */
+  readonly before?: (population: readonly Creature[]) => void;
+  /** Run after a generation evolves, with what the stage reported. */
+  readonly after?: (summary: PreSelectionSummary, fittest: Creature) => void;
+}
+
+/**
+ * Evolve until the stage has actually discarded something, then one
+ * generation more.
+ *
+ * The extra generation is not padding: a screened survivor's prediction is
+ * differenced against the exact score that arrives for it in the *following*
+ * generation, so stopping on the first screened generation leaves every
+ * residual outstanding.
+ *
+ * @param neat - The configured run, already populated.
+ * @param hooks - Per-generation assertions the caller wants to make.
+ * @returns What the run produced.
+ * @throws {AssertionError} When the cap is reached with nothing discarded —
+ *   a run that proved nothing fails loudly rather than passing quietly.
+ */
+async function evolveUntilScreened(
+  neat: Neat,
+  hooks: ScreenedRunHooks = {},
+): Promise<ScreenedRun> {
+  let fittest: Creature | undefined;
+  let screenedOut = 0;
+  let generations = 0;
+  let sinceFirstScreen = 0;
+  while (generations < MAX_SCREENING_GENERATIONS) {
+    hooks.before?.(neat.population);
+    // Generations are sequential by definition: each one breeds from the
+    // population the one before it produced.
+    // deno-lint-ignore no-await-in-loop
+    fittest = (await neat.evolve(fittest)).fittest;
+    generations++;
+    const summary = neat.preSelection.lastGeneration;
+    assert(summary !== undefined, "the stage must report what it did");
+    hooks.after?.(summary, fittest);
+    screenedOut += summary.screenedOut;
+    if (screenedOut > 0 && ++sinceFirstScreen > 1) break;
+  }
+  assert(
+    fittest !== undefined && screenedOut > 0,
+    `the stage discarded nothing over ${generations} generation(s): the ` +
+      `breeder never answered the surplus request with more offspring than ` +
+      `the budget called for`,
+  );
+  return { fittest, generations, screenedOut };
 }
 
 Deno.test("pre-selection wiring — a default Neat runs the stage off", () => {
@@ -121,37 +197,26 @@ Deno.test("pre-selection wiring — an active stage screens a real generation's 
     // generation's exact scores have taught it.
     assertEquals(neat.preSelection.offspringTarget(10), 10);
 
-    let fittest: Creature | undefined;
-    let screened = 0;
-    for (let generation = 0; generation < 3; generation++) {
-      // Generations are sequential by definition: each one breeds from the
-      // population the one before it produced.
-      // deno-lint-ignore no-await-in-loop
-      fittest = (await neat.evolve(fittest)).fittest;
-      const summary = neat.preSelection.lastGeneration;
-      assert(summary !== undefined, "the stage must report what it did");
-      assertEquals(
-        summary.survivors + summary.screenedOut,
-        summary.offspringGenerated,
-        "every offspring is either kept or discarded",
-      );
-      screened += summary.screenedOut;
-      assert(
-        neat.population.length <= 30,
-        `the population must stay at its budget, got ${neat.population.length}`,
-      );
-      // The surplus is cut before the population is assembled, so it never
-      // reaches the next generation's fitness queue — and the creature the
-      // run would export is still a scored one.
-      assert(
-        fittest.score !== undefined && Number.isFinite(fittest.score),
-        "the exported fittest carries a real score",
-      );
-    }
-    assert(
-      screened > 0,
-      "an active stage over three generations must discard some offspring",
-    );
+    await evolveUntilScreened(neat, {
+      after: (summary, fittest) => {
+        assertEquals(
+          summary.survivors + summary.screenedOut,
+          summary.offspringGenerated,
+          "every offspring is either kept or discarded",
+        );
+        assert(
+          neat.population.length <= 30,
+          `the population must stay at its budget, got ${neat.population.length}`,
+        );
+        // The surplus is cut before the population is assembled, so it never
+        // reaches the next generation's fitness queue — and the creature the
+        // run would export is still a scored one.
+        assert(
+          fittest.score !== undefined && Number.isFinite(fittest.score),
+          "the exported fittest carries a real score",
+        );
+      },
+    });
     // Issue #3933: the exact scores that arrive for screened survivors must
     // reach the drift monitor. A bred offspring is screened *before* fitness
     // recomputes its UUID, so a monitor keyed on that UUID records nothing in
@@ -203,20 +268,12 @@ Deno.test("pre-selection wiring — a screened-out creature never reaches the ar
     }, workers);
     await neat.populatePopulation(seed);
 
-    let fittest: Creature | undefined;
     let evaluable = 0;
-    let screenedOut = 0;
-    for (let generation = 0; generation < 3; generation++) {
-      // Each call evaluates the population it starts with, so that is the
-      // most records the archive may gain from it.
-      evaluable += neat.population.length;
-      // deno-lint-ignore no-await-in-loop
-      fittest = (await neat.evolve(fittest)).fittest;
-      const summary = neat.preSelection.lastGeneration;
-      assert(summary !== undefined);
-      screenedOut += summary.screenedOut;
-    }
-    assert(screenedOut > 0, "the stage must have discarded something to prove");
+    const { screenedOut } = await evolveUntilScreened(neat, {
+      // Each generation evaluates the population it starts with, so that is
+      // the most records the archive may gain from it.
+      before: (population) => evaluable += population.length,
+    });
 
     const archived = (await Deno.readTextFile(
       `${archiveDir}/${EVALUATION_ARCHIVE_FILE_NAME}`,
@@ -256,26 +313,21 @@ Deno.test("pre-selection wiring — an active stage never costs the run its elit
     // and its exact score never goes backwards. A screen let loose on the
     // elite band would eventually discard the incumbent, and the fittest would
     // regress.
-    let fittest: Creature | undefined;
-    let screened = 0;
-    for (let generation = 0; generation < 4; generation++) {
-      // deno-lint-ignore no-await-in-loop
-      const result = await neat.evolve(fittest);
-      const summary = neat.preSelection.lastGeneration;
-      assert(summary !== undefined);
-      screened += summary.screenedOut;
-      if (fittest?.score !== undefined) {
-        assert(
-          (result.fittest.score ?? -Infinity) >= fittest.score,
-          `the incumbent regressed from ${fittest.score} to ` +
-            `${result.fittest.score} while the stage was screening`,
-        );
-      }
-      fittest = result.fittest;
-    }
-    assert(screened > 0, "the stage must have discarded something to prove");
+    let incumbent: Creature | undefined;
+    const { fittest } = await evolveUntilScreened(neat, {
+      after: (_summary, current) => {
+        if (incumbent?.score !== undefined) {
+          assert(
+            (current.score ?? -Infinity) >= incumbent.score,
+            `the incumbent regressed from ${incumbent.score} to ` +
+              `${current.score} while the stage was screening`,
+          );
+        }
+        incumbent = current;
+      },
+    });
     assert(
-      fittest?.score !== undefined && Number.isFinite(fittest.score),
+      fittest.score !== undefined && Number.isFinite(fittest.score),
       "the run still exports a scored creature",
     );
   } finally {
