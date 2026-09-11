@@ -17,7 +17,6 @@
  */
 
 import { Creature } from "@creature";
-import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   EvaluationArchive,
@@ -25,89 +24,17 @@ import {
 } from "@archive/EvaluationArchive.ts";
 import { computeEvaluationDescriptor } from "@archive/EvaluationDescriptor.ts";
 import { resolveEvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
+// Issue #3934: the GRQ-shaped builder is shared with the training-gain-log
+// bench, so both report an overhead measured against the same creature.
+import {
+  buildNetwork,
+  HIDDEN_LAYERS,
+  INPUT_COUNT,
+  MAX_FAN_OUT,
+  OUTPUT_COUNT,
+  seededRandom,
+} from "./_productionScaleCreature.ts";
 
-/** Seeded generator so the topology is identical on every run. */
-function seededRandom(seed: number) {
-  let state = seed;
-  return () => {
-    state = (state * 1103515245 + 12345) & 0x7fffffff;
-    return (state / 0x7fffffff) * 2 - 1;
-  };
-}
-
-const SQUASH_NAMES = [
-  "ReLU",
-  "TANH",
-  "LOGISTIC",
-  "IDENTITY",
-  "GELU",
-  "LeakyReLU",
-];
-
-/** A sparse forward-only network of the requested layer shape. */
-function buildNetwork(
-  random: () => number,
-  inputCount: number,
-  outputCount: number,
-  hiddenLayers: readonly number[],
-  maxFanOut: number,
-): CreatureExport {
-  const neurons: CreatureExport["neurons"] = [];
-  const synapses: CreatureExport["synapses"] = [];
-  const layerUUIDs: string[][] = [
-    Array.from({ length: inputCount }, (_, i) => `input-${i}`),
-  ];
-
-  hiddenLayers.forEach((layerSize, layerIdx) => {
-    const uuids: string[] = [];
-    for (let i = 0; i < layerSize; i++) {
-      const uuid = `hidden-${layerIdx}-${i}`;
-      uuids.push(uuid);
-      neurons.push({
-        type: "hidden",
-        uuid,
-        squash:
-          SQUASH_NAMES[Math.floor(Math.abs(random()) * SQUASH_NAMES.length)],
-        bias: random() * 0.5,
-      });
-    }
-    layerUUIDs.push(uuids);
-  });
-
-  const outputUUIDs: string[] = [];
-  for (let i = 0; i < outputCount; i++) {
-    const uuid = `output-${i}`;
-    outputUUIDs.push(uuid);
-    neurons.push({ type: "output", uuid, squash: "IDENTITY", bias: random() });
-  }
-  layerUUIDs.push(outputUUIDs);
-
-  for (let l = 0; l < layerUUIDs.length - 1; l++) {
-    const toLayer = layerUUIDs[l + 1];
-    for (const fromUUID of layerUUIDs[l]) {
-      const fanOut = Math.min(maxFanOut, toLayer.length);
-      const connected = new Set<number>();
-      while (connected.size < fanOut) {
-        const targetIdx = Math.floor(Math.abs(random()) * toLayer.length);
-        if (connected.has(targetIdx)) continue;
-        connected.add(targetIdx);
-        synapses.push({
-          fromUUID,
-          toUUID: toLayer[targetIdx],
-          weight: random() * 0.5,
-        });
-      }
-    }
-  }
-
-  return { input: inputCount, output: outputCount, neurons, synapses };
-}
-
-/** ~5,300 neurons, the GRQ lineage's working size. */
-const HIDDEN_LAYERS = [900, 1100, 1100, 900, 700, 588];
-const INPUT_COUNT = 8;
-const OUTPUT_COUNT = 4;
-const MAX_FAN_OUT = 18;
 /** Creatures a GRQ generation scores. */
 const GENERATION_SIZE = 20;
 
