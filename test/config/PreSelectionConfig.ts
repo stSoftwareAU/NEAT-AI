@@ -67,8 +67,40 @@ Deno.test("pre-selection config — an unknown screen is refused", () => {
   assertEquals(error.reason, "INVALID_TYPE");
 });
 
+Deno.test("pre-selection config — numeric knobs accept the string form a CLI supplies", () => {
+  const config = resolvePreSelectionConfig({
+    ratio: "3" as unknown as number,
+    screen: "surrogate",
+    randomSurvivorFraction: "0.5" as unknown as number,
+    surrogateWindow: "64" as unknown as number,
+    surrogateNeighbours: "3" as unknown as number,
+  });
+  assertEquals(config.ratio, 3);
+  assertEquals(config.randomSurvivorFraction, 0.5);
+  assertEquals(config.surrogateWindow, 64);
+  assertEquals(config.surrogateNeighbours, 3);
+});
+
+Deno.test("pre-selection config — a value that is not a number at all is refused", () => {
+  const error = assertThrows(
+    () =>
+      resolvePreSelectionConfig({
+        ratio: "three" as unknown as number,
+        screen: "surrogate",
+      }),
+    ConfigurationError,
+  );
+  assertEquals(error.reason, "NOT_FINITE");
+  for (const ratio of [NaN, Infinity]) {
+    assertThrows(
+      () => resolvePreSelectionConfig({ ratio, screen: "surrogate" }),
+      ConfigurationError,
+    );
+  }
+});
+
 Deno.test("pre-selection config — a ratio below 1 or past the cap is refused", () => {
-  for (const ratio of [0, 0.5, -1, MAX_PRE_SELECTION_RATIO + 0.5, NaN]) {
+  for (const ratio of [0, 0.5, -1, MAX_PRE_SELECTION_RATIO + 0.5]) {
     const error = assertThrows(
       () => resolvePreSelectionConfig({ ratio, screen: "surrogate" }),
       ConfigurationError,

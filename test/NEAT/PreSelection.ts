@@ -19,6 +19,7 @@ import {
 import { PreSelectionError } from "@errors/PreSelectionError.ts";
 import { createSeededRng } from "@utils/RandomNumberGenerator.ts";
 import type { Creature } from "@creature";
+import { markScoreFidelity } from "@architecture/ScoreFidelity.ts";
 import { buildCandidates } from "./_preSelectionFixtures.ts";
 
 /**
@@ -244,6 +245,34 @@ Deno.test("pre-selection — elites are never screened, and their rank is report
   assertEquals(stage.screenRankOf(outsider), null);
   assertEquals(stage.recordElites([outsider]).length, 0);
   assertEquals(stage.describeEliteRanks([]), undefined);
+});
+
+Deno.test("pre-selection — an elite is counted once, however long it survives", async () => {
+  const stage = activeStage({ randomSurvivorFraction: 0 });
+  const outcome = await stage.select(buildCandidates(9), 3, 1);
+  const elite = outcome.survivors[0];
+
+  // The same creature is the elite in two consecutive generations. Counting it
+  // twice would weight the distribution towards elitism, not the screen.
+  assertEquals(stage.recordElites([elite]).length, 1);
+  assertEquals(stage.recordElites([elite]).length, 1);
+  assertEquals(stage.eliteScreenRanks.length, 1);
+});
+
+Deno.test("pre-selection — observe refuses to learn from an approximate score", () => {
+  const surrogate = new SurrogateScreen(32, 3);
+  const stage = new PreSelection(
+    resolvePreSelectionConfig({ ratio: 2, screen: "surrogate" }),
+    surrogate,
+  );
+  const population = buildCandidates(4) as Creature[];
+  population.forEach((creature, index) => creature.score = index);
+  // Issue #3931: a cheap score and an exact score are different measurements,
+  // and a model fitted to a mixture of the two is fitted to neither.
+  markScoreFidelity(population[1], 0.05);
+  markScoreFidelity(population[2], 0.5);
+  stage.observe(population);
+  assertEquals(surrogate.trainingSize, 2);
 });
 
 Deno.test("pre-selection — ranks survive one generation and are then forgotten", async () => {

@@ -75,9 +75,15 @@ corrected ratio changes how many creatures a generation throws away without
 saying so.
 
 ```ts
-const creature = await Creature.evolveDir(dataDir, {
+const result = await creature.evolveDataSet(data, {
   populationSize: 20,
-  preSelection: { ratio: 3, screen: "surrogate" },
+  preSelection: {
+    ratio: 3, // breed three offspring per population slot
+    screen: "surrogate", // "none" | "sampled" | "surrogate"
+    randomSurvivorFraction: 0.25, // survivors drawn uniformly, not by rank
+    surrogateWindow: 256, // training points the model is fitted to
+    surrogateNeighbours: 5, // neighbours a prediction averages
+  },
 });
 ```
 
@@ -123,9 +129,9 @@ endpoint at equal generations **and** at equal record budget, the diversity of
 each arm, and the screen percentile of every creature that became an elite. The
 measured result, including what it does not say, is in
 [`docs/evidence/pre-selection-3932.md`](evidence/pre-selection-3932.md). In
-short: at equal record budget every over-generated arm was a **regression**, and
-both screens cut mean genetic distance by a third or more while a keep-at-random
-control held it. That is why the stage ships off.
+short: at equal record budget **no arm improved**, and both screens cut mean
+genetic distance while a keep-at-random control raised it. That is why the stage
+ships off.
 
 Read it this way:
 

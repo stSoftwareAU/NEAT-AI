@@ -263,8 +263,8 @@ and it lives in [`preSelection`](../PRE_SELECTION.md) (Issue #3932): breed a
 surplus, screen it cheaply, and spend the true evaluation only on the survivors.
 Also off by default (`ratio: 1`), and the measured result —
 [`docs/evidence/pre-selection-3932.md`](../evidence/pre-selection-3932.md) — is
-why: at equal record budget every over-generated arm was a regression, and both
-screens cut mean genetic distance by a third or more.
+why: at equal record budget no arm improved, and both screens cut mean genetic
+distance while a keep-at-random control raised it.
 
 ## 👀 See also
 

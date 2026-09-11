@@ -235,7 +235,12 @@ export async function runArm(
   const previousRng = getRandomNumberGenerator();
   setRandomNumberGenerator(createSeededRng(settings.seed));
   try {
-    return runSeededArm(arm, settings, corpus, rng);
+    // `return await`, not `return`: returning the promise unawaited leaves the
+    // try block at the first inner await, so `finally` would restore the
+    // caller's generator part-way through generation 1 and every later
+    // generation would run unseeded — the "same seed" in the report would then
+    // be exactly the lie the seeding is here to prevent.
+    return await runSeededArm(arm, settings, corpus, rng);
   } finally {
     setRandomNumberGenerator(previousRng);
   }
@@ -308,14 +313,19 @@ async function runSeededArm(
     const target = preSelection.offspringTarget(slots);
     const offspring = breedOffspring(population, target, mutator, config, rng);
     candidatesConsidered += offspring.length;
-    const screenStartMs = Date.now();
+    // Generations are sequential by definition: each one breeds from the
+    // population the one before it produced.
+    // deno-lint-ignore no-await-in-loop
     const outcome = await preSelection.select(
       offspring,
       slots,
       generation,
       rng,
     );
-    const screenMs = Date.now() - screenStartMs;
+    // The stage's own reading, not the whole `select` call: the issue asks for
+    // the screen's wall-clock, and the sort, the uniform draw and the
+    // partitioning are not the screen.
+    const screenMs = outcome.summary.screenMs;
 
     generations.push({
       generation,

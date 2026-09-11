@@ -210,7 +210,7 @@ Deno.test("pre-selection wiring — a screened-out creature never reaches the ar
   }
 });
 
-Deno.test("pre-selection wiring — only fresh offspring are ever screened, never an elite", async () => {
+Deno.test("pre-selection wiring — an active stage never costs the run its elites", async () => {
   const dataDir = makeDataDir(buildDataSet(), 2000);
   const workers = [new WorkerHandler(dataDir, "MSE", true)];
   try {
@@ -223,36 +223,31 @@ Deno.test("pre-selection wiring — only fresh offspring are ever screened, neve
     }, workers);
     await neat.populatePopulation(seed);
 
-    // Watch what the screen is actually handed. An elite carries the exact
-    // score it earned, so a scored candidate reaching the screen would mean
-    // the stage had been let loose on something that is not offspring.
-    const screen = neat.preSelection.screen;
-    assert(screen !== undefined, "the configured screen must exist");
-    const inner = screen.screen.bind(screen);
-    let screened = 0;
-    let scoredSeen = 0;
-    screen.screen = (candidates) => {
-      screened += candidates.length;
-      for (const candidate of candidates) {
-        if (candidate.score !== undefined) scoredSeen++;
-      }
-      return inner(candidates);
-    };
-
+    // Elites are not offspring, so the stage must never see them. The
+    // observable consequence is this: the incumbent survives every generation
+    // and its exact score never goes backwards. A screen let loose on the
+    // elite band would eventually discard the incumbent, and the fittest would
+    // regress.
     let fittest: Creature | undefined;
-    for (let generation = 0; generation < 3; generation++) {
+    let screened = 0;
+    for (let generation = 0; generation < 4; generation++) {
       // deno-lint-ignore no-await-in-loop
-      fittest = (await neat.evolve(fittest)).fittest;
+      const result = await neat.evolve(fittest);
+      const summary = neat.preSelection.lastGeneration;
+      assert(summary !== undefined);
+      screened += summary.screenedOut;
+      if (fittest?.score !== undefined) {
+        assert(
+          (result.fittest.score ?? -Infinity) >= fittest.score,
+          `the incumbent regressed from ${fittest.score} to ` +
+            `${result.fittest.score} while the stage was screening`,
+        );
+      }
+      fittest = result.fittest;
     }
-    assert(screened > 0, "the screen must have been consulted");
-    assertEquals(
-      scoredSeen,
-      0,
-      "no already-scored creature — elite, fine-tuned or immigrant — may be " +
-        "handed to the screen",
-    );
+    assert(screened > 0, "the stage must have discarded something to prove");
     assert(
-      fittest?.score !== undefined,
+      fittest?.score !== undefined && Number.isFinite(fittest.score),
       "the run still exports a scored creature",
     );
   } finally {

@@ -62,6 +62,7 @@ import type {
 } from "@config/PreSelectionConfig.ts";
 import type { OffspringScreen } from "@neat/OffspringScreen.ts";
 import { PreSelectionError } from "@errors/PreSelectionError.ts";
+import { isExactScore } from "@architecture/ScoreFidelity.ts";
 import {
   getRandomNumberGenerator,
   type RandomNumberGenerator,
@@ -134,6 +135,8 @@ export class PreSelection {
   private readonly offspringScreen: OffspringScreen | undefined;
   /** Ranks from the generation just screened. */
   private ranks = new Map<string, ScreenRank>();
+  /** Creatures already recorded as elites, so a survivor is counted once. */
+  private recordedElites = new Set<string>();
   /** Ranks from the generation before that — where this one's elites came from. */
   private previousRanks = new Map<string, ScreenRank>();
   private lastSummary: PreSelectionSummary | undefined;
@@ -198,11 +201,17 @@ export class PreSelection {
   /**
    * Feed a generation's exact scores to a screen that learns from them.
    *
-   * Creatures whose score is missing or non-finite are skipped: a creature
-   * that took `-Infinity` for a WASM panic never earned a fitness reading, and
-   * teaching a surrogate that number teaches it about the runtime.
+   * Two kinds of creature are skipped, and for different reasons:
    *
-   * @param population - The population as it stands after an exact sweep.
+   * - **No score, or a non-finite one.** A creature that took `-Infinity` for a
+   *   WASM panic never earned a fitness reading, and teaching a surrogate that
+   *   number teaches it about the runtime.
+   * - **An approximate score** (Issue #3931's `scoreFidelity` tag). Evolution
+   *   control and pre-selection compose, so a run may be holding cheap scores
+   *   when this is called; a model fitted to a mixture of fidelities is fitted
+   *   to two different measurements at once.
+   *
+   * @param population - The population as it stands after evaluation.
    */
   observe(population: readonly Creature[]): void {
     const screen = this.offspringScreen;
@@ -210,6 +219,7 @@ export class PreSelection {
     for (const creature of population) {
       const score = creature.score;
       if (score === undefined || !Number.isFinite(score)) continue;
+      if (!isExactScore(creature)) continue;
       screen.observe(creature, score);
     }
   }
@@ -346,6 +356,13 @@ export class PreSelection {
    * screen works: if elites routinely come from the bottom of the screen's
    * ordering, the screen is anti-correlated with what matters.
    *
+   * **One observation per creature.** An elite survives many generations, and
+   * counting its rank again on each of them would weight the distribution
+   * towards long-lived elites rather than towards the screen's judgement — the
+   * aggregate would then say more about elitism than about the screen. The
+   * returned array is this generation's elites, whether or not they were new;
+   * only {@link eliteScreenRanks} is deduplicated.
+   *
    * @param elitists - The elite band, which is never itself screened.
    * @returns The ranks that were known, in the order the elites were given.
    */
@@ -355,6 +372,9 @@ export class PreSelection {
       const rank = this.screenRankOf(elite);
       if (rank === null) continue;
       found.push(rank);
+      const uuid = elite.uuid;
+      if (uuid !== undefined && this.recordedElites.has(uuid)) continue;
+      if (uuid !== undefined) this.recordedElites.add(uuid);
       this.eliteRanks.push(rank);
     }
     return found;
@@ -403,6 +423,7 @@ export class PreSelection {
     this.previousRanks = new Map();
     this.lastSummary = undefined;
     this.eliteRanks.length = 0;
+    this.recordedElites.clear();
   }
 
   /** Everything survives: the stage is off, unready, or has no surplus. */

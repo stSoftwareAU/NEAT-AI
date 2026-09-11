@@ -269,6 +269,16 @@ export class SurrogateScreen implements OffspringScreen {
 export const MIN_TRAINING_POINTS = 3;
 
 /**
+ * Relative standard deviation below which a descriptor column counts as
+ * constant and is dropped from the distance.
+ *
+ * Comfortably above the ~1e-16 of double rounding and far below any real
+ * structural difference, so it separates float noise from signal without
+ * discarding a slot that genuinely varies a little.
+ */
+const CONSTANT_COLUMN_EPS = 1e-12;
+
+/**
  * Build the screen a resolved configuration asks for.
  *
  * @param config - The resolved pre-selection configuration.
@@ -323,7 +333,15 @@ function fitScaler(points: readonly TrainingPoint[]): FeatureScaler {
       variance += delta * delta;
     }
     const columnSd = Math.sqrt(variance / points.length);
-    if (columnSd <= 0) continue;
+    // A column every creature shares is dropped — but its variance is rarely
+    // *exactly* zero: `sum / n` of n identical values need not reproduce the
+    // value, so a constant column can carry ~1e-17 of float noise. Dividing by
+    // that turns rounding error into a full standard deviation and lets a slot
+    // with no information dominate the distance, so the test is relative to the
+    // column's own magnitude rather than against zero.
+    if (columnSd <= Math.max(Math.abs(columnMean), 1) * CONSTANT_COLUMN_EPS) {
+      continue;
+    }
     keep.push(column);
     mean.push(columnMean);
     sd.push(columnSd);
@@ -347,15 +365,22 @@ function applyScaler(
  * Distance-weighted mean of the `k` nearest training scores.
  *
  * With every informative column dropped — a window in which the creatures are
- * structurally identical — every distance is zero and the prediction is the
- * window mean, which is the honest answer: the descriptor cannot tell these
- * candidates apart, so the screen does not pretend to either.
+ * structurally identical — there is nothing to measure a distance along, and
+ * the prediction is the **window mean** for every candidate. That is the honest
+ * answer: the descriptor cannot tell these candidates apart, so the screen does
+ * not pretend to either, and the resulting all-equal ranking leaves the stage's
+ * stable tie-break to keep the order reproducible.
  */
 function predict(
   points: readonly TrainingPoint[],
   query: readonly number[],
   neighbours: number,
 ): number {
+  if (query.length === 0) {
+    let sum = 0;
+    for (const point of points) sum += point.score;
+    return sum / points.length;
+  }
   const distances = points.map((point) => ({
     distance: euclidean(point.features, query),
     score: point.score,

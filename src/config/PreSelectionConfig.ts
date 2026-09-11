@@ -23,6 +23,7 @@
  */
 
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
+import { parseNumber } from "@config/ParseOptions.ts";
 
 /**
  * The cheap screens a surplus of offspring can be ranked by.
@@ -137,6 +138,9 @@ export const DEFAULT_PRE_SELECTION_CONFIG: Readonly<
  * trace reveals.
  *
  * @param overrides - Partial caller options, or `undefined` for the defaults.
+ * Numeric fields accept the string form a CLI supplies and are parsed with
+ * `parseNumber`, so `"3"` and `3` mean the same thing and `"three"` fails loud.
+ *
  * @returns The resolved configuration.
  * @throws {ConfigurationError} When a field is present but invalid, or when
  *   the ratio and the screen contradict each other.
@@ -144,15 +148,33 @@ export const DEFAULT_PRE_SELECTION_CONFIG: Readonly<
 export function resolvePreSelectionConfig(
   overrides?: PreSelectionConfig,
 ): RequiredPreSelectionConfig {
+  // A CLI hands every value through as a string (the `CoerceNumeric` shape in
+  // `NeatOptions`), so the numeric knobs are parsed rather than compared as-is:
+  // without this `preSelection.ratio="3"` is refused as out of range, which is
+  // a confusing way to say "your shell quoted it".
+  const raw = overrides as Record<string, unknown> | undefined;
   const resolved: RequiredPreSelectionConfig = {
-    ratio: overrides?.ratio ?? DEFAULT_PRE_SELECTION_CONFIG.ratio,
+    ratio: parseNumber(
+      "preSelection.ratio",
+      raw?.ratio,
+      DEFAULT_PRE_SELECTION_CONFIG.ratio,
+    ),
     screen: overrides?.screen ?? DEFAULT_PRE_SELECTION_CONFIG.screen,
-    randomSurvivorFraction: overrides?.randomSurvivorFraction ??
+    randomSurvivorFraction: parseNumber(
+      "preSelection.randomSurvivorFraction",
+      raw?.randomSurvivorFraction,
       DEFAULT_PRE_SELECTION_CONFIG.randomSurvivorFraction,
-    surrogateWindow: overrides?.surrogateWindow ??
+    ),
+    surrogateWindow: parseNumber(
+      "preSelection.surrogateWindow",
+      raw?.surrogateWindow,
       DEFAULT_PRE_SELECTION_CONFIG.surrogateWindow,
-    surrogateNeighbours: overrides?.surrogateNeighbours ??
+    ),
+    surrogateNeighbours: parseNumber(
+      "preSelection.surrogateNeighbours",
+      raw?.surrogateNeighbours,
       DEFAULT_PRE_SELECTION_CONFIG.surrogateNeighbours,
+    ),
   };
 
   if (!PRE_SELECTION_SCREENS.includes(resolved.screen)) {

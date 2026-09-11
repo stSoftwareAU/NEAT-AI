@@ -76,29 +76,32 @@ the artefact carries a `summary` block so every number below is re-derivable.
 
 | Arm           | Equal generations | Equal record budget | Mean genetic distance |
 | ------------- | ----------------- | ------------------- | --------------------- |
-| `control`     | −0.040396         | −0.040396           | 0.1501                |
-| `sampled`     | −0.012406 (7/10)  | −0.055391 (3/10)    | 0.1028 (**−0.0474**)  |
-| `surrogate`   | −0.032478 (6/10)  | −0.057664 (1/10)    | 0.0915 (**−0.0586**)  |
-| `random-only` | −0.015769 (7/10)  | −0.058123 (3/10)    | 0.1550 (+0.0048)      |
+| `control`     | −0.047237         | −0.047237           | 0.1308                |
+| `sampled`     | −0.017237 (9/10)  | −0.047247 (4/10)    | 0.1147 (**−0.0161**)  |
+| `surrogate`   | −0.033025 (7/10)  | −0.069645 (5/10)    | 0.1120 (**−0.0188**)  |
+| `random-only` | −0.016846 (9/10)  | −0.049942 (5/10)    | 0.1541 (+0.0233)      |
 
 Three findings, stated plainly:
 
-1. **No arm improved at equal record budget — every one was a regression
-   there.** At equal _generations_ the over-generated arms beat control, but so
-   does `random-only`, which never consults its screen: the gain is the surplus
-   filling a population when crossover fails, not the screen. Repeated
-   invocations moved the equal-budget deltas by ±2e-2 (the size of the deltas
-   themselves), because `Offspring.breed` mints neuron identities with
-   `crypto.randomUUID()` and the harness is therefore same-seed within an
-   invocation but not bit-reproducible across them.
-2. **Both screens cost genetic diversity** — a third to 40 % of mean genetic
-   distance — while `random-only` holds it. That is the diversity sink the issue
-   predicted, and `randomSurvivorFraction: 0.25` does not prevent it.
-3. **The elite-rank diagnostic works.** The `"sampled"` screen's eventual elites
-   come from the top 3 % of its ordering; the `"surrogate"` screen's from 0.289
-   against a 0.382 no-information baseline — weakly informative, not
-   anti-correlated. Screening cost 0.65 ms (surrogate) and 3.34 ms (sampled) a
-   generation.
+1. **No arm improved at equal record budget.** At equal _generations_ the
+   over-generated arms beat control, but `random-only` — which never consults
+   its screen — is the best of them: the gain is the surplus filling a
+   population when crossover fails, not the screen. Repeated invocations moved
+   the equal-budget deltas by ±2e-2 and flipped their sign, because
+   `Offspring.breed` mints neuron identities with `crypto.randomUUID()` and no
+   seed reaches it; the harness is same-seed within an invocation and not
+   bit-reproducible across them.
+2. **Both screens cost genetic diversity while keeping the same surplus at
+   random does not** (−0.016 and −0.019 against +0.023). Every over-generated
+   arm sees more offspring, so a diversity-neutral screen would look like
+   `random-only`; neither does. The direction held across every repeat while the
+   magnitude did not. That is the diversity sink the issue predicted, and
+   `randomSurvivorFraction: 0.25` does not prevent it.
+3. **The elite-rank diagnostic works.** One observation per creature: the
+   `"sampled"` screen's eventual elites come from the top 5 % of its ordering;
+   the `"surrogate"` screen's from 0.298 against a 0.411 no-information baseline
+   — weakly informative, not anti-correlated. The screen itself cost 0.66 ms
+   (surrogate) and 4.95 ms (sampled) a generation.
 
 **This is why the stage ships off**, and the issue asked for exactly this
 reporting rather than retuning until the number improved. What the issue asked

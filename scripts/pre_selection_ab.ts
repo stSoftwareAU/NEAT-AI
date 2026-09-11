@@ -147,6 +147,9 @@ if (import.meta.main) {
     const row: ABResult[] = [];
     for (const arm of arms) {
       const startedMs = performance.now();
+      // Arms run one at a time on purpose: each seeds the global generator, so
+      // running two concurrently would have them drawing from each other's.
+      // deno-lint-ignore no-await-in-loop
       const result = await runArm(arm, seeded, corpus);
       row.push(result);
       console.info(
@@ -324,11 +327,15 @@ if (import.meta.main) {
     );
     await Deno.writeTextFile(
       jsonPath,
-      JSON.stringify(
-        { settings, ratio, replicates, summary, results: trimmed },
-        null,
-        2,
-      ),
+      // Trailing newline: `deno fmt --check` runs over the artefact in CI, and
+      // a file without one fails the format gate.
+      `${
+        JSON.stringify(
+          { settings, ratio, replicates, summary, results: trimmed },
+          null,
+          2,
+        )
+      }\n`,
     );
     console.info(`\nWrote ${jsonPath}`);
   }

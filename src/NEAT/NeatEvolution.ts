@@ -903,7 +903,6 @@ export async function evolve(
   // to evaluate. A screened-out creature is dropped here and never scored, so
   // it reaches neither the archive, nor species statistics, nor an export.
   if (neat.preSelection.active) {
-    const preSelectionStartMs = Date.now();
     const bred = newPopulation.slice(bredSliceStart);
     const outcome = await neat.preSelection.select(
       bred,
@@ -913,13 +912,6 @@ export async function evolve(
     newPopulation.length = bredSliceStart;
     appendAll(newPopulation, outcome.survivors);
     getLogger().info(neat.preSelection.describe(outcome.summary));
-    if (neat.config.verbose) {
-      getLogger().info(
-        `[PreSelection] stage cost ${
-          Date.now() - preSelectionStartMs
-        }ms of which ${outcome.summary.screenMs}ms was the screen itself`,
-      );
-    }
   }
   // Issue #2312: Snapshot after mutation — main thread only
   const mutationUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);

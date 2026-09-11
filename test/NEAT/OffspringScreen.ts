@@ -16,6 +16,7 @@ import {
 } from "@neat/OffspringScreen.ts";
 import { resolvePreSelectionConfig } from "@config/PreSelectionConfig.ts";
 import { PreSelectionError } from "@errors/PreSelectionError.ts";
+import { Creature } from "@creature";
 import { buildCandidates } from "./_preSelectionFixtures.ts";
 
 Deno.test("offspring screen — the sampled screen refuses to exist without an evaluator", () => {
@@ -168,4 +169,25 @@ Deno.test("offspring screen — the factory refuses a sampled screen with nothin
     PreSelectionError,
   );
   assertEquals(error.reason, "NO_SCREEN_EVALUATOR");
+});
+
+Deno.test("offspring screen — a structurally identical window predicts the window mean", async () => {
+  const screen = new SurrogateScreen(32, 3);
+  // Every training creature is the same structure, so every descriptor column
+  // is constant and the model has nothing to measure a distance along.
+  const [shape] = buildCandidates(1);
+  const clones = [0, 1, 2].map(() => Creature.fromJSON(shape.exportJSON()));
+  const scores = [2, 4, 9];
+  clones.forEach((clone, index) => {
+    // A structural UUID is a hash of the structure, so the clones share one.
+    // Give each its own identity so the window holds all three.
+    clone.uuid = `clone-${index}`;
+    screen.observe(clone, scores[index]);
+  });
+  assertEquals(screen.trainingSize, 3);
+
+  const values = await screen.screen(buildCandidates(2));
+  // (2 + 4 + 9) / 3 — the honest answer when the descriptor cannot separate
+  // anything, rather than the oldest point's score dressed up as a prediction.
+  assertEquals(values, [5, 5]);
 });
