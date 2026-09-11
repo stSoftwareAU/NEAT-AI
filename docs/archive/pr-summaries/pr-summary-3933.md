@@ -120,10 +120,185 @@ fail identically on the base branch: `test/NEAT/Train.ts` and
 neat_ai_backpropagation when Rust trainDir is enabled"_ — the same missing
 native library.
 
-**Test output.** The new suites pass (47 in `test/surrogate/`, 10 in
+**Test output.** The new suites pass — 47 in `test/surrogate/`, 12 in
 `test/NEAT/SurrogateUncertaintyScreen.ts`, 8 in
 `test/config/SurrogateUncertaintyConfig.ts`, 3 in
-`test/scripts/SurrogateUncertaintyAB.ts`), as do the #3932 suites they extend
-(56 across `test/NEAT/PreSelection.ts`, `OffspringScreen.ts`,
-`PreSelectionWiring.ts` and `test/config/PreSelectionConfig.ts`) and the docs
-(316) and option-audit suites.
+`test/scripts/SurrogateUncertaintyAB.ts` — as do the #3932 suites they extend
+(`test/NEAT/PreSelection.ts`, `OffspringScreen.ts`, `PreSelectionWiring.ts`,
+`test/config/PreSelectionConfig.ts`), the docs suite (316) and the option-audit
+roll-up. The affected batch was run twice end to end for stability: 131 passed,
+0 failed.
+
+## Acceptance Criteria
+
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
+- **met** — `predict()` returns a mandatory uncertainty; no nullable path exists
+  — evidence: `src/surrogate/UncertainSurrogate.ts:41-66` (discriminated union,
+  no optional field), `assertVerdict` at `:110-134`, tests
+  `test/surrogate/UncertainSurrogate.ts` — reviewer: met — reason: the reviewer
+  flagged that nothing _enforced_ eligibility — a screen omitting `verdicts()`
+  silently ran unguarded. Fixed here: a `"surrogate"` screen that cannot report
+  an uncertainty is now refused with `PreSelectionError`
+  `SURROGATE_WITHOUT_UNCERTAINTY` (`src/NEAT/PreSelection.ts`).
+- **met** — Acquisition function (EI or LCB) implemented and configurable —
+  evidence: `src/surrogate/Acquisition.ts` (`expectedImprovement`,
+  `confidenceBound`, `acquisitionValue`), `preSelection.uncertainty.acquisition`
+  in `src/config/SurrogateUncertaintyConfig.ts`, tests
+  `test/surrogate/Acquisition.ts` — reviewer: met
+- **met** — Minimum fraction of exact evaluations reserved for high-uncertainty
+  candidates, enforced and asserted — evidence: band 2 of
+  `allocateExactEvaluations` plus `assertUncertaintyFloor`
+  (`src/surrogate/ExactEvaluationAllocator.ts`), tests
+  `test/surrogate/ExactEvaluationAllocator.ts::allocation — the floor spends on uncertainty the model calls mediocre`
+  and `::uncertainty floor — an argmax-shaped allocation is refused` — reviewer:
+  partial — reason: the reviewer's three caveats, each addressed or accepted
+  deliberately. (a) The reported fraction excluded the exact evaluations the
+  uniform survivor draw had already spent: the run now reports
+  `explorationShare` over **every** exact evaluation (18.6 % against the 25.6 %
+  of allocated slots) as well. (b) The per-allocation assertion is unreachable
+  while the bands are correct — it is a tripwire for a future change, and
+  `assertUncertaintyFloor` is exported and tested directly against an
+  argmax-shaped allocation. (c) OOD slots count towards the floor by design, and
+  the docs say so: a refusal is the maximum-uncertainty case, not a separate
+  budget.
+- **met** — Out-of-distribution detection against archive coverage; OOD refuses
+  to predict, with a test — evidence: `src/surrogate/CoverageRegion.ts`, wired
+  in `SurrogateScreen.verdicts`; tests
+  `test/surrogate/CoverageRegion.ts::coverage region — a novel topology is refused, not predicted`
+  and
+  `test/NEAT/SurrogateUncertaintyScreen.ts::pre-selection — an out-of-distribution candidate earns an exact evaluation`
+  — reviewer: partial — reason: the reviewer was right that the region is fitted
+  to the screen's window of exact `(descriptor, score)` pairs rather than read
+  from the #3929 archive file. That is deliberate — the refusal must hold
+  whether or not archiving is switched on, and the records are the same ones —
+  and the docs no longer claim otherwise.
+- **met** — Signed-bias drift monitor with automatic disable-and-log escalation
+  — evidence: `src/surrogate/DriftMonitor.ts`, disable through
+  `PreSelection.active`, warn line in `src/NEAT/NeatEvolution.ts`; tests
+  `test/surrogate/DriftMonitor.ts::a 1e-04 one-directional bias disables the surrogate`
+  and
+  `test/NEAT/SurrogateUncertaintyScreen.ts::a one-directional bias disables the surrogate path`;
+  fired on a real A/B run (seed 3934) — reviewer: met — reason: the reviewer
+  also found that a generation the model got exactly right was treated as
+  silence and left the streak standing; it now reads as zero bias and resets it.
+- **met** — Per-run diagnostics: signed bias, uncertainty-allocation fraction,
+  OOD rate — evidence: `SurrogateGuard.runDiagnostics` / `describeRun()`, logged
+  every generation from `src/NEAT/NeatEvolution.ts`, carried into the A/B JSON —
+  reviewer: partial — reason: the reviewer found the per-run line was computed
+  but never logged in the production evolve path. It is now emitted each
+  generation (cumulative), so a deadline-killed run still leaves it in the
+  trace. The reviewer also found the run-level bias ratio was outlier-dominated;
+  the run now reports the mean of the per-generation ratios beside the pooled
+  one, with the pooled one documented as not robust.
+- **met** — ≥100-generation A/B judged on final exact score, reported whichever
+  way it goes — evidence: `scripts/surrogate_uncertainty_ab.ts` (refuses
+  `--generations < 100`), `docs/evidence/surrogate-uncertainty-3933.md` and
+  `.json`, which report the seed that went the other way and the unequal budget
+  — reviewer: met
+- **met** — Documented: the surrogate path must not run in production without
+  this issue landed — evidence: `docs/SURROGATE_UNCERTAINTY.md` (IMPORTANT
+  block), echoed in `docs/PRE_SELECTION.md`, `docs/config/TRAINING.md`,
+  `docs/README.md`, `mod.ts` — reviewer: met
+- **unrequested** — `src/surrogate/FeatureScaler.ts`: the standardisation and
+  distance helpers were lifted out of `OffspringScreen.ts` into a shared module
+  — reviewer: unrequested — reason: the coverage region and the k-NN predictor
+  must standardise identically or a candidate could be judged _covered_ under
+  one scaling and predicted under another; duplicating the code was the
+  alternative.
+- **unrequested** — `ScreenRank.value` widened from `number` to `number | null`
+  — reviewer: unrequested — reason: a refusal has no number behind it, and
+  substituting one (a window mean, a zero) is exactly the fabricated prediction
+  the refusal exists to prevent.
+- **unrequested** — `OffspringScreen.bestObservedScore?()` — reviewer:
+  unrequested — reason: expected improvement needs a **ground-truth** incumbent;
+  taking it from the model's own window is what stops EI being measured against
+  the model's optimism.
+- **unrequested** — `deno.json` gains the `@surrogate/` alias and a
+  `surrogate-uncertainty-ab` task; `mod.ts` exports the new surface; the
+  option-audit roll-up classifies `preSelection.uncertainty` — reviewer:
+  unrequested — reason: repo conventions, each enforced by a test that fails
+  without it (`test/scripts/OptionAuditRollup.ts` fails loud on an unclassified
+  option key).
+- **unrequested** — `SurrogateGuard.assertUncertaintyAllocationFor()` —
+  reviewer: unrequested — reason: it is how the run-level floor rule is
+  reachable and testable by a consumer that allocates some of its own exact
+  evaluations; `assertUncertaintyAllocation()` is the same rule over the run's
+  own totals.
+
+## Standards Review
+
+<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
+
+- **violation** — `PreSelection.observe()` gained a `generation` parameter that
+  the JSDoc did not document, on a publicly exported surface — evidence:
+  `src/NEAT/PreSelection.ts:284` — reason: fixed here; the `@param generation`
+  tag is now present.
+- **violation** — An untyped `Error` for the empty training set, against the
+  "typed errors from `src/errors/`" rule every other refusal in the diff follows
+  — evidence: `src/surrogate/FeatureScaler.ts:313` — reason: fixed here; it
+  throws `SurrogateUncertaintyError` `EMPTY_TRAINING_SET`, a new reason on the
+  typed union.
+- **violation** — A non-finite descriptor failed loud on the ranking path but
+  was silently converted into an ordinary out-of-distribution refusal on the new
+  verdict path, so a descriptor bug bought an exact evaluation and inflated the
+  OOD rate — evidence: `src/NEAT/OffspringScreen.ts:344`,
+  `src/surrogate/CoverageRegion.ts:207` — reason: fixed here; `verdicts()` makes
+  the same `INVALID_SCREEN_VALUE` refusal the ranking path makes.
+- **violation** — `--replicates` was read but never validated, so
+  `--replicates=0` printed `NaN` means as if they were results; both sibling
+  harnesses validate the same flag — evidence:
+  `scripts/surrogate_uncertainty_ab.ts:101` — reason: fixed here; a non-integer
+  or non-positive value fails loud.
+- **violation** — `describeDrift` / `describeAllocation` / `describeRun` carried
+  no `@returns` while every neighbouring method documents one — evidence:
+  `src/surrogate/SurrogateGuard.ts:192`, `:200`, `src/NEAT/PreSelection.ts:594`
+  — reason: fixed here.
+- **clean** — Australian English throughout (cspell en-GB over all 31 changed
+  files, zero issues); tests call real functions and assert on returned values,
+  errors and diagnostics, with no source-text greps, no sleeps and no absolute
+  wall-clock assertions; fail-loud everywhere else in the diff (typed errors
+  with actionable messages, config rejected rather than clamped, no empty
+  catches); file sizes and module layout inside repo norms; `@surrogate/` alias
+  and `src/surrogate/` ↔ `test/surrogate/` mirroring follow convention; no
+  hidden paths staged; docs updated alongside the surface (new guide indexed and
+  cross-linked, option audit, evidence `.json` + `.md` pair, `mod.ts` banner);
+  `deno fmt --check`, `deno lint` and `deno check` clean.
+
+## Test Plan
+
+- **`test/surrogate/UncertainSurrogate.ts`** (5) — a verdict cannot carry a
+  value without an uncertainty; a non-finite value or a negative uncertainty is
+  refused; zero uncertainty is a real answer, not a missing one.
+- **`test/surrogate/Acquisition.ts`** (7) — EI prefers an uncertain candidate
+  predicted _below_ the incumbent over a confident one; certainty collapses EI
+  to the improvement; EI refuses a run with no incumbent; `kappa: 0` reduces the
+  confidence bound to the argmax.
+- **`test/surrogate/CoverageRegion.ts`** (9) — a novel topology is refused; a
+  hole inside the box is still an extrapolation; wrong width, empty archive and
+  non-finite descriptors fail loud.
+- **`test/surrogate/ExactEvaluationAllocator.ts`** (11) — refusals are allocated
+  first; the floor spends on candidates the model calls mediocre; a zero floor
+  degenerates to the argmax the issue warns about; an argmax-shaped allocation
+  is refused by `assertUncertaintyFloor`.
+- **`test/surrogate/DriftMonitor.ts`** (8) — symmetric noise never disables; a
+  1e-04 one-directional bias on scores around 0.36 does, at the expected
+  generation; a bias that changes direction is not a trend; too few residuals is
+  undecidable, never a pass.
+- **`test/surrogate/SurrogateGuard.ts`** (7) — the three run diagnostics; the
+  floor honoured with and without refusals; disable-and-log.
+- **`test/config/SurrogateUncertaintyConfig.ts`** (8) — the guard is on by
+  default; CLI strings parse; every out-of-range knob is rejected, never
+  clamped.
+- **`test/NEAT/SurrogateUncertaintyScreen.ts`** (12) — end to end through
+  `PreSelection`: an OOD candidate earns an exact evaluation and records `null`
+  for its screen value; the floor keeps spending on doubt; **a bred offspring
+  with no UUID still feeds the drift monitor** (the regression for the defect
+  the review found); a one-directional bias disables the stage and it falls
+  through to full evaluation; symmetric error leaves it alone.
+- **`test/NEAT/PreSelectionWiring.ts`** — extended: a real evolve loop must
+  reach the drift monitor with residuals and allocate its exact evaluations
+  through the acquisition rule.
+- **`test/scripts/SurrogateUncertaintyAB.ts`** (3) — the guarded arm reports its
+  diagnostics and honours its floor; the unguarded arm runs without a guard; the
+  reported fraction is the one the slots add up to.
