@@ -80,6 +80,8 @@ export class SignedBiasDriftMonitor {
   private runSignedSum = 0;
   private runAbsoluteSum = 0;
   private runSamples = 0;
+  private ratioSum = 0;
+  private ratioGenerations = 0;
   private lastReading: DriftReading | undefined;
 
   constructor(config: RequiredSurrogateUncertaintyConfig) {
@@ -111,10 +113,32 @@ export class SignedBiasDriftMonitor {
     return this.runSamples === 0 ? 0 : this.runAbsoluteSum / this.runSamples;
   }
 
-  /** Run-level bias ratio in `[-1, 1]`, or `null` with no residuals. */
+  /**
+   * Bias ratio over the run's **pooled** residuals, or `null` with none.
+   *
+   * Pooling is not robust: one creature that scored four orders of magnitude
+   * below the rest — an early topology that simply does not work — dominates
+   * both sums and drags this reading towards `±1` however symmetric every
+   * generation was. It is reported because it is the raw arithmetic, and
+   * {@link generationBiasRatio} is the reading to judge a run on.
+   */
   get runBiasRatio(): number | null {
     if (this.runSamples === 0 || this.runAbsoluteSum === 0) return null;
     return this.runSignedSum / this.runAbsoluteSum;
+  }
+
+  /**
+   * Mean of the **per-generation** bias ratios, or `null` when no generation
+   * carried enough residuals to decide one.
+   *
+   * This is the reading the escalation rule is built on, and the one to judge
+   * a run by: each generation contributes once whatever its residuals cost, so
+   * a single catastrophic creature moves one generation's ratio rather than
+   * the whole run's.
+   */
+  get generationBiasRatio(): number | null {
+    if (this.ratioGenerations === 0) return null;
+    return this.ratioSum / this.ratioGenerations;
   }
 
   /** The most recent generation's reading, or `undefined`. */
@@ -154,8 +178,15 @@ export class SignedBiasDriftMonitor {
     const signedBias = samples === 0 ? 0 : this.signedSum / samples;
     const meanAbsoluteResidual = samples === 0 ? 0 : this.absoluteSum / samples;
     let biasRatio: number | null = null;
-    if (samples >= this.config.driftMinSamples && this.absoluteSum > 0) {
-      biasRatio = this.signedSum / this.absoluteSum;
+    if (samples >= this.config.driftMinSamples) {
+      // A generation the model got exactly right reads as zero bias, not as
+      // silence: every residual was zero, which is the strongest evidence
+      // available that the bias is gone, so it resets the streak.
+      biasRatio = this.absoluteSum === 0
+        ? 0
+        : this.signedSum / this.absoluteSum;
+      this.ratioSum += biasRatio;
+      this.ratioGenerations++;
     }
     if (biasRatio === null) {
       // Undecidable: the streak is left standing rather than reset. A
@@ -229,6 +260,8 @@ export class SignedBiasDriftMonitor {
     this.runSignedSum = 0;
     this.runAbsoluteSum = 0;
     this.runSamples = 0;
+    this.ratioSum = 0;
+    this.ratioGenerations = 0;
     this.lastReading = undefined;
   }
 }

@@ -38,7 +38,13 @@ export type SurrogateUncertaintyErrorReason =
    * than candidates cannot be honoured, and a negative slot count is a caller
    * bug rather than an empty allocation.
    */
-  | "INVALID_ALLOCATION_REQUEST";
+  | "INVALID_ALLOCATION_REQUEST"
+  /**
+   * A standardisation was asked for over an empty training set. There is
+   * nothing to centre or scale against, so every distance taken afterwards
+   * would be measured against nothing.
+   */
+  | "EMPTY_TRAINING_SET";
 
 export class SurrogateUncertaintyError extends Error {
   override readonly name = "SurrogateUncertaintyError";

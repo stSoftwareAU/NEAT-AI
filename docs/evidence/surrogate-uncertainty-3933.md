@@ -40,37 +40,45 @@ is unsure.
 
 ## Result — 120 generations, 3 seeds, population 24
 
-| Arm         | Mean final exact score | vs unguarded |
-| ----------- | ---------------------- | ------------ |
-| `unguarded` | `-0.018134`            | —            |
-| `guarded`   | `-0.015735`            | `+2.399e-3`  |
+| Arm         | Mean final exact score | Mean exact evaluations | vs unguarded |
+| ----------- | ---------------------- | ---------------------- | ------------ |
+| `unguarded` | `-0.012964`            | 1,718                  | —            |
+| `guarded`   | `-0.005990`            | 2,158                  | `+6.974e-3`  |
 
 Per seed:
 
 | Seed | `unguarded` | `guarded`   | Delta       |
 | ---- | ----------- | ----------- | ----------- |
-| 3933 | `-0.003406` | `-0.004622` | `-1.216e-3` |
-| 3934 | `-0.011385` | `-0.006650` | `+4.735e-3` |
-| 3935 | `-0.039612` | `-0.035934` | `+3.678e-3` |
+| 3933 | `-0.030774` | `-0.004293` | `+2.648e-2` |
+| 3934 | `-0.005631` | `-0.001658` | `+3.973e-3` |
+| 3935 | `-0.002488` | `-0.012019` | `-9.531e-3` |
 
 Guard diagnostics, averaged over the three guarded runs: uncertainty allocation
-**25.3 %**, out-of-distribution rate **3.6 %**, and the drift monitor fired on
-**none** of the three.
+**25.6 %** of the slots the acquisition rule handed out — **18.6 %** of _every_
+exact evaluation the stage spent, the uniform survivor draw included — and an
+out-of-distribution rate of **3.9 %**.
+
+**The drift monitor fired on one of the three runs.** Seed 3934 disabled the
+surrogate path at generation 120 after a streak of one-directional bias; the
+other two ran to the end with per-generation bias ratios of `-0.13` and `+0.24`,
+comfortably inside the `0.5` threshold. That is the detector doing its job on a
+real search rather than on a constructed fixture.
 
 ## Read it this way
 
+- **The arms did not spend the same budget.** The guarded arm paid for about 26
+  % more exact evaluations (2,158 against 1,718) and considered about 77 % more
+  candidates. A better endpoint bought with more evaluations is not an
+  efficiency result, and this table is not one.
 - **This is not evidence that the guard buys score.** Three seeds on a synthetic
   regression, with a per-seed spread an order of magnitude wider than the mean
-  difference, cannot carry that claim, and the guard was never argued for on
-  those grounds — it is argued for because the failure it prevents is invisible
-  in the fitness trace.
+  difference and one seed going the _other_ way, cannot carry that claim. The
+  guard was never argued for on those grounds — it is argued for because the
+  failure it prevents is invisible in the fitness trace.
 - **What it does establish** is the thing worth establishing before shipping a
-  guard that costs exact evaluations: spending a quarter of them on exploration
-  did **not** cost the endpoint on this objective.
-- **The negative reading is reported, not dropped.** An earlier single-seed run
-  at 100 generations went the other way — `-0.008066` guarded against
-  `-0.004832` unguarded. That is exactly the variance the per-seed table above
-  would predict at n=1.
+  guard that costs exact evaluations: reserving a quarter of the allocation for
+  uncertainty did not collapse the endpoint, and the detector fires on a real
+  run rather than only in a test.
 - **An out-of-distribution rate near zero would be the suspicious reading**, not
   the reassuring one: on a NEAT population novel topologies are the mechanism,
   and they are by construction the points the model has no data near.

@@ -174,14 +174,17 @@ export class PreSelection {
   private readonly eliteRanks: ScreenRank[] = [];
   /** The uncertainty guard, when the screen can answer to one (Issue #3933). */
   private readonly guard: SurrogateGuard | undefined;
-  /** Predicted value per screened creature, awaiting its exact score. */
-  private predictions = new Map<string, number>();
   /**
-   * The generation before that — an elite screened last generation can take
-   * its exact score a generation later, and keeping exactly two generations
-   * bounds the map on a long run exactly as the rank maps are bounded.
+   * Predicted value per screened creature, awaiting its exact score.
+   *
+   * Keyed on the **creature itself**, not on its UUID: mutation invalidates a
+   * creature's UUID and the evolution loop only recomputes it during fitness,
+   * so a freshly bred offspring is screened while it has none. Keying on the
+   * UUID would therefore record nothing in a real run and the drift monitor
+   * would silently never see a residual. A weak map also needs no generational
+   * rotation — an entry dies with the creature it belongs to.
    */
-  private previousPredictions = new Map<string, number>();
+  private predictions = new WeakMap<Creature, number>();
   /** Best exact score the run has seen — the incumbent EI measures against. */
   private bestExactScore = -Infinity;
   private lastDrift: DriftReading | undefined;
@@ -198,6 +201,24 @@ export class PreSelection {
   ) {
     this.config = config;
     this.offspringScreen = screen;
+    // Issue #3933: a fitness approximation that cannot report an uncertainty
+    // is not eligible. The `"sampled"` screen is not one — it is a real, cheap
+    // evaluation — so only the surrogate is held to this.
+    if (
+      config.screen === "surrogate" && config.uncertainty.enabled &&
+      screen !== undefined && screen.verdicts === undefined
+    ) {
+      throw new PreSelectionError(
+        `the "surrogate" screen supplied cannot report an uncertainty for ` +
+          `its predictions, so no acquisition rule can be applied to it: ` +
+          `every exact evaluation would land where the model is already ` +
+          `confident and the model would never be corrected where it is ` +
+          `wrong. Implement verdicts(), or set ` +
+          `preSelection.uncertainty.enabled to false and accept the Issue ` +
+          `#3932 argmax knowingly.`,
+        "SURROGATE_WITHOUT_UNCERTAINTY",
+      );
+    }
     // The guard exists only where it can do its job: a screen that cannot
     // report an uncertainty cannot be held to an acquisition rule, and
     // pretending otherwise would report a floor nothing enforced.
@@ -280,6 +301,8 @@ export class PreSelection {
    *   to two different measurements at once.
    *
    * @param population - The population as it stands after evaluation.
+   * @param generation - The generation just evaluated, for the drift reading
+   *   (Issue #3933). Defaults to the generation last screened.
    */
   observe(population: readonly Creature[], generation?: number): void {
     const screen = this.offspringScreen;
@@ -291,15 +314,12 @@ export class PreSelection {
       // exact score by construction — EI against the model's own optimism is
       // a rule with no ground truth in it.
       if (score > this.bestExactScore) this.bestExactScore = score;
-      const uuid = creature.uuid;
-      if (uuid !== undefined) {
-        const predicted = this.predictions.get(uuid) ??
-          this.previousPredictions.get(uuid);
-        if (predicted !== undefined) {
-          this.guard?.observe(predicted, score);
-          this.predictions.delete(uuid);
-          this.previousPredictions.delete(uuid);
-        }
+      const predicted = this.predictions.get(creature);
+      if (predicted !== undefined) {
+        this.guard?.observe(predicted, score);
+        // Consumed: a creature that survives many generations is differenced
+        // once, against the first exact score it earned.
+        this.predictions.delete(creature);
       }
       screen?.observe?.(creature, score);
     }
@@ -354,19 +374,20 @@ export class PreSelection {
     const screenMs = Date.now() - screenStartMs;
     this.assertNoScoreWritten(candidates, scoresBefore);
 
+    // The incumbent expected improvement measures against: the best exact
+    // score this stage has seen, or the best in the model's own window when
+    // the screen was taught directly. Both are ground truth; a predicted best
+    // is not.
+    const incumbent = Math.max(
+      this.bestExactScore,
+      screen.bestObservedScore?.() ?? -Infinity,
+    );
     // Best first. A stable tie-break on the candidate's own position keeps a
     // same-seed run reproducible when the screen cannot separate two
     // candidates. With the guard on, "best" is the acquisition value and a
     // refusal sorts to the front — an out-of-distribution candidate is not a
     // bad candidate, it is an unmeasured one, and it is the one a true
     // evaluation buys the most information about.
-    // The incumbent EI measures against: the best exact score this stage has
-    // seen, or the best in the model's own window when the screen was taught
-    // directly. Both are ground truth; a predicted best is not.
-    const incumbent = Math.max(
-      this.bestExactScore,
-      screen.bestObservedScore?.() ?? -Infinity,
-    );
     const keys = verdicts === undefined
       ? (values as readonly number[])
       : verdicts.map((verdict) =>
@@ -415,6 +436,10 @@ export class PreSelection {
         Math.max(0, Math.min(slots - chosen.size, available.length)),
         incumbent,
       );
+      // The uniform draw already spent slots on creatures the guard did not
+      // choose; they are exact evaluations too, and the run's exploration
+      // share is measured against all of them.
+      guard.recordExternalExactEvaluations(chosen.size);
       for (const slot of allocation.slots) {
         const index = available[slot.index];
         chosen.add(index);
@@ -441,8 +466,6 @@ export class PreSelection {
     const discarded: Creature[] = [];
     this.previousRanks = this.ranks;
     this.ranks = new Map();
-    this.previousPredictions = this.predictions;
-    this.predictions = new Map();
     for (const index of order) {
       const creature = candidates[index];
       if (!chosen.has(index)) {
@@ -450,13 +473,20 @@ export class PreSelection {
         continue;
       }
       survivors.push(creature);
+      // Issue #3933: remember what the model said, so the exact score that
+      // arrives for this creature next generation can be differenced against
+      // it. That difference is the drift monitor's whole input, and it is
+      // recorded against the creature rather than its UUID because a bred
+      // offspring has not been given one yet.
+      const predicted = values[index];
+      if (predicted !== null) this.predictions.set(creature, predicted);
+      // A bred offspring has no UUID at this point — mutation invalidated it
+      // and fitness has not recomputed it yet — so this rank is recorded for
+      // the fixtures and callers that do carry one. Issue #4008 tracks moving
+      // the rank map onto creature identity, as the prediction map above
+      // already is.
       const uuid = creature.uuid;
       if (uuid !== undefined) {
-        // Issue #3933: remember what the model said, so the exact score that
-        // arrives for this creature next generation can be differenced
-        // against it. That difference is the drift monitor's whole input.
-        const predicted = values[index];
-        if (predicted !== null) this.predictions.set(uuid, predicted);
         this.ranks.set(uuid, {
           rank: rankOf[index],
           of: candidates.length,
@@ -587,8 +617,10 @@ export class PreSelection {
   }
 
   /**
-   * The per-generation acquisition line, or `undefined` when the guard was not
-   * consulted this generation.
+   * The per-generation acquisition line.
+   *
+   * @returns The line, or `undefined` when the guard was not consulted this
+   *   generation.
    */
   describeAllocation(): string | undefined {
     return this.guard?.describeAllocation();
@@ -613,8 +645,7 @@ export class PreSelection {
     this.lastSummary = undefined;
     this.eliteRanks.length = 0;
     this.recordedElites.clear();
-    this.predictions = new Map();
-    this.previousPredictions = new Map();
+    this.predictions = new WeakMap();
     this.bestExactScore = -Infinity;
     this.lastDrift = undefined;
     this.guard?.reset();

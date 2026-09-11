@@ -152,6 +152,21 @@ Deno.test("pre-selection wiring — an active stage screens a real generation's 
       screened > 0,
       "an active stage over three generations must discard some offspring",
     );
+    // Issue #3933: the exact scores that arrive for screened survivors must
+    // reach the drift monitor. A bred offspring is screened *before* fitness
+    // recomputes its UUID, so a monitor keyed on that UUID records nothing in
+    // a real run and the false-optimum detector can never fire.
+    const guard = neat.preSelection.surrogateGuard;
+    assert(guard !== undefined, "a surrogate screen carries the #3933 guard");
+    assert(
+      guard.runDiagnostics.residuals > 0,
+      "the surrogate's predictions must be differenced against the exact " +
+        "scores that arrived for them",
+    );
+    assert(
+      guard.runDiagnostics.exactSlots > 0,
+      "the acquisition rule must have allocated this run's exact evaluations",
+    );
   } finally {
     await Promise.all(workers.map((w) => w.waitUntilReady().catch(() => {})));
     for (const worker of workers) worker.terminate();

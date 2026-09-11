@@ -926,9 +926,17 @@ export async function evolve(
     appendAll(newPopulation, outcome.survivors);
     getLogger().info(neat.preSelection.describe(outcome.summary));
     // Issue #3933: where this generation's exact evaluations went — refusals,
-    // the uncertainty floor, and the acquisition rule.
+    // the uncertainty floor, and the acquisition rule — followed by the
+    // run-to-date totals. The run line is cumulative and is emitted every
+    // generation rather than at the end: a run that is killed by its deadline,
+    // or that never reaches a clean finish, still leaves its signed bias,
+    // uncertainty allocation and out-of-distribution rate in the trace.
     const allocationLine = neat.preSelection.describeAllocation();
-    if (allocationLine) getLogger().info(allocationLine);
+    if (allocationLine) {
+      getLogger().info(allocationLine);
+      const runLine = neat.preSelection.describeSurrogateRun();
+      if (runLine) getLogger().info(runLine);
+    }
   }
   // Issue #2312: Snapshot after mutation — main thread only
   const mutationUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);

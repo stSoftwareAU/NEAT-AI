@@ -11,6 +11,8 @@
  * @module FeatureScaler
  */
 
+import { SurrogateUncertaintyError } from "@errors/SurrogateUncertaintyError.ts";
+
 /** Column means and standard deviations of the informative columns. */
 export interface FeatureScaler {
   /** Indices of the columns that survived, in ascending order. */
@@ -45,13 +47,19 @@ export const CONSTANT_COLUMN_EPS = 1e-12;
  * @returns The fitted scaler. `keep` is empty when every column is constant,
  *   which is the honest answer rather than an error: the descriptor cannot
  *   tell these rows apart.
- * @throws {Error} When no rows were given — there is nothing to fit.
+ * @throws {SurrogateUncertaintyError} `EMPTY_TRAINING_SET` when no rows were
+ *   given — there is nothing to centre or scale against.
  */
 export function fitFeatureScaler(
   rows: readonly (readonly number[])[],
 ): FeatureScaler {
   if (rows.length === 0) {
-    throw new Error("cannot fit a feature scaler to an empty training set");
+    throw new SurrogateUncertaintyError(
+      "cannot fit a feature scaler to an empty training set: there is " +
+        "nothing to centre or scale against, so every distance taken " +
+        "afterwards would be measured against nothing",
+      "EMPTY_TRAINING_SET",
+    );
   }
   const width = rows[0].length;
   const keep: number[] = [];

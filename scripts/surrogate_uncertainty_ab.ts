@@ -99,6 +99,13 @@ async function main(): Promise<void> {
     );
   }
   const replicates = numberFlag(args, "replicates", 3);
+  if (!Number.isInteger(replicates) || replicates < 1) {
+    throw new Error(
+      `--replicates must be a whole number >= 1: a run with none reports a ` +
+        `mean over an empty sample, which prints as a result and is not one, ` +
+        `got ${replicates}`,
+    );
+  }
   const settings: ABSettings = {
     ...DEFAULT_AB_SETTINGS,
     generations,

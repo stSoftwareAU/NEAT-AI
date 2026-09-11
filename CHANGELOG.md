@@ -67,8 +67,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   the surrogate path must not run in production without it. Measured over 120
   generations and 3 seeds
   ([`docs/evidence/surrogate-uncertainty-3933.md`](./docs/evidence/surrogate-uncertainty-3933.md)):
-  spending a quarter of the exact evaluations on uncertainty did not cost the
-  endpoint on that objective.
+  reserving a quarter of the allocation for uncertainty did not collapse the
+  endpoint on that objective, and the monitor disabled the surrogate path on one
+  of the three runs.
 
 - **Issue #3974:** Depth-aware squash bias. `ModSquash` can now down-weight
   activations that block the gradient over a region of their input space when

@@ -360,6 +360,19 @@ export class SurrogateScreen implements OffspringScreen {
     const windowSd = scoreSpread(this.points);
     return candidates.map((candidate) => {
       const features = computeEvaluationDescriptor(candidate);
+      // A corrupt descriptor is not a novel topology, and reporting it as one
+      // would hide a bug inside the out-of-distribution rate and buy it an
+      // exact evaluation. Same refusal the ranking path makes.
+      for (const value of features) {
+        if (Number.isFinite(value)) continue;
+        throw new PreSelectionError(
+          `candidate ${
+            candidate.uuid?.substring(0, 8) ?? "<no uuid>"
+          } has a non-finite descriptor slot; a surrogate fitted to it would ` +
+            `rank on nonsense`,
+          "INVALID_SCREEN_VALUE",
+        );
+      }
       const reading = region.classify(features);
       if (!reading.inside) {
         // `classify` builds the refusal alongside the reading, so an outside
@@ -525,9 +538,16 @@ function predictWithUncertainty(
     weight += w;
   }
   const value = weighted / weight;
+  // The doubt is measured over the same points the value came from. With a
+  // coincident neighbour the value is *that* score, so the spread is taken
+  // over the coincident points only — weighting a neighbour 1e-9 away at 1e9
+  // against a value it did not contribute to would report a disagreement that
+  // is not there.
+  const coincident = ranked[0].distance === 0;
   let spread = 0;
   let spreadWeight = 0;
   for (let i = 0; i < k; i++) {
+    if (coincident && ranked[i].distance > 0) break;
     const w = ranked[i].distance === 0 ? 1 : 1 / ranked[i].distance;
     const delta = ranked[i].score - value;
     spread += w * delta * delta;

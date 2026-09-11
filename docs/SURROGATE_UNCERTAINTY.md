@@ -85,8 +85,12 @@ scores are higher-is-better, so each is computed on its maximisation mirror.
 ### 3. Refuse to extrapolate
 
 [`src/surrogate/CoverageRegion.ts`](../src/surrogate/CoverageRegion.ts) draws
-the region the archive actually covers and refuses anything outside it. Two
-tests, and a candidate need only fail one:
+the region the model's evidence actually covers and refuses anything outside it.
+That evidence is the window of exact `(descriptor, score)` pairs the run has
+already paid for — the same records the evaluation archive of Issue #3929
+stores, read from the screen's own window rather than from the archive file, so
+the refusal holds whether or not archiving is switched on. Two tests, and a
+candidate need only fail one:
 
 - **the box** — every descriptor slot must sit inside the range the archive
   spans, widened by `coverageMargin` standard deviations;
@@ -108,6 +112,13 @@ every prediction against the exact score that arrives for it later, and tracks
 ```text
 bias ratio = mean(predicted - exact) / mean(|predicted - exact|)
 ```
+
+The residuals can only come from candidates that went on to take an exact score,
+so the sample is not a uniform one: it is the survivor set. The uniform survivor
+draw of Issue #3932 (`randomSurvivorFraction`, `0.25` by default) is what keeps
+an unselected slice in that sample — with it at `0`, the monitor sees only what
+the acquisition rule chose, which is a narrower view of the model's error than
+it looks.
 
 `±1` when every residual points the same way, near `0` for symmetric noise of
 any magnitude. The reading is scale-free by construction, which is what lets it
@@ -193,26 +204,28 @@ Measured at 120 generations over 3 seeds, population 24
 machine-readable in
 [`surrogate-uncertainty-3933.json`](evidence/surrogate-uncertainty-3933.json)):
 
-| Arm                                 | Mean final exact score | vs unguarded |
-| ----------------------------------- | ---------------------- | ------------ |
-| `unguarded` (predicted-rank argmax) | `-0.018134`            | —            |
-| `guarded`                           | `-0.015735`            | `+2.399e-3`  |
+| Arm                                 | Mean final exact score | Mean exact evaluations | vs unguarded |
+| ----------------------------------- | ---------------------- | ---------------------- | ------------ |
+| `unguarded` (predicted-rank argmax) | `-0.012964`            | 1,718                  | —            |
+| `guarded`                           | `-0.005990`            | 2,158                  | `+6.974e-3`  |
 
-Per seed the guarded arm finished ahead on two of three (`-0.004622` vs
-`-0.003406`; `-0.006650` vs `-0.011385`; `-0.035934` vs `-0.039612`). The
-guarded arm spent **25.3 %** of its exact evaluations on uncertainty and refused
-to predict **3.6 %** of candidates; the drift monitor did not fire on any of the
-three runs.
+The guarded arm finished ahead on two seeds of three and behind on the third
+(`-0.012019` against `-0.002488`). It spent **25.6 %** of the slots the
+acquisition rule allocated on uncertainty — **18.6 %** of every exact evaluation
+the stage spent — refused to predict **3.9 %** of candidates, and **the drift
+monitor disabled the surrogate path on one of the three runs** (seed 3934,
+generation 120) after five consecutive one-directional generations.
 
-**Read that cautiously and in one direction only.** Three seeds on a synthetic
-regression is not evidence that the guard buys score, and the guard was never
-argued for on those grounds — it is argued for because the failure it prevents
-is invisible in the fitness trace. What the A/B does establish is the thing
-worth establishing: paying a quarter of the exact evaluations for exploration
-did **not** cost the endpoint on this objective. The single-seed run at 100
-generations went the other way (`-0.008066` guarded against `-0.004832`
-unguarded), which is exactly the variance you would expect at this sample size
-and is reported here rather than dropped.
+**Read that cautiously and in one direction only.** The arms did not spend the
+same budget — the guarded one paid for about 26 % more exact evaluations — so
+this is not an efficiency result, and three seeds on a synthetic regression is
+not evidence that the guard buys score. The guard was never argued for on those
+grounds: the failure it prevents is invisible in the fitness trace. What the A/B
+does establish is that reserving a quarter of the allocation for exploration did
+not collapse the endpoint, and that the detector fires on a real search rather
+than only on a fixture. The full reading, including the seed that went the other
+way, is in
+[`docs/evidence/surrogate-uncertainty-3933.md`](evidence/surrogate-uncertainty-3933.md).
 
 ## See also
 
@@ -220,7 +233,8 @@ and is reported here rather than dropped.
   #3932).
 - [EVOLUTION_CONTROL.md](EVOLUTION_CONTROL.md) — the model-management policy it
   composes with (Issue #3931).
-- [EVALUATION_ARCHIVE.md](EVALUATION_ARCHIVE.md) — the archive whose coverage
-  the out-of-distribution test is drawn against (Issue #3929).
+- [EVALUATION_ARCHIVE.md](EVALUATION_ARCHIVE.md) — the durable record of the
+  same exact `(descriptor, score)` pairs the coverage region is drawn from
+  (Issue #3929).
 - [comparison/REFERENCES.md](comparison/REFERENCES.md) — Jin (2011); Jones,
   Schonlau & Welch (1998).

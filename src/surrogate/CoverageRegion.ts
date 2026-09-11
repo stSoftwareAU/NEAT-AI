@@ -2,9 +2,10 @@
  * The region of descriptor space the archive actually covers — Issue #3933.
  *
  * "Refuse to extrapolate" is the third of the issue's three refusals. When a
- * candidate's descriptor falls outside the region the evaluation archive
- * (Issue #3929) covers, the model must **report that** rather than return a
- * number. In a NEAT population this is not an edge case: novel topologies are
+ * candidate's descriptor falls outside the region the model's own evidence
+ * covers — the window of exact `(descriptor, score)` pairs the run has paid
+ * for, which is the same record the evaluation archive of Issue #3929 keeps —
+ * the model must **report that** rather than return a number. In a NEAT population this is not an edge case: novel topologies are
  * the whole mechanism, and they are by construction the points the model has
  * no data near. A surrogate that silently extrapolates onto them is a
  * surrogate that systematically misjudges exactly the candidates that matter.

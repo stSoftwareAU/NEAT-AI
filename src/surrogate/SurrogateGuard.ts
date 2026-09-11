@@ -33,6 +33,7 @@ import {
   SignedBiasDriftMonitor,
 } from "@surrogate/DriftMonitor.ts";
 import type { SurrogateVerdict } from "@surrogate/UncertainSurrogate.ts";
+import { SurrogateUncertaintyError } from "@errors/SurrogateUncertaintyError.ts";
 
 /** What the guard saw across a whole run. */
 export interface SurrogateRunDiagnostics {
@@ -46,20 +47,46 @@ export interface SurrogateRunDiagnostics {
   readonly outOfDistributionRate: number;
   /** Exact evaluations the guard allocated. */
   readonly exactSlots: number;
+  /**
+   * Exact evaluations the generation spent in total — the guard's own slots
+   * plus the ones its caller had already handed out (the uniform survivor
+   * draw of Issue #3932, which is exploration the guard did not choose).
+   */
+  readonly exactEvaluations: number;
   /** Of those, the ones spent where the model was unsure or had no data. */
   readonly explorationSlots: number;
   /**
-   * `explorationSlots / exactSlots`, in `[0, 1]` — the number that must not
-   * drift to zero. If it does, the acquisition rule has degenerated to an
-   * argmax and the model has stopped being corrected where it is wrong.
+   * `explorationSlots / exactSlots`, in `[0, 1]` — the share of the slots the
+   * **acquisition rule allocated** that went where the model was unsure, and
+   * the number the configured floor is asserted against. If it drifts to zero
+   * the rule has degenerated to an argmax and the model has stopped being
+   * corrected where it is wrong.
    */
   readonly uncertaintyFraction: number;
+  /**
+   * `explorationSlots / exactEvaluations`, in `[0, 1]` — the same exploration
+   * measured against **every** exact evaluation the generation spent, slots
+   * the caller had already handed out included. Always the smaller of the two,
+   * and the honest answer to "what fraction of this run's true evaluations did
+   * uncertainty buy?".
+   */
+  readonly explorationShare: number;
   /** Mean signed residual `predicted - exact` over the run, in score units. */
   readonly signedBias: number;
   /** Mean absolute residual over the run, in score units. */
   readonly meanAbsoluteResidual: number;
-  /** Run-level `signedBias / meanAbsoluteResidual`, or `null`. */
+  /**
+   * Bias ratio over the run's **pooled** residuals, or `null`. Not robust: one
+   * creature scoring orders of magnitude below the rest drags it towards `±1`
+   * however symmetric each generation was. Judge a run on
+   * {@link SurrogateRunDiagnostics.generationBiasRatio}.
+   */
   readonly biasRatio: number | null;
+  /**
+   * Mean of the per-generation bias ratios, or `null` — the reading the
+   * escalation rule is built on, and the one to judge a run by.
+   */
+  readonly generationBiasRatio: number | null;
   /** Residuals the bias was taken over. */
   readonly residuals: number;
   /** True once the drift monitor disabled the surrogate path. */
@@ -76,6 +103,7 @@ export class SurrogateGuard {
   private candidates = 0;
   private outOfDistribution = 0;
   private exactSlots = 0;
+  private externalSlots = 0;
   private explorationSlots = 0;
   private lastAllocation: Allocation | undefined;
 
@@ -117,13 +145,18 @@ export class SurrogateGuard {
         ? 0
         : this.outOfDistribution / this.candidates,
       exactSlots: this.exactSlots,
+      exactEvaluations: this.exactSlots + this.externalSlots,
       explorationSlots: this.explorationSlots,
       uncertaintyFraction: this.exactSlots === 0
         ? 0
         : this.explorationSlots / this.exactSlots,
+      explorationShare: this.exactSlots + this.externalSlots === 0
+        ? 0
+        : this.explorationSlots / (this.exactSlots + this.externalSlots),
       signedBias: this.monitor.runSignedBias,
       meanAbsoluteResidual: this.monitor.runMeanAbsoluteResidual,
       biasRatio: this.monitor.runBiasRatio,
+      generationBiasRatio: this.monitor.generationBiasRatio,
       residuals: this.monitor.runResiduals,
       disabled: this.monitor.escalated,
       disabledAtGeneration: this.monitor.escalatedGeneration,
@@ -163,6 +196,27 @@ export class SurrogateGuard {
   }
 
   /**
+   * Record exact evaluations the caller allocated itself, so the run's
+   * exploration share is measured against every true evaluation the stage
+   * spent rather than only the ones the acquisition rule handed out.
+   *
+   * @param slots - Exact evaluations spent outside the allocation, this
+   *   generation. Negative or fractional counts are refused.
+   * @throws {SurrogateUncertaintyError} `INVALID_ALLOCATION_REQUEST` when
+   *   `slots` is not a non-negative whole number.
+   */
+  recordExternalExactEvaluations(slots: number): void {
+    if (!Number.isSafeInteger(slots) || slots < 0) {
+      throw new SurrogateUncertaintyError(
+        `exact evaluations spent outside the allocation must be a ` +
+          `non-negative whole number, got ${slots}`,
+        "INVALID_ALLOCATION_REQUEST",
+      );
+    }
+    this.externalSlots += slots;
+  }
+
+  /**
    * Record one prediction against the exact score that arrived for it.
    *
    * @param predicted - What the surrogate said.
@@ -188,14 +242,17 @@ export class SurrogateGuard {
    * carried no residuals.
    *
    * @param reading - The reading {@link closeGeneration} returned.
+   * @returns The line, or `undefined` when the generation carried no
+   *   residuals to report.
    */
   describeDrift(reading: DriftReading): string | undefined {
     return this.monitor.describe(reading);
   }
 
   /**
-   * The per-generation allocation line, or `undefined` when nothing was
-   * allocated.
+   * The per-generation allocation line.
+   *
+   * @returns The line, or `undefined` when nothing has been allocated yet.
    */
   describeAllocation(): string | undefined {
     const allocation = this.lastAllocation;
@@ -211,15 +268,23 @@ export class SurrogateGuard {
       `${(d.floor * 100).toFixed(1)}%)`;
   }
 
-  /** The one line a run reports its three guard diagnostics on. */
+  /**
+   * The one line a run reports its guard diagnostics on.
+   *
+   * @returns The line: signed bias, uncertainty allocation, and OOD rate.
+   */
   describeRun(): string {
     const d = this.runDiagnostics;
-    const ratio = d.biasRatio === null ? "undecidable" : d.biasRatio.toFixed(3);
+    const ratio = d.generationBiasRatio === null
+      ? "undecidable"
+      : d.generationBiasRatio.toFixed(3);
     return `[NEAT-AI] Surrogate guard over ${d.generations} generation(s): ` +
-      `signed bias ${d.signedBias.toExponential(3)} (ratio ${ratio}) over ` +
-      `${d.residuals} prediction(s), uncertainty allocation ` +
-      `${(d.uncertaintyFraction * 100).toFixed(1)}% of ${d.exactSlots} exact ` +
-      `evaluation(s), OOD rate ` +
+      `signed bias ${d.signedBias.toExponential(3)} (per-generation ratio ` +
+      `${ratio}) over ${d.residuals} prediction(s), uncertainty allocation ` +
+      `${(d.uncertaintyFraction * 100).toFixed(1)}% of ${d.exactSlots} ` +
+      `allocated exact evaluation(s) — ` +
+      `${(d.explorationShare * 100).toFixed(1)}% of all ` +
+      `${d.exactEvaluations}, OOD rate ` +
       `${(d.outOfDistributionRate * 100).toFixed(1)}% of ${d.candidates} ` +
       `candidate(s)${
         d.disabled ? `, DISABLED at generation ${d.disabledAtGeneration}` : ""
@@ -292,6 +357,7 @@ export class SurrogateGuard {
     this.candidates = 0;
     this.outOfDistribution = 0;
     this.exactSlots = 0;
+    this.externalSlots = 0;
     this.explorationSlots = 0;
     this.lastAllocation = undefined;
   }

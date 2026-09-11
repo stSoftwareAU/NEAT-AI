@@ -65,17 +65,36 @@ Deno.test("surrogate screen — an unready model is asked for nothing", () => {
   assertEquals(error.reason, "INVALID_SCREEN_VALUE");
 });
 
-Deno.test("surrogate screen — an unusual creature is less certainly predicted", () => {
-  const screen = trainedScreen(12);
-  // Candidate 1 sits inside the trained window; candidate 11 sits at its
-  // edge, which is where a k-NN model has the least support.
-  const [inside] = screen.verdicts(buildCandidates(1, 3));
-  const [edge] = screen.verdicts(buildCandidates(1, 11));
-  assert(isPrediction(inside) && isPrediction(edge));
+Deno.test("surrogate screen — an interpolated creature is less certainly predicted", () => {
+  // A window with gaps in it: every second creature of a structurally ordered
+  // batch, so a candidate can sit either *on* a training point or between two
+  // of them.
+  const screen = new SurrogateScreen(64, 3);
+  const trained = buildCandidates(12);
+  trained.forEach((creature, index) => {
+    if (index % 2 !== 0) return;
+    screen.observe(creature, 0.3 + index * 0.01);
+  });
+  // `buildCandidates(1, n)` is the same creature as `buildCandidates(12)[n]`,
+  // so offset 4 is a training point and offset 5 is one of the gaps.
+  const [onData] = screen.verdicts(buildCandidates(1, 4));
+  const [inGap] = screen.verdicts(buildCandidates(1, 5));
+  assert(isPrediction(onData) && isPrediction(inGap));
   assert(
-    edge.uncertainty > inside.uncertainty,
-    `edge ${edge.uncertainty} should exceed interior ${inside.uncertainty}`,
+    inGap.uncertainty > onData.uncertainty,
+    `a candidate the model must interpolate (${inGap.uncertainty}) should ` +
+      `carry more doubt than one it has measured (${onData.uncertainty})`,
   );
+});
+
+Deno.test("surrogate screen — an exact structural match is measured, not interpolated", () => {
+  const screen = trainedScreen(12);
+  // Every fixture creature sits on a training point, so the model has the
+  // score rather than an average of its neighbours: the doubt is the
+  // disagreement among the coincident points, which is none.
+  const [verdict] = screen.verdicts(buildCandidates(1, 3));
+  assert(isPrediction(verdict));
+  assertEquals(verdict.uncertainty, 0);
 });
 
 Deno.test("pre-selection — an out-of-distribution candidate earns an exact evaluation", async () => {
@@ -181,6 +200,32 @@ Deno.test("pre-selection — the guard off restores the Issue #3932 argmax", asy
   for (const creature of outcome.survivors) {
     assertEquals(stage.screenRankOf(creature)?.reason, "rank");
   }
+});
+
+Deno.test("pre-selection — a bred offspring with no UUID still feeds the monitor", async () => {
+  // The regression this exists for: mutation invalidates a creature's UUID and
+  // the evolution loop only recomputes it during fitness, so every candidate
+  // the real loop screens arrives *without* one. Keyed on the UUID, the drift
+  // monitor recorded nothing in a production run and the false-optimum
+  // detector could never fire.
+  const stage = new PreSelection(
+    resolvePreSelectionConfig({
+      ratio: 3,
+      screen: "surrogate",
+      randomSurvivorFraction: 0,
+    }),
+    trainedScreen(),
+  );
+  const candidates = buildCandidates(9) as Creature[];
+  for (const candidate of candidates) delete candidate.uuid;
+  const outcome = await stage.select(candidates, 3, 1, createSeededRng(7));
+  for (const survivor of outcome.survivors) survivor.score = 0.31;
+  stage.observe(outcome.survivors, 1);
+  const diagnostics = stage.surrogateGuard?.runDiagnostics;
+  assert(
+    (diagnostics?.residuals ?? 0) > 0,
+    "the exact scores of UUID-less offspring must still reach the monitor",
+  );
 });
 
 Deno.test("pre-selection — a one-directional bias disables the surrogate path", async () => {

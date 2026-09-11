@@ -76,28 +76,31 @@ Backend/CLI change: there is no web interface to screenshot. What was tested
 instead:
 
 **The long-horizon A/B, judged on final exact score.**
-`scripts/surrogate_uncertainty_ab.ts` runs the same seed, the same starting
-population and the same surrogate screen with the guard on and off, and refuses
-a horizon shorter than 100 generations. Measured at **120 generations over 3
-seeds**, population 24 (`docs/evidence/surrogate-uncertainty-3933.json`):
+`scripts/surrogate_uncertainty_ab.ts` (`deno task surrogate-uncertainty-ab`)
+runs the same seed, the same starting population and the same surrogate screen
+with the guard on and off, and refuses a horizon shorter than 100 generations.
+Measured at **120 generations over 3 seeds**, population 24
+(`docs/evidence/surrogate-uncertainty-3933.md`, machine-readable in the matching
+`.json`):
 
-| Arm                                 | Mean final exact score | vs unguarded |
-| ----------------------------------- | ---------------------- | ------------ |
-| `unguarded` (predicted-rank argmax) | `-0.018134`            | —            |
-| `guarded`                           | `-0.015735`            | `+2.399e-3`  |
+| Arm                                 | Mean final exact score | Mean exact evaluations | vs unguarded |
+| ----------------------------------- | ---------------------- | ---------------------- | ------------ |
+| `unguarded` (predicted-rank argmax) | `-0.012964`            | 1,718                  | —            |
+| `guarded`                           | `-0.005990`            | 2,158                  | `+6.974e-3`  |
 
-Per seed the guarded arm finished ahead on two of three (`-0.004622` vs
-`-0.003406`; `-0.006650` vs `-0.011385`; `-0.035934` vs `-0.039612`). It spent
-**25.3 %** of its exact evaluations on uncertainty and refused to predict **3.6
-%** of candidates; the drift monitor did not fire on any run.
+The guarded arm finished ahead on two seeds and **behind on the third**
+(`-0.012019` against `-0.002488`), spent **25.6 %** of the allocated slots on
+uncertainty (**18.6 %** of every exact evaluation the stage spent), refused
+**3.9 %** of candidates, and **the drift monitor disabled the surrogate path on
+one of the three runs** — the detector firing on a real search rather than on a
+fixture.
 
-**Reported whichever way it goes, and read cautiously.** An earlier single-seed
-run at 100 generations went the _other_ way (`-0.008066` guarded against
-`-0.004832` unguarded) and is recorded in `docs/SURROGATE_UNCERTAINTY.md` rather
-than dropped. Three seeds on a synthetic regression is not evidence that the
-guard buys score, and it was never argued for on those grounds — what the A/B
-does establish is that paying a quarter of the exact evaluations for exploration
-did not cost the endpoint here.
+**Reported whichever way it goes, and read cautiously.** The arms did not spend
+the same budget: the guarded one paid for about 26 % more exact evaluations, so
+this is not an efficiency result. Three seeds on a synthetic regression is not
+evidence that the guard buys score, and it was never argued for on those grounds
+— what the A/B establishes is that reserving a quarter of the allocation for
+exploration did not collapse the endpoint.
 
 **Quality gate.** `./quality.sh` refuses to run its test stage in this
 container: the native `rust_scorer` binary is not present and the gate will not
