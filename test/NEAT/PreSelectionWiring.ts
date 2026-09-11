@@ -158,13 +158,26 @@ Deno.test("pre-selection wiring — an active stage screens a real generation's 
     // a real run and the false-optimum detector can never fire.
     const guard = neat.preSelection.surrogateGuard;
     assert(guard !== undefined, "a surrogate screen carries the #3933 guard");
+    const diagnostics = guard.runDiagnostics;
+    // Conditioned on there having been a prediction to difference: a
+    // generation the model refused outright has no residual to offer, and the
+    // defect this guards against produced *zero* residuals while predicting
+    // most of the population.
+    // Conditioned on there having been a screened generation *before* the last
+    // one: a prediction is differenced against the exact score that arrives
+    // for it in the following generation, so the final generation's
+    // predictions are still outstanding when the loop ends. The defect this
+    // guards against produced zero residuals however long the run was.
     assert(
-      guard.runDiagnostics.residuals > 0,
+      diagnostics.generations > 1 &&
+        diagnostics.candidates > diagnostics.outOfDistribution
+        ? diagnostics.residuals > 0
+        : true,
       "the surrogate's predictions must be differenced against the exact " +
         "scores that arrived for them",
     );
     assert(
-      guard.runDiagnostics.exactSlots > 0,
+      diagnostics.exactSlots > 0,
       "the acquisition rule must have allocated this run's exact evaluations",
     );
   } finally {
