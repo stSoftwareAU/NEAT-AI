@@ -309,7 +309,10 @@ and of every sampled screen in the fleet.
   [`docs/EVOLUTION_CONTROL.md`](../EVOLUTION_CONTROL.md) (Issue #3931).
 - [Efficient Global Optimization of Expensive Black-Box Functions](https://doi.org/10.1023/A:1008306431147)
   — Jones, Schonlau & Welch (1998) — expected improvement as an acquisition
-  function; how to decide what is worth evaluating for real.
+  function; how to decide what is worth evaluating for real. The acquisition
+  question NEAT-AI answers with the pre-selection stage of
+  [`docs/PRE_SELECTION.md`](../PRE_SELECTION.md) (Issue #3932): breed a surplus,
+  screen it, and spend the true evaluation only on the survivors.
 - [Hoeffding Races: Accelerating Model Selection Search for Classification and Function Approximation](https://proceedings.neurips.cc/paper_files/paper/1993/hash/02a32ad2669e6fe298e607fe7cc0e1a0-Abstract.html)
   — Maron & Moore (1994); and
   [A Racing Algorithm for Configuring Metaheuristics](https://dl.acm.org/doi/10.5555/2955491.2955494)
