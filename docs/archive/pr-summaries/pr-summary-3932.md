@@ -128,7 +128,7 @@ CI runs the full gate on the PR.
 
 ## Test Plan
 
-55 new tests across five files, all calling real code:
+56 new tests across five files, all calling real code:
 
 - `test/config/PreSelectionConfig.ts` (12) — defaults are the stage off, every
   refusal, the two cross-field contradictions.
@@ -140,10 +140,14 @@ CI runs the full gate on the PR.
   rank-ordered** over 40 seeded draws; a discarded creature carrying no score
   and no rank; a screen that writes a score refused; elite ranks recorded and
   forgotten on schedule.
-- `test/NEAT/PreSelectionWiring.ts` (8) — config reaching `Neat`, the sampled
+- `test/NEAT/PreSelectionWiring.ts` (9) — config reaching `Neat`, the sampled
   screen's refusal, a default evolve run screening nothing, a real multi-
-  generation evolve screening offspring, and **the evaluation archive holding no
-  more than the evaluated populations** while the stage discards.
+  generation evolve screening offspring, **the evaluation archive holding no
+  more than the evaluated populations** while the stage discards, and a spy on
+  the live screen proving **every candidate it is handed is unscored** — an
+  elite carries the exact score it earned, so a scored candidate reaching the
+  screen would mean the stage had been let loose on something that is not
+  offspring.
 - `test/scripts/PreSelectionAB.ts` (5) — the harness's corpus, scoring, genetic
   distance and both arms.
 

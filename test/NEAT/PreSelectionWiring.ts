@@ -209,3 +209,54 @@ Deno.test("pre-selection wiring — a screened-out creature never reaches the ar
     await Deno.remove(archiveDir, { recursive: true });
   }
 });
+
+Deno.test("pre-selection wiring — only fresh offspring are ever screened, never an elite", async () => {
+  const dataDir = makeDataDir(buildDataSet(), 2000);
+  const workers = [new WorkerHandler(dataDir, "MSE", true)];
+  try {
+    const seed = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const neat = new Neat(2, 1, {
+      creatures: [seed.exportJSON()],
+      populationSize: 30,
+      elitism: 2,
+      preSelection: { ratio: 3, screen: "surrogate" },
+    }, workers);
+    await neat.populatePopulation(seed);
+
+    // Watch what the screen is actually handed. An elite carries the exact
+    // score it earned, so a scored candidate reaching the screen would mean
+    // the stage had been let loose on something that is not offspring.
+    const screen = neat.preSelection.screen;
+    assert(screen !== undefined, "the configured screen must exist");
+    const inner = screen.screen.bind(screen);
+    let screened = 0;
+    let scoredSeen = 0;
+    screen.screen = (candidates) => {
+      screened += candidates.length;
+      for (const candidate of candidates) {
+        if (candidate.score !== undefined) scoredSeen++;
+      }
+      return inner(candidates);
+    };
+
+    let fittest: Creature | undefined;
+    for (let generation = 0; generation < 3; generation++) {
+      // deno-lint-ignore no-await-in-loop
+      fittest = (await neat.evolve(fittest)).fittest;
+    }
+    assert(screened > 0, "the screen must have been consulted");
+    assertEquals(
+      scoredSeen,
+      0,
+      "no already-scored creature — elite, fine-tuned or immigrant — may be " +
+        "handed to the screen",
+    );
+    assert(
+      fittest?.score !== undefined,
+      "the run still exports a scored creature",
+    );
+  } finally {
+    await Promise.all(workers.map((w) => w.waitUntilReady().catch(() => {})));
+    for (const worker of workers) worker.terminate();
+  }
+});
