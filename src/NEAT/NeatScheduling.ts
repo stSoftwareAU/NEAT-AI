@@ -43,7 +43,6 @@ import {
 } from "@neat/TrainingErrorComparison.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
-import type { TrainingOutcome } from "@archive/TrainingGainLog.ts";
 
 /**
  * What the selection rule knew when it chose a creature for a gradient step
@@ -455,29 +454,6 @@ export function scheduleDiscovery(
 }
 
 /**
- * Close a training-gain event, if one is open for this creature (Issue #3934).
- *
- * An event that is not open is not an error here: the log may be off, the
- * dispatch may have been declined for a creature with no UUID, or — on the
- * `catch` path after a late fault — the outcome may already have been recorded.
- * One outcome per event is the invariant; recording a second would double-count
- * the wall-clock the run paid.
- *
- * @param neat - The run whose log is being written.
- * @param uuid - UUID of the creature whose step settled.
- * @param outcome - How it ended, and the score it produced.
- */
-function closeTrainingGainEvent(
-  neat: Neat,
-  uuid: string,
-  outcome: TrainingOutcome,
-): void {
-  const log = neat.trainingGainLog;
-  if (log === undefined || !log.isPending(uuid)) return;
-  log.recordOutcome(uuid, outcome);
-}
-
-/**
  * Schedules training for a creature on a worker.
  */
 export function scheduleTraining(
@@ -654,6 +630,9 @@ export function scheduleTraining(
       generation: neat.currentGeneration,
       rank: selection.rank,
       rankedPopulation: selection.rankedPopulation,
+      // An unscored creature is declined by the log rather than written as a
+      // `NaN` the reader would refuse; `NaN` here is the "no score" signal, not
+      // a value that reaches disk.
       scoreBefore: creature.score ?? Number.NaN,
       ...(errorBefore !== undefined && Number.isFinite(errorBefore)
         ? { errorBefore }
@@ -677,7 +656,7 @@ export function scheduleTraining(
     // Issue #3780: honour ResponseData.error / missing train payload instead of
     // calling Creature.fromJSON on a fabricated blank export (input: 0).
     if (isFailedTrainWorkerResponse(r)) {
-      closeTrainingGainEvent(neat, uuid, { outcome: "failed" });
+      neat.trainingGainLog?.closeIfOpen(uuid, { outcome: "failed" });
       recordTrainingTaskFailure(
         neat,
         creature,
@@ -716,7 +695,7 @@ export function scheduleTraining(
     // Issue #3934: the gain this gradient step realised, recorded before any
     // fine-tune variant is derived — the event being measured is the step the
     // selection rule paid for, not the best of its descendants.
-    closeTrainingGainEvent(neat, uuid, {
+    neat.trainingGainLog?.closeIfOpen(uuid, {
       outcome: "trained",
       scoreAfter: trainedCreature.score,
       errorAfter: r.train.error,
@@ -805,7 +784,7 @@ export function scheduleTraining(
       return;
     }
 
-    closeTrainingGainEvent(neat, uuid, { outcome: "failed" });
+    neat.trainingGainLog?.closeIfOpen(uuid, { outcome: "failed" });
     recordTrainingTaskFailure(neat, creature, uuid, scheduledEpoch, error);
   });
 

@@ -23,15 +23,17 @@ imports the harness, and no selection behaviour changes.
 ## Verdict
 
 **Stage 2 is a no-go, and the reason is not that rank says nothing — it is that
-rank says something too weak to spend a gradient step on.**
+rank says something too weak to reallocate a gradient step on.**
 
 Over **15,000 real training events**, the rank a creature was selected at does
-correlate with the gain its gradient step realised (ρ = 0.132, p = 0.0005 on the
+correlate with the gain its gradient step realised (ρ = 0.139, p = 0.0005 on the
 unbiased arm), in the direction the issue predicted: the **incumbent has least
-left to extract**. But |ρ| = 0.132 is below the 0.2 materiality floor the
+left to extract**. But |ρ| = 0.139 is below the 0.2 materiality floor the
 harness pre-registers, and the endpoint comparison says why that floor matters:
 at the same seed, today's rule and uniform-random selection reach the **same
-final exact score** — today's rule wins 34 of 75 seeds.
+final exact score** — the means agree to four significant figures (-1.3259e-2
+against -1.3256e-2) and the paired mean delta is -2.5e-06, which is four orders
+of magnitude below the 1e-05 improvements this lineage accepts.
 
 So there is no reallocation to make. A predictor built on this signal would move
 the budget towards creatures with more headroom and arrive at the same endpoint,
@@ -41,9 +43,10 @@ systematically favour poor creatures."_ That is not a hypothetical here — it i
 what the numbers show happening.
 
 The finding that **is** worth keeping is about the budget itself, and it is in
-the `improved` column below: **94.4 % of the gradient steps today's rule
-dispatches make the creature worse and are rolled back.** That is a statement
-about how much local search this lineage can absorb, not about who receives it.
+the `improved` column below: **95.2 % of the gradient steps today's rule
+dispatches produce a creature worse than the one they trained.** That is a
+statement about how much local search this lineage can absorb, not about who
+receives it.
 
 ## The run
 
@@ -84,20 +87,20 @@ flowchart LR
 
 | policy | events | median gain | trimmed mean |  mean gain |  max gain | improved | training s |    gain/s |
 | ------ | -----: | ----------: | -----------: | ---------: | --------: | -------: | ---------: | --------: |
-| top    |  7,500 |  -2.913e-02 |   -4.747e-02 | -5.159e-02 | 1.923e-01 |    5.6 % |       94.3 | -4.105e+0 |
-| random |  7,500 |  -1.326e-02 |   -2.490e-02 | -3.008e-02 | 5.479e-01 |   19.9 % |       96.5 | -2.338e+0 |
+| top    |  7,500 |  -2.801e-02 |   -4.234e-02 | -4.737e-02 | 1.923e-01 |    4.8 % |       87.0 | -4.085e+0 |
+| random |  7,500 |  -1.385e-02 |   -2.287e-02 | -2.799e-02 | 5.479e-01 |   21.3 % |       88.2 | -2.380e+0 |
 
 Read the columns in this order, because the first one is the trap:
 
 - **`gain/s` is negative for both arms.** The issue asks for "realised gain per
   unit of training wall-clock", and the honest answer is that the _average_
-  gradient step on this corpus **loses** score and is then rolled back. So this
-  metric ranks the arms by which wastes less, and by it today's rule is **1.76×
-  worse** than random selection. It is reported because the issue asks for it,
-  not because it is the number that decides anything.
-- **`improved` is the column that matters.** 5.6 % of the top rule's steps
-  improved the creature; 19.9 % of random selection's did. Four times as many
-  steps land when the budget is spread over the population.
+  gradient step on this corpus **loses** score against the creature it trained.
+  So this metric ranks the arms by which wastes less, and by it today's rule is
+  **1.72× worse** than random selection. It is reported because the issue asks
+  for it, not because it is the number that decides anything.
+- **`improved` is the column that matters.** 4.8 % of the top rule's steps
+  produced a better creature; 21.3 % of random selection's did. Four times as
+  many steps land when the budget is spread over the population.
 - **`mean gain` is not a centre.** The `max gain` column shows why: a creature
   whose outputs had exploded scores a colossal negative, and one step that reins
   it in realises a gain no other event comes near. The trimmed mean (10 % each
@@ -108,55 +111,72 @@ Read the columns in this order, because the first one is the trap:
 
 | sample                              |     ρ |   τ-b |      p |      n | distinct ranks |
 | ----------------------------------- | ----: | ----: | -----: | -----: | -------------: |
-| randomly-selected events (unbiased) | 0.132 | 0.091 | 0.0005 |  7,500 |             20 |
-| all events (rank-biased)            | 0.185 | 0.130 | 0.0005 | 15,000 |             20 |
+| randomly-selected events (unbiased) | 0.139 | 0.096 | 0.0005 |  7,500 |             20 |
+| all events (rank-biased)            | 0.204 | 0.144 | 0.0005 | 15,000 |             20 |
+
+**The verdict is taken from the first row only.** The pooled row reads higher
+precisely because it is contaminated: every one of the top arm's 7,500 events
+sits at a rank below `trainPerGen`, so pooling the arms loads the best ranks
+with one arm's outcomes and the rest with the other's. Its ρ crossing 0.2 is an
+artefact of that loading, not a stronger signal — which is exactly why the
+random arm exists.
 
 Positive ρ means a **worse** rank (a higher index) realised a **larger** gain.
 The p-value is a seeded two-sided permutation test over 2,000 shuffles, not the
 asymptotic approximation — the gains are heavily tied and far from normal, which
 is exactly where that approximation flatters itself.
 
-The shape behind the coefficient is monotone and clear:
+The shape behind the coefficient is monotone and clear. These rows are the
+**randomly-selected events only**, so the four quartiles are comparable with
+each other rather than with a different arm:
 
 | rank bucket | events | median gain | improved |
 | ----------- | -----: | ----------: | -------: |
-| 0–25 %      |  9,428 |  -2.506e-02 |    6.5 % |
-| 25–50 %     |  1,818 |  -1.456e-02 |   16.4 % |
-| 50–75 %     |  1,834 |  -1.153e-02 |   21.1 % |
-| 75–100 %    |  1,920 |  -9.383e-03 |   31.6 % |
+| 0–25 %      |  1,856 |  -1.756e-02 |   11.4 % |
+| 25–50 %     |  1,904 |  -1.503e-02 |   15.9 % |
+| 50–75 %     |  1,793 |  -1.366e-02 |   22.5 % |
+| 75–100 %    |  1,947 |  -7.868e-03 |   35.1 % |
 
-A creature in the bottom quartile of its population is **nearly five times**
-more likely to benefit from a gradient step than the incumbent. The issue's
-reasoning — "the current leader is likely to be the individual closest to its
-local optimum and therefore the one with the least left to extract" — is
-confirmed.
+A creature in the bottom quartile of its population is **about three times**
+more likely to benefit from a gradient step than one in the top quartile, and
+its median step costs it less than half as much. The issue's reasoning — "the
+current leader is likely to be the individual closest to its local optimum and
+therefore the one with the least left to extract" — is confirmed.
 
 ### Does it buy a better run?
 
 | comparison                                  | value       |
 | ------------------------------------------- | ----------- |
-| Final exact score, `top` (mean of 75 seeds) | -1.3496e-2  |
-| Final exact score, `random`                 | -1.2835e-2  |
-| Paired wins, `top` vs `random`              | **34 / 75** |
-| Paired mean delta (`top` − `random`)        | -6.614e-4   |
-| Paired median delta                         | -2.909e-4   |
+| Final exact score, `top` (mean of 75 seeds) | -1.3259e-2  |
+| Final exact score, `random`                 | -1.3256e-2  |
+| Paired wins, `top` vs `random`              | **44 / 75** |
+| Paired mean delta (`top` − `random`)        | -2.466e-6   |
+| Paired median delta                         | +2.145e-4   |
 
-No. The two rules are a coin flip on the endpoint, and the paired delta leans
-very slightly **against** today's rule. This is the comparison the issue insists
-any Stage 2 selector be judged on — "judged on **final exact score**, not on
-mean training gain" — and it is already decisive before any predictor is built:
-**there is no endpoint gap for a gain predictor to close.**
+No. The two rules are indistinguishable on the endpoint: the means agree to four
+significant figures and the paired mean delta is -2.5e-06. **The sign of that
+delta is not even stable** — an earlier run of this same configuration, before
+the rank-bucket table was corrected to use the unbiased arm, gave 34/75 to
+today's rule with a paired median delta of -2.9e-04, the opposite sign. A
+comparison whose direction flips between runs of the same harness has no
+direction to report.
+
+This is the comparison the issue insists any Stage 2 selector be judged on —
+"judged on **final exact score**, not on mean training gain" — and it is already
+decisive before any predictor is built: **there is no endpoint gap for a gain
+predictor to close.**
 
 ### Is the reading stable?
 
 | repeat | base seed | events | ρ (random arm) |      p | top wins | decision |
 | -----: | --------: | -----: | -------------: | -----: | -------: | -------- |
-|      1 |      3934 |  5,000 |          0.156 | 0.0005 |    10/25 | no-go    |
-|      2 |      4934 |  5,000 |          0.128 | 0.0005 |     9/25 | no-go    |
-|      3 |      5934 |  5,000 |          0.111 | 0.0005 |    15/25 | no-go    |
+|      1 |      3934 |  5,000 |          0.171 | 0.0005 |    16/25 | no-go    |
+|      2 |      4934 |  5,000 |          0.125 | 0.0005 |    16/25 | no-go    |
+|      3 |      5934 |  5,000 |          0.123 | 0.0005 |    12/25 | no-go    |
 
 Three independent repeats, no shared seeds, same verdict each time, ρ inside
-`[0.11, 0.16]` throughout. The endpoint stays a coin flip in all three.
+`[0.12, 0.18]` throughout. Across both runs of this configuration ρ has stayed
+in `[0.11, 0.18]` and the verdict has never changed.
 
 ## Caveats — what this does not show
 
@@ -188,6 +208,6 @@ it. The go/no-go is recorded on #3919.
 
 The instrumentation ships anyway and off by default
 ([`docs/TRAINING_GAIN_LOG.md`](../TRAINING_GAIN_LOG.md)), because the number
-that did come out of this — 94.4 % of scheduled gradient steps are rolled back —
-is a production question it can answer on a real run, on real creatures, without
-any predictor at all.
+that did come out of this — 95.2 % of scheduled gradient steps produce a worse
+creature than the one they trained — is a production question it can answer on a
+real run, on real creatures, without any predictor at all.

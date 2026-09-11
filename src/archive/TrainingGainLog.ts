@@ -137,6 +137,12 @@ export class TrainingGainLog {
   /** Dispatches declined because the creature carried no UUID. */
   private skippedUnidentified = 0;
 
+  /** Dispatches declined because the incoming score was not finite. */
+  private skippedUnscored = 0;
+
+  /** Outcomes that arrived with no open event — counted, never silent. */
+  private unmatchedOutcomes = 0;
+
   /** True once the head of an existing log has been version-checked. */
   private headChecked = false;
 
@@ -163,20 +169,6 @@ export class TrainingGainLog {
   }
 
   /**
-   * Is a dispatch open for this creature?
-   *
-   * Lets a caller that may be on either of two completion paths record exactly
-   * one outcome per event, without having to ask {@link recordOutcome} to
-   * tolerate a second.
-   *
-   * @param uuid - Creature UUID.
-   * @returns True when a dispatch is pending for it.
-   */
-  isPending(uuid: string): boolean {
-    return this.pending.has(uuid);
-  }
-
-  /**
    * Record that a gradient step was dispatched for `creature`.
    *
    * Synchronous and allocation-light: it computes the descriptor of the
@@ -193,6 +185,15 @@ export class TrainingGainLog {
     const uuid = creature.uuid;
     if (uuid === undefined) {
       this.skippedUnidentified++;
+      return;
+    }
+    // A step whose starting point is unmeasurable has no gain to report, and
+    // `JSON.stringify` writes a `NaN` out as `null` — which this module's own
+    // reader then refuses, taking every earlier record in the file with it.
+    // Declining the event here keeps the log readable; the tally makes the
+    // decline visible.
+    if (!Number.isFinite(dispatch.scoreBefore)) {
+      this.skippedUnscored++;
       return;
     }
     this.pending.set(uuid, {
@@ -267,6 +268,30 @@ export class TrainingGainLog {
         : {}),
       descriptor: event.descriptor,
     });
+  }
+
+  /**
+   * Close an event if one is open for this creature, reporting a miss.
+   *
+   * The production completion path can legitimately arrive with no open event —
+   * the dispatch may have been declined (no UUID, no measurable starting score),
+   * or a late fault may have followed an outcome already recorded. One outcome
+   * per event is the invariant, so a second is not recorded; but a miss is
+   * **counted and announced** at the next flush rather than absorbed, because a
+   * log quietly recording fewer events than the run dispatched is the failure
+   * this tally exists to surface.
+   *
+   * @param uuid - UUID of the creature whose step settled.
+   * @param outcome - How it ended, and the score it produced.
+   * @returns True when an event was open and has been closed.
+   */
+  closeIfOpen(uuid: string, outcome: TrainingOutcome): boolean {
+    if (!this.pending.has(uuid)) {
+      this.unmatchedOutcomes++;
+      return false;
+    }
+    this.recordOutcome(uuid, outcome);
+    return true;
   }
 
   /**
@@ -355,6 +380,21 @@ export class TrainingGainLog {
           `events are not in the log.`,
       );
       this.skippedUnidentified = 0;
+    }
+    if (this.skippedUnscored > 0) {
+      getLogger().warn(
+        `[NEAT-AI] Training-gain log skipped ${this.skippedUnscored} ` +
+          `dispatch(es) whose pre-training score was not finite; a gain cannot ` +
+          `be measured from one, so those events are not in the log.`,
+      );
+      this.skippedUnscored = 0;
+    }
+    if (this.unmatchedOutcomes > 0) {
+      getLogger().warn(
+        `[NEAT-AI] Training-gain log saw ${this.unmatchedOutcomes} outcome(s) ` +
+          `with no open event; those training events are not in the log.`,
+      );
+      this.unmatchedOutcomes = 0;
     }
   }
 }

@@ -17,9 +17,11 @@ import {
   trainingGain,
 } from "@archive/TrainingGainRecord.ts";
 import { TrainingGainLogError } from "@errors/TrainingGainLogError.ts";
-import { resolveTrainingGainLogConfig } from "@config/TrainingGainLogConfig.ts";
+import {
+  resolveTrainingGainLogConfig,
+  TRAINING_GAIN_LOG_FILE_NAME,
+} from "@config/TrainingGainLogConfig.ts";
 import { EVALUATION_DESCRIPTOR_LENGTH } from "@archive/EvaluationDescriptor.ts";
-import { TRAINING_GAIN_LOG_FILE_NAME } from "@config/TrainingGainLogConfig.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /** A distinct identified creature, so records are joinable. */
@@ -219,6 +221,65 @@ Deno.test("training-gain log - a creature without a UUID is not logged", async (
     assertEquals(log.pendingCount, 0);
     await log.flush();
     assertEquals(await readTrainingGainLog(log.path), []);
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
+Deno.test("training-gain log - a dispatch with no measurable score is declined", async () => {
+  await initWasmForTests();
+  const { log, directory } = await newLog();
+  try {
+    const creature = creatureWithUuid(0.8);
+    // A WASM-panicked evaluation scores -Infinity. `JSON.stringify` writes a
+    // NaN out as `null`, which this module's own reader refuses — so the event
+    // is declined rather than written as a line that poisons the file.
+    for (const score of [Number.NaN, Number.NEGATIVE_INFINITY]) {
+      log.recordDispatch(creature, {
+        generation: 1,
+        rank: 0,
+        rankedPopulation: 4,
+        scoreBefore: score,
+      });
+    }
+    assertEquals(log.pendingCount, 0);
+    await log.flush();
+    assertEquals(await readTrainingGainLog(log.path), []);
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
+Deno.test("training-gain log - closeIfOpen closes once and reports a miss", async () => {
+  await initWasmForTests();
+  const { log, directory } = await newLog();
+  try {
+    const creature = creatureWithUuid(0.9);
+    log.recordDispatch(creature, {
+      generation: 4,
+      rank: 2,
+      rankedPopulation: 9,
+      scoreBefore: -0.6,
+    });
+    assertEquals(
+      log.closeIfOpen(creature.uuid!, { outcome: "trained", scoreAfter: -0.5 }),
+      true,
+    );
+    // A second outcome for the same event is never recorded: the run paid for
+    // one step, so one record is what the log may hold.
+    assertEquals(
+      log.closeIfOpen(creature.uuid!, { outcome: "failed" }),
+      false,
+    );
+    assertEquals(
+      log.closeIfOpen("never-dispatched", { outcome: "failed" }),
+      false,
+    );
+    await log.flush();
+
+    const records = await readTrainingGainLog(log.path);
+    assertEquals(records.length, 1);
+    assertEquals(records[0].outcome, "trained");
   } finally {
     await Deno.remove(directory, { recursive: true });
   }

@@ -172,7 +172,7 @@ evolution (see the
   memetic loop: the surrogate decides which individuals earn an expensive
   refinement. The budget-allocation question NEAT-AI measured in
   [`docs/TRAINING_GAIN_LOG.md`](../TRAINING_GAIN_LOG.md) (Issue #3934), and the
-  answer was no-go — score rank orders realised gain only weakly (ρ = 0.132 over
+  answer was no-go — score rank orders realised gain only weakly (ρ = 0.139 over
   15,000 real gradient steps) and today's rule reaches the same final score as
   uniform-random selection. See
   [`docs/evidence/memetic-gain-3934.md`](../evidence/memetic-gain-3934.md).

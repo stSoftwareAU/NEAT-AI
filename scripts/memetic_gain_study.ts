@@ -113,7 +113,13 @@ interface StudyReport {
  * improved share, not the mean: one explosive recovery in a bucket of 250
  * events would otherwise be the whole row.
  *
- * @param events - Every event.
+ * **Randomly-selected events only.** Pooling both arms puts every one of the top
+ * rule's events in the first quartile and none in the others, so the first row
+ * would be ~80 % one arm and the rest purely the other: any difference between
+ * the rows would then be partly a difference between the arms. The uniform draw
+ * is the only sample whose quartiles are comparable with each other.
+ *
+ * @param events - The randomly-selected events.
  * @returns One row per quartile that saw at least one event.
  */
 function bucketGainByRank(
@@ -245,7 +251,7 @@ function reduceArms(
       finalScores.top ?? [],
       finalScores.random ?? [],
     ),
-    gainByRankBucket: bucketGainByRank(allEvents),
+    gainByRankBucket: bucketGainByRank(randomEvents),
   };
 }
 
@@ -358,6 +364,9 @@ function printReport(report: StudyReport): void {
       `${pooled.kendallTauB.toFixed(3)}, p = ${pooled.pValue.toFixed(4)}, ` +
       `n = ${pooled.scored}\n`,
   );
+  console.log(
+    "\nRank buckets over the randomly-selected events only (comparable rows):",
+  );
   console.log("| rank bucket | events | median gain | improved |");
   console.log("| ----------- | -----: | ----------: | -------: |");
   for (const row of report.gainByRankBucket) {
@@ -389,59 +398,75 @@ function printReport(report: StudyReport): void {
   );
 }
 
-const args = Deno.args;
-const settings: StudySettings = {
-  seed: intArg(args, "seed", DEFAULT_STUDY_SETTINGS.seed),
-  corpusRecords: intArg(
-    args,
-    "corpus-records",
-    DEFAULT_STUDY_SETTINGS.corpusRecords,
-  ),
-  populationSize: intArg(
-    args,
-    "population",
-    DEFAULT_STUDY_SETTINGS.populationSize,
-  ),
-  generations: intArg(args, "generations", DEFAULT_STUDY_SETTINGS.generations),
-  elitism: intArg(args, "elitism", DEFAULT_STUDY_SETTINGS.elitism),
-  trainPerGen: intArg(
-    args,
-    "train-per-gen",
-    DEFAULT_STUDY_SETTINGS.trainPerGen,
-  ),
-  trainingIterations: intArg(
-    args,
-    "iterations",
-    DEFAULT_STUDY_SETTINGS.trainingIterations,
-  ),
-};
-const seedCount = intArg(args, "seeds", 1);
-const repeatCount = intArg(args, "repeats", 1);
-
-/** Seed stride between repeats, so no two repeats share a seed. */
-const REPEAT_SEED_STRIDE = 1_000;
-
-const repeats = Array.from(
-  { length: repeatCount },
-  (_, repeat) =>
-    Array.from(
-      { length: seedCount },
-      (_, i) => settings.seed + repeat * REPEAT_SEED_STRIDE + i,
+/**
+ * Parse the flags, run the study, print the report and write the artefact.
+ *
+ * Behind `import.meta.main`, as every sibling study entry point is: importing
+ * this module must not launch a 150-arm run.
+ */
+async function main(): Promise<void> {
+  const args = Deno.args;
+  const settings: StudySettings = {
+    seed: intArg(args, "seed", DEFAULT_STUDY_SETTINGS.seed),
+    corpusRecords: intArg(
+      args,
+      "corpus-records",
+      DEFAULT_STUDY_SETTINGS.corpusRecords,
     ),
-);
+    populationSize: intArg(
+      args,
+      "population",
+      DEFAULT_STUDY_SETTINGS.populationSize,
+    ),
+    generations: intArg(
+      args,
+      "generations",
+      DEFAULT_STUDY_SETTINGS.generations,
+    ),
+    elitism: intArg(args, "elitism", DEFAULT_STUDY_SETTINGS.elitism),
+    trainPerGen: intArg(
+      args,
+      "train-per-gen",
+      DEFAULT_STUDY_SETTINGS.trainPerGen,
+    ),
+    trainingIterations: intArg(
+      args,
+      "iterations",
+      DEFAULT_STUDY_SETTINGS.trainingIterations,
+    ),
+  };
+  const seedCount = intArg(args, "seeds", 1);
+  const repeatCount = intArg(args, "repeats", 1);
 
-console.log(
-  `Issue #3934 Stage 1: ${repeatCount} repeat(s) × ${seedCount} seed(s) × ` +
-    `${SELECTION_POLICIES.length} arm(s), ${settings.generations} generations ` +
-    `× ${settings.trainPerGen} training events, population ` +
-    `${settings.populationSize}, corpus ${settings.corpusRecords} records\n`,
-);
+  /** Seed stride between repeats, so no two repeats share a seed. */
+  const REPEAT_SEED_STRIDE = 1_000;
 
-const report = runStudy(settings, repeats);
-printReport(report);
+  const repeats = Array.from(
+    { length: repeatCount },
+    (_, repeat) =>
+      Array.from(
+        { length: seedCount },
+        (_, i) => settings.seed + repeat * REPEAT_SEED_STRIDE + i,
+      ),
+  );
 
-const jsonPath = stringArg(args, "json");
-if (jsonPath !== undefined) {
-  await Deno.writeTextFile(jsonPath, JSON.stringify(report, null, 2) + "\n");
-  console.log(`Wrote ${jsonPath}`);
+  console.log(
+    `Issue #3934 Stage 1: ${repeatCount} repeat(s) × ${seedCount} seed(s) × ` +
+      `${SELECTION_POLICIES.length} arm(s), ${settings.generations} generations ` +
+      `× ${settings.trainPerGen} training events, population ` +
+      `${settings.populationSize}, corpus ${settings.corpusRecords} records\n`,
+  );
+
+  const report = runStudy(settings, repeats);
+  printReport(report);
+
+  const jsonPath = stringArg(args, "json");
+  if (jsonPath !== undefined) {
+    await Deno.writeTextFile(jsonPath, JSON.stringify(report, null, 2) + "\n");
+    console.log(`Wrote ${jsonPath}`);
+  }
+}
+
+if (import.meta.main) {
+  await main();
 }

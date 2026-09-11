@@ -68,18 +68,22 @@ compare against. The per-task wall-clock budget (`trainingTaskTimeoutMinutes`)
 still bounds the total work.
 
 > [!NOTE]
-> **Who receives those steps has been measured, and the rule is no better than
-> random** (Issue #3934). Over 15,000 real gradient steps, selecting the top
-> `trainPerGen` by current score reached the same final exact score as drawing
-> `trainPerGen` creatures uniformly — it won 34 of 75 paired seeds. Score rank
-> does order realised gain, in the direction you would expect (the incumbent is
-> nearest its local optimum, so it gains least: 6.5 % of its steps improved it
-> against 31.6 % in the worst quartile), but only weakly — ρ = 0.132. The number
-> worth acting on is a different one: **94 % of the gradient steps this rule
-> schedules make the creature worse and are rolled back.** Raising `trainPerGen`
-> buys gradient coverage, not guaranteed progress. The record per training event
-> lives in [`trainingGainLog`](../TRAINING_GAIN_LOG.md) (off by default) and the
-> study is in
+> **Who receives those steps has been measured, and on the harness it is no
+> better than random** (Issue #3934). Over 15,000 real gradient steps —
+> 20-creature populations on a 600-record corpus, **not** GRQ's scale —
+> selecting the top `trainPerGen` by current score reached the same final exact
+> score as drawing `trainPerGen` creatures uniformly — the two means agree to
+> four significant figures and the paired delta's **sign flips between runs of
+> the same configuration**. Score rank does order realised gain, in the
+> direction you would expect (the incumbent is nearest its local optimum, so it
+> gains least), but only weakly — ρ = 0.139, below the 0.2 materiality floor, so
+> no gain predictor was built. The number worth knowing is a different one:
+> **only 4.8 % of those gradient steps produced a creature better than the one
+> they trained.** Raising `trainPerGen` buys gradient coverage, not guaranteed
+> progress. Magnitudes on a production lineage are untested — the
+> per-training-event record lives in
+> [`trainingGainLog`](../TRAINING_GAIN_LOG.md) (off by default) so the same
+> question can be asked there, and the study with its caveats is in
 > [`docs/evidence/memetic-gain-3934.md`](../evidence/memetic-gain-3934.md).
 
 **Choosing a value for supervised tasks**

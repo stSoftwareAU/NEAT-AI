@@ -53,9 +53,22 @@ export interface TrainingGainRecord {
   readonly rank: number;
   /** Creatures the rank was taken over — the finite-score population size. */
   readonly rankedPopulation: number;
-  /** Exact score the creature carried into the gradient step. */
+  /**
+   * Score the creature carried into the gradient step — the one the fitness
+   * phase measured, which is what the selection rule ranked it on.
+   */
   readonly scoreBefore: number;
-  /** Score after the step; absent when the step produced none. */
+  /**
+   * Score after the step; absent when the step produced none.
+   *
+   * **Derived from the training error, not from a fresh fitness evaluation.**
+   * It is `calculateScore(trainedCreature, trainingError, costOfGrowth)`, so the
+   * pair `(scoreBefore, scoreAfter)` is exactly as comparable as the pair the
+   * run's own regression guard compares (`isTrainingErrorRegression`) — no more.
+   * A consumer that needs a like-for-like reading must re-evaluate the trained
+   * creature itself; `errorBefore` / `errorAfter` carry the two errors that
+   * comparison is actually made on.
+   */
   readonly scoreAfter?: number;
   /** Training error the creature carried in, when the run had it tagged. */
   readonly errorBefore?: number;
@@ -155,6 +168,32 @@ export function parseTrainingGainLine(
   if (typeof record.wallClockMs !== "number") {
     throw new TrainingGainLogError(
       `${path}:${lineNumber} is missing wallClockMs`,
+      "MALFORMED_RECORD",
+    );
+  }
+  if (
+    typeof record.generation !== "number" ||
+    typeof record.rankedPopulation !== "number"
+  ) {
+    throw new TrainingGainLogError(
+      `${path}:${lineNumber} is missing generation or rankedPopulation`,
+      "MALFORMED_RECORD",
+    );
+  }
+  if (typeof record.runId !== "string") {
+    throw new TrainingGainLogError(
+      `${path}:${lineNumber} is missing runId`,
+      "MALFORMED_RECORD",
+    );
+  }
+  // An event with no outcome is the worst of the malformed cases to accept: a
+  // failed step and a trained one cost the same wall-clock and mean opposite
+  // things, so a record that does not say which is not a weaker observation,
+  // it is an unusable one.
+  if (record.outcome !== "trained" && record.outcome !== "failed") {
+    throw new TrainingGainLogError(
+      `${path}:${lineNumber} has no recognised outcome, got ` +
+        `${JSON.stringify(record.outcome)}`,
       "MALFORMED_RECORD",
     );
   }

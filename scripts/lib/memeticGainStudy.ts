@@ -57,6 +57,7 @@ import {
 } from "@architecture/training/RustTrainDirBridge.ts";
 import { findNativeBackpropLibrary } from "@architecture/training/NativeBackpropLibrary.ts";
 import { Costs } from "@costs";
+import { getLogger } from "@utils/Logger.ts";
 import {
   countRankableCreatures,
   selectRankedTrainingCandidates,
@@ -214,11 +215,12 @@ export function selectUnderPolicy(
   if (policy === "top") {
     return selectRankedTrainingCandidates([...sorted], limit);
   }
-  const rankable = sorted
-    .filter((creature) => Number.isFinite(creature.score))
-    .map((creature, rank) => ({ creature, rank }));
+  // One definition of "rank", reused: asking the production selector for the
+  // whole population gives every finite-score creature with the rank the rule
+  // would have selected it at. Re-deriving that here is the drift the
+  // `selectTrainingCandidates` delegation exists to prevent.
   const drawn: { creature: Creature; rank: number }[] = [];
-  const pool = [...rankable];
+  const pool = selectRankedTrainingCandidates([...sorted], sorted.length);
   while (drawn.length < limit && pool.length > 0) {
     const index = Math.floor(rng.random() * pool.length);
     drawn.push(pool[index]);
@@ -418,8 +420,9 @@ function trainOne(
     scoreAfter = scoreExactly(trained, corpus);
   } catch (error) {
     // A step that threw still consumed its slot. Recorded as a failure rather
-    // than dropped, so the policy is charged for what the run paid.
-    console.error(
+    // than dropped, so the policy is charged for what the run paid — and
+    // announced through the repo's logger, not printed from a library module.
+    getLogger().error(
       `[3934] gradient step failed at rank ${rank}, generation ${generation}: ` +
         `${error instanceof Error ? error.message : String(error)}`,
     );

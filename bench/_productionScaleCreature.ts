@@ -4,9 +4,11 @@
  * Shared by `bench/EvaluationArchiveOverhead.ts` (Issue #3929) and
  * `bench/TrainingGainLogOverhead.ts` (Issue #3934): both measure what an
  * observer costs against the thing it observes, and both are only honest at the
- * GRQ lineage's working size — ~5,300 neurons and ~39,000 synapses. Two private
- * copies of this builder would let the two benches quietly measure different
- * creatures and report their overheads as comparable.
+ * GRQ lineage's working size — ~5,300 neurons, and **denser** than that lineage's
+ * ~39,000 synapses: the layer shape and fan-out below produce ~87,000, so an
+ * overhead budget asserted against it is conservative rather than flattering.
+ * Two private copies of this builder would let the two benches quietly measure
+ * different creatures and report their overheads as comparable.
  *
  * Not a benchmark itself: it declares no `Deno.bench`.
  *

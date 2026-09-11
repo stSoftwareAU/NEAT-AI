@@ -91,6 +91,51 @@ Deno.test("training-gain format - a record missing its pre-training score is ref
   );
 });
 
+Deno.test("training-gain format - a record with no outcome is refused", () => {
+  const broken = { ...validRecord() } as Record<string, unknown>;
+  delete broken.outcome;
+  const error = assertThrows(
+    () => parseTrainingGainLine(JSON.stringify(broken), "log", 4),
+    TrainingGainLogError,
+  );
+  assertEquals(error.reason, "MALFORMED_RECORD");
+});
+
+Deno.test("training-gain format - an unrecognised outcome is refused", () => {
+  const broken = { ...validRecord(), outcome: "maybe" };
+  assertThrows(
+    () => parseTrainingGainLine(JSON.stringify(broken), "log", 4),
+    TrainingGainLogError,
+  );
+});
+
+Deno.test("training-gain format - a record missing its generation is refused", () => {
+  const broken = { ...validRecord() } as Record<string, unknown>;
+  delete broken.generation;
+  assertThrows(
+    () => parseTrainingGainLine(JSON.stringify(broken), "log", 5),
+    TrainingGainLogError,
+  );
+});
+
+Deno.test("training-gain format - a record missing its ranked population is refused", () => {
+  const broken = { ...validRecord() } as Record<string, unknown>;
+  delete broken.rankedPopulation;
+  assertThrows(
+    () => parseTrainingGainLine(JSON.stringify(broken), "log", 5),
+    TrainingGainLogError,
+  );
+});
+
+Deno.test("training-gain format - a record missing its runId is refused", () => {
+  const broken = { ...validRecord() } as Record<string, unknown>;
+  delete broken.runId;
+  assertThrows(
+    () => parseTrainingGainLine(JSON.stringify(broken), "log", 6),
+    TrainingGainLogError,
+  );
+});
+
 Deno.test("training-gain format - a foreign descriptor version is refused", () => {
   const error = assertThrows(
     () =>

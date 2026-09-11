@@ -41,28 +41,40 @@ sequenceDiagram
   S->>L: recordDispatch — descriptor of the pre-training creature
   S->>W: train(creature)
   W-->>S: trained creature / failure
-  S->>L: recordOutcome — score after, or "failed"
-  E->>L: flush() once per generation -> one append
+  S->>L: closeIfOpen — score after, or "failed"
+  E->>L: flush() per generation, and once more at run end
 ```
 
-| Field                           | Meaning                                                          |
-| ------------------------------- | ---------------------------------------------------------------- |
-| `descriptorVersion`             | Layout version of `descriptor`; a reader refuses to mix versions |
-| `runId`, `generation`, `uuid`   | Provenance: which run, which generation, which creature          |
-| `rank`, `rankedPopulation`      | Where the rule chose it, and out of how many                     |
-| `scoreBefore`, `scoreAfter`     | Exact score in, score out (`scoreAfter` absent on a failure)     |
-| `errorBefore`, `errorAfter`     | The two errors the run's own regression check compares           |
-| `wallClockMs`                   | Dispatch to outcome — what the run actually paid                 |
-| `outcome`                       | `trained` or `failed`                                            |
-| `dispatchedAt`, `referenceUuid` | When, and the creature the genetic-distance slot was measured on |
-| `descriptor`                    | The **pre-training** feature vector (Issue #3929's layout)       |
+| Field                           | Meaning                                                            |
+| ------------------------------- | ------------------------------------------------------------------ |
+| `descriptorVersion`             | Layout version of `descriptor`; a reader refuses to mix versions   |
+| `runId`, `generation`, `uuid`   | Provenance: which run, which generation, which creature            |
+| `rank`, `rankedPopulation`      | Where the rule chose it, and out of how many                       |
+| `scoreBefore`, `scoreAfter`     | Score in, score out (`scoreAfter` absent on a failure) — see below |
+| `errorBefore`, `errorAfter`     | The two errors the run's own regression check compares             |
+| `wallClockMs`                   | Dispatch to outcome — what the run actually paid                   |
+| `outcome`                       | `trained` or `failed`                                              |
+| `dispatchedAt`, `referenceUuid` | When, and the creature the genetic-distance slot was measured on   |
+| `descriptor`                    | The **pre-training** feature vector (Issue #3929's layout)         |
 
 Gain is **not** stored. It is `scoreAfter - scoreBefore`, derived by
 `trainingGain()`, because a stored derived column is how a log comes to disagree
 with itself. A `failed` event has **no** gain — `undefined`, never `0`, so a
 fault can never be averaged in with a measurement.
 
-## The three properties it guarantees
+> [!IMPORTANT]
+> **`scoreAfter` comes from the training error, not from a fresh fitness
+> evaluation.** It is
+> `calculateScore(trainedCreature, trainingError,
+> costOfGrowth)`, so
+> `(scoreBefore, scoreAfter)` is exactly as comparable as the pair the run's own
+> regression guard compares (`isTrainingErrorRegression`) — no more.
+> `errorBefore` / `errorAfter` carry those two errors directly. A consumer that
+> needs a like-for-like reading must re-evaluate the trained creature on the
+> fitness path itself; the Stage 1 study did exactly that, which is why its
+> gains and this log's are not the same quantity.
+
+## The four properties it guarantees
 
 - **One event is one dispatched gradient step.** A step that was skipped
   (`#3553`'s once-per-run guard, a regression streak, too small a budget) is not
@@ -70,6 +82,12 @@ fault can never be averaged in with a measurement.
   a heavy worker slot: omitting it would report a gain per unit wall-clock that
   no run achieved. A step the run **abandoned** past its hard deadline records
   nothing — its cost belongs to the abandon.
+- **Nothing is declined silently.** Three refusals exist — a creature with no
+  UUID, a creature whose pre-training score is not finite (a `NaN` is written
+  out as `null`, and the reader would refuse that line and every earlier one
+  with it), and an outcome arriving with no open event — and each is counted and
+  warned about at the next flush. A log quietly holding fewer events than the
+  run dispatched is the failure those tallies exist to surface.
 - **The design point is the creature before the step.** The question is which
   creature a gradient step will reward, so the descriptor is computed at
   dispatch.
@@ -103,6 +121,13 @@ One directory is one log; the file name (`training-events.jsonl`) is fixed, so
 no caller-supplied string goes near a filesystem path. Read it back with
 `readTrainingGainLog(path)`, which validates every record rather than skipping
 the ones it cannot parse.
+
+Records are appended once per generation — a generation boundary is where the
+run holds both halves of every event it went on to consume — **and once more in
+the bounded teardown**, so the final generation's measurements are not left in
+the buffer when the loop exits. An append that fails is reported loudly and
+leaves the records buffered for the next attempt; it is never attributed to the
+training task it was observing.
 
 ## Overhead
 

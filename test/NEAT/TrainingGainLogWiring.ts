@@ -14,7 +14,10 @@ import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
 import { Neat } from "@neat/Neat.ts";
-import { scheduleTraining } from "@neat/NeatScheduling.ts";
+import {
+  flushTrainingGainLog,
+  scheduleTraining,
+} from "@neat/NeatScheduling.ts";
 import { TrainingRegressionTracker } from "@neat/TrainingRegressionTracker.ts";
 import { TrainingGainLog } from "@archive/TrainingGainLog.ts";
 import { readTrainingGainLog } from "@archive/TrainingGainRecord.ts";
@@ -234,7 +237,9 @@ Deno.test("training-gain log - a skipped dispatch logs no event", async () => {
     const worker = new StubWorker(trainedReply(0.4));
     const neat = stubNeat(worker, log);
     // Issue #3553: a creature already scheduled this run is never re-dispatched.
-    neat.alreadyScheduledMap.set(creature.uuid!, Date.now());
+    // A literal, not `Date.now()`: AGENTS.md bans timing APIs in test files, and
+    // the guard only cares that an entry exists.
+    neat.alreadyScheduledMap.set(creature.uuid!, 1);
 
     scheduleTraining(neat, creature, 5, { rank: 1, rankedPopulation: 4 });
 
@@ -265,5 +270,67 @@ Deno.test("training-gain log - an abandoned run records nothing for the step", a
     assertEquals(await readTrainingGainLog(log.path), []);
   } finally {
     await Deno.remove(directory, { recursive: true });
+  }
+});
+
+Deno.test("training-gain log - the run-end flush appends what is buffered", async () => {
+  await initWasmForTests();
+  const { log, directory } = await newLog();
+  try {
+    const creature = trainableCreature(0.7, 0.5);
+    const worker = new StubWorker(trainedReply(0.2));
+    const neat = stubNeat(worker, log);
+
+    scheduleTraining(neat, creature, 5, { rank: 0, rankedPopulation: 2 });
+    await Promise.all(neat.trainingInProgress.values());
+    assertEquals(
+      log.bufferedCount,
+      1,
+      "the outcome is buffered, not yet written",
+    );
+
+    // The teardown path the evolve loop runs: whatever settled after the last
+    // generation's flush still reaches disk.
+    await flushTrainingGainLog(neat);
+
+    assertEquals(log.bufferedCount, 0);
+    assertEquals((await readTrainingGainLog(log.path)).length, 1);
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
+Deno.test("training-gain log - a failed append is reported and the records survive", async () => {
+  await initWasmForTests();
+  const parent = await Deno.makeTempDir({ prefix: "gain-unwritable-" });
+  try {
+    // A *file* where the log's directory should be: `mkdir` cannot succeed, so
+    // the append fails for a reason no retry will fix.
+    const directory = `${parent}/blocked`;
+    await Deno.writeTextFile(directory, "not a directory\n");
+    const log = new TrainingGainLog(
+      resolveTrainingGainLogConfig({
+        enabled: true,
+        directory,
+        runId: "io-failure-run",
+      }),
+    );
+    const creature = trainableCreature(0.8, 0.5);
+    const worker = new StubWorker(trainedReply(0.3));
+    const neat = stubNeat(worker, log);
+
+    scheduleTraining(neat, creature, 5, { rank: 0, rankedPopulation: 1 });
+    await Promise.all(neat.trainingInProgress.values());
+
+    // The helper must not let a log fault escape into the training task, and
+    // must not destroy the records either.
+    await flushTrainingGainLog(neat);
+    assertEquals(
+      log.bufferedCount,
+      1,
+      "a loud failure must not be a destructive one",
+    );
+  } finally {
+    await Deno.remove(parent, { recursive: true });
   }
 });
