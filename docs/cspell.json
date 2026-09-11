@@ -758,6 +758,9 @@
     "strided",
     "Sendhoff",
     "Olhofer",
-    "unawaited"
+    "unawaited",
+    "rankable",
+    "joinable",
+    "Nair"
   ]
 }

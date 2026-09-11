@@ -67,6 +67,21 @@ that made the creature worse (Issue #3776) — a single epoch has nothing to
 compare against. The per-task wall-clock budget (`trainingTaskTimeoutMinutes`)
 still bounds the total work.
 
+> [!NOTE]
+> **Who receives those steps has been measured, and the rule is no better than
+> random** (Issue #3934). Over 15,000 real gradient steps, selecting the top
+> `trainPerGen` by current score reached the same final exact score as drawing
+> `trainPerGen` creatures uniformly — it won 34 of 75 paired seeds. Score rank
+> does order realised gain, in the direction you would expect (the incumbent is
+> nearest its local optimum, so it gains least: 6.5 % of its steps improved it
+> against 31.6 % in the worst quartile), but only weakly — ρ = 0.132. The number
+> worth acting on is a different one: **94 % of the gradient steps this rule
+> schedules make the creature worse and are rolled back.** Raising `trainPerGen`
+> buys gradient coverage, not guaranteed progress. The record per training event
+> lives in [`trainingGainLog`](../TRAINING_GAIN_LOG.md) (off by default) and the
+> study is in
+> [`docs/evidence/memetic-gain-3934.md`](../evidence/memetic-gain-3934.md).
+
 **Choosing a value for supervised tasks**
 
 - Start with the auto-scaled default. Raise `trainPerGen` (towards the
@@ -281,6 +296,9 @@ distance while a keep-at-random control raised it.
   screening: how many candidates a generation considers, and the invariants
   keeping a screened-out creature out of the archive, species statistics and the
   export.
+- [TRAINING_GAIN_LOG.md](../TRAINING_GAIN_LOG.md) — the per-training-event
+  record of realised gain: what each gradient step bought, at the rank the rule
+  selected it at. Off by default, and it changes no selection.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — picking batch sizes for
   large datasets and CPU/GPU (Graphics Processing Unit) targets.
 
