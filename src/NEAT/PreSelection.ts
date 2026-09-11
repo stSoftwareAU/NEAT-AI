@@ -63,6 +63,14 @@ import type {
 import type { OffspringScreen } from "@neat/OffspringScreen.ts";
 import { PreSelectionError } from "@errors/PreSelectionError.ts";
 import { isExactScore } from "@architecture/ScoreFidelity.ts";
+import { SurrogateGuard } from "@surrogate/SurrogateGuard.ts";
+import type {
+  Allocation,
+  AllocationDiagnostics,
+} from "@surrogate/ExactEvaluationAllocator.ts";
+import { acquisitionValue } from "@surrogate/Acquisition.ts";
+import type { DriftReading } from "@surrogate/DriftMonitor.ts";
+import { isPrediction } from "@surrogate/UncertainSurrogate.ts";
 import {
   getRandomNumberGenerator,
   type RandomNumberGenerator,
@@ -73,7 +81,18 @@ export type SurvivorReason =
   /** Kept because the screen ranked it inside the top slots. */
   | "rank"
   /** Kept by the uniform draw, whatever the screen thought of it. */
-  | "random";
+  | "random"
+  /**
+   * Kept because the surrogate **refused to predict** it — its descriptor
+   * falls outside the region the archive covers, so only a true evaluation can
+   * say what it is worth (Issue #3933).
+   */
+  | "out-of-distribution"
+  /**
+   * Kept by the uncertainty floor: the model is least sure about it, whatever
+   * it predicted for it (Issue #3933).
+   */
+  | "uncertainty";
 
 /** The screen's verdict on one creature, kept so an elite can be traced back. */
 export interface ScreenRank {
@@ -81,8 +100,15 @@ export interface ScreenRank {
   readonly rank: number;
   /** Candidates the rank was taken over. */
   readonly of: number;
-  /** The raw screen value. Never a fitness. */
-  readonly value: number;
+  /**
+   * The raw screen value. Never a fitness.
+   *
+   * `null` when the surrogate **refused to predict** this candidate (Issue
+   * #3933): a refusal has no number behind it, and substituting one — a window
+   * mean, a zero — would be the fabricated prediction the refusal exists to
+   * prevent.
+   */
+  readonly value: number | null;
   /** Why it survived. */
   readonly reason: SurvivorReason;
   /** The generation it was screened in. */
@@ -116,6 +142,11 @@ export interface PreSelectionSummary {
   readonly screenMs: number;
   /** False when the screen could not rank and no surplus was bred. */
   readonly screenReady: boolean;
+  /**
+   * What the acquisition rule spent this generation, or `undefined` when the
+   * uncertainty guard was not consulted (Issue #3933).
+   */
+  readonly surrogate?: AllocationDiagnostics;
 }
 
 /**
@@ -141,6 +172,22 @@ export class PreSelection {
   private previousRanks = new Map<string, ScreenRank>();
   private lastSummary: PreSelectionSummary | undefined;
   private readonly eliteRanks: ScreenRank[] = [];
+  /** The uncertainty guard, when the screen can answer to one (Issue #3933). */
+  private readonly guard: SurrogateGuard | undefined;
+  /**
+   * Predicted value per screened creature, awaiting its exact score.
+   *
+   * Keyed on the **creature itself**, not on its UUID: mutation invalidates a
+   * creature's UUID and the evolution loop only recomputes it during fitness,
+   * so a freshly bred offspring is screened while it has none. Keying on the
+   * UUID would therefore record nothing in a real run and the drift monitor
+   * would silently never see a residual. A weak map also needs no generational
+   * rotation — an entry dies with the creature it belongs to.
+   */
+  private predictions = new WeakMap<Creature, number>();
+  /** Best exact score the run has seen — the incumbent EI measures against. */
+  private bestExactScore = -Infinity;
+  private lastDrift: DriftReading | undefined;
 
   /**
    * @param config - Fully resolved configuration; the
@@ -154,11 +201,53 @@ export class PreSelection {
   ) {
     this.config = config;
     this.offspringScreen = screen;
+    // Issue #3933: a fitness approximation that cannot report an uncertainty
+    // is not eligible. The `"sampled"` screen is not one — it is a real, cheap
+    // evaluation — so only the surrogate is held to this.
+    if (
+      config.screen === "surrogate" && config.uncertainty.enabled &&
+      screen !== undefined && screen.verdicts === undefined
+    ) {
+      throw new PreSelectionError(
+        `the "surrogate" screen supplied cannot report an uncertainty for ` +
+          `its predictions, so no acquisition rule can be applied to it: ` +
+          `every exact evaluation would land where the model is already ` +
+          `confident and the model would never be corrected where it is ` +
+          `wrong. Implement verdicts(), or set ` +
+          `preSelection.uncertainty.enabled to false and accept the Issue ` +
+          `#3932 argmax knowingly.`,
+        "SURROGATE_WITHOUT_UNCERTAINTY",
+      );
+    }
+    // The guard exists only where it can do its job: a screen that cannot
+    // report an uncertainty cannot be held to an acquisition rule, and
+    // pretending otherwise would report a floor nothing enforced.
+    this.guard = config.uncertainty.enabled && screen?.verdicts !== undefined
+      ? new SurrogateGuard(config.uncertainty)
+      : undefined;
   }
 
-  /** True when a surplus is bred and screened. */
+  /**
+   * True when a surplus is bred and screened.
+   *
+   * False for the rest of the run once the drift monitor has disabled the
+   * surrogate path (Issue #3933): a model whose mistakes stopped being
+   * symmetric is not screened *less*, it is not consulted at all, and every
+   * candidate goes to a true evaluation.
+   */
   get active(): boolean {
+    if (this.guard?.disabled === true) return false;
     return this.config.ratio > 1 && this.offspringScreen !== undefined;
+  }
+
+  /** The uncertainty guard, or `undefined` when the screen cannot answer one. */
+  get surrogateGuard(): SurrogateGuard | undefined {
+    return this.guard;
+  }
+
+  /** The most recent drift reading, or `undefined`. */
+  get lastDriftReading(): DriftReading | undefined {
+    return this.lastDrift;
   }
 
   /** The configured screen name. */
@@ -212,15 +301,34 @@ export class PreSelection {
    *   to two different measurements at once.
    *
    * @param population - The population as it stands after evaluation.
+   * @param generation - The generation just evaluated, for the drift reading
+   *   (Issue #3933). Defaults to the generation last screened.
    */
-  observe(population: readonly Creature[]): void {
+  observe(population: readonly Creature[], generation?: number): void {
     const screen = this.offspringScreen;
-    if (screen?.observe === undefined) return;
     for (const creature of population) {
       const score = creature.score;
       if (score === undefined || !Number.isFinite(score)) continue;
       if (!isExactScore(creature)) continue;
-      screen.observe(creature, score);
+      // The incumbent expected improvement is measured against. It is an
+      // exact score by construction — EI against the model's own optimism is
+      // a rule with no ground truth in it.
+      if (score > this.bestExactScore) this.bestExactScore = score;
+      const predicted = this.predictions.get(creature);
+      if (predicted !== undefined) {
+        this.guard?.observe(predicted, score);
+        // Consumed: a creature that survives many generations is differenced
+        // once, against the first exact score it earned.
+        this.predictions.delete(creature);
+      }
+      screen?.observe?.(creature, score);
+    }
+    // Issue #3933: the residuals of this generation become one drift reading.
+    // Called once per generation, beside the exact scores that produced them.
+    if (this.guard !== undefined) {
+      this.lastDrift = this.guard.closeGeneration(
+        generation ?? this.lastSummary?.generation ?? 0,
+      );
     }
   }
 
@@ -251,15 +359,49 @@ export class PreSelection {
 
     const scoresBefore = candidates.map((candidate) => candidate.score);
     const screenStartMs = Date.now();
-    const values = await screen.screen(candidates);
+    // Issue #3933: a screen that can report an uncertainty is consulted for
+    // verdicts, and the exact-evaluation slots are allocated by an acquisition
+    // rule rather than by predicted rank. One that cannot keeps the Issue
+    // #3932 argmax, which is all it can honestly support.
+    const guard = this.guard?.active === true ? this.guard : undefined;
+    const askForVerdicts = guard === undefined
+      ? undefined
+      : screen.verdicts?.bind(screen);
+    const verdicts = askForVerdicts?.(candidates);
+    const values: readonly (number | null)[] = verdicts === undefined
+      ? await screen.screen(candidates)
+      : verdicts.map((verdict) => isPrediction(verdict) ? verdict.value : null);
     const screenMs = Date.now() - screenStartMs;
     this.assertNoScoreWritten(candidates, scoresBefore);
 
-    // Best-predicted first. A stable tie-break on the candidate's own position
-    // keeps a same-seed run reproducible when the screen cannot separate two
-    // candidates.
+    // The incumbent expected improvement measures against: the best exact
+    // score this stage has seen, or the best in the model's own window when
+    // the screen was taught directly. Both are ground truth; a predicted best
+    // is not.
+    const incumbent = Math.max(
+      this.bestExactScore,
+      screen.bestObservedScore?.() ?? -Infinity,
+    );
+    // Best first. A stable tie-break on the candidate's own position keeps a
+    // same-seed run reproducible when the screen cannot separate two
+    // candidates. With the guard on, "best" is the acquisition value and a
+    // refusal sorts to the front — an out-of-distribution candidate is not a
+    // bad candidate, it is an unmeasured one, and it is the one a true
+    // evaluation buys the most information about.
+    const keys = verdicts === undefined
+      ? (values as readonly number[])
+      : verdicts.map((verdict) =>
+        isPrediction(verdict)
+          ? acquisitionValue(
+            this.config.uncertainty.acquisition,
+            verdict,
+            incumbent,
+            this.config.uncertainty.kappa,
+          )
+          : Infinity
+      );
     const order = candidates.map((_, index) => index);
-    order.sort((a, b) => values[b] - values[a] || a - b);
+    order.sort((a, b) => (keys[a] === keys[b] ? a - b : keys[b] - keys[a]));
     const rankOf = new Array<number>(candidates.length);
     for (let rank = 0; rank < order.length; rank++) {
       rankOf[order[rank]] = rank;
@@ -280,11 +422,42 @@ export class PreSelection {
       chosen.add(index);
       reasons.set(index, "random");
     }
-    for (const index of order) {
-      if (chosen.size >= slots) break;
-      if (chosen.has(index)) continue;
-      chosen.add(index);
-      reasons.set(index, "rank");
+    // Issue #3933: the remaining slots are the exact evaluations the
+    // acquisition rule allocates — refusals first, then the uncertainty floor,
+    // then expected improvement or the confidence bound. Without the guard
+    // this is the Issue #3932 fill from the top of the predicted ranking.
+    let allocation: Allocation | undefined;
+    if (guard !== undefined && verdicts !== undefined) {
+      const available = candidates
+        .map((_, index) => index)
+        .filter((index) => !chosen.has(index));
+      allocation = guard.allocate(
+        available.map((index) => verdicts[index]),
+        Math.max(0, Math.min(slots - chosen.size, available.length)),
+        incumbent,
+      );
+      // The uniform draw already spent slots on creatures the guard did not
+      // choose; they are exact evaluations too, and the run's exploration
+      // share is measured against all of them.
+      guard.recordExternalExactEvaluations(chosen.size);
+      for (const slot of allocation.slots) {
+        const index = available[slot.index];
+        chosen.add(index);
+        // `"rank"` is the ranking rule's own band, whichever rule it is: the
+        // acquisition ordering here, the predicted-score argmax without the
+        // guard.
+        reasons.set(
+          index,
+          slot.reason === "acquisition" ? "rank" : slot.reason,
+        );
+      }
+    } else {
+      for (const index of order) {
+        if (chosen.size >= slots) break;
+        if (chosen.has(index)) continue;
+        chosen.add(index);
+        reasons.set(index, "rank");
+      }
     }
 
     // Survivors are handed on best-ranked first so the population array stays
@@ -300,6 +473,18 @@ export class PreSelection {
         continue;
       }
       survivors.push(creature);
+      // Issue #3933: remember what the model said, so the exact score that
+      // arrives for this creature next generation can be differenced against
+      // it. That difference is the drift monitor's whole input, and it is
+      // recorded against the creature rather than its UUID because a bred
+      // offspring has not been given one yet.
+      const predicted = values[index];
+      if (predicted !== null) this.predictions.set(creature, predicted);
+      // A bred offspring has no UUID at this point — mutation invalidated it
+      // and fitness has not recomputed it yet — so this rank is recorded for
+      // the fixtures and callers that do carry one. Issue #4008 tracks moving
+      // the rank map onto creature identity, as the prediction map above
+      // already is.
       const uuid = creature.uuid;
       if (uuid !== undefined) {
         this.ranks.set(uuid, {
@@ -326,6 +511,9 @@ export class PreSelection {
       randomSurvivors,
       screenMs,
       screenReady: true,
+      ...(allocation === undefined
+        ? {}
+        : { surrogate: allocation.diagnostics }),
     };
     this.lastSummary = summary;
     return { survivors, discarded, summary };
@@ -417,6 +605,39 @@ export class PreSelection {
       `anti-correlated with what matters`;
   }
 
+  /**
+   * The three guard numbers this run has accumulated — signed bias, the
+   * fraction of exact evaluations spent on uncertainty, and the
+   * out-of-distribution rate (Issue #3933).
+   *
+   * @returns The line, or `undefined` when no guard is attached.
+   */
+  describeSurrogateRun(): string | undefined {
+    return this.guard?.describeRun();
+  }
+
+  /**
+   * The per-generation acquisition line.
+   *
+   * @returns The line, or `undefined` when the guard was not consulted this
+   *   generation.
+   */
+  describeAllocation(): string | undefined {
+    return this.guard?.describeAllocation();
+  }
+
+  /**
+   * The drift line for the generation just observed — loud on the generation
+   * the surrogate path is disabled in.
+   *
+   * @returns The line, or `undefined` when there was nothing to report.
+   */
+  describeDrift(): string | undefined {
+    const reading = this.lastDrift;
+    if (reading === undefined || this.guard === undefined) return undefined;
+    return this.guard.describeDrift(reading);
+  }
+
   /** Clear all history. Call when starting a new run. */
   reset(): void {
     this.ranks = new Map();
@@ -424,6 +645,10 @@ export class PreSelection {
     this.lastSummary = undefined;
     this.eliteRanks.length = 0;
     this.recordedElites.clear();
+    this.predictions = new WeakMap();
+    this.bestExactScore = -Infinity;
+    this.lastDrift = undefined;
+    this.guard?.reset();
   }
 
   /** Everything survives: the stage is off, unready, or has no surplus. */

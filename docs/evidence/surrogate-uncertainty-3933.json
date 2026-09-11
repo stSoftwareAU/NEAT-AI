@@ -1,0 +1,173 @@
+{
+  "issue": 3933,
+  "settings": {
+    "seed": 3933,
+    "corpusRecords": 4000,
+    "populationSize": 24,
+    "generations": 120,
+    "elitism": 2,
+    "cheapRate": 0.05,
+    "replicates": 3
+  },
+  "arms": [
+    {
+      "arm": "unguarded",
+      "ratio": 3,
+      "screen": "surrogate",
+      "randomSurvivorFraction": 0.25,
+      "uncertainty": {
+        "enabled": false
+      }
+    },
+    {
+      "arm": "guarded",
+      "ratio": 3,
+      "screen": "surrogate",
+      "randomSurvivorFraction": 0.25,
+      "uncertainty": {
+        "enabled": true
+      }
+    }
+  ],
+  "summary": [
+    {
+      "arm": "unguarded",
+      "guard": false,
+      "meanFinalScore": -0.012964255824545296,
+      "meanExactEvaluations": 1718.3333333333333,
+      "meanRecordsScored": 6873333.333333333,
+      "meanCandidatesConsidered": 2254.3333333333335,
+      "diagnostics": null
+    },
+    {
+      "arm": "guarded",
+      "guard": true,
+      "meanFinalScore": -0.005989962519307355,
+      "meanExactEvaluations": 2157.6666666666665,
+      "meanRecordsScored": 8630666.666666666,
+      "meanCandidatesConsidered": 3979.6666666666665,
+      "diagnostics": {
+        "meanUncertaintyFraction": 0.2563270507349455,
+        "meanOutOfDistributionRate": 0.03890067690837628,
+        "meanSignedBias": 0.0006526834245582971,
+        "runsDisabled": 1
+      }
+    }
+  ],
+  "perSeed": [
+    [
+      {
+        "arm": "unguarded",
+        "ratio": 3,
+        "screen": "surrogate",
+        "finalScore": -0.030773916408854508,
+        "exactEvaluations": 166,
+        "recordsScored": 664000,
+        "candidatesConsidered": 234
+      },
+      {
+        "arm": "guarded",
+        "ratio": 3,
+        "screen": "surrogate",
+        "finalScore": -0.004293127613741253,
+        "exactEvaluations": 2587,
+        "recordsScored": 10348000,
+        "candidatesConsidered": 5325,
+        "surrogate": {
+          "generations": 111,
+          "candidates": 4492,
+          "outOfDistribution": 203,
+          "outOfDistributionRate": 0.04519145146927872,
+          "exactSlots": 1776,
+          "exactEvaluations": 2442,
+          "explorationSlots": 467,
+          "uncertaintyFraction": 0.26295045045045046,
+          "explorationShare": 0.19123669123669124,
+          "signedBias": -0.0013955309619637759,
+          "meanAbsoluteResidual": 0.02514686174361395,
+          "biasRatio": -0.05549523340892312,
+          "generationBiasRatio": -0.12859675688644653,
+          "residuals": 2185,
+          "disabled": false,
+          "disabledAtGeneration": null
+        }
+      }
+    ],
+    [
+      {
+        "arm": "unguarded",
+        "ratio": 3,
+        "screen": "surrogate",
+        "finalScore": -0.005631262928329248,
+        "exactEvaluations": 2585,
+        "recordsScored": 10340000,
+        "candidatesConsidered": 3554
+      },
+      {
+        "arm": "guarded",
+        "ratio": 3,
+        "screen": "surrogate",
+        "finalScore": -0.0016581960641980052,
+        "exactEvaluations": 2629,
+        "recordsScored": 10516000,
+        "candidatesConsidered": 4910,
+        "surrogate": {
+          "generations": 114,
+          "candidates": 4091,
+          "outOfDistribution": 170,
+          "outOfDistributionRate": 0.041554632119286235,
+          "exactSlots": 1824,
+          "exactEvaluations": 2508,
+          "explorationSlots": 467,
+          "uncertaintyFraction": 0.25603070175438597,
+          "explorationShare": 0.1862041467304625,
+          "signedBias": -0.0031537118105676634,
+          "meanAbsoluteResidual": 0.020563893602512442,
+          "biasRatio": -0.1533616090185543,
+          "generationBiasRatio": -0.029933318718840043,
+          "residuals": 2310,
+          "disabled": true,
+          "disabledAtGeneration": 120
+        }
+      }
+    ],
+    [
+      {
+        "arm": "unguarded",
+        "ratio": 3,
+        "screen": "surrogate",
+        "finalScore": -0.002487588136452132,
+        "exactEvaluations": 2404,
+        "recordsScored": 9616000,
+        "candidatesConsidered": 2975
+      },
+      {
+        "arm": "guarded",
+        "ratio": 3,
+        "screen": "surrogate",
+        "finalScore": -0.012018563879982805,
+        "exactEvaluations": 1257,
+        "recordsScored": 5028000,
+        "candidatesConsidered": 1704,
+        "surrogate": {
+          "generations": 43,
+          "candidates": 1135,
+          "outOfDistribution": 34,
+          "outOfDistributionRate": 0.029955947136563875,
+          "exactSlots": 688,
+          "exactEvaluations": 946,
+          "explorationSlots": 172,
+          "uncertaintyFraction": 0.25,
+          "explorationShare": 0.18181818181818182,
+          "signedBias": 0.00650729304620633,
+          "meanAbsoluteResidual": 0.030914880434205313,
+          "biasRatio": 0.21049064252587021,
+          "generationBiasRatio": 0.23811698262995787,
+          "residuals": 900,
+          "disabled": false,
+          "disabledAtGeneration": null
+        }
+      }
+    ]
+  ]
+}

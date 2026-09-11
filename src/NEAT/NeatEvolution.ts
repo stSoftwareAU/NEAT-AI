@@ -256,7 +256,20 @@ export async function evolve(
   // Issue #3932: a screen that learns from exact scores is taught here, on the
   // only scores in the run that are ground truth. A screened-out creature
   // never reaches this point, so nothing the screen rejected can teach it.
-  neat.preSelection.observe(neat.population);
+  neat.preSelection.observe(neat.population, neat.currentGeneration);
+
+  // Issue #3933: the residuals of this generation, differenced against what
+  // the surrogate predicted before it was paid for. A one-directional bias is
+  // the false-optimum signature, and the monitor disables the surrogate path
+  // for the rest of the run when it sees one.
+  const driftLine = neat.preSelection.describeDrift();
+  if (driftLine) {
+    if (neat.preSelection.surrogateGuard?.disabled === true) {
+      getLogger().warn(driftLine);
+    } else {
+      getLogger().info(driftLine);
+    }
+  }
 
   // Issue #2457: Commit any squash-mutation outcomes captured last generation
   // now that the freshly evaluated fitness is available. Each creature is
@@ -912,6 +925,18 @@ export async function evolve(
     newPopulation.length = bredSliceStart;
     appendAll(newPopulation, outcome.survivors);
     getLogger().info(neat.preSelection.describe(outcome.summary));
+    // Issue #3933: where this generation's exact evaluations went — refusals,
+    // the uncertainty floor, and the acquisition rule — followed by the
+    // run-to-date totals. The run line is cumulative and is emitted every
+    // generation rather than at the end: a run that is killed by its deadline,
+    // or that never reaches a clean finish, still leaves its signed bias,
+    // uncertainty allocation and out-of-distribution rate in the trace.
+    const allocationLine = neat.preSelection.describeAllocation();
+    if (allocationLine) {
+      getLogger().info(allocationLine);
+      const runLine = neat.preSelection.describeSurrogateRun();
+      if (runLine) getLogger().info(runLine);
+    }
   }
   // Issue #2312: Snapshot after mutation — main thread only
   const mutationUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);

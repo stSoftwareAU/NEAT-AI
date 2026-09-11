@@ -27,7 +27,15 @@ export type PreSelectionErrorReason =
    * decides what is worth measuring, and it must never be recorded as a
    * measurement.
    */
-  | "SCREEN_WROTE_SCORE";
+  | "SCREEN_WROTE_SCORE"
+  /**
+   * A `"surrogate"` screen was configured that cannot report an uncertainty
+   * for its predictions (Issue #3933). A model family that cannot produce one
+   * is not eligible: consumed without it, every exact evaluation lands where
+   * the model is already confident and it is never corrected where it is
+   * wrong.
+   */
+  | "SURROGATE_WITHOUT_UNCERTAINTY";
 
 export class PreSelectionError extends Error {
   override readonly name = "PreSelectionError";

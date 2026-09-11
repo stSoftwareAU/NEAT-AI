@@ -317,6 +317,67 @@ export {
 } from "@neat/OffspringScreen.ts";
 export type { PreSelectionErrorReason } from "@errors/PreSelectionError.ts";
 export { PreSelectionError } from "@errors/PreSelectionError.ts";
+/**
+ * Issue #3933 — the surrogate uncertainty guard. A surrogate makes
+ * *consistent* mistakes and an evolutionary algorithm finds them, so a
+ * prediction here is either a value with a **mandatory** uncertainty beside it
+ * or a refusal: there is no shape that carries a number without its
+ * confidence. Exact evaluations are allocated by an acquisition rule with an
+ * enforced exploration floor rather than by predicted rank, candidates outside
+ * the region the archive covers are refused a prediction, and a one-directional
+ * signed bias disables the surrogate path for the rest of the run.
+ *
+ * On by default wherever a surrogate screen runs
+ * (`preSelection.uncertainty.enabled`), and
+ * [`docs/SURROGATE_UNCERTAINTY.md`](./docs/SURROGATE_UNCERTAINTY.md) states
+ * that the surrogate path must not run in production without it.
+ *
+ * @see {@link module:src/config/SurrogateUncertaintyConfig}
+ * @see {@link module:src/surrogate/SurrogateGuard}
+ */
+export type {
+  AcquisitionRule,
+  RequiredSurrogateUncertaintyConfig,
+  SurrogateUncertaintyConfig,
+} from "@config/SurrogateUncertaintyConfig.ts";
+export {
+  ACQUISITION_RULES,
+  DEFAULT_SURROGATE_UNCERTAINTY_CONFIG,
+  resolveSurrogateUncertaintyConfig,
+} from "@config/SurrogateUncertaintyConfig.ts";
+export type {
+  OutOfDistributionVerdict,
+  SurrogateVerdict,
+  UncertainPrediction,
+  UncertainSurrogate,
+} from "@surrogate/UncertainSurrogate.ts";
+export { assertVerdict, isPrediction } from "@surrogate/UncertainSurrogate.ts";
+export {
+  acquisitionValue,
+  confidenceBound,
+  expectedImprovement,
+} from "@surrogate/Acquisition.ts";
+export type {
+  AllocatedSlot,
+  Allocation,
+  AllocationDiagnostics,
+  AllocationReason,
+} from "@surrogate/ExactEvaluationAllocator.ts";
+export {
+  allocateExactEvaluations,
+  assertUncertaintyFloor,
+} from "@surrogate/ExactEvaluationAllocator.ts";
+export type {
+  CoverageOptions,
+  CoverageReading,
+} from "@surrogate/CoverageRegion.ts";
+export { CoverageRegion } from "@surrogate/CoverageRegion.ts";
+export type { DriftReading } from "@surrogate/DriftMonitor.ts";
+export { SignedBiasDriftMonitor } from "@surrogate/DriftMonitor.ts";
+export type { SurrogateRunDiagnostics } from "@surrogate/SurrogateGuard.ts";
+export { SurrogateGuard } from "@surrogate/SurrogateGuard.ts";
+export type { SurrogateUncertaintyErrorReason } from "@errors/SurrogateUncertaintyError.ts";
+export { SurrogateUncertaintyError } from "@errors/SurrogateUncertaintyError.ts";
 export {
   assertExactScore,
   EXACT_SCORE_FIDELITY,
