@@ -121,6 +121,13 @@ Tuning guides and benchmark research.
   refusal to predict out-of-distribution candidates, and the signed-bias drift
   monitor that disables the surrogate path on a false-optimum signature. The
   surrogate path must not run in production without it.
+- **[CHEAP_PROBLEM_BENCHMARK.md](CHEAP_PROBLEM_BENCHMARK.md)** — the
+  cheap-problem benchmark harness for the surrogate techniques of the #3919
+  sweep (Issue #3935): surrogate accuracy against a fully enumerated ground
+  truth, multi-fidelity rank agreement, a deliberate false optimum that fires
+  #3933's drift monitor, and the CI-runnable GRQ-protecting invariants. Its
+  results are **not** transferable to GRQ creature scores, and the harness says
+  so in every report.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —
