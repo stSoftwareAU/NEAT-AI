@@ -184,8 +184,7 @@ with the guard on and off, and judges the pair on **final exact score** over at
 least 100 generations — the script refuses a shorter horizon.
 
 ```bash
-deno run --allow-read --allow-write --allow-env --allow-ffi \
-  scripts/surrogate_uncertainty_ab.ts --generations=120 --replicates=3 \
+deno task surrogate-uncertainty-ab --generations=120 --replicates=3 \
   --json=docs/evidence/surrogate-uncertainty-3933.json
 ```
 

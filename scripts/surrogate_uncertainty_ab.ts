@@ -18,8 +18,7 @@
  * bug to tune away.
  *
  * ```bash
- * deno run --allow-read --allow-write --allow-env --allow-ffi \
- *   scripts/surrogate_uncertainty_ab.ts --generations=120 --replicates=3 \
+ * deno task surrogate-uncertainty-ab --generations=120 --replicates=3 \
  *   --json=docs/evidence/surrogate-uncertainty-3933.json
  * ```
  *
