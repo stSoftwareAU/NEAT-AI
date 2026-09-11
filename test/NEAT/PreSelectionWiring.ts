@@ -13,6 +13,7 @@ import { Creature } from "@creature";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { PreSelectionError } from "@errors/PreSelectionError.ts";
 import { SurrogateScreen } from "@neat/OffspringScreen.ts";
+import { EVALUATION_ARCHIVE_FILE_NAME } from "@config/EvaluationArchiveConfig.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
@@ -154,5 +155,57 @@ Deno.test("pre-selection wiring — an active stage screens a real generation's 
   } finally {
     await Promise.all(workers.map((w) => w.waitUntilReady().catch(() => {})));
     for (const worker of workers) worker.terminate();
+  }
+});
+
+Deno.test("pre-selection wiring — a screened-out creature never reaches the archive", async () => {
+  const dataDir = makeDataDir(buildDataSet(), 2000);
+  const archiveDir = await Deno.makeTempDir({
+    prefix: "pre-selection-archive-",
+  });
+  const workers = [new WorkerHandler(dataDir, "MSE", true)];
+  try {
+    const seed = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const neat = new Neat(2, 1, {
+      creatures: [seed.exportJSON()],
+      populationSize: 30,
+      elitism: 1,
+      preSelection: { ratio: 3, screen: "surrogate" },
+      evaluationArchive: { enabled: true, directory: archiveDir },
+    }, workers);
+    await neat.populatePopulation(seed);
+
+    let fittest: Creature | undefined;
+    let evaluable = 0;
+    let screenedOut = 0;
+    for (let generation = 0; generation < 3; generation++) {
+      // Each call evaluates the population it starts with, so that is the
+      // most records the archive may gain from it.
+      evaluable += neat.population.length;
+      // deno-lint-ignore no-await-in-loop
+      fittest = (await neat.evolve(fittest)).fittest;
+      const summary = neat.preSelection.lastGeneration;
+      assert(summary !== undefined);
+      screenedOut += summary.screenedOut;
+    }
+    assert(screenedOut > 0, "the stage must have discarded something to prove");
+
+    const archived = (await Deno.readTextFile(
+      `${archiveDir}/${EVALUATION_ARCHIVE_FILE_NAME}`,
+    )).split("\n").filter((line) => line.length > 0);
+    assert(archived.length > 0, "the archive must have recorded something");
+    // Every archived record is an exact evaluation of a creature that was in
+    // the population. A screened-out creature never enters one, so an archive
+    // holding more than the evaluated populations would mean a discard was
+    // recorded.
+    assert(
+      archived.length <= evaluable,
+      `the archive holds ${archived.length} records after ${evaluable} ` +
+        `evaluable creatures and ${screenedOut} discards`,
+    );
+  } finally {
+    await Promise.all(workers.map((w) => w.waitUntilReady().catch(() => {})));
+    for (const worker of workers) worker.terminate();
+    await Deno.remove(archiveDir, { recursive: true });
   }
 });
