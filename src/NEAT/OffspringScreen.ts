@@ -37,6 +37,19 @@ import type {
   PreSelectionScreenName,
   RequiredPreSelectionConfig,
 } from "@config/PreSelectionConfig.ts";
+import type { RequiredSurrogateUncertaintyConfig } from "@config/SurrogateUncertaintyConfig.ts";
+import { DEFAULT_SURROGATE_UNCERTAINTY_CONFIG } from "@config/SurrogateUncertaintyConfig.ts";
+import { CoverageRegion } from "@surrogate/CoverageRegion.ts";
+import {
+  assertVerdict,
+  type SurrogateVerdict,
+} from "@surrogate/UncertainSurrogate.ts";
+import {
+  applyFeatureScaler,
+  euclideanDistance,
+  type FeatureScaler,
+  fitFeatureScaler,
+} from "@surrogate/FeatureScaler.ts";
 
 /**
  * A cheap ranking of candidate offspring.
@@ -67,6 +80,30 @@ export interface OffspringScreen {
    * @param score - That score.
    */
   observe?(creature: Creature, score: number): void;
+  /**
+   * Rank the candidates **with an uncertainty on every prediction**, and
+   * refuse to predict the ones the model has no data near — Issue #3933.
+   *
+   * A screen that implements this can be consumed by the acquisition rule of
+   * {@link ../surrogate/ExactEvaluationAllocator.ts}; one that cannot is
+   * limited to the predicted-rank argmax, which is the policy that guarantees
+   * the model is never corrected where it is wrong.
+   *
+   * @param candidates - The surplus offspring, unscored.
+   * @returns One verdict per candidate, in the same order.
+   */
+  verdicts?(candidates: readonly Creature[]): readonly SurrogateVerdict[];
+  /**
+   * The best **exact** score the screen has been taught — the incumbent
+   * expected improvement is measured against (Issue #3933).
+   *
+   * Taken from the model's own training data rather than from the caller, so
+   * a screen taught directly still has a ground-truth incumbent and EI never
+   * falls back to an ordering that is an accident of candidate order.
+   *
+   * @returns The best score, or `-Infinity` when it has been taught none.
+   */
+  bestObservedScore?(): number;
 }
 
 /** The cheap evaluator a {@link SampledCorpusScreen} is built around. */
@@ -159,19 +196,42 @@ export class SurrogateScreen implements OffspringScreen {
   /** Most recent `window` training points; oldest evicted first. */
   private points: TrainingPoint[] = [];
   private readonly seen = new Set<string>();
+  private readonly uncertainty: RequiredSurrogateUncertaintyConfig;
 
   /**
    * @param window - Training points retained. Must be `>= 3`.
    * @param neighbours - Neighbours a prediction averages. Must be `>= 1`.
+   * @param uncertainty - How the coverage region is drawn and how one-sided a
+   *   bias has to be to matter (Issue #3933). Defaults to the guard on.
    */
-  constructor(window: number, neighbours: number) {
+  constructor(
+    window: number,
+    neighbours: number,
+    uncertainty: RequiredSurrogateUncertaintyConfig =
+      DEFAULT_SURROGATE_UNCERTAINTY_CONFIG,
+  ) {
     this.window = window;
     this.neighbours = neighbours;
+    this.uncertainty = uncertainty;
   }
 
   /** Training points the model currently holds. */
   get trainingSize(): number {
     return this.points.length;
+  }
+
+  /**
+   * The best exact score in the window — the incumbent expected improvement
+   * is measured against (Issue #3933).
+   *
+   * @returns The best score, or `-Infinity` when nothing has been learnt.
+   */
+  bestObservedScore(): number {
+    let best = -Infinity;
+    for (const point of this.points) {
+      if (point.score > best) best = point.score;
+    }
+    return best;
   }
 
   /** True once enough exact scores have arrived to rank anything. */
@@ -258,6 +318,75 @@ export class SurrogateScreen implements OffspringScreen {
     return values;
   }
 
+  /**
+   * Predict every candidate **with its uncertainty**, refusing the ones the
+   * window has no data near — Issue #3933.
+   *
+   * The uncertainty has two parts, both in score units:
+   *
+   * - **local disagreement**: the distance-weighted standard deviation of the
+   *   `k` neighbour scores. Neighbours that disagree about a region of
+   *   descriptor space are the model telling you it cannot resolve it.
+   * - **distance from the data**: the window's own score spread, scaled by how
+   *   far the candidate sits from its nearest neighbour as a fraction of the
+   *   coverage radius. A candidate on the edge of what the archive covers
+   *   carries a full window standard deviation of doubt; one sitting on a
+   *   training point carries none of this term.
+   *
+   * A candidate outside the coverage region gets no number at all — that is
+   * the refusal, and the caller routes it to an exact evaluation.
+   *
+   * @param candidates - The surplus offspring.
+   * @returns One verdict per candidate, in the same order.
+   * @throws {PreSelectionError} `INVALID_SCREEN_VALUE` when the model is not
+   *   ready. An unready model has nothing to be uncertain *about*.
+   */
+  verdicts(candidates: readonly Creature[]): readonly SurrogateVerdict[] {
+    if (!this.ready()) {
+      throw new PreSelectionError(
+        `the "surrogate" screen was asked for uncertainty-bearing verdicts ` +
+          `on ${candidates.length} candidate(s) with ${this.points.length} ` +
+          `training point(s); it needs at least ${MIN_TRAINING_POINTS} and ` +
+          `reports that through ready()`,
+        "INVALID_SCREEN_VALUE",
+      );
+    }
+    const region = CoverageRegion.fit(this.points.map((p) => p.features), {
+      quantile: this.uncertainty.coverageQuantile,
+      factor: this.uncertainty.coverageFactor,
+      margin: this.uncertainty.coverageMargin,
+    });
+    const rows = region.scaledRows;
+    const windowSd = scoreSpread(this.points);
+    return candidates.map((candidate) => {
+      const features = computeEvaluationDescriptor(candidate);
+      const reading = region.classify(features);
+      if (!reading.inside) {
+        // `classify` builds the refusal alongside the reading, so an outside
+        // reading always carries one; the fallback keeps the type honest
+        // rather than asserting non-null over a value another branch owns.
+        return reading.verdict ?? {
+          kind: "out-of-distribution" as const,
+          reason: "outside the region the archive covers",
+          distance: reading.distance,
+          limit: reading.radius,
+        };
+      }
+      const query = region.project(features);
+      return assertVerdict(
+        "knn-surrogate",
+        predictWithUncertainty(
+          rows,
+          this.points,
+          query,
+          this.neighbours,
+          windowSd,
+          region.radius,
+        ),
+      ) as SurrogateVerdict;
+    });
+  }
+
   /** Drop everything learnt. Call when starting a new run. */
   reset(): void {
     this.points = [];
@@ -267,16 +396,6 @@ export class SurrogateScreen implements OffspringScreen {
 
 /** Fewest training points any prediction here may be made from. */
 export const MIN_TRAINING_POINTS = 3;
-
-/**
- * Relative standard deviation below which a descriptor column counts as
- * constant and is dropped from the distance.
- *
- * Comfortably above the ~1e-16 of double rounding and far below any real
- * structural difference, so it separates float noise from signal without
- * discarding a slot that genuinely varies a little.
- */
-const CONSTANT_COLUMN_EPS = 1e-12;
 
 /**
  * Build the screen a resolved configuration asks for.
@@ -300,53 +419,14 @@ export function createOffspringScreen(
       return new SurrogateScreen(
         config.surrogateWindow,
         config.surrogateNeighbours,
+        config.uncertainty,
       );
   }
 }
 
-/** Column means and standard deviations of the informative columns. */
-interface FeatureScaler {
-  readonly keep: readonly number[];
-  readonly mean: readonly number[];
-  readonly sd: readonly number[];
-}
-
-/**
- * Standardise the training columns, dropping the ones that carry no signal.
- *
- * A descriptor slot that is constant across the window — every creature in a
- * run has the same input count — has no variance to divide by, so it is
- * dropped rather than turned into an infinity.
- */
+/** Standardise the training columns, dropping the ones that carry no signal. */
 function fitScaler(points: readonly TrainingPoint[]): FeatureScaler {
-  const width = points[0].features.length;
-  const keep: number[] = [];
-  const mean: number[] = [];
-  const sd: number[] = [];
-  for (let column = 0; column < width; column++) {
-    let sum = 0;
-    for (const point of points) sum += point.features[column];
-    const columnMean = sum / points.length;
-    let variance = 0;
-    for (const point of points) {
-      const delta = point.features[column] - columnMean;
-      variance += delta * delta;
-    }
-    const columnSd = Math.sqrt(variance / points.length);
-    // A column every creature shares is dropped — but its variance is rarely
-    // *exactly* zero: `sum / n` of n identical values need not reproduce the
-    // value, so a constant column can carry ~1e-17 of float noise. Dividing by
-    // that turns rounding error into a full standard deviation and lets a slot
-    // with no information dominate the distance, so the test is relative to the
-    // column's own magnitude rather than against zero.
-    if (columnSd <= Math.max(Math.abs(columnMean), 1) * CONSTANT_COLUMN_EPS) {
-      continue;
-    }
-    keep.push(column);
-    mean.push(columnMean);
-    sd.push(columnSd);
-  }
-  return { keep, mean, sd };
+  return fitFeatureScaler(points.map((point) => point.features));
 }
 
 /** Project a raw feature vector into the scaler's kept, standardised space. */
@@ -354,61 +434,109 @@ function applyScaler(
   scaler: FeatureScaler,
   features: readonly number[],
 ): number[] {
-  const scaled = new Array<number>(scaler.keep.length);
-  for (let i = 0; i < scaler.keep.length; i++) {
-    scaled[i] = (features[scaler.keep[i]] - scaler.mean[i]) / scaler.sd[i];
-  }
-  return scaled;
+  return applyFeatureScaler(scaler, features);
 }
 
 /**
- * Distance-weighted mean of the `k` nearest training scores.
+ * The window's own score spread — the doubt a candidate at the edge of the
+ * covered region carries, in score units.
+ */
+function scoreSpread(points: readonly TrainingPoint[]): number {
+  let sum = 0;
+  for (const point of points) sum += point.score;
+  const mean = sum / points.length;
+  let variance = 0;
+  for (const point of points) {
+    const delta = point.score - mean;
+    variance += delta * delta;
+  }
+  return Math.sqrt(variance / points.length);
+}
+
+/**
+ * Distance-weighted mean of the `k` nearest training scores — the value half
+ * of {@link predictWithUncertainty}, for the ranking-only path.
  *
- * With every informative column dropped — a window in which the creatures are
- * structurally identical — there is nothing to measure a distance along, and
- * the prediction is the **window mean** for every candidate. That is the honest
- * answer: the descriptor cannot tell these candidates apart, so the screen does
- * not pretend to either, and the resulting all-equal ranking leaves the stage's
- * stable tie-break to keep the order reproducible.
+ * @param points - The training points, already standardised.
+ * @param query - The standardised candidate.
+ * @param neighbours - How many neighbours the mean is taken over.
+ * @returns The predicted score, higher is better.
  */
 function predict(
   points: readonly TrainingPoint[],
   query: readonly number[],
   neighbours: number,
 ): number {
+  return predictWithUncertainty(
+    points.map((point) => point.features),
+    points,
+    query,
+    neighbours,
+    0,
+    0,
+  ).value;
+}
+
+/**
+ * Distance-weighted mean of the `k` nearest training scores, with the
+ * uncertainty the issue makes mandatory.
+ *
+ * With every informative column dropped — a window in which the creatures are
+ * structurally identical — there is no distance to measure, so the prediction
+ * is the window mean and the uncertainty is the window spread: the descriptor
+ * cannot tell these candidates apart, and the model says so instead of
+ * pretending to.
+ */
+function predictWithUncertainty(
+  rows: readonly (readonly number[])[],
+  points: readonly TrainingPoint[],
+  query: readonly number[],
+  neighbours: number,
+  windowSd: number,
+  radius: number,
+): { kind: "prediction"; value: number; uncertainty: number } {
   if (query.length === 0) {
     let sum = 0;
     for (const point of points) sum += point.score;
-    return sum / points.length;
+    return {
+      kind: "prediction",
+      value: sum / points.length,
+      uncertainty: windowSd,
+    };
   }
-  const distances = points.map((point) => ({
-    distance: euclidean(point.features, query),
-    score: point.score,
+  const ranked = rows.map((row, index) => ({
+    distance: euclideanDistance(row, query),
+    score: points[index].score,
   }));
-  distances.sort((a, b) => a.distance - b.distance);
-  const k = Math.min(neighbours, distances.length);
+  ranked.sort((a, b) => a.distance - b.distance);
+  const k = Math.min(neighbours, ranked.length);
   let weighted = 0;
   let weight = 0;
   for (let i = 0; i < k; i++) {
-    const { distance, score } = distances[i];
-    // An exact structural match is the strongest evidence available: take its
-    // score rather than diluting it with the neighbours behind it.
-    if (distance === 0) return score;
-    const w = 1 / distance;
-    weighted += w * score;
+    // A coincident neighbour would divide by zero, so the weight is capped at
+    // the reciprocal of the smallest distance that is not one.
+    const w = ranked[i].distance === 0 ? Infinity : 1 / ranked[i].distance;
+    if (w === Infinity) {
+      weighted = ranked[i].score;
+      weight = 1;
+      break;
+    }
+    weighted += w * ranked[i].score;
     weight += w;
   }
-  return weighted / weight;
-}
-
-/** Euclidean distance between two vectors of the same length. */
-function euclidean(a: readonly number[], b: readonly number[]): number {
-  let sum = 0;
-  for (let i = 0; i < a.length; i++) {
-    const delta = a[i] - b[i];
-    sum += delta * delta;
+  const value = weighted / weight;
+  let spread = 0;
+  let spreadWeight = 0;
+  for (let i = 0; i < k; i++) {
+    const w = ranked[i].distance === 0 ? 1 : 1 / ranked[i].distance;
+    const delta = ranked[i].score - value;
+    spread += w * delta * delta;
+    spreadWeight += w;
   }
-  return Math.sqrt(sum);
+  const local = spreadWeight > 0 ? Math.sqrt(spread / spreadWeight) : 0;
+  const nearest = ranked[0].distance;
+  const reach = radius > 0 ? Math.min(1, nearest / radius) : 0;
+  return { kind: "prediction", value, uncertainty: local + windowSd * reach };
 }
 
 /** Refuse a screen result that cannot rank the candidates it was given. */

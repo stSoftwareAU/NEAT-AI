@@ -24,6 +24,12 @@
 
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import { parseNumber } from "@config/ParseOptions.ts";
+import {
+  DEFAULT_SURROGATE_UNCERTAINTY_CONFIG,
+  type RequiredSurrogateUncertaintyConfig,
+  resolveSurrogateUncertaintyConfig,
+  type SurrogateUncertaintyConfig,
+} from "@config/SurrogateUncertaintyConfig.ts";
 
 /**
  * The cheap screens a surplus of offspring can be ranked by.
@@ -107,6 +113,17 @@ export interface PreSelectionConfig {
    * Default: `5`. Must be an integer `>= 1`.
    */
   surrogateNeighbours?: number;
+  /**
+   * The uncertainty guard the surrogate path must not run without — Issue
+   * #3933: the acquisition rule, the out-of-distribution refusal and the
+   * signed-bias drift monitor.
+   *
+   * Defaults to the guard **on**. Turning it off reverts to ranking by
+   * predicted score, which is the policy that guarantees the model is never
+   * corrected where it is wrong; see
+   * [`docs/SURROGATE_UNCERTAINTY.md`](../../docs/SURROGATE_UNCERTAINTY.md).
+   */
+  uncertainty?: SurrogateUncertaintyConfig;
 }
 
 /** Fully resolved pre-selection configuration used internally. */
@@ -116,6 +133,7 @@ export interface RequiredPreSelectionConfig {
   randomSurvivorFraction: number;
   surrogateWindow: number;
   surrogateNeighbours: number;
+  uncertainty: RequiredSurrogateUncertaintyConfig;
 }
 
 /** The stage off; the remaining values are the defaults a screen would use. */
@@ -127,6 +145,7 @@ export const DEFAULT_PRE_SELECTION_CONFIG: Readonly<
   randomSurvivorFraction: 0.25,
   surrogateWindow: 256,
   surrogateNeighbours: 5,
+  uncertainty: DEFAULT_SURROGATE_UNCERTAINTY_CONFIG,
 });
 
 /**
@@ -174,6 +193,9 @@ export function resolvePreSelectionConfig(
       "preSelection.surrogateNeighbours",
       raw?.surrogateNeighbours,
       DEFAULT_PRE_SELECTION_CONFIG.surrogateNeighbours,
+    ),
+    uncertainty: resolveSurrogateUncertaintyConfig(
+      overrides?.uncertainty as SurrogateUncertaintyConfig | undefined,
     ),
   };
 

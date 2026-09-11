@@ -64,6 +64,7 @@
     "@propagate/": "./src/propagate/",
     "@reconstruct/": "./src/reconstruct/",
     "@repair/": "./src/repair/",
+    "@surrogate/": "./src/surrogate/",
     "@transfer/": "./src/transfer/",
     "@upgrade/": "./src/upgrade/",
     "@utils/": "./src/utils/",
