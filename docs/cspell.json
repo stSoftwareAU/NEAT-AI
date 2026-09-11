@@ -757,6 +757,7 @@
     "fittable",
     "strided",
     "Sendhoff",
-    "Olhofer"
+    "Olhofer",
+    "unawaited"
   ]
 }
