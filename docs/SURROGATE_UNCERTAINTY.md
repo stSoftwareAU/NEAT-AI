@@ -190,7 +190,9 @@ deno run --allow-read --allow-write --allow-env --allow-ffi \
 ```
 
 Measured at 120 generations over 3 seeds, population 24
-([`docs/evidence/surrogate-uncertainty-3933.json`](evidence/surrogate-uncertainty-3933.json)):
+([`docs/evidence/surrogate-uncertainty-3933.md`](evidence/surrogate-uncertainty-3933.md),
+machine-readable in
+[`surrogate-uncertainty-3933.json`](evidence/surrogate-uncertainty-3933.json)):
 
 | Arm                                 | Mean final exact score | vs unguarded |
 | ----------------------------------- | ---------------------- | ------------ |
