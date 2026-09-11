@@ -43,6 +43,49 @@ import {
 } from "@neat/TrainingErrorComparison.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
+import type { TrainingOutcome } from "@archive/TrainingGainLog.ts";
+
+/**
+ * What the selection rule knew when it chose a creature for a gradient step
+ * (Issue #3934).
+ *
+ * Supplied by the evolution loop and used only for the training-gain log: the
+ * scheduler makes no decision with it, so a run with the log off may omit it
+ * entirely.
+ */
+export interface TrainingSelection {
+  /** Rank in the score-sorted population; `0` is the fittest. */
+  readonly rank: number;
+  /** Finite-score creatures the rank was taken over. */
+  readonly rankedPopulation: number;
+  /** Reference creature for the descriptor's genetic-distance slot. */
+  readonly reference?: Creature;
+}
+
+/**
+ * Append a training-gain record, reporting — never swallowing — a write that
+ * fails (Issue #3934).
+ *
+ * The log is an observer, so a disk fault in it must not be attributed to the
+ * training task it is observing: throwing here would land in the task's own
+ * `catch` and be recorded as a training failure that never happened. The
+ * records stay buffered, so a later flush loses nothing.
+ *
+ * @param neat - The run whose log is being flushed.
+ */
+export async function flushTrainingGainLog(neat: Neat): Promise<void> {
+  const log = neat.trainingGainLog;
+  if (log === undefined) return;
+  try {
+    await log.flush();
+  } catch (error) {
+    getLogger().error(
+      `[Neat] Training-gain log append failed; ${log.bufferedCount} record(s) ` +
+        `are still buffered and will be retried on the next event:`,
+      error,
+    );
+  }
+}
 
 /**
  * Epochs requested for a scheduled per-generation training task (Issue #3776).
@@ -412,12 +455,36 @@ export function scheduleDiscovery(
 }
 
 /**
+ * Close a training-gain event, if one is open for this creature (Issue #3934).
+ *
+ * An event that is not open is not an error here: the log may be off, the
+ * dispatch may have been declined for a creature with no UUID, or — on the
+ * `catch` path after a late fault — the outcome may already have been recorded.
+ * One outcome per event is the invariant; recording a second would double-count
+ * the wall-clock the run paid.
+ *
+ * @param neat - The run whose log is being written.
+ * @param uuid - UUID of the creature whose step settled.
+ * @param outcome - How it ended, and the score it produced.
+ */
+function closeTrainingGainEvent(
+  neat: Neat,
+  uuid: string,
+  outcome: TrainingOutcome,
+): void {
+  const log = neat.trainingGainLog;
+  if (log === undefined || !log.isPending(uuid)) return;
+  log.recordOutcome(uuid, outcome);
+}
+
+/**
  * Schedules training for a creature on a worker.
  */
 export function scheduleTraining(
   neat: Neat,
   creature: Creature,
   trainingTimeOutMinutes: number,
+  selection?: TrainingSelection,
 ): void {
   const uuid = CreatureUtil.makeUUID(creature);
   if (neat.trainingInProgress.has(uuid)) return;
@@ -575,16 +642,42 @@ export function scheduleTraining(
   // the hard deadline before it settles.
   const scheduledEpoch = neat.abandonEpoch;
 
+  // Issue #3934: a training event exists from here — every guard above has
+  // passed and a heavy worker slot is committed — so this is where the
+  // pre-training design point, the selection rank and the incoming score are
+  // captured. A run that did not supply the selection context (or has the log
+  // off) records nothing; the scheduler's behaviour is identical either way.
+  if (neat.trainingGainLog !== undefined && selection !== undefined) {
+    const errorTag = getTag(creature, "error");
+    const errorBefore = errorTag === null ? undefined : parseFloat(errorTag);
+    neat.trainingGainLog.recordDispatch(creature, {
+      generation: neat.currentGeneration,
+      rank: selection.rank,
+      rankedPopulation: selection.rankedPopulation,
+      scoreBefore: creature.score ?? Number.NaN,
+      ...(errorBefore !== undefined && Number.isFinite(errorBefore)
+        ? { errorBefore }
+        : {}),
+      ...(selection.reference !== undefined
+        ? { reference: selection.reference }
+        : {}),
+    });
+  }
+
   const p = w.train(creature, trainOptions).then((r) => {
     // Issue #3435: discard late completions after a hard-deadline abandon before
     // rebuilding the trained creature, fine-tuning, or writing traces.
     if (neat.isRunAbandonedSince(scheduledEpoch)) {
+      // Issue #3934: the step's cost belongs to the abandon, not to the
+      // creature — there is no outcome to measure, so drop the open event.
+      neat.trainingGainLog?.abandon(uuid);
       return;
     }
 
     // Issue #3780: honour ResponseData.error / missing train payload instead of
     // calling Creature.fromJSON on a fabricated blank export (input: 0).
     if (isFailedTrainWorkerResponse(r)) {
+      closeTrainingGainEvent(neat, uuid, { outcome: "failed" });
       recordTrainingTaskFailure(
         neat,
         creature,
@@ -620,6 +713,14 @@ export function scheduleTraining(
       r.train.error,
       neat.config.costOfGrowth,
     );
+    // Issue #3934: the gain this gradient step realised, recorded before any
+    // fine-tune variant is derived — the event being measured is the step the
+    // selection rule paid for, not the best of its descendants.
+    closeTrainingGainEvent(neat, uuid, {
+      outcome: "trained",
+      scoreAfter: trainedCreature.score,
+      errorAfter: r.train.error,
+    });
     const backtracked = fineTuneImprovement(
       creature,
       trainedCreature,
@@ -700,9 +801,11 @@ export function scheduleTraining(
     // Issue #3435: a late failure after abandon must not push a stub (or
     // serialise the creature) into the complete queue.
     if (neat.isRunAbandonedSince(scheduledEpoch)) {
+      neat.trainingGainLog?.abandon(uuid);
       return;
     }
 
+    closeTrainingGainEvent(neat, uuid, { outcome: "failed" });
     recordTrainingTaskFailure(neat, creature, uuid, scheduledEpoch, error);
   });
 

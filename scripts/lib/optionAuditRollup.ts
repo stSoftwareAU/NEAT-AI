@@ -440,6 +440,16 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
       "2011 §4): breed a surplus, screen it cheaply, evaluate only the " +
       "survivors. `ratio: 1` breeds exactly the budget, as before.",
   }),
+  keep("trainingGainLog", "roll-up", {
+    interfaces: [
+      "src/config/TrainingGainLogConfig.ts::TrainingGainLogConfig",
+      "src/config/TrainingGainLogConfig.ts::RequiredTrainingGainLogConfig",
+    ],
+    note: "Added after the slices by #3934 — the training-gain log (Jin 2011 " +
+      "§5): one record per real training event, so the local-search budget " +
+      "rule can be measured against outcomes. `enabled: false` records " +
+      "nothing, as before.",
+  }),
 ];
 
 /** The merged classification table — every option key, one entry each. */

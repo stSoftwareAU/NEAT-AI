@@ -27,6 +27,7 @@ import { Genus } from "@neat/Genus.ts";
 import { checkMemoryAndEvict, logMemoryUsage } from "@neat/MemoryMonitor.ts";
 import { createMemoryPressureSink } from "@neat/createMemoryPressureSink.ts";
 import { computePerTaskTimeoutMinutes } from "@neat/PerTaskTrainingTimeout.ts";
+import { flushTrainingGainLog } from "@neat/NeatScheduling.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { CRISPR } from "@reconstruct/CRISPR.ts";
 import { CrisprError } from "@errors/CrisprError.ts";
@@ -63,7 +64,10 @@ import {
 import { assemblePopulationWithinBudget } from "@neat/PopulationBudget.ts";
 import { HARD_DEADLINE_WATCHDOG_INTERVAL_MS } from "@neat/HardDeadline.ts";
 import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
-import { selectTrainingCandidates } from "@neat/TrainingCandidates.ts";
+import {
+  countRankableCreatures,
+  selectRankedTrainingCandidates,
+} from "@neat/TrainingCandidates.ts";
 import {
   applySeedWarmupTagsAtSave,
   isSeedWarmupStructuralLockActive,
@@ -212,6 +216,12 @@ export async function evolve(
     neat.currentGeneration,
     previousFittest,
   );
+
+  // Issue #3934: append the training events that settled since the last
+  // generation. Training is asynchronous, so a generation boundary is the point
+  // at which the run has both halves of an event — the dispatch and its
+  // outcome — for every task it went on to consume.
+  await flushTrainingGainLog(neat);
 
   // Issue #2239: Time fitness evaluation phase
   // GRQ #4141: name the in-fitness phase so the hard-deadline watchdog can
@@ -528,10 +538,16 @@ export async function evolve(
     // elitist slice. With the default `elitism` of 1 the previous loop could
     // only ever train a single creature per generation regardless of
     // `trainPerGen`, starving supervised gradient descent.
-    const trainingCandidates = selectTrainingCandidates(
+    const trainingCandidates = selectRankedTrainingCandidates(
       neat.population,
       neat.config.trainPerGen,
     );
+    // Issue #3934: the rank is reported, not acted on — the rule still takes
+    // the top `trainPerGen` by score. Counted once per generation rather than
+    // per candidate.
+    const rankedPopulation = neat.trainingGainLog === undefined
+      ? 0
+      : countRankableCreatures(neat.population);
     // Issue #3053: cap each task's wall-clock budget so a single stuck task
     // cannot consume the entire remaining run. Discovery scheduling above
     // still uses the full remaining budget; only per-task training is capped.
@@ -539,14 +555,21 @@ export async function evolve(
       trainingTimeOutMinutes,
       neat.config.trainingTaskTimeoutMinutes,
     );
-    for (const n of trainingCandidates) {
+    for (const candidate of trainingCandidates) {
       if (
         neat.doNotStartMore === false &&
         neat.trainingInProgress.size < neat.config.trainPerGen
       ) {
         neat.scheduleTraining(
-          n,
+          candidate.creature,
           perTaskTimeoutMinutes,
+          {
+            rank: candidate.rank,
+            rankedPopulation,
+            // The descriptor's one relative slot is measured against the run's
+            // fittest, and the record names it — see `referenceUuid`.
+            reference: fittest,
+          },
         );
       }
     }

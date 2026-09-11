@@ -87,6 +87,10 @@ import {
   type PreSelectionConfig,
   resolvePreSelectionConfig,
 } from "@config/PreSelectionConfig.ts";
+import {
+  resolveTrainingGainLogConfig,
+  type TrainingGainLogConfig,
+} from "@config/TrainingGainLogConfig.ts";
 import { resolveRustScorerConfig } from "../score/RustScorerBridge.ts";
 
 // Automatic Discovery worker-memory envelope → workerThreadCap wiring.
@@ -780,6 +784,11 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // ratio the stage cannot honour is rejected rather than clamped.
     preSelection: resolvePreSelectionConfig(
       opts.preSelection as PreSelectionConfig | undefined,
+    ),
+    // Issue #3934: nothing is recorded and no disk is touched unless the
+    // caller asks for the log; an invalid bound is rejected, never clamped.
+    trainingGainLog: resolveTrainingGainLogConfig(
+      opts.trainingGainLog as TrainingGainLogConfig | undefined,
     ),
     // Issue #3565: seed the analysis memory budget from the Discovery runner's
     // exported value when the caller did not set it explicitly, so the Rust-side

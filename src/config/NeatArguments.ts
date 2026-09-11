@@ -30,6 +30,7 @@ import type { RequiredRacingConfig } from "@config/RacingConfig.ts";
 import type { RequiredEvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
 import type { RequiredEvolutionControlConfig } from "@config/EvolutionControlConfig.ts";
 import type { RequiredPreSelectionConfig } from "@config/PreSelectionConfig.ts";
+import type { RequiredTrainingGainLogConfig } from "@config/TrainingGainLogConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "@config/WeightRegularisationConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
@@ -839,6 +840,15 @@ export interface NeatArguments {
    * what the budget calls for and is identical to every build before it.
    */
   preSelection: RequiredPreSelectionConfig;
+
+  /**
+   * Resolved training-gain-log configuration.
+   *
+   * Issue #3934: the per-training-event record of what local search actually
+   * bought — Jin (2011) §5. `enabled: false` by default, which writes nothing
+   * and is identical to every build before it.
+   */
+  trainingGainLog: RequiredTrainingGainLogConfig;
 
   /**
    * Discovery cache eviction configuration.
