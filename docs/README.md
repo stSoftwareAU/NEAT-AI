@@ -115,6 +115,12 @@ Tuning guides and benchmark research.
   collapsing diversity, and the diagnostics that catch a screen anti-correlated
   with what matters. Off by default (`ratio: 1`), which breeds exactly the
   population budget.
+- **[SURROGATE_UNCERTAINTY.md](SURROGATE_UNCERTAINTY.md)** — the surrogate
+  uncertainty guard (Issue #3933): mandatory uncertainty on every prediction, an
+  acquisition rule with an enforced exploration floor instead of an argmax, the
+  refusal to predict out-of-distribution candidates, and the signed-bias drift
+  monitor that disables the surrogate path on a false-optimum signature. The
+  surrogate path must not run in production without it.
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —

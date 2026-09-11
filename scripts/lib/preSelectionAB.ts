@@ -51,6 +51,11 @@ import {
   resolvePreSelectionConfig,
 } from "@config/PreSelectionConfig.ts";
 import {
+  resolveSurrogateUncertaintyConfig,
+  type SurrogateUncertaintyConfig,
+} from "@config/SurrogateUncertaintyConfig.ts";
+import type { SurrogateRunDiagnostics } from "@surrogate/SurrogateGuard.ts";
+import {
   createSeededRng,
   getRandomNumberGenerator,
   type RandomNumberGenerator,
@@ -99,6 +104,13 @@ export interface ABArm {
   readonly screen: PreSelectionScreenName;
   /** Fraction of survivors drawn uniformly rather than by rank. */
   readonly randomSurvivorFraction?: number;
+  /**
+   * The uncertainty guard (Issue #3933): the acquisition rule, the
+   * out-of-distribution refusal and the signed-bias drift monitor. Omitted
+   * leaves the guard at its default, which is **on**; `{ enabled: false }` is
+   * the control arm that measures what it is worth.
+   */
+  readonly uncertainty?: SurrogateUncertaintyConfig;
 }
 
 /** The control arm: today's behaviour exactly. */
@@ -146,6 +158,11 @@ export interface ABResult {
   readonly generations: readonly ABGeneration[];
   /** Screen rank of every creature that went on to become an elite. */
   readonly eliteScreenRanks: readonly ScreenRank[];
+  /**
+   * What the uncertainty guard spent and saw across the run (Issue #3933), or
+   * `undefined` for an arm that ran without one.
+   */
+  readonly surrogate?: SurrogateRunDiagnostics;
 }
 
 /**
@@ -272,6 +289,9 @@ async function runSeededArm(
       ...(arm.randomSurvivorFraction === undefined
         ? {}
         : { randomSurvivorFraction: arm.randomSurvivorFraction }),
+      ...(arm.uncertainty === undefined
+        ? {}
+        : { uncertainty: arm.uncertainty }),
     }),
     screen,
   );
@@ -304,7 +324,7 @@ async function runSeededArm(
 
     // 3. Teach the screen, then record where it ranked this generation's
     //    elites — the number that says whether the screen is worth having.
-    preSelection.observe(population);
+    preSelection.observe(population, generation);
     const elitists = population.slice(0, settings.elitism);
     preSelection.recordElites(elitists);
 
@@ -355,6 +375,9 @@ async function runSeededArm(
     candidatesConsidered,
     generations,
     eliteScreenRanks: preSelection.eliteScreenRanks,
+    ...(preSelection.surrogateGuard === undefined
+      ? {}
+      : { surrogate: preSelection.surrogateGuard.runDiagnostics }),
   };
 }
 
@@ -368,7 +391,11 @@ function buildScreen(
 ): OffspringScreen | undefined {
   if (arm.screen === "none") return undefined;
   if (arm.screen === "surrogate") {
-    return new SurrogateScreen(settings.populationSize * 8, 5);
+    return new SurrogateScreen(
+      settings.populationSize * 8,
+      5,
+      resolveSurrogateUncertaintyConfig(arm.uncertainty),
+    );
   }
   return new SampledCorpusScreen((candidates) => {
     const values = candidates.map((candidate) => {

@@ -33,6 +33,15 @@ perfectly happy to spend a full evaluation on twenty distinct bad ones.
 > usable anyway is the consumer: a screen only orders candidates, it never
 > assigns a fitness, and the stage reports the screen rank of every creature
 > that becomes an elite so an anti-correlated screen shows up in the trace.
+>
+> **The `"surrogate"` screen must not run in production without the uncertainty
+> guard of Issue #3933** — see
+> [`SURROGATE_UNCERTAINTY.md`](SURROGATE_UNCERTAINTY.md). It is on by default
+> (`preSelection.uncertainty.enabled: true`): predictions carry a mandatory
+> uncertainty, out-of-distribution candidates are refused a prediction and
+> routed to an exact evaluation, a stated minimum fraction of the exact
+> evaluations goes to the least-certain candidates, and a one-directional signed
+> bias disables the surrogate path for the rest of the run.
 
 ## The stage
 
@@ -55,13 +64,14 @@ will actually be asked to evaluate rather than the pre-mutation offspring.
 
 ## Options
 
-| Option                                | Default  | Meaning                                                                          |
-| ------------------------------------- | -------- | -------------------------------------------------------------------------------- |
-| `preSelection.ratio`                  | `1`      | Offspring bred per population slot; `1` disables the stage.                      |
-| `preSelection.screen`                 | `"none"` | `"sampled"` (a low-rate cheap evaluation) or `"surrogate"` (a fitted predictor). |
-| `preSelection.randomSurvivorFraction` | `0.25`   | Fraction of survivors drawn uniformly rather than by rank.                       |
-| `preSelection.surrogateWindow`        | `256`    | `(descriptor, exact score)` pairs the surrogate is fitted to.                    |
-| `preSelection.surrogateNeighbours`    | `5`      | Neighbours a surrogate prediction averages.                                      |
+| Option                                | Default  | Meaning                                                                                         |
+| ------------------------------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `preSelection.ratio`                  | `1`      | Offspring bred per population slot; `1` disables the stage.                                     |
+| `preSelection.screen`                 | `"none"` | `"sampled"` (a low-rate cheap evaluation) or `"surrogate"` (a fitted predictor).                |
+| `preSelection.randomSurvivorFraction` | `0.25`   | Fraction of survivors drawn uniformly rather than by rank.                                      |
+| `preSelection.surrogateWindow`        | `256`    | `(descriptor, exact score)` pairs the surrogate is fitted to.                                   |
+| `preSelection.surrogateNeighbours`    | `5`      | Neighbours a surrogate prediction averages.                                                     |
+| `preSelection.uncertainty`            | guard on | The Issue #3933 uncertainty guard — see [`SURROGATE_UNCERTAINTY.md`](SURROGATE_UNCERTAINTY.md). |
 
 The issue spells the first two `preSelectionRatio` and `preSelectionScreen`;
 they are nested under one `preSelection` key so the surface matches the
@@ -83,6 +93,7 @@ const result = await creature.evolveDataSet(data, {
     randomSurvivorFraction: 0.25, // survivors drawn uniformly, not by rank
     surrogateWindow: 256, // training points the model is fitted to
     surrogateNeighbours: 5, // neighbours a prediction averages
+    uncertainty: { acquisition: "ei" }, // Issue #3933 guard; on by default
   },
 });
 ```
@@ -141,6 +152,10 @@ Read it this way:
   the screen costs more than it saves.
 - **Mean genetic distance falling while mean fitness rises** is the failure this
   section exists to catch, not a success.
+- **A `"surrogate"` run whose uncertainty-allocation fraction has drifted to
+  zero** has degenerated to an argmax — the acquisition rule of Issue #3933 is
+  no longer spending anything where the model is unsure, so the model has
+  stopped being corrected where it is wrong.
 
 ---
 
