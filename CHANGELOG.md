@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4022 (GRQ #4490 / #4794):** While `NEAT_AI_TRAINING_TASK_CAPTURE_DIR`
+  is set, `scheduleTraining` writes the creature exactly as handed to each
+  training task to `<dir>/training-task-<id>.json` (`<id>` = the last eight
+  characters of the UUID, as the stuck-task watchdog prints it) and removes the
+  file when the task settles. GRQ has armed that variable since its #4490 and
+  nothing read it, so every hung task reported `captured=0`; whatever survives a
+  run is now exactly the hung set. A capture that cannot be written or removed
+  is logged and never affects the task.
+
 - **GRQ #4489:** Abandoning a training task now cancels it. The stuck-task
   watchdog used to drop the task from its own maps while the worker request
   stayed in flight and unsettled for the rest of the run — so a wedged worker
