@@ -80,6 +80,7 @@ import {
   releaseEvolveCaches,
 } from "@creature/EvolveTeardown.ts";
 import { runBoundedEvolveTeardown } from "@creature/BoundedEvolveTeardown.ts";
+import { flushTrainingGainLog } from "@neat/NeatScheduling.ts";
 import { finishGeneration } from "@creature/EvolveGenerationTail.ts";
 import {
   createPhaseTimingAccumulator,
@@ -778,6 +779,11 @@ export async function evolveDir(
       if (config.creatureStore) {
         await writeCreatures(neat, config.creatureStore);
       }
+      // Issue #3934: the run's last chance to append the training events that
+      // settled after the final generation's flush. Without it the last
+      // generation's measurements stay in the buffer and are lost — a log that
+      // silently ends a generation early is worse than no log.
+      await flushTrainingGainLog(neat);
     },
     workers,
     replayQueue: neat.discoveryReplayQueue,
@@ -1071,6 +1077,11 @@ export async function evolveEnv<S, A>(
       if (config.creatureStore) {
         await writeCreatures(neat, config.creatureStore);
       }
+      // Issue #3934: the run's last chance to append the training events that
+      // settled after the final generation's flush. Without it the last
+      // generation's measurements stay in the buffer and are lost — a log that
+      // silently ends a generation early is worse than no log.
+      await flushTrainingGainLog(neat);
     },
     replayQueue: neat.discoveryReplayQueue,
     hardDeadlineMS,
@@ -1624,6 +1635,11 @@ export async function evolveRL<S, A>(
       if (config.creatureStore) {
         await writeCreatures(neat, config.creatureStore);
       }
+      // Issue #3934: the run's last chance to append the training events that
+      // settled after the final generation's flush. Without it the last
+      // generation's measurements stay in the buffer and are lost — a log that
+      // silently ends a generation early is worse than no log.
+      await flushTrainingGainLog(neat);
     },
     workers: workerPool ? [workerPool] : undefined,
     replayQueue: neat.discoveryReplayQueue,

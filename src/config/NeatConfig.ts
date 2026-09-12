@@ -71,6 +71,26 @@ import {
 // Extracted cross-field validation
 import { validateNeatConfig } from "@config/NeatConfigValidation.ts";
 import type { RustScorerConfig } from "@config/RustScorerConfig.ts";
+import {
+  type RacingConfig,
+  resolveRacingConfig,
+} from "@config/RacingConfig.ts";
+import {
+  type EvaluationArchiveConfig,
+  resolveEvaluationArchiveConfig,
+} from "@config/EvaluationArchiveConfig.ts";
+import {
+  type EvolutionControlConfig,
+  resolveEvolutionControlConfig,
+} from "@config/EvolutionControlConfig.ts";
+import {
+  type PreSelectionConfig,
+  resolvePreSelectionConfig,
+} from "@config/PreSelectionConfig.ts";
+import {
+  resolveTrainingGainLogConfig,
+  type TrainingGainLogConfig,
+} from "@config/TrainingGainLogConfig.ts";
 import { resolveRustScorerConfig } from "../score/RustScorerBridge.ts";
 
 // Automatic Discovery worker-memory envelope → workerThreadCap wiring.
@@ -746,6 +766,29 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     // built-in default. Resolved once per run; only the env layer is cached.
     rustScorer: resolveRustScorerConfig(
       opts.rustScorer as RustScorerConfig | undefined,
+    ),
+    // Issue #3928: racing is off unless the caller asks for it; out-of-range
+    // knobs are rejected here rather than clamped.
+    racing: resolveRacingConfig(opts.racing as RacingConfig | undefined),
+    // Issue #3929: the evaluation archive is off unless the caller asks for it;
+    // an invalid retention bound is rejected rather than clamped.
+    evaluationArchive: resolveEvaluationArchiveConfig(
+      opts.evaluationArchive as EvaluationArchiveConfig | undefined,
+    ),
+    // Issue #3931: the evolution-control policy is off unless the caller asks
+    // for a strategy; an out-of-range knob is rejected rather than clamped.
+    evolutionControl: resolveEvolutionControlConfig(
+      opts.evolutionControl as EvolutionControlConfig | undefined,
+    ),
+    // Issue #3932: no surplus is bred unless the caller asks for one, and a
+    // ratio the stage cannot honour is rejected rather than clamped.
+    preSelection: resolvePreSelectionConfig(
+      opts.preSelection as PreSelectionConfig | undefined,
+    ),
+    // Issue #3934: nothing is recorded and no disk is touched unless the
+    // caller asks for the log; an invalid bound is rejected, never clamped.
+    trainingGainLog: resolveTrainingGainLogConfig(
+      opts.trainingGainLog as TrainingGainLogConfig | undefined,
     ),
     // Issue #3565: seed the analysis memory budget from the Discovery runner's
     // exported value when the caller did not set it explicitly, so the Rust-side

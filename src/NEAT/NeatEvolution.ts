@@ -20,6 +20,7 @@ import { FindTunePopulation } from "@blackbox/FineTunePopulation.ts";
 import { Breed } from "@breed/Breed.ts";
 import { ParallelBreeding } from "@breed/ParallelBreeding.ts";
 import { buildCohortStdContext } from "@breed/ParentSelection.ts";
+import { recordLineage } from "@archive/CreatureLineage.ts";
 import { AddConnection } from "@mutate/AddConnection.ts";
 import { allocateBreedingQuotas } from "@neat/BreedingQuotas.ts";
 import { applyStagnationToQuotas } from "@neat/SpeciesPlateauDetector.ts";
@@ -27,6 +28,7 @@ import { Genus } from "@neat/Genus.ts";
 import { checkMemoryAndEvict, logMemoryUsage } from "@neat/MemoryMonitor.ts";
 import { createMemoryPressureSink } from "@neat/createMemoryPressureSink.ts";
 import { computePerTaskTimeoutMinutes } from "@neat/PerTaskTrainingTimeout.ts";
+import { flushTrainingGainLog } from "@neat/NeatScheduling.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { CRISPR } from "@reconstruct/CRISPR.ts";
 import { CrisprError } from "@errors/CrisprError.ts";
@@ -63,7 +65,10 @@ import {
 import { assemblePopulationWithinBudget } from "@neat/PopulationBudget.ts";
 import { HARD_DEADLINE_WATCHDOG_INTERVAL_MS } from "@neat/HardDeadline.ts";
 import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
-import { selectTrainingCandidates } from "@neat/TrainingCandidates.ts";
+import {
+  countRankableCreatures,
+  selectRankedTrainingCandidates,
+} from "@neat/TrainingCandidates.ts";
 import {
   applySeedWarmupTagsAtSave,
   isSeedWarmupStructuralLockActive,
@@ -201,6 +206,24 @@ export async function evolve(
     );
   }
 
+  // Issue #3931: decide this generation's fidelity before anything is
+  // evaluated. With the default `strategy: "none"` this is always an exact
+  // sweep, which is what every generation before this issue already ran.
+  neat.evolutionControl.beginGeneration(neat.currentGeneration);
+
+  // Issue #3929: stamp this generation's records and measure the descriptor's
+  // genetic-distance slot against the fittest creature the run has so far.
+  neat.evaluationArchive?.beginGeneration(
+    neat.currentGeneration,
+    previousFittest,
+  );
+
+  // Issue #3934: append the training events that settled since the last
+  // generation. Training is asynchronous, so a generation boundary is the point
+  // at which the run has both halves of an event — the dispatch and its
+  // outcome — for every task it went on to consume.
+  await flushTrainingGainLog(neat);
+
   // Issue #2239: Time fitness evaluation phase
   // GRQ #4141: name the in-fitness phase so the hard-deadline watchdog can
   // report a stall *while it is happening* and interrupt it. An
@@ -224,6 +247,40 @@ export async function evolve(
     neat.leaveInFlightPhase();
   }
   const fitnessMs = Date.now() - fitnessStartMs;
+
+  // Issue #3931: every generation states its fidelity and how many exact
+  // evaluations it paid for, so a run's trace can be read after the fact. An
+  // active policy says so at info; an unmanaged run keeps it to debug rather
+  // than repeating "exact" on every line of a default run.
+  const fidelitySummary = neat.evolutionControl.summarise(neat.population);
+  const fidelityLine = neat.evolutionControl.describe(fidelitySummary);
+  if (neat.evolutionControl.active) getLogger().info(fidelityLine);
+  else getLogger().debug(fidelityLine);
+  // A plan the sweep did not honour is stated once, loudly, rather than left
+  // to be inferred from a trace that says "approximate" beside an
+  // all-exact count.
+  const unhonoured = neat.evolutionControl.unhonouredPlanWarning(
+    fidelitySummary,
+  );
+  if (unhonoured) getLogger().warn(unhonoured);
+
+  // Issue #3932: a screen that learns from exact scores is taught here, on the
+  // only scores in the run that are ground truth. A screened-out creature
+  // never reaches this point, so nothing the screen rejected can teach it.
+  neat.preSelection.observe(neat.population, neat.currentGeneration);
+
+  // Issue #3933: the residuals of this generation, differenced against what
+  // the surrogate predicted before it was paid for. A one-directional bias is
+  // the false-optimum signature, and the monitor disables the surrogate path
+  // for the rest of the run when it sees one.
+  const driftLine = neat.preSelection.describeDrift();
+  if (driftLine) {
+    if (neat.preSelection.surrogateGuard?.disabled === true) {
+      getLogger().warn(driftLine);
+    } else {
+      getLogger().info(driftLine);
+    }
+  }
 
   // Issue #2457: Commit any squash-mutation outcomes captured last generation
   // now that the freshly evaluated fitness is available. Each creature is
@@ -340,6 +397,32 @@ export async function evolve(
   );
   const elitists = results.elitists;
 
+  // Issue #3931: the elite band and `previousFittest` are always exact. The
+  // assertion below compares the two scores, and satisfying it with an
+  // approximate number would let the lineage proceed from a false premise —
+  // Jin (2011) §4's false optimum, arrived at silently.
+  //
+  // Only an *active* policy enforces it, because only an active policy is
+  // entitled to change what a run does. With `strategy: "none"` the guarantee
+  // is racing's (`RacingRanking.ts` ranks every abandoned creature below every
+  // scored one), and behaviour is identical to every build before this issue.
+  if (neat.evolutionControl.active) {
+    neat.evolutionControl.assertExactAll(elitists, "elitism");
+    if (previousFittest) {
+      neat.evolutionControl.assertExact(previousFittest, "previousFittest");
+    }
+  }
+
+  // Issue #3932: the number that decides whether the screen is worth having —
+  // where the screen ranked the creatures that went on to become elites. A
+  // screen whose elites come from the bottom of its own ordering is
+  // anti-correlated with what matters, and this is where that shows up.
+  if (neat.preSelection.active) {
+    const eliteRanks = neat.preSelection.recordElites(elitists);
+    const eliteRankLine = neat.preSelection.describeEliteRanks(eliteRanks);
+    if (eliteRankLine) getLogger().info(eliteRankLine);
+  }
+
   let tmpFittest = elitists[0];
 
   assert(tmpFittest.uuid, "Fittest creature has no UUID");
@@ -372,6 +455,16 @@ export async function evolve(
 
   fittest.score = tmpFittest.score;
   assert(fittest.score, "No fittest score found");
+
+  // Issue #3931: no approximate score leaves the run. The clone carries the
+  // source creature's tags, so the fidelity travels with the export. Gated on
+  // an active policy for the same reason as the elite guard above.
+  if (neat.evolutionControl.active) {
+    neat.evolutionControl.assertExact(
+      fittest,
+      "export of the fittest creature",
+    );
+  }
 
   // Issue #1039: Record fitness for plateau detection
   neat.plateauDetector.recordFitness(fittest.score);
@@ -459,10 +552,16 @@ export async function evolve(
     // elitist slice. With the default `elitism` of 1 the previous loop could
     // only ever train a single creature per generation regardless of
     // `trainPerGen`, starving supervised gradient descent.
-    const trainingCandidates = selectTrainingCandidates(
+    const trainingCandidates = selectRankedTrainingCandidates(
       neat.population,
       neat.config.trainPerGen,
     );
+    // Issue #3934: the rank is reported, not acted on — the rule still takes
+    // the top `trainPerGen` by score. Counted once per generation rather than
+    // per candidate.
+    const rankedPopulation = neat.trainingGainLog === undefined
+      ? 0
+      : countRankableCreatures(neat.population);
     // Issue #3053: cap each task's wall-clock budget so a single stuck task
     // cannot consume the entire remaining run. Discovery scheduling above
     // still uses the full remaining budget; only per-task training is capped.
@@ -470,14 +569,21 @@ export async function evolve(
       trainingTimeOutMinutes,
       neat.config.trainingTaskTimeoutMinutes,
     );
-    for (const n of trainingCandidates) {
+    for (const candidate of trainingCandidates) {
       if (
         neat.doNotStartMore === false &&
         neat.trainingInProgress.size < neat.config.trainPerGen
       ) {
         neat.scheduleTraining(
-          n,
+          candidate.creature,
           perTaskTimeoutMinutes,
+          {
+            rank: candidate.rank,
+            rankedPopulation,
+            // The descriptor's one relative slot is measured against the run's
+            // fittest, and the record names it — see `referenceUuid`.
+            reference: fittest,
+          },
         );
       }
     }
@@ -535,6 +641,10 @@ export async function evolve(
     // structurally-modified clone would enter the new population wearing the
     // elite's uuid and be deduplicated onto the elite's score by `Fitness`.
     delete creativeThinking.uuid;
+    // Issue #4004: the clone is structurally changed below, so it reaches the
+    // archive as a new creature. Record the elite it came from *before* the
+    // mutations, while `n` still is the creature its UUID describes.
+    recordLineage(creativeThinking, n);
     const weightScale = 1 / Math.max(creativeThinking.synapses.length, 1);
     const addConnection = new AddConnection(creativeThinking);
     for (let i = 0; i < neat.config.creativeThinkingConnectionCount; i++) {
@@ -669,10 +779,14 @@ export async function evolve(
   // breeding quotas in proportion to summed adjusted fitness. The
   // species_adjusted statistics computed earlier this generation are
   // the inputs.
-  let speciesQuotas = neat.config.fitnessSharing.enabled && newPopSize > 0
+  // Issue #3932: pre-selection asks the breeder for a surplus so the screen
+  // has something to reject. With the stage off — or a screen that cannot rank
+  // yet — this is `newPopSize`, exactly what the budget calls for.
+  const breedingTarget = neat.preSelection.offspringTarget(newPopSize);
+  let speciesQuotas = neat.config.fitnessSharing.enabled && breedingTarget > 0
     ? allocateBreedingQuotas(
       genus,
-      newPopSize,
+      breedingTarget,
       neat.config.fitnessSharing.minSpeciesSlots,
     )
     : undefined;
@@ -689,7 +803,7 @@ export async function evolve(
     );
   }
   const rawBreedingPromise = parallelBreeding.breedBatch(
-    newPopSize,
+    breedingTarget,
     speciesQuotas,
   );
   const breedingPromise = rawBreedingPromise.then((result) => {
@@ -794,6 +908,10 @@ export async function evolve(
   // Issue #2314: Await breeding results now that all overlapped main-thread
   // work is complete.
   const offspringBatch = await breedingPromise;
+  // Issue #3932: where the bred slice starts, so pre-selection screens the
+  // offspring and nothing else. The creative-thinking clone ahead of it is
+  // derived from an elite and is never a screening candidate.
+  const bredSliceStart = newPopulation.length;
   // Issue #2897: Stack-safe in-place append. Spreading an unbounded
   // offspringBatch into push() arguments throws RangeError once the batch
   // exceeds V8's argument/stack limit; appendAll uses an indexed loop instead.
@@ -820,6 +938,34 @@ export async function evolve(
   );
   mutator.mutate(newPopulation);
   const mutationMs = Date.now() - mutationStartMs;
+
+  // Issue #3932: screen the surplus down to the population budget, after
+  // mutation so the screen judges the creature fitness will actually be asked
+  // to evaluate. A screened-out creature is dropped here and never scored, so
+  // it reaches neither the archive, nor species statistics, nor an export.
+  if (neat.preSelection.active) {
+    const bred = newPopulation.slice(bredSliceStart);
+    const outcome = await neat.preSelection.select(
+      bred,
+      newPopSize,
+      neat.currentGeneration,
+    );
+    newPopulation.length = bredSliceStart;
+    appendAll(newPopulation, outcome.survivors);
+    getLogger().info(neat.preSelection.describe(outcome.summary));
+    // Issue #3933: where this generation's exact evaluations went — refusals,
+    // the uncertainty floor, and the acquisition rule — followed by the
+    // run-to-date totals. The run line is cumulative and is emitted every
+    // generation rather than at the end: a run that is killed by its deadline,
+    // or that never reaches a clean finish, still leaves its signed bias,
+    // uncertainty allocation and out-of-distribution rate in the trace.
+    const allocationLine = neat.preSelection.describeAllocation();
+    if (allocationLine) {
+      getLogger().info(allocationLine);
+      const runLine = neat.preSelection.describeSurrogateRun();
+      if (runLine) getLogger().info(runLine);
+    }
+  }
   // Issue #2312: Snapshot after mutation — main thread only
   const mutationUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 

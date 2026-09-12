@@ -45,6 +45,13 @@ export interface RustScorerProbeState {
    */
   costSupported: boolean;
   /**
+   * Issue #3928: whether the probed binary advertises `--race-stdio`, the
+   * stdio surface over the scorer's early-exit hook (NEAT-AI-scorer#308).
+   * A binary without it can only full-score, so a run that asked for racing is
+   * warned and scored normally rather than silently believing it raced.
+   */
+  racingSupported: boolean;
+  /**
    * Issue #3870: memoised answer to "can this binary batch `forwardOnly=false`
    * creatures in directory mode?" (NEAT-AI-scorer#579). Resolved lazily by
    * `RecurrentDirectoryProbe.ts` — it costs a subprocess, so it is only paid
@@ -151,6 +158,7 @@ async function runProbe(
 ): Promise<RustScorerProbeState> {
   let available = false;
   let costSupported = false;
+  let racingSupported = false;
   try {
     const probe = await runCommand(config.binaryPath, ["--help"], {
       env: buildChildEnv(config.env),
@@ -162,6 +170,9 @@ async function runProbe(
     // depending on whether `--help` exits 0 or 2.
     const helpText = `${probe.stdout ?? ""}\n${probe.stderr ?? ""}`;
     costSupported = /(^|\s|,)--cost\b/.test(helpText);
+    // Issue #3928: same detection shape as `--cost` — the racing surface is a
+    // capability of the installed binary, not of the configuration.
+    racingSupported = /(^|\s|,)--race-stdio\b/.test(helpText);
   } catch {
     available = false;
   }
@@ -171,6 +182,7 @@ async function runProbe(
     binaryPath: config.binaryPath,
     warned: false,
     costSupported,
+    racingSupported,
   };
 }
 

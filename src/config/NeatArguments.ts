@@ -26,6 +26,11 @@ import type { RequiredPredictiveCodingConfig } from "@config/PredictiveCodingCon
 import type { RequiredMemoryConfig } from "@config/MemoryConfig.ts";
 import type { RequiredWasmCacheConfig } from "@config/WasmCacheConfig.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
+import type { RequiredRacingConfig } from "@config/RacingConfig.ts";
+import type { RequiredEvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
+import type { RequiredEvolutionControlConfig } from "@config/EvolutionControlConfig.ts";
+import type { RequiredPreSelectionConfig } from "@config/PreSelectionConfig.ts";
+import type { RequiredTrainingGainLogConfig } from "@config/TrainingGainLogConfig.ts";
 import type { RequiredWeightRegularisationConfig } from "@config/WeightRegularisationConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredDiscoveryCacheConfig } from "@config/DiscoveryCacheConfig.ts";
@@ -796,6 +801,54 @@ export interface NeatArguments {
    * for it.
    */
   rustScorer: RequiredRustScorerConfig;
+
+  /**
+   * Resolved racing (early-exit) configuration.
+   *
+   * Issue #3928: when enabled, native batch scoring abandons creatures that
+   * can no longer catch the leader instead of scoring every candidate over the
+   * whole corpus. Off by default; survivors keep an exact full-corpus score.
+   */
+  racing: RequiredRacingConfig;
+
+  /**
+   * Resolved evaluation-archive configuration.
+   *
+   * Issue #3929: when enabled, every exact fitness evaluation is appended to an
+   * on-disk archive as a `(descriptor, score)` pair — the training set every
+   * surrogate in Jin (2011) needs to exist before it can be fitted. Off by
+   * default; the archive is run infrastructure and never rides the creature
+   * export.
+   */
+  evaluationArchive: RequiredEvaluationArchiveConfig;
+
+  /**
+   * Resolved evolution-control (model-management) configuration.
+   *
+   * Issue #3931: the per-generation policy that decides which creatures earn
+   * an exact evaluation — Jin (2011) §4. `strategy: "none"` by default, which
+   * is exact evaluation everywhere and identical to every build before it.
+   */
+  evolutionControl: RequiredEvolutionControlConfig;
+
+  /**
+   * Resolved offspring pre-selection configuration.
+   *
+   * Issue #3932: how many offspring are bred per population slot, and which
+   * cheap screen cuts the surplus back before anyone pays for a true
+   * evaluation — Jin (2011) §4. `ratio: 1` by default, which breeds exactly
+   * what the budget calls for and is identical to every build before it.
+   */
+  preSelection: RequiredPreSelectionConfig;
+
+  /**
+   * Resolved training-gain-log configuration.
+   *
+   * Issue #3934: the per-training-event record of what local search actually
+   * bought — Jin (2011) §5. `enabled: false` by default, which writes nothing
+   * and is identical to every build before it.
+   */
+  trainingGainLog: RequiredTrainingGainLogConfig;
 
   /**
    * Discovery cache eviction configuration.

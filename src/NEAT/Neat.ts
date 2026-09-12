@@ -31,6 +31,11 @@ import {
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
+import { EvaluationArchive } from "@archive/EvaluationArchive.ts";
+import { TrainingGainLog } from "@archive/TrainingGainLog.ts";
+import { EvolutionControl } from "@neat/EvolutionControl.ts";
+import { PreSelection } from "@neat/PreSelection.ts";
+import { createOffspringScreen } from "@neat/OffspringScreen.ts";
 import { PlateauDetector } from "@neat/PlateauDetector.ts";
 import { RandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { SpeciesPlateauDetector } from "@neat/SpeciesPlateauDetector.ts";
@@ -170,6 +175,38 @@ export class Neat {
    * produced the creature being evaluated.
    */
   readonly mutationOperatorTelemetry: MutationOperatorTelemetry;
+
+  /**
+   * Issue #3929: the run's evaluation archive, or `undefined` when
+   * `evaluationArchive.enabled` is false (the default). Owned by Neat so a
+   * single append-only file spans the whole run and its per-generation
+   * reference creature can be set from the evolution loop.
+   */
+  readonly evaluationArchive: EvaluationArchive | undefined;
+
+  /**
+   * Issue #3934: the run's training-gain log, or `undefined` when
+   * `trainingGainLog.enabled` is false (the default). Owned by Neat because a
+   * training event spans the scheduler (dispatch) and the worker completion
+   * (outcome), which are two different call sites in the same run.
+   */
+  readonly trainingGainLog: TrainingGainLog | undefined;
+
+  /**
+   * Issue #3931: the run's model-management policy — which creatures earn an
+   * exact evaluation, and when the cheap path has drifted far enough to be
+   * abandoned. Owned by Neat so its canary history and escalation span the
+   * whole run rather than a single generation.
+   */
+  readonly evolutionControl: EvolutionControl;
+
+  /**
+   * Issue #3932: the run's offspring pre-selection stage — how large a surplus
+   * the breeder is asked for, and which cheap screen cuts it back before
+   * anyone pays for a true evaluation. Owned by Neat so a screen that learns
+   * from exact scores keeps what it learnt across generations.
+   */
+  readonly preSelection: PreSelection;
 
   /** Adaptive fine-tune population tracker (Issue #1323) */
   readonly fineTuneTracker: AdaptiveFineTuneTracker;
@@ -369,6 +406,12 @@ export class Neat {
       // call site reads the same value the per-creature path is given, instead
       // of each re-deriving it from the environment.
       this.config.rustScorer,
+      // Issue #3928: racing (early exit) is a scoring-path policy, so it rides
+      // the same seam as the scorer config rather than being re-derived.
+      this.config.racing,
+      // Issue #3928: racing must leave enough creatures scoring to completion
+      // to fill every elite slot with an exact score.
+      this.config.elitism,
     );
 
     this.population = [];
@@ -413,6 +456,34 @@ export class Neat {
     // offspring's evaluation cost is attributed to the operators that made it.
     this.mutationOperatorTelemetry = new MutationOperatorTelemetry();
     this.fitness.setMutationTelemetry(this.mutationOperatorTelemetry);
+
+    // Issue #3929: the archive exists only when it is asked for — the default
+    // run constructs nothing and touches no disk.
+    this.evaluationArchive = this.config.evaluationArchive.enabled
+      ? new EvaluationArchive(this.config.evaluationArchive)
+      : undefined;
+    this.fitness.setEvaluationArchive(this.evaluationArchive);
+
+    // Issue #3934: same opt-in discipline as the archive above — the default
+    // run constructs nothing and touches no disk.
+    this.trainingGainLog = this.config.trainingGainLog.enabled
+      ? new TrainingGainLog(this.config.trainingGainLog)
+      : undefined;
+
+    // Issue #3931: constructed always — with `strategy: "none"` it decides
+    // "exact" every generation, which is what the loop already did.
+    this.evolutionControl = new EvolutionControl(this.config.evolutionControl);
+
+    // Issue #3932: constructed always — with `ratio: 1` it asks the breeder
+    // for exactly the offspring the population budget calls for and screens
+    // none of them, which is what the loop already did. `screen: "sampled"`
+    // throws here: the evolution loop has no cheap corpus evaluator to call
+    // (Issue #3926 publishes the sampled corpus through the data pipeline), and
+    // discarding offspring on a fabricated number is worse than refusing.
+    this.preSelection = new PreSelection(
+      this.config.preSelection,
+      createOffspringScreen(this.config.preSelection),
+    );
 
     this.fineTuneTracker = new AdaptiveFineTuneTracker(
       this.config.fineTunePopulation,
@@ -1009,8 +1080,17 @@ export class Neat {
     scheduling.scheduleDiscovery(this, creature, timeOutMinutes);
   }
 
-  scheduleTraining(creature: Creature, trainingTimeOutMinutes: number) {
-    scheduling.scheduleTraining(this, creature, trainingTimeOutMinutes);
+  scheduleTraining(
+    creature: Creature,
+    trainingTimeOutMinutes: number,
+    selection?: scheduling.TrainingSelection,
+  ) {
+    scheduling.scheduleTraining(
+      this,
+      creature,
+      trainingTimeOutMinutes,
+      selection,
+    );
   }
 
   logReplaySummary(result: DiscoveryReplayDirResult) {

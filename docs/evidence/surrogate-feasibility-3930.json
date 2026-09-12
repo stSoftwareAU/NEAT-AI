@@ -1,0 +1,795 @@
+{
+  "provenance": "container-run",
+  "archivePath": "/tmp/sa-capture2/evaluations.jsonl",
+  "descriptorVersion": 1,
+  "records": 1141,
+  "uniqueCreatures": 1141,
+  "runs": 6,
+  "withParents": 8,
+  "lineageCoverage": 0.007011393514460999,
+  "baselineFallbacks": 1135,
+  "acceptGap": 0.0001,
+  "bands": [
+    {
+      "label": "<=1e-5",
+      "minGap": 0,
+      "maxGap": 0.00001
+    },
+    {
+      "label": "(1e-5, 1e-4]",
+      "minGap": 0.00001,
+      "maxGap": 0.0001
+    },
+    {
+      "label": "<=1e-4 (cumulative)",
+      "minGap": 0,
+      "maxGap": 0.0001
+    },
+    {
+      "label": ">1e-4",
+      "minGap": 0.0001,
+      "maxGap": null
+    }
+  ],
+  "features": [
+    "neurons",
+    "inputs",
+    "outputs",
+    "hiddenNeurons",
+    "constantNeurons",
+    "synapses",
+    "depth",
+    "meanFanIn",
+    "maxFanIn",
+    "meanFanOut",
+    "maxFanOut",
+    "weightMeanAbs",
+    "weightMaxAbs",
+    "weightRms",
+    "biasMeanAbs",
+    "biasMaxAbs",
+    "geneticDistanceToReference",
+    "squash:ABSOLUTE",
+    "squash:ArcTan",
+    "squash:BENT_IDENTITY",
+    "squash:BIPOLAR",
+    "squash:BIPOLAR_SIGMOID",
+    "squash:COMPLEMENT",
+    "squash:Cosine",
+    "squash:Cube",
+    "squash:ELU",
+    "squash:Exponential",
+    "squash:GAUSSIAN",
+    "squash:GELU",
+    "squash:HARD_TANH",
+    "squash:HYPOT",
+    "squash:HYPOTv2",
+    "squash:IDENTITY",
+    "squash:IF",
+    "squash:ISRU",
+    "squash:LOGISTIC",
+    "squash:LeakyReLU",
+    "squash:LogSigmoid",
+    "squash:MAXIMUM",
+    "squash:MEAN",
+    "squash:MINIMUM",
+    "squash:Mish",
+    "squash:ReLU",
+    "squash:ReLU6",
+    "squash:SELU",
+    "squash:SINE",
+    "squash:SOFTMAX",
+    "squash:SOFTSIGN",
+    "squash:SQRT",
+    "squash:SQUARE",
+    "squash:STEP",
+    "squash:Softplus",
+    "squash:StdInverse",
+    "squash:Swish",
+    "squash:TAN",
+    "squash:TANH",
+    "squash:other",
+    "hasReference"
+  ],
+  "splits": [
+    {
+      "mode": "lineage",
+      "rule": "leave-one-lineage-out: a creature and every ancestor it was bred from that is present in the archive form one group, and the whole group is held out together",
+      "groups": 1133,
+      "folds": 2,
+      "skipped": 1131,
+      "skippedByReason": [
+        {
+          "reason": "only 1 creature(s) held out — fewer than the 3 a fold needs to carry an ordering",
+          "count": 1129
+        },
+        {
+          "reason": "only 2 creature(s) held out — fewer than the 3 a fold needs to carry an ordering",
+          "count": 2
+        }
+      ],
+      "results": [
+        {
+          "name": "quadratic-polynomial",
+          "isBaseline": false,
+          "measuredFolds": 2,
+          "failedFolds": [],
+          "unmeasurableFolds": [
+            {
+              "group": "1af393a5-a2a5-572b-97e8-68fd4016e92f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            },
+            {
+              "group": "41c4c01b-77fe-5936-8ee4-c4a73e97496f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            }
+          ],
+          "spearman": 0.09999999999999998,
+          "kendall": 0.16666666666666669,
+          "topK": {
+            "1": 0.5,
+            "3": 0.8333333333333333,
+            "5": null
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 0,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": null
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 11,
+              "correct": 7,
+              "ties": 0,
+              "accuracy": 0.6363636363636364
+            }
+          ]
+        },
+        {
+          "name": "rbf-interpolation",
+          "isBaseline": false,
+          "measuredFolds": 2,
+          "failedFolds": [],
+          "unmeasurableFolds": [
+            {
+              "group": "1af393a5-a2a5-572b-97e8-68fd4016e92f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            },
+            {
+              "group": "41c4c01b-77fe-5936-8ee4-c4a73e97496f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            }
+          ],
+          "spearman": -0.1,
+          "kendall": -0.16666666666666666,
+          "topK": {
+            "1": 0.5,
+            "3": 0.6666666666666666,
+            "5": null
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 0,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": null
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 11,
+              "correct": 5,
+              "ties": 0,
+              "accuracy": 0.45454545454545453
+            }
+          ]
+        },
+        {
+          "name": "gaussian-process",
+          "isBaseline": false,
+          "measuredFolds": 2,
+          "failedFolds": [],
+          "unmeasurableFolds": [
+            {
+              "group": "1af393a5-a2a5-572b-97e8-68fd4016e92f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            },
+            {
+              "group": "41c4c01b-77fe-5936-8ee4-c4a73e97496f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            }
+          ],
+          "spearman": -0.1,
+          "kendall": -0.16666666666666666,
+          "topK": {
+            "1": 0.5,
+            "3": 0.6666666666666666,
+            "5": null
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 0,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": null
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 11,
+              "correct": 5,
+              "ties": 0,
+              "accuracy": 0.45454545454545453
+            }
+          ]
+        },
+        {
+          "name": "gradient-boosted-trees",
+          "isBaseline": false,
+          "measuredFolds": 2,
+          "failedFolds": [],
+          "unmeasurableFolds": [
+            {
+              "group": "1af393a5-a2a5-572b-97e8-68fd4016e92f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            },
+            {
+              "group": "41c4c01b-77fe-5936-8ee4-c4a73e97496f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            }
+          ],
+          "spearman": -0.6034410938988375,
+          "kendall": -0.5742865947853963,
+          "topK": {
+            "1": 0,
+            "3": 0.6666666666666666,
+            "5": null
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "ties": 1,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 0,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": null
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "ties": 1,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 11,
+              "correct": 1,
+              "ties": 3,
+              "accuracy": 0.09090909090909091
+            }
+          ]
+        },
+        {
+          "name": "parent-score-baseline",
+          "isBaseline": true,
+          "measuredFolds": 2,
+          "failedFolds": [],
+          "unmeasurableFolds": [
+            {
+              "group": "1af393a5-a2a5-572b-97e8-68fd4016e92f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            },
+            {
+              "group": "41c4c01b-77fe-5936-8ee4-c4a73e97496f",
+              "reason": "top-5 needs at least 6 held-out creatures to be a measurement, fold has 4"
+            }
+          ],
+          "spearman": -0.4400029622902147,
+          "kendall": -0.44484048351080147,
+          "topK": {
+            "1": 0,
+            "3": 0.6666666666666666,
+            "5": null
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 0,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": null
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 1,
+              "correct": 0,
+              "ties": 0,
+              "accuracy": 0
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 11,
+              "correct": 2,
+              "ties": 4,
+              "accuracy": 0.18181818181818182
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "run",
+      "rule": "leave-one-run-out: every creature archived by one run id is held out together",
+      "groups": 6,
+      "folds": 6,
+      "skipped": 0,
+      "skippedByReason": [],
+      "results": [
+        {
+          "name": "quadratic-polynomial",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "unmeasurableFolds": [],
+          "spearman": 0.24858304100100892,
+          "kendall": 0.174972725535843,
+          "topK": {
+            "1": 0,
+            "3": 0,
+            "5": 0
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 5390,
+              "correct": 2882,
+              "ties": 0,
+              "accuracy": 0.5346938775510204
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 2324,
+              "correct": 669,
+              "ties": 0,
+              "accuracy": 0.2878657487091222
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 7714,
+              "correct": 3551,
+              "ties": 0,
+              "accuracy": 0.4603318641431164
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 100196,
+              "correct": 59802,
+              "ties": 3,
+              "accuracy": 0.5968501736596271
+            }
+          ]
+        },
+        {
+          "name": "rbf-interpolation",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "unmeasurableFolds": [],
+          "spearman": 0.1357947856145635,
+          "kendall": 0.09316109696073001,
+          "topK": {
+            "1": 0,
+            "3": 0,
+            "5": 0.03333333333333333
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 5390,
+              "correct": 3055,
+              "ties": 0,
+              "accuracy": 0.5667903525046383
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 2324,
+              "correct": 988,
+              "ties": 0,
+              "accuracy": 0.42512908777969016
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 7714,
+              "correct": 4043,
+              "ties": 0,
+              "accuracy": 0.5241120041483018
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 100196,
+              "correct": 54864,
+              "ties": 3,
+              "accuracy": 0.5475667691325004
+            }
+          ]
+        },
+        {
+          "name": "gaussian-process",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "unmeasurableFolds": [],
+          "spearman": 0.19847984531070254,
+          "kendall": 0.162932061448987,
+          "topK": {
+            "1": 0,
+            "3": 0.16666666666666666,
+            "5": 0.16666666666666666
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 5390,
+              "correct": 3864,
+              "ties": 0,
+              "accuracy": 0.7168831168831169
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 2324,
+              "correct": 1056,
+              "ties": 0,
+              "accuracy": 0.45438898450946646
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 7714,
+              "correct": 4920,
+              "ties": 0,
+              "accuracy": 0.6378014000518538
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 100196,
+              "correct": 57889,
+              "ties": 3,
+              "accuracy": 0.5777575951135774
+            }
+          ]
+        },
+        {
+          "name": "gradient-boosted-trees",
+          "isBaseline": false,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "unmeasurableFolds": [],
+          "spearman": 0.7151735004463707,
+          "kendall": 0.6070107387137883,
+          "topK": {
+            "1": 0,
+            "3": 0.05555555555555555,
+            "5": 0.03333333333333333
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 5390,
+              "correct": 125,
+              "ties": 5220,
+              "accuracy": 0.023191094619666047
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 2324,
+              "correct": 6,
+              "ties": 2308,
+              "accuracy": 0.0025817555938037868
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 7714,
+              "correct": 131,
+              "ties": 7528,
+              "accuracy": 0.01698211044853513
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 100196,
+              "correct": 57643,
+              "ties": 36415,
+              "accuracy": 0.5753024072817278
+            }
+          ]
+        },
+        {
+          "name": "parent-score-baseline",
+          "isBaseline": true,
+          "measuredFolds": 6,
+          "failedFolds": [],
+          "unmeasurableFolds": [
+            {
+              "group": "capture-3930-0",
+              "reason": "a score vector is constant — it carries no ordering to correlate"
+            },
+            {
+              "group": "capture-3930-1",
+              "reason": "a score vector is constant — it carries no ordering to correlate"
+            },
+            {
+              "group": "capture-3930-4",
+              "reason": "a score vector is constant — it carries no ordering to correlate"
+            },
+            {
+              "group": "capture-3930-5",
+              "reason": "a score vector is constant — it carries no ordering to correlate"
+            }
+          ],
+          "spearman": -0.21436767132948625,
+          "kendall": -0.175197814047375,
+          "topK": {
+            "1": 0,
+            "3": 0,
+            "5": 0
+          },
+          "bands": [
+            {
+              "band": {
+                "label": "<=1e-5",
+                "minGap": 0,
+                "maxGap": 0.00001
+              },
+              "pairs": 5390,
+              "correct": 2,
+              "ties": 5386,
+              "accuracy": 0.00037105751391465676
+            },
+            {
+              "band": {
+                "label": "(1e-5, 1e-4]",
+                "minGap": 0.00001,
+                "maxGap": 0.0001
+              },
+              "pairs": 2324,
+              "correct": 2,
+              "ties": 2322,
+              "accuracy": 0.0008605851979345956
+            },
+            {
+              "band": {
+                "label": "<=1e-4 (cumulative)",
+                "minGap": 0,
+                "maxGap": 0.0001
+              },
+              "pairs": 7714,
+              "correct": 4,
+              "ties": 7708,
+              "accuracy": 0.0005185377236193933
+            },
+            {
+              "band": {
+                "label": ">1e-4",
+                "minGap": 0.0001,
+                "maxGap": null
+              },
+              "pairs": 100196,
+              "correct": 101,
+              "ties": 98703,
+              "accuracy": 0.001008024272426045
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "killGate": {
+    "passed": false,
+    "baselineTop5": null,
+    "best": null,
+    "reasons": [
+      "only 0.7% of archived creatures name a parent that is also in the archive, below the 50% this gate needs — the parent's-score baseline is mostly the training mean, so nothing can be shown to beat it and the gate is undecidable"
+    ]
+  }
+}

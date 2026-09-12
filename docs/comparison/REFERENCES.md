@@ -167,6 +167,16 @@ evolution (see the
   public copy; cite by report number.
 - [Memetic Algorithms for Optimization](https://link.springer.com/chapter/10.1007/978-3-540-72960-0_1)
   — Krasnogor & Smith (2005) — later survey treatment.
+- [Evolutionary Optimization of Computationally Expensive Problems via Surrogate Modeling](https://doi.org/10.2514/2.1999)
+  — Ong, Nair & Keane (2003) — surrogate-assisted local search _inside_ the
+  memetic loop: the surrogate decides which individuals earn an expensive
+  refinement. The budget-allocation question NEAT-AI measured in
+  [`docs/TRAINING_GAIN_LOG.md`](../TRAINING_GAIN_LOG.md) (Issue #3934), and the
+  answer was no-go — score rank orders realised gain only weakly (ρ = 0.104 over
+  the 6,777 unbiased events of a 10,546-step run) and today's rule reaches the
+  same final score as uniform-random selection, while converting only half its
+  local-search budget into gradient steps. See
+  [`docs/evidence/memetic-gain-3934.md`](../evidence/memetic-gain-3934.md).
 - [Memetic Algorithms](https://en.wikipedia.org/wiki/Memetic_algorithm) —
   orientation.
 
@@ -287,12 +297,32 @@ error-guided Discovery.
 Propose cheaply, accept expensively — the architecture of the Discovery pipeline
 and of every sampled screen in the fleet.
 
+> [!NOTE]
+> **The cheap model does not exist yet, and Issue #3930 measured why not.** A
+> Stage 1 study fitted four of Jin's families to an evaluation archive and held
+> creatures out by lineage and by run. Its kill gate — beat the parent's own
+> exact score at top-5 agreement — could not be decided, because the archive's
+> parent links are too sparse to build that baseline from. What could be
+> measured did not encourage: top-1 agreement was 0.000 for every family in
+> every fold, and the best rank correlation (ρ = 0.715, gradient-boosted trees)
+> belongs to the model that resolved 1.7 % of pairs at the ≤1e-4 margin, because
+> it tied 7 528 of the 7 714. Numbers, caveats and the harness are in
+> [`docs/evidence/surrogate-feasibility-3930.md`](../evidence/surrogate-feasibility-3930.md).
+
 - [Surrogate-Assisted Evolutionary Computation: Recent Advances and Future Challenges](https://doi.org/10.1016/j.swevo.2011.03.001)
   — Jin (2011) — **the primary source** and the name for the pattern: a cheap
   model proposes, the expensive true objective confirms.
+- [A Framework for Evolutionary Optimization with Approximate Fitness Functions](https://doi.org/10.1109/TEVC.2002.800884)
+  — Jin, Olhofer & Sendhoff (2002) — the controlled-evaluation framework Jin
+  (2011) §4 builds on, and the source of the individual-based and
+  generation-based control strategies NEAT-AI implements in
+  [`docs/EVOLUTION_CONTROL.md`](../EVOLUTION_CONTROL.md) (Issue #3931).
 - [Efficient Global Optimization of Expensive Black-Box Functions](https://doi.org/10.1023/A:1008306431147)
   — Jones, Schonlau & Welch (1998) — expected improvement as an acquisition
-  function; how to decide what is worth evaluating for real.
+  function; how to decide what is worth evaluating for real. The acquisition
+  question NEAT-AI answers with the pre-selection stage of
+  [`docs/PRE_SELECTION.md`](../PRE_SELECTION.md) (Issue #3932): breed a surplus,
+  screen it, and spend the true evaluation only on the survivors.
 - [Hoeffding Races: Accelerating Model Selection Search for Classification and Function Approximation](https://proceedings.neurips.cc/paper_files/paper/1993/hash/02a32ad2669e6fe298e607fe7cc0e1a0-Abstract.html)
   — Maron & Moore (1994); and
   [A Racing Algorithm for Configuring Metaheuristics](https://dl.acm.org/doi/10.5555/2955491.2955494)

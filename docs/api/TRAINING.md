@@ -56,11 +56,22 @@ interface BackPropagationOptions {
 
 `TrainOptions` extends `BackPropagationOptions` with these optional fields:
 
-| Field               | Type                     | Default  | Description                                                                           |
-| ------------------- | ------------------------ | -------- | ------------------------------------------------------------------------------------- |
-| `syntheticSynapses` | `boolean`                | `false`  | Generate dense inter-layer synapses before backprop, then prune near-zero ones after. |
-| `predictiveCoding`  | `PredictiveCodingConfig` | disabled | Use local Hebbian learning rules instead of standard backpropagation.                 |
-| `feedbackLoop`      | `boolean`                | `false`  | Feed previous output back as input for time-series tasks.                             |
+| Field                | Type                     | Default  | Description                                                                               |
+| -------------------- | ------------------------ | -------- | ----------------------------------------------------------------------------------------- |
+| `syntheticSynapses`  | `boolean`                | `false`  | Generate dense inter-layer synapses before backprop, then prune near-zero ones after.     |
+| `predictiveCoding`   | `PredictiveCodingConfig` | disabled | Use local Hebbian learning rules instead of standard backpropagation.                     |
+| `feedbackLoop`       | `boolean`                | `false`  | Feed previous output back as input for time-series tasks.                                 |
+| `trainingSampleRate` | `number`                 | `1`      | Fraction of the dataset each **backprop** iteration reads (0.0001–1). Not a fitness knob. |
+
+> [!IMPORTANT]
+> **`trainingSampleRate` samples records for backpropagation only.** It resolves
+> in `resolveTrainingSampleRate()`
+> (`src/architecture/training/TrainingSetup.ts`) and lands as `maxRecords` on
+> the training path — it never reaches `src/architecture/Fitness.ts`, so
+> lowering it leaves the cost of **scoring** untouched. Scoring is made cheaper
+> by pointing the run at a smaller corpus; see
+> [Fitness corpus fidelity](../config/TRAINING.md#-fitness-corpus-fidelity--not-trainingsamplerate)
+> (Issue #3926).
 
 ### 💡 Direct training example
 

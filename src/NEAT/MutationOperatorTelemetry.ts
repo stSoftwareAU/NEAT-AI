@@ -310,6 +310,19 @@ export class MutationOperatorTelemetry {
   }
 
   /**
+   * The operators applied to `creature` so far this generation, for provenance
+   * (Issue #3929). The tracker already holds the attribution the evaluation
+   * archive needs, so reading it here beats maintaining a second index.
+   *
+   * @param creature - The creature to look up.
+   * @returns The operator names, or an empty array when none are pending.
+   */
+  operatorsFor(creature: Creature): string[] {
+    const entry = this.pendingByCreature.get(creature);
+    return entry ? [...entry.operators.keys()] : [];
+  }
+
+  /**
    * Resolve every evaluated offspring against the surviving population, emit
    * the generation's report, and reset the per-generation counters.
    *

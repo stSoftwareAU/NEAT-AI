@@ -67,6 +67,34 @@ that made the creature worse (Issue #3776) — a single epoch has nothing to
 compare against. The per-task wall-clock budget (`trainingTaskTimeoutMinutes`)
 still bounds the total work.
 
+> [!NOTE]
+> **Who receives those steps has been measured, and on the harness it is no
+> better than random** (Issue #3934). Over 10,546 real gradient steps —
+> 20-creature populations on a 600-record corpus, **not** GRQ's scale —
+> selecting the top `trainPerGen` by current score reached the same final exact
+> score as drawing `trainPerGen` creatures uniformly, and which arm was ahead
+> **flipped between runs of the same configuration**. Score rank does order
+> realised gain, in the direction you would expect (the incumbent is nearest its
+> local optimum, so it gains least), but only weakly — ρ = 0.104 over the 6,777
+> unbiased events, below the 0.2 materiality floor, so no gain predictor was
+> built.
+>
+> The number worth knowing is a different one, and it bears directly on this
+> setting: **`trainPerGen` is not the number of gradient steps a generation
+> buys.** A creature is trained at most once per run (Issue #3553) and a refused
+> slot is lost rather than reallocated, so a rule that keeps choosing the head
+> of the population keeps choosing creatures it has already trained. On the
+> harness today's rule converted **50.3 %** of its offered slots into gradient
+> steps against **90.4 %** for uniform selection, and of the steps it did take,
+> **88.1 % produced a creature worse than the one they trained**. Raising
+> `trainPerGen` buys neither guaranteed progress nor, necessarily, more steps.
+>
+> Both percentages are harness-scale properties of a 20-creature population, not
+> production readings. The per-training-event record lives in
+> [`trainingGainLog`](../TRAINING_GAIN_LOG.md) (off by default) so the same
+> question can be asked on a real lineage, and the study with its caveats is in
+> [`docs/evidence/memetic-gain-3934.md`](../evidence/memetic-gain-3934.md).
+
 **Choosing a value for supervised tasks**
 
 - Start with the auto-scaled default. Raise `trainPerGen` (towards the
@@ -142,6 +170,16 @@ Fraction of the training dataset used in each training iteration. Values below
 `1.0` enable stochastic training, which can improve generalisation and speed up
 each generation at the cost of noisier fitness signals.
 
+> [!IMPORTANT]
+> **`trainingSampleRate` is a backpropagation knob, not a fitness knob.** It
+> resolves in `src/architecture/training/TrainingSetup.ts` and lands as
+> `maxRecords` on the training path; it never reaches
+> `src/architecture/Fitness.ts`. Lowering it makes each **training** pass
+> cheaper and leaves the cost of **scoring** exactly where it was. To make
+> scoring cheaper, see
+> [Fitness corpus fidelity](#-fitness-corpus-fidelity--not-trainingsamplerate)
+> below — a different mechanism entirely, in a different layer.
+
 ### `dataSetPartitionBreak`
 
 **Default: 2000** | Type: integer | Min: 1
@@ -177,6 +215,91 @@ error, and there is no public API that turns synthetic synapses on.
 See [Training API — Synthetic Synapses](../api/TRAINING.md#-synthetic-synapses)
 for what the feature does and where the flag is read.
 
+## 🎯 Fitness corpus fidelity — not `trainingSampleRate`
+
+Fitness is evaluated over **every record** of the dataset directory a run is
+given. There is no option that thins it — and deliberately so: the cheaper
+fidelity lives in the data pipeline, not in the scorer's arguments. Point a run
+at a smaller corpus and its generations get cheaper; nothing in
+`RustScorerConfig`, `RustScorerBridge` or `BatchRustScorerBridge` changes,
+because the directory is the only thing that changed (Issue #3926).
+
+|             | `trainingSampleRate`           | Fitness corpus fidelity          |
+| ----------- | ------------------------------ | -------------------------------- |
+| Layer       | `NeatOptions` / `TrainOptions` | the data pipeline                |
+| Affects     | backpropagation                | scoring                          |
+| Set by      | the caller, per run            | which directory the run is given |
+| Recorded as | the option value               | the corpus `manifest.json`       |
+
+```mermaid
+flowchart LR
+    F[(full corpus)] -->|"neat_ai_refinery sample --rate 0.1"| S[(sampled corpus<br/>+ manifest.json)]
+    S --> E["Creature.evolveDir(dir)"]
+    F --> E
+    E --> B["RustScorerBridge<br/>unchanged"]
+    S -.->|readFitnessCorpusProvenance| P["effective fitness<br/>sample rate"]
+```
+
+[NEAT-AI-Refinery](https://github.com/stSoftwareAU/NEAT-AI-Refinery) publishes
+such a corpus deterministically — the same source and seed reproduce it byte for
+byte — with a `manifest.json` beside the records recording how it was made.
+NEAT-AI scans a corpus directory for `.bin` files, so the manifest is never read
+as records; `readFitnessCorpusProvenance()` reads it deliberately, so a run can
+record which fidelity produced its score rather than guess:
+
+```typescript
+import {
+  assertFitnessCorpusSampleRate,
+  readFitnessCorpusProvenance,
+} from "@stsoftware/neat-ai";
+
+const provenance = readFitnessCorpusProvenance("trainData-binary-sampler");
+// Verify the corpus really is the size the manifest claims before trusting it.
+assertFitnessCorpusSampleRate(provenance);
+console.log(provenance.effectiveSampleRate); // e.g. 0.10065
+```
+
+A directory with no manifest is the full corpus and reports rate `1`. A manifest
+that is present but unreadable throws a `DatasetError` with reason
+`CORRUPT_PROVENANCE` — reading it as "no manifest" would report full fidelity
+for a run that scored a tenth of the corpus.
+
+**Choosing when to use a sampled corpus is a separate decision** — model
+management, not this mechanism. Production scores the full corpus until a policy
+opts in. Measured cost per fidelity on the sampler creature is in
+[`docs/evidence/fitness-corpus-fidelity-3926.md`](../evidence/fitness-corpus-fidelity-3926.md).
+
+> [!WARNING]
+> **A sampled corpus does not rank creatures the way the full corpus does.**
+> Measured over the 46-creature production sampler population (Issue #3927):
+> Spearman ρ stays above 0.95 down to rate 0.05, and every rate is still
+> unusable. At rate 0.5 the finest score gap a sampled ordering resolves is
+> **7.4× coarser than the median gap between adjacent creatures** in that very
+> population, and about 160× coarser by rate 0.01. High rank correlation is not
+> evidence of a usable fidelity; score-gap resolution is. The table, the caveats
+> — the run is against a synthetic corpus at the production record shape, not
+> production data — and the harness that reproduces them are in
+> [`docs/evidence/rank-fidelity-3927.md`](../evidence/rank-fidelity-3927.md).
+
+Choosing a fidelity is a per-call decision; deciding _when_ a creature earns an
+exact one is a policy across generations, and that lives in
+[`evolutionControl`](../EVOLUTION_CONTROL.md) (Issue #3931). It is off by
+default, and while no sampling rate passes the gate above it should stay off.
+
+Deciding _how many_ creatures are made in the first place is a third decision,
+and it lives in [`preSelection`](../PRE_SELECTION.md) (Issue #3932): breed a
+surplus, screen it cheaply, and spend the true evaluation only on the survivors.
+Also off by default (`ratio: 1`), and the measured result —
+[`docs/evidence/pre-selection-3932.md`](../evidence/pre-selection-3932.md) — is
+why: at equal record budget no arm improved, and both screens cut mean genetic
+distance while a keep-at-random control raised it.
+
+If the `"surrogate"` screen is turned on, the uncertainty guard of Issue #3933
+comes with it — see [`SURROGATE_UNCERTAINTY.md`](../SURROGATE_UNCERTAINTY.md).
+It is on by default and must stay on in production: without it, exact
+evaluations land only where the model is already confident, so the model is
+never corrected where it is wrong.
+
 ## 👀 See also
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — population, mutation, and
@@ -185,6 +308,20 @@ for what the feature does and where the flag is read.
   range constraints applied during training.
 - [Mutation adaptation](./MUTATION_ADAPTATION.md) — adaptive thresholds, plateau
   detection, and MCMC acceptance.
+- [EVOLUTION_CONTROL.md](../EVOLUTION_CONTROL.md) — the per-generation policy
+  deciding which creatures earn an exact evaluation, and the guards keeping an
+  approximate score out of the elite band, `previousFittest` and the export.
+- [PRE_SELECTION.md](../PRE_SELECTION.md) — offspring over-generation and
+  screening: how many candidates a generation considers, and the invariants
+  keeping a screened-out creature out of the archive, species statistics and the
+  export.
+- [SURROGATE_UNCERTAINTY.md](../SURROGATE_UNCERTAINTY.md) — the uncertainty
+  guard on the surrogate screen: mandatory uncertainty, the acquisition rule and
+  its exploration floor, the out-of-distribution refusal, and the signed-bias
+  drift monitor.
+- [TRAINING_GAIN_LOG.md](../TRAINING_GAIN_LOG.md) — the per-training-event
+  record of realised gain: what each gradient step bought, at the rank the rule
+  selected it at. Off by default, and it changes no selection.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — picking batch sizes for
   large datasets and CPU/GPU (Graphics Processing Unit) targets.
 

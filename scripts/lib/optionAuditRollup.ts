@@ -332,6 +332,17 @@ const SLICE_E: RollupEntry[] = [
     note:
       "#3865 promoted it to a NeatOptions key; option beats NEAT_AI_RUST_SCORER_* beats default.",
   },
+  {
+    key: "racing",
+    slice: "E",
+    verdict: "IN USE",
+    interfaces: [
+      "src/config/RacingConfig.ts::RacingConfig",
+      "src/config/RacingConfig.ts::RequiredRacingConfig",
+    ],
+    note:
+      "#3928 racing / early exit: read by Fitness.calculate and RacingPolicy on the native batch path.",
+  },
 ];
 
 /**
@@ -401,6 +412,54 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
   keep("deepChainMinLength", "roll-up", {
     note: "Added after the slices by #3974 — run length at which " +
       "`deepChainSquashBias` starts applying.",
+  }),
+  keep("evaluationArchive", "roll-up", {
+    interfaces: [
+      "src/config/EvaluationArchiveConfig.ts::EvaluationArchiveConfig",
+      "src/config/EvaluationArchiveConfig.ts::RequiredEvaluationArchiveConfig",
+    ],
+    note: "Added after the slices by #3929 — the off-by-default append-only " +
+      "archive of `(design point, true fitness)` pairs `Fitness.calculate` " +
+      "appends to; `enabled: false` writes nothing.",
+  }),
+  keep("evolutionControl", "roll-up", {
+    interfaces: [
+      "src/config/EvolutionControlConfig.ts::EvolutionControlConfig",
+      "src/config/EvolutionControlConfig.ts::RequiredEvolutionControlConfig",
+    ],
+    note: "Added after the slices by #3931 — the model-management policy " +
+      "(Jin 2011 §4) deciding which creatures earn an exact evaluation; " +
+      '`strategy: "none"` is exact everywhere, as before.',
+  }),
+  keep("preSelection", "roll-up", {
+    interfaces: [
+      "src/config/PreSelectionConfig.ts::PreSelectionConfig",
+      "src/config/PreSelectionConfig.ts::RequiredPreSelectionConfig",
+    ],
+    note: "Added after the slices by #3932 — offspring pre-selection (Jin " +
+      "2011 §4): breed a surplus, screen it cheaply, evaluate only the " +
+      "survivors. `ratio: 1` breeds exactly the budget, as before.",
+  }),
+  keep("preSelection.uncertainty", "roll-up", {
+    interfaces: [
+      "src/config/SurrogateUncertaintyConfig.ts::SurrogateUncertaintyConfig",
+      "src/config/SurrogateUncertaintyConfig.ts::" +
+      "RequiredSurrogateUncertaintyConfig",
+    ],
+    note: "Added after the slices by #3933 — the surrogate uncertainty guard " +
+      "(Jin 2011 §4-§5): an acquisition rule with an enforced exploration " +
+      "floor, the out-of-distribution refusal, and the signed-bias drift " +
+      "monitor. On by default, and only reachable once a surrogate screen is.",
+  }),
+  keep("trainingGainLog", "roll-up", {
+    interfaces: [
+      "src/config/TrainingGainLogConfig.ts::TrainingGainLogConfig",
+      "src/config/TrainingGainLogConfig.ts::RequiredTrainingGainLogConfig",
+    ],
+    note: "Added after the slices by #3934 — the training-gain log (Jin 2011 " +
+      "§5): one record per real training event, so the local-search budget " +
+      "rule can be measured against outcomes. `enabled: false` records " +
+      "nothing, as before.",
   }),
 ];
 

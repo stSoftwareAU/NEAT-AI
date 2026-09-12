@@ -94,6 +94,47 @@ Tuning guides and benchmark research.
 
 - **[PERFORMANCE_TUNING.md](PERFORMANCE_TUNING.md)** — operational tuning: WASM
   caches, thread pools, memory management, and scaling for large-scale training.
+- **[RACING.md](RACING.md)** — racing / early-exit fitness scoring (Issue
+  #3928): abandon a creature mid-corpus once it cannot catch the leader, with a
+  Hoeffding bound, a corpus-fraction floor, and elites exempt. Off by default;
+  survivors keep an exact full-corpus score.
+- **[EVALUATION_ARCHIVE.md](EVALUATION_ARCHIVE.md)** — the append-only archive
+  of exact `(descriptor, score)` evaluations (Issue #3929): the versioned
+  descriptor, fidelity and provenance per record, the retention bound, and the
+  identical-descriptor/different-score incidence check. Off by default, and
+  never on the creature export.
+- **[EVOLUTION_CONTROL.md](EVOLUTION_CONTROL.md)** — evolution control / model
+  management (Issue #3931): the per-generation policy deciding which creatures
+  earn an exact evaluation, the invariants keeping an approximate score out of
+  the elite band, `previousFittest` and the export, and the false-optimum
+  canary. Off by default (`strategy: "none"`), which is exact evaluation
+  everywhere.
+- **[PRE_SELECTION.md](PRE_SELECTION.md)** — offspring pre-selection (Issue
+  #3932): breed a surplus, screen it cheaply, and evaluate only the survivors.
+  The two screens, the uniform survivor draw that keeps the screen from
+  collapsing diversity, and the diagnostics that catch a screen anti-correlated
+  with what matters. Off by default (`ratio: 1`), which breeds exactly the
+  population budget.
+- **[SURROGATE_UNCERTAINTY.md](SURROGATE_UNCERTAINTY.md)** — the surrogate
+  uncertainty guard (Issue #3933): mandatory uncertainty on every prediction, an
+  acquisition rule with an enforced exploration floor instead of an argmax, the
+  refusal to predict out-of-distribution candidates, and the signed-bias drift
+  monitor that disables the surrogate path on a false-optimum signature. The
+  surrogate path must not run in production without it.
+- **[CHEAP_PROBLEM_BENCHMARK.md](CHEAP_PROBLEM_BENCHMARK.md)** — the
+  cheap-problem benchmark harness for the surrogate techniques of the #3919
+  sweep (Issue #3935): surrogate accuracy against a fully enumerated ground
+  truth, multi-fidelity rank agreement, a deliberate false optimum that fires
+  #3933's drift monitor, and the CI-runnable GRQ-protecting invariants. Its
+  results are **not** transferable to GRQ creature scores, and the harness says
+  so in every report.
+- **[TRAINING_GAIN_LOG.md](TRAINING_GAIN_LOG.md)** — the training-gain log
+  (Issue #3934): one record per real gradient step — the pre-training
+  descriptor, the rank the memetic rule selected at, the scores either side, and
+  the wall-clock — so the local-search budget rule can be measured against its
+  own outcomes (Jin 2011 §5). Off by default; it observes and changes no
+  selection. What it measured is in
+  [evidence/memetic-gain-3934.md](evidence/memetic-gain-3934.md).
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —

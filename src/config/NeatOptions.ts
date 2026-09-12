@@ -27,6 +27,11 @@ import type { ParallelEvaluationConfig } from "@config/ParallelEvaluationConfig.
 import type { SquashEffectivenessConfig } from "@config/SquashEffectivenessConfig.ts";
 import type { SquashBudgetConfig } from "@config/SquashBudgetConfig.ts";
 import type { RustScorerConfig } from "@config/RustScorerConfig.ts";
+import type { RacingConfig } from "@config/RacingConfig.ts";
+import type { EvaluationArchiveConfig } from "@config/EvaluationArchiveConfig.ts";
+import type { EvolutionControlConfig } from "@config/EvolutionControlConfig.ts";
+import type { PreSelectionConfig } from "@config/PreSelectionConfig.ts";
+import type { TrainingGainLogConfig } from "@config/TrainingGainLogConfig.ts";
 
 /** Converts number to number | string; recursively for plain numeric config objects. */
 export type CoerceNumeric<T> = T extends number ? number | string
@@ -114,6 +119,11 @@ export type NeatOptions =
     | "discoveryDiskSpace"
     | "wasmCache"
     | "rustScorer"
+    | "racing"
+    | "evaluationArchive"
+    | "evolutionControl"
+    | "preSelection"
+    | "trainingGainLog"
     | "memory"
     | "workerThreadCap"
     | "mcmc"
@@ -168,6 +178,45 @@ export type NeatOptions =
      * a caller who sets nothing sees no behaviour change.
      */
     rustScorer?: RustScorerConfig;
+    /**
+     * Partial overrides for racing / early-exit scoring (Issue #3928).
+     *
+     * Off unless `enabled: true`. When on, native batch scoring abandons a
+     * creature as soon as it cannot catch the leader; survivors still receive
+     * an exact full-corpus score. See `docs/RACING.md`.
+     */
+    racing?: RacingConfig;
+    /**
+     * Partial overrides for the evaluation archive (Issue #3929).
+     *
+     * Off unless `enabled: true`. When on, every exact fitness evaluation is
+     * appended to a versioned, size-bounded JSONL archive of
+     * `(descriptor, score)` pairs. See `docs/EVALUATION_ARCHIVE.md`.
+     */
+    evaluationArchive?: EvaluationArchiveConfig;
+    /**
+     * Partial overrides for evolution control — model management (Issue #3931).
+     *
+     * `strategy: "none"` (the default) evaluates every creature exactly every
+     * generation, as every build before this one did. See
+     * `docs/EVOLUTION_CONTROL.md`.
+     */
+    evolutionControl?: EvolutionControlConfig;
+    /**
+     * Partial overrides for offspring pre-selection (Issue #3932).
+     *
+     * `ratio: 1` / `screen: "none"` (the defaults) breed exactly the offspring
+     * the population budget calls for and screen none of them, as every build
+     * before this one did. See `docs/PRE_SELECTION.md`.
+     */
+    preSelection?: PreSelectionConfig;
+    /**
+     * Partial overrides for the training-gain log (Issue #3934).
+     *
+     * `enabled: false` (the default) writes nothing and touches no disk, as
+     * every build before this one did. See `docs/TRAINING_GAIN_LOG.md`.
+     */
+    trainingGainLog?: TrainingGainLogConfig;
     /** Partial overrides for memory monitoring configuration (defaults applied if not specified) */
     memory?: MemoryConfig;
     /** Partial overrides for worker thread cap configuration (defaults applied if not specified) */
@@ -275,6 +324,11 @@ export type NeatOptionsInput =
     | "discoveryDiskSpace"
     | "wasmCache"
     | "rustScorer"
+    | "racing"
+    | "evaluationArchive"
+    | "evolutionControl"
+    | "preSelection"
+    | "trainingGainLog"
     | "memory"
     | "workerThreadCap"
     | "mcmc"
@@ -315,6 +369,16 @@ export type NeatOptionsInput =
     wasmCache?: CoerceNumeric<WasmCacheConfig>;
     /** External Rust scorer configuration (Issue #3865). Numeric fields coerced from CLI. */
     rustScorer?: CoerceNumeric<RustScorerConfig>;
+    /** Racing / early-exit configuration (Issue #3928). Numeric fields coerced from CLI. */
+    racing?: CoerceNumeric<RacingConfig>;
+    /** Evaluation archive configuration (Issue #3929). Numeric fields coerced from CLI. */
+    evaluationArchive?: CoerceNumeric<EvaluationArchiveConfig>;
+    /** Evolution-control configuration (Issue #3931). Numeric fields coerced from CLI. */
+    evolutionControl?: CoerceNumeric<EvolutionControlConfig>;
+    /** Offspring pre-selection configuration (Issue #3932). Numeric fields coerced from CLI. */
+    preSelection?: CoerceNumeric<PreSelectionConfig>;
+    /** Training-gain-log configuration (Issue #3934). Numeric fields coerced from CLI. */
+    trainingGainLog?: CoerceNumeric<TrainingGainLogConfig>;
     memory?: CoerceNumeric<MemoryConfig>;
     workerThreadCap?: CoerceNumeric<WorkerThreadCapConfig>;
     /** MCMC acceptance configuration (Issue #2199). Numeric fields coerced from CLI. */

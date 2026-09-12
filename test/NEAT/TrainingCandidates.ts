@@ -8,7 +8,11 @@
 
 import { assertEquals } from "@std/assert";
 import type { Creature } from "@creature";
-import { selectTrainingCandidates } from "@neat/TrainingCandidates.ts";
+import {
+  countRankableCreatures,
+  selectRankedTrainingCandidates,
+  selectTrainingCandidates,
+} from "@neat/TrainingCandidates.ts";
 
 /** Minimal creature stub: the selector only reads `score` and `uuid`. */
 function creature(uuid: string, score: number): Creature {
@@ -64,4 +68,60 @@ Deno.test("selectTrainingCandidates - skips creatures with non-finite scores", (
 
 Deno.test("selectTrainingCandidates - empty population returns no candidates", () => {
   assertEquals(selectTrainingCandidates([], 3), []);
+});
+
+/**
+ * Issue #3934: the same rule, reporting the rank it selected at.
+ *
+ * The rank is the column the memetic-budget question is asked of — "does
+ * present fitness predict what a gradient step realises" — so it must be the
+ * position among the creatures the rule could have chosen, not the array index
+ * it happened to read.
+ */
+Deno.test("selectRankedTrainingCandidates - ranks from the fittest down", () => {
+  const result = selectRankedTrainingCandidates(population(), 3);
+  assertEquals(result.map((c) => c.creature.uuid), ["a", "b", "c"]);
+  assertEquals(result.map((c) => c.rank), [0, 1, 2]);
+});
+
+Deno.test("selectRankedTrainingCandidates - selects exactly what the unranked rule selects", () => {
+  for (const limit of [0, 1, 3, 5, 99]) {
+    const pop = population();
+    assertEquals(
+      selectRankedTrainingCandidates(pop, limit).map((c) => c.creature),
+      selectTrainingCandidates(pop, limit),
+      `limit ${limit} must select the same creatures`,
+    );
+  }
+});
+
+Deno.test("selectRankedTrainingCandidates - a skipped non-finite score consumes no rank", () => {
+  const pop = [
+    creature("a", 0.9),
+    creature("b", Number.NEGATIVE_INFINITY),
+    creature("c", 0.7),
+    creature("d", Number.NaN),
+    creature("e", 0.5),
+  ];
+  const result = selectRankedTrainingCandidates(pop, 3);
+  assertEquals(result.map((c) => c.creature.uuid), ["a", "c", "e"]);
+  assertEquals(result.map((c) => c.rank), [0, 1, 2]);
+});
+
+Deno.test("selectRankedTrainingCandidates - no candidates for a non-positive limit", () => {
+  assertEquals(selectRankedTrainingCandidates(population(), 0), []);
+  assertEquals(selectRankedTrainingCandidates(population(), -2), []);
+});
+
+Deno.test("countRankableCreatures - counts only the creatures the rule could choose", () => {
+  assertEquals(countRankableCreatures(population()), 5);
+  assertEquals(
+    countRankableCreatures([
+      creature("a", 0.9),
+      creature("b", Number.NEGATIVE_INFINITY),
+      creature("c", Number.NaN),
+    ]),
+    1,
+  );
+  assertEquals(countRankableCreatures([]), 0);
 });

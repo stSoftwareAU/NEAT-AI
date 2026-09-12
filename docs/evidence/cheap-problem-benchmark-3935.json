@@ -1,0 +1,5982 @@
+{
+  "scope": "Scope: these are cheap analytic problems. Nothing measured here transfers to GRQ creature scores — the 90-day equity objective is not a scaled-down analytic function, its error surface is heavy-tailed and its ground truth arrives a quarter late. Surrogate viability on real creatures is answered by Issues #3927 and #3930, against the real corpus, and cannot be answered here.",
+  "options": {
+    "surfaces": [
+      "sphere",
+      "rastrigin",
+      "rosenbrock"
+    ],
+    "dimensions": 2,
+    "levels": 41,
+    "records": 64,
+    "rates": [
+      1,
+      0.5,
+      0.25,
+      0.1
+    ],
+    "trainingSize": 80,
+    "locality": 0.35,
+    "seed": 3935
+  },
+  "accuracy": [
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 0.0015771621036813426,
+      "meanAbsoluteResidual": 0.0013146907210184338,
+      "signedBias": -0.0001521532600876364,
+      "biasRatio": -0.11573312084363832,
+      "spearmanRho": 0.999999989894955,
+      "kendallTau": 0.9999943344381179,
+      "topKAgreement": 1,
+      "topK": 10,
+      "trueOptimumRank": 0,
+      "falseOptimumRegret": 0
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 0.04949707297970282,
+      "meanAbsoluteResidual": 0.015335482323845264,
+      "signedBias": 0.006370165262932181,
+      "biasRatio": 0.41538734344384853,
+      "spearmanRho": 0.9999986383451898,
+      "kendallTau": 0.9994391093736721,
+      "topKAgreement": 1,
+      "topK": 10,
+      "trueOptimumRank": 0,
+      "falseOptimumRegret": 0
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gaussian-process",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 1.0881622096510255,
+      "meanAbsoluteResidual": 0.7165089850287369,
+      "signedBias": 0.04563918673132077,
+      "biasRatio": 0.06369660071951551,
+      "spearmanRho": 0.9991364935918352,
+      "kendallTau": 0.9768816747400924,
+      "topKAgreement": 0.7,
+      "topK": 10,
+      "trueOptimumRank": 0,
+      "falseOptimumRegret": 0
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 2.7973267341537427,
+      "meanAbsoluteResidual": 2.0041369304920127,
+      "signedBias": 0.006847957884081237,
+      "biasRatio": 0.0034169111800160653,
+      "spearmanRho": 0.9787830643226935,
+      "kendallTau": 0.876259879508642,
+      "topKAgreement": 0.4,
+      "topK": 10,
+      "trueOptimumRank": 10,
+      "falseOptimumRegret": 0.006940721201776127
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 1.2397553465645317,
+      "meanAbsoluteResidual": 1.0207042230560996,
+      "signedBias": 0.1308126017751716,
+      "biasRatio": 0.12815916581936382,
+      "spearmanRho": 0.9939573372074728,
+      "kendallTau": 0.9304297328687573,
+      "topKAgreement": 0.8,
+      "topK": 10,
+      "trueOptimumRank": 5,
+      "falseOptimumRegret": 0.021277274243681723
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 1.496791644282768,
+      "meanAbsoluteResidual": 1.1949531998687768,
+      "signedBias": 0.20798978804558252,
+      "biasRatio": 0.1740568484760933,
+      "spearmanRho": 0.9921594299218668,
+      "kendallTau": 0.9206410583269595,
+      "topKAgreement": 0.8,
+      "topK": 10,
+      "trueOptimumRank": 17,
+      "falseOptimumRegret": 0.0513530776296394
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gaussian-process",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 1.665903075447411,
+      "meanAbsoluteResidual": 1.2677161131275108,
+      "signedBias": 0.1774728356124832,
+      "biasRatio": 0.13999414677679692,
+      "spearmanRho": 0.9931557999876112,
+      "kendallTau": 0.925555933259681,
+      "topKAgreement": 0.6,
+      "topK": 10,
+      "trueOptimumRank": 3,
+      "falseOptimumRegret": 0.021277274243681723
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 2.949609454165306,
+      "meanAbsoluteResidual": 2.1385296684627804,
+      "signedBias": 0.11645301764315087,
+      "biasRatio": 0.05445471220741105,
+      "spearmanRho": 0.9771152158633568,
+      "kendallTau": 0.8674547292613083,
+      "topKAgreement": 0.4,
+      "topK": 10,
+      "trueOptimumRank": 76,
+      "falseOptimumRegret": 0.013607344158893047
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 7909.780718567047,
+      "meanAbsoluteResidual": 6078.898429025837,
+      "signedBias": -143.92765288301885,
+      "biasRatio": -0.023676601042679983,
+      "spearmanRho": 0.9639275055989528,
+      "kendallTau": 0.8674513469873375,
+      "topKAgreement": 1,
+      "topK": 10,
+      "trueOptimumRank": 245,
+      "falseOptimumRegret": 0.024899403927955498
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 233.8693919190309,
+      "meanAbsoluteResidual": 119.5859198742202,
+      "signedBias": 34.566337822623154,
+      "biasRatio": 0.28905023149029446,
+      "spearmanRho": 0.999570232437255,
+      "kendallTau": 0.9879819268575961,
+      "topKAgreement": 1,
+      "topK": 10,
+      "trueOptimumRank": 10,
+      "falseOptimumRegret": 0.00009065605283484285
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gaussian-process",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 5711.183175679651,
+      "meanAbsoluteResidual": 4357.092931065776,
+      "signedBias": -478.3173151970253,
+      "biasRatio": -0.10977900236799068,
+      "spearmanRho": 0.9529721362479382,
+      "kendallTau": 0.8332370187813376,
+      "topKAgreement": 0.4,
+      "topK": 10,
+      "trueOptimumRank": 26,
+      "falseOptimumRegret": 0.003365627227582773
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "trainingSize": 80,
+      "evaluated": 1681,
+      "rmse": 5304.782713114354,
+      "meanAbsoluteResidual": 3027.923353867206,
+      "signedBias": 966.602646633618,
+      "biasRatio": 0.3192295622011342,
+      "spearmanRho": 0.9584783850131848,
+      "kendallTau": 0.8328484668324787,
+      "topKAgreement": 0.2,
+      "topK": 10,
+      "trueOptimumRank": 88,
+      "falseOptimumRegret": 0.00863864005833147
+    }
+  ],
+  "fidelity": [
+    {
+      "problem": "sphere-2d-41L-64R",
+      "rate": 1,
+      "phase": 0,
+      "records": 64,
+      "spearmanRho": 1,
+      "kendallTau": 1,
+      "topKAgreement": 1,
+      "topK": 10,
+      "gapResolution": 0,
+      "trueOptimumRank": 0
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "rate": 0.5,
+      "phase": 0,
+      "records": 32,
+      "spearmanRho": 0.9998202666175696,
+      "kendallTau": 0.9887255318546216,
+      "topKAgreement": 0.8,
+      "topK": 10,
+      "gapResolution": 0.9591422936925369,
+      "trueOptimumRank": 0
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "rate": 0.25,
+      "phase": 0,
+      "records": 16,
+      "spearmanRho": 0.9984892806188168,
+      "kendallTau": 0.9659570550409337,
+      "topKAgreement": 0.8,
+      "topK": 10,
+      "gapResolution": 2.207905375281701,
+      "trueOptimumRank": 0
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "rate": 0.1,
+      "phase": 0,
+      "records": 7,
+      "spearmanRho": 0.9995326593537803,
+      "kendallTau": 0.9817668054729328,
+      "topKAgreement": 0.8,
+      "topK": 10,
+      "gapResolution": 1.263500642537835,
+      "trueOptimumRank": 0
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "rate": 1,
+      "phase": 0,
+      "records": 64,
+      "spearmanRho": 1,
+      "kendallTau": 1,
+      "topKAgreement": 1,
+      "topK": 10,
+      "gapResolution": 0,
+      "trueOptimumRank": 0
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "rate": 0.5,
+      "phase": 0,
+      "records": 32,
+      "spearmanRho": 0.9979377118964774,
+      "kendallTau": 0.9595478881618085,
+      "topKAgreement": 0.9,
+      "topK": 10,
+      "gapResolution": 2.9633610435339364,
+      "trueOptimumRank": 1
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "rate": 0.25,
+      "phase": 0,
+      "records": 16,
+      "spearmanRho": 0.9732995887145646,
+      "kendallTau": 0.8528072859125804,
+      "topKAgreement": 0.7,
+      "topK": 10,
+      "gapResolution": 11.615845588549796,
+      "trueOptimumRank": 50
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "rate": 0.1,
+      "phase": 0,
+      "records": 7,
+      "spearmanRho": 0.973640482406763,
+      "kendallTau": 0.854975779722954,
+      "topKAgreement": 0.6,
+      "topK": 10,
+      "gapResolution": 10.34581222216184,
+      "trueOptimumRank": 29
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "rate": 1,
+      "phase": 0,
+      "records": 64,
+      "spearmanRho": 1,
+      "kendallTau": 1,
+      "topKAgreement": 1,
+      "topK": 10,
+      "gapResolution": 0,
+      "trueOptimumRank": 0
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "rate": 0.5,
+      "phase": 0,
+      "records": 32,
+      "spearmanRho": 0.9998167247993063,
+      "kendallTau": 0.9884847454746325,
+      "topKAgreement": 0.9,
+      "topK": 10,
+      "gapResolution": 2842.2716733843117,
+      "trueOptimumRank": 0
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "rate": 0.25,
+      "phase": 0,
+      "records": 16,
+      "spearmanRho": 0.9975248778628477,
+      "kendallTau": 0.9563454293079516,
+      "topKAgreement": 0.6,
+      "topK": 10,
+      "gapResolution": 12307.969498915045,
+      "trueOptimumRank": 0
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "rate": 0.1,
+      "phase": 0,
+      "records": 7,
+      "spearmanRho": 0.9998344136805333,
+      "kendallTau": 0.9924378912778675,
+      "topKAgreement": 1,
+      "topK": 10,
+      "gapResolution": 393.18624106480274,
+      "trueOptimumRank": 2
+    }
+  ],
+  "falseOptimum": [
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.0034634156832726772,
+          "meanAbsoluteResidual": 0.0034634156832726772,
+          "biasRatio": -1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -0.003457955862865434,
+          "meanAbsoluteResidual": 0.003457955862865434,
+          "biasRatio": -1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.003415314584123322,
+          "meanAbsoluteResidual": 0.003415314584123322,
+          "biasRatio": -1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.003412403368227554,
+          "meanAbsoluteResidual": 0.003412403368227554,
+          "biasRatio": -1,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.0033228121497585472,
+          "meanAbsoluteResidual": 0.0033228121497585472,
+          "biasRatio": -1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -0.0034191691902546173,
+          "meanAbsoluteResidual": 0.0034191691902546173,
+          "biasRatio": -1,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.003284462451568604,
+          "meanAbsoluteResidual": 0.003284462451568604,
+          "biasRatio": -1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -0.0033200602405041024,
+          "meanAbsoluteResidual": 0.0033200602405041024,
+          "biasRatio": -1,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -0.003386949191321857,
+      "meanAbsoluteResidual": 0.003386949191321857,
+      "generationBiasRatio": -1,
+      "modelOptimumRegret": 0,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 128,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -3.387e-3 (per-generation ratio -1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0,
+      "meanAbsoluteResidual": 0,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 128,
+      "observedResiduals": 0,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 0.000e+0 (per-generation ratio undecidable) over 0 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.0027108261729431593,
+          "meanAbsoluteResidual": 0.0027108261729431593,
+          "biasRatio": -1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -0.0017547709295110403,
+          "meanAbsoluteResidual": 0.00180588438841911,
+          "biasRatio": -0.9716961621486662,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.0015046511311652966,
+          "meanAbsoluteResidual": 0.0017695373681278215,
+          "biasRatio": -0.8503076330946456,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.0023876711625127507,
+          "meanAbsoluteResidual": 0.0024909711867974645,
+          "biasRatio": -0.9585302211313322,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.0027733691239298017,
+          "meanAbsoluteResidual": 0.0027733691239298017,
+          "biasRatio": -1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -0.0022830770366970912,
+          "meanAbsoluteResidual": 0.0023035691203741396,
+          "biasRatio": -0.9911042028234343,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.0022055912805720376,
+          "meanAbsoluteResidual": 0.0024643676929967037,
+          "biasRatio": -0.8949927751609215,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -0.0020602231482848496,
+          "meanAbsoluteResidual": 0.0021132663920155267,
+          "biasRatio": -0.9748998782495721,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -0.0022100224982020034,
+      "meanAbsoluteResidual": 0.002303973930700466,
+      "generationBiasRatio": -0.9551913590760716,
+      "modelOptimumRegret": 0,
+      "evaluatedRegret": 0.0027789088470927324,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -2.210e-3 (per-generation ratio -0.955) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.0025760431012904848,
+          "meanAbsoluteResidual": 0.0025760431012904848,
+          "biasRatio": -1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -0.00251953649675183,
+          "meanAbsoluteResidual": 0.00251953649675183,
+          "biasRatio": -1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.0024780153178691824,
+          "meanAbsoluteResidual": 0.0024780153178691824,
+          "biasRatio": -1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.0024208019027011085,
+          "meanAbsoluteResidual": 0.0024208019027011085,
+          "biasRatio": -1,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.00238728080863225,
+          "meanAbsoluteResidual": 0.00238728080863225,
+          "biasRatio": -1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -0.0023359407963245288,
+          "meanAbsoluteResidual": 0.0023359407963245288,
+          "biasRatio": -1,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.00228389218256006,
+          "meanAbsoluteResidual": 0.00228389218256006,
+          "biasRatio": -1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -0.00223698242080958,
+          "meanAbsoluteResidual": 0.00223698242080958,
+          "biasRatio": -1,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -0.002404811628367378,
+      "meanAbsoluteResidual": 0.002404811628367378,
+      "generationBiasRatio": -1,
+      "modelOptimumRegret": 0,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -2.405e-3 (per-generation ratio -1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.00035346997673513236,
+          "meanAbsoluteResidual": 0.0011413470663328429,
+          "biasRatio": -0.3096954354741842,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -0.0002458809933382766,
+          "meanAbsoluteResidual": 0.001138511668685671,
+          "biasRatio": -0.21596703846006984,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 0.0004052845442099329,
+          "meanAbsoluteResidual": 0.0016962395236219951,
+          "biasRatio": 0.23893119961296813,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.0007091267443758691,
+          "meanAbsoluteResidual": 0.0014147576797828559,
+          "biasRatio": -0.5012354797640749,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.0006618150082702903,
+          "meanAbsoluteResidual": 0.0010379765616002692,
+          "biasRatio": -0.6376011104238779,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -0.000492154564851216,
+          "meanAbsoluteResidual": 0.0017453281538843124,
+          "biasRatio": -0.28198397175677375,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.0005461937798301175,
+          "meanAbsoluteResidual": 0.0014120394801440117,
+          "biasRatio": -0.38681197481419716,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 0.00018891093620895805,
+          "meanAbsoluteResidual": 0.0010784010001907707,
+          "biasRatio": 0.17517689261743954,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -0.0003018056983727514,
+      "meanAbsoluteResidual": 0.0013330751417803411,
+      "generationBiasRatio": -0.23989836480784626,
+      "modelOptimumRegret": 0,
+      "evaluatedRegret": 0.0010868345000607596,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -3.018e-4 (per-generation ratio -0.240) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -1.4438167122284886,
+          "meanAbsoluteResidual": 1.4438167122284886,
+          "biasRatio": -1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -1.525502165542866,
+          "meanAbsoluteResidual": 1.525502165542866,
+          "biasRatio": -1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -1.6693987041733387,
+          "meanAbsoluteResidual": 1.6693987041733387,
+          "biasRatio": -1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -2.4888132120666575,
+          "meanAbsoluteResidual": 2.4888132120666575,
+          "biasRatio": -1,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -2.3219932493132065,
+          "meanAbsoluteResidual": 2.3219932493132065,
+          "biasRatio": -1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -2.6255794341991843,
+          "meanAbsoluteResidual": 2.6255794341991843,
+          "biasRatio": -1,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -3.3030908229237563,
+          "meanAbsoluteResidual": 3.3030908229237563,
+          "biasRatio": -1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -2.2913490133547576,
+          "meanAbsoluteResidual": 2.2913490133547576,
+          "biasRatio": -1,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -2.208692914225282,
+      "meanAbsoluteResidual": 2.208692914225282,
+      "generationBiasRatio": -1,
+      "modelOptimumRegret": 0.028598800211523123,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 119,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -2.209e+0 (per-generation ratio -1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 1,
+          "signedBias": -0.048693344884863876,
+          "meanAbsoluteResidual": 0.048693344884863876,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 2,
+          "signedBias": -0.07248118272603676,
+          "meanAbsoluteResidual": 0.07248118272603676,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 3,
+          "signedBias": -0.029038666012339693,
+          "meanAbsoluteResidual": 0.029038666012339693,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 1,
+          "signedBias": -0.0068675093880754545,
+          "meanAbsoluteResidual": 0.0068675093880754545,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 2,
+          "signedBias": -0.02465712076410309,
+          "meanAbsoluteResidual": 0.02465712076410309,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -0.037439273254470905,
+      "meanAbsoluteResidual": 0.037439273254470905,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.028598800211523123,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 119,
+      "observedResiduals": 9,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -3.744e-2 (per-generation ratio undecidable) over 9 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -5.3245004031769945,
+          "meanAbsoluteResidual": 7.274455778433786,
+          "biasRatio": -0.731944844446271,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -1.3017627312247766,
+          "meanAbsoluteResidual": 5.423424160483223,
+          "biasRatio": -0.2400259859278258,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.6204174269909598,
+          "meanAbsoluteResidual": 5.355603824674073,
+          "biasRatio": -0.11584453355802819,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -2.5583146365281415,
+          "meanAbsoluteResidual": 7.187445869874836,
+          "biasRatio": -0.3559421083435155,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -4.080527280962844,
+          "meanAbsoluteResidual": 4.801860733002463,
+          "biasRatio": -0.8497804305147788,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -1.0427642068898975,
+          "meanAbsoluteResidual": 6.8546409034934985,
+          "biasRatio": -0.1521252858568343,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -3.4680993435563225,
+          "meanAbsoluteResidual": 8.996704535989949,
+          "biasRatio": -0.3854855219133538,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -2.3974651031146177,
+          "meanAbsoluteResidual": 6.512425248207093,
+          "biasRatio": -0.36813706288216563,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -2.5992313915555694,
+      "meanAbsoluteResidual": 6.550820131769869,
+      "generationBiasRatio": -0.3999107216803467,
+      "modelOptimumRegret": 0.028598800211523123,
+      "evaluatedRegret": 0.0027789088470927324,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -2.599e+0 (per-generation ratio -0.400) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 0.0001753318380981108,
+          "meanAbsoluteResidual": 0.0005611706280372036,
+          "biasRatio": 0.31243944236954424,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -0.00045534331384586985,
+          "meanAbsoluteResidual": 0.0010470736144389328,
+          "biasRatio": -0.4348723027366728,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.0015688808230900422,
+          "meanAbsoluteResidual": 0.0019382172428484348,
+          "biasRatio": -0.8094452925124069,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.0014322697535532614,
+          "meanAbsoluteResidual": 0.0019202364278563533,
+          "biasRatio": -0.745881982434928,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.002193749724396246,
+          "meanAbsoluteResidual": 0.0026920790117844345,
+          "biasRatio": -0.814890541768359,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -0.002176763578163224,
+          "meanAbsoluteResidual": 0.0029976309199234025,
+          "biasRatio": -0.7261613041470916,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.002569171129813891,
+          "meanAbsoluteResidual": 0.003390060845636228,
+          "biasRatio": -0.7578539875238501,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -0.002508062027853336,
+          "meanAbsoluteResidual": 0.0038049421344884815,
+          "biasRatio": -0.659159046104786,
+          "streak": 6,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 7,
+      "signedBias": -0.00159111356407722,
+      "meanAbsoluteResidual": 0.002293926353126684,
+      "generationBiasRatio": -0.5794781268573188,
+      "modelOptimumRegret": 0,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -1.591e-3 (per-generation ratio -0.579) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 7"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 0.010182801466164904,
+          "meanAbsoluteResidual": 0.018017309117989377,
+          "biasRatio": 0.5651677173034617,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 0.002351851832046059,
+          "meanAbsoluteResidual": 0.010788113189299009,
+          "biasRatio": 0.21800400040100784,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 0.02622971503579527,
+          "meanAbsoluteResidual": 0.03168365401391213,
+          "biasRatio": 0.8278626898361514,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 0.00039593281815261845,
+          "meanAbsoluteResidual": 0.011076965411377456,
+          "biasRatio": 0.03574379836430156,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.002223920575907319,
+          "meanAbsoluteResidual": 0.010117805573003229,
+          "biasRatio": -0.21980265976263483,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 0.012556085203146411,
+          "meanAbsoluteResidual": 0.015632044994951882,
+          "biasRatio": 0.8032272941384955,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 0.006093147385350384,
+          "meanAbsoluteResidual": 0.01421313128857904,
+          "biasRatio": 0.4286984522718461,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 0.0033991177119853944,
+          "meanAbsoluteResidual": 0.010411353501526416,
+          "biasRatio": 0.3264818269293274,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0.007373091359591715,
+      "meanAbsoluteResidual": 0.015242547136329818,
+      "generationBiasRatio": 0.37317288993524456,
+      "modelOptimumRegret": 0,
+      "evaluatedRegret": 0.0010868345000607596,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 7.373e-3 (per-generation ratio 0.373) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -2.2537525591056884,
+          "meanAbsoluteResidual": 2.2537525591056884,
+          "biasRatio": -1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -2.596607375116424,
+          "meanAbsoluteResidual": 2.596607375116424,
+          "biasRatio": -1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -3.1249536342775603,
+          "meanAbsoluteResidual": 3.1249536342775603,
+          "biasRatio": -1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -3.637630330397793,
+          "meanAbsoluteResidual": 3.6454847988396817,
+          "biasRatio": -0.9978454255400026,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -3.7908301532516333,
+          "meanAbsoluteResidual": 3.7908301532516333,
+          "biasRatio": -1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -5.438485469069727,
+          "meanAbsoluteResidual": 5.463177910013922,
+          "biasRatio": -0.9954802055962824,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -3.4977079930301835,
+          "meanAbsoluteResidual": 3.5143140904035555,
+          "biasRatio": -0.9952747258935342,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -5.121742100310536,
+          "meanAbsoluteResidual": 5.160631285648215,
+          "biasRatio": -0.9924642581139579,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -3.682713701819944,
+      "meanAbsoluteResidual": 3.693718975832086,
+      "generationBiasRatio": -0.9976330768929721,
+      "modelOptimumRegret": 0.08527912919362463,
+      "evaluatedRegret": 0.008668472336663327,
+      "coverageRefusals": 100,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -3.683e+0 (per-generation ratio -0.998) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 5,
+          "signedBias": -1.021428079184589,
+          "meanAbsoluteResidual": 1.021428079184589,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 3,
+          "signedBias": -0.5416104297203415,
+          "meanAbsoluteResidual": 0.5416104297203415,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 3,
+          "signedBias": -0.2758735437684002,
+          "meanAbsoluteResidual": 0.2758735437684002,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 4,
+          "signedBias": -0.12138535158934394,
+          "meanAbsoluteResidual": 0.15280322535690116,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 3,
+          "signedBias": -0.1706575780249994,
+          "meanAbsoluteResidual": 0.1706575780249994,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 3,
+          "signedBias": 0.0006501401071747163,
+          "meanAbsoluteResidual": 0.13104287826186223,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 2,
+          "signedBias": 0.06642438949348861,
+          "meanAbsoluteResidual": 0.06642438949348861,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 5,
+          "signedBias": 0.027104859924749647,
+          "meanAbsoluteResidual": 0.0973405331558201,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -0.2959565342103319,
+      "meanAbsoluteResidual": 0.346266358265837,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.08527912919362463,
+      "evaluatedRegret": 0.008668472336663327,
+      "coverageRefusals": 100,
+      "observedResiduals": 28,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -2.960e-1 (per-generation ratio undecidable) over 28 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -6.398333635791055,
+          "meanAbsoluteResidual": 8.33969273666331,
+          "biasRatio": -0.7672145530808864,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -2.274965613422836,
+          "meanAbsoluteResidual": 6.388282174652026,
+          "biasRatio": -0.3561153924054325,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -1.915677110835841,
+          "meanAbsoluteResidual": 6.80033252725653,
+          "biasRatio": -0.28170344658258734,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -5.653420468876825,
+          "meanAbsoluteResidual": 10.24264764845526,
+          "biasRatio": -0.5519491310168658,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -6.216274622184729,
+          "meanAbsoluteResidual": 6.943559507302643,
+          "biasRatio": -0.8952576291233598,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -3.5485739422883897,
+          "meanAbsoluteResidual": 9.381959483790489,
+          "biasRatio": -0.3782337739167787,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -5.6719218416718125,
+          "meanAbsoluteResidual": 11.193744800693288,
+          "biasRatio": -0.506704587487158,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -3.6470552862177295,
+          "meanAbsoluteResidual": 7.829899422819569,
+          "biasRatio": -0.4657857131074635,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -4.415777815161153,
+      "meanAbsoluteResidual": 8.390014787704139,
+      "generationBiasRatio": -0.5253705283400665,
+      "modelOptimumRegret": 0.08527912919362463,
+      "evaluatedRegret": 0.0027789088470927324,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -4.416e+0 (per-generation ratio -0.525) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 0.9838130172012055,
+          "meanAbsoluteResidual": 0.9838130172012055,
+          "biasRatio": 1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 0.9152929441746399,
+          "meanAbsoluteResidual": 0.9152929441746399,
+          "biasRatio": 1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 0.8254997397051554,
+          "meanAbsoluteResidual": 0.8254997397051554,
+          "biasRatio": 1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 0.7323001291383315,
+          "meanAbsoluteResidual": 0.7323001291383315,
+          "biasRatio": 1,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 0.7086355399966962,
+          "meanAbsoluteResidual": 0.7086355399966962,
+          "biasRatio": 1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 0.5989822010609505,
+          "meanAbsoluteResidual": 0.5989822010609505,
+          "biasRatio": 1,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 0.5537201337801415,
+          "meanAbsoluteResidual": 0.5537201337801415,
+          "biasRatio": 1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 0.45716780737944496,
+          "meanAbsoluteResidual": 0.45716780737944496,
+          "biasRatio": 1,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": 0.7219264390545708,
+      "meanAbsoluteResidual": 0.7219264390545708,
+      "generationBiasRatio": 1,
+      "modelOptimumRegret": 0,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 7.219e-1 (per-generation ratio 1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.19607931279985202,
+          "meanAbsoluteResidual": 0.7331767918275207,
+          "biasRatio": -0.26743796992142044,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 0.09496672486513152,
+          "meanAbsoluteResidual": 0.7082153418274166,
+          "biasRatio": 0.13409300710725602,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 0.7163727632269106,
+          "meanAbsoluteResidual": 1.1523862895154868,
+          "biasRatio": 0.6216429071957328,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 0.022176737601760393,
+          "meanAbsoluteResidual": 0.5907291595019941,
+          "biasRatio": 0.037541294931938314,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.26710809470972613,
+          "meanAbsoluteResidual": 0.5255896330172527,
+          "biasRatio": -0.5082065511382684,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 0.3912981120419131,
+          "meanAbsoluteResidual": 0.9275737456277915,
+          "biasRatio": 0.42185121548160953,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.02195275566906718,
+          "meanAbsoluteResidual": 0.650232279421682,
+          "biasRatio": -0.033761405522026694,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -0.03276685116641312,
+          "meanAbsoluteResidual": 0.7247473449080298,
+          "biasRatio": -0.04521141249654557,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0.08836341542383211,
+      "meanAbsoluteResidual": 0.751581323205897,
+      "generationBiasRatio": 0.04506388570478445,
+      "modelOptimumRegret": 0,
+      "evaluatedRegret": 0.0010868345000607596,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 8.836e-2 (per-generation ratio 0.045) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -1.6044786578017982,
+          "meanAbsoluteResidual": 2.0336610658497563,
+          "biasRatio": -0.78896069986538,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 7.753886671815201,
+          "meanAbsoluteResidual": 9.244477063525762,
+          "biasRatio": 0.8387588198372291,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.6968207294658607,
+          "meanAbsoluteResidual": 3.234706574248977,
+          "biasRatio": -0.21542007396069493,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 4.442888112885764,
+          "meanAbsoluteResidual": 8.875024483716349,
+          "biasRatio": 0.5006057302757252,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 2.4390611988700805,
+          "meanAbsoluteResidual": 5.066697111335399,
+          "biasRatio": 0.4813907650831,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -0.244366446043669,
+          "meanAbsoluteResidual": 7.335098717908335,
+          "biasRatio": -0.03331467720360172,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 6.148439005389674,
+          "meanAbsoluteResidual": 7.435647560053983,
+          "biasRatio": 0.8268868253547289,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -4.653148883156762,
+          "meanAbsoluteResidual": 4.653148883156762,
+          "biasRatio": -1,
+          "streak": 1,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 1.69818253406158,
+      "meanAbsoluteResidual": 5.984807682474411,
+      "generationBiasRatio": 0.07624333619013834,
+      "modelOptimumRegret": 0.11894105061433226,
+      "evaluatedRegret": 0.017929082688386538,
+      "coverageRefusals": 123,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 1.698e+0 (per-generation ratio 0.076) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 2,
+          "signedBias": -1.2007212559824865,
+          "meanAbsoluteResidual": 1.2007212559824865,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 2,
+          "signedBias": -1.3809211834898996,
+          "meanAbsoluteResidual": 1.3809211834898996,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 1,
+          "signedBias": -1.7865689254129773,
+          "meanAbsoluteResidual": 1.7865689254129773,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -1.38997076087155,
+      "meanAbsoluteResidual": 1.38997076087155,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.11894105061433226,
+      "evaluatedRegret": 0.017929082688386538,
+      "coverageRefusals": 123,
+      "observedResiduals": 5,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -1.390e+0 (per-generation ratio undecidable) over 5 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 7.493342603233985,
+          "meanAbsoluteResidual": 8.21854276985375,
+          "biasRatio": 0.9117604924707753,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 7.751289103261367,
+          "meanAbsoluteResidual": 8.898051271299336,
+          "biasRatio": 0.8711220993143914,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 4.076452369644885,
+          "meanAbsoluteResidual": 6.638180640239058,
+          "biasRatio": 0.6140918107793586,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 3.5098150713609995,
+          "meanAbsoluteResidual": 8.13338366880142,
+          "biasRatio": 0.4315319692619671,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 3.447826954564908,
+          "meanAbsoluteResidual": 6.598774191405942,
+          "biasRatio": 0.5224950656828447,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 5.5583705028080015,
+          "meanAbsoluteResidual": 9.515323719232368,
+          "biasRatio": 0.5841493854353504,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 5.5559653225903745,
+          "meanAbsoluteResidual": 8.149740408024146,
+          "biasRatio": 0.681735250992784,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 5.64770762111022,
+          "meanAbsoluteResidual": 8.248525877699498,
+          "biasRatio": 0.6846929627000646,
+          "streak": 4,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 5.380096193571845,
+      "meanAbsoluteResidual": 8.050065318319442,
+      "generationBiasRatio": 0.662697379579692,
+      "modelOptimumRegret": 0.1465539708542581,
+      "evaluatedRegret": 0.0027789088470927324,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 5.380e+0 (per-generation ratio 0.663) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.5292952033734594,
+          "meanAbsoluteResidual": 0.5422258355447033,
+          "biasRatio": -0.97615268155149,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -0.5281027226801436,
+          "meanAbsoluteResidual": 0.8123636307937299,
+          "biasRatio": -0.6500816908361029,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.9187682273274212,
+          "meanAbsoluteResidual": 0.9797670300256219,
+          "biasRatio": -0.9377415234143922,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.24701018107163775,
+          "meanAbsoluteResidual": 0.7389780421262517,
+          "biasRatio": -0.33425916196497346,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.28153609508538757,
+          "meanAbsoluteResidual": 1.034715274109919,
+          "biasRatio": -0.27209040219066066,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -1.2206945737193304,
+          "meanAbsoluteResidual": 1.2206945737193304,
+          "biasRatio": -1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.1766179313442527,
+          "meanAbsoluteResidual": 0.7894391231368076,
+          "biasRatio": -0.2237258404960572,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -0.04658091154246993,
+          "meanAbsoluteResidual": 0.7280808665460818,
+          "biasRatio": -0.06397766193670704,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -0.49357573076801275,
+      "meanAbsoluteResidual": 0.8557830470003059,
+      "generationBiasRatio": -0.5572536202987979,
+      "modelOptimumRegret": 0.013572271564110977,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -4.936e-1 (per-generation ratio -0.557) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.30359115782993557,
+          "meanAbsoluteResidual": 1.939020541660687,
+          "biasRatio": -0.1565693355522283,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 0.24540806375095675,
+          "meanAbsoluteResidual": 1.6721173680398422,
+          "biasRatio": 0.14676485541121975,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 1.2153946509607836,
+          "meanAbsoluteResidual": 2.482314477611407,
+          "biasRatio": 0.48962154550630915,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.7057350546494956,
+          "meanAbsoluteResidual": 1.612102665754574,
+          "biasRatio": -0.4377730213101307,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -1.1441456616822556,
+          "meanAbsoluteResidual": 2.1987096529717514,
+          "biasRatio": -0.520371418816414,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -0.17607768206453653,
+          "meanAbsoluteResidual": 2.2406658784773525,
+          "biasRatio": -0.07858274799283789,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.12988150073816107,
+          "meanAbsoluteResidual": 1.8405980444417704,
+          "biasRatio": -0.07056483686396203,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 0.5223097101905209,
+          "meanAbsoluteResidual": 2.4064107812037507,
+          "biasRatio": 0.21704927282998943,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -0.05953982900776546,
+      "meanAbsoluteResidual": 2.0489924262701424,
+      "generationBiasRatio": -0.05130321084850682,
+      "modelOptimumRegret": 0.013572271564110977,
+      "evaluatedRegret": 0.0010868345000607596,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -5.954e-2 (per-generation ratio -0.051) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 9.109213800611391,
+          "meanAbsoluteResidual": 9.109213800611391,
+          "biasRatio": 1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 10.56096083566592,
+          "meanAbsoluteResidual": 10.56096083566592,
+          "biasRatio": 1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 9.630088428014488,
+          "meanAbsoluteResidual": 9.630088428014488,
+          "biasRatio": 1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 9.572052625112667,
+          "meanAbsoluteResidual": 9.572052625112667,
+          "biasRatio": 1,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 9.131620484234972,
+          "meanAbsoluteResidual": 9.131620484234972,
+          "biasRatio": 1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 9.330699665190952,
+          "meanAbsoluteResidual": 9.330699665190952,
+          "biasRatio": 1,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 10.408781003659952,
+          "meanAbsoluteResidual": 10.408781003659952,
+          "biasRatio": 1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 8.963286062705123,
+          "meanAbsoluteResidual": 8.963286062705123,
+          "biasRatio": 1,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": 9.588337863149432,
+      "meanAbsoluteResidual": 9.588337863149432,
+      "generationBiasRatio": 1,
+      "modelOptimumRegret": 0.07531325966472317,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 128,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 9.588e+0 (per-generation ratio 1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0,
+      "meanAbsoluteResidual": 0,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.07531325966472317,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 128,
+      "observedResiduals": 0,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 0.000e+0 (per-generation ratio undecidable) over 0 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 7.565135265415126,
+          "meanAbsoluteResidual": 9.118841810545517,
+          "biasRatio": 0.8296158023781484,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 3.597735144254402,
+          "meanAbsoluteResidual": 6.315928743813247,
+          "biasRatio": 0.5696288368956909,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 2.2679552110246304,
+          "meanAbsoluteResidual": 4.3136571846113,
+          "biasRatio": 0.525761578624147,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 6.394823398626519,
+          "meanAbsoluteResidual": 7.5488486655422555,
+          "biasRatio": 0.8471256587533088,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 7.564215714390243,
+          "meanAbsoluteResidual": 7.657711949422235,
+          "biasRatio": 0.9877905782236891,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 5.988680903934508,
+          "meanAbsoluteResidual": 7.768569548538599,
+          "biasRatio": 0.7708859226292286,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 4.737157310380939,
+          "meanAbsoluteResidual": 6.840941254626717,
+          "biasRatio": 0.6924715670050622,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 4.271050882519841,
+          "meanAbsoluteResidual": 6.196610313244543,
+          "biasRatio": 0.689256007173948,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": 5.298344228818276,
+      "meanAbsoluteResidual": 6.970138683793052,
+      "generationBiasRatio": 0.7390669939604029,
+      "modelOptimumRegret": 0.07531325966472317,
+      "evaluatedRegret": 0.010610231210870116,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 5.298e+0 (per-generation ratio 0.739) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.2675971355944362,
+          "meanAbsoluteResidual": 0.9203574772523513,
+          "biasRatio": -0.2907534759138641,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 0.29871829665113503,
+          "meanAbsoluteResidual": 1.0103048659267582,
+          "biasRatio": 0.29567144208210766,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.13822852061471136,
+          "meanAbsoluteResidual": 1.1988629681665566,
+          "biasRatio": -0.11529968335422588,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.6660088157883499,
+          "meanAbsoluteResidual": 0.936294462886424,
+          "biasRatio": -0.7113240996162329,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.029061492429842906,
+          "meanAbsoluteResidual": 0.9039929638949296,
+          "biasRatio": -0.03214791883404604,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 0.10802553534363724,
+          "meanAbsoluteResidual": 1.1414145622285206,
+          "biasRatio": 0.09464180580693313,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.04466507129328012,
+          "meanAbsoluteResidual": 0.861549252759384,
+          "biasRatio": -0.05184273696509643,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 0.27649306051929856,
+          "meanAbsoluteResidual": 1.0399851309987829,
+          "biasRatio": 0.26586251310512454,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -0.05779051790081871,
+      "meanAbsoluteResidual": 1.0015952105142134,
+      "generationBiasRatio": -0.0681490192111625,
+      "modelOptimumRegret": 0.021277274243681723,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -5.779e-2 (per-generation ratio -0.068) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.2386446985887396,
+          "meanAbsoluteResidual": 1.1341833480188237,
+          "biasRatio": -0.21041104068896882,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 0.46547682236502275,
+          "meanAbsoluteResidual": 1.0982211019284083,
+          "biasRatio": 0.42384618320270323,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.1322984456261338,
+          "meanAbsoluteResidual": 0.9603815770765918,
+          "biasRatio": -0.1377561260898519,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 0.0013506131605052207,
+          "meanAbsoluteResidual": 0.9392892838508569,
+          "biasRatio": 0.0014379096873841,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 0.12373363040300167,
+          "meanAbsoluteResidual": 1.1725864171403428,
+          "biasRatio": 0.10552197142514949,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 0.8309642612667143,
+          "meanAbsoluteResidual": 1.0698055771169672,
+          "biasRatio": 0.776743250400779,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 0.267319313117516,
+          "meanAbsoluteResidual": 0.7310422619185752,
+          "biasRatio": 0.36566875410999217,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 0.09401845830405198,
+          "meanAbsoluteResidual": 1.2796131831800637,
+          "biasRatio": 0.07347412447752343,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0.17648999430024231,
+      "meanAbsoluteResidual": 1.048140343778829,
+      "generationBiasRatio": 0.17481562831558883,
+      "modelOptimumRegret": 0.021277274243681723,
+      "evaluatedRegret": 0.038588829393155055,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 1.765e-1 (per-generation ratio 0.175) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 280.16486630869855,
+          "meanAbsoluteResidual": 280.16486630869855,
+          "biasRatio": 1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 259.1158063540234,
+          "meanAbsoluteResidual": 259.1158063540234,
+          "biasRatio": 1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 237.91578698878766,
+          "meanAbsoluteResidual": 237.91578698878766,
+          "biasRatio": 1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 219.775959586216,
+          "meanAbsoluteResidual": 219.775959586216,
+          "biasRatio": 1,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 203.47303773486155,
+          "meanAbsoluteResidual": 203.47303773486155,
+          "biasRatio": 1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 187.19680026612457,
+          "meanAbsoluteResidual": 187.19680026612457,
+          "biasRatio": 1,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 173.5343727508664,
+          "meanAbsoluteResidual": 173.5343727508664,
+          "biasRatio": 1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 158.06587994200677,
+          "meanAbsoluteResidual": 158.06587994200677,
+          "biasRatio": 1,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": 214.90531374144808,
+      "meanAbsoluteResidual": 214.90531374144808,
+      "generationBiasRatio": 1,
+      "modelOptimumRegret": 0.03918583004246939,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 128,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 2.149e+2 (per-generation ratio 1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0,
+      "meanAbsoluteResidual": 0,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.03918583004246939,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 128,
+      "observedResiduals": 0,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 0.000e+0 (per-generation ratio undecidable) over 0 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -61.82963501085517,
+          "meanAbsoluteResidual": 111.9114890934769,
+          "biasRatio": -0.552486929730784,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -17.97279287332658,
+          "meanAbsoluteResidual": 112.9269661437014,
+          "biasRatio": -0.15915412843426527,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -46.72160972060677,
+          "meanAbsoluteResidual": 117.42462514708312,
+          "biasRatio": -0.3978859601389782,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -14.505262440569217,
+          "meanAbsoluteResidual": 160.56776189168795,
+          "biasRatio": -0.09033732717999668,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 44.370523687496885,
+          "meanAbsoluteResidual": 54.31082562121364,
+          "biasRatio": 0.8169738386404846,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -100.57447991433874,
+          "meanAbsoluteResidual": 212.88279347642313,
+          "biasRatio": -0.4724406245894054,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -77.69721304856365,
+          "meanAbsoluteResidual": 147.12191772398737,
+          "biasRatio": -0.5281144662233802,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -89.33327065760072,
+          "meanAbsoluteResidual": 154.51555464536943,
+          "biasRatio": -0.5781506649128667,
+          "streak": 2,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -45.5329674972955,
+      "meanAbsoluteResidual": 133.95774171786786,
+      "generationBiasRatio": -0.24519953282114898,
+      "modelOptimumRegret": 0.03918583004246939,
+      "evaluatedRegret": 0.010610231210870116,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -4.553e+1 (per-generation ratio -0.245) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.2867772047522805,
+          "meanAbsoluteResidual": 1.1185735741678726,
+          "biasRatio": -0.25637759676704264,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 0.13710371279073197,
+          "meanAbsoluteResidual": 0.8151628381055884,
+          "biasRatio": 0.16819180951545395,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.06047365396056459,
+          "meanAbsoluteResidual": 1.01125314962777,
+          "biasRatio": -0.059800707649537814,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.13908204379201883,
+          "meanAbsoluteResidual": 1.24245868472821,
+          "biasRatio": -0.11194098081614945,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 0.09082776268794035,
+          "meanAbsoluteResidual": 1.0335932280470472,
+          "biasRatio": 0.08787573314461193,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -0.03857213084368305,
+          "meanAbsoluteResidual": 0.963728967645604,
+          "biasRatio": -0.04002383672031257,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.41770028841533646,
+          "meanAbsoluteResidual": 1.3698512225921617,
+          "biasRatio": -0.3049238351774615,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -0.08436040956092761,
+          "meanAbsoluteResidual": 0.7531123626867453,
+          "biasRatio": -0.11201570142862873,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -0.09987928198076734,
+      "meanAbsoluteResidual": 1.0384667534501246,
+      "generationBiasRatio": -0.07862688948738335,
+      "modelOptimumRegret": 0.0513530776296394,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -9.988e-2 (per-generation ratio -0.079) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.1666519718112902,
+          "meanAbsoluteResidual": 1.2107747041947838,
+          "biasRatio": -0.13764077762272114,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 0.7499436834750257,
+          "meanAbsoluteResidual": 1.4187744807805822,
+          "biasRatio": 0.5285855459300489,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 0.5158876046759151,
+          "meanAbsoluteResidual": 1.434249143895942,
+          "biasRatio": 0.35969176406448944,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 0.10980751743030481,
+          "meanAbsoluteResidual": 0.9960858132864159,
+          "biasRatio": 0.11023901351231333,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 0.27704955284456756,
+          "meanAbsoluteResidual": 1.0936361549533766,
+          "biasRatio": 0.2533288165261678,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 0.9862488186362779,
+          "meanAbsoluteResidual": 1.322652270111061,
+          "biasRatio": 0.7456599447362413,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 0.3030248571618672,
+          "meanAbsoluteResidual": 0.9891060572878618,
+          "biasRatio": 0.30636235106350906,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -0.037781854486165,
+          "meanAbsoluteResidual": 1.4380796244616685,
+          "biasRatio": -0.026272435714613702,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0.34219102599081286,
+      "meanAbsoluteResidual": 1.2379197811214617,
+      "generationBiasRatio": 0.26749427781192936,
+      "modelOptimumRegret": 0.0513530776296394,
+      "evaluatedRegret": 0.038588829393155055,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 3.422e-1 (per-generation ratio 0.267) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -1.014301332796964,
+          "meanAbsoluteResidual": 1.7796147828449287,
+          "biasRatio": -0.5699555558734353,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -2.004408985693516,
+          "meanAbsoluteResidual": 2.1285876747002925,
+          "biasRatio": -0.9416614638510198,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -2.3029846887009953,
+          "meanAbsoluteResidual": 2.5031238352682488,
+          "biasRatio": -0.9200442488112837,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -2.658114183261924,
+          "meanAbsoluteResidual": 3.3953207554682043,
+          "biasRatio": -0.7828757206461274,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -2.829795263283007,
+          "meanAbsoluteResidual": 3.8301826527963323,
+          "biasRatio": -0.7388147041021752,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -3.3131104204109114,
+          "meanAbsoluteResidual": 3.689798796208624,
+          "biasRatio": -0.897910862731927,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -5.077193394050815,
+          "meanAbsoluteResidual": 5.191454645957836,
+          "biasRatio": -0.9779905133148016,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -5.05927880115898,
+          "meanAbsoluteResidual": 5.077150651796659,
+          "biasRatio": -0.9964799447833295,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -3.032398383669639,
+      "meanAbsoluteResidual": 3.4494042243801406,
+      "generationBiasRatio": -0.8532166267642625,
+      "modelOptimumRegret": 0.09608856727883507,
+      "evaluatedRegret": 0.0073030041132066585,
+      "coverageRefusals": 106,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -3.032e+0 (per-generation ratio -0.853) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 2,
+          "signedBias": 1.2150048833259035,
+          "meanAbsoluteResidual": 1.2150048833259035,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 3,
+          "signedBias": -0.054559769229784415,
+          "meanAbsoluteResidual": 0.5032418180183468,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 3,
+          "signedBias": 0.20979008478870634,
+          "meanAbsoluteResidual": 0.4552221980290234,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 3,
+          "signedBias": 0.38162615796060234,
+          "meanAbsoluteResidual": 1.4166031993888701,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 3,
+          "signedBias": 1.2742963962674783,
+          "meanAbsoluteResidual": 1.9425225717855288,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 4,
+          "signedBias": 0.7358923316468386,
+          "meanAbsoluteResidual": 0.7708611715440119,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 2,
+          "signedBias": -0.11872559441139607,
+          "meanAbsoluteResidual": 0.27485684954581124,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 2,
+          "signedBias": -0.7265069540833391,
+          "meanAbsoluteResidual": 0.8694817591847741,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0.4143896638913954,
+      "meanAbsoluteResidual": 0.9434045923615606,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.09608856727883507,
+      "evaluatedRegret": 0.0073030041132066585,
+      "coverageRefusals": 106,
+      "observedResiduals": 22,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 4.144e-1 (per-generation ratio undecidable) over 22 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -6.802812244237048,
+          "meanAbsoluteResidual": 8.43438239282655,
+          "biasRatio": -0.8065572471581139,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -2.2625634493974784,
+          "meanAbsoluteResidual": 6.244294023828592,
+          "biasRatio": -0.3623409533188866,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -2.281317183877472,
+          "meanAbsoluteResidual": 6.965652292068137,
+          "biasRatio": -0.3275094834227129,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -5.598457953260559,
+          "meanAbsoluteResidual": 10.575720740307803,
+          "biasRatio": -0.5293689282020148,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -5.386709613019841,
+          "meanAbsoluteResidual": 6.122900666992047,
+          "biasRatio": -0.8797643316441602,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -4.207781729674638,
+          "meanAbsoluteResidual": 10.64756385116002,
+          "biasRatio": -0.39518727368009277,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -6.394880227041337,
+          "meanAbsoluteResidual": 11.384289263390848,
+          "biasRatio": -0.5617285435293482,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -3.985400051494915,
+          "meanAbsoluteResidual": 8.57611208490754,
+          "biasRatio": -0.46470941751198924,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -4.6149903065004105,
+      "meanAbsoluteResidual": 8.618864414435192,
+      "generationBiasRatio": -0.5408957723084148,
+      "modelOptimumRegret": 0.09608856727883507,
+      "evaluatedRegret": 0.010610231210870116,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -4.615e+0 (per-generation ratio -0.541) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 0.8458944912060518,
+          "meanAbsoluteResidual": 1.0994011606213632,
+          "biasRatio": 0.7694138604765219,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 1.6019012491512936,
+          "meanAbsoluteResidual": 1.815618522108033,
+          "biasRatio": 0.8822895501701525,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 0.5780156833384971,
+          "meanAbsoluteResidual": 0.97589772616488,
+          "biasRatio": 0.5922912492172772,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 0.1858759131910206,
+          "meanAbsoluteResidual": 0.6989314969847651,
+          "biasRatio": 0.2659429629268406,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 0.4956023245800283,
+          "meanAbsoluteResidual": 1.0538982873715848,
+          "biasRatio": 0.4702563145975473,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 0.9129611281260597,
+          "meanAbsoluteResidual": 1.229846915509854,
+          "biasRatio": 0.7423372101133222,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 0.6966339344039372,
+          "meanAbsoluteResidual": 1.290517423790393,
+          "biasRatio": 0.5398097860297353,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 0.9817420234445675,
+          "meanAbsoluteResidual": 1.2255454527184886,
+          "biasRatio": 0.8010653715591539,
+          "streak": 3,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0.7873283434301823,
+      "meanAbsoluteResidual": 1.1737071231586698,
+      "generationBiasRatio": 0.6329257881363188,
+      "modelOptimumRegret": 0.021277274243681723,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 7.873e-1 (per-generation ratio 0.633) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.5117176062404263,
+          "meanAbsoluteResidual": 1.4346335600211333,
+          "biasRatio": -0.356688718638987,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 0.607556998773092,
+          "meanAbsoluteResidual": 1.3437161291140005,
+          "biasRatio": 0.4521468378694642,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 0.6241170306937247,
+          "meanAbsoluteResidual": 1.8108972850946217,
+          "biasRatio": 0.3446451854728546,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 0.13192059426439395,
+          "meanAbsoluteResidual": 0.920881435802481,
+          "biasRatio": 0.14325470048099598,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.1380766179958237,
+          "meanAbsoluteResidual": 1.296127756812389,
+          "biasRatio": -0.10653009880399462,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 1.2910049637628485,
+          "meanAbsoluteResidual": 1.679268670961646,
+          "biasRatio": 0.7687900013185768,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 0.23928192423776684,
+          "meanAbsoluteResidual": 1.1188540061041787,
+          "biasRatio": 0.2138634021349581,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -0.026548981306824482,
+          "meanAbsoluteResidual": 1.5070042707181928,
+          "biasRatio": -0.017617057776599426,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0.27719228827359393,
+      "meanAbsoluteResidual": 1.3889228893285805,
+      "generationBiasRatio": 0.18023303150715858,
+      "modelOptimumRegret": 0.021277274243681723,
+      "evaluatedRegret": 0.038588829393155055,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 2.772e-1 (per-generation ratio 0.180) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.777367723019943,
+          "meanAbsoluteResidual": 1.607262907132359,
+          "biasRatio": -0.4836593438262719,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 8.943112064623456,
+          "meanAbsoluteResidual": 9.418165650810792,
+          "biasRatio": 0.9495598608263554,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 1.427559316391116,
+          "meanAbsoluteResidual": 2.91915792820326,
+          "biasRatio": 0.4890312040327938,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 6.142620043515194,
+          "meanAbsoluteResidual": 9.068713781300753,
+          "biasRatio": 0.6773419242959214,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 3.9000942689469227,
+          "meanAbsoluteResidual": 5.233118684788994,
+          "biasRatio": 0.7452715109029062,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -0.29844881038561555,
+          "meanAbsoluteResidual": 7.965049044950286,
+          "biasRatio": -0.037469801968743346,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 5.8171404047123305,
+          "meanAbsoluteResidual": 7.339269250209478,
+          "biasRatio": 0.7926048502098894,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -4.192931863226677,
+          "meanAbsoluteResidual": 4.192931863226677,
+          "biasRatio": -1,
+          "streak": 1,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 2.620222212694599,
+      "meanAbsoluteResidual": 5.967958638827823,
+      "generationBiasRatio": 0.2665850255591064,
+      "modelOptimumRegret": 0.14578612010264858,
+      "evaluatedRegret": 0.027592381531174447,
+      "coverageRefusals": 123,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 2.620e+0 (per-generation ratio 0.267) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 2,
+          "signedBias": 0.3111788908378923,
+          "meanAbsoluteResidual": 0.3111788908378923,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 2,
+          "signedBias": 0.44159130617582143,
+          "meanAbsoluteResidual": 0.44159130617582143,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 1,
+          "signedBias": -1.3279076828412002,
+          "meanAbsoluteResidual": 1.3279076828412002,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0.035526542237245454,
+      "meanAbsoluteResidual": 0.5666896153737255,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.14578612010264858,
+      "evaluatedRegret": 0.027592381531174447,
+      "coverageRefusals": 123,
+      "observedResiduals": 5,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 3.553e-2 (per-generation ratio undecidable) over 5 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 7.86427698319361,
+          "meanAbsoluteResidual": 8.724713226460754,
+          "biasRatio": 0.901379424064327,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 8.09731343822342,
+          "meanAbsoluteResidual": 9.117959077724052,
+          "biasRatio": 0.8880620508602461,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 4.273837040129868,
+          "meanAbsoluteResidual": 6.776856949063425,
+          "biasRatio": 0.630651801012344,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 3.8647854267776944,
+          "meanAbsoluteResidual": 8.512647197184624,
+          "biasRatio": 0.4540051217036094,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 4.301467203288246,
+          "meanAbsoluteResidual": 6.37319811936349,
+          "biasRatio": 0.6749307212369928,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 5.824863880437192,
+          "meanAbsoluteResidual": 9.694774709424587,
+          "biasRatio": 0.6008250892900754,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 5.5794879600514005,
+          "meanAbsoluteResidual": 7.969131112625975,
+          "biasRatio": 0.7001375534167685,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 5.589076459907407,
+          "meanAbsoluteResidual": 8.309930777866654,
+          "biasRatio": 0.6725779804079485,
+          "streak": 4,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 5.674388549001104,
+      "meanAbsoluteResidual": 8.184901396214194,
+      "generationBiasRatio": 0.6903212177490389,
+      "modelOptimumRegret": 0.18266542562753207,
+      "evaluatedRegret": 0.010610231210870116,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 5.674e+0 (per-generation ratio 0.690) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.8944660257208641,
+          "meanAbsoluteResidual": 1.168891157075818,
+          "biasRatio": -0.7652261036506808,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -0.9072826762433888,
+          "meanAbsoluteResidual": 1.1365440933148099,
+          "biasRatio": -0.7982819862247805,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -0.6737142598099364,
+          "meanAbsoluteResidual": 1.1155525202790064,
+          "biasRatio": -0.6039287685365422,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.8360797696760907,
+          "meanAbsoluteResidual": 1.0342409856225054,
+          "biasRatio": -0.8083993781902364,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -1.3545947379671686,
+          "meanAbsoluteResidual": 1.5695491256587173,
+          "biasRatio": -0.8630470469655829,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -0.5834097066735453,
+          "meanAbsoluteResidual": 1.3051021289242593,
+          "biasRatio": -0.44702226265957085,
+          "streak": 0,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -0.13128606482296612,
+          "meanAbsoluteResidual": 1.346612541077193,
+          "biasRatio": -0.09749357058411674,
+          "streak": 0,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -0.4095304087369922,
+          "meanAbsoluteResidual": 1.5186873890943902,
+          "biasRatio": -0.2696607686860425,
+          "streak": 0,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -0.7237954562063686,
+      "meanAbsoluteResidual": 1.2743974926308372,
+      "generationBiasRatio": -0.5816324856871942,
+      "modelOptimumRegret": 0.058206919923521186,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -7.238e-1 (per-generation ratio -0.582) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -0.22346977608387997,
+          "meanAbsoluteResidual": 2.000871805657336,
+          "biasRatio": -0.11168620370981969,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 0.5322426394182507,
+          "meanAbsoluteResidual": 2.034445830732248,
+          "biasRatio": 0.26161553744917515,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 1.564428536562744,
+          "meanAbsoluteResidual": 3.0258171512938867,
+          "biasRatio": 0.5170267925455343,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -0.6768372119379069,
+          "meanAbsoluteResidual": 1.7633846084797316,
+          "biasRatio": -0.3838284675295137,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -0.6458542424280167,
+          "meanAbsoluteResidual": 2.1559168211370463,
+          "biasRatio": -0.2995728945086984,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 0.9091799936945122,
+          "meanAbsoluteResidual": 2.310114412330662,
+          "biasRatio": 0.39356491991980835,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 0.007925065028907552,
+          "meanAbsoluteResidual": 2.07601205002781,
+          "biasRatio": 0.003817446545554198,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 0.5250383239357175,
+          "meanAbsoluteResidual": 2.2390468274861224,
+          "biasRatio": 0.23449189069672177,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0.249081666023791,
+      "meanAbsoluteResidual": 2.200701188393105,
+      "generationBiasRatio": 0.07692862767609525,
+      "modelOptimumRegret": 0.058206919923521186,
+      "evaluatedRegret": 0.038588829393155055,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 2.491e-1 (per-generation ratio 0.077) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 5262.014535737983,
+          "meanAbsoluteResidual": 5262.014535737983,
+          "biasRatio": 1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 4996.634091217351,
+          "meanAbsoluteResidual": 4996.634091217351,
+          "biasRatio": 1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 4594.02058507503,
+          "meanAbsoluteResidual": 4594.02058507503,
+          "biasRatio": 1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 4120.936520380221,
+          "meanAbsoluteResidual": 4120.936520380221,
+          "biasRatio": 1,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 3960.1356760612607,
+          "meanAbsoluteResidual": 3960.1356760612607,
+          "biasRatio": 1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 3734.3743531891805,
+          "meanAbsoluteResidual": 3734.3743531891805,
+          "biasRatio": 1,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 2871.356596575105,
+          "meanAbsoluteResidual": 2871.356596575105,
+          "biasRatio": 1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 2606.1097545087705,
+          "meanAbsoluteResidual": 2606.1097545087705,
+          "biasRatio": 1,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": 4018.1977640931104,
+      "meanAbsoluteResidual": 4018.1977640931104,
+      "generationBiasRatio": 1,
+      "modelOptimumRegret": 0.0028989090625769496,
+      "evaluatedRegret": 0.0005422108196368549,
+      "coverageRefusals": 128,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 4.018e+3 (per-generation ratio 1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 0,
+      "meanAbsoluteResidual": 0,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.0028989090625769496,
+      "evaluatedRegret": 0.0005422108196368549,
+      "coverageRefusals": 128,
+      "observedResiduals": 0,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 0.000e+0 (per-generation ratio undecidable) over 0 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -120828.16586621018,
+          "meanAbsoluteResidual": 121010.61361931535,
+          "biasRatio": -0.9984922995789516,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -125754.16799982604,
+          "meanAbsoluteResidual": 126374.68150026268,
+          "biasRatio": -0.9950898906879907,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -89312.77086070394,
+          "meanAbsoluteResidual": 90091.86802476262,
+          "biasRatio": -0.9913521921440841,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -75023.96194741278,
+          "meanAbsoluteResidual": 76215.39643450017,
+          "biasRatio": -0.9843675353954064,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -65381.19860580974,
+          "meanAbsoluteResidual": 68021.47900165532,
+          "biasRatio": -0.9611846076475149,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -93119.21014608242,
+          "meanAbsoluteResidual": 93199.10137560326,
+          "biasRatio": -0.9991427897013848,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -115362.18833036479,
+          "meanAbsoluteResidual": 115722.56137939697,
+          "biasRatio": -0.996885887723737,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -115478.65066646477,
+          "meanAbsoluteResidual": 116055.28886757781,
+          "biasRatio": -0.9950313492238084,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -100032.53930285934,
+      "meanAbsoluteResidual": 100836.37377538429,
+      "generationBiasRatio": -0.9901933190128598,
+      "modelOptimumRegret": 0.0028989090625769496,
+      "evaluatedRegret": 0.00009065605283484285,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -1.000e+5 (per-generation ratio -0.990) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 17417.136894798346,
+          "meanAbsoluteResidual": 17417.136894798346,
+          "biasRatio": 1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 15212.440304021144,
+          "meanAbsoluteResidual": 15212.440304021144,
+          "biasRatio": 1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 13563.551906095498,
+          "meanAbsoluteResidual": 13563.551906095498,
+          "biasRatio": 1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 12166.72732366103,
+          "meanAbsoluteResidual": 12166.72732366103,
+          "biasRatio": 1,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 10870.826853827682,
+          "meanAbsoluteResidual": 10870.826853827682,
+          "biasRatio": 1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 9787.233815720421,
+          "meanAbsoluteResidual": 9787.233815720421,
+          "biasRatio": 1,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 8915.24719554447,
+          "meanAbsoluteResidual": 8915.24719554447,
+          "biasRatio": 1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 8045.648742468601,
+          "meanAbsoluteResidual": 8045.648742468601,
+          "biasRatio": 1,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": 11997.351629517152,
+      "meanAbsoluteResidual": 11997.351629517152,
+      "generationBiasRatio": 1,
+      "modelOptimumRegret": 0.024899403927955498,
+      "evaluatedRegret": 0.002959870739834486,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 1.200e+4 (per-generation ratio 1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "quadratic-polynomial",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -982.8836729253289,
+          "meanAbsoluteResidual": 5644.162747561258,
+          "biasRatio": -0.17414162505324912,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 3099.958394034931,
+          "meanAbsoluteResidual": 8121.195362442977,
+          "biasRatio": 0.3817120824812195,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 2491.4866922294495,
+          "meanAbsoluteResidual": 6676.116727889439,
+          "biasRatio": 0.373193997915177,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -1663.775777393023,
+          "meanAbsoluteResidual": 4967.401661487441,
+          "biasRatio": -0.33493884545161207,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -2593.7726352566197,
+          "meanAbsoluteResidual": 4226.846743662187,
+          "biasRatio": -0.6136424603389681,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -667.5580987389964,
+          "meanAbsoluteResidual": 3644.655323011338,
+          "biasRatio": -0.18316083129294025,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -1775.902005541447,
+          "meanAbsoluteResidual": 6010.275715849044,
+          "biasRatio": -0.2954776269012766,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 244.89854970583076,
+          "meanAbsoluteResidual": 6431.032589272578,
+          "biasRatio": 0.03808075084463715,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -230.94356923565033,
+      "meanAbsoluteResidual": 5715.210858897032,
+      "generationBiasRatio": -0.10104681972462658,
+      "modelOptimumRegret": 0.024899403927955498,
+      "evaluatedRegret": 0.00009065605283484285,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -2.309e+2 (per-generation ratio -0.101) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -529.4460300743672,
+          "meanAbsoluteResidual": 529.4460300743672,
+          "biasRatio": -1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -817.5072845299652,
+          "meanAbsoluteResidual": 817.5072845299652,
+          "biasRatio": -1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -1212.0716085599036,
+          "meanAbsoluteResidual": 1212.470393676087,
+          "biasRatio": -0.9996710970278009,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -1092.0703639363699,
+          "meanAbsoluteResidual": 1093.1351414517583,
+          "biasRatio": -0.999025941555612,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -1621.6922944646808,
+          "meanAbsoluteResidual": 1621.6922944646808,
+          "biasRatio": -1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -1935.85889322501,
+          "meanAbsoluteResidual": 1935.863112592875,
+          "biasRatio": -0.9999978204203398,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -1449.148919937254,
+          "meanAbsoluteResidual": 1450.8841683661972,
+          "biasRatio": -0.998804006228218,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -2369.6681615523676,
+          "meanAbsoluteResidual": 2370.886937156447,
+          "biasRatio": -0.9994859410691507,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -1378.432944534989,
+      "meanAbsoluteResidual": 1378.9856702890465,
+      "generationBiasRatio": -0.9996231007876402,
+      "modelOptimumRegret": 0.005498822492889462,
+      "evaluatedRegret": 0.00014949983011004539,
+      "coverageRefusals": 105,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -1.378e+3 (per-generation ratio -1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 2,
+          "signedBias": -46.1255588995042,
+          "meanAbsoluteResidual": 46.1255588995042,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 4,
+          "signedBias": -50.22403153211394,
+          "meanAbsoluteResidual": 51.81917199684813,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 5,
+          "signedBias": -69.53464707334896,
+          "meanAbsoluteResidual": 72.94193512259207,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 3,
+          "signedBias": -53.27137228291182,
+          "meanAbsoluteResidual": 53.27137228291182,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 3,
+          "signedBias": -78.93103557906655,
+          "meanAbsoluteResidual": 78.95353887434597,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 3,
+          "signedBias": -32.60369448760988,
+          "meanAbsoluteResidual": 41.85835277530714,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 3,
+          "signedBias": -45.38014506843077,
+          "meanAbsoluteResidual": 51.88028162352324,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -55.277357458620266,
+      "meanAbsoluteResidual": 58.35339643772286,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.005498822492889462,
+      "evaluatedRegret": 0.00014949983011004539,
+      "coverageRefusals": 105,
+      "observedResiduals": 23,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -5.528e+1 (per-generation ratio undecidable) over 23 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -15294.479139360355,
+          "meanAbsoluteResidual": 21941.975330702564,
+          "biasRatio": -0.6970420351334266,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 1401.2341416117222,
+          "meanAbsoluteResidual": 19199.352085384566,
+          "biasRatio": 0.07298340774105634,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 917.8917078801485,
+          "meanAbsoluteResidual": 13244.268030640276,
+          "biasRatio": 0.06930482724727628,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -11555.2499706629,
+          "meanAbsoluteResidual": 12933.34516601742,
+          "biasRatio": -0.8934463452676198,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -10537.048872094534,
+          "meanAbsoluteResidual": 12004.988540037137,
+          "biasRatio": -0.8777225265107949,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -10844.08141290608,
+          "meanAbsoluteResidual": 13596.097869283774,
+          "biasRatio": -0.7975877724008568,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -13282.420884298368,
+          "meanAbsoluteResidual": 16922.096190354056,
+          "biasRatio": -0.7849158127271267,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -10469.617752300459,
+          "meanAbsoluteResidual": 12722.71945114496,
+          "biasRatio": -0.8229072245523942,
+          "streak": 5,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 8,
+      "signedBias": -8707.971522766356,
+      "meanAbsoluteResidual": 15320.605332945584,
+      "generationBiasRatio": -0.5914166852004857,
+      "modelOptimumRegret": 0.005498822492889462,
+      "evaluatedRegret": 0.00009065605283484285,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -8.708e+3 (per-generation ratio -0.591) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 8"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 22.428067846994864,
+          "meanAbsoluteResidual": 23.130730164461482,
+          "biasRatio": 0.9696221298475824,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 30.898863603618295,
+          "meanAbsoluteResidual": 35.528017377986316,
+          "biasRatio": 0.8697041344829922,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 12.605938829101387,
+          "meanAbsoluteResidual": 20.79904328055824,
+          "biasRatio": 0.6060826288526789,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 22.782079723443687,
+          "meanAbsoluteResidual": 33.32452222961896,
+          "biasRatio": 0.6836431012113623,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 23.981558430870884,
+          "meanAbsoluteResidual": 35.89899085978093,
+          "biasRatio": 0.6680287622719328,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 26.798181600664222,
+          "meanAbsoluteResidual": 35.0699365140848,
+          "biasRatio": 0.7641354466068544,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 12.997454619576123,
+          "meanAbsoluteResidual": 27.914395326105335,
+          "biasRatio": 0.4656183473700754,
+          "streak": 0,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 0.6958701705848993,
+          "meanAbsoluteResidual": 28.370434595885467,
+          "biasRatio": 0.024528005315992606,
+          "streak": 0,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": 19.14850185310679,
+      "meanAbsoluteResidual": 30.004508793560188,
+      "generationBiasRatio": 0.6314203194949338,
+      "modelOptimumRegret": 0.00009065605283484285,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 1.915e+1 (per-generation ratio 0.631) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "rbf-interpolation",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 14.864252549228276,
+          "meanAbsoluteResidual": 127.55493584447576,
+          "biasRatio": 0.11653216279573729,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 63.02265410015891,
+          "meanAbsoluteResidual": 136.04781454057976,
+          "biasRatio": 0.4632390039706281,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 180.48604167820878,
+          "meanAbsoluteResidual": 262.11551407233856,
+          "biasRatio": 0.6885744337452621,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 33.3609362599768,
+          "meanAbsoluteResidual": 111.10544663507747,
+          "biasRatio": 0.30026373387030975,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 22.0369153982832,
+          "meanAbsoluteResidual": 93.09229655554483,
+          "biasRatio": 0.23672114894205626,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 12.515786697500936,
+          "meanAbsoluteResidual": 127.3632110988546,
+          "biasRatio": 0.09826846064509669,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 99.70989985116107,
+          "meanAbsoluteResidual": 130.86846589356207,
+          "biasRatio": 0.7619092893795906,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 30.234793179639315,
+          "meanAbsoluteResidual": 79.71046461345115,
+          "biasRatio": 0.37930770227297345,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 57.02890996426965,
+      "meanAbsoluteResidual": 133.48226865673558,
+      "generationBiasRatio": 0.3806019919527068,
+      "modelOptimumRegret": 0.00009065605283484285,
+      "evaluatedRegret": 0.00009065605283484285,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 5.703e+1 (per-generation ratio 0.381) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -252.46660636563342,
+          "meanAbsoluteResidual": 409.62580375213224,
+          "biasRatio": -0.6163347231865377,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -738.115249295231,
+          "meanAbsoluteResidual": 914.1445107377484,
+          "biasRatio": -0.8074382557956233,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -1262.8907858249365,
+          "meanAbsoluteResidual": 1400.77605935429,
+          "biasRatio": -0.901565084148487,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -1989.9423977761357,
+          "meanAbsoluteResidual": 2043.1843633035928,
+          "biasRatio": -0.9739416733586532,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -2010.0667212974822,
+          "meanAbsoluteResidual": 2037.1187851730356,
+          "biasRatio": -0.9867204288368213,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -2503.3122453157885,
+          "meanAbsoluteResidual": 2503.3481433407187,
+          "biasRatio": -0.9999856599949848,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -3594.640979183862,
+          "meanAbsoluteResidual": 3594.640979183862,
+          "biasRatio": -1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -4370.472664442129,
+          "meanAbsoluteResidual": 4371.5745687431945,
+          "biasRatio": -0.9997479388070046,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -2090.2384561876497,
+      "meanAbsoluteResidual": 2159.3016516985717,
+      "generationBiasRatio": -0.910716720516014,
+      "modelOptimumRegret": 0.019421230258129786,
+      "evaluatedRegret": 0.0033049533281211585,
+      "coverageRefusals": 85,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -2.090e+3 (per-generation ratio -0.911) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 4,
+          "signedBias": -14.680183057693455,
+          "meanAbsoluteResidual": 280.34986649423416,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 7,
+          "signedBias": -129.4285260019016,
+          "meanAbsoluteResidual": 486.5514792091734,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 5,
+          "signedBias": -84.68251508627336,
+          "meanAbsoluteResidual": 525.9153903802048,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 5,
+          "signedBias": -148.36336752116148,
+          "meanAbsoluteResidual": 318.73765720902304,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 7,
+          "signedBias": -354.5870665620138,
+          "meanAbsoluteResidual": 416.42035542042123,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 6,
+          "signedBias": -264.50981696531517,
+          "meanAbsoluteResidual": 264.6055450317943,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 5,
+          "signedBias": -426.62911367967445,
+          "meanAbsoluteResidual": 426.62911367967445,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 4,
+          "signedBias": -250.95782407087177,
+          "meanAbsoluteResidual": 255.36544127513548,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -217.11848976021176,
+      "meanAbsoluteResidual": 381.5746081399981,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.019421230258129786,
+      "evaluatedRegret": 0.0033049533281211585,
+      "coverageRefusals": 85,
+      "observedResiduals": 43,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -2.171e+2 (per-generation ratio undecidable) over 43 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -16079.486135980478,
+          "meanAbsoluteResidual": 22730.773586556996,
+          "biasRatio": -0.7073884254203255,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 74.45434604785646,
+          "meanAbsoluteResidual": 20608.898822404728,
+          "biasRatio": 0.00361272801081998,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -214.30240768553267,
+          "meanAbsoluteResidual": 15014.808917624523,
+          "biasRatio": -0.014272736260664796,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -15256.10863245474,
+          "meanAbsoluteResidual": 16694.99940037199,
+          "biasRatio": -0.9138130686075262,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -13751.859688689336,
+          "meanAbsoluteResidual": 15241.610538747289,
+          "biasRatio": -0.9022576488048489,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -13142.998663133993,
+          "meanAbsoluteResidual": 16001.309319582077,
+          "biasRatio": -0.8213702016902991,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -15188.816309773318,
+          "meanAbsoluteResidual": 18987.197751824544,
+          "biasRatio": -0.7999503933282505,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -11143.798243164732,
+          "meanAbsoluteResidual": 14199.563755062896,
+          "biasRatio": -0.7847986343377189,
+          "streak": 5,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 8,
+      "signedBias": -10587.864466854284,
+      "meanAbsoluteResidual": 17434.89526152188,
+      "generationBiasRatio": -0.6175297975548517,
+      "modelOptimumRegret": 0.019421230258129786,
+      "evaluatedRegret": 0.00009065605283484285,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -1.059e+4 (per-generation ratio -0.618) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 8"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 3951.625108135486,
+          "meanAbsoluteResidual": 3951.625108135486,
+          "biasRatio": 1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 3669.662556879917,
+          "meanAbsoluteResidual": 3669.662556879917,
+          "biasRatio": 1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 3551.194219351724,
+          "meanAbsoluteResidual": 3551.194219351724,
+          "biasRatio": 1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 3372.5294484179203,
+          "meanAbsoluteResidual": 3372.5294484179203,
+          "biasRatio": 1,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 3059.1661138730374,
+          "meanAbsoluteResidual": 3059.1661138730374,
+          "biasRatio": 1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 3211.9438766805115,
+          "meanAbsoluteResidual": 3211.9438766805115,
+          "biasRatio": 1,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 3044.8321966146573,
+          "meanAbsoluteResidual": 3044.8321966146573,
+          "biasRatio": 1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 3130.3636800494446,
+          "meanAbsoluteResidual": 3130.3636800494446,
+          "biasRatio": 1,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": 3373.9146500003358,
+      "meanAbsoluteResidual": 3373.9146500003358,
+      "generationBiasRatio": 1,
+      "modelOptimumRegret": 0.003365627227582773,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 3.374e+3 (per-generation ratio 1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gaussian-process",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -1413.6031377071217,
+          "meanAbsoluteResidual": 4433.921168593224,
+          "biasRatio": -0.31881557744420247,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 945.4682435100157,
+          "meanAbsoluteResidual": 5699.977242696943,
+          "biasRatio": 0.1658722839150613,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 3179.2263672645113,
+          "meanAbsoluteResidual": 6609.165355790829,
+          "biasRatio": 0.48103295894676495,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -255.10162576155693,
+          "meanAbsoluteResidual": 4521.420178420392,
+          "biasRatio": -0.05642068546937822,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -2423.2770048457605,
+          "meanAbsoluteResidual": 3657.8704045309505,
+          "biasRatio": -0.6624830124774467,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 685.5608657617823,
+          "meanAbsoluteResidual": 4004.7050088370497,
+          "biasRatio": 0.17118885517134919,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -762.268138933362,
+          "meanAbsoluteResidual": 5594.474906962253,
+          "biasRatio": -0.13625374170232293,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -947.6072134912883,
+          "meanAbsoluteResidual": 3815.4322953815126,
+          "biasRatio": -0.2483616901388458,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -123.9502055253476,
+      "meanAbsoluteResidual": 4792.120820151645,
+      "generationBiasRatio": -0.07553007614987758,
+      "modelOptimumRegret": 0.003365627227582773,
+      "evaluatedRegret": 0.00009065605283484285,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -1.240e+2 (per-generation ratio -0.076) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": -1987.2390527071245,
+          "meanAbsoluteResidual": 1987.2390527071245,
+          "biasRatio": -1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": -2593.7169718065466,
+          "meanAbsoluteResidual": 2593.7169718065466,
+          "biasRatio": -1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": -2776.5229493270435,
+          "meanAbsoluteResidual": 2776.5229493270435,
+          "biasRatio": -1,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -2524.459645619207,
+          "meanAbsoluteResidual": 2524.459645619207,
+          "biasRatio": -1,
+          "streak": 4,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -2892.961913696849,
+          "meanAbsoluteResidual": 2892.961913696849,
+          "biasRatio": -1,
+          "streak": 5,
+          "escalated": true
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -2625.6292064025324,
+          "meanAbsoluteResidual": 2625.6292064025324,
+          "biasRatio": -1,
+          "streak": 6,
+          "escalated": true
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -2471.8719174280013,
+          "meanAbsoluteResidual": 2471.8719174280013,
+          "biasRatio": -1,
+          "streak": 7,
+          "escalated": true
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -2942.526750166176,
+          "meanAbsoluteResidual": 2942.526750166176,
+          "biasRatio": -1,
+          "streak": 8,
+          "escalated": true
+        }
+      ],
+      "escalated": true,
+      "escalatedAtGeneration": 5,
+      "signedBias": -2601.8660508941857,
+      "meanAbsoluteResidual": 2601.8660508941857,
+      "generationBiasRatio": -1,
+      "modelOptimumRegret": 0.02447236666694942,
+      "evaluatedRegret": 0.00020080320045995757,
+      "coverageRefusals": 125,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -2.602e+3 (per-generation ratio -1.000) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s), DISABLED at generation 5"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "exploit",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "honour",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 2,
+          "signedBias": -735.6127241906763,
+          "meanAbsoluteResidual": 735.6127241906763,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 1,
+          "signedBias": -1384.5787493079865,
+          "meanAbsoluteResidual": 1384.5787493079865,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 0,
+          "signedBias": 0,
+          "meanAbsoluteResidual": 0,
+          "biasRatio": null,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": -951.934732563113,
+      "meanAbsoluteResidual": 951.934732563113,
+      "generationBiasRatio": null,
+      "modelOptimumRegret": 0.02447236666694942,
+      "evaluatedRegret": 0.00020080320045995757,
+      "coverageRefusals": 125,
+      "observedResiduals": 3,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias -9.519e+2 (per-generation ratio undecidable) over 3 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "uniform",
+      "trainingLocality": 0.35,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 5977.993808829919,
+          "meanAbsoluteResidual": 11196.14057902634,
+          "biasRatio": 0.5339334359581424,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 18442.44709260697,
+          "meanAbsoluteResidual": 24338.176406630082,
+          "biasRatio": 0.7577579677490944,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 9887.209429482964,
+          "meanAbsoluteResidual": 15862.749485733468,
+          "biasRatio": 0.6232973318008492,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": -703.9116978388442,
+          "meanAbsoluteResidual": 7735.4320865401105,
+          "biasRatio": -0.09099836828296537,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 872.1826592645755,
+          "meanAbsoluteResidual": 8538.33706328123,
+          "biasRatio": 0.10214900779864518,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 2156.1576794939965,
+          "meanAbsoluteResidual": 8559.428469255567,
+          "biasRatio": 0.2519043984348551,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 5245.540095931059,
+          "meanAbsoluteResidual": 10282.253833865514,
+          "biasRatio": 0.5101546976650594,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": 6402.931280417991,
+          "meanAbsoluteResidual": 10170.375791297049,
+          "biasRatio": 0.6295668333019789,
+          "streak": 2,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 6035.068793523581,
+      "meanAbsoluteResidual": 12085.361714453666,
+      "generationBiasRatio": 0.41472066305320743,
+      "modelOptimumRegret": 0.0020899905653104078,
+      "evaluatedRegret": 0.00009065605283484285,
+      "coverageRefusals": 115,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 6.035e+3 (per-generation ratio 0.415) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "exploit",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 1941.881434944211,
+          "meanAbsoluteResidual": 1941.881434944211,
+          "biasRatio": 1,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 248.2968579918619,
+          "meanAbsoluteResidual": 288.442786914145,
+          "biasRatio": 0.8608183988520658,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 206.34034301623086,
+          "meanAbsoluteResidual": 248.63931011114624,
+          "biasRatio": 0.8298781995654388,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 195.88338674140454,
+          "meanAbsoluteResidual": 405.66408227104523,
+          "biasRatio": 0.4828709153760492,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": -173.04921507451803,
+          "meanAbsoluteResidual": 295.3429430545149,
+          "biasRatio": -0.5859263583033244,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": -440.11456771805655,
+          "meanAbsoluteResidual": 440.11456771805655,
+          "biasRatio": -1,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": -260.8275126392962,
+          "meanAbsoluteResidual": 316.8697514762223,
+          "biasRatio": -0.8231379341958694,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -234.2051774723817,
+          "meanAbsoluteResidual": 294.1489591143178,
+          "biasRatio": -0.7962128378001855,
+          "streak": 4,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 185.52569372368185,
+      "meanAbsoluteResidual": 528.8879794504576,
+      "generationBiasRatio": -0.003963702063228214,
+      "modelOptimumRegret": 0.00863864005833147,
+      "evaluatedRegret": 0,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 1.855e+2 (per-generation ratio -0.004) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gradient-boosted-trees",
+      "selection": "uniform",
+      "trainingLocality": 1,
+      "coveragePolicy": "ignore",
+      "generations": 8,
+      "candidatesPerGeneration": 16,
+      "readings": [
+        {
+          "generation": 1,
+          "samples": 16,
+          "signedBias": 2976.255996350327,
+          "meanAbsoluteResidual": 3568.2825789809626,
+          "biasRatio": 0.8340864072486918,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 2,
+          "samples": 16,
+          "signedBias": 2111.014203748522,
+          "meanAbsoluteResidual": 3576.126202969541,
+          "biasRatio": 0.5903075238216089,
+          "streak": 2,
+          "escalated": false
+        },
+        {
+          "generation": 3,
+          "samples": 16,
+          "signedBias": 3252.7862256409653,
+          "meanAbsoluteResidual": 4216.340649099004,
+          "biasRatio": 0.7714714005226447,
+          "streak": 3,
+          "escalated": false
+        },
+        {
+          "generation": 4,
+          "samples": 16,
+          "signedBias": 77.26394190610733,
+          "meanAbsoluteResidual": 1051.6149522587364,
+          "biasRatio": 0.07347170344065014,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 5,
+          "samples": 16,
+          "signedBias": 148.4289089642454,
+          "meanAbsoluteResidual": 1858.644996255851,
+          "biasRatio": 0.07985866545964837,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 6,
+          "samples": 16,
+          "signedBias": 1244.8698220953052,
+          "meanAbsoluteResidual": 3261.7340514374323,
+          "biasRatio": 0.3816588975262089,
+          "streak": 0,
+          "escalated": false
+        },
+        {
+          "generation": 7,
+          "samples": 16,
+          "signedBias": 1297.6975719344448,
+          "meanAbsoluteResidual": 1645.4538043167638,
+          "biasRatio": 0.7886563381664083,
+          "streak": 1,
+          "escalated": false
+        },
+        {
+          "generation": 8,
+          "samples": 16,
+          "signedBias": -294.98908232197186,
+          "meanAbsoluteResidual": 3477.636370063861,
+          "biasRatio": -0.08482459088054536,
+          "streak": 0,
+          "escalated": false
+        }
+      ],
+      "escalated": false,
+      "escalatedAtGeneration": null,
+      "signedBias": 1351.6659485397429,
+      "meanAbsoluteResidual": 2831.9792006727685,
+      "generationBiasRatio": 0.4293357931631645,
+      "modelOptimumRegret": 0.00863864005833147,
+      "evaluatedRegret": 0.00009065605283484285,
+      "coverageRefusals": 0,
+      "observedResiduals": 128,
+      "line": "[NEAT-AI] Surrogate guard over 0 generation(s): signed bias 1.352e+3 (per-generation ratio 0.429) over 128 prediction(s), uncertainty allocation 0.0% of 0 allocated exact evaluation(s) — 0.0% of all 0, OOD rate 0.0% of 0 candidate(s)"
+    }
+  ],
+  "acquisition": [
+    {
+      "problem": "sphere-2d-41L-64R",
+      "family": "gaussian-process",
+      "candidates": 62,
+      "slots": 16,
+      "outOfDistribution": 0,
+      "outOfDistributionRate": 0,
+      "explorationSlots": 4,
+      "uncertaintyFraction": 0.25,
+      "floor": 0.2,
+      "allocationRegret": 0.011089431724548154
+    },
+    {
+      "problem": "rastrigin-2d-41L-64R",
+      "family": "gaussian-process",
+      "candidates": 62,
+      "slots": 16,
+      "outOfDistribution": 0,
+      "outOfDistributionRate": 0,
+      "explorationSlots": 4,
+      "uncertaintyFraction": 0.25,
+      "floor": 0.2,
+      "allocationRegret": 0.0073030041132066585
+    },
+    {
+      "problem": "rosenbrock-2d-41L-64R",
+      "family": "gaussian-process",
+      "candidates": 62,
+      "slots": 16,
+      "outOfDistribution": 0,
+      "outOfDistributionRate": 0,
+      "explorationSlots": 4,
+      "uncertaintyFraction": 0.25,
+      "floor": 0.2,
+      "allocationRegret": 0.00009065605283484285
+    }
+  ]
+}

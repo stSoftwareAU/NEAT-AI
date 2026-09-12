@@ -49,6 +49,76 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3934:** The training-gain log, and what it measured. Jin (2011) §5
+  asks who should receive local search — per-generation backpropagation is a
+  large fixed cost per individual, and `selectTrainingCandidates` had always
+  answered "who is currently best?" without anything ever checking whether that
+  predicts "who will gain most from a gradient step?". A new opt-in log
+  (`trainingGainLog`, `enabled: false` by default — nothing is constructed and
+  no disk is touched) records one line per real training event: the pre-training
+  descriptor, the rank the rule selected at, the scores and errors either side
+  of the step, the wall-clock, and the outcome. **No selection behaviour
+  changes.** Measured over 10,546 real gradient steps
+  ([`docs/evidence/memetic-gain-3934.md`](./docs/evidence/memetic-gain-3934.md)):
+  score rank does order realised gain in the predicted direction and far too
+  weakly to act on (ρ = 0.104 over the 6,777 unbiased events, below the
+  pre-registered 0.2 floor), and judged on final exact score at the same seed
+  the current rule and a random baseline are indistinguishable — which arm is
+  ahead flips between runs of the identical configuration. **Stage 2 (a gain
+  predictor) is therefore a documented no-go**, recorded on #3919. The finding
+  worth acting on is one rung up: because a creature is trained at most once per
+  run (#3553) and a refused slot is lost rather than reallocated, a rule that
+  keeps choosing the head of the population keeps choosing creatures it has
+  already trained — on the harness today's rule converted **50.3 %** of its
+  offered slots into gradient steps against **90.4 %** for uniform selection,
+  and 88.1 % of the steps it did take produced a creature worse than the one
+  they trained. Both are harness-scale numbers the shipped log can now ask on a
+  real run. See [`docs/TRAINING_GAIN_LOG.md`](./docs/TRAINING_GAIN_LOG.md).
+
+- **Issue #3935:** A cheap-problem benchmark harness for the surrogate
+  techniques of the #3919 sweep (`deno task bench:cheap-problem`). Jin (2011) §6
+  grades surrogate techniques on analytic test functions because the "expensive"
+  objective can be called for **every** point in the design space; nothing in
+  the fleet had that test bed. The harness enumerates a small lattice
+  exhaustively and reports four things the production corpus cannot answer:
+  surrogate accuracy against complete ground truth (including where the _true_
+  optimum sits in the model's ordering), multi-fidelity rank agreement over a
+  record stride, a five-regime false-optimum study, and the acquisition path end
+  to end. The false-optimum study is the one Issue #3933 needed: varying
+  extrapolation and exploitation one at a time, **exploiting a fully covered
+  model fires the drift monitor in 7 of 12 cases and the uniform control fires
+  in 0 of 12** — the monitor has now been seen to fire where it should, and not
+  where it should not. Alongside it, `test/surrogate/CheapProblemInvariants.ts`
+  asserts the three GRQ-protecting safety properties in CI, where a 21 GiB
+  corpus cannot go: an approximate score never reaching `previousFittest`, a
+  screened-out creature never being exported, and a disabled policy producing
+  bit-identical scores. No `src/` behaviour changes and nothing is added to the
+  published package. Results are explicitly **not** transferable to production
+  creature scores, and every generated report says so at the top and the bottom.
+  See [`docs/CHEAP_PROBLEM_BENCHMARK.md`](./docs/CHEAP_PROBLEM_BENCHMARK.md).
+
+- **Issue #3933:** The surrogate uncertainty guard. A surrogate does not merely
+  make mistakes, it makes _consistent_ ones, and an evolutionary algorithm finds
+  and exploits them — Jin (2011) §4–§5's **false optimum**, which looks like a
+  healthy fitness trace because the trace is drawn from the model. The
+  `"surrogate"` screen now carries the four things that make that visible: every
+  prediction arrives with a **mandatory** uncertainty or is a **refusal** (there
+  is no nullable path); exact evaluations are allocated by an acquisition rule —
+  expected improvement or a confidence bound — with an **enforced and asserted
+  floor** on the share spent where the model is least sure, instead of by
+  predicted rank; a candidate whose descriptor falls outside the region the
+  evaluation archive covers is refused a prediction and routed to an exact
+  evaluation; and a scale-free **signed-bias** monitor disables the surrogate
+  path for the rest of the run when the residuals stop being symmetric. On by
+  default wherever the screen runs (`preSelection.uncertainty`), and
+  [`docs/SURROGATE_UNCERTAINTY.md`](./docs/SURROGATE_UNCERTAINTY.md) states that
+  the surrogate path must not run in production without it. Measured over 120
+  generations and 3 seeds
+  ([`docs/evidence/surrogate-uncertainty-3933.md`](./docs/evidence/surrogate-uncertainty-3933.md)):
+  reserving a quarter of the allocation for uncertainty did not collapse the
+  endpoint on that objective, and the monitor disabled the surrogate path on one
+  of the three runs.
+
 - **Issue #3974:** Depth-aware squash bias. `ModSquash` can now down-weight
   activations that block the gradient over a region of their input space when
   the neuron it is re-squashing sits inside a long single-file run, where a zero

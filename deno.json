@@ -1,13 +1,13 @@
 {
   "name": "@stsoftware/neat-ai",
   "exports": "./mod.ts",
-  "version": "7.0.34",
+  "version": "7.0.35",
   "license": "Apache-2.0",
   "neatCore": {
     "repo": "stSoftwareAU/NEAT-AI-core",
     "ref": "Develop",
-    "rev": "86523eff033f2b947facc1f3d8d42f6f18a96e18",
-    "assetSha256": "c02c3dd7f561dc0bbea7f426630d14e7c42943d07d17eb03f103b040279a32bc",
+    "rev": "282bc18e4c292a7b50a5df4c4a3e2361a5f70c36",
+    "assetSha256": "f7cc668074af3a16af5b7530dd8fe29248a8335ff3203b5808606f4467b23edb",
     "memoryModel": "wasm64"
   },
   "publish": {
@@ -40,6 +40,7 @@
     "pngjs": "npm:pngjs@7.0.0",
     "@stsoftware/tags": "jsr:@stsoftware/tags@1.0.14",
     "@architecture/": "./src/architecture/",
+    "@archive/": "./src/archive/",
     "@blackbox/": "./src/blackbox/",
     "@breed/": "./src/breed/",
     "@cache/": "./src/cache/",
@@ -63,6 +64,7 @@
     "@propagate/": "./src/propagate/",
     "@reconstruct/": "./src/reconstruct/",
     "@repair/": "./src/repair/",
+    "@surrogate/": "./src/surrogate/",
     "@transfer/": "./src/transfer/",
     "@upgrade/": "./src/upgrade/",
     "@utils/": "./src/utils/",
@@ -78,9 +80,17 @@
     "bench:smoke": "deno bench --allow-read --allow-write --allow-env --allow-ffi bench/FatherCompatibility.ts bench/Activate.ts",
     "bench:score-per-hour": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/score_per_hour_harness.ts",
     "bench:evolution-sweep": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/evolution_config_sweep.ts",
+    "bench:fitness-corpus": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/fitness_corpus_fidelity.ts",
     "bench:structural-scale": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/structural_weight_scale_sweep.ts",
     "bench:skip-null": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/skip_connection_null_comparison.ts",
-    "bench:squash-bias": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/deep_chain_squash_bias.ts"
+    "bench:squash-bias": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/deep_chain_squash_bias.ts",
+    "bench:cheap-problem": "deno run --allow-read --allow-write --allow-env bench/surrogate_cheap_problem.ts",
+    "rank-fidelity": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/rank_fidelity_sweep.ts",
+    "surrogate-feasibility": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_feasibility.ts",
+    "evolution-control-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/evolution_control_ab.ts",
+    "pre-selection-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/pre_selection_ab.ts",
+    "memetic-gain-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/memetic_gain_study.ts",
+    "surrogate-uncertainty-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_uncertainty_ab.ts"
   },
   "test": {
     "include": [
@@ -95,6 +105,7 @@
     "exclude": [
       "bench/score_per_hour_harness_test.ts",
       "bench/evolution_config_sweep_test.ts",
+      "bench/fitness_corpus_fidelity_test.ts",
       "bench/structural_weight_scale_sweep_test.ts",
       "bench/skip_connection_null_comparison.ts",
       "bench/skip_connection_null_comparison_test.ts",
@@ -119,7 +130,11 @@
       "bench/ScoreCalculationCache.ts",
       "bench/ScorePooledBuffers.ts",
       "bench/SelectiveCacheInvalidation.ts",
-      "bench/WasmScoreScan.ts"
+      "bench/WasmScoreScan.ts",
+      "bench/fitness_corpus_fidelity.ts",
+      "bench/lib/cheapProblem.ts",
+      "bench/lib/cheapProblemStudy.ts",
+      "bench/surrogate_cheap_problem.ts"
     ]
   },
   "fmt": {

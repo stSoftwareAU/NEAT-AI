@@ -1,4 +1,5 @@
 import { assert } from "@std/assert";
+import { inheritLineage } from "@archive/CreatureLineage.ts";
 import { format } from "@std/fmt/duration";
 import type { Breed } from "@breed/Breed.ts";
 import type { Creature } from "@creature";
@@ -295,6 +296,11 @@ export class DeDuplicator {
         // Issue #2308: Use shallowClone() instead of fromJSON(exportJSON())
         // for a ~19x speed improvement per clone at production scale.
         const tmpCreature = creatures[index].shallowClone();
+        // Issue #4004: lineage is keyed on the creature object, so the clone
+        // starts with none. The source may be a bred offspring that is about to
+        // be replaced and will never be evaluated — its crossover parents are
+        // then the only link that resolves to an archive record.
+        inheritLineage(tmpCreature, creatures[index]);
         this.mutator.mutate([tmpCreature]);
         const key3 = CreatureUtil.makeUUID(tmpCreature);
 
@@ -335,6 +341,8 @@ export class DeDuplicator {
       for (let fb = 0; fb < maxFallbackAttempts; fb++) {
         // Issue #2308: Use shallowClone() for performance.
         const fallbackCreature = creatures[index].shallowClone();
+        // Issue #4004: as above — carry the source's parents onto the clone.
+        inheritLineage(fallbackCreature, creatures[index]);
         this.mutator.mutate([fallbackCreature]);
         const fallbackKey = CreatureUtil.makeUUID(fallbackCreature);
 

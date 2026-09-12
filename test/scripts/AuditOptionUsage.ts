@@ -165,15 +165,20 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   // `skipTrainingAfterPopulationNoProgress`, making 109; #3874 then removed
   // `crossValidation`, `dataFuzzing` and `dataQuantisation` in 7.0.0,
   // leaving 106; #3865 then promoted the env-only Rust scorer config to a
-  // `rustScorer` option key, making 107; GRQ #4717 then added
-  // `skipTrainingAfterPopulationRegressions`, making 108; #3970 then added
-  // `structuralWeightScale` and `structuralNewbornGraceRounds`, making 110;
-  // #3973 then added `skipConnectionRate` and `skipMinRunLength`, making 112;
+  // `rustScorer` option key, making 107; #3928 then added the `racing`
+  // (early-exit scoring) option key, making 108; GRQ #4717 then added
+  // `skipTrainingAfterPopulationRegressions`, making 109; #3970 then added
+  // `structuralWeightScale` and `structuralNewbornGraceRounds`, making 111;
+  // #3973 then added `skipConnectionRate` and `skipMinRunLength`, making 113;
   // #3974 then added `deepChainSquashBias` and `deepChainMinLength`, making
-  // 114.
+  // 115; #3929 then added `evaluationArchive`, making 116; #3931 then added
+  // `evolutionControl` (the model-management policy), making 117; #3932 then
+  // added `preSelection` (offspring over-generation and screening), making
+  // 118; #3934 then added `trainingGainLog` (the per-training-event record of
+  // realised gain), making 119.
   assertEquals(
     topLevel.length,
-    114,
+    119,
     "NeatArguments top-level key count changed",
   );
   assert(

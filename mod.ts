@@ -192,6 +192,256 @@ export type {
 } from "@config/RustScorerConfig.ts";
 
 /**
+ * Racing / Early-Exit Configuration
+ *
+ * Issue #3928: `NeatOptions.racing` lets native batch scoring abandon a
+ * creature mid-corpus once it cannot catch the leader, instead of paying the
+ * whole corpus to establish that it is worse. Off by default; survivors keep
+ * an exact full-corpus score, and abandoned creatures rank below every
+ * fully-scored creature.
+ *
+ * @see {@link module:src/config/RacingConfig}
+ */
+export type {
+  RacingConfig,
+  RequiredRacingConfig,
+} from "@config/RacingConfig.ts";
+
+/**
+ * Evaluation Archive
+ *
+ * Issue #3929: `NeatOptions.evaluationArchive` keeps every **exact** fitness
+ * evaluation as a `(descriptor, score)` pair in an append-only, versioned,
+ * size-bounded JSONL (JSON Lines) file — the training set a surrogate model has
+ * to be fitted to. Off by default, and deliberately absent from the creature
+ * export: this is run infrastructure, not part of a creature.
+ *
+ * Read an archive with `readEvaluationArchive`; interpret a `descriptor` slot
+ * by its position in `DESCRIPTOR_V1_FIELD_NAMES`; score a fresh candidate
+ * against a fitted model with `computeEvaluationDescriptor`.
+ *
+ * @see {@link module:src/config/EvaluationArchiveConfig}
+ * @see {@link module:src/archive/EvaluationArchive}
+ */
+export type {
+  EvaluationArchiveConfig,
+  RequiredEvaluationArchiveConfig,
+} from "@config/EvaluationArchiveConfig.ts";
+export type { EvaluationArchiveRecord } from "@archive/EvaluationArchiveFormat.ts";
+export { readEvaluationArchive } from "@archive/EvaluationArchiveFormat.ts";
+export type { EvaluationArchiveErrorReason } from "@errors/EvaluationArchiveError.ts";
+export { EvaluationArchiveError } from "@errors/EvaluationArchiveError.ts";
+export {
+  computeEvaluationDescriptor,
+  DESCRIPTOR_V1_FIELD_NAMES,
+  EVALUATION_DESCRIPTOR_LENGTH,
+  EVALUATION_DESCRIPTOR_VERSION,
+  NO_REFERENCE_DISTANCE,
+} from "@archive/EvaluationDescriptor.ts";
+/**
+ * Issue #3931 — evolution control: the model-management policy of Jin (2011)
+ * §4. It owns the per-generation question *is this creature worth an exact
+ * evaluation?* and the guards that keep an approximate score out of every slot
+ * that must hold ground truth: the elite band, `previousFittest`, the export,
+ * and any ordering that would otherwise mix the two fidelities.
+ *
+ * Off by default (`strategy: "none"`): every creature is evaluated exactly,
+ * every generation, and no creature carries a fidelity tag.
+ *
+ * @see {@link module:src/config/EvolutionControlConfig}
+ * @see {@link module:src/NEAT/EvolutionControl}
+ */
+export type {
+  EvolutionControlConfig,
+  EvolutionControlStrategy,
+  RequiredEvolutionControlConfig,
+} from "@config/EvolutionControlConfig.ts";
+export {
+  DEFAULT_EVOLUTION_CONTROL_CONFIG,
+  EVOLUTION_CONTROL_STRATEGIES,
+  resolveEvolutionControlConfig,
+} from "@config/EvolutionControlConfig.ts";
+export type {
+  CanaryReading,
+  EvolutionControlReason,
+  GenerationFidelity,
+  GenerationPlan,
+  GenerationSummary,
+} from "@neat/EvolutionControl.ts";
+export {
+  EvolutionControl,
+  orderingDivergence,
+} from "@neat/EvolutionControl.ts";
+export type { EvolutionControlErrorReason } from "@errors/EvolutionControlError.ts";
+export { EvolutionControlError } from "@errors/EvolutionControlError.ts";
+/**
+ * Issue #3932 — offspring pre-selection: the surplus-and-screen lever of Jin
+ * (2011) §4. Breeding produced exactly the offspring the population budget
+ * called for and every one of them cost a full evaluation; this stage breeds a
+ * surplus, ranks it with a cheap screen, and discards the rest before anyone
+ * pays for them.
+ *
+ * Off by default (`ratio: 1`, `screen: "none"`): the breeder is asked for
+ * exactly what the budget calls for and nothing is screened or discarded.
+ *
+ * @see {@link module:src/config/PreSelectionConfig}
+ * @see {@link module:src/NEAT/PreSelection}
+ */
+export type {
+  PreSelectionConfig,
+  PreSelectionScreenName,
+  RequiredPreSelectionConfig,
+} from "@config/PreSelectionConfig.ts";
+export {
+  DEFAULT_PRE_SELECTION_CONFIG,
+  MAX_PRE_SELECTION_RATIO,
+  PRE_SELECTION_SCREENS,
+  resolvePreSelectionConfig,
+} from "@config/PreSelectionConfig.ts";
+export type {
+  PreSelectionOutcome,
+  PreSelectionSummary,
+  ScreenRank,
+  SurvivorReason,
+} from "@neat/PreSelection.ts";
+export { PreSelection } from "@neat/PreSelection.ts";
+export type {
+  OffspringScreen,
+  SampledEvaluator,
+} from "@neat/OffspringScreen.ts";
+export {
+  createOffspringScreen,
+  MIN_TRAINING_POINTS,
+  SampledCorpusScreen,
+  SurrogateScreen,
+} from "@neat/OffspringScreen.ts";
+export type { PreSelectionErrorReason } from "@errors/PreSelectionError.ts";
+export { PreSelectionError } from "@errors/PreSelectionError.ts";
+/**
+ * Issue #3933 — the surrogate uncertainty guard. A surrogate makes
+ * *consistent* mistakes and an evolutionary algorithm finds them, so a
+ * prediction here is either a value with a **mandatory** uncertainty beside it
+ * or a refusal: there is no shape that carries a number without its
+ * confidence. Exact evaluations are allocated by an acquisition rule with an
+ * enforced exploration floor rather than by predicted rank, candidates outside
+ * the region the archive covers are refused a prediction, and a one-directional
+ * signed bias disables the surrogate path for the rest of the run.
+ *
+ * On by default wherever a surrogate screen runs
+ * (`preSelection.uncertainty.enabled`), and
+ * [`docs/SURROGATE_UNCERTAINTY.md`](./docs/SURROGATE_UNCERTAINTY.md) states
+ * that the surrogate path must not run in production without it.
+ *
+ * @see {@link module:src/config/SurrogateUncertaintyConfig}
+ * @see {@link module:src/surrogate/SurrogateGuard}
+ */
+export type {
+  AcquisitionRule,
+  RequiredSurrogateUncertaintyConfig,
+  SurrogateUncertaintyConfig,
+} from "@config/SurrogateUncertaintyConfig.ts";
+export {
+  ACQUISITION_RULES,
+  DEFAULT_SURROGATE_UNCERTAINTY_CONFIG,
+  resolveSurrogateUncertaintyConfig,
+} from "@config/SurrogateUncertaintyConfig.ts";
+export type {
+  OutOfDistributionVerdict,
+  SurrogateVerdict,
+  UncertainPrediction,
+  UncertainSurrogate,
+} from "@surrogate/UncertainSurrogate.ts";
+export { assertVerdict, isPrediction } from "@surrogate/UncertainSurrogate.ts";
+export {
+  acquisitionValue,
+  confidenceBound,
+  expectedImprovement,
+} from "@surrogate/Acquisition.ts";
+export type {
+  AllocatedSlot,
+  Allocation,
+  AllocationDiagnostics,
+  AllocationReason,
+} from "@surrogate/ExactEvaluationAllocator.ts";
+export {
+  allocateExactEvaluations,
+  assertUncertaintyFloor,
+} from "@surrogate/ExactEvaluationAllocator.ts";
+export type {
+  CoverageOptions,
+  CoverageReading,
+} from "@surrogate/CoverageRegion.ts";
+export { CoverageRegion } from "@surrogate/CoverageRegion.ts";
+export type { DriftReading } from "@surrogate/DriftMonitor.ts";
+export { SignedBiasDriftMonitor } from "@surrogate/DriftMonitor.ts";
+export type { SurrogateRunDiagnostics } from "@surrogate/SurrogateGuard.ts";
+export { SurrogateGuard } from "@surrogate/SurrogateGuard.ts";
+export type { SurrogateUncertaintyErrorReason } from "@errors/SurrogateUncertaintyError.ts";
+export { SurrogateUncertaintyError } from "@errors/SurrogateUncertaintyError.ts";
+
+/**
+ * Issue #3934 — the training-gain log: the memetic-budget instrumentation of
+ * Jin (2011) §5. Per-generation backpropagation is local search, and the rule
+ * that allocates it (`selectTrainingCandidates`) spends the budget on the
+ * creatures with the best *current* score. This records, per real training
+ * event, the pre-training design point, the rank the rule chose it at, and the
+ * gain the step realised — so the rule can be measured against outcomes.
+ *
+ * Off by default (`enabled: false`): nothing is recorded and no disk is
+ * touched. It changes no selection behaviour.
+ *
+ * @see {@link module:src/config/TrainingGainLogConfig}
+ * @see {@link module:src/archive/TrainingGainLog}
+ */
+export type {
+  RequiredTrainingGainLogConfig,
+  TrainingGainLogConfig,
+} from "@config/TrainingGainLogConfig.ts";
+export {
+  DEFAULT_TRAINING_GAIN_LOG_CONFIG,
+  resolveTrainingGainLogConfig,
+  TRAINING_GAIN_LOG_FILE_NAME,
+} from "@config/TrainingGainLogConfig.ts";
+export type {
+  TrainingDispatch,
+  TrainingOutcome,
+} from "@archive/TrainingGainLog.ts";
+export { TrainingGainLog } from "@archive/TrainingGainLog.ts";
+export type {
+  TrainingEventOutcome,
+  TrainingGainRecord,
+} from "@archive/TrainingGainRecord.ts";
+export {
+  readTrainingGainLog,
+  trainingErrorGain,
+  trainingGain,
+} from "@archive/TrainingGainRecord.ts";
+export type { TrainingGainLogErrorReason } from "@errors/TrainingGainLogError.ts";
+export { TrainingGainLogError } from "@errors/TrainingGainLogError.ts";
+export type { RankedTrainingCandidate } from "@neat/TrainingCandidates.ts";
+export { selectRankedTrainingCandidates } from "@neat/TrainingCandidates.ts";
+export {
+  assertExactScore,
+  EXACT_SCORE_FIDELITY,
+  isExactScore,
+  markScoreFidelity,
+  partialCorpusFidelity,
+  refreshExactScoreFidelity,
+  SCORE_FIDELITY_TAG,
+  scoreFidelity,
+} from "@architecture/ScoreFidelity.ts";
+
+export type {
+  DescriptorCollisionGroup,
+  DescriptorCollisionReport,
+} from "@archive/DescriptorCollisions.ts";
+export {
+  DEFAULT_COLLISION_TOLERANCE,
+  formatDescriptorCollisionReport,
+  reportDescriptorCollisions,
+} from "@archive/DescriptorCollisions.ts";
+
+/**
  * MCMC Acceptance Criterion
  *
  * Issue #2199: Markov Chain Monte Carlo (MCMC) temperature-based acceptance
@@ -349,6 +599,26 @@ export { BreedExhaustionError } from "@errors/BreedExhaustionError.ts";
 export type { BreedExhaustionReason } from "@errors/BreedExhaustionError.ts";
 export { DatasetError } from "@errors/DatasetError.ts";
 export type { DatasetErrorReason } from "@errors/DatasetError.ts";
+
+/**
+ * Issue #3926 — which corpus fidelity a run scored against. Fitness is
+ * evaluated over every record of the dataset directory it is given, so a
+ * cheaper fitness comes from pointing the run at a smaller corpus (one
+ * NEAT-AI-Refinery published), not from a scorer flag. These read the
+ * `manifest.json` beside such a corpus so the effective fitness sample rate is
+ * recorded rather than guessed. Distinct from `trainingSampleRate`, which
+ * samples records for backpropagation only.
+ */
+export {
+  assertFitnessCorpusSampleRate,
+  DEFAULT_SAMPLE_RATE_SIGMAS,
+  FITNESS_CORPUS_MANIFEST_FILE,
+  readFitnessCorpusProvenance,
+} from "@architecture/FitnessCorpusProvenance.ts";
+export type {
+  FitnessCorpusProvenance,
+  SampleRateAgreementOptions,
+} from "@architecture/FitnessCorpusProvenance.ts";
 export { ScorerStrictError } from "@errors/ScorerStrictError.ts";
 export type { ScorerStrictReason } from "@errors/ScorerStrictError.ts";
 export { validateDNA } from "@reconstruct/validateDNA.ts";

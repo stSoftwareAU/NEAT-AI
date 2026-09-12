@@ -15,6 +15,7 @@ import { addTag, removeTag } from "@stsoftware/tags/mod";
 import type { CreatureExport } from "../../mod.ts";
 import { Creature } from "@creature";
 import type { Approach } from "@neat/LogApproach.ts";
+import { recordLineage } from "@archive/CreatureLineage.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type { NeuronExport } from "@architecture/NeuronInterfaces.ts";
 import type { SynapseExport } from "@architecture/SynapseInterfaces.ts";
@@ -576,7 +577,10 @@ export function fineTuneImprovement(
   UUIDs.add(fittestUUID);
 
   const fineTuned: Creature[] = [];
-  const acceptCandidate = (candidate: Creature | null | undefined): void => {
+  const acceptCandidate = (
+    candidate: Creature | null | undefined,
+    ...parents: readonly Creature[]
+  ): void => {
     if (!candidate) return;
     const memetic = candidate.memetic
       ? JSON.parse(JSON.stringify(candidate.memetic))
@@ -595,6 +599,11 @@ export function fineTuneImprovement(
     const candidateUUID = CreatureUtil.makeUUID(candidate);
     if (!UUIDs.has(candidateUUID)) {
       UUIDs.add(candidateUUID);
+      // Issue #4004: memetic candidates are the largest slice of most
+      // generations and used to reach the archive naming nobody. Neither
+      // `fittest` nor `previousFittest` is mutated by the tuning above, so the
+      // UUIDs materialised here are the ones those parents are archived under.
+      recordLineage(candidate, ...parents);
       fineTuned.push(candidate);
     }
   };
@@ -604,8 +613,9 @@ export function fineTuneImprovement(
   // placeholder collapses into the safe candidate rather than being scored.
   const compactCandidates = fittest.compactVariants(feedbackLoop);
   const forwardOnly = feedbackLoop !== true;
-  acceptCandidate(compactCandidates.safe);
-  acceptCandidate(compactCandidates.aggressive);
+  // A compaction of the fittest has exactly one parent: the fittest.
+  acceptCandidate(compactCandidates.safe, fittest);
+  acceptCandidate(compactCandidates.aggressive, fittest);
   const resultSame = tuneRandomize(
     fittest,
     previousFittest,
@@ -613,7 +623,7 @@ export function fineTuneImprovement(
     effectiveBacktrack,
     quantumStepConfig,
   );
-  acceptCandidate(resultSame.tuned);
+  acceptCandidate(resultSame.tuned, fittest, previousFittest);
 
   for (
     let attempt = 0;
@@ -627,7 +637,7 @@ export function fineTuneImprovement(
       effectiveBacktrack,
       quantumStepConfig,
     );
-    acceptCandidate(resultRandomize.tuned);
+    acceptCandidate(resultRandomize.tuned, fittest, previousFittest);
   }
 
   return fineTuned;
