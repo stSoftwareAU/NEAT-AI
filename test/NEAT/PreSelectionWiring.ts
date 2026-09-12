@@ -251,6 +251,62 @@ Deno.test("pre-selection wiring — an active stage screens a real generation's 
   }
 });
 
+Deno.test("pre-selection wiring — a real evolve run reports the elite screen rank", async () => {
+  // Issue #4008: the diagnostic that decides whether the screen is worth
+  // having. A bred offspring is screened before fitness recomputes its UUID,
+  // so a rank map keyed on that UUID stays empty for a whole production run
+  // and the line is never logged — silently, because an empty list renders as
+  // no line at all. Only a run through the real evolve loop catches it: a
+  // fixture that assigns the UUID itself cannot.
+  const dataDir = makeDataDir(buildDataSet(), 2000);
+  const workers = [new WorkerHandler(dataDir, "MSE", true)];
+  try {
+    const seed = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const neat = new Neat(2, 1, {
+      creatures: [seed.exportJSON()],
+      populationSize: 30,
+      elitism: 2,
+      preSelection: { ratio: 3, screen: "surrogate" },
+    }, workers);
+    await neat.populatePopulation(seed);
+
+    let fittest: Creature | undefined;
+    let generations = 0;
+    while (
+      generations < MAX_SCREENING_GENERATIONS &&
+      neat.preSelection.eliteScreenRanks.length === 0
+    ) {
+      // Generations are sequential: each breeds from the one before it.
+      // deno-lint-ignore no-await-in-loop
+      fittest = (await neat.evolve(fittest)).fittest;
+      generations++;
+    }
+
+    const ranks = neat.preSelection.eliteScreenRanks;
+    assert(
+      ranks.length > 0,
+      `no elite carried a screen rank over ${generations} generation(s): the ` +
+        `stage records nothing for the creatures a real run actually breeds`,
+    );
+    for (const rank of ranks) {
+      assert(
+        rank.rank >= 0 && rank.rank < rank.of,
+        `an elite's rank ${rank.rank} must sit inside the ${rank.of} ` +
+          `candidates it was taken over`,
+      );
+    }
+    assert(
+      neat.preSelection.describeEliteRanks(ranks)?.includes(
+        "elite screen rank",
+      ),
+      "the run must be able to write the elite screen rank line",
+    );
+  } finally {
+    await Promise.all(workers.map((w) => w.waitUntilReady().catch(() => {})));
+    for (const worker of workers) worker.terminate();
+  }
+});
+
 Deno.test("pre-selection wiring — a screened-out creature never reaches the archive", async () => {
   const dataDir = makeDataDir(buildDataSet(), 2000);
   const archiveDir = await Deno.makeTempDir({
