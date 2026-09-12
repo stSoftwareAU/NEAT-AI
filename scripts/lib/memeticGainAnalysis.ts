@@ -260,6 +260,17 @@ export interface PolicySummary {
    * though the two cost the same.
    */
   readonly gainPerSecond: number;
+  /**
+   * The same rate with the trimmed centre in place of the raw mean.
+   *
+   * A memetic run occasionally rescues a creature from a catastrophic score,
+   * and one such event carries a gain four orders of magnitude above the rest —
+   * enough to set the sign of {@link gainPerSecond} for a whole arm on its own.
+   * Reporting only the raw rate would let one lucky step decide which rule
+   * spends wall-clock better, so the robust rate is reported beside it and the
+   * two are read together: they agree, or the arm is outlier-driven and says so.
+   */
+  readonly trimmedGainPerSecond: number;
 }
 
 /**
@@ -304,6 +315,7 @@ export function summarisePolicy(
       improvedFraction: 0,
       trainingSeconds,
       gainPerSecond: 0,
+      trimmedGainPerSecond: 0,
     };
   }
   const total = gains.reduce((sum, gain) => sum + gain, 0);
@@ -316,17 +328,22 @@ export function summarisePolicy(
   const kept = sorted.length - 2 * trim > 0
     ? sorted.slice(trim, sorted.length - trim)
     : sorted;
+  const trimmedMeanGain = kept.reduce((sum, gain) => sum + gain, 0) /
+    kept.length;
   return {
     events: observations.length,
     scored: gains.length,
     failed,
     meanGain: total / gains.length,
-    trimmedMeanGain: kept.reduce((sum, gain) => sum + gain, 0) / kept.length,
+    trimmedMeanGain,
     maxGain: sorted[sorted.length - 1],
     medianGain,
     improvedFraction: gains.filter((gain) => gain > 0).length / gains.length,
     trainingSeconds,
     gainPerSecond: trainingSeconds > 0 ? total / trainingSeconds : 0,
+    trimmedGainPerSecond: trainingSeconds > 0
+      ? (trimmedMeanGain * gains.length) / trainingSeconds
+      : 0,
   };
 }
 

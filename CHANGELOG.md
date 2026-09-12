@@ -58,19 +58,22 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   no disk is touched) records one line per real training event: the pre-training
   descriptor, the rank the rule selected at, the scores and errors either side
   of the step, the wall-clock, and the outcome. **No selection behaviour
-  changes.** Measured over 15,000 real gradient steps
+  changes.** Measured over 10,645 real gradient steps
   ([`docs/evidence/memetic-gain-3934.md`](./docs/evidence/memetic-gain-3934.md)):
   score rank does order realised gain in the predicted direction and far too
-  weakly to act on (ρ = 0.139 over 7,500 unbiased events, below the
+  weakly to act on (ρ = 0.119 over the 6,804 unbiased events, below the
   pre-registered 0.2 floor), and judged on final exact score at the same seed
-  the current rule and a random baseline agree to four significant figures with
-  the sign of the paired delta flipping between runs. **Stage 2 (a gain
-  predictor) is therefore a documented no-go**, recorded on #3919. The number
-  worth keeping is that 95.2 % of the gradient steps the rule dispatches produce
-  a creature worse than the one they trained — a statement about how much local
-  search this lineage absorbs, not about who receives it, and one the shipped
-  log can now ask on a real run. See
-  [`docs/TRAINING_GAIN_LOG.md`](./docs/TRAINING_GAIN_LOG.md).
+  the current rule and a random baseline are indistinguishable — which arm is
+  ahead flips between runs of the identical configuration. **Stage 2 (a gain
+  predictor) is therefore a documented no-go**, recorded on #3919. The finding
+  worth acting on is one rung up: because a creature is trained at most once per
+  run (#3553) and a refused slot is lost rather than reallocated, a rule that
+  keeps choosing the head of the population keeps choosing creatures it has
+  already trained — on the harness today's rule converted **51.2 %** of its
+  offered slots into gradient steps against **90.7 %** for uniform selection,
+  and 86.9 % of the steps it did take produced a creature worse than the one
+  they trained. Both are harness-scale numbers the shipped log can now ask on a
+  real run. See [`docs/TRAINING_GAIN_LOG.md`](./docs/TRAINING_GAIN_LOG.md).
 
 - **Issue #3935:** A cheap-problem benchmark harness for the surrogate
   techniques of the #3919 sweep (`deno task bench:cheap-problem`). Jin (2011) §6

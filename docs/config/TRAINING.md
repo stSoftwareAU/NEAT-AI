@@ -69,21 +69,30 @@ still bounds the total work.
 
 > [!NOTE]
 > **Who receives those steps has been measured, and on the harness it is no
-> better than random** (Issue #3934). Over 15,000 real gradient steps —
+> better than random** (Issue #3934). Over 10,645 real gradient steps —
 > 20-creature populations on a 600-record corpus, **not** GRQ's scale —
 > selecting the top `trainPerGen` by current score reached the same final exact
-> score as drawing `trainPerGen` creatures uniformly — the two means agree to
-> four significant figures and the paired delta's **sign flips between runs of
-> the same configuration**. Score rank does order realised gain, in the
-> direction you would expect (the incumbent is nearest its local optimum, so it
-> gains least), but only weakly — ρ = 0.139, below the 0.2 materiality floor, so
-> no gain predictor was built. The number worth knowing is a different one:
-> **only 4.8 % of those gradient steps produced a creature better than the one
-> they trained.** Raising `trainPerGen` buys gradient coverage, not guaranteed
-> progress. Magnitudes on a production lineage are untested — the
-> per-training-event record lives in
+> score as drawing `trainPerGen` creatures uniformly, and which arm was ahead
+> **flipped between runs of the same configuration**. Score rank does order
+> realised gain, in the direction you would expect (the incumbent is nearest its
+> local optimum, so it gains least), but only weakly — ρ = 0.119 over the 6,804
+> unbiased events, below the 0.2 materiality floor, so no gain predictor was
+> built.
+>
+> The number worth knowing is a different one, and it bears directly on this
+> setting: **`trainPerGen` is not the number of gradient steps a generation
+> buys.** A creature is trained at most once per run (Issue #3553) and a refused
+> slot is lost rather than reallocated, so a rule that keeps choosing the head
+> of the population keeps choosing creatures it has already trained. On the
+> harness today's rule converted **51.2 %** of its offered slots into gradient
+> steps against **90.7 %** for uniform selection, and of the steps it did take,
+> **86.9 % produced a creature worse than the one they trained**. Raising
+> `trainPerGen` buys neither guaranteed progress nor, necessarily, more steps.
+>
+> Both percentages are harness-scale properties of a 20-creature population, not
+> production readings. The per-training-event record lives in
 > [`trainingGainLog`](../TRAINING_GAIN_LOG.md) (off by default) so the same
-> question can be asked there, and the study with its caveats is in
+> question can be asked on a real lineage, and the study with its caveats is in
 > [`docs/evidence/memetic-gain-3934.md`](../evidence/memetic-gain-3934.md).
 
 **Choosing a value for supervised tasks**

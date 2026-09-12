@@ -130,6 +130,25 @@ Deno.test("summarisePolicy - the trimmed mean survives an explosive recovery", (
   assertAlmostEquals(summary.medianGain, 0.01, 1e-12);
 });
 
+Deno.test("summarisePolicy - one explosive recovery cannot set the rate's sign", () => {
+  // Eleven losing steps and one enormous win: the raw rate says the policy
+  // gained, the robust rate says eleven of twelve steps lost. Both are
+  // reported so the disagreement is visible rather than averaged away.
+  const gains = [...Array.from({ length: 11 }, () => -1), 1_000];
+  const summary = summarisePolicy(observations(gains));
+  assert(summary.gainPerSecond > 0, "the raw rate follows the outlier");
+  assert(
+    summary.trimmedGainPerSecond < 0,
+    "the robust rate follows the eleven steps that lost",
+  );
+  // The robust rate is the trimmed centre carried over the same wall-clock.
+  assertAlmostEquals(
+    summary.trimmedGainPerSecond,
+    (summary.trimmedMeanGain * summary.scored) / summary.trainingSeconds,
+    1e-9,
+  );
+});
+
 Deno.test("summarisePolicy - no events reads as zero, never NaN", () => {
   const summary = summarisePolicy([]);
   assertEquals(summary.events, 0);

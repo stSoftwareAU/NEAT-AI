@@ -185,9 +185,9 @@ Deno.test("runMemeticArm - a real arm logs one event per scheduled step", async 
     assertEquals(arm.policy, "top");
     assertEquals(arm.seed, TINY.seed);
     assertEquals(
-      arm.events.length,
+      arm.events.length + arm.skippedAlreadyTrained,
       TINY.generations * TINY.trainPerGen,
-      "every generation schedules `trainPerGen` gradient steps",
+      "every offered slot is either a gradient step or a counted refusal",
     );
     assertEquals(arm.bestScorePerGeneration.length, TINY.generations);
     assert(Number.isFinite(arm.finalScore));
@@ -217,10 +217,39 @@ Deno.test("runMemeticArm - the random arm trains past the top rule's reach", asy
     const arm = withAvailableTrainer(() =>
       runMemeticArm("random", { ...TINY, generations: 6 })
     );
-    assertEquals(arm.events.length, 6 * TINY.trainPerGen);
+    assertEquals(
+      arm.events.length + arm.skippedAlreadyTrained,
+      6 * TINY.trainPerGen,
+    );
     assert(
       arm.events.some((event) => event.rank >= TINY.trainPerGen),
       "the baseline exists to observe ranks the top rule cannot",
+    );
+  });
+});
+
+Deno.test("runMemeticArm - no creature is trained twice in a run (#3553)", async () => {
+  await initWasmForTests();
+  await withRngTestLock(() => {
+    // Long enough for the top rule to keep meeting the elites it already
+    // trained: with elitism 2 the head of the population survives generations.
+    const arm = withAvailableTrainer(() =>
+      runMemeticArm("top", { ...TINY, generations: 8 })
+    );
+    const trained = new Set(arm.events.map((event) => event.creatureUuid));
+    assertEquals(
+      trained.size,
+      arm.events.length,
+      "production dispatches nothing for a creature already trained this run",
+    );
+    assert(
+      arm.skippedAlreadyTrained > 0,
+      "the top rule keeps choosing creatures it has already trained, and the " +
+        "refused slots are what makes that visible",
+    );
+    assertEquals(
+      arm.events.length + arm.skippedAlreadyTrained,
+      8 * TINY.trainPerGen,
     );
   });
 });

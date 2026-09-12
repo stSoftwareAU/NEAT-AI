@@ -112,6 +112,8 @@ export const DEFAULT_STUDY_SETTINGS: StudySettings = Object.freeze({
 export interface StudyEvent extends GainObservation {
   /** Which rule selected the creature. */
   readonly policy: SelectionPolicy;
+  /** UUID of the creature that received the step, as the guard keys it. */
+  readonly creatureUuid: string;
   /** Generation the step ran in. */
   readonly generation: number;
   /** Finite-score creatures the rank was taken over. */
@@ -136,6 +138,16 @@ export interface ArmResult {
   readonly exactEvaluations: number;
   /** Every training event, in dispatch order. */
   readonly events: readonly StudyEvent[];
+  /**
+   * Slots the #3553 once-per-run guard refused.
+   *
+   * Production dispatches nothing for a creature it has already trained this
+   * run and does **not** hand the slot to the next candidate, so a rule that
+   * keeps choosing the same creatures spends less of its budget than it was
+   * given. Counting the refusals is the only way to tell a rule that trained
+   * little from one that was allowed little.
+   */
+  readonly skippedAlreadyTrained: number;
 }
 
 /** One corpus record, in the shape both the scorer and the trainer read. */
@@ -311,6 +323,9 @@ function runSeededArm(
     const bestScorePerGeneration: number[] = [];
     let exactEvaluations = 0;
     let bestScore = Number.NEGATIVE_INFINITY;
+    /** The run's `alreadyScheduledMap`, keyed the same way production keys it. */
+    const alreadyTrained = new Set<string>();
+    let skippedAlreadyTrained = 0;
 
     for (
       let generation = 1;
@@ -336,8 +351,21 @@ function runSeededArm(
           rng,
         )
       ) {
+        // Issue #3553, as production applies it: a creature is trained at most
+        // once per run, and the refused slot is lost rather than reallocated
+        // (`scheduleTraining` simply returns). Without this the top rule
+        // re-trains the same rolled-back elites every generation — a rule
+        // nobody runs, and one whose measured gain is mostly repeat steps on
+        // creatures already at their local optimum.
+        const uuid = CreatureUtil.makeUUID(candidate.creature);
+        if (alreadyTrained.has(uuid)) {
+          skippedAlreadyTrained++;
+          continue;
+        }
+        alreadyTrained.add(uuid);
         const event = trainOne(
           candidate.creature,
+          uuid,
           candidate.rank,
           rankedPopulation,
           generation,
@@ -377,6 +405,7 @@ function runSeededArm(
       bestScorePerGeneration,
       exactEvaluations,
       events,
+      skippedAlreadyTrained,
     };
   } finally {
     Deno.removeSync(dataDir, { recursive: true });
@@ -395,6 +424,7 @@ function runSeededArm(
  */
 function trainOne(
   creature: Creature,
+  creatureUuid: string,
   rank: number,
   rankedPopulation: number,
   generation: number,
@@ -449,6 +479,7 @@ function trainOne(
 
   return {
     policy,
+    creatureUuid,
     generation,
     rank,
     rankedPopulation,

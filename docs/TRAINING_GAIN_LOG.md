@@ -83,11 +83,12 @@ fault can never be averaged in with a measurement.
   no run achieved. A step the run **abandoned** past its hard deadline records
   nothing — its cost belongs to the abandon.
 - **Nothing is declined silently.** Three refusals exist — a creature with no
-  UUID, a creature whose pre-training score is not finite (a `NaN` is written
-  out as `null`, and the reader would refuse that line and every earlier one
-  with it), and an outcome arriving with no open event — and each is counted and
-  warned about at the next flush. A log quietly holding fewer events than the
-  run dispatched is the failure those tallies exist to surface.
+  UUID (universally unique identifier — see the [glossary](GLOSSARY.md)), a
+  creature whose pre-training score is not finite (a `NaN` is written out as
+  `null`, and the reader would refuse that line and every earlier one with it),
+  and an outcome arriving with no open event — and each is counted and warned
+  about at the next flush. A log quietly holding fewer events than the run
+  dispatched is the failure those tallies exist to surface.
 - **The design point is the creature before the step.** The question is which
   creature a gradient step will reward, so the descriptor is computed at
   dispatch.
@@ -131,11 +132,12 @@ training task it was observing.
 
 ## Overhead
 
-`bench/TrainingGainLogOverhead.ts` measures the whole hook at the GRQ lineage's
-working size (5,300 neurons, 87,000 synapses) and **asserts a budget** rather
-than printing a number: 0.1 % of a 60,000 ms training step. Measured on a 7-core
-container: **1.8 ms per event** — one `O(neurons + synapses)` descriptor plus
-one small append — which is 0.003 % of that step.
+`bench/TrainingGainLogOverhead.ts` measures the whole hook at the working size
+of the GRQ lineage (5,300 neurons, 87,000 synapses) — the production run this
+instrumentation exists for — and **asserts a budget** rather than printing a
+number: 0.1 % of a 60,000 ms training step. Measured on a 7-core container:
+**1.8 ms per event** — one `O(neurons + synapses)` descriptor plus one small
+append — which is 0.003 % of that step.
 
 ## Scope
 

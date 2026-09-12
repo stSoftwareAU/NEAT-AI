@@ -40,6 +40,26 @@ import {
   summarisePolicy,
 } from "./lib/memeticGainAnalysis.ts";
 
+/**
+ * How much of the offered local-search budget a rule actually spent.
+ *
+ * Issue #3553 trains a creature at most once per run and loses the slot rather
+ * than reallocating it, so "how many gradient steps did this rule buy?" is a
+ * different question from "how many was it given?". A rule that keeps choosing
+ * the same converged creatures answers the second question with far more than
+ * the first.
+ */
+interface BudgetUse {
+  /** Slots the rule was offered: generations × `trainPerGen` × seeds. */
+  readonly offered: number;
+  /** Slots that became a real gradient step. */
+  readonly used: number;
+  /** Slots the once-per-run guard refused. */
+  readonly refusedAlreadyTrained: number;
+  /** `used / offered`. */
+  readonly usedFraction: number;
+}
+
 /** One repeat's headline numbers, for the stability check. */
 interface RepeatSummary {
   readonly repeat: number;
@@ -61,6 +81,8 @@ interface StudyReport {
   readonly seeds: readonly number[];
   readonly events: number;
   readonly byPolicy: Record<SelectionPolicy, PolicySummary>;
+  /** What each rule did with the budget it was offered. */
+  readonly budgetUse: Record<SelectionPolicy, BudgetUse>;
   readonly finalScores: Record<SelectionPolicy, readonly number[]>;
   /** Correlation over the randomly-selected events: the unbiased estimator. */
   readonly rankVsGainRandom: RankGainCorrelation;
@@ -210,12 +232,30 @@ function reduceArms(
 ): Omit<StudyReport, "repeats"> {
   const eventsByPolicy = new Map<SelectionPolicy, StudyEvent[]>();
   const finalScores: Record<string, number[]> = {};
+  const refusedByPolicy = new Map<SelectionPolicy, number>();
+  const armsByPolicy = new Map<SelectionPolicy, number>();
   for (const arm of arms) {
     const bucket = eventsByPolicy.get(arm.policy) ?? [];
     bucket.push(...arm.events);
     eventsByPolicy.set(arm.policy, bucket);
     (finalScores[arm.policy] ??= []).push(arm.finalScore);
+    refusedByPolicy.set(
+      arm.policy,
+      (refusedByPolicy.get(arm.policy) ?? 0) + arm.skippedAlreadyTrained,
+    );
+    armsByPolicy.set(arm.policy, (armsByPolicy.get(arm.policy) ?? 0) + 1);
   }
+
+  const budgetUse = (policy: SelectionPolicy, used: number): BudgetUse => {
+    const offered = (armsByPolicy.get(policy) ?? 0) * settings.generations *
+      settings.trainPerGen;
+    return {
+      offered,
+      used,
+      refusedAlreadyTrained: refusedByPolicy.get(policy) ?? 0,
+      usedFraction: offered === 0 ? 0 : used / offered,
+    };
+  };
 
   const topEvents = eventsByPolicy.get("top") ?? [];
   const randomEvents = eventsByPolicy.get("random") ?? [];
@@ -233,6 +273,10 @@ function reduceArms(
     seeds,
     events: allEvents.length,
     byPolicy: { top: topSummary, random: randomSummary },
+    budgetUse: {
+      top: budgetUse("top", topEvents.length),
+      random: budgetUse("random", randomEvents.length),
+    },
     finalScores: {
       top: finalScores.top ?? [],
       random: finalScores.random ?? [],
@@ -318,10 +362,10 @@ function printReport(report: StudyReport): void {
       `${MIN_STAGE1_EVENTS} per arm\n`,
   );
   console.log(
-    "| policy | events | median gain | trimmed mean | mean gain | max gain | improved | training s | gain/s |",
+    "| policy | events | median gain | trimmed mean | mean gain | max gain | improved | training s | gain/s | trimmed gain/s |",
   );
   console.log(
-    "| ------ | -----: | ----------: | -----------: | --------: | -------: | -------: | ---------: | -----: |",
+    "| ------ | -----: | ----------: | -----------: | --------: | -------: | -------: | ---------: | -----: | -------------: |",
   );
   for (const policy of SELECTION_POLICIES) {
     const summary = report.byPolicy[policy];
@@ -333,7 +377,21 @@ function printReport(report: StudyReport): void {
         `${summary.maxGain.toExponential(3)} | ` +
         `${(summary.improvedFraction * 100).toFixed(1)}% | ` +
         `${summary.trainingSeconds.toFixed(1)} | ` +
-        `${summary.gainPerSecond.toExponential(3)} |`,
+        `${summary.gainPerSecond.toExponential(3)} | ` +
+        `${summary.trimmedGainPerSecond.toExponential(3)} |`,
+    );
+  }
+  console.log(
+    "\nBudget actually spent (Issue #3553 trains a creature at most once per run):",
+  );
+  console.log("| policy | slots offered | steps taken | refused | spent |");
+  console.log("| ------ | ------------: | ----------: | ------: | ----: |");
+  for (const policy of SELECTION_POLICIES) {
+    const use = report.budgetUse[policy];
+    console.log(
+      `| ${policy} | ${use.offered} | ${use.used} | ` +
+        `${use.refusedAlreadyTrained} | ` +
+        `${(use.usedFraction * 100).toFixed(1)}% |`,
     );
   }
   console.log(
