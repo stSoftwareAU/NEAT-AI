@@ -115,6 +115,19 @@ Tuning guides and benchmark research.
   collapsing diversity, and the diagnostics that catch a screen anti-correlated
   with what matters. Off by default (`ratio: 1`), which breeds exactly the
   population budget.
+- **[SURROGATE_UNCERTAINTY.md](SURROGATE_UNCERTAINTY.md)** — the surrogate
+  uncertainty guard (Issue #3933): mandatory uncertainty on every prediction, an
+  acquisition rule with an enforced exploration floor instead of an argmax, the
+  refusal to predict out-of-distribution candidates, and the signed-bias drift
+  monitor that disables the surrogate path on a false-optimum signature. The
+  surrogate path must not run in production without it.
+- **[CHEAP_PROBLEM_BENCHMARK.md](CHEAP_PROBLEM_BENCHMARK.md)** — the
+  cheap-problem benchmark harness for the surrogate techniques of the #3919
+  sweep (Issue #3935): surrogate accuracy against a fully enumerated ground
+  truth, multi-fidelity rank agreement, a deliberate false optimum that fires
+  #3933's drift monitor, and the CI-runnable GRQ-protecting invariants. Its
+  results are **not** transferable to GRQ creature scores, and the harness says
+  so in every report.
 - **[TRAINING_GAIN_LOG.md](TRAINING_GAIN_LOG.md)** — the training-gain log
   (Issue #3934): one record per real gradient step — the pre-training
   descriptor, the rank the memetic rule selected at, the scores either side, and

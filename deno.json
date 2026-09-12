@@ -64,6 +64,7 @@
     "@propagate/": "./src/propagate/",
     "@reconstruct/": "./src/reconstruct/",
     "@repair/": "./src/repair/",
+    "@surrogate/": "./src/surrogate/",
     "@transfer/": "./src/transfer/",
     "@upgrade/": "./src/upgrade/",
     "@utils/": "./src/utils/",
@@ -83,11 +84,13 @@
     "bench:structural-scale": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/structural_weight_scale_sweep.ts",
     "bench:skip-null": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/skip_connection_null_comparison.ts",
     "bench:squash-bias": "deno run --allow-read --allow-write --allow-env --allow-ffi bench/deep_chain_squash_bias.ts",
+    "bench:cheap-problem": "deno run --allow-read --allow-write --allow-env bench/surrogate_cheap_problem.ts",
     "rank-fidelity": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/rank_fidelity_sweep.ts",
     "surrogate-feasibility": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_feasibility.ts",
     "evolution-control-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/evolution_control_ab.ts",
     "pre-selection-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/pre_selection_ab.ts",
-    "memetic-gain-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/memetic_gain_study.ts"
+    "memetic-gain-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/memetic_gain_study.ts",
+    "surrogate-uncertainty-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_uncertainty_ab.ts"
   },
   "test": {
     "include": [
@@ -128,7 +131,10 @@
       "bench/ScorePooledBuffers.ts",
       "bench/SelectiveCacheInvalidation.ts",
       "bench/WasmScoreScan.ts",
-      "bench/fitness_corpus_fidelity.ts"
+      "bench/fitness_corpus_fidelity.ts",
+      "bench/lib/cheapProblem.ts",
+      "bench/lib/cheapProblemStudy.ts",
+      "bench/surrogate_cheap_problem.ts"
     ]
   },
   "fmt": {

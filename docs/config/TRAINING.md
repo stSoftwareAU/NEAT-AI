@@ -285,6 +285,12 @@ Also off by default (`ratio: 1`), and the measured result —
 why: at equal record budget no arm improved, and both screens cut mean genetic
 distance while a keep-at-random control raised it.
 
+If the `"surrogate"` screen is turned on, the uncertainty guard of Issue #3933
+comes with it — see [`SURROGATE_UNCERTAINTY.md`](../SURROGATE_UNCERTAINTY.md).
+It is on by default and must stay on in production: without it, exact
+evaluations land only where the model is already confident, so the model is
+never corrected where it is wrong.
+
 ## 👀 See also
 
 - [Core evolution parameters](./CORE_EVOLUTION.md) — population, mutation, and
@@ -300,6 +306,10 @@ distance while a keep-at-random control raised it.
   screening: how many candidates a generation considers, and the invariants
   keeping a screened-out creature out of the archive, species statistics and the
   export.
+- [SURROGATE_UNCERTAINTY.md](../SURROGATE_UNCERTAINTY.md) — the uncertainty
+  guard on the surrogate screen: mandatory uncertainty, the acquisition rule and
+  its exploration floor, the out-of-distribution refusal, and the signed-bias
+  drift monitor.
 - [TRAINING_GAIN_LOG.md](../TRAINING_GAIN_LOG.md) — the per-training-event
   record of realised gain: what each gradient step bought, at the rank the rule
   selected it at. Off by default, and it changes no selection.

@@ -440,6 +440,17 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
       "2011 §4): breed a surplus, screen it cheaply, evaluate only the " +
       "survivors. `ratio: 1` breeds exactly the budget, as before.",
   }),
+  keep("preSelection.uncertainty", "roll-up", {
+    interfaces: [
+      "src/config/SurrogateUncertaintyConfig.ts::SurrogateUncertaintyConfig",
+      "src/config/SurrogateUncertaintyConfig.ts::" +
+      "RequiredSurrogateUncertaintyConfig",
+    ],
+    note: "Added after the slices by #3933 — the surrogate uncertainty guard " +
+      "(Jin 2011 §4-§5): an acquisition rule with an enforced exploration " +
+      "floor, the out-of-distribution refusal, and the signed-bias drift " +
+      "monitor. On by default, and only reachable once a surrogate screen is.",
+  }),
   keep("trainingGainLog", "roll-up", {
     interfaces: [
       "src/config/TrainingGainLogConfig.ts::TrainingGainLogConfig",
