@@ -29,6 +29,9 @@ the archive **reports its own coverage** at every flush. Closes #4004.
   own UUID, counts coverage, and reports it per flush (`warn` under 50 %).
 - `docs/EVALUATION_ARCHIVE.md` — a "Parent links: what `parents` covers"
   section.
+- `docs/cspell.json` — `parentless` and `unhashed`, the two technical terms this
+  change introduces, added to the project dictionary so the spellcheck workflow
+  passes.
 
 ### Where lineage is recorded
 
@@ -64,7 +67,12 @@ reported (6 runs × 15 generations × population 24, synthetic corpus):
 Lineage-held-out splitting no longer degenerates into leave-one-creature-out:
 240 groups for 1,138 creatures, against 1,135 for 1,143.
 
-Full quality gate (`./quality.sh`) run in the foreground after the final edit.
+`./quality.sh --lint-only` and `./quality.sh --check-only` (formatter, linter,
+bash check, type check) pass in the foreground after the final edit. The full
+`./quality.sh` lane could not run in this container — it requires the native
+`rust_scorer` binary from the sibling NEAT-AI-scorer repo, which is absent, and
+the gate fails loud rather than falling back to the WASM scorer. CI runs the
+same gate on the PR; its `quality` check is green.
 
 ## Reproduction
 
@@ -224,5 +232,7 @@ Verified:
 
 - Both regression tests observed failing against the unfixed `src/` and passing
   after the fix.
-- `./quality.sh` (formatter, linter, type check, discovery, WASM sync, full
-  suite) run in the foreground.
+- `./quality.sh --lint-only` and `--check-only` (formatter, linter, bash check,
+  type check) run in the foreground and clean. The full lane needs the native
+  `rust_scorer` binary, which this container does not have; CI's `quality` check
+  covers it and is green.
