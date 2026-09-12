@@ -515,6 +515,24 @@ export class WorkerHandler
   }
 
   train(creature: Creature, options: TrainOptions) {
+    return this.trainTracked(creature, options).response;
+  }
+
+  /**
+   * Dispatch a training task and expose its task id (GRQ #4489).
+   *
+   * The task id is what lets the caller cancel the request when the task is
+   * given up on. Without it, NEAT's stuck-task watchdog could only forget its
+   * own bookkeeping while the worker request stayed in flight for the rest of
+   * the run — every abandoned task then reported no error, no timing and no
+   * partial result.
+   *
+   * @returns the dispatched task id and the response promise
+   */
+  trainTracked(
+    creature: Creature,
+    options: TrainOptions,
+  ): { taskID: number; response: Promise<ResponseData> } {
     const json = creature.exportJSON();
 
     delete json.tags;
@@ -540,12 +558,14 @@ export class WorkerHandler
 
     // Issue #2161: Track train as a long-running task.
     this.incrementLongRunningTaskCount();
-    return this.makePromiseDeferred(data, () => {
+    const response = this.makePromiseDeferred(data, () => {
       // Clear large creature data after structured clone completes.
       clearForGc(data.train!, "creature");
     }).finally(() => {
       this.decrementLongRunningTaskCount();
     });
+
+    return { taskID: data.taskID, response };
   }
 
   discover(creature: Creature, config: NeatConfig) {

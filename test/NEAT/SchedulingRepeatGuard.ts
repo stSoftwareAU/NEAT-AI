@@ -20,11 +20,12 @@ import { initWasmForTests } from "../_initWasm.ts";
 class StubWorker {
   trainCalls = 0;
 
-  train(): Promise<never> {
+  /** GRQ #4489: dispatch is tracked so the task can be cancelled. */
+  trainTracked(): { taskID: number; response: Promise<never> } {
     this.trainCalls++;
     // Never settles: the test only cares about dispatch, not the outcome.
     // A pending promise leaks no ops or resources.
-    return new Promise<never>(() => {});
+    return { taskID: this.trainCalls, response: new Promise<never>(() => {}) };
   }
 }
 
@@ -39,6 +40,8 @@ function createStubNeat(worker: StubWorker): Neat {
     abandonEpoch: 0,
     trainingInProgress: new Map(),
     trainingDeadlines: new Map(),
+    // GRQ #4489: the cancellable handle for each in-flight training task.
+    trainingTasks: new Map(),
     alreadyScheduledMap: new Map<string, number>(),
     trainingRegressionTracker: new TrainingRegressionTracker(),
     heavyWorkerPool: pool,

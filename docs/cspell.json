@@ -772,6 +772,7 @@
     "multimodal",
     "rankable",
     "joinable",
-    "Nair"
+    "Nair",
+    "messageerror"
   ]
 }

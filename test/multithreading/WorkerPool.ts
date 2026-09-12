@@ -19,6 +19,11 @@ class MockWorkerHandler {
     return this._busy;
   }
 
+  /** GRQ #4489: pool selection skips quarantined workers. */
+  isHealthy(): boolean {
+    return true;
+  }
+
   setBusy(busy: boolean): void {
     this._busy = busy;
     if (busy) {
