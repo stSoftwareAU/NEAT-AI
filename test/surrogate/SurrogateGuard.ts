@@ -72,6 +72,29 @@ Deno.test("surrogate guard — a run reports bias, uncertainty share and OOD rat
   guard.assertUncertaintyAllocation();
 });
 
+Deno.test("surrogate guard — the generation count is allocations, not differenced generations", () => {
+  // Issue #4010: a test read `generations > 1` as "a screened generation's
+  // residuals have arrived". The guard counts the generations it *allocated*
+  // in, and a prediction is only differenced when the exact score for it
+  // arrives a generation later — which a survivor can lose on the way, to
+  // de-duplication or to the population budget. The state below is therefore
+  // legitimate, and an assertion that rules it out is reading an allocation
+  // tally as an observation count.
+  const guard = new SurrogateGuard(resolveSurrogateUncertaintyConfig({}));
+  for (let gen = 1; gen <= 2; gen++) {
+    guard.allocate(generation(), 4, 0.5);
+    guard.closeGeneration(gen);
+  }
+  const d = guard.runDiagnostics;
+  assertEquals(d.generations, 2);
+  assertEquals(d.candidates, 20);
+  // Most of the population was predicted, not refused.
+  assert(d.candidates > d.outOfDistribution);
+  // And not one prediction has been differenced yet.
+  assertEquals(d.residuals, 0);
+  assertEquals(d.generationBiasRatio, null);
+});
+
 Deno.test("surrogate guard — the floor is honoured when nothing is out of distribution", () => {
   const guard = new SurrogateGuard(
     resolveSurrogateUncertaintyConfig({ minUncertaintyFraction: 0.5 }),

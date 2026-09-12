@@ -67,8 +67,10 @@ interface ScreenedRunHooks {
   /**
    * Stop as soon as this is true, instead of one generation after the first
    * discard. A caller waiting on a diagnostic that depends on *which*
-   * creatures became elites cannot know in advance which generation produces
-   * it, so it states the condition rather than a generation count.
+   * creatures became elites — or on a residual a survivor may lose before its
+   * exact score arrives — cannot know in advance which generation produces it,
+   * so it states the condition rather than a generation count (Issues #4008,
+   * #4010).
    */
   readonly until?: () => boolean;
 }
@@ -208,7 +210,25 @@ Deno.test("pre-selection wiring — an active stage screens a real generation's 
     // generation's exact scores have taught it.
     assertEquals(neat.preSelection.offspringTarget(10), 10);
 
+    // Issue #3933: the exact scores that arrive for screened survivors must
+    // reach the drift monitor. A bred offspring is screened *before* fitness
+    // recomputes its UUID, so a monitor keyed on that UUID records nothing in
+    // a real run and the false-optimum detector can never fire.
+    const guard = neat.preSelection.surrogateGuard;
+    assert(guard !== undefined, "a surrogate screen carries the #3933 guard");
+
+    // Issue #4010: the run is driven until the monitor has actually
+    // differenced a prediction, rather than until a generation count that was
+    // read as a proxy for one. A prediction is differenced against the exact
+    // score that arrives for it in the *following* generation, and a survivor
+    // can lose that score before it arrives — de-duplication replaces it, or
+    // the population budget drops it — so the guard's allocation tally never
+    // implied that a residual had landed. Inferring it from that tally made
+    // the assertion below conditional on an unseeded evolve run: green when
+    // the residual happened to arrive in the generation the loop stopped in,
+    // red under a contended gate when it did not.
     await evolveUntilScreened(neat, {
+      until: () => guard.runDiagnostics.residuals > 0,
       after: (summary, fittest) => {
         assertEquals(
           summary.survivors + summary.screenedOut,
@@ -228,29 +248,18 @@ Deno.test("pre-selection wiring — an active stage screens a real generation's 
         );
       },
     });
-    // Issue #3933: the exact scores that arrive for screened survivors must
-    // reach the drift monitor. A bred offspring is screened *before* fitness
-    // recomputes its UUID, so a monitor keyed on that UUID records nothing in
-    // a real run and the false-optimum detector can never fire.
-    const guard = neat.preSelection.surrogateGuard;
-    assert(guard !== undefined, "a surrogate screen carries the #3933 guard");
     const diagnostics = guard.runDiagnostics;
-    // Conditioned on there having been a prediction to difference: a
-    // generation the model refused outright has no residual to offer, and the
-    // defect this guards against produced *zero* residuals while predicting
-    // most of the population.
-    // Conditioned on there having been a screened generation *before* the last
-    // one: a prediction is differenced against the exact score that arrives
-    // for it in the following generation, so the final generation's
-    // predictions are still outstanding when the loop ends. The defect this
-    // guards against produced zero residuals however long the run was.
+    // Unconditional: the loop above only stops once a residual has landed, so
+    // reaching here with none means the cap was reached without one — which is
+    // exactly the defect this guards against. It produced zero residuals
+    // however long the run was, while predicting most of the population.
     assert(
-      diagnostics.generations > 1 &&
-        diagnostics.candidates > diagnostics.outOfDistribution
-        ? diagnostics.residuals > 0
-        : true,
-      "the surrogate's predictions must be differenced against the exact " +
-        "scores that arrived for them",
+      diagnostics.residuals > 0,
+      `the surrogate's predictions must be differenced against the exact ` +
+        `scores that arrived for them: ${diagnostics.residuals} residual(s) ` +
+        `over ${diagnostics.generations} allocating generation(s), ` +
+        `${diagnostics.candidates} candidate(s) of which ` +
+        `${diagnostics.outOfDistribution} were refused`,
     );
     assert(
       diagnostics.exactSlots > 0,
