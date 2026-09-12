@@ -247,6 +247,35 @@ Deno.test("pre-selection — elites are never screened, and their rank is report
   assertEquals(stage.describeEliteRanks([]), undefined);
 });
 
+Deno.test("pre-selection — a survivor screened without a UUID is still ranked", async () => {
+  // Issue #4008: a real bred offspring reaches the screen with no UUID —
+  // mutation invalidated it and fitness only recomputes it after screening —
+  // so a rank keyed on the UUID is never recorded in a production run.
+  const stage = activeStage({ randomSurvivorFraction: 0 });
+  const candidates = buildCandidates(12);
+  for (const candidate of candidates) delete candidate.uuid;
+  const outcome = await stage.select(candidates, 4, 6);
+
+  const elite = outcome.survivors[0];
+  assertEquals(elite.uuid, undefined, "the fixture must stay UUID-less");
+  const rank = stage.screenRankOf(elite);
+  assert(rank !== null, "a survivor with no UUID must still carry its rank");
+  assertEquals(rank.rank, 0);
+  assertEquals(rank.of, 12);
+  assertEquals(rank.generation, 6);
+
+  // The once-per-creature dedup cannot lean on a UUID either.
+  assertEquals(stage.recordElites([elite]).length, 1);
+  assertEquals(stage.recordElites([elite]).length, 1);
+  assertEquals(stage.eliteScreenRanks.length, 1);
+
+  // A discarded creature still leaves nothing behind.
+  assertEquals(outcome.discarded.length, 8);
+  for (const dropped of outcome.discarded) {
+    assertEquals(stage.screenRankOf(dropped), null);
+  }
+});
+
 Deno.test("pre-selection — an elite is counted once, however long it survives", async () => {
   const stage = activeStage({ randomSurvivorFraction: 0 });
   const outcome = await stage.select(buildCandidates(9), 3, 1);

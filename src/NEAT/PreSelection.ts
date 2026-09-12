@@ -164,12 +164,21 @@ export interface PreSelectionSummary {
 export class PreSelection {
   private readonly config: RequiredPreSelectionConfig;
   private readonly offspringScreen: OffspringScreen | undefined;
-  /** Ranks from the generation just screened. */
-  private ranks = new Map<string, ScreenRank>();
+  /**
+   * Ranks from the generation just screened.
+   *
+   * Keyed on the **creature itself**, not on its UUID (Issue #4008): mutation
+   * invalidates a creature's UUID and the evolution loop only recomputes it
+   * during fitness, so a freshly bred offspring is screened while it has none.
+   * A map keyed on the UUID therefore recorded nothing at all in a real run,
+   * and the elite screen rank — the number that decides whether the screen is
+   * worth having — reported an empty list on every generation, silently.
+   */
+  private ranks = new WeakMap<Creature, ScreenRank>();
   /** Creatures already recorded as elites, so a survivor is counted once. */
-  private recordedElites = new Set<string>();
+  private recordedElites = new WeakSet<Creature>();
   /** Ranks from the generation before that — where this one's elites came from. */
-  private previousRanks = new Map<string, ScreenRank>();
+  private previousRanks = new WeakMap<Creature, ScreenRank>();
   private lastSummary: PreSelectionSummary | undefined;
   private readonly eliteRanks: ScreenRank[] = [];
   /** The uncertainty guard, when the screen can answer to one (Issue #3933). */
@@ -465,7 +474,7 @@ export class PreSelection {
     const survivors: Creature[] = [];
     const discarded: Creature[] = [];
     this.previousRanks = this.ranks;
-    this.ranks = new Map();
+    this.ranks = new WeakMap();
     for (const index of order) {
       const creature = candidates[index];
       if (!chosen.has(index)) {
@@ -480,21 +489,15 @@ export class PreSelection {
       // offspring has not been given one yet.
       const predicted = values[index];
       if (predicted !== null) this.predictions.set(creature, predicted);
-      // A bred offspring has no UUID at this point — mutation invalidated it
-      // and fitness has not recomputed it yet — so this rank is recorded for
-      // the fixtures and callers that do carry one. Issue #4008 tracks moving
-      // the rank map onto creature identity, as the prediction map above
-      // already is.
-      const uuid = creature.uuid;
-      if (uuid !== undefined) {
-        this.ranks.set(uuid, {
-          rank: rankOf[index],
-          of: candidates.length,
-          value: values[index],
-          reason: reasons.get(index) ?? "rank",
-          generation,
-        });
-      }
+      // Recorded against the creature, for the reason the `ranks` field
+      // states (Issue #4008).
+      this.ranks.set(creature, {
+        rank: rankOf[index],
+        of: candidates.length,
+        value: values[index],
+        reason: reasons.get(index) ?? "rank",
+        generation,
+      });
     }
 
     let randomSurvivors = 0;
@@ -532,9 +535,7 @@ export class PreSelection {
    * @returns Its rank, or `null` when it was not screened recently.
    */
   screenRankOf(creature: Creature): ScreenRank | null {
-    const uuid = creature.uuid;
-    if (uuid === undefined) return null;
-    return this.ranks.get(uuid) ?? this.previousRanks.get(uuid) ?? null;
+    return this.ranks.get(creature) ?? this.previousRanks.get(creature) ?? null;
   }
 
   /**
@@ -560,9 +561,9 @@ export class PreSelection {
       const rank = this.screenRankOf(elite);
       if (rank === null) continue;
       found.push(rank);
-      const uuid = elite.uuid;
-      if (uuid !== undefined && this.recordedElites.has(uuid)) continue;
-      if (uuid !== undefined) this.recordedElites.add(uuid);
+      // The dedup is on the creature too, for the same reason (Issue #4008).
+      if (this.recordedElites.has(elite)) continue;
+      this.recordedElites.add(elite);
       this.eliteRanks.push(rank);
     }
     return found;
@@ -640,11 +641,11 @@ export class PreSelection {
 
   /** Clear all history. Call when starting a new run. */
   reset(): void {
-    this.ranks = new Map();
-    this.previousRanks = new Map();
+    this.ranks = new WeakMap();
+    this.previousRanks = new WeakMap();
     this.lastSummary = undefined;
     this.eliteRanks.length = 0;
-    this.recordedElites.clear();
+    this.recordedElites = new WeakSet();
     this.predictions = new WeakMap();
     this.bestExactScore = -Infinity;
     this.lastDrift = undefined;

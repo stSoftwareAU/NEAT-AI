@@ -3,7 +3,9 @@
  *
  * Every suite needs the same thing: candidate creatures that are structurally
  * distinct, so the surrogate's descriptor can tell them apart, and each
- * carrying a UUID so a screen rank can be looked up again.
+ * carrying a UUID so the screen's training set can tell one from another. A
+ * screen rank is not looked up by UUID (Issue #4008) — a case that needs a
+ * bred offspring's UUID-less arrival deletes it after building the batch.
  *
  * Not a test file itself — it declares no `Deno.test`.
  */

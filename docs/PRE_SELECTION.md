@@ -120,6 +120,13 @@ const result = await creature.evolveDataSet(data, {
   could not produce.
 - **Every generation logs what it generated, kept and discarded**, and the
   screen rank of every creature that became an elite.
+- **A screen rank belongs to the creature, not to its UUID** (Issue #4008). A
+  bred offspring reaches the screen with no UUID — mutation invalidates it and
+  the evolution loop only recomputes it during fitness, which runs after
+  screening — so the rank, and the once-per-creature elite dedup behind it, are
+  held in a `WeakMap`/`WeakSet` keyed on the creature itself, exactly as the
+  Issue #3933 prediction map is. Keyed on the UUID the rank map stayed empty for
+  the whole run and the elite screen rank line was never logged, silently.
 
 ## Failure detection
 

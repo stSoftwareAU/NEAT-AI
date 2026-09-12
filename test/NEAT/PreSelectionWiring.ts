@@ -64,11 +64,18 @@ interface ScreenedRunHooks {
   readonly before?: (population: readonly Creature[]) => void;
   /** Run after a generation evolves, with what the stage reported. */
   readonly after?: (summary: PreSelectionSummary, fittest: Creature) => void;
+  /**
+   * Stop as soon as this is true, instead of one generation after the first
+   * discard. A caller waiting on a diagnostic that depends on *which*
+   * creatures became elites cannot know in advance which generation produces
+   * it, so it states the condition rather than a generation count.
+   */
+  readonly until?: () => boolean;
 }
 
 /**
  * Evolve until the stage has actually discarded something, then one
- * generation more.
+ * generation more — or until `hooks.until` says so.
  *
  * The extra generation is not padding: a screened survivor's prediction is
  * differenced against the exact score that arrives for it in the *following*
@@ -100,6 +107,10 @@ async function evolveUntilScreened(
     assert(summary !== undefined, "the stage must report what it did");
     hooks.after?.(summary, fittest);
     screenedOut += summary.screenedOut;
+    if (hooks.until !== undefined) {
+      if (hooks.until()) break;
+      continue;
+    }
     if (screenedOut > 0 && ++sinceFirstScreen > 1) break;
   }
   assert(
@@ -244,6 +255,54 @@ Deno.test("pre-selection wiring — an active stage screens a real generation's 
     assert(
       diagnostics.exactSlots > 0,
       "the acquisition rule must have allocated this run's exact evaluations",
+    );
+  } finally {
+    await Promise.all(workers.map((w) => w.waitUntilReady().catch(() => {})));
+    for (const worker of workers) worker.terminate();
+  }
+});
+
+Deno.test("pre-selection wiring — a real evolve run reports the elite screen rank", async () => {
+  // Issue #4008: the diagnostic that decides whether the screen is worth
+  // having. A bred offspring is screened before fitness recomputes its UUID,
+  // so a rank map keyed on that UUID stays empty for a whole production run
+  // and the line is never logged — silently, because an empty list renders as
+  // no line at all. Only a run through the real evolve loop catches it: a
+  // fixture that assigns the UUID itself cannot.
+  const dataDir = makeDataDir(buildDataSet(), 2000);
+  const workers = [new WorkerHandler(dataDir, "MSE", true)];
+  try {
+    const seed = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const neat = new Neat(2, 1, {
+      creatures: [seed.exportJSON()],
+      populationSize: 30,
+      elitism: 2,
+      preSelection: { ratio: 3, screen: "surrogate" },
+    }, workers);
+    await neat.populatePopulation(seed);
+
+    const { generations } = await evolveUntilScreened(neat, {
+      until: () => neat.preSelection.eliteScreenRanks.length > 0,
+    });
+
+    const ranks = neat.preSelection.eliteScreenRanks;
+    assert(
+      ranks.length > 0,
+      `no elite carried a screen rank over ${generations} generation(s): the ` +
+        `stage records nothing for the creatures a real run actually breeds`,
+    );
+    for (const rank of ranks) {
+      assert(
+        rank.rank >= 0 && rank.rank < rank.of,
+        `an elite's rank ${rank.rank} must sit inside the ${rank.of} ` +
+          `candidates it was taken over`,
+      );
+    }
+    assert(
+      neat.preSelection.describeEliteRanks(ranks)?.includes(
+        "elite screen rank",
+      ),
+      "the run must be able to write the elite screen rank line",
     );
   } finally {
     await Promise.all(workers.map((w) => w.waitUntilReady().catch(() => {})));
