@@ -769,6 +769,9 @@
     "multimodal",
     "rankable",
     "joinable",
-    "Nair"
+    "Nair",
+    "bfloat",
+    "goldens",
+    "nleck"
   ]
 }
