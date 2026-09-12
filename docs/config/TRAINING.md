@@ -67,6 +67,34 @@ that made the creature worse (Issue #3776) — a single epoch has nothing to
 compare against. The per-task wall-clock budget (`trainingTaskTimeoutMinutes`)
 still bounds the total work.
 
+> [!NOTE]
+> **Who receives those steps has been measured, and on the harness it is no
+> better than random** (Issue #3934). Over 10,546 real gradient steps —
+> 20-creature populations on a 600-record corpus, **not** GRQ's scale —
+> selecting the top `trainPerGen` by current score reached the same final exact
+> score as drawing `trainPerGen` creatures uniformly, and which arm was ahead
+> **flipped between runs of the same configuration**. Score rank does order
+> realised gain, in the direction you would expect (the incumbent is nearest its
+> local optimum, so it gains least), but only weakly — ρ = 0.104 over the 6,777
+> unbiased events, below the 0.2 materiality floor, so no gain predictor was
+> built.
+>
+> The number worth knowing is a different one, and it bears directly on this
+> setting: **`trainPerGen` is not the number of gradient steps a generation
+> buys.** A creature is trained at most once per run (Issue #3553) and a refused
+> slot is lost rather than reallocated, so a rule that keeps choosing the head
+> of the population keeps choosing creatures it has already trained. On the
+> harness today's rule converted **50.3 %** of its offered slots into gradient
+> steps against **90.4 %** for uniform selection, and of the steps it did take,
+> **88.1 % produced a creature worse than the one they trained**. Raising
+> `trainPerGen` buys neither guaranteed progress nor, necessarily, more steps.
+>
+> Both percentages are harness-scale properties of a 20-creature population, not
+> production readings. The per-training-event record lives in
+> [`trainingGainLog`](../TRAINING_GAIN_LOG.md) (off by default) so the same
+> question can be asked on a real lineage, and the study with its caveats is in
+> [`docs/evidence/memetic-gain-3934.md`](../evidence/memetic-gain-3934.md).
+
 **Choosing a value for supervised tasks**
 
 - Start with the auto-scaled default. Raise `trainPerGen` (towards the
@@ -291,6 +319,9 @@ never corrected where it is wrong.
   guard on the surrogate screen: mandatory uncertainty, the acquisition rule and
   its exploration floor, the out-of-distribution refusal, and the signed-bias
   drift monitor.
+- [TRAINING_GAIN_LOG.md](../TRAINING_GAIN_LOG.md) — the per-training-event
+  record of realised gain: what each gradient step bought, at the rank the rule
+  selected it at. Off by default, and it changes no selection.
 - [PERFORMANCE_TUNING.md](../PERFORMANCE_TUNING.md) — picking batch sizes for
   large datasets and CPU/GPU (Graphics Processing Unit) targets.
 

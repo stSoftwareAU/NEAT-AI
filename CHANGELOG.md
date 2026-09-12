@@ -49,6 +49,32 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3934:** The training-gain log, and what it measured. Jin (2011) §5
+  asks who should receive local search — per-generation backpropagation is a
+  large fixed cost per individual, and `selectTrainingCandidates` had always
+  answered "who is currently best?" without anything ever checking whether that
+  predicts "who will gain most from a gradient step?". A new opt-in log
+  (`trainingGainLog`, `enabled: false` by default — nothing is constructed and
+  no disk is touched) records one line per real training event: the pre-training
+  descriptor, the rank the rule selected at, the scores and errors either side
+  of the step, the wall-clock, and the outcome. **No selection behaviour
+  changes.** Measured over 10,546 real gradient steps
+  ([`docs/evidence/memetic-gain-3934.md`](./docs/evidence/memetic-gain-3934.md)):
+  score rank does order realised gain in the predicted direction and far too
+  weakly to act on (ρ = 0.104 over the 6,777 unbiased events, below the
+  pre-registered 0.2 floor), and judged on final exact score at the same seed
+  the current rule and a random baseline are indistinguishable — which arm is
+  ahead flips between runs of the identical configuration. **Stage 2 (a gain
+  predictor) is therefore a documented no-go**, recorded on #3919. The finding
+  worth acting on is one rung up: because a creature is trained at most once per
+  run (#3553) and a refused slot is lost rather than reallocated, a rule that
+  keeps choosing the head of the population keeps choosing creatures it has
+  already trained — on the harness today's rule converted **50.3 %** of its
+  offered slots into gradient steps against **90.4 %** for uniform selection,
+  and 88.1 % of the steps it did take produced a creature worse than the one
+  they trained. Both are harness-scale numbers the shipped log can now ask on a
+  real run. See [`docs/TRAINING_GAIN_LOG.md`](./docs/TRAINING_GAIN_LOG.md).
+
 - **Issue #3935:** A cheap-problem benchmark harness for the surrogate
   techniques of the #3919 sweep (`deno task bench:cheap-problem`). Jin (2011) §6
   grades surrogate techniques on analytic test functions because the "expensive"

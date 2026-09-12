@@ -451,6 +451,16 @@ const ROLLUP_GAP_FILLS: RollupEntry[] = [
       "floor, the out-of-distribution refusal, and the signed-bias drift " +
       "monitor. On by default, and only reachable once a surrogate screen is.",
   }),
+  keep("trainingGainLog", "roll-up", {
+    interfaces: [
+      "src/config/TrainingGainLogConfig.ts::TrainingGainLogConfig",
+      "src/config/TrainingGainLogConfig.ts::RequiredTrainingGainLogConfig",
+    ],
+    note: "Added after the slices by #3934 — the training-gain log (Jin 2011 " +
+      "§5): one record per real training event, so the local-search budget " +
+      "rule can be measured against outcomes. `enabled: false` records " +
+      "nothing, as before.",
+  }),
 ];
 
 /** The merged classification table — every option key, one entry each. */

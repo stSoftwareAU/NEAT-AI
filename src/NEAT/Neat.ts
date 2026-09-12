@@ -32,6 +32,7 @@ import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
 import { EvaluationArchive } from "@archive/EvaluationArchive.ts";
+import { TrainingGainLog } from "@archive/TrainingGainLog.ts";
 import { EvolutionControl } from "@neat/EvolutionControl.ts";
 import { PreSelection } from "@neat/PreSelection.ts";
 import { createOffspringScreen } from "@neat/OffspringScreen.ts";
@@ -182,6 +183,14 @@ export class Neat {
    * reference creature can be set from the evolution loop.
    */
   readonly evaluationArchive: EvaluationArchive | undefined;
+
+  /**
+   * Issue #3934: the run's training-gain log, or `undefined` when
+   * `trainingGainLog.enabled` is false (the default). Owned by Neat because a
+   * training event spans the scheduler (dispatch) and the worker completion
+   * (outcome), which are two different call sites in the same run.
+   */
+  readonly trainingGainLog: TrainingGainLog | undefined;
 
   /**
    * Issue #3931: the run's model-management policy — which creatures earn an
@@ -454,6 +463,12 @@ export class Neat {
       ? new EvaluationArchive(this.config.evaluationArchive)
       : undefined;
     this.fitness.setEvaluationArchive(this.evaluationArchive);
+
+    // Issue #3934: same opt-in discipline as the archive above — the default
+    // run constructs nothing and touches no disk.
+    this.trainingGainLog = this.config.trainingGainLog.enabled
+      ? new TrainingGainLog(this.config.trainingGainLog)
+      : undefined;
 
     // Issue #3931: constructed always — with `strategy: "none"` it decides
     // "exact" every generation, which is what the loop already did.
@@ -1065,8 +1080,17 @@ export class Neat {
     scheduling.scheduleDiscovery(this, creature, timeOutMinutes);
   }
 
-  scheduleTraining(creature: Creature, trainingTimeOutMinutes: number) {
-    scheduling.scheduleTraining(this, creature, trainingTimeOutMinutes);
+  scheduleTraining(
+    creature: Creature,
+    trainingTimeOutMinutes: number,
+    selection?: scheduling.TrainingSelection,
+  ) {
+    scheduling.scheduleTraining(
+      this,
+      creature,
+      trainingTimeOutMinutes,
+      selection,
+    );
   }
 
   logReplaySummary(result: DiscoveryReplayDirResult) {

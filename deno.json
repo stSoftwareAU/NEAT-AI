@@ -89,6 +89,7 @@
     "surrogate-feasibility": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_feasibility.ts",
     "evolution-control-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/evolution_control_ab.ts",
     "pre-selection-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/pre_selection_ab.ts",
+    "memetic-gain-study": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/memetic_gain_study.ts",
     "surrogate-uncertainty-ab": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/surrogate_uncertainty_ab.ts"
   },
   "test": {

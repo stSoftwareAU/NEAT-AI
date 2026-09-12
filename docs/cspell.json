@@ -618,6 +618,7 @@
     "unaccessed",
     "unassertable",
     "unbudgeted",
+    "unboundedly",
     "uncited",
     "unclamped",
     "uncompensable",
@@ -763,6 +764,9 @@
     "Rosenbrock",
     "Ackley",
     "argmax",
-    "multimodal"
+    "multimodal",
+    "rankable",
+    "joinable",
+    "Nair"
   ]
 }

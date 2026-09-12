@@ -128,6 +128,13 @@ Tuning guides and benchmark research.
   #3933's drift monitor, and the CI-runnable GRQ-protecting invariants. Its
   results are **not** transferable to GRQ creature scores, and the harness says
   so in every report.
+- **[TRAINING_GAIN_LOG.md](TRAINING_GAIN_LOG.md)** — the training-gain log
+  (Issue #3934): one record per real gradient step — the pre-training
+  descriptor, the rank the memetic rule selected at, the scores either side, and
+  the wall-clock — so the local-search budget rule can be measured against its
+  own outcomes (Jin 2011 §5). Off by default; it observes and changes no
+  selection. What it measured is in
+  [evidence/memetic-gain-3934.md](evidence/memetic-gain-3934.md).
 - **[PERFORMANCE_RESEARCH.md](PERFORMANCE_RESEARCH.md)** — research notes and
   migration learnings from the WASM transition.
 - **[PREDICTIVE_CODING_BENCHMARKS.md](PREDICTIVE_CODING_BENCHMARKS.md)** —

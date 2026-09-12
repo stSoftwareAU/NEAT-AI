@@ -378,6 +378,48 @@ export type { SurrogateRunDiagnostics } from "@surrogate/SurrogateGuard.ts";
 export { SurrogateGuard } from "@surrogate/SurrogateGuard.ts";
 export type { SurrogateUncertaintyErrorReason } from "@errors/SurrogateUncertaintyError.ts";
 export { SurrogateUncertaintyError } from "@errors/SurrogateUncertaintyError.ts";
+
+/**
+ * Issue #3934 — the training-gain log: the memetic-budget instrumentation of
+ * Jin (2011) §5. Per-generation backpropagation is local search, and the rule
+ * that allocates it (`selectTrainingCandidates`) spends the budget on the
+ * creatures with the best *current* score. This records, per real training
+ * event, the pre-training design point, the rank the rule chose it at, and the
+ * gain the step realised — so the rule can be measured against outcomes.
+ *
+ * Off by default (`enabled: false`): nothing is recorded and no disk is
+ * touched. It changes no selection behaviour.
+ *
+ * @see {@link module:src/config/TrainingGainLogConfig}
+ * @see {@link module:src/archive/TrainingGainLog}
+ */
+export type {
+  RequiredTrainingGainLogConfig,
+  TrainingGainLogConfig,
+} from "@config/TrainingGainLogConfig.ts";
+export {
+  DEFAULT_TRAINING_GAIN_LOG_CONFIG,
+  resolveTrainingGainLogConfig,
+  TRAINING_GAIN_LOG_FILE_NAME,
+} from "@config/TrainingGainLogConfig.ts";
+export type {
+  TrainingDispatch,
+  TrainingOutcome,
+} from "@archive/TrainingGainLog.ts";
+export { TrainingGainLog } from "@archive/TrainingGainLog.ts";
+export type {
+  TrainingEventOutcome,
+  TrainingGainRecord,
+} from "@archive/TrainingGainRecord.ts";
+export {
+  readTrainingGainLog,
+  trainingErrorGain,
+  trainingGain,
+} from "@archive/TrainingGainRecord.ts";
+export type { TrainingGainLogErrorReason } from "@errors/TrainingGainLogError.ts";
+export { TrainingGainLogError } from "@errors/TrainingGainLogError.ts";
+export type { RankedTrainingCandidate } from "@neat/TrainingCandidates.ts";
+export { selectRankedTrainingCandidates } from "@neat/TrainingCandidates.ts";
 export {
   assertExactScore,
   EXACT_SCORE_FIDELITY,
