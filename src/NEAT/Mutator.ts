@@ -3,6 +3,7 @@ import { removeTag } from "@stsoftware/tags/mod";
 import type { TagInterface } from "@stsoftware/tags/mod";
 import { type Creature, CreatureUtil, Mutation } from "../../mod.ts";
 import { Neuron } from "@architecture/Neuron.ts";
+import { recordDerivedFrom } from "@archive/CreatureLineage.ts";
 import { discover } from "@blackbox/Discover.ts";
 import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
@@ -430,6 +431,12 @@ export class Mutator {
     for (let i = creatures.length; i--;) {
       if (rng.random() <= this.config.mutationRate) {
         const creature = creatures[i];
+        // Issue #4004: the identity this creature would have been archived
+        // under, captured **before** anything mutates it. A mutated clone is a
+        // new creature derived from exactly this one, and the hash is a
+        // content hash — taking it after the mutation would name a creature
+        // that never existed, which is a wrong link rather than a missing one.
+        const preMutationUuid = creature.uuid;
         let original: Creature | undefined;
         if (creature.score !== undefined || creature.memetic) {
           // Issue #1586: Use shallowClone() instead of JSON serialisation
@@ -632,6 +639,15 @@ export class Mutator {
           creature.clearState();
           delete creature.memetic;
           delete creature.uuid;
+          // Issue #4004: the mutate-a-clone path — a clone of a scored
+          // creature, mutated in place, is most of the population and used to
+          // reach the archive naming nobody. `recordDerivedFrom` keeps any
+          // lineage already recorded (a bred offspring names the two scored
+          // parents it was crossed from, which resolve; the un-mutated
+          // offspring was never evaluated and would not).
+          if (preMutationUuid !== undefined) {
+            recordDerivedFrom(creature, preMutationUuid);
+          }
           creature.state.preparedNeurons = false;
           if (original) {
             // Issue #2322: Only call memeticUpdate when original has a memetic.

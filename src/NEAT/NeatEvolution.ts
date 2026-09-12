@@ -20,6 +20,7 @@ import { FindTunePopulation } from "@blackbox/FineTunePopulation.ts";
 import { Breed } from "@breed/Breed.ts";
 import { ParallelBreeding } from "@breed/ParallelBreeding.ts";
 import { buildCohortStdContext } from "@breed/ParentSelection.ts";
+import { recordLineage } from "@archive/CreatureLineage.ts";
 import { AddConnection } from "@mutate/AddConnection.ts";
 import { allocateBreedingQuotas } from "@neat/BreedingQuotas.ts";
 import { applyStagnationToQuotas } from "@neat/SpeciesPlateauDetector.ts";
@@ -640,6 +641,10 @@ export async function evolve(
     // structurally-modified clone would enter the new population wearing the
     // elite's uuid and be deduplicated onto the elite's score by `Fitness`.
     delete creativeThinking.uuid;
+    // Issue #4004: the clone is structurally changed below, so it reaches the
+    // archive as a new creature. Record the elite it came from *before* the
+    // mutations, while `n` still is the creature its UUID describes.
+    recordLineage(creativeThinking, n);
     const weightScale = 1 / Math.max(creativeThinking.synapses.length, 1);
     const addConnection = new AddConnection(creativeThinking);
     for (let i = 0; i < neat.config.creativeThinkingConnectionCount; i++) {

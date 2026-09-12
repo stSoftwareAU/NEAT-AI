@@ -125,6 +125,11 @@ export class EvaluationArchive {
   /** Evaluations declined since the last flush because the creature had no UUID. */
   private skippedUnidentified = 0;
 
+  /** Issue #4004: records this instance has buffered, run-to-date. */
+  private recordedCount = 0;
+  /** Issue #4004: how many of those named at least one parent. */
+  private recordedWithParents = 0;
+
   constructor(config: RequiredEvaluationArchiveConfig) {
     this.config = config;
     this.path = `${config.directory}/${EVALUATION_ARCHIVE_FILE_NAME}`;
@@ -186,12 +191,18 @@ export class EvaluationArchive {
 
     const approach = getTag(creature, "approach");
     const referenceUuid = this.reference?.uuid;
+    const parents = lineageOf(creature);
+    // Issue #4004: a lineage-aware consumer cannot tell a genuinely parentless
+    // creature (a seed, a random immigrant) from a derivation the run forgot to
+    // record, so the archive counts the difference and `flush` announces it.
+    this.recordedCount++;
+    if (parents.length > 0) this.recordedWithParents++;
     this.buffer.push({
       descriptorVersion: EVALUATION_DESCRIPTOR_VERSION,
       runId: this.config.runId,
       generation: this.generation,
       uuid,
-      parents: lineageOf(creature),
+      parents,
       operators: entry.operators ?? [],
       ...(approach ? { approach } : {}),
       score: entry.score,
@@ -222,6 +233,7 @@ export class EvaluationArchive {
   async flush(): Promise<void> {
     this.reportSkipped();
     if (this.buffer.length === 0) return;
+    this.reportLineageCoverage();
     const pending = this.buffer;
     this.buffer = [];
 
@@ -252,6 +264,31 @@ export class EvaluationArchive {
   }
 
   /**
+   * Issue #4004: what fraction of the records this instance wrote name a
+   * parent, run-to-date.
+   *
+   * The `parents` field is only provenance a consumer can build on when it is
+   * actually populated, so the number the archive carries is readable rather
+   * than left for a downstream study to discover. `fraction` is `0` for an
+   * archive that has recorded nothing.
+   *
+   * @returns Records written, how many named a parent, and the ratio.
+   */
+  get lineageCoverage(): {
+    readonly records: number;
+    readonly withParents: number;
+    readonly fraction: number;
+  } {
+    return {
+      records: this.recordedCount,
+      withParents: this.recordedWithParents,
+      fraction: this.recordedCount === 0
+        ? 0
+        : this.recordedWithParents / this.recordedCount,
+    };
+  }
+
+  /**
    * Report, once per flush, any evaluations `record` declined to archive.
    *
    * An archive that silently stopped writing is worse than a run that stops, so
@@ -267,6 +304,33 @@ export class EvaluationArchive {
     );
     this.skippedNonFinite = 0;
     this.skippedUnidentified = 0;
+  }
+
+  /**
+   * Issue #4004: announce, once per flush, how much provenance the archive is
+   * actually carrying.
+   *
+   * The `parents` field was populated for under 1 % of records and nothing said
+   * so, which is how a downstream study spent its budget before discovering the
+   * field was empty. The run-to-date ratio is logged with the generation's own,
+   * so a regression to an unpopulated field is visible where the archive is
+   * written rather than months later.
+   */
+  private reportLineageCoverage(): void {
+    const generationRecords = this.buffer.length;
+    let generationWithParents = 0;
+    for (const record of this.buffer) {
+      if (record.parents.length > 0) generationWithParents++;
+    }
+    const percent = (count: number, total: number) =>
+      total === 0 ? "0.0" : ((count / total) * 100).toFixed(1);
+    getLogger().info(
+      `[NEAT-AI] Evaluation archive lineage: ${generationWithParents}/` +
+        `${generationRecords} record(s) this generation name a parent ` +
+        `(${percent(generationWithParents, generationRecords)}%), ` +
+        `${this.recordedWithParents}/${this.recordedCount} run-to-date ` +
+        `(${percent(this.recordedWithParents, this.recordedCount)}%).`,
+    );
   }
 }
 
