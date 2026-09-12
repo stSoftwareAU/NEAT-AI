@@ -86,16 +86,18 @@ Every derivation path records it (Issue #4004):
 | Path                                             | Parents recorded             |
 | ------------------------------------------------ | ---------------------------- |
 | Crossover breeding (`Breed`, `ParallelBreeding`) | mother and father            |
-| Memetic fine-tuning and compaction (`FineTune`)  | fittest and previous fittest |
+| Memetic fine-tuning (`FineTune`)                 | fittest and previous fittest |
+| Compaction of the fittest (`FineTune`)           | the fittest                  |
 | The creative-thinking clone (`NeatEvolution`)    | the elite it was cloned from |
 | Mutating a clone in place (`Mutator`)            | the pre-mutation identity    |
+| Cloning before mutating (`DeDuplicator`)         | inherited from the source    |
 
 Lineage is held **off** the creature, in a `WeakMap` keyed on the creature
 object (`src/archive/CreatureLineage.ts`). A creature's `uuid` is a content
 hash, so anything persisted beside it that is not content is a liability — the
 field reaches the archive record and never the creature export.
 
-Two rules keep a recorded link honest:
+Three rules keep a recorded link honest:
 
 - **The UUID is materialised while the parent still is the creature it will be
   archived as.** Reading an optional `uuid` silently dropped a parent whose hash
@@ -103,34 +105,40 @@ Two rules keep a recorded link honest:
   instead of two. Taking the hash _after_ a parent has been mutated in place
   would be worse still — a _wrong_ link rather than a missing one — so the
   mutate-a-clone path captures the identity before it mutates.
-- **An existing link is never overwritten.** A bred offspring names the two
-  scored parents it was crossed from; mutating it afterwards does not replace
-  them with the identity of the un-mutated offspring, which was never evaluated
-  and is in no archive.
+- **The nearest ancestor the archive actually holds wins.** A bred offspring
+  that has not been evaluated is in no archive, so mutating it keeps the two
+  scored parents it was crossed from rather than naming the un-mutated
+  offspring. Once a creature has taken a finite score it _is_ archived under its
+  own UUID, so mutating it from there names that UUID.
+- **A creature is never its own parent.** A mutation can land back on content
+  the creature already had, which re-derives the same hash. `record` drops such
+  a link: a baseline that predicted a creature's score from itself would read as
+  skill and is leakage.
 
 An **empty `parents` is a real answer**: a seed creature, a random immigrant and
 a restored source have no parent in the run. Measured on a small container
 capture, ~97 % of records name a parent and the remainder is the seed each run
-starts from. Every flush logs the generation's coverage and the run-to-date
-ratio, so a regression to an unpopulated field is visible where the archive is
-written:
+starts from. Every flush that writes records logs the generation's coverage and
+the run-to-date ratio, so a regression to an unpopulated field is visible where
+the archive is written — at `warn` once run-to-date coverage falls under 50 %,
+at `info` otherwise:
 
 ```text
 [NEAT-AI] Evaluation archive lineage: 7/7 record(s) this generation name a
 parent (100.0%), 34/35 run-to-date (97.1%).
 ```
 
-`EvaluationArchive.lineageCoverage` exposes the same run-to-date numbers to a
-caller that would rather not parse the log. Coverage is guarded by
-`test/archive/EvaluationArchiveLineage.ts`, which evolves a small population
-with the archive enabled and fails below a floor.
+Coverage is guarded by `test/archive/EvaluationArchiveLineage.ts`, which evolves
+a small population with the archive enabled and fails below a floor, so a
+regression to the 0.7 % the field once carried fails in CI rather than in a
+downstream study.
 
-A named parent resolves to a record in the same archive **when that parent was
-itself exactly evaluated**, which is the common case. It is not a guarantee: a
-restored memetic source is a genuine ancestor that may never have been scored,
-and the retention bound drops the oldest records, so a long-running archive can
-hold a child whose parent has aged out. Join on `uuid`, and treat a miss as a
-miss.
+Every record that names a parent names **at least one** the archive holds —
+`test/archive/EvaluationArchiveLineage.ts` asserts exactly that, and it holds on
+every capture shape measured. An individual entry may still miss: a restored
+memetic source is a genuine ancestor that may never have been scored, and the
+retention bound drops the oldest records, so a long-running archive can hold a
+child whose parent has aged out. Join on `uuid`, and treat a miss as a miss.
 
 ### Exact scores only
 

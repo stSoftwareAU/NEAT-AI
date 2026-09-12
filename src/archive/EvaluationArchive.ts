@@ -63,6 +63,17 @@ import {
 /** Fidelity of a score obtained over the whole corpus: ground truth. */
 export const EXACT_FIDELITY = 1;
 
+/**
+ * Run-to-date parent-link coverage under which the flush report is a warning
+ * rather than a note (Issue #4004).
+ *
+ * The field was populated for 0.7 % of records and nothing said so, which is
+ * how a downstream study spent its budget before discovering it was empty. A
+ * run whose derivation paths have stopped recording sits far below this; a run
+ * whose population is genuinely seed-heavy for a generation or two does not.
+ */
+const COVERAGE_FLOOR = 0.5;
+
 /** Everything `record()` needs that is not derivable from the creature. */
 export interface EvaluationArchiveEntry {
   /** The exact score. */
@@ -191,10 +202,14 @@ export class EvaluationArchive {
 
     const approach = getTag(creature, "approach");
     const referenceUuid = this.reference?.uuid;
-    const parents = lineageOf(creature);
-    // Issue #4004: a lineage-aware consumer cannot tell a genuinely parentless
-    // creature (a seed, a random immigrant) from a derivation the run forgot to
-    // record, so the archive counts the difference and `flush` announces it.
+    // Issue #4004: a creature is never its own parent. A mutation can land back
+    // on content it already had, which re-derives the same hash; naming it
+    // would let a parent's-score baseline predict a creature's score from
+    // itself, which reads as skill and is leakage.
+    const parents = lineageOf(creature).filter((parent) => parent !== uuid);
+    // A lineage-aware consumer cannot tell a genuinely parentless creature (a
+    // seed, a random immigrant) from a derivation the run forgot to record, so
+    // the archive counts the difference and `flush` announces it.
     this.recordedCount++;
     if (parents.length > 0) this.recordedWithParents++;
     this.buffer.push({
@@ -264,31 +279,6 @@ export class EvaluationArchive {
   }
 
   /**
-   * Issue #4004: what fraction of the records this instance wrote name a
-   * parent, run-to-date.
-   *
-   * The `parents` field is only provenance a consumer can build on when it is
-   * actually populated, so the number the archive carries is readable rather
-   * than left for a downstream study to discover. `fraction` is `0` for an
-   * archive that has recorded nothing.
-   *
-   * @returns Records written, how many named a parent, and the ratio.
-   */
-  get lineageCoverage(): {
-    readonly records: number;
-    readonly withParents: number;
-    readonly fraction: number;
-  } {
-    return {
-      records: this.recordedCount,
-      withParents: this.recordedWithParents,
-      fraction: this.recordedCount === 0
-        ? 0
-        : this.recordedWithParents / this.recordedCount,
-    };
-  }
-
-  /**
    * Report, once per flush, any evaluations `record` declined to archive.
    *
    * An archive that silently stopped writing is worse than a run that stops, so
@@ -324,13 +314,22 @@ export class EvaluationArchive {
     }
     const percent = (count: number, total: number) =>
       total === 0 ? "0.0" : ((count / total) * 100).toFixed(1);
-    getLogger().info(
-      `[NEAT-AI] Evaluation archive lineage: ${generationWithParents}/` +
-        `${generationRecords} record(s) this generation name a parent ` +
-        `(${percent(generationWithParents, generationRecords)}%), ` +
-        `${this.recordedWithParents}/${this.recordedCount} run-to-date ` +
-        `(${percent(this.recordedWithParents, this.recordedCount)}%).`,
-    );
+    const message = `[NEAT-AI] Evaluation archive lineage: ` +
+      `${generationWithParents}/${generationRecords} record(s) this ` +
+      `generation name a parent ` +
+      `(${percent(generationWithParents, generationRecords)}%), ` +
+      `${this.recordedWithParents}/${this.recordedCount} run-to-date ` +
+      `(${percent(this.recordedWithParents, this.recordedCount)}%).`;
+    // A collapse is the failure this report exists to surface, so it is said
+    // at a level an operator cannot miss rather than folded into the run log.
+    if (this.recordedWithParents / this.recordedCount < COVERAGE_FLOOR) {
+      getLogger().warn(
+        `${message} Lineage-aware consumers cannot work on an archive this ` +
+          `sparse.`,
+      );
+    } else {
+      getLogger().info(message);
+    }
   }
 }
 

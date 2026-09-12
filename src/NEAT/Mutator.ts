@@ -3,7 +3,7 @@ import { removeTag } from "@stsoftware/tags/mod";
 import type { TagInterface } from "@stsoftware/tags/mod";
 import { type Creature, CreatureUtil, Mutation } from "../../mod.ts";
 import { Neuron } from "@architecture/Neuron.ts";
-import { recordDerivedFrom } from "@archive/CreatureLineage.ts";
+import { lineageOf, recordDerivedFrom } from "@archive/CreatureLineage.ts";
 import { discover } from "@blackbox/Discover.ts";
 import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
@@ -436,7 +436,15 @@ export class Mutator {
         // new creature derived from exactly this one, and the hash is a
         // content hash — taking it after the mutation would name a creature
         // that never existed, which is a wrong link rather than a missing one.
+        //
+        // Materialising the hash here would buy nothing: only a creature that
+        // has already been evaluated is in the archive, and the evaluation path
+        // archives by UUID, so an evaluated creature always carries one.
         const preMutationUuid = creature.uuid;
+        // Whether that identity is one the archive actually holds. `Fitness`
+        // records a creature the moment it takes a finite full-corpus score, so
+        // a finite score is the signal that the pre-mutation identity resolves.
+        const preMutationEvaluated = Number.isFinite(creature.score);
         let original: Creature | undefined;
         if (creature.score !== undefined || creature.memetic) {
           // Issue #1586: Use shallowClone() instead of JSON serialisation
@@ -641,11 +649,17 @@ export class Mutator {
           delete creature.uuid;
           // Issue #4004: the mutate-a-clone path — a clone of a scored
           // creature, mutated in place, is most of the population and used to
-          // reach the archive naming nobody. `recordDerivedFrom` keeps any
-          // lineage already recorded (a bred offspring names the two scored
-          // parents it was crossed from, which resolve; the un-mutated
-          // offspring was never evaluated and would not).
-          if (preMutationUuid !== undefined) {
+          // reach the archive naming nobody.
+          //
+          // The pre-mutation identity is named when the archive holds it, or
+          // when nothing better is on record. It is *not* allowed to displace
+          // an inherited link: an un-mutated bred offspring was never
+          // evaluated, so naming it would trade the two scored parents it was
+          // crossed from for an identity no archive record carries.
+          if (
+            preMutationUuid !== undefined &&
+            (preMutationEvaluated || lineageOf(creature).length === 0)
+          ) {
             recordDerivedFrom(creature, preMutationUuid);
           }
           creature.state.preparedNeurons = false;

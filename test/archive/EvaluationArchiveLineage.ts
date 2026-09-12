@@ -31,9 +31,6 @@ import { initWasmForTests } from "../_initWasm.ts";
  */
 const MIN_PARENT_COVERAGE = 0.75;
 
-/** Fraction of parented records that must name a parent the archive holds. */
-const MIN_RESOLVABLE = 0.9;
-
 /** Run one small archive-enabled evolution and return what it wrote. */
 async function capture(
   directory: string,
@@ -98,15 +95,19 @@ Deno.test("evaluation archive lineage - a named parent is a record in the same a
     const parented = records.filter((record) => record.parents.length > 0);
     assert(parented.length > 0, "nothing named a parent");
 
-    const resolvable = parented.filter((record) =>
-      record.parents.some((parent) => archived.has(parent))
+    // Every parented record must join. A named parent that is in no archive is
+    // provenance a consumer cannot act on, which is the state this issue found
+    // the field in. Individual entries may still miss — a restored memetic
+    // source is a real ancestor that was never scored — so the rule is that at
+    // least one named parent resolves, never that all of them do.
+    const unjoinable = parented.filter((record) =>
+      !record.parents.some((parent) => archived.has(parent))
     );
-    const fraction = resolvable.length / parented.length;
-    assert(
-      fraction >= MIN_RESOLVABLE,
-      `only ${resolvable.length}/${parented.length} (${
-        (fraction * 100).toFixed(1)
-      }%) of parent links join to a record in the same archive`,
+    assertEquals(
+      unjoinable.map((record) => record.uuid),
+      [],
+      `${unjoinable.length}/${parented.length} records name only parents that ` +
+        "are in no record of the same archive",
     );
 
     // The parent's-score baseline of Issue #3930 needs the parent's own exact
@@ -121,11 +122,16 @@ Deno.test("evaluation archive lineage - a named parent is a record in the same a
       withParentScore !== undefined,
       "no archived creature can be joined to its parent's exact score",
     );
-    assertEquals(
-      withParentScore.parents.length > 0,
-      true,
-      "the joined record must carry the parents it was resolved through",
-    );
+
+    // A creature is never its own parent: a mutation that lands back on
+    // content it already had re-derives the same hash, and a baseline built on
+    // that link would predict a creature's score from itself.
+    for (const record of records) {
+      assert(
+        !record.parents.includes(record.uuid),
+        `${record.uuid} is recorded as its own parent`,
+      );
+    }
   } finally {
     await Deno.remove(directory, { recursive: true });
   }

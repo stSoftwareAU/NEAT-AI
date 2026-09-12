@@ -10,6 +10,7 @@ import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
+  inheritLineage,
   lineageOf,
   recordDerivedFrom,
   recordLineage,
@@ -81,21 +82,53 @@ Deno.test("creature lineage - the mutate-a-clone path names the pre-mutation ide
   assertEquals(lineageOf(child), [parent.uuid!]);
 });
 
-Deno.test("creature lineage - a derivation never overwrites recorded parents", () => {
-  // A bred offspring names the two scored parents it was crossed from. Mutating
-  // it in place must not trade those for the identity of the un-mutated
-  // offspring, which was never evaluated and is in no archive.
+Deno.test("creature lineage - a derivation names the nearest ancestor", () => {
+  const mother = makeCreature(2);
+  const child = makeCreature(3);
+  recordLineage(child, mother);
+
+  const nearer = makeCreature(4);
+  recordDerivedFrom(child, nearer.uuid!);
+
+  assertEquals(lineageOf(child), [nearer.uuid!]);
+});
+
+Deno.test("creature lineage - a clone inherits the parents of its source", () => {
+  // Lineage is keyed on the creature object, so a clone starts with none. The
+  // de-duplicator mutates clones of creatures that are then discarded, and the
+  // inherited parents are the only ones that resolve to an archive record.
   const mother = makeCreature(2);
   const father = makeCreature(3);
-  const child = makeCreature(4);
-  recordLineage(child, mother, father);
+  const source = makeCreature(4);
+  recordLineage(source, mother, father);
 
-  recordDerivedFrom(child, makeCreature(5).uuid!);
+  const clone = makeCreature(5);
+  inheritLineage(clone, source);
 
   assertEquals(
-    [...lineageOf(child)].sort(),
+    [...lineageOf(clone)].sort(),
     [mother.uuid!, father.uuid!].sort(),
   );
+});
+
+Deno.test("creature lineage - inheriting from a parentless source records nothing", () => {
+  const clone = makeCreature(2);
+  inheritLineage(clone, makeCreature(3));
+  assertEquals(lineageOf(clone), []);
+});
+
+Deno.test("creature lineage - two content-identical parents are one parent", () => {
+  // The same creature crossed with itself is one ancestor, not two. Recording
+  // it twice would make a one-parent derivation read as a crossover.
+  const parent = makeCreature(2);
+  const twin = parent.shallowClone();
+  delete twin.uuid;
+  const child = makeCreature(3);
+
+  recordLineage(child, parent, twin);
+
+  assertEquals(CreatureUtil.makeUUID(twin), parent.uuid!, "same content");
+  assertEquals(lineageOf(child), [parent.uuid!]);
 });
 
 Deno.test("creature lineage - recording no identifiable parent leaves no entry", () => {

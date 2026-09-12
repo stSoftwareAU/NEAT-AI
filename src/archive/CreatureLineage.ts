@@ -19,6 +19,7 @@
  *   F[fine-tune / compaction] -->|recordLineage candidate, fittest, previous| W
  *   C[creative-thinking clone] -->|recordLineage clone, elite| W
  *   M[mutate-a-clone] -->|recordDerivedFrom child, pre-mutation uuid| W
+ *   K[clone before mutating] -->|inheritLineage clone, source| W
  *   W -->|lineageOf| A[archive record.parents]
  * ```
  *
@@ -80,17 +81,37 @@ export function recordLineage(
  * content. The caller captures the parent's UUID before mutating and names it
  * here.
  *
- * Existing lineage wins. A bred offspring already names the two scored parents
- * it was crossed from; replacing them with the identity of the un-mutated
- * offspring — a creature that was never evaluated and is therefore in no
- * archive — would trade a link that resolves for one that cannot.
+ * Any earlier record is replaced — naming the nearest ancestor is the point.
+ * Deciding *whether* the pre-mutation identity is the nearest ancestor worth
+ * naming belongs to the caller, which is the only place that knows whether that
+ * identity was ever evaluated; see `Mutator.mutate`.
  *
  * @param child - The creature as it is after the mutation.
  * @param parentUuid - The UUID the creature carried before it was mutated.
  */
 export function recordDerivedFrom(child: Creature, parentUuid: string): void {
-  if (parentsByCreature.has(child)) return;
   parentsByCreature.set(child, Object.freeze([parentUuid]));
+}
+
+/**
+ * Carry a creature's recorded parents onto a clone of it (Issue #4004).
+ *
+ * Lineage is keyed on the creature **object**, so a clone starts with none even
+ * though it is the same creature by content. Where the clone is then mutated
+ * into something new — the de-duplicator's retry path — that loss matters: the
+ * source may be a bred offspring that is about to be replaced and will never be
+ * evaluated, so the only parents that resolve to an archive record are the ones
+ * it inherited.
+ *
+ * A no-op when the source has no recorded parents.
+ *
+ * @param clone - The freshly cloned creature.
+ * @param source - The creature it was cloned from.
+ */
+export function inheritLineage(clone: Creature, source: Creature): void {
+  const parents = parentsByCreature.get(source);
+  if (parents === undefined) return;
+  parentsByCreature.set(clone, parents);
 }
 
 /**
