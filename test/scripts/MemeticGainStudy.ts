@@ -12,6 +12,7 @@ import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import {
   buildStudyCorpus,
   DEFAULT_STUDY_SETTINGS,
+  isStudyTrainerAvailable,
   runMemeticArm,
   scoreExactly,
   SELECTION_POLICIES,
@@ -27,6 +28,7 @@ import {
 } from "@utils/RandomNumberGenerator.ts";
 import { withRngTestLock } from "../_rngTestLock.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+import { __setRustTrainDirEnabledForTests } from "@architecture/training/RustTrainDirBridge.ts";
 
 /** A settings block small enough to run inside a unit test's budget. */
 const TINY: StudySettings = {
@@ -38,6 +40,26 @@ const TINY: StudySettings = {
   trainPerGen: 2,
   trainingIterations: 1,
 };
+
+/**
+ * Run `body` against whichever trainer this checkout actually has.
+ *
+ * `trainDir` prefers the Rust trainer and refuses to fall back when it is
+ * enabled with nothing to run it — the state of a plain checkout, and the state
+ * a bare `deno test` inherits because the flag defaults on. The harness is
+ * trainer-agnostic, so the WASM loop is forced for the isolate rather than
+ * letting an absent binary fail a test about selection. `./quality.sh --next`
+ * has the Rust trainer and takes the untouched path.
+ */
+function withAvailableTrainer<T>(body: () => T): T {
+  if (isStudyTrainerAvailable()) return body();
+  __setRustTrainDirEnabledForTests(false);
+  try {
+    return body();
+  } finally {
+    __setRustTrainDirEnabledForTests(undefined);
+  }
+}
 
 Deno.test("buildStudyCorpus - the same seed builds the same corpus", () => {
   const first = buildStudyCorpus(TINY);
@@ -159,9 +181,7 @@ Deno.test("selectUnderPolicy - asking for more than exists returns what exists",
 Deno.test("runMemeticArm - a real arm logs one event per scheduled step", async () => {
   await initWasmForTests();
   await withRngTestLock(() => {
-    // Either trainer is acceptable; the guard refuses only when Rust training
-    // is enabled with nothing to run it.
-    const arm = runMemeticArm("top", TINY);
+    const arm = withAvailableTrainer(() => runMemeticArm("top", TINY));
     assertEquals(arm.policy, "top");
     assertEquals(arm.seed, TINY.seed);
     assertEquals(
@@ -194,7 +214,9 @@ Deno.test("runMemeticArm - a real arm logs one event per scheduled step", async 
 Deno.test("runMemeticArm - the random arm trains past the top rule's reach", async () => {
   await initWasmForTests();
   await withRngTestLock(() => {
-    const arm = runMemeticArm("random", { ...TINY, generations: 6 });
+    const arm = withAvailableTrainer(() =>
+      runMemeticArm("random", { ...TINY, generations: 6 })
+    );
     assertEquals(arm.events.length, 6 * TINY.trainPerGen);
     assert(
       arm.events.some((event) => event.rank >= TINY.trainPerGen),
@@ -209,7 +231,7 @@ Deno.test("runMemeticArm - the caller's random generator is restored", async () 
     const mine = createSeededRng(99);
     setRandomNumberGenerator(mine);
     try {
-      runMemeticArm("top", TINY);
+      withAvailableTrainer(() => runMemeticArm("top", TINY));
       assertEquals(getRandomNumberGenerator(), mine);
     } finally {
       setRandomNumberGenerator(createSeededRng(1));

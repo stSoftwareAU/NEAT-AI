@@ -255,7 +255,7 @@ export function runMemeticArm(
 }
 
 /**
- * Refuse to run when the trainer would not actually train.
+ * True when a trainer this checkout actually has will run the gradient step.
  *
  * `trainDir` prefers the Rust `neat_ai_backpropagation` trainer and **throws**
  * rather than falling back when it is enabled but its library and binary are
@@ -266,15 +266,21 @@ export function runMemeticArm(
  * Either trainer is fine: when the Rust one is present the study uses it, and
  * `./quality.sh --next` runs exactly that way.
  *
+ * @returns True when `trainDir` will train rather than throw.
+ */
+export function isStudyTrainerAvailable(): boolean {
+  if (!isRustTrainDirEnabled()) return true;
+  return findNativeBackpropLibrary() !== null ||
+    findRustTrainDirBinary() !== null;
+}
+
+/**
+ * Refuse to run when the trainer would not actually train.
+ *
  * @throws {Error} When Rust backpropagation is enabled but unavailable.
  */
 function assertTrainerAvailable(): void {
-  if (!isRustTrainDirEnabled()) return;
-  if (
-    findNativeBackpropLibrary() !== null || findRustTrainDirBinary() !== null
-  ) {
-    return;
-  }
+  if (isStudyTrainerAvailable()) return;
   throw new Error(
     "memeticGainStudy cannot train: NEAT_AI_BACKPROP_ENABLED is on but " +
       "neither the neat_ai_backpropagation library nor its binary was found, " +
