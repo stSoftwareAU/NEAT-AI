@@ -60,6 +60,13 @@ class StubWorker {
     this.trainCalls++;
     return Promise.resolve(this.reply(creature));
   }
+
+  /** GRQ #4489: the scheduler dispatches through the tracked call. */
+  trainTracked(
+    creature: Creature,
+  ): { taskID: number; response: Promise<ResponseData> } {
+    return { taskID: 1, response: this.train(creature) };
+  }
 }
 
 /** A trained reply whose error is `trainedError`. */
@@ -99,6 +106,7 @@ function stubNeat(
     abandonEpoch: 0,
     trainingInProgress: new Map(),
     trainingDeadlines: new Map(),
+    trainingTasks: new Map(),
     alreadyScheduledMap: new Map<string, number>(),
     trainingRegressionTracker: new TrainingRegressionTracker(),
     trainingGainLog: log,
