@@ -378,6 +378,8 @@ export type { SurrogateRunDiagnostics } from "@surrogate/SurrogateGuard.ts";
 export { SurrogateGuard } from "@surrogate/SurrogateGuard.ts";
 export type { SurrogateUncertaintyErrorReason } from "@errors/SurrogateUncertaintyError.ts";
 export { SurrogateUncertaintyError } from "@errors/SurrogateUncertaintyError.ts";
+
+/**
  * Issue #3934 — the training-gain log: the memetic-budget instrumentation of
  * Jin (2011) §5. Per-generation backpropagation is local search, and the rule
  * that allocates it (`selectTrainingCandidates`) spends the budget on the
