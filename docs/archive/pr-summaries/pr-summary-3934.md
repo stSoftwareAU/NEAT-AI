@@ -201,7 +201,7 @@ Backend/CLI only — no web interface, so no screenshot applies. What was run:
 - **unrequested** — the per-run `maxRecords` write bound and its refusal tallies
   (`src/config/TrainingGainLogConfig.ts:60`,
   `src/archive/TrainingGainLog.ts:238`) — reviewer: unrequested — reason: an
-  opt-in log that writes to disk unboundedly is not shippable; the bound is
+  opt-in log that writes to disk without bounds is not shippable; the bound is
   per-run and announces itself rather than truncating silently.
 - **unrequested** — record columns beyond the four asked for (`errorBefore`,
   `errorAfter`, `runId`, `dispatchedAt`, `referenceUuid`, `outcome`) — reviewer:
