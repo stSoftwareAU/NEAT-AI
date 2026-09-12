@@ -36,6 +36,11 @@ import {
 } from "@discovery/DiscoveryTimeout.ts";
 import type { DiscoveryReplayDirResult } from "@neat/DiscoveryReplayQueue.ts";
 import { getLogger } from "@utils/Logger.ts";
+import {
+  removeTrainingTaskCapture,
+  trainingTaskCaptureDir,
+  writeTrainingTaskCapture,
+} from "@neat/TrainingTaskCapture.ts";
 import type { Neat } from "@neat/Neat.ts";
 import {
   isTrainingErrorMaterialImprovement,
@@ -648,6 +653,14 @@ export function scheduleTraining(
   // request in flight and unsettled for the rest of the run.
   const { taskID, response } = w.trainTracked(creature, trainOptions);
 
+  // Issue #4022 (GRQ #4490): while the capture is armed, the creature exactly
+  // as dispatched is kept on disk until the task settles, so a task that never
+  // comes back leaves the one creature that reproduces the hang.
+  const captureDir = trainingTaskCaptureDir();
+  const capture = captureDir === undefined
+    ? Promise.resolve(undefined)
+    : writeTrainingTaskCapture(captureDir, uuid, creature.exportJSON());
+
   const p = response.then((r) => {
     // Issue #3435: discard late completions after a hard-deadline abandon before
     // rebuilding the trained creature, fine-tuning, or writing traces.
@@ -798,6 +811,11 @@ export function scheduleTraining(
     if (neat.trainingTasks.get(uuid)?.taskID === taskID) {
       neat.trainingTasks.delete(uuid);
     }
+    // Issue #4022: the task settled — by result, failure or cancellation — so
+    // its capture is no longer evidence of a hang.
+    capture.then((path) =>
+      path === undefined ? undefined : removeTrainingTaskCapture(path)
+    );
   });
 
   neat.trainingTasks.set(uuid, { worker: w, taskID });
