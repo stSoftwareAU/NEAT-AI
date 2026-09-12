@@ -96,6 +96,27 @@ Deno.test("evaluation archive — records an exact evaluation with its provenanc
   }
 });
 
+Deno.test("evaluation archive — a creature is never recorded as its own parent", async () => {
+  // Issue #4004: a mutation can land back on content the creature already had,
+  // which re-derives the same hash. A baseline built on that link would predict
+  // a creature's score from itself and read as skill.
+  const { archive, directory } = await makeArchive();
+  try {
+    const parent = creatureWithBias(0.4);
+    const child = creatureWithBias(0.6);
+    recordLineage(child, parent, child);
+
+    archive.beginGeneration(1);
+    archive.record(child, { score: 0.5, fidelity: EXACT_FIDELITY });
+    await archive.flush();
+
+    const [record] = await readEvaluationArchive(archive.path);
+    assertEquals(record.parents, [parent.uuid!]);
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
+
 Deno.test("evaluation archive — a later run appends to the same archive", async () => {
   const { archive, directory } = await makeArchive();
   try {

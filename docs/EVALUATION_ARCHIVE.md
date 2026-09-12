@@ -58,7 +58,7 @@ One record per **true** evaluation:
 | `runId`             | The run that produced the evaluation.                        |
 | `generation`        | Generation index within that run.                            |
 | `uuid`              | Content-hash UUID of the creature scored.                    |
-| `parents`           | UUIDs of the parents it was bred from; empty if not bred.    |
+| `parents`           | UUIDs the creature was derived from; see below.              |
 | `operators`         | Mutation operators applied to it, when telemetry knew them.  |
 | `approach`          | Pipeline stage that produced it (the `approach` tag).        |
 | `score`             | The exact score.                                             |
@@ -72,6 +72,73 @@ The file is newline-delimited JSON (`evaluations.jsonl`), appended once per
 generation. Runs sharing a directory append to the same archive — cross-run
 history is the point, since a surrogate is fitted to what the lineage has
 already learnt.
+
+### Parent links: what `parents` covers
+
+`parents` names the creature(s) an archived creature was **derived from**, by
+the same content-hash UUID those creatures are archived under. A lineage-aware
+consumer — a parent's-score baseline, a lineage-held-out split — can only work
+when the field is actually populated, so this section says what it carries
+rather than leaving a downstream study to find out.
+
+Every derivation path records it (Issue #4004):
+
+| Path                                             | Parents recorded             |
+| ------------------------------------------------ | ---------------------------- |
+| Crossover breeding (`Breed`, `ParallelBreeding`) | mother and father            |
+| Memetic fine-tuning (`FineTune`)                 | fittest and previous fittest |
+| Compaction of the fittest (`FineTune`)           | the fittest                  |
+| The creative-thinking clone (`NeatEvolution`)    | the elite it was cloned from |
+| Mutating a clone in place (`Mutator`)            | the pre-mutation identity    |
+| Cloning before mutating (`DeDuplicator`)         | inherited from the source    |
+
+Lineage is held **off** the creature, in a `WeakMap` keyed on the creature
+object (`src/archive/CreatureLineage.ts`). A creature's `uuid` is a content
+hash, so anything persisted beside it that is not content is a liability — the
+field reaches the archive record and never the creature export.
+
+Three rules keep a recorded link honest:
+
+- **The UUID is materialised while the parent still is the creature it will be
+  archived as.** Reading an optional `uuid` silently dropped a parent whose hash
+  had not been computed yet, which is how a record ended up naming one parent
+  instead of two. Taking the hash _after_ a parent has been mutated in place
+  would be worse still — a _wrong_ link rather than a missing one — so the
+  mutate-a-clone path captures the identity before it mutates.
+- **The nearest ancestor the archive actually holds wins.** A bred offspring
+  that has not been evaluated is in no archive, so mutating it keeps the two
+  scored parents it was crossed from rather than naming the un-mutated
+  offspring. Once a creature has taken a finite score it _is_ archived under its
+  own UUID, so mutating it from there names that UUID.
+- **A creature is never its own parent.** A mutation can land back on content
+  the creature already had, which re-derives the same hash. `record` drops such
+  a link: a baseline that predicted a creature's score from itself would read as
+  skill and is leakage.
+
+An **empty `parents` is a real answer**: a seed creature, a random immigrant and
+a restored source have no parent in the run. Measured on a small container
+capture, ~97 % of records name a parent and the remainder is the seed each run
+starts from. Every flush that writes records logs the generation's coverage and
+the run-to-date ratio, so a regression to an unpopulated field is visible where
+the archive is written — at `warn` once run-to-date coverage falls under 50 %,
+at `info` otherwise:
+
+```text
+[NEAT-AI] Evaluation archive lineage: 7/7 record(s) this generation name a
+parent (100.0%), 34/35 run-to-date (97.1%).
+```
+
+Coverage is guarded by `test/archive/EvaluationArchiveLineage.ts`, which evolves
+a small population with the archive enabled and fails below a floor, so a
+regression to the 0.7 % the field once carried fails in CI rather than in a
+downstream study.
+
+Every record that names a parent names **at least one** the archive holds —
+`test/archive/EvaluationArchiveLineage.ts` asserts exactly that, and it holds on
+every capture shape measured. An individual entry may still miss: a restored
+memetic source is a genuine ancestor that may never have been scored, and the
+retention bound drops the oldest records, so a long-running archive can hold a
+child whose parent has aged out. Join on `uuid`, and treat a miss as a miss.
 
 ### Exact scores only
 
