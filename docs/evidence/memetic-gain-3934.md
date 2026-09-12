@@ -27,10 +27,10 @@ rank says something too weak to reallocate a gradient step on. What the run did
 find is a larger problem one rung up: today's rule cannot spend half the budget
 it is given.**
 
-Over **10,645 real training events**, the rank a creature was selected at does
-correlate with the gain its gradient step realised (ρ = 0.119, p = 0.0005 on the
+Over **10,546 real training events**, the rank a creature was selected at does
+correlate with the gain its gradient step realised (ρ = 0.104, p = 0.0005 on the
 unbiased arm), in the direction the issue predicted: the **incumbent has least
-left to extract**. But |ρ| = 0.119 is below the 0.2 materiality floor the
+left to extract**. But |ρ| = 0.104 is below the 0.2 materiality floor the
 harness pre-registers, and the endpoint comparison says why that floor matters:
 at the same seed, today's rule and uniform-random selection reach the **same
 final exact score**, and which of them is ahead flips between runs of the
@@ -50,11 +50,11 @@ the creatures it has already trained, so:
 
 | policy             | slots offered | steps taken | refused by #3553 |  spent |
 | ------------------ | ------------: | ----------: | ---------------: | -----: |
-| top (today's rule) |         7,500 |       3,841 |            3,659 | 51.2 % |
-| random (baseline)  |         7,500 |       6,804 |              696 | 90.7 % |
+| top (today's rule) |         7,500 |       3,769 |            3,731 | 50.3 % |
+| random (baseline)  |         7,500 |       6,777 |              723 | 90.4 % |
 
-**Today's rule converts 51.2 % of its local-search budget into gradient steps.
-The random baseline converts 90.7 % of the same budget.** That is not a
+**Today's rule converts 50.3 % of its local-search budget into gradient steps.
+The random baseline converts 90.4 % of the same budget.** That is not a
 statistical effect needing a materiality floor — it is an arithmetic property of
 selecting by an attribute that barely changes between generations, and it is
 squarely inside this issue's scope (_who is selected for local search_).
@@ -76,6 +76,7 @@ NEAT_AI_BACKPROP_ENABLED=0 deno task memetic-gain-study \
 | Corpus       | 600 records, deterministic non-linear regression, written to a real binary data directory                                     |
 | Local search | **Real backpropagation** via `trainDir`, 2 epochs per step, TypeScript/WASM loop (the Rust trainer is absent from a checkout) |
 | Score        | `-MSE` over the whole corpus, re-measured after the step; higher is better                                                    |
+| Wall-clock   | The gradient step only — the harness's own exact re-score is its measuring instrument, not local search, and is not billed    |
 | Host         | 7-core container, Deno 2.x                                                                                                    |
 
 The `random` arm is not only the baseline the issue insists on. It is the **only
@@ -98,12 +99,12 @@ flowchart LR
     X --> B{"how much of the<br/>budget was spent?"}
 ```
 
-## What the 10,645 events say
+## What the 10,546 events say
 
 | policy | events | median gain | trimmed mean |  mean gain |  max gain | improved | training s |    gain/s | trimmed gain/s |
 | ------ | -----: | ----------: | -----------: | ---------: | --------: | -------: | ---------: | --------: | -------------: |
-| top    |  3,841 |  -1.938e-02 |   -3.516e-02 | -4.073e-02 | 1.923e-01 |   13.1 % |       48.3 | -3.237e+0 |      -2.794e+0 |
-| random |  6,804 |  -1.070e-02 |   -2.153e-02 | -2.655e-02 | 5.480e-01 |   22.9 % |       83.7 | -2.157e+0 |      -1.749e+0 |
+| top    |  3,769 |  -2.570e-02 |   -4.081e-02 | -4.586e-02 | 1.923e-01 |   11.9 % |       53.6 | -3.225e+0 |      -2.870e+0 |
+| random |  6,777 |  -1.372e-02 |   -2.437e-02 | -2.929e-02 | 5.480e-01 |   21.2 % |       95.8 | -2.072e+0 |      -1.724e+0 |
 
 Read the columns in this order, because the first one is the trap:
 
@@ -111,13 +112,13 @@ Read the columns in this order, because the first one is the trap:
   unit of training wall-clock", and the honest answer is that the _average_
   gradient step on this corpus **loses** score against the creature it trained.
   So this metric ranks the arms by which wastes less, and by it today's rule is
-  **1.50× worse** than random selection (**1.60×** on the outlier-resistant
+  **1.56× worse** than random selection (**1.66×** on the outlier-resistant
   `trimmed gain/s`, which is reported beside it so one explosive recovery cannot
   set an arm's sign on its own). It is reported because the issue asks for it,
   not because it is the number that decides anything.
-- **`improved` is the column that matters.** 13.1 % of the top rule's steps
-  produced a better creature; 22.9 % of random selection's did. Put the other
-  way: **86.9 % of the gradient steps today's rule dispatches produce a creature
+- **`improved` is the column that matters.** 11.9 % of the top rule's steps
+  produced a better creature; 21.2 % of random selection's did. Put the other
+  way: **88.1 % of the gradient steps today's rule dispatches produce a creature
   worse than the one they trained**, and the run throws those away.
 - **`events` is not the budget.** Each arm was offered 7,500 slots; the counts
   here are what survived the #3553 guard, which is the headline above.
@@ -131,8 +132,8 @@ Read the columns in this order, because the first one is the trap:
 
 | sample                              |     ρ |   τ-b |      p |      n | distinct ranks |
 | ----------------------------------- | ----: | ----: | -----: | -----: | -------------: |
-| randomly-selected events (unbiased) | 0.119 | 0.081 | 0.0005 |  6,804 |             20 |
-| all events (rank-biased)            | 0.157 | 0.109 | 0.0005 | 10,645 |             20 |
+| randomly-selected events (unbiased) | 0.104 | 0.071 | 0.0005 |  6,777 |             20 |
+| all events (rank-biased)            | 0.160 | 0.111 | 0.0005 | 10,546 |             20 |
 
 **The verdict is taken from the first row only.** The pooled row reads higher
 precisely because it is contaminated: every one of the top arm's events sits at
@@ -153,34 +154,34 @@ each other rather than with a different arm:
 
 | rank bucket | events | median gain | improved |
 | ----------- | -----: | ----------: | -------: |
-| 0–25 %      |  1,470 |  -1.328e-02 |   14.4 % |
-| 25–50 %     |  1,678 |  -1.178e-02 |   19.0 % |
-| 50–75 %     |  1,778 |  -1.147e-02 |   21.7 % |
-| 75–100 %    |  1,878 |  -6.483e-03 |   34.1 % |
+| 0–25 %      |  1,521 |  -1.491e-02 |   12.1 % |
+| 25–50 %     |  1,585 |  -1.478e-02 |   16.3 % |
+| 50–75 %     |  1,772 |  -1.483e-02 |   21.3 % |
+| 75–100 %    |  1,899 |  -1.024e-02 |   32.4 % |
 
-A creature in the bottom quartile of its population is **about 2.4 times** more
+A creature in the bottom quartile of its population is **about 2.7 times** more
 likely to benefit from a gradient step than one in the top quartile, and its
-median step costs it less than half as much. The issue's reasoning — "the
-current leader is likely to be the individual closest to its local optimum and
-therefore the one with the least left to extract" — is confirmed.
+median step costs it about a third less. The issue's reasoning — "the current
+leader is likely to be the individual closest to its local optimum and therefore
+the one with the least left to extract" — is confirmed.
 
 ### Does it buy a better run?
 
 | comparison                                  | value       |
 | ------------------------------------------- | ----------- |
-| Final exact score, `top` (mean of 75 seeds) | -1.3644e-2  |
-| Final exact score, `random`                 | -1.3003e-2  |
-| Paired wins, `top` vs `random`              | **35 / 75** |
-| Paired mean delta (`top` − `random`)        | -6.410e-4   |
-| Paired median delta                         | -1.589e-4   |
+| Final exact score, `top` (mean of 75 seeds) | -1.3225e-2  |
+| Final exact score, `random`                 | -1.2747e-2  |
+| Paired wins, `top` vs `random`              | **40 / 75** |
+| Paired mean delta (`top` − `random`)        | -4.780e-4   |
+| Paired median delta                         | +2.269e-4   |
 
-No — and more usefully, **the comparison has no stable direction to report**. A
-run of this identical configuration immediately before this one gave today's
-rule 35 → **43 / 75** wins with a paired mean delta of -1.046e-4 and a
-_positive_ median delta: the winner changed between two runs that differ only in
-the unseeded neuron UUIDs the mutation operators mint (see the caveats). A
-comparison whose sign flips between runs of the same harness cannot support a
-claim in either direction.
+No — and more usefully, **the comparison has no stable direction to report**.
+Runs of this identical configuration have given today's rule 35/75 and 43/75 as
+well as the 40/75 above, with the paired median delta changing sign between
+them: the winner changes between runs that differ only in the unseeded neuron
+UUIDs the mutation operators mint (see the caveats). A comparison whose sign
+flips between runs of the same harness cannot support a claim in either
+direction.
 
 This is the comparison the issue insists any Stage 2 selector be judged on —
 "judged on **final exact score**, not on mean training gain" — and it is already
@@ -191,13 +192,14 @@ for a gain predictor to close.**
 
 | repeat | base seed | events | ρ (random arm) |      p | top wins | decision |
 | -----: | --------: | -----: | -------------: | -----: | -------: | -------- |
-|      1 |      3934 |  3,554 |          0.147 | 0.0005 |    13/25 | no-go    |
-|      2 |      4934 |  3,469 |          0.127 | 0.0005 |    10/25 | no-go    |
-|      3 |      5934 |  3,622 |          0.079 | 0.0005 |    12/25 | no-go    |
+|      1 |      3934 |  3,531 |          0.065 | 0.0020 |    15/25 | no-go    |
+|      2 |      4934 |  3,483 |          0.140 | 0.0005 |    11/25 | no-go    |
+|      3 |      5934 |  3,532 |          0.110 | 0.0005 |    14/25 | no-go    |
 
 Three independent repeats, no shared seeds, same verdict each time, ρ inside
-`[0.08, 0.15]` throughout — every repeat below the 0.2 floor on its own
-evidence. The budget-utilisation gap is present in all three.
+`[0.06, 0.14]` throughout — every repeat below the 0.2 floor on its own
+evidence, and across every run of this configuration ρ has stayed under 0.15.
+The budget-utilisation gap is present in all three.
 
 ## Caveats — what this does not show
 
@@ -205,7 +207,7 @@ evidence. The budget-utilisation gap is present in all three.
   magnitudes are not GRQ's. A 5,317-neuron creature over a 21.2 GiB corpus could
   have a different gain distribution, and nothing here claims otherwise. What
   transfers is the _ordering_ question, which is what selection consumes.
-- **The utilisation figure is scale-dependent too.** 51.2 % is what a
+- **The utilisation figure is scale-dependent too.** 50.3 % is what a
   20-creature population with elitism 2 and `trainPerGen` 4 produces over 25
   generations. The _mechanism_ — score-rank changes slowly, #3553 refuses a
   repeat, the slot is lost — does not depend on those numbers, but the
@@ -231,7 +233,7 @@ evidence. The budget-utilisation gap is present in all three.
   here.
 - **#2382 is not modelled.** Production also skips creatures whose recent
   training attempts all regressed. Modelling it would refuse _more_ of today's
-  rule's slots, not fewer, so the 51.2 % above is an upper bound on utilisation.
+  rule's slots, not fewer, so the 50.3 % above is an upper bound on utilisation.
 
 ## What happens next
 
@@ -242,7 +244,7 @@ gap behind it. The go/no-go is recorded on #3919.
 
 The instrumentation ships anyway and off by default
 ([`docs/TRAINING_GAIN_LOG.md`](../TRAINING_GAIN_LOG.md)), because both numbers
-that did come out of this — 86.9 % of scheduled gradient steps produce a worse
+that did come out of this — 88.1 % of scheduled gradient steps produce a worse
 creature, and roughly half the local-search budget never becomes a gradient step
 at all — are production questions it can answer on a real run, on real
 creatures, without any predictor.

@@ -12,6 +12,7 @@ import {
   assertTrainingGainVersion,
   parseTrainingGainLine,
   readTrainingGainLog,
+  trainingErrorGain,
   trainingGain,
   type TrainingGainRecord,
 } from "@archive/TrainingGainRecord.ts";
@@ -156,6 +157,32 @@ Deno.test("training-gain format - a wrong-length descriptor is refused", () => {
     TrainingGainLogError,
   );
   assertEquals(error.reason, "DESCRIPTOR_LENGTH_MISMATCH");
+});
+
+Deno.test("trainingErrorGain - the like-for-like reading, and only when it exists", () => {
+  // Both terms come from the trainer's own instrument, unlike the two scores
+  // `trainingGain` subtracts; positive means the error fell.
+  assertEquals(
+    trainingErrorGain(validRecord({ errorBefore: 0.5, errorAfter: 0.2 })),
+    0.5 - 0.2,
+  );
+  assertEquals(
+    trainingErrorGain(validRecord({ errorBefore: 0.2, errorAfter: 0.5 })),
+    0.2 - 0.5,
+  );
+  // No reading is `undefined`, never 0 — "not measured" must not read as
+  // "nothing changed".
+  assertEquals(trainingErrorGain(validRecord()), undefined);
+  assertEquals(
+    trainingErrorGain(validRecord({ errorBefore: 0.5 })),
+    undefined,
+  );
+  assertEquals(
+    trainingErrorGain(
+      validRecord({ errorBefore: 0.5, errorAfter: Number.NaN }),
+    ),
+    undefined,
+  );
 });
 
 Deno.test("training-gain format - gain is the score the step bought", () => {

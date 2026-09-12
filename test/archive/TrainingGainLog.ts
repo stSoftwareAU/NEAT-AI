@@ -22,6 +22,7 @@ import {
   TRAINING_GAIN_LOG_FILE_NAME,
 } from "@config/TrainingGainLogConfig.ts";
 import { EVALUATION_DESCRIPTOR_LENGTH } from "@archive/EvaluationDescriptor.ts";
+import { getLogger, setLogger } from "@utils/Logger.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /** A distinct identified creature, so records are joinable. */
@@ -59,6 +60,45 @@ async function newLog(
   );
   return { log, directory, tick: () => (clock += 250) };
 }
+
+Deno.test("training-gain log - a dispatch that never settled is announced", async () => {
+  await initWasmForTests();
+  const { log, directory } = await newLog();
+  try {
+    // A step dispatched and never closed: the run ended, the worker vanished,
+    // or the outcome went missing. The record is gone either way, so the flush
+    // must say so rather than let the shortfall read as a step never taken.
+    log.recordDispatch(creatureWithUuid(0.4), {
+      generation: 3,
+      rank: 0,
+      rankedPopulation: 8,
+      scoreBefore: -0.4,
+      errorBefore: 0.4,
+    });
+    assertEquals(log.pendingCount, 1);
+
+    const lines: string[] = [];
+    const original = getLogger();
+    const record = (...args: unknown[]) =>
+      lines.push(args.map(String).join(" "));
+    setLogger({ debug: record, info: record, warn: record, error: record });
+    try {
+      await log.flush();
+    } finally {
+      setLogger(original);
+    }
+
+    const warning = lines.find((line) =>
+      line.includes("dispatch(es) with no outcome yet")
+    );
+    assert(
+      warning !== undefined,
+      `an unsettled dispatch must be announced, got: ${JSON.stringify(lines)}`,
+    );
+  } finally {
+    await Deno.remove(directory, { recursive: true });
+  }
+});
 
 Deno.test("training-gain log - one dispatch and outcome become one record", async () => {
   await initWasmForTests();

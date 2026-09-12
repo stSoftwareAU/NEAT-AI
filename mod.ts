@@ -413,6 +413,7 @@ export type {
 } from "@archive/TrainingGainRecord.ts";
 export {
   readTrainingGainLog,
+  trainingErrorGain,
   trainingGain,
 } from "@archive/TrainingGainRecord.ts";
 export type { TrainingGainLogErrorReason } from "@errors/TrainingGainLogError.ts";

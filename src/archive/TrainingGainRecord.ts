@@ -102,6 +102,16 @@ export interface TrainingGainRecord {
  * never `0`. Treating a failed step as a zero-gain step would let the analysis
  * average a fault in with a measurement.
  *
+ * > [!IMPORTANT]
+ * > The two scores are **not measured the same way**. `scoreBefore` is the
+ * > exact score the fitness phase computed over the whole corpus;
+ * > `scoreAfter` is derived from the training error the worker returned, over
+ * > whatever the trainer sampled. The difference is therefore a mix of "the
+ * > step helped" and "the two measurements disagree", and on a production log
+ * > that second term is not small. Use {@link trainingErrorGain} when you need
+ * > a like-for-like reading; use this one only when the run re-scored the
+ * > trained creature exactly, as the Stage 1 study does.
+ *
  * @param record - The event.
  * @returns `scoreAfter - scoreBefore`, or `undefined` when the step produced no
  *   score.
@@ -111,6 +121,29 @@ export function trainingGain(record: TrainingGainRecord): number | undefined {
   if (!Number.isFinite(record.scoreAfter)) return undefined;
   if (!Number.isFinite(record.scoreBefore)) return undefined;
   return record.scoreAfter - record.scoreBefore;
+}
+
+/**
+ * The like-for-like reading: how much the training error fell.
+ *
+ * Both terms come from the same instrument — the trainer's own error over the
+ * data it trained on — so unlike {@link trainingGain} this subtracts two
+ * commensurable quantities. Positive means the error fell, which is the
+ * direction "better" points in for every other column here.
+ *
+ * @param record - The event.
+ * @returns `errorBefore - errorAfter`, or `undefined` when the run did not tag
+ *   both errors (there is no reading, which is not the same as no change).
+ */
+export function trainingErrorGain(
+  record: TrainingGainRecord,
+): number | undefined {
+  const { errorBefore, errorAfter } = record;
+  if (errorBefore === undefined || errorAfter === undefined) return undefined;
+  if (!Number.isFinite(errorBefore) || !Number.isFinite(errorAfter)) {
+    return undefined;
+  }
+  return errorBefore - errorAfter;
 }
 
 /**

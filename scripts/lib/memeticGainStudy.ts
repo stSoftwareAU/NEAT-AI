@@ -437,7 +437,12 @@ function trainOne(
 ): StudyEvent {
   const scoreBefore = creature.score ?? Number.NEGATIVE_INFINITY;
   const subject = Creature.fromJSON(creature.exportJSON());
+  // The clock covers the gradient step and nothing else. The exact re-score
+  // below is the harness's own measuring instrument, not local search, and
+  // billing it to the step would inflate the wall-clock the issue's
+  // gain-per-second metric divides by.
   const startedMs = performance.now();
+  let wallClockMs = 0;
   let scoreAfter: number | undefined;
   let trained: Creature | undefined;
   try {
@@ -450,11 +455,14 @@ function trainOne(
       trainingTimeOutMinutes: 1,
       feedbackLoop: false,
     }, cost);
+    wallClockMs = performance.now() - startedMs;
     trained = result.compact === undefined
       ? subject
       : Creature.fromJSON(result.compact);
     scoreAfter = scoreExactly(trained, corpus);
   } catch (error) {
+    // A step that threw is charged for the time it burned before throwing.
+    if (wallClockMs === 0) wallClockMs = performance.now() - startedMs;
     // A step that threw still consumed its slot. Recorded as a failure rather
     // than dropped, so the policy is charged for what the run paid — and
     // announced through the repo's logger, not printed from a library module.
@@ -463,7 +471,6 @@ function trainOne(
         `${error instanceof Error ? error.message : String(error)}`,
     );
   }
-  const wallClockMs = performance.now() - startedMs;
 
   let kept = false;
   if (

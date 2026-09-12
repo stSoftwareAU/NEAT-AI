@@ -8,7 +8,8 @@
  * dispatch identically.
  */
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import { getLogger, setLogger } from "@utils/Logger.ts";
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
@@ -108,11 +109,17 @@ function stubNeat(
   } as unknown as Neat;
 }
 
-/** A log in a fresh temporary directory. */
-async function newLog(): Promise<
-  { log: TrainingGainLog; directory: string }
-> {
+/**
+ * A log in a fresh temporary directory, on a clock the test drives.
+ *
+ * The clock advances by a fixed step per reading, so `wallClockMs` on the
+ * record is a value the test can name rather than merely a non-negative number.
+ */
+async function newLog(
+  stepMs = 250,
+): Promise<{ log: TrainingGainLog; directory: string; stepMs: number }> {
   const directory = await Deno.makeTempDir({ prefix: "gain-wiring-" });
+  let reading = 0;
   return {
     log: new TrainingGainLog(
       resolveTrainingGainLogConfig({
@@ -120,9 +127,31 @@ async function newLog(): Promise<
         directory,
         runId: "wiring-run",
       }),
+      { now: () => (reading++) * stepMs },
     ),
     directory,
+    stepMs,
   };
+}
+
+/**
+ * Capture what the run reported while `body` ran.
+ *
+ * A fault that is "reported loudly" is only reported if something can read it,
+ * so the report is asserted through the repo's injectable logger rather than
+ * left to incidental stderr.
+ */
+async function captureLogs(body: () => Promise<void>): Promise<string[]> {
+  const lines: string[] = [];
+  const original = getLogger();
+  const record = (...args: unknown[]) => lines.push(args.map(String).join(" "));
+  setLogger({ debug: record, info: record, warn: record, error: record });
+  try {
+    await body();
+  } finally {
+    setLogger(original);
+  }
+  return lines;
 }
 
 Deno.test("training-gain log - Neat builds no log unless asked", () => {
@@ -156,7 +185,7 @@ Deno.test("training-gain log - an enabled log is built from the options", async 
 
 Deno.test("training-gain log - a dispatched step is recorded with its rank and gain", async () => {
   await initWasmForTests();
-  const { log, directory } = await newLog();
+  const { log, directory, stepMs } = await newLog();
   try {
     const creature = trainableCreature(0.3, 0.5);
     const reference = trainableCreature(0.9, 0.2);
@@ -188,7 +217,12 @@ Deno.test("training-gain log - a dispatched step is recorded with its rank and g
       "a lower error must read as a higher score",
     );
     assertEquals(record.referenceUuid, reference.uuid);
-    assert(record.wallClockMs >= 0, "wall-clock is measured, not invented");
+    assertEquals(
+      record.wallClockMs,
+      stepMs,
+      "wall-clock is the injected clock's dispatch-to-outcome delta, not a " +
+        "number the log invented",
+    );
   } finally {
     await Deno.remove(directory, { recursive: true });
   }
@@ -324,12 +358,20 @@ Deno.test("training-gain log - a failed append is reported and the records survi
 
     // The helper must not let a log fault escape into the training task, and
     // must not destroy the records either.
-    await flushTrainingGainLog(neat);
+    const reported = await captureLogs(() => flushTrainingGainLog(neat));
     assertEquals(
       log.bufferedCount,
       1,
       "a loud failure must not be a destructive one",
     );
+    const failure = reported.find((line) =>
+      line.includes("Training-gain log append failed")
+    );
+    assert(
+      failure !== undefined,
+      `the append failure must be reported, got: ${JSON.stringify(reported)}`,
+    );
+    assertStringIncludes(failure, "1 record(s) are still buffered");
   } finally {
     await Deno.remove(parent, { recursive: true });
   }

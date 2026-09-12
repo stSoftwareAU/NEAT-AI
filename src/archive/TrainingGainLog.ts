@@ -396,6 +396,17 @@ export class TrainingGainLog {
       );
       this.unmatchedOutcomes = 0;
     }
+    // A dispatch still open at a flush has no outcome yet, which is ordinary
+    // mid-run. At the run-end flush it means the step never reported one, and
+    // an event nobody closed is an event nobody counted: say so rather than let
+    // the missing record read as a step that was never dispatched.
+    if (this.pending.size > 0) {
+      getLogger().warn(
+        `[NEAT-AI] Training-gain log is holding ${this.pending.size} ` +
+          `dispatch(es) with no outcome yet; if the run is over, those ` +
+          `training events are not in the log.`,
+      );
+    }
   }
 }
 

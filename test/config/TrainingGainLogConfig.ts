@@ -7,7 +7,12 @@
  * to 1 would publish a rank-versus-gain correlation over a single event.
  */
 
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertStringIncludes,
+  assertThrows,
+} from "@std/assert";
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
 import {
   DEFAULT_TRAINING_GAIN_LOG_CONFIG,
@@ -59,6 +64,19 @@ Deno.test("trainingGainLog - refuses a maxRecords below one", () => {
     ConfigurationError,
   );
   assertEquals(error.reason, "OUT_OF_RANGE");
+});
+
+Deno.test("trainingGainLog - an unparseable maxRecords names what it was given", () => {
+  const thrown = assertThrows(
+    () =>
+      resolveTrainingGainLogConfig({
+        maxRecords: "abc" as unknown as number,
+      }),
+    ConfigurationError,
+  );
+  // A refusal that says "got NaN" tells the operator nothing about what they
+  // typed; the documented parse helper quotes the input back.
+  assertStringIncludes(thrown.message, '"abc"');
 });
 
 Deno.test("trainingGainLog - refuses a fractional maxRecords", () => {

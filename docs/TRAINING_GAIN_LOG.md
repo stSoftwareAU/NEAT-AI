@@ -69,10 +69,12 @@ fault can never be averaged in with a measurement.
 > costOfGrowth)`, so
 > `(scoreBefore, scoreAfter)` is exactly as comparable as the pair the run's own
 > regression guard compares (`isTrainingErrorRegression`) — no more.
-> `errorBefore` / `errorAfter` carry those two errors directly. A consumer that
-> needs a like-for-like reading must re-evaluate the trained creature on the
-> fitness path itself; the Stage 1 study did exactly that, which is why its
-> gains and this log's are not the same quantity.
+> `errorBefore` / `errorAfter` carry those two errors directly, and
+> `trainingErrorGain()` subtracts **those** — the like-for-like reading, from
+> one instrument, which is the accessor to reach for on a production log. A
+> consumer that wants the gain in score terms must re-evaluate the trained
+> creature on the fitness path itself; the Stage 1 study did exactly that, which
+> is why its gains and `trainingGain()`'s are not the same quantity.
 
 ## The four properties it guarantees
 

@@ -21,6 +21,7 @@
  */
 
 import { ConfigurationError } from "@errors/ConfigurationError.ts";
+import { parseNumber } from "@config/ParseOptions.ts";
 
 /** Caller-supplied log options; every field is optional. */
 export interface TrainingGainLogConfig {
@@ -100,8 +101,11 @@ export function resolveTrainingGainLogConfig(
     enabled: overrides?.enabled ?? DEFAULT_TRAINING_GAIN_LOG_CONFIG.enabled,
     directory: overrides?.directory ??
       DEFAULT_TRAINING_GAIN_LOG_CONFIG.directory,
-    maxRecords: Number(
-      overrides?.maxRecords ?? DEFAULT_TRAINING_GAIN_LOG_CONFIG.maxRecords,
+    maxRecords: parseNumber(
+      "trainingGainLog.maxRecords",
+      overrides?.maxRecords,
+      DEFAULT_TRAINING_GAIN_LOG_CONFIG.maxRecords,
+      { integer: true, min: 1 },
     ),
     runId: overrides?.runId ?? crypto.randomUUID(),
   };
