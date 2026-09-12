@@ -489,10 +489,8 @@ export class PreSelection {
       // offspring has not been given one yet.
       const predicted = values[index];
       if (predicted !== null) this.predictions.set(creature, predicted);
-      // Issue #4008: recorded against the creature, as the prediction map
-      // above already is. A bred offspring has no UUID at this point —
-      // mutation invalidated it and fitness has not recomputed it yet — so a
-      // rank keyed on the UUID would be recorded for nobody a real run breeds.
+      // Recorded against the creature, for the reason the `ranks` field
+      // states (Issue #4008).
       this.ranks.set(creature, {
         rank: rankOf[index],
         of: candidates.length,
@@ -563,9 +561,7 @@ export class PreSelection {
       const rank = this.screenRankOf(elite);
       if (rank === null) continue;
       found.push(rank);
-      // Issue #4008: the dedup is on the creature too. Keyed on a UUID a bred
-      // offspring does not carry, every elite looked new and none was ever
-      // recorded.
+      // The dedup is on the creature too, for the same reason (Issue #4008).
       if (this.recordedElites.has(elite)) continue;
       this.recordedElites.add(elite);
       this.eliteRanks.push(rank);

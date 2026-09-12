@@ -64,11 +64,18 @@ interface ScreenedRunHooks {
   readonly before?: (population: readonly Creature[]) => void;
   /** Run after a generation evolves, with what the stage reported. */
   readonly after?: (summary: PreSelectionSummary, fittest: Creature) => void;
+  /**
+   * Stop as soon as this is true, instead of one generation after the first
+   * discard. A caller waiting on a diagnostic that depends on *which*
+   * creatures became elites cannot know in advance which generation produces
+   * it, so it states the condition rather than a generation count.
+   */
+  readonly until?: () => boolean;
 }
 
 /**
  * Evolve until the stage has actually discarded something, then one
- * generation more.
+ * generation more — or until `hooks.until` says so.
  *
  * The extra generation is not padding: a screened survivor's prediction is
  * differenced against the exact score that arrives for it in the *following*
@@ -100,6 +107,10 @@ async function evolveUntilScreened(
     assert(summary !== undefined, "the stage must report what it did");
     hooks.after?.(summary, fittest);
     screenedOut += summary.screenedOut;
+    if (hooks.until !== undefined) {
+      if (hooks.until()) break;
+      continue;
+    }
     if (screenedOut > 0 && ++sinceFirstScreen > 1) break;
   }
   assert(
@@ -270,17 +281,9 @@ Deno.test("pre-selection wiring — a real evolve run reports the elite screen r
     }, workers);
     await neat.populatePopulation(seed);
 
-    let fittest: Creature | undefined;
-    let generations = 0;
-    while (
-      generations < MAX_SCREENING_GENERATIONS &&
-      neat.preSelection.eliteScreenRanks.length === 0
-    ) {
-      // Generations are sequential: each breeds from the one before it.
-      // deno-lint-ignore no-await-in-loop
-      fittest = (await neat.evolve(fittest)).fittest;
-      generations++;
-    }
+    const { generations } = await evolveUntilScreened(neat, {
+      until: () => neat.preSelection.eliteScreenRanks.length > 0,
+    });
 
     const ranks = neat.preSelection.eliteScreenRanks;
     assert(

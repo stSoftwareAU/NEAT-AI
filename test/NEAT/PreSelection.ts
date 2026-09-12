@@ -270,7 +270,10 @@ Deno.test("pre-selection — a survivor screened without a UUID is still ranked"
   assertEquals(stage.eliteScreenRanks.length, 1);
 
   // A discarded creature still leaves nothing behind.
-  assertEquals(stage.screenRankOf(outcome.discarded[0]), null);
+  assertEquals(outcome.discarded.length, 8);
+  for (const dropped of outcome.discarded) {
+    assertEquals(stage.screenRankOf(dropped), null);
+  }
 });
 
 Deno.test("pre-selection — an elite is counted once, however long it survives", async () => {
