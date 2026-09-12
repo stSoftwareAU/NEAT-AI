@@ -25,6 +25,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **GRQ #4794:** A training task the stuck-task watchdog **cancelled** now keeps
+  its schedule-time capture. GRQ #4489 settles an abandoned task by cancelling
+  its worker request, so the capture added for Issue #4022 was removed on the
+  way past — deleting the one creature that reproduces the hang, for exactly the
+  tasks the capture exists for, and leaving GRQ reporting
+  `captured=0 atSchedule=0` as before. A task that _answered_ still has its
+  capture removed; only a `WorkerTaskCancelledError` keeps it.
+
 - **Issue #4022 (GRQ #4490 / #4794):** While `NEAT_AI_TRAINING_TASK_CAPTURE_DIR`
   is set, `scheduleTraining` writes the creature exactly as handed to each
   training task to `<dir>/training-task-<id>.json` (`<id>` = the last eight
