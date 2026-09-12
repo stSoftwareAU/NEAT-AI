@@ -49,6 +49,29 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #3934:** The training-gain log, and what it measured. Jin (2011) §5
+  asks who should receive local search — per-generation backpropagation is a
+  large fixed cost per individual, and `selectTrainingCandidates` had always
+  answered "who is currently best?" without anything ever checking whether that
+  predicts "who will gain most from a gradient step?". A new opt-in log
+  (`trainingGainLog`, `enabled: false` by default — nothing is constructed and
+  no disk is touched) records one line per real training event: the pre-training
+  descriptor, the rank the rule selected at, the scores and errors either side
+  of the step, the wall-clock, and the outcome. **No selection behaviour
+  changes.** Measured over 15,000 real gradient steps
+  ([`docs/evidence/memetic-gain-3934.md`](./docs/evidence/memetic-gain-3934.md)):
+  score rank does order realised gain in the predicted direction and far too
+  weakly to act on (ρ = 0.139 over 7,500 unbiased events, below the
+  pre-registered 0.2 floor), and judged on final exact score at the same seed
+  the current rule and a random baseline agree to four significant figures with
+  the sign of the paired delta flipping between runs. **Stage 2 (a gain
+  predictor) is therefore a documented no-go**, recorded on #3919. The number
+  worth keeping is that 95.2 % of the gradient steps the rule dispatches produce
+  a creature worse than the one they trained — a statement about how much local
+  search this lineage absorbs, not about who receives it, and one the shipped
+  log can now ask on a real run. See
+  [`docs/TRAINING_GAIN_LOG.md`](./docs/TRAINING_GAIN_LOG.md).
+
 - **Issue #3935:** A cheap-problem benchmark harness for the surrogate
   techniques of the #3919 sweep (`deno task bench:cheap-problem`). Jin (2011) §6
   grades surrogate techniques on analytic test functions because the "expensive"
