@@ -35,38 +35,45 @@ flowchart LR
 
 Backend/CLI change — no web interface to screenshot.
 
-### Benchmark — the critical shard, measured
+### Benchmark — planned cost per shard, from CI-measured durations
 
-The coverage stage's wall-clock is set by its slowest shard, so the benchmark
-runs _that_ shard's slice before and after, on the same machine, with the same
-command (`deno test -A --parallel`, `DENO_JOBS=4`, matching the CI shard job):
-
-| slice                                             | files | wall-clock | tests                  |
-| ------------------------------------------------- | ----- | ---------- | ---------------------- |
-| **before** — round-robin shard 5 (the 7m01 shard) | 176   | **162s**   | 1211 passed, 8 ignored |
-| **after** — the weighted plan's heaviest shard    | 5     | **130s**   | 1 passed               |
-
-**−19.8% on the slowest shard**, which is the stage's wall-clock. (This machine
-is ~2.5× faster than a GitHub runner, so treat the ratio, not the absolute
-seconds, as the result.)
-
-### Distribution — CI-measured per-file costs
-
-Durations taken from the merged JUnit of run `34684855745` (the run the issue
-cites), replayed through both planners over the current test tree — total suite
-cost 1033.7s across 1408 files:
+The metric the issue defines is the slowest shard, because that is what sets the
+stage's wall-clock. Replaying the **actual per-file durations** from the merged
+JUnit of run `34684855745` (the run the issue cites) through both planners, over
+the current test tree — 1408 files, 1033.7s of test time:
 
 | shard                 | 0   | 1    | 2   | 3    | 4   | 5    | 6    | 7   | slowest  |
 | --------------------- | --- | ---- | --- | ---- | --- | ---- | ---- | --- | -------- |
 | round-robin (before)  | 29s | 105s | 67s | 217s | 35s | 373s | 150s | 56s | **373s** |
 | cost-weighted (after) | 98s | 98s  | 98s | 98s  | 97s | 318s | 131s | 97s | **318s** |
 
-Slowest shard −15%, and the second-heaviest shard drops 217s → 131s (−40%); the
-six shards that hold neither heavy suite sit within 1s of each other. The
-residual 318s floor is a single file: `test/NEAT/Ratios.ts` costs 317.8s, 30.7%
-of the whole suite, so no partition can go below it. Making individual suites
-faster is explicitly out of scope for this issue; that floor is tracked
-separately in #4026.
+- Slowest shard **373.4s → 317.8s, −15%**.
+- Second-heaviest shard **217s → 131s, −40%** — and the six shards holding
+  neither heavy suite land within 1s of each other, against a 29s–217s spread
+  before.
+- The residual 318s is a single file: `test/NEAT/Ratios.ts` costs 317.8s, 30.7%
+  of the whole suite, so no partition can go below it. Making individual suites
+  faster is explicitly out of scope for this issue; that floor is tracked
+  separately in #4026. The gain is therefore capped today — what the change also
+  buys is that the two heaviest suites can never again land on the same shard by
+  accident, which round-robin permitted (373s is exactly that accident).
+
+### Benchmark — same-box A/B on the critical slice
+
+The slice that sets the wall-clock, run before and after with the CI shard job's
+own command (`deno test -A --parallel`, `DENO_JOBS=4`), twice:
+
+| slice                                             | files | run 1    | run 2    |
+| ------------------------------------------------- | ----- | -------- | -------- |
+| **before** — round-robin shard 5 (the 7m01 shard) | 176   | 162s     | 296s     |
+| **after** — the weighted plan's heaviest shard    | 8     | **130s** | **153s** |
+
+The after slice wins both pairs (−20% and −48%), and the two numbers agree with
+each other; the _before_ number is the one that swings, because 176 files
+competing for four workers are contention-sensitive while the after slice is
+bounded by one serial file. This container is shared with other jobs, so treat
+the modelled per-shard costs above — measured on CI hardware — as the result,
+and this as corroboration of its direction.
 
 Reproduce the plan at any time:
 
@@ -106,13 +113,13 @@ against the diff.
   `scripts/shard_test_files.ts::verifyShardCoverage`,
   `test/scripts/ShardTestFiles.ts::verifyShardCoverage - holds for the cost-weighted partition`
   — reviewer: met
-- **partial** — the stage stops being set by one lopsided shard — evidence:
-  benchmark above, 162s → 130s on the critical shard — reviewer: partial —
-  reason: the reviewer is right that a single file, `test/NEAT/Ratios.ts` at
-  317.8s (31% of the suite), is now the floor, so the stage lands near ~5m
-  rather than the ~2m the issue projects. The partition is optimal for the costs
-  it is given; shrinking that file is out of scope here and is now tracked in
-  #4026, and both the docs and this summary say so.
+- **partial** — the stage stops being set by one lopsided shard — evidence: the
+  benchmarks above, slowest shard 373.4s → 317.8s on CI-measured durations —
+  reviewer: partial — reason: the reviewer is right that a single file,
+  `test/NEAT/Ratios.ts` at 317.8s (31% of the suite), is now the floor, so the
+  stage lands near ~5m rather than the ~2m the issue projects. The partition is
+  optimal for the costs it is given; shrinking that file is out of scope here
+  and is now tracked in #4026, and both the docs and this summary say so.
 - **unrequested** — `--plan --total=N` CLI mode and the exported `shardCost` —
   reviewer: unrequested — reason: the measurement surface this issue's
   before/after evidence is produced with, and what the troubleshooting doc tells
