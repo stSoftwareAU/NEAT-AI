@@ -45,8 +45,68 @@ function buildDataSet(): DataRecordInterface[] {
  * a small, low-diversity population honestly offers no surplus to cut. A
  * fixed generation count is therefore a bet on that yield; the cap is the
  * point at which the yield is so poor that the run has nothing left to prove.
+ *
+ * The cap is only honest when the run it bounds can actually reach the state
+ * the caller waits on — see {@link SCREENED_RUN_OPTIONS} for what makes that
+ * true by construction rather than by luck (Issue #4018).
  */
 const MAX_SCREENING_GENERATIONS = 15;
+
+/**
+ * Surplus the driven runs ask the breeder for.
+ *
+ * The breeder answers a request of `slots × ratio` with only as many
+ * *distinct* offspring as the population it has can yield, and that yield is a
+ * fraction of what was asked. At a ratio of 3 the shortfall routinely brought
+ * the batch back at or below the budget — and a batch that is not larger than
+ * the budget has no surplus to cut, so the stage discarded nothing. Asking for
+ * six times the budget leaves the yield room to exceed it (Issue #4018).
+ */
+const SURPLUS_RATIO = 6;
+
+/**
+ * The elite band the elite-rank run keeps.
+ *
+ * `screenRankOf` only answers for a creature screened in this generation or
+ * the one before, and elites carry over unchanged: with a band of two, the top
+ * two can be the same long-lived creatures for a whole run and no elite ever
+ * carries a rank. A band of eight is one a freshly screened survivor can
+ * actually enter — it only has to beat the eighth-best creature, not the
+ * incumbent (Issue #4018).
+ */
+const ELITE_BAND = 8;
+
+/**
+ * What every driven run configures so its screening state is reachable by
+ * construction rather than bet on (Issue #4018).
+ *
+ * Two contended sources of variance stood between an unseeded run and the
+ * state its assertions wait on, and neither is a seam these tests are about:
+ *
+ * - **Asynchronous training results collapse the offspring budget.** Completed
+ *   training tasks land in the population and are subtracted from the slots
+ *   the breeder is asked to fill, so a loaded machine that returns several
+ *   generations of them at once leaves a budget of one or two — and a batch
+ *   that small can carry no surplus. `trainPerGen: 0` removes the source;
+ *   gradient steps are not what pre-selection wiring tests.
+ * - **The drift monitor disables the surrogate mid-run.** After
+ *   `driftGenerations` consecutive one-directional generations the false-
+ *   optimum kill switch turns the surrogate path off for the rest of the run,
+ *   and a screen that cannot rank breeds no surplus ever again. Dropping the
+ *   gradient steps above makes the residuals more one-directional, and the
+ *   kill switch duly fired inside the cap in 1 of 96 measured runs — a flake
+ *   this fix would otherwise have traded for the one it removes. Putting the
+ *   threshold beyond the cap keeps a guard that has its own suite
+ *   (`test/surrogate/DriftMonitor.ts`) out of a window it would end.
+ */
+const SCREENED_RUN_OPTIONS = {
+  trainPerGen: 0,
+  preSelection: {
+    ratio: SURPLUS_RATIO,
+    screen: "surrogate",
+    uncertainty: { driftGenerations: MAX_SCREENING_GENERATIONS + 1 },
+  },
+} as const;
 
 /** What a run driven by {@link evolveUntilScreened} produced. */
 interface ScreenedRun {
@@ -56,6 +116,14 @@ interface ScreenedRun {
   readonly generations: number;
   /** Offspring the stage discarded across the whole run. */
   readonly screenedOut: number;
+  /**
+   * A one-line account of what the stage actually did, for the assertion that
+   * fails. A run that reaches the cap without the state its caller waits on
+   * has to say *which* link broke — the screen went dead, the budget left no
+   * slots to over-fill, or the breeder simply could not yield a surplus —
+   * rather than name the cap it ran out of (Issue #4018).
+   */
+  readonly trace: string;
 }
 
 /** Hooks a caller runs around each generation. */
@@ -98,6 +166,9 @@ async function evolveUntilScreened(
   let screenedOut = 0;
   let generations = 0;
   let sinceFirstScreen = 0;
+  let offspringGenerated = 0;
+  let survivors = 0;
+  let readyGenerations = 0;
   while (generations < MAX_SCREENING_GENERATIONS) {
     hooks.before?.(neat.population);
     // Generations are sequential by definition: each one breeds from the
@@ -109,19 +180,24 @@ async function evolveUntilScreened(
     assert(summary !== undefined, "the stage must report what it did");
     hooks.after?.(summary, fittest);
     screenedOut += summary.screenedOut;
+    offspringGenerated += summary.offspringGenerated;
+    survivors += summary.survivors;
+    if (summary.screenReady) readyGenerations++;
     if (hooks.until !== undefined) {
       if (hooks.until()) break;
       continue;
     }
     if (screenedOut > 0 && ++sinceFirstScreen > 1) break;
   }
+  const trace = `${generations} generation(s) bred ${offspringGenerated} ` +
+    `offspring and kept ${survivors}, discarding ${screenedOut}, with the ` +
+    `screen ready in ${readyGenerations} of them`;
   assert(
     fittest !== undefined && screenedOut > 0,
-    `the stage discarded nothing over ${generations} generation(s): the ` +
-      `breeder never answered the surplus request with more offspring than ` +
-      `the budget called for`,
+    `the stage discarded nothing: the breeder never answered the surplus ` +
+      `request with more offspring than the budget called for — ${trace}`,
   );
-  return { fittest, generations, screenedOut };
+  return { fittest, generations, screenedOut, trace };
 }
 
 Deno.test("pre-selection wiring — a default Neat runs the stage off", () => {
@@ -202,7 +278,7 @@ Deno.test("pre-selection wiring — an active stage screens a real generation's 
       creatures: [seed.exportJSON()],
       populationSize: 30,
       elitism: 1,
-      preSelection: { ratio: 3, screen: "surrogate" },
+      ...SCREENED_RUN_OPTIONS,
     }, workers);
     await neat.populatePopulation(seed);
 
@@ -285,20 +361,20 @@ Deno.test("pre-selection wiring — a real evolve run reports the elite screen r
     const neat = new Neat(2, 1, {
       creatures: [seed.exportJSON()],
       populationSize: 30,
-      elitism: 2,
-      preSelection: { ratio: 3, screen: "surrogate" },
+      elitism: ELITE_BAND,
+      ...SCREENED_RUN_OPTIONS,
     }, workers);
     await neat.populatePopulation(seed);
 
-    const { generations } = await evolveUntilScreened(neat, {
+    const { trace } = await evolveUntilScreened(neat, {
       until: () => neat.preSelection.eliteScreenRanks.length > 0,
     });
 
     const ranks = neat.preSelection.eliteScreenRanks;
     assert(
       ranks.length > 0,
-      `no elite carried a screen rank over ${generations} generation(s): the ` +
-        `stage records nothing for the creatures a real run actually breeds`,
+      `no elite carried a screen rank: the stage records nothing for the ` +
+        `creatures a real run actually breeds — ${trace}`,
     );
     for (const rank of ranks) {
       assert(
@@ -331,7 +407,7 @@ Deno.test("pre-selection wiring — a screened-out creature never reaches the ar
       creatures: [seed.exportJSON()],
       populationSize: 30,
       elitism: 1,
-      preSelection: { ratio: 3, screen: "surrogate" },
+      ...SCREENED_RUN_OPTIONS,
       evaluationArchive: { enabled: true, directory: archiveDir },
     }, workers);
     await neat.populatePopulation(seed);
@@ -372,7 +448,7 @@ Deno.test("pre-selection wiring — an active stage never costs the run its elit
       creatures: [seed.exportJSON()],
       populationSize: 30,
       elitism: 2,
-      preSelection: { ratio: 3, screen: "surrogate" },
+      ...SCREENED_RUN_OPTIONS,
     }, workers);
     await neat.populatePopulation(seed);
 
