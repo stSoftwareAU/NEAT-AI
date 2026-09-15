@@ -48,6 +48,7 @@ import {
 } from "@neat/TrainingErrorComparison.ts";
 import { emitTrainingEvent } from "@neat/TrainingEventEmitter.ts";
 import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
+import { WorkerTaskCancelledError } from "@workers/WorkerTaskCancelledError.ts";
 
 /**
  * What the selection rule knew when it chose a creature for a gradient step
@@ -660,6 +661,14 @@ export function scheduleTraining(
   const capture = captureDir === undefined
     ? Promise.resolve(undefined)
     : writeTrainingTaskCapture(captureDir, uuid, creature.exportJSON());
+  /**
+   * GRQ #4794: true once this task has been cancelled rather than answered.
+   *
+   * A cancelled task is the hung set — GRQ #4489 cancels exactly the tasks the
+   * stuck-task watchdog gave up on — so its capture is the evidence the
+   * capture exists to preserve and must outlive the settle.
+   */
+  let cancelled = false;
 
   const p = response.then((r) => {
     // Issue #3435: discard late completions after a hard-deadline abandon before
@@ -795,6 +804,8 @@ export function scheduleTraining(
       }
     }
   }).catch((error) => {
+    // GRQ #4794: the request was given up on, not answered.
+    if (error instanceof WorkerTaskCancelledError) cancelled = true;
     // Issue #3435: a late failure after abandon must not push a stub (or
     // serialise the creature) into the complete queue.
     if (neat.isRunAbandonedSince(scheduledEpoch)) {
@@ -811,8 +822,15 @@ export function scheduleTraining(
     if (neat.trainingTasks.get(uuid)?.taskID === taskID) {
       neat.trainingTasks.delete(uuid);
     }
-    // Issue #4022: the task settled — by result, failure or cancellation — so
-    // its capture is no longer evidence of a hang.
+    // Issue #4022: the task answered, so its capture is no longer evidence of
+    // a hang and is removed.
+    //
+    // GRQ #4794: a CANCELLED task did not answer. The stuck-task watchdog
+    // cancels precisely the tasks it abandoned (GRQ #4489), so removing the
+    // capture here would delete the one creature that reproduces the hang —
+    // the whole point of the capture — and leave the reader with the
+    // `captured=0 atSchedule=0` silence this was written to end.
+    if (cancelled) return;
     capture.then((path) =>
       path === undefined ? undefined : removeTrainingTaskCapture(path)
     );
