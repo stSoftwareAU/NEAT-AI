@@ -34,8 +34,10 @@ env:
 
 jobs:
   # Fan out the ~1k-file suite across N shards (Issue #3173). `deno test` has no
-  # native --shard flag, so scripts/shard_test_files.ts partitions the sorted
-  # test/**/*.ts list round-robin; each shard runs its slice, collecting a
+  # native --shard flag, so scripts/shard_test_files.ts partitions the
+  # test/**/*.ts list itself, packing files heaviest-first by their measured
+  # duration in scripts/test-timings.json so shards are balanced by *cost*, not
+  # by file count (Issue #4017). Each shard runs its slice, collecting a
   # partial coverage-<shard> dir and junit-<shard>.xml, then uploads both as a
   # per-shard artifact for the merge job to aggregate. Smaller slices also
   # reduce per-job memory pressure (the OOM root cause is tracked separately).
@@ -102,6 +104,9 @@ jobs:
 
           # Deterministically pick this shard's slice of test/**/*.ts. The same
           # partition function is unit-tested and re-verified in the merge job.
+          # It reads scripts/test-timings.json (published by the merge job's
+          # "Publish per-file test timings" step) to weight the split by
+          # measured cost; with no timings file it falls back to round-robin.
           deno run --allow-read scripts/shard_test_files.ts \
             --list --shard="${SHARD}" --total="${SHARD_TOTAL}" > shard-files.txt
           # Portable read (no mapfile) so this works on any bash the runner ships.
@@ -337,6 +342,29 @@ jobs:
           else
             echo "junit_exists=false" >> "$GITHUB_OUTPUT"
           fi
+
+      # Republish the per-file durations the cost-weighted shard planner reads
+      # (Issue #4017). Download this artifact and commit it over
+      # scripts/test-timings.json to refresh the split after the suite's cost
+      # profile shifts. The write grant is scoped to the single output file for
+      # the same reason the merge step above is: this job holds
+      # `secrets.CODECOV_TOKEN`, and an unrestricted grant would reach
+      # `$GITHUB_ENV` / `$GITHUB_PATH` (Issue #3681).
+      - name: Publish per-file test timings
+        if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
+        run: |
+          set -euo pipefail
+          deno run --allow-read --allow-write=test-timings.json \
+            scripts/merge_junit.ts --timings=test-timings.json junit.xml
+
+      - name: Upload test timings
+        if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
+        # actions/upload-artifact@v7.0.1 — Node 24 runtime (Issue #2767)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: test-timings
+          path: test-timings.json
+          retention-days: 30
 
       - name: Upload consolidated test results
         if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
