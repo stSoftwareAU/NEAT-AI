@@ -310,7 +310,7 @@ Deno.test("loadTimings - fails loud on a malformed document", async () => {
 
 Deno.test("loadTimings - refuses a document in another unit or version", async () => {
   // A future document that switched to milliseconds, or changed layout, would
-  // otherwise misplan in silence.
+  // otherwise produce a silently wrong plan.
   const path = await Deno.makeTempFile({ suffix: ".json" });
   try {
     await Deno.writeTextFile(

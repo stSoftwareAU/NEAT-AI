@@ -273,7 +273,7 @@ export async function loadTimings(
     | { version?: unknown; unit?: unknown; files?: unknown }
     | null;
   // A future document that changed the unit (milliseconds) or the layout would
-  // otherwise misplan in silence; refuse it instead.
+  // otherwise produce a silently wrong plan; refuse it instead.
   if (
     document?.version !== undefined && document.version !== SUPPORTED_VERSION
   ) {

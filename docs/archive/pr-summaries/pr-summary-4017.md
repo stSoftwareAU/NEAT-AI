@@ -212,7 +212,7 @@ Added to `test/scripts/ShardTestFiles.ts` (17 new tests, 27 in the file):
 - `planShards - fails loud on a corrupt timing entry`.
 - `partitionTestFiles - weighted slice equals the planned shard`.
 - `verifyShardCoverage - holds for the cost-weighted partition` — the parity
-  invariant, unweakened.
+  invariant, unchanged.
 - `loadTimings - reads a committed timings document`,
   `- fails loud on a malformed document`,
   `- fails loud when the file is missing`, and
