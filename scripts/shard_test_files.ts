@@ -15,11 +15,14 @@
  *
  * Both plans are deterministic and assign every file exactly once:
  *
- * - **Weighted** — untimed files (new tests, or a first run) are dealt
- *   round-robin first so they stay evenly spread, each charged the median
- *   recorded duration; timed files are then placed heaviest-first onto
- *   whichever shard is currently cheapest. Ties break on the lowest shard
- *   index, so the plan is identical on every runner.
+ * - **Weighted** — files with no positive measurement (new tests, or a fixture
+ *   module that declares none) are dealt round-robin *among themselves* first,
+ *   so they spread one-per-shard rather than clustering; an unmeasured one is
+ *   charged the mean recorded duration so the packer reserves room for it.
+ *   Measured files are
+ *   then placed heaviest-first onto whichever shard is currently cheapest.
+ *   Ties break on the smaller slice, then on the lowest shard index, so the
+ *   plan is identical on every runner.
  * - **Round-robin** — the fallback when no timings are available at all:
  *   shard `s` (of `total`) runs every file whose sorted index `i` satisfies
  *   `i % total === s`.
@@ -78,24 +81,41 @@ export type FileDurations = Readonly<Record<string, number>>;
 /** Where the coverage merge job publishes the measured per-file durations. */
 export const DEFAULT_TIMINGS_PATH = "scripts/test-timings.json";
 
-/** The recorded cost of `file`, or undefined when it has never been measured. */
+/** Timings-document schema this planner understands. */
+const SUPPORTED_VERSION = 1;
+
+/**
+ * The recorded cost of `file`, or undefined when it has never been measured.
+ * An entry that is present but unusable (negative, NaN, not a number) is a
+ * corrupt map rather than a missing measurement, so it throws instead of
+ * quietly degrading the plan.
+ */
 function recordedCost(
   file: string,
   timings: FileDurations | undefined,
 ): number | undefined {
-  const value = timings?.[file];
-  return typeof value === "number" && Number.isFinite(value) && value >= 0
-    ? value
-    : undefined;
+  if (timings === undefined || !Object.hasOwn(timings, file)) return undefined;
+  const value = timings[file];
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    throw new Error(
+      `timing for '${file}' must be a non-negative number, got ${
+        JSON.stringify(value)
+      }`,
+    );
+  }
+  return value;
 }
 
-function median(values: number[]): number {
+/**
+ * What to charge a file that has never been measured: the mean recorded
+ * duration, i.e. the expected cost of an unknown file. The median is a poor
+ * choice here — the distribution is long-tailed (median 0.02s against a mean
+ * of 0.76s), so it would charge a brand-new `evolve()` suite essentially
+ * nothing.
+ */
+function meanCost(values: number[]): number {
   if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = sorted.length >> 1;
-  return sorted.length % 2 === 1
-    ? sorted[middle]
-    : (sorted[middle - 1] + sorted[middle]) / 2;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 /**
@@ -103,8 +123,9 @@ function median(values: number[]): number {
  *
  * With `timings`, files are packed longest-processing-time-first onto the
  * cheapest shard so wall-clock — not file count — is what gets balanced. Files
- * with no recorded timing keep the historical round-robin placement and are
- * charged the median recorded duration so the packer still accounts for them.
+ * with no recorded timing are dealt round-robin among themselves — an even
+ * spread, not the same shard the old whole-list round-robin gave them — and
+ * charged the mean recorded duration so the packer still accounts for them.
  * Without usable timings the plan is exactly the previous round-robin.
  *
  * Deterministic for a given (files, total, timings): every tie breaks on the
@@ -119,31 +140,47 @@ export function planShards(
     throw new Error(`total must be a positive integer, got ${total}`);
   }
   const shards: string[][] = Array.from({ length: total }, () => []);
-  const timed = files.filter((file) =>
-    recordedCost(file, timings) !== undefined
-  );
+  // Only a positive duration tells the packer anything. Files measured at
+  // exactly 0s (fixtures and helpers that declare no test) carry no signal, so
+  // they are dealt round-robin alongside the never-measured ones rather than
+  // piling onto whichever shard happens to be cheapest.
+  const timed = files.filter((file) => (recordedCost(file, timings) ?? 0) > 0);
   if (timed.length === 0) {
     // No measurements at all — fall back to the stable round-robin.
     files.forEach((file, index) => shards[index % total].push(file));
     return shards;
   }
   const loads = new Array<number>(total).fill(0);
-  const nominal = median(timed.map((file) => recordedCost(file, timings)!));
+  const nominal = meanCost(timed.map((file) => recordedCost(file, timings)!));
   files
-    .filter((file) => recordedCost(file, timings) === undefined)
+    .filter((file) => (recordedCost(file, timings) ?? 0) <= 0)
     .forEach((file, index) => {
       const shard = index % total;
       shards[shard].push(file);
-      loads[shard] += nominal;
+      // Never measured: charge the expected cost of an unknown file. Measured
+      // at zero: charge nothing, because that is what it cost.
+      loads[shard] += recordedCost(file, timings) === undefined ? nominal : 0;
     });
   const heaviestFirst = [...timed].sort((a, b) => {
     const delta = recordedCost(b, timings)! - recordedCost(a, timings)!;
-    return delta !== 0 ? delta : a.localeCompare(b);
+    if (delta !== 0) return delta;
+    // Plain code-point order, never localeCompare: the plan must be identical
+    // on every runner regardless of the ICU locale the host resolves.
+    return a < b ? -1 : a > b ? 1 : 0;
   });
   for (const file of heaviestFirst) {
+    // Cheapest shard wins; equal load breaks on the smaller slice so the tail
+    // of zero-cost files spreads instead of piling onto one shard, and equal
+    // load *and* size breaks on the lowest index so the plan is reproducible.
     let cheapest = 0;
     for (let shard = 1; shard < total; shard++) {
-      if (loads[shard] < loads[cheapest]) cheapest = shard;
+      if (
+        loads[shard] < loads[cheapest] ||
+        (loads[shard] === loads[cheapest] &&
+          shards[shard].length < shards[cheapest].length)
+      ) {
+        cheapest = shard;
+      }
     }
     shards[cheapest].push(file);
     loads[cheapest] += recordedCost(file, timings)!;
@@ -232,7 +269,24 @@ export async function loadTimings(
   } catch (error) {
     throw new Error(`${path} is not valid JSON: ${error}`);
   }
-  const files = (parsed as { files?: unknown } | null)?.files;
+  const document = parsed as
+    | { version?: unknown; unit?: unknown; files?: unknown }
+    | null;
+  // A future document that changed the unit (milliseconds) or the layout would
+  // otherwise misplan in silence; refuse it instead.
+  if (
+    document?.version !== undefined && document.version !== SUPPORTED_VERSION
+  ) {
+    throw new Error(
+      `${path} is version ${document.version}; this planner reads version ${SUPPORTED_VERSION}`,
+    );
+  }
+  if (document?.unit !== undefined && document.unit !== "seconds") {
+    throw new Error(
+      `${path} records durations in '${document.unit}'; expected 'seconds'`,
+    );
+  }
+  const files = document?.files;
   if (typeof files !== "object" || files === null || Array.isArray(files)) {
     throw new Error(`${path} must contain a 'files' object of path→seconds`);
   }

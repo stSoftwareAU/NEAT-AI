@@ -52,15 +52,12 @@ Deno.test("coverage.yaml merge job publishes per-file test timings", async () =>
 Deno.test("coverage.yaml timings step scopes its write grant", async () => {
   const steps = await mergeSteps();
   const step = steps.find((s) => s.run?.includes("--timings="))!;
-  // This job holds secrets.CODECOV_TOKEN; an unrestricted write grant would
-  // reach $GITHUB_ENV / $GITHUB_PATH (Issue #3681).
+  // The blanket "no unrestricted write in a secret-bearing job" rule is
+  // already enforced for every step by CoverageMergeStepLeastPrivilege.ts;
+  // this asserts the narrower fact that the grant names *this* step's output.
   assert(
     step.run?.includes("--allow-write=test-timings.json"),
     "write grant must be scoped to the timings output file",
-  );
-  assert(
-    !/--allow-write(\s|$)/.test(step.run ?? ""),
-    "must never grant unrestricted --allow-write",
   );
   assert(
     step.run?.startsWith("set -euo pipefail"),
@@ -86,17 +83,18 @@ Deno.test("coverage.yaml uploads the timings as a named artifact", async () => {
   );
 });
 
-Deno.test("the committed timings document is readable and non-trivial", async () => {
+Deno.test("the committed timings document is readable and usable", async () => {
+  // Shape only — no threshold on how many files or how many seconds it lists.
+  // A map that has gone stale makes the split slower, never the build red.
   const timings = await loadTimings(DEFAULT_TIMINGS_PATH);
   const files = Object.keys(timings);
-  assert(
-    files.length > 500,
-    `expected timings for most of the suite, got ${files.length}`,
-  );
+  assert(files.length > 0, "the committed map must not be empty");
   assert(
     files.every((file) => file.startsWith("test/") && file.endsWith(".ts")),
     "every key must be a repo-relative test module path",
   );
-  const total = Object.values(timings).reduce((sum, s) => sum + s, 0);
-  assert(total > 60, `recorded suite cost looks unmeasured: ${total}s`);
+  assert(
+    Object.values(timings).some((seconds) => seconds > 0),
+    "at least one file must carry a positive duration, or nothing is weighted",
+  );
 });

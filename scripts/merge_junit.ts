@@ -144,29 +144,73 @@ function normaliseSuiteName(name: string): string {
   return name.replaceAll("\\", "/").replace(/^\.\//, "");
 }
 
+/** A numeric attribute, or undefined when it is absent or unparseable. */
+function readOptionalNumberAttr(
+  attrs: Map<string, string>,
+  name: string,
+): number | undefined {
+  const raw = attrs.get(name);
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * Sum a suite's testcase times. Returns undefined when the suite has no
+ * testcases, or when any one of them carries no usable `time` — an unknown
+ * duration must never be reported as zero, which the planner would read as
+ * "measured and free".
+ */
 function sumTestcaseTimes(suiteBody: string): number | undefined {
   const tags = suiteBody.match(/<testcase\b[^>]*>/g);
   if (tags === null || tags.length === 0) return undefined;
   let total = 0;
   for (const tag of tags) {
-    total += readNumberAttr(parseAttrs(tag), "time");
+    const seconds = readOptionalNumberAttr(parseAttrs(tag), "time");
+    if (seconds === undefined) return undefined;
+    total += seconds;
   }
   return total;
+}
+
+/**
+ * The duration a `<testsuite>` reports: its testcases' total, else its own
+ * `time`, else zero when it declares `tests="0"`. Undefined means "cannot be
+ * read" — the caller must not substitute zero.
+ */
+function suiteDuration(
+  attrs: Map<string, string>,
+  suiteBody: string,
+): number | undefined {
+  return sumTestcaseTimes(suiteBody) ??
+    readOptionalNumberAttr(attrs, "time") ??
+    (attrs.get("tests") === "0" ? 0 : undefined);
 }
 
 /**
  * Sum each test file's total test time across the given JUnit documents,
  * keyed by repo-relative path. A file's cost is the sum of its testcase
  * times; a suite with no testcases falls back to its own `time` attribute,
- * and an empty (self-closing) suite is recorded as zero so the planner treats
- * it as measured-and-cheap rather than unmeasured. Durations accumulate when
- * the same file appears in more than one document.
+ * and a suite that declares `tests="0"` is recorded as zero — it genuinely
+ * ran nothing. Durations accumulate when the same file appears in more than
+ * one document.
+ *
+ * A suite whose duration cannot be read (a truncated or garbled report from a
+ * crashed shard) is **skipped with a warning**, never recorded as zero: an
+ * unknown cost must stay unknown, so the planner treats the file as unmeasured
+ * instead of free.
  */
 export function extractFileDurations(contents: string[]): Map<string, number> {
   const durations = new Map<string, number>();
-  const add = (rawName: string, seconds: number) => {
+  const add = (rawName: string, seconds: number | undefined) => {
     const name = normaliseSuiteName(rawName);
     if (name.length === 0) return;
+    if (seconds === undefined) {
+      console.error(
+        `no usable duration for ${name}; leaving it unmeasured rather than recording 0s`,
+      );
+      return;
+    }
     durations.set(name, (durations.get(name) ?? 0) + seconds);
   };
   for (const content of contents) {
@@ -181,16 +225,14 @@ export function extractFileDurations(contents: string[]): Map<string, number> {
       const attrs = parseAttrs(openingTag);
       const name = attrs.get("name");
       if (name === undefined) continue;
-      const measured = sumTestcaseTimes(suiteBody) ??
-        readNumberAttr(attrs, "time");
-      add(name, measured);
+      add(name, suiteDuration(attrs, suiteBody));
     }
     // Empty suites are emitted self-closing and carry no testcases at all.
     for (const tag of body.match(/<testsuite\b[^>]*\/>/g) ?? []) {
       const attrs = parseAttrs(tag);
       const name = attrs.get("name");
       if (name === undefined) continue;
-      add(name, readNumberAttr(attrs, "time"));
+      add(name, suiteDuration(attrs, ""));
     }
   }
   return durations;
@@ -254,7 +296,8 @@ async function main(args: string[]): Promise<number> {
     console.error(`merged ${inputs.length} report(s) into ${output}`);
   }
   if (timingsPath !== undefined) {
-    const timings = buildTimings(contents, new Date().toISOString());
+    // Wall-clock instant persisted to JSON — Temporal, not Date (AGENTS.md).
+    const timings = buildTimings(contents, Temporal.Now.instant().toString());
     await Deno.writeTextFile(
       timingsPath,
       `${JSON.stringify(timings, null, 2)}\n`,

@@ -184,6 +184,58 @@ Deno.test("planShards - untimed files fall back to round-robin", () => {
   });
 });
 
+Deno.test("planShards - spreads zero-cost files instead of piling them up", () => {
+  // Fixtures and helpers that declare no test measure 0s. They carry no signal
+  // for the packer, so they must be dealt round-robin rather than all landing
+  // on whichever shard is momentarily cheapest.
+  const free = Array.from({ length: 16 }, (_v, i) => `test/free${i}.ts`);
+  const timings: Record<string, number> = {
+    ...SKEWED_TIMINGS,
+    ...Object.fromEntries(free.map((file) => [file, 0])),
+  };
+  const total = 4;
+  const plan = planShards([...SKEWED_FILES, ...free].sort(), total, timings);
+  const perShard = plan.map((slice) =>
+    slice.filter((file) => file.startsWith("test/free")).length
+  );
+  assert(
+    Math.max(...perShard) - Math.min(...perShard) <= 1,
+    `zero-cost files must spread evenly, got ${perShard}`,
+  );
+});
+
+Deno.test("planShards - charges an unmeasured file the mean, not the median", () => {
+  // Long-tailed costs: median 1s against a mean of 8.25s. Charging the median
+  // would leave the new file's shard looking almost empty, so the cheap tail
+  // would pile on top of it; charging the mean reserves the room.
+  const timings = {
+    "test/heavy.ts": 30,
+    "test/t1.ts": 1,
+    "test/t2.ts": 1,
+    "test/t3.ts": 1,
+  };
+  const files = [...Object.keys(timings), "test/brand-new.ts"].sort();
+  const plan = planShards(files, 3, timings);
+  const fresh = plan.find((slice) => slice.includes("test/brand-new.ts"))!;
+  assertEquals(
+    fresh,
+    ["test/brand-new.ts"],
+    "a shard holding an unmeasured file must not also take the cheap tail",
+  );
+});
+
+Deno.test("planShards - fails loud on a corrupt timing entry", () => {
+  assertThrows(
+    () => planShards(SAMPLE, 2, { [SAMPLE[0]]: -1 }),
+    Error,
+    "non-negative",
+  );
+  assertThrows(
+    () => planShards(SAMPLE, 2, { [SAMPLE[0]]: Number.NaN }),
+    Error,
+  );
+});
+
 Deno.test("planShards - ignores timings for files that are not in the list", () => {
   const timings = { "test/deleted.ts": 999, [SAMPLE[0]]: 3 };
   const plan = planShards(SAMPLE, 3, timings);
@@ -256,6 +308,26 @@ Deno.test("loadTimings - fails loud on a malformed document", async () => {
   }
 });
 
+Deno.test("loadTimings - refuses a document in another unit or version", async () => {
+  // A future document that switched to milliseconds, or changed layout, would
+  // otherwise misplan in silence.
+  const path = await Deno.makeTempFile({ suffix: ".json" });
+  try {
+    await Deno.writeTextFile(
+      path,
+      JSON.stringify({ version: 1, unit: "ms", files: { "test/a.ts": 1 } }),
+    );
+    await assertRejects(() => loadTimings(path), Error, "seconds");
+    await Deno.writeTextFile(
+      path,
+      JSON.stringify({ version: 2, unit: "seconds", files: {} }),
+    );
+    await assertRejects(() => loadTimings(path), Error, "version");
+  } finally {
+    await Deno.remove(path);
+  }
+});
+
 Deno.test("loadTimings - fails loud when the file is missing", async () => {
   await assertRejects(
     () => loadTimings("scripts/does-not-exist-timings.json"),
@@ -271,20 +343,36 @@ Deno.test("committed timings flatten the real 8-shard partition", async () => {
   verifyShardCoverage(files, 8, timings);
   const before = maxShardCost(roundRobin, timings);
   const after = maxShardCost(weighted, timings);
+  // `<=`, not `<`: a map that has drifted so far that nothing listed is still
+  // on disk degrades to round-robin, which is a slow build, never a red one.
   assert(
-    after < before,
-    `weighted max shard (${after.toFixed(1)}s) must beat round-robin (${
-      before.toFixed(1)
-    }s)`,
+    after <= before,
+    `weighted max shard (${after.toFixed(1)}s) must not be worse than ` +
+      `round-robin (${before.toFixed(1)}s)`,
   );
   // The floor is the heaviest single file — no split can beat it — so compare
   // against that rather than an absolute wall-clock budget.
   const heaviest = Math.max(...files.map((f) => timings[f] ?? 0));
-  const floor = Math.max(heaviest, sliceCost(files, timings) / 8);
+  const totalCost = sliceCost(files, timings);
+  const floor = Math.max(heaviest, totalCost / 8);
+  // 4/3 is the proven worst case for longest-processing-time-first against the
+  // optimum, so this holds for any timings data rather than only today's.
   assert(
-    after <= floor * 1.1,
-    `weighted max shard ${after.toFixed(1)}s must be within 10% of the ${
-      floor.toFixed(1)
-    }s floor`,
+    after <= floor * (4 / 3),
+    `weighted max shard ${after.toFixed(1)}s must be within the LPT bound of ` +
+      `the ${floor.toFixed(1)}s floor`,
+  );
+  // Isolating the one heaviest file is not enough on its own: the shards that
+  // do NOT hold it must be flat too, or the second-slowest shard becomes the
+  // next bottleneck the moment that file is split up (#4026).
+  const costs = weighted.map((slice) => sliceCost(slice, timings));
+  const heaviestShard = costs.indexOf(Math.max(...costs));
+  const rest = costs.filter((_cost, shard) => shard !== heaviestShard);
+  const restEven = rest.reduce((sum, cost) => sum + cost, 0) / rest.length;
+  assert(
+    Math.max(...rest) <= restEven * 1.5,
+    `the remaining shards must be flat: ${
+      rest.map((c) => c.toFixed(0)).join(", ")
+    } against an even ${restEven.toFixed(0)}s`,
   );
 });

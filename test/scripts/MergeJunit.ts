@@ -135,6 +135,21 @@ Deno.test("extractFileDurations - ignores blank documents", () => {
   assertEquals(extractFileDurations(["", "  "]).size, 0);
 });
 
+Deno.test("extractFileDurations - leaves an unreadable testcase time unmeasured", () => {
+  // A truncated or garbled report must never be recorded as 0s: the planner
+  // would read that as "measured and free" and under-load the shard forever.
+  const xml =
+    `<testsuites><testsuite name="test/x.ts" tests="2"><testcase name="a" time="1.0"/>` +
+    `<testcase name="b"/></testsuite></testsuites>`;
+  assertEquals(extractFileDurations([xml]).has("test/x.ts"), false);
+});
+
+Deno.test("extractFileDurations - leaves a suite with no duration at all unmeasured", () => {
+  const xml =
+    `<testsuites><testsuite name="test/x.ts" tests="3"/></testsuites>`;
+  assertEquals(extractFileDurations([xml]).has("test/x.ts"), false);
+});
+
 Deno.test("buildTimings - emits sorted, rounded seconds with a schema header", () => {
   const timings = buildTimings([DENO_SHAPED], "2026-01-01T00:00:00.000Z");
   assertEquals(timings.version, 1);

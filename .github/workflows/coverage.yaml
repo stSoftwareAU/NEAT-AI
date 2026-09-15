@@ -39,8 +39,11 @@ jobs:
   # duration in scripts/test-timings.json so shards are balanced by *cost*, not
   # by file count (Issue #4017). Each shard runs its slice, collecting a
   # partial coverage-<shard> dir and junit-<shard>.xml, then uploads both as a
-  # per-shard artifact for the merge job to aggregate. Smaller slices also
-  # reduce per-job memory pressure (the OOM root cause is tracked separately).
+  # per-shard artifact for the merge job to aggregate. Slice *sizes* are now
+  # deliberately uneven — the shards holding the heavy evolve suites carry only
+  # a handful of files, the cheap shards carry a few hundred — because shard
+  # memory pressure comes from heavy tests running concurrently, not from the
+  # file count (the OOM root cause is tracked separately).
   coverage:
     name: Coverage shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
