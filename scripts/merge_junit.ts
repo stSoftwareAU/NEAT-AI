@@ -14,6 +14,12 @@
  * unrestricted grant would reach `$GITHUB_ENV` / `$GITHUB_PATH`:
  *   deno run --allow-read --allow-write=junit.xml scripts/merge_junit.ts \
  *     --output=junit.xml junit-0.xml junit-1.xml ...
+ *
+ * `--timings=<path>` additionally publishes the per-file cost map the
+ * cost-weighted shard planner consumes (Issue #4017); scope the write grant to
+ * that path too:
+ *   deno run --allow-read --allow-write=test-timings.json \
+ *     scripts/merge_junit.ts --timings=test-timings.json junit.xml
  */
 
 interface SuiteTotals {
@@ -120,6 +126,141 @@ export function countJunitFailures(
   return { failures: totals.failures, errors: totals.errors };
 }
 
+/**
+ * Per-file test cost map published by the merge job and consumed by the
+ * cost-weighted shard planner in `scripts/shard_test_files.ts` (Issue #4017).
+ * Durations are seconds of *test* time (the sum of the file's testcase times),
+ * not wall-clock — that is the quantity a shard's slice accumulates.
+ */
+export interface TestTimings {
+  version: number;
+  unit: "seconds";
+  generated?: string;
+  files: Record<string, number>;
+}
+
+/** Normalise a JUnit suite name to a repo-relative POSIX path. */
+function normaliseSuiteName(name: string): string {
+  return name.replaceAll("\\", "/").replace(/^\.\//, "");
+}
+
+/** A numeric attribute, or undefined when it is absent or unparseable. */
+function readOptionalNumberAttr(
+  attrs: Map<string, string>,
+  name: string,
+): number | undefined {
+  const raw = attrs.get(name);
+  if (raw === undefined) return undefined;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * Sum a suite's testcase times. Returns undefined when the suite has no
+ * testcases, or when any one of them carries no usable `time` — an unknown
+ * duration must never be reported as zero, which the planner would read as
+ * "measured and free".
+ */
+function sumTestcaseTimes(suiteBody: string): number | undefined {
+  const tags = suiteBody.match(/<testcase\b[^>]*>/g);
+  if (tags === null || tags.length === 0) return undefined;
+  let total = 0;
+  for (const tag of tags) {
+    const seconds = readOptionalNumberAttr(parseAttrs(tag), "time");
+    if (seconds === undefined) return undefined;
+    total += seconds;
+  }
+  return total;
+}
+
+/**
+ * The duration a `<testsuite>` reports: its testcases' total, else its own
+ * `time`, else zero when it declares `tests="0"`. Undefined means "cannot be
+ * read" — the caller must not substitute zero.
+ */
+function suiteDuration(
+  attrs: Map<string, string>,
+  suiteBody: string,
+): number | undefined {
+  return sumTestcaseTimes(suiteBody) ??
+    readOptionalNumberAttr(attrs, "time") ??
+    (attrs.get("tests") === "0" ? 0 : undefined);
+}
+
+/**
+ * Sum each test file's total test time across the given JUnit documents,
+ * keyed by repo-relative path. A file's cost is the sum of its testcase
+ * times; a suite with no testcases falls back to its own `time` attribute,
+ * and a suite that declares `tests="0"` is recorded as zero — it genuinely
+ * ran nothing. Durations accumulate when the same file appears in more than
+ * one document.
+ *
+ * A suite whose duration cannot be read (a truncated or garbled report from a
+ * crashed shard) is **skipped with a warning**, never recorded as zero: an
+ * unknown cost must stay unknown, so the planner treats the file as unmeasured
+ * instead of free.
+ */
+export function extractFileDurations(contents: string[]): Map<string, number> {
+  const durations = new Map<string, number>();
+  const add = (rawName: string, seconds: number | undefined) => {
+    const name = normaliseSuiteName(rawName);
+    if (name.length === 0) return;
+    if (seconds === undefined) {
+      console.error(
+        `no usable duration for ${name}; leaving it unmeasured rather than recording 0s`,
+      );
+      return;
+    }
+    durations.set(name, (durations.get(name) ?? 0) + seconds);
+  };
+  for (const content of contents) {
+    if (content.trim().length === 0) continue;
+    const body = extractSuites(content);
+    if (body.length === 0) continue;
+    for (
+      const [, openingTag, suiteBody] of body.matchAll(
+        /(<testsuite\b[^>]*[^/]>)([\s\S]*?)<\/testsuite>/g,
+      )
+    ) {
+      const attrs = parseAttrs(openingTag);
+      const name = attrs.get("name");
+      if (name === undefined) continue;
+      add(name, suiteDuration(attrs, suiteBody));
+    }
+    // Empty suites are emitted self-closing and carry no testcases at all.
+    for (const tag of body.match(/<testsuite\b[^>]*\/>/g) ?? []) {
+      const attrs = parseAttrs(tag);
+      const name = attrs.get("name");
+      if (name === undefined) continue;
+      add(name, suiteDuration(attrs, ""));
+    }
+  }
+  return durations;
+}
+
+/**
+ * Build the committed timings document from JUnit report contents. `generated`
+ * is injected rather than read from the clock so the transform stays pure and
+ * unit-testable. Durations are rounded to milliseconds to keep the committed
+ * file small.
+ */
+export function buildTimings(
+  contents: string[],
+  generated?: string,
+): TestTimings {
+  const durations = extractFileDurations(contents);
+  const files: Record<string, number> = {};
+  for (const name of [...durations.keys()].sort()) {
+    files[name] = Math.round(durations.get(name)! * 1000) / 1000;
+  }
+  return {
+    version: 1,
+    unit: "seconds",
+    ...(generated === undefined ? {} : { generated }),
+    files,
+  };
+}
+
 function parseStringFlag(args: string[], name: string): string | undefined {
   const prefix = `--${name}=`;
   const match = args.find((arg) => arg.startsWith(prefix));
@@ -127,10 +268,17 @@ function parseStringFlag(args: string[], name: string): string | undefined {
 }
 
 async function main(args: string[]): Promise<number> {
-  const output = parseStringFlag(args, "output") ?? "junit.xml";
+  const timingsPath = parseStringFlag(args, "timings");
+  // `--timings` on its own publishes only the cost map; the merged report is
+  // still written whenever `--output` is given or no mode flag is passed at
+  // all (the historical default).
+  const output = parseStringFlag(args, "output") ??
+    (timingsPath === undefined ? "junit.xml" : undefined);
   const inputs = args.filter((arg) => !arg.startsWith("--"));
   if (inputs.length === 0) {
-    console.error("usage: merge_junit.ts --output=junit.xml <file...>");
+    console.error(
+      "usage: merge_junit.ts [--output=junit.xml] [--timings=test-timings.json] <file...>",
+    );
     return 2;
   }
   const contents = await Promise.all(
@@ -143,9 +291,23 @@ async function main(args: string[]): Promise<number> {
       }
     }),
   );
-  const merged = mergeJunitXml(contents);
-  await Deno.writeTextFile(output, merged);
-  console.error(`merged ${inputs.length} report(s) into ${output}`);
+  if (output !== undefined) {
+    await Deno.writeTextFile(output, mergeJunitXml(contents));
+    console.error(`merged ${inputs.length} report(s) into ${output}`);
+  }
+  if (timingsPath !== undefined) {
+    // Wall-clock instant persisted to JSON — Temporal, not Date (AGENTS.md).
+    const timings = buildTimings(contents, Temporal.Now.instant().toString());
+    await Deno.writeTextFile(
+      timingsPath,
+      `${JSON.stringify(timings, null, 2)}\n`,
+    );
+    console.error(
+      `wrote ${
+        Object.keys(timings.files).length
+      } per-file timings to ${timingsPath}`,
+    );
+  }
   return 0;
 }
 
