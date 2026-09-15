@@ -11,9 +11,57 @@ The CI workflow (`coverage.yaml`) runs the ~1k-file suite as a **parallel shard
 matrix** to cut wall-clock time (Issue #3173). `deno test` has no native
 `--shard` flag, so
 [`scripts/shard_test_files.ts`](../../scripts/shard_test_files.ts) partitions
-the sorted `test/**/*.ts` list round-robin across `SHARD_TOTAL` shards — shard
-`s` runs every file whose sorted index `i` satisfies `i % SHARD_TOTAL === s`, so
-every file runs on exactly one shard (no gaps, no double-runs).
+the `test/**/*.ts` list across `SHARD_TOTAL` shards itself, and every file runs
+on exactly one shard (no gaps, no double-runs).
+
+The split is weighted by **measured cost, not file count** (Issue #4017). Test
+cost here is wildly uneven — one `evolve()` suite outweighs hundreds of unit
+tests — so balancing file counts left one shard running 7m01 while the cheapest
+finished in 1m15. The planner now packs files longest-processing-time-first over
+the per-file durations in
+[`scripts/test-timings.json`](../../scripts/test-timings.json): the heaviest
+file goes to whichever shard is currently cheapest, and so on down. Files with
+no positive measurement — a new test, or a fixture module that declares none —
+are dealt round-robin **among themselves** so they spread one per shard, and an
+unmeasured one is charged the mean recorded duration so the packer reserves room
+for it. With no timings file at all the whole plan falls back to round-robin
+over the sorted list: shard `s` runs every file whose sorted index `i` satisfies
+`i % SHARD_TOTAL === s`.
+
+Slice sizes therefore stop being equal, by design: the shards holding the heavy
+suites carry a handful of files each, the cheap shards a few hundred.
+
+> [!NOTE]
+> The split is only as good as the file costs allow. `test/NEAT/Ratios.ts` alone
+> costs 317.8s — 31% of the whole suite — so no partition of any size can finish
+> the stage faster than that one file. Shrinking it is tracked in
+> [#4026](https://github.com/stSoftwareAU/NEAT-AI/issues/4026).
+
+Inspect the plan before pushing:
+
+```bash
+deno run --allow-read scripts/shard_test_files.ts --plan --total=8
+```
+
+### 🔄 Refreshing `scripts/test-timings.json`
+
+The committed map was generated from the merged JUnit of run
+[`34684855745`](https://github.com/stSoftwareAU/NEAT-AI/actions/runs/34684855745)
+— `generated` records when the document was written, not when the suite ran.
+
+The merge job republishes the map from the JUnit reports it already aggregates
+and uploads it as the **`test-timings`** artifact (30-day retention). When the
+suite's cost profile drifts — a heavy new suite lands, or a slow one is made
+fast — refresh the committed copy:
+
+```bash
+gh run download <develop-run-id> -n test-timings -D /tmp/timings
+cp /tmp/timings/test-timings.json scripts/test-timings.json
+deno run --allow-read scripts/shard_test_files.ts --plan --total=8
+```
+
+A stale map is a slow build, never a broken one: unknown files still run exactly
+once, and the parity gate below is unchanged.
 
 ```mermaid
 flowchart LR
@@ -29,6 +77,8 @@ flowchart LR
         M["Verify parity → merge coverage-* (lcov)<br/>+ merge junit-*.xml → gate on shard statuses"]
     end
     M --> C["1 Codecov coverage report<br/>1 consolidated Test Results check"]
+    M --> T["test-timings artifact<br/>per-file durations → scripts/test-timings.json"]
+    T -. "committed, weights the next split" .-> coverage
 ```
 
 **Per shard:** each matrix job sizes the V8 heap / parallelism to the runner,

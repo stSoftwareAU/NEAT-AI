@@ -1,6 +1,8 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import {
+  buildTimings,
   countJunitFailures,
+  extractFileDurations,
   mergeJunitXml,
 } from "../../scripts/merge_junit.ts";
 
@@ -76,4 +78,93 @@ Deno.test("countJunitFailures - reports zero for all-passing shards", () => {
   const result = countJunitFailures([SHARD_A, SHARD_A]);
   assertEquals(result.failures, 0);
   assertEquals(result.errors, 0);
+});
+
+/**
+ * Per-file duration extraction (Issue #4017). The merge job already parses
+ * every shard's JUnit report, so it is the natural place to publish the
+ * per-file cost map the cost-weighted shard planner consumes.
+ */
+
+const DENO_SHAPED = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="deno test" tests="3" failures="0" errors="0" time="0.0">
+  <testsuite name="./test/NEAT/Slow.ts" tests="2" disabled="0" errors="0" failures="0">
+    <testcase name="one" classname="./test/NEAT/Slow.ts" time="12.500" line="1" col="6">
+    </testcase>
+    <testcase name="two" classname="./test/NEAT/Slow.ts" time="0.250" line="9" col="6">
+    </testcase>
+  </testsuite>
+  <testsuite name="./test/unit/Fast.ts" tests="1" disabled="0" errors="0" failures="0">
+    <testcase name="three" classname="./test/unit/Fast.ts" time="0.004" line="1" col="6">
+    </testcase>
+  </testsuite>
+</testsuites>`;
+
+Deno.test("extractFileDurations - sums testcase times per suite", () => {
+  const durations = extractFileDurations([DENO_SHAPED]);
+  assertEquals(durations.get("test/NEAT/Slow.ts"), 12.75);
+  assertEquals(durations.get("test/unit/Fast.ts"), 0.004);
+});
+
+Deno.test("extractFileDurations - strips the ./ prefix from suite names", () => {
+  const durations = extractFileDurations([DENO_SHAPED]);
+  assert(
+    [...durations.keys()].every((name) => !name.startsWith("./")),
+    `suite names must be repo-relative, got ${[...durations.keys()]}`,
+  );
+});
+
+Deno.test("extractFileDurations - accumulates a file split across documents", () => {
+  const durations = extractFileDurations([DENO_SHAPED, DENO_SHAPED]);
+  assertEquals(durations.get("test/NEAT/Slow.ts"), 25.5);
+});
+
+Deno.test("extractFileDurations - falls back to the testsuite time attribute", () => {
+  // Older/other reporters emit a suite-level time with no testcase children.
+  const durations = extractFileDurations([SHARD_A]);
+  assertEquals(durations.get("a.ts"), 1.5);
+});
+
+Deno.test("extractFileDurations - records an empty self-closing suite as zero", () => {
+  const xml =
+    `<testsuites><testsuite name="./test/Empty.ts" tests="0"/></testsuites>`;
+  assertEquals(extractFileDurations([xml]).get("test/Empty.ts"), 0);
+});
+
+Deno.test("extractFileDurations - ignores blank documents", () => {
+  assertEquals(extractFileDurations(["", "  "]).size, 0);
+});
+
+Deno.test("extractFileDurations - leaves an unreadable testcase time unmeasured", () => {
+  // A truncated or garbled report must never be recorded as 0s: the planner
+  // would read that as "measured and free" and under-load the shard forever.
+  const xml =
+    `<testsuites><testsuite name="test/x.ts" tests="2"><testcase name="a" time="1.0"/>` +
+    `<testcase name="b"/></testsuite></testsuites>`;
+  assertEquals(extractFileDurations([xml]).has("test/x.ts"), false);
+});
+
+Deno.test("extractFileDurations - leaves a suite with no duration at all unmeasured", () => {
+  const xml =
+    `<testsuites><testsuite name="test/x.ts" tests="3"/></testsuites>`;
+  assertEquals(extractFileDurations([xml]).has("test/x.ts"), false);
+});
+
+Deno.test("buildTimings - emits sorted, rounded seconds with a schema header", () => {
+  const timings = buildTimings([DENO_SHAPED], "2026-01-01T00:00:00.000Z");
+  assertEquals(timings.version, 1);
+  assertEquals(timings.unit, "seconds");
+  assertEquals(timings.generated, "2026-01-01T00:00:00.000Z");
+  assertEquals(Object.keys(timings.files), [
+    "test/NEAT/Slow.ts",
+    "test/unit/Fast.ts",
+  ]);
+  assertEquals(timings.files["test/NEAT/Slow.ts"], 12.75);
+});
+
+Deno.test("buildTimings - rounds sub-millisecond noise to three decimals", () => {
+  const xml =
+    `<testsuites><testsuite name="test/x.ts"><testcase name="a" time="0.0004"/>` +
+    `<testcase name="b" time="0.0004"/></testsuite></testsuites>`;
+  assertEquals(buildTimings([xml]).files["test/x.ts"], 0.001);
 });
