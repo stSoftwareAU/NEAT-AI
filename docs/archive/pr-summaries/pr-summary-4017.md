@@ -230,7 +230,7 @@ artifact (never the whole workspace), and the committed document is readable and
 usable.
 
 Existing shard tests are untouched and still pass. Full suite under the CI shard
-environment: **9749 passed, 0 failed, 90 ignored** (`deno test -A --parallel`,
+environment: **9755 passed, 0 failed, 90 ignored** (`deno test -A --parallel`,
 `NEAT_AI_BACKPROP_ENABLED=0`), plus `test/ci/*.ts` and `test/docs/*.ts` (608
 passed).
 
