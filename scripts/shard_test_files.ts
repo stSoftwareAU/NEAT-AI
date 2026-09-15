@@ -169,9 +169,9 @@ export function planShards(
     return a < b ? -1 : a > b ? 1 : 0;
   });
   for (const file of heaviestFirst) {
-    // Cheapest shard wins; equal load breaks on the smaller slice so the tail
-    // of zero-cost files spreads instead of piling onto one shard, and equal
-    // load *and* size breaks on the lowest index so the plan is reproducible.
+    // Cheapest shard wins; equal load breaks on the smaller slice so equally
+    // priced files spread rather than stacking, and equal load *and* size
+    // breaks on the lowest index so the plan is reproducible everywhere.
     let cheapest = 0;
     for (let shard = 1; shard < total; shard++) {
       if (
