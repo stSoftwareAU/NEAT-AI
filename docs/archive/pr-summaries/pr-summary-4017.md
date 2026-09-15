@@ -62,8 +62,8 @@ cost 1033.7s across 1408 files:
 Slowest shard −15%, and the second-heaviest shard drops 217s → 131s (−40%). The
 residual 318s floor is a single file: `test/NEAT/Ratios.ts` costs 317.8s, 30.7%
 of the whole suite, so no partition can go below it. Making individual suites
-faster is explicitly out of scope for this issue; that floor is raised as a
-separate follow-up.
+faster is explicitly out of scope for this issue; that floor is tracked
+separately in #4026.
 
 Reproduce the plan at any time:
 
