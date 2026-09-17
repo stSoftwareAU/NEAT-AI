@@ -157,15 +157,25 @@ training. It passed on every run of this change (4 coverage runs plus the final
 sweep).
 
 Also run, because the change edits the committed timings map:
-`test/ci/CoverageTestTimings.ts`, `test/scripts/ShardTestFiles.ts`,
-`test/ci/CoverageShardMatrix.ts` — 38 tests, all pass.
+`test/ci/CoverageTestTimings.ts` and `test/scripts/ShardTestFiles.ts` — 38
+tests, all pass. `the committed timings document is readable and usable` is the
+one that would catch a malformed edit to the map.
 
 ```bash
+# The suite itself, under the coverage workflow's environment.
 NEAT_AI_BACKPROP_ENABLED=0 NEAT_AI_BACKPROP_REQUIRE_FFI=0 \
 NEAT_AI_NATIVE_CORE_BACKPROP=0 NEAT_RUST_DISCOVERY_OPTIONAL=true DENO_TEST=1 \
 deno test -A --parallel --config ./deno.json \
-  test/NEAT/Ratios.ts test/NEAT/HypotenuseDataSet.ts test/ci/ test/scripts/
-# ok | 8 passed | 0 failed (3s)   [test/ci and test/scripts counted separately: 38 passed]
+  test/NEAT/Ratios.ts test/NEAT/HypotenuseDataSet.ts
+# ok | 8 passed | 0 failed (3s)
+
+# The shard-planner and timings tests. Named explicitly, not by directory:
+# `deno test test/ci/` expands with Deno's default *_test.ts naming rules and
+# would silently match none of these files.
+deno test -A --config ./deno.json \
+  test/NEAT/HypotenuseDataSet.ts test/ci/CoverageTestTimings.ts \
+  test/scripts/ShardTestFiles.ts
+# ok | 38 passed | 0 failed (186ms)
 ```
 
 ## Quality gate
