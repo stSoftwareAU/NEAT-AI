@@ -1,25 +1,30 @@
 import { assert } from "@std/assert";
-import type { DataRecordInterface } from "@architecture/DataSet.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Creature } from "@creature";
 import { initWasmForTests } from "../_initWasm.ts";
+import {
+  buildHypotenuseDataSet,
+  HYPOTENUSE_HOLD_OUT,
+} from "./_hypotenuseDataSet.ts";
 
 ((globalThis as unknown) as { DEBUG: boolean }).DEBUG = true;
 
+/**
+ * Evolution is stochastic, so a single attempt can land on a poor topology.
+ * The retry budget is what keeps the suite deterministic; it is not a cost
+ * knob, but it does bound the worst case. At the measured per-attempt success
+ * rate (~75%) even ten attempts would make a spurious failure a 1-in-a-million
+ * event, so 40 leaves enormous headroom while capping a pathological run at a
+ * couple of minutes instead of hours (Issue #4026).
+ */
+const MAX_ATTEMPTS = 40;
+
 Deno.test("hypotenuse", async () => {
   await initWasmForTests();
-  const ts: DataRecordInterface[] = [];
-  for (let i = 100; i--;) {
-    for (let j = 100; j--;) {
-      if (i === 50) continue;
-      const item = {
-        input: new Float32Array([i, j]),
-        output: new Float32Array([Math.sqrt(i * i + j * j)]),
-      };
-
-      ts.push(item);
-    }
-  }
+  // Sampled every 5 on both axes, with the probe row held out, so the
+  // assertion below is still a generalisation check — see
+  // `_hypotenuseDataSet.ts` for why the grid is no longer dense.
+  const ts = buildHypotenuseDataSet();
 
   const options: NeatOptions = {
     iterations: 100,
@@ -31,7 +36,7 @@ Deno.test("hypotenuse", async () => {
 
   let errorPercent = 0;
   let answer = 0;
-  for (let attempts = 0; attempts < 240; attempts++) {
+  for (let attempts = 0; attempts < MAX_ATTEMPTS; attempts++) {
     const network = new Creature(2, 1, {
       layers: [
         { count: 2 },
@@ -41,7 +46,7 @@ Deno.test("hypotenuse", async () => {
     // deno-lint-ignore no-await-in-loop
     await network.evolveDataSet(ts, options);
 
-    const check = new Float32Array([50, 60]);
+    const check = new Float32Array([HYPOTENUSE_HOLD_OUT, 60]);
     answer = network.activate(check)[0];
 
     errorPercent = Math.round((1 - answer / 78.1) * 100);

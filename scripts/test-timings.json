@@ -200,7 +200,6 @@
     "test/NEAT/RandomImmigrantsStagnationEscape.ts": 1.085,
     "test/NEAT/RankShapedAcceptance.ts": 0.042,
     "test/NEAT/RankShaping.ts": 0.001,
-    "test/NEAT/Ratios.ts": 317.784,
     "test/NEAT/ScheduledTrainingIterations.ts": 0.02,
     "test/NEAT/SchedulingRepeatGuard.ts": 0.016,
     "test/NEAT/SeedWarmupAccumulation.ts": 0.068,

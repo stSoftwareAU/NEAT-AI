@@ -32,10 +32,13 @@ Slice sizes therefore stop being equal, by design: the shards holding the heavy
 suites carry a handful of files each, the cheap shards a few hundred.
 
 > [!NOTE]
-> The split is only as good as the file costs allow. `test/NEAT/Ratios.ts` alone
-> costs 317.8s — 31% of the whole suite — so no partition of any size can finish
-> the stage faster than that one file. Shrinking it is tracked in
-> [#4026](https://github.com/stSoftwareAU/NEAT-AI/issues/4026).
+> The split is only as good as the file costs allow: no partition of any size
+> can finish the stage faster than its single slowest file.
+> `test/NEAT/Ratios.ts` used to be that floor at 317.8s — 31% of the whole suite
+> — until [#4026](https://github.com/stSoftwareAU/NEAT-AI/issues/4026) thinned
+> its training grid and dropped it to seconds. `test/NEAT/Evolve.ts` (131.3s) is
+> the floor now. When you make a heavy suite fast, refresh the timings below so
+> the planner stops reserving a shard for a cost that no longer exists.
 
 Inspect the plan before pushing:
 
@@ -47,7 +50,13 @@ deno run --allow-read scripts/shard_test_files.ts --plan --total=8
 
 The committed map was generated from the merged JUnit of run
 [`34684855745`](https://github.com/stSoftwareAU/NEAT-AI/actions/runs/34684855745)
-— `generated` records when the document was written, not when the suite ran.
+— `generated` records when the document was written, not when the suite ran. One
+entry has since been **removed** rather than re-measured:
+[#4026](https://github.com/stSoftwareAU/NEAT-AI/issues/4026) made
+`test/NEAT/Ratios.ts` ~15x cheaper, and no CI measurement of the new shape
+existed yet, so the stale 317.8s was dropped and the file left unmeasured — the
+planner's documented state for a file it has never seen. Deleting a superseded
+entry is the right move in that position; inventing a replacement number is not.
 
 The merge job republishes the map from the JUnit reports it already aggregates
 and uploads it as the **`test-timings`** artifact (30-day retention). When the
