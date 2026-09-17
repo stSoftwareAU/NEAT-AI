@@ -178,6 +178,16 @@ export interface PruneReport {
   foldedNeurons: string[];
   /** `IF` neurons downgraded to `IDENTITY` because a role went with the removal. */
   downgradedIfNeurons: string[];
+  /**
+   * Hidden `IDENTITY` neurons core spliced out, rewiring their sources straight
+   * into their targets (core Issue #688). An `IDENTITY` only forwards
+   * `bias + Σ w·a`, so the splice is exact, and it runs recursively — the
+   * `IDENTITY` an `IF` rewrite leaves behind is usually spliced in the same
+   * call, which is why a flattened `IF` may not appear in the answer at all.
+   * Reported so the caller reads the removal rather than inferring it from a
+   * missing neuron.
+   */
+  splicedNeurons: string[];
   /** The mean folds applied, one per compensated target. */
   biasFolds: PruneBiasFold[];
   /** The correlated-survivor shares applied. */
@@ -570,6 +580,11 @@ export function readCommonReport(
     downgradedIfNeurons: requiredStrings(
       response.downgradedIfNeurons ?? [],
       "downgradedIfNeurons",
+      ctx,
+    ),
+    splicedNeurons: requiredStrings(
+      response.splicedNeurons ?? [],
+      "splicedNeurons",
       ctx,
     ),
     biasFolds: requiredRecords(response.biasFolds ?? [], "biasFolds", ctx)
