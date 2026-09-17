@@ -110,7 +110,10 @@ Deno.test("corePruneSynapse: a hidden left with no inward edge becomes a constan
 
 Deno.test("corePruneSynapse: removing the last IF condition flattens to the branch it always took", () => {
   // The superseded TypeScript refused this removal outright
-  // (`SubConnection#wouldBreakIfNeuron`); core rewrites instead.
+  // (`SubConnection#wouldBreakIfNeuron`); core rewrites instead. Core Issue
+  // #688 then splices out the `IDENTITY` the flatten leaves behind, so the
+  // surviving branch is rewired straight into the target and the `IF` neuron
+  // itself is gone — reported, never left for the caller to infer.
   const outcome = corePruneSynapse(ifFixture(), {
     fromUUID: "input-0",
     toUUID: "if-1",
@@ -119,13 +122,25 @@ Deno.test("corePruneSynapse: removing the last IF condition flattens to the bran
   assert(outcome.ok, "core must rewrite rather than refuse");
 
   assertEquals(outcome.staticIfNeurons, [{ uuid: "if-1", branch: "negative" }]);
-  const rewritten = outcome.creature.neurons.find((n) => n.uuid === "if-1");
-  assert(rewritten, "the IF neuron must survive as the branch it took");
-  assertEquals(rewritten.squash, IDENTITY.NAME);
   assertEquals(
-    outcome.creature.synapses.some((s) =>
-      s.toUUID === "if-1" && s.type === "positive"
-    ),
+    outcome.splicedNeurons,
+    ["if-1"],
+    "the flattened IDENTITY must be reported as spliced out",
+  );
+  assertEquals(
+    outcome.creature.neurons.some((n) => n.uuid === "if-1"),
+    false,
+    "the spliced IDENTITY must not survive in the creature",
+  );
+  // The negative branch carried 0.7 into an IDENTITY whose own edge out was
+  // 1.0, so the splice rewires it as the product.
+  const rewired = outcome.creature.synapses.find((s) =>
+    s.fromUUID === "input-2" && s.toUUID === "output-0"
+  );
+  assert(rewired, "the surviving branch must be rewired into the target");
+  assertAlmostEquals(rewired.weight, 0.7, 1e-9);
+  assertEquals(
+    outcome.creature.synapses.some((s) => s.type === "positive"),
     false,
     "the unreachable branch must go with the condition",
   );

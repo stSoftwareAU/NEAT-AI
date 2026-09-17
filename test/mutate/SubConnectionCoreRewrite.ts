@@ -20,7 +20,10 @@
  *
  * - the condition goes, or every condition source is structurally fixed → the
  *   `IF` flattens to the branch that condition always took, as an `IDENTITY`
- *   sum, and the unreachable branch cascades away with it;
+ *   sum, and the unreachable branch cascades away with it. Core Issue #688
+ *   then splices that `IDENTITY` out — it only forwards `bias + Σ w·a`, so
+ *   rewiring its sources into its targets is exact — and the branch ends up
+ *   wired straight into the target;
  * - a `positive` / `negative` branch is emptied while the condition still
  *   varies → a **zero-weight** edge from a support constant is put back into
  *   that role, because an empty branch sum is `0` and so is `0 · 1`.
@@ -141,20 +144,29 @@ Deno.test("SubConnection: a source left with no outward edge cascades away with 
 
 Deno.test("SubConnection: removing the last IF condition flattens the IF instead of refusing", () => {
   // The superseded `#wouldBreakIfNeuron` returned `false` here, so this whole
-  // class of typed structure was unreachable to mutation.
+  // class of typed structure was unreachable to mutation. Core Issue #688 then
+  // splices out the `IDENTITY` the flatten leaves behind, so what survives is
+  // the branch rewired straight into the output.
   const creature = ifFixture();
   assert(
     removeEdge(creature, 0, indexOf(creature, "if-1"), "condition"),
     "core must rewrite the IF rather than decline the removal",
   );
 
-  const rewritten = creature.neurons.find((neuron) => neuron.uuid === "if-1");
-  assert(rewritten, "the IF neuron itself survives as the branch it took");
-  assertEquals(rewritten.squash, IDENTITY.NAME);
+  assertEquals(
+    creature.neurons.some((neuron) => neuron.uuid === "if-1"),
+    false,
+    "the flattened IDENTITY is spliced out, not left behind",
+  );
   assertEquals(
     creature.synapses.some((synapse) => synapse.type === "condition"),
     false,
     "no condition edge may survive a flattened IF",
+  );
+  assertEquals(
+    creature.synapses.length,
+    1,
+    "only the branch the condition always took is rewired into the output",
   );
   creatureValidate(creature);
 });

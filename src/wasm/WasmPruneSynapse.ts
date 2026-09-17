@@ -46,6 +46,12 @@
  * | no condition edge, or a structurally fixed condition | the branch the condition always takes, as an `IDENTITY` sum |
  * | an emptied `positive` / `negative` branch, condition still varying | a zero-weight support edge into that role |
  *
+ * A flattened `IF` is an `IDENTITY`, and core splices hidden `IDENTITY`
+ * neurons out recursively (core Issue #688) — it only forwards
+ * `bias + Σ w·a`, so rewiring its sources into its targets is exact. The
+ * flattened neuron therefore usually does **not** survive in the answer; the
+ * `splicedNeurons` list names every neuron that went that way.
+ *
  * ## Fail loud, never skip
  *
  * There is no TypeScript fallback rewrite. An unavailable bundle throws a
