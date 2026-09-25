@@ -106,6 +106,92 @@ export function loadWasmActivationInitPayload():
 }
 
 /**
+ * Default bound on fetching the WASM activation payload over `https:`.
+ *
+ * Issue #4035: generous enough for a slow but healthy CDN, yet finite so a
+ * stalled peer surfaces a `WasmError` instead of hanging worker start-up.
+ */
+export const WASM_PAYLOAD_FETCH_TIMEOUT_MS = 30_000;
+
+/** Options for {@link fetchWasmActivationPayloadOverHttp}. */
+export interface WasmPayloadFetchOptions {
+  /** `fetch` implementation; defaults to the global `fetch`. */
+  fetchFn?: typeof fetch;
+  /** Bound on both requests and their bodies, in milliseconds. */
+  timeoutMs?: number;
+}
+
+/**
+ * Fetch the WASM activation JS glue and binary over HTTP(S) with a timeout.
+ *
+ * Issue #4035: one `AbortSignal.timeout` covers both requests and reading
+ * their bodies, so a peer that accepts the connection and then stalls fails
+ * fast. Timeouts, network failures and non-OK responses all reject with
+ * `WasmError("MODULE_NOT_LOADED")`, giving callers one failure mode.
+ *
+ * @param jsUrl - URL of `wasm_activation.js`.
+ * @param wasmUrl - URL of `wasm_activation_bg.wasm`.
+ * @param options - Optional `fetch` seam and timeout override.
+ * @returns The raw JS source and WASM bytes (not yet shared).
+ * @throws RangeError when `timeoutMs` is not a positive finite number.
+ */
+export function fetchWasmActivationPayloadOverHttp(
+  jsUrl: URL,
+  wasmUrl: URL,
+  options: WasmPayloadFetchOptions = {},
+): Promise<WasmActivationInitPayload> {
+  const fetchFn = options.fetchFn ?? fetch;
+  const timeoutMs = options.timeoutMs ?? WASM_PAYLOAD_FETCH_TIMEOUT_MS;
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new RangeError(
+      `WASM payload fetch timeout must be a positive finite number of milliseconds, got ${timeoutMs}`,
+    );
+  }
+  return (async () => {
+    const signal = AbortSignal.timeout(timeoutMs);
+    try {
+      const [jsRes, wasmRes] = await Promise.all([
+        fetchFn(jsUrl.href, { signal }),
+        fetchFn(wasmUrl.href, { signal }),
+      ]);
+      if (!jsRes.ok || !wasmRes.ok) {
+        const jsErr = !jsRes.ok
+          ? `${jsUrl.href}: ${jsRes.status} ${jsRes.statusText}`
+          : null;
+        const wasmErr = !wasmRes.ok
+          ? `${wasmUrl.href}: ${wasmRes.status} ${wasmRes.statusText}`
+          : null;
+        // Release unread bodies so their resources are not leaked.
+        await Promise.all([jsRes.body?.cancel(), wasmRes.body?.cancel()]);
+        throw new WasmError(
+          `WASM activation payload could not be loaded. ${
+            [jsErr, wasmErr].filter(Boolean).join("; ")
+          }`,
+          "MODULE_NOT_LOADED",
+        );
+      }
+      const [jsSource, wasmBuffer] = await Promise.all([
+        jsRes.text(),
+        wasmRes.arrayBuffer(),
+      ]);
+      return { jsSource, wasmBinary: new Uint8Array(wasmBuffer) };
+    } catch (err) {
+      if (err instanceof WasmError) throw err;
+      const detail = signal.aborted
+        ? `timed out after ${timeoutMs}ms`
+        : err instanceof Error
+        ? err.message
+        : String(err);
+      throw new WasmError(
+        `WASM activation payload could not be loaded from ${jsUrl.href} / ${wasmUrl.href}: ${detail}`,
+        "MODULE_NOT_LOADED",
+        { cause: err },
+      );
+    }
+  })();
+}
+
+/**
  * Async variant of loadWasmActivationInitPayload() that supports JSR `https:` URLs.
  *
  * De-duplicates in-flight loads so multiple callers don't trigger parallel fetches.
@@ -130,26 +216,10 @@ export async function loadWasmActivationInitPayloadAsync(): Promise<
       jsSource = await Deno.readTextFile(jsUrl.pathname);
       wasmBinary = await Deno.readFile(wasmUrl.pathname);
     } else {
-      const [jsRes, wasmRes] = await Promise.all([
-        fetch(jsUrl.href),
-        fetch(wasmUrl.href),
-      ]);
-      if (!jsRes.ok || !wasmRes.ok) {
-        const jsErr = !jsRes.ok
-          ? `${jsUrl.href}: ${jsRes.status} ${jsRes.statusText}`
-          : null;
-        const wasmErr = !wasmRes.ok
-          ? `${wasmUrl.href}: ${wasmRes.status} ${wasmRes.statusText}`
-          : null;
-        throw new WasmError(
-          `WASM activation payload could not be loaded. ${
-            [jsErr, wasmErr].filter(Boolean).join("; ")
-          }`,
-          "MODULE_NOT_LOADED",
-        );
-      }
-      jsSource = await jsRes.text();
-      wasmBinary = new Uint8Array(await wasmRes.arrayBuffer());
+      ({ jsSource, wasmBinary } = await fetchWasmActivationPayloadOverHttp(
+        jsUrl,
+        wasmUrl,
+      ));
     }
 
     // Issue #3478: share one copy across all workers when SAB is available.
