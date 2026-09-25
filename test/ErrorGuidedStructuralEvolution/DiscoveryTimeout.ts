@@ -14,6 +14,15 @@ import { TANH } from "@methods/activations/types/TANH.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**
+ * Await the recorder's cleanup so no temp-dir removal outlives the test (it
+ * would leak). Injected rather than set on the process, whose environment
+ * every file under `deno test --parallel` shares (Issue #4034).
+ */
+const awaitCleanupEnv = {
+  get: (key: string) => key === "DENO_TEST" ? "true" : undefined,
+};
+
+/**
  * Tests for discovery timeout handling and partial result recovery.
  * Uses fast timeouts (1-3 seconds) with small datasets for CI/CD.
  */
@@ -226,99 +235,89 @@ Deno.test({
         "test1.bin",
       );
 
-      // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
-      const originalDenoTest = Deno.env.get("DENO_TEST");
-      Deno.env.set("DENO_TEST", "true");
-      try {
-        // Record-phase timeout test (analysis is skipped by setting discoveryMaxNeurons=0).
-        // We still exercise real FFI recording/flush.
-        const config128 = createNeatConfig({
-          discoveryBatchSize: 128,
-          discoveryRecordTimeOutMinutes: 0.001, // 60ms (forces partial recording)
-          discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds (minimum allowed)
-          discoverySampleRate: 1.0, // 100% sample rate
-          discoveryMaxNeurons: 0, // Skip analysis (prevents slow Rust synapse analysis)
-          discoveryBaseDirectory: tmpDir128,
-          discoveryDisableCleanup: true, // Preserve artefacts for assertions
-          log: 0,
-        });
+      // Record-phase timeout test (analysis is skipped by setting discoveryMaxNeurons=0).
+      // We still exercise real FFI recording/flush.
+      const config128 = createNeatConfig({
+        discoveryBatchSize: 128,
+        discoveryRecordTimeOutMinutes: 0.001, // 60ms (forces partial recording)
+        discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds (minimum allowed)
+        discoverySampleRate: 1.0, // 100% sample rate
+        discoveryMaxNeurons: 0, // Skip analysis (prevents slow Rust synapse analysis)
+        discoveryBaseDirectory: tmpDir128,
+        discoveryDisableCleanup: true, // Preserve artefacts for assertions
+        log: 0,
+      });
 
-        const result128 = await recordDirectory(
-          creature128,
-          tmpDir128,
-          config128,
-        );
+      const result128 = await recordDirectory(
+        creature128,
+        tmpDir128,
+        config128,
+        { env: awaitCleanupEnv },
+      );
 
-        const config512 = createNeatConfig({
-          discoveryBatchSize: 512,
-          discoveryRecordTimeOutMinutes: 0.001, // 60ms (forces partial recording)
-          discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds (minimum allowed)
-          discoverySampleRate: 1.0,
-          discoveryMaxNeurons: 0, // Skip analysis
-          discoveryBaseDirectory: tmpDir512,
-          discoveryDisableCleanup: true,
-          log: 0,
-        });
+      const config512 = createNeatConfig({
+        discoveryBatchSize: 512,
+        discoveryRecordTimeOutMinutes: 0.001, // 60ms (forces partial recording)
+        discoveryAnalysisTimeoutMinutes: 0.05, // 3 seconds (minimum allowed)
+        discoverySampleRate: 1.0,
+        discoveryMaxNeurons: 0, // Skip analysis
+        discoveryBaseDirectory: tmpDir512,
+        discoveryDisableCleanup: true,
+        log: 0,
+      });
 
-        const result512 = await recordDirectory(
-          creature512,
-          tmpDir512,
-          config512,
-        );
+      const result512 = await recordDirectory(
+        creature512,
+        tmpDir512,
+        config512,
+        { env: awaitCleanupEnv },
+      );
 
-        // Both should return results (not throw) - this tests timeout handling and FFI integration.
-        assertExists(result128, "Batch 128 should return result");
-        assertExists(result512, "Batch 512 should return result");
+      // Both should return results (not throw) - this tests timeout handling and FFI integration.
+      assertExists(result128, "Batch 128 should return result");
+      assertExists(result512, "Batch 512 should return result");
 
-        // Ensure record phase actually saved Parquet via Rust FFI.
-        const parquet128 = await countParquetFiles(
-          `${tmpDir128}/${creature128.uuid}`,
-        );
-        const parquet512 = await countParquetFiles(
-          `${tmpDir512}/${creature512.uuid}`,
-        );
-        assert(
-          parquet128 > 0,
-          `Expected at least one Parquet artefact for batch=128, got ${parquet128}`,
-        );
-        assert(
-          parquet512 > 0,
-          `Expected at least one Parquet artefact for batch=512, got ${parquet512}`,
-        );
+      // Ensure record phase actually saved Parquet via Rust FFI.
+      const parquet128 = await countParquetFiles(
+        `${tmpDir128}/${creature128.uuid}`,
+      );
+      const parquet512 = await countParquetFiles(
+        `${tmpDir512}/${creature512.uuid}`,
+      );
+      assert(
+        parquet128 > 0,
+        `Expected at least one Parquet artefact for batch=128, got ${parquet128}`,
+      );
+      assert(
+        parquet512 > 0,
+        `Expected at least one Parquet artefact for batch=512, got ${parquet512}`,
+      );
 
-        // Ensure timeouts actually prevented full recording (partial indices).
-        const recorded128 = await readSelectedIndexCount(
-          tmpDir128,
-          creature128,
-        );
-        const recorded512 = await readSelectedIndexCount(
-          tmpDir512,
-          creature512,
-        );
-        assert(
-          recorded128 > 0,
-          "Expected to record at least one sample before timing out (batch=128)",
-        );
-        assert(
-          recorded512 > 0,
-          "Expected to record at least one sample before timing out (batch=512)",
-        );
-        assert(
-          recorded128 < recordCount,
-          `Expected partial recording for batch=128. Recorded=${recorded128}, total=${recordCount}`,
-        );
-        assert(
-          recorded512 < recordCount,
-          `Expected partial recording for batch=512. Recorded=${recorded512}, total=${recordCount}`,
-        );
-      } finally {
-        // Restore original DENO_TEST value
-        if (originalDenoTest !== undefined) {
-          Deno.env.set("DENO_TEST", originalDenoTest);
-        } else {
-          Deno.env.delete("DENO_TEST");
-        }
-      }
+      // Ensure timeouts actually prevented full recording (partial indices).
+      const recorded128 = await readSelectedIndexCount(
+        tmpDir128,
+        creature128,
+      );
+      const recorded512 = await readSelectedIndexCount(
+        tmpDir512,
+        creature512,
+      );
+      assert(
+        recorded128 > 0,
+        "Expected to record at least one sample before timing out (batch=128)",
+      );
+      assert(
+        recorded512 > 0,
+        "Expected to record at least one sample before timing out (batch=512)",
+      );
+      assert(
+        recorded128 < recordCount,
+        `Expected partial recording for batch=128. Recorded=${recorded128}, total=${recordCount}`,
+      );
+      assert(
+        recorded512 < recordCount,
+        `Expected partial recording for batch=512. Recorded=${recorded512}, total=${recordCount}`,
+      );
     } finally {
       cleanupTempDir(tmpDir128);
       cleanupTempDir(tmpDir512);
@@ -355,41 +354,31 @@ Deno.test({
         log: 0,
       });
 
-      // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
-      const originalDenoTest = Deno.env.get("DENO_TEST");
-      Deno.env.set("DENO_TEST", "true");
-      try {
-        const result = await recordDirectory(creature, tmpDir, config);
+      const result = await recordDirectory(creature, tmpDir, config, {
+        env: awaitCleanupEnv,
+      });
 
-        // Should return result (not throw)
-        assertExists(result, "Should return result even with timeout");
-        assertExists(result.ID, "Result should have ID");
+      // Should return result (not throw)
+      assertExists(result, "Should return result even with timeout");
+      assertExists(result.ID, "Result should have ID");
 
-        const parquetCount = await countParquetFiles(
-          `${tmpDir}/${creature.uuid}`,
-        );
-        assert(
-          parquetCount > 0,
-          `Expected at least one Parquet artefact, got ${parquetCount}`,
-        );
+      const parquetCount = await countParquetFiles(
+        `${tmpDir}/${creature.uuid}`,
+      );
+      assert(
+        parquetCount > 0,
+        `Expected at least one Parquet artefact, got ${parquetCount}`,
+      );
 
-        const recorded = await readSelectedIndexCount(tmpDir, creature);
-        assert(
-          recorded > 0,
-          "Expected to record at least one sample before timing out",
-        );
-        assert(
-          recorded < recordCount,
-          `Expected partial recording. Recorded=${recorded}, total=${recordCount}`,
-        );
-      } finally {
-        // Restore original DENO_TEST value
-        if (originalDenoTest !== undefined) {
-          Deno.env.set("DENO_TEST", originalDenoTest);
-        } else {
-          Deno.env.delete("DENO_TEST");
-        }
-      }
+      const recorded = await readSelectedIndexCount(tmpDir, creature);
+      assert(
+        recorded > 0,
+        "Expected to record at least one sample before timing out",
+      );
+      assert(
+        recorded < recordCount,
+        `Expected partial recording. Recorded=${recorded}, total=${recordCount}`,
+      );
     } finally {
       cleanupTempDir(tmpDir);
     }
@@ -427,37 +416,27 @@ Deno.test({
         log: 0,
       });
 
-      // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
-      const originalDenoTest = Deno.env.get("DENO_TEST");
-      Deno.env.set("DENO_TEST", "true");
-      try {
-        const result = await recordDirectory(creature, tmpDir, config);
+      const result = await recordDirectory(creature, tmpDir, config, {
+        env: awaitCleanupEnv,
+      });
 
-        // Should complete without throwing
-        assertExists(result, "Should return result despite timeout");
-        assertExists(result.ID, "Result should have ID");
+      // Should complete without throwing
+      assertExists(result, "Should return result despite timeout");
+      assertExists(result.ID, "Result should have ID");
 
-        const parquetCount = await countParquetFiles(
-          `${tmpDir}/${creature.uuid}`,
-        );
-        assert(
-          parquetCount > 0,
-          `Expected at least one Parquet artefact, got ${parquetCount}`,
-        );
+      const parquetCount = await countParquetFiles(
+        `${tmpDir}/${creature.uuid}`,
+      );
+      assert(
+        parquetCount > 0,
+        `Expected at least one Parquet artefact, got ${parquetCount}`,
+      );
 
-        const recorded = await readSelectedIndexCount(tmpDir, creature);
-        assert(
-          recorded > 0,
-          "Expected to record at least one sample before timing out",
-        );
-      } finally {
-        // Restore original DENO_TEST value
-        if (originalDenoTest !== undefined) {
-          Deno.env.set("DENO_TEST", originalDenoTest);
-        } else {
-          Deno.env.delete("DENO_TEST");
-        }
-      }
+      const recorded = await readSelectedIndexCount(tmpDir, creature);
+      assert(
+        recorded > 0,
+        "Expected to record at least one sample before timing out",
+      );
 
       // Should have processed at least some files
       // The diagnostic log should show "timeout reached during file processing"
@@ -496,36 +475,26 @@ Deno.test({
         log: 0,
       });
 
-      // Set environment variable to ensure cleanup is awaited in tests (prevents leaks)
-      const originalDenoTest = Deno.env.get("DENO_TEST");
-      Deno.env.set("DENO_TEST", "true");
-      try {
-        const result = await recordDirectory(creature, tmpDir, config);
+      const result = await recordDirectory(creature, tmpDir, config, {
+        env: awaitCleanupEnv,
+      });
 
-        // Should complete successfully
-        assertExists(result, "Should return result");
-        assertExists(result.ID, "Result should have ID");
+      // Should complete successfully
+      assertExists(result, "Should return result");
+      assertExists(result.ID, "Result should have ID");
 
-        const parquetCount = await countParquetFiles(
-          `${tmpDir}/${creature.uuid}`,
-        );
-        assert(
-          parquetCount > 0,
-          `Expected at least one Parquet artefact, got ${parquetCount}`,
-        );
-        const recorded = await readSelectedIndexCount(tmpDir, creature);
-        assert(
-          recorded === recordCount,
-          `Expected all records to be recorded. Recorded=${recorded}, total=${recordCount}`,
-        );
-      } finally {
-        // Restore original DENO_TEST value
-        if (originalDenoTest !== undefined) {
-          Deno.env.set("DENO_TEST", originalDenoTest);
-        } else {
-          Deno.env.delete("DENO_TEST");
-        }
-      }
+      const parquetCount = await countParquetFiles(
+        `${tmpDir}/${creature.uuid}`,
+      );
+      assert(
+        parquetCount > 0,
+        `Expected at least one Parquet artefact, got ${parquetCount}`,
+      );
+      const recorded = await readSelectedIndexCount(tmpDir, creature);
+      assert(
+        recorded === recordCount,
+        `Expected all records to be recorded. Recorded=${recorded}, total=${recordCount}`,
+      );
     } finally {
       cleanupTempDir(tmpDir);
     }

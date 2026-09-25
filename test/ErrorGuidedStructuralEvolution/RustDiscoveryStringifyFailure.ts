@@ -82,14 +82,6 @@ Deno.test("recordDiscovery handles stringify failure before encoding", () => {
     }
   >;
 
-  const originalOverride = (() => {
-    try {
-      return Deno.env.get("NEAT_AI_DISCOVERY_LIB_PATH");
-    } catch {
-      return undefined;
-    }
-  })();
-
   const dlopenStub = stub(Deno, "dlopen", () => fakeLib);
   const statStub = stub(
     Deno,
@@ -140,12 +132,5 @@ Deno.test("recordDiscovery handles stringify failure before encoding", () => {
     statStub.restore();
     permissionsStub.restore();
     envStub.restore();
-    if (originalOverride !== undefined) {
-      try {
-        Deno.env.set("NEAT_AI_DISCOVERY_LIB_PATH", originalOverride);
-      } catch {
-        // Ignore environments without --allow-env.
-      }
-    }
   }
 });
