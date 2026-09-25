@@ -1,12 +1,14 @@
 // markdownlint-cli2 configuration — drives both the local quality gate
 // (./quality.sh) and the CI workflow (.github/workflows/markdown-lint.yml).
 //
-// Globs select all Markdown files while excluding build artefacts.
+// Globs select all Markdown files while excluding build artefacts. `graft/`
+// is a locally generated, untracked repo map whose cards quote source code
+// verbatim, so it is never linted.
 // Rules are tuned to what is enforceable across the existing file corpus
 // without requiring mass rewrites; more rules can be re-enabled as the
 // codebase is cleaned up incrementally.
 {
-  "globs": ["**/*.md", "!node_modules", "!.git"],
+  "globs": ["**/*.md", "!node_modules", "!.git", "!graft"],
   "config": {
     // MD013 – line length: 80 chars is impractical for tables, URLs, and
     // auto-generated bench reports. Disable rather than set a high limit so
