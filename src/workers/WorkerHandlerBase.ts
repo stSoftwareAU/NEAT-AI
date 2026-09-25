@@ -235,16 +235,17 @@ export function verifyWorkerHeapBudget(
  *
  * Used by both WorkerHandlerBase constructors and deno/worker.ts entry points.
  * Defaults to 60 seconds; configurable via NEAT_AI_WORKER_INIT_TIMEOUT_MS.
+ *
+ * @param getEnv - Environment lookup (defaults to `Deno.env`); injected by
+ *   tests so they never mutate the shared process environment (Issue #4034).
  */
-export function getInitTimeoutMs(): number {
-  try {
-    const v = Deno.env.get("NEAT_AI_WORKER_INIT_TIMEOUT_MS");
-    if (v === null || v === undefined || v === "") return 60_000;
-    const n = parseInt(v, 10);
-    return Number.isFinite(n) && n >= 1000 ? n : 60_000;
-  } catch {
-    return 60_000;
-  }
+export function getInitTimeoutMs(
+  getEnv: (key: string) => string | undefined = defaultEnvGet,
+): number {
+  const v = getEnv("NEAT_AI_WORKER_INIT_TIMEOUT_MS");
+  if (v === undefined || v === "") return 60_000;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n >= 1000 ? n : 60_000;
 }
 
 /**

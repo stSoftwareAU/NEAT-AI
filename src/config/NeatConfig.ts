@@ -95,6 +95,7 @@ import { resolveRustScorerConfig } from "../score/RustScorerBridge.ts";
 
 // Automatic Discovery worker-memory envelope → workerThreadCap wiring.
 import {
+  type EnvReader,
   mergeDiscoveryWorkerThreadCapDefaults,
   resolveDiscoveryWorkerThreadCap,
 } from "@config/DiscoveryWorkerEnvelope.ts";
@@ -187,9 +188,16 @@ export type NeatConfig = Readonly<NeatArguments>;
  * Creates a validated NEAT configuration from user options.
  *
  * @param options - Partial configuration options from the user
+ * @param env - Reader for the host-exported Discovery memory envelope
+ *   (`DISCOVERY_*` worker cap and analysis budget). Defaults to `Deno.env`;
+ *   injected by tests so they never mutate the shared process environment
+ *   (Issue #4034).
  * @returns A frozen, validated NEAT configuration object
  */
-export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
+export function createNeatConfig(
+  options: NeatOptionsInput,
+  env: EnvReader = Deno.env,
+): NeatConfig {
   const opts = options as Record<string, unknown>;
 
   // Issue #1400: Set up the global RNG before anything else uses randomness.
@@ -249,7 +257,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
   let workerThreadCap = parseWorkerThreadCap(
     mergeDiscoveryWorkerThreadCapDefaults(
       opts.workerThreadCap as Record<string, unknown> | undefined,
-      resolveDiscoveryWorkerThreadCap(),
+      resolveDiscoveryWorkerThreadCap(env),
     ),
   );
 
@@ -796,7 +804,7 @@ export function createNeatConfig(options: NeatOptionsInput): NeatConfig {
     memory: parseMemoryConfig(
       mergeAnalysisMemoryBudgetDefault(
         opts.memory as Record<string, unknown> | undefined,
-        resolveAnalysisMemoryBudgetEnvMb(),
+        resolveAnalysisMemoryBudgetEnvMb(env),
       ),
     ),
     workerThreadCap,

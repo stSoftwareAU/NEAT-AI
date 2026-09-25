@@ -186,11 +186,16 @@ function searchPath(name: string): string | undefined {
  * through instead of being pinned back to `off`. Pinning it here would make
  * the opt-in lane look like GPU coverage while every scorer call ran on the
  * CPU — exactly the false confidence the lane exists to remove.
+ *
+ * @param getEnv - Environment lookup (defaults to `Deno.env`); injected by
+ *   tests so they never mutate the shared process environment (Issue #4034).
  */
-export function scorerGpuEnv(): Record<string, string> {
+export function scorerGpuEnv(
+  getEnv: (key: string) => string | undefined = (key) => Deno.env.get(key),
+): Record<string, string> {
   let mode: string | undefined;
   try {
-    mode = Deno.env.get("NEAT_SCORER_GPU")?.trim();
+    mode = getEnv("NEAT_SCORER_GPU")?.trim();
   } catch {
     // Env unreadable (a test without `env` permission) — keep the safe default.
   }
