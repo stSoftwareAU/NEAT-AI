@@ -6,7 +6,9 @@ import { Costs } from "@costs";
 import {
   __resetRustScorerBridgeForTests,
   __setRustScorerRunnerForTests,
+  __setRustScorerTmpDirForTests,
 } from "../../src/score/RustScorerBridge.ts";
+import { resolveScorerTmpDir } from "../../src/score/RustScorerBridgeInternal.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 function buildDataSet(): DataRecordInterface[] {
@@ -161,8 +163,7 @@ Deno.test("Rust scorer integration: writes temp creature JSON in configured tmp 
   __resetRustScorerBridgeForTests();
 
   const tmpDir = await Deno.makeTempDir({ prefix: "rust-scorer-tmp-" });
-  const previousTmpDir = Deno.env.get("NEAT_AI_RUST_SCORER_TMP_DIR");
-  Deno.env.set("NEAT_AI_RUST_SCORER_TMP_DIR", tmpDir);
+  __setRustScorerTmpDirForTests(tmpDir);
 
   let seenCreaturePath: string | undefined;
   __setRustScorerRunnerForTests((_command, args) => {
@@ -214,11 +215,17 @@ Deno.test("Rust scorer integration: writes temp creature JSON in configured tmp 
   } finally {
     await Deno.remove(dataDir, { recursive: true });
     await Deno.remove(tmpDir, { recursive: true });
-    if (previousTmpDir === undefined) {
-      Deno.env.delete("NEAT_AI_RUST_SCORER_TMP_DIR");
-    } else {
-      Deno.env.set("NEAT_AI_RUST_SCORER_TMP_DIR", previousTmpDir);
-    }
     __resetRustScorerBridgeForTests();
   }
+});
+
+Deno.test("Rust scorer tmp dir: the test override is cleared by the bridge reset", () => {
+  // Issue #4034: the override lives in this isolate's module state, so it must
+  // not outlive the test that set it.
+  __resetRustScorerBridgeForTests();
+  const ambient = resolveScorerTmpDir("/data");
+  __setRustScorerTmpDirForTests("/override");
+  assertEquals(resolveScorerTmpDir("/data"), "/override");
+  __resetRustScorerBridgeForTests();
+  assertEquals(resolveScorerTmpDir("/data"), ambient);
 });

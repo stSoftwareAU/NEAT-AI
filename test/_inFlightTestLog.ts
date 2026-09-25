@@ -15,9 +15,12 @@ export type InFlightHandle = {
   path: string;
 };
 
-function inFlightDir(): string | undefined {
+/** Environment lookup; `Deno.env` in the hook, a fake in its own tests. */
+type EnvLookup = (key: string) => string | undefined;
+
+function inFlightDir(getEnv: EnvLookup): string | undefined {
   try {
-    const dir = Deno.env.get("NEAT_AI_IN_FLIGHT_DIR");
+    const dir = getEnv("NEAT_AI_IN_FLIGHT_DIR");
     if (!dir) {
       return undefined;
     }
@@ -34,10 +37,18 @@ function safeName(name: string): string {
   return (cleaned.length > 0 ? cleaned : "unnamed").slice(0, 120);
 }
 
-/** Create a durable in-flight record. Returns undefined when tracking is off. */
-export function beginInFlight(name: string): InFlightHandle | undefined {
+/**
+ * Create a durable in-flight record. Returns undefined when tracking is off.
+ *
+ * @param getEnv - Environment lookup (defaults to `Deno.env`); injected by
+ *   tests so they never mutate the shared process environment (Issue #4034).
+ */
+export function beginInFlight(
+  name: string,
+  getEnv: EnvLookup = (key) => Deno.env.get(key),
+): InFlightHandle | undefined {
   try {
-    const dir = inFlightDir();
+    const dir = inFlightDir(getEnv);
     if (!dir) {
       return undefined;
     }

@@ -43,6 +43,7 @@ import {
   __getBatchRunner,
   buildChildEnv,
   resolveProbeState,
+  resolveScorerTmpDir,
 } from "./RustScorerBridgeInternal.ts";
 import { assertNotCorruptDataset } from "./ScorerFailureClassification.ts";
 import type { RacingPolicy } from "./RacingPolicy.ts";
@@ -156,7 +157,7 @@ export async function tryBatchScoreWithRustScorer(
   const expectedStems = Array.from(creatureByStem.keys());
   const runCommand = __getBatchRunner();
 
-  const tmpBase = readEnvString("NEAT_AI_RUST_SCORER_TMP_DIR") ?? dataDir;
+  const tmpBase = resolveScorerTmpDir(dataDir);
   const creaturesDir = await Deno.makeTempDir({
     dir: tmpBase,
     prefix: "neat-rust-scorer-batch-",
@@ -261,15 +262,5 @@ export async function tryBatchScoreWithRustScorer(
       // Ignore cleanup errors — temp dir leak is less bad than masking the
       // underlying failure.
     }
-  }
-}
-
-function readEnvString(key: string): string | undefined {
-  try {
-    const v = Deno.env.get(key);
-    if (v === undefined || v.trim() === "") return undefined;
-    return v;
-  } catch {
-    return undefined;
   }
 }
