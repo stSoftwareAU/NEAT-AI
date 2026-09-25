@@ -87,6 +87,15 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
+/**
+ * An environment where the capture is armed at `dir`. Injected rather than set
+ * on the process, whose environment every file under `deno test --parallel`
+ * shares (Issue #4034).
+ */
+function armedAt(dir: string): (name: string) => string | undefined {
+  return (name) => name === TRAINING_TASK_CAPTURE_DIR_ENV ? dir : undefined;
+}
+
 /** Poll until the file is (or is not) there, up to ~1 s. */
 async function waitForFile(
   path: string,
@@ -130,8 +139,6 @@ Deno.test("write then remove; a missing file on remove is not an error", async (
 Deno.test("a dispatched task is captured until it settles", async () => {
   await initWasmForTests();
   const dir = await Deno.makeTempDir();
-  const previous = Deno.env.get(TRAINING_TASK_CAPTURE_DIR_ENV);
-  Deno.env.set(TRAINING_TASK_CAPTURE_DIR_ENV, dir);
   try {
     const worker = new DeferredWorker();
     const neat = createStubNeat(worker);
@@ -139,7 +146,7 @@ Deno.test("a dispatched task is captured until it settles", async () => {
     const uuid = CreatureUtil.makeUUID(creature);
     const path = trainingTaskCapturePath(dir, uuid);
 
-    scheduleTraining(neat, creature, 5);
+    scheduleTraining(neat, creature, 5, undefined, armedAt(dir));
     assert(await waitForFile(path, true), "capture written at dispatch");
     const captured = JSON.parse(await Deno.readTextFile(path));
     assertEquals(captured.input, 2);
@@ -149,8 +156,6 @@ Deno.test("a dispatched task is captured until it settles", async () => {
     await Promise.allSettled(neat.trainingInProgress.values());
     assert(await waitForFile(path, false), "capture removed once settled");
   } finally {
-    if (previous === undefined) Deno.env.delete(TRAINING_TASK_CAPTURE_DIR_ENV);
-    else Deno.env.set(TRAINING_TASK_CAPTURE_DIR_ENV, previous);
     await Deno.remove(dir, { recursive: true });
   }
 });
@@ -158,8 +163,6 @@ Deno.test("a dispatched task is captured until it settles", async () => {
 Deno.test("a cancelled task keeps its capture — that is the hung set (GRQ #4794)", async () => {
   await initWasmForTests();
   const dir = await Deno.makeTempDir();
-  const previous = Deno.env.get(TRAINING_TASK_CAPTURE_DIR_ENV);
-  Deno.env.set(TRAINING_TASK_CAPTURE_DIR_ENV, dir);
   try {
     const worker = new DeferredWorker();
     const neat = createStubNeat(worker);
@@ -167,7 +170,7 @@ Deno.test("a cancelled task keeps its capture — that is the hung set (GRQ #479
     const uuid = CreatureUtil.makeUUID(creature);
     const path = trainingTaskCapturePath(dir, uuid);
 
-    scheduleTraining(neat, creature, 5);
+    scheduleTraining(neat, creature, 5, undefined, armedAt(dir));
     assert(await waitForFile(path, true), "capture written at dispatch");
 
     // GRQ #4489 cancels exactly the tasks the stuck-task watchdog abandoned,
@@ -182,8 +185,6 @@ Deno.test("a cancelled task keeps its capture — that is the hung set (GRQ #479
         "leaves GRQ with captured=0 atSchedule=0 and nothing to reproduce",
     );
   } finally {
-    if (previous === undefined) Deno.env.delete(TRAINING_TASK_CAPTURE_DIR_ENV);
-    else Deno.env.set(TRAINING_TASK_CAPTURE_DIR_ENV, previous);
     await Deno.remove(dir, { recursive: true });
   }
 });
@@ -191,22 +192,17 @@ Deno.test("a cancelled task keeps its capture — that is the hung set (GRQ #479
 Deno.test("nothing is written while the capture is not armed", async () => {
   await initWasmForTests();
   const dir = await Deno.makeTempDir();
-  const previous = Deno.env.get(TRAINING_TASK_CAPTURE_DIR_ENV);
-  Deno.env.delete(TRAINING_TASK_CAPTURE_DIR_ENV);
   try {
     const worker = new DeferredWorker();
     const neat = createStubNeat(worker);
     const creature = new Creature(2, 1);
-    scheduleTraining(neat, creature, 5);
+    scheduleTraining(neat, creature, 5, undefined, () => undefined);
     worker.fail();
     await Promise.allSettled(neat.trainingInProgress.values());
     let count = 0;
     for await (const _ of Deno.readDir(dir)) count++;
     assertEquals(count, 0);
   } finally {
-    if (previous !== undefined) {
-      Deno.env.set(TRAINING_TASK_CAPTURE_DIR_ENV, previous);
-    }
     await Deno.remove(dir, { recursive: true });
   }
 });

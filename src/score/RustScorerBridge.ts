@@ -49,9 +49,11 @@ import {
   __getBatchRunner,
   __resetInternal,
   __setRunnerInternal,
+  __setTmpDirInternal,
   buildChildEnv,
   type CommandRunner,
   resolveProbeState,
+  resolveScorerTmpDir,
 } from "./RustScorerBridgeInternal.ts";
 
 interface RustScorerResult {
@@ -334,7 +336,7 @@ export async function tryScoreWithRustScorer(
 
   let creaturePath: string | undefined;
   try {
-    const tmpDir = readEnvString("NEAT_AI_RUST_SCORER_TMP_DIR") ?? dataDir;
+    const tmpDir = resolveScorerTmpDir(dataDir);
     creaturePath = await writeCreatureTempFile(creature, tmpDir);
     // rust_scorer resolves relative paths against its own process cwd, which
     // may not match the Deno/worker cwd. Always hand it absolute paths.
@@ -428,6 +430,17 @@ export function __resetRustScorerBridgeForTests(): void {
 
 export function __setRustScorerRunnerForTests(runner: CommandRunner): void {
   __setRunnerInternal(runner);
+}
+
+/**
+ * Force the scorer temp directory in-process for tests (Issue #4034).
+ *
+ * Prefer this over `Deno.env.set("NEAT_AI_RUST_SCORER_TMP_DIR")`: it mutates
+ * only this isolate's module state, so parallel test files never race on the
+ * shared process environment. Cleared by `__resetRustScorerBridgeForTests`.
+ */
+export function __setRustScorerTmpDirForTests(dir: string): void {
+  __setTmpDirInternal(dir);
 }
 
 /**

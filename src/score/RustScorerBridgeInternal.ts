@@ -196,8 +196,40 @@ export function __setRunnerInternal(runner: CommandRunner): void {
   runCommand = runner;
 }
 
+/**
+ * Per-isolate override for the scorer temp directory (Issue #4034).
+ *
+ * `deno test --parallel` shares one process environment across every test
+ * file, so tests must not set `NEAT_AI_RUST_SCORER_TMP_DIR` to steer the temp
+ * files. Module state is isolated per worker, so this override is not shared.
+ */
+let tmpDirOverride: string | undefined;
+
+/** Set the scorer temp-directory override (test hook). */
+export function __setTmpDirInternal(dir: string | undefined): void {
+  tmpDirOverride = dir;
+}
+
+/**
+ * Directory the scorer bridges write temp creature files into: the test
+ * override, else `NEAT_AI_RUST_SCORER_TMP_DIR` when non-blank, else `dataDir`.
+ */
+export function resolveScorerTmpDir(dataDir: string): string {
+  if (tmpDirOverride !== undefined) return tmpDirOverride;
+  let configured: string | undefined;
+  try {
+    configured = Deno.env.get("NEAT_AI_RUST_SCORER_TMP_DIR");
+  } catch {
+    // No --allow-env: behave as if unset.
+  }
+  return configured !== undefined && configured.trim() !== ""
+    ? configured
+    : dataDir;
+}
+
 /** Reset internal state (test hook shared with `RustScorerBridge.ts`). */
 export function __resetInternal(): void {
   probeCache.clear();
   runCommand = defaultRunner;
+  tmpDirOverride = undefined;
 }

@@ -7,7 +7,10 @@ import {
   DISCOVERY_PER_WORKER_HEAP_CAP_ENV,
   DISCOVERY_WORKER_ENVELOPE_ENV,
 } from "@config/DiscoveryWorkerEnvelope.ts";
-import { DISCOVERY_HEAP_SIZE_ENV } from "@workers/WorkerHeapBudget.ts";
+import {
+  DISCOVERY_HEAP_SIZE_ENV,
+  type EnvReader,
+} from "@workers/WorkerHeapBudget.ts";
 
 /**
  * Guard the three host shapes from GRQ #4069: Discovery must size the worker
@@ -15,32 +18,13 @@ import { DISCOVERY_HEAP_SIZE_ENV } from "@workers/WorkerHeapBudget.ts";
  * process heap was used as the per-worker estimate.
  */
 
-const ENVELOPE_ENV_KEYS = [
-  DISCOVERY_WORKER_ENVELOPE_ENV,
-  DISCOVERY_HEAP_SIZE_ENV,
-  DISCOVERY_PER_WORKER_HEAP_CAP_ENV,
-];
-
-function withEnvelopeEnv(
-  overrides: Record<string, string>,
-  fn: () => void,
-): void {
-  const prior = new Map<string, string | undefined>();
-  for (const key of ENVELOPE_ENV_KEYS) {
-    prior.set(key, Deno.env.get(key));
-    Deno.env.delete(key);
-  }
-  try {
-    for (const [key, value] of Object.entries(overrides)) {
-      Deno.env.set(key, value);
-    }
-    fn();
-  } finally {
-    for (const [key, value] of prior) {
-      if (value === undefined) Deno.env.delete(key);
-      else Deno.env.set(key, value);
-    }
-  }
+/**
+ * An environment holding exactly `values`. Injected into `createNeatConfig`
+ * rather than set on the process, whose environment every file under
+ * `deno test --parallel` shares (Issue #4034).
+ */
+function envelopeEnv(values: Record<string, string>): EnvReader {
+  return { get: (key) => Object.hasOwn(values, key) ? values[key] : undefined };
 }
 
 type HostShape = {
@@ -86,32 +70,28 @@ for (const host of HOSTS) {
         host.envelopeMB / host.perWorkerCapMB,
       );
       const expectedThreads = Math.min(defaultThreads, memoryBasedMax);
-      withEnvelopeEnv(
-        {
-          [DISCOVERY_WORKER_ENVELOPE_ENV]: String(host.envelopeMB),
-          [DISCOVERY_HEAP_SIZE_ENV]: String(host.heapMB),
-          [DISCOVERY_PER_WORKER_HEAP_CAP_ENV]: String(host.perWorkerCapMB),
-        },
-        () => {
-          const config = createNeatConfig({ threads: defaultThreads });
-          assertEquals(
-            config.workerThreadCap.estimatedMemoryPerWorkerMB,
-            host.perWorkerCapMB,
-          );
-          assertEquals(config.threads, expectedThreads);
-          assertEquals(
-            config.threads *
-                config.workerThreadCap.estimatedMemoryPerWorkerMB <=
-              host.envelopeMB,
-            true,
-          );
-          // Must not collapse to the pre-fix 1-thread failure mode when
-          // the envelope can hold more than one packed worker.
-          if (memoryBasedMax > 1) {
-            assertEquals(config.threads > 1, true);
-          }
-        },
+      const env = envelopeEnv({
+        [DISCOVERY_WORKER_ENVELOPE_ENV]: String(host.envelopeMB),
+        [DISCOVERY_HEAP_SIZE_ENV]: String(host.heapMB),
+        [DISCOVERY_PER_WORKER_HEAP_CAP_ENV]: String(host.perWorkerCapMB),
+      });
+      const config = createNeatConfig({ threads: defaultThreads }, env);
+      assertEquals(
+        config.workerThreadCap.estimatedMemoryPerWorkerMB,
+        host.perWorkerCapMB,
       );
+      assertEquals(config.threads, expectedThreads);
+      assertEquals(
+        config.threads *
+            config.workerThreadCap.estimatedMemoryPerWorkerMB <=
+          host.envelopeMB,
+        true,
+      );
+      // Must not collapse to the pre-fix 1-thread failure mode when
+      // the envelope can hold more than one packed worker.
+      if (memoryBasedMax > 1) {
+        assertEquals(config.threads > 1, true);
+      }
     },
   );
 }

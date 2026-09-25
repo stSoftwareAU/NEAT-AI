@@ -196,14 +196,15 @@ export class DataRecorder {
   }
 
   private shouldAwaitCleanup(): boolean {
+    const env = this.discoverDeps.env ?? Deno.env;
     try {
-      const explicit = Deno.env.get("NEAT_DISCOVERY_AWAIT_CLEANUP");
+      const explicit = env.get("NEAT_DISCOVERY_AWAIT_CLEANUP");
       if (explicit) {
         const normalized = explicit.trim().toLowerCase();
         return normalized === "1" || normalized === "true" ||
           normalized === "yes";
       }
-      const denoTest = Deno.env.get("DENO_TEST");
+      const denoTest = env.get("DENO_TEST");
       return denoTest?.toLowerCase() === "true";
     } catch {
       return false;

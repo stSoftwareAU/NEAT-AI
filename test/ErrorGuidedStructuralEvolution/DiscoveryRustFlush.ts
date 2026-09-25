@@ -15,21 +15,18 @@ import type {
 } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
+/**
+ * Await the recorder's cleanup so no temp-dir removal outlives the test.
+ * Injected rather than set on the process, whose environment every file under
+ * `deno test --parallel` shares (Issue #4034).
+ */
+const awaitCleanupEnv = {
+  get: (key: string) =>
+    key === "NEAT_DISCOVERY_AWAIT_CLEANUP" ? "1" : undefined,
+};
+
 Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
   await initWasmForTests();
-  const envKey = "NEAT_DISCOVERY_AWAIT_CLEANUP";
-  const previousValue = (() => {
-    try {
-      return Deno.env.get(envKey);
-    } catch {
-      return undefined;
-    }
-  })();
-  try {
-    Deno.env.set(envKey, "1");
-  } catch {
-    // ignore if env not accessible
-  }
   const tempDir = await Deno.makeTempDir({ prefix: "discovery-chunk-test-" });
   try {
     const dataFile = join(tempDir, "sample.bin");
@@ -77,6 +74,7 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
     const mergedChunks: string[][] = [];
 
     const deps: Partial<DiscoverStructureDeps> = {
+      env: awaitCleanupEnv,
       isRustDiscoveryEnabled: () => true,
       isRustLibraryAvailable: () => true,
       recordDiscovery: (
@@ -117,25 +115,12 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
     };
 
     await recordDirectory(creature, tempDir, config, deps);
-    // Cleanup is already awaited when NEAT_DISCOVERY_AWAIT_CLEANUP is set
+    // Cleanup is already awaited: the injected env sets NEAT_DISCOVERY_AWAIT_CLEANUP
 
     assertEquals(recordCallSizes, [2, 2]);
     assertEquals(mergedChunks.length, 1);
     assertEquals(mergedChunks[0].length, 2);
   } finally {
-    if (previousValue === undefined) {
-      try {
-        Deno.env.delete(envKey);
-      } catch {
-        // ignore
-      }
-    } else {
-      try {
-        Deno.env.set(envKey, previousValue);
-      } catch {
-        // ignore
-      }
-    }
     // Use removeSync - simpler, faster, and ensures all file handles are closed
     try {
       // deno-lint-ignore no-sync-fn-in-async-fn
@@ -148,20 +133,6 @@ Deno.test("Discovery flushes Rust recording in configured chunks", async () => {
 
 Deno.test("Discovery flushes Rust recording based on estimated payload size", async () => {
   await initWasmForTests();
-  const envKey = "NEAT_DISCOVERY_AWAIT_CLEANUP";
-  const previousValue = (() => {
-    try {
-      return Deno.env.get(envKey);
-    } catch {
-      return undefined;
-    }
-  })();
-  try {
-    Deno.env.set(envKey, "1");
-  } catch {
-    // ignore if env not accessible
-  }
-
   const tempDir = await Deno.makeTempDir({ prefix: "discovery-byte-flush-" });
   try {
     const dataFile = join(tempDir, "sample.bin");
@@ -210,6 +181,7 @@ Deno.test("Discovery flushes Rust recording based on estimated payload size", as
     const mergedChunks: string[][] = [];
 
     const deps: Partial<DiscoverStructureDeps> = {
+      env: awaitCleanupEnv,
       isRustDiscoveryEnabled: () => true,
       isRustLibraryAvailable: () => true,
       recordDiscovery: (input: RustRecordInput): RustRecordResult => {
@@ -248,25 +220,12 @@ Deno.test("Discovery flushes Rust recording based on estimated payload size", as
     };
 
     await recordDirectory(creature, tempDir, config, deps);
-    // Cleanup is already awaited when NEAT_DISCOVERY_AWAIT_CLEANUP is set
+    // Cleanup is already awaited: the injected env sets NEAT_DISCOVERY_AWAIT_CLEANUP
 
     assertEquals(recordCallSizes, [1, 1, 1, 1]);
     assertEquals(mergedChunks.length, 1);
     assertEquals(mergedChunks[0].length, 4);
   } finally {
-    if (previousValue === undefined) {
-      try {
-        Deno.env.delete(envKey);
-      } catch {
-        // ignore
-      }
-    } else {
-      try {
-        Deno.env.set(envKey, previousValue);
-      } catch {
-        // ignore
-      }
-    }
     try {
       // deno-lint-ignore no-sync-fn-in-async-fn
       Deno.removeSync(tempDir, { recursive: true });

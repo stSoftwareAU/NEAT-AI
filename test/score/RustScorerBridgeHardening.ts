@@ -80,8 +80,13 @@ Deno.test("RustScorerBridge: merges overrides with parent env when overrides exi
   await initWasmForTests();
   __resetRustScorerBridgeForTests();
 
-  const sentinelKey = "NEAT_AI_RUST_SCORER_TEST_PARENT_SENTINEL";
-  Deno.env.set(sentinelKey, "present");
+  // Issue #4034: read a variable the parent already has rather than set a
+  // sentinel — `deno test --parallel` shares one process environment.
+  const parent = Object.entries(Deno.env.toObject()).find(([key]) =>
+    key !== "OVERRIDE_KEY"
+  );
+  assert(parent !== undefined, "the test process must have an environment");
+  const [parentKey, parentValue] = parent;
 
   let scoreEnv: Record<string, string> | undefined;
   __setRustScorerRunnerForTests((_command, args, options) => {
@@ -122,12 +127,11 @@ Deno.test("RustScorerBridge: merges overrides with parent env when overrides exi
     assert(scoreEnv !== undefined, "runner should receive merged env");
     assertEquals(scoreEnv!.OVERRIDE_KEY, "override_value");
     assertEquals(
-      scoreEnv![sentinelKey],
-      "present",
+      scoreEnv![parentKey],
+      parentValue,
       "merged env should include the parent process env",
     );
   } finally {
-    Deno.env.delete(sentinelKey);
     await Deno.remove(dataDir, { recursive: true });
     __resetRustScorerBridgeForTests();
   }

@@ -14,39 +14,34 @@ import { scorerGpuEnv } from "./NativeScorerFixtures.ts";
 
 const VARIABLE = "NEAT_SCORER_GPU";
 
-/** Run `fn` with `NEAT_SCORER_GPU` set to `value` (or removed), then restore. */
-function withGpuEnv(value: string | undefined, fn: () => void): void {
-  const original = Deno.env.get(VARIABLE);
-  try {
-    if (value === undefined) Deno.env.delete(VARIABLE);
-    else Deno.env.set(VARIABLE, value);
-    fn();
-  } finally {
-    if (original === undefined) Deno.env.delete(VARIABLE);
-    else Deno.env.set(VARIABLE, original);
-  }
+/**
+ * An environment where `NEAT_SCORER_GPU` holds `value` (or is unset). Injected
+ * rather than set on the shared process environment, which every file under
+ * `deno test --parallel` reads (Issue #4034).
+ */
+function gpuEnv(value: string | undefined) {
+  return (key: string) => key === VARIABLE ? value : undefined;
 }
 
 Deno.test("scorerGpuEnv defaults to off when the lane sets nothing", () => {
-  withGpuEnv(undefined, () => {
-    assertEquals(scorerGpuEnv(), { NEAT_SCORER_GPU: "off" });
-  });
+  assertEquals(scorerGpuEnv(gpuEnv(undefined)), { NEAT_SCORER_GPU: "off" });
 });
 
 Deno.test("scorerGpuEnv carries the GPU lane's auto mode through", () => {
-  withGpuEnv("auto", () => {
-    assertEquals(scorerGpuEnv(), { NEAT_SCORER_GPU: "auto" });
-  });
+  assertEquals(scorerGpuEnv(gpuEnv("auto")), { NEAT_SCORER_GPU: "auto" });
 });
 
 Deno.test("scorerGpuEnv honours an explicit off from the default lane", () => {
-  withGpuEnv("off", () => {
-    assertEquals(scorerGpuEnv(), { NEAT_SCORER_GPU: "off" });
-  });
+  assertEquals(scorerGpuEnv(gpuEnv("off")), { NEAT_SCORER_GPU: "off" });
 });
 
 Deno.test("scorerGpuEnv treats a blank value as unset", () => {
-  withGpuEnv("   ", () => {
-    assertEquals(scorerGpuEnv(), { NEAT_SCORER_GPU: "off" });
-  });
+  assertEquals(scorerGpuEnv(gpuEnv("   ")), { NEAT_SCORER_GPU: "off" });
+});
+
+Deno.test("scorerGpuEnv keeps the safe default when the environment is unreadable", () => {
+  const unreadable = (): string | undefined => {
+    throw new Deno.errors.NotCapable("no env permission");
+  };
+  assertEquals(scorerGpuEnv(unreadable), { NEAT_SCORER_GPU: "off" });
 });

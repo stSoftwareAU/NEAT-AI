@@ -461,12 +461,17 @@ export function scheduleDiscovery(
 
 /**
  * Schedules training for a creature on a worker.
+ *
+ * @param captureEnv - Environment lookup for the training-task capture
+ *   directory (defaults to `Deno.env`); injected by tests so they never mutate
+ *   the shared process environment (Issue #4034).
  */
 export function scheduleTraining(
   neat: Neat,
   creature: Creature,
   trainingTimeOutMinutes: number,
   selection?: TrainingSelection,
+  captureEnv?: (name: string) => string | undefined,
 ): void {
   const uuid = CreatureUtil.makeUUID(creature);
   if (neat.trainingInProgress.has(uuid)) return;
@@ -657,7 +662,7 @@ export function scheduleTraining(
   // Issue #4022 (GRQ #4490): while the capture is armed, the creature exactly
   // as dispatched is kept on disk until the task settles, so a task that never
   // comes back leaves the one creature that reproduces the hang.
-  const captureDir = trainingTaskCaptureDir();
+  const captureDir = trainingTaskCaptureDir(captureEnv);
   const capture = captureDir === undefined
     ? Promise.resolve(undefined)
     : writeTrainingTaskCapture(captureDir, uuid, creature.exportJSON());

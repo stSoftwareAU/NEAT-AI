@@ -8,6 +8,7 @@
 
 import { assert } from "@std/assert";
 import type { Creature } from "@creature";
+import type { EnvReader } from "@workers/WorkerHeapBudget.ts";
 import { isWasmActivationAvailable } from "@wasm/mod.ts";
 import type { CreatureErrorImpactEstimator } from "@discovery/NeuronErrorImpactEstimator.ts";
 import type { DataRecordInterface } from "@architecture/DataSet.ts";
@@ -78,6 +79,12 @@ export interface DiscoverStructureDeps {
    * removal that fails because a writer is still creating files.
    */
   removeTempDir?: (dir: string) => Promise<void>;
+  /**
+   * Issue #4034: environment reader for the recorder's cleanup flags
+   * (`NEAT_DISCOVERY_AWAIT_CLEANUP`, `DENO_TEST`). Defaults to `Deno.env`;
+   * injected by tests so they never mutate the shared process environment.
+   */
+  env?: EnvReader;
 }
 
 const DEFAULT_DISCOVER_STRUCTURE_DEPS: DiscoverStructureDeps = {
