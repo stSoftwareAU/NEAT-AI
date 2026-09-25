@@ -599,6 +599,13 @@ things faster), write a benchmark in `bench/`.
 - Test files live under `test/` and are included via `deno.json`
 - Name test files after the functionality they verify, not after performance
   characteristics (avoid "Benchmark" or "Performance" in test file names)
+- Never call `Deno.env.set` / `Deno.env.delete` from a test: every file under
+  `deno test --parallel` shares one process environment, so the mutation leaks
+  into sibling tests. Inject the value instead — an `EnvReader` /
+  `(key) => string | undefined` parameter on the code under test, or a
+  per-isolate test hook such as `__setRustScorerTmpDirForTests` — or run the
+  case in a child process as `test/config/RustScorerOption.ts` does (Issue
+  #4034).
 
 ### ⚠️ Error Handling
 
