@@ -331,6 +331,13 @@ with the bytes, the worker never reaches the `fetch(URL)` path and therefore
 never needs `net` permission. This works under both old and new Deno, and under
 narrowed worker permission lists.
 
+The parent-side `https:` fetch is bounded (Issue #4035): both requests and their
+bodies share a 30-second `AbortSignal.timeout` (`WASM_PAYLOAD_FETCH_TIMEOUT_MS`
+in `src/workers/WasmActivationPayload.ts`). A CDN that accepts the connection
+and then stalls rejects with `WasmError` reason `MODULE_NOT_LOADED` ("timed out
+after 30000ms"), the same failure as a non-OK response, rather than hanging
+start-up.
+
 **Alternative — upgrade Deno and rely on default inheritance.** From Deno 2.5
 onwards, workers spawned with no explicit `deno.permissions` inherit the
 parent's permissions, so a parent with `--allow-net` is sufficient on its own.
