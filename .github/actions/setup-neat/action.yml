@@ -1,8 +1,8 @@
 name: Set up NEAT-AI CI job
 description: >-
-  Shared preamble for NEAT-AI CI jobs — installs Deno 2.x and verifies the
-  vendored wasm_activation/pkg matches the NEAT-AI-core revision pinned in
-  deno.json.
+  Shared preamble for NEAT-AI CI jobs — restores the Deno dependency cache,
+  installs Deno 2.x and verifies the vendored wasm_activation/pkg matches the
+  NEAT-AI-core revision pinned in deno.json.
 
 # Issue #3608 — this preamble was copy-pasted across six jobs in four
 # workflows, so every pin bump or policy change needed six coordinated edits.
@@ -25,6 +25,23 @@ inputs:
 runs:
   using: composite
   steps:
+    # Issue #4040 — cache DENO_DIR (jsr + npm packages) keyed on deno.lock so
+    # jobs stop re-downloading the whole dependency graph on every run.
+    - name: Point DENO_DIR at a cacheable path
+      shell: bash
+      run: echo "DENO_DIR=${RUNNER_TEMP}/deno-dir" >> "$GITHUB_ENV"
+
+    # Restore-only on every event: a PR reads the Develop cache but can never
+    # write one, so an untrusted branch cannot poison what Develop restores.
+    - name: Restore Deno dependency cache
+      id: deno-cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # actions/cache@v6.1.0
+      with:
+        path: ${{ runner.temp }}/deno-dir
+        key: deno-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('deno.lock') }}
+        restore-keys: |
+          deno-${{ runner.os }}-${{ runner.arch }}-
+
     - name: Setup Deno
       # denoland/setup-deno@v2.0.4
       uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282
@@ -39,3 +56,19 @@ runs:
       if: ${{ inputs.verify-wasm == 'true' }}
       shell: bash
       run: ./build.sh --verify-only
+
+    # A composite action has no post-job hook, so the save runs here rather
+    # than after the job's own steps. Warm DENO_DIR from the lockfile first so
+    # the saved entry holds the whole graph, not just what setup has touched.
+    # Only a push to Develop writes; `--verify-only` above never reads it.
+    - name: Warm Deno dependency cache
+      if: github.event_name == 'push' && github.ref == 'refs/heads/Develop' && steps.deno-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: deno install --frozen
+
+    - name: Save Deno dependency cache
+      if: github.event_name == 'push' && github.ref == 'refs/heads/Develop' && steps.deno-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # actions/cache@v6.1.0
+      with:
+        path: ${{ runner.temp }}/deno-dir
+        key: ${{ steps.deno-cache.outputs.cache-primary-key }}
