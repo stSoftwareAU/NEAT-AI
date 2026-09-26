@@ -46,6 +46,38 @@ Inspect the plan before pushing:
 deno run --allow-read scripts/shard_test_files.ts --plan --total=8
 ```
 
+### 📄 Docs-only PRs skip the shards (Issue #4041)
+
+A `changes` job runs first and uses `dorny/paths-filter` to decide whether the
+PR touched code. The filter is an **include list** — `src/**`, `test/**`,
+`bench/**`, `wasm_activation/**`, `scripts/**`, `.github/actions/setup-neat/**`,
+`deno.json`, `deno.lock` and `coverage.yaml` itself — not a `docs/**` exclude.
+Every path that feeds a test is named explicitly, so review the list whenever a
+new code directory lands: **an unlisted path does not trigger coverage.**
+
+- **Code changed** — all 8 shards run and `merge` gates on them as before.
+- **Nothing on the list changed** — the shards are skipped. `merge` (the
+  required _Merge coverage & results_ check) still runs, logs a notice, and
+  passes trivially, so branch protection is satisfied.
+- **The `changes` job itself failed** — `merge` fails loudly. A skipped shard
+  reports success, so a broken filter must never read as "docs-only".
+
+`quality.yml` is deliberately left unscoped: its repo-wide hygiene checks
+(formatting, JSON validity, zero-length files, merge-conflict markers) apply to
+any change, docs included.
+
+```mermaid
+flowchart LR
+    CH["changes job<br/>paths-filter include list"] -- "code == true" --> SH["8 coverage shards"]
+    CH -- "code == false" --> SK["shards skipped"]
+    SH --> MG["merge job<br/>(required check)"]
+    SK --> MG
+    CH -- "result != success" --> MG
+    MG -- "shards ran" --> G["gate on shard statuses"]
+    MG -- "shards skipped" --> P["trivial pass"]
+    MG -- "changes failed" --> F["fail loudly"]
+```
+
 ### 🔄 Refreshing `scripts/test-timings.json`
 
 The committed map was generated from the merged JUnit of run
@@ -82,7 +114,7 @@ flowchart LR
     S0 --> M
     S1 --> M
     SN --> M
-    subgraph merge["merge job (needs: coverage, if: !cancelled)"]
+    subgraph merge["merge job (needs: changes + coverage, if: !cancelled)"]
         M["Verify parity → merge coverage-* (lcov)<br/>+ merge junit-*.xml → gate on shard statuses"]
     end
     M --> C["1 Codecov coverage report<br/>1 consolidated Test Results check"]
