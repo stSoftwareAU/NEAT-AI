@@ -33,6 +33,43 @@ env:
   SHARD_TOTAL: "8"
 
 jobs:
+  # Docs-only path scoping (Issue #4041). A PR that touches nothing on this
+  # explicit include list skips the eight shards; the merge job still runs so
+  # the required "Merge coverage & results" check reports a trivial pass. An
+  # include list (not a `docs/**` exclude) keeps any new top-level code path
+  # failing safe — it runs coverage until someone decides otherwise.
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-latest
+    # Every job in this workflow carries the >=60 minute ceiling (Issue #3168).
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - id: filter
+        name: Filter code paths
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            code:
+              - "src/**"
+              - "test/**"
+              - "bench/**"
+              - "wasm_activation/**"
+              - "scripts/**"
+              - ".github/actions/setup-neat/**"
+              - "deno.json"
+              - "deno.lock"
+              - ".github/workflows/coverage.yaml"
+
   # Fan out the ~1k-file suite across N shards (Issue #3173). `deno test` has no
   # native --shard flag, so scripts/shard_test_files.ts partitions the
   # test/**/*.ts list itself, packing files heaviest-first by their measured
@@ -46,6 +83,8 @@ jobs:
   # file count (the OOM root cause is tracked separately).
   coverage:
     name: Coverage shard ${{ matrix.shard }}
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     # Each shard runs only ~1/N of the suite, but keep the generous hour-long
     # cap (Issue #3168) as a safety bound against a wedged shard.
@@ -252,14 +291,35 @@ jobs:
   # coverage report and one consolidated Test Results check (Issue #3173).
   merge:
     name: Merge coverage & results
-    needs: coverage
+    needs: [changes, coverage]
     # Run even if some shards failed/crashed so results are still published and
     # the gate can report accurately; only skip if the whole run was cancelled.
+    # It also runs when the shards were skipped by path scoping (Issue #4041),
+    # because this is the required check and must still report.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      RUN_COVERAGE: ${{ needs.changes.outputs.code }}
+      CHANGES_RESULT: ${{ needs.changes.result }}
     steps:
+      # A skipped shard job reports success, so a failed change-detection job
+      # must fail this required check loudly rather than read as "docs-only".
+      - name: Verify change detection succeeded
+        run: |
+          set -euo pipefail
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "::error::Change detection job did not succeed (result: $CHANGES_RESULT)"
+            exit 1
+          fi
+
+      - name: "Skip: no code paths changed"
+        if: ${{ env.RUN_COVERAGE != 'true' }}
+        run: |
+          echo "::notice::No code paths changed; coverage shards skipped (Issue #4041)."
+
       - name: Checkout Code
+        if: ${{ env.RUN_COVERAGE == 'true' }}
         # `persist-credentials: false` (Issue #3351) — the default `true`
         # writes the workflow `GITHUB_TOKEN` into `.git/config` as an auth
         # header for the rest of the job. This merge job only reads the repo,
@@ -274,6 +334,7 @@ jobs:
       # This job only merges shard artefacts and uploads them — it never loads
       # the WASM bundle, so it opts out of the sync (Issue #3608).
       - name: Setup Deno
+        if: ${{ env.RUN_COVERAGE == 'true' }}
         uses: ./.github/actions/setup-neat
         with:
           verify-wasm: "false"
@@ -281,11 +342,13 @@ jobs:
       # File-count parity gate: assert the partition covers every test/**/*.ts
       # exactly once across all shards (no gaps, no double-runs).
       - name: Verify shard partition parity
+        if: ${{ env.RUN_COVERAGE == 'true' }}
         run: |
           set -euo pipefail
           deno run --allow-read scripts/shard_test_files.ts --verify --total="${SHARD_TOTAL}"
 
       - name: Download shard artifacts
+        if: ${{ env.RUN_COVERAGE == 'true' }}
         # actions/download-artifact@v8.0.1 — Node 24 runtime (clears Node 20
         # deprecation warning; matches the Node 24 upload-artifact pins above).
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
@@ -295,6 +358,7 @@ jobs:
 
       - id: gate
         name: Aggregate shard statuses
+        if: ${{ env.RUN_COVERAGE == 'true' }}
         run: |
           set -euo pipefail
           missing=0
@@ -323,6 +387,7 @@ jobs:
 
       - id: merge_junit
         name: Merge JUnit reports
+        if: ${{ env.RUN_COVERAGE == 'true' }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -354,14 +419,14 @@ jobs:
       # `secrets.CODECOV_TOKEN`, and an unrestricted grant would reach
       # `$GITHUB_ENV` / `$GITHUB_PATH` (Issue #3681).
       - name: Publish per-file test timings
-        if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
+        if: ${{ env.RUN_COVERAGE == 'true' && !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
         run: |
           set -euo pipefail
           deno run --allow-read --allow-write=test-timings.json \
             scripts/merge_junit.ts --timings=test-timings.json junit.xml
 
       - name: Upload test timings
-        if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
+        if: ${{ env.RUN_COVERAGE == 'true' && !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
         # actions/upload-artifact@v7.0.1 — Node 24 runtime (Issue #2767)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
@@ -370,7 +435,7 @@ jobs:
           retention-days: 30
 
       - name: Upload consolidated test results
-        if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
+        if: ${{ env.RUN_COVERAGE == 'true' && !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
         # actions/upload-artifact@v7.0.1 — Node 24 runtime (Issue #2767)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
@@ -379,7 +444,7 @@ jobs:
           retention-days: 30
 
       - name: Publish Test Results
-        if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
+        if: ${{ env.RUN_COVERAGE == 'true' && !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
         continue-on-error: true
         # EnricoMi/publish-unit-test-result-action@v2.23.0
         uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040
@@ -392,7 +457,7 @@ jobs:
           check_run_annotations_branch: ${{ github.head_ref || github.ref_name }}
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
+        if: ${{ env.RUN_COVERAGE == 'true' && !cancelled() && steps.merge_junit.outputs.junit_exists == 'true' }}
         # codecov/codecov-action@v6.0.1 — bumps internal actions/github-script
         # to v8.0.0 which runs on node24 (resolves issue #2768).
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354
@@ -402,6 +467,7 @@ jobs:
           report_type: test_results
 
       - name: Create merged coverage report
+        if: ${{ env.RUN_COVERAGE == 'true' }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -434,7 +500,7 @@ jobs:
           fi
 
       - name: Upload coverage to Codecov
-        if: ${{ hashFiles('.coverage.lcov') != '' }}
+        if: ${{ env.RUN_COVERAGE == 'true' && hashFiles('.coverage.lcov') != '' }}
         # codecov/codecov-action@v6.0.1 — bumps internal actions/github-script
         # to v8.0.0 which runs on node24 (resolves issue #2768).
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354
@@ -444,7 +510,7 @@ jobs:
           verbose: false
 
       - name: Fail build if any shard crashed
-        if: ${{ steps.gate.outputs.errored != '0' || steps.gate.outputs.missing != '0' }}
+        if: ${{ env.RUN_COVERAGE == 'true' && (steps.gate.outputs.errored != '0' || steps.gate.outputs.missing != '0') }}
         run: |
           set -euo pipefail
           echo "❌ ${{ steps.gate.outputs.errored }} shard(s) crashed and ${{ steps.gate.outputs.missing }} shard(s) produced no status."
@@ -452,7 +518,7 @@ jobs:
           exit 1
 
       - name: Fail build if tests failed
-        if: ${{ steps.gate.outputs.failed != '0' }}
+        if: ${{ env.RUN_COVERAGE == 'true' && steps.gate.outputs.failed != '0' }}
         run: |
           set -euo pipefail
           echo "❌ ${{ steps.gate.outputs.failed }} shard(s) reported test failures. Build cannot proceed."
