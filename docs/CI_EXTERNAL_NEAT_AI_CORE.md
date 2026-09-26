@@ -30,6 +30,11 @@ which installs Deno 2.x and then runs the verify step. Jobs reach it via
 The `merge` job only aggregates shard artefacts and never loads the bundle, so
 it opts out with `verify-wasm: "false"`.
 
+The same action also caches `DENO_DIR` (jsr and npm packages), keyed on
+`hashFiles('deno.lock')` (Issue #4040). Every run restores the cache, but only a
+`push` to `Develop` writes it, so a pull request can never poison the entry that
+Develop and later pull requests restore. The verify step never reads the cache.
+
 The publish workflow uses verify-only deliberately: the default `GITHUB_TOKEN`
 cannot read commits from `NEAT-AI-core`, so any attempt to resolve `Develop`
 HEAD from the publish job would fail (see
