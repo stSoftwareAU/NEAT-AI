@@ -53,4 +53,4 @@ flowchart TD
   All five tests fail against the unfixed action and pass after the change.
 - [x] `deno test -A test/ci/*.ts` — the whole CI suite passes, including
       `WorkflowActionPinning.ts`, which scans composite actions for SHA pins.
-- [x] `./quality.sh` (see the PR for the result).
+- [x] `./quality.sh` — exit 0; 9828 passed, 0 failed, 41 ignored.
