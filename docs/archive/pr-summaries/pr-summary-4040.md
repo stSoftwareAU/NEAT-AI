@@ -4,8 +4,8 @@
 
 Closes #4040.
 
-Every NEAT-AI CI job used to re-download the whole jsr/npm dependency graph.
-The shared composite action `.github/actions/setup-neat` now:
+Every NEAT-AI CI job used to re-download the whole jsr/npm dependency graph. The
+shared composite action `.github/actions/setup-neat` now:
 
 - points `DENO_DIR` at `${RUNNER_TEMP}/deno-dir`;
 - **restores** it on every run with `actions/cache/restore`, keyed on
@@ -16,9 +16,9 @@ The shared composite action `.github/actions/setup-neat` now:
 - leaves `./build.sh --verify-only` unchanged and independent of the cache.
 
 Both cache actions are pinned to `actions/cache@v6.1.0`
-(`55cc8345863c7cc4c66a329aec7e433d2d1c52a9`), resolved via `gh api`. A
-composite action has no post hook, so the save runs inline after the warm-up.
-The standalone setup-deno steps in `deno-outdated.yml`, `osv-scan.yml` and
+(`55cc8345863c7cc4c66a329aec7e433d2d1c52a9`), resolved via `gh api`. A composite
+action has no post hook, so the save runs inline after the warm-up. The
+standalone setup-deno steps in `deno-outdated.yml`, `osv-scan.yml` and
 `update-package-version.yml` stay out of scope, as the issue asks.
 
 `docs/CI_EXTERNAL_NEAT_AI_CORE.md` documents the cache behaviour.
@@ -42,8 +42,7 @@ flowchart TD
 
 ## Test Plan
 
-- [x] `test/ci/DenoDependencyCache.ts` (new) parses the action YAML and
-      asserts:
+- [x] `test/ci/DenoDependencyCache.ts` (new) parses the action YAML and asserts:
   - `DENO_DIR` is exported before setup-deno runs;
   - the restore step is unconditional and keyed on `deno.lock`;
   - there is exactly one save step, gated on push to Develop, with no combined
