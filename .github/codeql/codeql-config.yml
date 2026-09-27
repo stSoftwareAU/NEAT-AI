@@ -1,0 +1,15 @@
+# CodeQL advanced-setup configuration (stSoftwareAU/VibeCoder#2716).
+#
+# Three rules misfire on neural-network code that holds no secrets:
+#   rust/cleartext-logging             - neuron and synapse UUIDs in log lines
+#                                        are read as private data.
+#   js/insecure-randomness             - Math.random() for weights, biases,
+#                                        mutation and breeding is not a
+#                                        security context.
+#   rust/hard-coded-cryptographic-value - the `salt` in an RNG seed derivation
+#                                        is not a cryptographic secret.
+# Every other query stays on.
+query-filters:
+  - exclude: { id: rust/cleartext-logging }
+  - exclude: { id: js/insecure-randomness }
+  - exclude: { id: rust/hard-coded-cryptographic-value }
