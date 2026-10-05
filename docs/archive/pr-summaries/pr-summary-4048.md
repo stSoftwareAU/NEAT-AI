@@ -72,7 +72,20 @@ flowchart TD
 `CHANGELOG.md` (Unreleased → Fixed), and the module and function doc comments in
 `src/wasm/WasmBundleCache.ts`. `CHANGELOG.md:958` (the Issue #3419 entry,
 "fetches with **bounded exponential backoff**") — still true because the backoff
-is unchanged.
+is unchanged. `docs/troubleshooting/WASM.md:235` (diagram `Start` node
+`loadWasmBundleBytes`) — still true because that function is still the entry
+point and the change only adds a per-attempt bound below it.
+`src/wasm/WasmBundleCache.ts:18` ("retries with bounded backoff") — still true
+because the backoff is unchanged; the new timeout sentence follows it in the
+same bullet. `src/wasm/WasmBundleCache.ts:44` ("Options for
+`loadWasmBundleBytes`; all are injectable for testing") — still true because the
+new `fetchTimeoutMs` option is injectable too. `src/wasm/WasmBundleCache.ts:365`
+("Behaviour is identical to `loadWasmBundleBytes`") — still true because both
+call the same `fetchWithRetry` with the same timeout.
+`test/wasm/WasmBundleCache.ts:4` ("exercise `loadWasmBundleBytes` directly with
+an injected fetch/sleep") — still true because the new #4048 tests do exactly
+that. `test/wasm/WasmInitDiagnostics.ts:7` (`loadWasmBundleBytesWithDiagnostics`
+reports the cache outcome) — still true because the diagnostics are not changed.
 
 ## Reproduction
 
