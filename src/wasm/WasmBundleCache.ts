@@ -17,6 +17,10 @@
  *    when the cached version matches the running version (cache hit).
  *  - A cache miss triggers a fetch that **retries with bounded backoff** before
  *    giving up, so a single transient DNS/network blip no longer aborts start.
+ *    Each attempt's request and body read are bounded by
+ *    {@link WASM_BUNDLE_FETCH_TIMEOUT_MS} (overridable via `fetchTimeoutMs`),
+ *    so a stalled connection is retried rather than hanging start-up forever
+ *    (Issue #4048).
  *  - Local (`file:`) builds read the vendored bundle directly — no cache, no
  *    network.
  *
@@ -51,6 +55,13 @@ export interface LoadWasmBundleOptions {
   /** Base backoff delay in milliseconds. Defaults to {@link DEFAULT_BASE_DELAY_MS}. */
   baseDelayMs?: number;
   /**
+   * Per-attempt bound, in milliseconds, covering both the fetch request and
+   * reading its body. A timed-out attempt is retried by the backoff like any
+   * other failure. Must be a positive finite number. Defaults to
+   * {@link WASM_BUNDLE_FETCH_TIMEOUT_MS} (Issue #4048).
+   */
+  fetchTimeoutMs?: number;
+  /**
    * Override the cache directory. When omitted it is derived from the
    * environment (`NEAT_AI_WASM_CACHE_DIR`, then the platform cache dir).
    * Pass `null` to force caching **disabled** (every start fetches) — used to
@@ -84,6 +95,13 @@ const DEFAULT_MAX_ATTEMPTS = 5;
 
 /** Default base backoff delay in milliseconds (doubles each attempt). */
 const DEFAULT_BASE_DELAY_MS = 250;
+
+/**
+ * Default per-attempt bound on fetching the bundle and reading its body, in
+ * milliseconds (Issue #4048). The bundle is about 1 MB, so 60 s allows a cold
+ * fetch at roughly 17 KB/s while still failing a stalled connection.
+ */
+export const WASM_BUNDLE_FETCH_TIMEOUT_MS = 60_000;
 
 /** Real sleep used when no `sleepFn` is injected. */
 function defaultSleep(ms: number): Promise<void> {
@@ -238,35 +256,75 @@ function resolveExpectedSha256(override?: string): string {
   return expected;
 }
 
-/** Fetch the bundle bytes with bounded exponential backoff. Fails loud. */
+/**
+ * Settle with `promise`, or reject with the signal's reason once it aborts —
+ * so the bound holds even when a `fetchFn` or body ignores the signal.
+ */
+function untilAborted<T>(
+  promise: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener("abort", onAbort, { once: true });
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    promise.then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      },
+    );
+  });
+}
+
+/**
+ * Fetch the bundle bytes with bounded exponential backoff. Fails loud. Each
+ * attempt's request and body read are bounded by `fetchTimeoutMs` (Issue
+ * #4048) — a stalled connection is retried by the backoff rather than hanging
+ * forever.
+ */
 async function fetchWithRetry(
   wasmUrl: URL,
   fetchFn: typeof fetch,
   sleepFn: (ms: number) => Promise<void>,
   maxAttempts: number,
   baseDelayMs: number,
+  fetchTimeoutMs: number,
 ): Promise<Uint8Array> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const signal = AbortSignal.timeout(fetchTimeoutMs);
     try {
       // deno-lint-ignore no-await-in-loop -- retries are inherently sequential.
-      const response = await fetchFn(wasmUrl);
+      const response = await untilAborted(fetchFn(wasmUrl, { signal }), signal);
       if (!response.ok) {
         throw new Error(
           `WASM bundle fetch failed: HTTP ${response.status} for ${wasmUrl.href}`,
         );
       }
       // deno-lint-ignore no-await-in-loop -- sequential by design.
-      const buffer = await response.arrayBuffer();
+      const buffer = await untilAborted(response.arrayBuffer(), signal);
       return new Uint8Array(buffer);
     } catch (error) {
-      lastError = error;
+      let effectiveError = error;
+      if (signal.aborted) {
+        effectiveError = new Error(
+          `WASM bundle fetch timed out after ${fetchTimeoutMs}ms for ${wasmUrl.href}`,
+          { cause: error },
+        );
+      }
+      lastError = effectiveError;
       if (attempt < maxAttempts) {
         const delay = baseDelayMs * 2 ** (attempt - 1);
         getLogger().warn(
           `WASM bundle fetch attempt ${attempt}/${maxAttempts} failed for ` +
             `${wasmUrl.href}; retrying in ${delay}ms:`,
-          error,
+          effectiveError,
         );
         // deno-lint-ignore no-await-in-loop -- backoff must pause between tries.
         await sleepFn(delay);
@@ -276,7 +334,9 @@ async function fetchWithRetry(
   // Fail loud: surface the real network cause after exhausting retries.
   throw new Error(
     `WASM bundle could not be fetched from ${wasmUrl.href} after ` +
-      `${maxAttempts} attempt(s)`,
+      `${maxAttempts} attempt(s): ${
+        lastError instanceof Error ? lastError.message : String(lastError)
+      }`,
     { cause: lastError },
   );
 }
@@ -334,6 +394,13 @@ export async function loadWasmBundleBytesWithDiagnostics(
   const sleepFn = options.sleepFn ?? defaultSleep;
   const maxAttempts = Math.max(1, options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS);
   const baseDelayMs = options.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
+  const fetchTimeoutMs = options.fetchTimeoutMs ?? WASM_BUNDLE_FETCH_TIMEOUT_MS;
+  if (!Number.isFinite(fetchTimeoutMs) || fetchTimeoutMs <= 0) {
+    throw new RangeError(
+      `WASM bundle fetch timeout must be a positive finite number of ` +
+        `milliseconds, got ${fetchTimeoutMs}`,
+    );
+  }
 
   const cacheDir = resolveCacheDir(options.cacheDir);
   // Explicit "caching disabled" reason so a null cache dir never reads as a
@@ -381,6 +448,7 @@ export async function loadWasmBundleBytesWithDiagnostics(
     sleepFn,
     maxAttempts,
     baseDelayMs,
+    fetchTimeoutMs,
   );
   const fetchedSha256 = await sha256Hex(bytes);
   if (fetchedSha256 !== expectedSha256) {

@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4048 (GRQ #4923):** A stalled connection on a WASM bundle cache miss
+  — a TLS handshake that completed but then sent nothing, or a body that stalled
+  mid-stream — hung start-up forever with no log line. This happens on every
+  NEAT-AI version bump, since the new version is always a cache miss. Each fetch
+  attempt (request and body read) is now bounded by the new
+  `WASM_BUNDLE_FETCH_TIMEOUT_MS` (60 s), retried by the existing bounded
+  backoff, and the final failure names the timeout instead of hanging. Override
+  the per-attempt bound with the new `fetchTimeoutMs` option.
+
 - **GRQ #4794:** A training task the stuck-task watchdog **cancelled** now keeps
   its schedule-time capture. GRQ #4489 settles an abandoned task by cancelling
   its worker request, so the capture added for Issue #4022 was removed on the

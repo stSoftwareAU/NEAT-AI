@@ -238,7 +238,7 @@ flowchart TD
     Hit -- yes --> VerifyC{SHA-256 == pin?}
     VerifyC -- yes --> Serve[Serve cached bytes offline]
     VerifyC -- "no (poisoned)" --> Purge[Log integrity failure<br/>delete cache entry]
-    Hit -- no --> Fetch[Fetch with bounded backoff]
+    Hit -- no --> Fetch[Fetch with bounded backoff<br/>each attempt capped at 60 s]
     Purge --> Fetch
     Fetch --> VerifyF{SHA-256 == pin?}
     VerifyF -- yes --> Persist[Persist to cache] --> Serve
@@ -261,6 +261,14 @@ flowchart TD
 
 The local (`file:`) build path is unaffected: those bytes come from the
 checked-out tree, not a mutable cache.
+
+**Stalled fetch (Issue #4048).** On a cache miss each fetch attempt — the
+request and the body read — is bounded by `WASM_BUNDLE_FETCH_TIMEOUT_MS` (60 s,
+in `src/wasm/WasmBundleCache.ts`; override per call with `fetchTimeoutMs`). A
+connection that accepts and then stalls is retried by the backoff, logging a
+`WASM bundle fetch attempt N/M failed` warning per timed-out attempt, and after
+the last attempt start-up fails loud with an error naming the timeout
+(`timed out after 60000ms`).
 
 ## 🌐 JSR-hosted NEAT-AI in your own workers (Issue #2545)
 
