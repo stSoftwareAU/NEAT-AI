@@ -538,6 +538,7 @@
     "reshared",
     "reseen",
     "retryable",
+    "retr",
     "reviewdog",
     "rglob",
     "rhysd",
@@ -774,6 +775,7 @@
     "joinable",
     "Nair",
     "messageerror",
-    "dorny"
+    "dorny",
+    "retr"
   ]
 }

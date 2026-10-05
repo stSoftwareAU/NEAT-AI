@@ -18,6 +18,7 @@
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import {
   loadWasmBundleBytes,
+  WASM_BUNDLE_FETCH_TIMEOUT_MS,
   wasmCacheFilePath,
 } from "@wasm/WasmBundleCache.ts";
 
@@ -167,4 +168,189 @@ Deno.test("WasmBundleCache: file URL reads local bundle without caching", async 
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
+});
+
+Deno.test("WasmBundleCache: Issue #4048 — a fetch that never resolves (and ignores its signal) fails within the bound", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    let attempts = 0;
+    const delays: number[] = [];
+    const fetchFn = ((_url: URL, _init?: RequestInit) => {
+      attempts++;
+      // Ignores the signal entirely — the loader must still bound the wait.
+      return new Promise<Response>(() => {});
+    }) as unknown as typeof fetch;
+
+    const error = await assertRejects(
+      () =>
+        loadWasmBundleBytes(BUNDLE_URL, {
+          cacheDir,
+          fetchFn,
+          sleepFn: (ms) => {
+            delays.push(ms);
+            return Promise.resolve();
+          },
+          maxAttempts: 3,
+          baseDelayMs: 10,
+          fetchTimeoutMs: 1,
+        }),
+      Error,
+      "timed out after 1ms",
+    );
+
+    assertEquals(attempts, 3, "should retry until the bounded attempt count");
+    assertEquals(
+      delays,
+      [10, 20],
+      "should back off between timed-out attempts",
+    );
+    assert(error.cause instanceof Error, "cause should be an Error");
+    assert(
+      (error.cause as Error).message.includes("timed out after 1ms"),
+      "cause should describe the timeout",
+    );
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("WasmBundleCache: Issue #4048 — a body that never completes fails within the bound", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    let attempts = 0;
+    const fetchFn = ((_url: URL, _init?: RequestInit) => {
+      attempts++;
+      const stream = new ReadableStream<Uint8Array>({
+        start() {
+          // Never enqueue or close — the body read must still be bounded.
+        },
+      });
+      return Promise.resolve(new Response(stream, { status: 200 }));
+    }) as unknown as typeof fetch;
+
+    await assertRejects(
+      () =>
+        loadWasmBundleBytes(BUNDLE_URL, {
+          cacheDir,
+          fetchFn,
+          sleepFn: noSleep,
+          maxAttempts: 2,
+          baseDelayMs: 1,
+          fetchTimeoutMs: 1,
+        }),
+      Error,
+      "timed out after 1ms",
+    );
+
+    assertEquals(attempts, 2, "should stop after the bounded attempt count");
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("WasmBundleCache: Issue #4048 — a timed-out attempt is retried and the next attempt succeeds", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    const payload = new Uint8Array([11, 22, 33, 44]);
+    let attempts = 0;
+    const fetchFn = ((_url: URL, _init?: RequestInit) => {
+      attempts++;
+      if (attempts === 1) {
+        return new Promise<Response>(() => {});
+      }
+      return Promise.resolve(bytesResponse(payload));
+    }) as unknown as typeof fetch;
+
+    const bytes = await loadWasmBundleBytes(BUNDLE_URL, {
+      cacheDir,
+      fetchFn,
+      sleepFn: noSleep,
+      maxAttempts: 2,
+      baseDelayMs: 1,
+      // Must outlast the healthy second attempt's arrayBuffer() read, not just
+      // the first attempt's timeout, or this flakes on a loaded host.
+      fetchTimeoutMs: 200,
+      expectedSha256: await sha256Hex(payload),
+    });
+
+    assertEquals(
+      bytes,
+      payload,
+      "should succeed once the timed-out attempt is retried",
+    );
+    assertEquals(attempts, 2, "should take two attempts");
+
+    const cachePath = await wasmCacheFilePath(BUNDLE_URL, cacheDir);
+    const persisted = await Deno.readFile(cachePath);
+    assertEquals(persisted, payload, "fetched bundle should be persisted");
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("WasmBundleCache: Issue #4048 — every attempt passes an abort signal to fetchFn", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    const payload = new Uint8Array([5, 6, 7]);
+    let sawSignal: AbortSignal | undefined;
+    const fetchFn = ((_url: URL, init?: RequestInit) => {
+      sawSignal = init?.signal as AbortSignal | undefined;
+      return Promise.resolve(bytesResponse(payload));
+    }) as unknown as typeof fetch;
+
+    await loadWasmBundleBytes(BUNDLE_URL, {
+      cacheDir,
+      fetchFn,
+      sleepFn: noSleep,
+      expectedSha256: await sha256Hex(payload),
+    });
+
+    assert(
+      sawSignal instanceof AbortSignal,
+      "fetchFn should receive an AbortSignal",
+    );
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("WasmBundleCache: Issue #4048 — an invalid fetchTimeoutMs is refused", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    const payload = new Uint8Array([1, 1, 2, 3, 5]);
+    const fetchFn = ((_url: URL, _init?: RequestInit) =>
+      Promise.resolve(bytesResponse(payload))) as unknown as typeof fetch;
+    const expectedSha256 = await sha256Hex(payload);
+
+    for (const invalid of [0, -1, NaN, Infinity]) {
+      // deno-lint-ignore no-await-in-loop -- each case is independent/cheap; sequential keeps failures attributable.
+      await assertRejects(
+        () =>
+          loadWasmBundleBytes(BUNDLE_URL, {
+            cacheDir,
+            fetchFn,
+            sleepFn: noSleep,
+            fetchTimeoutMs: invalid,
+            expectedSha256,
+          }),
+        RangeError,
+      );
+    }
+
+    // A valid timeout with the same setup succeeds.
+    const bytes = await loadWasmBundleBytes(BUNDLE_URL, {
+      cacheDir,
+      fetchFn,
+      sleepFn: noSleep,
+      fetchTimeoutMs: 1000,
+      expectedSha256,
+    });
+    assertEquals(bytes, payload);
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("WasmBundleCache: Issue #4048 — the default bound is generous", () => {
+  assertEquals(WASM_BUNDLE_FETCH_TIMEOUT_MS, 60_000);
 });
