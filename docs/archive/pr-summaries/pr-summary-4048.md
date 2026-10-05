@@ -70,7 +70,7 @@ flowchart TD
 `docs/troubleshooting/WASM.md#-bundle-integrity-check-issue-3680`; updated:
 `docs/troubleshooting/WASM.md` (diagram node and new "Stalled fetch" paragraph),
 `CHANGELOG.md` (Unreleased → Fixed), and the module and function doc comments in
-`src/wasm/WasmBundleCache.ts`. `CHANGELOG.md:956` (the Issue #3419 entry,
+`src/wasm/WasmBundleCache.ts`. `CHANGELOG.md:958` (the Issue #3419 entry,
 "fetches with **bounded exponential backoff**") — still true because the backoff
 is unchanged.
 
