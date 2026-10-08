@@ -1,96 +1,119 @@
 /**
- * Regression test for Issue #4050: Hard deadline abandonment must not leave
- * disposed creatures in neat.population.
+ * Regression test for Issue #4050: a generation abandoned mid-flight by the
+ * hard deadline must not commit its population swap or dispose any previous
+ * member — `BoundedEvolveTeardown`'s checkpoint write may already be
+ * exporting `neat.population` by the time the abandoned `evolve()` resumes
+ * (PR #4051 review). Disposing a member that write is still iterating is
+ * what produced `RangeError: Invalid array length` in
+ * `CreatureExportBuilder.build()`.
  *
- * When hard deadline is breached and awaitWithinHardDeadline() abandons the
- * neat.evolve() Promise, creatures removed by trimPopulationToSize must still
- * be disposed. This test verifies that no disposed creatures (neurons.length = 0
- * or synapses.length = 0) remain in neat.population after the evolution loop
- * exits.
+ * The previous version of this test called `evolveDir` with an injected
+ * clock, asserted `assert(true)` after swallowing every error, and could not
+ * fail: generation 1 ran uncapped (`generationCap` is always `0` for the
+ * first generation) and the injected clock jumped far past the hard deadline
+ * before generation 2 even started, so the race was never exercised, and the
+ * same `assert(true)` would have passed unmodified on Develop too.
+ *
+ * This version abandons the run *while* `neat.evolve()` is actually
+ * in-flight: `evolve()` is invoked but not yet awaited, the abandon fires
+ * synchronously straight after (deterministic — JS runs `evolve()`'s body up
+ * to its first real `await` before this line executes, and every generation
+ * does several real awaits — fitness evaluation, dedup I/O — before the
+ * population commit this issue is about), and only then is the promise
+ * awaited. No real clock delay is needed: `Date.now()` here only picks an
+ * arbitrary past instant for the required `hardDeadlineMS` argument (the
+ * same idiom `NeatAbandonLateCompletion.ts` uses), not a timing assertion.
  */
 
-import { assert } from "@std/assert";
+import { assert, assertStrictEquals } from "@std/assert";
 import { Creature } from "@creature";
-import { evolveDir } from "@creature/CreatureTraining.ts";
-import type { EvolveDirDeps } from "@creature/CreatureTraining.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
+import { Neat } from "@neat/Neat.ts";
+import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
 } from "@architecture/DataSet.ts";
-import { initWasmForTests } from "../_initWasm.ts";
 
-/** A tiny XOR dataset for quick training. */
-function xorDataset(): DataRecordInterface[] {
-  return [
-    { input: new Float32Array([0, 0]), output: new Float32Array([0]) },
-    { input: new Float32Array([0, 1]), output: new Float32Array([1]) },
-    { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
-    { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
-  ];
+function createTestDataDir(input: number, output: number): string {
+  const records: DataRecordInterface[] = [];
+  for (let i = 0; i < 20; i++) {
+    records.push({
+      input: new Float32Array(
+        Array.from({ length: input }, () => Math.random()),
+      ),
+      output: new Float32Array(
+        Array.from({ length: output }, () => Math.random()),
+      ),
+    });
+  }
+  return makeDataDir(records, 2000);
 }
 
-Deno.test({
-  name:
-    "hard deadline abandonment does not leave disposed creatures in neat.population (Issue #4050)",
-  sanitizeOps: false,
-  sanitizeResources: false,
-  fn: async () => {
-    await initWasmForTests();
+function createTestWorkers(dataDir: string): WorkerHandler[] {
+  return [new WorkerHandler(dataDir, "MSE", true)];
+}
 
-    const dataSetDir = makeDataDir(xorDataset(), 100);
-    const creatureStore = await Deno.makeTempDir({
-      prefix: "neat-hard-deadline-disposal-",
-    });
+async function terminateWorkers(workers: WorkerHandler[]): Promise<void> {
+  await Promise.all(workers.map((w) => w.waitUntilReady().catch(() => {})));
+  for (const w of workers) {
+    w.terminate();
+  }
+}
 
-    const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
-
-    // Use a very short hard deadline so it breaches quickly, but allow
-    // some population cap trimming to happen by using a non-trivial population.
-    const startMS = Date.now();
-    const nowMS = startMS;
-
-    const options: NeatOptions = {
-      populationSize: 8, // Small enough that population cap will trim
-      iterations: 100, // Large iteration count so deadline will breach
-      timeoutMinutes: 0.001, // ~60ms total timeout (hardDeadline is endTimeMS + 60s)
-      threads: 1,
-      creatureStore,
-    };
-
-    // Inject a clock that jumps past the hard deadline after initial setup
-    // This simulates the hard deadline being breached during evolution
-    let clockReads = 0;
-    const injectedClock = () => {
-      clockReads++;
-      if (clockReads > 5) {
-        // After a few reads, jump way past the hard deadline to trigger early exit
-        return startMS + 100_000;
-      }
-      return nowMS;
-    };
-
-    const deps: EvolveDirDeps = {
-      startTimeMS: startMS,
-      now: injectedClock,
-      overrunEnforcementFactor: 1,
-    };
+Deno.test(
+  "evolve: a generation abandoned past the hard deadline does not swap " +
+    "neat.population or dispose any previous member (Issue #4050)",
+  async () => {
+    const dataDir = createTestDataDir(2, 1);
+    const workers = createTestWorkers(dataDir);
 
     try {
-      // Run evolution with a hard deadline that will be breached
-      await evolveDir(creature, dataSetDir, options, deps);
-    } catch (_error) {
-      // Hard deadline will likely cause some kind of error or early exit
-      // We're not concerned about the exact error, just the cleanup state
+      const seedCreature = new Creature(2, 1, { layers: [{ count: 3 }] });
+      const options: NeatOptions = {
+        creatures: [seedCreature.exportJSON()],
+        populationSize: 10,
+      };
+
+      const neat = new Neat(2, 1, options, workers);
+      await neat.populatePopulation(seedCreature);
+
+      // Keep the exact array reference — not a copy — so a swap is
+      // detectable by identity, the same thing a concurrent checkpoint
+      // write would be holding onto.
+      const originalPopulationRef = neat.population;
+      const originalMembers = [...originalPopulationRef];
+
+      // Start the generation, then abandon it before awaiting it: this
+      // reproduces a hard-deadline breach firing while the generation is
+      // in flight, which is exactly what BoundedEvolveTeardown's watchdog
+      // does in production (awaitWithinHardDeadline's onBreach callback).
+      const evolvePromise = neat.evolve();
+      neat.generationsCompleted = 1;
+      const abandoned = neat.abandonInFlightPastHardDeadline(
+        Date.now() - 1000,
+      );
+      assert(abandoned, "the hard-deadline abandon must actually fire");
+
+      await evolvePromise;
+
+      // The abandoned generation must leave neat.population exactly as it
+      // found it — not swapped to a new array — and must not have disposed
+      // any member of the previous population, which a concurrent
+      // checkpoint write could still be exporting.
+      assertStrictEquals(
+        neat.population,
+        originalPopulationRef,
+        "an abandoned generation must not commit a population swap",
+      );
+      for (const creature of originalMembers) {
+        assert(
+          creature.neurons.length > 0,
+          "an abandoned generation must not dispose a previous population member",
+        );
+      }
+    } finally {
+      await terminateWorkers(workers);
     }
-
-    // After evolution completes (or is breached), verify that no disposed
-    // creatures remain in the Neat instance. Note: we can't directly access
-    // the Neat instance here, so we verify this through the creature's
-    // training mechanism. The real verification happens if this test passes
-    // without crashing on a RangeError during checkpoint write.
-
-    // If we got here without a RangeError from CheckpointWriter, the fix worked.
-    assert(true, "Test completed without RangeError from disposed creatures");
   },
-});
+);

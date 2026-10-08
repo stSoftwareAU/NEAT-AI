@@ -301,3 +301,141 @@ Deno.test("writeCreatures propagates a write failure instead of swallowing it", 
     await Deno.remove(dir, { recursive: true });
   }
 });
+
+// Issue #4050 (PR #4051 review): a generation abandoned past the hard
+// deadline can dispose a population member — clearing its neurons and
+// synapses — while a checkpoint write for the *previous* population is
+// still in flight. The disposed creature used to throw a RangeError inside
+// exportJSON() that writeCreatures mis-blamed on every RangeError, and the
+// directory was emptied up front, so a crash partway through left the
+// checkpoint with gaps instead of the last-good state.
+
+Deno.test("writeCreatures skips a disposed creature in the middle and names it, writing every other member", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_disposed_" });
+  try {
+    const population = buildPopulation(5);
+    population[2].dispose();
+
+    await writeCreatures(source(population), dir, { batchSize: 2 });
+
+    assertEquals(
+      await listNames(dir),
+      ["1.json", "2.json", "4.json", "5.json"],
+      "every member except the disposed one (index 2 -> 3.json) is written",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("writeCreatures does not mislabel a genuine export error on a non-disposed creature as disposal", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_genuine_err_" });
+  try {
+    const population = buildPopulation(4);
+    // A real, non-disposed creature (neurons.length >= input) whose export
+    // fails for an unrelated reason. The old blanket `catch (RangeError)`
+    // would have silently skipped this one and logged it as disposed; the
+    // explicit neurons.length < input check does not match it, so the error
+    // must propagate with its original message.
+    population[1].exportJSON = () => {
+      throw new RangeError("unrelated export bug, not disposal");
+    };
+
+    await assertRejects(
+      () => writeCreatures(source(population), dir, { batchSize: 2 }),
+      RangeError,
+      "unrelated export bug, not disposal",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("writeCreatures survives a creature disposed mid-write by a racing generation", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_race_" });
+  try {
+    // 6 creatures, batchSize 2 -> batches [0,1], [2,3], [4,5]. Dispose
+    // population[4] (file "5.json", in the third/last batch) while the
+    // second batch's writes are still in flight — exactly the window the
+    // abandoned background evolve() races into in production.
+    const population = buildPopulation(6);
+    const writeTextFile = (path: string, text: string): Promise<void> => {
+      if (path.endsWith("4.json")) {
+        population[4].dispose();
+      }
+      return Deno.writeTextFile(path, text);
+    };
+
+    await writeCreatures(source(population), dir, {
+      batchSize: 2,
+      writeTextFile,
+    });
+
+    assertEquals(
+      await listNames(dir),
+      ["1.json", "2.json", "3.json", "4.json", "6.json"],
+      "5.json (disposed mid-write) is skipped; every other member is written",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("writeCreatures refuses to replace the checkpoint when every member is disposed", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_alldisposed_" });
+  try {
+    // Seed a last-good checkpoint first.
+    const good = buildPopulation(3);
+    await writeCreatures(source(good), dir);
+    const before = await listNames(dir);
+
+    const allDisposed = buildPopulation(2);
+    for (const creature of allDisposed) creature.dispose();
+
+    await assertRejects(
+      () => writeCreatures(source(allDisposed), dir),
+      Error,
+      "disposed",
+    );
+
+    assertEquals(
+      await listNames(dir),
+      before,
+      "the last-good checkpoint must survive an all-disposed write attempt",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("writeCreatures leaves the previous checkpoint untouched when a write fails partway through", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_atomic_" });
+  try {
+    const good = buildPopulation(3);
+    await writeCreatures(source(good), dir);
+    const before = await readCheckpoints(dir, 3);
+
+    const population = buildPopulation(6);
+    await assertRejects(
+      () =>
+        writeCreatures(source(population), dir, {
+          batchSize: 2,
+          writeTextFile: (path: string) =>
+            path.endsWith("3.json")
+              ? Promise.reject(new Error("disk full"))
+              : Promise.resolve(),
+        }),
+      Error,
+      "disk full",
+    );
+
+    const after = await readCheckpoints(dir, 3);
+    assertEquals(
+      JSON.stringify(after),
+      JSON.stringify(before),
+      "the previous checkpoint's files must be byte-for-byte unchanged",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
