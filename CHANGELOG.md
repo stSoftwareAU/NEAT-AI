@@ -49,11 +49,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
     swapping them into `neat.population`, and creatures trimmed by the
     population cap (`trimPopulationToSize`) are now disposed along with the
     other sources already disposed per generation.
-  - **Checkpoint paths with a trailing separator now work.** A `creatureStore`
-    ending in `/` or `\` (e.g. from shell tab-completion) used to make the
+  - **Checkpoint paths with a trailing slash now work.** A `creatureStore`
+    ending in `/` (e.g. from shell tab-completion) used to make the
     `.tmp`/`.old` siblings land inside the store rather than beside it, failing
     every write with `EINVAL`. The store path is now resolved before the sibling
-    names are built.
+    names are built. (On Linux/macOS, `@std/path`'s `resolve()` only strips a
+    trailing `/`; a trailing `\` is kept as a literal filename character and is
+    not covered by this fix.)
   - Also: the log message in `BoundedEvolveTeardown.ts` for a failed persist now
     says "persisting evolved checkpoint and champion failed" instead of the
     incomplete "persisting the evolved best creature failed", which did not
