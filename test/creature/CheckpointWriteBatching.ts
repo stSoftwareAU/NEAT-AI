@@ -382,7 +382,7 @@ Deno.test("writeCreatures survives a creature disposed mid-write by a racing gen
 });
 
 Deno.test("writeCreatures refuses to replace the checkpoint when every member is disposed", async () => {
-  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_alldisposed_" });
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_all_disposed_" });
   try {
     // Seed a last-good checkpoint first.
     const good = buildPopulation(3);

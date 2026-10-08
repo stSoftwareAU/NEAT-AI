@@ -87,7 +87,7 @@ original message rather than being silently logged as "disposed".
 `awaitWithinHardDeadline`, `CheckpointWriter`, `checkpointEveryGeneration`;
 section: `docs/TIMEOUTS.md#-what-each-phase-does-at-the-hard-cap` (documents the
 abandoned-generation background work this fix stops from mutating shared state)
-and `docs/PERFORMANCE_TUNING.md#checkpoint-write-memory-creaturestore`
+and `docs/PERFORMANCE_TUNING.md#checkpoint-write-memory-creature-store`
 (documents the batched checkpoint write this fix makes atomic); updated: none —
 both sections describe externally-visible behaviour ("the population evolved so
 far is kept"; "File contents and numbering … are unchanged") that remains true
