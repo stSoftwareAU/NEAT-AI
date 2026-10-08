@@ -124,6 +124,16 @@ export async function evolve(
   neat: Neat,
   previousFittest?: Creature,
 ): Promise<EvolveResult> {
+  // Issue #4050: capture the abandon token before this generation's first
+  // await. A hard-deadline abandon (Neat.abandonInFlightPastHardDeadline)
+  // can fire on the watchdog's own timer while this generation is
+  // suspended on any await below. isRunAbandonedSince(scheduledEpoch) lets
+  // this generation detect that on resume and refuse to commit its
+  // population changes — see the guard before the population commit below,
+  // which is what stops an abandoned generation disposing creatures that
+  // teardown's checkpoint write may still be exporting.
+  const scheduledEpoch = neat.abandonEpoch;
+
   // Issue #2239: Per-generation timing diagnostics
   const evolveStartMs = Date.now();
 
@@ -1004,141 +1014,176 @@ export async function evolve(
     dna: dnaPopulation,
   }, effectivePopSize);
 
-  neat.population = budgeted.population; // Keep pseudo sorted.
+  // Issue #4050: once the hard deadline has abandoned this generation (the
+  // epoch captured at entry no longer matches), neat.population may
+  // already be mid-read by BoundedEvolveTeardown's checkpoint write, which
+  // captures its own reference to oldPopulation and exports it across
+  // several `await` boundaries. Swapping neat.population here — and worse,
+  // disposing oldPopulation members the checkpoint writer has not yet
+  // exported — would mutate that same array and its creatures out from
+  // under the in-flight write: the root cause of the RangeError this issue
+  // reports. Skip the whole commit and leave the previous, stable
+  // population and its members untouched; nothing reads this generation's
+  // result once it has been abandoned.
+  const abandoned = neat.isRunAbandonedSince(scheduledEpoch);
+  // PR #4051 review: both are only ever read after being reassigned in the
+  // `!abandoned` branch below, so no placeholder initial value is needed.
+  let trim: ReturnType<typeof trimPopulationToSize>;
+  let preWarmResult: ReturnType<typeof preWarmWasmCache>;
+  let preWarmMs = 0;
+  let preWarmUtilisation: WorkerUtilisationSnapshot | undefined;
+  let deduplicationMs = 0;
+  let deduplicationUtilisation: WorkerUtilisationSnapshot | undefined;
 
-  if (budgeted.dropped.length > 0 && neat.config.verbose) {
-    getLogger().info(
-      `[PopulationBudget] Dropped ${budgeted.dropped.length} creature(s) to ` +
-        `stay within the effective population size of ${effectivePopSize} ` +
-        `(elitists=${elitists.length}, trained=${trainedPopulation.length}, ` +
-        `fineTuned=${fineTunedPopulation.length}, bred=${newPopulation.length}, ` +
-        `dna=${dnaPopulation.length})`,
+  if (abandoned) {
+    getLogger().warn(
+      `[Neat] Generation ${neat.currentGeneration} abandoned past the ` +
+        `hard deadline — discarding its population changes instead of ` +
+        `committing them (Issue #4050)`,
     );
-  }
+  } else {
+    neat.population = budgeted.population; // Keep pseudo sorted.
 
-  // Issue #3508: Only the bred slice above was budgeted against
-  // `effectivePopSize`; the elite, trained/discovered, fine-tuned and CRISPR
-  // slices were concatenated uncapped. Several heavy-pool tasks completing in
-  // the same generation therefore grew the population — and with it the next
-  // generation's fitness queue — well past the configured size (a queue depth
-  // of 48 for `populationSize: 15` on a contended CI runner). Trim back to the
-  // budget, dropping the weakest non-elite creatures.
-  const trim = trimPopulationToSize(
-    neat.population,
-    elitists.length,
-    effectivePopSize,
-  );
-  if (trim.removed > 0 && neat.config.verbose) {
-    getLogger().info(
-      `[PopulationCap] Trimmed ${trim.removed} creature(s) to the effective ` +
-        `population size of ${effectivePopSize} ` +
-        `(preserving ${elitists.length} elite(s))`,
-    );
-  }
+    if (budgeted.dropped.length > 0 && neat.config.verbose) {
+      getLogger().info(
+        `[PopulationBudget] Dropped ${budgeted.dropped.length} creature(s) to ` +
+          `stay within the effective population size of ${effectivePopSize} ` +
+          `(elitists=${elitists.length}, trained=${trainedPopulation.length}, ` +
+          `fineTuned=${fineTunedPopulation.length}, bred=${newPopulation.length}, ` +
+          `dna=${dnaPopulation.length})`,
+      );
+    }
 
-  // Issue #2933: On a sustained plateau, inject fresh genomes (random
-  // immigrants) in place of the weakest non-elite creatures. Elites (the
-  // leading `elitists.length` entries) are always preserved. This adds new
-  // genetic material — complementing the mutation-rate boost above — to help
-  // the population escape a stagnation trap. OFF by default: a no-op unless
-  // `randomImmigrants.enabled`.
-  if (
-    neat.randomImmigrants.shouldInject(
-      neat.plateauDetector.getGenerationsOnPlateau(),
-      neat.currentGeneration,
-    )
-  ) {
-    const immigrantCount = neat.randomImmigrants.immigrantCount(
-      neat.population.length,
-      elitists.length,
-    );
-    const feedbackEnabled = fittest.forwardOnly === false;
-    const makeImmigrant = (): Creature => {
-      const immigrant = new Creature(fittest.input, fittest.output, {
-        feedbackEnabled,
-      });
-      CreatureUtil.makeUUID(immigrant);
-      return immigrant;
-    };
-    const injection = injectRandomImmigrants(
+    // Issue #3508: Only the bred slice above was budgeted against
+    // `effectivePopSize`; the elite, trained/discovered, fine-tuned and CRISPR
+    // slices were concatenated uncapped. Several heavy-pool tasks completing in
+    // the same generation therefore grew the population — and with it the next
+    // generation's fitness queue — well past the configured size (a queue depth
+    // of 48 for `populationSize: 15` on a contended CI runner). Trim back to the
+    // budget, dropping the weakest non-elite creatures.
+    trim = trimPopulationToSize(
       neat.population,
       elitists.length,
-      immigrantCount,
-      makeImmigrant,
+      effectivePopSize,
     );
-    if (injection.injected > 0) {
-      neat.randomImmigrants.recordInjection(neat.currentGeneration);
-      if (neat.config.verbose) {
-        getLogger().info(
-          `[RandomImmigrants] Injected ${injection.injected} fresh genome(s) ` +
-            `on plateau ` +
-            `(${neat.plateauDetector.getGenerationsOnPlateau()} generations), ` +
-            `preserving ${elitists.length} elite(s)`,
-        );
+    if (trim.removed > 0 && neat.config.verbose) {
+      getLogger().info(
+        `[PopulationCap] Trimmed ${trim.removed} creature(s) to the effective ` +
+          `population size of ${effectivePopSize} ` +
+          `(preserving ${elitists.length} elite(s))`,
+      );
+    }
+
+    // Issue #2933: On a sustained plateau, inject fresh genomes (random
+    // immigrants) in place of the weakest non-elite creatures. Elites (the
+    // leading `elitists.length` entries) are always preserved. This adds new
+    // genetic material — complementing the mutation-rate boost above — to help
+    // the population escape a stagnation trap. OFF by default: a no-op unless
+    // `randomImmigrants.enabled`.
+    if (
+      neat.randomImmigrants.shouldInject(
+        neat.plateauDetector.getGenerationsOnPlateau(),
+        neat.currentGeneration,
+      )
+    ) {
+      const immigrantCount = neat.randomImmigrants.immigrantCount(
+        neat.population.length,
+        elitists.length,
+      );
+      const feedbackEnabled = fittest.forwardOnly === false;
+      const makeImmigrant = (): Creature => {
+        const immigrant = new Creature(fittest.input, fittest.output, {
+          feedbackEnabled,
+        });
+        CreatureUtil.makeUUID(immigrant);
+        return immigrant;
+      };
+      const injection = injectRandomImmigrants(
+        neat.population,
+        elitists.length,
+        immigrantCount,
+        makeImmigrant,
+      );
+      if (injection.injected > 0) {
+        neat.randomImmigrants.recordInjection(neat.currentGeneration);
+        if (neat.config.verbose) {
+          getLogger().info(
+            `[RandomImmigrants] Injected ${injection.injected} fresh genome(s) ` +
+              `on plateau ` +
+              `(${neat.plateauDetector.getGenerationsOnPlateau()} generations), ` +
+              `preserving ${elitists.length} elite(s)`,
+          );
+        }
       }
     }
-  }
 
-  // Issue #1099: Single-pass de-duplication on the combined population
-  // Issue #2274: Time de-duplication phase
-  // Issue #2314: Start dedup as a non-blocking promise and overlap it with
-  // WASM pre-warming. Dedup's async I/O (previousExperiment file checks via
-  // Deno.stat) yields to the event loop, letting pre-warming run during those
-  // pauses. Pre-warming on the pre-dedup population is safe because:
-  //   • Duplicate creatures share the same topology as another creature already
-  //     in the population, so no extra WASM templates are compiled for them.
-  //   • Replacement creatures from dedup are small mutations of existing
-  //     topologies and often share the same WASM template.
-  //   • At worst, a few replacement templates are compiled lazily during
-  //     fitness — a harmless cache overshoot.
-  const deduplicationStartMs = Date.now();
-  const dedupPromise = deDuplicator.perform(neat.population);
+    // Issue #1099: Single-pass de-duplication on the combined population
+    // Issue #2274: Time de-duplication phase
+    // Issue #2314: Start dedup as a non-blocking promise and overlap it with
+    // WASM pre-warming. Dedup's async I/O (previousExperiment file checks via
+    // Deno.stat) yields to the event loop, letting pre-warming run during those
+    // pauses. Pre-warming on the pre-dedup population is safe because:
+    //   • Duplicate creatures share the same topology as another creature already
+    //     in the population, so no extra WASM templates are compiled for them.
+    //   • Replacement creatures from dedup are small mutations of existing
+    //     topologies and often share the same WASM template.
+    //   • At worst, a few replacement templates are compiled lazily during
+    //     fitness — a harmless cache overshoot.
+    const deduplicationStartMs = Date.now();
+    const dedupPromise = deDuplicator.perform(neat.population);
 
-  // Issue #2287: Pre-warm WASM compilation cache before the next generation's
-  // fitness evaluation. Pre-computes topology hashes on all unevaluated
-  // creatures and pre-compiles WASM templates for unique topologies.
-  // Issue #2314: Runs concurrently with dedup I/O to hide latency.
-  const preWarmStartMs = Date.now();
-  const preWarmResult = preWarmWasmCache(neat.population);
-  const preWarmMs = Date.now() - preWarmStartMs;
-  // Issue #2312: Snapshot after pre-warming — main thread only
-  const preWarmUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
+    // Issue #2287: Pre-warm WASM compilation cache before the next generation's
+    // fitness evaluation. Pre-computes topology hashes on all unevaluated
+    // creatures and pre-compiles WASM templates for unique topologies.
+    // Issue #2314: Runs concurrently with dedup I/O to hide latency.
+    const preWarmStartMs = Date.now();
+    preWarmResult = preWarmWasmCache(neat.population);
+    preWarmMs = Date.now() - preWarmStartMs;
+    // Issue #2312: Snapshot after pre-warming — main thread only
+    preWarmUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
-  // Issue #2314: Await dedup completion after pre-warming finishes.
-  await dedupPromise;
-  const deduplicationMs = Date.now() - deduplicationStartMs;
-  // Issue #2312: Snapshot after deduplication
-  const deduplicationUtilisation = captureUtilisationSnapshot(
-    fastPool,
-    heavyPool,
-  );
-
-  // Issue #1568: Dispose old population creatures not carried forward
-  // Issue #3508: also dispose creatures dropped by the population budget.
-  // A Set de-duplicates the two sources so nothing is disposed twice.
-  const carriedForward = new Set(neat.population);
-  const toDispose = new Set<Creature>();
-  for (const creature of oldPopulation) {
-    if (!carriedForward.has(creature)) {
-      toDispose.add(creature);
-    }
-  }
-  for (const creature of budgeted.dropped) {
-    if (!carriedForward.has(creature)) {
-      toDispose.add(creature);
-    }
-  }
-  for (const creature of toDispose) {
-    creature.dispose();
-  }
-
-  if (neat.config.verbose && preWarmResult.newTemplatesCompiled > 0) {
-    getLogger().info(
-      `[PreWarm] ${preWarmResult.newTemplatesCompiled} new templates, ` +
-        `${preWarmResult.cachedTemplates} cached, ` +
-        `${preWarmResult.uniqueTopologies} unique topologies ` +
-        `(${preWarmMs}ms)`,
+    // Issue #2314: Await dedup completion after pre-warming finishes.
+    await dedupPromise;
+    deduplicationMs = Date.now() - deduplicationStartMs;
+    // Issue #2312: Snapshot after deduplication
+    deduplicationUtilisation = captureUtilisationSnapshot(
+      fastPool,
+      heavyPool,
     );
+
+    // Issue #1568: Dispose old population creatures not carried forward
+    // Issue #3508: also dispose creatures dropped by the population budget.
+    // Issue #4050: also dispose creatures dropped by the population cap (trimPopulationToSize).
+    // A Set de-duplicates the sources so nothing is disposed twice.
+    const carriedForward = new Set(neat.population);
+    const toDispose = new Set<Creature>();
+    for (const creature of oldPopulation) {
+      if (!carriedForward.has(creature)) {
+        toDispose.add(creature);
+      }
+    }
+    for (const creature of budgeted.dropped) {
+      if (!carriedForward.has(creature)) {
+        toDispose.add(creature);
+      }
+    }
+    for (const creature of trim.removedCreatures) {
+      if (!carriedForward.has(creature)) {
+        toDispose.add(creature);
+      }
+    }
+    for (const creature of toDispose) {
+      creature.dispose();
+    }
+
+    if (neat.config.verbose && preWarmResult.newTemplatesCompiled > 0) {
+      getLogger().info(
+        `[PreWarm] ${preWarmResult.newTemplatesCompiled} new templates, ` +
+          `${preWarmResult.cachedTemplates} cached, ` +
+          `${preWarmResult.uniqueTopologies} unique topologies ` +
+          `(${preWarmMs}ms)`,
+      );
+    }
   }
 
   // Issue #1565: Post-evolution heap memory monitoring

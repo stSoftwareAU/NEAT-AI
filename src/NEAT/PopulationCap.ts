@@ -20,6 +20,8 @@ export interface PopulationTrimResult {
   removed: number;
   /** UUIDs of the dropped creatures (for logging / telemetry). */
   removedUuids: string[];
+  /** The actual creatures that were removed (for disposal). */
+  removedCreatures: Creature[];
 }
 
 /**
@@ -64,7 +66,7 @@ export function trimPopulationToSize(
     ? Math.max(0, Math.floor(maxSize))
     : 0;
   if (total <= capacity) {
-    return { removed: 0, removedUuids: [] };
+    return { removed: 0, removedUuids: [], removedCreatures: [] };
   }
 
   const safeElite = Math.max(0, Math.min(Math.floor(eliteCount) || 0, total));
@@ -73,7 +75,7 @@ export function trimPopulationToSize(
   const dropCount = nonEliteCount - keepNonElite;
   if (dropCount <= 0) {
     // Elites alone meet or exceed the cap — never drop an elite.
-    return { removed: 0, removedUuids: [] };
+    return { removed: 0, removedUuids: [], removedCreatures: [] };
   }
 
   const ranked: { creature: Creature; index: number }[] = [];
@@ -84,12 +86,14 @@ export function trimPopulationToSize(
 
   const dropped = new Set<number>();
   const removedUuids: string[] = [];
+  const removedCreatures: Creature[] = [];
   for (let i = 0; i < dropCount; i++) {
     const victim = ranked[i];
     dropped.add(victim.index);
     if (victim.creature.uuid) {
       removedUuids.push(victim.creature.uuid);
     }
+    removedCreatures.push(victim.creature);
   }
 
   // Rebuild in place, preserving the original (pseudo sorted) order.
@@ -101,7 +105,7 @@ export function trimPopulationToSize(
   }
   population.length = write;
 
-  return { removed: dropCount, removedUuids };
+  return { removed: dropCount, removedUuids, removedCreatures };
 }
 
 /**
