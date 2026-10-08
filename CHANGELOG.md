@@ -25,6 +25,12 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4050:** Misleading log message in `BoundedEvolveTeardown.ts` now
+  accurately describes the persist operation. The message now says "persisting
+  evolved checkpoint and champion failed" instead of the incomplete "persisting
+  the evolved best creature failed", which did not account for the champion
+  restoration and training log flush that are part of the persist step.
+
 - **Issue #4048 (GRQ #4923):** A stalled connection on a WASM bundle cache miss
   — a TLS handshake that completed but then sent nothing, or a body that stalled
   mid-stream — hung start-up forever with no log line. This happens on every

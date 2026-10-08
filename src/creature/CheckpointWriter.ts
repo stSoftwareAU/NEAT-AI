@@ -24,6 +24,7 @@ import {
   isValidWriteableSemanticVersion,
 } from "@upgrade/SemanticVersionValidation.ts";
 import { applySeedWarmupTagsAtSave } from "@architecture/CreatureFactory.ts";
+import { getLogger } from "@utils/Logger.ts";
 
 /**
  * Default number of checkpoint files exported, stringified, and written
@@ -88,7 +89,21 @@ export async function writeCreatures(
       if (!isValidWriteableSemanticVersion(creature.semanticVersion)) {
         creature.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
       }
-      const json = creature.exportJSON();
+      // Issue #4050: handle disposed creatures (neurons.length = 0) that throw
+      // RangeError during export. Skip and log them rather than failing the
+      // entire checkpoint write.
+      let json;
+      try {
+        json = creature.exportJSON();
+      } catch (error) {
+        if (error instanceof RangeError) {
+          getLogger().warn(
+            `Skipping disposed creature ${creature.uuid} (RangeError during export - Issue #4050)`,
+          );
+          continue;
+        }
+        throw error;
+      }
       assertValidWriteableSemanticVersion(json.semanticVersion);
       // Issue #2909: stamp warm-up tags only at this export boundary. Stamp the
       // exported JSON (not the live population member) so the saved file is

@@ -1115,7 +1115,8 @@ export async function evolve(
 
   // Issue #1568: Dispose old population creatures not carried forward
   // Issue #3508: also dispose creatures dropped by the population budget.
-  // A Set de-duplicates the two sources so nothing is disposed twice.
+  // Issue #4050: also dispose creatures dropped by the population cap (trimPopulationToSize).
+  // A Set de-duplicates the sources so nothing is disposed twice.
   const carriedForward = new Set(neat.population);
   const toDispose = new Set<Creature>();
   for (const creature of oldPopulation) {
@@ -1124,6 +1125,11 @@ export async function evolve(
     }
   }
   for (const creature of budgeted.dropped) {
+    if (!carriedForward.has(creature)) {
+      toDispose.add(creature);
+    }
+  }
+  for (const creature of trim.removedCreatures) {
     if (!carriedForward.has(creature)) {
       toDispose.add(creature);
     }

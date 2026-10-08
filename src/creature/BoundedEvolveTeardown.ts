@@ -279,7 +279,7 @@ export async function runBoundedEvolveTeardown(
     persistError = error;
     persistFailed = true;
     getLogger().error(
-      `[${label}] teardown: persisting the evolved best creature failed`,
+      `[${label}] teardown: persisting evolved checkpoint and champion failed`,
       error,
     );
   }

@@ -28,6 +28,7 @@ Deno.test("trimPopulationToSize: no-op when the population is within the cap", (
 
   assertEquals(result.removed, 0);
   assertEquals(result.removedUuids, []);
+  assertEquals(result.removedCreatures, []);
   assertEquals(population, expected, "population must be untouched");
 });
 
@@ -39,6 +40,7 @@ Deno.test("trimPopulationToSize: trims exactly to the cap", () => {
   assertEquals(population.length, 8);
   assertEquals(result.removed, 12);
   assertEquals(result.removedUuids.length, 12);
+  assertEquals(result.removedCreatures.length, 12);
 });
 
 Deno.test("trimPopulationToSize: elites are never dropped", () => {
@@ -57,13 +59,16 @@ Deno.test("trimPopulationToSize: elites are never dropped", () => {
 
 Deno.test("trimPopulationToSize: elites exceeding the cap are still kept", () => {
   const elites = [makeCreature(9), makeCreature(8), makeCreature(7)];
-  const population = [...elites, makeCreature(), makeCreature()];
+  const nonElites = [makeCreature(), makeCreature()];
+  const population = [...elites, ...nonElites];
 
   const result = trimPopulationToSize(population, elites.length, 2);
 
   // Elitism wins over the cap; only the non-elites can be dropped.
   assertEquals(population.length, 3);
   assertEquals(result.removed, 2);
+  assertEquals(result.removedCreatures.length, 2);
+  assertEquals(result.removedCreatures, nonElites);
   assertEquals(population, elites);
 });
 
@@ -78,6 +83,8 @@ Deno.test("trimPopulationToSize: drops unscored creatures before scored survivor
 
   assertEquals(result.removed, 1);
   assertEquals(result.removedUuids, [unscored.uuid]);
+  assertEquals(result.removedCreatures.length, 1);
+  assertEquals(result.removedCreatures[0], unscored);
   assertEquals(population, [elite, scoredLow, scoredHigh]);
 });
 
@@ -105,18 +112,20 @@ Deno.test("trimPopulationToSize: keeps surviving creatures in assembly order", (
   assertEquals(population, [elite, rest[3], rest[4], rest[5]]);
 });
 
-Deno.test("trimPopulationToSize: dropped creatures are not disposed", () => {
+Deno.test("trimPopulationToSize: dropped creatures are not disposed by trimPopulationToSize", () => {
   const elite = makeCreature(10);
   const victim = makeCreature();
   const population = [elite, victim];
 
-  trimPopulationToSize(population, 1, 1);
+  const result = trimPopulationToSize(population, 1, 1);
 
   assertEquals(population.length, 1);
   assert(
     victim.neurons.length > 0 && victim.synapses.length > 0,
-    "dropped creatures are shared with the genus and must not be disposed",
+    "dropped creatures are not disposed by trimPopulationToSize itself",
   );
+  assertEquals(result.removedCreatures.length, 1);
+  assertEquals(result.removedCreatures[0], victim);
 });
 
 Deno.test("trimPopulationToSize: a cap of zero empties the non-elite slice", () => {
@@ -126,6 +135,7 @@ Deno.test("trimPopulationToSize: a cap of zero empties the non-elite slice", () 
 
   assertEquals(population.length, 0);
   assertEquals(result.removed, 3);
+  assertEquals(result.removedCreatures.length, 3);
 });
 
 Deno.test("trimPopulationToSize: handles an empty population", () => {
@@ -135,6 +145,7 @@ Deno.test("trimPopulationToSize: handles an empty population", () => {
 
   assertEquals(population.length, 0);
   assertEquals(result.removed, 0);
+  assertEquals(result.removedCreatures.length, 0);
 });
 
 Deno.test("trimPopulationToSize: an elite count beyond the population is clamped", () => {
@@ -144,6 +155,7 @@ Deno.test("trimPopulationToSize: an elite count beyond the population is clamped
 
   assertEquals(result.removed, 0, "every entry is an elite once clamped");
   assertEquals(population.length, 2);
+  assertEquals(result.removedCreatures.length, 0);
 });
 
 Deno.test("trimPopulationToSize: a non-finite cap drops every non-elite", () => {
@@ -153,4 +165,5 @@ Deno.test("trimPopulationToSize: a non-finite cap drops every non-elite", () => 
 
   assertEquals(result.removed, 2, "NaN is not a usable budget — cap at zero");
   assertEquals(population.length, 1);
+  assertEquals(result.removedCreatures.length, 2);
 });
