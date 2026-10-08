@@ -38,15 +38,29 @@ the run has been abandoned since this generation started, the whole commit is
 skipped: `neat.population` and every previous member are left exactly as they
 were, so a concurrent checkpoint write never sees them mutated.
 
-### Fix 2: atomic checkpoint writes (src/creature/CheckpointWriter.ts)
+### Fix 2: temp-dir checkpoint writes (src/creature/CheckpointWriter.ts)
 
-Writes now land in a sibling temp directory (`${dir}.tmp-<uuid>`) and are
-swapped into place (`Deno.remove(dir)` + `Deno.rename(tempDir, dir)`) only once
-every member has been exported and written without error. The previous version
-emptied `dir` up front, so a write failure — or every member being disposed —
-replaced the last-good checkpoint with gaps or nothing instead of leaving it
-untouched. A population that produces zero written members (every member
-disposed) now throws rather than silently swapping in an empty store.
+Writes land in a sibling temp directory and are swapped into place only once
+every member has been exported and written without error. The previous
+version emptied `dir` up front, so a write failure — or every member being
+disposed — replaced the last-good checkpoint with gaps or nothing instead of
+leaving it untouched. A population that produces zero written members (every
+member disposed) now throws rather than silently swapping in an empty store.
+
+**Revised after the #4051 review** (two further findings on this fix): the
+temp dir uses a fixed `${dir}.tmp` name, cleared at the start of every call,
+rather than a fresh `${dir}.tmp-<uuid>` per call — a random name was never
+revisited, so a crash between `mkdir` and the final rename left an orphan
+population copy next to the store forever (fleet hosts see routine OOM/
+wall-clock kills). The swap itself renames `dir` aside to `${dir}.old` rather
+than deleting it, then renames the temp dir into place, then removes
+`${dir}.old` — so a kill between the two renames leaves `${dir}.old` holding
+the last-good checkpoint instead of leaving none at all; the next call
+recovers it. The write-failure catch block also now awaits any batch writes
+still in flight (`Promise.allSettled`) before removing the temp dir, closing
+a race where the cleanup remove could collide with a write still creating
+its file and either crash the process on an unhandled rejection or mask the
+original error with a "Directory not empty" failure.
 
 ### Fix 3: explicit disposed-creature detection (src/creature/CheckpointWriter.ts)
 
@@ -75,27 +89,33 @@ original message rather than being silently logged as "disposed".
   asserts `neat.population` is the _same reference_ and every original member
   still has `neurons.length > 0`. Confirmed red against the pre-fix
   `NeatEvolution.ts`.
-- `test/creature/CheckpointWriteBatching.ts` — five new tests: a disposed
-  creature in the middle of the population is skipped and named; a creature
-  disposed mid-write by a racing writer is skipped without corrupting the rest;
-  a genuine (non-disposal) export error still propagates; an all-disposed
-  population is refused rather than replacing the checkpoint; a write failure
-  partway through leaves the previous checkpoint byte-for-byte unchanged. All
-  five confirmed red against the pre-fix code.
+- `test/creature/CheckpointWriteBatching.ts` — five tests from the original
+  fix: a disposed creature in the middle of the population is skipped and
+  named; a creature disposed mid-write by a racing writer is skipped without
+  corrupting the rest; a genuine (non-disposal) export error still
+  propagates; an all-disposed population is refused rather than replacing
+  the checkpoint; a write failure partway through leaves the previous
+  checkpoint byte-for-byte unchanged. Three more added for the #4051 review:
+  the cleanup remove awaits an in-flight batch write before running (without
+  the fix, the unhandled rejection crashed the whole test module — the exact
+  symptom the review named); a stale leftover temp dir from a previous crash
+  is discarded rather than merged in; a leftover `.old` dir from a kill
+  between the two swap renames is recovered into `dir` on the next call. All
+  eight confirmed red against the pre-fix code.
 
 **Docs sweep** — grep: `isRunAbandonedSince`, `abandonEpoch`,
 `awaitWithinHardDeadline`, `CheckpointWriter`, `checkpointEveryGeneration`;
 section: `docs/TIMEOUTS.md#-what-each-phase-does-at-the-hard-cap` (documents the
 abandoned-generation background work this fix stops from mutating shared state)
 and `docs/PERFORMANCE_TUNING.md#checkpoint-write-memory-creature-store`
-(documents the batched checkpoint write this fix makes atomic); updated: none —
-both sections describe externally-visible behaviour ("the population evolved so
-far is kept"; "File contents and numbering … are unchanged") that remains true
-after this fix, which changes only the internal race/atomicity mechanics, not
-the documented contract.
+(documents the batched checkpoint write this fix makes crash-recoverable);
+updated: none — both sections describe externally-visible behaviour ("the
+population evolved so far is kept"; "File contents and numbering … are
+unchanged") that remains true after this fix, which changes only the
+internal race/recovery mechanics, not the documented contract.
 
-Current totals: 12 `PopulationCap` + 16 `CheckpointWriteBatching` + 1
-`HardDeadlineDisposalRegression` = 29 tests across the three files this PR
+Current totals: 12 `PopulationCap` + 19 `CheckpointWriteBatching` + 1
+`HardDeadlineDisposalRegression` = 32 tests across the three files this PR
 touches, all passing.
 
 ## Branch outcomes
@@ -113,17 +133,23 @@ touches, all passing.
 - ✅ A genuine export error on a non-disposed creature is not mislabelled as
   disposal (`CheckpointWriteBatching.ts`: genuine-error-passthrough test).
 - ✅ Corrected log message accurately reflects what is being persisted.
+- ✅ A write failure never races the temp-dir cleanup against a write still in
+  flight (`CheckpointWriteBatching.ts`: cleanup-race test).
+- ✅ A crash between `mkdir` and the final rename never orphans a population
+  copy forever; a crash between the two swap renames never leaves zero
+  checkpoints on disk — both recovered by the next call
+  (`CheckpointWriteBatching.ts`: stale-tempDir and `.old`-recovery tests).
 
 ## Changes
 
-| File                                          | Change                                                                   |
-| --------------------------------------------- | ------------------------------------------------------------------------ |
-| `src/NEAT/NeatEvolution.ts`                   | Abandoned generations skip the entire population commit (root-cause fix) |
-| `src/creature/CheckpointWriter.ts`            | Atomic temp-dir swap; explicit disposed-creature check before export     |
-| `src/NEAT/PopulationCap.ts`                   | `PopulationTrimResult.removedCreatures` field (from the first iteration) |
-| `src/creature/BoundedEvolveTeardown.ts`       | Corrected log message                                                    |
-| `test/NEAT/HardDeadlineDisposalRegression.ts` | Rewritten so it actually reproduces the race and can fail                |
-| `test/creature/CheckpointWriteBatching.ts`    | Five new tests for the atomicity and disposal-detection fixes            |
+| File                                          | Change                                                                                         |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `src/NEAT/NeatEvolution.ts`                   | Abandoned generations skip the entire population commit (root-cause fix)                       |
+| `src/creature/CheckpointWriter.ts`            | Temp-dir swap with crash recovery and race-safe cleanup; disposed-creature check before export |
+| `src/NEAT/PopulationCap.ts`                   | `PopulationTrimResult.removedCreatures` field (from the first iteration)                       |
+| `src/creature/BoundedEvolveTeardown.ts`       | Corrected log message                                                                          |
+| `test/NEAT/HardDeadlineDisposalRegression.ts` | Rewritten so it actually reproduces the race and can fail                                      |
+| `test/creature/CheckpointWriteBatching.ts`    | Eight tests for atomicity, disposal-detection, cleanup-race and crash-orphan fixes             |
 
 ## Definition of Done
 
@@ -132,9 +158,9 @@ touches, all passing.
       symptom at the export boundary
 - [x] Implement safe export mechanism (explicit disposed check, not a blanket
       `RangeError` catch)
-- [x] Handle unexportable creatures by skipping, with atomic checkpoint writes
-      so a failure or all-disposed population cannot destroy the last-good
-      checkpoint
+- [x] Handle unexportable creatures by skipping, with crash-recoverable
+      checkpoint writes so a failure or all-disposed population cannot destroy
+      the last-good checkpoint
 - [x] Write a regression test that reproduces the race and fails without the fix
       (`HardDeadlineDisposalRegression.ts`)
 - [x] Fix misleading log text at `BoundedEvolveTeardown.ts`
