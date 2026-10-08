@@ -48,7 +48,7 @@ Deno.test({
     // Use a very short hard deadline so it breaches quickly, but allow
     // some population cap trimming to happen by using a non-trivial population.
     const startMS = Date.now();
-    let nowMS = startMS;
+    const nowMS = startMS;
 
     const options: NeatOptions = {
       populationSize: 8, // Small enough that population cap will trim
