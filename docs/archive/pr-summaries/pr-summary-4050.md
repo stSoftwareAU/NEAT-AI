@@ -81,7 +81,18 @@ original message rather than being silently logged as "disposed".
   a genuine (non-disposal) export error still propagates; an all-disposed
   population is refused rather than replacing the checkpoint; a write failure
   partway through leaves the previous checkpoint byte-for-byte unchanged. All
-  four confirmed red against the pre-fix code.
+  five confirmed red against the pre-fix code.
+
+**Docs sweep** — grep: `isRunAbandonedSince`, `abandonEpoch`,
+`awaitWithinHardDeadline`, `CheckpointWriter`, `checkpointEveryGeneration`;
+section: `docs/TIMEOUTS.md#-what-each-phase-does-at-the-hard-cap` (documents
+the abandoned-generation background work this fix stops from mutating shared
+state) and `docs/PERFORMANCE_TUNING.md#checkpoint-write-memory-creaturestore`
+(documents the batched checkpoint write this fix makes atomic); updated: none
+— both sections describe externally-visible behaviour ("the population
+evolved so far is kept"; "File contents and numbering … are unchanged") that
+remains true after this fix, which changes only the internal race/atomicity
+mechanics, not the documented contract.
 
 Current totals: 12 `PopulationCap` + 16 `CheckpointWriteBatching` + 1
 `HardDeadlineDisposalRegression` = 29 tests across the three files this PR
