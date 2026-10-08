@@ -41,26 +41,26 @@ were, so a concurrent checkpoint write never sees them mutated.
 ### Fix 2: temp-dir checkpoint writes (src/creature/CheckpointWriter.ts)
 
 Writes land in a sibling temp directory and are swapped into place only once
-every member has been exported and written without error. The previous
-version emptied `dir` up front, so a write failure — or every member being
-disposed — replaced the last-good checkpoint with gaps or nothing instead of
-leaving it untouched. A population that produces zero written members (every
-member disposed) now throws rather than silently swapping in an empty store.
+every member has been exported and written without error. The previous version
+emptied `dir` up front, so a write failure — or every member being disposed —
+replaced the last-good checkpoint with gaps or nothing instead of leaving it
+untouched. A population that produces zero written members (every member
+disposed) now throws rather than silently swapping in an empty store.
 
-**Revised after the #4051 review** (two further findings on this fix): the
-temp dir uses a fixed `${dir}.tmp` name, cleared at the start of every call,
-rather than a fresh `${dir}.tmp-<uuid>` per call — a random name was never
-revisited, so a crash between `mkdir` and the final rename left an orphan
-population copy next to the store forever (fleet hosts see routine OOM/
-wall-clock kills). The swap itself renames `dir` aside to `${dir}.old` rather
-than deleting it, then renames the temp dir into place, then removes
-`${dir}.old` — so a kill between the two renames leaves `${dir}.old` holding
-the last-good checkpoint instead of leaving none at all; the next call
-recovers it. The write-failure catch block also now awaits any batch writes
-still in flight (`Promise.allSettled`) before removing the temp dir, closing
-a race where the cleanup remove could collide with a write still creating
-its file and either crash the process on an unhandled rejection or mask the
-original error with a "Directory not empty" failure.
+**Revised after the #4051 review** (two further findings on this fix): the temp
+dir uses a fixed `${dir}.tmp` name, cleared at the start of every call, rather
+than a fresh `${dir}.tmp-<uuid>` per call — a random name was never revisited,
+so a crash between `mkdir` and the final rename left an orphan population copy
+next to the store forever (fleet hosts see routine OOM/ wall-clock kills). The
+swap itself renames `dir` aside to `${dir}.old` rather than deleting it, then
+renames the temp dir into place, then removes `${dir}.old` — so a kill between
+the two renames leaves `${dir}.old` holding the last-good checkpoint instead of
+leaving none at all; the next call recovers it. The write-failure catch block
+also now awaits any batch writes still in flight (`Promise.allSettled`) before
+removing the temp dir, closing a race where the cleanup remove could collide
+with a write still creating its file and either crash the process on an
+unhandled rejection or mask the original error with a "Directory not empty"
+failure.
 
 ### Fix 3: explicit disposed-creature detection (src/creature/CheckpointWriter.ts)
 
@@ -89,19 +89,18 @@ original message rather than being silently logged as "disposed".
   asserts `neat.population` is the _same reference_ and every original member
   still has `neurons.length > 0`. Confirmed red against the pre-fix
   `NeatEvolution.ts`.
-- `test/creature/CheckpointWriteBatching.ts` — five tests from the original
-  fix: a disposed creature in the middle of the population is skipped and
-  named; a creature disposed mid-write by a racing writer is skipped without
-  corrupting the rest; a genuine (non-disposal) export error still
-  propagates; an all-disposed population is refused rather than replacing
-  the checkpoint; a write failure partway through leaves the previous
-  checkpoint byte-for-byte unchanged. Three more added for the #4051 review:
-  the cleanup remove awaits an in-flight batch write before running (without
-  the fix, the unhandled rejection crashed the whole test module — the exact
-  symptom the review named); a stale leftover temp dir from a previous crash
-  is discarded rather than merged in; a leftover `.old` dir from a kill
-  between the two swap renames is recovered into `dir` on the next call. All
-  eight confirmed red against the pre-fix code.
+- `test/creature/CheckpointWriteBatching.ts` — five tests from the original fix:
+  a disposed creature in the middle of the population is skipped and named; a
+  creature disposed mid-write by a racing writer is skipped without corrupting
+  the rest; a genuine (non-disposal) export error still propagates; an
+  all-disposed population is refused rather than replacing the checkpoint; a
+  write failure partway through leaves the previous checkpoint byte-for-byte
+  unchanged. Three more added for the #4051 review: the cleanup remove awaits an
+  in-flight batch write before running (without the fix, the unhandled rejection
+  crashed the whole test module — the exact symptom the review named); a stale
+  leftover temp dir from a previous crash is discarded rather than merged in; a
+  leftover `.old` dir from a kill between the two swap renames is recovered into
+  `dir` on the next call. All eight confirmed red against the pre-fix code.
 
 **Docs sweep** — grep: `isRunAbandonedSince`, `abandonEpoch`,
 `awaitWithinHardDeadline`, `CheckpointWriter`, `checkpointEveryGeneration`;
@@ -111,8 +110,8 @@ and `docs/PERFORMANCE_TUNING.md#checkpoint-write-memory-creature-store`
 (documents the batched checkpoint write this fix makes crash-recoverable);
 updated: none — both sections describe externally-visible behaviour ("the
 population evolved so far is kept"; "File contents and numbering … are
-unchanged") that remains true after this fix, which changes only the
-internal race/recovery mechanics, not the documented contract.
+unchanged") that remains true after this fix, which changes only the internal
+race/recovery mechanics, not the documented contract.
 
 Current totals: 12 `PopulationCap` + 19 `CheckpointWriteBatching` + 1
 `HardDeadlineDisposalRegression` = 32 tests across the three files this PR
