@@ -1026,20 +1026,10 @@ export async function evolve(
   // population and its members untouched; nothing reads this generation's
   // result once it has been abandoned.
   const abandoned = neat.isRunAbandonedSince(scheduledEpoch);
-  let trim: ReturnType<typeof trimPopulationToSize> = {
-    removed: 0,
-    removedUuids: [],
-    removedCreatures: [],
-  };
-  let preWarmResult: ReturnType<typeof preWarmWasmCache> = {
-    totalCreatures: 0,
-    unevaluatedCreatures: 0,
-    uniqueTopologies: 0,
-    newTemplatesCompiled: 0,
-    cachedTemplates: 0,
-    ineligibleCreatures: 0,
-    elapsedMs: 0,
-  };
+  // PR #4051 review: both are only ever read after being reassigned in the
+  // `!abandoned` branch below, so no placeholder initial value is needed.
+  let trim: ReturnType<typeof trimPopulationToSize>;
+  let preWarmResult: ReturnType<typeof preWarmWasmCache>;
   let preWarmMs = 0;
   let preWarmUtilisation: WorkerUtilisationSnapshot | undefined;
   let deduplicationMs = 0;
