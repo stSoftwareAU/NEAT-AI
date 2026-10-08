@@ -563,6 +563,49 @@ Deno.test("writeCreatures recovers the last-good checkpoint from a leftover .old
   }
 });
 
+// PR #4051 review: `creatureStore` paths ending in a separator (which shell
+// tab-completion adds by default) used to make `tempDir`/`oldDir` land
+// *inside* the store instead of beside it, so the swap renamed the store
+// into its own subdirectory and failed with EINVAL.
+Deno.test("writeCreatures replaces an existing checkpoint when dir has a trailing separator (#4051 review)", async () => {
+  const base = await Deno.makeTempDir({ prefix: "neat_ckpt_trailing_slash_" });
+  const dir = `${base}/`;
+  try {
+    const first = buildPopulation(2);
+    first.forEach((creature, i) => addTag(creature, "member", `first-${i}`));
+    await writeCreatures(source(first), dir);
+
+    const second = buildPopulation(3);
+    second.forEach((creature, i) => addTag(creature, "member", `second-${i}`));
+    await writeCreatures(source(second), dir);
+
+    const written = await readCheckpoints(base, 3);
+    written.forEach((parsed, i) => {
+      assertEquals(
+        getTag(parsed, "member"),
+        `second-${i}`,
+        `${i + 1}.json must hold the second checkpoint`,
+      );
+    });
+    assertEquals(
+      await exists(`${base}.tmp`),
+      false,
+      "tempDir must be a sibling of the store, not left behind inside it",
+    );
+    assertEquals(
+      await exists(`${base}.old`),
+      false,
+      "oldDir must be cleaned up, not left behind",
+    );
+  } finally {
+    await Promise.allSettled([
+      Deno.remove(base, { recursive: true }),
+      Deno.remove(`${base}.tmp`, { recursive: true }),
+      Deno.remove(`${base}.old`, { recursive: true }),
+    ]);
+  }
+});
+
 Deno.test("writeCreatures leaves the previous checkpoint untouched when a write fails partway through", async () => {
   const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_atomic_" });
   try {

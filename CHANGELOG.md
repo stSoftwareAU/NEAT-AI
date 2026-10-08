@@ -25,11 +25,43 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- **Issue #4050:** Misleading log message in `BoundedEvolveTeardown.ts` now
-  accurately describes the persist operation. The message now says "persisting
-  evolved checkpoint and champion failed" instead of the incomplete "persisting
-  the evolved best creature failed", which did not account for the champion
-  restoration and training log flush that are part of the persist step.
+- **Issue #4050:** A hard-deadline-abandoned generation could race the teardown
+  checkpoint write, disposing a population member the write was still exporting
+  and crashing it with a `RangeError`. Fixed at the root cause and hardened end
+  to end — this changes the documented `creatureStore` behaviour of
+  `evolveDir()` / `evolveEnv()` / `evolveRL()`:
+  - **Atomic, crash-safe checkpoint swap.** Each write now stages every member
+    in `<creatureStore>.tmp`, next to the store, and only swaps it into place —
+    via `<creatureStore>.old` — once every member is written without error. A
+    failed write now **keeps the previous checkpoint** instead of the old
+    behaviour of emptying `creatureStore` up front and leaving gaps. A leftover
+    `.tmp` or `.old` sibling survives a crash between steps of the swap; the
+    next write recovers it automatically.
+  - **Disposed members are skipped, not fatal.** A creature disposed mid-write
+    (by a racing abandoned generation) is skipped and named in a warning log
+    rather than aborting the write — so checkpoint file numbering (`1.json`,
+    `2.json`, …) **can now have gaps**.
+  - **An all-disposed population refuses to write.** If every member of the
+    population was disposed, the write throws instead of replacing the last-good
+    checkpoint with an empty one.
+  - **An abandoned generation no longer commits.** A generation abandoned past
+    the hard deadline discards its population changes entirely instead of
+    swapping them into `neat.population`, and creatures trimmed by the
+    population cap (`trimPopulationToSize`) are now disposed along with the
+    other sources already disposed per generation.
+  - **Checkpoint paths with a trailing separator now work.** A `creatureStore`
+    ending in `/` or `\` (e.g. from shell tab-completion) used to make the
+    `.tmp`/`.old` siblings land inside the store rather than beside it, failing
+    every write with `EINVAL`. The store path is now resolved before the sibling
+    names are built.
+  - Also: the log message in `BoundedEvolveTeardown.ts` for a failed persist now
+    says "persisting evolved checkpoint and champion failed" instead of the
+    incomplete "persisting the evolved best creature failed", which did not
+    account for the champion restoration and training log flush that are part of
+    the persist step.
+
+  Downstream consumers reading `creatureStore` directly should expect the new
+  `.tmp` / `.old` siblings next to the store and tolerate numbering gaps.
 
 - **Issue #4048 (GRQ #4923):** A stalled connection on a WASM bundle cache miss
   — a TLS handshake that completed but then sent nothing, or a body that stalled

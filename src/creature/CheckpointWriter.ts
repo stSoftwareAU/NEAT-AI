@@ -18,6 +18,7 @@
 
 import type { Creature } from "@creature";
 import { CURRENT_CREATURE_SEMANTIC_VERSION } from "@creature";
+import { resolve } from "@std/path";
 import {
   assertValidWriteableSemanticVersion,
   isValidWriteableSemanticVersion,
@@ -105,6 +106,13 @@ async function removeIfExists(path: string): Promise<void> {
  * forever; a kill between the two swap renames left no checkpoint at all with
  * the only copy sitting under a name nothing reads.
  *
+ * `dir` is resolved first (PR #4051 review) so a trailing separator — e.g.
+ * `creatureStore: "out/"`, which shell tab-completion adds by default —
+ * cannot turn `${dir}.tmp` / `${dir}.old` into subdirectories of `dir`
+ * itself instead of its siblings. Unresolved, `out/` + `.tmp` is `out/.tmp`
+ * (inside the store), and the swap's `Deno.rename("out/", "out/.old")` then
+ * fails with EINVAL (renaming a directory into its own subdirectory).
+ *
  * @throws RangeError when `batchSize` is not a positive integer.
  */
 export async function writeCreatures(
@@ -122,19 +130,23 @@ export async function writeCreatures(
     ((path: string, text: string) => Deno.writeTextFile(path, text));
 
   const population = source.population;
-  const tempDir = `${dir}.tmp`;
-  const oldDir = `${dir}.old`;
+  // Resolve once and reuse everywhere below: `resolve()` strips a trailing
+  // separator, so the `.tmp` / `.old` names are always true siblings of the
+  // store, not entries inside it.
+  const resolvedDir = resolve(dir);
+  const tempDir = `${resolvedDir}.tmp`;
+  const oldDir = `${resolvedDir}.old`;
 
   // Recover from a crash during a previous call before starting this one.
   await removeIfExists(tempDir);
-  if (await exists(dir)) {
+  if (await exists(resolvedDir)) {
     // A completed swap whose final `oldDir` removal never ran — discard it.
     await removeIfExists(oldDir);
   } else {
     // Killed between the two swap renames below: `oldDir` is the only
     // surviving copy of the last-good checkpoint — put it back.
     try {
-      await Deno.rename(oldDir, dir);
+      await Deno.rename(oldDir, resolvedDir);
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) throw error;
     }
@@ -222,8 +234,8 @@ export async function writeCreatures(
     await Deno.remove(tempDir, { recursive: true });
     throw new Error(
       `[CheckpointWriter] All ${population.length} population member(s) were ` +
-        `disposed — refusing to replace the checkpoint at ${dir} with an ` +
-        `empty one (Issue #4050)`,
+        `disposed — refusing to replace the checkpoint at ${resolvedDir} ` +
+        `with an empty one (Issue #4050)`,
     );
   }
   if (skipped > 0) {
@@ -241,7 +253,7 @@ export async function writeCreatures(
   // leftover recovery above puts it back.
   let hadPreviousDir = true;
   try {
-    await Deno.rename(dir, oldDir);
+    await Deno.rename(resolvedDir, oldDir);
   } catch (error) {
     if (error instanceof Deno.errors.NotFound) {
       hadPreviousDir = false;
@@ -250,7 +262,7 @@ export async function writeCreatures(
       throw error;
     }
   }
-  await Deno.rename(tempDir, dir);
+  await Deno.rename(tempDir, resolvedDir);
   if (hadPreviousDir) {
     await removeIfExists(oldDir);
   }

@@ -414,9 +414,16 @@ flowchart LR
 
 Each batch's serialised genomes and in-flight write buffers are released before
 the next batch allocates its own, so peak checkpoint memory no longer scales
-with `populationSize × genome JSON`. File contents and numbering (`1.json`,
-`2.json`, …) are unchanged. No configuration is required — this is the default
-and only behaviour.
+with `populationSize × genome JSON`. No configuration is required — this is the
+default and only behaviour.
+
+Writes land atomically (Issue #4050/#4051): every member is staged in a sibling
+`<creatureStore>.tmp` directory and only swapped into place — through
+`<creatureStore>.old` — once the whole batch has written without error, so a
+failed write keeps the previous checkpoint instead of leaving `creatureStore`
+with gaps. A creature disposed mid-write by a racing abandoned generation is
+skipped rather than aborting the write, so file numbering (`1.json`, `2.json`,
+…) **can have gaps** — it is no longer guaranteed contiguous.
 
 ### Understanding Cache Diagnostics
 
