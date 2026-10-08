@@ -408,6 +408,161 @@ Deno.test("writeCreatures refuses to replace the checkpoint when every member is
   }
 });
 
+/** True when `path` exists; false only for ENOENT. */
+async function exists(path: string): Promise<boolean> {
+  try {
+    await Deno.stat(path);
+    return true;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) return false;
+    throw error;
+  }
+}
+
+/** Yield one macrotask turn so pending real filesystem ops get a chance to settle. */
+function tick(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+// PR #4051 review: two problems in how CheckpointWriter handles its temp
+// dir, found after the #4050 fix above landed.
+
+Deno.test("writeCreatures awaits in-flight batch writes before removing tempDir on error (#4051 review)", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_cleanup_race_" });
+  try {
+    const population = buildPopulation(2);
+    let releaseFirstWrite: () => void = () => {};
+    const firstWriteGate = new Promise<void>((resolve) => {
+      releaseFirstWrite = resolve;
+    });
+    let firstWriteStarted = false;
+    const writeTextFile = async (path: string, text: string): Promise<void> => {
+      if (path.endsWith("1.json")) {
+        firstWriteStarted = true;
+        // Not resolved until the test releases it below — simulates a write
+        // still in flight when the second creature's export throws.
+        await firstWriteGate;
+      }
+      await Deno.writeTextFile(path, text);
+    };
+    // The second creature's export throws synchronously, in the same batch
+    // as the first creature's still-pending write.
+    population[1].exportJSON = () => {
+      throw new Error("export boom");
+    };
+
+    const result = writeCreatures(source(population), dir, {
+      batchSize: 2,
+      writeTextFile,
+    });
+
+    for (let i = 0; i < 50 && !firstWriteStarted; i++) {
+      // deno-lint-ignore no-await-in-loop
+      await tick();
+    }
+    assert(firstWriteStarted, "precondition: first write must have started");
+    // Give the (buggy, pre-fix) cleanup remove several turns to run before
+    // asserting — an empty-directory remove completes within one of these.
+    for (let i = 0; i < 10; i++) {
+      // deno-lint-ignore no-await-in-loop
+      await tick();
+    }
+
+    assert(
+      await exists(`${dir}.tmp`),
+      "tempDir must not be removed while its in-flight write is still pending",
+    );
+
+    releaseFirstWrite();
+    await assertRejects(() => result, Error, "export boom");
+
+    assertEquals(
+      await exists(`${dir}.tmp`),
+      false,
+      "tempDir must be cleaned up once the in-flight write has settled",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("writeCreatures discards a stale leftover temp dir from a previous crash (#4051 review)", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_stale_tmp_" });
+  try {
+    // Simulate a kill between mkdir and the final rename on a prior call:
+    // a leftover sibling temp dir with stale content.
+    const staleTempDir = `${dir}.tmp`;
+    await Deno.mkdir(staleTempDir, { recursive: true });
+    await Deno.writeTextFile(`${staleTempDir}/stale.json`, "{}");
+
+    const population = buildPopulation(2);
+    await writeCreatures(source(population), dir);
+
+    assertEquals(
+      await listNames(dir),
+      ["1.json", "2.json"],
+      "stale leftover content must not be merged into the new checkpoint",
+    );
+    assertEquals(
+      await exists(staleTempDir),
+      false,
+      "leftover temp dir must be cleared, not left behind forever",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("writeCreatures recovers the last-good checkpoint from a leftover .old dir after a kill between swap renames (#4051 review)", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_old_recover_" });
+  try {
+    const good = buildPopulation(2);
+    good.forEach((creature, i) => addTag(creature, "member", `good-${i}`));
+    await writeCreatures(source(good), dir);
+
+    // Simulate a kill between the two swap renames: `dir` was renamed aside
+    // to `.old` but the temp dir never got renamed into place.
+    const oldDir = `${dir}.old`;
+    await Deno.rename(dir, oldDir);
+    assert(!(await exists(dir)), "precondition: dir missing like mid-crash");
+
+    // A second write that itself fails must still recover the last-good
+    // checkpoint from `.old` — recovery runs unconditionally before the
+    // write even starts, independent of whether this write succeeds.
+    const population = buildPopulation(3);
+    await assertRejects(
+      () =>
+        writeCreatures(source(population), dir, {
+          writeTextFile: () => Promise.reject(new Error("disk full")),
+        }),
+      Error,
+      "disk full",
+    );
+
+    assertEquals(
+      await exists(oldDir),
+      false,
+      ".old must be recovered, not left behind",
+    );
+    const recovered = await readCheckpoints(dir, 2);
+    recovered.forEach((parsed, i) => {
+      assertEquals(
+        getTag(parsed, "member"),
+        `good-${i}`,
+        "last-good checkpoint must be recovered from .old",
+      );
+    });
+  } finally {
+    // `dir` may legitimately not exist here if recovery did not run (the
+    // very defect this test guards against) — clean up both possible
+    // locations without letting a missing one mask the real assertion.
+    await Promise.allSettled([
+      Deno.remove(dir, { recursive: true }),
+      Deno.remove(`${dir}.old`, { recursive: true }),
+    ]);
+  }
+});
+
 Deno.test("writeCreatures leaves the previous checkpoint untouched when a write fails partway through", async () => {
   const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_atomic_" });
   try {
