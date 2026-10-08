@@ -83,7 +83,7 @@ original message rather than being silently logged as "disposed".
 `tempDir`/`oldDir` were built by string concatenation on the raw `dir`
 (`${dir}.tmp`, `${dir}.old`). A `creatureStore` ending in a separator (e.g.
 `"out/"`, which shell tab-completion adds by default) made both siblings land
-*inside* the store (`out/.tmp`, `out/.old`) instead of beside it, so the swap's
+_inside_ the store (`out/.tmp`, `out/.old`) instead of beside it, so the swap's
 `Deno.rename(dir, oldDir)` tried to rename the store into its own subdirectory
 and failed with `EINVAL` on every write. `dir` is now resolved with
 `@std/path`'s `resolve()` once, up front, and every rename/mkdir/remove below
@@ -97,9 +97,9 @@ said nothing about the `creatureStore` behaviour change (temp-dir swap and its
 `.tmp`/`.old` siblings, keeping the previous checkpoint on failure, skipped and
 possibly-gapped numbering, the all-disposed refusal, abandoned generations no
 longer committing, trimmed creatures now disposed). Rewrote the entry to cover
-all of it, and updated `docs/PERFORMANCE_TUNING.md`'s
-"File contents and numbering … are unchanged" sentence, which this PR made
-false (numbering can now have gaps).
+all of it, and updated `docs/PERFORMANCE_TUNING.md`'s "File contents and
+numbering … are unchanged" sentence, which this PR made false (numbering can now
+have gaps).
 
 ## Test Coverage
 
@@ -126,23 +126,24 @@ false (numbering can now have gaps).
   `dir` on the next call. All eight confirmed red against the pre-fix code.
 - **Round 2 (#4051 review):** one more test —
   `writeCreatures replaces an existing checkpoint when dir has a trailing
-  separator` writes twice to a store path ending in `/` and asserts the second
-  write replaces the first, with no `.tmp`/`.old` left behind. Confirmed red
+  separator`
+  writes twice to a store path ending in `/` and asserts the second write
+  replaces the first, with no `.tmp`/`.old` left behind. Confirmed red
   (`EINVAL`) against the pre-fix code.
 
 **Docs sweep** — grep: `isRunAbandonedSince`, `abandonEpoch`,
 `awaitWithinHardDeadline`, `CheckpointWriter`, `checkpointEveryGeneration`,
 `creatureStore`; sections:
 `docs/TIMEOUTS.md#-what-each-phase-does-at-the-hard-cap` (documents the
-abandoned-generation background work this fix stops from mutating shared
-state, unchanged), `docs/PERFORMANCE_TUNING.md#checkpoint-write-memory-creature-store`
-(documents the batched checkpoint write; **updated** — the swap is now
-described as atomic/crash-recoverable and the numbering sentence now says gaps
-are possible, since disposed members are skipped), `CHANGELOG.md`
-(**rewritten** `#4050` entry — the original only described the Fix 4 log-message
-correction) and `docs/OPTION_AUDIT_SLICE_E.md` / `docs/TIMEOUTS.md`'s other
-`creatureStore` mentions (read, not updated — neither claims contiguous
-numbering or no sibling directories).
+abandoned-generation background work this fix stops from mutating shared state,
+unchanged), `docs/PERFORMANCE_TUNING.md#checkpoint-write-memory-creature-store`
+(documents the batched checkpoint write; **updated** — the swap is now described
+as atomic/crash-recoverable and the numbering sentence now says gaps are
+possible, since disposed members are skipped), `CHANGELOG.md` (**rewritten**
+`#4050` entry — the original only described the Fix 4 log-message correction)
+and `docs/OPTION_AUDIT_SLICE_E.md` / `docs/TIMEOUTS.md`'s other `creatureStore`
+mentions (read, not updated — neither claims contiguous numbering or no sibling
+directories).
 
 Current totals: 12 `PopulationCap` + 20 `CheckpointWriteBatching` + 1
 `HardDeadlineDisposalRegression` = 33 tests across the three files this PR
@@ -169,22 +170,22 @@ touches, all passing.
   copy forever; a crash between the two swap renames never leaves zero
   checkpoints on disk — both recovered by the next call
   (`CheckpointWriteBatching.ts`: stale-tempDir and `.old`-recovery tests).
-- ✅ A `creatureStore` path ending in a separator still swaps correctly, with
-  no `.tmp`/`.old` left on disk
-  (`CheckpointWriteBatching.ts`: trailing-separator test).
+- ✅ A `creatureStore` path ending in a separator still swaps correctly, with no
+  `.tmp`/`.old` left on disk (`CheckpointWriteBatching.ts`: trailing-separator
+  test).
 
 ## Changes
 
-| File                                          | Change                                                                                         |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `src/NEAT/NeatEvolution.ts`                   | Abandoned generations skip the entire population commit (root-cause fix)                       |
-| `src/creature/CheckpointWriter.ts`            | Temp-dir swap with crash recovery and race-safe cleanup; disposed-creature check before export |
-| `src/NEAT/PopulationCap.ts`                   | `PopulationTrimResult.removedCreatures` field (from the first iteration)                       |
-| `src/creature/BoundedEvolveTeardown.ts`       | Corrected log message                                                                          |
-| `test/NEAT/HardDeadlineDisposalRegression.ts` | Rewritten so it actually reproduces the race and can fail                                      |
+| File                                          | Change                                                                                                |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `src/NEAT/NeatEvolution.ts`                   | Abandoned generations skip the entire population commit (root-cause fix)                              |
+| `src/creature/CheckpointWriter.ts`            | Temp-dir swap with crash recovery and race-safe cleanup; disposed-creature check before export        |
+| `src/NEAT/PopulationCap.ts`                   | `PopulationTrimResult.removedCreatures` field (from the first iteration)                              |
+| `src/creature/BoundedEvolveTeardown.ts`       | Corrected log message                                                                                 |
+| `test/NEAT/HardDeadlineDisposalRegression.ts` | Rewritten so it actually reproduces the race and can fail                                             |
 | `test/creature/CheckpointWriteBatching.ts`    | Nine tests for atomicity, disposal-detection, cleanup-race, crash-orphan and trailing-separator fixes |
-| `CHANGELOG.md`                                | Rewrote the `#4050` entry to cover the full `creatureStore` behaviour change                   |
-| `docs/PERFORMANCE_TUNING.md`                  | Updated the numbering sentence: gaps are now possible                                          |
+| `CHANGELOG.md`                                | Rewrote the `#4050` entry to cover the full `creatureStore` behaviour change                          |
+| `docs/PERFORMANCE_TUNING.md`                  | Updated the numbering sentence: gaps are now possible                                                 |
 
 ## Definition of Done
 
