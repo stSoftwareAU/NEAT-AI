@@ -99,7 +99,7 @@ Cited issues:
 
 - #4050: evolveDir teardown dies on RangeError 'Invalid array length' in
   CreatureExportBuilder after a deadline abandon — and wipes the checkpoint dir
-  first (recurrence of GRQ#4861)
+  first (a recurrence of an earlier downstream report)
 - #4051: Fix RangeError in evolveDir() after hard-deadline abandonment (Issue
   #4050)
 - #4052: Deadline-abandoned generation re-sorts neat.population in place while
