@@ -75,10 +75,18 @@ predicate, applying the same one-generation floor
   can hold the resources the next generation needs; past the cap the wedged
   generation is abandoned (its late rejection swallowed), the population evolved
   so far is kept, and control returns to the caller — no hard kill (GRQ #4470).
-  **Generation 1 is awaited uncapped** (Issue #3940): bounding it is what
-  produced `keeping the 0 generation(s) already evolved`, and the per-task
-  budgets below still clamp every discovery / training child inside it to the
-  cap, so the generation ends without one.
+  The abandoned generation keeps running in the background, so when its fitness
+  phase returns `evolve()` checks `isRunAbandonedSince` and returns before
+  anything sorts or commits `neat.population`. The result it hands back is still
+  real — the champion and averages come from a sorted _copy_ of the population —
+  because `evolveEnv` and `evolveRL` await `evolve()` directly and adopt that
+  champion. The teardown's checkpoint write (`writeCreatures`) also iterates a
+  snapshot of the population taken at entry, so the checkpoint holds every
+  member exactly once (Issue #4052). **Generation 1 is awaited uncapped** (Issue
+  #3940): bounding it is what produced
+  `keeping the 0 generation(s) already evolved`, and the per-task budgets below
+  still clamp every discovery / training child inside it to the cap, so the
+  generation ends without one.
 - **Over-run** — independently of the hard cap, when elapsed exceeds
   `timeoutMinutes × factor` after at least one generation, the loop stops
   starting new generations and finishes with the population committed. This is
