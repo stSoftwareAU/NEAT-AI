@@ -307,10 +307,14 @@ function runSeededArm(
   settings: StudySettings,
 ): ArmResult {
   const rng = createSeededRng(settings.seed ^ 0x5eed);
+  // `createNeatConfig` installs its own global generator, unseeded unless told
+  // otherwise, which silently replaces the one `runMemeticArm` seeded. Passing
+  // the seed keeps crossover and mutation reproducible.
   const config = createNeatConfig({
     populationSize: settings.populationSize,
     elitism: settings.elitism,
     mutationRate: 0.5,
+    seed: settings.seed,
   });
   const mutator = new Mutator(config);
   const corpus = buildStudyCorpus(settings);

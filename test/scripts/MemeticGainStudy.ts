@@ -254,6 +254,18 @@ Deno.test("runMemeticArm - no creature is trained twice in a run (#3553)", async
   });
 });
 
+Deno.test("runMemeticArm - the same seed runs the same search", async () => {
+  await initWasmForTests();
+  await withRngTestLock(() => {
+    const settings = { ...TINY, generations: 8 };
+    const first = withAvailableTrainer(() => runMemeticArm("top", settings));
+    const second = withAvailableTrainer(() => runMemeticArm("top", settings));
+    assertEquals(second.bestScorePerGeneration, first.bestScorePerGeneration);
+    assertEquals(second.skippedAlreadyTrained, first.skippedAlreadyTrained);
+    assertEquals(second.events.length, first.events.length);
+  });
+});
+
 Deno.test("runMemeticArm - the caller's random generator is restored", async () => {
   await initWasmForTests();
   await withRngTestLock(() => {
