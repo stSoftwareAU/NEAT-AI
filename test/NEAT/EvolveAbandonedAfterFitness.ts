@@ -9,8 +9,8 @@
  * Each test starts `neat.evolve()` without awaiting it and abandons the run
  * straight away (deterministic: `evolve()` runs up to its first real await
  * before the abandon line executes, and fitness is a real await). The
- * `Date.now()` used here only supplies an arbitrary past instant for the
- * required `hardDeadlineMS` argument, not a timing assertion.
+ * `hardDeadlineMS` argument is a fixed, arbitrary past instant (no timing API
+ * is used).
  */
 
 import { assert, assertEquals } from "@std/assert";
@@ -24,6 +24,9 @@ import {
   type DataRecordInterface,
   makeDataDir,
 } from "@architecture/DataSet.ts";
+
+/** A fixed epoch-ms instant that is always in the past. */
+const PAST_HARD_DEADLINE_MS = 1_000;
 
 function createTestDataDir(input: number, output: number): string {
   const records: DataRecordInterface[] = [];
@@ -86,12 +89,11 @@ Deno.test(
     try {
       const neat = await buildScoredNeat(workers);
       const before = [...neat.population];
-      const completedBefore = neat.generationsCompleted;
 
       const evolvePromise = neat.evolve(previousFittest());
       neat.generationsCompleted = 1;
       assert(
-        neat.abandonInFlightPastHardDeadline(Date.now() - 1000),
+        neat.abandonInFlightPastHardDeadline(PAST_HARD_DEADLINE_MS),
         "the hard-deadline abandon must actually fire",
       );
       await evolvePromise;
@@ -109,8 +111,9 @@ Deno.test(
       );
       assertEquals(
         neat.generationsCompleted,
-        completedBefore + 1,
-        "an abandoned generation must not bank itself as completed",
+        1,
+        "an abandoned generation must not bank itself as completed " +
+          "(only the generation the test marked complete is counted)",
       );
     } finally {
       await terminateWorkers(workers);
@@ -132,7 +135,7 @@ Deno.test(
 
       const evolvePromise = neat.evolve(previousFittest());
       neat.generationsCompleted = 1;
-      assert(neat.abandonInFlightPastHardDeadline(Date.now() - 1000));
+      assert(neat.abandonInFlightPastHardDeadline(PAST_HARD_DEADLINE_MS));
 
       // Each write yields a macrotask so the background generation can
       // finish mid-checkpoint.
