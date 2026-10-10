@@ -92,16 +92,15 @@ predicate, applying the same one-generation floor
   because `evolveEnv` and `evolveRL` await `evolve()` directly and adopt that
   champion. The teardown's checkpoint write (`writeCreatures`) also iterates a
   snapshot of the population taken at entry, so the checkpoint holds every
-  member exactly once (Issue #4052).
-  **Generation 1 is awaited past the hard cap, but only up to the
-  first-generation bound** (Issues #3940, #4053): bounding it at the hard cap is
-  what produced `keeping the 0 generation(s) already evolved`, and the per-task
-  budgets below still clamp every discovery / training child to the cap, so a
-  generation 1 that is merely late ends on its own. One that outlives the
-  first-generation bound is abandoned with `terminationReason`
-  `"first-generation-wedged"`; its in-flight training tasks are cancelled (their
-  schedule-time captures under `NEAT_AI_TRAINING_TASK_CAPTURE_DIR` are kept, GRQ
-  #4794) and named in the log.
+  member exactly once (Issue #4052). **Generation 1 is awaited past the hard
+  cap, but only up to the first-generation bound** (Issues #3940, #4053):
+  bounding it at the hard cap is what produced
+  `keeping the 0 generation(s) already evolved`, and the per-task budgets below
+  still clamp every discovery / training child to the cap, so a generation 1
+  that is merely late ends on its own. One that outlives the first-generation
+  bound is abandoned with `terminationReason` `"first-generation-wedged"`; its
+  in-flight training tasks are cancelled (their schedule-time captures under
+  `NEAT_AI_TRAINING_TASK_CAPTURE_DIR` are kept, GRQ #4794) and named in the log.
 - **Over-run** — independently of the hard cap, when elapsed exceeds
   `timeoutMinutes × factor` after at least one generation, the loop stops
   starting new generations and finishes with the population committed. This is
