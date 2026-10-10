@@ -113,6 +113,13 @@ async function removeIfExists(path: string): Promise<void> {
  * (inside the store), and the swap's `Deno.rename("out/", "out/.old")` then
  * fails with EINVAL (renaming a directory into its own subdirectory).
  *
+ * Issue #4052: the membership and order of `source.population` are
+ * snapshotted at entry. A generation abandoned past the hard deadline may
+ * still be running in the background and can reorder `source.population` in
+ * place (e.g. `sortCreaturesByScore`) while this write awaits its batches;
+ * iterating the live array would then duplicate some members and silently
+ * drop others.
+ *
  * @throws RangeError when `batchSize` is not a positive integer.
  */
 export async function writeCreatures(
@@ -129,7 +136,8 @@ export async function writeCreatures(
   const writeTextFile = options.writeTextFile ??
     ((path: string, text: string) => Deno.writeTextFile(path, text));
 
-  const population = source.population;
+  // Issue #4052: snapshot membership and order at entry (see doc comment).
+  const population = [...source.population];
   // Resolve once and reuse everywhere below: `resolve()` strips a trailing
   // separator, so the `.tmp` / `.old` names are always true siblings of the
   // store, not entries inside it.
