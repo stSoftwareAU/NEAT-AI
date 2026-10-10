@@ -72,10 +72,12 @@ Deno.test({
     let terminateCalls = 0;
 
     const deps: EvolveDirDeps = {
-      // One hour in the past: with timeoutMinutes = 1 both the soft end time
-      // and the hard cap sit ~58 min behind the wall clock, so the loop breaks
-      // on the hard-cap branch at generation 1.
-      startTimeMS: Date.now() - 60 * 60 * 1000,
+      // Three minutes in the past: with timeoutMinutes = 1 both the soft end
+      // time (start + 1 min) and the hard cap (start + 2 min) are behind the
+      // wall clock, so the loop breaks on the hard-cap branch at generation 1,
+      // while the first-generation bound (start + 6 min, Issue #4053) is still
+      // ahead.
+      startTimeMS: Date.now() - 3 * 60_000,
       // Abandon the wedged worker promptly instead of after the production
       // default; the test asserts on the outcome, never on elapsed time.
       teardownBudgetMS: 1,
@@ -107,6 +109,11 @@ Deno.test({
       "the teardown must still ask every worker to stop",
     );
     assert(Number.isFinite(result.score), "best score must be finite");
+    assertEquals(
+      result.terminationReason,
+      "hard-deadline",
+      "the hard cap, not a first-generation abandon, must end the run",
+    );
     assertEquals(
       result.generation,
       1,
@@ -147,7 +154,9 @@ Deno.test({
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
 
     const deps: EvolveDirDeps = {
-      startTimeMS: Date.now() - 60 * 60 * 1000,
+      // Past the hard cap (start + 2 min), inside the first-generation bound
+      // (start + 6 min) — see the first test in this file.
+      startTimeMS: Date.now() - 3 * 60_000,
       teardownBudgetMS: 1,
       onNeatReady: (neat) => {
         neat.trainingInProgress.set("stuck-train", new Promise<void>(() => {}));
@@ -168,6 +177,11 @@ Deno.test({
     }, deps);
 
     assert(Number.isFinite(result.score), "best score must be finite");
+    assertEquals(
+      result.terminationReason,
+      "hard-deadline",
+      "the hard cap, not a first-generation abandon, must end the run",
+    );
 
     // Before #4472 the unguarded `w.terminate()` threw straight out of
     // evolveDir, so the champion restore and the checkpoint write never ran and
@@ -200,7 +214,9 @@ Deno.test({
 
     let drainCalls = 0;
     const deps: EvolveDirDeps = {
-      startTimeMS: Date.now() - 60 * 60 * 1000,
+      // Past the hard cap (start + 2 min), inside the first-generation bound
+      // (start + 6 min) — see the first test in this file.
+      startTimeMS: Date.now() - 3 * 60_000,
       teardownBudgetMS: 1,
       onNeatReady: (neat) => {
         neat.trainingInProgress.set("stuck-train", new Promise<void>(() => {}));
@@ -224,6 +240,11 @@ Deno.test({
 
     assertEquals(drainCalls, 1, "the teardown must still attempt the drain");
     assert(Number.isFinite(result.score), "best score must be finite");
+    assertEquals(
+      result.terminationReason,
+      "hard-deadline",
+      "the hard cap, not a first-generation abandon, must end the run",
+    );
 
     const stored = await loadStoredCreatures(creatureStore);
     assert(

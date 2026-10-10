@@ -49,10 +49,12 @@ function tinyDataSet(): DataRecordInterface[] {
  */
 function hardDeadlineDeps(captureNeat: (neat: Neat) => void): EvolveDirDeps {
   return {
-    // One hour in the past: with timeoutMinutes = 1 the soft endTime (start +
-    // 1 min) and the hard cap (start + 1 min + 1 min grace) both sit ~58 min
-    // before now, so abandonInFlightPastHardDeadline fires on generation 1.
-    startTimeMS: Date.now() - 60 * 60 * 1000,
+    // Three minutes in the past: with timeoutMinutes = 1 the soft endTime
+    // (start + 1 min) and the hard cap (start + 2 min) are already behind the
+    // wall clock, so abandonInFlightPastHardDeadline fires on generation 1. The
+    // first-generation bound (start + 6 min, Issue #4053) is still ahead, so
+    // generation 0 is never raced against an expired deadline on a slow host.
+    startTimeMS: Date.now() - 3 * 60_000,
     onNeatReady: captureNeat,
   };
 }
@@ -119,6 +121,11 @@ Deno.test({
       result.generation,
       1,
       "the hard-cap branch must break on the first completed cycle",
+    );
+    assertEquals(
+      result.terminationReason,
+      "hard-deadline",
+      "the hard-cap branch, not a first-generation abandon, ended the run",
     );
     // The best creature found was loaded onto the caller's creature: it is a
     // valid, activatable network that round-trips through JSON.
@@ -199,6 +206,11 @@ Deno.test({
       result.generation,
       1,
       "the hard-cap branch must break on the first completed cycle",
+    );
+    assertEquals(
+      result.terminationReason,
+      "hard-deadline",
+      "the hard-cap branch, not a first-generation abandon, ended the run",
     );
 
     assert(captured, "onNeatReady must have handed back the Neat instance");
