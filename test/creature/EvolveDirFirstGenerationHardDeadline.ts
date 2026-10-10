@@ -9,7 +9,11 @@ import {
   type DataRecordInterface,
   makeDataDir,
 } from "@architecture/DataSet.ts";
-import { HARD_DEADLINE_WATCHDOG_INTERVAL_MS } from "@neat/HardDeadline.ts";
+import {
+  computeFirstGenerationDeadlineTS,
+  computeHardDeadlineTS,
+  HARD_DEADLINE_WATCHDOG_INTERVAL_MS,
+} from "@neat/HardDeadline.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**
@@ -27,6 +31,10 @@ import { initWasmForTests } from "../_initWasm.ts";
  * generation 1 starts (#2888): no assertion measures elapsed time, and the run
  * is held open only long enough for the abandon watchdog to have had its
  * chance to fire.
+ *
+ * Issue #4053 bounded generation 1 as well (`computeFirstGenerationDeadlineTS`),
+ * so the clock here lands between the hard cap and the first-generation bound:
+ * past the first, inside the second.
  */
 
 function tinyDataSet(): DataRecordInterface[] {
@@ -62,10 +70,20 @@ Deno.test({
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
 
     const start = Date.now();
-    // The clock sits inside the cap until generation 1 begins, then jumps an
-    // hour past it — a first generation slower than `timeoutMinutes + grace`.
+    // The clock sits inside the cap until generation 1 begins, then jumps to a
+    // point past the hard cap but still inside the first-generation bound
+    // (Issue #4053) — a first generation slower than `timeoutMinutes + grace`.
+    const jumpTarget = computeHardDeadlineTS(start, 1)! + 60_000;
+    assert(
+      jumpTarget > computeHardDeadlineTS(start, 1)!,
+      "the jump target must be past the hard deadline",
+    );
+    assert(
+      jumpTarget < computeFirstGenerationDeadlineTS(start, 1)!,
+      "the jump target must be inside the first-generation bound",
+    );
     let pastHardDeadline = false;
-    const now = () => pastHardDeadline ? start + 60 * 60 * 1000 : start;
+    const now = () => pastHardDeadline ? jumpTarget : start;
 
     let captured: Neat | undefined;
     const deps: EvolveDirDeps = {

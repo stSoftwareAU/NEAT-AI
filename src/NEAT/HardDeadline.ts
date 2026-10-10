@@ -35,11 +35,14 @@ export const HARD_DEADLINE_WATCHDOG_INTERVAL_MS = 1_000;
 
 /**
  * Why an `evolve*` run stopped. Distinguishes graceful over-run
- * self-termination from the T+15 hard-deadline abandon path.
+ * self-termination, the T+15 hard-deadline abandon path, and the loud
+ * abandon of a first generation that never settled (Issue #4053).
  */
 export type EvolveTerminationReason =
   | "overrun"
   | "hard-deadline"
+  // Generation 1 outlived its own first-generation bound — Issue #4053.
+  | "first-generation-wedged"
   | "iterations"
   | "target-error"
   | "interrupted";
@@ -72,6 +75,45 @@ export function computeHardDeadlineTS(
   );
 
   return startMS + timeoutMinutes * 60_000 + graceMinutes * 60_000;
+}
+
+/** Extra allowance generation 1 gets past the hard cap, as a multiple of `timeoutMinutes` (Issue #4053). */
+export const FIRST_GENERATION_TIMEOUT_MULTIPLE = 4;
+
+/** Ceiling, in minutes, on the extra allowance generation 1 gets past the hard cap (Issue #4053). */
+export const FIRST_GENERATION_MAX_EXTRA_MINUTES = 60;
+
+/**
+ * Compute the absolute deadline for the first generation (Issue #4053).
+ *
+ * Issue #3940 keeps a generation 1 that merely runs late alive past the hard
+ * cap, because abandoning it returns zero generations. That left a generation 1
+ * that never settles with no bound at all. This deadline bounds it: the hard
+ * cap plus `min(FIRST_GENERATION_MAX_EXTRA_MINUTES,
+ * FIRST_GENERATION_TIMEOUT_MULTIPLE * timeoutMinutes)` minutes, so it is always
+ * strictly after the hard cap for a positive `timeoutMinutes`. For example
+ * T=5 gives start+30 min, T=15 start+90 min, T=60 start+135 min.
+ *
+ * Pure: timestamps in, timestamp out — no real clock (#2888).
+ *
+ * @param startMS         Absolute start timestamp in milliseconds.
+ * @param timeoutMinutes  Configured soft timeout in minutes.
+ * @returns The absolute first-generation deadline in milliseconds, or
+ *          `undefined` when `timeoutMinutes` is 0/unset (no timeout → no bound).
+ */
+export function computeFirstGenerationDeadlineTS(
+  startMS: number,
+  timeoutMinutes: number,
+): number | undefined {
+  if (!timeoutMinutes) {
+    return undefined;
+  }
+
+  return computeHardDeadlineTS(startMS, timeoutMinutes)! +
+    Math.min(
+        FIRST_GENERATION_MAX_EXTRA_MINUTES,
+        FIRST_GENERATION_TIMEOUT_MULTIPLE * timeoutMinutes,
+      ) * 60_000;
 }
 
 /**
@@ -130,7 +172,9 @@ export function shouldStopStartingGenerations(
  * than `timeoutMinutes + grace` was abandoned mid-flight and the run returned
  * zero generations — an unscored population with no winner to publish. Once one
  * generation is in hand the cap behaves exactly as it did before (#2892/#2896):
- * a run that is making progress is still bounded.
+ * a run that is making progress is still bounded. Generation 1 is bounded
+ * separately by `computeFirstGenerationDeadlineTS` in evolveDir (Issue #4053),
+ * not by this predicate.
  *
  * Pure: counts and timestamps in, boolean out — no real clock (#2888).
  *

@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4053:** `evolveDir`'s first generation had no deadline, so a
+  generation 1 that never settled outlived a 5-minute `timeoutMinutes` by 2 h.
+  Generation 1 now has its own bound,
+  `timeoutMinutes + grace + min(60, 4 × timeoutMinutes)` minutes; breaching it
+  logs `[Neat] First generation wedged after Ns … in-flight: <ids>` at error
+  level, cancels in-flight training (keeping their captures) and returns with
+  `generation: 0` and the new `terminationReason` `"first-generation-wedged"`. A
+  generation 1 that merely runs late (Issue #3940) still completes inside that
+  bound.
 - **Issue #4050:** A hard-deadline-abandoned generation could race the teardown
   checkpoint write, disposing a population member the write was still exporting
   and crashing it with a `RangeError`. Fixed at the root cause and hardened end
