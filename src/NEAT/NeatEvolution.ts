@@ -45,7 +45,10 @@ import {
   computeTopologyAverages,
   type TopologyAverages,
 } from "@neat/TopologyAverages.ts";
-import type { MutationOperatorReport } from "@neat/MutationOperatorReport.ts";
+import {
+  MULTI_OPERATOR_ATTRIBUTION_NOTE,
+  type MutationOperatorReport,
+} from "@neat/MutationOperatorReport.ts";
 import { formatMutationOperatorReport } from "@neat/MutationOperatorLog.ts";
 import type {
   GenerationPhaseTiming,
@@ -114,6 +117,60 @@ export interface EvolveResult {
 }
 
 /**
+ * Issue #4052: the neutral result for a generation abandoned by the hard
+ * deadline once its fitness phase returned. Nothing reads it (the race has
+ * already resolved as breached), so it carries only inert values: the
+ * champion handed in (or the first member, unsorted — never a reorder of
+ * `neat.population`), zeroed telemetry and an empty mutation report.
+ */
+function abandonedGenerationResult(
+  neat: Neat,
+  previousFittest: Creature | undefined,
+  fitnessMs: number,
+  totalMs: number,
+): EvolveResult {
+  return {
+    fittest: (previousFittest ?? neat.population[0])!,
+    averageScore: 0,
+    plateau: {
+      onPlateau: false,
+      generationsOnPlateau: 0,
+      improvementRate: null,
+      mutationMultiplier: 1,
+    },
+    phaseTiming: {
+      fitnessMs,
+      breedingMs: 0,
+      resultProcessingMs: 0,
+      totalMs,
+    },
+    throughput: computeThroughputMetrics({
+      wallClockMs: totalMs,
+      fitnessMs,
+      fastWorkerCount: 0,
+      heavyWorkerCount: 0,
+      fastBusyMs: 0,
+      heavyBusyMs: 0,
+      fastQueueMaxDepth: 0,
+      heavyQueueMaxDepth: 0,
+    }),
+    squashHistogram: {},
+    topologyAverages: { averageNeurons: 0, averageSynapses: 0 },
+    mutationOperators: {
+      operators: {},
+      mcmc: { proposed: 0, accepted: 0, rejected: 0 },
+      attribution: {
+        resolvedOffspring: 0,
+        multiOperatorOffspring: 0,
+        discardedOffspring: 0,
+        evaluationMs: 0,
+        note: MULTI_OPERATOR_ATTRIBUTION_NOTE,
+      },
+    },
+  };
+}
+
+/**
  * Evaluates, selects, breeds and mutates the population.
  *
  * @param neat - The Neat instance to evolve
@@ -132,6 +189,10 @@ export async function evolve(
   // population changes — see the guard before the population commit below,
   // which is what stops an abandoned generation disposing creatures that
   // teardown's checkpoint write may still be exporting.
+  //
+  // Issue #4052: the same check runs again the moment fitness returns, before
+  // anything sorts or otherwise rewrites neat.population in place — that
+  // array is the one teardown's checkpoint write is iterating.
   const scheduledEpoch = neat.abandonEpoch;
 
   // Issue #2239: Per-generation timing diagnostics
@@ -257,6 +318,26 @@ export async function evolve(
     neat.leaveInFlightPhase();
   }
   const fitnessMs = Date.now() - fitnessStartMs;
+
+  // Issue #4052: fitness returned after the hard deadline abandoned this
+  // generation. Teardown's checkpoint write is iterating neat.population, so
+  // bail out before anything below sorts, scores-to-disk or commits it. The
+  // generation is neither banked (generationsCompleted) nor reported: the
+  // hard-deadline race has already resolved with HARD_DEADLINE_BREACHED and
+  // discards whatever this returns.
+  if (neat.isRunAbandonedSince(scheduledEpoch)) {
+    getLogger().warn(
+      `[Neat] Generation ${neat.currentGeneration} abandoned past the ` +
+        `hard deadline while fitness was in flight — leaving the ` +
+        `population untouched (Issue #4052)`,
+    );
+    return abandonedGenerationResult(
+      neat,
+      previousFittest,
+      fitnessMs,
+      Date.now() - evolveStartMs,
+    );
+  }
 
   // Issue #3931: every generation states its fidelity and how many exact
   // evaluations it paid for, so a run's trace can be read after the fact. An
