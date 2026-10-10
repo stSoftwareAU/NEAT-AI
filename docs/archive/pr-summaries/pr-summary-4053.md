@@ -192,8 +192,15 @@ This repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
   past the new first-generation bound (start + 6 min for T=1), and Issue #4053
   requires such a generation to be abandoned. Two asserts were added pinning the
   target between the two bounds. No assertion was removed.
-- `deno test --allow-all test/NEAT/HardDeadline.ts test/NEAT/HardDeadlineFirstGeneration.ts test/NEAT/TrainingTaskCapture.ts test/creature/EvolveDirFirstGenerationWedged.ts test/creature/EvolveDirFirstGenerationHardDeadline.ts test/creature/EvolveDirStuckChildDeadline.ts test/creature/EvolveDirHardDeadline.ts`
-  — passed (36 passed, 0 failed).
+- Modified `test/creature/EvolveDirHardDeadline.ts` and
+  `test/creature/EvolveDirBoundedTeardown.ts` (PR #4054 review): `startTimeMS`
+  changed from `Date.now() - 60 * 60 * 1000` to `Date.now() - 3 * 60_000`, past
+  the hard cap (start + 2 min) but inside the first-generation bound
+  (start + 6 min for T=1), so generation 0 is not raced against an expired
+  deadline on a slow host. Each now also asserts
+  `terminationReason === "hard-deadline"`. No assertion was removed.
+- `deno test --allow-all test/NEAT/HardDeadline.ts test/NEAT/HardDeadlineFirstGeneration.ts test/NEAT/TrainingTaskCapture.ts test/creature/EvolveDirFirstGenerationWedged.ts test/creature/EvolveDirFirstGenerationHardDeadline.ts test/creature/EvolveDirStuckChildDeadline.ts test/creature/EvolveDirHardDeadline.ts test/creature/EvolveDirBoundedTeardown.ts`
+  — passed (40 passed, 0 failed).
 - `./quality.sh --rust-scorer-bin=<built rust_scorer>` — passed:
   `ok | 9858 passed (5 steps) | 0 failed | 41 ignored`. It ran before the final
   comment-only and unit-test commit. The touched test files were re-run on the
