@@ -48,10 +48,13 @@ Deno.test(
     // intact on creatures that are not forward-only.
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
     creature.semanticVersion = "4.0.0";
+    const hiddenIndex = creature.input;
+    // A random MAXIMUM/MINIMUM squash strips self-loops in Neuron.fix(), which
+    // made this test flaky; pin one that tolerates them.
+    creature.neurons[hiddenIndex].setSquash("IDENTITY");
     creatureValidate(creature);
 
     // Inject a self-connection.
-    const hiddenIndex = creature.input;
     creature.synapses.push(new Synapse(hiddenIndex, hiddenIndex, 0.05));
     creature.synapses.sort(
       (a, b) => (a.from === b.from ? a.to - b.to : a.from - b.from),
