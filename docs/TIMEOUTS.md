@@ -77,10 +77,13 @@ predicate, applying the same one-generation floor
   so far is kept, and control returns to the caller — no hard kill (GRQ #4470).
   The abandoned generation keeps running in the background, so when its fitness
   phase returns `evolve()` checks `isRunAbandonedSince` and returns before
-  anything sorts or commits `neat.population`; the teardown's checkpoint write
-  (`writeCreatures`) also iterates a snapshot of the population taken at entry,
-  so the checkpoint holds every member exactly once (Issue #4052). **Generation
-  1 is awaited uncapped** (Issue #3940): bounding it is what produced
+  anything sorts or commits `neat.population`. The result it hands back is still
+  real — the champion and averages come from a sorted _copy_ of the population —
+  because `evolveEnv` and `evolveRL` await `evolve()` directly and adopt that
+  champion. The teardown's checkpoint write (`writeCreatures`) also iterates a
+  snapshot of the population taken at entry, so the checkpoint holds every
+  member exactly once (Issue #4052). **Generation 1 is awaited uncapped** (Issue
+  #3940): bounding it is what produced
   `keeping the 0 generation(s) already evolved`, and the per-task budgets below
   still clamp every discovery / training child inside it to the cap, so the
   generation ends without one.

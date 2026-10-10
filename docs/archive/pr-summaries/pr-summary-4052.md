@@ -16,8 +16,14 @@ Two changes close it:
 - **Part A** — `CheckpointWriter.writeCreatures` snapshots `source.population`
   at entry and iterates the snapshot.
 - **Part B** — `evolve()` checks `neat.isRunAbandonedSince(scheduledEpoch)` as
-  soon as fitness returns and returns a valid `EvolveResult` before anything
-  mutates `neat.population`.
+  soon as fitness returns and returns before anything mutates `neat.population`.
+  The returned `EvolveResult` is real: the champion (a clone of the best member,
+  or the previous champion on a tie or better), `averageScore` and
+  `topologyAverages` are built from a sorted _copy_ of the population, so
+  callers that await `evolve()` directly (`evolveEnv`, `evolveRL`, and
+  `evolveDir` when the in-fitness watchdog wins the race) still adopt the
+  generation's champion and emit true telemetry. Only the mutation report,
+  squash histogram and breeding timings are empty, because breeding did not run.
 
 ```mermaid
 sequenceDiagram
@@ -53,8 +59,11 @@ version in `deno.json` is bumped from 7.0.51 to 7.0.52.
 
 ### Essential Design Decisions
 
-- Part B returns through a small `abandonedGenerationResult` helper so callers
-  still receive a well-formed `EvolveResult` rather than `undefined`.
+- Part B returns through a small `abandonedGenerationResult` helper that builds
+  the result from a sorted copy of the population (PR #4055 review), so callers
+  that await `evolve()` directly lose neither the champion nor real telemetry.
+  An explicit `abandoned` flag was not added: base behaviour for those callers
+  was to use the generation's result, and this preserves it.
 - The #4050 / #4051 guard in the population-commit path is kept; it covers
   abandonment that happens after this new check.
 - The snapshot copies the array (membership and order), not the creatures;
@@ -73,11 +82,14 @@ Tests (paths relative to the repository root):
   member once when the source population is reversed in place mid-write, and
   when it is re-sorted by score mid-write (#4052).
 - `test/NEAT/EvolveAbandonedAfterFitness.ts` — an abandon during fitness leaves
-  `neat.population` in its original order, and a checkpoint written while the
-  abandoned generation finishes holds every member exactly once (`batchSize: 2`,
-  `writeTextFile` seam with a short delay, sorted score tags compared). The
-  wall-clock hard deadline is a fixed constant (`PAST_HARD_DEADLINE_MS`); no
-  timing API is used in the tests.
+  `neat.population` in its original order; the abandoned result carries the real
+  champion, mean score and topology averages; a previous champion that beats the
+  population is kept; and a checkpoint holds every member exactly once when the
+  abandoned generation runs to completion _between_ batches (`batchSize: 2`; on
+  the first `writeTextFile` call only, the test starts `evolve()`, abandons it
+  and awaits it, so the reorder lands deterministically after batch one is
+  read). The wall-clock hard deadline is a fixed constant
+  (`PAST_HARD_DEADLINE_MS`); no timing API is used in the tests.
 
 **Docs sweep** — grep: `writeCreatures`, `sortCreaturesByScore`,
 `isRunAbandonedSince`, `abandon\w*`, `hard deadline`, `checkpoint` (across
@@ -114,7 +126,7 @@ Cited issues:
 - **Status:** verified — reproduced against the base code by the regression
   tests below.
 - **Regression test:** `test/NEAT/EvolveAbandonedAfterFitness.ts` (abandon
-  during fitness, `writeCreatures` running while the generation finishes, each
+  during fitness; the generation finishes between two checkpoint batches; each
   original member written exactly once) and
   `test/creature/CheckpointWriteSnapshot.ts`.
 
@@ -127,7 +139,7 @@ Cited issues:
   `test/creature/CheckpointWriteSnapshot.ts` — reviewer: met
 - **met** — Part B: `evolve()` checks `isRunAbandonedSince(scheduledEpoch)` as
   soon as fitness returns and returns before mutating `neat.population` —
-  evidence: `src/NEAT/NeatEvolution.ts:328`,
+  evidence: `src/NEAT/NeatEvolution.ts:348`,
   `test/NEAT/EvolveAbandonedAfterFitness.ts` — reviewer: met
 - **met** — Required test: abandon during fitness, run `writeCreatures` while
   the generation finishes, assert each original member is written exactly once —
@@ -166,35 +178,56 @@ changes, no new dependencies, no source-grep tests.
 
 ## Test Plan
 
-Red-run evidence (change removed on purpose, test run, change restored):
+Red-run evidence (change removed on purpose, test run, change restored; 4 tests
+in `test/NEAT/EvolveAbandonedAfterFitness.ts`):
 
-- Part A removed (iterate `source.population` directly): both tests in
-  `test/creature/CheckpointWriteSnapshot.ts` and the checkpoint test in
-  `test/NEAT/EvolveAbandonedAfterFitness.ts` go red.
-- Part B check disabled: the "leaves neat.population in its original order" test
-  goes red.
-- With both in place: 4 passed, 0 failed.
+- Base `NeatEvolution.ts` and `CheckpointWriter.ts` (neither fix): all 4 fail,
+  including the checkpoint test
+  (`every original member must be checkpointed
+  exactly once`) — the reorder
+  now lands between batches, so it no longer passes on the unfixed code.
+- Part B kept but the helper reverted to the old placeholder
+  (`previousFittest ??
+  population[0]`, `averageScore: 0`): the "real champion
+  and averages" test goes red (`champion is not lost`).
+- The `previousFittest.score >= champion.score` branch flipped: the "keeps a
+  previous champion" test goes red.
+- The checkpoint test cannot go red from removing Part A alone while Part B is
+  present, because nothing reorders the array then; Part A is pinned directly by
+  `test/creature/CheckpointWriteSnapshot.ts`, which goes red when it is removed.
+- With everything in place: 6 passed, 0 failed (4 + 2 in
+  `test/creature/CheckpointWriteSnapshot.ts`).
 
 Run with
 `deno test --allow-read --allow-write --allow-env --allow-ffi --allow-net test/creature/CheckpointWriteSnapshot.ts test/NEAT/EvolveAbandonedAfterFitness.ts`.
 
 Branch outcomes:
 
-- `src/NEAT/NeatEvolution.ts:328` abandoned: early return with the population
-  untouched — `test/NEAT/EvolveAbandonedAfterFitness.ts` "leaves neat.population
-  in its original order"; disabling the check went red.
-- `src/NEAT/NeatEvolution.ts:328` not abandoned: continues to the existing sort
+- `src/NEAT/NeatEvolution.ts:348` abandoned: early return, population untouched
+  — `test/NEAT/EvolveAbandonedAfterFitness.ts` "leaves neat.population in its
+  original order"; removing the check went red.
+- `src/NEAT/NeatEvolution.ts:348` not abandoned: continues to the existing sort
   and commit path — covered by the existing evolve tests, which still pass.
+- `src/NEAT/NeatEvolution.ts:142` previous champion >= best member: previous
+  champion returned — `test/NEAT/EvolveAbandonedAfterFitness.ts` "keeps a
+  previous champion"; flipping the condition went red.
+- `src/NEAT/NeatEvolution.ts:142` previous champion below best member (or none):
+  best member's clone returned — "real champion and averages" test; the old
+  placeholder went red.
 - `src/creature/CheckpointWriter.ts:140` snapshot: iterates a stable copy —
   `test/creature/CheckpointWriteSnapshot.ts` (both tests) and the checkpoint
-  test in `test/NEAT/EvolveAbandonedAfterFitness.ts`; removing the snapshot went
-  red.
+  test in `test/NEAT/EvolveAbandonedAfterFitness.ts` (red with both fixes
+  removed).
 
 Guards on the new path: the early return sits before the sort and any population
 mutation, so nothing is half-applied. The existing #4050 / #4051 abandon guard
-at `src/NEAT/NeatEvolution.ts:1109` is kept for abandonment after this check.
+at `src/NEAT/NeatEvolution.ts:1129` is kept for abandonment after this check.
 Callers checked: `writeCreatures` has no changed signature, so every caller gets
-the snapshot; `evolve()` callers receive a normal `EvolveResult`.
+the snapshot; `evolve()` callers (`evolveDir`, `evolveEnv`, `evolveRL`) receive
+a real `EvolveResult` and adopt its champion as before. Not covered by a test
+that runs a caller end to end: firing the in-fitness watchdog through
+`evolveEnv` / `evolveRL` needs a real wall-clock deadline; the contract those
+callers consume (`EvolveResult`) is pinned at `evolve()`.
 
 Removed assertions: none.
 

@@ -13,6 +13,7 @@ import { trimPopulationToSize } from "@neat/PopulationCap.ts";
 import { injectRandomImmigrants } from "@neat/RandomImmigrants.ts";
 import { DeDuplicator } from "@architecture/DeDuplicator.ts";
 import {
+  computeAverageScore,
   makeElitists,
   sortCreaturesByScore,
 } from "@architecture/ElitismUtils.ts";
@@ -117,11 +118,14 @@ export interface EvolveResult {
 }
 
 /**
- * Issue #4052: the neutral result for a generation abandoned by the hard
- * deadline once its fitness phase returned. Nothing reads it (the race has
- * already resolved as breached), so it carries only inert values: the
- * champion handed in (or the first member, unsorted — never a reorder of
- * `neat.population`), zeroed telemetry and an empty mutation report.
+ * Issue #4052: the result for a generation abandoned by the hard deadline once
+ * its fitness phase returned. Callers that await `evolve()` directly
+ * (`evolveEnv`, `evolveRL`, and `evolveDir` when the in-fitness watchdog beats
+ * its race poll) feed this straight into `finishGeneration`, so it must stay
+ * real: the champion and the averages are read from a sorted *copy* of
+ * `neat.population` — the live array teardown's checkpoint write is iterating
+ * is never reordered. Breeding and mutation did not run, so the mutation
+ * report, squash histogram and breeding/result phase timings are empty.
  */
 function abandonedGenerationResult(
   neat: Neat,
@@ -129,14 +133,30 @@ function abandonedGenerationResult(
   fitnessMs: number,
   totalMs: number,
 ): EvolveResult {
+  const ranked = sortCreaturesByScore([...neat.population]);
+  let champion = ranked[0];
+  assert(champion?.uuid, "Fittest creature has no UUID");
+  assert(champion.score, "No fittest creature score found");
+  // Same rule as the normal path: a tie keeps the previous champion.
+  if (previousFittest?.score !== undefined) {
+    if (previousFittest.score >= champion.score) champion = previousFittest;
+  }
+  const fittest = champion.shallowClone();
+  fittest.score = champion.score;
+  addTag(fittest, "score", fittest.score!.toString());
+  applySeedWarmupTagsAtSave(
+    fittest,
+    neat.warmupGenerations,
+    neat.currentGeneration,
+  );
   return {
-    fittest: (previousFittest ?? neat.population[0])!,
-    averageScore: 0,
+    fittest,
+    averageScore: computeAverageScore(neat.population),
     plateau: {
-      onPlateau: false,
-      generationsOnPlateau: 0,
-      improvementRate: null,
-      mutationMultiplier: 1,
+      onPlateau: neat.plateauDetector.isOnPlateau(),
+      generationsOnPlateau: neat.plateauDetector.getGenerationsOnPlateau(),
+      improvementRate: neat.plateauDetector.getImprovementRate(),
+      mutationMultiplier: neat.plateauDetector.getMutationMultiplier(),
     },
     phaseTiming: {
       fitnessMs,
@@ -155,7 +175,7 @@ function abandonedGenerationResult(
       heavyQueueMaxDepth: 0,
     }),
     squashHistogram: {},
-    topologyAverages: { averageNeurons: 0, averageSynapses: 0 },
+    topologyAverages: computeTopologyAverages(neat.population),
     mutationOperators: {
       operators: {},
       mcmc: { proposed: 0, accepted: 0, rejected: 0 },
@@ -322,9 +342,9 @@ export async function evolve(
   // Issue #4052: fitness returned after the hard deadline abandoned this
   // generation. Teardown's checkpoint write is iterating neat.population, so
   // bail out before anything below sorts, scores-to-disk or commits it. The
-  // generation is neither banked (generationsCompleted) nor reported: the
-  // hard-deadline race has already resolved with HARD_DEADLINE_BREACHED and
-  // discards whatever this returns.
+  // generation is not banked (generationsCompleted), but its scored result is
+  // still handed back from a sorted copy: callers awaiting evolve() directly
+  // (evolveEnv, evolveRL) go on to adopt its champion.
   if (neat.isRunAbandonedSince(scheduledEpoch)) {
     getLogger().warn(
       `[Neat] Generation ${neat.currentGeneration} abandoned past the ` +

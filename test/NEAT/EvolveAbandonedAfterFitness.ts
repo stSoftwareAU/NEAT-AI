@@ -122,6 +122,65 @@ Deno.test(
 );
 
 Deno.test(
+  "evolve: a generation abandoned during fitness still returns the real " +
+    "champion and averages, from a sorted copy (Issue #4052)",
+  async () => {
+    const workers = [new WorkerHandler(createTestDataDir(2, 1), "MSE", true)];
+    try {
+      const neat = await buildScoredNeat(workers);
+      const before = [...neat.population];
+      // Scores are 0..9 in ascending order, so the best member is the last
+      // one and the first member (the old placeholder) is the worst.
+      const best = before[before.length - 1];
+
+      const evolvePromise = neat.evolve(previousFittest());
+      neat.generationsCompleted = 1;
+      assert(neat.abandonInFlightPastHardDeadline(PAST_HARD_DEADLINE_MS));
+      const result = await evolvePromise;
+
+      assertEquals(result.fittest.score, best.score, "champion is not lost");
+      assertEquals(getTag(result.fittest, "score"), String(best.score));
+      assertEquals(result.averageScore, 4.5, "average is the real mean");
+      assert(
+        result.topologyAverages.averageNeurons > 0 &&
+          result.topologyAverages.averageSynapses > 0,
+        "topology telemetry is the real population's",
+      );
+      assert(
+        neat.population.every((c, indx) => c === before[indx]),
+        "the live population is still untouched",
+      );
+    } finally {
+      await terminateWorkers(workers);
+    }
+  },
+);
+
+Deno.test(
+  "evolve: an abandoned generation keeps a previous champion that beats " +
+    "the population (Issue #4052)",
+  async () => {
+    const workers = [new WorkerHandler(createTestDataDir(2, 1), "MSE", true)];
+    try {
+      const neat = await buildScoredNeat(workers);
+      const champion = previousFittest();
+      champion.score = 100;
+      addTag(champion, "score", "100");
+
+      const evolvePromise = neat.evolve(champion);
+      neat.generationsCompleted = 1;
+      assert(neat.abandonInFlightPastHardDeadline(PAST_HARD_DEADLINE_MS));
+      const result = await evolvePromise;
+
+      assertEquals(result.fittest.score, 100);
+      assertEquals(result.fittest.uuid, champion.uuid);
+    } finally {
+      await terminateWorkers(workers);
+    }
+  },
+);
+
+Deno.test(
   "evolve: a checkpoint written while an abandoned generation finishes " +
     "holds every member exactly once (Issue #4052)",
   async () => {
@@ -133,24 +192,29 @@ Deno.test(
       // tag set in buildScoredNeat identifies each.
       const expected = neat.population.map((c) => getTag(c, "score")).sort();
 
-      const evolvePromise = neat.evolve(previousFittest());
-      neat.generationsCompleted = 1;
-      assert(neat.abandonInFlightPastHardDeadline(PAST_HARD_DEADLINE_MS));
-
-      // Each write yields a macrotask so the background generation can
-      // finish mid-checkpoint.
+      // The abandoned generation runs to completion *between* checkpoint
+      // batches: on the first write only, start evolve(), abandon it, and
+      // wait for it. Without the early return it re-sorts neat.population in
+      // place here, after batch one has been read and before batch two.
+      let evolveRan = false;
       const written: string[] = [];
       await writeCreatures(neat, `${outDir}/cp`, {
         batchSize: 2,
         writeTextFile: async (_path: string, text: string) => {
-          await new Promise<void>((resolve) => setTimeout(resolve, 5));
+          if (!evolveRan) {
+            evolveRan = true;
+            const evolvePromise = neat.evolve(previousFittest());
+            neat.generationsCompleted = 1;
+            assert(neat.abandonInFlightPastHardDeadline(PAST_HARD_DEADLINE_MS));
+            await evolvePromise;
+          }
           written.push(
             String(getTag(JSON.parse(text) as TagsInterface, "score")),
           );
         },
       });
-      await evolvePromise;
 
+      assert(evolveRan, "the abandoned generation must run mid-checkpoint");
       assertEquals(
         written.slice().sort(),
         expected,
