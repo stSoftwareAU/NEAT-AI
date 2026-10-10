@@ -99,9 +99,11 @@ and `src`); section: `docs/TIMEOUTS.md#-what-each-phase-does-at-the-hard-cap`
 `docs/TIMEOUTS.md#-the-post-loop-teardown-is-bounded-too-grq-4472`; updated:
 `docs/TIMEOUTS.md` — the "The generation itself" bullet now says the abandoned
 generation returns before sorting or committing `neat.population` once fitness
-returns, and that `writeCreatures` iterates a snapshot taken at entry. Code hits
-re-read and left in place, each still true: `src/NEAT/Neat.ts:955`,
-`src/NEAT/Neat.ts:1038`, `src/creature/BoundedEvolveTeardown.ts:13`,
+returns, that the returned result is still real (built from a sorted copy, since
+`evolveEnv` and `evolveRL` adopt its champion), and that `writeCreatures`
+iterates a snapshot taken at entry. Code hits re-read and left in place, each
+still true: `src/NEAT/Neat.ts:955`, `src/NEAT/Neat.ts:1038`,
+`src/creature/BoundedEvolveTeardown.ts:13`,
 `src/creature/CreatureTraining.ts:743`, `src/config/TrainingEvent.ts:122`,
 `src/creature/EvolveGenerationTail.ts:182`. Other `isRunAbandonedSince` callers
 (the `NeatScheduling.ts` guards) are unchanged. The `writeCreatures` doc comment
@@ -143,7 +145,7 @@ Cited issues:
   `test/NEAT/EvolveAbandonedAfterFitness.ts` — reviewer: met
 - **met** — Required test: abandon during fitness, run `writeCreatures` while
   the generation finishes, assert each original member is written exactly once —
-  evidence: second test in `test/NEAT/EvolveAbandonedAfterFitness.ts` —
+  evidence: fourth test in `test/NEAT/EvolveAbandonedAfterFitness.ts` —
   reviewer: met
 - **unrequested** — `abandonedGenerationResult` helper in
   `src/NEAT/NeatEvolution.ts` — reviewer: unrequested — reason: the early return
