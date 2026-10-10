@@ -14,22 +14,30 @@ bounds `evolveDir` (and its siblings `evolveDataSet`, `evolveEnv`, `evolveRL`).
 That guarantee has exactly one carve-out.
 
 > [!NOTE]
-> **The one exception: the first generation is never abandoned (Issue #3940).**
-> The cap bounds a run that is _making progress_; it is not a licence to return
-> nothing. A run whose first generation is slower than `T + grace` completes
-> that generation and returns it, so `evolveDir` never comes back with
-> `generation === 0` — an unscored population has no winner to publish. Every
-> generation after the first is capped exactly as described below.
+> **The one exception: the first generation is not abandoned at the hard cap
+> (Issue #3940), but has its own larger bound (Issue #4053).** The cap bounds a
+> run that is _making progress_; it is not a licence to return nothing. A run
+> whose first generation is merely slower than `T + grace` completes that
+> generation and returns it, because coming back with `generation === 0` leaves
+> an unscored population with no winner to publish. That allowance is not
+> unlimited: generation 1 is bounded by `start + (T + grace + min(60, 4 × T))`
+> minutes. A generation 1 that outlives that bound never settled, so it is
+> abandoned loudly
+> (`[Neat] First generation wedged after Ns … in-flight: <ids>`) and `evolveDir`
+> returns with `generation === 0` and
+> `terminationReason: "first-generation-wedged"`. Every generation after the
+> first is capped exactly as described below.
 
 ## 🧩 The deadlines
 
 Evolution tracks wall-clock deadlines anchored at the run's start timestamp:
 
-| Deadline                        | Value                                       | Role                                                                                                                                                                                                  |
-| ------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Soft timeout** (`endTimeMS`)  | `start + max(1, T) × 60 000 ms`             | Stops starting _new_ generations once it passes. The loop then enters the finish-up phase and waits — briefly — for in-flight discovery / training to settle so their partial results are not wasted. |
-| **Over-run** (GRQ #4141)        | `elapsed > T × factor` (default factor `1`) | Same generation-stop as the soft timeout, but an explicit self-termination path: the run finishes with the evolved population committed and does **not** wait for an external wall-clock cap.         |
-| **Hard cap** (`hardDeadlineTS`) | `start + (T + grace) × 60 000 ms`           | The point of no return, **once one generation has been banked**. After that, every phase abandons in-flight work and the run returns. Nothing else is allowed to push past it.                        |
+| Deadline                                                 | Value                                         | Role                                                                                                                                                                                                  |
+| -------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Soft timeout** (`endTimeMS`)                           | `start + max(1, T) × 60 000 ms`               | Stops starting _new_ generations once it passes. The loop then enters the finish-up phase and waits — briefly — for in-flight discovery / training to settle so their partial results are not wasted. |
+| **Over-run** (GRQ #4141)                                 | `elapsed > T × factor` (default factor `1`)   | Same generation-stop as the soft timeout, but an explicit self-termination path: the run finishes with the evolved population committed and does **not** wait for an external wall-clock cap.         |
+| **Hard cap** (`hardDeadlineTS`)                          | `start + (T + grace) × 60 000 ms`             | The point of no return, **once one generation has been banked**. After that, every phase abandons in-flight work and the run returns. Nothing else is allowed to push past it.                        |
+| **First-generation bound** (`firstGenerationDeadlineMS`) | `hardDeadlineTS + min(60, 4 × T) × 60 000 ms` | Bounds generation 1 only (Issue #4053). A generation 1 that merely runs late is kept past the hard cap (#3940); one that outlives this bound never settled and is abandoned loudly.                   |
 
 The grace period is clamped:
 
@@ -50,7 +58,8 @@ external watchdog. The canonical computation lives in
 The cap is enforced cooperatively — each phase checks the absolute
 `hardDeadlineTS` at its own next safe boundary and stops there. None of them
 waits past it, and none of them fires until `Neat.generationsCompleted > 0`
-(Issue #3940) — `shouldAbandonInFlight` in
+(Issue #3940; the first-generation bound is the exception for generation 1,
+Issue #4053) — `shouldAbandonInFlight` in
 [`src/NEAT/HardDeadline.ts`](../src/NEAT/HardDeadline.ts) is the shared
 predicate, applying the same one-generation floor
 `shouldStopStartingGenerations` has always applied to the soft guard.
@@ -67,8 +76,9 @@ predicate, applying the same one-generation floor
 - **Generation loop** — the same check runs at the **top of every pass** of the
   loop, before any branch decides what to do next, so a generation that neither
   completed nor tripped the over-run predicate cannot start another one past the
-  cap (GRQ #4470). The very first generation is exempt, so a run that starts
-  already past its cap still commits one evolved population.
+  cap (GRQ #4470). The very first generation is exempt from this check, so a run
+  that starts already past its cap still commits one evolved population; it is
+  bounded by the first-generation bound instead (Issue #4053).
 - **The generation itself** — `awaitWithinHardDeadline`
   ([`src/NEAT/HardDeadlineRace.ts`](../src/NEAT/HardDeadlineRace.ts)) bounds the
   `await neat.evolve()` itself. A discovery or training child that never settles
@@ -82,11 +92,15 @@ predicate, applying the same one-generation floor
   because `evolveEnv` and `evolveRL` await `evolve()` directly and adopt that
   champion. The teardown's checkpoint write (`writeCreatures`) also iterates a
   snapshot of the population taken at entry, so the checkpoint holds every
-  member exactly once (Issue #4052). **Generation 1 is awaited uncapped** (Issue
-  #3940): bounding it is what produced
+  member exactly once (Issue #4052). **Generation 1 is awaited past the hard
+  cap, but only up to the first-generation bound** (Issues #3940, #4053):
+  bounding it at the hard cap is what produced
   `keeping the 0 generation(s) already evolved`, and the per-task budgets below
-  still clamp every discovery / training child inside it to the cap, so the
-  generation ends without one.
+  still clamp every discovery / training child to the cap, so a generation 1
+  that is merely late ends on its own. One that outlives the first-generation
+  bound is abandoned with `terminationReason` `"first-generation-wedged"`; its
+  in-flight training tasks are cancelled (their schedule-time captures under
+  `NEAT_AI_TRAINING_TASK_CAPTURE_DIR` are kept, GRQ #4794) and named in the log.
 - **Over-run** — independently of the hard cap, when elapsed exceeds
   `timeoutMinutes × factor` after at least one generation, the loop stops
   starting new generations and finishes with the population committed. This is
@@ -257,7 +271,9 @@ sequenceDiagram
         Worker-->>Worker: clamp per-task deadline to min(local, hardDeadlineTS)
         Neat->>Replay: scheduleReplay(... hardDeadlineTS ...)
         alt generation 1 (nothing banked yet)
-            evolveDir-->>evolveDir: awaited uncapped — finish it and bank it (#3940)
+            evolveDir-->>evolveDir: awaited past the cap up to the first-generation bound (#3940, #4053)
+        else generation 1 outlives the first-generation bound
+            evolveDir-->>evolveDir: abandon it, log in-flight ids, return terminationReason first-generation-wedged (#4053)
         else the generation wedges behind a child that never settles
             evolveDir-->>evolveDir: awaitWithinHardDeadline → abandon it at the cap,<br/>keep the population evolved so far
         end
@@ -307,10 +323,15 @@ is loaded onto the caller's creature, `creatureStore` is written and loadable,
 and the in-flight maps are empty. Its sibling
 [`test/creature/EvolveDirFirstGenerationHardDeadline.ts`](../test/creature/EvolveDirFirstGenerationHardDeadline.ts)
 drives the opposite case for Issue #3940 — the cap passing _during_ generation 1
-— and asserts the run still returns a scored generation with a champion in
-`creatureStore`; the floor itself is unit-covered in
+but before the first-generation bound — and asserts the run still returns a
+scored generation with a champion in `creatureStore`; the floor itself is
+unit-covered in
 [`test/NEAT/HardDeadlineFirstGeneration.ts`](../test/NEAT/HardDeadlineFirstGeneration.ts).
-The replay-queue hard-cap bound has dedicated coverage in
+`test/creature/EvolveDirFirstGenerationWedged.ts` drives a generation 1 that
+never settles with `timeoutMinutes` 5 and asserts `evolveDir` returns with
+`first-generation-wedged` once the bound passes; the bound itself is
+unit-covered in `test/NEAT/HardDeadline.ts`. The replay-queue hard-cap bound has
+dedicated coverage in
 [`test/NEAT/DiscoveryReplayQueueDeadline.ts`](../test/NEAT/DiscoveryReplayQueueDeadline.ts).
 
 The bounded teardown has its own two layers:

@@ -29,6 +29,7 @@ import { Costs } from "@costs";
 import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import { AWAIT_IN_FLIGHT_TIMEOUT_MS, Neat } from "@neat/Neat.ts";
 import {
+  computeFirstGenerationDeadlineTS,
   computeHardDeadlineTS,
   DEFAULT_OVERRUN_ENFORCEMENT_FACTOR,
   shouldStopStartingGenerations,
@@ -506,6 +507,12 @@ export async function evolveDir(
   // below via neat.abandonInFlightPastHardDeadline(hardDeadlineMS).
   const hardDeadlineMS =
     computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
+  // Issue #4053: generation 1's own, larger bound; 0 when no timeout is
+  // configured.
+  const firstGenerationDeadlineMS = computeFirstGenerationDeadlineTS(
+    start,
+    config.timeoutMinutes ?? 0,
+  ) ?? 0;
 
   const workers: WorkerHandler[] = [];
   const threads = config.threads;
@@ -612,6 +619,8 @@ export async function evolveDir(
     // the cap has passed, so the loop could spin well past its own deadline.
     // Generation 1 is exempt (as `shouldStopStartingGenerations` is) so a run
     // that starts already past its cap still commits one evolved population.
+    // Generation 1 is bounded by the first-generation bound on the evolve
+    // await below (Issue #4053).
     if (
       generation > 0 &&
       neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
@@ -648,18 +657,25 @@ export async function evolveDir(
     // `await` on a promise that never settles outlives every deadline check in
     // the loop. Past the cap we abandon the generation, keep the population
     // evolved so far, and hand control back to the caller — no hard kill.
-    // Issue #3940: the first generation keeps the unbounded await — whether the
-    // run began past its cap or the cap passes while generation 1 is in flight.
-    // Bounding it returned `0 generation(s) already evolved`: an unscored
-    // population with no winner to publish, and a whole team slot banked
-    // nothing. Every later generation is bounded exactly as before.
-    const generationCap = generation === 0 ? 0 : hardDeadlineMS;
+    // Issue #3940 still lets the first generation run past the hard cap:
+    // bounding it there returned `0 generation(s) already evolved`, an unscored
+    // population with no winner to publish. Issue #4053 bounds it by its own,
+    // larger first-generation bound instead, because a generation 1 that never
+    // settles otherwise outlives every deadline; breaching it ends the run with
+    // terminationReason "first-generation-wedged". Every later generation is
+    // bounded by the hard cap exactly as before.
+    const generationCap = generation === 0
+      ? firstGenerationDeadlineMS
+      : hardDeadlineMS;
     // deno-lint-ignore no-await-in-loop
     const outcome = await awaitWithinHardDeadline(
       neat.evolve(bestCreature),
       generationCap,
       nowFn,
-      () => abandonWedgedGeneration(neat, hardDeadlineMS, nowFn, generation),
+      () =>
+        generation === 0
+          ? neat.abandonWedgedFirstGeneration(nowFn() - start)
+          : abandonWedgedGeneration(neat, hardDeadlineMS, nowFn, generation),
     );
     if (outcome === HARD_DEADLINE_BREACHED) {
       break;

@@ -1,7 +1,10 @@
-import { assertEquals } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import {
+  computeFirstGenerationDeadlineTS,
   computeHardDeadlineTS,
   DEFAULT_OVERRUN_ENFORCEMENT_FACTOR,
+  FIRST_GENERATION_MAX_EXTRA_MINUTES,
+  FIRST_GENERATION_TIMEOUT_MULTIPLE,
   HARD_DEADLINE_GRACE_MINUTES,
   hasTrainingOverrun,
   shouldStopStartingGenerations,
@@ -99,4 +102,47 @@ Deno.test("shouldStopStartingGenerations - stops after a generation once over-ru
 
 Deno.test("over-run enforcement factor default is 1", () => {
   assertEquals(DEFAULT_OVERRUN_ENFORCEMENT_FACTOR, 1);
+});
+
+// Issue #4053: generation 1 is floored past the hard cap (#3940) but must
+// still be bounded, or a wedged first generation hangs the run forever.
+Deno.test("computeFirstGenerationDeadlineTS - constants are 4x and 60 minutes", () => {
+  assertEquals(FIRST_GENERATION_TIMEOUT_MULTIPLE, 4);
+  assertEquals(FIRST_GENERATION_MAX_EXTRA_MINUTES, 60);
+});
+
+Deno.test("computeFirstGenerationDeadlineTS - no timeout configured returns undefined", () => {
+  assertEquals(computeFirstGenerationDeadlineTS(START, 0), undefined);
+});
+
+Deno.test("computeFirstGenerationDeadlineTS - T=5 adds 4T minutes to the hard cap", () => {
+  // hard cap = 5 + 5 = 10 minutes; extra = min(60, 20) = 20 minutes
+  assertEquals(
+    computeFirstGenerationDeadlineTS(START, 5),
+    START + 30 * 60_000,
+  );
+});
+
+Deno.test("computeFirstGenerationDeadlineTS - T=15 adds 4T minutes to the hard cap", () => {
+  // hard cap = 15 + 15 = 30 minutes; extra = min(60, 60) = 60 minutes
+  assertEquals(
+    computeFirstGenerationDeadlineTS(START, 15),
+    START + 90 * 60_000,
+  );
+});
+
+Deno.test("computeFirstGenerationDeadlineTS - T=60 is bound by the 60 minute ceiling", () => {
+  // hard cap = 60 + 15 = 75 minutes; extra = min(60, 240) = 60 minutes
+  assertEquals(
+    computeFirstGenerationDeadlineTS(START, 60),
+    START + 135 * 60_000,
+  );
+});
+
+Deno.test("computeFirstGenerationDeadlineTS - is always later than the hard deadline", () => {
+  for (const minutes of [0.5, 1, 5, 15, 45, 120]) {
+    const hard = computeHardDeadlineTS(START, minutes)!;
+    const first = computeFirstGenerationDeadlineTS(START, minutes)!;
+    assert(first > hard, `T=${minutes}: ${first} must exceed ${hard}`);
+  }
 });

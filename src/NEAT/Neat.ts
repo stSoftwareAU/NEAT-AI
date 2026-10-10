@@ -275,7 +275,9 @@ export class Neat {
    * run of the lineage: this one starts at 0 for each `Neat` instance and is
    * incremented once a generation has been evaluated end to end. It is the
    * floor the hard-deadline cap consults — a run with nothing banked has no
-   * winner to return, so the first generation is never abandoned.
+   * winner to return, so the hard-deadline cap never abandons the first
+   * generation; generation 1 is bounded instead by its own, larger
+   * first-generation bound ({@link abandonWedgedFirstGeneration}, Issue #4053).
    */
   generationsCompleted = 0;
 
@@ -960,7 +962,9 @@ export class Neat {
    * chokepoint every enforcement path goes through (the evolve loops, the
    * in-fitness watchdog via {@link pollHardDeadlineWatchdog}), so a run whose
    * first generation is slower than `timeoutMinutes + grace` finishes that
-   * generation instead of returning an unscored population.
+   * generation instead of returning an unscored population. Generation 1 is
+   * bounded instead by its own, larger first-generation bound
+   * ({@link abandonWedgedFirstGeneration}, Issue #4053).
    *
    * @param hardDeadlineMS Absolute hard-deadline epoch ms (0/unset = no cap).
    * @returns `true` when the cap was exceeded and the loop must break.
@@ -1008,16 +1012,61 @@ export class Neat {
       );
     }
 
-    this.terminationReason = "hard-deadline";
+    this.shedInFlightWork(
+      "hard-deadline",
+      "hard deadline (timeoutMinutes + grace) exceeded",
+    );
+    return true;
+  }
+
+  /**
+   * Issue #4053: abandon a first generation that outlived
+   * `computeFirstGenerationDeadlineTS`. Called by evolveDir. Unlike the
+   * hard-deadline path it does not require a completed generation. Cancelled
+   * training tasks keep their schedule-time captures because cancelled tasks
+   * skip capture removal (GRQ #4794 in NeatScheduling).
+   *
+   * @param elapsedMS Wall-clock milliseconds since the run started.
+   */
+  abandonWedgedFirstGeneration(elapsedMS: number): void {
+    const discoveryCount = this.discoveryInProgress.size;
+    const trainingCount = this.trainingInProgress.size;
+    const stalledPhase = this.inFlightPhase;
+    const ids = [
+      ...this.discoveryInProgress.keys(),
+      ...this.trainingInProgress.keys(),
+    ].map((uuid) => uuid.substring(Math.max(0, uuid.length - 8)));
+    const elapsedSeconds = Math.round(elapsedMS / 1000);
+
+    getLogger().error(
+      `[Neat] First generation wedged after ${elapsedSeconds}s ` +
+        `(first-generation bound passed) — ` +
+        (stalledPhase ? `stalled in ${stalledPhase}; ` : "") +
+        `in-flight: ${ids.length ? ids.join(", ") : "none"} ` +
+        `(${discoveryCount} discovery, ${trainingCount} training) — ` +
+        `abandoning generation 1; no generation was evolved`,
+    );
+
+    if (stalledPhase) {
+      this.interruptInFlightPhase();
+    }
+
+    this.shedInFlightWork(
+      "first-generation-wedged",
+      `first generation wedged after ${elapsedSeconds}s (Issue #4053)`,
+    );
+  }
+
+  private shedInFlightWork(
+    reason: EvolveTerminationReason,
+    cancelReason: string,
+  ): void {
+    this.terminationReason = reason;
     this.doNotStartMore = true;
     // GRQ #4489: shed the training work itself, not only the bookkeeping —
     // an unsettled request holds its worker slot past the deadline.
     for (const uuid of Array.from(this.trainingTasks.keys())) {
-      this.cancelTrainingWork(
-        uuid,
-        "hard deadline (timeoutMinutes + grace) exceeded",
-        false,
-      );
+      this.cancelTrainingWork(uuid, cancelReason, false);
     }
     this.discoveryInProgress.clear();
     this.trainingInProgress.clear();
@@ -1026,7 +1075,6 @@ export class Neat {
     // late-resolving promises discard their result blobs rather than re-inflate
     // the complete queues after we have deliberately shed the work.
     this.abandonEpoch++;
-    return true;
   }
 
   /**
