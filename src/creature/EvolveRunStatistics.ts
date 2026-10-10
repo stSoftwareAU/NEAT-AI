@@ -84,7 +84,8 @@ export interface EvolveResult extends EvolveRunStatistics {
    * Why the run stopped (GRQ #4141). Present when the loop took an explicit
    * exit path — graceful over-run self-termination, the T+15 hard-deadline
    * abandon, or the abandon of a first generation that never settled
-   * (`first-generation-wedged`, Issue #4053) — so tests can distinguish those from iterations / target-error.
+   * (`first-generation-wedged`, Issue #4053) — so tests can distinguish those
+   * from iterations / target-error.
    */
   readonly terminationReason?: EvolveTerminationReason;
 }

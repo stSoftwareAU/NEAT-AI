@@ -275,7 +275,9 @@ export class Neat {
    * run of the lineage: this one starts at 0 for each `Neat` instance and is
    * incremented once a generation has been evaluated end to end. It is the
    * floor the hard-deadline cap consults — a run with nothing banked has no
-   * winner to return, so the first generation is never abandoned.
+   * winner to return, so the hard-deadline cap never abandons the first
+   * generation; generation 1 is bounded instead by its own, larger
+   * first-generation bound ({@link abandonWedgedFirstGeneration}, Issue #4053).
    */
   generationsCompleted = 0;
 

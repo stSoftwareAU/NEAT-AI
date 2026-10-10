@@ -2,6 +2,7 @@ import { assert, assertEquals } from "@std/assert";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Neat } from "@neat/Neat.ts";
 import { shouldAbandonInFlight } from "@neat/HardDeadline.ts";
+import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
 import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import {
   type DataRecordInterface,
@@ -149,6 +150,47 @@ Deno.test("hard-deadline watchdog: does not interrupt fitness during the first g
     assert(neat.pollHardDeadlineWatchdog(neat.hardDeadlineTS + 60_000));
     assert(signal.aborted, "a stall after the first generation is interrupted");
   } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("abandonWedgedFirstGeneration: interrupts a stalled phase and names an empty in-flight set (Issue #4053)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  const originalLogger = getLogger();
+  const lines: string[] = [];
+  const record = (...args: unknown[]) => {
+    lines.push(args.map((a) => String(a)).join(" "));
+  };
+  const recordingLogger: Logger = {
+    debug: record,
+    info: record,
+    warn: record,
+    error: record,
+  };
+
+  try {
+    const options: NeatOptions = { populationSize: 10, timeoutMinutes: 5 };
+    const neat = new Neat(2, 1, options, workers);
+    // Installed after construction: the Neat constructor resets the global logger.
+    setLogger(recordingLogger);
+
+    const signal = neat.enterInFlightPhase("fitness");
+    const epochBefore = neat.abandonEpoch;
+
+    neat.abandonWedgedFirstGeneration(125_000);
+
+    assert(signal.aborted, "the stalled phase must be interrupted");
+    assertEquals(neat.terminationReason, "first-generation-wedged");
+    assertEquals(neat.doNotStartMore, true);
+    assertEquals(neat.abandonEpoch, epochBefore + 1);
+
+    const log = lines.join("\n");
+    assert(log.includes("First generation wedged after 125s"), log);
+    assert(log.includes("stalled in fitness"), log);
+    assert(log.includes("in-flight: none"), log);
+  } finally {
+    setLogger(originalLogger);
     await terminateWorkers(workers);
   }
 });
