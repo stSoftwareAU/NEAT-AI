@@ -14,9 +14,9 @@ import { initWasmForTests } from "../_initWasm.ts";
 
 /**
  * Issue #4056: `evolveEnv` must bound `neat.evolve()` by the same deadlines as
- * `evolveDir` (Issues #4053 / #4470). A generation that never settles ends the
- * run at its own bound instead of hanging, driven by an injected clock so the
- * test makes no elapsed-time assertions.
+ * `evolveDir` (Issue #4053 / GRQ #4470). A generation that never settles ends
+ * the run at its own bound instead of hanging, driven by an injected clock so
+ * the test makes no elapsed-time assertions.
  */
 
 /** Single-tick adapter that can never reach `targetError`. */
