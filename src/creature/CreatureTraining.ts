@@ -1433,10 +1433,13 @@ export async function evolveRL<S, A>(
   rlFitness.setStatisticsEnabled(statisticsEnabled);
   const milestones: EvolveRLMilestone[] = [];
 
+  type GenerationStatistics = NonNullable<
+    ReturnType<typeof rlFitness.consumeGenerationStatistics>
+  >;
+
   /**
-   * Issue #2629 / #2647: build the milestone payload for the current
-   * generation, consuming and clearing the per-generation statistics
-   * accumulator. Hoisted into a closure so the loop body can emit on the
+   * Issue #2629 / #2647: build the milestone payload for a generation from
+   * its snapshotted per-generation statistics. Hoisted into a closure so the loop body can emit on the
    * geometric schedule and the post-loop tail can append a synthetic
    * final-generation milestone using the same field semantics.
    *
@@ -1444,8 +1447,15 @@ export async function evolveRL<S, A>(
    * scalars instead of a live creature reference; the loop path still
    * forwards live `creature.neurons.length` / `creature.synapses.length`
    * via the wrapper below.
+   *
+   * PR #4059 review: the per-generation statistics are passed in as a
+   * snapshot taken when the kept generation settled, never read from the live
+   * accumulator. A generation abandoned at the hard deadline resets that
+   * accumulator, which would otherwise erase the last kept generation's
+   * statistics before the synthetic tail milestone is built.
    */
   const buildMilestoneFromScalars = (
+    stats: GenerationStatistics | undefined,
     fittestScore: number,
     fittestNeurons: number,
     fittestSynapses: number,
@@ -1454,7 +1464,6 @@ export async function evolveRL<S, A>(
     nowMs: number,
     gen: number,
   ): EvolveRLMilestone => {
-    const stats = rlFitness.consumeGenerationStatistics();
     // bestScore — prefer the fittest creature's tagged mean return so that
     // elites which were not re-evaluated this generation still report a
     // sensible value. Fall back to the in-generation best mean tracked by
@@ -1484,6 +1493,7 @@ export async function evolveRL<S, A>(
   };
 
   const buildMilestonePayload = (
+    stats: GenerationStatistics | undefined,
     fittest: Creature,
     fittestScore: number,
     generationStartMs: number,
@@ -1491,6 +1501,7 @@ export async function evolveRL<S, A>(
     gen: number,
   ): EvolveRLMilestone => {
     return buildMilestoneFromScalars(
+      stats,
       fittestScore,
       fittest.neurons.length,
       fittest.synapses.length,
@@ -1510,6 +1521,7 @@ export async function evolveRL<S, A>(
   // generation's fittest across the entire run pinned an otherwise-disposable
   // creature in long-running evolveRL loops, fanning out to its neurons,
   // synapses, and tag arrays via the creature → neuron → creature cycle.
+  let lastGenerationStats: GenerationStatistics | undefined;
   let lastFittestScore = 0;
   let lastFittestNeurons = 0;
   let lastFittestSynapses = 0;
@@ -1616,8 +1628,9 @@ export async function evolveRL<S, A>(
     if (outcome === HARD_DEADLINE_BREACHED) {
       // The wedged generation never completed.
       generation--;
-      // Discard the abandoned generation's partial statistics.
-      rlFitness.consumeGenerationStatistics();
+      // The abandoned generation's partial statistics stay in the live
+      // accumulator and are never read; the last kept generation's were
+      // snapshotted into `lastGenerationStats`.
       break;
     }
     const result = outcome;
@@ -1655,7 +1668,14 @@ export async function evolveRL<S, A>(
     // synthetic final milestone can be built after the loop exits between
     // scheduled milestones. Captured before the scheduled-milestone block
     // because that block consumes the per-generation statistics accumulator.
+    // The statistics are consumed here, once, so both the scheduled milestone
+    // and a later synthetic one read this kept generation's snapshot even if
+    // the next generation is abandoned and resets the live accumulator.
+    const generationStats = statisticsEnabled
+      ? rlFitness.consumeGenerationStatistics()
+      : undefined;
     if (statisticsEnabled) {
+      lastGenerationStats = generationStats;
       // Issue #2693: snapshot only the milestone-relevant scalars so the
       // live creature reference is not retained across generations.
       lastFittestScore = fittestScore;
@@ -1672,6 +1692,7 @@ export async function evolveRL<S, A>(
     // were opted in.
     if (statisticsEnabled && isMilestoneGeneration(generation)) {
       const milestone = buildMilestonePayload(
+        generationStats,
         fittest,
         fittestScore,
         generationStartMs,
@@ -1751,6 +1772,7 @@ export async function evolveRL<S, A>(
     // Issue #2693: build the synthetic-tail milestone from the snapshotted
     // scalars rather than a retained Creature reference.
     const milestone = buildMilestoneFromScalars(
+      lastGenerationStats,
       lastFittestScore,
       lastFittestNeurons,
       lastFittestSynapses,

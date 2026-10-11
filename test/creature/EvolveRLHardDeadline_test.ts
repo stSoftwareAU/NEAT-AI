@@ -425,9 +425,9 @@ Deno.test({
         );
         // Every scheduled milestone saw one single-step episode per creature,
         // so its mean is 1. The final one must not be built from the episodes
-        // generation 4 scored before it was abandoned.
+        // generation 4 scored before it was abandoned, nor lose generation 3's.
         assertEquals(result.milestones?.[0].meanEpisodeSteps, 1);
-        assertEquals(result.milestones?.[2].meanEpisodeSteps, 0);
+        assertEquals(result.milestones?.[2].meanEpisodeSteps, 1);
       },
       { statistics: true },
     ),
