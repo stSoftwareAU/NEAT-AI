@@ -1041,10 +1041,13 @@ export async function evolveEnv<S, A>(
 
     // Issue #4056: bound the generation by the hard cap (generation 1 by its
     // own first-generation bound), exactly as evolveDir does.
+    const generationCap = generation === 1
+      ? firstGenerationDeadlineMS
+      : hardDeadlineMS;
     // deno-lint-ignore no-await-in-loop
     const outcome = await awaitWithinHardDeadline(
       neat.evolve(bestCreature),
-      hardDeadlineMS,
+      generationCap,
       nowFn,
       () =>
         generation === 1
@@ -1592,10 +1595,13 @@ export async function evolveRL<S, A>(
 
     // Issue #4056: bound the generation by the hard cap (generation 1 by its
     // own first-generation bound), exactly as evolveDir does.
+    const generationCap = generation === 1
+      ? firstGenerationDeadlineMS
+      : hardDeadlineMS;
     // deno-lint-ignore no-await-in-loop
     const outcome = await awaitWithinHardDeadline(
       neat.evolve(bestCreature),
-      hardDeadlineMS,
+      generationCap,
       nowFn,
       () =>
         generation === 1
