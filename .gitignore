@@ -14,6 +14,8 @@ junit.xml
 publish-output.log
 !.github
 !.gitleaks.toml
+# Anthropic OSS Scanner build image and threat-model brief.
+!.oss-scanner
 on/
 
 # --- Vibe Coder safety patterns (Issue #1751) ---
