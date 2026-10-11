@@ -90,6 +90,8 @@ interface Harness {
   creatureStore: string;
   state: {
     nowMS: number;
+    /** One-shot hook run on each injected-clock read (watchdog poll). */
+    onNow?: () => void;
     evolveCalls: number;
     captured?: Neat;
     cancelCalls: Array<{ taskID: number; reason: string }>;
@@ -134,7 +136,10 @@ async function makeHarness(
     state,
     deps: {
       startTimeMS: START_MS,
-      now: () => state.nowMS,
+      now: () => {
+        state.onNow?.();
+        return state.nowMS;
+      },
       teardownBudgetMS: 1_000,
       onNeatReady: (neat) => {
         state.captured = neat;
@@ -275,6 +280,50 @@ Deno.test({
         assertEquals(result.generation, 1);
         assertEquals(h.state.evolveCalls, 1);
         assertClean(h);
+      },
+    ),
+});
+
+Deno.test({
+  name:
+    "evolveRL: a first generation slower than the hard cap is not abandoned at the hard cap",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () =>
+    run(
+      "slow first generation",
+      async (call, _neat, original, h) => {
+        if (call > 1) {
+          throw new Error("a second generation must never start");
+        }
+        // Strictly between the hard deadline and the first-generation bound.
+        h.state.nowMS = computeHardDeadlineTS(START_MS, TIMEOUT_MINUTES)! +
+          60_000;
+        // Settle only after the watchdog has polled the clock at this time a
+        // few times, so a first generation capped at the hard deadline would
+        // already have been abandoned.
+        const POLLS_BEFORE_SETTLING = 3;
+        const polled = new Promise<void>((resolve) => {
+          let polls = 0;
+          h.state.onNow = () => {
+            if (++polls >= POLLS_BEFORE_SETTLING) {
+              h.state.onNow = undefined;
+              resolve();
+            }
+          };
+        });
+        const r = await original(undefined as never);
+        await polled;
+        return r;
+      },
+      (result, h) => {
+        assertEquals(result.terminationReason, "hard-deadline");
+        assertEquals(result.generation, 1);
+        assertEquals(h.state.evolveCalls, 1);
+        assert(
+          !h.lines.join("\n").includes("First generation wedged after"),
+          "a first generation that settled must not be logged as wedged",
+        );
       },
     ),
 });

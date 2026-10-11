@@ -1044,7 +1044,7 @@ export async function evolveEnv<S, A>(
     // deno-lint-ignore no-await-in-loop
     const outcome = await awaitWithinHardDeadline(
       neat.evolve(bestCreature),
-      generation === 1 ? firstGenerationDeadlineMS : hardDeadlineMS,
+      hardDeadlineMS,
       nowFn,
       () =>
         generation === 1
@@ -1595,7 +1595,7 @@ export async function evolveRL<S, A>(
     // deno-lint-ignore no-await-in-loop
     const outcome = await awaitWithinHardDeadline(
       neat.evolve(bestCreature),
-      generation === 1 ? firstGenerationDeadlineMS : hardDeadlineMS,
+      hardDeadlineMS,
       nowFn,
       () =>
         generation === 1

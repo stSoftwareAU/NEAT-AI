@@ -87,6 +87,10 @@ interface Harness {
     captured?: Neat;
     cancelCalls: Array<{ taskID: number; reason: string }>;
     quarantineCalls: number;
+    /** Number of times the injected clock has been read. */
+    nowCalls: number;
+    /** One-shot hook: fires after `remaining` further clock reads. */
+    afterNowReads?: { remaining: number; fire: () => void };
   };
 }
 
@@ -110,6 +114,7 @@ async function makeHarness(
     evolveCalls: 0,
     cancelCalls: [],
     quarantineCalls: 0,
+    nowCalls: 0,
   };
   const fakeWorker = {
     cancelTask(taskID: number, reason: string): boolean {
@@ -127,7 +132,15 @@ async function makeHarness(
     state,
     deps: {
       startTimeMS: START_MS,
-      now: () => state.nowMS,
+      now: () => {
+        state.nowCalls++;
+        const hook = state.afterNowReads;
+        if (hook && --hook.remaining <= 0) {
+          state.afterNowReads = undefined;
+          hook.fire();
+        }
+        return state.nowMS;
+      },
       teardownBudgetMS: 1_000,
       onNeatReady: (neat) => {
         state.captured = neat;
@@ -266,6 +279,40 @@ Deno.test({
         assertEquals(result.generation, 1);
         assertEquals(h.state.evolveCalls, 1);
         assertClean(h);
+      },
+    ),
+});
+
+Deno.test({
+  name:
+    "evolveEnv: a first generation slower than the hard cap is not abandoned at the hard cap",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () =>
+    run(
+      "slow first generation",
+      (_call, _neat, original, h) => {
+        // Strictly between the hard deadline and the first-generation bound.
+        h.state.nowMS = computeHardDeadlineTS(START_MS, TIMEOUT_MINUTES)! +
+          60_000;
+        // While this promise is pending the loop is suspended, so every clock
+        // read is the watchdog's. Settle only after it has polled twice at the
+        // in-between time: a gen-1 cap of the hard deadline would abandon here.
+        return new Promise((resolve, reject) => {
+          h.state.afterNowReads = {
+            remaining: 2,
+            fire: () => original(undefined as never).then(resolve, reject),
+          };
+        });
+      },
+      (result, h) => {
+        assertEquals(result.terminationReason, "hard-deadline");
+        assertEquals(result.generation, 1);
+        assertEquals(h.state.evolveCalls, 1);
+        assert(
+          !h.lines.join("\n").includes("First generation wedged after"),
+          "generation 1 completed, so it must not be abandoned",
+        );
       },
     ),
 });
