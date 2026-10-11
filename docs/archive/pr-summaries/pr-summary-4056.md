@@ -36,10 +36,10 @@ top-of-loop check and the race to both functions.
 - When `statistics` is enabled, `evolveRL` consumes each kept generation's
   `rlFitness` statistics once the generation settles. The scheduled milestone
   reads that generation's `generationStats`, and the synthetic final milestone
-  reads the `lastGenerationStats` snapshot of it. The abandoned
-  generation's `beginGenerationStatistics()` reset therefore cannot erase the
-  last kept generation's statistics (PR #4059 review: the terminal milestone
-  reported `meanEpisodeSteps` 0).
+  reads the `lastGenerationStats` snapshot of it. The abandoned generation's
+  `beginGenerationStatistics()` reset therefore cannot erase the last kept
+  generation's statistics (PR #4059 review: the terminal milestone reported
+  `meanEpisodeSteps` 0).
 
 ### Undiscoverable Facts
 
