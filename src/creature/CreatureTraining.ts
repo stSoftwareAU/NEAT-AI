@@ -384,7 +384,8 @@ export function traceDir(
 }
 
 /**
- * Test-only injection seam for {@link evolveDir} (Issue #2902).
+ * Test-only injection seam for {@link evolveDir} (Issue #2902), also accepted
+ * by {@link evolveEnv} and {@link evolveRL} (Issue #4056).
  *
  * Lets the end-to-end T+15 hard-deadline guard drive the absolute cap
  * deterministically without real sleeps (behavioural-test policy #2888).
@@ -866,11 +867,18 @@ export async function evolveDir(
  *
  * Multi-threaded worker rollouts are deliberately deferred to a follow-up so
  * this PR stays reviewable; today every episode runs on the main thread.
+ *
+ * Like {@link evolveDir}, the run is bounded by the T+grace hard cap (Issue
+ * #4056): a generation that never settles is abandoned and the population
+ * evolved so far is kept. Generation 1 is bounded by its own, larger
+ * first-generation deadline. The optional `deps` argument is a test seam (see
+ * {@link EvolveDirDeps}); production callers omit it.
  */
 export async function evolveEnv<S, A>(
   creature: Creature,
   adapter: LegacyEpisodeAdapter<S, A>,
   options: NeatOptions & EpisodicOptions,
+  deps?: EvolveDirDeps,
 ): Promise<EvolveResult> {
   if (creature.input !== adapter.inputCount) {
     throw new Error(
@@ -906,7 +914,7 @@ export async function evolveEnv<S, A>(
   };
   options.signal?.addEventListener("abort", abortListener);
 
-  const start = Date.now();
+  const start = deps?.startTimeMS ?? Date.now();
   // Issue #2791: reinforcement learning is an evolution-only task with no
   // labelled dataset, so the supervised auto-scaling of `trainPerGen` does not
   // apply. Preserve the historical default of 1 (per-generation backprop is a
@@ -928,6 +936,15 @@ export async function evolveEnv<S, A>(
   // below via neat.abandonInFlightPastHardDeadline(hardDeadlineMS).
   const hardDeadlineMS =
     computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
+  // Issue #4056: generation 1's own, larger bound (as in evolveDir); 0 when no
+  // timeout is configured.
+  const firstGenerationDeadlineMS = computeFirstGenerationDeadlineTS(
+    start,
+    config.timeoutMinutes ?? 0,
+  ) ?? 0;
+  const nowFn = deps?.now ?? Date.now;
+  const overrunFactor = deps?.overrunEnforcementFactor ??
+    DEFAULT_OVERRUN_ENFORCEMENT_FACTOR;
 
   const trialsPerScore = options.trialsPerScore !== undefined
     ? Math.max(1, Math.floor(options.trialsPerScore))
@@ -966,6 +983,9 @@ export async function evolveEnv<S, A>(
 
   await neat.populatePopulation(creature);
 
+  // Issue #4056: test seam, as in evolveDir. No-op for production callers.
+  deps?.onNeatReady?.(neat);
+
   let error = Infinity;
   let bestScore = -Infinity;
 
@@ -983,29 +1003,68 @@ export async function evolveEnv<S, A>(
   const scoreTrajectory = createScoreTrajectory();
 
   while (true) {
+    // Issue #4056: the hard cap is consulted on every pass (as in evolveDir).
+    // Generation 1 is bounded by the first-generation bound on the evolve
+    // await below.
+    if (
+      generation > 0 &&
+      neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
+    ) {
+      break;
+    }
+
     if (
       shouldStopStartingGenerations(
         generation,
         start,
         config.timeoutMinutes,
-        Date.now(),
+        nowFn(),
+        overrunFactor,
       )
     ) {
-      requestOverrunStop(neat, DEFAULT_OVERRUN_ENFORCEMENT_FACTOR);
+      requestOverrunStop(neat, overrunFactor);
       if (interrupted) break;
       if (neat.finishUp(iterations, endTimeMS, start, generation)) {
         break;
       }
       // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks();
+      await neat.awaitInFlightTasks(
+        AWAIT_IN_FLIGHT_TIMEOUT_MS,
+        hardDeadlineMS,
+        nowFn,
+      );
       continue;
     }
 
     generation++;
     episodicFitness.setGeneration(generation);
 
+    // Issue #4056: bound the generation by the hard cap (generation 1 by its
+    // own first-generation bound), exactly as evolveDir does.
+    const generationCap = generation === 1
+      ? firstGenerationDeadlineMS
+      : hardDeadlineMS;
     // deno-lint-ignore no-await-in-loop
-    const result = await neat.evolve(bestCreature);
+    const outcome = await awaitWithinHardDeadline(
+      neat.evolve(bestCreature),
+      generationCap,
+      nowFn,
+      () =>
+        generation === 1
+          ? neat.abandonWedgedFirstGeneration(nowFn() - start)
+          : abandonWedgedGeneration(
+            neat,
+            hardDeadlineMS,
+            nowFn,
+            generation - 1,
+          ),
+    );
+    if (outcome === HARD_DEADLINE_BREACHED) {
+      // The wedged generation never completed.
+      generation--;
+      break;
+    }
+    const result = outcome;
 
     // Issue #3636: shared end-of-generation bookkeeping (see finishGeneration).
     // deno-lint-ignore no-await-in-loop
@@ -1067,7 +1126,7 @@ export async function evolveEnv<S, A>(
       // even when finishUp() would still ask for more wait generations. The
       // post-loop sequence (best-creature restore, writeCreatures) still runs
       // because the break lands there.
-      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS)) {
+      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
         break;
       }
 
@@ -1075,7 +1134,11 @@ export async function evolveEnv<S, A>(
         break;
       }
       // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks();
+      await neat.awaitInFlightTasks(
+        AWAIT_IN_FLIGHT_TIMEOUT_MS,
+        hardDeadlineMS,
+        nowFn,
+      );
     }
   }
 
@@ -1101,6 +1164,8 @@ export async function evolveEnv<S, A>(
     },
     replayQueue: neat.discoveryReplayQueue,
     hardDeadlineMS,
+    now: nowFn,
+    budgetMS: deps?.teardownBudgetMS,
   });
 
   // Issue #3434: run-level lifecycle teardown — dispose the run's population
@@ -1235,11 +1300,18 @@ export interface EvolveRLOptions extends NeatOptions {
  *
  * Multi-threaded worker rollouts are deliberately deferred to #2612; today
  * every episode runs on the main thread.
+ *
+ * Like {@link evolveDir}, the run is bounded by the T+grace hard cap (Issue
+ * #4056): a generation that never settles is abandoned and the population
+ * evolved so far is kept. Generation 1 is bounded by its own, larger
+ * first-generation deadline. The optional `deps` argument is a test seam (see
+ * {@link EvolveDirDeps}); production callers omit it.
  */
 export async function evolveRL<S, A>(
   creature: Creature,
   adapter: EpisodeAdapter<S, A>,
   options: EvolveRLOptions,
+  deps?: EvolveDirDeps,
 ): Promise<
   EvolveResult & {
     /**
@@ -1281,7 +1353,7 @@ export async function evolveRL<S, A>(
   };
   options.signal?.addEventListener("abort", abortListener);
 
-  const start = Date.now();
+  const start = deps?.startTimeMS ?? Date.now();
   // Issue #2791: reinforcement learning is an evolution-only task with no
   // labelled dataset, so the supervised auto-scaling of `trainPerGen` does not
   // apply. Preserve the historical default of 1 (per-generation backprop is a
@@ -1303,6 +1375,15 @@ export async function evolveRL<S, A>(
   // below via neat.abandonInFlightPastHardDeadline(hardDeadlineMS).
   const hardDeadlineMS =
     computeHardDeadlineTS(start, config.timeoutMinutes ?? 0) ?? 0;
+  // Issue #4056: generation 1's own, larger bound (as in evolveDir); 0 when no
+  // timeout is configured.
+  const firstGenerationDeadlineMS = computeFirstGenerationDeadlineTS(
+    start,
+    config.timeoutMinutes ?? 0,
+  ) ?? 0;
+  const nowFn = deps?.now ?? Date.now;
+  const overrunFactor = deps?.overrunEnforcementFactor ??
+    DEFAULT_OVERRUN_ENFORCEMENT_FACTOR;
 
   // Lazy import avoids a circular module graph (Neat.ts → Creature.ts →
   // CreatureTraining.ts → RLEpisodeFitness.ts → Fitness.ts vs Neat.ts → Fitness.ts).
@@ -1352,10 +1433,13 @@ export async function evolveRL<S, A>(
   rlFitness.setStatisticsEnabled(statisticsEnabled);
   const milestones: EvolveRLMilestone[] = [];
 
+  type GenerationStatistics = NonNullable<
+    ReturnType<typeof rlFitness.consumeGenerationStatistics>
+  >;
+
   /**
-   * Issue #2629 / #2647: build the milestone payload for the current
-   * generation, consuming and clearing the per-generation statistics
-   * accumulator. Hoisted into a closure so the loop body can emit on the
+   * Issue #2629 / #2647: build the milestone payload for a generation from
+   * its snapshotted per-generation statistics. Hoisted into a closure so the loop body can emit on the
    * geometric schedule and the post-loop tail can append a synthetic
    * final-generation milestone using the same field semantics.
    *
@@ -1363,8 +1447,15 @@ export async function evolveRL<S, A>(
    * scalars instead of a live creature reference; the loop path still
    * forwards live `creature.neurons.length` / `creature.synapses.length`
    * via the wrapper below.
+   *
+   * PR #4059 review: the per-generation statistics are passed in as a
+   * snapshot taken when the kept generation settled, never read from the live
+   * accumulator. A generation abandoned at the hard deadline resets that
+   * accumulator, which would otherwise erase the last kept generation's
+   * statistics before the synthetic tail milestone is built.
    */
   const buildMilestoneFromScalars = (
+    stats: GenerationStatistics | undefined,
     fittestScore: number,
     fittestNeurons: number,
     fittestSynapses: number,
@@ -1373,7 +1464,6 @@ export async function evolveRL<S, A>(
     nowMs: number,
     gen: number,
   ): EvolveRLMilestone => {
-    const stats = rlFitness.consumeGenerationStatistics();
     // bestScore — prefer the fittest creature's tagged mean return so that
     // elites which were not re-evaluated this generation still report a
     // sensible value. Fall back to the in-generation best mean tracked by
@@ -1403,6 +1493,7 @@ export async function evolveRL<S, A>(
   };
 
   const buildMilestonePayload = (
+    stats: GenerationStatistics | undefined,
     fittest: Creature,
     fittestScore: number,
     generationStartMs: number,
@@ -1410,6 +1501,7 @@ export async function evolveRL<S, A>(
     gen: number,
   ): EvolveRLMilestone => {
     return buildMilestoneFromScalars(
+      stats,
       fittestScore,
       fittest.neurons.length,
       fittest.synapses.length,
@@ -1429,6 +1521,7 @@ export async function evolveRL<S, A>(
   // generation's fittest across the entire run pinned an otherwise-disposable
   // creature in long-running evolveRL loops, fanning out to its neurons,
   // synapses, and tag arrays via the creature → neuron → creature cycle.
+  let lastGenerationStats: GenerationStatistics | undefined;
   let lastFittestScore = 0;
   let lastFittestNeurons = 0;
   let lastFittestSynapses = 0;
@@ -1448,6 +1541,9 @@ export async function evolveRL<S, A>(
 
   await neat.populatePopulation(creature);
 
+  // Issue #4056: test seam, as in evolveDir. No-op for production callers.
+  deps?.onNeatReady?.(neat);
+
   let error = Infinity;
   let bestScore = -Infinity;
 
@@ -1465,21 +1561,36 @@ export async function evolveRL<S, A>(
   const scoreTrajectory = createScoreTrajectory();
 
   while (true) {
+    // Issue #4056: the hard cap is consulted on every pass (as in evolveDir).
+    // Generation 1 is bounded by the first-generation bound on the evolve
+    // await below.
+    if (
+      generation > 0 &&
+      neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
+    ) {
+      break;
+    }
+
     if (
       shouldStopStartingGenerations(
         generation,
         start,
         config.timeoutMinutes,
-        Date.now(),
+        nowFn(),
+        overrunFactor,
       )
     ) {
-      requestOverrunStop(neat, DEFAULT_OVERRUN_ENFORCEMENT_FACTOR);
+      requestOverrunStop(neat, overrunFactor);
       if (interrupted) break;
       if (neat.finishUp(iterations, endTimeMS, start, generation)) {
         break;
       }
       // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks();
+      await neat.awaitInFlightTasks(
+        AWAIT_IN_FLIGHT_TIMEOUT_MS,
+        hardDeadlineMS,
+        nowFn,
+      );
       continue;
     }
 
@@ -1491,11 +1602,38 @@ export async function evolveRL<S, A>(
     // Issue #2629: capture per-generation wall-clock and reset stats
     // accumulators *before* fitness runs. When statistics are off, both
     // calls are no-ops on the disabled path.
-    const generationStartMs = Date.now();
+    const generationStartMs = nowFn();
     rlFitness.beginGenerationStatistics();
 
+    // Issue #4056: bound the generation by the hard cap (generation 1 by its
+    // own first-generation bound), exactly as evolveDir does.
+    const generationCap = generation === 1
+      ? firstGenerationDeadlineMS
+      : hardDeadlineMS;
     // deno-lint-ignore no-await-in-loop
-    const result = await neat.evolve(bestCreature);
+    const outcome = await awaitWithinHardDeadline(
+      neat.evolve(bestCreature),
+      generationCap,
+      nowFn,
+      () =>
+        generation === 1
+          ? neat.abandonWedgedFirstGeneration(nowFn() - start)
+          : abandonWedgedGeneration(
+            neat,
+            hardDeadlineMS,
+            nowFn,
+            generation - 1,
+          ),
+    );
+    if (outcome === HARD_DEADLINE_BREACHED) {
+      // The wedged generation never completed.
+      generation--;
+      // The abandoned generation's partial statistics stay in the live
+      // accumulator and are never read; the last kept generation's were
+      // snapshotted into `lastGenerationStats`.
+      break;
+    }
+    const result = outcome;
 
     const fittest = result.fittest;
     const fittestScore = fittest.score!;
@@ -1530,7 +1668,14 @@ export async function evolveRL<S, A>(
     // synthetic final milestone can be built after the loop exits between
     // scheduled milestones. Captured before the scheduled-milestone block
     // because that block consumes the per-generation statistics accumulator.
+    // The statistics are consumed here, once, so both the scheduled milestone
+    // and a later synthetic one read this kept generation's snapshot even if
+    // the next generation is abandoned and resets the live accumulator.
+    const generationStats = statisticsEnabled
+      ? rlFitness.consumeGenerationStatistics()
+      : undefined;
     if (statisticsEnabled) {
+      lastGenerationStats = generationStats;
       // Issue #2693: snapshot only the milestone-relevant scalars so the
       // live creature reference is not retained across generations.
       lastFittestScore = fittestScore;
@@ -1547,6 +1692,7 @@ export async function evolveRL<S, A>(
     // were opted in.
     if (statisticsEnabled && isMilestoneGeneration(generation)) {
       const milestone = buildMilestonePayload(
+        generationStats,
         fittest,
         fittestScore,
         generationStartMs,
@@ -1595,7 +1741,7 @@ export async function evolveRL<S, A>(
       // even when finishUp() would still ask for more wait generations. The
       // post-loop sequence (best-creature restore, writeCreatures) still runs
       // because the break lands there.
-      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS)) {
+      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
         break;
       }
 
@@ -1603,7 +1749,11 @@ export async function evolveRL<S, A>(
         break;
       }
       // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks();
+      await neat.awaitInFlightTasks(
+        AWAIT_IN_FLIGHT_TIMEOUT_MS,
+        hardDeadlineMS,
+        nowFn,
+      );
     }
   }
 
@@ -1622,6 +1772,7 @@ export async function evolveRL<S, A>(
     // Issue #2693: build the synthetic-tail milestone from the snapshotted
     // scalars rather than a retained Creature reference.
     const milestone = buildMilestoneFromScalars(
+      lastGenerationStats,
       lastFittestScore,
       lastFittestNeurons,
       lastFittestSynapses,
@@ -1660,6 +1811,8 @@ export async function evolveRL<S, A>(
     workers: workerPool ? [workerPool] : undefined,
     replayQueue: neat.discoveryReplayQueue,
     hardDeadlineMS,
+    now: nowFn,
+    budgetMS: deps?.teardownBudgetMS,
   });
 
   // Issue #3434: run-level lifecycle teardown — dispose the run's population

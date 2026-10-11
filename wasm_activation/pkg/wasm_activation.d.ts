@@ -90,13 +90,6 @@ export class CompiledNetwork {
     free(): void;
     [Symbol.dispose](): void;
     /**
-     * Activate the network with the given input values
-     * Returns the output values
-     * Issue #1175 - Uses typed structs for better cache locality
-     * Issue #1177 - Inlines common squash functions to avoid function call overhead
-     */
-    activate(input: Float32Array, num_outputs: number): Float32Array;
-    /**
      * Activate the network with tracing for backpropagation support
      * Issue #1121 - WASM Migration Phase 4: activateAndTrace
      * Issue #1173 - Pre-allocate `Vec<f32>` buffers in CompiledNetwork struct
@@ -138,6 +131,13 @@ export class CompiledNetwork {
      * [outputs..., activations..., hints..., trace_data...]
      */
     activate_and_trace_batch_4way(inputs: Float32Array, input_size: number, num_outputs: number): Float32Array;
+    /**
+     * Activate the network with the given input values
+     * Returns the output values
+     * Issue #1175 - Uses typed structs for better cache locality
+     * Issue #1177 - Inlines common squash functions to avoid function call overhead
+     */
+    activate(input: Float32Array, num_outputs: number): Float32Array;
     /**
      * Activate the network with the given input values, writing to a pre-allocated output buffer
      * Issue #1171 - Avoids per-call Float32Array allocation overhead

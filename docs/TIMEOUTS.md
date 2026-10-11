@@ -26,7 +26,9 @@ That guarantee has exactly one carve-out.
 > (`[Neat] First generation wedged after Ns … in-flight: <ids>`) and `evolveDir`
 > returns with `generation === 0` and
 > `terminationReason: "first-generation-wedged"`. Every generation after the
-> first is capped exactly as described below.
+> first is capped exactly as described below. `evolveEnv` and `evolveRL` apply
+> the same first-generation bound and hard cap as `evolveDir` (Issue #4056);
+> `evolveDataSet` delegates to `evolveDir`.
 
 ## 🧩 The deadlines
 
@@ -89,12 +91,12 @@ predicate, applying the same one-generation floor
   phase returns `evolve()` checks `isRunAbandonedSince` and returns before
   anything sorts or commits `neat.population`. The result it hands back is still
   real — the champion and averages come from a sorted _copy_ of the population —
-  because `evolveEnv` and `evolveRL` await `evolve()` directly and adopt that
-  champion. The teardown's checkpoint write (`writeCreatures`) also iterates a
-  snapshot of the population taken at entry, so the checkpoint holds every
-  member exactly once (Issue #4052). **Generation 1 is awaited past the hard
-  cap, but only up to the first-generation bound** (Issues #3940, #4053):
-  bounding it at the hard cap is what produced
+  because `evolveDir`, `evolveEnv` and `evolveRL` all race `evolve()` against
+  the same deadlines and adopt that champion. The teardown's checkpoint write
+  (`writeCreatures`) also iterates a snapshot of the population taken at entry,
+  so the checkpoint holds every member exactly once (Issue #4052). **Generation
+  1 is awaited past the hard cap, but only up to the first-generation bound**
+  (Issues #3940, #4053): bounding it at the hard cap is what produced
   `keeping the 0 generation(s) already evolved`, and the per-task budgets below
   still clamp every discovery / training child to the cap, so a generation 1
   that is merely late ends on its own. One that outlives the first-generation
@@ -330,8 +332,12 @@ unit-covered in
 `test/creature/EvolveDirFirstGenerationWedged.ts` drives a generation 1 that
 never settles with `timeoutMinutes` 5 and asserts `evolveDir` returns with
 `first-generation-wedged` once the bound passes; the bound itself is
-unit-covered in `test/NEAT/HardDeadline.ts`. The replay-queue hard-cap bound has
-dedicated coverage in
+unit-covered in `test/NEAT/HardDeadline.ts`.
+[`test/creature/EvolveEnvHardDeadline_test.ts`](../test/creature/EvolveEnvHardDeadline_test.ts)
+and
+[`test/creature/EvolveRLHardDeadline_test.ts`](../test/creature/EvolveRLHardDeadline_test.ts)
+drive the same cases through `evolveEnv` and `evolveRL` (Issue #4056). The
+replay-queue hard-cap bound has dedicated coverage in
 [`test/NEAT/DiscoveryReplayQueueDeadline.ts`](../test/NEAT/DiscoveryReplayQueueDeadline.ts).
 
 The bounded teardown has its own two layers:
