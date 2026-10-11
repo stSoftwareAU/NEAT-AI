@@ -1,7 +1,9 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
-import { evolveRL } from "@creature/CreatureTraining.ts";
-import type { EvolveDirDeps } from "@creature/CreatureTraining.ts";
+import {
+  type EvolveDirDeps,
+  evolveEnv,
+} from "../../src/creature/CreatureTraining.ts";
 import type { Neat } from "@neat/Neat.ts";
 import {
   computeFirstGenerationDeadlineTS,
@@ -9,42 +11,35 @@ import {
 } from "@neat/HardDeadline.ts";
 import type { TrainingTaskHandle } from "@neat/TrainingTaskHandle.ts";
 import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
-import { EpisodeAdapter, type StepResult } from "@creature/EpisodeAdapter.ts";
+import type { LegacyEpisodeAdapter } from "@creature/EpisodicFitnessTypes.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**
- * Issue #4056: `evolveRL` must bound `neat.evolve()` by the same deadlines as
+ * Issue #4056: `evolveEnv` must bound `neat.evolve()` by the same deadlines as
  * `evolveDir` (Issue #4053 / GRQ #4470). A generation that never settles ends
  * the run at its own bound instead of hanging, driven by an injected clock so
  * the test makes no elapsed-time assertions.
  */
 
 /** Single-tick adapter that can never reach `targetError`. */
-class UnreachableAdapter extends EpisodeAdapter<null, number> {
-  override reset(_seed: number): { observation: Float32Array; state: null } {
-    return { observation: new Float32Array([1.0]), state: null };
-  }
-  override step(
-    _state: null,
-    action: number,
-  ): StepResult<Float32Array> & { state: null } {
-    return {
-      observation: new Float32Array([0]),
-      reward: -Math.abs(action - 99),
-      terminated: true,
-      truncated: false,
-      state: null,
-    };
-  }
-  override get observationLength(): number {
-    return 1;
-  }
-  override decodeAction(creatureOutput: Float32Array): number {
-    return creatureOutput[0];
-  }
-  override maxSteps(): number {
-    return 1;
-  }
+function buildAdapter(): LegacyEpisodeAdapter<null, number> {
+  return {
+    inputCount: 1,
+    outputCount: 1,
+    maxSteps: 1,
+    reset(_seed?: number): null {
+      return null;
+    },
+    observe(_state: null): Float32Array {
+      return new Float32Array([1.0]);
+    },
+    decode(output: Float32Array): number {
+      return output[0];
+    },
+    step(_state: null, action: number) {
+      return { state: null, reward: -Math.abs(action - 99), done: true };
+    },
+  };
 }
 
 function makeRecordingLogger(): { logger: Logger; lines: string[] } {
@@ -67,7 +62,7 @@ function withRealTimeGuard<T>(
   let timer: ReturnType<typeof setTimeout> | undefined;
   const guard = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(
-      () => reject(new Error(`${label}: evolveRL did not return`)),
+      () => reject(new Error(`${label}: evolveEnv did not return`)),
       timeoutMS,
     );
   });
@@ -90,12 +85,14 @@ interface Harness {
   creatureStore: string;
   state: {
     nowMS: number;
-    /** One-shot hook run on each injected-clock read (watchdog poll). */
-    onNow?: () => void;
     evolveCalls: number;
     captured?: Neat;
     cancelCalls: Array<{ taskID: number; reason: string }>;
     quarantineCalls: number;
+    /** Number of times the injected clock has been read. */
+    nowCalls: number;
+    /** One-shot hook: fires after `remaining` further clock reads. */
+    afterNowReads?: { remaining: number; fire: () => void };
   };
 }
 
@@ -119,6 +116,7 @@ async function makeHarness(
     evolveCalls: 0,
     cancelCalls: [],
     quarantineCalls: 0,
+    nowCalls: 0,
   };
   const fakeWorker = {
     cancelTask(taskID: number, reason: string): boolean {
@@ -137,7 +135,12 @@ async function makeHarness(
     deps: {
       startTimeMS: START_MS,
       now: () => {
-        state.onNow?.();
+        state.nowCalls++;
+        const hook = state.afterNowReads;
+        if (hook && --hook.remaining <= 0) {
+          state.afterNowReads = undefined;
+          hook.fire();
+        }
         return state.nowMS;
       },
       teardownBudgetMS: 1_000,
@@ -175,25 +178,25 @@ async function run(
   name: string,
   behave: Parameters<typeof makeHarness>[0],
   check: (
-    result: Awaited<ReturnType<typeof evolveRL>>,
+    result: Awaited<ReturnType<typeof evolveEnv>>,
     h: Harness,
   ) => void,
+  overrides: { iterations?: number; deps?: Partial<EvolveDirDeps> } = {},
 ) {
   await initWasmForTests();
   const h = await makeHarness(behave);
+  Object.assign(h.deps, overrides.deps);
   const creature = new Creature(1, 1);
   const priorLogger = getLogger();
   try {
     const result = await withRealTimeGuard(
-      evolveRL(creature, new UnreachableAdapter(), {
+      evolveEnv(creature, buildAdapter(), {
         populationSize: 6,
-        iterations: 500,
+        iterations: overrides.iterations ?? 500,
         timeoutMinutes: TIMEOUT_MINUTES,
         threads: 1,
         creatureStore: h.creatureStore,
         logger: h.logger,
-        episodesPerCreature: 1,
-        seed: 7,
       }, h.deps),
       name,
     );
@@ -205,7 +208,7 @@ async function run(
 }
 
 Deno.test({
-  name: "evolveRL: a first generation that never settles ends at its bound",
+  name: "evolveEnv: a first generation that never settles ends at its bound",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: () =>
@@ -232,7 +235,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "evolveRL: a later generation that never settles ends at the hard cap",
+  name: "evolveEnv: a later generation that never settles ends at the hard cap",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: () =>
@@ -259,7 +262,7 @@ Deno.test({
 });
 
 Deno.test({
-  name: "evolveRL: the top-of-loop hard cap stops before a second generation",
+  name: "evolveEnv: the top-of-loop hard cap stops before a second generation",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: () =>
@@ -286,35 +289,25 @@ Deno.test({
 
 Deno.test({
   name:
-    "evolveRL: a first generation slower than the hard cap is not abandoned at the hard cap",
+    "evolveEnv: a first generation slower than the hard cap is not abandoned at the hard cap",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: () =>
     run(
       "slow first generation",
-      async (call, _neat, original, h) => {
-        if (call > 1) {
-          throw new Error("a second generation must never start");
-        }
+      (_call, _neat, original, h) => {
         // Strictly between the hard deadline and the first-generation bound.
         h.state.nowMS = computeHardDeadlineTS(START_MS, TIMEOUT_MINUTES)! +
           60_000;
-        // Settle only after the watchdog has polled the clock at this time a
-        // few times, so a first generation capped at the hard deadline would
-        // already have been abandoned.
-        const POLLS_BEFORE_SETTLING = 3;
-        const polled = new Promise<void>((resolve) => {
-          let polls = 0;
-          h.state.onNow = () => {
-            if (++polls >= POLLS_BEFORE_SETTLING) {
-              h.state.onNow = undefined;
-              resolve();
-            }
+        // While this promise is pending the loop is suspended, so every clock
+        // read is the watchdog's. Settle only after it has polled twice at the
+        // in-between time: a gen-1 cap of the hard deadline would abandon here.
+        return new Promise((resolve, reject) => {
+          h.state.afterNowReads = {
+            remaining: 2,
+            fire: () => original(undefined as never).then(resolve, reject),
           };
         });
-        const r = await original(undefined as never);
-        await polled;
-        return r;
       },
       (result, h) => {
         assertEquals(result.terminationReason, "hard-deadline");
@@ -322,8 +315,67 @@ Deno.test({
         assertEquals(h.state.evolveCalls, 1);
         assert(
           !h.lines.join("\n").includes("First generation wedged after"),
-          "a first generation that settled must not be logged as wedged",
+          "generation 1 completed, so it must not be abandoned",
         );
       },
+    ),
+});
+
+Deno.test({
+  name:
+    "evolveEnv: an over-run before the hard cap stops new generations as an over-run",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () =>
+    run(
+      "over-run",
+      async (call, _neat, original, h) => {
+        if (call > 1) {
+          throw new Error("no generation may start after the over-run");
+        }
+        const r = await original(undefined as never);
+        // Past timeoutMinutes × factor 1, still before the hard cap.
+        h.state.nowMS = START_MS + TIMEOUT_MINUTES * 60_000 + 30_000;
+        return r;
+      },
+      (result, h) => {
+        assertEquals(result.terminationReason, "overrun");
+        assertEquals(result.generation, 1);
+        assertEquals(h.state.evolveCalls, 1);
+        const joined = h.lines.join("\n");
+        assert(
+          joined.includes("Training over-run"),
+          "the over-run self-termination must be logged",
+        );
+        assert(
+          !joined.includes("Hard deadline"),
+          "the hard cap must not be what ends the run",
+        );
+      },
+      { deps: { overrunEnforcementFactor: 1 } },
+    ),
+});
+
+Deno.test({
+  name:
+    "evolveEnv: a completed run before the hard cap still runs a requested additional generation",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () =>
+    run(
+      "completed before the cap",
+      async (call, neat, original) => {
+        const r = await original(undefined as never);
+        // As evolve() does when it folds in trained creatures: ask for one
+        // more generation before the run may finish.
+        if (call === 1) neat.additionalGenerationCount = 1;
+        return r;
+      },
+      (result, h) => {
+        assertEquals(result.terminationReason, undefined);
+        assertEquals(result.generation, 2);
+        assertEquals(h.state.evolveCalls, 2);
+      },
+      { iterations: 1 },
     ),
 });

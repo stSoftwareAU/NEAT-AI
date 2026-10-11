@@ -15,9 +15,13 @@ raced against the deadline, generation 1 is bounded by
 ### Intent and Rationale
 
 `docs/TIMEOUTS.md` promises that a run ends within the hard deadline. That held
-for `evolveDir` only (Issues #4053 and GRQ-AutoTrader #4470). The other two
-evolve loops computed `firstGenerationDeadlineMS` but never used it, so a
-generation that never settled hung the caller indefinitely.
+for `evolveDir` only (Issues #4053 and GRQ-AutoTrader #4470). On `Develop`, only
+`evolveDir` computes `firstGenerationDeadlineMS` and races `neat.evolve()`
+against the deadlines. `evolveEnv` and `evolveRL` computed only
+`hardDeadlineMS`, checked it only in the finish-up branch, and awaited
+`neat.evolve()` directly, so a generation that never settled hung the caller
+indefinitely. This branch adds the `firstGenerationDeadlineMS` computation, the
+top-of-loop check and the race to both functions.
 
 ### Essential Design Decisions
 
@@ -40,15 +44,40 @@ generation that never settled hung the caller indefinitely.
 - The test seam is an optional `deps?: EvolveDirDeps` parameter on both
   functions (injected clock, `onNeatReady`, enforcement factor, teardown
   budget), mirroring `evolveDir`.
+- The test files are named `*_test.ts` (Deno's default test-name pattern, as in
+  `test/creature/EvolveRLStatistics_test.ts`) and import `evolveEnv` /
+  `evolveRL` by relative path (`../../src/creature/CreatureTraining.ts`). Under
+  the old names, importing through the `@creature/` alias, the mutation check
+  reported "no test imports this module" for both `CreatureTraining.ts` and the
+  test files.
 
 ## Evidence
 
-Tests (all 8 red before the fix, green after):
+Tests (the original 8 were red before the fix; all 13 green after):
 
 ```text
-deno test -A test/creature/EvolveEnvHardDeadline.ts test/creature/EvolveRLHardDeadline.ts
-ok | 8 passed | 0 failed
+deno test -A test/creature/EvolveEnvHardDeadline_test.ts test/creature/EvolveRLHardDeadline_test.ts
+ok | 13 passed | 0 failed
 ```
+
+Mutation check, re-run by hand on every `CreatureTraining.ts` line the gate
+listed (`deno test --no-check` on the two files, one mutant at a time); each
+went red:
+
+| Line | Mutant                                             | Result                |
+| ---- | -------------------------------------------------- | --------------------- |
+| 1025 | delete `requestOverrunStop(neat, overrunFactor)`   | 1 failed (over-run)   |
+| 1062 | negate `outcome === HARD_DEADLINE_BREACHED`        | 6 failed              |
+| 1129 | negate finish-up `abandonInFlightPastHardDeadline` | 1 failed (completed)  |
+| 1571 | delete `requestOverrunStop(neat, overrunFactor)`   | 1 failed (over-run)   |
+| 1616 | negate `outcome === HARD_DEADLINE_BREACHED`        | 7 failed              |
+| 1620 | delete `rlFitness.consumeGenerationStatistics()`   | 1 failed (statistics) |
+| 1723 | negate finish-up `abandonInFlightPastHardDeadline` | 1 failed (completed)  |
+
+The listed `test/creature/EvolveEnvHardDeadline.ts` mutants mutate the test file
+itself; the gate ran no test against them ("no test imports this module"). The
+file is now `EvolveEnvHardDeadline_test.ts` (likewise
+`EvolveRLHardDeadline_test.ts`), named as a test.
 
 ```mermaid
 flowchart TD
@@ -68,13 +97,24 @@ flowchart TD
 Related issues: #4056 (this), #4053 (evolveDir first-generation bound),
 GRQ-AutoTrader #4470 (hard-deadline race).
 
-Docs sweep: grepped `timeoutMinutes`, `hard deadline`,
-`first-generation-wedged`, `evolveEnv`, `evolveRL`. Updated `docs/TIMEOUTS.md`
-(evolveEnv and evolveRL now share the evolveDir behaviour). Hits still true:
-`docs/TIMEOUTS.md:5,17-31,94,146`, `docs/EVOLUTION_CONTROL.md:27,41,68`,
-`docs/TRAINING_GAIN_LOG.md:85`, `src/creature/CreatureTraining.ts` doc comments
-near 871-876 and 1305-1310. `docs/REINFORCEMENT_LEARNING.md` makes no deadline
-claims.
+**Docs sweep** — grep: `timeoutMinutes`, `hard deadline`,
+`first-generation-wedged`, `firstGenerationDeadlineMS`, `evolveEnv`, `evolveRL`,
+"await `evolve()` directly"; section:
+`docs/TIMEOUTS.md#-what-each-phase-does-at-the-hard-cap`; updated:
+`docs/TIMEOUTS.md`
+
+Read through `docs/TIMEOUTS.md` (the opening note,
+`#-what-each-phase-does-at-the-hard-cap` and `#-verifying-the-guarantee`). The
+sentence saying `evolveEnv` and `evolveRL` "await `evolve()` directly" was made
+false and now says all three loops race `evolve()`. The opening note now says
+`evolveEnv` and `evolveRL` apply the same first-generation bound and hard cap.
+`#-verifying-the-guarantee` now names the two new test files. Hits still true:
+`docs/api/EVOLUTION.md#-creatureevolverl` ("stop conditions match
+`evolveDir()`", true now that the deadlines match),
+`docs/EVOLUTION_CONTROL.md:27,41,68`, `docs/TRAINING_GAIN_LOG.md:85`, and the
+`src/creature/CreatureTraining.ts` doc comments on `evolveEnv` / `evolveRL`.
+`docs/REINFORCEMENT_LEARNING.md` and `docs/event-driven-evolution.md` make no
+deadline claims.
 
 ## Acceptance Criteria
 
@@ -96,8 +136,8 @@ claims.
   `abandonWedgedGeneration` — evidence: src/creature/CreatureTraining.ts:1055,
   src/creature/CreatureTraining.ts:1609 — reviewer: met
 - **met** — Injected-clock regression tests where `neat.evolve()` never settles
-  — evidence: test/creature/EvolveEnvHardDeadline.ts,
-  test/creature/EvolveRLHardDeadline.ts — reviewer: met
+  — evidence: test/creature/EvolveEnvHardDeadline_test.ts,
+  test/creature/EvolveRLHardDeadline_test.ts — reviewer: met
 - **unrequested** — Optional `deps?: EvolveDirDeps` parameter on `evolveEnv` and
   `evolveRL` — evidence: src/creature/CreatureTraining.ts — reviewer:
   unrequested — reason: the injected clock needs a seam; it mirrors
@@ -114,23 +154,27 @@ Clean: no material departures. The repository has no `CODING-STANDARDS.md`;
 
 ## Test Plan
 
-- `test/creature/EvolveEnvHardDeadline.ts` and
-  `test/creature/EvolveRLHardDeadline.ts`, four tests each: a first generation
-  that never settles ends at its bound; a later generation that never settles
-  ends at the hard cap; the top-of-loop hard cap stops before a second
-  generation; a first generation slower than the hard cap is not abandoned at
-  the hard cap. 8/8 passed. No assertions removed.
+- `test/creature/EvolveEnvHardDeadline_test.ts` and
+  `test/creature/EvolveRLHardDeadline_test.ts` (renamed from `*.ts`), six tests
+  each: "a first generation that never settles ends at its bound"; "a later
+  generation that never settles ends at the hard cap"; "the top-of-loop hard cap
+  stops before a second generation"; "a first generation slower than the hard
+  cap is not abandoned at the hard cap"; "an over-run before the hard cap stops
+  new generations as an over-run"; "a completed run before the hard cap still
+  runs a requested additional generation". `EvolveRLHardDeadline_test.ts` adds a
+  seventh: "an abandoned generation's statistics do not reach the final
+  milestone". 13/13 passed. No assertions removed.
 - `./quality.sh --lint-only` and `--check-only` pass. The full `./quality.sh`
   fails in this environment with "Native rust_scorer is required (quality.sh
   default) but was not found"; this is an environment limitation, not a pass.
 
-<!-- vibe-quality-gate-skipped reason="native rust_scorer unavailable in this environment; lint and type-check passed, 8/8 targeted tests passed" -->
+<!-- vibe-quality-gate-skipped reason="native rust_scorer unavailable in this environment; lint and type-check passed, 13/13 targeted tests passed" -->
 
 Branch outcomes:
 
 - src/creature/CreatureTraining.ts:1011 — evolveEnv hard cap reached at top of
-  loop → stops; test/creature/EvolveEnvHardDeadline.ts "the top-of-loop hard cap
-  stops before a second generation"; flipping went red.
+  loop → stops; test/creature/EvolveEnvHardDeadline_test.ts "the top-of-loop
+  hard cap stops before a second generation"; flipping went red.
 - src/creature/CreatureTraining.ts:1044 — evolveEnv generation 1 uses the
   first-generation bound; "a first generation that never settles ends at its
   bound" and "a first generation slower than the hard cap is not abandoned at
@@ -141,13 +185,24 @@ Branch outcomes:
 - src/creature/CreatureTraining.ts:1062 — evolveEnv breach → `generation--` and
   break; the two never-settles tests; flipping went red.
 - src/creature/CreatureTraining.ts:1557 — evolveRL hard cap at top of loop →
-  stops; test/creature/EvolveRLHardDeadline.ts "the top-of-loop hard cap stops
-  before a second generation"; flipping went red.
+  stops; test/creature/EvolveRLHardDeadline_test.ts "the top-of-loop hard cap
+  stops before a second generation"; flipping went red.
 - src/creature/CreatureTraining.ts:1598 — evolveRL generation 1 first-generation
   bound / later generation hard cap; the corresponding EvolveRL tests; flipping
   went red.
 - src/creature/CreatureTraining.ts:1616 — evolveRL breach → `generation--`,
   break; the two never-settles tests; flipping went red.
 - src/creature/CreatureTraining.ts:1620 — evolveRL drains
-  `rlFitness.consumeGenerationStatistics()` on breach; exempt (untestable): the
-  drained value is discarded and not observable through the public API.
+  `rlFitness.consumeGenerationStatistics()` on breach;
+  test/creature/EvolveRLHardDeadline_test.ts "an abandoned generation's
+  statistics do not reach the final milestone" (with `statistics: true`, the
+  synthetic milestone for the last kept generation must not carry the abandoned
+  generation's episodes); deleting it went red.
+- src/creature/CreatureTraining.ts:1025, 1571 — over-run before the hard cap →
+  `requestOverrunStop` sets `terminationReason: "overrun"`; "an over-run before
+  the hard cap stops new generations as an over-run" in each file; deleting the
+  call went red.
+- src/creature/CreatureTraining.ts:1129, 1723 — finish-up branch before the hard
+  cap → falls through to `finishUp()`, which honours a pending additional
+  generation; "a completed run before the hard cap still runs a requested
+  additional generation" in each file; negating it went red.

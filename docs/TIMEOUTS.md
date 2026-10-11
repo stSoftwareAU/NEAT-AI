@@ -332,8 +332,12 @@ unit-covered in
 `test/creature/EvolveDirFirstGenerationWedged.ts` drives a generation 1 that
 never settles with `timeoutMinutes` 5 and asserts `evolveDir` returns with
 `first-generation-wedged` once the bound passes; the bound itself is
-unit-covered in `test/NEAT/HardDeadline.ts`. The replay-queue hard-cap bound has
-dedicated coverage in
+unit-covered in `test/NEAT/HardDeadline.ts`.
+[`test/creature/EvolveEnvHardDeadline_test.ts`](../test/creature/EvolveEnvHardDeadline_test.ts)
+and
+[`test/creature/EvolveRLHardDeadline_test.ts`](../test/creature/EvolveRLHardDeadline_test.ts)
+drive the same cases through `evolveEnv` and `evolveRL` (Issue #4056). The
+replay-queue hard-cap bound has dedicated coverage in
 [`test/NEAT/DiscoveryReplayQueueDeadline.ts`](../test/NEAT/DiscoveryReplayQueueDeadline.ts).
 
 The bounded teardown has its own two layers:
