@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
-import { evolveDir } from "@creature/CreatureTraining.ts";
-import type { EvolveDirDeps } from "@creature/CreatureTraining.ts";
+import { evolveDir } from "../../src/creature/CreatureTraining.ts";
+import type { EvolveDirDeps } from "../../src/creature/CreatureTraining.ts";
 import type { Neat } from "@neat/Neat.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { DeDuplicator } from "@architecture/DeDuplicator.ts";
@@ -10,6 +10,8 @@ import {
   makeDataDir,
 } from "@architecture/DataSet.ts";
 import { computeHardDeadlineTS } from "@neat/HardDeadline.ts";
+import { evolve } from "../../src/NEAT/NeatEvolution.ts";
+import { getLogger, setLogger } from "@utils/Logger.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 // Issue #4061: a generation abandoned past the hard deadline during its dedup
@@ -94,7 +96,8 @@ Deno.test({
       teardownBudgetMS: 1_000,
       onNeatReady: (neat) => {
         liveNeat = neat;
-        const realEvolve = neat.evolve.bind(neat);
+        const realEvolve = (previousFittest?: Creature) =>
+          evolve(neat, previousFittest);
         let calls = 0;
         (neat as { evolve: Neat["evolve"] }).evolve = (
           previousFittest?: Creature,
@@ -111,12 +114,22 @@ Deno.test({
     };
 
     // Several iterations so generation 1 does not complete the run and generation 2 is reached.
+    // Every log line, so the check can see generation 2's mid-commit warning,
+    // which it logs after evolveDir has returned.
+    const lines: string[] = [];
+    const record = (...args: unknown[]) => {
+      lines.push(args.map((a) => String(a)).join(" "));
+    };
+    const logger = { debug: record, info: record, warn: record, error: record };
+    const priorLogger = getLogger();
+
     const options: NeatOptions = {
       populationSize: 10,
       iterations: 5,
       timeoutMinutes: 1,
       threads: 1,
       creatureStore,
+      logger,
     };
 
     try {
@@ -155,7 +168,14 @@ Deno.test({
         "hard-deadline",
         "the hard cap, not an overrun, must end the run",
       );
+      assert(
+        lines.some((line) =>
+          line.includes("abandoned past the hard deadline mid-commit")
+        ),
+        "the abandoned generation must log that it left the previous population undisposed",
+      );
     } finally {
+      setLogger(priorLogger);
       await Deno.remove(dataSetDir, { recursive: true });
       await Deno.remove(creatureStore, { recursive: true });
     }

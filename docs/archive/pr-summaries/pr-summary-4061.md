@@ -1,13 +1,14 @@
-# Keep the caller's creature valid on every `evolveDir()` exit, deadline abandon included (#4061)
+# Keep the caller's creature valid when `evolveDir()` restores it after a deadline abandon (#4061)
 
 ## Summary
 
-`evolveDir()` could return the caller's creature with `neurons.length < input`
-after a generation-2 hard-deadline abandon, so `CreatureUtil.makeUUID` threw
-`RangeError: Invalid array length`. The restore step now snapshots the caller
-before populating and only hands back a champion that is usable; otherwise it
-restores the caller's original genome. `NeatEvolution` also stops disposing the
-previous population once a run has been abandoned mid-commit.
+After a generation-2 hard-deadline abandon, `evolveDir()` could hand the
+caller's creature back with `neurons.length < input`, so `CreatureUtil.makeUUID`
+threw `RangeError: Invalid array length`. The restore step now snapshots the
+caller before the population is built and hands back the champion only if it is
+usable; otherwise it restores the caller's original genome from that snapshot.
+`NeatEvolution` also stops disposing the previous population once a run has been
+abandoned mid-commit.
 
 Part of #4061. Criterion 3 (a GRQ sampler log line from the fixed release) is
 missing, so this PR does not close the issue; see "Not closing #4061" below.
@@ -17,63 +18,109 @@ missing, so this PR does not close the issue; see "Not closing #4061" below.
 ### Intent and Rationale
 
 After the hard deadline abandons a generation, the abandoned work keeps running
-and may later commit. The caller's creature sits in the generation-1 population,
+and may later commit. The caller's creature can sit in the previous population,
 so that late commit disposes it (`Creature.dispose()` sets
 `neurons.length = 0`). Two changes close the hole:
 
-- `src/NEAT/NeatEvolution.ts` re-checks `isRunAbandonedSince(scheduledEpoch)`
-  before disposing the previous population and skips disposal when the run was
-  abandoned.
+- `src/NEAT/NeatEvolution.ts:1261` re-checks
+  `isRunAbandonedSince(scheduledEpoch)` before disposing the previous
+  population. When the run was abandoned it logs a warning and skips disposal.
 - `src/creature/EvolveTeardown.ts` adds `snapshotEvolveCaller` and
   `restoreEvolveChampion`. The champion is restored only when
   `neurons.length >= input + output` and `validate()` passes. Otherwise the
-  snapshot is restored. If both are unusable it throws with context rather than
-  returning damage.
+  snapshot is restored, with a warning logged only when a champion was supplied
+  and rejected. If the snapshot is unusable too, the restore throws and leaves
+  the caller as it is.
 
 `evolveEnv()` and `evolveRL()` share the same restore step, so they use the same
 helpers.
 
 ### Essential Design Decisions
 
-- **Snapshot with `shallowClone()` before populating.** The snapshot is
-  independent of the caller's later disposal and is disposed itself once the
-  restore finishes.
+- **Snapshot with `shallowClone()` before populating.** The snapshot does not
+  depend on whether the caller is disposed later. It is disposed after the
+  post-loop teardown (`src/creature/CreatureTraining.ts:826`, `:1189`, `:1843`).
 - **Fail loud, not silent.** When neither candidate is usable, the restore
-  throws and names both reasons, so a damaged creature is never returned as
-  success.
+  throws and names the snapshot's reason, so a damaged creature is never
+  returned as success.
 - **Skip disposal, don't wait.** An abandoned commit leaves previous-population
   members undisposed (logged at warn) and leaves them to the garbage collector.
   A leak of a few creatures is cheaper than a corrupt caller.
+- **The restore runs only in the post-loop teardown.** It sits in the `persist`
+  callback of `runBoundedEvolveTeardown`. A generation loop that rejects never
+  reaches it, and the snapshot then leaks.
 
 ### Undiscoverable Facts
 
 - An abandon during generation 2 reports `generation === 1`.
-- The root cause is inferred from the code path and was not reproduced against
-  the base.
+- The failure is reproduced. On the base (`f089c75f`),
+  `test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts` fails with
+  `RangeError: Invalid array length` at `CreatureUtil.makeUUID`
+  (`src/architecture/CreatureUtils.ts:114:24`), the same frame as the GRQ
+  sampler log. At the head it passes. That confirms the cause: an abandoned
+  generation's late commit disposes the caller. The test stages the timing by
+  stubbing `DeDuplicator.prototype.perform`.
 - `DeDuplicator.perform` throws the same `RangeError` over a population disposed
   during teardown. That is out of scope here.
+- The mutation gate runs only `*_test.ts` files that import the mutated module
+  through a relative path. This PR's tests are therefore named `*_test.ts` and
+  import the module under test relatively.
 
 ## Evidence
 
 ```text
-test/creature/RestoreEvolveChampion.ts                     7 passed
-test/creature/EvolveRestoresCallerSnapshot.ts              3 passed
-test/creature/EvolveDirGenerationTwoAbandonCaller.ts       1 passed
-test/NEAT/AbandonedCommitKeepsPreviousPopulation.ts        1 passed
-deno fmt / deno lint / deno check on changed files         clean
+test/creature/RestoreEvolveChampion_test.ts                  10 passed
+test/creature/EvolveRestoresCallerSnapshot_test.ts            3 passed
+test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts     1 passed
+test/NEAT/AbandonedCommitKeepsPreviousPopulation_test.ts      1 passed
+test/NEAT/EvolveCommitDisposal_test.ts                        1 passed
+test/creature/EvolveEnvHardDeadline_test.ts, EvolveRLHardDeadline_test.ts  pass
+deno fmt / deno lint / deno check on changed files            clean
 ```
 
-Mutation red-checks (each mutation was applied, the named test went red, then it
-was restored):
+Mutation red-checks. Each mutant was applied with `deno test --no-check` over
+every `*_test.ts` file that imports the module through a relative path, then
+reverted. The unmutated set passes (19 passed).
 
-| Line                                             | Mutant                                           | Result                                                          |
-| ------------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------- |
-| `src/creature/EvolveTeardown.ts:54`              | drop the neuron-count check                      | red (RestoreEvolveChampion.ts "too few neurons")                |
-| `src/creature/EvolveTeardown.ts:57`              | drop the `validate()` check                      | red (RestoreEvolveChampion.ts "fails validate")                 |
-| `src/creature/EvolveTeardown.ts:101`             | skip the snapshot fallback when no champion      | red (RestoreEvolveChampion.ts "no champion")                    |
-| `src/creature/EvolveTeardown.ts:102`             | return the unusable snapshot instead of throwing | red (RestoreEvolveChampion.ts "throws when neither usable")     |
-| `src/NEAT/NeatEvolution.ts:1257`                 | force the guard to `if (false)`                  | red (AbandonedCommitKeepsPreviousPopulation.ts)                 |
-| `src/creature/CreatureTraining.ts:796,1161,1814` | revert each caller to the old restore            | red (EvolveRestoresCallerSnapshot.ts, one test per entry point) |
+| Line                                    | Mutant                            | Result                                                                                                                                                   |
+| --------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/creature/EvolveTeardown.ts:41`     | return `undefined`                | red ("snapshotEvolveCaller is independent of the caller")                                                                                                |
+| `src/creature/EvolveTeardown.ts:54`     | negate the neuron-count check     | red ("restoreEvolveChampion restores a usable champion into the caller")                                                                                 |
+| `src/creature/EvolveTeardown.ts:55`     | return `undefined`                | red ("restoreEvolveChampion falls back to the snapshot when the champion has fewer neurons than input + output")                                         |
+| `src/creature/EvolveTeardown.ts:58`     | delete `validate()`               | red ("restoreEvolveChampion falls back to the snapshot when the champion fails validate()")                                                              |
+| `src/creature/EvolveTeardown.ts:61`     | negate the ternary                | red ("restoreEvolveChampion warns with the validate() message when it rejects a champion")                                                               |
+| `src/creature/EvolveTeardown.ts:91`     | negate `if (champion)`            | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                       |
+| `src/creature/EvolveTeardown.ts:93`     | negate `reason === undefined`     | red ("restoreEvolveChampion restores a usable champion into the caller")                                                                                 |
+| `src/creature/EvolveTeardown.ts:94`     | delete `loadFrom(champion)`       | red ("restoreEvolveChampion restores a usable champion into the caller")                                                                                 |
+| `src/creature/EvolveTeardown.ts:97`     | delete the warning                | red ("restoreEvolveChampion warns with the validate() message when it rejects a champion")                                                               |
+| `src/creature/EvolveTeardown.ts:102`    | negate the snapshot check         | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                       |
+| `src/creature/EvolveTeardown.ts:107`    | delete `loadFrom(snapshot)`       | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                       |
+| `src/creature/CreatureTraining.ts:826`  | delete `callerSnapshot.dispose()` | red (`EvolveRestoresCallerSnapshot_test.ts` "evolveDir: a disposed caller with no champion is restored from its original genome (Issue #4061)")          |
+| `src/creature/CreatureTraining.ts:1189` | delete `callerSnapshot.dispose()` | red (`EvolveRestoresCallerSnapshot_test.ts` "evolveEnv: a disposed caller with no champion is restored from its original genome (Issue #4061)")          |
+| `src/creature/CreatureTraining.ts:1843` | delete `callerSnapshot.dispose()` | red (`EvolveRestoresCallerSnapshot_test.ts` "evolveRL: a disposed caller with no champion is restored from its original genome (Issue #4061)")           |
+| `src/NEAT/NeatEvolution.ts:1261`        | negate the abandon re-check       | red (`EvolveCommitDisposal_test.ts` "evolve: a committed generation disposes the members it drops and keeps the ones it carries forward")                |
+| `src/NEAT/NeatEvolution.ts:1262`        | delete the warning                | red (`AbandonedCommitKeepsPreviousPopulation_test.ts` "NEAT: a generation abandoned mid-commit leaves the previous population undisposed (Issue #4061)") |
+| `src/NEAT/NeatEvolution.ts:1275`        | negate `!carriedForward.has`      | red (`EvolveCommitDisposal_test.ts` "evolve: a committed generation disposes the members it drops and keeps the ones it carries forward")                |
+| `src/NEAT/NeatEvolution.ts:1276`        | delete `toDispose.add`            | red (same test)                                                                                                                                          |
+| `src/NEAT/NeatEvolution.ts:1280`        | negate `!carriedForward.has`      | red (same test)                                                                                                                                          |
+| `src/NEAT/NeatEvolution.ts:1281`        | delete `toDispose.add`            | red (same test: "a creature the population budget dropped was not disposed")                                                                             |
+| `src/NEAT/NeatEvolution.ts:1290`        | delete `creature.dispose()`       | red (same test)                                                                                                                                          |
+
+Lines exempt from the mutation check:
+
+- `src/NEAT/NeatEvolution.ts:1285` exempt (untestable): the
+  `trim.removedCreatures` loop is unreachable from `evolve()`.
+  `trimPopulationToSize` runs on `budgeted.population`, which
+  `assemblePopulationWithinBudget` has already capped at the same
+  `effectivePopSize` with the same elite floor, so `removedCreatures` is always
+  empty here. The negated condition survives for that reason. The line is the
+  existing Issue #4050 loop, re-indented into the `else` branch.
+- `src/NEAT/NeatEvolution.ts:1286` exempt (untestable): same unreachable loop as
+  `:1285`; deleting `toDispose.add` there cannot change any outcome.
+- The test-file mutants listed against
+  `test/NEAT/AbandonedCommitKeepsPreviousPopulation.ts` no longer apply. The
+  file is now `test/NEAT/AbandonedCommitKeepsPreviousPopulation_test.ts`, which
+  the gate treats as a test, not a source module.
 
 ```mermaid
 flowchart TD
@@ -81,14 +128,14 @@ flowchart TD
     B --> C[populate and evolve]
     C --> D{hard deadline abandon?}
     D -- yes --> E[abandoned commit skips disposing previous population]
-    D -- no --> F[normal commit]
-    E --> G[restoreEvolveChampion]
+    D -- no --> F[normal commit disposes dropped members]
+    E --> G[post-loop teardown: restoreEvolveChampion]
     F --> G
     G --> H{champion usable?}
     H -- yes --> I[caller.loadFrom champion]
     H -- no --> J{snapshot usable?}
     J -- yes --> K[caller.loadFrom snapshot]
-    J -- no --> L[throw with both reasons]
+    J -- no --> L[throw, caller left as it is]
     I --> M[dispose snapshot]
     K --> M
 ```
@@ -101,9 +148,12 @@ Related issues: #4061, #4050 (earlier occurrence of the same failure), GRQ #4472
 post-loop teardown is bounded too"; siblings: `evolveEnv`, `evolveRL`; updated:
 `docs/TIMEOUTS.md`, `CHANGELOG.md`.
 
-The remaining hits in `docs/TIMEOUTS.md` that describe the teardown budget and
-the abandon epoch are still true: the change narrows what the restore step may
-hand back and does not change either mechanism.
+The `docs/TIMEOUTS.md` and `CHANGELOG.md` entries now limit the guarantee to
+runs that reach the post-loop teardown. They say the warning is logged only when
+a champion is rejected, and that the restore throws when the snapshot is
+unusable. The remaining hits in `docs/TIMEOUTS.md` that describe the teardown
+budget and the abandon epoch are still true: this change narrows what the
+restore step may hand back and changes neither mechanism.
 
 ## Reproduction
 
@@ -111,25 +161,19 @@ hand back and does not change either mechanism.
   returned the caller's creature with `neurons.length < input`, and the caller's
   `CreatureUtil.makeUUID` threw `RangeError: Invalid array length`
   (`CreatureUtils.ts:114:24` in the GRQ sampler log).
-- **status** — `not-run` — reason: no red run against the base was observed; the
-  issue's recipe stays green on the base, and the production trigger depends on
-  GRQ timing that the test cannot recreate, so the root cause was inferred from
-  the code path.
-- **regression test** — `test/creature/EvolveDirGenerationTwoAbandonCaller.ts`
+- **status** — `reproduced` — red on the base (`f089c75f`) with
+  `RangeError: Invalid array length` at `CreatureUtil.makeUUID`
+  (`src/architecture/CreatureUtils.ts:114:24`); green at the head.
+- **regression test** —
+  `test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts` "evolveDir: a
+  generation 2 abandoned after its commit leaves the caller creature whole"
 
-The regression test `test/creature/EvolveDirGenerationTwoAbandonCaller.ts`
-follows the issue's recipe (a hard-deadline breach in generation 2, the
-abandoned generation finishing after `evolveDir()` returns, then
-`makeUUID(caller)` and `caller.neurons.length > caller.input`). It passes on
-both the base and the head, so it pins the behaviour but does not demonstrate
-the failure. The fix is covered by tests that do go red without it:
-
-- `test/NEAT/AbandonedCommitKeepsPreviousPopulation.ts` goes red when the
-  abandon guard is removed.
-- `test/creature/RestoreEvolveChampion.ts` and
-  `test/creature/EvolveRestoresCallerSnapshot.ts` go red when the champion check
-  or snapshot fallback is removed. The latter disposes the caller and leaves no
-  champion, then asserts the original genome is restored.
+The regression test follows the issue's recipe. It forces a hard-deadline breach
+in generation 2 and lets the abandoned generation finish after `evolveDir()`
+returns. It then asserts that `makeUUID(caller)` succeeds and
+`caller.neurons.length > caller.input`. It stubs
+`DeDuplicator.prototype.perform` to place the abandon inside generation 2's
+dedup await.
 
 ## Acceptance Criteria
 
@@ -137,31 +181,45 @@ the failure. The fix is covered by tests that do go red without it:
 
 - **partial** — "`evolveDir()` guarantees on every exit path, deadline-abandon
   included, that the caller's creature is valid
-  (`neurons.length >= input + output`, `validate()` passes). If it cannot
-  restore a champion, it leaves the caller's original genome untouched." —
-  evidence: `src/creature/EvolveTeardown.ts:83`,
-  `src/creature/CreatureTraining.ts:796` — reviewer: partial — reason: when
-  neither the champion nor the snapshot is usable the restore throws instead of
-  returning a valid creature; a teardown-budget breach may skip persistence; the
-  root cause was inferred and not reproduced.
-- **partial** — "Regression test (in the style of
+  (`neurons.length >= input + output`, `validate()` passes)." — evidence:
+  `src/creature/EvolveTeardown.ts:83`, `src/creature/CreatureTraining.ts:796`,
+  `test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts::"evolveDir: a generation 2 abandoned after its commit leaves the caller creature whole"`
+  — reviewer: partial — reason: the restore runs only in the post-loop
+  teardown's `persist` callback; a rejection from `neat.evolve()`,
+  `finishGeneration()` or `populatePopulation()` skips it, because the
+  generation loop has no try/finally.
+- **partial** — "If it cannot restore a champion, it leaves the caller's
+  original genome untouched." — evidence:
+  `test/creature/RestoreEvolveChampion_test.ts::"restoreEvolveChampion falls back to the snapshot when there is no champion"`,
+  `::"restoreEvolveChampion falls back to the snapshot when the champion fails validate()"`,
+  `::"restoreEvolveChampion throws and leaves the caller untouched when neither the champion nor the snapshot is usable"`
+  — reviewer: partial — reason: the original genome is reloaded from a snapshot
+  rather than left in place, and when the snapshot is unusable too the restore
+  throws, so `evolveDir` rejects with the caller in whatever state the run left
+  it.
+- **met** — "Regression test (in the style of
   `test/NEAT/HardDeadlineDisposalRegression.ts`): force a hard-deadline breach
   in generation 2, let the abandoned generation finish after `evolveDir()`
   returns, then assert `CreatureUtil.makeUUID(caller)` succeeds and
   `caller.neurons.length > caller.input`." — evidence:
-  `test/creature/EvolveDirGenerationTwoAbandonCaller.ts:33` — reviewer: partial
-  — reason: the test is green on the base, and it holds
-  `DeDuplicator.prototype.perform` to stage the abandon. Failing-without-the-fix
-  coverage sits in the other tests listed above.
+  `test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts::"evolveDir: a generation 2 abandoned after its commit leaves the caller creature whole"`
+  — reviewer: met. The test fails on the base with the reported `RangeError` and
+  passes at the head. Caveat: it stubs `DeDuplicator.prototype.perform` to stage
+  the abandon.
 - **missing** — "Closing evidence: a quoted GRQ sampler log line from a run that
   logs `Hard deadline … exceeded during generation N` and still completes the
   loop, on the fixed release." — reviewer: missing — reason: needs a released
   build and a production run; it cannot be produced from this PR.
+- **unrequested** — the abandon re-check before disposal in
+  `src/NEAT/NeatEvolution.ts:1261` — reviewer: unrequested — reason: it follows
+  from the issue's root cause rather than a listed criterion. An abandoned
+  mid-commit generation leaves the dropped members undisposed (a logged leak).
 - **unrequested** — the restore step is also wired into `evolveEnv()` and
   `evolveRL()` (`src/creature/CreatureTraining.ts:1161`, `:1814`) — reviewer:
   unrequested — reason: the issue names `evolveDir()` only; the three loops
-  share the same restore step and the same defect, so leaving two of them would
-  keep the hole open.
+  share the same restore step and the same defect.
+- **unrequested** — the `CHANGELOG.md` and `docs/TIMEOUTS.md` entries —
+  reviewer: unrequested — reason: housekeeping that follows from the fix.
 
 ## Not closing #4061
 
@@ -177,20 +235,35 @@ line is posted.
 The repository has no `CODING-STANDARDS.md`, so `docs/ENGINEERING_PRINCIPLES.md`
 and `AGENTS.md` were used as the standard.
 
-- **violation** — timing in a test (`setTimeout` in an earlier draft of a test
-  helper; `AGENTS.md` → Unit Tests vs Benchmarks) — evidence:
-  `test/creature/EvolveRestoresCallerSnapshot.ts` — reason: fixed in this diff;
-  the tests now use `disposeThenWedge` and an injected clock.
-- **clean** — Australian English, logging through `getLogger()`, errors that
-  name their cause, tests that assert behaviour rather than implementation.
+- **violation** — typed errors (`AGENTS.md` → Error Handling: "Use typed errors
+  from `src/errors/`") — evidence: `src/creature/EvolveTeardown.ts:103` —
+  reason: not fixed in this diff; the new fail-fast path throws a bare `Error`,
+  which callers can only match by message.
+- **violation** — tests describe behaviour, not implementation
+  (`docs/ENGINEERING_PRINCIPLES.md` §3) — evidence:
+  `test/creature/EvolveRestoresCallerSnapshot_test.ts:123` — reason: not fixed
+  in this diff; to check that the entry snapshot is released, the test patches
+  the caller's `shallowClone()` and treats the first copy as the snapshot, so it
+  depends on how the snapshot is taken.
+- **clean** — Australian English; logging through `getLogger()` with the logger
+  restored in `finally`; no timing APIs or `Deno.env` mutation in tests
+  (deadlines come from an injected clock); neuron UUID, creature UUID and
+  semantic-version invariants preserved; no TS fallback for WASM-owned
+  operations; one shared helper for all three entry points; the
+  `DeDuplicator.prototype.perform` and `Creature.prototype.dispose` patches
+  stage a race or observe the public `dispose()` lifecycle, and the assertions
+  are on outcomes.
 
 ## Test Plan
 
-- `deno task test` was not run in full; the touched tests ran individually:
-  `test/creature/RestoreEvolveChampion.ts`,
-  `test/creature/EvolveRestoresCallerSnapshot.ts`,
-  `test/creature/EvolveDirGenerationTwoAbandonCaller.ts`,
-  `test/NEAT/AbandonedCommitKeepsPreviousPopulation.ts`.
+- `deno task test` was not run in full. These tests ran together and pass:
+  `test/creature/RestoreEvolveChampion_test.ts`,
+  `test/creature/EvolveRestoresCallerSnapshot_test.ts`,
+  `test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts`,
+  `test/NEAT/AbandonedCommitKeepsPreviousPopulation_test.ts`,
+  `test/NEAT/EvolveCommitDisposal_test.ts`,
+  `test/creature/EvolveEnvHardDeadline_test.ts`,
+  `test/creature/EvolveRLHardDeadline_test.ts`.
 - `deno fmt`, `deno lint` and `deno check` pass on the changed files.
 - `./quality.sh` aborts in this environment with "Native rust_scorer is required
   (quality.sh default) but was not found", so the full gate could not be run.
@@ -200,25 +273,31 @@ and `AGENTS.md` were used as the standard.
 Branch outcomes:
 
 - `src/creature/EvolveTeardown.ts:54` — champion has too few neurons;
-  `test/creature/RestoreEvolveChampion.ts` "a champion with too few neurons
-  falls back"; flipping went red.
-- `src/creature/EvolveTeardown.ts:57` — champion fails `validate()`;
-  `test/creature/RestoreEvolveChampion.ts` "a champion that fails validate()
-  falls back"; flipping went red.
-- `src/creature/EvolveTeardown.ts:91` — champion usable, restored;
-  `test/creature/RestoreEvolveChampion.ts` "a usable champion is restored";
+  `test/creature/RestoreEvolveChampion_test.ts` "restoreEvolveChampion falls
+  back to the snapshot when the champion has fewer neurons than input + output";
   flipping went red.
+- `src/creature/EvolveTeardown.ts:58` — champion fails `validate()`;
+  `test/creature/RestoreEvolveChampion_test.ts` "restoreEvolveChampion falls
+  back to the snapshot when the champion fails validate()"; deleting the call
+  went red.
+- `src/creature/EvolveTeardown.ts:91` — champion supplied;
+  `test/creature/RestoreEvolveChampion_test.ts` "restoreEvolveChampion restores
+  a usable champion into the caller"; flipping `:93` went red.
 - `src/creature/EvolveTeardown.ts:101` — no champion, falls back to the
-  snapshot; `test/creature/RestoreEvolveChampion.ts` "no champion falls back to
-  the snapshot"; flipping went red.
+  snapshot; `test/creature/RestoreEvolveChampion_test.ts` "restoreEvolveChampion
+  falls back to the snapshot when there is no champion"; flipping `:102` went
+  red.
 - `src/creature/EvolveTeardown.ts:102` — snapshot also unusable, throws;
-  `test/creature/RestoreEvolveChampion.ts` "throws when neither is usable";
-  flipping went red.
-- `src/NEAT/NeatEvolution.ts:1257` — run abandoned mid-commit, previous
+  `test/creature/RestoreEvolveChampion_test.ts` "restoreEvolveChampion throws
+  and leaves the caller untouched when neither the champion nor the snapshot is
+  usable".
+- `src/NEAT/NeatEvolution.ts:1261` — run abandoned mid-commit, previous
   population left undisposed;
-  `test/NEAT/AbandonedCommitKeepsPreviousPopulation.ts` "a generation abandoned
-  mid-commit leaves the previous population undisposed"; flipping went red.
+  `test/NEAT/AbandonedCommitKeepsPreviousPopulation_test.ts` "NEAT: a generation
+  abandoned mid-commit leaves the previous population undisposed (Issue #4061)";
+  the not-abandoned branch is pinned by `test/NEAT/EvolveCommitDisposal_test.ts`
+  "evolve: a committed generation disposes the members it drops and keeps the
+  ones it carries forward"; flipping went red.
 - `src/creature/CreatureTraining.ts:796`, `:1161`, `:1814` — each loop restores
   through `restoreEvolveChampion`;
-  `test/creature/EvolveRestoresCallerSnapshot.ts` (one test per loop); flipping
-  went red.
+  `test/creature/EvolveRestoresCallerSnapshot_test.ts` (one test per loop).

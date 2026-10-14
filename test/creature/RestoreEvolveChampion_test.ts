@@ -1,10 +1,16 @@
-import { assert, assertEquals, assertThrows } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertStringIncludes,
+  assertThrows,
+} from "@std/assert";
 import { Creature } from "@creature";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
+import { getLogger, setLogger } from "@utils/Logger.ts";
 import {
   restoreEvolveChampion,
   snapshotEvolveCaller,
-} from "@creature/EvolveTeardown.ts";
+} from "../../src/creature/EvolveTeardown.ts";
 
 /**
  * A tiny 2-input, 1-output creature. `weight` and `bias` make each genome
@@ -210,4 +216,69 @@ Deno.test("snapshotEvolveCaller is independent of the caller", () => {
   assertEquals(snapshot.neurons.length, snapshotNeurons);
   assert(snapshotNeurons >= snapshot.input + snapshot.output);
   assertEquals(genome(snapshot), originalGenome);
+});
+
+/** Run `fn` with every warning captured, restoring the prior logger after. */
+function captureWarnings(fn: () => void): string[] {
+  const warnings: string[] = [];
+  const noop = () => {};
+  const prior = getLogger();
+  setLogger({
+    debug: noop,
+    info: noop,
+    warn: (...args: unknown[]) => warnings.push(args.map(String).join(" ")),
+    error: noop,
+  });
+  try {
+    fn();
+  } finally {
+    setLogger(prior);
+  }
+  return warnings;
+}
+
+Deno.test("restoreEvolveChampion warns with the validate() message when it rejects a champion", () => {
+  const { caller, snapshot, originalGenome } = setupRun();
+  const champion = tinyCreature(0.125, 0.5);
+  champion.validate = () => {
+    throw new Error("bad shape");
+  };
+
+  const warnings = captureWarnings(() =>
+    restoreEvolveChampion(caller, champion, snapshot, false, "test:warn")
+  );
+
+  assertEquals(genome(caller), originalGenome);
+  assertEquals(warnings.length, 1);
+  assertStringIncludes(
+    warnings[0],
+    "test:warn: champion not restorable (validate() failed: bad shape)",
+  );
+});
+
+Deno.test("restoreEvolveChampion reports a non-Error validate() failure as text", () => {
+  const { caller, snapshot, originalGenome } = setupRun();
+  const champion = tinyCreature(0.125, 0.5);
+  champion.validate = () => {
+    // deno-lint-ignore no-throw-literal -- a non-Error throw is the case under test
+    throw "not an Error";
+  };
+
+  const warnings = captureWarnings(() =>
+    restoreEvolveChampion(caller, champion, snapshot, false, "test:text")
+  );
+
+  assertEquals(genome(caller), originalGenome);
+  assertEquals(warnings.length, 1);
+  assertStringIncludes(warnings[0], "(validate() failed: not an Error)");
+});
+
+Deno.test("restoreEvolveChampion does not warn when there is no champion to reject", () => {
+  const { caller, snapshot } = setupRun();
+
+  const warnings = captureWarnings(() =>
+    restoreEvolveChampion(caller, undefined, snapshot, false, "test:quiet")
+  );
+
+  assertEquals(warnings, []);
 });

@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
-import { evolveDir } from "@creature/CreatureTraining.ts";
-import type { EvolveDirDeps } from "@creature/CreatureTraining.ts";
+import { evolveDir } from "../../src/creature/CreatureTraining.ts";
+import type { EvolveDirDeps } from "../../src/creature/CreatureTraining.ts";
 import type { Neat } from "@neat/Neat.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";

@@ -168,13 +168,16 @@ Issue #4061 narrows what the restore step may hand back. Each entry point
 The restore (`restoreEvolveChampion` in
 [`src/creature/EvolveTeardown.ts`](../src/creature/EvolveTeardown.ts)) loads the
 champion only when it is usable: at least `input + output` neurons, and
-`validate()` passes. Otherwise it logs a warning and puts the caller's original
-genome back from the snapshot, so the caller is never returned empty, including
-after a hard-deadline abandon. If neither copy is usable it throws rather than
-return a broken creature. A generation abandoned past the hard deadline that
-finishes after the run has moved on no longer disposes the previous population
-at commit; it logs a warning instead, because that population can still hold the
-caller's creature.
+`validate()` passes. Otherwise it puts the caller's original genome back from
+the snapshot, logging a warning when it rejected a champion (a run that adopted
+no champion restores silently). The restore runs in the teardown's persist step,
+so a run that reaches the teardown, including one ended by a hard-deadline
+abandon, does not hand the caller back empty; a generation loop that rejects
+never reaches it. If neither copy is usable it throws and leaves the caller as
+it is rather than load a broken creature. A generation abandoned past the hard
+deadline that finishes after the run has moved on no longer disposes the
+previous population at commit; it logs a warning instead, because that
+population can still hold the caller's creature.
 
 The budget defaults to `DEFAULT_TEARDOWN_STEP_BUDGET_MS` (5 s) per step. The
 teardown always emits **one summary line** naming what it left behind, so the
