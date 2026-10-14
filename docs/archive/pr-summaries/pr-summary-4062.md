@@ -18,9 +18,9 @@ the pruned count.
 
 #3844 and #3849 stopped the known producers (neuron removal, `restoreSource`)
 leaving a dangling `memetic`, but #4062 shows a checkpoint can still carry one.
-The suspected producer is the deadline-abandoned background generation from #4052
-that may still be mutating `neat.population` while the teardown checkpoint is
-written. The write boundary is the one place every producer must pass, so it
+The suspected producer is the deadline-abandoned background generation from
+#4052 that may still be mutating `neat.population` while the teardown checkpoint
+is written. The write boundary is the one place every producer must pass, so it
 holds the guarantee: a persisted creature never carries a memetic row naming a
 missing synapse or neuron.
 
@@ -35,8 +35,8 @@ missing synapse or neuron.
   validation walks them too.
 - Only the exported JSON is changed. The live creature is left alone, so the
   prune never races a still-running abandoned generation.
-- A prune is logged through `getLogger().warn` with the count, so the
-  corruption stays visible instead of being silently repaired.
+- A prune is logged through `getLogger().warn` with the count, so the corruption
+  stays visible instead of being silently repaired.
 
 ### Undiscoverable Facts
 
@@ -44,8 +44,8 @@ missing synapse or neuron.
   available to this run. The regression test simulates the race by mutating the
   creature from the `writeTextFile` hook with `batchSize: 1`, so a later
   member's export sees the stale memetic.
-- Because the live creature stays stale, later checkpoints repeat the prune
-  (and the warning) until the creature is replaced; GRQ no longer sees the
+- Because the live creature stays stale, later checkpoints repeat the prune (and
+  the warning) until the creature is replaced; GRQ no longer sees the
   `rule=ValidationError/MEMETIC` repair line for these files.
 - The test file is named `*_test.ts` and imports the source modules by relative
   path (as in `pr-summary-4056.md`); otherwise the mutation check reports "no
@@ -64,12 +64,12 @@ ok | 10 passed | 0 failed
 ```
 
 Base red check: with `src/creature/CheckpointWriter.ts` restored to
-`origin/Develop`, 5 tests passed and 2 failed (the two `writeCreatures`
-tests: "writeCreatures never writes a memetic row naming a missing synapse" and
+`origin/Develop`, 5 tests passed and 2 failed (the two `writeCreatures` tests:
+"writeCreatures never writes a memetic row naming a missing synapse" and
 "writeCreatures warns with the pruned count…"); the file was then restored.
 
-Full gate: `./quality.sh --rust-scorer-bin=<path> < /dev/null` — 9888 passed,
-1 failed, 41 ignored. The one failure is the unrelated flaky
+Full gate: `./quality.sh --rust-scorer-bin=<path> < /dev/null` — 9888 passed, 1
+failed, 41 ignored. The one failure is the unrelated flaky
 `PI: converges toward PI*input…` (`test/propagate/PI.ts:212`), which passed on
 two isolated re-runs. Discovery was not built (optional).
 
@@ -89,22 +89,30 @@ flowchart TD
 
 Related issues:
 
-- #4062: Population checkpoint written with a dangling memetic reference ('Memetic from id … has no matching synapses') on GRQ-21 — recurrence of #3844
-- #4052: Deadline-abandoned generation re-sorts neat.population in place while the teardown checkpoint write is iterating it, so the checkpoint can duplicate some members and drop others
-- #4050: evolveDir teardown dies on RangeError 'Invalid array length' in CreatureExportBuilder after a deadline abandon — and wipes the checkpoint dir first (recurrence of GRQ#4861)
-- #2349: Investigate creatureStore writing creature JSON files without a valid semanticVersion
-- #3844: Removing a neuron must delete `memetic` — DiscoveryNeuronRemoval and RestoreSource leave dangling references
-- #3849: restoreSource: prune the memetic references a restore leaves dangling (Issue #3844)
+- #4062: Population checkpoint written with a dangling memetic reference
+  ('Memetic from id … has no matching synapses') on GRQ-21 — recurrence of #3844
+- #4052: Deadline-abandoned generation re-sorts neat.population in place while
+  the teardown checkpoint write is iterating it, so the checkpoint can duplicate
+  some members and drop others
+- #4050: evolveDir teardown dies on RangeError 'Invalid array length' in
+  CreatureExportBuilder after a deadline abandon — and wipes the checkpoint dir
+  first (recurrence of GRQ#4861)
+- #2349: Investigate creatureStore writing creature JSON files without a valid
+  semanticVersion
+- #3844: Removing a neuron must delete `memetic` — DiscoveryNeuronRemoval and
+  RestoreSource leave dangling references
+- #3849: restoreSource: prune the memetic references a restore leaves dangling
+  (Issue #3844)
 
 **Docs sweep** — grep: `pruneDanglingMemeticFromExport`, "dangling memetic",
 `pruneOrphanMemeticReferences`, `writeCreatures`, `ValidationError/MEMETIC`;
-section: `docs/PERFORMANCE_TUNING.md` (the checkpoint-write paragraph near
-line 425); updated: `docs/PERFORMANCE_TUNING.md`, `CHANGELOG.md`, the
+section: `docs/PERFORMANCE_TUNING.md` (the checkpoint-write paragraph near line
+425); updated: `docs/PERFORMANCE_TUNING.md`, `CHANGELOG.md`, the
 `writeCreatures` doc comment and the `pruneDanglingMemeticFromExport` doc
 comment; siblings: `pruneOrphanMemeticReferences`,
 `cleanupMemeticForRemovedNeuron` (live-creature and removal-time prunes in
-`src/compact/MemeticCleanup.ts`, whose doc comments describe different
-call sites and remain true).
+`src/compact/MemeticCleanup.ts`, whose doc comments describe different call
+sites and remain true).
 
 ## Reproduction
 
@@ -156,20 +164,21 @@ call sites and remain true).
 
 Clean: no material departures. The repository has no `CODING-STANDARDS.md`;
 `docs/ENGINEERING_PRINCIPLES.md` and `AGENTS.md` were used as the standard
-(Australian English, logger via `getLogger()`, no timing APIs or
-`Deno.env.set` in tests, unit tests under `test/`).
+(Australian English, logger via `getLogger()`, no timing APIs or `Deno.env.set`
+in tests, unit tests under `test/`).
 
 ## Test Plan
 
 - `test/creature/CheckpointWriteDanglingMemetic_test.ts` (10 tests, all pass):
   "writeCreatures never writes a memetic row naming a missing synapse"; "a
-  stale-memetic checkpoint file passes core validation"; "pruneDanglingMemeticFromExport
-  removes dangling rows and keeps valid ones" (missing synapse, missing neuron,
-  ancestry); "removes a row whose pair has no synapse" (a bias is kept when only
-  the weight is missing); "leaves a clean export untouched"; "returns 0 when
-  there is no memetic"; "leaves a legacy map-shaped weights value untouched";
-  "writeCreatures warns with the pruned count"; "does not warn when every memetic
-  reference is valid"; "removes a row whose UUID is not a string".
+  stale-memetic checkpoint file passes core validation";
+  "pruneDanglingMemeticFromExport removes dangling rows and keeps valid ones"
+  (missing synapse, missing neuron, ancestry); "removes a row whose pair has no
+  synapse" (a bias is kept when only the weight is missing); "leaves a clean
+  export untouched"; "returns 0 when there is no memetic"; "leaves a legacy
+  map-shaped weights value untouched"; "writeCreatures warns with the pruned
+  count"; "does not warn when every memetic reference is valid"; "removes a row
+  whose UUID is not a string".
 - Red checks: base `CheckpointWriter.ts` → 5 passed / 2 failed (the two
   `writeCreatures` tests). Each branch below was flipped on purpose, the file
   run, then restored.
@@ -192,15 +201,17 @@ Branch outcomes:
   row whose UUID is not a string"; dropping the string guard went red (4 passed
   / 6 failed).
 - src/compact/MemeticCleanup.ts:265 — bias key naming no neuron deleted;
-  "removes dangling rows and keeps valid ones"; removing the delete went red
-  (9 passed / 1 failed).
-- src/compact/MemeticCleanup.ts:271 — ancestry snapshots pruned recursively;
-  the ancestry case in "removes dangling rows and keeps valid ones"; removing
-  the recursion went red (7 passed / 3 failed).
-- src/creature/CheckpointWriter.ts:202 — export pruned before write; "writeCreatures
-  never writes a memetic row naming a missing synapse"; failed on the base.
-- src/creature/CheckpointWriter.ts:203 — prune count > 0 → warns; "writeCreatures
-  warns with the pruned count…"; forcing `false` went red (9 passed / 1 failed).
-- src/creature/CheckpointWriter.ts:203 — prune count 0 → no warning; "writeCreatures
-  does not warn when every memetic reference is valid"; forcing the warning on
-  would fail it.
+  "removes dangling rows and keeps valid ones"; removing the delete went red (9
+  passed / 1 failed).
+- src/compact/MemeticCleanup.ts:271 — ancestry snapshots pruned recursively; the
+  ancestry case in "removes dangling rows and keeps valid ones"; removing the
+  recursion went red (7 passed / 3 failed).
+- src/creature/CheckpointWriter.ts:202 — export pruned before write;
+  "writeCreatures never writes a memetic row naming a missing synapse"; failed
+  on the base.
+- src/creature/CheckpointWriter.ts:203 — prune count > 0 → warns;
+  "writeCreatures warns with the pruned count…"; forcing `false` went red (9
+  passed / 1 failed).
+- src/creature/CheckpointWriter.ts:203 — prune count 0 → no warning;
+  "writeCreatures does not warn when every memetic reference is valid"; forcing
+  the warning on would fail it.
