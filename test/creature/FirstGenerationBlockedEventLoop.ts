@@ -64,6 +64,7 @@ const dataSetDir = makeDataDir([
   { input: new Float32Array([1, 0]), output: new Float32Array([1]) },
   { input: new Float32Array([1, 1]), output: new Float32Array([0]) },
 ], 2000);
+console.log("DATASET_DIR=" + dataSetDir);
 await evolveDir(new Creature(2, 1, { layers: [{ count: 3 }] }), dataSetDir, ${
     options(store)
   }, deps);
@@ -149,11 +150,21 @@ async function runChild(
     const output = await child.output();
     clearTimeout(guard);
     const decoder = new TextDecoder();
+    const stdout = decoder.decode(output.stdout);
+    // The child is SIGKILLed, so it cannot remove its own dataset directory.
+    const match = stdout.match(/^DATASET_DIR=(.+)$/m);
+    if (match) {
+      try {
+        await Deno.remove(match[1], { recursive: true });
+      } catch (err) {
+        if (!(err instanceof Deno.errors.NotFound)) throw err;
+      }
+    }
     return {
       guardFired,
       success: output.success,
       signal: output.signal,
-      stdout: decoder.decode(output.stdout),
+      stdout,
       stderr: decoder.decode(output.stderr),
     };
   } finally {

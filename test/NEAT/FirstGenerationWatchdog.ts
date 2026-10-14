@@ -49,6 +49,19 @@ Deno.test("fireFirstGenerationWatchdog: a failing kill is reported, not thrown",
   assert(lines[1].includes("Requires run access"));
 });
 
+Deno.test("fireFirstGenerationWatchdog: a failing log still kills", () => {
+  let kills = 0;
+  fireFirstGenerationWatchdog(90_000, { startMS: 0 }, {
+    log: () => {
+      throw new Error("log sink closed");
+    },
+    kill: () => {
+      kills++;
+    },
+  });
+  assertEquals(kills, 1);
+});
+
 Deno.test("armFirstGenerationWatchdog: no bound means nothing is spawned", () => {
   assertEquals(armFirstGenerationWatchdog(0, 0), undefined);
 });

@@ -1074,7 +1074,7 @@ export async function evolveEnv<S, A>(
     // deno-lint-ignore no-await-in-loop
     const outcome = await withFirstGenerationWatchdog(
       start,
-      0,
+      generation === 1 ? firstGenerationDeadlineMS : 0,
       deps?.firstGenerationWatchdogSlackMS,
       () =>
         awaitWithinHardDeadline(

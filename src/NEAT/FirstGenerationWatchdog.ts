@@ -68,6 +68,10 @@ export function fireFirstGenerationWatchdog(
     actions.log(
       `[Neat] First generation wedged after ${elapsedSeconds}s (first-generation bound passed while the main thread was not yielding, so the in-process bound could not fire) — terminating the process with SIGKILL; terminationReason first-generation-wedged, no generation was evolved`,
     );
+  } catch {
+    // A failing log must never stop the kill.
+  }
+  try {
     actions.kill();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
