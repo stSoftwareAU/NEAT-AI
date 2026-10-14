@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4062:** A checkpoint written during teardown could carry `memetic`
+  data that no longer matched its synapses, so loading it failed with
+  `Memetic from id … has no matching synapses`. The likely cause, not yet
+  confirmed in production, is a checkpoint written during teardown while a
+  deadline-abandoned generation still changed structure on live creatures.
+  `writeCreatures` now prunes, on the exported JSON only, any `memetic` weight
+  row whose synapse is not exported and any `memetic.biases` key that is not an
+  exported neuron, and logs a warning naming Issue #4062 when it does. Valid
+  memetic data and the live creature are untouched.
 - **Issue #4061:** when `evolveDir()`, `evolveEnv()` or `evolveRL()` reaches its
   post-loop teardown, hard-deadline abandon included, the caller's creature now
   gets the champion only if it is usable (`neurons.length >= input + output` and
