@@ -9,7 +9,8 @@ before populating and only hands back a champion that is usable; otherwise it
 restores the caller's original genome. `NeatEvolution` also stops disposing the
 previous population once a run has been abandoned mid-commit.
 
-Closes #4061.
+Part of #4061. Criterion 3 (a GRQ sampler log line from the fixed release) is
+missing, so this PR does not close the issue; see "Not closing #4061" below.
 
 ## Spec
 
@@ -106,13 +107,22 @@ hand back and does not change either mechanism.
 
 ## Reproduction
 
-Not reproduced against the base. The regression test
-`test/creature/EvolveDirGenerationTwoAbandonCaller.ts` follows the issue's
-recipe (a hard-deadline breach in generation 2, the abandoned generation
-finishing after `evolveDir()` returns, then `makeUUID(caller)` and
-`caller.neurons.length > caller.input`). It passes on both the base and the
-head, so it pins the behaviour but does not demonstrate the failure. The fix is
-covered by tests that do go red without it:
+- **symptom** — after a generation-2 hard-deadline abandon, `evolveDir()`
+  returned the caller's creature with `neurons.length < input`, and the caller's
+  `CreatureUtil.makeUUID` threw `RangeError: Invalid array length`
+  (`CreatureUtils.ts:114:24` in the GRQ sampler log).
+- **status** — `not-run` — reason: no red run against the base was observed; the
+  issue's recipe stays green on the base, and the production trigger depends on
+  GRQ timing that the test cannot recreate, so the root cause was inferred from
+  the code path.
+- **regression test** — `test/creature/EvolveDirGenerationTwoAbandonCaller.ts`
+
+The regression test `test/creature/EvolveDirGenerationTwoAbandonCaller.ts`
+follows the issue's recipe (a hard-deadline breach in generation 2, the
+abandoned generation finishing after `evolveDir()` returns, then
+`makeUUID(caller)` and `caller.neurons.length > caller.input`). It passes on
+both the base and the head, so it pins the behaviour but does not demonstrate
+the failure. The fix is covered by tests that do go red without it:
 
 - `test/NEAT/AbandonedCommitKeepsPreviousPopulation.ts` goes red when the
   abandon guard is removed.
@@ -153,17 +163,26 @@ covered by tests that do go red without it:
   share the same restore step and the same defect, so leaving two of them would
   keep the hole open.
 
+## Not closing #4061
+
+Criterion 3, the closing evidence, is missing. It needs a GRQ sampler log line
+from a run on a released build that contains this fix, and that build does not
+exist until this PR is merged and released. The issue stays open until that log
+line is posted.
+
 ## Standards Review
 
 <!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
 
-One departure found, fixed in this diff: an earlier draft of a test helper used
-`setTimeout`, which breaks the rule against timing in tests (`AGENTS.md` → Unit
-Tests vs Benchmarks). It was removed; the tests now use `disposeThenWedge` and
-an injected clock. Otherwise clean: the repository has no `CODING-STANDARDS.md`,
-so `docs/ENGINEERING_PRINCIPLES.md` and `AGENTS.md` were used as the standard
-(Australian English, logging through `getLogger()`, errors that name their
-cause, tests that assert behaviour).
+The repository has no `CODING-STANDARDS.md`, so `docs/ENGINEERING_PRINCIPLES.md`
+and `AGENTS.md` were used as the standard.
+
+- **violation** — timing in a test (`setTimeout` in an earlier draft of a test
+  helper; `AGENTS.md` → Unit Tests vs Benchmarks) — evidence:
+  `test/creature/EvolveRestoresCallerSnapshot.ts` — reason: fixed in this diff;
+  the tests now use `disposeThenWedge` and an injected clock.
+- **clean** — Australian English, logging through `getLogger()`, errors that
+  name their cause, tests that assert behaviour rather than implementation.
 
 ## Test Plan
 
