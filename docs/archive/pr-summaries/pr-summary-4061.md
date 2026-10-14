@@ -144,9 +144,9 @@ Related issues: #4061, #4050 (earlier occurrence of the same failure), GRQ #4472
 (post-loop teardown budget).
 
 **Docs sweep** — grep: `restoreEvolveChampion`, `loadFrom\(champion`,
-`hard deadline`, `abandon\w*`, `dispos\w*`; section: `docs/TIMEOUTS.md` "The
-post-loop teardown is bounded too"; siblings: `evolveEnv`, `evolveRL`; updated:
-`docs/TIMEOUTS.md`, `CHANGELOG.md`.
+`hard deadline`, `abandonInFlightPastHardDeadline`, `dispose`; section:
+`docs/TIMEOUTS.md` "The post-loop teardown is bounded too"; siblings:
+`evolveEnv`, `evolveRL`; updated: `docs/TIMEOUTS.md`, `CHANGELOG.md`.
 
 The `docs/TIMEOUTS.md` and `CHANGELOG.md` entries now limit the guarantee to
 runs that reach the post-loop teardown. They say the warning is logged only when
