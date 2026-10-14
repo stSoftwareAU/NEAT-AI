@@ -4,7 +4,9 @@
  *
  * `evolveDir`, `evolveEnv`, and `evolveRL` share the same outer shape: they
  * track a champion clone across generations, restore it into the caller
- * creature at the end, then return. Before this module they leaked in two
+ * creature at the end, then return. The caller's genome is snapshotted before
+ * the population is built, and the snapshot is restored instead when the
+ * champion is unusable (Issue #4061). Before this module they leaked in two
  * ways:
  *
  *  1. Each champion improvement overwrote `bestCreature` with a fresh
@@ -67,8 +69,9 @@ function unusableReason(
  * original genome when the champion is unusable (Issue #4061).
  *
  * The champion is restored only if it has at least `input + output` neurons
- * and passes `validate()`. Otherwise the snapshot is restored and the fallback
- * is logged. Throws if neither is usable, so the caller is never left empty.
+ * and passes `validate()`. Otherwise the snapshot is restored, and when a
+ * champion was supplied but rejected the fallback is logged. Throws if neither
+ * is usable, leaving the caller untouched rather than emptied.
  *
  * @param caller The caller creature to restore into.
  * @param champion The run's champion clone, if one was adopted.
@@ -136,8 +139,10 @@ export function adoptChampionClone(
  *
  * The caller creature may be a member of `neat.population` (`Neat.populatePopulation`
  * adds it), so it is skipped by identity. The other members are independent of
- * the caller: the champion is restored into the caller via `loadFrom`, which
- * rebuilds the caller's arrays, so disposing them cannot invalidate it.
+ * the caller: the caller is restored from the champion or from its snapshot via
+ * `loadFrom`, which rebuilds the caller's arrays, and the snapshot is a separate
+ * `shallowClone()` (Issue #4061), so disposing these members cannot invalidate
+ * either source.
  *
  * @param population The run's final population.
  * @param keep The caller creature to preserve.
