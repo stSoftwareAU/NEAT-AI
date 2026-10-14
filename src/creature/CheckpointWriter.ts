@@ -201,11 +201,10 @@ export async function writeCreatures(
         // synapse or neuron. Prune the exported JSON only, not the creature.
         const pruned = pruneDanglingMemeticFromExport(json);
         if (pruned > 0) {
+          const creatureLabel = creature.uuid ?? "<unidentified>";
           getLogger().warn(
             `[CheckpointWriter] Pruned ${pruned} dangling memetic reference(s) ` +
-              `from creature ${
-                creature.uuid ?? "<unidentified>"
-              } before writing — the live ` +
+              `from creature ${creatureLabel} before writing — the live ` +
               `creature's memetic no longer matched its synapses (likely a ` +
               `still-running abandoned generation) — Issue #4062`,
           );
