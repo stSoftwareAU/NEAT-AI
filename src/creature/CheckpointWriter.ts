@@ -25,6 +25,7 @@ import {
 } from "@upgrade/SemanticVersionValidation.ts";
 import { applySeedWarmupTagsAtSave } from "@architecture/CreatureFactory.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { pruneDanglingMemeticFromExport } from "../compact/MemeticCleanup.ts";
 
 /**
  * Default number of checkpoint files exported, stringified, and written
@@ -120,6 +121,10 @@ async function removeIfExists(path: string): Promise<void> {
  * iterating the live array would then duplicate some members and silently
  * drop others.
  *
+ * Issue #4062: `writeCreatures` never persists a memetic that references a
+ * missing synapse or neuron. Dangling rows are pruned from each exported JSON
+ * (never the live creature), and the prune is logged.
+ *
  * @throws RangeError when `batchSize` is not a positive integer.
  */
 export async function writeCreatures(
@@ -192,6 +197,17 @@ export async function writeCreatures(
           creature.semanticVersion = CURRENT_CREATURE_SEMANTIC_VERSION;
         }
         const json = creature.exportJSON();
+        // Issue #4062: never persist a memetic that references a missing
+        // synapse or neuron. Prune the exported JSON only, not the creature.
+        const pruned = pruneDanglingMemeticFromExport(json);
+        if (pruned > 0) {
+          getLogger().warn(
+            `[CheckpointWriter] Pruned ${pruned} dangling memetic reference(s) ` +
+              `from creature ${creature.uuid} before writing — the live ` +
+              `creature's memetic no longer matched its synapses (likely a ` +
+              `still-running abandoned generation) — Issue #4062`,
+          );
+        }
         assertValidWriteableSemanticVersion(json.semanticVersion);
         // Issue #2909: stamp warm-up tags only at this export boundary. Stamp the
         // exported JSON (not the live population member) so the saved file is
