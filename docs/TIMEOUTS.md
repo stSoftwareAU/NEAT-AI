@@ -25,21 +25,26 @@ That guarantee has exactly one carve-out.
 > abandoned loudly
 > (`[Neat] First generation wedged after Ns … in-flight: <ids>`) and `evolveDir`
 > returns with `generation === 0` and
-> `terminationReason: "first-generation-wedged"`. Every generation after the
-> first is capped exactly as described below. `evolveEnv` and `evolveRL` apply
-> the same first-generation bound and hard cap as `evolveDir` (Issue #4056);
-> `evolveDataSet` delegates to `evolveDir`.
+> `terminationReason: "first-generation-wedged"`. That in-process bound is a
+> timer on the loop it bounds, so it is also backstopped off-thread (Issue
+> #4060): if the main thread stops yielding, a watchdog worker terminates the
+> whole process with `SIGKILL` (exit status 137) 60 s after the bound instead —
+> see
+> [the watchdog section](#-the-off-thread-first-generation-watchdog-issue-4060).
+> Every generation after the first is capped exactly as described below.
+> `evolveEnv` and `evolveRL` apply the same first-generation bound and hard cap
+> as `evolveDir` (Issue #4056); `evolveDataSet` delegates to `evolveDir`.
 
 ## 🧩 The deadlines
 
 Evolution tracks wall-clock deadlines anchored at the run's start timestamp:
 
-| Deadline                                                 | Value                                         | Role                                                                                                                                                                                                  |
-| -------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Soft timeout** (`endTimeMS`)                           | `start + max(1, T) × 60 000 ms`               | Stops starting _new_ generations once it passes. The loop then enters the finish-up phase and waits — briefly — for in-flight discovery / training to settle so their partial results are not wasted. |
-| **Over-run** (GRQ #4141)                                 | `elapsed > T × factor` (default factor `1`)   | Same generation-stop as the soft timeout, but an explicit self-termination path: the run finishes with the evolved population committed and does **not** wait for an external wall-clock cap.         |
-| **Hard cap** (`hardDeadlineTS`)                          | `start + (T + grace) × 60 000 ms`             | The point of no return, **once one generation has been banked**. After that, every phase abandons in-flight work and the run returns. Nothing else is allowed to push past it.                        |
-| **First-generation bound** (`firstGenerationDeadlineMS`) | `hardDeadlineTS + min(60, 4 × T) × 60 000 ms` | Bounds generation 1 only (Issue #4053). A generation 1 that merely runs late is kept past the hard cap (#3940); one that outlives this bound never settled and is abandoned loudly.                   |
+| Deadline                                                 | Value                                         | Role                                                                                                                                                                                                                                                          |
+| -------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Soft timeout** (`endTimeMS`)                           | `start + max(1, T) × 60 000 ms`               | Stops starting _new_ generations once it passes. The loop then enters the finish-up phase and waits — briefly — for in-flight discovery / training to settle so their partial results are not wasted.                                                         |
+| **Over-run** (GRQ #4141)                                 | `elapsed > T × factor` (default factor `1`)   | Same generation-stop as the soft timeout, but an explicit self-termination path: the run finishes with the evolved population committed and does **not** wait for an external wall-clock cap.                                                                 |
+| **Hard cap** (`hardDeadlineTS`)                          | `start + (T + grace) × 60 000 ms`             | The point of no return, **once one generation has been banked**. After that, every phase abandons in-flight work and the run returns. Nothing else is allowed to push past it.                                                                                |
+| **First-generation bound** (`firstGenerationDeadlineMS`) | `hardDeadlineTS + min(60, 4 × T) × 60 000 ms` | Bounds generation 1 only (Issue #4053). A generation 1 that merely runs late is kept past the hard cap (#3940); one that outlives this bound never settled and is abandoned loudly. Backstopped off-thread when the main thread stops yielding (Issue #4060). |
 
 The grace period is clamped:
 
@@ -100,8 +105,11 @@ predicate, applying the same one-generation floor
   `keeping the 0 generation(s) already evolved`, and the per-task budgets below
   still clamp every discovery / training child to the cap, so a generation 1
   that is merely late ends on its own. One that outlives the first-generation
-  bound is abandoned with `terminationReason` `"first-generation-wedged"`; its
-  in-flight training tasks are cancelled (their schedule-time captures under
+  bound is abandoned with `terminationReason` `"first-generation-wedged"` (or,
+  when the main thread is not yielding, the process is killed by the off-thread
+  watchdog — see
+  [below](#-the-off-thread-first-generation-watchdog-issue-4060)); its in-flight
+  training tasks are cancelled (their schedule-time captures under
   `NEAT_AI_TRAINING_TASK_CAPTURE_DIR` are kept, GRQ #4794) and named in the log.
 - **Over-run** — independently of the hard cap, when elapsed exceeds
   `timeoutMinutes × factor` after at least one generation, the loop stops
@@ -304,14 +312,84 @@ The data flow, in one line:
 evolveDir → Neat.hardDeadlineTS → scheduleDiscovery / scheduleTraining / replay queue → worker clamps
 ```
 
+## 🐕 The off-thread first-generation watchdog (Issue #4060)
+
+The first-generation bound above is enforced by `awaitWithinHardDeadline`, a
+`setInterval` poll on the **same JS event loop** as the work it bounds. If the
+main thread stops yielding, no timer runs and the bound cannot fire. With
+`threads: 1`, `evolveDir` runs fitness and training in-process via `MockWorker`
+on the main thread, so any long synchronous step there starves the poll. Three
+`threads: 1` GRQ runs on neat-ai 7.0.55 went silent for ~2 h with no
+`First generation wedged` line. What blocked the main thread there is not
+confirmed; a long synchronous step on the main thread or V8 GC thrash near the
+heap limit both fit.
+
+[`src/NEAT/FirstGenerationWatchdog.ts`](../src/NEAT/FirstGenerationWatchdog.ts)
+(worker entry
+[`src/NEAT/FirstGenerationWatchdogWorker.ts`](../src/NEAT/FirstGenerationWatchdogWorker.ts))
+adds a backstop with its own event loop. `evolveDir`, `evolveEnv` and `evolveRL`
+**arm** it just before generation 1's `neat.evolve()` and **disarm** it
+(terminate the worker) as soon as that await settles, whether the generation
+completed or the in-process bound fired. If it is still armed
+`FIRST_GENERATION_WATCHDOG_SLACK_MS` (60 s) after the first-generation bound, it
+logs from the worker thread at error level:
+
+```text
+[Neat] First generation wedged after Ns (first-generation bound passed while the main thread was not yielding, so the in-process bound could not fire) — terminating the process with SIGKILL; terminationReason first-generation-wedged, no generation was evolved
+```
+
+and ends the whole process with `Deno.kill(Deno.pid, "SIGKILL")`. `SIGTERM`
+would be swallowed by `evolveDir`'s own listener, which cannot run on a blocked
+loop, and a worker's `Deno.exit()` only closes the worker.
+
+```mermaid
+sequenceDiagram
+    participant Main as Main thread
+    participant WD as Watchdog worker
+    participant Proc as Process
+
+    Main->>WD: arm (before generation 1 evolve)
+    alt generation 1 settles, or the in-process bound fires
+        Main->>WD: disarm (terminate worker)
+    else main thread blocked, never yields
+        Note over WD: first-generation bound + 60 s passes
+        WD->>WD: log "First generation wedged …"
+        WD->>Proc: Deno.kill(pid, SIGKILL)
+        Note over Proc: exit by signal 9 (status 137)
+    end
+```
+
+What the caller sees on the kill path:
+
+- The process exits by signal 9 (shell status 137). `evolve*` never returns, so
+  the post-loop teardown does not run: **no new checkpoint is written** and the
+  previous `creatureStore` checkpoint is left as it was.
+- If the kill itself fails (for example a host that refuses `Deno.kill`) the
+  worker logs
+  `[Neat] First-generation watchdog could not terminate the process: <cause> — the caller must enforce timeoutMinutes + the first-generation bound as a hard kill`.
+- No watchdog is spawned when `timeoutMinutes` is `0`/unset, because there is no
+  bound to enforce.
+- Only generation 1 is backed by the watchdog. Later generations' hard-cap await
+  is unchanged and still in-process only.
+- When the main thread **is** responsive, the in-process path fires first
+  (within its 1 s poll), logs the `… in-flight: <ids>` line and returns
+  `terminationReason: "first-generation-wedged"` as before.
+
 ## 🛰️ The external watchdog is unchanged
 
-The T+15 hard cap is an **in-process** guarantee. The external watchdog — for
-example GRQ's 3-hour `max-task-hours` — remains the independent backstop and is
-**unchanged** by any of this. The cap exists so that, in the normal case, a run
-finishes and checks its model in _well before_ the watchdog ever has to fire;
-the watchdog only catches pathological situations (a wedged process, a deadlock
-outside the cooperative checkpoints) that an in-process deadline cannot reach.
+The T+15 hard cap is an **in-process** guarantee, with one off-thread backstop:
+the first-generation watchdog above, which only covers generation 1. The
+external watchdog — for example GRQ's 3-hour `max-task-hours` — remains the
+independent backstop and is **unchanged** by any of this. The cap exists so
+that, in the normal case, a run finishes and checks its model in _well before_
+the watchdog ever has to fire; the watchdog only catches pathological situations
+(a wedged process, a deadlock outside the cooperative checkpoints) that an
+in-process deadline cannot reach.
+
+As defence in depth, a caller such as GRQ's `sampler.sh` should still enforce
+`timeoutMinutes + first-generation bound + slack` as a hard per-loop kill. The
+off-thread watchdog only exists when the process is alive enough to run a worker
+and `Deno.kill` is permitted.
 
 ## ✅ Verifying the guarantee
 
@@ -332,7 +410,17 @@ unit-covered in
 `test/creature/EvolveDirFirstGenerationWedged.ts` drives a generation 1 that
 never settles with `timeoutMinutes` 5 and asserts `evolveDir` returns with
 `first-generation-wedged` once the bound passes; the bound itself is
-unit-covered in `test/NEAT/HardDeadline.ts`.
+unit-covered in `test/NEAT/HardDeadline.ts`. The off-thread watchdog (Issue
+#4060) is unit-covered in
+[`test/NEAT/FirstGenerationWatchdog.ts`](../test/NEAT/FirstGenerationWatchdog.ts)
+(the fire / kill-failure decisions, with injected log and kill) and end to end
+in
+[`test/creature/FirstGenerationBlockedEventLoop.ts`](../test/creature/FirstGenerationBlockedEventLoop.ts),
+which runs `evolveDir`, `evolveEnv` and `evolveRL` in child processes with a
+generation-1 `evolve()` that busy-loops forever on the main thread and asserts
+each child is SIGKILLed with the watchdog's wedged line. The older
+`EvolveDirFirstGenerationWedged.ts` stubs a never-settling _promise_, which
+yields the event loop, so it could not catch this.
 [`test/creature/EvolveEnvHardDeadline_test.ts`](../test/creature/EvolveEnvHardDeadline_test.ts)
 and
 [`test/creature/EvolveRLHardDeadline_test.ts`](../test/creature/EvolveRLHardDeadline_test.ts)

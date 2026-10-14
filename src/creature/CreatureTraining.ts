@@ -38,6 +38,7 @@ import {
   awaitWithinHardDeadline,
   HARD_DEADLINE_BREACHED,
 } from "@neat/HardDeadlineRace.ts";
+import { withFirstGenerationWatchdog } from "@neat/FirstGenerationWatchdog.ts";
 import {
   type BackPropagationConfig,
   createBackPropagationConfig,
@@ -423,6 +424,13 @@ export interface EvolveDirDeps {
    * {@link DEFAULT_TEARDOWN_STEP_BUDGET_MS}.
    */
   teardownBudgetMS?: number;
+  /**
+   * How long (ms) past the first-generation bound the off-thread watchdog waits
+   * before it terminates the process (Issue #4060). Tests shrink it so the
+   * blocked-event-loop guard runs without a real minute-long wait; production
+   * omits it and takes `FIRST_GENERATION_WATCHDOG_SLACK_MS`.
+   */
+  firstGenerationWatchdogSlackMS?: number;
 }
 
 /**
@@ -668,15 +676,30 @@ export async function evolveDir(
     const generationCap = generation === 0
       ? firstGenerationDeadlineMS
       : hardDeadlineMS;
+    // The poll inside awaitWithinHardDeadline runs on this event loop, so a
+    // blocked main thread (e.g. threads: 1, where training runs in-process)
+    // would starve it; the off-thread watchdog backs generation 1's bound up
+    // (Issue #4060).
     // deno-lint-ignore no-await-in-loop
-    const outcome = await awaitWithinHardDeadline(
-      neat.evolve(bestCreature),
-      generationCap,
-      nowFn,
+    const outcome = await withFirstGenerationWatchdog(
+      start,
+      generation === 0 ? firstGenerationDeadlineMS : 0,
+      deps?.firstGenerationWatchdogSlackMS,
       () =>
-        generation === 0
-          ? neat.abandonWedgedFirstGeneration(nowFn() - start)
-          : abandonWedgedGeneration(neat, hardDeadlineMS, nowFn, generation),
+        awaitWithinHardDeadline(
+          neat.evolve(bestCreature),
+          generationCap,
+          nowFn,
+          () =>
+            generation === 0
+              ? neat.abandonWedgedFirstGeneration(nowFn() - start)
+              : abandonWedgedGeneration(
+                neat,
+                hardDeadlineMS,
+                nowFn,
+                generation,
+              ),
+        ),
     );
     if (outcome === HARD_DEADLINE_BREACHED) {
       break;
@@ -1044,20 +1067,30 @@ export async function evolveEnv<S, A>(
     const generationCap = generation === 1
       ? firstGenerationDeadlineMS
       : hardDeadlineMS;
+    // The poll inside awaitWithinHardDeadline runs on this event loop, so a
+    // blocked main thread (e.g. threads: 1, where training runs in-process)
+    // would starve it; the off-thread watchdog backs generation 1's bound up
+    // (Issue #4060).
     // deno-lint-ignore no-await-in-loop
-    const outcome = await awaitWithinHardDeadline(
-      neat.evolve(bestCreature),
-      generationCap,
-      nowFn,
+    const outcome = await withFirstGenerationWatchdog(
+      start,
+      0,
+      deps?.firstGenerationWatchdogSlackMS,
       () =>
-        generation === 1
-          ? neat.abandonWedgedFirstGeneration(nowFn() - start)
-          : abandonWedgedGeneration(
-            neat,
-            hardDeadlineMS,
-            nowFn,
-            generation - 1,
-          ),
+        awaitWithinHardDeadline(
+          neat.evolve(bestCreature),
+          generationCap,
+          nowFn,
+          () =>
+            generation === 1
+              ? neat.abandonWedgedFirstGeneration(nowFn() - start)
+              : abandonWedgedGeneration(
+                neat,
+                hardDeadlineMS,
+                nowFn,
+                generation - 1,
+              ),
+        ),
     );
     if (outcome === HARD_DEADLINE_BREACHED) {
       // The wedged generation never completed.
@@ -1610,20 +1643,30 @@ export async function evolveRL<S, A>(
     const generationCap = generation === 1
       ? firstGenerationDeadlineMS
       : hardDeadlineMS;
+    // The poll inside awaitWithinHardDeadline runs on this event loop, so a
+    // blocked main thread (e.g. threads: 1, where training runs in-process)
+    // would starve it; the off-thread watchdog backs generation 1's bound up
+    // (Issue #4060).
     // deno-lint-ignore no-await-in-loop
-    const outcome = await awaitWithinHardDeadline(
-      neat.evolve(bestCreature),
-      generationCap,
-      nowFn,
+    const outcome = await withFirstGenerationWatchdog(
+      start,
+      generation === 1 ? firstGenerationDeadlineMS : 0,
+      deps?.firstGenerationWatchdogSlackMS,
       () =>
-        generation === 1
-          ? neat.abandonWedgedFirstGeneration(nowFn() - start)
-          : abandonWedgedGeneration(
-            neat,
-            hardDeadlineMS,
-            nowFn,
-            generation - 1,
-          ),
+        awaitWithinHardDeadline(
+          neat.evolve(bestCreature),
+          generationCap,
+          nowFn,
+          () =>
+            generation === 1
+              ? neat.abandonWedgedFirstGeneration(nowFn() - start)
+              : abandonWedgedGeneration(
+                neat,
+                hardDeadlineMS,
+                nowFn,
+                generation - 1,
+              ),
+        ),
     );
     if (outcome === HARD_DEADLINE_BREACHED) {
       // The wedged generation never completed.

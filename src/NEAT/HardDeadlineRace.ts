@@ -12,6 +12,10 @@
  * single `setTimeout`, so tests drive it with an injected clock and no real
  * waits (policy #2888), and a caller that advances its clock in jumps is still
  * caught within one poll interval.
+ *
+ * The poll runs on the same event loop as the work it bounds, so it cannot fire
+ * while that loop is blocked synchronously; generation 1 is additionally
+ * backstopped off-thread by `FirstGenerationWatchdog.ts` (Issue #4060).
  */
 
 import { HARD_DEADLINE_WATCHDOG_INTERVAL_MS } from "./HardDeadline.ts";

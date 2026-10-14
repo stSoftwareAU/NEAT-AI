@@ -25,6 +25,20 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4060:** The Issue #4053 first-generation bound was a timer on the
+  very event loop it bounded, so it cannot fire when the main thread stops
+  yielding (with `threads: 1`, fitness and training run in-process on it). On
+  7.0.55 three `threads: 1` GRQ runs sat silent for ~2 h with no
+  `First generation wedged` line; what blocked the main thread there is not
+  confirmed. Generation 1 is now also bounded off-thread. `evolveDir`,
+  `evolveEnv` and `evolveRL` arm a watchdog worker just before generation 1's
+  `neat.evolve()` and disarm it when that await settles; if it is still armed 60
+  s after the first-generation bound it logs
+  `[Neat] First generation wedged after Ns …` at error level and ends the
+  process with `SIGKILL` (exit status 137). On that path `evolve*` never returns
+  and no checkpoint is written; the previous `creatureStore` checkpoint is left
+  as it was. Nothing is spawned when `timeoutMinutes` is unset. See
+  [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md).
 - **Issue #4053:** `evolveDir`'s first generation had no deadline, so a
   generation 1 that never settled outlived a 5-minute `timeoutMinutes` by 2 h.
   Generation 1 now has its own bound,
