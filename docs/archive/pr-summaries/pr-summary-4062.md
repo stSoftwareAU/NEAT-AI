@@ -100,7 +100,7 @@ Related issues:
   some members and drop others
 - #4050: evolveDir teardown dies on RangeError 'Invalid array length' in
   CreatureExportBuilder after a deadline abandon — and wipes the checkpoint dir
-  first (recurrence of GRQ#4861)
+  first (recurrence of an earlier downstream-repo report)
 - #2349: Investigate creatureStore writing creature JSON files without a valid
   semanticVersion
 - #3844: Removing a neuron must delete `memetic` — DiscoveryNeuronRemoval and
@@ -150,10 +150,11 @@ sites and remain true).
   creature passes `ValidationError/MEMETIC` validation — evidence:
   test/creature/CheckpointWriteDanglingMemetic_test.ts:113,
   test/creature/CheckpointWriteDanglingMemetic_test.ts:188 — reviewer: met
-- **missing** — Closing evidence: a week of GRQ-logs from sampler hosts with no
-  `rule=ValidationError/MEMETIC` repair lines on the fixed release, quoted with
-  the search used — evidence: none — reviewer: missing — reason: the logs only
-  exist after the fixed release has run for a week on the sampler hosts.
+- **missing** — Closing evidence: a week of downstream production logs from
+  sampler hosts with no `rule=ValidationError/MEMETIC` repair lines on the fixed
+  release, quoted with the search used — evidence: none — reviewer: missing —
+  reason: the logs only exist after the fixed release has run for a week on the
+  sampler hosts.
 - **unrequested** — Bias-key and `ancestry[]` pruning, and the pruned-count
   warning — evidence: src/compact/MemeticCleanup.ts:259,
   src/compact/MemeticCleanup.ts:271, src/creature/CheckpointWriter.ts:203 —
