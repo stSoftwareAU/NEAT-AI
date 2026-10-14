@@ -114,6 +114,64 @@ Deno.test("restoreEvolveChampion falls back to the snapshot when there is no cha
   );
 });
 
+/**
+ * A valid 1-input, 1-output creature with two neurons. On its own it passes
+ * `validate()`, but it has fewer neurons than a 2-input, 1-output caller needs.
+ */
+function narrowCreature(): Creature {
+  return Creature.fromJSON({
+    neurons: [{
+      bias: 0,
+      type: "input",
+      squash: "LOGISTIC",
+      index: 0,
+    }, {
+      bias: 0.5,
+      type: "output",
+      squash: "BIPOLAR_SIGMOID",
+      index: 1,
+    }],
+    synapses: [{ weight: 0.25, from: 0, to: 1 }],
+    input: 1,
+    output: 1,
+  });
+}
+
+Deno.test("restoreEvolveChampion falls back to the snapshot when the champion has fewer neurons than input + output", () => {
+  const { caller, snapshot, originalGenome } = setupRun();
+  const champion = narrowCreature();
+  champion.validate();
+  assert(
+    champion.neurons.length < caller.input + caller.output,
+    "champion should be narrower than the caller",
+  );
+
+  restoreEvolveChampion(caller, champion, snapshot, false, "test:narrow");
+
+  assertEquals(genome(caller), originalGenome);
+});
+
+Deno.test("restoreEvolveChampion falls back to the snapshot when the champion fails validate()", () => {
+  const { caller, snapshot, originalGenome } = setupRun();
+  const champion = tinyCreature(0.125, 0.5);
+  // A synapse naming a neuron that does not exist. The champion keeps enough
+  // neurons, so only validate() can reject it.
+  (champion.synapses as unknown as unknown[]).push({
+    weight: 0.1,
+    from: 0,
+    to: 9,
+    type: "positive",
+  });
+  assert(
+    champion.neurons.length >= caller.input + caller.output,
+    "champion should not be rejected on neuron count",
+  );
+
+  restoreEvolveChampion(caller, champion, snapshot, false, "test:invalid");
+
+  assertEquals(genome(caller), originalGenome);
+});
+
 Deno.test("restoreEvolveChampion throws and leaves the caller untouched when neither the champion nor the snapshot is usable", () => {
   const { caller, snapshot } = setupRun();
   const champion = tinyCreature(0.125, 0.5);

@@ -55,6 +55,15 @@ Deno.test({
     let liveNeat: Neat | undefined;
     let abandonOnDedup = false;
 
+    // Generation 2 is parked inside its dedup await, after the abandon, and is
+    // released only once evolveDir has returned and restored the caller. Without
+    // the hold, the abandoned generation runs its post-commit disposal before
+    // the caller is restored and the test cannot observe the bug.
+    let releaseHeld: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      releaseHeld = resolve;
+    });
+
     const originalPerform = DeDuplicator.prototype.perform;
     DeDuplicator.prototype.perform = function (
       this: DeDuplicator,
@@ -65,6 +74,7 @@ Deno.test({
         // The commit has landed; the previous population is not yet disposed.
         clock = breachMS;
         liveNeat.abandonInFlightPastHardDeadline(hardDeadline, breachMS);
+        return held.then(() => originalPerform.call(this, creatures));
       }
       return originalPerform.call(this, creatures);
     };
@@ -99,11 +109,15 @@ Deno.test({
       creatureStore,
     };
 
+    // The finally always releases the held generation, so a failing evolveDir
+    // cannot leave the abandoned generation parked forever.
     const result = await evolveDir(creature, dataSetDir, options, deps)
       .finally(() => {
+        releaseHeld();
         DeDuplicator.prototype.perform = originalPerform;
       });
     assert(background.generationTwo, "generation 2 must have started");
+    // Generation 2 resumes only now, after the caller has been restored.
     await background.generationTwo.catch(() => undefined);
 
     const uuid = CreatureUtil.makeUUID(creature);

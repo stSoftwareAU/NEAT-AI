@@ -817,11 +817,10 @@ export async function evolveDir(
   });
   workers.length = 0;
 
-  // Issue #3434: run-level lifecycle teardown. The champion has been restored
-  // into (and any checkpoint written from) the population above, so dispose the
-  // run's population (keeping the caller creature), dispose the temporary
-  // champion clone, and release the process-global breed/discovery caches so a
-  // second evolveDir in the same process starts from a clean baseline.
+  // Issue #3434: run-level teardown. The caller holds the champion, or else its
+  // original genome from the entry snapshot (Issue #4061). Dispose the population
+  // (keeping the caller), the champion and the snapshot, then release the
+  // process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
   callerSnapshot.dispose();
@@ -1181,9 +1180,10 @@ export async function evolveEnv<S, A>(
     budgetMS: deps?.teardownBudgetMS,
   });
 
-  // Issue #3434: run-level lifecycle teardown — dispose the run's population
-  // (keeping the caller creature), dispose the temporary champion clone, and
-  // release the process-global breed/discovery caches.
+  // Issue #3434: run-level teardown. The caller holds the champion, or else its
+  // original genome from the entry snapshot (Issue #4061). Dispose the population
+  // (keeping the caller), the champion and the snapshot, then release the
+  // process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
   callerSnapshot.dispose();
@@ -1834,9 +1834,10 @@ export async function evolveRL<S, A>(
     budgetMS: deps?.teardownBudgetMS,
   });
 
-  // Issue #3434: run-level lifecycle teardown — dispose the run's population
-  // (keeping the caller creature), dispose the temporary champion clone, and
-  // release the process-global breed/discovery caches.
+  // Issue #3434: run-level teardown. The caller holds the champion, or else its
+  // original genome from the entry snapshot (Issue #4061). Dispose the population
+  // (keeping the caller), the champion and the snapshot, then release the
+  // process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
   callerSnapshot.dispose();
