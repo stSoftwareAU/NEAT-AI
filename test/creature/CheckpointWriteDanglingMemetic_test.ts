@@ -10,13 +10,13 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { Creature } from "@creature";
-import { writeCreatures } from "@creature/CheckpointWriter.ts";
+import { Creature } from "../../src/Creature.ts";
+import { writeCreatures } from "../../src/creature/CheckpointWriter.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
-import { creatureValidate } from "@architecture/CreatureValidate.ts";
-import { pruneDanglingMemeticFromExport } from "@compact/MemeticCleanup.ts";
+import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
+import { pruneDanglingMemeticFromExport } from "../../src/compact/MemeticCleanup.ts";
 import { danglingMemeticReferences } from "../_memeticReferences.ts";
-import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
+import { getLogger, type Logger, setLogger } from "../../src/utils/Logger.ts";
 
 function baseExport(): CreatureExport {
   return {
