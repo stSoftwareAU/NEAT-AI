@@ -20,6 +20,7 @@
  * This module stays import-light because the worker entry imports it.
  */
 
+import { getLogger } from "@utils/Logger.ts";
 import { HARD_DEADLINE_WATCHDOG_INTERVAL_MS } from "./HardDeadline.ts";
 
 /**
@@ -57,6 +58,20 @@ export function isFirstGenerationWatchdogDue(
   return nowMS > request.deadlineMS + request.slackMS;
 }
 
+/** The request posted to the watchdog worker when it is armed. */
+export function firstGenerationWatchdogRequest(
+  startMS: number,
+  deadlineMS: number,
+  slackMS: number,
+): FirstGenerationWatchdogRequest {
+  return {
+    startMS,
+    deadlineMS,
+    slackMS,
+    pollIntervalMS: HARD_DEADLINE_WATCHDOG_INTERVAL_MS,
+  };
+}
+
 /** Log the wedged line, then terminate. Never throws. */
 export function fireFirstGenerationWatchdog(
   nowMS: number,
@@ -85,6 +100,25 @@ export function fireFirstGenerationWatchdog(
   }
 }
 
+/**
+ * Poll `nowFn` every `request.pollIntervalMS` and fire once the watchdog is
+ * due; never fires twice, even when the kill fails. Returns a stop function.
+ */
+export function pollFirstGenerationWatchdog(
+  request: FirstGenerationWatchdogRequest,
+  actions: FirstGenerationWatchdogActions,
+  nowFn: () => number = Date.now,
+): () => void {
+  const pollId = setInterval(() => {
+    const now = nowFn();
+    if (isFirstGenerationWatchdogDue(now, request)) {
+      clearInterval(pollId);
+      fireFirstGenerationWatchdog(now, request, actions);
+    }
+  }, request.pollIntervalMS);
+  return () => clearInterval(pollId);
+}
+
 /** Handle to an armed watchdog. */
 export interface FirstGenerationWatchdog {
   disarm(): void;
@@ -104,13 +138,19 @@ export function armFirstGenerationWatchdog(
     new URL("./FirstGenerationWatchdogWorker.ts", import.meta.url).href,
     { type: "module", name: "first-generation-watchdog" },
   );
-  const request: FirstGenerationWatchdogRequest = {
-    startMS,
-    deadlineMS,
-    slackMS,
-    pollIntervalMS: HARD_DEADLINE_WATCHDOG_INTERVAL_MS,
+  // An error that a worker leaves unhandled is re-thrown in the parent and
+  // ends the process, so a watchdog that cannot start (e.g. no read access to
+  // its module) must be logged and skipped, never fatal to the run it guards.
+  // The worker posts no messages, so there is no `messageerror` to handle.
+  worker.onerror = (e) => {
+    e.preventDefault();
+    getLogger().warn(
+      `[Neat] First-generation watchdog unavailable: ${e.message} — generation 1 is bounded only in-process`,
+    );
   };
-  worker.postMessage(request);
+  worker.postMessage(
+    firstGenerationWatchdogRequest(startMS, deadlineMS, slackMS),
+  );
   return { disarm: () => worker.terminate() };
 }
 

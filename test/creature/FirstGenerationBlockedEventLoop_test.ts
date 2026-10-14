@@ -1,4 +1,9 @@
 import { assert, assertEquals } from "@std/assert";
+import {
+  evolveDir,
+  evolveEnv,
+  evolveRL,
+} from "../../src/creature/CreatureTraining.ts";
 
 /**
  * Issue #4060: a generation-1 `neat.evolve()` that blocks the main thread
@@ -15,7 +20,8 @@ import { assert, assertEquals } from "@std/assert";
  *
  * Here the stubbed `evolve` spins in a synchronous `for (;;)`. The off-thread
  * watchdog (a Deno Worker) must log the wedge and SIGKILL the process. That
- * kills the process, so each entry point runs in a child process.
+ * kills the process, so each entry point runs in a child process. The entry
+ * points are imported here too, so a rename breaks this test at compile time.
  */
 
 const GUARD_MS = 60_000;
@@ -172,11 +178,11 @@ async function runChild(
   }
 }
 
-const results = {
-  evolveDir: runChild(evolveDirCode),
-  evolveEnv: runChild(evolveEnvCode),
-  evolveRL: runChild(evolveRLCode),
-};
+const children = [
+  { entry: evolveDir, result: runChild(evolveDirCode) },
+  { entry: evolveEnv, result: runChild(evolveEnvCode) },
+  { entry: evolveRL, result: runChild(evolveRLCode) },
+];
 
 function check(r: ChildResult) {
   const detail = `\nstderr:\n${r.stderr}\nstdout:\n${r.stdout}`;
@@ -204,14 +210,14 @@ function check(r: ChildResult) {
   );
 }
 
-for (const name of ["evolveDir", "evolveEnv", "evolveRL"] as const) {
+for (const { entry, result } of children) {
   Deno.test({
     name:
-      `${name}: a blocked main thread still ends at the first-generation bound`,
+      `${entry.name}: a blocked main thread still ends at the first-generation bound`,
     sanitizeOps: false,
     sanitizeResources: false,
     fn: async () => {
-      check(await results[name]);
+      check(await result);
     },
   });
 }

@@ -6,9 +6,8 @@
 
 import { getLogger } from "@utils/Logger.ts";
 import {
-  fireFirstGenerationWatchdog,
   type FirstGenerationWatchdogRequest,
-  isFirstGenerationWatchdogDue,
+  pollFirstGenerationWatchdog,
 } from "./FirstGenerationWatchdog.ts";
 
 const workerSelf = self as unknown as {
@@ -16,15 +15,8 @@ const workerSelf = self as unknown as {
 };
 
 workerSelf.onmessage = (e) => {
-  const request = e.data;
-  const pollId = setInterval(() => {
-    const now = Date.now();
-    if (isFirstGenerationWatchdogDue(now, request)) {
-      clearInterval(pollId);
-      fireFirstGenerationWatchdog(now, request, {
-        log: (line) => getLogger().error(line),
-        kill: () => Deno.kill(Deno.pid, "SIGKILL"),
-      });
-    }
-  }, request.pollIntervalMS);
+  pollFirstGenerationWatchdog(e.data, {
+    log: (line) => getLogger().error(line),
+    kill: () => Deno.kill(Deno.pid, "SIGKILL"),
+  });
 };

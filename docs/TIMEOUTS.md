@@ -367,6 +367,11 @@ What the caller sees on the kill path:
 - If the kill itself fails (for example a host that refuses `Deno.kill`) the
   worker logs
   `[Neat] First-generation watchdog could not terminate the process: <cause> — the caller must enforce timeoutMinutes + the first-generation bound as a hard kill`.
+- If the watchdog worker cannot start (for example the process has no read
+  access to its module), the main thread logs
+  `[Neat] First-generation watchdog unavailable: <cause> — generation 1 is bounded only in-process`
+  at warn level and the run carries on with the in-process bound alone; a
+  watchdog that fails to load never ends the run it guards.
 - No watchdog is spawned when `timeoutMinutes` is `0`/unset, because there is no
   bound to enforce.
 - Only generation 1 is backed by the watchdog. Later generations' hard-cap await
@@ -412,10 +417,11 @@ never settles with `timeoutMinutes` 5 and asserts `evolveDir` returns with
 `first-generation-wedged` once the bound passes; the bound itself is
 unit-covered in `test/NEAT/HardDeadline.ts`. The off-thread watchdog (Issue
 #4060) is unit-covered in
-[`test/NEAT/FirstGenerationWatchdog.ts`](../test/NEAT/FirstGenerationWatchdog.ts)
-(the fire / kill-failure decisions, with injected log and kill) and end to end
-in
-[`test/creature/FirstGenerationBlockedEventLoop.ts`](../test/creature/FirstGenerationBlockedEventLoop.ts),
+[`test/NEAT/FirstGenerationWatchdog_test.ts`](../test/NEAT/FirstGenerationWatchdog_test.ts)
+(the poll and fire / kill-failure decisions with injected log, kill and clock;
+plus child processes for the real worker's SIGKILL and for a worker that cannot
+load) and end to end in
+[`test/creature/FirstGenerationBlockedEventLoop_test.ts`](../test/creature/FirstGenerationBlockedEventLoop_test.ts),
 which runs `evolveDir`, `evolveEnv` and `evolveRL` in child processes with a
 generation-1 `evolve()` that busy-loops forever on the main thread and asserts
 each child is SIGKILLed with the watchdog's wedged line. The older

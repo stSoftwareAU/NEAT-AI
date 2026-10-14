@@ -10,9 +10,11 @@ off-thread. `evolveDir`, `evolveEnv` and `evolveRL` arm a watchdog worker
 settles. If the watchdog is still armed 60 s after the bound, it logs
 `[Neat] First generation wedged after Ns (first-generation bound passed while
 the main thread was not yielding …)`
-from the worker thread and ends the process with `SIGKILL`. Closes #4060. Two
-criteria remain `missing` (see Acceptance Criteria): the issue's root-cause
-capture and its closing field evidence can only come from a GRQ host.
+from the worker thread and ends the process with `SIGKILL`. A watchdog worker
+that cannot start (for example, no read access to its module) is logged at warn
+level and skipped. The run it guards carries on. Closes #4060. Two criteria
+remain `missing` (see Acceptance Criteria): the issue's root-cause capture and
+its closing field evidence can only come from a GRQ host.
 
 ## Spec
 
@@ -38,6 +40,14 @@ capture and its closing field evidence can only come from a GRQ host.
   (1 s poll) wins first. That path disarms the watchdog and still returns
   `first-generation-wedged` with teardown. The kill path writes no new
   checkpoint, which the docs and CHANGELOG say.
+- The watchdog must never be what ends a healthy run. Deno re-throws an error
+  that a child worker leaves unhandled in the parent, so
+  `armFirstGenerationWatchdog` sets `worker.onerror`. That handler calls
+  `preventDefault()` and logs
+  `[Neat] First-generation watchdog unavailable: <cause> — generation 1 is
+  bounded only in-process`
+  at warn level. There is no `messageerror` handler: the worker never posts a
+  message to the parent, so that event cannot fire.
 - Only generation 1 is armed, once per run. Nothing is spawned when
   `timeoutMinutes` is 0.
 
@@ -90,7 +100,8 @@ sequenceDiagram
 and `docs/TIMEOUTS.md#️-the-external-watchdog-is-unchanged`; siblings:
 `teardownBudgetMS`, `startTimeMS` (the existing `EvolveDirDeps` members; no doc
 lists the deps set); updated: `docs/TIMEOUTS.md`, `CHANGELOG.md`,
-`src/NEAT/HardDeadlineRace.ts` (module doc).
+`src/NEAT/HardDeadlineRace.ts` (module doc). The test links in
+`docs/TIMEOUTS.md` follow the two test files' renames to `_test.ts`.
 
 Hits left in place:
 
@@ -118,7 +129,7 @@ Hits left in place:
   thrash vs a long synchronous in-process training step) was not reproduced; the
   host captures are on GRQ machines this run cannot reach.
 - **regression test** —
-  `test/creature/FirstGenerationBlockedEventLoop.ts::evolveDir: a blocked main thread still ends at the first-generation bound`
+  `test/creature/FirstGenerationBlockedEventLoop_test.ts::evolveDir: a blocked main thread still ends at the first-generation bound`
   (plus the `evolveEnv` and `evolveRL` cases)
 
 ## Acceptance Criteria
@@ -141,7 +152,7 @@ Hits left in place:
 - **partial** — Regression test: a generation-1 `evolve()` that blocks the main
   thread synchronously (a busy loop past the bound) must still end at the
   first-generation bound with `first-generation-wedged`. — evidence:
-  `test/creature/FirstGenerationBlockedEventLoop.ts` — reviewer: partial —
+  `test/creature/FirstGenerationBlockedEventLoop_test.ts` — reviewer: partial —
   reason: the run ends via SIGKILL plus a log line carrying
   `first-generation-wedged`, not a returned `terminationReason`, because nothing
   in-process can return from a loop that never yields. The test uses slack 0,
@@ -187,63 +198,127 @@ The repo has no `CODING-STANDARDS.md`. The reviewer was given `AGENTS.md` and
 
 ## Test Plan
 
-- Added `test/NEAT/FirstGenerationWatchdog.ts` (7 tests): the due predicate, the
-  fire path (log + one kill), a refused kill reported and not thrown, a failing
-  log that still kills, no spawn when the deadline is 0, and the real-worker
-  wrapper returning a value and propagating a rejection.
-- Added `test/creature/FirstGenerationBlockedEventLoop.ts` (3 tests): one child
-  process per entry point. `evolve()` is stubbed to `for (;;) {}`, so the
+- Added `test/NEAT/FirstGenerationWatchdog_test.ts` (14 tests):
+  - the due predicate at the boundary
+  - the request posted to the worker (every field, including the poll interval)
+  - the fire path: log plus one kill; a refused kill (an `Error` and a
+    non-Error) is reported with its exact cause, not thrown; a failing log still
+    kills
+  - the poll: never fires before it is due; fires once when due, even when the
+    kill fails (injected clock, 1 ms interval)
+  - arming: no spawn when the deadline is 0; a handle when a bound is set
+  - the real-worker wrapper returning a value and propagating a rejection
+  - child process, real worker: armed past its bound with the main thread in
+    `for (;;) {}`, the child is SIGKILLed and logs
+    `[Neat] First generation wedged after 10Ns`
+  - child process, no permissions: the worker cannot read its module, the
+    `unavailable` warning is logged, and the wrapped run still resolves
+    (`RESULT=42`, clean exit)
+- Added `test/creature/FirstGenerationBlockedEventLoop_test.ts` (3 tests): one
+  child process per entry point. `evolve()` is stubbed to `for (;;) {}`, so the
   in-process poll can never run. Each test asserts:
   - SIGKILL, not a clean exit
   - the `[Neat] First generation wedged after` line, plus
     `main thread was not yielding` and `first-generation-wedged`
   - `EVOLVE_RETURNED` never printed
   - no 60 s guard kill
-- Red runs:
+- **Pre-PR verifier finding (`FirstGenerationWatchdog.ts`, no worker error
+  handler) — reproduced and fixed.** At the previous head, a script that only
+  wrapped a 2 s healthy `run()` in `withFirstGenerationWatchdog` crashed when
+  run with `--allow-read=/tmp`, with no permission flags, or with `--deny-read`.
+  The output was
+  `error: Uncaught (in promise) Error: Unhandled
+  error in child worker.` and
+  `RESULT` was never printed. With the `onerror` handler, all of these runs log
+  the `unavailable` warning, print `RESULT 7` and exit 0. The no-permissions
+  child test pins it. Removing `e.preventDefault()`, or the whole handler, turns
+  that test red.
+- **Mutation check.** The gate reported "no test imports this module" for every
+  watchdog line. Those tests imported through the `@neat/` alias, and the test
+  files were not named as tests (the #4056 precedent). Changes:
+  - Both test files now import by relative path and are named `_test.ts`.
+  - `FirstGenerationBlockedEventLoop_test.ts` imports `evolveDir`, `evolveEnv`
+    and `evolveRL` from `../../src/creature/CreatureTraining.ts`. Test names
+    come from those functions.
+  - Two pieces moved out of the worker entry into `FirstGenerationWatchdog.ts`
+    so unit tests reach them: the request literal became
+    `firstGenerationWatchdogRequest()`, and the poll loop became
+    `pollFirstGenerationWatchdog()`. The worker entry now only wires the real
+    log and kill into the poll.
+  - Each listed mutant was re-run by hand on its current line, one at a time
+    (`deno test -A --no-check`, the relevant test file). Every one went red:
+
+| Listed line (old)                  | Mutant                                | Now in                           | Result                     |
+| ---------------------------------- | ------------------------------------- | -------------------------------- | -------------------------- |
+| `FirstGenerationWatchdog:57`       | due predicate returns undefined       | same                             | 3 failed                   |
+| `FirstGenerationWatchdog:75`       | delete `actions.kill()`               | same                             | 6 failed                   |
+| `FirstGenerationWatchdog:77`       | negate `err instanceof Error`         | same                             | 2 failed                   |
+| `FirstGenerationWatchdog:102`      | negate `if (!deadlineMS)`             | same                             | 2 failed, then test killed |
+| `FirstGenerationWatchdog:108`      | delete `startMS`                      | `firstGenerationWatchdogRequest` | 2 failed                   |
+| `FirstGenerationWatchdog:109`      | delete `deadlineMS`                   | `firstGenerationWatchdogRequest` | 2 failed                   |
+| `FirstGenerationWatchdog:110`      | delete `slackMS`                      | `firstGenerationWatchdogRequest` | 2 failed                   |
+| `FirstGenerationWatchdog:111`      | delete `pollIntervalMS`               | `firstGenerationWatchdogRequest` | 1 failed                   |
+| `FirstGenerationWatchdog:113`      | delete `worker.postMessage(…)`        | same                             | 1 failed (guard)           |
+| `FirstGenerationWatchdog:114`      | arm returns undefined                 | same                             | 1 failed                   |
+| `FirstGenerationWatchdog:133`      | wrapper returns undefined             | same                             | 2 failed                   |
+| `FirstGenerationWatchdogWorker:22` | negate the due check                  | `pollFirstGenerationWatchdog`    | 3 failed                   |
+| `FirstGenerationWatchdogWorker:23` | delete `clearInterval(pollId)`        | `pollFirstGenerationWatchdog`    | 1 failed                   |
+| `FirstGenerationWatchdogWorker`    | delete the poll call                  | worker entry                     | 1 failed (guard)           |
+| `FirstGenerationWatchdogWorker:25` | delete `log`                          | worker entry                     | 1 failed                   |
+| `FirstGenerationWatchdogWorker:26` | delete `kill`                         | worker entry                     | 1 failed (guard)           |
+| new                                | delete `e.preventDefault()`           | `armFirstGenerationWatchdog`     | 1 failed                   |
+| new                                | drop the `onerror` handler            | `armFirstGenerationWatchdog`     | 1 failed                   |
+| `CreatureTraining:686`             | negate `generation === 0` (evolveDir) | same                             | 1 failed (guard)           |
+| `CreatureTraining:1077`            | negate `generation === 1` (evolveEnv) | same                             | 1 failed (guard)           |
+| `CreatureTraining:1653`            | negate `generation === 1` (evolveRL)  | same                             | 1 failed (guard)           |
+
+- The listed `test/NEAT/FirstGenerationWatchdog.ts` mutants changed the test
+  file itself. The gate ran no test against them ("no test imports this
+  module"). That file is now `FirstGenerationWatchdog_test.ts`, named as a test.
+- No line is recorded as exempt.
+- Red runs from the original change:
   - With base `CreatureTraining.ts`, all 3 child tests failed with
     `child never terminated …` (run by me).
   - Disabling one call site at a time (deadline argument `0`) turned only that
     entry point's test red, for each of `evolveDir`, `evolveEnv` and `evolveRL`.
-  - Removing `actions.kill()` turned "logs the wedge and kills once" red.
-  - Making the kill catch rethrow turned "a failing kill is reported, not
-    thrown" red.
-  - Moving the log back into the kill's try turned "a failing log still kills"
-    red.
 - Targeted run on the final head:
-  `deno test -A test/NEAT/FirstGenerationWatchdog.ts test/creature/FirstGenerationBlockedEventLoop.ts test/creature/EvolveDirFirstGenerationWedged.ts test/creature/EvolveDirFirstGenerationHardDeadline.ts test/creature/EvolveDirHardDeadline.ts test/creature/EvolveEnvHardDeadline_test.ts test/creature/EvolveRLHardDeadline_test.ts test/NEAT/HardDeadlineRace.ts`
-  — 32 passed, 0 failed.
-- `./quality.sh --rust-scorer-bin=<built NEAT-AI-scorer rust_scorer>`: fmt, lint
-  and check were clean. Tests: 9888 passed, 1 failed. The failure was
+  `deno test -A test/NEAT/FirstGenerationWatchdog_test.ts test/creature/FirstGenerationBlockedEventLoop_test.ts test/creature/EvolveDirFirstGenerationWedged.ts test/creature/EvolveDirFirstGenerationHardDeadline.ts test/creature/EvolveDirHardDeadline.ts test/creature/EvolveEnvHardDeadline_test.ts test/creature/EvolveRLHardDeadline_test.ts test/NEAT/HardDeadlineRace.ts`
+  — 39 passed, 0 failed. `deno fmt --check`, `deno lint` and `deno check` were
+  clean on the changed files.
+- `./quality.sh --rust-scorer-bin=<built NEAT-AI-scorer rust_scorer>` ran on the
+  previous head, before the fixes above. fmt, lint and check were clean. Tests:
+  9888 passed, 1 failed. The failure was
   `test/architecture/MakeUuidDirectConstruction.ts` "different squash produces
   different UUIDs", which this diff does not touch. It passed 6/6 when run
-  alone: two random creatures can differ in synapse count. Filed as #4063.
-- No existing test was edited. No existing test needed fixture changes: the full
-  gate ran every `startTimeMS` test with the watchdog live, and none was killed.
+  alone: two random creatures can differ in synapse count. Filed as #4063. The
+  worker re-runs the full gate on this head.
+- No pre-existing test was edited. No existing test needed fixture changes: the
+  full gate ran every `startTimeMS` test with the watchdog live, and none was
+  killed.
 - Callers and siblings checked: every `awaitWithinHardDeadline(neat.evolve(…))`
   site in `src/creature/CreatureTraining.ts` (`evolveDir`, `evolveEnv`,
   `evolveRL`) is wrapped. `evolveDataSet` delegates to `evolveDir`.
 
 **Branch outcomes:**
 
-- `src/NEAT/FirstGenerationWatchdog.ts` `if (!deadlineMS) return undefined` — no
-  bound, nothing spawned:
-  `test/NEAT/FirstGenerationWatchdog.ts::armFirstGenerationWatchdog: no bound means nothing is spawned`.
-  Bound set, worker armed: the `withFirstGenerationWatchdog` real-worker cases
-  and `FirstGenerationBlockedEventLoop.ts`. Forcing `undefined` turned the child
-  tests red (the guard fired).
-- `isFirstGenerationWatchdogDue` (strictly past deadline + slack) —
-  `test/NEAT/FirstGenerationWatchdog.ts::isFirstGenerationWatchdogDue: only strictly past deadline + slack`
-  covers both outcomes at the boundary.
+- `armFirstGenerationWatchdog` `if (!deadlineMS) return undefined`:
+  - no bound, nothing spawned: "no bound means nothing is spawned"
+  - bound set, worker armed: "a bound arms a watchdog that can be disarmed",
+    plus the child tests
+- `armFirstGenerationWatchdog` `worker.onerror`:
+  - worker loads: every real-worker case
+  - worker cannot load: "a watchdog that cannot load is logged and the run still
+    resolves"
+- `isFirstGenerationWatchdogDue` (strictly past deadline + slack) — "only
+  strictly past deadline + slack" covers both outcomes at the boundary.
+- `pollFirstGenerationWatchdog`:
+  - not due: "never fires before it is due"
+  - due: "fires once when due, even if the kill fails"
 - `fireFirstGenerationWatchdog`:
   - kill succeeds: "logs the wedge and kills once"
-  - kill throws: "a failing kill is reported, not thrown"
+  - kill throws an `Error`: "a failing kill is reported, not thrown"
+  - kill throws a non-Error: "a non-Error kill failure is reported as text"
   - log throws: "a failing log still kills"
-  - Each went red when its branch was broken, as listed above.
-- `src/NEAT/FirstGenerationWatchdogWorker.ts`
-  `if (isFirstGenerationWatchdogDue(…))`:
-  - due: the child tests (red when the watchdog never fires)
-  - not due: the in-process tests with a future bound (`EvolveDir*`,
-    `EvolveEnv*`, `EvolveRL*`) still return normally rather than being killed
 - `src/creature/CreatureTraining.ts`: the generation-1 predicate at each of the
   3 call sites (`generation === 0` / `generation === 1`) arms only for
   generation 1. Each site was red-checked alone, as listed above.

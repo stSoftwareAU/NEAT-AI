@@ -37,7 +37,8 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `[Neat] First generation wedged after Ns …` at error level and ends the
   process with `SIGKILL` (exit status 137). On that path `evolve*` never returns
   and no checkpoint is written; the previous `creatureStore` checkpoint is left
-  as it was. Nothing is spawned when `timeoutMinutes` is unset. See
+  as it was. A watchdog worker that cannot start is logged at warn level and
+  skipped, never fatal. Nothing is spawned when `timeoutMinutes` is unset. See
   [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md).
 - **Issue #4053:** `evolveDir`'s first generation had no deadline, so a
   generation 1 that never settled outlived a 5-minute `timeoutMinutes` by 2 h.
