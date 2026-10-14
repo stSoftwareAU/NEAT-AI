@@ -79,6 +79,8 @@ import { buildRLSeedSet } from "@creature/EvolveRLSeedSet.ts";
 import {
   disposeEvolvePopulation,
   releaseEvolveCaches,
+  restoreEvolveChampion,
+  snapshotEvolveCaller,
 } from "@creature/EvolveTeardown.ts";
 import { runBoundedEvolveTeardown } from "@creature/BoundedEvolveTeardown.ts";
 import { flushTrainingGainLog } from "@neat/NeatScheduling.ts";
@@ -583,6 +585,7 @@ export async function evolveDir(
   );
 
   neat.setDataDir(dataSetDir);
+  const callerSnapshot = snapshotEvolveCaller(creature);
   await neat.populatePopulation(creature);
 
   // Issue #2902: hand the constructed Neat instance to the test seam (if any)
@@ -790,9 +793,13 @@ export async function evolveDir(
   await runBoundedEvolveTeardown({
     label: "evolveDir",
     persist: async () => {
-      if (bestCreature) {
-        creature.loadFrom(bestCreature, config.debug, "training:restoreBest");
-      }
+      restoreEvolveChampion(
+        creature,
+        bestCreature,
+        callerSnapshot,
+        config.debug,
+        "training:restoreBest",
+      );
       if (config.creatureStore) {
         await writeCreatures(neat, config.creatureStore);
       }
@@ -817,6 +824,7 @@ export async function evolveDir(
   // second evolveDir in the same process starts from a clean baseline.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
+  callerSnapshot.dispose();
   releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
@@ -981,6 +989,7 @@ export async function evolveEnv<S, A>(
   // alternative scoring strategies.
   (neat as unknown as { fitness: Fitness }).fitness = episodicFitness;
 
+  const callerSnapshot = snapshotEvolveCaller(creature);
   await neat.populatePopulation(creature);
 
   // Issue #4056: test seam, as in evolveDir. No-op for production callers.
@@ -1150,9 +1159,13 @@ export async function evolveEnv<S, A>(
   await runBoundedEvolveTeardown({
     label: "evolveEnv",
     persist: async () => {
-      if (bestCreature) {
-        creature.loadFrom(bestCreature, config.debug, "evolveEnv:restoreBest");
-      }
+      restoreEvolveChampion(
+        creature,
+        bestCreature,
+        callerSnapshot,
+        config.debug,
+        "evolveEnv:restoreBest",
+      );
       if (config.creatureStore) {
         await writeCreatures(neat, config.creatureStore);
       }
@@ -1173,6 +1186,7 @@ export async function evolveEnv<S, A>(
   // release the process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
+  callerSnapshot.dispose();
   releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
@@ -1539,6 +1553,7 @@ export async function evolveRL<S, A>(
   // scoring strategies.
   (neat as unknown as { fitness: Fitness }).fitness = rlFitness;
 
+  const callerSnapshot = snapshotEvolveCaller(creature);
   await neat.populatePopulation(creature);
 
   // Issue #4056: test seam, as in evolveDir. No-op for production callers.
@@ -1796,9 +1811,13 @@ export async function evolveRL<S, A>(
   await runBoundedEvolveTeardown({
     label: "evolveRL",
     persist: async () => {
-      if (bestCreature) {
-        creature.loadFrom(bestCreature, config.debug, "evolveRL:restoreBest");
-      }
+      restoreEvolveChampion(
+        creature,
+        bestCreature,
+        callerSnapshot,
+        config.debug,
+        "evolveRL:restoreBest",
+      );
       if (config.creatureStore) {
         await writeCreatures(neat, config.creatureStore);
       }
@@ -1820,6 +1839,7 @@ export async function evolveRL<S, A>(
   // release the process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
+  callerSnapshot.dispose();
   releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
