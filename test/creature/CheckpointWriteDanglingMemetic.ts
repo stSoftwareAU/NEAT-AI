@@ -16,6 +16,7 @@ import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { pruneDanglingMemeticFromExport } from "@compact/MemeticCleanup.ts";
 import { danglingMemeticReferences } from "../_memeticReferences.ts";
+import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
 
 function baseExport(): CreatureExport {
   return {
@@ -282,5 +283,78 @@ Deno.test("pruneDanglingMemeticFromExport leaves a legacy map-shaped weights val
   assertEquals(
     (json.memetic as unknown as { weights: unknown }).weights,
     { "hidden-0->output-0": 0.5, "gone->output-0": 0.25 },
+  );
+});
+
+function captureWarnings(warnings: string[]): Logger {
+  return {
+    debug: () => {},
+    info: () => {},
+    warn: (...args: unknown[]) => {
+      warnings.push(args.map(String).join(" "));
+    },
+    error: () => {},
+  };
+}
+
+Deno.test("writeCreatures warns with the pruned count when it drops a dangling memetic reference (#4062)", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_memetic_warn_" });
+  const previous = getLogger();
+  const warnings: string[] = [];
+  setLogger(captureWarnings(warnings));
+  try {
+    const creature = memeticCreature();
+    dropSynapseKeepingMemetic(creature);
+    await writeCreatures(
+      { population: [creature], warmupGenerations: 0, currentGeneration: 0 },
+      dir,
+      { batchSize: 1 },
+    );
+    const relevant = warnings.filter((w) => w.includes("[CheckpointWriter]"));
+    assertEquals(relevant.length, 1);
+    assert(relevant[0].includes("Pruned 2 "), relevant[0]);
+    assert(relevant[0].includes("Issue #4062"), relevant[0]);
+  } finally {
+    setLogger(previous);
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("writeCreatures does not warn when every memetic reference is valid (#4062)", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_memetic_nowarn_" });
+  const previous = getLogger();
+  const warnings: string[] = [];
+  setLogger(captureWarnings(warnings));
+  try {
+    await writeCreatures(
+      {
+        population: [memeticCreature()],
+        warmupGenerations: 0,
+        currentGeneration: 0,
+      },
+      dir,
+      { batchSize: 1 },
+    );
+    assertEquals(
+      warnings.filter((w) => w.includes("[CheckpointWriter]")).length,
+      0,
+    );
+  } finally {
+    setLogger(previous);
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("pruneDanglingMemeticFromExport removes a row whose UUID is not a string (#4062)", () => {
+  const json = baseExport();
+  (json.memetic as unknown as { weights: unknown[] }).weights.push({
+    fromUUID: 7,
+    toUUID: "output-0",
+    weight: 0.1,
+  });
+  assertEquals(pruneDanglingMemeticFromExport(json), 1);
+  assertEquals(
+    pairs(json.memetic as unknown as Snapshot),
+    pairs(baseExport().memetic as unknown as Snapshot),
   );
 });
