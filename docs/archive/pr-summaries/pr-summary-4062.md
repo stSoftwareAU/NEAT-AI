@@ -116,15 +116,15 @@ sites and remain true).
 
 ## Reproduction
 
-- **Symptom:** checkpoint `.creatures/10.json` from rocket@GRQ-21 (neat-ai
+- **symptom** — checkpoint `.creatures/10.json` from rocket@GRQ-21 (neat-ai
   7.0.55) holds "Memetic from id 206680568 to id 765492927 has no matching
   synapses".
-- **Status:** partially reproduced — reason: the original file is unavailable
-  and the producing path is unconfirmed; the test reproduces the symptom (a
-  memetic row naming a synapse the creature no longer has, changed while
-  `writeCreatures` is mid-write) and fails on the base.
-- **Regression test:** `test/creature/CheckpointWriteDanglingMemetic_test.ts`,
-  "writeCreatures never writes a memetic row naming a missing synapse (#4062)".
+- **status** — `partial` — reason: the original file is unavailable and the
+  producing path is unconfirmed; the test reproduces the symptom (a memetic row
+  naming a synapse the creature no longer has, changed while `writeCreatures` is
+  mid-write) and was observed failing on the base and passing after the fix.
+- **regression test** —
+  `test/creature/CheckpointWriteDanglingMemetic_test.ts::writeCreatures never writes a memetic row naming a missing synapse (#4062)`
 
 ## Acceptance Criteria
 
@@ -162,10 +162,10 @@ sites and remain true).
 
 <!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
 
-Clean: no material departures. The repository has no `CODING-STANDARDS.md`;
-`docs/ENGINEERING_PRINCIPLES.md` and `AGENTS.md` were used as the standard
-(Australian English, logger via `getLogger()`, no timing APIs or `Deno.env.set`
-in tests, unit tests under `test/`).
+- **clean** — no material departures found. The repository has no
+  `CODING-STANDARDS.md`; `docs/ENGINEERING_PRINCIPLES.md` and `AGENTS.md` were
+  used as the standard (Australian English, logging via `getLogger()`, no timing
+  APIs or `Deno.env.set` in tests, unit tests under `test/`).
 
 ## Test Plan
 
