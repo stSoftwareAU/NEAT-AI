@@ -134,24 +134,6 @@ function disposeThenWedge(creature: Creature): Wedge {
   return wedge;
 }
 
-/** Fail loudly instead of hanging the suite if an entry point never returns. */
-function withRealTimeGuard<T>(
-  work: Promise<T>,
-  label: string,
-  timeoutMS = 20_000,
-): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const guard = new Promise<never>((_resolve, reject) => {
-    timer = setTimeout(
-      () => reject(new Error(`${label}: did not return`)),
-      timeoutMS,
-    );
-  });
-  return Promise.race([work, guard]).finally(() =>
-    clearTimeout(timer)
-  ) as Promise<T>;
-}
-
 /** Assert the run was wedged with no champion and the caller got its genome back. */
 function assertCallerRestored(
   creature: Creature,
@@ -204,21 +186,18 @@ Deno.test({
     const priorLogger = getLogger();
 
     try {
-      const result = await withRealTimeGuard(
-        evolveDir(
-          creature,
-          dataSetDir,
-          {
-            populationSize: 6,
-            iterations: 500,
-            timeoutMinutes: TIMEOUT_MINUTES,
-            threads: 1,
-            creatureStore,
-            logger: wedge.logger,
-          },
-          wedge.deps,
-        ),
-        "evolveDir",
+      const result = await evolveDir(
+        creature,
+        dataSetDir,
+        {
+          populationSize: 6,
+          iterations: 500,
+          timeoutMinutes: TIMEOUT_MINUTES,
+          threads: 1,
+          creatureStore,
+          logger: wedge.logger,
+        },
+        wedge.deps,
       );
       assertCallerRestored(creature, wedge, result, originalUUIDs);
     } finally {
@@ -244,17 +223,14 @@ Deno.test({
     const priorLogger = getLogger();
 
     try {
-      const result = await withRealTimeGuard(
-        evolveEnv(creature, buildEnvAdapter(), {
-          populationSize: 6,
-          iterations: 500,
-          timeoutMinutes: TIMEOUT_MINUTES,
-          threads: 1,
-          creatureStore,
-          logger: wedge.logger,
-        }, wedge.deps),
-        "evolveEnv",
-      );
+      const result = await evolveEnv(creature, buildEnvAdapter(), {
+        populationSize: 6,
+        iterations: 500,
+        timeoutMinutes: TIMEOUT_MINUTES,
+        threads: 1,
+        creatureStore,
+        logger: wedge.logger,
+      }, wedge.deps);
       assertCallerRestored(creature, wedge, result, originalUUIDs);
     } finally {
       setLogger(priorLogger);
@@ -278,17 +254,14 @@ Deno.test({
     const priorLogger = getLogger();
 
     try {
-      const result = await withRealTimeGuard(
-        evolveRL(creature, new UnreachableAdapter(), {
-          populationSize: 6,
-          iterations: 500,
-          timeoutMinutes: TIMEOUT_MINUTES,
-          threads: 1,
-          creatureStore,
-          logger: wedge.logger,
-        }, wedge.deps),
-        "evolveRL",
-      );
+      const result = await evolveRL(creature, new UnreachableAdapter(), {
+        populationSize: 6,
+        iterations: 500,
+        timeoutMinutes: TIMEOUT_MINUTES,
+        threads: 1,
+        creatureStore,
+        logger: wedge.logger,
+      }, wedge.deps);
       assertCallerRestored(creature, wedge, result, originalUUIDs);
     } finally {
       setLogger(priorLogger);

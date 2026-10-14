@@ -163,6 +163,19 @@ runs three steps, in this order:
    run (`timeoutMinutes` unset) keeps the unbounded Issue #1509 wait — with no
    deadline there is nothing to be late for.
 
+Issue #4061 narrows what the restore step may hand back. Each entry point
+(`evolveDir`, `evolveEnv`, `evolveRL`) snapshots the caller's creature on entry.
+The restore (`restoreEvolveChampion` in
+[`src/creature/EvolveTeardown.ts`](../src/creature/EvolveTeardown.ts)) loads the
+champion only when it is usable: at least `input + output` neurons, and
+`validate()` passes. Otherwise it logs a warning and puts the caller's original
+genome back from the snapshot, so the caller is never returned empty, including
+after a hard-deadline abandon. If neither copy is usable it throws rather than
+return a broken creature. A generation abandoned past the hard deadline that
+finishes after the run has moved on no longer disposes the previous population
+at commit; it logs a warning instead, because that population can still hold the
+caller's creature.
+
 The budget defaults to `DEFAULT_TEARDOWN_STEP_BUDGET_MS` (5 s) per step. The
 teardown always emits **one summary line** naming what it left behind, so the
 gap between a child's last log line and its exit is diagnosable rather than
