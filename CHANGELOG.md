@@ -25,6 +25,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4061:** `evolveDir()`, `evolveEnv()` and `evolveRL()` now guarantee
+  on every exit path, hard-deadline abandon included, that the caller's creature
+  is valid (`neurons.length >= input + output`). If no usable champion exists,
+  the caller's original genome is restored from a pre-evolution snapshot
+  (`restoreEvolveChampion` in `src/creature/EvolveTeardown.ts`), and an
+  abandoned generation no longer disposes the previous population after its
+  commit. This fixes `RangeError: Invalid array length` in
+  `CreatureUtil.makeUUID`.
 - **Issue #4053:** `evolveDir`'s first generation had no deadline, so a
   generation 1 that never settled outlived a 5-minute `timeoutMinutes` by 2 h.
   Generation 1 now has its own bound,

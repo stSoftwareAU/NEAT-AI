@@ -54,6 +54,8 @@ Deno.test({
     const background: { generationTwo?: Promise<unknown> } = {};
     let liveNeat: Neat | undefined;
     let abandonOnDedup = false;
+    let callerOutsideCommittedPopulation = false;
+    let previousPopulation: Creature[] = [];
 
     // Generation 2 is parked inside its dedup await, after the abandon, and is
     // released only once evolveDir has returned and restored the caller. Without
@@ -74,7 +76,17 @@ Deno.test({
         // The commit has landed; the previous population is not yet disposed.
         clock = breachMS;
         liveNeat.abandonInFlightPastHardDeadline(hardDeadline, breachMS);
-        return held.then(() => originalPerform.call(this, creatures));
+        // Generation 1 disposed the caller (it was not carried forward) and
+        // the run restores it only after evolveDir returns. Make the caller a
+        // member of the previous population that the commit did not carry
+        // forward: exactly what the post-commit disposal empties when it is
+        // not skipped. The disposal iterates this array after the dedup await.
+        previousPopulation.push(creature);
+        callerOutsideCommittedPopulation = !creatures.includes(creature);
+        // The held dedup deliberately skips the real pass: by release time the
+        // run's teardown has disposed these members, and deduplicating them
+        // would throw before generation 2 reaches its post-commit disposal.
+        return held.then(() => undefined);
       }
       return originalPerform.call(this, creatures);
     };
@@ -93,6 +105,8 @@ Deno.test({
           calls++;
           if (calls !== 2) return realEvolve(previousFittest);
           abandonOnDedup = true;
+          // The array generation 2 will commit over: its previous population.
+          previousPopulation = neat.population;
           const generationTwo = realEvolve(previousFittest);
           background.generationTwo = generationTwo;
           return generationTwo;
@@ -117,6 +131,10 @@ Deno.test({
         DeDuplicator.prototype.perform = originalPerform;
       });
     assert(background.generationTwo, "generation 2 must have started");
+    assert(
+      callerOutsideCommittedPopulation,
+      "the caller must be outside generation 2's committed population",
+    );
     // Generation 2 resumes only now, after the caller has been restored.
     await background.generationTwo.catch(() => undefined);
 
