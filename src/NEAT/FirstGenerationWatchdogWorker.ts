@@ -17,6 +17,5 @@ const workerSelf = self as unknown as {
 workerSelf.onmessage = (e) => {
   pollFirstGenerationWatchdog(e.data, {
     log: (line) => getLogger().error(line),
-    kill: () => Deno.kill(Deno.pid, "SIGKILL"),
   });
 };
