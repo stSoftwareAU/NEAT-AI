@@ -55,18 +55,22 @@ missing synapse or neuron.
 
 ## Evidence
 
-Tests (5 of the 7 branch-affecting tests pass on the base; the two
-`writeCreatures` tests are red there):
+Tests (7 of the 10 tests pass on the base; the three that exercise the
+checkpoint write are red there):
 
 ```text
 deno test -A test/creature/CheckpointWriteDanglingMemetic_test.ts
 ok | 10 passed | 0 failed
 ```
 
-Base red check: with `src/creature/CheckpointWriter.ts` restored to
-`origin/Develop`, 5 tests passed and 2 failed (the two `writeCreatures` tests:
-"writeCreatures never writes a memetic row naming a missing synapse" and
-"writeCreatures warns with the pruned count…"); the file was then restored.
+Base red check: with `src/creature/CheckpointWriter.ts` restored to the base
+`origin/Develop` (`f089c75f`),
+`deno test -A
+test/creature/CheckpointWriteDanglingMemetic_test.ts` reported
+`FAILED | 7 passed | 3 failed`. The three failures were "writeCreatures never
+writes a memetic row naming a missing synapse", "a stale-memetic checkpoint file
+passes core validation" and "writeCreatures warns with the pruned count…". The
+file was then restored.
 
 Full gate: `./quality.sh --rust-scorer-bin=<path> < /dev/null` — 9888 passed, 1
 failed, 41 ignored. The one failure is the unrelated flaky
@@ -179,9 +183,11 @@ sites and remain true).
   map-shaped weights value untouched"; "writeCreatures warns with the pruned
   count"; "does not warn when every memetic reference is valid"; "removes a row
   whose UUID is not a string".
-- Red checks: base `CheckpointWriter.ts` → 5 passed / 2 failed (the two
-  `writeCreatures` tests). Each branch below was flipped on purpose, the file
-  run, then restored.
+- Red checks: `CheckpointWriter.ts` from the base `origin/Develop` (`f089c75f`)
+  → 7 passed / 3 failed ("writeCreatures never writes a memetic row naming a
+  missing synapse", "a stale-memetic checkpoint file passes core validation",
+  "writeCreatures warns with the pruned count…"). Each branch below was flipped
+  on purpose, the file run, then restored.
 - `./quality.sh --rust-scorer-bin=<path> < /dev/null`: 9888 passed, 1 failed
   (unrelated flaky `PI: converges toward PI*input…`, passed on two isolated
   re-runs), 41 ignored.
@@ -207,8 +213,9 @@ Branch outcomes:
   ancestry case in "removes dangling rows and keeps valid ones"; removing the
   recursion went red (7 passed / 3 failed).
 - src/creature/CheckpointWriter.ts:202 — export pruned before write;
-  "writeCreatures never writes a memetic row naming a missing synapse"; failed
-  on the base.
+  "writeCreatures never writes a memetic row naming a missing synapse" and "a
+  stale-memetic checkpoint file passes core validation"; both failed on the
+  base.
 - src/creature/CheckpointWriter.ts:203 — prune count > 0 → warns;
   "writeCreatures warns with the pruned count…"; forcing `false` went red (9
   passed / 1 failed).
