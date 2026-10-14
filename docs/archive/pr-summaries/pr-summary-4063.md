@@ -69,6 +69,8 @@ random creature.
 - Callers/siblings: no production callers touched; other tests in the file
   unchanged and still pass.
 
+<!-- vibe-quality-gate-skipped reason="./quality.sh could not run because no native rust_scorer binary is available (checked PATH and ../NEAT-AI-scorer/target/release/rust_scorer; neither exists) and there is no WASM fallback; targeted evidence instead: deno test test/architecture/MakeUuidDirectConstruction.ts gave 8 passed, 0 failed, and deno fmt --check, deno lint and deno check were run on the changed test file" -->
+
 <!-- vibe-branch-outcomes -->
 
 Branch outcomes: none added
