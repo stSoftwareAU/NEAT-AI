@@ -116,14 +116,13 @@ Deno.test("writeCreatures never writes a memetic row naming a missing synapse (#
     const stale = population[1];
     let calls = 0;
     const writeTextFile = (path: string, text: string): Promise<void> => {
-      // Abandoned generation strikes after the first batch is exported, before
-      // the second creature is exported.
+      // Stands in for an abandoned generation still mutating
+      // `neat.population`: with batchSize 1, this runs after the first
+      // creature is written and before the second is exported.
       if (calls++ === 0) dropSynapseKeepingMemetic(stale);
       return Deno.writeTextFile(path, text);
     };
 
-    // Strike the second creature before export as well (batch of 1), so the
-    // precondition holds on the live creature at the time it is exported.
     await writeCreatures(
       { population, warmupGenerations: 0, currentGeneration: 0 },
       dir,

@@ -25,7 +25,7 @@ import {
 } from "@upgrade/SemanticVersionValidation.ts";
 import { applySeedWarmupTagsAtSave } from "@architecture/CreatureFactory.ts";
 import { getLogger } from "@utils/Logger.ts";
-import { pruneDanglingMemeticFromExport } from "../compact/MemeticCleanup.ts";
+import { pruneDanglingMemeticFromExport } from "@compact/MemeticCleanup.ts";
 
 /**
  * Default number of checkpoint files exported, stringified, and written
@@ -203,7 +203,9 @@ export async function writeCreatures(
         if (pruned > 0) {
           getLogger().warn(
             `[CheckpointWriter] Pruned ${pruned} dangling memetic reference(s) ` +
-              `from creature ${creature.uuid} before writing — the live ` +
+              `from creature ${
+                creature.uuid ?? "<unidentified>"
+              } before writing — the live ` +
               `creature's memetic no longer matched its synapses (likely a ` +
               `still-running abandoned generation) — Issue #4062`,
           );
