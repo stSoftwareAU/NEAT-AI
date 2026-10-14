@@ -205,3 +205,73 @@ export function pruneOrphanMemeticReferences(
     }
   }
 }
+
+/**
+ * Removes memetic rows and bias keys that reference a synapse or neuron the
+ * exported creature does not contain (Issue #4062).
+ *
+ * Operates on the UUID-only wire JSON, in place, and never on the live
+ * creature. A weight row survives only when its `(fromUUID, toUUID)` pair is a
+ * synapse in `json.synapses`; a bias key survives only when it names a neuron
+ * in `json.neurons`, an `input-N` or an `output-N`. Every `ancestry[]`
+ * snapshot is checked against the same sets. A legacy map-shaped `weights`
+ * value is left untouched. Valid rows are never removed.
+ *
+ * @param json - The exported creature (modified in place).
+ * @returns The number of weight rows and bias keys removed.
+ */
+export function pruneDanglingMemeticFromExport(json: CreatureExport): number {
+  const memetic = json.memetic;
+  if (!memetic) return 0;
+
+  const pairKey = (from: string, to: string) => JSON.stringify([from, to]);
+  const pairs = new Set<string>();
+  for (const s of json.synapses ?? []) {
+    if (typeof s.fromUUID === "string" && typeof s.toUUID === "string") {
+      pairs.add(pairKey(s.fromUUID, s.toUUID));
+    }
+  }
+  const labels = new Set<string>();
+  for (let i = 0; i < (json.input ?? 0); i++) labels.add(`input-${i}`);
+  for (let i = 0; i < (json.output ?? 0); i++) labels.add(`output-${i}`);
+  for (const n of json.neurons ?? []) {
+    if (typeof n.uuid === "string") labels.add(n.uuid);
+  }
+
+  let removed = 0;
+  const prune = (snap: unknown): void => {
+    if (typeof snap !== "object" || snap === null) return;
+    const node = snap as {
+      weights?: unknown;
+      biases?: unknown;
+      ancestry?: unknown;
+    };
+    if (Array.isArray(node.weights)) {
+      const kept = node.weights.filter((row: unknown) => {
+        const r = row as { fromUUID?: unknown; toUUID?: unknown } | null;
+        return typeof r?.fromUUID === "string" &&
+          typeof r.toUUID === "string" &&
+          pairs.has(pairKey(r.fromUUID, r.toUUID));
+      });
+      removed += node.weights.length - kept.length;
+      node.weights = kept;
+    }
+    const biases = node.biases;
+    if (
+      typeof biases === "object" && biases !== null && !Array.isArray(biases)
+    ) {
+      const map = biases as Record<string, unknown>;
+      for (const key of Object.keys(map)) {
+        if (!labels.has(key)) {
+          delete map[key];
+          removed++;
+        }
+      }
+    }
+    if (Array.isArray(node.ancestry)) {
+      for (const a of node.ancestry) prune(a);
+    }
+  };
+  prune(memetic);
+  return removed;
+}
