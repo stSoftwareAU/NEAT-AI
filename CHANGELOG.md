@@ -28,11 +28,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 - **Issue #4062:** A checkpoint written during teardown could carry `memetic`
   data that no longer matched its synapses (a deadline-abandoned generation can
   still change structure on live creatures), so loading it failed with
-  `Memetic
-  from id … has no matching synapses`. `writeCreatures` now prunes,
-  on the exported JSON only, any `memetic` weight row whose synapse is not
-  exported and any `memetic.biases` key that is not an exported neuron, and logs
-  a warning naming Issue #4062 when it does. Valid memetic data and the live
+  `Memetic from id … has no matching synapses`. `writeCreatures` now prunes, on
+  the exported JSON only, any `memetic` weight row whose synapse is not exported
+  and any `memetic.biases` key that is not an exported neuron, and logs a
+  warning naming Issue #4062 when it does. Valid memetic data and the live
   creature are untouched.
 - **Issue #4053:** `evolveDir`'s first generation had no deadline, so a
   generation 1 that never settled outlived a 5-minute `timeoutMinutes` by 2 h.

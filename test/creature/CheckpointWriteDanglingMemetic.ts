@@ -266,3 +266,22 @@ Deno.test("pruneDanglingMemeticFromExport leaves a clean export untouched (#4062
   assertEquals(pruneDanglingMemeticFromExport(json), 0);
   assertEquals(JSON.stringify(json), before);
 });
+
+Deno.test("pruneDanglingMemeticFromExport returns 0 when there is no memetic (#4062)", () => {
+  const json = baseExport();
+  delete json.memetic;
+  const before = JSON.stringify(json);
+  assertEquals(pruneDanglingMemeticFromExport(json), 0);
+  assertEquals(JSON.stringify(json), before);
+});
+
+Deno.test("pruneDanglingMemeticFromExport leaves a legacy map-shaped weights value untouched (#4062)", () => {
+  const json = baseExport();
+  const legacy = { "hidden-0->output-0": 0.5, "gone->output-0": 0.25 };
+  (json.memetic as unknown as { weights: unknown }).weights = legacy;
+  assertEquals(pruneDanglingMemeticFromExport(json), 0);
+  assertEquals(
+    (json.memetic as unknown as { weights: unknown }).weights,
+    { "hidden-0->output-0": 0.5, "gone->output-0": 0.25 },
+  );
+});
