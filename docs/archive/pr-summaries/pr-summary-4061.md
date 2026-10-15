@@ -39,7 +39,8 @@ helpers.
 
 - **Snapshot with `shallowClone()` before populating.** The snapshot does not
   depend on whether the caller is disposed later. It is released in the
-  `finally` of each entry point (`src/creature/CreatureTraining.ts:880`, `:1270`, `:1972`).
+  `finally` of each entry point (`src/creature/CreatureTraining.ts:880`,
+  `:1270`, `:1972`).
 - **Fail loud, not silent.** When neither candidate is usable, the restore
   throws and names the snapshot's reason, so a damaged creature is never
   returned as success.
@@ -81,39 +82,39 @@ deno fmt --check and deno lint on EvolveRestoresCallerSnapshot_test.ts  clean; d
 
 Mutation red-checks. Each mutant was applied with `deno test --no-check` over
 every `*_test.ts` file that imports the module through a relative path, then
-reverted. The unmutated set passes (19 passed). The catch-path rows were
-added after that run and have not been re-run here.
+reverted. The unmutated set passes (19 passed). The catch-path rows were added
+after that run and have not been re-run here.
 
-| Line                                    | Mutant                            | Result                                                                                                                                                   |
-| --------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/creature/EvolveTeardown.ts:41`     | return `undefined`                | red ("snapshotEvolveCaller is independent of the caller")                                                                                                |
-| `src/creature/EvolveTeardown.ts:54`     | negate the neuron-count check     | red ("restoreEvolveChampion restores a usable champion into the caller")                                                                                 |
-| `src/creature/EvolveTeardown.ts:55`     | return `undefined`                | red ("restoreEvolveChampion falls back to the snapshot when the champion has fewer neurons than input + output")                                         |
-| `src/creature/EvolveTeardown.ts:58`     | delete `validate()`               | red ("restoreEvolveChampion falls back to the snapshot when the champion fails validate()")                                                              |
-| `src/creature/EvolveTeardown.ts:61`     | negate the ternary                | red ("restoreEvolveChampion warns with the validate() message when it rejects a champion")                                                               |
-| `src/creature/EvolveTeardown.ts:91`     | negate `if (champion)`            | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                       |
-| `src/creature/EvolveTeardown.ts:93`     | negate `reason === undefined`     | red ("restoreEvolveChampion restores a usable champion into the caller")                                                                                 |
-| `src/creature/EvolveTeardown.ts:94`     | delete `loadFrom(champion)`       | red ("restoreEvolveChampion restores a usable champion into the caller")                                                                                 |
-| `src/creature/EvolveTeardown.ts:97`     | delete the warning                | red ("restoreEvolveChampion warns with the validate() message when it rejects a champion")                                                               |
-| `src/creature/EvolveTeardown.ts:102`    | negate the snapshot check         | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                       |
-| `src/creature/EvolveTeardown.ts:107`    | delete `loadFrom(snapshot)`       | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                       |
-| `src/creature/CreatureTraining.ts:865` | delete the `restoreEvolveChampion` call in the catch | not run locally (Deno suite needs jsr); CI mutation gate is the check. Expected red: "evolveDir: a rejected generation preserves the original error and restores a disposed caller" |
+| Line                                    | Mutant                                               | Result                                                                                                                                                                              |
+| --------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/creature/EvolveTeardown.ts:41`     | return `undefined`                                   | red ("snapshotEvolveCaller is independent of the caller")                                                                                                                           |
+| `src/creature/EvolveTeardown.ts:54`     | negate the neuron-count check                        | red ("restoreEvolveChampion restores a usable champion into the caller")                                                                                                            |
+| `src/creature/EvolveTeardown.ts:55`     | return `undefined`                                   | red ("restoreEvolveChampion falls back to the snapshot when the champion has fewer neurons than input + output")                                                                    |
+| `src/creature/EvolveTeardown.ts:58`     | delete `validate()`                                  | red ("restoreEvolveChampion falls back to the snapshot when the champion fails validate()")                                                                                         |
+| `src/creature/EvolveTeardown.ts:61`     | negate the ternary                                   | red ("restoreEvolveChampion warns with the validate() message when it rejects a champion")                                                                                          |
+| `src/creature/EvolveTeardown.ts:91`     | negate `if (champion)`                               | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                                                  |
+| `src/creature/EvolveTeardown.ts:93`     | negate `reason === undefined`                        | red ("restoreEvolveChampion restores a usable champion into the caller")                                                                                                            |
+| `src/creature/EvolveTeardown.ts:94`     | delete `loadFrom(champion)`                          | red ("restoreEvolveChampion restores a usable champion into the caller")                                                                                                            |
+| `src/creature/EvolveTeardown.ts:97`     | delete the warning                                   | red ("restoreEvolveChampion warns with the validate() message when it rejects a champion")                                                                                          |
+| `src/creature/EvolveTeardown.ts:102`    | negate the snapshot check                            | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                                                  |
+| `src/creature/EvolveTeardown.ts:107`    | delete `loadFrom(snapshot)`                          | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                                                  |
+| `src/creature/CreatureTraining.ts:865`  | delete the `restoreEvolveChampion` call in the catch | not run locally (Deno suite needs jsr); CI mutation gate is the check. Expected red: "evolveDir: a rejected generation preserves the original error and restores a disposed caller" |
 | `src/creature/CreatureTraining.ts:1255` | delete the `restoreEvolveChampion` call in the catch | not run locally (Deno suite needs jsr); CI mutation gate is the check. Expected red: "evolveEnv: a rejected generation preserves the original error and restores a disposed caller" |
-| `src/creature/CreatureTraining.ts:1957` | delete the `restoreEvolveChampion` call in the catch | not run locally (Deno suite needs jsr); CI mutation gate is the check. Expected red: "evolveRL: a rejected generation preserves the original error and restores a disposed caller" |
-| `src/NEAT/NeatEvolution.ts:1261`        | negate the abandon re-check       | red (`EvolveCommitDisposal_test.ts` "evolve: a committed generation disposes the members it drops and keeps the ones it carries forward")                |
-| `src/NEAT/NeatEvolution.ts:1262`        | delete the warning                | red (`AbandonedCommitKeepsPreviousPopulation_test.ts` "NEAT: a generation abandoned mid-commit leaves the previous population undisposed (Issue #4061)") |
-| `src/NEAT/NeatEvolution.ts:1275`        | negate `!carriedForward.has`      | red (`EvolveCommitDisposal_test.ts` "evolve: a committed generation disposes the members it drops and keeps the ones it carries forward")                |
-| `src/NEAT/NeatEvolution.ts:1276`        | delete `toDispose.add`            | red (same test)                                                                                                                                          |
-| `src/NEAT/NeatEvolution.ts:1280`        | negate `!carriedForward.has`      | red (same test)                                                                                                                                          |
-| `src/NEAT/NeatEvolution.ts:1281`        | delete `toDispose.add`            | red (same test: "a creature the population budget dropped was not disposed")                                                                             |
-| `src/NEAT/NeatEvolution.ts:1290`        | delete `creature.dispose()`       | red (same test)                                                                                                                                          |
+| `src/creature/CreatureTraining.ts:1957` | delete the `restoreEvolveChampion` call in the catch | not run locally (Deno suite needs jsr); CI mutation gate is the check. Expected red: "evolveRL: a rejected generation preserves the original error and restores a disposed caller"  |
+| `src/NEAT/NeatEvolution.ts:1261`        | negate the abandon re-check                          | red (`EvolveCommitDisposal_test.ts` "evolve: a committed generation disposes the members it drops and keeps the ones it carries forward")                                           |
+| `src/NEAT/NeatEvolution.ts:1262`        | delete the warning                                   | red (`AbandonedCommitKeepsPreviousPopulation_test.ts` "NEAT: a generation abandoned mid-commit leaves the previous population undisposed (Issue #4061)")                            |
+| `src/NEAT/NeatEvolution.ts:1275`        | negate `!carriedForward.has`                         | red (`EvolveCommitDisposal_test.ts` "evolve: a committed generation disposes the members it drops and keeps the ones it carries forward")                                           |
+| `src/NEAT/NeatEvolution.ts:1276`        | delete `toDispose.add`                               | red (same test)                                                                                                                                                                     |
+| `src/NEAT/NeatEvolution.ts:1280`        | negate `!carriedForward.has`                         | red (same test)                                                                                                                                                                     |
+| `src/NEAT/NeatEvolution.ts:1281`        | delete `toDispose.add`                               | red (same test: "a creature the population budget dropped was not disposed")                                                                                                        |
+| `src/NEAT/NeatEvolution.ts:1290`        | delete `creature.dispose()`                          | red (same test)                                                                                                                                                                     |
 
 Lines exempt from the mutation check:
 
-- `src/creature/CreatureTraining.ts:880`, `:1270` and `:1972` exempt (untestable):
-  `callerSnapshot.dispose()` in each `finally`. Releasing the snapshot is not
-  observable through the caller without asserting implementation details, so
-  the tests do not pin it.
+- `src/creature/CreatureTraining.ts:880`, `:1270` and `:1972` exempt
+  (untestable): `callerSnapshot.dispose()` in each `finally`. Releasing the
+  snapshot is not observable through the caller without asserting implementation
+  details, so the tests do not pin it.
 - `src/NEAT/NeatEvolution.ts:1285` exempt (untestable): the
   `trim.removedCreatures` loop is unreachable from `evolve()`.
   `trimPopulationToSize` runs on `budgeted.population`, which
@@ -154,12 +155,12 @@ Related issues: #4061, #4050 (earlier occurrence of the same failure), GRQ #4472
 `docs/TIMEOUTS.md` "The post-loop teardown is bounded too"; siblings:
 `evolveEnv`, `evolveRL`; updated: `docs/TIMEOUTS.md`, `CHANGELOG.md`.
 
-The `docs/TIMEOUTS.md` and `CHANGELOG.md` entries describe the restore on
-every exit path of all three entry points. They say the warning is logged only when
-a champion is rejected, and that the restore throws when the snapshot is
-unusable. The remaining hits in `docs/TIMEOUTS.md` that describe the teardown
-budget and the abandon epoch are still true: this change narrows what the
-restore step may hand back and changes neither mechanism.
+The `docs/TIMEOUTS.md` and `CHANGELOG.md` entries describe the restore on every
+exit path of all three entry points. They say the warning is logged only when a
+champion is rejected, and that the restore throws when the snapshot is unusable.
+The remaining hits in `docs/TIMEOUTS.md` that describe the teardown budget and
+the abandon epoch are still true: this change narrows what the restore step may
+hand back and changes neither mechanism.
 
 ## Reproduction
 
@@ -239,8 +240,8 @@ line is posted.
 The repository has no `CODING-STANDARDS.md`, so `docs/ENGINEERING_PRINCIPLES.md`
 and `AGENTS.md` were used as the standard.
 
-- **fixed** — typed errors (`AGENTS.md` → Error Handling: "Use typed errors
-  from `src/errors/`") — evidence: `src/creature/EvolveTeardown.ts:104` throws
+- **fixed** — typed errors (`AGENTS.md` → Error Handling: "Use typed errors from
+  `src/errors/`") — evidence: `src/creature/EvolveTeardown.ts:104` throws
   `ValidationError` from `src/errors/ValidationError.ts`.
 - **fixed** — tests describe behaviour, not implementation
   (`docs/ENGINEERING_PRINCIPLES.md` §3) — the test no longer patches the
