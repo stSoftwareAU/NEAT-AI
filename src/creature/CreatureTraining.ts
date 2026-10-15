@@ -1232,6 +1232,18 @@ export async function evolveEnv<S, A>(
       ? { terminationReason: neat.terminationReason }
       : {}),
   };
+  } catch (error) {
+    // Preserve the original generation/teardown failure while keeping the
+    // caller's genome usable even when a previous commit disposed it.
+    try {
+      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "evolveEnv:restoreBest");
+    } catch (restoreError) {
+      getLogger().error("evolveEnv: unable to restore caller after failure", restoreError);
+    }
+    throw error;
+  } finally {
+    callerSnapshot.dispose();
+  }
 }
 
 /**
@@ -1300,19 +1312,6 @@ export interface EvolveRLOptions extends NeatOptions {
    */
   adapterDescription?:
     import("@creature/EpisodeWorkerProtocol.ts").AdapterDescription;
-  } catch (error) {
-    // Preserve the original generation/teardown failure while keeping the
-    // caller's genome usable even when a previous commit disposed it.
-    try {
-      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "evolveEnv:restoreBest");
-    } catch (restoreError) {
-      getLogger().error("evolveEnv: unable to restore caller after failure", restoreError);
-    }
-    throw error;
-  } finally {
-    callerSnapshot.dispose();
-  }
-
 }
 
 /**
