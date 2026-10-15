@@ -5,6 +5,7 @@ import {
   assertThrows,
 } from "@std/assert";
 import { Creature } from "@creature";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { getLogger, setLogger } from "@utils/Logger.ts";
 import {
@@ -196,7 +197,7 @@ Deno.test("restoreEvolveChampion throws and leaves the caller untouched when nei
         false,
         "test:neither",
       ),
-    Error,
+    ValidationError,
     "neither the champion nor the caller's original genome is usable",
   );
 
