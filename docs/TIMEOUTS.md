@@ -170,10 +170,9 @@ The restore (`restoreEvolveChampion` in
 champion only when it is usable: at least `input + output` neurons, and
 `validate()` passes. Otherwise it puts the caller's original genome back from
 the snapshot, logging a warning when it rejected a champion (a run that adopted
-no champion restores silently). The restore runs in the teardown's persist step,
-so a run that reaches the teardown, including one ended by a hard-deadline
-abandon, does not hand the caller back empty; a generation loop that rejects
-never reaches it. If neither copy is usable it throws and leaves the caller as
+no champion restores silently). The restore runs in the teardown's persist step and is also attempted
+when the generation loop rejects, preserving the original error. The entry
+snapshot is released on both success and failure. If neither copy is usable it throws and leaves the caller as
 it is rather than load a broken creature. A generation abandoned past the hard
 deadline that finishes after the run has moved on no longer disposes the
 previous population at commit; it logs a warning instead, because that
