@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4071:** `cleanupOrphanedNeurons` converted a hidden neuron that had
+  outward but no inward synapses into a constant and dropped its `uuid`. On
+  reload the constant was relabelled `legacy-neuron-<id>`, which could match a
+  neuron that already carried that label. The creature then held two neurons
+  with one uuid; it still validated in memory, but the next export/import
+  resolved both neurons' synapses onto one of them and failed with
+  `constants neuron legacy-neuron-N has no outward connections` (the signature
+  of the flaky `XNOR - evolve` failure and of #3383). The converted constant now
+  keeps the neuron's uuid, as the neuron UUID stability invariant requires.
 - **Issue #4062:** A checkpoint written during teardown could carry `memetic`
   data that no longer matched its synapses, so loading it failed with
   `Memetic from id … has no matching synapses`. The likely cause, not yet
