@@ -585,7 +585,9 @@ export async function evolveDir(
   );
 
   neat.setDataDir(dataSetDir);
+  let bestCreature: Creature | undefined;
   const callerSnapshot = snapshotEvolveCaller(creature);
+  try {
   await neat.populatePopulation(creature);
 
   // Issue #2902: hand the constructed Neat instance to the test seam (if any)
@@ -598,7 +600,7 @@ export async function evolveDir(
 
   // Dynamic import to avoid circular dependency at module load time.
   const { Creature: CreatureClass } = await import("../Creature.ts");
-  let bestCreature: InstanceType<typeof CreatureClass> | undefined;
+
 
   let iterationStartMS = Date.now();
   let generation = 0;
@@ -823,7 +825,18 @@ export async function evolveDir(
   // process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
-  callerSnapshot.dispose();
+  } catch (error) {
+    // Preserve the original generation/teardown failure while keeping the
+    // caller's genome usable even when a previous commit disposed it.
+    try {
+      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "training:restoreBest");
+    } catch (restoreError) {
+      getLogger().error("evolveDir: unable to restore caller after failure", restoreError);
+    }
+    throw error;
+  } finally {
+    callerSnapshot.dispose();
+  }
   releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
@@ -988,7 +1001,9 @@ export async function evolveEnv<S, A>(
   // alternative scoring strategies.
   (neat as unknown as { fitness: Fitness }).fitness = episodicFitness;
 
+  let bestCreature: Creature | undefined;
   const callerSnapshot = snapshotEvolveCaller(creature);
+  try {
   await neat.populatePopulation(creature);
 
   // Issue #4056: test seam, as in evolveDir. No-op for production callers.
@@ -998,7 +1013,7 @@ export async function evolveEnv<S, A>(
   let bestScore = -Infinity;
 
   const { Creature: CreatureClass } = await import("../Creature.ts");
-  let bestCreature: InstanceType<typeof CreatureClass> | undefined;
+
 
   let iterationStartMS = Date.now();
   let generation = 0;
@@ -1186,7 +1201,18 @@ export async function evolveEnv<S, A>(
   // process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
-  callerSnapshot.dispose();
+  } catch (error) {
+    // Preserve the original generation/teardown failure while keeping the
+    // caller's genome usable even when a previous commit disposed it.
+    try {
+      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "evolveEnv:restoreBest");
+    } catch (restoreError) {
+      getLogger().error("evolveEnv: unable to restore caller after failure", restoreError);
+    }
+    throw error;
+  } finally {
+    callerSnapshot.dispose();
+  }
   releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
@@ -1553,7 +1579,9 @@ export async function evolveRL<S, A>(
   // scoring strategies.
   (neat as unknown as { fitness: Fitness }).fitness = rlFitness;
 
+  let bestCreature: Creature | undefined;
   const callerSnapshot = snapshotEvolveCaller(creature);
+  try {
   await neat.populatePopulation(creature);
 
   // Issue #4056: test seam, as in evolveDir. No-op for production callers.
@@ -1563,7 +1591,7 @@ export async function evolveRL<S, A>(
   let bestScore = -Infinity;
 
   const { Creature: CreatureClass } = await import("../Creature.ts");
-  let bestCreature: InstanceType<typeof CreatureClass> | undefined;
+
 
   let iterationStartMS = Date.now();
   let generation = 0;
@@ -1840,7 +1868,18 @@ export async function evolveRL<S, A>(
   // process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
-  callerSnapshot.dispose();
+  } catch (error) {
+    // Preserve the original generation/teardown failure while keeping the
+    // caller's genome usable even when a previous commit disposed it.
+    try {
+      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "evolveRL:restoreBest");
+    } catch (restoreError) {
+      getLogger().error("evolveRL: unable to restore caller after failure", restoreError);
+    }
+    throw error;
+  } finally {
+    callerSnapshot.dispose();
+  }
   releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
