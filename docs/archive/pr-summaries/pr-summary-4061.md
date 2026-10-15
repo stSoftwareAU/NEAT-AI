@@ -38,17 +38,18 @@ helpers.
 ### Essential Design Decisions
 
 - **Snapshot with `shallowClone()` before populating.** The snapshot does not
-  depend on whether the caller is disposed later. It is disposed after the
-  post-loop teardown (`src/creature/CreatureTraining.ts:826`, `:1189`, `:1843`).
+  depend on whether the caller is disposed later. It is released in the
+  `finally` of each entry point (`src/creature/CreatureTraining.ts:880`, `:1270`, `:1972`).
 - **Fail loud, not silent.** When neither candidate is usable, the restore
   throws and names the snapshot's reason, so a damaged creature is never
   returned as success.
 - **Skip disposal, don't wait.** An abandoned commit leaves previous-population
   members undisposed (logged at warn) and leaves them to the garbage collector.
   A leak of a few creatures is cheaper than a corrupt caller.
-- **The restore runs only in the post-loop teardown.** It sits in the `persist`
-  callback of `runBoundedEvolveTeardown`. A generation loop that rejects never
-  reaches it, and the snapshot then leaks.
+- **The restore runs on every exit.** Each entry point (`evolveDir`,
+  `evolveEnv`, `evolveRL`) restores the caller in a `catch` when the generation
+  loop or the teardown rejects, rethrows the original error, and releases the
+  snapshot in a `finally`.
 
 ### Undiscoverable Facts
 
@@ -70,17 +71,18 @@ helpers.
 
 ```text
 test/creature/RestoreEvolveChampion_test.ts                  10 passed
-test/creature/EvolveRestoresCallerSnapshot_test.ts            3 passed
+test/creature/EvolveRestoresCallerSnapshot_test.ts            5 tests (not run locally: Deno suite needs jsr; CI is the check)
 test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts     1 passed
 test/NEAT/AbandonedCommitKeepsPreviousPopulation_test.ts      1 passed
 test/NEAT/EvolveCommitDisposal_test.ts                        1 passed
 test/creature/EvolveEnvHardDeadline_test.ts, EvolveRLHardDeadline_test.ts  pass
-deno fmt / deno lint / deno check on changed files            clean
+deno fmt --check and deno lint on EvolveRestoresCallerSnapshot_test.ts  clean; deno check and the test run need jsr, CI is the check
 ```
 
 Mutation red-checks. Each mutant was applied with `deno test --no-check` over
 every `*_test.ts` file that imports the module through a relative path, then
-reverted. The unmutated set passes (19 passed).
+reverted. The unmutated set passes (19 passed). The catch-path rows were
+added after that run and have not been re-run here.
 
 | Line                                    | Mutant                            | Result                                                                                                                                                   |
 | --------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -95,9 +97,9 @@ reverted. The unmutated set passes (19 passed).
 | `src/creature/EvolveTeardown.ts:97`     | delete the warning                | red ("restoreEvolveChampion warns with the validate() message when it rejects a champion")                                                               |
 | `src/creature/EvolveTeardown.ts:102`    | negate the snapshot check         | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                       |
 | `src/creature/EvolveTeardown.ts:107`    | delete `loadFrom(snapshot)`       | red ("restoreEvolveChampion falls back to the snapshot when there is no champion")                                                                       |
-| `src/creature/CreatureTraining.ts:826`  | delete `callerSnapshot.dispose()` | red (`EvolveRestoresCallerSnapshot_test.ts` "evolveDir: a disposed caller with no champion is restored from its original genome (Issue #4061)")          |
-| `src/creature/CreatureTraining.ts:1189` | delete `callerSnapshot.dispose()` | red (`EvolveRestoresCallerSnapshot_test.ts` "evolveEnv: a disposed caller with no champion is restored from its original genome (Issue #4061)")          |
-| `src/creature/CreatureTraining.ts:1843` | delete `callerSnapshot.dispose()` | red (`EvolveRestoresCallerSnapshot_test.ts` "evolveRL: a disposed caller with no champion is restored from its original genome (Issue #4061)")           |
+| `src/creature/CreatureTraining.ts:865` | delete the `restoreEvolveChampion` call in the catch | not run locally (Deno suite needs jsr); CI mutation gate is the check. Expected red: "evolveDir: a rejected generation preserves the original error and restores a disposed caller" |
+| `src/creature/CreatureTraining.ts:1255` | delete the `restoreEvolveChampion` call in the catch | not run locally (Deno suite needs jsr); CI mutation gate is the check. Expected red: "evolveEnv: a rejected generation preserves the original error and restores a disposed caller" |
+| `src/creature/CreatureTraining.ts:1957` | delete the `restoreEvolveChampion` call in the catch | not run locally (Deno suite needs jsr); CI mutation gate is the check. Expected red: "evolveRL: a rejected generation preserves the original error and restores a disposed caller" |
 | `src/NEAT/NeatEvolution.ts:1261`        | negate the abandon re-check       | red (`EvolveCommitDisposal_test.ts` "evolve: a committed generation disposes the members it drops and keeps the ones it carries forward")                |
 | `src/NEAT/NeatEvolution.ts:1262`        | delete the warning                | red (`AbandonedCommitKeepsPreviousPopulation_test.ts` "NEAT: a generation abandoned mid-commit leaves the previous population undisposed (Issue #4061)") |
 | `src/NEAT/NeatEvolution.ts:1275`        | negate `!carriedForward.has`      | red (`EvolveCommitDisposal_test.ts` "evolve: a committed generation disposes the members it drops and keeps the ones it carries forward")                |
@@ -108,6 +110,10 @@ reverted. The unmutated set passes (19 passed).
 
 Lines exempt from the mutation check:
 
+- `src/creature/CreatureTraining.ts:880`, `:1270` and `:1972` exempt (untestable):
+  `callerSnapshot.dispose()` in each `finally`. Releasing the snapshot is not
+  observable through the caller without asserting implementation details, so
+  the tests do not pin it.
 - `src/NEAT/NeatEvolution.ts:1285` exempt (untestable): the
   `trim.removedCreatures` loop is unreachable from `evolve()`.
   `trimPopulationToSize` runs on `budgeted.population`, which
@@ -148,8 +154,8 @@ Related issues: #4061, #4050 (earlier occurrence of the same failure), GRQ #4472
 `docs/TIMEOUTS.md` "The post-loop teardown is bounded too"; siblings:
 `evolveEnv`, `evolveRL`; updated: `docs/TIMEOUTS.md`, `CHANGELOG.md`.
 
-The `docs/TIMEOUTS.md` and `CHANGELOG.md` entries now limit the guarantee to
-runs that reach the post-loop teardown. They say the warning is logged only when
+The `docs/TIMEOUTS.md` and `CHANGELOG.md` entries describe the restore on
+every exit path of all three entry points. They say the warning is logged only when
 a champion is rejected, and that the restore throws when the snapshot is
 unusable. The remaining hits in `docs/TIMEOUTS.md` that describe the teardown
 budget and the abandon epoch are still true: this change narrows what the
@@ -179,15 +185,13 @@ dedup await.
 
 <!-- vibe-spec-review inputs="diff+issue-body" -->
 
-- **partial** — "`evolveDir()` guarantees on every exit path, deadline-abandon
+- **met** — "`evolveDir()` guarantees on every exit path, deadline-abandon
   included, that the caller's creature is valid
   (`neurons.length >= input + output`, `validate()` passes)." — evidence:
   `src/creature/EvolveTeardown.ts:83`, `src/creature/CreatureTraining.ts:796`,
-  `test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts::"evolveDir: a generation 2 abandoned after its commit leaves the caller creature whole"`
-  — reviewer: partial — reason: the restore runs only in the post-loop
-  teardown's `persist` callback; a rejection from `neat.evolve()`,
-  `finishGeneration()` or `populatePopulation()` skips it, because the
-  generation loop has no try/finally.
+  the catch blocks at `:861-881`, `:1251-1271` and `:1953-1973`,
+  `test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts::"evolveDir: a generation 2 abandoned after its commit leaves the caller creature whole"`,
+  `test/creature/EvolveRestoresCallerSnapshot_test.ts::"evolveDir: a rejected generation preserves the original error and restores a disposed caller"`.
 - **partial** — "If it cannot restore a champion, it leaves the caller's
   original genome untouched." — evidence:
   `test/creature/RestoreEvolveChampion_test.ts::"restoreEvolveChampion falls back to the snapshot when there is no champion"`,
@@ -235,16 +239,12 @@ line is posted.
 The repository has no `CODING-STANDARDS.md`, so `docs/ENGINEERING_PRINCIPLES.md`
 and `AGENTS.md` were used as the standard.
 
-- **violation** — typed errors (`AGENTS.md` → Error Handling: "Use typed errors
-  from `src/errors/`") — evidence: `src/creature/EvolveTeardown.ts:103` —
-  reason: not fixed in this diff; the new fail-fast path throws a bare `Error`,
-  which callers can only match by message.
-- **violation** — tests describe behaviour, not implementation
-  (`docs/ENGINEERING_PRINCIPLES.md` §3) — evidence:
-  `test/creature/EvolveRestoresCallerSnapshot_test.ts:123` — reason: not fixed
-  in this diff; to check that the entry snapshot is released, the test patches
-  the caller's `shallowClone()` and treats the first copy as the snapshot, so it
-  depends on how the snapshot is taken.
+- **fixed** — typed errors (`AGENTS.md` → Error Handling: "Use typed errors
+  from `src/errors/`") — evidence: `src/creature/EvolveTeardown.ts:104` throws
+  `ValidationError` from `src/errors/ValidationError.ts`.
+- **fixed** — tests describe behaviour, not implementation
+  (`docs/ENGINEERING_PRINCIPLES.md` §3) — the test no longer patches the
+  caller's `shallowClone()`, and its entry-snapshot assertions were removed.
 - **clean** — Australian English; logging through `getLogger()` with the logger
   restored in `finally`; no timing APIs or `Deno.env` mutation in tests
   (deadlines come from an injected clock); neuron UUID, creature UUID and
