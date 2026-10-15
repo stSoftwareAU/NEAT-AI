@@ -825,18 +825,6 @@ export async function evolveDir(
   // process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
-  } catch (error) {
-    // Preserve the original generation/teardown failure while keeping the
-    // caller's genome usable even when a previous commit disposed it.
-    try {
-      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "training:restoreBest");
-    } catch (restoreError) {
-      getLogger().error("evolveDir: unable to restore caller after failure", restoreError);
-    }
-    throw error;
-  } finally {
-    callerSnapshot.dispose();
-  }
   releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
@@ -866,6 +854,19 @@ export async function evolveDir(
       ? { terminationReason: neat.terminationReason }
       : {}),
   };
+  } catch (error) {
+    // Preserve the original generation/teardown failure while keeping the
+    // caller's genome usable even when a previous commit disposed it.
+    try {
+      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "training:restoreBest");
+    } catch (restoreError) {
+      getLogger().error("evolveDir: unable to restore caller after failure", restoreError);
+    }
+    throw error;
+  } finally {
+    callerSnapshot.dispose();
+  }
+
 }
 
 /**
@@ -1201,18 +1202,6 @@ export async function evolveEnv<S, A>(
   // process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
-  } catch (error) {
-    // Preserve the original generation/teardown failure while keeping the
-    // caller's genome usable even when a previous commit disposed it.
-    try {
-      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "evolveEnv:restoreBest");
-    } catch (restoreError) {
-      getLogger().error("evolveEnv: unable to restore caller after failure", restoreError);
-    }
-    throw error;
-  } finally {
-    callerSnapshot.dispose();
-  }
   releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
@@ -1311,6 +1300,19 @@ export interface EvolveRLOptions extends NeatOptions {
    */
   adapterDescription?:
     import("@creature/EpisodeWorkerProtocol.ts").AdapterDescription;
+  } catch (error) {
+    // Preserve the original generation/teardown failure while keeping the
+    // caller's genome usable even when a previous commit disposed it.
+    try {
+      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "evolveEnv:restoreBest");
+    } catch (restoreError) {
+      getLogger().error("evolveEnv: unable to restore caller after failure", restoreError);
+    }
+    throw error;
+  } finally {
+    callerSnapshot.dispose();
+  }
+
 }
 
 /**
@@ -1868,18 +1870,6 @@ export async function evolveRL<S, A>(
   // process-global breed/discovery caches.
   disposeEvolvePopulation(neat.population, creature);
   bestCreature?.dispose();
-  } catch (error) {
-    // Preserve the original generation/teardown failure while keeping the
-    // caller's genome usable even when a previous commit disposed it.
-    try {
-      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "evolveRL:restoreBest");
-    } catch (restoreError) {
-      getLogger().error("evolveRL: unable to restore caller after failure", restoreError);
-    }
-    throw error;
-  } finally {
-    callerSnapshot.dispose();
-  }
   releaseEvolveCaches();
 
   Deno.removeSignalListener("SIGTERM", signalListener);
@@ -1937,6 +1927,19 @@ export async function evolveRL<S, A>(
     ...runStatistics,
     ...termination,
   };
+  } catch (error) {
+    // Preserve the original generation/teardown failure while keeping the
+    // caller's genome usable even when a previous commit disposed it.
+    try {
+      restoreEvolveChampion(creature, bestCreature, callerSnapshot, config.debug, "evolveRL:restoreBest");
+    } catch (restoreError) {
+      getLogger().error("evolveRL: unable to restore caller after failure", restoreError);
+    }
+    throw error;
+  } finally {
+    callerSnapshot.dispose();
+  }
+
 }
 
 /**
