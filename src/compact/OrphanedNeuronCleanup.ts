@@ -281,14 +281,14 @@ export function cleanupOrphanedNeurons(
           // Issue #1972: Preserve neuron tags when converting to constant.
           const constantNeuron: typeof creatureExport.neurons[number] = {
             type: "constant",
+            // Issue #4071: the uuid is the neuron's identity and must survive this
+            // conversion; dropping it relabels the constant `legacy-neuron-<id>` on
+            // reload, where it can collide with another neuron and strand a constant.
+            uuid: neuron.uuid,
             id: neuron.id!,
             bias: constantBias,
           };
           if (neuron.tags) constantNeuron.tags = [...neuron.tags];
-          // Issue #4071: the uuid is the neuron's identity and must survive this
-          // conversion; dropping it relabels the constant `legacy-neuron-<id>` on
-          // reload, where it can collide with another neuron and strand a constant.
-          if (neuron.uuid) constantNeuron.uuid = neuron.uuid;
           creatureExport.neurons[i] = constantNeuron;
           totalConverted++;
           changedThisPass = true;
