@@ -88,16 +88,17 @@ Deno.test(
     delete creature1.uuid;
     const uuid1 = CreatureUtil.makeUUID(creature1);
 
-    const creature2 = new Creature(3, 1, {
-      layers: [{ count: 2, squash: "TANH" }],
-    });
-    // Align weights to isolate squash difference
-    for (let i = 0; i < creature2.synapses.length; i++) {
-      creature2.synapses[i].weight = creature1.synapses[i].weight;
-    }
-    for (let i = creature2.input; i < creature2.neurons.length; i++) {
-      creature2.neurons[i].bias = creature1.neurons[i].bias;
-    }
+    // Copy creature1 so the only difference is the squash below.
+    const creature2 = Creature.fromJSON(creature1.exportJSON());
+    delete creature2.uuid;
+    assertEquals(
+      CreatureUtil.makeUUID(creature2),
+      uuid1,
+      "An unchanged copy should share the UUID",
+    );
+
+    const hiddenIdx = creature2.input;
+    creature2.neurons[hiddenIdx].setSquash("TANH");
     delete creature2.uuid;
     const uuid2 = CreatureUtil.makeUUID(creature2);
 
