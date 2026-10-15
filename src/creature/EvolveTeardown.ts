@@ -24,6 +24,7 @@
  */
 
 import type { Creature } from "@creature";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { clearDistanceCache } from "@breed/DistanceCache.ts";
 import { clearWasmCompilationCache } from "@wasm/WasmCompilationCache.ts";
 import { getSharedSubnetworkIndex } from "@discovery/SubnetworkHashIndex.ts";
@@ -78,7 +79,7 @@ function unusableReason(
  * @param snapshot The caller's original genome from {@link snapshotEvolveCaller}.
  * @param debug Passed through to `loadFrom`.
  * @param label Context label for the log line and any thrown error.
- * @throws {Error} When neither the champion nor the snapshot is usable.
+ * @throws {ValidationError} When neither the champion nor the snapshot is usable.
  */
 export function restoreEvolveChampion(
   caller: Creature,
@@ -100,8 +101,9 @@ export function restoreEvolveChampion(
   }
   const reason = unusableReason(snapshot, input, output);
   if (reason !== undefined) {
-    throw new Error(
+    throw new ValidationError(
       `${label}: neither the champion nor the caller's original genome is usable (snapshot: ${reason})`,
+      "OTHER",
     );
   }
   caller.loadFrom(snapshot, debug, label);
