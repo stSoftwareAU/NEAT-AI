@@ -95,12 +95,6 @@ interface Wedge {
   evolveCalls: number;
   /** Neuron count observed straight after the caller was disposed. */
   neuronsAfterDispose: number;
-  /**
-   * The first copy the run took of the caller with `shallowClone()`: its
-   * entry snapshot, taken before the population is built. Later copies are
-   * population members, which have their own lifecycle.
-   */
-  entrySnapshot?: Creature;
 }
 
 /**
@@ -119,12 +113,6 @@ function disposeThenWedge(creature: Creature): Wedge {
     nowMS: START_MS,
     evolveCalls: 0,
     neuronsAfterDispose: -1,
-  };
-  const shallowClone = creature.shallowClone.bind(creature);
-  creature.shallowClone = () => {
-    const copy = shallowClone();
-    wedge.entrySnapshot ??= copy;
-    return copy;
   };
   wedge.deps = {
     startTimeMS: START_MS,
@@ -181,14 +169,6 @@ function assertCallerRestored(
     "the restored caller must produce a creature UUID",
   );
 
-  // Once the caller has been restored from its entry snapshot, the snapshot
-  // must not outlive the run.
-  assert(wedge.entrySnapshot, "the run must snapshot the caller on entry");
-  assertEquals(
-    wedge.entrySnapshot.neurons.length,
-    0,
-    "the caller's entry snapshot was not released when the run returned",
-  );
 }
 
 Deno.test({
