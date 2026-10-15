@@ -168,7 +168,6 @@ function assertCallerRestored(
     CreatureUtil.makeUUID(creature).length > 0,
     "the restored caller must produce a creature UUID",
   );
-
 }
 
 Deno.test({
@@ -209,15 +208,17 @@ Deno.test({
   },
 });
 
-
 Deno.test({
-  name: "evolveDir: a rejected generation preserves the original error and restores a disposed caller",
+  name:
+    "evolveDir: a rejected generation preserves the original error and restores a disposed caller",
   sanitizeOps: false,
   sanitizeResources: false,
   fn: async () => {
     await initWasmForTests();
     const dataSetDir = makeDataDir(tinyDataSet(), 2000);
-    const creatureStore = await Deno.makeTempDir({ prefix: "neat-4061-reject-" });
+    const creatureStore = await Deno.makeTempDir({
+      prefix: "neat-4061-reject-",
+    });
     const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
     const originalUUIDs = creature.neurons.map((neuron) => neuron.uuid);
     const failure = new Error("simulated generation rejection");
@@ -251,7 +252,10 @@ Deno.test({
       }
       assertEquals(evolveCalls, 1);
       assertEquals(caught, failure, "the original rejection must be rethrown");
-      assertEquals(creature.neurons.map((neuron) => neuron.uuid), originalUUIDs);
+      assertEquals(
+        creature.neurons.map((neuron) => neuron.uuid),
+        originalUUIDs,
+      );
       creature.validate();
       assert(CreatureUtil.makeUUID(creature).length > 0);
     } finally {
