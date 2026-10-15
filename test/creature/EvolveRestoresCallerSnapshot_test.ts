@@ -209,6 +209,59 @@ Deno.test({
   },
 });
 
+
+Deno.test({
+  name: "evolveDir: a rejected generation preserves the original error and restores a disposed caller",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+    const dataSetDir = makeDataDir(tinyDataSet(), 2000);
+    const creatureStore = await Deno.makeTempDir({ prefix: "neat-4061-reject-" });
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const originalUUIDs = creature.neurons.map((neuron) => neuron.uuid);
+    const failure = new Error("simulated generation rejection");
+    const priorLogger = getLogger();
+
+    try {
+      let evolveCalls = 0;
+      const deps: EvolveDirDeps = {
+        startTimeMS: START_MS,
+        now: () => START_MS,
+        onNeatReady: (neat) => {
+          neat.evolve = ((..._args: unknown[]) => {
+            evolveCalls++;
+            creature.dispose();
+            return Promise.reject(failure);
+          }) as Neat["evolve"];
+        },
+      };
+
+      let caught: unknown;
+      try {
+        await evolveDir(creature, dataSetDir, {
+          populationSize: 6,
+          iterations: 500,
+          timeoutMinutes: TIMEOUT_MINUTES,
+          threads: 1,
+          creatureStore,
+        }, deps);
+      } catch (error) {
+        caught = error;
+      }
+      assertEquals(evolveCalls, 1);
+      assertEquals(caught, failure, "the original rejection must be rethrown");
+      assertEquals(creature.neurons.map((neuron) => neuron.uuid), originalUUIDs);
+      creature.validate();
+      assert(CreatureUtil.makeUUID(creature).length > 0);
+    } finally {
+      setLogger(priorLogger);
+      await Deno.remove(dataSetDir, { recursive: true });
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
 Deno.test({
   name:
     "evolveEnv: a disposed caller with no champion is restored from its original genome (Issue #4061)",
