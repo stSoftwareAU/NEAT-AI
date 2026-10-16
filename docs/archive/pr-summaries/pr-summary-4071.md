@@ -121,10 +121,10 @@ it quotes the historical #3383 error.
 - Targeted run:
   `deno test … test/compact/ConvertedConstantKeepsUuid.ts test/compact/CleanupOrphanedNeurons.ts test/compact/OrphanedNeuronCornerCases.ts test/compact/CompactTagPreservation.ts test/architecture/training/CompactResultValidation.ts test/creature/NeuronUuidStability.ts`:
   41 passed, 0 failed.
-- `./quality.sh --rust-scorer-bin=<locally built NEAT-AI-scorer rust_scorer>` on
-  the final code: `ok | 9891 passed (5 steps) | 0 failed | 41 ignored`. This
-  host has no `rust_scorer`, so I built one from `stSoftwareAU/NEAT-AI-scorer`
-  outside the checkout.
+- `./quality.sh --rust-scorer-bin=/var/tmp/vibe-cargo-target/NEAT-AI-5d15f9f9/release/rust_scorer < /dev/null`
+  on the final code: `ok | 9928 passed (5 steps) | 0 failed | 4 ignored`, exit
+  0. The `rust_scorer` binary came from the host's existing cargo target
+  directory, outside the checkout.
 
 <!-- vibe-branch-outcomes -->
 
