@@ -14,6 +14,7 @@ in [`../TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) for other categories.
 - [Exit code 143 (SIGTERM / OOM kill)](#-exit-code-143-sigterm--oom-kill)
 - [Memory leak detection tests](#-memory-leak-detection-tests)
 - [Discovery memory tuning](#-discovery-memory-tuning)
+- [Silent single-worker generation: GC thrash excluded (Issue #4069)](#-silent-single-worker-generation-gc-thrash-excluded-issue-4069)
 
 ## 📏 The two memory ceilings (Issue #3743)
 
@@ -411,6 +412,94 @@ result — instead of a zero-candidate skip.
 The legacy skip-to-partial function `resolveHeapAbortBoundary` (and its
 `heapAbortedAtExtensionBoundary` wire contract) is **retained only for its unit
 tests**; it is no longer the production path.
+
+## 🧊 Silent single-worker generation: GC thrash excluded (Issue #4069)
+
+**Field symptom (#4060, 7.0.55):** a loop-2 relaunch at
+`--max-old-space-size=2163`, `popSize=5`, `heavyWorkers 1`, `threads 1` logged
+`Training <id> scheduled` and then nothing for about two hours — no
+`Generation 1 score`, no `First generation wedged`, no `[MemoryMonitor]` line.
+The leading theory was V8 GC thrash starving the main event loop. A local
+reproduction on the v7.0.55 tree **excludes** that theory for the synthetic
+creature below. It does **not** identify the code that spins.
+
+### Reproduction
+
+- Tree: `git archive v7.0.55` with `scripts/repro_4069_gc_thrash.ts` copied into
+  that tree's root, run from there (so the command below uses the root path)
+  with the tree's own `deno.json` (Deno 2.9.6, V8 15.0, aarch64 Linux, 7 cores,
+  16 GB).
+- Synthetic creature: 200 inputs, 8,200 hidden neurons in topological order
+  (squashes cycling `TANH`, `LOGISTIC`, `IDENTITY`, `RELU`), 4 `IDENTITY`
+  outputs, each hidden neuron fed by 7 distinct earlier neurons and every
+  otherwise unused hidden neuron wired to an output — **8,404 neurons, 58,452
+  synapses** after `Creature.fromJSON`, forward-only.
+- Dataset: 4,000 records of 200 uniform inputs in [-1, 1] and 4 outputs, written
+  with `makeDataDir(records, 1000)`.
+- Call:
+  `creature.evolveDir(dataSetDir, { populationSize: 5, timeoutMinutes: 6,
+  threads: 1, heavyTaskWorkerCount: 1, iterations: 1000, creatureStore,
+  logger, verbose: true })`,
+  with a `setInterval` heartbeat every 5 s logging heap and timer lag.
+- Command line:
+
+  ```bash
+  deno run -A --config deno.json \
+    --v8-flags=--max-old-space-size=2163,--trace-gc repro_4069_gc_thrash.ts < /dev/null
+  ```
+
+- Run A had no `libneat_ai_backpropagation`, so every training task failed at
+  once. Run B set `NEAT_AI_BACKPROP_LIB_PATH` to a release build of
+  NEAT-AI-Backpropagation 0.1.47, so training ran through the FFI.
+
+### Evidence
+
+- **Generation 1 is not where GC bites.** Run A finished generation 1 in under 2
+  s — `[    3.5s] Generation 1 score 0.6296566717575544 … time 1s 787ms`. Run B
+  finished it in 19 s, 16 s of which was the training task:
+  `Generation 1 score 0.629687048971054 … time 18s 975ms` and
+  `Training f9aae2c6 completed after 16s 90ms`.
+- **The heap never neared 2163 MB.** Across 47 Mark-Compact events in run A the
+  largest post-GC old-space size was 331.4 MB —
+  `129776 ms: Incremental Mark-Compact 1286.7 (1480.9) -> 331.4 (941.0) MB …
+  26.12 / 0.00 ms`.
+  The lowest mutator utilisation in the trace was `average mu = 0.986`: GC took
+  at most 1.4 % of the main thread.
+- **Run A did go silent — but not in GC.** After
+  `[  130.5s] [NEAT-AI] EvolutionControl: generation 62 exact …` it printed
+  nothing more, ran past its 6-minute timeout, and was still alive at 528 s.
+  Sampled over 15 s from `/proc/<pid>/task/*/stat`, the main thread gained 15.02
+  s of user CPU and 0 s of system CPU, the four `V8 DefaultWorker` GC helper
+  threads gained 0 s, and `VmRSS` stayed at exactly 1,752,672 kB. The
+  `--trace-gc` log did not grow at all after second 131. A GC thrash runs
+  collections back to back, each logged and each using the helper threads; this
+  is a CPU-bound loop on the main thread that allocates nothing.
+- **Timers do not fire on the single-thread path, even when healthy.** With
+  `threads: 1` the workers are `MockWorker`s that run on the main thread, and
+  the native trainer is called with `nonblocking: false`. The 5 s heartbeat
+  logged nothing during run A's 130 healthy seconds, and in run B it fired only
+  after `evolveDir` returned:
+  `[  363.2s] [heartbeat] heap=1003MB
+  lag=358192ms`. So any `setInterval` poll
+  — including the first-generation bound's — cannot be relied on there, whether
+  or not GC is involved.
+- **No `[MemoryMonitor]` line is expected at this heap size.** The monitor logs
+  only when heap pressure crosses its warning or critical threshold
+  (`checkMemoryAndEvict` / `logMemoryUsage` in `src/NEAT/MemoryMonitor.ts`); a
+  heap at 15 % of its limit logs nothing, so the missing lines are not evidence
+  of starvation.
+
+### Verdict
+
+**Excluded** for this reproduction: GC thrash on a 2163 MB heap does not explain
+a silent first generation at the field creature's size. The silence itself was
+reproduced, as a main-thread busy loop with no allocation and no GC, at
+generation 62 rather than generation 1, and the spinning call site was not
+identified. The field creature and dataset are not in this repository, so a host
+capture is still the only way to name the field's call site: the in-flight
+training-task records
+`~/logs/training-hangs/in-flight/training-task-b08ca7f0.json` and
+`training-task-b3acbd96.json` on rocket@GRQ-19/21.
 
 ## See also
 
