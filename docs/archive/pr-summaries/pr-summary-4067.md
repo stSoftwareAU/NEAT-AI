@@ -149,8 +149,8 @@ This repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
 - **violation** — "how" tests asserting stub call counts (`disarms`,
   `generations`) — evidence: `test/creature/EvolveWatchdogWiring_test.ts:215` —
   reason: fixed in this diff. Disarm is now also demonstrated by outcome in
-  `test/creature/EvolveFirstGenerationBusyLoop_test.ts` (`*-return` cases): an
-  undisarmed Worker keeps the process alive, and that test went red with the
+  `test/creature/EvolveFirstGenerationBusyLoop_test.ts` (`*-return` cases): a
+  Worker left armed keeps the process alive, and that test went red with the
   `finally` disarm removed. The stub assertions stay because the issue mandates
   the `armWatchdog` seam for in-process tests.
 - **clean** — named tests exist; no `Deno.env.set`; no `console.*` or `@std/log`
