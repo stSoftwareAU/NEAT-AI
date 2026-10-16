@@ -34,6 +34,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   row whose synapse is not exported and any `memetic.biases` key that is not an
   exported neuron, and logs a warning naming Issue #4062 when it does. Valid
   memetic data and the live creature are untouched.
+- **Issue #4061:** when `evolveDir()`, `evolveEnv()` or `evolveRL()` reaches its
+  post-loop teardown or rejects during evolution, hard-deadline abandon
+  included, the caller's creature now gets the champion only if it is usable
+  (`neurons.length >= input + output` and `validate()` passes); otherwise the
+  caller's original genome is restored from a pre-evolution snapshot
+  (`restoreEvolveChampion` in `src/creature/EvolveTeardown.ts`). If the snapshot
+  is unusable too, the restore throws. An abandoned generation no longer
+  disposes the previous population after its commit. This fixes
+  `RangeError: Invalid array length` in `CreatureUtil.makeUUID`.
 - **Issue #4053:** `evolveDir`'s first generation had no deadline, so a
   generation 1 that never settled outlived a 5-minute `timeoutMinutes` by 2 h.
   Generation 1 now has its own bound,
