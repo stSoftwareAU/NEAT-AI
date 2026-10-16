@@ -25,6 +25,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4072:** When the generation loop threw, `evolveDir`, `evolveEnv` and
+  `evolveRL` left their SIGTERM listener registered, so a supervisor's SIGTERM
+  was swallowed (see #4066). `evolveEnv` and `evolveRL` also kept their abort
+  listener. Each entry point now removes its listeners on every exit path. A run
+  that fails mid-way also terminates its worker threads (`evolveDir`, and
+  `evolveRL` when it runs a pool), disposes its population except the caller's
+  creature, and releases the process-global evolve caches. A cleanup error is
+  logged and never replaces the original error.
 - **Issue #4071:** `cleanupOrphanedNeurons` converted a hidden neuron that had
   outward but no inward synapses into a constant and dropped its `uuid`. On
   reload the constant was relabelled `legacy-neuron-<id>`, which could match a
