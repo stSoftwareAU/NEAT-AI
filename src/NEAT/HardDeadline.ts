@@ -190,3 +190,20 @@ export function shouldAbandonInFlight(
   return generationsCompleted > 0 && hardDeadlineMS > 0 &&
     nowMS > hardDeadlineMS;
 }
+
+/** Margin the event-loop watchdog allows past an in-process bound before it SIGKILLs the process (Issue #4067). Covers the bounded teardown budget. */
+export const DEFAULT_WATCHDOG_MARGIN_MS = 5 * 60_000;
+
+/**
+ * Real-clock deadline (epoch ms) for the event-loop watchdog (Issue #4067):
+ * `realNowMS + max(0, boundMS - injectedNowMS) + marginMS`.
+ * Anchoring on the real clock plus the *remaining* injected budget means a test whose injected start is in the past never arms a deadline that has already passed on the real clock by more than the margin. Pure.
+ */
+export function computeWatchdogDeadlineEpochMS(
+  realNowMS: number,
+  boundMS: number,
+  injectedNowMS: number,
+  marginMS: number,
+): number {
+  return realNowMS + Math.max(0, boundMS - injectedNowMS) + marginMS;
+}
