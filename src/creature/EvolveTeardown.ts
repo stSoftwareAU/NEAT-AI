@@ -4,7 +4,9 @@
  *
  * `evolveDir`, `evolveEnv`, and `evolveRL` share the same outer shape: they
  * track a champion clone across generations, restore it into the caller
- * creature at the end, then return. Before this module they leaked in two
+ * creature at the end, then return. The caller's genome is snapshotted before
+ * the population is built, and the snapshot is restored instead when the
+ * champion is unusable (Issue #4061). Before this module they leaked in two
  * ways:
  *
  *  1. Each champion improvement overwrote `bestCreature` with a fresh
@@ -22,9 +24,90 @@
  */
 
 import type { Creature } from "@creature";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { clearDistanceCache } from "@breed/DistanceCache.ts";
 import { clearWasmCompilationCache } from "@wasm/WasmCompilationCache.ts";
 import { getSharedSubnetworkIndex } from "@discovery/SubnetworkHashIndex.ts";
+import { getLogger } from "@utils/Logger.ts";
+
+/**
+ * Snapshot the caller creature before `neat.populatePopulation()` adopts it
+ * (Issue #4061). `shallowClone()` builds fresh neuron/synapse arrays, so
+ * disposing the caller during the run cannot empty the snapshot.
+ *
+ * @param creature The caller creature, before evolution starts.
+ * @returns An independent copy of the caller's original genome.
+ */
+export function snapshotEvolveCaller(creature: Creature): Creature {
+  return creature.shallowClone();
+}
+
+/**
+ * Explain why a creature cannot be restored into a caller with the given
+ * input/output counts, or return `undefined` when it can (Issue #4061).
+ */
+function unusableReason(
+  candidate: Creature,
+  input: number,
+  output: number,
+): string | undefined {
+  const required = input + output;
+  if (candidate.neurons.length < required) {
+    return `neurons.length ${candidate.neurons.length} < input + output ${required}`;
+  }
+  try {
+    candidate.validate();
+  } catch (error) {
+    return `validate() failed: ${
+      error instanceof Error ? error.message : String(error)
+    }`;
+  }
+  return undefined;
+}
+
+/**
+ * Restore the run's champion into the caller, falling back to the caller's
+ * original genome when the champion is unusable (Issue #4061).
+ *
+ * The champion is restored only if it has at least `input + output` neurons
+ * and passes `validate()`. Otherwise the snapshot is restored, and when a
+ * champion was supplied but rejected the fallback is logged. Throws if neither
+ * is usable, leaving the caller untouched rather than emptied.
+ *
+ * @param caller The caller creature to restore into.
+ * @param champion The run's champion clone, if one was adopted.
+ * @param snapshot The caller's original genome from {@link snapshotEvolveCaller}.
+ * @param debug Passed through to `loadFrom`.
+ * @param label Context label for the log line and any thrown error.
+ * @throws {ValidationError} When neither the champion nor the snapshot is usable.
+ */
+export function restoreEvolveChampion(
+  caller: Creature,
+  champion: Creature | undefined,
+  snapshot: Creature,
+  debug: boolean,
+  label: string,
+): void {
+  const { input, output } = caller;
+  if (champion) {
+    const reason = unusableReason(champion, input, output);
+    if (reason === undefined) {
+      caller.loadFrom(champion, debug, label);
+      return;
+    }
+    getLogger().warn(
+      `${label}: champion not restorable (${reason}); restoring the caller's original genome`,
+    );
+  }
+  const reason = unusableReason(snapshot, input, output);
+  if (reason !== undefined) {
+    throw new ValidationError(
+      `${label}: neither the champion nor the caller's original genome is usable (snapshot: ${reason})`,
+      "OTHER",
+    );
+  }
+  caller.loadFrom(snapshot, debug, label);
+}
 
 /**
  * Adopt a new champion clone, disposing the one it replaces (Issue #3434).
@@ -56,11 +139,12 @@ export function adoptChampionClone(
  * Dispose every population creature from a finished run except the caller's
  * creature, which the caller keeps using after `evolve*` returns (Issue #3434).
  *
- * The caller creature is member 0 of `neat.population` (see
- * `Neat.populatePopulation`), so it is skipped by identity. Population members
- * are independent of the caller creature — the champion is restored into the
- * caller via `loadFrom`, which rebuilds the caller's arrays — so disposing the
- * rest cannot invalidate it.
+ * The caller creature may be a member of `neat.population` (`Neat.populatePopulation`
+ * adds it), so it is skipped by identity. The other members are independent of
+ * the caller: the caller is restored from the champion or from its snapshot via
+ * `loadFrom`, which rebuilds the caller's arrays, and the snapshot is a separate
+ * `shallowClone()` (Issue #4061), so disposing these members cannot invalidate
+ * either source.
  *
  * @param population The run's final population.
  * @param keep The caller creature to preserve.

@@ -425,6 +425,13 @@ with gaps. A creature disposed mid-write by a racing abandoned generation is
 skipped rather than aborting the write, so file numbering (`1.json`, `2.json`,
 …) **can have gaps** — it is no longer guaranteed contiguous.
 
+Before each member is written, its exported JSON is also pruned of any `memetic`
+weight row or bias key that points at a synapse or neuron absent from the same
+export (Issue #4062), so a racing abandoned generation cannot leave a checkpoint
+that later fails to load with `Memetic from id … has no matching synapses`. Only
+the exported copy is pruned — never the live creature — and a warning naming the
+issue is logged when anything was removed.
+
 ### Understanding Cache Diagnostics
 
 Use `getCacheStats()` to inspect cache health at any point during training:
