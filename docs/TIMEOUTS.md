@@ -331,9 +331,10 @@ outside the cooperative checkpoints) that an in-process deadline cannot reach.
 
 ## 🐕 The event-loop watchdog primitive (Issue #4066)
 
-Every in-process bound above, including `awaitWithinHardDeadline`, is a timer on
-the run's own event loop. A main thread blocked in a synchronous loop, or a V8
-heap thrashing in garbage collection, silences that timer exactly when it is
+The in-process bounds above all run on the run's own event loop:
+`awaitWithinHardDeadline` polls with `setInterval`, and the others are checks
+the loop reaches between steps. A main thread blocked in a synchronous loop, or
+a V8 heap thrashing in garbage collection, silences them exactly when they are
 needed (#4060). `armEventLoopWatchdog` in
 [`src/NEAT/EventLoopWatchdog.ts`](../src/NEAT/EventLoopWatchdog.ts) runs the
 deadline in a Worker instead. At breach it writes the breach line to stderr and

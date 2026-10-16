@@ -8,9 +8,10 @@
  * a child `deno run` so the SIGKILL and exit status are real.
  *
  * The fixtures compute their deadlines with `Date.now()` inside their own
- * source text. This file never reads the clock, and it never waits on a timer;
- * the subprocess `AbortSignal` is only a hang guard so a regression fails
- * instead of hanging the suite.
+ * source text. This file never reads the clock and never waits on a timer for
+ * an assertion. The 60 s SIGKILL hang-guard timer in `runFixture` fires only
+ * when a regression would otherwise hang the suite. The fixtures swallow
+ * SIGTERM, so SIGTERM cannot be that guard.
  */
 
 import { assert, assertEquals, assertThrows } from "@std/assert";
@@ -29,6 +30,8 @@ const MODULE_URL = new URL(
 interface FixtureResult {
   code: number;
   signal: Deno.Signal | null;
+  /** True when the hang-guard timer, not the fixture, ended the child. */
+  guardFired: boolean;
   stdout: string;
   stderr: string;
 }
@@ -53,15 +56,27 @@ async function runFixture(
       stdin: "null",
       stdout: "piped",
       stderr: "piped",
-      signal: AbortSignal.timeout(60_000),
     });
-    const { code, signal, stdout, stderr } = await command.output();
-    return {
-      code,
-      signal,
-      stdout: new TextDecoder().decode(stdout),
-      stderr: new TextDecoder().decode(stderr),
-    };
+    const child = command.spawn();
+    // Hang guard only. SIGTERM cannot end a fixture that swallows it, so the
+    // guard sends SIGKILL.
+    let guardFired = false;
+    const guard = setTimeout(() => {
+      guardFired = true;
+      child.kill("SIGKILL");
+    }, 60_000);
+    try {
+      const { code, signal, stdout, stderr } = await child.output();
+      return {
+        code,
+        signal,
+        guardFired,
+        stdout: new TextDecoder().decode(stdout),
+        stderr: new TextDecoder().decode(stderr),
+      };
+    } finally {
+      clearTimeout(guard);
+    }
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -80,10 +95,41 @@ for (;;) {}
 `,
     ["--allow-read"],
   );
+  // The watchdog must end the process itself. A SIGKILL from the hang guard
+  // would also look like exit 137, so the guard's firing is asserted separately.
+  assert(
+    !result.guardFired,
+    "the hang guard ended the process, not the watchdog",
+  );
   assertEquals(result.code, 137, `stderr: ${result.stderr}`);
   assertEquals(result.signal, "SIGKILL");
   assert(
     result.stderr.includes("[Neat] watchdog-test breach at generation 7"),
+    `breach line missing from stderr: ${result.stderr}`,
+  );
+});
+
+Deno.test("EventLoopWatchdog breach line names an unknown generation when none was set", async () => {
+  const result = await runFixture(
+    `
+const w = armEventLoopWatchdog({
+  deadlineEpochMS: Date.now() - 1_000,
+  breachLine: "[Neat] watchdog-test breach at generation ${EVENT_LOOP_WATCHDOG_GENERATION_TOKEN}",
+});
+for (;;) {}
+`,
+    ["--allow-read"],
+  );
+  // As in the SIGKILL test above: the watchdog, not the hang guard, must end
+  // the process.
+  assert(
+    !result.guardFired,
+    "the hang guard ended the process, not the watchdog",
+  );
+  assertEquals(result.code, 137, `stderr: ${result.stderr}`);
+  assertEquals(result.signal, "SIGKILL");
+  assert(
+    result.stderr.includes("[Neat] watchdog-test breach at generation unknown"),
     `breach line missing from stderr: ${result.stderr}`,
   );
 });
@@ -159,9 +205,29 @@ Deno.test("armEventLoopWatchdog refuses a non-finite deadline", () => {
 });
 
 Deno.test("armEventLoopWatchdog refuses an empty breach line", () => {
-  // 0 is finite, so only the breach-line rule can refuse this call.
+  // The deadline is finite, so only the breach-line rule can refuse this call.
+  // It is far in the future so that a broken check can never breach and kill
+  // the test runner.
   const err = assertThrows(
-    () => armEventLoopWatchdog({ deadlineEpochMS: 0, breachLine: "  " }),
+    () =>
+      armEventLoopWatchdog({
+        deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+        breachLine: "  ",
+      }),
+    ConfigurationError,
+  );
+  assertEquals(err.reason, "INVALID_TYPE");
+});
+
+Deno.test("armEventLoopWatchdog refuses a non-string breach line", () => {
+  // Same reasoning as above: finite, far-future deadline, so only the
+  // typeof rule can refuse this call.
+  const err = assertThrows(
+    () =>
+      armEventLoopWatchdog({
+        deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+        breachLine: 42 as unknown as string,
+      }),
     ConfigurationError,
   );
   assertEquals(err.reason, "INVALID_TYPE");

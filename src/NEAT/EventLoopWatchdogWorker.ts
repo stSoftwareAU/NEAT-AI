@@ -31,11 +31,31 @@ interface ArmMessage {
   generationBuffer: SharedArrayBuffer;
 }
 
+const encoder = new TextEncoder();
+
 /** Write every byte of `bytes` to stderr. `writeSync` may write partially. */
 function writeAllStderr(bytes: Uint8Array): void {
   let offset = 0;
   while (offset < bytes.length) {
     offset += Deno.stderr.writeSync(bytes.subarray(offset));
+  }
+}
+
+/**
+ * Send SIGKILL to the whole process. If the signal cannot be sent, say so on
+ * stderr and rethrow, so a watchdog that fails to kill fails loudly.
+ */
+function killProcess(): void {
+  try {
+    Deno.kill(Deno.pid, "SIGKILL");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    writeAllStderr(
+      encoder.encode(
+        `[Neat] event-loop watchdog could not kill the process: ${message}\n`,
+      ),
+    );
+    throw err;
   }
 }
 
@@ -45,23 +65,17 @@ self.onmessage = (event: MessageEvent<ArmMessage>) => {
 
   const { deadlineEpochMS, breachLine, generationBuffer } = event.data;
   const generation = new Int32Array(generationBuffer);
-  const encoder = new TextEncoder();
 
   const breach = (): void => {
     const value = Atomics.load(generation, 0);
     const label = value < 0 ? "unknown" : String(value);
     const line = breachLine.replaceAll("{generation}", label) + "\n";
-    writeAllStderr(encoder.encode(line));
+    // The kill runs even if the stderr write throws. An unwritten breach line
+    // must never leave the process alive past its deadline.
     try {
-      Deno.kill(Deno.pid, "SIGTERM");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      writeAllStderr(
-        encoder.encode(
-          `[Neat] event-loop watchdog could not kill the process: ${message}\n`,
-        ),
-      );
-      throw err;
+      writeAllStderr(encoder.encode(line));
+    } finally {
+      killProcess();
     }
   };
 

@@ -61,8 +61,9 @@ export interface EventLoopWatchdogOptions {
 /** Handle returned by {@link armEventLoopWatchdog}. */
 export interface EventLoopWatchdog {
   /**
-   * Stop the watchdog so the process can exit without a breach. Idempotent.
-   * Call it in a `finally` once the bounded work is over.
+   * Stop the watchdog so the process can exit without a breach. Idempotent,
+   * because `Worker.terminate()` is. Call it in a `finally` once the bounded
+   * work is over.
    */
   disarm(): void;
   /**
@@ -141,15 +142,11 @@ export function armEventLoopWatchdog(
     return NOOP_HANDLE;
   }
 
-  let disarmed = false;
-
   // A Worker that cannot load does not throw from `new Worker`. It reports an
   // asynchronous `error` event instead. Preventing the default stops that event
   // from crashing the main process.
   worker.addEventListener("error", (event) => {
     event.preventDefault();
-    if (disarmed) return;
-    disarmed = true;
     worker.terminate();
     logUnavailable(event.message);
   });
@@ -161,9 +158,8 @@ export function armEventLoopWatchdog(
   });
 
   return {
+    // Idempotent because `Worker.terminate()` is idempotent.
     disarm(): void {
-      if (disarmed) return;
-      disarmed = true;
       worker.terminate();
     },
     setGeneration(next: number): void {
