@@ -1,8 +1,35 @@
-{"version":1,"branchOutcomes":{"noneAdded":false,"entries":[
-  {"path":"scripts/repro_4069_gc_thrash.ts","line":36,"outcome":"heartbeat records a new maximum timer lag",
-   "exempt":{"kind":"out-of-scope","reason":"diagnostic reproduction script only; issue #4069 is diagnostic and documentation only with no runtime behaviour, exercised by the recorded runs"}},
-  {"path":"scripts/repro_4069_gc_thrash.ts","line":65,"outcome":"fan-in loop draws distinct sources until FAN_IN is reached",
-   "exempt":{"kind":"out-of-scope","reason":"diagnostic reproduction script only; issue #4069 is diagnostic and documentation only, verified by the logged neuron and synapse counts"}},
-  {"path":"scripts/repro_4069_gc_thrash.ts","line":84,"outcome":"otherwise unused hidden neuron is wired to an output",
-   "exempt":{"kind":"out-of-scope","reason":"diagnostic reproduction script only; issue #4069 is diagnostic and documentation only, verified by the logged neuron and synapse counts"}}
-]}}
+{
+  "version": 1,
+  "branchOutcomes": {
+    "noneAdded": false,
+    "entries": [
+      {
+        "path": "scripts/repro_4069_gc_thrash.ts",
+        "line": 36,
+        "outcome": "heartbeat records a new maximum timer lag",
+        "exempt": {
+          "kind": "out-of-scope",
+          "reason": "diagnostic reproduction script only; issue #4069 is diagnostic and documentation only with no runtime behaviour, exercised by the recorded runs"
+        }
+      },
+      {
+        "path": "scripts/repro_4069_gc_thrash.ts",
+        "line": 65,
+        "outcome": "fan-in loop draws distinct sources until FAN_IN is reached",
+        "exempt": {
+          "kind": "out-of-scope",
+          "reason": "diagnostic reproduction script only; issue #4069 is diagnostic and documentation only, verified by the logged neuron and synapse counts"
+        }
+      },
+      {
+        "path": "scripts/repro_4069_gc_thrash.ts",
+        "line": 84,
+        "outcome": "otherwise unused hidden neuron is wired to an output",
+        "exempt": {
+          "kind": "out-of-scope",
+          "reason": "diagnostic reproduction script only; issue #4069 is diagnostic and documentation only, verified by the logged neuron and synapse counts"
+        }
+      }
+    ]
+  }
+}
