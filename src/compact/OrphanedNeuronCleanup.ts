@@ -214,7 +214,8 @@ export function removeHiddenNeuron(creature: Creature, indx: number) {
  * This function handles two types of orphaned neurons:
  * 1. Hidden/constant neurons with no outward connections - these are removed
  * 2. Hidden neurons with no inward connections but with outward connections -
- *    these are converted to constants
+ *    these are converted to constants. The converted constant keeps the
+ *    neuron's uuid (Issue #4071).
  *
  * This can occur when a neuron is removed and other neurons that only
  * connected to/from it are left dangling.
@@ -280,6 +281,10 @@ export function cleanupOrphanedNeurons(
           // Issue #1972: Preserve neuron tags when converting to constant.
           const constantNeuron: typeof creatureExport.neurons[number] = {
             type: "constant",
+            // Issue #4071: the uuid is the neuron's identity and must survive this
+            // conversion; dropping it relabels the constant `legacy-neuron-<id>` on
+            // reload, where it can collide with another neuron and strand a constant.
+            uuid: neuron.uuid,
             id: neuron.id!,
             bias: constantBias,
           };
