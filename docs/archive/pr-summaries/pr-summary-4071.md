@@ -74,9 +74,9 @@ flowchart LR
     D -->|exportJSON → fromJSON| S["synapses collapse onto the later neuron;\nearlier constant: NO_OUTWARD_CONNECTIONS"]
 ```
 
-**Docs sweep** — grep: `cleanupOrphanedNeurons`, `legacy-neuron`, "convert\w* to
-.*constant", "drops the source UUID"; section: none — no manual documents the
-orphan-cleanup conversion (the only doc hits are code comments and
+**Docs sweep** — grep: `cleanupOrphanedNeurons`, `legacy-neuron`,
+`convert\w* to .*constant`, `drops the source UUID`; section: none — no manual
+documents the orphan-cleanup conversion (the only doc hits are code comments and
 `CHANGELOG.md`); siblings: none — no existing set gained a member; updated:
 `src/compact/OrphanedNeuronCleanup.ts` (doc comment of
 `cleanupOrphanedNeurons`), `test/compact/CleanupOrphanedNeurons.ts` (two
