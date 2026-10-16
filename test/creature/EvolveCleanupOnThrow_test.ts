@@ -15,14 +15,22 @@ import {
 import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
 import type { LegacyEpisodeAdapter } from "@creature/EpisodicFitnessTypes.ts";
 import { EpisodeAdapter, type StepResult } from "@creature/EpisodeAdapter.ts";
+import { EpisodeWorkerPool } from "@creature/EpisodeWorkerPool.ts";
+import {
+  getDistanceCacheSize,
+  setCachedDistance,
+} from "@breed/DistanceCache.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+import SeedRewardAdapterFixture from "./fixtures/SeedRewardAdapterFixture.ts";
 
 // Issue #4072: when the generation loop throws, `evolveDir` / `evolveEnv` /
 // `evolveRL` must release everything they took for the run: every
-// WorkerHandler is terminated (evolveDir), the SIGTERM listener is removed, and
-// for evolveEnv / evolveRL the `options.signal` 'abort' listener is removed. The
-// original rejection must reach the caller, and a second run in the same
-// process must start clean.
+// WorkerHandler is terminated (evolveDir), the episode worker pool is terminated
+// (evolveRL), the population other than the caller is disposed, the distance
+// cache is released, the SIGTERM listener is removed, and for evolveEnv /
+// evolveRL the `options.signal` 'abort' listener is removed. The original
+// rejection must reach the caller, a cleanup error must never replace it, and a
+// second run in the same process must start clean.
 //
 // The run is driven by an injected clock (#2888): `now` and `startTimeMS` are
 // pinned to a far-future constant, so no real elapsed time is read. The
@@ -34,6 +42,11 @@ const TIMEOUT_MINUTES = 5;
 // Constant far-future start. Every deadline is derived from it, so no real
 // elapsed time is read.
 const START_MS = Date.UTC(3000, 0, 1);
+
+const SEED_REWARD_FIXTURE_URL = new URL(
+  "./fixtures/SeedRewardAdapterFixture.ts",
+  import.meta.url,
+).href;
 
 const silentLogger: Logger = {
   debug: (..._args: unknown[]) => {},
@@ -211,6 +224,66 @@ function watchTerminate(): TerminateLedger {
   return ledger;
 }
 
+/** Episode worker pools created and terminated, counted across every instance. */
+interface PoolLedger {
+  creations: number;
+  terminations: number;
+  restore(): void;
+}
+
+/**
+ * Wrap the static `EpisodeWorkerPool.create` and the instance `terminate` so
+ * every pool built and every pool stopped is counted.
+ */
+function watchEpisodeWorkerPool(): PoolLedger {
+  const originalCreate = EpisodeWorkerPool.create;
+  const originalTerminate = EpisodeWorkerPool.prototype.terminate;
+  const ledger: PoolLedger = {
+    creations: 0,
+    terminations: 0,
+    restore: () => {
+      EpisodeWorkerPool.create = originalCreate;
+      EpisodeWorkerPool.prototype.terminate = originalTerminate;
+    },
+  };
+  EpisodeWorkerPool.create = (options) => {
+    ledger.creations++;
+    return originalCreate.call(EpisodeWorkerPool, options);
+  };
+  EpisodeWorkerPool.prototype.terminate = function (this: EpisodeWorkerPool) {
+    ledger.terminations++;
+    originalTerminate.call(this);
+  };
+  return ledger;
+}
+
+/** Worker terminations that succeed, then throw (Issue #4072). */
+interface FailingTerminateLedger {
+  calls: number;
+  restore(): void;
+}
+
+/**
+ * Make every `WorkerHandlerBase.prototype.terminate()` stop the worker and then
+ * throw, so a cleanup failure can be checked against the original rejection.
+ */
+function failingTerminate(): FailingTerminateLedger {
+  const proto = WorkerHandlerBase.prototype;
+  const original = proto.terminate;
+  const ledger: FailingTerminateLedger = {
+    calls: 0,
+    restore: () => {
+      proto.terminate = original;
+    },
+  };
+  proto.terminate = function (this: unknown) {
+    ledger.calls++;
+    original.call(this as WorkerHandlerBase<never, never>);
+    throw new Error("terminate failed");
+  };
+  return ledger;
+}
+
 /** Make the first `neat.evolve()` reject with `failure`, counting the calls. */
 function rejectEvolve(
   neat: Neat,
@@ -221,6 +294,37 @@ function rejectEvolve(
     counter.calls++;
     return Promise.reject(failure);
   }) as Neat["evolve"];
+}
+
+/**
+ * Seed one distance-cache entry and return the cache size straight after, so a
+ * later assertion can prove the release actually emptied something (Issue #4072).
+ */
+function seedDistanceCache(): number {
+  setCachedDistance("uuid-4072-a", "uuid-4072-b", 0.5);
+  return getDistanceCacheSize();
+}
+
+/**
+ * Assert every population member other than the caller was disposed, with a
+ * positive control that the population held a member other than the caller.
+ */
+function assertPopulationDisposed(
+  population: readonly Creature[],
+  creature: Creature,
+): void {
+  assert(
+    population.some((member) => member !== creature),
+    "positive control: the population must hold at least one member other than the caller",
+  );
+  for (const member of population) {
+    if (member === creature) continue;
+    assertEquals(
+      member.neurons.length,
+      0,
+      "every population member other than the caller must be disposed after a rejected generation",
+    );
+  }
 }
 
 /** Assert the caller still holds its genome and can be exported. */
@@ -250,12 +354,16 @@ Deno.test({
 
     try {
       const workers: Neat["workers"] = [];
+      let population: Creature[] = [];
+      let seededCacheSize = 0;
       const counter = { calls: 0 };
       const deps: EvolveDirDeps = {
         startTimeMS: START_MS,
         now: () => START_MS,
         onNeatReady: (neat) => {
           workers.push(...neat.workers);
+          population = [...neat.population];
+          seededCacheSize = seedDistanceCache();
           rejectEvolve(neat, failure, counter);
         },
       };
@@ -266,7 +374,7 @@ Deno.test({
           populationSize: 6,
           iterations: 500,
           timeoutMinutes: TIMEOUT_MINUTES,
-          threads: 1,
+          threads: 2,
           creatureStore,
           logger: silentLogger,
         }, deps);
@@ -286,6 +394,16 @@ Deno.test({
           "every worker must be terminated after a rejected generation",
         );
       }
+      assert(
+        seededCacheSize > 0,
+        "positive control: seeding must populate the distance cache",
+      );
+      assertPopulationDisposed(population, creature);
+      assertEquals(
+        getDistanceCacheSize(),
+        0,
+        "the distance cache must be released after a rejected generation",
+      );
       assert(
         sigterm.adds > 0,
         "positive control: evolveDir must register a SIGTERM listener",
@@ -327,6 +445,85 @@ Deno.test({
 
 Deno.test({
   name:
+    "evolveDir: a cleanup error is logged and never replaces the original rejection (Issue #4072)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const dataSetDir = makeDataDir(tinyDataSet(), 2000);
+    const creatureStore = await Deno.makeTempDir({ prefix: "neat-4072-log-" });
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const failure = new Error("boom");
+    const priorLogger = getLogger();
+    const sigterm = watchSigterm();
+    const terminate = failingTerminate();
+    const loggedErrors: unknown[][] = [];
+    const capturingLogger: Logger = {
+      debug: (..._args: unknown[]) => {},
+      info: (..._args: unknown[]) => {},
+      warn: (..._args: unknown[]) => {},
+      error: (...args: unknown[]) => {
+        loggedErrors.push(args);
+      },
+    };
+
+    try {
+      const counter = { calls: 0 };
+      const deps: EvolveDirDeps = {
+        startTimeMS: START_MS,
+        now: () => START_MS,
+        onNeatReady: (neat) => rejectEvolve(neat, failure, counter),
+      };
+
+      let caught: unknown;
+      try {
+        await evolveDir(creature, dataSetDir, {
+          populationSize: 6,
+          iterations: 500,
+          timeoutMinutes: TIMEOUT_MINUTES,
+          threads: 1,
+          creatureStore,
+          logger: capturingLogger,
+        }, deps);
+      } catch (error) {
+        caught = error;
+      }
+
+      assertEquals(counter.calls, 1, "generation 1 must be entered once");
+      assertEquals(
+        caught,
+        failure,
+        "a cleanup error must never replace the original rejection",
+      );
+      assert(
+        terminate.calls > 0,
+        "positive control: the failing terminate must have been reached",
+      );
+      assert(
+        loggedErrors.some((args) =>
+          typeof args[0] === "string" &&
+          args[0].includes("cleanup failed after error")
+        ),
+        "a cleanup error must be logged with 'cleanup failed after error'",
+      );
+      assertEquals(
+        sigterm.live.size,
+        0,
+        "the remaining cleanup must still remove the SIGTERM listener",
+      );
+    } finally {
+      terminate.restore();
+      sigterm.restore();
+      setLogger(priorLogger);
+      await Deno.remove(dataSetDir, { recursive: true });
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
     "evolveEnv: a rejected generation removes its SIGTERM and abort listeners, and a second run starts clean (Issue #4072)",
   sanitizeOps: false,
   sanitizeResources: false,
@@ -342,11 +539,17 @@ Deno.test({
     const abort = watchAbort(controller.signal);
 
     try {
+      let population: Creature[] = [];
+      let seededCacheSize = 0;
       const counter = { calls: 0 };
       const deps: EvolveDirDeps = {
         startTimeMS: START_MS,
         now: () => START_MS,
-        onNeatReady: (neat) => rejectEvolve(neat, failure, counter),
+        onNeatReady: (neat) => {
+          population = [...neat.population];
+          seededCacheSize = seedDistanceCache();
+          rejectEvolve(neat, failure, counter);
+        },
       };
 
       let caught: unknown;
@@ -366,6 +569,16 @@ Deno.test({
 
       assertEquals(counter.calls, 1, "generation 1 must be entered once");
       assertEquals(caught, failure, "the original rejection must be rethrown");
+      assert(
+        seededCacheSize > 0,
+        "positive control: seeding must populate the distance cache",
+      );
+      assertPopulationDisposed(population, creature);
+      assertEquals(
+        getDistanceCacheSize(),
+        0,
+        "the distance cache must be released after a rejected generation",
+      );
       assert(
         sigterm.adds > 0,
         "positive control: evolveEnv must register a SIGTERM listener",
@@ -436,11 +649,17 @@ Deno.test({
     const abort = watchAbort(controller.signal);
 
     try {
+      let population: Creature[] = [];
+      let seededCacheSize = 0;
       const counter = { calls: 0 };
       const deps: EvolveDirDeps = {
         startTimeMS: START_MS,
         now: () => START_MS,
-        onNeatReady: (neat) => rejectEvolve(neat, failure, counter),
+        onNeatReady: (neat) => {
+          population = [...neat.population];
+          seededCacheSize = seedDistanceCache();
+          rejectEvolve(neat, failure, counter);
+        },
       };
 
       let caught: unknown;
@@ -460,6 +679,16 @@ Deno.test({
 
       assertEquals(counter.calls, 1, "generation 1 must be entered once");
       assertEquals(caught, failure, "the original rejection must be rethrown");
+      assert(
+        seededCacheSize > 0,
+        "positive control: seeding must populate the distance cache",
+      );
+      assertPopulationDisposed(population, creature);
+      assertEquals(
+        getDistanceCacheSize(),
+        0,
+        "the distance cache must be released after a rejected generation",
+      );
       assert(
         sigterm.adds > 0,
         "positive control: evolveRL must register a SIGTERM listener",
@@ -508,6 +737,59 @@ Deno.test({
       abort.restore();
       sigterm.restore();
       setLogger(priorLogger);
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "evolveRL: a rejected generation terminates its episode worker pool (Issue #4072)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const creatureStore = await Deno.makeTempDir({ prefix: "neat-4072-pool-" });
+    const creature = new Creature(1, 1, { layers: [{ count: 3 }] });
+    const failure = new Error("boom");
+    const pools = watchEpisodeWorkerPool();
+
+    try {
+      const counter = { calls: 0 };
+      const deps: EvolveDirDeps = {
+        startTimeMS: START_MS,
+        now: () => START_MS,
+        onNeatReady: (neat) => rejectEvolve(neat, failure, counter),
+      };
+
+      let caught: unknown;
+      try {
+        await evolveRL(creature, new SeedRewardAdapterFixture(), {
+          populationSize: 6,
+          iterations: 500,
+          timeoutMinutes: TIMEOUT_MINUTES,
+          threads: 2,
+          creatureStore,
+          logger: silentLogger,
+          adapterDescription: { url: SEED_REWARD_FIXTURE_URL, direct: true },
+        }, deps);
+      } catch (error) {
+        caught = error;
+      }
+
+      assertEquals(counter.calls, 1, "generation 1 must be entered once");
+      assertEquals(caught, failure, "the original rejection must be rethrown");
+      assert(
+        pools.creations >= 1,
+        "positive control: evolveRL must create an episode worker pool",
+      );
+      assert(
+        pools.terminations >= 1,
+        "the episode worker pool must be terminated after a rejected generation",
+      );
+    } finally {
+      pools.restore();
       await Deno.remove(creatureStore, { recursive: true });
     }
   },
