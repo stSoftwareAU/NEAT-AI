@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "branchOutcomes": {
+    "noneAdded": false,
+    "entries": [
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 95,
+        "outcome": "journal timedOut line marks the CLI train as timed out",
+        "test": "test/architecture/training/RustTrainDirBridge.ts",
+        "testName": "Rust trainDir CLI: per-task deadline is forwarded and stops training early",
+        "flipWentRed": "replacing the check with false turned it red: no timed-out log"
+      },
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 460,
+        "outcome": "help output lists --deadline-epoch-ms so the CLI is deadline-capable",
+        "test": "test/architecture/training/RustTrainDirBridge.ts",
+        "testName": "Rust trainDir CLI: per-task deadline is forwarded and stops training early",
+        "flipWentRed": "forcing the CLI branch to unsupported turned it red: iteration 50, not 1"
+      },
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 462,
+        "outcome": "probe spawn throws and the CLI counts as unsupported",
+        "exempt": {
+          "kind": "untestable",
+          "reason": "a binary that cannot spawn for --help also cannot spawn for train, so tryCliTrainDir throws before any observable result; the only caller test file, test/architecture/training/RustTrainDirBridge.ts, needs a runnable stub to reach this code"
+        }
+      },
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 525,
+        "outcome": "timed-out Rust result logs timed out after",
+        "test": "test/architecture/training/RustTrainDirBridge.ts",
+        "testName": "Rust trainDir FFI: per-task deadline stops the native trainer early",
+        "flipWentRed": "replacing the check with false turned both deadline tests red"
+      },
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 589,
+        "outcome": "no deadline leaves the FFI request without deadlineEpochMs",
+        "test": "test/architecture/training/RustTrainDirBridge.ts",
+        "testName": "Rust trainDir FFI: MSE forward-only trains when library is present",
+        "flipWentRed": "forcing the check true turned it red: deadline 0 stopped the native train"
+      },
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 590,
+        "outcome": "ABI-2 library receives deadlineEpochMs",
+        "test": "test/architecture/training/RustTrainDirBridge.ts",
+        "testName": "Rust trainDir FFI: per-task deadline stops the native trainer early",
+        "flipWentRed": "dropping the request field turned it red: all 50 epochs ran"
+      },
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 590,
+        "outcome": "ABI-1 library warns once and trains without a deadline",
+        "exempt": {
+          "kind": "untestable",
+          "reason": "needs an ABI-1 libneat_ai_backpropagation build; test/architecture/training/RustTrainDirBridge.ts, the only file calling tryRustTrainDir, loads whatever library resolves and none ships with the repo"
+        }
+      },
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 616,
+        "outcome": "FFI timedOut comes from the response",
+        "test": "test/architecture/training/RustTrainDirBridge.ts",
+        "testName": "Rust trainDir FFI: per-task deadline stops the native trainer early",
+        "flipWentRed": "hard-coding false turned it red: no timed-out log"
+      },
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 692,
+        "outcome": "no deadline passes no --deadline-epoch-ms",
+        "test": "test/architecture/training/RustTrainDirBridge.ts",
+        "testName": "Rust trainDir CLI: no deadline runs every iteration",
+        "flipWentRed": "forcing the check true turned it red: deadline 0 stopped the stub"
+      },
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 693,
+        "outcome": "deadline-capable CLI receives --deadline-epoch-ms",
+        "test": "test/architecture/training/RustTrainDirBridge.ts",
+        "testName": "Rust trainDir CLI: per-task deadline is forwarded and stops training early",
+        "flipWentRed": "forcing the branch false turned it red: iteration 50"
+      },
+      {
+        "path": "src/architecture/training/RustTrainDirBridge.ts",
+        "line": 693,
+        "outcome": "old CLI warns once and trains without a deadline",
+        "test": "test/architecture/training/RustTrainDirBridge.ts",
+        "testName": "Rust trainDir CLI: binary without --deadline-epoch-ms trains and warns",
+        "flipWentRed": "removing the warning call turned it red: deadlineWarned false"
+      },
+      {
+        "path": "src/architecture/training/NativeBackpropLibrary.ts",
+        "line": 279,
+        "outcome": "library ABI outside 1..2 is refused",
+        "exempt": {
+          "kind": "untestable",
+          "reason": "needs a library reporting ABI 0 or 3; test/architecture/training/RustTrainDirBridge.ts, the only caller test file, loads only the real library that resolves"
+        }
+      },
+      {
+        "path": "src/architecture/training/NativeBackpropLibrary.ts",
+        "line": 341,
+        "outcome": "ABI 2 or later supports the deadline",
+        "test": "test/architecture/training/RustTrainDirBridge.ts",
+        "testName": "Rust trainDir FFI: per-task deadline stops the native trainer early",
+        "flipWentRed": "the test returns early unless this is true, and dropping the field it gates turned it red"
+      }
+    ]
+  }
+}

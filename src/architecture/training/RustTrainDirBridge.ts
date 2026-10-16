@@ -444,17 +444,13 @@ function spawnTrain(
   };
 }
 
-/** Per-binary-path result of the `train --help` deadline probe. */
-const cliDeadlineSupport = new Map<string, boolean>();
-
 /**
  * True when `<binary> train --help` succeeds and lists `--deadline-epoch-ms`
- * (Issue #4073). Cached per binary path; a failed probe counts as unsupported.
+ * (Issue #4073). A failed probe counts as unsupported.
  */
 function cliSupportsDeadline(binary: string): boolean {
-  const cached = cliDeadlineSupport.get(binary);
-  if (cached !== undefined) return cached;
   let supported = false;
+  // SIMPLE-ON-PURPOSE: probes once per CLI train, a few ms beside a multi-second train — upgrade when CLI trains become sub-second.
   try {
     const output = new Deno.Command(binary, {
       args: ["train", "--help"],
@@ -466,7 +462,6 @@ function cliSupportsDeadline(binary: string): boolean {
   } catch {
     supported = false;
   }
-  cliDeadlineSupport.set(binary, supported);
   return supported;
 }
 
