@@ -342,13 +342,16 @@ bound and the bounded teardown all run on the run's main event loop.
 deadline with `setInterval` on that loop, and a timer callback runs only when
 the loop is free. If the main thread is blocked in a synchronous loop, or the V8
 heap is thrashing in garbage collection, the poll never runs, and the run
-outlives every in-process bound. This is the #4060 failure mode: loop-2 runs at
-T = 4 and T = 5 went silent for about two hours against a 24- or 30-minute
-first-generation bound, until the caller's stale window ended them. The
-[event-loop watchdog](#-the-event-loop-watchdog-primitive-issue-4066) (#4066,
-armed by #4067) keeps its deadline in a Worker, which has its own event loop and
-its own timer. At breach it writes one stderr line and SIGKILLs the whole
-process.
+outlives every in-process bound. A loop that never yields is the #4060 failure
+mode: loop-2 runs at T = 4 and T = 5 went silent for about two hours against a
+24- or 30-minute first-generation bound, until the caller's stale window ended
+them. The code that blocked the loop there is not yet identified; the Issue
+#4069 reproduction
+[excluded GC thrash](troubleshooting/MEMORY.md#-silent-single-worker-generation-gc-thrash-excluded-issue-4069).
+The [event-loop watchdog](#-the-event-loop-watchdog-primitive-issue-4066)
+(#4066, armed by #4067) keeps its deadline in a Worker, which has its own event
+loop and its own timer. At breach it writes one stderr line and SIGKILLs the
+whole process.
 
 **Recognising the watchdog kill.** A run the watchdog ends exits with status
 **137** (128 + `SIGKILL`) and returns no `terminationReason`. The stderr line
@@ -392,12 +395,13 @@ These constants and helpers all live in
 with a 5-minute margin: the hard cap is 6 + 6 = 12 minutes, the first-generation
 bound is 12 + min(60, 24) = 36 minutes, and the per-loop kill lands at 36 + 5 =
 **41 minutes** after `start`. Once generation 1 completes, the in-process
-watchdog re-arms at the hard cap + margin (17 minutes for T = 6), which is
-earlier, so this one caller deadline bounds the whole loop. The in-process
-watchdog measures from the start `evolve*` itself records, which comes after the
-process launches. A caller that measures `start` from the launch should
-therefore round the margin up to cover start-up. That way the in-process
-watchdog fires first and its breach line is printed.
+watchdog re-arms at the hard cap + margin (17 minutes for T = 6). No in-process
+bound for a later generation is later than the first-generation one, so the
+caller needs no second, later kill: the one 41-minute deadline bounds the whole
+loop. The in-process watchdog measures from the start `evolve*` itself records,
+which comes after the process launches. A caller that measures `start` from the
+launch should therefore round the margin up to cover start-up. That way the
+in-process watchdog fires first and its breach line is printed.
 
 ## 🐕 The event-loop watchdog primitive (Issue #4066)
 
@@ -508,7 +512,9 @@ child whose main thread spins in a synchronous loop and swallows `SIGTERM` exits
 137 with the breach line on stderr. When no generation was set, the breach line
 names `unknown`. After `disarm()` the child exits 0 without the line. A Worker
 that cannot load (no read permission), or whose constructor throws, logs
-`event-loop watchdog unavailable` and returns a no-op handle.
+`event-loop watchdog unavailable` and leaves only the in-process bound, so the
+child exits 0; the no-read-permission case also checks that the breach line is
+absent.
 
 The arming by the training entry points (Issue #4067) is covered by
 [`test/creature/EvolveFirstGenerationBusyLoop_test.ts`](../test/creature/EvolveFirstGenerationBusyLoop_test.ts),
