@@ -55,7 +55,7 @@
         "path": "src/NEAT/HardDeadline.ts",
         "line": 214,
         "outcome": "a bound already behind the injected clock contributes 0 (clamp)",
-        "test": "test/NEAT/HardDeadlineWatchdog.ts",
+        "test": "test/NEAT/HardDeadlineWatchdog_test.ts",
         "testName": "computeWatchdogDeadlineEpochMS: a bound already behind the injected clock contributes nothing",
         "flipWentRed": "computing boundMS + marginMS from the injected clock turned three arithmetic tests red"
       }

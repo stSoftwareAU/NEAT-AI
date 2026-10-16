@@ -33,7 +33,15 @@ import { initWasmForTests } from "../_initWasm.ts";
 
 const START_MS = 4_000_000_000_000;
 const TIMEOUT_MINUTES = 5;
-const MARGIN_MS = 300_000;
+// Not the 5-minute default, so a margin that is not passed through shows.
+const MARGIN_MS = 120_000;
+// With timeoutMinutes = 5 the hard cap is start + 10 min and generation 1's
+// bound is start + 30 min. The run starts in the future, so the real clock is
+// behind both bounds and each breach time is (bound + margin - start) / 1000.
+const FIRST_LINE =
+  "[Neat] First generation wedged after 1920s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged";
+const RUN_LINE =
+  "[Neat] Run wedged after 720s at generation {generation} (event loop blocked past the hard cap; watchdog killing the process)";
 const STUCK_MESSAGE = "staged evolve failure";
 
 type EntryPoint = "evolveDir" | "evolveEnv" | "evolveRL";
@@ -191,18 +199,12 @@ async function runEntryPoint(
 function assertArmedThroughRun(armed: Recorded[], generation: number): void {
   assert(generation >= 1, "the run must complete at least one generation");
   assertEquals(armed.length, 2, "first-generation watchdog, then the hard cap");
-  assert(
-    armed[0].options.breachLine.startsWith(
-      "[Neat] First generation wedged after ",
-    ),
-    `first breach line: ${armed[0].options.breachLine}`,
-  );
-  assert(
-    armed[1].options.breachLine.startsWith("[Neat] Run wedged after "),
-    `second breach line: ${armed[1].options.breachLine}`,
-  );
-  assert(
-    armed[1].options.breachLine.includes("{generation}"),
+  // The breach seconds are measured from the run start and include the
+  // configured margin, so both must reach the watchdog.
+  assertEquals(armed[0].options.breachLine, FIRST_LINE);
+  assertEquals(
+    armed[1].options.breachLine,
+    RUN_LINE,
     "the hard-cap line names the generation at breach time",
   );
   assertEquals(armed[0].generations, [0]);

@@ -435,8 +435,8 @@ The watchdog arming is covered by
 [`test/creature/EvolveFirstGenerationBusyLoop_test.ts`](../test/creature/EvolveFirstGenerationBusyLoop_test.ts),
 which runs each entry point in a subprocess with a generation 1 that spins in a
 synchronous loop and asserts exit 137 with the first-generation stderr line.
-[`test/NEAT/HardDeadlineWatchdog.ts`](../test/NEAT/HardDeadlineWatchdog.ts) pins
-the deadline arithmetic,
+[`test/NEAT/HardDeadlineWatchdog_test.ts`](../test/NEAT/HardDeadlineWatchdog_test.ts)
+pins the deadline arithmetic,
 [`test/creature/EvolveRunWatchdog_test.ts`](../test/creature/EvolveRunWatchdog_test.ts)
 covers arm, re-arm and disarm, and
 [`test/creature/EvolveWatchdogWiring_test.ts`](../test/creature/EvolveWatchdogWiring_test.ts)

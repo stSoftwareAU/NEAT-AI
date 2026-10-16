@@ -3,7 +3,7 @@ import type {
   EventLoopWatchdog,
   EventLoopWatchdogOptions,
 } from "@neat/EventLoopWatchdog.ts";
-import { armRunWatchdog } from "@creature/EvolveRunWatchdog.ts";
+import { armRunWatchdog } from "../../src/creature/EvolveRunWatchdog.ts";
 
 // Issue #4067: unit tests of the run-level watchdog controller. A recording
 // stub stands in for `armEventLoopWatchdog`, so no Worker is spawned, and the

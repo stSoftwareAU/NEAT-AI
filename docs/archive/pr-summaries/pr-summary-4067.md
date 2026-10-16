@@ -113,7 +113,7 @@ discovery/NEAT unit tests.
   `test/creature/fixtures/BusyLoopFirstGenerationFixture.ts` — reviewer: met
 - **met** — A unit test pins the deadline arithmetic, including when
   `firstGenerationDeadlineMS - now()` is negative (clamped to 0) — evidence:
-  `test/NEAT/HardDeadlineWatchdog.ts::computeWatchdogDeadlineEpochMS: a bound already behind the injected clock contributes nothing`
+  `test/NEAT/HardDeadlineWatchdog_test.ts::computeWatchdogDeadlineEpochMS: a bound already behind the injected clock contributes nothing`
   — reviewer: met
 - **met** — These suites pass unchanged, so injected clocks do not trigger a
   real kill: `EvolveDirFirstGenerationWedged.ts`,
@@ -163,19 +163,37 @@ This repository has no `CODING-STANDARDS.md`. The reviewer used `AGENTS.md` and
 
 ## Test Plan
 
-- Added `test/NEAT/HardDeadlineWatchdog.ts`: deadline arithmetic (positive
+- Added `test/NEAT/HardDeadlineWatchdog_test.ts`: deadline arithmetic (positive
   remaining budget, negative clamped to 0, exactly at the bound) and the
   5-minute default.
 - Added `test/creature/EvolveRunWatchdog_test.ts`: `armRunWatchdog` arm, re-arm,
   generation and disarm behaviour, with stubbed clocks.
 - Added `test/creature/EvolveWatchdogWiring_test.ts`: each entry point arms,
   re-arms after generation 1 and disarms on return and on a throw; with no
-  `timeoutMinutes`, nothing is armed.
+  `timeoutMinutes`, nothing is armed. It runs with a 2-minute margin, not the
+  5-minute default, and pins the exact breach lines (`1920s` and `720s`), so the
+  run start and the margin must both reach `armRunWatchdog`.
 - Added `test/creature/EvolveFirstGenerationBusyLoop_test.ts` with
   `test/creature/fixtures/BusyLoopFirstGenerationFixture.ts`. A real subprocess
   per entry point busy-loops in generation 1, and the test asserts SIGKILL/137,
   both stderr markers, and that the hang guard did not fire. The `*-return`
   cases assert that a normal run exits 0.
+- Mutation check: every mutant the gate listed now turns a test red. Each was
+  applied by hand against the three unit-test files, then restored:
+  - `src/NEAT/HardDeadline.ts:214` → `HardDeadlineWatchdog_test.ts` red;
+  - `src/creature/EvolveRunWatchdog.ts:72`, `:79`, `:80`, `:96` (both), `:106`,
+    `:110`, `:111`, `:112`, `:125` → `EvolveRunWatchdog_test.ts` red;
+  - `src/creature/CreatureTraining.ts:615`, `:620`, `:1059`, `:1064`, `:1666`
+    (`startMS` / `marginMS` deleted), and `:1671`, which the gate did not reach
+    → `EvolveWatchdogWiring_test.ts` red (breach-line seconds).
+
+  Most of these mutants survived only because the gate never ran a test against
+  them. The gate links a test to a module only through a relative import, and
+  only counts `*_test.ts` files as tests. The two unit-test files now import
+  their module relatively, and `test/NEAT/HardDeadlineWatchdog.ts` is renamed
+  `HardDeadlineWatchdog_test.ts`. That also clears the
+  `HardDeadlineWatchdog.ts:33` mutant, which came from the gate treating the old
+  file as source.
 - Red checks, each restored afterwards:
   - arm removed from `evolveDir` → `dir` busy-loop case red (hang guard);
   - deadline computed from the injected clock → three arithmetic tests red;

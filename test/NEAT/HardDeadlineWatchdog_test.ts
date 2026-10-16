@@ -2,7 +2,7 @@ import { assertEquals } from "@std/assert";
 import {
   computeWatchdogDeadlineEpochMS,
   DEFAULT_WATCHDOG_MARGIN_MS,
-} from "@neat/HardDeadline.ts";
+} from "../../src/NEAT/HardDeadline.ts";
 
 // Issue #4067: the event-loop watchdog deadline is anchored on the real clock
 // plus the remaining injected budget. All inputs are passed in, so the test
