@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "branchOutcomes": {
+    "noneAdded": false,
+    "entries": [
+      {
+        "path": "src/creature/CreatureSerialization.ts",
+        "line": 665,
+        "outcome": "duplicate neuron uuid is refused with a ValidationError",
+        "test": "test/creature/LoadFromDuplicateNeuronUuid.ts",
+        "testName": "two constants sharing a uuid are refused with a ValidationError",
+        "flipWentRed": "forcing the condition to `false &&` turned both refusal tests red with 'Expected function to throw'"
+      },
+      {
+        "path": "src/creature/CreatureSerialization.ts",
+        "line": 672,
+        "outcome": "unique neuron uuid is registered and the load proceeds",
+        "test": "test/creature/LoadFromDuplicateNeuronUuid.ts",
+        "testName": "distinct constant uuids load",
+        "flipWentRed": "treating every uuid as a duplicate makes the positive control throw"
+      }
+    ]
+  }
+}
