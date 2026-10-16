@@ -329,6 +329,26 @@ finishes and checks its model in _well before_ the watchdog ever has to fire;
 the watchdog only catches pathological situations (a wedged process, a deadlock
 outside the cooperative checkpoints) that an in-process deadline cannot reach.
 
+## 🐕 The event-loop watchdog primitive (Issue #4066)
+
+The in-process bounds above all run on the run's own event loop:
+`awaitWithinHardDeadline` polls with `setInterval`, and the others are checks
+the loop reaches between steps. A main thread blocked in a synchronous loop, or
+a V8 heap thrashing in garbage collection, silences them exactly when they are
+needed (#4060). `armEventLoopWatchdog` in
+[`src/NEAT/EventLoopWatchdog.ts`](../src/NEAT/EventLoopWatchdog.ts) runs the
+deadline in a Worker instead. At breach it writes the breach line to stderr and
+sends `SIGKILL` to the process, which exits with status 137. `SIGKILL` is used
+because `SIGTERM` is swallowed by the listeners the training entry points
+register, and `Deno.exit` from a Worker ends only that Worker. A `{generation}`
+token in the breach line is replaced with the last generation the run recorded.
+If the Worker cannot load, the primitive logs
+`[Neat] event-loop watchdog unavailable: ...` and only the in-process bound
+applies.
+
+Not armed by any entry point yet: #4067 will arm it in `evolveDir`, `evolveEnv`
+and `evolveRL`.
+
 ## ✅ Verifying the guarantee
 
 The end-to-end guard
