@@ -3,7 +3,7 @@
  * #4060 field size (8,200 hidden neurons, ~58k synapses) with a 5 s
  * `setInterval` heartbeat that logs heap and timer lag. Diagnostic only; the
  * findings are in docs/troubleshooting/MEMORY.md. Size knobs: R_INPUTS,
- * R_HIDDEN, R_FANIN, R_RECORDS.
+ * R_HIDDEN, R_FAN_IN, R_RECORDS.
  *
  * deno run -A --config deno.json \
  *   --v8-flags=--max-old-space-size=2163,--trace-gc \
@@ -18,7 +18,7 @@ import type { Logger } from "@utils/Logger.ts";
 const INPUTS = Number(Deno.env.get("R_INPUTS") ?? 200);
 const OUTPUTS = 4;
 const HIDDEN = Number(Deno.env.get("R_HIDDEN") ?? 8200);
-const FAN_IN = Number(Deno.env.get("R_FANIN") ?? 6);
+const FAN_IN = Number(Deno.env.get("R_FAN_IN") ?? 7);
 const RECORDS = Number(Deno.env.get("R_RECORDS") ?? 4000);
 
 const t0 = performance.now();
