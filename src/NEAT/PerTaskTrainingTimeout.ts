@@ -12,10 +12,13 @@
 
 /**
  * Grace (ms) added to a task's own deadline before the Neat-level watchdog
- * ({@link Neat.abandonStuckTrainingTasks}) abandons it. The worker enforces
- * each task's `timeoutTS` itself; the watchdog only steps in for tasks whose
- * worker promise never settles, so a short grace avoids racing a task that is
- * about to resolve cleanly.
+ * ({@link Neat.abandonStuckTrainingTasks}) abandons it. The TypeScript loop
+ * checks the task's `timeoutTS` per sample; the Rust trainer receives it as its
+ * deadline and stops between epochs (an epoch already running finishes first).
+ * A pre-ABI-2 library, or a binary without `--deadline-epoch-ms`, cannot
+ * enforce it, and then the watchdog is the only stop. The watchdog steps in
+ * only for tasks whose worker promise never settles, so a short grace avoids
+ * racing a task that is about to resolve cleanly.
  */
 export const TRAINING_TASK_WATCHDOG_GRACE_MS = 30_000;
 

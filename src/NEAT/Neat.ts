@@ -836,9 +836,12 @@ export class Neat {
    *
    * Abandons individual training tasks that have exceeded their own per-task
    * wall-clock deadline (plus a small grace), instead of waiting to clear the
-   * whole batch at the hard deadline. The worker enforces each task's
-   * `timeoutTS` itself (see {@link runSingleEpoch}) and settles its promise;
-   * this watchdog only steps in for tasks whose worker promise never settles,
+   * whole batch at the hard deadline. The TypeScript loop checks each task's
+   * `timeoutTS` per sample (see {@link runSingleEpoch}); the Rust trainer is
+   * given it as a deadline and stops between epochs, so an epoch already
+   * running finishes first. A pre-ABI-2 library, or a binary without
+   * `--deadline-epoch-ms`, cannot enforce it, and then this watchdog is the
+   * only stop. It steps in only for tasks whose worker promise never settles,
    * so a stuck task no longer keeps the run alive until the hard cap.
    *
    * Pure aside from the maps it mutates and `now`-injectable for deterministic

@@ -14,14 +14,26 @@
  * The library is not opened at module load. Callers load it on first use so
  * the default TypeScript / WASM path (when Rust trainDir is disabled) never
  * `dlopen`s in every worker.
+ *
+ * ABI 2 adds the optional `deadlineEpochMs` request field and the `timedOut`
+ * response field (Issue #4073). A loaded library in
+ * [{@link NEAT_BACKPROP_MIN_ABI_VERSION}, {@link NEAT_BACKPROP_ABI_VERSION}] is
+ * accepted; an ABI-1 library cannot enforce the deadline and
+ * {@link nativeBackpropSupportsDeadline} reports that.
  */
 
 import { join } from "@std/path/join";
 import { getLogger } from "@utils/Logger.ts";
 import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
 
-/** Matches `NEAT_BACKPROP_ABI_VERSION` / header revision 1. */
-export const NEAT_BACKPROP_ABI_VERSION = 1;
+/** Matches `NEAT_BACKPROP_ABI_VERSION` / header revision 2. */
+export const NEAT_BACKPROP_ABI_VERSION = 2;
+
+/** Oldest ABI this bridge accepts (ABI 1 has no deadline support). */
+export const NEAT_BACKPROP_MIN_ABI_VERSION = 1;
+
+/** First ABI that honours `deadlineEpochMs` and reports `timedOut`. */
+const NEAT_BACKPROP_DEADLINE_ABI_VERSION = 2;
 
 /** Matches `NEAT_BACKPROP_OK`. */
 export const NEAT_BACKPROP_OK = 0;
@@ -111,6 +123,12 @@ export interface NativeBackpropTrainRequest {
   maxBacktracks?: number;
   scorer?: string | null;
   traceStore?: string | null;
+  /**
+   * Absolute deadline (ms since Unix epoch). ABI 2 only: the trainer stops
+   * between epochs once it is reached. Must be omitted entirely (not `null`)
+   * for an ABI-1 library, which rejects unknown fields.
+   */
+  deadlineEpochMs?: number;
 }
 
 /** Successful JSON response from `neat_backprop_train`. */
@@ -128,11 +146,14 @@ export interface NativeBackpropTrainResponse {
   failedTraceDir?: string | null;
   baselineScore?: unknown;
   bestScore?: unknown;
+  /** ABI 2: true when the trainer stopped at `deadlineEpochMs`. */
+  timedOut?: boolean;
 }
 
 let nativeLib: Deno.DynamicLibrary<NativeBackpropSymbols> | null = null;
 let loadAttempted = false;
 let loggedAvailability = false;
+let loadedAbiVersion: number | undefined;
 
 function readEnvString(key: string): string | undefined {
   try {
@@ -254,15 +275,18 @@ function loadNativeBackpropLibrary(): boolean {
   try {
     nativeLib = Deno.dlopen(libPath, NATIVE_BACKPROP_SYMBOLS);
     const abi = nativeLib.symbols["neat_backprop_abi_version"]();
-    if (abi !== NEAT_BACKPROP_ABI_VERSION) {
+    if (
+      abi < NEAT_BACKPROP_MIN_ABI_VERSION || abi > NEAT_BACKPROP_ABI_VERSION
+    ) {
       nativeLib.close();
       nativeLib = null;
       getLogger().warn(
         `[NEAT-AI] libneat_ai_backpropagation at ${libPath} reports ABI ` +
-          `${abi}; expected ${NEAT_BACKPROP_ABI_VERSION}.`,
+          `${abi}; expected ${NEAT_BACKPROP_MIN_ABI_VERSION}..${NEAT_BACKPROP_ABI_VERSION}.`,
       );
       return false;
     }
+    loadedAbiVersion = abi;
     if (!loggedAvailability) {
       loggedAvailability = true;
       getLogger().info(
@@ -291,6 +315,7 @@ export function closeNativeBackpropLibrary(): void {
   }
   loadAttempted = false;
   loggedAvailability = false;
+  loadedAbiVersion = undefined;
 }
 
 /**
@@ -298,6 +323,22 @@ export function closeNativeBackpropLibrary(): void {
  */
 export function isNativeBackpropAvailable(): boolean {
   return loadNativeBackpropLibrary();
+}
+
+/**
+ * ABI version of the loaded library, or `undefined` when none is loaded.
+ */
+export function getNativeBackpropAbiVersion(): number | undefined {
+  return loadNativeBackpropLibrary() ? loadedAbiVersion : undefined;
+}
+
+/**
+ * True when the loaded library (ABI 2+) enforces `deadlineEpochMs` and
+ * reports `timedOut`. An ABI-1 library or no library returns false.
+ */
+export function nativeBackpropSupportsDeadline(): boolean {
+  const abi = getNativeBackpropAbiVersion();
+  return abi !== undefined && abi >= NEAT_BACKPROP_DEADLINE_ABI_VERSION;
 }
 
 /**

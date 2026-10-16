@@ -18,9 +18,18 @@
  * TypeScript / WASM loop). When Rust is enabled there is no silent WASM
  * fallback for a request the native trainer claimed: a missing library and
  * binary is an error.
+ *
+ * The per-task deadline (`trainingTimeOutMinutes` / `hardDeadlineTS`) is
+ * forwarded to the trainer as an absolute deadline (ABI 2 `deadlineEpochMs`,
+ * or CLI `--deadline-epoch-ms`, Issue #4073) and enforced natively between
+ * epochs, so an epoch already running finishes first. An older library or
+ * binary cannot enforce it; that is logged once and the stuck-task watchdog
+ * stays the only stop.
  */
 
 import { join, resolve } from "@std/path";
+import { blue, yellow } from "@std/fmt/colors";
+import { format } from "@std/fmt/duration";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import { MSE } from "@costs/MSE.ts";
 import type { Creature } from "@creature";
@@ -30,13 +39,16 @@ import { getLogger } from "@utils/Logger.ts";
 import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
 import { finaliseTraining } from "@architecture/training/TrainingTeardown.ts";
 import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
+import { computeTimeoutTS } from "@architecture/training/TrainingOutcome.ts";
 import type { TrainingLoopResult } from "@architecture/training/TrainingLoop.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 import { readDatasetDirEntriesSync } from "@architecture/DatasetIO.ts";
 import {
   closeNativeBackpropLibrary,
   findNativeBackpropLibrary,
+  getNativeBackpropAbiVersion,
   isNativeBackpropAvailable,
+  nativeBackpropSupportsDeadline,
   nativeBackpropTrain,
   type NativeBackpropTrainRequest,
 } from "@architecture/training/NativeBackpropLibrary.ts";
@@ -56,6 +68,18 @@ interface TrainJournalLine {
   beforeMse?: number;
   afterMse?: number;
   accepted?: boolean;
+  completedEpochs?: number;
+  deadlineEpochMs?: number;
+}
+
+/**
+ * Task timing for one {@link tryRustTrainDir} call (Issue #4073).
+ */
+interface RustTrainTiming {
+  /** Wall-clock start of the call (epoch ms), for the elapsed log. */
+  startTS: number;
+  /** Absolute per-task deadline (epoch ms); 0 = no deadline. */
+  deadlineTS: number;
 }
 
 function summariseTrainJournal(journalPath: string): TrainSummary {
@@ -64,9 +88,15 @@ function summariseTrainJournal(journalPath: string): TrainSummary {
   let bestMse = Number.POSITIVE_INFINITY;
   let acceptedEpochs = 0;
   let completedEpochs = 0;
+  let timedOut = false;
   for (const line of lines) {
     if (line.trim().length === 0) continue;
     const rec = JSON.parse(line) as TrainJournalLine;
+    if (rec.kind === "timedOut") {
+      timedOut = true;
+      completedEpochs = Math.max(completedEpochs, rec.completedEpochs ?? 0);
+      continue;
+    }
     if (rec.kind !== "epoch") continue;
     completedEpochs = Math.max(completedEpochs, rec.epoch ?? 0);
     if (!Number.isFinite(baselineMse) && Number.isFinite(rec.beforeMse)) {
@@ -85,8 +115,18 @@ function summariseTrainJournal(journalPath: string): TrainSummary {
     bestMse,
     acceptedEpochs,
     completedEpochs,
-    timedOut: false,
+    timedOut,
   };
+}
+
+/** Deadline-capability warnings already logged in this process. */
+const warnedDeadlineUnsupported = new Set<string>();
+
+/** Log a deadline-unsupported warning once per process per `key`. */
+function warnDeadlineUnsupportedOnce(key: string, message: string): void {
+  if (warnedDeadlineUnsupported.has(key)) return;
+  warnedDeadlineUnsupported.add(key);
+  getLogger().warn(message);
 }
 
 export interface RustTrainDirSearchOptions {
@@ -404,6 +444,32 @@ function spawnTrain(
   };
 }
 
+/** Per-binary-path result of the `train --help` deadline probe. */
+const cliDeadlineSupport = new Map<string, boolean>();
+
+/**
+ * True when `<binary> train --help` succeeds and lists `--deadline-epoch-ms`
+ * (Issue #4073). Cached per binary path; a failed probe counts as unsupported.
+ */
+function cliSupportsDeadline(binary: string): boolean {
+  const cached = cliDeadlineSupport.get(binary);
+  if (cached !== undefined) return cached;
+  let supported = false;
+  try {
+    const output = new Deno.Command(binary, {
+      args: ["train", "--help"],
+      stdout: "piped",
+      stderr: "piped",
+    }).outputSync();
+    supported = output.success &&
+      new TextDecoder().decode(output.stdout).includes("--deadline-epoch-ms");
+  } catch {
+    supported = false;
+  }
+  cliDeadlineSupport.set(binary, supported);
+  return supported;
+}
+
 function buildTrainRequestFields(
   creature: Creature,
   dataDir: string,
@@ -459,7 +525,15 @@ function packageTrainingResult(
   setup: TrainingSetupState,
   bestJson: CreatureExport,
   summary: TrainSummary,
+  timing: RustTrainTiming,
 ): TrainingResult {
+  if (summary.timedOut) {
+    getLogger().info(
+      `Training ${blue(setup.ID)} timed out after ${
+        yellow(format(Date.now() - timing.startTS, { ignoreZero: true }))
+      }`,
+    );
+  }
   creature.loadFrom(bestJson, false, "training:rustTrainDir");
 
   const loop: TrainingLoopResult = {
@@ -488,6 +562,7 @@ function tryFfiTrainDir(
   options: TrainOptions,
   setup: TrainingSetupState,
   workDir: string,
+  timing: RustTrainTiming,
 ): TrainingResult {
   const outputDir = join(workDir, "out");
   Deno.mkdirSync(outputDir);
@@ -516,6 +591,18 @@ function tryFfiTrainDir(
     traceStore: fields.traceStore ?? null,
   };
 
+  if (timing.deadlineTS > 0) {
+    if (nativeBackpropSupportsDeadline()) {
+      request.deadlineEpochMs = Math.floor(timing.deadlineTS);
+    } else {
+      warnDeadlineUnsupportedOnce(
+        "ffi",
+        `[NEAT-AI] loaded libneat_ai_backpropagation (ABI ${getNativeBackpropAbiVersion()}) cannot enforce the per-task deadline; the stuck-task watchdog ` +
+          `stays the only stop — upgrade NEAT-AI-Backpropagation.`,
+      );
+    }
+  }
+
   const backendKey = `ffi:${findNativeBackpropLibrary() ?? "loaded"}`;
   if (loggedTrainDirBackend !== backendKey) {
     loggedTrainDirBackend = backendKey;
@@ -531,7 +618,7 @@ function tryFfiTrainDir(
     bestMse: response.bestMse,
     acceptedEpochs: response.acceptedEpochs,
     completedEpochs: Math.max(1, response.epochs),
-    timedOut: false,
+    timedOut: response.timedOut === true,
   };
   // Prefer journal when present (early-stop may complete fewer epochs).
   try {
@@ -545,7 +632,7 @@ function tryFfiTrainDir(
   } catch {
     // Response fields are authoritative when the journal is missing.
   }
-  return packageTrainingResult(creature, setup, bestJson, summary);
+  return packageTrainingResult(creature, setup, bestJson, summary, timing);
 }
 
 function tryCliTrainDir(
@@ -554,6 +641,7 @@ function tryCliTrainDir(
   options: TrainOptions,
   setup: TrainingSetupState,
   workDir: string,
+  timing: RustTrainTiming,
 ): TrainingResult {
   const binary = findRustTrainDirBinary();
   if (binary === null) {
@@ -606,6 +694,21 @@ function tryCliTrainDir(
   if (fields.traceStore !== undefined) {
     args.push("--trace-store", fields.traceStore);
   }
+  if (timing.deadlineTS > 0) {
+    if (cliSupportsDeadline(binary)) {
+      args.push(
+        "--deadline-epoch-ms",
+        String(Math.floor(timing.deadlineTS)),
+      );
+    } else {
+      warnDeadlineUnsupportedOnce(
+        "cli",
+        `[NEAT-AI] neat_ai_backpropagation at ${binary} does not accept ` +
+          `--deadline-epoch-ms; the stuck-task watchdog stays the only stop ` +
+          `— upgrade NEAT-AI-Backpropagation.`,
+      );
+    }
+  }
 
   if (loggedTrainDirBackend !== binary) {
     loggedTrainDirBackend = binary;
@@ -628,7 +731,7 @@ function tryCliTrainDir(
     Deno.readTextFileSync(bestPath),
   ) as CreatureExport;
   const summary = summariseTrainJournal(journalPath);
-  return packageTrainingResult(creature, setup, bestJson, summary);
+  return packageTrainingResult(creature, setup, bestJson, summary, timing);
 }
 
 /**
@@ -647,6 +750,16 @@ export function tryRustTrainDir(
   cost: CostInterface,
   setup: TrainingSetupState,
 ): TrainingResult | undefined {
+  const startTS = Date.now();
+  // Same deadline the TypeScript loop uses as `timeoutTS` (0 = no deadline).
+  const timing: RustTrainTiming = {
+    startTS,
+    deadlineTS: computeTimeoutTS(
+      startTS,
+      setup.trainingTimeOutMinutes,
+      setup.hardDeadlineTS,
+    ),
+  };
   if (!isRustTrainDirEnabled()) {
     return undefined;
   }
@@ -664,7 +777,7 @@ export function tryRustTrainDir(
   const workDir = Deno.makeTempDirSync({ prefix: "neat-ai-backprop-" });
   try {
     if (isNativeBackpropAvailable()) {
-      return tryFfiTrainDir(creature, dataDir, options, setup, workDir);
+      return tryFfiTrainDir(creature, dataDir, options, setup, workDir, timing);
     }
     if (isRustTrainDirFfiRequired()) {
       throw new Error(
@@ -672,7 +785,7 @@ export function tryRustTrainDir(
           "refusing CLI/WASM fallback.",
       );
     }
-    return tryCliTrainDir(creature, dataDir, options, setup, workDir);
+    return tryCliTrainDir(creature, dataDir, options, setup, workDir, timing);
   } finally {
     try {
       Deno.removeSync(workDir, { recursive: true });

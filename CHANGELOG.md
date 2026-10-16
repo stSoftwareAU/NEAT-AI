@@ -25,6 +25,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4073:** The Rust `trainDir` path (FFI `libneat_ai_backpropagation`
+  and CLI `neat_ai_backpropagation`) never received the per-task deadline, so a
+  long native train could not stop, and the bridge always reported
+  `timedOut: false`. The deadline is now forwarded to the trainer as
+  `deadlineEpochMs` (ABI 2) or `--deadline-epoch-ms`, enforced between epochs
+  (an epoch already running finishes first), and a native timeout is logged as
+  `timed out after …`. This needs NEAT-AI-Backpropagation with ABI 2 /
+  `--deadline-epoch-ms`. An older library or binary still works but cannot
+  honour the deadline; this is logged once, and the stuck-task watchdog remains
+  the only stop.
 - **Issue #4062:** A checkpoint written during teardown could carry `memetic`
   data that no longer matched its synapses, so loading it failed with
   `Memetic from id … has no matching synapses`. The likely cause, not yet
