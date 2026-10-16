@@ -1,9 +1,11 @@
 import {
   closeNativeBackpropLibrary,
   findNativeBackpropLibrary,
+  getNativeBackpropAbiVersion,
   getNativeBackpropVersion,
   isNativeBackpropAvailable,
   NEAT_BACKPROP_ABI_VERSION,
+  NEAT_BACKPROP_MIN_ABI_VERSION,
 } from "@architecture/training/NativeBackpropLibrary.ts";
 
 /**
@@ -32,13 +34,14 @@ function main(): void {
     if (!isNativeBackpropAvailable()) {
       console.error(
         `❌ Native libneat_ai_backpropagation exists at ${libPath} but failed to load ` +
-          `(expected ABI ${NEAT_BACKPROP_ABI_VERSION}).`,
+          `(expected ABI ${NEAT_BACKPROP_MIN_ABI_VERSION}..${NEAT_BACKPROP_ABI_VERSION}).`,
       );
       Deno.exit(1);
     }
     const version = getNativeBackpropVersion() ?? "(unknown)";
+    const abi = getNativeBackpropAbiVersion() ?? "(unknown)";
     console.log(
-      `✅ native libneat_ai_backpropagation loaded from ${libPath} (v${version}, ABI ${NEAT_BACKPROP_ABI_VERSION})`,
+      `✅ native libneat_ai_backpropagation loaded from ${libPath} (v${version}, ABI ${abi})`,
     );
   } finally {
     closeNativeBackpropLibrary();

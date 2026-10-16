@@ -553,12 +553,21 @@ Deno.test({
 });
 
 /**
- * Stub for the `neat_ai_backpropagation` CLI contract (Issue #4073).
+ * Stub for the `neat_ai_backpropagation` CLI failure contract (Issue #4073).
+ *
+ * Contract source: `backpropagation/src/main.rs` in
+ * stSoftwareAU/NEAT-AI-Backpropagation, branch
+ * `issue-neat-ai-4073-train-deadline` (commit 7ec31cc). There `train --help`
+ * lists `--deadline-epoch-ms <DEADLINE_EPOCH_MS>`, and a deadline stop appends
+ * `{"kind":"timedOut","completedEpochs":N,"deadlineEpochMs":D}` to
+ * journal.jsonl.
  *
  * `train --help` lists `--deadline-epoch-ms` only when `supportsDeadline`.
- * Unknown arguments exit 2, as clap does. With a deadline already passed the
- * stub writes one epoch and a `timedOut` line; otherwise it writes epochs
- * 1..N for `--epochs N`.
+ * Failures mirror the real CLI: a missing `<CREATURE>` or `<DATA>` positional
+ * and a missing `--output-dir` exit 2 with a clap-style message, as does an
+ * unexpected argument. An unreadable creature file or a data path that is not
+ * a directory exits 1. With a deadline already passed the stub writes one
+ * epoch and a `timedOut` line; otherwise it writes epochs 1..N for `--epochs N`.
  */
 function cliStubScript(supportsDeadline: boolean): string {
   const usage = [
@@ -573,27 +582,56 @@ function cliStubScript(supportsDeadline: boolean): string {
   }
   const helpLines = usage.map((line) => `  echo '${line}'`).join("\n");
   const deadlineCase = supportsDeadline
-    ? `    --deadline-epoch-ms) deadline="$2"; shift 2 ;;\n`
+    ? `    --deadline-epoch-ms) value_of "$1" "$#"; deadline="$2"; shift 2 ;;\n`
     : "";
   return `#!/usr/bin/env bash
-if [ "$1" = "train" ] && [ "$2" = "--help" ]; then
+set -euo pipefail
+value_of() {
+  if [ "$2" -lt 2 ]; then
+    echo "error: a value is required for '$1' but none was supplied" >&2
+    exit 2
+  fi
+}
+if [ "\${1:-}" = "train" ] && [ "\${2:-}" = "--help" ]; then
 ${helpLines}
   exit 0
 fi
-creature="$2"
+creature="\${2:-}"
+data="\${3:-}"
+missing=()
+case "$creature" in ""|-*) missing+=("<CREATURE>") ;; esac
+case "$data" in ""|-*) missing+=("<DATA>") ;; esac
+if [ "\${#missing[@]}" -gt 0 ]; then
+  echo "error: the following required arguments were not provided:" >&2
+  for m in "\${missing[@]}"; do echo "  $m" >&2; done
+  exit 2
+fi
 shift 3
 epochs=1
 outdir=""
 deadline=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --epochs) epochs="$2"; shift 2 ;;
-    --output-dir) outdir="$2"; shift 2 ;;
-${deadlineCase}    --learning-rate | --learning-rate-strategy | --learning-rate-decay | --maximum-bias-adjustment-scale | --maximum-weight-adjustment-scale | --step-scale | --seed | --max-records | --trace-store) shift 2 ;;
+    --epochs) value_of "$1" "$#"; epochs="$2"; shift 2 ;;
+    --output-dir) value_of "$1" "$#"; outdir="$2"; shift 2 ;;
+${deadlineCase}    --learning-rate | --learning-rate-strategy | --learning-rate-decay | --maximum-bias-adjustment-scale | --maximum-weight-adjustment-scale | --step-scale | --seed | --max-records | --trace-store) value_of "$1" "$#"; shift 2 ;;
     --normalise-gradients | --disable-random-samples) shift ;;
     *) echo "error: unexpected argument '$1' found" >&2; exit 2 ;;
   esac
 done
+if [ -z "$outdir" ]; then
+  echo "error: the following required arguments were not provided:" >&2
+  echo "  --output-dir <DIR>" >&2
+  exit 2
+fi
+if [ ! -r "$creature" ]; then
+  echo "error: creature file '$creature' is not readable" >&2
+  exit 1
+fi
+if [ ! -d "$data" ]; then
+  echo "error: data dir '$data' is not a directory" >&2
+  exit 1
+fi
 mkdir -p "$outdir"
 cp "$creature" "$outdir/best.json"
 journal="$outdir/journal.jsonl"
