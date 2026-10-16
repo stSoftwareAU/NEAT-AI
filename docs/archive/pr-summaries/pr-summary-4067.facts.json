@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "branchOutcomes": {
+    "noneAdded": false,
+    "entries": [
+      {
+        "path": "src/creature/EvolveRunWatchdog.ts",
+        "line": 72,
+        "outcome": "no timeoutMinutes: no-op handle, armWatchdog never called",
+        "test": "test/creature/EvolveRunWatchdog_test.ts",
+        "testName": "armRunWatchdog: no timeout returns a no-op handle and never arms",
+        "flipWentRed": "forcing the guard to false turned it red: the stub was armed"
+      },
+      {
+        "path": "src/creature/EvolveRunWatchdog.ts",
+        "line": 74,
+        "outcome": "production default arms the real off-main-thread watchdog (armEventLoopWatchdog)",
+        "test": "test/creature/EvolveFirstGenerationBusyLoop_test.ts",
+        "testName": "EvolveFirstGenerationBusyLoop (dir): a synchronous first generation is SIGKILLed at its bound",
+        "flipWentRed": "defaulting to a no-op arm turned it red: the hang guard ended the process, not the watchdog"
+      },
+      {
+        "path": "src/creature/EvolveRunWatchdog.ts",
+        "line": 75,
+        "outcome": "default margin is DEFAULT_WATCHDOG_MARGIN_MS when the caller passes none",
+        "test": "test/creature/EvolveDirHardDeadline.ts",
+        "testName": "evolveDir T+15 guard: training-mode run returns once the hard cap passes",
+        "flipWentRed": "defaulting the margin to 0 turned it red: the past-start suite's own test process was SIGKILLed (exit 137)"
+      },
+      {
+        "path": "src/creature/EvolveRunWatchdog.ts",
+        "line": 76,
+        "outcome": "real clock defaults to Date.now",
+        "test": "test/creature/EvolveDirHardDeadline.ts",
+        "testName": "evolveDir T+15 guard: training-mode run returns once the hard cap passes",
+        "flipWentRed": "defaulting realNow to () => 0 turned it red: the test process was SIGKILLed (exit 137)"
+      },
+      {
+        "path": "src/creature/EvolveRunWatchdog.ts",
+        "line": 110,
+        "outcome": "after disarm, generationCompleted neither re-arms nor touches the handle",
+        "test": "test/creature/EvolveRunWatchdog_test.ts",
+        "testName": "armRunWatchdog: disarm releases the watchdog and generationCompleted then never re-arms",
+        "flipWentRed": "removing the disarmed guard turned it red: a second watchdog was armed"
+      },
+      {
+        "path": "src/creature/EvolveRunWatchdog.ts",
+        "line": 111,
+        "outcome": "only the first completed generation re-arms to the hard cap; later ones only move the generation",
+        "test": "test/creature/EvolveRunWatchdog_test.ts",
+        "testName": "armRunWatchdog: a completed generation 2 updates the generation without re-arming",
+        "flipWentRed": "forcing the condition to true turned it red: a third watchdog was armed"
+      },
+      {
+        "path": "src/NEAT/HardDeadline.ts",
+        "line": 214,
+        "outcome": "a bound already behind the injected clock contributes 0 (clamp)",
+        "test": "test/NEAT/HardDeadlineWatchdog.ts",
+        "testName": "computeWatchdogDeadlineEpochMS: a bound already behind the injected clock contributes nothing",
+        "flipWentRed": "computing boundMS + marginMS from the injected clock turned three arithmetic tests red"
+      }
+    ]
+  }
+}
