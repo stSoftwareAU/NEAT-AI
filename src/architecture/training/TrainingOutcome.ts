@@ -7,6 +7,7 @@
  */
 
 import { blue, yellow } from "@std/fmt/colors";
+import { format } from "@std/fmt/duration";
 import { ensureDirSync } from "@std/fs";
 import type { Creature } from "@creature";
 import type { TrainOptions } from "@config/TrainOptions.ts";
@@ -20,6 +21,11 @@ import type {
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
 import type { ScratchIndexBuffer } from "@architecture/training/TrainingSamples.ts";
+import {
+  computeEffectiveTrainingBudgetMs,
+  isTrainingBudgetTooSmall,
+  MIN_TRAINING_BUDGET_MS,
+} from "@neat/PerTaskTrainingTimeout.ts";
 
 /** Mutable state carried across epochs of the training loop. */
 export interface EpochState {
@@ -67,6 +73,39 @@ export function computeTimeoutTS(
     return relativeTS > 0 ? Math.min(relativeTS, hardTS) : hardTS;
   }
   return relativeTS;
+}
+
+/**
+ * Log that training `id`, started at `startTS`, stopped at its per-task
+ * deadline `timeoutTS`; `now` is when it stopped. The TypeScript loop and the
+ * Rust trainer share this line (Issue #4073).
+ *
+ * Issue #3166: `scheduleTraining` skips sub-second budgets before dispatch,
+ * but a queue delay can still shrink the effective budget to milliseconds by
+ * the time the worker starts. That is flagged as misconfiguration (no useful
+ * training performed) instead of a silent millisecond "timed out" line.
+ */
+export function logTrainingDeadlineStop(
+  id: string,
+  startTS: number,
+  timeoutTS: number,
+  now: number,
+): void {
+  const budgetMs = computeEffectiveTrainingBudgetMs(startTS, timeoutTS);
+  if (isTrainingBudgetTooSmall(budgetMs)) {
+    getLogger().warn(
+      `Training ${blue(id)} had an implausibly small budget of ${
+        yellow(format(Math.max(0, budgetMs), { ignoreZero: true }))
+      } (< ${MIN_TRAINING_BUDGET_MS}ms) — likely a queue delay or ` +
+        `misconfiguration; no useful training performed.`,
+    );
+    return;
+  }
+  getLogger().info(
+    `Training ${blue(id)} timed out after ${
+      yellow(format(now - startTS, { ignoreZero: true }))
+    }`,
+  );
 }
 
 /** Construct the initial epoch state from setup output. */

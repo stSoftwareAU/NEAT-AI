@@ -29,7 +29,12 @@ import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
 /** Matches `NEAT_BACKPROP_ABI_VERSION` / header revision 2. */
 export const NEAT_BACKPROP_ABI_VERSION = 2;
 
-/** Oldest ABI this bridge accepts (ABI 1 has no deadline support). */
+/**
+ * Oldest ABI this bridge accepts (ABI 1 has no deadline support). Issue #4073
+ * follow-up: raise this to 2, and drop the CLI `train --help` probe and the
+ * deadline-unsupported warnings in `RustTrainDirBridge.ts`, once a
+ * NEAT-AI-Backpropagation release with ABI 2 is installed across the fleet.
+ */
 export const NEAT_BACKPROP_MIN_ABI_VERSION = 1;
 
 /** First ABI that honours `deadlineEpochMs` and reports `timedOut`. */
@@ -150,9 +155,14 @@ export interface NativeBackpropTrainResponse {
   timedOut?: boolean;
 }
 
-let nativeLib: Deno.DynamicLibrary<NativeBackpropSymbols> | null = null;
+/** The parts of the opened library this module calls (tests supply a double). */
+export type NativeBackpropHandle = Pick<
+  Deno.DynamicLibrary<NativeBackpropSymbols>,
+  "symbols" | "close"
+>;
+
+let nativeLib: NativeBackpropHandle | null = null;
 let loadAttempted = false;
-let loggedAvailability = false;
 let loadedAbiVersion: number | undefined;
 
 function readEnvString(key: string): string | undefined {
@@ -264,6 +274,28 @@ export function findNativeBackpropLibrary(): string | null {
   });
 }
 
+/** Keep `lib` when its ABI is in range; otherwise close it and warn. */
+function adoptNativeBackpropLibrary(
+  lib: NativeBackpropHandle,
+  libPath: string,
+): boolean {
+  const abi = lib.symbols["neat_backprop_abi_version"]();
+  if (abi < NEAT_BACKPROP_MIN_ABI_VERSION || abi > NEAT_BACKPROP_ABI_VERSION) {
+    lib.close();
+    getLogger().warn(
+      `[NEAT-AI] libneat_ai_backpropagation at ${libPath} reports ABI ` +
+        `${abi}; expected ${NEAT_BACKPROP_MIN_ABI_VERSION}..${NEAT_BACKPROP_ABI_VERSION}.`,
+    );
+    return false;
+  }
+  nativeLib = lib;
+  loadedAbiVersion = abi;
+  getLogger().info(
+    `[NEAT-AI] trainDir FFI libneat_ai_backpropagation loaded from ${libPath}`,
+  );
+  return true;
+}
+
 function loadNativeBackpropLibrary(): boolean {
   if (nativeLib !== null) return true;
   if (loadAttempted) return false;
@@ -273,27 +305,10 @@ function loadNativeBackpropLibrary(): boolean {
   if (!libPath) return false;
 
   try {
-    nativeLib = Deno.dlopen(libPath, NATIVE_BACKPROP_SYMBOLS);
-    const abi = nativeLib.symbols["neat_backprop_abi_version"]();
-    if (
-      abi < NEAT_BACKPROP_MIN_ABI_VERSION || abi > NEAT_BACKPROP_ABI_VERSION
-    ) {
-      nativeLib.close();
-      nativeLib = null;
-      getLogger().warn(
-        `[NEAT-AI] libneat_ai_backpropagation at ${libPath} reports ABI ` +
-          `${abi}; expected ${NEAT_BACKPROP_MIN_ABI_VERSION}..${NEAT_BACKPROP_ABI_VERSION}.`,
-      );
-      return false;
-    }
-    loadedAbiVersion = abi;
-    if (!loggedAvailability) {
-      loggedAvailability = true;
-      getLogger().info(
-        `[NEAT-AI] trainDir FFI libneat_ai_backpropagation loaded from ${libPath}`,
-      );
-    }
-    return true;
+    return adoptNativeBackpropLibrary(
+      Deno.dlopen(libPath, NATIVE_BACKPROP_SYMBOLS),
+      libPath,
+    );
   } catch (error) {
     nativeLib = null;
     getLogger().warn(
@@ -314,8 +329,20 @@ export function closeNativeBackpropLibrary(): void {
     nativeLib = null;
   }
   loadAttempted = false;
-  loggedAvailability = false;
   loadedAbiVersion = undefined;
+}
+
+/**
+ * Test seam: close the current library and adopt `lib` (a double of the C
+ * ABI) through the same ABI check a real `dlopen` passes. Returns false, and
+ * closes `lib`, when its ABI is out of range. Undo with
+ * {@link closeNativeBackpropLibrary}.
+ */
+export function __installNativeBackpropLibraryForTests(
+  lib: NativeBackpropHandle,
+): boolean {
+  closeNativeBackpropLibrary();
+  return adoptNativeBackpropLibrary(lib, "(test double)");
 }
 
 /**

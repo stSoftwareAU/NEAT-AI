@@ -28,8 +28,6 @@
  */
 
 import { join, resolve } from "@std/path";
-import { blue, yellow } from "@std/fmt/colors";
-import { format } from "@std/fmt/duration";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import { MSE } from "@costs/MSE.ts";
 import type { Creature } from "@creature";
@@ -39,7 +37,10 @@ import { getLogger } from "@utils/Logger.ts";
 import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
 import { finaliseTraining } from "@architecture/training/TrainingTeardown.ts";
 import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
-import { computeTimeoutTS } from "@architecture/training/TrainingOutcome.ts";
+import {
+  computeTimeoutTS,
+  logTrainingDeadlineStop,
+} from "@architecture/training/TrainingOutcome.ts";
 import type { TrainingLoopResult } from "@architecture/training/TrainingLoop.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 import { readDatasetDirEntriesSync } from "@architecture/DatasetIO.ts";
@@ -117,6 +118,17 @@ function summariseTrainJournal(journalPath: string): TrainSummary {
     completedEpochs,
     timedOut,
   };
+}
+
+/**
+ * The best MSE from the CLI's
+ * `train: baseline_mse=<B> best_mse=<M> accepted_epochs=<N>` stderr line, or
+ * `undefined` when it is absent.
+ */
+function parseCliBestMse(stderr: string): number | undefined {
+  const match = /^train: baseline_mse=\S+ best_mse=(\S+)/m.exec(stderr);
+  if (match === null) return undefined;
+  return Number(match[1]);
 }
 
 /** Deadline-capability warnings already logged in this process. */
@@ -446,23 +458,15 @@ function spawnTrain(
 
 /**
  * True when `<binary> train --help` succeeds and lists `--deadline-epoch-ms`
- * (Issue #4073). A failed probe counts as unsupported.
+ * (Issue #4073). A probe that exits non-zero counts as unsupported; a binary
+ * that cannot be spawned throws here, as the train itself would.
  */
 function cliSupportsDeadline(binary: string): boolean {
-  let supported = false;
   // SIMPLE-ON-PURPOSE: probes once per CLI train, a few ms beside a multi-second train — upgrade when CLI trains become sub-second.
-  try {
-    const output = new Deno.Command(binary, {
-      args: ["train", "--help"],
-      stdout: "piped",
-      stderr: "piped",
-    }).outputSync();
-    supported = output.success &&
-      new TextDecoder().decode(output.stdout).includes("--deadline-epoch-ms");
-  } catch {
-    supported = false;
-  }
-  return supported;
+  const output = new Deno.Command(binary, { args: ["train", "--help"] })
+    .outputSync();
+  return output.success &&
+    new TextDecoder().decode(output.stdout).includes("--deadline-epoch-ms");
 }
 
 function buildTrainRequestFields(
@@ -523,10 +527,11 @@ function packageTrainingResult(
   timing: RustTrainTiming,
 ): TrainingResult {
   if (summary.timedOut) {
-    getLogger().info(
-      `Training ${blue(setup.ID)} timed out after ${
-        yellow(format(Date.now() - timing.startTS, { ignoreZero: true }))
-      }`,
+    logTrainingDeadlineStop(
+      setup.ID,
+      timing.startTS,
+      timing.deadlineTS,
+      Date.now(),
     );
   }
   creature.loadFrom(bestJson, false, "training:rustTrainDir");
@@ -622,7 +627,12 @@ function tryFfiTrainDir(
       summary.completedEpochs = fromJournal.completedEpochs;
       summary.acceptedEpochs = fromJournal.acceptedEpochs;
       summary.baselineMse = fromJournal.baselineMse;
-      summary.bestMse = fromJournal.bestMse;
+      // A stop before epoch 1 journals no epoch, so no MSE (NaN): keep the
+      // response's rather than report a non-finite error, which the
+      // scheduler reads as a failed train (Issue #4073).
+      if (Number.isFinite(fromJournal.bestMse)) {
+        summary.bestMse = fromJournal.bestMse;
+      }
     }
   } catch {
     // Response fields are authoritative when the journal is missing.
@@ -726,6 +736,12 @@ function tryCliTrainDir(
     Deno.readTextFileSync(bestPath),
   ) as CreatureExport;
   const summary = summariseTrainJournal(journalPath);
+  // A stop before epoch 1 journals no epoch, so no MSE (NaN): take the CLI's
+  // own rather than report a non-finite error, which the scheduler reads as a
+  // failed train (Issue #4073).
+  if (!Number.isFinite(summary.bestMse)) {
+    summary.bestMse = parseCliBestMse(spawned.stderr) ?? summary.bestMse;
+  }
   return packageTrainingResult(creature, setup, bestJson, summary, timing);
 }
 

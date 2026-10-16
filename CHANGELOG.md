@@ -31,7 +31,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `timedOut: false`. The deadline is now forwarded to the trainer as
   `deadlineEpochMs` (ABI 2) or `--deadline-epoch-ms`, enforced between epochs
   (an epoch already running finishes first), and a native timeout is logged as
-  `timed out after …`. This needs NEAT-AI-Backpropagation with ABI 2 /
+  `timed out after …`. A train the deadline stops before its first epoch reports
+  the trainer's own MSE rather than a non-finite one, so it is not counted as a
+  failed training task. This needs NEAT-AI-Backpropagation with ABI 2 /
   `--deadline-epoch-ms`. An older library or binary still works but cannot
   honour the deadline; this is logged once, and the stuck-task watchdog remains
   the only stop.
