@@ -1490,6 +1490,9 @@ export async function evolveRL<S, A>(
   // released by the `finally` at the end of this function, on every exit path.
   let neatForCleanup: Neat | undefined;
   let bestCreature: Creature | undefined;
+  let workerPool:
+    | import("@creature/EpisodeWorkerPool.ts").EpisodeWorkerPool
+    | undefined;
   let tornDown = false;
   try {
     const start = deps?.startTimeMS ?? Date.now();
