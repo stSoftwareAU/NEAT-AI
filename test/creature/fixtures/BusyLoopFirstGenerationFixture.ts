@@ -1,15 +1,16 @@
 /**
  * Subprocess fixture for `test/creature/EvolveFirstGenerationBusyLoop_test.ts`
  * (Issue #4067, part of #4060). Run as
- * `deno run ... BusyLoopFirstGenerationFixture.ts <dir|env|rl>`.
+ * `deno run ... BusyLoopFirstGenerationFixture.ts <mode>`, where mode is
+ * `dir|env|rl` (busy loop) or `dir-return|env-return|rl-return` (normal run).
  *
  * `neat.evolve` is replaced with a synchronous `for (;;) {}`. The loop never
  * yields, so the in-process bound cannot fire. Only the off-main-thread
  * watchdog armed by the entry point can end the process.
  *
- * The watchdog is real here: no `armWatchdog` stub. The run starts 24 h in
- * the past, so generation 1's bound has already passed, and `watchdogMarginMS`
- * is 0, so the Worker breaches on its first check.
+ * The watchdog is real here: no `armWatchdog` stub. The run starts in 2001, so
+ * generation 1's bound has long passed, and `watchdogMarginMS` is 0, so the
+ * Worker breaches on its first check.
  *
  * This file has no `Deno.test`. The test spawns it as a child process.
  * The dispatch sits behind `import.meta.main`, so `deno test` only imports it.
@@ -30,6 +31,9 @@ import {
 import type { LegacyEpisodeAdapter } from "@creature/EpisodicFitnessTypes.ts";
 import { EpisodeAdapter, type StepResult } from "@creature/EpisodeAdapter.ts";
 import { initWasmForTests } from "../../_initWasm.ts";
+
+/** Start far in the past: generation 1's bound has long passed (2001). */
+const PAST_START_MS = 1_000_000_000_000;
 
 function tinyDataSet(): DataRecordInterface[] {
   return [
@@ -89,14 +93,18 @@ class UnreachableAdapter extends EpisodeAdapter<null, number> {
 
 if (import.meta.main) {
   const mode = Deno.args[0];
-  if (mode !== "dir" && mode !== "env" && mode !== "rl") {
+  const returns = mode.endsWith("-return");
+  const entry = returns ? mode.slice(0, -"-return".length) : mode;
+  if (entry !== "dir" && entry !== "env" && entry !== "rl") {
     throw new Error(`unknown mode: ${mode}`);
   }
 
   await initWasmForTests();
   const creatureStore = await Deno.makeTempDir({ prefix: "busy-loop-4067-" });
-  const deps: EvolveDirDeps = {
-    startTimeMS: Date.now() - 24 * 60 * 60_000,
+  // Busy loop: the evolve stub never yields, and the run starts in the past.
+  // Return mode: no stub, no injected start, the default watchdog margin.
+  const deps: EvolveDirDeps = returns ? {} : {
+    startTimeMS: PAST_START_MS,
     watchdogMarginMS: 0,
     onNeatReady: (neat: Neat) => {
       neat.evolve = (() => {
@@ -108,13 +116,13 @@ if (import.meta.main) {
   };
   const options = {
     populationSize: 6,
-    iterations: 500,
+    iterations: returns ? 1 : 500,
     timeoutMinutes: 5,
     threads: 1,
     creatureStore,
   };
 
-  if (mode === "dir") {
+  if (entry === "dir") {
     const dataSetDir = makeDataDir(tinyDataSet(), 2000);
     await evolveDir(
       new Creature(2, 1, { layers: [{ count: 3 }] }),
@@ -122,9 +130,10 @@ if (import.meta.main) {
       options,
       deps,
     );
-  } else if (mode === "env") {
+  } else if (entry === "env") {
     await evolveEnv(new Creature(1, 1), buildLegacyAdapter(), options, deps);
   } else {
     await evolveRL(new Creature(1, 1), new UnreachableAdapter(), options, deps);
   }
+  if (returns) console.log("fixture-returned");
 }

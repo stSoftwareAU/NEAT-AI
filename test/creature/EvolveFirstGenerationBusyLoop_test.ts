@@ -28,10 +28,11 @@ interface FixtureResult {
   signal: Deno.Signal | null;
   /** True when the hang-guard timer, not the watchdog, ended the child. */
   guardFired: boolean;
+  stdout: string;
   stderr: string;
 }
 
-async function runFixture(mode: "dir" | "env" | "rl"): Promise<FixtureResult> {
+async function runFixture(mode: string): Promise<FixtureResult> {
   const command = new Deno.Command(Deno.execPath(), {
     args: [
       "run",
@@ -58,11 +59,12 @@ async function runFixture(mode: "dir" | "env" | "rl"): Promise<FixtureResult> {
     child.kill("SIGKILL");
   }, 60_000);
   try {
-    const { code, signal, stderr } = await child.output();
+    const { code, signal, stdout, stderr } = await child.output();
     return {
       code,
       signal,
       guardFired,
+      stdout: new TextDecoder().decode(stdout),
       stderr: new TextDecoder().decode(stderr),
     };
   } finally {
@@ -88,6 +90,27 @@ for (const mode of ["dir", "env", "rl"] as const) {
       assert(
         result.stderr.includes("first-generation-wedged"),
         `breach reason missing from stderr: ${result.stderr}`,
+      );
+    },
+  );
+}
+
+for (const entry of ["dir", "env", "rl"] as const) {
+  Deno.test(
+    `EvolveFirstGenerationBusyLoop (${entry}-return): a normal run returns and its watchdog does not keep the process alive`,
+    async () => {
+      // An armed Worker keeps the process alive until its deadline, so a run
+      // that returns but never disarms would hang until the guard SIGKILLs it.
+      // The guard firing is therefore the failure this case catches.
+      const result = await runFixture(`${entry}-return`);
+      assert(
+        !result.guardFired,
+        "the process did not exit after the run returned",
+      );
+      assertEquals(result.code, 0, `stderr: ${result.stderr}`);
+      assert(
+        result.stdout.includes("fixture-returned"),
+        `stdout: ${result.stdout}`,
       );
     },
   );
