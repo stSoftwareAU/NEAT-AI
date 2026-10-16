@@ -52,6 +52,7 @@ import {
 import { normaliseCreatureExport } from "@architecture/NormaliseCreatureExport.ts";
 import { assertNoRecurrentSynapseOnForwardOnly } from "@architecture/ForwardOnlyAssertion.ts";
 import { TopologyError } from "@errors/TopologyError.ts";
+import { ValidationError } from "@errors/ValidationError.ts";
 import { computeCreatureStructuralHash } from "@utils/CreatureStructuralHash.ts";
 import { cleanupOrphanedNeuronsInCreature } from "@compact/OrphanedNeuronCleanup.ts";
 import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
@@ -655,6 +656,22 @@ export function loadFrom(
   const pinnedOutputSquash = Activations.getFixedOutputSquash();
   let pinnedOutputSquashConflicts = 0;
 
+  // Issue #4077: a uuid names exactly one neuron. A repeat (including a hidden
+  // neuron claiming `input-N`) is refused here, unconditionally, rather than
+  // letting the later neuron silently capture every synapse naming that uuid.
+  // `position` is the runtime index into creature.neurons, as is `earlier`.
+  const registerNeuronUuid = (uuid: string, position: number): void => {
+    const earlier = uuidToIndex.get(uuid);
+    if (earlier !== undefined) {
+      throw new ValidationError(
+        `Duplicate neuron uuid ${uuid}: neuron at position ${position} repeats the uuid already held by position ${earlier}`,
+        "OTHER",
+        position,
+      );
+    }
+    uuidToIndex.set(uuid, position);
+  };
+
   for (let i = 0; i < neurons.length; i++) {
     const jn = neurons[i];
     if (jn.type === "input") continue;
@@ -663,10 +680,10 @@ export function loadFrom(
       const outId = outputNeuronId(outputIndex++);
       (jn as { id: number }).id = outId;
       if (typeof jn.uuid === "string") {
-        uuidToIndex.set(jn.uuid, pos);
+        registerNeuronUuid(jn.uuid, pos);
       }
     } else if (typeof jn.uuid === "string") {
-      uuidToIndex.set(jn.uuid, pos);
+      registerNeuronUuid(jn.uuid, pos);
     }
 
     // Issue #2704: reject non-finite bias on the default JSON-load path.

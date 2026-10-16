@@ -25,6 +25,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4077:** `loadFrom` accepted a creature JSON whose neurons repeated a
+  uuid. The later neuron silently overwrote the earlier entry, so every synapse
+  naming that uuid resolved onto the later neuron. A repeated uuid (including a
+  hidden neuron claiming `input-0`) is now refused with a `ValidationError`
+  naming both positions, whether or not validation is requested.
 - **Issue #4071:** `cleanupOrphanedNeurons` converted a hidden neuron that had
   outward but no inward synapses into a constant and dropped its `uuid`. On
   reload the constant was relabelled `legacy-neuron-<id>`, which could match a

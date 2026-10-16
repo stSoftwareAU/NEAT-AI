@@ -239,7 +239,9 @@ meaninglessly scrambled.
    process is a bug.
 
 5. **`loadFrom` resolves synapses by UUID first** (Issue #2090). Integer IDs are
-   a fallback only for internal round-trips where UUIDs may not be present.
+   a fallback only for internal round-trips where UUIDs may not be present. A
+   JSON whose neurons repeat a uuid is refused with a `ValidationError` naming
+   both positions (Issue #4077).
 
 6. **Genetic compatibility** uses `getHiddenNeuronWireKeys()` (UUID-based wire
    labels), not integer ids.
