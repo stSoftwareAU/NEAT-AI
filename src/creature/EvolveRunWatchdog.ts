@@ -26,7 +26,11 @@ import {
 
 /** Lifecycle handle for one evolve run's watchdog. */
 export interface RunWatchdog {
-  /** Record that `generationsCompleted` generations have completed. The first call with a value >= 1 re-arms the watchdog from the first-generation bound to the hard cap; every call updates the breach line's generation. */
+  /**
+   * Record that `generationsCompleted` generations have completed. The first
+   * call re-arms the watchdog from the first-generation bound to the hard cap;
+   * every call updates the breach line's generation.
+   */
   generationCompleted(generationsCompleted: number): void;
   /** Idempotent. After it, generationCompleted never re-arms. */
   disarm(): void;
@@ -46,7 +50,10 @@ export interface ArmRunWatchdogParams {
   now: () => number;
   /** Arms the Worker; defaults to `armEventLoopWatchdog`. */
   armWatchdog?: (options: EventLoopWatchdogOptions) => EventLoopWatchdog;
-  /** Margin past each bound before the SIGKILL; defaults to `DEFAULT_WATCHDOG_MARGIN_MS`. */
+  /**
+   * Margin past each bound before the SIGKILL; defaults to
+   * `DEFAULT_WATCHDOG_MARGIN_MS`.
+   */
   marginMS?: number;
   /** Real wall clock the Worker compares against; defaults to `Date.now`. */
   realNow?: () => number;
@@ -101,7 +108,7 @@ export function armRunWatchdog(params: ArmRunWatchdogParams): RunWatchdog {
   return {
     generationCompleted(generationsCompleted: number): void {
       if (disarmed) return;
-      if (onFirstGeneration && generationsCompleted >= 1) {
+      if (onFirstGeneration) {
         onFirstGeneration = false;
         current?.disarm();
         current = armBound(

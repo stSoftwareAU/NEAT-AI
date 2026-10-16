@@ -12,6 +12,7 @@
  * is 0, so the Worker breaches on its first check.
  *
  * This file has no `Deno.test`. The test spawns it as a child process.
+ * The dispatch sits behind `import.meta.main`, so `deno test` only imports it.
  */
 
 import { Creature } from "@creature";
@@ -86,42 +87,44 @@ class UnreachableAdapter extends EpisodeAdapter<null, number> {
   }
 }
 
-const mode = Deno.args[0];
-if (mode !== "dir" && mode !== "env" && mode !== "rl") {
-  throw new Error(`unknown mode: ${mode}`);
-}
+if (import.meta.main) {
+  const mode = Deno.args[0];
+  if (mode !== "dir" && mode !== "env" && mode !== "rl") {
+    throw new Error(`unknown mode: ${mode}`);
+  }
 
-await initWasmForTests();
-const creatureStore = await Deno.makeTempDir({ prefix: "busy-loop-4067-" });
-const deps: EvolveDirDeps = {
-  startTimeMS: Date.now() - 24 * 60 * 60_000,
-  watchdogMarginMS: 0,
-  onNeatReady: (neat: Neat) => {
-    neat.evolve = (() => {
-      for (;;) {
-        // Busy loop: never yields to the event loop.
-      }
-    }) as typeof neat.evolve;
-  },
-};
-const options = {
-  populationSize: 6,
-  iterations: 500,
-  timeoutMinutes: 5,
-  threads: 1,
-  creatureStore,
-};
+  await initWasmForTests();
+  const creatureStore = await Deno.makeTempDir({ prefix: "busy-loop-4067-" });
+  const deps: EvolveDirDeps = {
+    startTimeMS: Date.now() - 24 * 60 * 60_000,
+    watchdogMarginMS: 0,
+    onNeatReady: (neat: Neat) => {
+      neat.evolve = (() => {
+        for (;;) {
+          // Busy loop: never yields to the event loop.
+        }
+      }) as typeof neat.evolve;
+    },
+  };
+  const options = {
+    populationSize: 6,
+    iterations: 500,
+    timeoutMinutes: 5,
+    threads: 1,
+    creatureStore,
+  };
 
-if (mode === "dir") {
-  const dataSetDir = makeDataDir(tinyDataSet(), 2000);
-  await evolveDir(
-    new Creature(2, 1, { layers: [{ count: 3 }] }),
-    dataSetDir,
-    options,
-    deps,
-  );
-} else if (mode === "env") {
-  await evolveEnv(new Creature(1, 1), buildLegacyAdapter(), options, deps);
-} else {
-  await evolveRL(new Creature(1, 1), new UnreachableAdapter(), options, deps);
+  if (mode === "dir") {
+    const dataSetDir = makeDataDir(tinyDataSet(), 2000);
+    await evolveDir(
+      new Creature(2, 1, { layers: [{ count: 3 }] }),
+      dataSetDir,
+      options,
+      deps,
+    );
+  } else if (mode === "env") {
+    await evolveEnv(new Creature(1, 1), buildLegacyAdapter(), options, deps);
+  } else {
+    await evolveRL(new Creature(1, 1), new UnreachableAdapter(), options, deps);
+  }
 }
