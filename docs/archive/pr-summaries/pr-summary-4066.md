@@ -39,6 +39,10 @@ will. Closes #4066.
 - Options are validated with `ConfigurationError` before anything is spawned
   (repo rule: fail fast on configuration errors). `disarm()` is
   `Worker.terminate()`, which is idempotent.
+- The `error` listener only prevents the default and logs; it does not call
+  `terminate()`. By the time the event arrives the Worker has already stopped
+  (it never loaded, or it raised an uncaught error), so a `terminate()` there
+  changed nothing. The mutation check showed this, and the line was removed.
 
 ### Undiscoverable Facts
 
@@ -54,12 +58,18 @@ will. Closes #4066.
   `EventLoopWatchdog.ts`. Loading it remotely was not exercised. If it fails, it
   reports through the same `error` event, which the unavailable test covers for
   the permission case.
+- Both catch branches can be staged in a child process (Deno 2.9.6 probes).
+  Replacing `globalThis.Worker` with a class whose constructor throws makes
+  `new Worker` throw synchronously. A wrapper Worker module whose first import
+  redefines `Deno.kill` makes the Worker's kill throw. Without `terminate()`, a
+  Worker that raised an uncaught error, with the event's default prevented, does
+  not hold the process open: the child still exits 0.
 
 ## Evidence
 
 Backend-only change; no UI files. The subprocess tests in
-`test/NEAT/EventLoopWatchdog.ts` run a real `deno run` child and assert its exit
-status and stderr.
+`test/NEAT/EventLoopWatchdog_test.ts` run a real `deno run` child and assert its
+exit status and stderr.
 
 ```mermaid
 sequenceDiagram
@@ -67,7 +77,7 @@ sequenceDiagram
     participant W as Watchdog Worker
     M->>W: new Worker + postMessage(deadline, breachLine, SAB)
     M->>M: setGeneration(n) → Atomics.store
-    M->>M: blocked (for(;;) / GC thrash)
+    M->>M: blocked (busy loop or GC thrash)
     W->>W: Date.now() >= deadline?
     W->>W: stderr.writeSync(breach line with generation)
     W->>M: Deno.kill(Deno.pid, "SIGKILL") → exit 137
@@ -98,7 +108,7 @@ test policy the issue cites.
   SIGKILLed at the deadline, but the training entry points are not armed until
   #4067, so the field symptom itself is not reproduced or fixed here.
 - **regression test** —
-  `test/NEAT/EventLoopWatchdog.ts::EventLoopWatchdogKillsBlockedMainThread: SIGKILLs a busy-looping main thread that swallows SIGTERM`
+  `test/NEAT/EventLoopWatchdog_test.ts::EventLoopWatchdogKillsBlockedMainThread: SIGKILLs a busy-looping main thread that swallows SIGTERM`
 
 ## Acceptance Criteria
 
@@ -114,16 +124,16 @@ test policy the issue cites.
   SIGTERM listener, arms the watchdog with a deadline already in the past, then
   runs `for (;;) {}`. The test asserts that the child ends by SIGKILL (signal
   `SIGKILL` / code 137) and that stderr contains the breach line. — evidence:
-  `test/NEAT/EventLoopWatchdog.ts::EventLoopWatchdogKillsBlockedMainThread: SIGKILLs a busy-looping main thread that swallows SIGTERM`
+  `test/NEAT/EventLoopWatchdog_test.ts::EventLoopWatchdogKillsBlockedMainThread: SIGKILLs a busy-looping main thread that swallows SIGTERM`
   — reviewer: met
 - **met** — Subprocess test: arm, then `disarm()`, then return normally. The
   child exits 0 promptly; the Worker does not hold the process open. — evidence:
-  `test/NEAT/EventLoopWatchdog.ts::EventLoopWatchdogDisarm: disarm() lets the process exit 0 without the breach`
+  `test/NEAT/EventLoopWatchdog_test.ts::EventLoopWatchdogDisarm: disarm() lets the process exit 0 without the breach`
   — reviewer: met
 - **met** — Neither test uses a real wait or elapsed-time assertion; deadlines
   are already in the past (policy #2888). — evidence:
-  `test/NEAT/EventLoopWatchdog.ts` (no assertion waits on or measures time) —
-  reviewer: partial — reason: the reviewer noted the disarm fixture's deadline
+  `test/NEAT/EventLoopWatchdog_test.ts` (no assertion waits on or measures time)
+  — reviewer: partial — reason: the reviewer noted the disarm fixture's deadline
   is one hour ahead and the 60 s hang guard is a real timer. Neither is a wait:
   the disarm child exits at once and the far deadline is what makes a broken
   `disarm()` fail (a past deadline would race the kill against termination), and
@@ -135,7 +145,7 @@ test policy the issue cites.
   it was run here and passed.
 - **met** — setGeneration(n) posts the current generation to the Worker, so the
   breach line can name it — evidence:
-  `test/NEAT/EventLoopWatchdog.ts::EventLoopWatchdogKillsBlockedMainThread: SIGKILLs a busy-looping main thread that swallows SIGTERM`
+  `test/NEAT/EventLoopWatchdog_test.ts::EventLoopWatchdogKillsBlockedMainThread: SIGKILLs a busy-looping main thread that swallows SIGTERM`
   (asserts `generation 7`) — reviewer: partial — reason: the reviewer flagged
   that the value travels through a `SharedArrayBuffer`, not a posted message,
   and said the outcome is the same; this was chosen on purpose so the breach
@@ -180,14 +190,27 @@ test policy the issue cites.
 
 ## Test Plan
 
-- Added `test/NEAT/EventLoopWatchdog.ts` (8 tests): four subprocess tests (kill
-  of a SIGTERM-swallowing busy loop naming `generation 7`; `unknown` generation;
-  disarm exits 0; unavailable Worker logs the cause and exits 0) and four
-  in-process validation tests.
-- `deno test … test/NEAT/EventLoopWatchdog.ts`: 8 passed, 0 failed.
+- Added `test/NEAT/EventLoopWatchdog_test.ts` (10 tests): six subprocess tests
+  (kill of a SIGTERM-swallowing busy loop naming `generation 7`; `unknown`
+  generation; disarm exits 0; unavailable Worker logs the cause and exits 0; a
+  throwing `Worker` constructor, for both an `Error` and a non-`Error` throw,
+  logs the cause and returns a no-op handle; a failed `Deno.kill` is written to
+  stderr after the breach line and rethrown) and four in-process validation
+  tests. The file is named `*_test.ts` so that the mutation check counts it as a
+  test that imports both modules. `deno.json` already runs `test/**/*.ts`.
+- `deno test … test/NEAT/EventLoopWatchdog_test.ts`: 10 passed, 0 failed.
 - `./quality.sh --rust-scorer-bin=<built rust_scorer>`: exit 0, 9918 passed, 0
-  failed. Plain `./quality.sh` stops early on this host because `rust_scorer` is
-  not installed; this is an environment gap, not a code change.
+  failed. That run was on the head before the mutation-check fixes (the rename,
+  the two new tests and the removed `terminate()`). The worker re-runs the gate
+  on this head. Plain `./quality.sh` stops early on this host because
+  `rust_scorer` is not installed; this is an environment gap, not a code change.
+- Mutation check, replayed by hand: each of the 23 source mutants the gate
+  listed was applied to a scratch copy of the tree and
+  `deno test --no-check -A test/NEAT/EventLoopWatchdog_test.ts` was run. 22 went
+  red. The one survivor, `worker.terminate()` in the `error` listener
+  (`src/NEAT/EventLoopWatchdog.ts:150` before the fix), was dead code and has
+  been removed. The 16 listed mutants of the test file's own lines are no longer
+  generated, because the gate skips `*_test.ts` files.
 - Red checks (each restored afterwards): Worker `SIGKILL`→`SIGTERM` → kill test
   red ("the hang guard ended the process, not the watchdog"); `disarm()` without
   `terminate()` → disarm test red; unavailable log removed → unavailable test

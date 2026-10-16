@@ -27,6 +27,11 @@ const MODULE_URL = new URL(
   import.meta.url,
 ).href;
 
+const WORKER_MODULE_URL = new URL(
+  "../../src/NEAT/EventLoopWatchdogWorker.ts",
+  import.meta.url,
+).href;
+
 interface FixtureResult {
   code: number;
   signal: Deno.Signal | null;
@@ -39,13 +44,20 @@ interface FixtureResult {
 /**
  * Run `body` as a `deno run` child with the given permission flags. The body
  * is appended after an import of the watchdog module by absolute file URL.
+ * `extraFiles` are written next to the fixture, keyed by file name.
  */
 async function runFixture(
   body: string,
   permFlags: string[],
+  extraFiles: Record<string, string> = {},
 ): Promise<FixtureResult> {
   const dir = await Deno.makeTempDir({ prefix: "event-loop-watchdog-" });
   try {
+    await Promise.all(
+      Object.entries(extraFiles).map(([name, text]) =>
+        Deno.writeTextFile(join(dir, name), text)
+      ),
+    );
     const fixturePath = join(dir, "fixture.ts");
     await Deno.writeTextFile(
       fixturePath,
@@ -185,6 +197,101 @@ armEventLoopWatchdog({
   assert(
     !result.stderr.includes("[Neat] watchdog-test unavailable breach"),
     `breach line must not appear when unavailable: ${result.stderr}`,
+  );
+});
+
+Deno.test("EventLoopWatchdog unavailable: a Worker constructor that throws logs the cause and returns a no-op handle", async () => {
+  // Replacing the global \`Worker\` is the only way to make \`new Worker\` throw
+  // synchronously; the fixture runs in its own process, so nothing else sees it.
+  // Both an Error and a non-Error throw are staged, one per arm.
+  const result = await runFixture(
+    `
+const throwing = [new Error("staged spawn failure"), "staged string failure"];
+globalThis.Worker = class {
+  constructor() {
+    throw throwing.shift();
+  }
+} as unknown as typeof Worker;
+for (let i = 0; i < 2; i++) {
+  const w = armEventLoopWatchdog({
+    deadlineEpochMS: Date.now() - 1_000,
+    breachLine: "[Neat] watchdog-test spawn-failure breach",
+  });
+  w.setGeneration(-1);
+  w.disarm();
+}
+console.log("no-op handle returned");
+`,
+    ["--allow-read"],
+  );
+  assertEquals(result.code, 0, `stderr: ${result.stderr}`);
+  assert(
+    result.stdout.includes("no-op handle returned"),
+    `stdout: ${result.stdout}`,
+  );
+  assert(
+    result.stderr.includes(
+      "[Neat] event-loop watchdog unavailable: staged spawn failure — only the in-process bound applies",
+    ),
+    `stderr: ${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes(
+      "[Neat] event-loop watchdog unavailable: staged string failure — only the in-process bound applies",
+    ),
+    `stderr: ${result.stderr}`,
+  );
+});
+
+Deno.test("EventLoopWatchdogWorker: a kill that fails is reported on stderr after the breach line", async () => {
+  // The Worker module is loaded behind a wrapper whose first import replaces
+  // \`Deno.kill\` inside the Worker, so the breach reaches a kill that throws.
+  const result = await runFixture(
+    `
+const generationBuffer = new SharedArrayBuffer(4);
+Atomics.store(new Int32Array(generationBuffer), 0, 4);
+const worker = new Worker(new URL("./wrapper.ts", import.meta.url), {
+  type: "module",
+});
+worker.addEventListener("error", (event) => {
+  event.preventDefault();
+  worker.terminate();
+  console.log("worker error: " + event.message);
+});
+worker.postMessage({
+  deadlineEpochMS: Date.now() - 1_000,
+  breachLine: "[Neat] watchdog-test failed-kill breach at generation {generation}",
+  generationBuffer,
+});
+`,
+    ["--allow-read"],
+    {
+      "patch.ts": `Object.defineProperty(Deno, "kill", {
+  value: () => {
+    throw new Error("staged kill failure");
+  },
+});
+`,
+      "wrapper.ts": `import "./patch.ts";\nimport "${WORKER_MODULE_URL}";\n`,
+    },
+  );
+  assertEquals(result.code, 0, `stderr: ${result.stderr}`);
+  const breachAt = result.stderr.indexOf(
+    "[Neat] watchdog-test failed-kill breach at generation 4\n",
+  );
+  const failureAt = result.stderr.indexOf(
+    "[Neat] event-loop watchdog could not kill the process: staged kill failure\n",
+  );
+  assert(breachAt >= 0, `breach line missing from stderr: ${result.stderr}`);
+  assert(
+    failureAt > breachAt,
+    `kill failure must follow the breach line: ${result.stderr}`,
+  );
+  // The failure is rethrown, so the Worker reports it rather than going quiet.
+  assert(
+    result.stdout.includes("worker error:") &&
+      result.stdout.includes("staged kill failure"),
+    `stdout: ${result.stdout}`,
   );
 });
 

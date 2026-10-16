@@ -144,10 +144,11 @@ export function armEventLoopWatchdog(
 
   // A Worker that cannot load does not throw from `new Worker`. It reports an
   // asynchronous `error` event instead. Preventing the default stops that event
-  // from crashing the main process.
+  // from crashing the main process. The Worker has already stopped by the time
+  // the event arrives — it never loaded, or it raised an uncaught error — so
+  // there is nothing left to terminate.
   worker.addEventListener("error", (event) => {
     event.preventDefault();
-    worker.terminate();
     logUnavailable(event.message);
   });
 
