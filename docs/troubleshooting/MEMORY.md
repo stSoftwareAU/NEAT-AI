@@ -425,8 +425,10 @@ creature below. It does **not** identify the code that spins.
 
 ### Reproduction
 
-- Tree: `git archive v7.0.55`, run from its root with its own `deno.json` (Deno
-  2.9.6, V8 15.0, aarch64 Linux, 7 cores, 16 GB).
+- Tree: `git archive v7.0.55` with `scripts/repro_4069_gc_thrash.ts` copied into
+  that tree's root, run from there (so the command below uses the root path)
+  with the tree's own `deno.json` (Deno 2.9.6, V8 15.0, aarch64 Linux, 7 cores,
+  16 GB).
 - Synthetic creature: 200 inputs, 8,200 hidden neurons in topological order
   (squashes cycling `TANH`, `LOGISTIC`, `IDENTITY`, `RELU`), 4 `IDENTITY`
   outputs, each hidden neuron fed by 7 distinct earlier neurons and every
@@ -443,7 +445,7 @@ creature below. It does **not** identify the code that spins.
 
   ```bash
   deno run -A --config deno.json \
-    --v8-flags=--max-old-space-size=2163,--trace-gc repro_4069.ts < /dev/null
+    --v8-flags=--max-old-space-size=2163,--trace-gc repro_4069_gc_thrash.ts < /dev/null
   ```
 
 - Run A had no `libneat_ai_backpropagation`, so every training task failed at
