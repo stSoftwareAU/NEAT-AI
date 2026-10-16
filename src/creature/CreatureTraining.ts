@@ -79,6 +79,8 @@ import { buildRLSeedSet } from "@creature/EvolveRLSeedSet.ts";
 import {
   disposeEvolvePopulation,
   releaseEvolveCaches,
+  restoreEvolveChampion,
+  snapshotEvolveCaller,
 } from "@creature/EvolveTeardown.ts";
 import { runBoundedEvolveTeardown } from "@creature/BoundedEvolveTeardown.ts";
 import { flushTrainingGainLog } from "@neat/NeatScheduling.ts";
@@ -583,269 +585,300 @@ export async function evolveDir(
   );
 
   neat.setDataDir(dataSetDir);
-  await neat.populatePopulation(creature);
+  let bestCreature: Creature | undefined;
+  const callerSnapshot = snapshotEvolveCaller(creature);
+  try {
+    await neat.populatePopulation(creature);
 
-  // Issue #2902: hand the constructed Neat instance to the test seam (if any)
-  // so integration guards can stub never-resolving in-flight work before the
-  // evolve loop. No-op for production callers.
-  deps?.onNeatReady?.(neat);
+    // Issue #2902: hand the constructed Neat instance to the test seam (if any)
+    // so integration guards can stub never-resolving in-flight work before the
+    // evolve loop. No-op for production callers.
+    deps?.onNeatReady?.(neat);
 
-  let error = Infinity;
-  let bestScore = -Infinity;
+    let error = Infinity;
+    let bestScore = -Infinity;
 
-  // Dynamic import to avoid circular dependency at module load time.
-  const { Creature: CreatureClass } = await import("../Creature.ts");
-  let bestCreature: InstanceType<typeof CreatureClass> | undefined;
+    // Dynamic import to avoid circular dependency at module load time.
+    const { Creature: CreatureClass } = await import("../Creature.ts");
 
-  let iterationStartMS = Date.now();
-  let generation = 0;
-  const iterations = config.iterations;
-  // Issue #3210: sum the always-on per-generation phase timings across the run.
-  const phaseTimingAccumulator = createPhaseTimingAccumulator();
-  // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
-  const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
-  // Issue #3422: compact best-score trajectory for the improvement milestones.
-  const scoreTrajectory = createScoreTrajectory();
-  const nowFn = deps?.now ?? Date.now;
-  const overrunFactor = deps?.overrunEnforcementFactor ??
-    DEFAULT_OVERRUN_ENFORCEMENT_FACTOR;
+    let iterationStartMS = Date.now();
+    let generation = 0;
+    const iterations = config.iterations;
+    // Issue #3210: sum the always-on per-generation phase timings across the run.
+    const phaseTimingAccumulator = createPhaseTimingAccumulator();
+    // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
+    const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
+    // Issue #3422: compact best-score trajectory for the improvement milestones.
+    const scoreTrajectory = createScoreTrajectory();
+    const nowFn = deps?.now ?? Date.now;
+    const overrunFactor = deps?.overrunEnforcementFactor ??
+      DEFAULT_OVERRUN_ENFORCEMENT_FACTOR;
 
-  while (true) {
-    // GRQ #4470: the hard cap is consulted on *every* pass, before any branch
-    // decides what to do next. It used to be checked only inside the over-run
-    // branch and the `completed` branch, so a generation that neither
-    // completed nor tripped the over-run predicate went straight back into
-    // evolve() without ever looking at the cap — and both of those branches
-    // fall through to an `awaitInFlightTasks()` that returns immediately once
-    // the cap has passed, so the loop could spin well past its own deadline.
-    // Generation 1 is exempt (as `shouldStopStartingGenerations` is) so a run
-    // that starts already past its cap still commits one evolved population.
-    // Generation 1 is bounded by the first-generation bound on the evolve
-    // await below (Issue #4053).
-    if (
-      generation > 0 &&
-      neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
-    ) {
-      break;
-    }
+    while (true) {
+      // GRQ #4470: the hard cap is consulted on *every* pass, before any branch
+      // decides what to do next. It used to be checked only inside the over-run
+      // branch and the `completed` branch, so a generation that neither
+      // completed nor tripped the over-run predicate went straight back into
+      // evolve() without ever looking at the cap — and both of those branches
+      // fall through to an `awaitInFlightTasks()` that returns immediately once
+      // the cap has passed, so the loop could spin well past its own deadline.
+      // Generation 1 is exempt (as `shouldStopStartingGenerations` is) so a run
+      // that starts already past its cap still commits one evolved population.
+      // Generation 1 is bounded by the first-generation bound on the evolve
+      // await below (Issue #4053).
+      if (
+        generation > 0 &&
+        neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
+      ) {
+        break;
+      }
 
-    if (
-      shouldStopStartingGenerations(
+      if (
+        shouldStopStartingGenerations(
+          generation,
+          start,
+          config.timeoutMinutes,
+          nowFn(),
+          overrunFactor,
+        )
+      ) {
+        requestOverrunStop(neat, overrunFactor);
+        if (interrupted) break;
+        // Graceful self-termination: do not take the hard-deadline abandon path.
+        if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+          break;
+        }
+        // deno-lint-ignore no-await-in-loop
+        await neat.awaitInFlightTasks(
+          AWAIT_IN_FLIGHT_TIMEOUT_MS,
+          hardDeadlineMS,
+          nowFn,
+        );
+        continue;
+      }
+
+      // GRQ #4470: bound the generation itself. A discovery/training child that
+      // never settles can hold the resources this generation needs, and an
+      // `await` on a promise that never settles outlives every deadline check in
+      // the loop. Past the cap we abandon the generation, keep the population
+      // evolved so far, and hand control back to the caller — no hard kill.
+      // Issue #3940 still lets the first generation run past the hard cap:
+      // bounding it there returned `0 generation(s) already evolved`, an unscored
+      // population with no winner to publish. Issue #4053 bounds it by its own,
+      // larger first-generation bound instead, because a generation 1 that never
+      // settles otherwise outlives every deadline; breaching it ends the run with
+      // terminationReason "first-generation-wedged". Every later generation is
+      // bounded by the hard cap exactly as before.
+      const generationCap = generation === 0
+        ? firstGenerationDeadlineMS
+        : hardDeadlineMS;
+      // deno-lint-ignore no-await-in-loop
+      const outcome = await awaitWithinHardDeadline(
+        neat.evolve(bestCreature),
+        generationCap,
+        nowFn,
+        () =>
+          generation === 0
+            ? neat.abandonWedgedFirstGeneration(nowFn() - start)
+            : abandonWedgedGeneration(neat, hardDeadlineMS, nowFn, generation),
+      );
+      if (outcome === HARD_DEADLINE_BREACHED) {
+        break;
+      }
+      const result = outcome;
+
+      generation++;
+
+      // Issue #3636: the end-of-generation bookkeeping (champion adoption, timed
+      // checkpoint, run-total accumulation, score trajectory, lifecycle events,
+      // cost-aware early stop) is shared with evolveEnv and evolveRL.
+      // deno-lint-ignore no-await-in-loop
+      const tail = await finishGeneration({
+        neat,
+        config,
+        result,
         generation,
         start,
-        config.timeoutMinutes,
-        nowFn(),
-        overrunFactor,
-      )
-    ) {
-      requestOverrunStop(neat, overrunFactor);
-      if (interrupted) break;
-      // Graceful self-termination: do not take the hard-deadline abandon path.
-      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
-        break;
-      }
-      // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks(
-        AWAIT_IN_FLIGHT_TIMEOUT_MS,
-        hardDeadlineMS,
-        nowFn,
-      );
-      continue;
-    }
-
-    // GRQ #4470: bound the generation itself. A discovery/training child that
-    // never settles can hold the resources this generation needs, and an
-    // `await` on a promise that never settles outlives every deadline check in
-    // the loop. Past the cap we abandon the generation, keep the population
-    // evolved so far, and hand control back to the caller — no hard kill.
-    // Issue #3940 still lets the first generation run past the hard cap:
-    // bounding it there returned `0 generation(s) already evolved`, an unscored
-    // population with no winner to publish. Issue #4053 bounds it by its own,
-    // larger first-generation bound instead, because a generation 1 that never
-    // settles otherwise outlives every deadline; breaching it ends the run with
-    // terminationReason "first-generation-wedged". Every later generation is
-    // bounded by the hard cap exactly as before.
-    const generationCap = generation === 0
-      ? firstGenerationDeadlineMS
-      : hardDeadlineMS;
-    // deno-lint-ignore no-await-in-loop
-    const outcome = await awaitWithinHardDeadline(
-      neat.evolve(bestCreature),
-      generationCap,
-      nowFn,
-      () =>
-        generation === 0
-          ? neat.abandonWedgedFirstGeneration(nowFn() - start)
-          : abandonWedgedGeneration(neat, hardDeadlineMS, nowFn, generation),
-    );
-    if (outcome === HARD_DEADLINE_BREACHED) {
-      break;
-    }
-    const result = outcome;
-
-    generation++;
-
-    // Issue #3636: the end-of-generation bookkeeping (champion adoption, timed
-    // checkpoint, run-total accumulation, score trajectory, lifecycle events,
-    // cost-aware early stop) is shared with evolveEnv and evolveRL.
-    // deno-lint-ignore no-await-in-loop
-    const tail = await finishGeneration({
-      neat,
-      config,
-      result,
-      generation,
-      start,
-      iterationStartMS,
-      endTimeMS,
-      interrupted,
-      bestScore,
-      error,
-      bestCreature,
-      phaseTimingAccumulator,
-      scorerUtilisationAccumulator,
-      scoreTrajectory,
-    });
-    bestCreature = tail.bestCreature as
-      | InstanceType<typeof CreatureClass>
-      | undefined;
-    bestScore = tail.bestScore;
-    error = tail.error;
-    const now = tail.now;
-    const completed = tail.completed;
-
-    // evolveDir-specific: supervised scores are `1 - error` (plus the growth
-    // penalty), so a new champion's score and error must stay consistent.
-    if (tail.championImproved) {
-      const tolerance = 1e-10;
-      assert(
-        bestScore - 1 <= -error + tolerance,
-        `Score (absolute) less than error (score=${bestScore}, error=${error})`,
-      );
-    }
-
-    if (
-      config.log &&
-      (generation % config.log === 0 || completed)
-    ) {
-      let avgTxt = "";
-      if (Number.isFinite(result.averageScore)) {
-        avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
-      }
-      getLogger().info(
-        "Generation",
-        generation,
-        "score",
-        result.fittest.score,
-        avgTxt,
-        "error",
+        iterationStartMS,
+        endTimeMS,
+        interrupted,
+        bestScore,
         error,
-        (config.log > 1 ? "avg " : "") + "time",
-        yellow(
-          format(Math.round((now - iterationStartMS) / config.log), {
-            ignoreZero: true,
-          }),
-        ),
-      );
+        bestCreature,
+        phaseTimingAccumulator,
+        scorerUtilisationAccumulator,
+        scoreTrajectory,
+      });
+      bestCreature = tail.bestCreature as
+        | InstanceType<typeof CreatureClass>
+        | undefined;
+      bestScore = tail.bestScore;
+      error = tail.error;
+      const now = tail.now;
+      const completed = tail.completed;
 
-      iterationStartMS = now;
-    }
-
-    if (completed) {
-      if (interrupted) break;
-
-      // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
-      // any in-flight discovery/training bookkeeping and break unconditionally —
-      // even when finishUp() would still ask for more wait generations. The
-      // post-loop sequence (worker termination, best-creature restore,
-      // writeCreatures) still runs because the break lands there.
-      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
-        break;
+      // evolveDir-specific: supervised scores are `1 - error` (plus the growth
+      // penalty), so a new champion's score and error must stay consistent.
+      if (tail.championImproved) {
+        const tolerance = 1e-10;
+        assert(
+          bestScore - 1 <= -error + tolerance,
+          `Score (absolute) less than error (score=${bestScore}, error=${error})`,
+        );
       }
 
-      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
-        break;
+      if (
+        config.log &&
+        (generation % config.log === 0 || completed)
+      ) {
+        let avgTxt = "";
+        if (Number.isFinite(result.averageScore)) {
+          avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
+        }
+        getLogger().info(
+          "Generation",
+          generation,
+          "score",
+          result.fittest.score,
+          avgTxt,
+          "error",
+          error,
+          (config.log > 1 ? "avg " : "") + "time",
+          yellow(
+            format(Math.round((now - iterationStartMS) / config.log), {
+              ignoreZero: true,
+            }),
+          ),
+        );
+
+        iterationStartMS = now;
       }
 
-      // Issue #2240: Lightweight wait for in-flight tasks instead of running
-      // full evolve() cycles. This avoids wasting worker resources on fitness
-      // evaluation, breeding, and mutation while simply waiting for discovery
-      // or training to finish.
-      // GRQ #4470: the wait shares the loop's clock and cap, so once the cap
-      // passes it returns immediately and the guard at the top of the loop
-      // ends the run rather than letting it spin here.
-      // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks(
-        AWAIT_IN_FLIGHT_TIMEOUT_MS,
-        hardDeadlineMS,
-        nowFn,
+      if (completed) {
+        if (interrupted) break;
+
+        // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
+        // any in-flight discovery/training bookkeeping and break unconditionally —
+        // even when finishUp() would still ask for more wait generations. The
+        // post-loop sequence (worker termination, best-creature restore,
+        // writeCreatures) still runs because the break lands there.
+        if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
+          break;
+        }
+
+        if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+          break;
+        }
+
+        // Issue #2240: Lightweight wait for in-flight tasks instead of running
+        // full evolve() cycles. This avoids wasting worker resources on fitness
+        // evaluation, breeding, and mutation while simply waiting for discovery
+        // or training to finish.
+        // GRQ #4470: the wait shares the loop's clock and cap, so once the cap
+        // passes it returns immediately and the guard at the top of the loop
+        // ends the run rather than letting it spin here.
+        // deno-lint-ignore no-await-in-loop
+        await neat.awaitInFlightTasks(
+          AWAIT_IN_FLIGHT_TIMEOUT_MS,
+          hardDeadlineMS,
+          nowFn,
+        );
+      }
+    }
+
+    // GRQ #4472: the post-loop teardown is bounded, so "the loop ended on time"
+    // translates into "the process returned on time". The champion restore and
+    // the checkpoint write run first — before worker termination or the Issue
+    // #1509 replay drain, either of which can be abandoned without losing the
+    // generations already evolved.
+    await runBoundedEvolveTeardown({
+      label: "evolveDir",
+      persist: async () => {
+        restoreEvolveChampion(
+          creature,
+          bestCreature,
+          callerSnapshot,
+          config.debug,
+          "training:restoreBest",
+        );
+        if (config.creatureStore) {
+          await writeCreatures(neat, config.creatureStore);
+        }
+        // Issue #3934: the run's last chance to append the training events that
+        // settled after the final generation's flush. Without it the last
+        // generation's measurements stay in the buffer and are lost — a log that
+        // silently ends a generation early is worse than no log.
+        await flushTrainingGainLog(neat);
+      },
+      workers,
+      replayQueue: neat.discoveryReplayQueue,
+      hardDeadlineMS,
+      now: nowFn,
+      budgetMS: deps?.teardownBudgetMS,
+    });
+    workers.length = 0;
+
+    // Issue #3434: run-level teardown. The caller holds the champion, or else its
+    // original genome from the entry snapshot (Issue #4061). Dispose the population
+    // (keeping the caller), the champion and the snapshot, then release the
+    // process-global breed/discovery caches.
+    disposeEvolvePopulation(neat.population, creature);
+    bestCreature?.dispose();
+    releaseEvolveCaches();
+
+    Deno.removeSignalListener("SIGTERM", signalListener);
+    const time = Date.now() - start;
+    return {
+      error: error,
+      score: bestScore,
+      generation: generation,
+      time,
+      phaseTimingTotals: finalisePhaseTimingTotals(
+        phaseTimingAccumulator,
+        time,
+      ),
+      scorerUtilisation: finaliseScorerUtilisationTotals(
+        scorerUtilisationAccumulator,
+      ),
+      // Issue #3779: run-level training-outcome totals, including the skipped
+      // dispatches a non-verbose run-end summary could not otherwise see.
+      trainingOutcomes: summariseTrainingOutcomes(
+        neat.trainingRegressionTracker,
+      ),
+      // Issue #3422: run-level tuning statistics — population size, requested
+      // options, hardware and the score-improvement milestones.
+      ...buildEvolveRunStatistics({
+        populationSize: config.populationSize,
+        adaptivePopulationEnabled: config.adaptivePopulation.enabled,
+        finalPopulationSize: neat.effectivePopulationSize,
+        options,
+        trajectory: scoreTrajectory,
+      }),
+      ...(neat.terminationReason
+        ? { terminationReason: neat.terminationReason }
+        : {}),
+    };
+  } catch (error) {
+    // Preserve the original generation/teardown failure while keeping the
+    // caller's genome usable even when a previous commit disposed it.
+    try {
+      restoreEvolveChampion(
+        creature,
+        bestCreature,
+        callerSnapshot,
+        config.debug,
+        "training:restoreBest",
+      );
+    } catch (restoreError) {
+      getLogger().error(
+        "evolveDir: unable to restore caller after failure",
+        restoreError,
       );
     }
+    throw error;
+  } finally {
+    callerSnapshot.dispose();
   }
-
-  // GRQ #4472: the post-loop teardown is bounded, so "the loop ended on time"
-  // translates into "the process returned on time". The champion restore and
-  // the checkpoint write run first — before worker termination or the Issue
-  // #1509 replay drain, either of which can be abandoned without losing the
-  // generations already evolved.
-  await runBoundedEvolveTeardown({
-    label: "evolveDir",
-    persist: async () => {
-      if (bestCreature) {
-        creature.loadFrom(bestCreature, config.debug, "training:restoreBest");
-      }
-      if (config.creatureStore) {
-        await writeCreatures(neat, config.creatureStore);
-      }
-      // Issue #3934: the run's last chance to append the training events that
-      // settled after the final generation's flush. Without it the last
-      // generation's measurements stay in the buffer and are lost — a log that
-      // silently ends a generation early is worse than no log.
-      await flushTrainingGainLog(neat);
-    },
-    workers,
-    replayQueue: neat.discoveryReplayQueue,
-    hardDeadlineMS,
-    now: nowFn,
-    budgetMS: deps?.teardownBudgetMS,
-  });
-  workers.length = 0;
-
-  // Issue #3434: run-level lifecycle teardown. The champion has been restored
-  // into (and any checkpoint written from) the population above, so dispose the
-  // run's population (keeping the caller creature), dispose the temporary
-  // champion clone, and release the process-global breed/discovery caches so a
-  // second evolveDir in the same process starts from a clean baseline.
-  disposeEvolvePopulation(neat.population, creature);
-  bestCreature?.dispose();
-  releaseEvolveCaches();
-
-  Deno.removeSignalListener("SIGTERM", signalListener);
-  const time = Date.now() - start;
-  return {
-    error: error,
-    score: bestScore,
-    generation: generation,
-    time,
-    phaseTimingTotals: finalisePhaseTimingTotals(phaseTimingAccumulator, time),
-    scorerUtilisation: finaliseScorerUtilisationTotals(
-      scorerUtilisationAccumulator,
-    ),
-    // Issue #3779: run-level training-outcome totals, including the skipped
-    // dispatches a non-verbose run-end summary could not otherwise see.
-    trainingOutcomes: summariseTrainingOutcomes(neat.trainingRegressionTracker),
-    // Issue #3422: run-level tuning statistics — population size, requested
-    // options, hardware and the score-improvement milestones.
-    ...buildEvolveRunStatistics({
-      populationSize: config.populationSize,
-      adaptivePopulationEnabled: config.adaptivePopulation.enabled,
-      finalPopulationSize: neat.effectivePopulationSize,
-      options,
-      trajectory: scoreTrajectory,
-    }),
-    ...(neat.terminationReason
-      ? { terminationReason: neat.terminationReason }
-      : {}),
-  };
 }
 
 /**
@@ -981,228 +1014,261 @@ export async function evolveEnv<S, A>(
   // alternative scoring strategies.
   (neat as unknown as { fitness: Fitness }).fitness = episodicFitness;
 
-  await neat.populatePopulation(creature);
+  let bestCreature: Creature | undefined;
+  const callerSnapshot = snapshotEvolveCaller(creature);
+  try {
+    await neat.populatePopulation(creature);
 
-  // Issue #4056: test seam, as in evolveDir. No-op for production callers.
-  deps?.onNeatReady?.(neat);
+    // Issue #4056: test seam, as in evolveDir. No-op for production callers.
+    deps?.onNeatReady?.(neat);
 
-  let error = Infinity;
-  let bestScore = -Infinity;
+    let error = Infinity;
+    let bestScore = -Infinity;
 
-  const { Creature: CreatureClass } = await import("../Creature.ts");
-  let bestCreature: InstanceType<typeof CreatureClass> | undefined;
+    const { Creature: CreatureClass } = await import("../Creature.ts");
 
-  let iterationStartMS = Date.now();
-  let generation = 0;
-  const iterations = config.iterations;
-  // Issue #3210: sum the always-on per-generation phase timings across the run.
-  const phaseTimingAccumulator = createPhaseTimingAccumulator();
-  // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
-  const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
-  // Issue #3422: compact best-score trajectory for the improvement milestones.
-  const scoreTrajectory = createScoreTrajectory();
+    let iterationStartMS = Date.now();
+    let generation = 0;
+    const iterations = config.iterations;
+    // Issue #3210: sum the always-on per-generation phase timings across the run.
+    const phaseTimingAccumulator = createPhaseTimingAccumulator();
+    // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
+    const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
+    // Issue #3422: compact best-score trajectory for the improvement milestones.
+    const scoreTrajectory = createScoreTrajectory();
 
-  while (true) {
-    // Issue #4056: the hard cap is consulted on every pass (as in evolveDir).
-    // Generation 1 is bounded by the first-generation bound on the evolve
-    // await below.
-    if (
-      generation > 0 &&
-      neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
-    ) {
-      break;
-    }
+    while (true) {
+      // Issue #4056: the hard cap is consulted on every pass (as in evolveDir).
+      // Generation 1 is bounded by the first-generation bound on the evolve
+      // await below.
+      if (
+        generation > 0 &&
+        neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
+      ) {
+        break;
+      }
 
-    if (
-      shouldStopStartingGenerations(
+      if (
+        shouldStopStartingGenerations(
+          generation,
+          start,
+          config.timeoutMinutes,
+          nowFn(),
+          overrunFactor,
+        )
+      ) {
+        requestOverrunStop(neat, overrunFactor);
+        if (interrupted) break;
+        if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+          break;
+        }
+        // deno-lint-ignore no-await-in-loop
+        await neat.awaitInFlightTasks(
+          AWAIT_IN_FLIGHT_TIMEOUT_MS,
+          hardDeadlineMS,
+          nowFn,
+        );
+        continue;
+      }
+
+      generation++;
+      episodicFitness.setGeneration(generation);
+
+      // Issue #4056: bound the generation by the hard cap (generation 1 by its
+      // own first-generation bound), exactly as evolveDir does.
+      const generationCap = generation === 1
+        ? firstGenerationDeadlineMS
+        : hardDeadlineMS;
+      // deno-lint-ignore no-await-in-loop
+      const outcome = await awaitWithinHardDeadline(
+        neat.evolve(bestCreature),
+        generationCap,
+        nowFn,
+        () =>
+          generation === 1
+            ? neat.abandonWedgedFirstGeneration(nowFn() - start)
+            : abandonWedgedGeneration(
+              neat,
+              hardDeadlineMS,
+              nowFn,
+              generation - 1,
+            ),
+      );
+      if (outcome === HARD_DEADLINE_BREACHED) {
+        // The wedged generation never completed.
+        generation--;
+        break;
+      }
+      const result = outcome;
+
+      // Issue #3636: shared end-of-generation bookkeeping (see finishGeneration).
+      // deno-lint-ignore no-await-in-loop
+      const tail = await finishGeneration({
+        neat,
+        config,
+        result,
         generation,
         start,
-        config.timeoutMinutes,
-        nowFn(),
-        overrunFactor,
-      )
-    ) {
-      requestOverrunStop(neat, overrunFactor);
-      if (interrupted) break;
-      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
-        break;
-      }
-      // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks(
-        AWAIT_IN_FLIGHT_TIMEOUT_MS,
-        hardDeadlineMS,
-        nowFn,
-      );
-      continue;
-    }
-
-    generation++;
-    episodicFitness.setGeneration(generation);
-
-    // Issue #4056: bound the generation by the hard cap (generation 1 by its
-    // own first-generation bound), exactly as evolveDir does.
-    const generationCap = generation === 1
-      ? firstGenerationDeadlineMS
-      : hardDeadlineMS;
-    // deno-lint-ignore no-await-in-loop
-    const outcome = await awaitWithinHardDeadline(
-      neat.evolve(bestCreature),
-      generationCap,
-      nowFn,
-      () =>
-        generation === 1
-          ? neat.abandonWedgedFirstGeneration(nowFn() - start)
-          : abandonWedgedGeneration(
-            neat,
-            hardDeadlineMS,
-            nowFn,
-            generation - 1,
-          ),
-    );
-    if (outcome === HARD_DEADLINE_BREACHED) {
-      // The wedged generation never completed.
-      generation--;
-      break;
-    }
-    const result = outcome;
-
-    // Issue #3636: shared end-of-generation bookkeeping (see finishGeneration).
-    // deno-lint-ignore no-await-in-loop
-    const tail = await finishGeneration({
-      neat,
-      config,
-      result,
-      generation,
-      start,
-      iterationStartMS,
-      endTimeMS,
-      interrupted,
-      bestScore,
-      error,
-      bestCreature,
-      phaseTimingAccumulator,
-      scorerUtilisationAccumulator,
-      scoreTrajectory,
-    });
-    bestCreature = tail.bestCreature as
-      | InstanceType<typeof CreatureClass>
-      | undefined;
-    bestScore = tail.bestScore;
-    error = tail.error;
-    const now = tail.now;
-    const completed = tail.completed;
-
-    if (
-      config.log &&
-      (generation % config.log === 0 || completed)
-    ) {
-      let avgTxt = "";
-      if (Number.isFinite(result.averageScore)) {
-        avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
-      }
-      getLogger().info(
-        "Generation",
-        generation,
-        "score",
-        result.fittest.score,
-        avgTxt,
-        "error",
+        iterationStartMS,
+        endTimeMS,
+        interrupted,
+        bestScore,
         error,
-        (config.log > 1 ? "avg " : "") + "time",
-        yellow(
-          format(Math.round((now - iterationStartMS) / config.log), {
-            ignoreZero: true,
-          }),
-        ),
-      );
-      iterationStartMS = now;
-    }
+        bestCreature,
+        phaseTimingAccumulator,
+        scorerUtilisationAccumulator,
+        scoreTrajectory,
+      });
+      bestCreature = tail.bestCreature as
+        | InstanceType<typeof CreatureClass>
+        | undefined;
+      bestScore = tail.bestScore;
+      error = tail.error;
+      const now = tail.now;
+      const completed = tail.completed;
 
-    if (completed) {
-      if (interrupted) break;
-
-      // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
-      // any in-flight discovery/training bookkeeping and break unconditionally —
-      // even when finishUp() would still ask for more wait generations. The
-      // post-loop sequence (best-creature restore, writeCreatures) still runs
-      // because the break lands there.
-      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
-        break;
+      if (
+        config.log &&
+        (generation % config.log === 0 || completed)
+      ) {
+        let avgTxt = "";
+        if (Number.isFinite(result.averageScore)) {
+          avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
+        }
+        getLogger().info(
+          "Generation",
+          generation,
+          "score",
+          result.fittest.score,
+          avgTxt,
+          "error",
+          error,
+          (config.log > 1 ? "avg " : "") + "time",
+          yellow(
+            format(Math.round((now - iterationStartMS) / config.log), {
+              ignoreZero: true,
+            }),
+          ),
+        );
+        iterationStartMS = now;
       }
 
-      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
-        break;
+      if (completed) {
+        if (interrupted) break;
+
+        // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
+        // any in-flight discovery/training bookkeeping and break unconditionally —
+        // even when finishUp() would still ask for more wait generations. The
+        // post-loop sequence (best-creature restore, writeCreatures) still runs
+        // because the break lands there.
+        if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
+          break;
+        }
+
+        if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+          break;
+        }
+        // deno-lint-ignore no-await-in-loop
+        await neat.awaitInFlightTasks(
+          AWAIT_IN_FLIGHT_TIMEOUT_MS,
+          hardDeadlineMS,
+          nowFn,
+        );
       }
-      // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks(
-        AWAIT_IN_FLIGHT_TIMEOUT_MS,
-        hardDeadlineMS,
-        nowFn,
+    }
+
+    // No worker pool to terminate — episode rollouts ran inline. The replay queue
+    // never had a chance to schedule anything (no dataDir was provided), but it
+    // is drained for symmetry with evolveDir() in case a future change wires one
+    // through. GRQ #4472: same bounded teardown, so the champion restore and the
+    // checkpoint write cannot be stranded behind a drain that will not end.
+    await runBoundedEvolveTeardown({
+      label: "evolveEnv",
+      persist: async () => {
+        restoreEvolveChampion(
+          creature,
+          bestCreature,
+          callerSnapshot,
+          config.debug,
+          "evolveEnv:restoreBest",
+        );
+        if (config.creatureStore) {
+          await writeCreatures(neat, config.creatureStore);
+        }
+        // Issue #3934: the run's last chance to append the training events that
+        // settled after the final generation's flush. Without it the last
+        // generation's measurements stay in the buffer and are lost — a log that
+        // silently ends a generation early is worse than no log.
+        await flushTrainingGainLog(neat);
+      },
+      replayQueue: neat.discoveryReplayQueue,
+      hardDeadlineMS,
+      now: nowFn,
+      budgetMS: deps?.teardownBudgetMS,
+    });
+
+    // Issue #3434: run-level teardown. The caller holds the champion, or else its
+    // original genome from the entry snapshot (Issue #4061). Dispose the population
+    // (keeping the caller), the champion and the snapshot, then release the
+    // process-global breed/discovery caches.
+    disposeEvolvePopulation(neat.population, creature);
+    bestCreature?.dispose();
+    releaseEvolveCaches();
+
+    Deno.removeSignalListener("SIGTERM", signalListener);
+    options.signal?.removeEventListener("abort", abortListener);
+    const time = Date.now() - start;
+    return {
+      error,
+      score: bestScore,
+      generation,
+      time,
+      phaseTimingTotals: finalisePhaseTimingTotals(
+        phaseTimingAccumulator,
+        time,
+      ),
+      scorerUtilisation: finaliseScorerUtilisationTotals(
+        scorerUtilisationAccumulator,
+      ),
+      // Issue #3779: run-level training-outcome totals, including the skipped
+      // dispatches a non-verbose run-end summary could not otherwise see.
+      trainingOutcomes: summariseTrainingOutcomes(
+        neat.trainingRegressionTracker,
+      ),
+      // Issue #3422: run-level tuning statistics — population size, requested
+      // options, hardware and the score-improvement milestones.
+      ...buildEvolveRunStatistics({
+        populationSize: config.populationSize,
+        adaptivePopulationEnabled: config.adaptivePopulation.enabled,
+        finalPopulationSize: neat.effectivePopulationSize,
+        options,
+        trajectory: scoreTrajectory,
+      }),
+      ...(neat.terminationReason
+        ? { terminationReason: neat.terminationReason }
+        : {}),
+    };
+  } catch (error) {
+    // Preserve the original generation/teardown failure while keeping the
+    // caller's genome usable even when a previous commit disposed it.
+    try {
+      restoreEvolveChampion(
+        creature,
+        bestCreature,
+        callerSnapshot,
+        config.debug,
+        "evolveEnv:restoreBest",
+      );
+    } catch (restoreError) {
+      getLogger().error(
+        "evolveEnv: unable to restore caller after failure",
+        restoreError,
       );
     }
+    throw error;
+  } finally {
+    callerSnapshot.dispose();
   }
-
-  // No worker pool to terminate — episode rollouts ran inline. The replay queue
-  // never had a chance to schedule anything (no dataDir was provided), but it
-  // is drained for symmetry with evolveDir() in case a future change wires one
-  // through. GRQ #4472: same bounded teardown, so the champion restore and the
-  // checkpoint write cannot be stranded behind a drain that will not end.
-  await runBoundedEvolveTeardown({
-    label: "evolveEnv",
-    persist: async () => {
-      if (bestCreature) {
-        creature.loadFrom(bestCreature, config.debug, "evolveEnv:restoreBest");
-      }
-      if (config.creatureStore) {
-        await writeCreatures(neat, config.creatureStore);
-      }
-      // Issue #3934: the run's last chance to append the training events that
-      // settled after the final generation's flush. Without it the last
-      // generation's measurements stay in the buffer and are lost — a log that
-      // silently ends a generation early is worse than no log.
-      await flushTrainingGainLog(neat);
-    },
-    replayQueue: neat.discoveryReplayQueue,
-    hardDeadlineMS,
-    now: nowFn,
-    budgetMS: deps?.teardownBudgetMS,
-  });
-
-  // Issue #3434: run-level lifecycle teardown — dispose the run's population
-  // (keeping the caller creature), dispose the temporary champion clone, and
-  // release the process-global breed/discovery caches.
-  disposeEvolvePopulation(neat.population, creature);
-  bestCreature?.dispose();
-  releaseEvolveCaches();
-
-  Deno.removeSignalListener("SIGTERM", signalListener);
-  options.signal?.removeEventListener("abort", abortListener);
-  const time = Date.now() - start;
-  return {
-    error,
-    score: bestScore,
-    generation,
-    time,
-    phaseTimingTotals: finalisePhaseTimingTotals(phaseTimingAccumulator, time),
-    scorerUtilisation: finaliseScorerUtilisationTotals(
-      scorerUtilisationAccumulator,
-    ),
-    // Issue #3779: run-level training-outcome totals, including the skipped
-    // dispatches a non-verbose run-end summary could not otherwise see.
-    trainingOutcomes: summariseTrainingOutcomes(neat.trainingRegressionTracker),
-    // Issue #3422: run-level tuning statistics — population size, requested
-    // options, hardware and the score-improvement milestones.
-    ...buildEvolveRunStatistics({
-      populationSize: config.populationSize,
-      adaptivePopulationEnabled: config.adaptivePopulation.enabled,
-      finalPopulationSize: neat.effectivePopulationSize,
-      options,
-      trajectory: scoreTrajectory,
-    }),
-    ...(neat.terminationReason
-      ? { terminationReason: neat.terminationReason }
-      : {}),
-  };
 }
 
 /**
@@ -1539,164 +1605,248 @@ export async function evolveRL<S, A>(
   // scoring strategies.
   (neat as unknown as { fitness: Fitness }).fitness = rlFitness;
 
-  await neat.populatePopulation(creature);
+  let bestCreature: Creature | undefined;
+  const callerSnapshot = snapshotEvolveCaller(creature);
+  try {
+    await neat.populatePopulation(creature);
 
-  // Issue #4056: test seam, as in evolveDir. No-op for production callers.
-  deps?.onNeatReady?.(neat);
+    // Issue #4056: test seam, as in evolveDir. No-op for production callers.
+    deps?.onNeatReady?.(neat);
 
-  let error = Infinity;
-  let bestScore = -Infinity;
+    let error = Infinity;
+    let bestScore = -Infinity;
 
-  const { Creature: CreatureClass } = await import("../Creature.ts");
-  let bestCreature: InstanceType<typeof CreatureClass> | undefined;
+    const { Creature: CreatureClass } = await import("../Creature.ts");
 
-  let iterationStartMS = Date.now();
-  let generation = 0;
-  const iterations = config.iterations;
-  // Issue #3210: sum the always-on per-generation phase timings across the run.
-  const phaseTimingAccumulator = createPhaseTimingAccumulator();
-  // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
-  const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
-  // Issue #3422: compact best-score trajectory for the improvement milestones.
-  const scoreTrajectory = createScoreTrajectory();
+    let iterationStartMS = Date.now();
+    let generation = 0;
+    const iterations = config.iterations;
+    // Issue #3210: sum the always-on per-generation phase timings across the run.
+    const phaseTimingAccumulator = createPhaseTimingAccumulator();
+    // Issue #3234: sum the per-backend scorer-utilisation counts across the run.
+    const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
+    // Issue #3422: compact best-score trajectory for the improvement milestones.
+    const scoreTrajectory = createScoreTrajectory();
 
-  while (true) {
-    // Issue #4056: the hard cap is consulted on every pass (as in evolveDir).
-    // Generation 1 is bounded by the first-generation bound on the evolve
-    // await below.
-    if (
-      generation > 0 &&
-      neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
-    ) {
-      break;
-    }
-
-    if (
-      shouldStopStartingGenerations(
-        generation,
-        start,
-        config.timeoutMinutes,
-        nowFn(),
-        overrunFactor,
-      )
-    ) {
-      requestOverrunStop(neat, overrunFactor);
-      if (interrupted) break;
-      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+    while (true) {
+      // Issue #4056: the hard cap is consulted on every pass (as in evolveDir).
+      // Generation 1 is bounded by the first-generation bound on the evolve
+      // await below.
+      if (
+        generation > 0 &&
+        neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())
+      ) {
         break;
       }
-      // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks(
-        AWAIT_IN_FLIGHT_TIMEOUT_MS,
-        hardDeadlineMS,
-        nowFn,
+
+      if (
+        shouldStopStartingGenerations(
+          generation,
+          start,
+          config.timeoutMinutes,
+          nowFn(),
+          overrunFactor,
+        )
+      ) {
+        requestOverrunStop(neat, overrunFactor);
+        if (interrupted) break;
+        if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+          break;
+        }
+        // deno-lint-ignore no-await-in-loop
+        await neat.awaitInFlightTasks(
+          AWAIT_IN_FLIGHT_TIMEOUT_MS,
+          hardDeadlineMS,
+          nowFn,
+        );
+        continue;
+      }
+
+      generation++;
+      rlFitness.setGeneration(generation);
+      rlFitness.setSeedSet(
+        buildRLSeedSet(baseSeed, generation, episodesPerCreature, fixedSeedSet),
       );
-      continue;
-    }
+      // Issue #2629: capture per-generation wall-clock and reset stats
+      // accumulators *before* fitness runs. When statistics are off, both
+      // calls are no-ops on the disabled path.
+      const generationStartMs = nowFn();
+      rlFitness.beginGenerationStatistics();
 
-    generation++;
-    rlFitness.setGeneration(generation);
-    rlFitness.setSeedSet(
-      buildRLSeedSet(baseSeed, generation, episodesPerCreature, fixedSeedSet),
-    );
-    // Issue #2629: capture per-generation wall-clock and reset stats
-    // accumulators *before* fitness runs. When statistics are off, both
-    // calls are no-ops on the disabled path.
-    const generationStartMs = nowFn();
-    rlFitness.beginGenerationStatistics();
+      // Issue #4056: bound the generation by the hard cap (generation 1 by its
+      // own first-generation bound), exactly as evolveDir does.
+      const generationCap = generation === 1
+        ? firstGenerationDeadlineMS
+        : hardDeadlineMS;
+      // deno-lint-ignore no-await-in-loop
+      const outcome = await awaitWithinHardDeadline(
+        neat.evolve(bestCreature),
+        generationCap,
+        nowFn,
+        () =>
+          generation === 1
+            ? neat.abandonWedgedFirstGeneration(nowFn() - start)
+            : abandonWedgedGeneration(
+              neat,
+              hardDeadlineMS,
+              nowFn,
+              generation - 1,
+            ),
+      );
+      if (outcome === HARD_DEADLINE_BREACHED) {
+        // The wedged generation never completed.
+        generation--;
+        // The abandoned generation's partial statistics stay in the live
+        // accumulator and are never read; the last kept generation's were
+        // snapshotted into `lastGenerationStats`.
+        break;
+      }
+      const result = outcome;
 
-    // Issue #4056: bound the generation by the hard cap (generation 1 by its
-    // own first-generation bound), exactly as evolveDir does.
-    const generationCap = generation === 1
-      ? firstGenerationDeadlineMS
-      : hardDeadlineMS;
-    // deno-lint-ignore no-await-in-loop
-    const outcome = await awaitWithinHardDeadline(
-      neat.evolve(bestCreature),
-      generationCap,
-      nowFn,
-      () =>
-        generation === 1
-          ? neat.abandonWedgedFirstGeneration(nowFn() - start)
-          : abandonWedgedGeneration(
-            neat,
-            hardDeadlineMS,
-            nowFn,
-            generation - 1,
+      const fittest = result.fittest;
+      const fittestScore = fittest.score!;
+
+      // Issue #3636: shared end-of-generation bookkeeping (see finishGeneration).
+      // deno-lint-ignore no-await-in-loop
+      const tail = await finishGeneration({
+        neat,
+        config,
+        result,
+        generation,
+        start,
+        iterationStartMS,
+        endTimeMS,
+        interrupted,
+        bestScore,
+        error,
+        bestCreature,
+        phaseTimingAccumulator,
+        scorerUtilisationAccumulator,
+        scoreTrajectory,
+      });
+      bestCreature = tail.bestCreature as
+        | InstanceType<typeof CreatureClass>
+        | undefined;
+      bestScore = tail.bestScore;
+      error = tail.error;
+      const now = tail.now;
+      const completed = tail.completed;
+
+      // Issue #2647: remember the most recent generation's snapshot inputs so a
+      // synthetic final milestone can be built after the loop exits between
+      // scheduled milestones. Captured before the scheduled-milestone block
+      // because that block consumes the per-generation statistics accumulator.
+      // The statistics are consumed here, once, so both the scheduled milestone
+      // and a later synthetic one read this kept generation's snapshot even if
+      // the next generation is abandoned and resets the live accumulator.
+      const generationStats = statisticsEnabled
+        ? rlFitness.consumeGenerationStatistics()
+        : undefined;
+      if (statisticsEnabled) {
+        lastGenerationStats = generationStats;
+        // Issue #2693: snapshot only the milestone-relevant scalars so the
+        // live creature reference is not retained across generations.
+        lastFittestScore = fittestScore;
+        lastFittestNeurons = fittest.neurons.length;
+        lastFittestSynapses = fittest.synapses.length;
+        lastFittestMeanReward = getTag(fittest, "meanReward");
+        lastGenerationStartMs = generationStartMs;
+        lastNowMs = now;
+        lastFittestCaptured = true;
+      }
+
+      // Issue #2629: emit and accumulate the milestone payload exactly when the
+      // schedule (geometric: 1, 2, 5, 10, …, 1000, 10_000, …) hits and statistics
+      // were opted in.
+      if (statisticsEnabled && isMilestoneGeneration(generation)) {
+        const milestone = buildMilestonePayload(
+          generationStats,
+          fittest,
+          fittestScore,
+          generationStartMs,
+          now,
+          generation,
+        );
+        milestones.push(milestone);
+        emitTrainingEvent(config.onTrainingEvent, {
+          kind: "evolverl_milestone",
+          timestamp: Temporal.Now.instant().toString(),
+          ...milestone,
+        });
+      }
+
+      if (
+        config.log &&
+        (generation % config.log === 0 || completed)
+      ) {
+        let avgTxt = "";
+        if (Number.isFinite(result.averageScore)) {
+          avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
+        }
+        getLogger().info(
+          "Generation",
+          generation,
+          "score",
+          fittest.score,
+          avgTxt,
+          "error",
+          error,
+          (config.log > 1 ? "avg " : "") + "time",
+          yellow(
+            format(Math.round((now - iterationStartMS) / config.log), {
+              ignoreZero: true,
+            }),
           ),
-    );
-    if (outcome === HARD_DEADLINE_BREACHED) {
-      // The wedged generation never completed.
-      generation--;
-      // The abandoned generation's partial statistics stay in the live
-      // accumulator and are never read; the last kept generation's were
-      // snapshotted into `lastGenerationStats`.
-      break;
-    }
-    const result = outcome;
+        );
+        iterationStartMS = now;
+      }
 
-    const fittest = result.fittest;
-    const fittestScore = fittest.score!;
+      if (completed) {
+        if (interrupted) break;
 
-    // Issue #3636: shared end-of-generation bookkeeping (see finishGeneration).
-    // deno-lint-ignore no-await-in-loop
-    const tail = await finishGeneration({
-      neat,
-      config,
-      result,
-      generation,
-      start,
-      iterationStartMS,
-      endTimeMS,
-      interrupted,
-      bestScore,
-      error,
-      bestCreature,
-      phaseTimingAccumulator,
-      scorerUtilisationAccumulator,
-      scoreTrajectory,
-    });
-    bestCreature = tail.bestCreature as
-      | InstanceType<typeof CreatureClass>
-      | undefined;
-    bestScore = tail.bestScore;
-    error = tail.error;
-    const now = tail.now;
-    const completed = tail.completed;
+        // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
+        // any in-flight discovery/training bookkeeping and break unconditionally —
+        // even when finishUp() would still ask for more wait generations. The
+        // post-loop sequence (best-creature restore, writeCreatures) still runs
+        // because the break lands there.
+        if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
+          break;
+        }
 
-    // Issue #2647: remember the most recent generation's snapshot inputs so a
-    // synthetic final milestone can be built after the loop exits between
-    // scheduled milestones. Captured before the scheduled-milestone block
-    // because that block consumes the per-generation statistics accumulator.
-    // The statistics are consumed here, once, so both the scheduled milestone
-    // and a later synthetic one read this kept generation's snapshot even if
-    // the next generation is abandoned and resets the live accumulator.
-    const generationStats = statisticsEnabled
-      ? rlFitness.consumeGenerationStatistics()
-      : undefined;
-    if (statisticsEnabled) {
-      lastGenerationStats = generationStats;
-      // Issue #2693: snapshot only the milestone-relevant scalars so the
-      // live creature reference is not retained across generations.
-      lastFittestScore = fittestScore;
-      lastFittestNeurons = fittest.neurons.length;
-      lastFittestSynapses = fittest.synapses.length;
-      lastFittestMeanReward = getTag(fittest, "meanReward");
-      lastGenerationStartMs = generationStartMs;
-      lastNowMs = now;
-      lastFittestCaptured = true;
+        if (neat.finishUp(iterations, endTimeMS, start, generation)) {
+          break;
+        }
+        // deno-lint-ignore no-await-in-loop
+        await neat.awaitInFlightTasks(
+          AWAIT_IN_FLIGHT_TIMEOUT_MS,
+          hardDeadlineMS,
+          nowFn,
+        );
+      }
     }
 
-    // Issue #2629: emit and accumulate the milestone payload exactly when the
-    // schedule (geometric: 1, 2, 5, 10, …, 1000, 10_000, …) hits and statistics
-    // were opted in.
-    if (statisticsEnabled && isMilestoneGeneration(generation)) {
-      const milestone = buildMilestonePayload(
-        generationStats,
-        fittest,
-        fittestScore,
-        generationStartMs,
-        now,
+    // Issue #2647: append a synthetic final-generation milestone when the run
+    // terminated between two scheduled milestones (e.g. `targetError` met or
+    // `timeoutMinutes` elapsed at a non-power-of-ten generation). Charts and
+    // resume helpers driven by `milestones` need the rightmost point to track
+    // `result.generation`; otherwise the last visible point is the previous
+    // scheduled milestone and downstream consumers see drift.
+    if (
+      statisticsEnabled &&
+      lastFittestCaptured &&
+      (milestones.length === 0 ||
+        milestones[milestones.length - 1].generation !== generation)
+    ) {
+      // Issue #2693: build the synthetic-tail milestone from the snapshotted
+      // scalars rather than a retained Creature reference.
+      const milestone = buildMilestoneFromScalars(
+        lastGenerationStats,
+        lastFittestScore,
+        lastFittestNeurons,
+        lastFittestSynapses,
+        lastFittestMeanReward,
+        lastGenerationStartMs,
+        lastNowMs,
         generation,
       );
       milestones.push(milestone);
@@ -1707,152 +1857,88 @@ export async function evolveRL<S, A>(
       });
     }
 
-    if (
-      config.log &&
-      (generation % config.log === 0 || completed)
-    ) {
-      let avgTxt = "";
-      if (Number.isFinite(result.averageScore)) {
-        avgTxt = `(avg: ${yellow(result.averageScore.toFixed(4))})`;
-      }
-      getLogger().info(
-        "Generation",
-        generation,
-        "score",
-        fittest.score,
-        avgTxt,
-        "error",
-        error,
-        (config.log > 1 ? "avg " : "") + "time",
-        yellow(
-          format(Math.round((now - iterationStartMS) / config.log), {
-            ignoreZero: true,
-          }),
-        ),
-      );
-      iterationStartMS = now;
-    }
-
-    if (completed) {
-      if (interrupted) break;
-
-      // Issue #2896: enforce the absolute T+15 hard cap. Once it passes, abandon
-      // any in-flight discovery/training bookkeeping and break unconditionally —
-      // even when finishUp() would still ask for more wait generations. The
-      // post-loop sequence (best-creature restore, writeCreatures) still runs
-      // because the break lands there.
-      if (neat.abandonInFlightPastHardDeadline(hardDeadlineMS, nowFn())) {
-        break;
-      }
-
-      if (neat.finishUp(iterations, endTimeMS, start, generation)) {
-        break;
-      }
-      // deno-lint-ignore no-await-in-loop
-      await neat.awaitInFlightTasks(
-        AWAIT_IN_FLIGHT_TIMEOUT_MS,
-        hardDeadlineMS,
-        nowFn,
-      );
-    }
-  }
-
-  // Issue #2647: append a synthetic final-generation milestone when the run
-  // terminated between two scheduled milestones (e.g. `targetError` met or
-  // `timeoutMinutes` elapsed at a non-power-of-ten generation). Charts and
-  // resume helpers driven by `milestones` need the rightmost point to track
-  // `result.generation`; otherwise the last visible point is the previous
-  // scheduled milestone and downstream consumers see drift.
-  if (
-    statisticsEnabled &&
-    lastFittestCaptured &&
-    (milestones.length === 0 ||
-      milestones[milestones.length - 1].generation !== generation)
-  ) {
-    // Issue #2693: build the synthetic-tail milestone from the snapshotted
-    // scalars rather than a retained Creature reference.
-    const milestone = buildMilestoneFromScalars(
-      lastGenerationStats,
-      lastFittestScore,
-      lastFittestNeurons,
-      lastFittestSynapses,
-      lastFittestMeanReward,
-      lastGenerationStartMs,
-      lastNowMs,
-      generation,
-    );
-    milestones.push(milestone);
-    emitTrainingEvent(config.onTrainingEvent, {
-      kind: "evolverl_milestone",
-      timestamp: Temporal.Now.instant().toString(),
-      ...milestone,
+    // Issue #2612: Terminate the parallel rollout pool, if any. When no pool was
+    // constructed (single-threaded or missing adapterDescription) there is
+    // nothing to terminate. GRQ #4472: both the pool shutdown and the replay
+    // drain run inside the bounded teardown, after the champion is on disk.
+    await runBoundedEvolveTeardown({
+      label: "evolveRL",
+      persist: async () => {
+        restoreEvolveChampion(
+          creature,
+          bestCreature,
+          callerSnapshot,
+          config.debug,
+          "evolveRL:restoreBest",
+        );
+        if (config.creatureStore) {
+          await writeCreatures(neat, config.creatureStore);
+        }
+        // Issue #3934: the run's last chance to append the training events that
+        // settled after the final generation's flush. Without it the last
+        // generation's measurements stay in the buffer and are lost — a log that
+        // silently ends a generation early is worse than no log.
+        await flushTrainingGainLog(neat);
+      },
+      workers: workerPool ? [workerPool] : undefined,
+      replayQueue: neat.discoveryReplayQueue,
+      hardDeadlineMS,
+      now: nowFn,
+      budgetMS: deps?.teardownBudgetMS,
     });
-  }
 
-  // Issue #2612: Terminate the parallel rollout pool, if any. When no pool was
-  // constructed (single-threaded or missing adapterDescription) there is
-  // nothing to terminate. GRQ #4472: both the pool shutdown and the replay
-  // drain run inside the bounded teardown, after the champion is on disk.
-  await runBoundedEvolveTeardown({
-    label: "evolveRL",
-    persist: async () => {
-      if (bestCreature) {
-        creature.loadFrom(bestCreature, config.debug, "evolveRL:restoreBest");
-      }
-      if (config.creatureStore) {
-        await writeCreatures(neat, config.creatureStore);
-      }
-      // Issue #3934: the run's last chance to append the training events that
-      // settled after the final generation's flush. Without it the last
-      // generation's measurements stay in the buffer and are lost — a log that
-      // silently ends a generation early is worse than no log.
-      await flushTrainingGainLog(neat);
-    },
-    workers: workerPool ? [workerPool] : undefined,
-    replayQueue: neat.discoveryReplayQueue,
-    hardDeadlineMS,
-    now: nowFn,
-    budgetMS: deps?.teardownBudgetMS,
-  });
+    // Issue #3434: run-level teardown. The caller holds the champion, or else its
+    // original genome from the entry snapshot (Issue #4061). Dispose the population
+    // (keeping the caller), the champion and the snapshot, then release the
+    // process-global breed/discovery caches.
+    disposeEvolvePopulation(neat.population, creature);
+    bestCreature?.dispose();
+    releaseEvolveCaches();
 
-  // Issue #3434: run-level lifecycle teardown — dispose the run's population
-  // (keeping the caller creature), dispose the temporary champion clone, and
-  // release the process-global breed/discovery caches.
-  disposeEvolvePopulation(neat.population, creature);
-  bestCreature?.dispose();
-  releaseEvolveCaches();
-
-  Deno.removeSignalListener("SIGTERM", signalListener);
-  options.signal?.removeEventListener("abort", abortListener);
-  // Issue #2629: include milestones only when statistics were enabled, so
-  // callers that did not opt in see the same return shape as #2628.
-  const time = Date.now() - start;
-  const phaseTimingTotals = finalisePhaseTimingTotals(
-    phaseTimingAccumulator,
-    time,
-  );
-  // Issue #3234: finalise the run-level per-backend scorer-utilisation totals.
-  const scorerUtilisation = finaliseScorerUtilisationTotals(
-    scorerUtilisationAccumulator,
-  );
-  // Issue #3779: run-level training-outcome totals, including skipped
-  // dispatches.
-  const trainingOutcomes = summariseTrainingOutcomes(
-    neat.trainingRegressionTracker,
-  );
-  // Issue #3422: run-level tuning statistics — population size, requested
-  // options, hardware and the score-improvement milestones.
-  const runStatistics = buildEvolveRunStatistics({
-    populationSize: config.populationSize,
-    adaptivePopulationEnabled: config.adaptivePopulation.enabled,
-    finalPopulationSize: neat.effectivePopulationSize,
-    options,
-    trajectory: scoreTrajectory,
-  });
-  const termination = neat.terminationReason
-    ? { terminationReason: neat.terminationReason }
-    : {};
-  if (statisticsEnabled) {
+    Deno.removeSignalListener("SIGTERM", signalListener);
+    options.signal?.removeEventListener("abort", abortListener);
+    // Issue #2629: include milestones only when statistics were enabled, so
+    // callers that did not opt in see the same return shape as #2628.
+    const time = Date.now() - start;
+    const phaseTimingTotals = finalisePhaseTimingTotals(
+      phaseTimingAccumulator,
+      time,
+    );
+    // Issue #3234: finalise the run-level per-backend scorer-utilisation totals.
+    const scorerUtilisation = finaliseScorerUtilisationTotals(
+      scorerUtilisationAccumulator,
+    );
+    // Issue #3779: run-level training-outcome totals, including skipped
+    // dispatches.
+    const trainingOutcomes = summariseTrainingOutcomes(
+      neat.trainingRegressionTracker,
+    );
+    // Issue #3422: run-level tuning statistics — population size, requested
+    // options, hardware and the score-improvement milestones.
+    const runStatistics = buildEvolveRunStatistics({
+      populationSize: config.populationSize,
+      adaptivePopulationEnabled: config.adaptivePopulation.enabled,
+      finalPopulationSize: neat.effectivePopulationSize,
+      options,
+      trajectory: scoreTrajectory,
+    });
+    const termination = neat.terminationReason
+      ? { terminationReason: neat.terminationReason }
+      : {};
+    if (statisticsEnabled) {
+      return {
+        error,
+        score: bestScore,
+        generation,
+        time,
+        phaseTimingTotals,
+        scorerUtilisation,
+        trainingOutcomes,
+        ...runStatistics,
+        milestones,
+        ...termination,
+      };
+    }
     return {
       error,
       score: bestScore,
@@ -1862,21 +1948,29 @@ export async function evolveRL<S, A>(
       scorerUtilisation,
       trainingOutcomes,
       ...runStatistics,
-      milestones,
       ...termination,
     };
+  } catch (error) {
+    // Preserve the original generation/teardown failure while keeping the
+    // caller's genome usable even when a previous commit disposed it.
+    try {
+      restoreEvolveChampion(
+        creature,
+        bestCreature,
+        callerSnapshot,
+        config.debug,
+        "evolveRL:restoreBest",
+      );
+    } catch (restoreError) {
+      getLogger().error(
+        "evolveRL: unable to restore caller after failure",
+        restoreError,
+      );
+    }
+    throw error;
+  } finally {
+    callerSnapshot.dispose();
   }
-  return {
-    error,
-    score: bestScore,
-    generation,
-    time,
-    phaseTimingTotals,
-    scorerUtilisation,
-    trainingOutcomes,
-    ...runStatistics,
-    ...termination,
-  };
 }
 
 /**

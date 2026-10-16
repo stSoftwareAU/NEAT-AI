@@ -1125,7 +1125,9 @@ export async function evolve(
   // under the in-flight write: the root cause of the RangeError this issue
   // reports. Skip the whole commit and leave the previous, stable
   // population and its members untouched; nothing reads this generation's
-  // result once it has been abandoned.
+  // result once it has been abandoned. The guard is checked here, before the
+  // commit, and again before disposal (Issue #4061), because the dedup await
+  // below can span a hard-deadline abandon.
   const abandoned = neat.isRunAbandonedSince(scheduledEpoch);
   // PR #4051 review: both are only ever read after being reassigned in the
   // `!abandoned` branch below, so no placeholder initial value is needed.
@@ -1252,29 +1254,41 @@ export async function evolve(
       heavyPool,
     );
 
-    // Issue #1568: Dispose old population creatures not carried forward
-    // Issue #3508: also dispose creatures dropped by the population budget.
-    // Issue #4050: also dispose creatures dropped by the population cap (trimPopulationToSize).
-    // A Set de-duplicates the sources so nothing is disposed twice.
-    const carriedForward = new Set(neat.population);
-    const toDispose = new Set<Creature>();
-    for (const creature of oldPopulation) {
-      if (!carriedForward.has(creature)) {
-        toDispose.add(creature);
+    // Issue #4061: the dedup await above yields to the event loop, so a
+    // hard-deadline abandon can land after the check before the commit. Re-check
+    // immediately before disposal: once abandoned, the checkpoint writer may
+    // still be exporting oldPopulation's members, so they are left undisposed.
+    if (neat.isRunAbandonedSince(scheduledEpoch)) {
+      getLogger().warn(
+        `[Neat] Generation ${neat.currentGeneration} abandoned past the ` +
+          `hard deadline mid-commit — leaving previous-population members ` +
+          `undisposed (Issue #4061)`,
+      );
+    } else {
+      // Issue #1568: Dispose old population creatures not carried forward
+      // Issue #3508: also dispose creatures dropped by the population budget.
+      // Issue #4050: also dispose creatures dropped by the population cap (trimPopulationToSize).
+      // A Set de-duplicates the sources so nothing is disposed twice.
+      const carriedForward = new Set(neat.population);
+      const toDispose = new Set<Creature>();
+      for (const creature of oldPopulation) {
+        if (!carriedForward.has(creature)) {
+          toDispose.add(creature);
+        }
       }
-    }
-    for (const creature of budgeted.dropped) {
-      if (!carriedForward.has(creature)) {
-        toDispose.add(creature);
+      for (const creature of budgeted.dropped) {
+        if (!carriedForward.has(creature)) {
+          toDispose.add(creature);
+        }
       }
-    }
-    for (const creature of trim.removedCreatures) {
-      if (!carriedForward.has(creature)) {
-        toDispose.add(creature);
+      for (const creature of trim.removedCreatures) {
+        if (!carriedForward.has(creature)) {
+          toDispose.add(creature);
+        }
       }
-    }
-    for (const creature of toDispose) {
-      creature.dispose();
+      for (const creature of toDispose) {
+        creature.dispose();
+      }
     }
 
     if (neat.config.verbose && preWarmResult.newTemplatesCompiled > 0) {
