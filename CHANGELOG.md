@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4071:** `cleanupOrphanedNeurons` converted a hidden neuron that had
+  outward but no inward synapses into a constant and dropped its `uuid`. On
+  reload the constant was relabelled `legacy-neuron-<id>`, which could match a
+  neuron that already carried that label. The creature then held two neurons
+  with one uuid; it still validated in memory, but the next export/import
+  resolved both neurons' synapses onto one of them and failed with
+  `constants neuron legacy-neuron-N has no outward connections` (the signature
+  of the flaky `XNOR - evolve` failure and of #3383). The converted constant now
+  keeps the neuron's uuid, as the neuron UUID stability invariant requires.
 - **Issue #4062:** A checkpoint written during teardown could carry `memetic`
   data that no longer matched its synapses, so loading it failed with
   `Memetic from id … has no matching synapses`. The likely cause, not yet
@@ -34,6 +43,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   row whose synapse is not exported and any `memetic.biases` key that is not an
   exported neuron, and logs a warning naming Issue #4062 when it does. Valid
   memetic data and the live creature are untouched.
+- **Issue #4061:** when `evolveDir()`, `evolveEnv()` or `evolveRL()` reaches its
+  post-loop teardown or rejects during evolution, hard-deadline abandon
+  included, the caller's creature now gets the champion only if it is usable
+  (`neurons.length >= input + output` and `validate()` passes); otherwise the
+  caller's original genome is restored from a pre-evolution snapshot
+  (`restoreEvolveChampion` in `src/creature/EvolveTeardown.ts`). If the snapshot
+  is unusable too, the restore throws. An abandoned generation no longer
+  disposes the previous population after its commit. This fixes
+  `RangeError: Invalid array length` in `CreatureUtil.makeUUID`.
 - **Issue #4053:** `evolveDir`'s first generation had no deadline, so a
   generation 1 that never settled outlived a 5-minute `timeoutMinutes` by 2 h.
   Generation 1 now has its own bound,

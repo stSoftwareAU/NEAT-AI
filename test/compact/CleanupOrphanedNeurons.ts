@@ -426,7 +426,7 @@ Deno.test("cleanupOrphanedNeurons - should apply squash function when converting
 
   // The hidden neuron should have been converted to a constant. Identify it
   // observably as the sole constant neuron rather than by a derived hash id
-  // (conversion drops the source UUID).
+  // (the converted constant keeps its source UUID; this test matches on type alone).
   const convertedNeuron = creatureExport.neurons.find(
     (n) => n.type === "constant",
   );
@@ -497,7 +497,7 @@ Deno.test("cleanupOrphanedNeurons - should apply TANH squash function when conve
 
   // Verify the constant neuron has the TANH-squashed bias. Identify it
   // observably as the sole constant neuron rather than by a derived hash id
-  // (conversion drops the source UUID).
+  // (the converted constant keeps its source UUID; this test matches on type alone).
   const convertedNeuron = creatureExport.neurons.find(
     (n) => n.type === "constant",
   );
