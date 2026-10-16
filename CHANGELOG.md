@@ -25,6 +25,21 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4067:** when `timeoutMinutes` is set, `evolveDir()`, `evolveEnv()`
+  and `evolveRL()` now arm the off-main-thread event-loop watchdog (Issue #4066)
+  so a run whose main thread is blocked in a synchronous loop cannot outlive its
+  cap. Generation 1 is armed against the first-generation bound plus a 5 minute
+  margin, and re-armed against the hard cap plus the margin after generation 1
+  completes. A breach writes one stderr line, then the process is SIGKILLed and
+  exits with status 137. The line is:
+  - during generation 1: `[Neat] First generation wedged after <s>s` …
+    `first-generation-wedged`;
+  - later: `[Neat] Run wedged after <s>s at generation <n>` …
+
+  A blocked main thread cannot return a `terminationReason`, so callers see 137
+  and the stderr line instead. When the loop yields, the in-process bound still
+  returns `terminationReason` as before. SIGKILL skips in-process cleanup,
+  including the checkpoint flush.
 - **Issue #4071:** `cleanupOrphanedNeurons` converted a hidden neuron that had
   outward but no inward synapses into a constant and dropped its `uuid`. On
   reload the constant was relabelled `legacy-neuron-<id>`, which could match a

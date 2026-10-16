@@ -27,8 +27,9 @@
  * The caller must `disarm()` in a `finally`. An armed Worker keeps the process
  * alive until its deadline, so a run that finishes early must release it.
  *
- * Nothing arms this primitive yet. Issue #4067 will wire it into `evolveDir`,
- * `evolveEnv` and `evolveRL`.
+ * `armRunWatchdog` in `src/creature/EvolveRunWatchdog.ts` arms this primitive
+ * for `evolveDir`, `evolveEnv` and `evolveRL` when `timeoutMinutes` is set
+ * (Issue #4067).
  *
  * @module
  */
