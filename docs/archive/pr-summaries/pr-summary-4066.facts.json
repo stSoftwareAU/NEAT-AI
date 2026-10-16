@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "branchOutcomes": {
+    "noneAdded": false,
+    "entries": [
+      {
+        "path": "src/NEAT/EventLoopWatchdog.ts",
+        "line": 109,
+        "outcome": "non-finite deadline refused with NOT_FINITE",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "armEventLoopWatchdog refuses a non-finite deadline",
+        "flipWentRed": "removing the check turned it red: Expected function to throw"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdog.ts",
+        "line": 116,
+        "outcome": "operand typeof breachLine !== string: non-string line refused with INVALID_TYPE",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "armEventLoopWatchdog refuses a non-string breach line",
+        "flipWentRed": "deleting only the typeof operand turned it red: TypeError instead of ConfigurationError"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdog.ts",
+        "line": 117,
+        "outcome": "operand trimmed length === 0: blank line refused with INVALID_TYPE",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "armEventLoopWatchdog refuses an empty breach line",
+        "flipWentRed": "deleting only the trim operand turned it red: Expected function to throw"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdog.ts",
+        "line": 141,
+        "outcome": "synchronous new Worker throw (Error or non-Error) logs unavailable naming the cause and returns a no-op handle",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "EventLoopWatchdog unavailable: a Worker constructor that throws logs the cause and returns a no-op handle",
+        "flipWentRed": "negating the Error ternary turned it red: unavailable line named 'Error: staged spawn failure'; returning undefined turned it red: TypeError calling setGeneration"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdog.ts",
+        "line": 150,
+        "outcome": "Worker load failure (no read permission) logs one unavailable line naming the cause and the process exits 0",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "EventLoopWatchdog unavailable: a Worker that cannot load logs one loud line and returns a no-op handle",
+        "flipWentRed": "removing the logUnavailable call turned it red: unavailable line missing from stderr"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdog.ts",
+        "line": 167,
+        "outcome": "non-integer generation refused with NOT_INTEGER",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "setGeneration refuses a non-integer or out-of-range generation",
+        "flipWentRed": "removing the check turned it red: Expected function to throw"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdog.ts",
+        "line": 173,
+        "outcome": "operand next < 0: negative generation refused with OUT_OF_RANGE",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "setGeneration refuses a non-integer or out-of-range generation",
+        "flipWentRed": "removing the negative operand turned it red: Expected function to throw"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdog.ts",
+        "line": 173,
+        "outcome": "operand next > GENERATION_MAX: 2^31 refused with OUT_OF_RANGE",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "setGeneration refuses a non-integer or out-of-range generation",
+        "flipWentRed": "removing the upper-bound operand turned it red: Expected function to throw"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdogWorker.ts",
+        "line": 52,
+        "outcome": "Deno.kill failure is written to stderr after the breach line and rethrown",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "EventLoopWatchdogWorker: a kill that fails is reported on stderr after the breach line",
+        "flipWentRed": "negating the Error ternary turned it red: stderr named 'Error: staged kill failure'"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdogWorker.ts",
+        "line": 71,
+        "outcome": "no generation set: breach line names generation unknown",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "EventLoopWatchdog breach line names an unknown generation when none was set",
+        "flipWentRed": "changing the label to -1 turned it red: breach line missing from stderr"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdogWorker.ts",
+        "line": 71,
+        "outcome": "generation set: breach line names that generation",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "EventLoopWatchdogKillsBlockedMainThread: SIGKILLs a busy-looping main thread that swallows SIGTERM",
+        "flipWentRed": "removing the replaceAll substitution turned it red: breach line missing from stderr"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdogWorker.ts",
+        "line": 84,
+        "outcome": "deadline passed: breach writes the line and SIGKILLs the process (exit 137)",
+        "test": "test/NEAT/EventLoopWatchdog_test.ts",
+        "testName": "EventLoopWatchdogKillsBlockedMainThread: SIGKILLs a busy-looping main thread that swallows SIGTERM",
+        "flipWentRed": "sending SIGTERM instead of SIGKILL turned it red: the hang guard ended the process, not the watchdog"
+      },
+      {
+        "path": "src/NEAT/EventLoopWatchdogWorker.ts",
+        "line": 88,
+        "outcome": "deadline still ahead: re-check the wall clock after min(remaining, POLL_MS)",
+        "exempt": {
+          "kind": "untestable",
+          "reason": "observing a re-check needs a real wait for the timer, which policy #2888 forbids in tests; the only harness, test/NEAT/EventLoopWatchdog_test.ts, reaches this path in the disarm and setGeneration tests but terminates the Worker before any re-check"
+        }
+      }
+    ]
+  }
+}

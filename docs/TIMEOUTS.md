@@ -329,6 +329,72 @@ finishes and checks its model in _well before_ the watchdog ever has to fire;
 the watchdog only catches pathological situations (a wedged process, a deadlock
 outside the cooperative checkpoints) that an in-process deadline cannot reach.
 
+## 🐕 The event-loop watchdog primitive (Issue #4066)
+
+The in-process bounds above all run on the run's own event loop:
+`awaitWithinHardDeadline` polls with `setInterval`, and the others are checks
+the loop reaches between steps. A main thread blocked in a synchronous loop, or
+a V8 heap thrashing in garbage collection, silences them exactly when they are
+needed (#4060). `armEventLoopWatchdog` in
+[`src/NEAT/EventLoopWatchdog.ts`](../src/NEAT/EventLoopWatchdog.ts) runs the
+deadline in a Worker instead. At breach it writes the breach line to stderr and
+sends `SIGKILL` to the process, which exits with status 137. `SIGKILL` is used
+because `SIGTERM` is swallowed by the listeners the training entry points
+register, and `Deno.exit` from a Worker ends only that Worker. A `{generation}`
+token in the breach line is replaced with the last generation the run recorded.
+If the Worker cannot load, the primitive logs
+`[Neat] event-loop watchdog unavailable: ...` and only the in-process bound
+applies.
+
+### Armed by the training entry points (Issue #4067)
+
+When `timeoutMinutes` is set, `evolveDir`, `evolveEnv` and `evolveRL` arm the
+watchdog through `armRunWatchdog` in
+[`src/creature/EvolveRunWatchdog.ts`](../src/creature/EvolveRunWatchdog.ts), at
+the start of the main try block and before the population is seeded. With no
+`timeoutMinutes` nothing is armed.
+
+- **Generation 1.** The deadline is
+  `Date.now() + max(0, firstGenerationDeadlineMS - now()) + margin`, where
+  `now()` is the run's clock. An injected start in the past therefore cannot
+  schedule a kill before the margin. The helper is
+  `computeWatchdogDeadlineEpochMS` and the default margin is
+  `DEFAULT_WATCHDOG_MARGIN_MS` (5 minutes, which covers the bounded teardown);
+  both live in [`src/NEAT/HardDeadline.ts`](../src/NEAT/HardDeadline.ts).
+- **After generation 1 completes** the watchdog is re-armed against the hard cap
+  plus margin, using the same formula with `hardDeadlineMS`. The generation
+  counter is updated after every completed generation.
+- **Disarm.** A `finally` disarms the watchdog, so a normal return, a thrown
+  error and the SIGTERM path all release it.
+- **Breach.** At the scheduled deadline the watchdog writes one stderr line,
+  then SIGKILLs the process, which exits with status 137. `<s>` is the run's
+  elapsed seconds at the breach:
+  - during generation 1:
+    `[Neat] First generation wedged after <s>s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged`
+  - later:
+    `[Neat] Run wedged after <s>s at generation <n> (event loop blocked past the hard cap; watchdog killing the process)`,
+    where `<n>` is the number of generations completed.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Gen1Armed: timeoutMinutes set, arm at generation 1 deadline + margin
+    Gen1Armed --> HardCapArmed: generation 1 completes, re-arm at hard cap + margin
+    Gen1Armed --> Disarmed: return, throw or SIGTERM (finally)
+    HardCapArmed --> Disarmed: return, throw or SIGTERM (finally)
+    Gen1Armed --> Killed: loop blocked, deadline passes, SIGKILL (137)
+    HardCapArmed --> Killed: loop blocked, deadline passes, SIGKILL (137)
+    Disarmed --> [*]
+    Killed --> [*]
+```
+
+A blocked main thread cannot return
+`terminationReason: "first-generation-wedged"`, so on this path the caller sees
+exit 137 and the stderr line only. When the loop does yield, the in-process
+bound fires first, because the watchdog deadline is that bound plus the margin,
+and it returns `terminationReason` exactly as before. SIGKILL skips in-process
+cleanup (checkpoint flush and SIGTERM teardown). That is accepted for a
+last-resort bound.
+
 ## ✅ Verifying the guarantee
 
 The end-to-end guard
@@ -364,6 +430,17 @@ drives `evolveDir` end to end with a worker whose `terminate()` never resolves,
 one whose `terminate()` throws, and a replay drain that never settles —
 asserting in every case that the run returns and the champion still reaches
 `creatureStore`.
+
+The watchdog arming is covered by
+[`test/creature/EvolveFirstGenerationBusyLoop_test.ts`](../test/creature/EvolveFirstGenerationBusyLoop_test.ts),
+which runs each entry point in a subprocess with a generation 1 that spins in a
+synchronous loop and asserts exit 137 with the first-generation stderr line.
+[`test/NEAT/HardDeadlineWatchdog_test.ts`](../test/NEAT/HardDeadlineWatchdog_test.ts)
+pins the deadline arithmetic,
+[`test/creature/EvolveRunWatchdog_test.ts`](../test/creature/EvolveRunWatchdog_test.ts)
+covers arm, re-arm and disarm, and
+[`test/creature/EvolveWatchdogWiring_test.ts`](../test/creature/EvolveWatchdogWiring_test.ts)
+checks that each entry point arms, re-arms and disarms, including on error.
 
 ## 🔗 Related
 
