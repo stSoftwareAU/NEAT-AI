@@ -21,7 +21,7 @@ import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import {
   cleanupOrphanedNeurons,
   cleanupOrphanedNeuronsInCreature,
-} from "@compact/OrphanedNeuronCleanup.ts";
+} from "../../src/compact/OrphanedNeuronCleanup.ts";
 import { LOGISTIC } from "@methods/activations/types/LOGISTIC.ts";
 import {
   createSeededRng,

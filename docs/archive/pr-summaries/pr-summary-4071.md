@@ -99,11 +99,11 @@ it quotes the historical #3383 error.
   flaky `XNOR - evolve` failure did not reproduce in 441 evolution runs, so it
   is not proven that this collision is the exact one CI hit.
 - **regression test** —
-  `test/compact/ConvertedConstantKeepsUuid.ts::Issue #4071 - a converted constant survives an export round trip beside a legacy-labelled constant`
+  `test/compact/ConvertedConstantKeepsUuid_test.ts::Issue #4071 - a converted constant survives an export round trip beside a legacy-labelled constant`
 
 ## Test Plan
 
-- Added `test/compact/ConvertedConstantKeepsUuid.ts`:
+- Added `test/compact/ConvertedConstantKeepsUuid_test.ts`:
   - `Issue #4071 - a converted constant survives an export round trip beside a legacy-labelled constant`:
     a constant `legacy-neuron-1777777` sits beside a hidden `U` (id 1777777)
     that has no inward synapse. After `cleanupOrphanedNeuronsInCreature`, a
@@ -115,11 +115,23 @@ it quotes the historical #3383 error.
     `ValidationError: constants neuron legacy-neuron-1777777 has no outward connections`
     and `AssertionError: undefined` vs `"hidden-no-inward"` respectively. Both
     pass with the line restored.
+- Mutation check: the gate reported every mutant of
+  `src/compact/OrphanedNeuronCleanup.ts:287` and of the new test file as "no
+  test imports this module". It does not resolve the `@compact/` import-map
+  alias, and it did not treat a file without the `_test.ts` suffix as a test.
+  The file is now `test/compact/ConvertedConstantKeepsUuid_test.ts`, and it
+  imports `cleanupOrphanedNeurons` / `cleanupOrphanedNeuronsInCreature` by
+  relative path (`../../src/compact/OrphanedNeuronCleanup.ts`). This follows the
+  #4056 precedent. I re-ran the `:287` mutant (delete `uuid: neuron.uuid,`) by
+  hand against the renamed file, and both tests went red:
+  `FAILED | 0 passed | 2 failed`. The remaining listed mutants change the test
+  file itself, and the gate ran no test against them. They are now in a file the
+  gate recognises as a test.
 - Edited `test/compact/CleanupOrphanedNeurons.ts`: comments only. Two comments
   said "(conversion drops the source UUID)" and are reworded. No assertion was
   removed or changed.
 - Targeted run:
-  `deno test … test/compact/ConvertedConstantKeepsUuid.ts test/compact/CleanupOrphanedNeurons.ts test/compact/OrphanedNeuronCornerCases.ts test/compact/CompactTagPreservation.ts test/architecture/training/CompactResultValidation.ts test/creature/NeuronUuidStability.ts`:
+  `deno test … test/compact/ConvertedConstantKeepsUuid_test.ts test/compact/CleanupOrphanedNeurons.ts test/compact/OrphanedNeuronCornerCases.ts test/compact/CompactTagPreservation.ts test/architecture/training/CompactResultValidation.ts test/creature/NeuronUuidStability.ts`:
   41 passed, 0 failed.
 - `./quality.sh --rust-scorer-bin=/var/tmp/vibe-cargo-target/NEAT-AI-5d15f9f9/release/rust_scorer < /dev/null`
   on the final code: `ok | 9928 passed (5 steps) | 0 failed | 4 ignored`, exit
