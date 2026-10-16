@@ -329,6 +329,76 @@ finishes and checks its model in _well before_ the watchdog ever has to fire;
 the watchdog only catches pathological situations (a wedged process, a deadlock
 outside the cooperative checkpoints) that an in-process deadline cannot reach.
 
+Like every in-process bound, the cap only fires while the run's main event loop
+yields. The subsection below explains what that means for a caller and how to
+bound each run from outside the process.
+
+### 🧱 The event-loop limit and the caller-side per-loop kill (Issue #4068)
+
+**Why the in-process bounds cannot always fire.** The T+15 cap, generation 1's
+bound and the bounded teardown all run on the run's main event loop.
+`awaitWithinHardDeadline` in
+[`src/NEAT/HardDeadlineRace.ts`](../src/NEAT/HardDeadlineRace.ts) polls its
+deadline with `setInterval` on that loop, and a timer callback runs only when
+the loop is free. If the main thread is blocked in a synchronous loop, or the V8
+heap is thrashing in garbage collection, the poll never runs, and the run
+outlives every in-process bound. This is the #4060 failure mode: loop-2 runs at
+T = 4 and T = 5 went silent for about two hours against a 24- or 30-minute
+first-generation bound, until the caller's stale window ended them. The
+[event-loop watchdog](#-the-event-loop-watchdog-primitive-issue-4066) (#4066,
+armed by #4067) keeps its deadline in a Worker, which has its own event loop and
+its own timer. At breach it writes one stderr line and SIGKILLs the whole
+process.
+
+**Recognising the watchdog kill.** A run the watchdog ends exits with status
+**137** (128 + `SIGKILL`) and returns no `terminationReason`. The stderr line
+just before the exit says which bound was breached:
+
+| Exit | stderr line contains                                             | What happened                                                                 | Report it as                                    |
+| ---- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------- |
+| 137  | `First generation wedged after <s>s … — first-generation-wedged` | Generation 1 was still running (generation counter 0) past its bound + margin | `first-generation-wedged`                       |
+| 137  | `Run wedged after <s>s at generation <n>`                        | `<n>` generations had completed and the run was past the hard cap + margin    | a wedge past the hard cap                       |
+| 137  | neither line                                                     | A `SIGKILL` from elsewhere: the caller's own kill, the OOM killer, a host cap | whatever the caller's own records say killed it |
+
+Neither breach line is a generic crash or an out-of-memory kill. Report exit 137
+plus the first line as `first-generation-wedged`, and exit 137 plus the second
+line as a wedge. When the loop does yield, the in-process bound fires first,
+because each watchdog deadline is that bound plus the margin. The run then
+returns normally with `terminationReason` set, and there is no exit 137. A
+`SIGKILL` skips in-process cleanup (checkpoint flush and SIGTERM teardown), so a
+run killed this way has persisted only what it had already written.
+
+**The caller-side per-loop hard kill.** As defence in depth, a caller that
+launches one `evolve*` run per loop (for example GRQ's `worker/sampler.sh`)
+should enforce its own hard kill on each loop. It also covers two cases the
+in-process watchdog does not. One is a Worker that cannot load: the run then
+logs `[Neat] event-loop watchdog unavailable: …` and only the in-process bound
+applies. The other is a run with no `timeoutMinutes`, for which nothing is
+armed. For a loop launched with `timeoutMinutes` = T, kill it at:
+
+```text
+start + T + min(15, max(1, T)) + min(60, 4×T) + margin   (minutes)
+```
+
+| Term                 | Source                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `T`                  | The soft timeout, `timeoutMinutes`                                                                                                               |
+| `min(15, max(1, T))` | The grace clamp in `computeHardDeadlineTS` (`HARD_DEADLINE_GRACE_MINUTES`); `start + T + grace` is the hard cap                                  |
+| `min(60, 4×T)`       | Generation 1's extra allowance in `computeFirstGenerationDeadlineTS` (`FIRST_GENERATION_MAX_EXTRA_MINUTES`, `FIRST_GENERATION_TIMEOUT_MULTIPLE`) |
+| `margin`             | At least `DEFAULT_WATCHDOG_MARGIN_MS`, 5 minutes, the margin the in-process watchdog adds                                                        |
+
+These constants and helpers all live in
+[`src/NEAT/HardDeadline.ts`](../src/NEAT/HardDeadline.ts). Worked example, T = 6
+with a 5-minute margin: the hard cap is 6 + 6 = 12 minutes, the first-generation
+bound is 12 + min(60, 24) = 36 minutes, and the per-loop kill lands at 36 + 5 =
+**41 minutes** after `start`. Once generation 1 completes, the in-process
+watchdog re-arms at the hard cap + margin (17 minutes for T = 6), which is
+earlier, so this one caller deadline bounds the whole loop. The in-process
+watchdog measures from the start `evolve*` itself records, which comes after the
+process launches. A caller that measures `start` from the launch should
+therefore round the margin up to cover start-up. That way the in-process
+watchdog fires first and its breach line is printed.
+
 ## 🐕 The event-loop watchdog primitive (Issue #4066)
 
 The in-process bounds above all run on the run's own event loop:
@@ -431,7 +501,16 @@ one whose `terminate()` throws, and a replay drain that never settles —
 asserting in every case that the run returns and the champion still reaches
 `creatureStore`.
 
-The watchdog arming is covered by
+The off-main-thread primitive is covered by
+[`test/NEAT/EventLoopWatchdog_test.ts`](../test/NEAT/EventLoopWatchdog_test.ts)
+(Issue #4066). Its subprocess tests run each case in its own `deno run` child. A
+child whose main thread spins in a synchronous loop and swallows `SIGTERM` exits
+137 with the breach line on stderr. When no generation was set, the breach line
+names `unknown`. After `disarm()` the child exits 0 without the line. A Worker
+that cannot load (no read permission), or whose constructor throws, logs
+`event-loop watchdog unavailable` and returns a no-op handle.
+
+The arming by the training entry points (Issue #4067) is covered by
 [`test/creature/EvolveFirstGenerationBusyLoop_test.ts`](../test/creature/EvolveFirstGenerationBusyLoop_test.ts),
 which runs each entry point in a subprocess with a generation 1 that spins in a
 synchronous loop and asserts exit 137 with the first-generation stderr line.
