@@ -48,11 +48,12 @@ for a human (needs-human) to file in GRQ exactly once and link.
 ### Undiscoverable Facts
 
 - #4066/#4067 landed on `Develop` through the `4060-src-event-loop-watchdog`
-  milestone (PR #4084), but this milestone branch had not synced. This branch
-  therefore merges `origin/Develop` (commit `cf87a85d`), and until the milestone
-  syncs, the PR diff against the milestone base also shows that already-reviewed
-  code. This PR's own change is commits `dbd6f872` and `01a44bd0`, which touch
-  only `docs/TIMEOUTS.md`.
+  milestone (PR #4084). This branch first merged `origin/Develop` (commit
+  `cf87a85d`) to pick them up. The milestone has since synced (PR #4085, merged
+  here in `d67e503f`), so that code is already on the base. The PR diff against
+  the milestone base is docs-only: `docs/TIMEOUTS.md` (commits `dbd6f872` and
+  `01a44bd0`) plus this summary and its `.facts.json` (commits `df63b4e9` and
+  `b699f47e`).
 - GRQ's sampler lives at `worker/sampler.sh`. I checked that with a `gh api`
   contents lookup on the downstream production repo.
 - GRQ search (open issues): no hits for "sampler.sh hard kill", "per-loop kill",
