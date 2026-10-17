@@ -194,7 +194,9 @@ champion and releases the process-global evolve caches. `evolveEnv` creates no
 workers. Each of those cleanup steps is isolated: an error is logged and never
 replaces the error that caused the failure, which still propagates to the
 caller. The Issue #4061 restore still runs first, before the population is
-disposed.
+disposed. The success and failure paths release the same resources; the failure
+path differs only in running that release when the success teardown has not
+completed.
 
 The budget defaults to `DEFAULT_TEARDOWN_STEP_BUDGET_MS` (5 s) per step. The
 teardown always emits **one summary line** naming what it left behind, so the

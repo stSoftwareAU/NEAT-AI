@@ -34,6 +34,14 @@ import {
   DEFAULT_OVERRUN_ENFORCEMENT_FACTOR,
   shouldStopStartingGenerations,
 } from "@neat/HardDeadline.ts";
+import type {
+  EventLoopWatchdog,
+  EventLoopWatchdogOptions,
+} from "@neat/EventLoopWatchdog.ts";
+import {
+  armRunWatchdog,
+  type RunWatchdog,
+} from "@creature/EvolveRunWatchdog.ts";
 import {
   awaitWithinHardDeadline,
   HARD_DEADLINE_BREACHED,
@@ -426,6 +434,16 @@ export interface EvolveDirDeps {
    * {@link DEFAULT_TEARDOWN_STEP_BUDGET_MS}.
    */
   teardownBudgetMS?: number;
+  /**
+   * Arms the off-main-thread event-loop watchdog (Issue #4067). Defaults to
+   * `armEventLoopWatchdog`; in-process tests stub it so no Worker is spawned.
+   */
+  armWatchdog?: (options: EventLoopWatchdogOptions) => EventLoopWatchdog;
+  /**
+   * Margin (ms) the watchdog allows past each bound before it SIGKILLs the
+   * process. Defaults to `DEFAULT_WATCHDOG_MARGIN_MS`.
+   */
+  watchdogMarginMS?: number;
 }
 
 /**
@@ -610,8 +628,21 @@ export async function evolveDir(
 
     neatForCleanup = neat;
     neat.setDataDir(dataSetDir);
+    const nowFn = deps?.now ?? Date.now;
     const callerSnapshot = snapshotEvolveCaller(creature);
+    let watchdog: RunWatchdog | undefined;
     try {
+      // Issue #4067: armed first inside the try, so an early throw cannot leave
+      // an armed watchdog behind to SIGKILL the process later.
+      watchdog = armRunWatchdog({
+        timeoutMinutes: config.timeoutMinutes,
+        startMS: start,
+        firstGenerationDeadlineMS,
+        hardDeadlineMS,
+        now: nowFn,
+        armWatchdog: deps?.armWatchdog,
+        marginMS: deps?.watchdogMarginMS,
+      });
       await neat.populatePopulation(creature);
 
       // Issue #2902: hand the constructed Neat instance to the test seam (if any)
@@ -634,7 +665,6 @@ export async function evolveDir(
       const scorerUtilisationAccumulator = createScorerUtilisationAccumulator();
       // Issue #3422: compact best-score trajectory for the improvement milestones.
       const scoreTrajectory = createScoreTrajectory();
-      const nowFn = deps?.now ?? Date.now;
       const overrunFactor = deps?.overrunEnforcementFactor ??
         DEFAULT_OVERRUN_ENFORCEMENT_FACTOR;
 
@@ -717,6 +747,7 @@ export async function evolveDir(
         const result = outcome;
 
         generation++;
+        watchdog?.generationCompleted(generation);
 
         // Issue #3636: the end-of-generation bookkeeping (champion adoption, timed
         // checkpoint, run-total accumulation, score trajectory, lifecycle events,
@@ -906,6 +937,7 @@ export async function evolveDir(
       }
       throw error;
     } finally {
+      watchdog?.disarm();
       callerSnapshot.dispose();
     }
   } finally {
@@ -952,8 +984,10 @@ export async function evolveDir(
  * Like {@link evolveDir}, the run is bounded by the T+grace hard cap (Issue
  * #4056): a generation that never settles is abandoned and the population
  * evolved so far is kept. Generation 1 is bounded by its own, larger
- * first-generation deadline. The optional `deps` argument is a test seam (see
- * {@link EvolveDirDeps}); production callers omit it.
+ * first-generation deadline. When `timeoutMinutes` is set, the event-loop
+ * watchdog (Issue #4067) backs that bound off the main thread. The optional
+ * `deps` argument is a test seam (see {@link EvolveDirDeps}); production
+ * callers omit it.
  */
 export async function evolveEnv<S, A>(
   creature: Creature,
@@ -1071,7 +1105,19 @@ export async function evolveEnv<S, A>(
     (neat as unknown as { fitness: Fitness }).fitness = episodicFitness;
 
     const callerSnapshot = snapshotEvolveCaller(creature);
+    let watchdog: RunWatchdog | undefined;
     try {
+      // Issue #4067: armed first inside the try, so an early throw cannot leave
+      // an armed watchdog behind to SIGKILL the process later.
+      watchdog = armRunWatchdog({
+        timeoutMinutes: config.timeoutMinutes,
+        startMS: start,
+        firstGenerationDeadlineMS,
+        hardDeadlineMS,
+        now: nowFn,
+        armWatchdog: deps?.armWatchdog,
+        marginMS: deps?.watchdogMarginMS,
+      });
       await neat.populatePopulation(creature);
 
       // Issue #4056: test seam, as in evolveDir. No-op for production callers.
@@ -1155,6 +1201,7 @@ export async function evolveEnv<S, A>(
           break;
         }
         const result = outcome;
+        watchdog?.generationCompleted(generation);
 
         // Issue #3636: shared end-of-generation bookkeeping (see finishGeneration).
         // deno-lint-ignore no-await-in-loop
@@ -1321,6 +1368,7 @@ export async function evolveEnv<S, A>(
       }
       throw error;
     } finally {
+      watchdog?.disarm();
       callerSnapshot.dispose();
     }
   } finally {
@@ -1440,8 +1488,10 @@ export interface EvolveRLOptions extends NeatOptions {
  * Like {@link evolveDir}, the run is bounded by the T+grace hard cap (Issue
  * #4056): a generation that never settles is abandoned and the population
  * evolved so far is kept. Generation 1 is bounded by its own, larger
- * first-generation deadline. The optional `deps` argument is a test seam (see
- * {@link EvolveDirDeps}); production callers omit it.
+ * first-generation deadline. When `timeoutMinutes` is set, the event-loop
+ * watchdog (Issue #4067) backs that bound off the main thread. The optional
+ * `deps` argument is a test seam (see {@link EvolveDirDeps}); production
+ * callers omit it.
  */
 export async function evolveRL<S, A>(
   creature: Creature,
@@ -1684,7 +1734,19 @@ export async function evolveRL<S, A>(
     (neat as unknown as { fitness: Fitness }).fitness = rlFitness;
 
     const callerSnapshot = snapshotEvolveCaller(creature);
+    let watchdog: RunWatchdog | undefined;
     try {
+      // Issue #4067: armed first inside the try, so an early throw cannot leave
+      // an armed watchdog behind to SIGKILL the process later.
+      watchdog = armRunWatchdog({
+        timeoutMinutes: config.timeoutMinutes,
+        startMS: start,
+        firstGenerationDeadlineMS,
+        hardDeadlineMS,
+        now: nowFn,
+        armWatchdog: deps?.armWatchdog,
+        marginMS: deps?.watchdogMarginMS,
+      });
       await neat.populatePopulation(creature);
 
       // Issue #4056: test seam, as in evolveDir. No-op for production callers.
@@ -1784,6 +1846,7 @@ export async function evolveRL<S, A>(
           break;
         }
         const result = outcome;
+        watchdog?.generationCompleted(generation);
 
         const fittest = result.fittest;
         const fittestScore = fittest.score!;
@@ -2050,6 +2113,7 @@ export async function evolveRL<S, A>(
       }
       throw error;
     } finally {
+      watchdog?.disarm();
       callerSnapshot.dispose();
     }
   } finally {
