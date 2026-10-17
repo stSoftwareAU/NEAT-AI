@@ -6,8 +6,9 @@
  * track a champion clone across generations, restore it into the caller
  * creature at the end, then return. The caller's genome is snapshotted before
  * the population is built, and the snapshot is restored instead when the
- * champion is unusable (Issue #4061). Before this module they leaked in two
- * ways:
+ * champion is unusable (Issue #4061). The caller is validated at entry, so an
+ * unusable caller is rejected before anything is touched (Issue #4078). Before
+ * this module they leaked in two ways:
  *
  *  1. Each champion improvement overwrote `bestCreature` with a fresh
  *     `shallowClone()` and left the superseded clone's topology arrays and
@@ -66,6 +67,30 @@ function unusableReason(
 }
 
 /**
+ * Reject an unusable caller creature before any `evolve*` work starts
+ * (Issue #4078). Called as the first statement of each entry point, before any
+ * signal listener, worker or population exists, so an unusable caller is
+ * rejected untouched rather than snapshotted, emptied or restored.
+ *
+ * @param creature The caller creature passed to the entry point.
+ * @param label The entry point name, used as the error prefix (e.g. `evolveDir`).
+ * @throws {ValidationError} The caller has fewer than `input + output` neurons
+ *   or fails `validate()`. The message names the entry point and the reason.
+ */
+export function assertEvolveCallerUsable(
+  creature: Creature,
+  label: string,
+): void {
+  const reason = unusableReason(creature, creature.input, creature.output);
+  if (reason !== undefined) {
+    throw new ValidationError(
+      `${label}: caller creature is unusable (${reason})`,
+      "OTHER",
+    );
+  }
+}
+
+/**
  * Restore the run's champion into the caller, falling back to the caller's
  * original genome when the champion is unusable (Issue #4061).
  *
@@ -74,12 +99,17 @@ function unusableReason(
  * champion was supplied but rejected the fallback is logged. Throws if neither
  * is usable, leaving the caller untouched rather than emptied.
  *
+ * Since the caller is validated at entry by {@link assertEvolveCallerUsable}
+ * (Issue #4078), a valid caller always yields a usable snapshot. The throw is
+ * therefore a backstop, reachable only if the snapshot is damaged after entry.
+ *
  * @param caller The caller creature to restore into.
  * @param champion The run's champion clone, if one was adopted.
  * @param snapshot The caller's original genome from {@link snapshotEvolveCaller}.
  * @param debug Passed through to `loadFrom`.
  * @param label Context label for the log line and any thrown error.
- * @throws {ValidationError} When neither the champion nor the snapshot is usable.
+ * @throws {ValidationError} Backstop only: the snapshot was damaged after entry
+ *   and neither the champion nor the snapshot is usable.
  */
 export function restoreEvolveChampion(
   caller: Creature,
