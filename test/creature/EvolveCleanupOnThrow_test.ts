@@ -296,6 +296,56 @@ function rejectEvolve(
   }) as Neat["evolve"];
 }
 
+/** What the champion-carrying `neat.evolve()` calls saw (Issue #4072). */
+interface ChampionLedger {
+  calls: number;
+  championNeurons: number;
+  champion?: Creature;
+}
+
+/**
+ * Let the first `neat.evolve()` run for real, so a champion is adopted, then make
+ * the second call reject with `failure`. The loop passes the champion into every
+ * `evolve()` call, so the rejecting call records it for a disposal check.
+ */
+function rejectAfterChampion(
+  neat: Neat,
+  failure: Error,
+  ledger: ChampionLedger,
+): void {
+  const realEvolve = neat.evolve.bind(neat);
+  neat.evolve = ((previousFittest?: Creature) => {
+    ledger.calls++;
+    if (ledger.calls === 1) return realEvolve(previousFittest);
+    ledger.champion = previousFittest;
+    ledger.championNeurons = previousFittest?.neurons.length ?? 0;
+    return Promise.reject(failure);
+  }) as Neat["evolve"];
+}
+
+/** Assert the champion adopted in generation 1 was disposed by the failure path. */
+function assertChampionDisposed(ledger: ChampionLedger): void {
+  assertEquals(
+    ledger.calls,
+    2,
+    "generation 2 must be entered once, after a real generation 1",
+  );
+  const champion = ledger.champion;
+  assert(
+    champion !== undefined,
+    "positive control: generation 2 must be handed a champion",
+  );
+  assert(
+    ledger.championNeurons > 0,
+    "positive control: the champion must hold neurons before the failure",
+  );
+  assertEquals(
+    champion.neurons.length,
+    0,
+    "the champion must be disposed after a rejected generation",
+  );
+}
+
 /**
  * Seed one distance-cache entry and return the cache size straight after, so a
  * later assertion can prove the release actually emptied something (Issue #4072).
@@ -790,6 +840,146 @@ Deno.test({
       );
     } finally {
       pools.restore();
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "evolveDir: a rejection after a champion exists disposes the champion (Issue #4072)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const dataSetDir = makeDataDir(tinyDataSet(), 2000);
+    const creatureStore = await Deno.makeTempDir({
+      prefix: "neat-4072-champ-dir-",
+    });
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const failure = new Error("boom");
+    const priorLogger = getLogger();
+    const ledger: ChampionLedger = { calls: 0, championNeurons: 0 };
+
+    try {
+      const deps: EvolveDirDeps = {
+        startTimeMS: START_MS,
+        now: () => START_MS,
+        onNeatReady: (neat) => rejectAfterChampion(neat, failure, ledger),
+      };
+
+      let caught: unknown;
+      try {
+        await evolveDir(creature, dataSetDir, {
+          populationSize: 6,
+          iterations: 500,
+          timeoutMinutes: TIMEOUT_MINUTES,
+          threads: 1,
+          creatureStore,
+          logger: silentLogger,
+        }, deps);
+      } catch (error) {
+        caught = error;
+      }
+
+      assertEquals(caught, failure, "the original rejection must be rethrown");
+      assertChampionDisposed(ledger);
+    } finally {
+      setLogger(priorLogger);
+      await Deno.remove(dataSetDir, { recursive: true });
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "evolveEnv: a rejection after a champion exists disposes the champion (Issue #4072)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const creatureStore = await Deno.makeTempDir({
+      prefix: "neat-4072-champ-env-",
+    });
+    const creature = new Creature(1, 1, { layers: [{ count: 3 }] });
+    const failure = new Error("boom");
+    const priorLogger = getLogger();
+    const ledger: ChampionLedger = { calls: 0, championNeurons: 0 };
+
+    try {
+      const deps: EvolveDirDeps = {
+        startTimeMS: START_MS,
+        now: () => START_MS,
+        onNeatReady: (neat) => rejectAfterChampion(neat, failure, ledger),
+      };
+
+      let caught: unknown;
+      try {
+        await evolveEnv(creature, buildEnvAdapter(), {
+          populationSize: 6,
+          iterations: 500,
+          timeoutMinutes: TIMEOUT_MINUTES,
+          threads: 1,
+          creatureStore,
+          logger: silentLogger,
+        }, deps);
+      } catch (error) {
+        caught = error;
+      }
+
+      assertEquals(caught, failure, "the original rejection must be rethrown");
+      assertChampionDisposed(ledger);
+    } finally {
+      setLogger(priorLogger);
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "evolveRL: a rejection after a champion exists disposes the champion (Issue #4072)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const creatureStore = await Deno.makeTempDir({
+      prefix: "neat-4072-champ-rl-",
+    });
+    const creature = new Creature(1, 1, { layers: [{ count: 3 }] });
+    const failure = new Error("boom");
+    const priorLogger = getLogger();
+    const ledger: ChampionLedger = { calls: 0, championNeurons: 0 };
+
+    try {
+      const deps: EvolveDirDeps = {
+        startTimeMS: START_MS,
+        now: () => START_MS,
+        onNeatReady: (neat) => rejectAfterChampion(neat, failure, ledger),
+      };
+
+      let caught: unknown;
+      try {
+        await evolveRL(creature, new UnreachableAdapter(), {
+          populationSize: 6,
+          iterations: 500,
+          timeoutMinutes: TIMEOUT_MINUTES,
+          threads: 1,
+          creatureStore,
+          logger: silentLogger,
+        }, deps);
+      } catch (error) {
+        caught = error;
+      }
+
+      assertEquals(caught, failure, "the original rejection must be rethrown");
+      assertChampionDisposed(ledger);
+    } finally {
+      setLogger(priorLogger);
       await Deno.remove(creatureStore, { recursive: true });
     }
   },
