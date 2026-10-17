@@ -21,6 +21,7 @@ import {
   setCachedDistance,
 } from "@breed/DistanceCache.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+import { assertEvolveCallerUsable } from "@creature/EvolveTeardown.ts";
 import SeedRewardAdapterFixture from "./fixtures/SeedRewardAdapterFixture.ts";
 
 // Issue #4072: when the generation loop throws, `evolveDir` / `evolveEnv` /
@@ -979,6 +980,157 @@ Deno.test({
       assertEquals(caught, failure, "the original rejection must be rethrown");
       assertChampionDisposed(ledger);
     } finally {
+      setLogger(priorLogger);
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+/** Records every message a logger receives, at any level (Issue #4072). */
+interface CaptureLedger {
+  messages: string[];
+  logger: Logger;
+}
+
+function captureLogger(): CaptureLedger {
+  const messages: string[] = [];
+  const record = (...args: unknown[]): void => {
+    messages.push(args.map((arg) => String(arg)).join(" "));
+  };
+  return {
+    messages,
+    logger: { debug: record, info: record, warn: record, error: record },
+  };
+}
+
+/** A successful run must never log a teardown step that threw (Issue #4072). */
+function assertNoCleanupFailure(messages: string[]): void {
+  assertEquals(
+    messages.filter((message) =>
+      message.includes("cleanup failed after error")
+    ),
+    [],
+    "a successful run must not log a cleanup failure",
+  );
+}
+
+Deno.test({
+  name:
+    "evolveDir: a successful run logs no cleanup failure and leaves the caller usable (Issue #4072)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const dataSetDir = makeDataDir(tinyDataSet(), 2000);
+    const creatureStore = await Deno.makeTempDir({
+      prefix: "neat-4072-ok-dir-",
+    });
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const priorLogger = getLogger();
+    const capture = captureLogger();
+
+    try {
+      const result = await evolveDir(creature, dataSetDir, {
+        populationSize: 6,
+        iterations: 2,
+        timeoutMinutes: TIMEOUT_MINUTES,
+        threads: 1,
+        creatureStore,
+        logger: capture.logger,
+      }, { startTimeMS: START_MS, now: () => START_MS });
+
+      assert(
+        Number.isFinite(result.score),
+        "a successful run must complete with a finite score",
+      );
+      assertNoCleanupFailure(capture.messages);
+      assertEvolveCallerUsable(creature, "evolveDir");
+      assertCallerUsable(creature);
+    } finally {
+      setLogger(priorLogger);
+      await Deno.remove(dataSetDir, { recursive: true });
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "evolveEnv: a successful run logs no cleanup failure and leaves the caller usable (Issue #4072)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const creatureStore = await Deno.makeTempDir({
+      prefix: "neat-4072-ok-env-",
+    });
+    const creature = new Creature(1, 1, { layers: [{ count: 3 }] });
+    const priorLogger = getLogger();
+    const capture = captureLogger();
+
+    try {
+      await evolveEnv(creature, buildEnvAdapter(), {
+        populationSize: 6,
+        iterations: 2,
+        timeoutMinutes: TIMEOUT_MINUTES,
+        threads: 1,
+        creatureStore,
+        logger: capture.logger,
+      }, { startTimeMS: START_MS, now: () => START_MS });
+
+      assertNoCleanupFailure(capture.messages);
+      assertEvolveCallerUsable(creature, "evolveEnv");
+      assertCallerUsable(creature);
+    } finally {
+      setLogger(priorLogger);
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "evolveRL: a successful run logs no cleanup failure, terminates its episode worker pool exactly once, and leaves the caller usable (Issue #4072)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const creatureStore = await Deno.makeTempDir({
+      prefix: "neat-4072-ok-rl-",
+    });
+    const creature = new Creature(1, 1, { layers: [{ count: 3 }] });
+    const priorLogger = getLogger();
+    const capture = captureLogger();
+    const pools = watchEpisodeWorkerPool();
+
+    try {
+      await evolveRL(creature, new SeedRewardAdapterFixture(), {
+        populationSize: 6,
+        iterations: 2,
+        timeoutMinutes: TIMEOUT_MINUTES,
+        threads: 2,
+        creatureStore,
+        logger: capture.logger,
+        adapterDescription: { url: SEED_REWARD_FIXTURE_URL, direct: true },
+      }, { startTimeMS: START_MS, now: () => START_MS });
+
+      assert(
+        pools.creations >= 1,
+        "positive control: evolveRL must create an episode worker pool",
+      );
+      assertEquals(
+        pools.terminations,
+        pools.creations,
+        "every episode worker pool must be terminated exactly once",
+      );
+      assertNoCleanupFailure(capture.messages);
+      assertEvolveCallerUsable(creature, "evolveRL");
+      assertCallerUsable(creature);
+    } finally {
+      pools.restore();
       setLogger(priorLogger);
       await Deno.remove(creatureStore, { recursive: true });
     }
