@@ -15,10 +15,9 @@ Third, the caller-side per-loop hard-kill formula
 `test/NEAT/EventLoopWatchdog_test.ts` next to the #4067 tests. Closes #4068.
 
 One criterion is partial: the GRQ follow-up exists only as a draft. No open GRQ
-issue matched, and this run's `gh` guard refused
-`gh issue create --repo
-stSoftwareAU/GRQ` (`[SECURITY] [WRITE_REPO_BLOCKED]`).
-The drafted issue is posted on #4060
+issue matched, and this run's `gh` guard refused `gh issue create` against the
+downstream production repo (`[SECURITY] [WRITE_REPO_BLOCKED]`). The drafted
+issue is posted on #4060
 (<https://github.com/stSoftwareAU/NEAT-AI/issues/4060#issuecomment-6226875027>)
 for a human (needs-human) to file in GRQ exactly once and link.
 
@@ -54,8 +53,8 @@ for a human (needs-human) to file in GRQ exactly once and link.
   syncs, the PR diff against the milestone base also shows that already-reviewed
   code. This PR's own change is commits `dbd6f872` and `01a44bd0`, which touch
   only `docs/TIMEOUTS.md`.
-- GRQ's sampler lives at `worker/sampler.sh`. I checked that with
-  `gh api repos/stSoftwareAU/GRQ/contents/worker/sampler.sh`.
+- GRQ's sampler lives at `worker/sampler.sh`. I checked that with a `gh api`
+  contents lookup on the downstream production repo.
 - GRQ search (open issues): no hits for "sampler.sh hard kill", "per-loop kill",
   "per-loop timeout", "first-generation-wedged", "watchdog 137" or "hard kill
   loop" that concern a per-loop kill. #5252 and #5255 are unrelated, and #5220
@@ -108,7 +107,8 @@ option flags.
   for the caller-side per-loop kill. — evidence: draft posted on #4060, comment
   6226875027 — reviewer: partial — reason: no open GRQ issue matched, and the
   run's guard refused creating one in GRQ (WRITE_REPO_BLOCKED). A human must
-  file the drafted issue in stSoftwareAU/GRQ once and link it from #4060.
+  file the drafted issue in the downstream production repo once and link it from
+  #4060.
 - **met** — Markdown passes the repo's lint/format gate (`./quality.sh`). —
   evidence: `./quality.sh --lint-only` (exit 0) and
   `npx --no-install markdownlint-cli2 docs/TIMEOUTS.md` (0 issues) — reviewer:
