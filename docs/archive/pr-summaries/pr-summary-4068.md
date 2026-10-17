@@ -110,11 +110,10 @@ option flags.
   file the drafted issue in the downstream production repo once and link it from
   #4060.
 - **met** — Markdown passes the repo's lint/format gate (`./quality.sh`). —
-  evidence: `./quality.sh --lint-only` (exit 0) and
+  evidence: full `./quality.sh` (exit 0, 9944 passed) and
   `npx --no-install markdownlint-cli2 docs/TIMEOUTS.md` (0 issues) — reviewer:
   missing — reason: the reviewer saw only the diff and could not run the gate.
-  The lint/format lane of `./quality.sh` and markdownlint were run on the head
-  and passed. The full gate could not start here (see Test Plan).
+  The full `./quality.sh` and markdownlint were run on the head and passed.
 
 ## Standards Review
 
@@ -141,13 +140,16 @@ option flags.
 
 ## Test Plan
 
-- No tests added or modified; the diff touches only `docs/TIMEOUTS.md`.
-- `./quality.sh --lint-only < /dev/null` on the head: exit 0 (format checked
-  2886 files, lint checked 2224 files, bash scripts all ✅).
+- No tests added or modified; this PR's own commits touch only
+  `docs/TIMEOUTS.md` and this summary.
+- `./quality.sh --rust-scorer-bin=<built rust_scorer> < /dev/null` on the head:
+  exit 0, `9944 passed | 0 failed | 41 ignored`. The explicit flag is needed
+  because the gate does not look under `CARGO_TARGET_DIR`, where this container
+  builds the binary (a worker-environment fault, not a repo change).
+- The first gate run failed `test/docs/ArchiveDocsNoPrivateRepoSlugs.ts` on this
+  summary's private-repo slugs; they are reworded to concept level and that test
+  now passes.
 - `npx --no-install markdownlint-cli2 docs/TIMEOUTS.md < /dev/null`: 0 issues.
-- `deno fmt --check docs/TIMEOUTS.md`: passed.
-
-<!-- vibe-quality-gate-skipped reason="the full ./quality.sh stops before running any check: the native rust_scorer binary is not on PATH or under CARGO_TARGET_DIR in this container (worker-environment fault). The lint/format lane, which is all a docs-only change exercises, was run and passed; CI runs the full gate." -->
 
 <!-- vibe-branch-outcomes -->
 
