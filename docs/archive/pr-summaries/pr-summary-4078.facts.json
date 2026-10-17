@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "branchOutcomes": {
+    "noneAdded": false,
+    "entries": [
+      {
+        "path": "src/creature/EvolveTeardown.ts",
+        "line": 85,
+        "outcome": "unusable caller (too few neurons or validate() fails) throws ValidationError naming the entry point and reason",
+        "test": "test/creature/EvolveRejectsUnusableCaller_test.ts",
+        "testName": "assertEvolveCallerUsable throws ValidationError naming too few neurons (Issue #4078)",
+        "flipWentRed": "removing each entry call in CreatureTraining.ts turned that entry point's two refusal tests red (6 of 6 across evolveDir, evolveEnv, evolveRL)"
+      },
+      {
+        "path": "src/creature/EvolveTeardown.ts",
+        "line": 85,
+        "outcome": "usable caller returns without throwing",
+        "test": "test/creature/EvolveRejectsUnusableCaller_test.ts",
+        "testName": "assertEvolveCallerUsable accepts a valid caller (Issue #4078)",
+        "flipWentRed": "forcing the condition to true (always throw) turned the accept test red"
+      }
+    ]
+  }
+}
