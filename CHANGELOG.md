@@ -25,6 +25,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4078:** `evolveDir()`, `evolveEnv()` and `evolveRL()` now reject an
+  unusable caller creature (fewer than `input + output` neurons, or failing
+  `validate()`) with a `ValidationError` as their first step, before any signal
+  listener, worker or population exists, so the caller's original genome is
+  never altered.
 - **Issue #4067:** when `timeoutMinutes` is set, `evolveDir()`, `evolveEnv()`
   and `evolveRL()` now arm the off-main-thread event-loop watchdog (Issue #4066)
   so a run whose main thread is blocked in a synchronous loop cannot outlive its
