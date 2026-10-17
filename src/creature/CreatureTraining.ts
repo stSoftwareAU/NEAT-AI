@@ -85,6 +85,7 @@ import type { Fitness } from "@architecture/Fitness.ts";
 import type { EpisodeAdapter } from "@creature/EpisodeAdapter.ts";
 import { buildRLSeedSet } from "@creature/EvolveRLSeedSet.ts";
 import {
+  assertEvolveCallerUsable,
   disposeEvolvePopulation,
   releaseEvolveCaches,
   restoreEvolveChampion,
@@ -502,6 +503,7 @@ export async function evolveDir(
   options: NeatOptions,
   deps?: EvolveDirDeps,
 ): Promise<EvolveResult> {
+  assertEvolveCallerUsable(creature, "evolveDir");
   let interrupted = false;
   const signalListener = () => {
     getLogger().info("SIGTERM received, saving progress...");
@@ -947,6 +949,7 @@ export async function evolveEnv<S, A>(
   options: NeatOptions & EpisodicOptions,
   deps?: EvolveDirDeps,
 ): Promise<EvolveResult> {
+  assertEvolveCallerUsable(creature, "evolveEnv");
   if (creature.input !== adapter.inputCount) {
     throw new Error(
       `Creature input ${creature.input} does not match adapter inputCount ` +
@@ -1438,6 +1441,7 @@ export async function evolveRL<S, A>(
     milestones?: EvolveRLMilestone[];
   }
 > {
+  assertEvolveCallerUsable(creature, "evolveRL");
   if (creature.input !== adapter.observationLength) {
     throw new Error(
       `Creature input ${creature.input} does not match adapter ` +
