@@ -16,7 +16,10 @@ import {
   evolveEnv,
   evolveRL,
 } from "../../src/creature/CreatureTraining.ts";
-import { assertEvolveCallerUsable } from "../../src/creature/EvolveTeardown.ts";
+import {
+  assertEvolveCallerUsable,
+  restoreEvolveChampion,
+} from "../../src/creature/EvolveTeardown.ts";
 import type { LegacyEpisodeAdapter } from "../../src/creature/EpisodicFitnessTypes.ts";
 import {
   EpisodeAdapter,
@@ -318,4 +321,36 @@ Deno.test("assertEvolveCallerUsable throws ValidationError naming validate() (Is
     "evolveRL: caller creature is unusable (validate() failed",
   );
   assertEquals(error.reason, "OTHER");
+});
+
+Deno.test("restoreEvolveChampion backstop names the neuron-count shortfall when the snapshot is undersized (Issue #4078)", () => {
+  const caller = validCreature();
+  const snapshot = tooFewNeuronsCreature();
+  const before = captureState(caller);
+
+  try {
+    const error = assertThrows(
+      () =>
+        restoreEvolveChampion(
+          caller,
+          undefined,
+          snapshot,
+          false,
+          "backstop-test",
+        ),
+      ValidationError,
+      "backstop-test: neither the champion nor the caller's original genome is usable",
+    );
+    assertStringIncludes(error.message, "neurons.length");
+    assertStringIncludes(error.message, "input + output");
+    assertEquals(error.reason, "OTHER");
+    assertEquals(
+      captureState(caller),
+      before,
+      "the caller must keep its original neurons, synapses, input and output",
+    );
+  } finally {
+    snapshot.dispose();
+    caller.dispose();
+  }
 });
