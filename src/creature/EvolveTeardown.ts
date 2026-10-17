@@ -77,7 +77,10 @@ function unusableReason(
  * @throws {ValidationError} The caller has fewer than `input + output` neurons
  *   or fails `validate()`. The message names the entry point and the reason.
  */
-export function assertEvolveCallerUsable(creature: Creature, label: string): void {
+export function assertEvolveCallerUsable(
+  creature: Creature,
+  label: string,
+): void {
   const reason = unusableReason(creature, creature.input, creature.output);
   if (reason !== undefined) {
     throw new ValidationError(

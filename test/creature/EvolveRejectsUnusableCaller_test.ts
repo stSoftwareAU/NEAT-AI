@@ -214,8 +214,7 @@ const invokeEnv = (
   creature: Creature,
   _dataSetDir: string,
   creatureStore: string,
-) =>
-  evolveEnv(creature, buildEnvAdapter(), { ...OPTIONS, creatureStore });
+) => evolveEnv(creature, buildEnvAdapter(), { ...OPTIONS, creatureStore });
 
 const invokeRL = (
   creature: Creature,
