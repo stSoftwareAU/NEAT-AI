@@ -145,6 +145,17 @@ and `:1375` are recorded as `exempt` in the facts file.
   `docs/archive/pr-summaries/pr-summary-4072.facts.json` come from these runs.
 - The tests in the Evidence list must exist under those names.
 
+### Quality gate
+
+- `./quality.sh --lint-only` passed: 2889 files formatted, 2226 files linted,
+  six bash scripts checked.
+- `./quality.sh --check-only` passed: `deno check` completed with exit 0.
+- The full `./quality.sh` test run was **not** run in this worker: its test lane
+  hard-requires the native `rust_scorer` binary (Issue #3871), which is not
+  present in this environment. The tests that cover this change were run
+  directly with `deno test -A` (see Evidence) and pass. CI and the worker's
+  pre-PR gate re-run the full suite with the scorer.
+
 <!-- vibe-branch-outcomes -->
 
 ## Notes
@@ -155,7 +166,7 @@ and `:1375` are recorded as `exempt` in the facts file.
 - **Watchdog (#4067) unchanged.** `armRunWatchdog` is still the first statement
   of the inner `try`, and `watchdog?.disarm()` still runs in the inner
   `finally`.
-- **Diffstat.** `src/creature/CreatureTraining.ts` shows 2482 changed lines in
+- **Diff size.** `src/creature/CreatureTraining.ts` shows 2482 changed lines in
   `git diff`, because wrapping each body in `try`/`finally` re-indents it. Under
   `git diff -w` it is 130 lines (112 insertions, 18 deletions). The whole branch
   is 1273 insertions and 18 deletions under `-w`.
