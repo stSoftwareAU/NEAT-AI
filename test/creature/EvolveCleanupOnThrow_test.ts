@@ -20,6 +20,14 @@ import {
   getDistanceCacheSize,
   setCachedDistance,
 } from "@breed/DistanceCache.ts";
+import {
+  getMaxCachedWasmCreatureActivations,
+  setMaxCachedWasmCreatureActivations,
+} from "@wasm/WasmCreatureActivationLRU.ts";
+import {
+  getWasmCompilationCacheMaxSize,
+  setWasmCompilationCacheSize,
+} from "@wasm/WasmCompilationCache.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 import { assertEvolveCallerUsable } from "@creature/EvolveTeardown.ts";
 import SeedRewardAdapterFixture from "./fixtures/SeedRewardAdapterFixture.ts";
@@ -282,6 +290,70 @@ function failingTerminate(): FailingTerminateLedger {
     original.call(this as WorkerHandlerBase<never, never>);
     throw new Error("terminate failed");
   };
+  return ledger;
+}
+
+/** The worker whose init failed, and how many `waitUntilReady()` calls ran. */
+interface InitFailureLedger {
+  waitCalls: number;
+  failedWorker: unknown;
+  restore(): void;
+}
+
+/**
+ * Make the first `WorkerHandlerBase.prototype.waitUntilReady()` call reject, as
+ * if that worker's init handshake failed, then delegate later calls to the real
+ * method. Records the failing worker so the fallback path can be checked against
+ * it (Issue #4072 mutation coverage).
+ */
+function failFirstInit(): InitFailureLedger {
+  const proto = WorkerHandlerBase.prototype;
+  const original = proto.waitUntilReady;
+  const ledger: InitFailureLedger = {
+    waitCalls: 0,
+    failedWorker: undefined,
+    restore: () => {
+      proto.waitUntilReady = original;
+    },
+  };
+  proto.waitUntilReady = function (this: unknown) {
+    ledger.waitCalls++;
+    if (ledger.waitCalls === 1) {
+      ledger.failedWorker = this;
+      return Promise.reject(new Error("init failed"));
+    }
+    return original.call(this as WorkerHandlerBase<never, never>);
+  };
+  return ledger;
+}
+
+/** Real `Worker` thread constructions, counted across the wrapped global. */
+interface WorkerSpawnLedger {
+  spawns: number;
+  restore(): void;
+}
+
+/**
+ * Wrap the global `Worker` constructor so every real worker thread spawned
+ * while the wrap is active is counted (Issue #4072 mutation coverage). A
+ * mock/direct worker never reaches `new Worker`, so the count separates a mock
+ * fallback from a real one.
+ */
+function watchWorkerSpawns(): WorkerSpawnLedger {
+  const OriginalWorker = globalThis.Worker;
+  const ledger: WorkerSpawnLedger = {
+    spawns: 0,
+    restore: () => {
+      globalThis.Worker = OriginalWorker;
+    },
+  };
+  class CountingWorker extends OriginalWorker {
+    constructor(specifier: string | URL, options?: WorkerOptions) {
+      ledger.spawns++;
+      super(specifier, options);
+    }
+  }
+  globalThis.Worker = CountingWorker as unknown as typeof Worker;
   return ledger;
 }
 
@@ -1132,6 +1204,166 @@ Deno.test({
     } finally {
       pools.restore();
       setLogger(priorLogger);
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "evolveDir: applies the configured WASM cache caps and sets the dataset directory (Issue #4072)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const dataSetDir = makeDataDir(tinyDataSet(), 2000);
+    const creatureStore = await Deno.makeTempDir({ prefix: "neat-4072-caps-" });
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const failure = new Error("boom");
+    const priorLogger = getLogger();
+    const priorActivationCap = getMaxCachedWasmCreatureActivations();
+    const priorCompilationCap = getWasmCompilationCacheMaxSize();
+    const sigterm = watchSigterm();
+
+    try {
+      // Park the caps on sentinel values so the assertion below can only pass
+      // if `evolveDir` itself applies the configured caps on the main thread.
+      // A mock (direct) worker also applies them in-process via WorkerProcessor,
+      // so this test runs real workers (threads: 2) to pin the main-thread call.
+      setMaxCachedWasmCreatureActivations(101);
+      setWasmCompilationCacheSize(202);
+
+      let neatRef: Neat | undefined;
+      const counter = { calls: 0 };
+      const deps: EvolveDirDeps = {
+        startTimeMS: START_MS,
+        now: () => START_MS,
+        onNeatReady: (neat) => {
+          neatRef = neat;
+          rejectEvolve(neat, failure, counter);
+        },
+      };
+
+      let caught: unknown;
+      try {
+        await evolveDir(creature, dataSetDir, {
+          populationSize: 6,
+          iterations: 500,
+          timeoutMinutes: TIMEOUT_MINUTES,
+          threads: 2,
+          creatureStore,
+          logger: silentLogger,
+          wasmCache: { maxCachedActivations: 7, compilationCacheSize: 13 },
+        }, deps);
+      } catch (error) {
+        caught = error;
+      }
+
+      assertEquals(caught, failure, "the original rejection must be rethrown");
+      assertEquals(
+        getMaxCachedWasmCreatureActivations(),
+        7,
+        "evolveDir must apply the configured WASM activation cache cap",
+      );
+      assertEquals(
+        getWasmCompilationCacheMaxSize(),
+        13,
+        "evolveDir must apply the configured WASM compilation cache size",
+      );
+      assert(
+        neatRef !== undefined,
+        "positive control: onNeatReady must hand the Neat instance over",
+      );
+      assertEquals(
+        neatRef.dataDir,
+        dataSetDir,
+        "evolveDir must set the dataset directory on the Neat instance",
+      );
+    } finally {
+      setMaxCachedWasmCreatureActivations(priorActivationCap);
+      setWasmCompilationCacheSize(priorCompilationCap);
+      sigterm.restore();
+      setLogger(priorLogger);
+      await Deno.remove(dataSetDir, { recursive: true });
+      await Deno.remove(creatureStore, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
+  name:
+    "evolveDir: a worker init failure terminates the failed worker and falls back to a direct worker (Issue #4072)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const dataSetDir = makeDataDir(tinyDataSet(), 2000);
+    const creatureStore = await Deno.makeTempDir({ prefix: "neat-4072-init-" });
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+    const failure = new Error("boom");
+    const priorLogger = getLogger();
+    const sigterm = watchSigterm();
+    const terminate = watchTerminate();
+    const init = failFirstInit();
+    const spawns = watchWorkerSpawns();
+
+    try {
+      const counter = { calls: 0 };
+      const deps: EvolveDirDeps = {
+        startTimeMS: START_MS,
+        now: () => START_MS,
+        // Issue #4067: stub the event-loop watchdog so it spawns no Worker;
+        // only the worker-loop constructions are counted below.
+        armWatchdog: () => ({ disarm() {}, setGeneration() {} }),
+        onNeatReady: (neat) => rejectEvolve(neat, failure, counter),
+      };
+
+      let caught: unknown;
+      try {
+        await evolveDir(creature, dataSetDir, {
+          populationSize: 6,
+          iterations: 500,
+          timeoutMinutes: TIMEOUT_MINUTES,
+          threads: 2,
+          creatureStore,
+          logger: silentLogger,
+        }, deps);
+      } catch (error) {
+        caught = error;
+      }
+
+      assertEquals(
+        caught,
+        failure,
+        "the direct fallback must let the run reach the generation loop, whose rejection is rethrown",
+      );
+      assert(
+        init.failedWorker !== undefined,
+        "positive control: the first worker's init must have failed",
+      );
+      assert(
+        terminate.terminated.has(init.failedWorker),
+        "the failed worker must be terminated before the direct fallback",
+      );
+      assertEquals(
+        init.waitCalls,
+        3,
+        "waitUntilReady must be awaited for the failed worker, the fallback, and the second worker",
+      );
+      assertEquals(
+        spawns.spawns,
+        2,
+        "the fallback must be a direct (mock) worker, so only the two non-direct workers spawn real threads",
+      );
+    } finally {
+      spawns.restore();
+      init.restore();
+      terminate.restore();
+      sigterm.restore();
+      setLogger(priorLogger);
+      await Deno.remove(dataSetDir, { recursive: true });
       await Deno.remove(creatureStore, { recursive: true });
     }
   },

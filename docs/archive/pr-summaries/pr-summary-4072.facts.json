@@ -76,6 +76,62 @@
         "test": "test/creature/EvolveCleanupOnThrow_test.ts",
         "testName": "evolveDir: a cleanup error is logged and never replaces the original rejection (Issue #4072)",
         "flipWentRed": "rethrowing the cleanup error in place of logging it turned that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 545,
+        "outcome": "evolveDir: applies the configured WASM activation cache cap on the main thread",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: applies the configured WASM cache caps and sets the dataset directory (Issue #4072)",
+        "flipWentRed": "deleting the cap call left the main-thread cap on its sentinel value, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 546,
+        "outcome": "evolveDir: applies the configured WASM compilation cache size on the main thread",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: applies the configured WASM cache caps and sets the dataset directory (Issue #4072)",
+        "flipWentRed": "deleting the size call left the main-thread size on its sentinel value, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 588,
+        "outcome": "evolveDir: terminates a worker whose init handshake failed before falling back",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: a worker init failure terminates the failed worker and falls back to a direct worker (Issue #4072)",
+        "flipWentRed": "deleting the terminate left the failed worker unterminated, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 592,
+        "outcome": "evolveDir: a non-direct worker init failure falls back to a direct worker instead of rethrowing",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: a worker init failure terminates the failed worker and falls back to a direct worker (Issue #4072)",
+        "flipWentRed": "negating the guard made the init failure propagate instead of falling back, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 600,
+        "outcome": "evolveDir: the fallback worker is direct (mock), not a real thread",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: a worker init failure terminates the failed worker and falls back to a direct worker (Issue #4072)",
+        "flipWentRed": "swapping true to false spawned a real fallback thread, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 607,
+        "outcome": "evolveDir: awaits the fallback worker's readiness before using it",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: a worker init failure terminates the failed worker and falls back to a direct worker (Issue #4072)",
+        "flipWentRed": "deleting the await dropped one waitUntilReady call, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 630,
+        "outcome": "evolveDir: sets the dataset directory on the Neat instance",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: applies the configured WASM cache caps and sets the dataset directory (Issue #4072)",
+        "flipWentRed": "deleting the call left Neat.dataDir unset, turning that test red"
       }
     ]
   }

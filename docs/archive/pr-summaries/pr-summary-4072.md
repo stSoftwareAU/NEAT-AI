@@ -66,7 +66,7 @@ in this change.
 
 Backend-only change; there is no UI surface.
 
-Eleven tests in `test/creature/EvolveCleanupOnThrow_test.ts`:
+Thirteen tests in `test/creature/EvolveCleanupOnThrow_test.ts`:
 
 1. `evolveDir: a rejected generation terminates every worker, removes its SIGTERM listener, and a second run starts clean (Issue #4072)`
 2. `evolveDir: a cleanup error is logged and never replaces the original rejection (Issue #4072)`
@@ -79,14 +79,16 @@ Eleven tests in `test/creature/EvolveCleanupOnThrow_test.ts`:
 9. `evolveDir: a successful run logs no cleanup failure and leaves the caller usable (Issue #4072)`
 10. `evolveEnv: a successful run logs no cleanup failure and leaves the caller usable (Issue #4072)`
 11. `evolveRL: a successful run logs no cleanup failure, terminates its episode worker pool exactly once, and leaves the caller usable (Issue #4072)`
+12. `evolveDir: applies the configured WASM cache caps and sets the dataset directory (Issue #4072)`
+13. `evolveDir: a worker init failure terminates the failed worker and falls back to a direct worker (Issue #4072)`
 
 Targeted runs (`deno test -A` with `< /dev/null`):
 
-- `EvolveCleanupOnThrow_test.ts`: `ok | 11 passed | 0 failed (482ms)`.
+- `EvolveCleanupOnThrow_test.ts`: `ok | 13 passed | 0 failed (830ms)`.
 - Six creature files together (`EvolveCleanupOnThrow_test.ts`,
   `EvolveRejectsUnusableCaller_test.ts`, `EvolveWatchdogWiring_test.ts`,
   `EvolveRunWatchdog_test.ts`, `NeuronUuidStability.ts`,
-  `SemanticVersionStability.ts`): `ok | 59 passed | 0 failed (1s)`.
+  `SemanticVersionStability.ts`): `ok | 61 passed | 0 failed (1s)`.
 
 **Docs sweep** — grep: `SIGTERM listener`, `abort listener`,
 `runBoundedEvolveTeardown`, `Issue #4072`; section: the Issue #4072 paragraph in
@@ -124,22 +126,36 @@ mutant was restored and `cmp` confirmed the copy was identical to the source.
 
 | Mutant                                          | Result                                | Failing test(s) |
 | ----------------------------------------------- | ------------------------------------- | --------------- |
-| M0 unmutated                                    | `ok \| 11 passed \| 0 failed`         | none            |
-| M1 `CreatureTraining.ts:944` guard `if (false)` | `FAILED \| 8 passed \| 3 failed`      | tests 1, 2, 6   |
-| M2 `:1375` guard `if (false)`                   | `FAILED \| 9 passed \| 2 failed`      | tests 3, 7      |
-| M3 `:2120` guard `if (false)`                   | `FAILED \| 8 passed \| 3 failed`      | tests 4, 5, 8   |
-| M4 `:944` guard `if (true)`                     | `ok \| 11 passed` (green, equivalent) | none            |
-| M5 `:1375` guard `if (true)`                    | `ok \| 11 passed` (green, equivalent) | none            |
-| M6 `:2120` guard `if (true)`                    | `FAILED \| 10 passed \| 1 failed`     | test 11         |
-| M7 `:1388` evolveEnv abort removal deleted      | `FAILED \| 10 passed \| 1 failed`     | test 3          |
-| M8 `:2134` evolveRL abort removal deleted       | `FAILED \| 10 passed \| 1 failed`     | test 4          |
-| M9 `:506` `runFailureCleanup` catch rethrows    | `FAILED \| 10 passed \| 1 failed`     | test 2          |
-| M10 `:2124` evolveRL pool terminate deleted     | `FAILED \| 10 passed \| 1 failed`     | test 5          |
-| M11 `:958` evolveDir cache release deleted      | `FAILED \| 10 passed \| 1 failed`     | test 1          |
+| M0 unmutated                                    | `ok \| 13 passed \| 0 failed`         | none            |
+| M1 `CreatureTraining.ts:944` guard `if (false)` | `FAILED \| 10 passed \| 3 failed`     | tests 1, 2, 6   |
+| M2 `:1375` guard `if (false)`                   | `FAILED \| 11 passed \| 2 failed`     | tests 3, 7      |
+| M3 `:2120` guard `if (false)`                   | `FAILED \| 10 passed \| 3 failed`     | tests 4, 5, 8   |
+| M4 `:944` guard `if (true)`                     | `ok \| 13 passed` (green, equivalent) | none            |
+| M5 `:1375` guard `if (true)`                    | `ok \| 13 passed` (green, equivalent) | none            |
+| M6 `:2120` guard `if (true)`                    | `FAILED \| 12 passed \| 1 failed`     | test 11         |
+| M7 `:1388` evolveEnv abort removal deleted      | `FAILED \| 12 passed \| 1 failed`     | test 3          |
+| M8 `:2134` evolveRL abort removal deleted       | `FAILED \| 12 passed \| 1 failed`     | test 4          |
+| M9 `:506` `runFailureCleanup` catch rethrows    | `FAILED \| 12 passed \| 1 failed`     | test 2          |
+| M10 `:2124` evolveRL pool terminate deleted     | `FAILED \| 12 passed \| 1 failed`     | test 5          |
+| M11 `:958` evolveDir cache release deleted      | `FAILED \| 12 passed \| 1 failed`     | test 1          |
+| M12 `:545` WASM activation cap call deleted     | `FAILED \| 12 passed \| 1 failed`     | test 12         |
+| M13 `:546` WASM compilation cap call deleted    | `FAILED \| 12 passed \| 1 failed`     | test 12         |
+| M14 `:588` failed-worker terminate deleted      | `FAILED \| 12 passed \| 1 failed`     | test 13         |
+| M15 `:592` fallback guard negated               | `FAILED \| 12 passed \| 1 failed`     | test 13         |
+| M16 `:600` fallback `direct` true -> false      | `FAILED \| 12 passed \| 1 failed`     | test 13         |
+| M17 `:607` fallback waitUntilReady deleted      | `FAILED \| 12 passed \| 1 failed`     | test 13         |
+| M18 `:630` setDataDir deleted                   | `FAILED \| 12 passed \| 1 failed`     | test 12         |
 
 M4 and M5 stay green because forcing the guard to `true` only repeats the
 teardown after a successful run. That is why the success-path outcomes at `:944`
 and `:1375` are recorded as `exempt` in the facts file.
+
+M12-M18 are the pre-existing `evolveDir` worker-setup lines that the `try`/
+`finally` wrap re-indented (so the mutation sweep treated them as changed).
+Tests 12 and 13 pin them: test 12 pins the main-thread WASM cache caps and the
+`setDataDir` call; test 13 drives a first-worker init failure so the terminate,
+the `!preferDirect` fallback, the fallback `direct` worker and the fallback
+`waitUntilReady` are all observed.
 
 - The `flipWentRed` values in
   `docs/archive/pr-summaries/pr-summary-4072.facts.json` come from these runs.
@@ -169,13 +185,22 @@ and `:1375` are recorded as `exempt` in the facts file.
 - **Diff size.** `src/creature/CreatureTraining.ts` shows 2482 changed lines in
   `git diff`, because wrapping each body in `try`/`finally` re-indents it. Under
   `git diff -w` it is 130 lines (112 insertions, 18 deletions). The whole branch
-  is 1273 insertions and 18 deletions under `-w`.
+  is 1598 insertions and 72 deletions under `-w` (the dependency bump below and
+  its regenerated `wasm_activation/pkg` artifacts account for the rest).
 - **CHANGELOG (#4067).** Commit `3b61a461` restores the Issue #4067 entry that
   the #4072 entry had dropped.
-- **Dependencies.** No `deno.lock`, `deno.json` or dependency change. The diff
-  touches four files: `CHANGELOG.md`, `docs/TIMEOUTS.md`,
-  `src/creature/CreatureTraining.ts` and
-  `test/creature/EvolveCleanupOnThrow_test.ts`.
+- **Dependencies.** Commit `ec5d05dc`
+  (`chore: bump dependencies via
+  bump-deps.sh`) bumps `deno.json` 7.0.60 →
+  7.0.61 and the `neatCore` `rev`/`assetSha256`, which regenerates
+  `src/wasm/WasmBundleSha256.ts` and the vendored `wasm_activation/pkg/*`
+  artifacts. `deno.lock` is unchanged. The diff touches 14 files, not four:
+  `CHANGELOG.md`, `deno.json`, `docs/TIMEOUTS.md`,
+  `docs/archive/pr-summaries/pr-summary-4072.facts.json`,
+  `docs/archive/pr-summaries/pr-summary-4072.md`,
+  `src/creature/CreatureTraining.ts`, `src/wasm/WasmBundleSha256.ts`,
+  `test/creature/EvolveCleanupOnThrow_test.ts` and the six
+  `wasm_activation/pkg/*` files.
 - **Persisted data.** No export or import code changed, so no persisted data
   shape changed.
 
