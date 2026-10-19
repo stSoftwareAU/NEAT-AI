@@ -19,7 +19,7 @@ issue matched, and this run's `gh` guard refused `gh issue create` against the
 downstream production repo (`[SECURITY] [WRITE_REPO_BLOCKED]`). The drafted
 issue is posted on #4060
 (<https://github.com/stSoftwareAU/NEAT-AI/issues/4060#issuecomment-6226875027>)
-for a human (needs-human) to file in GRQ exactly once and link.
+for a human (needs-human) to file in GRQ exactly once and link
 
 ## Spec
 
