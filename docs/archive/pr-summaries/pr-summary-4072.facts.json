@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "branchOutcomes": {
+    "noneAdded": false,
+    "entries": [
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 944,
+        "outcome": "evolveDir: the generation loop threw before the success-path teardown set tornDown, so the failure teardown runs",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: a rejected generation terminates every worker, removes its SIGTERM listener, and a second run starts clean (Issue #4072)",
+        "flipWentRed": "forcing the guard to false turned 3 of 11 red (the worker test, the cleanup-error test and the champion test)"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 944,
+        "outcome": "evolveDir: the success path already ran the teardown and set tornDown, so the failure teardown is skipped",
+        "exempt": {
+          "kind": "untestable",
+          "reason": "forcing the guard to true repeats the teardown after a successful run, and all 11 tests in test/creature/EvolveCleanupOnThrow_test.ts stay green. On the success path the workers array is already emptied (CreatureTraining.ts:879) and the population, champion and caches are already released (CreatureTraining.ts:884-888), so the repeat is not observable through these tests"
+        }
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 1375,
+        "outcome": "evolveEnv: the generation loop threw before the success-path teardown set tornDown, so the failure teardown runs",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveEnv: a rejected generation removes its SIGTERM and abort listeners, and a second run starts clean (Issue #4072)",
+        "flipWentRed": "forcing the guard to false turned 2 of 11 red (the evolveEnv listener test and the evolveEnv champion test)"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 1375,
+        "outcome": "evolveEnv: the success path already ran the teardown and set tornDown, so the failure teardown is skipped",
+        "exempt": {
+          "kind": "untestable",
+          "reason": "forcing the guard to true repeats the teardown after a successful run, and all 11 tests in test/creature/EvolveCleanupOnThrow_test.ts stay green. The repeat is not observable through these tests; evolveEnv has no worker threads or pool to terminate twice"
+        }
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 1388,
+        "outcome": "evolveEnv: the failure path removes the abort listener",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveEnv: a rejected generation removes its SIGTERM and abort listeners, and a second run starts clean (Issue #4072)",
+        "flipWentRed": "deleting the abort-listener removal turned that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 2120,
+        "outcome": "evolveRL: the generation loop threw before the success-path teardown set tornDown, so the failure teardown runs",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveRL: a rejected generation removes its SIGTERM and abort listeners, and a second run starts clean (Issue #4072)",
+        "flipWentRed": "forcing the guard to false turned 3 of 11 red (the evolveRL listener test, the episode pool test and the champion test)"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 2120,
+        "outcome": "evolveRL: the success path already ran the teardown and set tornDown, so the failure teardown is skipped",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveRL: a successful run logs no cleanup failure, terminates its episode worker pool exactly once, and leaves the caller usable (Issue #4072)",
+        "flipWentRed": "forcing the guard to true turned that test red (the exactly-once pool termination)"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 2134,
+        "outcome": "evolveRL: the failure path removes the abort listener",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveRL: a rejected generation removes its SIGTERM and abort listeners, and a second run starts clean (Issue #4072)",
+        "flipWentRed": "deleting the abort-listener removal turned that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 506,
+        "outcome": "runFailureCleanup: a cleanup step throws, so the error is logged with getLogger().error and not rethrown",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: a cleanup error is logged and never replaces the original rejection (Issue #4072)",
+        "flipWentRed": "rethrowing the cleanup error in place of logging it turned that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 545,
+        "outcome": "evolveDir: applies the configured WASM activation cache cap on the main thread",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: applies the configured WASM cache caps and sets the dataset directory (Issue #4072)",
+        "flipWentRed": "deleting the cap call left the main-thread cap on its sentinel value, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 546,
+        "outcome": "evolveDir: applies the configured WASM compilation cache size on the main thread",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: applies the configured WASM cache caps and sets the dataset directory (Issue #4072)",
+        "flipWentRed": "deleting the size call left the main-thread size on its sentinel value, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 588,
+        "outcome": "evolveDir: terminates a worker whose init handshake failed before falling back",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: a worker init failure terminates the failed worker and falls back to a direct worker (Issue #4072)",
+        "flipWentRed": "deleting the terminate left the failed worker unterminated, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 592,
+        "outcome": "evolveDir: a non-direct worker init failure falls back to a direct worker instead of rethrowing",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: a worker init failure terminates the failed worker and falls back to a direct worker (Issue #4072)",
+        "flipWentRed": "negating the guard made the init failure propagate instead of falling back, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 600,
+        "outcome": "evolveDir: the fallback worker is direct (mock), not a real thread",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: a worker init failure terminates the failed worker and falls back to a direct worker (Issue #4072)",
+        "flipWentRed": "swapping true to false spawned a real fallback thread, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 607,
+        "outcome": "evolveDir: awaits the fallback worker's readiness before using it",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: a worker init failure terminates the failed worker and falls back to a direct worker (Issue #4072)",
+        "flipWentRed": "deleting the await dropped one waitUntilReady call, turning that test red"
+      },
+      {
+        "path": "src/creature/CreatureTraining.ts",
+        "line": 630,
+        "outcome": "evolveDir: sets the dataset directory on the Neat instance",
+        "test": "test/creature/EvolveCleanupOnThrow_test.ts",
+        "testName": "evolveDir: applies the configured WASM cache caps and sets the dataset directory (Issue #4072)",
+        "flipWentRed": "deleting the call left Neat.dataDir unset, turning that test red"
+      }
+    ]
+  }
+}

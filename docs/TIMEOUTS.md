@@ -183,6 +183,21 @@ generation abandoned past the hard deadline that finishes after the run has
 moved on no longer disposes the previous population at commit; it logs a warning
 instead, because that population can still hold the caller's creature.
 
+Issue #4072 covers the failure path, which the teardown above does not. Each
+entry point's outer `finally` removes its SIGTERM listener on every exit, and
+`evolveEnv` and `evolveRL` also remove their abort listener, so a run that
+throws no longer swallows a supervisor's SIGTERM. When the run fails before the
+success path's teardown has completed, that `finally` also terminates the
+`WorkerHandler`s (`evolveDir`) or the `EpisodeWorkerPool` (`evolveRL`, when one
+was created), disposes the population except the caller's creature, disposes the
+champion and releases the process-global evolve caches. `evolveEnv` creates no
+workers. Each of those cleanup steps is isolated: an error is logged and never
+replaces the error that caused the failure, which still propagates to the
+caller. The Issue #4061 restore still runs first, before the population is
+disposed. The success and failure paths release the same resources; the failure
+path differs only in running that release when the success teardown has not
+completed.
+
 The budget defaults to `DEFAULT_TEARDOWN_STEP_BUDGET_MS` (5 s) per step. The
 teardown always emits **one summary line** naming what it left behind, so the
 gap between a child's last log line and its exit is diagnosable rather than
