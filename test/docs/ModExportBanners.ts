@@ -39,7 +39,26 @@ import { initWasmForTests } from "../_initWasm.ts";
 /** Banner: `CreatureExport` carries no activation state; `CreatureTrace` does. */
 Deno.test("mod.ts banner — CreatureTrace adds trace state only after activation", async () => {
   await initWasmForTests();
-  const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+  // Fixed weights and squashes: a random squash such as STEP can already output the target 1, giving zero error and no synapse updates (Issue #4091).
+  const fixture: CreatureExport = {
+    semanticVersion: "4.0.0",
+    input: 2,
+    output: 1,
+    neurons: [
+      { type: "hidden", uuid: "hidden-a", bias: 0.1, squash: "LOGISTIC" },
+      { type: "hidden", uuid: "hidden-b", bias: -0.1, squash: "LOGISTIC" },
+      { type: "output", uuid: "output-0", bias: 0, squash: "IDENTITY" },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "hidden-a", weight: 0.3 },
+      { fromUUID: "input-0", toUUID: "hidden-b", weight: -0.2 },
+      { fromUUID: "input-1", toUUID: "hidden-a", weight: 0.4 },
+      { fromUUID: "input-1", toUUID: "hidden-b", weight: 0.5 },
+      { fromUUID: "hidden-a", toUUID: "output-0", weight: 0.6 },
+      { fromUUID: "hidden-b", toUUID: "output-0", weight: -0.3 },
+    ],
+  };
+  const creature = Creature.fromJSON(fixture);
 
   for (const neuron of creature.exportJSON().neurons) {
     assert(
