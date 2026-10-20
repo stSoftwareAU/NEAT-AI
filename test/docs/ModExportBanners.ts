@@ -41,7 +41,6 @@ Deno.test("mod.ts banner — CreatureTrace adds trace state only after activatio
   await initWasmForTests();
   // Fixed weights and squashes: a random squash such as STEP can already output the target 1, giving zero error and no synapse updates (Issue #4091).
   const fixture: CreatureExport = {
-    semanticVersion: "4.0.0",
     input: 2,
     output: 1,
     neurons: [
