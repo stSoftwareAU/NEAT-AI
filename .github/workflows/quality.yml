@@ -34,7 +34,7 @@ jobs:
   # Any fmt/lint fixes leave as a patch artefact for the `push-fixes` job,
   # which is the only place `secrets.ACTIONS_PUSH` appears.
   quality:
-    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -294,7 +294,7 @@ jobs:
   # the push.
   push-fixes:
     needs: quality
-    if: ${{ (needs.quality.outputs.has_changes == 'true') && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+    if: (needs.quality.outputs.has_changes == 'true') && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

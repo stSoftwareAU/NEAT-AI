@@ -40,7 +40,7 @@ permissions:
 
 jobs:
   smoke:
-    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Benchmark smoke
     runs-on: ubuntu-latest
     # The smoke subset is fast; keep a generous cap purely as a wedge guard.
@@ -83,7 +83,7 @@ jobs:
     name: Score-per-hour regression gate
     # Only on the weekly schedule / manual dispatch — this runs a real
     # (bounded) evolution and is slower than the smoke pass (Issue #3398).
-    if: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && (github.event_name != 'pull_request' || !github.event.pull_request.draft) }}
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
