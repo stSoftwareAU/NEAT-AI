@@ -2,6 +2,9 @@ name: Test Coverage
 
 on:
   pull_request:
+    # Draft PRs are work in progress (owner, 2026-10-23): CI runs
+    # once, when the PR is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - Develop
       # Also gate milestone sub-issue PRs. They target a shared
@@ -39,6 +42,7 @@ jobs:
   # include list (not a `docs/**` exclude) keeps any new top-level code path
   # failing safe — it runs coverage until someone decides otherwise.
   changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Detect code changes
     runs-on: ubuntu-latest
     # Every job in this workflow carries the >=60 minute ceiling (Issue #3168).
@@ -84,7 +88,7 @@ jobs:
   coverage:
     name: Coverage shard ${{ matrix.shard }}
     needs: changes
-    if: ${{ needs.changes.outputs.code == 'true' }}
+    if: (needs.changes.outputs.code == 'true') && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     # Each shard runs only ~1/N of the suite, but keep the generous hour-long
     # cap (Issue #3168) as a safety bound against a wedged shard.
@@ -296,7 +300,7 @@ jobs:
     # the gate can report accurately; only skip if the whole run was cancelled.
     # It also runs when the shards were skipped by path scoping (Issue #4041),
     # because this is the required check and must still report.
-    if: ${{ !cancelled() }}
+    if: (!cancelled()) && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
