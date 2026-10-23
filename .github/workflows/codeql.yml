@@ -9,6 +9,9 @@ on:
   push:
     branches: [Develop]
   pull_request:
+    # Draft PRs are work in progress (owner, 2026-10-23): CI runs
+    # once, when the PR is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [Develop]
   schedule:
     # Weekly, Mondays 04:30 UTC, so the baseline stays fresh in a quiet week.
@@ -22,6 +25,7 @@ concurrency:
 
 jobs:
   analyze:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
