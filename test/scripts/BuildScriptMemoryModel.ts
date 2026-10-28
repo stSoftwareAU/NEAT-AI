@@ -231,6 +231,7 @@ Deno.test({
         `${pkgDir}/wasm_activation_bg.wasm`,
         memoryOnlyModule(0x04),
       );
+      await Deno.writeTextFile(`${pkgDir}/wasm_activation.js`, "// glue");
       const pinFile = `${tmpDir}/WasmBundleSha256.ts`;
 
       const run = await runSourcedFns(
@@ -262,6 +263,7 @@ Deno.test({
         `${pkgDir}/wasm_activation_bg.wasm`,
         memoryOnlyModule(0x04),
       );
+      await Deno.writeTextFile(`${pkgDir}/wasm_activation.js`, "// glue");
       const pinFile = `${tmpDir}/WasmBundleSha256.ts`;
 
       const run = await runSourcedFns(
