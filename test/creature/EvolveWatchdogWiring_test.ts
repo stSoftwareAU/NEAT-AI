@@ -10,6 +10,7 @@ import type { Neat } from "@neat/Neat.ts";
 import type {
   EventLoopWatchdog,
   EventLoopWatchdogOptions,
+  EventLoopWatchdogPhase,
 } from "@neat/EventLoopWatchdog.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import {
@@ -50,6 +51,7 @@ interface Recorded {
   options: EventLoopWatchdogOptions;
   disarms: number;
   generations: number[];
+  phases: EventLoopWatchdogPhase[];
 }
 
 function recordingArm(): {
@@ -60,7 +62,12 @@ function recordingArm(): {
   const armWatchdog = (
     options: EventLoopWatchdogOptions,
   ): EventLoopWatchdog => {
-    const record: Recorded = { options, disarms: 0, generations: [] };
+    const record: Recorded = {
+      options,
+      disarms: 0,
+      generations: [],
+      phases: [],
+    };
     armed.push(record);
     return {
       disarm(): void {
@@ -68,6 +75,9 @@ function recordingArm(): {
       },
       setGeneration(generation: number): void {
         record.generations.push(generation);
+      },
+      setPhase(phase: EventLoopWatchdogPhase): void {
+        record.phases.push(phase);
       },
     };
   };
@@ -259,6 +269,51 @@ for (const entry of ["evolveDir", "evolveEnv", "evolveRL"] as const) {
       );
       assertEquals(armed.length, 1, "only the first-generation watchdog armed");
       assertEquals(armed[0].disarms, 1, "the handle is disarmed on the throw");
+    },
+  });
+}
+
+/**
+ * Issue #4096: the generation phases reach the watchdog, so its breach line
+ * can name the phase the main thread was in. Phases from every armed handle
+ * are concatenated in arm order, which is the order the run emitted them.
+ */
+for (const entry of ["evolveDir", "evolveEnv", "evolveRL"] as const) {
+  Deno.test({
+    name:
+      `${entry}: generation phases reach the watchdog, fitness before mutation, and stop once the run returns`,
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+      const { armed, armWatchdog } = recordingArm();
+      let neatRef: Neat | undefined;
+      const generation = await runEntryPoint(entry, {
+        startTimeMS: START_MS,
+        armWatchdog,
+        watchdogMarginMS: MARGIN_MS,
+        onNeatReady: (neat: Neat) => {
+          neatRef = neat;
+        },
+      }, TIMEOUT_MINUTES);
+      assert(generation >= 1, "the run must complete at least one generation");
+
+      const phases = armed.flatMap((record) => record.phases);
+      assert(phases.includes("fitness"), "fitness phase is reported");
+      assert(phases.includes("mutation"), "mutation phase is reported");
+      assert(
+        phases.indexOf("fitness") < phases.indexOf("mutation"),
+        "fitness is reported before mutation",
+      );
+
+      // The observer is cleared on return, so a late marker reaches nothing.
+      const reported = phases.length;
+      assert(neatRef !== undefined, "onNeatReady hands over the Neat instance");
+      neatRef.markPhase("fitness");
+      assertEquals(
+        armed.flatMap((record) => record.phases).length,
+        reported,
+        "no phase reaches the watchdog after the run returns",
+      );
     },
   });
 }

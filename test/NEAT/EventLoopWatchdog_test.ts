@@ -5,7 +5,10 @@
  * or that swallows SIGTERM must still be killed at the deadline, a disarmed
  * watchdog must not kill a run that finished, and a Worker that cannot load
  * must degrade to a logged no-op rather than crash the run. Those cases run in
- * a child `deno run` so the SIGKILL and exit status are real.
+ * a child `deno run` so the SIGKILL and exit status are real. The heartbeat
+ * tests check the measured liveness in the breach line: a busy loop never ticks
+ * after arm, so its age is at least the time to the deadline, while a yielding
+ * loop keeps its age near one heartbeat interval.
  *
  * The fixtures compute their deadlines with `Date.now()` inside their own
  * source text. This file never reads the clock and never waits on a timer for
@@ -92,6 +95,15 @@ async function runFixture(
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
+}
+
+/**
+ * Read `lastHeartbeatAgeMs` from a breach line. Fails the test if it is absent.
+ */
+function heartbeatAgeMs(stderr: string): number {
+  const match = /lastHeartbeatAgeMs=(\d+)/.exec(stderr);
+  assert(match !== null, `lastHeartbeatAgeMs missing from stderr: ${stderr}`);
+  return Number(match[1]);
 }
 
 Deno.test("EventLoopWatchdogKillsBlockedMainThread: SIGKILLs a busy-looping main thread that swallows SIGTERM", async () => {
@@ -364,6 +376,213 @@ Deno.test("setGeneration refuses a non-integer or out-of-range generation", () =
     );
     watchdog.setGeneration(0);
     watchdog.setGeneration(3);
+  } finally {
+    watchdog.disarm();
+  }
+});
+
+Deno.test("EventLoopWatchdogHeartbeat: a busy-looping main thread shows a heartbeat age at least the time since arm", async () => {
+  // The main loop is busy from the moment it arms, so it never ticks the
+  // heartbeat. The newest heartbeat is the one taken at arm, which is no later
+  // than afterArm, and the breach is no earlier than the deadline. So the age
+  // at breach is at least deadline - afterArm.
+  const result = await runFixture(
+    `
+Deno.addSignalListener("SIGTERM", () => {});
+const deadline = Date.now() + 1_500;
+armEventLoopWatchdog({
+  deadlineEpochMS: deadline,
+  breachLine: "[Neat] watchdog-test busy breach at generation ${EVENT_LOOP_WATCHDOG_GENERATION_TOKEN}",
+  heartbeatIntervalMS: 100,
+});
+const afterArm = Date.now();
+console.log(JSON.stringify({ deadline, afterArm }));
+for (;;) {}
+`,
+    ["--allow-read"],
+  );
+  assert(
+    !result.guardFired,
+    "the hang guard ended the process, not the watchdog",
+  );
+  assertEquals(result.code, 137, `stderr: ${result.stderr}`);
+  assertEquals(result.signal, "SIGKILL");
+  assert(
+    result.stderr.includes(
+      "[Neat] watchdog-test busy breach at generation unknown",
+    ),
+    `breach line missing from stderr: ${result.stderr}`,
+  );
+  const { deadline, afterArm } = JSON.parse(result.stdout) as {
+    deadline: number;
+    afterArm: number;
+  };
+  const age = heartbeatAgeMs(result.stderr);
+  assert(
+    age >= deadline - afterArm,
+    `heartbeat age ${age} ms is below the ${
+      deadline - afterArm
+    } ms between arm and the deadline: ${result.stderr}`,
+  );
+});
+
+Deno.test("EventLoopWatchdogHeartbeat: a yielding main thread that is over budget keeps its heartbeat fresh", async () => {
+  // The loop yields for the whole run, so the heartbeat timer keeps ticking
+  // and the age at breach stays near one interval, far below the 2 s deadline.
+  const result = await runFixture(
+    `
+armEventLoopWatchdog({
+  deadlineEpochMS: Date.now() + 2_000,
+  breachLine: "[Neat] watchdog-test yielding breach at generation ${EVENT_LOOP_WATCHDOG_GENERATION_TOKEN}",
+  heartbeatIntervalMS: 100,
+});
+await new Promise((resolve) => setTimeout(resolve, 10_000));
+`,
+    ["--allow-read"],
+  );
+  assert(
+    !result.guardFired,
+    "the hang guard ended the process, not the watchdog",
+  );
+  assertEquals(result.code, 137, `stderr: ${result.stderr}`);
+  assertEquals(result.signal, "SIGKILL");
+  assert(
+    result.stderr.includes(
+      "[Neat] watchdog-test yielding breach at generation unknown",
+    ),
+    `breach line missing from stderr: ${result.stderr}`,
+  );
+  const age = heartbeatAgeMs(result.stderr);
+  assert(
+    age < 1_200,
+    `heartbeat age ${age} ms is too large for a loop that kept ticking: ${result.stderr}`,
+  );
+});
+
+Deno.test("EventLoopWatchdogPhase: the breach line names the phase set before the busy loop", async () => {
+  const result = await runFixture(
+    `
+Deno.addSignalListener("SIGTERM", () => {});
+const w = armEventLoopWatchdog({
+  deadlineEpochMS: Date.now() + 1_500,
+  breachLine: "[Neat] watchdog-test phase breach",
+  heartbeatIntervalMS: 100,
+});
+w.setPhase("mutation");
+for (;;) {}
+`,
+    ["--allow-read"],
+  );
+  assert(
+    !result.guardFired,
+    "the hang guard ended the process, not the watchdog",
+  );
+  assertEquals(result.code, 137, `stderr: ${result.stderr}`);
+  assertEquals(result.signal, "SIGKILL");
+  assert(
+    result.stderr.includes(
+      "[Neat] watchdog-test phase breach lastHeartbeatAgeMs=",
+    ),
+    `breach line missing from stderr: ${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes("inFlightPhase=mutation"),
+    `stderr: ${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes("heartbeatIntervalMS=100"),
+    `stderr: ${result.stderr}`,
+  );
+});
+
+Deno.test("EventLoopWatchdogPhase: the breach line reports untracked when no phase was set", async () => {
+  const result = await runFixture(
+    `
+Deno.addSignalListener("SIGTERM", () => {});
+armEventLoopWatchdog({
+  deadlineEpochMS: Date.now() + 1_500,
+  breachLine: "[Neat] watchdog-test untracked breach",
+  heartbeatIntervalMS: 100,
+});
+for (;;) {}
+`,
+    ["--allow-read"],
+  );
+  assert(
+    !result.guardFired,
+    "the hang guard ended the process, not the watchdog",
+  );
+  assertEquals(result.code, 137, `stderr: ${result.stderr}`);
+  assertEquals(result.signal, "SIGKILL");
+  assert(
+    result.stderr.includes("inFlightPhase=untracked"),
+    `stderr: ${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes("heartbeatIntervalMS=100"),
+    `stderr: ${result.stderr}`,
+  );
+});
+
+Deno.test("armEventLoopWatchdog refuses a heartbeat interval that is not finite", () => {
+  for (
+    const heartbeatIntervalMS of [
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.NEGATIVE_INFINITY,
+    ]
+  ) {
+    const err = assertThrows(
+      () =>
+        armEventLoopWatchdog({
+          deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+          breachLine: "x",
+          heartbeatIntervalMS,
+        }),
+      ConfigurationError,
+    );
+    assertEquals(err.reason, "NOT_FINITE");
+  }
+});
+
+Deno.test("armEventLoopWatchdog refuses a heartbeat interval that is not greater than zero", () => {
+  for (const heartbeatIntervalMS of [0, -1]) {
+    const err = assertThrows(
+      () =>
+        armEventLoopWatchdog({
+          deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+          breachLine: "x",
+          heartbeatIntervalMS,
+        }),
+      ConfigurationError,
+    );
+    assertEquals(err.reason, "OUT_OF_RANGE");
+  }
+});
+
+Deno.test("armEventLoopWatchdog accepts a positive heartbeat interval", () => {
+  // Far-future deadline so the Worker never breaches during this in-process test.
+  const watchdog = armEventLoopWatchdog({
+    deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+    breachLine: "[Neat] watchdog-test in-process breach",
+    heartbeatIntervalMS: 50,
+  });
+  watchdog.disarm();
+});
+
+Deno.test("EventLoopWatchdog setPhase refuses a phase outside the list and accepts a listed one", () => {
+  // Far-future deadline so the Worker never breaches during this in-process test.
+  const watchdog = armEventLoopWatchdog({
+    deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+    breachLine: "[Neat] watchdog-test in-process breach",
+  });
+  try {
+    const err = assertThrows(
+      () => watchdog.setPhase("nonsense" as never),
+      ConfigurationError,
+    );
+    assertEquals(err.reason, "INVALID_TYPE");
+    watchdog.setPhase("fitness");
   } finally {
     watchdog.disarm();
   }

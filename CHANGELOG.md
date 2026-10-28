@@ -193,6 +193,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4096:** The event-loop watchdog (Issue #4066) now has a main-thread
+  heartbeat. The main thread writes the epoch-ms of its latest timer tick into a
+  `SharedArrayBuffer` every `heartbeatIntervalMS` (default
+  `DEFAULT_HEARTBEAT_INTERVAL_MS`, 1000 ms; an option on `armEventLoopWatchdog`)
+  and once at arm. The timer is unref'd and `disarm()` clears it. At breach the
+  Worker reads the heartbeat and appends
+  `lastHeartbeatAgeMs=<n> inFlightPhase=<phase> heartbeatIntervalMS=<n>` to the
+  end of the breach line. The existing text is unchanged and still a prefix.
+  `inFlightPhase` is the phase the main thread most recently entered, one of
+  `EVENT_LOOP_WATCHDOG_PHASES`. An age far above `heartbeatIntervalMS` means the
+  main event loop was blocked for about that long; an age of roughly one
+  interval or less means it was alive and the run was merely over budget. See
+  [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md) for how to read a breach line.
 - **Issue #3934:** The training-gain log, and what it measured. Jin (2011) §5
   asks who should receive local search — per-generation backpropagation is a
   large fixed cost per individual, and `selectTrainingCandidates` had always
