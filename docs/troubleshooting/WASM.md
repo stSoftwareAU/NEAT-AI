@@ -339,12 +339,33 @@ with the bytes, the worker never reaches the `fetch(URL)` path and therefore
 never needs `net` permission. This works under both old and new Deno, and under
 narrowed worker permission lists.
 
-The parent-side `https:` fetch is bounded (Issue #4035): both requests and their
-bodies share a 30-second `AbortSignal.timeout` (`WASM_PAYLOAD_FETCH_TIMEOUT_MS`
-in `src/workers/WasmActivationPayload.ts`). A CDN that accepts the connection
-and then stalls rejects with `WasmError` reason `MODULE_NOT_LOADED` ("timed out
-after 30000ms"), the same failure as a non-OK response, rather than hanging
-start-up.
+The parent-side `https:` load is cache-first (Issue #4097).
+`loadWasmActivationInitPayloadAsync()` reads the JS glue and the binary through
+the same SHA-pinned on-disk cache as the bundle loader
+(`loadWasmActivationPayloadCacheFirst` in
+`src/workers/WasmActivationPayload.ts`):
+
+- **Warm cache:** both files are served from disk with **no network access**, so
+  the pre-fetch succeeds during a jsr.io outage. Each file is checked against
+  its own pin before it is used: `EXPECTED_WASM_BUNDLE_SHA256` for the binary
+  and `EXPECTED_WASM_GLUE_SHA256` for the glue, both in
+  `src/wasm/WasmBundleSha256.ts`.
+- **Cold cache** (or a rejected cache entry): each file is fetched with the
+  bounded retry and backoff of `loadWasmBundleBytes`. Each attempt, covering the
+  request and its body, is capped at 60 s (`WASM_BUNDLE_FETCH_TIMEOUT_MS`, Issue
+  #4048). A verified file is persisted, so the next start is offline again. When
+  no cache directory can be resolved, caching is disabled and every start is a
+  cold load.
+
+If the cache is cold and the fetch still fails, or a fetched file misses its
+pin, the call rejects with `WasmError` reason `MODULE_NOT_LOADED`. The message
+names both URLs (for example "timed out after 60000ms"), the same failure mode
+as a non-OK response, so start-up does not hang.
+
+The single-shot, uncached `https:` fetch from Issue #4035 has been removed
+(Issue #4097). Its stall guard now covers this cache-first path: each attempt is
+capped at 60 s with bounded retries (Issue #4048), and a stalled peer rejects
+with a `WasmError` (reason `MODULE_NOT_LOADED`) instead of hanging start-up.
 
 **Alternative — upgrade Deno and rely on default inheritance.** From Deno 2.5
 onwards, workers spawned with no explicit `deno.permissions` inherit the
@@ -359,7 +380,7 @@ sequenceDiagram
     participant Worker as Worker (no --allow-net)
     participant JSR as jsr.io
 
-    Parent->>JSR: fetch(wasm_activation.js + .wasm)
+    Parent->>JSR: fetch(wasm_activation.js + .wasm) on a cache miss only
     JSR-->>Parent: bytes
     Parent->>Parent: cache payload
     Parent->>Worker: spawn + postMessage(payload)
