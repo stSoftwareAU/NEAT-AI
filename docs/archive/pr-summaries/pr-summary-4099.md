@@ -120,9 +120,11 @@ flowchart TD
   selection deterministically. The unit-level companion
   `test/NEAT/NeatFinishUp.ts::finishUp: a settled training result is merged by processCompletedResults, then the run finishes (Issue #4099)`
   covers the `finishUp()` false-then-true contract. The test wraps `evolve()`
-  rather than stubbing a worker's promise: the worker result handler's only
-  effect on `Neat` is the `recordTrainingComplete` call, so the settle point is
-  the same. — reviewer: met
+  rather than stubbing a worker's promise, and settles the result through
+  `recordTrainingComplete`, the hook the worker result handler also ends in. It
+  does not run the rest of that handler (`src/NEAT/NeatScheduling.ts`: the
+  `trainingRegressionTracker` updates, `r.train.forward` and the trace-file
+  writes), which this test does not cover. — reviewer: met
 - **missing** — Field evidence: a GRQ sampler log on a neat-ai release carrying
   the fix where a task scheduled in the last generation shows
   `Training <id> completed`, with no `outcome=in_flight … reason=log-ended` in
@@ -158,8 +160,10 @@ flowchart TD
   `resultsDiscarded` equals its return value; `baseOptions` gained a `neat` stub
   returning 0 (no assertion removed from any existing test).
 - Not done: a mutation-style red check of each new test against the unfixed
-  code; every `finishUp` test fails against the base `Neat.ts` by reading it,
-  not by observed run (apart from the `evolveDir` red check above). Call sites
+  code; the new `finishUp` tests that the fix is meant to turn green are
+  expected to fail against the base `Neat.ts` by reading it, not by observed run
+  (apart from the `evolveDir` red check above). The over-run and
+  no-pending-result `finishUp` tests also pass on the base code. Call sites
   checked: `evolveDir`, `evolveEnv`, `evolveRL` all pass `neat` (required
   option, so omission fails type-check); the discard option is exercised by the
   teardown unit test, and the merge route by the `evolveDir` test above.
@@ -199,6 +203,14 @@ and mutated the source by hand, running `test/NEAT/NeatFinishUp.ts` and
   file's own helper and assertion lines (`captureLog`, `settledTraining`,
   `settledDiscovery`, the test bodies); mutating a test cannot be pinned by
   another test.
+
+- `test/creature/EvolveDirLateTrainingResult.ts:38,39,52,66,68,70,76,77,79,91,94-98,107-111,113,115,121,124,129-134,139,144,145,167,180,181`:
+  exempt (untestable): the whole file is the test (its helpers, fixture data,
+  logger recorder, settle hook and assertions). The runner reports "no test
+  imports this module" because nothing imports a test file, so no other test can
+  go red on a mutation of it. Its worth is checked by the `finishUp()` red check
+  above (disabling the wait fails it with
+  `a settled-but-unmerged result must lead to another evolve(); got 1 call(s)`).
 
 The runner's cap (40 of 72 candidates tried) means the other 32 mutants were
 never tried; I did not enumerate them.
