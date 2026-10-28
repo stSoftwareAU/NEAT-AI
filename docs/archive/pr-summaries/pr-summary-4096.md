@@ -33,8 +33,8 @@ the final version.
   hard-deadline abandon text) is deliberately left alone; `Neat.markPhase` is a
   separate channel, so adding finer phases cannot change the abandon wording or
   `interruptInFlightPhase`.
-- The heartbeat timer is unref'd and cleared by `disarm()` and by the Worker
-  `error` path, so it can never keep a finished process alive.
+- The heartbeat timer is unreferenced and cleared by `disarm()` and by the
+  Worker `error` path, so it can never keep a finished process alive.
 - `postMessage` to the Worker is the last step of arming. The extra heartbeat
   set-up before it widened a pre-existing race in a test whose deadline is
   already past; the order restores the old gap.

@@ -428,7 +428,7 @@ measurement that tells the two apart.
   latest timer tick into a `SharedArrayBuffer` every `heartbeatIntervalMS`, and
   once at arm. The default is `DEFAULT_HEARTBEAT_INTERVAL_MS` (1000 ms), set
   with the `heartbeatIntervalMS` option on `armEventLoopWatchdog`. The timer is
-  unref'd, so it never keeps the process alive, and `disarm()` clears it.
+  unreferenced, so it never keeps the process alive, and `disarm()` clears it.
 - **Read at breach.** The Worker reads the buffer when the deadline passes.
   `lastHeartbeatAgeMs` is the time since the main thread's latest tick.
 - **`inFlightPhase`** is the phase the main thread most recently entered: one of
