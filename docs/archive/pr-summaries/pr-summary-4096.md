@@ -194,3 +194,6 @@ issue).
   `generationBuffer`.
 - Final-head checks run: `deno fmt --check`, `deno lint` and `deno check` over
   the touched files passed; the five watchdog test files above pass.
+- `./quality.sh < /dev/null` was attempted and stopped at its first stage: `❌ Native rust_scorer is required (quality.sh default) but was not found`. `./quality.sh --skip-tests --skip-discovery --skip-wasm` completed its format, lint and type-check stages. The full test suite did not run.
+
+<!-- vibe-quality-gate-skipped reason="rust_scorer binary absent on this host, so the full test stage cannot run; targeted watchdog, wiring and phase tests were run instead" -->
