@@ -923,6 +923,14 @@ Deno.test("abandonInFlightAtTeardown: names each in-flight task, clears the maps
     const discoverUUID = "discover-uuid-bbbb2222";
     neat.trainingInProgress.set(trainUUID, new Promise<void>(() => {}));
     neat.discoveryInProgress.set(discoverUUID, new Promise<void>(() => {}));
+    neat.trainingDeadlines.set(trainUUID, 1);
+    neat.trainingTasks.set(trainUUID, {
+      worker: {
+        cancelTask: () => false,
+        quarantine: () => {},
+      },
+      taskID: 5,
+    });
     const epochBefore = neat.abandonEpoch;
 
     log = captureLog();
@@ -931,6 +939,8 @@ Deno.test("abandonInFlightAtTeardown: names each in-flight task, clears the maps
     assertEquals(abandoned, 2, "every in-flight task must be counted");
     assertEquals(neat.trainingInProgress.size, 0);
     assertEquals(neat.discoveryInProgress.size, 0);
+    assertEquals(neat.trainingDeadlines.size, 0, "deadlines must be cleared");
+    assertEquals(neat.trainingTasks.size, 0, "task handles must be cleared");
     assert(
       log.warnings.some((l) =>
         l.includes("Training aaaa1111 abandoned at teardown")

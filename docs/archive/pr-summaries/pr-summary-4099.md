@@ -119,11 +119,12 @@ flowchart TD
   worker task dropped by `WorkerHandlerBase.terminate()` is named by the same
   teardown line because its training entry is still in `trainingInProgress`. —
   reviewer: partial — reason: the reviewer found the failed-stub double line
-  (fixed in this diff by the skip above) and that no test covers every route;
-  training failure stubs are now covered, but a failed _discovery_ stub can
-  still log a second line and `completed` prints only when `verbose` is on
-  (existing behaviour). Discovery is outside this criterion's "training task"
-  wording.
+  (fixed in this diff by the skip above) and that the SIGTERM/interrupted route
+  and a result settling during the persist were untested (both now covered by
+  the evidence above); training failure stubs are covered too, but a failed
+  _discovery_ stub can still log a second line and `completed` prints only when
+  `verbose` is on (existing behaviour). Discovery is outside this criterion's
+  "training task" wording.
 - **met** — Regression test: stub a worker whose training promise resolves
   **after** the final generation's `processCompletedResults` but before
   `finishUp`. … assert that (a) the trained creature reaches the returned
@@ -254,6 +255,23 @@ and mutated the source by hand, running `test/NEAT/NeatFinishUp.ts` and
   go red on a mutation of it. Its worth is checked by the `finishUp()` red check
   above (disabling the wait fails it with
   `a settled-but-unmerged result must lead to another evolve(); got 1 call(s)`).
+
+Second review round (survivors again tagged "no test imports this module" except
+`Neat.ts:1191-1198`): I mutated each by hand and ran
+`test/NEAT/NeatFinishUp.ts` + `test/creature/BoundedEvolveTeardown.ts` — all
+red: `src/NEAT/Neat.ts:1191` (`abandoned > 0` → `true`), `:1192`-`:1196` (each
+`clear()` / `abandonEpoch++` deleted), `:1198` (`return 0`). The
+`trainingDeadlines` / `trainingTasks` clears were unpinned, so the abandon test
+now seeds both maps and asserts they are emptied.
+`src/creature/BoundedEvolveTeardown.ts:349` (`tasksAbandoned`) is asserted at
+`test/creature/BoundedEvolveTeardown.ts:302`.
+
+- `test/NEAT/NeatFinishUp.ts:924,925,931-933,948,955,958,961,975-977,980`,
+  `test/creature/BoundedEvolveTeardown.ts:71,72,281,282,319,321,322,328,329,333,334,347,351,354,360`
+  and `test/creature/EvolveDirLateTrainingResult.ts:190,191,193`: exempt
+  (untestable): these are lines of the test files themselves (fixtures, spies,
+  assertions, `sanitizeOps` / `sanitizeResources` flags); nothing imports a test
+  file, so no other test can go red on a mutation of it.
 
 The runner's cap (40 of 72 candidates tried) means the other 32 mutants were
 never tried; I did not enumerate them.
