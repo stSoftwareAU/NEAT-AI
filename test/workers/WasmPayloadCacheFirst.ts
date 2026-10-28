@@ -138,6 +138,34 @@ Deno.test("Issue #4097: a cold cache with a failing network rejects with WasmErr
   }
 });
 
+Deno.test("Issue #4097: a non-OK response on a cold cache rejects with WasmError naming the status and the URL, and nothing is cached", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    const unavailableFetch: typeof fetch = () =>
+      Promise.resolve(new Response("down", { status: 503 }));
+
+    const err = await assertRejects(
+      () =>
+        loadWasmActivationInitPayloadAsync(
+          loadOptions(cacheDir, unavailableFetch, { maxAttempts: 1 }),
+        ),
+      WasmError,
+      "HTTP 503",
+    );
+
+    assertEquals(err.reason, "MODULE_NOT_LOADED");
+    assert(err.message.includes(JS_URL.href), "message names the glue URL");
+    assert(err.message.includes(WASM_URL.href), "message names the binary URL");
+
+    const gluePath = await wasmCacheFilePath(JS_URL, cacheDir);
+    const wasmPath = await wasmCacheFilePath(WASM_URL, cacheDir);
+    await assertRejects(() => Deno.readFile(gluePath), Deno.errors.NotFound);
+    await assertRejects(() => Deno.readFile(wasmPath), Deno.errors.NotFound);
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
 Deno.test("Issue #4097: a cold cache fetches once, persists both entries, then serves offline", async () => {
   const cacheDir = await Deno.makeTempDir();
   try {
@@ -293,8 +321,11 @@ Deno.test("Issue #4097: a stalled fetch on a cold cache rejects with WasmError (
 Deno.test("Issue #4097: an invalid fetch timeout is refused before any network access", async () => {
   const cacheDir = await Deno.makeTempDir();
   try {
-    for (const fetchTimeoutMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+    for (
+      const fetchTimeoutMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]
+    ) {
       const calls: string[] = [];
+      // deno-lint-ignore no-await-in-loop -- each invalid value is checked in turn.
       const err = await assertRejects(
         () =>
           loadWasmActivationInitPayloadAsync(

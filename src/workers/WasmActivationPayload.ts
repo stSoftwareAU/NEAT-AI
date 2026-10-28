@@ -198,7 +198,9 @@ export async function loadWasmActivationPayloadCacheFirst(
  *
  * De-duplicates in-flight loads so multiple callers don't trigger parallel fetches.
  * The memo serves only the default location: when `options.baseUrl` is set, the
- * memo is neither read nor written, so that load is isolated.
+ * memo is neither read nor written, so that load is isolated. The memo is keyed
+ * by nothing, so options other than `baseUrl` only affect the first load in a
+ * process.
  *
  * @param options - Optional overrides; see {@link WasmPayloadLoadOptions}.
  */

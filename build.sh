@@ -584,8 +584,9 @@ write_runtime_bundle_pin() {
  * GENERATED FILE — do not edit by hand.
  *
  * Written by \`./build.sh\` from \`wasm_activation/pkg/wasm_activation_bg.wasm\`
- * each time the vendored NEAT-AI-core bundle is refreshed, and committed
- * alongside \`deno.json\` and \`wasm_activation/pkg/**\`.
+ * and \`wasm_activation/pkg/wasm_activation.js\` each time the vendored
+ * NEAT-AI-core bundle is refreshed, and committed alongside \`deno.json\` and
+ * \`wasm_activation/pkg/**\`.
  *
  * Issue #3680: \`deno.json\` \`neatCore.assetSha256\` pins the *release tarball*
  * and is enforced only at build time, so the runtime had no value to compare
