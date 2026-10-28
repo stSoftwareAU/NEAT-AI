@@ -148,19 +148,26 @@ issue).
 
 ## Test Plan
 
-- `test/NEAT/EventLoopWatchdog_test.ts` (18 tests, all pass at the head): new
-  heartbeat busy/yielding cases, phase cases, `heartbeatIntervalMS` and
-  `setPhase` refusals asserting the `ConfigurationError` code.
+- `test/NEAT/EventLoopWatchdog_test.ts` (20 tests, all pass at the head): new
+  heartbeat busy/yielding cases (the busy case also bounds the age from above,
+  so a heartbeat missing at arm fails), a case per listed phase against a
+  hard-coded list, phase cases, `heartbeatIntervalMS` and `setPhase` refusals
+  asserting the `ConfigurationError` code.
 - `test/creature/EvolveRunWatchdogHeartbeat_test.ts` (new, 2 tests): generation
   2 busy and yielding through `armRunWatchdog`.
 - `test/creature/EvolveRunWatchdog_test.ts`: four `setPhase` tests (forward,
   kept across re-arm, nothing after `disarm`, no-op when unarmed).
 - `test/creature/EvolveWatchdogWiring_test.ts`: one test per entry point
   (`evolveDir`, `evolveEnv`, `evolveRL`) asserting `fitness` then `mutation`
-  reach the watchdog and that a late `markPhase` after the run reaches no
-  handle.
-- `test/NEAT/NeatPhaseObserver_test.ts` (new, 4 tests): ordering, no-observer
-  no-op, clearing, throwing observer logged not thrown.
+  reach the watchdog, that a late `markPhase` after the run reaches no handle,
+  and that every generation emits exactly the ordered marker walk
+  `fitness,
+  untracked, sort, write-scores, breeding, mutation, pre-warm, deduplication,
+  untracked, untracked`
+  (this pins every `markPhase` call in `NeatEvolution.ts`).
+- `test/NEAT/NeatPhaseObserver_test.ts` (new, 5 tests): ordering, no-observer
+  no-op, clearing, throwing observer logged not thrown, a non-`Error` throw
+  logged by its string form.
 - `test/creature/EvolveCleanupOnThrow_test.ts`: inline `armWatchdog` fake gained
   `setPhase() {}`; no assertion changed.
 - Changed expectation: in `test/NEAT/EventLoopWatchdog_test.ts`, the
@@ -182,6 +189,34 @@ issue).
   `EventLoopWatchdogHeartbeat: a yielding main thread …` red; hard-coding
   `ageMs = 0` in the Worker turns
   `EventLoopWatchdogHeartbeat: a busy-looping main thread …` red.
+- Mutation follow-up (completion check): each listed survivor was re-run by hand
+  after the new tests. Deleting `"sort"` from the phase list, deleting the
+  arm-time `beat()`, deleting a `markPhase` in `NeatEvolution.ts`, and replacing
+  the non-`Error` branch of `Neat.markPhase` each turn a named test red. Exempt
+  lines, equivalent mutants because the heartbeat timer is unreferenced and
+  `RunWatchdog.setPhase` is a no-op once disarmed:
+  - `src/NEAT/EventLoopWatchdog.ts:227` exempt (untestable): `Deno.unrefTimer`
+    only matters if the timer outlives both `disarm()` and the Worker, and the
+    live Worker holds the process open until then, so no exit-status difference
+    can be observed.
+  - `src/NEAT/EventLoopWatchdog.ts:237` exempt (untestable): the error-path
+    `clearInterval` stops an unreferenced idle timer; Deno's sanitizers do not
+    report it, so no behaviour changes.
+  - `src/NEAT/EventLoopWatchdog.ts:257` exempt (untestable): the `disarm()`
+    `clearInterval`, same reason (a leaked unreferenced timer is invisible to
+    exit status and to the sanitizers).
+  - `src/creature/CreatureTraining.ts:946` and `:1383` exempt (untestable):
+    `neat.setPhaseObserver(undefined)` in `finally` is belt and braces, since
+    the observer reaches `RunWatchdog.setPhase`, which already returns after
+    `disarm()`.
+- Coverage carry-over (completion check): the listed lines are in
+  `BreedingQuotas.ts`, `DeDuplicator.ts`, `MutationOperatorTelemetry.ts` and
+  similar files this change does not touch. Running the four edited watchdog
+  test files with coverage on the base branch and on the head gave the same
+  result for them (`BreedingQuotas.ts` 0% lines on both, `DeDuplicator.ts` 54.4%
+  on both), so the loss is not from this change; the differences between the two
+  runs were under 2 points on files the change does not edit. Coverage of code
+  run in breeding Workers varies between runs. No test was removed.
 - Callers and siblings of the new required `setPhase` member checked:
   `armRunWatchdog` (calls it on every arm), `NOOP_HANDLE` and
   `NO_OP_RUN_WATCHDOG` (no-ops), the three `CreatureTraining.ts` arm sites, and

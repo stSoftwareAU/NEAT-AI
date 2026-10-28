@@ -106,3 +106,24 @@ Deno.test("markPhase: a throwing observer does not throw and logs a warning", ()
     "the warning names the phase that failed",
   );
 });
+
+Deno.test("markPhase: an observer that throws a non-Error value is logged by its string form", () => {
+  const neat = new Neat(3, 1, {}, []);
+  neat.setPhaseObserver(() => {
+    // deno-lint-ignore no-throw-literal -- a non-Error throw is the case under test
+    throw "plain string failure";
+  });
+  const { warnings, logger } = captureWarnings();
+  const original = getLogger();
+  try {
+    setLogger(logger);
+    neat.markPhase("breeding");
+  } finally {
+    setLogger(original);
+  }
+
+  assertEquals(warnings.length, 1);
+  const message = String(warnings[0][0]);
+  assertEquals(message.includes("plain string failure"), true);
+  assertEquals(message.includes("breeding"), true);
+});

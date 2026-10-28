@@ -22,6 +22,7 @@ import { join } from "@std/path";
 import {
   armEventLoopWatchdog,
   EVENT_LOOP_WATCHDOG_GENERATION_TOKEN,
+  EVENT_LOOP_WATCHDOG_PHASES,
 } from "../../src/NEAT/EventLoopWatchdog.ts";
 import { ConfigurationError } from "../../src/errors/ConfigurationError.ts";
 
@@ -429,6 +430,13 @@ for (;;) {}
       deadline - afterArm
     } ms between arm and the deadline: ${result.stderr}`,
   );
+  // The heartbeat is taken at arm, so the age is measured from then and not
+  // from the epoch (what an unset slot would give). The bound is loose because
+  // a loaded host can start the Worker late.
+  assert(
+    age < 30_000,
+    `heartbeat age ${age} ms was not measured from a heartbeat taken at arm: ${result.stderr}`,
+  );
 });
 
 Deno.test("EventLoopWatchdogHeartbeat: a yielding main thread that is over budget keeps its heartbeat fresh", async () => {
@@ -595,4 +603,61 @@ Deno.test("EventLoopWatchdog setPhase refuses a phase outside the list and accep
   } finally {
     watchdog.disarm();
   }
+});
+
+Deno.test("EventLoopWatchdogPhase: every listed phase is named as itself in the breach line", async () => {
+  // The closed list is a contract with whoever reads the breach line. It is
+  // spelled out here, so a phase dropped from the source list fails this test.
+  // One child per phase, so a phase that shifts the index of the ones after it
+  // is named wrongly or refused.
+  const expectedPhases = [
+    "untracked",
+    "fitness",
+    "sort",
+    "write-scores",
+    "breeding",
+    "mutation",
+    "pre-warm",
+    "deduplication",
+  ];
+  assertEquals([...EVENT_LOOP_WATCHDOG_PHASES], expectedPhases);
+  const results = await Promise.all(
+    expectedPhases.map(async (phase) => ({
+      phase,
+      result: await runFixture(
+        `
+Deno.addSignalListener("SIGTERM", () => {});
+const w = armEventLoopWatchdog({
+  deadlineEpochMS: Date.now() + 1_500,
+  breachLine: "[Neat] watchdog-test every-phase breach",
+  heartbeatIntervalMS: 100,
+});
+w.setPhase("${phase}");
+for (;;) {}
+`,
+        ["--allow-read"],
+      ),
+    })),
+  );
+  for (const { phase, result } of results) {
+    assert(
+      !result.guardFired,
+      `${phase}: the hang guard ended the process, not the watchdog`,
+    );
+    assertEquals(result.code, 137, `${phase}: stderr: ${result.stderr}`);
+    assert(
+      result.stderr.includes(` inFlightPhase=${phase} heartbeatIntervalMS=`),
+      `${phase}: stderr: ${result.stderr}`,
+    );
+  }
+});
+
+Deno.test("EventLoopWatchdogDisarm: disarm() can be called twice", () => {
+  const watchdog = armEventLoopWatchdog({
+    deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+    breachLine: "[Neat] watchdog-test in-process breach",
+    heartbeatIntervalMS: 10,
+  });
+  watchdog.disarm();
+  watchdog.disarm();
 });

@@ -273,6 +273,20 @@ for (const entry of ["evolveDir", "evolveEnv", "evolveRL"] as const) {
   });
 }
 
+/** The markers one generation of `NeatEvolution.evolve` emits, in order. */
+const GENERATION_PHASES: EventLoopWatchdogPhase[] = [
+  "fitness",
+  "untracked",
+  "sort",
+  "write-scores",
+  "breeding",
+  "mutation",
+  "pre-warm",
+  "deduplication",
+  "untracked",
+  "untracked",
+];
+
 /**
  * Issue #4096: the generation phases reach the watchdog, so its breach line
  * can name the phase the main thread was in. Phases from every armed handle
@@ -287,15 +301,42 @@ for (const entry of ["evolveDir", "evolveEnv", "evolveRL"] as const) {
     fn: async () => {
       const { armed, armWatchdog } = recordingArm();
       let neatRef: Neat | undefined;
+      // Every marker the generation loop emits, in order, seen on the Neat
+      // instance itself so it is independent of what the watchdog keeps.
+      const marked: EventLoopWatchdogPhase[] = [];
       const generation = await runEntryPoint(entry, {
         startTimeMS: START_MS,
         armWatchdog,
         watchdogMarginMS: MARGIN_MS,
         onNeatReady: (neat: Neat) => {
           neatRef = neat;
+          const deliver = neat.markPhase.bind(neat);
+          neat.markPhase = (phase: EventLoopWatchdogPhase): void => {
+            marked.push(phase);
+            deliver(phase);
+          };
         },
       }, TIMEOUT_MINUTES);
       assert(generation >= 1, "the run must complete at least one generation");
+
+      // Every generation walks the same phases in the same order, and ends
+      // between phases (`untracked`) so a stall after the loop is not blamed
+      // on the last phase.
+      assertEquals(
+        marked.length,
+        GENERATION_PHASES.length * generation,
+        `one full phase walk per generation: ${marked.join(",")}`,
+      );
+      for (let g = 0; g < generation; g++) {
+        assertEquals(
+          marked.slice(
+            g * GENERATION_PHASES.length,
+            (g + 1) * GENERATION_PHASES.length,
+          ),
+          GENERATION_PHASES,
+          `generation ${g + 1} phases`,
+        );
+      }
 
       const phases = armed.flatMap((record) => record.phases);
       assert(phases.includes("fitness"), "fitness phase is reported");
