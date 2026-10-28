@@ -120,8 +120,8 @@ sites and remain true).
 
 ## Closing evidence
 
-Source: `stSoftwareAU/GRQ-logs` `Develop` (the repository named in the issue),
-cloned with
+Source: the downstream production log repository's `Develop` branch (the
+repository named in the issue), cloned with
 `git clone --single-branch --branch Develop --shallow-since=2026-10-10` (1155
 commits, 2026-10-10 to 2026-10-28). The fix first appears in a deployed build as
 `[neat-ai] running version 7.0.57`, first logged in commit `c79ed9e`
@@ -195,8 +195,8 @@ path.
   hosts with no `rule=ValidationError/MEMETIC` repair lines on the fixed
   release, quoted with the search used — evidence: the Closing evidence section
   below — reviewer: missing — reason: the reviewer saw only the diff and could
-  not read the GRQ-logs repository; the search was run here against
-  `stSoftwareAU/GRQ-logs` `Develop` and is quoted below.
+  not read the downstream production log repository; the search was run here
+  against the `Develop` branch of that repository and is quoted below.
 - **unrequested** — Bias-key and `ancestry[]` pruning, and the pruned-count
   warning — evidence: src/compact/MemeticCleanup.ts:259,
   src/compact/MemeticCleanup.ts:271, src/creature/CheckpointWriter.ts:203 —
