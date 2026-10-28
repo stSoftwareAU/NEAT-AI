@@ -1,6 +1,9 @@
 import { assert, assertEquals } from "@std/assert";
+import { getTag } from "@stsoftware/tags/mod";
+import { Creature } from "@creature";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Neat } from "@neat/Neat.ts";
+import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
 import {
   type ResponseData,
   WorkerHandler,

@@ -1161,11 +1161,18 @@ export class Neat {
    * rather than silently lost. Only the over-run and hard-deadline paths reach
    * here with results still queued; the normal path merges them first.
    *
+   * A failed training task is queued as a stub with `train.error === Infinity`
+   * (see `recordTrainingTaskFailure`). That stub has already logged its own
+   * `Training failed for creature …` terminal line, so it is neither logged nor
+   * counted here, though it is still cleared. `processCompletedResults` skips
+   * the same entries.
+   *
    * @returns the number of results discarded
    */
   discardUnprocessedResults(): number {
     let discarded = 0;
     for (const r of this.trainingComplete) {
+      if (r.train !== undefined && !Number.isFinite(r.train.error)) continue;
       getLogger().warn(
         `Training ${
           r.train?.ID ?? "unknown"
