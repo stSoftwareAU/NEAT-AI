@@ -792,8 +792,13 @@ Deno.test("finishUp: a settled training result is merged by processCompletedResu
     const fittest = new Creature(2, 1);
     const trained = new Creature(2, 1);
 
-    // Settled after the last generation's processCompletedResults(): nothing in progress.
-    neat.trainingComplete.push({
+    // A training task in flight, registered the way the scheduler registers it.
+    const uuid = "late-task-4099";
+    neat.trainingInProgress.set(uuid, Promise.resolve());
+
+    // It settles through the production hook, after the last generation's
+    // processCompletedResults() has run.
+    const recorded = neat.recordTrainingComplete(uuid, neat.abandonEpoch, {
       taskID: 1,
       duration: 1,
       train: {
@@ -802,6 +807,16 @@ Deno.test("finishUp: a settled training result is merged by processCompletedResu
         error: 0.5,
       },
     } as never);
+    assert(recorded, "the in-flight training result must be recorded");
+    assert(
+      !neat.trainingInProgress.has(uuid),
+      "recording a result must release its in-flight task",
+    );
+    assertEquals(
+      neat.trainingComplete.length,
+      1,
+      "the settled result must be queued for merging",
+    );
 
     log = captureLog();
 

@@ -1,0 +1,65 @@
+## Summary
+
+A training or discovery result that settled after the last generation's `processCompletedResults()` was dropped at teardown: `finishUp()` saw nothing in flight and returned `true`, and the result sat unmerged in `neat.trainingComplete` / `neat.discoveryComplete`. Now `finishUp()` waits one more pass while a settled result is queued, so `evolve()` merges it. Where `evolve()` can never run again (over-run stop, hard deadline), the bounded teardown logs each leftover result by ID and drops it. Closes #4099.
+
+Version bump: not part of this change.
+
+## Spec
+
+### Intent and Rationale
+
+- The clean-up delay in `finishUp()` keys on "still running" (`*InProgress` maps), but a result that already settled is in neither map. Checking "not yet processed" (`*Complete` arrays) closes that window.
+- The merge route reuses the existing loop: the `completed` branch of `evolveDir`/`evolveEnv`/`evolveRL` calls `evolve()` again after `finishUp()` returns `false`, which runs `processCompletedResults`, clears the arrays and (for trained creatures) arms the existing "one more generation" re-score.
+
+### Essential Design Decisions
+
+- `finishUp()` does not wait when `terminationReason === "overrun"`: that branch never calls `evolve()` again, so waiting would spin until the hard deadline. Those results are discarded and logged instead.
+- The discard lives in `runBoundedEvolveTeardown` through a **required** `neat` option, so all three callers (`evolveDir`, `evolveEnv`, `evolveRL`) must pass it; it runs before persist because it is synchronous and not part of the evolved state.
+- A failed training task (stub with `train.error === Infinity`) already logged `Training failed for creature …`, so the discard skips it to keep one terminal line per task. Known gap: a failed discovery stub carries no marker, so it can log `Discovery … discarded at teardown` after its own failure line; marking it needs a new field on the worker response type, which this issue does not ask for.
+
+### Undiscoverable Facts
+
+- `deno.json` / `deno.lock` bump `@stsoftware/tags` 1.0.34 → 1.0.36. This came from `./quality.sh`'s dependency-update step, not from this change, and is unrelated to #4099.
+- `Training <id> completed` is only logged when `config.verbose` is on (existing behaviour in `ProcessCompletedResults.ts`); the new discard line is unconditional.
+
+## Evidence
+
+```mermaid
+flowchart TD
+    A[Result settles after processCompletedResults] --> B{finishUp}
+    B -- before: nothing in flight --> C[return true, teardown, result lost silently]
+    B -- after: result queued --> D{terminationReason is overrun?}
+    D -- no --> E[return false, evolve runs, result merged and logged]
+    D -- yes --> F[return true, teardown logs 'discarded at teardown' by ID]
+```
+
+- `./quality.sh` (with the local scorer binary and discovery library) passed on the first fix commit: `ok | 10010 passed (5 steps) | 0 failed | 4 ignored`. It is re-run on the head; see Test Plan.
+- Issue-numbers cited as provenance in the diff: `#4099: A training result that settles after the last generation's processCompletedResults is dropped at teardown` (this issue).
+
+## Reproduction
+
+- **symptom** — a training result that settles after the last generation's `processCompletedResults()` is never merged and never logged; `finishUp()` returns `true` with the result still in `trainingComplete`.
+- **status** — `partial` — reason: the test settles the result through `neat.recordTrainingComplete` rather than stubbing a worker whose promise resolves late through a full `evolveDir`; I did not run the new tests against the unfixed `Neat.ts` (the `finishUp` tests would fail there because it returned `true`, by reading the base code, not by observation).
+- **regression test** — `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled training result is unmerged, then finishes (Issue #4099)`
+
+## Acceptance Criteria
+
+<!-- vibe-spec-review inputs="diff+issue-body" -->
+
+- **met** — Before `finishUp` can return `true`, it also checks `trainingComplete.length > 0` (and `discoveryComplete`). When either is non-empty it arms one more processing pass. … a settled result is either merged or explicitly logged as discarded with its id. — evidence: `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled training result is unmerged, then finishes (Issue #4099)`, `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled discovery result is unmerged, then finishes (Issue #4099)`, `test/creature/BoundedEvolveTeardown.ts::bounded teardown: unmerged results are discarded before persist, and the count is reported (Issue #4099)` — reviewer: met
+- **met** — Every scheduled training task ends with exactly one terminal line (`completed`, `failed`, `abandoned`, or a new `discarded at teardown`). — evidence: `test/NEAT/NeatFinishUp.ts::discardUnprocessedResults: skips a failed-task stub but still logs and counts a finite result (Issue #4099)` — reviewer: partial — reason: the reviewer found the failed-stub double line (fixed in this diff by the skip above) and that no test covers every route; training failure stubs are now covered, but a failed *discovery* stub can still log a second line and `completed` prints only when `verbose` is on (existing behaviour). Discovery is outside this criterion's "training task" wording.
+- **met** — Regression test: stub a worker whose training promise resolves **after** the final generation's `processCompletedResults` but before `finishUp`. … assert that (a) the trained creature reaches the returned population or the creature store, or a `discarded` line names the task, and (b) `Training <id> completed` is logged. — evidence: `test/NEAT/NeatFinishUp.ts::finishUp: a settled training result is merged by processCompletedResults, then the run finishes (Issue #4099)` — reviewer: partial — reason: the reviewer saw the result pushed straight onto `trainingComplete`; the test now settles it through the production hook `neat.recordTrainingComplete` (the call the worker-result handler makes), then asserts `finishUp()` is false, the real `processCompletedResults` returns the creature tagged `late1234` (criterion (a): it reaches the trained population), the `Training late1234 completed` line is logged (criterion (b)), and `finishUp()` is then true. It does not run a full `evolveDir` with a stubbed worker.
+- **missing** — Field evidence: a GRQ sampler log on a neat-ai release carrying the fix where a task scheduled in the last generation shows `Training <id> completed`, with no `outcome=in_flight … reason=log-ended` in `[training-outcomes]`. — reviewer: missing — reason: needs a GRQ log from a released version carrying this fix; it cannot exist before release.
+
+## Standards Review
+
+<!-- vibe-standards-review inputs="diff+AGENTS.md+docs/ENGINEERING_PRINCIPLES.md" -->
+
+- **clean** — no violations reported. Checked: logging goes through `getLogger()`; no timing APIs or `Deno.env` mutation in tests; tests assert behaviour; Australian English; no TS fallback added; `runBoundedEvolveTeardown` is not exported from `mod.ts`, and all three callers were updated. The repository has no `CODING-STANDARDS.md` and marks no rule as review-only.
+
+## Test Plan
+
+- `test/NEAT/NeatFinishUp.ts`: training/discovery pending → `finishUp` false then true; over-run → true (no spin; this one also passes on the unfixed code, it guards the exclusion); `discardUnprocessedResults` count/empty/failed-stub cases; merge-then-finish through the real `processCompletedResults`.
+- `test/creature/BoundedEvolveTeardown.ts`: discard runs before persist and `resultsDiscarded` equals its return value; `baseOptions` gained a `neat` stub returning 0 (no assertion removed from any existing test).
+- Not done: a mutation-style red check of each new test against the unfixed code; every `finishUp` test fails against the base `Neat.ts` by reading it, not by observed run. Call sites checked: `evolveDir`, `evolveEnv`, `evolveRL` all pass `neat` (required option, so omission fails type-check); only the teardown unit test exercises the option, not a full `evolveDir` run.
+- Docs: `docs/TIMEOUTS.md` teardown-order sentence updated; `CHANGELOG.md` entry added. Greps for `finishUp`, `cleanUpDelayCount`, `trainingComplete`, `teardown` over `README.md`, `docs/` (excluding archive) and `src` doc comments found no other stale sentence.
