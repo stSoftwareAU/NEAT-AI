@@ -1155,11 +1155,59 @@ export class Neat {
   }
 
   /**
+   * Issue #4099: give every training and discovery task still in flight at
+   * teardown a terminal line. An interrupted (SIGTERM) stop breaks out of the
+   * evolve loop before `finishUp()` or any abandon runs, so a scheduled task
+   * can be left in {@link trainingInProgress} / {@link discoveryInProgress}
+   * with no completed, failed or abandoned line. The workers have been
+   * terminated by now, which drops their pending requests, so these tasks will
+   * never settle: each is logged by task ID and its bookkeeping cleared.
+   * {@link abandonEpoch} is bumped so a promise that does settle later is
+   * discarded rather than re-inflating the complete queues.
+   *
+   * Hard-deadline and first-generation abandons already cleared the maps
+   * ({@link shedInFlightWork}), so those tasks are not named twice.
+   *
+   * @returns the number of in-flight tasks abandoned
+   */
+  abandonInFlightAtTeardown(): number {
+    let abandoned = 0;
+    for (const uuid of this.trainingInProgress.keys()) {
+      getLogger().warn(
+        `Training ${
+          uuid.substring(Math.max(0, uuid.length - 8))
+        } abandoned at teardown: the run ended before it settled`,
+      );
+      abandoned++;
+    }
+    for (const uuid of this.discoveryInProgress.keys()) {
+      getLogger().warn(
+        `Discovery ${
+          uuid.substring(Math.max(0, uuid.length - 8))
+        } abandoned at teardown: the run ended before it settled`,
+      );
+      abandoned++;
+    }
+    if (abandoned > 0) {
+      this.trainingInProgress.clear();
+      this.trainingDeadlines.clear();
+      this.trainingTasks.clear();
+      this.discoveryInProgress.clear();
+      this.abandonEpoch++;
+    }
+    return abandoned;
+  }
+
+  /**
    * Issue #4099: drop every completed result that was never merged, logging
    * each one by task ID. Called at teardown, after the last `finishUp()` has
    * returned, so a result that settled too late to be merged is reported
-   * rather than silently lost. Only the over-run and hard-deadline paths reach
-   * here with results still queued; the normal path merges them first.
+   * rather than silently lost. Results are still queued here when the run
+   * ended without a final `evolve()` pass to merge them: the over-run and
+   * hard-deadline paths, an interrupted (SIGTERM) stop, and a result that
+   * settled while the teardown was persisting. The normal path merges them
+   * first. Call {@link abandonInFlightAtTeardown} first so a task still in
+   * flight cannot settle into the queues being cleared here.
    *
    * A failed training task is queued as a stub with `train.error === Infinity`
    * (see `recordTrainingTaskFailure`). That stub has already logged its own

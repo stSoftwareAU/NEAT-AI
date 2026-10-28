@@ -911,3 +911,72 @@ Deno.test("finishUp: an over-run stop with only one kind of unmerged result stil
     await terminateWorkers(workers);
   }
 });
+
+Deno.test("abandonInFlightAtTeardown: names each in-flight task, clears the maps and discards a later settle (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const neat = new Neat(2, 1, { populationSize: 10 }, workers);
+    const trainUUID = "train-uuid-aaaa1111";
+    const discoverUUID = "discover-uuid-bbbb2222";
+    neat.trainingInProgress.set(trainUUID, new Promise<void>(() => {}));
+    neat.discoveryInProgress.set(discoverUUID, new Promise<void>(() => {}));
+    const epochBefore = neat.abandonEpoch;
+
+    log = captureLog();
+    const abandoned = neat.abandonInFlightAtTeardown();
+
+    assertEquals(abandoned, 2, "every in-flight task must be counted");
+    assertEquals(neat.trainingInProgress.size, 0);
+    assertEquals(neat.discoveryInProgress.size, 0);
+    assert(
+      log.warnings.some((l) =>
+        l.includes("Training aaaa1111 abandoned at teardown")
+      ),
+      `the training task must be named; got: ${log.warnings.join(" | ")}`,
+    );
+    assert(
+      log.warnings.some((l) =>
+        l.includes("Discovery bbbb2222 abandoned at teardown")
+      ),
+      `the discovery task must be named; got: ${log.warnings.join(" | ")}`,
+    );
+
+    // A promise that settles after the teardown must not re-inflate the queues.
+    assert(neat.abandonEpoch > epochBefore, "the abandon epoch must be bumped");
+    assertEquals(
+      neat.recordTrainingComplete(
+        trainUUID,
+        epochBefore,
+        settledTraining(5, "aaaa1111"),
+      ),
+      false,
+      "a task abandoned at teardown must not record a late result",
+    );
+    assertEquals(neat.trainingComplete.length, 0);
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("abandonInFlightAtTeardown: with nothing in flight it returns 0, logs nothing and leaves the epoch alone (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const neat = new Neat(2, 1, { populationSize: 10 }, workers);
+    const epochBefore = neat.abandonEpoch;
+
+    log = captureLog();
+    assertEquals(neat.abandonInFlightAtTeardown(), 0);
+    assertEquals(log.lines.length, 0);
+    assertEquals(neat.abandonEpoch, epochBefore);
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});

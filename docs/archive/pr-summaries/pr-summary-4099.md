@@ -5,8 +5,11 @@ A training or discovery result that settled after the last generation's
 flight and returned `true`, and the result sat unmerged in
 `neat.trainingComplete` / `neat.discoveryComplete`. Now `finishUp()` waits one
 more pass while a settled result is queued, so `evolve()` merges it. Where
-`evolve()` can never run again (over-run stop, hard deadline), the bounded
-teardown logs each leftover result by ID and drops it. Closes #4099.
+`evolve()` can never run again (over-run stop, hard deadline, an interrupted
+SIGTERM stop, or a result that settles while the teardown persists), the bounded
+teardown logs each leftover result by ID and drops it. A training or discovery
+task still in flight when a SIGTERM stop breaks the loop is logged as abandoned
+by ID at teardown. Closes #4099.
 
 Version bump: not part of this change.
 
@@ -27,10 +30,23 @@ Version bump: not part of this change.
 - `finishUp()` does not wait when `terminationReason === "overrun"`: that branch
   never calls `evolve()` again, so waiting would spin until the hard deadline.
   Those results are discarded and logged instead.
-- The discard lives in `runBoundedEvolveTeardown` through a **required** `neat`
-  option, so all three callers (`evolveDir`, `evolveEnv`, `evolveRL`) must pass
-  it; it runs before persist because it is synchronous and not part of the
-  evolved state.
+- The naming lives in `runBoundedEvolveTeardown` through a **required** `neat`
+  option (`abandonInFlightAtTeardown()` then `discardUnprocessedResults()`), so
+  all three callers (`evolveDir`, `evolveEnv`, `evolveRL`) must pass it. It runs
+  **after** persist and worker termination (PR #4104 review): the workers are
+  down, so nothing more can settle, and a result that settled during the persist
+  awaits (`writeCreatures`, `flushTrainingGainLog`) is still named. It is
+  synchronous and not part of the evolved state, so it never gates the persist.
+- An interrupted (SIGTERM) stop breaks out of the loop at
+  `if (interrupted)
+  break;` before `finishUp()` or any abandon runs, leaving
+  the task in `trainingInProgress` / `discoveryInProgress`.
+  `WorkerHandlerBase.terminate()` clears its pending requests, so that task
+  never settles; the teardown logs it
+  `Training <last 8 of uuid> abandoned at teardown`, clears the bookkeeping and
+  bumps `abandonEpoch` so a late settle is dropped. Hard-deadline and
+  first-generation abandons already cleared the maps, so those tasks are not
+  named twice.
 - A failed training task (stub with `train.error === Infinity`) already logged
   `Training failed for creature …`, so the discard skips it to keep one terminal
   line per task. Known gap: a failed discovery stub carries no marker, so it can
@@ -89,13 +105,20 @@ flowchart TD
   merged or explicitly logged as discarded with its id. — evidence:
   `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled training result is unmerged, then finishes (Issue #4099)`,
   `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled discovery result is unmerged, then finishes (Issue #4099)`,
-  `test/creature/BoundedEvolveTeardown.ts::bounded teardown: unmerged results are discarded before persist, and the count is reported (Issue #4099)`
+  `test/creature/BoundedEvolveTeardown.ts::bounded teardown: unmerged work is named after persist and worker termination, and counted (Issue #4099)`
   — reviewer: met
 - **met** — Every scheduled training task ends with exactly one terminal line
   (`completed`, `failed`, `abandoned`, or a new `discarded at teardown`). —
   evidence:
-  `test/NEAT/NeatFinishUp.ts::discardUnprocessedResults: skips a failed-task stub but still logs and counts a finite result (Issue #4099)`
-  — reviewer: partial — reason: the reviewer found the failed-stub double line
+  `test/NEAT/NeatFinishUp.ts::discardUnprocessedResults: skips a failed-task stub but still logs and counts a finite result (Issue #4099)`,
+  `test/NEAT/NeatFinishUp.ts::abandonInFlightAtTeardown: names each in-flight task, clears the maps and discards a later settle (Issue #4099)`,
+  `test/creature/BoundedEvolveTeardown.ts::bounded teardown: a result that settles while persisting is still discarded by name (Issue #4099)`,
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a SIGTERM stop names a training task still in flight instead of leaving it silent (Issue #4099)`
+  — the SIGTERM/interrupted path (a task still in `trainingInProgress` at the
+  break) and a result settling during the persist awaits are now covered; a
+  worker task dropped by `WorkerHandlerBase.terminate()` is named by the same
+  teardown line because its training entry is still in `trainingInProgress`. —
+  reviewer: partial — reason: the reviewer found the failed-stub double line
   (fixed in this diff by the skip above) and that no test covers every route;
   training failure stubs are now covered, but a failed _discovery_ stub can
   still log a second line and `completed` prints only when `verbose` is on
@@ -148,17 +171,33 @@ flowchart TD
   then true; over-run → true (no spin; this one also passes on the unfixed code,
   it guards the exclusion); `discardUnprocessedResults` count/empty/failed-stub
   cases; merge-then-finish through the real `processCompletedResults`.
-- `test/creature/EvolveDirLateTrainingResult.ts` (1 test at head): end-to-end
-  through `evolveDir` — a result settled after the last generation leads to
-  another `evolve()`, is logged `completed`, not discarded, and is in the
-  returned population and creature store. Red check: disabling the `finishUp()`
-  wait (`false && …`) fails it with
+- `test/creature/EvolveDirLateTrainingResult.ts` (2 tests at head; this bullet
+  describes the first): end-to-end through `evolveDir` — a result settled after
+  the last generation leads to another `evolve()`, is logged `completed`, not
+  discarded, and is in the returned population and creature store. Red check:
+  disabling the `finishUp()` wait (`false && …`) fails it with
   `a settled-but-unmerged result must lead to another evolve(); got 1 call(s)`;
   restored and green. Branch outcome: the `trainingComplete.length > 0` operand
   of the new `finishUp()` condition is reached by this test via `evolveDir`.
-- `test/creature/BoundedEvolveTeardown.ts`: discard runs before persist and
-  `resultsDiscarded` equals its return value; `baseOptions` gained a `neat` stub
-  returning 0 (no assertion removed from any existing test).
+- `test/creature/EvolveDirLateTrainingResult.ts` second test: a real `evolveDir`
+  whose captured SIGTERM listener is invoked after the first generation with a
+  never-settling training entry in `trainingInProgress`; asserts one `evolve()`
+  call and `Training <last 8> abandoned at teardown` in the warnings. Red check:
+  replacing the `abandonInFlightAtTeardown()` call in `runBoundedEvolveTeardown`
+  with `0` fails it, and fails the teardown order test.
+- `test/creature/BoundedEvolveTeardown.ts` (11 tests at head): the order is
+  persist, terminate, abandon, discard, with `resultsDiscarded` and
+  `tasksAbandoned` equal to the returned counts; a result queued during the
+  persist's await is named; both naming calls still run when persist fails.
+  `baseOptions` gained a `neat` stub returning 0 for both methods (no assertion
+  removed from any existing test).
+- `test/NEAT/NeatFinishUp.ts` (25 tests at head): `abandonInFlightAtTeardown`
+  names training and discovery by last 8 characters of the uuid, clears both
+  maps, bumps `abandonEpoch` and makes `recordTrainingComplete` refuse a late
+  settle; with nothing in flight it returns 0, logs nothing and leaves the epoch
+  alone. Branch outcomes: the `abandoned > 0` guard forced to `true` fails the
+  nothing-in-flight test; removing the `discoveryInProgress.clear()` fails the
+  discovery assertion.
 - Not done: a mutation-style red check of each new test against the unfixed
   code; the new `finishUp` tests that the fix is meant to turn green are
   expected to fail against the base `Neat.ts` by reading it, not by observed run
@@ -169,7 +208,8 @@ flowchart TD
   teardown unit test, and the merge route by the `evolveDir` test above.
   `evolveEnv`/`evolveRL` share `finishUp()` and the teardown but have no
   end-to-end late-result test of their own.
-- Docs: `docs/TIMEOUTS.md` teardown-order sentence updated; `CHANGELOG.md` entry
+- Docs: `docs/TIMEOUTS.md` teardown description updated (the naming pass now
+  sits between worker termination and the replay drain); `CHANGELOG.md` entry
   added. Greps for `finishUp`, `cleanUpDelayCount`, `trainingComplete`,
   `teardown` over `README.md`, `docs/` (excluding archive) and `src` doc
   comments found no other stale sentence.
@@ -193,12 +233,15 @@ and mutated the source by hand, running `test/NEAT/NeatFinishUp.ts` and
   tests fail.
 - `src/NEAT/Neat.ts:838` operand `(trainingComplete.length > 0 || …)` → `true`:
   8 tests fail.
-- `src/NEAT/Neat.ts:1175` operand `r.train !== undefined` dropped: no longer
+- `src/NEAT/Neat.ts:1223` operand `r.train !== undefined` dropped: no longer
   type-checks (the payload-less case is also now covered by a test).
-- `src/NEAT/Neat.ts:845` / `:1193` (`return` values): 4 tests fail when
+- `src/NEAT/Neat.ts:1191` (`abandoned > 0` guard forced to `true`) and the
+  `discoveryInProgress.clear()` removed: each fails one `NeatFinishUp.ts` test.
+- `src/NEAT/Neat.ts:845` / `:1241` (`return` values): 4 tests fail when
   `discardUnprocessedResults` returns `undefined`.
-- `src/creature/BoundedEvolveTeardown.ts:335` property `resultsDiscarded`
-  removed: fails type-check, and the teardown test asserts it equals `2`.
+- `src/creature/BoundedEvolveTeardown.ts:348-349` properties `resultsDiscarded`
+  / `tasksAbandoned` removed: fails type-check, and the teardown test asserts
+  `2` and `1`.
 - `test/NEAT/NeatFinishUp.ts:533–660`: exempt (untestable): these are the test
   file's own helper and assertion lines (`captureLog`, `settledTraining`,
   `settledDiscovery`, the test bodies); mutating a test cannot be pinned by

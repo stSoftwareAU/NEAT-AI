@@ -20,16 +20,19 @@
  * This module makes the teardown itself bounded, so "the loop ended on time"
  * always translates into "the process returned on time":
  *
- *  0. **Discard unmerged results.** A training or discovery result that settled
- *     after the last generation's results were processed is logged by task ID
- *     and dropped before anything else runs (Issue #4099). It is not part of the
- *     evolved state, so it does not gate the persist.
  *  1. **Persist first.** The champion restore and the checkpoint write run
  *     before anything that can block, so completed work reaches disk even in
  *     the worst case.
  *  2. **Bound each blocking step.** Worker termination and the replay drain get
  *     a short, explicit budget. Detaching something we cannot stop is
  *     acceptable; hanging on it is not.
+ *  2b. **Name unmerged work.** Once the workers are down, a training or
+ *     discovery task still in flight (an interrupted stop leaves it there) is
+ *     logged as abandoned, and a result that settled after the last
+ *     generation's results were processed — including one that settled while
+ *     the persist was awaiting — is logged as discarded, both by task ID
+ *     (Issue #4099). Neither is part of the evolved state, so neither gates
+ *     the persist.
  *  3. **Say what was left behind.** One summary line names every abandoned
  *     step, so a future silent-child log is diagnosable rather than a mystery.
  *
@@ -77,9 +80,14 @@ export interface ReplayDrainQueue {
 export interface BoundedEvolveTeardownReport {
   /**
    * Completed training/discovery results that were never merged and were
-   * discarded (and logged by task ID) before persist (Issue #4099).
+   * discarded (and logged by task ID) after the workers stopped (Issue #4099).
    */
   resultsDiscarded: number;
+  /**
+   * Training/discovery tasks still in flight after the workers stopped, logged
+   * by task ID as abandoned (Issue #4099).
+   */
+  tasksAbandoned: number;
   /** Workers whose `terminate()` completed inside the budget. */
   workersTerminated: number;
   /** Workers left detached: `terminate()` threw or outlived the budget. */
@@ -95,19 +103,21 @@ export interface BoundedEvolveTeardownOptions {
   /** Entry point being torn down (`"evolveDir"`, …) — used in log lines. */
   label: string;
   /**
-   * Champion restore + checkpoint write. Runs unbounded, straight after the
-   * unmerged results are discarded, so the evolved improvement is on disk before
-   * any step that can block. A failure is logged, the rest of the teardown still
+   * Champion restore + checkpoint write. Runs unbounded, first, so the evolved
+   * improvement is on disk before any step that can block. A failure is logged, the rest of the teardown still
    * runs, and the error is re-thrown once the workers are down — never swallowed.
    */
   persist: () => Promise<void>;
   /**
-   * The run's `Neat` instance (or any surface with `discardUnprocessedResults`).
-   * Its completed-but-unmerged training and discovery results are logged by
-   * task ID and dropped as the very first teardown step (Issue #4099). Required:
-   * a caller that skips it would silently lose those results.
+   * The run's `Neat` instance (or any surface with these two methods). Once the
+   * workers are down, its still-in-flight tasks are logged by task ID as
+   * abandoned and its completed-but-unmerged results as discarded (Issue
+   * #4099). Required: a caller that skips it would silently lose both.
    */
-  neat: { discardUnprocessedResults(): number };
+  neat: {
+    abandonInFlightAtTeardown(): number;
+    discardUnprocessedResults(): number;
+  };
   /** Worker handlers to terminate. Empty/omitted is a no-op. */
   workers?: readonly TerminableWorker[];
   /** Background replay queue to drain. */
@@ -270,8 +280,8 @@ async function drainReplayQueue(
  * Run the bounded post-loop teardown shared by `evolveDir`, `evolveEnv` and
  * `evolveRL`.
  *
- * Order matters: discard unmerged results, then persist, then terminate workers,
- * then drain the replay queue. Persisting before the blocking steps is what
+ * Order matters: persist, then terminate workers, then name unmerged work, then
+ * drain the replay queue. Persisting before the blocking steps is what
  * protects the evolved improvement — every later step can be abandoned without
  * losing it.
  *
@@ -285,10 +295,6 @@ export async function runBoundedEvolveTeardown(
   const budgetMS = normaliseBudget(options.budgetMS);
   const pollIntervalMS = options.pollIntervalMS ?? TEARDOWN_POLL_INTERVAL_MS;
   const label = options.label;
-
-  // 0. Discard completed results that were never merged. Logged by task ID, so
-  //    a result that settled after the final generation is named, not lost.
-  const resultsDiscarded = options.neat.discardUnprocessedResults();
 
   // 1. Persist before anything that can block: a wedged worker or replay must
   //    never cost us the generations already evolved.
@@ -314,6 +320,13 @@ export async function runBoundedEvolveTeardown(
     pollIntervalMS,
   );
 
+  // 2b. Name what never reached a terminal line. Workers are down, so nothing
+  //     more can settle; running after the persist awaits means a result that
+  //     settled during them is named too. In-flight first, so it cannot settle
+  //     into the queues the discard then clears.
+  const tasksAbandoned = options.neat.abandonInFlightAtTeardown();
+  const resultsDiscarded = options.neat.discardUnprocessedResults();
+
   // A failed persist is re-thrown here — after the workers are down, so the
   // caller is not left with a live pool, and before the replay drain, which
   // exists only to protect work this run can no longer produce.
@@ -333,6 +346,7 @@ export async function runBoundedEvolveTeardown(
 
   const report: BoundedEvolveTeardownReport = {
     resultsDiscarded,
+    tasksAbandoned,
     workersTerminated: terminated,
     workersAbandoned: abandoned,
     replayDrained: drained,

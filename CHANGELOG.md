@@ -38,9 +38,12 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   entry point) was removed, and its stall guard now covers the cache-first path.
 - **Issue #4099:** a training or discovery result that settled after the last
   generation's results were processed is no longer dropped silently. On the
-  normal finish, `finishUp` waits one more pass so the result is merged. On the
-  over-run and hard-deadline paths it is logged as discarded, with its task ID,
-  instead of disappearing.
+  normal finish, `finishUp` waits one more pass so the result is merged. Where
+  no further `evolve()` pass can run (over-run, hard deadline, an interrupted
+  SIGTERM stop, or a result that settles while the teardown persists), the
+  teardown logs it as discarded, with its task ID, instead of disappearing. A
+  training or discovery task still in flight when a SIGTERM stop breaks the loop
+  is logged as abandoned at teardown, by task ID, once the workers are down.
 - **Issue #4078:** `evolveDir()`, `evolveEnv()` and `evolveRL()` now reject an
   unusable caller creature (fewer than `input + output` neurons, or failing
   `validate()`) with a `ValidationError` as their first step, before any signal

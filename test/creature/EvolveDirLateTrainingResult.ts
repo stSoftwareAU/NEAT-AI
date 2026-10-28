@@ -183,3 +183,90 @@ Deno.test({
     }
   },
 });
+
+Deno.test({
+  name:
+    "evolveDir: a SIGTERM stop names a training task still in flight instead of leaving it silent (Issue #4099)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+
+    const { value } = constantCreature();
+    const dataSetDir = makeDataDir(constantDataSet(value), 2000);
+    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+
+    const warnings: string[] = [];
+    const previousLogger = getLogger();
+    const realAddSignalListener = Deno.addSignalListener;
+    let sigtermListener: (() => void) | undefined;
+    let captured: Neat | undefined;
+    let evolveCalls = 0;
+
+    // Capture the handler so the stop is delivered deterministically, without a
+    // real signal or a wait.
+    Deno.addSignalListener = ((
+      signal: Deno.Signal,
+      handler: () => void,
+    ) => {
+      if (signal === "SIGTERM") sigtermListener = handler;
+      return realAddSignalListener(signal, handler);
+    }) as typeof Deno.addSignalListener;
+
+    try {
+      await evolveDir(creature, dataSetDir, {
+        populationSize: 10,
+        iterations: 50,
+        threads: 1,
+        verbose: true,
+      }, {
+        onNeatReady: (neat) => {
+          captured = neat;
+          setLogger({
+            debug: () => {},
+            info: () => {},
+            warn: (...a: unknown[]) => warnings.push(a.join(" ")),
+            error: () => {},
+          });
+
+          const realEvolve = neat.evolve.bind(neat);
+          neat.evolve = async (...args: Parameters<Neat["evolve"]>) => {
+            const out = await realEvolve(...args);
+            evolveCalls++;
+            if (evolveCalls === 1) {
+              // A task is scheduled and still pending when the stop arrives.
+              neat.trainingInProgress.set(
+                TRAIN_UUID,
+                new Promise<void>(() => {}),
+              );
+              assert(sigtermListener, "evolveDir must listen for SIGTERM");
+              sigtermListener();
+            }
+            return out;
+          };
+        },
+      });
+
+      assertEquals(
+        evolveCalls,
+        1,
+        "the interrupted stop must break out of the loop after one generation",
+      );
+      assert(captured, "onNeatReady must have handed back the Neat instance");
+      const plain = stripAnsi(warnings.join("\n"));
+      assert(
+        plain.includes(
+          `Training ${
+            TRAIN_UUID.substring(TRAIN_UUID.length - 8)
+          } abandoned at teardown`,
+        ),
+        `the in-flight task must be named as abandoned; got: ${plain}`,
+      );
+      assertEquals(captured.trainingInProgress.size, 0);
+    } finally {
+      Deno.addSignalListener = realAddSignalListener;
+      setLogger(previousLogger);
+      await Deno.remove(dataSetDir, { recursive: true });
+    }
+  },
+});

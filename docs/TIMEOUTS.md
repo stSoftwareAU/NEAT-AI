@@ -144,9 +144,8 @@ with a wedge in the teardown as with one in the loop.
 
 [`src/creature/BoundedEvolveTeardown.ts`](../src/creature/BoundedEvolveTeardown.ts)
 is the single teardown shared by `evolveDir`, `evolveEnv` and `evolveRL`. It
-first discards any completed training or discovery result that was never merged,
-logging each one by task ID (Issue #4099). It then runs three steps, in this
-order:
+runs three steps, in this order (with a short naming pass between steps 2 and 3,
+described after the list):
 
 1. **Persist first.** The champion restore and the `creatureStore` write run
    _before_ anything that can block, so the evolved improvement is on disk even
@@ -164,6 +163,13 @@ order:
    signalled to abort (`abandonInFlightReplay()`) and left running. An uncapped
    run (`timeoutMinutes` unset) keeps the unbounded Issue #1509 wait — with no
    deadline there is nothing to be late for.
+
+Between steps 2 and 3, once the workers are down, a training or discovery task
+still in flight (an interrupted SIGTERM stop breaks the loop before any abandon
+runs) is logged by task ID as abandoned, and any completed result that was never
+merged — including one that settled while the persist was awaiting — is logged
+by task ID as discarded (Issue #4099). Neither is part of the evolved state, so
+neither gates the persist.
 
 Issue #4061 narrows what the restore step may hand back. Each entry point
 (`evolveDir`, `evolveEnv`, `evolveRL`) validates the caller's creature on entry
