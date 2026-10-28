@@ -36,8 +36,9 @@ version. Closes #4095.
 
 ### Undiscoverable Facts
 
-- Evidence is from GRQ-logs quoted in the issue comments (neat-ai 7.0.62); the
-  inference that queued tasks never started is the issue's, not verified here.
+- Evidence is from production logs quoted in the issue comments (neat-ai
+  7.0.62); the inference that queued tasks never started is the issue's, not
+  verified here.
 - `WorkerHandler.train()` (no production callers) now supplies
   `CreatureUtil.makeUUID(creature)` as its label so it compiles with the
   required parameter.
