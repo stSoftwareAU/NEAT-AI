@@ -282,6 +282,16 @@ Every abandon path now settles the work as well as the bookkeeping:
 - A worker `error` / `messageerror` event _after_ init no longer vanishes; it
   fails that worker's in-flight tasks with the crash as the cause and
   quarantines it.
+- When every selectable worker is busy, `WorkerPool` selection now picks the
+  worker with the least in-flight load (queue size plus `getPendingTaskCount()`,
+  ties to the first) instead of ranking an always-empty queue.
+  `scheduleTraining` and `scheduleDiscovery` therefore spread extra tasks across
+  the heavy workers rather than piling them onto the first one (Issue #4095).
+- A task failed because its worker was quarantined now carries its **own** task
+  label (the creature uuid, passed as the third argument to `trainTracked`) in
+  its `WorkerTaskCancelledError` reason, and says it was queued on the
+  quarantined worker. It no longer repeats the culprit task's reason. The task
+  that actually missed its deadline keeps its own reason.
 
 A response that arrives after its task was cancelled is logged and discarded —
 never asserted on, since an assertion inside the worker's message listener would
