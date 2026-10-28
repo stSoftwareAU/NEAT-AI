@@ -545,6 +545,8 @@ write_content_manifest() {
 # neatCore.assetSha256 pins the release tarball and is only ever checked here
 # at build time; the loader needs the bundle's own digest to verify bytes read
 # back from the environment-controlled disk cache or fetched from JSR.
+# Issue #4097: the wasm-bindgen glue (wasm_activation.js) is pinned the same
+# way, because it is cached on disk beside the bundle and executed in workers.
 write_runtime_bundle_pin() {
   if ! command -v shasum >/dev/null 2>&1; then
     echo "ERROR: shasum is required to write the runtime bundle pin" >&2
@@ -562,6 +564,18 @@ write_runtime_bundle_pin() {
   digest="$(shasum -a 256 "$DEST_DIR/wasm_activation_bg.wasm" | awk '{print $1}')"
   if ! [[ "$digest" =~ ^[0-9a-f]{64}$ ]]; then
     echo "ERROR: could not compute SHA-256 of $DEST_DIR/wasm_activation_bg.wasm" >&2
+    return 1
+  fi
+  # Issue #4097: the glue is pinned too, so a missing or unhashable glue file
+  # refuses the whole pin rather than writing a half-populated constant set.
+  if [[ ! -f "$DEST_DIR/wasm_activation.js" ]]; then
+    echo "ERROR: cannot pin the wasm glue; $DEST_DIR/wasm_activation.js is missing" >&2
+    return 1
+  fi
+  local glue_digest
+  glue_digest="$(shasum -a 256 "$DEST_DIR/wasm_activation.js" | awk '{print $1}')"
+  if ! [[ "$glue_digest" =~ ^[0-9a-f]{64}$ ]]; then
+    echo "ERROR: could not compute SHA-256 of $DEST_DIR/wasm_activation.js" >&2
     return 1
   fi
   mkdir -p "$(dirname "$RUNTIME_PIN_FILE")"
@@ -584,6 +598,10 @@ write_runtime_bundle_pin() {
  * Issue #3743: the address size of the pinned bundle travels the same way, so
  * {@link file://./WasmModuleLoader.ts} can refuse to run a wasm32 copy under a
  * wasm64 pin instead of silently inheriting the 4 GiB linear-memory ceiling.
+ *
+ * Issue #4097: the wasm-bindgen glue (\`wasm_activation.js\`) is pinned the same
+ * way as the bundle, because it is cached on disk beside the bundle and
+ * executed in workers.
  */
 
 import type { WasmMemoryModel } from "@wasm/WasmMemoryModel.ts";
@@ -591,6 +609,14 @@ import type { WasmMemoryModel } from "@wasm/WasmMemoryModel.ts";
 /** Lowercase hex SHA-256 of \`wasm_activation/pkg/wasm_activation_bg.wasm\`. */
 export const EXPECTED_WASM_BUNDLE_SHA256 =
   "${digest}";
+
+/**
+ * Lowercase hex SHA-256 of \`wasm_activation/pkg/wasm_activation.js\` (the
+ * wasm-bindgen glue). Issue #4097: the glue is cached on disk beside the
+ * bundle and executed in workers, so it needs the same trusted pin.
+ */
+export const EXPECTED_WASM_GLUE_SHA256 =
+  "${glue_digest}";
 
 /**
  * Address size of the pinned linear memory, mirroring \`deno.json\`

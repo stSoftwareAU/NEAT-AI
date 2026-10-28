@@ -527,6 +527,45 @@ Deno.test({
 });
 
 Deno.test({
+  name:
+    "write_runtime_bundle_pin refuses a missing wasm glue and writes no pin (issue #4097)",
+  permissions: { run: true, read: true, write: true },
+  fn: async () => {
+    const tmpDir = await Deno.makeTempDir({ prefix: "neat-pin-noglue-" });
+    try {
+      const pkgDir = `${tmpDir}/pkg`;
+      await Deno.mkdir(pkgDir, { recursive: true });
+      await Deno.writeFile(
+        `${pkgDir}/wasm_activation_bg.wasm`,
+        new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]),
+      );
+      const pinFile = `${tmpDir}/WasmBundleSha256.ts`;
+
+      const run = await runSourcedFn(
+        "write_runtime_bundle_pin",
+        `DEST_DIR='${pkgDir}' RUNTIME_PIN_FILE='${pinFile}' MEMORY_MODEL=wasm64 write_runtime_bundle_pin`,
+      );
+      assert(run.code !== 0, "a missing wasm_activation.js must fail loud");
+      assert(
+        run.stderr.includes("cannot pin the wasm glue"),
+        `stderr must come from the explicit glue guard; got ${run.stderr}`,
+      );
+      assert(
+        run.stderr.includes("wasm_activation.js"),
+        `stderr must name the missing glue file; got ${run.stderr}`,
+      );
+      assertEquals(
+        await fileExists(pinFile),
+        false,
+        "no pin may be written when the glue is missing",
+      );
+    } finally {
+      await Deno.remove(tmpDir, { recursive: true });
+    }
+  },
+});
+
+Deno.test({
   name: "deno.json pins neatCore.assetSha256 so the default build is attested",
   permissions: { read: true },
   fn: async () => {
@@ -550,6 +589,8 @@ Deno.test({
       await Deno.mkdir(pkgDir, { recursive: true });
       const bundle = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
       await Deno.writeFile(`${pkgDir}/wasm_activation_bg.wasm`, bundle);
+      const glue = new TextEncoder().encode("// glue");
+      await Deno.writeFile(`${pkgDir}/wasm_activation.js`, glue);
       const pinFile = `${tmpDir}/WasmBundleSha256.ts`;
 
       const run = await runSourcedFn(
@@ -562,11 +603,14 @@ Deno.test({
         `write_runtime_bundle_pin must succeed; ${run.stderr}`,
       );
 
-      const digest = Array.from(
-        new Uint8Array(
-          await crypto.subtle.digest("SHA-256", bundle as BufferSource),
-        ),
-      ).map((b) => b.toString(16).padStart(2, "0")).join("");
+      const sha256Hex = async (bytes: Uint8Array): Promise<string> =>
+        Array.from(
+          new Uint8Array(
+            await crypto.subtle.digest("SHA-256", bytes as BufferSource),
+          ),
+        ).map((b) => b.toString(16).padStart(2, "0")).join("");
+      const digest = await sha256Hex(bundle);
+      const glueDigest = await sha256Hex(glue);
 
       const generated = await Deno.readTextFile(pinFile);
       assert(
@@ -576,6 +620,14 @@ Deno.test({
       assert(
         generated.includes("export const EXPECTED_WASM_BUNDLE_SHA256"),
         "generated pin must export the runtime constant",
+      );
+      assert(
+        generated.includes("export const EXPECTED_WASM_GLUE_SHA256"),
+        "generated pin must export the glue constant (issue #4097)",
+      );
+      assert(
+        generated.includes(`"${glueDigest}"`),
+        `generated pin must carry the glue digest ${glueDigest}; got ${generated}`,
       );
     } finally {
       await Deno.remove(tmpDir, { recursive: true });
