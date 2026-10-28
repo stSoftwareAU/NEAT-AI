@@ -5,10 +5,19 @@
  * bootstrap WASM activation in workers. This module provides the shared
  * payload type and loading functions as a single source of truth.
  *
+ * Issue #4097: remote (`https:`) payloads load cache-first through
+ * {@link loadWasmActivationPayloadCacheFirst}, which reuses the SHA-pinned
+ * on-disk bundle cache in `src/wasm/WasmBundleCache.ts`.
+ *
  * @module
  */
 
 import { WasmError } from "@errors/WasmError.ts";
+import {
+  loadWasmBundleBytes,
+  type LoadWasmBundleOptions,
+} from "@wasm/WasmBundleCache.ts";
+import { EXPECTED_WASM_GLUE_SHA256 } from "@wasm/WasmBundleSha256.ts";
 
 /**
  * Payload for bootstrapping WASM activation inside a worker.
@@ -106,106 +115,109 @@ export function loadWasmActivationInitPayload():
 }
 
 /**
- * Default bound on fetching the WASM activation payload over `https:`.
+ * Options for {@link loadWasmActivationInitPayloadAsync} and
+ * {@link loadWasmActivationPayloadCacheFirst} (Issue #4097).
  *
- * Issue #4035: generous enough for a slow but healthy CDN, yet finite so a
- * stalled peer surfaces a `WasmError` instead of hanging worker start-up.
+ * Extends {@link LoadWasmBundleOptions}, so `fetchFn`, `sleepFn`, `maxAttempts`,
+ * `baseDelayMs`, `fetchTimeoutMs`, `cacheDir` and `now` apply to both files.
  */
-export const WASM_PAYLOAD_FETCH_TIMEOUT_MS = 30_000;
-
-/** Options for {@link fetchWasmActivationPayloadOverHttp}. */
-export interface WasmPayloadFetchOptions {
-  /** `fetch` implementation; defaults to the global `fetch`. */
-  fetchFn?: typeof fetch;
-  /** Bound on both requests and their bodies, in milliseconds. */
-  timeoutMs?: number;
+export interface WasmPayloadLoadOptions extends LoadWasmBundleOptions {
+  /**
+   * Lowercase hex SHA-256 the WASM binary (`wasm_activation_bg.wasm`) must
+   * match. This is the inherited {@link LoadWasmBundleOptions.expectedSha256};
+   * it defaults to the generated `EXPECTED_WASM_BUNDLE_SHA256` pin.
+   */
+  expectedSha256?: string;
+  /**
+   * Lowercase hex SHA-256 the JS glue (`wasm_activation.js`) must match before
+   * it is used or cached. Defaults to {@link EXPECTED_WASM_GLUE_SHA256}.
+   */
+  expectedGlueSha256?: string;
+  /**
+   * Directory the two files are resolved from; it should end in `/`. Defaults
+   * to the vendored `wasm_activation/pkg/` beside this module. When set, the
+   * module-level memo is neither read nor written, so the load is isolated.
+   */
+  baseUrl?: URL;
 }
 
 /**
- * Fetch the WASM activation JS glue and binary over HTTP(S) with a timeout.
+ * Load the JS glue and WASM binary cache-first, each pinned by its own SHA-256
+ * (Issue #4097).
  *
- * Issue #4035: one `AbortSignal.timeout` covers both requests and reading
- * their bodies, so a peer that accepts the connection and then stalls fails
- * fast. Timeouts, network failures and non-OK responses all reject with
- * `WasmError("MODULE_NOT_LOADED")`, giving callers one failure mode.
+ * Both files go through {@link loadWasmBundleBytes} in parallel. A warm on-disk
+ * cache serves them with no network access. A cache miss fetches with the
+ * bounded retry and per-attempt timeout (Issue #4048). The glue is checked
+ * against `expectedGlueSha256` and the binary against `expectedSha256`, so a
+ * poisoned or substituted file is never returned.
+ *
+ * Any failure rejects with a `WasmError` (`MODULE_NOT_LOADED`) that names both
+ * URLs. A failure that is already a `WasmError` is rethrown unchanged.
  *
  * @param jsUrl - URL of `wasm_activation.js`.
  * @param wasmUrl - URL of `wasm_activation_bg.wasm`.
- * @param options - Optional `fetch` seam and timeout override.
- * @returns The raw JS source and WASM bytes (not yet shared).
- * @throws RangeError when `timeoutMs` is not a positive finite number.
+ * @param options - Cache, fetch, retry and digest overrides.
+ * @returns The decoded glue source and the WASM bytes (not yet shared).
+ * @throws WasmError when either file cannot be obtained or verified.
  */
-export function fetchWasmActivationPayloadOverHttp(
+export async function loadWasmActivationPayloadCacheFirst(
   jsUrl: URL,
   wasmUrl: URL,
-  options: WasmPayloadFetchOptions = {},
+  options: WasmPayloadLoadOptions = {},
 ): Promise<WasmActivationInitPayload> {
-  const fetchFn = options.fetchFn ?? fetch;
-  const timeoutMs = options.timeoutMs ?? WASM_PAYLOAD_FETCH_TIMEOUT_MS;
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    throw new RangeError(
-      `WASM payload fetch timeout must be a positive finite number of milliseconds, got ${timeoutMs}`,
+  // Issue #4097: the glue cache entry is keyed by its own URL hash, so it shares
+  // the cache directory and the `.wasm` file suffix with the binary's entry.
+  // That is harmless: the key is a SHA-256 of the full URL, and each entry is
+  // verified against its own pin.
+  const { expectedGlueSha256, baseUrl: _baseUrl, ...wasmOptions } = options;
+  try {
+    const [glueBytes, wasmBinary] = await Promise.all([
+      loadWasmBundleBytes(jsUrl, {
+        ...wasmOptions,
+        expectedSha256: expectedGlueSha256 ?? EXPECTED_WASM_GLUE_SHA256,
+      }),
+      loadWasmBundleBytes(wasmUrl, wasmOptions),
+    ]);
+    return { jsSource: new TextDecoder().decode(glueBytes), wasmBinary };
+  } catch (error) {
+    if (error instanceof WasmError) throw error;
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new WasmError(
+      `WASM activation payload could not be loaded from ${jsUrl.href} / ${wasmUrl.href}: ${detail}`,
+      "MODULE_NOT_LOADED",
+      { cause: error },
     );
   }
-  return (async () => {
-    const signal = AbortSignal.timeout(timeoutMs);
-    try {
-      const [jsRes, wasmRes] = await Promise.all([
-        fetchFn(jsUrl.href, { signal }),
-        fetchFn(wasmUrl.href, { signal }),
-      ]);
-      if (!jsRes.ok || !wasmRes.ok) {
-        const jsErr = !jsRes.ok
-          ? `${jsUrl.href}: ${jsRes.status} ${jsRes.statusText}`
-          : null;
-        const wasmErr = !wasmRes.ok
-          ? `${wasmUrl.href}: ${wasmRes.status} ${wasmRes.statusText}`
-          : null;
-        // Release unread bodies so their resources are not leaked.
-        await Promise.all([jsRes.body?.cancel(), wasmRes.body?.cancel()]);
-        throw new WasmError(
-          `WASM activation payload could not be loaded. ${
-            [jsErr, wasmErr].filter(Boolean).join("; ")
-          }`,
-          "MODULE_NOT_LOADED",
-        );
-      }
-      const [jsSource, wasmBuffer] = await Promise.all([
-        jsRes.text(),
-        wasmRes.arrayBuffer(),
-      ]);
-      return { jsSource, wasmBinary: new Uint8Array(wasmBuffer) };
-    } catch (err) {
-      if (err instanceof WasmError) throw err;
-      const detail = signal.aborted
-        ? `timed out after ${timeoutMs}ms`
-        : err instanceof Error
-        ? err.message
-        : String(err);
-      throw new WasmError(
-        `WASM activation payload could not be loaded from ${jsUrl.href} / ${wasmUrl.href}: ${detail}`,
-        "MODULE_NOT_LOADED",
-        { cause: err },
-      );
-    }
-  })();
 }
 
 /**
  * Async variant of loadWasmActivationInitPayload() that supports JSR `https:` URLs.
  *
+ * `https:` payloads load cache-first (Issue #4097): a warm on-disk cache makes
+ * no network request. `file:` payloads are read from disk.
+ *
  * De-duplicates in-flight loads so multiple callers don't trigger parallel fetches.
+ * The memo serves only the default location: when `options.baseUrl` is set, the
+ * memo is neither read nor written, so that load is isolated. The memo is keyed
+ * by nothing, so options other than `baseUrl` only affect the first load in a
+ * process.
+ *
+ * @param options - Optional overrides; see {@link WasmPayloadLoadOptions}.
  */
-export async function loadWasmActivationInitPayloadAsync(): Promise<
-  WasmActivationInitPayload
-> {
-  if (cachedPayload) return cachedPayload;
-  if (inFlightPayload) {
-    return await inFlightPayload.promise;
+export async function loadWasmActivationInitPayloadAsync(
+  options?: WasmPayloadLoadOptions,
+): Promise<WasmActivationInitPayload> {
+  const memoised = options?.baseUrl === undefined;
+  if (memoised) {
+    if (cachedPayload) return cachedPayload;
+    if (inFlightPayload) {
+      return await inFlightPayload.promise;
+    }
   }
 
-  const promise = (async () => {
-    const baseUrl = new URL("../../wasm_activation/pkg/", import.meta.url);
+  const load = (async () => {
+    const baseUrl = options?.baseUrl ??
+      new URL("../../wasm_activation/pkg/", import.meta.url);
     const jsUrl = new URL("wasm_activation.js", baseUrl);
     const wasmUrl = new URL("wasm_activation_bg.wasm", baseUrl);
 
@@ -216,19 +228,27 @@ export async function loadWasmActivationInitPayloadAsync(): Promise<
       jsSource = await Deno.readTextFile(jsUrl.pathname);
       wasmBinary = await Deno.readFile(wasmUrl.pathname);
     } else {
-      ({ jsSource, wasmBinary } = await fetchWasmActivationPayloadOverHttp(
+      ({ jsSource, wasmBinary } = await loadWasmActivationPayloadCacheFirst(
         jsUrl,
         wasmUrl,
+        options,
       ));
     }
 
     // Issue #3478: share one copy across all workers when SAB is available.
-    cachedPayload = { jsSource, wasmBinary: toShareableWasmBinary(wasmBinary) };
-    return cachedPayload;
-  })().finally(() => {
+    const payload = {
+      jsSource,
+      wasmBinary: toShareableWasmBinary(wasmBinary),
+    };
+    if (memoised) cachedPayload = payload;
+    return payload;
+  })();
+
+  if (!memoised) return await load;
+
+  const promise = load.finally(() => {
     inFlightPayload = null;
   });
-
   inFlightPayload = { promise };
   return await promise;
 }
@@ -238,6 +258,9 @@ export async function loadWasmActivationInitPayloadAsync(): Promise<
  *
  * Issue #1285: Call this before spawning workers so the main thread does one fetch
  * and workers receive the cached payload instead of each worker triggering its own fetch.
+ *
+ * Issue #4097: the load is cache-first. A warm on-disk cache succeeds offline;
+ * only a cold cache (or a rejected entry) touches the network.
  *
  * @returns Promise that resolves when the WASM payload is loaded and cached
  */
