@@ -25,6 +25,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4097:** `loadWasmActivationInitPayloadAsync()` and
+  `fetchWasmForWorkers()` no longer fetch the WASM activation payload from
+  jsr.io on every start. For `https:` installs they now load the JS glue and the
+  binary cache-first, through the SHA-pinned on-disk bundle cache. A warm cache
+  makes no network request, so a jsr.io outage no longer stops the run. A cold
+  cache fetches with the bounded retry used for the bundle, and a failure is
+  still a `WasmError` (`MODULE_NOT_LOADED`) that names both URLs. The explicit
+  `baseUrl` option on `loadWasmActivationInitPayloadAsync()` isolates a load
+  from the in-process memo. The superseded single-shot uncached fetch
+  (`fetchWasmActivationPayloadOverHttp`, internal, not exported from the package
+  entry point) was removed, and its stall guard now covers the cache-first path.
 - **Issue #4078:** `evolveDir()`, `evolveEnv()` and `evolveRL()` now reject an
   unusable caller creature (fewer than `input + output` neurons, or failing
   `validate()`) with a `ValidationError` as their first step, before any signal
