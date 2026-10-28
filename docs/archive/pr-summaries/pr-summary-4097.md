@@ -87,12 +87,12 @@ flowchart TD
     J -- no --> L[WasmError, nothing cached]
 ```
 
-Issues cited: #4097: Recurrence of GRQ#4862: fetchWasmForWorkers() /
-loadWasmActivationInitPayloadAsync() always fetch the WASM payload from jsr.io
-and never read the on-disk bundle cache; #4035: WASM payload fetch() has no
-timeout in src/workers/WasmActivationPayload.ts; #4048: WasmBundleCache
-fetchWithRetry has no timeout: a stalled jsr.io connection hangs WASM loading
-forever.
+Issues cited: #4097: Recurrence of a downstream jsr.io outage:
+fetchWasmForWorkers() / loadWasmActivationInitPayloadAsync() always fetch the
+WASM payload from jsr.io and never read the on-disk bundle cache; #4035: WASM
+payload fetch() has no timeout in src/workers/WasmActivationPayload.ts; #4048:
+WasmBundleCache fetchWithRetry has no timeout: a stalled jsr.io connection hangs
+WASM loading forever.
 
 ## Reproduction
 
@@ -282,12 +282,15 @@ refused, glue digest emitted.
 
 Results on the final code head:
 `timeout 590 ./quality.sh --rust-scorer-bin=<built from the sibling scorer checkout>`
-with `NEAT_AI_DISCOVERY_LIB_PATH` set to the installed discovery library:
-`ok | 10006 passed (5 steps) | 0 failed | 4 ignored`, exit 0, run before the
-non-OK test and this summary were added. After adding the non-OK test:
+with `NEAT_AI_DISCOVERY_LIB_PATH` set to the installed discovery library, run
+after the last code change and with this summary in place:
+`ok | 10007 passed (5 steps) | 0 failed | 4 ignored`, exit 0. An earlier full
+run with the summary in place failed one test,
+`no private stSoftwareAU repo slugs or links in docs/archive (#3455)`, because
+the summary cited a downstream issue by slug; the citation was reworded and the
+gate then passed in full.
 `timeout 120 deno test -A test/workers/WasmPayloadCacheFirst.ts`:
-`ok | 9 passed | 0 failed`. The gate is re-run after this summary is committed;
-its result is in the PR comment if it differs.
+`ok | 9 passed | 0 failed`.
 
 Not checked: no test calls `fetchWasmForWorkers()` itself; a real jsr.io fetch
 and the GRQ-side follow-up were not exercised.
