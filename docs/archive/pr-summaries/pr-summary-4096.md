@@ -195,10 +195,10 @@ issue).
   the non-`Error` branch of `Neat.markPhase` each turn a named test red. Exempt
   lines, equivalent mutants because the heartbeat timer is unreferenced and
   `RunWatchdog.setPhase` is a no-op once disarmed:
-  - `src/NEAT/EventLoopWatchdog.ts:227` exempt (untestable): `Deno.unrefTimer`
-    only matters if the timer outlives both `disarm()` and the Worker, and the
-    live Worker holds the process open until then, so no exit-status difference
-    can be observed.
+  - `src/NEAT/EventLoopWatchdog.ts:227` exempt (untestable): the
+    timer-unreference call only matters if the timer outlives both `disarm()`
+    and the Worker, and the live Worker holds the process open until then, so no
+    exit-status difference can be observed.
   - `src/NEAT/EventLoopWatchdog.ts:237` exempt (untestable): the error-path
     `clearInterval` stops an unreferenced idle timer; Deno's sanitizers do not
     report it, so no behaviour changes.
