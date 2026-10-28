@@ -531,7 +531,7 @@ Deno.test({
     "write_runtime_bundle_pin refuses a missing wasm glue and writes no pin (issue #4097)",
   permissions: { run: true, read: true, write: true },
   fn: async () => {
-    const tmpDir = await Deno.makeTempDir({ prefix: "neat-pin-noglue-" });
+    const tmpDir = await Deno.makeTempDir({ prefix: "neat-pin-no-glue-" });
     try {
       const pkgDir = `${tmpDir}/pkg`;
       await Deno.mkdir(pkgDir, { recursive: true });

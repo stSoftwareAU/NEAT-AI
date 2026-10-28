@@ -566,7 +566,7 @@ write_runtime_bundle_pin() {
     echo "ERROR: could not compute SHA-256 of $DEST_DIR/wasm_activation_bg.wasm" >&2
     return 1
   fi
-  # Issue #4097: the glue is pinned too, so a missing or unhashable glue file
+  # Issue #4097: the glue is pinned too, so a missing or unreadable glue file
   # refuses the whole pin rather than writing a half-populated constant set.
   if [[ ! -f "$DEST_DIR/wasm_activation.js" ]]; then
     echo "ERROR: cannot pin the wasm glue; $DEST_DIR/wasm_activation.js is missing" >&2
