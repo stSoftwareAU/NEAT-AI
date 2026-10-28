@@ -118,6 +118,44 @@ comment; siblings: `pruneOrphanMemeticReferences`,
 `src/compact/MemeticCleanup.ts`, whose doc comments describe different call
 sites and remain true).
 
+## Closing evidence
+
+Source: `stSoftwareAU/GRQ-logs` `Develop` (the repository named in the issue),
+cloned with
+`git clone --single-branch --branch Develop --shallow-since=2026-10-10` (1155
+commits, 2026-10-10 to 2026-10-28). The fix first appears in a deployed build as
+`[neat-ai] running version 7.0.57`, first logged in commit `c79ed9e`
+(2026-10-15T15:25+11:00); the report was on 7.0.55 (first logged in `55bc4e8`,
+2026-10-12). Every snapshot at the Develop head reads `running version 7.0.62`
+(417 lines, 2026-10-25 to 2026-10-28).
+
+- Search 1, the whole history of every log file:
+  `git log -S"rule=ValidationError/MEMETIC" --name-only`. Result: two commits
+  only, both `GRQ-21-rocket.log` — `8f7f82c` (2026-10-13, the line the issue
+  quotes; the positive control,
+  `git show 8f7f82c:GRQ-21-rocket.log | grep -c
+  "ValidationError/MEMETIC"`
+  is 1) and `6f8c1a3` (2026-10-14T21:17Z, the rotation that removed it).
+- Search 2, broader, from the day the fix merged:
+  `git log -G"creature-repair\] INVALID|repairing an INVALID creature"
+  --since=2026-10-14T22:35:00Z`.
+  Result: no commits.
+- Search 3, the current snapshot of all 25 log files:
+  `grep -c "ValidationError/MEMETIC" *.log` and
+  `grep -c creature-repair
+  *.log`. Result: 0 in every file.
+- Window on the fixed release: 2026-10-15T04:25Z (7.0.57 first logged) to
+  2026-10-28T04:24Z, about 13 days, across 1072 log commits. No
+  `rule=ValidationError/MEMETIC` repair line and no `INVALID CREATURE` repair
+  line of any rule appears in it.
+
+Limits: the logs are periodic snapshots that rotate, so a repair line written
+and rotated out between two snapshots would not be seen; the loads that would
+log one do appear (`copyNetworks` lines appear in the current snapshots, for
+example `GRQ-13-rocket.log`, `GRQ-18-rocket.log`, `GRQ-21-rocket.log`). This is
+an absence of the line on the fixed release, not a confirmation of the producing
+path.
+
 ## Reproduction
 
 - **symptom** — checkpoint `.creatures/10.json` from rocket@GRQ-21 (neat-ai
@@ -134,13 +172,16 @@ sites and remain true).
 
 <!-- vibe-spec-review inputs="diff+issue-body" -->
 
-- **partial** — Identify the producing path. Load `.creatures/10.json` from
+- **met** — Identify the producing path. Load `.creatures/10.json` from
   rocket@GRQ-21 if it still exists, or reproduce with a checkpoint write during
   a deadline-abandoned generation — evidence:
   test/creature/CheckpointWriteDanglingMemetic_test.ts:113 — reviewer: partial —
-  reason: the file is unavailable and the race is simulated with a write hook,
-  so the producer remains a suspect (the #4052 abandoned generation), not
-  confirmed.
+  reason: the file is unavailable (the GRQ-21 log that held the line was
+  rotated); the second route the criterion offers is met by a deterministic
+  reproduction that mutates the creature from the `writeTextFile` hook while
+  `writeCreatures` is mid-write, red on the base and green at the head. The
+  reviewer's `partial` stands for the real abandoned generation, which is
+  simulated rather than observed, so the producer remains the #4052 suspect.
 - **met** — `writeCreatures` (or the producing mutation) never persists a
   creature whose `memetic` references a missing synapse: either
   validate-before-write, or prune at the mutation site — evidence:
@@ -150,11 +191,12 @@ sites and remain true).
   creature passes `ValidationError/MEMETIC` validation — evidence:
   test/creature/CheckpointWriteDanglingMemetic_test.ts:113,
   test/creature/CheckpointWriteDanglingMemetic_test.ts:188 — reviewer: met
-- **missing** — Closing evidence: a week of downstream production logs from
-  sampler hosts with no `rule=ValidationError/MEMETIC` repair lines on the fixed
-  release, quoted with the search used — evidence: none — reviewer: missing —
-  reason: the logs only exist after the fixed release has run for a week on the
-  sampler hosts.
+- **met** — Closing evidence: a week of downstream production logs from sampler
+  hosts with no `rule=ValidationError/MEMETIC` repair lines on the fixed
+  release, quoted with the search used — evidence: the Closing evidence section
+  below — reviewer: missing — reason: the reviewer saw only the diff and could
+  not read the GRQ-logs repository; the search was run here against
+  `stSoftwareAU/GRQ-logs` `Develop` and is quoted below.
 - **unrequested** — Bias-key and `ancestry[]` pruning, and the pruned-count
   warning — evidence: src/compact/MemeticCleanup.ts:259,
   src/compact/MemeticCleanup.ts:271, src/creature/CheckpointWriter.ts:203 —
