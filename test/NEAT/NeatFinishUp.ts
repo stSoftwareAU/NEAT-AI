@@ -855,3 +855,59 @@ Deno.test("finishUp: a settled training result is merged by processCompletedResu
     await terminateWorkers(workers);
   }
 });
+
+Deno.test("discardUnprocessedResults: a result with no task payload is still logged as unknown and counted (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    neat.trainingComplete.push({ taskID: 5, duration: 1 } as never);
+    neat.discoveryComplete.push({ taskID: 6, duration: 1 } as never);
+
+    log = captureLog();
+    const discarded = neat.discardUnprocessedResults();
+
+    assertEquals(discarded, 2, "a result without a payload must be counted");
+    assertEquals(neat.trainingComplete.length, 0);
+    assertEquals(neat.discoveryComplete.length, 0);
+    assert(
+      log.warnings.some((l) => l.includes("Training unknown discarded")),
+      `an unnamed training result must be logged as unknown; got: ${
+        log.warnings.join(" | ")
+      }`,
+    );
+    assert(
+      log.warnings.some((l) => l.includes("Discovery unknown discarded")),
+      `an unnamed discovery result must be logged as unknown; got: ${
+        log.warnings.join(" | ")
+      }`,
+    );
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("finishUp: an over-run stop with only one kind of unmerged result still finishes (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    neat.terminationReason = "overrun";
+    neat.trainingComplete.push(settledTraining(7, "abc12345"));
+    assertEquals(neat.finishUp(), true, "training only, over-run");
+
+    neat.trainingComplete.length = 0;
+    neat.discoveryComplete.push(settledDiscovery(8, "def12345"));
+    assertEquals(neat.finishUp(), true, "discovery only, over-run");
+  } finally {
+    await terminateWorkers(workers);
+  }
+});

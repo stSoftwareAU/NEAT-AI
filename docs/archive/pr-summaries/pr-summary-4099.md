@@ -149,3 +149,42 @@ flowchart TD
   added. Greps for `finishUp`, `cleanUpDelayCount`, `trainingComplete`,
   `teardown` over `README.md`, `docs/` (excluding archive) and `src` doc
   comments found no other stale sentence.
+
+## Mutation check: changed lines are pinned
+
+The earlier run reported 37 survivors, every one tagged "no test imports this
+module": the mutation runner could not map the `@neat/…` / `@creature/…` alias
+imports in `test/NEAT/NeatFinishUp.ts` and
+`test/creature/BoundedEvolveTeardown.ts` back to the mutated source, so it ran
+no relevant test. I added two tests
+(`discardUnprocessedResults: a result with no task payload is still logged as
+unknown and counted`
+and
+`finishUp: an over-run stop with only one kind of
+unmerged result still finishes`)
+and mutated the source by hand, running `test/NEAT/NeatFinishUp.ts` and
+`test/creature/BoundedEvolveTeardown.ts`:
+
+- `src/NEAT/Neat.ts:837` operand `terminationReason !== "overrun"` → `true`: 2
+  tests fail.
+- `src/NEAT/Neat.ts:838` operand `(trainingComplete.length > 0 || …)` → `true`:
+  8 tests fail.
+- `src/NEAT/Neat.ts:1175` operand `r.train !== undefined` dropped: no longer
+  type-checks (the payload-less case is also now covered by a test).
+- `src/NEAT/Neat.ts:845` / `:1193` (`return` values): 4 tests fail when
+  `discardUnprocessedResults` returns `undefined`.
+- `src/creature/BoundedEvolveTeardown.ts:335` property `resultsDiscarded`
+  removed: fails type-check, and the teardown test asserts it equals `2`.
+- `test/NEAT/NeatFinishUp.ts:533–660`: exempt (untestable): these are the test
+  file's own helper and assertion lines (`captureLog`, `settledTraining`,
+  `settledDiscovery`, the test bodies); mutating a test cannot be pinned by
+  another test.
+
+The runner's cap (40 of 72 candidates tried) means the other 32 mutants were
+never tried; I did not enumerate them.
+
+## Acceptance criterion left `missing` (not fabricated)
+
+The "Field evidence" criterion needs a GRQ sampler log from a released neat-ai
+version carrying this fix. No such release exists yet, so it cannot be met in
+this change and stays `missing` above.
