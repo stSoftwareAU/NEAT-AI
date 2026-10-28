@@ -260,7 +260,7 @@ Deno.test("EventLoopWatchdogWorker: a kill that fails is reported on stderr afte
   // \`Deno.kill\` inside the Worker, so the breach reaches a kill that throws.
   const result = await runFixture(
     `
-const generationBuffer = new SharedArrayBuffer(4);
+const generationBuffer = new SharedArrayBuffer(8);
 Atomics.store(new Int32Array(generationBuffer), 0, 4);
 const worker = new Worker(new URL("./wrapper.ts", import.meta.url), {
   type: "module",
@@ -274,6 +274,9 @@ worker.postMessage({
   deadlineEpochMS: Date.now() - 1_000,
   breachLine: "[Neat] watchdog-test failed-kill breach at generation {generation}",
   generationBuffer,
+  heartbeatBuffer: new SharedArrayBuffer(8),
+  phaseNames: ["untracked"],
+  heartbeatIntervalMS: 100,
 });
 `,
     ["--allow-read"],
@@ -288,8 +291,10 @@ worker.postMessage({
     },
   );
   assertEquals(result.code, 0, `stderr: ${result.stderr}`);
+  // The breach text is a prefix of the full line, which now carries the
+  // liveness suffix after it, so match the text without its trailing newline.
   const breachAt = result.stderr.indexOf(
-    "[Neat] watchdog-test failed-kill breach at generation 4\n",
+    "[Neat] watchdog-test failed-kill breach at generation 4",
   );
   const failureAt = result.stderr.indexOf(
     "[Neat] event-loop watchdog could not kill the process: staged kill failure\n",
@@ -428,11 +433,15 @@ for (;;) {}
 
 Deno.test("EventLoopWatchdogHeartbeat: a yielding main thread that is over budget keeps its heartbeat fresh", async () => {
   // The loop yields for the whole run, so the heartbeat timer keeps ticking
-  // and the age at breach stays near one interval, far below the 2 s deadline.
+  // and the age at breach stays near one interval, far below the 4 s deadline.
+  // The bound is deliberately loose: a loaded host can delay a 100 ms timer
+  // tick, so asserting near one interval would be flaky. It asserts only that
+  // the age stays below what a blocked loop reports, which is about the full
+  // 4 s deadline.
   const result = await runFixture(
     `
 armEventLoopWatchdog({
-  deadlineEpochMS: Date.now() + 2_000,
+  deadlineEpochMS: Date.now() + 4_000,
   breachLine: "[Neat] watchdog-test yielding breach at generation ${EVENT_LOOP_WATCHDOG_GENERATION_TOKEN}",
   heartbeatIntervalMS: 100,
 });
@@ -454,7 +463,7 @@ await new Promise((resolve) => setTimeout(resolve, 10_000));
   );
   const age = heartbeatAgeMs(result.stderr);
   assert(
-    age < 1_200,
+    age < 3_000,
     `heartbeat age ${age} ms is too large for a loop that kept ticking: ${result.stderr}`,
   );
 });

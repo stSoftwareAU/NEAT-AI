@@ -42,15 +42,12 @@ interface ArmMessage {
   breachLine: string;
   /** Slot 0 is the generation; slot 1 is the phase index. */
   generationBuffer: SharedArrayBuffer;
-  /**
-   * Epoch milliseconds, bumped by the main thread. Absent from a message that
-   * carries no liveness data, in which case the breach line gets no measured
-   * suffix.
-   */
-  heartbeatBuffer?: SharedArrayBuffer;
+  /** One 64-bit slot of epoch milliseconds, bumped by the main thread. */
+  heartbeatBuffer: SharedArrayBuffer;
   /** Phase names, indexed by the phase slot. */
-  phaseNames?: readonly string[];
-  heartbeatIntervalMS?: number;
+  phaseNames: readonly string[];
+  /** The interval the heartbeat is measured against, echoed in the breach line. */
+  heartbeatIntervalMS: number;
 }
 
 const encoder = new TextEncoder();
@@ -94,20 +91,15 @@ self.onmessage = (event: MessageEvent<ArmMessage>) => {
     heartbeatIntervalMS,
   } = event.data;
   const generation = new Int32Array(generationBuffer);
-  const heartbeat = heartbeatBuffer === undefined
-    ? undefined
-    : new BigInt64Array(heartbeatBuffer);
+  const heartbeat = new BigInt64Array(heartbeatBuffer);
 
-  /** The breach line, with the measured liveness suffix when it is available. */
+  /** The breach line, with the measured liveness suffix. */
   const breachText = (): string => {
     const value = Atomics.load(generation, 0);
     const label = value < 0 ? "unknown" : String(value);
     const line = breachLine.replaceAll("{generation}", label);
-    if (heartbeat === undefined) {
-      return line + "\n";
-    }
     const ageMs = Math.max(0, Date.now() - Number(Atomics.load(heartbeat, 0)));
-    const phase = phaseNames?.[Atomics.load(generation, 1)] ?? "unknown";
+    const phase = phaseNames[Atomics.load(generation, 1)];
     return `${line} lastHeartbeatAgeMs=${ageMs} inFlightPhase=${phase} heartbeatIntervalMS=${heartbeatIntervalMS}\n`;
   };
 
