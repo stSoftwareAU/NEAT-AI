@@ -708,3 +708,135 @@ Deno.test("discardUnprocessedResults: with nothing unmerged it returns 0 and log
     await terminateWorkers(workers);
   }
 });
+
+/** A failed training task as `recordTrainingTaskFailure` queues it (error Infinity). */
+function failedTrainingStub(taskID: number, ID: string): ResponseData {
+  return {
+    taskID,
+    duration: 0,
+    train: {
+      ID,
+      creature: {} as never,
+      error: Number.POSITIVE_INFINITY,
+      trace: { input: 2, output: 1, neurons: [], synapses: [] } as never,
+    },
+  } as never;
+}
+
+/** Strip ANSI colour codes so assertions see the plain text of a log line. */
+function stripAnsi(text: string): string {
+  return text.replace(
+    new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"),
+    "",
+  );
+}
+
+Deno.test("discardUnprocessedResults: skips a failed-task stub but still logs and counts a finite result (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // The failed task already logged its own `Training failed for creature`
+    // terminal line, so its stub must not produce a second one.
+    neat.trainingComplete.push(failedTrainingStub(1, "fail1234"));
+    neat.trainingComplete.push(settledTraining(2, "abc12345"));
+
+    log = captureLog();
+    const discarded = neat.discardUnprocessedResults();
+
+    assertEquals(
+      discarded,
+      1,
+      "only the finite-error result must be counted as discarded",
+    );
+    assertEquals(
+      neat.trainingComplete.length,
+      0,
+      "the failed-task stub must still be cleared from the queue",
+    );
+    assertEquals(
+      log.warnings.length,
+      1,
+      "only the finite-error result must be logged",
+    );
+    assert(
+      log.warnings[0].includes("Training abc12345 discarded at teardown"),
+      `the finite-error discard must name its task ID; got: ${
+        log.warnings.join(" | ")
+      }`,
+    );
+    assert(
+      !log.lines.some((l) => l.includes("fail1234")),
+      `the failed-task stub must not be named again; got: ${
+        log.lines.join(" | ")
+      }`,
+    );
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("finishUp: a settled training result is merged by processCompletedResults, then the run finishes (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const options: NeatOptions = { populationSize: 10, verbose: true };
+    const neat = new Neat(2, 1, options, workers);
+    const fittest = new Creature(2, 1);
+    const trained = new Creature(2, 1);
+
+    // Settled after the last generation's processCompletedResults(): nothing in progress.
+    neat.trainingComplete.push({
+      taskID: 1,
+      duration: 1,
+      train: {
+        ID: "late1234",
+        creature: trained.exportJSON(),
+        error: 0.5,
+      },
+    } as never);
+
+    log = captureLog();
+
+    assertEquals(
+      neat.finishUp(),
+      false,
+      "a settled training result that has not been merged must hold finishUp open",
+    );
+
+    const merged = processCompletedResults(neat, fittest, {} as never);
+
+    const late = merged.filter((c) => getTag(c, "trainID") === "late1234");
+    assert(
+      merged.length >= 1,
+      "processCompletedResults must return the settled training result",
+    );
+    assertEquals(
+      late.length,
+      1,
+      "the merged creature must be tagged with the settled task's trainID",
+    );
+
+    const plain = stripAnsi(log.lines.join("\n"));
+    assert(
+      /Training\s+late1234\s+completed/.test(plain),
+      `the merge must log the settled task's completion; got: ${plain}`,
+    );
+
+    assertEquals(
+      neat.finishUp(),
+      true,
+      "once the settled result is merged the run may finish",
+    );
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
