@@ -94,7 +94,7 @@ Deno.test({
       populationSize: 10,
       iterations: 1,
       threads: 1,
-      verbose: true,
+      verbose: false,
       creatureStore,
     };
 

@@ -787,7 +787,8 @@ Deno.test("finishUp: a settled training result is merged by processCompletedResu
   let log: ReturnType<typeof captureLog> | undefined;
 
   try {
-    const options: NeatOptions = { populationSize: 10, verbose: true };
+    // verbose is off: the completed line is a terminal line, not a debug one.
+    const options: NeatOptions = { populationSize: 10, verbose: false };
     const neat = new Neat(2, 1, options, workers);
     const fittest = new Creature(2, 1);
     const trained = new Creature(2, 1);

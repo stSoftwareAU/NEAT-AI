@@ -43,7 +43,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   SIGTERM stop, or a result that settles while the teardown persists), the
   teardown logs it as discarded, with its task ID, instead of disappearing. A
   training or discovery task still in flight when a SIGTERM stop breaks the loop
-  is logged as abandoned at teardown, by task ID, once the workers are down.
+  is logged as abandoned at teardown, by task ID, once the workers are down. A
+  merged training task's `Training <id> completed` line is now logged whether or
+  not `verbose` is set, so every scheduled task ends with a terminal line.
 - **Issue #4078:** `evolveDir()`, `evolveEnv()` and `evolveRL()` now reject an
   unusable caller creature (fewer than `input + output` neurons, or failing
   `validate()`) with a `ValidationError` as their first step, before any signal

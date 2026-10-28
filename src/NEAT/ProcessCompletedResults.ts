@@ -42,13 +42,13 @@ export function processCompletedResults(
     }
 
     const json = r.train.creature;
-    if (neat.config.verbose) {
-      getLogger().info(
-        `Training ${blue(r.train.ID)} completed ${
-          r.duration ? "after " + format(r.duration, { ignoreZero: true }) : ""
-        }`,
-      );
-    }
+    // Issue #4099: the terminal line for a merged training task is logged
+    // whatever `verbose` says, so a task never shows `scheduled` alone.
+    getLogger().info(
+      `Training ${blue(r.train.ID)} completed ${
+        r.duration ? "after " + format(r.duration, { ignoreZero: true }) : ""
+      }`,
+    );
 
     // Issue #1913: Preserve PC approach tag from trace if present.
     const traceJSON = r.train.trace ? r.train.trace : null;

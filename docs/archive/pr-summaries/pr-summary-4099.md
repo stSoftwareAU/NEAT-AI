@@ -11,7 +11,8 @@ teardown logs each leftover result by ID and drops it. A training or discovery
 task still in flight when a SIGTERM stop breaks the loop is logged as abandoned
 by ID at teardown. Closes #4099.
 
-Version bump: not part of this change.
+Version bump: `deno.json` `version` updated for this change; the merged commit
+records the final version.
 
 ## Spec
 
@@ -56,12 +57,13 @@ Version bump: not part of this change.
 
 ### Undiscoverable Facts
 
-- `deno.json` / `deno.lock` bump `@stsoftware/tags` 1.0.34 → 1.0.36. This came
-  from `./quality.sh`'s dependency-update step, not from this change, and is
-  unrelated to #4099.
-- `Training <id> completed` is only logged when `config.verbose` is on (existing
-  behaviour in `ProcessCompletedResults.ts`); the new discard line is
-  unconditional.
+- `deno.json` carries only the version bump; `deno.lock` and the dependency pins
+  are unchanged against `Develop`.
+- `Training <id> completed` used to be logged only when `config.verbose` was on
+  (`ProcessCompletedResults.ts`), so a merged task in a default run showed
+  `scheduled` with no terminal line. It is now logged unconditionally, like the
+  discard, abandon and failed lines. This adds one `info` line per merged
+  training task to non-verbose logs.
 
 ## Evidence
 
@@ -118,13 +120,13 @@ flowchart TD
   break) and a result settling during the persist awaits are now covered; a
   worker task dropped by `WorkerHandlerBase.terminate()` is named by the same
   teardown line because its training entry is still in `trainingInProgress`. —
-  reviewer: partial — reason: the reviewer found the failed-stub double line
-  (fixed in this diff by the skip above) and that the SIGTERM/interrupted route
-  and a result settling during the persist were untested (both now covered by
-  the evidence above); training failure stubs are covered too, but a failed
-  _discovery_ stub can still log a second line and `completed` prints only when
-  `verbose` is on (existing behaviour). Discovery is outside this criterion's
-  "training task" wording.
+  `test/NEAT/NeatFinishUp.ts::finishUp: a settled training result is merged by processCompletedResults, then the run finishes (Issue #4099)`
+  and the `evolveDir` test above assert `Training <id> completed` with `verbose`
+  off, so a merged task now has a terminal line in a default run (red check:
+  restoring the `if (neat.config.verbose)` gate in `ProcessCompletedResults.ts`
+  fails both). — reviewer: met. Not covered: a failed _discovery_ stub can still
+  log a second line (it carries no marker; the criterion is worded for training
+  tasks, and marking it needs a new field on the worker response type).
 - **met** — Regression test: stub a worker whose training promise resolves
   **after** the final generation's `processCompletedResults` but before
   `finishUp`. … assert that (a) the trained creature reaches the returned
@@ -132,7 +134,7 @@ flowchart TD
   (b) `Training <id> completed` is logged. — evidence:
   `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled after the last generation is merged and persisted, not discarded (Issue #4099)`
   runs a real `evolveDir` (`iterations: 1`, temporary `creatureStore`,
-  `verbose: true`) and wraps the captured `neat.evolve` through the
+  `verbose: false`) and wraps the captured `neat.evolve` through the
   `deps.onNeatReady` seam; right after the last scheduled generation returns it
   settles a training result tagged `late4099` through the production hook
   `neat.recordTrainingComplete`. It asserts a second `evolve()` ran, the run did
