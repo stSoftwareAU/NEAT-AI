@@ -5,13 +5,13 @@
  * SHA-256 pin before it is used or cached.
  */
 import { assert, assertEquals, assertRejects } from "@std/assert";
-import { WasmError } from "@errors/WasmError.ts";
+import { WasmError } from "../../src/errors/WasmError.ts";
 import {
   loadWasmActivationInitPayloadAsync,
   type WasmPayloadLoadOptions,
-} from "@workers/WasmActivationPayload.ts";
-import { wasmCacheFilePath } from "@wasm/WasmBundleCache.ts";
-import { EXPECTED_WASM_GLUE_SHA256 } from "@wasm/WasmBundleSha256.ts";
+} from "../../src/workers/WasmActivationPayload.ts";
+import { wasmCacheFilePath } from "../../src/wasm/WasmBundleCache.ts";
+import { EXPECTED_WASM_GLUE_SHA256 } from "../../src/wasm/WasmBundleSha256.ts";
 
 const BASE_URL = new URL("https://jsr.example/pkg/");
 const JS_URL = new URL("wasm_activation.js", BASE_URL);
@@ -342,6 +342,65 @@ Deno.test("Issue #4097: an invalid fetch timeout is refused before any network a
       );
       assertEquals(calls, [], "no request is made with an invalid timeout");
     }
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("Issue #4097: without an explicit glue pin the vendored glue pin applies", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    const vendoredGlue = await Deno.readFile(
+      new URL("../../wasm_activation/pkg/wasm_activation.js", import.meta.url),
+    );
+    const { expectedGlueSha256: _omitted, ...withoutGluePin } = loadOptions(
+      cacheDir,
+      networkFetch(vendoredGlue, GENUINE_WASM, []),
+      { maxAttempts: 1 },
+    );
+
+    // The vendored glue satisfies the default pin, so it loads.
+    const payload = await loadWasmActivationInitPayloadAsync(withoutGluePin);
+    assertEquals(payload.jsSource, new TextDecoder().decode(vendoredGlue));
+
+    // The fixture glue is not the vendored glue, so the default pin refuses it.
+    await assertRejects(
+      () =>
+        loadWasmActivationInitPayloadAsync({
+          ...withoutGluePin,
+          fetchFn: networkFetch(GENUINE_GLUE, GENUINE_WASM, []),
+          cacheDir: cacheDir + "-other",
+        }),
+      WasmError,
+      "integrity check failed",
+    );
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+    await Deno.remove(cacheDir + "-other", { recursive: true }).catch(() => {});
+  }
+});
+
+Deno.test("Issue #4097: a load with an explicit baseUrl does not poison the default payload", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    await warmCache(cacheDir, GENUINE_GLUE, GENUINE_WASM);
+    const isolated = await loadWasmActivationInitPayloadAsync(
+      loadOptions(cacheDir, failingFetch([])),
+    );
+    assertEquals(isolated.jsSource, GLUE_SOURCE);
+
+    const vendored = await Deno.readTextFile(
+      new URL(
+        "../../wasm_activation/pkg/wasm_activation.js",
+        import.meta.url,
+      ),
+    );
+    const defaults = await loadWasmActivationInitPayloadAsync();
+    assertEquals(
+      defaults.jsSource,
+      vendored,
+      "the default load serves the vendored glue, not the isolated load's payload",
+    );
   } finally {
     await Deno.remove(cacheDir, { recursive: true });
   }

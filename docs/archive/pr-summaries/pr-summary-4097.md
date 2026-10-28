@@ -203,13 +203,15 @@ WASM loading forever.
 
 ## Test Plan
 
-Tests added in `test/workers/WasmPayloadCacheFirst.ts` (9, all named
+Tests added in `test/workers/WasmPayloadCacheFirst.ts` (11, all named
 `Issue #4097: ...`): warm cache with zero fetches; cold cache with a failing
 network; non-OK HTTP 503 with nothing cached; cold fetch then offline reuse;
-poisoned cached glue; network glue missing the pin; vendored glue pin; stalled
-fetch; invalid timeout. `test/scripts/BuildScriptContentHash.ts` gains the
-missing-glue refusal test and the glue-constant assertions;
-`test/scripts/BuildScriptMemoryModel.ts` gains a glue fixture line in two tests.
+poisoned cached glue; network glue missing the pin; vendored glue pin; default
+glue pin applies when none is passed; an explicit `baseUrl` load leaves the
+process memo untouched; stalled fetch; invalid timeout.
+`test/scripts/BuildScriptContentHash.ts` gains the missing-glue refusal test and
+the glue-constant assertions; `test/scripts/BuildScriptMemoryModel.ts` gains a
+glue fixture line in two tests.
 
 Removed from `test/workers/WasmPayloadFetchTimeout.ts` (file deleted with the
 function it tested; reason: principles 4 and 7, one owner):
@@ -290,7 +292,23 @@ run with the summary in place failed one test,
 the summary cited a downstream issue by slug; the citation was reworded and the
 gate then passed in full.
 `timeout 120 deno test -A test/workers/WasmPayloadCacheFirst.ts`:
-`ok | 9 passed | 0 failed`.
+`ok | 11 passed | 0 failed`.
+
+Mutation check (Issue #4146): the gate reported `no test imports this module`
+for `src/workers/WasmActivationPayload.ts`, because the new test imported it
+through the `@workers/` alias; the test now imports the `src/` modules by
+relative path. Hand-applied mutations, each restored after: negating the
+`instanceof WasmError` rethrow (5 red); dropping the
+`?? EXPECTED_WASM_GLUE_SHA256` default (red, via the new default-pin test);
+caching the payload when `baseUrl` is set (red, via the new memo test);
+returning the glue bytes as the binary (2 red).
+
+- `test/workers/WasmPayloadCacheFirst.ts:45-82`,
+  `test/scripts/BuildScriptContentHash.ts:532-593`,
+  `test/scripts/BuildScriptMemoryModel.ts:234,266` exempt (untestable): these
+  are lines of test files and fixtures; nothing imports a test file, so a
+  mutation there cannot make another test red. Their assertions are red-checked
+  above.
 
 Not checked: no test calls `fetchWasmForWorkers()` itself; a real jsr.io fetch
 and the GRQ-side follow-up were not exercised.
