@@ -67,6 +67,7 @@ function baseOptions(
     now: () => 1_000,
     budgetMS: BUDGET_MS,
     pollIntervalMS: POLL_MS,
+    neat: { discardUnprocessedResults: () => 0 },
     ...overrides,
   };
 }
@@ -259,4 +260,40 @@ Deno.test("bounded teardown: a non-positive budget falls back to the default", a
     "the default budget must be positive",
   );
   assertEquals(report.replayDrained, true);
+});
+
+Deno.test("bounded teardown: unmerged results are discarded before persist, and the count is reported (Issue #4099)", async () => {
+  const order: string[] = [];
+  const workers: TerminableWorker[] = [
+    {
+      terminate: () => {
+        order.push("terminate");
+      },
+    },
+  ];
+
+  const report = await runBoundedEvolveTeardown(baseOptions({
+    neat: {
+      discardUnprocessedResults: () => {
+        order.push("discard");
+        return 2;
+      },
+    },
+    persist: () => {
+      order.push("persist");
+      return Promise.resolve();
+    },
+    workers,
+  }));
+
+  assertEquals(
+    report.resultsDiscarded,
+    2,
+    "the report must carry the number of results discarded at teardown",
+  );
+  assertEquals(
+    order,
+    ["discard", "persist", "terminate"],
+    "unmerged results must be discarded before the checkpoint is written",
+  );
 });

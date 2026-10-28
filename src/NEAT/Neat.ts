@@ -828,6 +828,22 @@ export class Neat {
       );
       return false;
     }
+    // Issue #4099: a result that settled after the last generation's
+    // processCompletedResults() is in neither in-progress map, so the checks
+    // above miss it. Wait one more pass: the loop calls evolve() again, which
+    // merges and clears the arrays, so this cannot spin. The over-run path
+    // never calls evolve() again, so it is excluded and discards at teardown.
+    if (
+      this.terminationReason !== "overrun" &&
+      (this.trainingComplete.length > 0 || this.discoveryComplete.length > 0)
+    ) {
+      getLogger().info(
+        `[Neat] Waiting for ${
+          this.trainingComplete.length + this.discoveryComplete.length
+        } settled result(s) (training: ${this.trainingComplete.length}, discovery: ${this.discoveryComplete.length}) to be merged before finishing`,
+      );
+      return false;
+    }
     return true;
   }
 
@@ -1136,6 +1152,38 @@ export class Neat {
     this.trainingInProgress.delete(uuid);
     this.trainingDeadlines.delete(uuid);
     return true;
+  }
+
+  /**
+   * Issue #4099: drop every completed result that was never merged, logging
+   * each one by task ID. Called at teardown, after the last `finishUp()` has
+   * returned, so a result that settled too late to be merged is reported
+   * rather than silently lost. Only the over-run and hard-deadline paths reach
+   * here with results still queued; the normal path merges them first.
+   *
+   * @returns the number of results discarded
+   */
+  discardUnprocessedResults(): number {
+    let discarded = 0;
+    for (const r of this.trainingComplete) {
+      getLogger().warn(
+        `Training ${
+          r.train?.ID ?? "unknown"
+        } discarded at teardown: it settled after the last generation's results were processed`,
+      );
+      discarded++;
+    }
+    for (const r of this.discoveryComplete) {
+      getLogger().warn(
+        `Discovery ${
+          r.discover?.ID ?? "unknown"
+        } discarded at teardown: it settled after the last generation's results were processed`,
+      );
+      discarded++;
+    }
+    this.trainingComplete.length = 0;
+    this.discoveryComplete.length = 0;
+    return discarded;
   }
 
   /**

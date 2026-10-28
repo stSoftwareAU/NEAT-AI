@@ -20,6 +20,10 @@
  * This module makes the teardown itself bounded, so "the loop ended on time"
  * always translates into "the process returned on time":
  *
+ *  0. **Discard unmerged results.** A training or discovery result that settled
+ *     after the last generation's results were processed is logged by task ID
+ *     and dropped before anything else runs (Issue #4099). It is not part of the
+ *     evolved state, so it does not gate the persist.
  *  1. **Persist first.** The champion restore and the checkpoint write run
  *     before anything that can block, so completed work reaches disk even in
  *     the worst case.
@@ -71,6 +75,11 @@ export interface ReplayDrainQueue {
 
 /** What the teardown actually managed to do — returned for tests and callers. */
 export interface BoundedEvolveTeardownReport {
+  /**
+   * Completed training/discovery results that were never merged and were
+   * discarded (and logged by task ID) before persist (Issue #4099).
+   */
+  resultsDiscarded: number;
   /** Workers whose `terminate()` completed inside the budget. */
   workersTerminated: number;
   /** Workers left detached: `terminate()` threw or outlived the budget. */
@@ -86,12 +95,19 @@ export interface BoundedEvolveTeardownOptions {
   /** Entry point being torn down (`"evolveDir"`, …) — used in log lines. */
   label: string;
   /**
-   * Champion restore + checkpoint write. Runs **first** and unbounded so the
-   * evolved improvement is on disk before any step that can block. A failure
-   * is logged, the rest of the teardown still runs, and the error is re-thrown
-   * once the workers are down — never swallowed.
+   * Champion restore + checkpoint write. Runs unbounded, straight after the
+   * unmerged results are discarded, so the evolved improvement is on disk before
+   * any step that can block. A failure is logged, the rest of the teardown still
+   * runs, and the error is re-thrown once the workers are down — never swallowed.
    */
   persist: () => Promise<void>;
+  /**
+   * The run's `Neat` instance (or any surface with `discardUnprocessedResults`).
+   * Its completed-but-unmerged training and discovery results are logged by
+   * task ID and dropped as the very first teardown step (Issue #4099). Required:
+   * a caller that skips it would silently lose those results.
+   */
+  neat: { discardUnprocessedResults(): number };
   /** Worker handlers to terminate. Empty/omitted is a no-op. */
   workers?: readonly TerminableWorker[];
   /** Background replay queue to drain. */
@@ -254,9 +270,10 @@ async function drainReplayQueue(
  * Run the bounded post-loop teardown shared by `evolveDir`, `evolveEnv` and
  * `evolveRL`.
  *
- * Order matters: persist, then terminate workers, then drain the replay queue.
- * Persisting first is what protects the evolved improvement — every later step
- * can be abandoned without losing it.
+ * Order matters: discard unmerged results, then persist, then terminate workers,
+ * then drain the replay queue. Persisting before the blocking steps is what
+ * protects the evolved improvement — every later step can be abandoned without
+ * losing it.
  *
  * @throws Whatever `persist` threw, re-thrown after the workers are down so a
  *         failed checkpoint write is loud and still leaves nothing running.
@@ -268,6 +285,10 @@ export async function runBoundedEvolveTeardown(
   const budgetMS = normaliseBudget(options.budgetMS);
   const pollIntervalMS = options.pollIntervalMS ?? TEARDOWN_POLL_INTERVAL_MS;
   const label = options.label;
+
+  // 0. Discard completed results that were never merged. Logged by task ID, so
+  //    a result that settled after the final generation is named, not lost.
+  const resultsDiscarded = options.neat.discardUnprocessedResults();
 
   // 1. Persist before anything that can block: a wedged worker or replay must
   //    never cost us the generations already evolved.
@@ -311,6 +332,7 @@ export async function runBoundedEvolveTeardown(
   );
 
   const report: BoundedEvolveTeardownReport = {
+    resultsDiscarded,
     workersTerminated: terminated,
     workersAbandoned: abandoned,
     replayDrained: drained,

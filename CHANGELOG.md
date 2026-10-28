@@ -25,6 +25,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4099:** a training or discovery result that settled after the last
+  generation's results were processed is no longer dropped silently. On the
+  normal finish, `finishUp` waits one more pass so the result is merged. On the
+  over-run and hard-deadline paths it is logged as discarded, with its task ID,
+  instead of disappearing.
 - **Issue #4078:** `evolveDir()`, `evolveEnv()` and `evolveRL()` now reject an
   unusable caller creature (fewer than `input + output` neurons, or failing
   `validate()`) with a `ValidationError` as their first step, before any signal

@@ -853,6 +853,7 @@ export async function evolveDir(
       // generations already evolved.
       await runBoundedEvolveTeardown({
         label: "evolveDir",
+        neat,
         persist: async () => {
           restoreEvolveChampion(
             creature,
@@ -1286,6 +1287,7 @@ export async function evolveEnv<S, A>(
       // checkpoint write cannot be stranded behind a drain that will not end.
       await runBoundedEvolveTeardown({
         label: "evolveEnv",
+        neat,
         persist: async () => {
           restoreEvolveChampion(
             creature,
@@ -2008,6 +2010,7 @@ export async function evolveRL<S, A>(
       // drain run inside the bounded teardown, after the champion is on disk.
       await runBoundedEvolveTeardown({
         label: "evolveRL",
+        neat,
         persist: async () => {
           restoreEvolveChampion(
             creature,

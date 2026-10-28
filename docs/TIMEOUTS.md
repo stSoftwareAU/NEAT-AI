@@ -144,7 +144,9 @@ with a wedge in the teardown as with one in the loop.
 
 [`src/creature/BoundedEvolveTeardown.ts`](../src/creature/BoundedEvolveTeardown.ts)
 is the single teardown shared by `evolveDir`, `evolveEnv` and `evolveRL`. It
-runs three steps, in this order:
+first discards any completed training or discovery result that was never merged,
+logging each one by task ID (Issue #4099). It then runs three steps, in this
+order:
 
 1. **Persist first.** The champion restore and the `creatureStore` write run
    _before_ anything that can block, so the evolved improvement is on disk even
