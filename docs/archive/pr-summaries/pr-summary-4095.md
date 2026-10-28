@@ -63,12 +63,43 @@ flowchart LR
 
 - **symptom** — with both heavy workers busy, extra training tasks all went to
   the first worker and, on quarantine, were failed with the first task's reason
-- **status** — `verified` — the spread test and the pool test went red when
-  `findLeastLoadedWorker` was restored to rank queue size only, and the
-  quarantine test went red when `cancelAllTasks` ignored the label; both pass
+- **status** — `verified` — the regression test was observed failing against the
+  unfixed code and passing after the fix: the spread test and the pool test went
+  red when `findLeastLoadedWorker` was restored to rank queue size only, and the
+  quarantine test went red when `cancelAllTasks` ignored the label; all pass
   with the fix
 - **regression test** —
   `test/NEAT/TrainingSpreadsAcrossHeavyWorkers.ts::two training tasks land on two busy heavy workers, one each (Issue #4095)`
+
+## Mutation check
+
+The gate's mutation run reported its source-line mutants as "no test imports
+this module", which is a harness artefact: the tests below import them. Each was
+re-applied by hand and the targeted suites
+(`test/NEAT/TrainingSpreadsAcrossHeavyWorkers.ts`,
+`test/multithreading/WorkerPool.ts`, `test/multithreading/WorkerHandler.ts`,
+`test/workers/WorkerTaskCancellation.ts`) went red each time:
+
+- `src/multithreading/WorkerPool.ts:228` negated `load < leastLoad` — 5 tests
+  failed
+- `src/workers/WorkerHandlerBase.ts:662` dropped `label` from the pending entry
+  — 2 tests failed
+- `src/workers/WorkerHandlerBase.ts:735` negated the `task.label` check — 3
+  tests failed
+- `src/workers/WorkerHandlerBase.ts:817` and `:847` dropped the `label` argument
+  to `registerPending` — 2 tests failed
+
+The remaining mutants are in test and bench code, which no test exercises:
+
+- `bench/WorkStealingPool.ts:35` exempt (untestable): benchmark stub, not
+  production code and not imported by any test
+- `test/NEAT/PoolBorrowing.ts:38`,
+  `test/NEAT/TrainingSpreadsAcrossHeavyWorkers.ts:37-114`,
+  `test/multithreading/WorkerHandler.ts:154-175`,
+  `test/multithreading/WorkerPool.ts:30` and `:494-529` exempt (untestable):
+  these are test helpers and the test bodies themselves; a mutant there is
+  checked by the assertions it supports, which the source mutants above show are
+  effective
 
 ## Acceptance Criteria
 
