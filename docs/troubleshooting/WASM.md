@@ -362,9 +362,10 @@ pin, the call rejects with `WasmError` reason `MODULE_NOT_LOADED`. The message
 names both URLs (for example "timed out after 60000ms"), the same failure mode
 as a non-OK response, so start-up does not hang.
 
-The single-shot fetch `fetchWasmActivationPayloadOverHttp` (Issue #4035, 30 s
-bound `WASM_PAYLOAD_FETCH_TIMEOUT_MS`) is no longer on this path. It remains
-exported for callers that want one uncached request.
+The single-shot, uncached `https:` fetch from Issue #4035 has been removed (Issue
+#4097). Its stall guard now covers this cache-first path: each attempt is capped
+at 60 s with bounded retries (Issue #4048), and a stalled peer rejects with a
+`WasmError` (reason `MODULE_NOT_LOADED`) instead of hanging start-up.
 
 **Alternative — upgrade Deno and rely on default inheritance.** From Deno 2.5
 onwards, workers spawned with no explicit `deno.permissions` inherit the

@@ -60,6 +60,16 @@ function failingFetch(calls: string[]): typeof fetch {
   }) as unknown as typeof fetch;
 }
 
+/** A peer that accepts the request and never answers until aborted. */
+const hangingFetch: typeof fetch = (_input, init) =>
+  new Promise<Response>((_resolve, reject) => {
+    const signal = init?.signal;
+    if (!signal) return; // No signal: hang forever — the bug under test.
+    signal.addEventListener("abort", () => reject(signal.reason), {
+      once: true,
+    });
+  });
+
 /** A fetch that records each requested URL and serves the given bytes. */
 function networkFetch(
   glue: Uint8Array,
@@ -255,4 +265,53 @@ Deno.test("Issue #4097: the glue pin matches the vendored wasm_activation.js", a
     EXPECTED_WASM_GLUE_SHA256,
     "glue pin and content manifest must agree",
   );
+});
+
+Deno.test("Issue #4097: a stalled fetch on a cold cache rejects with WasmError (timeout bound kept, Issue #4035/#4048)", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    const err = await assertRejects(
+      () =>
+        loadWasmActivationInitPayloadAsync(
+          loadOptions(cacheDir, hangingFetch, {
+            fetchTimeoutMs: 5,
+            maxAttempts: 1,
+          }),
+        ),
+      WasmError,
+      "timed out after 5ms",
+    );
+
+    assertEquals(err.reason, "MODULE_NOT_LOADED");
+    assert(err.message.includes(JS_URL.href), "message names the glue URL");
+    assert(err.message.includes(WASM_URL.href), "message names the binary URL");
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("Issue #4097: an invalid fetch timeout is refused before any network access", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    for (const fetchTimeoutMs of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const calls: string[] = [];
+      const err = await assertRejects(
+        () =>
+          loadWasmActivationInitPayloadAsync(
+            loadOptions(cacheDir, failingFetch(calls), { fetchTimeoutMs }),
+          ),
+        WasmError,
+        "positive finite number",
+      );
+
+      assertEquals(err.reason, "MODULE_NOT_LOADED");
+      assert(
+        err.cause instanceof RangeError,
+        "the RangeError is carried as the cause",
+      );
+      assertEquals(calls, [], "no request is made with an invalid timeout");
+    }
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
 });
