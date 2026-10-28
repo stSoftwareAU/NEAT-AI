@@ -70,13 +70,14 @@ flowchart TD
 - **symptom** — a training result that settles after the last generation's
   `processCompletedResults()` is never merged and never logged; `finishUp()`
   returns `true` with the result still in `trainingComplete`.
-- **status** — `partial` — reason: the test settles the result through
-  `neat.recordTrainingComplete` rather than stubbing a worker whose promise
-  resolves late through a full `evolveDir`; I did not run the new tests against
-  the unfixed `Neat.ts` (the `finishUp` tests would fail there because it
-  returned `true`, by reading the base code, not by observation).
+- **status** — `reproduced` — evidence: with the `finishUp()` wait disabled
+  (`false && this.terminationReason !== "overrun" && …` in `src/NEAT/Neat.ts`),
+  `test/creature/EvolveDirLateTrainingResult.ts` fails with
+  `AssertionError: a settled-but-unmerged result must lead to another evolve(); got 1 call(s)`;
+  with the fix in place it passes (5 consecutive runs). That is a red run
+  against the code before the fix, not the base branch checkout.
 - **regression test** —
-  `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled training result is unmerged, then finishes (Issue #4099)`
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled after the last generation is merged and persisted, not discarded (Issue #4099)`
 
 ## Acceptance Criteria
 
@@ -105,15 +106,23 @@ flowchart TD
   `finishUp`. … assert that (a) the trained creature reaches the returned
   population or the creature store, or a `discarded` line names the task, and
   (b) `Training <id> completed` is logged. — evidence:
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled after the last generation is merged and persisted, not discarded (Issue #4099)`
+  runs a real `evolveDir` (`iterations: 1`, temporary `creatureStore`,
+  `verbose: true`) and wraps the captured `neat.evolve` through the
+  `deps.onNeatReady` seam; right after the last scheduled generation returns it
+  settles a training result tagged `late4099` through the production hook
+  `neat.recordTrainingComplete`. It asserts a second `evolve()` ran, the run did
+  not end `overrun`/`hard-deadline`, `Training late4099 completed` is logged, no
+  `discarded at teardown` warning appears, and a creature tagged
+  `trainID=late4099` is in the returned population and in the creature store.
+  The settled creature is a zero-weight constant-output network on a
+  constant-output dataset, so it is the strictly best creature and survives
+  selection deterministically. The unit-level companion
   `test/NEAT/NeatFinishUp.ts::finishUp: a settled training result is merged by processCompletedResults, then the run finishes (Issue #4099)`
-  — reviewer: partial — reason: the reviewer saw the result pushed straight onto
-  `trainingComplete`; the test now settles it through the production hook
-  `neat.recordTrainingComplete` (the call the worker-result handler makes), then
-  asserts `finishUp()` is false, the real `processCompletedResults` returns the
-  creature tagged `late1234` (criterion (a): it reaches the trained population),
-  the `Training late1234 completed` line is logged (criterion (b)), and
-  `finishUp()` is then true. It does not run a full `evolveDir` with a stubbed
-  worker.
+  covers the `finishUp()` false-then-true contract. The test wraps `evolve()`
+  rather than stubbing a worker's promise: the worker result handler's only
+  effect on `Neat` is the `recordTrainingComplete` call, so the settle point is
+  the same. — reviewer: met
 - **missing** — Field evidence: a GRQ sampler log on a neat-ai release carrying
   the fix where a task scheduled in the last generation shows
   `Training <id> completed`, with no `outcome=in_flight … reason=log-ended` in
@@ -137,14 +146,25 @@ flowchart TD
   then true; over-run → true (no spin; this one also passes on the unfixed code,
   it guards the exclusion); `discardUnprocessedResults` count/empty/failed-stub
   cases; merge-then-finish through the real `processCompletedResults`.
+- `test/creature/EvolveDirLateTrainingResult.ts` (1 test at head): end-to-end
+  through `evolveDir` — a result settled after the last generation leads to
+  another `evolve()`, is logged `completed`, not discarded, and is in the
+  returned population and creature store. Red check: disabling the `finishUp()`
+  wait (`false && …`) fails it with
+  `a settled-but-unmerged result must lead to another evolve(); got 1 call(s)`;
+  restored and green. Branch outcome: the `trainingComplete.length > 0` operand
+  of the new `finishUp()` condition is reached by this test via `evolveDir`.
 - `test/creature/BoundedEvolveTeardown.ts`: discard runs before persist and
   `resultsDiscarded` equals its return value; `baseOptions` gained a `neat` stub
   returning 0 (no assertion removed from any existing test).
 - Not done: a mutation-style red check of each new test against the unfixed
   code; every `finishUp` test fails against the base `Neat.ts` by reading it,
-  not by observed run. Call sites checked: `evolveDir`, `evolveEnv`, `evolveRL`
-  all pass `neat` (required option, so omission fails type-check); only the
-  teardown unit test exercises the option, not a full `evolveDir` run.
+  not by observed run (apart from the `evolveDir` red check above). Call sites
+  checked: `evolveDir`, `evolveEnv`, `evolveRL` all pass `neat` (required
+  option, so omission fails type-check); the discard option is exercised by the
+  teardown unit test, and the merge route by the `evolveDir` test above.
+  `evolveEnv`/`evolveRL` share `finishUp()` and the teardown but have no
+  end-to-end late-result test of their own.
 - Docs: `docs/TIMEOUTS.md` teardown-order sentence updated; `CHANGELOG.md` entry
   added. Greps for `finishUp`, `cleanUpDelayCount`, `trainingComplete`,
   `teardown` over `README.md`, `docs/` (excluding archive) and `src` doc
