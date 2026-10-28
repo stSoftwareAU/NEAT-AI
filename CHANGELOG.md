@@ -29,9 +29,12 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   ranked an always-empty queue, so `scheduleTraining` and `scheduleDiscovery`
   piled extra tasks onto the first heavy worker. It now picks the worker with
   the least in-flight load (queue size plus pending tasks, ties to the first). A
-  task failed because its worker was quarantined now carries its own label (the
-  creature uuid) and says it was queued on that worker, instead of repeating the
-  culprit task's reason. The task that missed its deadline keeps its own reason.
+  labelled task (training or discovery, labelled with the creature uuid) that
+  fails because its worker was quarantined now carries its own label and says it
+  was queued on that worker, instead of repeating the culprit task's reason.
+  Other request kinds (evaluate, score, ...) are unlabelled and keep the
+  quarantine reason unchanged. The task that missed its deadline keeps its own
+  reason.
 - **Issue #4078:** `evolveDir()`, `evolveEnv()` and `evolveRL()` now reject an
   unusable caller creature (fewer than `input + output` neurons, or failing
   `validate()`) with a `ValidationError` as their first step, before any signal

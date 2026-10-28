@@ -13,6 +13,7 @@
  */
 import { assertEquals } from "@std/assert";
 import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { Neat } from "@neat/Neat.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
@@ -26,6 +27,8 @@ import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
 class TrainingWorker {
   /** Creatures dispatched by `scheduleTraining`, in order. */
   public readonly dispatched: Creature[] = [];
+  /** The task label each dispatch carried, in the same order as `dispatched`. */
+  public readonly labels: string[] = [];
   private pending = 0;
 
   constructor(public readonly label: string) {}
@@ -53,8 +56,11 @@ class TrainingWorker {
 
   trainTracked(
     creature: Creature,
+    _options?: unknown,
+    label: string = "",
   ): { taskID: number; response: Promise<ResponseData> } {
     this.dispatched.push(creature);
+    this.labels.push(label);
     this.pending++;
     const taskID = this.dispatched.length;
     // Never settles: the worker is wedged for the whole test.
@@ -106,4 +112,17 @@ Deno.test("two training tasks land on two busy heavy workers, one each (Issue #4
   );
   assertEquals(heavy1.dispatched[0], first);
   assertEquals(heavy2.dispatched[0], second);
+
+  // Each dispatch is labelled with its creature's uuid, so a quarantine of the
+  // worker names the task (Issue #4095).
+  assertEquals(
+    heavy1.labels[0],
+    CreatureUtil.makeUUID(first),
+    "heavy-1's task is labelled with the first creature's uuid",
+  );
+  assertEquals(
+    heavy2.labels[0],
+    CreatureUtil.makeUUID(second),
+    "heavy-2's task is labelled with the second creature's uuid",
+  );
 });

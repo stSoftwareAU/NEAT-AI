@@ -717,10 +717,10 @@ export abstract class WorkerHandlerBase<
    * Cancel every in-flight task on this worker (GRQ #4489).
    *
    * A labelled task is cancelled with a reason that names its own label and
-   * says it was collateral of the quarantine, keeping `reason` inside it. An
-   * unlabelled task is cancelled with `reason` unchanged (Issue #4095): the
-   * caller that quarantined the worker has already cancelled the culprit with
-   * its own reason, so the remaining tasks must not be reported with it.
+   * says it was collateral of the quarantine, keeping `reason` inside it. Only
+   * labelled tasks (training and discovery, which pass the creature uuid) are
+   * named. An unlabelled task keeps `reason` unchanged because the worker
+   * cannot name it (Issue #4095).
    *
    * @param reason the quarantine reason, e.g. the deadline the culprit missed
    * @param cause underlying fault, when one was observed

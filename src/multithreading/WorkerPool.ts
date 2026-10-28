@@ -149,7 +149,8 @@ export class WorkerPool<T = unknown> {
       }
     }
 
-    // All workers are busy - select the one with smallest queue
+    // All workers are busy - select the one with least in-flight load
+    // (queue size plus pending tasks)
     return this.findLeastLoadedWorker();
   }
 

@@ -599,10 +599,12 @@ export class WorkerHandler
 
     // Issue #2161: Track discover as a long-running task.
     this.incrementLongRunningTaskCount();
+    // The creature uuid labels the task so a quarantine of this worker names
+    // it (Issue #4095).
     return this.makePromiseDeferred(data, () => {
       // Clear large creature data after structured clone completes.
       clearForGc(data.discover!, "creature");
-    }).finally(() => {
+    }, CreatureUtil.makeUUID(creature)).finally(() => {
       this.decrementLongRunningTaskCount();
     });
   }

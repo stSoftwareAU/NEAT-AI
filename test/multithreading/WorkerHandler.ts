@@ -4,10 +4,13 @@
  * Issue #1698: Validates WorkerHandler construction, echo communication,
  * and lifecycle management using direct (MockWorker) mode.
  */
-import { assertEquals, assertExists } from "@std/assert";
+import { assert, assertEquals, assertExists, assertRejects } from "@std/assert";
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
+import { WorkerTaskCancelledError } from "@workers/WorkerTaskCancelledError.ts";
+import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import {
   CURRENT_GENERATION_TAG,
@@ -142,4 +145,32 @@ Deno.test("WorkerHandler.train: does NOT carry warm-up tags in train payload (Is
   );
   // Existing training context tags should still be present.
   assertEquals(tags?.find((t) => t.name === "untrained-error")?.value, "0.5");
+});
+
+Deno.test("WorkerHandler.discover: a quarantine names the discovery task after its creature uuid (Issue #4095)", async () => {
+  const handler = new WorkerHandler(
+    await Deno.makeTempDir(),
+    "MSE",
+    true,
+  );
+  await handler.waitUntilReady();
+
+  const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+  const uuid = CreatureUtil.makeUUID(creature);
+
+  // Quarantine before the direct-mode worker can answer, so the discovery
+  // task is still in flight and is failed as collateral of the quarantine.
+  const pending = handler.discover(creature, {} as NeatConfig);
+  handler.quarantine("its discovery task never returned");
+
+  const error = await assertRejects(() => pending, WorkerTaskCancelledError);
+  assert(
+    error.reason.includes(uuid),
+    `the failure names the discovery task ${uuid}: ${error.reason}`,
+  );
+  assert(
+    error.reason.includes("its discovery task never returned"),
+    `the failure keeps the quarantine reason: ${error.reason}`,
+  );
+  handler.terminate();
 });
