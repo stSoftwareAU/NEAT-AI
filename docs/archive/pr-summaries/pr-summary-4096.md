@@ -194,11 +194,15 @@ issue).
   dropping the `\n` from `breachText` in `src/NEAT/EventLoopWatchdogWorker.ts`
   turns this test red.
 - Red checks against the base branch's production code (a clean `origin/Develop`
-  worktree with the two new test files copied in, `--no-check`): 9 failed, 11
-  passed. The failures are the busy and yielding cases in both files, both phase
-  cases, both interval-refusal cases and the `setPhase` refusal case. The
-  "accepts a positive heartbeat interval" test passes on base (it asserts only
-  that nothing throws).
+  worktree with only the named file copied in, `--no-check`), one line per new
+  test file: `test/creature/EvolveRunWatchdogHeartbeat_test.ts` (2 tests at
+  head): 2 failed on base, 0 passed (the busy and yielding cases);
+  `test/NEAT/NeatPhaseObserver_test.ts` (5 tests at head): 5 failed on base, 0
+  passed. Both files pass on the head. The earlier combined "9 failed, 11
+  passed" figure covered edited files too and is withdrawn. The edited
+  `test/NEAT/EventLoopWatchdog_test.ts` (20 tests at head) and
+  `test/creature/EvolveRunWatchdog_test.ts` (11 tests at head) pass on the head
+  (38 tests passed across these four files).
 - Mutations on the head: replacing the main-thread `setInterval(beat, …)`
   callback with a no-op turns
   `EventLoopWatchdogHeartbeat: a yielding main thread …` red; hard-coding
@@ -224,6 +228,11 @@ issue).
     `neat.setPhaseObserver(undefined)` in `finally` is belt and braces, since
     the observer reaches `RunWatchdog.setPhase`, which already returns after
     `disarm()`.
+- Mutation re-check on the head (`NeatEvolution.ts`): deleting each of the
+  `markPhase` calls at lines 436, 469, 471, 1069 and 1257 in turn turns 3 of the
+  10 tests in `test/creature/EvolveWatchdogWiring_test.ts` red (the three
+  `generation phases reach the watchdog` tests, via the exact per-generation
+  marker walk). That file is the killer for all five; no new test was needed.
 - Coverage carry-over (completion check): the listed lines are in
   `BreedingQuotas.ts`, `DeDuplicator.ts`, `MutationOperatorTelemetry.ts` and
   similar files this change does not touch. Running the four edited watchdog
