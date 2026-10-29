@@ -595,14 +595,15 @@ export function scheduleTraining(
     return;
   }
 
-  if (neat.config.verbose) {
-    const borrowTag = borrowedFromFast ? " (borrowed from fast pool)" : "";
-    getLogger().info(
-      `Training ${
-        blue(uuid.substring(Math.max(0, uuid.length - 8)))
-      } scheduled${borrowTag}`,
-    );
-  }
+  // Issue #4099: logged whatever `verbose` says, like the terminal lines
+  // (`completed`, `failed`, `abandoned`, `discarded`), so a scheduled-vs-terminal
+  // count over a log matches in a default run.
+  const borrowTag = borrowedFromFast ? " (borrowed from fast pool)" : "";
+  getLogger().info(
+    `Training ${
+      blue(uuid.substring(Math.max(0, uuid.length - 8)))
+    } scheduled${borrowTag}`,
+  );
 
   const trainOptions: TrainOptions = {
     log: neat.config.log,
