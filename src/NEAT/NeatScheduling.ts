@@ -656,8 +656,9 @@ export function scheduleTraining(
 
   // GRQ #4489: dispatch through the tracked call so the task id is known —
   // without it the stuck-task watchdog can only forget the task, leaving the
-  // request in flight and unsettled for the rest of the run.
-  const { taskID, response } = w.trainTracked(creature, trainOptions);
+  // request in flight and unsettled for the rest of the run. The creature uuid
+  // labels the task so a quarantine of this worker names it (Issue #4095).
+  const { taskID, response } = w.trainTracked(creature, trainOptions, uuid);
 
   // Issue #4022 (GRQ #4490): while the capture is armed, the creature exactly
   // as dispatched is kept on disk until the task settles, so a task that never

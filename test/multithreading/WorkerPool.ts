@@ -14,6 +14,7 @@ import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 class MockWorkerHandler {
   private _busy = false;
   private _taskCount = 0;
+  private _pending = 0;
 
   isBusy(): boolean {
     return this._busy;
@@ -22,6 +23,15 @@ class MockWorkerHandler {
   /** GRQ #4489: pool selection skips quarantined workers. */
   isHealthy(): boolean {
     return true;
+  }
+
+  /** Issue #4095: dispatched-but-unsettled tasks, as `WorkerHandlerBase` reports. */
+  getPendingTaskCount(): number {
+    return this._pending;
+  }
+
+  setPendingTaskCount(pending: number): void {
+    this._pending = pending;
   }
 
   setBusy(busy: boolean): void {
@@ -472,4 +482,66 @@ Deno.test("WorkerPool - balances load across workers when all busy", () => {
     const queueSize = pool.getQueueSize(w);
     assertEquals(queueSize, 10); // Exactly 30/3 = 10 tasks each
   }
+});
+
+// Issue #4095: scheduleTraining/scheduleDiscovery dispatch straight to the
+// worker and never queue, so every busy worker's queue reads 0. The in-flight
+// load must therefore come from the pending count.
+
+Deno.test("WorkerPool - all busy: ties on pending keep the first worker, then the least pending wins (Issue #4095)", () => {
+  const a = new MockWorkerHandler();
+  const b = new MockWorkerHandler();
+  a.setBusy(true);
+  b.setBusy(true);
+  const pool = new WorkerPool([a, b] as unknown as WorkerHandler[]);
+
+  // Queues are empty, so only the pending count can tell these apart.
+  a.setPendingTaskCount(1);
+  b.setPendingTaskCount(1);
+  assertEquals(
+    pool.selectWorker(),
+    a as unknown as WorkerHandler,
+    "a tie keeps the first selectable worker",
+  );
+
+  a.setPendingTaskCount(2);
+  b.setPendingTaskCount(1);
+  assertEquals(
+    pool.selectWorker(),
+    b as unknown as WorkerHandler,
+    "the worker with fewer pending tasks is chosen",
+  );
+
+  a.setPendingTaskCount(3);
+  b.setPendingTaskCount(1);
+  assertEquals(
+    pool.selectWorker(),
+    b as unknown as WorkerHandler,
+    "still the least pending, however far apart",
+  );
+});
+
+Deno.test("WorkerPool - all busy: in-flight load is queued tasks plus pending (Issue #4095)", () => {
+  const a = new MockWorkerHandler();
+  const b = new MockWorkerHandler();
+  const c = new MockWorkerHandler();
+  a.setBusy(true);
+  b.setBusy(true);
+  c.setBusy(true);
+  const pool = new WorkerPool([a, b, c] as unknown as WorkerHandler[]);
+
+  // Load: a = 2 queued + 0 pending = 2; b = 0 + 1 = 1; c = 1 + 1 = 2.
+  // Pending alone would pick a (0), so this case pins the queue term; the
+  // previous case pins the pending term.
+  pool.queueTask(a as unknown as WorkerHandler, { id: 1 });
+  pool.queueTask(a as unknown as WorkerHandler, { id: 2 });
+  pool.queueTask(c as unknown as WorkerHandler, { id: 3 });
+  b.setPendingTaskCount(1);
+  c.setPendingTaskCount(1);
+
+  assertEquals(
+    pool.selectWorker(),
+    b as unknown as WorkerHandler,
+    "a queued task counts toward load alongside pending tasks",
+  );
 });
