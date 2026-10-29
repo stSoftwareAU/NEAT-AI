@@ -1,126 +1,41 @@
-# writeCreatures: never persist a memetic that references a missing synapse
+# Record checkpoint log evidence; keep the producer investigation open
 
 ## Summary
 
-Closes #4062.
+Part of #4062.
 
-`writeCreatures` exported each population member and wrote it as-is, so a
-creature whose `memetic` no longer matched its synapses (the `rocket@GRQ-21`
-checkpoint `.creatures/10.json`, "Memetic from id 206680568 to id 765492927 has
-no matching synapses") was persisted and later failed `ValidationError/MEMETIC`.
-`writeCreatures` now prunes dangling memetic weight rows and bias keys from the
-exported JSON (never the live creature) before writing, and logs a warning with
-the pruned count.
+PR #4100 records downstream log evidence following the checkpoint export prune
+already merged in PR #4064. It does not add that production fix or establish
+which mutation created the stale memetic. The review correction removes claims
+that a synthetic write hook identifies the producer, and clarifies the test
+comments to match their scope.
 
-## Spec
-
-### Intent and Rationale
-
-#3844 and #3849 stopped the known producers (neuron removal, `restoreSource`)
-leaving a dangling `memetic`, but #4062 shows a checkpoint can still carry one.
-The suspected producer is the deadline-abandoned background generation from
-#4052 that may still be mutating `neat.population` while the teardown checkpoint
-is written. The write boundary is the one place every producer must pass, so it
-holds the guarantee: a persisted creature never carries a memetic row naming a
-missing synapse or neuron.
-
-### Essential Design Decisions
-
-- Validate-before-write at the export boundary
-  (`pruneDanglingMemeticFromExport`, `src/compact/MemeticCleanup.ts`), the first
-  option the issue offers; the producing mutation is not pruned.
-- A weight row survives only when its `(fromUUID, toUUID)` pair is a synapse in
-  the same export; a bias key survives only when it names a neuron, `input-N` or
-  `output-N`. Every `ancestry[]` snapshot is checked the same way, since
-  validation walks them too.
-- Only the exported JSON is changed. The live creature is left alone, so the
-  prune never races a still-running abandoned generation.
-- A prune is logged through `getLogger().warn` with the count, so the corruption
-  stays visible instead of being silently repaired.
-
-### Undiscoverable Facts
-
-- The producing path could not be confirmed: `.creatures/10.json` is not
-  available to this run. The regression test simulates the race by mutating the
-  creature from the `writeTextFile` hook with `batchSize: 1`, so a later
-  member's export sees the stale memetic.
-- Because the live creature stays stale, later checkpoints repeat the prune (and
-  the warning) until the creature is replaced; GRQ no longer sees the
-  `rule=ValidationError/MEMETIC` repair line for these files.
-- The test file is named `*_test.ts` and imports the source modules by relative
-  path (as in `pr-summary-4056.md`); otherwise the mutation check reports "no
-  test imports this module".
-- A legacy map-shaped `weights` value is left untouched; only the array-of-rows
-  wire shape is pruned.
+Version bump: `deno.json` updated for this change; the merged commit records the
+final version.
 
 ## Evidence
 
-Tests (7 of the 10 tests pass on the base; the three that exercise the
-checkpoint write are red there):
-
-```text
-deno test -A test/creature/CheckpointWriteDanglingMemetic_test.ts
-ok | 10 passed | 0 failed
-```
-
-Base red check: with `src/creature/CheckpointWriter.ts` restored to the base
-`origin/Develop` (`f089c75f`),
-`deno test -A
-test/creature/CheckpointWriteDanglingMemetic_test.ts` reported
-`FAILED | 7 passed | 3 failed`. The three failures were "writeCreatures never
-writes a memetic row naming a missing synapse", "a stale-memetic checkpoint file
-passes core validation" and "writeCreatures warns with the pruned count…". The
-file was then restored.
-
-Full gate: `./quality.sh --rust-scorer-bin=<path> < /dev/null` — 9888 passed, 1
-failed, 41 ignored. The one failure is the unrelated flaky
-`PI: converges toward PI*input…` (`test/propagate/PI.ts:212`), which passed on
-two isolated re-runs. Discovery was not built (optional).
-
-```mermaid
-flowchart TD
-    A[writeCreatures] --> B[snapshot population #4052]
-    B --> C{disposed? #4050}
-    C -- yes --> S[skip, warn]
-    C -- no --> D[exportJSON]
-    D --> E[pruneDanglingMemeticFromExport]
-    E --> F{removed > 0?}
-    F -- yes --> W[warn with count, Issue 4062]
-    F -- no --> G[write file to .tmp dir]
-    W --> G
-    G --> H[swap .tmp into place]
-```
-
-Related issues:
-
-- #4062: Population checkpoint written with a dangling memetic reference
-  ('Memetic from id … has no matching synapses') on GRQ-21 — recurrence of #3844
-- #4052: Deadline-abandoned generation re-sorts neat.population in place while
-  the teardown checkpoint write is iterating it, so the checkpoint can duplicate
-  some members and drop others
-- #4050: evolveDir teardown dies on RangeError 'Invalid array length' in
-  CreatureExportBuilder after a deadline abandon — and wipes the checkpoint dir
-  first (recurrence of an earlier downstream-repo report)
-- #2349: Investigate creatureStore writing creature JSON files without a valid
-  semanticVersion
-- #3844: Removing a neuron must delete `memetic` — DiscoveryNeuronRemoval and
-  RestoreSource leave dangling references
-- #3849: restoreSource: prune the memetic references a restore leaves dangling
-  (Issue #3844)
-
-**Docs sweep** — grep: `pruneDanglingMemeticFromExport`, "dangling memetic",
-`pruneOrphanMemeticReferences`, `writeCreatures`, `ValidationError/MEMETIC`;
-section: `docs/PERFORMANCE_TUNING.md` (the checkpoint-write paragraph near line
-425); updated: `docs/PERFORMANCE_TUNING.md`, `CHANGELOG.md`, the
-`writeCreatures` doc comment and the `pruneDanglingMemeticFromExport` doc
-comment; siblings: `pruneOrphanMemeticReferences`,
-`cleanupMemeticForRemovedNeuron` (live-creature and removal-time prunes in
-`src/compact/MemeticCleanup.ts`, whose doc comments describe different call
-sites and remain true).
+- The current issue description requires either the host checkpoint or a
+  reproduction during a deadline-abandoned generation, plus core validation of
+  every file written through the identified path.
+- The owner's 22–23 October direction predates this branch's first commit
+  (2026-10-28T04:31:35Z) and still requires those criteria to be completed. The
+  log evidence alone does not fulfil them.
+- `gh pr view 4064 --json title,mergedAt,mergeCommit` confirms the checkpoint
+  fix merged on 2026-10-14T22:35:02Z as
+  `d7c8f72233098650148e1fe6bfd60a12aff59f35`.
+- `git diff origin/Develop...HEAD` before this review correction contained only
+  the summary and `deno.json`. The writer prune and its tests already exist on
+  this PR's base.
+- The previously recorded red check used `CheckpointWriter.ts` from `f089c75f`,
+  before PR #4064. It is historical evidence for that fix, not a red run against
+  PR #4100's base. Old gate totals and mutation results have been removed from
+  this PR's Test Plan.
 
 ## Closing evidence
 
-Source: the downstream production log repository's `Develop` branch (the
+Evidence recorded by the earlier PR #4100 run (not re-fetched in this review
+fix). Source: the downstream production log repository's `Develop` branch (the
 repository named in the issue), cloned with
 `git clone --single-branch --branch Develop --shallow-since=2026-10-10` (1155
 commits, 2026-10-10 to 2026-10-28). The fix first appears in a deployed build as
@@ -158,110 +73,75 @@ path.
 
 ## Reproduction
 
-- **symptom** — checkpoint `.creatures/10.json` from rocket@GRQ-21 (neat-ai
-  7.0.55) holds "Memetic from id 206680568 to id 765492927 has no matching
-  synapses".
-- **status** — `partial` — reason: the original file is unavailable and the
-  producing path is unconfirmed; the test reproduces the symptom (a memetic row
-  naming a synapse the creature no longer has, changed while `writeCreatures` is
-  mid-write) and was observed failing on the base and passing after the fix.
-- **regression test** —
-  `test/creature/CheckpointWriteDanglingMemetic_test.ts::writeCreatures never writes a memetic row naming a missing synapse (#4062)`
+- **symptom** — the issue quotes a missing-synapse memetic error from a numbered
+  host checkpoint on neat-ai 7.0.55.
+- **status** — `partial`: no original host checkpoint was loaded in this PR, and
+  no production mutation was identified. Log rotation does not establish whether
+  `.creatures/10.json` still exists on the host.
+- **synthetic coverage** —
+  `test/creature/CheckpointWriteDanglingMemetic_test.ts` directly filters a live
+  creature's synapses from a `writeTextFile` hook between exports. Its two-file
+  test checks memetic references with test helpers. Its separate core-validation
+  test creates the stale memetic before writing one file. Neither test runs a
+  deadline-abandoned generation through checkpoint writing and validates every
+  resulting file with `creatureValidate`.
+- `src/NEAT/NeatEvolution.ts::evolve` checks the abandon epoch after fitness and
+  before committing the population. Merely starting and abandoning it does not
+  demonstrate that a production mutation leaves a stale memetic.
 
 ## Acceptance Criteria
 
 <!-- vibe-spec-review inputs="diff+issue-body" -->
 
-- **met** — Identify the producing path. Load `.creatures/10.json` from
-  rocket@GRQ-21 if it still exists, or reproduce with a checkpoint write during
-  a deadline-abandoned generation — evidence:
-  test/creature/CheckpointWriteDanglingMemetic_test.ts:113 — reviewer: partial —
-  reason: the file is unavailable (the GRQ-21 log that held the line was
-  rotated); the second route the criterion offers is met by a deterministic
-  reproduction that mutates the creature from the `writeTextFile` hook while
-  `writeCreatures` is mid-write, red on the base and green at the head. The
-  reviewer's `partial` stands for the real abandoned generation, which is
-  simulated rather than observed, so the producer remains the #4052 suspect.
-- **met** — `writeCreatures` (or the producing mutation) never persists a
-  creature whose `memetic` references a missing synapse: either
-  validate-before-write, or prune at the mutation site — evidence:
-  src/creature/CheckpointWriter.ts:202, src/compact/MemeticCleanup.ts:223 —
-  reviewer: met
-- **met** — Regression test: run the identified path and assert every written
-  creature passes `ValidationError/MEMETIC` validation — evidence:
-  test/creature/CheckpointWriteDanglingMemetic_test.ts:113,
-  test/creature/CheckpointWriteDanglingMemetic_test.ts:188 — reviewer: met
-- **met** — Closing evidence: a week of downstream production logs from sampler
-  hosts with no `rule=ValidationError/MEMETIC` repair lines on the fixed
-  release, quoted with the search used — evidence: the Closing evidence section
-  below — reviewer: missing — reason: the reviewer saw only the diff and could
-  not read the downstream production log repository; the search was run here
-  against the `Develop` branch of that repository and is quoted below.
-- **unrequested** — Bias-key and `ancestry[]` pruning, and the pruned-count
-  warning — evidence: src/compact/MemeticCleanup.ts:259,
-  src/compact/MemeticCleanup.ts:271, src/creature/CheckpointWriter.ts:203 —
-  reviewer: unrequested — reason: validation checks biases and ancestry
-  snapshots as well as weight rows, so pruning rows alone would still persist a
-  creature that fails `ValidationError/MEMETIC`; the warning keeps the repair
-  visible.
+The two incomplete criteria have partial supporting evidence, but are marked
+`missing` here so this PR cannot close the issue.
 
-## Standards Review
-
-<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
-
-- **clean** — no material departures found. The repository has no
-  `CODING-STANDARDS.md`; `docs/ENGINEERING_PRINCIPLES.md` and `AGENTS.md` were
-  used as the standard (Australian English, logging via `getLogger()`, no timing
-  APIs or `Deno.env.set` in tests, unit tests under `test/`).
+- **missing** — Identify the producing path. Load the host checkpoint or
+  reproduce with a checkpoint write during a deadline-abandoned generation —
+  reviewer: partial — reason: neither route has been demonstrated. The synthetic
+  synapse filter does not identify a producing mutation.
+- **met** — `writeCreatures` never persists a memetic reference to a missing
+  synapse through the tested array-of-rows export path — evidence:
+  `src/creature/CheckpointWriter.ts::writeCreatures` calls
+  `src/compact/MemeticCleanup.ts::pruneDanglingMemeticFromExport` before
+  writing. This protection was merged in PR #4064; it changes the export,
+  leaving the live creature's stale memetic untouched.
+- **missing** — Regression test: run the identified path and assert every
+  written creature passes `ValidationError/MEMETIC` validation — reviewer:
+  partial — reason: the synthetic multi-file test and separate single-file
+  core-validation test do not jointly establish this criterion.
+- **met** — Closing evidence: a week of downstream sampler logs without
+  `rule=ValidationError/MEMETIC` repair lines on the fixed release, quoted with
+  the search used — evidence: Closing evidence above, subject to its snapshot
+  and rotation limits. This does not identify the producer.
 
 ## Test Plan
 
-- `test/creature/CheckpointWriteDanglingMemetic_test.ts` (10 tests, all pass):
-  "writeCreatures never writes a memetic row naming a missing synapse"; "a
-  stale-memetic checkpoint file passes core validation";
-  "pruneDanglingMemeticFromExport removes dangling rows and keeps valid ones"
-  (missing synapse, missing neuron, ancestry); "removes a row whose pair has no
-  synapse" (a bias is kept when only the weight is missing); "leaves a clean
-  export untouched"; "returns 0 when there is no memetic"; "leaves a legacy
-  map-shaped weights value untouched"; "writeCreatures warns with the pruned
-  count"; "does not warn when every memetic reference is valid"; "removes a row
-  whose UUID is not a string".
-- Red checks: `CheckpointWriter.ts` from the base `origin/Develop` (`f089c75f`)
-  → 7 passed / 3 failed ("writeCreatures never writes a memetic row naming a
-  missing synapse", "a stale-memetic checkpoint file passes core validation",
-  "writeCreatures warns with the pruned count…"). Each branch below was flipped
-  on purpose, the file run, then restored.
-- `./quality.sh --rust-scorer-bin=<path> < /dev/null`: 9888 passed, 1 failed
-  (unrelated flaky `PI: converges toward PI*input…`, passed on two isolated
-  re-runs), 41 ignored.
+Only explanatory comments changed in
+`test/creature/CheckpointWriteDanglingMemetic_test.ts`; test behaviour and
+production code are unchanged. No new regression test or red-on-base result is
+claimed by this review correction.
 
-Branch outcomes:
+Checks run for this review correction:
 
-- src/compact/MemeticCleanup.ts:225 — no memetic → returns 0; "returns 0 when
-  there is no memetic"; flipping went red (9 passed / 1 failed).
-- src/compact/MemeticCleanup.ts:249 — array `weights` pruned, a legacy map is
-  left alone; "leaves a legacy map-shaped weights value untouched"; flipping the
-  guard went red (9 passed / 1 failed).
-- src/compact/MemeticCleanup.ts:252 — weight row kept only when its string
-  `(fromUUID, toUUID)` pair is a synapse; "removes dangling rows and keeps valid
-  ones", "removes a row whose pair has no synapse"; making the filter `true`
-  went red (5 passed / 5 failed).
-- src/compact/MemeticCleanup.ts:252 — non-string UUID row removed; "removes a
-  row whose UUID is not a string"; dropping the string guard went red (4 passed
-  / 6 failed).
-- src/compact/MemeticCleanup.ts:265 — bias key naming no neuron deleted;
-  "removes dangling rows and keeps valid ones"; removing the delete went red (9
-  passed / 1 failed).
-- src/compact/MemeticCleanup.ts:271 — ancestry snapshots pruned recursively; the
-  ancestry case in "removes dangling rows and keeps valid ones"; removing the
-  recursion went red (7 passed / 3 failed).
-- src/creature/CheckpointWriter.ts:202 — export pruned before write;
-  "writeCreatures never writes a memetic row naming a missing synapse" and "a
-  stale-memetic checkpoint file passes core validation"; both failed on the
-  base.
-- src/creature/CheckpointWriter.ts:203 — prune count > 0 → warns;
-  "writeCreatures warns with the pruned count…"; forcing `false` went red (9
-  passed / 1 failed).
-- src/creature/CheckpointWriter.ts:203 — prune count 0 → no warning;
-  "writeCreatures does not warn when every memetic reference is valid"; forcing
-  the warning on would fail it.
+- `deno test -A test/creature/CheckpointWriteDanglingMemetic_test.ts`: 10 tests
+  at head, 10 passed, 0 failed; type checking also passed.
+- `deno fmt --check` on the changed summary and test file: passed.
+- `deno lint test/creature/CheckpointWriteDanglingMemetic_test.ts`: passed.
+- `markdownlint-cli2 docs/archive/pr-summaries/pr-summary-4062.md`: passed.
+- `git diff --check`: passed.
+- `timeout 900 ./quality.sh < /dev/null`: failed at preflight with "Native
+  rust_scorer is required (quality.sh default) but was not found." The full
+  suite did not run. No product change is made for this environment
+  prerequisite.
+
+Copies checked: the summary's Summary, Evidence, Reproduction, Acceptance
+Criteria and Test Plan; the test module, fault helper and write-hook comments;
+`docs/PERFORMANCE_TUNING.md`'s checkpoint paragraph. The manual describes the
+export protection, which remains true; the three test comments asserting or
+implying a production abandoned-generation reproduction were corrected. No
+production branches, call sites, dependencies or persisted formats changed.
+
+Skipped or unverified: the original host checkpoint, a real producing mutation,
+and an abandoned-generation reproduction with core validation of every written
+file. The downstream log searches above were retained from the earlier run.
