@@ -88,12 +88,14 @@ async function runFixture(body: string): Promise<FixtureResult> {
  * Build the fixture source. It arms the run watchdog, yields once so the
  * generation 1 heartbeat ticks, completes generations 1 and 2 (the second
  * re-arms to the hard cap), declares the `mutation` phase, prints the hard cap
- * and the busy-start instant, and then runs `tail`.
+ * and the busy-start instant, and then runs `tail`. `hardOffsetMS` is how long
+ * after arming the hard cap falls; the re-arm happens about 1100 ms in, so the
+ * re-armed handle has `hardOffsetMS - 1100` ms before its breach.
  */
-function fixture(tail: string): string {
+function fixture(tail: string, hardOffsetMS = 2_500): string {
   return `
 Deno.addSignalListener("SIGTERM", () => {});
-const hard = Date.now() + 2_500;
+const hard = Date.now() + ${hardOffsetMS};
 const w = armRunWatchdog({
   timeoutMinutes: 1,
   startMS: Date.now(),
@@ -158,8 +160,14 @@ Deno.test("EvolveRunWatchdogHeartbeat: a busy main thread in generation 2 is kil
 });
 
 Deno.test("EvolveRunWatchdogHeartbeat: a yielding main thread in generation 2 keeps its heartbeat age near one interval", async () => {
+  // The hard cap falls ~4900 ms after the re-arm, far above the 2500 ms bound,
+  // so a re-armed handle whose heartbeat timer never ticks reports an age near
+  // 4900 ms and fails the bound. A shorter window would pass either way.
   const result = await runFixture(
-    fixture("await new Promise((resolve) => setTimeout(resolve, 10_000));"),
+    fixture(
+      "await new Promise((resolve) => setTimeout(resolve, 20_000));",
+      6_000,
+    ),
   );
   assert(
     !result.guardFired,
@@ -176,7 +184,8 @@ Deno.test("EvolveRunWatchdogHeartbeat: a yielding main thread in generation 2 ke
     `breach line must name generation 2: ${result.stderr}`,
   );
   // The heartbeat ticks every default interval (1000 ms) while the loop yields,
-  // so the age at breach stays well under 2500 ms.
+  // so the age at breach stays well under 2500 ms, though ~4900 ms have passed
+  // since the re-arm.
   const age = heartbeatAgeMs(result.stderr);
   assert(
     age < 2_500,

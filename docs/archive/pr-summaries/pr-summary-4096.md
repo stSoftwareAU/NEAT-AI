@@ -8,11 +8,20 @@ breach line, so "blocked" versus "alive but over budget" is read off the line
 instead of assumed. `NeatEvolution` marks the generation phase (`fitness`,
 `sort`, `write-scores`, `breeding`, `mutation`, `pre-warm`, `deduplication`,
 otherwise `untracked`) through `Neat.markPhase`, which `evolveDir`, `evolveEnv`
-and `evolveRL` forward to the watchdog through `RunWatchdog.setPhase`. Closes
-#4096.
+and `evolveRL` forward to the watchdog through `RunWatchdog.setPhase`. A marker
+is cleared back to `untracked` when its work returns, so speciation,
+pre-selection and population assembly are reported as `untracked`, not as the
+phase before them. Part of #4096.
 
 Version bump: `VERSION` is not touched by this change; the merged commit records
 the final version.
+
+## Not closing #4096
+
+Two criteria stay open: the generation-11 root cause is neither identified nor
+excluded (`partial`), and the closing field evidence needs a deployed run on the
+released version (`missing`). This PR delivers the instrument that answers the
+first from the next breach line.
 
 ## Spec
 
@@ -154,30 +163,36 @@ issue).
   hard-coded list, phase cases, `heartbeatIntervalMS` and `setPhase` refusals
   asserting the `ConfigurationError` code.
 - `test/creature/EvolveRunWatchdogHeartbeat_test.ts` (new, 2 tests): generation
-  2 busy and yielding through `armRunWatchdog`.
+  2 busy and yielding through `armRunWatchdog`. The yielding case puts the hard
+  cap ~4900 ms after the re-arm against a 2500 ms bound; replacing the heartbeat
+  `setInterval` callback with a no-op turns it red (age 4889 ms).
 - `test/creature/EvolveRunWatchdog_test.ts`: four `setPhase` tests (forward,
   kept across re-arm, nothing after `disarm`, no-op when unarmed).
 - `test/creature/EvolveWatchdogWiring_test.ts`: one test per entry point
   (`evolveDir`, `evolveEnv`, `evolveRL`) asserting `fitness` then `mutation`
   reach the watchdog, that a late `markPhase` after the run reaches no handle,
   and that every generation emits exactly the ordered marker walk
-  `fitness,
-  untracked, sort, write-scores, breeding, mutation, pre-warm, deduplication,
+  `fitness, untracked, sort, write-scores, untracked, write-scores, untracked,
+  breeding, mutation, untracked, deduplication, pre-warm, deduplication,
   untracked, untracked`
-  (this pins every `markPhase` call in `NeatEvolution.ts`).
+  (this pins every `markPhase` call in `NeatEvolution.ts`, including the resets
+  to `untracked` after `mutator.mutate` and around speciation, and the
+  `deduplication` marker before `deDuplicator.perform`'s synchronous first
+  pass).
 - `test/NEAT/NeatPhaseObserver_test.ts` (new, 5 tests): ordering, no-observer
   no-op, clearing, throwing observer logged not thrown, a non-`Error` throw
   logged by its string form.
 - `test/creature/EvolveCleanupOnThrow_test.ts`: inline `armWatchdog` fake gained
   `setPhase() {}`; no assertion changed.
 - Changed expectation: in `test/NEAT/EventLoopWatchdog_test.ts`, the
-  kill-failure test now matches the breach text without its trailing newline
-  (the line now continues with the heartbeat suffix) and posts the full
-  8-byte-buffer message. Removed: `indexOf("...at generation 4\n")`. Required
-  by: "The breach line then reports `lastHeartbeatAgeMs=` and the in-flight
-  phase". The `failureAt > breachAt` order check and the `worker error:` stdout
-  check are kept unchanged, so the test still asserts the kill-failure line
-  follows the breach text.
+  kill-failure test posts the full 8-byte-buffer message and matches the new
+  ending of the breach line, `inFlightPhase=untracked heartbeatIntervalMS=100`
+  followed by a newline, with the kill-failure line required after it. Removed:
+  `indexOf("...at generation 4\n")`, replaced by the suffix-plus-newline check.
+  Required by: "The breach line then reports `lastHeartbeatAgeMs=` and the
+  in-flight phase". The `worker error:` stdout check is kept. Red check:
+  dropping the `\n` from `breachText` in `src/NEAT/EventLoopWatchdogWorker.ts`
+  turns this test red.
 - Red checks against the base branch's production code (a clean `origin/Develop`
   worktree with the two new test files copied in, `--no-check`): 9 failed, 11
   passed. The failures are the busy and yielding cases in both files, both phase

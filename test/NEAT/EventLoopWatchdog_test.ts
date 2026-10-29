@@ -292,17 +292,24 @@ worker.postMessage({
     },
   );
   assertEquals(result.code, 0, `stderr: ${result.stderr}`);
-  // The breach text is a prefix of the full line, which now carries the
-  // liveness suffix after it, so match the text without its trailing newline.
-  const breachAt = result.stderr.indexOf(
-    "[Neat] watchdog-test failed-kill breach at generation 4",
+  // The line carries the liveness suffix after the breach text and must end in
+  // a newline, so the kill failure that follows starts on its own line.
+  const breachPrefix =
+    "[Neat] watchdog-test failed-kill breach at generation 4 " +
+    "lastHeartbeatAgeMs=";
+  const breachAt = result.stderr.indexOf(breachPrefix);
+  assert(breachAt >= 0, `breach line missing from stderr: ${result.stderr}`);
+  const suffix = "inFlightPhase=untracked heartbeatIntervalMS=100\n";
+  const suffixAt = result.stderr.indexOf(suffix, breachAt);
+  assert(
+    suffixAt >= 0,
+    `breach line must end with the suffix and a newline: ${result.stderr}`,
   );
   const failureAt = result.stderr.indexOf(
     "[Neat] event-loop watchdog could not kill the process: staged kill failure\n",
   );
-  assert(breachAt >= 0, `breach line missing from stderr: ${result.stderr}`);
   assert(
-    failureAt > breachAt,
+    failureAt >= suffixAt + suffix.length,
     `kill failure must follow the breach line: ${result.stderr}`,
   );
   // The failure is rethrown, so the Worker reports it rather than going quiet.

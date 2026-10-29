@@ -432,6 +432,8 @@ export async function evolve(
   neat.markPhase("write-scores");
   const writeScoresStartMs = Date.now();
   const writeScoresPromise = neat.writeScores(neat.population);
+  // Issue #4096 (PR #4101 review): speciation below is not write-scores work.
+  neat.markPhase("untracked");
 
   // Issue #2274: Time speciation phase (Genus.addCreature for each creature)
   const speciationStartMs = Date.now();
@@ -463,7 +465,10 @@ export async function evolve(
 
   // Issue #2315: Await writeScores to ensure all file writes complete before
   // proceeding. Timing captures the full I/O cost (overlapped with speciation).
+  // Issue #4096: only the await is write-scores time; clear it once it settles.
+  neat.markPhase("write-scores");
   await writeScoresPromise;
+  neat.markPhase("untracked");
   const writeScoresMs = Date.now() - writeScoresStartMs;
   // Issue #2312: Snapshot after writeScores+speciation — both now complete
   const writeScoresUtilisation = captureUtilisationSnapshot(
@@ -1060,6 +1065,8 @@ export async function evolve(
     parallelBreeding.lastParentBaselines,
   );
   mutator.mutate(newPopulation);
+  // Issue #4096 (PR #4101 review): selection, assembly and trimming follow.
+  neat.markPhase("untracked");
   const mutationMs = Date.now() - mutationStartMs;
 
   // Issue #3932: screen the surplus down to the population budget, after
@@ -1245,6 +1252,9 @@ export async function evolve(
     //   • At worst, a few replacement templates are compiled lazily during
     //     fitness — a harmless cache overshoot.
     const deduplicationStartMs = Date.now();
+    // Issue #4096 (PR #4101 review): perform()'s synchronous first pass (UUIDs,
+    // genus) runs before its first await, so the phase is named before the call.
+    neat.markPhase("deduplication");
     const dedupPromise = deDuplicator.perform(neat.population);
 
     // Issue #2287: Pre-warm WASM compilation cache before the next generation's

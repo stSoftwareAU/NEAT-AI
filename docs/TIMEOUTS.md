@@ -435,10 +435,12 @@ measurement that tells the two apart.
   `untracked` (outside any tracked phase, for example checkpoint or bookkeeping
   between generations), `fitness`, `sort`, `write-scores`, `breeding`,
   `mutation`, `pre-warm` or `deduplication`. `NeatEvolution` sets it per
-  generation through `neat.markPhase`, and `RunWatchdog.setPhase` forwards it.
-  Phases can overlap in time, so the field names the most recently entered
-  phase, not necessarily the one that is stuck. The list is
-  `EVENT_LOOP_WATCHDOG_PHASES` in
+  generation through `neat.markPhase`, and `RunWatchdog.setPhase` forwards it. A
+  marker is cleared back to `untracked` when its work returns, so spans between
+  tracked phases (speciation, pre-selection, population assembly) read
+  `untracked`. Dedup and write-scores can overlap other work in time, so the
+  field names the most recently entered phase, not necessarily the one that is
+  stuck. The list is `EVENT_LOOP_WATCHDOG_PHASES` in
   [`src/NEAT/EventLoopWatchdog.ts`](../src/NEAT/EventLoopWatchdog.ts).
 - **`heartbeatIntervalMS`** is the interval in force, so the age can be read
   against it.
