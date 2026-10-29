@@ -96,7 +96,7 @@ The remaining mutants are in test and bench code, which no test exercises:
   production code and not imported by any test
 - `test/NEAT/PoolBorrowing.ts:38`,
   `test/NEAT/TrainingSpreadsAcrossHeavyWorkers.ts:37-114`,
-  `test/multithreading/WorkerHandler.ts:154-175`,
+  `test/multithreading/WorkerHandler.ts:154-230`,
   `test/multithreading/WorkerPool.ts:30` and `:494-529` exempt (untestable):
   these are test helpers and the test bodies themselves; a mutant there is
   checked by the assertions it supports, which the source mutants above show are
@@ -126,11 +126,14 @@ The remaining mutants are in test and bench code, which no test exercises:
 - **met** — Regression test: quarantining a worker with 3 pending training tasks
   produces 3 `WorkerTaskCancelledError`s, each carrying its own task's uuid in
   `reason`. — evidence:
-  `test/workers/WorkerTaskCancellation.ts::quarantine names each labelled task as its own collateral, not the first task's reason (Issue #4095)`;
-  the production label is asserted in
+  `test/multithreading/WorkerHandler.ts::WorkerHandler.trainTracked: a quarantine names each training task after its own creature uuid (Issue #4095)`
+  (real direct-mode handler, 3 `trainTracked` tasks quarantined, 3
+  `WorkerTaskCancelledError`s each naming only its own uuid); the base-class
+  mechanism is in `test/workers/WorkerTaskCancellation.ts`, and the label passed
+  by `scheduleTraining` is asserted in
   `test/NEAT/TrainingSpreadsAcrossHeavyWorkers.ts` — reviewer: partial — reason:
-  the reviewer found no test tying `scheduleTraining`'s dispatch to the uuid
-  label; the spread test now asserts the label passed to `trainTracked`
+  the earlier rounds found only echo-task and stub evidence; the real
+  `trainTracked` test now covers the `label` hand-off to `makePromiseDeferred`
 
 ## Standards Review
 
@@ -146,17 +149,18 @@ The remaining mutants are in test and bench code, which no test exercises:
 ## Test Plan
 
 - `deno test -A --no-check test/NEAT/TrainingSpreadsAcrossHeavyWorkers.ts test/multithreading/WorkerPool.ts test/multithreading/WorkerPoolQuarantine.ts test/multithreading/WorkerHandler.ts test/NEAT/PoolBorrowing.ts test/NEAT/StuckTrainingTaskCancelled.ts test/workers/WorkerTaskCancellation.ts`:
-  passed on the pre-final head per each executor run; re-run on the final head
-  below.
+  62 passed, 0 failed on the final head (7 files).
 - Added: `test/multithreading/WorkerPool.ts` (tie/least-pending;
   queue-plus-pending), `test/NEAT/TrainingSpreadsAcrossHeavyWorkers.ts`,
   `test/workers/WorkerTaskCancellation.ts` (labelled and unlabelled quarantine),
-  `test/multithreading/WorkerHandler.ts` (real handler: `discover` task named
-  after quarantine).
+  `test/multithreading/WorkerHandler.ts` (real handler: `discover` and three
+  `trainTracked` tasks each named after their own uuid on quarantine).
 - Red checks: queue-only ranking → pool tie test and spread test red;
   `cancelAllTasks` ignoring the label → labelled quarantine test red; dropping
   `uuid` at `NeatScheduling.ts` `trainTracked` call → spread test red on the
-  label assertion.
+  label assertion; dropping `label` at the `makePromiseDeferred` call in
+  `WorkerHandler.trainTracked` → the real-handler training test red
+  (`task 0 names its own creature <uuid>`).
 - Stubs given `getPendingTaskCount()` (needed for the all-busy path):
   `test/NEAT/PoolBorrowing.ts`, `test/multithreading/WorkerPoolQuarantine.ts`,
   `bench/WorkStealingPool.ts`. No assertions removed from existing tests.

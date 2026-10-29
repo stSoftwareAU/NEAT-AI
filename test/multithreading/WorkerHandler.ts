@@ -174,3 +174,57 @@ Deno.test("WorkerHandler.discover: a quarantine names the discovery task after i
   );
   handler.terminate();
 });
+
+Deno.test("WorkerHandler.trainTracked: a quarantine names each training task after its own creature uuid (Issue #4095)", async () => {
+  const handler = new WorkerHandler(
+    await Deno.makeTempDir(),
+    "MSE",
+    true,
+  );
+  await handler.waitUntilReady();
+
+  const creatures = [0, 1, 2].map((i) =>
+    new Creature(2, 1, { layers: [{ count: 2 + i }] })
+  );
+  const uuids = creatures.map((c) => CreatureUtil.makeUUID(c));
+  assertEquals(
+    new Set(uuids).size,
+    3,
+    "the creatures are distinct, so their uuids are too",
+  );
+
+  // Quarantine before the direct-mode worker can answer, so all three
+  // training tasks are still in flight and fail as collateral.
+  const reason = "the culprit never returned";
+  const tracked = creatures.map((c, i) =>
+    handler.trainTracked(c, {} as TrainOptions, uuids[i])
+  );
+  handler.quarantine(reason);
+
+  // Settle every task first so a failing assertion cannot leave the others'
+  // rejections unhandled.
+  const settled = await Promise.allSettled(tracked.map((t) => t.response));
+  for (let i = 0; i < tracked.length; i++) {
+    const outcome = settled[i];
+    assertEquals(outcome.status, "rejected", `task ${i} is cancelled`);
+    const error = (outcome as PromiseRejectedResult).reason;
+    assert(error instanceof WorkerTaskCancelledError);
+    assert(
+      error.reason.includes(uuids[i]),
+      `task ${i} names its own creature ${uuids[i]}: ${error.reason}`,
+    );
+    assert(
+      error.reason.includes(reason),
+      `task ${i} keeps the quarantine reason: ${error.reason}`,
+    );
+    for (let j = 0; j < uuids.length; j++) {
+      if (j !== i) {
+        assert(
+          !error.reason.includes(uuids[j]),
+          `task ${i} does not name creature ${uuids[j]}: ${error.reason}`,
+        );
+      }
+    }
+  }
+  handler.terminate();
+});
