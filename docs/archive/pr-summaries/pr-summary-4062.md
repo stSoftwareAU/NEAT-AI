@@ -68,8 +68,8 @@ Limits: the logs are periodic snapshots that rotate, so a repair line written
 and rotated out between two snapshots would not be seen; the loads that would
 log one do appear (`copyNetworks` lines appear in the current snapshots, for
 example `GRQ-13-rocket.log`, `GRQ-18-rocket.log`, `GRQ-21-rocket.log`). This is
-an absence of the line on the fixed release, not a confirmation of the producing
-path.
+an absence of the line in the sampled logs on the fixed release; events between
+snapshots remain unverified.
 
 ## Reproduction
 
@@ -96,20 +96,18 @@ path.
 The two incomplete criteria have partial supporting evidence, but are marked
 `missing` here so this PR cannot close the issue.
 
-- **missing** — Identify the producing path. Load the host checkpoint or
-  reproduce with a checkpoint write during a deadline-abandoned generation —
-  reviewer: partial — reason: neither route has been demonstrated. The synthetic
-  synapse filter does not identify a producing mutation.
+- **missing** — The original host checkpoint and a production reproduction
+  remain unverified. The synthetic synapse filter exercises the write boundary
+  without establishing how the stale memetic arose.
 - **met** — `writeCreatures` never persists a memetic reference to a missing
   synapse through the tested array-of-rows export path — evidence:
   `src/creature/CheckpointWriter.ts::writeCreatures` calls
   `src/compact/MemeticCleanup.ts::pruneDanglingMemeticFromExport` before
   writing. This protection was merged in PR #4064; it changes the export,
   leaving the live creature's stale memetic untouched.
-- **missing** — Regression test: run the identified path and assert every
-  written creature passes `ValidationError/MEMETIC` validation — reviewer:
-  partial — reason: the synthetic multi-file test and separate single-file
-  core-validation test do not jointly establish this criterion.
+- **missing** — Core validation of every checkpoint file from a production
+  reproduction remains unverified. Coverage consists of a synthetic multi-file
+  test and a separate single-file core-validation test.
 - **met** — Closing evidence: a week of downstream sampler logs without
   `rule=ValidationError/MEMETIC` repair lines on the fixed release, quoted with
   the search used — evidence: Closing evidence above, subject to its snapshot
