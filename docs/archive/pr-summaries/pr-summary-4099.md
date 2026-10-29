@@ -9,7 +9,10 @@ more pass while a settled result is queued, so `evolve()` merges it. Where
 SIGTERM stop, or a result that settles while the teardown persists), the bounded
 teardown logs each leftover result by ID and drops it. A training or discovery
 task still in flight when a SIGTERM stop breaks the loop is logged as abandoned
-by ID at teardown. Closes #4099.
+by ID at teardown. The same two calls run in the failure cleanup of `evolveDir`,
+`evolveEnv` and `evolveRL`, so a run that throws names its tasks too.
+`Training <id> scheduled` and `Training <id> completed` are both logged whatever
+`verbose` says. Closes #4099.
 
 Version bump: `deno.json` `version` updated for this change; the merged commit
 records the final version.
@@ -60,10 +63,14 @@ records the final version.
 - `deno.json` carries only the version bump; `deno.lock` and the dependency pins
   are unchanged against `Develop`.
 - `Training <id> completed` used to be logged only when `config.verbose` was on
-  (`ProcessCompletedResults.ts`), so a merged task in a default run showed
-  `scheduled` with no terminal line. It is now logged unconditionally, like the
-  discard, abandon and failed lines. This adds one `info` line per merged
-  training task to non-verbose logs.
+  (`ProcessCompletedResults.ts`), and `Training <id> scheduled` was verbose-only
+  too (`NeatScheduling.ts`, the `scheduleTraining` dispatch). A default run
+  therefore showed neither line, and a verbose run already showed both; the
+  `completed` change alone had no effect on a `scheduled`-without-terminal
+  window and only added `completed` lines to non-verbose logs. Both lines are
+  now unconditional, like the discard, abandon and failed lines, so a
+  scheduled-vs-terminal count over a default-run log pairs up. This adds two
+  `info` lines per training task to non-verbose logs.
 
 ## Evidence
 
@@ -124,9 +131,15 @@ flowchart TD
   and the `evolveDir` test above assert `Training <id> completed` with `verbose`
   off, so a merged task now has a terminal line in a default run (red check:
   restoring the `if (neat.config.verbose)` gate in `ProcessCompletedResults.ts`
-  fails both). — reviewer: met. Not covered: a failed _discovery_ stub can still
-  log a second line (it carries no marker; the criterion is worded for training
-  tasks, and marking it needs a new field on the worker response type).
+  fails both). The failure exit path is covered too: `evolveDir`, `evolveEnv`
+  and `evolveRL` call `abandonInFlightAtTeardown()` and
+  `discardUnprocessedResults()` in their Issue #4072 failure cleanup, tested by
+  `test/creature/EvolveFailureNamesInFlightTasks_test.ts` (3 tests at head, one
+  per entry point; red against the unfixed `CreatureTraining.ts`: 3 failed with
+  `the in-flight task must be named as abandoned`). — reviewer: met. Not
+  covered: a failed _discovery_ stub can still log a second line (it carries no
+  marker; the criterion is worded for training tasks, and marking it needs a new
+  field on the worker response type).
 - **met** — Regression test: stub a worker whose training promise resolves
   **after** the final generation's `processCompletedResults` but before
   `finishUp`. … assert that (a) the trained creature reaches the returned
@@ -201,6 +214,19 @@ flowchart TD
   alone. Branch outcomes: the `abandoned > 0` guard forced to `true` fails the
   nothing-in-flight test; removing the `discoveryInProgress.clear()` fails the
   discovery assertion.
+- `test/creature/EvolveFailureNamesInFlightTasks_test.ts` (3 tests at head):
+  each entry point is failed through `deps.onNeatReady` (`neat.evolve` rejects)
+  with a never-settling `trainingInProgress` entry and a result queued in
+  `trainingComplete`; asserts the original error is rethrown, the in-flight task
+  is logged `abandoned`, the queued result `discarded at teardown`, and both
+  collections are empty. Red check: with `CreatureTraining.ts` restored to the
+  prior commit, `0 passed | 3 failed`. Branch outcomes: the abandon call and the
+  discard call are each named by their own log line, so deleting either one
+  fails the matching assertion in all three tests. Entry points checked: the
+  failure `finally` of `evolveDir`, `evolveEnv` and `evolveRL`. The `scheduled`
+  line is a log-only change with no test of its own; the scheduling and teardown
+  test files (`test/NEAT/` and `test/creature/` neighbours of the files above)
+  were re-run on the head: 74 passed, 0 failed.
 - Not done: a mutation-style red check of each new test against the unfixed
   code; the new `finishUp` tests that the fix is meant to turn green are
   expected to fail against the base `Neat.ts` by reading it, not by observed run
@@ -210,12 +236,12 @@ flowchart TD
   option, so omission fails type-check); the discard option is exercised by the
   teardown unit test, and the merge route by the `evolveDir` test above.
   `evolveEnv`/`evolveRL` share `finishUp()` and the teardown but have no
-  end-to-end late-result test of their own.
+  end-to-end late-result test of their own (their failure path is tested above).
 - Docs: `docs/TIMEOUTS.md` teardown description updated (the naming pass now
-  sits between worker termination and the replay drain); `CHANGELOG.md` entry
-  added. Greps for `finishUp`, `cleanUpDelayCount`, `trainingComplete`,
-  `teardown` over `README.md`, `docs/` (excluding archive) and `src` doc
-  comments found no other stale sentence.
+  sits between worker termination and the replay drain, and the failure cleanup
+  makes the same calls); `CHANGELOG.md` entry added. Greps for `finishUp`,
+  `cleanUpDelayCount`, `trainingComplete`, `teardown` over `README.md`, `docs/`
+  (excluding archive) and `src` doc comments found no other stale sentence.
 
 ## Mutation check: changed lines are pinned
 

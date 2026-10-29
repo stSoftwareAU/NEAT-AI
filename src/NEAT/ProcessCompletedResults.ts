@@ -43,7 +43,8 @@ export function processCompletedResults(
 
     const json = r.train.creature;
     // Issue #4099: the terminal line for a merged training task is logged
-    // whatever `verbose` says, so a task never shows `scheduled` alone.
+    // whatever `verbose` says. `scheduled` is unconditional too (NeatScheduling),
+    // so the two counts match in a default run.
     getLogger().info(
       `Training ${blue(r.train.ID)} completed ${
         r.duration ? "after " + format(r.duration, { ignoreZero: true }) : ""

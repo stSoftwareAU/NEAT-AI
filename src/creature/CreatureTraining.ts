@@ -957,6 +957,16 @@ export async function evolveDir(
         const worker = workers[index];
         runFailureCleanup("evolveDir", () => worker.terminate());
       }
+      // Issue #4099: name the tasks the failed run leaves behind, so each
+      // still gets a terminal line (a terminated worker never settles them).
+      runFailureCleanup(
+        "evolveDir",
+        () => neatForCleanup?.abandonInFlightAtTeardown(),
+      );
+      runFailureCleanup(
+        "evolveDir",
+        () => neatForCleanup?.discardUnprocessedResults(),
+      );
       runFailureCleanup(
         "evolveDir",
         () =>
@@ -1391,6 +1401,16 @@ export async function evolveEnv<S, A>(
       // Issue #4072: a run that failed mid-way must not leak its population,
       // its champion or the process-global caches. Each step is isolated, so a
       // cleanup error is logged and never masks the original one.
+      // Issue #4099: name the tasks the failed run leaves behind, so each
+      // still gets a terminal line (a terminated worker never settles them).
+      runFailureCleanup(
+        "evolveEnv",
+        () => neatForCleanup?.abandonInFlightAtTeardown(),
+      );
+      runFailureCleanup(
+        "evolveEnv",
+        () => neatForCleanup?.discardUnprocessedResults(),
+      );
       runFailureCleanup(
         "evolveEnv",
         () =>
@@ -2144,6 +2164,16 @@ export async function evolveRL<S, A>(
       // its champion or the process-global caches. Each step is isolated, so a
       // cleanup error is logged and never masks the original one.
       runFailureCleanup("evolveRL", () => workerPool?.terminate());
+      // Issue #4099: name the tasks the failed run leaves behind, so each
+      // still gets a terminal line (a terminated worker never settles them).
+      runFailureCleanup(
+        "evolveRL",
+        () => neatForCleanup?.abandonInFlightAtTeardown(),
+      );
+      runFailureCleanup(
+        "evolveRL",
+        () => neatForCleanup?.discardUnprocessedResults(),
+      );
       runFailureCleanup(
         "evolveRL",
         () =>

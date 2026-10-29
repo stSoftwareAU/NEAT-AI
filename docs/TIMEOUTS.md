@@ -169,7 +169,9 @@ still in flight (an interrupted SIGTERM stop breaks the loop before any abandon
 runs) is logged by task ID as abandoned, and any completed result that was never
 merged — including one that settled while the persist was awaiting — is logged
 by task ID as discarded (Issue #4099). Neither is part of the evolved state, so
-neither gates the persist.
+neither gates the persist. A run whose generation throws never reaches this
+teardown; its failure cleanup (Issue #4072) makes the same two calls after
+terminating the workers, so those tasks are named there too.
 
 Issue #4061 narrows what the restore step may hand back. Each entry point
 (`evolveDir`, `evolveEnv`, `evolveRL`) validates the caller's creature on entry
