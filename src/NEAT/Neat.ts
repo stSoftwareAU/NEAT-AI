@@ -835,6 +835,22 @@ export class Neat {
       );
       return false;
     }
+    // Issue #4099: a result that settled after the last generation's
+    // processCompletedResults() is in neither in-progress map, so the checks
+    // above miss it. Wait one more pass: the loop calls evolve() again, which
+    // merges and clears the arrays, so this cannot spin. The over-run path
+    // never calls evolve() again, so it is excluded and discards at teardown.
+    if (
+      this.terminationReason !== "overrun" &&
+      (this.trainingComplete.length > 0 || this.discoveryComplete.length > 0)
+    ) {
+      getLogger().info(
+        `[Neat] Waiting for ${
+          this.trainingComplete.length + this.discoveryComplete.length
+        } settled result(s) (training: ${this.trainingComplete.length}, discovery: ${this.discoveryComplete.length}) to be merged before finishing`,
+      );
+      return false;
+    }
     return true;
   }
 
@@ -1172,6 +1188,93 @@ export class Neat {
     this.trainingInProgress.delete(uuid);
     this.trainingDeadlines.delete(uuid);
     return true;
+  }
+
+  /**
+   * Issue #4099: give every training and discovery task still in flight at
+   * teardown a terminal line. An interrupted (SIGTERM) stop breaks out of the
+   * evolve loop before `finishUp()` or any abandon runs, so a scheduled task
+   * can be left in {@link trainingInProgress} / {@link discoveryInProgress}
+   * with no completed, failed or abandoned line. The workers have been
+   * terminated by now, which drops their pending requests, so these tasks will
+   * never settle: each is logged by task ID and its bookkeeping cleared.
+   * {@link abandonEpoch} is bumped so a promise that does settle later is
+   * discarded rather than re-inflating the complete queues.
+   *
+   * Hard-deadline and first-generation abandons already cleared the maps
+   * ({@link shedInFlightWork}), so those tasks are not named twice.
+   *
+   * @returns the number of in-flight tasks abandoned
+   */
+  abandonInFlightAtTeardown(): number {
+    let abandoned = 0;
+    for (const uuid of this.trainingInProgress.keys()) {
+      getLogger().warn(
+        `Training ${
+          uuid.substring(Math.max(0, uuid.length - 8))
+        } abandoned at teardown: the run ended before it settled`,
+      );
+      abandoned++;
+    }
+    for (const uuid of this.discoveryInProgress.keys()) {
+      getLogger().warn(
+        `Discovery ${
+          uuid.substring(Math.max(0, uuid.length - 8))
+        } abandoned at teardown: the run ended before it settled`,
+      );
+      abandoned++;
+    }
+    if (abandoned > 0) {
+      this.trainingInProgress.clear();
+      this.trainingDeadlines.clear();
+      this.trainingTasks.clear();
+      this.discoveryInProgress.clear();
+      this.abandonEpoch++;
+    }
+    return abandoned;
+  }
+
+  /**
+   * Issue #4099: drop every completed result that was never merged, logging
+   * each one by task ID. Called at teardown, after the last `finishUp()` has
+   * returned, so a result that settled too late to be merged is reported
+   * rather than silently lost. Results are still queued here when the run
+   * ended without a final `evolve()` pass to merge them: the over-run and
+   * hard-deadline paths, an interrupted (SIGTERM) stop, and a result that
+   * settled while the teardown was persisting. The normal path merges them
+   * first. Call {@link abandonInFlightAtTeardown} first so a task still in
+   * flight cannot settle into the queues being cleared here.
+   *
+   * A failed training task is queued as a stub with `train.error === Infinity`
+   * (see `recordTrainingTaskFailure`). That stub has already logged its own
+   * `Training failed for creature …` terminal line, so it is neither logged nor
+   * counted here, though it is still cleared. `processCompletedResults` skips
+   * the same entries.
+   *
+   * @returns the number of results discarded
+   */
+  discardUnprocessedResults(): number {
+    let discarded = 0;
+    for (const r of this.trainingComplete) {
+      if (r.train !== undefined && !Number.isFinite(r.train.error)) continue;
+      getLogger().warn(
+        `Training ${
+          r.train?.ID ?? "unknown"
+        } discarded at teardown: it settled after the last generation's results were processed`,
+      );
+      discarded++;
+    }
+    for (const r of this.discoveryComplete) {
+      getLogger().warn(
+        `Discovery ${
+          r.discover?.ID ?? "unknown"
+        } discarded at teardown: it settled after the last generation's results were processed`,
+      );
+      discarded++;
+    }
+    this.trainingComplete.length = 0;
+    this.discoveryComplete.length = 0;
+    return discarded;
   }
 
   /**

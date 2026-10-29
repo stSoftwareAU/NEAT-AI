@@ -144,7 +144,8 @@ with a wedge in the teardown as with one in the loop.
 
 [`src/creature/BoundedEvolveTeardown.ts`](../src/creature/BoundedEvolveTeardown.ts)
 is the single teardown shared by `evolveDir`, `evolveEnv` and `evolveRL`. It
-runs three steps, in this order:
+runs three steps, in this order (with a short naming pass between steps 2 and 3,
+described after the list):
 
 1. **Persist first.** The champion restore and the `creatureStore` write run
    _before_ anything that can block, so the evolved improvement is on disk even
@@ -162,6 +163,15 @@ runs three steps, in this order:
    signalled to abort (`abandonInFlightReplay()`) and left running. An uncapped
    run (`timeoutMinutes` unset) keeps the unbounded Issue #1509 wait — with no
    deadline there is nothing to be late for.
+
+Between steps 2 and 3, once the workers are down, a training or discovery task
+still in flight (an interrupted SIGTERM stop breaks the loop before any abandon
+runs) is logged by task ID as abandoned, and any completed result that was never
+merged — including one that settled while the persist was awaiting — is logged
+by task ID as discarded (Issue #4099). Neither is part of the evolved state, so
+neither gates the persist. A run whose generation throws never reaches this
+teardown; its failure cleanup (Issue #4072) makes the same two calls after
+terminating the workers, so those tasks are named there too.
 
 Issue #4061 narrows what the restore step may hand back. Each entry point
 (`evolveDir`, `evolveEnv`, `evolveRL`) validates the caller's creature on entry
@@ -189,14 +199,16 @@ entry point's outer `finally` removes its SIGTERM listener on every exit, and
 throws no longer swallows a supervisor's SIGTERM. When the run fails before the
 success path's teardown has completed, that `finally` also terminates the
 `WorkerHandler`s (`evolveDir`) or the `EpisodeWorkerPool` (`evolveRL`, when one
-was created), disposes the population except the caller's creature, disposes the
-champion and releases the process-global evolve caches. `evolveEnv` creates no
-workers. Each of those cleanup steps is isolated: an error is logged and never
-replaces the error that caused the failure, which still propagates to the
-caller. The Issue #4061 restore still runs first, before the population is
-disposed. The success and failure paths release the same resources; the failure
-path differs only in running that release when the success teardown has not
-completed.
+was created), names the tasks the run leaves behind
+(`abandonInFlightAtTeardown()` for those in flight, then
+`discardUnprocessedResults()` for results queued but never merged), disposes the
+population except the caller's creature, disposes the champion and releases the
+process-global evolve caches. `evolveEnv` creates no workers. Each of those
+cleanup steps is isolated: an error is logged and never replaces the error that
+caused the failure, which still propagates to the caller. The Issue #4061
+restore still runs first, before the population is disposed. The success and
+failure paths release the same resources; the failure path differs only in
+running that release when the success teardown has not completed.
 
 The budget defaults to `DEFAULT_TEARDOWN_STEP_BUDGET_MS` (5 s) per step. The
 teardown always emits **one summary line** naming what it left behind, so the

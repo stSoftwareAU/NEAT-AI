@@ -1,11 +1,18 @@
 import { assert, assertEquals } from "@std/assert";
+import { getTag } from "@stsoftware/tags/mod";
+import { Creature } from "@creature";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Neat } from "@neat/Neat.ts";
-import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
+import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
+import {
+  type ResponseData,
+  WorkerHandler,
+} from "@multithreading/workers/WorkerHandler.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
 } from "@architecture/DataSet.ts";
+import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
 
 /**
  * Unit tests for Neat.finishUp method.
@@ -501,6 +508,486 @@ Deno.test("finishUp: the additional-generation wait clears without another evolv
       "the additional-generation counter must be drained once the wait clears",
     );
   } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+// ============================================================================
+// Issue #4099: a result that settles after the last processCompletedResults()
+// ============================================================================
+
+/**
+ * Record what the code under test logs, separating warnings, then restore the
+ * previous logger. Installed after construction, as the Neat constructor
+ * replaces the logger from its resolved config.
+ */
+function captureLog(): {
+  warnings: string[];
+  lines: string[];
+  restore: () => void;
+} {
+  const warnings: string[] = [];
+  const lines: string[] = [];
+  const previous = getLogger();
+  const recorder: Logger = {
+    debug: (...args: unknown[]) => lines.push(args.join(" ")),
+    info: (...args: unknown[]) => lines.push(args.join(" ")),
+    warn: (...args: unknown[]) => {
+      warnings.push(args.join(" "));
+      lines.push(args.join(" "));
+    },
+    error: (...args: unknown[]) => lines.push(args.join(" ")),
+  };
+  setLogger(recorder);
+  return { warnings, lines, restore: () => setLogger(previous) };
+}
+
+/** A training result as `recordTrainingComplete` would have pushed it. */
+function settledTraining(taskID: number, ID: string): ResponseData {
+  return {
+    taskID,
+    duration: 1,
+    train: { ID, creature: {} as never, error: 0.5 },
+  } as never;
+}
+
+/** A discovery result as `recordDiscoveryComplete` would have pushed it. */
+function settledDiscovery(taskID: number, ID: string): ResponseData {
+  return {
+    taskID,
+    duration: 1,
+    discover: { ID, creature: {} as never, config: {} as never },
+  } as never;
+}
+
+Deno.test("finishUp: waits while a settled training result is unmerged, then finishes (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // Settled after the last processCompletedResults(): nothing is in progress.
+    neat.trainingComplete.push(settledTraining(1, "abc12345"));
+
+    assertEquals(
+      neat.finishUp(),
+      false,
+      "a settled training result that has not been merged must hold finishUp open",
+    );
+
+    // evolve() runs processCompletedResults(), which clears the array; stand in for it.
+    neat.trainingComplete.length = 0;
+
+    assertEquals(
+      neat.finishUp(),
+      true,
+      "once the settled result is merged the run may finish",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("finishUp: waits while a settled discovery result is unmerged, then finishes (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    neat.discoveryComplete.push(settledDiscovery(2, "def12345"));
+
+    assertEquals(
+      neat.finishUp(),
+      false,
+      "a settled discovery result that has not been merged must hold finishUp open",
+    );
+
+    neat.discoveryComplete.length = 0;
+
+    assertEquals(
+      neat.finishUp(),
+      true,
+      "once the settled result is merged the run may finish",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("finishUp: an over-run stop does not wait on results it will never merge (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // The over-run path never calls evolve() again, so waiting here would spin
+    // until the hard deadline. Teardown discards these instead.
+    neat.terminationReason = "overrun";
+    neat.trainingComplete.push(settledTraining(3, "abc12345"));
+    neat.discoveryComplete.push(settledDiscovery(4, "def12345"));
+
+    assertEquals(
+      neat.finishUp(),
+      true,
+      "an over-run stop must finish without waiting on unmerged results",
+    );
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("discardUnprocessedResults: returns the count, empties both queues and names each task (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    neat.trainingComplete.push(settledTraining(1, "abc12345"));
+    neat.discoveryComplete.push(settledDiscovery(2, "def12345"));
+
+    log = captureLog();
+    const discarded = neat.discardUnprocessedResults();
+
+    assertEquals(discarded, 2, "every unmerged result must be counted");
+    assertEquals(neat.trainingComplete.length, 0);
+    assertEquals(neat.discoveryComplete.length, 0);
+    assertEquals(
+      log.warnings.length,
+      2,
+      "each discarded result must be logged once at warn level",
+    );
+    assert(
+      log.warnings.some((l) =>
+        l.includes("Training abc12345 discarded at teardown")
+      ),
+      `the training discard must name its task ID; got: ${
+        log.warnings.join(" | ")
+      }`,
+    );
+    assert(
+      log.warnings.some((l) =>
+        l.includes("Discovery def12345 discarded at teardown")
+      ),
+      `the discovery discard must name its task ID; got: ${
+        log.warnings.join(" | ")
+      }`,
+    );
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("discardUnprocessedResults: with nothing unmerged it returns 0 and logs nothing (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    log = captureLog();
+    assertEquals(neat.discardUnprocessedResults(), 0);
+    assertEquals(
+      log.lines.length,
+      0,
+      "a teardown with nothing unmerged must not log anything",
+    );
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
+
+/** A failed training task as `recordTrainingTaskFailure` queues it (error Infinity). */
+function failedTrainingStub(taskID: number, ID: string): ResponseData {
+  return {
+    taskID,
+    duration: 0,
+    train: {
+      ID,
+      creature: {} as never,
+      error: Number.POSITIVE_INFINITY,
+      trace: { input: 2, output: 1, neurons: [], synapses: [] } as never,
+    },
+  } as never;
+}
+
+/** Strip ANSI colour codes so assertions see the plain text of a log line. */
+function stripAnsi(text: string): string {
+  return text.replace(
+    new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"),
+    "",
+  );
+}
+
+Deno.test("discardUnprocessedResults: skips a failed-task stub but still logs and counts a finite result (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    // The failed task already logged its own `Training failed for creature`
+    // terminal line, so its stub must not produce a second one.
+    neat.trainingComplete.push(failedTrainingStub(1, "fail1234"));
+    neat.trainingComplete.push(settledTraining(2, "abc12345"));
+
+    log = captureLog();
+    const discarded = neat.discardUnprocessedResults();
+
+    assertEquals(
+      discarded,
+      1,
+      "only the finite-error result must be counted as discarded",
+    );
+    assertEquals(
+      neat.trainingComplete.length,
+      0,
+      "the failed-task stub must still be cleared from the queue",
+    );
+    assertEquals(
+      log.warnings.length,
+      1,
+      "only the finite-error result must be logged",
+    );
+    assert(
+      log.warnings[0].includes("Training abc12345 discarded at teardown"),
+      `the finite-error discard must name its task ID; got: ${
+        log.warnings.join(" | ")
+      }`,
+    );
+    assert(
+      !log.lines.some((l) => l.includes("fail1234")),
+      `the failed-task stub must not be named again; got: ${
+        log.lines.join(" | ")
+      }`,
+    );
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("finishUp: a settled training result is merged by processCompletedResults, then the run finishes (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    // verbose is off: the completed line is a terminal line, not a debug one.
+    const options: NeatOptions = { populationSize: 10, verbose: false };
+    const neat = new Neat(2, 1, options, workers);
+    const fittest = new Creature(2, 1);
+    const trained = new Creature(2, 1);
+
+    // A training task in flight, registered the way the scheduler registers it.
+    const uuid = "late-task-4099";
+    neat.trainingInProgress.set(uuid, Promise.resolve());
+
+    // It settles through the production hook, after the last generation's
+    // processCompletedResults() has run.
+    const recorded = neat.recordTrainingComplete(uuid, neat.abandonEpoch, {
+      taskID: 1,
+      duration: 1,
+      train: {
+        ID: "late1234",
+        creature: trained.exportJSON(),
+        error: 0.5,
+      },
+    } as never);
+    assert(recorded, "the in-flight training result must be recorded");
+    assert(
+      !neat.trainingInProgress.has(uuid),
+      "recording a result must release its in-flight task",
+    );
+    assertEquals(
+      neat.trainingComplete.length,
+      1,
+      "the settled result must be queued for merging",
+    );
+
+    log = captureLog();
+
+    assertEquals(
+      neat.finishUp(),
+      false,
+      "a settled training result that has not been merged must hold finishUp open",
+    );
+
+    const merged = processCompletedResults(neat, fittest, {} as never);
+
+    const late = merged.filter((c) => getTag(c, "trainID") === "late1234");
+    assert(
+      merged.length >= 1,
+      "processCompletedResults must return the settled training result",
+    );
+    assertEquals(
+      late.length,
+      1,
+      "the merged creature must be tagged with the settled task's trainID",
+    );
+
+    const plain = stripAnsi(log.lines.join("\n"));
+    assert(
+      /Training\s+late1234\s+completed/.test(plain),
+      `the merge must log the settled task's completion; got: ${plain}`,
+    );
+
+    assertEquals(
+      neat.finishUp(),
+      true,
+      "once the settled result is merged the run may finish",
+    );
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("discardUnprocessedResults: a result with no task payload is still logged as unknown and counted (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    neat.trainingComplete.push({ taskID: 5, duration: 1 } as never);
+    neat.discoveryComplete.push({ taskID: 6, duration: 1 } as never);
+
+    log = captureLog();
+    const discarded = neat.discardUnprocessedResults();
+
+    assertEquals(discarded, 2, "a result without a payload must be counted");
+    assertEquals(neat.trainingComplete.length, 0);
+    assertEquals(neat.discoveryComplete.length, 0);
+    assert(
+      log.warnings.some((l) => l.includes("Training unknown discarded")),
+      `an unnamed training result must be logged as unknown; got: ${
+        log.warnings.join(" | ")
+      }`,
+    );
+    assert(
+      log.warnings.some((l) => l.includes("Discovery unknown discarded")),
+      `an unnamed discovery result must be logged as unknown; got: ${
+        log.warnings.join(" | ")
+      }`,
+    );
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("finishUp: an over-run stop with only one kind of unmerged result still finishes (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+
+  try {
+    const options: NeatOptions = { populationSize: 10 };
+    const neat = new Neat(2, 1, options, workers);
+
+    neat.terminationReason = "overrun";
+    neat.trainingComplete.push(settledTraining(7, "abc12345"));
+    assertEquals(neat.finishUp(), true, "training only, over-run");
+
+    neat.trainingComplete.length = 0;
+    neat.discoveryComplete.push(settledDiscovery(8, "def12345"));
+    assertEquals(neat.finishUp(), true, "discovery only, over-run");
+  } finally {
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("abandonInFlightAtTeardown: names each in-flight task, clears the maps and discards a later settle (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const neat = new Neat(2, 1, { populationSize: 10 }, workers);
+    const trainUUID = "train-uuid-aaaa1111";
+    const discoverUUID = "discover-uuid-bbbb2222";
+    neat.trainingInProgress.set(trainUUID, new Promise<void>(() => {}));
+    neat.discoveryInProgress.set(discoverUUID, new Promise<void>(() => {}));
+    neat.trainingDeadlines.set(trainUUID, 1);
+    neat.trainingTasks.set(trainUUID, {
+      worker: {
+        cancelTask: () => false,
+        quarantine: () => {},
+      },
+      taskID: 5,
+    });
+    const epochBefore = neat.abandonEpoch;
+
+    log = captureLog();
+    const abandoned = neat.abandonInFlightAtTeardown();
+
+    assertEquals(abandoned, 2, "every in-flight task must be counted");
+    assertEquals(neat.trainingInProgress.size, 0);
+    assertEquals(neat.discoveryInProgress.size, 0);
+    assertEquals(neat.trainingDeadlines.size, 0, "deadlines must be cleared");
+    assertEquals(neat.trainingTasks.size, 0, "task handles must be cleared");
+    assert(
+      log.warnings.some((l) =>
+        l.includes("Training aaaa1111 abandoned at teardown")
+      ),
+      `the training task must be named; got: ${log.warnings.join(" | ")}`,
+    );
+    assert(
+      log.warnings.some((l) =>
+        l.includes("Discovery bbbb2222 abandoned at teardown")
+      ),
+      `the discovery task must be named; got: ${log.warnings.join(" | ")}`,
+    );
+
+    // A promise that settles after the teardown must not re-inflate the queues.
+    assert(neat.abandonEpoch > epochBefore, "the abandon epoch must be bumped");
+    assertEquals(
+      neat.recordTrainingComplete(
+        trainUUID,
+        epochBefore,
+        settledTraining(5, "aaaa1111"),
+      ),
+      false,
+      "a task abandoned at teardown must not record a late result",
+    );
+    assertEquals(neat.trainingComplete.length, 0);
+  } finally {
+    log?.restore();
+    await terminateWorkers(workers);
+  }
+});
+
+Deno.test("abandonInFlightAtTeardown: with nothing in flight it returns 0, logs nothing and leaves the epoch alone (Issue #4099)", async () => {
+  const dataDir = createTestDataDir(2, 1);
+  const workers = createTestWorkers(dataDir);
+  let log: ReturnType<typeof captureLog> | undefined;
+
+  try {
+    const neat = new Neat(2, 1, { populationSize: 10 }, workers);
+    const epochBefore = neat.abandonEpoch;
+
+    log = captureLog();
+    assertEquals(neat.abandonInFlightAtTeardown(), 0);
+    assertEquals(log.lines.length, 0);
+    assertEquals(neat.abandonEpoch, epochBefore);
+  } finally {
+    log?.restore();
     await terminateWorkers(workers);
   }
 });
