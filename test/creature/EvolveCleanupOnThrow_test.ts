@@ -1316,7 +1316,7 @@ Deno.test({
         now: () => START_MS,
         // Issue #4067: stub the event-loop watchdog so it spawns no Worker;
         // only the worker-loop constructions are counted below.
-        armWatchdog: () => ({ disarm() {}, setGeneration() {} }),
+        armWatchdog: () => ({ disarm() {}, setGeneration() {}, setPhase() {} }),
         onNeatReady: (neat) => rejectEvolve(neat, failure, counter),
       };
 

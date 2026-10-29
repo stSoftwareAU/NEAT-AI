@@ -127,7 +127,9 @@ export class WorkerPool<T = unknown> {
    *
    * Selection strategy:
    * 1. If any workers are not busy, prefer them (round-robin among idle)
-   * 2. If all workers are busy, select the one with the smallest queue
+   * 2. If all workers are busy, select the one with the least in-flight load
+   *    (queued tasks plus dispatched-but-unsettled tasks; see
+   *    `findLeastLoadedWorker`)
    *
    * This replaces the random + linear scan approach with a more
    * intelligent selection based on actual workload.
@@ -147,7 +149,8 @@ export class WorkerPool<T = unknown> {
       }
     }
 
-    // All workers are busy - select the one with smallest queue
+    // All workers are busy - select the one with least in-flight load
+    // (queue size plus pending tasks)
     return this.findLeastLoadedWorker();
   }
 
@@ -205,19 +208,25 @@ export class WorkerPool<T = unknown> {
   }
 
   /**
-   * Finds the worker with the smallest queue.
+   * Finds the selectable worker with the least in-flight load.
+   *
+   * Load is the queue size plus `getPendingTaskCount()` (tasks dispatched to
+   * the worker that have not yet settled). The pending term is required:
+   * `scheduleTraining` and `scheduleDiscovery` dispatch straight to the worker
+   * and never queue, so queue size alone reads 0 for every busy worker and
+   * every task piles onto the first one. Ties keep the first selectable worker.
    *
    * @returns The least-loaded worker
    */
   private findLeastLoadedWorker(): WorkerHandler | undefined {
     let bestWorker: WorkerHandler | undefined;
-    let smallestQueue = Infinity;
+    let leastLoad = Infinity;
 
     for (const worker of this.selectableWorkers()) {
       const queue = this.queues.get(worker);
-      const size = queue?.size() ?? 0;
-      if (size < smallestQueue) {
-        smallestQueue = size;
+      const load = (queue?.size() ?? 0) + worker.getPendingTaskCount();
+      if (load < leastLoad) {
+        leastLoad = load;
         bestWorker = worker;
       }
     }

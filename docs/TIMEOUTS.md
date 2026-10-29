@@ -282,6 +282,18 @@ Every abandon path now settles the work as well as the bookkeeping:
 - A worker `error` / `messageerror` event _after_ init no longer vanishes; it
   fails that worker's in-flight tasks with the crash as the cause and
   quarantines it.
+- When every selectable worker is busy, `WorkerPool` selection now picks the
+  worker with the least in-flight load (queue size plus `getPendingTaskCount()`,
+  ties to the first) instead of ranking an always-empty queue.
+  `scheduleTraining` and `scheduleDiscovery` therefore spread extra tasks across
+  the heavy workers rather than piling them onto the first one (Issue #4095).
+- A labelled task (a training or discovery task, labelled with the creature uuid
+  passed to `trainTracked` / `discover`) that fails because its worker was
+  quarantined now carries its **own** label in its `WorkerTaskCancelledError`
+  reason, and says it was queued on the quarantined worker. It no longer repeats
+  the culprit task's reason. Other request kinds (evaluate, score, ...) are
+  unlabelled and keep the quarantine reason unchanged. The task that actually
+  missed its deadline keeps its own reason.
 
 A response that arrives after its task was cancelled is logged and discarded —
 never asserted on, since an assertion inside the worker's message listener would
@@ -357,11 +369,13 @@ a V8 heap thrashing in garbage collection, silences them exactly when they are
 needed (#4060). `armEventLoopWatchdog` in
 [`src/NEAT/EventLoopWatchdog.ts`](../src/NEAT/EventLoopWatchdog.ts) runs the
 deadline in a Worker instead. At breach it writes the breach line to stderr and
-sends `SIGKILL` to the process, which exits with status 137. `SIGKILL` is used
-because `SIGTERM` is swallowed by the listeners the training entry points
-register, and `Deno.exit` from a Worker ends only that Worker. A `{generation}`
-token in the breach line is replaced with the last generation the run recorded.
-If the Worker cannot load, the primitive logs
+sends `SIGKILL` to the process, which exits with status 137. The line ends with
+three heartbeat fields that say how long the main thread had been silent (see
+[Main-thread heartbeat and reading a breach line](#main-thread-heartbeat-and-reading-a-breach-line-issue-4096)).
+`SIGKILL` is used because `SIGTERM` is swallowed by the listeners the training
+entry points register, and `Deno.exit` from a Worker ends only that Worker. A
+`{generation}` token in the breach line is replaced with the last generation the
+run recorded. If the Worker cannot load, the primitive logs
 `[Neat] event-loop watchdog unavailable: ...` and only the in-process bound
 applies.
 
@@ -387,11 +401,13 @@ the start of the main try block and before the population is seeded. With no
   error and the SIGTERM path all release it.
 - **Breach.** At the scheduled deadline the watchdog writes one stderr line,
   then SIGKILLs the process, which exits with status 137. `<s>` is the run's
-  elapsed seconds at the breach:
+  elapsed seconds at the breach. The three trailing heartbeat fields
+  (`lastHeartbeatAgeMs=<ms> inFlightPhase=<phase> heartbeatIntervalMS=<ms>`) are
+  appended to the end of the line; the text before them is unchanged:
   - during generation 1:
-    `[Neat] First generation wedged after <s>s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged`
+    `[Neat] First generation wedged after <s>s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged lastHeartbeatAgeMs=<ms> inFlightPhase=<phase> heartbeatIntervalMS=<ms>`
   - later:
-    `[Neat] Run wedged after <s>s at generation <n> (event loop blocked past the hard cap; watchdog killing the process)`,
+    `[Neat] Run wedged after <s>s at generation <n> (event loop blocked past the hard cap; watchdog killing the process) lastHeartbeatAgeMs=<ms> inFlightPhase=<phase> heartbeatIntervalMS=<ms>`,
     where `<n>` is the number of generations completed.
 
 ```mermaid
@@ -413,6 +429,61 @@ bound fires first, because the watchdog deadline is that bound plus the margin,
 and it returns `terminationReason` exactly as before. SIGKILL skips in-process
 cleanup (checkpoint flush and SIGTERM teardown). That is accepted for a
 last-resort bound.
+
+### Main-thread heartbeat and reading a breach line (Issue #4096)
+
+A breach line says that a deadline passed. On its own it does not say whether
+the main thread was blocked or only over budget. The heartbeat is the
+measurement that tells the two apart.
+
+- **Written by the main thread.** The main thread writes the epoch-ms of its
+  latest timer tick into a `SharedArrayBuffer` every `heartbeatIntervalMS`, and
+  once at arm. The default is `DEFAULT_HEARTBEAT_INTERVAL_MS` (1000 ms), set
+  with the `heartbeatIntervalMS` option on `armEventLoopWatchdog`. The timer is
+  unreferenced, so it never keeps the process alive, and `disarm()` clears it.
+- **Read at breach.** The Worker reads the buffer when the deadline passes.
+  `lastHeartbeatAgeMs` is the time since the main thread's latest tick.
+- **`inFlightPhase`** is the phase the main thread most recently entered: one of
+  `untracked` (outside any tracked phase, for example checkpoint or bookkeeping
+  between generations), `fitness`, `sort`, `write-scores`, `breeding`,
+  `mutation`, `pre-warm` or `deduplication`. `NeatEvolution` sets it per
+  generation through `neat.markPhase`, and `RunWatchdog.setPhase` forwards it. A
+  marker is cleared back to `untracked` when its work returns, so spans between
+  tracked phases (speciation, pre-selection, population assembly) read
+  `untracked`. Dedup and write-scores can overlap other work in time, so the
+  field names the most recently entered phase, not necessarily the one that is
+  stuck. The list is `EVENT_LOOP_WATCHDOG_PHASES` in
+  [`src/NEAT/EventLoopWatchdog.ts`](../src/NEAT/EventLoopWatchdog.ts).
+- **`heartbeatIntervalMS`** is the interval in force, so the age can be read
+  against it.
+
+Read `lastHeartbeatAgeMs` against `heartbeatIntervalMS`:
+
+| Age against the interval   | What it means                                                                                                                          |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| About one interval or less | The main event loop was alive and servicing timers. The run was over budget: slow, not wedged.                                         |
+| Far above the interval     | The main event loop was not servicing timers for about `lastHeartbeatAgeMs`. It was blocked for roughly that long, in `inFlightPhase`. |
+
+A reading between these two is not classified; treat it as inconclusive. Both
+readings are measurements of timer behaviour. The parenthetical in the breach
+line, such as `(event loop blocked past the hard cap; …)`, describes the
+condition the deadline was set to catch. It is fixed wording, not a measurement,
+so decide from the trailing fields.
+
+A worked example, with the values made concrete:
+
+```text
+[Neat] Run wedged after 1834s at generation 4 (event loop blocked past the hard cap; watchdog killing the process) lastHeartbeatAgeMs=312044 inFlightPhase=fitness heartbeatIntervalMS=1000
+```
+
+Read this as: the main thread had not ticked for about 312 s, and it was last in
+`fitness`. The kill happens whatever the age; the field changes the diagnosis,
+not the action.
+
+Callers that treat exit 137 plus the breach line as a wedge should read
+`lastHeartbeatAgeMs` first. A large age supports the wedge reading and points at
+`inFlightPhase`. An age near `heartbeatIntervalMS` means the process was alive
+and was killed for overrunning its budget, so it is a slow run, not a wedge.
 
 ## ✅ Verifying the guarantee
 
