@@ -4,10 +4,12 @@ import { parse } from "@std/yaml";
 
 /**
  * Verifies the Test Coverage workflow skips its eight heavy shards on a
- * docs-only PR while the required `merge` check still reports (Issue #4041).
+ * docs-only PR to Develop while the required `merge` check still reports
+ * (Issue #4041).
  *
  * A `changes` job runs `dorny/paths-filter` against an explicit include list;
- * the shards run only when it reports a code change, and `merge` always runs
+ * the shards run when it reports a code change or the target is a milestone
+ * branch (whose rules require the named shard checks). `merge` always runs
  * so the required status check posts a trivial pass instead of hanging. A
  * failed `changes` job must fail `merge` loudly rather than read as "no code
  * changed".
@@ -68,7 +70,7 @@ function codeGlobs(wf: Workflow): string[] {
   return filters.code;
 }
 
-/** Whether a PR touching `files` would run the coverage shards. */
+/** Whether the path filter reports code changes for `files`. */
 function runsShards(globs: string[], files: string[]): boolean {
   const patterns = globs.map((g) =>
     globToRegExp(g, { globstar: true, extended: true })
@@ -84,7 +86,7 @@ Deno.test("paths-filter is pinned to a full commit SHA (Issue #4041)", async () 
   );
 });
 
-Deno.test("docs-only PRs skip the coverage shards (Issue #4041)", async () => {
+Deno.test("docs-only paths do not match the code filter (Issue #4041)", async () => {
   const globs = codeGlobs(await readWorkflow());
   assertEquals(
     runsShards(globs, [
@@ -133,7 +135,7 @@ Deno.test("the changes job holds read-only permissions (Issue #4041)", async () 
   }
 });
 
-Deno.test("the shards run only when the filter reports code (Issue #4041)", async () => {
+Deno.test("the shards run for milestone targets or filtered code changes (Issue #4041)", async () => {
   const wf = await readWorkflow();
   const coverage = wf.jobs.coverage;
   assert(needsOf(coverage).includes("changes"));
@@ -143,7 +145,7 @@ Deno.test("the shards run only when the filter reports code (Issue #4041)", asyn
   );
   assertEquals(
     wf.jobs.changes.outputs?.code,
-    "${{ steps.filter.outputs.code }}",
+    "${{ startsWith(github.base_ref, 'milestone/') && 'true' || steps.filter.outputs.code }}",
   );
 });
 
@@ -169,7 +171,7 @@ Deno.test("the merge check always runs and fails loud when detection fails (Issu
   assertEquals(guard.if, undefined, "the detection guard must always run");
 
   // Every other step is either the explicit skip notice or gated on the
-  // filter, so a docs-only PR cannot trip the shard-status failure steps.
+  // changes output, so skipped shards cannot trip the status failure steps.
   for (const step of steps.slice(1)) {
     assert(
       (step.if ?? "").includes("env.RUN_COVERAGE"),
