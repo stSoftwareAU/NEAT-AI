@@ -15,7 +15,10 @@
  *   - a worker-level `error` event *after* init fails every in-flight task on
  *     that worker rather than being logged and forgotten;
  *   - a quarantined worker is reported unhealthy and terminated so no further
- *     work is handed to a wedged isolate.
+ *     work is handed to a wedged isolate;
+ *   - a quarantine names each labelled task it fails as collateral of that
+ *     quarantine, so no task is reported with another task's reason (Issue
+ *     #4095).
  */
 import { assert, assertEquals, assertRejects } from "@std/assert";
 import type {
@@ -89,15 +92,22 @@ class TestWorkerHandler extends WorkerHandlerBase<TestRequest, TestResponse> {
     super(worker, initReady);
   }
 
-  /** Post a job the way `train`/`discover` do, returning its task id. */
+  /**
+   * Post a job the way `train`/`discover` do, returning its task id. An
+   * optional `label` is the caller's identity for the task (Issue #4095).
+   */
   sendTracked(
     message: string,
+    label?: string,
   ): { taskID: number; response: Promise<TestResponse> } {
     const data: TestRequest = {
       taskID: this.taskID++,
       echo: { message },
     };
-    return { taskID: data.taskID, response: this.makePromiseDeferred(data) };
+    return {
+      taskID: data.taskID,
+      response: this.makePromiseDeferred(data, undefined, label),
+    };
   }
 }
 
@@ -210,4 +220,63 @@ Deno.test("quarantine cancels in-flight work and stops the worker (GRQ #4489)", 
   assertEquals(handler.isHealthy(), false);
   assert(worker.terminated);
   assertEquals(handler.isBusy(), false);
+});
+
+/** Creature uuids used as task labels; none is a substring of another. */
+const LABEL_A = "5f1c2a3b-0000-4000-8000-00000000000a";
+const LABEL_B = "5f1c2a3b-0000-4000-8000-00000000000b";
+const LABEL_C = "5f1c2a3b-0000-4000-8000-00000000000c";
+
+Deno.test("quarantine names each labelled task as its own collateral, not the first task's reason (Issue #4095)", async () => {
+  const { handler } = createHandler();
+  const labels = [LABEL_A, LABEL_B, LABEL_C];
+  const tasks = labels.map((label, i) =>
+    handler.sendTracked(`task-${i}`, label)
+  );
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assertEquals(handler.getPendingTaskCount(), 3);
+
+  const reason = "training task AAA passed its per-task deadline";
+  handler.quarantine(reason);
+
+  const errors = await Promise.all(
+    tasks.map((task) =>
+      assertRejects(() => task.response, WorkerTaskCancelledError)
+    ),
+  );
+
+  for (const [i, error] of errors.entries()) {
+    assertEquals(error.taskID, tasks[i].taskID);
+    assert(
+      error.reason.includes(labels[i]),
+      `the failure names its own task ${labels[i]}: ${error.reason}`,
+    );
+    for (const other of labels) {
+      if (other === labels[i]) continue;
+      assert(
+        !error.reason.includes(other),
+        `the failure does not name another task ${other}: ${error.reason}`,
+      );
+    }
+    assert(
+      error.reason.includes("quarantined"),
+      `the failure says it was quarantined: ${error.reason}`,
+    );
+    assert(
+      error.reason.includes(reason),
+      `the failure keeps the quarantine reason: ${error.reason}`,
+    );
+  }
+  assertEquals(handler.getPendingTaskCount(), 0);
+});
+
+Deno.test("quarantine keeps the reason unchanged for an unlabelled task (Issue #4095)", async () => {
+  const { handler } = createHandler();
+  const { response } = handler.sendTracked("unlabelled");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  handler.quarantine("its worker crashed");
+
+  const error = await assertRejects(() => response, WorkerTaskCancelledError);
+  assertEquals(error.reason, "its worker crashed");
 });

@@ -483,6 +483,12 @@ jobs:
           if [ "$GATE_EXIT" -ne 0 ]; then exit "$GATE_EXIT"; fi
 
           cov_dirs=(coverage-*/)
+          # A test process killed mid-write (e.g. a watchdog or SIGKILL test)
+          # leaves a zero-byte raw coverage `.json`, which makes `deno coverage`
+          # abort with "EOF while parsing a value". An empty file carries no
+          # coverage, so drop it — loudly — rather than lose the whole report.
+          find "${cov_dirs[@]}" -type f -name '*.json' -empty \
+            -exec echo "⚠️  dropping empty coverage file: {}" \; -delete
           # `deno coverage` accepts multiple input dirs and merges them into one
           # lcov report. Exclude ephemeral temp modules and *.test.* files as
           # before.
