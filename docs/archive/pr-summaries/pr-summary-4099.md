@@ -34,13 +34,16 @@ records the final version.
 - `finishUp()` does not wait when `terminationReason === "overrun"`: that branch
   never calls `evolve()` again, so waiting would spin until the hard deadline.
   Those results are discarded and logged instead.
-- The naming lives in `runBoundedEvolveTeardown` through a **required** `neat`
-  option (`abandonInFlightAtTeardown()` then `discardUnprocessedResults()`), so
-  all three callers (`evolveDir`, `evolveEnv`, `evolveRL`) must pass it. It runs
-  **after** persist and worker termination (PR #4104 review): the workers are
-  down, so nothing more can settle, and a result that settled during the persist
-  awaits (`writeCreatures`, `flushTrainingGainLog`) is still named. It is
-  synchronous and not part of the evolved state, so it never gates the persist.
+- The success-path naming lives in `runBoundedEvolveTeardown` through a
+  **required** `neat` option (`abandonInFlightAtTeardown()` then
+  `discardUnprocessedResults()`), so all three callers (`evolveDir`,
+  `evolveEnv`, `evolveRL`) must pass it. The failure `finally` of each entry
+  point makes the same two calls directly, each isolated by `runFailureCleanup`,
+  because a failed run never reaches the bounded teardown. It runs **after**
+  persist and worker termination (PR #4104 review): the workers are down, so
+  nothing more can settle, and a result that settled during the persist awaits
+  (`writeCreatures`, `flushTrainingGainLog`) is still named. It is synchronous
+  and not part of the evolved state, so it never gates the persist.
 - An interrupted (SIGTERM) stop breaks out of the loop at
   `if (interrupted)
   break;` before `finishUp()` or any abandon runs, leaving
@@ -223,10 +226,19 @@ flowchart TD
   prior commit, `0 passed | 3 failed`. Branch outcomes: the abandon call and the
   discard call are each named by their own log line, so deleting either one
   fails the matching assertion in all three tests. Entry points checked: the
-  failure `finally` of `evolveDir`, `evolveEnv` and `evolveRL`. The `scheduled`
-  line is a log-only change with no test of its own; the scheduling and teardown
-  test files (`test/NEAT/` and `test/creature/` neighbours of the files above)
-  were re-run on the head: 74 passed, 0 failed.
+  failure `finally` of `evolveDir`, `evolveEnv` and `evolveRL`. Re-run on the
+  head: `EvolveFailureNamesInFlightTasks_test.ts` 3 passed, 0 failed.
+- `test/NEAT/ScheduledTrainingLogLine.ts` (2 tests): `scheduleTraining` with
+  `verbose: false` logs exactly one `scheduled` line, without a borrow tag when
+  the heavy pool supplies the worker, and with `(borrowed from fast pool)` when
+  only the fast pool has an idle worker. Red check: inverting the
+  `borrowedFromFast ?` ternary in `NeatScheduling.ts` fails both tests (0 passed
+  | 2 failed); this kills the mutant reported at `NeatScheduling.ts:601`.
+  Scheduling and teardown neighbours (`NeatFinishUp.ts`,
+  `ScheduledTrainingIterations.ts`, `ScheduledTrainingLogLine.ts`,
+  `SchedulingRepeatGuard.ts`, `PoolBorrowing.ts`,
+  `NeatAbandonLateCompletion.ts`) re-run together on the head: 48 passed, 0
+  failed.
 - Not done: a mutation-style red check of each new test against the unfixed
   code; the new `finishUp` tests that the fix is meant to turn green are
   expected to fail against the base `Neat.ts` by reading it, not by observed run
