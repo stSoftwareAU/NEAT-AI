@@ -409,10 +409,12 @@ just before the exit says which bound was breached:
 Neither breach line is a generic crash or an out-of-memory kill. Report exit 137
 plus the first line as `first-generation-wedged`, and exit 137 plus the second
 line as a wedge. When the loop does yield, the in-process bound fires first,
-because each watchdog deadline is that bound plus the margin. The run then
-returns normally with `terminationReason` set, and there is no exit 137. A
-`SIGKILL` skips in-process cleanup (checkpoint flush and SIGTERM teardown), so a
-run killed this way has persisted only what it had already written.
+because the watchdog deadline is that bound plus the margin (for the re-armed
+watchdog, the bound is the later of the hard cap and the moment generation 1
+completes). The run then returns normally with `terminationReason` set, and
+there is no exit 137. A `SIGKILL` skips in-process cleanup (checkpoint flush and
+SIGTERM teardown), so a run killed this way has persisted only what it had
+already written.
 
 **The caller-side per-loop hard kill.** As defence in depth, a caller that
 launches one `evolve*` run per loop (for example GRQ's `worker/sampler.sh`)

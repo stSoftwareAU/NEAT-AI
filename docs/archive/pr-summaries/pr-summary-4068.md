@@ -33,18 +33,15 @@ than requiring the previous filter-only expression.
 
 ## Test Plan
 
-- `deno test --allow-read test/ci/CoveragePathScoping.ts < /dev/null`: before
-  this fix, 6 passed and 1 failed with the output-expression mismatch; after
-  this fix, all 7 pass.
+- `test/ci/CoveragePathScoping.ts` (7 tests at head): all 7 pass. Before this
+  fix, 6 passed and 1 failed with the output-expression mismatch.
 - The edited expression assertion goes red independently when the milestone
   override is removed, its prefix check is inverted, or its filter fallback is
   replaced with unconditional true. Each workflow mutation was restored.
 - `deno test --allow-all test/ci/Coverage*.ts < /dev/null`: 55 passed.
 - `deno fmt` and `deno lint` on the changed files passed.
-- `deno test --allow-all test/ci/*.ts < /dev/null`: 303 passed, 1 failed. The
-  unrelated `test/ci/PackageVersionNoDowngrade.ts` reports this milestone’s
-  version 7.0.63 behind origin/Develop 7.0.64; left unchanged in this scoped
-  fix.
+- `deno test --allow-all test/ci/*.ts < /dev/null` (304 tests at head): all 304
+  pass, including `test/ci/PackageVersionNoDowngrade.ts`.
 - Twinned rules: no second filter-output assertion was found by the graph search
   for `steps.filter.outputs.code` and `startsWith(github.base_ref` in tests.
   Existing path-filter and merge-guard assertions remain in place.
