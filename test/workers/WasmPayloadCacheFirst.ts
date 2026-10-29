@@ -264,6 +264,66 @@ Deno.test("Issue #4097: network glue that misses the glue pin hard-fails and is 
   }
 });
 
+Deno.test("Issue #4097: a rejected glue load settles the sibling binary load before it rejects", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    await assertRejects(
+      () =>
+        loadWasmActivationInitPayloadAsync(
+          loadOptions(
+            cacheDir,
+            networkFetch(SUBSTITUTED_GLUE, GENUINE_WASM, []),
+            { maxAttempts: 1 },
+          ),
+        ),
+      WasmError,
+      "integrity check failed",
+    );
+
+    // The genuine binary was persisted before the rejection returned, so no
+    // cache write is left running against a directory the caller may remove.
+    const wasmEntry = await Deno.readFile(
+      await wasmCacheFilePath(WASM_URL, cacheDir),
+    );
+    assertEquals(wasmEntry, GENUINE_WASM);
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
+Deno.test("Issue #4097: a rejected binary load surfaces its own error and settles the sibling glue load first", async () => {
+  const cacheDir = await Deno.makeTempDir();
+  try {
+    const substitutedWasm = new Uint8Array([9, 9, 9, 9]);
+    const err = await assertRejects(
+      () =>
+        loadWasmActivationInitPayloadAsync(
+          loadOptions(
+            cacheDir,
+            networkFetch(GENUINE_GLUE, substitutedWasm, []),
+            { maxAttempts: 1 },
+          ),
+        ),
+      WasmError,
+      "integrity check failed",
+    );
+    assertEquals(err.reason, "MODULE_NOT_LOADED");
+
+    assertEquals(
+      await Deno.readFile(await wasmCacheFilePath(JS_URL, cacheDir)),
+      GENUINE_GLUE,
+      "the genuine glue was persisted before the rejection returned",
+    );
+    await assertRejects(
+      async () =>
+        await Deno.readFile(await wasmCacheFilePath(WASM_URL, cacheDir)),
+      Deno.errors.NotFound,
+    );
+  } finally {
+    await Deno.remove(cacheDir, { recursive: true });
+  }
+});
+
 Deno.test("Issue #4097: the glue pin matches the vendored wasm_activation.js", async () => {
   const gluePath = new URL(
     "../../wasm_activation/pkg/wasm_activation.js",
