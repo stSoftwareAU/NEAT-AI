@@ -403,7 +403,7 @@ just before the exit says which bound was breached:
 | Exit | stderr line contains                                             | What happened                                                                 | Report it as                                    |
 | ---- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------- |
 | 137  | `First generation wedged after <s>s … — first-generation-wedged` | Generation 1 was still running (generation counter 0) past its bound + margin | `first-generation-wedged`                       |
-| 137  | `Run wedged after <s>s at generation <n>`                        | `<n>` generations had completed and the run was past the hard cap + margin    | a wedge past the hard cap                       |
+| 137  | `Run wedged after <s>s at generation <n>`                        | `<n>` generations had completed and the run was past its re-armed deadline    | a wedge past the hard cap                       |
 | 137  | neither line                                                     | A `SIGKILL` from elsewhere: the caller's own kill, the OOM killer, a host cap | whatever the caller's own records say killed it |
 
 Neither breach line is a generic crash or an out-of-memory kill. Report exit 137
@@ -438,13 +438,20 @@ These constants and helpers all live in
 with a 5-minute margin: the hard cap is 6 + 6 = 12 minutes, the first-generation
 bound is 12 + min(60, 24) = 36 minutes, and the per-loop kill lands at 36 + 5 =
 **41 minutes** after `start`. Once generation 1 completes, the in-process
-watchdog re-arms at the hard cap + margin (17 minutes for T = 6). No in-process
-bound for a later generation is later than the first-generation one, so the
-caller needs no second, later kill: the one 41-minute deadline bounds the whole
-loop. The in-process watchdog measures from the start `evolve*` itself records,
-which comes after the process launches. A caller that measures `start` from the
-launch should therefore round the margin up to cover start-up. That way the
-in-process watchdog fires first and its breach line is printed.
+watchdog re-arms at max(hard cap, the moment generation 1 completes) + margin.
+For T = 6 that is 17 minutes only when generation 1 finishes within 12 minutes;
+otherwise it is 5 minutes after generation 1 completes (generation 1 finishing
+at minute 20 re-arms to minute 25, and its breach line reads
+`Run wedged after 1500s`). The 41-minute kill still bounds every loop in which
+generation 1 completes by minute 36, its own bound. The in-process watchdog
+measures from the start `evolve*` itself records, which comes after the process
+launches. A caller that measures `start` from the launch should therefore round
+the margin up to cover start-up. That way the in-process watchdog fires first
+and its breach line is printed. That holds for a generation 1 that completes
+within its bound. A generation 1 that completes later (a blocked loop that
+unblocks between minute 36 and minute 41) re-arms the watchdog as late as minute
+46, after the caller's 41-minute kill, so the caller's kill fires first and no
+breach line is printed.
 
 ## 🐕 The event-loop watchdog primitive (Issue #4066)
 
@@ -480,9 +487,12 @@ the start of the main try block and before the population is seeded. With no
   `computeWatchdogDeadlineEpochMS` and the default margin is
   `DEFAULT_WATCHDOG_MARGIN_MS` (5 minutes, which covers the bounded teardown);
   both live in [`src/NEAT/HardDeadline.ts`](../src/NEAT/HardDeadline.ts).
-- **After generation 1 completes** the watchdog is re-armed against the hard cap
-  plus margin, using the same formula with `hardDeadlineMS`. The generation
-  counter is updated after every completed generation.
+- **After generation 1 completes** the watchdog is re-armed using the same
+  formula with `hardDeadlineMS`. Because `max(0, hardDeadlineMS - now())` is
+  zero once the hard cap has passed, the deadline is max(hard cap, the moment
+  generation 1 completes) + margin: the hard cap + margin when generation 1
+  finishes before the cap, otherwise the margin after generation 1 completes.
+  The generation counter is updated after every completed generation.
 - **Disarm.** A `finally` disarms the watchdog, so a normal return, a thrown
   error and the SIGTERM path all release it.
 - **Breach.** At the scheduled deadline the watchdog writes one stderr line,
@@ -499,7 +509,7 @@ the start of the main try block and before the population is seeded. With no
 ```mermaid
 stateDiagram-v2
     [*] --> Gen1Armed: timeoutMinutes set, arm at generation 1 deadline + margin
-    Gen1Armed --> HardCapArmed: generation 1 completes, re-arm at hard cap + margin
+    Gen1Armed --> HardCapArmed: generation 1 completes, re-arm at max(hard cap, completion) + margin
     Gen1Armed --> Disarmed: return, throw or SIGTERM (finally)
     HardCapArmed --> Disarmed: return, throw or SIGTERM (finally)
     Gen1Armed --> Killed: loop blocked, deadline passes, SIGKILL (137)
