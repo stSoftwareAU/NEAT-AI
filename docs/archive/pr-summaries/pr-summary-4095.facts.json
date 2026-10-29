@@ -1,0 +1,24 @@
+{
+  "branchOutcomes": {
+    "entries": [
+      {
+        "flipWentRed": "ranking by queue size only turned it and the scheduleTraining spread test red",
+        "line": 227,
+        "outcome": "all-busy selection ranks queue size plus pending tasks; ties keep the first worker",
+        "path": "src/multithreading/WorkerPool.ts",
+        "test": "test/multithreading/WorkerPool.ts",
+        "testName": "WorkerPool - all busy: ties on pending keep the first worker, then the least pending wins"
+      },
+      {
+        "flipWentRed": "ignoring the label in cancelAllTasks turned it red: the failure names its own task; the unlabelled test stays green by design",
+        "line": 733,
+        "outcome": "labelled task cancelled by quarantine gets a reason naming its own label; unlabelled keeps the reason",
+        "path": "src/workers/WorkerHandlerBase.ts",
+        "test": "test/workers/WorkerTaskCancellation.ts",
+        "testName": "quarantine names each labelled task as its own collateral, not the first task's reason (Issue #4095)"
+      }
+    ],
+    "noneAdded": false
+  },
+  "version": 1
+}

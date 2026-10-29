@@ -33,6 +33,11 @@ class StubWorker {
     return this.healthy;
   }
 
+  /** Issue #4095: no task is pending on these stand-ins. */
+  getPendingTaskCount(): number {
+    return 0;
+  }
+
   getCumulativeBusyMs(): number {
     return 0;
   }

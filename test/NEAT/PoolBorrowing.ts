@@ -33,6 +33,11 @@ class StubWorker {
     return true;
   }
 
+  /** Issue #4095: no task is pending on these stand-ins. */
+  getPendingTaskCount(): number {
+    return 0;
+  }
+
   setBusy(busy: boolean): void {
     this._busy = busy;
   }

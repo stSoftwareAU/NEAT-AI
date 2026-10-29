@@ -10,6 +10,12 @@
  * margin, so the Worker SIGKILLs the process only after the in-process bound
  * has had its chance to end the run.
  *
+ * The run's in-flight phase (Issue #4096) is remembered here and forwarded to
+ * whichever watchdog handle is current, including a handle re-armed for the
+ * hard cap. The breach line the Worker prints ends with the main-thread
+ * heartbeat age and that phase (`lastHeartbeatAgeMs`, `inFlightPhase`), which
+ * the Worker appends; this controller supplies only the generation-aware prefix.
+ *
  * @module
  */
 
@@ -18,6 +24,7 @@ import {
   EVENT_LOOP_WATCHDOG_GENERATION_TOKEN,
   type EventLoopWatchdog,
   type EventLoopWatchdogOptions,
+  type EventLoopWatchdogPhase,
 } from "@neat/EventLoopWatchdog.ts";
 import {
   computeWatchdogDeadlineEpochMS,
@@ -32,6 +39,12 @@ export interface RunWatchdog {
    * every call updates the breach line's generation.
    */
   generationCompleted(generationsCompleted: number): void;
+  /**
+   * Record the run's current in-flight phase and forward it to the armed
+   * watchdog. The latest phase is kept across a re-arm for the hard cap. After
+   * {@link RunWatchdog.disarm} it does nothing.
+   */
+  setPhase(phase: EventLoopWatchdogPhase): void;
   /** Idempotent. After it, generationCompleted never re-arms. */
   disarm(): void;
 }
@@ -61,6 +74,7 @@ export interface ArmRunWatchdogParams {
 
 const NO_OP_RUN_WATCHDOG: RunWatchdog = {
   generationCompleted(): void {},
+  setPhase(): void {},
   disarm(): void {},
 };
 
@@ -78,6 +92,7 @@ export function armRunWatchdog(params: ArmRunWatchdogParams): RunWatchdog {
 
   let onFirstGeneration = true;
   let disarmed = false;
+  let phase: EventLoopWatchdogPhase = "untracked";
 
   const armBound = (
     boundMS: number,
@@ -93,7 +108,9 @@ export function armRunWatchdog(params: ArmRunWatchdogParams): RunWatchdog {
     const seconds = Math.round(
       (Math.max(boundMS, injected) + marginMS - startMS) / 1000,
     );
-    return arm({ deadlineEpochMS, breachLine: breachLine(seconds) });
+    const handle = arm({ deadlineEpochMS, breachLine: breachLine(seconds) });
+    handle.setPhase(phase);
+    return handle;
   };
 
   let current: EventLoopWatchdog | undefined = armBound(
@@ -120,6 +137,11 @@ export function armRunWatchdog(params: ArmRunWatchdogParams): RunWatchdog {
         );
       }
       current?.setGeneration(generationsCompleted);
+    },
+    setPhase(next: EventLoopWatchdogPhase): void {
+      if (disarmed) return;
+      phase = next;
+      current?.setPhase(next);
     },
     disarm(): void {
       disarmed = true;

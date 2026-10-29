@@ -2,6 +2,9 @@ name: Test Coverage
 
 on:
   pull_request:
+    # Draft PRs are work in progress (owner, 2026-10-23): CI runs
+    # once, when the PR is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - Develop
       # Also gate milestone sub-issue PRs. They target a shared
@@ -39,6 +42,7 @@ jobs:
   # include list (not a `docs/**` exclude) keeps any new top-level code path
   # failing safe — it runs coverage until someone decides otherwise.
   changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Detect code changes
     runs-on: ubuntu-latest
     # Every job in this workflow carries the >=60 minute ceiling (Issue #3168).
@@ -86,7 +90,7 @@ jobs:
   coverage:
     name: Coverage shard ${{ matrix.shard }}
     needs: changes
-    if: ${{ needs.changes.outputs.code == 'true' }}
+    if: (needs.changes.outputs.code == 'true') && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     # Each shard runs only ~1/N of the suite, but keep the generous hour-long
     # cap (Issue #3168) as a safety bound against a wedged shard.
@@ -298,7 +302,7 @@ jobs:
     # the gate can report accurately; only skip if the whole run was cancelled.
     # It also runs when the shards were skipped by path scoping (Issue #4041),
     # because this is the required check and must still report.
-    if: ${{ !cancelled() }}
+    if: (!cancelled()) && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -485,6 +489,12 @@ jobs:
           if [ "$GATE_EXIT" -ne 0 ]; then exit "$GATE_EXIT"; fi
 
           cov_dirs=(coverage-*/)
+          # A test process killed mid-write (e.g. a watchdog or SIGKILL test)
+          # leaves a zero-byte raw coverage `.json`, which makes `deno coverage`
+          # abort with "EOF while parsing a value". An empty file carries no
+          # coverage, so drop it — loudly — rather than lose the whole report.
+          find "${cov_dirs[@]}" -type f -name '*.json' -empty \
+            -exec echo "⚠️  dropping empty coverage file: {}" \; -delete
           # `deno coverage` accepts multiple input dirs and merges them into one
           # lcov report. Exclude ephemeral temp modules and *.test.* files as
           # before.

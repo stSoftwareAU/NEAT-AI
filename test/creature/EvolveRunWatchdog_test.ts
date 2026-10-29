@@ -2,6 +2,7 @@ import { assertEquals } from "@std/assert";
 import type {
   EventLoopWatchdog,
   EventLoopWatchdogOptions,
+  EventLoopWatchdogPhase,
 } from "@neat/EventLoopWatchdog.ts";
 import { armRunWatchdog } from "../../src/creature/EvolveRunWatchdog.ts";
 
@@ -19,6 +20,7 @@ interface ArmedRecord {
   options: EventLoopWatchdogOptions;
   disarms: number;
   generations: number[];
+  phases: EventLoopWatchdogPhase[];
 }
 
 function recordingArm(): {
@@ -29,7 +31,12 @@ function recordingArm(): {
   const armWatchdog = (
     options: EventLoopWatchdogOptions,
   ): EventLoopWatchdog => {
-    const record: ArmedRecord = { options, disarms: 0, generations: [] };
+    const record: ArmedRecord = {
+      options,
+      disarms: 0,
+      generations: [],
+      phases: [],
+    };
     armed.push(record);
     return {
       disarm(): void {
@@ -37,6 +44,9 @@ function recordingArm(): {
       },
       setGeneration(generation: number): void {
         record.generations.push(generation);
+      },
+      setPhase(phase: EventLoopWatchdogPhase): void {
+        record.phases.push(phase);
       },
     };
   };
@@ -159,4 +169,80 @@ Deno.test("armRunWatchdog: the run breach line leaves the generation token for t
   handle.generationCompleted(1);
 
   assertEquals(armed[1].options.breachLine, RUN_LINE);
+});
+
+// Issue #4096: the run's in-flight phase is forwarded to the armed handle. The
+// two phases differ, so reading the wrong one fails the assertion.
+
+Deno.test("armRunWatchdog: setPhase is forwarded to the armed generation-1 handle", () => {
+  const { armed, armWatchdog } = recordingArm();
+  const clock = { value: 1_000_000 };
+  const handle = armRunWatchdog(params(armWatchdog, clock, 5));
+
+  handle.setPhase("mutation");
+
+  assertEquals(armed.length, 1);
+  assertEquals(
+    armed[0].phases,
+    ["untracked", "mutation"],
+    "the initial phase is then the remembered one",
+  );
+});
+
+Deno.test("armRunWatchdog: re-arming for the hard cap gives the new handle the remembered phase only", () => {
+  const { armed, armWatchdog } = recordingArm();
+  const clock = { value: 1_000_000 };
+  const handle = armRunWatchdog(params(armWatchdog, clock, 5));
+
+  handle.setPhase("mutation");
+  handle.generationCompleted(1);
+
+  assertEquals(armed.length, 2);
+  assertEquals(
+    armed[1].phases,
+    ["mutation"],
+    "the re-armed handle is given the remembered phase",
+  );
+
+  handle.setPhase("breeding");
+
+  assertEquals(
+    armed[1].phases,
+    ["mutation", "breeding"],
+    "later phases go to the new handle",
+  );
+  assertEquals(
+    armed[0].phases,
+    ["untracked", "mutation"],
+    "the disarmed generation-1 handle gets no later phase",
+  );
+});
+
+Deno.test("armRunWatchdog: setPhase after disarm forwards nothing", () => {
+  const { armed, armWatchdog } = recordingArm();
+  const clock = { value: 1_000_000 };
+  const handle = armRunWatchdog(params(armWatchdog, clock, 5));
+
+  handle.setPhase("mutation");
+  handle.disarm();
+  handle.setPhase("breeding");
+
+  assertEquals(armed.length, 1, "no re-arm after disarm");
+  assertEquals(
+    armed[0].phases,
+    ["untracked", "mutation"],
+    "no phase forwarded after disarm",
+  );
+});
+
+Deno.test("armRunWatchdog: with no timeout the no-op handle's setPhase never arms", () => {
+  const { armed, armWatchdog } = recordingArm();
+  const clock = { value: START_MS };
+  const handle = armRunWatchdog(params(armWatchdog, clock, undefined));
+
+  handle.setPhase("mutation");
+  handle.generationCompleted(1);
+  handle.setPhase("breeding");
+
+  assertEquals(armed.length, 0, "setPhase does not call armWatchdog");
 });

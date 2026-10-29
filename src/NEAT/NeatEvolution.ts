@@ -320,6 +320,8 @@ export async function evolve(
   // report a stall *while it is happening* and interrupt it. An
   // `abandoning 0 in-flight task(s)` line after the fact is the failure mode.
   const fitnessStartMs = Date.now();
+  // Issue #4096: name the phase for the off-main-thread watchdog breach line.
+  neat.markPhase("fitness");
   const fitnessSignal = neat.enterInFlightPhase("fitness");
   let fitnessWatchdogId: ReturnType<typeof setInterval> | undefined;
   try {
@@ -336,6 +338,8 @@ export async function evolve(
       clearInterval(fitnessWatchdogId);
     }
     neat.leaveInFlightPhase();
+    // Issue #4096: fitness has returned; the main thread is between phases.
+    neat.markPhase("untracked");
   }
   const fitnessMs = Date.now() - fitnessStartMs;
 
@@ -412,6 +416,8 @@ export async function evolve(
   );
 
   // Issue #2274: Time score sorting phase
+  // Issue #4096: name the phase for the off-main-thread watchdog breach line.
+  neat.markPhase("sort");
   const sortStartMs = Date.now();
   sortCreaturesByScore(neat.population);
   const sortMs = Date.now() - sortStartMs;
@@ -422,8 +428,12 @@ export async function evolve(
   // speciation. writeScores only writes files to disk; speciation only reads
   // in-memory creature data. The two phases are independent, so running them
   // concurrently hides the I/O latency behind useful CPU work.
+  // Issue #4096: name the phase for the off-main-thread watchdog breach line.
+  neat.markPhase("write-scores");
   const writeScoresStartMs = Date.now();
   const writeScoresPromise = neat.writeScores(neat.population);
+  // Issue #4096 (PR #4101 review): speciation below is not write-scores work.
+  neat.markPhase("untracked");
 
   // Issue #2274: Time speciation phase (Genus.addCreature for each creature)
   const speciationStartMs = Date.now();
@@ -455,7 +465,10 @@ export async function evolve(
 
   // Issue #2315: Await writeScores to ensure all file writes complete before
   // proceeding. Timing captures the full I/O cost (overlapped with speciation).
+  // Issue #4096: only the await is write-scores time; clear it once it settles.
+  neat.markPhase("write-scores");
   await writeScoresPromise;
+  neat.markPhase("untracked");
   const writeScoresMs = Date.now() - writeScoresStartMs;
   // Issue #2312: Snapshot after writeScores+speciation — both now complete
   const writeScoresUtilisation = captureUtilisationSnapshot(
@@ -871,6 +884,8 @@ export async function evolve(
 
   // Issue #1026: Use parallel breeding for improved performance
   // Issue #2239: Time parallel breeding phase
+  // Issue #4096: name the phase for the off-main-thread watchdog breach line.
+  neat.markPhase("breeding");
   const breedingStartMs = Date.now();
   const parallelBreeding = new ParallelBreeding(
     genus,
@@ -1041,6 +1056,8 @@ export async function evolve(
   const breedingSubPhases = parallelBreeding.lastBreedingSubPhases;
 
   // Issue #2274: Time mutation phase
+  // Issue #4096: name the phase for the off-main-thread watchdog breach line.
+  neat.markPhase("mutation");
   const mutationStartMs = Date.now();
   // Issue #3971: a bred offspring has no score of its own, so the telemetry
   // measures its mutations against the score of the parent it came from.
@@ -1048,6 +1065,8 @@ export async function evolve(
     parallelBreeding.lastParentBaselines,
   );
   mutator.mutate(newPopulation);
+  // Issue #4096 (PR #4101 review): selection, assembly and trimming follow.
+  neat.markPhase("untracked");
   const mutationMs = Date.now() - mutationStartMs;
 
   // Issue #3932: screen the surplus down to the population budget, after
@@ -1233,18 +1252,25 @@ export async function evolve(
     //   • At worst, a few replacement templates are compiled lazily during
     //     fitness — a harmless cache overshoot.
     const deduplicationStartMs = Date.now();
+    // Issue #4096 (PR #4101 review): perform()'s synchronous first pass (UUIDs,
+    // genus) runs before its first await, so the phase is named before the call.
+    neat.markPhase("deduplication");
     const dedupPromise = deDuplicator.perform(neat.population);
 
     // Issue #2287: Pre-warm WASM compilation cache before the next generation's
     // fitness evaluation. Pre-computes topology hashes on all unevaluated
     // creatures and pre-compiles WASM templates for unique topologies.
     // Issue #2314: Runs concurrently with dedup I/O to hide latency.
+    // Issue #4096: name the phase for the off-main-thread watchdog breach line.
+    neat.markPhase("pre-warm");
     const preWarmStartMs = Date.now();
     preWarmResult = preWarmWasmCache(neat.population);
     preWarmMs = Date.now() - preWarmStartMs;
     // Issue #2312: Snapshot after pre-warming — main thread only
     preWarmUtilisation = captureUtilisationSnapshot(fastPool, heavyPool);
 
+    // Issue #4096: dedup is in flight again from here until its await returns.
+    neat.markPhase("deduplication");
     // Issue #2314: Await dedup completion after pre-warming finishes.
     await dedupPromise;
     deduplicationMs = Date.now() - deduplicationStartMs;
@@ -1253,6 +1279,8 @@ export async function evolve(
       fastPool,
       heavyPool,
     );
+    // Issue #4096: dedup has settled; the main thread is between phases.
+    neat.markPhase("untracked");
 
     // Issue #4061: the dedup await above yields to the event loop, so a
     // hard-deadline abandon can land after the check before the commit. Re-check
@@ -1516,6 +1544,9 @@ export async function evolve(
         ` corruptParentSkips=${throughput.corruptParentSkips}`,
     );
   }
+
+  // Issue #4096: generation work is done; the main thread is between phases.
+  neat.markPhase("untracked");
 
   // Issue #2909: stamp warm-up tags only at this save boundary while warming,
   // and strip both once warm (or when warm-up was never configured) so the
