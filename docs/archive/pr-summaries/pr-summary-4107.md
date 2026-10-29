@@ -4,8 +4,8 @@ When the hard deadline abandons a generation after `processCompletedResults()`
 has already logged `Training <id> completed`, the Issue #4050 guard in
 `evolve()` throws the generation's trained creatures away without a word. The
 abandoned branch now logs a `Training <id> discarded` warning once per task
-(`generation abandoned past the hard deadline`), so every `completed` line is matched by what happened to its creature.
-Closes #4107.
+(`generation abandoned past the hard deadline`), so every `completed` line is
+matched by what happened to its creature. Closes #4107.
 
 Version bump: not touched here; CI records the final version on the merged
 commit.
