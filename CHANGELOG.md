@@ -25,6 +25,27 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4097:** `loadWasmActivationInitPayloadAsync()` and
+  `fetchWasmForWorkers()` no longer fetch the WASM activation payload from
+  jsr.io on every start. For `https:` installs they now load the JS glue and the
+  binary cache-first, through the SHA-pinned on-disk bundle cache. A warm cache
+  makes no network request, so a jsr.io outage no longer stops the run. A cold
+  cache fetches with the bounded retry used for the bundle, and a failure is
+  still a `WasmError` (`MODULE_NOT_LOADED`) that names both URLs. The explicit
+  `baseUrl` option on `loadWasmActivationInitPayloadAsync()` isolates a load
+  from the in-process memo. The superseded single-shot uncached fetch
+  (`fetchWasmActivationPayloadOverHttp`, internal, not exported from the package
+  entry point) was removed, and its stall guard now covers the cache-first path.
+- **Issue #4095:** when every selectable worker was busy, `WorkerPool` selection
+  ranked an always-empty queue, so `scheduleTraining` and `scheduleDiscovery`
+  piled extra tasks onto the first heavy worker. It now picks the worker with
+  the least in-flight load (queue size plus pending tasks, ties to the first). A
+  labelled task (training or discovery, labelled with the creature uuid) that
+  fails because its worker was quarantined now carries its own label and says it
+  was queued on that worker, instead of repeating the culprit task's reason.
+  Other request kinds (evaluate, score, ...) are unlabelled and keep the
+  quarantine reason unchanged. The task that missed its deadline keeps its own
+  reason.
 - **Issue #4078:** `evolveDir()`, `evolveEnv()` and `evolveRL()` now reject an
   unusable caller creature (fewer than `input + output` neurons, or failing
   `validate()`) with a `ValidationError` as their first step, before any signal
@@ -193,6 +214,19 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4096:** The event-loop watchdog (Issue #4066) now has a main-thread
+  heartbeat. The main thread writes the epoch-ms of its latest timer tick into a
+  `SharedArrayBuffer` every `heartbeatIntervalMS` (default
+  `DEFAULT_HEARTBEAT_INTERVAL_MS`, 1000 ms; an option on `armEventLoopWatchdog`)
+  and once at arm. The timer is unreferenced and `disarm()` clears it. At breach
+  the Worker reads the heartbeat and appends
+  `lastHeartbeatAgeMs=<n> inFlightPhase=<phase> heartbeatIntervalMS=<n>` to the
+  end of the breach line. The existing text is unchanged and still a prefix.
+  `inFlightPhase` is the phase the main thread most recently entered, one of
+  `EVENT_LOOP_WATCHDOG_PHASES`. An age far above `heartbeatIntervalMS` means the
+  main event loop was blocked for about that long; an age of roughly one
+  interval or less means it was alive and the run was merely over budget. See
+  [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md) for how to read a breach line.
 - **Issue #3934:** The training-gain log, and what it measured. Jin (2011) §5
   asks who should receive local search — per-generation backpropagation is a
   large fixed cost per individual, and `selectTrainingCandidates` had always

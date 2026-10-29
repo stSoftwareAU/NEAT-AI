@@ -1,7 +1,8 @@
 /// <reference lib="deno.worker" />
 
 /**
- * Worker half of the event-loop watchdog — Issue #4066, part of #4060.
+ * Worker half of the event-loop watchdog — Issue #4066, part of #4060; liveness
+ * measurement — Issue #4096.
  *
  * This module runs inside the Worker that `armEventLoopWatchdog`
  * (`EventLoopWatchdog.ts`) spawns. It owns the deadline timer, so the deadline
@@ -11,6 +12,17 @@
  * On breach it writes the breach line to stderr, then sends `SIGKILL` to the
  * whole process. `SIGKILL` is used because `SIGTERM` is swallowed by the
  * main-thread listeners, and `Deno.exit` from a Worker ends only the Worker.
+ *
+ * The breach line carries the measured liveness of the main thread:
+ *
+ * - `lastHeartbeatAgeMs` is the age of the newest heartbeat the main thread
+ *   bumped. The heartbeat is set at arm and then every `heartbeatIntervalMS`,
+ *   so the age is roughly the time since arm or since the last tick. An age far
+ *   above `heartbeatIntervalMS` means the main loop was blocked: it never got
+ *   to tick. An age at or below about one interval means the loop was alive
+ *   and the run was simply over budget.
+ * - `inFlightPhase` is the phase the run last declared with `setPhase`.
+ * - `heartbeatIntervalMS` is the interval the heartbeat is measured against.
  *
  * This file must import nothing. It runs as a standalone module, and it is
  * loaded by URL from the main thread.
@@ -28,7 +40,14 @@ const POLL_MS = 1_000;
 interface ArmMessage {
   deadlineEpochMS: number;
   breachLine: string;
+  /** Slot 0 is the generation; slot 1 is the phase index. */
   generationBuffer: SharedArrayBuffer;
+  /** One 64-bit slot of epoch milliseconds, bumped by the main thread. */
+  heartbeatBuffer: SharedArrayBuffer;
+  /** Phase names, indexed by the phase slot. */
+  phaseNames: readonly string[];
+  /** The interval the heartbeat is measured against, echoed in the breach line. */
+  heartbeatIntervalMS: number;
 }
 
 const encoder = new TextEncoder();
@@ -63,17 +82,33 @@ self.onmessage = (event: MessageEvent<ArmMessage>) => {
   // Only the first message arms the watchdog. Any later message is ignored.
   self.onmessage = null;
 
-  const { deadlineEpochMS, breachLine, generationBuffer } = event.data;
+  const {
+    deadlineEpochMS,
+    breachLine,
+    generationBuffer,
+    heartbeatBuffer,
+    phaseNames,
+    heartbeatIntervalMS,
+  } = event.data;
   const generation = new Int32Array(generationBuffer);
+  const heartbeat = new BigInt64Array(heartbeatBuffer);
 
-  const breach = (): void => {
+  /** The breach line, with the measured liveness suffix. */
+  const breachText = (): string => {
     const value = Atomics.load(generation, 0);
     const label = value < 0 ? "unknown" : String(value);
-    const line = breachLine.replaceAll("{generation}", label) + "\n";
-    // The kill runs even if the stderr write throws. An unwritten breach line
-    // must never leave the process alive past its deadline.
+    const line = breachLine.replaceAll("{generation}", label);
+    const ageMs = Math.max(0, Date.now() - Number(Atomics.load(heartbeat, 0)));
+    const phase = phaseNames[Atomics.load(generation, 1)];
+    return `${line} lastHeartbeatAgeMs=${ageMs} inFlightPhase=${phase} heartbeatIntervalMS=${heartbeatIntervalMS}\n`;
+  };
+
+  const breach = (): void => {
+    // The kill runs even if building or writing the breach line throws. An
+    // unwritten breach line must never leave the process alive past its
+    // deadline.
     try {
-      writeAllStderr(encoder.encode(line));
+      writeAllStderr(encoder.encode(breachText()));
     } finally {
       killProcess();
     }

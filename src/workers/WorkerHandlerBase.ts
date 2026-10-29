@@ -39,6 +39,12 @@ interface WorkerEventListener<THandler> {
 interface PendingTask<TResponse> {
   /** `Date.now()` at dispatch, so a failure can report how long it ran. */
   readonly startedAtMs: number;
+  /**
+   * The caller's identity for the task (e.g. a creature uuid), when the caller
+   * supplied one. A quarantine names a labelled task in its failure so the
+   * task is not reported with another task's reason (Issue #4095).
+   */
+  readonly label?: string;
   /** Deliver the worker's response. */
   readonly settle: (result: TResponse) => void;
   /** Give up on the task, rejecting its promise. */
@@ -69,6 +75,20 @@ const workerErrorSinks = new WeakMap<object, (error: Error) => void>();
  */
 export function notifyWorkerError(worker: object, error: Error): void {
   workerErrorSinks.get(worker)?.(error);
+}
+
+/**
+ * The failure reason for a labelled task that was queued on a worker when it
+ * was quarantined for some other task's fault (Issue #4095). It names the task
+ * so its failure is its own, and keeps the quarantine reason as the cause.
+ */
+function collateralReason(
+  label: string,
+  workerID: number,
+  reason: string,
+): string {
+  return `task ${label} was queued on worker-${workerID} when it was ` +
+    `quarantined, so it never got a result of its own: ${reason}`;
 }
 
 let globalWorkerID = 0;
@@ -628,6 +648,7 @@ export abstract class WorkerHandlerBase<
     taskID: number,
     resolve: (result: TResponse) => void,
     reject: (error: Error) => void,
+    label?: string,
   ): void {
     const finish = () => {
       this.onTaskEnd();
@@ -638,6 +659,7 @@ export abstract class WorkerHandlerBase<
 
     this.pending.set(taskID, {
       startedAtMs: Date.now(),
+      label,
       settle: (result: TResponse) => {
         finish();
         resolve(result);
@@ -694,12 +716,23 @@ export abstract class WorkerHandlerBase<
   /**
    * Cancel every in-flight task on this worker (GRQ #4489).
    *
+   * A labelled task is cancelled with a reason that names its own label and
+   * says it was collateral of the quarantine, keeping `reason` inside it. Only
+   * labelled tasks (training and discovery, which pass the creature uuid) are
+   * named. An unlabelled task keeps `reason` unchanged because the worker
+   * cannot name it (Issue #4095).
+   *
+   * @param reason the quarantine reason, e.g. the deadline the culprit missed
+   * @param cause underlying fault, when one was observed
    * @returns how many tasks were cancelled
    */
   cancelAllTasks(reason: string, cause?: Error): number {
     let cancelled = 0;
-    for (const taskID of Array.from(this.pending.keys())) {
-      if (this.cancelTask(taskID, reason, cause)) cancelled++;
+    for (const [taskID, task] of Array.from(this.pending.entries())) {
+      const taskReason = task.label
+        ? collateralReason(task.label, this.workerID, reason)
+        : reason;
+      if (this.cancelTask(taskID, taskReason, cause)) cancelled++;
     }
     return cancelled;
   }
@@ -712,6 +745,12 @@ export abstract class WorkerHandlerBase<
    * ids were abandoned twice in a single run. Quarantine fails whatever is
    * still in flight, marks the handler unhealthy so {@link WorkerPool} stops
    * selecting it, and stops the isolate.
+   *
+   * Each labelled task is failed with a reason that names its own label and
+   * records it as collateral of this quarantine, with `reason` kept inside it;
+   * unlabelled tasks fail with `reason` unchanged (see {@link cancelAllTasks}).
+   * The task that caused the quarantine keeps its own reason when it was
+   * cancelled first with {@link cancelTask}.
    */
   quarantine(reason: string, cause?: Error): void {
     if (!this.healthy) return;
@@ -768,12 +807,14 @@ export abstract class WorkerHandlerBase<
    * Creates a promise for a request and posts it immediately.
    *
    * @param data - The request data to send
+   * @param label - Optional caller identity for the task (e.g. a creature
+   *   uuid), named in its failure if the worker is quarantined (Issue #4095)
    * @returns Promise resolving to the worker's response
    */
-  protected makePromise(data: TRequest): Promise<TResponse> {
+  protected makePromise(data: TRequest, label?: string): Promise<TResponse> {
     this.onTaskStart();
     const p = new Promise<TResponse>((resolve, reject) => {
-      this.registerPending(data.taskID, resolve, reject);
+      this.registerPending(data.taskID, resolve, reject, label);
     });
 
     this.worker.postMessage(data);
@@ -791,16 +832,19 @@ export abstract class WorkerHandlerBase<
    * @param afterPost - Optional callback invoked after postMessage completes
    *   the structured clone. Use this to null large request fields that are no
    *   longer needed, reducing memory pressure while the response is in flight.
+   * @param label - Optional caller identity for the task (e.g. a creature
+   *   uuid), named in its failure if the worker is quarantined (Issue #4095)
    * @returns Promise resolving to the worker's response
    */
   protected makePromiseDeferred(
     data: TRequest,
     afterPost?: () => void,
+    label?: string,
   ): Promise<TResponse> {
     this.onTaskStart();
 
     const p = new Promise<TResponse>((resolve, reject) => {
-      this.registerPending(data.taskID, resolve, reject);
+      this.registerPending(data.taskID, resolve, reject, label);
 
       this.ready.then(() => {
         this.worker.postMessage(data);
