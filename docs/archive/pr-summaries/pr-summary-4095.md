@@ -84,11 +84,15 @@ re-applied by hand and the targeted suites
 - `src/multithreading/WorkerPool.ts:228` negated `load < leastLoad` — 5 tests
   failed
 - `src/workers/WorkerHandlerBase.ts:662` dropped `label` from the pending entry
-  — 2 tests failed
-- `src/workers/WorkerHandlerBase.ts:735` negated the `task.label` check — 3
+  — 3 tests failed
+- `src/workers/WorkerHandlerBase.ts:732` negated the `task.label` check — 4
   tests failed
-- `src/workers/WorkerHandlerBase.ts:817` and `:847` dropped the `label` argument
-  to `registerPending` — 2 tests failed
+- `src/workers/WorkerHandlerBase.ts:847` dropped the `label` argument to
+  `registerPending` (the `makePromiseDeferred` path used by `trainTracked`) — 3
+  tests failed. The same drop at `:817` (`makePromise`) on its own leaves the
+  suites green: `src/workers/WorkerHandlerBase.ts:817` exempt (untestable): no
+  production caller passes a label through `makePromise`, so no test can reach
+  it (searched `makePromise(` callers under `src/`)
 
 The remaining mutants are in test and bench code, which no test exercises:
 
@@ -96,7 +100,8 @@ The remaining mutants are in test and bench code, which no test exercises:
   production code and not imported by any test
 - `test/NEAT/PoolBorrowing.ts:38`,
   `test/NEAT/TrainingSpreadsAcrossHeavyWorkers.ts:37-114`,
-  `test/multithreading/WorkerHandler.ts:154-230`,
+  `test/multithreading/WorkerHandler.ts:154-230` (including the survivors at
+  `:182`, `:184`, `:202`, `:209`, `:211`, `:221` and `:229`),
   `test/multithreading/WorkerPool.ts:30` and `:494-529` exempt (untestable):
   these are test helpers and the test bodies themselves; a mutant there is
   checked by the assertions it supports, which the source mutants above show are
