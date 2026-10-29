@@ -28,6 +28,7 @@ import {
   type EvolveTerminationReason,
   shouldAbandonInFlight,
 } from "@neat/HardDeadline.ts";
+import type { EventLoopWatchdogPhase } from "@neat/EventLoopWatchdog.ts";
 import { Mutator } from "@neat/Mutator.ts";
 import { MCMCState } from "@neat/MCMCState.ts";
 import { MutationOperatorTelemetry } from "@neat/MutationOperatorTelemetry.ts";
@@ -124,6 +125,12 @@ export class Neat {
    * killing the process.
    */
   private inFlightAbort: AbortController | undefined = undefined;
+  /**
+   * Off-main-thread watchdog observer installed by {@link setPhaseObserver}
+   * (Issue #4096). `undefined` when no watchdog is armed.
+   */
+  private phaseObserver: ((phase: EventLoopWatchdogPhase) => void) | undefined =
+    undefined;
   /**
    * Why the most recent `evolve*` run stopped (GRQ #4141). Distinguishes
    * graceful over-run self-termination from the T+15 hard-deadline abandon.
@@ -952,6 +959,35 @@ export class Neat {
   /** Cooperative interrupt for the current {@link inFlightPhase}. */
   interruptInFlightPhase(): void {
     this.inFlightAbort?.abort();
+  }
+
+  /**
+   * Install (or clear, with `undefined`) the observer that receives generation
+   * phase markers. The evolve entry points wire this to the off-main-thread
+   * watchdog so its breach line names the phase (Issue #4096).
+   */
+  setPhaseObserver(
+    observer: ((phase: EventLoopWatchdogPhase) => void) | undefined,
+  ): void {
+    this.phaseObserver = observer;
+  }
+
+  /**
+   * Reports the generation phase to the off-main-thread watchdog so its breach
+   * line names it (Issue #4096). Phases may overlap in time; the marker is the
+   * phase the main thread most recently entered. An observer that throws must
+   * not take the run down, so the error is logged once and swallowed.
+   */
+  markPhase(phase: EventLoopWatchdogPhase): void {
+    if (!this.phaseObserver) return;
+    try {
+      this.phaseObserver(phase);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      getLogger().warn(
+        `EventLoopWatchdog phase observer failed (phase "${phase}"): ${message}`,
+      );
+    }
   }
 
   /**

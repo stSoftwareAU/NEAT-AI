@@ -20,6 +20,7 @@ import { assert } from "@std/assert";
 import { addTag, getTag } from "@stsoftware/tags/mod";
 import type { CostName } from "@costs";
 import type { Creature } from "@creature";
+import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import type {
   CreatureExport,
   CreatureTrace,
@@ -515,7 +516,8 @@ export class WorkerHandler
   }
 
   train(creature: Creature, options: TrainOptions) {
-    return this.trainTracked(creature, options).response;
+    return this.trainTracked(creature, options, CreatureUtil.makeUUID(creature))
+      .response;
   }
 
   /**
@@ -527,11 +529,19 @@ export class WorkerHandler
    * the run — every abandoned task then reported no error, no timing and no
    * partial result.
    *
+   * The label names the task in its failure if the worker is quarantined while
+   * the task is still queued, so it is not reported with another task's reason
+   * (Issue #4095).
+   *
+   * @param creature the creature to train
+   * @param options training options for the worker
+   * @param label the caller's identity for the task, e.g. the creature uuid
    * @returns the dispatched task id and the response promise
    */
   trainTracked(
     creature: Creature,
     options: TrainOptions,
+    label: string,
   ): { taskID: number; response: Promise<ResponseData> } {
     const json = creature.exportJSON();
 
@@ -561,7 +571,7 @@ export class WorkerHandler
     const response = this.makePromiseDeferred(data, () => {
       // Clear large creature data after structured clone completes.
       clearForGc(data.train!, "creature");
-    }).finally(() => {
+    }, label).finally(() => {
       this.decrementLongRunningTaskCount();
     });
 
@@ -589,10 +599,12 @@ export class WorkerHandler
 
     // Issue #2161: Track discover as a long-running task.
     this.incrementLongRunningTaskCount();
+    // The creature uuid labels the task so a quarantine of this worker names
+    // it (Issue #4095).
     return this.makePromiseDeferred(data, () => {
       // Clear large creature data after structured clone completes.
       clearForGc(data.discover!, "creature");
-    }).finally(() => {
+    }, CreatureUtil.makeUUID(creature)).finally(() => {
       this.decrementLongRunningTaskCount();
     });
   }

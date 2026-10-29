@@ -97,7 +97,7 @@ Deno.test("OutputRange integration: penalty increases error for out-of-range out
 Deno.test("OutputRange integration: no penalty when outputs are in range", async () => {
   const dataDir = createNarrowRangeDataDir();
 
-  // Very wide output range: virtually all outputs should be in range
+  // LOGISTIC is bounded in [0, 1], so every output is inside this range.
   const wideRanges: RequiredOutputRange[] = [
     { min: -100, max: 100, penaltyWeight: 1.0 },
   ];
@@ -116,7 +116,9 @@ Deno.test("OutputRange integration: no penalty when outputs are in range", async
     await workerBaseline.waitUntilReady();
     await workerWideRange.waitUntilReady();
 
-    const creature = new Creature(2, 1);
+    const creature = new Creature(2, 1, {
+      outputLayer: { squash: "LOGISTIC" },
+    });
 
     const fitnessBaseline = new Fitness([workerBaseline], 0.000_000_1, false);
     const fitnessWide = new Fitness([workerWideRange], 0.000_000_1, false);

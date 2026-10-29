@@ -9,6 +9,9 @@ name: Benchmarks
 
 on:
   pull_request:
+    # Draft PRs are work in progress (owner, 2026-10-23): CI runs
+    # once, when the PR is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
     # Milestone sub-issue PRs target a shared `milestone/<slug>` branch, so a
     # `Develop`-only filter skipped this gate on them (Issue #3606). Milestone
     # branch names have no nested slashes, so a single-level glob is enough.
@@ -37,6 +40,7 @@ permissions:
 
 jobs:
   smoke:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Benchmark smoke
     runs-on: ubuntu-latest
     # The smoke subset is fast; keep a generous cap purely as a wedge guard.
@@ -79,7 +83,7 @@ jobs:
     name: Score-per-hour regression gate
     # Only on the weekly schedule / manual dispatch — this runs a real
     # (bounded) evolution and is slower than the smoke pass (Issue #3398).
-    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

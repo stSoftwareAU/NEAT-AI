@@ -30,6 +30,11 @@ class MockBenchWorker {
     return this._busy;
   }
 
+  /** Issue #4095: all-busy selection ranks workers by in-flight load. */
+  getPendingTaskCount(): number {
+    return 0;
+  }
+
   setBusy(busy: boolean): void {
     this._busy = busy;
   }

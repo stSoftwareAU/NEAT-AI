@@ -437,6 +437,8 @@ export interface EvolveDirDeps {
   /**
    * Arms the off-main-thread event-loop watchdog (Issue #4067). Defaults to
    * `armEventLoopWatchdog`; in-process tests stub it so no Worker is spawned.
+   * Its breach line carries the heartbeat age and the generation phase the main
+   * thread was in (Issue #4096).
    */
   armWatchdog?: (options: EventLoopWatchdogOptions) => EventLoopWatchdog;
   /**
@@ -643,6 +645,9 @@ export async function evolveDir(
         armWatchdog: deps?.armWatchdog,
         marginMS: deps?.watchdogMarginMS,
       });
+      // Issue #4096: the generation phase reaches the watchdog so its breach
+      // line names the phase the main thread was in.
+      neat.setPhaseObserver((phase) => watchdog?.setPhase(phase));
       await neat.populatePopulation(creature);
 
       // Issue #2902: hand the constructed Neat instance to the test seam (if any)
@@ -938,6 +943,8 @@ export async function evolveDir(
       }
       throw error;
     } finally {
+      // Issue #4096: no phase markers reach a disarmed watchdog.
+      neat.setPhaseObserver(undefined);
       watchdog?.disarm();
       callerSnapshot.dispose();
     }
@@ -986,9 +993,10 @@ export async function evolveDir(
  * #4056): a generation that never settles is abandoned and the population
  * evolved so far is kept. Generation 1 is bounded by its own, larger
  * first-generation deadline. When `timeoutMinutes` is set, the event-loop
- * watchdog (Issue #4067) backs that bound off the main thread. The optional
- * `deps` argument is a test seam (see {@link EvolveDirDeps}); production
- * callers omit it.
+ * watchdog (Issue #4067) backs that bound off the main thread; its breach line
+ * carries the heartbeat age and the generation phase (Issue #4096). The
+ * optional `deps` argument is a test seam (see {@link EvolveDirDeps});
+ * production callers omit it.
  */
 export async function evolveEnv<S, A>(
   creature: Creature,
@@ -1119,6 +1127,9 @@ export async function evolveEnv<S, A>(
         armWatchdog: deps?.armWatchdog,
         marginMS: deps?.watchdogMarginMS,
       });
+      // Issue #4096: the generation phase reaches the watchdog so its breach
+      // line names the phase the main thread was in.
+      neat.setPhaseObserver((phase) => watchdog?.setPhase(phase));
       await neat.populatePopulation(creature);
 
       // Issue #4056: test seam, as in evolveDir. No-op for production callers.
@@ -1370,6 +1381,8 @@ export async function evolveEnv<S, A>(
       }
       throw error;
     } finally {
+      // Issue #4096: no phase markers reach a disarmed watchdog.
+      neat.setPhaseObserver(undefined);
       watchdog?.disarm();
       callerSnapshot.dispose();
     }
@@ -1491,9 +1504,10 @@ export interface EvolveRLOptions extends NeatOptions {
  * #4056): a generation that never settles is abandoned and the population
  * evolved so far is kept. Generation 1 is bounded by its own, larger
  * first-generation deadline. When `timeoutMinutes` is set, the event-loop
- * watchdog (Issue #4067) backs that bound off the main thread. The optional
- * `deps` argument is a test seam (see {@link EvolveDirDeps}); production
- * callers omit it.
+ * watchdog (Issue #4067) backs that bound off the main thread; its breach line
+ * carries the heartbeat age and the generation phase (Issue #4096). The
+ * optional `deps` argument is a test seam (see {@link EvolveDirDeps});
+ * production callers omit it.
  */
 export async function evolveRL<S, A>(
   creature: Creature,
@@ -1749,6 +1763,9 @@ export async function evolveRL<S, A>(
         armWatchdog: deps?.armWatchdog,
         marginMS: deps?.watchdogMarginMS,
       });
+      // Issue #4096: the generation phase reaches the watchdog so its breach
+      // line names the phase the main thread was in.
+      neat.setPhaseObserver((phase) => watchdog?.setPhase(phase));
       await neat.populatePopulation(creature);
 
       // Issue #4056: test seam, as in evolveDir. No-op for production callers.
@@ -2116,6 +2133,8 @@ export async function evolveRL<S, A>(
       }
       throw error;
     } finally {
+      // Issue #4096: no phase markers reach a disarmed watchdog.
+      neat.setPhaseObserver(undefined);
       watchdog?.disarm();
       callerSnapshot.dispose();
     }
