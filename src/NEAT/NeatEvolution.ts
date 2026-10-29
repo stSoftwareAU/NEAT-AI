@@ -1163,6 +1163,17 @@ export async function evolve(
         `hard deadline — discarding its population changes instead of ` +
         `committing them (Issue #4050)`,
     );
+    // Issue #4107: name each trained task this abandon discards.
+    const discardedTrainIDs = new Set<string>();
+    for (const creature of trainedPopulation) {
+      const trainID = getTag(creature, "trainID");
+      if (trainID) discardedTrainIDs.add(trainID);
+    }
+    for (const trainID of discardedTrainIDs) {
+      getLogger().warn(
+        `Training ${trainID} discarded: generation abandoned past the hard deadline`,
+      );
+    }
   } else {
     neat.population = budgeted.population; // Keep pseudo sorted.
 

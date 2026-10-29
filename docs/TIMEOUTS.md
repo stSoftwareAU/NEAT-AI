@@ -173,6 +173,14 @@ neither gates the persist. A run whose generation throws never reaches this
 teardown; its failure cleanup (Issue #4072) makes the same two calls after
 terminating the workers, so those tasks are named there too.
 
+A result already merged by `evolve()` has left `trainingComplete`, so the
+teardown discard above cannot see it. When the hard deadline abandons that
+generation before it commits (Issue #4050), the generation's trained creatures
+are dropped with it, so `evolve()` logs
+`Training <id> discarded: generation abandoned past the hard deadline` once per
+task (Issue #4107). Discovery and replay creatures carry no train ID and are not
+named by this line.
+
 Issue #4061 narrows what the restore step may hand back. Each entry point
 (`evolveDir`, `evolveEnv`, `evolveRL`) validates the caller's creature on entry
 (Issue #4078) and then snapshots it. A caller with fewer than `input + output`
