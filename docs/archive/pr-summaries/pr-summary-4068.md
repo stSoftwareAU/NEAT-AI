@@ -15,7 +15,7 @@ than requiring the previous filter-only expression.
 - Documentation adds the event-loop explanation, breach-line interpretation,
   caller deadline formula and references to the existing watchdog tests.
 - CI’s Test Results annotation identified `test/ci/CoveragePathScoping.ts`: the
-  validator expected `${{ steps.filter.outputs.code }}` after the workflow
+  validator expected the filter step's `code` output alone after the workflow
   gained its milestone override. The single-file test reproduced this failure
   locally.
 - No runtime code or dependency changes are included.
