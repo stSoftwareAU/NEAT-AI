@@ -67,6 +67,10 @@ function baseOptions(
     now: () => 1_000,
     budgetMS: BUDGET_MS,
     pollIntervalMS: POLL_MS,
+    neat: {
+      abandonInFlightAtTeardown: () => 0,
+      discardUnprocessedResults: () => 0,
+    },
     ...overrides,
   };
 }
@@ -259,4 +263,99 @@ Deno.test("bounded teardown: a non-positive budget falls back to the default", a
     "the default budget must be positive",
   );
   assertEquals(report.replayDrained, true);
+});
+
+Deno.test("bounded teardown: unmerged work is named after persist and worker termination, and counted (Issue #4099)", async () => {
+  const order: string[] = [];
+  const workers: TerminableWorker[] = [
+    {
+      terminate: () => {
+        order.push("terminate");
+      },
+    },
+  ];
+
+  const report = await runBoundedEvolveTeardown(baseOptions({
+    neat: {
+      abandonInFlightAtTeardown: () => {
+        order.push("abandon");
+        return 1;
+      },
+      discardUnprocessedResults: () => {
+        order.push("discard");
+        return 2;
+      },
+    },
+    persist: () => {
+      order.push("persist");
+      return Promise.resolve();
+    },
+    workers,
+  }));
+
+  assertEquals(
+    report.resultsDiscarded,
+    2,
+    "the report must carry the number of results discarded at teardown",
+  );
+  assertEquals(
+    report.tasksAbandoned,
+    1,
+    "the report must carry the number of in-flight tasks abandoned",
+  );
+  assertEquals(
+    order,
+    ["persist", "terminate", "abandon", "discard"],
+    "in-flight tasks and unmerged results are named last, once nothing more can settle",
+  );
+});
+
+Deno.test("bounded teardown: a result that settles while persisting is still discarded by name (Issue #4099)", async () => {
+  const queued: string[] = [];
+  const named: string[] = [];
+
+  const report = await runBoundedEvolveTeardown(baseOptions({
+    neat: {
+      abandonInFlightAtTeardown: () => 0,
+      discardUnprocessedResults: () => {
+        named.push(...queued);
+        return queued.length;
+      },
+    },
+    // The result arrives during the persist's await, as `writeCreatures` /
+    // `flushTrainingGainLog` leave the event loop free to settle a task.
+    persist: async () => {
+      await Promise.resolve();
+      queued.push("late-task");
+    },
+  }));
+
+  assertEquals(named, ["late-task"]);
+  assertEquals(report.resultsDiscarded, 1);
+});
+
+Deno.test("bounded teardown: unmerged work is still named when persist fails (Issue #4099)", async () => {
+  let abandonCalls = 0;
+  let discardCalls = 0;
+
+  await assertRejects(
+    () =>
+      runBoundedEvolveTeardown(baseOptions({
+        neat: {
+          abandonInFlightAtTeardown: () => {
+            abandonCalls++;
+            return 0;
+          },
+          discardUnprocessedResults: () => {
+            discardCalls++;
+            return 0;
+          },
+        },
+        persist: () => Promise.reject(new Error("disk full")),
+      })),
+    Error,
+    "disk full",
+  );
+
+  assertEquals([abandonCalls, discardCalls], [1, 1]);
 });
