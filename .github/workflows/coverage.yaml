@@ -265,16 +265,16 @@ jobs:
             fi
           fi
 
-          # Record this shard's outcome for the merge job's gate. Never fail the
-          # shard on test failures (exit 1) — the merge job gates the build so
-          # every shard still uploads its results. Genuine runner crashes are
-          # recorded as "error".
+          # Record this shard's outcome for the merge job's gate. Test failures
+          # (exit 1) stay green here so every shard can upload its results;
+          # runner crashes fail this required shard check after writing status.
           if [ "$TEST_EXIT_CODE" -eq 0 ]; then
             echo "passed" > "shard-status-${SHARD}.txt"
           elif [ "$TEST_EXIT_CODE" -eq 1 ]; then
             echo "failed" > "shard-status-${SHARD}.txt"
           else
             echo "error:${TEST_EXIT_CODE}" > "shard-status-${SHARD}.txt"
+            exit "$TEST_EXIT_CODE"
           fi
           echo "Shard ${SHARD} status: $(cat "shard-status-${SHARD}.txt")"
 

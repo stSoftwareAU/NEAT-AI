@@ -129,8 +129,12 @@ runs its slice, and — if the runner OOM-kills the run — retries once while
 **staying parallel**: it keeps `--parallel` but caps the worker pool via
 `DENO_JOBS=2` and halves the V8 heap (Issue #3174). Each shard uploads its
 partial `coverage-<shard>` dir, `junit-<shard>.xml`, and a
-`shard-status-<shard>.txt` marker; test _failures_ never fail the shard job (the
-merge job gates the build), so every shard always publishes its results.
+`shard-status-<shard>.txt` marker. Assertion failures (exit 1) leave the shard
+job green so every shard can publish its results before the merge job fails the
+build. A runner crash (any final exit other than 0 or 1, including an OOM that
+survives the retry) writes an `error:<code>` marker and fails that required
+shard check; the `always()` artifact step still uploads its status, JUnit and
+coverage outputs for aggregation.
 
 Both the initial plan and the scoped OOM recovery come from the unit-tested
 [`scripts/coverage_run_plan.ts`](../../scripts/coverage_run_plan.ts)
@@ -181,10 +185,15 @@ stays serial on the retry with the reduced heap.
 flowchart TD
     A[Shard slice] --> B["Initial run<br/>--parallel, DENO_JOBS=auto, full heap"]
     B --> C{Exit code}
-    C -->|"0 / 1"| E["Record status<br/>upload coverage-N + junit-N.xml"]
-    C -->|"134 / 137 / 143 (OOM)"| D["Scoped recovery<br/>--parallel, DENO_JOBS=2, half heap"]
-    D --> E
-    E --> M["Merge job<br/>merge coverage + JUnit, gate on shard statuses"]
+    C -->|"0 / 1, not OOM"| E["Record pass/fail status"]
+    C -->|"OOM exit or fatal-OOM log"| D["Scoped retry<br/>--parallel, DENO_JOBS=2, half heap"]
+    D --> R{Final exit code}
+    R -->|"0 / 1"| E
+    R -->|"other"| X["Record error status<br/>fail shard step"]
+    C -->|"other"| X
+    X -->|"if: always()"| U["Upload shard artifact"]
+    E --> U
+    U --> M["Merge job<br/>merge coverage + JUnit, gate on shard statuses"]
 ```
 
 **Merge job:** re-verifies partition parity, checks the
@@ -196,14 +205,18 @@ consolidated Test Results check + Codecov upload, then fails the build if any
 shard reported test failures (`failed`) or a runner crash (`error`/missing
 status).
 
-**Per-shard exit code meanings:**
+**Initial OOM retry triggers:** exit 133/134/137/143 or a fatal-OOM log
+signature triggers one retry, still parallel, with `DENO_JOBS=2` and half the
+heap. The retry's result is final; an OOM on that attempt does not retry again.
 
-| Exit Code   | Meaning           | Shard Action                                               |
-| ----------- | ----------------- | ---------------------------------------------------------- |
-| 0           | All tests passed  | Marker `passed`                                            |
-| 1           | Test failures     | Marker `failed`; merge job fails build                     |
-| 143/137/134 | OOM kill / signal | Retry once, still parallel: cap `DENO_JOBS=2` + halve heap |
-| Other       | Unexpected error  | Marker `error`; merge job fails build                      |
+**Final per-shard exit code meanings (after any OOM retry):**
+
+| Final exit code | Meaning          | Shard Action                                                          |
+| --------------- | ---------------- | --------------------------------------------------------------------- |
+| 0               | All tests passed | Marker `passed`                                                       |
+| 1               | Test failures    | Marker `failed`; merge job fails build                                |
+| 133/134/137/143 | OOM / signal     | Marker `error:<code>`; shard job fails after artifact data is written |
+| Other           | Unexpected error | Marker `error:<code>`; shard job fails after artifact data is written |
 
 **Tuning shard count:** set the workflow-level `SHARD_TOTAL` env **and** the
 `coverage` job's `strategy.matrix.shard` list to the same value —
