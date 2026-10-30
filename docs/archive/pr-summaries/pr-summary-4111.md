@@ -56,14 +56,9 @@ flowchart LR
 
 ## Test Plan
 
-- `test/ci/CoveragePathScoping.ts` (7 tests at head): passed. Its current
-  expectations against the base workflow (`origin/Develop`) give 6 passed, 1
-  failed:
-  `every accepted ready PR forces coverage regardless of the path
-  filter`
-  reports `AssertionError: Values are not equal.` Removing only the Develop
-  operand also makes that test fail; removing only the milestone operand makes
-  it fail too.
+- `test/ci/CoveragePathScoping.ts` (7 tests at head): 7 passed, 0 failed. Re-run
+  for PR #4116 with
+  `timeout 180 deno test -A test/ci/CoveragePathScoping.ts < /dev/null`.
 - `test/ci/CoverageMilestoneBranchFilter.ts` (1 test at head): passed.
 - `test/ci/CoverageShardMatrix.ts` (4 tests at head): passed.
 - `test/ci/CoverageMergeGate.ts` (9 tests at head): passed.
