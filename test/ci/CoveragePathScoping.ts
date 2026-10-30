@@ -3,19 +3,17 @@ import { globToRegExp } from "@std/path";
 import { parse } from "@std/yaml";
 
 /**
- * Verifies the Test Coverage workflow skips its eight heavy shards on a
- * docs-only PR to Develop while the required `merge` check still reports
- * (Issue #4041).
+ * Verifies the Test Coverage workflow runs its eight shards on Develop and
+ * milestone PRs, including docs-only changes (Issue #4111).
  *
  * A `changes` job runs `dorny/paths-filter` against an explicit include list;
- * the shards run when it reports a code change or the target is a milestone
- * branch (whose rules require the named shard checks). `merge` always runs
- * so the required status check posts a trivial pass instead of hanging. A
- * failed `changes` job must fail `merge` loudly rather than read as "no code
- * changed".
+ * its result does not gate coverage under the current triggers. Every ready
+ * PR accepted by this workflow runs the shards. `merge` aggregates results
+ * and fails loudly when change detection fails; neither ruleset requires it.
  *
  * This is a "what" test: it parses the committed workflow, evaluates the
- * filter's globs against sample PR file lists, and asserts on the job graph.
+ * retained filter's globs against sample file lists, and asserts on the job
+ * graph. Glob matching alone does not decide whether the shards run.
  */
 
 interface Step {
@@ -71,7 +69,7 @@ function codeGlobs(wf: Workflow): string[] {
 }
 
 /** Whether the path filter reports code changes for `files`. */
-function runsShards(globs: string[], files: string[]): boolean {
+function matchesCodeFilter(globs: string[], files: string[]): boolean {
   const patterns = globs.map((g) =>
     globToRegExp(g, { globstar: true, extended: true })
   );
@@ -89,7 +87,7 @@ Deno.test("paths-filter is pinned to a full commit SHA (Issue #4041)", async () 
 Deno.test("docs-only paths do not match the code filter (Issue #4041)", async () => {
   const globs = codeGlobs(await readWorkflow());
   assertEquals(
-    runsShards(globs, [
+    matchesCodeFilter(globs, [
       "README.md",
       "docs/GLOSSARY.md",
       "docs/archive/pr-summaries/pr-summary-4041.md",
@@ -100,7 +98,7 @@ Deno.test("docs-only paths do not match the code filter (Issue #4041)", async ()
   );
 });
 
-Deno.test("code, test and build-input PRs run the coverage shards (Issue #4041)", async () => {
+Deno.test("code, test and build-input paths match the retained filter (Issue #4041)", async () => {
   const globs = codeGlobs(await readWorkflow());
   for (
     const file of [
@@ -116,7 +114,10 @@ Deno.test("code, test and build-input PRs run the coverage shards (Issue #4041)"
       ".github/workflows/coverage.yaml",
     ]
   ) {
-    assert(runsShards(globs, [file]), `${file} must trigger the shards`);
+    assert(
+      matchesCodeFilter(globs, [file]),
+      `${file} must match the retained filter`,
+    );
   }
 });
 
@@ -135,28 +136,28 @@ Deno.test("the changes job holds read-only permissions (Issue #4041)", async () 
   }
 });
 
-Deno.test("the shards run for milestone targets or filtered code changes (Issue #4041)", async () => {
+Deno.test("every accepted ready PR forces coverage regardless of the path filter (Issue #4111)", async () => {
   const wf = await readWorkflow();
   const coverage = wf.jobs.coverage;
   assert(needsOf(coverage).includes("changes"));
   assert(
     (coverage.if ?? "").includes("needs.changes.outputs.code == 'true'"),
-    `coverage.if must gate on the filter, got: ${coverage.if}`,
+    `coverage.if must gate on the changes output, got: ${coverage.if}`,
   );
   assertEquals(
     wf.jobs.changes.outputs?.code,
-    "${{ startsWith(github.base_ref, 'milestone/') && 'true' || steps.filter.outputs.code }}",
+    "${{ (github.base_ref == 'Develop' || startsWith(github.base_ref, 'milestone/')) && 'true' || steps.filter.outputs.code }}",
   );
 });
 
-Deno.test("the merge check always runs and fails loud when detection fails (Issue #4041)", async () => {
+Deno.test("the merge job is not skipped and fails loud when detection fails (Issue #4041)", async () => {
   const merge = (await readWorkflow()).jobs.merge;
   const needs = needsOf(merge);
   assert(needs.includes("changes") && needs.includes("coverage"));
   assert((merge.if ?? "").includes("!cancelled()"));
   assert(
     !(merge.if ?? "").includes("needs.changes.outputs"),
-    "merge must not be skipped on a docs-only PR — it is the required check",
+    "merge must not be skipped on a docs-only PR — it publishes Test Results",
   );
 
   const steps = merge.steps ?? [];
@@ -170,8 +171,8 @@ Deno.test("the merge check always runs and fails loud when detection fails (Issu
   );
   assertEquals(guard.if, undefined, "the detection guard must always run");
 
-  // Every other step is either the explicit skip notice or gated on the
-  // changes output, so skipped shards cannot trip the status failure steps.
+  // The output gates the remaining steps. With the current triggers it is
+  // always true after successful change detection; the skip notice is inactive.
   for (const step of steps.slice(1)) {
     assert(
       (step.if ?? "").includes("env.RUN_COVERAGE"),
