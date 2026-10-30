@@ -2,10 +2,10 @@
  * Issue #4062 — a population checkpoint must never carry a creature whose
  * `memetic` names a synapse (or neuron) the same file does not carry.
  *
- * After a hard-deadline abandonment the background generation keeps mutating
- * live creatures while the teardown checkpoint is written, so a creature's
- * `memetic` can go stale against its synapses. The writer prunes such rows at
- * the export boundary; core's validator would otherwise reject the file with
+ * These tests inject stale memetic references to exercise the write boundary.
+ * They do not identify a production mutation or run an abandoned generation.
+ * The writer prunes such rows at the export boundary; core's validator would
+ * otherwise reject the file with
  * "Memetic from id X to id Y has no matching synapses".
  */
 
@@ -67,7 +67,7 @@ function memeticCreature(): Creature {
 
 /**
  * Removes the hidden-1 -> output-0 synapse straight from the live creature
- * WITHOUT touching memetic — what an abandoned generation does mid-write.
+ * WITHOUT touching memetic — a synthetic fault, not a production mutation.
  */
 function dropSynapseKeepingMemetic(
   creature: Creature,
@@ -117,9 +117,8 @@ Deno.test("writeCreatures never writes a memetic row naming a missing synapse (#
     const stale = population[1];
     let calls = 0;
     const writeTextFile = (path: string, text: string): Promise<void> => {
-      // Stands in for an abandoned generation still mutating
-      // `neat.population`: with batchSize 1, this runs after the first
-      // creature is written and before the second is exported.
+      // Inject a synthetic fault between exports. This does not exercise
+      // evolve() or identify how a production creature becomes stale.
       if (calls++ === 0) dropSynapseKeepingMemetic(stale);
       return Deno.writeTextFile(path, text);
     };
