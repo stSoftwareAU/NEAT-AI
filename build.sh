@@ -18,12 +18,14 @@ VERIFY_ONLY=false
 ALLOW_UNVERIFIED=false
 EXPLICIT_REV=""
 
-# Distinct exit code for "the upstream revision could not be looked up"
-# (Issue #3990). It is not a broken build: the network was unreachable, the
-# API was rate limited, or no credential could read the repo. The pinned rev
-# and the vendored bundle are untouched and still valid, so the automated
-# dependency bump treats it as "nothing to bump" rather than reverting the
-# whole PR's bump. Every genuine failure still exits 1.
+# Distinct exit code for "upstream could not be reached" (Issue #3990, extended
+# to the release asset in Issue #4120). It is not a broken build: the network
+# was unreachable, the API was rate limited, no credential could read the
+# repo, or the release-asset host refused the download (e.g. a proxy 403). The
+# pinned rev and the vendored bundle are untouched and still valid, so the
+# automated dependency bump treats it as "nothing to bump" rather than
+# reverting the whole PR's bump. A missing asset (404/410) and every other
+# genuine failure still exits 1.
 EXIT_UPSTREAM_UNRESOLVED=3
 # Printed to stderr immediately before exiting with the code above. A caller
 # must match this marker as well as the status: a status of 3 alone could have
@@ -79,12 +81,15 @@ Exit codes:
   0   Success (bundle refreshed, or already current).
   1   Failure — bad flag, failed verification, or a failed download.
   3   The upstream revision could not be looked up because upstream was
-      unreachable (offline, rate limited, or no credential), and the
-      marker line BUILD_STATUS=upstream-unresolved was printed to
-      stderr. Nothing was changed, so a caller that matches both the
-      status and the marker may treat this as "nothing to bump". A ref
-      that upstream reports as missing is a configuration error and
-      still exits 1.
+      unreachable (offline, rate limited, or no credential), or the
+      release asset could not be downloaded because its host was
+      unreachable or refused the request (e.g. a proxy 403). The marker
+      line BUILD_STATUS=upstream-unresolved was printed to stderr.
+      Nothing was changed, so a caller that matches both the status and
+      the marker may treat this as "nothing to bump". A ref that
+      upstream reports as missing, or an asset that answers 404 or 410,
+      is a configuration error and still exits 1, as does any asset
+      failure under --clean.
 HELP
 }
 
@@ -1081,13 +1086,28 @@ if [[ "$download_ok" != true ]]; then
     curl_args+=(-H "Authorization: Bearer ${token}")
   fi
   asset_url="https://github.com/${NEAT_CORE_REPO}/releases/download/${RELEASE_TAG}/${ASSET_NAME}"
-  if ! curl "${curl_args[@]}" -o "$tmp_dir/$ASSET_NAME" "$asset_url"; then
+  asset_status=""
+  curl_rc=0
+  asset_status="$(curl "${curl_args[@]}" -w '%{http_code}' -o "$tmp_dir/$ASSET_NAME" "$asset_url" 2>"$tmp_dir/asset.err")" || curl_rc=$?
+  if [[ "$curl_rc" -ne 0 ]]; then
+    cat "$tmp_dir/asset.err" >&2 || true
     echo "ERROR: Could not download ${ASSET_NAME} from ${NEAT_CORE_REPO} release ${RELEASE_TAG}." >&2
     echo "  - Failure mode: the release exists but the asset is missing or unreadable." >&2
     echo "  - The release-not-found propagation race is handled separately by NEAT_CORE_BUNDLE_RETRIES (default 5) — that retry already succeeded." >&2
     echo "  - Confirm the asset is attached: https://github.com/${NEAT_CORE_REPO}/releases/tag/${RELEASE_TAG}" >&2
     echo "  - For private repos, set NEAT_CORE_GITHUB_TOKEN or GITHUB_TOKEN with read access." >&2
-    exit 1
+    # Issue #4120: a 404/410 means the asset is genuinely missing, and under
+    # --clean pkg/ is already gone, so neither can be a skip. Any other failure
+    # means the asset host was unreachable or refused us: the same "upstream
+    # could not be reached" condition as the lookup above, so it gets the same
+    # status and marker, and nothing has been changed.
+    if [[ "$CLEAN" == true || "$asset_status" == "404" || "$asset_status" == "410" ]]; then
+      exit 1
+    fi
+    echo "Release asset host unreachable: curl exit code ${curl_rc}, HTTP status ${asset_status:-000} fetching ${ASSET_NAME}." >&2
+    echo "  - The pinned neatCore.rev in deno.json and the vendored bundle are untouched." >&2
+    echo "$UPSTREAM_UNRESOLVED_MARKER" >&2
+    exit "$EXIT_UPSTREAM_UNRESOLVED"
   fi
 fi
 

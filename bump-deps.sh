@@ -39,12 +39,14 @@ cd "$SCRIPT_DIR"
 #   already current).
 
 QUARANTINE_HOURS="${VIBE_BUMP_QUARANTINE_HOURS:-24}"
-# Exit code the build script uses for "upstream revision could not be looked
-# up" — offline, rate limited, or no credential (Issue #3990). It is distinct
-# from a genuine build failure, which is still exit 1. The status alone is not
-# trusted: the build script also prints the marker below, and both must be
-# present before the run is degraded to a skip. A bare status of 3 could have
-# come from any command the build script ran.
+# Exit code the build script uses for "upstream could not be read": the
+# revision lookup failed (offline, rate limited, or no credential), or a release
+# asset download was refused for a reason other than the asset being absent
+# (Issues #3990, #4120). It is distinct from a genuine build failure, which is
+# still exit 1. The status alone is not trusted: the build script also prints
+# the marker below, and both must be present before the run is degraded to a
+# skip. A bare status of 3 could have come from any command the build script
+# ran.
 BUILD_EXIT_UPSTREAM_UNRESOLVED=3
 BUILD_UPSTREAM_UNRESOLVED_MARKER="BUILD_STATUS=upstream-unresolved"
 SKIP_INTERNAL=false
@@ -298,12 +300,13 @@ else
   fi
   if [[ "$build_exit" -eq "$BUILD_EXIT_UPSTREAM_UNRESOLVED" ]] \
     && grep -q "$BUILD_UPSTREAM_UNRESOLVED_MARKER" "$build_log"; then
-    # Upstream is unreachable (offline, rate limited, or no credential) and
-    # said so explicitly. The pin and the vendored bundle are untouched and
-    # still valid, so there is nothing to bump — a degraded internal bump must
-    # not take the external bumps down with it. Loud on stderr, and named in
-    # the summary so a run is never reported as simply "current".
-    INTERNAL_SKIP_REASON="upstream revision could not be resolved"
+    # Upstream could not be read (offline, rate limited, refused, or no
+    # credential) and the build script said so explicitly. The pin and the
+    # vendored bundle are untouched and still valid, so there is nothing to
+    # bump — a degraded internal bump must not take the external bumps down
+    # with it. Loud on stderr, and named in the summary so a run is never
+    # reported as simply "current".
+    INTERNAL_SKIP_REASON="upstream could not be reached (revision lookup or bundle download)"
     echo "WARNING: internal bump skipped — ${INTERNAL_SKIP_REASON}." >&2
     before_display="${INTERNAL_BEFORE:0:7}"
     [[ -n "$before_display" ]] || before_display="(unset)"
