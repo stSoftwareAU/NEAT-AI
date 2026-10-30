@@ -67,15 +67,12 @@ flowchart LR
   `timeout 180 deno test -A test/ci/CoveragePathScoping.ts test/ci/CoverageMilestoneBranchFilter.ts test/ci/CoverageShardMatrix.ts test/ci/CoverageMergeGate.ts test/ci/CoverageFailsPrOnTestFailure.ts < /dev/null`.
   The glob tests check only the retained filter's matching, not whether coverage
   runs. Names, messages and the helper now make this distinction explicit.
-- Red check for the edited expectation (run at head for PR #4116): with only the
-  Develop clause removed from `changes.outputs.code` in
-  `.github/workflows/coverage.yaml` and the milestone clause kept,
-  `timeout 180 deno test -A test/ci/CoveragePathScoping.ts < /dev/null` gave 6
-  passed, 1 failed;
-  `every accepted ready PR forces coverage regardless of the
-  path filter (Issue #4111)`
-  failed with `AssertionError: Values are not equal.` With the workflow restored
-  it gives 7 passed, 0 failed.
+- Red check for the edited expectation: removing only the Develop clause from
+  `changes.outputs.code` in `.github/workflows/coverage.yaml` turns
+  `test/ci/CoveragePathScoping.ts` red in the test named
+  `every accepted ready PR forces coverage regardless of the path filter (Issue #4111)`;
+  with the workflow restored `test/ci/CoveragePathScoping.ts` has 7 tests at
+  head, all passing.
 - `deno lint test/ci/CoveragePathScoping.ts` and
   `deno check test/ci/CoveragePathScoping.ts test/ci/CoverageMilestoneBranchFilter.ts`:
   passed.
@@ -98,9 +95,9 @@ milestone refs:
 `${{ startsWith(github.base_ref, 'milestone/') && 'true' || steps.filter.outputs.code }}`
 {% endraw %}
 
-Required by the issue: "Apply the milestone override to Develop targets as
-well." Replaced by the expression that also forces coverage for Develop; the
-milestone override is still pinned:
+Required by the issue: the milestone override must also cover Develop targets.
+Replaced by the expression that also forces coverage for Develop; the milestone
+override is still pinned:
 
 {% raw %}
 `${{ (github.base_ref == 'Develop' || startsWith(github.base_ref, 'milestone/')) && 'true' || steps.filter.outputs.code }}`
