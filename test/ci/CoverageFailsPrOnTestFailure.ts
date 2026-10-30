@@ -87,22 +87,18 @@ exit 90
 `,
     );
     await Deno.chmod(deno, 0o755);
-    const nproc = join(bin, "nproc");
-    await Deno.writeTextFile(nproc, "#!/bin/sh\necho 8\n");
-    await Deno.chmod(nproc, 0o755);
 
     const run = step.run.replaceAll("${{ matrix.shard }}", "0")
       .replaceAll("/proc/meminfo", join(dir, "meminfo"));
     const result = await new Deno.Command("bash", {
       args: ["-euo", "pipefail", "-c", run],
       cwd: dir,
+      clearEnv: true,
       env: {
         PATH: `${bin}:${Deno.env.get("PATH") ?? ""}`,
         RUNNER_CODES: codes.join(","),
         SHARD_TOTAL: "8",
       },
-      stdout: "piped",
-      stderr: "piped",
     }).output();
     if (!(await exists(join(dir, "shard-status-0.txt")))) {
       throw new Error(

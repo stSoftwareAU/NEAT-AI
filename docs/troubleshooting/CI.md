@@ -205,14 +205,18 @@ consolidated Test Results check + Codecov upload, then fails the build if any
 shard reported test failures (`failed`) or a runner crash (`error`/missing
 status).
 
+**Initial OOM retry triggers:** exit 133/134/137/143 or a fatal-OOM log
+signature triggers one retry, still parallel, with `DENO_JOBS=2` and half the
+heap. The retry's result is final; an OOM on that attempt does not retry again.
+
 **Final per-shard exit code meanings (after any OOM retry):**
 
-| Final exit code                  | Meaning          | Shard Action                                                          |
-| -------------------------------- | ---------------- | --------------------------------------------------------------------- |
-| 0                                | All tests passed | Marker `passed`                                                       |
-| 1                                | Test failures    | Marker `failed`; merge job fails build                                |
-| 133/134/137/143 or fatal-OOM log | OOM              | Retry once, still parallel: cap `DENO_JOBS=2` + halve heap            |
-| Other                            | Unexpected error | Marker `error:<code>`; shard job fails after artifact data is written |
+| Final exit code | Meaning          | Shard Action                                                          |
+| --------------- | ---------------- | --------------------------------------------------------------------- |
+| 0               | All tests passed | Marker `passed`                                                       |
+| 1               | Test failures    | Marker `failed`; merge job fails build                                |
+| 133/134/137/143 | OOM / signal     | Marker `error:<code>`; shard job fails after artifact data is written |
+| Other           | Unexpected error | Marker `error:<code>`; shard job fails after artifact data is written |
 
 **Tuning shard count:** set the workflow-level `SHARD_TOTAL` env **and** the
 `coverage` job's `strategy.matrix.shard` list to the same value —
