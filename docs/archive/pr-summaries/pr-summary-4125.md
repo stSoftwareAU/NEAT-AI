@@ -77,4 +77,22 @@ flowchart TD
 - The full `./quality.sh` gate was not run (it needs the native `rust_scorer`,
   unavailable in this sandbox); CI runs it.
 
+## Mutation check
+
+The 26 surviving mutants are all inside
+`test/ci/CoverageFailsPrOnTestFailure.ts`, which is itself a test, so the check
+found "no test imports this module".
+
+- Harness lines `:121`, `:122`, `:148`, `:149`, `:167`, `:168` (env properties,
+  ternary, `hasCoverage`, `runs`, `isDirectory`): killed. Applied by hand one at
+  a time, each turns
+  `deno test -A --no-check
+  test/ci/CoverageFailsPrOnTestFailure.ts` red (exit
+  1; unmutated file exits 0), then the file was restored.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:277-280`, `:284-287`, `:291-294`,
+  `:298-301` exempt (untestable): these are the assertion statements of the new
+  `Deno.test` cases. Deleting or flipping an assertion in a test body cannot
+  make another test fail; the assertions are themselves the check, and the
+  workflow-level red checks above show they bite.
+
 <!-- vibe-quality-gate-skipped reason="./quality.sh requires the native rust_scorer, unavailable in this sandbox; targeted fmt, lint and the CI test files were run instead" -->
