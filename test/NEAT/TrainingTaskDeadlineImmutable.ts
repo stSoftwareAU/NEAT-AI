@@ -9,9 +9,9 @@
  * the budget, so the worker and the watchdog disagreed about when the task was
  * due.
  *
- * These tests drive the real `scheduleTraining` with a controlled clock and a
- * worker boundary that burns time during dispatch, and assert the deadline the
- * worker is handed and the one the watchdog records.
+ * These tests drive the real `scheduleTraining` with an injected controlled
+ * clock and a worker boundary that burns time during dispatch, and assert the
+ * deadline the worker is handed and the one the watchdog records.
  */
 import { assert, assertEquals } from "@std/assert";
 import { createNeatConfig } from "@config/NeatConfig.ts";
@@ -33,18 +33,20 @@ const MINUTE = 60_000;
 const DISPATCH_DELAY_MS = 90_000;
 const T0 = 1_800_000_000_000;
 
-/** Runs `body` with `Date.now()` pinned to a clock the test advances. */
-async function withClock<T>(
-  body: (clock: { advance: (ms: number) => void }) => Promise<T> | T,
-): Promise<T> {
-  const realNow = Date.now;
-  let now = T0;
-  Date.now = () => now;
-  try {
-    return await body({ advance: (ms) => now += ms });
-  } finally {
-    Date.now = realNow;
-  }
+/** A controlled clock: the test moves it forward explicitly. */
+interface Clock {
+  now: () => number;
+  advance: (ms: number) => void;
+}
+
+function makeClock(): Clock {
+  let t = T0;
+  return {
+    now: () => t,
+    advance: (ms: number) => {
+      t += ms;
+    },
+  };
 }
 
 /** Records the options it is handed and burns time while dispatching. */
@@ -83,111 +85,101 @@ function createStubNeat(
   } as unknown as Neat;
 }
 
-/** Schedules one task and returns what the worker got and what the watchdog holds. */
+/**
+ * Schedules one task on a stub run and returns what the worker got, what the
+ * watchdog holds, and the clock (already advanced by the dispatch).
+ */
 function schedule(
-  clock: { advance: (ms: number) => void },
   minutes: number,
   hardDeadlineTS: number,
   layers: number,
-): { options: TrainOptions; recorded: number | undefined } {
+): { options: TrainOptions; recorded: number | undefined; clock: Clock } {
+  const clock = makeClock();
   const worker = new DelayedWorker(clock.advance);
   const neat = createStubNeat(worker, hardDeadlineTS);
   const creature = new Creature(2, 1, { layers: [{ count: layers }] });
-  scheduleTraining(neat, creature, minutes);
+  scheduleTraining(neat, creature, minutes, undefined, undefined, clock.now);
   assert(worker.lastOptions, "training should have been dispatched");
   return {
     options: worker.lastOptions,
     recorded: neat.trainingDeadlines.get(CreatureUtil.makeUUID(creature)),
+    clock,
   };
 }
 
 Deno.test("the worker and the watchdog share the deadline fixed at scheduling (Issue #4118)", async () => {
   await initWasmForTests();
-  await withClock((clock) => {
-    const { options, recorded } = schedule(clock, 5, 0, 2);
-    const expected = T0 + 5 * MINUTE;
+  const { options, recorded } = schedule(5, 0, 2);
+  const expected = T0 + 5 * MINUTE;
 
-    // The dispatch burned 90 s, so a deadline derived after it would differ.
-    assertEquals(
-      recorded,
-      expected,
-      "watchdog deadline anchored at scheduling",
-    );
-    assertEquals(
-      options.hardDeadlineTS,
-      expected,
-      "worker is handed the same absolute deadline",
-    );
-    assertEquals(options.hardDeadlineTS, recorded);
-  });
+  // The dispatch burned 90 s, so a deadline derived after it would differ.
+  assertEquals(
+    recorded,
+    expected,
+    "watchdog deadline anchored at scheduling",
+  );
+  assertEquals(
+    options.hardDeadlineTS,
+    expected,
+    "worker is handed the same absolute deadline",
+  );
+  assertEquals(options.hardDeadlineTS, recorded);
 });
 
 Deno.test("a worker that starts late cannot renew the task budget (Issue #4118)", async () => {
   await initWasmForTests();
-  await withClock((clock) => {
-    const { options } = schedule(clock, 5, 0, 3);
-    // The worker derives its own timeout from the options when it dequeues the
-    // task — DISPATCH_DELAY_MS after scheduling — exactly as `createEpochState`.
-    const workerTimeoutTS = computeTimeoutTS(
-      Date.now(),
-      options.trainingTimeOutMinutes ?? 0,
-      options.hardDeadlineTS,
-    );
-    assertEquals(workerTimeoutTS, T0 + 5 * MINUTE);
-  });
+  const { options, clock } = schedule(5, 0, 3);
+  // The worker derives its own timeout from the options when it dequeues the
+  // task — DISPATCH_DELAY_MS after scheduling — exactly as `createEpochState`.
+  const workerTimeoutTS = computeTimeoutTS(
+    clock.now(),
+    options.trainingTimeOutMinutes ?? 0,
+    options.hardDeadlineTS,
+  );
+  assertEquals(workerTimeoutTS, T0 + 5 * MINUTE);
 });
 
 Deno.test("an earlier run deadline wins over the task cap (Issue #4118)", async () => {
   await initWasmForTests();
-  await withClock((clock) => {
-    const runDeadline = T0 + 2 * MINUTE;
-    const { options, recorded } = schedule(clock, 10, runDeadline, 4);
-    assertEquals(recorded, runDeadline);
-    assertEquals(options.hardDeadlineTS, runDeadline);
-  });
+  const runDeadline = T0 + 2 * MINUTE;
+  const { options, recorded } = schedule(10, runDeadline, 4);
+  assertEquals(recorded, runDeadline);
+  assertEquals(options.hardDeadlineTS, runDeadline);
 });
 
 Deno.test("an earlier task cap is forwarded in place of the later run deadline (Issue #4118)", async () => {
   await initWasmForTests();
-  await withClock((clock) => {
-    const runDeadline = T0 + 30 * MINUTE;
-    const { options, recorded } = schedule(clock, 1, runDeadline, 5);
-    assertEquals(recorded, T0 + MINUTE);
-    assertEquals(
-      options.hardDeadlineTS,
-      T0 + MINUTE,
-      "the worker must stop at the task cap, not at the later run deadline",
-    );
-  });
+  const runDeadline = T0 + 30 * MINUTE;
+  const { options, recorded } = schedule(1, runDeadline, 5);
+  assertEquals(recorded, T0 + MINUTE);
+  assertEquals(
+    options.hardDeadlineTS,
+    T0 + MINUTE,
+    "the worker must stop at the task cap, not at the later run deadline",
+  );
 });
 
 Deno.test("a disabled task cap leaves the run deadline in force (Issue #4118)", async () => {
   await initWasmForTests();
-  await withClock((clock) => {
-    const runDeadline = T0 + 20 * MINUTE;
-    const { options, recorded } = schedule(clock, 0, runDeadline, 6);
-    assertEquals(recorded, runDeadline);
-    assertEquals(options.hardDeadlineTS, runDeadline);
-    assertEquals(options.trainingTimeOutMinutes, 0);
-  });
+  const runDeadline = T0 + 20 * MINUTE;
+  const { options, recorded } = schedule(0, runDeadline, 6);
+  assertEquals(recorded, runDeadline);
+  assertEquals(options.hardDeadlineTS, runDeadline);
+  assertEquals(options.trainingTimeOutMinutes, 0);
 });
 
 Deno.test("no cap and no run deadline stays unbounded (Issue #4118)", async () => {
   await initWasmForTests();
-  await withClock((clock) => {
-    const { options, recorded } = schedule(clock, 0, 0, 7);
-    assertEquals(options.hardDeadlineTS, undefined);
-    assertEquals(options.trainingTimeOutMinutes, 0);
-    assertEquals(recorded, 0, "0 is the watchdog's 'no deadline' sentinel");
-  });
+  const { options, recorded } = schedule(0, 0, 7);
+  assertEquals(options.hardDeadlineTS, undefined);
+  assertEquals(options.trainingTimeOutMinutes, 0);
+  assertEquals(recorded, 0, "0 is the watchdog's 'no deadline' sentinel");
 });
 
 Deno.test("the relative timeout still travels with the task (Issue #4118)", async () => {
   await initWasmForTests();
-  await withClock((clock) => {
-    const { options } = schedule(clock, 7, 0, 8);
-    assertEquals(options.trainingTimeOutMinutes, 7);
-  });
+  const { options } = schedule(7, 0, 8);
+  assertEquals(options.trainingTimeOutMinutes, 7);
 });
 
 /** A worker that never answers, so only the watchdog can end the task. */
@@ -196,8 +188,6 @@ class WedgedWorker {
   quarantinedFor: string | undefined;
   private healthy = true;
   private pending = new Map<number, (error: Error) => void>();
-
-  constructor(private readonly advance: (ms: number) => void) {}
 
   isBusy(): boolean {
     return this.pending.size > 0;
@@ -209,7 +199,6 @@ class WedgedWorker {
     return 0;
   }
   trainTracked(): { taskID: number; response: Promise<ResponseData> } {
-    this.advance(DISPATCH_DELAY_MS);
     const response = new Promise<ResponseData>((_resolve, reject) => {
       this.pending.set(1, reject);
     });
@@ -237,43 +226,41 @@ class WedgedWorker {
 }
 
 Deno.test("the watchdog still waits its 30 s grace past the original deadline, then cancels (Issue #4118)", async () => {
-  await withClock(async (clock) => {
-    const worker = new WedgedWorker(clock.advance);
-    const neat = new Neat(2, 1, { populationSize: 4 }, [
-      worker as unknown as WorkerHandler,
-    ]);
-    const creature = new Creature(2, 1, { layers: [{ count: 9 }] });
-    const uuid = CreatureUtil.makeUUID(creature);
+  const worker = new WedgedWorker();
+  const neat = new Neat(2, 1, { populationSize: 4 }, [
+    worker as unknown as WorkerHandler,
+  ]);
+  const creature = new Creature(2, 1, { layers: [{ count: 9 }] });
+  const uuid = CreatureUtil.makeUUID(creature);
 
-    neat.scheduleTraining(creature, 5);
-    const inFlight = neat.trainingInProgress.get(uuid);
-    assert(inFlight, "the training promise is tracked");
+  neat.scheduleTraining(creature, 5);
+  const inFlight = neat.trainingInProgress.get(uuid);
+  assert(inFlight, "the training promise is tracked");
 
-    const deadline = T0 + 5 * MINUTE;
-    assertEquals(neat.trainingDeadlines.get(uuid), deadline);
-    assertEquals(TRAINING_TASK_WATCHDOG_GRACE_MS, 30_000);
+  const deadline = neat.trainingDeadlines.get(uuid);
+  assert(deadline !== undefined && deadline > 0, "a deadline is recorded");
+  assertEquals(TRAINING_TASK_WATCHDOG_GRACE_MS, 30_000);
 
-    // At the deadline plus the full grace the task is still given its chance…
-    assertEquals(
-      neat.abandonStuckTrainingTasks(
-        deadline + TRAINING_TASK_WATCHDOG_GRACE_MS,
-        TRAINING_TASK_WATCHDOG_GRACE_MS,
-      ),
-      [],
-    );
-    assertEquals(worker.cancelled.length, 0);
+  // At the deadline plus the full grace the task is still given its chance…
+  assertEquals(
+    neat.abandonStuckTrainingTasks(
+      deadline + TRAINING_TASK_WATCHDOG_GRACE_MS,
+      TRAINING_TASK_WATCHDOG_GRACE_MS,
+    ),
+    [],
+  );
+  assertEquals(worker.cancelled.length, 0);
 
-    // …and one millisecond later a genuinely unresponsive task is cancelled and
-    // its worker quarantined.
-    assertEquals(
-      neat.abandonStuckTrainingTasks(
-        deadline + TRAINING_TASK_WATCHDOG_GRACE_MS + 1,
-        TRAINING_TASK_WATCHDOG_GRACE_MS,
-      ),
-      [uuid],
-    );
-    await inFlight;
-    assertEquals(worker.cancelled, [1]);
-    assertEquals(worker.isHealthy(), false);
-  });
+  // …and one millisecond later a genuinely unresponsive task is cancelled and
+  // its worker quarantined.
+  assertEquals(
+    neat.abandonStuckTrainingTasks(
+      deadline + TRAINING_TASK_WATCHDOG_GRACE_MS + 1,
+      TRAINING_TASK_WATCHDOG_GRACE_MS,
+    ),
+    [uuid],
+  );
+  await inFlight;
+  assertEquals(worker.cancelled, [1]);
+  assertEquals(worker.isHealthy(), false);
 });
