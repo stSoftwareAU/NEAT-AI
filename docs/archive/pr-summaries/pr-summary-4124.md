@@ -58,8 +58,8 @@ flowchart TD
   optional `oomRuns` parameter and returns `runs`):
   - both runs exit 1 and emit the signature → `error:oom`, exit 1, artifacts
     retained.
-  - first run exit 1 with signature, retry exit 1 without it → `failed`, exit
-    0, `runs` equal to 2 (proves the retry engaged).
+  - first run exit 1 with signature, retry exit 1 without it → `failed`, exit 0,
+    `runs` equal to 2 (proves the retry engaged).
   - first run exit 1 with signature, retry exit 0 → `passed`.
 - Result on the final head: 17 passed, 0 failed (the file above plus
   `test/ci/CoverageOomRetryParallel.ts`). `deno fmt --check` and `deno lint`
