@@ -827,7 +827,13 @@ Deno.test("finishUp: a settled training result is merged by processCompletedResu
       "a settled training result that has not been merged must hold finishUp open",
     );
 
-    const merged = processCompletedResults(neat, fittest, {} as never);
+    const sink = { discoveryIDs: [], replayKeys: [] };
+    const merged = processCompletedResults(neat, fittest, {} as never, sink);
+    assertEquals(
+      sink,
+      { discoveryIDs: [], replayKeys: [] },
+      "a training-only merge must not record a discovery or replay",
+    );
 
     const late = merged.filter((c) => getTag(c, "trainID") === "late1234");
     assert(
