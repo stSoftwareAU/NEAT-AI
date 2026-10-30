@@ -750,6 +750,15 @@ then continues with the external bumps — nothing was written, so there is
 nothing to revert. A ref upstream reports as **missing** is a configuration
 error and exits `1`, as does any other build failure.
 
+The same marker and exit `3` also cover a release asset download that fails for
+any reason other than the asset being absent: a transport failure, or an HTTP
+403, 429 or 5xx from the signed asset host (Issue #4120). The pin, `deno.json`
+and the vendored bundle are left untouched, so `bump-deps.sh` reports the same
+skipped internal bump. An HTTP 404 or 410 on the asset stays a hard failure and
+exits `1`. With `--clean`, which deletes `wasm_activation/pkg` before
+downloading, a failed download still exits `1`, because the bundle has already
+been removed.
+
 ## 🦀 Rust Discovery Module
 
 The Rust FFI extension shipped via

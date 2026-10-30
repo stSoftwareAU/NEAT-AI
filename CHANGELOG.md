@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4120:** `build.sh` no longer exits `1` when the release asset
+  download fails after the release probe has confirmed the release exists. A
+  transport failure, or an HTTP 403, 429 or 5xx from the signed asset host, now
+  prints `BUILD_STATUS=upstream-unresolved` and exits `3`, so `bump-deps.sh`
+  reports a skipped internal bump and continues with the external bumps. The
+  pin, `deno.json` and the vendored bundle are untouched. An HTTP 404 or 410 on
+  the asset is still a hard failure (exit `1`), and with `--clean` a failed
+  download still exits `1`, because `wasm_activation/pkg` has already been
+  deleted.
 - **Issue #4115:** a discovery or replay creature merged by
   `processCompletedResults()` in a generation the hard deadline then abandons is
   no longer dropped silently. The abandoned branch of `evolve()` now logs

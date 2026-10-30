@@ -218,6 +218,15 @@ The Vibe Coder worker invokes [`./bump-deps.sh`](../bump-deps.sh) before
   A ref upstream reports as **missing** is a configuration error, not an outage:
   `build.sh` exits `1` and the bump is reverted, so a stale `neatCore.ref` can
   never sit behind a green run. Every other build failure still exits `1` too.
+
+  The same marker and code `3` also cover a release asset download that fails
+  for any reason other than the asset being absent: a transport failure, or an
+  HTTP 403, 429 or 5xx from the signed asset host (Issue #4120). The pin,
+  `deno.json` and the vendored bundle are left untouched, so `bump-deps.sh`
+  reports the same skipped internal bump. An HTTP 404 or 410 on the asset stays
+  a hard failure and exits `1`. With `--clean`, which deletes
+  `wasm_activation/pkg` before downloading, a failed download still exits `1`,
+  because the bundle has already been removed.
 - **External (jsr:@std/_, npm:_, https://deno.land/*):** runs
   `deno outdated --update --latest --minimum-dependency-age=<min>` with a
   quarantine window (default 24h, see `VIBE_BUMP_QUARANTINE_HOURS`). The

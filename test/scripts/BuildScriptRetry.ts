@@ -18,6 +18,7 @@ import { assert, assertEquals } from "@std/assert";
 const REPO_ROOT = Deno.cwd();
 const FAKE_REV_A = "a".repeat(40);
 const FAKE_REV_B = "b".repeat(40);
+const UPSTREAM_MARKER = "BUILD_STATUS=upstream-unresolved";
 
 interface RunResult {
   stdout: string;
@@ -141,6 +142,12 @@ async function writeFakeGh(
      * (issue #3515).
      */
     sidecarSha256?: string;
+    /**
+     * When true, `gh release download` of the tarball fails the way a
+     * refused signed-asset host does (Issue #4120). The sidecar download is
+     * unaffected: it is best-effort and build.sh never reaches it.
+     */
+    downloadFails?: boolean;
   },
 ): Promise<void> {
   const script = `#!/usr/bin/env bash
@@ -153,6 +160,7 @@ FIXTURE="${opts.fixturePath}"
 PROBE_FAIL_UNTIL_SUCCESS="${opts.probeFailUntilSuccess ?? 0}"
 PROBE_FATAL_STDERR=${JSON.stringify(opts.probeFatalStderr ?? "")}
 SIDECAR_SHA256=${JSON.stringify(opts.sidecarSha256 ?? "")}
+DOWNLOAD_FAILS="${opts.downloadFails ? "true" : "false"}"
 
 case "$1" in
   api)
@@ -202,6 +210,10 @@ case "$1" in
         # build.sh, which a sandboxed test must not exercise.
         exit 0
       fi
+      if [[ "$DOWNLOAD_FAILS" == "true" ]]; then
+        echo 'gh: Get "https://release-assets.githubusercontent.com/github-production-release-asset/fake": Forbidden' >&2
+        exit 1
+      fi
       cp "$FIXTURE" "$asset_dir/$pattern"
       exit 0
     fi
@@ -215,6 +227,16 @@ exit 1
   await Deno.chmod(path, 0o755);
 }
 
+/** A simulated failed release-asset transfer (Issue #4120). */
+interface FakeAssetFailure {
+  /** curl's exit code, e.g. 56 for a refused CONNECT tunnel, 22 for an HTTP error under -f. */
+  exitCode: number;
+  /** The `%{http_code}` curl reports; "000" when no HTTP response arrived. */
+  httpStatus: string;
+  /** curl's own stderr line for the failure. */
+  stderr: string;
+}
+
 /**
  * Write a fake `curl` into the shim directory (Issue #3990).
  *
@@ -222,20 +244,44 @@ exit 1
  * tests would otherwise reach the real GitHub API. The shim answers the
  * release probe with a canned HTTP status and refuses anything else.
  *
+ * When `assetFailure` is given (Issue #4120), a request for a
+ * `/releases/download/` URL fails the way curl would: it prints its stderr,
+ * prints the http_code when `-w` was passed, writes no body to `-o`, and
+ * exits with the configured code.
+ *
  * @param probeStatus status the probe reports — "000" means curl itself
  *        could not answer, which is what an offline runner looks like.
+ * @param assetFailure how the release-asset download fails; omitted means
+ *        the asset URL is refused as an unsupported request.
  */
 async function writeFakeCurl(
   fakeBinDir: string,
   probeStatus: string,
+  assetFailure?: FakeAssetFailure,
 ): Promise<void> {
   const script = `#!/usr/bin/env bash
 PROBE_STATUS=${JSON.stringify(probeStatus)}
+ASSET_RC=${assetFailure?.exitCode ?? -1}
+ASSET_HTTP_STATUS=${JSON.stringify(assetFailure?.httpStatus ?? "")}
+ASSET_STDERR=${JSON.stringify(assetFailure?.stderr ?? "")}
 for arg in "$@"; do
   case "$arg" in
     *releases/tags/*) printf '%s' "$PROBE_STATUS"; exit 0 ;;
   esac
 done
+if [[ "$ASSET_RC" -ge 0 ]]; then
+  want_status=false
+  for arg in "$@"; do
+    case "$arg" in
+      *releases/download/*)
+        printf '%s\\n' "$ASSET_STDERR" >&2
+        if [[ "$want_status" == true ]]; then printf '%s' "$ASSET_HTTP_STATUS"; fi
+        exit "$ASSET_RC"
+        ;;
+    esac
+    if [[ "$arg" == "-w" ]]; then want_status=true; fi
+  done
+fi
 echo "fake-curl: unsupported request: $*" >&2
 exit 1
 `;
@@ -668,5 +714,221 @@ Deno.test({
     } finally {
       await setup.cleanup();
     }
+  },
+});
+
+interface AssetRefusalOutcome {
+  result: RunResult;
+  denoJsonBefore: string;
+  denoJsonAfter: string;
+  /** Names of the entries left in wasm_activation/pkg (empty if absent). */
+  pkgEntries: string[];
+}
+
+/**
+ * Runs build.sh where the gh tarball download fails and the curl fallback
+ * fails as `asset` describes (Issue #4120). The probe succeeds, so the
+ * download is the first thing that can go wrong.
+ */
+async function runAssetRefusal(
+  asset: FakeAssetFailure,
+  extraArgs: string[],
+): Promise<AssetRefusalOutcome> {
+  const setup = await setupFakeRepo();
+  try {
+    await writeFakeGh(setup.fakeBinDir, {
+      probeCounterFile: setup.probeCounterFile,
+      downloadCounterFile: setup.downloadCounterFile,
+      fixturePath: setup.fixturePath,
+      downloadFails: true,
+    });
+    await writeFakeCurl(setup.fakeBinDir, "200", asset);
+    const denoJsonBefore = await Deno.readTextFile(`${setup.dir}/deno.json`);
+    const result = await runBuild(
+      setup.dir,
+      ["--rev", FAKE_REV_B, ...extraArgs],
+      setup.fakeBinDir,
+      {
+        NEAT_CORE_BUNDLE_RETRIES: "5",
+        NEAT_CORE_BUNDLE_RETRY_DELAY_SECONDS: "0",
+      },
+    );
+    const denoJsonAfter = await Deno.readTextFile(`${setup.dir}/deno.json`);
+    const pkgEntries: string[] = [];
+    try {
+      for await (
+        const entry of Deno.readDir(`${setup.dir}/wasm_activation/pkg`)
+      ) {
+        pkgEntries.push(entry.name);
+      }
+    } catch (err) {
+      // --clean deletes pkg/ outright; a missing directory holds no files.
+      if (!(err instanceof Deno.errors.NotFound)) throw err;
+    }
+    return { result, denoJsonBefore, denoJsonAfter, pkgEntries };
+  } finally {
+    await setup.cleanup();
+  }
+}
+
+/**
+ * Asserts an asset-host refusal is reported as upstream-unresolved: exit 3,
+ * the marker, curl's own stderr still shown, and nothing changed (Issue #4120).
+ */
+function assertAssetHostUnreachable(
+  outcome: AssetRefusalOutcome,
+  asset: FakeAssetFailure,
+): void {
+  const { result } = outcome;
+  assertEquals(
+    result.code,
+    3,
+    `expected the upstream-unresolved code for a refused asset host; stderr=${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes(UPSTREAM_MARKER),
+    `expected the marker on stderr; stderr=${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes("Could not download"),
+    `the ERROR lines must still be printed; stderr=${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes(asset.stderr),
+    `curl's own stderr must not be swallowed; stderr=${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes(`curl exit code ${asset.exitCode}`) &&
+      result.stderr.includes(`HTTP status ${asset.httpStatus}`),
+    `expected the curl exit code and HTTP status to be named; stderr=${result.stderr}`,
+  );
+  assertEquals(
+    outcome.denoJsonAfter,
+    outcome.denoJsonBefore,
+    "deno.json must not be mutated when the asset host is unreachable",
+  );
+  assert(
+    outcome.denoJsonAfter.includes(FAKE_REV_A),
+    "the pinned neatCore.rev must still be FAKE_REV_A",
+  );
+  assertEquals(
+    outcome.pkgEntries,
+    [],
+    "no bundle files may be extracted into pkg/",
+  );
+}
+
+const CONNECT_TUNNEL_REFUSED: FakeAssetFailure = {
+  exitCode: 56,
+  httpStatus: "000",
+  stderr: "curl: (56) CONNECT tunnel failed, response 403",
+};
+
+const ASSET_FORBIDDEN: FakeAssetFailure = {
+  exitCode: 22,
+  httpStatus: "403",
+  stderr: "curl: (22) The requested URL returned error: 403",
+};
+
+const ASSET_NOT_FOUND: FakeAssetFailure = {
+  exitCode: 22,
+  httpStatus: "404",
+  stderr: "curl: (22) The requested URL returned error: 404",
+};
+
+const ASSET_GONE: FakeAssetFailure = {
+  exitCode: 22,
+  httpStatus: "410",
+  stderr: "curl: (22) The requested URL returned error: 410",
+};
+
+Deno.test({
+  name:
+    "build.sh signals a refused asset tunnel (curl 56 / 000) with exit 3 and the marker (Issue #4120)",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const outcome = await runAssetRefusal(CONNECT_TUNNEL_REFUSED, []);
+    assertAssetHostUnreachable(outcome, CONNECT_TUNNEL_REFUSED);
+  },
+});
+
+Deno.test({
+  name:
+    "build.sh signals a 403 on the release asset with exit 3 and the marker (Issue #4120)",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const outcome = await runAssetRefusal(ASSET_FORBIDDEN, []);
+    assertAssetHostUnreachable(outcome, ASSET_FORBIDDEN);
+  },
+});
+
+Deno.test({
+  name:
+    "build.sh keeps a genuinely missing release asset (curl 22 / 404) a hard failure, exit 1 with no marker (Issue #4120)",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const outcome = await runAssetRefusal(ASSET_NOT_FOUND, []);
+    const { result } = outcome;
+    assertEquals(
+      result.code,
+      1,
+      `a 404 for the asset must stay a hard failure; stderr=${result.stderr}`,
+    );
+    assert(
+      !result.stderr.includes(UPSTREAM_MARKER),
+      `a missing asset must not carry the upstream-unresolved marker; stderr=${result.stderr}`,
+    );
+    assert(
+      result.stderr.includes("Could not download"),
+      `the ERROR lines must still be printed; stderr=${result.stderr}`,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "build.sh keeps a gone release asset (curl 22 / 410) a hard failure, exit 1 with no marker (Issue #4120)",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    const outcome = await runAssetRefusal(ASSET_GONE, []);
+    const { result } = outcome;
+    assertEquals(
+      result.code,
+      1,
+      `a 410 for the asset must stay a hard failure; stderr=${result.stderr}`,
+    );
+    assert(
+      !result.stderr.includes(UPSTREAM_MARKER),
+      `a gone asset must not carry the upstream-unresolved marker; stderr=${result.stderr}`,
+    );
+    assert(
+      result.stderr.includes("Could not download"),
+      `the ERROR lines must still be printed; stderr=${result.stderr}`,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "build.sh keeps an asset refusal a hard failure under --clean, exit 1 with no marker (Issue #4120)",
+  permissions: { run: true, read: true, write: true, env: true },
+  fn: async () => {
+    // --clean already deleted pkg/, so "nothing was changed" is false and the
+    // refusal cannot be treated as a skip.
+    const outcome = await runAssetRefusal(CONNECT_TUNNEL_REFUSED, ["--clean"]);
+    const { result } = outcome;
+    assertEquals(
+      result.code,
+      1,
+      `--clean must keep an asset refusal a hard failure; stderr=${result.stderr}`,
+    );
+    assert(
+      !result.stderr.includes(UPSTREAM_MARKER),
+      `--clean must not carry the upstream-unresolved marker; stderr=${result.stderr}`,
+    );
+    assert(
+      result.stderr.includes("Could not download"),
+      `the ERROR lines must still be printed; stderr=${result.stderr}`,
+    );
   },
 });
