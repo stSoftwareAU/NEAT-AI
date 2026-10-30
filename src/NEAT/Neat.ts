@@ -1278,6 +1278,10 @@ export class Neat {
   discardUnprocessedResults(): number {
     const abandonedPastDeadline = this.terminationReason === "hard-deadline" ||
       this.terminationReason === "first-generation-wedged";
+    // A generation that threw part-way through processCompletedResults() has
+    // recorded a task as merged while it is still queued in trainingComplete;
+    // name such a task once, by the merged line, and skip its queued entry.
+    const namedAsMerged = new Set(this.mergedUncommittedTrainIDs);
     let discarded = this.discardMergedUncommittedTraining(
       abandonedPastDeadline
         ? DISCARD_REASON_ABANDONED_PAST_HARD_DEADLINE
@@ -1285,6 +1289,7 @@ export class Neat {
     );
     for (const r of this.trainingComplete) {
       if (r.train !== undefined && !Number.isFinite(r.train.error)) continue;
+      if (r.train !== undefined && namedAsMerged.has(r.train.ID)) continue;
       getLogger().warn(
         `Training ${
           r.train?.ID ?? "unknown"

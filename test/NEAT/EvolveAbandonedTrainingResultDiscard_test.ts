@@ -260,6 +260,20 @@ Deno.test(
         0,
         "a generation that commits must not log any discarded line",
       );
+      // PR #4114 review: the commit must forget the task it merged, or the
+      // teardown would later name a committed, persisted creature as discarded.
+      assertEquals(
+        neat.discardUnprocessedResults(),
+        0,
+        "a teardown after a committed generation must discard nothing",
+      );
+      assertEquals(
+        captured.filter((line) =>
+          line.text.includes(`Training ${TASK_ID} discarded`)
+        ).length,
+        0,
+        "a teardown after a committed generation must not name its task",
+      );
     } finally {
       setLogger(previousLogger);
       await terminateWorkers(workers);
@@ -438,6 +452,60 @@ Deno.test(
       releaseBreeding?.();
       await evolving?.catch(() => {});
       ParallelBreeding.prototype.breedBatch = originalBreedBatch;
+      setLogger(previousLogger);
+      await terminateWorkers(workers);
+    }
+  },
+);
+
+Deno.test(
+  "discardUnprocessedResults: a task merged by a generation that threw mid-merge is named once (Issue #4107)",
+  async () => {
+    const workers = [new WorkerHandler(createTestDataDir(), "MSE", true)];
+    const previousLogger = getLogger();
+    const captured: CapturedLine[] = [];
+
+    try {
+      const neat = await buildNeat(workers);
+      // PR #4114 review: processCompletedResults() records a task's ID before
+      // it builds the task's creature variants, and drains trainingComplete
+      // only after its whole loop. A variant that fails to load mid-loop
+      // leaves the task in both places when evolveDir's failure cleanup runs.
+      const broken = makeTrainingResult(TASK_ID);
+      broken.train!.compact = { neurons: "not-an-array" } as never;
+      neat.trainingComplete.length = 0;
+      neat.trainingComplete.push(broken);
+      setLogger(captureLogger(captured));
+
+      let threw = false;
+      try {
+        await evolve(neat);
+      } catch {
+        threw = true;
+      }
+      assert(threw, "a variant that fails to load must make evolve() throw");
+      assert(
+        neat.mergedUncommittedTrainIDs.has(TASK_ID) &&
+          neat.trainingComplete.length === 1,
+        "the task must be both recorded as merged and still queued",
+      );
+
+      assertEquals(
+        neat.discardUnprocessedResults(),
+        1,
+        "the task must be counted once",
+      );
+      assertEquals(
+        captured.filter((line) =>
+          line.text.includes(`Training ${TASK_ID} discarded`)
+        ).map((line) => line.text),
+        [
+          `Training ${TASK_ID} discarded: its generation ended before it committed`,
+        ],
+        "the task must be named exactly once",
+      );
+      assertEquals(neat.trainingComplete.length, 0);
+    } finally {
       setLogger(previousLogger);
       await terminateWorkers(workers);
     }

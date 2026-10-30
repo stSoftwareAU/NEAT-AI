@@ -59,10 +59,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   once per task, instead of vanishing. The line comes from the abandoned
   `evolve()` or, when that `evolve()` never resumes (in `evolveDir` it can wait
   forever on breed requests the teardown's worker termination dropped), from the
-  teardown's discard step; whichever runs first names the task. Only the
-  training results merged in the abandoned generation are named: a discovery or
-  replay creature that inherited an earlier task's `trainID` tag does not
-  produce this line.
+  teardown's discard step; whichever runs first names the task. A task whose
+  generation threw part-way through merging is still named once, not also as
+  `discarded at teardown`. Only the training results merged in the abandoned
+  generation are named: a discovery or replay creature that inherited an earlier
+  task's `trainID` tag does not produce this line.
 - **Issue #4099:** a training or discovery result that settled after the last
   generation's results were processed is no longer dropped silently. On the
   normal finish, `finishUp` waits one more pass so the result is merged. Where

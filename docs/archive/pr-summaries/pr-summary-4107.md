@@ -41,7 +41,11 @@ commit.
   `generation abandoned past the hard deadline` when the run was abandoned past
   the hard deadline (or its first-generation bound), and
   `its generation ended before it committed` otherwise (a generation that threw
-  after merging).
+  after merging). A generation that throws part-way through
+  `processCompletedResults()` can leave a task both in the set and still queued
+  in `trainingComplete`; `discardUnprocessedResults()` snapshots the set first
+  and skips queued entries it has already named, so the task gets one line and
+  is counted once.
 - Fixing the worker termination itself (settling dropped requests so the
   abandoned `evolve()` resumes) is a larger change to run control flow and is
   not attempted here.
@@ -72,7 +76,9 @@ Backend-only change; no UI files touched. Behaviour is pinned by
     `discarded` warning for a result with four variants, and that the previous
     population's members are kept.
   - `evolve: a trained task that is committed normally logs completed and no discarded line (Issue #4107)`
-    is the negative control.
+    is the negative control. It also runs `discardUnprocessedResults()` after
+    the committed `evolve()` and asserts it discards nothing, which pins the
+    commit clearing `mergedUncommittedTrainIDs`.
   - `evolve: a discovered creature is discarded by its discovery ID without naming an earlier training task (Issue #4107)`
     merges a discovery result whose creature carries an earlier task's `trainID`
     into the abandoned generation and asserts that its discovery ID and the
@@ -83,6 +89,10 @@ Backend-only change; no UI files touched. Behaviour is pinned by
     `runBoundedEvolveTeardown`, and asserts exactly one `discarded` line while
     `evolve()` is still parked. It then releases breeding and asserts the
     resumed `evolve()` takes its abandoned branch without naming the task again.
+  - `discardUnprocessedResults: a task merged by a generation that threw mid-merge is named once (Issue #4107)`
+    makes the compact variant fail to load, so `evolve()` throws after the task
+    is recorded as merged but before `trainingComplete` is drained, then asserts
+    the teardown discard returns 1 and logs exactly one line for the task.
   - The first test also runs `discardUnprocessedResults()` after the abandoned
     `evolve()` and asserts the task is still named once.
 - Red check: removing only the new logging block turned the abandoned test red
@@ -94,7 +104,10 @@ Backend-only change; no UI files touched. Behaviour is pinned by
   with the fix, all three tests pass. Second review round: against the previous
   head's source the new teardown test failed
   (`the teardown must name the merged task while evolve() is still parked`);
-  with the fix it passes.
+  with the fix it passes. Third review round: removing the commit's
+  `mergedUncommittedTrainIDs.clear()` turned the negative control red, and
+  removing the new skip in `discardUnprocessedResults()` turned the mid-merge
+  test red; with both in place all five tests pass.
 - Re-ran on the head: the new file plus
   `test/NEAT/AbandonedCommitKeepsPreviousPopulation_test.ts`,
   `test/NEAT/EvolveCommitDisposal_test.ts`,
@@ -102,7 +115,7 @@ Backend-only change; no UI files touched. Behaviour is pinned by
   `test/creature/BoundedEvolveTeardown.ts`,
   `test/creature/EvolveDirBoundedTeardown.ts`,
   `test/creature/EvolveDirLateTrainingResult.ts` and
-  `test/creature/EvolveTeardown.ts` — 58 passed, 0 failed. Also the other
+  `test/creature/EvolveTeardown.ts` — 59 passed, 0 failed. Also the other
   hard-deadline and teardown tests (`FitnessStallWatchdog.test.ts`,
   `HardDeadlineDisposalRegression.ts`, `HardDeadlineFirstGeneration.ts`,
   `NeatAbandonLateCompletion.ts`, `NeatHardDeadlineEnforcement.ts`,

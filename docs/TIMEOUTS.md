@@ -194,7 +194,10 @@ places name what is left, and whichever runs first clears the set:
   `await breedingPromise` on breed requests queued on the run's own workers, and
   the teardown terminates those workers, which drops the requests unsettled (GRQ
   #4489). A merged task whose generation threw before committing is named here
-  too, with the reason `its generation ended before it committed`.
+  too, with the reason `its generation ended before it committed`. If the
+  generation threw part-way through `processCompletedResults()`, the task can
+  still be queued in `trainingComplete` as well; it is named once, by this line,
+  and its queued entry is not named again.
 
 Only the training results merged in that generation are named. The IDs are
 recorded as the results are merged, not read from creature tags, because a
