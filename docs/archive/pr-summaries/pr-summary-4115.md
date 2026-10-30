@@ -59,8 +59,16 @@ Backend-only change; no UI files touched. Behaviour is pinned by
   (`the discarded discovery must be logged exactly
   once, as a warning`); both
   other tests stayed green. The loops were restored and the tests re-run green.
-- Edited `test/NEAT/NeatFinishUp.ts`: only the `processCompletedResults(...)`
-  call gained the new required 4th argument; no assertion removed or changed.
+- Added `test/NEAT/ProcessCompletedResultsMerged_test.ts` (3 tests) that call
+  `processCompletedResults()` directly and pin the sink: a merged discovery and
+  replay are recorded by ID and key; a replay without a key is recorded as
+  `replay`; a discovery with no improved creature records nothing. These kill
+  the mutants that deleted the two `merged.*.push(...)` statements.
+- Edited `test/NEAT/NeatFinishUp.ts`: the `processCompletedResults(...)` call
+  gained the new required 4th argument, held in a `sink` variable, and one
+  assertion was added that a training-only merge leaves the sink empty (kills
+  the mutants that deleted the `discoveryIDs` / `replayKeys` properties). No
+  existing assertion removed or changed.
 - Entry point checked: `evolve()` is the only production caller of
   `processCompletedResults()`; it passes the sink and reads it in the abandoned
   branch (the new test reaches it through `evolve()`).
