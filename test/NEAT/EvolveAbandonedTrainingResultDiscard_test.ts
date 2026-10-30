@@ -268,7 +268,7 @@ Deno.test(
 );
 
 Deno.test(
-  "evolve: a discovered creature carrying an earlier task's trainID is not named by a hard-deadline abandon (Issue #4107)",
+  "evolve: a discovered creature is discarded by its discovery ID without naming an earlier training task (Issue #4107)",
   async () => {
     const workers = [new WorkerHandler(createTestDataDir(), "MSE", true)];
     const previousLogger = getLogger();
@@ -319,8 +319,9 @@ Deno.test(
         ) => line.text),
         [
           `Training ${TASK_ID} discarded: generation abandoned past the hard deadline`,
+          "Discovery discovery-with-stale-train-id discarded: generation abandoned past the hard deadline",
         ],
-        "only the training task merged in the abandoned generation is named",
+        "only the training and discovery results merged in the abandoned generation are named",
       );
     } finally {
       Mutator.prototype.mutate = originalMutate;

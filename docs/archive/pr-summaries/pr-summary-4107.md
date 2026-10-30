@@ -47,9 +47,9 @@ commit.
   not attempted here.
 - Creature `trainID` tags are not used (PR #4114 review): a discovery or replay
   creature built from a trained fittest inherits that earlier, already committed
-  task's tag, and would otherwise be named as discarded. Discovery and replay
-  results themselves are not named; the issue only asks for training tasks (see
-  #4115).
+  task's tag, and would otherwise be named as discarded. The base branch
+  separately names discovery and replay results by their own IDs or keys
+  (#4115); this PR adds training-task tracking alongside that reporting.
 - The window after the mid-commit re-check (Issue #4061) is unchanged: there the
   population has already been committed, so trained creatures are not dropped.
 
@@ -73,10 +73,10 @@ Backend-only change; no UI files touched. Behaviour is pinned by
     population's members are kept.
   - `evolve: a trained task that is committed normally logs completed and no discarded line (Issue #4107)`
     is the negative control.
-  - `evolve: a discovered creature carrying an earlier task's trainID is not named by a hard-deadline abandon (Issue #4107)`
+  - `evolve: a discovered creature is discarded by its discovery ID without naming an earlier training task (Issue #4107)`
     merges a discovery result whose creature carries an earlier task's `trainID`
-    into the abandoned generation and asserts that only the task merged in that
-    generation is named.
+    into the abandoned generation and asserts that its discovery ID and the
+    current training task are named, without naming the earlier training task.
   - `evolveDir teardown: a trained task merged into a generation whose breeding never settles is logged once as discarded (Issue #4107)`
     parks `evolve()` at `await breedingPromise` (breeding settles only when the
     test releases it), fires the hard-deadline abandon, runs
@@ -109,7 +109,12 @@ Backend-only change; no UI files touched. Behaviour is pinned by
   `EvolveDirGenerationTwoAbandonCaller_test.ts`, `EvolveDirHardDeadline.ts`,
   `EvolveFailureNamesInFlightTasks_test.ts`) — 24 passed, 0 failed.
 - Docs: `CHANGELOG.md` and `docs/TIMEOUTS.md` (teardown section) updated.
-- No test outside the new file was edited.
+- Merge validation: combined training and discovery/replay discard reporting;
+  updated the inherited-tag test to expect the discovery warning alongside the
+  current training task warning. The stale training ID remains forbidden.
+  Targeted merge checks: the training discard, discovery/replay discard and
+  merged-result suites passed (10 tests); formatting passed. Full quality gate
+  deferred to CI for this merge.
 
 <!-- vibe-quality-gate-skipped reason="full ./quality.sh not run in this run; deno fmt, deno lint, deno check and the covering tests were run on the touched files. CI runs the full gate." -->
 

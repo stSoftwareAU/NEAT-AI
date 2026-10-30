@@ -24,9 +24,22 @@ import { getLogger } from "@utils/Logger.ts";
 import { clearForGc } from "@utils/ReleasableRef.ts";
 
 /**
+ * Identities of the discovery and replay creatures merged into the population
+ * by `processCompletedResults` (Issue #4115). Lets an abandoned generation name
+ * the creatures it discards.
+ */
+export interface MergedExternalResults {
+  discoveryIDs: string[];
+  replayKeys: string[];
+}
+
+/**
  * Process completed training, discovery, and replay results.
  * Returns an array of creatures to add to the population.
  *
+ * Issue #4115: each discovery and replay creature actually merged is also
+ * recorded in `merged` (by discovery ID and replay key), so a later
+ * hard-deadline abandon can log what it discarded.
  * Issue #4107: when `mergedTrainIDs` is given, the ID of every training result
  * merged here (each one logged `Training <id> completed`) is added to it. A
  * creature's `trainID` tag cannot stand in for this: discovery and replay
@@ -36,6 +49,7 @@ export function processCompletedResults(
   neat: Neat,
   fittest: Creature,
   _genus: Genus,
+  merged: MergedExternalResults,
   mergedTrainIDs?: Set<string>,
 ): Creature[] {
   const trainedPopulation: Creature[] = [];
@@ -171,6 +185,7 @@ export function processCompletedResults(
       });
 
       trainedPopulation.push(discoveredCreature);
+      merged.discoveryIDs.push(r.discover.ID);
 
       if (neat.config.verbose) {
         getLogger().info(
@@ -216,6 +231,7 @@ export function processCompletedResults(
       });
 
       trainedPopulation.push(replayedCreature);
+      merged.replayKeys.push(result.improvement.key ?? "replay");
 
       if (neat.config.verbose) {
         getLogger().info(
