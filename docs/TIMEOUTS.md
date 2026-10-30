@@ -181,7 +181,31 @@ into a generation the hard deadline then abandons (Issue #4050) has left
 `neat.discoveryComplete` and the replay queue, so this teardown cannot see it.
 `evolve()` logs it itself, as a warning, by discovery ID or replay key:
 `Discovery <id> discarded: generation abandoned past the hard deadline` (Issue
-#4115).
+#4115). A result already merged by `evolve()` has left `trainingComplete`, so
+the `trainingComplete` scan above cannot see it. When the hard deadline abandons
+that generation before it commits (Issue #4050), the generation's trained
+creatures are dropped with it, and each task is logged
+`Training <id> discarded: generation abandoned past the hard deadline` exactly
+once (Issue #4107). `processCompletedResults()` records the merged IDs on the
+`Neat` instance (`mergedUncommittedTrainIDs`) and the commit clears them. Two
+places name what is left, and whichever runs first clears the set:
+
+- the abandoned branch of `evolve()`, when the abandoned generation reaches its
+  commit guard;
+- `discardUnprocessedResults()` in the teardown's step 2b. In `evolveDir` the
+  abandoned `evolve()` often never gets there: it waits at
+  `await breedingPromise` on breed requests queued on the run's own workers, and
+  the teardown terminates those workers, which drops the requests unsettled (GRQ
+  #4489). A merged task whose generation threw before committing is named here
+  too, with the reason `its generation ended before it committed`. If the
+  generation threw part-way through `processCompletedResults()`, the task can
+  still be queued in `trainingComplete` as well; it is named once, by this line,
+  and its queued entry is not named again.
+
+Only the training results merged in that generation are named. The IDs are
+recorded as the results are merged, not read from creature tags, because a
+discovery or replay creature built from a trained fittest keeps that earlier
+task's `trainID` tag.
 
 Issue #4061 narrows what the restore step may hand back. Each entry point
 (`evolveDir`, `evolveEnv`, `evolveRL`) validates the caller's creature on entry
