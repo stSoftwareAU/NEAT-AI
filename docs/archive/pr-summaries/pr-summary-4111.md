@@ -67,7 +67,15 @@ flowchart LR
   `timeout 180 deno test -A test/ci/CoveragePathScoping.ts test/ci/CoverageMilestoneBranchFilter.ts test/ci/CoverageShardMatrix.ts test/ci/CoverageMergeGate.ts test/ci/CoverageFailsPrOnTestFailure.ts < /dev/null`.
   The glob tests check only the retained filter's matching, not whether coverage
   runs. Names, messages and the helper now make this distinction explicit.
-  Expectations and coverage of the job graph remain unchanged.
+- Red check for the edited expectation (run at head for PR #4116): with only the
+  Develop clause removed from `changes.outputs.code` in
+  `.github/workflows/coverage.yaml` and the milestone clause kept,
+  `timeout 180 deno test -A test/ci/CoveragePathScoping.ts < /dev/null` gave 6
+  passed, 1 failed;
+  `every accepted ready PR forces coverage regardless of the
+  path filter (Issue #4111)`
+  failed with `AssertionError: Values are not equal.` With the workflow restored
+  it gives 7 passed, 0 failed.
 - `deno lint test/ci/CoveragePathScoping.ts` and
   `deno check test/ci/CoveragePathScoping.ts test/ci/CoverageMilestoneBranchFilter.ts`:
   passed.
@@ -78,6 +86,34 @@ flowchart LR
 - Full `timeout 900 ./quality.sh < /dev/null`: failed at preflight:
   `Native rust_scorer is required (quality.sh default) but was not found.` The
   full suite did not run in this review environment.
+
+## Edited test expectations
+
+Removed from `test/ci/CoveragePathScoping.ts` (the `changes.outputs.code`
+expectation, which also drops the #4041 contract that a docs-only Develop PR
+skips the shards): the expected output expression that forced coverage only for
+milestone refs:
+
+{% raw %}
+`${{ startsWith(github.base_ref, 'milestone/') && 'true' || steps.filter.outputs.code }}`
+{% endraw %}
+
+Required by the issue: "Apply the milestone override to Develop targets as
+well." Replaced by the expression that also forces coverage for Develop; the
+milestone override is still pinned:
+
+{% raw %}
+`${{ (github.base_ref == 'Develop' || startsWith(github.base_ref, 'milestone/')) && 'true' || steps.filter.outputs.code }}`
+{% endraw %}
+
+Red check: see the Test Plan; removing only the Develop clause turns the test
+red.
+
+Removed from the same file: the assertion message describing `merge` as "the
+required check". Required by the issue: "test/ci/CoveragePathScoping.ts still
+describes merge as the required check, which it is not on Develop." Replaced by
+a message saying `merge` must not be skipped because it publishes Test Results;
+the assertion still requires `merge` to run. No assertion was removed.
 
 ## Review corrections
 
