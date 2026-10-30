@@ -112,3 +112,29 @@ Run in this sandbox against the real, blocked asset host, on the head:
   the exit-code help and header comments in `build.sh` and `bump-deps.sh`.
 
 <!-- vibe-quality-gate-skipped reason="full ./quality.sh not runnable here: it stops at 'Native rust_scorer is required'; formatter, linter, type check, shellcheck and the covering tests were run on the touched files. CI runs the full gate." -->
+
+## Mutation check
+
+All 40 surviving mutants are in `test/scripts/BuildScriptRetry.ts`, the test
+file itself: its fake `gh`/`curl` shim options, fixture-builder helpers, the
+case table of exit codes and HTTP statuses, and the `permissions` objects of the
+`Deno.test` cases. The mutation harness maps a mutant to the tests that import
+the mutated module; a `Deno.test` file is imported by nothing, so it reports "no
+test imports this module" and can never see a test go red. The shipped behaviour
+these lines exercise (`build.sh`) was red-checked directly instead (see the Test
+Plan): removing each operand of the new condition turned the matching test red.
+
+- `test/scripts/BuildScriptRetry.ts:163` exempt (untestable): test-file shim
+  helper; no module imports a test file, so no test can observe its mutation.
+- `test/scripts/BuildScriptRetry.ts:273` exempt (untestable): test-file shim
+  helper, as above.
+- `test/scripts/BuildScriptRetry.ts:278` exempt (untestable): test-file shim
+  helper, as above.
+- `test/scripts/BuildScriptRetry.ts:282` exempt (untestable): test-file shim
+  helper, as above.
+- `test/scripts/BuildScriptRetry.ts:740-770` exempt (untestable): the
+  asset-download fixture runner inside the test file, as above.
+- `test/scripts/BuildScriptRetry.ts:822-842` exempt (untestable): the table of
+  exit code / HTTP status / stderr cases inside the test file, as above.
+- `test/scripts/BuildScriptRetry.ts:848-914` exempt (untestable): `Deno.test`
+  `permissions` options and per-case setup inside the test file, as above.
