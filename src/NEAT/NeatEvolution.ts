@@ -946,14 +946,14 @@ export async function evolve(
   // Issue #2314: Process completed results while workers breed.
   // Issue #2239: Time result processing phase
   const resultProcessingStartMs = Date.now();
-  // Issue #4107: the training tasks merged this generation, named if the hard
-  // deadline then abandons it before the commit.
-  const mergedTrainIDs = new Set<string>();
+  // Issue #4107: the training tasks merged this generation are recorded on the
+  // Neat instance until the commit, so they are named if the hard deadline
+  // abandons it first: here, or by the teardown if this evolve() never resumes.
   const trainedPopulation = processCompletedResults(
     neat,
     fittest,
     genus,
-    mergedTrainIDs,
+    neat.mergedUncommittedTrainIDs,
   );
   const resultProcessingMs = Date.now() - resultProcessingStartMs;
 
@@ -1175,14 +1175,15 @@ export async function evolve(
     // because the abandon drops its creatures. The IDs come from the merged
     // results, not from creature tags: a discovery or replay creature built
     // from a trained fittest keeps that task's trainID tag, although the task
-    // was committed in an earlier generation.
-    for (const trainID of mergedTrainIDs) {
-      getLogger().warn(
-        `Training ${trainID} discarded: generation abandoned past the hard deadline`,
-      );
-    }
+    // was committed in an earlier generation. If the teardown already named
+    // them (this evolve() resumed after it), the set is empty and nothing is
+    // logged twice.
+    neat.discardMergedUncommittedTraining();
   } else {
     neat.population = budgeted.population; // Keep pseudo sorted.
+    // Issue #4107: this generation's trained creatures are committed now, so
+    // its merged training tasks are no longer at risk of being discarded.
+    neat.mergedUncommittedTrainIDs.clear();
 
     if (budgeted.dropped.length > 0 && neat.config.verbose) {
       getLogger().info(
