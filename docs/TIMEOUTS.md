@@ -178,9 +178,8 @@ into a generation the hard deadline then abandons (Issue #4050) has left
 `neat.discoveryComplete` and the replay queue, so this teardown cannot see it.
 `evolve()` logs it itself, as a warning, by discovery ID or replay key:
 `Discovery <id> discarded: generation abandoned past the hard deadline` (Issue
-#4115).
-A result already merged by `evolve()` has left `trainingComplete`, so the
-`trainingComplete` scan above cannot see it. When the hard deadline abandons
+#4115). A result already merged by `evolve()` has left `trainingComplete`, so
+the `trainingComplete` scan above cannot see it. When the hard deadline abandons
 that generation before it commits (Issue #4050), the generation's trained
 creatures are dropped with it, and each task is logged
 `Training <id> discarded: generation abandoned past the hard deadline` exactly
