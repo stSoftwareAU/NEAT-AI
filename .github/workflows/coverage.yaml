@@ -268,8 +268,15 @@ jobs:
           # Record this shard's outcome for the merge job's gate. Test failures
           # (exit 1) stay green here so every shard can upload its results;
           # runner crashes fail this required shard check after writing status.
+          # An exit-1 that still carries the fatal-OOM signature after the retry
+          # is a crash too (Issue #4124): it is recorded as error:oom and fails
+          # the check. test-errors.log is overwritten by the retry, so this
+          # reflects the FINAL run.
           if [ "$TEST_EXIT_CODE" -eq 0 ]; then
             echo "passed" > "shard-status-${SHARD}.txt"
+          elif [ "$TEST_EXIT_CODE" -eq 1 ] && is_oom_failure "$TEST_EXIT_CODE"; then
+            echo "error:oom" > "shard-status-${SHARD}.txt"
+            exit 1
           elif [ "$TEST_EXIT_CODE" -eq 1 ]; then
             echo "failed" > "shard-status-${SHARD}.txt"
           else
