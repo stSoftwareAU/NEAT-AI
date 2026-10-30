@@ -465,6 +465,8 @@ export function scheduleDiscovery(
  * @param captureEnv - Environment lookup for the training-task capture
  *   directory (defaults to `Deno.env`); injected by tests so they never mutate
  *   the shared process environment (Issue #4034).
+ * @param now - Clock for the task deadline (defaults to `Date.now`); injected
+ *   by tests so they never patch the global clock (Issue #4118).
  */
 export function scheduleTraining(
   neat: Neat,
@@ -472,6 +474,7 @@ export function scheduleTraining(
   trainingTimeOutMinutes: number,
   selection?: TrainingSelection,
   captureEnv?: (name: string) => string | undefined,
+  now: () => number = Date.now,
 ): void {
   const uuid = CreatureUtil.makeUUID(creature);
   if (neat.trainingInProgress.has(uuid)) return;
@@ -482,7 +485,7 @@ export function scheduleTraining(
   // per-task relative timeout clamped by the absolute hard deadline; when that
   // is sub-second the run is either misconfigured or already out of time, so
   // skip and flag rather than burn a worker slot on a no-op.
-  const nowTS = Date.now();
+  const nowTS = now();
   const timeoutTS = computeTimeoutTS(
     nowTS,
     trainingTimeOutMinutes,
@@ -613,10 +616,11 @@ export function scheduleTraining(
     trainingSampleRate: neat.config.trainingSampleRate,
     disableRandomSamples: neat.config.disableRandomSamples,
     trainingTimeOutMinutes: trainingTimeOutMinutes,
-    // Issue #2899: carry the absolute hard deadline so worker-side training
-    // stops at T+15 even when the task sat in the worker queue. 0 means no
-    // deadline configured; leave it absent so behaviour is unchanged.
-    hardDeadlineTS: neat.hardDeadlineTS > 0 ? neat.hardDeadlineTS : undefined,
+    // Issue #4118 (builds on #2899): this is the task's own absolute deadline,
+    // min(now + task cap, run hard deadline), fixed once at scheduling and handed
+    // to the worker unchanged so neither queueing nor worker setup can renew the
+    // budget. 0 / absent means no deadline configured.
+    hardDeadlineTS: timeoutTS > 0 ? timeoutTS : undefined,
     batchSize: neat.config.trainingBatchSize,
     maximumBiasAdjustmentScale: neat.config.maximumBiasAdjustmentScale,
     maximumWeightAdjustmentScale: neat.config.maximumWeightAdjustmentScale,
@@ -847,15 +851,9 @@ export function scheduleTraining(
   neat.trainingInProgress.set(uuid, p);
   // Issue #3053: record this task's absolute per-task wall-clock deadline so the
   // incremental stuck-task watchdog can abandon it promptly if its worker
-  // promise never settles. Mirrors the worker-side `timeoutTS` derivation.
-  neat.trainingDeadlines.set(
-    uuid,
-    computeTimeoutTS(
-      Date.now(),
-      trainingTimeOutMinutes,
-      neat.hardDeadlineTS > 0 ? neat.hardDeadlineTS : undefined,
-    ),
-  );
+  // promise never settles. Issue #4118: the watchdog records the SAME deadline
+  // the worker was handed, never recomputed after dispatch.
+  neat.trainingDeadlines.set(uuid, timeoutTS);
 }
 
 /**
