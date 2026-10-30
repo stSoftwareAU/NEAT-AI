@@ -31,8 +31,8 @@ this change; the merged commit records the final version. Closes #4111.
 - Read-only `gh api repos/stSoftwareAU/NEAT-AI/rulesets/20827306` confirmed the
   required status contexts on the active Develop ruleset.
 - Read-only `gh api repos/stSoftwareAU/NEAT-AI/commits/94e9cb1bea07/check-runs`
-  returned `Coverage shard ${{ matrix.shard }}` as skipped and no `Test Results`
-  check for the cited regression commit.
+  returned {% raw %}`Coverage shard ${{ matrix.shard }}`{% endraw %} as skipped
+  and no `Test Results` check for the cited regression commit.
 
 ## Evidence
 
@@ -65,13 +65,22 @@ flowchart LR
 - `deno check test/ci/CoveragePathScoping.ts test/ci/CoverageMilestoneBranchFilter.ts`:
   passed.
 - Full `./quality.sh` with the required native scorer and Discovery library
-  available: passed; 10,063 passed, 0 failed, 4 ignored (12m3s).
+  available: passed; 10,063 passed, 0 failed, 4 ignored (6m14s).
 
 Removed from `test/ci/CoveragePathScoping.ts`: the expected output expression
-`${{ startsWith(github.base_ref, 'milestone/') && 'true' || steps.filter.outputs.code }}`.
+that forced coverage only for milestone refs:
+
+{% raw %}
+`${{ startsWith(github.base_ref, 'milestone/') && 'true' || steps.filter.outputs.code }}`
+{% endraw %}
+
 Required by: "Apply the milestone override to Develop targets as well." Replaced
-by:
+by the expression that also forces coverage for Develop:
+
+{% raw %}
 `${{ (github.base_ref == 'Develop' || startsWith(github.base_ref, 'milestone/')) && 'true' || steps.filter.outputs.code }}`
+{% endraw %}
+
 Red check: removing only the Develop clause while keeping the milestone clause
 made the test fail.
 
