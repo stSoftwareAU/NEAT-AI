@@ -51,7 +51,9 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      code: ${{ steps.filter.outputs.code }}
+      # Milestone rules require all eight named shards and Test Results.
+      # Skipping the matrix leaves those checks pending forever on docs PRs.
+      code: ${{ startsWith(github.base_ref, 'milestone/') && 'true' || steps.filter.outputs.code }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

@@ -171,13 +171,19 @@ export async function loadWasmActivationPayloadCacheFirst(
   // verified against its own pin.
   const { expectedGlueSha256, baseUrl: _baseUrl, ...wasmOptions } = options;
   try {
-    const [glueBytes, wasmBinary] = await Promise.all([
+    // allSettled, not all: a rejection must not return while the sibling load is
+    // still persisting to the cache directory (a late write races its teardown).
+    const [glue, wasm] = await Promise.allSettled([
       loadWasmBundleBytes(jsUrl, {
         ...wasmOptions,
         expectedSha256: expectedGlueSha256 ?? EXPECTED_WASM_GLUE_SHA256,
       }),
       loadWasmBundleBytes(wasmUrl, wasmOptions),
     ]);
+    if (glue.status === "rejected") throw glue.reason;
+    if (wasm.status === "rejected") throw wasm.reason;
+    const glueBytes = glue.value;
+    const wasmBinary = wasm.value;
     return { jsSource: new TextDecoder().decode(glueBytes), wasmBinary };
   } catch (error) {
     if (error instanceof WasmError) throw error;

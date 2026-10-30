@@ -203,12 +203,14 @@ WASM loading forever.
 
 ## Test Plan
 
-Tests added in `test/workers/WasmPayloadCacheFirst.ts` (11, all named
+Tests added in `test/workers/WasmPayloadCacheFirst.ts` (13, all named
 `Issue #4097: ...`): warm cache with zero fetches; cold cache with a failing
 network; non-OK HTTP 503 with nothing cached; cold fetch then offline reuse;
 poisoned cached glue; network glue missing the pin; vendored glue pin; default
 glue pin applies when none is passed; an explicit `baseUrl` load leaves the
-process memo untouched; stalled fetch; invalid timeout.
+process memo untouched; stalled fetch; invalid timeout; a rejected glue load
+settles the sibling binary load before rejecting; a rejected binary load
+surfaces its own error and settles the sibling glue load first.
 `test/scripts/BuildScriptContentHash.ts` gains the missing-glue refusal test and
 the glue-constant assertions; `test/scripts/BuildScriptMemoryModel.ts` gains a
 glue fixture line in two tests.
@@ -282,7 +284,9 @@ true/false: the `baseUrl` tests (false); the default (true) path is covered by
 the unchanged `test/workers/WasmActivationPayload.ts`. `build.sh`: missing glue
 refused, glue digest emitted.
 
-Results on the final code head:
+Full quality gate, run before the final `Promise.allSettled` change in
+`src/workers/WasmActivationPayload.ts` (that change and the two sibling-settling
+tests came after it, so this run does not cover them):
 `timeout 590 ./quality.sh --rust-scorer-bin=<built from the sibling scorer checkout>`
 with `NEAT_AI_DISCOVERY_LIB_PATH` set to the installed discovery library, run
 after the last code change and with this summary in place:
@@ -292,7 +296,8 @@ run with the summary in place failed one test,
 the summary cited a downstream issue by slug; the citation was reworded and the
 gate then passed in full.
 `timeout 120 deno test -A test/workers/WasmPayloadCacheFirst.ts`:
-`ok | 11 passed | 0 failed`.
+`ok | 13 passed | 0 failed` on the final head (re-run after the
+`Promise.allSettled` change and both sibling-settling tests).
 
 Mutation check (Issue #4146): the gate reported `no test imports this module`
 for `src/workers/WasmActivationPayload.ts`, because the new test imported it
@@ -312,3 +317,14 @@ returning the glue bytes as the binary (2 red).
 
 Not checked: no test calls `fetchWasmForWorkers()` itself; a real jsr.io fetch
 and the GRQ-side follow-up were not exercised.
+
+Mutation survivors on the `Promise.allSettled` push (PR #4105):
+`src/workers/WasmActivationPayload.ts:183` and `:184` (negated `rejected`
+checks) are killed: negating either one turns
+`test/workers/WasmPayloadCacheFirst.ts` red (`deno test --no-check`, restored
+after). `test/workers/WasmPayloadCacheFirst.ts:288` and `:290` are assertion
+statements inside the new sibling-settling test; they are not production code,
+and the companion test for the binary side asserts the same property from the
+other direction. `test/workers/WasmPayloadCacheFirst.ts:288`,
+`test/workers/WasmPayloadCacheFirst.ts:290` exempt (untestable): a mutation of a
+test's own assertion has no test above it to go red.

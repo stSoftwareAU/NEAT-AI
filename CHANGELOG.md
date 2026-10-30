@@ -46,6 +46,20 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   Other request kinds (evaluate, score, ...) are unlabelled and keep the
   quarantine reason unchanged. The task that missed its deadline keeps its own
   reason.
+- **Issue #4099:** a training or discovery result that settled after the last
+  generation's results were processed is no longer dropped silently. On the
+  normal finish, `finishUp` waits one more pass so the result is merged. Where
+  no further `evolve()` pass can run (over-run, hard deadline, an interrupted
+  SIGTERM stop, or a result that settles while the teardown persists), the
+  teardown logs it as discarded, with its task ID, instead of disappearing. A
+  training or discovery task still in flight when a SIGTERM stop breaks the loop
+  is logged as abandoned at teardown, by task ID, once the workers are down. A
+  merged training task's `Training <id> completed` line and its
+  `Training <id> scheduled` line are now both logged whether or not `verbose` is
+  set, so a default-run log pairs every scheduled task with a terminal line. A
+  run whose generation throws (`evolveDir`, `evolveEnv`, `evolveRL`) now names
+  its in-flight tasks as abandoned and its unmerged results as discarded in the
+  failure cleanup too, then rethrows the original error.
 - **Issue #4078:** `evolveDir()`, `evolveEnv()` and `evolveRL()` now reject an
   unusable caller creature (fewer than `input + output` neurons, or failing
   `validate()`) with a `ValidationError` as their first step, before any signal
