@@ -23,11 +23,15 @@ commit.
 
 ### Essential Design Decisions
 
-- Tasks are named by the `trainID` tag, de-duplicated with a `Set`, because a
-  task yields several variants (main, compact, backtracked, forward) that share
-  one ID.
-- Discovery and replay creatures carry no `trainID` and are not named; the issue
-  only asks for training tasks.
+- Tasks are named from the training results `processCompletedResults()` merged
+  in this generation: it adds each merged result's ID to a `Set` the caller
+  passes in, so a task with several variants (main, compact, backtracked,
+  forward) is named once.
+- Creature `trainID` tags are not used (PR #4114 review): a discovery or replay
+  creature built from a trained fittest inherits that earlier, already committed
+  task's tag, and would otherwise be named as discarded. Discovery and replay
+  results themselves are not named; the issue only asks for training tasks (see
+  #4115).
 - The window after the mid-commit re-check (Issue #4061) is unchanged: there the
   population has already been committed, so trained creatures are not dropped.
 
@@ -51,10 +55,17 @@ Backend-only change; no UI files touched. Behaviour is pinned by
     population's members are kept.
   - `evolve: a trained task that is committed normally logs completed and no discarded line (Issue #4107)`
     is the negative control.
+  - `evolve: a discovered creature carrying an earlier task's trainID is not named by a hard-deadline abandon (Issue #4107)`
+    merges a discovery result whose creature carries an earlier task's `trainID`
+    into the abandoned generation and asserts that only the task merged in that
+    generation is named.
 - Red check: removing only the new logging block turned the abandoned test red
   (`the discarded task must be logged exactly once, as a warning`); the negative
   control stayed green, as it should. The block was restored and the tests
-  re-run green.
+  re-run green. Review round: with the earlier tag scan restored in `evolve()`,
+  the discovered-creature test failed
+  (`a task committed in an earlier generation must not be logged as discarded`);
+  with the fix, all three tests pass.
 - Re-ran on the head: the new file plus
   `test/NEAT/AbandonedCommitKeepsPreviousPopulation_test.ts`,
   `test/NEAT/EvolveCommitDisposal_test.ts` and

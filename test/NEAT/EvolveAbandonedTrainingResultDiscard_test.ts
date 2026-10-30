@@ -31,6 +31,9 @@ const PAST_HARD_DEADLINE_MS = 1_000;
 
 const TASK_ID = "abandoned-task";
 
+/** A training task committed in an earlier generation (PR #4114 review). */
+const EARLIER_TASK_ID = "earlier-committed-task";
+
 interface CapturedLine {
   level: string;
   text: string;
@@ -94,6 +97,27 @@ async function buildNeat(workers: WorkerHandler[]): Promise<Neat> {
   await neat.populatePopulation(seedCreature);
   neat.trainingComplete.push(makeTrainingResult(TASK_ID));
   return neat;
+}
+
+/**
+ * A settled discovery result whose improved creature carries the trainID tag
+ * of an earlier, already committed training task, as one built from a trained
+ * fittest does (discovery copies the base creature's tags).
+ */
+function makeDiscoveryResultWithStaleTrainID(trainID: string): ResponseData {
+  const improved = new Creature(2, 1, { layers: [{ count: 3 }] }).exportJSON();
+  addTag(improved, "trainID", trainID);
+  addTag(improved, "approach", "discovery");
+  return {
+    taskID: 2,
+    duration: 1,
+    discover: {
+      ID: "discovery-with-stale-train-id",
+      creature: {} as never,
+      config: {} as never,
+      improvedCreature: improved,
+    },
+  } as unknown as ResponseData;
 }
 
 /** A logger that records every line with its level, minus ANSI colour codes. */
@@ -220,6 +244,69 @@ Deno.test(
         "a generation that commits must not log any discarded line",
       );
     } finally {
+      setLogger(previousLogger);
+      await terminateWorkers(workers);
+    }
+  },
+);
+
+Deno.test(
+  "evolve: a discovered creature carrying an earlier task's trainID is not named by a hard-deadline abandon (Issue #4107)",
+  async () => {
+    const workers = [new WorkerHandler(createTestDataDir(), "MSE", true)];
+    const previousLogger = getLogger();
+    const originalMutate = Mutator.prototype.mutate;
+    const captured: CapturedLine[] = [];
+    let hookFired = false;
+
+    try {
+      const neat = await buildNeat(workers);
+      neat.discoveryComplete.push(
+        makeDiscoveryResultWithStaleTrainID(EARLIER_TASK_ID),
+      );
+
+      Mutator.prototype.mutate = function (
+        this: Mutator,
+        creatures: Creature[],
+      ): void {
+        if (!hookFired) {
+          hookFired = true;
+          neat.generationsCompleted = 1;
+          assert(
+            neat.abandonInFlightPastHardDeadline(PAST_HARD_DEADLINE_MS),
+            "the hard-deadline abandon must actually fire",
+          );
+        }
+        originalMutate.call(this, creatures);
+      };
+      setLogger(captureLogger(captured));
+
+      await evolve(neat);
+
+      assert(hookFired, "the abandon must land before the commit guard");
+      assertEquals(
+        neat.discoveryComplete.length,
+        0,
+        "the discovery result must have been merged into the abandoned generation",
+      );
+      assertEquals(
+        captured.filter((line) =>
+          line.text.includes(`Training ${EARLIER_TASK_ID} discarded`)
+        ).length,
+        0,
+        "a task committed in an earlier generation must not be logged as discarded",
+      );
+      assertEquals(
+        captured.filter((line) => line.text.includes(" discarded: ")).map((
+          line,
+        ) => line.text),
+        [
+          `Training ${TASK_ID} discarded: generation abandoned past the hard deadline`,
+        ],
+        "only the training task merged in the abandoned generation is named",
+      );
+    } finally {
+      Mutator.prototype.mutate = originalMutate;
       setLogger(previousLogger);
       await terminateWorkers(workers);
     }

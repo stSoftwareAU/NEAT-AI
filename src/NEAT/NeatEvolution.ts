@@ -946,7 +946,15 @@ export async function evolve(
   // Issue #2314: Process completed results while workers breed.
   // Issue #2239: Time result processing phase
   const resultProcessingStartMs = Date.now();
-  const trainedPopulation = processCompletedResults(neat, fittest, genus);
+  // Issue #4107: the training tasks merged this generation, named if the hard
+  // deadline then abandons it before the commit.
+  const mergedTrainIDs = new Set<string>();
+  const trainedPopulation = processCompletedResults(
+    neat,
+    fittest,
+    genus,
+    mergedTrainIDs,
+  );
   const resultProcessingMs = Date.now() - resultProcessingStartMs;
 
   // Issue #2314: Compute plateau and MCMC configuration while workers breed.
@@ -1163,13 +1171,12 @@ export async function evolve(
         `hard deadline — discarding its population changes instead of ` +
         `committing them (Issue #4050)`,
     );
-    // Issue #4107: name each trained task this abandon discards.
-    const discardedTrainIDs = new Set<string>();
-    for (const creature of trainedPopulation) {
-      const trainID = getTag(creature, "trainID");
-      if (trainID) discardedTrainIDs.add(trainID);
-    }
-    for (const trainID of discardedTrainIDs) {
+    // Issue #4107: name each training task merged this generation, once,
+    // because the abandon drops its creatures. The IDs come from the merged
+    // results, not from creature tags: a discovery or replay creature built
+    // from a trained fittest keeps that task's trainID tag, although the task
+    // was committed in an earlier generation.
+    for (const trainID of mergedTrainIDs) {
       getLogger().warn(
         `Training ${trainID} discarded: generation abandoned past the hard deadline`,
       );

@@ -26,11 +26,17 @@ import { clearForGc } from "@utils/ReleasableRef.ts";
 /**
  * Process completed training, discovery, and replay results.
  * Returns an array of creatures to add to the population.
+ *
+ * Issue #4107: when `mergedTrainIDs` is given, the ID of every training result
+ * merged here (each one logged `Training <id> completed`) is added to it. A
+ * creature's `trainID` tag cannot stand in for this: discovery and replay
+ * creatures built from a trained fittest inherit its tag.
  */
 export function processCompletedResults(
   neat: Neat,
   fittest: Creature,
   _genus: Genus,
+  mergedTrainIDs?: Set<string>,
 ): Creature[] {
   const trainedPopulation: Creature[] = [];
 
@@ -50,6 +56,7 @@ export function processCompletedResults(
         r.duration ? "after " + format(r.duration, { ignoreZero: true }) : ""
       }`,
     );
+    mergedTrainIDs?.add(r.train.ID);
 
     // Issue #1913: Preserve PC approach tag from trace if present.
     const traceJSON = r.train.trace ? r.train.trace : null;

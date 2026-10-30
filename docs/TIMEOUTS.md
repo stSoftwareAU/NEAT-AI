@@ -178,8 +178,10 @@ teardown discard above cannot see it. When the hard deadline abandons that
 generation before it commits (Issue #4050), the generation's trained creatures
 are dropped with it, so `evolve()` logs
 `Training <id> discarded: generation abandoned past the hard deadline` once per
-task (Issue #4107). Discovery and replay creatures carry no train ID and are not
-named by this line.
+task (Issue #4107). Only the training results merged in that generation are
+named. The IDs are recorded as the results are merged, not read from creature
+tags, because a discovery or replay creature built from a trained fittest keeps
+that earlier task's `trainID` tag.
 
 Issue #4061 narrows what the restore step may hand back. Each entry point
 (`evolveDir`, `evolveEnv`, `evolveRL`) validates the caller's creature on entry
