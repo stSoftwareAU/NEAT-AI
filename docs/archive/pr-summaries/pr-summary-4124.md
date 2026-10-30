@@ -78,3 +78,24 @@ flowchart TD
   `Native rust_scorer is required` in this environment); CI runs it.
 
 <!-- vibe-quality-gate-skipped reason="./quality.sh requires the native rust_scorer, unavailable in this sandbox; targeted fmt, lint and the two CI test files were run instead" -->
+
+## Mutation check
+
+All 11 surviving mutants are inside the test file itself
+(`test/ci/CoverageFailsPrOnTestFailure.ts`), which no other test imports, so
+there is no test that could run against a mutated copy of it. The mutants are
+deleted assertions and harness properties of the tests that already pin the
+production change; those production mutations are covered by the red checks in
+the Test Plan.
+
+- `test/ci/CoverageFailsPrOnTestFailure.ts:112` exempt (untestable): the test harness's own `RUNNER_OOM_RUNS` env property; deleting it turns the new `error:oom` tests red when the file runs, but nothing imports the file to observe that.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:133` exempt (untestable): the test harness's own `runs` return property; deleting it fails the `runs` assertion when the file runs, but nothing imports the file.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:256` exempt (untestable): an assertion statement inside a test; a test cannot assert on its own assertions.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:257` exempt (untestable): an assertion statement inside a test; a test cannot assert on its own assertions.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:258` exempt (untestable): an assertion statement inside a test; a test cannot assert on its own assertions.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:259` exempt (untestable): an assertion statement inside a test; a test cannot assert on its own assertions.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:264` exempt (untestable): an assertion statement inside a test; a test cannot assert on its own assertions.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:265` exempt (untestable): an assertion statement inside a test; a test cannot assert on its own assertions.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:266` exempt (untestable): an assertion statement inside a test; a test cannot assert on its own assertions.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:271` exempt (untestable): an assertion statement inside a test; a test cannot assert on its own assertions.
+- `test/ci/CoverageFailsPrOnTestFailure.ts:272` exempt (untestable): an assertion statement inside a test; a test cannot assert on its own assertions.
