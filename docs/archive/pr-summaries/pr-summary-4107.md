@@ -76,9 +76,12 @@ Backend-only change; no UI files touched. Behaviour is pinned by
     `discarded` warning for a result with four variants, and that the previous
     population's members are kept.
   - `evolve: a trained task that is committed normally logs completed and no discarded line (Issue #4107)`
-    is the negative control. It also runs `discardUnprocessedResults()` after
-    the committed `evolve()` and asserts it discards nothing, which pins the
-    commit clearing `mergedUncommittedTrainIDs`.
+    is the negative control. It also asserts `mergedUncommittedTrainIDs` is
+    empty after the committed `evolve()`, which pins the commit clearing it,
+    then runs `discardUnprocessedResults()` and asserts the task is not named.
+    It does not assert a count of 0: the committed generation schedules its own
+    training tasks, and any that settle first are rightly discarded under their
+    own IDs.
   - `evolve: a discovered creature is discarded by its discovery ID without naming an earlier training task (Issue #4107)`
     merges a discovery result whose creature carries an earlier task's `trainID`
     into the abandoned generation and asserts that its discovery ID and the

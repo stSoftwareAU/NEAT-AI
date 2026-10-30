@@ -262,11 +262,16 @@ Deno.test(
       );
       // PR #4114 review: the commit must forget the task it merged, or the
       // teardown would later name a committed, persisted creature as discarded.
+      // The count from discardUnprocessedResults() is not asserted: the
+      // committed generation schedules its own training tasks, and any that
+      // settle before the teardown runs are rightly discarded under their own
+      // IDs (Issue #4099).
       assertEquals(
-        neat.discardUnprocessedResults(),
+        neat.mergedUncommittedTrainIDs.size,
         0,
-        "a teardown after a committed generation must discard nothing",
+        "a committed generation must clear its merged training IDs",
       );
+      neat.discardUnprocessedResults();
       assertEquals(
         captured.filter((line) =>
           line.text.includes(`Training ${TASK_ID} discarded`)
