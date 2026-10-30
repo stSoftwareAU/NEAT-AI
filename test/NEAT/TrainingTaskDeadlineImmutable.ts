@@ -14,18 +14,18 @@
  * deadline the worker is handed and the one the watchdog records.
  */
 import { assert, assertEquals } from "@std/assert";
-import { createNeatConfig } from "@config/NeatConfig.ts";
-import type { TrainOptions } from "@config/TrainOptions.ts";
-import { Creature } from "@creature";
-import { CreatureUtil } from "@architecture/CreatureUtils.ts";
-import { computeTimeoutTS } from "@architecture/training/TrainingOutcome.ts";
-import { Neat } from "@neat/Neat.ts";
-import { scheduleTraining } from "@neat/NeatScheduling.ts";
-import { TRAINING_TASK_WATCHDOG_GRACE_MS } from "@neat/PerTaskTrainingTimeout.ts";
-import { TrainingRegressionTracker } from "@neat/TrainingRegressionTracker.ts";
-import type { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
-import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
-import { WorkerTaskCancelledError } from "@workers/WorkerTaskCancelledError.ts";
+import { createNeatConfig } from "../../src/config/NeatConfig.ts";
+import type { TrainOptions } from "../../src/config/TrainOptions.ts";
+import { Creature } from "../../src/Creature.ts";
+import { CreatureUtil } from "../../src/architecture/CreatureUtils.ts";
+import { computeTimeoutTS } from "../../src/architecture/training/TrainingOutcome.ts";
+import { Neat } from "../../src/NEAT/Neat.ts";
+import { scheduleTraining } from "../../src/NEAT/NeatScheduling.ts";
+import { TRAINING_TASK_WATCHDOG_GRACE_MS } from "../../src/NEAT/PerTaskTrainingTimeout.ts";
+import { TrainingRegressionTracker } from "../../src/NEAT/TrainingRegressionTracker.ts";
+import type { WorkerHandler } from "../../src/multithreading/workers/WorkerHandler.ts";
+import type { ResponseData } from "../../src/multithreading/workers/WorkerHandler.ts";
+import { WorkerTaskCancelledError } from "../../src/workers/WorkerTaskCancelledError.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 const MINUTE = 60_000;

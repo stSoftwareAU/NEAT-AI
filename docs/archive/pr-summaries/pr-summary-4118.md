@@ -144,6 +144,36 @@ dispatch.
     deliberately does not use the injected clock.
   - The tests that stay green under the unfixed code (earlier run deadline,
     disabled cap, no cap, relative timeout) pin behaviour that must not change.
+- Mutation check follow-up: the check reported every mutant on
+  `NeatScheduling.ts:623` / `:856` and in the test file as "no test imports this
+  module" because the test reached `src/` through `deno.json` import-map aliases
+  (`@neat/`, `@creature`, …) that the mutation runner does not resolve. The test
+  now imports `src/` by relative path, so the runner can see it; the listed
+  mutants (negated `timeoutTS > 0 ? … : undefined`, deleted `hardDeadlineTS`
+  property, deleted `trainingDeadlines.set`) are each killed by the red checks
+  above (forwarding reverted, watchdog recomputed) plus the "no cap and no run
+  deadline stays unbounded" and shared-deadline tests. The mutants inside the
+  test file itself are scaffolding (fake neat/worker/clock) with no behaviour of
+  their own to pin.
+- Existing callers of the changed functions (verdicts):
+  - `scheduleTraining` at `src/NEAT/Neat.ts:1347` — unchanged (new `now`
+    parameter is optional and left at `Date.now`); covered by
+    `StuckTrainingTaskCancelled`, `PoolBorrowing`, `TrainingRegressionSkip`,
+    `PopulationTrainingSkip`, `TrainingSpreadsAcrossHeavyWorkers`.
+  - `scheduleTraining` at `src/NEAT/NeatEvolution.ts:701` (via
+    `neat.scheduleTraining`) — changed and tested: the worker now receives the
+    task's own deadline in `hardDeadlineTS`; pinned by
+    `TrainingTaskDeadlineImmutable`.
+  - `scheduleTraining` at `scripts/lib/optionAuditRollup.ts:385` and `:390` —
+    unchanged (documentation strings naming the function, not calls).
+  - `scheduleDiscovery` at `src/NEAT/Neat.ts:1344` and
+    `src/NEAT/NeatEvolution.ts:648` — unchanged (`scheduleDiscovery` was not
+    edited; its deadline handling is untouched), covered by `PoolBorrowing`.
+  - Re-ran on the head after the import change: the new file plus the callers'
+    tests above and `ScheduledTrainingIterations`, `SchedulingRepeatGuard`,
+    `ScheduledTrainingLogLine`, `TrainingTaskCapture` — 40 passed, 0 failed;
+    `deno check` clean on `Neat.ts`, `NeatEvolution.ts`, `optionAuditRollup.ts`
+    and the test.
 - Entry point checked: `scheduleTraining` is the only place that builds the
   worker's `hardDeadlineTS` for training and the watchdog's `trainingDeadlines`;
   its caller `Neat.scheduleTraining` leaves `now` at the default.
