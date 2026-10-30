@@ -4,7 +4,7 @@ import { parse } from "@std/yaml";
 
 /**
  * Verifies the Test Coverage workflow runs its eight shards on Develop and
- * milestone PRs, while path-scoping other targets (Issue #4111).
+ * milestone PRs while retaining the code-path filter contract (Issue #4111).
  *
  * A `changes` job runs `dorny/paths-filter` against an explicit include list;
  * the shards run when it reports a code change, or when the target is Develop
@@ -147,7 +147,7 @@ Deno.test("the shards run for Develop and milestone targets or filtered code cha
   );
 });
 
-Deno.test("the merge check always runs and fails loud when detection fails (Issue #4041)", async () => {
+Deno.test("the merge job is not skipped and fails loud when detection fails (Issue #4041)", async () => {
   const merge = (await readWorkflow()).jobs.merge;
   const needs = needsOf(merge);
   assert(needs.includes("changes") && needs.includes("coverage"));

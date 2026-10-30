@@ -59,7 +59,8 @@ new code directory lands: **an unlisted path does not trigger coverage.**
   changed. These rulesets require each named shard and `Test Results`, so a
   docs-only PR incurs the full coverage run to publish those checks. Draft PRs
   remain gated until they are marked ready.
-- **Code changed** — the path filter also enables all 8 shards.
+- **Code changed** — changed paths still match the include list and all 8 shards
+  run.
 - **The `changes` job itself failed** — `merge` fails loudly. A skipped shard
   reports success, so a broken filter must never read as "docs-only".
 
