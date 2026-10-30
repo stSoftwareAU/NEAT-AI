@@ -176,6 +176,13 @@ neither gates the persist. A run whose generation throws never reaches this
 teardown; its failure cleanup (Issue #4072) makes the same two calls after
 terminating the workers, so those tasks are named there too.
 
+A discovery or replay creature that `processCompletedResults()` already merged
+into a generation the hard deadline then abandons (Issue #4050) has left
+`neat.discoveryComplete` and the replay queue, so this teardown cannot see it.
+`evolve()` logs it itself, as a warning, by discovery ID or replay key:
+`Discovery <id> discarded: generation abandoned past the hard deadline` (Issue
+#4115).
+
 Issue #4061 narrows what the restore step may hand back. Each entry point
 (`evolveDir`, `evolveEnv`, `evolveRL`) validates the caller's creature on entry
 (Issue #4078) and then snapshots it. A caller with fewer than `input + output`

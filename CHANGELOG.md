@@ -25,6 +25,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4115:** a discovery or replay creature merged by
+  `processCompletedResults()` in a generation the hard deadline then abandons is
+  no longer dropped silently. The abandoned branch of `evolve()` now logs
+  `Discovery <id> discarded: generation abandoned past the hard deadline` (or
+  `Replay <key> ...`) for each one, by the discovery ID or replay key the merge
+  recorded, as a warning. A discovery with no improved creature, or a generation
+  that commits, logs nothing.
 - **Issue #4118:** the training worker and the stuck-task watchdog now share one
   immutable per-task deadline. `scheduleTraining` computes
   `min(now + trainingTaskTimeoutMinutes, run hard deadline)` once, at
