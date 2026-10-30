@@ -64,7 +64,9 @@ change detection with these triggers.
 If the `changes` job fails, `merge` fails loudly. `Merge coverage & results` is
 the aggregation job; neither the Develop nor the milestone ruleset requires it.
 It publishes the separate required `Test Results` check when merged JUnit
-exists.
+exists. The partition-parity and lost-coverage gates therefore also run in each
+shard (Issue #4125), so a failure there fails a required `Coverage shard <n>`
+check, not only the merge job.
 
 `quality.yml` is deliberately left unscoped: its repo-wide hygiene checks
 (formatting, JSON validity, zero-length files, merge-conflict markers) apply to
@@ -117,7 +119,7 @@ flowchart LR
     S1 --> M
     SN --> M
     subgraph merge["merge job (needs: changes + coverage, if: !cancelled)"]
-        M["Verify parity → merge coverage-* (lcov)<br/>+ merge junit-*.xml → gate on shard statuses"]
+        M["Re-verify parity → merge coverage-* (lcov)<br/>+ merge junit-*.xml → gate on shard statuses"]
     end
     M --> C["1 Codecov coverage report<br/>1 consolidated Test Results check"]
     M --> T["test-timings artifact<br/>per-file durations → scripts/test-timings.json"]
@@ -135,6 +137,12 @@ build. A runner crash (any final exit other than 0 or 1, including an OOM that
 survives the retry) writes an `error:<code>` marker and fails that required
 shard check; the `always()` artifact step still uploads its status, JUnit and
 coverage outputs for aggregation.
+
+Two more failures also fail that required shard check (Issue #4125). A failed
+partition verification (`shard_test_files.ts --verify`) writes `error:partition`
+and stops the shard before any test runs. A run that recorded a status but left
+no `coverage-<shard>/` dir writes `error:no-coverage`. Both fail the shard
+rather than only the non-required merge job.
 
 Both the initial plan and the scoped OOM recovery come from the unit-tested
 [`scripts/coverage_run_plan.ts`](../../scripts/coverage_run_plan.ts)

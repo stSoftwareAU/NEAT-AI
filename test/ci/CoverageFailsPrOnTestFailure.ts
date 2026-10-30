@@ -6,6 +6,10 @@ import { join } from "@std/path";
  * The Test Coverage workflow is the PR test gate (quality.yml does not run
  * tests). Runner crashes fail their required shard check; assertion failures
  * stay green on shards and fail in the merge job after results are published.
+ * Partition-verification failures (`error:partition`) and a missing
+ * `coverage-<shard>/` dir after a recorded status (`error:no-coverage`) also
+ * fail the required shard check (Issue #4125), because the merge job that
+ * repeats those gates is not a required check.
  *
  * These tests parse the committed workflow YAML and execute the shard's actual
  * shell block with a controlled Deno runner to verify exit and artifact effects.
@@ -36,11 +40,26 @@ async function readWorkflow(): Promise<Workflow> {
   return parse(await Deno.readTextFile(COVERAGE_WORKFLOW)) as Workflow;
 }
 
+interface ShardOptions {
+  /** Exit code of the fake `shard_test_files.ts --verify` (default 0). */
+  verifyExit?: number;
+  /** When true, the fake `deno test` does not create `coverage-<shard>/`. */
+  skipCoverage?: boolean;
+}
+
+interface ShardResult {
+  code: number;
+  status: string;
+  junit: string;
+  hasCoverage: boolean;
+  /** Number of times the fake `deno test` ran. */
+  runs: number;
+}
+
 async function runShard(
   codes: number[],
-): Promise<
-  { code: number; status: string; junit: string; hasCoverage: boolean }
-> {
+  opts: ShardOptions = {},
+): Promise<ShardResult> {
   const wf = await readWorkflow();
   const step = wf.jobs?.coverage?.steps?.find((s) =>
     s.name === "Run test shard"
@@ -58,6 +77,7 @@ async function runShard(
       `#!/bin/sh
 case "$*" in
 *scripts/shard_test_files.ts*)
+  case "$*" in *--verify*) if [ "\${RUNNER_VERIFY_EXIT:-0}" -ne 0 ]; then echo 'unassigned files: test/x.ts' >&2; fi; exit "\${RUNNER_VERIFY_EXIT:-0}" ;; esac
   echo test/example.ts
   exit 0
   ;;
@@ -68,7 +88,7 @@ case "$*" in
 esac
 if [ "$1" = test ]; then
   for arg do
-    case "$arg" in --coverage=*) mkdir -p "\${arg#--coverage=}" ;; esac
+    case "$arg" in --coverage=*) [ "\${RUNNER_NO_COVERAGE:-0}" = 1 ] || mkdir -p "\${arg#--coverage=}" ;; esac
   done
   count=0
   [ ! -f .runner-count ] || count=$(cat .runner-count)
@@ -98,6 +118,8 @@ exit 90
       env: {
         PATH: `${bin}:${Deno.env.get("PATH") ?? ""}`,
         RUNNER_CODES: codes.join(","),
+        RUNNER_VERIFY_EXIT: String(opts.verifyExit ?? 0),
+        RUNNER_NO_COVERAGE: opts.skipCoverage ? "1" : "0",
         SHARD_TOTAL: "8",
       },
     }).output();
@@ -109,12 +131,22 @@ exit 90
       );
     }
     const status = await Deno.readTextFile(join(dir, "shard-status-0.txt"));
-    const junit = await Deno.readTextFile(join(dir, "junit-0.xml"));
+    // The JUnit file is absent when the shard stops before running tests
+    // (e.g. a partition-verification failure).
+    const junitPath = join(dir, "junit-0.xml");
+    const junit = (await exists(junitPath))
+      ? await Deno.readTextFile(junitPath)
+      : "";
+    const countPath = join(dir, ".runner-count");
+    const runs = (await exists(countPath))
+      ? Number((await Deno.readTextFile(countPath)).trim())
+      : 0;
     return {
       code: result.code,
       status: status.trim(),
       junit,
-      hasCoverage: (await Deno.stat(join(dir, "coverage-0"))).isDirectory,
+      hasCoverage: await isDirectory(join(dir, "coverage-0")),
+      runs,
     };
   } finally {
     await Deno.remove(dir, { recursive: true });
@@ -129,6 +161,11 @@ async function exists(path: string): Promise<boolean> {
     if (error instanceof Deno.errors.NotFound) return false;
     throw error;
   }
+}
+
+async function isDirectory(path: string): Promise<boolean> {
+  if (!(await exists(path))) return false;
+  return (await Deno.stat(path)).isDirectory;
 }
 
 function mergeSteps(wf: Workflow): Step[] {
@@ -233,6 +270,35 @@ Deno.test("an exhausted OOM retry fails after retaining final shard artifacts", 
   assert(result.junit.length > 0);
   assert(!result.junit.includes("</testsuites>"));
   assert(result.hasCoverage);
+});
+
+Deno.test("a failed partition check fails the shard before any test runs (Issue #4125)", async () => {
+  const result = await runShard([0], { verifyExit: 1 });
+  assertEquals(result.status, "error:partition");
+  assertEquals(result.code, 1);
+  assertEquals(result.runs, 0);
+  assert(!result.hasCoverage);
+
+  // Positive control: the same inputs with a passing partition check pass.
+  const control = await runShard([0], { verifyExit: 0 });
+  assertEquals(control.code, 0);
+  assertEquals(control.status, "passed");
+  assertEquals(control.runs, 1);
+  assert(control.hasCoverage);
+});
+
+Deno.test("a passing run that loses its coverage dir fails the shard (Issue #4125)", async () => {
+  const result = await runShard([0], { skipCoverage: true });
+  assertEquals(result.status, "error:no-coverage");
+  assertEquals(result.code, 1);
+  assertEquals(result.hasCoverage, false);
+});
+
+Deno.test("an ordinary failure that loses its coverage dir fails the shard (Issue #4125)", async () => {
+  const result = await runShard([1], { skipCoverage: true });
+  assertEquals(result.status, "error:no-coverage");
+  assertEquals(result.code, 1);
+  assertEquals(result.hasCoverage, false);
 });
 
 Deno.test("coverage shard failures still upload status and JUnit artifacts", async () => {

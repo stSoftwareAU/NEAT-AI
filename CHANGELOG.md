@@ -25,6 +25,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4125:** the shard partition check (`shard_test_files.ts --verify`)
+  and the lost-coverage check now run in each required `Coverage shard <n>` job,
+  not only in the non-required `Merge coverage & results` job. A partition
+  failure records `error:partition` and stops that shard before any test runs; a
+  run that recorded a status but left no `coverage-<shard>/` dir records
+  `error:no-coverage`. Both fail that shard instead of passing silently. The
+  merge-job copies of the gates stay in place as defence in depth.
 - **Issue #4115:** a discovery or replay creature merged by
   `processCompletedResults()` in a generation the hard deadline then abandons is
   no longer dropped silently. The abandoned branch of `evolve()` now logs
