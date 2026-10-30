@@ -68,7 +68,10 @@ import {
 } from "@neat/CpuUtilisation.ts";
 import { assemblePopulationWithinBudget } from "@neat/PopulationBudget.ts";
 import { HARD_DEADLINE_WATCHDOG_INTERVAL_MS } from "@neat/HardDeadline.ts";
-import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
+import {
+  type MergedExternalResults,
+  processCompletedResults,
+} from "@neat/ProcessCompletedResults.ts";
 import {
   countRankableCreatures,
   selectRankedTrainingCandidates,
@@ -946,7 +949,16 @@ export async function evolve(
   // Issue #2314: Process completed results while workers breed.
   // Issue #2239: Time result processing phase
   const resultProcessingStartMs = Date.now();
-  const trainedPopulation = processCompletedResults(neat, fittest, genus);
+  const mergedExternal: MergedExternalResults = {
+    discoveryIDs: [],
+    replayKeys: [],
+  };
+  const trainedPopulation = processCompletedResults(
+    neat,
+    fittest,
+    genus,
+    mergedExternal,
+  );
   const resultProcessingMs = Date.now() - resultProcessingStartMs;
 
   // Issue #2314: Compute plateau and MCMC configuration while workers breed.
@@ -1163,6 +1175,17 @@ export async function evolve(
         `hard deadline — discarding its population changes instead of ` +
         `committing them (Issue #4050)`,
     );
+    // Issue #4115: name each discovery/replay creature this abandon discards.
+    for (const id of mergedExternal.discoveryIDs) {
+      getLogger().warn(
+        `Discovery ${id} discarded: generation abandoned past the hard deadline`,
+      );
+    }
+    for (const key of mergedExternal.replayKeys) {
+      getLogger().warn(
+        `Replay ${key} discarded: generation abandoned past the hard deadline`,
+      );
+    }
   } else {
     neat.population = budgeted.population; // Keep pseudo sorted.
 
