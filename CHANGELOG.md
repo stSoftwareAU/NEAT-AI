@@ -32,6 +32,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   `Replay <key> ...`) for each one, by the discovery ID or replay key the merge
   recorded, as a warning. A discovery with no improved creature, or a generation
   that commits, logs nothing.
+- **Issue #4118:** the training worker and the stuck-task watchdog now share one
+  immutable per-task deadline. `scheduleTraining` computes
+  `min(now + trainingTaskTimeoutMinutes, run hard deadline)` once, at
+  scheduling, hands it to the worker as `hardDeadlineTS` and records it for the
+  watchdog. The worker previously re-anchored a fresh
+  `now + trainingTaskTimeoutMinutes` when it dequeued the task, so time spent
+  queued or in setup renewed the budget. Discovery, worker selection and direct
+  `creature.train()` calls are unchanged.
 - **Issue #4097:** `loadWasmActivationInitPayloadAsync()` and
   `fetchWasmForWorkers()` no longer fetch the WASM activation payload from
   jsr.io on every start. For `https:` installs they now load the JS glue and the
@@ -53,6 +61,17 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   Other request kinds (evaluate, score, ...) are unlabelled and keep the
   quarantine reason unchanged. The task that missed its deadline keeps its own
   reason.
+- **Issue #4107:** a training result that was merged (`Training <id> completed`)
+  in a generation the hard deadline then abandons before it commits is now
+  logged `Training <id> discarded: generation abandoned past the hard deadline`,
+  once per task, instead of vanishing. The line comes from the abandoned
+  `evolve()` or, when that `evolve()` never resumes (in `evolveDir` it can wait
+  forever on breed requests the teardown's worker termination dropped), from the
+  teardown's discard step; whichever runs first names the task. A task whose
+  generation threw part-way through merging is still named once, not also as
+  `discarded at teardown`. Only the training results merged in the abandoned
+  generation are named: a discovery or replay creature that inherited an earlier
+  task's `trainID` tag does not produce this line.
 - **Issue #4099:** a training or discovery result that settled after the last
   generation's results were processed is no longer dropped silently. On the
   normal finish, `finishUp` waits one more pass so the result is merged. Where

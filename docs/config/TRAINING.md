@@ -137,6 +137,13 @@ deadline is tracked in `trainingDeadlines`; once a task overruns its own
 deadline plus a small grace it is abandoned **individually and promptly**,
 instead of waiting for the whole batch to be cleared at the hard deadline.
 
+The per-task deadline is computed **once, when the task is scheduled**, as the
+earlier of the cap and the remaining run budget (Issue #4118). That single
+absolute deadline is handed to the worker and is the value the Neat-level
+watchdog records for the task. The watchdog abandons a task only after it has
+overrun that recorded deadline by its 30-second grace, so time spent waiting in
+the worker queue or setting up cannot extend the task.
+
 - Lower the cap (e.g. `2`) on tight wall-clock budgets so no single task can
   starve breeding/discovery.
 - Set `trainingTaskTimeoutMinutes: 0` to disable the cap and restore the

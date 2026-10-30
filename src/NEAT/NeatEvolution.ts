@@ -949,6 +949,9 @@ export async function evolve(
   // Issue #2314: Process completed results while workers breed.
   // Issue #2239: Time result processing phase
   const resultProcessingStartMs = Date.now();
+  // Issue #4107: the training tasks merged this generation are recorded on the
+  // Neat instance until the commit, so they are named if the hard deadline
+  // abandons it first: here, or by the teardown if this evolve() never resumes.
   const mergedExternal: MergedExternalResults = {
     discoveryIDs: [],
     replayKeys: [],
@@ -958,6 +961,7 @@ export async function evolve(
     fittest,
     genus,
     mergedExternal,
+    neat.mergedUncommittedTrainIDs,
   );
   const resultProcessingMs = Date.now() - resultProcessingStartMs;
 
@@ -1175,6 +1179,14 @@ export async function evolve(
         `hard deadline — discarding its population changes instead of ` +
         `committing them (Issue #4050)`,
     );
+    // Issue #4107: name each training task merged this generation, once,
+    // because the abandon drops its creatures. The IDs come from the merged
+    // results, not from creature tags: a discovery or replay creature built
+    // from a trained fittest keeps that task's trainID tag, although the task
+    // was committed in an earlier generation. If the teardown already named
+    // them (this evolve() resumed after it), the set is empty and nothing is
+    // logged twice.
+    neat.discardMergedUncommittedTraining();
     // Issue #4115: name each discovery/replay creature this abandon discards.
     for (const id of mergedExternal.discoveryIDs) {
       getLogger().warn(
@@ -1188,6 +1200,9 @@ export async function evolve(
     }
   } else {
     neat.population = budgeted.population; // Keep pseudo sorted.
+    // Issue #4107: this generation's trained creatures are committed now, so
+    // its merged training tasks are no longer at risk of being discarded.
+    neat.mergedUncommittedTrainIDs.clear();
 
     if (budgeted.dropped.length > 0 && neat.config.verbose) {
       getLogger().info(

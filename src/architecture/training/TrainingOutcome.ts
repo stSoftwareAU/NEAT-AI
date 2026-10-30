@@ -46,6 +46,10 @@ export interface EpochState {
  * delay. A `trainingTimeOutMinutes` of `0` means "no relative budget"; an
  * absent/zero `hardDeadlineTS` leaves the relative computation unchanged.
  *
+ * Issue #4118: the scheduler calls this once at scheduling time and forwards
+ * the result as `hardDeadlineTS`, so on the worker this clamp returns that
+ * deadline unchanged.
+ *
  * Pure and `now`-injectable so it can be unit-tested without elapsed-time
  * assertions (#2888 policy).
  *
