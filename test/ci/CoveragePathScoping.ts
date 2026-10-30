@@ -3,16 +3,14 @@ import { globToRegExp } from "@std/path";
 import { parse } from "@std/yaml";
 
 /**
- * Verifies the Test Coverage workflow skips its eight heavy shards on a
- * docs-only PR to Develop while the required `merge` check still reports
- * (Issue #4041).
+ * Verifies the Test Coverage workflow runs its eight shards on Develop and
+ * milestone PRs, while path-scoping other targets (Issue #4111).
  *
  * A `changes` job runs `dorny/paths-filter` against an explicit include list;
- * the shards run when it reports a code change or the target is a milestone
- * branch (whose rules require the named shard checks). `merge` always runs
- * so the required status check posts a trivial pass instead of hanging. A
- * failed `changes` job must fail `merge` loudly rather than read as "no code
- * changed".
+ * the shards run when it reports a code change, or when the target is Develop
+ * or a milestone branch (whose rules require each named shard and Test
+ * Results). `merge` always runs so it publishes those results and fails
+ * loudly when change detection fails.
  *
  * This is a "what" test: it parses the committed workflow, evaluates the
  * filter's globs against sample PR file lists, and asserts on the job graph.
@@ -135,7 +133,7 @@ Deno.test("the changes job holds read-only permissions (Issue #4041)", async () 
   }
 });
 
-Deno.test("the shards run for milestone targets or filtered code changes (Issue #4041)", async () => {
+Deno.test("the shards run for Develop and milestone targets or filtered code changes (Issue #4111)", async () => {
   const wf = await readWorkflow();
   const coverage = wf.jobs.coverage;
   assert(needsOf(coverage).includes("changes"));
@@ -145,7 +143,7 @@ Deno.test("the shards run for milestone targets or filtered code changes (Issue 
   );
   assertEquals(
     wf.jobs.changes.outputs?.code,
-    "${{ startsWith(github.base_ref, 'milestone/') && 'true' || steps.filter.outputs.code }}",
+    "${{ (github.base_ref == 'Develop' || startsWith(github.base_ref, 'milestone/')) && 'true' || steps.filter.outputs.code }}",
   );
 });
 
@@ -156,7 +154,7 @@ Deno.test("the merge check always runs and fails loud when detection fails (Issu
   assert((merge.if ?? "").includes("!cancelled()"));
   assert(
     !(merge.if ?? "").includes("needs.changes.outputs"),
-    "merge must not be skipped on a docs-only PR — it is the required check",
+    "merge must not be skipped on a docs-only PR — it publishes Test Results",
   );
 
   const steps = merge.steps ?? [];

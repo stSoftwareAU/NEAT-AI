@@ -36,11 +36,10 @@ env:
   SHARD_TOTAL: "8"
 
 jobs:
-  # Docs-only path scoping (Issue #4041). A PR that touches nothing on this
-  # explicit include list skips the eight shards; the merge job still runs so
-  # the required "Merge coverage & results" check reports a trivial pass. An
-  # include list (not a `docs/**` exclude) keeps any new top-level code path
-  # failing safe — it runs coverage until someone decides otherwise.
+  # Docs-only path scoping (Issue #4041). Develop and milestone targets force
+  # coverage because their rulesets require every named shard and Test Results;
+  # this means docs-only PRs to those branches incur a full coverage run. The
+  # explicit include list remains fail-safe for any new code path.
   changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Detect code changes
@@ -51,9 +50,9 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      # Milestone rules require all eight named shards and Test Results.
-      # Skipping the matrix leaves those checks pending forever on docs PRs.
-      code: ${{ startsWith(github.base_ref, 'milestone/') && 'true' || steps.filter.outputs.code }}
+      # Develop and milestone rules require all eight named shards and Test
+      # Results. Skipping the matrix leaves those checks pending forever.
+      code: ${{ (github.base_ref == 'Develop' || startsWith(github.base_ref, 'milestone/')) && 'true' || steps.filter.outputs.code }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -300,8 +299,8 @@ jobs:
     needs: [changes, coverage]
     # Run even if some shards failed/crashed so results are still published and
     # the gate can report accurately; only skip if the whole run was cancelled.
-    # It also runs when the shards were skipped by path scoping (Issue #4041),
-    # because this is the required check and must still report.
+    # It also runs when the shards were skipped by path scoping (Issue #4041)
+    # so the workflow reports a clean skip for targets without required shards.
     if: (!cancelled()) && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 60

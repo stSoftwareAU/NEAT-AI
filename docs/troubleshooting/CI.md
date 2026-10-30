@@ -46,7 +46,7 @@ Inspect the plan before pushing:
 deno run --allow-read scripts/shard_test_files.ts --plan --total=8
 ```
 
-### 📄 Docs-only PRs skip the shards (Issue #4041)
+### 📄 Docs-only PRs to Develop run all shards (Issue #4111)
 
 A `changes` job runs first and uses `dorny/paths-filter` to decide whether the
 PR touched code. The filter is an **include list** — `src/**`, `test/**`,
@@ -55,10 +55,11 @@ PR touched code. The filter is an **include list** — `src/**`, `test/**`,
 Every path that feeds a test is named explicitly, so review the list whenever a
 new code directory lands: **an unlisted path does not trigger coverage.**
 
-- **Code changed** — all 8 shards run and `merge` gates on them as before.
-- **Nothing on the list changed** — the shards are skipped. `merge` (the
-  required _Merge coverage & results_ check) still runs, logs a notice, and
-  passes trivially, so branch protection is satisfied.
+- **Develop or milestone target** — all 8 shards run even when no listed path
+  changed. These rulesets require each named shard and `Test Results`, so a
+  docs-only PR incurs the full coverage run to publish those checks. Draft PRs
+  remain gated until they are marked ready.
+- **Code changed** — the path filter also enables all 8 shards.
 - **The `changes` job itself failed** — `merge` fails loudly. A skipped shard
   reports success, so a broken filter must never read as "docs-only".
 
@@ -69,12 +70,10 @@ any change, docs included.
 ```mermaid
 flowchart LR
     CH["changes job<br/>paths-filter include list"] -- "code == true" --> SH["8 coverage shards"]
-    CH -- "code == false" --> SK["shards skipped"]
-    SH --> MG["merge job<br/>(required check)"]
-    SK --> MG
+    CH -- "Develop or milestone target" --> SH
+    SH --> MG["merge job<br/>aggregate results"]
     CH -- "result != success" --> MG
     MG -- "shards ran" --> G["gate on shard statuses"]
-    MG -- "shards skipped" --> P["trivial pass"]
     MG -- "changes failed" --> F["fail loudly"]
 ```
 
