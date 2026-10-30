@@ -89,6 +89,7 @@ exit 90
     await Deno.chmod(deno, 0o755);
 
     const run = step.run.replaceAll("${{ matrix.shard }}", "0")
+      .replaceAll("$(nproc)", "4")
       .replaceAll("/proc/meminfo", join(dir, "meminfo"));
     const result = await new Deno.Command("bash", {
       args: ["-euo", "pipefail", "-c", run],

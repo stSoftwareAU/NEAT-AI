@@ -96,6 +96,18 @@ Deno.test("coverage regression accepts the real workflow with isolated runner st
   await checkRegression("", () => {}, undefined, 0);
 });
 
+Deno.test("coverage regression runs when host CPU discovery is unavailable", async () => {
+  await checkRegression(
+    "",
+    (wf) => {
+      const step = shardStep(wf);
+      step.run = `nproc() { return 127; }\n${step.run}`;
+    },
+    undefined,
+    0,
+  );
+});
+
 const scenarios = [
   { filter: "coverage shard exits successfully", code: 0, complete: true },
   { filter: "ordinary test failures retain", code: 0, complete: true },
