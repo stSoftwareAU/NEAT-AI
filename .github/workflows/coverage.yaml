@@ -36,11 +36,9 @@ env:
   SHARD_TOTAL: "8"
 
 jobs:
-  # Docs-only path scoping (Issue #4041). A PR that touches nothing on this
-  # explicit include list skips the eight shards; the merge job still runs so
-  # the required "Merge coverage & results" check reports a trivial pass. An
-  # include list (not a `docs/**` exclude) keeps any new top-level code path
-  # failing safe — it runs coverage until someone decides otherwise.
+  # Every ready PR accepted by this workflow targets Develop or milestone/*
+  # and runs all shards, including docs-only PRs. The retained path filter
+  # does not gate coverage under these triggers.
   changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Detect code changes
@@ -51,9 +49,9 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      # Milestone rules require all eight named shards and Test Results.
-      # Skipping the matrix leaves those checks pending forever on docs PRs.
-      code: ${{ startsWith(github.base_ref, 'milestone/') && 'true' || steps.filter.outputs.code }}
+      # Develop and milestone rules require all eight named shards and Test
+      # Results. Skipping the matrix leaves those checks pending forever.
+      code: ${{ (github.base_ref == 'Develop' || startsWith(github.base_ref, 'milestone/')) && 'true' || steps.filter.outputs.code }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -300,8 +298,7 @@ jobs:
     needs: [changes, coverage]
     # Run even if some shards failed/crashed so results are still published and
     # the gate can report accurately; only skip if the whole run was cancelled.
-    # It also runs when the shards were skipped by path scoping (Issue #4041),
-    # because this is the required check and must still report.
+    # It also runs if change detection fails before the shards can start.
     if: (!cancelled()) && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -309,8 +306,8 @@ jobs:
       RUN_COVERAGE: ${{ needs.changes.outputs.code }}
       CHANGES_RESULT: ${{ needs.changes.result }}
     steps:
-      # A skipped shard job reports success, so a failed change-detection job
-      # must fail this required check loudly rather than read as "docs-only".
+      # Fail this aggregation job loudly if change detection failed. Neither
+      # the Develop nor the milestone ruleset requires this job.
       - name: Verify change detection succeeded
         run: |
           set -euo pipefail
@@ -319,6 +316,8 @@ jobs:
             exit 1
           fi
 
+      # Unreachable after successful detection with the current PR triggers:
+      # every accepted target forces RUN_COVERAGE to true.
       - name: "Skip: no code paths changed"
         if: ${{ env.RUN_COVERAGE != 'true' }}
         run: |
