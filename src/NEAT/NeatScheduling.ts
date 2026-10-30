@@ -613,10 +613,11 @@ export function scheduleTraining(
     trainingSampleRate: neat.config.trainingSampleRate,
     disableRandomSamples: neat.config.disableRandomSamples,
     trainingTimeOutMinutes: trainingTimeOutMinutes,
-    // Issue #2899: carry the absolute hard deadline so worker-side training
-    // stops at T+15 even when the task sat in the worker queue. 0 means no
-    // deadline configured; leave it absent so behaviour is unchanged.
-    hardDeadlineTS: neat.hardDeadlineTS > 0 ? neat.hardDeadlineTS : undefined,
+    // Issue #4118 (builds on #2899): this is the task's own absolute deadline,
+    // min(now + task cap, run hard deadline), fixed once at scheduling and handed
+    // to the worker unchanged so neither queueing nor worker setup can renew the
+    // budget. 0 / absent means no deadline configured.
+    hardDeadlineTS: timeoutTS > 0 ? timeoutTS : undefined,
     batchSize: neat.config.trainingBatchSize,
     maximumBiasAdjustmentScale: neat.config.maximumBiasAdjustmentScale,
     maximumWeightAdjustmentScale: neat.config.maximumWeightAdjustmentScale,
@@ -847,15 +848,9 @@ export function scheduleTraining(
   neat.trainingInProgress.set(uuid, p);
   // Issue #3053: record this task's absolute per-task wall-clock deadline so the
   // incremental stuck-task watchdog can abandon it promptly if its worker
-  // promise never settles. Mirrors the worker-side `timeoutTS` derivation.
-  neat.trainingDeadlines.set(
-    uuid,
-    computeTimeoutTS(
-      Date.now(),
-      trainingTimeOutMinutes,
-      neat.hardDeadlineTS > 0 ? neat.hardDeadlineTS : undefined,
-    ),
-  );
+  // promise never settles. Issue #4118: the watchdog records the SAME deadline
+  // the worker was handed, never recomputed after dispatch.
+  neat.trainingDeadlines.set(uuid, timeoutTS);
 }
 
 /**

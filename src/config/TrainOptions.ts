@@ -102,6 +102,12 @@ export interface TrainArguments extends BackPropagationArguments {
    * deadline. Carrying the absolute deadline lets the worker clamp the
    * relative budget to `min(now + trainingTimeOutMinutes, hardDeadlineTS)`.
    *
+   * Issue #4118: the scheduler (`scheduleTraining`) now carries the task's own
+   * effective absolute deadline in this field — min(scheduling time +
+   * trainingTimeOutMinutes, run hard deadline) — fixed once at scheduling, so
+   * the worker's clamp cannot be renewed by queue or setup delay. Other callers
+   * may still pass the run's overall deadline.
+   *
    * A plain number so it survives `Worker.postMessage`. When absent,
    * behaviour is unchanged (direct `creature.train()` callers are
    * unaffected).

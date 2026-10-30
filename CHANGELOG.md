@@ -25,6 +25,14 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4118:** the training worker and the stuck-task watchdog now share one
+  immutable per-task deadline. `scheduleTraining` computes
+  `min(now + trainingTaskTimeoutMinutes, run hard deadline)` once, at
+  scheduling, hands it to the worker as `hardDeadlineTS` and records it for the
+  watchdog. The worker previously re-anchored a fresh
+  `now + trainingTaskTimeoutMinutes` when it dequeued the task, so time spent
+  queued or in setup renewed the budget. Discovery, worker selection and direct
+  `creature.train()` calls are unchanged.
 - **Issue #4097:** `loadWasmActivationInitPayloadAsync()` and
   `fetchWasmForWorkers()` no longer fetch the WASM activation payload from
   jsr.io on every start. For `https:` installs they now load the JS glue and the

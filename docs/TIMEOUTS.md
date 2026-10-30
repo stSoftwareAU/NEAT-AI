@@ -117,8 +117,11 @@ predicate, applying the same one-generation floor
   record/analysis deadline to the cap regardless of how long the request waited
   in the queue. The relative phase-split allocation (record vs analysis) still
   applies _inside_ that ceiling.
-- **Training** — scheduled training tasks carry the same absolute hard deadline
-  (Issue #2899) and are clamped to it.
+- **Training** — each scheduled training task carries its own absolute deadline,
+  `min(now + trainingTaskTimeoutMinutes, hardDeadlineTS)`, computed once at
+  scheduling (Issues #2899, #4118). The worker is handed that value and does not
+  re-anchor a fresh relative budget when it dequeues the task, so time spent
+  queueing cannot renew it.
 - **Discovery replay** — `DiscoveryReplayQueue.scheduleReplay()` refuses to
   start a replay once the cap has passed, and
   `waitForCompletion(hardDeadlineTS)` drops any queued replay and signals the
@@ -261,7 +264,10 @@ normal runs:
   a warning rather than dispatched to a worker that could only "time out" in
   milliseconds. This surfaces mis-scaled budgets (the GRQ-16 run saw 16–93 ms
   budgets) and stops burning a worker slot near the hard deadline on a no-op.
-  The pure helpers `computeEffectiveTrainingBudgetMs` and
+  That deadline is the task's single, immutable deadline (Issue #4118): it is
+  the value handed to the worker as `hardDeadlineTS` and the value the
+  stuck-task watchdog records, so time spent queueing or setting up cannot renew
+  the budget. The pure helpers `computeEffectiveTrainingBudgetMs` and
   `isTrainingBudgetTooSmall` live in
   [`src/NEAT/PerTaskTrainingTimeout.ts`](../src/NEAT/PerTaskTrainingTimeout.ts).
 
@@ -328,8 +334,10 @@ sequenceDiagram
 
     loop each generation
         evolveDir->>Neat: abandonInFlightPastHardDeadline(hardDeadlineTS)<br/>(top of every pass — GRQ #4470,<br/>no-op until 1 generation is banked — #3940)
-        Neat->>Worker: scheduleDiscovery / scheduleTraining<br/>(carry hardDeadlineTS)
-        Worker-->>Worker: clamp per-task deadline to min(local, hardDeadlineTS)
+        Neat->>Worker: scheduleDiscovery<br/>(carry hardDeadlineTS)
+        Neat->>Worker: scheduleTraining<br/>(carry the task deadline, fixed at schedule time)
+        Worker-->>Worker: discovery clamps per-discovery deadline to min(local, hardDeadlineTS)
+        Worker-->>Worker: training clamps to the deadline it was handed (no re-anchor)
         Neat->>Replay: scheduleReplay(... hardDeadlineTS ...)
         alt generation 1 (nothing banked yet)
             evolveDir-->>evolveDir: awaited past the cap up to the first-generation bound (#3940, #4053)
@@ -360,7 +368,8 @@ sequenceDiagram
 The data flow, in one line:
 
 ```text
-evolveDir → Neat.hardDeadlineTS → scheduleDiscovery / scheduleTraining / replay queue → worker clamps
+evolveDir → Neat.hardDeadlineTS → scheduleDiscovery / replay queue → worker clamps
+evolveDir → Neat.hardDeadlineTS → scheduleTraining → task deadline (fixed once) → worker and watchdog
 ```
 
 ## 🛰️ The external watchdog is unchanged
