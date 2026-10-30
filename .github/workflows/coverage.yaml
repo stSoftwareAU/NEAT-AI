@@ -36,10 +36,9 @@ env:
   SHARD_TOTAL: "8"
 
 jobs:
-  # Docs-only path scoping (Issue #4041). Develop and milestone targets force
-  # coverage because their rulesets require every named shard and Test Results;
-  # this means docs-only PRs to those branches incur a full coverage run. The
-  # explicit include list remains the code-change detector for other refs.
+  # Every ready PR accepted by this workflow targets Develop or milestone/*
+  # and runs all shards, including docs-only PRs. The retained path filter
+  # does not gate coverage under these triggers.
   changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     name: Detect code changes
@@ -299,8 +298,7 @@ jobs:
     needs: [changes, coverage]
     # Run even if some shards failed/crashed so results are still published and
     # the gate can report accurately; only skip if the whole run was cancelled.
-    # It also runs when the shards were skipped by path scoping (Issue #4041)
-    # so the change-detection failure guard remains active.
+    # It also runs if change detection fails before the shards can start.
     if: (!cancelled()) && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -308,8 +306,8 @@ jobs:
       RUN_COVERAGE: ${{ needs.changes.outputs.code }}
       CHANGES_RESULT: ${{ needs.changes.result }}
     steps:
-      # A skipped shard job reports success, so a failed change-detection job
-      # must fail this required check loudly rather than read as "docs-only".
+      # Fail this aggregation job loudly if change detection failed. Neither
+      # the Develop nor the milestone ruleset requires this job.
       - name: Verify change detection succeeded
         run: |
           set -euo pipefail
@@ -318,6 +316,8 @@ jobs:
             exit 1
           fi
 
+      # Unreachable after successful detection with the current PR triggers:
+      # every accepted target forces RUN_COVERAGE to true.
       - name: "Skip: no code paths changed"
         if: ${{ env.RUN_COVERAGE != 'true' }}
         run: |

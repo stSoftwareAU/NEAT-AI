@@ -48,21 +48,23 @@ deno run --allow-read scripts/shard_test_files.ts --plan --total=8
 
 ### 📄 Docs-only PRs to Develop run all shards (Issue #4111)
 
-A `changes` job runs first and uses `dorny/paths-filter` to decide whether the
-PR touched code. The filter is an **include list** — `src/**`, `test/**`,
-`bench/**`, `wasm_activation/**`, `scripts/**`, `.github/actions/setup-neat/**`,
-`deno.json`, `deno.lock` and `coverage.yaml` itself — not a `docs/**` exclude.
-Every path that feeds a test is named explicitly, so review the list whenever a
-new code directory lands: **an unlisted path does not trigger coverage.**
+This workflow accepts pull requests targeting Develop or `milestone/*`. Every
+ready PR it accepts runs all 8 shards, including docs-only changes. These
+rulesets require each named shard and `Test Results`, so docs-only PRs incur the
+full coverage run to publish those checks. Draft PRs remain gated until they are
+marked ready.
 
-- **Develop or milestone target** — all 8 shards run even when no listed path
-  changed. These rulesets require each named shard and `Test Results`, so a
-  docs-only PR incurs the full coverage run to publish those checks. Draft PRs
-  remain gated until they are marked ready.
-- **Code changed** — changed paths still match the include list and all 8 shards
-  run.
-- **The `changes` job itself failed** — `merge` fails loudly. A skipped shard
-  reports success, so a broken filter must never read as "docs-only".
+The `changes` job retains a `dorny/paths-filter` include list, but its result
+does not gate coverage under the current triggers: the job's `code` output is
+forced to `true` for both accepted targets. Unlisted paths also run coverage;
+adding a code directory does not require updating this list to start the shards.
+The merge job's no-code skip notice is likewise unreachable after successful
+change detection with these triggers.
+
+If the `changes` job fails, `merge` fails loudly. `Merge coverage & results` is
+the aggregation job; neither the Develop nor the milestone ruleset requires it.
+It publishes the separate required `Test Results` check when merged JUnit
+exists.
 
 `quality.yml` is deliberately left unscoped: its repo-wide hygiene checks
 (formatting, JSON validity, zero-length files, merge-conflict markers) apply to
@@ -70,8 +72,8 @@ any change, docs included.
 
 ```mermaid
 flowchart LR
-    CH["changes job<br/>paths-filter include list"] -- "code == true" --> SH["8 coverage shards"]
-    CH -- "Develop or milestone target" --> SH
+    PR["Ready PR to Develop or milestone/*"] --> CH["changes job<br/>code output forced true"]
+    CH --> SH["8 coverage shards"]
     SH --> MG["merge job<br/>aggregate results"]
     CH -- "result != success" --> MG
     MG -- "shards ran" --> G["gate on shard statuses"]
