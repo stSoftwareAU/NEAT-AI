@@ -3,8 +3,8 @@
 Develop docs-only PRs now run all eight coverage shards and publish the required
 `Test Results` check. The existing Develop ruleset remains unchanged. The Deno
 dependency update step also advanced internal `@stsoftware/tags` from 1.0.36 to
-1.0.40 in `deno.json` and `deno.lock`. Version bump: no `VERSION` change was
-needed. Closes #4111.
+1.0.40 in `deno.json` and `deno.lock`. Version bump: `deno.json` was updated for
+this change; the merged commit records the final version. Closes #4111.
 
 ## Spec
 
