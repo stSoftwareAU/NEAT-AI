@@ -116,3 +116,68 @@ faults. Only the partition scenario selects the run-count and passing-control
 faults. The complete sensitivity suite exercises both choices for each added
 condition. No workflow, public API or persisted format changes in this review
 fix. The per-shard and merge-job gate copies remain unchanged.
+
+### Sensitivity-suite mutation review (PR #4129)
+
+The reported “no test imports this module” is a discovery limitation:
+`test/ci/CoverageRegressionSensitivity.ts` is itself a `deno test` entry point.
+Each of the 11 reported mutations was applied individually and checked with
+`deno test -A --no-check test/ci/CoverageRegressionSensitivity.ts`, then
+restored. No production code or tests were changed for this review.
+
+Existing tests kill these four mutations; the reported survivors are incorrect:
+
+- `test/ci/CoverageRegressionSensitivity.ts:127`, deleting `filter`: rejection
+  cases fail because the child cannot run the intended test.
+- `test/ci/CoverageRegressionSensitivity.ts:130`, changing `absentCoverage` to
+  false or deleting it: the added JUnit faults incorrectly leave the child
+  green, so the parent rejection tests fail.
+- `test/ci/CoverageRegressionSensitivity.ts:138`, negating the absent-coverage
+  ternary: lost-coverage JUnit rejection cases fail.
+
+The remaining seven mutations cannot be killed by supported behavioural tests:
+
+- `test/ci/CoverageRegressionSensitivity.ts:123` exempt (untestable): deleting
+  this test-data element removes eight partition sensitivity tests, without
+  changing any executed assertion or workflow behaviour. Testing its presence
+  would pin test registration, which the repository's behaviour-test policy
+  excludes.
+- `test/ci/CoverageRegressionSensitivity.ts:124` exempt (untestable): deleting
+  this element removes three passing-run lost-coverage sensitivity tests;
+  remaining behaviour is unchanged. A test-registration assertion would be
+  required to detect the deletion.
+- `test/ci/CoverageRegressionSensitivity.ts:125` exempt (untestable): deleting
+  this element removes three ordinary-failure lost-coverage sensitivity tests;
+  remaining behaviour is unchanged. A test-registration assertion would be
+  required to detect the deletion.
+- `test/ci/CoverageRegressionSensitivity.ts:128` exempt (untestable): deleting
+  `code: 1` is equivalent here. Both `1 === 0` and `undefined === 0` are false,
+  so the exit fault remains `exit 0`; no other code reads this field.
+- `test/ci/CoverageRegressionSensitivity.ts:129` exempt (untestable): changing
+  `complete: false` to true is equivalent for these three scenarios because
+  `absentCoverage: true` omits all JUnit faults before `complete` is read.
+- `test/ci/CoverageRegressionSensitivity.ts:129` exempt (untestable): deleting
+  `complete` is equivalent for the same reason: no generated fault reads it
+  while `absentCoverage` is true.
+- `test/ci/CoverageRegressionSensitivity.ts:142` exempt (untestable): negating
+  this condition removes two crash empty-JUnit sensitivity tests and adds three
+  complete-result empty-JUnit sensitivity tests, all of which still reject their
+  broken workflows. The mutated suite passes 67 tests. Distinguishing these test
+  inventories would require a test-registration assertion.
+
+Harness search: the coverage/sensitivity files under `test/ci/` include the
+entry point above and `test/ci/CoverageFailsPrOnTestFailure.ts`, which exercises
+the real workflow shell. Neither observes registration of other tests; adding
+such an observer would test implementation rather than workflow outcomes. No new
+behavioural test can distinguish the equivalent mutations. The original scenario
+definitions remain intact.
+
+Mutation results: the six exemptions at lines 123–130 passed with respectively
+58, 63, 63, 66, 66 and 66 tests; line 142 passed with 67. The four mutations at
+lines 127, 130 (two variants) and 138 exited 1. Each run used the actual entry
+point rather than an import-based mutation-test selector.
+
+Restored-head validation: all 66 tests passed with type checking enabled;
+`deno fmt --check` passed for this summary. Skipped: full quality suite for this
+documentation-only review. Residual risk: test-case deletion is not guarded by
+behavioural assertions, as explained in the exemptions above.
