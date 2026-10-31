@@ -148,11 +148,20 @@ jobs:
           COV_DIR="coverage-${SHARD}"
           JUNIT="junit-${SHARD}.xml"
 
+          # Required-check gate (Issue #4125): the merge job is not a required
+          # check, so a planner defect that drops or double-runs files must fail
+          # THIS shard.
+          if ! deno run --allow-read scripts/shard_test_files.ts --verify --total="${SHARD_TOTAL}"; then
+            echo "error:partition" > "shard-status-${SHARD}.txt"
+            echo "::error::shard partition does not cover every test file exactly once"
+            exit 1
+          fi
+
           # Deterministically pick this shard's slice of test/**/*.ts. The same
-          # partition function is unit-tested and re-verified in the merge job.
-          # It reads scripts/test-timings.json (published by the merge job's
-          # "Publish per-file test timings" step) to weight the split by
-          # measured cost; with no timings file it falls back to round-robin.
+          # partition function is verified in every shard (above) and again in
+          # the merge job. It reads scripts/test-timings.json (published by the
+          # merge job's "Publish per-file test timings" step) to weight the split
+          # by measured cost; with no timings file it falls back to round-robin.
           deno run --allow-read scripts/shard_test_files.ts \
             --list --shard="${SHARD}" --total="${SHARD_TOTAL}" > shard-files.txt
           # Portable read (no mapfile) so this works on any bash the runner ships.
@@ -283,6 +292,14 @@ jobs:
             echo "error:${TEST_EXIT_CODE}" > "shard-status-${SHARD}.txt"
             exit "$TEST_EXIT_CODE"
           fi
+          # Required-check gate (Issue #4125): a run that recorded a status must
+          # have left its own coverage-<shard>/ dir; losing it fails this shard,
+          # not just the non-required merge job.
+          if [ ! -d "${COV_DIR}" ]; then
+            echo "error:no-coverage" > "shard-status-${SHARD}.txt"
+            echo "::error::shard ${SHARD} recorded a status but produced no ${COV_DIR}/ directory"
+            exit 1
+          fi
           echo "Shard ${SHARD} status: $(cat "shard-status-${SHARD}.txt")"
 
       - name: Upload shard artifact
@@ -352,7 +369,9 @@ jobs:
           verify-wasm: "false"
 
       # File-count parity gate: assert the partition covers every test/**/*.ts
-      # exactly once across all shards (no gaps, no double-runs).
+      # exactly once across all shards (no gaps, no double-runs). This is also
+      # enforced per shard in the required `Coverage shard <n>` check (Issue
+      # #4125); this merge-job copy is defence in depth.
       - name: Verify shard partition parity
         if: ${{ env.RUN_COVERAGE == 'true' }}
         run: |
@@ -486,7 +505,10 @@ jobs:
           # Fail loud when coverage went missing (Issue #3550). The gate exits
           # 1 if any shard uploaded a status marker (so it ran tests) while no
           # coverage-<shard>/ dir arrived, and 2 only when nothing at all was
-          # uploaded — the shard-status gate reports that case.
+          # uploaded — the shard-status gate reports that case. The same
+          # lost-coverage check is also enforced per shard in the required
+          # `Coverage shard <n>` check (Issue #4125); this copy is defence in
+          # depth.
           set +e
           deno run --allow-read scripts/coverage_merge_gate.ts
           GATE_EXIT=$?
