@@ -6,6 +6,7 @@ import { join } from "@std/path";
  * The Test Coverage workflow is the PR test gate (quality.yml does not run
  * tests). Runner crashes fail their required shard check; assertion failures
  * stay green on shards and fail in the merge job after results are published.
+ * An exit-1 fatal OOM that survives the retry is a runner crash (Issue #4124).
  *
  * These tests parse the committed workflow YAML and execute the shard's actual
  * shell block with a controlled Deno runner to verify exit and artifact effects.
@@ -38,8 +39,15 @@ async function readWorkflow(): Promise<Workflow> {
 
 async function runShard(
   codes: number[],
+  oomRuns: number[] = [],
 ): Promise<
-  { code: number; status: string; junit: string; hasCoverage: boolean }
+  {
+    code: number;
+    status: string;
+    junit: string;
+    hasCoverage: boolean;
+    runs: number;
+  }
 > {
   const wf = await readWorkflow();
   const step = wf.jobs?.coverage?.steps?.find((s) =>
@@ -75,6 +83,9 @@ if [ "$1" = test ]; then
   count=$((count + 1))
   echo "$count" > .runner-count
   code=$(printf '%s' "$RUNNER_CODES" | cut -d, -f "$count")
+  case ",\${RUNNER_OOM_RUNS:-}," in
+    *",$count,"*) echo 'Fatal JavaScript out of memory: Ineffective mark-compacts near heap limit' >&2 ;;
+  esac
   if [ "$code" -eq 0 ] || [ "$code" -eq 1 ]; then
     printf '<?xml version="1.0"?>\\n<testsuites></testsuites>\\n'
   else
@@ -98,6 +109,7 @@ exit 90
       env: {
         PATH: `${bin}:${Deno.env.get("PATH") ?? ""}`,
         RUNNER_CODES: codes.join(","),
+        RUNNER_OOM_RUNS: oomRuns.join(","),
         SHARD_TOTAL: "8",
       },
     }).output();
@@ -110,11 +122,15 @@ exit 90
     }
     const status = await Deno.readTextFile(join(dir, "shard-status-0.txt"));
     const junit = await Deno.readTextFile(join(dir, "junit-0.xml"));
+    const runs = (await exists(join(dir, ".runner-count")))
+      ? Number(await Deno.readTextFile(join(dir, ".runner-count")))
+      : 0;
     return {
       code: result.code,
       status: status.trim(),
       junit,
       hasCoverage: (await Deno.stat(join(dir, "coverage-0"))).isDirectory,
+      runs,
     };
   } finally {
     await Deno.remove(dir, { recursive: true });
@@ -233,6 +249,27 @@ Deno.test("an exhausted OOM retry fails after retaining final shard artifacts", 
   assert(result.junit.length > 0);
   assert(!result.junit.includes("</testsuites>"));
   assert(result.hasCoverage);
+});
+
+Deno.test("a fatal-OOM exit 1 that survives the retry fails the shard as error:oom", async () => {
+  const result = await runShard([1, 1], [1, 2]);
+  assertEquals(result.status, "error:oom");
+  assertEquals(result.code, 1);
+  assert(result.junit.length > 0);
+  assert(result.hasCoverage);
+});
+
+Deno.test("a fatal-OOM exit 1 followed by an ordinary retry failure stays green", async () => {
+  const result = await runShard([1, 1], [1]);
+  assertEquals(result.status, "failed");
+  assertEquals(result.code, 0);
+  assertEquals(result.runs, 2);
+});
+
+Deno.test("a fatal-OOM exit 1 recovered by the retry leaves the shard green", async () => {
+  const result = await runShard([1, 0], [1]);
+  assertEquals(result.status, "passed");
+  assertEquals(result.code, 0);
 });
 
 Deno.test("coverage shard failures still upload status and JUnit artifacts", async () => {

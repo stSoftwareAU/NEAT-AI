@@ -34,6 +34,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   the asset is still a hard failure (exit `1`), and with `--clean` a failed
   download still exits `1`, because `wasm_activation/pkg` has already been
   deleted.
+- **Issue #4124:** a coverage shard whose V8 fatal-OOM (exit 1,
+  `Fatal JavaScript out of memory`) survives the capped-worker retry is no
+  longer recorded as `failed` with a green step. It now writes `error:oom` to
+  `shard-status-<shard>.txt` and fails the shard check, the same as other runner
+  crashes. Ordinary exit-1 test failures remain green.
 - **Issue #4115:** a discovery or replay creature merged by
   `processCompletedResults()` in a generation the hard deadline then abandons is
   no longer dropped silently. The abandoned branch of `evolve()` now logs
