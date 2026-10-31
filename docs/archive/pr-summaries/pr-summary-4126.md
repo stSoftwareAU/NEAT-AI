@@ -146,12 +146,22 @@ Backend/CLI change; no UI. Tests that verify it:
   `test/creature/BoundedEvolveTeardown.ts` and
   `test/workers/WorkerTaskCancellation.ts` (including a cancel, late reply, then
   quarantine case for the violation above).
-- No assertion removed from an existing test; no expected value in an existing
-  test changed.
+- No assertion removed from an existing test. One expected value changed: the
+  pinned top-level option count in `test/scripts/AuditOptionUsage.ts` went from
+  119 to 120 for the new `exitOnUnreclaimableWorkers` key. That test still fails
+  if the key set drifts again.
 - Related docs updated: `docs/config/WORKERS.md`,
   `docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md`, `docs/TROUBLESHOOTING.md`,
   `docs/README.md`, `CHANGELOG.md`. Twinned rule: the option audit list
   `scripts/lib/optionAuditRollup.ts` lists the new option; no other copy was
   found.
-- Targeted tests: passed on the head before the final fix; the final results are
-  recorded below.
+- Red check for the late-reply fix: with the late-reply clear removed from
+  `handleCallback`,
+  `couldNotBeStopped is false when a cancelled task was
+  answered late and a later quarantine is unrelated (Issue #4126)`
+  fails; restored afterwards.
+- `./quality.sh --skip-discovery --rust-scorer-bin=<built rust_scorer>` on the
+  final head: `ok | 10134 passed (5 steps) | 0 failed | 41 ignored`. The
+  discovery library step was skipped because it could not be installed in this
+  container (`Discovery library file not found`); this change does not touch
+  discovery.
