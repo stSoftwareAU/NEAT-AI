@@ -140,9 +140,18 @@ Deno.test("publish step is gated on a prior version-published check", async () =
   );
 
   // The referenced step must exist and actually query JSR for the version.
-  const checkStep = steps.find((s) =>
-    (s.run ?? "").includes("jsr.io") && (s.run ?? "").includes("deno.json")
-  );
+  const checkStep = steps.find((s) => {
+    const run = s.run ?? "";
+    const hasDenoJson = run.includes("deno.json");
+    const hasJsrHost = [...run.matchAll(/https?:\/\/[^\s"'`]+/g)].some((m) => {
+      try {
+        return new URL(m[0]).hostname === "jsr.io";
+      } catch {
+        return false;
+      }
+    });
+    return hasJsrHost && hasDenoJson;
+  });
   assert(
     checkStep !== undefined && typeof checkStep.id === "string",
     "publish job must contain an identified step that checks JSR for the " +
