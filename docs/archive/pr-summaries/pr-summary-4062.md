@@ -16,8 +16,8 @@ issue) is unchanged.
 The mutation or teardown path that first created the stale reference on GRQ-21
 is **not identified**; see the Acceptance Criteria.
 
-Version bump: `deno.json` carries the auto-incremented 7.0.74; the merged commit
-records the final version.
+Version bump: `deno.json` carries the auto-incremented patch version; the merged
+commit records the final version.
 
 ```mermaid
 flowchart LR
@@ -234,20 +234,36 @@ Added:
   racing member was shortened. It still passes with the writer's prune disabled,
   because the real operator leaves the memetic consistent: it guards the
   boundary end to end but does not red-check the prune.
+- `test/mutate/SubConnectionCoreRewrite.ts`: one test,
+  `SubConnection prunes
+  ancestry without a stale-file warning (#4062)`. A real
+  `SubConnection` removal reloads core's rewrite, whose ancestry row still names
+  the removed synapse; the test asserts the exported memetic has no dangling
+  reference and that no `Issue #4062` warning was logged. It guards the
+  `sourceTag !== "SubConnection"` exemption in `loadFrom`, which is what backs
+  the claim that routine `SubConnection` rewrites prune silently.
 - `bench/LoadFromMemeticPrune.ts`.
 
 No existing assertion was removed or edited.
 
 Checks run on the final head:
 
-- `deno test -A test/creature/LoadPrunesDanglingMemetic.ts
-  test/compact/PruneOrphanMemeticReferences.ts`:
-  14 passed, 0 failed.
-- 73 memetic and serialisation test files plus the serialisation tests in
-  `test/creature`: 441 passed, 0 failed. `test/blackbox`, `test/compact`,
-  `test/breed`, `test/mutate` and `test/architecture` (every `.ts` in them):
-  1439 passed, 0 failed.
-- `deno fmt --check` (2920 files), `deno lint` (2308 files) and
+- `deno test -A test/mutate/SubConnectionCoreRewrite.ts
+  test/creature/LoadPrunesDanglingMemetic.ts
+  test/compact/PruneOrphanMemeticReferences.ts
+  test/creature/CheckpointWriteDanglingMemetic_test.ts`:
+  35 passed, 0 failed.
+- Every `.ts` file in each directory, `deno test -A --parallel`: `test/mutate`
+  229 passed; `test/compact` 216 passed; `test/breed` 330 passed;
+  `test/blackbox` 93 passed; `test/architecture` 623 passed, 1 failed
+  (`TrainingLoop - trainDir returns a well-formed result for a tiny dataset`);
+  `test/creature` 619 passed, 9 failed (all in `CreatureTrainEvolve.ts`). Each
+  of those 10 failures throws
+  `neat_ai_backpropagation library/binary was not
+  found` from the Rust train
+  bridge, which this host does not have; none touches `loadFrom`, the memetic or
+  the checkpoint writer.
+- `deno fmt --check` (2929 files), `deno lint` (2314 files) and
   `deno check
   mod.ts`: clean.
 
@@ -257,6 +273,13 @@ Red checks:
   tests: 7 of 10 fail (root, ancestry, legacy map, child, core validation,
   warning, runtime-shaped); the not-mutated, clean-round-trip and no-warning
   tests pass on base because they guard behaviour the change must keep.
+- Remove the `sourceTag !== "SubConnection"` exemption in `loadFrom` → the new
+  `SubConnectionCoreRewrite.ts` test fails with
+  `[loadFrom] Pruned 1 memetic
+  reference(s) that named structure creature hash:f20971db does not have (Issue
+  #4062) (source=SubConnection).`
+  (7 passed / 1 failed in that file); restored, 35 passed across the four files
+  above.
 - Skip the ownership clone → the runtime-shaped test fails (the caller's object
   is mutated); drop the warning → the warning test fails (`0` vs `1`).
 - `pruneOrphanMemeticReferences` returning `0` → both new compact tests fail;
