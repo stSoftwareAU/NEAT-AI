@@ -175,10 +175,11 @@ Deno.test("enumerateOptionKeys - pins the real NeatArguments top-level surface",
   // `evolutionControl` (the model-management policy), making 117; #3932 then
   // added `preSelection` (offspring over-generation and screening), making
   // 118; #3934 then added `trainingGainLog` (the per-training-event record of
-  // realised gain), making 119.
+  // realised gain), making 119. #4126 then added `exitOnUnreclaimableWorkers`
+  // (the opt-in exit for a process pinned by an unstoppable worker), making 120.
   assertEquals(
     topLevel.length,
-    119,
+    120,
     "NeatArguments top-level key count changed",
   );
   assert(
