@@ -6,11 +6,12 @@ keeps the process alive for it, so a script whose last `evolveDir` has returned
 never exits. This PR makes the teardown report those workers and adds an opt-in
 exit guard. Part of #4126.
 
-The report is on by default: `evolveDir`, `evolveEnv` and `evolveRL` teardown
-logs one `teardown: N worker(s) could not be stopped` warning. The guard is off
-by default: `exitOnUnreclaimableWorkers: true` makes a library call
-`Deno.exit()` (preserving `Deno.exitCode`) 10 s after teardown, but only when
-such a worker is left. Version bump: none in this change.
+The report is on by default: `evolveDir` teardown logs one
+`teardown: N worker(s) could not be stopped` warning. The guard is off by
+default: `exitOnUnreclaimableWorkers: true` makes a library call `Deno.exit()`
+(preserving `Deno.exitCode`) 10 s after teardown, but only when such a worker is
+left. `evolveEnv` and `evolveRL` accept the option but cannot report an
+unstoppable worker today. Version bump: none in this change.
 
 ```mermaid
 flowchart LR
@@ -43,11 +44,11 @@ flowchart LR
   with a timer that does not hold the process open, so a healthy process still
   exits naturally before it fires.
 - A worker counts as unstoppable when it has been taken out of service
-  (quarantined, or `terminate()` called) while a task it had cancelled is still
-  unanswered; a late reply clears the task id. `couldNotBeStopped()` is computed
-  live, so a task shed with `cancelTask` at the run's deadline and then
-  terminated by teardown, with no quarantine, is reported too. An error event on
-  an idle worker, or a cancelled task answered later, does not count.
+  (quarantined, or `terminate()` called) while a task is still unanswered; a
+  late reply clears the task id. `couldNotBeStopped()` is computed live, so a
+  task shed with `cancelTask` at the run's deadline and then terminated by
+  teardown, with no quarantine, is reported too. An error event on an idle
+  worker, or a cancelled task answered later, does not count.
 - The option is wired into `evolveEnv` and `evolveRL` teardown too, but has no
   effect there today: `evolveEnv` has no worker pool and `EpisodeWorkerPool`
   does not report `couldNotBeStopped()`.

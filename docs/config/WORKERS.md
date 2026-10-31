@@ -19,15 +19,15 @@ const config = createNeatConfig({
 
 ## 📊 Quick reference
 
-| Option                                       | Type      | Default                                                          | Description                                                                           |
-| -------------------------------------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `threads`                                    | `integer` | `navigator.hardwareConcurrency + heavyTaskWorkerCount` (default) | Worker threads (min: 1)                                                               |
-| `heavyTaskWorkerCount`                       | `integer` | `2`                                                              | Workers dedicated to discovery/training (min: 1)                                      |
-| `workerThreadCap.maxMemoryMB`                | `integer` | `0` (disabled)                                                   | Total memory budget for workers (MB)                                                  |
-| `workerThreadCap.estimatedMemoryPerWorkerMB` | `integer` | `2048`                                                           | Estimated memory per worker (MB)                                                      |
-| `parallelEvaluation.topologyGrouping`        | `boolean` | `true`                                                           | Group same-topology creatures for WASM cache hits                                     |
-| `rustScorer.enabled`                         | `boolean` | `false`                                                          | Score datasets with the external Rust scorer                                          |
-| `exitOnUnreclaimableWorkers`                 | `boolean` | `false`                                                          | `evolveDir` only: exit via `Deno.exit()` if a quarantined worker could not be stopped |
+| Option                                       | Type      | Default                                                          | Description                                                               |
+| -------------------------------------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `threads`                                    | `integer` | `navigator.hardwareConcurrency + heavyTaskWorkerCount` (default) | Worker threads (min: 1)                                                   |
+| `heavyTaskWorkerCount`                       | `integer` | `2`                                                              | Workers dedicated to discovery/training (min: 1)                          |
+| `workerThreadCap.maxMemoryMB`                | `integer` | `0` (disabled)                                                   | Total memory budget for workers (MB)                                      |
+| `workerThreadCap.estimatedMemoryPerWorkerMB` | `integer` | `2048`                                                           | Estimated memory per worker (MB)                                          |
+| `parallelEvaluation.topologyGrouping`        | `boolean` | `true`                                                           | Group same-topology creatures for WASM cache hits                         |
+| `rustScorer.enabled`                         | `boolean` | `false`                                                          | Score datasets with the external Rust scorer                              |
+| `exitOnUnreclaimableWorkers`                 | `boolean` | `false`                                                          | `evolveDir` only: exit via `Deno.exit()` if a worker could not be stopped |
 
 ## 🧮 Sizing the pool
 
@@ -181,9 +181,9 @@ by `Worker.terminate()`, and Deno keeps the process alive for its thread. The
 teardown warns `teardown: N worker(s) could not be stopped` when this happens.
 Set `exitOnUnreclaimableWorkers` to have the library call `Deno.exit()` 10
 seconds after teardown, preserving `Deno.exitCode`. The guard is armed only when
-`evolveDir` finishes while a worker could not be stopped: either one it
-quarantined or terminated with a cancelled task still unanswered, or one it
-detached because `terminate()` threw or outlived the teardown budget.
+`evolveDir` returns or throws while a worker could not be stopped: either one it
+quarantined or terminated with a task still unanswered, or one it detached
+because `terminate()` threw or outlived the teardown budget.
 
 ```ts
 const config = createNeatConfig({

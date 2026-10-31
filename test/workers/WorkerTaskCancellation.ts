@@ -429,3 +429,26 @@ Deno.test("teardown reports a worker whose task was cancelled at the deadline, w
     "the cancelled task never answered, so teardown must report the worker",
   );
 });
+
+Deno.test("teardown reports an unanswered task terminated without cancellation (Issue #4126)", async () => {
+  const { handler } = createHandler();
+  handler.sendTracked("wedged");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const report = await runBoundedEvolveTeardown({
+    label: "test",
+    persist: () => Promise.resolve(),
+    workers: [handler],
+    replayQueue: {
+      waitForCompletion: () => Promise.resolve(),
+      isReplayInProgress: () => false,
+    },
+    hardDeadlineMS: 0,
+    neat: {
+      abandonInFlightAtTeardown: () => 0,
+      discardUnprocessedResults: () => 0,
+    },
+  });
+  assertEquals(handler.couldNotBeStopped(), true);
+  assertEquals(report.workersUnreclaimable, 1);
+});

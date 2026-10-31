@@ -137,8 +137,8 @@ export interface NeatArguments {
    * When true, the library exits the process via `Deno.exit()` — preserving
    * `Deno.exitCode` — 10 s after teardown, instead of letting the process hang
    * until an external watchdog kills it. The guard is armed only when `evolveDir`
-   * finishes while a worker could not be stopped: one it quarantined or
-   * terminated with a cancelled task still unanswered, or one it detached because `terminate()` threw or outlived
+   * returns or throws while a worker could not be stopped: one it quarantined or
+   * terminated with a task still unanswered, or one it detached because `terminate()` threw or outlived
    * the teardown budget (a thread blocked in native code ignores
    * `Worker.terminate()`).
    *

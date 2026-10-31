@@ -93,6 +93,7 @@ import {
 } from "@creature/EvolveTeardown.ts";
 import {
   type BoundedEvolveTeardownOptions,
+  handleUnreclaimableWorkers,
   runBoundedEvolveTeardown,
 } from "@creature/BoundedEvolveTeardown.ts";
 import { flushTrainingGainLog } from "@neat/NeatScheduling.ts";
@@ -546,12 +547,15 @@ export async function evolveDir(
   let neatForCleanup: Neat | undefined;
   let bestCreature: Creature | undefined;
   let tornDown = false;
+  let exitOnUnreclaimableWorkers = false;
+  let unreclaimableWorkersHandled = false;
   try {
     // Issue #2902: `deps?.startTimeMS` is a test-only override that anchors both
     // the soft `endTimeMS` and the absolute T+15 hard cap to an injected (past)
     // timestamp, so the hard-cap branch can be driven without real sleeps.
     const start = deps?.startTimeMS ?? Date.now();
     const config = createNeatConfig(options);
+    exitOnUnreclaimableWorkers = config.exitOnUnreclaimableWorkers;
 
     // Issue #1566: Apply WASM cache caps from config before training starts.
     setMaxCachedWasmCreatureActivations(config.wasmCache.maxCachedActivations);
@@ -871,6 +875,9 @@ export async function evolveDir(
         neat,
         exitOnUnreclaimableWorkers: config.exitOnUnreclaimableWorkers,
         exitGuard: deps?.exitGuard,
+        onUnreclaimableWorkersHandled: () => {
+          unreclaimableWorkersHandled = true;
+        },
         persist: async () => {
           restoreEvolveChampion(
             creature,
@@ -965,9 +972,16 @@ export async function evolveDir(
       // Issue #4072: a run that failed mid-way must not leak its workers, its
       // population, its champion or the process-global caches. Each step is
       // isolated, so a cleanup error is logged and never masks the original one.
+      let unreclaimable = 0;
       for (let index = workers.length - 1; index >= 0; index--) {
         const worker = workers[index];
-        runFailureCleanup("evolveDir", () => worker.terminate());
+        runFailureCleanup("evolveDir", () => {
+          try {
+            worker.terminate();
+          } finally {
+            if (worker.couldNotBeStopped()) unreclaimable++;
+          }
+        });
       }
       // Issue #4099: name the tasks the failed run leaves behind, so each
       // still gets a terminal line (a terminated worker never settles them).
@@ -986,6 +1000,14 @@ export async function evolveDir(
       );
       runFailureCleanup("evolveDir", () => bestCreature?.dispose());
       runFailureCleanup("evolveDir", () => releaseEvolveCaches());
+      if (!unreclaimableWorkersHandled) {
+        runFailureCleanup("evolveDir", () =>
+          handleUnreclaimableWorkers(
+            { exitOnUnreclaimableWorkers, exitGuard: deps?.exitGuard },
+            "evolveDir",
+            unreclaimable,
+          ));
+      }
     }
     Deno.removeSignalListener("SIGTERM", signalListener);
   }

@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
 import { Creature } from "@creature";
 import { evolveDir } from "@creature/CreatureTraining.ts";
 import type { EvolveDirDeps } from "@creature/CreatureTraining.ts";
@@ -6,6 +6,7 @@ import {
   type DataRecordInterface,
   makeDataDir,
 } from "@architecture/DataSet.ts";
+import { getLogger, setLogger } from "@utils/Logger.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**
@@ -109,5 +110,63 @@ Deno.test({
 
     assert(scheduledMS.length === 0, "no exit may be armed unasked");
     assertEquals(exitCodes, []);
+  },
+});
+
+Deno.test({
+  name:
+    "evolveDir reports and arms the exit guard after a failure with an unreclaimable worker",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    await initWasmForTests();
+    const dataSetDir = makeDataDir(tinyDataSet(), 2000);
+    const scheduledMS: number[] = [];
+    const warnings: string[] = [];
+    const previous = getLogger();
+    const logger = {
+      ...previous,
+      warn: (...args: unknown[]) => warnings.push(args.map(String).join(" ")),
+    };
+    try {
+      await assertRejects(
+        () =>
+          evolveDir(
+            new Creature(2, 1, { layers: [{ count: 3 }] }),
+            dataSetDir,
+            {
+              populationSize: 10,
+              iterations: 1,
+              threads: 1,
+              exitOnUnreclaimableWorkers: true,
+              logger,
+            },
+            {
+              exitGuard: {
+                graceMS: GRACE_MS,
+                schedule: (_fn, ms) => scheduledMS.push(ms),
+              },
+              onNeatReady: (neat) => {
+                for (const worker of neat.workers) {
+                  worker.terminate = () => {};
+                  worker.couldNotBeStopped = () => true;
+                }
+                throw new Error("run failed");
+              },
+            },
+          ),
+        Error,
+        "run failed",
+      );
+      assertEquals(scheduledMS, [GRACE_MS]);
+      assert(
+        warnings.some((line) =>
+          line.includes("teardown: 1 worker(s) could not be stopped")
+        ),
+      );
+    } finally {
+      setLogger(previous);
+      await Deno.remove(dataSetDir, { recursive: true });
+    }
   },
 });

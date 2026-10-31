@@ -160,6 +160,8 @@ export interface BoundedEvolveTeardownOptions {
    * `Deno.exit()` itself once its work is done.
    */
   exitOnUnreclaimableWorkers?: boolean;
+  /** Called once the unreclaimable-worker report has been handled. */
+  onUnreclaimableWorkersHandled?: () => void;
   /**
    * Grace period, exit function and scheduler for the unreclaimable-worker exit
    * guard. Forwarded to `armUnreclaimableWorkerExit`; only read when
@@ -272,11 +274,15 @@ async function terminateWorkers(
  * caller opted in — arm the exit guard. Call it last: the guard must follow the
  * persist and the replay drain so persisted work is never lost (Issue #4126).
  */
-function handleUnreclaimableWorkers(
-  options: BoundedEvolveTeardownOptions,
+export function handleUnreclaimableWorkers(
+  options: Pick<
+    BoundedEvolveTeardownOptions,
+    "exitOnUnreclaimableWorkers" | "exitGuard" | "onUnreclaimableWorkersHandled"
+  >,
   label: string,
   count: number,
 ): void {
+  options.onUnreclaimableWorkersHandled?.();
   if (count === 0) return;
   const exitOnUnreclaimable = options.exitOnUnreclaimableWorkers === true;
   const cause = `${count} worker(s) could not be stopped — a thread blocked ` +
