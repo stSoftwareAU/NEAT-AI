@@ -1,7 +1,10 @@
 import { assert, assertEquals } from "@std/assert";
 import { Creature } from "@creature";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
-import { pruneOrphanMemeticReferences } from "@compact/MemeticCleanup.ts";
+import {
+  type MemeticPruneTarget,
+  pruneOrphanMemeticReferences,
+} from "@compact/MemeticCleanup.ts";
 import { fix } from "@creature/CreatureMutation.ts";
 
 Deno.test("pruneOrphanMemeticReferences removes stale bias keys", () => {
@@ -93,4 +96,101 @@ Deno.test("fix() leaves memetic consistent for validate after stale memetic", ()
 
   fix(creature, { forwardOnly: true });
   creatureValidate(creature, { forwardOnly: true });
+});
+
+Deno.test("pruneOrphanMemeticReferences returns the exact count of removed items", () => {
+  const memetic = {
+    generation: 1,
+    score: 0,
+    biases: { 0: 0.1, 1: 0.2, 99: 0.5 },
+    weights: {
+      0: [
+        { toId: 1, weight: 0.3 },
+        { toId: 2, weight: 0.4 },
+      ],
+      1: [{ toId: 2, weight: 0.5 }],
+      42: [
+        { toId: 1, weight: 0.6 },
+        { toId: 2, weight: 0.7 },
+      ],
+    },
+    ancestry: [
+      {
+        generation: 0,
+        score: 0,
+        biases: {},
+        weights: {
+          0: [
+            { toId: 1, weight: 0.1 },
+            { toId: 9, weight: 0.2 },
+          ],
+        },
+      },
+    ],
+  };
+  const target: MemeticPruneTarget = {
+    neurons: [{ id: 0 }, { id: 1 }, { id: 2 }],
+    synapses: [
+      { from: 0, to: 1 },
+      { from: 1, to: 2 },
+    ],
+    memetic,
+  };
+
+  // Bias key 99, the row 0->2 (no synapse), the whole entry for missing source
+  // 42 (counted once despite two rows), and the ancestry row to missing 9.
+  assertEquals(pruneOrphanMemeticReferences(target), 4);
+
+  assertEquals<unknown>(memetic.biases, { 0: 0.1, 1: 0.2 });
+  assertEquals<unknown>(memetic.weights, {
+    0: [{ toId: 1, weight: 0.3 }],
+    1: [{ toId: 2, weight: 0.5 }],
+  });
+  assertEquals(memetic.ancestry[0].weights, { 0: [{ toId: 1, weight: 0.1 }] });
+
+  const clean: MemeticPruneTarget = {
+    neurons: [{ id: 0 }, { id: 1 }],
+    synapses: [{ from: 0, to: 1 }],
+    memetic: {
+      generation: 1,
+      score: 0,
+      biases: { 0: 0.1, 1: 0.2 },
+      weights: { 0: [{ toId: 1, weight: 0.3 }] },
+    },
+  };
+  assertEquals(pruneOrphanMemeticReferences(clean), 0);
+});
+
+Deno.test("pruneOrphanMemeticReferences leaves array-shaped root weights untouched", () => {
+  // Wire-shaped weights. Array indices 0-2 are not valid neuron ids (10-12), so
+  // deleting by index would carve holes into the array.
+  const weights = [
+    { fromUUID: "input-0", toUUID: "input-1", weight: 0.3 },
+    { fromUUID: "input-1", toUUID: "output-0", weight: 0.4 },
+    { fromUUID: "output-0", toUUID: "input-0", weight: 0.5 },
+  ];
+  const before = structuredClone(weights);
+  const memetic = {
+    generation: 1,
+    score: 0,
+    biases: { 10: 0.1, 99: 0.5 },
+    weights: weights as unknown as NonNullable<
+      MemeticPruneTarget["memetic"]
+    >["weights"],
+  };
+  const target: MemeticPruneTarget = {
+    neurons: [{ id: 10 }, { id: 11 }, { id: 12 }],
+    synapses: [
+      { from: 0, to: 1 },
+      { from: 1, to: 2 },
+    ],
+    memetic,
+  };
+
+  assertEquals(pruneOrphanMemeticReferences(target), 1);
+
+  assertEquals(weights.length, 3);
+  assertEquals(Object.keys(weights).length, 3, "no slots deleted");
+  assertEquals(weights, before);
+  assertEquals<unknown>(memetic.biases, { 10: 0.1 });
 });
