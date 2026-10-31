@@ -324,3 +324,25 @@ Deno.test("couldNotBeStopped is true when the culprit task was cancelled before 
     "the unanswered task was cancelled, so its thread may still be blocked",
   );
 });
+
+Deno.test("couldNotBeStopped is false when a cancelled task was answered late and a later quarantine is unrelated (Issue #4126)", async () => {
+  const { worker, handler } = createHandler();
+  const { taskID, response } = handler.sendTracked("late");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert(handler.cancelTask(taskID, "past its per-task deadline"));
+  await assertRejects(() => response, WorkerTaskCancelledError);
+
+  // The worker finally answers the cancelled task, so its thread is free.
+  worker.respond(taskID, { echo: { message: "late" } });
+
+  // Later, an unrelated error event on the now-idle worker quarantines it.
+  notifyWorkerError(worker, new Error("Worker error event (worker-1)"));
+
+  assertEquals(handler.isHealthy(), false, "the worker was quarantined");
+  assertEquals(
+    handler.couldNotBeStopped(),
+    false,
+    "the cancelled task was answered late, so no thread is left blocked",
+  );
+});

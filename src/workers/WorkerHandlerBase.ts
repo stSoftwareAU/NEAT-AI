@@ -328,14 +328,15 @@ export abstract class WorkerHandlerBase<
    */
   private healthy = true;
   /**
-   * Number of tasks this handler has cancelled while they were unanswered
-   * (Issue #4126). Never reset: a cancelled task never returned a result, so
-   * its worker may still be blocked in native code.
+   * Task ids this handler cancelled while they were still unanswered (Issue
+   * #4126). A cancelled task that never returned a result may leave its worker
+   * blocked in native code. A late reply for one of these ids clears it, since
+   * the worker is then known to have come back.
    */
-  private unansweredCancelled = 0;
+  private cancelledUnanswered = new Set<number>();
   /**
-   * True when the quarantine that took this worker out of service left a task
-   * unanswered (Issue #4126). Set by {@link quarantine}.
+   * True when, at quarantine time, a task was cancelled and still unanswered
+   * (Issue #4126). Set by {@link quarantine}.
    */
   private unreclaimable = false;
   /** Listeners to notify when worker becomes idle */
@@ -639,6 +640,7 @@ export abstract class WorkerHandlerBase<
   private handleCallback(data: TResponse) {
     const task = this.pending.get(data.taskID);
     if (!task) {
+      this.cancelledUnanswered.delete(data.taskID);
       getLogger().warn(
         `[worker-${this.workerID}] response for task ${data.taskID} arrived ` +
           `after the task was settled or cancelled — discarded (GRQ #4489)`,
@@ -698,13 +700,14 @@ export abstract class WorkerHandlerBase<
   }
 
   /**
-   * True when this worker was quarantined with a task that never returned a
-   * result (Issue #4126).
+   * True when this worker was quarantined while a task it had cancelled was
+   * still unanswered (Issue #4126).
    *
    * Such a thread may be blocked in native code, which {@link terminate}
    * cannot interrupt, and Deno keeps the process alive until that thread ends.
-   * A quarantine with no unanswered task (e.g. an error event on an idle
-   * worker) stays false.
+   * A quarantine with no cancelled-and-unanswered task (e.g. an error event on
+   * an idle worker) stays false, and so does one whose cancelled task was
+   * answered late.
    */
   couldNotBeStopped(): boolean {
     return this.unreclaimable;
@@ -725,7 +728,7 @@ export abstract class WorkerHandlerBase<
     if (!task) return false;
 
     this.pending.delete(taskID);
-    this.unansweredCancelled++;
+    this.cancelledUnanswered.add(taskID);
     const error = new WorkerTaskCancelledError({
       taskID,
       workerID: this.workerID,
@@ -778,8 +781,9 @@ export abstract class WorkerHandlerBase<
    * cancelled first with {@link cancelTask}.
    *
    * {@link terminate} cannot interrupt a thread blocked in native code. When a
-   * task never returned a result, {@link couldNotBeStopped} reports that the
-   * thread may still hold the process open (Issue #4126).
+   * task cancelled earlier is still unanswered at this point,
+   * {@link couldNotBeStopped} reports that the thread may still hold the
+   * process open (Issue #4126).
    */
   quarantine(reason: string, cause?: Error): void {
     if (!this.healthy) return;
@@ -789,7 +793,7 @@ export abstract class WorkerHandlerBase<
         `given further work (GRQ #4489)`,
     );
     this.cancelAllTasks(reason, cause);
-    this.unreclaimable = this.unansweredCancelled > 0;
+    this.unreclaimable = this.cancelledUnanswered.size > 0;
     this.worker.terminate();
   }
 

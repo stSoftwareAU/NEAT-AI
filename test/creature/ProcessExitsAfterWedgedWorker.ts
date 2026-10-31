@@ -12,10 +12,10 @@
  * That is a watchdog bounding a hang, not a measurement. The assertions are
  * binary: the child exited by itself with code N, or it was still running when
  * the watchdog fired. Case 2 arms its short watchdog only after the child has
- * printed its last statement, so start-up latency (the child is type-checked on
- * each run) cannot make the control pass or fail for the wrong reason. A
- * fallback watchdog from spawn stops a child that never reaches that statement
- * from hanging the suite.
+ * printed its last statement, so start-up latency (the child is compiled on
+ * each run, and that time can vary) cannot make the control pass or fail for
+ * the wrong reason. A fallback watchdog from spawn stops a child that never
+ * reaches that statement from hanging the suite.
  */
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { fromFileUrl, join } from "@std/path";
