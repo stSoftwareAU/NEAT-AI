@@ -31,6 +31,7 @@ import {
   WorkerHandlerBase,
 } from "@workers/WorkerHandlerBase.ts";
 import { WorkerTaskCancelledError } from "@workers/WorkerTaskCancelledError.ts";
+import { runBoundedEvolveTeardown } from "@creature/BoundedEvolveTeardown.ts";
 
 /** Minimal request type for testing. */
 interface TestRequest extends BaseRequestData {
@@ -279,4 +280,175 @@ Deno.test("quarantine keeps the reason unchanged for an unlabelled task (Issue #
 
   const error = await assertRejects(() => response, WorkerTaskCancelledError);
   assertEquals(error.reason, "its worker crashed");
+});
+
+Deno.test("couldNotBeStopped is false on a fresh handler (Issue #4126)", () => {
+  const { handler } = createHandler();
+  assertEquals(handler.couldNotBeStopped(), false);
+});
+
+Deno.test("couldNotBeStopped stays false when a quarantine has no unanswered task (Issue #4126)", () => {
+  const { worker, handler } = createHandler();
+
+  // An error event on an idle worker: nothing is in flight to be stranded.
+  notifyWorkerError(worker, new Error("Worker error event (worker-1)"));
+
+  assertEquals(handler.isHealthy(), false, "the worker was quarantined");
+  assertEquals(handler.couldNotBeStopped(), false);
+});
+
+Deno.test("couldNotBeStopped is true when a quarantine cancels an unanswered task (Issue #4126)", async () => {
+  const { handler } = createHandler();
+  const { response } = handler.sendTracked("wedged");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  handler.quarantine("its task never returned");
+
+  await assertRejects(() => response, WorkerTaskCancelledError);
+  assertEquals(handler.couldNotBeStopped(), true);
+});
+
+Deno.test("couldNotBeStopped is true when the culprit task was cancelled before the quarantine (Issue #4126)", async () => {
+  const { handler } = createHandler();
+  const { taskID, response } = handler.sendTracked("wedged");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert(handler.cancelTask(taskID, "past its per-task deadline"));
+  await assertRejects(() => response, WorkerTaskCancelledError);
+  assertEquals(handler.getPendingTaskCount(), 0);
+
+  handler.quarantine("its worker is wedged");
+
+  assertEquals(
+    handler.couldNotBeStopped(),
+    true,
+    "the unanswered task was cancelled, so its thread may still be blocked",
+  );
+});
+
+Deno.test("couldNotBeStopped is false when a cancelled task was answered late and a later quarantine is unrelated (Issue #4126)", async () => {
+  const { worker, handler } = createHandler();
+  const { taskID, response } = handler.sendTracked("late");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert(handler.cancelTask(taskID, "past its per-task deadline"));
+  await assertRejects(() => response, WorkerTaskCancelledError);
+
+  // The worker finally answers the cancelled task, so its thread is free.
+  worker.respond(taskID, { echo: { message: "late" } });
+
+  // Later, an unrelated error event on the now-idle worker quarantines it.
+  notifyWorkerError(worker, new Error("Worker error event (worker-1)"));
+
+  assertEquals(handler.isHealthy(), false, "the worker was quarantined");
+  assertEquals(
+    handler.couldNotBeStopped(),
+    false,
+    "the cancelled task was answered late, so no thread is left blocked",
+  );
+});
+
+Deno.test("couldNotBeStopped is false for a cancelled task while the worker is still in service (Issue #4126)", async () => {
+  const { handler } = createHandler();
+  const { taskID, response } = handler.sendTracked("wedged");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert(handler.cancelTask(taskID, "past its per-task deadline"));
+  await assertRejects(() => response, WorkerTaskCancelledError);
+
+  assertEquals(handler.isHealthy(), true);
+  assertEquals(
+    handler.couldNotBeStopped(),
+    false,
+    "a worker still in service has not been stopped, so nothing is stranded",
+  );
+});
+
+Deno.test("couldNotBeStopped is true when a task was cancelled without a quarantine and the worker is then terminated (Issue #4126)", async () => {
+  const { worker, handler } = createHandler();
+  const { taskID, response } = handler.sendTracked("wedged");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  // The run's deadline sheds the task; no quarantine follows.
+  assert(handler.cancelTask(taskID, "the run's deadline passed"));
+  await assertRejects(() => response, WorkerTaskCancelledError);
+  assertEquals(handler.isHealthy(), true, "no quarantine happened");
+
+  handler.terminate();
+
+  assert(worker.terminated, "the worker was asked to stop");
+  assertEquals(
+    handler.couldNotBeStopped(),
+    true,
+    "the cancelled task never answered, so its thread may still be blocked",
+  );
+});
+
+Deno.test("couldNotBeStopped is false when the worker is terminated after the cancelled task was answered late (Issue #4126)", async () => {
+  const { worker, handler } = createHandler();
+  const { taskID, response } = handler.sendTracked("late");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert(handler.cancelTask(taskID, "the run's deadline passed"));
+  await assertRejects(() => response, WorkerTaskCancelledError);
+  worker.respond(taskID, { echo: { message: "late" } });
+
+  handler.terminate();
+
+  assertEquals(handler.couldNotBeStopped(), false);
+});
+
+Deno.test("teardown reports a worker whose task was cancelled at the deadline, with no quarantine (Issue #4126)", async () => {
+  const { handler } = createHandler();
+  const { taskID, response } = handler.sendTracked("wedged");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert(handler.cancelTask(taskID, "the run's deadline passed"));
+  await assertRejects(() => response, WorkerTaskCancelledError);
+  assertEquals(handler.isHealthy(), true, "no quarantine happened");
+
+  const report = await runBoundedEvolveTeardown({
+    label: "test",
+    persist: () => Promise.resolve(),
+    workers: [handler],
+    replayQueue: {
+      waitForCompletion: () => Promise.resolve(),
+      isReplayInProgress: () => false,
+    },
+    hardDeadlineMS: 0,
+    now: () => 1_000,
+    neat: {
+      abandonInFlightAtTeardown: () => 0,
+      discardUnprocessedResults: () => 0,
+    },
+  });
+
+  assertEquals(report.workersTerminated, 1);
+  assertEquals(
+    report.workersUnreclaimable,
+    1,
+    "the cancelled task never answered, so teardown must report the worker",
+  );
+});
+
+Deno.test("teardown reports an unanswered task terminated without cancellation (Issue #4126)", async () => {
+  const { handler } = createHandler();
+  handler.sendTracked("wedged");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const report = await runBoundedEvolveTeardown({
+    label: "test",
+    persist: () => Promise.resolve(),
+    workers: [handler],
+    replayQueue: {
+      waitForCompletion: () => Promise.resolve(),
+      isReplayInProgress: () => false,
+    },
+    hardDeadlineMS: 0,
+    neat: {
+      abandonInFlightAtTeardown: () => 0,
+      discardUnprocessedResults: () => 0,
+    },
+  });
+  assertEquals(handler.couldNotBeStopped(), true);
+  assertEquals(report.workersUnreclaimable, 1);
 });

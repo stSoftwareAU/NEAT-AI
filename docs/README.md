@@ -214,7 +214,9 @@ Drop-in API and configuration material.
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** — FAQ-style index of common
   problems. The detail docs under [`troubleshooting/`](troubleshooting/) cover
   WASM, discovery / FFI, memory, performance, training divergence, CI /
-  quality.sh, configuration, and ONNX export.
+  quality.sh, configuration, ONNX export, and a process that does not exit after
+  `evolveDir` returns (see
+  [`troubleshooting/PROCESS_DOES_NOT_EXIT.md`](troubleshooting/PROCESS_DOES_NOT_EXIT.md)).
 
 ## 🧪 Specialised topics
 
