@@ -108,23 +108,58 @@ Deno.test("coverage regression runs when host CPU discovery is unavailable", asy
   );
 });
 
-const scenarios = [
+const scenarios: {
+  filter: string;
+  code: number;
+  complete: boolean;
+  absentCoverage?: boolean;
+}[] = [
   { filter: "coverage shard exits successfully", code: 0, complete: true },
   { filter: "ordinary test failures retain", code: 0, complete: true },
   { filter: "unexpected runner crashes", code: 139, complete: false },
   { filter: "successful OOM recovery", code: 0, complete: true },
   { filter: "an exhausted OOM retry", code: 137, complete: false },
+  ...[
+    "a failed partition check",
+    "a passing run that loses its coverage dir",
+    "an ordinary failure that loses its coverage dir",
+  ].map((filter) => ({
+    filter,
+    code: 1,
+    complete: false,
+    absentCoverage: true,
+  })),
 ];
 
 for (const scenario of scenarios) {
   const faults = {
     exit: `exit ${scenario.code === 0 ? 7 : 0}`,
     status: "printf 'wrong-status\\n' > shard-status-0.txt",
-    junit: scenario.complete
-      ? "printf '<?xml version=\"1.0\"?>\\n<testsuites>' > junit-0.xml"
-      : "printf '<testsuites></testsuites>\\n' > junit-0.xml",
-    coverage: "rm -rf coverage-0; touch coverage-0",
-    ...(scenario.complete ? {} : { "empty JUnit": ": > junit-0.xml" }),
+    ...(scenario.absentCoverage ? {} : {
+      junit: scenario.complete
+        ? "printf '<?xml version=\"1.0\"?>\\n<testsuites>' > junit-0.xml"
+        : "printf '<testsuites></testsuites>\\n' > junit-0.xml",
+      ...(scenario.complete ? {} : { "empty JUnit": ": > junit-0.xml" }),
+    }),
+    coverage: scenario.absentCoverage
+      ? "mkdir -p coverage-0"
+      : "rm -rf coverage-0; touch coverage-0",
+    ...(scenario.filter === "a failed partition check"
+      ? {
+        status:
+          'if [ "$(cat shard-status-0.txt)" = error:partition ]; then echo wrong-status > shard-status-0.txt; fi',
+        runs:
+          'if [ "$(cat shard-status-0.txt)" = error:partition ]; then echo 7 > .runner-count; fi',
+        "control exit":
+          'if [ "$(cat shard-status-0.txt)" = passed ]; then exit 7; fi',
+        "control status":
+          'if [ "$(cat shard-status-0.txt)" = passed ]; then echo wrong-status > shard-status-0.txt; fi',
+        "control runs":
+          'if [ "$(cat shard-status-0.txt)" = passed ]; then echo 7 > .runner-count; fi',
+        "control coverage":
+          'if [ "$(cat shard-status-0.txt)" = passed ]; then rm -rf coverage-0; touch coverage-0; fi',
+      }
+      : {}),
   };
   for (const [fault, command] of Object.entries(faults)) {
     Deno.test(`coverage regression rejects ${fault}: ${scenario.filter}`, async () => {
