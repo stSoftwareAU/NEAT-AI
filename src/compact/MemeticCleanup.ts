@@ -139,12 +139,20 @@ export type MemeticPruneTarget = {
  * Structural repair (`fix()`, orphan cleanup, some mutations) can remove
  * neurons or synapses while leaving copied memetic snapshots intact; strict
  * validation then fails with MEMETIC. This pass keeps valid entries only.
+ *
+ * `loadFrom` also runs it on ingest (Issue #4062), so a memetic written by an
+ * earlier release that names structure the file lacks is pruned on load. It
+ * works on the runtime integer-keyed shape; a snapshot whose `weights` is still
+ * the wire array shape is skipped untouched.
+ *
+ * @returns The number of bias keys and weight rows removed. A weight array
+ *   dropped whole because its source neuron is gone counts once.
  */
 export function pruneOrphanMemeticReferences(
   creature: MemeticPruneTarget,
-): void {
+): number {
   const memetic = creature.memetic;
-  if (!memetic) return;
+  if (!memetic) return 0;
 
   const validIds = new Set<number>();
   for (const n of creature.neurons) {
@@ -160,6 +168,7 @@ export function pruneOrphanMemeticReferences(
     }
   }
 
+  let removed = 0;
   const pruneSubtree = (node: MemeticBiasWeights): void => {
     const biases = node.biases as Record<string, number> | undefined;
     if (biases) {
@@ -167,6 +176,7 @@ export function pruneOrphanMemeticReferences(
         const id = Number(k);
         if (!validIds.has(id)) {
           delete biases[k];
+          removed++;
         }
       }
     }
@@ -174,12 +184,15 @@ export function pruneOrphanMemeticReferences(
     const weights = node.weights as
       | Record<string, { toId: number; weight: number }[]>
       | undefined;
-    if (!weights) return;
+    // Issue #4062: a wire `weights` array is not the runtime map keyed by
+    // neuron id; deleting its slots would corrupt it, so leave it untouched.
+    if (!weights || Array.isArray(weights)) return;
 
     for (const k of Object.keys(weights)) {
       const fromId = Number(k);
       if (!validIds.has(fromId)) {
         delete weights[k];
+        removed++;
         continue;
       }
       const arr = weights[k];
@@ -189,6 +202,7 @@ export function pruneOrphanMemeticReferences(
           validIds.has(w.toId) &&
           synapseKeys.has(`${fromId}->${w.toId}`),
       );
+      removed += arr.length - filtered.length;
       if (filtered.length === 0) {
         delete weights[k];
       } else if (filtered.length !== arr.length) {
@@ -204,6 +218,7 @@ export function pruneOrphanMemeticReferences(
       pruneSubtree(snap);
     }
   }
+  return removed;
 }
 
 /**

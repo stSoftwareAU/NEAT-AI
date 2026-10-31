@@ -552,6 +552,12 @@ export interface LoadFromOptions {
 /**
  * Load the creature from a JSON object.
  *
+ * The `memetic` record is pruned on ingest (Issue #4062): weight rows and bias
+ * keys that name a neuron or synapse the loaded creature does not carry are
+ * dropped, so a file written by an earlier release cannot carry them into
+ * exports or children. The pruning works on a private copy; the caller's JSON
+ * is never modified.
+ *
  * @param source Optional tag describing the calling site (e.g.
  *   `"breed"`, `"discovery"`, `"fromJSON"`). Included in any
  *   `[loadFrom] Stripping recurrent synapse` warning or
@@ -932,6 +938,21 @@ export function loadFrom(
   }
 
   creature.prebuildInwardIndexIfLarge();
+
+  // Issue #4062: prune a memetic that names structure this file lacks.
+  if (creature.memetic) {
+    creature.memetic = JSON.parse(JSON.stringify(creature.memetic));
+    const prunedMemetic = pruneOrphanMemeticReferences(creature);
+    if (prunedMemetic > 0) {
+      const uuidLabel = creature.uuid ?? "<unidentified>";
+      getLogger().warn(
+        `[loadFrom] Pruned ${prunedMemetic} memetic reference(s) naming ` +
+          `structure creature ${uuidLabel} does not have (Issue #4062). The ` +
+          `file carried a memetic written by an earlier release ` +
+          `(source=${sourceTag}).`,
+      );
+    }
+  }
 
   // Forward-only ingest: merge duplicate (from,to) rows (Issue #2086 / GRQ-25),
   // then repair when recurrent synapses were stripped (GRQ-12), duplicates were
