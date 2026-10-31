@@ -19,14 +19,15 @@ const config = createNeatConfig({
 
 ## 📊 Quick reference
 
-| Option                                       | Type      | Default                                                          | Description                                       |
-| -------------------------------------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------- |
-| `threads`                                    | `integer` | `navigator.hardwareConcurrency + heavyTaskWorkerCount` (default) | Worker threads (min: 1)                           |
-| `heavyTaskWorkerCount`                       | `integer` | `2`                                                              | Workers dedicated to discovery/training (min: 1)  |
-| `workerThreadCap.maxMemoryMB`                | `integer` | `0` (disabled)                                                   | Total memory budget for workers (MB)              |
-| `workerThreadCap.estimatedMemoryPerWorkerMB` | `integer` | `2048`                                                           | Estimated memory per worker (MB)                  |
-| `parallelEvaluation.topologyGrouping`        | `boolean` | `true`                                                           | Group same-topology creatures for WASM cache hits |
-| `rustScorer.enabled`                         | `boolean` | `false`                                                          | Score datasets with the external Rust scorer      |
+| Option                                       | Type      | Default                                                          | Description                                                               |
+| -------------------------------------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `threads`                                    | `integer` | `navigator.hardwareConcurrency + heavyTaskWorkerCount` (default) | Worker threads (min: 1)                                                   |
+| `heavyTaskWorkerCount`                       | `integer` | `2`                                                              | Workers dedicated to discovery/training (min: 1)                          |
+| `workerThreadCap.maxMemoryMB`                | `integer` | `0` (disabled)                                                   | Total memory budget for workers (MB)                                      |
+| `workerThreadCap.estimatedMemoryPerWorkerMB` | `integer` | `2048`                                                           | Estimated memory per worker (MB)                                          |
+| `parallelEvaluation.topologyGrouping`        | `boolean` | `true`                                                           | Group same-topology creatures for WASM cache hits                         |
+| `rustScorer.enabled`                         | `boolean` | `false`                                                          | Score datasets with the external Rust scorer                              |
+| `exitOnUnreclaimableWorkers`                 | `boolean` | `false`                                                          | `evolveDir` only: exit via `Deno.exit()` if a worker could not be stopped |
 
 ## 🧮 Sizing the pool
 
@@ -172,6 +173,33 @@ belongs to one run and never writes back into that cache.
 
 The environment variables themselves are listed in
 [TROUBLESHOOTING.md](../TROUBLESHOOTING.md#-environment-variables-reference).
+
+## 🛑 Exiting when a worker cannot be stopped
+
+Issue #4126: a quarantined worker blocked in native (FFI) code cannot be stopped
+by `Worker.terminate()`, and Deno keeps the process alive for its thread. The
+teardown warns `teardown: N worker(s) could not be stopped` when this happens.
+Set `exitOnUnreclaimableWorkers` to have the library call `Deno.exit()` 10
+seconds after teardown, preserving `Deno.exitCode`. The guard is armed only when
+`evolveDir` returns or throws while a worker could not be stopped: either one it
+quarantined or terminated with a task still unanswered, or one it detached
+because `terminate()` threw or outlived the teardown budget.
+
+```ts
+const config = createNeatConfig({
+  exitOnUnreclaimableWorkers: true, // default: false
+});
+```
+
+The option takes effect in `evolveDir`, the entry point that schedules
+native-trainer tasks. It is accepted but has no effect in `evolveEnv` or
+`evolveRL` today: `evolveEnv` has no worker pool, and `evolveRL`'s
+EpisodeWorkerPool does not report unstoppable workers.
+
+The default is `false`, because a library does not exit its host unasked. Enable
+it only in a script that has nothing left to do after `evolveDir` returns, or
+that finishes within the grace period. See
+[Process does not exit](../troubleshooting/PROCESS_DOES_NOT_EXIT.md).
 
 ## ✅ Validation rules
 
