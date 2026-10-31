@@ -146,6 +146,12 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   row whose synapse is not exported and any `memetic.biases` key that is not an
   exported neuron, and logs a warning naming Issue #4062 when it does. Valid
   memetic data and the live creature are untouched.
+- **Issue #4062:** `Creature.fromJSON` / `loadFrom` now prune a `memetic` that
+  names structure the file does not carry, on ingest. A file written by an
+  earlier release could carry such rows, and they were adopted verbatim,
+  re-exported, and copied into children by `memeticUpdate`. Valid rows and bias
+  keys are kept, the caller's memetic is not modified, and a warning naming
+  Issue #4062 is logged when anything is removed.
 - **Issue #4061:** when `evolveDir()`, `evolveEnv()` or `evolveRL()` reaches its
   post-loop teardown or rejects during evolution, hard-deadline abandon
   included, the caller's creature now gets the champion only if it is usable

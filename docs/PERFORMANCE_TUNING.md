@@ -430,7 +430,9 @@ weight row or bias key that points at a synapse or neuron absent from the same
 export (Issue #4062), so a racing abandoned generation cannot leave a checkpoint
 that later fails to load with `Memetic from id … has no matching synapses`. Only
 the exported copy is pruned — never the live creature — and a warning naming the
-issue is logged when anything was removed.
+issue is logged when anything was removed. A creature loaded from a file whose
+`memetic` names missing structure is pruned on load too, so a checkpoint written
+by an older release stops carrying it into new children.
 
 ### Understanding Cache Diagnostics
 

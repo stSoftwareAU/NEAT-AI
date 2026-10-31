@@ -555,8 +555,8 @@ export interface LoadFromOptions {
  * The `memetic` record is pruned on ingest (Issue #4062): weight rows and bias
  * keys that name a neuron or synapse the loaded creature does not carry are
  * dropped, so a file written by an earlier release cannot carry them into
- * exports or children. The pruning works on a private copy; the caller's JSON
- * is never modified.
+ * exports or children. The pruning works on a private copy, so the caller's
+ * memetic is never modified.
  *
  * @param source Optional tag describing the calling site (e.g.
  *   `"breed"`, `"discovery"`, `"fromJSON"`). Included in any
@@ -941,6 +941,7 @@ export function loadFrom(
 
   // Issue #4062: prune a memetic that names structure this file lacks.
   if (creature.memetic) {
+    // SIMPLE-ON-PURPOSE: clones every loaded memetic (it can share the caller's JSON) — upgrade when a profile shows the clone costs more than the load itself
     creature.memetic = JSON.parse(JSON.stringify(creature.memetic));
     const prunedMemetic = pruneOrphanMemeticReferences(creature);
     if (prunedMemetic > 0) {
