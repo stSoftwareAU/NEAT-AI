@@ -63,13 +63,13 @@ const config = createNeatConfig({
 });
 ```
 
-When `true`, and `evolveDir` finishes while a worker could not be stopped, the
-library calls `Deno.exit()` 10 seconds after teardown. A worker counts as not
-stopped if it was quarantined or terminated while a task it had cancelled (at a
-per-task or run deadline) was still unanswered, or if it was detached because
-`terminate()` threw or outlived the teardown budget. It preserves
-`Deno.exitCode`, so the exit status is the one your script set. The guard is
-armed only in that case.
+When `true`, and `evolveDir` returns or throws while a worker could not be
+stopped, the library arms a guard that calls `Deno.exit()` 10 seconds after
+teardown. A worker counts as not stopped if it was quarantined or terminated
+while a task was still unanswered, whether cancelled or not, or if it was
+detached because `terminate()` threw or outlived the teardown budget. The exit
+preserves `Deno.exitCode`, so the exit status is the one your script set. The
+guard is armed only in that case.
 
 The option takes effect in `evolveDir`, the entry point that schedules
 native-trainer tasks. It is accepted but has no effect in `evolveEnv` or
