@@ -15,6 +15,7 @@ import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "@architecture/CreatureValidate.ts";
 import { memeticUpdate } from "@blackbox/MemeticUpdate.ts";
 import { danglingMemeticReferences } from "../_memeticReferences.ts";
+import { getLogger, type Logger, setLogger } from "../../src/utils/Logger.ts";
 
 type Row = { fromUUID: string; toUUID: string; weight: number };
 type Snapshot = {
@@ -192,4 +193,74 @@ Deno.test("a clean memetic is unchanged by a load round trip (#4062)", () => {
 
   const twice = Creature.fromJSON(once).exportJSON();
   assertEquals(fingerprint(memeticOf(twice)), before);
+});
+
+function captureWarnings(warnings: string[]): Logger {
+  return {
+    debug: () => {},
+    info: () => {},
+    warn: (...args: unknown[]) => {
+      warnings.push(args.map(String).join(" "));
+    },
+    error: () => {},
+  };
+}
+
+/** Runs `load` with the logger captured, and returns the warnings it logged. */
+function warningsFrom(load: () => void): string[] {
+  const previous = getLogger();
+  const warnings: string[] = [];
+  setLogger(captureWarnings(warnings));
+  try {
+    load();
+  } finally {
+    setLogger(previous);
+  }
+  return warnings;
+}
+
+Deno.test("loading a dirty export logs one Issue #4062 warning with the removed count (#4062)", () => {
+  const warnings = warningsFrom(() => {
+    Creature.fromJSON(dirtyExport());
+  });
+
+  const relevant = warnings.filter((w) => w.includes("Issue #4062"));
+  assertEquals(relevant.length, 1);
+  assert(
+    relevant[0].includes("[loadFrom] Pruned 2 memetic reference(s)"),
+    `warning must name the removed count, got: ${relevant[0]}`,
+  );
+});
+
+Deno.test("loading a clean export logs no Issue #4062 warning (#4062)", () => {
+  const warnings = warningsFrom(() => {
+    Creature.fromJSON(baseExport());
+  });
+
+  assertEquals(warnings.filter((w) => w.includes("Issue #4062")), []);
+});
+
+Deno.test("a runtime-shaped memetic is pruned on a copy, not the caller's object (#4062)", () => {
+  // Input and output ids are fixed by position; hidden ids come from a global
+  // counter and change on every load, so only input and output ids are keyed.
+  const built = Creature.fromJSON(baseExport());
+  const input1 = built.neurons.find((n) => n.type === "input" && n.index === 1);
+  const output = built.neurons.find((n) => n.type === "output");
+  assert(input1 && output, "built creature must carry input-1 and output-0");
+
+  const json = baseExport();
+  const memetic = {
+    generation: 4,
+    score: -0.2,
+    biases: { [String(output.id)]: 0.3 },
+    // input-1 -> output-0 has no synapse in the file: a dangling pair.
+    weights: { [String(input1.id)]: [{ toId: output.id, weight: 0.5 }] },
+  };
+  json.memetic = memetic as unknown as CreatureExport["memetic"];
+  const before = structuredClone(memetic);
+
+  const exported = Creature.fromJSON(json).exportJSON();
+
+  assertEquals(danglingMemeticReferences(exported), []);
+  assertEquals(memetic, before);
 });

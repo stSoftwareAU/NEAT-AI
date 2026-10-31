@@ -432,7 +432,8 @@ that later fails to load with `Memetic from id … has no matching synapses`. On
 the exported copy is pruned — never the live creature — and a warning naming the
 issue is logged when anything was removed. A creature loaded from a file whose
 `memetic` names missing structure is pruned on load too, so a checkpoint written
-by an older release stops carrying it into new children.
+by an older release can carry it, and the load prunes it, so it stops being
+carried into new children.
 
 ### Understanding Cache Diagnostics
 

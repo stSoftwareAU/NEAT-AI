@@ -142,8 +142,9 @@ export type MemeticPruneTarget = {
  *
  * `loadFrom` also runs it on ingest (Issue #4062), so a memetic written by an
  * earlier release that names structure the file lacks is pruned on load. It
- * works on the runtime integer-keyed shape; a snapshot whose `weights` is still
- * the wire array shape is skipped untouched.
+ * works on the runtime integer-keyed shape; in a snapshot whose `weights` is
+ * still the wire array shape, only that `weights` is skipped (its `biases` are
+ * still checked).
  *
  * @returns The number of bias keys and weight rows removed. A weight array
  *   dropped whole because its source neuron is gone counts once.
