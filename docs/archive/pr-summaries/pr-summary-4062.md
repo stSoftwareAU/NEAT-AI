@@ -214,9 +214,10 @@ Checks run on the final head:
 - `deno test -A test/creature/LoadPrunesDanglingMemetic.ts
   test/compact/PruneOrphanMemeticReferences.ts`:
   14 passed, 0 failed.
-- 73 memetic and serialisation test files plus `test/creature/*Serializ*`: 441
-  passed, 0 failed. `test/blackbox`, `test/compact`, `test/breed`, `test/mutate`
-  and `test/architecture` (every `.ts` in them): 1439 passed, 0 failed.
+- 73 memetic and serialisation test files plus the serialisation tests in
+  `test/creature`: 441 passed, 0 failed. `test/blackbox`, `test/compact`,
+  `test/breed`, `test/mutate` and `test/architecture` (every `.ts` in them):
+  1439 passed, 0 failed.
 - `deno fmt --check` (2920 files), `deno lint` (2308 files) and
   `deno check
   mod.ts`: clean.
