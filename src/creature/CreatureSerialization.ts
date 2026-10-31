@@ -951,13 +951,14 @@ export function loadFrom(
 
   creature.prebuildInwardIndexIfLarge();
 
-  // Issue #4062: prune a memetic that names structure this file lacks.
+  // Issue #4062: prune references missing from the loaded structure.
   if (creature.memetic) {
     if (!memeticOwned) {
       creature.memetic = JSON.parse(JSON.stringify(creature.memetic));
     }
     const prunedMemetic = pruneOrphanMemeticReferences(creature);
-    if (prunedMemetic > 0) {
+    // SubConnection reloads a core rewrite; its ancestry can need routine pruning.
+    if (prunedMemetic > 0 && sourceTag !== "SubConnection") {
       const uuidLabel = `hash:${getStructuralHash()}`;
       getLogger().warn(
         `[loadFrom] Pruned ${prunedMemetic} memetic reference(s) that named ` +

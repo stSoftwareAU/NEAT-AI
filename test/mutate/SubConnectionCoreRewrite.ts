@@ -36,6 +36,7 @@ import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import type { SynapseRole } from "@architecture/SynapseKey.ts";
 import { IDENTITY } from "@methods/activations/types/IDENTITY.ts";
 import { SubConnection } from "@mutate/SubConnection.ts";
+import { getLogger, setLogger } from "@utils/Logger.ts";
 import {
   getRandomNumberGenerator,
   type RandomNumberGenerator,
@@ -305,4 +306,64 @@ Deno.test("SubConnection: memetic is pruned entry by entry, not dropped wholesal
     "the survivor's own fine-tuning record must be kept",
   );
   creatureValidate(creature);
+});
+
+Deno.test("SubConnection prunes ancestry without a stale-file warning (#4062)", () => {
+  const creature = Creature.fromJSON({
+    input: 2,
+    output: 1,
+    neurons: [
+      { uuid: "h-1", type: "hidden", squash: "TANH", bias: 0 },
+      { uuid: "h-2", type: "hidden", squash: IDENTITY.NAME, bias: 0 },
+      { uuid: "output-0", type: "output", squash: IDENTITY.NAME, bias: 0 },
+    ],
+    synapses: [
+      { fromUUID: "input-0", toUUID: "h-1", weight: 1 },
+      { fromUUID: "input-1", toUUID: "h-2", weight: 1 },
+      { fromUUID: "h-1", toUUID: "h-2", weight: 1 },
+      { fromUUID: "h-1", toUUID: "output-0", weight: 1 },
+      { fromUUID: "h-2", toUUID: "output-0", weight: 1 },
+    ],
+    memetic: {
+      generation: 3,
+      score: -0.5,
+      biases: {},
+      weights: [{ fromUUID: "h-2", toUUID: "output-0", weight: 1 }],
+      ancestry: [{
+        generation: 2,
+        score: -0.6,
+        biases: {},
+        weights: [
+          { fromUUID: "h-1", toUUID: "output-0", weight: 1 },
+          { fromUUID: "h-2", toUUID: "output-0", weight: 1 },
+        ],
+      }],
+    },
+  } as unknown as CreatureExport);
+  const warnings: string[] = [];
+  const previous = getLogger();
+  setLogger({
+    ...previous,
+    warn: (...args: unknown[]) => warnings.push(args.map(String).join(" ")),
+  });
+  try {
+    assert(
+      removeEdge(
+        creature,
+        indexOf(creature, "h-1"),
+        indexOf(creature, "output-0"),
+      ),
+    );
+  } finally {
+    setLogger(previous);
+  }
+  indexOf(creature, "h-1");
+  indexOf(creature, "output-0");
+  const exported = creature.exportJSON();
+  assert(exported.memetic);
+  assertEquals(danglingMemeticReferences(exported), []);
+  assertEquals(
+    warnings.filter((warning) => warning.includes("Issue #4062")),
+    [],
+  );
 });

@@ -9,14 +9,15 @@ carry kept that memetic unchanged. It was re-exported on every checkpoint and
 copied into children by `memeticUpdate`, so one stale record could outlive the
 code that created it. `loadFrom` (so `Creature.fromJSON`) now prunes such rows
 and bias keys, ancestry included, on a private copy, and logs one warning naming
-Issue #4062. The writer-side prune (`pruneDanglingMemeticFromExport`, merged
-earlier for this issue) is unchanged.
+Issue #4062 on ingest. Routine `SubConnection` rewrites prune silently. The
+writer-side prune (`pruneDanglingMemeticFromExport`, merged earlier for this
+issue) is unchanged.
 
 The mutation or teardown path that first created the stale reference on GRQ-21
 is **not identified**; see the Acceptance Criteria.
 
-Version bump: `deno.json` is not edited here; the merged commit records the
-final version.
+Version bump: `deno.json` carries the auto-incremented 7.0.74; the merged commit
+records the final version.
 
 ```mermaid
 flowchart LR
@@ -44,7 +45,8 @@ flowchart LR
 
 - Prune on ingest, in `loadFrom`, by reusing `pruneOrphanMemeticReferences` (the
   live-creature pruner `fix()` and `Offspring` already use) rather than a second
-  copy of the rule. It now returns the removed count, which `loadFrom` logs.
+  copy of the rule. It now returns the removed count, which `loadFrom` logs
+  except for routine `SubConnection` rewrites.
 - The caller's memetic is never mutated: `convertMemeticToIntIds` reports
   whether it returned its own deep clone (`owned`); `loadFrom` clones only when
   it did not.

@@ -158,9 +158,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   earlier release could carry such rows, and they were adopted verbatim,
   re-exported, and copied into children by `memeticUpdate`. Valid rows and bias
   keys are kept, the caller's memetic is not modified, and when anything is
-  removed a warning is logged that reads
+  removed on ingest a warning is logged that reads
   `[loadFrom] Pruned N memetic reference(s) that named structure creature … does not have (Issue #4062)`,
-  so it can be found by searching the logs for `Issue #4062`.
+  so it can be found by searching the logs for `Issue #4062`. Routine
+  `SubConnection` rewrites prune silently.
 - **Issue #4061:** when `evolveDir()`, `evolveEnv()` or `evolveRL()` reaches its
   post-loop teardown or rejects during evolution, hard-deadline abandon
   included, the caller's creature now gets the champion only if it is usable
