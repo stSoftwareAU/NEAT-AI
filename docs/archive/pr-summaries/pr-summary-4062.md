@@ -287,18 +287,18 @@ Red checks:
   removing each `removed` increment fails the count test (`3`, `3`, `2` vs `4`);
   removing the `Array.isArray(weights)` guard fails the array test (`4` vs `1`).
 
-Mutation survivors: the `MemeticCleanup.ts` survivors at
-lines 156, 190 and 222 are killed by the new compact tests (no memetic; a
-snapshot with no `weights`, which throws on `Object.keys(undefined)` without the
-`!weights` guard; the count assertions). The `CreatureSerialization.ts` mutants
-at 485, 497, 498, 503, 955, 956 and 961 and the `MemeticCleanup.ts` mutants at
-156, 190 (negated, `!weights` dropped, `Array.isArray(weights)` dropped) and 222
-were each applied by hand on the head and make at least one of the four test
-files fail (for example 485 fails 9 of the 35 tests, 955 fails 16, the dropped
-`!weights` operand fails 1). The reported "no test imports this module" is a
-direct-import heuristic: `test/creature/LoadPrunesDanglingMemetic.ts` reaches
-`loadFrom` through `Creature.fromJSON`. The redundant `memeticOwned = false`
-assignments in `loadFrom` were removed because they were dead.
+Mutation survivors: the `MemeticCleanup.ts` survivors at lines 156, 190 and 222
+are killed by the new compact tests (no memetic; a snapshot with no `weights`,
+which throws on `Object.keys(undefined)` without the `!weights` guard; the count
+assertions). The `CreatureSerialization.ts` mutants at 485, 497, 498, 503, 955,
+956 and 961 and the `MemeticCleanup.ts` mutants at 156, 190 (negated, `!weights`
+dropped, `Array.isArray(weights)` dropped) and 222 were each applied by hand on
+the head and make at least one of the four test files fail (for example 485
+fails 9 of the 35 tests, 955 fails 16, the dropped `!weights` operand fails 1).
+The reported "no test imports this module" is a direct-import heuristic:
+`test/creature/LoadPrunesDanglingMemetic.ts` reaches `loadFrom` through
+`Creature.fromJSON`. The redundant `memeticOwned = false` assignments in
+`loadFrom` were removed because they were dead.
 
 - `src/creature/CreatureSerialization.ts:508` exempt (untestable): swapping
   `owned: true` to `false` only makes `loadFrom` take one extra deep clone of an
