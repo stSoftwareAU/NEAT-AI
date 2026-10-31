@@ -1319,7 +1319,8 @@ export class Creature implements CreatureInternal {
    * re-run full structural validation on every step (use {@link Creature.DEBUG}
    * or {@link Creature.validate} while diagnosing bugs). Prefer
    * {@link Creature.fromJSON} for trusted in-process round-trips where you must
-   * preserve exact topology and memetic state — {@link Creature.fix} can prune
+   * preserve exact topology and memetic state (memetic references the file does
+   * not back are dropped on load, Issue #4062) — {@link Creature.fix} can prune
    * edges and clear memetic lineage when repairs run.
    *
    * `loadFrom` logs and strips recurrent synapses that contradict

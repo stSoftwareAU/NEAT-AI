@@ -472,13 +472,17 @@ function convertSnapshotTree(
  * Issue #3682: `ancestry` nesting is bounded to {@link DEFAULT_ANCESTRY_DEPTH}
  * — the same cap the write side applies — and the deep clone is taken once, at
  * this entry point, so depth no longer multiplies serialisation cost.
+ *
+ * `owned` is true only when `memetic` is the private clone made here. When it
+ * is false the result may still share objects with the caller's JSON, so a
+ * caller that mutates it must copy it first (Issue #4062).
  */
 function convertMemeticToIntIds(
   memetic: MemeticWireData,
   creature: Creature,
   uuidToIndex: Map<string, number>,
-): MemeticInterface | MemeticWireData {
-  if (!memetic) return memetic;
+): { memetic: MemeticInterface | MemeticWireData; owned: boolean } {
+  if (!memetic) return { memetic, owned: false };
 
   const uuidToIntId = new Map<string, number>();
   for (const [uuid, index] of uuidToIndex) {
@@ -490,16 +494,18 @@ function convertMemeticToIntIds(
   // Bound the untrusted ancestry chain before anything walks or clones it.
   const bounded = truncateAncestryDepth(memetic, DEFAULT_ANCESTRY_DEPTH);
 
-  if (!snapshotNeedsConversion(bounded, uuidToIntId)) return bounded;
+  if (!snapshotNeedsConversion(bounded, uuidToIntId)) {
+    return { memetic: bounded, owned: false };
+  }
 
   // One deep clone of the now-bounded tree, so the caller's JSON is untouched.
   const parsed: unknown = JSON.parse(JSON.stringify(bounded));
-  if (!isMemeticWireData(parsed)) return bounded;
+  if (!isMemeticWireData(parsed)) return { memetic: bounded, owned: false };
   const result: MemeticWireData = parsed;
 
   convertSnapshotTree(result, uuidToIntId, 0);
 
-  return result;
+  return { memetic: result, owned: true };
 }
 
 function forwardOnlyHiddenLacksInbound(creature: Creature): boolean {
@@ -551,6 +557,12 @@ export interface LoadFromOptions {
 
 /**
  * Load the creature from a JSON object.
+ *
+ * The `memetic` record is pruned on ingest (Issue #4062): weight rows and bias
+ * keys that name a neuron or synapse the loaded creature does not carry are
+ * dropped, so a file written by an earlier release cannot carry them into
+ * exports or children. The pruning works on a private copy, so the caller's
+ * memetic is never modified.
  *
  * @param source Optional tag describing the calling site (e.g.
  *   `"breed"`, `"discovery"`, `"fromJSON"`). Included in any
@@ -914,14 +926,20 @@ export function loadFrom(
 
   const mergedDuplicateSynapses = mergeDuplicateSynapsesInCreature(creature);
 
+  // Issue #4062: true only while creature.memetic is a private copy. Otherwise
+  // it may still be (part of) the caller's JSON and must be copied before any
+  // pruning writes to it. Only the converted branch below can own its copy.
+  let memeticOwned = false;
   if (mergedDuplicateSynapses > 0) {
     creature.memetic = undefined;
   } else if (json.memetic && uuidToIndex.size > 0) {
-    creature.memetic = convertMemeticToIntIds(
+    const converted = convertMemeticToIntIds(
       json.memetic as unknown as MemeticWireData,
       creature,
       uuidToIndex,
-    ) as MemeticInterface;
+    );
+    creature.memetic = converted.memetic as MemeticInterface;
+    memeticOwned = converted.owned;
   } else {
     creature.memetic = json.memetic;
   }
@@ -932,6 +950,23 @@ export function loadFrom(
   }
 
   creature.prebuildInwardIndexIfLarge();
+
+  // Issue #4062: prune references missing from the loaded structure.
+  if (creature.memetic) {
+    if (!memeticOwned) {
+      creature.memetic = JSON.parse(JSON.stringify(creature.memetic));
+    }
+    const prunedMemetic = pruneOrphanMemeticReferences(creature);
+    // SubConnection reloads a core rewrite; its ancestry can need routine pruning.
+    if (prunedMemetic > 0 && sourceTag !== "SubConnection") {
+      const uuidLabel = `hash:${getStructuralHash()}`;
+      getLogger().warn(
+        `[loadFrom] Pruned ${prunedMemetic} memetic reference(s) that named ` +
+          `structure creature ${uuidLabel} does not have (Issue #4062) ` +
+          `(source=${sourceTag}).`,
+      );
+    }
+  }
 
   // Forward-only ingest: merge duplicate (from,to) rows (Issue #2086 / GRQ-25),
   // then repair when recurrent synapses were stripped (GRQ-12), duplicates were

@@ -2,8 +2,9 @@
  * Issue #4062 — a population checkpoint must never carry a creature whose
  * `memetic` names a synapse (or neuron) the same file does not carry.
  *
- * These tests inject stale memetic references to exercise the write boundary.
- * They do not identify a production mutation or run an abandoned generation.
+ * These tests exercise the write boundary. Most inject a synthetic fault; one
+ * runs a real `SubConnection` mutation between batches, as an abandoned
+ * generation would. None identifies a production producer of a stale memetic.
  * The writer prunes such rows at the export boundary; core's validator would
  * otherwise reject the file with
  * "Memetic from id X to id Y has no matching synapses".
@@ -15,6 +16,11 @@ import { writeCreatures } from "../../src/creature/CheckpointWriter.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { creatureValidate } from "../../src/architecture/CreatureValidate.ts";
 import { pruneDanglingMemeticFromExport } from "../../src/compact/MemeticCleanup.ts";
+import { SubConnection } from "../../src/mutate/SubConnection.ts";
+import {
+  getRandomNumberGenerator,
+  setRandomNumberGenerator,
+} from "../../src/utils/RandomNumberGenerator.ts";
 import { danglingMemeticReferences } from "../_memeticReferences.ts";
 import { getLogger, type Logger, setLogger } from "../../src/utils/Logger.ts";
 
@@ -356,4 +362,88 @@ Deno.test("pruneDanglingMemeticFromExport removes a row whose UUID is not a stri
     pairs(json.memetic as unknown as Snapshot),
     pairs(baseExport().memetic as unknown as Snapshot),
   );
+});
+
+/**
+ * Applies one real `SubConnection` mutation that removes `from -> to`, the way
+ * a generation abandoned past the hard deadline keeps mutating a population
+ * member while a checkpoint is written. The operator is used directly, without
+ * the `Mutator` wrapper that rebuilds the memetic afterwards, so whatever it
+ * leaves behind is exactly what a checkpoint export could meet.
+ */
+function removeEdgeWithSubConnection(
+  creature: Creature,
+  fromUuid: string,
+  toUuid: string,
+): void {
+  const from = creature.neurons.findIndex((n) => n.uuid === fromUuid);
+  const to = creature.neurons.findIndex((n) => n.uuid === toUuid);
+  assert(from >= 0 && to >= 0, "fixture must carry both neurons");
+  const forward = creature.synapses.filter((s) => s.to > s.from);
+  const position = forward.findIndex((s) => s.from === from && s.to === to);
+  assert(position >= 0, "fixture must carry the synapse to remove");
+
+  const previous = getRandomNumberGenerator();
+  setRandomNumberGenerator({
+    random: () => (position + 0.5) / forward.length,
+    randomInt: (min: number) => min,
+    choice: <T>(array: readonly T[]) => array[0],
+    seeded: false,
+    seed: null,
+  });
+  try {
+    assert(new SubConnection(creature).mutate(), "the removal must apply");
+  } finally {
+    setRandomNumberGenerator(previous);
+  }
+}
+
+Deno.test("a checkpoint written while an abandoned generation prunes a synapse holds only valid creatures (#4062)", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "neat_ckpt_abandoned_" });
+  try {
+    const population = [
+      memeticCreature(),
+      memeticCreature(),
+      memeticCreature(),
+    ];
+    const racing = population[2];
+    let calls = 0;
+    const writeTextFile = (path: string, text: string): Promise<void> => {
+      // The first batch is in flight; the abandoned generation now mutates a
+      // member that has not been exported yet.
+      if (calls++ === 0) {
+        removeEdgeWithSubConnection(racing, "hidden-1", "output-0");
+      }
+      return Deno.writeTextFile(path, text);
+    };
+
+    await writeCreatures(
+      { population, warmupGenerations: 0, currentGeneration: 0 },
+      dir,
+      { batchSize: 1, writeTextFile },
+    );
+
+    assertEquals(calls, 3);
+    // Precondition: the mutation landed before the racing member was
+    // exported, so the test cannot pass without the race having happened.
+    assert(
+      racing.synapses.length < population[0].synapses.length,
+      "the abandoned generation must have removed a synapse",
+    );
+    const files = await readAll(dir);
+    assertEquals(files.length, 3);
+    let shortened = 0;
+    for (const file of files) {
+      assertEquals(
+        danglingMemeticReferences(file),
+        [],
+        "written file must not carry a dangling memetic reference",
+      );
+      creatureValidate(Creature.fromJSON(file, true));
+      if (file.synapses.length < population[0].synapses.length) shortened++;
+    }
+    assertEquals(shortened, 1, "exactly the racing member was mutated");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
 });
