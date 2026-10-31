@@ -133,10 +133,12 @@ runs its slice, and — if the runner OOM-kills the run — retries once while
 partial `coverage-<shard>` dir, `junit-<shard>.xml`, and a
 `shard-status-<shard>.txt` marker. Assertion failures (exit 1) leave the shard
 job green so every shard can publish its results before the merge job fails the
-build. A runner crash (any final exit other than 0 or 1, including an OOM that
-survives the retry) writes an `error:<code>` marker and fails that required
-shard check; the `always()` artifact step still uploads its status, JUnit and
-coverage outputs for aggregation.
+build. A runner crash (any final exit other than 0 or 1, including a
+signal-killed OOM that survives the retry) writes an `error:<code>` marker and
+fails that required shard check. An exit 1 that still carries the fatal-OOM log
+signature after the retry is a crash too (Issue #4124): it writes `error:oom`
+and fails the shard check. The `always()` artifact step still uploads its
+status, JUnit and coverage outputs for aggregation.
 
 Two more failures also fail that required shard check (Issue #4125). A failed
 partition verification (`shard_test_files.ts --verify`) writes `error:partition`
@@ -196,8 +198,8 @@ flowchart TD
     C -->|"0 / 1, not OOM"| E["Record pass/fail status"]
     C -->|"OOM exit or fatal-OOM log"| D["Scoped retry<br/>--parallel, DENO_JOBS=2, half heap"]
     D --> R{Final exit code}
-    R -->|"0 / 1"| E
-    R -->|"other"| X["Record error status<br/>fail shard step"]
+    R -->|"0, or 1 without fatal-OOM log"| E
+    R -->|"other, or 1 with fatal-OOM log"| X["Record error status<br/>fail shard step"]
     C -->|"other"| X
     X -->|"if: always()"| U["Upload shard artifact"]
     E --> U
@@ -219,12 +221,13 @@ heap. The retry's result is final; an OOM on that attempt does not retry again.
 
 **Final per-shard exit code meanings (after any OOM retry):**
 
-| Final exit code | Meaning          | Shard Action                                                          |
-| --------------- | ---------------- | --------------------------------------------------------------------- |
-| 0               | All tests passed | Marker `passed`                                                       |
-| 1               | Test failures    | Marker `failed`; merge job fails build                                |
-| 133/134/137/143 | OOM / signal     | Marker `error:<code>`; shard job fails after artifact data is written |
-| Other           | Unexpected error | Marker `error:<code>`; shard job fails after artifact data is written |
+| Final exit code   | Meaning            | Shard Action                                                          |
+| ----------------- | ------------------ | --------------------------------------------------------------------- |
+| 0                 | All tests passed   | Marker `passed`                                                       |
+| 1                 | Test failures      | Marker `failed`; merge job fails build                                |
+| 1 + fatal-OOM log | OOM survived retry | Marker `error:oom`; shard job fails after artifact data is written    |
+| 133/134/137/143   | OOM / signal       | Marker `error:<code>`; shard job fails after artifact data is written |
+| Other             | Unexpected error   | Marker `error:<code>`; shard job fails after artifact data is written |
 
 **Tuning shard count:** set the workflow-level `SHARD_TOTAL` env **and** the
 `coverage` job's `strategy.matrix.shard` list to the same value —

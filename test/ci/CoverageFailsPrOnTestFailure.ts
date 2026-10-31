@@ -6,6 +6,7 @@ import { join } from "@std/path";
  * The Test Coverage workflow is the PR test gate (quality.yml does not run
  * tests). Runner crashes fail their required shard check; assertion failures
  * stay green on shards and fail in the merge job after results are published.
+ * An exit-1 fatal OOM that survives the retry is a runner crash (Issue #4124).
  * Partition-verification failures (`error:partition`) and a missing
  * `coverage-<shard>/` dir after a recorded status (`error:no-coverage`) also
  * fail the required shard check (Issue #4125), because the merge job that
@@ -58,6 +59,8 @@ interface ShardResult {
 
 async function runShard(
   codes: number[],
+  /** 1-based `deno test` runs that log the fatal-OOM signature. */
+  oomRuns: number[] = [],
   opts: ShardOptions = {},
 ): Promise<ShardResult> {
   const wf = await readWorkflow();
@@ -95,6 +98,9 @@ if [ "$1" = test ]; then
   count=$((count + 1))
   echo "$count" > .runner-count
   code=$(printf '%s' "$RUNNER_CODES" | cut -d, -f "$count")
+  case ",\${RUNNER_OOM_RUNS:-}," in
+    *",$count,"*) echo 'Fatal JavaScript out of memory: Ineffective mark-compacts near heap limit' >&2 ;;
+  esac
   if [ "$code" -eq 0 ] || [ "$code" -eq 1 ]; then
     printf '<?xml version="1.0"?>\\n<testsuites></testsuites>\\n'
   else
@@ -118,6 +124,7 @@ exit 90
       env: {
         PATH: `${bin}:${Deno.env.get("PATH") ?? ""}`,
         RUNNER_CODES: codes.join(","),
+        RUNNER_OOM_RUNS: oomRuns.join(","),
         RUNNER_VERIFY_EXIT: String(opts.verifyExit ?? 0),
         RUNNER_NO_COVERAGE: opts.skipCoverage ? "1" : "0",
         SHARD_TOTAL: "8",
@@ -273,14 +280,14 @@ Deno.test("an exhausted OOM retry fails after retaining final shard artifacts", 
 });
 
 Deno.test("a failed partition check fails the shard before any test runs (Issue #4125)", async () => {
-  const result = await runShard([0], { verifyExit: 1 });
+  const result = await runShard([0], [], { verifyExit: 1 });
   assertEquals(result.status, "error:partition");
   assertEquals(result.code, 1);
   assertEquals(result.runs, 0);
   assert(!result.hasCoverage);
 
   // Positive control: the same inputs with a passing partition check pass.
-  const control = await runShard([0], { verifyExit: 0 });
+  const control = await runShard([0], [], { verifyExit: 0 });
   assertEquals(control.code, 0);
   assertEquals(control.status, "passed");
   assertEquals(control.runs, 1);
@@ -288,17 +295,38 @@ Deno.test("a failed partition check fails the shard before any test runs (Issue 
 });
 
 Deno.test("a passing run that loses its coverage dir fails the shard (Issue #4125)", async () => {
-  const result = await runShard([0], { skipCoverage: true });
+  const result = await runShard([0], [], { skipCoverage: true });
   assertEquals(result.status, "error:no-coverage");
   assertEquals(result.code, 1);
   assertEquals(result.hasCoverage, false);
 });
 
 Deno.test("an ordinary failure that loses its coverage dir fails the shard (Issue #4125)", async () => {
-  const result = await runShard([1], { skipCoverage: true });
+  const result = await runShard([1], [], { skipCoverage: true });
   assertEquals(result.status, "error:no-coverage");
   assertEquals(result.code, 1);
   assertEquals(result.hasCoverage, false);
+});
+
+Deno.test("a fatal-OOM exit 1 that survives the retry fails the shard as error:oom", async () => {
+  const result = await runShard([1, 1], [1, 2]);
+  assertEquals(result.status, "error:oom");
+  assertEquals(result.code, 1);
+  assert(result.junit.length > 0);
+  assert(result.hasCoverage);
+});
+
+Deno.test("a fatal-OOM exit 1 followed by an ordinary retry failure stays green", async () => {
+  const result = await runShard([1, 1], [1]);
+  assertEquals(result.status, "failed");
+  assertEquals(result.code, 0);
+  assertEquals(result.runs, 2);
+});
+
+Deno.test("a fatal-OOM exit 1 recovered by the retry leaves the shard green", async () => {
+  const result = await runShard([1, 0], [1]);
+  assertEquals(result.status, "passed");
+  assertEquals(result.code, 0);
 });
 
 Deno.test("coverage shard failures still upload status and JUnit artifacts", async () => {

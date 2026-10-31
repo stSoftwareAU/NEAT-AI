@@ -57,8 +57,9 @@ flowchart TD
 
 ## Test Plan
 
-- `test/ci/CoverageFailsPrOnTestFailure.ts` (harness `runShard` gained
-  `{ verifyExit, skipCoverage }`; no existing assertion removed or edited):
+- `test/ci/CoverageFailsPrOnTestFailure.ts` (harness `runShard` gained a
+  trailing `{ verifyExit, skipCoverage }` options argument after the base
+  branch's `oomRuns` (Issue #4124); no existing assertion removed or edited):
   - a failed partition check → `error:partition`, exit 1, `runs` 0; positive
     control with `verifyExit: 0` → `passed`, `runs` 1.
   - passing run that loses its coverage dir → `error:no-coverage`, exit 1.
