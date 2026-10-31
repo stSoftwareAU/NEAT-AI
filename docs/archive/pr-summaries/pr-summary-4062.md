@@ -287,7 +287,7 @@ Red checks:
   removing each `removed` increment fails the count test (`3`, `3`, `2` vs `4`);
   removing the `Array.isArray(weights)` guard fails the array test (`4` vs `1`).
 
-Mutation survivors (Issue #4146 retry): the `MemeticCleanup.ts` survivors at
+Mutation survivors: the `MemeticCleanup.ts` survivors at
 lines 156, 190 and 222 are killed by the new compact tests (no memetic; a
 snapshot with no `weights`, which throws on `Object.keys(undefined)` without the
 `!weights` guard; the count assertions). The `CreatureSerialization.ts` mutants
