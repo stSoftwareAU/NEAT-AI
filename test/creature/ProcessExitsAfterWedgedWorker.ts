@@ -33,6 +33,7 @@ const WORKER_SLEEP_SECONDS = 120;
 /** Guard grace period passed to the teardown in the child. */
 const GUARD_GRACE_MS = 500;
 
+// cspell:disable-next-line
 const LIBC = Deno.build.os === "darwin" ? "libSystem.B.dylib" : "libc.so.6";
 
 const REPO_ROOT = new URL("../../", import.meta.url);
@@ -42,7 +43,7 @@ function repoModule(relative: string): string {
   return new URL(relative, REPO_ROOT).href;
 }
 
-/** The worker: announces it started, then blocks its thread in libc `sleep`. */
+/** The worker: announces it started, then blocks its thread in the C library `sleep`. */
 function workerSource(): string {
   return `const lib = Deno.dlopen(${JSON.stringify(LIBC)}, {
   sleep: { parameters: ["u32"], result: "u32" },
