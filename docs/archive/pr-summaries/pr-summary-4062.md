@@ -90,7 +90,8 @@ Backend change; no UI. Observed on the base branch, then on the head:
   `Mutator.mutate` is fully synchronous, so a checkpoint export cannot see a
   creature mid-mutation. These fuzz scripts were scratch files and are not
   committed.
-- Quality gate: `./quality.sh` was not run, see the note under Test Plan.
+- Quality gate: the full `./quality.sh` was not run, see the note under Test
+  Plan; `./quality.sh --check-only` (whole-repo type check) exited 0.
 
 Issue numbers cited as provenance, each read with `gh`: #4062 (this issue, "a
 dangling memetic reference"), #3844 and #4052 (named in the issue body).
@@ -240,7 +241,7 @@ Callers of `pruneOrphanMemeticReferences` checked (all ignore the result):
 surfaces read: `loadFrom` JSDoc, `Creature.fromJSON` doc comment,
 `docs/PERFORMANCE_TUNING.md` checkpoint paragraph, `CHANGELOG.md`.
 
-<!-- vibe-quality-gate-skipped reason="`./quality.sh` stops at its preflight without a native rust_scorer, which is not installed in this container; the targeted suites above, fmt, lint and type check were run instead" -->
+<!-- vibe-quality-gate-skipped reason="the full `./quality.sh` takes longer than the 10-minute cap on a foreground command here and may not be started in the background; its format, lint, bash and whole-repo type-check steps were run (`./quality.sh --check-only` exited 0) with the targeted test suites above" -->
 
 Skipped or unverified: the producing path on GRQ-21, `.creatures/10.json`, an
 abandoned-generation reproduction, a fresh log search after this change, and the
