@@ -20,7 +20,7 @@ flowchart LR
     C -- yes --> W["warn: N worker(s)<br/>could not be stopped"]
     W --> O{"exitOnUnreclaimableWorkers?"}
     O -- no --> H["caller must Deno.exit()"]
-    O -- yes --> G["unref'd 10 s timer,<br/>then Deno.exit(Deno.exitCode)"]
+    O -- yes --> G["10 s timer that does not hold the process open,<br/>then Deno.exit(Deno.exitCode)"]
 ```
 
 ## Spec
@@ -40,8 +40,8 @@ flowchart LR
   "can't pin the process" by default. A silent `Deno.exit()` from a library
   could cut off a caller's later work (save, check-in).
 - The guard runs last in teardown (after persist and replay drain) and is armed
-  with an unref'd timer, so a healthy process still exits naturally before it
-  fires.
+  with a timer that does not hold the process open, so a healthy process still
+  exits naturally before it fires.
 - A worker counts as unstoppable only when a task it had cancelled is still
   unanswered at quarantine; a late reply clears the task id. An error event on
   an idle worker, or a cancelled task answered later, does not count.
@@ -53,7 +53,8 @@ flowchart LR
 
 - The cause is inferred from the issue, not observed in the fleet: no log shows
   a ref'd timer or the watchdog pinning the process. The new child-process test
-  reproduces the native-block mechanism with a real worker calling libc `sleep`.
+  reproduces the native-block mechanism with a real worker calling the C library
+  `sleep`.
 - The issue's closing evidence needs a fleet log with a quarantine followed by a
   phase `END`; that can only come after release and an opt-in in GRQ.
 
