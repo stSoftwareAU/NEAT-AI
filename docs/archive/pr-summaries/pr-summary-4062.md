@@ -9,9 +9,9 @@ carry kept that memetic unchanged. It was re-exported on every checkpoint and
 copied into children by `memeticUpdate`, so one stale record could outlive the
 code that created it. `loadFrom` (so `Creature.fromJSON`) now prunes such rows
 and bias keys, ancestry included, on a private copy, and logs one warning naming
-Issue #4062 on ingest. Routine `SubConnection` rewrites prune silently. The
-writer-side prune (`pruneDanglingMemeticFromExport`, merged earlier for this
-issue) is unchanged.
+Issue #4062 on ingest. A `SubConnection` reload of core's rewrite prunes without
+that warning. The writer-side prune (`pruneDanglingMemeticFromExport`, merged
+earlier for this issue) is unchanged.
 
 The mutation or teardown path that first created the stale reference on GRQ-21
 is **not identified**; see the Acceptance Criteria.
@@ -207,9 +207,10 @@ between snapshots would not be seen.
 - **violation** — the doc comment on `pruneOrphanMemeticReferences` said a
   wire-shaped snapshot is skipped untouched when only its `weights` are —
   evidence: `src/compact/MemeticCleanup.ts:146` — reason: fixed in this diff
-- **clean** — no existing test expectation changed; callers of
-  `pruneOrphanMemeticReferences` ignore the new numeric return; no timing APIs
-  in tests; logging through `getLogger()`; Australian English; no `Deno.env` in
+- **clean** — no existing test expectation changed; of the callers of
+  `pruneOrphanMemeticReferences`, only the new prune in `loadFrom` uses the
+  numeric return (for the warning) and the rest ignore it; no timing APIs in
+  tests; logging through `getLogger()`; Australian English; no `Deno.env` in
   tests; named tests exist. Review-enforced rules checked: the AGENTS.md
   serialisation hot-path rule and the "what, not how" test rule
 
@@ -241,24 +242,24 @@ Added:
   the removed synapse; the test asserts the exported memetic has no dangling
   reference and that no `Issue #4062` warning was logged. It guards the
   `sourceTag !== "SubConnection"` exemption in `loadFrom`, which is what backs
-  the claim that routine `SubConnection` rewrites prune silently.
+  the claim that a `SubConnection` reload of core's rewrite prunes without the
+  warning.
 - `bench/LoadFromMemeticPrune.ts`.
 
 No existing assertion was removed or edited.
 
-Checks run on the final head:
+Checks run on the head (recounted this round):
 
-- `deno test -A test/mutate/SubConnectionCoreRewrite.ts
-  test/creature/LoadPrunesDanglingMemetic.ts
-  test/compact/PruneOrphanMemeticReferences.ts
-  test/creature/CheckpointWriteDanglingMemetic_test.ts`:
-  35 passed, 0 failed.
+- The four touched test files, each run with `deno test -A`:
+  `SubConnectionCoreRewrite.ts` 8 passed; `LoadPrunesDanglingMemetic.ts` 10
+  passed; `PruneOrphanMemeticReferences.ts` 6 passed;
+  `CheckpointWriteDanglingMemetic_test.ts` 11 passed; 35 passed, 0 failed in
+  total.
 - Every `.ts` file in each directory, `deno test -A --parallel`: `test/mutate`
   229 passed; `test/compact` 216 passed; `test/breed` 330 passed;
-  `test/blackbox` 93 passed; `test/architecture` 623 passed, 1 failed
-  (`TrainingLoop - trainDir returns a well-formed result for a tiny dataset`);
+  `test/blackbox` 93 passed; `test/architecture` 576 passed, 0 failed;
   `test/creature` 619 passed, 9 failed (all in `CreatureTrainEvolve.ts`). Each
-  of those 10 failures throws
+  of those 9 failures throws
   `neat_ai_backpropagation library/binary was not
   found` from the Rust train
   bridge, which this host does not have; none touches `loadFrom`, the memetic or
@@ -278,8 +279,8 @@ Red checks:
   `[loadFrom] Pruned 1 memetic
   reference(s) that named structure creature hash:f20971db does not have (Issue
   #4062) (source=SubConnection).`
-  (7 passed / 1 failed in that file); restored, 35 passed across the four files
-  above.
+  (7 passed / 1 failed in that file); restored, the four files above pass (35
+  tests in total).
 - Skip the ownership clone → the runtime-shaped test fails (the caller's object
   is mutated); drop the warning → the warning test fails (`0` vs `1`).
 - `pruneOrphanMemeticReferences` returning `0` → both new compact tests fail;
@@ -290,12 +291,20 @@ Mutation survivors (Issue #4146 retry): the `MemeticCleanup.ts` survivors at
 lines 156, 190 and 222 are killed by the new compact tests (no memetic; a
 snapshot with no `weights`, which throws on `Object.keys(undefined)` without the
 `!weights` guard; the count assertions). The `CreatureSerialization.ts` mutants
-at 485, 497, 503 and the prune guard at 957 each fail 7 of the 10 load tests
-when applied by hand. The reported "no test imports this module" is a
+at 485, 497, 498, 503, 955, 956 and 961 and the `MemeticCleanup.ts` mutants at
+156, 190 (negated, `!weights` dropped, `Array.isArray(weights)` dropped) and 222
+were each applied by hand on the head and make at least one of the four test
+files fail (for example 485 fails 9 of the 35 tests, 955 fails 16, the dropped
+`!weights` operand fails 1). The reported "no test imports this module" is a
 direct-import heuristic: `test/creature/LoadPrunesDanglingMemetic.ts` reaches
 `loadFrom` through `Creature.fromJSON`. The redundant `memeticOwned = false`
 assignments in `loadFrom` were removed because they were dead.
 
+- `src/creature/CreatureSerialization.ts:508` exempt (untestable): swapping
+  `owned: true` to `false` only makes `loadFrom` take one extra deep clone of an
+  already private memetic, so the loaded creature is identical either way; the
+  difference is cost, which AGENTS.md keeps out of `test/` (the benchmark covers
+  it). Replacing the whole return value at 508 does fail 17 tests.
 - `src/creature/CreatureSerialization.ts:932` exempt (untestable): the initial
   `memeticOwned = false` only matters on the `else` branch (`json.memetic`
   present with an empty `uuidToIndex`), which `assertValidCreatureShape` makes
@@ -304,11 +313,12 @@ assignments in `loadFrom` were removed because they were dead.
   run by `deno bench`, which no test imports by design (AGENTS.md keeps timing
   out of `test/`).
 
-Callers of `pruneOrphanMemeticReferences` checked (all ignore the result):
-`Upgrade.ts`, `Offspring.ts`, `FineTune.ts`, `RestoreSource.ts`,
-`TargetedRepair.ts`, `CreatureMutation.ts`, `CreatureSerialization.ts`. Doc
-surfaces read: `loadFrom` JSDoc, `Creature.fromJSON` doc comment,
-`docs/PERFORMANCE_TUNING.md` checkpoint paragraph, `CHANGELOG.md`.
+Callers of `pruneOrphanMemeticReferences` checked: `Upgrade.ts`, `Offspring.ts`,
+`FineTune.ts`, `RestoreSource.ts`, `TargetedRepair.ts` and `CreatureMutation.ts`
+ignore the result, as do the two later calls in `CreatureSerialization.ts`'s
+forward-only repair block; the new call in `loadFrom` stores the count and uses
+it for the warning. Doc surfaces read: `loadFrom` JSDoc, `Creature.fromJSON` doc
+comment, `docs/PERFORMANCE_TUNING.md` checkpoint paragraph, `CHANGELOG.md`.
 
 <!-- vibe-quality-gate-skipped reason="the full `./quality.sh` takes longer than the 10-minute cap on a foreground command here and may not be started in the background; its format, lint, bash and whole-repo type-check steps were run (`./quality.sh --check-only` exited 0) with the targeted test suites above" -->
 
