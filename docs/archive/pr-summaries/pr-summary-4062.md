@@ -171,17 +171,18 @@ between snapshots would not be seen.
   simulates the race with a real operator inside the write seam but does not
   drive `evolve` or a deadline, does not show the race producing a stale
   memetic, and no path was identified to run
-- **partial** — Closing evidence: a week of GRQ-logs from sampler hosts with no
-  `rule=ValidationError/MEMETIC` repair lines on the fixed release, quoted with
-  the search used — evidence: Closing evidence above — reviewer: missing —
-  reason: the reviewer saw only the diff and cannot see logs; the searches and
-  window quoted are retained from the earlier PR #4100 run, not re-fetched in
-  this run, and cover the writer-side fix only. This change is not yet in a
-  deployed release, and after it the repair line cannot appear on loads through
-  `Creature.fromJSON`, so that search cannot show anything about this head. The
-  criterion stays open until a log search against the release carrying this
-  change (using the `[loadFrom] Pruned ... Issue #4062` and
-  `[CheckpointWriter] Pruned` terms) exists
+- **partial** — Closing evidence: a week of logs from the downstream production
+  sampler hosts with no `rule=ValidationError/MEMETIC` repair lines on the fixed
+  release, quoted with the search used — evidence: Closing evidence above —
+  reviewer: missing — reason: the reviewer saw only the diff and cannot see
+  logs; the searches and window quoted are retained from the earlier PR #4100
+  run, not re-fetched in this run, and cover the writer-side fix only. This
+  change is not yet in a deployed release, and after it the repair line cannot
+  appear on loads through `Creature.fromJSON`, so that search cannot show
+  anything about this head. The criterion stays open until a log search against
+  the release carrying this change (using the
+  `[loadFrom] Pruned ... Issue #4062` and `[CheckpointWriter] Pruned` terms)
+  exists
 - **unrequested** — Load-side pruning in `loadFrom`, with the clone, the count
   return and the warning — reviewer: unrequested — reason: the issue asks for a
   writer fix; this is the change that stops a stale record persisting, found
