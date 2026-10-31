@@ -91,7 +91,11 @@ import {
   restoreEvolveChampion,
   snapshotEvolveCaller,
 } from "@creature/EvolveTeardown.ts";
-import { runBoundedEvolveTeardown } from "@creature/BoundedEvolveTeardown.ts";
+import {
+  type BoundedEvolveTeardownOptions,
+  handleUnreclaimableWorkers,
+  runBoundedEvolveTeardown,
+} from "@creature/BoundedEvolveTeardown.ts";
 import { flushTrainingGainLog } from "@neat/NeatScheduling.ts";
 import { finishGeneration } from "@creature/EvolveGenerationTail.ts";
 import {
@@ -435,6 +439,13 @@ export interface EvolveDirDeps {
    */
   teardownBudgetMS?: number;
   /**
+   * Grace period, exit function and scheduler for the unreclaimable-worker exit
+   * guard (Issue #4126). Tests inject them so no real `Deno.exit()` or timer is
+   * involved; production omits it. Only read when
+   * `exitOnUnreclaimableWorkers` is true and a worker could not be stopped.
+   */
+  exitGuard?: BoundedEvolveTeardownOptions["exitGuard"];
+  /**
    * Arms the off-main-thread event-loop watchdog (Issue #4067). Defaults to
    * `armEventLoopWatchdog`; in-process tests stub it so no Worker is spawned.
    * Its breach line carries the heartbeat age and the generation phase the main
@@ -536,12 +547,15 @@ export async function evolveDir(
   let neatForCleanup: Neat | undefined;
   let bestCreature: Creature | undefined;
   let tornDown = false;
+  let exitOnUnreclaimableWorkers = false;
+  let unreclaimableWorkersHandled = false;
   try {
     // Issue #2902: `deps?.startTimeMS` is a test-only override that anchors both
     // the soft `endTimeMS` and the absolute T+15 hard cap to an injected (past)
     // timestamp, so the hard-cap branch can be driven without real sleeps.
     const start = deps?.startTimeMS ?? Date.now();
     const config = createNeatConfig(options);
+    exitOnUnreclaimableWorkers = config.exitOnUnreclaimableWorkers;
 
     // Issue #1566: Apply WASM cache caps from config before training starts.
     setMaxCachedWasmCreatureActivations(config.wasmCache.maxCachedActivations);
@@ -859,6 +873,11 @@ export async function evolveDir(
       await runBoundedEvolveTeardown({
         label: "evolveDir",
         neat,
+        exitOnUnreclaimableWorkers: config.exitOnUnreclaimableWorkers,
+        exitGuard: deps?.exitGuard,
+        onUnreclaimableWorkersHandled: () => {
+          unreclaimableWorkersHandled = true;
+        },
         persist: async () => {
           restoreEvolveChampion(
             creature,
@@ -953,9 +972,16 @@ export async function evolveDir(
       // Issue #4072: a run that failed mid-way must not leak its workers, its
       // population, its champion or the process-global caches. Each step is
       // isolated, so a cleanup error is logged and never masks the original one.
+      let unreclaimable = 0;
       for (let index = workers.length - 1; index >= 0; index--) {
         const worker = workers[index];
-        runFailureCleanup("evolveDir", () => worker.terminate());
+        runFailureCleanup("evolveDir", () => {
+          try {
+            worker.terminate();
+          } finally {
+            if (worker.couldNotBeStopped()) unreclaimable++;
+          }
+        });
       }
       // Issue #4099: name the tasks the failed run leaves behind, so each
       // still gets a terminal line (a terminated worker never settles them).
@@ -974,6 +1000,14 @@ export async function evolveDir(
       );
       runFailureCleanup("evolveDir", () => bestCreature?.dispose());
       runFailureCleanup("evolveDir", () => releaseEvolveCaches());
+      if (!unreclaimableWorkersHandled) {
+        runFailureCleanup("evolveDir", () =>
+          handleUnreclaimableWorkers(
+            { exitOnUnreclaimableWorkers, exitGuard: deps?.exitGuard },
+            "evolveDir",
+            unreclaimable,
+          ));
+      }
     }
     Deno.removeSignalListener("SIGTERM", signalListener);
   }
@@ -1309,6 +1343,7 @@ export async function evolveEnv<S, A>(
       await runBoundedEvolveTeardown({
         label: "evolveEnv",
         neat,
+        exitOnUnreclaimableWorkers: config.exitOnUnreclaimableWorkers,
         persist: async () => {
           restoreEvolveChampion(
             creature,
@@ -2048,6 +2083,7 @@ export async function evolveRL<S, A>(
       await runBoundedEvolveTeardown({
         label: "evolveRL",
         neat,
+        exitOnUnreclaimableWorkers: config.exitOnUnreclaimableWorkers,
         persist: async () => {
           restoreEvolveChampion(
             creature,

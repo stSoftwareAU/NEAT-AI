@@ -109,6 +109,21 @@ async function readSections(): Promise<Section[]> {
   return parseSections(await Deno.readTextFile(REFERENCES));
 }
 
+function containsWikipediaUrl(text: string): boolean {
+  const urls = text.match(/https?:\/\/[^\s)>\]]+/g) ?? [];
+  for (const rawUrl of urls) {
+    try {
+      const { hostname } = new URL(rawUrl);
+      if (hostname === "wikipedia.org" || hostname.endsWith(".wikipedia.org")) {
+        return true;
+      }
+    } catch {
+      // Ignore malformed URLs in free-form bullet text.
+    }
+  }
+  return false;
+}
+
 Deno.test("REFERENCES.md carries a section for every cited literature area", async () => {
   const headings = new Set((await readSections()).map((s) => s.heading));
   const missing = REQUIRED_SECTIONS.filter((h) => !headings.has(h));
@@ -129,7 +144,7 @@ Deno.test("REFERENCES.md leads every literature section with a primary source", 
       failures.push(`${section.heading}: section has no entries`);
       continue;
     }
-    if (lead.includes("wikipedia.org")) {
+    if (containsWikipediaUrl(lead)) {
       failures.push(
         `${section.heading}: leads with a Wikipedia overview — "${lead}"`,
       );

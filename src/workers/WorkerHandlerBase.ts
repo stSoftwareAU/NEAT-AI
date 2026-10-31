@@ -327,6 +327,19 @@ export abstract class WorkerHandlerBase<
    * not be handed the next task.
    */
   private healthy = true;
+  /**
+   * Task ids this handler cancelled while they were still unanswered (Issue
+   * #4126). A cancelled task that never returned a result may leave its worker
+   * blocked in native code. A late reply for one of these ids clears it, since
+   * the worker is then known to have come back.
+   */
+  private cancelledUnanswered = new Set<number>();
+  /**
+   * True once {@link terminate} has asked the worker to stop (Issue #4126).
+   * Quarantine marks the handler unhealthy instead, so either one means the
+   * worker has been taken out of service.
+   */
+  private terminateRequested = false;
   /** Listeners to notify when worker becomes idle */
   private idleListeners: WorkerEventListener<this>[] = [];
   /** Promise that resolves once the worker is initialised */
@@ -628,6 +641,7 @@ export abstract class WorkerHandlerBase<
   private handleCallback(data: TResponse) {
     const task = this.pending.get(data.taskID);
     if (!task) {
+      this.cancelledUnanswered.delete(data.taskID);
       getLogger().warn(
         `[worker-${this.workerID}] response for task ${data.taskID} arrived ` +
           `after the task was settled or cancelled — discarded (GRQ #4489)`,
@@ -687,6 +701,24 @@ export abstract class WorkerHandlerBase<
   }
 
   /**
+   * True when this worker has been taken out of service — quarantined or
+   * terminated — while a task is still unanswered (Issue
+   * #4126).
+   *
+   * Such a thread may be blocked in native code, which {@link terminate}
+   * cannot interrupt, and Deno keeps the process alive until that thread ends.
+   * It is computed live, so it covers a task shed with {@link cancelTask} at
+   * the run's deadline and then terminated by teardown, with no quarantine. A
+   * worker taken out of service with no unanswered task (e.g. an
+   * error event on an idle worker) stays false, and so does one whose
+   * cancelled task was answered late.
+   */
+  couldNotBeStopped(): boolean {
+    return (!this.healthy || this.terminateRequested) &&
+      this.cancelledUnanswered.size > 0;
+  }
+
+  /**
    * Give up on one in-flight task, settling its promise as a failure
    * (GRQ #4489).
    *
@@ -701,6 +733,7 @@ export abstract class WorkerHandlerBase<
     if (!task) return false;
 
     this.pending.delete(taskID);
+    this.cancelledUnanswered.add(taskID);
     const error = new WorkerTaskCancelledError({
       taskID,
       workerID: this.workerID,
@@ -744,13 +777,18 @@ export abstract class WorkerHandlerBase<
    * cannot be trusted with the next one: on GRQ-22-rocket the same two task
    * ids were abandoned twice in a single run. Quarantine fails whatever is
    * still in flight, marks the handler unhealthy so {@link WorkerPool} stops
-   * selecting it, and stops the isolate.
+   * selecting it, and asks the isolate to stop.
    *
    * Each labelled task is failed with a reason that names its own label and
    * records it as collateral of this quarantine, with `reason` kept inside it;
    * unlabelled tasks fail with `reason` unchanged (see {@link cancelAllTasks}).
    * The task that caused the quarantine keeps its own reason when it was
    * cancelled first with {@link cancelTask}.
+   *
+   * {@link terminate} cannot interrupt a thread blocked in native code. When a
+   * task cancelled earlier is still unanswered at this point,
+   * {@link couldNotBeStopped} reports that the thread may still hold the
+   * process open (Issue #4126).
    */
   quarantine(reason: string, cause?: Error): void {
     if (!this.healthy) return;
@@ -861,7 +899,9 @@ export abstract class WorkerHandlerBase<
   }
 
   /**
-   * Terminates the worker and cleans up resources.
+   * Asks the worker to terminate and cleans up resources. A thread blocked in
+   * native code cannot be interrupted by this call — see
+   * {@link couldNotBeStopped} (Issue #4126).
    *
    * GRQ #4489: dropping in-flight tasks here leaves their promises pending
    * forever. Teardown is not the place to change a run's control flow, so the
@@ -870,6 +910,7 @@ export abstract class WorkerHandlerBase<
    * its work fails loudly instead.
    */
   terminate() {
+    this.terminateRequested = true;
     if (this.pending.size > 0) {
       getLogger().warn(
         `[worker-${this.workerID}] terminated with ${this.pending.size} ` +
@@ -877,6 +918,9 @@ export abstract class WorkerHandlerBase<
             Array.from(this.pending.keys()).join(", ")
           }) — their results are lost (GRQ #4489)`,
       );
+    }
+    for (const taskID of this.pending.keys()) {
+      this.cancelledUnanswered.add(taskID);
     }
     this.pending.clear();
     this.idleListeners.length = 0;
