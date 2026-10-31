@@ -42,8 +42,11 @@ flowchart LR
 - The guard runs last in teardown (after persist and replay drain) and is armed
   with a timer that does not hold the process open, so a healthy process still
   exits naturally before it fires.
-- A worker counts as unstoppable only when a task it had cancelled is still
-  unanswered at quarantine; a late reply clears the task id. An error event on
+- A worker counts as unstoppable when it has been taken out of service
+  (quarantined, or `terminate()` called) while a task it had cancelled is still
+  unanswered; a late reply clears the task id. `couldNotBeStopped()` is computed
+  live, so a task shed with `cancelTask` at the run's deadline and then
+  terminated by teardown, with no quarantine, is reported too. An error event on
   an idle worker, or a cancelled task answered later, does not count.
 - The option is wired into `evolveEnv` and `evolveRL` teardown too, but has no
   effect there today: `evolveEnv` has no worker pool and `EpisodeWorkerPool`
@@ -71,6 +74,16 @@ Backend/CLI change; no UI. Tests that verify it:
   `test/workers/WorkerTaskCancellation.ts`,
   `test/config/ExitOnUnreclaimableWorkersOption.ts` cover the report, the
   counts, the arming, the handler flag and the config default.
+- `test/creature/EvolveDirExitOnUnreclaimableWorkers.ts` runs `evolveDir` itself
+  with a worker reporting `couldNotBeStopped()` and an injected
+  `deps.exitGuard`: with `exitOnUnreclaimableWorkers: true` the guard is armed
+  once with the grace period and exits when fired; with the default nothing is
+  armed. Removing the `exitOnUnreclaimableWorkers` mapping in `evolveDir` fails
+  the first.
+- `test/workers/WorkerTaskCancellation.ts` pins that `cancelTask` without a
+  quarantine, then `terminate()`, reports `couldNotBeStopped()`, and that
+  `runBoundedEvolveTeardown` over such a real handler reports
+  `workersUnreclaimable = 1`.
 - Red check: replacing the `armUnreclaimableWorkerExit(...)` call in
   `src/creature/BoundedEvolveTeardown.ts` with a no-op made 4 tests fail (the
   process-exit tests and the "failed persist still arms the guard" test);
@@ -95,21 +108,23 @@ Backend/CLI change; no UI. Tests that verify it:
 - **partial** — Reproduce: a test where one scheduled training task blocks
   synchronously, past its deadline, gets quarantined, and `evolveDir` then
   returns. Assert that the hosting deno process exits within a bounded time —
-  evidence: `test/creature/ProcessExitsAfterWedgedWorker.ts` — reviewer: partial
-  — reason: the child calls `runBoundedEvolveTeardown` directly rather than
-  `evolveDir`, and the process only exits with
-  `exitOnUnreclaimableWorkers: true`; the one-line wiring in
-  `src/creature/CreatureTraining.ts` has no `evolveDir`-level test
-- **partial** — Fix in neat-ai so a quarantined/terminated worker or watchdog
-  can't pin the process. If a thread genuinely can't be reclaimed, `evolveDir`
-  should report it (e.g.
-  `[evolveDir] teardown: N worker(s) could not be stopped`) so callers can exit
-  explicitly — evidence: `src/creature/BoundedEvolveTeardown.ts`,
-  `src/workers/UnreclaimableWorkerExit.ts`,
-  `test/creature/BoundedEvolveTeardown.ts` — reviewer: partial — reason: the
-  report branch is met and opt-in exit is provided, but by default a wedged
-  thread still pins the process, and no ref'd timer or watchdog leak was found
-  or tested
+  evidence: `test/creature/ProcessExitsAfterWedgedWorker.ts`,
+  `test/creature/EvolveDirExitOnUnreclaimableWorkers.ts` — reviewer: partial —
+  reason: the real-process test (FFI-wedged worker, child exits by itself) calls
+  `runBoundedEvolveTeardown`; the `evolveDir` test uses a stubbed worker and a
+  fake exit. A full `evolveDir` in a child process with a wedged worker was
+  tried and hung before teardown, so it is not delivered
+- **met** — Fix in neat-ai so a quarantined/terminated worker or watchdog can't
+  pin the process. If a thread genuinely can't be reclaimed, `evolveDir` should
+  report it (e.g. `[evolveDir] teardown: N worker(s) could not be stopped`) so
+  callers can exit explicitly — evidence:
+  `src/creature/BoundedEvolveTeardown.ts`,
+  `src/workers/UnreclaimableWorkerExit.ts`, `src/workers/WorkerHandlerBase.ts`,
+  `test/creature/BoundedEvolveTeardown.ts`,
+  `test/workers/WorkerTaskCancellation.ts` — reviewer: met — reason: the report
+  is delivered and the opt-in exit is provided; the criterion allows reporting
+  so callers can exit, and a default `evolveDir` still hangs with a wedged
+  thread
 - **missing** — In GRQ, separately: the `EvolveApp`s can end with an explicit
   `Deno.exit(0)` after cleanup — reviewer: missing — reason: lives in the GRQ
   repository, out of scope here; documented as Option 2 in
@@ -132,12 +147,39 @@ Backend/CLI change; no UI. Tests that verify it:
   unstoppable worker, contradicting its doc comment — evidence:
   `src/workers/WorkerHandlerBase.ts:330` — reason: fixed in this diff
   (cancelled-and-unanswered task ids are tracked and a late reply clears the id)
+- **violation** — `test/creature/EvolveDirExitOnUnreclaimableWorkers.ts` read
+  `Date.now()` — evidence:
+  `test/creature/EvolveDirExitOnUnreclaimableWorkers.ts:44` — reason: fixed in
+  this diff (a fixed `NOW_MS` and injected `deps.now`)
 - **clean** — Australian English; no timing APIs read in unit tests (the
   child-process test only uses a kill watchdog and binary assertions); logging
   goes through `getLogger()`; typed `ValidationError`; no `@std/log`; no
   named-but-absent tests; every added field has a production reader apart from
   the test seams `exitGuard` and `workersUnreclaimable`, which no written rule
   forbids
+
+## Verifier findings addressed
+
+- `couldNotBeStopped()` was decided only inside `quarantine()`; a task shed with
+  `cancelTask` at the deadline and then terminated by teardown was missed. It is
+  now computed live (`!healthy || terminateRequested`, with a cancelled task
+  still unanswered). Test: `cancelTask`, `terminate()`, then
+  `runBoundedEvolveTeardown` reports `workersUnreclaimable = 1`.
+- The `evolveDir` wiring now has a test (`deps.exitGuard` seam).
+- Mutation survivors: the listed `src/workers/UnreclaimableWorkerExit.ts`,
+  `src/config/NeatConfig.ts` and
+  `test/config/ExitOnUnreclaimableWorkersOption.ts` lines report "no test
+  imports this module", yet `test/workers/UnreclaimableWorkerExit.ts` and
+  `test/config/ExitOnUnreclaimableWorkersOption.ts` import and assert on them
+  (count and grace validation, default and pass-through). Added tests for the
+  async-`terminate()` branches, the zero-unreclaimable count, and the label,
+  count and exit wording of the teardown warning in
+  `test/creature/BoundedEvolveTeardown.ts`. The other survivors in
+  `scripts/lib/optionAuditRollup.ts` and `CreatureTraining.ts` (the other two
+  `exitOnUnreclaimableWorkers` mappings, `evolveEnv` and `evolveRL`) have no
+  effect today and are not tested: `src/creature/CreatureTraining.ts:1313` and
+  `:2053` exempt (untestable): neither entry point has a worker pool that
+  reports unstoppable workers.
 
 ## Test Plan
 
@@ -146,7 +188,9 @@ Backend/CLI change; no UI. Tests that verify it:
   `test/config/ExitOnUnreclaimableWorkersOption.ts`; extended
   `test/creature/BoundedEvolveTeardown.ts` and
   `test/workers/WorkerTaskCancellation.ts` (including a cancel, late reply, then
-  quarantine case for the violation above).
+  quarantine case for the violation above, and cancel-then-terminate cases with
+  no quarantine); added `test/creature/EvolveDirExitOnUnreclaimableWorkers.ts`
+  and a test `deps.exitGuard` seam on `evolveDir`.
 - No assertion removed from an existing test. One expected value changed: the
   pinned top-level option count in `test/scripts/AuditOptionUsage.ts` went from
   119 to 120 for the new `exitOnUnreclaimableWorkers` key. That test still fails

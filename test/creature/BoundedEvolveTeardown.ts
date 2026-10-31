@@ -613,3 +613,70 @@ Deno.test("bounded teardown (Issue #4126): a failed persist still arms the guard
     "the guard must be armed before the rethrow, or the caller hangs after the error",
   );
 });
+
+Deno.test("bounded teardown (Issue #4126): a worker whose async terminate() settles but could not be stopped is counted", async () => {
+  const { value: report } = await captureWarnings(() =>
+    runBoundedEvolveTeardown(baseOptions({
+      workers: [{
+        terminate: () => Promise.resolve(),
+        couldNotBeStopped: () => true,
+      }],
+    }))
+  );
+
+  assertEquals(report.workersTerminated, 1);
+  assertEquals(report.workersAbandoned, 0);
+  assertEquals(report.workersUnreclaimable, 1);
+});
+
+Deno.test("bounded teardown (Issue #4126): a worker whose async terminate() settles and could be stopped is not counted", async () => {
+  const { value: report, warnings } = await captureWarnings(() =>
+    runBoundedEvolveTeardown(baseOptions({
+      workers: [{
+        terminate: () => Promise.resolve(),
+        couldNotBeStopped: () => false,
+      }],
+    }))
+  );
+
+  assertEquals(report.workersTerminated, 1);
+  assertEquals(report.workersUnreclaimable, 0);
+  assertEquals(
+    warnings.filter((w) => w.includes("could not be stopped")).length,
+    0,
+  );
+});
+
+Deno.test("bounded teardown (Issue #4126): a worker that is not reported as unstoppable is counted as zero unreclaimable", async () => {
+  const report = await runBoundedEvolveTeardown(baseOptions({
+    workers: [{ terminate: () => {} }, { terminate: () => {} }],
+  }));
+
+  assertEquals(report.workersTerminated, 2);
+  assertEquals(report.workersUnreclaimable, 0);
+});
+
+Deno.test("bounded teardown (Issue #4126): the exit warning is only logged by the exit-armed path and names the label", async () => {
+  const guard = fakeExitGuard();
+  const { warnings } = await captureWarnings(() =>
+    runBoundedEvolveTeardown(baseOptions({
+      label: "evolveDir",
+      workers: [unreclaimableWorker(), unreclaimableWorker()],
+      exitOnUnreclaimableWorkers: true,
+      exitGuard: guard.guard,
+    }))
+  );
+
+  const named = warnings.filter((w) => w.includes("could not be stopped"));
+  assert(
+    named.some((w) =>
+      w.includes("[evolveDir] teardown: 2 worker(s) could not be stopped") &&
+      w.includes("it will be exited after the grace period")
+    ),
+    `the teardown warning must name the label, count and exit, got: ${
+      named.join(" | ")
+    }`,
+  );
+  guard.fire();
+  assertEquals(guard.exitCodes.length, 1, "the armed guard exits once");
+});

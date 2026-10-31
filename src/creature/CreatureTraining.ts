@@ -91,7 +91,10 @@ import {
   restoreEvolveChampion,
   snapshotEvolveCaller,
 } from "@creature/EvolveTeardown.ts";
-import { runBoundedEvolveTeardown } from "@creature/BoundedEvolveTeardown.ts";
+import {
+  type BoundedEvolveTeardownOptions,
+  runBoundedEvolveTeardown,
+} from "@creature/BoundedEvolveTeardown.ts";
 import { flushTrainingGainLog } from "@neat/NeatScheduling.ts";
 import { finishGeneration } from "@creature/EvolveGenerationTail.ts";
 import {
@@ -434,6 +437,13 @@ export interface EvolveDirDeps {
    * {@link DEFAULT_TEARDOWN_STEP_BUDGET_MS}.
    */
   teardownBudgetMS?: number;
+  /**
+   * Grace period, exit function and scheduler for the unreclaimable-worker exit
+   * guard (Issue #4126). Tests inject them so no real `Deno.exit()` or timer is
+   * involved; production omits it. Only read when
+   * `exitOnUnreclaimableWorkers` is true and a worker could not be stopped.
+   */
+  exitGuard?: BoundedEvolveTeardownOptions["exitGuard"];
   /**
    * Arms the off-main-thread event-loop watchdog (Issue #4067). Defaults to
    * `armEventLoopWatchdog`; in-process tests stub it so no Worker is spawned.
@@ -860,6 +870,7 @@ export async function evolveDir(
         label: "evolveDir",
         neat,
         exitOnUnreclaimableWorkers: config.exitOnUnreclaimableWorkers,
+        exitGuard: deps?.exitGuard,
         persist: async () => {
           restoreEvolveChampion(
             creature,

@@ -182,8 +182,8 @@ teardown warns `teardown: N worker(s) could not be stopped` when this happens.
 Set `exitOnUnreclaimableWorkers` to have the library call `Deno.exit()` 10
 seconds after teardown, preserving `Deno.exitCode`. The guard is armed only when
 `evolveDir` finishes while a worker could not be stopped: either one it
-quarantined with an unanswered task, or one it detached because `terminate()`
-threw or outlived the teardown budget.
+quarantined or terminated with a cancelled task still unanswered, or one it
+detached because `terminate()` threw or outlived the teardown budget.
 
 ```ts
 const config = createNeatConfig({

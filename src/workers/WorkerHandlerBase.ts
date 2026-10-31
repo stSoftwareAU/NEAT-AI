@@ -335,10 +335,11 @@ export abstract class WorkerHandlerBase<
    */
   private cancelledUnanswered = new Set<number>();
   /**
-   * True when, at quarantine time, a task was cancelled and still unanswered
-   * (Issue #4126). Set by {@link quarantine}.
+   * True once {@link terminate} has asked the worker to stop (Issue #4126).
+   * Quarantine marks the handler unhealthy instead, so either one means the
+   * worker has been taken out of service.
    */
-  private unreclaimable = false;
+  private terminateRequested = false;
   /** Listeners to notify when worker becomes idle */
   private idleListeners: WorkerEventListener<this>[] = [];
   /** Promise that resolves once the worker is initialised */
@@ -700,17 +701,21 @@ export abstract class WorkerHandlerBase<
   }
 
   /**
-   * True when this worker was quarantined while a task it had cancelled was
-   * still unanswered (Issue #4126).
+   * True when this worker has been taken out of service — quarantined or
+   * terminated — while a task it had cancelled is still unanswered (Issue
+   * #4126).
    *
    * Such a thread may be blocked in native code, which {@link terminate}
    * cannot interrupt, and Deno keeps the process alive until that thread ends.
-   * A quarantine with no cancelled-and-unanswered task (e.g. an error event on
-   * an idle worker) stays false, and so does one whose cancelled task was
-   * answered late.
+   * It is computed live, so it covers a task shed with {@link cancelTask} at
+   * the run's deadline and then terminated by teardown, with no quarantine. A
+   * worker taken out of service with no cancelled-and-unanswered task (e.g. an
+   * error event on an idle worker) stays false, and so does one whose
+   * cancelled task was answered late.
    */
   couldNotBeStopped(): boolean {
-    return this.unreclaimable;
+    return (!this.healthy || this.terminateRequested) &&
+      this.cancelledUnanswered.size > 0;
   }
 
   /**
@@ -793,7 +798,6 @@ export abstract class WorkerHandlerBase<
         `given further work (GRQ #4489)`,
     );
     this.cancelAllTasks(reason, cause);
-    this.unreclaimable = this.cancelledUnanswered.size > 0;
     this.worker.terminate();
   }
 
@@ -906,6 +910,7 @@ export abstract class WorkerHandlerBase<
    * its work fails loudly instead.
    */
   terminate() {
+    this.terminateRequested = true;
     if (this.pending.size > 0) {
       getLogger().warn(
         `[worker-${this.workerID}] terminated with ${this.pending.size} ` +
