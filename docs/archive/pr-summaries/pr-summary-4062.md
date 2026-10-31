@@ -90,6 +90,13 @@ Backend change; no UI. Observed on the base branch, then on the head:
   `Mutator.mutate` is fully synchronous, so a checkpoint export cannot see a
   creature mid-mutation. These fuzz scripts were scratch files and are not
   committed.
+- Abandoned-generation interleaving, run for real this time: a test applies one
+  real `SubConnection` mutation (removing `hidden-1 -> output-0` from a creature
+  with a root and ancestry memetic) to a population member between checkpoint
+  batches, then writes. The operator left that creature's memetic consistent
+  (the exported root and ancestry rows named only surviving synapses), so this
+  fixture does not reproduce a stale record either. It is kept as a regression
+  test for the path the issue names as its strongest lead.
 - Quality gate: the full `./quality.sh` was not run, see the note under Test
   Plan; `./quality.sh --check-only` (whole-repo type check) exited 0.
 
@@ -156,16 +163,25 @@ between snapshots would not be seen.
   generation N while its mutations are in flight, then write the checkpoint) and
   assert every written creature passes `ValidationError/MEMETIC` validation —
   evidence: `test/creature/LoadPrunesDanglingMemetic.ts` (load, export, child
-  and core validation) and the writer test above — reviewer: partial — reason:
-  no test runs an abandoned generation through a checkpoint write, because no
-  producing path was identified
-- **met** — Closing evidence: a week of GRQ-logs from sampler hosts with no
+  and core validation) and
+  `test/creature/CheckpointWriteDanglingMemetic_test.ts::a checkpoint written while an abandoned generation prunes a synapse holds only valid creatures (#4062)`
+  (a real `SubConnection` mutation lands between checkpoint batches; every
+  written file is free of dangling references and passes `creatureValidate`) —
+  reviewer: partial — reason: the spec reviewer rated it partial: the test
+  simulates the race with a real operator inside the write seam but does not
+  drive `evolve` or a deadline, does not show the race producing a stale
+  memetic, and no path was identified to run
+- **partial** — Closing evidence: a week of GRQ-logs from sampler hosts with no
   `rule=ValidationError/MEMETIC` repair lines on the fixed release, quoted with
   the search used — evidence: Closing evidence above — reviewer: missing —
-  reason: the reviewer saw only the diff and cannot see logs; the evidence is
-  retained from the earlier PR #4100 run and not re-fetched, and it covers the
-  writer-side fix, not this change (after which the repair line cannot appear on
-  loads through `Creature.fromJSON`)
+  reason: the reviewer saw only the diff and cannot see logs; the searches and
+  window quoted are retained from the earlier PR #4100 run, not re-fetched in
+  this run, and cover the writer-side fix only. This change is not yet in a
+  deployed release, and after it the repair line cannot appear on loads through
+  `Creature.fromJSON`, so that search cannot show anything about this head. The
+  criterion stays open until a log search against the release carrying this
+  change (using the `[loadFrom] Pruned ... Issue #4062` and
+  `[CheckpointWriter] Pruned` terms) exists
 - **unrequested** — Load-side pruning in `loadFrom`, with the clone, the count
   return and the warning — reviewer: unrequested — reason: the issue asks for a
   writer fix; this is the change that stops a stale record persisting, found
@@ -206,6 +222,15 @@ Added:
 - `test/compact/PruneOrphanMemeticReferences.ts`: two tests added, the exact
   removed count (4) and a clean target (0), and array-shaped `weights` left
   untouched while a dangling bias is still counted.
+- `test/compact/PruneOrphanMemeticReferences.ts`: two more tests, a creature
+  with no memetic (0, memetic stays unset) and snapshots with no `weights` at
+  all (their biases are pruned, root and ancestry, and no `weights` is added).
+- `test/creature/CheckpointWriteDanglingMemetic_test.ts`: one test, a real
+  `SubConnection` mutation between checkpoint batches; every written file has no
+  dangling reference and reloads through `creatureValidate`, and exactly the
+  racing member was shortened. It still passes with the writer's prune disabled,
+  because the real operator leaves the memetic consistent: it guards the
+  boundary end to end but does not red-check the prune.
 - `bench/LoadFromMemeticPrune.ts`.
 
 No existing assertion was removed or edited.
@@ -235,6 +260,24 @@ Red checks:
   removing each `removed` increment fails the count test (`3`, `3`, `2` vs `4`);
   removing the `Array.isArray(weights)` guard fails the array test (`4` vs `1`).
 
+Mutation survivors (Issue #4146 retry): the `MemeticCleanup.ts` survivors at
+lines 156, 190 and 222 are killed by the new compact tests (no memetic; a
+snapshot with no `weights`, which throws on `Object.keys(undefined)` without the
+`!weights` guard; the count assertions). The `CreatureSerialization.ts` mutants
+at 485, 497, 503 and the prune guard at 957 each fail 7 of the 10 load tests
+when applied by hand. The reported "no test imports this module" is a
+direct-import heuristic: `test/creature/LoadPrunesDanglingMemetic.ts` reaches
+`loadFrom` through `Creature.fromJSON`. The redundant `memeticOwned = false`
+assignments in `loadFrom` were removed because they were dead.
+
+- `src/creature/CreatureSerialization.ts:932` exempt (untestable): the initial
+  `memeticOwned = false` only matters on the `else` branch (`json.memetic`
+  present with an empty `uuidToIndex`), which `assertValidCreatureShape` makes
+  unreachable — a creature with `input: 0` throws before `loadFrom` gets there.
+- `bench/LoadFromMemeticPrune.ts:43-102` exempt (untestable): a benchmark file
+  run by `deno bench`, which no test imports by design (AGENTS.md keeps timing
+  out of `test/`).
+
 Callers of `pruneOrphanMemeticReferences` checked (all ignore the result):
 `Upgrade.ts`, `Offspring.ts`, `FineTune.ts`, `RestoreSource.ts`,
 `TargetedRepair.ts`, `CreatureMutation.ts`, `CreatureSerialization.ts`. Doc
@@ -243,6 +286,7 @@ surfaces read: `loadFrom` JSDoc, `Creature.fromJSON` doc comment,
 
 <!-- vibe-quality-gate-skipped reason="the full `./quality.sh` takes longer than the 10-minute cap on a foreground command here and may not be started in the background; its format, lint, bash and whole-repo type-check steps were run (`./quality.sh --check-only` exited 0) with the targeted test suites above" -->
 
-Skipped or unverified: the producing path on GRQ-21, `.creatures/10.json`, an
-abandoned-generation reproduction, a fresh log search after this change, and the
-full quality gate (CI runs it).
+Skipped or unverified: the producing path on GRQ-21, `.creatures/10.json` (not
+available), a reproduction of a stale memetic from a real abandoned generation
+(the interleaving test does not produce one), a fresh log search after this
+change, and the full quality gate (CI runs it).

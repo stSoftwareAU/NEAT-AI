@@ -194,3 +194,32 @@ Deno.test("pruneOrphanMemeticReferences leaves array-shaped root weights untouch
   assertEquals(weights, before);
   assertEquals<unknown>(memetic.biases, { 10: 0.1 });
 });
+
+Deno.test("pruneOrphanMemeticReferences counts nothing for a creature with no memetic", () => {
+  const target: MemeticPruneTarget = {
+    neurons: [{ id: 0 }, { id: 1 }],
+    synapses: [{ from: 0, to: 1 }],
+  };
+  assertEquals(pruneOrphanMemeticReferences(target), 0);
+  assertEquals(target.memetic, undefined);
+});
+
+Deno.test("pruneOrphanMemeticReferences prunes biases of a snapshot that has no weights", () => {
+  const memetic = {
+    generation: 1,
+    score: 0,
+    biases: { 0: 0.1, 99: 0.5 },
+    ancestry: [{ generation: 0, score: 0, biases: { 0: 0.1, 98: 0.2 } }],
+  } as unknown as NonNullable<MemeticPruneTarget["memetic"]>;
+  const target: MemeticPruneTarget = {
+    neurons: [{ id: 0 }, { id: 1 }],
+    synapses: [{ from: 0, to: 1 }],
+    memetic,
+  };
+
+  assertEquals(pruneOrphanMemeticReferences(target), 2);
+
+  assertEquals<unknown>(memetic.biases, { 0: 0.1 });
+  assertEquals<unknown>(memetic.ancestry?.[0].biases, { 0: 0.1 });
+  assertEquals("weights" in memetic, false, "no weights added");
+});

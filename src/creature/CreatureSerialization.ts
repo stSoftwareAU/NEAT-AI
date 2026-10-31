@@ -928,11 +928,10 @@ export function loadFrom(
 
   // Issue #4062: true only while creature.memetic is a private copy. Otherwise
   // it may still be (part of) the caller's JSON and must be copied before any
-  // pruning writes to it.
+  // pruning writes to it. Only the converted branch below can own its copy.
   let memeticOwned = false;
   if (mergedDuplicateSynapses > 0) {
     creature.memetic = undefined;
-    memeticOwned = false;
   } else if (json.memetic && uuidToIndex.size > 0) {
     const converted = convertMemeticToIntIds(
       json.memetic as unknown as MemeticWireData,
@@ -943,7 +942,6 @@ export function loadFrom(
     memeticOwned = converted.owned;
   } else {
     creature.memetic = json.memetic;
-    memeticOwned = false;
   }
   creature.clearCache();
 
