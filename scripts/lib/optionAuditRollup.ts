@@ -110,6 +110,7 @@ const SLICE_A: RollupEntry[] = [
     "costOfGrowth",
     "elitism",
     "timeoutMinutes",
+    "exitOnUnreclaimableWorkers",
     "trainPerGen",
     "mutationAmount",
     "mutationRate",

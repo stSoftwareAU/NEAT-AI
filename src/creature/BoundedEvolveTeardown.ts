@@ -35,6 +35,12 @@
  *     the persist.
  *  3. **Say what was left behind.** One summary line names every abandoned
  *     step, so a future silent-child log is diagnosable rather than a mystery.
+ *  4. **Guard the exit (Issue #4126).** A worker that could not be stopped —
+ *     detached, or terminated while its thread is still blocked in native code
+ *     — keeps the process alive after the run returns. One warning names the
+ *     count. When the caller opted in (`exitOnUnreclaimableWorkers`), the exit
+ *     is armed as the very last step, after the persist and the replay drain,
+ *     so no persisted work is lost.
  *
  * The clock is injectable and the deadline is polled (never armed as a single
  * `setTimeout`), so tests drive every branch with no real waits — the
@@ -46,6 +52,7 @@ import {
   HARD_DEADLINE_BREACHED,
 } from "@neat/HardDeadlineRace.ts";
 import { getLogger } from "@utils/Logger.ts";
+import { armUnreclaimableWorkerExit } from "@workers/UnreclaimableWorkerExit.ts";
 
 /**
  * Default budget, in milliseconds, for each blocking teardown step.
@@ -66,6 +73,12 @@ export const TEARDOWN_POLL_INTERVAL_MS = 50;
  */
 export interface TerminableWorker {
   terminate(): void | Promise<unknown>;
+  /**
+   * True when the thread may outlive `terminate()` and keep the process alive
+   * (a thread blocked in native code ignores it). Optional: a worker that does
+   * not report it is treated as reclaimable.
+   */
+  couldNotBeStopped?(): boolean;
 }
 
 /** The replay-queue surface teardown needs — satisfied by `DiscoveryReplayQueue`. */
@@ -92,6 +105,12 @@ export interface BoundedEvolveTeardownReport {
   workersTerminated: number;
   /** Workers left detached: `terminate()` threw or outlived the budget. */
   workersAbandoned: number;
+  /**
+   * Workers that may outlive `terminate()` and keep the process alive: every
+   * detached worker, plus every terminated worker still reporting
+   * `couldNotBeStopped()`. Each worker is counted once (Issue #4126).
+   */
+  workersUnreclaimable: number;
   /** True when the replay queue drained inside its budget. */
   replayDrained: boolean;
   /** True when the in-flight replay was signalled to abort and left running. */
@@ -135,6 +154,22 @@ export interface BoundedEvolveTeardownOptions {
   budgetMS?: number;
   /** Deadline poll interval. Defaults to {@link TEARDOWN_POLL_INTERVAL_MS}. */
   pollIntervalMS?: number;
+  /**
+   * Exit the process after a grace period when any worker could not be stopped
+   * (Issue #4126). Off by default: the caller is warned and must call
+   * `Deno.exit()` itself once its work is done.
+   */
+  exitOnUnreclaimableWorkers?: boolean;
+  /**
+   * Grace period, exit function and scheduler for the unreclaimable-worker exit
+   * guard. Forwarded to `armUnreclaimableWorkerExit`; only read when
+   * `exitOnUnreclaimableWorkers` is true and a worker is unreclaimable.
+   */
+  exitGuard?: {
+    graceMS?: number;
+    exit?: (code: number) => void;
+    schedule?: (fn: () => void, ms: number) => void;
+  };
 }
 
 /** A positive, finite budget; anything else falls back to the default. */
@@ -171,6 +206,10 @@ function beginTerminate(
  * as abandoned and named in the log rather than waited on. Termination is not
  * cancellable, so an abandoned worker keeps running — the caller's process may
  * therefore outlive this function, which is why the abandon is logged loudly.
+ * A worker that returned from `terminate()` but still reports
+ * `couldNotBeStopped()` is terminated and unreclaimable at once (Issue #4126):
+ * its thread can outlive the teardown too. Each worker is counted once as
+ * unreclaimable, whichever way it ended up there.
  */
 async function terminateWorkers(
   label: string,
@@ -178,10 +217,11 @@ async function terminateWorkers(
   now: () => number,
   budgetMS: number,
   pollIntervalMS: number,
-): Promise<{ terminated: number; abandoned: number }> {
+): Promise<{ terminated: number; abandoned: number; unreclaimable: number }> {
   let terminated = 0;
   let abandoned = 0;
-  if (workers.length === 0) return { terminated, abandoned };
+  let unreclaimable = 0;
+  if (workers.length === 0) return { terminated, abandoned, unreclaimable };
 
   const deadlineMS = now() + budgetMS;
 
@@ -189,6 +229,7 @@ async function terminateWorkers(
     const { pending, error } = beginTerminate(workers[i]);
     if (error !== undefined) {
       abandoned++;
+      unreclaimable++;
       getLogger().warn(
         `[${label}] teardown: worker ${i} terminate() failed — detaching it ` +
           `and continuing`,
@@ -198,6 +239,7 @@ async function terminateWorkers(
     }
     if (pending === undefined) {
       terminated++;
+      if (workers[i].couldNotBeStopped?.() === true) unreclaimable++;
       continue;
     }
     // deno-lint-ignore no-await-in-loop
@@ -215,12 +257,38 @@ async function terminateWorkers(
     );
     if (outcome === HARD_DEADLINE_BREACHED) {
       abandoned++;
+      unreclaimable++;
     } else {
       terminated++;
+      if (workers[i].couldNotBeStopped?.() === true) unreclaimable++;
     }
   }
 
-  return { terminated, abandoned };
+  return { terminated, abandoned, unreclaimable };
+}
+
+/**
+ * Warn once that `count` worker(s) could not be stopped, and — only when the
+ * caller opted in — arm the exit guard. Call it last: the guard must follow the
+ * persist and the replay drain so persisted work is never lost (Issue #4126).
+ */
+function handleUnreclaimableWorkers(
+  options: BoundedEvolveTeardownOptions,
+  label: string,
+  count: number,
+): void {
+  if (count === 0) return;
+  const exitOnUnreclaimable = options.exitOnUnreclaimableWorkers === true;
+  const cause = `${count} worker(s) could not be stopped — a thread blocked ` +
+    `in native code ignores terminate(), so the process will not exit on its own`;
+  getLogger().warn(
+    exitOnUnreclaimable
+      ? `[${label}] teardown: ${cause}; it will be exited after the grace period`
+      : `[${label}] teardown: ${cause}; call Deno.exit() once your work is done`,
+  );
+  if (exitOnUnreclaimable) {
+    armUnreclaimableWorkerExit({ label, count, ...options.exitGuard });
+  }
 }
 
 /**
@@ -281,12 +349,14 @@ async function drainReplayQueue(
  * `evolveRL`.
  *
  * Order matters: persist, then terminate workers, then name unmerged work, then
- * drain the replay queue. Persisting before the blocking steps is what
- * protects the evolved improvement — every later step can be abandoned without
- * losing it.
+ * drain the replay queue, then warn about and (if opted in) arm the exit for any
+ * unreclaimable worker. Persisting before the blocking steps is what protects
+ * the evolved improvement — every later step can be abandoned without losing
+ * it.
  *
  * @throws Whatever `persist` threw, re-thrown after the workers are down so a
- *         failed checkpoint write is loud and still leaves nothing running.
+ *         failed checkpoint write is loud and still leaves nothing running. The
+ *         unreclaimable-worker exit is armed before that rethrow (Issue #4126).
  */
 export async function runBoundedEvolveTeardown(
   options: BoundedEvolveTeardownOptions,
@@ -312,7 +382,7 @@ export async function runBoundedEvolveTeardown(
   }
 
   // 2. Workers, on a shared budget.
-  const { terminated, abandoned } = await terminateWorkers(
+  const { terminated, abandoned, unreclaimable } = await terminateWorkers(
     label,
     options.workers ?? [],
     now,
@@ -330,7 +400,10 @@ export async function runBoundedEvolveTeardown(
   // A failed persist is re-thrown here — after the workers are down, so the
   // caller is not left with a live pool, and before the replay drain, which
   // exists only to protect work this run can no longer produce.
+  // The unreclaimable-worker guard is armed here too, before the rethrow: the
+  // caller gets no later chance to exit and a live worker would hang it.
   if (persistFailed) {
+    handleUnreclaimableWorkers(options, label, unreclaimable);
     throw persistError;
   }
 
@@ -349,6 +422,7 @@ export async function runBoundedEvolveTeardown(
     tasksAbandoned,
     workersTerminated: terminated,
     workersAbandoned: abandoned,
+    workersUnreclaimable: unreclaimable,
     replayDrained: drained,
     replayAbandoned,
   };
@@ -365,6 +439,10 @@ export async function runBoundedEvolveTeardown(
   } else {
     getLogger().info(summary);
   }
+
+  // 5. Unreclaimable workers (Issue #4126). Last, so the exit guard, if armed,
+  //    fires only after every persist and replay step has run.
+  handleUnreclaimableWorkers(options, label, unreclaimable);
 
   return report;
 }

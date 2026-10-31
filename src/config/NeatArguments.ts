@@ -133,6 +133,24 @@ export interface NeatArguments {
   /** Maximum number of minutes to run the training loop before exiting. */
   timeoutMinutes: number;
 
+  /**
+   * When true, the library exits the process via `Deno.exit()` — preserving
+   * `Deno.exitCode` — 10 s after teardown, instead of letting the process hang
+   * until an external watchdog kills it. The guard is armed only when `evolveDir`
+   * finishes while a worker it quarantined with an unanswered task could not be
+   * stopped (a thread blocked in native code ignores `Worker.terminate()`).
+   *
+   * Takes effect in `evolveDir`, the entry point that schedules native-trainer
+   * tasks. It is accepted but has no effect in `evolveEnv` or `evolveRL` today:
+   * `evolveEnv` has no worker pool, and `evolveRL`'s EpisodeWorkerPool does not
+   * report unstoppable workers.
+   *
+   * Default false: a library does not exit its host unasked. Only enable it in a
+   * script that has nothing left to do after the evolve call returns (or finishes
+   * within the grace period).
+   */
+  exitOnUnreclaimableWorkers: boolean;
+
   /** Number of training sessions per generation. Default is 1. */
   trainPerGen: number;
 

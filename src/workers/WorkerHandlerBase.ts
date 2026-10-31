@@ -327,6 +327,17 @@ export abstract class WorkerHandlerBase<
    * not be handed the next task.
    */
   private healthy = true;
+  /**
+   * Number of tasks this handler has cancelled while they were unanswered
+   * (Issue #4126). Never reset: a cancelled task never returned a result, so
+   * its worker may still be blocked in native code.
+   */
+  private unansweredCancelled = 0;
+  /**
+   * True when the quarantine that took this worker out of service left a task
+   * unanswered (Issue #4126). Set by {@link quarantine}.
+   */
+  private unreclaimable = false;
   /** Listeners to notify when worker becomes idle */
   private idleListeners: WorkerEventListener<this>[] = [];
   /** Promise that resolves once the worker is initialised */
@@ -687,6 +698,19 @@ export abstract class WorkerHandlerBase<
   }
 
   /**
+   * True when this worker was quarantined with a task that never returned a
+   * result (Issue #4126).
+   *
+   * Such a thread may be blocked in native code, which {@link terminate}
+   * cannot interrupt, and Deno keeps the process alive until that thread ends.
+   * A quarantine with no unanswered task (e.g. an error event on an idle
+   * worker) stays false.
+   */
+  couldNotBeStopped(): boolean {
+    return this.unreclaimable;
+  }
+
+  /**
    * Give up on one in-flight task, settling its promise as a failure
    * (GRQ #4489).
    *
@@ -701,6 +725,7 @@ export abstract class WorkerHandlerBase<
     if (!task) return false;
 
     this.pending.delete(taskID);
+    this.unansweredCancelled++;
     const error = new WorkerTaskCancelledError({
       taskID,
       workerID: this.workerID,
@@ -744,13 +769,17 @@ export abstract class WorkerHandlerBase<
    * cannot be trusted with the next one: on GRQ-22-rocket the same two task
    * ids were abandoned twice in a single run. Quarantine fails whatever is
    * still in flight, marks the handler unhealthy so {@link WorkerPool} stops
-   * selecting it, and stops the isolate.
+   * selecting it, and asks the isolate to stop.
    *
    * Each labelled task is failed with a reason that names its own label and
    * records it as collateral of this quarantine, with `reason` kept inside it;
    * unlabelled tasks fail with `reason` unchanged (see {@link cancelAllTasks}).
    * The task that caused the quarantine keeps its own reason when it was
    * cancelled first with {@link cancelTask}.
+   *
+   * {@link terminate} cannot interrupt a thread blocked in native code. When a
+   * task never returned a result, {@link couldNotBeStopped} reports that the
+   * thread may still hold the process open (Issue #4126).
    */
   quarantine(reason: string, cause?: Error): void {
     if (!this.healthy) return;
@@ -760,6 +789,7 @@ export abstract class WorkerHandlerBase<
         `given further work (GRQ #4489)`,
     );
     this.cancelAllTasks(reason, cause);
+    this.unreclaimable = this.unansweredCancelled > 0;
     this.worker.terminate();
   }
 
@@ -861,7 +891,9 @@ export abstract class WorkerHandlerBase<
   }
 
   /**
-   * Terminates the worker and cleans up resources.
+   * Asks the worker to terminate and cleans up resources. A thread blocked in
+   * native code cannot be interrupted by this call — see
+   * {@link couldNotBeStopped} (Issue #4126).
    *
    * GRQ #4489: dropping in-flight tasks here leaves their promises pending
    * forever. Teardown is not the place to change a run's control flow, so the

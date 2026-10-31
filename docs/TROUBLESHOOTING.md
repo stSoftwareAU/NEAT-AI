@@ -19,6 +19,7 @@ flowchart LR
     Idx --> CI[troubleshooting/CI.md]
     Idx --> Cfg[troubleshooting/CONFIGURATION.md]
     Idx --> ONNX[troubleshooting/ONNX.md]
+    Idx --> Exit[troubleshooting/PROCESS_DOES_NOT_EXIT.md]
 ```
 
 ## 🧭 First-response decision tree
@@ -32,6 +33,7 @@ flowchart TD
     Start --> Err[Error message thrown]
     Start --> Slow[Run is too slow]
     Start --> Bad[Run finishes but results are poor]
+    Start --> Hang[Run finishes but the process never exits]
 
     Crash --> OOM{Exit 143 / SIGTERM?}
     OOM -->|yes| Mem[troubleshooting/MEMORY.md]
@@ -48,6 +50,8 @@ flowchart TD
     Slow --> Perf[troubleshooting/PERFORMANCE.md]
 
     Bad --> Train[troubleshooting/TRAINING.md]
+
+    Hang --> Exit[troubleshooting/PROCESS_DOES_NOT_EXIT.md]
 ```
 
 ## ⚙️ WASM (WebAssembly) — init, load, and runtime panics

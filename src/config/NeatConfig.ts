@@ -393,6 +393,7 @@ export function createNeatConfig(
       integer: true,
       min: 0,
     }),
+    exitOnUnreclaimableWorkers: options.exitOnUnreclaimableWorkers ?? false,
     traceStore: options.traceStore,
     trainPerGen: parseNumber(
       "Training per generation",

@@ -5,6 +5,7 @@ import {
   runBoundedEvolveTeardown,
   type TerminableWorker,
 } from "@creature/BoundedEvolveTeardown.ts";
+import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
 
 /**
  * GRQ #4472: unit cover for the bounded post-loop teardown.
@@ -358,4 +359,257 @@ Deno.test("bounded teardown: unmerged work is still named when persist fails (Is
   );
 
   assertEquals([abandonCalls, discardCalls], [1, 1]);
+});
+
+/** Grace period handed to the injected exit guard (Issue #4126). */
+const GRACE_MS = 1_234;
+
+/**
+ * Run `body` with the global logger swapped for one that records every warn
+ * line, restoring the previous logger afterwards so no other test sees it.
+ */
+async function captureWarnings<T>(
+  body: () => Promise<T>,
+): Promise<{ value: T; warnings: string[] }> {
+  const warnings: string[] = [];
+  const capture: Logger = {
+    debug: () => {},
+    info: () => {},
+    warn: (...args: unknown[]) => {
+      warnings.push(args.map(String).join(" "));
+    },
+    error: () => {},
+  };
+  const previous = getLogger();
+  setLogger(capture);
+  try {
+    const value = await body();
+    return { value, warnings };
+  } finally {
+    setLogger(previous);
+  }
+}
+
+/**
+ * A fake exit guard. Its `schedule` records the grace period it was armed with
+ * and holds the callback; nothing fires on its own, so no test waits on a real
+ * timer. `fire()` stands in for the grace period elapsing.
+ */
+function fakeExitGuard() {
+  const scheduledMS: number[] = [];
+  const exitCodes: number[] = [];
+  let armedCallback: (() => void) | undefined;
+  return {
+    scheduledMS,
+    exitCodes,
+    guard: {
+      graceMS: GRACE_MS,
+      exit: (code: number) => {
+        exitCodes.push(code);
+      },
+      schedule: (fn: () => void, ms: number) => {
+        scheduledMS.push(ms);
+        armedCallback = fn;
+      },
+    },
+    fire: () => armedCallback?.(),
+  };
+}
+
+/** A worker whose `terminate()` returns but whose thread cannot be stopped. */
+function unreclaimableWorker(): TerminableWorker {
+  return { terminate: () => {}, couldNotBeStopped: () => true };
+}
+
+Deno.test("bounded teardown (Issue #4126): a worker that terminates but could not be stopped is counted and named", async () => {
+  const { value: report, warnings } = await captureWarnings(() =>
+    runBoundedEvolveTeardown(baseOptions({
+      workers: [unreclaimableWorker()],
+    }))
+  );
+
+  assertEquals(
+    report.workersTerminated,
+    1,
+    "terminate() returned, so the worker is still terminated",
+  );
+  assertEquals(
+    report.workersUnreclaimable,
+    1,
+    "a terminated worker still reporting couldNotBeStopped() is unreclaimable",
+  );
+  const named = warnings.filter((w) => w.includes("could not be stopped"));
+  assertEquals(
+    named.length,
+    1,
+    "exactly one warn line must name the unreclaimable worker",
+  );
+  assert(
+    named[0].includes("1 worker(s) could not be stopped"),
+    `the warn line must name the count, got: ${named[0]}`,
+  );
+  assert(
+    named[0].includes("call Deno.exit() once your work is done"),
+    "with the exit option off the warn line must tell the caller to exit",
+  );
+});
+
+Deno.test("bounded teardown (Issue #4126): a worker that is not reported as unstoppable is not counted and not named", async () => {
+  const { value: report, warnings } = await captureWarnings(() =>
+    runBoundedEvolveTeardown(baseOptions({
+      workers: [
+        { terminate: () => {} },
+        { terminate: () => {}, couldNotBeStopped: () => false },
+      ],
+    }))
+  );
+
+  assertEquals(report.workersTerminated, 2);
+  assertEquals(
+    report.workersUnreclaimable,
+    0,
+    "absent or false couldNotBeStopped() must leave the count at zero",
+  );
+  assertEquals(
+    warnings.filter((w) => w.includes("could not be stopped")),
+    [],
+    "no unreclaimable warning when every worker is reclaimable",
+  );
+});
+
+Deno.test("bounded teardown (Issue #4126): detached and unstoppable workers are each counted once", async () => {
+  const { value: report, warnings } = await captureWarnings(() =>
+    runBoundedEvolveTeardown(baseOptions({
+      workers: [
+        // Throws, and also reports unstoppable: counted once, as detached.
+        {
+          terminate: () => {
+            throw new Error("native scorer will not unwind");
+          },
+          couldNotBeStopped: () => true,
+        },
+        unreclaimableWorker(),
+      ],
+    }))
+  );
+
+  assertEquals(report.workersAbandoned, 1);
+  assertEquals(report.workersTerminated, 1);
+  assertEquals(
+    report.workersUnreclaimable,
+    2,
+    "the detached worker and the unstoppable one, each counted once",
+  );
+  assert(
+    warnings.some((w) => w.includes("2 worker(s) could not be stopped")),
+    "the warn line must carry the combined count",
+  );
+});
+
+Deno.test("bounded teardown (Issue #4126): with the exit option off an unreclaimable worker arms nothing", async () => {
+  const guard = fakeExitGuard();
+  const { value: report, warnings } = await captureWarnings(() =>
+    runBoundedEvolveTeardown(baseOptions({
+      workers: [unreclaimableWorker()],
+      exitGuard: guard.guard,
+    }))
+  );
+
+  assertEquals(report.workersUnreclaimable, 1);
+  assertEquals(
+    guard.scheduledMS,
+    [],
+    "the exit guard must not be armed when exitOnUnreclaimableWorkers is off",
+  );
+  assert(
+    warnings.some((w) => w.includes("call Deno.exit() once your work is done")),
+    "the caller must be told to exit itself",
+  );
+});
+
+Deno.test("bounded teardown (Issue #4126): with the exit option on but no unreclaimable worker, nothing is armed", async () => {
+  const guard = fakeExitGuard();
+  const { value: report, warnings } = await captureWarnings(() =>
+    runBoundedEvolveTeardown(baseOptions({
+      workers: [{ terminate: () => {} }],
+      exitOnUnreclaimableWorkers: true,
+      exitGuard: guard.guard,
+    }))
+  );
+
+  assertEquals(report.workersUnreclaimable, 0);
+  assertEquals(
+    guard.scheduledMS,
+    [],
+    "a clean teardown must never arm the exit guard",
+  );
+  assertEquals(
+    warnings.filter((w) => w.includes("could not be stopped")),
+    [],
+    "a clean teardown must not warn about unstoppable workers",
+  );
+});
+
+Deno.test("bounded teardown (Issue #4126): with the exit option on and an unreclaimable worker, the guard is armed for the label and count", async () => {
+  const guard = fakeExitGuard();
+  const { value: report, warnings } = await captureWarnings(async () => {
+    const result = await runBoundedEvolveTeardown(baseOptions({
+      label: "evolveDir",
+      workers: [unreclaimableWorker()],
+      exitOnUnreclaimableWorkers: true,
+      exitGuard: guard.guard,
+    }));
+    // The guard's own timer callback names the label and count it was armed
+    // with, then exits. Fire it to observe exactly that.
+    guard.fire();
+    return result;
+  });
+
+  assertEquals(report.workersUnreclaimable, 1);
+  assertEquals(
+    guard.scheduledMS,
+    [GRACE_MS],
+    "the guard must be armed once, with the caller's grace period",
+  );
+  assertEquals(
+    guard.exitCodes.length,
+    1,
+    "the armed guard must exit once its grace period elapses",
+  );
+  assert(
+    warnings.some((w) =>
+      w.startsWith("[evolveDir] teardown: 1 worker(s) could not be stopped") &&
+      w.includes("will be exited after the grace period")
+    ),
+    "the teardown warn line must name the label and count and say the process will be exited",
+  );
+  assert(
+    warnings.some((w) =>
+      w.startsWith("evolveDir: 1 worker thread(s) could not be stopped")
+    ),
+    "the armed guard must be armed with the same label and count",
+  );
+});
+
+Deno.test("bounded teardown (Issue #4126): a failed persist still arms the guard before the rethrow", async () => {
+  const guard = fakeExitGuard();
+  await captureWarnings(() =>
+    assertRejects(
+      () =>
+        runBoundedEvolveTeardown(baseOptions({
+          workers: [unreclaimableWorker()],
+          persist: () => Promise.reject(new Error("checkpoint write failed")),
+          exitOnUnreclaimableWorkers: true,
+          exitGuard: guard.guard,
+        })),
+      Error,
+      "checkpoint write failed",
+    )
+  );
+
+  assertEquals(
+    guard.scheduledMS,
+    [GRACE_MS],
+    "the guard must be armed before the rethrow, or the caller hangs after the error",
+  );
 });

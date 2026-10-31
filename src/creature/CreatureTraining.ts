@@ -859,6 +859,7 @@ export async function evolveDir(
       await runBoundedEvolveTeardown({
         label: "evolveDir",
         neat,
+        exitOnUnreclaimableWorkers: config.exitOnUnreclaimableWorkers,
         persist: async () => {
           restoreEvolveChampion(
             creature,
@@ -1309,6 +1310,7 @@ export async function evolveEnv<S, A>(
       await runBoundedEvolveTeardown({
         label: "evolveEnv",
         neat,
+        exitOnUnreclaimableWorkers: config.exitOnUnreclaimableWorkers,
         persist: async () => {
           restoreEvolveChampion(
             creature,
@@ -2048,6 +2050,7 @@ export async function evolveRL<S, A>(
       await runBoundedEvolveTeardown({
         label: "evolveRL",
         neat,
+        exitOnUnreclaimableWorkers: config.exitOnUnreclaimableWorkers,
         persist: async () => {
           restoreEvolveChampion(
             creature,

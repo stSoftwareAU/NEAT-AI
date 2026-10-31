@@ -280,3 +280,47 @@ Deno.test("quarantine keeps the reason unchanged for an unlabelled task (Issue #
   const error = await assertRejects(() => response, WorkerTaskCancelledError);
   assertEquals(error.reason, "its worker crashed");
 });
+
+Deno.test("couldNotBeStopped is false on a fresh handler (Issue #4126)", () => {
+  const { handler } = createHandler();
+  assertEquals(handler.couldNotBeStopped(), false);
+});
+
+Deno.test("couldNotBeStopped stays false when a quarantine has no unanswered task (Issue #4126)", () => {
+  const { worker, handler } = createHandler();
+
+  // An error event on an idle worker: nothing is in flight to be stranded.
+  notifyWorkerError(worker, new Error("Worker error event (worker-1)"));
+
+  assertEquals(handler.isHealthy(), false, "the worker was quarantined");
+  assertEquals(handler.couldNotBeStopped(), false);
+});
+
+Deno.test("couldNotBeStopped is true when a quarantine cancels an unanswered task (Issue #4126)", async () => {
+  const { handler } = createHandler();
+  const { response } = handler.sendTracked("wedged");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  handler.quarantine("its task never returned");
+
+  await assertRejects(() => response, WorkerTaskCancelledError);
+  assertEquals(handler.couldNotBeStopped(), true);
+});
+
+Deno.test("couldNotBeStopped is true when the culprit task was cancelled before the quarantine (Issue #4126)", async () => {
+  const { handler } = createHandler();
+  const { taskID, response } = handler.sendTracked("wedged");
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert(handler.cancelTask(taskID, "past its per-task deadline"));
+  await assertRejects(() => response, WorkerTaskCancelledError);
+  assertEquals(handler.getPendingTaskCount(), 0);
+
+  handler.quarantine("its worker is wedged");
+
+  assertEquals(
+    handler.couldNotBeStopped(),
+    true,
+    "the unanswered task was cancelled, so its thread may still be blocked",
+  );
+});

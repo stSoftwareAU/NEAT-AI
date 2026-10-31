@@ -268,6 +268,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Issue #4126:** a run whose `evolveDir()` has returned can hang after a
+  quarantined worker that `Worker.terminate()` cannot stop (a thread blocked in
+  native code). The teardown now warns
+  `teardown: N worker(s) could not be stopped` for those workers. A new option,
+  `exitOnUnreclaimableWorkers` (`boolean`, default `false`), makes the library
+  call `Deno.exit()` 10 s after teardown, preserving `Deno.exitCode`, when
+  `evolveDir` finishes with such a worker still running. It is opt-in because a
+  library does not exit its host unasked. It takes effect in `evolveDir` only
+  and is accepted with no effect in `evolveEnv` or `evolveRL` today. See
+  [`docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md`](./docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md).
 - **Issue #4096:** The event-loop watchdog (Issue #4066) now has a main-thread
   heartbeat. The main thread writes the epoch-ms of its latest timer tick into a
   `SharedArrayBuffer` every `heartbeatIntervalMS` (default
