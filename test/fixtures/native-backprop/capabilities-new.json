@@ -1,0 +1,13 @@
+{
+  "abiVersion": 1,
+  "capabilities": {
+    "deadline": {
+      "cliFlag": "--deadline-epoch-ms",
+      "requestField": "deadlineEpochMs",
+      "resultFile": "result.json",
+      "unit": "epochMilliseconds",
+      "version": 1
+    }
+  },
+  "version": "0.1.50"
+}

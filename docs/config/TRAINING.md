@@ -144,6 +144,12 @@ watchdog records for the task. The watchdog abandons a task only after it has
 overrun that recorded deadline by its 30-second grace, so time spent waiting in
 the worker queue or setting up cannot extend the task.
 
+When the native `trainDir` trainer runs the task, the deadline is also enforced
+inside the engine, but only if the engine advertises the deadline capability
+(NEAT-AI-Backpropagation 0.1.50 or later, Issue #4119). An older engine runs
+with no native deadline, and the watchdog above is the only stop. See
+[the native trainer and the per-task deadline](../TIMEOUTS.md#-the-native-trainer-and-the-per-task-deadline-issue-4119).
+
 - Lower the cap (e.g. `2`) on tight wall-clock budgets so no single task can
   starve breeding/discovery.
 - Set `trainingTaskTimeoutMinutes: 0` to disable the cap and restore the

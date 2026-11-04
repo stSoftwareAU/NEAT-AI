@@ -40,14 +40,24 @@
  * `feedbackLoop`, recurrent (`forwardOnly !== true`), non-MSE cost.
  *
  * **TypeScript-only orchestration (Rust path ignores today)**
- * - `log`, `targetError`, `trainingTimeOutMinutes`, `hardDeadlineTS`
- *   (FFI unlocks honouring these without re-spawning; not wired yet)
+ * - `log`, `targetError` (FFI unlocks honouring these without re-spawning;
+ *   not wired yet)
  * - Most other `BackPropagationArguments` (e.g. `sparseRatio`,
  *   `generations`, L1/L2, `batchSize`) are not ABI/CLI fields yet
  *
+ * **Task deadline (Issue #4119)**: `trainingTimeOutMinutes` and
+ * `hardDeadlineTS` feed one effective deadline, the earlier of `hardDeadlineTS`
+ * and now + `trainingTimeOutMinutes` (whichever are set), computed once when
+ * training is set up (on the scheduler path `hardDeadlineTS` already is that
+ * deadline, Issue #4118) and floored to whole milliseconds. That deadline is
+ * what is forwarded as `deadlineEpochMs` / `--deadline-epoch-ms`, and only when
+ * the backend advertises the `deadline` capability; otherwise the native trainer
+ * does not enforce it.
+ *
  * **FFI-only convenience** (same fields as CLI, no process spawn): shared
  * in-process creature JSON, lower overhead per memetic `trainDir`. Mid-epoch
- * cancellation for `hardDeadlineTS` / `targetError` remains a follow-up.
+ * cancellation for `targetError` remains a follow-up. A deadline-capable
+ * backend stops within an epoch when the task deadline above passes.
  */
 import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
 import type { PredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
@@ -89,7 +99,15 @@ export interface TrainArguments extends BackPropagationArguments {
    */
   trainingSampleRate: number;
 
-  /** The maximum number of minutes to train for */
+  /**
+   * The maximum number of minutes to train for.
+   *
+   * Issue #4119: on the Rust path this is honoured through the task's one
+   * effective deadline, the earlier of {@link hardDeadlineTS} and now +
+   * `trainingTimeOutMinutes` (whichever are set), computed once when training
+   * is set up. It reaches a deadline-capable native trainer only via that
+   * deadline.
+   */
   trainingTimeOutMinutes: number;
 
   /**
@@ -112,8 +130,16 @@ export interface TrainArguments extends BackPropagationArguments {
    * behaviour is unchanged (direct `creature.train()` callers are
    * unaffected).
    *
-   * Not forwarded to `neat_ai_backpropagation` yet (TypeScript loop only;
-   * Issue #3765 notes FFI as the path to honour this in-process).
+   * Issue #4119: the task's effective deadline (the earlier of this and
+   * now + {@link trainingTimeOutMinutes}, whichever are set, computed once when
+   * training is set up; on the scheduler path this already is that deadline,
+   * Issue #4118) is forwarded, floored to whole milliseconds, to
+   * `neat_ai_backpropagation` as `deadlineEpochMs` (FFI) /
+   * `--deadline-epoch-ms` (CLI) only when the backend advertises the `deadline`
+   * capability v1 (NEAT-AI-Backpropagation issue
+   * #214, crate 0.1.50 or later). A backend without it runs with no deadline
+   * field or flag, NEAT-AI logs a warning once per backend, and the stuck-task
+   * watchdog is the only stop.
    */
   hardDeadlineTS?: number;
 

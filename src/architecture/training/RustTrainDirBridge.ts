@@ -1,12 +1,20 @@
 /**
  * Drive eligible `trainDir` through sibling `neat_ai_backpropagation`
- * (Issues #3741, #3765).
+ * (Issues #3741, #3765, #4119).
  *
  * Prefers in-process Deno FFI (`libneat_ai_backpropagation`, Backpropagation
  * #84) when the cdylib resolves. Falls back to spawning the CLI binary when
  * the library is absent. `./quality.sh --next` requires the FFI library so
  * that path is exercised; set `NEAT_AI_BACKPROP_REQUIRE_FFI=1` to refuse the
  * CLI fallback in other environments.
+ *
+ * Deadline (Issue #4119): the run's one absolute timeout, `setup.timeoutTS`,
+ * goes to the trainer as `deadlineEpochMs` / `--deadline-epoch-ms` only when
+ * the backend advertises the deadline capability (probed per backend). A
+ * capable trainer's response is the whole summary: the FFI response, or
+ * `result.json` for the CLI. A timed-out run returns on the normal result
+ * path. A legacy backend never receives the deadline, and a run with a
+ * deadline on one logs a warning once per backend.
  *
  * Options that are not backpropagation skip Rust (predictive coding,
  * cross-validation, custom costs, dropout, fuzzing, quantisation, Muon,
@@ -21,6 +29,7 @@
  */
 
 import { join, resolve } from "@std/path";
+import { blue } from "@std/fmt/colors";
 import type { CostInterface } from "@costs/CostInterface.ts";
 import { MSE } from "@costs/MSE.ts";
 import type { Creature } from "@creature";
@@ -28,6 +37,8 @@ import type { TrainOptions } from "@config/TrainOptions.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
+import { getTag } from "@stsoftware/tags/mod";
+import { TRAINING_TASK_WATCHDOG_GRACE_MS } from "@neat/PerTaskTrainingTimeout.ts";
 import { finaliseTraining } from "@architecture/training/TrainingTeardown.ts";
 import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
 import type { TrainingLoopResult } from "@architecture/training/TrainingLoop.ts";
@@ -37,9 +48,25 @@ import {
   closeNativeBackpropLibrary,
   findNativeBackpropLibrary,
   isNativeBackpropAvailable,
+  nativeBackpropDeadlineCapability,
+  type NativeBackpropMeasure,
   nativeBackpropTrain,
   type NativeBackpropTrainRequest,
+  type NativeBackpropTrainResponse,
+  parseNativeBackpropCapabilities,
+  parseNativeBackpropTrainResponse,
 } from "@architecture/training/NativeBackpropLibrary.ts";
+
+/**
+ * What a deadline-capable trainer reported beyond the MSE figures (Issue
+ * #4119). Legacy summaries leave it unset.
+ */
+interface NativeRunDetail {
+  bestMeasure: NativeBackpropMeasure;
+  /** Phase the run stopped in; `undefined` when it did not time out. */
+  phase: string | undefined;
+  weightsChanged: boolean;
+}
 
 /** Derived from `journal.jsonl` epoch lines (`TrainEpochRecord`). */
 interface TrainSummary {
@@ -48,6 +75,7 @@ interface TrainSummary {
   acceptedEpochs: number;
   completedEpochs: number;
   timedOut: boolean;
+  native?: NativeRunDetail;
 }
 
 interface TrainJournalLine {
@@ -454,24 +482,95 @@ function buildTrainRequestFields(
   };
 }
 
+/**
+ * The creature's own pre-training error: the first finite number among the
+ * `error` tag and the `untrained-error` tag. The worker dispatch
+ * (`WorkerHandler.trainTracked`) strips `error` and sends the pre-training
+ * error as `untrained-error` instead, so a real worker only has the latter.
+ * `undefined` when neither tag holds a finite number.
+ */
+function preTrainingErrorTag(creature: Creature): number | undefined {
+  for (const name of ["error", "untrained-error"]) {
+    const tag = getTag(creature, name);
+    if (tag === null) continue;
+    const value = parseFloat(tag);
+    if (Number.isFinite(value)) return value;
+  }
+  return undefined;
+}
+
+/**
+ * True once `now` is past the task deadline plus the watchdog grace
+ * (Issue #4119). A task with no deadline (`timeoutTS <= 0`) never is.
+ */
+export function isFinalisationWindowSpent(
+  timeoutTS: number,
+  now: number,
+): boolean {
+  return timeoutTS > 0 && now > timeoutTS + TRAINING_TASK_WATCHDOG_GRACE_MS;
+}
+
 function packageTrainingResult(
   creature: Creature,
   setup: TrainingSetupState,
   bestJson: CreatureExport,
   summary: TrainSummary,
 ): TrainingResult {
+  // Read before `loadFrom`, while the creature still carries its pre-training tags.
+  const carriedError = preTrainingErrorTag(creature);
   creature.loadFrom(bestJson, false, "training:rustTrainDir");
+
+  const native = summary.native;
+  let bestError = summary.bestMse;
+  let errorNote = "";
+  if (native !== undefined && native.bestMeasure.kind === "full") {
+    bestError = native.bestMeasure.mse;
+  } else if (native !== undefined) {
+    // No full MSE was measured. Never invent a score, and never use a partial
+    // MSE: carry the creature's own pre-training error (the `error` tag, or the
+    // `untrained-error` tag the worker dispatch sends instead), or NaN (the
+    // scheduler treats a non-finite error as a failed training result).
+    bestError = carriedError ?? Number.NaN;
+    errorNote = carriedError === undefined
+      ? "; error is NaN (no finite pre-training error tag or untrained-error tag)"
+      : `; error carried from the pre-training error (${carriedError}, the error or untrained-error tag)`;
+  }
+
+  if (native !== undefined && summary.timedOut) {
+    getLogger().info(
+      `Training ${blue(setup.ID)} stopped by the native deadline (phase ${
+        native.phase ?? "unknown"
+      }, ${summary.completedEpochs} epoch(s), weights changed: ${native.weightsChanged}, best measure: ${native.bestMeasure.kind})${errorNote}`,
+    );
+  }
 
   const loop: TrainingLoopResult = {
     iteration: Math.max(1, summary.completedEpochs),
-    bestError: summary.bestMse,
+    bestError,
     bestCreatureJSON: creature.exportJSON(),
     bestTraceJSON: creature.traceJSON(),
     sparseConfig: setup.sparseConfig,
     timedOut: summary.timedOut,
   };
 
-  return finaliseTraining(
+  // Issue #4119: finalisation must fit the original deadline plus the
+  // watchdog grace. When a deadline-stopped native run reaches here with that
+  // window already spent, the optional compacted copy is dropped: an explicit,
+  // logged degraded outcome that still returns the trained weights, instead of
+  // compacting past the window and tripping the watchdog.
+  const windowSpent = native !== undefined && summary.timedOut &&
+    isFinalisationWindowSpent(setup.timeoutTS, Date.now());
+  if (windowSpent) {
+    getLogger().warn(
+      `Training ${
+        blue(setup.ID)
+      } native adapter finalisation started after the watchdog window (deadline + ${
+        TRAINING_TASK_WATCHDOG_GRACE_MS / 1000
+      } s); returning the trained weights without the compacted copy.`,
+    );
+  }
+
+  const finalised = finaliseTraining(
     creature,
     loop,
     setup.iterationConfig,
@@ -479,7 +578,99 @@ function packageTrainingResult(
     setup.feedbackLoop,
     setup.syntheticKeys,
     setup.ID,
+    { skipCompaction: windowSpent },
   );
+
+  // Legacy trainers report no outcome beyond the MSE, so their result keeps
+  // the old shape.
+  if (native === undefined) return finalised;
+
+  if (
+    !windowSpent && summary.timedOut &&
+    isFinalisationWindowSpent(setup.timeoutTS, Date.now())
+  ) {
+    getLogger().warn(
+      `Training ${
+        blue(setup.ID)
+      } native adapter finalisation settled after the watchdog window (deadline + ${
+        TRAINING_TASK_WATCHDOG_GRACE_MS / 1000
+      } s); diagnostic only, the result is unchanged.`,
+    );
+  }
+
+  return {
+    ...finalised,
+    timedOut: summary.timedOut,
+    bestMeasure: native.bestMeasure.kind,
+  };
+}
+
+/**
+ * Summary of a deadline-capable response (Issue #4119). The response alone is
+ * the source: `journal.jsonl` may be absent when no epoch completed, so it is
+ * not read.
+ */
+function summaryFromNativeResponse(
+  response: NativeBackpropTrainResponse,
+): TrainSummary {
+  // The parser guarantees these for a deadline-capable response; the check
+  // keeps a future parser change from turning into a silent default.
+  if (
+    response.bestMeasure === undefined ||
+    response.completedEpochs === undefined ||
+    response.timedOut === undefined
+  ) {
+    throw new Error(
+      "native trainer response is missing a deadline field (bestMeasure, completedEpochs or timedOut)",
+    );
+  }
+  return {
+    baselineMse: response.baselineMse ?? Number.NaN,
+    bestMse: response.bestMse ?? Number.NaN,
+    acceptedEpochs: response.acceptedEpochs,
+    completedEpochs: response.completedEpochs,
+    timedOut: response.timedOut,
+    native: {
+      bestMeasure: response.bestMeasure,
+      phase: response.timeout?.phase,
+      weightsChanged: response.timeout?.weightsChanged ?? false,
+    },
+  };
+}
+
+/** Backends already warned about the missing deadline capability (Issue #4119). */
+const legacyDeadlineWarnedBackends = new Set<string>();
+
+/**
+ * Warn once per backend that a run with a deadline reaches a trainer that
+ * cannot enforce it (Issue #4119). The run itself is unchanged.
+ */
+function warnLegacyDeadlineOnce(backendKey: string, backend: string): void {
+  if (legacyDeadlineWarnedBackends.has(backendKey)) return;
+  legacyDeadlineWarnedBackends.add(backendKey);
+  getLogger().warn(
+    `[NEAT-AI] trainDir backend ${backend} does not advertise the native deadline capability, ` +
+      `so the per-task deadline is NOT enforced natively. The stuck-task watchdog ` +
+      `(deadline + ${
+        TRAINING_TASK_WATCHDOG_GRACE_MS / 1000
+      } s) is the only stop for this run; ` +
+      `upgrade NEAT-AI-Backpropagation (issue #214) to enforce the deadline.`,
+  );
+}
+
+/** Test seam: forget which backends have already been warned about. */
+export function __resetNativeDeadlineDiagnosticsForTests(): void {
+  legacyDeadlineWarnedBackends.clear();
+}
+
+/** `deadlineEpochMs` for a deadline-capable trainer; absent otherwise. */
+function deadlineRequestField(
+  deadlineCapable: boolean,
+  timeoutTS: number,
+): { deadlineEpochMs?: number } {
+  return deadlineCapable && timeoutTS > 0
+    ? { deadlineEpochMs: Math.floor(timeoutTS) }
+    : {};
 }
 
 function tryFfiTrainDir(
@@ -498,6 +689,8 @@ function tryFfiTrainDir(
     setup,
     outputDir,
   );
+  const deadlineCapable = nativeBackpropDeadlineCapability() !== undefined;
+  const libraryPath = findNativeBackpropLibrary() ?? "loaded";
   const request: NativeBackpropTrainRequest = {
     creatureJson: fields.creatureJson,
     trainingData: fields.trainingData,
@@ -514,21 +707,37 @@ function tryFfiTrainDir(
     maximumWeightAdjustmentScale: fields.maximumWeightAdjustmentScale,
     stepScale: fields.stepScale,
     traceStore: fields.traceStore ?? null,
+    ...deadlineRequestField(deadlineCapable, setup.timeoutTS),
   };
 
-  const backendKey = `ffi:${findNativeBackpropLibrary() ?? "loaded"}`;
+  const backendKey = `ffi:${libraryPath}`;
   if (loggedTrainDirBackend !== backendKey) {
     loggedTrainDirBackend = backendKey;
     getLogger().info(
       `[NEAT-AI] trainDir using FFI libneat_ai_backpropagation`,
     );
   }
+  if (!deadlineCapable && setup.timeoutTS > 0) {
+    warnLegacyDeadlineOnce(
+      backendKey,
+      `libneat_ai_backpropagation at ${libraryPath}`,
+    );
+  }
 
   const response = nativeBackpropTrain(request);
   const bestJson = JSON.parse(response.bestCreatureJson) as CreatureExport;
+  if (deadlineCapable) {
+    return packageTrainingResult(
+      creature,
+      setup,
+      bestJson,
+      summaryFromNativeResponse(response),
+    );
+  }
+  // Legacy library: the parser guarantees numeric MSEs for a legacy response.
   const summary: TrainSummary = {
-    baselineMse: response.baselineMse,
-    bestMse: response.bestMse,
+    baselineMse: response.baselineMse as number,
+    bestMse: response.bestMse as number,
     acceptedEpochs: response.acceptedEpochs,
     completedEpochs: Math.max(1, response.epochs),
     timedOut: false,
@@ -548,6 +757,63 @@ function tryFfiTrainDir(
   return packageTrainingResult(creature, setup, bestJson, summary);
 }
 
+/** The stderr line that names a failure: the first `error` line, else the first non-empty line. */
+function causeLine(stderr: string): string {
+  const lines = stderr.split("\n").map((line) => line.trim()).filter((line) =>
+    line.length > 0
+  );
+  return lines.find((line) => /error/i.test(line)) ?? lines[0] ??
+    "(no stderr output)";
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Whether the CLI advertises the deadline capability (Issue #4119). A CLI
+ * without the `capabilities` subcommand is legacy; any other failure throws
+ * rather than falling back silently.
+ */
+export function cliDeadlineCapable(binary: string): boolean {
+  // SIMPLE-ON-PURPOSE: one capabilities spawn per train (a few ms beside a multi-second train); upgrade when CLI trains become sub-second.
+  const probe = spawnTrain(binary, ["capabilities"]);
+  if (probe.success) {
+    return parseNativeBackpropCapabilities(probe.stdout).deadline !== undefined;
+  }
+  if (probe.stderr.includes("unrecognized subcommand")) return false;
+  throw new Error(
+    `neat_ai_backpropagation capabilities failed (exit ${probe.code}): ${
+      causeLine(probe.stderr)
+    }`,
+  );
+}
+
+/**
+ * `result.json` written by a deadline-capable CLI: the same object the FFI
+ * returns. A missing or malformed file throws, and the message names it.
+ */
+function readCliResultFile(outputDir: string): NativeBackpropTrainResponse {
+  const resultPath = join(outputDir, "result.json");
+  let text: string;
+  try {
+    text = Deno.readTextFileSync(resultPath);
+  } catch (error) {
+    throw new Error(
+      `neat_ai_backpropagation train exited 0 but ${resultPath} could not be read: ${
+        errorMessage(error)
+      }`,
+    );
+  }
+  try {
+    return parseNativeBackpropTrainResponse(text, true);
+  } catch (error) {
+    throw new Error(
+      `${resultPath} is not a valid train response: ${errorMessage(error)}`,
+    );
+  }
+}
+
 function tryCliTrainDir(
   creature: Creature,
   dataDir: string,
@@ -562,6 +828,7 @@ function tryCliTrainDir(
         "refusing WASM/TypeScript fallback (neat_ai_backpropagation binary was not found).",
     );
   }
+  const deadlineCapable = cliDeadlineCapable(binary);
 
   const creaturePath = join(workDir, "creature.json");
   const outputDir = join(workDir, "out");
@@ -606,11 +873,21 @@ function tryCliTrainDir(
   if (fields.traceStore !== undefined) {
     args.push("--trace-store", fields.traceStore);
   }
+  if (deadlineCapable && setup.timeoutTS > 0) {
+    args.push("--deadline-epoch-ms", String(Math.floor(setup.timeoutTS)));
+  }
 
+  const backendKey = `cli:${binary}`;
   if (loggedTrainDirBackend !== binary) {
     loggedTrainDirBackend = binary;
     getLogger().info(
       `[NEAT-AI] trainDir using CLI neat_ai_backpropagation at ${binary}`,
+    );
+  }
+  if (!deadlineCapable && setup.timeoutTS > 0) {
+    warnLegacyDeadlineOnce(
+      backendKey,
+      `CLI neat_ai_backpropagation at ${binary}`,
     );
   }
 
@@ -619,6 +896,17 @@ function tryCliTrainDir(
     throw new Error(
       `neat_ai_backpropagation train failed (exit ${spawned.code}): ` +
         spawned.stderr.trim(),
+    );
+  }
+
+  if (deadlineCapable) {
+    const response = readCliResultFile(outputDir);
+    const bestJson = JSON.parse(response.bestCreatureJson) as CreatureExport;
+    return packageTrainingResult(
+      creature,
+      setup,
+      bestJson,
+      summaryFromNativeResponse(response),
     );
   }
 

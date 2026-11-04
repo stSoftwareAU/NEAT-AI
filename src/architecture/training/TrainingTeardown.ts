@@ -210,6 +210,9 @@ export function stripUntrackedTraces(
 /**
  * Finalise training: load best creature, prune synthetic synapses,
  * strip unused traces, compact, and package the final result.
+ *
+ * `options.skipCompaction` returns the trained creature without the compacted
+ * copy (Issue #4119: the finalisation budget is already spent).
  */
 export function finaliseTraining(
   creature: Creature,
@@ -219,6 +222,7 @@ export function finaliseTraining(
   feedbackLoop: boolean,
   syntheticKeys: Set<string> | undefined,
   ID: string,
+  options: { skipCompaction?: boolean } = {},
 ): TrainingResult {
   let { bestCreatureJSON, bestTraceJSON } = loop;
 
@@ -241,6 +245,20 @@ export function finaliseTraining(
   bestTraceJSON = pruned.bestTraceJSON;
 
   stripUntrackedTraces(bestTraceJSON, bestCreatureJSON, loop.sparseConfig);
+
+  // Issue #4119: a native run that is already past its deadline-plus-grace
+  // window returns the trained weights without the optional compacted copy.
+  if (options.skipCompaction === true) {
+    ageNewbornGrace(creature);
+    ageNewbornGrace(bestTraceJSON);
+    return {
+      ID,
+      iteration: loop.iteration,
+      error: loop.bestError,
+      trace: bestTraceJSON,
+      compact: undefined,
+    };
+  }
 
   let compact = compactUnused(bestTraceJSON, iterationConfig.plankConstant);
   // Issue #3970: `compactUnused` spends a grace round on the copy it returns.

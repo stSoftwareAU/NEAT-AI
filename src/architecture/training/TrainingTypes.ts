@@ -27,4 +27,20 @@ export interface TrainingResult {
   trace: CreatureTrace;
   /** Compact export of the best creature, when available. */
   compact: CreatureExport | undefined;
+  /**
+   * `true` when a deadline-capable native trainer stopped the run at its
+   * absolute deadline (Issue #4119). Absent for the TypeScript loop and for a
+   * legacy native trainer, which cannot report a timeout.
+   */
+  timedOut?: boolean;
+  /**
+   * The measure `error` was taken from, for a deadline-capable native run
+   * (Issue #4119). `"full"` means `error` is the trainer's complete MSE over
+   * the selection. `"partial"` and `"unmeasured"` mean no MSE was measured, so
+   * `error` is the creature's pre-training error (the `error` tag, or the
+   * `untrained-error` tag the worker dispatch sends instead), or `NaN` when
+   * neither holds a finite number. Absent for the TypeScript loop and for a
+   * legacy native trainer.
+   */
+  bestMeasure?: "full" | "partial" | "unmeasured";
 }

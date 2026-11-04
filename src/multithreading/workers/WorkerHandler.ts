@@ -36,6 +36,7 @@ import type {
   CandidateSynapse,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { BreedingSubPhaseTiming } from "@config/TrainingEvent.ts";
+import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 import type { NeatConfig } from "@config/NeatConfig.ts";
 import type { RequiredOutputRange } from "@config/OutputRangeConfig.ts";
 import type { RequiredRustScorerConfig } from "@config/RustScorerConfig.ts";
@@ -238,6 +239,18 @@ export interface ResponseData {
     backtracked?: CreatureExport;
     /** Optional forward creature representation */
     forward?: CreatureExport;
+    /**
+     * `true` when a deadline-capable native trainer stopped the run at its
+     * deadline (Issue #4119). Set only by such a trainer; absent for the
+     * TypeScript loop and legacy engines, whose responses carry no such key.
+     */
+    timedOut?: TrainingResult["timedOut"];
+    /**
+     * The measure `error` was taken from (Issue #4119). Set only by a
+     * deadline-capable native trainer; absent for the TypeScript loop and
+     * legacy engines, whose responses carry no such key.
+     */
+    bestMeasure?: TrainingResult["bestMeasure"];
   };
   /** Echo response */
   echo?: {

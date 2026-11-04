@@ -121,7 +121,9 @@ predicate, applying the same one-generation floor
   `min(now + trainingTaskTimeoutMinutes, hardDeadlineTS)`, computed once at
   scheduling (Issues #2899, #4118). The worker is handed that value and does not
   re-anchor a fresh relative budget when it dequeues the task, so time spent
-  queueing cannot renew it.
+  queueing cannot renew it. On the native `trainDir` trainer the deadline is
+  forwarded to the engine only when the engine can enforce it (Issue #4119); see
+  [the native trainer and the per-task deadline](#-the-native-trainer-and-the-per-task-deadline-issue-4119).
 - **Discovery replay** — `DiscoveryReplayQueue.scheduleReplay()` refuses to
   start a replay once the cap has passed, and
   `waitForCompletion(hardDeadlineTS)` drops any queued replay and signals the
@@ -347,6 +349,113 @@ Every abandon path now settles the work as well as the bookkeeping:
 A response that arrives after its task was cancelled is logged and discarded —
 never asserted on, since an assertion inside the worker's message listener would
 escape as an uncaught error.
+
+## 🧠 The native trainer and the per-task deadline (Issue #4119)
+
+A training task that runs through the native `trainDir` trainer
+(`neat_ai_backpropagation`, from
+[NEAT-AI-Backpropagation](https://github.com/stSoftwareAU/NEAT-AI-Backpropagation))
+receives the same immutable per-task deadline as one that runs on the TypeScript
+loop (see
+[What each phase does at the hard cap](#-what-each-phase-does-at-the-hard-cap)).
+Whether the engine can enforce that deadline depends on its version, so NEAT-AI
+probes the engine before it sends anything.
+
+**The probe.** NEAT-AI asks the backend for its capabilities: the FFI symbol
+`neat_backprop_capabilities()`, or the `capabilities` subcommand of the CLI. An
+engine is **deadline-capable** when it advertises
+`capabilities.deadline.version` `== 1`. That is NEAT-AI-Backpropagation issue
+#214, in crate 0.1.50 or later. The native ABI version stays `1`.
+
+What happens next depends on the probe:
+
+1. **Legacy engine (no `deadline` capability, for example 0.1.49 or earlier).**
+   The task runs exactly as before, with no `deadlineEpochMs` field and no
+   `--deadline-epoch-ms` flag. NEAT-AI logs a warning, once per backend, that
+   the native deadline is **not enforced**. The stuck-task watchdog is the only
+   stop: the task's deadline plus `TRAINING_TASK_WATCHDOG_GRACE_MS` (30 s). A
+   wedged native call still ends in cancellation and quarantine (see
+   [Abandoning a task](#-abandoning-a-task-means-cancelling-it-grq-4489)).
+2. **Deadline-capable engine.** The task's effective deadline (the earlier of
+   `hardDeadlineTS` and now + `trainingTimeOutMinutes`, whichever are set,
+   computed once when training is set up, floored to whole milliseconds) is what
+   is forwarded. Backend selection, queueing and fallback never restart it. The
+   trainer is cooperative: it stops within an epoch, not only between epochs,
+   and returns OK with `timedOut: true` and the best creature found so far. That
+   is the weights learned from the accepted partial epochs, or the input when no
+   progress was made. A full-measure stop is scored like any other trained
+   result and is **not** guaranteed to beat the incumbent. A running 32-record
+   batch or scorer process is not interrupted.
+3. **Measures.** The trainer reports its baseline and best measure as `full`,
+   `partial` or `unmeasured`. A `partial` measure is the mean over only the
+   first N records, so it is **not** comparable to a full-corpus figure. The
+   `TrainingResult` returned by `trainDir` gains two optional fields, set by the
+   native path only: `timedOut` and `bestMeasure`. Its `error` depends on the
+   measure:
+   - `full`: `error` is the trainer's best MSE.
+   - `partial` or `unmeasured`: NEAT-AI does **not** invent a score. `error`
+     carries forward the creature's own pre-training error (the `error` tag, or
+     the `untrained-error` tag the worker dispatch sends instead). If neither
+     tag holds a finite number, `error` is `NaN`, which the scheduler already
+     treats as a failed (unusable) training result.
+
+   For a partial or unmeasured timeout with a usable carried error, the
+   scheduler queues weights unscored for the next generation's fitness pass. It
+   skips `calculateScore`, regression checks, fine-tune variants and
+   regression-tracker updates, and closes the gain-log event as `trained`
+   without `scoreAfter` or `errorAfter`.
+
+   If finalisation begins after the deadline plus
+   `TRAINING_TASK_WATCHDOG_GRACE_MS`, NEAT-AI logs a warning and skips
+   compaction, returning no compacted copy. Finalisation that begins inside the
+   window is not interrupted if it overruns.
+
+   A timeout before any full epoch is therefore an explicit, supported outcome.
+   So is an already-expired deadline: the trainer returns phase `start`,
+   unmeasured, with the weights unchanged.
+
+4. **Expired before the request.** A request whose `hardDeadlineTS` has already
+   expired still skips Rust and stays on the TypeScript loop (existing
+   behaviour, `rustTrainDirSkipReason`).
+5. **Result source.** A deadline-capable CLI is read from
+   `<output-dir>/result.json`, the same object the FFI returns. A legacy CLI is
+   still read from `journal.jsonl`. A deadline-capable backend whose response
+   misses the new fields, or is inconsistent (for example a number for a
+   `partial` measure), is **rejected** with an error that names the field. There
+   is no silent TypeScript or WASM fallback.
+6. **Preflight.** `scripts/check_native_backprop_train.ts`, run by
+   `./quality.sh --next`, reports the deadline capability. A malformed
+   capability payload fails it. A legacy library is a warning.
+
+```mermaid
+flowchart TD
+    S["Training task scheduled<br/>hardDeadlineTS fixed once"] --> P{"Engine advertises<br/>deadline capability v1?"}
+    P -- "no: legacy engine" --> L["Run as before, no deadline field or flag<br/>warn once per backend: not enforced"]
+    L --> LW["Stuck-task watchdog is the only stop<br/>(deadline + 30 s grace)"]
+    LW --> LC["Wedged call: cancelled, worker quarantined"]
+    P -- "yes" --> F["Forward effective task deadline<br/>deadlineEpochMs / --deadline-epoch-ms"]
+    F --> R{"Result"}
+    R -- "fields missing or inconsistent" --> X["Rejected, error names the field<br/>no TypeScript or WASM fallback"]
+    R -- "OK, timedOut true or false" --> B{"bestMeasure"}
+    B -- "full" --> FE["error = trainer's best MSE"]
+    B -- "partial or unmeasured" --> T{"Finite pre-training<br/>error tag?"}
+    T -- "yes" --> TE["error = pre-training tag"]
+    T -- "no" --> NE["error = NaN<br/>failed, unusable training result"]
+    FE --> V["Normal validation and evaluation"]
+    TE --> U["Queue weights unscored for next fitness pass<br/>no fine-tuning or regression-tracker update"]
+```
+
+The compatibility matrix below records what each engine and request combination
+does. "Deadline sent" means the `deadlineEpochMs` field or the
+`--deadline-epoch-ms` flag is passed.
+
+| Engine                                                  | Advertises `deadline` v1 | Deadline sent                 | Stop when the deadline passes     | Result read from              | Outcome                                                                                                                       |
+| ------------------------------------------------------- | ------------------------ | ----------------------------- | --------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Legacy, 0.1.49 or earlier, FFI or CLI                   | No                       | No                            | Stuck-task watchdog only (+ 30 s) | `journal.jsonl` (legacy CLI)  | Runs as before. One warning per backend that the native deadline is not enforced. A wedged call is cancelled and quarantined. |
+| Deadline-capable, 0.1.50 or later, FFI                  | Yes                      | Yes, as `deadlineEpochMs`     | Trainer stops within an epoch     | FFI response                  | OK with `timedOut`, the best creature so far, and `bestMeasure` / `error` as in point 3.                                      |
+| Deadline-capable, 0.1.50 or later, CLI                  | Yes                      | Yes, as `--deadline-epoch-ms` | Trainer stops within an epoch     | `<output-dir>/result.json`    | Same as FFI.                                                                                                                  |
+| Deadline-capable, new fields missing or inconsistent    | Yes                      | Yes                           | Not applicable (result rejected)  | FFI response or `result.json` | Rejected with an error naming the field. No fallback.                                                                         |
+| Any engine, deadline already expired before the request | Not applicable           | No (Rust not called)          | Not applicable                    | Not applicable                | Stays on the TypeScript loop (`rustTrainDirSkipReason`).                                                                      |
 
 ## 🔀 How the deadline propagates
 

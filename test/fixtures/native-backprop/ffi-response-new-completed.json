@@ -1,0 +1,28 @@
+{
+  "abiVersion": 1,
+  "version": "0.1.50",
+  "bestCreatureJson": "{\n  \"forwardOnly\": true,\n  \"input\": 1,\n  \"neurons\": [\n    {\n      \"bias\": 0.000054455445765858836,\n      \"squash\": \"IDENTITY\",\n      \"type\": \"hidden\",\n      \"uuid\": \"h1\"\n    },\n    {\n      \"bias\": 0.000054455445765858836,\n      \"squash\": \"IDENTITY\",\n      \"type\": \"hidden\",\n      \"uuid\": \"h2\"\n    },\n    {\n      \"bias\": 0.000054455445765858836,\n      \"squash\": \"IDENTITY\",\n      \"type\": \"output\",\n      \"uuid\": \"o1\"\n    }\n  ],\n  \"output\": 1,\n  \"semanticVersion\": \"4.0.0\",\n  \"synapses\": [\n    {\n      \"fromUUID\": \"input-0\",\n      \"toUUID\": \"h1\",\n      \"weight\": 1.00009900990099\n    },\n    {\n      \"fromUUID\": \"h1\",\n      \"toUUID\": \"h2\",\n      \"weight\": 1.00009900990099\n    },\n    {\n      \"fromUUID\": \"h2\",\n      \"toUUID\": \"o1\",\n      \"weight\": 1.00009900990099\n    }\n  ]\n}\n",
+  "baselineMse": 0.38500000014901176,
+  "bestMse": 0.3845915356043993,
+  "baselineMeasure": {
+    "kind": "full",
+    "mse": 0.38500000014901176,
+    "records": 100
+  },
+  "bestMeasure": {
+    "kind": "full",
+    "mse": 0.3845915356043993,
+    "records": 100
+  },
+  "acceptedEpochs": 1,
+  "epochs": 1,
+  "bestPath": "<OUTPUT_DIR>/best.json",
+  "journalPath": "<OUTPUT_DIR>/journal.jsonl",
+  "bestTracePath": null,
+  "failedTraceDir": null,
+  "baselineScore": null,
+  "bestScore": null,
+  "timedOut": false,
+  "timeout": null,
+  "completedEpochs": 1
+}
