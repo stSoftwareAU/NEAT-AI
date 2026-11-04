@@ -36,7 +36,10 @@
 
 import { Creature } from "@creature";
 import { Costs } from "@costs";
-import { type DataRecordInterface, makeDataDir } from "@architecture/DataSet.ts";
+import {
+  type DataRecordInterface,
+  makeDataDir,
+} from "@architecture/DataSet.ts";
 import { trainDir } from "@architecture/Training.ts";
 import type { TrainOptions } from "@config/TrainOptions.ts";
 import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
@@ -145,7 +148,9 @@ function installRecorder(): Recorded {
 }
 
 /** The adapter the bridge logged, or `none` when it fell through to TypeScript. */
-function adapterFrom(infos: string[]): { adapter: Adapter | "none"; log: string | null } {
+function adapterFrom(
+  infos: string[],
+): { adapter: Adapter | "none"; log: string | null } {
   const line = infos.find((message) =>
     message.includes("trainDir using FFI") ||
     message.includes("trainDir using CLI")
@@ -308,10 +313,8 @@ function runTrainScenario(
   const before = parameterMap(creature.exportJSON());
   // The reported deadline: the instant the native trainer must already be past
   // (expired), or the absolute deadline it is given (productive and legacy).
-  const deadlineEpochMs = expired
-    ? Date.now()
-    : Date.now() +
-      (legacy ? LEGACY_DEADLINE_MS : PRODUCTIVE_DEADLINE_MS);
+  const deadlineEpochMs = expired ? Date.now() : Date.now() +
+    (legacy ? LEGACY_DEADLINE_MS : PRODUCTIVE_DEADLINE_MS);
   const options: TrainOptions = expired
     ? {
       iterations: 1000,
@@ -424,7 +427,7 @@ async function runWorkerScenario(recorded: Recorded): Promise<ProbeOutput> {
     };
   } finally {
     handler.terminate();
-    Deno.removeSync(dataDir, { recursive: true });
+    await Deno.remove(dataDir, { recursive: true });
   }
 }
 

@@ -34,8 +34,9 @@ function writeXorDataset(path: string, samples: number): void {
 }
 
 Deno.test("TrainingTaskWatchdog - an already-expired deadline stops on the first iteration", () => {
-  // hardDeadlineTS is TypeScript loop behaviour; rust train does not
-  // honour per-task wall-clock deadlines yet.
+  // hardDeadlineTS is TypeScript loop behaviour here: rust trainDir is disabled
+  // for this case. A deadline-capable native trainer honours the deadline
+  // (Issue #4119); a legacy one does not, and only the watchdog stops it.
   __setRustTrainDirEnabledForTests(false);
   const dir = Deno.makeTempDirSync({ prefix: "training-watchdog-" });
   try {
