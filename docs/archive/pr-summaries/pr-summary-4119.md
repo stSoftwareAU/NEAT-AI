@@ -8,10 +8,11 @@ normal result, and older engines keep running exactly as before with an explicit
 "not enforced natively" warning. Version bump: no `VERSION` field is edited by
 this change; the merged commit records the final version.
 
-Part of #4119. Four criteria are still `partial` (see Acceptance Criteria): CI
-does not provide the native engines, adapter finalisation is only warned about
-rather than bounded, a stopped run with a partial/unmeasured score carries the
-incumbent's error forward, and `./quality.sh` could not run here.
+Part of #4119. Criteria still `partial` (see Acceptance Criteria): no required
+CI job provisions the native engines (`./quality.sh --next` runs the real-engine
+cases fail-closed, but it is a local/opt-in lane), and `./quality.sh` could not
+run here. The unearned-score gap and the unbounded finalisation are closed in
+the head commit.
 
 ```mermaid
 flowchart TD
@@ -22,8 +23,8 @@ flowchart TD
     R --> M{"bestMeasure"}
     M -- "full" --> E1["error = bestMse"]
     M -- "partial / unmeasured" --> E2["error = pre-training error<br/>or NaN, never the partial mse"]
-    E1 --> N["normal result path, worker keeps timedOut/bestMeasure"]
-    E2 --> N
+    E1 --> N["scheduleTraining scores and queues the weights"]
+    E2 --> U["scheduleTraining queues the weights unscored:<br/>no calculateScore, no fine-tune, no tracker update"]
 ```
 
 ## Spec
@@ -53,9 +54,22 @@ flowchart TD
   `TrainingResult.error` carries the creature's own pre-training error (the
   `error` tag, or the `untrained-error` tag that `WorkerHandler.trainTracked`
   sends instead), else `NaN`, which `isFailedTrainWorkerResponse` already treats
-  as an unusable result. Trade-off, flagged by the independent reviewers:
-  `scheduleTraining` then scores the changed weights with the incumbent's error.
-  That is not a new measured figure, but it is not an earned one either.
+  as an unusable result. `scheduleTraining` does not turn that carried figure
+  into a score: `isUnmeasuredTimeout` (timed out with a non-`full`
+  `bestMeasure`) skips `calculateScore`, the regression check, the fine-tune
+  variants and the regression-tracker update, closes the gain-log event as
+  `trained` with no `scoreAfter`/`errorAfter`, and still queues the changed
+  weights, which the next generation evaluates through the normal fitness path
+  (the queued export carries no `score`). A `full` measure is scored as any
+  other result.
+- Finalisation is bounded: `packageTrainingResult` checks
+  `isFinalisationWindowSpent(timeoutTS, now)` (now past deadline +
+  `TRAINING_TASK_WATCHDOG_GRACE_MS`) before `finaliseTraining`. When spent, it
+  logs a warning and returns the trained weights with no compacted copy
+  (`finaliseTraining(..., { skipCompaction: true })`) rather than compacting
+  past the watchdog window. The check is made once, before finalisation begins;
+  a finalisation that starts inside the window and overruns it is still only
+  reported after the fact.
 - Capable backends are strict: a missing or inconsistent field is an error
   naming the field, and there is no TypeScript/WASM fallback.
 - `timedOut` and `bestMeasure` are optional on `TrainingResult` and
@@ -126,9 +140,12 @@ quarantine (existing doc page linked, not changed in behaviour).
   `test/architecture/training/NativeDeadlineIntegration.ts::native deadline: FFI productive run stops at the deadline and keeps its learning`
   and
   `::native deadline: CLI productive run stops at the deadline and keeps its learning`
-  — reviewer: partial — reason: both pass against the real engines on this head,
-  but they run only where an engine resolves (CI provides none, so they are
-  ignored there and fail only under `NEAT_AI_BACKPROP_REQUIRE_FFI=1`).
+  — reviewer: partial — reason: both passed against the real engines (earlier
+  head; the engines were not rebuilt for the head commit), but they run only
+  where an engine resolves. `./quality.sh --next` sets
+  `NEAT_AI_BACKPROP_REQUIRE_FFI=1` and checks the library with
+  `scripts/check_native_backprop_train.ts` first, so a missing engine fails
+  there rather than being ignored; no required CI job runs that lane.
 - **partial** — The scheduled-worker integration path settles by its original
   deadline plus 30 seconds, including adapter finalisation; returned weights
   reach existing result evaluation without timeout-driven
@@ -136,18 +153,22 @@ quarantine (existing doc page linked, not changed in behaviour).
   `test/architecture/training/NativeDeadlineIntegration.ts::native deadline: a productive run through a real worker settles at the deadline on a healthy worker`,
   `test/workers/TrainTimeoutFieldsCrossWorkerBoundary.ts` — reviewer: partial —
   reason: the real worker settles within the grace and the result passes
-  `isFailedTrainWorkerResponse`, but the scheduler's evaluation is not run and
-  finalisation is only warned about (`RustTrainDirBridge.ts`
-  `packageTrainingResult`), not bounded.
+  `isFailedTrainWorkerResponse`; finalisation past the window now degrades
+  explicitly (`isFinalisationWindowSpent`, `FinalisationWindow.ts`) and the
+  scheduler's handling of the returned weights is tested at scheduler level
+  (`test/NEAT/UnmeasuredTimeoutNotScored.ts`). Still outstanding: the scheduler
+  is not driven through a real native engine, and finalisation that starts
+  inside the window is not interrupted.
 - **partial** — An already-expired/no-progress request and a timeout before any
   full epoch have explicit supported outcomes, without fabricated scores or
   unconditional parsing of an absent epoch journal. — evidence:
   `test/architecture/training/RustTrainDirDeadline.ts::Rust trainDir deadline: a partial measure never supplies the error`,
   `NativeDeadlineIntegration.ts::native deadline: FFI run already out of time stops unmeasured with the weights unchanged`
-  — reviewer: partial — reason: no journal is read on the capable path and the
-  outcomes are explicit, but a partial/unmeasured result carries the incumbent's
-  error forward (see Essential Design Decisions), so the scheduler scores
-  changed weights with a figure the trainer did not measure.
+  — reviewer: partial — reason: no journal is read on the capable path, the
+  outcomes are explicit, and the scheduler no longer scores partial/unmeasured
+  weights from the carried error
+  (`test/NEAT/UnmeasuredTimeoutNotScored.ts::deadline stop: a partial measure queues the weights without a score`);
+  the real-engine confirmation is engine-gated as above.
 - **partial** — Supported legacy FFI and CLI contracts receive no unsupported
   deadline fields/flags, retain prior execution behaviour and emit the required
   diagnostic. Fixtures are produced or verified by the actual legacy producer,
@@ -170,7 +191,8 @@ quarantine (existing doc page linked, not changed in behaviour).
   `test/creature/ProcessExitsAfterWedgedWorker.ts` (unchanged and passing) —
   reviewer: partial — reason: `./quality.sh` could not run here (native
   `rust_scorer` is missing); the equivalent targeted checks passed instead (see
-  Test Plan).
+  Test Plan), and the native scripts that `quality.sh --next` runs now have
+  hermetic tests (`test/scripts/NativeBackpropScripts.ts`).
 - **unrequested** — a `worker-productive` scenario, `WorkerTrainResponse.ts` and
   an info log in `NeatScheduling.ts` — reviewer: unrequested — reason: needed so
   `timedOut`/`bestMeasure` survive the worker boundary the scheduler reads from;
@@ -261,8 +283,30 @@ bullet), `docs/config/TRAINING.md`,
 `targetError`. Stale-but-unchanged: `src/NEAT/Neat.ts:119` "Enforcement lands in
 follow-up sub-issues" concerns the Neat-level field. No `deno.lock` change.
 
-Not done: CI does not provide the native engines or run these cases; adapter
-finalisation is warned about, not bounded; the scheduler's own evaluation is not
-run in the worker integration case; `./quality.sh` did not run here.
+Head commit "Do not score deadline-stopped unmeasured weights...": `deno lint`
+and `deno fmt --check` clean; `NEAT_AI_BACKPROP_ENABLED=0 deno test --parallel`
+over `test/architecture/training`, `test/workers`, `test/scripts`, `test/NEAT`,
+`test/multithreading`, `test/config`: `ok | 2521 passed | 0 failed | 8 ignored`.
+New files: `test/NEAT/UnmeasuredTimeoutNotScored.ts`,
+`test/architecture/training/FinalisationWindow.ts`,
+`test/scripts/NativeBackpropScripts.ts`.
+
+Mutation check: `scripts/native_deadline_probe.ts` and
+`scripts/check_native_backprop_train.ts` were not importable, so no test could
+reach them. Both now guard their entry point with `import.meta.main`;
+`checkNativeBackprop(deps)` takes injected dependencies and
+`checkAdapterPrecondition` takes the library path and an env reader. The helpers
+(`SCENARIO_ADAPTER`, `fail`, `installRecorder`, `adapterFrom`,
+`checkAdapterPrecondition`, `recordsFor`, `wideCreatureJSON`,
+`chainCreatureJSON`) and every branch of the check are asserted in
+`test/scripts/NativeBackpropScripts.ts`. Not re-run through the mutation tool.
+`runTrainScenario`, `runWorkerScenario` and `main` need a real engine and stay
+covered only by `NativeDeadlineIntegration.ts`.
+
+Not done: no required CI job provisions the native engines (the real-engine
+cases run under `./quality.sh --next`, with `NEAT_AI_BACKPROP_REQUIRE_FFI=1`);
+the real engines were not re-run against the head commit; the scheduler is not
+driven through a real native engine; finalisation that starts inside the window
+is not interrupted; `./quality.sh` did not run here.
 
 <!-- vibe-quality-gate-skipped reason="./quality.sh stops at its native rust_scorer prerequisite, which is not installed in this run; targeted fmt, lint, check and tests were run instead; CI runs the gate" -->
