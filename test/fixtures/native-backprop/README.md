@@ -17,7 +17,7 @@ moves.
   pretty-printed (whitespace only; content unchanged):
 
   ```sh
-  /tmp/bpnew/neat_ai_backpropagation capabilities
+  <new-engine-dir>/neat_ai_backpropagation capabilities
   ```
 
   The legacy CLI has no such subcommand; it exits 2 with
@@ -56,8 +56,8 @@ directly and called `neat_backprop_train`, with:
 deno run --no-config --no-lock --allow-ffi --allow-read --allow-write driver.ts <libPath> <outFile> [deadlineEpochMs]
 ```
 
-- `<libPath>`: `/tmp/bplegacy/libneat_ai_backpropagation.so` for the legacy
-  file, `/tmp/bpnew/libneat_ai_backpropagation.so` for the new ones.
+- `<libPath>`: `<legacy-engine-dir>/libneat_ai_backpropagation.so` for the legacy
+  file, `<new-engine-dir>/libneat_ai_backpropagation.so` for the new ones.
 - The dataset is a temporary directory holding `0.bin`: 100 little-endian f32
   `(x, 2x)` pairs, with `x` cycling through `0.1 … 1.0`.
 - The creature is the 1-input / 1-output identity chain `input-0 → h1 → h2 → o1`
