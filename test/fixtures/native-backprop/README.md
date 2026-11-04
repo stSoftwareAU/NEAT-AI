@@ -34,14 +34,14 @@ moves.
   with `records: 100`, and `baselineMse` / `bestMse` are numbers equal to their
   measure's `mse`.
 
-- `ffi-response-new-timedout-expired.json` — the NEW library with
+- `ffi-response-new-timed-out-expired.json` — the NEW library with
   `deadlineEpochMs: 1` (already expired, so the run stops before any work).
   `timedOut` is `true`, `timeout` is
   `{"phase":"start","completedEpochs":0,"weightsChanged":false,"deadlineEpochMs":1}`,
   both measures are `unmeasured`, `baselineMse` / `bestMse` are `null`, and
   `bestCreatureJson` equals the input creature.
 
-- No `ffi-response-new-timedout-partial.json`. A `partial` measure needs the
+- No `ffi-response-new-timed-out-partial.json`. A `partial` measure needs the
   deadline to land inside the baseline measurement, which is a narrow and
   nondeterministic window (1–10 ms offsets gave `unmeasured`, 13 ms and above
   gave `full`, in a sweep on the tiny creature). It was skipped rather than
@@ -49,15 +49,16 @@ moves.
 
 ## How the FFI responses were produced
 
-A throwaway Deno driver (not kept in the repository) dlopened the library
-directly and called `neat_backprop_train`, with:
+A throwaway Deno driver (not kept in the repository) loaded the library directly
+over FFI and called `neat_backprop_train`, with:
 
 ```sh
 deno run --no-config --no-lock --allow-ffi --allow-read --allow-write driver.ts <libPath> <outFile> [deadlineEpochMs]
 ```
 
-- `<libPath>`: `<legacy-engine-dir>/libneat_ai_backpropagation.so` for the legacy
-  file, `<new-engine-dir>/libneat_ai_backpropagation.so` for the new ones.
+- `<libPath>`: `<legacy-engine-dir>/libneat_ai_backpropagation.so` for the
+  legacy file, `<new-engine-dir>/libneat_ai_backpropagation.so` for the new
+  ones.
 - The dataset is a temporary directory holding `0.bin`: 100 little-endian f32
   `(x, 2x)` pairs, with `x` cycling through `0.1 … 1.0`.
 - The creature is the 1-input / 1-output identity chain `input-0 → h1 → h2 → o1`

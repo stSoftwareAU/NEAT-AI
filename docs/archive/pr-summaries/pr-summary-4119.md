@@ -79,7 +79,7 @@ flowchart TD
 ## Evidence
 
 Real engines, final head,
-`NEAT_AI_BACKPROP_DEADLINE_NEW=/tmp/bpnew NEAT_AI_BACKPROP_DEADLINE_LEGACY=/tmp/bplegacy`:
+`NEAT_AI_BACKPROP_DEADLINE_NEW=<new-engine-dir> NEAT_AI_BACKPROP_DEADLINE_LEGACY=<legacy-engine-dir>`:
 
 | Scenario                               | adapter     | timedOut           | bestMeasure | weights changed / valid | settled after deadline        |
 | -------------------------------------- | ----------- | ------------------ | ----------- | ----------------------- | ----------------------------- |
@@ -219,13 +219,13 @@ stops at its rust_scorer check, exit before any step):
   `test/scripts`, `test/docs`, `test/multithreading`, `test/NEAT`:
   `ok | 2756 passed | 0 failed | 8 ignored` (the ignored cases are the
   engine-gated native ones).
-- With real engines (`NEAT_AI_BACKPROP_DEADLINE_NEW=/tmp/bpnew`,
-  `..._LEGACY=/tmp/bplegacy`, `NEAT_AI_BACKPROP_LIB_PATH=/tmp/bpnew`):
-  `NativeDeadlineIntegration.ts`, `NativeBackpropCapabilities.ts`,
-  `RustTrainDirDeadline.ts`: `ok | 42 passed | 0 failed`;
-  `NativeDeadlineIntegration.ts` alone re-run after the last edit:
-  `ok | 7 passed | 0 failed`. The 18 cases of `RustTrainDirDeadline.ts` re-ran
-  green after the CLI-probe tests.
+- With real engines (`NEAT_AI_BACKPROP_DEADLINE_NEW=<new-engine-dir>`,
+  `..._LEGACY=<legacy-engine-dir>`,
+  `NEAT_AI_BACKPROP_LIB_PATH=<new-engine-dir>`): `NativeDeadlineIntegration.ts`,
+  `NativeBackpropCapabilities.ts`, `RustTrainDirDeadline.ts`:
+  `ok | 42 passed | 0 failed`; `NativeDeadlineIntegration.ts` alone re-run after
+  the last edit: `ok | 7 passed | 0 failed`. The 18 cases of
+  `RustTrainDirDeadline.ts` re-ran green after the CLI-probe tests.
 
 Added tests: `test/architecture/training/NativeBackpropCapabilities.ts` (parse,
 refuse, doubles-based `nativeBackpropTrain`),

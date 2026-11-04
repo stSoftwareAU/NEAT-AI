@@ -385,7 +385,8 @@ What happens next depends on the probe:
    is the weights learned from the accepted partial epochs, or the input when no
    progress was made. The result then goes through the normal validation and
    evaluation, the same as any trained result. It is **not** guaranteed to beat
-   the incumbent. A running 32-record batch or scorer process is not preempted.
+   the incumbent. A running 32-record batch or scorer process is not
+   interrupted.
 3. **Measures.** The trainer reports its baseline and best measure as `full`,
    `partial` or `unmeasured`. A `partial` measure is the mean over only the
    first N records, so it is **not** comparable to a full-corpus figure. The

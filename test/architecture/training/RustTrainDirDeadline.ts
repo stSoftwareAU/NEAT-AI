@@ -47,7 +47,7 @@ function readFixture(name: string): string {
 const CAPABILITIES = readFixture("capabilities-new.json");
 const LEGACY_RESPONSE = readFixture("ffi-response-legacy.json");
 const COMPLETED_RESPONSE = readFixture("ffi-response-new-completed.json");
-const EXPIRED_RESPONSE = readFixture("ffi-response-new-timedout-expired.json");
+const EXPIRED_RESPONSE = readFixture("ffi-response-new-timed-out-expired.json");
 
 /** The input creature the captures were produced from (`bestCreatureJson` of the expired run). */
 const INPUT_CREATURE_JSON = (JSON.parse(EXPIRED_RESPONSE) as {
