@@ -229,6 +229,15 @@ quarantine (existing doc page linked, not changed in behaviour).
 
 ## Test Plan
 
+Review follow-up: the hermetic POSIX fake CLI now exercises `trainDir` with a
+relative budget both with and without a hard deadline. It records the train
+arguments and returns a captured capable-engine timeout response. Coverage:
+`test/architecture/training/RustTrainDirDeadline.ts::Rust trainDir deadline: CLI forwards a relative budget with a hard deadline`
+and
+`::Rust trainDir deadline: CLI forwards a relative budget without a hard deadline`.
+Both cases fail when the CLI forwards `hardDeadlineTS` instead of `timeoutTS`,
+and when the deadline flag is removed; both mutations were restored.
+
 Review follow-up: the previously uncovered relative-budget case is now checked
 with and without a hard deadline by
 `test/architecture/training/RustTrainDirDeadline.ts::Rust trainDir deadline: a relative budget is forwarded with a hard deadline`

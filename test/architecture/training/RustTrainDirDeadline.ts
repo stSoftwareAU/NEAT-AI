@@ -14,7 +14,7 @@ import {
   assertStringIncludes,
   assertThrows,
 } from "@std/assert";
-import { join } from "@std/path";
+import { fromFileUrl, join } from "@std/path";
 import { Creature } from "@creature";
 import { Costs } from "@costs";
 import { addTag } from "@stsoftware/tags/mod";
@@ -648,6 +648,81 @@ Deno.test(
     });
   },
 );
+
+// A child isolates backend selection from any library installed on the host.
+for (const hardDeadline of [true, false]) {
+  Deno.test({
+    name: `Rust trainDir deadline: CLI forwards a relative budget ${
+      hardDeadline ? "with" : "without"
+    } a hard deadline${POSIX_SUFFIX}`,
+    ...POSIX_ONLY,
+    fn() {
+      const dir = Deno.makeTempDirSync({ prefix: "deadline-cli-" });
+      try {
+        const binary = join(dir, "neat_ai_backpropagation");
+        const argv = join(dir, "argv");
+        const invalidLib = join(dir, "invalid-lib");
+        Deno.writeTextFileSync(invalidLib, "not a library");
+        Deno.writeTextFileSync(
+          binary,
+          `#!/bin/sh
+if [ "$1" = capabilities ]; then
+  cat <<'CAPABILITIES'
+${CAPABILITIES}
+CAPABILITIES
+  exit 0
+fi
+printf '%s\n' "$@" > "$FAKE_ARGV"
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = --output-dir ]; then shift; output="$1"; fi
+  shift
+done
+cat > "$output/result.json" <<'RESULT'
+${EXPIRED_RESPONSE}
+RESULT
+`,
+        );
+        Deno.chmodSync(binary, 0o755);
+        const root = fromFileUrl(new URL("../../../", import.meta.url));
+        const child = new Deno.Command(Deno.execPath(), {
+          args: [
+            "run",
+            "-A",
+            "--config",
+            join(root, "deno.json"),
+            "--preload",
+            join(root, "test/_preload.ts"),
+            join(
+              root,
+              "test/architecture/training/fixtures/CliDeadlineDriver.ts",
+            ),
+            hardDeadline ? String(HARD_DEADLINE_TS) : "none",
+          ],
+          cwd: dir,
+          env: {
+            NEAT_AI_BACKPROP_ENABLED: "1",
+            NEAT_AI_BACKPROP_REQUIRE_FFI: "0",
+            NEAT_AI_BACKPROP_LIB_PATH: invalidLib,
+            NEAT_AI_BACKPROP_BINARY_PATH: binary,
+            FAKE_ARGV: argv,
+          },
+          stdout: "piped",
+          stderr: "piped",
+        }).outputSync();
+        assert(child.success, new TextDecoder().decode(child.stderr));
+        const args = Deno.readTextFileSync(argv).trimEnd().split("\n");
+        const index = args.indexOf("--deadline-epoch-ms");
+        assert(index >= 0, "CLI must receive --deadline-epoch-ms");
+        const value = Number(args[index + 1]);
+        assert(
+          Number.isSafeInteger(value) && value > 0 && value < HARD_DEADLINE_TS,
+        );
+      } finally {
+        Deno.removeSync(dir, { recursive: true });
+      }
+    },
+  });
+}
 
 // --- (f) prepareTraining computes the one timeout ---------------------------
 
