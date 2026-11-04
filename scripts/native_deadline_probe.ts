@@ -38,6 +38,7 @@ import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import { Costs } from "@costs";
 import { isFailedTrainWorkerResponse } from "@neat/NeatScheduling.ts";
+import { TRAINING_TASK_WATCHDOG_GRACE_MS } from "@neat/PerTaskTrainingTimeout.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
@@ -105,6 +106,8 @@ interface ProbeOutput {
   weightsChanged: boolean;
   weightsValid: boolean;
   settledAfterDeadlineMs: number | null;
+  /** Whether the run settled within the training task watchdog grace. */
+  settledWithinGrace: boolean;
   warnings: string[];
   infos: string[];
   /** Worker scenario only: whether `timedOut` crossed the worker wire. */
@@ -359,6 +362,8 @@ function runTrainScenario(
     weightsChanged: parametersChanged(before, after),
     weightsValid: parametersFinite(after),
     settledAfterDeadlineMs: settledAt - deadlineEpochMs,
+    settledWithinGrace: settledAt - deadlineEpochMs <=
+      TRAINING_TASK_WATCHDOG_GRACE_MS,
     warnings: recorded.warnings,
     infos: recorded.infos,
   };
@@ -426,6 +431,8 @@ async function runWorkerScenario(recorded: Recorded): Promise<ProbeOutput> {
       weightsChanged: returned ? parametersChanged(before, returned) : false,
       weightsValid: returned ? parametersFinite(returned) : false,
       settledAfterDeadlineMs: settledAt - deadlineEpochMs,
+      settledWithinGrace: settledAt - deadlineEpochMs <=
+        TRAINING_TASK_WATCHDOG_GRACE_MS,
       warnings: recorded.warnings,
       infos: recorded.infos,
       healthy: handler.isHealthy(),

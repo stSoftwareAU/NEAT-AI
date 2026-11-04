@@ -746,7 +746,7 @@ function errorMessage(error: unknown): string {
  * without the `capabilities` subcommand is legacy; any other failure throws
  * rather than falling back silently.
  */
-function cliDeadlineCapable(binary: string): boolean {
+export function cliDeadlineCapable(binary: string): boolean {
   // SIMPLE-ON-PURPOSE: one capabilities spawn per train (a few ms beside a multi-second train); upgrade when CLI trains become sub-second.
   const probe = spawnTrain(binary, ["capabilities"]);
   if (probe.success) {

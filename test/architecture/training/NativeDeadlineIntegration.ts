@@ -31,8 +31,6 @@ const CONFIG = join(REPO_ROOT, "deno.json");
 
 /** Hang guard around one probe child. Not a measurement. */
 const HANG_GUARD_SECONDS = 120;
-/** A run must settle this far past its deadline, or it has ignored the deadline. */
-const SETTLE_BOUND_MS = 30_000;
 
 type EngineKind = "new" | "legacy";
 
@@ -58,6 +56,7 @@ interface ProbeResult {
   weightsChanged: boolean;
   weightsValid: boolean;
   settledAfterDeadlineMs: number | null;
+  settledWithinGrace: boolean;
   warnings: string[];
   infos: string[];
   timedOutOnWire?: boolean;
@@ -286,11 +285,6 @@ async function runProbe(probe: ProbeCase): Promise<ProbeResult> {
   }
 }
 
-function settledWithinBound(result: ProbeResult): boolean {
-  const settled = result.settledAfterDeadlineMs;
-  return typeof settled === "number" && settled < SETTLE_BOUND_MS;
-}
-
 function legacyWarningsIn(result: ProbeResult): string[] {
   return result.warnings.filter((message) => message.includes(LEGACY_WARNING));
 }
@@ -311,9 +305,10 @@ nativeTest(
     assertEquals(result.timedOut, true);
     assertEquals(result.weightsChanged, true);
     assertEquals(result.weightsValid, true);
-    assert(
-      settledWithinBound(result),
-      `settled ${result.settledAfterDeadlineMs} ms after the deadline; bound is ${SETTLE_BOUND_MS} ms`,
+    assertEquals(
+      result.settledWithinGrace,
+      true,
+      `settled ${result.settledAfterDeadlineMs} ms after the deadline; expected within the training task watchdog grace`,
     );
     assert(
       result.bestMeasure === "partial" || result.bestMeasure === "full",
@@ -344,9 +339,10 @@ nativeTest(
     assertEquals(result.timedOut, true);
     assertEquals(result.weightsChanged, true);
     assertEquals(result.weightsValid, true);
-    assert(
-      settledWithinBound(result),
-      `settled ${result.settledAfterDeadlineMs} ms after the deadline; bound is ${SETTLE_BOUND_MS} ms`,
+    assertEquals(
+      result.settledWithinGrace,
+      true,
+      `settled ${result.settledAfterDeadlineMs} ms after the deadline; expected within the training task watchdog grace`,
     );
     assert(
       result.bestMeasure === "partial" || result.bestMeasure === "full",
@@ -499,9 +495,10 @@ nativeTest(
       true,
       "a deadline-stopped result with a finite error goes through evaluation",
     );
-    assert(
-      settledWithinBound(result),
-      `settled ${result.settledAfterDeadlineMs} ms after the deadline; bound is ${SETTLE_BOUND_MS} ms`,
+    assertEquals(
+      result.settledWithinGrace,
+      true,
+      `settled ${result.settledAfterDeadlineMs} ms after the deadline; expected within the training task watchdog grace`,
     );
     assertEquals(result.weightsChanged, true);
     assertEquals(result.weightsValid, true);

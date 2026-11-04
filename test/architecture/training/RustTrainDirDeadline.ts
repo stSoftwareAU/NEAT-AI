@@ -8,7 +8,13 @@
  * a fixed epoch constant, and no test reads a clock or a timing API (#2888).
  */
 
-import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertStringIncludes,
+  assertThrows,
+} from "@std/assert";
+import { join } from "@std/path";
 import { Creature } from "@creature";
 import { Costs } from "@costs";
 import { addTag } from "@stsoftware/tags/mod";
@@ -21,6 +27,7 @@ import { trainDir } from "@architecture/Training.ts";
 import {
   __resetNativeDeadlineDiagnosticsForTests,
   __setRustTrainDirEnabledForTests,
+  cliDeadlineCapable,
 } from "@architecture/training/RustTrainDirBridge.ts";
 import {
   __installNativeBackpropLibraryForTests,
@@ -522,6 +529,95 @@ Deno.test("Rust trainDir deadline: a legacy library never receives the deadline 
     Deno.removeSync(dataDir, { recursive: true });
   }
 });
+
+// --- (e) the CLI capability probe, against tiny fake CLIs ------------------
+
+/**
+ * The stderr and exit code of `neat_ai_backpropagation capabilities` from a
+ * legacy CLI, copied verbatim. Observed from NEAT-AI-Backpropagation f444bc4
+ * / v0.1.49: clap rejects the unknown subcommand with exit 2.
+ */
+const LEGACY_CLI_STDERR = `error: unrecognized subcommand 'capabilities'
+
+Usage: neat_ai_backpropagation <COMMAND>
+
+For more information, try '--help'.
+`;
+
+const POSIX_ONLY = { ignore: Deno.build.os === "windows" };
+const POSIX_SUFFIX = " (POSIX shell fake CLI; skipped on Windows)";
+
+/** Writes an executable `#!/bin/sh` fake CLI, runs `fn` with its path, then removes it. */
+function withFakeCli(script: string, fn: (binary: string) => void): void {
+  const dir = Deno.makeTempDirSync({ prefix: "fake-cli-" });
+  try {
+    const binary = join(dir, "neat_ai_backpropagation");
+    Deno.writeTextFileSync(binary, `#!/bin/sh\n${script}\n`);
+    Deno.chmodSync(binary, 0o755);
+    fn(binary);
+  } finally {
+    Deno.removeSync(dir, { recursive: true });
+  }
+}
+
+Deno.test(
+  "Rust trainDir deadline: a legacy CLI without the capabilities subcommand is not deadline-capable" +
+    POSIX_SUFFIX,
+  POSIX_ONLY,
+  () => {
+    const script = `cat >&2 <<'EOF'
+${LEGACY_CLI_STDERR}EOF
+exit 2`;
+    withFakeCli(script, (binary) => {
+      assertEquals(cliDeadlineCapable(binary), false);
+    });
+  },
+);
+
+Deno.test(
+  "Rust trainDir deadline: a CLI printing the new capability JSON is deadline-capable" +
+    POSIX_SUFFIX,
+  POSIX_ONLY,
+  () => {
+    const script = `cat <<'EOF'
+${CAPABILITIES}
+EOF
+exit 0`;
+    withFakeCli(script, (binary) => {
+      assertEquals(cliDeadlineCapable(binary), true);
+    });
+  },
+);
+
+Deno.test(
+  "Rust trainDir deadline: a failing capabilities probe throws and quotes its cause" +
+    POSIX_SUFFIX,
+  POSIX_ONLY,
+  () => {
+    withFakeCli(`echo "error: boom: disk full" >&2\nexit 1`, (binary) => {
+      assertThrows(
+        () => cliDeadlineCapable(binary),
+        Error,
+        "boom: disk full",
+      );
+    });
+  },
+);
+
+Deno.test(
+  "Rust trainDir deadline: a zero-exit capabilities probe with non-JSON output throws, not legacy" +
+    POSIX_SUFFIX,
+  POSIX_ONLY,
+  () => {
+    withFakeCli(`echo "this is not json"\nexit 0`, (binary) => {
+      assertThrows(
+        () => cliDeadlineCapable(binary),
+        Error,
+        "not valid JSON",
+      );
+    });
+  },
+);
 
 // --- (f) prepareTraining computes the one timeout ---------------------------
 
