@@ -34,8 +34,10 @@
  * precondition; 1 (stderr) for an unexpected failure.
  */
 
+import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import { Costs } from "@costs";
+import { isFailedTrainWorkerResponse } from "@neat/NeatScheduling.ts";
 import {
   type DataRecordInterface,
   makeDataDir,
@@ -115,6 +117,11 @@ interface ProbeOutput {
   adapterSource?: string;
   /** Worker scenario only: the rejection message when no response arrived. */
   failure?: string | null;
+  /**
+   * Worker scenario only: the scheduler would evaluate the returned creature
+   * (`!isFailedTrainWorkerResponse`), rather than record a failed training.
+   */
+  evaluated?: boolean;
 }
 
 /** Messages the bridge and the trainer log while a scenario runs. */
@@ -366,6 +373,9 @@ function runTrainScenario(
  */
 async function runWorkerScenario(recorded: Recorded): Promise<ProbeOutput> {
   const creature = creatureFrom(wideCreatureJSON(PRODUCTIVE_HIDDEN));
+  // A finite pre-training error tag, as the scheduler always sends: a partial
+  // or unmeasured native run carries it back as the result's `error`.
+  addTag(creature, "error", "0.5");
   const dataDir = makeDataDir(
     recordsFor(PRODUCTIVE_RECORDS),
     PRODUCTIVE_RECORDS,
@@ -406,9 +416,10 @@ async function runWorkerScenario(recorded: Recorded): Promise<ProbeOutput> {
       adapterSource:
         "inferred: NEAT_AI_BACKPROP_REQUIRE_FFI=1 refuses the CLI, so a train response proves FFI ran (worker isolate log not captured)",
       deadlineEpochMs,
-      timedOut: null,
+      timedOut: train?.timedOut ?? null,
       timedOutOnWire: train !== undefined && "timedOut" in train,
-      bestMeasure: null,
+      bestMeasure: train?.bestMeasure ?? null,
+      evaluated: data !== undefined && !isFailedTrainWorkerResponse(data),
       error: train ? numberOrNull(train.error) : null,
       errorIsNaN: train ? Number.isNaN(train.error) : false,
       iteration: null,

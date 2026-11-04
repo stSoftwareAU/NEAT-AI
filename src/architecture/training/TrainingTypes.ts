@@ -37,8 +37,10 @@ export interface TrainingResult {
    * The measure `error` was taken from, for a deadline-capable native run
    * (Issue #4119). `"full"` means `error` is the trainer's complete MSE over
    * the selection. `"partial"` and `"unmeasured"` mean no MSE was measured, so
-   * `error` is the creature's pre-training `error` tag, or `NaN` when it has
-   * none. Absent for the TypeScript loop and for a legacy native trainer.
+   * `error` is the creature's pre-training error (the `error` tag, or the
+   * `untrained-error` tag the worker dispatch sends instead), or `NaN` when
+   * neither holds a finite number. Absent for the TypeScript loop and for a
+   * legacy native trainer.
    */
   bestMeasure?: "full" | "partial" | "unmeasured";
 }

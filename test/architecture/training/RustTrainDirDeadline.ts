@@ -291,6 +291,77 @@ Deno.test("Rust trainDir deadline: a timed-out run carries the pre-training erro
   }
 });
 
+Deno.test("Rust trainDir deadline: a timed-out run carries the untrained-error tag the worker sends", () => {
+  const creature = fixtureCreature();
+  addTag(creature, "untrained-error", "0.25");
+  const dataDir = makeSingleDataDir(creature);
+  try {
+    const result = withNativeLibrary(
+      makeDouble({
+        capabilities: CAPABILITIES,
+        payload: EXPIRED_RESPONSE,
+        received: [],
+      }),
+      () => trainWith(creature, dataDir),
+    );
+
+    assertEquals(result.timedOut, true);
+    assertEquals(result.bestMeasure, "unmeasured");
+    assertEquals(result.error, 0.25);
+  } finally {
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test("Rust trainDir deadline: the error tag wins over the untrained-error tag", () => {
+  const creature = fixtureCreature();
+  addTag(creature, "error", "0.5");
+  addTag(creature, "untrained-error", "0.25");
+  const dataDir = makeSingleDataDir(creature);
+  try {
+    const result = withNativeLibrary(
+      makeDouble({
+        capabilities: CAPABILITIES,
+        payload: EXPIRED_RESPONSE,
+        received: [],
+      }),
+      () => trainWith(creature, dataDir),
+    );
+
+    assertEquals(result.timedOut, true);
+    assertEquals(result.bestMeasure, "unmeasured");
+    assertEquals(result.error, 0.5);
+  } finally {
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test('Rust trainDir deadline: the literal "undefined" untrained-error tag yields NaN', () => {
+  const creature = fixtureCreature();
+  // What the worker dispatch sends when the creature had no `error` tag.
+  addTag(creature, "untrained-error", "undefined");
+  const dataDir = makeSingleDataDir(creature);
+  try {
+    const result = withNativeLibrary(
+      makeDouble({
+        capabilities: CAPABILITIES,
+        payload: EXPIRED_RESPONSE,
+        received: [],
+      }),
+      () => trainWith(creature, dataDir),
+    );
+
+    assertEquals(result.timedOut, true);
+    assertEquals(result.bestMeasure, "unmeasured");
+    assert(
+      Number.isNaN(result.error),
+      "error must be NaN, got " + result.error,
+    );
+  } finally {
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
 // --- (c) the error comes only from a full measure ----------------------------
 
 Deno.test("Rust trainDir deadline: a partial measure never supplies the error", () => {

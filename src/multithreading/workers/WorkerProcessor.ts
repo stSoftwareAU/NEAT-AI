@@ -25,6 +25,7 @@ import type {
   RemovalCandidate,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { trainDir } from "@architecture/Training.ts";
+import { buildTrainResponseBody } from "@multithreading/workers/WorkerTrainResponse.ts";
 import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
 import { Costs } from "@costs";
 import type { CostInterface } from "@costs/CostInterface.ts";
@@ -456,13 +457,10 @@ export class WorkerProcessor {
         const response = {
           taskID: data.taskID,
           duration: Date.now() - start,
-          train: {
-            ID: result.ID,
-            creature: exportJSONWithRuntimeIds(creature),
-            error: result.error,
-            trace: result.trace,
-            compact: result.compact,
-          },
+          train: buildTrainResponseBody(
+            result,
+            exportJSONWithRuntimeIds(creature),
+          ),
         };
 
         // Immediately clear large objects to help GC

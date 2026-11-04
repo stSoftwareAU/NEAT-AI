@@ -64,6 +64,7 @@ interface ProbeResult {
   healthy?: boolean;
   cancelled?: boolean;
   failure?: string | null;
+  evaluated?: boolean;
 }
 
 const LEGACY_WARNING = "does not advertise the native deadline capability";
@@ -469,6 +470,35 @@ nativeTest(
     assertEquals(result.failure, null, "the worker must answer, not reject");
     assertEquals(result.cancelled, false);
     assertEquals(result.healthy, true, "the worker must stay in service");
+    assertEquals(
+      result.timedOutOnWire,
+      true,
+      "timedOut must cross the worker boundary",
+    );
+    assertEquals(
+      result.timedOut,
+      true,
+      "the deadline stop must reach the wire",
+    );
+    assert(
+      result.bestMeasure === "partial" || result.bestMeasure === "full",
+      `bestMeasure must be partial or full, got ${result.bestMeasure}`,
+    );
+    if (result.bestMeasure === "partial") {
+      assertEquals(
+        result.error,
+        0.5,
+        "a partial measure carries the creature's pre-training error tag",
+      );
+    } else {
+      assertEquals(result.errorIsNaN, false);
+      assert(result.error !== null, "a full measure returns a finite mse");
+    }
+    assertEquals(
+      result.evaluated,
+      true,
+      "a deadline-stopped result with a finite error goes through evaluation",
+    );
     assert(
       settledWithinBound(result),
       `settled ${result.settledAfterDeadlineMs} ms after the deadline; bound is ${SETTLE_BOUND_MS} ms`,

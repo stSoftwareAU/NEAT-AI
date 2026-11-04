@@ -712,6 +712,14 @@ export function scheduleTraining(
 
     assert(r.train, "No train found");
 
+    if (r.train.timedOut === true) {
+      getLogger().info(
+        `Training ${r.train.ID} stopped by its deadline (best measure: ${
+          r.train.bestMeasure ?? "unknown"
+        }); the returned weights go through the normal evaluation`,
+      );
+    }
+
     const errorTx = getTag(creature, "error");
     assert(errorTx, "No error tag found");
 

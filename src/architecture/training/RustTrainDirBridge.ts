@@ -483,14 +483,20 @@ function buildTrainRequestFields(
 }
 
 /**
- * The creature's own pre-training `error` tag, read the way the scheduler
- * reads it. `undefined` when the tag is absent or not a finite number.
+ * The creature's own pre-training error: the first finite number among the
+ * `error` tag and the `untrained-error` tag. The worker dispatch
+ * (`WorkerHandler.trainTracked`) strips `error` and sends the pre-training
+ * error as `untrained-error` instead, so a real worker only has the latter.
+ * `undefined` when neither tag holds a finite number.
  */
 function preTrainingErrorTag(creature: Creature): number | undefined {
-  const tag = getTag(creature, "error");
-  if (tag === null) return undefined;
-  const value = parseFloat(tag);
-  return Number.isFinite(value) ? value : undefined;
+  for (const name of ["error", "untrained-error"]) {
+    const tag = getTag(creature, name);
+    if (tag === null) continue;
+    const value = parseFloat(tag);
+    if (Number.isFinite(value)) return value;
+  }
+  return undefined;
 }
 
 function packageTrainingResult(
@@ -510,12 +516,13 @@ function packageTrainingResult(
     bestError = native.bestMeasure.mse;
   } else if (native !== undefined) {
     // No full MSE was measured. Never invent a score, and never use a partial
-    // MSE: carry the creature's own pre-training error, or NaN (the scheduler
-    // treats a non-finite error as a failed training result).
+    // MSE: carry the creature's own pre-training error (the `error` tag, or the
+    // `untrained-error` tag the worker dispatch sends instead), or NaN (the
+    // scheduler treats a non-finite error as a failed training result).
     bestError = carriedError ?? Number.NaN;
     errorNote = carriedError === undefined
-      ? "; error is NaN (no finite pre-training error tag)"
-      : `; error carried from the pre-training error tag (${carriedError})`;
+      ? "; error is NaN (no finite pre-training error tag or untrained-error tag)"
+      : `; error carried from the pre-training error (${carriedError}, the error or untrained-error tag)`;
   }
 
   if (native !== undefined && summary.timedOut) {

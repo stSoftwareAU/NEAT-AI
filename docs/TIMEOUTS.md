@@ -392,8 +392,9 @@ What happens next depends on the probe:
    measure:
    - `full`: `error` is the trainer's best MSE.
    - `partial` or `unmeasured`: NEAT-AI does **not** invent a score. `error`
-     carries forward the creature's own pre-training `error` tag, so evaluation
-     sees no measured change. If that tag is absent or not finite, `error` is
+     carries forward the creature's own pre-training error (the `error` tag, or
+     the `untrained-error` tag the worker dispatch sends instead), so evaluation
+     sees no measured change. If neither tag holds a finite number, `error` is
      `NaN`, which the scheduler already treats as a failed (unusable) training
      result.
 

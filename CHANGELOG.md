@@ -540,12 +540,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   from `trainDir` gains optional `timedOut` and `bestMeasure` (`full`, `partial`
   or `unmeasured`), set by the native path only. `error` is the trainer's best
   MSE only for a `full` measure. For `partial` or `unmeasured` NEAT-AI carries
-  forward the creature's pre-training `error` tag, or uses `NaN` (a failed
-  training result) when that tag is absent or not finite. A deadline-capable
-  backend that omits or mis-shapes the new fields is rejected with an error
-  naming the field, with no silent TypeScript or WASM fallback. A capable CLI's
-  result is read from `<output-dir>/result.json`. The `./quality.sh --next`
-  preflight reports the capability. See
+  forward the creature's pre-training error (the `error` tag, or the
+  `untrained-error` tag the worker dispatch sends instead), or uses `NaN` (a
+  failed training result) when neither tag holds a finite number. A
+  deadline-capable backend that omits or mis-shapes the new fields is rejected
+  with an error naming the field, with no silent TypeScript or WASM fallback. A
+  capable CLI's result is read from `<output-dir>/result.json`. The
+  `./quality.sh --next` preflight reports the capability. See
   [TIMEOUTS.md](./docs/TIMEOUTS.md#-the-native-trainer-and-the-per-task-deadline-issue-4119).
 - **Issue #3976 — synapse removal moved to Rust/WASM.** The `SubConnection`
   mutation operator now calls NEAT-AI-core's `prune_synapse` through the new
