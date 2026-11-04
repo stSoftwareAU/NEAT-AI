@@ -536,18 +536,23 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   backend, that the native deadline is not enforced. The stuck-task watchdog
   (deadline plus 30 s grace) is then the only stop. A deadline-capable trainer
   stops within an epoch and returns OK with `timedOut: true` and the best
-  creature found so far. That result goes through the normal validation and
-  evaluation, and is not guaranteed to beat the incumbent. The `TrainingResult`
-  from `trainDir` gains optional `timedOut` and `bestMeasure` (`full`, `partial`
-  or `unmeasured`), set by the native path only. `error` is the trainer's best
-  MSE only for a `full` measure. For `partial` or `unmeasured` NEAT-AI carries
-  forward the creature's pre-training error (the `error` tag, or the
-  `untrained-error` tag the worker dispatch sends instead), or uses `NaN` (a
-  failed training result) when neither tag holds a finite number. A
-  deadline-capable backend that omits or mis-shapes the new fields is rejected
-  with an error naming the field, with no silent TypeScript or WASM fallback. A
-  capable CLI's result is read from `<output-dir>/result.json`. The
-  `./quality.sh --next` preflight reports the capability. See
+  creature found so far. A full-measure stop is scored normally and is not
+  guaranteed to beat the incumbent. The `TrainingResult` from `trainDir` gains
+  optional `timedOut` and `bestMeasure` (`full`, `partial` or `unmeasured`), set
+  by the native path only. `error` is the trainer's best MSE only for a `full`
+  measure. For `partial` or `unmeasured` NEAT-AI carries forward the creature's
+  pre-training error (the `error` tag, or the `untrained-error` tag the worker
+  dispatch sends instead), or uses `NaN` (a failed training result) when neither
+  tag holds a finite number. A partial or unmeasured timeout with a usable
+  carried error queues weights unscored for the next generation's fitness pass,
+  skips `calculateScore`, fine-tune variants and regression-tracker updates, and
+  closes the gain-log event as `trained` without scores. Once the deadline plus
+  `TRAINING_TASK_WATCHDOG_GRACE_MS` has passed, finalisation warns and skips
+  compaction, returning no compacted copy. A deadline-capable backend that omits
+  or mis-shapes the new fields is rejected with an error naming the field, with
+  no silent TypeScript or WASM fallback. A capable CLI's result is read from
+  `<output-dir>/result.json`. The `./quality.sh --next` preflight reports the
+  capability. See
   [TIMEOUTS.md](./docs/TIMEOUTS.md#-the-native-trainer-and-the-per-task-deadline-issue-4119).
 - **Issue #3976 — synapse removal moved to Rust/WASM.** The `SubConnection`
   mutation operator now calls NEAT-AI-core's `prune_synapse` through the new

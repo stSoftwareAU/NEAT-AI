@@ -383,10 +383,9 @@ What happens next depends on the probe:
    trainer is cooperative: it stops within an epoch, not only between epochs,
    and returns OK with `timedOut: true` and the best creature found so far. That
    is the weights learned from the accepted partial epochs, or the input when no
-   progress was made. The result then goes through the normal validation and
-   evaluation, the same as any trained result. It is **not** guaranteed to beat
-   the incumbent. A running 32-record batch or scorer process is not
-   interrupted.
+   progress was made. A full-measure stop is scored like any other trained
+   result and is **not** guaranteed to beat the incumbent. A running 32-record
+   batch or scorer process is not interrupted.
 3. **Measures.** The trainer reports its baseline and best measure as `full`,
    `partial` or `unmeasured`. A `partial` measure is the mean over only the
    first N records, so it is **not** comparable to a full-corpus figure. The
@@ -396,10 +395,20 @@ What happens next depends on the probe:
    - `full`: `error` is the trainer's best MSE.
    - `partial` or `unmeasured`: NEAT-AI does **not** invent a score. `error`
      carries forward the creature's own pre-training error (the `error` tag, or
-     the `untrained-error` tag the worker dispatch sends instead), so evaluation
-     sees no measured change. If neither tag holds a finite number, `error` is
-     `NaN`, which the scheduler already treats as a failed (unusable) training
-     result.
+     the `untrained-error` tag the worker dispatch sends instead). If neither
+     tag holds a finite number, `error` is `NaN`, which the scheduler already
+     treats as a failed (unusable) training result.
+
+   For a partial or unmeasured timeout with a usable carried error, the
+   scheduler queues weights unscored for the next generation's fitness pass. It
+   skips `calculateScore`, regression checks, fine-tune variants and
+   regression-tracker updates, and closes the gain-log event as `trained`
+   without `scoreAfter` or `errorAfter`.
+
+   If finalisation begins after the deadline plus
+   `TRAINING_TASK_WATCHDOG_GRACE_MS`, NEAT-AI logs a warning and skips
+   compaction, returning no compacted copy. Finalisation that begins inside the
+   window is not interrupted if it overruns.
 
    A timeout before any full epoch is therefore an explicit, supported outcome.
    So is an already-expired deadline: the trainer returns phase `start`,
@@ -430,10 +439,10 @@ flowchart TD
     R -- "OK, timedOut true or false" --> B{"bestMeasure"}
     B -- "full" --> FE["error = trainer's best MSE"]
     B -- "partial or unmeasured" --> T{"Finite pre-training<br/>error tag?"}
-    T -- "yes" --> TE["error = pre-training tag<br/>no measured change"]
+    T -- "yes" --> TE["error = pre-training tag"]
     T -- "no" --> NE["error = NaN<br/>failed, unusable training result"]
     FE --> V["Normal validation and evaluation"]
-    TE --> V
+    TE --> U["Queue weights unscored for next fitness pass<br/>no fine-tuning or regression-tracker update"]
 ```
 
 The compatibility matrix below records what each engine and request combination

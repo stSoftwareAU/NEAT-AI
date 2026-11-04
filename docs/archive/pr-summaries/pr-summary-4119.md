@@ -229,6 +229,22 @@ quarantine (existing doc page linked, not changed in behaviour).
 
 ## Test Plan
 
+Review follow-up: the previously uncovered relative-budget case is now checked
+with and without a hard deadline by
+`test/architecture/training/RustTrainDirDeadline.ts::Rust trainDir deadline: a relative budget is forwarded with a hard deadline`
+and
+`::Rust trainDir deadline: a relative budget is forwarded without a hard deadline`
+and at setup by
+`test/architecture/training/RustTrainDirDeadline.ts::prepareTraining: a relative budget earlier than the hard deadline sets timeoutTS`.
+The obsolete documentation claimed partial stops were evaluated as normal; the
+remaining behaviour queues usable results unscored, covered by
+`test/NEAT/UnmeasuredTimeoutNotScored.ts::deadline stop: a partial measure queues the weights without a score`.
+The timeout guide and changelog also describe the finalisation-window warning
+and skipped compaction. Mutation checks: replacing FFI forwarding with
+`hardDeadlineTS` failed both forwarding cases; replacing the setup calculation
+with `hardDeadlineTS ?? 0` failed both forwarding cases and the setup case. Both
+mutations were restored.
+
 Final-head results (no `rust_scorer`, so `./quality.sh` itself did not run; it
 stops at its rust_scorer check, exit before any step):
 

@@ -247,6 +247,36 @@ Deno.test("Rust trainDir deadline: a capable library receives the hard deadline 
   }
 });
 
+for (const hardDeadline of [true, false]) {
+  Deno.test(`Rust trainDir deadline: a relative budget is forwarded ${hardDeadline ? "with" : "without"} a hard deadline`, () => {
+    const received: Record<string, unknown>[] = [];
+    const creature = fixtureCreature();
+    const dataDir = makeSingleDataDir(creature);
+    try {
+      withNativeLibrary(
+        makeDouble({
+          capabilities: CAPABILITIES,
+          payload: COMPLETED_RESPONSE,
+          received,
+        }),
+        () =>
+          trainWith(creature, dataDir, {
+            trainingTimeOutMinutes: 1,
+            hardDeadlineTS: hardDeadline ? HARD_DEADLINE_TS : undefined,
+          }),
+      );
+      assertEquals(received.length, 1);
+      for (const request of received) {
+        const deadline = request.deadlineEpochMs;
+        assert(typeof deadline === "number" && Number.isSafeInteger(deadline));
+        assert(deadline > 0 && deadline < HARD_DEADLINE_TS);
+      }
+    } finally {
+      Deno.removeSync(dataDir, { recursive: true });
+    }
+  });
+}
+
 // --- (b) a timed-out run returns on the normal result path -------------------
 
 Deno.test("Rust trainDir deadline: a timed-out run without a pre-training error tag yields NaN", () => {
@@ -659,4 +689,18 @@ Deno.test("prepareTraining: a far relative budget leaves the hard deadline as ti
     "deadln04",
   );
   assertEquals(setup.timeoutTS, HARD_DEADLINE_TS);
+});
+
+Deno.test("prepareTraining: a relative budget earlier than the hard deadline sets timeoutTS", () => {
+  const setup = prepareTraining(
+    new Creature(1, 1),
+    {
+      iterations: 1,
+      trainingTimeOutMinutes: 5,
+      hardDeadlineTS: HARD_DEADLINE_TS,
+    },
+    "deadln05",
+  );
+  assert(Number.isSafeInteger(setup.timeoutTS));
+  assert(setup.timeoutTS > 0 && setup.timeoutTS < HARD_DEADLINE_TS);
 });
