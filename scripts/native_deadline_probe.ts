@@ -52,9 +52,9 @@ import { WorkerHandler } from "@multithreading/workers/WorkerHandler.ts";
 import type { ResponseData } from "@multithreading/workers/WorkerHandler.ts";
 import { WorkerTaskCancelledError } from "@workers/WorkerTaskCancelledError.ts";
 
-type Adapter = "ffi" | "cli";
+export type Adapter = "ffi" | "cli";
 
-type Scenario =
+export type Scenario =
   | "ffi-productive"
   | "cli-productive"
   | "ffi-expired"
@@ -64,7 +64,7 @@ type Scenario =
   | "worker-productive";
 
 /** Scenario -> the adapter it must force. */
-const SCENARIO_ADAPTER: Record<Scenario, Adapter> = {
+export const SCENARIO_ADAPTER: Record<Scenario, Adapter> = {
   "ffi-productive": "ffi",
   "cli-productive": "cli",
   "ffi-expired": "ffi",
@@ -128,18 +128,18 @@ interface ProbeOutput {
 }
 
 /** Messages the bridge and the trainer log while a scenario runs. */
-interface Recorded {
+export interface Recorded {
   infos: string[];
   warnings: string[];
 }
 
-function fail(code: number, message: string): never {
+export function fail(code: number, message: string): never {
   console.error(message);
   Deno.exit(code);
 }
 
 /** Route every log line into memory so stdout carries only the JSON line. */
-function installRecorder(): Recorded {
+export function installRecorder(): Recorded {
   const recorded: Recorded = { infos: [], warnings: [] };
   const recorder: Logger = {
     debug() {},
@@ -158,7 +158,7 @@ function installRecorder(): Recorded {
 }
 
 /** The adapter the bridge logged, or `none` when it fell through to TypeScript. */
-function adapterFrom(
+export function adapterFrom(
   infos: string[],
 ): { adapter: Adapter | "none"; log: string | null } {
   const line = infos.find((message) =>
@@ -170,8 +170,11 @@ function adapterFrom(
 }
 
 /** Refuse to run a forced-adapter scenario whose adapter would not be the one forced. */
-function checkAdapterPrecondition(adapter: Adapter): void {
-  const lib = findNativeBackpropLibrary();
+export function checkAdapterPrecondition(
+  adapter: Adapter,
+  lib: string | null = findNativeBackpropLibrary(),
+  readEnv: (name: string) => string | undefined = (name) => Deno.env.get(name),
+): void {
   if (adapter === "ffi") {
     if (lib === null) {
       fail(
@@ -179,7 +182,7 @@ function checkAdapterPrecondition(adapter: Adapter): void {
         "FFI scenario: no libneat_ai_backpropagation resolves; set NEAT_AI_BACKPROP_LIB_PATH",
       );
     }
-    if (Deno.env.get("NEAT_AI_BACKPROP_REQUIRE_FFI") !== "1") {
+    if (readEnv("NEAT_AI_BACKPROP_REQUIRE_FFI") !== "1") {
       fail(
         2,
         "FFI scenario: set NEAT_AI_BACKPROP_REQUIRE_FFI=1 so the CLI fallback is refused",
@@ -193,13 +196,13 @@ function checkAdapterPrecondition(adapter: Adapter): void {
       `CLI scenario: the FFI library resolves to ${lib}; the CLI would not be exercised`,
     );
   }
-  if (!Deno.env.get("NEAT_AI_BACKPROP_BINARY_PATH")) {
+  if (!readEnv("NEAT_AI_BACKPROP_BINARY_PATH")) {
     fail(2, "CLI scenario: set NEAT_AI_BACKPROP_BINARY_PATH");
   }
 }
 
 /** `count` `(x, 2x)` records, `x` cycling through 0.1 .. 1.0 (as the Backprop corpus). */
-function recordsFor(count: number): DataRecordInterface[] {
+export function recordsFor(count: number): DataRecordInterface[] {
   return Array.from({ length: count }, (_, i) => {
     const x = ((i % 10) + 1) * 0.1;
     return {
@@ -214,7 +217,7 @@ function recordsFor(count: number): DataRecordInterface[] {
  * `h{i} -> o1` at weight `1/hidden`, so the output equals the input. Synapses are
  * sorted by target, as neat-core requires.
  */
-function wideCreatureJSON(hidden: number): Record<string, unknown> {
+export function wideCreatureJSON(hidden: number): Record<string, unknown> {
   const neurons: Record<string, unknown>[] = Array.from(
     { length: hidden },
     (_, i) => ({ type: "hidden", uuid: `h${i}`, bias: 0, squash: "IDENTITY" }),
@@ -241,7 +244,7 @@ function wideCreatureJSON(hidden: number): Record<string, unknown> {
 }
 
 /** Identity chain `input-0 -> h0 -> .. -> h{n-1} -> o1`, weights 1. */
-function chainCreatureJSON(hidden: number): Record<string, unknown> {
+export function chainCreatureJSON(hidden: number): Record<string, unknown> {
   const names = Array.from({ length: hidden }, (_, i) => `h${i}`);
   const neurons: Record<string, unknown>[] = names.map((uuid) => ({
     type: "hidden",
@@ -468,11 +471,13 @@ async function main(): Promise<void> {
   console.log(JSON.stringify(output));
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(
-    error instanceof Error ? error.stack ?? error.message : String(error),
-  );
-  Deno.exit(1);
+if (import.meta.main) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(
+      error instanceof Error ? error.stack ?? error.message : String(error),
+    );
+    Deno.exit(1);
+  }
 }

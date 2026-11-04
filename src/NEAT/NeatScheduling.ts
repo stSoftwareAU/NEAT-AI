@@ -216,6 +216,18 @@ function recordTrainingSkip(
 }
 
 /**
+ * True when a deadline-stopped native run returned weights without a full-data
+ * error measure (Issue #4119). Its `error` is the incumbent's, not an earned
+ * figure, so the scheduler must not score the weights from it.
+ */
+export function isUnmeasuredTimeout(
+  train: Pick<NonNullable<ResponseData["train"]>, "timedOut" | "bestMeasure">,
+): boolean {
+  return train.timedOut === true && train.bestMeasure !== undefined &&
+    train.bestMeasure !== "full";
+}
+
+/**
  * True when the worker reported a train failure without a usable creature
  * payload (Issue #3780).
  */
@@ -720,89 +732,100 @@ export function scheduleTraining(
       );
     }
 
-    const errorTx = getTag(creature, "error");
-    assert(errorTx, "No error tag found");
-
-    let trainingImprovement = true;
-    if (isTrainingErrorRegression(r.train.error, parseFloat(errorTx))) {
-      getLogger().warn(
-        `Training ${
-          blue(r.train.ID)
-        } caused a higher error of ${r.train.error} from ${errorTx}`,
-      );
-      trainingImprovement = false;
-    }
-    const trainedCreature = Creature.fromJSON(r.train.creature);
-    trainedCreature.score = calculateScore(
-      trainedCreature,
-      r.train.error,
-      neat.config.costOfGrowth,
-    );
-    // Issue #3934: the gain this gradient step realised, recorded before any
-    // fine-tune variant is derived — the event being measured is the step the
-    // selection rule paid for, not the best of its descendants.
-    neat.trainingGainLog?.closeIfOpen(uuid, {
-      outcome: "trained",
-      scoreAfter: trainedCreature.score,
-      errorAfter: r.train.error,
-    });
-    const backtracked = fineTuneImprovement(
-      creature,
-      trainedCreature,
-      neat.config.feedbackLoop,
-      1,
-      true,
-      neat.config.quantumStep,
-    );
-    const forward = fineTuneImprovement(
-      creature,
-      trainedCreature,
-      neat.config.feedbackLoop,
-      1,
-      false,
-      neat.config.quantumStep,
-    );
-
-    if (backtracked.length > 0 || forward.length > 0) {
-      const untrainedError = getTag(trainedCreature, "untrained-error");
-      if (backtracked.length > 0) {
-        const backtrackedCreature = exportJSONWithRuntimeIds(backtracked[0]);
-        addTag(backtrackedCreature, "trainID", r.train.ID);
-        addTag(backtrackedCreature, "trainVariant", "overshot");
-        if (untrainedError) {
-          addTag(backtrackedCreature, "untrained-error", untrainedError);
-        }
-        r.train.backtracked = backtrackedCreature;
-      }
-      if (forward.length > 0) {
-        const forwardCreature = exportJSONWithRuntimeIds(forward[0]);
-        addTag(forwardCreature, "trainID", r.train.ID);
-        addTag(forwardCreature, "trainVariant", "undershot");
-        if (untrainedError) {
-          addTag(forwardCreature, "untrained-error", untrainedError);
-        }
-        r.train.forward = forwardCreature;
-      }
-      // Issue #2382: a fine-tune variant recovered the loss — reset streak.
-      neat.trainingRegressionTracker.recordImprovement(uuid);
-    } else if (trainingImprovement === false) {
-      getLogger().warn(
-        `Training ${
-          blue(r.train.ID)
-        } caused a higher error of ${r.train.error} from ${errorTx} and no tuning`,
-      );
-      // Issue #2382: rollback with no fine-tune — count as a regression.
-      neat.trainingRegressionTracker.recordRegression(uuid);
-    } else if (
-      isTrainingErrorMaterialImprovement(r.train.error, parseFloat(errorTx))
-    ) {
-      // Training lowered the error and no fine-tune was needed.
-      neat.trainingRegressionTracker.recordImprovement(uuid);
+    // Issue #4119: a native run stopped by its deadline without a full-data
+    // measure changed the weights but measured no error (`r.train.error` is
+    // only the incumbent's pre-training error, carried so the result stays
+    // usable). Scoring, regression tracking and fine-tuning off that figure
+    // would hand the changed weights a score they never earned, so they are
+    // skipped: the weights queue unscored and the next generation evaluates
+    // them through the normal fitness path.
+    if (isUnmeasuredTimeout(r.train)) {
+      neat.trainingGainLog?.closeIfOpen(uuid, { outcome: "trained" });
     } else {
-      // Issue #3779: the error moved by less than the noise floor (the `🫥`
-      // outcome). A wasted heavy slot is not an improvement, so it must not
-      // clear the no-progress streaks.
-      neat.trainingRegressionTracker.recordNoChange(uuid);
+      const errorTx = getTag(creature, "error");
+      assert(errorTx, "No error tag found");
+
+      let trainingImprovement = true;
+      if (isTrainingErrorRegression(r.train.error, parseFloat(errorTx))) {
+        getLogger().warn(
+          `Training ${
+            blue(r.train.ID)
+          } caused a higher error of ${r.train.error} from ${errorTx}`,
+        );
+        trainingImprovement = false;
+      }
+      const trainedCreature = Creature.fromJSON(r.train.creature);
+      trainedCreature.score = calculateScore(
+        trainedCreature,
+        r.train.error,
+        neat.config.costOfGrowth,
+      );
+      // Issue #3934: the gain this gradient step realised, recorded before any
+      // fine-tune variant is derived — the event being measured is the step the
+      // selection rule paid for, not the best of its descendants.
+      neat.trainingGainLog?.closeIfOpen(uuid, {
+        outcome: "trained",
+        scoreAfter: trainedCreature.score,
+        errorAfter: r.train.error,
+      });
+      const backtracked = fineTuneImprovement(
+        creature,
+        trainedCreature,
+        neat.config.feedbackLoop,
+        1,
+        true,
+        neat.config.quantumStep,
+      );
+      const forward = fineTuneImprovement(
+        creature,
+        trainedCreature,
+        neat.config.feedbackLoop,
+        1,
+        false,
+        neat.config.quantumStep,
+      );
+
+      if (backtracked.length > 0 || forward.length > 0) {
+        const untrainedError = getTag(trainedCreature, "untrained-error");
+        if (backtracked.length > 0) {
+          const backtrackedCreature = exportJSONWithRuntimeIds(backtracked[0]);
+          addTag(backtrackedCreature, "trainID", r.train.ID);
+          addTag(backtrackedCreature, "trainVariant", "overshot");
+          if (untrainedError) {
+            addTag(backtrackedCreature, "untrained-error", untrainedError);
+          }
+          r.train.backtracked = backtrackedCreature;
+        }
+        if (forward.length > 0) {
+          const forwardCreature = exportJSONWithRuntimeIds(forward[0]);
+          addTag(forwardCreature, "trainID", r.train.ID);
+          addTag(forwardCreature, "trainVariant", "undershot");
+          if (untrainedError) {
+            addTag(forwardCreature, "untrained-error", untrainedError);
+          }
+          r.train.forward = forwardCreature;
+        }
+        // Issue #2382: a fine-tune variant recovered the loss — reset streak.
+        neat.trainingRegressionTracker.recordImprovement(uuid);
+      } else if (trainingImprovement === false) {
+        getLogger().warn(
+          `Training ${
+            blue(r.train.ID)
+          } caused a higher error of ${r.train.error} from ${errorTx} and no tuning`,
+        );
+        // Issue #2382: rollback with no fine-tune — count as a regression.
+        neat.trainingRegressionTracker.recordRegression(uuid);
+      } else if (
+        isTrainingErrorMaterialImprovement(r.train.error, parseFloat(errorTx))
+      ) {
+        // Training lowered the error and no fine-tune was needed.
+        neat.trainingRegressionTracker.recordImprovement(uuid);
+      } else {
+        // Issue #3779: the error moved by less than the noise floor (the `🫥`
+        // outcome). A wasted heavy slot is not an improvement, so it must not
+        // clear the no-progress streaks.
+        neat.trainingRegressionTracker.recordNoChange(uuid);
+      }
     }
 
     // Issue #3435: guarded push — discarded (with no map mutation) when the run

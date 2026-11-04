@@ -499,6 +499,17 @@ function preTrainingErrorTag(creature: Creature): number | undefined {
   return undefined;
 }
 
+/**
+ * True once `now` is past the task deadline plus the watchdog grace
+ * (Issue #4119). A task with no deadline (`timeoutTS <= 0`) never is.
+ */
+export function isFinalisationWindowSpent(
+  timeoutTS: number,
+  now: number,
+): boolean {
+  return timeoutTS > 0 && now > timeoutTS + TRAINING_TASK_WATCHDOG_GRACE_MS;
+}
+
 function packageTrainingResult(
   creature: Creature,
   setup: TrainingSetupState,
@@ -542,6 +553,23 @@ function packageTrainingResult(
     timedOut: summary.timedOut,
   };
 
+  // Issue #4119: finalisation must fit the original deadline plus the
+  // watchdog grace. When a deadline-stopped native run reaches here with that
+  // window already spent, the optional compacted copy is dropped: an explicit,
+  // logged degraded outcome that still returns the trained weights, instead of
+  // compacting past the window and tripping the watchdog.
+  const windowSpent = native !== undefined && summary.timedOut &&
+    isFinalisationWindowSpent(setup.timeoutTS, Date.now());
+  if (windowSpent) {
+    getLogger().warn(
+      `Training ${
+        blue(setup.ID)
+      } native adapter finalisation started after the watchdog window (deadline + ${
+        TRAINING_TASK_WATCHDOG_GRACE_MS / 1000
+      } s); returning the trained weights without the compacted copy.`,
+    );
+  }
+
   const finalised = finaliseTraining(
     creature,
     loop,
@@ -550,6 +578,7 @@ function packageTrainingResult(
     setup.feedbackLoop,
     setup.syntheticKeys,
     setup.ID,
+    { skipCompaction: windowSpent },
   );
 
   // Legacy trainers report no outcome beyond the MSE, so their result keeps
@@ -557,8 +586,8 @@ function packageTrainingResult(
   if (native === undefined) return finalised;
 
   if (
-    summary.timedOut && setup.timeoutTS > 0 &&
-    Date.now() > setup.timeoutTS + TRAINING_TASK_WATCHDOG_GRACE_MS
+    !windowSpent && summary.timedOut &&
+    isFinalisationWindowSpent(setup.timeoutTS, Date.now())
   ) {
     getLogger().warn(
       `Training ${
