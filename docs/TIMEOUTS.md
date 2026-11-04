@@ -376,11 +376,13 @@ What happens next depends on the probe:
    stop: the task's deadline plus `TRAINING_TASK_WATCHDOG_GRACE_MS` (30 s). A
    wedged native call still ends in cancellation and quarantine (see
    [Abandoning a task](#-abandoning-a-task-means-cancelling-it-grq-4489)).
-2. **Deadline-capable engine.** The deadline is forwarded unchanged. Backend
-   selection, queueing and fallback never restart it. The trainer is
-   cooperative: it stops within an epoch, not only between epochs, and returns
-   OK with `timedOut: true` and the best creature found so far. That is the
-   weights learned from the accepted partial epochs, or the input when no
+2. **Deadline-capable engine.** The task's effective deadline (the earlier of
+   `hardDeadlineTS` and now + `trainingTimeOutMinutes`, whichever are set,
+   computed once when training is set up, floored to whole milliseconds) is what
+   is forwarded. Backend selection, queueing and fallback never restart it. The
+   trainer is cooperative: it stops within an epoch, not only between epochs,
+   and returns OK with `timedOut: true` and the best creature found so far. That
+   is the weights learned from the accepted partial epochs, or the input when no
    progress was made. The result then goes through the normal validation and
    evaluation, the same as any trained result. It is **not** guaranteed to beat
    the incumbent. A running 32-record batch or scorer process is not preempted.
@@ -421,7 +423,7 @@ flowchart TD
     P -- "no: legacy engine" --> L["Run as before, no deadline field or flag<br/>warn once per backend: not enforced"]
     L --> LW["Stuck-task watchdog is the only stop<br/>(deadline + 30 s grace)"]
     LW --> LC["Wedged call: cancelled, worker quarantined"]
-    P -- "yes" --> F["Forward deadline unchanged<br/>deadlineEpochMs / --deadline-epoch-ms"]
+    P -- "yes" --> F["Forward effective task deadline<br/>deadlineEpochMs / --deadline-epoch-ms"]
     F --> R{"Result"}
     R -- "fields missing or inconsistent" --> X["Rejected, error names the field<br/>no TypeScript or WASM fallback"]
     R -- "OK, timedOut true or false" --> B{"bestMeasure"}

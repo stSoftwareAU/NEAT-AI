@@ -525,10 +525,11 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - **Issue #4119:** the native `trainDir` trainer (`neat_ai_backpropagation`) now
-  receives the task's immutable per-task deadline (`hardDeadlineTS`) as
-  `deadlineEpochMs` (FFI) or `--deadline-epoch-ms` (CLI). NEAT-AI first probes
-  the `deadline` capability v1 (`neat_backprop_capabilities()` / the
-  `capabilities` subcommand) and sends the deadline only to an engine that
+  receives the task's effective per-task deadline (the earlier of
+  `hardDeadlineTS` and now + `trainingTimeOutMinutes`, computed once at training
+  setup) as `deadlineEpochMs` (FFI) or `--deadline-epoch-ms` (CLI). NEAT-AI
+  first probes the `deadline` capability v1 (`neat_backprop_capabilities()` /
+  the `capabilities` subcommand) and sends the deadline only to an engine that
   advertises it. **Requires NEAT-AI-Backpropagation issue #214, crate 0.1.50 or
   later.** An engine without the capability (0.1.49 or earlier) runs exactly as
   before with no deadline field or flag, and NEAT-AI logs a warning, once per
