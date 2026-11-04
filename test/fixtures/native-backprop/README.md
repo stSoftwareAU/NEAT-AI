@@ -1,19 +1,20 @@
 # Native backpropagation fixtures (Issue #4119)
 
-Captured from the real `libneat_ai_backpropagation` and `neat_ai_backpropagation`
-binaries, never hand-written. They pin the C ABI and CLI contract that
-`src/architecture/training/NativeBackpropLibrary.ts` parses. Do not edit them
-by hand; regenerate from the producers below if the contract moves.
+Captured from the real `libneat_ai_backpropagation` and
+`neat_ai_backpropagation` binaries, never hand-written. They pin the C ABI and
+CLI contract that `src/architecture/training/NativeBackpropLibrary.ts` parses.
+Do not edit them by hand; regenerate from the producers below if the contract
+moves.
 
-| Binary | Source | Version | Deadline capability |
-| ------ | ------ | ------- | ------------------- |
-| NEW engine | stSoftwareAU/NEAT-AI-Backpropagation git `947cbb5` | `0.1.50` | yes (`deadline` v1) |
+| Binary        | Source                                             | Version  | Deadline capability                                                       |
+| ------------- | -------------------------------------------------- | -------- | ------------------------------------------------------------------------- |
+| NEW engine    | stSoftwareAU/NEAT-AI-Backpropagation git `947cbb5` | `0.1.50` | yes (`deadline` v1)                                                       |
 | LEGACY engine | stSoftwareAU/NEAT-AI-Backpropagation git `f444bc4` | `0.1.49` | no (no `neat_backprop_capabilities` symbol, no `capabilities` subcommand) |
 
 ## Files
 
-- `capabilities-new.json` — the stdout of the NEW CLI `capabilities`
-  subcommand, pretty-printed (whitespace only; content unchanged):
+- `capabilities-new.json` — the stdout of the NEW CLI `capabilities` subcommand,
+  pretty-printed (whitespace only; content unchanged):
 
   ```sh
   /tmp/bpnew/neat_ai_backpropagation capabilities
@@ -29,9 +30,9 @@ by hand; regenerate from the producers below if the contract moves.
   numbers.
 
 - `ffi-response-new-completed.json` — the NEW library (`0.1.50`), a run with no
-  deadline. `timedOut` is `false`, `timeout` is `null`, both measures are
-  `full` with `records: 100`, and `baselineMse` / `bestMse` are numbers equal to
-  their measure's `mse`.
+  deadline. `timedOut` is `false`, `timeout` is `null`, both measures are `full`
+  with `records: 100`, and `baselineMse` / `bestMse` are numbers equal to their
+  measure's `mse`.
 
 - `ffi-response-new-timedout-expired.json` — the NEW library with
   `deadlineEpochMs: 1` (already expired, so the run stops before any work).
@@ -59,11 +60,11 @@ deno run --no-config --no-lock --allow-ffi --allow-read --allow-write driver.ts 
   file, `/tmp/bpnew/libneat_ai_backpropagation.so` for the new ones.
 - The dataset is a temporary directory holding `0.bin`: 100 little-endian f32
   `(x, 2x)` pairs, with `x` cycling through `0.1 … 1.0`.
-- The creature is the 1-input / 1-output identity chain
-  `input-0 → h1 → h2 → o1` (all weights `1.0`, all biases `0.0`, `IDENTITY`
-  squashes, `semanticVersion` `4.0.0`, `forwardOnly` true).
-- Request: `creatureJson` (the creature above, stringified), `trainingData`
-  (the dataset directory), `outputDir` (a temporary directory), `epochs: 1`,
+- The creature is the 1-input / 1-output identity chain `input-0 → h1 → h2 → o1`
+  (all weights `1.0`, all biases `0.0`, `IDENTITY` squashes, `semanticVersion`
+  `4.0.0`, `forwardOnly` true).
+- Request: `creatureJson` (the creature above, stringified), `trainingData` (the
+  dataset directory), `outputDir` (a temporary directory), `epochs: 1`,
   `seed: 1`, `disableRandomSamples: true`, `learningRate: 0.01`,
   `learningRateStrategy: "fixed"`, `learningRateDecay: 0.0`,
   `maximumBiasAdjustmentScale: 1`, `maximumWeightAdjustmentScale: 1`,
