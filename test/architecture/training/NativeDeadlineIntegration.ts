@@ -225,12 +225,12 @@ interface ProbeCase {
  * engine's binary.
  */
 async function runProbe(probe: ProbeCase): Promise<ProbeResult> {
-  const sandbox = Deno.makeTempDirSync({ prefix: "native-deadline-probe-" });
+  const sandbox = await Deno.makeTempDir({ prefix: "native-deadline-probe-" });
   try {
     const home = join(sandbox, "home");
     const workDir = join(sandbox, "cwd");
-    Deno.mkdirSync(home);
-    Deno.mkdirSync(workDir);
+    await Deno.mkdir(home);
+    await Deno.mkdir(workDir);
 
     const forced: Record<string, string> = probe.adapter === "ffi"
       ? {
