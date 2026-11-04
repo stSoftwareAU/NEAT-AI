@@ -1,0 +1,29 @@
+{
+  "abiVersion": 1,
+  "version": "0.1.50",
+  "bestCreatureJson": "{\n  \"forwardOnly\": true,\n  \"input\": 1,\n  \"neurons\": [\n    {\n      \"bias\": 0.0,\n      \"squash\": \"IDENTITY\",\n      \"type\": \"hidden\",\n      \"uuid\": \"h1\"\n    },\n    {\n      \"bias\": 0.0,\n      \"squash\": \"IDENTITY\",\n      \"type\": \"hidden\",\n      \"uuid\": \"h2\"\n    },\n    {\n      \"bias\": 0.0,\n      \"squash\": \"IDENTITY\",\n      \"type\": \"output\",\n      \"uuid\": \"o1\"\n    }\n  ],\n  \"output\": 1,\n  \"semanticVersion\": \"4.0.0\",\n  \"synapses\": [\n    {\n      \"fromUUID\": \"input-0\",\n      \"toUUID\": \"h1\",\n      \"weight\": 1.0\n    },\n    {\n      \"fromUUID\": \"h1\",\n      \"toUUID\": \"h2\",\n      \"weight\": 1.0\n    },\n    {\n      \"fromUUID\": \"h2\",\n      \"toUUID\": \"o1\",\n      \"weight\": 1.0\n    }\n  ]\n}\n",
+  "baselineMse": null,
+  "bestMse": null,
+  "baselineMeasure": {
+    "kind": "unmeasured"
+  },
+  "bestMeasure": {
+    "kind": "unmeasured"
+  },
+  "acceptedEpochs": 0,
+  "epochs": 1,
+  "bestPath": "<OUTPUT_DIR>/best.json",
+  "journalPath": "<OUTPUT_DIR>/journal.jsonl",
+  "bestTracePath": null,
+  "failedTraceDir": null,
+  "baselineScore": null,
+  "bestScore": null,
+  "timedOut": true,
+  "timeout": {
+    "phase": "start",
+    "completedEpochs": 0,
+    "weightsChanged": false,
+    "deadlineEpochMs": 1
+  },
+  "completedEpochs": 0
+}
