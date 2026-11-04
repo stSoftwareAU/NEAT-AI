@@ -40,14 +40,18 @@
  * `feedbackLoop`, recurrent (`forwardOnly !== true`), non-MSE cost.
  *
  * **TypeScript-only orchestration (Rust path ignores today)**
- * - `log`, `targetError`, `trainingTimeOutMinutes`, `hardDeadlineTS`
+ * - `log`, `targetError`, `trainingTimeOutMinutes`
  *   (FFI unlocks honouring these without re-spawning; not wired yet)
+ * - `hardDeadlineTS` is forwarded as `deadlineEpochMs` / `--deadline-epoch-ms`
+ *   only when the backend advertises the `deadline` capability (Issue #4119);
+ *   otherwise the native trainer does not enforce it
  * - Most other `BackPropagationArguments` (e.g. `sparseRatio`,
  *   `generations`, L1/L2, `batchSize`) are not ABI/CLI fields yet
  *
  * **FFI-only convenience** (same fields as CLI, no process spawn): shared
  * in-process creature JSON, lower overhead per memetic `trainDir`. Mid-epoch
- * cancellation for `hardDeadlineTS` / `targetError` remains a follow-up.
+ * cancellation for `targetError` remains a follow-up. A deadline-capable
+ * backend stops within an epoch when `hardDeadlineTS` passes (Issue #4119).
  */
 import type { BackPropagationArguments } from "@propagate/BackPropagation.ts";
 import type { PredictiveCodingConfig } from "@config/PredictiveCodingConfig.ts";
@@ -112,8 +116,12 @@ export interface TrainArguments extends BackPropagationArguments {
    * behaviour is unchanged (direct `creature.train()` callers are
    * unaffected).
    *
-   * Not forwarded to `neat_ai_backpropagation` yet (TypeScript loop only;
-   * Issue #3765 notes FFI as the path to honour this in-process).
+   * Issue #4119: forwarded unchanged to `neat_ai_backpropagation` as
+   * `deadlineEpochMs` (FFI) / `--deadline-epoch-ms` (CLI) only when the backend
+   * advertises the `deadline` capability v1 (NEAT-AI-Backpropagation issue
+   * #214, crate 0.1.50 or later). A backend without it runs with no deadline
+   * field or flag, NEAT-AI logs a warning once per backend, and the stuck-task
+   * watchdog is the only stop.
    */
   hardDeadlineTS?: number;
 

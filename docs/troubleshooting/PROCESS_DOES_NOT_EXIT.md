@@ -16,9 +16,12 @@ it.
 A quarantined worker is one that missed its per-task deadline.
 `Worker.terminate()` can only stop a worker at a JavaScript boundary. A thread
 blocked in synchronous native (FFI) code, such as a native `trainDir` call that
-ignores its deadline, cannot be interrupted that way. Deno keeps the event loop,
-and therefore the process, alive for that thread, so the script ends but the
-process does not.
+ignores its deadline, cannot be interrupted that way. An engine that does not
+advertise the native deadline capability is never sent the deadline, so it does
+not stop on it (see
+[the native trainer and the per-task deadline](../TIMEOUTS.md#-the-native-trainer-and-the-per-task-deadline-issue-4119)).
+Deno keeps the event loop, and therefore the process, alive for that thread, so
+the script ends but the process does not.
 
 ```mermaid
 sequenceDiagram

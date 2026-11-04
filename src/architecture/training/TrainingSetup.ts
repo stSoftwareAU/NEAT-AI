@@ -24,6 +24,7 @@ import type {
   CreatureExport,
   CreatureTrace,
 } from "@architecture/CreatureInterfaces.ts";
+import { computeTimeoutTS } from "@architecture/training/TrainingOutcome.ts";
 
 /**
  * Formats a fractional percentage value with colour highlighting.
@@ -125,6 +126,13 @@ export interface TrainingSetupState {
    * Issue #2899: undefined/0 leaves the relative budget unchanged.
    */
   hardDeadlineTS: number | undefined;
+  /**
+   * The run's single absolute timeout (epoch ms; 0 = none), computed once by
+   * {@link prepareTraining} as `computeTimeoutTS(now, trainingTimeOutMinutes,
+   * hardDeadlineTS)` (Issue #4119). Every backend and the TypeScript epoch
+   * loop read this value, so none can restart the budget.
+   */
+  timeoutTS: number;
   ID: string;
   BYTES_PER_RECORD: number;
   recordBuffer: Uint8Array;
@@ -159,6 +167,13 @@ export function prepareTraining(
   const trainingTimeOutMinutes = options.trainingTimeOutMinutes ?? 0;
   // Issue #2899: carry the absolute hard deadline through to epoch state.
   const hardDeadlineTS = options.hardDeadlineTS;
+  // Issue #4119: the one timeout for this run. Computed here, once, and read
+  // by every backend, so backend selection or fallback cannot restart it.
+  const timeoutTS = computeTimeoutTS(
+    Date.now(),
+    trainingTimeOutMinutes,
+    hardDeadlineTS,
+  );
 
   const valuesCount = creature.input + creature.output;
   const BYTES_PER_RECORD = valuesCount * 4; // Each float is 4 bytes
@@ -218,6 +233,7 @@ export function prepareTraining(
     trainingSampleRate,
     trainingTimeOutMinutes,
     hardDeadlineTS,
+    timeoutTS,
     ID: shortId,
     BYTES_PER_RECORD,
     recordBuffer,

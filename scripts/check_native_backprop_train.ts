@@ -3,6 +3,7 @@ import {
   findNativeBackpropLibrary,
   getNativeBackpropVersion,
   isNativeBackpropAvailable,
+  nativeBackpropDeadlineCapability,
   NEAT_BACKPROP_ABI_VERSION,
 } from "@architecture/training/NativeBackpropLibrary.ts";
 
@@ -12,6 +13,9 @@ import {
  *
  * quality.sh --next calls this after an optional sibling cargo build so
  * tests exercise the FFI path and cannot silently stay on CLI/WASM.
+ *
+ * It also reports the per-task deadline capability (Issue #4119). A legacy
+ * library is a warning; a library that advertises a malformed capability fails.
  */
 function main(): void {
   const libPath = findNativeBackpropLibrary();
@@ -40,6 +44,27 @@ function main(): void {
     console.log(
       `✅ native libneat_ai_backpropagation loaded from ${libPath} (v${version}, ABI ${NEAT_BACKPROP_ABI_VERSION})`,
     );
+
+    let deadline;
+    try {
+      deadline = nativeBackpropDeadlineCapability();
+    } catch (error) {
+      console.error(
+        `❌ libneat_ai_backpropagation advertises a malformed capability: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      Deno.exit(1);
+    }
+    if (deadline === undefined) {
+      console.log(
+        "⚠️ no deadline capability — the per-task deadline is not enforced natively",
+      );
+    } else {
+      console.log(
+        `✅ libneat_ai_backpropagation advertises the deadline capability v${deadline.version}`,
+      );
+    }
   } finally {
     closeNativeBackpropLibrary();
   }

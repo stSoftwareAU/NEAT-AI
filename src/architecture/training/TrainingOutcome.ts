@@ -50,6 +50,9 @@ export interface EpochState {
  * the result as `hardDeadlineTS`, so on the worker this clamp returns that
  * deadline unchanged.
  *
+ * Issue #4119: called once per run, by `prepareTraining`, which stores the
+ * result as `timeoutTS`. Every backend reads that single value.
+ *
  * Pure and `now`-injectable so it can be unit-tested without elapsed-time
  * assertions (#2888 policy).
  *
@@ -73,7 +76,12 @@ export function computeTimeoutTS(
   return relativeTS;
 }
 
-/** Construct the initial epoch state from setup output. */
+/**
+ * Construct the initial epoch state from setup output.
+ *
+ * Issue #4119: `timeoutTS` is the value {@link prepareTraining} computed once,
+ * so backend selection and fallback cannot restart the budget.
+ */
 export function createEpochState(setup: TrainingSetupState): EpochState {
   return {
     bestError: undefined,
@@ -86,11 +94,7 @@ export function createEpochState(setup: TrainingSetupState): EpochState {
     scratch: { buffer: null },
     indxMap: new Map(),
     timedOut: false,
-    timeoutTS: computeTimeoutTS(
-      Date.now(),
-      setup.trainingTimeOutMinutes,
-      setup.hardDeadlineTS,
-    ),
+    timeoutTS: setup.timeoutTS,
   };
 }
 
