@@ -690,6 +690,13 @@ measurement that tells the two apart.
   unreferenced, so it never keeps the process alive, and `disarm()` clears it.
 - **Read at breach.** The Worker reads the buffer when the deadline passes.
   `lastHeartbeatAgeMs` is the time since the main thread's latest tick.
+- **Non-fatal stall line.** The main thread also checks each tick. When a tick
+  is late by `stallReportMS` or more (default `DEFAULT_STALL_REPORT_MS`, 10 s;
+  an option on `armEventLoopWatchdog`), it logs one `warn` line and does not
+  kill the process:
+  `[Neat] main loop stalled for <ms>ms (heartbeat every <n>ms) at generation <n|unknown>; phase at last heartbeat: <phase>, phase now: <phase>`.
+  It shows a block that stayed under the deadline. The check uses the wall
+  clock, so a clock step can produce a false line.
 - **`inFlightPhase`** is the phase the main thread most recently entered: one of
   `untracked` (outside any tracked phase, for example checkpoint or bookkeeping
   between generations), `fitness`, `sort`, `write-scores`, `breeding`,
