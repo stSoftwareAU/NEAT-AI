@@ -78,8 +78,12 @@ read with `git show <commit>:<file>` and counted with `awk` for
    Every one of the four was followed by the over-run line on the next pass
    (`96ad583a:GRQ-3-sloth.log`, `f9cb327e:GRQ-3-sloth.log`,
    `fa1c6afc:GRQ-22-rocket.log` show the same sequence). So the settled result
-   was named by ID and dropped, not merged. In the same run GRQ reports these as
-   `inFlight=0` with `task=c632dbf5 outcome=completed`, and no `log-ended`.
+   was named by ID and dropped, not merged. GRQ reports `c632dbf5` as
+   `inFlight=0` and `outcome=completed … reason=fine-tune-recovered`, with no
+   `log-ended`. It derived that from the worker's own result line
+   (`Training c632dbf5 caused a higher error of 0.5635… from 0.5622…`, logged
+   when the result settled), not from a `Training c632dbf5 completed` line,
+   which this task never got.
 
 2. **Terminal lines hold.** Every one of the 34 snapshots reached
    `teardown complete` after its last `scheduled` line, and in each every
@@ -147,7 +151,10 @@ with `gh pr view`).
   population or the creature store, or a `discarded` line names the task, and
   (b) `Training <id> completed` is logged. — evidence:
   `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled after the last generation is merged and persisted, not discarded (Issue #4099)`
-  — reviewer: met
+  — reviewer: met — reason: the red run was recorded in #4104 against the code
+  with the `finishUp()` wait disabled, not against a `v7.0.62` checkout, and the
+  test settles the result through `recordTrainingComplete` rather than a stubbed
+  worker promise
 - **partial** — Field evidence: a GRQ sampler log on a neat-ai release carrying
   the fix where a task scheduled in the last generation shows
   `Training <id> completed`, with no `outcome=in_flight … reason=log-ended` in
@@ -156,6 +163,13 @@ with `gh pr view`).
   contract holds, but no log shows the merge pass producing `completed`, and 7
   discarded tasks still read `log-ended` because GRQ's parser has no rule for
   the new line.
+- **unrequested** — this file replaces the earlier archived summary of #4104 at
+  the same path — reviewer: unrequested — reason: `pr-summary-4099.md` is the
+  path this run must write; the earlier spec, design decisions, test plan and
+  mutation-check record stay in git history at `81941817` and describe code that
+  is unchanged here. The two GRQ observations (the wait line that can promise a
+  merge, GRQ's missing `discarded at teardown` rule) are recorded as facts, with
+  no behaviour change.
 
 ## Standards Review
 
