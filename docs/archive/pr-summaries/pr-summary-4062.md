@@ -28,7 +28,7 @@ Version bump: no `VERSION` change is made by this documentation-only change.
 
 - No code is changed: earlier rounds fuzzed every mutation operator,
   `fineTuneImprovement` and real `evolveDataSet` runs and found no producer, so
-  a further speculative change would be fixing an unreproduced fault.
+  a further speculative change would be fixing a fault that was not reproduced.
 
 ### Undiscoverable Facts
 
@@ -53,11 +53,11 @@ snapshot commits from 2026-10-31 to 2026-11-06.
 only on 2026-11-01, for about 1.5 hours before 7.1.2, and is outside the window.
 
 - Search 1:
-  `git log -G"ValidationError/MEMETIC|INVALID CREATURE|repairing an INVALID creature" --oneline`
+  `git log -G"ValidationError/MEMETIC|INVALID CREATURE|repairing an INVALID creature" --format=%h`
   found 0 commits, and `grep -c` for the same terms over the two files at the
   head was 0.
-- Search 2: `git log -G"Pruned [0-9]+ memetic" --oneline` (the `[loadFrom]` and
-  `[CheckpointWriter]` warnings) found 0 commits, and
+- Search 2: `git log -G"Pruned [0-9]+ memetic" --format=%h` (the `[loadFrom]`
+  and `[CheckpointWriter]` warnings) found 0 commits, and
   `git log -S"[creature-repair]"` found 0.
 - Control that the search can see sampler loads: `git log -S"option=sampler"`
   found 32 commits and `git log -S"copyNetworks:"` found 29, spanning 2026-10-31
