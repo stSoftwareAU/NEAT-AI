@@ -268,3 +268,45 @@ Deno.test("a failed native analysis does not stop the queued analyses (Issue #41
     },
   );
 });
+
+Deno.test("cleanup preserves the discovery directory until queued analyses settle (Issue #4126)", async () => {
+  await initWasmForTests();
+  const creature = makeCreature();
+  const hiddenId = runtimeIdForUuid(creature, "hidden-1");
+  let release!: (result: RustParallelAnalysisResult) => void;
+  let started!: () => void;
+  const pending = new Promise<RustParallelAnalysisResult>((resolve) => {
+    release = resolve;
+  });
+  const entered = new Promise<void>((resolve) => started = resolve);
+  let removed = false;
+  const structure = new DiscoverStructure(creature, 60, 100, {
+    ...makeDeps(() => {
+      started();
+      return pending;
+    }),
+    removeTempDir: async (dir) => {
+      removed = true;
+      await Deno.remove(dir, { recursive: true });
+    },
+  });
+  const neuronPromises = new Map<number, Promise<void>>();
+  structure.initialize(neuronPromises);
+  structure.record([{
+    input: Float32Array.from([0.1, 0.2]),
+    output: Float32Array.from([0.3]),
+  }], neuronPromises);
+  structure.flushRustRecording();
+  const analysis = structure.analyzeSelectedNeurons([hiddenId]);
+  await entered;
+  const cleanup = structure.cleanUp();
+  try {
+    // Let cleanup progress through its asynchronous steps.
+    await yieldToEventLoop();
+    assertEquals(removed, false);
+  } finally {
+    release(SUCCESS);
+    await Promise.all([analysis, cleanup]);
+  }
+  assertEquals(removed, true);
+});

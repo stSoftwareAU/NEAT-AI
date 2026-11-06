@@ -509,6 +509,10 @@ export class DiscoverStructureBase {
   public async cleanUp() {
     assert(this.initialized, "Not initialized");
     this.initialized = false;
+    // A timed-out caller may have abandoned an analysis that still uses the
+    // creature, native library and parquet directory. Drain the queue before
+    // releasing any of those resources, including after a rejected analysis.
+    await this.combinedAnalysisTail;
     this.recorded = false;
     this.creature.dispose();
     this.discoveries = [];
