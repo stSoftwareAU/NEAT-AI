@@ -14,7 +14,8 @@ that carries both, and say plainly what is still open.
 Two things remain open: the producing path on GRQ-21 is still not identified,
 and the log window is about 5 days of the 7 the issue asks for.
 
-Version bump: no `VERSION` change is made by this documentation-only change.
+Version bump: no `deno.json` version change is made by this documentation-only
+change.
 
 ## Spec
 
@@ -66,7 +67,11 @@ only on 2026-11-01, for about 1.5 hours before 7.1.2, and is outside the window.
   full week is reached on 2026-11-08.
 
 Limits: the repository keeps rotating snapshots, so a line written and rotated
-out between two snapshots would not be seen.
+out between two snapshots would not be seen. The zero result is also partly
+circular: load now repairs a stale memetic before any downstream repair line
+could be written, so the absence of `rule=ValidationError/MEMETIC` shows less
+than it would have before #4131; the zero `Pruned` warnings are the stronger
+signal that no stale file reached a sampler.
 
 Earlier evidence from PR #4100, before the load-side prune, release 7.0.57:
 `grep -c "ValidationError/MEMETIC" *.log` was 0 in all 25 files at the head, and
@@ -104,8 +109,8 @@ dangling memetic reference"), #3844 and #4052 (named in the issue body), #4064,
   creature whose `memetic` references a missing synapse: either
   validate-before-write, or prune at the mutation site — evidence:
   `src/creature/CheckpointWriter.ts::writeCreatures` and
-  `test/creature/CheckpointWriteDanglingMemetic_test.ts`, merged in #4064 —
-  reviewer: met
+  `test/creature/CheckpointWriteDanglingMemetic_test.ts`, merged in #4064 and
+  extended in #4100 — reviewer: met
 - **partial** — Regression test: run the identified path (e.g. abandon
   generation N while its mutations are in flight, then write the checkpoint) and
   assert every written creature passes `ValidationError/MEMETIC` validation —
@@ -119,6 +124,35 @@ dangling memetic reference"), #3844 and #4052 (named in the issue body), #4064,
   lines and 0 prune warnings on 7.1.2 and 7.1.3, sampler loads logged
   throughout) — reviewer: partial — reason: the window is about 5 days of the 7
   asked for; the week completes on 2026-11-08
+
+## Standards Review
+
+<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
+
+The repository has no `CODING-STANDARDS.md`; the reviewer used `AGENTS.md`,
+`docs/ENGINEERING_PRINCIPLES.md` and `docs/DOC_STYLE.md`.
+
+- **violation** — claims must match reality (DOC_STYLE rule 4) — evidence:
+  `pr-summary-4062.md` Summary, "no `VERSION` change" named a file that does not
+  exist — reviewer: violation — reason: fixed in this diff, now says `deno.json`
+  version
+- **violation** — consistency of claims (DOC_STYLE rule 4) — evidence:
+  `pr-summary-4062.md` Summary credited the writer prune to #4064 and #4100 but
+  the `met` criterion cited only #4064 — reviewer: violation — reason: fixed in
+  this diff, the criterion now cites #4100 too
+- **violation** — application-agnostic public repo (principle 11), minor —
+  evidence: `pr-summary-4062.md` Evidence, log tokens `option=sampler` and
+  `copyNetworks:` — reviewer: observation — reason: not changed; the tokens are
+  the literal searches run, the log repository is already anonymised, and
+  "sampler hosts" and "GRQ-21" were in the file before this change
+- **clean** — Australian English and `cspell` (0 issues), `deno fmt --check`,
+  claims checkable in the repository (commit `a4adf05b`, versions 7.1.2 and
+  7.1.3, the two `Pruned` warnings, the cited tests and bench), test rules (no
+  test added, no timing API, no `Deno.env`), no restating of shared policy,
+  Mermaid and acronym rules for write-once release notes
+- **unverifiable** — the log-repository figures (1971 snapshots, control hit
+  counts, zero matches) cannot be checked from this repository; the summary
+  states them as run results and names the rotation limit
 
 ## Test Plan
 
