@@ -66,6 +66,8 @@ interface ProbeResult {
   cancelled?: boolean;
   failure?: string | null;
   evaluated?: boolean;
+  queuedCount?: number;
+  trackerUpdated?: boolean;
 }
 
 const LEGACY_WARNING = "does not advertise the native deadline capability";
@@ -503,6 +505,59 @@ nativeTest(
       true,
       "a deadline-stopped result with a finite error goes through evaluation",
     );
+    assertEquals(
+      result.settledWithinGrace,
+      true,
+      `settled ${result.settledAfterDeadlineMs} ms after the deadline; expected within the training task watchdog grace`,
+    );
+    assertEquals(result.weightsChanged, true);
+    assertEquals(result.weightsValid, true);
+  },
+);
+
+// --- (6) the real scheduler, worker and native engine end to end -------------
+
+nativeTest(
+  "new",
+  "native deadline: scheduleTraining queues a deadline-stopped native result on a healthy worker",
+  async (engine) => {
+    const result = await runProbe({
+      scenario: "scheduler-productive",
+      adapter: "ffi",
+      engine,
+    });
+    assertEquals(result.adapter, "ffi");
+    assertEquals(
+      result.failure,
+      null,
+      "the scheduler must not record a failure",
+    );
+    assertEquals(result.cancelled, false);
+    assertEquals(result.healthy, true, "the worker must stay in service");
+    assertEquals(result.queuedCount, 1, "exactly one result is queued");
+    assertEquals(
+      result.timedOut,
+      true,
+      "the deadline stop must reach the queue",
+    );
+    assertEquals(result.evaluated, true, "the queued result is not a failure");
+    assert(
+      result.bestMeasure === "partial" || result.bestMeasure === "full",
+      `bestMeasure must be partial or full, got ${result.bestMeasure}`,
+    );
+    if (result.bestMeasure === "full") {
+      assertEquals(
+        result.trackerUpdated,
+        true,
+        "a full measure is scored like any other result",
+      );
+    } else {
+      assertEquals(
+        result.trackerUpdated,
+        false,
+        "a partial measure is queued without being scored into the regression tracker",
+      );
+    }
     assertEquals(
       result.settledWithinGrace,
       true,

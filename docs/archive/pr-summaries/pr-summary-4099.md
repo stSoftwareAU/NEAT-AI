@@ -1,109 +1,143 @@
 ## Summary
 
-A training or discovery result that settled after the last generation's
-`processCompletedResults()` was dropped at teardown: `finishUp()` saw nothing in
-flight and returned `true`, and the result sat unmerged in
-`neat.trainingComplete` / `neat.discoveryComplete`. Now `finishUp()` waits one
-more pass while a settled result is queued, so `evolve()` merges it. Where
-`evolve()` can never run again (over-run stop, hard deadline, an interrupted
-SIGTERM stop, or a result that settles while the teardown persists), the bounded
-teardown logs each leftover result by ID and drops it. A training or discovery
-task still in flight when a SIGTERM stop breaks the loop is logged as abandoned
-by ID at teardown. The same two calls run in the failure cleanup of `evolveDir`,
-`evolveEnv` and `evolveRL`, so a run that throws names its tasks too.
-`Training <id> scheduled` and `Training <id> completed` are both logged whatever
-`verbose` says. Closes #4099.
+PR #4104 (merged 2026-10-29, first released in v7.0.65, commit `81941817`)
+already made `finishUp()` wait for a settled-but-unmerged training or discovery
+result and made the teardown name every result it drops. The exactly-one
+terminal-line and field-evidence criteria remain partial. This PR changes no
+code: it replaces the earlier summary with the record of that evidence, searched
+in the downstream log repository's history (`Develop`, 2026-10-29 to 2026-11-06)
+across 34 log snapshots from releases 7.0.66 to 7.1.3. The counted terminal
+lines cover every scheduled task in the sample, but the count omits a
+hard-deadline discard form. The evidence also shows one thing the issue did not
+expect: in every field case where the new wait fired, the over-run guard stopped
+the run on the next pass, so the result was logged as discarded and never
+merged. Part of #4099.
 
 Version bump: `deno.json` `version` updated for this change; the merged commit
 records the final version.
+
+## Not closing #4099
+
+The exactly-one terminal-line criterion is `partial`: a hard-deadline
+abandonment can log both completion and discard for one task (Evidence item 2).
+The field-evidence criterion is also `partial`: no field log yet shows a task
+scheduled in the last generation ending in `Training <id> completed` through the
+extra merge pass, and seven tasks that do carry a `discarded at teardown` line
+still read `outcome=in_flight … reason=log-ended` in GRQ's own parser (see
+Evidence).
 
 ## Spec
 
 ### Intent and Rationale
 
-- The clean-up delay in `finishUp()` keys on "still running" (`*InProgress`
-  maps), but a result that already settled is in neither map. Checking "not yet
-  processed" (`*Complete` arrays) closes that window.
-- The merge route reuses the existing loop: the `completed` branch of
-  `evolveDir`/`evolveEnv`/`evolveRL` calls `evolve()` again after `finishUp()`
-  returns `false`, which runs `processCompletedResults`, clears the arrays and
-  (for trained creatures) arms the existing "one more generation" re-score.
+- The criterion asks for field proof of the fix. The only way to give it without
+  a new release is to search the logs the fleet has already written since the
+  fix shipped, so this PR records that search and its limits.
 
 ### Essential Design Decisions
 
-- `finishUp()` does not wait when `terminationReason === "overrun"`: that branch
-  never calls `evolve()` again, so waiting would spin until the hard deadline.
-  Those results are discarded and logged instead.
-- The success-path naming lives in `runBoundedEvolveTeardown` through a
-  **required** `neat` option (`abandonInFlightAtTeardown()` then
-  `discardUnprocessedResults()`), so all three callers (`evolveDir`,
-  `evolveEnv`, `evolveRL`) must pass it. The failure `finally` of each entry
-  point makes the same two calls directly, each isolated by `runFailureCleanup`,
-  because a failed run never reaches the bounded teardown. It runs **after**
-  persist and worker termination (PR #4104 review): the workers are down, so
-  nothing more can settle, and a result that settled during the persist awaits
-  (`writeCreatures`, `flushTrainingGainLog`) is still named. It is synchronous
-  and not part of the evolved state, so it never gates the persist.
-- An interrupted (SIGTERM) stop breaks out of the loop at
-  `if (interrupted)
-  break;` before `finishUp()` or any abandon runs, leaving
-  the task in `trainingInProgress` / `discoveryInProgress`.
-  `WorkerHandlerBase.terminate()` clears its pending requests, so that task
-  never settles; the teardown logs it
-  `Training <last 8 of uuid> abandoned at teardown`, clears the bookkeeping and
-  bumps `abandonEpoch` so a late settle is dropped. Hard-deadline and
-  first-generation abandons already cleared the maps, so those tasks are not
-  named twice.
-- A failed training task (stub with `train.error === Infinity`) already logged
-  `Training failed for creature …`, so the discard skips it to keep one terminal
-  line per task. Known gap: a failed discovery stub carries no marker, so it can
-  log `Discovery … discarded at teardown` after its own failure line; marking it
-  needs a new field on the worker response type, which this issue does not ask
-  for.
+- No code change. The searched logs show the shipped behaviour matches the
+  issue's wording ("merged or explicitly logged as discarded with its id"), and
+  the discard on over-run is the documented design (`docs/TIMEOUTS.md`, the
+  teardown steps; `CHANGELOG.md` Issue #4099).
+- The over-run stop is deliberately not changed to allow one more merge pass: it
+  is a time bound, and a merge pass re-scores the whole population.
 
 ### Undiscoverable Facts
 
-- `deno.json` carries only the version bump; `deno.lock` and the dependency pins
-  are unchanged against `Develop`.
-- `Training <id> completed` used to be logged only when `config.verbose` was on
-  (`ProcessCompletedResults.ts`), and `Training <id> scheduled` was verbose-only
-  too (`NeatScheduling.ts`, the `scheduleTraining` dispatch). A default run
-  therefore showed neither line, and a verbose run already showed both; the
-  `completed` change alone had no effect on a `scheduled`-without-terminal
-  window and only added `completed` lines to non-verbose logs. Both lines are
-  now unconditional, like the discard, abandon and failed lines, so a
-  scheduled-vs-terminal count over a default-run log pairs up. This adds two
-  `info` lines per training task to non-verbose logs.
+- The `[Neat] Waiting for N settled result(s) … to be merged before finishing`
+  line (`src/NEAT/Neat.ts`, `finishUp`) is written before the loop top decides
+  to stop for over-run, so in sampler runs it can be followed at once by
+  `Training over-run … stopping new generations` and a discard. The line names a
+  merge that does not then happen.
+- The downstream parser `worker/shared/training_outcome_health.sh` (read with
+  `gh api`) has no rule for `discarded at teardown`: its only `teardown` match
+  is the `[evolveDir] teardown complete` run boundary. That is a GRQ-side fact,
+  outside this repository.
 
 ## Evidence
 
+Method: `git log --since=2026-10-29T10:00:00Z` over the downstream log
+repository's `Develop` at `464596a` (2026-11-06) gave 2 599 distinct log blobs;
+of those, 34 hold a `Training <id> scheduled` line and a
+`[neat-ai] running version` of 7.0.66 or later (7.0.63 snapshots predate the
+release and are excluded). Each blob was read with `git show <commit>:<file>`
+and counted with `awk` for `Training <id> scheduled`, `completed after`,
+`discarded at teardown`, `abandoned at teardown`,
+`Training failed for creature`, and the `[training-outcomes]` lines. This reads
+logs from one host-sample of the fleet (GRQ-3, GRQ-11, GRQ-13, GRQ-16, GRQ-19,
+GRQ-22), not every host.
+
+1. **The extra wait fired in the field**, 4 times (7.0.73 on `GRQ-3-sloth`,
+   7.1.3 on `GRQ-13-rocket` and `GRQ-22-rocket`), each time with exactly the new
+   line, for example `4654548e:GRQ-13-rocket.log`:
+
+   ```text
+   Generation 8 score 0.437721152536804 (avg: 0.0375) error 0.5622626630873621 avg time 23s 927ms
+   [Neat] Waiting for 1 settled result(s) (training: 1, discovery: 0) to be merged before finishing
+   [Neat] Training over-run: elapsed exceeded expected duration × 1 — stopping new generations and finishing with the evolved population
+   Training c632dbf5 discarded at teardown: it settled after the last generation's results were processed
+   [evolveDir] teardown complete: 10 worker(s) terminated, 0 detached; replay queue drained
+   ```
+
+   Every one of the four was followed by the over-run line on the next pass
+   (`96ad583a:GRQ-3-sloth.log`, `f9cb327e:GRQ-3-sloth.log`,
+   `fa1c6afc:GRQ-22-rocket.log` show the same sequence). So the settled result
+   was named by ID and dropped, not merged. GRQ reports `c632dbf5` as
+   `inFlight=0` and `outcome=completed … reason=fine-tune-recovered`, with no
+   `log-ended`. It derived that from the worker's own result line
+   (`Training c632dbf5 caused a higher error of 0.5635… from 0.5622…`, logged
+   when the result settled), not from a `Training c632dbf5 completed` line,
+   which this task never got.
+
+2. **Counted terminal lines.** Every one of the 34 snapshots reached
+   `teardown complete` after its last `scheduled` line, and in each every
+   scheduled task id has a terminal line (`completed after`,
+   `discarded at teardown`, `abandoned at teardown` or
+   `Training failed for creature`). Two ids carry two counted terminal lines
+   because one creature id is scheduled twice in the log (`0c2a1de7` in
+   `fa1c6afc`, `5cb993cb` in `6cef715e`): two separate schedules, one counted
+   line each. This count omitted `Training <id> discarded: …` after a
+   completion, so it does not establish the exactly-one contract. When a hard
+   deadline abandons a generation after a training result is merged but before
+   it commits (Issue #4107), the task logs both `Training <id> completed` and
+   `Training <id> discarded: generation abandoned past the hard deadline`.
+   `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts` covers this path.
+
+3. **Residual `log-ended`.** 22 tasks in the sample carry a
+   `discarded at
+   teardown` line. GRQ marks 15 of them `rejected`, `completed`
+   or `aborted` from other lines, and 7 as
+   `outcome=in_flight … reason=log-ended`: `204d5e4c` (8087b3a4), `40bafc53`
+   (673fae87), `9389e96f` (0c0ad063, fb504c77), `9b02766d` (d86dc5dd),
+   `d0c7bf94` (bbc8ed59), `e53ce0b3` (1274d269). Each is a task NEAT-AI named by
+   ID; GRQ's parser does not read the new line (Undiscoverable Facts).
+
+4. **Not observed:** no `Training <id> completed` line after the final
+   `Generation N` line and before `teardown complete`, i.e. no run where the
+   extra pass merged a late result.
+
 ```mermaid
 flowchart TD
-    A[Result settles after processCompletedResults] --> B{finishUp}
-    B -- before: nothing in flight --> C[return true, teardown, result lost silently]
-    B -- after: result queued --> D{terminationReason is overrun?}
-    D -- no --> E[return false, evolve runs, result merged and logged]
-    D -- yes --> F[return true, teardown logs 'discarded at teardown' by ID]
+    A[Result settles after last processCompletedResults] --> B{finishUp}
+    B -- queued result --> C["Waiting for N settled result(s)"]
+    C --> D{loop top: over-run?}
+    D -- field: yes, 4 of 4 --> E["finishUp true, teardown: discarded at teardown ID"]
+    D -- not yet seen in the field --> F[evolve merges, Training ID completed]
 ```
 
-- `./quality.sh` (with the local scorer binary and discovery library) passed on
-  the first fix commit: `ok | 10010 passed (5 steps) | 0 failed | 4 ignored`. It
-  is re-run on the head; see Test Plan.
-- Issue-numbers cited as provenance in the diff:
-  `#4099: A training result that settles after the last generation's processCompletedResults is dropped at teardown`
-  (this issue).
+Issue numbers cited as provenance, each looked up with `gh issue view`: #4099
+(this issue: the dropped result), #4104 (the merged fix, a pull request found
+with `gh pr view`).
 
 ## Reproduction
 
 - **symptom** — a training result that settles after the last generation's
-  `processCompletedResults()` is never merged and never logged; `finishUp()`
-  returns `true` with the result still in `trainingComplete`.
-- **status** — `reproduced` — evidence: with the `finishUp()` wait disabled
-  (`false && this.terminationReason !== "overrun" && …` in `src/NEAT/Neat.ts`),
-  `test/creature/EvolveDirLateTrainingResult.ts` fails with
-  `AssertionError: a settled-but-unmerged result must lead to another evolve(); got 1 call(s)`;
-  with the fix in place it passes (5 consecutive runs). That is a red run
-  against the code before the fix, not the base branch checkout.
+  `processCompletedResults()` was never merged and never logged.
+- **status** — `partial` — the regression test was observed red against the
+  unfixed code in #4104 (the `finishUp()` wait disabled), not in this run, which
+  changes no code; here it was re-run green on the head. reason: this PR has no
+  fix to take red.
 - **regression test** —
   `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled after the last generation is merged and persisted, not discarded (Issue #4099)`
 
@@ -115,209 +149,60 @@ flowchart TD
   `trainingComplete.length > 0` (and `discoveryComplete`). When either is
   non-empty it arms one more processing pass. … a settled result is either
   merged or explicitly logged as discarded with its id. — evidence:
-  `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled training result is unmerged, then finishes (Issue #4099)`,
-  `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled discovery result is unmerged, then finishes (Issue #4099)`,
-  `test/creature/BoundedEvolveTeardown.ts::bounded teardown: unmerged work is named after persist and worker termination, and counted (Issue #4099)`
-  — reviewer: met
-- **met** — Every scheduled training task ends with exactly one terminal line
-  (`completed`, `failed`, `abandoned`, or a new `discarded at teardown`). —
-  evidence:
-  `test/NEAT/NeatFinishUp.ts::discardUnprocessedResults: skips a failed-task stub but still logs and counts a finite result (Issue #4099)`,
-  `test/NEAT/NeatFinishUp.ts::abandonInFlightAtTeardown: names each in-flight task, clears the maps and discards a later settle (Issue #4099)`,
-  `test/creature/BoundedEvolveTeardown.ts::bounded teardown: a result that settles while persisting is still discarded by name (Issue #4099)`,
-  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a SIGTERM stop names a training task still in flight instead of leaving it silent (Issue #4099)`
-  — the SIGTERM/interrupted path (a task still in `trainingInProgress` at the
-  break) and a result settling during the persist awaits are now covered; a
-  worker task dropped by `WorkerHandlerBase.terminate()` is named by the same
-  teardown line because its training entry is still in `trainingInProgress`. —
-  `test/NEAT/NeatFinishUp.ts::finishUp: a settled training result is merged by processCompletedResults, then the run finishes (Issue #4099)`
-  and the `evolveDir` test above assert `Training <id> completed` with `verbose`
-  off, so a merged task now has a terminal line in a default run (red check:
-  restoring the `if (neat.config.verbose)` gate in `ProcessCompletedResults.ts`
-  fails both). The failure exit path is covered too: `evolveDir`, `evolveEnv`
-  and `evolveRL` call `abandonInFlightAtTeardown()` and
-  `discardUnprocessedResults()` in their Issue #4072 failure cleanup, tested by
-  `test/creature/EvolveFailureNamesInFlightTasks_test.ts` (3 tests at head, one
-  per entry point; red against the unfixed `CreatureTraining.ts`: 3 failed with
-  `the in-flight task must be named as abandoned`). — reviewer: met. Not
-  covered: a failed _discovery_ stub can still log a second line (it carries no
-  marker; the criterion is worded for training tasks, and marking it needs a new
-  field on the worker response type).
+  `src/NEAT/Neat.ts` (the `terminationReason !== "overrun"` wait in `finishUp`),
+  `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled training result is unmerged, then finishes (Issue #4099)`;
+  field: Evidence item 1 — reviewer: met
+- **partial** — Every scheduled training task ends with exactly one terminal
+  line (`completed`, `failed`, `abandoned`, or a new `discarded at teardown`). —
+  evidence: `test/creature/EvolveFailureNamesInFlightTasks_test.ts`,
+  `test/NEAT/NeatFinishUp.ts`; field: Evidence item 2 — reviewer: partial —
+  reason: a hard-deadline abandonment of an uncommitted generation logs both
+  completion and discard for the same task (Issue #4107), as covered by
+  `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts::evolve: a trained task discarded by a hard-deadline abandon is logged once as discarded (Issue #4107)`.
 - **met** — Regression test: stub a worker whose training promise resolves
   **after** the final generation's `processCompletedResults` but before
   `finishUp`. … assert that (a) the trained creature reaches the returned
   population or the creature store, or a `discarded` line names the task, and
   (b) `Training <id> completed` is logged. — evidence:
   `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled after the last generation is merged and persisted, not discarded (Issue #4099)`
-  runs a real `evolveDir` (`iterations: 1`, temporary `creatureStore`,
-  `verbose: false`) and wraps the captured `neat.evolve` through the
-  `deps.onNeatReady` seam; right after the last scheduled generation returns it
-  settles a training result tagged `late4099` through the production hook
-  `neat.recordTrainingComplete`. It asserts a second `evolve()` ran, the run did
-  not end `overrun`/`hard-deadline`, `Training late4099 completed` is logged, no
-  `discarded at teardown` warning appears, and a creature tagged
-  `trainID=late4099` is in the returned population and in the creature store.
-  The settled creature is a zero-weight constant-output network on a
-  constant-output dataset, so it is the strictly best creature and survives
-  selection deterministically. The unit-level companion
-  `test/NEAT/NeatFinishUp.ts::finishUp: a settled training result is merged by processCompletedResults, then the run finishes (Issue #4099)`
-  covers the `finishUp()` false-then-true contract. The test wraps `evolve()`
-  rather than stubbing a worker's promise, and settles the result through
-  `recordTrainingComplete`, the hook the worker result handler also ends in. It
-  does not run the rest of that handler (`src/NEAT/NeatScheduling.ts`: the
-  `trainingRegressionTracker` updates, `r.train.forward` and the trace-file
-  writes), which this test does not cover. — reviewer: met
-- **missing** — Field evidence: a GRQ sampler log on a neat-ai release carrying
+  — reviewer: met — reason: the red run was recorded in #4104 against the code
+  with the `finishUp()` wait disabled, not against a `v7.0.62` checkout, and the
+  test settles the result through `recordTrainingComplete` rather than a stubbed
+  worker promise
+- **partial** — Field evidence: a GRQ sampler log on a neat-ai release carrying
   the fix where a task scheduled in the last generation shows
   `Training <id> completed`, with no `outcome=in_flight … reason=log-ended` in
-  `[training-outcomes]`. — reviewer: missing — reason: needs a GRQ log from a
-  released version carrying this fix; it cannot exist before release.
+  `[training-outcomes]`. — evidence: Evidence items 1 to 4 — reviewer: partial —
+  reason: a release carrying the fix is in the field and the terminal-line count
+  covers the sample as qualified in Evidence item 2, but no log shows the merge
+  pass producing `completed`, and 7 discarded tasks still read `log-ended`
+  because GRQ's parser has no rule for the new line.
+- **unrequested** — this file replaces the earlier archived summary of #4104 at
+  the same path — reviewer: unrequested — reason: `pr-summary-4099.md` is the
+  path this run must write; the earlier spec, design decisions, test plan and
+  mutation-check record stay in git history at `81941817` and describe code that
+  is unchanged here. The two GRQ observations (the wait line that can promise a
+  merge, GRQ's missing `discarded at teardown` rule) are recorded as facts, with
+  no behaviour change.
 
 ## Standards Review
 
 <!-- vibe-standards-review inputs="diff+AGENTS.md+docs/ENGINEERING_PRINCIPLES.md" -->
 
-- **clean** — no violations reported. Checked: logging goes through
-  `getLogger()`; no timing APIs or `Deno.env` mutation in tests; tests assert
-  behaviour; Australian English; no TS fallback added;
-  `runBoundedEvolveTeardown` is not exported from `mod.ts`, and all three
-  callers were updated. The repository has no `CODING-STANDARDS.md` and marks no
-  rule as review-only.
+- **clean** — Australian English; no code or test changed; `deno.json` carries
+  only the CI version bump; every figure traces to a command in Evidence.
 
 ## Test Plan
 
-- `test/NEAT/NeatFinishUp.ts`: training/discovery pending → `finishUp` false
-  then true; over-run → true (no spin; this one also passes on the unfixed code,
-  it guards the exclusion); `discardUnprocessedResults` count/empty/failed-stub
-  cases; merge-then-finish through the real `processCompletedResults`.
-- `test/creature/EvolveDirLateTrainingResult.ts` (2 tests at head; this bullet
-  describes the first): end-to-end through `evolveDir` — a result settled after
-  the last generation leads to another `evolve()`, is logged `completed`, not
-  discarded, and is in the returned population and creature store. Red check:
-  disabling the `finishUp()` wait (`false && …`) fails it with
-  `a settled-but-unmerged result must lead to another evolve(); got 1 call(s)`;
-  restored and green. Branch outcome: the `trainingComplete.length > 0` operand
-  of the new `finishUp()` condition is reached by this test via `evolveDir`.
-- `test/creature/EvolveDirLateTrainingResult.ts` second test: a real `evolveDir`
-  whose captured SIGTERM listener is invoked after the first generation with a
-  never-settling training entry in `trainingInProgress`; asserts one `evolve()`
-  call and `Training <last 8> abandoned at teardown` in the warnings. Red check:
-  replacing the `abandonInFlightAtTeardown()` call in `runBoundedEvolveTeardown`
-  with `0` fails it, and fails the teardown order test.
-- `test/creature/BoundedEvolveTeardown.ts` (11 tests at head): the order is
-  persist, terminate, abandon, discard, with `resultsDiscarded` and
-  `tasksAbandoned` equal to the returned counts; a result queued during the
-  persist's await is named; both naming calls still run when persist fails.
-  `baseOptions` gained a `neat` stub returning 0 for both methods (no assertion
-  removed from any existing test).
-- `test/NEAT/NeatFinishUp.ts` (25 tests at head): `abandonInFlightAtTeardown`
-  names training and discovery by last 8 characters of the uuid, clears both
-  maps, bumps `abandonEpoch` and makes `recordTrainingComplete` refuse a late
-  settle; with nothing in flight it returns 0, logs nothing and leaves the epoch
-  alone. Branch outcomes: the `abandoned > 0` guard forced to `true` fails the
-  nothing-in-flight test; removing the `discoveryInProgress.clear()` fails the
-  discovery assertion.
-- `test/creature/EvolveFailureNamesInFlightTasks_test.ts` (3 tests at head):
-  each entry point is failed through `deps.onNeatReady` (`neat.evolve` rejects)
-  with a never-settling `trainingInProgress` entry and a result queued in
-  `trainingComplete`; asserts the original error is rethrown, the in-flight task
-  is logged `abandoned`, the queued result `discarded at teardown`, and both
-  collections are empty. Red check: with `CreatureTraining.ts` restored to the
-  prior commit, `0 passed | 3 failed`. Branch outcomes: the abandon call and the
-  discard call are each named by their own log line, so deleting either one
-  fails the matching assertion in all three tests. Entry points checked: the
-  failure `finally` of `evolveDir`, `evolveEnv` and `evolveRL`. Re-run on the
-  head: `EvolveFailureNamesInFlightTasks_test.ts` 3 passed, 0 failed.
-- `test/NEAT/ScheduledTrainingLogLine.ts` (2 tests): `scheduleTraining` with
-  `verbose: false` logs exactly one `scheduled` line, without a borrow tag when
-  the heavy pool supplies the worker, and with `(borrowed from fast pool)` when
-  only the fast pool has an idle worker. Red check: inverting the
-  `borrowedFromFast ?` ternary in `NeatScheduling.ts` fails both tests (0 passed
-  | 2 failed); this kills the mutant reported at `NeatScheduling.ts:601`.
-  Scheduling and teardown neighbours (`NeatFinishUp.ts`,
-  `ScheduledTrainingIterations.ts`, `ScheduledTrainingLogLine.ts`,
-  `SchedulingRepeatGuard.ts`, `PoolBorrowing.ts`,
-  `NeatAbandonLateCompletion.ts`) re-run together on the head: 48 passed, 0
-  failed.
-- Not done: a mutation-style red check of each new test against the unfixed
-  code; the new `finishUp` tests that the fix is meant to turn green are
-  expected to fail against the base `Neat.ts` by reading it, not by observed run
-  (apart from the `evolveDir` red check above). The over-run and
-  no-pending-result `finishUp` tests also pass on the base code. Call sites
-  checked: `evolveDir`, `evolveEnv`, `evolveRL` all pass `neat` (required
-  option, so omission fails type-check); the discard option is exercised by the
-  teardown unit test, and the merge route by the `evolveDir` test above.
-  `evolveEnv`/`evolveRL` share `finishUp()` and the teardown but have no
-  end-to-end late-result test of their own (their failure path is tested above).
-- Docs: `docs/TIMEOUTS.md` teardown description updated (the naming pass now
-  sits between worker termination and the replay drain, and the failure cleanup
-  makes the same calls); `CHANGELOG.md` entry added. Greps for `finishUp`,
-  `cleanUpDelayCount`, `trainingComplete`, `teardown` over `README.md`, `docs/`
-  (excluding archive) and `src` doc comments found no other stale sentence.
-
-## Mutation check: changed lines are pinned
-
-The earlier run reported 37 survivors, every one tagged "no test imports this
-module": the mutation runner could not map the `@neat/…` / `@creature/…` alias
-imports in `test/NEAT/NeatFinishUp.ts` and
-`test/creature/BoundedEvolveTeardown.ts` back to the mutated source, so it ran
-no relevant test. I added two tests
-(`discardUnprocessedResults: a result with no task payload is still logged as
-unknown and counted`
-and
-`finishUp: an over-run stop with only one kind of
-unmerged result still finishes`)
-and mutated the source by hand, running `test/NEAT/NeatFinishUp.ts` and
-`test/creature/BoundedEvolveTeardown.ts`:
-
-- `src/NEAT/Neat.ts:837` operand `terminationReason !== "overrun"` → `true`: 2
-  tests fail.
-- `src/NEAT/Neat.ts:838` operand `(trainingComplete.length > 0 || …)` → `true`:
-  8 tests fail.
-- `src/NEAT/Neat.ts:1223` operand `r.train !== undefined` dropped: no longer
-  type-checks (the payload-less case is also now covered by a test).
-- `src/NEAT/Neat.ts:1191` (`abandoned > 0` guard forced to `true`) and the
-  `discoveryInProgress.clear()` removed: each fails one `NeatFinishUp.ts` test.
-- `src/NEAT/Neat.ts:845` / `:1241` (`return` values): 4 tests fail when
-  `discardUnprocessedResults` returns `undefined`.
-- `src/creature/BoundedEvolveTeardown.ts:348-349` properties `resultsDiscarded`
-  / `tasksAbandoned` removed: fails type-check, and the teardown test asserts
-  `2` and `1`.
-- `test/NEAT/NeatFinishUp.ts:533–660`: exempt (untestable): these are the test
-  file's own helper and assertion lines (`captureLog`, `settledTraining`,
-  `settledDiscovery`, the test bodies); mutating a test cannot be pinned by
-  another test.
-
-- `test/creature/EvolveDirLateTrainingResult.ts:38,39,52,66,68,70,76,77,79,91,94-98,107-111,113,115,121,124,129-134,139,144,145,167,180,181`:
-  exempt (untestable): the whole file is the test (its helpers, fixture data,
-  logger recorder, settle hook and assertions). The runner reports "no test
-  imports this module" because nothing imports a test file, so no other test can
-  go red on a mutation of it. Its worth is checked by the `finishUp()` red check
-  above (disabling the wait fails it with
-  `a settled-but-unmerged result must lead to another evolve(); got 1 call(s)`).
-
-Second review round (survivors again tagged "no test imports this module" except
-`Neat.ts:1191-1198`): I mutated each by hand and ran
-`test/NEAT/NeatFinishUp.ts` + `test/creature/BoundedEvolveTeardown.ts` — all
-red: `src/NEAT/Neat.ts:1191` (`abandoned > 0` → `true`), `:1192`-`:1196` (each
-`clear()` / `abandonEpoch++` deleted), `:1198` (`return 0`). The
-`trainingDeadlines` / `trainingTasks` clears were unpinned, so the abandon test
-now seeds both maps and asserts they are emptied.
-`src/creature/BoundedEvolveTeardown.ts:349` (`tasksAbandoned`) is asserted at
-`test/creature/BoundedEvolveTeardown.ts:302`.
-
-- `test/NEAT/NeatFinishUp.ts:924,925,931-933,948,955,958,961,975-977,980`,
-  `test/creature/BoundedEvolveTeardown.ts:71,72,281,282,319,321,322,328,329,333,334,347,351,354,360`
-  and `test/creature/EvolveDirLateTrainingResult.ts:190,191,193`: exempt
-  (untestable): these are lines of the test files themselves (fixtures, spies,
-  assertions, `sanitizeOps` / `sanitizeResources` flags); nothing imports a test
-  file, so no other test can go red on a mutation of it.
-
-The runner's cap (40 of 72 candidates tried) means the other 32 mutants were
-never tried; I did not enumerate them.
-
-## Acceptance criterion left `missing` (not fabricated)
-
-The "Field evidence" criterion needs a GRQ sampler log from a released neat-ai
-version carrying this fix. No such release exists yet, so it cannot be met in
-this change and stays `missing` above.
+- Reworded private repository references to describe the downstream sources so
+  the archived evidence remains accessible to public readers. The archive
+  privacy gate is `test/docs/ArchiveDocsNoPrivateRepoSlugs.ts`.
+- No test file is added, edited or removed. The hard-deadline abandonment test
+  documents the remaining double-line behaviour.
+- Ran on the head:
+  `deno test -A test/NEAT/NeatFinishUp.ts
+  test/creature/EvolveDirLateTrainingResult.ts
+  test/creature/BoundedEvolveTeardown.ts
+  test/creature/EvolveFailureNamesInFlightTasks_test.ts`
+  — 52 passed, 0 failed.
+- <!-- vibe-quality-gate-skipped reason="documentation change and CI version bump only; no source or test changed, so the full ./quality.sh was not run" -->
