@@ -2,22 +2,25 @@
 
 PR #4104 (merged 2026-10-29, first released in v7.0.65, commit `81941817`)
 already made `finishUp()` wait for a settled-but-unmerged training or discovery
-result and made the teardown name every result it drops. The only Definition of
-done item left open was the field evidence. This PR changes no code: it replaces
-the earlier summary with the record of that evidence, searched in the downstream
-log repository's history (`Develop`, 2026-10-29 to 2026-11-06) across 34 log
-snapshots from releases 7.0.66 to 7.1.3. The evidence shows the terminal-line
-contract holding in the field, and it shows one thing the issue did not expect:
-in every field case where the new wait fired, the over-run guard stopped the run
-on the next pass, so the result was logged as discarded and never merged. Part
-of #4099.
+result and made the teardown name every result it drops. The exactly-one
+terminal-line and field-evidence criteria remain partial. This PR changes no
+code: it replaces the earlier summary with the record of that evidence, searched
+in the downstream log repository's history (`Develop`, 2026-10-29 to 2026-11-06)
+across 34 log snapshots from releases 7.0.66 to 7.1.3. The counted terminal
+lines cover every scheduled task in the sample, but the count omits a
+hard-deadline discard form. The evidence also shows one thing the issue did not
+expect: in every field case where the new wait fired, the over-run guard stopped
+the run on the next pass, so the result was logged as discarded and never
+merged. Part of #4099.
 
 Version bump: `deno.json` `version` updated for this change; the merged commit
 records the final version.
 
 ## Not closing #4099
 
-The closing field-evidence criterion is `partial`: no field log yet shows a task
+The exactly-one terminal-line criterion is `partial`: a hard-deadline
+abandonment can log both completion and discard for one task (Evidence item 2).
+The field-evidence criterion is also `partial`: no field log yet shows a task
 scheduled in the last generation ending in `Training <id> completed` through the
 extra merge pass, and seven tasks that do carry a `discarded at teardown` line
 still read `outcome=in_flight … reason=log-ended` in GRQ's own parser (see
@@ -87,13 +90,19 @@ GRQ-22), not every host.
    when the result settled), not from a `Training c632dbf5 completed` line,
    which this task never got.
 
-2. **Terminal lines hold.** Every one of the 34 snapshots reached
+2. **Counted terminal lines.** Every one of the 34 snapshots reached
    `teardown complete` after its last `scheduled` line, and in each every
    scheduled task id has a terminal line (`completed after`,
    `discarded at teardown`, `abandoned at teardown` or
-   `Training failed for creature`). Two ids carry two terminal lines because one
-   creature id is scheduled twice in the log (`0c2a1de7` in `fa1c6afc`,
-   `5cb993cb` in `6cef715e`): two separate schedules, one terminal line each.
+   `Training failed for creature`). Two ids carry two counted terminal lines
+   because one creature id is scheduled twice in the log (`0c2a1de7` in
+   `fa1c6afc`, `5cb993cb` in `6cef715e`): two separate schedules, one counted
+   line each. This count omitted `Training <id> discarded: …` after a
+   completion, so it does not establish the exactly-one contract. When a hard
+   deadline abandons a generation after a training result is merged but before
+   it commits (Issue #4107), the task logs both `Training <id> completed` and
+   `Training <id> discarded: generation abandoned past the hard deadline`.
+   `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts` covers this path.
 
 3. **Residual `log-ended`.** 22 tasks in the sample carry a
    `discarded at
@@ -143,10 +152,13 @@ with `gh pr view`).
   `src/NEAT/Neat.ts` (the `terminationReason !== "overrun"` wait in `finishUp`),
   `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled training result is unmerged, then finishes (Issue #4099)`;
   field: Evidence item 1 — reviewer: met
-- **met** — Every scheduled training task ends with exactly one terminal line
-  (`completed`, `failed`, `abandoned`, or a new `discarded at teardown`). —
+- **partial** — Every scheduled training task ends with exactly one terminal
+  line (`completed`, `failed`, `abandoned`, or a new `discarded at teardown`). —
   evidence: `test/creature/EvolveFailureNamesInFlightTasks_test.ts`,
-  `test/NEAT/NeatFinishUp.ts`; field: Evidence item 2 — reviewer: met
+  `test/NEAT/NeatFinishUp.ts`; field: Evidence item 2 — reviewer: partial —
+  reason: a hard-deadline abandonment of an uncommitted generation logs both
+  completion and discard for the same task (Issue #4107), as covered by
+  `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts::evolve: a trained task discarded by a hard-deadline abandon is logged once as discarded (Issue #4107)`.
 - **met** — Regression test: stub a worker whose training promise resolves
   **after** the final generation's `processCompletedResults` but before
   `finishUp`. … assert that (a) the trained creature reaches the returned
@@ -161,10 +173,10 @@ with `gh pr view`).
   the fix where a task scheduled in the last generation shows
   `Training <id> completed`, with no `outcome=in_flight … reason=log-ended` in
   `[training-outcomes]`. — evidence: Evidence items 1 to 4 — reviewer: partial —
-  reason: a release carrying the fix is in the field and the terminal-line
-  contract holds, but no log shows the merge pass producing `completed`, and 7
-  discarded tasks still read `log-ended` because GRQ's parser has no rule for
-  the new line.
+  reason: a release carrying the fix is in the field and the terminal-line count
+  covers the sample as qualified in Evidence item 2, but no log shows the merge
+  pass producing `completed`, and 7 discarded tasks still read `log-ended`
+  because GRQ's parser has no rule for the new line.
 - **unrequested** — this file replaces the earlier archived summary of #4104 at
   the same path — reviewer: unrequested — reason: `pr-summary-4099.md` is the
   path this run must write; the earlier spec, design decisions, test plan and
@@ -185,7 +197,8 @@ with `gh pr view`).
 - Reworded private repository references to describe the downstream sources so
   the archived evidence remains accessible to public readers. The archive
   privacy gate is `test/docs/ArchiveDocsNoPrivateRepoSlugs.ts`.
-- No test file is added, edited or removed.
+- No test file is added, edited or removed. The hard-deadline abandonment test
+  documents the remaining double-line behaviour.
 - Ran on the head:
   `deno test -A test/NEAT/NeatFinishUp.ts
   test/creature/EvolveDirLateTrainingResult.ts
