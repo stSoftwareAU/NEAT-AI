@@ -22,8 +22,11 @@ on:
     branches: ["*", "milestone/*"]
     paths:
       - "src/architecture/training/**"
+      - "src/architecture/Training.ts"
       - "src/config/TrainOptions.ts"
       - "src/NEAT/NeatScheduling.ts"
+      - "src/NEAT/PerTaskTrainingTimeout.ts"
+      - "src/multithreading/workers/**"
       - "src/workers/**"
       - "scripts/check_native_backprop_train.ts"
       - "scripts/native_deadline_probe.ts"

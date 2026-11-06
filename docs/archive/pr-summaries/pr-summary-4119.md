@@ -240,6 +240,12 @@ quarantine (existing doc page linked, not changed in behaviour).
 
 ## Test Plan
 
+Review follow-up: the native deadline workflow now triggers for changes to
+`Training.ts`, the multithreading workers, and `PerTaskTrainingTimeout.ts`.
+`test/ci/NativeBackpropWorkflow.ts::native-backprop workflow triggers for deadline execution paths`
+checks representative bridge, probe, worker and grace-period paths against the
+pull request filter. Before the fix it failed on `Training.ts`.
+
 Review follow-up: the hermetic POSIX fake CLI now exercises `trainDir` with a
 relative budget both with and without a hard deadline. It records the train
 arguments and returns a captured capable-engine timeout response. Coverage:
