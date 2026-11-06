@@ -65,7 +65,7 @@ closing fleet-log evidence needs a release and a run (see Acceptance Criteria).
   `[evolveDir] teardown: 1 worker(s) could not be stopped`. Discovery
   `56c37f26-…93116c6` had logged
   `rust combined analysis chunk 1/3 … [synapse=gpu neuron=gpu]`.
-- Observed with Deno 2.9.8 on Linux: a worker blocked in a synchronous libc
+- Observed with Deno 2.9.8 on Linux: a worker blocked in a synchronous C-library
   `sleep(60)` keeps the process alive after `terminate()` (killed by `timeout`
   at 25 s); the same call declared `nonblocking: true` exits at once.
 
@@ -97,7 +97,7 @@ with `gh issue view`: #4126 (this issue), #4119 (native trainer deadline, open),
   stayed alive until a stale-window watchdog killed it; the log showed
   `teardown: 1 worker(s) could not be stopped` for a stuck discovery analysis.
 - **status** — `partial` — reason: the process-exit mechanism is reproduced in a
-  child process with a worker blocked in a libc `sleep` declared with the
+  child process with a worker blocked in a C-library `sleep` declared with the
   production flag; the real `analyze_parallel` and a full `evolveDir` with a
   quarantined worker are not run, because the Rust library is not available here
   and a full `evolveDir` child hung before teardown in the earlier attempt on
@@ -116,8 +116,8 @@ with `gh issue view`: #4126 (this issue), #4119 (native trainer deadline, open),
   `test/ErrorGuidedStructuralEvolution/AnalyzeParallelNonBlocking.ts::a worker blocked in the analyze_parallel FFI declaration does not keep the process alive after terminate (Issue #4126)`,
   `test/creature/ProcessExitsAfterWedgedWorker.ts` — reviewer: partial — reason:
   the test is a child-process check of the `analyze_parallel` declaration with a
-  libc stand-in, not a scheduled task through `evolveDir`; a full `evolveDir`
-  with a wedged worker hung before teardown when tried earlier.
+  C-library stand-in, not a scheduled task through `evolveDir`; a full
+  `evolveDir` with a wedged worker hung before teardown when tried earlier.
 - **partial** — Fix in neat-ai so a quarantined/terminated worker or watchdog
   can't pin the process. If a thread genuinely can't be reclaimed, `evolveDir`
   should report it … so callers can exit explicitly — evidence:
@@ -150,7 +150,7 @@ with `gh issue view`: #4126 (this issue), #4119 (native trainer deadline, open),
 
 <!-- vibe-standards-review inputs="diff+AGENTS.md+docs/ENGINEERING_PRINCIPLES.md+docs/DOC_STYLE.md" -->
 
-- **violation** — the libc `sleep` stand-in is more lenient than the real
+- **violation** — the C-library `sleep` stand-in is more lenient than the real
   `analyze_parallel` and no contract source was named — evidence:
   `test/ErrorGuidedStructuralEvolution/AnalyzeParallelNonBlocking.ts:1` —
   reason: fixed in this diff (the header names the Deno FFI `nonblocking`

@@ -11,7 +11,7 @@
  * Deno FFI documents that a symbol declared `nonblocking: true` runs on a separate
  * thread and returns a promise, whereas a blocking call parks the calling thread
  * (https://docs.deno.com/runtime/reference/deno_namespace_apis/#deno.dlopen). The
- * libc `sleep` stand-in mirrors that contract. It cannot exercise NEAT-AI-Discovery's
+ * C library `sleep` stand-in mirrors that contract. It cannot exercise NEAT-AI-Discovery's
  * real `analyze_parallel`: the library is not available in CI, and the real-library
  * discovery tests in `test/discovery` are gated on it. The stand-in therefore pins
  * the process-exit property of the declaration `RUST_DISCOVERY_SYMBOLS` ships.
@@ -65,7 +65,7 @@ function repoModule(relative: string): string {
 }
 
 /**
- * The worker waits for a start message, opens libc with the chosen `nonblocking`
+ * The worker waits for a start message, opens the C library with the chosen `nonblocking`
  * flag, announces it started, then calls the C library `sleep`.
  *
  * `"fromMessage"` takes the flag from the message the caller sends.
