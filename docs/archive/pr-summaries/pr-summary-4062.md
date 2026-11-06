@@ -132,9 +132,9 @@ runs it).
   — reviewer: partial — reason: No producing path was identified, so the tests
   exercise a real SubConnection mutation between checkpoint batches and the
   load-side prune, not the deadline-abandoned path.
-- **partial** — Closing a week of GRQ-logs from sampler hosts with no
-  rule=ValidationError/MEMETIC repair lines on the fixed release, quoted with
-  the search used. — evidence:
+- **partial** — Closing a week of downstream production logs from sampler hosts
+  with no rule=ValidationError/MEMETIC repair lines on the fixed release, quoted
+  with the search used. — evidence:
   `docs/archive/pr-summaries/pr-summary-4062.md, Evidence section. It quotes the searches, which found 0 repair lines and 0 prune warnings on 7.1.2 and 7.1.3, with sampler loads present throughout.`
   — reviewer: partial — reason: The window is about 5 days of the 7 asked for,
   and a full week is reached on 2026-11-08. The zero result is also partly
@@ -148,4 +148,4 @@ runs it).
   withdrawn, because principle 11 governs the public library contract (the API
   surface in API REFERENCE.md), not an archived PR summary. The tokens
   option=sampler and copyNetworks: are the literal log searches run, not naming,
-  defaults or
+  defaults or public API surface.
