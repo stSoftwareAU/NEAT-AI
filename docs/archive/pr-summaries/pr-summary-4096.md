@@ -51,8 +51,9 @@ that carries this change (`missing`).
 
 ## Evidence
 
-Field logs searched: GRQ-logs `Develop` at `66af01e` (2026-11-06), history from
-2026-10-29 (the day #4101 merged) with `git log -S 'lastHeartbeatAgeMs'` and
+Field logs searched: the downstream production log repository, `Develop` at
+`66af01e` (2026-11-06), history from 2026-10-29 (the day #4101 merged) with
+`git log -S 'lastHeartbeatAgeMs'` and
 `git log -G 'Run wedged|event loop blocked'`. Neither matched a line, so no
 fatal breach with a heartbeat age has been logged since the heartbeat shipped.
 The same window does hold non-fatal blocks on 7.1.2, for example
@@ -123,8 +124,8 @@ and evolveRL), #4096 (this issue).
   (merged in #4101, present at the base) — reviewer: met
 - **missing** — Closing evidence: a quoted breach line from a field run that
   includes the heartbeat age, or a quoted green final loop on a swap-backed 8 GB
-  host. — reviewer: missing — reason: the GRQ-logs search above found no such
-  line since 2026-10-29; it needs a deployed run.
+  host. — reviewer: missing — reason: the production log search above found no
+  such line since 2026-10-29; it needs a deployed run.
 - **unrequested** — the non-fatal stall line, its `stallReportMS` option, tests
   and docs — reviewer: unrequested — reason: no criterion asks for it. It is
   kept because the root-cause criterion cannot be answered from fatal breach
