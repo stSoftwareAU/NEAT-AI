@@ -32,7 +32,10 @@
  * since arm or since the last tick. An age far above `heartbeatIntervalMS`
  * means the main loop never got to tick, so it was blocked. An age at or below
  * about one interval means the loop was still turning and the run was simply
- * over budget.
+ * over budget. The main thread also logs a non-fatal stall line when a tick is
+ * late by `stallReportMS` or more, naming the phase at the last heartbeat and
+ * the phase now. It uses the wall clock (`Date.now`), so a clock step can
+ * produce a false report.
  *
  * The caller must `disarm()` in a `finally`. An armed Worker keeps the process
  * alive until its deadline, so a run that finishes early must release it. The
@@ -81,6 +84,13 @@ export type EventLoopWatchdogPhase = typeof EVENT_LOOP_WATCHDOG_PHASES[number];
  */
 export const DEFAULT_HEARTBEAT_INTERVAL_MS = 1_000;
 
+/**
+ * Lateness of a heartbeat tick, in milliseconds, at which the main thread logs
+ * a non-fatal stall line. Used when
+ * {@link EventLoopWatchdogOptions.stallReportMS} is not given.
+ */
+export const DEFAULT_STALL_REPORT_MS = 10_000;
+
 /** Options for {@link armEventLoopWatchdog}. */
 export interface EventLoopWatchdogOptions {
   /**
@@ -100,6 +110,12 @@ export interface EventLoopWatchdogOptions {
    * {@link DEFAULT_HEARTBEAT_INTERVAL_MS}.
    */
   heartbeatIntervalMS?: number;
+  /**
+   * Minimum lateness of a heartbeat tick, in milliseconds, before the main
+   * thread logs a stall. Must be a finite number greater than zero. Defaults to
+   * {@link DEFAULT_STALL_REPORT_MS}.
+   */
+  stallReportMS?: number;
 }
 
 /** Handle returned by {@link armEventLoopWatchdog}. */
@@ -152,10 +168,10 @@ function logUnavailable(cause: string): void {
  * without read permission) reports asynchronously; that path is handled by the
  * `error` listener below.
  *
- * @throws {ConfigurationError} `NOT_FINITE` if `deadlineEpochMS` or
- *   `heartbeatIntervalMS` is not finite; `OUT_OF_RANGE` if
- *   `heartbeatIntervalMS` is not greater than zero; `INVALID_TYPE` if
- *   `breachLine` is empty after trimming.
+ * @throws {ConfigurationError} `NOT_FINITE` if `deadlineEpochMS`,
+ *   `heartbeatIntervalMS` or `stallReportMS` is not finite; `OUT_OF_RANGE` if
+ *   `heartbeatIntervalMS` or `stallReportMS` is not greater than zero;
+ *   `INVALID_TYPE` if `breachLine` is empty after trimming.
  */
 export function armEventLoopWatchdog(
   options: EventLoopWatchdogOptions,
@@ -189,6 +205,19 @@ export function armEventLoopWatchdog(
       "OUT_OF_RANGE",
     );
   }
+  const stallReportMS = options.stallReportMS ?? DEFAULT_STALL_REPORT_MS;
+  if (!Number.isFinite(stallReportMS)) {
+    throw new ConfigurationError(
+      `stallReportMS must be a finite number of milliseconds, got ${stallReportMS}`,
+      "NOT_FINITE",
+    );
+  }
+  if (stallReportMS <= 0) {
+    throw new ConfigurationError(
+      `stallReportMS must be greater than 0, got ${stallReportMS}`,
+      "OUT_OF_RANGE",
+    );
+  }
 
   // The generation and the phase live in shared memory rather than in a
   // message. Slot 0 is the generation and slot 1 is the phase index, which is
@@ -217,10 +246,32 @@ export function armEventLoopWatchdog(
     return NOOP_HANDLE;
   }
 
+  // The main thread also reports a stall. A tick that is late by stallReportMS
+  // or more logs one line naming the phase at the last heartbeat and now. The
+  // arm-time beat is stored without the check, so it never reports. Date.now is
+  // the wall clock, so a clock step can produce a false report.
+  const currentPhase = (): EventLoopWatchdogPhase =>
+    EVENT_LOOP_WATCHDOG_PHASES[Atomics.load(generation, 1)];
+  let lastBeatMS = Date.now();
+  let lastBeatPhase = currentPhase();
+  Atomics.store(heartbeat, 0, BigInt(lastBeatMS));
   const beat = (): void => {
-    Atomics.store(heartbeat, 0, BigInt(Date.now()));
+    const now = Date.now();
+    const lateMS = now - lastBeatMS - heartbeatIntervalMS;
+    const phaseNow = currentPhase();
+    if (lateMS >= stallReportMS) {
+      const gen = Atomics.load(generation, 0);
+      const genText = gen === GENERATION_UNKNOWN ? "unknown" : String(gen);
+      getLogger().warn(
+        `[Neat] main loop stalled for ${
+          now - lastBeatMS
+        }ms (heartbeat every ${heartbeatIntervalMS}ms) at generation ${genText}; phase at last heartbeat: ${lastBeatPhase}, phase now: ${phaseNow}`,
+      );
+    }
+    Atomics.store(heartbeat, 0, BigInt(now));
+    lastBeatMS = now;
+    lastBeatPhase = phaseNow;
   };
-  beat();
   const heartbeatTimer = setInterval(beat, heartbeatIntervalMS);
   // Unreferenced, so the heartbeat never keeps the process alive on its own.
   // The Worker's deadline is what holds the process until disarm.

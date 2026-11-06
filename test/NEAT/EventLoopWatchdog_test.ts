@@ -483,6 +483,76 @@ await new Promise((resolve) => setTimeout(resolve, 10_000));
   );
 });
 
+Deno.test("EventLoopWatchdogStall: a busy loop logs one stall line naming the generation and the phase", async () => {
+  // The fixture yields once after setPhase so that a heartbeat tick records the
+  // phase before the busy loop starts. Otherwise the last heartbeat would still
+  // read untracked. The first tick after the busy loop is then late by about
+  // the length of the loop, which is over stallReportMS.
+  const result = await runFixture(
+    `
+const w = armEventLoopWatchdog({
+  deadlineEpochMS: Date.now() + 60_000,
+  breachLine: "[Neat] watchdog-test stall breach",
+  heartbeatIntervalMS: 50,
+  stallReportMS: 300,
+});
+w.setGeneration(3);
+w.setPhase("mutation");
+await new Promise((resolve) => setTimeout(resolve, 120));
+const busyUntil = Date.now() + 800;
+while (Date.now() < busyUntil) {}
+await new Promise((resolve) => setTimeout(resolve, 200));
+w.disarm();
+`,
+    ["--allow-read"],
+  );
+  assertEquals(result.code, 0, `stderr: ${result.stderr}`);
+  assert(
+    result.stderr.includes("main loop stalled"),
+    `stall line missing from stderr: ${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes("generation 3"),
+    `stall line must name the generation: ${result.stderr}`,
+  );
+  assert(
+    result.stderr.includes("phase at last heartbeat: mutation"),
+    `stall line must name the phase at the last heartbeat: ${result.stderr}`,
+  );
+  const stallCount = result.stderr.split("main loop stalled").length - 1;
+  assertEquals(
+    stallCount,
+    1,
+    `the stall line must appear exactly once: ${result.stderr}`,
+  );
+});
+
+Deno.test("EventLoopWatchdogStall: a yielding main thread logs no stall line", async () => {
+  // No busy loop, so the heartbeat timer ticks on time. The threshold is 1.5 s,
+  // far above the 50 ms interval, so a loaded host does not trip it. The yields
+  // total about 600 ms, which is several ticks.
+  const result = await runFixture(
+    `
+const w = armEventLoopWatchdog({
+  deadlineEpochMS: Date.now() + 60_000,
+  breachLine: "[Neat] watchdog-test quiet breach",
+  heartbeatIntervalMS: 50,
+  stallReportMS: 1_500,
+});
+for (let i = 0; i < 6; i++) {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}
+w.disarm();
+`,
+    ["--allow-read"],
+  );
+  assertEquals(result.code, 0, `stderr: ${result.stderr}`);
+  assert(
+    !result.stderr.includes("main loop stalled"),
+    `no stall line expected for a yielding main thread: ${result.stderr}`,
+  );
+});
+
 Deno.test("EventLoopWatchdogPhase: the breach line names the phase set before the busy loop", async () => {
   const result = await runFixture(
     `
@@ -590,6 +660,52 @@ Deno.test("armEventLoopWatchdog accepts a positive heartbeat interval", () => {
     deadlineEpochMS: Number.MAX_SAFE_INTEGER,
     breachLine: "[Neat] watchdog-test in-process breach",
     heartbeatIntervalMS: 50,
+  });
+  watchdog.disarm();
+});
+
+Deno.test("armEventLoopWatchdog refuses a stall report threshold that is not finite", () => {
+  for (
+    const stallReportMS of [
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.NEGATIVE_INFINITY,
+    ]
+  ) {
+    const err = assertThrows(
+      () =>
+        armEventLoopWatchdog({
+          deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+          breachLine: "x",
+          stallReportMS,
+        }),
+      ConfigurationError,
+    );
+    assertEquals(err.reason, "NOT_FINITE");
+  }
+});
+
+Deno.test("armEventLoopWatchdog refuses a stall report threshold that is not greater than zero", () => {
+  for (const stallReportMS of [0, -1]) {
+    const err = assertThrows(
+      () =>
+        armEventLoopWatchdog({
+          deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+          breachLine: "x",
+          stallReportMS,
+        }),
+      ConfigurationError,
+    );
+    assertEquals(err.reason, "OUT_OF_RANGE");
+  }
+});
+
+Deno.test("armEventLoopWatchdog accepts a positive stall report threshold", () => {
+  // Far-future deadline so the Worker never breaches during this in-process test.
+  const watchdog = armEventLoopWatchdog({
+    deadlineEpochMS: Number.MAX_SAFE_INTEGER,
+    breachLine: "[Neat] watchdog-test in-process breach",
+    stallReportMS: 50,
   });
   watchdog.disarm();
 });
