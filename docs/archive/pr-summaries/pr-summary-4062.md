@@ -57,9 +57,10 @@ only on 2026-11-01, for about 1.5 hours before 7.1.2, and is outside the window.
   `git log -G"ValidationError/MEMETIC|INVALID CREATURE|repairing an INVALID creature" --format=%h`
   found 0 commits, and `grep -c` for the same terms over the two files at the
   head was 0.
-- Search 2: `git log -G"Pruned [0-9]+ memetic" --format=%h` (the `[loadFrom]`
-  and `[CheckpointWriter]` warnings) found 0 commits, and
-  `git log -S"[creature-repair]"` found 0.
+- Search 2: `git log -G"Pruned [0-9]+ memetic" --format=%h` found 0 commits
+  matching the `[loadFrom]` warning, and `git log -S"[creature-repair]"` found
+  0. This pattern does not match the `[CheckpointWriter]` warning, which says
+  `Pruned N dangling memetic`; the writer warning was not searched for.
 - Control that the search can see sampler loads: `git log -S"option=sampler"`
   found 32 commits and `git log -S"copyNetworks:"` found 29, spanning 2026-10-31
   to 2026-11-06.
@@ -70,8 +71,10 @@ Limits: the repository keeps rotating snapshots, so a line written and rotated
 out between two snapshots would not be seen. The zero result is also partly
 circular: load now repairs a stale memetic before any downstream repair line
 could be written, so the absence of `rule=ValidationError/MEMETIC` shows less
-than it would have before #4131; the zero `Pruned` warnings are the stronger
-signal that no stale file reached a sampler.
+than it would have before #4131. The absence of matching `[loadFrom] Pruned`
+warnings is a stronger signal that no stale file reached a sampler, subject to
+the snapshot limit. No conclusion about writer-side pruning follows from this
+search.
 
 Earlier evidence from PR #4100, before the load-side prune, release 7.0.57:
 `grep -c "ValidationError/MEMETIC" *.log` was 0 in all 25 files at the head, and
@@ -106,8 +109,8 @@ the summary was run.
 <!-- vibe-quality-gate-skipped reason="documentation-only change; no code, lint or test input changed" -->
 
 Skipped or unverified: the producing path on GRQ-21 and `.creatures/10.json`,
-the last two days of the seven-day log window, and the full quality gate (CI
-runs it).
+the checkpoint writer warnings, the last two days of the seven-day log window,
+and the full quality gate (CI runs it).
 
 ## Acceptance Criteria
 
@@ -135,7 +138,7 @@ runs it).
 - **partial** — Closing a week of downstream production logs from sampler hosts
   with no rule=ValidationError/MEMETIC repair lines on the fixed release, quoted
   with the search used. — evidence:
-  `docs/archive/pr-summaries/pr-summary-4062.md, Evidence section. It quotes the searches, which found 0 repair lines and 0 prune warnings on 7.1.2 and 7.1.3, with sampler loads present throughout.`
+  `docs/archive/pr-summaries/pr-summary-4062.md, Evidence section. The searches found 0 repair lines and 0 matching load-side prune warnings on 7.1.2 and 7.1.3, with sampler loads present throughout; writer-side prune warnings were not searched for.`
   — reviewer: partial — reason: The window is about 5 days of the 7 asked for,
   and a full week is reached on 2026-11-08. The zero result is also partly
   circular, because load now repairs a stale memetic first.
