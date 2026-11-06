@@ -14,8 +14,8 @@ that carries both, and say plainly what is still open.
 Two things remain open: the producing path on GRQ-21 is still not identified,
 and the log window is about 5 days of the 7 the issue asks for.
 
-Version bump: no `deno.json` version change is made by this documentation-only
-change.
+Version bump: `deno.json` carries the auto-incremented patch version from 7.1.3
+to 7.1.4; the merged commit records the final version.
 
 ## Spec
 
@@ -122,13 +122,13 @@ runs it).
 - **met** — writeCreatures (or the producing mutation) never persists a creature
   whose memetic references a missing synapse: either validate-before-write, or
   prune at the mutation site. — evidence:
-  `src/creature/CheckpointWriter.ts::writeCreatures (calls pruneDanglingMemeticFromExport) and test/creature/CheckpointWriteDanglingMemetic test.ts. This is already on Develop (PRs #4064 and #4100), not added by this diff.`
+  `src/creature/CheckpointWriter.ts::writeCreatures (calls pruneDanglingMemeticFromExport) and test/creature/CheckpointWriteDanglingMemetic_test.ts. This is already on Develop (PRs #4064 and #4100), not added by this diff.`
   — reviewer: met
 - **partial** — Regression test: run the identified path (e.g. abandon
   generation N while its mutations are in flight, then write the checkpoint) and
   assert every written creature passes ValidationError/MEMETIC validation. —
   evidence:
-  `test/creature/CheckpointWriteDanglingMemetic test.ts and test/creature/LoadPrunesDanglingMemetic.ts`
+  `test/creature/CheckpointWriteDanglingMemetic_test.ts and test/creature/LoadPrunesDanglingMemetic.ts`
   — reviewer: partial — reason: No producing path was identified, so the tests
   exercise a real SubConnection mutation between checkpoint batches and the
   load-side prune, not the deadline-abandoned path.
@@ -146,6 +146,6 @@ runs it).
 
 - **clean** — The principle 11 (application-agnostic public repo) finding is
   withdrawn, because principle 11 governs the public library contract (the API
-  surface in API REFERENCE.md), not an archived PR summary. The tokens
+  surface in `docs/API_REFERENCE.md`), not an archived PR summary. The tokens
   option=sampler and copyNetworks: are the literal log searches run, not naming,
   defaults or public API surface.
