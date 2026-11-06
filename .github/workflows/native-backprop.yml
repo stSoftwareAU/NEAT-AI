@@ -1,0 +1,97 @@
+name: Native backprop deadline
+
+# Runs the real libneat_ai_backpropagation / neat_ai_backpropagation engines
+# against the native deadline contract (Issue #4119). The coverage shards force
+# the TypeScript / WASM path, so without this job nothing in CI would notice the
+# FFI or CLI adapter dropping the deadline. Both engines are built from pinned
+# commits of NEAT-AI-Backpropagation:
+#
+#   NEW    - advertises the `deadline` capability (v0.1.50)
+#   LEGACY - predates it (v0.1.49), proving older engines keep working
+#
+# The tests run with NEAT_AI_BACKPROP_REQUIRE_FFI=1 and
+# NEAT_AI_BACKPROP_REQUIRE_LEGACY=1, so a missing, unloadable or mis-detected
+# NEW or LEGACY engine fails the job instead of skipping the cases. Fixtures under
+# test/fixtures/native-backprop/ come from these same two commits; move the pins
+# and the fixtures together.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    # `milestone/*` keeps the gate on milestone sub-issue PRs (Issue #3359).
+    branches: ["*", "milestone/*"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  native-deadline:
+    name: Native deadline (real FFI and CLI engines)
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      NEW_ENGINE_REV: 947cbb5412156e229ed2e0d34142aa18ff2f9760
+      LEGACY_ENGINE_REV: f444bc4c1d73c088e8ec1188252df6da4501efca
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Deno and sync WASM package
+        uses: ./.github/actions/setup-neat
+
+      - name: Build the NEW and LEGACY engines
+        run: |
+          set -euo pipefail
+          engines="${RUNNER_TEMP}/native-engines"
+          mkdir -p "${engines}"
+          for which in NEW LEGACY; do
+            rev_var="${which}_ENGINE_REV"
+            rev="${!rev_var}"
+            lower="$(printf '%s' "${which}" | tr '[:upper:]' '[:lower:]')"
+            src="${engines}/${lower}-src"
+            out="${engines}/${lower}"
+            git clone --quiet https://github.com/stSoftwareAU/NEAT-AI-Backpropagation.git "${src}"
+            git -C "${src}" checkout --quiet "${rev}"
+            (cd "${src}" && CARGO_TARGET_DIR="${engines}/${lower}-target" \
+              cargo build --release -p neat_ai_backpropagation)
+            mkdir -p "${out}"
+            cp "${engines}/${lower}-target/release/libneat_ai_backpropagation.so" "${out}/"
+            cp "${engines}/${lower}-target/release/neat_ai_backpropagation" "${out}/"
+          done
+          {
+            echo "NEAT_AI_BACKPROP_DEADLINE_NEW=${engines}/new"
+            echo "NEAT_AI_BACKPROP_DEADLINE_LEGACY=${engines}/legacy"
+            echo "NEAT_AI_BACKPROP_LIB_PATH=${engines}/new"
+          } >> "${GITHUB_ENV}"
+
+      - name: Check the NEW library loads and advertises the deadline
+        run: |
+          set -euo pipefail
+          deno run \
+            --allow-read --allow-env --allow-ffi \
+            --config ./deno.json \
+            scripts/check_native_backprop_train.ts
+
+      - name: Run the native deadline tests against the real engines
+        env:
+          NEAT_AI_BACKPROP_REQUIRE_FFI: "1"
+          NEAT_AI_BACKPROP_REQUIRE_LEGACY: "1"
+        run: |
+          set -euo pipefail
+          timeout 1200 deno test -A \
+            --preload test/_preload.ts \
+            --config ./deno.json \
+            test/architecture/training/NativeDeadlineIntegration.ts \
+            test/architecture/training/NativeBackpropCapabilities.ts \
+            test/architecture/training/RustTrainDirDeadline.ts \
+            < /dev/null

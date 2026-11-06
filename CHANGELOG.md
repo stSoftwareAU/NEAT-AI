@@ -310,6 +310,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   main event loop was blocked for about that long; an age of roughly one
   interval or less means it was alive and the run was merely over budget. See
   [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md) for how to read a breach line.
+- **Issue #4096:** The main thread now also logs a non-fatal stall line when a
+  heartbeat tick is late by `stallReportMS` or more (default
+  `DEFAULT_STALL_REPORT_MS`, 10 s; an option on `armEventLoopWatchdog`). The
+  line reads
+  `[Neat] main loop stalled for <ms>ms (heartbeat every <n>ms) at generation <n|unknown>; phase at last heartbeat: <phase>, phase now: <phase>`.
+  It does not kill the process. It shows a main-loop block that stayed under the
+  deadline, and the phase at the last heartbeat and the phase now. The check
+  uses the wall clock, so a clock step can produce a false line. See
+  [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md).
 - **Issue #3934:** The training-gain log, and what it measured. Jin (2011) §5
   asks who should receive local search — per-generation backpropagation is a
   large fixed cost per individual, and `selectTrainingCandidates` had always
