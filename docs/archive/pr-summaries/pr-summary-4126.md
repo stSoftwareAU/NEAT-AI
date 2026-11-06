@@ -1,8 +1,8 @@
 ## Summary
 
 The 7.1.3 recurrence of this issue was not a training task. In `GRQ-3-sloth.log`
-(GRQ-logs `Develop` at `9af82cc`, 2026-11-05) the worker that could not be
-stopped held a **discovery** task inside the Rust GPU `analyze_parallel` FFI
+(the downstream fleet logs at `9af82cc`, 2026-11-05) the worker that could not
+be stopped held a **discovery** task inside the Rust GPU `analyze_parallel` FFI
 call, which was declared `nonblocking: false`. A thread parked in a synchronous
 native call cannot be stopped by `Worker.terminate()`, and Deno keeps the
 process alive for it. This PR declares `analyze_parallel` `nonblocking: true`
@@ -82,6 +82,8 @@ closing fleet-log evidence needs a release and a run (see Acceptance Criteria).
 
 Backend change; no UI. Commands run on the head:
 
+- The archived summary describes downstream references at concept level so it
+  remains accessible to public readers; the archive privacy test covers it.
 - `timeout 600 deno test -A test/ErrorGuidedStructuralEvolution/AnalyzeParallelNonBlocking.ts`
   — 5 passed, 0 failed.
 - `timeout 600 deno test -A test/ErrorGuidedStructuralEvolution/AnalyzeParallelSerialised.ts`
@@ -144,9 +146,9 @@ with `gh issue view`: #4126 (this issue), #4119 (native trainer deadline, open),
   involved; `GRQ-3-sloth.log` at `9af82cc` does
   (`Clearing stuck discoveries: d93116c6` directly before
   `1 worker(s) could not be stopped`).
-- **missing** — In GRQ, separately: the `EvolveApp`s can end with an explicit
-  `Deno.exit(0)` after cleanup — reviewer: missing — reason: lives in the GRQ
-  repository (stSoftwareAU/GRQ#5479), outside this repository.
+- **missing** — In the downstream production application, the `EvolveApp`s can
+  end with an explicit `Deno.exit(0)` after cleanup — reviewer: missing —
+  reason: lives outside this repository.
 - **missing** — Closing evidence: a quoted fleet log showing a quarantine
   followed by the unit's `[phase] ✔ END industry-evolve` within a minute of
   `Cleaned up .tmp/train` — reviewer: missing — reason: needs a release carrying
