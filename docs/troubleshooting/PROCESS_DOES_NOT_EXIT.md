@@ -32,8 +32,9 @@ Two native calls have been the source of such a thread:
   synchronous native call, so a stuck discovery analysis pinned the process in
   the same way. It is now declared `nonblocking: true`. The worker's thread is
   no longer blocked, so a stuck discovery analysis no longer prevents the
-  process from exiting. The native analysis itself still cannot be cancelled,
-  and it ends at its Rust-side deadline.
+  process from exiting. The native analysis cannot be cancelled from JavaScript;
+  it ends at its Rust-side deadline or when `cancel_analysis_memory_pressure()`
+  is signalled under memory pressure.
 
 ```mermaid
 sequenceDiagram

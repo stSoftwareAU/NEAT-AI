@@ -28,8 +28,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 - **Issue #4126:** a stuck discovery analysis no longer keeps the process alive
   after `evolveDir()` returns. The Rust GPU `analyze_parallel` call is now
   declared `nonblocking: true`, so the worker's thread is no longer blocked and
-  the process can exit. The native analysis itself still cannot be cancelled and
-  ends at its Rust-side deadline. A training task on a legacy native engine
+  the process can exit. The native analysis cannot be cancelled from JavaScript;
+  it ends at its Rust-side deadline or when `cancel_analysis_memory_pressure()`
+  is signalled under memory pressure. A training task on a legacy native engine
   (`neat_ai_backpropagation` 0.1.49 or earlier) can still pin the process, and
   `exitOnUnreclaimableWorkers` remains the guard for that. See
   [`docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md`](./docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md).

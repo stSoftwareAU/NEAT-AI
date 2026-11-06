@@ -8,6 +8,14 @@
  * `nonblocking: true` call runs on its own native thread and returns a promise,
  * which lets the worker terminate and the process exit.
  *
+ * Deno FFI documents that a symbol declared `nonblocking: true` runs on a separate
+ * thread and returns a promise, whereas a blocking call parks the calling thread
+ * (https://docs.deno.com/runtime/reference/deno_namespace_apis/#deno.dlopen). The
+ * libc `sleep` stand-in mirrors that contract. It cannot exercise NEAT-AI-Discovery's
+ * real `analyze_parallel`: the library is not available in CI, and the real-library
+ * discovery tests in `test/discovery` are gated on it. The stand-in therefore pins
+ * the process-exit property of the declaration `RUST_DISCOVERY_SYMBOLS` ships.
+ *
  * Process-level cases: each child runs under an abort signal that kills it. That
  * is a watchdog bounding a hang, not a measurement. The assertions are binary:
  * the child exited by itself with code 0, or it was still running when the
