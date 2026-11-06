@@ -8,11 +8,12 @@ normal result, and older engines keep running exactly as before with an explicit
 "not enforced natively" warning. Version bump: no `VERSION` field is edited by
 this change; the merged commit records the final version.
 
-Part of #4119. Criteria still `partial` (see Acceptance Criteria): no required
-CI job provisions the native engines (`./quality.sh --next` runs the real-engine
-cases fail-closed, but it is a local/opt-in lane), and `./quality.sh` could not
-run here. The unearned-score gap and the unbounded finalisation are closed in
-the head commit.
+Follow-up round: a new `.github/workflows/native-backprop.yml` job builds the
+pinned NEW and LEGACY engines and runs the real-engine cases with
+`NEAT_AI_BACKPROP_REQUIRE_FFI=1`, and the real engines were re-run against the
+current head. Part of #4119: the scheduler is still not driven through a real
+native engine, finalisation that starts inside the window is not interrupted,
+and `./quality.sh` could not run here.
 
 ```mermaid
 flowchart TD
@@ -142,10 +143,12 @@ quarantine (existing doc page linked, not changed in behaviour).
   `::native deadline: CLI productive run stops at the deadline and keeps its learning`
   — reviewer: partial — reason: both passed against the real engines (earlier
   head; the engines were not rebuilt for the head commit), but they run only
-  where an engine resolves. `./quality.sh --next` sets
-  `NEAT_AI_BACKPROP_REQUIRE_FFI=1` and checks the library with
+  where an engine resolves. `./quality.sh --next` and the new
+  `.github/workflows/native-backprop.yml` job set
+  `NEAT_AI_BACKPROP_REQUIRE_FFI=1` and check the library with
   `scripts/check_native_backprop_train.ts` first, so a missing engine fails
-  there rather than being ignored; no required CI job runs that lane.
+  rather than being ignored. The job's build and test commands were run locally
+  on this head (51 passed, 0 failed); the job itself has not yet run on GitHub.
 - **partial** — The scheduled-worker integration path settles by its original
   deadline plus 30 seconds, including adapter finalisation; returned weights
   reach existing result evaluation without timeout-driven
@@ -328,9 +331,21 @@ reach them. Both now guard their entry point with `import.meta.main`;
 `runTrainScenario`, `runWorkerScenario` and `main` need a real engine and stay
 covered only by `NativeDeadlineIntegration.ts`.
 
-Not done: no required CI job provisions the native engines (the real-engine
-cases run under `./quality.sh --next`, with `NEAT_AI_BACKPROP_REQUIRE_FFI=1`);
-the real engines were not re-run against the head commit; the scheduler is not
+Follow-up round: `.github/workflows/native-backprop.yml` (pinned engine commits
+`947cbb54...` NEW and `f444bc4c...` LEGACY, resolved with
+`gh api repos/stSoftwareAU/NEAT-AI-Backpropagation/commits/<short>`) builds both
+engines with `cargo build --release -p neat_ai_backpropagation` (about 47 s
+each, observed locally) and runs the three native test files with
+`NEAT_AI_BACKPROP_REQUIRE_FFI=1`. `test/ci/NativeBackpropWorkflow.ts` pins the
+FFI requirement, the test list, the distinct SHAs, no push trigger plus the
+`milestone/*` filter, the timeout and credential settings and the `GITHUB_ENV`
+exports; removing the `REQUIRE_FFI` line turned its FFI case red. Real engines
+built from those two commits and run on this head:
+`NativeDeadlineIntegration.ts`, `NativeBackpropCapabilities.ts`,
+`RustTrainDirDeadline.ts`: `ok | 51 passed | 0 failed`. `test/ci/*.ts`:
+`ok | 389 passed | 0 failed`. `actionlint` clean on the new workflow.
+
+Not done: the new workflow has not yet run on GitHub; the scheduler is not
 driven through a real native engine; finalisation that starts inside the window
 is not interrupted; `./quality.sh` did not run here.
 
