@@ -1,5 +1,4 @@
 import { assert, assertEquals } from "@std/assert";
-import { globToRegExp } from "@std/path";
 import { parse } from "@std/yaml";
 
 /**
@@ -19,6 +18,7 @@ interface Step {
 }
 
 interface Job {
+  if?: string;
   "timeout-minutes"?: number;
   env?: Record<string, string>;
   steps?: Step[];
@@ -35,31 +35,22 @@ const TEST_STEP = "Run the native deadline tests against the real engines";
 const BUILD_STEP = "Build the NEW and LEGACY engines";
 const CHECKOUT_STEP = "Checkout Code";
 
-Deno.test("native-backprop workflow triggers for deadline execution paths", async () => {
+Deno.test("native-backprop workflow covers all pull request paths and skips drafts", async () => {
   const wf = await loadWorkflow();
-  const pr = wf.on?.pull_request as { paths?: string[] } | undefined;
+  const pr = wf.on?.pull_request as
+    | { paths?: string[]; types?: string[] }
+    | undefined;
   assert(pr, "workflow must trigger on pull requests");
-  const paths = pr.paths;
-  for (
-    const file of [
-      "scripts/native_deadline_probe.ts",
-      "src/architecture/Training.ts",
-      "src/architecture/training/RustTrainDirBridge.ts",
-      "src/multithreading/workers/WorkerHandler.ts",
-      "src/multithreading/workers/WorkerProcessor.ts",
-      "src/multithreading/workers/WorkerTrainResponse.ts",
-      "src/multithreading/workers/deno/worker.ts",
-      "src/NEAT/PerTaskTrainingTimeout.ts",
-    ]
-  ) {
-    assert(
-      !paths ||
-        paths.some((path) =>
-          globToRegExp(path, { globstar: true, extended: true }).test(file)
-        ),
-      `pull request changing ${file} must trigger the native deadline workflow`,
-    );
-  }
+  assertEquals(
+    pr.paths,
+    undefined,
+    "all dependencies must trigger the workflow",
+  );
+  assert(pr.types?.includes("ready_for_review"));
+  assertEquals(
+    findJob(wf).if,
+    "github.event_name != 'pull_request' || !github.event.pull_request.draft",
+  );
 });
 
 async function loadWorkflow(): Promise<Workflow> {

@@ -20,19 +20,6 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     # `milestone/*` keeps the gate on milestone sub-issue PRs (Issue #3359).
     branches: ["*", "milestone/*"]
-    paths:
-      - "src/architecture/training/**"
-      - "src/architecture/Training.ts"
-      - "src/config/TrainOptions.ts"
-      - "src/NEAT/NeatScheduling.ts"
-      - "src/NEAT/PerTaskTrainingTimeout.ts"
-      - "src/multithreading/workers/**"
-      - "src/workers/**"
-      - "scripts/check_native_backprop_train.ts"
-      - "scripts/native_deadline_probe.ts"
-      - "test/architecture/training/**"
-      - "test/fixtures/native-backprop/**"
-      - ".github/workflows/native-backprop.yml"
   workflow_dispatch:
 
 concurrency:
@@ -45,6 +32,7 @@ permissions:
 jobs:
   native-deadline:
     name: Native deadline (real FFI and CLI engines)
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
