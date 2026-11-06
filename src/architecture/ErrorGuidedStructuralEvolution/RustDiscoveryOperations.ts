@@ -22,6 +22,7 @@ import type {
 } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryTypes.ts";
 import { computeRustRecordStats } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryInput.ts";
 import {
+  discoveryLibraryLifetime,
   getRustLibSymbols,
   isRustGpuAvailable,
   isRustLibraryAvailable,
@@ -308,8 +309,6 @@ export async function analyzeParallel(
     };
   }
 
-  const symbols = getRustLibSymbols();
-
   let inputBuffer: Uint8Array | undefined;
   try {
     const inputJson = JSON.stringify(input);
@@ -318,19 +317,25 @@ export async function analyzeParallel(
     inputBuffer.set(inputBytes);
     inputBuffer[inputBytes.length] = 0;
     const inputPtr = Deno.UnsafePointer.of(inputBuffer);
-    const resultPtr = await symbols["analyze_parallel"](inputPtr);
+    return await discoveryLibraryLifetime.run(async () => {
+      const resultPtr = await getRustLibSymbols()["analyze_parallel"](inputPtr);
 
-    if (resultPtr === null) {
-      return {
-        success: false,
-        error: "Rust function returned null pointer",
-      };
-    }
+      if (resultPtr === null) {
+        return {
+          success: false,
+          error: "Rust function returned null pointer",
+        };
+      }
 
-    const resultJson = readCString(resultPtr);
-    symbols["free_discovery_result"](resultPtr);
-    const result = JSON.parse(resultJson) as RustParallelAnalysisResult;
-    return result;
+      let resultJson: string;
+      try {
+        resultJson = readCString(resultPtr);
+      } finally {
+        getRustLibSymbols()["free_discovery_result"](resultPtr);
+      }
+      const result = JSON.parse(resultJson) as RustParallelAnalysisResult;
+      return result;
+    });
   } catch (error) {
     return {
       success: false,

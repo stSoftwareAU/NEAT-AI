@@ -10,6 +10,7 @@ import { join } from "@std/path/join";
 import { DiscoveryError } from "@errors/DiscoveryError.ts";
 import { getLogger } from "@utils/Logger.ts";
 import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
+import { DiscoveryLibraryLifetime } from "./DiscoveryLibraryLifetime.ts";
 import type {
   RustCheckGpuResult,
   RustGetVersionResult,
@@ -388,7 +389,15 @@ export function findRustLibraryFromOptions(
  * Closes the Rust library if it's loaded.
  * This is useful for test cleanup to avoid leak detection warnings.
  */
+export const discoveryLibraryLifetime = new DiscoveryLibraryLifetime(
+  closeHandles,
+);
+
 export function closeRustLibrary(): void {
+  discoveryLibraryLifetime.close();
+}
+
+function closeHandles(): void {
   if (rustLib !== null) {
     rustLib.close();
     rustLib = null;

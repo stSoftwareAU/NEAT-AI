@@ -93,6 +93,7 @@ export interface DiscoverStructureDeps {
    * removal that fails because a writer is still creating files.
    */
   removeTempDir?: (dir: string) => Promise<void>;
+  closeRustLibrary?: () => void;
   /**
    * Issue #4034: environment reader for the recorder's cleanup flags
    * (`NEAT_DISCOVERY_AWAIT_CLEANUP`, `DENO_TEST`). Defaults to `Deno.env`;
@@ -529,7 +530,7 @@ export class DiscoverStructureBase {
 
     try {
       const { closeRustLibrary } = await import("./RustDiscovery.ts");
-      closeRustLibrary();
+      (this.deps.closeRustLibrary ?? closeRustLibrary)();
     } catch {
       // Ignore errors during cleanup
     }

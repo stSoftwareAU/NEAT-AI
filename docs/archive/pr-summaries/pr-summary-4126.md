@@ -59,6 +59,9 @@ closing fleet-log evidence needs a release and a run (see Acceptance Criteria).
 - Cleanup waits for the queued analyses before disposing the creature, closing
   the native library or removing its parquet directory. This also protects the
   direct-mode timeout and early-rejection paths while native work is in flight.
+- The native library is shared within an isolate. A close requested by one
+  discovery is deferred until every in-flight native analysis has read and freed
+  its result, including when another discovery initiated that analysis.
 - Accepted risk: when a worker is terminated while its native analysis runs,
   that call's result pointer is never read or freed (one leaked result, in a
   process that is exiting), and the input buffer is only kept alive while the
@@ -187,6 +190,11 @@ with `gh issue view`: #4126 (this issue), #4119 (native trainer deadline, open),
 
 ## Test Plan
 
+- `test/ErrorGuidedStructuralEvolution/AnalyzeParallelSerialised.ts::cleanup defers shared library close until another discovery finishes (Issue #4126)`
+  covers two discovery instances sharing the library lifetime. The obsolete
+  behaviour closed the shared handle during another instance's analysis; the
+  remaining behaviour defers closure until that analysis settles. The test
+  failed with immediate closure and passes with the lifetime guard.
 - `test/ErrorGuidedStructuralEvolution/AnalyzeParallelSerialised.ts::cleanup preserves the discovery directory until queued analyses settle (Issue #4126)`
   holds an asynchronous analysis open during cleanup and checks that removal
   waits until it settles. Before the fix, cleanup disposed the creature while

@@ -24,6 +24,7 @@ import type {
   RustParallelAnalysisResult,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscovery.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+import { DiscoveryLibraryLifetime } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryLibraryLifetime.ts";
 
 function makeCreature(): Creature {
   const creature = Creature.fromJSON({
@@ -309,4 +310,83 @@ Deno.test("cleanup preserves the discovery directory until queued analyses settl
     await Promise.all([analysis, cleanup]);
   }
   assertEquals(removed, true);
+});
+
+Deno.test("cleanup defers shared library close until another discovery finishes (Issue #4126)", async () => {
+  await initWasmForTests();
+  let closed = 0;
+  const lifetime = new DiscoveryLibraryLifetime(() => closed++);
+  let release!: (result: RustParallelAnalysisResult) => void;
+  let started!: () => void;
+  const pending = new Promise<RustParallelAnalysisResult>((resolve) =>
+    release = resolve
+  );
+  const entered = new Promise<void>((resolve) => started = resolve);
+  const creatureA = makeCreature();
+  const creatureB = makeCreature();
+  const baseA = await Deno.makeTempDir();
+  const baseB = await Deno.makeTempDir();
+  const deps = {
+    ...makeDeps(() =>
+      lifetime.run(async () => {
+        started();
+        return await pending;
+      })
+    ),
+    closeRustLibrary: () => lifetime.close(),
+  };
+  const a = new DiscoverStructure(creatureA, 60, 100, deps, {
+    baseDirectory: baseA,
+  });
+  const b = new DiscoverStructure(creatureB, 60, 100, deps, {
+    baseDirectory: baseB,
+  });
+  const promises = new Map<number, Promise<void>>();
+  a.initialize(promises);
+  b.initialize(promises);
+  b.record([{
+    input: Float32Array.from([0.1, 0.2]),
+    output: Float32Array.from([0.3]),
+  }], promises);
+  b.flushRustRecording();
+  const analysis = b.analyzeSelectedNeurons([
+    runtimeIdForUuid(creatureB, "hidden-1"),
+  ]);
+  await entered;
+  try {
+    await a.cleanUp();
+    assertEquals(closed, 0);
+  } finally {
+    release(SUCCESS);
+    await analysis;
+    await b.cleanUp();
+    await Deno.remove(baseA, { recursive: true });
+    await Deno.remove(baseB, { recursive: true });
+  }
+  assertEquals(closed, 2);
+});
+
+Deno.test("a requested library close waits for all analyses, including failures", async () => {
+  let closed = 0;
+  const lifetime = new DiscoveryLibraryLifetime(() => closed++);
+  let finish!: () => void;
+  let fail!: (reason: Error) => void;
+  const first = lifetime.run(() =>
+    new Promise<void>((resolve) => finish = resolve)
+  );
+  const second = lifetime.run(() =>
+    new Promise<void>((_resolve, reject) => fail = reject)
+  );
+  lifetime.close();
+  finish();
+  await first;
+  assertEquals(closed, 0);
+  fail(new Error("analysis failed"));
+  try {
+    await second;
+    throw new Error("expected rejection");
+  } catch (error) {
+    assertEquals((error as Error).message, "analysis failed");
+  }
+  assertEquals(closed, 1);
 });
