@@ -47,6 +47,15 @@ closing fleet-log evidence needs a release and a run (see Acceptance Criteria).
 - `DiscoverStructureDeps.analyzeParallel` accepts a sync or promise result so
   the existing synchronous test doubles stay valid; production has one path, the
   awaited FFI call.
+- `DiscoverStructure.ensureRustCombinedAnalysis` queues its native analyses
+  (`combinedAnalysisTail`): with a non-blocking FFI call the three-way fan-out
+  in `runParallelAnalysis` (neuron-only, synapse-only, removal) would otherwise
+  start three native analyses together, where the blocking call used to run them
+  one after another and let the removal analysis hit the synapse analysis's
+  cache. The queue restores that order. A failed analysis does not poison the
+  queue. A native analysis that never settles holds the queue, as the blocking
+  call held the thread before; the Rust-side analysis deadline remains the
+  bound.
 - Accepted risk: when a worker is terminated while its native analysis runs,
   that call's result pointer is never read or freed (one leaked result, in a
   process that is exiting), and the input buffer is only kept alive while the
@@ -74,11 +83,12 @@ closing fleet-log evidence needs a release and a run (see Acceptance Criteria).
 Backend change; no UI. Commands run on the head:
 
 - `timeout 600 deno test -A test/ErrorGuidedStructuralEvolution/AnalyzeParallelNonBlocking.ts`
-  — 4 passed, 0 failed.
-- `deno test -A test/ErrorGuidedStructuralEvolution/*.ts` — 310 passed, 0
-  failed, 31 ignored; `deno test -A test/discovery/*.ts` — 620 passed, 0 failed,
-  4 ignored. The ignored cases need the Rust library and a GPU, which this
-  runner lacks.
+  — 5 passed, 0 failed.
+- `timeout 600 deno test -A test/ErrorGuidedStructuralEvolution/AnalyzeParallelSerialised.ts`
+  — 5 passed, 0 failed.
+- `deno test -A test/ErrorGuidedStructuralEvolution/*.ts test/discovery/*.ts` —
+  940 passed, 0 failed, 35 ignored. The ignored cases need the Rust library and
+  a GPU, which this runner lacks.
 - `./quality.sh --skip-tests --skip-discovery --skip-wasm` (format, lint,
   type-check): completed without an error report.
 
@@ -115,20 +125,25 @@ with `gh issue view`: #4126 (this issue), #4119 (native trainer deadline, open),
   evidence:
   `test/ErrorGuidedStructuralEvolution/AnalyzeParallelNonBlocking.ts::a worker blocked in the analyze_parallel FFI declaration does not keep the process alive after terminate (Issue #4126)`,
   `test/creature/ProcessExitsAfterWedgedWorker.ts` — reviewer: partial — reason:
-  the test is a child-process check of the `analyze_parallel` declaration with a
-  C-library stand-in, not a scheduled task through `evolveDir`; a full
-  `evolveDir` with a wedged worker hung before teardown when tried earlier.
+  the independent review counted the earlier PR's
+  `ProcessExitsAfterWedgedWorker.ts` as meeting it on Develop, and this PR adds
+  no `evolveDir`-level reproduction; the new test is a child-process check of
+  the `analyze_parallel` declaration with a C-library stand-in, not a scheduled
+  task through `evolveDir`; a full `evolveDir` with a wedged worker hung before
+  teardown when tried earlier.
 - **partial** — Fix in neat-ai so a quarantined/terminated worker or watchdog
   can't pin the process. If a thread genuinely can't be reclaimed, `evolveDir`
   should report it … so callers can exit explicitly — evidence:
   `src/architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts`
   (`RUST_DISCOVERY_SYMBOLS`), `RustDiscoveryOperations.ts`,
   `RustAnalysisCache.ts` — reviewer: partial — reason: the discovery pin seen on
-  7.1.3 is removed; the synchronous native trainer on a legacy engine can still
-  pin the process, and the report plus opt-in exit from the earlier PR remain
-  its only guard. The reviewer said no log shows a discovery task was involved;
-  `GRQ-3-sloth.log` at `9af82cc` does (`Clearing stuck discoveries: d93116c6`
-  directly before `1 worker(s) could not be stopped`).
+  7.1.3 is removed and its native analyses are queued so the non-blocking call
+  does not overlap them; the synchronous native trainer on a legacy engine can
+  still pin the process, and the report plus opt-in exit from the earlier PR
+  remain its only guard. The reviewer said no log shows a discovery task was
+  involved; `GRQ-3-sloth.log` at `9af82cc` does
+  (`Clearing stuck discoveries: d93116c6` directly before
+  `1 worker(s) could not be stopped`).
 - **missing** — In GRQ, separately: the `EvolveApp`s can end with an explicit
   `Deno.exit(0)` after cleanup — reviewer: missing — reason: lives in the GRQ
   repository (stSoftwareAU/GRQ#5479), outside this repository.
@@ -178,6 +193,22 @@ with `gh issue view`: #4126 (this issue), #4119 (native trainer deadline, open),
   stayed green; restored. The `await` before `deps.analyzeParallel(` removed → a
   type error under `deno test`, and with `--no-check` both analysis tests failed
   (`analysis did not return a result` instead of `boom`); restored.
+- Added `test/ErrorGuidedStructuralEvolution/AnalyzeParallelSerialised.ts` (5
+  tests, all through `DiscoverStructure` with an asynchronous `analyzeParallel`
+  double): each of `analyzeSelectedNeurons`, `analyzeMissingNeurons` and
+  `analyzeSelectedNeuronsForRemoval` returns the candidate of the awaited
+  analysis (the three `await this.ensureRustCombinedAnalysis` mutants, which
+  leave the cache empty and the result `undefined`); a `Promise.all` fan-out of
+  the three reaches the double at most once at a time and the removal analysis
+  is served from the cache (the verifier's overlap finding); a failed analysis
+  does not stop the queued one. Red check: the queue replaced by an immediately
+  resolved promise → the fan-out test failed and the failure-isolation test
+  errored; restored.
+- Added to `AnalyzeParallelNonBlocking.ts` a case that pins the whole
+  `RUST_DISCOVERY_SYMBOLS` table (parameters, result and `nonblocking` per
+  symbol). It is the FFI declaration `Deno.dlopen` receives and the real library
+  is not available to exercise it; it covers the `RustDiscoveryLibrary.ts`
+  property mutants.
 - Edited existing tests (`test/ErrorGuidedStructuralEvolution/`
   AnalysisCacheRelease, AnalysisFocusNeuronErrorShares,
   AnalysisMemoryBudgetWiring, AnalyzeParallelGpuGuard, AnalyzeParallelWireShape,
@@ -193,6 +224,6 @@ with `gh issue view`: #4126 (this issue), #4119 (native trainer deadline, open),
   `collectRustAnalysisCandidates` in `DiscoverAnalysis.ts` stays synchronous.
 - Not run: the real `analyze_parallel` against NEAT-AI-Discovery (library and
   GPU not present), the full `./quality.sh` test stage (over this runner's
-  10-minute command limit) and a mutation check. Mutation survivors are
-  therefore unchecked.
+  10-minute command limit) and the mutation tool itself. The listed survivors
+  were each given a test that goes red for them (see above).
 - <!-- vibe-quality-gate-skipped reason="the full ./quality.sh takes about 15 minutes, longer than this runner's 10-minute foreground command limit; format, lint and type-check ran via ./quality.sh --skip-tests, and the affected test directories were run directly; CI runs the full gate" -->

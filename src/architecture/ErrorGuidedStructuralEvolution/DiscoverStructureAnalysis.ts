@@ -228,6 +228,29 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
      */
     chunkDeadlineMs?: number,
   ): Promise<RustAnalyzeAllResult | undefined> {
+    // `analyze_parallel` is a non-blocking FFI call (Issue #4126), so callers
+    // that fan out (`runParallelAnalysis`) no longer queue behind a parked
+    // thread. Queue them here instead: at most one native analysis is in
+    // flight, and a later call reads the cache the earlier one populated.
+    const previous = this.combinedAnalysisTail;
+    const run = previous.then(() =>
+      this.#runCombinedAnalysis(
+        focusList,
+        includeSynapse,
+        includeNeuron,
+        chunkDeadlineMs,
+      )
+    );
+    this.combinedAnalysisTail = run.then(() => undefined, () => undefined);
+    return await run;
+  }
+
+  async #runCombinedAnalysis(
+    focusList: number[],
+    includeSynapse: boolean,
+    includeNeuron: boolean,
+    chunkDeadlineMs: number | undefined,
+  ): Promise<RustAnalyzeAllResult | undefined> {
     const result = await ensureRustCombinedAnalysisImpl(
       this.creature,
       this.parquetFilePath,

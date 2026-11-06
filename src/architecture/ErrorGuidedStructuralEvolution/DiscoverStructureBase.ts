@@ -167,6 +167,8 @@ export class DiscoverStructureBase {
   protected cachedRemovalCandidates?:
     import("./DiscoverResult.ts").RemovalCandidate[];
   protected combinedRustAnalysis?: CombinedAnalysisCache;
+  /** Tail of the queue that serialises native combined analyses (Issue #4126). */
+  protected combinedAnalysisTail: Promise<void> = Promise.resolve();
   protected recordedNeuronTotalAbsError = new Map<number, number>();
   protected analysisTimeoutGuardEnabled = true;
   protected disableCleanup = false;

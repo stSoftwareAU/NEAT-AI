@@ -37,6 +37,7 @@ import {
   buildCombinedAnalysisKey,
   ensureRustCombinedAnalysis,
 } from "@architecture/ErrorGuidedStructuralEvolution/RustAnalysisCache.ts";
+import { RUST_DISCOVERY_SYMBOLS } from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts";
 import type {
   RustCandidateSynapse,
   RustParallelAnalysisResult,
@@ -385,4 +386,30 @@ Deno.test("ensureRustCombinedAnalysis logs the reason from an asynchronous analy
 
   assertEquals(result, undefined);
   assertEquals(logged, [{ scope: "synapse", reason: "boom" }]);
+});
+
+Deno.test("RUST_DISCOVERY_SYMBOLS declares only analyze_parallel non-blocking (Issue #4126)", () => {
+  const pointerIn = { parameters: ["pointer"], result: "pointer" };
+  assertEquals(RUST_DISCOVERY_SYMBOLS, {
+    record_discovery: { ...pointerIn, nonblocking: false },
+    analyze_parallel: { ...pointerIn, nonblocking: true },
+    read_discovery_records_ffi: { ...pointerIn, nonblocking: false },
+    merge_discovery_parquet: { ...pointerIn, nonblocking: false },
+    rank_focus_neurons: { ...pointerIn, nonblocking: false },
+    check_gpu_available: {
+      parameters: [],
+      result: "pointer",
+      nonblocking: false,
+    },
+    get_library_version: {
+      parameters: [],
+      result: "pointer",
+      nonblocking: false,
+    },
+    free_discovery_result: {
+      parameters: ["pointer"],
+      result: "void",
+      nonblocking: false,
+    },
+  });
 });
