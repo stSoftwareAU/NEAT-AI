@@ -724,7 +724,34 @@ line, such as `(event loop blocked past the hard cap; …)`, describes the
 condition the deadline was set to catch. It is fixed wording, not a measurement,
 so decide from the trailing fields.
 
-A worked example, with the values made concrete:
+#### Field observation (GRQ-logs, 2026-11-06)
+
+The GRQ-logs `Develop` snapshot at `92bd6423ba6c37adc471557368368c23d3ce4c4e`
+contains no `lastHeartbeatAgeMs`, `main loop stalled` or `Run wedged` line, and
+no green final loop on a swap-backed 8 GB host. Its four tracked log files do
+not provide the closing evidence requested by Issue #4096. The only `neat-ai`
+release marker in that snapshot is 7.1.3 in the scorer log; it is not a learning
+run with the heartbeat diagnostics.
+
+The newest useful learning-run evidence available in that repository snapshot is
+older: `GRQ-3-rocket.log` at source commit
+`289753f0c5459c30f261794ae91e151c77ff43b7`. It records GRQ 1.1.213 (`13c24754`),
+NEAT-AI 7.1.2, generation 2 on rocket@GRQ-3 (10 CPUs, 16 GB RAM, about 8 GB
+available, load averages `49.79 58.48 50.43`):
+
+```text
+[Timing] fitness=34710ms breeding=133950ms breedingWorker=133949ms mainThreadOverlap=0ms resultProcessing=0ms memoryEviction=3ms preWarm=508ms pipelineOverlap=526ms sort=0ms writeScores=194ms mutation=0ms deduplication=974ms speciation=18ms total=232627ms
+[DiscoveryReplayRunner] Worker init failed; falling back to direct execution for this worker slot. Error: [WasmWorkerInit] Worker init: no response after 60s (worker=worker-25). Parent-observed: handshakeMs=60000 parentStallMs=5942 loopBlockedMs=64941 spawnToInitMs=0 workerError=none heartbeat=none wasm[cache=hit cacheDir=/Users/rocket/.cache/neat-ai/wasm bundleBytes=1039068 bundleLoadMs=24 glueImportMs=30 instantiateMs=6 wasmTotalMs=61].
+```
+
+This run shows a 64,941 ms parent loop block while the reported mutation phase
+was 0 ms; it excludes mutation as the cause of this instance only. The host load
+was high, but the log has no RSS, page-fault, swap-activity or GC-trace
+measurements, and it predates the heartbeat. It cannot distinguish CPU
+starvation from paging or identify the generation-11 cause. This is field
+evidence, not the illustrative breach example below.
+
+An illustrative breach example, with the values made concrete:
 
 ```text
 [Neat] Run wedged after 1834s at generation 4 (event loop blocked past the hard cap; watchdog killing the process) lastHeartbeatAgeMs=312044 inFlightPhase=fitness heartbeatIntervalMS=1000
