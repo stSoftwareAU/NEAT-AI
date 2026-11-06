@@ -12,8 +12,8 @@ in every field case where the new wait fired, the over-run guard stopped the run
 on the next pass, so the result was logged as discarded and never merged. Part
 of #4099.
 
-Version bump: not touched by this change; the merged commit records the final
-version.
+Version bump: `deno.json` `version` updated for this change; the merged commit
+records the final version.
 
 ## Not closing #4099
 
@@ -177,8 +177,8 @@ with `gh pr view`).
 
 <!-- vibe-standards-review inputs="diff+AGENTS.md+docs/ENGINEERING_PRINCIPLES.md" -->
 
-- **clean** — documentation-only change; Australian English; no code, test or
-  config touched; every figure traces to a command in Evidence.
+- **clean** — Australian English; no code or test changed; `deno.json` carries
+  only the CI version bump; every figure traces to a command in Evidence.
 
 ## Test Plan
 
@@ -192,4 +192,4 @@ with `gh pr view`).
   test/creature/BoundedEvolveTeardown.ts
   test/creature/EvolveFailureNamesInFlightTasks_test.ts`
   — 52 passed, 0 failed.
-- <!-- vibe-quality-gate-skipped reason="documentation-only change (this summary file); no source, test or config changed, so the full ./quality.sh was not run" -->
+- <!-- vibe-quality-gate-skipped reason="documentation change and CI version bump only; no source or test changed, so the full ./quality.sh was not run" -->
