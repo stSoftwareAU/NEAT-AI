@@ -100,7 +100,7 @@ Deno.test("analysis request carries the configured memory budget (Issue #3432)",
   const creature = makeTestCreature();
   const captured: RustParallelAnalysisInput[] = [];
 
-  runAnalysis(creature, captured, 2048);
+  await runAnalysis(creature, captured, 2048);
 
   assertEquals(captured.length, 1, "expected one analyze_parallel call");
   assertEquals(captured[0].maxAnalysisMemoryMb, 2048);
@@ -111,7 +111,7 @@ Deno.test("analysis request floors a fractional memory budget (Issue #3432)", as
   const creature = makeTestCreature();
   const captured: RustParallelAnalysisInput[] = [];
 
-  runAnalysis(creature, captured, 1536.75);
+  await runAnalysis(creature, captured, 1536.75);
 
   assertEquals(captured[0].maxAnalysisMemoryMb, 1536);
 });
@@ -121,7 +121,7 @@ Deno.test("analysis request omits the budget field when unconfigured (Issue #343
   const creature = makeTestCreature();
   const captured: RustParallelAnalysisInput[] = [];
 
-  runAnalysis(creature, captured, undefined);
+  await runAnalysis(creature, captured, undefined);
 
   // Discovery reads an ABSENT field as "no budget"; a literal 0 would starve
   // the analysis immediately, so the key must not be present at all.
@@ -138,7 +138,7 @@ Deno.test("analysis request omits a zero memory budget (Issue #3432)", async () 
   const creature = makeTestCreature();
   const captured: RustParallelAnalysisInput[] = [];
 
-  runAnalysis(creature, captured, 0);
+  await runAnalysis(creature, captured, 0);
 
   assertEquals(Object.hasOwn(captured[0], "maxAnalysisMemoryMb"), false);
 });
@@ -174,7 +174,7 @@ Deno.test("DiscoverStructure forwards its configured budget to Rust (Issue #3432
       "stubbed parquet should let the record phase be skipped",
     );
 
-    discoverStructure.ensureRustCombinedAnalysis(
+    await discoverStructure.ensureRustCombinedAnalysis(
       [outputRuntimeId(creature)],
       true,
       false,

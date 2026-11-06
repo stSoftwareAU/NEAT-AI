@@ -55,7 +55,7 @@ Deno.test("requireGpu is omitted in ensureRustCombinedAnalysis so GPU guard is a
   const focusId = output0Id(creature);
   let capturedInput: RustParallelAnalysisInput | undefined;
 
-  const result = ensureRustCombinedAnalysis(
+  const result = await ensureRustCombinedAnalysis(
     creature,
     "/tmp/test.parquet",
     {
@@ -266,7 +266,7 @@ Deno.test("discovery enabled: analysis called with requireGpu omitted (Issue #21
   let analysisCalled = false;
   let capturedRequireGpu: boolean | undefined;
 
-  const result = ensureRustCombinedAnalysis(
+  const result = await ensureRustCombinedAnalysis(
     creature,
     "/tmp/test.parquet",
     {
@@ -313,7 +313,7 @@ Deno.test("ensureRustCombinedAnalysis skips unresolved focus neurons", async () 
   let analysisCalled = false;
   let loggedReason: string | undefined;
 
-  const result = ensureRustCombinedAnalysis(
+  const result = await ensureRustCombinedAnalysis(
     makeCreature(),
     "/tmp/test.parquet",
     {
@@ -352,12 +352,12 @@ Deno.test("ensureRustCombinedAnalysis skips unresolved focus neurons", async () 
   );
 });
 
-Deno.test("discovery disabled when library unavailable", () => {
+Deno.test("discovery disabled when library unavailable", async () => {
   const creature = makeCreature();
   const focusId = output0Id(creature);
   let analysisCalled = false;
 
-  const result = ensureRustCombinedAnalysis(
+  const result = await ensureRustCombinedAnalysis(
     creature,
     "/tmp/test.parquet",
     {

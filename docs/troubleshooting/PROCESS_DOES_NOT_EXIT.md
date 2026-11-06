@@ -15,13 +15,25 @@ it.
 
 A quarantined worker is one that missed its per-task deadline.
 `Worker.terminate()` can only stop a worker at a JavaScript boundary. A thread
-blocked in synchronous native (FFI) code, such as a native `trainDir` call that
-ignores its deadline, cannot be interrupted that way. An engine that does not
-advertise the native deadline capability is never sent the deadline, so it does
-not stop on it (see
-[the native trainer and the per-task deadline](../TIMEOUTS.md#-the-native-trainer-and-the-per-task-deadline-issue-4119)).
-Deno keeps the event loop, and therefore the process, alive for that thread, so
-the script ends but the process does not.
+blocked in a synchronous native (FFI) call cannot be interrupted that way, and
+Deno keeps the event loop, and therefore the process, alive for that thread. The
+script ends but the process does not.
+
+Two native calls have been the source of such a thread:
+
+- **The native trainer on a legacy engine.** `trainDir` runs its training in a
+  synchronous native call. An engine that does not advertise the native deadline
+  capability (`neat_ai_backpropagation` 0.1.49 or earlier) is never sent the
+  deadline, so it does not stop on it, and a wedged training call can pin the
+  process. A deadline-capable engine (0.1.50 or later) stops within an epoch.
+  See
+  [the native trainer and the per-task deadline](../TIMEOUTS.md#-the-native-trainer-and-the-per-task-deadline-issue-4119).
+- **Discovery analysis, until Issue #4126.** `analyze_parallel` was also a
+  synchronous native call, so a stuck discovery analysis pinned the process in
+  the same way. It is now declared `nonblocking: true`. The worker's thread is
+  no longer blocked, so a stuck discovery analysis no longer prevents the
+  process from exiting. The native analysis itself still cannot be cancelled,
+  and it ends at its Rust-side deadline.
 
 ```mermaid
 sequenceDiagram
@@ -75,10 +87,10 @@ preserves `Deno.exitCode`, so the exit status is the one your script set. The
 guard is armed only in that case.
 
 The option takes effect in `evolveDir`, the entry point that schedules
-native-trainer tasks. It is accepted but has no effect in `evolveEnv` or
-`evolveRL` today: `evolveEnv` has no worker pool, and `evolveRL`'s
-EpisodeWorkerPool does not report unstoppable workers. A process that hangs
-after `evolveEnv` or `evolveRL` therefore needs Option 2.
+native-trainer and discovery tasks. It is accepted but has no effect in
+`evolveEnv` or `evolveRL` today: `evolveEnv` has no worker pool, and
+`evolveRL`'s EpisodeWorkerPool does not report unstoppable workers. A process
+that hangs after `evolveEnv` or `evolveRL` therefore needs Option 2.
 
 The default is `false`, because a library should not exit its host unasked. Only
 enable it in a script that has nothing left to do after `evolveDir` returns, or

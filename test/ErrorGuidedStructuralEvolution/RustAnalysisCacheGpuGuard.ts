@@ -30,7 +30,7 @@ Deno.test({
   name:
     "ensureRustCombinedAnalysis omits requireGpu so GPU guard can protect FFI calls (Issue #2142)",
   sanitizeResources: false,
-  fn: () => {
+  fn: async () => {
     // Capture what analyzeParallel receives to verify requireGpu is not false
     let capturedInput: Record<string, unknown> | undefined;
     const creature = buildMinimalCreature();
@@ -47,7 +47,7 @@ Deno.test({
 
     const logCalls: Array<{ scope: string; reason: string }> = [];
 
-    ensureRustCombinedAnalysis(
+    await ensureRustCombinedAnalysis(
       creature,
       "/tmp/test.parquet",
       deps as unknown as Parameters<typeof ensureRustCombinedAnalysis>[2],

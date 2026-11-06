@@ -30,7 +30,7 @@ type RustDiscoverySymbols = {
   "analyze_parallel": {
     parameters: ["pointer"];
     result: "pointer";
-    nonblocking: false;
+    nonblocking: true;
   };
   "read_discovery_records_ffi": {
     parameters: ["pointer"];
@@ -62,6 +62,60 @@ type RustDiscoverySymbols = {
     result: "void";
     nonblocking: false;
   };
+};
+
+/**
+ * The core Rust discovery FFI symbol table, shared by {@link loadRustLibrary}.
+ *
+ * `analyze_parallel` is declared `nonblocking: true` (Issue #4126). A
+ * synchronous FFI call parks the worker thread inside native code, and when the
+ * analysis is abandoned at its deadline `Worker.terminate()` cannot stop that
+ * thread, so Deno keeps the whole process alive after `evolveDir` returns. A
+ * non-blocking call runs on a native thread and returns a promise, which lets
+ * the worker terminate and the process exit. Every other symbol stays
+ * blocking.
+ */
+export const RUST_DISCOVERY_SYMBOLS: RustDiscoverySymbols = {
+  "record_discovery": {
+    parameters: ["pointer"],
+    result: "pointer",
+    nonblocking: false,
+  },
+  "analyze_parallel": {
+    parameters: ["pointer"],
+    result: "pointer",
+    nonblocking: true,
+  },
+  "read_discovery_records_ffi": {
+    parameters: ["pointer"],
+    result: "pointer",
+    nonblocking: false,
+  },
+  "merge_discovery_parquet": {
+    parameters: ["pointer"],
+    result: "pointer",
+    nonblocking: false,
+  },
+  "rank_focus_neurons": {
+    parameters: ["pointer"],
+    result: "pointer",
+    nonblocking: false,
+  },
+  "check_gpu_available": {
+    parameters: [],
+    result: "pointer",
+    nonblocking: false,
+  },
+  "get_library_version": {
+    parameters: [],
+    result: "pointer",
+    nonblocking: false,
+  },
+  "free_discovery_result": {
+    parameters: ["pointer"],
+    result: "void",
+    nonblocking: false,
+  },
 };
 
 /**
@@ -447,9 +501,9 @@ export function getDiscoveryMemoryUsageBytes(): number | undefined {
  * Asks NEAT-AI-Discovery to abort an in-flight analysis because the host is
  * under CRITICAL memory pressure (Discovery #1099).
  *
- * Discovery's cancellation flag is process-wide, so a host isolate that is not
- * itself blocked inside `analyze_parallel` can use this to stop an analysis
- * running on another thread of the same process. For that reason — unlike
+ * Discovery's cancellation flag is process-wide, so a host isolate can use this
+ * to stop an analysis running on another thread of the same process (JS cannot
+ * cancel the native work itself). For that reason — unlike
  * {@link getDiscoveryMemoryUsageBytes} — this call *will* load the library if
  * it is not yet open in this isolate; it only ever runs under genuine memory
  * pressure, so the one-off load is a fair price for being able to stop the
@@ -506,49 +560,7 @@ export function loadRustLibrary(): boolean {
       }
     }
 
-    const symbols: RustDiscoverySymbols = {
-      "record_discovery": {
-        parameters: ["pointer"],
-        result: "pointer",
-        nonblocking: false,
-      },
-      "analyze_parallel": {
-        parameters: ["pointer"],
-        result: "pointer",
-        nonblocking: false,
-      },
-      "read_discovery_records_ffi": {
-        parameters: ["pointer"],
-        result: "pointer",
-        nonblocking: false,
-      },
-      "merge_discovery_parquet": {
-        parameters: ["pointer"],
-        result: "pointer",
-        nonblocking: false,
-      },
-      "rank_focus_neurons": {
-        parameters: ["pointer"],
-        result: "pointer",
-        nonblocking: false,
-      },
-      "check_gpu_available": {
-        parameters: [],
-        result: "pointer",
-        nonblocking: false,
-      },
-      "get_library_version": {
-        parameters: [],
-        result: "pointer",
-        nonblocking: false,
-      },
-      "free_discovery_result": {
-        parameters: ["pointer"],
-        result: "void",
-        nonblocking: false,
-      },
-    };
-    rustLib = Deno.dlopen(libPath, symbols);
+    rustLib = Deno.dlopen(libPath, RUST_DISCOVERY_SYMBOLS);
     return true;
   } catch (error) {
     getLogger().warn(

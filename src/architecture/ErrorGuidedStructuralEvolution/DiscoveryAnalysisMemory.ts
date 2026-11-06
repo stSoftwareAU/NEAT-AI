@@ -13,7 +13,7 @@
  * The host's own guards (`MemoryMonitor`, `AnalysisHeapGuard`) only ever see
  * V8 heap and RSS samples taken from Deno, so they can neither observe
  * Discovery's analysis footprint nor stop an analysis that is already running
- * inside a blocking FFI call. This module supplies the missing half: a pure
+ * in native code. This module supplies the missing half: a pure
  * cancellation decision, a diagnostic formatter, and a signal helper with
  * injectable FFI dependencies so the wiring is unit-testable without a GPU or
  * a built Rust library.
@@ -187,10 +187,10 @@ export interface DiscoveryMemoryPressureSignal {
  * Samples host memory and, when the host is under genuine pressure, asks
  * NEAT-AI-Discovery to abort its in-flight analysis.
  *
- * Called from the evolve loop (the host isolate), which is *not* the isolate
- * blocked inside `analyze_parallel`; Discovery's cancellation flag is
- * process-wide, so this is the only way an in-flight analysis can be stopped
- * before it exhausts memory.
+ * Called from the evolve loop (the host isolate). `analyze_parallel` runs on a
+ * native thread and does not block this isolate (Issue #4126). Discovery's
+ * cancellation flag is process-wide, so this is the only way an in-flight
+ * analysis can be stopped before it exhausts memory.
  *
  * Emits one grep-friendly `[DiscoveryMemory]` line per cancellation, carrying
  * the Discovery-reported usage bytes alongside the host heap/RSS numbers so

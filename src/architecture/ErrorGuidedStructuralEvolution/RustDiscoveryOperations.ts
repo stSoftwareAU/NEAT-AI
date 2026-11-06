@@ -280,9 +280,19 @@ export function recordDiscovery(
   }
 }
 
-export function analyzeParallel(
+/**
+ * Runs one GPU-backed analysis pass through the `analyze_parallel` FFI symbol.
+ *
+ * The symbol is non-blocking (Issue #4126), so the native work runs on its own
+ * thread and this resolves when it returns. JS cannot cancel that work; the
+ * Rust-side deadline and memory budget are the only bounds on it.
+ *
+ * @returns The Discovery result, a structured failure when the GPU guard or
+ *          the call refuses the pass, or `null` when the library is unavailable.
+ */
+export async function analyzeParallel(
   input: RustParallelAnalysisInput,
-): RustParallelAnalysisResult | null {
+): Promise<RustParallelAnalysisResult | null> {
   if (!isRustLibraryAvailable()) {
     return null;
   }
@@ -300,14 +310,15 @@ export function analyzeParallel(
 
   const symbols = getRustLibSymbols();
 
+  let inputBuffer: Uint8Array | undefined;
   try {
     const inputJson = JSON.stringify(input);
     const inputBytes = new TextEncoder().encode(inputJson);
-    const inputBuffer = new Uint8Array(inputBytes.length + 1);
+    inputBuffer = new Uint8Array(inputBytes.length + 1);
     inputBuffer.set(inputBytes);
     inputBuffer[inputBytes.length] = 0;
     const inputPtr = Deno.UnsafePointer.of(inputBuffer);
-    const resultPtr = symbols["analyze_parallel"](inputPtr);
+    const resultPtr = await symbols["analyze_parallel"](inputPtr);
 
     if (resultPtr === null) {
       return {
@@ -325,5 +336,9 @@ export function analyzeParallel(
       success: false,
       error: error instanceof Error ? error.message : String(error),
     };
+  } finally {
+    // Keep the input buffer reachable until the non-blocking call has returned,
+    // so the GC cannot free the memory the native thread is still reading.
+    void inputBuffer?.byteLength;
   }
 }

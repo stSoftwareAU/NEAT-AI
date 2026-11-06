@@ -95,7 +95,7 @@ Deno.test("analysis request omits the deprecated focus error shares (Issue #3449
   const creature = makeTestCreature();
   const captured: RustParallelAnalysisInput[] = [];
 
-  runAnalysis(creature, captured);
+  await runAnalysis(creature, captured);
 
   assertEquals(captured.length, 1, "expected one analyze_parallel call");
   assertEquals(
@@ -110,7 +110,7 @@ Deno.test("analysis request still carries the focus neuron wire uuids (Issue #34
   const creature = makeTestCreature();
   const captured: RustParallelAnalysisInput[] = [];
 
-  const { result } = runAnalysis(creature, captured);
+  const { result } = await runAnalysis(creature, captured);
 
   assert(result?.success, "analysis should succeed with the mocked FFI");
   assertEquals(captured[0].focusNeurons.length, 2);

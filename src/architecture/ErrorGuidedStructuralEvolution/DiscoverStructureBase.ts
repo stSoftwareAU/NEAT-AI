@@ -57,6 +57,10 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/NeuronImpact.ts";
 import type { CombinedAnalysisCache } from "@architecture/ErrorGuidedStructuralEvolution/RustAnalysisCache.ts";
 import type {
+  RustParallelAnalysisInput,
+  RustParallelAnalysisResult,
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryTypes.ts";
+import type {
   CandidateNeuron,
   CandidateSynapse,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
@@ -70,7 +74,17 @@ export interface DiscoverStructureDeps {
   isRustLibraryAvailable: typeof isRustLibraryAvailable;
   recordDiscovery: typeof recordDiscovery;
   mergeDiscoveryParquet: typeof mergeDiscoveryParquet;
-  analyzeParallel: typeof analyzeParallel;
+  /**
+   * Issue #4126: `analyze_parallel` is a non-blocking FFI call, so the
+   * production implementation returns a promise. Synchronous test doubles
+   * remain valid.
+   */
+  analyzeParallel: (
+    input: RustParallelAnalysisInput,
+  ) =>
+    | RustParallelAnalysisResult
+    | null
+    | Promise<RustParallelAnalysisResult | null>;
   readDiscoveryRecords: typeof readDiscoveryRecords;
   rankFocusNeurons?: typeof rankFocusNeurons;
   /**

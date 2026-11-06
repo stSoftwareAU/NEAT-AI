@@ -216,19 +216,19 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
     this.combinedRustAnalysis = undefined;
   }
 
-  public ensureRustCombinedAnalysis(
+  public async ensureRustCombinedAnalysis(
     focusList: number[],
     includeSynapse: boolean,
     includeNeuron: boolean,
     /**
      * Optional tighter per-chunk deadline (Issue #2501). Forwarded to Rust
-     * via `RustParallelAnalysisInput.analysisDeadlineMs` so the synchronous
-     * FFI call self-aborts close to the per-chunk budget instead of running
-     * for the full analysis window.
+     * via `RustParallelAnalysisInput.analysisDeadlineMs` so the FFI call
+     * self-aborts close to the per-chunk budget instead of running for the
+     * full analysis window.
      */
     chunkDeadlineMs?: number,
-  ): RustAnalyzeAllResult | undefined {
-    const result = ensureRustCombinedAnalysisImpl(
+  ): Promise<RustAnalyzeAllResult | undefined> {
+    const result = await ensureRustCombinedAnalysisImpl(
       this.creature,
       this.parquetFilePath,
       this.deps,
@@ -284,7 +284,6 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   // ── Analysis (delegates) ────────────────────────────────────────────
 
-  // deno-lint-ignore require-await
   public async analyzeSelectedNeurons(
     focusList: number[],
   ): Promise<CandidateSynapse[] | undefined> {
@@ -318,7 +317,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       return Promise.resolve(undefined);
     }
 
-    this.ensureRustCombinedAnalysis(focusList, true, false);
+    await this.ensureRustCombinedAnalysis(focusList, true, false);
 
     const rustResult = readRustCombinedAnalysisImpl(
       this.combinedRustAnalysis,
@@ -352,7 +351,6 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
     return Promise.resolve(this.discoveries);
   }
 
-  // deno-lint-ignore require-await
   public async analyzeMissingNeurons(
     focusList: number[],
   ): Promise<CandidateNeuron[] | undefined> {
@@ -386,7 +384,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       return Promise.resolve(undefined);
     }
 
-    this.ensureRustCombinedAnalysis(focusList, false, true);
+    await this.ensureRustCombinedAnalysis(focusList, false, true);
 
     const rustResult = readRustCombinedAnalysisImpl(
       this.combinedRustAnalysis,
@@ -420,10 +418,10 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
     return Promise.resolve(bestCandidates);
   }
 
-  public collectRustAnalysisCandidates(
+  public async collectRustAnalysisCandidates(
     focusList: number[],
-  ): CandidateAnalysisBundle | undefined {
-    const combinedResult = this.ensureRustCombinedAnalysis(
+  ): Promise<CandidateAnalysisBundle | undefined> {
+    const combinedResult = await this.ensureRustCombinedAnalysis(
       focusList,
       true,
       true,
@@ -453,7 +451,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   // ── Synapse removal (delegates) ─────────────────────────────────────
 
-  public analyzeSelectedNeuronsForRemoval(
+  public async analyzeSelectedNeuronsForRemoval(
     focusList: number[],
   ): Promise<CandidateSynapse | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
@@ -489,7 +487,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       return Promise.resolve(undefined);
     }
 
-    this.ensureRustCombinedAnalysis(focusList, true, false);
+    await this.ensureRustCombinedAnalysis(focusList, true, false);
 
     const rustResult = readRustCombinedAnalysisImpl(
       this.combinedRustAnalysis,

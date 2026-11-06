@@ -237,7 +237,7 @@ Deno.test("analyzeParallel carries the configured cost task descriptor (Issue #2
     const outputNeuron = creature.neurons.find((n) => n.type === "output");
     assert(outputNeuron, "creature should have an output neuron");
 
-    structure.ensureRustCombinedAnalysis([outputNeuron.id], true, true);
+    await structure.ensureRustCombinedAnalysis([outputNeuron.id], true, true);
 
     assertEquals(
       analyzeInputs.length,
@@ -264,7 +264,7 @@ Deno.test("analyzeParallel carries the configured cost task descriptor (Issue #2
   }
 });
 
-Deno.test("ensureRustCombinedAnalysis never leaks a custom cost name, sending OTHER instead (Issue #2785)", () => {
+Deno.test("ensureRustCombinedAnalysis never leaks a custom cost name, sending OTHER instead (Issue #2785)", async () => {
   const creature = makeCreature();
   // A custom JS cost maps to the neutral OTHER descriptor via the helper.
   const customDescriptor = costNameToTaskDescriptor("my-secret-custom-cost");
@@ -286,7 +286,7 @@ Deno.test("ensureRustCombinedAnalysis never leaks a custom cost name, sending OT
   const outputNeuron = creature.neurons.find((n) => n.type === "output");
   assert(outputNeuron);
 
-  ensureRustCombinedAnalysis(
+  await ensureRustCombinedAnalysis(
     creature,
     "/tmp/test.parquet",
     deps as unknown as Parameters<typeof ensureRustCombinedAnalysis>[2],
@@ -319,7 +319,7 @@ Deno.test("ensureRustCombinedAnalysis never leaks a custom cost name, sending OT
   );
 });
 
-Deno.test("analyzeParallel omits the descriptor when none is supplied (backward compatible) (Issue #2785)", () => {
+Deno.test("analyzeParallel omits the descriptor when none is supplied (backward compatible) (Issue #2785)", async () => {
   const creature = makeCreature();
   let capturedInput: RustParallelAnalysisInput | undefined;
   const deps = {
@@ -333,7 +333,7 @@ Deno.test("analyzeParallel omits the descriptor when none is supplied (backward 
   const outputNeuron = creature.neurons.find((n) => n.type === "output");
   assert(outputNeuron);
 
-  ensureRustCombinedAnalysis(
+  await ensureRustCombinedAnalysis(
     creature,
     "/tmp/test.parquet",
     deps as unknown as Parameters<typeof ensureRustCombinedAnalysis>[2],
