@@ -185,6 +185,44 @@ export function describeMainLoopStall(input: {
 }
 
 /**
+ * Build the main-thread heartbeat tick. The returned function stores the
+ * heartbeat and, when the tick is a stall per {@link describeMainLoopStall},
+ * warns first. The arm-time heartbeat is taken here, without the check, so
+ * arming never reports. Everything it reads or writes is injected so the
+ * wiring can be exercised with a fixed clock.
+ */
+export function createHeartbeatBeat(deps: {
+  now: () => number;
+  heartbeatIntervalMS: number;
+  stallReportMS: number;
+  readGeneration: () => number;
+  readPhase: () => EventLoopWatchdogPhase;
+  storeHeartbeat: (epochMS: number) => void;
+  warn: (line: string) => void;
+}): () => void {
+  let lastBeatMS = deps.now();
+  let lastBeatPhase = deps.readPhase();
+  deps.storeHeartbeat(lastBeatMS);
+  return (): void => {
+    const nowMS = deps.now();
+    const phaseNow = deps.readPhase();
+    const stall = describeMainLoopStall({
+      nowMS,
+      lastBeatMS,
+      heartbeatIntervalMS: deps.heartbeatIntervalMS,
+      stallReportMS: deps.stallReportMS,
+      generation: deps.readGeneration(),
+      lastBeatPhase,
+      phaseNow,
+    });
+    if (stall !== undefined) deps.warn(stall);
+    deps.storeHeartbeat(nowMS);
+    lastBeatMS = nowMS;
+    lastBeatPhase = phaseNow;
+  };
+}
+
+/**
  * Arm an off-main-thread deadline that SIGKILLs the process at breach.
  *
  * The options are validated before anything is spawned. If the Worker cannot
@@ -275,28 +313,15 @@ export function armEventLoopWatchdog(
   // or more logs one line naming the phase at the last heartbeat and now. The
   // arm-time beat is stored without the check, so it never reports. Date.now is
   // the wall clock, so a clock step can produce a false report.
-  const currentPhase = (): EventLoopWatchdogPhase =>
-    EVENT_LOOP_WATCHDOG_PHASES[Atomics.load(generation, 1)];
-  let lastBeatMS = Date.now();
-  let lastBeatPhase = currentPhase();
-  Atomics.store(heartbeat, 0, BigInt(lastBeatMS));
-  const beat = (): void => {
-    const now = Date.now();
-    const phaseNow = currentPhase();
-    const stall = describeMainLoopStall({
-      nowMS: now,
-      lastBeatMS,
-      heartbeatIntervalMS,
-      stallReportMS,
-      generation: Atomics.load(generation, 0),
-      lastBeatPhase,
-      phaseNow,
-    });
-    if (stall !== undefined) getLogger().warn(stall);
-    Atomics.store(heartbeat, 0, BigInt(now));
-    lastBeatMS = now;
-    lastBeatPhase = phaseNow;
-  };
+  const beat = createHeartbeatBeat({
+    now: Date.now,
+    heartbeatIntervalMS,
+    stallReportMS,
+    readGeneration: () => Atomics.load(generation, 0),
+    readPhase: () => EVENT_LOOP_WATCHDOG_PHASES[Atomics.load(generation, 1)],
+    storeHeartbeat: (ms) => Atomics.store(heartbeat, 0, BigInt(ms)),
+    warn: (line) => getLogger().warn(line),
+  });
   const heartbeatTimer = setInterval(beat, heartbeatIntervalMS);
   // Unreferenced, so the heartbeat never keeps the process alive on its own.
   // The Worker's deadline is what holds the process until disarm.

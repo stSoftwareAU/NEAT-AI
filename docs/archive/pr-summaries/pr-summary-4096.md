@@ -37,8 +37,11 @@ that carries this change (`missing`).
 - Both the phase at the last heartbeat and the phase now are named. A phase
   marker is cleared when its work returns, so the phase now alone can read
   `untracked` after a block that began inside `mutation`.
-- The arm-time heartbeat is stored directly, not through the checking `beat`, so
-  arming never reports.
+- The tick itself is `createHeartbeatBeat`, with the clock, the shared-memory
+  readers, the heartbeat store and the logger injected, so the wiring around
+  `describeMainLoopStall` is tested in-process with a fixed clock. The arm-time
+  heartbeat is stored directly, not through the checking tick, so arming never
+  reports.
 
 ### Undiscoverable Facts
 
@@ -94,7 +97,7 @@ and evolveRL), #4096 (this issue).
   generation-11 stall needs the 8 GB swap-backed host and the 2.3 M-record
   corpus and was not reproduced.
 - **regression test** —
-  `test/NEAT/EventLoopWatchdog_test.ts::EventLoopWatchdogStall: a busy loop logs one stall line naming the generation and the phase`
+  `test/NEAT/EventLoopWatchdog_test.ts::EventLoopWatchdogStall: a busy loop logs a stall line naming the generation and the phase`
 
 ## Acceptance Criteria
 
@@ -160,6 +163,18 @@ and evolveRL), #4096 (this issue).
   land in the right slots), and three `stallReportMS` validation tests
   (`NOT_FINITE`, `OUT_OF_RANGE`, positive accepted). No existing assertion was
   edited or removed.
+- Mutation check (`src/NEAT/EventLoopWatchdog.ts:287-293`, the five deleted
+  properties passed to `describeMainLoopStall` from the tick): the tick body
+  moved into `createHeartbeatBeat`, and the new test
+  `createHeartbeatBeat:
+  stores the arm-time heartbeat without reporting, then reports a late tick with
+  the phase at the last heartbeat and now`
+  drives it with a fixed clock and asserts the exact line, the stored
+  heartbeats, no report at arm or on an on-time tick, and the phase carried from
+  the previous tick. Dropping any of `nowMS`, `lastBeatMS`,
+  `heartbeatIntervalMS`, `stallReportMS`, `generation` or either phase changes
+  the asserted line or the report count. This was not re-run under the mutation
+  tool; the 31 tests in the two watchdog files pass.
 - Red checks, each restored afterwards: `beat` not logging turns the wiring test
   red (`stall line missing from stderr`); `<=` for `<` in the threshold turns
   the boundary tests red; swapping the two phases in the line turns the phase
@@ -169,9 +184,10 @@ and evolveRL), #4096 (this issue).
   test/creature/EvolveRunWatchdogHeartbeat_test.ts
   test/creature/EvolveRunWatchdog_test.ts
   test/creature/EvolveWatchdogWiring_test.ts`:
-  51 passed, 0 failed. `deno fmt
-  --check`, `deno lint` and `deno check` on the
-  touched TypeScript pass.
+  52 passed, 0 failed (31 in the first two files, 21 in the other two).
+  `deno fmt
+  --check`, `deno lint` and `deno check` on the touched TypeScript
+  pass.
 - Callers of `armEventLoopWatchdog`: `src/creature/EvolveRunWatchdog.ts` passes
   no `stallReportMS`, so production uses the 10 s default.
 - Docs: `docs/TIMEOUTS.md` (heartbeat section) and `CHANGELOG.md`.

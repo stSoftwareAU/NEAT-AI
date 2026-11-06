@@ -23,6 +23,7 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { join } from "@std/path";
 import {
   armEventLoopWatchdog,
+  createHeartbeatBeat,
   describeMainLoopStall,
   EVENT_LOOP_WATCHDOG_GENERATION_TOKEN,
   EVENT_LOOP_WATCHDOG_PHASES,
@@ -587,6 +588,59 @@ Deno.test("describeMainLoopStall: puts the phase at the last heartbeat and the p
   assertEquals(
     line,
     "[Neat] main loop stalled for 350ms (heartbeat every 50ms) at generation 3; phase at last heartbeat: sort, phase now: breeding",
+  );
+});
+
+Deno.test("createHeartbeatBeat: stores the arm-time heartbeat without reporting, then reports a late tick with the phase at the last heartbeat and now", () => {
+  // A fixed clock and fixed readers: no timers, no process.
+  let clock = 1_000;
+  let generation = -1;
+  let phase: (typeof EVENT_LOOP_WATCHDOG_PHASES)[number] = "mutation";
+  const stored: number[] = [];
+  const warned: string[] = [];
+  const beat = createHeartbeatBeat({
+    now: () => clock,
+    heartbeatIntervalMS: 50,
+    stallReportMS: 300,
+    readGeneration: () => generation,
+    readPhase: () => phase,
+    storeHeartbeat: (ms) => stored.push(ms),
+    warn: (line) => warned.push(line),
+  });
+  assertEquals(stored, [1_000], "arming stores the heartbeat");
+  assertEquals(warned, [], "arming never reports");
+
+  // On time: gap 50, lateness 0.
+  clock = 1_050;
+  beat();
+  assertEquals(stored, [1_000, 1_050]);
+  assertEquals(warned, []);
+
+  // Late by exactly 300 (gap 350 less interval 50), with a changed phase and
+  // a known generation.
+  clock = 1_400;
+  generation = 7;
+  phase = "fitness";
+  beat();
+  assertEquals(stored, [1_000, 1_050, 1_400]);
+  assertEquals(warned, [
+    "[Neat] main loop stalled for 350ms (heartbeat every 50ms) at generation 7; phase at last heartbeat: mutation, phase now: fitness",
+  ]);
+
+  // The next tick measures from the stall tick, and names its phase.
+  clock = 1_450;
+  phase = "sort";
+  beat();
+  assertEquals(stored, [1_000, 1_050, 1_400, 1_450]);
+  assertEquals(warned.length, 1);
+
+  // Late again: the phase at the last heartbeat is the one recorded on the
+  // previous tick ("sort"), not the arm-time one.
+  clock = 2_000;
+  beat();
+  assertEquals(
+    warned[1],
+    "[Neat] main loop stalled for 550ms (heartbeat every 50ms) at generation 7; phase at last heartbeat: sort, phase now: sort",
   );
 });
 
