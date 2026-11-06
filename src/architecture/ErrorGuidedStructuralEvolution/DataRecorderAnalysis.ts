@@ -27,6 +27,11 @@ import { getLogger } from "@utils/Logger.ts";
 /**
  * Signature for the parallel analysis driver. Exposed so tests can inject a
  * stubbed implementation that never resolves (Issue #2420).
+ *
+ * `chunkDeadlineMs` is the per-chunk deadline the loop computed for this
+ * chunk, or `undefined` when no per-chunk budget applies. The driver forwards
+ * it to its fallback analyses so they are bounded by the chunk budget too
+ * (Issue #4141).
  */
 export type ParallelAnalysisFn = (
   ctx: AnalysisLoopContext,
@@ -34,6 +39,7 @@ export type ParallelAnalysisFn = (
   perfStats: DiscoveryPerformanceStats,
   phaseDiagnostics: PhaseDiagnostics,
   newFocusList: number[],
+  chunkDeadlineMs: number | undefined,
 ) => Promise<[
   CandidateNeuron[] | undefined,
   CandidateSynapse[] | undefined,
@@ -649,12 +655,11 @@ export async function runAnalysisLoop(
       let candidateSquashes: CandidateSquash[] | undefined;
 
       const parallelStartTime = now();
-      // Sequential per chunk, as above.
-      // deno-lint-ignore no-await-in-loop
-      const candidateBundle = await discoverStructure
-        .collectRustAnalysisCandidates(
-          chunk,
-        );
+      // Map the first call's outcome rather than issuing a second native
+      // analysis: a failed chunk is not re-run without the per-chunk deadline
+      // (Issue #4141). Mapping is synchronous, so there is nothing to await.
+      const candidateBundle = discoverStructure
+        .mapRustAnalysisCandidates(combinedResult, chunk);
       const candidateCollectionTime = now() - parallelStartTime;
 
       if (candidateBundle) {
@@ -672,7 +677,7 @@ export async function runAnalysisLoop(
         // activation traces, derivative maps), so releasing the prior
         // chunk's full {helpful/harmful synapses + helpful neurons +
         // diagnostics} payload here lets V8 reclaim it before squash
-        // allocates. Mapping in `collectRustAnalysisCandidates` already
+        // allocates. Mapping in `mapRustAnalysisCandidates` already
         // produced fresh `CandidateSynapse` / `CandidateNeuron` copies, so
         // the bundle is independent of the cache.
         discoverStructure.releaseCombinedRustAnalysisCache();
@@ -772,6 +777,7 @@ export async function runAnalysisLoop(
             perfStats,
             phaseDiagnostics,
             chunk,
+            chunkDeadlineMs,
           ).then<RaceResult>((value) => ({ kind: "ok", value }));
           // Ensure unhandled rejection from a detached analysis promise is
           // swallowed after a timeout — we intentionally stop awaiting it.
@@ -810,6 +816,7 @@ export async function runAnalysisLoop(
             perfStats,
             phaseDiagnostics,
             chunk,
+            chunkDeadlineMs,
           );
         }
 
@@ -1119,6 +1126,7 @@ async function runParallelAnalysis(
   perfStats: DiscoveryPerformanceStats,
   phaseDiagnostics: PhaseDiagnostics,
   newFocusList: number[],
+  chunkDeadlineMs: number | undefined,
 ): Promise<[
   CandidateNeuron[] | undefined,
   CandidateSynapse[] | undefined,
@@ -1144,7 +1152,7 @@ async function runParallelAnalysis(
     async () => {
       const neuronAnalyzeStart = Date.now();
       const helpfulNeurons = await discoverStructure
-        .analyzeMissingNeurons(newFocusList);
+        .analyzeMissingNeurons(newFocusList, chunkDeadlineMs);
       ctx.refreshAnalysisTimeout(discoverStructure);
       const neuronAnalyzeTime = Date.now() - neuronAnalyzeStart;
       perfStats.neuronAnalysisTime += neuronAnalyzeTime;
@@ -1166,7 +1174,7 @@ async function runParallelAnalysis(
     async () => {
       const analyzeStartTime = Date.now();
       const helpfulSynapses = await discoverStructure
-        .analyzeSelectedNeurons(newFocusList);
+        .analyzeSelectedNeurons(newFocusList, chunkDeadlineMs);
       ctx.refreshAnalysisTimeout(discoverStructure);
       const analyzeTime = Date.now() - analyzeStartTime;
       perfStats.synapseAnalysisTime += analyzeTime;
@@ -1188,7 +1196,7 @@ async function runParallelAnalysis(
     async () => {
       const harmfulStartTime = Date.now();
       const harmfulSynapse = await discoverStructure
-        .analyzeSelectedNeuronsForRemoval(newFocusList);
+        .analyzeSelectedNeuronsForRemoval(newFocusList, chunkDeadlineMs);
       ctx.refreshAnalysisTimeout(discoverStructure);
       const harmfulTime = Date.now() - harmfulStartTime;
       perfStats.harmfulSynapseAnalysisTime += harmfulTime;
