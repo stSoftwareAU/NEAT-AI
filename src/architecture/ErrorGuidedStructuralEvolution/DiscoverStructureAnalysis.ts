@@ -203,8 +203,8 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
    * candidates, diagnostics arrays, and metadata. Without explicit release,
    * the prior chunk's result stays live while the next chunk's analysis
    * allocates its own large result, so peak heap is roughly two chunks'
-   * worth. After the chunk loop has called
-   * {@link collectRustAnalysisCandidates} and accumulated the bundle into
+   * worth. After the chunk loop has mapped the first call's result via
+   * {@link mapRustAnalysisCandidates} and accumulated the bundle into
    * the {@link DiscoverResult}, nothing else in the loop reads the cache,
    * so dropping it now lets V8 collect that footprint before the next
    * Rust FFI allocation.
@@ -309,6 +309,12 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   public async analyzeSelectedNeurons(
     focusList: number[],
+    /**
+     * Optional per-chunk deadline (Issue #4141). Forwarded to
+     * {@link ensureRustCombinedAnalysis} so a fallback analysis run for a
+     * chunk whose combined analysis failed stays bounded by the chunk budget.
+     */
+    chunkDeadlineMs?: number,
   ): Promise<CandidateSynapse[] | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
 
@@ -340,7 +346,12 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       return Promise.resolve(undefined);
     }
 
-    await this.ensureRustCombinedAnalysis(focusList, true, false);
+    await this.ensureRustCombinedAnalysis(
+      focusList,
+      true,
+      false,
+      chunkDeadlineMs,
+    );
 
     const rustResult = readRustCombinedAnalysisImpl(
       this.combinedRustAnalysis,
@@ -376,6 +387,12 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   public async analyzeMissingNeurons(
     focusList: number[],
+    /**
+     * Optional per-chunk deadline (Issue #4141). Forwarded to
+     * {@link ensureRustCombinedAnalysis} so a fallback analysis run for a
+     * chunk whose combined analysis failed stays bounded by the chunk budget.
+     */
+    chunkDeadlineMs?: number,
   ): Promise<CandidateNeuron[] | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
 
@@ -407,7 +424,12 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       return Promise.resolve(undefined);
     }
 
-    await this.ensureRustCombinedAnalysis(focusList, false, true);
+    await this.ensureRustCombinedAnalysis(
+      focusList,
+      false,
+      true,
+      chunkDeadlineMs,
+    );
 
     const rustResult = readRustCombinedAnalysisImpl(
       this.combinedRustAnalysis,
@@ -441,6 +463,24 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
     return Promise.resolve(bestCandidates);
   }
 
+  /**
+   * Map an already-obtained combined Rust analysis result to candidate
+   * bundles. This never issues a native analysis: the caller passes the
+   * outcome of its own {@link ensureRustCombinedAnalysis} call, so a failed
+   * analysis is not re-run without the per-chunk deadline (Issue #4141).
+   */
+  public mapRustAnalysisCandidates(
+    combinedResult: RustAnalyzeAllResult | undefined,
+    focusList: number[],
+  ): CandidateAnalysisBundle | undefined {
+    return collectRustAnalysisCandidatesImpl(
+      combinedResult,
+      focusList,
+      (scope, diagnostics) =>
+        this.logRustNoImprovement(scope, focusList, diagnostics),
+    );
+  }
+
   public async collectRustAnalysisCandidates(
     focusList: number[],
   ): Promise<CandidateAnalysisBundle | undefined> {
@@ -449,12 +489,7 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       true,
       true,
     );
-    return collectRustAnalysisCandidatesImpl(
-      combinedResult,
-      focusList,
-      (scope, diagnostics) =>
-        this.logRustNoImprovement(scope, focusList, diagnostics),
-    );
+    return this.mapRustAnalysisCandidates(combinedResult, focusList);
   }
 
   public async analyze(
@@ -476,6 +511,12 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
 
   public async analyzeSelectedNeuronsForRemoval(
     focusList: number[],
+    /**
+     * Optional per-chunk deadline (Issue #4141). Forwarded to
+     * {@link ensureRustCombinedAnalysis} so a fallback analysis run for a
+     * chunk whose combined analysis failed stays bounded by the chunk budget.
+     */
+    chunkDeadlineMs?: number,
   ): Promise<CandidateSynapse | undefined> {
     if (focusList.length === 0) return Promise.resolve(undefined);
 
@@ -510,7 +551,12 @@ export class DiscoverStructureAnalysis extends DiscoverStructureRecording {
       return Promise.resolve(undefined);
     }
 
-    await this.ensureRustCombinedAnalysis(focusList, true, false);
+    await this.ensureRustCombinedAnalysis(
+      focusList,
+      true,
+      false,
+      chunkDeadlineMs,
+    );
 
     const rustResult = readRustCombinedAnalysisImpl(
       this.combinedRustAnalysis,

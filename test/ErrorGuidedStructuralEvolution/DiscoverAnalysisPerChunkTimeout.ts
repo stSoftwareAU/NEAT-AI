@@ -13,7 +13,7 @@
  *    prevents further chunks even when a chunk-sized stall is barely
  *    under the per-chunk budget on each individual call.
  */
-import { assert, assertFalse } from "@std/assert";
+import { assert, assertEquals, assertFalse } from "@std/assert";
 import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import { DiscoverStructure } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import type { DiscoverStructureDeps } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
@@ -68,7 +68,10 @@ function makeTrainingData(): DataRecordInterface[] {
 }
 
 interface RunOptions {
-  readonly runParallelAnalysis: ParallelAnalysisFn;
+  /** Stub parallel driver. Omit to run the real fallback `runParallelAnalysis`. */
+  readonly runParallelAnalysis?: ParallelAnalysisFn;
+  /** Stub native `analyzeParallel`. Defaults to returning no result. */
+  readonly analyzeParallel?: DiscoverStructureDeps["analyzeParallel"];
   readonly analysisChunkSize: number;
   readonly perChunkMaxMs: number;
   readonly perChunkGraceMs?: number;
@@ -100,7 +103,7 @@ async function runAnalysisLoopWithStub(
       success: true,
       outputFile: tempParquetPath,
     }),
-    analyzeParallel: () => null,
+    analyzeParallel: options.analyzeParallel ?? (() => null),
     readDiscoveryRecords: () => ({ success: true, records: [] }),
   };
 
@@ -124,9 +127,17 @@ async function runAnalysisLoopWithStub(
   structure.extendTimeoutForAnalysis(600);
 
   let callCount = 0;
-  const wrapped: ParallelAnalysisFn = (ctx, ds, ps, pd, focus) => {
+  const stubDriver = options.runParallelAnalysis;
+  const wrapped: ParallelAnalysisFn = (
+    ctx,
+    ds,
+    ps,
+    pd,
+    focus,
+    chunkDeadlineMs,
+  ) => {
     callCount++;
-    return options.runParallelAnalysis(ctx, ds, ps, pd, focus);
+    return stubDriver!(ctx, ds, ps, pd, focus, chunkDeadlineMs);
   };
 
   try {
@@ -142,7 +153,7 @@ async function runAnalysisLoopWithStub(
         now: options.now,
         getTimeoutTS: () => deadlineMs,
         refreshAnalysisTimeout: () => {},
-        runParallelAnalysis: wrapped,
+        runParallelAnalysis: stubDriver ? wrapped : undefined,
         // Issue #2735: exercises the per-chunk timeout, not the heap guard; opt
         // out so the test process heap ratio does not trip the in-loop abort.
         heapCriticalProbe: () => false,
@@ -233,5 +244,62 @@ Deno.test("runAnalysisLoop defence-in-depth cap aborts remaining chunks when ite
   assert(
     callCount < 3,
     `expected early abort to limit parallel calls, got ${callCount}`,
+  );
+});
+
+Deno.test("runAnalysisLoop never re-runs a failed chunk's native analysis without the per-chunk deadline (Issue #4141)", async () => {
+  // Fixed clock: the per-chunk deadline is exactly now + perChunkMaxMs + grace.
+  const nowMs = 1_000;
+  const perChunkMaxMs = 5_000;
+  const perChunkGraceMs = 500;
+  const chunkDeadlineMs = nowMs + perChunkMaxMs + perChunkGraceMs;
+
+  const calls: { analysisDeadlineMs: number | undefined; combined: boolean }[] =
+    [];
+
+  await runAnalysisLoopWithStub({
+    // No `runParallelAnalysis`: the real fallback driver runs, so every native
+    // call it makes goes through this recording `analyzeParallel` double.
+    analyzeParallel: (input) => {
+      calls.push({
+        analysisDeadlineMs: input.analysisDeadlineMs,
+        // The combined chunk analysis requests both candidate kinds; the two
+        // fallback analyses each request only one.
+        combined: input.maxSynapseCandidates !== undefined &&
+          input.maxNeuronCandidates !== undefined,
+      });
+      return { success: false, error: "gpu failure" };
+    },
+    analysisChunkSize: 1,
+    perChunkMaxMs,
+    perChunkGraceMs,
+    discoveryMaxNeurons: 3,
+    now: () => nowMs,
+  });
+
+  assert(
+    calls.length > 0,
+    `expected at least one analyzeParallel call, got ${calls.length}`,
+  );
+
+  const deadlines = calls.map((call) => call.analysisDeadlineMs);
+  assert(
+    deadlines.every((deadline) => deadline === chunkDeadlineMs),
+    `every analyzeParallel call must carry the per-chunk deadline ${chunkDeadlineMs}, got [${
+      deadlines.join(", ")
+    }]`,
+  );
+
+  // Each chunk makes four native calls, all bounded by the chunk deadline:
+  // the combined chunk analysis, then the fallbacks analyzeMissingNeurons,
+  // analyzeSelectedNeurons and analyzeSelectedNeuronsForRemoval. The combined
+  // call is the first call per chunk, so it identifies the chunks processed.
+  // A redundant collect re-run would add a fifth call per chunk.
+  const chunks = calls.filter((call) => call.combined).length;
+  assert(chunks > 0, `expected at least one combined chunk analysis, got 0`);
+  assertEquals(
+    calls.length,
+    4 * chunks,
+    `expected 4 analyzeParallel calls per chunk (combined + analyzeMissingNeurons + analyzeSelectedNeurons + analyzeSelectedNeuronsForRemoval), got ${calls.length} across ${chunks} chunk(s)`,
   );
 });

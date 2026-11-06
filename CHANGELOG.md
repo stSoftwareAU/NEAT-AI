@@ -25,6 +25,10 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4141:** a discovery chunk whose combined analysis failed is no longer
+  re-run without the per-chunk deadline: the analysis loop reuses the first
+  call's outcome, and the fallback analyses (missing-neuron, helpful-synapse and
+  harmful-synapse) receive the chunk deadline.
 - **Issue #4126:** a stuck discovery analysis no longer keeps the process alive
   after `evolveDir()` returns. The Rust GPU `analyze_parallel` call is now
   declared `nonblocking: true`, so the worker's thread is no longer blocked and
