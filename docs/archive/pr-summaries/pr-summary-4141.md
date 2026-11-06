@@ -62,16 +62,19 @@ flowchart LR
   to four more times, none with the per-chunk deadline.
 - **status** — `verified` — the new test fails against the base-branch `src`
   (run with `--no-check`, because the test's six-parameter driver double does
-  not type-check against the five-parameter base type): `every analyzeParallel
+  not type-check against the five-parameter base type):
+  `every analyzeParallel
   call must carry the per-chunk deadline 6500, got [6500, 1793966547733, …]`;
   it passes with the fix.
-- **regression test** — `test/ErrorGuidedStructuralEvolution/DiscoverAnalysisPerChunkTimeout.ts::runAnalysisLoop never re-runs a failed chunk's native analysis without the per-chunk deadline (Issue #4141)`
+- **regression test** —
+  `test/ErrorGuidedStructuralEvolution/DiscoverAnalysisPerChunkTimeout.ts::runAnalysisLoop never re-runs a failed chunk's native analysis without the per-chunk deadline (Issue #4141)`
 
 ## Test Plan
 
-- Added `runAnalysisLoop never re-runs a failed chunk's native analysis without
-  the per-chunk deadline (Issue #4141)` in
-  `test/ErrorGuidedStructuralEvolution/DiscoverAnalysisPerChunkTimeout.ts`: a
+- Added
+  `runAnalysisLoop never re-runs a failed chunk's native analysis without
+  the per-chunk deadline (Issue #4141)`
+  in `test/ErrorGuidedStructuralEvolution/DiscoverAnalysisPerChunkTimeout.ts`: a
   failing `analyzeParallel` double, a fixed clock, the real fallback driver. It
   asserts every recorded `analysisDeadlineMs` equals the chunk deadline (6500)
   and that there are exactly four calls per chunk. Red on base `src` (above),
@@ -83,11 +86,12 @@ flowchart LR
 - Callers of `ParallelAnalysisFn` / the changed analysis methods checked:
   `runAnalysisLoop` (both `analysisFn` call sites pass `chunkDeadlineMs`),
   `runParallelAnalysis` (forwards to all three), `analyze()` and
-  `analyzeSynapsesForRemoval()` (no per-chunk budget, optional param left unset).
-- Ran on the head: `deno test -A test/ErrorGuidedStructuralEvolution/*.ts` —
-  324 passed, 0 failed, 31 ignored; `deno fmt --check src test CHANGELOG.md`,
-  `deno lint src test`, `deno check mod.ts test/ErrorGuidedStructuralEvolution/*.ts`
-  clean.
+  `analyzeSynapsesForRemoval()` (no per-chunk budget, optional param left
+  unset).
+- Ran on the head: `deno test -A test/ErrorGuidedStructuralEvolution/*.ts` — 324
+  passed, 0 failed, 31 ignored; `deno fmt --check src test CHANGELOG.md`,
+  `deno lint src test`,
+  `deno check mod.ts test/ErrorGuidedStructuralEvolution/*.ts` clean.
 - Docs: `CHANGELOG.md` Unreleased/Fixed entry added; the doc comment on
   `releaseCombinedRustAnalysisCache` and the comment in the loop that named
   `collectRustAnalysisCandidates` now name `mapRustAnalysisCandidates`. No
