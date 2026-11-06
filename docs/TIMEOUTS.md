@@ -733,11 +733,10 @@ not provide the closing evidence requested by Issue #4096. The only `neat-ai`
 release marker in that snapshot is 7.1.3 in the scorer log; it is not a learning
 run with the heartbeat diagnostics.
 
-The newest useful learning-run evidence available in that repository snapshot is
-older: `GRQ-3-rocket.log` at source commit
-`289753f0c5459c30f261794ae91e151c77ff43b7`. It records GRQ 1.1.213 (`13c24754`),
-NEAT-AI 7.1.2, generation 2 on rocket@GRQ-3 (10 CPUs, 16 GB RAM, about 8 GB
-available, load averages `49.79 58.48 50.43`):
+One useful older learning-run log in repository history is `GRQ-3-rocket.log` at
+source commit `289753f0c5459c30f261794ae91e151c77ff43b7`. It records GRQ 1.1.213
+(`13c24754`), NEAT-AI 7.1.2, generation 2 on rocket@GRQ-3 (10 CPUs, 16 GB RAM,
+about 8 GB available, load averages `49.79 58.48 50.43`):
 
 ```text
 [Timing] fitness=34710ms breeding=133950ms breedingWorker=133949ms mainThreadOverlap=0ms resultProcessing=0ms memoryEviction=3ms preWarm=508ms pipelineOverlap=526ms sort=0ms writeScores=194ms mutation=0ms deduplication=974ms speciation=18ms total=232627ms
