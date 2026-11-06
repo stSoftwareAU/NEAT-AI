@@ -4,7 +4,8 @@ Recorded a fresh downstream log archive search and the strongest retained field
 evidence in `docs/TIMEOUTS.md`. The heartbeat and stall diagnostics are already
 present on the base from merged PRs #4101 and #4136. This investigation did not
 identify the generation-11 cause or find qualifying closing evidence, so it
-remains part of #4096.
+remains part of #4096. The live guide describes the archive at concept level and
+places the dated observation after the general breach and caller guidance.
 
 Version bump: `VERSION` is not changed by this investigation; the merged commit
 records the final version.
