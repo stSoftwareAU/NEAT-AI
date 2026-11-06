@@ -7,9 +7,9 @@ that never reach the deadline, so that instrument never reports them. This PR
 adds a non-fatal stall line to the same heartbeat timer: when a tick is late by
 `stallReportMS` (default `DEFAULT_STALL_REPORT_MS`, 10 s) the main thread logs
 `[Neat] main loop stalled for <ms>ms (heartbeat every <n>ms) at generation
-<n|unknown>; phase at last heartbeat: <phase>, phase now: <phase>`. It does not
-kill anything. The field logs on 7.1.2 also exclude one hypothesis (see
-Evidence). Part of #4096.
+<n|unknown>; phase at last heartbeat: <phase>, phase now: <phase>`.
+It does not kill anything. The field logs on 7.1.2 also exclude one hypothesis
+(see Evidence). Part of #4096.
 
 Version bump: `VERSION` is not touched by this change; the merged commit records
 the final version.
@@ -30,14 +30,15 @@ that carries this change (`missing`).
 
 ### Essential Design Decisions
 
-- The stall check is a main-thread comparison of two `Date.now()` readings, so
-  it needs no Worker change and the breach line is untouched. It uses the wall
-  clock, so a clock step can give a false line; that is documented.
+- The stall check is `describeMainLoopStall`, a pure comparison of two
+  `Date.now()` readings made by the heartbeat timer, so it needs no Worker
+  change and the breach line is untouched. It uses the wall clock, so a clock
+  step can give a false line; that is documented.
 - Both the phase at the last heartbeat and the phase now are named. A phase
   marker is cleared when its work returns, so the phase now alone can read
   `untracked` after a block that began inside `mutation`.
-- The arm-time heartbeat is stored directly, not through the checking `beat`,
-  so arming never reports.
+- The arm-time heartbeat is stored directly, not through the checking `beat`, so
+  arming never reports.
 
 ### Undiscoverable Facts
 
@@ -60,8 +61,8 @@ The same window does hold non-fatal blocks on 7.1.2, for example
 [DiscoveryReplayRunner] Worker init failed; falling back to direct execution for this worker slot. Error: [WasmWorkerInit] Worker init: no response after 60s (worker=worker-25). Parent-observed: handshakeMs=60000 parentStallMs=5942 loopBlockedMs=64941 ...
 ```
 
-In that generation `mutation=0ms` and every itemised main-thread phase is
-under 1 s, while `total` exceeds `fitness + breeding` by about 63 s, matching
+In that generation `mutation=0ms` and every itemised main-thread phase is under
+1 s, while `total` exceeds `fitness + breeding` by about 63 s, matching
 `loopBlockedMs=64941`. So the comment's inference that a long `mutation` phase
 causes the block does not hold for this instance, and the block sits in time no
 phase accounts for, on a host far over-subscribed. That excludes `mutation` for
@@ -103,8 +104,8 @@ and evolveRL), #4096 (this issue).
   timestamp the main loop bumps on a timer, read by `EventLoopWatchdogWorker`.
   The breach line then reports `lastHeartbeatAgeMs=` and the in-flight phase
   (`inFlightPhase`). — evidence: `src/NEAT/EventLoopWatchdog.ts`,
-  `src/NEAT/EventLoopWatchdogWorker.ts` (merged in #4101, present at the base)
-  — reviewer: met
+  `src/NEAT/EventLoopWatchdogWorker.ts` (merged in #4101, present at the base) —
+  reviewer: met
 - **partial** — Root cause of the generation-11 stall identified, or reproduced
   or excluded with quoted evidence. In particular: is it paging on a swap-backed
   heap, or main-thread work inside fitness? — evidence: the `rocket` log excerpt
@@ -136,7 +137,9 @@ and evolveRL), #4096 (this issue).
   evidence: `test/NEAT/EventLoopWatchdog_test.ts:494` — reason: fixed in this
   diff (the decision is now the pure `describeMainLoopStall`, tested with fixed
   numbers; the yielding child-process test is removed and the one wiring test
-  asserts at least one line, with a 400 ms yield)
+  asserts at least one line, with a 400 ms yield). The one wiring test still
+  runs a real 800 ms busy loop in a child process, as the other watchdog tests
+  in that file do
 - **clean** — logging goes through `getLogger()`, typed `ConfigurationError`
   codes match the sibling option, Australian English, docs for the changed
   surface updated, no `Deno.env` in tests, `DEFAULT_STALL_REPORT_MS` and
@@ -148,19 +151,27 @@ and evolveRL), #4096 (this issue).
 ## Test Plan
 
 - `test/NEAT/EventLoopWatchdog_test.ts`: new
-  `EventLoopWatchdogStall: a busy loop logs one stall line naming the generation and the phase`
-  (asserts exactly one line, `generation 3`, `phase at last heartbeat:
-  mutation`), `EventLoopWatchdogStall: a yielding main thread logs no stall line`,
-  and three `stallReportMS` validation tests (`NOT_FINITE`, `OUT_OF_RANGE`,
-  positive accepted). No existing assertion was edited or removed.
-- Red checks: the report comparison changed to never fire turns the busy-loop
-  test red (`stall line missing from stderr`); changed to always fire it turns
-  the yielding test red. Both restored.
-- Ran on the head: `deno test -A test/NEAT/EventLoopWatchdog_test.ts
+  `EventLoopWatchdogStall: a busy loop logs a stall line naming the generation and the phase`
+  (child process; asserts `generation 3` and
+  `phase at last heartbeat:
+  mutation`), four fixed-number tests of
+  `describeMainLoopStall` (the exact threshold with the full line, one ms below
+  returns `undefined`, generation -1 prints `unknown`, and two different phases
+  land in the right slots), and three `stallReportMS` validation tests
+  (`NOT_FINITE`, `OUT_OF_RANGE`, positive accepted). No existing assertion was
+  edited or removed.
+- Red checks, each restored afterwards: `beat` not logging turns the wiring test
+  red (`stall line missing from stderr`); `<=` for `<` in the threshold turns
+  the boundary tests red; swapping the two phases in the line turns the phase
+  test red.
+- Ran on the head:
+  `deno test -A test/NEAT/EventLoopWatchdog_test.ts
   test/creature/EvolveRunWatchdogHeartbeat_test.ts
   test/creature/EvolveRunWatchdog_test.ts
-  test/creature/EvolveWatchdogWiring_test.ts`: 48 passed, 0 failed. `deno fmt
-  --check`, `deno lint` and `deno check` on the touched TypeScript pass.
+  test/creature/EvolveWatchdogWiring_test.ts`:
+  51 passed, 0 failed. `deno fmt
+  --check`, `deno lint` and `deno check` on the
+  touched TypeScript pass.
 - Callers of `armEventLoopWatchdog`: `src/creature/EvolveRunWatchdog.ts` passes
   no `stallReportMS`, so production uses the 10 s default.
 - Docs: `docs/TIMEOUTS.md` (heartbeat section) and `CHANGELOG.md`.
