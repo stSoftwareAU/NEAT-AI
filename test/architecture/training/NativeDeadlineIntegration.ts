@@ -14,7 +14,9 @@
  * `NEAT_AI_BACKPROP_DEADLINE_LEGACY`. Each directory holds
  * `libneat_ai_backpropagation` and `neat_ai_backpropagation`. A missing NEW
  * engine fails the case when `NEAT_AI_BACKPROP_REQUIRE_FFI=1` and is otherwise
- * reported as ignored; a missing LEGACY engine is always ignored.
+ * reported as ignored; a missing (or mis-detected) LEGACY engine fails the case
+ * when `NEAT_AI_BACKPROP_REQUIRE_LEGACY=1` (the CI job sets it) and is otherwise
+ * reported as ignored.
  */
 
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
@@ -79,6 +81,10 @@ function readEnv(name: string): string | undefined {
 
 function requireFfi(): boolean {
   return readEnv("NEAT_AI_BACKPROP_REQUIRE_FFI") === "1";
+}
+
+function requireLegacy(): boolean {
+  return readEnv("NEAT_AI_BACKPROP_REQUIRE_LEGACY") === "1";
 }
 
 function nativeBinaryName(): string {
@@ -165,7 +171,9 @@ const warnedKinds = new Set<EngineKind>();
 /**
  * Register a case that needs an engine. An absent NEW engine fails the case
  * under `NEAT_AI_BACKPROP_REQUIRE_FFI=1` and is otherwise ignored; an absent
- * LEGACY engine is always ignored. Either way the name says what is required.
+ * or mis-detected LEGACY engine fails it under
+ * `NEAT_AI_BACKPROP_REQUIRE_LEGACY=1` and is otherwise ignored. Either way the
+ * name says what is required.
  */
 function nativeTest(
   kind: EngineKind,
@@ -180,7 +188,7 @@ function nativeTest(
   }
   const what = kind === "new" ? "NEW engine" : "LEGACY engine";
   const label = `[REQUIRES native engine: ${what}] ${name}`;
-  if (kind === "new" && requireFfi()) {
+  if (kind === "new" ? requireFfi() : requireLegacy()) {
     Deno.test(label, () => {
       throw new Error(
         `native deadline prerequisite missing (${what}): ${located.missing}`,

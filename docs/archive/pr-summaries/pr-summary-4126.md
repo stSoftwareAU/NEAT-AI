@@ -12,7 +12,8 @@ is unchanged, so a training task on a legacy engine can still pin the process.
 Part of #4126.
 
 Version bump: no `VERSION` field is edited by this change; the merged commit
-records the final version.
+records the final version. The merge with Develop retains its newer package
+version, 7.1.6.
 
 ```mermaid
 flowchart LR
