@@ -726,9 +726,9 @@ so decide from the trailing fields.
 
 #### Field observation (GRQ-logs, 2026-11-06)
 
-The GRQ-logs `Develop` snapshot at `92bd6423ba6c37adc471557368368c23d3ce4c4e`
+The GRQ-logs `Develop` snapshot at `ef0dd4e255c7702b53ccad8e61b4d19b332e85f8`
 contains no `lastHeartbeatAgeMs`, `main loop stalled` or `Run wedged` line, and
-no green final loop on a swap-backed 8 GB host. Its four tracked log files do
+no green final loop on a swap-backed 8 GB host. Its five tracked log files do
 not provide the closing evidence requested by Issue #4096. The only `neat-ai`
 release marker in that snapshot is 7.1.3 in the scorer log; it is not a learning
 run with the heartbeat diagnostics.
@@ -746,9 +746,11 @@ about 8 GB available, load averages `49.79 58.48 50.43`):
 This run shows a 64,941 ms parent loop block while the reported mutation phase
 was 0 ms; it excludes mutation as the cause of this instance only. The host load
 was high, but the log has no RSS, page-fault, swap-activity or GC-trace
-measurements, and it predates the heartbeat. It cannot distinguish CPU
-starvation from paging or identify the generation-11 cause. This is field
-evidence, not the illustrative breach example below.
+measurements. It predates non-fatal stall reporting and contains no watchdog
+heartbeat-age reading: the heartbeat already existed, but its age was reported
+only on a fatal breach. It cannot distinguish CPU starvation from paging or
+identify the generation-11 cause. This is field evidence, not the illustrative
+breach example below.
 
 An illustrative breach example, with the values made concrete:
 
