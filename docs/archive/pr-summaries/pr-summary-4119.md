@@ -14,8 +14,9 @@ pinned NEW and LEGACY engines and runs the real-engine cases with
 `NEAT_AI_BACKPROP_REQUIRE_LEGACY=1` (a missing or mis-detected LEGACY engine
 fails), and the real engines were re-run against the current head. Part of
 #4119: the scheduler is still not driven through a real native engine,
-finalisation that starts inside the window is not interrupted, and
-`./quality.sh` could not run here.
+finalisation that starts inside the window is not interrupted. The full
+`./quality.sh` gate passed on the merged head (`415932f8`) once `rust_scorer`
+was built from NEAT-AI-scorer (10268 passed, 0 failed).
 
 ```mermaid
 flowchart TD
@@ -196,14 +197,16 @@ quarantine (existing doc page linked, not changed in behaviour).
   `test/architecture/training/NativeBackpropCapabilities.ts`,
   `test/architecture/training/RustTrainDirDeadline.ts::Rust trainDir deadline: a capable library's legacy-shaped response is refused`
   — reviewer: met
-- **partial** — Tests retain cancellation/quarantine for a genuinely wedged
-  call, and native integration checks and the repository quality gate pass. —
+- **met** — Tests retain cancellation/quarantine for a genuinely wedged call,
+  and native integration checks and the repository quality gate pass. —
   evidence: `test/NEAT/TrainingTaskDeadlineImmutable.ts`,
-  `test/creature/ProcessExitsAfterWedgedWorker.ts` (unchanged and passing) —
-  reviewer: partial — reason: `./quality.sh` could not run here (native
-  `rust_scorer` is missing); the equivalent targeted checks passed instead (see
-  Test Plan), and the native scripts that `quality.sh --next` runs now have
-  hermetic tests (`test/scripts/NativeBackpropScripts.ts`).
+  `test/creature/ProcessExitsAfterWedgedWorker.ts` (unchanged and passing),
+  `./quality.sh --rust-scorer-bin=<built rust_scorer>` exit 0 with
+  `ok | 10268 passed (5 steps) | 0 failed | 49 ignored` on head `415932f8`; the
+  native scripts that `quality.sh --next` runs have hermetic tests
+  (`test/scripts/NativeBackpropScripts.ts`) — reviewer: partial — reason: the
+  reviewer saw only the diff and could not run the gate; it was run here and
+  passed. The native integration job has not yet run on GitHub.
 - **unrequested** — a `worker-productive` scenario, `WorkerTrainResponse.ts` and
   an info log in `NeatScheduling.ts` — reviewer: unrequested — reason: needed so
   `timedOut`/`bestMeasure` survive the worker boundary the scheduler reads from;
@@ -274,8 +277,13 @@ and skipped compaction. Mutation checks: replacing FFI forwarding with
 with `hardDeadlineTS ?? 0` failed both forwarding cases and the setup case. Both
 mutations were restored.
 
-Final-head results (no `rust_scorer`, so `./quality.sh` itself did not run; it
-stops at its rust_scorer check, exit before any step):
+Full gate: `rust_scorer` was built with `cargo build --release -p rust_scorer`
+from a shallow clone of stSoftwareAU/NEAT-AI-scorer, and
+`./quality.sh --rust-scorer-bin=<that binary> < /dev/null` exited 0 on head
+`415932f8` (`ok | 10268 passed (5 steps) | 0 failed | 49 ignored`, 6m10s),
+leaving the working tree clean.
+
+Targeted results from the earlier round:
 
 - `deno fmt --check` clean after formatting
   `test/fixtures/native-backprop/README.md`; `deno lint` clean (2320 files);
@@ -381,6 +389,4 @@ failed); both restored. With both engines rebuilt from the pinned commits and
 
 Not done: the new workflow has not yet run on GitHub; the scheduler is not
 driven through a real native engine; finalisation that starts inside the window
-is not interrupted; `./quality.sh` did not run here.
-
-<!-- vibe-quality-gate-skipped reason="./quality.sh stops at its native rust_scorer prerequisite, which is not installed in this run; targeted fmt, lint, check and tests were run instead; CI runs the gate" -->
+is not interrupted.
