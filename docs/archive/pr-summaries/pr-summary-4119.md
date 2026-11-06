@@ -13,10 +13,11 @@ pinned NEW and LEGACY engines and runs the real-engine cases with
 `NEAT_AI_BACKPROP_REQUIRE_FFI=1` (a missing NEW engine fails) and
 `NEAT_AI_BACKPROP_REQUIRE_LEGACY=1` (a missing or mis-detected LEGACY engine
 fails), and the real engines were re-run against the current head. Part of
-#4119: the scheduler is still not driven through a real native engine,
-finalisation that starts inside the window is not interrupted. The full
-`./quality.sh` gate passed on the merged head (`415932f8`) once `rust_scorer`
-was built from NEAT-AI-scorer (10268 passed, 0 failed).
+#4119: a single compaction stage that is already running when the window closes
+is synchronous and is not interrupted (the scheduler is now driven through a
+real native engine, see Evidence). The full `./quality.sh` gate passed on the
+merged head (`415932f8`) once `rust_scorer` was built from NEAT-AI-scorer (10268
+passed, 0 failed).
 
 ```mermaid
 flowchart TD
@@ -66,14 +67,16 @@ flowchart TD
   weights, which the next generation evaluates through the normal fitness path
   (the queued export carries no `score`). A `full` measure is scored as any
   other result.
-- Finalisation is bounded: `packageTrainingResult` checks
-  `isFinalisationWindowSpent(timeoutTS, now)` (now past deadline +
-  `TRAINING_TASK_WATCHDOG_GRACE_MS`) before `finaliseTraining`. When spent, it
-  logs a warning and returns the trained weights with no compacted copy
-  (`finaliseTraining(..., { skipCompaction: true })`) rather than compacting
-  past the watchdog window. The check is made once, before finalisation begins;
-  a finalisation that starts inside the window and overruns it is still only
-  reported after the fact.
+- Finalisation is bounded: `packageTrainingResult` passes `finaliseTraining` a
+  `skipCompaction` function that tests
+  `isFinalisationWindowSpent(timeoutTS,
+  now)` (now past deadline +
+  `TRAINING_TASK_WATCHDOG_GRACE_MS`). It is asked before `compactUnused` and
+  again before the larger `compactVariants` fallback, so a window that closes
+  during `compactUnused` stops the remaining work. When spent it logs a warning
+  and returns the trained weights with no compacted copy rather than compacting
+  past the watchdog window. A single stage that is already running is
+  synchronous and cannot be interrupted; an overrun is reported after the fact.
 - Capable backends are strict: a missing or inconsistent field is an error
   naming the field, and there is no TypeScript/WASM fallback.
 - `timedOut` and `bestMeasure` are optional on `TrainingResult` and
@@ -99,13 +102,22 @@ flowchart TD
 Real engines, final head,
 `NEAT_AI_BACKPROP_DEADLINE_NEW=<new-engine-dir> NEAT_AI_BACKPROP_DEADLINE_LEGACY=<legacy-engine-dir>`:
 
-| Scenario                               | adapter     | timedOut           | bestMeasure | weights changed / valid | settled after deadline        |
-| -------------------------------------- | ----------- | ------------------ | ----------- | ----------------------- | ----------------------------- |
-| productive, 1 s deadline               | FFI         | true               | partial     | true / true             | 30 to 42 ms                   |
-| productive, 1 s deadline               | CLI         | true               | partial     | true / true             | 37 ms                         |
-| already out of time                    | FFI and CLI | true               | unmeasured  | false / true            | 17 ms                         |
-| through a real worker (`trainTracked`) | FFI         | true (on the wire) | partial     | true / true             | 53 ms, healthy, not cancelled |
-| legacy engine, deadline set            | FFI and CLI | absent             | absent      | true / true             | warned, not stopped natively  |
+| Scenario                               | adapter     | timedOut           | bestMeasure | weights changed / valid | settled after deadline             |
+| -------------------------------------- | ----------- | ------------------ | ----------- | ----------------------- | ---------------------------------- |
+| productive, 1 s deadline               | FFI         | true               | partial     | true / true             | 30 to 42 ms                        |
+| productive, 1 s deadline               | CLI         | true               | partial     | true / true             | 37 ms                              |
+| already out of time                    | FFI and CLI | true               | unmeasured  | false / true            | 17 ms                              |
+| through a real worker (`trainTracked`) | FFI         | true (on the wire) | partial     | true / true             | 53 ms, healthy, not cancelled      |
+| through the real `scheduleTraining`    | FFI         | true (queued)      | partial     | true / true             | 117 ms, healthy, no tracker update |
+| legacy engine, deadline set            | FFI and CLI | absent             | absent      | true / true             | warned, not stopped natively       |
+
+Re-run on this head with both engines rebuilt from the pinned commits (947cbb5
+and f444bc4) and `REQUIRE_FFI=1 REQUIRE_LEGACY=1`:
+`NativeDeadlineIntegration.ts` (8 cases), `NativeBackpropCapabilities.ts`,
+`RustTrainDirDeadline.ts`: `ok | 53 passed | 0 failed`. The legacy CLI `train`
+run is also captured: `test/fixtures/native-backprop/cli-train-legacy/` holds
+the arguments, input creature, `best.json` and `journal.jsonl` of a real legacy
+`train` (no `--deadline-epoch-ms`), replayed by a hermetic fake CLI.
 
 Tool behaviour relied on (observed): the new engine's `capabilities` prints
 `{"abiVersion":1,"capabilities":{"deadline":{"version":1,...}},"version":"0.1.50"}`;
@@ -138,59 +150,53 @@ quarantine (existing doc page linked, not changed in behaviour).
 
 <!-- vibe-spec-review inputs="diff+issue-body" -->
 
-- **partial** — Real `trainDir` calls forced independently through the actual
-  FFI library and CLI return `timedOut: true` and changed, valid weights on a
+- **met** — Real `trainDir` calls forced independently through the actual FFI
+  library and CLI return `timedOut: true` and changed, valid weights on a
   productive long-first-epoch fixture with a short deadline. — evidence:
   `test/architecture/training/NativeDeadlineIntegration.ts::native deadline: FFI productive run stops at the deadline and keeps its learning`
   and
   `::native deadline: CLI productive run stops at the deadline and keeps its learning`
-  — reviewer: partial — reason: both passed against the real engines (earlier
-  head; the engines were not rebuilt for the head commit), but they run only
-  where an engine resolves. `./quality.sh --next` and the new
-  `.github/workflows/native-backprop.yml` job set
-  `NEAT_AI_BACKPROP_REQUIRE_FFI=1` and check the library with
-  `scripts/check_native_backprop_train.ts` first, so a missing engine fails
-  rather than being ignored; the same job sets
-  `NEAT_AI_BACKPROP_REQUIRE_LEGACY=1`, so a missing or mis-detected LEGACY
-  engine fails its cases too. The job's build and test commands were run locally
-  on this head with both engines rebuilt from the pinned commits (51 passed, 0
-  failed); the job itself has not yet run on GitHub.
+  — reviewer: met — note: they ran against both engines rebuilt from the pinned
+  commits on this head (53 passed). Where no engine resolves they are ignored
+  locally, but `./quality.sh --next` and `.github/workflows/native-backprop.yml`
+  set `NEAT_AI_BACKPROP_REQUIRE_FFI=1` / `NEAT_AI_BACKPROP_REQUIRE_LEGACY=1` so
+  a missing engine fails; the GitHub job itself has not yet run.
 - **partial** — The scheduled-worker integration path settles by its original
   deadline plus 30 seconds, including adapter finalisation; returned weights
   reach existing result evaluation without timeout-driven
   cancellation/quarantine. — evidence:
-  `test/architecture/training/NativeDeadlineIntegration.ts::native deadline: a productive run through a real worker settles at the deadline on a healthy worker`,
-  `test/workers/TrainTimeoutFieldsCrossWorkerBoundary.ts` — reviewer: partial —
-  reason: the real worker settles within the grace and the result passes
-  `isFailedTrainWorkerResponse`; finalisation past the window now degrades
-  explicitly (`isFinalisationWindowSpent`, `FinalisationWindow.ts`) and the
-  scheduler's handling of the returned weights is tested at scheduler level
-  (`test/NEAT/UnmeasuredTimeoutNotScored.ts`). Still outstanding: the scheduler
-  is not driven through a real native engine, and finalisation that starts
-  inside the window is not interrupted.
-- **partial** — An already-expired/no-progress request and a timeout before any
-  full epoch have explicit supported outcomes, without fabricated scores or
+  `test/architecture/training/NativeDeadlineIntegration.ts::native deadline: scheduleTraining queues a deadline-stopped native result on a healthy worker`
+  (the real `scheduleTraining`, a real `WorkerHandler` and the real FFI engine),
+  `::native deadline: a productive run through a real worker settles at the deadline on a healthy worker`,
+  `test/architecture/training/FinalisationWindow.ts`,
+  `test/workers/TrainTimeoutFieldsCrossWorkerBoundary.ts`,
+  `test/NEAT/UnmeasuredTimeoutNotScored.ts` — reviewer: partial — reason: the
+  reviewer judged that `recordTrainingComplete` and the `Neat` bookkeeping are
+  test doubles, so "reaches evaluation" is checked at the queue, not through a
+  full run, and the stage-by-stage window check is covered at unit level only. A
+  compaction stage already running when the window closes is synchronous and not
+  interrupted. The GitHub job has not yet run.
+- **met** — An already-expired/no-progress request and a timeout before any full
+  epoch have explicit supported outcomes, without fabricated scores or
   unconditional parsing of an absent epoch journal. — evidence:
   `test/architecture/training/RustTrainDirDeadline.ts::Rust trainDir deadline: a partial measure never supplies the error`,
-  `NativeDeadlineIntegration.ts::native deadline: FFI run already out of time stops unmeasured with the weights unchanged`
-  — reviewer: partial — reason: no journal is read on the capable path, the
-  outcomes are explicit, and the scheduler no longer scores partial/unmeasured
-  weights from the carried error
-  (`test/NEAT/UnmeasuredTimeoutNotScored.ts::deadline stop: a partial measure queues the weights without a score`);
-  the real-engine confirmation is engine-gated as above.
-- **partial** — Supported legacy FFI and CLI contracts receive no unsupported
+  `NativeDeadlineIntegration.ts::native deadline: FFI run already out of time stops unmeasured with the weights unchanged`,
+  `test/NEAT/UnmeasuredTimeoutNotScored.ts::deadline stop: a partial measure queues the weights without a score`
+  — reviewer: met — note: no journal is read on the capable path; an already
+  expired `hardDeadlineTS` still skips native by design
+  (`rustTrainDirSkipReason`).
+- **met** — Supported legacy FFI and CLI contracts receive no unsupported
   deadline fields/flags, retain prior execution behaviour and emit the required
   diagnostic. Fixtures are produced or verified by the actual legacy producer,
   not guessed. — evidence:
   `test/architecture/training/RustTrainDirDeadline.ts::Rust trainDir deadline: a legacy library never receives the deadline and is warned once`,
-  `NativeDeadlineIntegration.ts::native deadline: a legacy CLI engine is warned and not stopped natively`,
-  the CLI probe cases in `RustTrainDirDeadline.ts` — reviewer: partial — reason:
-  the legacy CLI probe is covered by shell-script fakes copied byte for byte
-  from the real legacy CLI, and the full legacy CLI run only by the engine-gated
-  integration case; no legacy CLI train fixture was captured. The legacy
-  integration cases can no longer be skipped silently in CI:
-  `NEAT_AI_BACKPROP_REQUIRE_LEGACY=1` turns an absent or mis-detected LEGACY
-  engine into a failing case.
+  `::Rust trainDir deadline: a legacy CLI train run gets no deadline flag, runs as before and is warned`
+  (replays `test/fixtures/native-backprop/cli-train-legacy/`, captured from the
+  real legacy CLI `0.1.49`),
+  `NativeDeadlineIntegration.ts::native deadline: a legacy CLI engine is warned and not stopped natively`
+  — reviewer: met — note: the capture is documented in
+  `test/fixtures/native-backprop/README.md`; the reviewer could not verify it
+  independently.
 - **met** — A backend advertising deadline support must supply its required
   result metadata; malformed responses and genuine native errors fail
   explicitly. No silent TypeScript/WASM fallback is added. — evidence:
@@ -235,6 +241,9 @@ quarantine (existing doc page linked, not changed in behaviour).
   diff (four shell-fake probe tests in
   `test/architecture/training/RustTrainDirDeadline.ts`; the full legacy CLI run
   stays engine-gated)
+- **violation** — a clock read in a `test/` driver — evidence:
+  `test/architecture/training/fixtures/CliLegacyTrainDriver.ts` — reason: fixed
+  in this diff (fixed far-future constant)
 - **clean** — Australian English; no `console.*` in `src/`; no `Deno.env.set` in
   tests; no source-text-grep tests; fail loud on malformed capability and
   response; no WASM fallback; named tests exist at the head. The reviewer's
@@ -387,6 +396,21 @@ failed); both restored. With both engines rebuilt from the pinned commits and
 `ok | 51 passed | 0 failed`; `test/ci/NativeBackpropWorkflow.ts`:
 `ok | 7 passed | 0 failed`. `deno fmt` and `deno lint` clean.
 
-Not done: the new workflow has not yet run on GitHub; the scheduler is not
-driven through a real native engine; finalisation that starts inside the window
-is not interrupted.
+Unmet-criteria round: legacy CLI `train` fixtures captured from the real legacy
+CLI (wrapper script around the pinned f444bc4 binary) and replayed by
+`RustTrainDirDeadline.ts::...a legacy CLI train run gets no deadline flag...`
+(red-check: sending the deadline flag to a legacy CLI failed it; restored).
+`scheduler-productive` probe scenario and
+`NativeDeadlineIntegration.ts::...scheduleTraining queues a deadline-stopped native result...`
+(red-check: making `isUnmeasuredTimeout` return false failed it on the tracker
+assertion; restored). `finaliseTraining` now asks `skipCompaction` before each
+compaction stage (`test/architecture/training/FinalisationWindow.ts`, two new
+cases). Gates: `deno fmt --check` and `deno lint` clean;
+`NEAT_AI_BACKPROP_ENABLED=0 deno test --parallel` over
+`test/architecture/training`, `workers`, `scripts`, `NEAT`, `ci`, `docs`,
+`config`, `multithreading`: `ok | 3194 passed | 0 failed | 9 ignored`. The
+Standards reviewer's one note (a `Date.now()` in the new test driver) was fixed
+with a fixed constant.
+
+Not done: the new workflow has not yet run on GitHub; a compaction stage that is
+already running when the window closes is not interrupted.

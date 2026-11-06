@@ -554,21 +554,28 @@ function packageTrainingResult(
   };
 
   // Issue #4119: finalisation must fit the original deadline plus the
-  // watchdog grace. When a deadline-stopped native run reaches here with that
-  // window already spent, the optional compacted copy is dropped: an explicit,
-  // logged degraded outcome that still returns the trained weights, instead of
-  // compacting past the window and tripping the watchdog.
-  const windowSpent = native !== undefined && summary.timedOut &&
-    isFinalisationWindowSpent(setup.timeoutTS, Date.now());
-  if (windowSpent) {
+  // watchdog grace. Finalisation asks before each optional compaction stage;
+  // once a deadline-stopped native run finds that window spent, the compacted
+  // copy is dropped: an explicit, logged degraded outcome that still returns
+  // the trained weights, instead of compacting past the window and tripping
+  // the watchdog.
+  let windowSpent = false;
+  const windowSpentNow = (): boolean => {
+    if (windowSpent) return true;
+    if (
+      native === undefined || !summary.timedOut ||
+      !isFinalisationWindowSpent(setup.timeoutTS, Date.now())
+    ) return false;
+    windowSpent = true;
     getLogger().warn(
       `Training ${
         blue(setup.ID)
-      } native adapter finalisation started after the watchdog window (deadline + ${
+      } native adapter finalisation passed the watchdog window (deadline + ${
         TRAINING_TASK_WATCHDOG_GRACE_MS / 1000
       } s); returning the trained weights without the compacted copy.`,
     );
-  }
+    return true;
+  };
 
   const finalised = finaliseTraining(
     creature,
@@ -578,7 +585,7 @@ function packageTrainingResult(
     setup.feedbackLoop,
     setup.syntheticKeys,
     setup.ID,
-    { skipCompaction: windowSpent },
+    { skipCompaction: windowSpentNow },
   );
 
   // Legacy trainers report no outcome beyond the MSE, so their result keeps

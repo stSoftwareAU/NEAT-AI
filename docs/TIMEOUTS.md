@@ -405,10 +405,12 @@ What happens next depends on the probe:
    regression-tracker updates, and closes the gain-log event as `trained`
    without `scoreAfter` or `errorAfter`.
 
-   If finalisation begins after the deadline plus
-   `TRAINING_TASK_WATCHDOG_GRACE_MS`, NEAT-AI logs a warning and skips
-   compaction, returning no compacted copy. Finalisation that begins inside the
-   window is not interrupted if it overruns.
+   Finalisation checks the window before each optional compaction stage (before
+   `compactUnused` and again before the `compactVariants` fallback). Once the
+   deadline plus `TRAINING_TASK_WATCHDOG_GRACE_MS` has passed, NEAT-AI logs a
+   warning and skips the remaining compaction, returning no compacted copy. A
+   single stage that is already running is synchronous and is not interrupted;
+   it is reported after the fact.
 
    A timeout before any full epoch is therefore an explicit, supported outcome.
    So is an already-expired deadline: the trainer returns phase `start`,

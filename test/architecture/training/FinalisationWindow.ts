@@ -67,3 +67,52 @@ Deno.test("finaliseTraining: skipCompaction returns the trained creature with no
   assertEquals(skipped.compact, undefined);
   assert(skipped.trace !== undefined, "the trace is still returned");
 });
+
+function finalise(skipCompaction: boolean | (() => boolean)) {
+  const creature = trainedCreature();
+  const loop = {
+    iteration: 1,
+    bestError: 0.5,
+    bestCreatureJSON: creature.exportJSON(),
+    bestTraceJSON: creature.traceJSON(),
+    sparseConfig: undefined as never,
+    timedOut: true,
+  };
+  return finaliseTraining(
+    creature,
+    loop,
+    // deno-lint-ignore no-explicit-any
+    {} as any,
+    1,
+    false,
+    undefined,
+    "ask-id",
+    { skipCompaction },
+  );
+}
+
+Deno.test("finaliseTraining: a budget that is spent when asked drops the compacted copy", async () => {
+  await initWasmForTests();
+  let asked = 0;
+  const result = finalise(() => {
+    asked++;
+    return true;
+  });
+  assertEquals(asked, 1, "asked once, then stopped");
+  assertEquals(result.compact, undefined);
+  assert(result.trace !== undefined, "the trace is still returned");
+});
+
+Deno.test("finaliseTraining: a budget that is still open when asked finalises as if never asked", async () => {
+  await initWasmForTests();
+  let asked = 0;
+  const result = finalise(() => {
+    asked++;
+    return false;
+  });
+  assert(asked >= 1, "the budget is asked before compacting");
+  const unasked = finalise(false);
+  assertEquals(result.compact, unasked.compact);
+  assertEquals(result.error, unasked.error);
+  assertEquals(result.ID, "ask-id");
+});
