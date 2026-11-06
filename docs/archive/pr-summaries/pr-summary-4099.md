@@ -4,12 +4,13 @@ PR #4104 (merged 2026-10-29, first released in v7.0.65, commit `81941817`)
 already made `finishUp()` wait for a settled-but-unmerged training or discovery
 result and made the teardown name every result it drops. The only Definition of
 done item left open was the field evidence. This PR changes no code: it replaces
-the earlier summary with the record of that evidence, searched in the GRQ-logs
-history (`Develop`, 2026-10-29 to 2026-11-06) across 34 log snapshots from
-releases 7.0.66 to 7.1.3. The evidence shows the terminal-line contract holding
-in the field, and it shows one thing the issue did not expect: in every field
-case where the new wait fired, the over-run guard stopped the run on the next
-pass, so the result was logged as discarded and never merged. Part of #4099.
+the earlier summary with the record of that evidence, searched in the downstream
+log repository's history (`Develop`, 2026-10-29 to 2026-11-06) across 34 log
+snapshots from releases 7.0.66 to 7.1.3. The evidence shows the terminal-line
+contract holding in the field, and it shows one thing the issue did not expect:
+in every field case where the new wait fired, the over-run guard stopped the run
+on the next pass, so the result was logged as discarded and never merged. Part
+of #4099.
 
 Version bump: not touched by this change; the merged commit records the final
 version.
@@ -46,22 +47,23 @@ Evidence).
   to stop for over-run, so in sampler runs it can be followed at once by
   `Training over-run … stopping new generations` and a discard. The line names a
   merge that does not then happen.
-- GRQ's parser `worker/shared/training_outcome_health.sh` (stSoftwareAU/GRQ,
-  read with `gh api`) has no rule for `discarded at teardown`: its only
-  `teardown` match is the `[evolveDir] teardown complete` run boundary. That is
-  a GRQ-side fact, outside this repository.
+- The downstream parser `worker/shared/training_outcome_health.sh` (read with
+  `gh api`) has no rule for `discarded at teardown`: its only `teardown` match
+  is the `[evolveDir] teardown complete` run boundary. That is a GRQ-side fact,
+  outside this repository.
 
 ## Evidence
 
-Method: `git log --since=2026-10-29T10:00:00Z` over GRQ-logs `Develop` at
-`464596a` (2026-11-06) gave 2 599 distinct log blobs; of those, 34 hold a
-`Training <id> scheduled` line and a `[neat-ai] running version` of 7.0.66 or
-later (7.0.63 snapshots predate the release and are excluded). Each blob was
-read with `git show <commit>:<file>` and counted with `awk` for
-`Training <id> scheduled`, `completed after`, `discarded at teardown`,
-`abandoned at teardown`, `Training failed for creature`, and the
-`[training-outcomes]` lines. This reads logs from one host-sample of the fleet
-(GRQ-3, GRQ-11, GRQ-13, GRQ-16, GRQ-19, GRQ-22), not every host.
+Method: `git log --since=2026-10-29T10:00:00Z` over the downstream log
+repository's `Develop` at `464596a` (2026-11-06) gave 2 599 distinct log blobs;
+of those, 34 hold a `Training <id> scheduled` line and a
+`[neat-ai] running version` of 7.0.66 or later (7.0.63 snapshots predate the
+release and are excluded). Each blob was read with `git show <commit>:<file>`
+and counted with `awk` for `Training <id> scheduled`, `completed after`,
+`discarded at teardown`, `abandoned at teardown`,
+`Training failed for creature`, and the `[training-outcomes]` lines. This reads
+logs from one host-sample of the fleet (GRQ-3, GRQ-11, GRQ-13, GRQ-16, GRQ-19,
+GRQ-22), not every host.
 
 1. **The extra wait fired in the field**, 4 times (7.0.73 on `GRQ-3-sloth`,
    7.1.3 on `GRQ-13-rocket` and `GRQ-22-rocket`), each time with exactly the new
@@ -180,6 +182,9 @@ with `gh pr view`).
 
 ## Test Plan
 
+- Reworded private repository references to describe the downstream sources so
+  the archived evidence remains accessible to public readers. The archive
+  privacy gate is `test/docs/ArchiveDocsNoPrivateRepoSlugs.ts`.
 - No test file is added, edited or removed.
 - Ran on the head:
   `deno test -A test/NEAT/NeatFinishUp.ts
