@@ -8,7 +8,9 @@
  * a child `deno run` so the SIGKILL and exit status are real. The heartbeat
  * tests check the measured liveness in the breach line: a busy loop never ticks
  * after arm, so its age is at least the time to the deadline, while a yielding
- * loop keeps its age near one heartbeat interval.
+ * loop keeps its age near one heartbeat interval. The stall line is decided by
+ * `describeMainLoopStall` with fixed numbers, and one child-process test
+ * (`EventLoopWatchdogStall: a busy loop ...`) checks that `beat` logs it.
  *
  * The fixtures compute their deadlines with `Date.now()` inside their own
  * source text. This file never reads the clock and never waits on a timer for
@@ -21,6 +23,7 @@ import { assert, assertEquals, assertThrows } from "@std/assert";
 import { join } from "@std/path";
 import {
   armEventLoopWatchdog,
+  describeMainLoopStall,
   EVENT_LOOP_WATCHDOG_GENERATION_TOKEN,
   EVENT_LOOP_WATCHDOG_PHASES,
 } from "../../src/NEAT/EventLoopWatchdog.ts";
@@ -483,11 +486,12 @@ await new Promise((resolve) => setTimeout(resolve, 10_000));
   );
 });
 
-Deno.test("EventLoopWatchdogStall: a busy loop logs one stall line naming the generation and the phase", async () => {
-  // The fixture yields once after setPhase so that a heartbeat tick records the
-  // phase before the busy loop starts. Otherwise the last heartbeat would still
-  // read untracked. The first tick after the busy loop is then late by about
-  // the length of the loop, which is over stallReportMS.
+Deno.test("EventLoopWatchdogStall: a busy loop logs a stall line naming the generation and the phase", async () => {
+  // The fixture yields once after setPhase, for 400 ms, so that several 50 ms
+  // heartbeat ticks record the phase before the busy loop starts. Otherwise the
+  // last heartbeat would still read untracked. The first tick after the busy
+  // loop is then late by about the length of the loop, which is over
+  // stallReportMS.
   const result = await runFixture(
     `
 const w = armEventLoopWatchdog({
@@ -498,7 +502,7 @@ const w = armEventLoopWatchdog({
 });
 w.setGeneration(3);
 w.setPhase("mutation");
-await new Promise((resolve) => setTimeout(resolve, 120));
+await new Promise((resolve) => setTimeout(resolve, 400));
 const busyUntil = Date.now() + 800;
 while (Date.now() < busyUntil) {}
 await new Promise((resolve) => setTimeout(resolve, 200));
@@ -519,37 +523,70 @@ w.disarm();
     result.stderr.includes("phase at last heartbeat: mutation"),
     `stall line must name the phase at the last heartbeat: ${result.stderr}`,
   );
-  const stallCount = result.stderr.split("main loop stalled").length - 1;
+});
+
+Deno.test("describeMainLoopStall: reports a tick late by exactly stallReportMS, naming the gap, interval, generation and both phases", () => {
+  // Fixed numbers, no clock. The gap is 350 ms and the interval 50 ms, so the
+  // lateness is 300 ms, which is exactly the threshold.
+  const line = describeMainLoopStall({
+    nowMS: 1_350,
+    lastBeatMS: 1_000,
+    heartbeatIntervalMS: 50,
+    stallReportMS: 300,
+    generation: 3,
+    lastBeatPhase: "mutation",
+    phaseNow: "fitness",
+  });
   assertEquals(
-    stallCount,
-    1,
-    `the stall line must appear exactly once: ${result.stderr}`,
+    line,
+    "[Neat] main loop stalled for 350ms (heartbeat every 50ms) at generation 3; phase at last heartbeat: mutation, phase now: fitness",
   );
 });
 
-Deno.test("EventLoopWatchdogStall: a yielding main thread logs no stall line", async () => {
-  // No busy loop, so the heartbeat timer ticks on time. The threshold is 1.5 s,
-  // far above the 50 ms interval, so a loaded host does not trip it. The yields
-  // total about 600 ms, which is several ticks.
-  const result = await runFixture(
-    `
-const w = armEventLoopWatchdog({
-  deadlineEpochMS: Date.now() + 60_000,
-  breachLine: "[Neat] watchdog-test quiet breach",
-  heartbeatIntervalMS: 50,
-  stallReportMS: 1_500,
+Deno.test("describeMainLoopStall: returns undefined one ms below stallReportMS", () => {
+  // The gap is 349 ms, so the lateness is 299 ms, one ms short of the threshold.
+  const line = describeMainLoopStall({
+    nowMS: 1_349,
+    lastBeatMS: 1_000,
+    heartbeatIntervalMS: 50,
+    stallReportMS: 300,
+    generation: 3,
+    lastBeatPhase: "mutation",
+    phaseNow: "fitness",
+  });
+  assertEquals(line, undefined);
 });
-for (let i = 0; i < 6; i++) {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-}
-w.disarm();
-`,
-    ["--allow-read"],
+
+Deno.test("describeMainLoopStall: prints unknown for generation -1", () => {
+  const line = describeMainLoopStall({
+    nowMS: 1_350,
+    lastBeatMS: 1_000,
+    heartbeatIntervalMS: 50,
+    stallReportMS: 300,
+    generation: -1,
+    lastBeatPhase: "untracked",
+    phaseNow: "untracked",
+  });
+  assertEquals(
+    line,
+    "[Neat] main loop stalled for 350ms (heartbeat every 50ms) at generation unknown; phase at last heartbeat: untracked, phase now: untracked",
   );
-  assertEquals(result.code, 0, `stderr: ${result.stderr}`);
-  assert(
-    !result.stderr.includes("main loop stalled"),
-    `no stall line expected for a yielding main thread: ${result.stderr}`,
+});
+
+Deno.test("describeMainLoopStall: puts the phase at the last heartbeat and the phase now in their own slots", () => {
+  // The two phases differ, so a swap in the output is visible.
+  const line = describeMainLoopStall({
+    nowMS: 1_350,
+    lastBeatMS: 1_000,
+    heartbeatIntervalMS: 50,
+    stallReportMS: 300,
+    generation: 3,
+    lastBeatPhase: "sort",
+    phaseNow: "breeding",
+  });
+  assertEquals(
+    line,
+    "[Neat] main loop stalled for 350ms (heartbeat every 50ms) at generation 3; phase at last heartbeat: sort, phase now: breeding",
   );
 });
 

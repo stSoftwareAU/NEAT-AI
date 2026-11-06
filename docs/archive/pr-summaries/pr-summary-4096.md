@@ -121,12 +121,29 @@ and evolveRL), #4096 (this issue).
   includes the heartbeat age, or a quoted green final loop on a swap-backed 8 GB
   host. — reviewer: missing — reason: the GRQ-logs search above found no such
   line since 2026-10-29; it needs a deployed run.
+- **unrequested** — the non-fatal stall line, its `stallReportMS` option, tests
+  and docs — reviewer: unrequested — reason: no criterion asks for it. It is
+  kept because the root-cause criterion cannot be answered from fatal breach
+  lines alone (none exist in the field since the heartbeat shipped) and the
+  non-fatal blocks the issue comments report are otherwise unmeasured.
 
 ## Standards Review
 
-<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
+<!-- vibe-standards-review inputs="diff+AGENTS.md" -->
 
-Pending the reviewer's verdict below.
+- **violation** — the stall tests decided pass or fail on real timer scheduling
+  (a 300 ms threshold, an exactly-once count, a 1.5 s yielding control) —
+  evidence: `test/NEAT/EventLoopWatchdog_test.ts:494` — reason: fixed in this
+  diff (the decision is now the pure `describeMainLoopStall`, tested with fixed
+  numbers; the yielding child-process test is removed and the one wiring test
+  asserts at least one line, with a 400 ms yield)
+- **clean** — logging goes through `getLogger()`, typed `ConfigurationError`
+  codes match the sibling option, Australian English, docs for the changed
+  surface updated, no `Deno.env` in tests, `DEFAULT_STALL_REPORT_MS` and
+  `stallReportMS` have a production reader in `beat`. No `CODING-STANDARDS.md`
+  exists in this repository, so the reviewer used `AGENTS.md` and
+  `docs/ENGINEERING_PRINCIPLES.md`, which mark no rule as enforced by review
+  only.
 
 ## Test Plan
 

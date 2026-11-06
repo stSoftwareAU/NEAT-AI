@@ -160,6 +160,31 @@ function logUnavailable(cause: string): void {
 }
 
 /**
+ * Decide whether a heartbeat tick is a stall, and if so return the stall line.
+ * A tick is a stall when it is late by `stallReportMS` or more, where lateness
+ * is the gap since the last heartbeat less `heartbeatIntervalMS`. Returns
+ * `undefined` otherwise. The main-thread heartbeat timer calls this on every
+ * tick, so it is the production reader of the stall line.
+ */
+export function describeMainLoopStall(input: {
+  nowMS: number;
+  lastBeatMS: number;
+  heartbeatIntervalMS: number;
+  stallReportMS: number;
+  generation: number;
+  lastBeatPhase: EventLoopWatchdogPhase;
+  phaseNow: EventLoopWatchdogPhase;
+}): string | undefined {
+  const gapMS = input.nowMS - input.lastBeatMS;
+  const lateMS = gapMS - input.heartbeatIntervalMS;
+  if (lateMS < input.stallReportMS) return undefined;
+  const genText = input.generation === GENERATION_UNKNOWN
+    ? "unknown"
+    : String(input.generation);
+  return `[Neat] main loop stalled for ${gapMS}ms (heartbeat every ${input.heartbeatIntervalMS}ms) at generation ${genText}; phase at last heartbeat: ${input.lastBeatPhase}, phase now: ${input.phaseNow}`;
+}
+
+/**
  * Arm an off-main-thread deadline that SIGKILLs the process at breach.
  *
  * The options are validated before anything is spawned. If the Worker cannot
@@ -257,17 +282,17 @@ export function armEventLoopWatchdog(
   Atomics.store(heartbeat, 0, BigInt(lastBeatMS));
   const beat = (): void => {
     const now = Date.now();
-    const lateMS = now - lastBeatMS - heartbeatIntervalMS;
     const phaseNow = currentPhase();
-    if (lateMS >= stallReportMS) {
-      const gen = Atomics.load(generation, 0);
-      const genText = gen === GENERATION_UNKNOWN ? "unknown" : String(gen);
-      getLogger().warn(
-        `[Neat] main loop stalled for ${
-          now - lastBeatMS
-        }ms (heartbeat every ${heartbeatIntervalMS}ms) at generation ${genText}; phase at last heartbeat: ${lastBeatPhase}, phase now: ${phaseNow}`,
-      );
-    }
+    const stall = describeMainLoopStall({
+      nowMS: now,
+      lastBeatMS,
+      heartbeatIntervalMS,
+      stallReportMS,
+      generation: Atomics.load(generation, 0),
+      lastBeatPhase,
+      phaseNow,
+    });
+    if (stall !== undefined) getLogger().warn(stall);
     Atomics.store(heartbeat, 0, BigInt(now));
     lastBeatMS = now;
     lastBeatPhase = phaseNow;
