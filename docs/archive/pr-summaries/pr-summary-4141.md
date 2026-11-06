@@ -79,6 +79,14 @@ flowchart LR
   asserts every recorded `analysisDeadlineMs` equals the chunk deadline (6500)
   and that there are exactly four calls per chunk. Red on base `src` (above),
   green at head.
+- Added `test/ErrorGuidedStructuralEvolution/DiscoverFallbackAnalysisScope.ts`
+  (mutation-check follow-up): calls `analyzeSelectedNeurons`,
+  `analyzeMissingNeurons` and `analyzeSelectedNeuronsForRemoval` directly and
+  asserts each native request asks for only its own candidate kind and carries
+  the chunk deadline (kills the swapped `includeSynapse`/`includeNeuron`
+  arguments); `collectRustAnalysisCandidates` returns the mapped bundle after
+  one native call; `mapRustAnalysisCandidates` maps a held result with no native
+  call. Red when the include flags are swapped, green at head.
 - Edited the helper `runAnalysisLoopWithStub` in the same file: the driver
   double forwards the sixth argument, `runParallelAnalysis` is optional (so the
   real driver can run) and `analyzeParallel` is injectable. No assertion of the
