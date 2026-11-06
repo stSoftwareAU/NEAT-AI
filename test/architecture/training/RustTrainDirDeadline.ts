@@ -26,6 +26,7 @@ import {
 import { trainDir } from "@architecture/Training.ts";
 import {
   __resetNativeDeadlineDiagnosticsForTests,
+  __setFinalisationNowForTests,
   __setRustTrainDirEnabledForTests,
   cliDeadlineCapable,
 } from "@architecture/training/RustTrainDirBridge.ts";
@@ -37,6 +38,7 @@ import {
 import { prepareTraining } from "@architecture/training/TrainingSetup.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
+import { TRAINING_TASK_WATCHDOG_GRACE_MS } from "@neat/PerTaskTrainingTimeout.ts";
 
 const FIXTURE_DIR = new URL("../../fixtures/native-backprop/", import.meta.url);
 
@@ -56,6 +58,44 @@ const INPUT_CREATURE_JSON = (JSON.parse(EXPIRED_RESPONSE) as {
 
 /** A fixed far-future instant (2100-01-01T00:00:00Z). No clock is read. */
 const HARD_DEADLINE_TS = 4_102_444_800_000;
+
+for (const spent of [false, true]) {
+  Deno.test(`Rust trainDir deadline: finalisation window ${spent ? "spent" : "open"}`, () => {
+    const json = JSON.parse(INPUT_CREATURE_JSON);
+    const hidden = json.neurons.find((n: { type: string }) =>
+      n.type === "hidden"
+    );
+    hidden.squash = "IDENTITY";
+    hidden.bias = 0;
+    const creature = Creature.fromJSON(json);
+    const dataDir = makeSingleDataDir(creature);
+    const payload = withChanges(EXPIRED_RESPONSE, {
+      bestCreatureJson: JSON.stringify(json),
+    });
+    try {
+      __setFinalisationNowForTests(() =>
+        HARD_DEADLINE_TS + (spent ? TRAINING_TASK_WATCHDOG_GRACE_MS + 1 : 0)
+      );
+      const { result, warnings } = captureWarnings(() =>
+        withNativeLibrary(
+          makeDouble({ capabilities: CAPABILITIES, payload, received: [] }),
+          () => trainWith(creature, dataDir),
+        )
+      );
+      assertEquals(result.timedOut, true);
+      assertEquals(result.compact === undefined, spent);
+      assertEquals(
+        warnings.filter((w) =>
+          w.includes("native adapter finalisation passed the watchdog window")
+        ).length,
+        spent ? 1 : 0,
+      );
+    } finally {
+      __setFinalisationNowForTests();
+      Deno.removeSync(dataDir, { recursive: true });
+    }
+  });
+}
 
 /** Shallow-override fields of a JSON fixture and re-serialise it. */
 function withChanges(fixture: string, change: Record<string, unknown>): string {

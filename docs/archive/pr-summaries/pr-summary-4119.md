@@ -1,5 +1,17 @@
 ## Summary
 
+Review follow-up: deterministic finalisation tests now prove that an expired
+window stops trace compaction, that a window closing between stages stops the
+variant search, and that the native bridge emits one warning and omits the copy
+only when the window is spent. Coverage:
+`test/architecture/training/FinalisationWindow.ts::finaliseTraining: an expired window skips trace compaction`,
+`::finaliseTraining: window closes before variant compaction`, and
+`test/architecture/training/RustTrainDirDeadline.ts::Rust trainDir deadline: finalisation window spent`
+and `::Rust trainDir deadline: finalisation window open`. Each stage check was
+individually removed and its test failed; both checks were restored. Replacing
+the bridge's predicate with `false` and making the predicate always return
+`false` also failed the bridge tests; both mutations were restored.
+
 The native `trainDir` bridge now forwards the task's single effective deadline
 to `libneat_ai_backpropagation` (FFI, `deadlineEpochMs`) and
 `neat_ai_backpropagation` (CLI, `--deadline-epoch-ms`) once the backend has

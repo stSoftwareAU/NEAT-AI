@@ -510,6 +510,12 @@ export function isFinalisationWindowSpent(
   return timeoutTS > 0 && now > timeoutTS + TRAINING_TASK_WATCHDOG_GRACE_MS;
 }
 
+// Isolated clock seam for deterministic finalisation-window tests.
+let finalisationNow: () => number = Date.now;
+export function __setFinalisationNowForTests(now?: () => number): void {
+  finalisationNow = now ?? Date.now;
+}
+
 function packageTrainingResult(
   creature: Creature,
   setup: TrainingSetupState,
@@ -564,7 +570,7 @@ function packageTrainingResult(
     if (windowSpent) return true;
     if (
       native === undefined || !summary.timedOut ||
-      !isFinalisationWindowSpent(setup.timeoutTS, Date.now())
+      !isFinalisationWindowSpent(setup.timeoutTS, finalisationNow())
     ) return false;
     windowSpent = true;
     getLogger().warn(
@@ -594,7 +600,7 @@ function packageTrainingResult(
 
   if (
     !windowSpent && summary.timedOut &&
-    isFinalisationWindowSpent(setup.timeoutTS, Date.now())
+    isFinalisationWindowSpent(setup.timeoutTS, finalisationNow())
   ) {
     getLogger().warn(
       `Training ${
