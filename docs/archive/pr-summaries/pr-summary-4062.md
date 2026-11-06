@@ -113,13 +113,39 @@ runs it).
 
 <!-- vibe-spec-review inputs="diff+issue-body" -->
 
-- **missing** — Identify the producing path. Load .creatures/10.json from rocket@GRQ-21 if it still exists, or reproduce with a checkpoint write during a deadline-abandoned generation. — reviewer: missing — reason: The first writer of the stale record is not identified. The file was not available, and earlier fuzzing of every mutation operator, fineTuneImprovement and evolveDataSet runs found no producer. The diff only edits the PR summary.
-- **met** — writeCreatures (or the producing mutation) never persists a creature whose memetic references a missing synapse: either validate-before-write, or prune at the mutation site. — evidence: `src/creature/CheckpointWriter.ts::writeCreatures (calls pruneDanglingMemeticFromExport) and test/creature/CheckpointWriteDanglingMemetic test.ts. This is already on Develop (PRs #4064 and #4100), not added by this diff.` — reviewer: met
-- **partial** — Regression test: run the identified path (e.g. abandon generation N while its mutations are in flight, then write the checkpoint) and assert every written creature passes ValidationError/MEMETIC validation. — evidence: `test/creature/CheckpointWriteDanglingMemetic test.ts and test/creature/LoadPrunesDanglingMemetic.ts` — reviewer: partial — reason: No producing path was identified, so the tests exercise a real SubConnection mutation between checkpoint batches and the load-side prune, not the deadline-abandoned path.
-- **partial** — Closing a week of GRQ-logs from sampler hosts with no rule=ValidationError/MEMETIC repair lines on the fixed release, quoted with the search used. — evidence: `docs/archive/pr-summaries/pr-summary-4062.md, Evidence section. It quotes the searches, which found 0 repair lines and 0 prune warnings on 7.1.2 and 7.1.3, with sampler loads present throughout.` — reviewer: partial — reason: The window is about 5 days of the 7 asked for, and a full week is reached on 2026-11-08. The zero result is also partly circular, because load now repairs a stale memetic first.
+- **missing** — Identify the producing path. Load .creatures/10.json from
+  rocket@GRQ-21 if it still exists, or reproduce with a checkpoint write during
+  a deadline-abandoned generation. — reviewer: missing — reason: The first
+  writer of the stale record is not identified. The file was not available, and
+  earlier fuzzing of every mutation operator, fineTuneImprovement and
+  evolveDataSet runs found no producer. The diff only edits the PR summary.
+- **met** — writeCreatures (or the producing mutation) never persists a creature
+  whose memetic references a missing synapse: either validate-before-write, or
+  prune at the mutation site. — evidence:
+  `src/creature/CheckpointWriter.ts::writeCreatures (calls pruneDanglingMemeticFromExport) and test/creature/CheckpointWriteDanglingMemetic test.ts. This is already on Develop (PRs #4064 and #4100), not added by this diff.`
+  — reviewer: met
+- **partial** — Regression test: run the identified path (e.g. abandon
+  generation N while its mutations are in flight, then write the checkpoint) and
+  assert every written creature passes ValidationError/MEMETIC validation. —
+  evidence:
+  `test/creature/CheckpointWriteDanglingMemetic test.ts and test/creature/LoadPrunesDanglingMemetic.ts`
+  — reviewer: partial — reason: No producing path was identified, so the tests
+  exercise a real SubConnection mutation between checkpoint batches and the
+  load-side prune, not the deadline-abandoned path.
+- **partial** — Closing a week of GRQ-logs from sampler hosts with no
+  rule=ValidationError/MEMETIC repair lines on the fixed release, quoted with
+  the search used. — evidence:
+  `docs/archive/pr-summaries/pr-summary-4062.md, Evidence section. It quotes the searches, which found 0 repair lines and 0 prune warnings on 7.1.2 and 7.1.3, with sampler loads present throughout.`
+  — reviewer: partial — reason: The window is about 5 days of the 7 asked for,
+  and a full week is reached on 2026-11-08. The zero result is also partly
+  circular, because load now repairs a stale memetic first.
 
 ## Standards Review
 
 <!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
 
-- **clean** — The principle 11 (application-agnostic public repo) finding is withdrawn, because principle 11 governs the public library contract (the API surface in API REFERENCE.md), not an archived PR summary. The tokens option=sampler and copyNetworks: are the literal log searches run, not naming, defaults or
+- **clean** — The principle 11 (application-agnostic public repo) finding is
+  withdrawn, because principle 11 governs the public library contract (the API
+  surface in API REFERENCE.md), not an archived PR summary. The tokens
+  option=sampler and copyNetworks: are the literal log searches run, not naming,
+  defaults or
