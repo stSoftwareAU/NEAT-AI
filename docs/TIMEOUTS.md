@@ -726,7 +726,7 @@ line, such as `(event loop blocked past the hard cap; …)`, describes the
 condition the deadline was set to catch. It is fixed wording, not a measurement,
 so decide from the trailing fields.
 
-A worked example, with the values made concrete:
+An illustrative breach example, with the values made concrete:
 
 ```text
 [Neat] Run wedged after 1834s at generation 4 (event loop blocked past the hard cap; watchdog killing the process) lastHeartbeatAgeMs=312044 inFlightPhase=fitness heartbeatIntervalMS=1000
@@ -740,6 +740,33 @@ Callers that treat exit 137 plus the breach line as a wedge should read
 `lastHeartbeatAgeMs` first. A large age supports the wedge reading and points at
 `inFlightPhase`. An age near `heartbeatIntervalMS` means the process was alive
 and was killed for overrunning its budget, so it is a slow run, not a wedge.
+
+#### Field observation (2026-11-06)
+
+The downstream production log archive snapshot from 2026-11-06 contains no
+`lastHeartbeatAgeMs`, `main loop stalled` or `Run wedged` line, and no green
+final loop on a swap-backed 8 GB host. Its five tracked log files do not provide
+the closing evidence requested by Issue #4096. The only `neat-ai` release marker
+in that snapshot is 7.1.3 in the scorer log; it is not a learning run with the
+heartbeat diagnostics.
+
+One useful older learning-run log in the archive records GRQ 1.1.213, NEAT-AI
+7.1.2, generation 2 on rocket@GRQ-3 (10 CPUs, 16 GB RAM, about 8 GB available,
+load averages `49.79 58.48 50.43`):
+
+```text
+[Timing] fitness=34710ms breeding=133950ms breedingWorker=133949ms mainThreadOverlap=0ms resultProcessing=0ms memoryEviction=3ms preWarm=508ms pipelineOverlap=526ms sort=0ms writeScores=194ms mutation=0ms deduplication=974ms speciation=18ms total=232627ms
+[DiscoveryReplayRunner] Worker init failed; falling back to direct execution for this worker slot. Error: [WasmWorkerInit] Worker init: no response after 60s (worker=worker-25). Parent-observed: handshakeMs=60000 parentStallMs=5942 loopBlockedMs=64941 spawnToInitMs=0 workerError=none heartbeat=none wasm[cache=hit cacheDir=/Users/rocket/.cache/neat-ai/wasm bundleBytes=1039068 bundleLoadMs=24 glueImportMs=30 instantiateMs=6 wasmTotalMs=61].
+```
+
+This run shows a 64,941 ms parent loop block while the reported mutation phase
+was 0 ms; it excludes mutation as the cause of this instance only. The host load
+was high, but the log has no RSS, page-fault, swap-activity or GC-trace
+measurements. It predates non-fatal stall reporting and contains no watchdog
+heartbeat-age reading: the heartbeat already existed, but its age was reported
+only on a fatal breach. It cannot distinguish CPU starvation from paging or
+identify the generation-11 cause. This is field evidence, not the illustrative
+breach example above.
 
 ## ✅ Verifying the guarantee
 
