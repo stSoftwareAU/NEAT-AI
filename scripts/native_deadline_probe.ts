@@ -29,6 +29,10 @@
  *                                   deadline, on a legacy engine.
  *   worker-productive               the productive fixture through a real
  *                                   `WorkerHandler` (a Deno Worker).
+ *   scheduler-productive            the productive fixture dispatched by the
+ *                                   real `scheduleTraining` to a real
+ *                                   `WorkerHandler`, and the result it hands
+ *                                   to `recordTrainingComplete`.
  *
  * Exit: 0 with the JSON line; 2 for an unknown scenario or an unmet
  * precondition; 1 (stderr) for an unexpected failure.
@@ -37,7 +41,13 @@
 import { addTag } from "@stsoftware/tags/mod";
 import { Creature } from "@creature";
 import { Costs } from "@costs";
-import { isFailedTrainWorkerResponse } from "@neat/NeatScheduling.ts";
+import {
+  isFailedTrainWorkerResponse,
+  scheduleTraining,
+} from "@neat/NeatScheduling.ts";
+import type { Neat } from "@neat/Neat.ts";
+import { createNeatConfig } from "@config/NeatConfig.ts";
+import { TrainingRegressionTracker } from "@neat/TrainingRegressionTracker.ts";
 import { TRAINING_TASK_WATCHDOG_GRACE_MS } from "@neat/PerTaskTrainingTimeout.ts";
 import {
   type DataRecordInterface,
@@ -61,7 +71,8 @@ export type Scenario =
   | "cli-expired"
   | "legacy-ffi"
   | "legacy-cli"
-  | "worker-productive";
+  | "worker-productive"
+  | "scheduler-productive";
 
 /** Scenario -> the adapter it must force. */
 export const SCENARIO_ADAPTER: Record<Scenario, Adapter> = {
@@ -72,11 +83,23 @@ export const SCENARIO_ADAPTER: Record<Scenario, Adapter> = {
   "legacy-ffi": "ffi",
   "legacy-cli": "cli",
   "worker-productive": "ffi",
+  "scheduler-productive": "ffi",
 };
 
 const PRODUCTIVE_RECORDS = 8_000;
 const PRODUCTIVE_HIDDEN = 500;
 const PRODUCTIVE_DEADLINE_MS = 1_000;
+/**
+ * `scheduleTraining` refuses a budget under `MIN_TRAINING_BUDGET_MS` (1 s), so
+ * the scheduled scenario gives the task a little more than that.
+ */
+const SCHEDULED_DEADLINE_MS = 2_000;
+/**
+ * The scheduler asks for only a few epochs, so the fixture is larger than the
+ * productive one to keep the first epoch longer than `SCHEDULED_DEADLINE_MS`.
+ */
+const SCHEDULED_RECORDS = 40_000;
+const SCHEDULED_HIDDEN = 1_000;
 /**
  * Expired-before-useful-work deadline. `trainDir` skips the native trainer when
  * `hardDeadlineTS` is already past (`rustTrainDirSkipReason`), and a deadline
@@ -125,6 +148,14 @@ interface ProbeOutput {
    * (`!isFailedTrainWorkerResponse`), rather than record a failed training.
    */
   evaluated?: boolean;
+  /**
+   * Scheduler scenario only: how many results `scheduleTraining` handed to
+   * `recordTrainingComplete`, and whether it recorded an outcome in the
+   * regression tracker (it must not for a deadline stop that measured no full
+   * error: the weights are queued unscored).
+   */
+  queuedCount?: number;
+  trackerUpdated?: boolean;
 }
 
 /** Messages the bridge and the trainer log while a scenario runs. */
@@ -452,6 +483,96 @@ async function runWorkerScenario(recorded: Recorded): Promise<ProbeOutput> {
   }
 }
 
+/**
+ * Dispatch the productive fixture with the real `scheduleTraining` to a real
+ * `WorkerHandler` and report what it hands to `recordTrainingComplete` (Issue
+ * #4119). Nothing is stubbed on the path from the scheduler to the native
+ * engine; only the `Neat` bookkeeping around it is a minimal double.
+ */
+async function runSchedulerScenario(recorded: Recorded): Promise<ProbeOutput> {
+  const creature = creatureFrom(wideCreatureJSON(SCHEDULED_HIDDEN));
+  addTag(creature, "error", "0.5");
+  creature.score = -0.5;
+  const dataDir = makeDataDir(
+    recordsFor(SCHEDULED_RECORDS),
+    SCHEDULED_RECORDS,
+    { input: creature.input, output: creature.output },
+  );
+  const handler = new WorkerHandler(dataDir, "MSE", false);
+  try {
+    await handler.waitUntilReady();
+    const before = parameterMap(creature.exportJSON());
+    const deadlineEpochMs = Date.now() + SCHEDULED_DEADLINE_MS;
+
+    const queued: ResponseData[] = [];
+    const tracker = new TrainingRegressionTracker();
+    let settledAt = 0;
+    const pool = { selectWorker: () => handler, getIdleWorkers: () => [] };
+    const neat = {
+      config: createNeatConfig({}),
+      currentGeneration: 1,
+      hardDeadlineTS: deadlineEpochMs,
+      abandonEpoch: 0,
+      trainingInProgress: new Map(),
+      trainingDeadlines: new Map(),
+      trainingTasks: new Map(),
+      alreadyScheduledMap: new Map<string, number>(),
+      trainingRegressionTracker: tracker,
+      heavyWorkerPool: pool,
+      fastWorkerPool: pool,
+      isRunAbandonedSince: () => false,
+      recordTrainingComplete: (_u: string, _e: number, r: ResponseData) => {
+        settledAt = Date.now();
+        queued.push(r);
+        return true;
+      },
+    } as unknown as Neat;
+
+    scheduleTraining(neat, creature, 5);
+    await Promise.all(neat.trainingInProgress.values());
+
+    const data = queued[0];
+    const train = data?.train;
+    const returned = train ? parameterMap(train.creature) : undefined;
+    return {
+      scenario: "scheduler-productive",
+      adapter: train !== undefined &&
+          Deno.env.get("NEAT_AI_BACKPROP_REQUIRE_FFI") === "1"
+        ? "ffi"
+        : "none",
+      adapterLog: null,
+      adapterSource:
+        "inferred: NEAT_AI_BACKPROP_REQUIRE_FFI=1 refuses the CLI, so a train response proves FFI ran (worker isolate log not captured)",
+      deadlineEpochMs,
+      timedOut: train?.timedOut ?? null,
+      timedOutOnWire: train !== undefined && "timedOut" in train,
+      bestMeasure: train?.bestMeasure ?? null,
+      evaluated: data !== undefined && !isFailedTrainWorkerResponse(data),
+      queuedCount: queued.length,
+      trackerUpdated: tracker.totalRegressions + tracker.totalImprovements +
+          tracker.totalNoChange > 0,
+      error: train ? numberOrNull(train.error) : null,
+      errorIsNaN: train ? Number.isNaN(train.error) : false,
+      iteration: null,
+      weightsChanged: returned ? parametersChanged(before, returned) : false,
+      weightsValid: returned ? parametersFinite(returned) : false,
+      settledAfterDeadlineMs: settledAt === 0
+        ? null
+        : settledAt - deadlineEpochMs,
+      settledWithinGrace: settledAt !== 0 &&
+        settledAt - deadlineEpochMs <= TRAINING_TASK_WATCHDOG_GRACE_MS,
+      warnings: recorded.warnings,
+      infos: recorded.infos,
+      healthy: handler.isHealthy(),
+      cancelled: data?.error instanceof WorkerTaskCancelledError,
+      failure: data?.error === undefined ? null : String(data.error),
+    };
+  } finally {
+    handler.terminate();
+    await Deno.remove(dataDir, { recursive: true });
+  }
+}
+
 async function main(): Promise<void> {
   const scenario = Deno.args[0] as Scenario | undefined;
   if (scenario === undefined || !(scenario in SCENARIO_ADAPTER)) {
@@ -467,6 +588,8 @@ async function main(): Promise<void> {
 
   const output = scenario === "worker-productive"
     ? await runWorkerScenario(recorded)
+    : scenario === "scheduler-productive"
+    ? await runSchedulerScenario(recorded)
     : runTrainScenario(scenario, recorded);
   console.log(JSON.stringify(output));
 }

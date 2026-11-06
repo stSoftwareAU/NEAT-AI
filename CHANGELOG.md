@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4126:** a stuck discovery analysis no longer keeps the process alive
+  after `evolveDir()` returns. The Rust GPU `analyze_parallel` call is now
+  declared `nonblocking: true`, so the worker's thread is no longer blocked and
+  the process can exit. The native analysis cannot be cancelled from JavaScript;
+  it ends at its Rust-side deadline or when `cancel_analysis_memory_pressure()`
+  is signalled under memory pressure. A training task on a legacy native engine
+  (`neat_ai_backpropagation` 0.1.49 or earlier) can still pin the process, and
+  `exitOnUnreclaimableWorkers` remains the guard for that. See
+  [`docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md`](./docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md).
 - **Issue #4120:** `build.sh` no longer exits `1` when the release asset
   download fails after the release probe has confirmed the release exists. A
   transport failure, or an HTTP 403, 429 or 5xx from the signed asset host, now
@@ -556,12 +565,12 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   carried error queues weights unscored for the next generation's fitness pass,
   skips `calculateScore`, fine-tune variants and regression-tracker updates, and
   closes the gain-log event as `trained` without scores. Once the deadline plus
-  `TRAINING_TASK_WATCHDOG_GRACE_MS` has passed, finalisation warns and skips
-  compaction, returning no compacted copy. A deadline-capable backend that omits
-  or mis-shapes the new fields is rejected with an error naming the field, with
-  no silent TypeScript or WASM fallback. A capable CLI's result is read from
-  `<output-dir>/result.json`. The `./quality.sh --next` preflight reports the
-  capability. See
+  `TRAINING_TASK_WATCHDOG_GRACE_MS` has passed, finalisation warns and skips the
+  remaining compaction stages (checked before each), returning no compacted
+  copy. A deadline-capable backend that omits or mis-shapes the new fields is
+  rejected with an error naming the field, with no silent TypeScript or WASM
+  fallback. A capable CLI's result is read from `<output-dir>/result.json`. The
+  `./quality.sh --next` preflight reports the capability. See
   [TIMEOUTS.md](./docs/TIMEOUTS.md#-the-native-trainer-and-the-per-task-deadline-issue-4119).
 - **Issue #3976 — synapse removal moved to Rust/WASM.** The `SubConnection`
   mutation operator now calls NEAT-AI-core's `prune_synapse` through the new

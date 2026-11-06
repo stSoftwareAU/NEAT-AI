@@ -70,13 +70,13 @@ function makeCapturingDeps(
 }
 
 /** Runs one analysis pass and returns the payload NEAT-AI handed to Rust. */
-function captureAnalysisRequest(): RustParallelAnalysisInput {
+async function captureAnalysisRequest(): Promise<RustParallelAnalysisInput> {
   const creature = makeTestCreature();
   const output = creature.neurons.find((n) => n.type === "output");
   assert(output, "test creature must have an output neuron");
   const captured: RustParallelAnalysisInput[] = [];
 
-  ensureRustCombinedAnalysis(
+  await ensureRustCombinedAnalysis(
     creature,
     "/tmp/discovery-3886.parquet",
     makeCapturingDeps(captured),
@@ -95,7 +95,7 @@ function captureAnalysisRequest(): RustParallelAnalysisInput {
 Deno.test("analysis request carries the creature observation widths (Issue #3886)", async () => {
   await initWasmForTests();
 
-  const creature = captureAnalysisRequest().creature;
+  const creature = (await captureAnalysisRequest()).creature;
 
   // Discovery's `CreatureJson` requires both widths and rejects anything < 1.
   assertEquals(creature.input, 2, "input width must reach Discovery");
@@ -107,7 +107,7 @@ Deno.test("analysis request is serialised flat, with no envelope (Issue #3886)",
 
   // Assert on the bytes that actually cross the FFI boundary.
   const wire = JSON.parse(
-    JSON.stringify(captureAnalysisRequest()),
+    JSON.stringify(await captureAnalysisRequest()),
   ) as Record<string, unknown>;
 
   assert(

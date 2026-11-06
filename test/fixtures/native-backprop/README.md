@@ -47,6 +47,24 @@ moves.
   gave `full`, in a sweep on the tiny creature). It was skipped rather than
   invented.
 
+- `cli-train-legacy/` — a real `neat_ai_backpropagation train` run of the LEGACY
+  CLI (`0.1.49`), captured by a wrapper that recorded the arguments and copied
+  the input creature and the output directory. The arguments and the engine's
+  output are verbatim apart from the per-run paths, which are replaced with
+  `<WORK_DIR>` and `<DATA_DIR>` in `argv.txt`:
+  - `input-creature.json` — the 1-input / 1-output identity chain with three
+    hidden neurons the bridge wrote as `creature.json`.
+  - `argv.txt` — the argument list, one per line. It has no
+    `--deadline-epoch-ms`; the legacy CLI has no such flag.
+  - `best.json`, `journal.jsonl` — the engine's output (`journal.jsonl` has a
+    `runHeader` and three `epoch` lines; `candidate.json` was also written and
+    is not read by the bridge, so it is not kept).
+  - Produced by the `legacy-cli` scenario of `scripts/native_deadline_probe.ts`
+    (three epochs, seed 1, `disableRandomSamples`). `RustTrainDirDeadline.ts`
+    replays them through a fake CLI to check the arguments, the result read from
+    the journal and `best.json`, and the once-only "not enforced natively"
+    warning.
+
 ## How the FFI responses were produced
 
 A throwaway Deno driver (not kept in the repository) loaded the library directly

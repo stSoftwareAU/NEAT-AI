@@ -786,11 +786,12 @@ does not yet list. Pinned by
 
 ### 🧠 Analysis memory controls
 
-`analyze_parallel` is a **blocking** FFI call: while Rust is analysing, the
-calling isolate cannot run a timer, sample the heap, or evict a cache. The host
-therefore cannot police the analysis footprint from TypeScript — it has to hand
-Rust a budget up front and be able to interrupt from a _different_ thread. Three
-controls cover that (Issue #3432):
+`analyze_parallel` is a **non-blocking** FFI call (`nonblocking: true`, Issue
+#4126): while Rust is analysing, the calling isolate keeps its event loop, so it
+can run a timer, sample the heap, or evict a cache. The host still cannot stop
+the native analysis from TypeScript except through
+`cancel_analysis_memory_pressure()`, so it still has to hand Rust a budget up
+front. Three controls cover that (Issue #3432):
 
 | Control                                              | Direction   | Role                                                                            |
 | ---------------------------------------------------- | ----------- | ------------------------------------------------------------------------------- |
@@ -837,7 +838,8 @@ flowchart LR
 
 The cancellation flag inside NEAT-AI-Discovery is process-wide, which is what
 makes the interrupt possible: the evolve loop signals it from the host isolate
-while the analysis blocks a different thread of the same process.
+while the analysis runs on a different thread of the same process. The call is
+`nonblocking: true`, so the host isolate is not held up while it waits.
 
 ```mermaid
 sequenceDiagram

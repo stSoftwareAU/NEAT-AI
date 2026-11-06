@@ -325,9 +325,10 @@ with **no Rust-side allocator budget at all**.
 The judgement is that both are brakes built for the exact failure GRQ still
 fights. #3432 shipped `maxAnalysisMemoryMb` to stop `analyze_parallel` growing
 RSS until the host OOMs, and stated the host cannot police it from TypeScript
-because the FFI call is blocking. Deleting it removes the only in-flight brake
-on that path. The recommendation on #3565 is therefore **wire up, do not
-remove**: GRQ already computes a Rust budget (`RUST_MEMORY_BUDGET_MB` in
+because the FFI call was blocking (it has been `nonblocking: true` since Issue
+#4126). Deleting it removes the only in-flight brake on that path. The
+recommendation on #3565 is therefore **wire up, do not remove**: GRQ already
+computes a Rust budget (`RUST_MEMORY_BUDGET_MB` in
 `worker/Discovery/run.sh:215`) and simply never passes it to NEAT-AI.
 
 ### `parallelEvaluation.maxConcurrentEvaluations` — a plain inert knob (#3566)

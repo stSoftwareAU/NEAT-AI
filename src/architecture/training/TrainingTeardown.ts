@@ -212,7 +212,9 @@ export function stripUntrackedTraces(
  * strip unused traces, compact, and package the final result.
  *
  * `options.skipCompaction` returns the trained creature without the compacted
- * copy (Issue #4119: the finalisation budget is already spent).
+ * copy (Issue #4119: the finalisation budget is already spent). A function is
+ * asked before each compaction stage, so a budget that runs out part-way
+ * through stops the remaining, optional work instead of finishing it.
  */
 export function finaliseTraining(
   creature: Creature,
@@ -222,7 +224,7 @@ export function finaliseTraining(
   feedbackLoop: boolean,
   syntheticKeys: Set<string> | undefined,
   ID: string,
-  options: { skipCompaction?: boolean } = {},
+  options: { skipCompaction?: boolean | (() => boolean) } = {},
 ): TrainingResult {
   let { bestCreatureJSON, bestTraceJSON } = loop;
 
@@ -248,7 +250,12 @@ export function finaliseTraining(
 
   // Issue #4119: a native run that is already past its deadline-plus-grace
   // window returns the trained weights without the optional compacted copy.
-  if (options.skipCompaction === true) {
+  const skipCompaction = options.skipCompaction;
+  const compactionSkipped = (): boolean =>
+    typeof skipCompaction === "function"
+      ? skipCompaction()
+      : skipCompaction === true;
+  const withoutCompactedCopy = (): TrainingResult => {
     ageNewbornGrace(creature);
     ageNewbornGrace(bestTraceJSON);
     return {
@@ -258,7 +265,8 @@ export function finaliseTraining(
       trace: bestTraceJSON,
       compact: undefined,
     };
-  }
+  };
+  if (compactionSkipped()) return withoutCompactedCopy();
 
   let compact = compactUnused(bestTraceJSON, iterationConfig.plankConstant);
   // Issue #3970: `compactUnused` spends a grace round on the copy it returns.
@@ -266,6 +274,9 @@ export function finaliseTraining(
   // produced `compact` and spend the round explicitly when it did not.
   const compactWasAged = compact !== undefined;
   if (!compact) {
+    // Issue #4119: `compactUnused` can take long enough to spend the window;
+    // the variant search that follows is the larger, optional cost.
+    if (compactionSkipped()) return withoutCompactedCopy();
     // Issue #3037: select the best of the safe + aggressive compaction
     // candidates (the safe variant is the floor; identical variants dedupe).
     compact = selectCompactVariant(

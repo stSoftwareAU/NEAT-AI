@@ -73,7 +73,7 @@ Deno.test("CPU-only integration: ensureRustCombinedAnalysis returns undefined re
 
   const logCalls: Array<{ scope: string; reason: string }> = [];
 
-  const result = ensureRustCombinedAnalysis(
+  const result = await ensureRustCombinedAnalysis(
     creature,
     "/tmp/test.parquet",
     {
@@ -128,7 +128,7 @@ Deno.test("CPU-only integration: both synapse and neuron scopes log unavailabili
 
   const logCalls: Array<{ scope: string; reason: string }> = [];
 
-  const result = ensureRustCombinedAnalysis(
+  const result = await ensureRustCombinedAnalysis(
     creature,
     "/tmp/test.parquet",
     {
@@ -181,7 +181,7 @@ Deno.test("CPU-only integration: no exceptions thrown during GPU-unavailable flo
   // encounters GPU unavailability — the primary concern from Issue #2141.
   let exceptionCaught = false;
   try {
-    ensureRustCombinedAnalysis(
+    await ensureRustCombinedAnalysis(
       creature,
       "/tmp/test.parquet",
       {
@@ -222,7 +222,7 @@ Deno.test("CPU-only integration: analyzeParallel receives requireGpu omitted, en
 
   let capturedInput: RustParallelAnalysisInput | undefined;
 
-  ensureRustCombinedAnalysis(
+  await ensureRustCombinedAnalysis(
     creature,
     "/tmp/test.parquet",
     {
@@ -267,7 +267,7 @@ Deno.test("CPU-only integration: discovery disabled returns undefined without ca
 
   let analysisCalled = false;
 
-  const result = ensureRustCombinedAnalysis(
+  const result = await ensureRustCombinedAnalysis(
     creature,
     "/tmp/test.parquet",
     {

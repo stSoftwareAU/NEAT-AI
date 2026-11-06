@@ -57,6 +57,10 @@ import {
 } from "@architecture/ErrorGuidedStructuralEvolution/NeuronImpact.ts";
 import type { CombinedAnalysisCache } from "@architecture/ErrorGuidedStructuralEvolution/RustAnalysisCache.ts";
 import type {
+  RustParallelAnalysisInput,
+  RustParallelAnalysisResult,
+} from "@architecture/ErrorGuidedStructuralEvolution/RustDiscoveryTypes.ts";
+import type {
   CandidateNeuron,
   CandidateSynapse,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructureTypes.ts";
@@ -70,7 +74,17 @@ export interface DiscoverStructureDeps {
   isRustLibraryAvailable: typeof isRustLibraryAvailable;
   recordDiscovery: typeof recordDiscovery;
   mergeDiscoveryParquet: typeof mergeDiscoveryParquet;
-  analyzeParallel: typeof analyzeParallel;
+  /**
+   * Issue #4126: `analyze_parallel` is a non-blocking FFI call, so the
+   * production implementation returns a promise. Synchronous test doubles
+   * remain valid.
+   */
+  analyzeParallel: (
+    input: RustParallelAnalysisInput,
+  ) =>
+    | RustParallelAnalysisResult
+    | null
+    | Promise<RustParallelAnalysisResult | null>;
   readDiscoveryRecords: typeof readDiscoveryRecords;
   rankFocusNeurons?: typeof rankFocusNeurons;
   /**
@@ -79,6 +93,7 @@ export interface DiscoverStructureDeps {
    * removal that fails because a writer is still creating files.
    */
   removeTempDir?: (dir: string) => Promise<void>;
+  closeRustLibrary?: () => void;
   /**
    * Issue #4034: environment reader for the recorder's cleanup flags
    * (`NEAT_DISCOVERY_AWAIT_CLEANUP`, `DENO_TEST`). Defaults to `Deno.env`;
@@ -153,6 +168,8 @@ export class DiscoverStructureBase {
   protected cachedRemovalCandidates?:
     import("./DiscoverResult.ts").RemovalCandidate[];
   protected combinedRustAnalysis?: CombinedAnalysisCache;
+  /** Tail of the queue that serialises native combined analyses (Issue #4126). */
+  protected combinedAnalysisTail: Promise<void> = Promise.resolve();
   protected recordedNeuronTotalAbsError = new Map<number, number>();
   protected analysisTimeoutGuardEnabled = true;
   protected disableCleanup = false;
@@ -493,6 +510,10 @@ export class DiscoverStructureBase {
   public async cleanUp() {
     assert(this.initialized, "Not initialized");
     this.initialized = false;
+    // A timed-out caller may have abandoned an analysis that still uses the
+    // creature, native library and parquet directory. Drain the queue before
+    // releasing any of those resources, including after a rejected analysis.
+    await this.combinedAnalysisTail;
     this.recorded = false;
     this.creature.dispose();
     this.discoveries = [];
@@ -509,7 +530,7 @@ export class DiscoverStructureBase {
 
     try {
       const { closeRustLibrary } = await import("./RustDiscovery.ts");
-      closeRustLibrary();
+      (this.deps.closeRustLibrary ?? closeRustLibrary)();
     } catch {
       // Ignore errors during cleanup
     }

@@ -84,7 +84,7 @@ Deno.test(
     assert(focusId !== undefined, "output-0 should have a runtime id");
 
     const warnings: Array<{ scope: string; reason: string }> = [];
-    const { result, cache } = ensureRustCombinedAnalysis(
+    const { result, cache } = await ensureRustCombinedAnalysis(
       creature,
       "/tmp/gpu-doc.parquet",
       {

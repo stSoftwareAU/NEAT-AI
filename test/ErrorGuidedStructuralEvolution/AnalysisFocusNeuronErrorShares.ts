@@ -68,9 +68,9 @@ function makeCapturingDeps(
   };
 }
 
-function captureAnalysisInput(
+async function captureAnalysisInput(
   focusTypes: ReadonlyArray<"hidden" | "output">,
-): RustParallelAnalysisInput {
+): Promise<RustParallelAnalysisInput> {
   const creature = makeTestCreature();
   const focusList = focusTypes.map((type) => {
     const neuron = creature.neurons.find((n) => n.type === type);
@@ -79,7 +79,7 @@ function captureAnalysisInput(
   });
   const captured: RustParallelAnalysisInput[] = [];
 
-  ensureRustCombinedAnalysis(
+  await ensureRustCombinedAnalysis(
     creature,
     "/tmp/discovery-3449.parquet",
     makeCapturingDeps(captured),
@@ -98,7 +98,7 @@ function captureAnalysisInput(
 Deno.test("analysis request omits focusNeuronErrorShares (Issue #3449)", async () => {
   await initWasmForTests();
 
-  const input = captureAnalysisInput(["output"]);
+  const input = await captureAnalysisInput(["output"]);
 
   assertEquals(
     Object.hasOwn(input, "focusNeuronErrorShares"),
@@ -110,7 +110,7 @@ Deno.test("analysis request omits focusNeuronErrorShares (Issue #3449)", async (
 Deno.test("multi-focus analysis still sends focus neuron uuids (Issue #3449)", async () => {
   await initWasmForTests();
 
-  const input = captureAnalysisInput(["hidden", "output"]);
+  const input = await captureAnalysisInput(["hidden", "output"]);
 
   // Dropping the deprecated shares must not disturb the focus list itself.
   assertEquals(input.focusNeurons.length, 2);

@@ -5,8 +5,8 @@
  * ## Why this exists
  *
  * `memory.maxAnalysisMemoryMb` (#3432) is the only in-flight brake on
- * `analyze_parallel` growing the resident set until the host OOMs: the FFI call
- * is blocking, so no JS timer or heap sample runs while Rust allocates. Its
+ * `analyze_parallel` growing the resident set until the host OOMs: JS cannot
+ * cancel the native call once it is running. Its
  * default is `0` ("send no budget"), and the production runner never set it —
  * so Discovery analysis ran with no Rust-side allocator budget at all.
  *
