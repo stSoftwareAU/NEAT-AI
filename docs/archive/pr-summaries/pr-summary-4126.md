@@ -1,106 +1,128 @@
 ## Summary
 
-A worker quarantined with an unanswered task can be blocked inside synchronous
-native (FFI) code. `Worker.terminate()` cannot interrupt such a thread, and Deno
-keeps the process alive for it, so a script whose last `evolveDir` has returned
-never exits. This PR makes the teardown report those workers and adds an opt-in
-exit guard. Part of #4126.
+The 7.1.3 recurrence of this issue was not a training task. In `GRQ-3-sloth.log`
+(the downstream fleet logs at `9af82cc`, 2026-11-05) the worker that could not
+be stopped held a **discovery** task inside the Rust GPU `analyze_parallel` FFI
+call, which was declared `nonblocking: false`. A thread parked in a synchronous
+native call cannot be stopped by `Worker.terminate()`, and Deno keeps the
+process alive for it. This PR declares `analyze_parallel` `nonblocking: true`
+and awaits it up the analysis chain, so an abandoned discovery analysis no
+longer pins the process. The synchronous native trainer (`neat_backprop_train`)
+is unchanged, so a training task on a legacy engine can still pin the process.
+Part of #4126.
 
-The report is on by default: `evolveDir` teardown logs one
-`teardown: N worker(s) could not be stopped` warning. The guard is off by
-default: `exitOnUnreclaimableWorkers: true` makes a library call `Deno.exit()`
-(preserving `Deno.exitCode`) 10 s after teardown, but only when such a worker is
-left. `evolveEnv` and `evolveRL` accept the option but cannot report an
-unstoppable worker today. Version bump: none in this change.
+Version bump: no `VERSION` field is edited by this change; the merged commit
+records the final version. The merge with Develop retains its newer package
+version, 7.1.6.
 
 ```mermaid
 flowchart LR
-    Q["worker quarantined,<br/>task unanswered"] --> T["teardown: persist,<br/>terminate, drain replay"]
-    T --> C{"worker still<br/>couldNotBeStopped()?"}
-    C -- no --> R["evolveDir returns,<br/>process exits"]
-    C -- yes --> W["warn: N worker(s)<br/>could not be stopped"]
-    W --> O{"exitOnUnreclaimableWorkers?"}
-    O -- no --> H["caller must Deno.exit()"]
-    O -- yes --> G["10 s timer that does not hold the process open,<br/>then Deno.exit(Deno.exitCode)"]
+    D["discovery task abandoned<br/>at its deadline"] --> T["teardown: Worker.terminate()"]
+    T --> Q{"analyze_parallel<br/>nonblocking?"}
+    Q -- "false (before)" --> P["thread parked in native code,<br/>process stays alive"]
+    Q -- "true (now)" --> E["worker ends, native work runs on<br/>its own thread, process exits"]
 ```
+
+## Not closing #4126
+
+The Definition of done is not met in full: the training path on a legacy engine
+is unchanged, the GRQ-side `Deno.exit()` lives in another repository, and the
+closing fleet-log evidence needs a release and a run (see Acceptance Criteria).
 
 ## Spec
 
 ### Intent and Rationale
 
-- The incident's process hung after the last statement; the leading suspect (a
-  quarantined worker stuck in native code) cannot be reclaimed by any JavaScript
-  call, so the library can only report it and, if asked, exit.
-- The issue's definition of done allows either fixing the pin or reporting it so
-  callers can exit explicitly; both are delivered, with the exit behind an
-  option because a library must not exit its host unasked.
+- The comment on 7.1.3 asked why a task is blocked in native code past its
+  deadline after #4134. The log answers it: the task was a discovery analysis,
+  so the native trainer deadline of #4119 never applied to it.
+- Non-blocking FFI removes the pin itself, instead of reporting it (the earlier
+  teardown warning and opt-in `exitOnUnreclaimableWorkers`, which GRQ does not
+  enable).
 
 ### Essential Design Decisions
 
-- `exitOnUnreclaimableWorkers` defaults to `false`: a deliberate deviation from
-  "can't pin the process" by default. A silent `Deno.exit()` from a library
-  could cut off a caller's later work (save, check-in).
-- The guard runs last in teardown (after persist and replay drain) and is armed
-  with a timer that does not hold the process open, so a healthy process still
-  exits naturally before it fires.
-- A worker counts as unstoppable when it has been taken out of service
-  (quarantined, or `terminate()` called) while a task is still unanswered; a
-  late reply clears the task id. `couldNotBeStopped()` is computed live, so a
-  task shed with `cancelTask` at the run's deadline and then terminated by
-  teardown, with no quarantine, is reported too. An error event on an idle
-  worker, or a cancelled task answered later, does not count.
-- The option is wired into `evolveEnv` and `evolveRL` teardown too, but has no
-  effect there today: `evolveEnv` has no worker pool and `EpisodeWorkerPool`
-  does not report `couldNotBeStopped()`.
+- Only `analyze_parallel` is made non-blocking: it is the call the log shows,
+  and it is the long-running one. The other discovery symbols are short or
+  memory probes and stay blocking.
+- `DiscoverStructureDeps.analyzeParallel` accepts a sync or promise result so
+  the existing synchronous test doubles stay valid; production has one path, the
+  awaited FFI call.
+- `DiscoverStructure.ensureRustCombinedAnalysis` queues its native analyses
+  (`combinedAnalysisTail`): with a non-blocking FFI call the three-way fan-out
+  in `runParallelAnalysis` (neuron-only, synapse-only, removal) would otherwise
+  start three native analyses together, where the blocking call used to run them
+  one after another and let the removal analysis hit the synapse analysis's
+  cache. The queue restores that order. A failed analysis does not poison the
+  queue. A native analysis that never settles holds the queue, as the blocking
+  call held the thread before; the Rust-side analysis deadline remains the
+  bound.
+- Cleanup waits for the queued analyses before disposing the creature, closing
+  the native library or removing its parquet directory. This also protects the
+  direct-mode timeout and early-rejection paths while native work is in flight.
+- The native library is shared within an isolate. A close requested by one
+  discovery is deferred until every in-flight native analysis has read and freed
+  its result, including when another discovery initiated that analysis.
+- Accepted risk: when a worker is terminated while its native analysis runs,
+  that call's result pointer is never read or freed (one leaked result, in a
+  process that is exiting), and the input buffer is only kept alive while the
+  worker awaits it. Not exercised against the real library (see Test Plan).
+- The public synchronous `trainDir` was not converted: it is called from tests,
+  benches and scripts, so making the native trainer non-blocking is a separate,
+  larger change. On a deadline-capable engine (crate 0.1.50 or later) the
+  trainer already stops by itself (#4119).
 
 ### Undiscoverable Facts
 
-- The cause is inferred from the issue, not observed in the fleet: no log shows
-  a ref'd timer or the watchdog pinning the process. The new child-process test
-  reproduces the native-block mechanism with a real worker calling the C library
-  `sleep`.
-- The issue's closing evidence needs a fleet log with a quarantine followed by a
-  phase `END`; that can only come after release and an opt-in in GRQ.
+- Log evidence, `GRQ-3-sloth.log` at `9af82cc`: native engine
+  `neat_ai_backpropagation 0.1.50`, then
+  `[Neat] Discovery timeout reached after wall-clock deadline expired. Clearing stuck discoveries: d93116c6`,
+  `[worker-11] terminated with 1 task(s) still in flight (2)` and
+  `[evolveDir] teardown: 1 worker(s) could not be stopped`. Discovery
+  `56c37f26-…93116c6` had logged
+  `rust combined analysis chunk 1/3 … [synapse=gpu neuron=gpu]`.
+- Observed with Deno 2.9.8 on Linux: a worker blocked in a synchronous C-library
+  `sleep(60)` keeps the process alive after `terminate()` (killed by `timeout`
+  at 25 s); the same call declared `nonblocking: true` exits at once.
 
 ## Evidence
 
-Backend/CLI change; no UI. Tests that verify it:
+Backend change; no UI. Commands run on the head:
 
-- `test/creature/ProcessExitsAfterWedgedWorker.ts` runs the real teardown in a
-  child process with a worker blocked in synchronous FFI: the child exits by
-  itself with the option on, keeps running without it (control), and preserves
-  the caller's exit code.
-- `test/creature/BoundedEvolveTeardown.ts`,
-  `test/workers/UnreclaimableWorkerExit.ts`,
-  `test/workers/WorkerTaskCancellation.ts`,
-  `test/config/ExitOnUnreclaimableWorkersOption.ts` cover the report, the
-  counts, the arming, the handler flag and the config default.
-- `test/creature/EvolveDirExitOnUnreclaimableWorkers.ts` runs `evolveDir` itself
-  with a worker reporting `couldNotBeStopped()` and an injected
-  `deps.exitGuard`: with `exitOnUnreclaimableWorkers: true` the guard is armed
-  once with the grace period and exits when fired; with the default nothing is
-  armed. Removing the `exitOnUnreclaimableWorkers` mapping in `evolveDir` fails
-  the first.
-- `test/workers/WorkerTaskCancellation.ts` pins that `cancelTask` without a
-  quarantine, then `terminate()`, reports `couldNotBeStopped()`, and that
-  `runBoundedEvolveTeardown` over such a real handler reports
-  `workersUnreclaimable = 1`.
-- Red check: replacing the `armUnreclaimableWorkerExit(...)` call in
-  `src/creature/BoundedEvolveTeardown.ts` with a no-op made 4 tests fail (the
-  process-exit tests and the "failed persist still arms the guard" test);
-  restored afterwards.
+- The archived summary describes downstream references at concept level so it
+  remains accessible to public readers; the archive privacy test covers it.
+- `timeout 600 deno test -A test/ErrorGuidedStructuralEvolution/AnalyzeParallelNonBlocking.ts`
+  — 5 passed, 0 failed.
+- `timeout 600 deno test -A test/ErrorGuidedStructuralEvolution/AnalyzeParallelSerialised.ts`
+  — 5 passed, 0 failed.
+- `deno test -A test/ErrorGuidedStructuralEvolution/*.ts test/discovery/*.ts` —
+  940 passed, 0 failed, 35 ignored. The ignored cases need the Rust library and
+  a GPU, which this runner lacks.
+- `./quality.sh --skip-tests --skip-discovery --skip-wasm` (format, lint,
+  type-check): completed without an error report.
+
+Docs read and updated: `docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md` (Cause,
+Option 1 scope), `docs/DISCOVERY_ARCHITECTURE.md` (the "blocking FFI call"
+passages), `docs/OPTION_AUDIT_SLICE_E.md`, `docs/GPU_ACCELERATION.md` (the
+`analyzeParallel` snippet), `CHANGELOG.md`. Left as true: `docs/TIMEOUTS.md`,
+`docs/config/WORKERS.md`, `docs/troubleshooting/MEMORY.md` (they describe the
+native trainer or the generic quarantine). Issue numbers cited, each looked up
+with `gh issue view`: #4126 (this issue), #4119 (native trainer deadline, open),
+#4134 (its pull request).
 
 ## Reproduction
 
-- **symptom** — the process stayed alive for 2 h after `evolveDir` returned
-  following `[worker-11] quarantined`, until the stale-window watchdog killed it
-- **status** — `partial` — reason: reproduced the mechanism (a worker blocked in
-  synchronous FFI that `Worker.terminate()` cannot stop) in a child process
-  around the real `runBoundedEvolveTeardown`, not through a full `evolveDir`
-  with the native trainer; the observed hang with default options is pinned as
-  the control
+- **symptom** — `evolveDir` returned and the script ended, but the process
+  stayed alive until a stale-window watchdog killed it; the log showed
+  `teardown: 1 worker(s) could not be stopped` for a stuck discovery analysis.
+- **status** — `partial` — reason: the process-exit mechanism is reproduced in a
+  child process with a worker blocked in a C-library `sleep` declared with the
+  production flag; the real `analyze_parallel` and a full `evolveDir` with a
+  quarantined worker are not run, because the Rust library is not available here
+  and a full `evolveDir` child hung before teardown in the earlier attempt on
+  #4130.
 - **regression test** —
-  `test/creature/ProcessExitsAfterWedgedWorker.ts::process exits on its own after a wedged worker is quarantined when exitOnUnreclaimableWorkers is true`
+  `test/ErrorGuidedStructuralEvolution/AnalyzeParallelNonBlocking.ts::a worker blocked in the analyze_parallel FFI declaration does not keep the process alive after terminate (Issue #4126)`
 
 ## Acceptance Criteria
 
@@ -109,105 +131,117 @@ Backend/CLI change; no UI. Tests that verify it:
 - **partial** — Reproduce: a test where one scheduled training task blocks
   synchronously, past its deadline, gets quarantined, and `evolveDir` then
   returns. Assert that the hosting deno process exits within a bounded time —
-  evidence: `test/creature/ProcessExitsAfterWedgedWorker.ts`,
-  `test/creature/EvolveDirExitOnUnreclaimableWorkers.ts` — reviewer: partial —
-  reason: the real-process test (FFI-wedged worker, child exits by itself) calls
-  `runBoundedEvolveTeardown`; the `evolveDir` test uses a stubbed worker and a
-  fake exit. A full `evolveDir` in a child process with a wedged worker was
-  tried and hung before teardown, so it is not delivered
-- **met** — Fix in neat-ai so a quarantined/terminated worker or watchdog can't
-  pin the process. If a thread genuinely can't be reclaimed, `evolveDir` should
-  report it (e.g. `[evolveDir] teardown: N worker(s) could not be stopped`) so
-  callers can exit explicitly — evidence:
-  `src/creature/BoundedEvolveTeardown.ts`,
-  `src/workers/UnreclaimableWorkerExit.ts`, `src/workers/WorkerHandlerBase.ts`,
-  `test/creature/BoundedEvolveTeardown.ts`,
-  `test/workers/WorkerTaskCancellation.ts` — reviewer: met — reason: the report
-  is delivered and the opt-in exit is provided; the criterion allows reporting
-  so callers can exit, and a default `evolveDir` still hangs with a wedged
-  thread
-- **missing** — In GRQ, separately: the `EvolveApp`s can end with an explicit
-  `Deno.exit(0)` after cleanup — reviewer: missing — reason: lives in the GRQ
-  repository, out of scope here; documented as Option 2 in
-  `docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md`
+  evidence:
+  `test/ErrorGuidedStructuralEvolution/AnalyzeParallelNonBlocking.ts::a worker blocked in the analyze_parallel FFI declaration does not keep the process alive after terminate (Issue #4126)`,
+  `test/creature/ProcessExitsAfterWedgedWorker.ts` — reviewer: partial — reason:
+  the independent review counted the earlier PR's
+  `ProcessExitsAfterWedgedWorker.ts` as meeting it on Develop, and this PR adds
+  no `evolveDir`-level reproduction; the new test is a child-process check of
+  the `analyze_parallel` declaration with a C-library stand-in, not a scheduled
+  task through `evolveDir`; a full `evolveDir` with a wedged worker hung before
+  teardown when tried earlier.
+- **partial** — Fix in neat-ai so a quarantined/terminated worker or watchdog
+  can't pin the process. If a thread genuinely can't be reclaimed, `evolveDir`
+  should report it … so callers can exit explicitly — evidence:
+  `src/architecture/ErrorGuidedStructuralEvolution/RustDiscoveryLibrary.ts`
+  (`RUST_DISCOVERY_SYMBOLS`), `RustDiscoveryOperations.ts`,
+  `RustAnalysisCache.ts` — reviewer: partial — reason: the discovery pin seen on
+  7.1.3 is removed and its native analyses are queued so the non-blocking call
+  does not overlap them; the synchronous native trainer on a legacy engine can
+  still pin the process, and the report plus opt-in exit from the earlier PR
+  remain its only guard. The reviewer said no log shows a discovery task was
+  involved; `GRQ-3-sloth.log` at `9af82cc` does
+  (`Clearing stuck discoveries: d93116c6` directly before
+  `1 worker(s) could not be stopped`).
+- **missing** — In the downstream production application, the `EvolveApp`s can
+  end with an explicit `Deno.exit(0)` after cleanup — reviewer: missing —
+  reason: lives outside this repository.
 - **missing** — Closing evidence: a quoted fleet log showing a quarantine
   followed by the unit's `[phase] ✔ END industry-evolve` within a minute of
-  `Cleaned up .tmp/train` — reviewer: missing — reason: needs a release and a
-  fleet run
-- **unrequested** — `exitOnUnreclaimableWorkers` passed into `evolveEnv` and
-  `evolveRL` teardown and registered in `scripts/lib/optionAuditRollup.ts` —
-  reviewer: unrequested — reason: the option is a config field read by all three
-  teardown callers; it is documented as having no effect outside `evolveDir`
+  `Cleaned up .tmp/train` — reviewer: missing — reason: needs a release carrying
+  this change and a fleet run.
+- **unrequested** — the exported `RUST_DISCOVERY_SYMBOLS` constant and the
+  `await` added in about 12 existing tests — reviewer: unrequested — reason: the
+  constant is read by `loadRustLibrary` and by the new test; the test edits only
+  add `async`/`await` because `analyzeParallel` now returns a promise.
+
+- **unrequested** — this file replaces the archived summary of the earlier #4126
+  pull request (#4130, merged) at the same path — reviewer: unrequested —
+  reason: `pr-summary-4126.md` is the path this run must write; the earlier
+  record stays in git history, and its report and opt-in exit are unchanged.
 
 ## Standards Review
 
 <!-- vibe-standards-review inputs="diff+AGENTS.md+docs/ENGINEERING_PRINCIPLES.md+docs/DOC_STYLE.md" -->
 
-- **violation** — `couldNotBeStopped()` counted every task ever cancelled, so a
-  cancelled task answered later made a later unrelated quarantine report an
-  unstoppable worker, contradicting its doc comment — evidence:
-  `src/workers/WorkerHandlerBase.ts:330` — reason: fixed in this diff
-  (cancelled-and-unanswered task ids are tracked and a late reply clears the id)
-- **violation** — `test/creature/EvolveDirExitOnUnreclaimableWorkers.ts` read
-  `Date.now()` — evidence:
-  `test/creature/EvolveDirExitOnUnreclaimableWorkers.ts:44` — reason: fixed in
-  this diff (a fixed `NOW_MS` and injected `deps.now`)
-- **clean** — Australian English; no timing APIs read in unit tests (the
-  child-process test only uses a kill watchdog and binary assertions); logging
-  goes through `getLogger()`; typed `ValidationError`; no `@std/log`; no
-  named-but-absent tests; every added field has a production reader apart from
-  the test seams `exitGuard` and `workersUnreclaimable`, which no written rule
-  forbids
-
-## Verifier findings addressed
-
-- `couldNotBeStopped()` was decided only inside `quarantine()`; a task shed with
-  `cancelTask` at the deadline and then terminated by teardown was missed. It is
-  now computed live (`!healthy || terminateRequested`, with a cancelled task
-  still unanswered). Test: `cancelTask`, `terminate()`, then
-  `runBoundedEvolveTeardown` reports `workersUnreclaimable = 1`.
-- The `evolveDir` wiring now has a test (`deps.exitGuard` seam).
-- Mutation survivors: the listed `src/workers/UnreclaimableWorkerExit.ts`,
-  `src/config/NeatConfig.ts` and
-  `test/config/ExitOnUnreclaimableWorkersOption.ts` lines report "no test
-  imports this module", yet `test/workers/UnreclaimableWorkerExit.ts` and
-  `test/config/ExitOnUnreclaimableWorkersOption.ts` import and assert on them
-  (count and grace validation, default and pass-through). Added tests for the
-  async-`terminate()` branches, the zero-unreclaimable count, and the label,
-  count and exit wording of the teardown warning in
-  `test/creature/BoundedEvolveTeardown.ts`. The other survivors in
-  `scripts/lib/optionAuditRollup.ts` and `CreatureTraining.ts` (the other two
-  `exitOnUnreclaimableWorkers` mappings, `evolveEnv` and `evolveRL`) have no
-  effect today and are not tested: `src/creature/CreatureTraining.ts:1313` and
-  `:2053` exempt (untestable): neither entry point has a worker pool that
-  reports unstoppable workers.
+- **violation** — the C-library `sleep` stand-in is more lenient than the real
+  `analyze_parallel` and no contract source was named — evidence:
+  `test/ErrorGuidedStructuralEvolution/AnalyzeParallelNonBlocking.ts:1` —
+  reason: fixed in this diff (the header names the Deno FFI `nonblocking`
+  contract and says the real library is not available in CI)
+- **violation** — the `analyzeParallel` snippet stayed synchronous — evidence:
+  `docs/GPU_ACCELERATION.md:169` — reason: fixed in this diff (now awaited)
+- **violation** — the docs disagreed on whether the analysis can be cancelled —
+  evidence: `CHANGELOG.md:31` and
+  `docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md:34` — reason: fixed in this
+  diff (both now name the Rust deadline and `cancel_analysis_memory_pressure()`)
+- **clean** — Australian English; logging only through `getLogger()`; no timing
+  API read by an assertion (the kill watchdog bounds a hang); no
+  named-but-absent tests; no `@std/log`; no existing expected value changed.
 
 ## Test Plan
 
-- Added `test/creature/ProcessExitsAfterWedgedWorker.ts`,
-  `test/workers/UnreclaimableWorkerExit.ts`,
-  `test/config/ExitOnUnreclaimableWorkersOption.ts`; extended
-  `test/creature/BoundedEvolveTeardown.ts` and
-  `test/workers/WorkerTaskCancellation.ts` (including a cancel, late reply, then
-  quarantine case for the violation above, and cancel-then-terminate cases with
-  no quarantine); added `test/creature/EvolveDirExitOnUnreclaimableWorkers.ts`
-  and a test `deps.exitGuard` seam on `evolveDir`.
-- No assertion removed from an existing test. One expected value changed: the
-  pinned top-level option count in `test/scripts/AuditOptionUsage.ts` went from
-  119 to 120 for the new `exitOnUnreclaimableWorkers` key. That test still fails
-  if the key set drifts again.
-- Related docs updated: `docs/config/WORKERS.md`,
-  `docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md`, `docs/TROUBLESHOOTING.md`,
-  `docs/README.md`, `CHANGELOG.md`. Twinned rule: the option audit list
-  `scripts/lib/optionAuditRollup.ts` lists the new option; no other copy was
-  found.
-- Red check for the late-reply fix: with the late-reply clear removed from
-  `handleCallback`,
-  `couldNotBeStopped is false when a cancelled task was
-  answered late and a later quarantine is unrelated (Issue #4126)`
-  fails; restored afterwards.
-- `./quality.sh --skip-discovery --rust-scorer-bin=<built rust_scorer>` on the
-  final head: `ok | 10134 passed (5 steps) | 0 failed | 41 ignored`. The
-  discovery library step was skipped because it could not be installed in this
-  container (`Discovery library file not found`); this change does not touch
-  discovery.
+- `test/ErrorGuidedStructuralEvolution/AnalyzeParallelSerialised.ts::cleanup defers shared library close until another discovery finishes (Issue #4126)`
+  covers two discovery instances sharing the library lifetime. The obsolete
+  behaviour closed the shared handle during another instance's analysis; the
+  remaining behaviour defers closure until that analysis settles. The test
+  failed with immediate closure and passes with the lifetime guard.
+- `test/ErrorGuidedStructuralEvolution/AnalyzeParallelSerialised.ts::cleanup preserves the discovery directory until queued analyses settle (Issue #4126)`
+  holds an asynchronous analysis open during cleanup and checks that removal
+  waits until it settles. Before the fix, cleanup disposed the creature while
+  the analysis still needed it and the test failed; after the fix it passes.
+- Added `test/ErrorGuidedStructuralEvolution/AnalyzeParallelNonBlocking.ts` (4
+  tests): the process-exit test, a control with a blocking declaration (the
+  child is still running after its last statement), and two
+  `ensureRustCombinedAnalysis` cases with an asynchronous `analyzeParallel`
+  double (a success, and a failure whose reason `boom` must be logged).
+- Red checks: `analyze_parallel` set to `nonblocking: false` in the type and in
+  `RUST_DISCOVERY_SYMBOLS` → the process-exit test failed
+  (`child did not exit within 30000 ms`), the control and the two analysis tests
+  stayed green; restored. The `await` before `deps.analyzeParallel(` removed → a
+  type error under `deno test`, and with `--no-check` both analysis tests failed
+  (`analysis did not return a result` instead of `boom`); restored.
+- Added `test/ErrorGuidedStructuralEvolution/AnalyzeParallelSerialised.ts` (5
+  tests, all through `DiscoverStructure` with an asynchronous `analyzeParallel`
+  double): each of `analyzeSelectedNeurons`, `analyzeMissingNeurons` and
+  `analyzeSelectedNeuronsForRemoval` returns the candidate of the awaited
+  analysis (the three `await this.ensureRustCombinedAnalysis` mutants, which
+  leave the cache empty and the result `undefined`); a `Promise.all` fan-out of
+  the three reaches the double at most once at a time and the removal analysis
+  is served from the cache (the verifier's overlap finding); a failed analysis
+  does not stop the queued one. Red check: the queue replaced by an immediately
+  resolved promise → the fan-out test failed and the failure-isolation test
+  errored; restored.
+- Added to `AnalyzeParallelNonBlocking.ts` a case that pins the whole
+  `RUST_DISCOVERY_SYMBOLS` table (parameters, result and `nonblocking` per
+  symbol). It is the FFI declaration `Deno.dlopen` receives and the real library
+  is not available to exercise it; it covers the `RustDiscoveryLibrary.ts`
+  property mutants.
+- Edited existing tests (`test/ErrorGuidedStructuralEvolution/`
+  AnalysisCacheRelease, AnalysisFocusNeuronErrorShares,
+  AnalysisMemoryBudgetWiring, AnalyzeParallelGpuGuard, AnalyzeParallelWireShape,
+  DeprecatedFocusNeuronErrorShares, DiscoveryTaskDescriptor,
+  NeuronDiscoveryIntegration, RustAnalysisCacheGpuGuard; `test/discovery/`
+  CpuOnlyDiscoveryIntegration, CrossPlatformGpuSupport;
+  `test/docs/GpuAccelerationDoc.ts`) only gained `async`/`await`. No assertion
+  was removed or changed.
+- Callers checked for the new async result: `ensureRustCombinedAnalysis` and
+  `collectRustAnalysisCandidates` (methods) are awaited in
+  `analyzeSelectedNeurons`, `analyzeMissingNeurons`,
+  `analyzeSelectedNeuronsForRemoval` and `runAnalysisLoop`; the pure
+  `collectRustAnalysisCandidates` in `DiscoverAnalysis.ts` stays synchronous.
+- Not run: the real `analyze_parallel` against NEAT-AI-Discovery (library and
+  GPU not present), the full `./quality.sh` test stage (over this runner's
+  10-minute command limit) and the mutation tool itself. The listed survivors
+  were each given a test that goes red for them (see above).
+- <!-- vibe-quality-gate-skipped reason="the full ./quality.sh takes about 15 minutes, longer than this runner's 10-minute foreground command limit; format, lint and type-check ran via ./quality.sh --skip-tests, and the affected test directories were run directly; CI runs the full gate" -->

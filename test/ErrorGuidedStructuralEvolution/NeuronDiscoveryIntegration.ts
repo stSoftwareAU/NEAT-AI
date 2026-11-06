@@ -449,7 +449,7 @@ Deno.test({
       const output1Id = runtimeIdForUuid(crippledCreature, "output-1");
 
       // This is what DiscoverDirectory uses in production
-      const bundle = discoverStructure.collectRustAnalysisCandidates(
+      const bundle = await discoverStructure.collectRustAnalysisCandidates(
         [output0Id, output1Id],
       );
 

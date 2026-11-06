@@ -72,7 +72,7 @@ export function readRustCombinedAnalysis(
 /**
  * Calls Rust `analyzeParallel` if cache miss, returns the result and new cache entry.
  */
-export function ensureRustCombinedAnalysis(
+export async function ensureRustCombinedAnalysis(
   creature: Creature,
   parquetFilePath: string | null,
   deps: DiscoverStructureDeps,
@@ -106,10 +106,10 @@ export function ensureRustCombinedAnalysis(
    * reads an absent field as "no budget", so sending `0` would be wrong.
    */
   maxAnalysisMemoryMb?: number,
-): {
+): Promise<{
   result: RustAnalyzeAllResult | undefined;
   cache: CombinedAnalysisCache | undefined;
-} {
+}> {
   if (!parquetFilePath || !deps.isRustDiscoveryEnabled()) {
     return { result: undefined, cache };
   }
@@ -148,10 +148,10 @@ export function ensureRustCombinedAnalysis(
   }
 
   // Issue #2501: when a per-chunk deadline is supplied, give Rust the tighter
-  // of the two so the synchronous FFI call self-aborts close to the per-chunk
-  // budget instead of running for the full analysis window. JS cannot
-  // interrupt the blocking FFI, so the Rust-side deadline is the only path
-  // to bound a single chunk's wall-clock.
+  // of the two so the FFI call self-aborts close to the per-chunk budget
+  // instead of running for the full analysis window. JS cannot cancel the
+  // native work itself, so the Rust-side deadline is the only path to bound
+  // a single chunk's wall-clock.
   const effectiveDeadlineMs = chunkDeadlineMs !== undefined &&
       Number.isFinite(chunkDeadlineMs)
     ? (analysisDeadlineMs !== undefined && Number.isFinite(analysisDeadlineMs)
@@ -172,8 +172,8 @@ export function ensureRustCombinedAnalysis(
     analysisDeadlineMs: effectiveDeadlineMs,
     // Issue #3432: hand Rust an explicit analysis memory budget. Without it
     // Discovery runs with no budget at all and the resident set can grow until
-    // the host OOMs; JS cannot police this because `analyze_parallel` blocks
-    // the isolate for its whole duration.
+    // the host OOMs; JS cannot police this because it cannot cancel the native
+    // `analyze_parallel` work once it is running.
     ...(maxAnalysisMemoryMb !== undefined && maxAnalysisMemoryMb > 0
       ? { maxAnalysisMemoryMb: Math.floor(maxAnalysisMemoryMb) }
       : {}),
@@ -190,7 +190,7 @@ export function ensureRustCombinedAnalysis(
       : {}),
   };
 
-  const parallelResult = deps.analyzeParallel(parallelInput);
+  const parallelResult = await deps.analyzeParallel(parallelInput);
   if (!parallelResult || !parallelResult.success) {
     const reason = parallelResult?.error ??
       "analysis did not return a result";

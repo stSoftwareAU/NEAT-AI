@@ -599,10 +599,10 @@ export async function runAnalysisLoop(
       }
       const chunkStart = now();
       // Issue #2501: tighten the deadline forwarded to Rust per chunk so a
-      // single synchronous FFI call cannot burn far more than its budget.
-      // JS cannot interrupt the blocking FFI; the Rust-side deadline is the
-      // only mechanism that actually bounds a chunk's wall-clock. We add a
-      // small grace so well-behaved chunks finish without being clipped.
+      // single FFI call cannot burn far more than its budget. JS cannot cancel
+      // the native work, so the Rust-side deadline is the only mechanism that
+      // actually bounds a chunk's wall-clock. We add a small grace so
+      // well-behaved chunks finish without being clipped.
       const chunkGraceMs = Math.max(
         0,
         ctx.perChunkGraceMs ?? DEFAULT_PER_CHUNK_GRACE_MS,
@@ -610,7 +610,10 @@ export async function runAnalysisLoop(
       const chunkDeadlineMs = ctx.perChunkMaxMs > 0
         ? chunkStart + ctx.perChunkMaxMs + chunkGraceMs
         : undefined;
-      const combinedResult = discoverStructure.ensureRustCombinedAnalysis(
+      // Chunks run strictly in order: each chunk's analysis must finish before
+      // the next one starts, so this await is intentionally sequential.
+      // deno-lint-ignore no-await-in-loop
+      const combinedResult = await discoverStructure.ensureRustCombinedAnalysis(
         chunk,
         true, // includeSynapse
         true, // includeNeuron
@@ -646,9 +649,12 @@ export async function runAnalysisLoop(
       let candidateSquashes: CandidateSquash[] | undefined;
 
       const parallelStartTime = now();
-      const candidateBundle = discoverStructure.collectRustAnalysisCandidates(
-        chunk,
-      );
+      // Sequential per chunk, as above.
+      // deno-lint-ignore no-await-in-loop
+      const candidateBundle = await discoverStructure
+        .collectRustAnalysisCandidates(
+          chunk,
+        );
       const candidateCollectionTime = now() - parallelStartTime;
 
       if (candidateBundle) {
@@ -730,9 +736,9 @@ export async function runAnalysisLoop(
           runParallelAnalysis;
         // Race the parallel analysis against the per-chunk budget so a
         // hung driver cannot burn the whole analysis cycle. This gives up
-        // on the in-flight Promise but does not interrupt any synchronous
-        // Rust FFI already executing — the JS event loop is blocked until
-        // the FFI returns. The race is a structural defence for async
+        // on the in-flight Promise but does not cancel any native Rust work
+        // already executing — JS cannot interrupt it, though the event loop
+        // stays free (Issue #4126). The race is a structural defence for async
         // drivers (and for tests) and ensures we stop submitting further
         // chunks even when the stall guard below can't observe the chunk
         // (Issue #2420).

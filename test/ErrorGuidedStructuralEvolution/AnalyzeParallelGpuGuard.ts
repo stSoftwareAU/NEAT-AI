@@ -49,12 +49,12 @@ Deno.test({
     "analyzeParallel returns graceful failure when library available but GPU unavailable",
   ignore: !isRustLibraryAvailable() || isRustGpuAvailable(),
   sanitizeResources: false,
-  fn: () => {
+  fn: async () => {
     // When the library is loaded but no GPU is detected, calling
     // analyzeParallel with requireGpu unset (defaults to requiring GPU)
     // should return a failure result without calling into Rust FFI.
     const input = buildStubInput();
-    const result = analyzeParallel(input);
+    const result = await analyzeParallel(input);
 
     assertEquals(result?.success, false);
     assertEquals(
@@ -75,12 +75,12 @@ Deno.test({
   name: "analyzeParallel proceeds when requireGpu is false even without GPU",
   ignore: !isRustLibraryAvailable(),
   sanitizeResources: false,
-  fn: () => {
+  fn: async () => {
     // When requireGpu is explicitly false, the guard should not block the call.
     // The call may still fail for other reasons (e.g. invalid parquet file),
     // but it should NOT fail with "GPU adapter not available".
     const input = buildStubInput({ requireGpu: false });
-    const result = analyzeParallel(input);
+    const result = await analyzeParallel(input);
 
     if (result !== null && !result.success) {
       // If it failed, it should NOT be because of the GPU guard
@@ -99,7 +99,7 @@ Deno.test({
     "analyzeParallel with requireGpu=false returns structured Rust error when GPU unavailable (Issue #2116)",
   ignore: !isRustLibraryAvailable() || isRustGpuAvailable(),
   sanitizeResources: false,
-  fn: () => {
+  fn: async () => {
     // Issue #2116: When requireGpu is false and GPU is unavailable, the Rust
     // FFI layer should return a structured error classifying the failure as
     // permanently GPU-related instead of panicking via assert!.
@@ -107,7 +107,7 @@ Deno.test({
     // Issue #3892: the classification arrives in Discovery's snake_case wire
     // spelling — `gpu_permanent`, not the Rust variant name `GpuPermanent`.
     const input = buildStubInput({ requireGpu: false });
-    const result = analyzeParallel(input);
+    const result = await analyzeParallel(input);
 
     // The TypeScript guard allows this through (requireGpu === false),
     // so the call reaches the Rust layer which returns a structured error.
@@ -134,9 +134,9 @@ Deno.test({
 Deno.test({
   name: "analyzeParallel returns null when library is unavailable",
   ignore: isRustLibraryAvailable(),
-  fn: () => {
+  fn: async () => {
     const input = buildStubInput();
-    const result = analyzeParallel(input);
+    const result = await analyzeParallel(input);
     assertEquals(
       result,
       null,

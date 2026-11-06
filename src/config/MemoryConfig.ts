@@ -132,9 +132,9 @@ export interface MemoryConfig {
    * issue, and a contributor to the RSS spikes seen on discovery-heavy
    * `evolveDir` runs.
    *
-   * The host cannot police this from TypeScript: `analyze_parallel` is a
-   * blocking FFI call, so no JS timer or heap sample runs while Rust is
-   * allocating. The budget is the only in-flight brake.
+   * The host cannot police this from TypeScript: JS cannot cancel the native
+   * `analyze_parallel` work once it is running, so the budget is the only
+   * in-flight brake.
    *
    * Defaults to 0, which means "do not send a budget" and preserves the
    * previous unbounded behaviour.

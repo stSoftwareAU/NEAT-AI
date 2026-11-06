@@ -147,7 +147,7 @@ Deno.test("releaseCombinedRustAnalysisCache clears the cached chunk result", asy
     )!.id;
 
     // Populate the cache.
-    const populated = structure.ensureRustCombinedAnalysis(
+    const populated = await structure.ensureRustCombinedAnalysis(
       [focusId],
       true,
       true,

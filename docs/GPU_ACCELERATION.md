@@ -162,11 +162,12 @@ const info: GpuBackendInfo = getGpuBackendInfo();
 ### Method 3: Check Return Values
 
 `analyzeParallel()` (`RustDiscoveryOperations.ts`) is the analysis entry point.
-It reports GPU usage on the **nested** synapse and neuron branches of the
-converted result, not at the top level:
+It is asynchronous and returns a Promise, so await it before converting the
+result. It reports GPU usage on the **nested** synapse and neuron branches of
+the converted result, not at the top level:
 
 ```typescript
-const converted = convertParallelAnalysisResult(analyzeParallel(input));
+const converted = convertParallelAnalysisResult(await analyzeParallel(input));
 console.info(
   `synapse GPU: ${converted.synapse?.gpuUsed}, neuron GPU: ${converted.neuron?.gpuUsed}`,
 );
