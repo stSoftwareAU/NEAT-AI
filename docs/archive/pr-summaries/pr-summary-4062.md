@@ -14,8 +14,8 @@ that carries both, and say plainly what is still open.
 Two things remain open: the producing path on GRQ-21 is still not identified,
 and the log window is about 5 days of the 7 the issue asks for.
 
-Version bump: `deno.json` carries patch version 7.1.6, following Develop's
-7.1.5; the merged commit records the final version.
+Version bump: `deno.json` updated for this change; the merged commit records the
+final version.
 
 ## Spec
 
