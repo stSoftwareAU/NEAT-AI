@@ -26,6 +26,7 @@ import {
 import { trainDir } from "@architecture/Training.ts";
 import {
   __resetNativeDeadlineDiagnosticsForTests,
+  __setFinalisationNowForTests,
   __setRustTrainDirEnabledForTests,
   cliDeadlineCapable,
 } from "@architecture/training/RustTrainDirBridge.ts";
@@ -37,6 +38,7 @@ import {
 import { prepareTraining } from "@architecture/training/TrainingSetup.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
+import { TRAINING_TASK_WATCHDOG_GRACE_MS } from "@neat/PerTaskTrainingTimeout.ts";
 
 const FIXTURE_DIR = new URL("../../fixtures/native-backprop/", import.meta.url);
 
@@ -56,6 +58,44 @@ const INPUT_CREATURE_JSON = (JSON.parse(EXPIRED_RESPONSE) as {
 
 /** A fixed far-future instant (2100-01-01T00:00:00Z). No clock is read. */
 const HARD_DEADLINE_TS = 4_102_444_800_000;
+
+for (const spent of [false, true]) {
+  Deno.test(`Rust trainDir deadline: finalisation window ${spent ? "spent" : "open"}`, () => {
+    const json = JSON.parse(INPUT_CREATURE_JSON);
+    const hidden = json.neurons.find((n: { type: string }) =>
+      n.type === "hidden"
+    );
+    hidden.squash = "IDENTITY";
+    hidden.bias = 0;
+    const creature = Creature.fromJSON(json);
+    const dataDir = makeSingleDataDir(creature);
+    const payload = withChanges(EXPIRED_RESPONSE, {
+      bestCreatureJson: JSON.stringify(json),
+    });
+    try {
+      __setFinalisationNowForTests(() =>
+        HARD_DEADLINE_TS + (spent ? TRAINING_TASK_WATCHDOG_GRACE_MS + 1 : 0)
+      );
+      const { result, warnings } = captureWarnings(() =>
+        withNativeLibrary(
+          makeDouble({ capabilities: CAPABILITIES, payload, received: [] }),
+          () => trainWith(creature, dataDir),
+        )
+      );
+      assertEquals(result.timedOut, true);
+      assertEquals(result.compact === undefined, spent);
+      assertEquals(
+        warnings.filter((w) =>
+          w.includes("native adapter finalisation passed the watchdog window")
+        ).length,
+        spent ? 1 : 0,
+      );
+    } finally {
+      __setFinalisationNowForTests();
+      Deno.removeSync(dataDir, { recursive: true });
+    }
+  });
+}
 
 /** Shallow-override fields of a JSON fixture and re-serialise it. */
 function withChanges(fixture: string, change: Record<string, unknown>): string {
@@ -723,6 +763,110 @@ RESULT
     },
   });
 }
+
+// The legacy CLI `train` contract: the argument list and output directory a
+// real legacy `neat_ai_backpropagation train` (f444bc4 / v0.1.49) was given and
+// wrote, replayed by a fake CLI. See test/fixtures/native-backprop/README.md.
+Deno.test(
+  "Rust trainDir deadline: a legacy CLI train run gets no deadline flag, runs as before and is warned" +
+    POSIX_SUFFIX,
+  POSIX_ONLY,
+  () => {
+    const fixtures = fromFileUrl(
+      new URL(
+        "../../fixtures/native-backprop/cli-train-legacy/",
+        import.meta.url,
+      ),
+    );
+    const dir = Deno.makeTempDirSync({ prefix: "legacy-cli-train-" });
+    try {
+      const binary = join(dir, "neat_ai_backpropagation");
+      const argv = join(dir, "argv");
+      const invalidLib = join(dir, "invalid-lib");
+      Deno.writeTextFileSync(invalidLib, "not a library");
+      Deno.writeTextFileSync(
+        binary,
+        `#!/bin/sh
+if [ "$1" = capabilities ]; then
+  cat >&2 <<'EOF'
+${LEGACY_CLI_STDERR}EOF
+  exit 2
+fi
+printf '%s\n' "$@" > "$FAKE_ARGV"
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = --output-dir ]; then shift; output="$1"; fi
+  shift
+done
+cp "${fixtures}best.json" "${fixtures}journal.jsonl" "$output/"
+`,
+      );
+      Deno.chmodSync(binary, 0o755);
+      const root = fromFileUrl(new URL("../../../", import.meta.url));
+      const child = new Deno.Command(Deno.execPath(), {
+        args: [
+          "run",
+          "-A",
+          "--config",
+          join(root, "deno.json"),
+          "--preload",
+          join(root, "test/_preload.ts"),
+          join(
+            root,
+            "test/architecture/training/fixtures/CliLegacyTrainDriver.ts",
+          ),
+        ],
+        cwd: dir,
+        env: {
+          NEAT_AI_BACKPROP_ENABLED: "1",
+          NEAT_AI_BACKPROP_REQUIRE_FFI: "0",
+          NEAT_AI_BACKPROP_LIB_PATH: invalidLib,
+          NEAT_AI_BACKPROP_BINARY_PATH: binary,
+          FAKE_ARGV: argv,
+        },
+        stdout: "piped",
+        stderr: "piped",
+      }).outputSync();
+      assert(child.success, new TextDecoder().decode(child.stderr));
+      const lines = new TextDecoder().decode(child.stdout).trim().split("\n");
+      const observed = JSON.parse(lines[lines.length - 1]) as {
+        error: number | null;
+        iteration: number;
+        timedOut: boolean | null;
+        bestMeasure: string | null;
+        weightsChanged: boolean;
+        warnings: string[];
+      };
+
+      // Prior execution behaviour: the arguments are the captured real ones,
+      // with the per-run paths replaced, and nothing more.
+      const sent = Deno.readTextFileSync(argv).trimEnd().split("\n");
+      assert(
+        !sent.includes("--deadline-epoch-ms"),
+        "a legacy CLI must not receive --deadline-epoch-ms",
+      );
+      const flagsOf = (args: string[]) =>
+        args.filter((arg) => arg.startsWith("--") || arg === "train");
+      const captured = Deno.readTextFileSync(`${fixtures}argv.txt`).trimEnd()
+        .split("\n");
+      assertEquals(flagsOf(sent), flagsOf(captured));
+
+      // The result comes from the journal and best.json, as before.
+      assertEquals(observed.timedOut, null);
+      assertEquals(observed.bestMeasure, null);
+      assertEquals(observed.iteration, 3);
+      assertEquals(observed.error, 0.3834493141684288);
+      assertEquals(observed.weightsChanged, true);
+
+      const warnings = observed.warnings.filter((message) =>
+        message.includes("does not advertise the native deadline capability")
+      );
+      assertEquals(warnings.length, 1);
+      assertStringIncludes(warnings[0], "NOT enforced natively");
+    } finally {
+      Deno.removeSync(dir, { recursive: true });
+    }
+  },
+);
 
 // --- (f) prepareTraining computes the one timeout ---------------------------
 

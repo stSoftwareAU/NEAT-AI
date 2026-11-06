@@ -1,0 +1,18 @@
+{
+  "semanticVersion": "4.0.0",
+  "forwardOnly": true,
+  "neurons": [
+    { "type": "hidden", "uuid": "h0", "bias": 0, "squash": "IDENTITY" },
+    { "type": "hidden", "uuid": "h1", "bias": 0, "squash": "IDENTITY" },
+    { "type": "hidden", "uuid": "h2", "bias": 0, "squash": "IDENTITY" },
+    { "type": "output", "uuid": "output-0", "bias": 0, "squash": "IDENTITY" }
+  ],
+  "synapses": [
+    { "weight": 1, "fromUUID": "input-0", "toUUID": "h0" },
+    { "weight": 1, "fromUUID": "h0", "toUUID": "h1" },
+    { "weight": 1, "fromUUID": "h1", "toUUID": "h2" },
+    { "weight": 1, "fromUUID": "h2", "toUUID": "output-0" }
+  ],
+  "input": 1,
+  "output": 1
+}

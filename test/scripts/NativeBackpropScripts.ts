@@ -121,6 +121,7 @@ Deno.test("probe: every scenario forces the adapter its name says", () => {
     "legacy-ffi": "ffi",
     "legacy-cli": "cli",
     "worker-productive": "ffi",
+    "scheduler-productive": "ffi",
   });
 });
 
