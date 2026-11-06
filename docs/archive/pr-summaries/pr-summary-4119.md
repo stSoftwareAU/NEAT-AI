@@ -10,10 +10,12 @@ this change; the merged commit records the final version.
 
 Follow-up round: a new `.github/workflows/native-backprop.yml` job builds the
 pinned NEW and LEGACY engines and runs the real-engine cases with
-`NEAT_AI_BACKPROP_REQUIRE_FFI=1`, and the real engines were re-run against the
-current head. Part of #4119: the scheduler is still not driven through a real
-native engine, finalisation that starts inside the window is not interrupted,
-and `./quality.sh` could not run here.
+`NEAT_AI_BACKPROP_REQUIRE_FFI=1` (a missing NEW engine fails) and
+`NEAT_AI_BACKPROP_REQUIRE_LEGACY=1` (a missing or mis-detected LEGACY engine
+fails), and the real engines were re-run against the current head. Part of
+#4119: the scheduler is still not driven through a real native engine,
+finalisation that starts inside the window is not interrupted, and
+`./quality.sh` could not run here.
 
 ```mermaid
 flowchart TD
@@ -147,8 +149,11 @@ quarantine (existing doc page linked, not changed in behaviour).
   `.github/workflows/native-backprop.yml` job set
   `NEAT_AI_BACKPROP_REQUIRE_FFI=1` and check the library with
   `scripts/check_native_backprop_train.ts` first, so a missing engine fails
-  rather than being ignored. The job's build and test commands were run locally
-  on this head (51 passed, 0 failed); the job itself has not yet run on GitHub.
+  rather than being ignored; the same job sets
+  `NEAT_AI_BACKPROP_REQUIRE_LEGACY=1`, so a missing or mis-detected LEGACY
+  engine fails its cases too. The job's build and test commands were run locally
+  on this head with both engines rebuilt from the pinned commits (51 passed, 0
+  failed); the job itself has not yet run on GitHub.
 - **partial** — The scheduled-worker integration path settles by its original
   deadline plus 30 seconds, including adapter finalisation; returned weights
   reach existing result evaluation without timeout-driven
@@ -181,7 +186,10 @@ quarantine (existing doc page linked, not changed in behaviour).
   the CLI probe cases in `RustTrainDirDeadline.ts` — reviewer: partial — reason:
   the legacy CLI probe is covered by shell-script fakes copied byte for byte
   from the real legacy CLI, and the full legacy CLI run only by the engine-gated
-  integration case; no legacy CLI train fixture was captured.
+  integration case; no legacy CLI train fixture was captured. The legacy
+  integration cases can no longer be skipped silently in CI:
+  `NEAT_AI_BACKPROP_REQUIRE_LEGACY=1` turns an absent or mis-detected LEGACY
+  engine into a failing case.
 - **met** — A backend advertising deadline support must supply its required
   result metadata; malformed responses and genuine native errors fail
   explicitly. No silent TypeScript/WASM fallback is added. — evidence:
@@ -344,6 +352,23 @@ built from those two commits and run on this head:
 `NativeDeadlineIntegration.ts`, `NativeBackpropCapabilities.ts`,
 `RustTrainDirDeadline.ts`: `ok | 51 passed | 0 failed`. `test/ci/*.ts`:
 `ok | 389 passed | 0 failed`. `actionlint` clean on the new workflow.
+
+Verifier follow-up (legacy cases could be ignored under `REQUIRE_FFI=1`):
+`NativeDeadlineIntegration.ts` now fails a LEGACY case when
+`NEAT_AI_BACKPROP_REQUIRE_LEGACY=1` and the LEGACY engine is missing or its
+capability probe is not `no-deadline`; the workflow's test step sets it and
+`test/ci/NativeBackpropWorkflow.ts::native-backprop.yml test step requires the
+LEGACY engine`
+pins it. It is a separate variable from `REQUIRE_FFI` so that
+`./quality.sh --next`, which sets only `REQUIRE_FFI=1` and has no legacy engine,
+keeps working. Red-checks: with the variable set and no LEGACY directory both
+legacy cases failed with "native deadline prerequisite missing (LEGACY engine)";
+with the workflow line removed the new workflow case failed (6 passed, 1
+failed); both restored. With both engines rebuilt from the pinned commits and
+`REQUIRE_FFI=1 REQUIRE_LEGACY=1`: `NativeDeadlineIntegration.ts`,
+`NativeBackpropCapabilities.ts`, `RustTrainDirDeadline.ts`:
+`ok | 51 passed | 0 failed`; `test/ci/NativeBackpropWorkflow.ts`:
+`ok | 7 passed | 0 failed`. `deno fmt` and `deno lint` clean.
 
 Not done: the new workflow has not yet run on GitHub; the scheduler is not
 driven through a real native engine; finalisation that starts inside the window

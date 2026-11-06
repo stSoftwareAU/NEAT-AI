@@ -9,8 +9,9 @@ name: Native backprop deadline
 #   NEW    - advertises the `deadline` capability (v0.1.50)
 #   LEGACY - predates it (v0.1.49), proving older engines keep working
 #
-# The tests run with NEAT_AI_BACKPROP_REQUIRE_FFI=1, so a missing or unloadable
-# engine fails the job instead of skipping the cases. Fixtures under
+# The tests run with NEAT_AI_BACKPROP_REQUIRE_FFI=1 and
+# NEAT_AI_BACKPROP_REQUIRE_LEGACY=1, so a missing, unloadable or mis-detected
+# NEW or LEGACY engine fails the job instead of skipping the cases. Fixtures under
 # test/fixtures/native-backprop/ come from these same two commits; move the pins
 # and the fixtures together.
 
@@ -93,6 +94,7 @@ jobs:
       - name: Run the native deadline tests against the real engines
         env:
           NEAT_AI_BACKPROP_REQUIRE_FFI: "1"
+          NEAT_AI_BACKPROP_REQUIRE_LEGACY: "1"
         run: |
           set -euo pipefail
           timeout 1200 deno test -A \

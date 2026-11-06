@@ -63,6 +63,18 @@ Deno.test(
 );
 
 Deno.test(
+  "native-backprop.yml test step requires the LEGACY engine (NEAT_AI_BACKPROP_REQUIRE_LEGACY=1)",
+  async () => {
+    const step = findStep(findJob(await loadWorkflow()), TEST_STEP);
+    assertEquals(
+      step.env?.NEAT_AI_BACKPROP_REQUIRE_LEGACY,
+      "1",
+      "a missing or mis-detected legacy engine must fail the job, not skip the legacy cases",
+    );
+  },
+);
+
+Deno.test(
   "native-backprop.yml test step runs the three native deadline test files",
   async () => {
     const step = findStep(findJob(await loadWorkflow()), TEST_STEP);
