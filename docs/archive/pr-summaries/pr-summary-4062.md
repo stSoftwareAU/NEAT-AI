@@ -166,6 +166,13 @@ explicitly prohibits delegation. No reviewer provenance marker is claimed.
 
 ## Test Plan
 
+- `timeout 900 ./quality.sh --rust-scorer-bin=/var/tmp/vibe-cargo-target/NEAT-AI-5d15f9f9/release/rust_scorer < /dev/null`
+  — passed; 10,296 passed, 0 failed, 50 ignored. Discovery verification was
+  skipped because the sibling NEAT-AI-Discovery checkout was unavailable. The
+  first gate attempt found this summary's private-repository references; those
+  were reworded, and this full rerun passed.
+- `deno test -A test/docs/ArchiveDocsNoPrivateRepoSlugs.ts < /dev/null` —
+  passed, 1 passed / 0 failed.
 - `timeout 180 deno test -A test/creature/CheckpointWriteDanglingMemetic_test.ts test/NEAT/EvolveAbandonedAfterFitness.ts < /dev/null`
   — passed, 15 passed / 0 failed.
 - `timeout 180 deno test -A test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts < /dev/null`
@@ -177,4 +184,5 @@ explicitly prohibits delegation. No reviewer provenance marker is claimed.
 
 Skipped or unverified: a full week of continuous sampler coverage, GRQ-21 and
 its original checkpoint, the production producer, and independent Spec and
-Standards reviews.
+Standards reviews. Discovery-library verification was also skipped by the
+quality gate because its sibling checkout was unavailable.
