@@ -3,10 +3,10 @@
 ## Summary
 
 Updated the #4062 evidence record against the current `Develop` code and the
-complete available GRQ-logs history for the requested week. The writer and
-load-time protections are already merged. The original GRQ-21 producer remains
-unidentified, and the archive has sampler-activity gaps, so this is Part of
-#4062.
+complete available private log archive history for the requested week. The
+writer and load-time protections are already merged. The original GRQ-21
+producer remains unidentified, and the archive has sampler-activity gaps, so
+this is Part of #4062.
 
 Version bump: none; this documentation-only update changes no version.
 
@@ -27,8 +27,8 @@ Version bump: none; this documentation-only update changes no version.
 
 ### Undiscoverable Facts
 
-- The GRQ-logs `Develop` archive is private and keeps rotating snapshots. Its
-  current head is `0e6caba2fa580a4793b9b238a6386837d294c7e5`.
+- The private `Develop` log archive keeps rotating snapshots. Its current head
+  is `0e6caba2fa580a4793b9b238a6386837d294c7e5`.
 - `.creatures/10.json` is not in that repository's history. Read-only SSH
   retrieval was attempted; the host could not be resolved in this environment.
 
@@ -59,11 +59,10 @@ The checkpoint test that does produce a dangling reference uses a real
 `SubConnection` mutation injected between writer batches; it is not the
 production generation producer.
 
-**GRQ-logs search.** Retrieved with
-`gh repo clone stSoftwareAU/GRQ-logs /tmp/grq-logs-4062`. The archive head was
-`0e6caba2fa580a4793b9b238a6386837d294c7e5`. The requested window was
-`2026-11-01T09:05:00Z` through `2026-11-08T09:05:00Z`; 2,202 archive commits
-fall in that range. The first and last in-window snapshot commits were
+**Private log archive search.** Retrieved with the authenticated GitHub CLI. The
+archive head was `0e6caba2fa580a4793b9b238a6386837d294c7e5`. The requested
+window was `2026-11-01T09:05:00Z` through `2026-11-08T09:05:00Z`; 2,202 archive
+commits fall in that range. The first and last in-window snapshot commits were
 `0c1bbdf9dad383488501883efab481912b682254` at `2026-11-01T09:05:56Z` and
 `9524befc952c88ac4995a39f35fc53abdf3abb8e` at `2026-11-08T09:03:46Z`.
 
@@ -75,9 +74,9 @@ repair and prune phrases (zero matches):
 `9524befc952c88ac4995a39f35fc53abdf3abb8e`, and
 `dceca64ab7eaf49b1d26d719265995862bc67134`.
 
-- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'rule=ValidationError/MEMETIC|INVALID CREATURE|repairing an INVALID creature' --format='%H' -- '*.log'`
-- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'loadFrom.*Pruned .*dangling memetic' --format='%H' -- '*.log'`
-- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'CheckpointWriter.*Pruned .*dangling memetic' --format='%H' -- '*.log'`
+- `git -C /tmp/log-archive-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'rule=ValidationError/MEMETIC|INVALID CREATURE|repairing an INVALID creature' --format='%H' -- '*.log'`
+- `git -C /tmp/log-archive-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'loadFrom.*Pruned .*dangling memetic' --format='%H' -- '*.log'`
+- `git -C /tmp/log-archive-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'CheckpointWriter.*Pruned .*dangling memetic' --format='%H' -- '*.log'`
 
 Positive controls found 58 commits changing `option=sampler` lines and 44
 changing `copyNetworks:` lines. Sampler activity was present in these ten log
@@ -91,10 +90,10 @@ window. GRQ-21 is absent.
 
 The positive-control and version commands were:
 
-- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'option=sampler' --format='%H' -- '*.log'`
-- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'copyNetworks:' --format='%H' -- '*.log'`
-- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'option=sampler' --name-only --format= -- '*.log' | sort -u`
-- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -p -G 'running version 7\.1\.[0-9]+' -- '*.log' | grep -E '^[+-].*running version 7\.1\.[0-9]+' | sed 's/^[+-]//' | sort -u`
+- `git -C /tmp/log-archive-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'option=sampler' --format='%H' -- '*.log'`
+- `git -C /tmp/log-archive-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'copyNetworks:' --format='%H' -- '*.log'`
+- `git -C /tmp/log-archive-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'option=sampler' --name-only --format= -- '*.log' | sort -u`
+- `git -C /tmp/log-archive-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -p -G 'running version 7\.1\.[0-9]+' -- '*.log' | grep -E '^[+-].*running version 7\.1\.[0-9]+' | sed 's/^[+-]//' | sort -u`
 
 Distinct `[neat-ai] running version` banners in the in-window log history were
 7.1.2, 7.1.3, 7.1.4, 7.1.8, 7.1.10, 7.1.11 and 7.1.12. This is the set seen in
@@ -112,7 +111,7 @@ The original-file retrieval command was
 It failed with
 `ssh: Could not resolve hostname grq-21: Temporary failure in name resolution`.
 The archive path search
-`git -C /tmp/grq-logs-4062 log --all --format= --name-only -- '.creatures/10.json'`
+`git -C /tmp/log-archive-4062 log --all --format= --name-only -- '.creatures/10.json'`
 found no matching path.
 
 ## Reproduction
@@ -152,7 +151,7 @@ found no matching path.
   on its checkpoint files.
 - **partial** — Closing evidence: a week of downstream production logs from
   sampler hosts with no `rule=ValidationError/MEMETIC` repair lines, quoted with
-  the search used. — evidence: the GRQ-logs searches above found no repair,
+  the search used. — evidence: the archive searches above found no repair,
   `[loadFrom] Pruned`, or `[CheckpointWriter] Pruned` warning commits; sampler
   markers span 6 days, 20 hours, 5 minutes and 48 seconds across eight hosts,
   not the full week, and do not include GRQ-21 — reviewer: missing — reason:
@@ -175,8 +174,6 @@ explicitly prohibits delegation. No reviewer provenance marker is claimed.
   deadline-abandon teardown path; this test does not inspect memetic references.
 - No tests were added or edited. These runs exercise the existing writer
   boundary, fitness-abandon and controlled `evolveDir` paths.
-
-<!-- vibe-quality-gate-skipped reason="not yet run; planned once after this summary update" -->
 
 Skipped or unverified: a full week of continuous sampler coverage, GRQ-21 and
 its original checkpoint, the production producer, and independent Spec and
