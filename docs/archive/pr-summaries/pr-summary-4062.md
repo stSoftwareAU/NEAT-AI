@@ -61,6 +61,19 @@ A checkpoint test injects a real `SubConnection` mutation between writer
 batches; it does not reproduce a dangling reference or identify the production
 generation producer.
 
+**In-process synapse-removal audit (run on 2026-11-09).** To look for a producer
+other than the abandoned-generation path, every in-process site that removes a
+synapse without going through core's `prune_synapse` was read for memetic
+handling: `SubSelfCon`, `SubBackCon`, `SubNeuron` and `SwapNeurons` each
+`delete creature.memetic`; `CreatureTraining.applyLearnings` (the only caller of
+the `IF`/`MAXIMUM`/`MINIMUM` `applyLearnings` that calls `Creature.disconnect`)
+deletes `memetic` whenever it reports a structural change; and `Creature.fix`
+runs `pruneOrphanMemeticReferences` and drops `memetic` when the content hash
+moves. `Creature.disconnect` itself does not touch `memetic` or `uuid`, so a
+caller outside those sites is the only remaining candidate, and none was found.
+This narrows the search but does not identify the GRQ-21 producer, so criterion
+1 stays `missing`.
+
 **Private log archive search.** Retrieved with the authenticated GitHub CLI. The
 archive head was `0e6caba2fa580a4793b9b238a6386837d294c7e5`. The requested
 window was `2026-11-01T09:05:00Z` through `2026-11-08T09:05:00Z`; 2,202 archive
@@ -98,6 +111,17 @@ The positive-control and version commands were:
 Distinct `[neat-ai] running version` banners in the in-window log history were
 7.1.2, 7.1.3, 7.1.4, 7.1.8, 7.1.10, 7.1.11 and 7.1.12. This is the set seen in
 the archive, not a claim that every sampler host ran every version.
+
+**Post-window extension (run on 2026-11-09).** The same repair and prune
+patterns were searched from `2026-11-08T09:05:00Z` to the archive head
+`760850fd41babb1c6a8e4ad5aba567f6493f03ef` (`2026-11-09T02:08:27Z`):
+`git log --since='2026-11-08T09:05:00Z' -G 'rule=ValidationError/MEMETIC|repairing an INVALID creature|Pruned .*dangling memetic' --format='%H %aI' -- '*.log'`
+returned zero commits, with eight commits in the same range changing
+`option=sampler` lines as a positive control. The original 2026-10-13 repair
+line is no longer in the archive (the same search over
+`2026-10-13T00:00Z`–`02:00Z` returned zero commits), and no path mentioning
+GRQ-21 exists at the archive head, so the original producer and its file cannot
+be recovered from this source.
 
 The archive search is over snapshot diffs, including file rotations; it cannot
 prove that no log line existed between snapshots. The observed zero repair and
