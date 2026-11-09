@@ -99,6 +99,17 @@ Distinct `[neat-ai] running version` banners in the in-window log history were
 7.1.2, 7.1.3, 7.1.4, 7.1.8, 7.1.10, 7.1.11 and 7.1.12. This is the set seen in
 the archive, not a claim that every sampler host ran every version.
 
+**Post-window extension (run on 2026-11-09).** The same repair and prune
+patterns were searched from `2026-11-08T09:05:00Z` to the archive head
+`760850fd41babb1c6a8e4ad5aba567f6493f03ef` (`2026-11-09T02:08:27Z`):
+`git log --since='2026-11-08T09:05:00Z' -G 'rule=ValidationError/MEMETIC|repairing an INVALID creature|Pruned .*dangling memetic' --format='%H %aI' -- '*.log'`
+returned zero commits, with eight commits in the same range changing
+`option=sampler` lines as a positive control. The original 2026-10-13 repair
+line is no longer in the archive (the same search over
+`2026-10-13T00:00Z`–`02:00Z` returned zero commits), and no path mentioning
+GRQ-21 exists at the archive head, so the original producer and its file cannot
+be recovered from this source.
+
 The archive search is over snapshot diffs, including file rotations; it cannot
 prove that no log line existed between snapshots. The observed zero repair and
 prune warnings are further limited because PR #4131 prunes on load, which can
