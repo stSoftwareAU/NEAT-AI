@@ -61,6 +61,19 @@ A checkpoint test injects a real `SubConnection` mutation between writer
 batches; it does not reproduce a dangling reference or identify the production
 generation producer.
 
+**In-process synapse-removal audit (run on 2026-11-09).** To look for a producer
+other than the abandoned-generation path, every in-process site that removes a
+synapse without going through core's `prune_synapse` was read for memetic
+handling: `SubSelfCon`, `SubBackCon`, `SubNeuron` and `SwapNeurons` each
+`delete creature.memetic`; `CreatureTraining.applyLearnings` (the only caller of
+the `IF`/`MAXIMUM`/`MINIMUM` `applyLearnings` that calls `Creature.disconnect`)
+deletes `memetic` whenever it reports a structural change; and `Creature.fix`
+runs `pruneOrphanMemeticReferences` and drops `memetic` when the content hash
+moves. `Creature.disconnect` itself does not touch `memetic` or `uuid`, so a
+caller outside those sites is the only remaining candidate, and none was found.
+This narrows the search but does not identify the GRQ-21 producer, so criterion
+1 stays `missing`.
+
 **Private log archive search.** Retrieved with the authenticated GitHub CLI. The
 archive head was `0e6caba2fa580a4793b9b238a6386837d294c7e5`. The requested
 window was `2026-11-01T09:05:00Z` through `2026-11-08T09:05:00Z`; 2,202 archive
