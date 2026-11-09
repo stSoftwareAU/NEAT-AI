@@ -8,7 +8,8 @@ writer and load-time protections are already merged. The original GRQ-21
 producer remains unidentified, and the archive has sampler-activity gaps, so
 this is Part of #4062.
 
-Version bump: none; this documentation-only update changes no version.
+Version bump: `deno.json` updated for this change; the merged commit records the
+final version.
 
 ## Spec
 
@@ -34,7 +35,8 @@ Version bump: none; this documentation-only update changes no version.
 
 ## Evidence
 
-Backend and documentation-only. The current `Develop` tree already contains
+This change records evidence in documentation and includes a package version
+bump; it changes no production behaviour. The current `Develop` tree contains
 these merged changes:
 
 - PR #4064 (`d7c8f722`): `writeCreatures` prunes dangling memetic references
@@ -55,9 +57,9 @@ undisposed. `test/NEAT/EvolveAbandonedAfterFitness.ts` exercises the real
 `test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts` uses a held promise
 in the `evolveDir` path. The latter reached bounded teardown and the
 generation's mid-commit abandon guard. Neither test produces a dangling memetic.
-The checkpoint test that does produce a dangling reference uses a real
-`SubConnection` mutation injected between writer batches; it is not the
-production generation producer.
+A checkpoint test injects a real `SubConnection` mutation between writer
+batches; it does not reproduce a dangling reference or identify the production
+generation producer.
 
 **Private log archive search.** Retrieved with the authenticated GitHub CLI. The
 archive head was `0e6caba2fa580a4793b9b238a6386837d294c7e5`. The requested
@@ -79,8 +81,8 @@ repair and prune phrases (zero matches):
 - `git -C /tmp/log-archive-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'CheckpointWriter.*Pruned .*dangling memetic' --format='%H' -- '*.log'`
 
 Positive controls found 58 commits changing `option=sampler` lines and 44
-changing `copyNetworks:` lines. Sampler activity was present in these ten log
-files, covering eight sampler hosts. The first sampler marker was at
+changing `copyNetworks:` lines. Sampler activity was present in ten log files,
+covering eight sampler hosts. The first sampler marker was at
 `2026-11-01T12:52:11Z`; the last was at `2026-11-08T08:57:59Z`. Thus the
 positive-control markers span 6 days, 20 hours, 5 minutes and 48 seconds, with
 no marker in the first 3 hours 47 minutes or last 7 minutes of the target
@@ -183,8 +185,8 @@ found no matching path.
 - **clean** — Australian English; the NEAT versus NEAT-AI rule;
   `test/docs/ArchiveDocsNoPrivateRepoSlugs.ts` passes; `deno fmt --check` passes
   on both files; the summary follows the `pr-summary-NNNN.md` structure; the
-  diff is documentation-only so the test, logging, UUID and semantic-version
-  rules do not apply.
+  diff changes documentation and the package version, so the test, logging, UUID
+  and semantic-version rules do not apply.
 
 ## Test Plan
 
