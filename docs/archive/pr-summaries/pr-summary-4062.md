@@ -1,154 +1,183 @@
-# Record the closing log evidence for the dangling-memetic fix
+# Record the remaining evidence for dangling memetic checkpoints
 
 ## Summary
 
-Part of #4062.
+Updated the #4062 evidence record against the current `Develop` code and the
+complete available GRQ-logs history for the requested week. The writer and
+load-time protections are already merged. The original GRQ-21 producer remains
+unidentified, and the archive has sampler-activity gaps, so this is Part of
+#4062.
 
-This change adds no code. The fixes for this issue are already on `Develop`: the
-writer-side prune (`writeCreatures` → `pruneDanglingMemeticFromExport`, PRs
-#4064 and #4100) and the load-side prune (`loadFrom`, PR #4131, merge commit
-`a4adf05b`). What this change does is replace the pre-change log search in
-`docs/archive/pr-summaries/pr-summary-4062.md` with one run against the release
-that carries both, and say plainly what is still open.
-
-Two things remain open: the producing path on GRQ-21 is still not identified,
-and the log window is about 5 days of the 7 the issue asks for.
-
-Version bump: `deno.json` updated for this change; the merged commit records the
-final version.
+Version bump: none; this documentation-only update changes no version.
 
 ## Spec
 
 ### Intent and Rationale
 
-- The issue asks for a week of sampler-host logs on the fixed release with no
-  `rule=ValidationError/MEMETIC` repair lines. That evidence now partly exists,
-  so it is recorded rather than left as "logs only exist after a week".
+- Re-check the two remaining evidence gaps after the earlier fixes landed, using
+  the complete available archive history and the current deadline-abandon path.
 
 ### Essential Design Decisions
 
-- No code is changed: earlier rounds fuzzed every mutation operator,
-  `fineTuneImprovement` and real `evolveDataSet` runs and found no producer, so
-  a further speculative change would be fixing a fault that was not reproduced.
+- No production change is made because the original producer or a dangling
+  reference from the current production path was not reproduced. The checkpoint
+  writer already prunes dangling references from exported JSON.
+- Keep the remaining criteria open where the production cause or continuous
+  sampler coverage is not demonstrated.
 
 ### Undiscoverable Facts
 
-- The logs live in a separate repository that only holds rotating snapshots, so
-  the search below is bounded by what was snapshotted.
-- Because load now repairs a stale memetic before downstream code sees it, a
-  downstream `rule=ValidationError/MEMETIC` repair line can no longer appear for
-  a load that goes through `Creature.fromJSON`; the `[loadFrom] Pruned` and
-  `[CheckpointWriter] Pruned` warnings are the signal to search for as well.
+- The GRQ-logs `Develop` archive is private and keeps rotating snapshots. Its
+  current head is `0e6caba2fa580a4793b9b238a6386837d294c7e5`.
+- `.creatures/10.json` is not in that repository's history. Read-only SSH
+  retrieval was attempted; the host could not be resolved in this environment.
 
 ## Evidence
 
-Backend, documentation-only. The searches ran in a clone of the downstream
-production log repository's `Develop` branch:
-`git clone --single-branch --branch Develop --shallow-since=2026-10-31`, 1971
-snapshot commits from 2026-10-31 to 2026-11-06.
+Backend and documentation-only. The current `Develop` tree already contains
+these merged changes:
 
-**Release carrying the fix.** `a4adf05b` (merged 2026-10-31T17:23Z) has
-`deno.json` version 7.1.2. Hosts logged `[neat-ai] running version 7.1.2` from
-2026-11-01T09:05Z to 2026-11-05 and `7.1.3` from 2026-11-05 to 2026-11-06
-(`git log -S"running version 7.1.2"`, likewise 7.1.3). Version 7.1.1 appears
-only on 2026-11-01, for about 1.5 hours before 7.1.2, and is outside the window.
+- PR #4064 (`d7c8f722`): `writeCreatures` prunes dangling memetic references
+  from the exported JSON; `CheckpointWriteDanglingMemetic_test.ts` covers the
+  writer boundary.
+- PR #4100 (`71faa1f8`): expanded the checkpoint regression coverage.
+- PR #4131 (`a4adf05b`): load-time pruning prevents a stale persisted reference
+  from surviving `loadFrom`.
+- PR #4135 (`30f4117f`): recorded the interim log search and its remaining
+  limits.
 
-- Search 1:
-  `git log -G"ValidationError/MEMETIC|INVALID CREATURE|repairing an INVALID creature" --format=%h`
-  found 0 commits, and `grep -c` for the same terms over the two files at the
-  head was 0.
-- Search 2: `git log -G"Pruned [0-9]+ memetic" --format=%h` found 0 commits
-  matching the `[loadFrom]` warning, and `git log -S"[creature-repair]"` found
-  0. This pattern does not match the `[CheckpointWriter]` warning, which says
-  `Pruned N dangling memetic`; the writer warning was not searched for.
-- Control that the search can see sampler loads: `git log -S"option=sampler"`
-  found 32 commits and `git log -S"copyNetworks:"` found 29, spanning 2026-10-31
-  to 2026-11-06.
-- Window on 7.1.2 and 7.1.3: about 5 days (2026-11-01T09:05Z to 2026-11-06). A
-  full week is reached on 2026-11-08.
+`src/NEAT/NeatEvolution.ts` returns an abandoned generation immediately after
+fitness detects the changed abandon epoch, before breeding and mutation. If an
+abandon lands during the later deduplication await, the generation's population
+commit has already happened; the post-await guard leaves the previous members
+undisposed. `test/NEAT/EvolveAbandonedAfterFitness.ts` exercises the real
+`Neat.evolve` path, and
+`test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts` uses a held promise
+in the `evolveDir` path. The latter reached bounded teardown and the
+generation's mid-commit abandon guard. Neither test produces a dangling memetic.
+The checkpoint test that does produce a dangling reference uses a real
+`SubConnection` mutation injected between writer batches; it is not the
+production generation producer.
 
-Limits: the repository keeps rotating snapshots, so a line written and rotated
-out between two snapshots would not be seen. The zero result is also partly
-circular: load now repairs a stale memetic before any downstream repair line
-could be written, so the absence of `rule=ValidationError/MEMETIC` shows less
-than it would have before #4131. The absence of matching `[loadFrom] Pruned`
-warnings is a stronger signal that no stale file reached a sampler, subject to
-the snapshot limit. No conclusion about writer-side pruning follows from this
-search.
+**GRQ-logs search.** Retrieved with
+`gh repo clone stSoftwareAU/GRQ-logs /tmp/grq-logs-4062`. The archive head was
+`0e6caba2fa580a4793b9b238a6386837d294c7e5`. The requested window was
+`2026-11-01T09:05:00Z` through `2026-11-08T09:05:00Z`; 2,202 archive commits
+fall in that range. The first and last in-window snapshot commits were
+`0c1bbdf9dad383488501883efab481912b682254` at `2026-11-01T09:05:56Z` and
+`9524befc952c88ac4995a39f35fc53abdf3abb8e` at `2026-11-08T09:03:46Z`.
 
-Earlier evidence from PR #4100, before the load-side prune, release 7.0.57:
-`grep -c "ValidationError/MEMETIC" *.log` was 0 in all 25 files at the head, and
-`git log -S"rule=ValidationError/MEMETIC"` found only the two commits that
-carried and rotated out the line quoted in the issue.
+The following history searches returned zero matching commits. Snapshot trees
+immediately before and after the requested window were also checked for the same
+repair and prune phrases (zero matches):
+`54c7cc44558304db3b51d427d9d2a43dca02bf98`,
+`0c1bbdf9dad383488501883efab481912b682254`,
+`9524befc952c88ac4995a39f35fc53abdf3abb8e`, and
+`dceca64ab7eaf49b1d26d719265995862bc67134`.
 
-Issue numbers cited as provenance, each read with `gh`: #4062 (this issue, "a
-dangling memetic reference"), #3844 and #4052 (named in the issue body), #4064,
-#4100 and #4131 (the earlier PRs for this issue).
+- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'rule=ValidationError/MEMETIC|INVALID CREATURE|repairing an INVALID creature' --format='%H' -- '*.log'`
+- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'loadFrom.*Pruned .*dangling memetic' --format='%H' -- '*.log'`
+- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'CheckpointWriter.*Pruned .*dangling memetic' --format='%H' -- '*.log'`
+
+Positive controls found 58 commits changing `option=sampler` lines and 44
+changing `copyNetworks:` lines. Sampler activity was present in these ten log
+files, covering eight hosts: `GRQ-3` (rocket, sloth), `GRQ-10` (rocket),
+`GRQ-11` (nigel), `GRQ-13` (rocket), `GRQ-18` (rocket, sloth), `GRQ-19`
+(rocket), `GRQ-22` (rocket), and `GRQ-24` (rocket). The first sampler marker was
+at `2026-11-01T12:52:11Z`; the last was at `2026-11-08T08:57:59Z`. Thus the
+positive-control markers span 6 days, 20 hours, 5 minutes and 48 seconds, with
+no marker in the first 3 hours 47 minutes or last 7 minutes of the target
+window. GRQ-21 is absent.
+
+The positive-control and version commands were:
+
+- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'option=sampler' --format='%H' -- '*.log'`
+- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'copyNetworks:' --format='%H' -- '*.log'`
+- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -G 'option=sampler' --name-only --format= -- '*.log' | sort -u`
+- `git -C /tmp/grq-logs-4062 log --since='2026-11-01T09:05:00Z' --until='2026-11-08T09:05:00Z' -p -G 'running version 7\.1\.[0-9]+' -- '*.log' | grep -E '^[+-].*running version 7\.1\.[0-9]+' | sed 's/^[+-]//' | sort -u`
+
+Distinct `[neat-ai] running version` banners in the in-window log history were
+7.1.2, 7.1.3, 7.1.4, 7.1.8, 7.1.10, 7.1.11 and 7.1.12. This is the set seen in
+the archive, not a claim that every sampler host ran every version.
+
+The archive search is over snapshot diffs, including file rotations; it cannot
+prove that no unsnapshotted line existed between snapshots. The observed zero
+repair and prune warnings are further limited because PR #4131 prunes on load,
+which can prevent a downstream `ValidationError/MEMETIC` repair line. The
+absence of `[CheckpointWriter] Pruned` warnings is useful evidence about the
+writer, subject to the same snapshot and host-coverage gaps.
+
+The original-file retrieval command was
+`GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=5' timeout 8 ssh rocket@GRQ-21 'test -r .creatures/10.json && echo available || echo unavailable'`.
+It failed with
+`ssh: Could not resolve hostname grq-21: Temporary failure in name resolution`.
+The archive path search
+`git -C /tmp/grq-logs-4062 log --all --format= --name-only -- '.creatures/10.json'`
+found no matching path.
 
 ## Reproduction
 
-- **symptom** — a population file loads with
-  `Memetic from id X to id Y has no
-  matching synapses`, so GRQ repairs it and
-  calls it an upstream defect.
-- **status** — `partial` — reason: persistence of a stale memetic through load,
-  export and `memeticUpdate` was reproduced against the base code in #4131; the
-  original producer on GRQ-21 is not, and `.creatures/10.json` was not available
-  to load.
+- **symptom** — the reported `.creatures/10.json` has a memetic pair with no
+  matching synapse and is repaired as `ValidationError/MEMETIC`.
+- **status** — `partial` — the writer boundary was tested with a stale memetic,
+  and controlled deadline-abandon tests exercised the production generation and
+  teardown paths. The original file was unavailable, and the production
+  generation path did not reproduce a dangling reference.
 - **regression test** —
-  `test/creature/LoadPrunesDanglingMemetic.ts::a loaded dirty creature passes core creatureValidate (#4062)`
-
-## Test Plan
-
-No test is added or edited; this change is documentation only. The tests named
-above exist at the head (`git ls-files` from the repository root lists
-`test/creature/LoadPrunesDanglingMemetic.ts` and
-`test/creature/CheckpointWriteDanglingMemetic_test.ts`). `deno fmt --check` on
-the summary was run.
-
-<!-- vibe-quality-gate-skipped reason="documentation-only change; no code, lint or test input changed" -->
-
-Skipped or unverified: the producing path on GRQ-21 and `.creatures/10.json`,
-the checkpoint writer warnings, the last two days of the seven-day log window,
-and the full quality gate (CI runs it).
+  `test/creature/CheckpointWriteDanglingMemetic_test.ts::a checkpoint written while an abandoned generation prunes a synapse holds only valid creatures (#4062)`
 
 ## Acceptance Criteria
 
 <!-- vibe-spec-review inputs="diff+issue-body" -->
 
-- **missing** — Identify the producing path. Load .creatures/10.json from
+- **missing** — Identify the producing path. Load `.creatures/10.json` from
   rocket@GRQ-21 if it still exists, or reproduce with a checkpoint write during
-  a deadline-abandoned generation. — reviewer: missing — reason: The first
-  writer of the stale record is not identified. The file was not available, and
-  earlier fuzzing of every mutation operator, fineTuneImprovement and
-  evolveDataSet runs found no producer. The diff only edits the PR summary.
-- **met** — writeCreatures (or the producing mutation) never persists a creature
-  whose memetic references a missing synapse: either validate-before-write, or
-  prune at the mutation site. — evidence:
-  `src/creature/CheckpointWriter.ts::writeCreatures (calls pruneDanglingMemeticFromExport) and test/creature/CheckpointWriteDanglingMemetic_test.ts. This is already on Develop (PRs #4064 and #4100), not added by this diff.`
-  — reviewer: met
+  a deadline-abandoned generation. — reviewer: missing — reason: The file was
+  not retrievable, and the controlled production-path exercise did not produce a
+  dangling reference or identify the producer.
+- **met** — `writeCreatures` (or the producing mutation) never persists a
+  creature whose `memetic` references a missing synapse: either
+  validate-before-write, or prune at the mutation site. — evidence:
+  `src/creature/CheckpointWriter.ts::writeCreatures` and
+  `test/creature/CheckpointWriteDanglingMemetic_test.ts` — reviewer: missing —
+  reason: The independent Spec reviewer was not run; the writer protection is
+  present on `Develop` from PRs #4064 and #4100.
 - **partial** — Regression test: run the identified path (e.g. abandon
   generation N while its mutations are in flight, then write the checkpoint) and
-  assert every written creature passes ValidationError/MEMETIC validation. —
-  evidence:
-  `test/creature/CheckpointWriteDanglingMemetic_test.ts and test/creature/LoadPrunesDanglingMemetic.ts`
-  — reviewer: partial — reason: No producing path was identified, so the tests
-  exercise a real SubConnection mutation between checkpoint batches and the
-  load-side prune, not the deadline-abandoned path.
-- **partial** — Closing a week of downstream production logs from sampler hosts
-  with no rule=ValidationError/MEMETIC repair lines on the fixed release, quoted
-  with the search used. — evidence:
-  `docs/archive/pr-summaries/pr-summary-4062.md, Evidence section. The searches found 0 repair lines and 0 matching load-side prune warnings on 7.1.2 and 7.1.3, with sampler loads present throughout; writer-side prune warnings were not searched for.`
-  — reviewer: partial — reason: The window is about 5 days of the 7 asked for,
-  and a full week is reached on 2026-11-08. The zero result is also partly
-  circular, because load now repairs a stale memetic first.
+  assert every written creature passes `ValidationError/MEMETIC` validation. —
+  evidence: `test/creature/CheckpointWriteDanglingMemetic_test.ts` and
+  `test/NEAT/EvolveAbandonedAfterFitness.ts` — reviewer: missing — reason: The
+  writer test validates files after an injected `SubConnection` mutation; the
+  production deadline test does not produce the fault or assert memetic validity
+  on its checkpoint files.
+- **partial** — Closing evidence: a week of downstream production logs from
+  sampler hosts with no `rule=ValidationError/MEMETIC` repair lines, quoted with
+  the search used. — evidence: the GRQ-logs searches above found no repair,
+  `[loadFrom] Pruned`, or `[CheckpointWriter] Pruned` warning commits; sampler
+  markers span 6 days, 20 hours, 5 minutes and 48 seconds across eight hosts,
+  not the full week, and do not include GRQ-21 — reviewer: missing — reason:
+  sampler markers leave 3 hours 54 minutes and 12 seconds of the requested
+  window uncovered; snapshots rotate and load-time pruning limits what a zero
+  repair-line result proves.
 
 ## Standards Review
 
-<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
+No independent Standards reviewer was run because the executor instruction
+explicitly prohibits delegation. No reviewer provenance marker is claimed.
 
-- **clean** — The principle 11 (application-agnostic public repo) finding is
-  withdrawn, because principle 11 governs the public library contract (the API
-  surface in `docs/API_REFERENCE.md`), not an archived PR summary. The tokens
-  option=sampler and copyNetworks: are the literal log searches run, not naming,
-  defaults or public API surface.
+## Test Plan
+
+- `timeout 180 deno test -A test/creature/CheckpointWriteDanglingMemetic_test.ts test/NEAT/EvolveAbandonedAfterFitness.ts < /dev/null`
+  — passed, 15 passed / 0 failed.
+- `timeout 180 deno test -A test/creature/EvolveDirGenerationTwoAbandonCaller_test.ts < /dev/null`
+  — passed, 1 passed / 0 failed. The mock worker emitted
+  missing-`neat_ai_backpropagation` errors while still reaching the
+  deadline-abandon teardown path; this test does not inspect memetic references.
+- No tests were added or edited. These runs exercise the existing writer
+  boundary, fitness-abandon and controlled `evolveDir` paths.
+
+<!-- vibe-quality-gate-skipped reason="not yet run; planned once after this summary update" -->
+
+Skipped or unverified: a full week of continuous sampler coverage, GRQ-21 and
+its original checkpoint, the production producer, and independent Spec and
+Standards reviews.
