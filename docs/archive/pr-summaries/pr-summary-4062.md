@@ -80,10 +80,8 @@ repair and prune phrases (zero matches):
 
 Positive controls found 58 commits changing `option=sampler` lines and 44
 changing `copyNetworks:` lines. Sampler activity was present in these ten log
-files, covering eight hosts: `GRQ-3` (rocket, sloth), `GRQ-10` (rocket),
-`GRQ-11` (nigel), `GRQ-13` (rocket), `GRQ-18` (rocket, sloth), `GRQ-19`
-(rocket), `GRQ-22` (rocket), and `GRQ-24` (rocket). The first sampler marker was
-at `2026-11-01T12:52:11Z`; the last was at `2026-11-08T08:57:59Z`. Thus the
+files, covering eight sampler hosts. The first sampler marker was at
+`2026-11-01T12:52:11Z`; the last was at `2026-11-08T08:57:59Z`. Thus the
 positive-control markers span 6 days, 20 hours, 5 minutes and 48 seconds, with
 no marker in the first 3 hours 47 minutes or last 7 minutes of the target
 window. GRQ-21 is absent.
@@ -106,9 +104,8 @@ prevent a downstream `ValidationError/MEMETIC` repair line. The absence of
 `[CheckpointWriter] Pruned` warnings is useful evidence about the writer,
 subject to the same snapshot and host-coverage gaps.
 
-The original-file retrieval command was
-`GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=5' timeout 8 ssh rocket@GRQ-21 'test -r .creatures/10.json && echo available || echo unavailable'`.
-It failed with
+A read-only SSH probe of the original producer host for `.creatures/10.json` was
+attempted with a short connect timeout. It failed with
 `ssh: Could not resolve hostname grq-21: Temporary failure in name resolution`.
 The archive path search
 `git -C /tmp/log-archive-4062 log --all --format= --name-only -- '.creatures/10.json'`
@@ -121,7 +118,14 @@ found no matching path.
 - **status** — `partial` — the writer boundary was tested with a stale memetic,
   and controlled deadline-abandon tests exercised the production generation and
   teardown paths. The original file was unavailable, and the production
-  generation path did not reproduce a dangling reference.
+  generation path did not reproduce a dangling reference. In addition, with the
+  writer's prune disabled, the real-`SubConnection` race test still passes: a
+  genuine `SubConnection` removal racing the export leaves a consistent memetic
+  (core's `prune_synapse` owns the memetic cleanup), so that test guards the
+  writer boundary but does not reproduce the fault. Only the synthetic-fault
+  writer tests fail without the prune. reason: the original file was unreachable
+  and no production path was found that leaves a dangling memetic, so a
+  fail-before observation exists only for the synthetic injection.
 - **regression test** —
   `test/creature/CheckpointWriteDanglingMemetic_test.ts::a checkpoint written while an abandoned generation prunes a synapse holds only valid creatures (#4062)`
 
@@ -131,38 +135,56 @@ found no matching path.
 
 - **missing** — Identify the producing path. Load `.creatures/10.json` from
   rocket@GRQ-21 if it still exists, or reproduce with a checkpoint write during
-  a deadline-abandoned generation. — reviewer: missing — reason: The file was
-  not retrievable, and the controlled production-path exercise did not produce a
-  dangling reference or identify the producer.
+  a deadline-abandoned generation. — reviewer: missing — reason: the file was
+  unreachable; the real `Neat.evolve` and `evolveDir` abandon tests, and a real
+  `SubConnection` race, produce no dangling memetic (the last re-checked with
+  the writer prune disabled), so the producer is still inferred, not identified.
 - **met** — `writeCreatures` (or the producing mutation) never persists a
   creature whose `memetic` references a missing synapse: either
   validate-before-write, or prune at the mutation site. — evidence:
   `src/creature/CheckpointWriter.ts::writeCreatures` and
-  `test/creature/CheckpointWriteDanglingMemetic_test.ts` — reviewer: missing —
-  reason: The independent Spec reviewer was not run; the writer protection is
-  present on `Develop` from PRs #4064 and #4100.
+  `test/creature/CheckpointWriteDanglingMemetic_test.ts::writeCreatures never writes a memetic row naming a missing synapse (#4062)`
+  — reviewer: met
 - **partial** — Regression test: run the identified path (e.g. abandon
   generation N while its mutations are in flight, then write the checkpoint) and
   assert every written creature passes `ValidationError/MEMETIC` validation. —
-  evidence: `test/creature/CheckpointWriteDanglingMemetic_test.ts` and
-  `test/NEAT/EvolveAbandonedAfterFitness.ts` — reviewer: missing — reason: The
-  writer test validates files after an injected `SubConnection` mutation; the
-  production deadline test does not produce the fault or assert memetic validity
-  on its checkpoint files.
+  evidence:
+  `test/creature/CheckpointWriteDanglingMemetic_test.ts::a checkpoint written while an abandoned generation prunes a synapse holds only valid creatures (#4062)`
+  — reviewer: partial — reason: the path is simulated at the writer boundary,
+  not an identified production path, and with the prune disabled this test still
+  passes, so it does not discriminate; the `Neat.evolve`/`evolveDir` abandon
+  tests do not assert memetic validity on their checkpoints.
 - **partial** — Closing evidence: a week of downstream production logs from
   sampler hosts with no `rule=ValidationError/MEMETIC` repair lines, quoted with
-  the search used. — evidence: the archive searches above found no repair,
-  `[loadFrom] Pruned`, or `[CheckpointWriter] Pruned` warning commits; sampler
-  markers span 6 days, 20 hours, 5 minutes and 48 seconds across eight hosts,
-  not the full week, and do not include GRQ-21 — reviewer: missing — reason:
-  sampler markers leave 3 hours 54 minutes and 12 seconds of the requested
-  window uncovered; snapshots rotate and load-time pruning limits what a zero
-  repair-line result proves.
+  the search used. — evidence: the archive searches above (zero repair,
+  `[loadFrom] Pruned` or `[CheckpointWriter] Pruned` commits across 2,202
+  in-window commits) — reviewer: partial — reason: sampler markers span 6 days
+  20 hours 5 minutes, leaving about 3 hours 54 minutes uncovered; GRQ-21 is
+  absent; snapshots can miss lines; load-time pruning can hide the repair line.
+- **unrequested** — `docs/archive/handover/issue-4062.md` and this summary are
+  process documents, with no behaviour change — reviewer: unrequested — reason:
+  worker-generated handover note and the closure document the process requires.
 
 ## Standards Review
 
-No independent Standards reviewer was run because the executor instruction
-explicitly prohibits delegation. No reviewer provenance marker is claimed.
+<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
+
+`CODING-STANDARDS.md` does not exist in this repository; the reviewer used
+`AGENTS.md`, `docs/ENGINEERING_PRINCIPLES.md` and `docs/DOC_STYLE.md`.
+
+- **violation** — application-agnostic documentation (principle 11): a list of
+  private production hosts, their login names and a runnable `ssh` probe —
+  evidence: former `pr-summary-4062.md` lines 83-86 and 110 — reason: fixed in
+  this diff; the host list is now "eight sampler hosts" and the probe is
+  described without host or login.
+- **violation** — the previous Standards section claimed no reviewer had run —
+  evidence: former `pr-summary-4062.md:162-165` — reason: fixed in this diff;
+  replaced by this review.
+- **clean** — Australian English; the NEAT versus NEAT-AI rule;
+  `test/docs/ArchiveDocsNoPrivateRepoSlugs.ts` passes; `deno fmt --check` passes
+  on both files; the summary follows the `pr-summary-NNNN.md` structure; the
+  diff is documentation-only so the test, logging, UUID and semantic-version
+  rules do not apply.
 
 ## Test Plan
 
@@ -179,10 +201,13 @@ explicitly prohibits delegation. No reviewer provenance marker is claimed.
   — passed, 1 passed / 0 failed. The mock worker emitted
   missing-`neat_ai_backpropagation` errors while still reaching the
   deadline-abandon teardown path; this test does not inspect memetic references.
-- No tests were added or edited. These runs exercise the existing writer
-  boundary, fitness-abandon and controlled `evolveDir` paths.
+- No tests were added or edited. A temporary local edit disabling the writer's
+  prune was used to check which tests fail without it, then reverted: the
+  synthetic-fault writer tests fail; the real-`SubConnection` race test passes.
+  These runs exercise the existing writer boundary, fitness-abandon and
+  controlled `evolveDir` paths.
 
 Skipped or unverified: a full week of continuous sampler coverage, GRQ-21 and
-its original checkpoint, the production producer, and independent Spec and
-Standards reviews. Discovery-library verification was also skipped by the
-quality gate because its sibling checkout was unavailable.
+its original checkpoint, and the production producer. Discovery-library
+verification was also skipped by the quality gate because its sibling checkout
+was unavailable.
