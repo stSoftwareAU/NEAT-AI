@@ -100,11 +100,11 @@ Distinct `[neat-ai] running version` banners in the in-window log history were
 the archive, not a claim that every sampler host ran every version.
 
 The archive search is over snapshot diffs, including file rotations; it cannot
-prove that no unsnapshotted line existed between snapshots. The observed zero
-repair and prune warnings are further limited because PR #4131 prunes on load,
-which can prevent a downstream `ValidationError/MEMETIC` repair line. The
-absence of `[CheckpointWriter] Pruned` warnings is useful evidence about the
-writer, subject to the same snapshot and host-coverage gaps.
+prove that no log line existed between snapshots. The observed zero repair and
+prune warnings are further limited because PR #4131 prunes on load, which can
+prevent a downstream `ValidationError/MEMETIC` repair line. The absence of
+`[CheckpointWriter] Pruned` warnings is useful evidence about the writer,
+subject to the same snapshot and host-coverage gaps.
 
 The original-file retrieval command was
 `GIT_SSH_COMMAND='ssh -o BatchMode=yes -o ConnectTimeout=5' timeout 8 ssh rocket@GRQ-21 'test -r .creatures/10.json && echo available || echo unavailable'`.
