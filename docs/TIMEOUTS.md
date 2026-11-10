@@ -494,17 +494,26 @@ level, after the backend line. The WASM loop writes neither.
 [training-phase] task=<ID> phase=<native-returned|finalised> timedOut=<yes|no> msFromDeadline=<integer|none>
 ```
 
-- `native-returned` is written when the native trainer returns.
+- `native-returned` is written as soon as the blocking native call returns,
+  before the response is parsed or packaged.
+- `timedOut` is the response's outcome. It is `unknown` when the response has
+  not been read yet (CLI, where `result.json` is read after this line) or the
+  engine did not report it (a legacy FFI library).
 - `finalised` is written when packaging and compaction finish, just before the
   result is returned.
 - `msFromDeadline` is wall-clock now minus the task deadline, in whole
   milliseconds (negative means before the deadline). It is `none` when the task
   has no deadline.
 
+A native call that throws writes no phase line: the task fails with its error.
+
 Like the backend line, these lines reach the parent's logger through the worker
-relay. A task whose log shows `[training-backend]` but no `native-returned` line
-was still inside the native call. A task with `native-returned` but no
-`finalised` line hung in finalisation.
+relay. Read them as follows:
+
+- A `[training-backend]` line with no `native-returned` line means the native
+  call had not returned, or it threw. The task's error, if any, says which.
+- A `native-returned` line with no `finalised` line means the task hung after
+  the native call returned: in parsing, packaging or finalisation.
 
 ## 🔀 How the deadline propagates
 

@@ -32,9 +32,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   line before its blocking native call. A pooled worker relays the line, with
   the `[NEAT-AI] trainDir using ...` lines and the legacy-deadline warning, to
   the parent's logger. A native (`ffi` or `cli`) task also writes two
-  `[training-phase]` lines, one when the native trainer returns
+  `[training-phase]` lines, one as soon as the native call returns
   (`phase=native-returned`) and one when finalisation ends (`phase=finalised`),
-  so a hang can be placed inside the native call or in finalisation. See
+  so a hang can be placed inside the native call or after it. See
   [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md).
 - **Issue #4141:** a discovery chunk whose combined analysis failed is no longer
   re-run without the per-chunk deadline: the analysis loop reuses the first

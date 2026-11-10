@@ -544,11 +544,6 @@ function packageTrainingResult(
   bestJson: CreatureExport,
   summary: TrainSummary,
 ): TrainingResult {
-  reportTrainDirPhase(setup.ID, {
-    phase: "native-returned",
-    timedOut: summary.timedOut,
-    msFromDeadline: msFromDeadlineNow(setup),
-  });
   // Read before `loadFrom`, while the creature still carries its pre-training tags.
   const carriedError = preTrainingErrorTag(creature);
   creature.loadFrom(bestJson, false, "training:rustTrainDir");
@@ -621,19 +616,8 @@ function packageTrainingResult(
     { skipCompaction: windowSpentNow },
   );
 
-  // Legacy trainers report no outcome beyond the MSE, so their result keeps
-  // the old shape.
-  if (native === undefined) {
-    reportTrainDirPhase(setup.ID, {
-      phase: "finalised",
-      timedOut: summary.timedOut,
-      msFromDeadline: msFromDeadlineNow(setup),
-    });
-    return finalised;
-  }
-
   if (
-    !windowSpent && summary.timedOut &&
+    native !== undefined && !windowSpent && summary.timedOut &&
     isFinalisationWindowSpent(setup.timeoutTS, finalisationNow())
   ) {
     getLogger().warn(
@@ -650,6 +634,10 @@ function packageTrainingResult(
     timedOut: summary.timedOut,
     msFromDeadline: msFromDeadlineNow(setup),
   });
+  // Legacy trainers report no outcome beyond the MSE, so their result keeps
+  // the old shape.
+  if (native === undefined) return finalised;
+
   return {
     ...finalised,
     timedOut: summary.timedOut,
@@ -789,6 +777,11 @@ function tryFfiTrainDir(
       : String(deadlineCapability.version),
   });
   const response = nativeBackpropTrain(request);
+  reportTrainDirPhase(setup.ID, {
+    phase: "native-returned",
+    timedOut: response.timedOut,
+    msFromDeadline: msFromDeadlineNow(setup),
+  });
   const bestJson = JSON.parse(response.bestCreatureJson) as CreatureExport;
   if (deadlineCapable) {
     return packageTrainingResult(
@@ -976,6 +969,12 @@ function tryCliTrainDir(
       : String(deadlineCapability.version),
   });
   const spawned = spawnTrain(binary, args);
+  // The result file is not read yet, so the outcome is unknown here.
+  reportTrainDirPhase(setup.ID, {
+    phase: "native-returned",
+    timedOut: undefined,
+    msFromDeadline: msFromDeadlineNow(setup),
+  });
   if (!spawned.success) {
     throw new Error(
       `neat_ai_backpropagation train failed (exit ${spawned.code}): ` +

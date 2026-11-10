@@ -11,10 +11,19 @@
  * [training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no> capability=<version|none>
  * ```
  *
- * Two `[training-phase]` lines follow it per task: `native-returned` when the
- * native trainer returns, and `finalised` when packaging and compaction finish.
- * A backend line with no `native-returned` line hung inside the native call;
- * one with `native-returned` but no `finalised` hung in finalisation.
+ * Two `[training-phase]` lines follow it per native (`ffi` / `cli`) task:
+ *
+ * - `native-returned` is written as soon as the blocking native call returns,
+ *   before the response is parsed or packaged. `timedOut=unknown` means the
+ *   response has not been read yet (CLI) or the engine did not report it
+ *   (legacy FFI). A native call that throws writes no phase line: the task
+ *   fails with its error.
+ * - `finalised` is written when packaging and compaction finish.
+ *
+ * Triage: a backend line with no `native-returned` line means the native call
+ * had not returned, or it threw (the task's error says which). A
+ * `native-returned` line with no `finalised` line means the task hung after the
+ * native call returned: in parsing, packaging or finalisation.
  *
  * - `task` — the task's `setup.ID` (the 8-char creature id).
  * - `backend` — `ffi` (in-process `libneat_ai_backpropagation`), `cli`
@@ -109,7 +118,8 @@ export type TrainDirPhase = "native-returned" | "finalised";
 /** What a training task reports when it reaches a phase. */
 export interface TrainDirPhaseInfo {
   phase: TrainDirPhase;
-  timedOut: boolean;
+  /** `undefined` when the outcome is not known yet, rendered `unknown`. */
+  timedOut: boolean | undefined;
   /** now - deadline in whole ms (negative = before the deadline); undefined when the task has no deadline */
   msFromDeadline: number | undefined;
 }
@@ -119,7 +129,11 @@ export function formatTrainDirPhaseLine(
   ID: string,
   info: TrainDirPhaseInfo,
 ): string {
-  const timedOut = info.timedOut ? "yes" : "no";
+  const timedOut = info.timedOut === undefined
+    ? "unknown"
+    : info.timedOut
+    ? "yes"
+    : "no";
   const msFromDeadline = info.msFromDeadline === undefined
     ? "none"
     : String(info.msFromDeadline);
