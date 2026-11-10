@@ -100,9 +100,9 @@ function buildCreatureJSON(): CreatureExport {
   }
 
   // Fix-up: every hidden neuron needs an outward connection.
-  const outd = new Set(synapses.map((s) => s.fromUUID));
+  const hasOutward = new Set(synapses.map((s) => s.fromUUID));
   for (let i = 0; i < HIDDEN; i++) {
-    if (!outd.has(`h-${i}`)) add(`h-${i}`, `output-${i % OUT}`);
+    if (!hasOutward.has(`h-${i}`)) add(`h-${i}`, `output-${i % OUT}`);
   }
 
   return {
