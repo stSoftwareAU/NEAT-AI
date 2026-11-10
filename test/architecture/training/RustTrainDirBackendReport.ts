@@ -265,6 +265,40 @@ Deno.test("Issue #4146: the TypeScript loop reports backend=wasm deadlineSent=no
   }
 });
 
+Deno.test("Issue #4146: the predictive-coding trainer reports backend=wasm deadlineSent=no capability=none", () => {
+  const creature = new Creature(2, 1, { layers: [{ count: 2 }] });
+  const records: DataRecordInterface[] = [0, 1, 2, 3].map((i) => ({
+    input: new Float32Array([i & 1, (i >> 1) & 1]),
+    output: new Float32Array([(i & 1) ^ ((i >> 1) & 1)]),
+  }));
+  const dataDir = makeDataDir(records, records.length, {
+    input: creature.input,
+    output: creature.output,
+  });
+  const reports: string[] = [];
+  setTrainDirReporter((level, message) => {
+    reports.push(`${level}|${message}`);
+  });
+  try {
+    trainDir(creature, dataDir, {
+      iterations: 1,
+      disableRandomSamples: true,
+      predictiveCoding: { enabled: true },
+    }, Costs.find("MSE"));
+    const lines = reports.filter((r) => r.includes("[training-backend]"));
+    assertEquals(lines.length, 1, "one backend line per task");
+    assert(
+      BACKEND_LINE("backend=wasm deadlineSent=no capability=none").test(
+        lines[0],
+      ),
+      `unexpected backend line: ${lines[0]}`,
+    );
+  } finally {
+    setTrainDirReporter(undefined);
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
 // --- CLI: a fake binary in a child process ----------------------------------
 
 const LEGACY_CLI_STDERR = `error: unrecognized subcommand 'capabilities'

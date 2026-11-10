@@ -40,8 +40,9 @@ Version bump: not touched by this change.
 
 ### Undiscoverable Facts
 
-- The predictive-coding branch of `trainDir` never uses a native trainer and
-  writes no backend line.
+- The predictive-coding branch of `trainDir` never uses a native trainer; it
+  writes `backend=wasm deadlineSent=no capability=none` from
+  `trainDirPredictiveCoding`, so every task writes one line.
 - `./quality.sh` cannot run its test stage on this host (no native
   `rust_scorer`); see Test Plan.
 
@@ -91,7 +92,7 @@ entry), `test/workers/TrainDirBackendRelay.ts`,
   capable and legacy) — reviewer: partial — reason: the real-worker test runs
   the TypeScript loop (`NEAT_AI_BACKPROP_ENABLED=0` on the child, as this host
   has no native library), so ffi and cli are proven through the reporter hook
-  but not through a real worker; the predictive-coding branch writes no line
+  but not through a real worker
 - **missing** — Root cause pinned to one of the three branches above with a
   reproduction on the captured creature or an equivalently large fixture. —
   reviewer: missing — reason: needs the captured creature on sloth@GRQ-3; the
@@ -108,8 +109,6 @@ entry), `test/workers/TrainDirBackendRelay.ts`,
   `test/architecture/training/NativeBackpropCargoLibLayout.ts` (the
   `~/.cargo/lib` layout is found, wins over a cwd build, and an absent install
   resolves to no library),
-  `test/architecture/training/NativeBackpropCapabilities.ts` (a NULL or
-  malformed probe throws),
   `test/architecture/training/RustTrainDirBackendReport.ts` — reviewer: partial
   — reason: no change to the probe itself; the layout test covers `~/.cargo/lib`
   only, and a `CARGO_HOME` that is not `~/.cargo` is not searched (not changed:
@@ -132,15 +131,19 @@ entry), `test/workers/TrainDirBackendRelay.ts`,
 ## Test Plan
 
 - `NEAT_AI_BACKPROP_ENABLED=0 deno test -A test/workers/TrainDirBackendRelay.ts test/architecture/training/RustTrainDirBackendReport.ts test/architecture/training/RustTrainDirDeadline.ts test/architecture/training/RustTrainDirBridge.ts test/architecture/training/TrainingLoop.ts test/workers/WorkerStartHeartbeat.ts test/workers/WorkerHandlerBaseInitTimeout.ts`
-  — 65 passed, 0 failed.
-- Red checks: removing the FFI `reportTrainDirBackend` call → 2 tests in
+  — 66 passed, 0 failed.
+- Red checks: removing the `reportTrainDirBackend` call from
+  `trainDirPredictiveCoding` →
+  `the predictive-coding trainer reports
+  backend=wasm …` failed ("one backend
+  line per task"); removing the FFI `reportTrainDirBackend` call → 2 tests in
   `RustTrainDirBackendReport.ts` failed; commenting out `routeWorkerLogMessage`
   in `WorkerHandlerBase` → the handler test in `TrainDirBackendRelay.ts` failed.
 - Entry points checked: FFI (`tryFfiTrainDir`, capable and legacy), CLI
   (`tryCliTrainDir`, capable and legacy, in a child process), TypeScript loop
-  (`runTypeScriptLoop`), worker relay (`worker.ts` → `installTrainDirRelay`,
-  driven end to end by `TrainDirBackendRelayWiring.ts`), parent routing
-  (`WorkerHandlerBase`).
+  (`runTypeScriptLoop`), predictive-coding trainer (`trainDirPredictiveCoding`),
+  worker relay (`worker.ts` → `installTrainDirRelay`, driven end to end by
+  `TrainDirBackendRelayWiring.ts`), parent routing (`WorkerHandlerBase`).
 - `./quality.sh --skip-tests --skip-discovery` — passed (format, lint, type
   check, WASM sync). The full `./quality.sh` stops before tests: "Native
   rust_scorer is required … was not found" on this host; the worker re-runs the
@@ -163,6 +166,6 @@ entry), `test/workers/TrainDirBackendRelay.ts`,
   change can fix.
 
 Not done / not checked: root-cause pin, in-epoch deadline regression and engine
-change, `$CARGO_HOME/lib` layout test, and the field
-`[training-outcomes] timedOut≥1` confirmation. The full test suite was not run
-on this host.
+change, a `$CARGO_HOME` that is not `~/.cargo` (only `~/.cargo/lib` has a layout
+test), and the field `[training-outcomes] timedOut≥1` confirmation. The full
+test suite was not run on this host.

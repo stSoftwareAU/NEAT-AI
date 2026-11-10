@@ -13,7 +13,8 @@
  *
  * - `task` — the task's `setup.ID` (the 8-char creature id).
  * - `backend` — `ffi` (in-process `libneat_ai_backpropagation`), `cli`
- *   (spawned `neat_ai_backpropagation`), or `wasm` (the TypeScript / WASM loop).
+ *   (spawned `neat_ai_backpropagation`), or `wasm` (the TypeScript / WASM loop,
+ *   including the predictive-coding trainer).
  * - `deadlineSent` — `yes` when the request carried a deadline
  *   (`deadlineEpochMs` / `--deadline-epoch-ms`).
  * - `capability` — the version of the deadline capability the backend

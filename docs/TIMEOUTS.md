@@ -471,7 +471,8 @@ native call, so a task that later hangs already has it in the log:
 - `task` is the task's `setup.ID`, the 8-character creature id.
 - `backend` is `ffi` for the in-process `libneat_ai_backpropagation`, `cli` for
   the spawned `neat_ai_backpropagation`, or `wasm` for the TypeScript / WASM
-  loop.
+  loop, which includes the predictive-coding trainer (it uses no native trainer,
+  so it reports `deadlineSent=no capability=none`).
 - `deadlineSent` is `yes` when the request carried the deadline
   (`deadlineEpochMs` or `--deadline-epoch-ms`), and `no` otherwise: a legacy
   engine, no timeout, or the WASM loop.
