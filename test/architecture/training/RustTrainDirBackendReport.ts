@@ -50,8 +50,12 @@ const INPUT_CREATURE_JSON = (JSON.parse(EXPIRED_RESPONSE) as {
 const HARD_DEADLINE_TS = 4_102_444_800_000;
 
 /** A `[training-backend]` report at info level, with any task id. */
-const BACKEND_LINE = (fields: string): RegExp =>
-  new RegExp(`^info\\|\\[training-backend\\] task=\\S+ ${fields}$`);
+const BACKEND_LINE = (fields: string): { test: (line: string) => boolean } => ({
+  test: (line: string): boolean => {
+    const match = /^info\|\[training-backend\] task=\S+ (.*)$/.exec(line);
+    return match !== null && match[1] === fields;
+  },
+});
 
 // Keeps every buffer handed to the native side reachable while a double reads it.
 const keepAlive: Uint8Array[] = [];
