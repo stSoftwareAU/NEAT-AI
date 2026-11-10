@@ -136,9 +136,10 @@ entry), `test/workers/TrainDirBackendRelay.ts`,
   `trainDirPredictiveCoding` →
   `the predictive-coding trainer reports
   backend=wasm …` failed ("one backend
-  line per task"); removing the FFI `reportTrainDirBackend` call → the 3 FFI tests in
-  `RustTrainDirBackendReport.ts` failed; commenting out `routeWorkerLogMessage`
-  in `WorkerHandlerBase` → the handler test in `TrainDirBackendRelay.ts` failed.
+  line per task"); removing the FFI `reportTrainDirBackend` call → the 3 FFI
+  tests in `RustTrainDirBackendReport.ts` failed; commenting out
+  `routeWorkerLogMessage` in `WorkerHandlerBase` → the handler test in
+  `TrainDirBackendRelay.ts` failed.
 - PR #4149 review: `deadlineSent` is now separated from `capability` by an FFI
   and a CLI case pairing a deadline-capable trainer with no timeout (neither
   `hardDeadlineTS` nor `trainingTimeOutMinutes`), asserting
