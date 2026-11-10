@@ -16,6 +16,7 @@ still inside the native call (branches 1 and 2); `native-returned` without
 `finalised` means it hung in finalisation (compaction/validation of the 9,684
 neuron creature, branch 3). The root cause itself is still not pinned or fixed:
 it needs a log from a run that carries these lines, or the captured creature.
+
 Part of #4146.
 
 Version bump: not touched by this change.
