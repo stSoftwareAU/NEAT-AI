@@ -461,8 +461,9 @@ does. "Deadline sent" means the `deadlineEpochMs` field or the
 
 ## 🧾 Which backend ran, and whether a deadline was sent (Issue #4146)
 
-Every training task writes one line at info level, **before** its blocking
-native call, so a task that later hangs already has it in the log:
+Every training task writes one `[training-backend]` line at info level,
+**before** its blocking native call, so a task that later hangs already has it
+in the log:
 
 ```text
 [training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no> capability=<version|none>
@@ -485,6 +486,25 @@ writes it. The once-per-backend `[NEAT-AI] trainDir using ...` lines and the
 legacy-deadline warning take the same route. A `deadlineSent=no` line on a
 `backend=cli` or `backend=ffi` task means the engine was never sent a deadline,
 so only the stuck-task watchdog can stop it.
+
+A native (`ffi` or `cli`) task also writes two `[training-phase]` lines at info
+level, after the backend line. The WASM loop writes neither.
+
+```text
+[training-phase] task=<ID> phase=<native-returned|finalised> timedOut=<yes|no> msFromDeadline=<integer|none>
+```
+
+- `native-returned` is written when the native trainer returns.
+- `finalised` is written when packaging and compaction finish, just before the
+  result is returned.
+- `msFromDeadline` is wall-clock now minus the task deadline, in whole
+  milliseconds (negative means before the deadline). It is `none` when the task
+  has no deadline.
+
+Like the backend line, these lines reach the parent's logger through the worker
+relay. A task whose log shows `[training-backend]` but no `native-returned` line
+was still inside the native call. A task with `native-returned` but no
+`finalised` line hung in finalisation.
 
 ## 🔀 How the deadline propagates
 

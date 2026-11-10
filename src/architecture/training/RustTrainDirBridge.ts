@@ -66,6 +66,7 @@ import {
 import {
   reportTrainDirBackend,
   reportTrainDirMessage,
+  reportTrainDirPhase,
 } from "@architecture/training/TrainDirBackendReport.ts";
 
 /**
@@ -527,12 +528,27 @@ export function __setFinalisationNowForTests(now?: () => number): void {
   finalisationNow = now ?? Date.now;
 }
 
+/**
+ * Whole ms from the task deadline to now, for the `[training-phase]` lines
+ * (Issue #4146). `undefined` when the task has no deadline.
+ */
+function msFromDeadlineNow(setup: TrainingSetupState): number | undefined {
+  return setup.timeoutTS > 0
+    ? Math.round(finalisationNow() - setup.timeoutTS)
+    : undefined;
+}
+
 function packageTrainingResult(
   creature: Creature,
   setup: TrainingSetupState,
   bestJson: CreatureExport,
   summary: TrainSummary,
 ): TrainingResult {
+  reportTrainDirPhase(setup.ID, {
+    phase: "native-returned",
+    timedOut: summary.timedOut,
+    msFromDeadline: msFromDeadlineNow(setup),
+  });
   // Read before `loadFrom`, while the creature still carries its pre-training tags.
   const carriedError = preTrainingErrorTag(creature);
   creature.loadFrom(bestJson, false, "training:rustTrainDir");
@@ -607,7 +623,14 @@ function packageTrainingResult(
 
   // Legacy trainers report no outcome beyond the MSE, so their result keeps
   // the old shape.
-  if (native === undefined) return finalised;
+  if (native === undefined) {
+    reportTrainDirPhase(setup.ID, {
+      phase: "finalised",
+      timedOut: summary.timedOut,
+      msFromDeadline: msFromDeadlineNow(setup),
+    });
+    return finalised;
+  }
 
   if (
     !windowSpent && summary.timedOut &&
@@ -622,6 +645,11 @@ function packageTrainingResult(
     );
   }
 
+  reportTrainDirPhase(setup.ID, {
+    phase: "finalised",
+    timedOut: summary.timedOut,
+    msFromDeadline: msFromDeadlineNow(setup),
+  });
   return {
     ...finalised,
     timedOut: summary.timedOut,
