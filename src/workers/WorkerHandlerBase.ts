@@ -18,6 +18,7 @@ import type {
 } from "@workers/WorkerInterface.ts";
 import { getLogger, type Logger } from "@utils/Logger.ts";
 import { isWorkerHeartbeatMessage } from "@workers/WorkerHeartbeat.ts";
+import { routeWorkerLogMessage } from "@workers/WorkerLogRelay.ts";
 import { WorkerTaskCancelledError } from "@workers/WorkerTaskCancelledError.ts";
 import {
   formatWorkerInitDiagnostics,
@@ -374,6 +375,9 @@ export abstract class WorkerHandlerBase<
         this.heartbeatAtMs = performance.now();
         return;
       }
+      // Issue #4146: a worker-side log line (e.g. `[training-backend]`) is
+      // written to the parent's logger, never routed as a task response.
+      if (routeWorkerLogMessage(me.data, getLogger())) return;
       this.handleCallback(me.data as TResponse);
     });
 

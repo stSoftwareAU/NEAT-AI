@@ -16,6 +16,12 @@
  * path. A legacy backend never receives the deadline, and a run with a
  * deadline on one logs a warning once per backend.
  *
+ * Backend report (Issue #4146): each native train writes one
+ * `[training-backend]` line before the blocking call (see
+ * `TrainDirBackendReport.ts`). The once-per-backend `[NEAT-AI] trainDir using
+ * ...` lines and the legacy-deadline warning go through the same reporter, so a
+ * pooled worker relays them to the parent's logger.
+ *
  * Options that are not backpropagation skip Rust (predictive coding,
  * cross-validation, custom costs, dropout, fuzzing, quantisation, Muon,
  * recurrent / `feedbackLoop`). `trainingSampleRate` maps to `maxRecords`
@@ -48,6 +54,7 @@ import {
   closeNativeBackpropLibrary,
   findNativeBackpropLibrary,
   isNativeBackpropAvailable,
+  type NativeBackpropDeadlineCapability,
   nativeBackpropDeadlineCapability,
   type NativeBackpropMeasure,
   nativeBackpropTrain,
@@ -56,6 +63,10 @@ import {
   parseNativeBackpropCapabilities,
   parseNativeBackpropTrainResponse,
 } from "@architecture/training/NativeBackpropLibrary.ts";
+import {
+  reportTrainDirBackend,
+  reportTrainDirMessage,
+} from "@architecture/training/TrainDirBackendReport.ts";
 
 /**
  * What a deadline-capable trainer reported beyond the MSE figures (Issue
@@ -656,12 +667,15 @@ const legacyDeadlineWarnedBackends = new Set<string>();
 
 /**
  * Warn once per backend that a run with a deadline reaches a trainer that
- * cannot enforce it (Issue #4119). The run itself is unchanged.
+ * cannot enforce it (Issue #4119). The run itself is unchanged. The warning
+ * goes through the training reporter, so a worker relays it to the parent
+ * (Issue #4146).
  */
 function warnLegacyDeadlineOnce(backendKey: string, backend: string): void {
   if (legacyDeadlineWarnedBackends.has(backendKey)) return;
   legacyDeadlineWarnedBackends.add(backendKey);
-  getLogger().warn(
+  reportTrainDirMessage(
+    "warn",
     `[NEAT-AI] trainDir backend ${backend} does not advertise the native deadline capability, ` +
       `so the per-task deadline is NOT enforced natively. The stuck-task watchdog ` +
       `(deadline + ${
@@ -702,7 +716,8 @@ function tryFfiTrainDir(
     setup,
     outputDir,
   );
-  const deadlineCapable = nativeBackpropDeadlineCapability() !== undefined;
+  const deadlineCapability = nativeBackpropDeadlineCapability();
+  const deadlineCapable = deadlineCapability !== undefined;
   const libraryPath = findNativeBackpropLibrary() ?? "loaded";
   const request: NativeBackpropTrainRequest = {
     creatureJson: fields.creatureJson,
@@ -726,7 +741,8 @@ function tryFfiTrainDir(
   const backendKey = `ffi:${libraryPath}`;
   if (loggedTrainDirBackend !== backendKey) {
     loggedTrainDirBackend = backendKey;
-    getLogger().info(
+    reportTrainDirMessage(
+      "info",
       `[NEAT-AI] trainDir using FFI libneat_ai_backpropagation`,
     );
   }
@@ -737,6 +753,13 @@ function tryFfiTrainDir(
     );
   }
 
+  reportTrainDirBackend(setup.ID, {
+    backend: "ffi",
+    deadlineSent: request.deadlineEpochMs !== undefined,
+    capability: deadlineCapability === undefined
+      ? "none"
+      : String(deadlineCapability.version),
+  });
   const response = nativeBackpropTrain(request);
   const bestJson = JSON.parse(response.bestCreatureJson) as CreatureExport;
   if (deadlineCapable) {
@@ -784,22 +807,31 @@ function errorMessage(error: unknown): string {
 }
 
 /**
- * Whether the CLI advertises the deadline capability (Issue #4119). A CLI
- * without the `capabilities` subcommand is legacy; any other failure throws
- * rather than falling back silently.
+ * The deadline capability the CLI advertises (Issue #4119).
+ *
+ * @returns `undefined` for a legacy CLI (no `capabilities` subcommand) or one
+ *          advertising an unsupported version. Any other failure throws rather
+ *          than falling back silently.
  */
-export function cliDeadlineCapable(binary: string): boolean {
+export function cliDeadlineCapability(
+  binary: string,
+): NativeBackpropDeadlineCapability | undefined {
   // SIMPLE-ON-PURPOSE: one capabilities spawn per train (a few ms beside a multi-second train); upgrade when CLI trains become sub-second.
   const probe = spawnTrain(binary, ["capabilities"]);
   if (probe.success) {
-    return parseNativeBackpropCapabilities(probe.stdout).deadline !== undefined;
+    return parseNativeBackpropCapabilities(probe.stdout).deadline;
   }
-  if (probe.stderr.includes("unrecognized subcommand")) return false;
+  if (probe.stderr.includes("unrecognized subcommand")) return undefined;
   throw new Error(
     `neat_ai_backpropagation capabilities failed (exit ${probe.code}): ${
       causeLine(probe.stderr)
     }`,
   );
+}
+
+/** Whether the CLI advertises the deadline capability (Issue #4119). */
+export function cliDeadlineCapable(binary: string): boolean {
+  return cliDeadlineCapability(binary) !== undefined;
 }
 
 /**
@@ -841,7 +873,8 @@ function tryCliTrainDir(
         "refusing WASM/TypeScript fallback (neat_ai_backpropagation binary was not found).",
     );
   }
-  const deadlineCapable = cliDeadlineCapable(binary);
+  const deadlineCapability = cliDeadlineCapability(binary);
+  const deadlineCapable = deadlineCapability !== undefined;
 
   const creaturePath = join(workDir, "creature.json");
   const outputDir = join(workDir, "out");
@@ -886,14 +919,17 @@ function tryCliTrainDir(
   if (fields.traceStore !== undefined) {
     args.push("--trace-store", fields.traceStore);
   }
+  let deadlineSent = false;
   if (deadlineCapable && setup.timeoutTS > 0) {
     args.push("--deadline-epoch-ms", String(Math.floor(setup.timeoutTS)));
+    deadlineSent = true;
   }
 
   const backendKey = `cli:${binary}`;
   if (loggedTrainDirBackend !== binary) {
     loggedTrainDirBackend = binary;
-    getLogger().info(
+    reportTrainDirMessage(
+      "info",
       `[NEAT-AI] trainDir using CLI neat_ai_backpropagation at ${binary}`,
     );
   }
@@ -904,6 +940,13 @@ function tryCliTrainDir(
     );
   }
 
+  reportTrainDirBackend(setup.ID, {
+    backend: "cli",
+    deadlineSent,
+    capability: deadlineCapability === undefined
+      ? "none"
+      : String(deadlineCapability.version),
+  });
   const spawned = spawnTrain(binary, args);
   if (!spawned.success) {
     throw new Error(

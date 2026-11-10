@@ -25,6 +25,9 @@ import {
   tryRustTrainDir,
 } from "@architecture/training/RustTrainDirBridge.ts";
 import { trainDirPredictiveCoding } from "@architecture/training/TrainingPredictiveCoding.ts";
+import {
+  reportTrainDirBackend,
+} from "@architecture/training/TrainDirBackendReport.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 
 export { dataFiles } from "@architecture/training/TrainingSetup.ts";
@@ -96,6 +99,12 @@ function trainDirBinary(
   const setup = prepareTraining(creature, options, ID);
 
   const runTypeScriptLoop = (): TrainingResult => {
+    // Issue #4146: one backend line per task, before the loop runs.
+    reportTrainDirBackend(setup.ID, {
+      backend: "wasm",
+      deadlineSent: false,
+      capability: "none",
+    });
     const loopResult = runTrainingLoop(
       creature,
       binaryFiles,

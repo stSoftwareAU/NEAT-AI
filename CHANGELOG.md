@@ -25,6 +25,13 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4146:** a hung native training task now says which backend ran and
+  whether a deadline was sent. Each training task writes one
+  `[training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no>
+  capability=<version|none>`
+  line before its blocking native call. A pooled worker relays the line, with
+  the `[NEAT-AI] trainDir using ...` lines and the legacy-deadline warning, to
+  the parent's logger. See [`docs/TIMEOUTS.md`](./docs/TIMEOUTS.md).
 - **Issue #4141:** a discovery chunk whose combined analysis failed is no longer
   re-run without the per-chunk deadline: the analysis loop reuses the first
   call's outcome, and the fallback analyses (missing-neuron, helpful-synapse and

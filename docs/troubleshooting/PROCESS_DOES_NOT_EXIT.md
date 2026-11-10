@@ -25,8 +25,9 @@ Two native calls have been the source of such a thread:
   synchronous native call. An engine that does not advertise the native deadline
   capability (`neat_ai_backpropagation` 0.1.49 or earlier) is never sent the
   deadline, so it does not stop on it, and a wedged training call can pin the
-  process. A deadline-capable engine (0.1.50 or later) stops within an epoch.
-  See
+  process. A deadline-capable engine (0.1.50 or later) stops within an epoch. To
+  see which backend a hung task ran and whether it was sent a deadline, grep the
+  parent log for `[training-backend]` (Issue #4146). See
   [the native trainer and the per-task deadline](../TIMEOUTS.md#-the-native-trainer-and-the-per-task-deadline-issue-4119).
 - **Discovery analysis, until Issue #4126.** `analyze_parallel` was also a
   synchronous native call, so a stuck discovery analysis pinned the process in
