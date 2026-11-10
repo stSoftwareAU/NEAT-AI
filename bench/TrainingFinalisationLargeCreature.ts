@@ -5,14 +5,13 @@
  * Issue #4146 reports training tasks overrunning their per-task deadline, then
  * returning no result and being quarantined. This bench times the TypeScript
  * stages that run after the native trainer returns, on a creature the size of
- * the one in the issue: 50 inputs, 5 outputs, 9,630 hidden neurons, 63,317
- * synapses, forward-only. It shows whether finalisation on its own can hold a
- * worker.
+ * the one in the issue (9,684 neurons, 63,317 synapses): 50 inputs, 5 outputs,
+ * 9,630 hidden neurons, at least 63,317 synapses, forward-only. It shows
+ * whether finalisation on its own can hold a worker.
  *
  * Methodology:
  *   - The creature is built deterministically once at module load from a
- *     fixed-seed LCG: each hidden neuron is fed by an earlier neuron (the first
- *     five by inputs),
+ *     fixed-seed LCG: each hidden neuron is fed by an earlier neuron (the first five by inputs),
  *     random extra synapses are added up to 63,317, and a fix-up gives every
  *     hidden neuron an outward connection. The JSON is held in memory only;
  *     nothing is written to disk.
@@ -124,7 +123,7 @@ const target = new Creature(IN, OUT);
 const trace = creature.traceJSON();
 
 const GROUP =
-  "training finalisation, issue-sized creature (9,630 hidden, 63,317 synapses)";
+  "training finalisation, issue-sized creature (9,630 hidden, 63,317+ synapses)";
 
 Deno.bench({
   group: GROUP,
