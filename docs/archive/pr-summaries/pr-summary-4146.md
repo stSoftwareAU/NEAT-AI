@@ -35,8 +35,8 @@ Version bump: not touched by this change.
 
 - The bench lives in `bench/` (timing is not allowed in `test/`, per AGENTS.md)
   and asserts nothing; it only reports `Deno.bench` timings.
-- No production change: the offline measurements do not reproduce a fault, and
-  a fault that has not been reproduced is not fixed on a guess.
+- No production change: the offline measurements do not reproduce a fault, and a
+  fault that has not been reproduced is not fixed on a guess.
 
 ### Undiscoverable Facts
 
