@@ -58,8 +58,10 @@ sequenceDiagram
     Note over W,P: a hang after this point still leaves the line in the parent log
 ```
 
-Tests: `test/workers/TrainDirBackendRelay.ts`,
-`test/architecture/training/RustTrainDirBackendReport.ts`.
+Tests: `test/workers/TrainDirBackendRelayWiring.ts` (the production worker
+entry), `test/workers/TrainDirBackendRelay.ts`,
+`test/architecture/training/RustTrainDirBackendReport.ts`,
+`test/architecture/training/NativeBackpropCargoLibLayout.ts`.
 
 ## Reproduction
 
@@ -71,20 +73,25 @@ Tests: `test/workers/TrainDirBackendRelay.ts`,
   neither is reachable from this run. Only the observability gap was addressed,
   and its tests were observed red with the change removed.
 - **regression test** —
-  `test/workers/TrainDirBackendRelay.ts::a relayed worker log line reaches the parent logger and never the task callbacks`
+  `test/workers/TrainDirBackendRelayWiring.ts::the real pooled worker relays its training backend line to the parent logger`
+  (red with the `installTrainDirRelay` line in `worker.ts` commented out)
 
 ## Acceptance Criteria
 
 <!-- vibe-spec-review inputs="diff+issue-body" -->
 
-- **met** — The worker logs, into the parent run log, which `trainDir` backend
-  ran and whether a deadline was forwarded (one line per task:
+- **partial** — The worker logs, into the parent run log, which `trainDir`
+  backend ran and whether a deadline was forwarded (one line per task:
   `backend=ffi|cli|wasm deadlineSent=yes|no capability=<version|none>`). A
   regression test asserts the line reaches the parent's logger from inside a
-  worker. — evidence: `test/workers/TrainDirBackendRelay.ts`,
-  `test/architecture/training/RustTrainDirBackendReport.ts` — reviewer: met —
-  reason: the predictive-coding branch writes no line (it never uses a native
-  trainer)
+  worker. — evidence: `test/workers/TrainDirBackendRelayWiring.ts` (real
+  `deno/worker.ts` isolate through a real `WorkerHandler`, `backend=wasm`),
+  `test/workers/TrainDirBackendRelay.ts`,
+  `test/architecture/training/RustTrainDirBackendReport.ts` (ffi and cli,
+  capable and legacy) — reviewer: partial — reason: the real-worker test runs
+  the TypeScript loop (`NEAT_AI_BACKPROP_ENABLED=0` on the child, as this host
+  has no native library), so ffi and cli are proven through the reporter hook
+  but not through a real worker; the predictive-coding branch writes no line
 - **missing** — Root cause pinned to one of the three branches above with a
   reproduction on the captured creature or an equivalently large fixture. —
   reviewer: missing — reason: needs the captured creature on sloth@GRQ-3; the
@@ -98,11 +105,15 @@ Tests: `test/workers/TrainDirBackendRelay.ts`,
   deadline-capable engine is available in this run
 - **partial** — If branch 2: capability probe failure is loud and the regression
   covers the `$CARGO_HOME/lib` install layout GRQ uses. — evidence:
-  `test/architecture/training/RustTrainDirBackendReport.ts` — reviewer: missing
-  — reason: the legacy-deadline warning and the capability field now reach the
-  parent log, but no `$CARGO_HOME/lib` layout regression was added; reviewer
-  said `missing`, recorded `partial` because the diff makes the legacy case
-  visible
+  `test/architecture/training/NativeBackpropCargoLibLayout.ts` (the
+  `~/.cargo/lib` layout is found, wins over a cwd build, and an absent install
+  resolves to no library),
+  `test/architecture/training/NativeBackpropCapabilities.ts` (a NULL or
+  malformed probe throws),
+  `test/architecture/training/RustTrainDirBackendReport.ts` — reviewer: partial
+  — reason: no change to the probe itself; the layout test covers `~/.cargo/lib`
+  only, and a `CARGO_HOME` that is not `~/.cargo` is not searched (not changed:
+  nothing shows GRQ uses one)
 - **missing** — Closing requires a quoted
   `[training-outcomes] … timedOut=N≥1 abandoned=0` line from a sampler or learn
   run on sloth@GRQ-3 (or another 16 GB host) on the fixed release, not
@@ -127,8 +138,9 @@ Tests: `test/workers/TrainDirBackendRelay.ts`,
   in `WorkerHandlerBase` → the handler test in `TrainDirBackendRelay.ts` failed.
 - Entry points checked: FFI (`tryFfiTrainDir`, capable and legacy), CLI
   (`tryCliTrainDir`, capable and legacy, in a child process), TypeScript loop
-  (`runTypeScriptLoop`), worker relay (`worker.ts` → `installTrainDirRelay`),
-  parent routing (`WorkerHandlerBase`).
+  (`runTypeScriptLoop`), worker relay (`worker.ts` → `installTrainDirRelay`,
+  driven end to end by `TrainDirBackendRelayWiring.ts`), parent routing
+  (`WorkerHandlerBase`).
 - `./quality.sh --skip-tests --skip-discovery` — passed (format, lint, type
   check, WASM sync). The full `./quality.sh` stops before tests: "Native
   rust_scorer is required … was not found" on this host; the worker re-runs the
@@ -140,6 +152,15 @@ Tests: `test/workers/TrainDirBackendRelay.ts`,
 - Existing tests edited: none.
 - Docs updated: `docs/TIMEOUTS.md` (new section on the line),
   `docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md`, `CHANGELOG.md`.
+
+- Also run: `test/architecture/training/NativeBackpropCargoLibLayout.ts` and
+  `test/workers/TrainDirBackendRelayWiring.ts` — 4 passed. Red check: with the
+  `installTrainDirRelay` line in `worker.ts` commented out, the wiring test
+  failed (no `[training-backend]` line reached the parent logger).
+- Mutation check could not judge mutants: its baseline fails on this host
+  because no native library exists (the listed files need one unless
+  `NEAT_AI_BACKPROP_ENABLED=0`), which is environmental and not something this
+  change can fix.
 
 Not done / not checked: root-cause pin, in-epoch deadline regression and engine
 change, `$CARGO_HOME/lib` layout test, and the field
