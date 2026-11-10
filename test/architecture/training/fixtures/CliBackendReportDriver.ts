@@ -2,7 +2,9 @@
 //
 // The parent test makes the FFI library unavailable and points the CLI at a
 // fake binary. This child installs a reporter that prints each report on
-// stdout, then runs one `trainDir` through the CLI path.
+// stdout, then runs one `trainDir` through the CLI path. The `--no-deadline`
+// argument omits the hard deadline and the relative budget, so no deadline is
+// carried even to a deadline-capable trainer.
 import { Creature } from "@creature";
 import { Costs } from "@costs";
 import { makeDataDir } from "@architecture/DataSet.ts";
@@ -31,11 +33,14 @@ if (import.meta.main) {
     output: creature.output,
   });
   try {
+    const deadlineOptions = Deno.args.includes("--no-deadline") ? {} : {
+      trainingTimeOutMinutes: 1,
+      hardDeadlineTS: 4_102_444_800_000,
+    };
     trainDir(creature, dataDir, {
       iterations: 1,
       disableRandomSamples: true,
-      trainingTimeOutMinutes: 1,
-      hardDeadlineTS: 4_102_444_800_000,
+      ...deadlineOptions,
     }, Costs.find("MSE"));
   } finally {
     Deno.removeSync(dataDir, { recursive: true });

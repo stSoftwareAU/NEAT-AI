@@ -140,14 +140,19 @@ function makeSingleDataDir(creature: Creature): string {
   });
 }
 
-function trainWith(creature: Creature, dataDir: string): TrainingResult {
+/** `withDeadline: false` sets neither a hard deadline nor a relative budget. */
+function trainWith(
+  creature: Creature,
+  dataDir: string,
+  withDeadline = true,
+): TrainingResult {
   return trainDir(
     creature,
     dataDir,
     {
       iterations: 1,
       disableRandomSamples: true,
-      hardDeadlineTS: HARD_DEADLINE_TS,
+      ...(withDeadline ? { hardDeadlineTS: HARD_DEADLINE_TS } : {}),
     },
     Costs.find("MSE"),
   );
@@ -180,6 +185,37 @@ Deno.test("Issue #4146: a deadline-capable FFI train reports backend=ffi deadlin
     assert(
       events.indexOf(lines[0]) < events.indexOf("native-train"),
       "the backend line must be written before the native call",
+    );
+  } finally {
+    setTrainDirReporter(undefined);
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+// A deadline-capable engine with no timeout: the capability is advertised but
+// no deadline is carried, so `deadlineSent` must stay separate from `capability`.
+Deno.test("Issue #4146: a deadline-capable FFI train with no timeout reports backend=ffi deadlineSent=no capability=1", () => {
+  const creature = fixtureCreature();
+  const dataDir = makeSingleDataDir(creature);
+  const events: string[] = [];
+  setTrainDirReporter((level, message) => {
+    events.push(`${level}|${message}`);
+  });
+  try {
+    withNativeLibrary(
+      makeDouble({
+        capabilities: CAPABILITIES,
+        payload: COMPLETED_RESPONSE,
+        onTrain: () => events.push("native-train"),
+      }),
+      () => trainWith(creature, dataDir, false),
+    );
+    assert(events.includes("native-train"), "the native trainer must run");
+    const lines = events.filter((e) => e.includes("[training-backend]"));
+    assertEquals(lines.length, 1, "one backend line per task");
+    assert(
+      BACKEND_LINE("backend=ffi deadlineSent=no capability=1").test(lines[0]),
+      `unexpected backend line: ${lines[0]}`,
     );
   } finally {
     setTrainDirReporter(undefined);
@@ -309,9 +345,10 @@ For more information, try '--help'.
 /**
  * Run the CLI driver in a child process with a fake `neat_ai_backpropagation`
  * shell script, and return the child's stdout. The FFI library is pointed at an
- * invalid file so the CLI path is taken.
+ * invalid file so the CLI path is taken. `driverArgs` go to the driver
+ * (`--no-deadline` omits every deadline option).
  */
-function runCliChild(script: string): string {
+function runCliChild(script: string, driverArgs: string[] = []): string {
   const dir = Deno.makeTempDirSync({ prefix: "backend-report-cli-" });
   try {
     const binary = join(dir, "neat_ai_backpropagation");
@@ -332,6 +369,7 @@ function runCliChild(script: string): string {
           root,
           "test/architecture/training/fixtures/CliBackendReportDriver.ts",
         ),
+        ...driverArgs,
       ],
       cwd: dir,
       env: {
@@ -376,6 +414,39 @@ RESULT`;
     assertEquals(lines.length, 1, "one backend line per task");
     assert(
       BACKEND_LINE("backend=cli deadlineSent=yes capability=1").test(lines[0]),
+      `unexpected backend line: ${lines[0]}`,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "Issue #4146: a deadline-capable CLI train with no timeout reports backend=cli deadlineSent=no capability=1 (POSIX shell fake CLI)",
+  ignore: Deno.build.os === "windows",
+  fn() {
+    // The fake CLI records its arguments so the test can prove no deadline flag
+    // reached it, alongside the reported line.
+    const script = `if [ "$1" = capabilities ]; then
+  cat <<'CAPABILITIES'
+${CAPABILITIES}
+CAPABILITIES
+  exit 0
+fi
+output=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = --deadline-epoch-ms ]; then echo "UNEXPECTED_DEADLINE_FLAG" >&2; exit 9; fi
+  if [ "$1" = --output-dir ]; then shift; output="$1"; fi
+  shift
+done
+cat > "$output/result.json" <<'RESULT'
+${COMPLETED_RESPONSE}
+RESULT`;
+    const lines = runCliChild(script, ["--no-deadline"]).split("\n").filter((
+      l,
+    ) => l.includes("[training-backend]"));
+    assertEquals(lines.length, 1, "one backend line per task");
+    assert(
+      BACKEND_LINE("backend=cli deadlineSent=no capability=1").test(lines[0]),
       `unexpected backend line: ${lines[0]}`,
     );
   },

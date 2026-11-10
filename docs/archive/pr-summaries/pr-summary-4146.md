@@ -89,10 +89,10 @@ entry), `test/workers/TrainDirBackendRelay.ts`,
   `deno/worker.ts` isolate through a real `WorkerHandler`, `backend=wasm`),
   `test/workers/TrainDirBackendRelay.ts`,
   `test/architecture/training/RustTrainDirBackendReport.ts` (ffi and cli,
-  capable and legacy) — reviewer: partial — reason: the real-worker test runs
-  the TypeScript loop (`NEAT_AI_BACKPROP_ENABLED=0` on the child, as this host
-  has no native library), so ffi and cli are proven through the reporter hook
-  but not through a real worker
+  capable, capable with no timeout, and legacy) — reviewer: partial — reason:
+  the real-worker test runs the TypeScript loop (`NEAT_AI_BACKPROP_ENABLED=0` on
+  the child, as this host has no native library), so ffi and cli are proven
+  through the reporter hook but not through a real worker
 - **missing** — Root cause pinned to one of the three branches above with a
   reproduction on the captured creature or an equivalently large fixture. —
   reviewer: missing — reason: needs the captured creature on sloth@GRQ-3; the
@@ -131,7 +131,7 @@ entry), `test/workers/TrainDirBackendRelay.ts`,
 ## Test Plan
 
 - `NEAT_AI_BACKPROP_ENABLED=0 deno test -A test/workers/TrainDirBackendRelay.ts test/architecture/training/RustTrainDirBackendReport.ts test/architecture/training/RustTrainDirDeadline.ts test/architecture/training/RustTrainDirBridge.ts test/architecture/training/TrainingLoop.ts test/workers/WorkerStartHeartbeat.ts test/workers/WorkerHandlerBaseInitTimeout.ts`
-  — 66 passed, 0 failed.
+  — 68 passed, 0 failed.
 - Red checks: removing the `reportTrainDirBackend` call from
   `trainDirPredictiveCoding` →
   `the predictive-coding trainer reports
@@ -139,10 +139,19 @@ entry), `test/workers/TrainDirBackendRelay.ts`,
   line per task"); removing the FFI `reportTrainDirBackend` call → 2 tests in
   `RustTrainDirBackendReport.ts` failed; commenting out `routeWorkerLogMessage`
   in `WorkerHandlerBase` → the handler test in `TrainDirBackendRelay.ts` failed.
-- Entry points checked: FFI (`tryFfiTrainDir`, capable and legacy), CLI
-  (`tryCliTrainDir`, capable and legacy, in a child process), TypeScript loop
-  (`runTypeScriptLoop`), predictive-coding trainer (`trainDirPredictiveCoding`),
-  worker relay (`worker.ts` → `installTrainDirRelay`, driven end to end by
+- PR #4149 review: `deadlineSent` is now separated from `capability` by an FFI
+  and a CLI case pairing a deadline-capable trainer with no timeout (neither
+  `hardDeadlineTS` nor `trainingTimeOutMinutes`), asserting
+  `backend=<ffi|cli> deadlineSent=no capability=1`. Red checks:
+  `deadlineSent:
+  deadlineCapable` at the FFI report site failed the FFI
+  no-timeout test; `let deadlineSent = deadlineCapable` in `tryCliTrainDir`
+  failed the CLI no-timeout test.
+- Entry points checked: FFI (`tryFfiTrainDir`, capable, capable with no timeout
+  and legacy), CLI (`tryCliTrainDir`, capable, capable with no timeout and
+  legacy, in a child process), TypeScript loop (`runTypeScriptLoop`),
+  predictive-coding trainer (`trainDirPredictiveCoding`), worker relay
+  (`worker.ts` → `installTrainDirRelay`, driven end to end by
   `TrainDirBackendRelayWiring.ts`), parent routing (`WorkerHandlerBase`).
 - `./quality.sh --skip-tests --skip-discovery` — passed (format, lint, type
   check, WASM sync). The full `./quality.sh` stops before tests: "Native
