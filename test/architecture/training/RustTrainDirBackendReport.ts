@@ -20,6 +20,7 @@ import {
 import { trainDir } from "@architecture/Training.ts";
 import {
   __resetNativeDeadlineDiagnosticsForTests,
+  __setFinalisationNowForTests,
   __setRustTrainDirEnabledForTests,
 } from "@architecture/training/RustTrainDirBridge.ts";
 import {
@@ -27,7 +28,10 @@ import {
   closeNativeBackpropLibrary,
   type NativeBackpropHandle,
 } from "@architecture/training/NativeBackpropLibrary.ts";
-import { setTrainDirReporter } from "@architecture/training/TrainDirBackendReport.ts";
+import {
+  formatTrainDirPhaseLine,
+  setTrainDirReporter,
+} from "@architecture/training/TrainDirBackendReport.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 
 const FIXTURE_DIR = new URL("../../fixtures/native-backprop/", import.meta.url);
@@ -56,6 +60,14 @@ const BACKEND_LINE = (fields: string): { test: (line: string) => boolean } => ({
     return match !== null && match[1] === fields;
   },
 });
+
+/** A `[training-phase]` report at info level, with any task id, for `fields`. */
+function phaseLinePredicate(fields: string): (line: string) => boolean {
+  return (line: string): boolean => {
+    const match = /^info\|\[training-phase\] task=\S+ (.*)$/.exec(line);
+    return match !== null && match[1] === fields;
+  };
+}
 
 // Keeps every buffer handed to the native side reachable while a double reads it.
 const keepAlive: Uint8Array[] = [];
@@ -441,13 +453,36 @@ done
 cat > "$output/result.json" <<'RESULT'
 ${COMPLETED_RESPONSE}
 RESULT`;
-    const lines = runCliChild(script, ["--no-deadline"]).split("\n").filter((
+    const stdout = runCliChild(script, ["--no-deadline"]);
+    const lines = stdout.split("\n").filter((
       l,
     ) => l.includes("[training-backend]"));
     assertEquals(lines.length, 1, "one backend line per task");
     assert(
       BACKEND_LINE("backend=cli deadlineSent=no capability=1").test(lines[0]),
       `unexpected backend line: ${lines[0]}`,
+    );
+    // No deadline, so msFromDeadline is none whatever the clock says. The CLI
+    // has not read result.json when native-returned is written.
+    const phases = stdout.split("\n").filter((l) =>
+      l.includes("[training-phase]")
+    );
+    assertEquals(phases.length, 2, "two phase lines per task");
+    assertEquals(
+      phases.filter(
+        phaseLinePredicate(
+          "phase=native-returned timedOut=unknown msFromDeadline=none",
+        ),
+      ).length,
+      1,
+      "one native-returned line with timedOut=unknown",
+    );
+    assertEquals(
+      phases.filter(
+        phaseLinePredicate("phase=finalised timedOut=no msFromDeadline=none"),
+      ).length,
+      1,
+      "one finalised line",
     );
   },
 });
@@ -491,4 +526,308 @@ cp "${fixtures}best.json" "${fixtures}journal.jsonl" "$output/"`;
       "the legacy-deadline warning must reach the reporter",
     );
   },
+});
+
+// --- Phase lines: native-returned and finalised -----------------------------
+
+Deno.test("Issue #4146: formatTrainDirPhaseLine writes the literal phase line shape", () => {
+  assertEquals(
+    formatTrainDirPhaseLine("abcd1234", {
+      phase: "native-returned",
+      timedOut: false,
+      msFromDeadline: -5000,
+    }),
+    "[training-phase] task=abcd1234 phase=native-returned timedOut=no msFromDeadline=-5000",
+  );
+  assertEquals(
+    formatTrainDirPhaseLine("abcd1234", {
+      phase: "finalised",
+      timedOut: true,
+      msFromDeadline: 7000,
+    }),
+    "[training-phase] task=abcd1234 phase=finalised timedOut=yes msFromDeadline=7000",
+  );
+  assertEquals(
+    formatTrainDirPhaseLine("abcd1234", {
+      phase: "finalised",
+      timedOut: false,
+      msFromDeadline: undefined,
+    }),
+    "[training-phase] task=abcd1234 phase=finalised timedOut=no msFromDeadline=none",
+  );
+  assertEquals(
+    formatTrainDirPhaseLine("abcd1234", {
+      phase: "native-returned",
+      timedOut: undefined,
+      msFromDeadline: undefined,
+    }),
+    "[training-phase] task=abcd1234 phase=native-returned timedOut=unknown msFromDeadline=none",
+  );
+});
+
+Deno.test("Issue #4146: a deadline-capable FFI train writes native-returned then finalised phase lines, each once, before the deadline", () => {
+  const creature = fixtureCreature();
+  const dataDir = makeSingleDataDir(creature);
+  const events: string[] = [];
+  setTrainDirReporter((level, message) => {
+    events.push(`${level}|${message}`);
+  });
+  __setFinalisationNowForTests(() => HARD_DEADLINE_TS - 5000);
+  try {
+    withNativeLibrary(
+      makeDouble({
+        capabilities: CAPABILITIES,
+        payload: COMPLETED_RESPONSE,
+        onTrain: () => events.push("native-train"),
+      }),
+      () => trainWith(creature, dataDir),
+    );
+    const phaseLines = events.filter((e) => e.includes("[training-phase]"));
+    assertEquals(phaseLines.length, 2, "two phase lines per task");
+    const returned = phaseLines.filter(
+      phaseLinePredicate(
+        "phase=native-returned timedOut=no msFromDeadline=-5000",
+      ),
+    );
+    assertEquals(returned.length, 1, "one native-returned line");
+    const finalised = phaseLines.filter(
+      phaseLinePredicate("phase=finalised timedOut=no msFromDeadline=-5000"),
+    );
+    assertEquals(finalised.length, 1, "one finalised line");
+    // The exact marker sequence: backend, then the native call, then the
+    // native-returned line, then the finalised line.
+    const markers = events.filter((e) =>
+      e === "native-train" || e.includes("[training-backend]") ||
+      e.includes("[training-phase]")
+    );
+    assertEquals(
+      markers.length,
+      4,
+      `expected four ordered markers, got: ${events.join(" | ")}`,
+    );
+    assert(
+      markers[0].includes("[training-backend]"),
+      `first marker must be the backend line, got: ${markers[0]}`,
+    );
+    assertEquals(markers[1], "native-train");
+    assertEquals(markers[2], returned[0]);
+    assertEquals(markers[3], finalised[0]);
+  } finally {
+    __setFinalisationNowForTests(undefined);
+    setTrainDirReporter(undefined);
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test("Issue #4146: a timed-out FFI train reports timedOut=yes msFromDeadline=7000 on both phase lines", () => {
+  const creature = fixtureCreature();
+  const dataDir = makeSingleDataDir(creature);
+  const events: string[] = [];
+  setTrainDirReporter((level, message) => {
+    events.push(`${level}|${message}`);
+  });
+  __setFinalisationNowForTests(() => HARD_DEADLINE_TS + 7000);
+  try {
+    withNativeLibrary(
+      makeDouble({
+        capabilities: CAPABILITIES,
+        payload: EXPIRED_RESPONSE,
+        onTrain: () => events.push("native-train"),
+      }),
+      () => trainWith(creature, dataDir),
+    );
+    const phaseLines = events.filter((e) => e.includes("[training-phase]"));
+    assertEquals(phaseLines.length, 2, "two phase lines per task");
+    const returned = phaseLines.filter(
+      phaseLinePredicate(
+        "phase=native-returned timedOut=yes msFromDeadline=7000",
+      ),
+    );
+    assertEquals(returned.length, 1, "one native-returned line");
+    const finalised = phaseLines.filter(
+      phaseLinePredicate("phase=finalised timedOut=yes msFromDeadline=7000"),
+    );
+    assertEquals(finalised.length, 1, "one finalised line");
+  } finally {
+    __setFinalisationNowForTests(undefined);
+    setTrainDirReporter(undefined);
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test("Issue #4146: a train with no deadline writes phase lines with msFromDeadline=none", () => {
+  const creature = fixtureCreature();
+  const dataDir = makeSingleDataDir(creature);
+  const events: string[] = [];
+  setTrainDirReporter((level, message) => {
+    events.push(`${level}|${message}`);
+  });
+  try {
+    withNativeLibrary(
+      makeDouble({
+        capabilities: CAPABILITIES,
+        payload: COMPLETED_RESPONSE,
+        onTrain: () => events.push("native-train"),
+      }),
+      () => trainWith(creature, dataDir, false),
+    );
+    const phaseLines = events.filter((e) => e.includes("[training-phase]"));
+    assertEquals(phaseLines.length, 2, "two phase lines per task");
+    assertEquals(
+      phaseLines.filter(
+        phaseLinePredicate(
+          "phase=native-returned timedOut=no msFromDeadline=none",
+        ),
+      ).length,
+      1,
+      "one native-returned line with msFromDeadline=none",
+    );
+    assertEquals(
+      phaseLines.filter(
+        phaseLinePredicate("phase=finalised timedOut=no msFromDeadline=none"),
+      ).length,
+      1,
+      "one finalised line with msFromDeadline=none",
+    );
+  } finally {
+    setTrainDirReporter(undefined);
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test("Issue #4146: a legacy FFI train writes native-returned with timedOut=unknown, then finalised with timedOut=no", () => {
+  __resetNativeDeadlineDiagnosticsForTests();
+  const creature = fixtureCreature();
+  const dataDir = makeSingleDataDir(creature);
+  const reports: string[] = [];
+  setTrainDirReporter((level, message) => {
+    reports.push(`${level}|${message}`);
+  });
+  __setFinalisationNowForTests(() => HARD_DEADLINE_TS - 5000);
+  try {
+    withNativeLibrary(
+      makeDouble({
+        payload: LEGACY_RESPONSE,
+        onTrain: () => reports.push("native-train"),
+      }),
+      () => trainWith(creature, dataDir),
+    );
+    const phases = reports.filter((r) => r.includes("[training-phase]"));
+    assertEquals(phases.length, 2, "two phase lines per task");
+    assertEquals(
+      phases.filter(
+        phaseLinePredicate(
+          "phase=native-returned timedOut=unknown msFromDeadline=-5000",
+        ),
+      ).length,
+      1,
+      "one native-returned line with timedOut=unknown",
+    );
+    assertEquals(
+      phases.filter(
+        phaseLinePredicate("phase=finalised timedOut=no msFromDeadline=-5000"),
+      ).length,
+      1,
+      "one finalised line",
+    );
+  } finally {
+    __setFinalisationNowForTests(undefined);
+    setTrainDirReporter(undefined);
+    __resetNativeDeadlineDiagnosticsForTests();
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test("Issue #4146: native-returned is written before the response is parsed, so an unparseable response leaves no finalised line", () => {
+  const creature = fixtureCreature();
+  const dataDir = makeSingleDataDir(creature);
+  const reports: string[] = [];
+  setTrainDirReporter((level, message) => {
+    reports.push(`${level}|${message}`);
+  });
+  __setFinalisationNowForTests(() => HARD_DEADLINE_TS - 5000);
+  const payload = JSON.stringify({
+    ...JSON.parse(COMPLETED_RESPONSE),
+    bestCreatureJson: "{not json",
+  });
+  try {
+    let thrown: unknown;
+    withNativeLibrary(
+      makeDouble({
+        capabilities: CAPABILITIES,
+        payload,
+        onTrain: () => reports.push("native-train"),
+      }),
+      () => {
+        try {
+          trainWith(creature, dataDir);
+        } catch (error) {
+          thrown = error;
+        }
+      },
+    );
+    assert(
+      thrown instanceof SyntaxError,
+      `expected a parse error, got: ${String(thrown)}`,
+    );
+    const phases = reports.filter((r) => r.includes("[training-phase]"));
+    assertEquals(phases.length, 1, "only native-returned is written");
+    assert(
+      phaseLinePredicate(
+        "phase=native-returned timedOut=no msFromDeadline=-5000",
+      )(
+        phases[0],
+      ),
+      `unexpected phase line: ${phases[0]}`,
+    );
+  } finally {
+    __setFinalisationNowForTests(undefined);
+    setTrainDirReporter(undefined);
+    Deno.removeSync(dataDir, { recursive: true });
+  }
+});
+
+Deno.test("Issue #4146: a native call that throws writes the backend line but no phase line, and the error propagates", () => {
+  const creature = fixtureCreature();
+  const dataDir = makeSingleDataDir(creature);
+  const reports: string[] = [];
+  setTrainDirReporter((level, message) => {
+    reports.push(`${level}|${message}`);
+  });
+  try {
+    let thrown: unknown;
+    withNativeLibrary(
+      makeDouble({
+        capabilities: CAPABILITIES,
+        payload: COMPLETED_RESPONSE,
+        onTrain: () => {
+          throw new Error("native boom");
+        },
+      }),
+      () => {
+        try {
+          trainWith(creature, dataDir);
+        } catch (error) {
+          thrown = error;
+        }
+      },
+    );
+    assert(
+      thrown instanceof Error && thrown.message.includes("native boom"),
+      `expected the native error to propagate, got: ${String(thrown)}`,
+    );
+    assertEquals(
+      reports.filter((r) => r.includes("[training-backend]")).length,
+      1,
+      "the backend line is written before the native call",
+    );
+    assertEquals(
+      reports.filter((r) => r.includes("[training-phase]")).length,
+      0,
+      "a throwing native call writes no phase line",
+    );
+  } finally {
+    setTrainDirReporter(undefined);
+    Deno.removeSync(dataDir, { recursive: true });
+  }
 });

@@ -66,6 +66,7 @@ import {
 import {
   reportTrainDirBackend,
   reportTrainDirMessage,
+  reportTrainDirPhase,
 } from "@architecture/training/TrainDirBackendReport.ts";
 
 /**
@@ -527,6 +528,16 @@ export function __setFinalisationNowForTests(now?: () => number): void {
   finalisationNow = now ?? Date.now;
 }
 
+/**
+ * Whole ms from the task deadline to now, for the `[training-phase]` lines
+ * (Issue #4146). `undefined` when the task has no deadline.
+ */
+function msFromDeadlineNow(setup: TrainingSetupState): number | undefined {
+  return setup.timeoutTS > 0
+    ? Math.round(finalisationNow() - setup.timeoutTS)
+    : undefined;
+}
+
 function packageTrainingResult(
   creature: Creature,
   setup: TrainingSetupState,
@@ -605,12 +616,8 @@ function packageTrainingResult(
     { skipCompaction: windowSpentNow },
   );
 
-  // Legacy trainers report no outcome beyond the MSE, so their result keeps
-  // the old shape.
-  if (native === undefined) return finalised;
-
   if (
-    !windowSpent && summary.timedOut &&
+    native !== undefined && !windowSpent && summary.timedOut &&
     isFinalisationWindowSpent(setup.timeoutTS, finalisationNow())
   ) {
     getLogger().warn(
@@ -621,6 +628,15 @@ function packageTrainingResult(
       } s); diagnostic only, the result is unchanged.`,
     );
   }
+
+  reportTrainDirPhase(setup.ID, {
+    phase: "finalised",
+    timedOut: summary.timedOut,
+    msFromDeadline: msFromDeadlineNow(setup),
+  });
+  // Legacy trainers report no outcome beyond the MSE, so their result keeps
+  // the old shape.
+  if (native === undefined) return finalised;
 
   return {
     ...finalised,
@@ -761,6 +777,11 @@ function tryFfiTrainDir(
       : String(deadlineCapability.version),
   });
   const response = nativeBackpropTrain(request);
+  reportTrainDirPhase(setup.ID, {
+    phase: "native-returned",
+    timedOut: response.timedOut,
+    msFromDeadline: msFromDeadlineNow(setup),
+  });
   const bestJson = JSON.parse(response.bestCreatureJson) as CreatureExport;
   if (deadlineCapable) {
     return packageTrainingResult(
@@ -948,6 +969,12 @@ function tryCliTrainDir(
       : String(deadlineCapability.version),
   });
   const spawned = spawnTrain(binary, args);
+  // The result file is not read yet, so the outcome is unknown here.
+  reportTrainDirPhase(setup.ID, {
+    phase: "native-returned",
+    timedOut: undefined,
+    msFromDeadline: msFromDeadlineNow(setup),
+  });
   if (!spawned.success) {
     throw new Error(
       `neat_ai_backpropagation train failed (exit ${spawned.code}): ` +

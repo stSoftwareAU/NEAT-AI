@@ -461,8 +461,9 @@ does. "Deadline sent" means the `deadlineEpochMs` field or the
 
 ## 🧾 Which backend ran, and whether a deadline was sent (Issue #4146)
 
-Every training task writes one line at info level, **before** its blocking
-native call, so a task that later hangs already has it in the log:
+Every training task writes one `[training-backend]` line at info level,
+**before** its blocking native call, so a task that later hangs already has it
+in the log:
 
 ```text
 [training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no> capability=<version|none>
@@ -485,6 +486,36 @@ writes it. The once-per-backend `[NEAT-AI] trainDir using ...` lines and the
 legacy-deadline warning take the same route. A `deadlineSent=no` line on a
 `backend=cli` or `backend=ffi` task means the engine was never sent a deadline,
 so only the stuck-task watchdog can stop it.
+
+A native (`ffi` or `cli`) task also writes two `[training-phase]` lines at info
+level, after the backend line. The WASM loop writes neither.
+
+```text
+[training-phase] task=<ID> phase=<native-returned|finalised> timedOut=<yes|no|unknown> msFromDeadline=<integer|none>
+```
+
+- `native-returned` is written as soon as the blocking native call returns,
+  before the response is parsed or packaged.
+- `timedOut` is the response's outcome. On the `native-returned` line it is
+  `unknown` when the response has not been read yet (CLI, where `result.json` is
+  read after this line) or the engine did not report it (a legacy FFI library).
+  On the `finalised` line it is always `yes` or `no`, taken from the packaged
+  summary, never `unknown`.
+- `finalised` is written when packaging and compaction finish, just before the
+  result is returned.
+- `msFromDeadline` is wall-clock now minus the task deadline, in whole
+  milliseconds (negative means before the deadline). It is `none` when the task
+  has no deadline.
+
+A native call that throws writes no phase line: the task fails with its error.
+
+Like the backend line, these lines reach the parent's logger through the worker
+relay. Read them as follows:
+
+- A `[training-backend]` line with no `native-returned` line means the native
+  call had not returned, or it threw. The task's error, if any, says which.
+- A `native-returned` line with no `finalised` line means the task hung after
+  the native call returned: in parsing, packaging or finalisation.
 
 ## 🔀 How the deadline propagates
 
