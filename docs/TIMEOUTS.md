@@ -459,6 +459,33 @@ does. "Deadline sent" means the `deadlineEpochMs` field or the
 | Deadline-capable, new fields missing or inconsistent    | Yes                      | Yes                           | Not applicable (result rejected)  | FFI response or `result.json` | Rejected with an error naming the field. No fallback.                                                                         |
 | Any engine, deadline already expired before the request | Not applicable           | No (Rust not called)          | Not applicable                    | Not applicable                | Stays on the TypeScript loop (`rustTrainDirSkipReason`).                                                                      |
 
+## 🧾 Which backend ran, and whether a deadline was sent (Issue #4146)
+
+Every training task writes one line at info level, **before** its blocking
+native call, so a task that later hangs already has it in the log:
+
+```text
+[training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no> capability=<version|none>
+```
+
+- `task` is the task's `setup.ID`, the 8-character creature id.
+- `backend` is `ffi` for the in-process `libneat_ai_backpropagation`, `cli` for
+  the spawned `neat_ai_backpropagation`, or `wasm` for the TypeScript / WASM
+  loop, which includes the predictive-coding trainer (it uses no native trainer,
+  so it reports `deadlineSent=no capability=none`).
+- `deadlineSent` is `yes` when the request carried the deadline
+  (`deadlineEpochMs` or `--deadline-epoch-ms`), and `no` otherwise: a legacy
+  engine, no timeout, or the WASM loop.
+- `capability` is the `deadline` capability version the engine advertised (`1`
+  for a deadline-capable engine), or `none` when it advertised none.
+
+A training task runs in a pooled worker, whose console the parent cannot see.
+The worker therefore relays the line to the parent, and the **parent's logger**
+writes it. The once-per-backend `[NEAT-AI] trainDir using ...` lines and the
+legacy-deadline warning take the same route. A `deadlineSent=no` line on a
+`backend=cli` or `backend=ffi` task means the engine was never sent a deadline,
+so only the stuck-task watchdog can stop it.
+
 ## 🔀 How the deadline propagates
 
 ```mermaid

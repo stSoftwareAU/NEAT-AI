@@ -20,6 +20,7 @@ import {
   resolveIterations,
   resolveTargetError,
 } from "@architecture/training/TrainingSetup.ts";
+import { reportTrainDirBackend } from "@architecture/training/TrainDirBackendReport.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 
 /**
@@ -41,6 +42,14 @@ export function trainDirPredictiveCoding(
 
   const uuid = CreatureUtil.makeUUID(creature);
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
+
+  // Issue #4146: one backend line per task, here too — a missing line must not
+  // read as "the task never reached trainDir". No native trainer, no deadline.
+  reportTrainDirBackend(ID, {
+    backend: "wasm",
+    deadlineSent: false,
+    capability: "none",
+  });
 
   const pcResult = trainWithPredictiveCoding(
     creature,
