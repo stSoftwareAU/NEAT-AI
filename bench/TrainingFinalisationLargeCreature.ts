@@ -10,11 +10,10 @@
  * whether finalisation on its own can hold a worker.
  *
  * Methodology:
- *   - The creature is built deterministically once at module load from a
- *     fixed-seed LCG: each hidden neuron is fed by an earlier neuron (the first five by inputs),
- *     random extra synapses are added up to 63,317, and a fix-up gives every
- *     hidden neuron an outward connection. The JSON is held in memory only;
- *     nothing is written to disk.
+ *   - The creature is built deterministically once at module load by
+ *     `buildLargeCreatureJSON` (`test/fixtures/LargeCreatureFixture.ts`, whose
+ *     shape is pinned by a test) from a fixed-seed LCG. The JSON is held in
+ *     memory only; nothing is written to disk.
  *   - The built JSON is loaded with `Creature.fromJSON`, and that creature's
  *     `exportJSON()` is the canonical export, so the synapse order is the one
  *     the library produces.
@@ -37,86 +36,15 @@
 
 import { Creature } from "@creature";
 import { compactUnused } from "@compact/CompactUnused.ts";
-import type { CreatureExport } from "@architecture/CreatureInterfaces.ts";
+import {
+  buildLargeCreatureJSON,
+  ISSUE_4146_SHAPE,
+} from "../test/fixtures/LargeCreatureFixture.ts";
 
-const IN = 50;
-const OUT = 5;
-const HIDDEN = 9630;
-const SYNAPSES = 63317;
-
-// Fixed-seed LCG, so the same creature is rebuilt on every run.
-let seed = 12345;
-const rnd = (): number => {
-  seed = (seed * 1664525 + 1013904223) >>> 0;
-  return seed / 4294967296;
-};
-
-function buildCreatureJSON(): CreatureExport {
-  const neurons: CreatureExport["neurons"] = [];
-  for (let i = 0; i < HIDDEN; i++) {
-    neurons.push({
-      type: "hidden",
-      uuid: `h-${i}`,
-      bias: rnd() - 0.5,
-      squash: "TANH",
-    });
-  }
-  for (let o = 0; o < OUT; o++) {
-    neurons.push({
-      type: "output",
-      uuid: `output-${o}`,
-      bias: rnd() - 0.5,
-      squash: "TANH",
-    });
-  }
-
-  const synapses: CreatureExport["synapses"] = [];
-  const seen = new Set<string>();
-  const add = (fromUUID: string, toUUID: string) => {
-    const key = `${fromUUID}>${toUUID}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    synapses.push({ weight: (rnd() * 2 - 1) * 0.3, fromUUID, toUUID });
-  };
-
-  // The first five hidden neurons read the inputs; the rest read an earlier
-  // hidden neuron.
-  for (let i = 0; i < HIDDEN; i++) {
-    add(
-      i < 5 ? `input-${i % IN}` : `h-${Math.floor(rnd() * i)}`,
-      `h-${i}`,
-    );
-  }
-  for (let o = 0; o < OUT; o++) {
-    add(`h-${HIDDEN - 1 - o}`, `output-${o}`);
-  }
-  while (synapses.length < SYNAPSES) {
-    const to = Math.floor(rnd() * HIDDEN);
-    const from = rnd() < 0.3
-      ? `input-${Math.floor(rnd() * IN)}`
-      : `h-${Math.floor(rnd() * (to || 1))}`;
-    if (from === `h-${to}`) continue;
-    add(from, `h-${to}`);
-  }
-
-  // Fix-up: every hidden neuron needs an outward connection.
-  const hasOutward = new Set(synapses.map((s) => s.fromUUID));
-  for (let i = 0; i < HIDDEN; i++) {
-    if (!hasOutward.has(`h-${i}`)) add(`h-${i}`, `output-${i % OUT}`);
-  }
-
-  return {
-    semanticVersion: "4.0.0",
-    forwardOnly: true,
-    neurons,
-    synapses,
-    input: IN,
-    output: OUT,
-  };
-}
+const { inputs: IN, outputs: OUT } = ISSUE_4146_SHAPE;
 
 // Built once at module load; the bench cases only time the stages.
-const built = buildCreatureJSON();
+const built = buildLargeCreatureJSON(ISSUE_4146_SHAPE);
 const creature = Creature.fromJSON(built);
 const canonical = creature.exportJSON();
 const target = new Creature(IN, OUT);

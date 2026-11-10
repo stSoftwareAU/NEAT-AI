@@ -182,13 +182,35 @@ flowchart LR
 ## Test Plan
 
 - Added `bench/TrainingFinalisationLargeCreature.ts` (a `Deno.bench` file, no
-  assertions, so no red-check applies). Run on the final head: all five cases
-  ran, results in the Evidence table.
+  assertions). Run on the final head: all five cases ran, results in the
+  Evidence table.
+- Moved the fixture builder out of the bench into
+  `test/fixtures/LargeCreatureFixture.ts` (parameterised by a shape) and added
+  `test/fixtures/LargeCreatureFixture.test.ts`, which pins on a small shape: the
+  neuron counts, uuids, biases and squash; the version and forward-only
+  metadata; synapse uniqueness, the weight bound and the minimum count;
+  feed-forward ordering; the input-fed first five hidden neurons; the output-fed
+  last hidden neurons; the outward-connection fix-up; seed determinism with no
+  RNG state shared between calls; and a `Creature.fromJSON`/`exportJSON` round
+  trip. Run: 6 passed.
 - `./quality.sh --skip-tests --skip-discovery`: passed on the final head
   (format, lint, type check, WASM sync). The test stage was not run: this host
   has no native `rust_scorer`, and the diff adds no test and changes no
   production code.
 - Related existing tests were not edited.
+
+## Mutation check
+
+The survivors at `bench/TrainingFinalisationLargeCreature.ts:51-114` were the
+fixture builder; it now lives in `test/fixtures/LargeCreatureFixture.ts` and the
+test above covers it. The survivors at `:129-153` are the `Deno.bench`
+registrations, not the builder.
+
+- `bench/TrainingFinalisationLargeCreature.ts` bench registrations (`group`,
+  `name` and the `fn` bodies of the five `Deno.bench` cases) exempt
+  (untestable): a `Deno.bench` file is not imported by any test and timing is
+  not allowed in `test/` (AGENTS.md); the cases only call library functions that
+  have their own tests.
 
 ## Unmet criteria in this run
 
