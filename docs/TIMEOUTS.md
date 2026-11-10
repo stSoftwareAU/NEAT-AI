@@ -491,7 +491,7 @@ A native (`ffi` or `cli`) task also writes two `[training-phase]` lines at info
 level, after the backend line. The WASM loop writes neither.
 
 ```text
-[training-phase] task=<ID> phase=<native-returned|finalised> timedOut=<yes|no> msFromDeadline=<integer|none>
+[training-phase] task=<ID> phase=<native-returned|finalised> timedOut=<yes|no|unknown> msFromDeadline=<integer|none>
 ```
 
 - `native-returned` is written as soon as the blocking native call returns,
