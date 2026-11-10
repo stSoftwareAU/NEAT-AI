@@ -99,6 +99,32 @@ Tests: `test/architecture/training/RustTrainDirBackendReport.ts`.
   reviewer: unrequested — reason: not named by a criterion; added so the next
   field log can pin the root cause the second criterion asks for
 
+## Mutation check
+
+The mutation check could not judge mutants: its baseline run failed before
+mutation. The failure is the host, not the change. On this host the native
+`neat_ai_backpropagation` library and binary are absent, so
+`test/architecture/training/TrainingLoop.ts` fails its one test that needs the
+native trainer ("refusing WASM/TypeScript fallback (neat_ai_backpropagation
+library/binary was not found)"). The other six named files pass here
+(`FinalisationWindow`, `RustTrainDirBridge`, `RustTrainDirDeadline`,
+`TrainingTaskWatchdog`, `MemeticGainStudy`, and `RustTrainDirBackendReport`: 15
+passed). The phase-line mutations are pinned by the red-checks listed under Test
+Plan. No test or production change was made for this item.
+
+## Unmet criteria in this run
+
+The four `missing` criteria above stay `missing`; none can be done from this
+run. The root cause needs the captured creature (`~/logs/training-hangs/*.json`,
+absent from this host) or a field log carrying the `[training-phase]` lines. The
+branch 1 regression needs a root cause to confirm branch 1 first, and the engine
+source does not support it as worded. The branch 2 `$CARGO_HOME/lib` layout test
+already shipped with #4149. The closing
+`[training-outcomes] ... timedOut=N>=1
+abandoned=0` line needs a run on
+sloth@GRQ-3 on a released build. This pull request is `Part of #4146`; the issue
+stays open.
+
 ## Test Plan
 
 All in `test/architecture/training/RustTrainDirBackendReport.ts`; run on the
