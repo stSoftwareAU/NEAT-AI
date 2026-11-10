@@ -497,10 +497,10 @@ level, after the backend line. The WASM loop writes neither.
 - `native-returned` is written as soon as the blocking native call returns,
   before the response is parsed or packaged.
 - `timedOut` is the response's outcome. On the `native-returned` line it is
-  `unknown` when the response has not been read yet (CLI, where `result.json`
-  is read after this line) or the engine did not report it (a legacy FFI
-  library). On the `finalised` line it is always `yes` or `no`, taken from the
-  packaged summary, never `unknown`.
+  `unknown` when the response has not been read yet (CLI, where `result.json` is
+  read after this line) or the engine did not report it (a legacy FFI library).
+  On the `finalised` line it is always `yes` or `no`, taken from the packaged
+  summary, never `unknown`.
 - `finalised` is written when packaging and compaction finish, just before the
   result is returned.
 - `msFromDeadline` is wall-clock now minus the task deadline, in whole
