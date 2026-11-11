@@ -20,7 +20,8 @@ open. The issue is not closed by this step.
 
 Part of #4146.
 
-Version bump: `deno.json` was auto-incremented to 7.1.17 by CI (commit ebf33d4f); the merged commit records the final version.
+Version bump: `deno.json` was auto-incremented to 7.1.17 by CI (commit
+ebf33d4f); the merged commit records the final version.
 
 ## Spec
 
