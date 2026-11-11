@@ -141,8 +141,8 @@ flowchart LR
   `test/workers/TrainDirBackendRelayWiring.ts`,
   `test/architecture/training/RustTrainDirBackendReport.ts` (delivered by the
   merged #4149, not by this diff) — reviewer: missing — reason: the reviewer saw
-  only this diff, which adds the bench and its large-creature fixture; the criterion is satisfied by
-  #4149 already on the base branch
+  only this diff, which adds the bench and its large-creature fixture; the
+  criterion is satisfied by #4149 already on the base branch
 - **partial** — Root cause pinned to one of the three branches above with a
   reproduction on the captured creature or an equivalently large fixture. —
   evidence: `bench/TrainingFinalisationLargeCreature.ts` and the measurements
