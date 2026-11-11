@@ -6,13 +6,13 @@
  * returning no result and being quarantined. This bench times the TypeScript
  * stages that run after the native trainer returns, on a creature the size of
  * the one in the issue (9,684 neurons, 63,317 synapses): 50 inputs, 5 outputs,
- * 9,630 hidden neurons, at least 63,317 synapses, forward-only. It shows
+ * 9,629 hidden neurons, exactly 63,317 synapses, forward-only. It shows
  * whether finalisation on its own can hold a worker.
  *
  * Methodology:
  *   - The creature is built deterministically once at module load by
  *     `buildLargeCreatureJSON` (`test/fixtures/LargeCreatureFixture.ts`, whose
- *     shape is pinned by a test) from a fixed-seed LCG. The JSON is held in
+ *     size is pinned by a test) from a fixed-seed LCG. The JSON is held in
  *     memory only; nothing is written to disk.
  *   - The built JSON is loaded with `Creature.fromJSON`, and that creature's
  *     `exportJSON()` is the canonical export, so the synapse order is the one
@@ -51,7 +51,7 @@ const target = new Creature(IN, OUT);
 const trace = creature.traceJSON();
 
 const GROUP =
-  "training finalisation, issue-sized creature (9,630 hidden, 63,317+ synapses)";
+  "training finalisation, issue-sized creature (9,629 hidden, 63,317 synapses)";
 
 Deno.bench({
   group: GROUP,

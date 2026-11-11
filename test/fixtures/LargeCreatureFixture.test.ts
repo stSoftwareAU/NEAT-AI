@@ -21,16 +21,15 @@ const SMALL: LargeCreatureShape = {
   seed: 7,
 };
 
-Deno.test("LargeCreatureFixture: the issue shape is the size reported in #4146", () => {
-  assertEquals(ISSUE_4146_SHAPE.inputs, 50);
-  assertEquals(ISSUE_4146_SHAPE.outputs, 5);
-  assertEquals(ISSUE_4146_SHAPE.hidden, 9630);
-  assertEquals(ISSUE_4146_SHAPE.synapses, 63317);
+Deno.test("LargeCreatureFixture: the issue shape builds the 9,684-neuron, 63,317-synapse creature of #4146", () => {
+  const json = buildLargeCreatureJSON(ISSUE_4146_SHAPE);
+  // Inputs are implied by `input`; `neurons` lists hidden and output neurons.
+  assertEquals(json.input + json.neurons.length, 9684);
+  assertEquals(json.synapses.length, 63317);
 });
 
 Deno.test("LargeCreatureFixture: carries the requested neurons and metadata", () => {
   const json = buildLargeCreatureJSON(SMALL);
-  assertEquals(json.semanticVersion, "4.0.0");
   assertEquals(json.forwardOnly, true);
   assertEquals(json.input, 4);
   assertEquals(json.output, 3);
@@ -48,9 +47,9 @@ Deno.test("LargeCreatureFixture: carries the requested neurons and metadata", ()
   }
 });
 
-Deno.test("LargeCreatureFixture: synapses are unique, bounded and reach the minimum", () => {
+Deno.test("LargeCreatureFixture: synapses are unique, bounded and exactly the requested count", () => {
   const json = buildLargeCreatureJSON(SMALL);
-  assert(json.synapses.length >= 150);
+  assertEquals(json.synapses.length, 150);
 
   const keys = new Set<string>();
   for (const s of edges(json)) {

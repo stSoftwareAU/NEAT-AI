@@ -49,7 +49,8 @@ Version bump: not touched by this change.
 
 ## Evidence
 
-Fixture: 50 inputs, 5 outputs, 9,630 hidden neurons, 64,992 synapses
+Engine fixture (an uncommitted scratch generator under `/tmp`, not the committed
+builder): 50 inputs, 5 outputs, 9,630 hidden neurons, 64,992 synapses
 (forward-only, `TANH`, seeded), plus a 200,000-record `.bin` corpus (44 MB).
 Host: 21 cores, linux. Engine built with
 `cargo build --release --locked -p neat_ai_backpropagation` at `947cbb5`.
@@ -81,18 +82,20 @@ changed weights about 0.3 s past the deadline, through both the CLI and FFI.
 This is a measurement on this fixture; it does not cover the production corpus
 or a 16 GB macOS host.
 
-TypeScript finalisation on the same size of creature, from the committed bench
+TypeScript finalisation on a creature of the issue's size (50 inputs, 5 outputs,
+9,629 hidden neurons = 9,684 neurons, 63,317 synapses), from the committed bench
 (`deno bench --allow-read --allow-write --allow-env --allow-ffi
 bench/TrainingFinalisationLargeCreature.ts`,
-average per iteration):
+average per iteration, re-run on the final head on a shared 7-core aarch64 Linux
+host, so indicative only):
 
 | stage                           | time     |
 | ------------------------------- | -------- |
-| `Creature.fromJSON`             | 29.8 ms  |
-| `creature.loadFrom(exportJSON)` | 30.0 ms  |
-| `creature.exportJSON()`         | 3.9 ms   |
-| `creature.traceJSON()`          | 6.0 ms   |
-| `compactUnused(trace, 0.1)`     | 168.3 ms |
+| `Creature.fromJSON`             | 34.0 ms  |
+| `creature.loadFrom(exportJSON)` | 35.6 ms  |
+| `creature.exportJSON()`         | 5.6 ms   |
+| `creature.traceJSON()`          | 8.9 ms   |
+| `compactUnused(trace, 0.1)`     | 198.8 ms |
 
 Limit of that table: the trace comes from a never-activated creature, so
 `compactUnused` times the copy and identity setup, not a removal pass over a
@@ -186,25 +189,34 @@ flowchart LR
   Evidence table.
 - Moved the fixture builder out of the bench into
   `test/fixtures/LargeCreatureFixture.ts` (parameterised by a shape) and added
-  `test/fixtures/LargeCreatureFixture.test.ts`, which pins on a small shape: the
-  neuron counts, uuids, biases and squash; the version and forward-only
-  metadata; synapse uniqueness, the weight bound and the minimum count;
-  feed-forward ordering; the input-fed first five hidden neurons; the output-fed
-  last hidden neurons; the outward-connection fix-up; seed determinism with no
-  RNG state shared between calls; and a `Creature.fromJSON`/`exportJSON` round
-  trip. Run: 6 passed.
-- `./quality.sh --skip-tests --skip-discovery`: passed on the final head
-  (format, lint, type check, WASM sync). The test stage was not run: this host
-  has no native `rust_scorer`, and the diff adds no test and changes no
-  production code.
+  `test/fixtures/LargeCreatureFixture.test.ts` (6 tests at head). The shape now
+  builds exactly the issue's totals: 50 inputs + 5 outputs + 9,629 hidden =
+  9,684 neurons, and 63,317 synapses (the outward-connection fix-up runs before
+  the random fill, so the synapse count lands on the target). The first test
+  builds `ISSUE_4146_SHAPE` and asserts those two totals as literals; the others
+  pin, on a small shape: neuron counts, uuids, biases and squash; forward-only
+  and input and output counts; synapse uniqueness, the weight bound and the
+  exact count; feed-forward ordering; the input-fed first hidden neurons; the
+  output-fed last hidden neurons; the outward-connection fix-up; seed
+  determinism with no RNG state shared between calls; and a
+  `Creature.fromJSON`/`exportJSON` round trip. Run on the final head:
+  `deno test test/fixtures/LargeCreatureFixture.test.ts`, 6 passed, 0 failed.
+  Run with the previous builder (9,630 hidden, fix-up after the fill): 4 passed,
+  2 failed (the issue-shape totals test and the exact synapse-count test).
+- `./quality.sh --skip-tests --skip-discovery`: passed on the previous head
+  (format, lint, type check, WASM sync); on the final head only `deno fmt` and
+  the test file above were run. The full test stage was not run: this host has
+  no native `rust_scorer`. The diff adds one test file and changes no production
+  code.
 - Related existing tests were not edited.
 
 ## Mutation check
 
-The survivors at `bench/TrainingFinalisationLargeCreature.ts:51-114` were the
-fixture builder; it now lives in `test/fixtures/LargeCreatureFixture.ts` and the
-test above covers it. The survivors at `:129-153` are the `Deno.bench`
-registrations, not the builder.
+The earlier survivors in the fixture builder (previously in the bench) are now
+covered by the test above; the builder lives at
+`test/fixtures/LargeCreatureFixture.ts:42-113`. The bench is
+`bench/TrainingFinalisationLargeCreature.ts` (94 lines), and its five
+`Deno.bench` registrations are at lines 56-94.
 
 - `bench/TrainingFinalisationLargeCreature.ts` bench registrations (`group`,
   `name` and the `fn` bodies of the five `Deno.bench` cases) exempt
