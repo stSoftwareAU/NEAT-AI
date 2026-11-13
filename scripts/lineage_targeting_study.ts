@@ -222,8 +222,9 @@ if (import.meta.main) {
           "indicative only",
         diversityPolicy:
           "behavioural diversity: mean pairwise RMS difference of the first " +
-          "output over the first 64 calibration records, averaged over every " +
-          "generation; the ratio is the median over seeds of arm / control; " +
+          "output over the first 64 calibration records, averaged over " +
+          "generations 2 and later (generation 1 is the identical seeded " +
+          "population in every arm); the ratio is the median over seeds of arm / control; " +
           "measurement only, never read by selection, mutation or targeting; " +
           "genetic distance and species count are reported but not used",
       },
