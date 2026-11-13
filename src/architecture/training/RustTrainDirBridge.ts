@@ -1214,8 +1214,11 @@ async function removeWorkDirAsync(workDir: string): Promise<void> {
 function removeWorkDir(workDir: string): void {
   try {
     Deno.removeSync(workDir, { recursive: true });
-  } catch {
-    // Temp dir cleanup is best-effort.
+  } catch (error) {
+    getLogger().warn(
+      `Failed to remove native training work directory ${workDir}`,
+      error,
+    );
   }
 }
 

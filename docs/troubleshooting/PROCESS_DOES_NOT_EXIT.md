@@ -24,7 +24,10 @@ The native training call is now awaited on the worker path (Issue #4126):
   The request and output structure live on the C heap. An additional OS loader
   reference keeps the native code mapped after Deno closes the worker's library
   resource. Normal completion frees these resources; an explicit library close
-  during pending calls is deferred until those calls settle.
+  during pending calls is deferred until those calls settle. Native workers need
+  FFI permission for the trainer, the system C allocator and the loader
+  (`libc.so.6` / `libdl.so.2` on Linux, `libSystem.B.dylib` on macOS,
+  `msvcrt.dll` / `kernel32.dll` on Windows).
 - Terminating the isolate cannot run its JavaScript cleanup. Its C buffers,
   loader reference, native result/state and temporary work directory can remain
   until process exit (the directory remains on disk). They do not keep the
@@ -57,7 +60,7 @@ sequenceDiagram
     participant Native as Native thread
     W->>Native: nonblocking train with retained buffers and library
     Evolve->>W: deadline missed, quarantine and terminate
-    Note over Native: may continue; code and buffers remain valid
+    Note over Native: may continue, code and buffers remain valid
     Evolve-->>App: result and teardown warning
     App->>App: save results and run final statement
     Note over App: process can exit without waiting for native training

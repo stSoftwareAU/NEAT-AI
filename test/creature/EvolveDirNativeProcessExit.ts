@@ -69,6 +69,7 @@ async function runQuarantine(lateReturn: boolean, cli = false): Promise<void> {
     assertStringIncludes(output, "TRAINING_QUARANTINED", output);
     assertStringIncludes(output, "quarantined — training task", output);
     assertStringIncludes(output, "EVOLVE_RETURNED", output);
+    assertStringIncludes(output, "native work may still be running", output);
     assertStringIncludes(output, "CALLER_LAST_STATEMENT", output);
     assertEquals(killed, false, output);
     assertEquals(status.code, 0, output);
