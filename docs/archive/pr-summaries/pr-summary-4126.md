@@ -83,7 +83,7 @@ sequenceDiagram
     participant Native as Native thread
     W->>Native: nonblocking train (C-heap buffers, retained library)
     Evolve->>W: deadline missed → quarantine → terminate()
-    Note over W: isolate released; JS thread was not blocked
+    Note over W: isolate released, JS thread was not blocked
     Note over Native: may continue; code and buffers stay valid
     Evolve-->>App: result + conservative teardown warning
     App->>App: save, last statement
