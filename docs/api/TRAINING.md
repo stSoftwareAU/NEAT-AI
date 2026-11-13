@@ -151,6 +151,15 @@ const result = trainDir(creature, dataDir, {
 These functions are used internally by the training pipeline and are **not**
 exported from `mod.ts`. They are documented here for architectural reference.
 
+#### `trainDir` and `trainDirAsync`
+
+`trainDir(creature, dataDir, options, cost)` remains synchronous.
+`WorkerProcessor` awaits `trainDirAsync` with the same arguments and result
+contract. Its native FFI call or CLI subprocess is asynchronous, allowing a
+quarantined worker to terminate without waiting for training (Issue #4126). The
+TypeScript/WASM loop and predictive coding still run synchronously. Neither
+entry point is exported from `mod.ts`.
+
 #### `generateSyntheticSynapses(creature, options?)`
 
 Adds zero-weight synapses between neurons in adjacent topological layers.

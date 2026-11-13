@@ -482,9 +482,10 @@ creature below. It does **not** identify the code that spins.
   train. The 5 s heartbeat logged nothing during run A's 130 healthy seconds,
   and in run B it fired only after `evolveDir` returned:
   `[  363.2s] [heartbeat] heap=1003MB
-  lag=358192ms`. So any `setInterval` poll
-  — including the first-generation bound's — cannot be relied on there, whether
-  or not GC is involved.
+  lag=358192ms`. During those
+  measurements, `setInterval` polls — including the first-generation bound's —
+  could not run while synchronous training held the main thread, whether or not
+  GC was involved.
 - **No `[MemoryMonitor]` line is expected at this heap size.** The monitor logs
   only when heap pressure crosses its warning or critical threshold
   (`checkMemoryAndEvict` / `logMemoryUsage` in `src/NEAT/MemoryMonitor.ts`); a

@@ -8,44 +8,19 @@ import {
 import {
   __installNativeBackpropLibraryForTests,
   closeNativeBackpropLibrary,
-  type NativeBackpropHandle,
   nativeBackpropTrainAsync,
   type NativeBackpropTrainRequest,
 } from "@architecture/training/NativeBackpropLibrary.ts";
 
-const CAPABILITIES = JSON.stringify({
-  abiVersion: 1,
-  version: "0.1.50",
-  capabilities: {
-    deadline: {
-      version: 1,
-      requestField: "deadlineEpochMs",
-      cliFlag: "--deadline-epoch-ms",
-      unit: "epochMilliseconds",
-      resultFile: "result.json",
-    },
-  },
-});
+import { nativeBackpropDouble } from "./_nativeBackpropDouble.ts";
 
-const COMPLETED_RESPONSE = JSON.stringify({
-  abiVersion: 1,
-  version: "0.1.50",
-  bestCreatureJson: "{}",
-  baselineMse: 0.5,
-  bestMse: 0.25,
-  acceptedEpochs: 1,
-  epochs: 1,
-  bestPath: "best.json",
-  journalPath: "journal.json",
-  timedOut: false,
-  timeout: null,
-  completedEpochs: 1,
-  baselineMeasure: { kind: "full", mse: 0.5, records: 10 },
-  bestMeasure: { kind: "full", mse: 0.25, records: 10 },
-});
-
-// Keeps payloads reachable while a double's "native" side points at them.
-const keepAlive: Uint8Array[] = [];
+const FIXTURES = new URL("../../fixtures/native-backprop/", import.meta.url);
+const CAPABILITIES = Deno.readTextFileSync(
+  new URL("capabilities-new.json", FIXTURES),
+);
+const COMPLETED_RESPONSE = Deno.readTextFileSync(
+  new URL("ffi-response-new-completed.json", FIXTURES),
+);
 
 function trainRequest(
   extra: Partial<NativeBackpropTrainRequest> = {},
@@ -68,75 +43,9 @@ function trainRequest(
   };
 }
 
-/** `capabilities` omitted means a legacy library. */
-function makeDouble(options: {
-  capabilities?: string;
-  status: number;
-  payload: string;
-  completion?: Promise<void>;
-}): {
-  handle: NativeBackpropHandle;
-  received: Record<string, unknown>[];
-} {
-  const received: Record<string, unknown>[] = [];
-  let closed = false;
-  const capabilityBytes = options.capabilities === undefined
-    ? null
-    : new TextEncoder().encode(`${options.capabilities}\0`);
-  if (capabilityBytes !== null) keepAlive.push(capabilityBytes);
-
-  const symbols: Record<string, unknown> = {
-    "neat_backprop_abi_version": () => 1,
-    "neat_backprop_version": () => null,
-    "neat_backprop_capabilities": capabilityBytes === null
-      ? null
-      : () => Deno.UnsafePointer.of(capabilityBytes),
-    "neat_backprop_train": () => {
-      throw new Error("Synchronous entry is not used by this ABI double");
-    },
-    "neat_backprop_buffer_free": () => {},
-  };
-  symbols["neat_backprop_train_nonblocking"] = (
-    reqPtr: Deno.PointerObject,
-    len: bigint,
-    outPtr: Deno.PointerObject,
-  ): Promise<number> => {
-    const bytes = new Uint8Array(Number(len));
-    new Deno.UnsafePointerView(reqPtr).copyInto(bytes);
-    received.push(JSON.parse(new TextDecoder().decode(bytes)));
-    const payload = new TextEncoder().encode(options.payload);
-    keepAlive.push(payload);
-    const view = new DataView(
-      Deno.UnsafePointerView.getArrayBuffer(outPtr, 24),
-    );
-    view.setBigUint64(
-      0,
-      Deno.UnsafePointer.value(Deno.UnsafePointer.of(payload)),
-      true,
-    );
-    view.setBigUint64(8, BigInt(payload.byteLength), true);
-    view.setBigUint64(16, BigInt(payload.byteLength), true);
-    return (options.completion ?? Promise.resolve()).then(() => {
-      if (closed) {
-        throw new Error("Native code was unloaded before training returned");
-      }
-      return options.status;
-    });
-  };
-  return {
-    handle: {
-      symbols,
-      close: () => {
-        closed = true;
-      },
-    } as unknown as NativeBackpropHandle,
-    received,
-  };
-}
-
 Deno.test("nativeBackpropTrainAsync awaits the non-blocking call and forwards the deadline", async () => {
   const deadline = 1_800_000_000_000;
-  const { handle, received } = makeDouble({
+  const { handle, received } = nativeBackpropDouble({
     capabilities: CAPABILITIES,
     status: 0,
     payload: COMPLETED_RESPONSE,
@@ -146,7 +55,7 @@ Deno.test("nativeBackpropTrainAsync awaits the non-blocking call and forwards th
     const response = await nativeBackpropTrainAsync(
       trainRequest({ deadlineEpochMs: deadline }),
     );
-    assertEquals(response.bestMse, 0.25);
+    assertEquals(response.bestMse, 0.3845915356043993);
     assertEquals(response.timedOut, false);
     assertEquals(received.length, 1);
     assertEquals(received[0].deadlineEpochMs, deadline);
@@ -156,7 +65,7 @@ Deno.test("nativeBackpropTrainAsync awaits the non-blocking call and forwards th
 });
 
 Deno.test("nativeBackpropTrainAsync rejects with the native error on a non-OK status", async () => {
-  const { handle } = makeDouble({
+  const { handle } = nativeBackpropDouble({
     capabilities: CAPABILITIES,
     status: 2,
     payload: "boom: trainer failed",
@@ -179,9 +88,11 @@ Deno.test("nativeBackpropTrainAsync rejects with the native error on a non-OK st
 });
 
 Deno.test("nativeBackpropTrainAsync refuses a deadline on a legacy library before any native call", async () => {
-  const { handle, received } = makeDouble({
+  const { handle, received } = nativeBackpropDouble({
     status: 0,
-    payload: COMPLETED_RESPONSE,
+    payload: Deno.readTextFileSync(
+      new URL("ffi-response-legacy.json", FIXTURES),
+    ),
   });
   try {
     assert(__installNativeBackpropLibraryForTests(handle));
@@ -191,6 +102,9 @@ Deno.test("nativeBackpropTrainAsync refuses a deadline on a legacy library befor
     assert(error !== undefined, "expected a rejection");
     assertStringIncludes(error.message, "no deadline capability");
     assertEquals(received.length, 0);
+    const allowed = await nativeBackpropTrainAsync(trainRequest());
+    assertEquals(allowed.bestMse, 0.3845915356043993);
+    assertEquals(allowed.timedOut, undefined);
   } finally {
     closeNativeBackpropLibrary();
   }
@@ -198,7 +112,7 @@ Deno.test("nativeBackpropTrainAsync refuses a deadline on a legacy library befor
 
 Deno.test("closing the library during concurrent native training preserves both results", async () => {
   const completed = Promise.withResolvers<void>();
-  const { handle } = makeDouble({
+  const { handle } = nativeBackpropDouble({
     capabilities: CAPABILITIES,
     status: 0,
     payload: COMPLETED_RESPONSE,
@@ -211,34 +125,39 @@ Deno.test("closing the library during concurrent native training preserves both 
   completed.resolve();
   try {
     const results = await Promise.all([first, second]);
-    assertEquals(results.map((result) => result.bestMse), [0.25, 0.25]);
+    assertEquals(results.map((result) => result.bestMse), [
+      0.3845915356043993,
+      0.3845915356043993,
+    ]);
   } finally {
     closeNativeBackpropLibrary();
   }
 });
 
 Deno.test("async native training rejects invalid absolute deadlines and accepts a valid one", async () => {
-  const { handle } = makeDouble({
+  const { handle } = nativeBackpropDouble({
     capabilities: CAPABILITIES,
     status: 0,
     payload: COMPLETED_RESPONSE,
   });
   try {
     assert(__installNativeBackpropLibraryForTests(handle));
-    for (const value of [-1, 0.5, NaN, Infinity, null]) {
-      await assertRejects(
-        () =>
-          nativeBackpropTrainAsync(
-            trainRequest({ deadlineEpochMs: value as number }),
-          ),
-        Error,
-        "deadlineEpochMs must be a non-negative safe integer",
-      );
-    }
+    await Promise.all(
+      [-1, 0.5, NaN, Infinity, null].map((value) =>
+        assertRejects(
+          () =>
+            nativeBackpropTrainAsync(
+              trainRequest({ deadlineEpochMs: value as number }),
+            ),
+          Error,
+          "deadlineEpochMs must be a non-negative safe integer",
+        )
+      ),
+    );
     const result = await nativeBackpropTrainAsync(
       trainRequest({ deadlineEpochMs: 1_800_000_000_000 }),
     );
-    assertEquals(result.bestMse, 0.25);
+    assertEquals(result.bestMse, 0.3845915356043993);
   } finally {
     closeNativeBackpropLibrary();
   }

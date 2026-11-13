@@ -25,15 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- **Issue #4126:** a training task wedged in the native trainer no longer keeps
-  the process alive after `evolveDir()` returns. The worker path now awaits
-  `trainDirAsync`: the FFI call uses a `nonblocking: true` alias of
-  `neat_backprop_train` with its request and output buffers on the C heap, so a
-  terminated worker's freed memory is never written (those buffers and the
-  task's temp work dir deliberately leak if the worker is terminated mid-call),
-  and the CLI path awaits `Deno.Command(...).output()`. This holds for legacy
-  and deadline-capable engines alike. The public synchronous `trainDir` is
-  unchanged and still blocks its caller's thread.
+- **Issue #4126:** scheduled native training no longer pins a worker thread
+  after quarantine. Workers await `trainDirAsync`, using nonblocking FFI or an
+  asynchronous CLI child. C-heap buffers and an OS loader reference keep late
+  native reads/writes safe after worker termination; abandoned resources can
+  remain until process exit and temporary directories can remain on disk. Native
+  computation itself is not cancelled. Synchronous `trainDir` and the opt-in
+  exit guard retain their behaviour. The teardown warning now describes
+  unanswered native work as potentially running, rather than asserting that the
+  process cannot exit.
 - **Issue #4146:** a hung native training task now says which backend ran and
   whether a deadline was sent. Each training task writes one
   `[training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no>

@@ -20,10 +20,8 @@ const WINDOWS_SYMBOLS = {
 export function retainNativeLibrary(path: string): () => void {
   if (Deno.build.os === "windows") {
     const loader = Deno.dlopen("kernel32.dll", WINDOWS_SYMBOLS);
-    const widePath = Uint16Array.from(
-      `${path}\0`,
-      (char) => char.charCodeAt(0),
-    );
+    const widePath = new Uint16Array(path.length + 1);
+    for (let i = 0; i < path.length; i++) widePath[i] = path.charCodeAt(i);
     const reference = loader.symbols.LoadLibraryW(widePath);
     if (reference === null) {
       loader.close();

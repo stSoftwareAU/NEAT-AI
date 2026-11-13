@@ -9,6 +9,8 @@
  * Failures throw; there is no fallback.
  */
 
+import { retainNativeLibrary } from "./NativeLibraryLease.ts";
+
 // cspell:disable-next-line
 const LIBC_NAME = Deno.build.os === "darwin"
   ? "libSystem.B.dylib"
@@ -32,12 +34,22 @@ const HEAP_SYMBOLS = {
 
 let heap: Deno.DynamicLibrary<typeof HEAP_SYMBOLS> | null = null;
 let allocations = 0;
+let releaseHeap: (() => void) | undefined;
+
+function closeHeap(): void {
+  heap?.close();
+  heap = null;
+  releaseHeap?.();
+  releaseHeap = undefined;
+}
 
 function loadHeap(): Deno.DynamicLibrary<typeof HEAP_SYMBOLS> {
   if (heap !== null) return heap;
   try {
     heap = Deno.dlopen(LIBC_NAME, HEAP_SYMBOLS);
+    releaseHeap = retainNativeLibrary(LIBC_NAME);
   } catch (error) {
+    closeHeap();
     throw new Error(
       `Failed to open the C library ${LIBC_NAME} for native buffers: ${
         error instanceof Error ? error.message : String(error)
@@ -59,8 +71,7 @@ export function allocNativeZeroed(byteLength: number): Deno.PointerObject {
   const ptr = loadHeap().symbols.calloc(1n, BigInt(byteLength));
   if (ptr === null) {
     if (allocations === 0) {
-      heap?.close();
-      heap = null;
+      closeHeap();
     }
     throw new Error(
       `calloc in ${LIBC_NAME} returned null for ${byteLength} bytes`,
@@ -88,7 +99,6 @@ export function allocNativeCopy(bytes: Uint8Array): Deno.PointerObject {
 export function freeNative(ptr: Deno.PointerObject): void {
   loadHeap().symbols.free(ptr);
   if (--allocations === 0) {
-    heap?.close();
-    heap = null;
+    closeHeap();
   }
 }

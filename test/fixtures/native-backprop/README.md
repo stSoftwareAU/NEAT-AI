@@ -97,3 +97,19 @@ deno run --no-config --no-lock --allow-ffi --allow-read --allow-write driver.ts 
 The temporary `outputDir` is machine-specific, so it was replaced with the
 placeholder `<OUTPUT_DIR>` in `bestPath` and `journalPath`. Nothing else was
 changed. The `bestCreatureJson` strings are verbatim engine output.
+
+## Process lifetime fixture (Issue #4126)
+
+`test/architecture/training/fixtures/WedgedNativeTrainer.c` is a deliberately
+blocking ABI/CLI stand-in, compiled with `cc` by the macOS/Linux process tests.
+It replays the response captures above; it does not implement gradient training.
+The CLI reads `train <creature> <data> --output-dir ...` and writes
+`result.json`, matching the deadline-capable bridge contract. Error cases return
+non-zero and carry a cause string.
+
+The cancellation tests hold training on a POSIX pipe, advance the existing
+watchdog's injected clock past the recorded deadline plus grace, and check real
+worker quarantine and natural process exit through `evolveDir`. A separate case
+releases the native call after the worker has terminated, exercising late reads
+of the request and writes to the output structure. The 30-second process
+watchdog bounds a hang; it is not a performance assertion.

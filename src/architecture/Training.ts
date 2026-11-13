@@ -85,9 +85,9 @@ export function trainDir(
 
 /**
  * Worker path (Issue #4126): same behaviour as {@link trainDir}, but the
- * native trainer is awaited rather than called synchronously. A terminated
- * worker therefore is not stuck in a blocking native call, and cannot keep
- * the process alive. The TypeScript / WASM loop stays synchronous.
+ * native trainer is awaited rather than called synchronously. Native training
+ * can outlive a terminated worker without holding that worker thread open.
+ * The TypeScript / WASM loop stays synchronous.
  */
 export async function trainDirAsync(
   creature: Creature,

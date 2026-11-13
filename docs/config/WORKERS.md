@@ -176,17 +176,24 @@ The environment variables themselves are listed in
 
 ## 🛑 Exiting when a worker cannot be stopped
 
-Issue #4126: a quarantined worker blocked in native (FFI) code cannot be stopped
-by `Worker.terminate()`, and Deno keeps the process alive for its thread. The
-teardown warns `teardown: N worker(s) could not be stopped` when this happens.
+A worker blocked in a synchronous native (FFI) call can keep Deno alive after
+`evolveDir` returns. The native trainer and discovery analysis are awaited on
+the worker path (Issue #4126), allowing the worker to terminate while native
+work is pending. Other synchronous native calls can still block worker
+termination.
+
+Teardown conservatively warns `teardown: N worker(s) could not be stopped` for
+workers quarantined or terminated with unanswered tasks, and for workers
+detached because `terminate()` threw or outlived its teardown budget. This
+warning can also appear for asynchronous training that no longer pins the
+process.
+
 Set `exitOnUnreclaimableWorkers` to have the library call `Deno.exit()` 10
-seconds after teardown, preserving `Deno.exitCode`. The guard is armed only when
-`evolveDir` returns or throws while a worker could not be stopped: either one it
-quarantined or terminated with a task still unanswered, or one it detached
-because `terminate()` threw or outlived the teardown budget. The native trainer
-and the discovery analysis are awaited on the worker path (Issue #4126), so the
-guard now covers threads blocked elsewhere, such as the synchronous
-TypeScript/WASM loop or another synchronous native call.
+seconds after teardown when that count is non-zero, preserving `Deno.exitCode`.
+The guard still covers unanswered native training tasks. Native FFI computation
+can continue after quarantine, retaining its buffers, loader reference and
+temporary files until the process exits; see the
+[ownership details](../troubleshooting/PROCESS_DOES_NOT_EXIT.md#cause).
 
 ```ts
 const config = createNeatConfig({

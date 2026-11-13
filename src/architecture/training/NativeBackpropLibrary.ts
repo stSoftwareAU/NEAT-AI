@@ -29,7 +29,7 @@
  * process never exits. `neat_backprop_train_nonblocking` declares the same C
  * symbol with `nonblocking: true`, giving an awaitable call that
  * {@link nativeBackpropTrainAsync} uses. The synchronous declaration stays for
- * the public synchronous `trainDir`.
+ * the synchronous `trainDir` entry point.
  */
 
 import { join } from "@std/path/join";
@@ -685,8 +685,9 @@ function loadNativeBackpropLibrary(): boolean {
 }
 
 /**
- * Close the native library. Tests that reopen the handle should call this
- * in `finally` so `--trace-leaks` stays happy.
+ * Stop using this handle for new calls; pending asynchronous calls close it
+ * after their response buffers have been released. Tests should call this in
+ * `finally` so `--trace-leaks` stays happy.
  */
 export function closeNativeBackpropLibrary(): void {
   if (nativeLib !== null) {

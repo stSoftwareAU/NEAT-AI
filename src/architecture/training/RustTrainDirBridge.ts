@@ -17,7 +17,7 @@
  * deadline on one logs a warning once per backend.
  *
  * Backend report (Issue #4146): each native train writes one
- * `[training-backend]` line before the blocking call (see
+ * `[training-backend]` line before invoking native training (see
  * `TrainDirBackendReport.ts`). The once-per-backend `[NEAT-AI] trainDir using
  * ...` lines and the legacy-deadline warning go through the same reporter, so a
  * pooled worker relays them to the parent's logger.

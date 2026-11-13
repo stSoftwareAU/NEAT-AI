@@ -47,7 +47,10 @@ async function runQuarantine(lateReturn: boolean, cli = false): Promise<void> {
         pending = lines.pop()!;
         for (const line of lines) {
           stdout.push(line);
-          if (lateReturn && line === "EVOLVE_RETURNED") await fixture.release();
+          if (lateReturn && line === "EVOLVE_RETURNED") {
+            // deno-lint-ignore no-await-in-loop
+            await fixture.release();
+          }
           if (lateReturn && line === "NATIVE_TRAIN_FINISHED") {
             process.kill("SIGUSR2");
           }
