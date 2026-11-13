@@ -1,8 +1,9 @@
 /**
  * Issue #4107: a training result that `processCompletedResults` has already
- * logged as `completed` must not vanish silently when the hard deadline
- * abandons the generation before it commits. Each discarded task is logged
- * once, as `discarded`, however many creature variants it produced.
+ * merged must not vanish silently when the hard deadline abandons the
+ * generation before it commits. Each discarded task is logged once, as
+ * `discarded`, however many creature variants it produced, and never also as
+ * `completed` (Issue #4099: that line is written only at commit).
  *
  * The abandon lands deterministically between `processCompletedResults` and
  * the commit guard: the hook sits on the first `Mutator.prototype.mutate` call

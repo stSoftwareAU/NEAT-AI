@@ -872,7 +872,7 @@ Deno.test("finishUp: a settled training result is merged by processCompletedResu
     const plain = stripAnsi(log.lines.join("\n"));
     assert(
       /Training\s+late1234\s+completed/.test(plain),
-      `the merge must log the settled task's completion; got: ${plain}`,
+      `the commit must log the settled task's completion; got: ${plain}`,
     );
 
     assertEquals(
