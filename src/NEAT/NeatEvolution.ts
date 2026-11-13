@@ -1184,7 +1184,7 @@ export async function evolve(
     // results, not from creature tags: a discovery or replay creature built
     // from a trained fittest keeps that task's trainID tag, although the task
     // was committed in an earlier generation. If the teardown already named
-    // them (this evolve() resumed after it), the set is empty and nothing is
+    // them (this evolve() resumed after it), the map is empty and nothing is
     // logged twice.
     neat.discardMergedUncommittedTraining();
     // Issue #4115: name each discovery/replay creature this abandon discards.

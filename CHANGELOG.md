@@ -42,8 +42,8 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   branch of `evolve()`, logs it for each merged task, using the durations held
   in `mergedUncommittedTrainIDs` (now a `Map` of train ID to duration). A task
   whose generation the hard deadline abandons, or which throws before commit, is
-  logged only as `Training <id> discarded: ...`, so every scheduled training
-  task ends with exactly one terminal line.
+  logged only as `Training <id> discarded: ...`, so those tasks no longer
+  receive both terminal lines.
 - **Issue #4141:** a discovery chunk whose combined analysis failed is no longer
   re-run without the per-chunk deadline: the analysis loop reuses the first
   call's outcome, and the fallback analyses (missing-neuron, helpful-synapse and
