@@ -180,7 +180,9 @@ A worker blocked in a synchronous native (FFI) call can keep Deno alive after
 `evolveDir` returns. The native trainer and discovery analysis are awaited on
 the worker path (Issue #4126), allowing the worker to terminate while native
 work is pending. Other synchronous native calls can still block worker
-termination.
+termination. Each worker still runs one native training task at a time: tasks
+sent to a busy worker queue behind the running one, so a heavy worker never
+holds more than one native trainer's memory and CPU at once.
 
 When native training is enabled, `evolveDir` uses a real worker even with
 `threads: 1`. A main-isolate mock cannot drop a pending FFI operation when

@@ -261,6 +261,15 @@ export class WorkerProcessor {
   private readonly datasetFileCache = new DatasetFileListCache();
 
   /**
+   * Settles when the last queued training task in this isolate settles
+   * (Issue #4126). Training is awaited so `terminate()` can release a worker
+   * whose native call overruns, but the entry point does not serialise
+   * messages, so without this queue every training task sent to one worker
+   * would enter the native trainer at once. Never rejects.
+   */
+  private trainingTail: Promise<void> = Promise.resolve();
+
+  /**
    * Loads a custom cost function from a file path using dynamic import.
    * This allows external programs to provide custom cost functions without
    * needing to register constructors in advance.
@@ -305,6 +314,50 @@ export class WorkerProcessor {
       throw new Error(
         `Failed to load custom cost function from ${filePath}: ${errorMessage}`,
       );
+    }
+  }
+
+  /** Runs one training request; callers serialise it via {@link trainingTail}. */
+  private async train(data: RequestData): Promise<ResponseData> {
+    const start = Date.now();
+    assert(data.train, "No train request");
+    let creature: Creature | null = null;
+    try {
+      creature = Creature.fromJSON(
+        data.train.creature,
+        data.debug,
+      );
+      clearForGc(data.train, "creature");
+
+      assert(this.dataSetDir, "No data dir");
+      assert(this.cost, "No cost");
+
+      const result = await trainDirAsync(
+        creature,
+        this.dataSetDir,
+        data.train.options,
+        this.cost,
+      );
+
+      const response = {
+        taskID: data.taskID,
+        duration: Date.now() - start,
+        train: buildTrainResponseBody(
+          result,
+          exportJSONWithRuntimeIds(creature),
+        ),
+      };
+
+      // Immediately clear large objects to help GC
+      if (result.trace) clearForGc(result, "trace");
+      if (result.compact) clearForGc(result, "compact");
+
+      return response;
+    } finally {
+      // Ensure creature is disposed even if an error occurs
+      if (creature) {
+        creature.dispose();
+      }
     }
   }
 
@@ -436,44 +489,11 @@ export class WorkerProcessor {
         }
       }
     } else if (data.train) {
-      let creature: Creature | null = null;
-      try {
-        creature = Creature.fromJSON(
-          data.train.creature,
-          data.debug,
-        );
-        clearForGc(data.train, "creature");
-
-        assert(this.dataSetDir, "No data dir");
-        assert(this.cost, "No cost");
-
-        const result = await trainDirAsync(
-          creature,
-          this.dataSetDir,
-          data.train.options,
-          this.cost,
-        );
-
-        const response = {
-          taskID: data.taskID,
-          duration: Date.now() - start,
-          train: buildTrainResponseBody(
-            result,
-            exportJSONWithRuntimeIds(creature),
-          ),
-        };
-
-        // Immediately clear large objects to help GC
-        if (result.trace) clearForGc(result, "trace");
-        if (result.compact) clearForGc(result, "compact");
-
-        return response;
-      } finally {
-        // Ensure creature is disposed even if an error occurs
-        if (creature) {
-          creature.dispose();
-        }
-      }
+      // One native training run per worker isolate at a time, as when the
+      // call was synchronous; a queued task's duration starts when it runs.
+      const run = this.trainingTail.then(() => this.train(data));
+      this.trainingTail = run.then(() => undefined, () => undefined);
+      return await run;
     } else if (data.echo) {
       await new Promise((f) => setTimeout(f, data.echo?.ms));
       return {

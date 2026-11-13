@@ -29,6 +29,12 @@ of #4126.
   than falling back to in-process execution, because a mock worker cannot drop a
   pending FFI call held by the main isolate. WASM-only runs keep the direct path
   and its fallback.
+- Training stays one-at-a-time per worker isolate. Awaiting the native call
+  frees the worker's event loop, and the entry point does not serialise
+  messages, so `WorkerProcessor` chains each `train` request behind the previous
+  one's settled promise. A heavy worker therefore never runs two native trainers
+  at once, as when the call was synchronous, and `terminate()` still works
+  because the chain is awaited.
 - A terminated call abandons its C allocations, loader reference and temporary
   directory until process exit. It does not cancel the native computation; #4146
   tracks the native deadline overruns.
@@ -128,23 +134,31 @@ sequenceDiagram
   `src/architecture/training/NativeLibraryLease.ts`,
   `src/architecture/training/RustTrainDirBridge.ts`,
   `src/creature/CreatureTraining.ts`, `src/creature/BoundedEvolveTeardown.ts` —
-  reviewer: partial — reason: the reviewer judged the warning over-inclusive and
-  said a busy loop is not fixed. A busy loop was re-measured as genuinely
-  unreclaimable on Deno 2.9.8, which is the issue's "report it" case. It is
-  still reported, and `docs/TIMEOUTS.md` keeps the exit guidance. The count is
-  deliberately conservative because a terminated thread's end cannot be observed
-  from JavaScript.
+  reviewer: met — the report already existed on Develop
+  (`handleUnreclaimableWorkers`); native computation is detached, not cancelled,
+  as the CHANGELOG states.
 - **missing** — In GRQ, separately: the `EvolveApp`s can end with an explicit
   `Deno.exit(0)` after cleanup as a belt-and-braces guard. That is a mitigation,
-  not this fix. — reviewer: missing — reason: this is GRQ code that the issue
-  scopes as separate, and this diff carries none. It was handled by the
-  downstream production repo's own tracking issue (closed), which opts callers
-  into `exitOnUnreclaimableWorkers`.
+  not this fix. — reviewer: missing — reason: nothing in this diff touches GRQ,
+  and no `EvolveApp` gains a `Deno.exit(0)`. The issue scopes this as separate
+  work in another repository, which cannot be changed from this one.
 - **missing** — Closing evidence: a quoted fleet log showing a quarantine
   (`[worker-N] quarantined`) followed by the unit's
   `[phase] ✔ END industry-evolve` (or equivalent) within a minute of
   `Cleaned up .tmp/train`. — reviewer: missing — reason: such a log can only
   exist after a release carrying this change runs on the fleet.
+- **unrequested** — the per-worker training queue (`trainingTail` in
+  `src/multithreading/workers/WorkerProcessor.ts`) and its test
+  `test/architecture/training/NativeTrainingWorkerResults.ts::native worker runs two training tasks sent to it one after the other (Issue #4126)`
+  with `fixtures/WorkerNativeTrainSerial.ts` — reviewer: unrequested — reason:
+  fixes a regression the async change introduced (several native trainings at
+  once on one worker).
+- **unrequested** — `docs/archive/handover/issue-4126.md` — reviewer:
+  unrequested — reason: a progress note the automation wrote when an earlier run
+  was interrupted, not an issue deliverable.
+- **unrequested** — `src/multithreading/workers/MockWorker.ts` comment and
+  `docs/cspell.json` word additions — reviewer: unrequested — reason: comment
+  and spelling-list updates that follow from the fix.
 - **unrequested** — `removeWorkDir` in
   `src/architecture/training/RustTrainDirBridge.ts` now logs a warning when
   temp-dir cleanup fails — reviewer: unrequested — reason: the shared cleanup
@@ -196,6 +210,10 @@ This repository has no `CODING-STANDARDS.md`. The reviewer was given
       `threads: 1` CLI). Each asserts native entry, quarantine,
       `EVOLVE_RETURNED`, `CALLER_LAST_STATEMENT` and exit code 0. The first case
       failed on base (killed at 30 s) and passes at the head.
+- [x] `test/architecture/training/NativeTrainingWorkerResults.ts::native worker runs two training tasks sent to it one after the other (Issue #4126)`:
+      two `worker.train()` calls on one real `WorkerHandler` must give native
+      `entered, finished, entered, finished`. With the queue removed it failed
+      with `entered, entered`; with the queue it passes.
 - [x] `test/creature/EvolveDirNativeWorkerInit.ts`: a native-enabled init
       failure refuses the in-process fallback; the WASM direct and fallback
       controls complete.
@@ -219,9 +237,23 @@ This repository has no `CODING-STANDARDS.md`. The reviewer was given
       copied onto a detached `origin/Develop` (`e275a827`) worktree, the first
       `EvolveDirNativeProcessExit.ts` case failed (`killed` was `true` after the
       30 s watchdog); at the head all five cases pass.
-- Existing tests edited: none. Every test file in the diff is new, so no
-  assertion was removed.
-- Documentation updated: `docs/config/WORKERS.md`,
+- [x] Targeted run after the verifier fixes: 64 files (`test/multithreading/`,
+      `test/architecture/training/`, `test/workers/`, the `EvolveDir*` and
+      `ProcessExitsAfterWedgedWorker` files, `EvolveCleanupOnThrow_test.ts`).
+      With `NEAT_AI_BACKPROP_ENABLED=0`: 430 passed, 0 failed, 9 ignored. With
+      `=1`: 429 passed, 1 failed. The failure is `TrainingLoop.ts` ("trainDir
+      returns a well-formed result for a tiny dataset"): the native library is
+      not installed on this host. It fails the same way on `origin/Develop`.
+- Existing tests edited: one. `test/creature/EvolveCleanupOnThrow_test.ts` ("a
+  worker init failure terminates the failed worker and falls back to a direct
+  worker (Issue #4072)") now pins the WASM lane it describes with the
+  isolate-local `__setRustTrainDirEnabledForTests(false)`, restored in
+  `finally`. Before this, the test failed whenever native training was enabled
+  (the default, and `./quality.sh --next`). No assertion was changed or removed.
+  It passes with `NEAT_AI_BACKPROP_ENABLED=1`.
+- Documentation updated: `docs/api/COMPUTE.md` (the worker-init fallback applies
+  only when native training is disabled), `docs/config/WORKERS.md` (including
+  one native training task at a time per worker),
   `docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md` (Cause and Diagnose),
   `docs/TIMEOUTS.md` (teardown warning, backend and phase lines),
   `docs/api/TRAINING.md`, `docs/troubleshooting/MEMORY.md`,

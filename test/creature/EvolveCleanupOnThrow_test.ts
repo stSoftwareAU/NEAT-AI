@@ -29,6 +29,7 @@ import {
   setWasmCompilationCacheSize,
 } from "@wasm/WasmCompilationCache.ts";
 import { initWasmForTests } from "../_initWasm.ts";
+import { __setRustTrainDirEnabledForTests } from "@architecture/training/RustTrainDirBridge.ts";
 import { assertEvolveCallerUsable } from "@creature/EvolveTeardown.ts";
 import SeedRewardAdapterFixture from "./fixtures/SeedRewardAdapterFixture.ts";
 
@@ -1308,6 +1309,10 @@ Deno.test({
     const terminate = watchTerminate();
     const init = failFirstInit();
     const spawns = watchWorkerSpawns();
+    // This case describes the WASM lane's direct fallback. Native-enabled runs
+    // refuse it (Issue #4126), so pin the isolate-local flag rather than
+    // inheriting NEAT_AI_BACKPROP_ENABLED.
+    __setRustTrainDirEnabledForTests(false);
 
     try {
       const counter = { calls: 0 };
@@ -1358,6 +1363,7 @@ Deno.test({
         "the fallback must be a direct (mock) worker, so only the two non-direct workers spawn real threads",
       );
     } finally {
+      __setRustTrainDirEnabledForTests(undefined);
       spawns.restore();
       init.restore();
       terminate.restore();
