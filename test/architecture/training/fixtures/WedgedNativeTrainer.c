@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 typedef struct {
@@ -92,6 +93,13 @@ int main(int argc, char **argv) {
     return 0;
   }
   if (argc < 4 || strcmp(argv[1], "train")) return 2;
+  char *creature = read_file(argv[2]);
+  free(creature);
+  struct stat dataset;
+  if (stat(argv[3], &dataset) || !S_ISDIR(dataset.st_mode)) {
+    fputs("native fixture dataset directory not found\n", stderr);
+    return 2;
+  }
   const char *output = NULL;
   for (int i = 4; i + 1 < argc; ++i) {
     if (!strcmp(argv[i], "--output-dir")) output = argv[i + 1];

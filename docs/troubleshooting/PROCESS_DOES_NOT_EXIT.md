@@ -17,6 +17,10 @@ A worker can be quarantined after missing its per-task deadline.
 `Worker.terminate()` cannot interrupt a synchronous native (FFI) call. Deno can
 keep the process alive for that worker after the caller's script ends.
 
+`evolveDir` keeps native-enabled work in real worker isolates, including with
+`threads: 1`. It refuses an in-process fallback if worker initialisation fails,
+because terminating a mock cannot drop the main isolate's pending FFI operation.
+
 The native training call is now awaited on the worker path (Issue #4126):
 
 - FFI training uses a `nonblocking: true` alias of `neat_backprop_train`.

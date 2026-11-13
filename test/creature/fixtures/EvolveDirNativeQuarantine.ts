@@ -36,6 +36,7 @@ if (import.meta.main) {
       heavyTaskWorkerCount: 1,
       populationSize: 4,
       iterations: 1,
+      timeoutMinutes: 1,
       trainPerGen: 0,
       discoverySampleRate: 0,
       sparseRatio: 1,

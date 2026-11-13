@@ -58,6 +58,10 @@ if (import.meta.main) {
     }
     if (!Deno.args.includes("--cli")) {
       const request = JSON.parse(await Deno.readTextFile(requestPath));
+      assertEquals(request.trainingData, dir);
+      const sent = Creature.fromJSON(JSON.parse(request.creatureJson));
+      assertEquals(sent.exportJSON().neurons, creature.exportJSON().neurons);
+      assertEquals(sent.exportJSON().synapses, creature.exportJSON().synapses);
       assertEquals(
         "deadlineEpochMs" in request,
         !Deno.args.includes("--legacy"),

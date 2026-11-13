@@ -182,6 +182,12 @@ the worker path (Issue #4126), allowing the worker to terminate while native
 work is pending. Other synchronous native calls can still block worker
 termination.
 
+When native training is enabled, `evolveDir` uses a real worker even with
+`threads: 1`. A main-isolate mock cannot drop a pending FFI operation when
+quarantined. Worker initialisation therefore fails loudly rather than falling
+back to in-process execution in this mode. With native training disabled,
+single-thread execution and initialisation fallback can still use mocks.
+
 Teardown conservatively warns `teardown: N worker(s) could not be stopped` for
 workers quarantined or terminated with unanswered tasks, and for workers
 detached because `terminate()` threw or outlived its teardown budget. This

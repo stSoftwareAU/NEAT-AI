@@ -160,6 +160,10 @@ quarantined worker to terminate without waiting for training (Issue #4126). The
 TypeScript/WASM loop and predictive coding still run synchronously. Neither
 entry point is exported from `mod.ts`.
 
+Native-enabled `evolveDir` uses a real worker even with `threads: 1` and refuses
+an in-process initialisation fallback, so quarantine can drop the isolate's
+pending native operation.
+
 #### `generateSyntheticSynapses(creature, options?)`
 
 Adds zero-weight synapses between neurons in adjacent topological layers.
