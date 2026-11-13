@@ -15,22 +15,27 @@ it.
 
 A quarantined worker is one that missed its per-task deadline.
 `Worker.terminate()` can only stop a worker at a JavaScript boundary. A thread
-blocked in a synchronous native (FFI) call cannot be interrupted that way, and
-Deno keeps the event loop, and therefore the process, alive for that thread. The
-script ends but the process does not.
+blocked in a synchronous native (FFI) call or a synchronous loop cannot be
+interrupted that way, and Deno keeps the event loop, and therefore the process,
+alive for that thread. The script ends but the process does not.
 
-Two native calls have been the source of such a thread:
+Two native calls have been the source of such a thread, and both are now awaited
+on the worker path:
 
-- **The native trainer on a legacy engine.** `trainDir` runs its training in a
-  synchronous native call. An engine that does not advertise the native deadline
-  capability (`neat_ai_backpropagation` 0.1.49 or earlier) is never sent the
-  deadline, so it does not stop on it, and a wedged training call can pin the
-  process. A deadline-capable engine (0.1.50 or later) stops within an epoch. To
-  see which backend a hung task ran and whether it was sent a deadline, grep the
-  parent log for `[training-backend]` (Issue #4146). For a native task,
-  `[training-phase]` lines then show whether the native call returned
-  (`phase=native-returned`, written as soon as it does) and whether packaging
-  and finalisation finished (`phase=finalised`). See
+- **The native trainer, until Issue #4126.** Training ran in a synchronous
+  native call, so a wedged training call pinned the process. The worker path now
+  awaits the trainer (a nonblocking FFI call, or an asynchronous CLI process),
+  so the worker's thread is no longer blocked and a wedged training call no
+  longer keeps the process alive. The native call itself still stops only at its
+  native deadline: a deadline-capable engine (0.1.50 or later) stops within an
+  epoch, while a legacy engine (`neat_ai_backpropagation` 0.1.49 or earlier) is
+  never sent the deadline and runs on until it finishes. The public synchronous
+  `trainDir`, called directly from your own code, still blocks its caller's
+  thread. To see which backend a hung task ran and whether it was sent a
+  deadline, grep the parent log for `[training-backend]` (Issue #4146). For a
+  native task, `[training-phase]` lines then show whether the native call
+  returned (`phase=native-returned`, written as soon as it does) and whether
+  packaging and finalisation finished (`phase=finalised`). See
   [the native trainer and the per-task deadline](../TIMEOUTS.md#-the-native-trainer-and-the-per-task-deadline-issue-4119).
 - **Discovery analysis, until Issue #4126.** `analyze_parallel` was also a
   synchronous native call, so a stuck discovery analysis pinned the process in

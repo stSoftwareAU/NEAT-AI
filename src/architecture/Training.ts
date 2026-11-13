@@ -23,11 +23,13 @@ import {
   runLegacyTrainDirWrappers,
   rustTrainDirSkipReason,
   tryRustTrainDir,
+  tryRustTrainDirAsync,
 } from "@architecture/training/RustTrainDirBridge.ts";
 import { trainDirPredictiveCoding } from "@architecture/training/TrainingPredictiveCoding.ts";
 import {
   reportTrainDirBackend,
 } from "@architecture/training/TrainDirBackendReport.ts";
+import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 
 export { dataFiles } from "@architecture/training/TrainingSetup.ts";
@@ -53,31 +55,90 @@ export function trainDir(
   cost: CostInterface,
 ): TrainingResult {
   const dataResult = dataFiles(dataDir, options);
-
-  assert(
-    dataResult.files.length > 0,
-    "No binary files found in the data directory",
-  );
+  assertDataFiles(dataResult.files);
 
   // Issue #1556: Predictive coding is a separate TypeScript trainer —
   // the old WASM backprop never honoured it, so do not spawn Rust.
   if (options.predictiveCoding?.enabled) {
-    return runLegacyTrainDirWrappers(() =>
-      trainDirPredictiveCoding(
-        creature,
-        dataResult.files,
-        options,
-        cost,
-      )
-    );
+    return runPredictiveCoding(creature, dataResult.files, options, cost);
   }
 
-  return trainDirBinary(creature, dataDir, dataResult.files, options, cost);
+  const prepared = prepareBinaryRun(
+    creature,
+    dataResult.files,
+    options,
+    cost,
+  );
+  if (prepared.skipRust) {
+    return runLegacyTrainDirWrappers(prepared.runTypeScriptLoop);
+  }
+
+  const rust = tryRustTrainDir(
+    creature,
+    dataDir,
+    options,
+    cost,
+    prepared.setup,
+  );
+  return resolveRustOutcome(rust, prepared.runTypeScriptLoop);
 }
 
 /**
- * Orchestrates the three training phases for a single-fold binary run:
- * setup → loop → teardown.
+ * Worker path (Issue #4126): same behaviour as {@link trainDir}, but the
+ * native trainer is awaited rather than called synchronously. A terminated
+ * worker therefore is not stuck in a blocking native call, and cannot keep
+ * the process alive. The TypeScript / WASM loop stays synchronous.
+ */
+export async function trainDirAsync(
+  creature: Creature,
+  dataDir: string,
+  options: TrainOptions,
+  cost: CostInterface,
+): Promise<TrainingResult> {
+  const dataResult = dataFiles(dataDir, options);
+  assertDataFiles(dataResult.files);
+
+  if (options.predictiveCoding?.enabled) {
+    return runPredictiveCoding(creature, dataResult.files, options, cost);
+  }
+
+  const prepared = prepareBinaryRun(
+    creature,
+    dataResult.files,
+    options,
+    cost,
+  );
+  if (prepared.skipRust) {
+    return runLegacyTrainDirWrappers(prepared.runTypeScriptLoop);
+  }
+
+  const rust = await tryRustTrainDirAsync(
+    creature,
+    dataDir,
+    options,
+    cost,
+    prepared.setup,
+  );
+  return resolveRustOutcome(rust, prepared.runTypeScriptLoop);
+}
+
+function assertDataFiles(files: string[]): void {
+  assert(files.length > 0, "No binary files found in the data directory");
+}
+
+function runPredictiveCoding(
+  creature: Creature,
+  files: string[],
+  options: TrainOptions,
+  cost: CostInterface,
+): TrainingResult {
+  return runLegacyTrainDirWrappers(() =>
+    trainDirPredictiveCoding(creature, files, options, cost)
+  );
+}
+
+/**
+ * Setup for a single-fold binary run (setup → loop → teardown).
  *
  * Eligible `trainDir` uses sibling `neat_ai_backpropagation train` by
  * default. Set `NEAT_AI_BACKPROP_ENABLED=0` to force the TypeScript /
@@ -86,13 +147,16 @@ export function trainDir(
  * loop. A missing binary is an error when Rust is enabled — no silent
  * WASM fallback.
  */
-function trainDirBinary(
+function prepareBinaryRun(
   creature: Creature,
-  dataDir: string,
   binaryFiles: string[],
   options: TrainOptions,
   cost: CostInterface,
-): TrainingResult {
+): {
+  setup: TrainingSetupState;
+  skipRust: boolean;
+  runTypeScriptLoop: () => TrainingResult;
+} {
   const uuid = CreatureUtil.makeUUID(creature);
   const ID = uuid.substring(Math.max(0, uuid.length - 8));
 
@@ -123,20 +187,25 @@ function trainDirBinary(
     );
   };
 
-  if (rustTrainDirSkipReason(creature, options, cost, setup) !== undefined) {
-    return runLegacyTrainDirWrappers(runTypeScriptLoop);
-  }
+  return {
+    setup,
+    skipRust: rustTrainDirSkipReason(creature, options, cost, setup) !==
+      undefined,
+    runTypeScriptLoop,
+  };
+}
 
-  const rust = tryRustTrainDir(creature, dataDir, options, cost, setup);
-  if (rust !== undefined) {
-    return rust;
-  }
+/** The Rust result, else the TypeScript loop; an enabled Rust that declined is an error. */
+function resolveRustOutcome(
+  rust: TrainingResult | undefined,
+  runTypeScriptLoop: () => TrainingResult,
+): TrainingResult {
+  if (rust !== undefined) return rust;
   if (isRustTrainDirEnabled()) {
     throw new Error(
       "trainDir must use neat_ai_backpropagation when Rust trainDir is enabled; " +
         "refusing WASM/TypeScript fallback.",
     );
   }
-
   return runTypeScriptLoop();
 }

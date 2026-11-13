@@ -23,11 +23,23 @@
  * library always returns the `timedOut` / `timeout` / `completedEpochs` /
  * `*Measure` fields, and a malformed response fails loudly rather than being
  * read as a legacy one.
+ *
+ * Nonblocking alias (Issue #4126): a worker parked in the synchronous
+ * `neat_backprop_train` cannot be stopped by `Worker.terminate()`, so the
+ * process never exits. `neat_backprop_train_nonblocking` declares the same C
+ * symbol with `nonblocking: true`, giving an awaitable call that
+ * {@link nativeBackpropTrainAsync} uses. The synchronous declaration stays for
+ * the public synchronous `trainDir`.
  */
 
 import { join } from "@std/path/join";
 import { getLogger } from "@utils/Logger.ts";
 import { pathFromModuleUrl } from "@utils/ModuleSiblingPath.ts";
+import {
+  allocNativeCopy,
+  allocNativeZeroed,
+  freeNative,
+} from "./NativeHeap.ts";
 
 /** Matches `NEAT_BACKPROP_ABI_VERSION` / header revision 1. */
 export const NEAT_BACKPROP_ABI_VERSION = 1;
@@ -68,6 +80,13 @@ export type NativeBackpropSymbols = {
     result: "i32";
     nonblocking: false;
   };
+  /** Same C symbol as `neat_backprop_train`, awaitable (Issue #4126). */
+  "neat_backprop_train_nonblocking": {
+    name: "neat_backprop_train";
+    parameters: ["pointer", "usize", "pointer"];
+    result: "i32";
+    nonblocking: true;
+  };
   "neat_backprop_buffer_free": {
     parameters: ["buffer"];
     result: "void";
@@ -75,7 +94,8 @@ export type NativeBackpropSymbols = {
   };
 };
 
-const NATIVE_BACKPROP_SYMBOLS: NativeBackpropSymbols = {
+/** The `Deno.dlopen` declaration of the native trainer symbols. */
+export const NATIVE_BACKPROP_SYMBOLS: NativeBackpropSymbols = {
   "neat_backprop_abi_version": {
     parameters: [],
     result: "u32",
@@ -96,6 +116,12 @@ const NATIVE_BACKPROP_SYMBOLS: NativeBackpropSymbols = {
     parameters: ["buffer", "usize", "buffer"],
     result: "i32",
     nonblocking: false,
+  },
+  "neat_backprop_train_nonblocking": {
+    name: "neat_backprop_train",
+    parameters: ["pointer", "usize", "pointer"],
+    result: "i32",
+    nonblocking: true,
   },
   "neat_backprop_buffer_free": {
     parameters: ["buffer"],
@@ -761,23 +787,16 @@ function readOwnedUtf8(structBytes: Uint8Array): string {
 }
 
 /**
- * Run one `trainDir` via the C ABI.
- *
- * `request.deadlineEpochMs` is forwarded only to a deadline-capable library.
- * For any other library it is refused before the native call.
- *
- * @throws when the library is missing, the request is invalid, the library
- *         lacks the deadline capability but a deadline was set, the ABI rejects
- *         the request, the trainer fails, or the response is malformed for the
- *         library's contract. Callers must not fall back to WASM for a claimed
- *         native request.
+ * Shared pre-call checks: library loaded and `deadlineEpochMs` acceptable.
+ * Returns the handle and whether it is deadline-capable.
  */
-export function nativeBackpropTrain(
+function prepareTrain(
   request: NativeBackpropTrainRequest,
-): NativeBackpropTrainResponse {
+): { lib: NativeBackpropHandle; deadlineCapable: boolean } {
   if (!loadNativeBackpropLibrary() || nativeLib === null) {
     throw new Error(MISSING_LIBRARY_MESSAGE);
   }
+  const lib = nativeLib;
   const deadlineCapable = nativeBackpropDeadlineCapability() !== undefined;
 
   if (request.deadlineEpochMs !== undefined) {
@@ -796,30 +815,116 @@ export function nativeBackpropTrain(
       );
     }
   }
+  return { lib, deadlineCapable };
+}
+
+/** Shared response handling: read the owned payload, check status, parse. */
+function readTrainResponse(
+  status: number,
+  outStruct: Uint8Array,
+  deadlineCapable: boolean,
+): NativeBackpropTrainResponse {
+  const payload = readOwnedUtf8(outStruct);
+  if (status !== NEAT_BACKPROP_OK) {
+    throw new Error(
+      `neat_backprop_train failed (status ${status}): ${payload || "(empty)"}`,
+    );
+  }
+  return parseNativeBackpropTrainResponse(payload, deadlineCapable);
+}
+
+function freeOwnedBuffer(lib: NativeBackpropHandle, outStruct: Uint8Array) {
+  try {
+    lib.symbols["neat_backprop_buffer_free"](outStruct);
+  } catch {
+    // Best-effort free if the call partially populated the buffer.
+  }
+}
+
+/**
+ * Run one `trainDir` via the C ABI.
+ *
+ * `request.deadlineEpochMs` is forwarded only to a deadline-capable library.
+ * For any other library it is refused before the native call.
+ *
+ * @throws when the library is missing, the request is invalid, the library
+ *         lacks the deadline capability but a deadline was set, the ABI rejects
+ *         the request, the trainer fails, or the response is malformed for the
+ *         library's contract. Callers must not fall back to WASM for a claimed
+ *         native request.
+ */
+export function nativeBackpropTrain(
+  request: NativeBackpropTrainRequest,
+): NativeBackpropTrainResponse {
+  const { lib, deadlineCapable } = prepareTrain(request);
 
   const requestBytes = new TextEncoder().encode(JSON.stringify(request));
   const outStruct = new Uint8Array(BACKPROP_BUFFER_BYTES);
   try {
-    const status = nativeLib.symbols["neat_backprop_train"](
+    const status = lib.symbols["neat_backprop_train"](
       requestBytes,
       BigInt(requestBytes.byteLength),
       outStruct,
     );
-    const payload = readOwnedUtf8(outStruct);
-    if (status !== NEAT_BACKPROP_OK) {
-      throw new Error(
-        `neat_backprop_train failed (status ${status}): ${
-          payload || "(empty)"
-        }`,
-      );
-    }
-    return parseNativeBackpropTrainResponse(payload, deadlineCapable);
+    return readTrainResponse(status, outStruct, deadlineCapable);
   } finally {
+    freeOwnedBuffer(lib, outStruct);
+  }
+}
+
+/**
+ * Awaitable variant of {@link nativeBackpropTrain} (Issue #4126).
+ *
+ * The native call runs on its own thread, so a worker awaiting it can be
+ * terminated and the process can exit. Validation, errors and response
+ * handling are identical to the synchronous function.
+ *
+ * The request and output buffers live on the C heap, not in the isolate: a
+ * terminated worker's ArrayBuffers are freed while the native thread may still
+ * write into them.
+ *
+ * @throws as {@link nativeBackpropTrain}, and when the loaded handle lacks
+ *         `neat_backprop_train_nonblocking`.
+ */
+export async function nativeBackpropTrainAsync(
+  request: NativeBackpropTrainRequest,
+): Promise<NativeBackpropTrainResponse> {
+  const { lib, deadlineCapable } = prepareTrain(request);
+  const trainAsync = lib.symbols["neat_backprop_train_nonblocking"];
+  if (typeof trainAsync !== "function") {
+    throw new Error(
+      "the loaded libneat_ai_backpropagation handle lacks neat_backprop_train_nonblocking",
+    );
+  }
+
+  const requestBytes = new TextEncoder().encode(JSON.stringify(request));
+  const reqPtr = allocNativeCopy(requestBytes);
+  let outPtr: Deno.PointerObject;
+  try {
+    outPtr = allocNativeZeroed(BACKPROP_BUFFER_BYTES);
+  } catch (error) {
+    freeNative(reqPtr);
+    throw error;
+  }
+  const local = new Uint8Array(BACKPROP_BUFFER_BYTES);
+  try {
+    const status = await trainAsync(
+      reqPtr,
+      BigInt(requestBytes.byteLength),
+      outPtr,
+    );
+    new Deno.UnsafePointerView(outPtr).copyInto(local);
     try {
-      nativeLib.symbols["neat_backprop_buffer_free"](outStruct);
-    } catch {
-      // Best-effort free if the call partially populated the buffer.
+      return readTrainResponse(status, local, deadlineCapable);
+    } finally {
+      freeOwnedBuffer(lib, local);
     }
+  } finally {
+    // Reached only once the await settles: if the worker is terminated
+    // mid-call these two allocations deliberately leak rather than risk a
+    // late native write into freed memory.
+    freeNative(reqPtr);
+    freeNative(outPtr);
   }
 }
 

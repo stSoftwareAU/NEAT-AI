@@ -183,7 +183,10 @@ Set `exitOnUnreclaimableWorkers` to have the library call `Deno.exit()` 10
 seconds after teardown, preserving `Deno.exitCode`. The guard is armed only when
 `evolveDir` returns or throws while a worker could not be stopped: either one it
 quarantined or terminated with a task still unanswered, or one it detached
-because `terminate()` threw or outlived the teardown budget.
+because `terminate()` threw or outlived the teardown budget. The native trainer
+and the discovery analysis are awaited on the worker path (Issue #4126), so the
+guard now covers threads blocked elsewhere, such as the synchronous
+TypeScript/WASM loop or another synchronous native call.
 
 ```ts
 const config = createNeatConfig({

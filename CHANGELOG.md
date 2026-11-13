@@ -25,6 +25,15 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4126:** a training task wedged in the native trainer no longer keeps
+  the process alive after `evolveDir()` returns. The worker path now awaits
+  `trainDirAsync`: the FFI call uses a `nonblocking: true` alias of
+  `neat_backprop_train` with its request and output buffers on the C heap, so a
+  terminated worker's freed memory is never written (those buffers and the
+  task's temp work dir deliberately leak if the worker is terminated mid-call),
+  and the CLI path awaits `Deno.Command(...).output()`. This holds for legacy
+  and deadline-capable engines alike. The public synchronous `trainDir` is
+  unchanged and still blocks its caller's thread.
 - **Issue #4146:** a hung native training task now says which backend ran and
   whether a deadline was sent. Each training task writes one
   `[training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no>
@@ -45,9 +54,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   declared `nonblocking: true`, so the worker's thread is no longer blocked and
   the process can exit. The native analysis cannot be cancelled from JavaScript;
   it ends at its Rust-side deadline or when `cancel_analysis_memory_pressure()`
-  is signalled under memory pressure. A training task on a legacy native engine
-  (`neat_ai_backpropagation` 0.1.49 or earlier) can still pin the process, and
-  `exitOnUnreclaimableWorkers` remains the guard for that. See
+  is signalled under memory pressure. The native trainer is awaited too (see the
+  entry above), and `exitOnUnreclaimableWorkers` remains the guard for any other
+  thread that cannot be stopped. See
   [`docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md`](./docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md).
 - **Issue #4120:** `build.sh` no longer exits `1` when the release asset
   download fails after the release probe has confirmed the release exists. A

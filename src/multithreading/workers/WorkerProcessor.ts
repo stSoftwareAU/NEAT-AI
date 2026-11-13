@@ -24,7 +24,7 @@ import type {
   DiscoverResult,
   RemovalCandidate,
 } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
-import { trainDir } from "@architecture/Training.ts";
+import { trainDirAsync } from "@architecture/Training.ts";
 import { buildTrainResponseBody } from "@multithreading/workers/WorkerTrainResponse.ts";
 import { BreedingSubPhaseAccumulator } from "@breed/BreedingSubPhaseAccumulator.ts";
 import { Costs } from "@costs";
@@ -447,7 +447,7 @@ export class WorkerProcessor {
         assert(this.dataSetDir, "No data dir");
         assert(this.cost, "No cost");
 
-        const result = trainDir(
+        const result = await trainDirAsync(
           creature,
           this.dataSetDir,
           data.train.options,

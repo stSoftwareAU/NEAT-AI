@@ -476,9 +476,11 @@ creature below. It does **not** identify the code that spins.
   is a CPU-bound loop on the main thread that allocates nothing.
 - **Timers do not fire on the single-thread path, even when healthy.** With
   `threads: 1` the workers are `MockWorker`s that run on the main thread, and
-  the native trainer is called with `nonblocking: false`. The 5 s heartbeat
-  logged nothing during run A's 130 healthy seconds, and in run B it fired only
-  after `evolveDir` returned:
+  the native trainer was called with `nonblocking: false` at the time of this
+  measurement. Since Issue #4126 the worker path awaits it
+  (`nonblocking: true`), so the main thread is no longer blocked during a native
+  train. The 5 s heartbeat logged nothing during run A's 130 healthy seconds,
+  and in run B it fired only after `evolveDir` returned:
   `[  363.2s] [heartbeat] heap=1003MB
   lag=358192ms`. So any `setInterval` poll
   — including the first-generation bound's — cannot be relied on there, whether
