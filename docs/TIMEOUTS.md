@@ -763,7 +763,7 @@ measurement that tells the two apart.
 - **`inFlightPhase`** is the phase the main thread most recently entered: one of
   `untracked` (outside any tracked phase, for example checkpoint or bookkeeping
   between generations), `fitness`, `sort`, `write-scores`, `parent-selection`,
-  `breeding`, `result-processing`, `mutation`, `pre-warm` or `deduplication`.
+  `result-processing`, `breeding`, `mutation`, `pre-warm` or `deduplication`.
   `parent-selection` covers parent selection, breeding-quota allocation and the
   synchronous start of breeding (ranking, pair selection and each worker's first
   breeding request export) before the first await. `result-processing` covers
