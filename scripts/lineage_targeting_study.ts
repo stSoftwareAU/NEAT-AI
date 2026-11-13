@@ -35,6 +35,12 @@ import {
 import { intArg, numberArg, stringArg } from "./lib/cliArgs.ts";
 
 /** Per-operator count, mean deltas (overall and per stratum) and targeting. */
+/**
+ * Maximum number of edges embedded per run as `sampleEdges` in the JSON
+ * artefact. The full record is available via `--edges=<path>`.
+ */
+export const SAMPLE_EDGE_LIMIT = 40;
+
 function edgeSummary(edges: readonly LineageEdge[]) {
   const byOperator = new Map<string, LineageEdge[]>();
   for (const edge of edges) {
@@ -225,11 +231,18 @@ if (import.meta.main) {
       comparisons,
       failuresRun,
       // `sampleEdges` (with gene keys) is kept for the first seed of each arm
-      // only, to bound the artefact; `--edges=<path>` writes every edge.
+      // only, capped at SAMPLE_EDGE_LIMIT, to bound the artefact;
+      // `sampleEdgesTotal` is the uncapped count. `--edges=<path>` writes the
+      // full record.
       runs: runs.map(({ edges, generations, ...rest }) => ({
         ...rest,
         edges: edgeSummary(edges),
-        ...(rest.seed === seedList[0] ? { sampleEdges: edges } : {}),
+        ...(rest.seed === seedList[0]
+          ? {
+            sampleEdges: edges.slice(0, SAMPLE_EDGE_LIMIT),
+            sampleEdgesTotal: edges.length,
+          }
+          : {}),
         generations: generations.filter((g, i) =>
           i === 0 || i === generations.length - 1 || g.generation % 5 === 0
         ),
