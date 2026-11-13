@@ -149,7 +149,7 @@ Criteria heading.
 - The objective is a synthetic two-input regression with small creatures. The
   result says nothing about production-scale creatures or private corpora, and
   no representative production run was made.
-- The paper was not read (see above). Offspring probabilities are nonstationary
+- The paper was not read (see above). Offspring probabilities are non-stationary
   and unequal, so the census estimate is a trigger heuristic, not an accurate
   estimate of unseen genomes.
 - Neuron uuids are part of the topology hash, so only clone families share a
