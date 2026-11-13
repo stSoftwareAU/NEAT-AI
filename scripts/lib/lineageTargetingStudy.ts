@@ -42,6 +42,18 @@ import {
   setRandomNumberGenerator,
 } from "@utils/RandomNumberGenerator.ts";
 import { meanGeneticDistance, seedPopulation } from "./preSelectionAB.ts";
+import { median as strictMedian } from "./rankFidelity.ts";
+
+/** Median of a set; `NaN` for an empty one (the strict helper throws). */
+export function median(values: readonly number[]): number {
+  return values.length === 0 ? Number.NaN : strictMedian(values);
+}
+
+/** Mean of a set; `NaN` for an empty one. */
+export function mean(values: readonly number[]): number {
+  if (values.length === 0) return Number.NaN;
+  return values.reduce((s, v) => s + v, 0) / values.length;
+}
 
 /** Strata in the corpus: the quadrants of the two inputs. */
 export const STRATUM_COUNT = 4;
@@ -76,6 +88,12 @@ export interface StudySettings {
   readonly targetHoldoutFraction: number;
 }
 
+/**
+ * The sample size fixed in advance for the representative run: the number of
+ * seeds the verdict is read from. The CLI defaults `--seeds` to this.
+ */
+export const PREDECLARED_SEEDS = 30;
+
 export const DEFAULT_STUDY_SETTINGS: StudySettings = Object.freeze({
   seed: 4155,
   recordsPerSplit: 400,
@@ -87,6 +105,49 @@ export const DEFAULT_STUDY_SETTINGS: StudySettings = Object.freeze({
   evaluationBudget: 400,
   targetHoldoutFraction: 0.5,
 });
+
+/** Throw a descriptive error when settings cannot describe a valid run. */
+export function validateSettings(settings: StudySettings): void {
+  const positiveInt = (name: keyof StudySettings) => {
+    const v = settings[name];
+    if (!Number.isInteger(v) || v <= 0) {
+      throw new Error(`${name} must be a positive integer, got ${v}`);
+    }
+  };
+  positiveInt("recordsPerSplit");
+  positiveInt("populationSize");
+  positiveInt("evaluationBudget");
+  const { elitism, populationSize } = settings;
+  if (!Number.isInteger(elitism) || elitism < 0 || elitism >= populationSize) {
+    throw new Error(
+      `elitism must be an integer in [0, populationSize), got ${elitism}`,
+    );
+  }
+  if (
+    !Number.isInteger(settings.candidatesPerTarget) ||
+    settings.candidatesPerTarget < 1
+  ) {
+    throw new Error(
+      `candidatesPerTarget must be an integer >= 1, got ${settings.candidatesPerTarget}`,
+    );
+  }
+  if (
+    !Number.isInteger(settings.historyProposals) ||
+    settings.historyProposals < 1
+  ) {
+    throw new Error(
+      `historyProposals must be an integer >= 1, got ${settings.historyProposals}`,
+    );
+  }
+  const x = settings.historyExploration;
+  if (!(x >= 0 && x <= 1)) {
+    throw new Error(`historyExploration must be in [0, 1], got ${x}`);
+  }
+  const f = settings.targetHoldoutFraction;
+  if (!(f > 0 && f <= 1)) {
+    throw new Error(`targetHoldoutFraction must be in (0, 1], got ${f}`);
+  }
+}
 
 /**
  * Build the three disjoint splits.
@@ -283,7 +344,13 @@ export interface LineageEdge {
   operator: string;
   /** The operator really changed the creature and repair succeeded. */
   changed: boolean;
-  affected: { added: number; removed: number; changed: number };
+  /** Exact counts, plus at most {@link AFFECTED_GENES_CAP} gene keys. */
+  affected: {
+    added: number;
+    removed: number;
+    changed: number;
+    genes: string[];
+  };
   targetStratum: number | null;
   /** The parent's calibration MSE per stratum — what targeting read. */
   parentCalibration: number[];
@@ -486,10 +553,8 @@ export function breedPair(
       operator: made.operator,
       changed: made.changed,
       affected: made.changed
-        ? (({ added, removed, changed }) => ({ added, removed, changed }))(
-          affectedGenes(parentExport, made.child.exportJSON()),
-        )
-        : { added: 0, removed: 0, changed: 0 },
+        ? affectedGenes(parentExport, made.child.exportJSON())
+        : { added: 0, removed: 0, changed: 0, genes: [] },
       targetStratum,
       parentCalibration,
       calibrationDelta: [],
@@ -571,7 +636,11 @@ export interface ArmResult {
   targetedOffspring: number;
   finalMeanGeneticDistance: number;
   finalSpeciesCount: number;
-  /** Mean of the per-generation behavioural diversity over the run. */
+  /**
+   * Mean of the per-generation behavioural diversity over generations 2 and
+   * later (generation 1 is the identical seeded population in every arm and
+   * would dominate the average); `NaN` when the run has none.
+   */
   meanBehaviouralDiversity: number;
   finalBehaviouralDiversity: number;
   generations: GenerationTrace[];
@@ -600,6 +669,7 @@ export function runArm(
   settings: StudySettings,
   corpus: Record<Split, StudyRecord[]>,
 ): ArmResult {
+  validateSettings(settings);
   // `createNeatConfig` installs its own generator, so the caller's generator is
   // captured *first* and restored in `finally` even if building the context
   // throws. The context is built *before* seeding: otherwise the same seed
@@ -774,25 +844,17 @@ function runSeededArm(
     targetedOffspring,
     finalMeanGeneticDistance: finalDistance,
     finalSpeciesCount: finalSpecies,
-    meanBehaviouralDiversity: generations.length === 0 ? 0 : generations.reduce(
-      (s, g) => s + g.behaviouralDiversity,
-      0,
-    ) / generations.length,
+    meanBehaviouralDiversity: mean(
+      generations.filter((g) => g.generation >= 2).map((g) =>
+        g.behaviouralDiversity
+      ),
+    ),
     finalBehaviouralDiversity: generations.length === 0
       ? 0
       : generations[generations.length - 1].behaviouralDiversity,
     generations,
     edges,
   };
-}
-
-function median(values: readonly number[]): number {
-  if (values.length === 0) return Number.NaN;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 /** The paired comparison of an arm against a control, over shared seeds. */
@@ -838,8 +900,6 @@ export function pairedComparison(
     r.finalHoldoutMse - control[i].finalHoldoutMse
   );
   const n = diffs.length;
-  const mean = (values: readonly number[]) =>
-    values.reduce((s, v) => s + v, 0) / values.length;
   const rng = createSeededRng(seed);
   const means: number[] = [];
   if (n > 0) {
@@ -891,7 +951,8 @@ export function pairedComparison(
  * The criteria fixed before any run, so a result cannot move them.
  *
  * The diversity criterion is behavioural diversity
- * ({@link behaviouralDiversity}) averaged over the run, as a ratio of arm to
+ * ({@link behaviouralDiversity}) averaged over generations 2 and later
+ * (generation 1 is the identical seeded population in every arm), as a ratio of arm to
  * control. UUID-based genetic distance is reported but not used, because it
  * collapses to zero for mutation-only clones.
  */

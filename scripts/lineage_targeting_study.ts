@@ -7,7 +7,7 @@
  * fixed in advance.
  *
  * ```bash
- * deno task lineage-targeting-study --seeds=10 --json=/tmp/lts.json
+ * deno task lineage-targeting-study --seeds=30 --json=/tmp/lts.json
  * ```
  *
  * The objective is synthetic (see `scripts/lib/lineageTargetingStudy.ts`). A
@@ -22,53 +22,49 @@ import {
   buildStratifiedCorpus,
   DEFAULT_STUDY_SETTINGS,
   type LineageEdge,
+  mean,
+  median,
   pairedComparison,
+  PREDECLARED_SEEDS,
   runArm,
+  STRATUM_COUNT,
   type StudySettings,
   SUCCESS_CRITERIA,
   verdict,
 } from "./lib/lineageTargetingStudy.ts";
 import { intArg, numberArg, stringArg } from "./lib/cliArgs.ts";
 
-function mean(values: readonly number[]): number {
-  if (values.length === 0) return Number.NaN;
-  return values.reduce((s, v) => s + v, 0) / values.length;
-}
-
-function median(values: readonly number[]): number {
-  if (values.length === 0) return Number.NaN;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 1
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
-/** Count and mean overall delta per operator, instead of every edge. */
+/** Per-operator count, mean deltas (overall and per stratum) and targeting. */
 function edgeSummary(edges: readonly LineageEdge[]) {
-  const byOperator = new Map<string, number[]>();
+  const byOperator = new Map<string, LineageEdge[]>();
   for (const edge of edges) {
     const list = byOperator.get(edge.operator) ?? [];
-    list.push(edge.overallDelta);
+    list.push(edge);
     byOperator.set(edge.operator, list);
   }
+  const finiteMean = (values: number[]): number | null => {
+    const finite = values.filter((d) => Number.isFinite(d));
+    return finite.length === 0 ? null : mean(finite);
+  };
   return {
     count: edges.length,
     operators: Object.fromEntries(
-      [...byOperator].map(([operator, deltas]) => {
-        const finite = deltas.filter((d) => Number.isFinite(d));
-        return [operator, {
-          count: deltas.length,
-          meanOverallDelta: mean(finite),
-        }];
-      }),
+      [...byOperator].map(([operator, list]) => [operator, {
+        count: list.length,
+        meanOverallDelta: finiteMean(list.map((e) => e.overallDelta)),
+        meanCalibrationDeltaPerStratum: Array.from(
+          { length: STRATUM_COUNT },
+          (_, s) => finiteMean(list.map((e) => e.calibrationDelta[s])),
+        ),
+        targetedCount: list.filter((e) => e.kind === "targeted").length,
+      }]),
     ),
   };
 }
 
 if (import.meta.main) {
   const args = [...Deno.args];
-  const seeds = intArg(args, "seeds", 10);
+  const seeds = intArg(args, "seeds", PREDECLARED_SEEDS);
   const baseSeed = numberArg(args, "base-seed", DEFAULT_STUDY_SETTINGS.seed);
   const settings: StudySettings = {
     ...DEFAULT_STUDY_SETTINGS,
@@ -91,6 +87,7 @@ if (import.meta.main) {
   };
   const codeVersion = stringArg(args, "code-version") ?? "unknown";
   const jsonPath = stringArg(args, "json");
+  const edgesPath = stringArg(args, "edges");
 
   const seedList = Array.from({ length: seeds }, (_, i) => baseSeed + i);
   const runs: ArmResult[] = [];
@@ -161,6 +158,7 @@ if (import.meta.main) {
     { arm: "targeted", versus: "ordinary" },
     { arm: "history-targeted", versus: "ordinary" },
     { arm: "history-targeted", versus: "targeted" },
+    { arm: "history-targeted", versus: "history" },
   ];
   const comparisons = contrasts.map(({ arm, versus }) => {
     const [control, treated] = paired(versus, arm);
@@ -179,6 +177,17 @@ if (import.meta.main) {
         c.diversityRatio.toFixed(3)
       }  => ${c.verdict}`,
     );
+  }
+
+  if (edgesPath !== undefined) {
+    const lines = runs.flatMap((r) =>
+      r.edges.map((e) => JSON.stringify({ arm: r.arm, seed: r.seed, ...e }))
+    );
+    await Deno.writeTextFile(
+      edgesPath,
+      lines.length === 0 ? "" : `${lines.join("\n")}\n`,
+    );
+    console.info(`Wrote ${lines.length} edges to ${edgesPath}`);
   }
 
   if (jsonPath !== undefined) {
@@ -215,9 +224,12 @@ if (import.meta.main) {
       summary,
       comparisons,
       failuresRun,
+      // `sampleEdges` (with gene keys) is kept for the first seed of each arm
+      // only, to bound the artefact; `--edges=<path>` writes every edge.
       runs: runs.map(({ edges, generations, ...rest }) => ({
         ...rest,
         edges: edgeSummary(edges),
+        ...(rest.seed === seedList[0] ? { sampleEdges: edges } : {}),
         generations: generations.filter((g, i) =>
           i === 0 || i === generations.length - 1 || g.generation % 5 === 0
         ),

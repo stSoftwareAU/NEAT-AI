@@ -17,6 +17,7 @@ import {
 } from "@std/assert";
 import { Creature } from "@creature";
 import {
+  AFFECTED_GENES_CAP,
   affectedGenes,
   type ArmName,
   type ArmResult,
@@ -34,6 +35,7 @@ import {
   STRATUM_COUNT,
   stratumErrors,
   type StudySettings,
+  validateSettings,
   verdict,
 } from "../../scripts/lib/lineageTargetingStudy.ts";
 import { seedPopulation } from "../../scripts/lib/preSelectionAB.ts";
@@ -124,7 +126,7 @@ function edge(
     kind: "ordinary",
     operator,
     changed: true,
-    affected: { added: 0, removed: 0, changed: 1 },
+    affected: { added: 0, removed: 0, changed: 1, genes: [] },
     targetStratum: null,
     parentCalibration: [0, 0, 0, 0],
     calibrationDelta,
@@ -148,28 +150,34 @@ Deno.test("lineage study - OperatorHistory averages deltas from edges only", () 
 
 Deno.test("lineage study - breeding never modifies the parent", async () => {
   await withRngTestLock(() => {
-    const corpus = buildStratifiedCorpus(SMALL);
-    for (const arm of ARMS) {
-      const parent = seedPopulation(SMALL, createSeededRng(7))[2];
-      const ctx = createBreedContext(SMALL, corpus.calibration);
-      const errors = {
-        train: stratumErrors(parent, corpus.train),
-        calibration: stratumErrors(parent, corpus.calibration),
-      };
-      const before = JSON.stringify(parent.exportJSON());
-      let sawChange = false;
-      for (let i = 0; i < 8; i++) {
-        const bred = breedPair(arm, parent, errors, ctx, 1);
-        assertEquals(bred.length, 2);
-        assertEquals(JSON.stringify(parent.exportJSON()), before);
-        for (const { child, edge: e } of bred) {
-          if (e.changed) {
-            sawChange = true;
-            assertNotEquals(child.uuid, parent.uuid);
+    const saved = getRandomNumberGenerator();
+    try {
+      const corpus = buildStratifiedCorpus(SMALL);
+      for (const arm of ARMS) {
+        const parent = seedPopulation(SMALL, createSeededRng(7))[2];
+        const ctx = createBreedContext(SMALL, corpus.calibration);
+        setRandomNumberGenerator(createSeededRng(11));
+        const errors = {
+          train: stratumErrors(parent, corpus.train),
+          calibration: stratumErrors(parent, corpus.calibration),
+        };
+        const before = JSON.stringify(parent.exportJSON());
+        let sawChange = false;
+        for (let i = 0; i < 8; i++) {
+          const bred = breedPair(arm, parent, errors, ctx, 1);
+          assertEquals(bred.length, 2);
+          assertEquals(JSON.stringify(parent.exportJSON()), before);
+          for (const { child, edge: e } of bred) {
+            if (e.changed) {
+              sawChange = true;
+              assertNotEquals(child.uuid, parent.uuid);
+            }
           }
         }
+        assert(sawChange, `${arm}: expected at least one real change`);
       }
-      assert(sawChange, `${arm}: expected at least one real change`);
+    } finally {
+      setRandomNumberGenerator(saved);
     }
   });
 });
@@ -318,4 +326,51 @@ Deno.test("lineage study - behaviouralDiversity measures output differences", ()
   const output = shifted.neurons.find((n) => n.type === "output")!;
   output.bias += 1;
   assert(behaviouralDiversity([c, shifted], probe) > 0);
+});
+
+Deno.test("lineage study - edges carry the affected gene keys", async () => {
+  const corpus = buildStratifiedCorpus(SMALL);
+  const result = await withRngTestLock(() => runArm("history", SMALL, corpus));
+  assert(
+    result.edges.some((e) =>
+      e.changed && e.affected.genes.length > 0 &&
+      e.affected.genes.length <= AFFECTED_GENES_CAP
+    ),
+    "expected a changed edge that names its genes",
+  );
+  for (const e of result.edges) {
+    const { added, removed, changed, genes } = e.affected;
+    assert(genes.length <= AFFECTED_GENES_CAP);
+    assertEquals(
+      genes.length,
+      Math.min(AFFECTED_GENES_CAP, added + removed + changed),
+    );
+  }
+});
+
+Deno.test("lineage study - mean behavioural diversity excludes generation 1", async () => {
+  const corpus = buildStratifiedCorpus(SMALL);
+  const result = await withRngTestLock(() => runArm("ordinary", SMALL, corpus));
+  const later = result.generations.filter((g) => g.generation >= 2);
+  assert(later.length > 0, "expected more than one generation");
+  assertAlmostEquals(
+    result.meanBehaviouralDiversity,
+    later.reduce((s, g) => s + g.behaviouralDiversity, 0) / later.length,
+    1e-12,
+  );
+});
+
+Deno.test("lineage study - validateSettings names the offending setting", () => {
+  validateSettings(DEFAULT_STUDY_SETTINGS);
+  validateSettings(SMALL);
+  assertThrows(
+    () => validateSettings({ ...SMALL, candidatesPerTarget: 0 }),
+    Error,
+    "candidatesPerTarget",
+  );
+  assertThrows(
+    () => validateSettings({ ...SMALL, historyExploration: 1.5 }),
+    Error,
+    "historyExploration",
+  );
 });
