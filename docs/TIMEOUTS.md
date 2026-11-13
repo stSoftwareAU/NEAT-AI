@@ -884,6 +884,11 @@ last tick and at the next one, so a synchronous mutation reads `breeding` ->
 | GRQ-21 | 1          | 17829 ms                | 16774 ms    |
 | GRQ-21 | 2          | 106255 ms               | 103899 ms   |
 
+The table's `Generation` column is the evolve generation number (the
+`Generation N score …` line). The stall line's `at generation <n>` counts
+completed generations, so it reads one less than the column; the quoted pair
+below is the GRQ-21 generation 2 row.
+
 One source pair, verbatim:
 
 ```text
@@ -891,8 +896,17 @@ One source pair, verbatim:
 [Timing] fitness=19041ms breeding=31382ms breedingWorker=31382ms mainThreadOverlap=2ms resultProcessing=0ms preWarm=610ms pipelineOverlap=614ms sort=0ms writeScores=10ms mutation=103899ms deduplication=1416ms speciation=4ms total=172667ms
 ```
 
-The multi-second to multi-minute non-fatal stalls are the synchronous
+The stalls that span `breeding` -> `deduplication` match the same generation's
+`mutation=` time to within about 1-2.5 s, so they are the synchronous
 `mutator.mutate` on the main thread.
+
+A second set of stalls spans the end of fitness to breeding, where the phase at
+the last heartbeat is `fitness` or `write-scores` and the phase now is
+`breeding`: GRQ-19 20274 ms (generation 1) and 36352 ms (generation 2); GRQ-21
+30398 ms, 25526 ms, 14982 ms, 15121 ms and 40536 ms (generations 1-5). The
+`[Timing]` line does not itemise that window (it covers the end of fitness,
+sort, write-scores, parent selection and result processing), so these logs do
+not say which step in it blocked.
 
 Inferred, not measured: both fatal wedges followed an OOM at twice the heap, so
 the leading suspect for the 2,000 s block is garbage collection near the 2163 MB
