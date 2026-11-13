@@ -23,6 +23,16 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Issue #4156:** opt-in `deno task differential-weight-study`, a research
+  harness that measures differential-weight (DE) offspring and delayed
+  population contraction as a 2×2 at equal charged records, crossed with whether
+  refined descendants re-enter the population. The result on a synthetic
+  objective is negative: no arm meets the benefit criterion and none is harm.
+  Nothing under `src/` imports the harness. See
+  [`docs/evidence/differential-weight-4156.md`](docs/evidence/differential-weight-4156.md).
+
 ### Fixed
 
 - **Issue #4146:** a hung native training task now says which backend ran and
