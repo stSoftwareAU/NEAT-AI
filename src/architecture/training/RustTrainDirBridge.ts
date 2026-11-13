@@ -17,7 +17,7 @@
  * deadline on one logs a warning once per backend.
  *
  * Backend report (Issue #4146): each native train writes one
- * `[training-backend]` line before the blocking call (see
+ * `[training-backend]` line before invoking native training (see
  * `TrainDirBackendReport.ts`). The once-per-backend `[NEAT-AI] trainDir using
  * ...` lines and the legacy-deadline warning go through the same reporter, so a
  * pooled worker relays them to the parent's logger.
@@ -58,6 +58,7 @@ import {
   nativeBackpropDeadlineCapability,
   type NativeBackpropMeasure,
   nativeBackpropTrain,
+  nativeBackpropTrainAsync,
   type NativeBackpropTrainRequest,
   type NativeBackpropTrainResponse,
   parseNativeBackpropCapabilities,
@@ -427,21 +428,42 @@ export function canUseRustTrainDir(
     rustTrainDirRefusalReason(creature, options, cost, setup) === undefined;
 }
 
-function spawnTrain(
-  binary: string,
-  args: string[],
-): { success: boolean; code: number; stdout: string; stderr: string } {
-  const output = new Deno.Command(binary, {
-    args,
-    stdout: "piped",
-    stderr: "piped",
-  }).outputSync();
+interface SpawnedTrain {
+  success: boolean;
+  code: number;
+  stdout: string;
+  stderr: string;
+}
+
+function decodeSpawned(
+  output: Deno.CommandOutput,
+): SpawnedTrain {
   return {
     success: output.success,
     code: output.code,
     stdout: new TextDecoder().decode(output.stdout),
     stderr: new TextDecoder().decode(output.stderr),
   };
+}
+
+function trainCommand(binary: string, args: string[]): Deno.Command {
+  return new Deno.Command(binary, {
+    args,
+    stdout: "piped",
+    stderr: "piped",
+  });
+}
+
+function spawnTrain(binary: string, args: string[]): SpawnedTrain {
+  return decodeSpawned(trainCommand(binary, args).outputSync());
+}
+
+/** Awaits the child so a terminated worker is not stuck in a blocking call (Issue #4126). */
+async function spawnTrainAsync(
+  binary: string,
+  args: string[],
+): Promise<SpawnedTrain> {
+  return decodeSpawned(await trainCommand(binary, args).output());
 }
 
 function buildTrainRequestFields(
@@ -716,13 +738,19 @@ function deadlineRequestField(
     : {};
 }
 
-function tryFfiTrainDir(
+interface FfiTrainPlan {
+  request: NativeBackpropTrainRequest;
+  deadlineCapable: boolean;
+}
+
+/** Build the request and write the backend report; shared by the sync and async paths. */
+function prepareFfiTrain(
   creature: Creature,
   dataDir: string,
   options: TrainOptions,
   setup: TrainingSetupState,
   workDir: string,
-): TrainingResult {
+): FfiTrainPlan {
   const outputDir = join(workDir, "out");
   Deno.mkdirSync(outputDir);
   const fields = buildTrainRequestFields(
@@ -776,7 +804,16 @@ function tryFfiTrainDir(
       ? "none"
       : String(deadlineCapability.version),
   });
-  const response = nativeBackpropTrain(request);
+  return { request, deadlineCapable };
+}
+
+/** Package a native response; shared by the sync and async paths. */
+function finishFfiTrain(
+  creature: Creature,
+  setup: TrainingSetupState,
+  response: NativeBackpropTrainResponse,
+  deadlineCapable: boolean,
+): TrainingResult {
   reportTrainDirPhase(setup.ID, {
     phase: "native-returned",
     timedOut: response.timedOut,
@@ -812,6 +849,30 @@ function tryFfiTrainDir(
     // Response fields are authoritative when the journal is missing.
   }
   return packageTrainingResult(creature, setup, bestJson, summary);
+}
+
+function tryFfiTrainDir(
+  creature: Creature,
+  dataDir: string,
+  options: TrainOptions,
+  setup: TrainingSetupState,
+  workDir: string,
+): TrainingResult {
+  const plan = prepareFfiTrain(creature, dataDir, options, setup, workDir);
+  const response = nativeBackpropTrain(plan.request);
+  return finishFfiTrain(creature, setup, response, plan.deadlineCapable);
+}
+
+async function tryFfiTrainDirAsync(
+  creature: Creature,
+  dataDir: string,
+  options: TrainOptions,
+  setup: TrainingSetupState,
+  workDir: string,
+): Promise<TrainingResult> {
+  const plan = prepareFfiTrain(creature, dataDir, options, setup, workDir);
+  const response = await nativeBackpropTrainAsync(plan.request);
+  return finishFfiTrain(creature, setup, response, plan.deadlineCapable);
 }
 
 /** The stderr line that names a failure: the first `error` line, else the first non-empty line. */
@@ -880,13 +941,21 @@ function readCliResultFile(outputDir: string): NativeBackpropTrainResponse {
   }
 }
 
-function tryCliTrainDir(
+interface CliTrainPlan {
+  binary: string;
+  args: string[];
+  outputDir: string;
+  deadlineCapable: boolean;
+}
+
+/** Build the CLI args and write the backend report; shared by the sync and async paths. */
+function prepareCliTrain(
   creature: Creature,
   dataDir: string,
   options: TrainOptions,
   setup: TrainingSetupState,
   workDir: string,
-): TrainingResult {
+): CliTrainPlan {
   const binary = findRustTrainDirBinary();
   if (binary === null) {
     throw new Error(
@@ -968,7 +1037,17 @@ function tryCliTrainDir(
       ? "none"
       : String(deadlineCapability.version),
   });
-  const spawned = spawnTrain(binary, args);
+  return { binary, args, outputDir, deadlineCapable };
+}
+
+/** Package a finished CLI run; shared by the sync and async paths. */
+function finishCliTrain(
+  creature: Creature,
+  setup: TrainingSetupState,
+  spawned: SpawnedTrain,
+  plan: CliTrainPlan,
+): TrainingResult {
+  const { outputDir, deadlineCapable } = plan;
   // The result file is not read yet, so the outcome is unknown here.
   reportTrainDirPhase(setup.ID, {
     phase: "native-returned",
@@ -1002,6 +1081,30 @@ function tryCliTrainDir(
   return packageTrainingResult(creature, setup, bestJson, summary);
 }
 
+function tryCliTrainDir(
+  creature: Creature,
+  dataDir: string,
+  options: TrainOptions,
+  setup: TrainingSetupState,
+  workDir: string,
+): TrainingResult {
+  const plan = prepareCliTrain(creature, dataDir, options, setup, workDir);
+  const spawned = spawnTrain(plan.binary, plan.args);
+  return finishCliTrain(creature, setup, spawned, plan);
+}
+
+async function tryCliTrainDirAsync(
+  creature: Creature,
+  dataDir: string,
+  options: TrainOptions,
+  setup: TrainingSetupState,
+  workDir: string,
+): Promise<TrainingResult> {
+  const plan = prepareCliTrain(creature, dataDir, options, setup, workDir);
+  const spawned = await spawnTrainAsync(plan.binary, plan.args);
+  return finishCliTrain(creature, setup, spawned, plan);
+}
+
 /**
  * Run the Rust trainer and package a TypeScript {@link TrainingResult}.
  *
@@ -1018,11 +1121,65 @@ export function tryRustTrainDir(
   cost: CostInterface,
   setup: TrainingSetupState,
 ): TrainingResult | undefined {
-  if (!isRustTrainDirEnabled()) {
-    return undefined;
+  if (!rustTrainDirGate(creature, options, cost, setup)) return undefined;
+  const workDir = Deno.makeTempDirSync({ prefix: "neat-ai-backprop-" });
+  try {
+    if (isNativeBackpropAvailable()) {
+      return tryFfiTrainDir(creature, dataDir, options, setup, workDir);
+    }
+    refuseCliWhenFfiRequired();
+    return tryCliTrainDir(creature, dataDir, options, setup, workDir);
+  } finally {
+    removeWorkDir(workDir);
   }
+}
+
+/**
+ * Async twin of {@link tryRustTrainDir} for the worker path (Issue #4126): the
+ * native trainer is awaited, so the thread is not blocked inside it.
+ */
+export async function tryRustTrainDirAsync(
+  creature: Creature,
+  dataDir: string,
+  options: TrainOptions,
+  cost: CostInterface,
+  setup: TrainingSetupState,
+): Promise<TrainingResult | undefined> {
+  if (!rustTrainDirGate(creature, options, cost, setup)) return undefined;
+  const workDir = await Deno.makeTempDir({ prefix: "neat-ai-backprop-" });
+  try {
+    if (isNativeBackpropAvailable()) {
+      return await tryFfiTrainDirAsync(
+        creature,
+        dataDir,
+        options,
+        setup,
+        workDir,
+      );
+    }
+    refuseCliWhenFfiRequired();
+    return await tryCliTrainDirAsync(
+      creature,
+      dataDir,
+      options,
+      setup,
+      workDir,
+    );
+  } finally {
+    await removeWorkDirAsync(workDir);
+  }
+}
+
+/** False to skip Rust; throws when Rust is enabled but cannot take the request. */
+function rustTrainDirGate(
+  creature: Creature,
+  options: TrainOptions,
+  cost: CostInterface,
+  setup: TrainingSetupState,
+): boolean {
+  if (!isRustTrainDirEnabled()) return false;
   if (rustTrainDirSkipReason(creature, options, cost, setup) !== undefined) {
-    return undefined;
+    return false;
   }
   const reason = rustTrainDirRefusalReason(creature, options, cost, setup);
   if (reason !== undefined) {
@@ -1031,25 +1188,37 @@ export function tryRustTrainDir(
         `refusing WASM/TypeScript fallback (${reason}).`,
     );
   }
+  return true;
+}
 
-  const workDir = Deno.makeTempDirSync({ prefix: "neat-ai-backprop-" });
+function refuseCliWhenFfiRequired(): void {
+  if (isRustTrainDirFfiRequired()) {
+    throw new Error(
+      "trainDir must use libneat_ai_backpropagation FFI when REQUIRE_FFI is set; " +
+        "refusing CLI/WASM fallback.",
+    );
+  }
+}
+
+async function removeWorkDirAsync(workDir: string): Promise<void> {
   try {
-    if (isNativeBackpropAvailable()) {
-      return tryFfiTrainDir(creature, dataDir, options, setup, workDir);
-    }
-    if (isRustTrainDirFfiRequired()) {
-      throw new Error(
-        "trainDir must use libneat_ai_backpropagation FFI when REQUIRE_FFI is set; " +
-          "refusing CLI/WASM fallback.",
-      );
-    }
-    return tryCliTrainDir(creature, dataDir, options, setup, workDir);
-  } finally {
-    try {
-      Deno.removeSync(workDir, { recursive: true });
-    } catch {
-      // Temp dir cleanup is best-effort.
-    }
+    await Deno.remove(workDir, { recursive: true });
+  } catch (error) {
+    getLogger().warn(
+      `Failed to remove native training work directory ${workDir}`,
+      error,
+    );
+  }
+}
+
+function removeWorkDir(workDir: string): void {
+  try {
+    Deno.removeSync(workDir, { recursive: true });
+  } catch (error) {
+    getLogger().warn(
+      `Failed to remove native training work directory ${workDir}`,
+      error,
+    );
   }
 }
 

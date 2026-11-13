@@ -474,15 +474,17 @@ creature below. It does **not** identify the code that spins.
   `--trace-gc` log did not grow at all after second 131. A GC thrash runs
   collections back to back, each logged and each using the helper threads; this
   is a CPU-bound loop on the main thread that allocates nothing.
-- **Timers do not fire on the single-thread path, even when healthy.** With
-  `threads: 1` the workers are `MockWorker`s that run on the main thread, and
-  the native trainer is called with `nonblocking: false`. The 5 s heartbeat
-  logged nothing during run A's 130 healthy seconds, and in run B it fired only
-  after `evolveDir` returned:
-  `[  363.2s] [heartbeat] heap=1003MB
-  lag=358192ms`. So any `setInterval` poll
-  — including the first-generation bound's — cannot be relied on there, whether
-  or not GC is involved.
+- **Timers did not fire on the single-thread path during these measurements.**
+  At the time, `threads: 1` used `MockWorker`s on the main thread and the native
+  trainer was called with `nonblocking: false`. Since Issue #4126,
+  native-enabled `evolveDir` uses a real worker even with `threads: 1`, and
+  awaits native training there. WASM-only single-thread runs can still use an
+  in-process mock and a synchronous training loop. The 5 s heartbeat logged
+  nothing during run A's 130 healthy seconds, and in run B it fired only after
+  `evolveDir` returned: `[  363.2s] [heartbeat] heap=1003MB lag=358192ms`.
+  During those measurements, `setInterval` polls — including the
+  first-generation bound's — could not run while synchronous training held the
+  main thread, whether or not GC was involved.
 - **No `[MemoryMonitor]` line is expected at this heap size.** The monitor logs
   only when heap pressure crosses its warning or critical threshold
   (`checkMemoryAndEvict` / `logMemoryUsage` in `src/NEAT/MemoryMonitor.ts`); a

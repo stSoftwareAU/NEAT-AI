@@ -257,19 +257,27 @@ abandoned still-running — the process may stay alive until the detached work e
 ```
 
 > [!WARNING]
-> **A bounded teardown makes `evolveDir` _return_ on time; it cannot make the
-> Deno process _exit_ on time.** A worker wedged inside a synchronous native /
-> WASM call never yields to its event loop, so `Worker.terminate()` returns
-> immediately on the main thread but the worker thread is never reaped and the
-> runtime will not exit. Measured directly on Deno 2.x: a main module that
-> spawns a worker running `while (true) {}`, calls `terminate()` and then falls
-> off the end **never exits** (killed at a 20 s timeout); the same program with
-> a final `Deno.exit(0)` exits immediately.
+> **Returning from `evolveDir` and exiting the process are separate steps.** A
+> worker blocked in a synchronous native call can outlive `Worker.terminate()`.
+> Scheduled native training now awaits its FFI call or CLI subprocess, so its
+> quarantine does not hold the worker thread in that blocking call (Issue
+> #4126). This does not cancel in-process native computation or fix native
+> deadline overruns. Other synchronous native calls can still hold a worker
+> thread.
 >
-> So a caller that must guarantee its own exit — GRQ's `location` children, for
-> example — has to call `Deno.exit()` after `evolveDir` resolves rather than
-> rely on natural exit. The teardown's warning line is the signal that this
-> matters for a given run: it fires exactly when something was detached.
+> A worker busy in synchronous JavaScript/WASM or native code is not reaped by
+> `Worker.terminate()`. Re-measured on 2026-11-13 with Deno 2.9.8 on Linux, a
+> main module that spawns a worker running `while (true) {}`, calls
+> `terminate()` and then falls off the end **never exits** (killed at a 20 s
+> timeout). This still applies to the TypeScript/WASM training loop and the
+> other synchronous calls above. A caller that must guarantee its own exit
+> should opt into `exitOnUnreclaimableWorkers` or call `Deno.exit()` after
+> `evolveDir` resolves, rather than rely on natural exit.
+>
+> Teardown reports unanswered tasks conservatively, even for asynchronous
+> training that can terminate. The optional `exitOnUnreclaimableWorkers` guard
+> remains available; see
+> [Process does not exit](troubleshooting/PROCESS_DOES_NOT_EXIT.md).
 
 ## 🤝 Cooperative return vs. forced abandon (Issue #3166)
 
@@ -462,8 +470,8 @@ does. "Deadline sent" means the `deadlineEpochMs` field or the
 ## 🧾 Which backend ran, and whether a deadline was sent (Issue #4146)
 
 Every training task writes one `[training-backend]` line at info level,
-**before** its blocking native call, so a task that later hangs already has it
-in the log:
+**before** its native call, so a task that later hangs already has it in the
+log:
 
 ```text
 [training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no> capability=<version|none>
@@ -494,8 +502,8 @@ level, after the backend line. The WASM loop writes neither.
 [training-phase] task=<ID> phase=<native-returned|finalised> timedOut=<yes|no|unknown> msFromDeadline=<integer|none>
 ```
 
-- `native-returned` is written as soon as the blocking native call returns,
-  before the response is parsed or packaged.
+- `native-returned` is written as soon as the native call returns, before the
+  response is parsed or packaged.
 - `timedOut` is the response's outcome. On the `native-returned` line it is
   `unknown` when the response has not been read yet (CLI, where `result.json` is
   read after this line) or the engine did not report it (a legacy FFI library).

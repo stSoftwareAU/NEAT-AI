@@ -22,6 +22,7 @@ import { makeDataDir } from "@architecture/DataSet.ts";
 import type { DiscoverRecord } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverStructure.ts";
 import { calculate as calculateScore } from "@architecture/Score.ts";
 import { dataFiles } from "@architecture/Training.ts";
+import { isRustTrainDirEnabled } from "@architecture/training/RustTrainDirBridge.ts";
 import { createNeatConfig } from "@config/NeatConfig.ts";
 import { EVOLUTION_ONLY_TRAIN_PER_GEN } from "@config/TrainPerGen.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
@@ -577,9 +578,11 @@ export async function evolveDir(
     ) ?? 0;
 
     const threads = config.threads;
+    const nativeTrainingEnabled = isRustTrainDirEnabled();
 
     for (let i = threads; i--;) {
-      const preferDirect = threads === 1;
+      // Native work must leave the main isolate when this worker is quarantined.
+      const preferDirect = threads === 1 && !nativeTrainingEnabled;
       // Issue #1567: Propagate WASM cache limits to worker threads.
       // Issue #1620: Propagate output range constraints to worker threads.
       const outputRanges = config.outputRanges.length > 0
@@ -605,7 +608,7 @@ export async function evolveDir(
         } catch {
           // Ignore termination errors.
         }
-        if (!preferDirect) {
+        if (!preferDirect && !nativeTrainingEnabled) {
           getLogger().warn(
             "[Creature.evolveDir] Worker init failed; falling back to direct execution for this worker slot.",
             err,

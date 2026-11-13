@@ -81,9 +81,18 @@ const result = await creature.evolveDir("./data", {
 });
 ```
 
-Workers handle evaluation, training, discovery, and breeding in parallel. If a
-worker fails to initialise (e.g. in restricted environments), it falls back to
-direct (in-process) execution automatically.
+Workers handle evaluation, training, discovery, and breeding in parallel.
+
+The fallback on worker initialisation failure depends on native training:
+
+- **Native training disabled** (`NEAT_AI_BACKPROP_ENABLED=0`): a worker that
+  fails to initialise (e.g. in restricted environments) falls back to direct
+  (in-process) execution automatically.
+- **Native training enabled** (the default): `evolveDir` uses real workers even
+  with `threads: 1`, and a worker initialisation failure is rethrown rather than
+  falling back. In-process native work could not be released if its worker were
+  quarantined (Issue #4126). See
+  [Exiting when a worker cannot be stopped](../config/WORKERS.md#-exiting-when-a-worker-cannot-be-stopped).
 
 ## 🗃️ WASM cache control
 

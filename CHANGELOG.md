@@ -25,11 +25,21 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Issue #4126:** scheduled native training no longer pins a worker thread
+  after quarantine. Workers await `trainDirAsync`, using nonblocking FFI or an
+  asynchronous CLI child. C-heap buffers and an OS loader reference keep late
+  native reads/writes safe after worker termination; abandoned resources can
+  remain until process exit and temporary directories can remain on disk. Native
+  computation itself is not cancelled. Synchronous `trainDir` and the opt-in
+  exit guard retain their behaviour. Native-enabled `evolveDir` uses real
+  workers even with `threads: 1` and refuses an in-process initialisation
+  fallback. The teardown warning now describes unanswered native work as
+  potentially running, rather than asserting that the process cannot exit.
 - **Issue #4146:** a hung native training task now says which backend ran and
   whether a deadline was sent. Each training task writes one
   `[training-backend] task=<ID> backend=<ffi|cli|wasm> deadlineSent=<yes|no>
   capability=<version|none>`
-  line before its blocking native call. A pooled worker relays the line, with
+  line before invoking native training. A pooled worker relays the line, with
   the `[NEAT-AI] trainDir using ...` lines and the legacy-deadline warning, to
   the parent's logger. A native (`ffi` or `cli`) task also writes two
   `[training-phase]` lines, one as soon as the native call returns
@@ -45,9 +55,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   declared `nonblocking: true`, so the worker's thread is no longer blocked and
   the process can exit. The native analysis cannot be cancelled from JavaScript;
   it ends at its Rust-side deadline or when `cancel_analysis_memory_pressure()`
-  is signalled under memory pressure. A training task on a legacy native engine
-  (`neat_ai_backpropagation` 0.1.49 or earlier) can still pin the process, and
-  `exitOnUnreclaimableWorkers` remains the guard for that. See
+  is signalled under memory pressure. The native trainer is awaited too (see the
+  entry above), and `exitOnUnreclaimableWorkers` remains the guard for any other
+  thread that cannot be stopped. See
   [`docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md`](./docs/troubleshooting/PROCESS_DOES_NOT_EXIT.md).
 - **Issue #4120:** `build.sh` no longer exits `1` when the release asset
   download fails after the release probe has confirmed the release exists. A
