@@ -1,87 +1,112 @@
 ## Summary
 
-Recorded a fresh downstream log archive search and the strongest retained field
-evidence in `docs/TIMEOUTS.md`. The heartbeat and stall diagnostics are already
-present on the base from merged PRs #4101 and #4136. This investigation did not
-identify the generation-11 cause or find qualifying closing evidence, so it
-remains part of #4096. The live guide describes the archive at concept level and
-places the dated observation after the general breach and caller guidance.
+The downstream log archive now holds two field breach lines that carry the
+heartbeat age: neat-ai 7.1.14 on GRQ-19 and 7.1.17 on GRQ-21. Both read
+`lastHeartbeatAgeMs≈1,990,000 inFlightPhase=breeding`. They are recorded in
+`docs/TIMEOUTS.md` as closing evidence. They show the main loop was blocked (not
+just slow), on hosts with no swap-backed heap, in the breeding window rather
+than fitness.
 
-Version bump: `VERSION` is not changed by this investigation; the merged commit
-records the final version.
+The line could not say which main-thread step in that window blocked, or how
+full the heap was, so this PR adds both:
+
+- the breach line now ends with
+  `lastHeartbeatHeapUsedMB=<MiB> heapLimitMB=<MiB>`;
+- `evolve()` marks the old `breeding` window as `parent-selection`, then
+  `result-processing`, then `breeding`.
+
+The generation-11 stall on the 8 GB swap-backed host (7.0.62) itself was not
+reproduced, so the root-cause criterion stays partial. Part of #4096.
 
 ## Spec
 
 ### Intent and Rationale
 
-- Refresh the field evidence against the current downstream log archive snapshot
-  and keep measured observations separate from the illustrative breach example.
-- Avoid changing production behaviour without reproducing a watchdog or
-  diagnostic defect.
+- The heartbeat (#4101, #4136) and its subprocess regression tests (#4140) are
+  already on the base branch. What was left was the cause, and field evidence.
+  This run's archive search found the evidence. The two fatal wedges blocked in
+  a window that covered several separate pieces of main-thread work, and both
+  came right after an out-of-memory retry halved the heap. So the next useful
+  measurement is which step blocked, and whether the heap was near its limit.
+- Adding diagnostics was chosen over a speculative fix: the fatal block was not
+  reproduced, so no evolution behaviour changes.
 
 ### Essential Design Decisions
 
-- The 7.1.2 field run excludes mutation only for its own generation-2 stall. Its
-  phase and host measurements cannot establish the cause of the separate
-  generation-11 incident.
-- The current downstream log archive snapshot has no qualifying breach or
-  swap-backed 8 GB final-loop evidence. The issue remains open for a deployed
-  run carrying the diagnostics.
+- The heap fields are appended after `heartbeatIntervalMS=`, so parsers that
+  match the existing prefix still work. Heap used comes from
+  `Deno.memoryUsage().heapUsed` at arm and on every heartbeat tick. The limit
+  (`heap_size_limit`) is read once at arm. Both go into their own
+  `SharedArrayBuffer`, and a value of 0 prints as `unknown`.
+- The new phases are appended to `EVENT_LOOP_WATCHDOG_PHASES`, so existing
+  indices keep their meaning. `setPhase` writes shared memory synchronously, so
+  a breach always names the step the main thread was in, even when it is
+  blocked.
+- `readHeapSizeLimit` moved from `MemoryMonitor.ts` to a new
+  `src/NEAT/HeapSizeLimit.ts`. The watchdog can then call it without importing
+  the monitor's dependency graph, and only one copy exists.
 
 ### Undiscoverable Facts
 
-- The current environment has 16 GB RAM and no swap, so it cannot reproduce the
-  reported 8 GB swap-backed host condition.
-- The downstream log archive's `Develop` at
-  `ef0dd4e255c7702b53ccad8e61b4d19b332e85f8` was the latest source snapshot
-  rechecked on 2026-11-06.
+- The two source logs (`GRQ-19-sloth.log` at GRQ-logs commit `a34f9c1`,
+  `GRQ-21-sloth.log` at `d78afa4`) were removed by the archive's later triage
+  commits (`adb8dd6`, `54c6fac`). They are only reachable through the archive's
+  git history.
+- In the same runs, the non-fatal `breeding` → `deduplication` stalls match the
+  same generation's `mutation=` timing to within 1–2.5 s. A second set of
+  stalls, from `fitness`/`write-scores` → `breeding`, is not itemised by
+  `[Timing]`.
 
 ## Evidence
 
-The initial downstream log archive `Develop` snapshot inspected was
-`92bd6423ba6c37adc471557368368c23d3ce4c4e`. This turn rechecked all five tracked
-log files at the newer snapshot `ef0dd4e255c7702b53ccad8e61b4d19b332e85f8`:
-`GRQ-25-elephant-degraded.log`, `GRQ-25-elephant.log`, `GRQ-3-scorer.log`,
-`Mac-Ultra-M2-elephant.log` and `Mac-Ultra-M2-portfolio.log`. None contains
-`lastHeartbeatAgeMs`, `main loop stalled` or `Run wedged`, and none provides a
-green final loop on a swap-backed 8 GB host. The only `neat-ai` release marker
-was 7.1.3 in `GRQ-3-scorer.log`, which is not a learning run with these
-diagnostics. The original host and full corpus are unavailable here.
+Backend-only change. No UI file is touched.
 
-One useful older learning-run log retrieved from repository history is
-`GRQ-3-rocket.log` from downstream log archive source commit
-`289753f0c5459c30f261794ae91e151c77ff43b7`. It records GRQ 1.1.213 (`13c24754`),
-NEAT-AI 7.1.2, generation 2 on rocket@GRQ-3: 10 CPUs, 16 GB RAM, about 8 GB
-available and load averages `49.79 58.48 50.43`.
+Archive search (GRQ-logs `Develop`, deepened to 3000 commits):
+`git log -S"lastHeartbeatAgeMs"` returned `a34f9c1`, `adb8dd6`, `d78afa4` and
+`54c6fac`. The breach lines, quoted from `git show a34f9c1:GRQ-19-sloth.log` and
+`git show d78afa4:GRQ-21-sloth.log`:
 
 ```text
-[Timing] fitness=34710ms breeding=133950ms breedingWorker=133949ms mainThreadOverlap=0ms resultProcessing=0ms memoryEviction=3ms preWarm=508ms pipelineOverlap=526ms sort=0ms writeScores=194ms mutation=0ms deduplication=974ms speciation=18ms total=232627ms
-[DiscoveryReplayRunner] Worker init failed; falling back to direct execution for this worker slot. Error: [WasmWorkerInit] Worker init: no response after 60s (worker=worker-25). Parent-observed: handshakeMs=60000 parentStallMs=5942 loopBlockedMs=64941 spawnToInitMs=0 workerError=none heartbeat=none wasm[cache=hit cacheDir=/Users/rocket/.cache/neat-ai/wasm bundleBytes=1039068 bundleLoadMs=24 glueImportMs=30 instantiateMs=6 wasmTotalMs=61].
+[Neat] First generation wedged after 2100s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged lastHeartbeatAgeMs=1999298 inFlightPhase=breeding heartbeatIntervalMS=1000
+[Neat] First generation wedged after 2100s (event loop blocked past the first-generation bound; watchdog killing the process) — first-generation-wedged lastHeartbeatAgeMs=1982754 inFlightPhase=breeding heartbeatIntervalMS=1000
 ```
 
-This supports excluding mutation for this instance (`mutation=0ms`), while the
-64,941 ms parent block remains unattributed. It does not distinguish paging from
-CPU starvation or establish whether work inside fitness caused the generation-11
-stall. RSS, page faults, swap activity and GC traces were not recorded in this
-log. This run predates non-fatal stall reporting, and contains no watchdog
-heartbeat-age reading. The shared-memory heartbeat and fatal-breach fields were
-already present: commit `c3733691` (#4101) declares NEAT-AI 7.0.64. This field
-excerpt is distinct from the illustrative breach line in `docs/TIMEOUTS.md`.
+Both hosts have 10 CPUs and 16 GB RAM, with about 13–14 GB available. Loop 1
+ended `Learn.ts exited 133` (V8 heap-limit abort) at 4326 MB. Loop 2 ran at 2163
+MB with `heavyWorkers 1, threads 1`.
 
-The checked-out host reports 16 GB RAM and `SwapTotal: 0 kB`, so a local
-memory-pressure run would not reproduce the reported host condition. No
-production defect was demonstrated; no code was changed.
+```mermaid
+flowchart LR
+    F["fitness"] --> S["sort / write-scores"] --> P["parent-selection<br/>(ranking, pair selection,<br/>first export)"]
+    P --> R["result-processing<br/>(processCompletedResults)"]
+    R --> B["breeding<br/>(await workers; fromJSON,<br/>discover per offspring)"]
+    B --> M["mutation"] --> D["pre-warm / deduplication"]
+    W["Watchdog Worker"] -. "at breach reads phase, heartbeat age,<br/>heap used, heap limit" .-> B
+```
+
+Issue numbers cited, each looked up with `gh` in this run:
+
+- #4096: evolveDir main loop stalls in generation 11 past the T+15 cap on 7.0.62
+  (8 GB swap-backed host): SIGKILL loses 10 evolved generations, and the
+  watchdog cannot say what blocked
+- #4101, #4136, #4140: merged PRs for this issue, with the same title
+- #4068: Document the event-loop limit of the in-process bounds and the
+  caller-side per-loop hard kill
+- #4086: Document the event-loop limit and the caller-side per-loop hard kill
+  (#4068)
 
 ## Reproduction
 
-- **symptom** — the reported generation-11 main-loop stall and SIGKILL were not
-  reproduced. The existing subprocess tests reproduce the narrower diagnostic
-  case of a generation-2 busy loop and a yielding run.
-- **status** — `partial` — reason: the original 8 GB swap-backed host and full
-  corpus are unavailable, so the generation-11 failure was not reproduced;
-  existing diagnostic tests pass, with no fail-before observation this turn.
+- **symptom** — the main event loop of `evolveDir` stopped servicing timers in
+  generation 11 on an 8 GB swap-backed host (7.0.62), and the watchdog SIGKILLed
+  the run.
+- **status** — `not-run` — reason: the trigger needs a paging, swap-backed 8 GB
+  host and the full production corpus; this host has 16 GB and no swap. The
+  field wedges on 7.1.14 and 7.1.17 are quoted instead. The new diagnostic tests
+  were seen failing against the unchanged source, then passing.
 - **regression test** —
   `test/creature/EvolveRunWatchdogHeartbeat_test.ts::EvolveRunWatchdogHeartbeat: a busy main thread in generation 2 is killed with a heartbeat age at least the busy duration`
+  (from #4140, unchanged here)
 
 ## Acceptance Criteria
 
@@ -91,62 +116,108 @@ production defect was demonstrated; no code was changed.
   timestamp the main loop bumps on a timer, read by `EventLoopWatchdogWorker`.
   The breach line then reports `lastHeartbeatAgeMs=` and the in-flight phase
   (`inFlightPhase`). — evidence: `src/NEAT/EventLoopWatchdog.ts`,
-  `src/NEAT/EventLoopWatchdogWorker.ts` on the base from #4101 — reviewer: met
+  `src/NEAT/EventLoopWatchdogWorker.ts` (from #4101 and #4136, extended here) —
+  reviewer: met
 - **partial** — Root cause of the generation-11 stall identified, or reproduced
   or excluded with quoted evidence. In particular: is it paging on a swap-backed
-  heap, or main-thread work inside fitness? — evidence: the generation-2
-  `GRQ-3-rocket.log` excerpt above — reviewer: partial — reason: mutation is
-  excluded for this different instance only; its log has no watchdog
-  heartbeat-age reading, RSS, page-fault, swap or GC measurements, so
-  generation-11 cause and paging versus main-thread work inside fitness remain
-  unresolved
+  heap, or main-thread work inside fitness? — evidence: `docs/TIMEOUTS.md`
+  ("Field observation (2026-11-13)") — reviewer: partial — reason: the quoted
+  7.1.x wedges were measured blocked in `breeding` on hosts with no swap, so
+  they need neither paging nor fitness. The non-fatal stalls are shown to be the
+  synchronous `mutator.mutate`. The generation-11 case itself (7.0.62, swap
+  host) is not reproduced, and the fatal block's step and heap state wait on a
+  field breach carrying this PR's heap fields and phases.
 - **met** — Regression test: a subprocess run whose main thread busy-loops in
   generation ≥ 2 is killed with a breach line carrying `lastHeartbeatAgeMs` ≥
   the busy duration. A run that is merely slow but yielding reports a small
-  heartbeat age. — evidence: `test/creature/EvolveRunWatchdogHeartbeat_test.ts`
-  (both subprocess tests reran this turn; 57 targeted tests passed) — reviewer:
-  met
-- **missing** — Closing evidence: a quoted breach line from a field run that
+  heartbeat age. — evidence:
+  `test/creature/EvolveRunWatchdogHeartbeat_test.ts::EvolveRunWatchdogHeartbeat: a busy main thread in generation 2 is killed with a heartbeat age at least the busy duration`,
+  `test/creature/EvolveRunWatchdogHeartbeat_test.ts::EvolveRunWatchdogHeartbeat: a yielding main thread in generation 2 keeps its heartbeat age near one interval`
+  (from #4140; re-run on this head) — reviewer: met
+- **met** — Closing evidence: a quoted breach line from a field run that
   includes the heartbeat age, or a quoted green final loop on a swap-backed 8 GB
-  host. — reviewer: missing — reason: all five logs at the latest downstream log
-  archive snapshot lack qualifying field evidence; this environment has no swap
-  and cannot supply a matching host run
+  host. — evidence: `docs/TIMEOUTS.md` quotes the GRQ-19 (7.1.14) and GRQ-21
+  (7.1.17) breach lines with `lastHeartbeatAgeMs=1999298` and `=1982754` —
+  reviewer: met
+- **unrequested** — the `lastHeartbeatHeapUsedMB=` / `heapLimitMB=` breach
+  fields and the `HeapSizeLimit.ts` move — reviewer: unrequested — reason: both
+  fatal wedges followed a heap-limit OOM, so heap headroom at the last tick is
+  what tells garbage collection near the limit from synchronous work. That is
+  the remaining root-cause question.
+- **unrequested** — the `parent-selection` and `result-processing` phases that
+  split the old `breeding` window — reviewer: unrequested — reason: the field
+  breach named `breeding`, which spanned four separate main-thread steps, so
+  only splitting it can name the step that blocked.
+- **unrequested** — the `docs/TIMEOUTS.md` stall and mutation analysis, and the
+  CHANGELOG entry — reviewer: unrequested — reason: it is the quoted evidence
+  for the root-cause criterion, and the CHANGELOG records the new breach-line
+  fields.
 
 ## Standards Review
 
-<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
+<!-- vibe-standards-review inputs="diff+AGENTS.md+docs/ENGINEERING_PRINCIPLES.md" -->
 
-- **violation** — documentation claims must match implementation and history
-  (`docs/DOC_STYLE.md`, rule 4) — evidence: `docs/TIMEOUTS.md` field observation
-  — reason: fixed in this diff by distinguishing the existing heartbeat from
-  later non-fatal stall reporting
-- **clean** — documentation-only scope, Australian English, NEAT-AI terminology,
-  separation of measured field evidence from the illustrative breach, and
-  explicit limits on reproduction and acceptance. No `CODING-STANDARDS.md`
-  exists; the reviewer checked `AGENTS.md`, `docs/ENGINEERING_PRINCIPLES.md` and
-  `docs/DOC_STYLE.md`.
+- **clean** — no violations. Checked:
+  - logging through `getLogger()` only, and no `@std/log`;
+  - no timing assertions or `Deno.env` mutation in tests;
+  - tests assert on breach-line stderr, exit code and the public phase observer,
+    never on source text;
+  - typed errors unchanged;
+  - DRY: `readHeapSizeLimit` was moved, not copied;
+  - no fallback path, and no change to the UUID or semantic-version invariants;
+  - `EventLoopWatchdogWorker.ts` still imports nothing;
+  - phase indices are stable;
+  - Australian English.
+
+  Each changed expectation in an existing test still fails without its code.
+  Neither standards file marks a rule as enforced by review only. Of the
+  reviewer's optional notes, the `HeapSizeLimit.ts` doc comment was updated, and
+  the spec reviewer's phase-order note on `docs/TIMEOUTS.md` was fixed in this
+  diff.
 
 ## Test Plan
 
-- The archive privacy gate checks that this summary uses publicly readable
-  descriptions of the downstream log archive.
-- Existing watchdog, phase-observer and entry-point tests:
-  `deno test -A test/NEAT/EventLoopWatchdog_test.ts
-  test/NEAT/NeatPhaseObserver_test.ts
-  test/creature/EvolveRunWatchdogHeartbeat_test.ts
-  test/creature/EvolveRunWatchdog_test.ts
-  test/creature/EvolveWatchdogWiring_test.ts < /dev/null`
-  — reran this turn: 57 passed, 0 failed.
-- This documentation correction: `./quality.sh --lint-only < /dev/null` passed
-  dependency checks, formatting, linting and bash checks. Both edited documents
-  also pass `deno fmt --check`; `git diff --check` passes. Final Spec review
-  confirmed met / partial / met / missing; final Standards review was clean.
-- `timeout 900 ./quality.sh --rust-scorer-bin=/var/tmp/vibe-cargo-target/NEAT-AI-a155970c/release/rust_scorer < /dev/null`
-  — passed earlier in this run, 10,260 passed, 49 ignored. Discovery library
-  verification was skipped because the sibling `NEAT-AI-Discovery` checkout and
-  library are absent.
-- The first `./quality.sh` attempt failed because `rust_scorer` was not on
-  `PATH` or in the expected sibling `target` directory. Built the scorer through
-  the quality gate, then reran with its actual `CARGO_TARGET_DIR` binary path as
-  shown above.
-- No test assertions were edited or removed. No tests were added.
+- `test/NEAT/EventLoopWatchdog_test.ts`:
+  - **New tests** (red against the unchanged source, then green):
+    - `EventLoopWatchdogHeap: the breach line reports heap used and the heap limit in MiB`:
+      512/2048 MiB slots print `lastHeartbeatHeapUsedMB=512 heapLimitMB=2048`.
+    - `EventLoopWatchdogHeap: unmeasured heap slots are reported as unknown`.
+    - `EventLoopWatchdogHeap: a busy-looping main thread reports real heap readings taken at arm`:
+      both values are greater than 0, and used is at most the limit.
+    - `EventLoopWatchdogPhase: parent-selection is named in the breach line and result-processing is accepted`.
+  - `EventLoopWatchdogPhase: every listed phase is named as itself in the breach line`
+    now lists the two new phases. Nothing was removed from it.
+  - Removed from `test/NEAT/EventLoopWatchdog_test.ts`:
+    `const suffix = "inFlightPhase=untracked heartbeatIntervalMS=100\n";`
+    - Obsolete: the breach line no longer ends at `heartbeatIntervalMS=`; the
+      heap fields now follow it.
+    - Still covered by:
+      `test/NEAT/EventLoopWatchdog_test.ts::EventLoopWatchdogWorker: a kill that fails is reported on stderr after the breach line`.
+      Its ends-with-newline and kill-failure-order checks are unchanged.
+    - Replaced by:
+      `const suffix = "inFlightPhase=untracked heartbeatIntervalMS=100 " + "lastHeartbeatHeapUsedMB=unknown heapLimitMB=unknown\n";`
+- `test/NEAT/EvolveBreedingPhaseMarks_test.ts` (new):
+  `evolve: breeding is announced as parent-selection, result-processing, breeding, then mutation (Issue #4096)`
+  drives one real `evolve()` generation with a worker. Against the unchanged
+  `NeatEvolution.ts` it failed because `parent-selection` was never announced.
+- `test/creature/EvolveWatchdogWiring_test.ts`: `GENERATION_PHASES` gains
+  `parent-selection` and `result-processing` before `breeding`. No assertion was
+  removed. The exact per-generation walk for `evolveDir`, `evolveEnv` and
+  `evolveRL` still fails without the new markers.
+- **Ran on the head:**
+  - `NEAT_AI_BACKPROP_ENABLED=0 deno test -A --parallel` on 10 files —
+    `test/NEAT/EventLoopWatchdog_test.ts`,
+    `test/NEAT/EvolveBreedingPhaseMarks_test.ts`,
+    `test/NEAT/NeatPhaseObserver_test.ts`,
+    `test/creature/EvolveWatchdogWiring_test.ts`,
+    `test/creature/EvolveRunWatchdogHeartbeat_test.ts`,
+    `test/creature/EvolveRunWatchdog_test.ts`, `test/NEAT/MemoryMonitor.ts`,
+    `test/NEAT/MemoryPressureCacheCorrelation.ts`,
+    `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts` and
+    `test/creature/EvolveDirFirstGenerationWedged.ts` — 119 passed, 0 failed.
+  - `NEAT_AI_BACKPROP_ENABLED=0 deno test -A --parallel test/NEAT/`: the first
+    run gave 59 passed, 1 failed. The failing test's name was not captured.
+    Three reruns each gave 60 passed, 0 failed.
+- `./quality.sh --skip-tests --skip-discovery` (dependency update, format, lint,
+  bash syntax, type-check, WASM sync) passed.
+- <!-- vibe-quality-gate-skipped reason="full ./quality.sh exits 1 on this host before its test stage: native rust_scorer is required and not installed here; the static stages and the targeted tests above were run instead" -->
