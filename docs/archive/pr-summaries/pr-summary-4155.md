@@ -8,22 +8,22 @@ at an equal record budget. It records the 30-seed result, which is a **negative
 finding**. No arm beats ordinary mutation on held-out MSE: every bootstrap 95%
 CI spans zero, and win rates are 10–19 of 30. Every non-control arm loses some
 behavioural diversity (×0.85–0.88 against the control). No production code
-changed: nothing under `src/` is touched, and nothing calls the harness.
-Closes #4155.
+changed: nothing under `src/` is touched, and nothing calls the harness. Closes
+#4155.
 
 ## Spec
 
 ### Intent and Rationale
 
-- The issue asks for a controlled comparison, not a feature. The harness
-  follows the pattern of the existing study harnesses (`scripts/lib/preSelectionAB.ts`,
+- The issue asks for a controlled comparison, not a feature. The harness follows
+  the pattern of the existing study harnesses (`scripts/lib/preSelectionAB.ts`,
   `scripts/pre_selection_ab.ts`), with a library, a CLI, a `deno task` and an
   evidence page plus a JSON artefact. It reuses the real `Mutator`
   (`selectMutationMethod`, `mutateCreature`, `repairAfterMutation`), `Genus`,
   `seedPopulation`, `meanGeneticDistance`, `median` and the `cliArgs` readers.
-- The design is a 2×2 factorial (history on/off × stratum targeting on/off).
-  The ordinary/ordinary cell is the "equally many ordinary offspring" control,
-  so history and targeting are ablated separately and together.
+- The design is a 2×2 factorial (history on/off × stratum targeting on/off). The
+  ordinary/ordinary cell is the "equally many ordinary offspring" control, so
+  history and targeting are ablated separately and together.
 
 ### Essential Design Decisions
 
@@ -31,10 +31,10 @@ Closes #4155.
   supplies the lineage deltas, the worst stratum and the targeted screen; and
   **holdout** is reporting only. The test "holdout never guides any decision"
   proves that holdout cannot change any trajectory.
-- Cost is counted in records scored: train plus calibration for each
-  evaluation, plus every calibration record the targeted screen scores. All
-  arms stop at the same record limit. Holdout and the 64-record diversity probe
-  are counted separately and are never charged.
+- Cost is counted in records scored: train plus calibration for each evaluation,
+  plus every calibration record the targeted screen scores. All arms stop at the
+  same record limit. Holdout and the 64-record diversity probe are counted
+  separately and are never charged.
 - Offspring are mutation-only, with one operator each and no crossover. Every
   lineage edge therefore has one parent and a solely attributed operator.
   Parents are cloned through export/import and are never modified. The harness
@@ -58,8 +58,8 @@ Closes #4155.
 - Two criteria changed before the reported 30-seed run, and the evidence page
   says so. First, a one-seed timing run showed genetic distance collapsing, so
   the diversity metric moved to behavioural diversity. Second, after review,
-  generation 1 was dropped from the diversity average. An earlier 30-seed run
-  of the previous harness version gave identical holdout results and verdicts,
+  generation 1 was dropped from the diversity average. An earlier 30-seed run of
+  the previous harness version gave identical holdout results and verdicts,
   because diversity is measurement-only.
 
 ## Evidence
@@ -68,9 +68,9 @@ Purely a script/CLI change; no UI files. The full record is in
 `docs/evidence/lineage-targeting-4155.md`, and the machine-readable artefact is
 `docs/evidence/lineage-targeting-4155.json`. The artefact holds the manifest
 (code commit, NEAT-AI 7.1.17, NEAT-AI-core rev, Deno version, corpus id, seeds,
-settings, criteria and policies), per-seed paired diffs, CIs, failures,
-coverage of 30/30 seeds per arm, per-operator per-stratum lineage deltas and
-sampled full edges. To reproduce:
+settings, criteria and policies), per-seed paired diffs, CIs, failures, coverage
+of 30/30 seeds per arm, per-operator per-stratum lineage deltas and sampled full
+edges. To reproduce:
 
 ```bash
 deno task lineage-targeting-study --code-version=$(git rev-parse HEAD) \
@@ -102,15 +102,15 @@ Independent review ran before this summary was written. The issue has no
 Acceptance Criteria heading, so the two verdicts are recorded here rather than
 as a closure block.
 
-- **Spec reviewer** rated most items met. It found four gaps: affected gene
-  keys were dropped from edges and the artefact; predeclaration was weaker than
-  the doc said; generation 1 inflated the diversity average; and the median
-  helper was duplicated. All four were fixed in this diff (gene keys kept on
-  edges, a per-operator per-stratum summary and `--edges` JSONL;
-  `PREDECLARED_SEEDS`, `validateSettings` and an honest deviation note;
-  generation 1 excluded; `median` reused from `scripts/lib/rankFidelity.ts`).
-  Its one remaining partial is that the archive lineage mechanism is not
-  reused; the reason is under Essential Design Decisions above.
+- **Spec reviewer** rated most items met. It found four gaps: affected gene keys
+  were dropped from edges and the artefact; pre-declaration was weaker than the
+  doc said; generation 1 inflated the diversity average; and the median helper
+  was duplicated. All four were fixed in this diff (gene keys kept on edges, a
+  per-operator per-stratum summary and `--edges` JSONL; `PREDECLARED_SEEDS`,
+  `validateSettings` and an honest deviation note; generation 1 excluded;
+  `median` reused from `scripts/lib/rankFidelity.ts`). Its one remaining partial
+  is that the archive lineage mechanism is not reused; the reason is under
+  Essential Design Decisions above.
 
 ## Standards Review
 
@@ -119,8 +119,8 @@ as a closure block.
 - **clean** — no violations. Rules checked: no timing APIs in test files, no
   `Deno.env.set` in tests, "what" not "how" tests, Australian English, logging
   policy (`console.*` only under `scripts/`), Neuron UUID and creature UUID
-  provenance rules, semantic version untouched, no WASM fallback, nothing new
-  on the public surface, and no existing test expectation changed. The optional
+  provenance rules, semantic version untouched, no WASM fallback, nothing new on
+  the public surface, and no existing test expectation changed. The optional
   items it raised were fixed: duplicated `median`/`mean`, settings validated
   late, and an unseeded generator in one test.
 
@@ -139,25 +139,24 @@ as a closure block.
   validateSettings names the offending setting.
 - `scripts/lib/preSelectionAB.ts`: `seedPopulation` is exported and its
   parameter narrowed. No assertion was removed from any existing test.
-- On the final head, `deno test --allow-all test/scripts/LineageTargetingStudy.ts test/scripts/PreSelectionAB.ts`
-  passed: 19 passed, 0 failed. `deno fmt --check`, `deno lint` and
-  `deno check` passed on the changed files, and cspell passed on the changed
-  docs and scripts.
-- The full `./quality.sh --rust-scorer-bin=<built rust_scorer>` did not
-  complete. It reached the test phase, which means formatting, lint, bash
-  syntax and type-check had passed, and more than 10,000 tests had passed,
-  including all 14 new ones, when it was cut off at the 1,500 s bound. No test
-  failure appeared in its log. The Discovery library is absent on this host, so
-  discovery tests ran in their skip mode.
-
-<!-- vibe-quality-gate-skipped reason="full ./quality.sh exceeded the 1500 s bound on this host before finishing the test phase; no failure was observed in the partial run; the worker re-runs the gate before the PR is raised" -->
+- On the final head,
+  `deno test --allow-all test/scripts/LineageTargetingStudy.ts test/scripts/PreSelectionAB.ts`
+  passed: 19 passed, 0 failed. `deno fmt --check`, `deno lint` and `deno check`
+  passed on the changed files, and cspell passed on the changed docs and
+  scripts.
+- The full `./quality.sh --rust-scorer-bin=<built rust_scorer>` ran in the
+  foreground on head `534b8fa3` and exited 0: 10,340 passed, 0 failed, 50
+  ignored. Head `534b8fa3` is the last code commit; later commits touch only
+  this summary. The Discovery library is absent on this host, so the gate
+  skipped its verification and discovery tests ran in their skip mode.
 
 ## Not done / risks
 
-- The study uses a synthetic two-input regression with small creatures. It
-  says nothing about GRQ-scale creatures or private corpora, and no
-  representative production run was made.
-- The full quality gate is not confirmed green on this host (see above).
+- The study uses a synthetic two-input regression with small creatures. It says
+  nothing about GRQ-scale creatures or private corpora, and no representative
+  production run was made.
+- Discovery tests ran only in their skip mode, because the Discovery library is
+  absent on this host.
 - The JSON artefact is about 0.9 MB. Full lineage edges are sampled, with the
   first 40 edges of the first seed per arm; `--edges=<path>` regenerates the
   complete record.
