@@ -296,10 +296,28 @@ if (import.meta.main) {
     arm: arm.name,
     completed: runs.get(arm.name)!.size,
     attempted: attempted.get(arm.name)!,
+    unfilledSlots: [...runs.get(arm.name)!.values()].reduce(
+      (sum, run) => sum + run.result.unfilledSlots,
+      0,
+    ),
+    generations: [...runs.get(arm.name)!.values()].reduce(
+      (sum, run) => sum + run.result.generations,
+      0,
+    ),
+    evaluations: [...runs.get(arm.name)!.values()].reduce(
+      (sum, run) => sum + run.result.evaluations,
+      0,
+    ),
   }));
   console.info("\nCoverage (completed/attempted):");
   for (const row of coverage) {
-    console.info(`  ${row.arm.padEnd(24)} ${row.completed}/${row.attempted}`);
+    console.info(
+      `  ${
+        row.arm.padEnd(24)
+      } ${row.completed}/${row.attempted}  gens ${row.generations}  evals/gen ${
+        fmt(row.evaluations / Math.max(1, row.generations), 3)
+      }  unfilled slots ${row.unfilledSlots}`,
+    );
   }
 
   if (jsonPath !== undefined) {

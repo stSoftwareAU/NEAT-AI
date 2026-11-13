@@ -565,7 +565,16 @@ export interface TraceEntry {
   readonly generation: number;
   readonly recordsCharged: number;
   readonly bestTrainMse: number;
+  /** The target population size the rules asked for this generation. */
   readonly populationSize: number;
+  /**
+   * The population actually assembled to go into the next generation: elites,
+   * any re-entered refinement, DE children and ordinary children. Below
+   * `populationSize` only when breeding could not fill every slot (see
+   * {@link ArmResult.unfilledSlots}). For the final generation, which breeds
+   * nothing, it is the size of the population that was evaluated.
+   */
+  readonly assembledSize: number;
   readonly speciesCount: number;
   readonly behaviouralDiversity: number;
 }
@@ -587,6 +596,17 @@ export interface ArmResult {
   readonly contractionEvents: number;
   readonly firstContractionRecords: number | null;
   readonly finalPopulationSize: number;
+  /**
+   * Offspring slots requested over the run (target size less elites and any
+   * re-entered refinement, summed over generations that bred).
+   */
+  readonly slotsRequested: number;
+  /**
+   * Slots still empty after DE and the ordinary top-up (which retries up to
+   * four times the slots asked for, because `Offspring.breed` can decline). A
+   * non-zero value means the population ran below its target size.
+   */
+  readonly unfilledSlots: number;
   readonly deOffspring: number;
   readonly deFallbacks: number;
   readonly refinementsAccepted: number;
@@ -664,6 +684,8 @@ function runSeededArm(
   let contractionEvents = 0;
   let firstContractionRecords: number | null = null;
   let deOffspring = 0;
+  let slotsRequested = 0;
+  let unfilledSlots = 0;
   let deFallbacks = 0;
   let refinementsAccepted = 0;
   let refinedReentered = 0;
@@ -741,6 +763,7 @@ function runSeededArm(
       recordsCharged,
       bestTrainMse,
       populationSize: size,
+      assembledSize: population.length,
       speciesCount,
       behaviouralDiversity: diversity,
     });
@@ -797,13 +820,22 @@ function runSeededArm(
         deOffspring++;
       }
     }
-    const ordinaryChildren = breedOffspring(
-      population,
-      ordinary,
-      mutator,
-      config,
-      rng,
-    );
+    // `Offspring.breed` can decline a pairing, so top up until the slots are
+    // full or four times as many attempts as slots have been made. Without
+    // this the non-DE arms ran a smaller population than the DE arms, whose
+    // DE slots always fill, and the DE contrast measured population fill.
+    const ordinaryChildren: Creature[] = [];
+    let attempts = 0;
+    const attemptCap = 4 * ordinary;
+    while (ordinaryChildren.length < ordinary && attempts < attemptCap) {
+      const remaining = ordinary - ordinaryChildren.length;
+      attempts += remaining;
+      ordinaryChildren.push(
+        ...breedOffspring(population, remaining, mutator, config, rng),
+      );
+    }
+    slotsRequested += slots;
+    unfilledSlots += ordinary - ordinaryChildren.length;
 
     // 7. Assemble.
     population = [
@@ -812,6 +844,10 @@ function runSeededArm(
       ...deChildren,
       ...ordinaryChildren,
     ];
+    trace[trace.length - 1] = {
+      ...trace[trace.length - 1],
+      assembledSize: population.length,
+    };
 
     // A generation that charged nothing cannot advance the budget.
     if (recordsCharged === chargedAtStart) break;
@@ -846,6 +882,8 @@ function runSeededArm(
     contractionEvents,
     firstContractionRecords,
     finalPopulationSize: size,
+    slotsRequested,
+    unfilledSlots,
     deOffspring,
     deFallbacks,
     refinementsAccepted,

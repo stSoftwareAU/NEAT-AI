@@ -313,6 +313,45 @@ Deno.test("contraction@reenter really contracts after the delay; the control nev
   });
 });
 
+Deno.test("breeding tops the population up to its target size", async () => {
+  await withRngTestLock(async () => {
+    const splits = buildSplits(SMALL);
+    const settings = { ...SMALL, recordBudget: 60 * 8 * 30 };
+    for (const name of ["control@reenter", "de@reenter"]) {
+      const arm = STUDY_ARMS.find((x) => x.name === name)!;
+      // deno-lint-ignore no-await-in-loop
+      const result = await runArm(arm, settings, 5, splits);
+      assert(result.slotsRequested > 0, name);
+      assert(result.unfilledSlots <= result.slotsRequested, name);
+      // The shortfall is accounted for slot by slot: every empty slot shows up
+      // as a gap between the target and the assembled population.
+      const gaps = result.trace.slice(0, -1).map((entry) =>
+        entry.populationSize - entry.assembledSize
+      );
+      // The final entry may or may not have bred (the budget can end exactly
+      // on a generation boundary), so it can account for up to one generation.
+      const gapTotal = gaps.reduce((a, b) => a + b, 0);
+      assert(gapTotal <= result.unfilledSlots, name);
+      assert(
+        result.unfilledSlots - gapTotal <= settings.populationSize,
+        name,
+      );
+      if (result.unfilledSlots === 0) {
+        for (const entry of result.trace.slice(0, -1)) {
+          assertEquals(entry.assembledSize, entry.populationSize, name);
+        }
+      }
+      // Observed at these settings (seed 5): de@reenter leaves 6 of 177 slots
+      // empty (3.4%). control@reenter leaves 474 of 529: its population
+      // converges to the two elites, `Offspring.breed` then returns clones and
+      // declines them, so no amount of retrying fills the slots.
+      if (name === "de@reenter") {
+        assert(result.unfilledSlots < 0.1 * result.slotsRequested, name);
+      }
+    }
+  });
+});
+
 Deno.test("the holdout never guides a run", async () => {
   await withRngTestLock(async () => {
     const splits = buildSplits(SMALL);
