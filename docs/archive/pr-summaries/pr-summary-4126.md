@@ -47,8 +47,9 @@ of #4126.
 - A C probe without the retained loader reference unloaded its pending library
   and died with SIGSEGV on a late return. The retained-reference regression test
   exits 0.
-- The GRQ-side mitigation (stSoftwareAU/GRQ#5479, opting callers into
-  `exitOnUnreclaimableWorkers`) is closed. This PR changes no GRQ code.
+- The downstream production repo's mitigation (its tracking issue opting callers
+  into `exitOnUnreclaimableWorkers`) is closed. This PR changes no code in that
+  repo.
 
 ## Evidence
 
@@ -71,9 +72,9 @@ Backend/CLI change only; no visual surface changed.
   the committed captures from NEAT-AI-Backpropagation `947cbb5`.
 - Issues cited: #4126 (Process never exits after evolveDir returns following a
   worker quarantine); #4146 (Recurrence of #4119 on 7.1.12 + engine 0.1.50:
-  training tasks still overrun the per-task deadline), open;
-  stSoftwareAU/GRQ#5479 (GRQ ignores NEAT-AI's 'call Deno.exit()' teardown
-  warning), closed.
+  training tasks still overrun the per-task deadline), open. The downstream
+  production repo's issue about ignoring NEAT-AI's 'call Deno.exit()' teardown
+  warning is closed.
 
 ```mermaid
 sequenceDiagram
@@ -84,7 +85,7 @@ sequenceDiagram
     W->>Native: nonblocking train (C-heap buffers, retained library)
     Evolve->>W: deadline missed → quarantine → terminate()
     Note over W: isolate released, JS thread was not blocked
-    Note over Native: may continue; code and buffers stay valid
+    Note over Native: may continue — code and buffers stay valid
     Evolve-->>App: result + conservative teardown warning
     App->>App: save, last statement
     Note over App: process exits without waiting for native work
@@ -136,9 +137,9 @@ sequenceDiagram
 - **missing** — In GRQ, separately: the `EvolveApp`s can end with an explicit
   `Deno.exit(0)` after cleanup as a belt-and-braces guard. That is a mitigation,
   not this fix. — reviewer: missing — reason: this is GRQ code that the issue
-  scopes as separate, and this diff carries none. It was handled under
-  stSoftwareAU/GRQ#5479 (closed), which opts callers into
-  `exitOnUnreclaimableWorkers`.
+  scopes as separate, and this diff carries none. It was handled by the
+  downstream production repo's own tracking issue (closed), which opts callers
+  into `exitOnUnreclaimableWorkers`.
 - **missing** — Closing evidence: a quoted fleet log showing a quarantine
   (`[worker-N] quarantined`) followed by the unit's
   `[phase] ✔ END industry-evolve` (or equivalent) within a minute of
