@@ -27,8 +27,8 @@ deno task lineage-targeting-study --seeds=30 --code-version=$(git rev-parse HEAD
 
 The issue names arXiv 2610.30042. Its fetch failed in the issue audit and failed
 again in this run (the proxy refused the connection). The method here is this
-repository's own operationalisation of the issue text, **not** a reproduction of
-the paper, and no number from the paper is used.
+repository's own reading of the issue text, **not** a reproduction of the paper,
+and no number from the paper is used.
 
 ## Predeclared design
 
