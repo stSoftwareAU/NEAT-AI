@@ -407,8 +407,8 @@ function buildScreen(
 }
 
 /** `populationSize` structurally distinct creatures from one seed. */
-function seedPopulation(
-  settings: ABSettings,
+export function seedPopulation(
+  settings: Pick<ABSettings, "populationSize">,
   rng: RandomNumberGenerator,
 ): Creature[] {
   const population: Creature[] = [];
