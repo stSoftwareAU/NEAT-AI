@@ -58,14 +58,14 @@ Backend/CLI changes only; no visual surface changed.
   [library resource lifetime](https://github.com/denoland/deno/blob/v2.9.8/ext/ffi/dlfcn.rs).
   The C fixture tests late reads/writes after termination; CLI cases verify the
   trainer process is no longer running.
-- [GRQ PR #5494](https://github.com/stSoftwareAU/GRQ/pull/5494), merged as
-  `df3c887b5`, sets the shared options flag and applies it in `Learn.ts`.
-  Verified the four EvolveApp callers and FX's additional options at GRQ
+- The downstream mitigation PR (tracking item 5494), merged as `df3c887b5`, sets
+  the shared options flag and applies it in `Learn.ts`. Verified the four
+  EvolveApp callers and FX's additional options at downstream snapshot
   `f0a8e225`; they preserve the opt-in.
 - Issue provenance checked: #4126 — Process never exits after evolveDir returns
   following a worker quarantine; #4146 — Recurrence of #4119 on 7.1.12 + engine
-  0.1.50; [GRQ #5479](https://github.com/stSoftwareAU/GRQ/issues/5479) — GRQ
-  ignores NEAT-AI's 'call Deno.exit()' teardown warning (closed).
+  0.1.50. The downstream orchestration tracking item 5479, about callers
+  ignoring the teardown exit warning, is closed.
 
 ```mermaid
 flowchart LR
@@ -109,17 +109,18 @@ review provenance is claimed.
   and the process regressions above.
 - **met** — In GRQ, separately: the `EvolveApp`s can end with an explicit
   `Deno.exit(0)` after cleanup as a belt-and-braces guard. That is a mitigation,
-  not this fix. — evidence: GRQ PR #5494 and the verified callers; reason: the
-  separately delivered mitigation opts callers into the existing exit guard
-  instead of adding an exit call to every app. This PR changes no GRQ code.
+  not this fix. — evidence: the downstream mitigation PR (tracking item 5494)
+  and the verified callers; reason: the separately delivered mitigation opts
+  callers into the existing exit guard instead of adding an exit call to every
+  app. This PR changes no GRQ code.
 - **missing** — Closing evidence: a quoted fleet log showing a quarantine
   (`[worker-N] quarantined`) followed by the unit's
   `[phase] ✔ END industry-evolve` (or equivalent) within a minute of
   `Cleaned up .tmp/train`. — reason: no such sequence was found in the sampled
-  archive. Inspected all six artifacts at GRQ-logs `ca28e2ab`, plus GRQ-3-sloth
-  snapshots `fda98f17`, `c2c49587` and `ebf0de9f` from 8–10 November. These
-  samples do not establish fleet-wide behaviour, and this implementation has not
-  been deployed there.
+  archive. Inspected all six artifacts at downstream log snapshot `ca28e2ab`,
+  plus GRQ-3-sloth snapshots `fda98f17`, `c2c49587` and `ebf0de9f` from 8–10
+  November. These samples do not establish fleet-wide behaviour, and this
+  implementation has not been deployed there.
 
 ## Standards Review
 
@@ -162,6 +163,8 @@ Executor self-review only, as required by the no-delegation instruction.
       linter, type-checker and 45 regression tests passed after that
       consolidation, including `test/creature/NeuronUuidStability.ts` and
       `test/creature/SemanticVersionStability.ts`.
+- [x] Archive privacy/layout, live-document privacy and Mermaid checks: **23
+      passed, 0 failed** after writing this delivery record.
 - Documentation sweep covered the worker exit section, troubleshooting cause and
   diagnostics, timeout teardown warning, internal training API, historical
   memory measurement, and native fixture contract. Updated
