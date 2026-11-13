@@ -34,7 +34,14 @@ of #4126.
   messages, so `WorkerProcessor` chains each `train` request behind the previous
   one's settled promise. A heavy worker therefore never runs two native trainers
   at once, as when the call was synchronous, and `terminate()` still works
-  because the chain is awaited.
+  because the chain is awaited. `process()` takes the request's creature and
+  options synchronously, before queuing, because the sender clears
+  `train.creature` as soon as `postMessage` returns and the in-process
+  `MockWorker` shares that object. Reading it when the queued task ran failed
+  every in-process training task with
+  `Cannot read properties of null (reading
+  'semanticVersion')` (the coverage
+  shards' `TraceNeuron.ts` and `TraceStore.ts`).
 - A terminated call abandons its C allocations, loader reference and temporary
   directory until process exit. It does not cancel the native computation; #4146
   tracks the native deadline overruns.
@@ -217,6 +224,11 @@ This repository has no `CODING-STANDARDS.md`. The reviewer was given
 - [x] `test/creature/EvolveDirNativeWorkerInit.ts`: a native-enabled init
       failure refuses the in-process fallback; the WASM direct and fallback
       controls complete.
+- [x] `test/multithreading/TrainDirVanishedDataset.ts::a worker train task still runs when the sender clears its creature right after submitting`:
+      fails on the previous head with the `semanticVersion` TypeError and passes
+      now. With `NEAT_AI_BACKPROP_ENABLED=0` (the coverage shards' setting),
+      `test/propagate/TraceNeuron.ts` and `TraceStore.ts` failed on the previous
+      head and pass now.
 - [x] `test/architecture/training/NativeTrainingWorkerResults.ts`: FFI/CLI
       completion and errors, trained genome and metrics, and deadline
       forwarding. The legacy case now runs against the faithful 0.1.49 stand-in,

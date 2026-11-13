@@ -318,16 +318,19 @@ export class WorkerProcessor {
   }
 
   /** Runs one training request; callers serialise it via {@link trainingTail}. */
-  private async train(data: RequestData): Promise<ResponseData> {
+  private async train(
+    taskID: RequestData["taskID"],
+    request: NonNullable<RequestData["train"]>,
+    debug: RequestData["debug"],
+  ): Promise<ResponseData> {
     const start = Date.now();
-    assert(data.train, "No train request");
     let creature: Creature | null = null;
     try {
       creature = Creature.fromJSON(
-        data.train.creature,
-        data.debug,
+        request.creature,
+        debug,
       );
-      clearForGc(data.train, "creature");
+      clearForGc(request, "creature");
 
       assert(this.dataSetDir, "No data dir");
       assert(this.cost, "No cost");
@@ -335,12 +338,12 @@ export class WorkerProcessor {
       const result = await trainDirAsync(
         creature,
         this.dataSetDir,
-        data.train.options,
+        request.options,
         this.cost,
       );
 
       const response = {
-        taskID: data.taskID,
+        taskID,
         duration: Date.now() - start,
         train: buildTrainResponseBody(
           result,
@@ -491,7 +494,17 @@ export class WorkerProcessor {
     } else if (data.train) {
       // One native training run per worker isolate at a time, as when the
       // call was synchronous; a queued task's duration starts when it runs.
-      const run = this.trainingTail.then(() => this.train(data));
+      // The caller clears `data.train.creature` as soon as `postMessage`
+      // returns (the in-process `MockWorker` shares the request object), so the
+      // request is captured here, synchronously, rather than read when queued.
+      const request = {
+        creature: data.train.creature,
+        options: data.train.options,
+      };
+      clearForGc(data.train, "creature");
+      const run = this.trainingTail.then(() =>
+        this.train(data.taskID, request, data.debug)
+      );
       this.trainingTail = run.then(() => undefined, () => undefined);
       return await run;
     } else if (data.echo) {
