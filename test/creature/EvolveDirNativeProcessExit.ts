@@ -74,10 +74,10 @@ async function runQuarantine(
     assertStringIncludes(output, "TRAINING_QUARANTINED", output);
     assertStringIncludes(output, "quarantined — training task", output);
     assertStringIncludes(output, "EVOLVE_RETURNED", output);
-    assertStringIncludes(output, "native work may still be running", output);
     assertStringIncludes(output, "CALLER_LAST_STATEMENT", output);
     assertEquals(killed, false, output);
     assertEquals(status.code, 0, output);
+    assertStringIncludes(output, "native work may still be running", output);
     if (cli) {
       const marker = stdout.find((line) =>
         line.startsWith("NATIVE_CALL_STARTED pid=")
@@ -141,4 +141,10 @@ Deno.test({
   name: "evolveDir with threads=1 exits after native training is quarantined",
   ignore: Deno.build.os === "windows", // POSIX C fixture and signals.
   fn: () => runQuarantine(false, false, true),
+});
+
+Deno.test({
+  name: "evolveDir with threads=1 kills a quarantined CLI trainer and exits",
+  ignore: Deno.build.os === "windows", // POSIX C fixture and signals.
+  fn: () => runQuarantine(false, true, true),
 });
