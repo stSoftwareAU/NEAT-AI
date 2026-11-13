@@ -45,6 +45,7 @@ export async function nativeProcessFixture(dir: string, cli = false): Promise<{
   return {
     library,
     env: {
+      TMPDIR: dir,
       NEAT_AI_BACKPROP_ENABLED: "1",
       NEAT_AI_BACKPROP_LIB_PATH: library,
       NEAT_AI_BACKPROP_REQUIRE_FFI: cli ? "0" : "1",

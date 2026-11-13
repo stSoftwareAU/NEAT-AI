@@ -6,7 +6,11 @@ import {
   REPO_ROOT,
 } from "../architecture/training/_nativeProcessFixture.ts";
 
-async function runQuarantine(lateReturn: boolean, cli = false): Promise<void> {
+async function runQuarantine(
+  lateReturn: boolean,
+  cli = false,
+  singleThread = false,
+): Promise<void> {
   const dir = await Deno.makeTempDir({ prefix: "evolve-native-exit-" });
   let child: Deno.ChildProcess | undefined;
   let exited = false;
@@ -25,6 +29,7 @@ async function runQuarantine(lateReturn: boolean, cli = false): Promise<void> {
           new URL("fixtures/EvolveDirNativeQuarantine.ts", import.meta.url),
         ),
         ...(lateReturn ? ["--late-return"] : []),
+        ...(singleThread ? ["--single-thread"] : []),
       ],
       env: fixture.env,
       stdin: "null",
@@ -130,4 +135,10 @@ Deno.test({
     "evolveDir exits and kills the CLI trainer when its worker is quarantined",
   ignore: Deno.build.os === "windows", // POSIX C fixture and signals.
   fn: () => runQuarantine(false, true),
+});
+
+Deno.test({
+  name: "evolveDir with threads=1 exits after native training is quarantined",
+  ignore: Deno.build.os === "windows", // POSIX C fixture and signals.
+  fn: () => runQuarantine(false, false, true),
 });

@@ -32,7 +32,7 @@ if (import.meta.main) {
   const creature = new Creature(1, 1);
   try {
     const result = await evolveDir(creature, dir, {
-      threads: 2,
+      threads: Deno.args.includes("--single-thread") ? 1 : 2,
       heavyTaskWorkerCount: 1,
       populationSize: 4,
       iterations: 1,
