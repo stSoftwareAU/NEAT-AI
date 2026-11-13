@@ -90,7 +90,7 @@ Deno.test("nativeBackpropTrainAsync rejects with the native error on a non-OK st
 Deno.test("nativeBackpropTrainAsync refuses a deadline on a legacy library before any native call", async () => {
   const { handle, received } = nativeBackpropDouble({
     status: 0,
-    payload: Deno.readTextFileSync(
+    payload: await Deno.readTextFile(
       new URL("ffi-response-legacy.json", FIXTURES),
     ),
   });

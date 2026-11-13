@@ -31,18 +31,22 @@ export function nativeBackpropDouble(options: {
   const remember = (bytes: Uint8Array) =>
     received.push(JSON.parse(new TextDecoder().decode(bytes)));
   const symbols = {
-    neat_backprop_abi_version: () => 1,
-    neat_backprop_version: () => null,
-    neat_backprop_capabilities: capabilityBytes === null
+    "neat_backprop_abi_version": () => 1,
+    "neat_backprop_version": () => null,
+    "neat_backprop_capabilities": capabilityBytes === null
       ? null
       : () => Deno.UnsafePointer.of(capabilityBytes),
-    neat_backprop_train: (bytes: Uint8Array, _len: bigint, out: Uint8Array) => {
+    "neat_backprop_train": (
+      bytes: Uint8Array,
+      _len: bigint,
+      out: Uint8Array,
+    ) => {
       checkOpen();
       remember(bytes);
       writeBuffer(out);
       return options.status;
     },
-    neat_backprop_train_nonblocking: (
+    "neat_backprop_train_nonblocking": (
       reqPtr: Deno.PointerObject,
       len: bigint,
       outPtr: Deno.PointerObject,
@@ -58,7 +62,7 @@ export function nativeBackpropDouble(options: {
         return options.status;
       });
     },
-    neat_backprop_buffer_free: checkOpen,
+    "neat_backprop_buffer_free": checkOpen,
   };
   return {
     handle: {

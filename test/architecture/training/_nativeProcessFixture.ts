@@ -9,6 +9,7 @@ export async function nativeProcessFixture(dir: string, cli = false): Promise<{
   env: Record<string, string>;
   release: () => Promise<void>;
 }> {
+  dir = await Deno.realPath(dir);
   const library = join(
     dir,
     Deno.build.os === "darwin" ? "trainer.dylib" : "trainer.so",

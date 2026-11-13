@@ -285,8 +285,8 @@ export function handleUnreclaimableWorkers(
   options.onUnreclaimableWorkersHandled?.();
   if (count === 0) return;
   const exitOnUnreclaimable = options.exitOnUnreclaimableWorkers === true;
-  const cause = `${count} worker(s) could not be stopped — unanswered tasks ` +
-    `may still have native work running after terminate()`;
+  const cause = `${count} worker(s) could not be stopped — native work ` +
+    `may still be running after terminate()`;
   getLogger().warn(
     exitOnUnreclaimable
       ? `[${label}] teardown: ${cause}; it will be exited after the grace period`
