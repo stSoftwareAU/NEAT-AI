@@ -1,145 +1,94 @@
 ## Summary
 
-PR #4104 (merged 2026-10-29, first released in v7.0.65, commit `81941817`)
-already made `finishUp()` wait for a settled-but-unmerged training or discovery
-result and made the teardown name every result it drops. The exactly-one
-terminal-line and field-evidence criteria remain partial. This PR changes no
-code: it replaces the earlier summary with the record of that evidence, searched
-in the downstream log repository's history (`Develop`, 2026-10-29 to 2026-11-06)
-across 34 log snapshots from releases 7.0.66 to 7.1.3. The counted terminal
-lines cover every scheduled task in the sample, but the count omits a
-hard-deadline discard form. The evidence also shows one thing the issue did not
-expect: in every field case where the new wait fired, the over-run guard stopped
-the run on the next pass, so the result was logged as discarded and never
-merged. Part of #4099.
+Training completion is logged when its generation commits. A result merged into
+an abandoned or failed generation receives one discard line. Trace-store errors
+are reported separately, preserving the successful training result and its
+completion line. Worker-boundary regressions now exercise actual scheduling,
+late settlement, commit, teardown and persistence through `evolveDir`.
 
-Version bump: `deno.json` `version` updated for this change; the merged commit
-records the final version.
-
-## Not closing #4099
-
-The exactly-one terminal-line criterion is `partial`: a hard-deadline
-abandonment can log both completion and discard for one task (Evidence item 2).
-The field-evidence criterion is also `partial`: no field log yet shows a task
-scheduled in the last generation ending in `Training <id> completed` through the
-extra merge pass, and seven tasks that do carry a `discarded at teardown` line
-still read `outcome=in_flight … reason=log-ended` in GRQ's own parser (see
-Evidence).
+Qualifying production sampler evidence is still missing. Part of #4099.
 
 ## Spec
 
 ### Intent and Rationale
 
-- The criterion asks for field proof of the fix. The only way to give it without
-  a new release is to search the logs the fleet has already written since the
-  fix shipped, so this PR records that search and its limits.
+Preserve the queued-result finish-up fix delivered by merged PR #4104, complete
+the commit-time terminal logging change, and resolve the pre-PR verifier's
+trace-persistence defect and regression-test findings. The field criterion is
+retained verbatim; available logs do not justify marking it met.
 
 ### Essential Design Decisions
 
-- No code change. The searched logs show the shipped behaviour matches the
-  issue's wording ("merged or explicitly logged as discarded with its id"), and
-  the discard on over-run is the documented design (`docs/TIMEOUTS.md`, the
-  teardown steps; `CHANGELOG.md` Issue #4099).
-- The over-run stop is deliberately not changed to allow one more merge pass: it
-  is a time bound, and a merge pass re-scores the whole population.
+- `processCompletedResults()` records task IDs and durations in
+  `mergedTrainIDs`. `Neat.commitMergedTraining()` emits completion lines at the
+  generation commit; abandonment and teardown emit discards and clear pending
+  outcomes.
+- A failure to persist a diagnostic training trace is logged independently of
+  the successful worker response. It cannot enqueue a second failed-task result.
+- Over-run and hard-deadline guards retain priority over another merge and
+  population-scoring pass in `evolveDir`, `evolveEnv` and `evolveRL`.
+- The worker regression resolves a controllable training response after the last
+  requested generation returns and before `finishUp`. Scheduling, response
+  handling, another generation commit and creature-store writes run normally.
 
 ### Undiscoverable Facts
 
-- The `[Neat] Waiting for N settled result(s) … to be merged before finishing`
-  line (`src/NEAT/Neat.ts`, `finishUp`) is written before the loop top decides
-  to stop for over-run, so in sampler runs it can be followed at once by
-  `Training over-run … stopping new generations` and a discard. The line names a
-  merge that does not then happen.
-- The downstream parser `worker/shared/training_outcome_health.sh` (read with
-  `gh api`) has no rule for `discarded at teardown`: its only `teardown` match
-  is the `[evolveDir] teardown complete` run boundary. That is a GRQ-side fact,
-  outside this repository.
+- The original queued-result fix is included from v7.0.65 onward; this branch's
+  additional commit-time logging and trace-persistence changes are unshipped.
+- Independent Spec reviewer `/root/spec_reviewer` reviewed the diff and issue
+  body: criteria 1–3 met, field evidence missing. Independent Standards reviewer
+  `/root/field` reviewed the final diff against `AGENTS.md` and
+  `docs/ENGINEERING_PRINCIPLES.md`: clean. Their verdicts are recorded below.
+- The carry-over notice names only 40 of its 212 source locations. All 40 are
+  covered below; the omitted 172 locations were not available in retained report
+  artifacts and cannot be individually verified from that notice.
 
 ## Evidence
 
-Method: `git log --since=2026-10-29T10:00:00Z` over the downstream log
-repository's `Develop` at `464596a` (2026-11-06) gave 2 599 distinct log blobs;
-of those, 34 hold a `Training <id> scheduled` line and a
-`[neat-ai] running version` of 7.0.66 or later (7.0.63 snapshots predate the
-release and are excluded). Each blob was read with `git show <commit>:<file>`
-and counted with `awk` for `Training <id> scheduled`, `completed after`,
-`discarded at teardown`, `abandoned at teardown`,
-`Training failed for creature`, and the `[training-outcomes]` lines. This reads
-logs from one host-sample of the fleet (GRQ-3, GRQ-11, GRQ-13, GRQ-16, GRQ-19,
-GRQ-22), not every host.
+Backend-only change; no visual surface changed.
 
-1. **The extra wait fired in the field**, 4 times (7.0.73 on `GRQ-3-sloth`,
-   7.1.3 on `GRQ-13-rocket` and `GRQ-22-rocket`), each time with exactly the new
-   line, for example `4654548e:GRQ-13-rocket.log`:
+- The worker trace-write regression first failed on this run's starting head:
+  one successful response produced both `Training failed for creature <id>` and
+  `Training <id> completed`. It passes after isolating trace persistence errors.
+- The identical late-worker-promise regression fails against `v7.0.62`, commit
+  `45e62c81d429601a9b35f747ea54f9d1775c2ed1`: actual completion count 0,
+  expected 1. It passes at head and verifies the trained creature in both the
+  population and creature store. The Spec reviewer checked the red log and tag.
+- The public parked-breeding abandonment regression fails against base commit
+  `e275a8278147d2f2abaa59eb8a057ec0e857959f` because it receives a completion
+  line before discard. It passes at head, preserving the committed population
+  and a non-empty creature store, including after the breeding promise resumes.
 
-   ```text
-   Generation 8 score 0.437721152536804 (avg: 0.0375) error 0.5622626630873621 avg time 23s 927ms
-   [Neat] Waiting for 1 settled result(s) (training: 1, discovery: 0) to be merged before finishing
-   [Neat] Training over-run: elapsed exceeded expected duration × 1 — stopping new generations and finishing with the evolved population
-   Training c632dbf5 discarded at teardown: it settled after the last generation's results were processed
-   [evolveDir] teardown complete: 10 worker(s) terminated, 0 detached; replay queue drained
-   ```
+### Field evidence checked on 2026-11-13
 
-   Every one of the four was followed by the over-run line on the next pass
-   (`96ad583a:GRQ-3-sloth.log`, `f9cb327e:GRQ-3-sloth.log`,
-   `fa1c6afc:GRQ-22-rocket.log` show the same sequence). So the settled result
-   was named by ID and dropped, not merged. GRQ reports `c632dbf5` as
-   `inFlight=0` and `outcome=completed … reason=fine-tune-recovered`, with no
-   `log-ended`. It derived that from the worker's own result line
-   (`Training c632dbf5 caused a higher error of 0.5635… from 0.5622…`, logged
-   when the result settled), not from a `Training c632dbf5 completed` line,
-   which this task never got.
+A read-only audit downloaded 76 historical log files, including 49 containing a
+NEAT-AI version. All ten observed settled-result finish windows across nine
+snapshots led to over-run termination and explicit discard, without a qualifying
+late completion. The original fix has shipped; its requested production outcome
+has not been demonstrated by these snapshots.
 
-2. **Counted terminal lines.** Every one of the 34 snapshots reached
-   `teardown complete` after its last `scheduled` line, and in each every
-   scheduled task id has a terminal line (`completed after`,
-   `discarded at teardown`, `abandoned at teardown` or
-   `Training failed for creature`). Two ids carry two counted terminal lines
-   because one creature id is scheduled twice in the log (`0c2a1de7` in
-   `fa1c6afc`, `5cb993cb` in `6cef715e`): two separate schedules, one counted
-   line each. This count omitted `Training <id> discarded: …` after a
-   completion, so it does not establish the exactly-one contract. When a hard
-   deadline abandons a generation after a training result is merged but before
-   it commits (Issue #4107), the task logs both `Training <id> completed` and
-   `Training <id> discarded: generation abandoned past the hard deadline`.
-   `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts` covers this path.
+| Log and immutable revision                                                                           | Release | Observed outcome                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GRQ-3-sloth.log` at `c2c49587c8850738d1b293940fb344bf622eca21` (2026-11-09T05:21:55Z)               | 7.1.12  | Lines 825–827: settled wait, over-run stop, discard of `5c1db96e`; parsed as rejected, without completion.                                                  |
+| `GRQ-3-sloth.log` at `fda98f174a6ed9261bee357c8bbbecd1ccf718d1` (2026-11-10T22:30:58Z)               | 7.1.15  | Lines 534–537: two settled results, over-run stop, discards of `89130576` and `20c163b1`; lines 666–667 still parse both as `in_flight … reason=log-ended`. |
+| Latest green sampler diagnostic at `dba84d71392611bd6c1123f96496b1783b129b47` (2026-11-12T10:38:42Z) | —       | Ten-line capability excerpt; no training evidence.                                                                                                          |
+| Audited log-repository head `3e51bf407a4622bef832559d0a9608edefb92d16` (2026-11-13T03:28:14Z)        | —       | Only scorer and portfolio logs; no sampler run.                                                                                                             |
 
-3. **Residual `log-ended`.** 22 tasks in the sample carry a
-   `discarded at
-   teardown` line. GRQ marks 15 of them `rejected`, `completed`
-   or `aborted` from other lines, and 7 as
-   `outcome=in_flight … reason=log-ended`: `204d5e4c` (8087b3a4), `40bafc53`
-   (673fae87), `9389e96f` (0c0ad063, fb504c77), `9b02766d` (d86dc5dd),
-   `d0c7bf94` (bbc8ed59), `e53ce0b3` (1274d269). Each is a task NEAT-AI named by
-   ID; GRQ's parser does not read the new line (Undiscoverable Facts).
-
-4. **Not observed:** no `Training <id> completed` line after the final
-   `Generation N` line and before `teardown complete`, i.e. no run where the
-   extra pass merged a late result.
-
-```mermaid
-flowchart TD
-    A[Result settles after last processCompletedResults] --> B{finishUp}
-    B -- queued result --> C["Waiting for N settled result(s)"]
-    C --> D{loop top: over-run?}
-    D -- field: yes, 4 of 4 --> E["finishUp true, teardown: discarded at teardown ID"]
-    D -- not yet seen in the field --> F[evolve merges, Training ID completed]
-```
-
-Issue numbers cited as provenance, each looked up with `gh issue view`: #4099
-(this issue: the dropped result), #4104 (the merged fix, a pull request found
-with `gh pr view`).
+The 7.1.15 completion lines for `ef0834b8` and `804474fb` belong to tasks
+scheduled before generation 1, so they do not satisfy the last-generation field
+criterion. The GitHub plugin returned 404 for the private log source; immutable
+snapshots were read with `gh api`.
 
 ## Reproduction
 
-- **symptom** — a training result that settles after the last generation's
-  `processCompletedResults()` was never merged and never logged.
-- **status** — `partial` — the regression test was observed red against the
-  unfixed code in #4104 (the `finishUp()` wait disabled), not in this run, which
-  changes no code; here it was re-run green on the head. reason: this PR has no
-  fix to take red.
-- **regression test** —
-  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled after the last generation is merged and persisted, not discarded (Issue #4099)`
+- **symptom** — successful training could be reported failed when trace
+  persistence threw, then also completed; merged results could be reported both
+  completed and discarded when their generation was abandoned.
+- **status** — `verified`: the trace regression failed before its fix; the
+  public abandonment regression failed against the base; the late-worker
+  regression failed against v7.0.62. All pass at head.
+- **regression tests** — `test/creature/EvolveDirLateTrainingResult.ts` and
+  `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts`.
 
 ## Acceptance Criteria
 
@@ -147,62 +96,100 @@ with `gh pr view`).
 
 - **met** — Before `finishUp` can return `true`, it also checks
   `trainingComplete.length > 0` (and `discoveryComplete`). When either is
-  non-empty it arms one more processing pass. … a settled result is either
-  merged or explicitly logged as discarded with its id. — evidence:
-  `src/NEAT/Neat.ts` (the `terminationReason !== "overrun"` wait in `finishUp`),
-  `test/NEAT/NeatFinishUp.ts::finishUp: waits while a settled training result is unmerged, then finishes (Issue #4099)`;
-  field: Evidence item 1 — reviewer: met
-- **partial** — Every scheduled training task ends with exactly one terminal
-  line (`completed`, `failed`, `abandoned`, or a new `discarded at teardown`). —
-  evidence: `test/creature/EvolveFailureNamesInFlightTasks_test.ts`,
-  `test/NEAT/NeatFinishUp.ts`; field: Evidence item 2 — reviewer: partial —
-  reason: a hard-deadline abandonment of an uncommitted generation logs both
-  completion and discard for the same task (Issue #4107), as covered by
-  `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts::evolve: a trained task discarded by a hard-deadline abandon is logged once as discarded (Issue #4107)`.
+  non-empty it arms one more processing pass. Alternatively, the teardown drains
+  `trainingComplete` into the population and re-scores before
+  `restoreEvolveChampion`/`writeCreatures`. Whichever route: a settled result is
+  either merged or explicitly logged as discarded with its id. — evidence:
+  `test/NEAT/NeatFinishUp.ts` queued-training, queued-discovery and over-run
+  cases; `test/creature/BoundedEvolveTeardown.ts` persistence/failure cases;
+  `test/creature/EvolveDirLateTrainingResult.ts` worker settlement and persisted
+  population — reviewer: met
+- **met** — Every scheduled training task ends with exactly one terminal line
+  (`completed`, `failed`, `abandoned`, or a new `discarded at teardown`). —
+  evidence:
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: trace persistence failure preserves one completed training outcome (Issue #4099)`;
+  `test/NEAT/EvolveAbandonedTrainingResultDiscard_test.ts::evolveDir teardown: a worker result merged before breeding wedges is discarded once and preserves the committed population (Issue #4107)`;
+  `test/creature/EvolveFailureNamesInFlightTasks_test.ts` — reviewer: met
 - **met** — Regression test: stub a worker whose training promise resolves
   **after** the final generation's `processCompletedResults` but before
-  `finishUp`. … assert that (a) the trained creature reaches the returned
+  `finishUp`. Then assert that (a) the trained creature reaches the returned
   population or the creature store, or a `discarded` line names the task, and
-  (b) `Training <id> completed` is logged. — evidence:
-  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a training result settled after the last generation is merged and persisted, not discarded (Issue #4099)`
-  — reviewer: met — reason: the red run was recorded in #4104 against the code
-  with the `finishUp()` wait disabled, not against a `v7.0.62` checkout, and the
-  test settles the result through `recordTrainingComplete` rather than a stubbed
-  worker promise
-- **partial** — Field evidence: a GRQ sampler log on a neat-ai release carrying
+  (b) `Training <id> completed` is logged. On `v7.0.62` this test fails. —
+  evidence:
+  `test/creature/EvolveDirLateTrainingResult.ts::evolveDir: a worker training promise settled after the last generation is merged and persisted (Issue #4099)`;
+  identical test red-checked against tag commit
+  `45e62c81d429601a9b35f747ea54f9d1775c2ed1` — reviewer: met
+- **missing** — Field evidence: a GRQ sampler log on a neat-ai release carrying
   the fix where a task scheduled in the last generation shows
   `Training <id> completed`, with no `outcome=in_flight … reason=log-ended` in
-  `[training-outcomes]`. — evidence: Evidence items 1 to 4 — reviewer: partial —
-  reason: a release carrying the fix is in the field and the terminal-line count
-  covers the sample as qualified in Evidence item 2, but no log shows the merge
-  pass producing `completed`, and 7 discarded tasks still read `log-ended`
-  because GRQ's parser has no rule for the new line.
-- **unrequested** — this file replaces the earlier archived summary of #4104 at
-  the same path — reviewer: unrequested — reason: `pr-summary-4099.md` is the
-  path this run must write; the earlier spec, design decisions, test plan and
-  mutation-check record stay in git history at `81941817` and describe code that
-  is unchanged here. The two GRQ observations (the wait line that can promise a
-  merge, GRQ's missing `discarded at teardown` rule) are recorded as facts, with
-  no behaviour change.
+  `[training-outcomes]`. — reviewer: missing — reason: no audited snapshot
+  demonstrates the requested last-generation completion; the observed late
+  results were discarded at the over-run bound.
 
 ## Standards Review
 
-<!-- vibe-standards-review inputs="diff+AGENTS.md+docs/ENGINEERING_PRINCIPLES.md" -->
+<!-- vibe-standards-review inputs="diff+CODING-STANDARDS.md" -->
 
-- **clean** — Australian English; no code or test changed; `deno.json` carries
-  only the CI version bump; every figure traces to a command in Evidence.
+- **clean** — Independent reviewer checked `AGENTS.md` and
+  `docs/ENGINEERING_PRINCIPLES.md` (this repository has no
+  `CODING-STANDARDS.md`). Worker regressions assert terminal logs, population
+  and persisted creatures; the prohibited merged-map assertions and manual
+  commit simulation are removed. Coverage tests assert behaviour and restore
+  seeded random state. Logging uses `getLogger()`; Australian English; no
+  identity, semantic-version, dependency or wire-format changes; no timing APIs
+  or environment mutation added to tests.
+- **clean** — Reviewer validation: 12 focused tests passed; lint and format
+  checks passed all 14 changed/new TypeScript files. Two existing-test import
+  substitutions resolve to the same modules and retain all assertions.
+
+## Coverage carry-over
+
+Four deterministic behaviour tests restore the named cold-start quota,
+activation-mismatch, fine-tuning and maternal-memetic paths. Existing routing
+and repair tests cover the remaining named lines. Their alias imports now use
+relative paths so the carry-over import scanner discovers those tests too.
+
+| Source locations named in the notice                     | Behaviour tests reaching them at head                                                                    |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `src/NEAT/BreedingQuotas.ts:132–141,151`                 | `test/breed/BreedingQuotasColdStart_test.ts`                                                             |
+| `src/architecture/BehaviourGuard.ts:435,436,440–443,446` | `test/compact/IfRoutingScoreInvariant.ts`                                                                |
+| `src/architecture/Offspring.ts:625,626,674,675`          | `test/breed/OffspringMemeticInheritance_test.ts`                                                         |
+| `src/architecture/RepairInvalidIfNeurons.ts:66,68–76`    | `test/architecture/CreatureFactorySeedIfRoles.ts`, `test/architecture/StaleUuidAfterStructuralChange.ts` |
+| `src/blackbox/Discover.ts:37,38`                         | `test/blackbox/DiscoverSquashMismatch_test.ts`                                                           |
+| `src/blackbox/FineTune.ts:478–482,484`                   | `test/blackbox/FineTuneChangedSquash_test.ts`                                                            |
+
+The seven-file coverage run passed 36 tests. Its LCOV report records non-zero
+hits for every one of these 40 locations. No production lines were deleted and
+no untestable exemptions are claimed. The omitted 172 locations remain
+unaudited; this table does not claim to close the entire 212-line report.
 
 ## Test Plan
 
-- Reworded private repository references to describe the downstream sources so
-  the archived evidence remains accessible to public readers. The archive
-  privacy gate is `test/docs/ArchiveDocsNoPrivateRepoSlugs.ts`.
-- No test file is added, edited or removed. The hard-deadline abandonment test
-  documents the remaining double-line behaviour.
-- Ran on the head:
-  `deno test -A test/NEAT/NeatFinishUp.ts
-  test/creature/EvolveDirLateTrainingResult.ts
-  test/creature/BoundedEvolveTeardown.ts
-  test/creature/EvolveFailureNamesInFlightTasks_test.ts`
-  — 52 passed, 0 failed.
-- <!-- vibe-quality-gate-skipped reason="documentation change and CI version bump only; no source or test changed, so the full ./quality.sh was not run" -->
+- `deno test -A` over the 11 focused issue/regression/invariant files, with
+  stdin from `/dev/null`: 91 passed, 0 failed. Includes abandonment, finish-up,
+  merged results, discovery/replay, bounded teardown, failure cleanup, late
+  worker settlement, neuron UUID stability and semantic-version stability.
+- The seven-file carry-over coverage command, with stdin from `/dev/null`: 36
+  passed, 0 failed. Includes the four new tests and the three existing routing,
+  repair and structural-identity test files named above.
+- Independent Spec review: 52 adjacent tests and eight final abandonment/late
+  worker tests passed. Independent Standards review: 12 focused tests passed.
+- Removed the direct merge/commit simulation in `test/NEAT/NeatFinishUp.ts`; its
+  completion and trained-population assertions are now proved through the actual
+  public worker/commit/persistence regression. The pending-breeding abandonment
+  case likewise uses the public evolution and worker boundaries.
+- `DENO_JOBS=1 ./quality.sh < /dev/null` could not start the full gate in this
+  resumed environment: native `rust_scorer` is absent. It failed the explicit
+  preflight; no fallback or full-suite success is claimed for this revision.
+- `./quality.sh --skip-tests < /dev/null` exited 0: dependencies unchanged,
+  formatting, lint, shell checks, all type checks and pinned WASM verification
+  passed. Discovery verification skipped because its library was absent.
+- `deno test -A test/docs/ArchiveDocsNoPrivateRepoSlugs.ts < /dev/null` passed
+  (one test); `deno fmt` formatted this summary.
+
+## Merge verification
+
+CI and review remain pending. Production sampler evidence and the omitted 172
+carry-over locations remain unverified. The worker will rerun the quality gate
+and verifier before raising the pull request. Optional native discovery, GPU and
+native-training lanes were not run here.

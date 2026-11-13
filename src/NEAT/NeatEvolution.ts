@@ -1184,7 +1184,7 @@ export async function evolve(
     // results, not from creature tags: a discovery or replay creature built
     // from a trained fittest keeps that task's trainID tag, although the task
     // was committed in an earlier generation. If the teardown already named
-    // them (this evolve() resumed after it), the set is empty and nothing is
+    // them (this evolve() resumed after it), the map is empty and nothing is
     // logged twice.
     neat.discardMergedUncommittedTraining();
     // Issue #4115: name each discovery/replay creature this abandon discards.
@@ -1202,7 +1202,9 @@ export async function evolve(
     neat.population = budgeted.population; // Keep pseudo sorted.
     // Issue #4107: this generation's trained creatures are committed now, so
     // its merged training tasks are no longer at risk of being discarded.
-    neat.mergedUncommittedTrainIDs.clear();
+    // Issue #4099: log each one's `completed` line here, at commit, so a task
+    // ends with exactly one terminal line.
+    neat.commitMergedTraining();
 
     if (budgeted.dropped.length > 0 && neat.config.verbose) {
       getLogger().info(

@@ -5,6 +5,10 @@ import { evolveDir } from "@creature/CreatureTraining.ts";
 import type { Neat } from "@neat/Neat.ts";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import {
+  type ResponseData,
+  WorkerHandler,
+} from "@multithreading/workers/WorkerHandler.ts";
+import {
   type DataRecordInterface,
   makeDataDir,
 } from "@architecture/DataSet.ts";
@@ -12,20 +16,11 @@ import { getLogger, type Logger, setLogger } from "@utils/Logger.ts";
 import { initWasmForTests } from "../_initWasm.ts";
 
 /**
- * Issue #4099 (PR #4104 review): end-to-end guard that a training result which
- * settles after the final generation's `processCompletedResults()` but before
- * `finishUp()` is merged by a further `evolve()` and persisted — not dropped at
- * teardown.
- *
- * The result is settled through the production hook
- * (`Neat.recordTrainingComplete`) from a wrapper around the captured
- * `neat.evolve`, immediately after the last scheduled generation returns. The
- * assertions are on outcomes only: the completion log line, the absence of a
- * discard line, and the trained creature in the returned population and in the
- * creature store.
+ * Issue #4099: drive the scheduler and worker-response handler through evolveDir.
+ * The worker promise settles after the last requested generation returns, before
+ * finishUp decides whether a final result-processing generation is necessary.
  */
 
-const TRAIN_ID = "late4099";
 const TRAIN_UUID = "late-task-4099";
 
 /**
@@ -70,118 +65,158 @@ async function loadStoredCreatures(dir: string): Promise<Creature[]> {
   return creatures;
 }
 
+async function checkLateWorkerResult(
+  traceWriteFailure: boolean,
+): Promise<void> {
+  await initWasmForTests();
+  const { json: trainedJSON, value } = constantCreature();
+  const dataSetDir = makeDataDir(constantDataSet(value), 2000);
+  const creatureStore = await Deno.makeTempDir({ prefix: "neat-4099-" });
+  const traceStore = traceWriteFailure
+    ? await Deno.makeTempFile({ prefix: "neat-trace-4099-" })
+    : undefined;
+  const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
+  const lines: string[] = [];
+  const previousLogger = getLogger();
+  const originalTrainTracked = WorkerHandler.prototype.trainTracked;
+  const originalTrain = WorkerHandler.prototype.train;
+  let captured: Neat | undefined;
+  let resolveTraining!: (response: ResponseData) => void;
+  const response = new Promise<ResponseData>((resolve) => {
+    resolveTraining = resolve;
+  });
+  let taskID: string | undefined;
+
+  // Stub only the external training boundary; population scoring, selection,
+  // scheduling, the response handler, final commit and persistence all run.
+  const train = (_creature: Creature, _options: unknown, label?: string) => {
+    taskID = (label ?? _creature.uuid!).slice(-8);
+    return response;
+  };
+  WorkerHandler.prototype.trainTracked = function (
+    c: Creature,
+    options: unknown,
+    label?: string,
+  ) {
+    return { taskID: 4099, response: train(c, options, label) };
+  };
+  // v7.0.62 dispatched with train(); keep the identical boundary regression
+  // usable against that release as well as the tracked-dispatch implementation.
+  WorkerHandler.prototype.train = train;
+
+  const options: NeatOptions = {
+    populationSize: 10,
+    iterations: 1,
+    trainPerGen: 1,
+    threads: 1,
+    verbose: false,
+    creatureStore,
+    ...(traceStore ? { traceStore } : {}),
+  };
+
+  try {
+    const result = await evolveDir(creature, dataSetDir, options, {
+      onNeatReady: (neat) => {
+        captured = neat;
+        const recorder: Logger = {
+          debug: (...a: unknown[]) => lines.push(a.join(" ")),
+          info: (...a: unknown[]) => lines.push(a.join(" ")),
+          warn: (...a: unknown[]) => lines.push(a.join(" ")),
+          error: (...a: unknown[]) => lines.push(a.join(" ")),
+        };
+        setLogger(recorder);
+
+        const realEvolve = neat.evolve.bind(neat);
+        let finalRequestedGeneration = true;
+        neat.evolve = async (...args: Parameters<Neat["evolve"]>) => {
+          const out = await realEvolve(...args);
+          if (finalRequestedGeneration) {
+            finalRequestedGeneration = false;
+            assert(
+              taskID,
+              "the last requested generation must schedule training",
+            );
+            resolveTraining({
+              taskID: 4099,
+              duration: 1,
+              train: {
+                ID: taskID,
+                creature: trainedJSON,
+                error: 0,
+                ...(traceWriteFailure ? { trace: trainedJSON } : {}),
+              },
+            } as ResponseData);
+            // The production response handler registered before this await;
+            // let it receive the result before evolveDir reaches finishUp.
+            await response;
+          }
+          return out;
+        };
+      },
+    });
+
+    assert(captured, "the run must construct a population");
+    assert(taskID, "a worker training task must have been dispatched");
+    assert(
+      result.terminationReason !== "overrun" &&
+        result.terminationReason !== "hard-deadline",
+      `the run must finish normally; got ${result.terminationReason}`,
+    );
+    const plain = stripAnsi(lines.join("\n"));
+    assertEquals(
+      plain.split("\n").filter((line) =>
+        new RegExp(`Training\\s+${taskID}\\s+completed`).test(line)
+      ).length,
+      1,
+      `the worker result must have exactly one completion; got: ${plain}`,
+    );
+    assert(
+      !plain.includes(`Training failed for creature ${taskID}`),
+      `a successful training task must not be reported as failed; got: ${plain}`,
+    );
+    assert(
+      !plain.includes(`Training ${taskID} discarded`),
+      `the late result must not be discarded; got: ${plain}`,
+    );
+    if (traceWriteFailure) {
+      assert(
+        plain.includes(`Training trace persistence failed for ${taskID}`),
+        `the trace write fault must be reported independently; got: ${plain}`,
+      );
+    }
+    const stored = await loadStoredCreatures(creatureStore);
+    assert(
+      stored.some((c) => getTag(c, "trainID") === taskID),
+      "the late worker result must reach the persisted creature store",
+    );
+    assert(
+      captured.population.some((c) => getTag(c, "trainID") === taskID),
+      "the late worker result must reach the returned population",
+    );
+  } finally {
+    WorkerHandler.prototype.trainTracked = originalTrainTracked;
+    WorkerHandler.prototype.train = originalTrain;
+    setLogger(previousLogger);
+    await Deno.remove(dataSetDir, { recursive: true });
+    await Deno.remove(creatureStore, { recursive: true });
+    if (traceStore) await Deno.remove(traceStore);
+  }
+}
+
 Deno.test({
   name:
-    "evolveDir: a training result settled after the last generation is merged and persisted, not discarded (Issue #4099)",
+    "evolveDir: a worker training promise settled after the last generation is merged and persisted (Issue #4099)",
   sanitizeOps: false,
   sanitizeResources: false,
-  fn: async () => {
-    await initWasmForTests();
+  fn: () => checkLateWorkerResult(false),
+});
 
-    const { json: trainedJSON, value } = constantCreature();
-    const dataSetDir = makeDataDir(constantDataSet(value), 2000);
-    const creatureStore = await Deno.makeTempDir({ prefix: "neat-4099-" });
-    const creature = new Creature(2, 1, { layers: [{ count: 3 }] });
-
-    const lines: string[] = [];
-    const warnings: string[] = [];
-    const previousLogger = getLogger();
-    let captured: Neat | undefined;
-    let evolveCalls = 0;
-    let settled = false;
-
-    const options: NeatOptions = {
-      populationSize: 10,
-      iterations: 1,
-      threads: 1,
-      verbose: false,
-      creatureStore,
-    };
-
-    try {
-      const result = await evolveDir(creature, dataSetDir, options, {
-        onNeatReady: (neat) => {
-          captured = neat;
-          // Installed after construction: the Neat constructor resets the logger.
-          const recorder: Logger = {
-            debug: (...a: unknown[]) => lines.push(a.join(" ")),
-            info: (...a: unknown[]) => lines.push(a.join(" ")),
-            warn: (...a: unknown[]) => {
-              warnings.push(a.join(" "));
-              lines.push(a.join(" "));
-            },
-            error: (...a: unknown[]) => lines.push(a.join(" ")),
-          };
-          setLogger(recorder);
-
-          const realEvolve = neat.evolve.bind(neat);
-          neat.evolve = async (...args: Parameters<Neat["evolve"]>) => {
-            const out = await realEvolve(...args);
-            evolveCalls++;
-            if (evolveCalls === 1) {
-              // The last scheduled generation (iterations = 1) has just run its
-              // processCompletedResults(); the training task settles now.
-              neat.trainingInProgress.set(TRAIN_UUID, Promise.resolve());
-              settled = neat.recordTrainingComplete(
-                TRAIN_UUID,
-                neat.abandonEpoch,
-                {
-                  taskID: 1,
-                  duration: 1,
-                  train: {
-                    ID: TRAIN_ID,
-                    creature: trainedJSON,
-                    error: 0.5,
-                  },
-                } as never,
-              );
-            }
-            return out;
-          };
-        },
-      });
-
-      assert(settled, "the late training result must have been recorded");
-      assert(captured, "onNeatReady must have handed back the Neat instance");
-      assert(
-        evolveCalls >= 2,
-        `a settled-but-unmerged result must lead to another evolve(); got ${evolveCalls} call(s)`,
-      );
-      assert(
-        result.terminationReason !== "overrun" &&
-          result.terminationReason !== "hard-deadline",
-        `the run must finish normally; got ${result.terminationReason}`,
-      );
-
-      const plain = stripAnsi(lines.join("\n"));
-      assert(
-        new RegExp(`Training\\s+${TRAIN_ID}\\s+completed`).test(plain),
-        `the late result must be logged as completed; got: ${plain}`,
-      );
-      assert(
-        !warnings.some((w) => w.includes("discarded at teardown")),
-        `nothing may be discarded on a normal finish; got: ${
-          warnings.join(" | ")
-        }`,
-      );
-      assertEquals(captured.trainingComplete.length, 0);
-
-      // The merged creature reaches the population and the creature store.
-      assert(
-        captured.population.some((c) => getTag(c, "trainID") === TRAIN_ID),
-        "the trained creature must be in the returned population",
-      );
-      const stored = await loadStoredCreatures(creatureStore);
-      assert(
-        stored.some((c) => getTag(c, "trainID") === TRAIN_ID),
-        "the trained creature must be persisted to the creature store",
-      );
-    } finally {
-      setLogger(previousLogger);
-      await Deno.remove(dataSetDir, { recursive: true });
-      await Deno.remove(creatureStore, { recursive: true });
-    }
-  },
+Deno.test({
+  name:
+    "evolveDir: trace persistence failure preserves one completed training outcome (Issue #4099)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: () => checkLateWorkerResult(true),
 });
 
 Deno.test({
