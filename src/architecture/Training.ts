@@ -15,6 +15,7 @@ import { CreatureUtil } from "@architecture/CreatureUtils.ts";
 import {
   dataFiles,
   prepareTraining,
+  type TrainingSetupState,
 } from "@architecture/training/TrainingSetup.ts";
 import { runTrainingLoop } from "@architecture/training/TrainingLoop.ts";
 import { finaliseTraining } from "@architecture/training/TrainingTeardown.ts";
@@ -29,7 +30,6 @@ import { trainDirPredictiveCoding } from "@architecture/training/TrainingPredict
 import {
   reportTrainDirBackend,
 } from "@architecture/training/TrainDirBackendReport.ts";
-import type { TrainingSetupState } from "@architecture/training/TrainingSetup.ts";
 import type { TrainingResult } from "@architecture/training/TrainingTypes.ts";
 
 export { dataFiles } from "@architecture/training/TrainingSetup.ts";
