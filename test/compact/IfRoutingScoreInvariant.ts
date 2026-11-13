@@ -10,7 +10,7 @@ import {
   hasRoleTypedIfStructure,
   isExactBehaviourPreserved,
   measureBehaviourDeviation,
-} from "@architecture/BehaviourGuard.ts";
+} from "../../src/architecture/BehaviourGuard.ts";
 import { removeLowImpactNeuron } from "@architecture/ErrorGuidedStructuralEvolution/DiscoveryNeuronRemoval.ts";
 import type { RemovalCandidate } from "@architecture/ErrorGuidedStructuralEvolution/DiscoverResult.ts";
 import { simplify } from "@optimize/Simplify.ts";

@@ -832,16 +832,21 @@ export function scheduleTraining(
     // abandoned this task since it was scheduled.
     neat.recordTrainingComplete(uuid, scheduledEpoch, r);
 
-    if (neat.config.traceStore) {
-      if (r.train.trace) {
-        const traceNetwork = Creature.fromJSON(
-          r.train.trace,
-        );
+    // A trace is diagnostic output. Its persistence failure must not reclassify
+    // an already queued successful result as a failed training task (#4099).
+    if (neat.config.traceStore && r.train.trace) {
+      try {
+        const traceNetwork = Creature.fromJSON(r.train.trace);
         CreatureUtil.makeUUID(traceNetwork);
         ensureDirSync(neat.config.traceStore);
         Deno.writeTextFileSync(
           `${neat.config.traceStore}/${traceNetwork.uuid}.json`,
           JSON.stringify(traceNetwork.traceJSON(), null, 1),
+        );
+      } catch (error) {
+        getLogger().error(
+          `Training trace persistence failed for ${r.train.ID}:`,
+          error,
         );
       }
     }

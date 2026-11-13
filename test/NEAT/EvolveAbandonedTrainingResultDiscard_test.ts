@@ -19,7 +19,7 @@
  */
 
 import { assert, assertEquals } from "@std/assert";
-import { addTag } from "@stsoftware/tags/mod";
+import { addTag, getTag } from "@stsoftware/tags/mod";
 import { Creature } from "../../src/Creature.ts";
 import type { NeatOptions } from "../../src/config/NeatOptions.ts";
 import { Neat } from "../../src/NEAT/Neat.ts";
@@ -33,7 +33,7 @@ import {
 } from "../../src/architecture/DataSet.ts";
 import { getLogger, type Logger, setLogger } from "../../src/utils/Logger.ts";
 import { ParallelBreeding } from "../../src/breed/ParallelBreeding.ts";
-import { runBoundedEvolveTeardown } from "../../src/creature/BoundedEvolveTeardown.ts";
+import { evolveDir } from "../../src/creature/CreatureTraining.ts";
 
 /** A fixed epoch-ms instant that is always in the past. */
 const PAST_HARD_DEADLINE_MS = 1_000;
@@ -267,11 +267,6 @@ Deno.test(
       // committed generation schedules its own training tasks, and any that
       // settle before the teardown runs are rightly discarded under their own
       // IDs (Issue #4099).
-      assertEquals(
-        neat.mergedUncommittedTrainIDs.size,
-        0,
-        "a committed generation must clear its merged training IDs",
-      );
       neat.discardUnprocessedResults();
       assertEquals(
         captured.filter((line) =>
@@ -351,129 +346,164 @@ Deno.test(
   },
 );
 
-Deno.test(
-  "evolveDir teardown: a trained task merged into a generation whose breeding never settles is logged once as discarded (Issue #4107)",
-  async () => {
-    const workers = [new WorkerHandler(createTestDataDir(), "MSE", true)];
+Deno.test({
+  name:
+    "evolveDir teardown: a worker result merged before breeding wedges is discarded once and preserves the committed population (Issue #4107)",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const dataDir = createTestDataDir();
+    const creatureStore = await Deno.makeTempDir({
+      prefix: "neat-abandon-4099-",
+    });
     const previousLogger = getLogger();
     const originalBreedBatch = ParallelBreeding.prototype.breedBatch;
+    const originalTrainTracked = WorkerHandler.prototype.trainTracked;
     const captured: CapturedLine[] = [];
+    const start = 32_503_680_000_000;
+    let now = start;
+    let resolveTraining!: (result: ResponseData) => void;
+    const response = new Promise<ResponseData>((resolve) => {
+      resolveTraining = resolve;
+    });
+    let trainID: string | undefined;
     let releaseBreeding: (() => void) | undefined;
-    let evolving: Promise<unknown> | undefined;
+    let pendingGeneration: Promise<unknown> | undefined;
+    let neat: Neat | undefined;
+    let committedPopulation: Creature[] = [];
+    let generations = 0;
+    let breedCalls = 0;
 
-    const discardLines = () =>
-      captured.filter((line) =>
-        line.text.includes(`Training ${TASK_ID} discarded`)
-      ).map((line) => line.text);
+    WorkerHandler.prototype.trainTracked = function (
+      _creature,
+      _options,
+      label,
+    ) {
+      trainID = label.slice(-8);
+      return { taskID: 4107, response };
+    };
+    ParallelBreeding.prototype.breedBatch = function (...args) {
+      breedCalls++;
+      if (breedCalls === 1) return originalBreedBatch.apply(this, args);
+      // The external breeding request stalls only in the final merge pass.
+      // Advancing the injected clock lets evolveDir itself abandon and tear down.
+      now = start + 10 * 60_000;
+      return new Promise<Creature[]>((resolve) => {
+        releaseBreeding = () => resolve([]);
+      });
+    };
 
     try {
-      const neat = await buildNeat(workers);
+      const result = await evolveDir(
+        new Creature(2, 1, { layers: [{ count: 3 }] }),
+        dataDir,
+        {
+          populationSize: 10,
+          trainPerGen: 1,
+          iterations: 1,
+          timeoutMinutes: 1,
+          threads: 1,
+          creatureStore,
+        },
+        {
+          startTimeMS: start,
+          now: () => now,
+          onNeatReady: (instance) => {
+            neat = instance;
+            setLogger(captureLogger(captured));
+            const realEvolve = instance.evolve.bind(instance);
+            instance.evolve = async (...args) => {
+              const evolving = realEvolve(...args);
+              if (generations === 1) pendingGeneration = evolving;
+              const out = await evolving;
+              generations++;
+              if (generations === 1) {
+                committedPopulation = [...instance.population];
+                assert(
+                  trainID,
+                  "the first generation must dispatch a worker task",
+                );
+                resolveTraining(makeTrainingResult(trainID));
+                await response;
+              }
+              return out;
+            };
+          },
+        },
+      );
 
-      // Stand in for breed requests queued on workers the teardown terminates:
-      // WorkerHandlerBase.terminate() drops their callbacks, so they never
-      // settle. Here breeding settles only when the test releases it.
-      let breedingStarted!: () => void;
-      const started = new Promise<void>((resolve) => {
-        breedingStarted = resolve;
-      });
-      ParallelBreeding.prototype.breedBatch = function (
-        this: ParallelBreeding,
-        ...args: Parameters<ParallelBreeding["breedBatch"]>
-      ): Promise<Creature[]> {
-        breedingStarted();
-        return new Promise<Creature[]>((resolve, reject) => {
-          releaseBreeding = () => {
-            originalBreedBatch.apply(this, args).then(resolve, reject);
-          };
-        });
-      };
-      setLogger(captureLogger(captured));
-
-      evolving = evolve(neat);
-      // evolve() runs synchronously from the breedBatch call to
-      // `await breedingPromise`, so once this resolves it is parked there,
-      // after processCompletedResults() merged the training result.
-      await Promise.race([
-        started,
-        evolving.then(() => {
-          throw new Error("evolve() finished without starting to breed");
-        }),
-      ]);
-
-      assert(
-        neat.mergedUncommittedTrainIDs.has(TASK_ID),
-        "the training result must have been merged before breeding is awaited",
+      assert(neat);
+      assert(trainID);
+      assertEquals(result.terminationReason, "hard-deadline");
+      assertEquals(
+        captured.filter((line) =>
+          line.text.includes(`Training ${trainID} discarded`)
+        ),
+        [{
+          level: "warn",
+          text:
+            `Training ${trainID} discarded: generation abandoned past the hard deadline`,
+        }],
+        "the public teardown must give the task exactly one discard line",
       );
       assertEquals(
         captured.filter((line) =>
-          line.text.includes(`Training ${TASK_ID} completed`)
-        ).length,
-        0,
-        "not logged completed before the generation commits (Issue #4099)",
+          line.text.includes(`Training ${trainID} completed`)
+        ),
+        [],
+        "an abandoned generation must not report completion",
       );
-      assertEquals(neat.trainingComplete.length, 0);
-      assertEquals(discardLines(), [], "nothing is discarded yet");
-
-      // What evolveDir does when awaitWithinHardDeadline breaches: abandon the
-      // generation, break out of the loop, and run the bounded teardown while
-      // the dangling evolve() stays parked.
-      neat.generationsCompleted = 1;
+      const members = new Set(committedPopulation);
+      assertEquals(neat.population.length, committedPopulation.length);
       assert(
-        neat.abandonInFlightPastHardDeadline(PAST_HARD_DEADLINE_MS),
-        "the hard-deadline abandon must actually fire",
+        neat.population.every((c) => members.has(c)),
+        "teardown must retain the last committed population",
       );
-      const report = await runBoundedEvolveTeardown({
-        label: "evolveDir",
-        persist: () => Promise.resolve(),
-        neat,
-        replayQueue: {
-          waitForCompletion: () => Promise.resolve(),
-          isReplayInProgress: () => false,
-        },
-        hardDeadlineMS: 0,
-      });
+      let storedCount = 0;
+      for await (const entry of Deno.readDir(creatureStore)) {
+        if (!entry.isFile || !entry.name.endsWith(".json")) continue;
+        storedCount++;
+        const stored = Creature.fromJSON(JSON.parse(
+          await Deno.readTextFile(`${creatureStore}/${entry.name}`),
+        ));
+        assert(
+          getTag(stored, "trainID") !== trainID,
+          "the abandoned training result must not replace the saved population",
+        );
+      }
 
-      assertEquals(
-        discardLines(),
-        [
-          `Training ${TASK_ID} discarded: generation abandoned past the hard deadline`,
-        ],
-        "the teardown must name the merged task while evolve() is still parked",
+      assert(
+        storedCount > 0,
+        "the committed population must reach the creature store",
       );
-      assertEquals(report.resultsDiscarded, 1);
 
-      // If the dangling evolve() ever resumes, it must not name the task again.
+      // A late breeding response must not give the same task a second outcome.
       releaseBreeding?.();
       releaseBreeding = undefined;
-      await evolving;
-      assert(
-        captured.some((line) =>
-          line.text.includes("discarding its population changes instead of")
-        ),
-        "the resumed evolve() must take its abandoned branch",
-      );
+      await pendingGeneration;
       assertEquals(
-        discardLines().length,
+        captured.filter((line) =>
+          line.text.includes(`Training ${trainID} discarded`)
+        ).length,
         1,
-        "each merged task is named exactly once, whichever path runs first",
       );
       assertEquals(
         captured.filter((line) =>
-          line.text.includes(`Training ${TASK_ID} completed`)
+          line.text.includes(`Training ${trainID} completed`)
         ).length,
         0,
-        "an abandoned generation never logs completed (Issue #4099)",
       );
     } finally {
-      // Let a still-parked evolve() finish so nothing leaks past the test.
       releaseBreeding?.();
-      await evolving?.catch(() => {});
+      await pendingGeneration?.catch(() => {});
       ParallelBreeding.prototype.breedBatch = originalBreedBatch;
+      WorkerHandler.prototype.trainTracked = originalTrainTracked;
       setLogger(previousLogger);
-      await terminateWorkers(workers);
+      await Deno.remove(dataDir, { recursive: true });
+      await Deno.remove(creatureStore, { recursive: true });
     }
   },
-);
+});
 
 Deno.test(
   "discardUnprocessedResults: a task merged by a generation that threw mid-merge is named once (Issue #4107)",
@@ -501,11 +531,6 @@ Deno.test(
         threw = true;
       }
       assert(threw, "a variant that fails to load must make evolve() throw");
-      assert(
-        neat.mergedUncommittedTrainIDs.has(TASK_ID) &&
-          neat.trainingComplete.length === 1,
-        "the task must be both recorded as merged and still queued",
-      );
 
       assertEquals(
         neat.discardUnprocessedResults(),

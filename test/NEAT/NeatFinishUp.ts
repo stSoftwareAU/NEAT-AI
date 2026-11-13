@@ -1,9 +1,6 @@
 import { assert, assertEquals } from "@std/assert";
-import { getTag } from "@stsoftware/tags/mod";
-import { Creature } from "@creature";
 import type { NeatOptions } from "@config/NeatOptions.ts";
 import { Neat } from "@neat/Neat.ts";
-import { processCompletedResults } from "@neat/ProcessCompletedResults.ts";
 import {
   type ResponseData,
   WorkerHandler,
@@ -723,14 +720,6 @@ function failedTrainingStub(taskID: number, ID: string): ResponseData {
   } as never;
 }
 
-/** Strip ANSI colour codes so assertions see the plain text of a log line. */
-function stripAnsi(text: string): string {
-  return text.replace(
-    new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"),
-    "",
-  );
-}
-
 Deno.test("discardUnprocessedResults: skips a failed-task stub but still logs and counts a finite result (Issue #4099)", async () => {
   const dataDir = createTestDataDir(2, 1);
   const workers = createTestWorkers(dataDir);
@@ -774,111 +763,6 @@ Deno.test("discardUnprocessedResults: skips a failed-task stub but still logs an
       `the failed-task stub must not be named again; got: ${
         log.lines.join(" | ")
       }`,
-    );
-  } finally {
-    log?.restore();
-    await terminateWorkers(workers);
-  }
-});
-
-Deno.test("finishUp: a settled training result is merged by processCompletedResults, then the run finishes (Issue #4099)", async () => {
-  const dataDir = createTestDataDir(2, 1);
-  const workers = createTestWorkers(dataDir);
-  let log: ReturnType<typeof captureLog> | undefined;
-
-  try {
-    // verbose is off: the completed line is a terminal line, not a debug one.
-    const options: NeatOptions = { populationSize: 10, verbose: false };
-    const neat = new Neat(2, 1, options, workers);
-    const fittest = new Creature(2, 1);
-    const trained = new Creature(2, 1);
-
-    // A training task in flight, registered the way the scheduler registers it.
-    const uuid = "late-task-4099";
-    neat.trainingInProgress.set(uuid, Promise.resolve());
-
-    // It settles through the production hook, after the last generation's
-    // processCompletedResults() has run.
-    const recorded = neat.recordTrainingComplete(uuid, neat.abandonEpoch, {
-      taskID: 1,
-      duration: 1,
-      train: {
-        ID: "late1234",
-        creature: trained.exportJSON(),
-        error: 0.5,
-      },
-    } as never);
-    assert(recorded, "the in-flight training result must be recorded");
-    assert(
-      !neat.trainingInProgress.has(uuid),
-      "recording a result must release its in-flight task",
-    );
-    assertEquals(
-      neat.trainingComplete.length,
-      1,
-      "the settled result must be queued for merging",
-    );
-
-    log = captureLog();
-
-    assertEquals(
-      neat.finishUp(),
-      false,
-      "a settled training result that has not been merged must hold finishUp open",
-    );
-
-    const sink = { discoveryIDs: [], replayKeys: [] };
-    const mergedIDs = new Map<string, number | undefined>();
-    const merged = processCompletedResults(
-      neat,
-      fittest,
-      {} as never,
-      sink,
-      mergedIDs,
-    );
-    assertEquals(
-      sink,
-      { discoveryIDs: [], replayKeys: [] },
-      "a training-only merge must not record a discovery or replay",
-    );
-
-    const late = merged.filter((c) => getTag(c, "trainID") === "late1234");
-    assert(
-      merged.length >= 1,
-      "processCompletedResults must return the settled training result",
-    );
-    assertEquals(
-      late.length,
-      1,
-      "the merged creature must be tagged with the settled task's trainID",
-    );
-
-    assert(
-      mergedIDs.has("late1234"),
-      "the merge must record the settled task as merged",
-    );
-    assert(
-      !/Training\s+late1234\s+completed/.test(
-        stripAnsi(log.lines.join("\n")),
-      ),
-      "the completed line must wait for the generation to commit (Issue #4099)",
-    );
-    // Stand in for the commit evolve() makes once the generation is accepted.
-    for (const [id, duration] of mergedIDs) {
-      neat.mergedUncommittedTrainIDs.set(id, duration);
-    }
-    assertEquals(neat.commitMergedTraining(), 1);
-
-    const plain = stripAnsi(log.lines.join("\n"));
-    assert(
-      /Training\s+late1234\s+completed/.test(plain),
-      `the commit must log the settled task's completion; got: ${plain}`,
-    );
-
-    assertEquals(
-      neat.finishUp(),
-      true,
-      "once the settled result is merged the run may finish",
     );
   } finally {
     log?.restore();

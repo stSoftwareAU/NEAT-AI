@@ -43,7 +43,9 @@ adheres to [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
   in `mergedUncommittedTrainIDs` (now a `Map` of train ID to duration). A task
   whose generation the hard deadline abandons, or which throws before commit, is
   logged only as `Training <id> discarded: ...`, so those tasks no longer
-  receive both terminal lines.
+  receive both terminal lines. A trace-store write failure is reported
+  separately and preserves the successful training result and its single
+  terminal outcome.
 - **Issue #4141:** a discovery chunk whose combined analysis failed is no longer
   re-run without the per-chunk deadline: the analysis loop reuses the first
   call's outcome, and the fallback analyses (missing-neuron, helpful-synapse and
